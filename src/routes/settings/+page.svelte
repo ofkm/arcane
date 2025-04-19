@@ -171,6 +171,9 @@
               <p class="text-xs text-muted-foreground">
                 Directory where Docker Compose stacks will be stored
               </p>
+              <p class="text-xs text-destructive">
+                Changing this setting will not move existing stacks!
+              </p>
             </div>
           </div>
         </Card.Content>
