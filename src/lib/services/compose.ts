@@ -11,8 +11,7 @@ import type {
 } from "$lib/types/stack";
 import yaml from "js-yaml";
 
-let STACKS_DIR =
-  process.env.STACKS_DIR || join(process.cwd(), ".arcane", "stacks");
+let STACKS_DIR = process.env.STACKS_DIR || join("/app/data/stacks");
 
 /**
  * Update the stacks directory path
@@ -45,8 +44,8 @@ async function ensureStacksDir(): Promise<void> {
  */
 export async function initComposeService(): Promise<void> {
   try {
-    // Try to load settings
-    const settingsPath = join(process.cwd(), "app-settings.json");
+    // Update settings path to match the new location
+    const settingsPath = join("/app/data/app-settings.json");
     const settingsData = await fs
       .readFile(settingsPath, "utf8")
       .catch(() => "{}");

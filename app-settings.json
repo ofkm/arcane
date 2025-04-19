@@ -3,5 +3,5 @@
   "autoRefresh": true,
   "refreshInterval": 10,
   "darkMode": true,
-  "stacksDirectory": ".arcane/stacks"
+  "stacksDirectory": "/app/data/stacks"
 }

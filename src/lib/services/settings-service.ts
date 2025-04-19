@@ -4,7 +4,7 @@ import { updateDockerConnection } from "./docker-service";
 import fs from "fs/promises";
 import path from "path";
 
-const SETTINGS_FILE = path.resolve("./app-settings.json");
+const SETTINGS_FILE = path.resolve("/app/data/app-settings.json");
 
 // Default settings
 const DEFAULT_SETTINGS: SettingsData = {
@@ -12,7 +12,7 @@ const DEFAULT_SETTINGS: SettingsData = {
   autoRefresh: true,
   refreshInterval: 10,
   darkMode: true,
-  stacksDirectory: path.resolve(".arcane", "stacks"),
+  stacksDirectory: path.resolve("/app/data/stacks"),
 };
 
 // Get settings
@@ -41,7 +41,7 @@ export async function getSettings(): Promise<SettingsData> {
 // Save settings
 export async function saveSettings(settings: SettingsData): Promise<void> {
   try {
-    // Ensure directory exists
+    // Ensure directory exists - create /app/data if it doesn't exist
     const settingsDir = path.dirname(SETTINGS_FILE);
     await fs.mkdir(settingsDir, { recursive: true });
 

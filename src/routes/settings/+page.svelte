@@ -165,13 +165,14 @@
                 id="stacksDirectory"
                 name="stacksDirectory"
                 bind:value={stacksDirectory}
-                placeholder=".arcane/stacks"
+                placeholder="/app/data/stacks"
                 required
               />
               <p class="text-xs text-muted-foreground">
-                Directory where Docker Compose stacks will be stored
+                Directory where Docker Compose stacks will be stored inside the
+                container.
               </p>
-              <p class="text-xs text-destructive">
+              <p class="text-xs font-bold text-destructive">
                 Changing this setting will not move existing stacks!
               </p>
             </div>
