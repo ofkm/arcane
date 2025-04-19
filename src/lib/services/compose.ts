@@ -11,8 +11,21 @@ import type {
 } from "$lib/types/stack";
 import yaml from "js-yaml";
 
-const STACKS_DIR =
+let STACKS_DIR =
   process.env.STACKS_DIR || join(process.cwd(), ".arcane", "stacks");
+
+/**
+ * Update the stacks directory path
+ * @param {string} directory New stacks directory path
+ */
+export function updateStacksDirectory(directory: string): void {
+  if (directory) {
+    STACKS_DIR = directory;
+    console.log(`Stacks directory updated to: ${STACKS_DIR}`);
+    // No need to re-initialize anything here since
+    // each function call will use the updated STACKS_DIR
+  }
+}
 
 /**
  * Ensure stacks directory exists
@@ -23,6 +36,33 @@ async function ensureStacksDir(): Promise<void> {
   } catch (err) {
     console.error("Error creating stacks directory:", err);
     throw new Error("Failed to create stacks storage directory");
+  }
+}
+
+/**
+ * Initialize the compose service with settings
+ * This should be called at app startup
+ */
+export async function initComposeService(): Promise<void> {
+  try {
+    // Try to load settings
+    const settingsPath = join(process.cwd(), "app-settings.json");
+    const settingsData = await fs
+      .readFile(settingsPath, "utf8")
+      .catch(() => "{}");
+    const settings = JSON.parse(settingsData);
+
+    if (settings.stacksDirectory) {
+      STACKS_DIR = settings.stacksDirectory;
+      console.log(`Stacks directory initialized from settings: ${STACKS_DIR}`);
+    }
+
+    // Ensure the directory exists
+    await ensureStacksDir();
+  } catch (err) {
+    console.error("Error initializing compose service:", err);
+    // Fall back to default directory and ensure it exists
+    await ensureStacksDir();
   }
 }
 

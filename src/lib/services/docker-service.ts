@@ -1,45 +1,8 @@
 import Docker from "dockerode";
-import fs from "fs"; // Use synchronous fs for initial load
-import path from "path";
+import { getSettings } from "$lib/services/settings-service";
 import type { DockerConnectionOptions } from "$lib/types/docker";
 
-// Define Settings Type (can be shared with +page.server.ts if moved to a types file)
-type SettingsData = {
-  dockerHost: string;
-  autoRefresh: boolean;
-  refreshInterval: number;
-  darkMode: boolean;
-};
-
-// --- Load Initial Settings ---
-const SETTINGS_FILE = path.resolve("./app-settings.json");
-const DEFAULT_SETTINGS: SettingsData = {
-  dockerHost: "unix:///var/run/docker.sock",
-  autoRefresh: true,
-  refreshInterval: 10,
-  darkMode: true,
-};
-
-function loadInitialSettings(): SettingsData {
-  try {
-    // Use synchronous read for initial module load simplicity
-    if (fs.existsSync(SETTINGS_FILE)) {
-      const data = fs.readFileSync(SETTINGS_FILE, "utf-8");
-      const settings = JSON.parse(data);
-      console.log("Docker Service: Loaded initial settings:", settings);
-      return { ...DEFAULT_SETTINGS, ...settings }; // Merge with defaults
-    } else {
-      console.log("Docker Service: Settings file not found, using defaults.");
-      return DEFAULT_SETTINGS;
-    }
-  } catch (error) {
-    console.error("Docker Service: Error loading initial settings:", error);
-    return DEFAULT_SETTINGS; // Fallback to defaults
-  }
-}
-
-const initialSettings = loadInitialSettings();
-// --- End Load Initial Settings ---
+const initialSettings = await getSettings();
 
 let dockerClient: Docker | null = null;
 

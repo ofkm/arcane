@@ -2,5 +2,6 @@
   "dockerHost": "unix:///var/run/docker.sock",
   "autoRefresh": true,
   "refreshInterval": 10,
-  "darkMode": true
+  "darkMode": true,
+  "stacksDirectory": ".arcane/stacks"
 }

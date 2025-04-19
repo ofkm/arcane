@@ -1,70 +1,66 @@
 <script lang="ts">
-  import type { PageData, ActionData } from "./$types";
+  import { run } from "svelte/legacy";
+
+  import { enhance } from "$app/forms";
+  import * as Form from "$lib/components/ui/form/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
-  import { Label } from "$lib/components/ui/label/index.js";
-  import {
-    Settings,
-    Save,
-    RefreshCw,
-    CheckCircle,
-    XCircle,
-    ServerCog,
-    Sliders,
-    Palette,
-  } from "@lucide/svelte";
-  import * as Switch from "$lib/components/ui/switch/index.js";
-  import { enhance } from "$app/forms";
+  import { Switch } from "$lib/components/ui/switch/index.js";
+  import { Separator } from "$lib/components/ui/separator/index.js";
+  import { Save, RefreshCw } from "@lucide/svelte";
+  import type { ActionData, PageData } from "./$types";
+  import { toast } from "svelte-sonner";
   import * as Alert from "$lib/components/ui/alert/index.js";
+  import { AlertCircle } from "@lucide/svelte";
+  import { onMount } from "svelte";
 
-  let { data, form }: { data: PageData; form: ActionData } = $props();
+  interface Props {
+    data: PageData;
+    form: ActionData;
+  }
 
-  // Initialize state variables *only* from the initial data load
-  let dockerHost = $state(data.settings.dockerHost);
-  let autoRefresh = $state(data.settings.autoRefresh);
-  let refreshInterval = $state(data.settings.refreshInterval);
-  let darkMode = $state(data.settings.darkMode);
+  let { data, form }: Props = $props();
 
-  let isSubmitting = $state(false);
-  let testStatus: "idle" | "testing" | "success" | "error" = $state("idle");
-  let testMessage: string | null = $state(null);
+  let settings = $derived(data.settings);
 
-  // Keep the effect for resetting test status when dockerHost input changes
-  $effect(() => {
-    const currentHost = dockerHost; // Create dependency on dockerHost
-    if (currentHost !== undefined) {
-      testStatus = "idle";
-      testMessage = null;
+  let saving = $state(false);
+
+  // Update form values from form.values if there was an error, otherwise from settings
+  let dockerHost = $derived(
+    form?.values?.dockerHost || settings?.dockerHost || ""
+  );
+  let autoRefresh = $derived(
+    form?.values?.autoRefresh !== undefined
+      ? form.values.autoRefresh === "on"
+      : settings?.autoRefresh || false
+  );
+  let refreshInterval = $derived(
+    form?.values?.refreshInterval !== undefined
+      ? form.values.refreshInterval
+      : settings?.refreshInterval || 10
+  );
+  let darkMode = $derived(
+    form?.values?.darkMode !== undefined
+      ? form.values.darkMode === "on"
+      : settings?.darkMode || false
+  );
+  let stacksDirectory = $derived(
+    form?.values?.stacksDirectory || settings?.stacksDirectory || ""
+  );
+
+  // Handle form submission result
+  run(() => {
+    if (form?.success) {
+      toast.success("Settings saved successfully");
+    } else if (form?.error) {
+      toast.error(form.error);
     }
   });
 
-  async function testConnection() {
-    testStatus = "testing";
-    testMessage = null;
-    try {
-      const hostParam = encodeURIComponent(dockerHost);
-      const response = await fetch(
-        `/api/docker/test-connection?host=${hostParam}`
-      );
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        testStatus = "success";
-        testMessage = result.message || "Connection successful!";
-      } else {
-        testStatus = "error";
-        testMessage =
-          result.error ||
-          "Connection failed. Check Docker status and host setting.";
-      }
-    } catch (error: any) {
-      testStatus = "error";
-      testMessage =
-        "Failed to run connection test: " + (error.message || "Unknown error");
-      console.error("Error during connection test fetch:", error);
-    }
-  }
+  onMount(() => {
+    // Any initialization needed
+  });
 </script>
 
 <div class="space-y-6">
@@ -76,21 +72,21 @@
         Configure Arcane's connection and behavior
       </p>
     </div>
-    <Button
-      type="submit"
-      form="settings-form"
-      disabled={isSubmitting || testStatus === "testing"}
-      class="h-10"
-    >
-      <Save class="w-4 h-4 mr-2" />
-      {isSubmitting ? "Saving..." : "Save Settings"}
+    <Button type="submit" form="settings-form" disabled={saving} class="h-10">
+      {#if saving}
+        <RefreshCw class="mr-2 h-4 w-4 animate-spin" />
+        Saving...
+      {:else}
+        <Save class="mr-2 h-4 w-4" />
+        Save Settings
+      {/if}
     </Button>
   </div>
 
   <!-- Alerts -->
   {#if form?.error}
     <Alert.Root variant="destructive">
-      <XCircle class="h-4 w-4 mr-2" />
+      <AlertCircle class="h-4 w-4 mr-2" />
       <Alert.Title>Error Saving Settings</Alert.Title>
       <Alert.Description>{form.error}</Alert.Description>
     </Alert.Root>
@@ -101,7 +97,7 @@
       variant="default"
       class="bg-primary/10 text-primary border border-primary"
     >
-      <CheckCircle class="h-4 w-4 mr-2" />
+      <AlertCircle class="h-4 w-4 mr-2" />
       <Alert.Title>Settings Saved</Alert.Title>
       <Alert.Description
         >Your settings have been updated successfully.</Alert.Description
@@ -111,25 +107,14 @@
 
   <!-- Settings Form -->
   <form
-    id="settings-form"
     method="POST"
+    id="settings-form"
+    class="space-y-6"
     use:enhance={() => {
-      isSubmitting = true;
-      testStatus = "idle";
-      testMessage = null;
-      return async ({ result, update }) => {
-        isSubmitting = false;
-
-        // IMPORTANT: Update local state *before* calling update()
-        if (result.type === "success" && result.data?.settings) {
-          const newSettings = result.data.settings as typeof data.settings;
-          dockerHost = newSettings.dockerHost;
-          autoRefresh = newSettings.autoRefresh;
-          refreshInterval = newSettings.refreshInterval;
-          darkMode = newSettings.darkMode;
-        }
-
-        await update({ reset: false });
+      saving = true;
+      return async ({ update }) => {
+        saving = false;
+        await update();
       };
     }}
   >
@@ -139,67 +124,54 @@
         <Card.Header class="pb-3">
           <div class="flex items-center gap-2">
             <div class="bg-blue-500/10 p-2 rounded-full">
-              <ServerCog class="h-5 w-5 text-blue-500" />
+              <Save class="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <Card.Title>Docker Connection</Card.Title>
+              <Card.Title>Docker Settings</Card.Title>
               <Card.Description
-                >Configure Docker host connection</Card.Description
+                >Configure your Docker connection</Card.Description
               >
             </div>
           </div>
         </Card.Header>
-        <Card.Content class="space-y-6">
-          <div class="space-y-2">
-            <Label for="dockerHost" class="text-sm font-medium"
-              >Docker Host</Label
-            >
-            <Input
-              id="dockerHost"
-              name="dockerHost"
-              bind:value={dockerHost}
-              placeholder="unix:///var/run/docker.sock"
-              class="mt-1"
-              disabled={testStatus === "testing"}
-            />
-            <p class="text-xs text-muted-foreground">
-              Enter Docker host URL (e.g., unix:///var/run/docker.sock or
-              tcp://localhost:2375)
-            </p>
-          </div>
-
-          <div>
-            <Button
-              variant="secondary"
-              class="w-full sm:w-auto"
-              onclick={testConnection}
-              type="button"
-              disabled={testStatus === "testing" || !dockerHost}
-            >
-              {#if testStatus === "testing"}
-                <RefreshCw class="w-4 h-4 mr-2 animate-spin" />
-                Testing...
-              {:else}
-                <RefreshCw class="w-4 h-4 mr-2" />
-                Test Connection
-              {/if}
-            </Button>
-
-            {#if testStatus === "success"}
-              <div
-                class="flex items-center gap-2 text-sm text-green-600 mt-3 bg-green-50 p-3 rounded-md border border-green-200"
+        <Card.Content>
+          <div class="space-y-4">
+            <!-- Fix Form.Field to use the correct component structure -->
+            <div class="space-y-2">
+              <label for="dockerHost" class="text-sm font-medium"
+                >Docker Host</label
               >
-                <CheckCircle class="w-4 h-4 flex-shrink-0" />
-                <span>{testMessage || "Connection successful!"}</span>
-              </div>
-            {:else if testStatus === "error"}
-              <div
-                class="flex items-center gap-2 text-sm text-destructive mt-3 bg-destructive/10 p-3 rounded-md border border-destructive/20"
+              <Input
+                type="text"
+                id="dockerHost"
+                name="dockerHost"
+                bind:value={dockerHost}
+                placeholder="unix:///var/run/docker.sock"
+                required
+              />
+              <p class="text-xs text-muted-foreground">
+                For local Docker: unix:///var/run/docker.sock (Unix) or
+                npipe:////./pipe/docker_engine (Windows)
+              </p>
+            </div>
+
+            <!-- Add this block for stacks directory with correct structure -->
+            <div class="space-y-2">
+              <label for="stacksDirectory" class="text-sm font-medium"
+                >Stacks Directory</label
               >
-                <XCircle class="w-4 h-4 flex-shrink-0" />
-                <span>{testMessage || "Connection failed."}</span>
-              </div>
-            {/if}
+              <Input
+                type="text"
+                id="stacksDirectory"
+                name="stacksDirectory"
+                bind:value={stacksDirectory}
+                placeholder=".arcane/stacks"
+                required
+              />
+              <p class="text-xs text-muted-foreground">
+                Directory where Docker Compose stacks will be stored
+              </p>
+            </div>
           </div>
         </Card.Content>
       </Card.Root>
@@ -211,7 +183,7 @@
           <Card.Header class="pb-3">
             <div class="flex items-center gap-2">
               <div class="bg-amber-500/10 p-2 rounded-full">
-                <Sliders class="h-5 w-5 text-amber-500" />
+                <RefreshCw class="h-5 w-5 text-amber-500" />
               </div>
               <div>
                 <Card.Title>Auto Refresh</Card.Title>
@@ -226,14 +198,14 @@
               class="flex items-center justify-between rounded-lg border p-4 bg-muted/30"
             >
               <div class="space-y-0.5">
-                <Label for="autoRefreshSwitch" class="text-base font-medium"
-                  >Auto Refresh</Label
+                <label for="autoRefreshSwitch" class="text-base font-medium"
+                  >Auto Refresh</label
                 >
                 <p class="text-sm text-muted-foreground">
                   Automatically refresh data periodically
                 </p>
               </div>
-              <Switch.Root
+              <Switch
                 id="autoRefreshSwitch"
                 name="autoRefresh"
                 bind:checked={autoRefresh}
@@ -242,9 +214,9 @@
 
             {#if autoRefresh}
               <div class="space-y-2 px-1">
-                <Label for="refreshInterval" class="text-sm font-medium"
-                  >Refresh Interval (seconds)</Label
-                >
+                <label for="refreshInterval" class="text-sm font-medium">
+                  Refresh Interval (seconds)
+                </label>
                 <Input
                   id="refreshInterval"
                   name="refreshInterval"
@@ -272,7 +244,7 @@
           <Card.Header class="pb-3">
             <div class="flex items-center gap-2">
               <div class="bg-purple-500/10 p-2 rounded-full">
-                <Palette class="h-5 w-5 text-purple-500" />
+                <Save class="h-5 w-5 text-purple-500" />
               </div>
               <div>
                 <Card.Title>UI Settings</Card.Title>
@@ -285,14 +257,14 @@
               class="flex items-center justify-between rounded-lg border p-4 bg-muted/30"
             >
               <div class="space-y-0.5">
-                <Label for="darkModeSwitch" class="text-base font-medium"
-                  >Dark Mode</Label
+                <label for="darkModeSwitch" class="text-base font-medium"
+                  >Dark Mode</label
                 >
                 <p class="text-sm text-muted-foreground">
                   Enable the dark color theme
                 </p>
               </div>
-              <Switch.Root
+              <Switch
                 id="darkModeSwitch"
                 name="darkMode"
                 bind:checked={darkMode}
