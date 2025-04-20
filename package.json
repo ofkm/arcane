@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "@tanstack/table-core": "^8.21.3",
-    "dockerode": "^4.0.5",
+    "dockerode": "^4.0.6",
     "dockerode-compose": "^1.4.0",
     "js-yaml": "^4.1.0",
     "nanoid": "^5.1.5"
