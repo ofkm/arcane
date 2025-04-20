@@ -6,7 +6,8 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm ci
-RUN npm run build
+# When building, set NODE_ENV to "build" to prevent connection attempts
+RUN NODE_ENV=build npm run build
 
 # Stage 2: Production image
 FROM node:22-alpine
@@ -18,6 +19,12 @@ RUN deluser --remove-home node
 RUN apk add --no-cache su-exec curl shadow
 
 WORKDIR /app
+
+# Make sure data directory exists and is writable
+RUN mkdir -p /app/data && chmod 755 /app/data
+
+# Copy default settings if starting fresh
+COPY app-settings.json /app/data/app-settings.json.default
 
 # Copy entrypoint script
 COPY scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh

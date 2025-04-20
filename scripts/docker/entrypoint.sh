@@ -64,15 +64,53 @@ if ! id -nG "$APP_USER" | grep -qw "docker"; then
 fi
 
 # Fix permissions for the Docker socket if it exists
-if [ -e "/var/run/docker.sock" ]; then
-    echo "Entrypoint: Setting permissions for Docker socket..."
-    chmod 666 /var/run/docker.sock
+if [ -S /var/run/docker.sock ]; then
+    # Get the GID of the docker socket
+    SOCKET_GID=$(stat -c '%g' /var/run/docker.sock)
+    
+    # If we have a different GID than expected, recreate the docker group
+    if [ "${SOCKET_GID}" != "${DOCKER_GID}" ]; then
+        echo "Docker socket GID (${SOCKET_GID}) doesn't match configured DOCKER_GID (${DOCKER_GID})"
+        echo "Updating docker group to match socket GID"
+        
+        # Delete existing docker group
+        delgroup docker >/dev/null 2>&1 || true
+        
+        # Create new docker group with socket GID
+        addgroup -g "${SOCKET_GID}" docker
+        
+        # Add arcane user to the new docker group
+        adduser arcane docker
+    fi
+    
+    echo "Docker socket accessible at /var/run/docker.sock (GID: ${SOCKET_GID})"
+else
+    echo "WARNING: Docker socket not found at /var/run/docker.sock"
+    echo "Make sure to mount the Docker socket when running this container"
 fi
+
+# Ensure data directory exists
+mkdir -p /app/data
+
+# If settings don't exist, copy the default
+if [ ! -f /app/data/app-settings.json ]; then
+  if [ -f /app/data/app-settings.json.default ]; then
+    cp /app/data/app-settings.json.default /app/data/app-settings.json
+  fi
+fi
+
+# Ensure permissions
+chmod 755 /app/data
+chmod 644 /app/data/app-settings.json 2>/dev/null || true
 
 # Change ownership of application directories
 echo "Entrypoint: Ensuring ownership of ${APP_DIR} for ${PUID}:${PGID}..."
 chown -R "$PUID":"$PGID" "$APP_DIR"
+chown -R "$PUID":"$PGID" "$APP_DIR/data"
+
+# Ensure permissions
+chown -R arcane:arcane /app/data
 
 # Execute the command passed to the script (CMD) as the specified user
-echo "Entrypoint: Switching to user ${APP_USER} (${PUID}:${PGID}) and executing command: $@"
-exec su-exec "$APP_USER" "$@"
+echo "Starting Arcane as user arcane ($(id -u arcane):$(id -g arcane))..."
+exec su-exec arcane "$@"

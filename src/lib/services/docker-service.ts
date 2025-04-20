@@ -2,9 +2,8 @@ import Docker from "dockerode";
 import { getSettings } from "$lib/services/settings-service";
 import type { DockerConnectionOptions } from "$lib/types/docker";
 
-const initialSettings = await getSettings();
-
 let dockerClient: Docker | null = null;
+let dockerHost: string = "unix:///var/run/docker.sock"; // Default value
 
 /**
  * Initialize Docker connection with the given options
@@ -16,9 +15,11 @@ export function initializeDocker(options: DockerConnectionOptions): Docker {
   // Handle different connection types (socket, tcp, etc.)
   if (options.socketPath) {
     connectionOpts.socketPath = options.socketPath;
+    dockerHost = options.socketPath;
   } else if (options.host && options.port) {
     connectionOpts.host = options.host;
     connectionOpts.port = options.port;
+    dockerHost = `${options.host}:${options.port}`;
 
     if (options.ca || options.cert || options.key) {
       connectionOpts.ca = options.ca;
@@ -33,45 +34,21 @@ export function initializeDocker(options: DockerConnectionOptions): Docker {
 
 /**
  * Update the Docker connection with a new host string
- * @param dockerHost Docker host connection string
+ * @param host Docker host connection string
  */
-export function updateDockerConnection(dockerHost: string): Docker {
-  // Reset the client
-  dockerClient = null;
-
-  // Parse the host string to determine connection type
-  let connectionOpts: any = {};
-
-  if (dockerHost.startsWith("unix://")) {
-    // Unix socket connection
-    connectionOpts.socketPath = dockerHost.replace("unix://", "");
-  } else if (dockerHost.startsWith("tcp://")) {
-    // TCP connection (no TLS)
-    const url = new URL(dockerHost);
-    connectionOpts.host = url.hostname;
-    connectionOpts.port = parseInt(url.port || "2375", 10);
-  } else if (dockerHost.startsWith("https://")) {
-    // HTTPS connection (TLS)
-    const url = new URL(dockerHost);
-    connectionOpts.host = url.hostname;
-    connectionOpts.port = parseInt(url.port || "2376", 10);
-    connectionOpts.protocol = "https";
-    // Note: For TLS, you would typically need to provide ca, cert, and key
-    // which should be handled separately
-  } else {
-    // Default to socket if format is unknown
-    const socketPath =
-      process.platform === "win32"
-        ? "//./pipe/docker_engine"
-        : "/var/run/docker.sock";
-    connectionOpts.socketPath = socketPath;
+export function updateDockerConnection(host: string): void {
+  try {
+    // Only create a new connection if we have a valid host
+    if (host) {
+      console.log(`Connecting to Docker at ${host}`);
+      dockerClient = new Docker({ socketPath: host });
+      dockerHost = host;
+    } else {
+      console.warn("No Docker host specified, connection not established");
+    }
+  } catch (error) {
+    console.error("Error connecting to Docker:", error);
   }
-
-  // Create new Docker client with updated connection
-  dockerClient = new Docker(connectionOpts);
-  console.log(`Docker connection updated to: ${dockerHost}`);
-
-  return dockerClient;
 }
 
 /**
@@ -79,15 +56,10 @@ export function updateDockerConnection(dockerHost: string): Docker {
  */
 export function getDockerClient(): Docker {
   if (!dockerClient) {
-    // Default to socket path for local development
-    const socketPath =
-      process.platform === "win32"
-        ? "//./pipe/docker_engine"
-        : "/var/run/docker.sock";
-
-    dockerClient = new Docker({ socketPath });
+    // Use default connection if not initialized
+    dockerClient = new Docker({ socketPath: dockerHost });
+    console.log(`Initialized Docker client with default host: ${dockerHost}`);
   }
-
   return dockerClient;
 }
 
@@ -152,7 +124,7 @@ export async function listContainers(all = true): Promise<ServiceContainer[]> {
   } catch (error: any) {
     console.error("Docker Service: Error listing containers:", error);
     throw new Error(
-      `Failed to list Docker containers using host "${initialSettings.dockerHost}".`
+      `Failed to list Docker containers using host "${dockerHost}".`
     );
   }
 }
@@ -186,7 +158,7 @@ export async function getContainer(containerId: string) {
       return null;
     }
     throw new Error(
-      `Failed to get container details for ${containerId} using host "${initialSettings.dockerHost}".`
+      `Failed to get container details for ${containerId} using host "${dockerHost}".`
     );
   }
 }
@@ -206,9 +178,9 @@ export async function startContainer(containerId: string): Promise<void> {
       error
     );
     throw new Error(
-      `Failed to start container ${containerId} using host "${
-        initialSettings.dockerHost
-      }". ${error.message || ""}`
+      `Failed to start container ${containerId} using host "${dockerHost}". ${
+        error.message || ""
+      }`
     );
   }
 }
@@ -228,9 +200,9 @@ export async function stopContainer(containerId: string): Promise<void> {
       error
     );
     throw new Error(
-      `Failed to stop container ${containerId} using host "${
-        initialSettings.dockerHost
-      }". ${error.message || ""}`
+      `Failed to stop container ${containerId} using host "${dockerHost}". ${
+        error.message || ""
+      }`
     );
   }
 }
@@ -250,9 +222,9 @@ export async function restartContainer(containerId: string): Promise<void> {
       error
     );
     throw new Error(
-      `Failed to restart container ${containerId} using host "${
-        initialSettings.dockerHost
-      }". ${error.message || ""}`
+      `Failed to restart container ${containerId} using host "${dockerHost}". ${
+        error.message || ""
+      }`
     );
   }
 }
@@ -284,9 +256,9 @@ export async function removeContainer(
       );
     }
     throw new Error(
-      `Failed to remove container ${containerId} using host "${
-        initialSettings.dockerHost
-      }". ${error.message || ""}`
+      `Failed to remove container ${containerId} using host "${dockerHost}". ${
+        error.message || ""
+      }`
     );
   }
 }
@@ -348,9 +320,9 @@ export async function getContainerLogs(
       error
     );
     throw new Error(
-      `Failed to get logs for container ${containerId} using host "${
-        initialSettings.dockerHost
-      }". ${error.message || ""}`
+      `Failed to get logs for container ${containerId} using host "${dockerHost}". ${
+        error.message || ""
+      }`
     );
   }
 }
@@ -407,9 +379,7 @@ export async function listImages(): Promise<ServiceImage[]> {
     });
   } catch (error: any) {
     console.error("Docker Service: Error listing images:", error);
-    throw new Error(
-      `Failed to list Docker images using host "${initialSettings.dockerHost}".`
-    );
+    throw new Error(`Failed to list Docker images using host "${dockerHost}".`);
   }
 }
 
@@ -445,7 +415,7 @@ export async function listNetworks(): Promise<ServiceNetwork[]> {
   } catch (error: any) {
     console.error("Docker Service: Error listing networks:", error);
     throw new Error(
-      `Failed to list Docker networks using host "${initialSettings.dockerHost}".`
+      `Failed to list Docker networks using host "${dockerHost}".`
     );
   }
 }
@@ -480,7 +450,7 @@ export async function listVolumes(): Promise<ServiceVolume[]> {
   } catch (error: any) {
     console.error("Docker Service: Error listing volumes:", error);
     throw new Error(
-      `Failed to list Docker volumes using host "${initialSettings.dockerHost}".`
+      `Failed to list Docker volumes using host "${dockerHost}".`
     );
   }
 }
