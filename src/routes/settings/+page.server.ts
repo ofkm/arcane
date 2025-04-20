@@ -3,9 +3,16 @@ import { fail } from "@sveltejs/kit";
 import { getSettings, saveSettings } from "$lib/services/settings-service";
 import type { SettingsData } from "$lib/types/settings";
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
   const settings = await getSettings();
-  return { settings };
+
+  // Generate a CSRF token
+  const csrf = crypto.randomUUID();
+
+  return {
+    settings,
+    csrf,
+  };
 };
 
 export const actions: Actions = {

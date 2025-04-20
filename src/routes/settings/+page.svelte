@@ -108,6 +108,7 @@
   <!-- Settings Form -->
   <form
     method="POST"
+    action="?"
     id="settings-form"
     class="space-y-6"
     use:enhance={() => {
@@ -118,6 +119,9 @@
       };
     }}
   >
+    <!-- Add a hidden input with a CSRF token -->
+    <input type="hidden" name="csrf_token" value={data.csrf} />
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Docker Connection Card -->
       <Card.Root class="border shadow-sm">
