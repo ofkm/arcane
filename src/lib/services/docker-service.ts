@@ -541,4 +541,33 @@ export async function createVolume(options: VolumeCreateOptions): Promise<any> {
   }
 }
 
+/**
+ * Removes a Docker volume.
+ * @param name - The name of the volume to remove.
+ * @param force - Whether to force removal if the volume is in use.
+ */
+export async function removeVolume(
+  name: string,
+  force: boolean = false
+): Promise<void> {
+  try {
+    const docker = getDockerClient();
+    const volume = docker.getVolume(name);
+    await volume.remove({ force });
+    console.log(`Docker Service: Volume "${name}" removed successfully.`);
+  } catch (error: any) {
+    console.error(`Docker Service: Error removing volume "${name}":`, error);
+    if (error.statusCode === 409) {
+      throw new Error(
+        `Volume "${name}" is in use by a container. Use force option to remove.`
+      );
+    }
+    throw new Error(
+      `Failed to remove volume "${name}" using host "${dockerHost}". ${
+        error.message || error.reason || ""
+      }`
+    );
+  }
+}
+
 export default getDockerClient;

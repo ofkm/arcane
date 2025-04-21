@@ -1,8 +1,7 @@
-// filepath: /Users/kylemendell/dev/ofkm/arcane/src/routes/volumes/columns.ts
 import type { ColumnDef } from "@tanstack/table-core";
 import { renderComponent } from "$lib/components/ui/data-table/index.js";
 import VolumeActions from "./VolumeActions.svelte";
-import MountpointCell from "./MountpointCell.svelte"; // Import the new component
+import MountpointCell from "./MountpointCell.svelte";
 import type { ServiceVolume } from "$lib/services/docker-service";
 
 export type VolumeInfo = ServiceVolume;
