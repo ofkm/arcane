@@ -31,7 +31,6 @@
     }) => {},
   }: Props = $props();
 
-  // Internal state
   let imageRef = $state("");
   let tag = $state("latest");
   let showAdvanced = $state(false);
@@ -49,18 +48,15 @@
   function handleSubmit() {
     if (!imageRef.trim()) return;
 
-    // Extract just the image reference without tag for the URL path
     let urlPath = imageRef.trim();
     let imageTag = tag || "latest";
 
-    // If it contains a tag, extract it
     if (urlPath.includes(":")) {
       const parts = urlPath.split(":");
       urlPath = parts[0];
       imageTag = parts[1];
     }
 
-    // Call onSubmit with the appropriate values
     onSubmit({
       imageRef: urlPath,
       tag: imageTag,
@@ -80,27 +76,30 @@
 
     <form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
       <!-- Basic image settings -->
-      <div class="grid grid-cols-4 items-center gap-4">
-        <Label for="image-ref" class="text-right">Image</Label>
-        <Input
-          id="image-ref"
-          bind:value={imageRef}
-          class="col-span-3"
-          placeholder="e.g., nginx or ubuntu"
-          required
-          disabled={isPulling}
-        />
-      </div>
-
-      <div class="grid grid-cols-4 items-center gap-4">
-        <Label for="image-tag" class="text-right">Tag</Label>
-        <Input
-          id="image-tag"
-          bind:value={tag}
-          class="col-span-3"
-          placeholder="latest"
-          disabled={isPulling}
-        />
+      <div class="flex flex-col gap-2">
+        <Label for="image-ref">Image</Label>
+        <div class="flex items-center gap-2">
+          <div class="flex-1">
+            <Input
+              id="image-ref"
+              bind:value={imageRef}
+              placeholder="e.g., nginx or ubuntu"
+              required
+              disabled={isPulling}
+            />
+          </div>
+          <div class="flex items-center">
+            <span class="text-lg font-medium text-muted-foreground">:</span>
+          </div>
+          <div class="w-1/3">
+            <Input
+              id="image-tag"
+              bind:value={tag}
+              placeholder="latest"
+              disabled={isPulling}
+            />
+          </div>
+        </div>
       </div>
 
       <!-- Advanced settings -->

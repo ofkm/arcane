@@ -52,7 +52,6 @@
 
       const encodedImageRef = encodeURIComponent(imageRef);
 
-      // Call the API endpoint
       const response = await fetch(`/api/images/pull/${encodedImageRef}`, {
         method: "POST",
         headers: {
