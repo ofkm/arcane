@@ -30,8 +30,13 @@
 
   const totalVolumes = $derived(volumes?.length || 0);
 
-  async function handleCreateVolumeSubmit(event: { name: string }) {
-    const volumeName = event.name;
+  async function handleCreateVolumeSubmit(event: {
+    name: string;
+    driver?: string;
+    driverOpts?: Record<string, string>;
+    labels?: Record<string, string>;
+  }) {
+    const { name, driver, driverOpts, labels } = event;
 
     isCreatingVolume = true;
     try {
@@ -41,7 +46,10 @@
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          Name: volumeName,
+          name, // Renamed from Name to name
+          driver, // Added driver
+          driverOpts, // Added driver options
+          labels, // Added labels
         }),
       });
 

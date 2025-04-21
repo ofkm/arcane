@@ -6,6 +6,9 @@
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
   import { Loader2 } from "@lucide/svelte";
+  import { Textarea } from "$lib/components/ui/textarea/index.js";
+  import * as Accordion from "$lib/components/ui/accordion/index.js";
+  import * as Select from "$lib/components/ui/select/index.js";
 
   // Functions for events
   export function onClose() {
@@ -22,15 +25,72 @@
   let {
     open = $bindable(false),
     isCreating = false,
-    onSubmit = (data: { name: string }) => {},
+    onSubmit = (data: {
+      name: string;
+      driver?: string;
+      driverOpts?: Record<string, string>;
+      labels?: Record<string, string>;
+    }) => {},
   }: Props = $props();
 
   // Internal state
   let volumeName = $state("");
+  let driver = $state("local");
+  let showAdvanced = $state(false);
+
+  // Driver options as key-value pairs
+  let driverOptsText = $state("");
+  // Labels as key-value pairs
+  let labelsText = $state("");
+
+  // Available volume drivers
+  const drivers = [
+    { label: "Local", value: "local" },
+    { label: "NFS", value: "nfs" },
+    { label: "AWS EBS", value: "awsElasticBlockStore" },
+    { label: "Azure Disk", value: "azure_disk" },
+    { label: "GCE Persistent Disk", value: "gcePersistentDisk" },
+  ];
+
+  // Parse key-value text into an object
+  function parseKeyValuePairs(text: string): Record<string, string> {
+    if (!text.trim()) return {};
+
+    const result: Record<string, string> = {};
+    const lines = text.split("\n");
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.includes("=")) continue;
+
+      const [key, ...valueParts] = trimmed.split("=");
+      const value = valueParts.join("="); // Handle values that might contain =
+
+      if (key.trim()) {
+        result[key.trim()] = value.trim();
+      }
+    }
+
+    return result;
+  }
+
+  function handleSubmit() {
+    if (!volumeName.trim()) return;
+
+    const driverOpts = parseKeyValuePairs(driverOptsText);
+    const labels = parseKeyValuePairs(labelsText);
+
+    onSubmit({
+      name: volumeName.trim(),
+      driver,
+      driverOpts: Object.keys(driverOpts).length ? driverOpts : undefined,
+      labels: Object.keys(labels).length ? labels : undefined,
+    });
+  }
 </script>
 
 <Dialog.Root bind:open>
-  <Dialog.Content class="sm:max-w-[425px]">
+  <Dialog.Content class="sm:max-w-[500px]">
     <Dialog.Header>
       <Dialog.Title>Create New Volume</Dialog.Title>
       <Dialog.Description>
@@ -38,10 +98,8 @@
       </Dialog.Description>
     </Dialog.Header>
 
-    <form
-      onsubmit={preventDefault(() => onSubmit({ name: volumeName }))}
-      class="grid gap-4 py-4"
-    >
+    <form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
+      <!-- Basic volume settings -->
       <div class="grid grid-cols-4 items-center gap-4">
         <Label for="volume-name" class="text-right">Name</Label>
         <Input
@@ -53,6 +111,62 @@
           disabled={isCreating}
         />
       </div>
+
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="volume-driver" class="text-right">Driver</Label>
+        <div class="col-span-3">
+          <Select.Root type="single" bind:value={driver} disabled={isCreating}>
+            <Select.Trigger class="w-full">
+              <span
+                >{drivers.find((d) => d.value === driver)?.label ||
+                  "Select a driver"}</span
+              >
+            </Select.Trigger>
+            <Select.Content>
+              {#each drivers as driverOption}
+                <Select.Item value={driverOption.value}>
+                  {driverOption.label}
+                </Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
+        </div>
+      </div>
+
+      <!-- Advanced settings -->
+      <Accordion.Root type="single">
+        <Accordion.Item value="advanced">
+          <Accordion.Trigger>Advanced Settings</Accordion.Trigger>
+          <Accordion.Content>
+            <div class="grid gap-4 pt-2">
+              <div>
+                <Label for="driver-opts">Driver Options</Label>
+                <Textarea
+                  id="driver-opts"
+                  bind:value={driverOptsText}
+                  placeholder="key=value&#10;key2=value2"
+                  disabled={isCreating}
+                />
+                <p class="text-xs text-muted-foreground mt-1">
+                  Enter driver-specific options as key=value pairs, one per line
+                </p>
+              </div>
+              <div>
+                <Label for="labels">Labels</Label>
+                <Textarea
+                  id="labels"
+                  bind:value={labelsText}
+                  placeholder="com.example.description=Production data&#10;com.example.department=Finance"
+                  disabled={isCreating}
+                />
+                <p class="text-xs text-muted-foreground mt-1">
+                  Enter metadata labels as key=value pairs, one per line
+                </p>
+              </div>
+            </div>
+          </Accordion.Content>
+        </Accordion.Item>
+      </Accordion.Root>
     </form>
 
     <Dialog.Footer>
@@ -61,7 +175,7 @@
       </Button>
       <Button
         type="submit"
-        onclick={() => onSubmit({ name: volumeName })}
+        onclick={handleSubmit}
         disabled={isCreating || !volumeName.trim()}
       >
         {#if isCreating}
