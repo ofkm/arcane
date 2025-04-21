@@ -1,0 +1,328 @@
+<script lang="ts" generics="TData">
+  import {
+    type ColumnDef,
+    getCoreRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    type SortingState,
+    getFilteredRowModel,
+    type ColumnFiltersState,
+  } from "@tanstack/table-core";
+  import {
+    createSvelteTable,
+    FlexRender,
+  } from "$lib/components/ui/data-table/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
+  import * as Pagination from "$lib/components/ui/pagination/index.js";
+  import * as Select from "$lib/components/ui/select/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { debounced } from "$lib/utils";
+  import { Checkbox } from "$lib/components/ui/checkbox/index.js";
+  import { ChevronDown } from "@lucide/svelte";
+  import { cn } from "$lib/utils";
+
+  type UniversalTableProps<TData> = {
+    columns: ColumnDef<TData, any>[];
+    data: TData[];
+    pageSize?: number;
+    pageSizeOptions?: number[];
+    enableSorting?: boolean;
+    enableFiltering?: boolean;
+    enableSelection?: boolean;
+    filterPlaceholder?: string;
+    noResultsMessage?: string;
+    itemsPerPageLabel?: string;
+    selectedIds?: string[];
+  };
+
+  let {
+    data,
+    columns,
+    pageSize = 10,
+    pageSizeOptions = [10, 20, 50, 100],
+    enableSorting = true,
+    enableFiltering = true,
+    enableSelection = false,
+    filterPlaceholder = "Search...",
+    noResultsMessage = "No results found",
+    itemsPerPageLabel = "Items per page",
+    selectedIds = $bindable<string[]>([]),
+  }: UniversalTableProps<TData> = $props();
+
+  // Pagination state
+  let pageIndex = $state(0);
+  let currentPage = $state(1);
+
+  // Sorting state
+  let sorting = $state<SortingState>([]);
+
+  // Filtering state
+  let columnFilters = $state<ColumnFiltersState>([]);
+  let globalFilter = $state<string>("");
+  // Selection state
+  let selectedRowIds = $state<Record<string, boolean>>({});
+
+  $effect(() => {
+    // Update selected IDs array when row selection changes
+    selectedIds = Object.entries(selectedRowIds)
+      .filter(([_, selected]) => selected)
+      .map(([id]) => id);
+  });
+
+  // Sync pagination states
+  $effect(() => {
+    pageIndex = currentPage - 1;
+  });
+
+  $effect(() => {
+    const tablePageIndex = table.getState().pagination.pageIndex;
+    if (tablePageIndex !== pageIndex) {
+      currentPage = tablePageIndex + 1;
+    }
+  });
+
+  // Create table instance
+  const table = createSvelteTable({
+    get data() {
+      return data;
+    },
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: enableSorting ? getSortedRowModel() : undefined,
+    getFilteredRowModel: enableFiltering ? getFilteredRowModel() : undefined,
+    state: {
+      get pagination() {
+        return {
+          pageIndex,
+          pageSize,
+        };
+      },
+      get sorting() {
+        return sorting;
+      },
+      get columnFilters() {
+        return columnFilters;
+      },
+      get globalFilter() {
+        return globalFilter;
+      },
+      get rowSelection() {
+        return selectedRowIds;
+      },
+    },
+    onSortingChange: (updater) => {
+      if (typeof updater === "function") {
+        sorting = updater(sorting);
+      } else {
+        sorting = updater;
+      }
+    },
+    onColumnFiltersChange: (updater) => {
+      if (typeof updater === "function") {
+        columnFilters = updater(columnFilters);
+      } else {
+        columnFilters = updater;
+      }
+    },
+    onGlobalFilterChange: (value) => {
+      globalFilter = value;
+      pageIndex = 0; // Reset to first page when filtering
+      currentPage = 1;
+    },
+    onRowSelectionChange: (updater) => {
+      if (typeof updater === "function") {
+        selectedRowIds = updater(selectedRowIds);
+      } else {
+        selectedRowIds = updater;
+      }
+    },
+    enableRowSelection: enableSelection,
+  });
+
+  const pageCount = $derived(table.getPageCount());
+  const filteredRowCount = $derived(table.getFilteredRowModel().rows.length);
+
+  // Handle global filtering with debounce
+  const handleFilterChange = debounced((value: string) => {
+    table.setGlobalFilter(value);
+  }, 300);
+
+  // Check if all rows on current page are selected
+  const allRowsSelected = $derived(
+    table.getIsAllPageRowsSelected() && table.getRowModel().rows.length > 0
+  );
+
+  // Handle page size change
+  function handlePageSizeChange(size: string | number) {
+    const sizeNumber = typeof size === "string" ? parseInt(size) : size;
+    table.setPageSize(sizeNumber);
+    pageIndex = 0;
+    currentPage = 1;
+  }
+</script>
+
+<div class="space-y-4">
+  {#if enableFiltering}
+    <div class="flex items-center">
+      <Input
+        placeholder={filterPlaceholder}
+        value={globalFilter}
+        oninput={(e) => handleFilterChange(e.currentTarget.value)}
+        class="max-w-sm"
+      />
+    </div>
+  {/if}
+
+  <div class="rounded-md border">
+    <Table.Root>
+      <Table.Header>
+        {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+          <Table.Row>
+            {#if enableSelection}
+              <Table.Head class="w-12">
+                <Checkbox
+                  checked={allRowsSelected}
+                  onCheckedChange={(checked) =>
+                    table.toggleAllPageRowsSelected(!!checked)}
+                />
+              </Table.Head>
+            {/if}
+            {#each headerGroup.headers as header (header.id)}
+              <Table.Head>
+                {#if !header.isPlaceholder}
+                  {#if header.column.getCanSort()}
+                    <Button
+                      variant="ghost"
+                      class="flex items-center p-0 hover:bg-transparent"
+                      onclick={() =>
+                        header.column.toggleSorting(
+                          header.column.getIsSorted() === "asc"
+                        )}
+                    >
+                      <FlexRender
+                        content={header.column.columnDef.header}
+                        context={header.getContext()}
+                      />
+                      {#if header.column.getIsSorted()}
+                        <ChevronDown
+                          class={cn(
+                            "ml-2 h-4 w-4",
+                            header.column.getIsSorted() === "asc"
+                              ? "rotate-180"
+                              : ""
+                          )}
+                        />
+                      {/if}
+                    </Button>
+                  {:else}
+                    <FlexRender
+                      content={header.column.columnDef.header}
+                      context={header.getContext()}
+                    />
+                  {/if}
+                {/if}
+              </Table.Head>
+            {/each}
+          </Table.Row>
+        {/each}
+      </Table.Header>
+      <Table.Body>
+        {#if table.getRowModel().rows.length > 0}
+          {#each table.getRowModel().rows as row (row.id)}
+            <Table.Row data-state={row.getIsSelected() && "selected"}>
+              {#if enableSelection}
+                <Table.Cell class="w-12">
+                  <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(checked) => row.toggleSelected(!!checked)}
+                  />
+                </Table.Cell>
+              {/if}
+              {#each row.getVisibleCells() as cell (cell.id)}
+                <Table.Cell>
+                  <FlexRender
+                    content={cell.column.columnDef.cell}
+                    context={cell.getContext()}
+                  />
+                </Table.Cell>
+              {/each}
+            </Table.Row>
+          {/each}
+        {:else}
+          <Table.Row>
+            <Table.Cell
+              colspan={enableSelection ? columns.length + 1 : columns.length}
+              class="h-24 text-center"
+            >
+              {noResultsMessage}
+            </Table.Cell>
+          </Table.Row>
+        {/if}
+      </Table.Body>
+    </Table.Root>
+  </div>
+
+  <!-- Pagination Controls -->
+  {#if pageCount > 1 || pageSizeOptions.length > 1}
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <span class="text-sm my-auto">{itemsPerPageLabel}</span>
+        <Select.Root
+          type="single"
+          value={pageSize.toString()}
+          onValueChange={(value) => handlePageSizeChange(value)}
+        >
+          <Select.Trigger class="h-8 w-[70px]" id="pageSize">
+            <span>
+              {pageSize}
+            </span>
+          </Select.Trigger>
+          <Select.Content>
+            {#each pageSizeOptions as size}
+              <Select.Item value={size.toString()}>
+                {size}
+              </Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
+      </div>
+
+      <div class="ml-auto">
+        <Pagination.Root
+          count={filteredRowCount}
+          perPage={pageSize}
+          bind:page={currentPage}
+        >
+          {#snippet children({ pages, currentPage })}
+            <Pagination.Content>
+              <Pagination.Item>
+                <Pagination.PrevButton class="px-2.5" />
+              </Pagination.Item>
+              {#each pages as page (page.key)}
+                {#if page.type === "ellipsis"}
+                  <Pagination.Item>
+                    <Pagination.Ellipsis />
+                  </Pagination.Item>
+                {:else}
+                  <Pagination.Item>
+                    <Pagination.Link
+                      {page}
+                      isActive={currentPage === page.value}
+                    >
+                      {page.value}
+                    </Pagination.Link>
+                  </Pagination.Item>
+                {/if}
+              {/each}
+              <Pagination.Item>
+                <Pagination.NextButton class="px-2.5" />
+              </Pagination.Item>
+            </Pagination.Content>
+          {/snippet}
+        </Pagination.Root>
+      </div>
+    </div>
+  {/if}
+</div>

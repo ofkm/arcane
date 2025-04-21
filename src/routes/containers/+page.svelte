@@ -2,15 +2,17 @@
   import DataTable from "$lib/components/data-table.svelte";
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
-  import { columns } from "./columns.js";
+  import { columns } from "./columns";
   import { Plus, Box, RefreshCw, Filter, ArrowUpDown } from "@lucide/svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
+  import UniversalTable from "$lib/components/universal-table.svelte";
   import { invalidateAll } from "$app/navigation";
 
   let { data } = $props();
   const { containers } = data;
 
   let isRefreshing = $state(false);
+  let selectedIds = $state([]);
 
   // Calculate running containers
   const runningContainers = $derived(
@@ -104,10 +106,7 @@
     <Card.Header class="px-6">
       <div class="flex items-center justify-between">
         <div>
-          <Card.Title>
-            Container List
-            <Badge variant="secondary" class="ml-2">{totalContainers}</Badge>
-          </Card.Title>
+          <Card.Title>Container List</Card.Title>
           <Card.Description
             >View and manage your Docker containers</Card.Description
           >
@@ -125,7 +124,19 @@
       </div>
     </Card.Header>
     <Card.Content>
-      <DataTable data={containers} {columns} />
+      <UniversalTable
+        data={containers}
+        {columns}
+        pageSize={10}
+        pageSizeOptions={[5, 10, 20, 50]}
+        enableSorting={true}
+        enableFiltering={true}
+        enableSelection={true}
+        bind:selectedIds
+        filterPlaceholder="Search containers..."
+        noResultsMessage="No containers found"
+      />
+      <!-- <DataTable data={containers} {columns} /> -->
     </Card.Content>
   </Card.Root>
 
