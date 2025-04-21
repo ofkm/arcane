@@ -24,6 +24,7 @@
   let isRefreshing = $state(false);
   let isPullDialogOpen = $state(false);
   let isPullingImage = $state(false);
+  let pullProgress = $state(0);
 
   const totalImages = $derived(images?.length || 0);
 
@@ -39,41 +40,55 @@
     const { imageRef, tag = "latest", platform } = event;
 
     isPullingImage = true;
+    // Create a reactive state for tracking progress
+    let currentPullProgress = $state(0);
+
     try {
       const encodedImageRef = encodeURIComponent(imageRef);
-      const response = await fetch(`/api/images/pull/${encodedImageRef}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          tag,
-          platform,
-        }),
-      });
+      const eventSource = new EventSource(
+        `/api/images/pull-stream/${encodedImageRef}?tag=${tag}${platform ? `&platform=${platform}` : ""}`
+      );
 
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(
-          result.error || `HTTP error! status: ${response.status}`
-        );
-      }
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
 
-      const fullImageRef = `${imageRef}:${tag}`;
-      toast.success(`Image "${fullImageRef}" pulled successfully.`);
-      isPullDialogOpen = false;
+        if (data.error) {
+          eventSource.close();
+          toast.error(`Pull failed: ${data.error}`);
+          isPullingImage = false;
+          return;
+        }
 
-      window.location.href = `${window.location.pathname}?t=${Date.now()}`;
+        // Update progress - this is what was missing
+        if (data.progress !== undefined) {
+          console.log("Progress update:", data.progress);
+          currentPullProgress = data.progress;
+          // Make sure to pass this to the dialog
+          pullProgress = data.progress;
+        }
+
+        if (data.complete) {
+          eventSource.close();
+          const fullImageRef = `${imageRef}:${tag}`;
+          toast.success(`Image "${fullImageRef}" pulled successfully.`);
+          isPullDialogOpen = false;
+
+          // Force page reload with a cache busting parameter
+          window.location.href = `${window.location.pathname}?t=${Date.now()}`;
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.error("EventSource error:", err);
+        eventSource.close();
+        toast.error("Connection to server lost while pulling image");
+        isPullingImage = false;
+      };
     } catch (err: any) {
       console.error("Failed to pull image:", err);
       toast.error(`Failed to pull image: ${err.message}`);
-    } finally {
       isPullingImage = false;
     }
-  }
-
-  function pullImage() {
-    alert("Implement pull image functionality");
   }
 
   async function refreshData() {
@@ -216,6 +231,7 @@
   <PullImageDialog
     bind:open={isPullDialogOpen}
     isPulling={isPullingImage}
+    {pullProgress}
     onSubmit={handlePullImageSubmit}
   />
 </div>

@@ -21,12 +21,14 @@
   interface Props {
     open?: boolean;
     isPulling?: boolean;
+    pullProgress?: number;
     onSubmit?: any;
   }
 
   let {
     open = $bindable(false),
     isPulling = false,
+    pullProgress = 0,
     onSubmit = (data: {
       imageRef: string;
       tag?: string;
@@ -145,6 +147,25 @@
       </Accordion.Root>
     </form>
 
+    {#if isPulling}
+      <div class="mt-4">
+        <div class="flex justify-between text-xs mb-1">
+          <span>Pulling image...</span>
+          <span>{Math.round(pullProgress)}%</span>
+        </div>
+        <div class="w-full bg-secondary h-2 rounded-full overflow-hidden">
+          <div
+            class="bg-primary h-full transition-all duration-300 ease-in-out"
+            style="width: {pullProgress}%"
+          ></div>
+        </div>
+        <p class="text-xs text-muted-foreground mt-1">
+          This may take a while depending on the image size and your internet
+          connection.
+        </p>
+      </div>
+    {/if}
+
     <Dialog.Footer>
       <Button variant="outline" onclick={onClose} disabled={isPulling}>
         Cancel
@@ -153,9 +174,37 @@
         type="submit"
         onclick={handleSubmit}
         disabled={isPulling || !imageRef.trim()}
+        class="relative"
       >
         {#if isPulling}
-          <Loader2 class="h-4 w-4 mr-2 animate-spin" /> Pulling...
+          <div class="absolute inset-0 flex items-center justify-center">
+            <svg class="absolute w-full h-full" viewBox="0 0 100 100">
+              <circle
+                class="text-primary-400/20"
+                cx="50"
+                cy="50"
+                r="45"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="8"
+              />
+              <circle
+                class="text-primary-500"
+                cx="50"
+                cy="50"
+                r="45"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="8"
+                stroke-linecap="round"
+                stroke-dasharray={283}
+                stroke-dashoffset={283 * (1 - pullProgress / 100)}
+                transform="rotate(-90 50 50)"
+              />
+            </svg>
+            <Loader2 class="h-4 w-4 animate-spin" />
+          </div>
+          <span class="opacity-0">Pull Image</span>
         {:else}
           Pull Image
         {/if}
