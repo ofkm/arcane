@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { preventDefault } from "svelte/legacy";
-
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
@@ -9,13 +7,18 @@
   import * as Accordion from "$lib/components/ui/accordion/index.js";
   import * as Select from "$lib/components/ui/select/index.js";
 
-  // Functions for events
+  function preventDefault(handler: (event: SubmitEvent) => void) {
+    return (event: SubmitEvent) => {
+      event.preventDefault();
+      handler(event);
+    };
+  }
+
   export function onClose() {
     open = false;
   }
 
   interface Props {
-    // Simple boolean prop for open state
     open?: boolean;
     isPulling?: boolean;
     onSubmit?: any;
@@ -33,7 +36,6 @@
 
   let imageRef = $state("");
   let tag = $state("latest");
-  let showAdvanced = $state(false);
   let platform = $state("");
 
   // Available platforms
