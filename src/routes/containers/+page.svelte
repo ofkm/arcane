@@ -111,16 +111,6 @@
             >View and manage your Docker containers</Card.Description
           >
         </div>
-        <div class="flex items-center gap-2">
-          <Button variant="outline" size="sm" class="hidden sm:flex">
-            <Filter class="h-4 w-4 mr-2" />
-            Filter
-          </Button>
-          <Button variant="outline" size="sm" class="hidden sm:flex">
-            <ArrowUpDown class="h-4 w-4 mr-2" />
-            Sort
-          </Button>
-        </div>
       </div>
     </Card.Header>
     <Card.Content>
@@ -136,7 +126,6 @@
         filterPlaceholder="Search containers..."
         noResultsMessage="No containers found"
       />
-      <!-- <DataTable data={containers} {columns} /> -->
     </Card.Content>
   </Card.Root>
 
