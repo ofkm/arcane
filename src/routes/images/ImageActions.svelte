@@ -4,7 +4,6 @@
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
   import { Trash2, Download, Ellipsis, Loader2 } from "@lucide/svelte";
   import { toast } from "svelte-sonner";
-  import { invalidateAll } from "$app/navigation";
 
   let { id, repoTag }: { id: string; repoTag?: string } = $props();
   let isPulling = $state(false);
@@ -31,7 +30,6 @@
       );
       isConfirmDialogOpen = false;
 
-      // Force page refresh to update the image list
       window.location.href = `${window.location.pathname}?t=${Date.now()}`;
     } catch (err: any) {
       console.error(`Failed to delete image:`, err);
@@ -54,6 +52,7 @@
 
       const encodedImageRef = encodeURIComponent(imageRef);
 
+      // Call the API endpoint
       const response = await fetch(`/api/images/pull/${encodedImageRef}`, {
         method: "POST",
         headers: {
@@ -73,9 +72,7 @@
 
       toast.success(`Image "${repoTag}" pulled successfully.`);
 
-      setTimeout(async () => {
-        await invalidateAll();
-      }, 500);
+      window.location.href = `${window.location.pathname}?t=${Date.now()}`;
     } catch (err: any) {
       console.error(`Failed to pull image "${repoTag}":`, err);
       toast.error(`Failed to pull image: ${err.message}`);

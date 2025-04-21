@@ -25,10 +25,8 @@
   let isPullDialogOpen = $state(false);
   let isPullingImage = $state(false);
 
-  // Calculate total images
   const totalImages = $derived(images?.length || 0);
 
-  // Calculate total size of all images
   const totalSize = $derived(
     images?.reduce((acc, img) => acc + (img.size || 0), 0) || 0
   );
@@ -49,7 +47,7 @@
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          tag, // Send tag as part of the body
+          tag,
           platform,
         }),
       });
@@ -65,10 +63,7 @@
       toast.success(`Image "${fullImageRef}" pulled successfully.`);
       isPullDialogOpen = false;
 
-      // Force a refresh with a short timeout
-      setTimeout(async () => {
-        await refreshData();
-      }, 500);
+      window.location.href = `${window.location.pathname}?t=${Date.now()}`;
     } catch (err: any) {
       console.error("Failed to pull image:", err);
       toast.error(`Failed to pull image: ${err.message}`);
