@@ -1,4 +1,5 @@
 import Docker from "dockerode";
+import type { VolumeInspectInfo, VolumeCreateOptions, Volume } from "dockerode"; // Import Volume type
 import { getSettings } from "$lib/services/settings-service";
 import type { DockerConnectionOptions } from "$lib/types/docker";
 
@@ -496,6 +497,46 @@ export async function listVolumes(): Promise<ServiceVolume[]> {
     console.error("Docker Service: Error listing volumes:", error);
     throw new Error(
       `Failed to list Docker volumes using host "${dockerHost}".`
+    );
+  }
+}
+
+/**
+ * Creates a Docker volume.
+ * @param options - Options for creating the volume (e.g., Name, Driver, Labels).
+ */
+export async function createVolume(options: VolumeCreateOptions): Promise<any> {
+  try {
+    const docker = getDockerClient();
+    // createVolume returns the volume data directly - no need to inspect
+    const volume = await docker.createVolume(options);
+
+    console.log(
+      `Docker Service: Volume "${options.Name}" created successfully.`
+    );
+
+    // Return the creation response which contains basic info
+    return {
+      Name: volume.Name,
+      Driver: volume.Driver,
+      Mountpoint: volume.Mountpoint,
+      Labels: volume.Labels || {},
+      Scope: volume.Scope || "local",
+      CreatedAt: new Date().toISOString(), // Since inspect would give us this
+    };
+  } catch (error: any) {
+    console.error(
+      `Docker Service: Error creating volume "${options.Name}":`,
+      error
+    );
+    // Check for specific Docker errors, like volume already exists (often 409)
+    if (error.statusCode === 409) {
+      throw new Error(`Volume "${options.Name}" already exists.`);
+    }
+    throw new Error(
+      `Failed to create volume "${options.Name}" using host "${dockerHost}". ${
+        error.message || error.reason || "" // Include reason if available
+      }`
     );
   }
 }
