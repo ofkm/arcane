@@ -49,19 +49,21 @@
   function handleSubmit() {
     if (!imageRef.trim()) return;
 
-    // Normalize the image reference
-    let normalizedImageRef = imageRef.trim();
+    // Extract just the image reference without tag for the URL path
+    let urlPath = imageRef.trim();
+    let imageTag = tag || "latest";
 
     // If it contains a tag, extract it
-    if (normalizedImageRef.includes(":") && tag === "latest") {
-      const parts = normalizedImageRef.split(":");
-      normalizedImageRef = parts[0];
-      tag = parts[1];
+    if (urlPath.includes(":")) {
+      const parts = urlPath.split(":");
+      urlPath = parts[0];
+      imageTag = parts[1];
     }
 
+    // Call onSubmit with the appropriate values
     onSubmit({
-      imageRef: normalizedImageRef,
-      tag,
+      imageRef: urlPath,
+      tag: imageTag,
       platform: platform || undefined,
     });
   }

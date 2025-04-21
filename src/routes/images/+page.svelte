@@ -39,17 +39,17 @@
     platform?: string;
   }) {
     const { imageRef, tag = "latest", platform } = event;
-    const fullImageRef = `${imageRef}:${tag}`;
 
     isPullingImage = true;
     try {
-      const response = await fetch("/api/images/pull", {
+      const encodedImageRef = encodeURIComponent(imageRef);
+      const response = await fetch(`/api/images/pull/${encodedImageRef}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          imageRef: fullImageRef,
+          tag, // Send tag as part of the body
           platform,
         }),
       });
@@ -61,10 +61,11 @@
         );
       }
 
+      const fullImageRef = `${imageRef}:${tag}`;
       toast.success(`Image "${fullImageRef}" pulled successfully.`);
       isPullDialogOpen = false;
 
-      // Force a refresh with a short timeout to ensure Docker API has time to register the image
+      // Force a refresh with a short timeout
       setTimeout(async () => {
         await refreshData();
       }, 500);
