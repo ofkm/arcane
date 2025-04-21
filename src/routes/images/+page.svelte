@@ -15,11 +15,15 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { invalidateAll } from "$app/navigation";
+  import { toast } from "svelte-sonner";
+  import PullImageDialog from "./pull-image-dialog.svelte";
 
   let { data }: { data: PageData } = $props();
   const { images, error } = data;
 
   let isRefreshing = $state(false);
+  let isPullDialogOpen = $state(false);
+  let isPullingImage = $state(false);
 
   // Calculate total images
   const totalImages = $derived(images?.length || 0);
@@ -29,8 +33,50 @@
     images?.reduce((acc, img) => acc + (img.size || 0), 0) || 0
   );
 
+  async function handlePullImageSubmit(event: {
+    imageRef: string;
+    tag?: string;
+    platform?: string;
+  }) {
+    const { imageRef, tag = "latest", platform } = event;
+    const fullImageRef = `${imageRef}:${tag}`;
+
+    isPullingImage = true;
+    try {
+      const response = await fetch("/api/images/pull", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageRef: fullImageRef,
+          platform,
+        }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(
+          result.error || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      toast.success(`Image "${fullImageRef}" pulled successfully.`);
+      isPullDialogOpen = false;
+
+      // Force a refresh with a short timeout to ensure Docker API has time to register the image
+      setTimeout(async () => {
+        await refreshData();
+      }, 500);
+    } catch (err: any) {
+      console.error("Failed to pull image:", err);
+      toast.error(`Failed to pull image: ${err.message}`);
+    } finally {
+      isPullingImage = false;
+    }
+  }
+
   function pullImage() {
-    // TODO: Implement pull image modal/logic
     alert("Implement pull image functionality");
   }
 
@@ -40,6 +86,10 @@
     setTimeout(() => {
       isRefreshing = false;
     }, 500);
+  }
+
+  function openPullDialog() {
+    isPullDialogOpen = true;
   }
 
   // Helper to format bytes
@@ -72,7 +122,7 @@
         <RefreshCw class={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
         Refresh
       </Button>
-      <Button variant="outline" size="sm" onclick={pullImage}>
+      <Button variant="outline" size="sm" onclick={openPullDialog}>
         <Download class="w-4 h-4" />
         Pull Image
       </Button>
@@ -159,11 +209,17 @@
           <RefreshCw class="h-4 w-4" />
           Refresh
         </Button>
-        <Button variant="outline" size="sm" onclick={pullImage}>
+        <Button variant="outline" size="sm" onclick={openPullDialog}>
           <Download class="h-4 w-4" />
           Pull Image
         </Button>
       </div>
     </div>
   {/if}
+
+  <PullImageDialog
+    bind:open={isPullDialogOpen}
+    isPulling={isPullingImage}
+    onSubmit={handlePullImageSubmit}
+  />
 </div>
