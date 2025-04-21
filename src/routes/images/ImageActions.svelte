@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button/index.js";
+  import * as Dialog from "$lib/components/ui/dialog/index.js";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
   import { Trash2, Download, Ellipsis, Loader2 } from "@lucide/svelte";
   import { toast } from "svelte-sonner";
@@ -7,11 +8,37 @@
 
   let { id, repoTag }: { id: string; repoTag?: string } = $props();
   let isPulling = $state(false);
+  let isDeleting = $state(false);
+  let isConfirmDialogOpen = $state(false);
 
-  function removeImage() {
-    // TODO: Implement API call to remove image
-    console.log("Attempting to remove image:", id, repoTag);
-    alert(`Implement remove action for image ID: ${id.substring(0, 12)}`);
+  async function removeImage() {
+    isDeleting = true;
+    try {
+      const response = await fetch(`/api/images/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      toast.success(
+        `Image ${repoTag || id.substring(0, 12)} deleted successfully.`
+      );
+      isConfirmDialogOpen = false;
+
+      // Force page refresh to update the image list
+      window.location.href = `${window.location.pathname}?t=${Date.now()}`;
+    } catch (err: any) {
+      console.error(`Failed to delete image:`, err);
+      toast.error(`Failed to delete image: ${err.message}`);
+    } finally {
+      isDeleting = false;
+    }
   }
 
   async function pullImage() {
@@ -85,7 +112,7 @@
       </DropdownMenu.Item>
       <DropdownMenu.Item
         class="text-red-500 focus:!text-red-700"
-        onclick={removeImage}
+        onclick={() => (isConfirmDialogOpen = true)}
       >
         <Trash2 class="mr-2 h-4 w-4" />
         Remove
@@ -93,3 +120,32 @@
     </DropdownMenu.Group>
   </DropdownMenu.Content>
 </DropdownMenu.Root>
+
+<Dialog.Root
+  open={isConfirmDialogOpen}
+  onOpenChange={(open) => (isConfirmDialogOpen = open)}
+>
+  <Dialog.Content>
+    <Dialog.Header>
+      <Dialog.Title>Confirm Deletion</Dialog.Title>
+      <Dialog.Description>
+        Are you sure you want to delete the image <span class="font-bold"
+          >{repoTag || id.substring(0, 12)}</span
+        >? This action cannot be undone.
+      </Dialog.Description>
+    </Dialog.Header>
+    <Dialog.Footer>
+      <Button variant="ghost" onclick={() => (isConfirmDialogOpen = false)}>
+        Cancel
+      </Button>
+      <Button variant="destructive" onclick={removeImage} disabled={isDeleting}>
+        {#if isDeleting}
+          <Loader2 class="h-4 w-4 animate-spin" />
+          Deleting...
+        {:else}
+          Delete
+        {/if}
+      </Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>

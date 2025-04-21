@@ -429,6 +429,35 @@ export async function listImages(): Promise<ServiceImage[]> {
   }
 }
 
+/**
+ * Removes a Docker image.
+ * @param imageId - The ID or name of the image to remove.
+ * @param force - Whether to force removal (default: false).
+ */
+export async function removeImage(
+  imageId: string,
+  force: boolean = false
+): Promise<void> {
+  try {
+    const docker = getDockerClient();
+    const image = docker.getImage(imageId);
+    await image.remove({ force });
+    console.log(`Docker Service: Image "${imageId}" removed successfully.`);
+  } catch (error: any) {
+    console.error(`Docker Service: Error removing image "${imageId}":`, error);
+    if (error.statusCode === 409) {
+      throw new Error(
+        `Image "${imageId}" is being used by a container. Use force option to remove.`
+      );
+    }
+    throw new Error(
+      `Failed to remove image "${imageId}" using host "${dockerHost}". ${
+        error.message || error.reason || ""
+      }`
+    );
+  }
+}
+
 // Define and export the type returned by listNetworks
 export type ServiceNetwork = {
   id: string;
