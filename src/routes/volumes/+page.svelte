@@ -1,9 +1,6 @@
 <script lang="ts">
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import { Label } from "$lib/components/ui/label/index.js";
   import { toast } from "svelte-sonner";
   import {
     Plus,
@@ -21,23 +18,20 @@
   import * as Alert from "$lib/components/ui/alert/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { invalidateAll } from "$app/navigation";
+  import CreateVolumeDialog from "./create-volume-dialog.svelte";
 
   let { data }: { data: PageData } = $props();
   let { error } = data;
   let volumes = $state(data.volumes);
 
   let isRefreshing = $state(false);
-  let isCreateDialogOpen = $state(false);
+  let isCreateDialogOpen = $state(false); // Simple boolean state
   let isCreatingVolume = $state(false);
-  let newVolumeName = $state("");
 
   const totalVolumes = $derived(volumes?.length || 0);
 
-  async function handleCreateVolumeSubmit() {
-    if (!newVolumeName.trim()) {
-      toast.error("Volume name cannot be empty.");
-      return;
-    }
+  async function handleCreateVolumeSubmit(event: { name: string }) {
+    const volumeName = event.name;
 
     isCreatingVolume = true;
     try {
@@ -47,11 +41,14 @@
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          Name: newVolumeName.trim(),
+          Name: volumeName,
         }),
       });
 
       const result = await response.json();
+
+      // Add debug logging to see what's being returned
+      console.log("Volume creation result:", result);
 
       if (!response.ok) {
         throw new Error(
@@ -61,7 +58,6 @@
 
       toast.success(`Volume "${result.volume.Name}" created successfully.`);
       isCreateDialogOpen = false;
-      newVolumeName = "";
 
       // Force a refresh with a short timeout to ensure Docker API has time to register the volume
       setTimeout(async () => {
@@ -74,6 +70,7 @@
       isCreatingVolume = false;
     }
   }
+
   async function refreshData() {
     isRefreshing = true;
     try {
@@ -88,8 +85,11 @@
   }
 
   function openCreateDialog() {
-    newVolumeName = "";
     isCreateDialogOpen = true;
+  }
+
+  function closeCreateDialog() {
+    isCreateDialogOpen = false;
   }
 </script>
 
@@ -206,48 +206,9 @@
     </Card.Content>
   </Card.Root>
 
-  <Dialog.Root bind:open={isCreateDialogOpen}>
-    <Dialog.Content class="sm:max-w-[425px]">
-      <Dialog.Header>
-        <Dialog.Title>Create New Volume</Dialog.Title>
-        <Dialog.Description>
-          Enter the details for the new Docker volume.
-        </Dialog.Description>
-      </Dialog.Header>
-      <form onsubmit={handleCreateVolumeSubmit} class="grid gap-4 py-4">
-        <div class="grid grid-cols-4 items-center gap-4">
-          <Label for="volume-name" class="text-right">Name</Label>
-          <Input
-            id="volume-name"
-            bind:value={newVolumeName}
-            class="col-span-3"
-            placeholder="e.g., my-app-data"
-            required
-            disabled={isCreatingVolume}
-          />
-        </div>
-      </form>
-      <Dialog.Footer>
-        <Button
-          variant="outline"
-          onclick={() => (isCreateDialogOpen = false)}
-          disabled={isCreatingVolume}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          onclick={handleCreateVolumeSubmit}
-          disabled={isCreatingVolume || !newVolumeName.trim()}
-        >
-          {#if isCreatingVolume}
-            <Loader2 class="h-4 w-4 mr-2 animate-spin" />
-            Creating...
-          {:else}
-            Create Volume
-          {/if}
-        </Button>
-      </Dialog.Footer>
-    </Dialog.Content>
-  </Dialog.Root>
+  <CreateVolumeDialog
+    bind:open={isCreateDialogOpen}
+    isCreating={isCreatingVolume}
+    onSubmit={handleCreateVolumeSubmit}
+  />
 </div>
