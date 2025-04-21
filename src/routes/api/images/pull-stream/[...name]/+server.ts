@@ -16,21 +16,17 @@ export const GET: RequestHandler = async ({ params, request }) => {
       try {
         const docker = getDockerClient();
 
-        // Helper to send SSE messages
         function send(data: any) {
           controller.enqueue(
             new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`)
           );
         }
 
-        // Start the pull operation
         const pullStream = await docker.pull(imageRef);
 
-        // Process to calculate progress
         let layers: Record<string, any> = {};
         let totalProgress = 0;
 
-        // Stream processing
         docker.modem.followProgress(
           pullStream,
           (err: Error | null, output: any[]) => {
@@ -43,7 +39,6 @@ export const GET: RequestHandler = async ({ params, request }) => {
             controller.close();
           },
           (event: any) => {
-            // Progress update for a layer
             if (event.id && event.status) {
               if (!layers[event.id]) {
                 layers[event.id] = { current: 0, total: 0 };
@@ -58,7 +53,6 @@ export const GET: RequestHandler = async ({ params, request }) => {
                 layers[event.id].total = event.progressDetail.total;
               }
 
-              // Calculate overall progress
               let totalSize = 0;
               let currentProgress = 0;
 
@@ -70,15 +64,12 @@ export const GET: RequestHandler = async ({ params, request }) => {
               });
 
               if (totalSize > 0) {
-                // Update more frequently - calculate on every change
                 totalProgress = Math.min(
                   99,
                   Math.floor((currentProgress / totalSize) * 100)
                 );
-                // Always send progress updates, even small changes
                 send({ progress: totalProgress, status: event.status });
               } else {
-                // If we can't calculate percentage yet, send a small progress indicator
                 send({ progress: 5, status: event.status });
               }
             }
