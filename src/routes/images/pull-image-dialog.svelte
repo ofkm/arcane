@@ -134,7 +134,6 @@
                   </Select.Content>
                 </Select.Root>
 
-                <!-- Help text moved outside the grid -->
                 <p class="text-xs text-muted-foreground mt-1">
                   Platform specifies the architecture and OS for
                   multi-architecture images. Leave empty to use your system's

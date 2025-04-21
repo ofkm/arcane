@@ -40,7 +40,6 @@
     const { imageRef, tag = "latest", platform } = event;
 
     isPullingImage = true;
-    // Create a reactive state for tracking progress
     let currentPullProgress = $state(0);
 
     try {
@@ -59,11 +58,9 @@
           return;
         }
 
-        // Update progress - this is what was missing
         if (data.progress !== undefined) {
           console.log("Progress update:", data.progress);
           currentPullProgress = data.progress;
-          // Make sure to pass this to the dialog
           pullProgress = data.progress;
         }
 
@@ -73,7 +70,6 @@
           toast.success(`Image "${fullImageRef}" pulled successfully.`);
           isPullDialogOpen = false;
 
-          // Force page reload with a cache busting parameter
           window.location.href = `${window.location.pathname}?t=${Date.now()}`;
         }
       };
@@ -103,7 +99,6 @@
     isPullDialogOpen = true;
   }
 
-  // Helper to format bytes
   function formatBytes(bytes: number | undefined | null, decimals = 1): string {
     if (!bytes || !+bytes) return "0 Bytes";
     const k = 1024;
