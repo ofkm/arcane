@@ -25,7 +25,7 @@
   let volumes = $state(data.volumes);
 
   let isRefreshing = $state(false);
-  let isCreateDialogOpen = $state(false); // Simple boolean state
+  let isCreateDialogOpen = $state(false);
   let isCreatingVolume = $state(false);
 
   const totalVolumes = $derived(volumes?.length || 0);
@@ -46,17 +46,14 @@
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name, // Renamed from Name to name
-          driver, // Added driver
-          driverOpts, // Added driver options
-          labels, // Added labels
+          name,
+          driver,
+          driverOpts,
+          labels,
         }),
       });
 
       const result = await response.json();
-
-      // Add debug logging to see what's being returned
-      console.log("Volume creation result:", result);
 
       if (!response.ok) {
         throw new Error(
@@ -83,7 +80,6 @@
     isRefreshing = true;
     try {
       await invalidateAll();
-      // Manually update the volumes reference from updated data
       volumes = data.volumes;
     } finally {
       setTimeout(() => {
@@ -94,10 +90,6 @@
 
   function openCreateDialog() {
     isCreateDialogOpen = true;
-  }
-
-  function closeCreateDialog() {
-    isCreateDialogOpen = false;
   }
 </script>
 

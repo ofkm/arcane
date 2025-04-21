@@ -38,9 +38,7 @@
   let driver = $state("local");
   let showAdvanced = $state(false);
 
-  // Driver options as key-value pairs
   let driverOptsText = $state("");
-  // Labels as key-value pairs
   let labelsText = $state("");
 
   // Available volume drivers
@@ -52,7 +50,6 @@
     { label: "GCE Persistent Disk", value: "gcePersistentDisk" },
   ];
 
-  // Parse key-value text into an object
   function parseKeyValuePairs(text: string): Record<string, string> {
     if (!text.trim()) return {};
 
