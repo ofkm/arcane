@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from "./$types";
-  import DataTable from "$lib/components/data-table.svelte";
+  import UniversalTable from "$lib/components/universal-table.svelte";
   import { columns } from "./columns";
   import { Button } from "$lib/components/ui/button/index.js";
   import {
@@ -20,6 +20,7 @@
 
   let { data }: { data: PageData } = $props();
   const { images, error } = data;
+  let selectedIds = $state([]);
 
   let isRefreshing = $state(false);
   let isPullDialogOpen = $state(false);
@@ -119,15 +120,6 @@
       </p>
     </div>
     <div class="flex gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onclick={refreshData}
-        disabled={isRefreshing}
-      >
-        <RefreshCw class={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-        Refresh
-      </Button>
       <Button variant="outline" size="sm" onclick={openPullDialog}>
         <Download class="w-4 h-4" />
         Pull Image
@@ -176,28 +168,30 @@
       <Card.Header class="px-6">
         <div class="flex items-center justify-between">
           <div>
-            <Card.Title>
-              Image List
-              <Badge variant="secondary" class="ml-2">{totalImages}</Badge>
-            </Card.Title>
+            <Card.Title>Image List</Card.Title>
             <Card.Description
               >View and manage your Docker images</Card.Description
             >
           </div>
           <div class="flex items-center gap-2">
-            <Button variant="outline" size="sm" class="hidden sm:flex">
-              <Filter class="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-            <Button variant="outline" size="sm" class="hidden sm:flex">
-              <ArrowUpDown class="h-4 w-4 mr-2" />
-              Sort
-            </Button>
+            <!-- Put buttons here  -->
           </div>
         </div>
       </Card.Header>
       <Card.Content>
-        <DataTable data={images} {columns} />
+        <UniversalTable
+          data={images}
+          {columns}
+          pageSize={10}
+          pageSizeOptions={[5, 10, 20, 50]}
+          enableSorting={true}
+          enableFiltering={true}
+          enableSelection={true}
+          bind:selectedIds
+          filterPlaceholder="Search containers..."
+          noResultsMessage="No containers found"
+        />
+        <!-- <DataTable data={images} {columns} /> -->
       </Card.Content>
     </Card.Root>
   {:else if !error}

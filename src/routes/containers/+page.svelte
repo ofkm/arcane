@@ -1,10 +1,8 @@
 <script lang="ts">
-  import DataTable from "$lib/components/data-table.svelte";
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
   import { columns } from "./columns";
-  import { Plus, Box, RefreshCw, Filter, ArrowUpDown } from "@lucide/svelte";
-  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { Plus, Box, RefreshCw } from "@lucide/svelte";
   import UniversalTable from "$lib/components/universal-table.svelte";
   import { invalidateAll } from "$app/navigation";
 
