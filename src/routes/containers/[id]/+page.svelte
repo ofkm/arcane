@@ -23,6 +23,7 @@
   import * as Alert from "$lib/components/ui/alert/index.js";
   import { Separator } from "$lib/components/ui/separator/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
+  import ActionButtons from "$lib/components/action-buttons.svelte";
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
   let { container, logs } = $derived(data);
@@ -120,128 +121,32 @@
 
     {#if container}
       <div class="flex gap-2 flex-wrap">
-        <Button
-          variant="outline"
-          size="sm"
-          onclick={refreshData}
-          disabled={isRefreshing}
-          class="h-9"
-        >
-          <RefreshCw
-            class={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-          />
-          Refresh
-        </Button>
-
-        {#if container.state?.Running}
-          <form
-            method="POST"
-            action="?/stop"
-            use:enhance={() => {
-              stopping = true;
-              return async ({ update }) => {
-                await update({ reset: false });
-              };
-            }}
-          >
-            <Button
-              type="submit"
-              variant="secondary"
-              disabled={stopping}
-              size="sm"
-              class="font-medium h-9"
-            >
-              {#if stopping}
-                <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-              {:else}
-                <StopCircle class="w-4 h-4 mr-2" />
-              {/if}
-              Stop
-            </Button>
-          </form>
-          <form
-            method="POST"
-            action="?/restart"
-            use:enhance={() => {
-              restarting = true;
-              return async ({ update }) => {
-                await update({ reset: false });
-              };
-            }}
-          >
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={restarting}
-              size="sm"
-              class="font-medium h-9"
-            >
-              {#if restarting}
-                <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-              {:else}
-                <RotateCw class="w-4 h-4 mr-2" />
-              {/if}
-              Restart
-            </Button>
-          </form>
-        {:else if container.state?.Status === "exited" || container.state?.Status === "created"}
-          <form
-            method="POST"
-            action="?/start"
-            use:enhance={() => {
-              starting = true;
-              return async ({ update }) => {
-                await update({ reset: false });
-              };
-            }}
-          >
-            <Button
-              type="submit"
-              variant="default"
-              disabled={starting}
-              size="sm"
-              class="font-medium h-9"
-            >
-              {#if starting}
-                <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-              {:else}
-                <PlayCircle class="w-4 h-4 mr-2" />
-              {/if}
-              Start
-            </Button>
-          </form>
-        {/if}
+        <!-- Use ActionButtons for container actions -->
         <form
           method="POST"
-          action="?/remove"
+          action={container.state?.Running ? "?/stop" : "?/start"}
           use:enhance={() => {
-            if (
-              !confirm(
-                `Are you sure you want to remove container "${container?.name}"?`
-              )
-            ) {
-              return;
+            if (container.state?.Running) {
+              stopping = true;
+            } else {
+              starting = true;
             }
-            removing = true;
             return async ({ update }) => {
               await update({ reset: false });
             };
           }}
         >
-          <Button
-            type="submit"
-            variant="destructive"
-            disabled={removing}
-            size="sm"
-            class="font-medium h-9"
-          >
-            {#if removing}
-              <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-            {:else}
-              <Trash2 class="w-4 h-4 mr-2" />
-            {/if}
-            Remove
-          </Button>
+          <ActionButtons
+            id={container.id}
+            type="container"
+            state={container.state?.Running ? "running" : "stopped"}
+            loading={{
+              start: starting,
+              stop: stopping,
+              restart: restarting,
+              remove: removing,
+            }}
+          />
         </form>
       </div>
     {/if}

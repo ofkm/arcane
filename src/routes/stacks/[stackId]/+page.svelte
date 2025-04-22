@@ -25,6 +25,7 @@
   import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
   import YamlEditor from "$lib/components/yaml-editor.svelte";
   import { onMount } from "svelte";
+  import ActionButtons from "$lib/components/action-buttons.svelte";
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
   let { stack } = $derived(data);
@@ -106,115 +107,42 @@
 
     {#if stack}
       <div class="flex gap-2 flex-wrap">
-        {#if stack.status === "running" || stack.status === "partially running"}
-          <form
-            method="POST"
-            action="?/stop"
-            use:enhance={() => {
-              stopping = true;
-              return async ({ update }) => {
-                await update({ reset: false });
-              };
-            }}
-          >
-            <Button
-              type="submit"
-              variant="secondary"
-              disabled={stopping}
-              size="sm"
-              class="font-medium h-9"
-            >
-              {#if stopping}
-                <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-              {:else}
-                <StopCircle class="w-4 h-4 mr-2" />
-              {/if}
-              Stop
-            </Button>
-          </form>
-          <form
-            method="POST"
-            action="?/restart"
-            use:enhance={() => {
-              restarting = true;
-              return async ({ update }) => {
-                await update({ reset: false });
-              };
-            }}
-          >
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={restarting}
-              size="sm"
-              class="font-medium h-9"
-            >
-              {#if restarting}
-                <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-              {:else}
-                <RotateCw class="w-4 h-4 mr-2" />
-              {/if}
-              Restart
-            </Button>
-          </form>
-        {:else}
-          <form
-            method="POST"
-            action="?/start"
-            use:enhance={() => {
-              depoloying = true;
-              return async ({ update }) => {
-                await update({ reset: false });
-              };
-            }}
-          >
-            <Button
-              type="submit"
-              variant="default"
-              disabled={depoloying}
-              size="sm"
-              class="font-medium h-9"
-            >
-              {#if depoloying}
-                <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-              {:else}
-                <PlayCircle class="w-4 h-4 mr-2" />
-              {/if}
-              Deploy
-            </Button>
-          </form>
-        {/if}
         <form
           method="POST"
-          action="?/remove"
+          action={stack.status === "running" ||
+          stack.status === "partially running"
+            ? "?/stop"
+            : "?/start"}
           use:enhance={() => {
-            if (
-              !confirm(
-                `Are you sure you want to remove stack "${stack?.name}"?`
-              )
-            ) {
-              return;
-            }
-            removing = true;
+            const isStarting =
+              stack.status !== "running" &&
+              stack.status !== "partially running";
+            if (isStarting) depoloying = true;
+            else stopping = true;
             return async ({ update }) => {
               await update({ reset: false });
             };
           }}
         >
-          <Button
-            type="submit"
-            variant="destructive"
-            disabled={removing}
-            size="sm"
-            class="font-medium h-9"
-          >
-            {#if removing}
-              <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-            {:else}
-              <Trash2 class="w-4 h-4 mr-2" />
-            {/if}
-            Remove
-          </Button>
+          <input
+            type="hidden"
+            name="action"
+            value={stack.status === "running" ||
+            stack.status === "partially running"
+              ? "stop"
+              : "start"}
+          />
+          <ActionButtons
+            id={stack.id}
+            type="stack"
+            state={stack.status}
+            loading={{
+              start: depoloying,
+              stop: stopping,
+              restart: restarting,
+              remove: removing,
+            }}
+          />
         </form>
       </div>
     {/if}
