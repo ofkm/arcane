@@ -3,17 +3,16 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Table from "$lib/components/ui/table/index.js";
+  import UniversalTable from "$lib/components/universal-table.svelte";
   import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
+  import { dashboardContainerColumns, dashboardImageColumns } from "./columns";
   import {
     AlertCircle,
-    Server,
     Box,
     HardDrive,
     Cpu,
     MemoryStick,
-    Network,
     ArrowRight,
-    RefreshCw,
     PlayCircle,
     StopCircle,
     Trash2,
@@ -37,15 +36,6 @@
   const stoppedContainers = $derived(
     containers?.filter((c) => c.state === "exited").length ?? 0
   );
-
-  // Function to refresh data
-  async function refreshData() {
-    isRefreshing = true;
-    await invalidateAll();
-    setTimeout(() => {
-      isRefreshing = false;
-    }, 500);
-  }
 </script>
 
 <div class="space-y-8">
@@ -57,6 +47,7 @@
         Overview of your Docker environment
       </p>
     </div>
+    <!-- Dont remove this button -->
     <!-- <Button
       variant="outline"
       size="sm"
@@ -235,13 +226,9 @@
         <Card.Header class="px-6">
           <div class="flex items-center justify-between">
             <div>
-              <Card.Title>
-                Containers
-                <Badge variant="secondary" class="ml-2"
-                  >{containers?.length || 0}</Badge
-                >
-              </Card.Title>
-              <Card.Description>Recent containers</Card.Description>
+              <Card.Title>Containers</Card.Title>
+              <Card.Description class="pb-3">Recent containers</Card.Description
+              >
             </div>
             <Button
               variant="ghost"
@@ -256,34 +243,18 @@
         </Card.Header>
         <Card.Content class="p-0">
           {#if containers?.length > 0}
-            <Table.Root>
-              <Table.Header>
-                <Table.Row>
-                  <Table.Head class="pl-6 w-[30%]">Name</Table.Head>
-                  <Table.Head class="w-[40%]">Image</Table.Head>
-                  <Table.Head>State</Table.Head>
-                  <Table.Head class="pr-6">Status</Table.Head>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {#each containers.slice(0, 5) as c (c.id)}
-                  <Table.Row>
-                    <Table.Cell class="font-medium pl-6 truncate">
-                      <a href="/containers/{c.id}" class="hover:underline">
-                        {c.name}
-                      </a>
-                    </Table.Cell>
-                    <Table.Cell class="text-xs truncate max-w-[200px]">
-                      {c.image}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <StatusBadge state={c.state} />
-                    </Table.Cell>
-                    <Table.Cell class="text-xs pr-6">{c.status}</Table.Cell>
-                  </Table.Row>
-                {/each}
-              </Table.Body>
-            </Table.Root>
+            <UniversalTable
+              data={containers.slice(0, 5)}
+              columns={dashboardContainerColumns}
+              pageSize={5}
+              pageSizeOptions={[5]}
+              enableSorting={true}
+              enableFiltering={false}
+              enableSelection={false}
+              filterPlaceholder=""
+              noResultsMessage="No containers found"
+              isDashboardTable={true}
+            />
             {#if containers.length > 5}
               <div class="bg-muted/40 py-2 px-6 text-xs text-muted-foreground">
                 Showing 5 of {containers.length} containers
@@ -314,7 +285,7 @@
                   >{images?.length || 0}</Badge
                 >
               </Card.Title>
-              <Card.Description>Recent images</Card.Description>
+              <Card.Description class="pb-3">Recent images</Card.Description>
             </div>
             <Button
               variant="ghost"
@@ -329,27 +300,19 @@
         </Card.Header>
         <Card.Content class="p-0">
           {#if images?.length > 0}
-            <Table.Root>
-              <Table.Header>
-                <Table.Row>
-                  <Table.Head class="pl-6 w-[50%]">Repository</Table.Head>
-                  <Table.Head class="w-[20%]">Tag</Table.Head>
-                  <Table.Head class="pr-6">Size</Table.Head>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {#each images.slice(0, 5) as img (img.id)}
-                  <Table.Row>
-                    <Table.Cell class="font-medium truncate pl-6">
-                      {img.repo}
-                    </Table.Cell>
-                    <Table.Cell>{img.tag}</Table.Cell>
-                    <Table.Cell class="pr-6">{formatBytes(img.size)}</Table.Cell
-                    >
-                  </Table.Row>
-                {/each}
-              </Table.Body>
-            </Table.Root>
+            <UniversalTable
+              data={images.slice(0, 5)}
+              columns={dashboardImageColumns}
+              pageSize={5}
+              pageSizeOptions={[5]}
+              enableSorting={true}
+              enableFiltering={false}
+              enableSelection={false}
+              filterPlaceholder=""
+              noResultsMessage="No images found"
+              isDashboardTable={true}
+              defaultSort={{ id: "repo", desc: false }}
+            />
             {#if images.length > 5}
               <div class="bg-muted/40 py-2 px-6 text-xs text-muted-foreground">
                 Showing 5 of {images.length} images

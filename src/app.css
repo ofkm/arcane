@@ -73,3 +73,56 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Dashboard tables styling */
+.dashboard-table-wrapper :global(.space-y-4) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.dashboard-table-wrapper :global(.rounded-md.border) {
+  border: none !important;
+  border-radius: 0 !important;
+  overflow: hidden;
+}
+
+.dashboard-table-wrapper :global(table) {
+  margin: 0;
+}
+
+.dashboard-table-wrapper :global(th) {
+  background-color: transparent !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  color: var(--muted-foreground) !important;
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+  height: 2.5rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+.dashboard-table-wrapper :global(td) {
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+  font-size: 0.875rem !important;
+}
+
+.dashboard-table-wrapper :global(tr:last-child td) {
+  border-bottom: none !important;
+}
+
+/* Hide the search/filter area */
+.dashboard-table-wrapper > :global(div) > :global(div:first-child) {
+  display: none !important;
+}
+
+/* Remove vertical spacing between elements */
+.dashboard-table-wrapper > :global(div.space-y-4) > :global(div) {
+  margin-top: 0 !important;
+}
+
+/* Hide pagination when not needed */
+.dashboard-table-wrapper > :global(div.space-y-4) > :global(div:last-child) {
+  display: none !important;
+}

@@ -34,7 +34,9 @@
     noResultsMessage?: string;
     itemsPerPageLabel?: string;
     selectedIds?: string[];
-    defaultSort?: { id: string; desc: boolean }; // Combined prop for default sorting
+    defaultSort?: { id: string; desc: boolean };
+    class?: string;
+    isDashboardTable?: boolean;
   };
 
   let {
@@ -50,6 +52,8 @@
     itemsPerPageLabel = "Items per page",
     selectedIds = $bindable<string[]>([]),
     defaultSort = { id: "name", desc: false }, // Default to name ascending
+    class: className = "",
+    isDashboardTable = false,
   }: UniversalTableProps<TData> = $props();
 
   // Pagination state
@@ -165,8 +169,8 @@
   }
 </script>
 
-<div class="space-y-4">
-  {#if enableFiltering}
+<div class={cn("space-y-4", className, isDashboardTable && "dashboard-table")}>
+  {#if enableFiltering && !isDashboardTable}
     <div class="flex items-center">
       <Input
         placeholder={filterPlaceholder}
@@ -177,7 +181,12 @@
     </div>
   {/if}
 
-  <div class="rounded-md border">
+  <div
+    class={cn(
+      "rounded-md border",
+      isDashboardTable && "border-none rounded-none"
+    )}
+  >
     <Table.Root>
       <Table.Header>
         {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
@@ -267,7 +276,7 @@
   </div>
 
   <!-- Pagination Controls -->
-  {#if pageCount > 1 || pageSizeOptions.length > 1}
+  {#if (pageCount > 1 || pageSizeOptions.length > 1) && !isDashboardTable}
     <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-4">
         <span class="text-sm my-auto">{itemsPerPageLabel}</span>
