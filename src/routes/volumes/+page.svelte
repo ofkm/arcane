@@ -179,16 +179,6 @@
             Create a new volume using the "Create Volume" button above or use
             the Docker CLI
           </p>
-          <div class="flex gap-3 mt-4">
-            <Button variant="outline" size="default" onclick={refreshData}>
-              <RefreshCw class="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            <Button variant="default" size="default" onclick={openCreateDialog}>
-              <Plus class="h-4 w-4 mr-2" />
-              Create Volume
-            </Button>
-          </div>
         </div>
       {/if}
     </Card.Content>

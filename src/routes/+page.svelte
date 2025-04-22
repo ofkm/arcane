@@ -67,7 +67,7 @@
         Overview of your Docker environment
       </p>
     </div>
-    <Button
+    <!-- <Button
       variant="outline"
       size="sm"
       class="h-9"
@@ -76,7 +76,7 @@
     >
       <RefreshCw class={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
       Refresh
-    </Button>
+    </Button> -->
   </div>
 
   {#if error}

@@ -157,16 +157,6 @@
             Create a new stack using the "Create Stack" button above or import
             an existing compose file
           </p>
-          <div class="flex gap-3 mt-4">
-            <Button variant="outline" size="sm" onclick={refreshData}>
-              <RefreshCw class="h-4 w-4" />
-              Refresh
-            </Button>
-            <Button variant="outline" size="sm" onclick={createStack}>
-              <Plus class="h-4 w-4" />
-              Create Stack
-            </Button>
-          </div>
         </div>
       {/if}
     </Card.Content>
