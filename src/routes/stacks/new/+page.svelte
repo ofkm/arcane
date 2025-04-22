@@ -21,16 +21,16 @@
   let saving = $state(false);
 
   // Default compose file template
-  const defaultComposeTemplate = `version: '3'
-
+  const defaultComposeTemplate = `
 services:
   web:
-    image: nginx:latest
-    ports:
-      - "8080:80"
-    volumes:
-      - ./html:/usr/share/nginx/html
+    image: nginx:alpine
+    container_name: my_web_container
     restart: unless-stopped
+    volumes:
+      - ./data:/var/www/html
+    ports:
+      - 8080:80
 `;
 
   let name = $state("");
