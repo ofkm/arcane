@@ -46,8 +46,7 @@
   });
 
   // Default compose file template
-  const defaultComposeTemplate = `
-services:
+  const defaultComposeTemplate = `services:
   web:
     image: nginx:alpine
     container_name: my_web_container

@@ -1,5 +1,3 @@
-<!-- @migration-task Error while migrating Svelte code: Cannot use `export let` in runes mode — use `$props()` instead
-https://svelte.dev/e/legacy_export_invalid -->
 <script lang="ts">
   import CodeMirror from "svelte-codemirror-editor";
   import { yaml } from "@codemirror/lang-yaml";
