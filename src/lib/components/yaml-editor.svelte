@@ -6,6 +6,7 @@
   import { browser } from "$app/environment";
   import jsyaml from "js-yaml";
   import { createEventDispatcher } from "svelte";
+  import { EditorView } from "@codemirror/view";
 
   const dispatch = createEventDispatcher();
 
@@ -28,6 +29,54 @@
     }
   });
 
+  // Custom theme that aligns with your application theme
+  const arcaneTheme = EditorView.theme(
+    {
+      "&": {
+        backgroundColor: "var(--background)",
+        color: "var(--foreground)",
+      },
+      ".cm-content": {
+        caretColor: "var(--primary)",
+      },
+      ".cm-cursor": {
+        borderLeftColor: "var(--primary)",
+      },
+      ".cm-activeLine": {
+        backgroundColor: "color-mix(in srgb, var(--accent), transparent 50%)",
+      },
+      ".cm-activeLineGutter": {
+        backgroundColor: "color-mix(in srgb, var(--accent), transparent 70%)",
+      },
+      ".cm-gutters": {
+        backgroundColor: "var(--muted)",
+        color: "var(--muted-foreground)",
+        border: "none",
+      },
+      ".cm-line": {
+        padding: "0 0.5rem",
+      },
+      ".cm-selectionBackground": {
+        backgroundColor: "color-mix(in srgb, var(--primary), transparent 70%)",
+      },
+      ".cm-selectionMatch": {
+        backgroundColor: "color-mix(in srgb, var(--primary), transparent 80%)",
+      },
+      ".cm-matchingBracket, .cm-nonmatchingBracket": {
+        backgroundColor: "color-mix(in srgb, var(--primary), transparent 80%)",
+        outline: "1px solid var(--border)",
+      },
+      // Syntax highlighting
+      ".ͼa": { color: "var(--primary)" }, // Comments
+      ".ͼb": { color: "var(--foreground)" }, // Regular text
+      ".ͼc": { color: "var(--card-foreground)" }, // Strings
+      ".ͼd": { color: "var(--destructive)" }, // Keywords
+      ".ͼe": { color: "var(--accent-foreground)" }, // Numbers/literals
+      ".ͼf": { color: "var(--primary)" }, // Definitions
+    },
+    { dark: darkMode }
+  );
+
   // YAML linting function
   function yamlLinter(view: { state: { doc: { toString(): string } } }) {
     const diagnostics = [];
@@ -47,19 +96,17 @@
     return diagnostics;
   }
 
-  // Always include oneDark in extensions
+  // Use the custom theme based on dark mode
   const extensions = $derived([
     yaml(),
     lintGutter(),
     linter(yamlLinter),
-    oneDark,
+    arcaneTheme,
   ]);
 
   function handleChange(e: Event) {
     const target = e.target as HTMLInputElement;
-    value = target.value; // or however you get the value
-
-    // Dispatch the event with the new value
+    value = target.value;
     dispatch("change", { value });
   }
 </script>
@@ -78,7 +125,6 @@
         },
       }}
       {placeholder}
-      theme={oneDark}
     />
   </div>
 {/if}
