@@ -68,21 +68,21 @@
       },
       // Syntax highlighting
       // YAML-specific syntax highlighting
-      ".cm-keyword": { color: "var(--primary)" }, // YAML keywords and special tokens
-      ".cm-atom": { color: "var(--accent-foreground)" }, // YAML boolean and null values
-      ".cm-number": { color: "var(--accent-foreground)" }, // YAML numbers
-      ".cm-property": { color: "var(--primary)" }, // YAML keys
-      ".cm-string": { color: "var(--success)" }, // YAML string values
-      ".cm-operator": { color: "var(--destructive)" }, // Colons, dashes, etc.
+      ".cm-keyword": { color: "var(--destructive)" }, // YAML keywords and special tokens (changed to red)
+      ".cm-atom": { color: "var(--warning)" }, // YAML boolean and null values (changed to warning/orange)
+      ".cm-number": { color: "var(--warning)" }, // YAML numbers (changed to warning/orange)
+      ".cm-property": { color: "var(--destructive)" }, // YAML keys (changed to red for better visibility)
+      ".cm-string": { color: "var(--success)" }, // YAML string values (kept as green)
+      ".cm-operator": { color: "var(--secondary)" }, // Colons, dashes, etc. (changed to secondary)
       ".cm-comment": { color: "var(--muted-foreground)", fontStyle: "italic" }, // Comments
 
       // More general highlighting
       ".cm-meta": { color: "var(--secondary)" },
       ".cm-def": { color: "var(--primary)" },
-      ".cm-variable": { color: "var(--foreground)" },
-      ".cm-variable-2": { color: "var(--foreground)" },
+      ".cm-variable": { color: "hsl(var(--foreground))" }, // Making sure this is fully opaque
+      ".cm-variable-2": { color: "hsl(var(--foreground))" }, // Making sure this is fully opaque
       ".cm-tag": { color: "var(--destructive)" },
-      ".cm-header": { color: "var(--primary)", fontWeight: "bold" },
+      ".cm-header": { color: "var(--accent)", fontWeight: "bold" }, // Changed to accent
       ".cm-link": { color: "var(--primary)", textDecoration: "underline" },
     },
     { dark: darkMode }
