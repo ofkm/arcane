@@ -44,19 +44,7 @@
       </p>
     </div>
     <div class="flex gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onclick={refreshData}
-        disabled={isRefreshing}
-      >
-        <RefreshCw class={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-        Refresh
-      </Button>
-      <Button variant="outline" size="sm">
-        <Plus class="w-4 h-4" />
-        Create Container
-      </Button>
+      <!-- put buttons here -->
     </div>
   </div>
 
@@ -108,6 +96,12 @@
           <Card.Description
             >View and manage your Docker containers</Card.Description
           >
+        </div>
+        <div class="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <Plus class="w-4 h-4" />
+            Create Container
+          </Button>
         </div>
       </div>
     </Card.Header>

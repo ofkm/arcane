@@ -9,15 +9,15 @@
     Filter,
     ArrowUpDown,
   } from "@lucide/svelte";
-  import DataTable from "$lib/components/data-table.svelte";
+  import UniversalTable from "$lib/components/universal-table.svelte";
   import { columns } from "./columns";
   import type { PageData } from "./$types";
   import * as Alert from "$lib/components/ui/alert/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
   import { invalidateAll } from "$app/navigation";
 
   let { data }: { data: PageData } = $props();
   const { networks, error } = data;
+  let selectedIds = $state([]);
 
   let isRefreshing = $state(false);
 
@@ -53,19 +53,7 @@
       </p>
     </div>
     <div class="flex gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onclick={refreshData}
-        disabled={isRefreshing}
-      >
-        <RefreshCw class={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-        Refresh
-      </Button>
-      <Button variant="outline" size="sm" onclick={createNetwork}>
-        <Plus class="w-4 h-4" />
-        Create Network
-      </Button>
+      <!-- Put buttons here -->
     </div>
   </div>
 
@@ -127,28 +115,31 @@
     <Card.Header class="px-6">
       <div class="flex items-center justify-between">
         <div>
-          <Card.Title>
-            Network List
-            <Badge variant="secondary" class="ml-2">{totalNetworks}</Badge>
-          </Card.Title>
+          <Card.Title>Network List</Card.Title>
           <Card.Description>Manage container communication</Card.Description>
         </div>
         <div class="flex items-center gap-2">
-          <Button variant="outline" size="sm" class="hidden sm:flex">
-            <Filter class="h-4 w-4 mr-2" />
-            Filter
-          </Button>
-          <Button variant="outline" size="sm" class="hidden sm:flex">
-            <ArrowUpDown class="h-4 w-4 mr-2" />
-            Sort
+          <Button variant="outline" size="sm" onclick={createNetwork}>
+            <Plus class="w-4 h-4" />
+            Create Network
           </Button>
         </div>
       </div>
     </Card.Header>
-    <!-- Fixed padding for the table container -->
     <Card.Content>
       {#if networks && networks.length > 0}
-        <DataTable data={networks} {columns} />
+        <UniversalTable
+          data={networks}
+          {columns}
+          pageSize={10}
+          pageSizeOptions={[5, 10, 20, 50]}
+          enableSorting={true}
+          enableFiltering={true}
+          enableSelection={true}
+          bind:selectedIds
+          filterPlaceholder="Search networks..."
+          noResultsMessage="No networks found"
+        />
       {:else if !error}
         <div
           class="flex flex-col items-center justify-center py-12 px-6 text-center"

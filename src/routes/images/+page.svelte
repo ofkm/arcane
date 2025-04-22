@@ -120,10 +120,7 @@
       </p>
     </div>
     <div class="flex gap-2">
-      <Button variant="outline" size="sm" onclick={openPullDialog}>
-        <Download class="w-4 h-4" />
-        Pull Image
-      </Button>
+      <!-- put buttons here -->
     </div>
   </div>
 
@@ -174,7 +171,10 @@
             >
           </div>
           <div class="flex items-center gap-2">
-            <!-- Put buttons here  -->
+            <Button variant="outline" size="sm" onclick={openPullDialog}>
+              <Download class="w-4 h-4" />
+              Pull Image
+            </Button>
           </div>
         </div>
       </Card.Header>
@@ -188,10 +188,9 @@
           enableFiltering={true}
           enableSelection={true}
           bind:selectedIds
-          filterPlaceholder="Search containers..."
-          noResultsMessage="No containers found"
+          filterPlaceholder="Search images..."
+          noResultsMessage="No images found"
         />
-        <!-- <DataTable data={images} {columns} /> -->
       </Card.Content>
     </Card.Root>
   {:else if !error}
