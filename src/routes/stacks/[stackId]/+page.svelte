@@ -24,6 +24,7 @@
   import { Label } from "$lib/components/ui/label/index.js";
   import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
   import YamlEditor from "$lib/components/yaml-editor.svelte";
+  import { onMount } from "svelte";
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
   let { stack } = $derived(data);
@@ -37,6 +38,7 @@
 
   let name = $state("");
   let composeContent = $state("");
+  let editorReady = $state(false);
 
   $effect(() => {
     if (stack) {
@@ -56,6 +58,12 @@
     restarting = false;
     removing = false;
     saving = false;
+  });
+
+  onMount(() => {
+    setTimeout(() => {
+      editorReady = true;
+    }, 100);
   });
 </script>
 
@@ -306,12 +314,15 @@
                 name="composeContent"
                 value={composeContent}
               />
-              <YamlEditor
-                bind:value={composeContent}
-                height="400px"
-                placeholder="Enter your docker-compose.yml content"
-                forceDarkTheme={true}
-              />
+              {#key editorReady || composeContent}
+                <YamlEditor
+                  value={composeContent}
+                  on:change={(e) => (composeContent = e.detail.value)}
+                  height="400px"
+                  placeholder="Enter your docker-compose.yml content"
+                  forceDarkTheme={true}
+                />
+              {/key}
               <p class="text-xs text-muted-foreground">
                 Edit your docker-compose.yml file directly. Syntax errors will
                 be highlighted.

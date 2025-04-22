@@ -5,6 +5,9 @@
   import { linter, lintGutter } from "@codemirror/lint";
   import { browser } from "$app/environment";
   import jsyaml from "js-yaml";
+  import { createEventDispatcher } from "svelte";
+
+  const dispatch = createEventDispatcher();
 
   let {
     value = $bindable(""),
@@ -51,12 +54,21 @@
     linter(yamlLinter),
     oneDark,
   ]);
+
+  function handleChange(e: Event) {
+    const target = e.target as HTMLInputElement;
+    value = target.value; // or however you get the value
+
+    // Dispatch the event with the new value
+    dispatch("change", { value });
+  }
 </script>
 
 {#if browser}
   <div class="border rounded-md overflow-hidden">
     <CodeMirror
       bind:value
+      on:change={handleChange}
       {extensions}
       styles={{
         "&": {
