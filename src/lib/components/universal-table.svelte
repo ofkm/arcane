@@ -34,6 +34,7 @@
     noResultsMessage?: string;
     itemsPerPageLabel?: string;
     selectedIds?: string[];
+    defaultSort?: { id: string; desc: boolean }; // Combined prop for default sorting
   };
 
   let {
@@ -48,14 +49,15 @@
     noResultsMessage = "No results found",
     itemsPerPageLabel = "Items per page",
     selectedIds = $bindable<string[]>([]),
+    defaultSort = { id: "name", desc: false }, // Default to name ascending
   }: UniversalTableProps<TData> = $props();
 
   // Pagination state
   let pageIndex = $state(0);
   let currentPage = $state(1);
 
-  // Sorting state
-  let sorting = $state<SortingState>([]);
+  // Sorting state - Initialize with default sort
+  let sorting = $state<SortingState>(defaultSort ? [defaultSort] : []);
 
   // Filtering state
   let columnFilters = $state<ColumnFiltersState>([]);

@@ -174,6 +174,7 @@
           bind:selectedIds
           filterPlaceholder="Search images..."
           noResultsMessage="No images found"
+          defaultSort={{ id: "repo", desc: false }}
         />
       </Card.Content>
     </Card.Root>

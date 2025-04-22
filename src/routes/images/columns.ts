@@ -6,7 +6,7 @@ import { formatBytes } from "$lib/utils";
 
 export const columns: ColumnDef<ServiceImage>[] = [
   {
-    accessorKey: "name",
+    accessorKey: "repo",
     header: "Name",
     cell: ({ row }) => {
       return row.original.repo;
@@ -16,7 +16,6 @@ export const columns: ColumnDef<ServiceImage>[] = [
     accessorKey: "tag",
     header: "Tag",
     cell: ({ row }) => {
-      // Return the plain tag string
       return row.original.tag;
     },
   },
