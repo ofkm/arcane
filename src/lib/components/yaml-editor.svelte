@@ -67,12 +67,23 @@
         outline: "1px solid var(--border)",
       },
       // Syntax highlighting
-      ".ͼa": { color: "var(--primary)" }, // Comments
-      ".ͼb": { color: "var(--foreground)" }, // Regular text
-      ".ͼc": { color: "var(--card-foreground)" }, // Strings
-      ".ͼd": { color: "var(--destructive)" }, // Keywords
-      ".ͼe": { color: "var(--accent-foreground)" }, // Numbers/literals
-      ".ͼf": { color: "var(--primary)" }, // Definitions
+      // YAML-specific syntax highlighting
+      ".cm-keyword": { color: "var(--primary)" }, // YAML keywords and special tokens
+      ".cm-atom": { color: "var(--accent-foreground)" }, // YAML boolean and null values
+      ".cm-number": { color: "var(--accent-foreground)" }, // YAML numbers
+      ".cm-property": { color: "var(--primary)" }, // YAML keys
+      ".cm-string": { color: "var(--success)" }, // YAML string values
+      ".cm-operator": { color: "var(--destructive)" }, // Colons, dashes, etc.
+      ".cm-comment": { color: "var(--muted-foreground)", fontStyle: "italic" }, // Comments
+
+      // More general highlighting
+      ".cm-meta": { color: "var(--secondary)" },
+      ".cm-def": { color: "var(--primary)" },
+      ".cm-variable": { color: "var(--foreground)" },
+      ".cm-variable-2": { color: "var(--foreground)" },
+      ".cm-tag": { color: "var(--destructive)" },
+      ".cm-header": { color: "var(--primary)", fontWeight: "bold" },
+      ".cm-link": { color: "var(--primary)", textDecoration: "underline" },
     },
     { dark: darkMode }
   );
