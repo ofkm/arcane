@@ -5,20 +5,17 @@ import {
   stopContainer,
   restartContainer,
   removeContainer,
-  getContainerLogs, // Add this import
+  getContainerLogs,
 } from "$lib/services/docker-service";
 import { error, fail, redirect } from "@sveltejs/kit";
-import { invalidateAll } from "$app/navigation"; // Used client-side, but good practice to know
 
 export const load: PageServerLoad = async ({ params }) => {
   const containerId = params.id;
 
   try {
-    // Fetch container details and logs concurrently for better performance
     const [container, logs] = await Promise.all([
       getContainer(containerId),
       getContainerLogs(containerId, { tail: 100 }).catch((err) => {
-        // Handle log retrieval errors gracefully
         console.error(`Failed to retrieve logs for ${containerId}:`, err);
         return "Failed to load logs. This could be because the container hasn't been started yet.";
       }),
@@ -36,7 +33,6 @@ export const load: PageServerLoad = async ({ params }) => {
     };
   } catch (err: any) {
     console.error(`Failed to load container ${containerId}:`, err);
-    // Use the error helper for consistency
     error(500, {
       message:
         err.message || `Failed to load container details for "${containerId}".`,
@@ -50,7 +46,6 @@ export const actions: Actions = {
     const containerId = params.id;
     try {
       await startContainer(containerId);
-      // No redirect needed, page data will refresh via invalidateAll on client
       return { success: true, message: "Container started." };
     } catch (err: any) {
       return fail(500, { error: err.message });

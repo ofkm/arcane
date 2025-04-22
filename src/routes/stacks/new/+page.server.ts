@@ -25,9 +25,25 @@ export const actions = {
 
     try {
       const stack = await createStack(name, composeContent);
-      throw redirect(303, `/stacks/${stack.id}`);
+      if (stack && stack.id) {
+        throw redirect(303, `/stacks/${stack.id}`);
+      }
+
+      return {
+        success: true,
+        stack: stack,
+      };
     } catch (err) {
-      if (err instanceof Response) throw err; // Rethrow the redirect
+      // Don't catch redirects
+      if (
+        err instanceof Response ||
+        (err &&
+          typeof err === "object" &&
+          "status" in err &&
+          err.status === 303)
+      ) {
+        throw err;
+      }
 
       console.error("Error creating stack:", err);
       return {

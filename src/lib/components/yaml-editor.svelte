@@ -47,7 +47,6 @@
     return diagnostics;
   }
 
-  // Use the oneDark theme
   const extensions = $derived([
     yaml(),
     lintGutter(),
