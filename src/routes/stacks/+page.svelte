@@ -7,8 +7,6 @@
     AlertCircle,
     Layers,
     RefreshCw,
-    Filter,
-    ArrowUpDown,
     Upload,
     FileStack,
   } from "@lucide/svelte";
@@ -16,12 +14,28 @@
   import { columns } from "./columns";
   import * as Alert from "$lib/components/ui/alert/index.js";
   import { invalidateAll } from "$app/navigation";
+  import { enhance } from "$app/forms";
+  import UniversalModal from "$lib/components/universal-modal.svelte";
 
   let { data }: { data: PageData } = $props();
   const { stacks, error } = data;
   let selectedIds = $state([]);
 
   let isRefreshing = $state(false);
+  let isRemoving = $state(false);
+  let deleteDialogOpen = $state(false);
+  let id = $state(""); // Store the ID of the stack to be deleted
+
+  // Message Dialog state
+  let dialogOpen = $state(false);
+  let dialogProps = $state({
+    type: "info" as const,
+    title: "",
+    message: "",
+    okText: "OK",
+    cancelText: "Cancel",
+    showCancel: false,
+  });
 
   // Calculate stack stats
   const totalStacks = $derived(stacks?.length || 0);
@@ -37,8 +51,15 @@
   }
 
   async function importStack() {
-    // TODO: Implement import stack modal functionality
-    alert("Implement import stack functionality");
+    dialogOpen = true;
+    dialogProps = {
+      type: "info",
+      title: "Import Stack",
+      message: "This feature is not yet implemented. Check back soon!",
+      okText: "Close",
+      cancelText: "Cancel",
+      showCancel: false,
+    };
   }
 
   async function refreshData() {
@@ -60,7 +81,15 @@
       </p>
     </div>
     <div class="flex gap-2">
-      <!-- put buttons here -->
+      <Button
+        variant="outline"
+        size="sm"
+        onclick={refreshData}
+        disabled={isRefreshing}
+      >
+        <RefreshCw class={isRefreshing ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
+        Refresh
+      </Button>
     </div>
   </div>
 
@@ -158,4 +187,38 @@
       {/if}
     </Card.Content>
   </Card.Root>
+
+  <form
+    method="POST"
+    action={`/stacks/${id}?/remove`}
+    use:enhance={() => {
+      isRemoving = true;
+      deleteDialogOpen = false;
+      deleteDialogOpen = false;
+
+      return async ({ result }) => {
+        isRemoving = false;
+
+        if (result.type === "success") {
+          // Force navigation to the stacks page after successful deletion
+          window.location.href = "/stacks";
+        } else {
+          console.error("Error removing stack:", result);
+          await invalidateAll();
+        }
+      };
+    }}
+  >
+    <!-- Button remains the same -->
+  </form>
+
+  <UniversalModal
+    bind:open={dialogOpen}
+    type={dialogProps.type}
+    title={dialogProps.title}
+    message={dialogProps.message}
+    okText={dialogProps.okText}
+    cancelText={dialogProps.cancelText}
+    showCancel={dialogProps.showCancel}
+  />
 </div>

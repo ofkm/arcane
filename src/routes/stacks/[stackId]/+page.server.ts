@@ -46,14 +46,9 @@ export const actions = {
   },
 
   start: async ({ params }) => {
-    const { stackId } = params;
-
     try {
-      await startStack(stackId);
-      return {
-        success: true,
-        message: "Stack Deployed successfully",
-      };
+      await startStack(params.stackId);
+      return { success: true };
     } catch (err) {
       console.error("Error starting stack:", err);
       return {
@@ -64,14 +59,9 @@ export const actions = {
   },
 
   stop: async ({ params }) => {
-    const { stackId } = params;
-
     try {
-      await stopStack(stackId);
-      return {
-        success: true,
-        message: "Stack stopped successfully",
-      };
+      await stopStack(params.stackId);
+      return { success: true };
     } catch (err) {
       console.error("Error stopping stack:", err);
       return {
@@ -82,14 +72,9 @@ export const actions = {
   },
 
   restart: async ({ params }) => {
-    const { stackId } = params;
-
     try {
-      await restartStack(stackId);
-      return {
-        success: true,
-        message: "Stack restarted successfully",
-      };
+      await restartStack(params.stackId);
+      return { success: true };
     } catch (err) {
       console.error("Error restarting stack:", err);
       return {
@@ -100,14 +85,13 @@ export const actions = {
   },
 
   remove: async ({ params }) => {
-    const { stackId } = params;
-
     try {
-      await removeStack(stackId);
-      throw redirect(303, "/stacks");
+      const success = await removeStack(params.stackId);
+      if (success) {
+        return { success: true, redirectTo: "/stacks" };
+      }
+      return { success: false, error: "Failed to remove stack" };
     } catch (err) {
-      if (err instanceof Response) throw err; // Rethrow the redirect
-
       console.error("Error removing stack:", err);
       return {
         success: false,
