@@ -12,13 +12,38 @@
   import * as Breadcrumb from "$lib/components/ui/breadcrumb/index.js";
   import { enhance } from "$app/forms";
   import * as Alert from "$lib/components/ui/alert/index.js";
-  import { Textarea } from "$lib/components/ui/textarea/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
+
+  // Import CodeMirror components
+  import CodeMirror from "svelte-codemirror-editor";
+  import { yaml } from "@codemirror/lang-yaml";
+  import { oneDark } from "@codemirror/theme-one-dark";
+  import { browser } from "$app/environment";
+
+  import YamlEditor from "$lib/components/yaml-editor.svelte";
 
   let { form }: { form: ActionData } = $props();
 
   let saving = $state(false);
+  let darkMode = $state(false);
+
+  // Check for dark mode preference
+  $effect(() => {
+    if (browser) {
+      darkMode =
+        window.matchMedia("(prefers-color-scheme: dark)").matches ||
+        document.documentElement.classList.contains("dark");
+    }
+  });
+
+  // Set up CodeMirror extensions
+  let extensions = $state([oneDark]);
+
+  // Dynamic theme based on dark mode
+  $effect(() => {
+    extensions = darkMode ? [oneDark] : [];
+  });
 
   // Default compose file template
   const defaultComposeTemplate = `
@@ -112,18 +137,15 @@ services:
 
           <div class="grid w-full items-center gap-1.5">
             <Label for="compose-editor">Docker Compose File</Label>
-            <Textarea
-              id="compose-editor"
-              name="composeContent"
-              bind:value={composeContent}
-              rows={20}
-              class="font-mono text-sm"
-              required
-              placeholder="Paste your docker-compose.yml content here"
-            />
+
+            <!-- Hidden textarea to submit the form value -->
+            <input type="hidden" name="composeContent" value={composeContent} />
+
+            <!-- YamlEditor Component -->
+            <YamlEditor bind:value={composeContent} />
+
             <p class="text-xs text-muted-foreground">
-              Enter a valid docker-compose.yml file. Be sure to check your
-              syntax.
+              Enter a valid compose.yaml file.
             </p>
           </div>
         </div>

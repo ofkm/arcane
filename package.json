@@ -44,10 +44,14 @@
     "zod": "^3.24.3"
   },
   "dependencies": {
+    "@codemirror/lang-yaml": "^6.1.2",
+    "@codemirror/theme-one-dark": "^6.1.2",
     "@tanstack/table-core": "^8.21.3",
+    "codemirror": "^6.0.1",
     "dockerode": "^4.0.6",
     "dockerode-compose": "^1.4.0",
     "js-yaml": "^4.1.0",
-    "nanoid": "^5.1.5"
+    "nanoid": "^5.1.5",
+    "svelte-codemirror-editor": "^1.4.1"
   }
 }
