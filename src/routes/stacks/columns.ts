@@ -39,7 +39,7 @@ export const columns: ColumnDef<Stack>[] = [
   },
   {
     id: "actions",
-    header: "Actions",
+    header: "",
     cell: ({ row }) => {
       return renderComponent(StackActions, {
         id: row.original.id,

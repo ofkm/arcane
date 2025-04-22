@@ -40,7 +40,7 @@ export const columns: ColumnDef<ServiceImage>[] = [
   },
   {
     id: "actions",
-    header: "Actions",
+    header: "",
     cell: ({ row }) => {
       return renderComponent(ImageActions, {
         id: row.original.id,

@@ -1,7 +1,7 @@
 import type { ServiceContainer } from "$lib/services/docker-service";
 import type { ColumnDef } from "@tanstack/table-core";
 import { renderComponent } from "$lib/components/ui/data-table/index.js";
-import DataTableActions from "./data-table-actions.svelte";
+import DataTableActions from "./ContainerActions.svelte";
 import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
 import IdCell from "./IdCell.svelte";
 
@@ -35,7 +35,7 @@ export const columns: ColumnDef<ServiceContainer>[] = [
   },
   {
     id: "actions",
-    header: "Actions",
+    header: "",
     cell: ({ row }) => {
       return renderComponent(DataTableActions, {
         id: row.original.id,

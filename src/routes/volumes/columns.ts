@@ -31,7 +31,7 @@ export const columns: ColumnDef<VolumeInfo>[] = [
   },
   {
     id: "actions",
-    header: "Actions",
+    header: "",
     cell: ({ row }) => {
       return renderComponent(VolumeActions, {
         name: row.original.name,

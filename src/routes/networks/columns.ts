@@ -41,7 +41,7 @@ export const columns: ColumnDef<NetworkInfo>[] = [
   // },
   {
     id: "actions",
-    header: "Actions",
+    header: "",
     cell: ({ row }) => {
       return renderComponent(NetworkActions, {
         id: row.original.id, // Pass the actual ID
