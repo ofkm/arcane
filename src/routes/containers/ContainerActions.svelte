@@ -11,6 +11,23 @@
     goto(`/containers/${id}`);
   }
 
+  function performContainerAction(action: string) {
+    // Log the action for now - will be replaced with API call later
+    console.log(`Container ${id}: Performing action: ${action}`);
+
+    /*
+  try {
+    // Will implement fetch call to backend API endpoint
+    // await fetch(`/api/containers/${id}/${action}`, {
+    //   method: 'POST'
+    // });
+    console.log(`Successfully performed ${action} on container ${id}`);
+  } catch (error) {
+    console.error(`Failed to ${action} container ${id}:`, error);
+  }
+  */
+  }
+
   // Determine if container is running
   const isRunning = $derived(state === "running");
 </script>
@@ -37,28 +54,25 @@
       </DropdownMenu.Item>
 
       {#if !isRunning}
-        <!-- Show Start action only if container is not running -->
-        <DropdownMenu.Item onclick={() => viewContainer()}>
+        <DropdownMenu.Item onclick={() => performContainerAction("start")}>
           <Play class="w-4 h-4" />
           Start
         </DropdownMenu.Item>
       {:else}
-        <!-- Show Restart and Stop actions only if container is running -->
-        <DropdownMenu.Item onclick={() => viewContainer()}>
+        <DropdownMenu.Item onclick={() => performContainerAction("restart")}>
           <RotateCcw class="w-4 h-4" />
           Restart
         </DropdownMenu.Item>
 
-        <DropdownMenu.Item onclick={() => viewContainer()}>
+        <DropdownMenu.Item onclick={() => performContainerAction("stop")}>
           <StopCircle class="w-4 h-4" />
           Stop
         </DropdownMenu.Item>
       {/if}
 
-      <!-- Always show Remove action -->
       <DropdownMenu.Item
         class="text-red-500 focus:!text-red-700"
-        onclick={() => viewContainer()}
+        onclick={() => performContainerAction("remove")}
       >
         <Trash2 class="w-4 h-4" />
         Remove
