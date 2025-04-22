@@ -1,12 +1,11 @@
 <script lang="ts">
   import CodeMirror from "svelte-codemirror-editor";
   import { yaml } from "@codemirror/lang-yaml";
-  import { oneDark } from "@codemirror/theme-one-dark";
   import { linter, lintGutter } from "@codemirror/lint";
   import { browser } from "$app/environment";
   import jsyaml from "js-yaml";
   import { createEventDispatcher } from "svelte";
-  import { EditorView } from "@codemirror/view";
+  import { oneDark } from "@codemirror/theme-one-dark";
 
   const dispatch = createEventDispatcher();
 
@@ -14,7 +13,7 @@
     value = $bindable(""),
     height = "400px",
     placeholder = "Enter YAML content",
-    forceDarkTheme = false, // Add this prop to force dark theme
+    forceDarkTheme = true,
   } = $props();
 
   let darkMode = $state(forceDarkTheme || false);
@@ -28,65 +27,6 @@
         document.documentElement.classList.contains("dark");
     }
   });
-
-  // Custom theme that aligns with your application theme
-  const arcaneTheme = EditorView.theme(
-    {
-      "&": {
-        backgroundColor: "var(--background)",
-        color: "var(--foreground)",
-      },
-      ".cm-content": {
-        caretColor: "var(--primary)",
-      },
-      ".cm-cursor": {
-        borderLeftColor: "var(--primary)",
-      },
-      ".cm-activeLine": {
-        backgroundColor: "color-mix(in srgb, var(--accent), transparent 50%)",
-      },
-      ".cm-activeLineGutter": {
-        backgroundColor: "color-mix(in srgb, var(--accent), transparent 70%)",
-      },
-      ".cm-gutters": {
-        backgroundColor: "var(--muted)",
-        color: "var(--muted-foreground)",
-        border: "none",
-      },
-      ".cm-line": {
-        padding: "0 0.5rem",
-      },
-      ".cm-selectionBackground": {
-        backgroundColor: "color-mix(in srgb, var(--primary), transparent 70%)",
-      },
-      ".cm-selectionMatch": {
-        backgroundColor: "color-mix(in srgb, var(--primary), transparent 80%)",
-      },
-      ".cm-matchingBracket, .cm-nonmatchingBracket": {
-        backgroundColor: "color-mix(in srgb, var(--primary), transparent 80%)",
-        outline: "1px solid var(--border)",
-      },
-      // Syntax highlighting
-      // YAML-specific syntax highlighting
-      ".cm-keyword": { color: "var(--destructive)" }, // YAML keywords and special tokens (changed to red)
-      ".cm-atom": { color: "var(--warning)" }, // YAML boolean and null values (changed to warning/orange)
-      ".cm-number": { color: "var(--warning)" }, // YAML numbers (changed to warning/orange)
-      ".cm-property": { color: "var(--destructive)" }, // YAML keys (changed to red for better visibility)
-      ".cm-string": { color: "var(--success)" }, // YAML string values (kept as green)
-      ".cm-operator": { color: "var(--secondary)" }, // Colons, dashes, etc. (changed to secondary)
-      ".cm-comment": { color: "var(--muted-foreground)", fontStyle: "italic" }, // Comments
-
-      // More general highlighting
-      ".cm-meta": { color: "var(--secondary)" },
-      ".cm-def": { color: "var(--primary)" },
-      ".cm-variable": { color: "hsl(var(--foreground))" }, // Making sure this is fully opaque
-      ".cm-variable-2": { color: "hsl(var(--foreground))" }, // Making sure this is fully opaque
-      ".cm-tag": { color: "var(--destructive)" },
-      ".cm-header": { color: "var(--accent)", fontWeight: "bold" }, // Changed to accent
-      ".cm-link": { color: "var(--primary)", textDecoration: "underline" },
-    },
-    { dark: darkMode }
-  );
 
   // YAML linting function
   function yamlLinter(view: { state: { doc: { toString(): string } } }) {
@@ -107,12 +47,12 @@
     return diagnostics;
   }
 
-  // Use the custom theme based on dark mode
+  // Use the oneDark theme
   const extensions = $derived([
     yaml(),
     lintGutter(),
     linter(yamlLinter),
-    arcaneTheme,
+    darkMode ? oneDark : [],
   ]);
 
   function handleChange(e: Event) {
