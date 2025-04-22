@@ -166,15 +166,14 @@
         <UniversalTable
           data={images}
           {columns}
-          pageSize={10}
-          pageSizeOptions={[5, 10, 20, 50]}
-          enableSorting={true}
-          enableFiltering={true}
-          enableSelection={true}
+          display={{
+            filterPlaceholder: "Search images...",
+            noResultsMessage: "No images found",
+          }}
+          sort={{
+            defaultSort: { id: "repo", desc: false },
+          }}
           bind:selectedIds
-          filterPlaceholder="Search images..."
-          noResultsMessage="No images found"
-          defaultSort={{ id: "repo", desc: false }}
         />
       </Card.Content>
     </Card.Root>

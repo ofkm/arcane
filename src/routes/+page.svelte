@@ -248,14 +248,17 @@
                 <UniversalTable
                   data={containers.slice(0, 5)}
                   columns={dashboardContainerColumns}
-                  pageSize={5}
-                  pageSizeOptions={[5]}
-                  enableSorting={true}
-                  enableFiltering={false}
-                  enableSelection={false}
-                  filterPlaceholder=""
-                  noResultsMessage="No containers found"
-                  isDashboardTable={true}
+                  features={{
+                    filtering: false,
+                    selection: false,
+                  }}
+                  pagination={{
+                    pageSize: 5,
+                    pageSizeOptions: [5],
+                  }}
+                  display={{
+                    isDashboardTable: true,
+                  }}
                 />
               </div>
               {#if containers.length > 5}
@@ -311,15 +314,20 @@
                 <UniversalTable
                   data={images.slice(0, 5)}
                   columns={dashboardImageColumns}
-                  pageSize={5}
-                  pageSizeOptions={[5]}
-                  enableSorting={true}
-                  enableFiltering={false}
-                  enableSelection={false}
-                  filterPlaceholder=""
-                  noResultsMessage="No images found"
-                  isDashboardTable={true}
-                  defaultSort={{ id: "repo", desc: false }}
+                  features={{
+                    filtering: false,
+                    selection: false,
+                  }}
+                  pagination={{
+                    pageSize: 5,
+                    pageSizeOptions: [5],
+                  }}
+                  display={{
+                    isDashboardTable: true,
+                  }}
+                  sort={{
+                    defaultSort: { id: "repo", desc: false },
+                  }}
                 />
               </div>
               {#if images.length > 5}

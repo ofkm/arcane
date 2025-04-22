@@ -131,14 +131,11 @@
         <UniversalTable
           data={networks}
           {columns}
-          pageSize={10}
-          pageSizeOptions={[5, 10, 20, 50]}
-          enableSorting={true}
-          enableFiltering={true}
-          enableSelection={true}
+          display={{
+            filterPlaceholder: "Search networks...",
+            noResultsMessage: "No networks found",
+          }}
           bind:selectedIds
-          filterPlaceholder="Search networks..."
-          noResultsMessage="No networks found"
         />
       {:else if !error}
         <div

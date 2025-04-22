@@ -21,40 +21,44 @@
   import { Checkbox } from "$lib/components/ui/checkbox/index.js";
   import { ChevronDown } from "@lucide/svelte";
   import { cn } from "$lib/utils";
-
-  type UniversalTableProps<TData> = {
-    columns: ColumnDef<TData, any>[];
-    data: TData[];
-    pageSize?: number;
-    pageSizeOptions?: number[];
-    enableSorting?: boolean;
-    enableFiltering?: boolean;
-    enableSelection?: boolean;
-    filterPlaceholder?: string;
-    noResultsMessage?: string;
-    itemsPerPageLabel?: string;
-    selectedIds?: string[];
-    defaultSort?: { id: string; desc: boolean };
-    class?: string;
-    isDashboardTable?: boolean;
-  };
+  import type {
+    UniversalTableProps,
+    FeatureFlags,
+    SortOptions,
+    DisplayOptions,
+    PaginationOptions,
+  } from "$lib/types/table-types";
 
   let {
     data,
     columns,
+    features = {},
+    display = {},
+    pagination = {},
+    sort = {},
+    selectedIds = $bindable<string[]>([]),
+  }: UniversalTableProps<TData> = $props();
+
+  let {
+    sorting: enableSorting = true,
+    filtering: enableFiltering = true,
+    selection: enableSelection = true,
+  } = features;
+
+  let {
     pageSize = 10,
     pageSizeOptions = [10, 20, 50, 100],
-    enableSorting = true,
-    enableFiltering = true,
-    enableSelection = false,
+    itemsPerPageLabel = "Items per page",
+  } = pagination;
+
+  let {
     filterPlaceholder = "Search...",
     noResultsMessage = "No results found",
-    itemsPerPageLabel = "Items per page",
-    selectedIds = $bindable<string[]>([]),
-    defaultSort = { id: "name", desc: false }, // Default to name ascending
-    class: className = "",
     isDashboardTable = false,
-  }: UniversalTableProps<TData> = $props();
+    class: className = "",
+  } = display;
+
+  let { defaultSort = { id: "name", desc: false } } = sort;
 
   // Pagination state
   let pageIndex = $state(0);

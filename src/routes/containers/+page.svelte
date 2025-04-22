@@ -109,14 +109,11 @@
       <UniversalTable
         data={containers}
         {columns}
-        pageSize={10}
-        pageSizeOptions={[5, 10, 20, 50]}
-        enableSorting={true}
-        enableFiltering={true}
-        enableSelection={true}
+        display={{
+          filterPlaceholder: "Search containers...",
+          noResultsMessage: "No containers found",
+        }}
         bind:selectedIds
-        filterPlaceholder="Search containers..."
-        noResultsMessage="No containers found"
       />
     </Card.Content>
   </Card.Root>

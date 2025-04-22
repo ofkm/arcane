@@ -138,14 +138,11 @@
         <UniversalTable
           data={stacks}
           {columns}
-          pageSize={10}
-          pageSizeOptions={[5, 10, 20, 50]}
-          enableSorting={true}
-          enableFiltering={true}
-          enableSelection={true}
+          display={{
+            filterPlaceholder: "Search stacks...",
+            noResultsMessage: "No stacks found",
+          }}
           bind:selectedIds
-          filterPlaceholder="Search stacks..."
-          noResultsMessage="No stacks found"
         />
       {:else if !error}
         <div

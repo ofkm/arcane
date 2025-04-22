@@ -160,14 +160,11 @@
         <UniversalTable
           data={volumes}
           {columns}
-          pageSize={10}
-          pageSizeOptions={[5, 10, 20, 50]}
-          enableSorting={true}
-          enableFiltering={true}
-          enableSelection={true}
+          display={{
+            filterPlaceholder: "Search volumes...",
+            noResultsMessage: "No volumes found",
+          }}
           bind:selectedIds
-          filterPlaceholder="Search volumes..."
-          noResultsMessage="No volumes found"
         />
       {:else if !error}
         <div
