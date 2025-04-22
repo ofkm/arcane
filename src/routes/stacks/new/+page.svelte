@@ -15,9 +15,6 @@
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
 
-  // Import CodeMirror components
-  import CodeMirror from "svelte-codemirror-editor";
-  import { yaml } from "@codemirror/lang-yaml";
   import { oneDark } from "@codemirror/theme-one-dark";
   import { browser } from "$app/environment";
 
