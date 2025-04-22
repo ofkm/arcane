@@ -288,12 +288,7 @@
         <Card.Header class="px-6">
           <div class="flex items-center justify-between">
             <div>
-              <Card.Title>
-                Images
-                <Badge variant="secondary" class="ml-2"
-                  >{images?.length || 0}</Badge
-                >
-              </Card.Title>
+              <Card.Title>Images</Card.Title>
               <Card.Description class="pb-3">Recent images</Card.Description>
             </div>
             <Button

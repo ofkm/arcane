@@ -1,6 +1,5 @@
 <script lang="ts" generics="TData">
   import {
-    type ColumnDef,
     getCoreRowModel,
     getPaginationRowModel,
     getSortedRowModel,
@@ -21,13 +20,7 @@
   import { Checkbox } from "$lib/components/ui/checkbox/index.js";
   import { ChevronDown } from "@lucide/svelte";
   import { cn } from "$lib/utils";
-  import type {
-    UniversalTableProps,
-    FeatureFlags,
-    SortOptions,
-    DisplayOptions,
-    PaginationOptions,
-  } from "$lib/types/table-types";
+  import type { UniversalTableProps } from "$lib/types/table-types";
 
   let {
     data,
@@ -46,7 +39,7 @@
   } = features;
 
   let {
-    pageSize = 10,
+    pageSize: initialPageSize = 10,
     pageSizeOptions = [10, 20, 50, 100],
     itemsPerPageLabel = "Items per page",
   } = pagination;
@@ -59,6 +52,7 @@
   } = display;
 
   let { defaultSort = { id: "name", desc: false } } = sort;
+  let pageSize = $state(initialPageSize);
 
   // Pagination state
   let pageIndex = $state(0);
@@ -167,6 +161,7 @@
   // Handle page size change
   function handlePageSizeChange(size: string | number) {
     const sizeNumber = typeof size === "string" ? parseInt(size) : size;
+    pageSize = sizeNumber;
     table.setPageSize(sizeNumber);
     pageIndex = 0;
     currentPage = 1;
