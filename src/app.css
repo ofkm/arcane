@@ -126,3 +126,10 @@
 .dashboard-table-wrapper > :global(div.space-y-4) > :global(div:last-child) {
   display: none !important;
 }
+
+.version-collapsed {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  opacity: 0.7;
+}

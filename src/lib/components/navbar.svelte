@@ -11,6 +11,7 @@
     ChevronRight,
     ChevronLeft,
     FileStack,
+    ExternalLink, // Add this for the update link icon
     type Icon as IconType,
   } from "@lucide/svelte";
   import { page } from "$app/stores";
@@ -20,6 +21,24 @@
   import { Separator } from "$lib/components/ui/separator/index.js";
   import { cn } from "$lib/utils";
   import { browser } from "$app/environment";
+  import type { AppVersionInformation } from "$lib/types/application-configuration";
+
+  // Menu items and version information with proper typing
+  let {
+    items = [
+      { href: "/", label: "Dashboard", icon: Home },
+      { href: "/containers", label: "Containers", icon: Box },
+      { href: "/stacks", label: "Stacks", icon: FileStack },
+      { href: "/images", label: "Images", icon: Image },
+      { href: "/networks", label: "Networks", icon: Network },
+      { href: "/volumes", label: "Volumes", icon: HardDrive },
+      { href: "/settings", label: "Settings", icon: Settings },
+    ] as MenuItem[],
+    versionInformation,
+  } = $props<{
+    items?: MenuItem[];
+    versionInformation?: AppVersionInformation;
+  }>();
 
   // Define MenuItem type with proper IconType
   type MenuItem = {
@@ -49,18 +68,8 @@
     }
   }
 
-  // Menu items with proper typing
-  let {
-    items = [
-      { href: "/", label: "Dashboard", icon: Home },
-      { href: "/containers", label: "Containers", icon: Box },
-      { href: "/stacks", label: "Stacks", icon: FileStack },
-      { href: "/images", label: "Images", icon: Image },
-      { href: "/networks", label: "Networks", icon: Network },
-      { href: "/volumes", label: "Volumes", icon: HardDrive },
-      { href: "/settings", label: "Settings", icon: Settings },
-    ] as MenuItem[],
-  } = $props();
+  // Determine if update is available
+  const updateAvailable = $derived(versionInformation?.updateAvailable);
 </script>
 
 <!-- Mobile menu button -->
@@ -98,7 +107,7 @@
     <div class="flex-shrink-0">
       <img
         src="/img/nautix_logo_new.png"
-        alt="Nautix"
+        alt="Arcane"
         class="h-15 w-15"
         width="30"
         height="30"
@@ -108,7 +117,9 @@
       <div class="flex flex-col justify-center">
         <span class="text-lg font-bold tracking-tight leading-none">Arcane</span
         >
-        <span class="text-xs text-muted-foreground">v0.1.0</span>
+        <span class="text-xs text-muted-foreground"
+          >v{versionInformation.currentVersion}</span
+        >
       </div>
     {/if}
   </div>
@@ -200,6 +211,41 @@
       </a>
     {/each}
   </nav>
+
+  <!-- Only show update section if an update is available -->
+  {#if updateAvailable}
+    <Separator />
+
+    <!-- Update available notification -->
+    <div
+      class={cn("transition-all px-3 py-2", isCollapsed ? "text-center" : "")}
+    >
+      {#if !isCollapsed}
+        <a
+          href={versionInformation.releaseUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center justify-between text-blue-500 hover:underline text-sm"
+        >
+          <span>Update available</span>
+          <span class="flex items-center">
+            v{versionInformation.newestVersion}
+            <ExternalLink class="ml-1 h-3 w-3" />
+          </span>
+        </a>
+      {:else}
+        <a
+          href={versionInformation.releaseUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Update available: v{versionInformation.newestVersion}"
+          class="flex justify-center text-blue-500"
+        >
+          <ExternalLink class="h-4 w-4" />
+        </a>
+      {/if}
+    </div>
+  {/if}
 
   <Separator />
 
