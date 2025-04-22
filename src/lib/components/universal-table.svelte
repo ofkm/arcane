@@ -52,9 +52,9 @@
   } = display;
 
   let { defaultSort = { id: "name", desc: false } } = sort;
-  let pageSize = $state(initialPageSize);
 
   // Pagination state
+  let pageSize = $state(initialPageSize);
   let pageIndex = $state(0);
   let currentPage = $state(1);
 
