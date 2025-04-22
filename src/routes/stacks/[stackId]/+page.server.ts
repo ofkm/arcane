@@ -52,7 +52,7 @@ export const actions = {
       await startStack(stackId);
       return {
         success: true,
-        message: "Stack started successfully",
+        message: "Stack Deployed successfully",
       };
     } catch (err) {
       console.error("Error starting stack:", err);

@@ -29,12 +29,11 @@
   let { data, form }: { data: PageData; form: ActionData } = $props();
   let { stack } = $derived(data);
 
-  let starting = $state(false);
+  let depoloying = $state(false);
   let stopping = $state(false);
   let restarting = $state(false);
   let removing = $state(false);
   let saving = $state(false);
-  let isRefreshing = $state(false);
 
   let name = $state("");
   let composeContent = $state("");
@@ -53,7 +52,7 @@
   });
 
   $effect(() => {
-    starting = false;
+    depoloying = false;
     stopping = false;
     restarting = false;
     removing = false;
@@ -163,7 +162,7 @@
             method="POST"
             action="?/start"
             use:enhance={() => {
-              starting = true;
+              depoloying = true;
               return async ({ update }) => {
                 await update({ reset: false });
               };
@@ -172,16 +171,16 @@
             <Button
               type="submit"
               variant="default"
-              disabled={starting}
+              disabled={depoloying}
               size="sm"
               class="font-medium h-9"
             >
-              {#if starting}
+              {#if depoloying}
                 <Loader2 class="w-4 h-4 mr-2 animate-spin" />
               {:else}
                 <PlayCircle class="w-4 h-4 mr-2" />
               {/if}
-              Start
+              Deploy
             </Button>
           </form>
         {/if}

@@ -415,6 +415,7 @@ export async function updateStack(
 export async function startStack(stackId: string): Promise<boolean> {
   try {
     const compose = await getComposeInstance(stackId);
+    await compose.pull();
     await compose.up();
     return true;
   } catch (err: unknown) {
