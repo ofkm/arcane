@@ -19,10 +19,10 @@
     Trash2,
   } from "@lucide/svelte";
   import * as Alert from "$lib/components/ui/alert/index.js";
-  import { Separator } from "$lib/components/ui/separator/index.js";
   import { Progress } from "$lib/components/ui/progress/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { invalidateAll } from "$app/navigation";
+  import { formatBytes } from "$lib/utils";
 
   let { data }: { data: PageData } = $props();
   const { dockerInfo, containers, images, error } = data;
@@ -37,16 +37,6 @@
   const stoppedContainers = $derived(
     containers?.filter((c) => c.state === "exited").length ?? 0
   );
-
-  // Helper to format bytes
-  function formatBytes(bytes: number | undefined | null, decimals = 1): string {
-    if (!bytes || !+bytes) return "0 Bytes";
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-  }
 
   // Function to refresh data
   async function refreshData() {

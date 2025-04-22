@@ -3,20 +3,13 @@
   import UniversalTable from "$lib/components/universal-table.svelte";
   import { columns } from "./columns";
   import { Button } from "$lib/components/ui/button/index.js";
-  import {
-    Download,
-    AlertCircle,
-    RefreshCw,
-    Filter,
-    ArrowUpDown,
-    HardDrive,
-  } from "@lucide/svelte";
+  import { Download, AlertCircle, RefreshCw, HardDrive } from "@lucide/svelte";
   import * as Alert from "$lib/components/ui/alert/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
   import { invalidateAll } from "$app/navigation";
   import { toast } from "svelte-sonner";
   import PullImageDialog from "./pull-image-dialog.svelte";
+  import { formatBytes } from "$lib/utils";
 
   let { data }: { data: PageData } = $props();
   const { images, error } = data;
@@ -98,15 +91,6 @@
 
   function openPullDialog() {
     isPullDialogOpen = true;
-  }
-
-  function formatBytes(bytes: number | undefined | null, decimals = 1): string {
-    if (!bytes || !+bytes) return "0 Bytes";
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
   }
 </script>
 
