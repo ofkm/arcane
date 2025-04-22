@@ -222,7 +222,7 @@
     <h2 class="text-lg font-semibold tracking-tight mb-4">Resources</h2>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Containers List -->
-      <Card.Root class="border shadow-sm">
+      <Card.Root class="border shadow-sm relative flex flex-col">
         <Card.Header class="px-6">
           <div class="flex items-center justify-between">
             <div>
@@ -241,25 +241,31 @@
             </Button>
           </div>
         </Card.Header>
-        <Card.Content class="p-0">
+        <Card.Content class="p-0 flex-1">
           {#if containers?.length > 0}
-            <UniversalTable
-              data={containers.slice(0, 5)}
-              columns={dashboardContainerColumns}
-              pageSize={5}
-              pageSizeOptions={[5]}
-              enableSorting={true}
-              enableFiltering={false}
-              enableSelection={false}
-              filterPlaceholder=""
-              noResultsMessage="No containers found"
-              isDashboardTable={true}
-            />
-            {#if containers.length > 5}
-              <div class="bg-muted/40 py-2 px-6 text-xs text-muted-foreground">
-                Showing 5 of {containers.length} containers
+            <div class="flex flex-col h-full">
+              <div class="flex-1">
+                <UniversalTable
+                  data={containers.slice(0, 5)}
+                  columns={dashboardContainerColumns}
+                  pageSize={5}
+                  pageSizeOptions={[5]}
+                  enableSorting={true}
+                  enableFiltering={false}
+                  enableSelection={false}
+                  filterPlaceholder=""
+                  noResultsMessage="No containers found"
+                  isDashboardTable={true}
+                />
               </div>
-            {/if}
+              {#if containers.length > 5}
+                <div
+                  class="bg-muted/40 py-2 px-6 text-xs text-muted-foreground border-t"
+                >
+                  Showing 5 of {containers.length} containers
+                </div>
+              {/if}
+            </div>
           {:else if !error}
             <div
               class="flex flex-col items-center justify-center py-10 px-6 text-center"
@@ -275,7 +281,7 @@
       </Card.Root>
 
       <!-- Images List -->
-      <Card.Root class="border shadow-sm">
+      <Card.Root class="border shadow-sm relative flex flex-col">
         <Card.Header class="px-6">
           <div class="flex items-center justify-between">
             <div>
@@ -298,26 +304,32 @@
             </Button>
           </div>
         </Card.Header>
-        <Card.Content class="p-0">
+        <Card.Content class="p-0 flex-1">
           {#if images?.length > 0}
-            <UniversalTable
-              data={images.slice(0, 5)}
-              columns={dashboardImageColumns}
-              pageSize={5}
-              pageSizeOptions={[5]}
-              enableSorting={true}
-              enableFiltering={false}
-              enableSelection={false}
-              filterPlaceholder=""
-              noResultsMessage="No images found"
-              isDashboardTable={true}
-              defaultSort={{ id: "repo", desc: false }}
-            />
-            {#if images.length > 5}
-              <div class="bg-muted/40 py-2 px-6 text-xs text-muted-foreground">
-                Showing 5 of {images.length} images
+            <div class="flex flex-col h-full">
+              <div class="flex-1">
+                <UniversalTable
+                  data={images.slice(0, 5)}
+                  columns={dashboardImageColumns}
+                  pageSize={5}
+                  pageSizeOptions={[5]}
+                  enableSorting={true}
+                  enableFiltering={false}
+                  enableSelection={false}
+                  filterPlaceholder=""
+                  noResultsMessage="No images found"
+                  isDashboardTable={true}
+                  defaultSort={{ id: "repo", desc: false }}
+                />
               </div>
-            {/if}
+              {#if images.length > 5}
+                <div
+                  class="bg-muted/40 py-2 px-6 text-xs text-muted-foreground border-t"
+                >
+                  Showing 5 of {images.length} images
+                </div>
+              {/if}
+            </div>
           {:else if !error}
             <div
               class="flex flex-col items-center justify-center py-10 px-6 text-center"
