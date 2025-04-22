@@ -14,12 +14,12 @@
     Save,
     FileStack,
     Layers,
+    ArrowRight,
   } from "@lucide/svelte";
   import * as Breadcrumb from "$lib/components/ui/breadcrumb/index.js";
   import { enhance } from "$app/forms";
   import { invalidateAll } from "$app/navigation";
   import * as Alert from "$lib/components/ui/alert/index.js";
-  import { Separator } from "$lib/components/ui/separator/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Textarea } from "$lib/components/ui/textarea/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
@@ -53,14 +53,6 @@
     removing = false;
     saving = false;
   });
-
-  async function refreshData() {
-    isRefreshing = true;
-    await invalidateAll();
-    setTimeout(() => {
-      isRefreshing = false;
-    }, 500);
-  }
 </script>
 
 <div class="space-y-6 pb-8">
@@ -103,19 +95,6 @@
 
     {#if stack}
       <div class="flex gap-2 flex-wrap">
-        <Button
-          variant="outline"
-          size="sm"
-          onclick={refreshData}
-          disabled={isRefreshing}
-          class="h-9"
-        >
-          <RefreshCw
-            class={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-          />
-          Refresh
-        </Button>
-
         {#if stack.status === "running" || stack.status === "partially running"}
           <form
             method="POST"
@@ -363,8 +342,13 @@
         <div class="space-y-2">
           {#if stack.services && stack.services.length > 0}
             {#each stack.services as service}
-              <div
-                class="flex items-center justify-between p-3 border rounded-md"
+              <a
+                href={service.id ? `/containers/${service.id}` : undefined}
+                class={`flex items-center justify-between p-3 border rounded-md ${
+                  service.id
+                    ? "hover:bg-muted/50 transition-colors cursor-pointer"
+                    : "cursor-default"
+                }`}
               >
                 <div class="flex items-center gap-3">
                   <div class="bg-muted rounded-md p-1">
@@ -377,8 +361,16 @@
                     </p>
                   </div>
                 </div>
-                <StatusBadge state={service.state?.Status || "unknown"} />
-              </div>
+                <div class="flex items-center gap-2">
+                  <StatusBadge state={service.state?.Status || "unknown"} />
+                  {#if service.id}
+                    <div class="text-xs text-blue-500 ml-2">
+                      <span class="hidden sm:inline">View details</span>
+                      <ArrowRight class="inline-block ml-1 h-3 w-3" />
+                    </div>
+                  {/if}
+                </div>
+              </a>
             {/each}
           {:else}
             <div class="text-center py-6 text-muted-foreground">
@@ -404,10 +396,6 @@
         <Button variant="outline" href="/stacks">
           <ArrowLeft class="h-4 w-4 mr-2" />
           Back to Stacks
-        </Button>
-        <Button variant="default" onclick={refreshData}>
-          <RefreshCw class="h-4 w-4 mr-2" />
-          Retry
         </Button>
       </div>
     </div>
