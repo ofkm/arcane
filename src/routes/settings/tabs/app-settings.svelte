@@ -13,11 +13,20 @@
   let dockerHost = $derived(
     form?.values?.dockerHost || settings?.dockerHost || ""
   );
-  let pollingInterval = $derived(
-    form?.values?.pollingInterval !== undefined
-      ? form.values.pollingInterval
+
+  // Separate states for polling toggle and interval value
+  let pollingEnabled = $derived(
+    form?.values?.pollingEnabled !== undefined
+      ? form.values.pollingEnabled === "on"
+      : settings?.pollingInterval > 0
+  );
+
+  let pollingIntervalValue = $derived(
+    form?.values?.pollingIntervalValue !== undefined
+      ? form.values.pollingIntervalValue
       : settings?.pollingInterval || 10
   );
+
   let stacksDirectory = $derived(
     form?.values?.stacksDirectory || settings?.stacksDirectory || ""
   );
@@ -121,7 +130,7 @@
           class="flex items-center justify-between rounded-lg border p-4 bg-muted/30"
         >
           <div class="space-y-0.5">
-            <label for="pollingIntervalSwitch" class="text-base font-medium"
+            <label for="pollingEnabledSwitch" class="text-base font-medium"
               >Check for New Images</label
             >
             <p class="text-sm text-muted-foreground">
@@ -129,27 +138,29 @@
             </p>
           </div>
           <Switch
-            id="pollingIntervalhSwitch"
-            name="pollingInterval"
-            bind:checked={pollingInterval}
+            id="pollingEnabledSwitch"
+            name="pollingEnabled"
+            bind:checked={pollingEnabled}
           />
         </div>
 
-        {#if pollingInterval}
+        {#if pollingEnabled}
           <div class="space-y-2 px-1">
-            <label for="pollingInterval" class="text-sm font-medium">
+            <label for="pollingIntervalValue" class="text-sm font-medium">
               Polling Interval (minutes)
             </label>
             <Input
-              id="pollingInterval"
-              name="pollingInterval"
+              id="pollingIntervalValue"
+              name="pollingIntervalValue"
               type="number"
-              bind:value={pollingInterval}
+              bind:value={pollingIntervalValue}
               min="5"
               max="60"
             />
-            {#if form?.error && form.values?.pollingInterval && (parseInt(String(form.values.pollingInterval), 10) < 5 || parseInt(String(form.values.pollingInterval), 10) > 60)}
-              <p class="text-sm text-destructive">Must be between 5 and 60.</p>
+            {#if form?.error && form.values?.pollingIntervalValue && (parseInt(String(form.values.pollingIntervalValue), 10) < 5 || parseInt(String(form.values.pollingIntervalValue), 10) > 60)}
+              <p class="text-sm text-destructive">
+                Must be between 5 and 60 minutes.
+              </p>
             {:else}
               <p class="text-xs text-muted-foreground">
                 Set between 5-60 minutes.

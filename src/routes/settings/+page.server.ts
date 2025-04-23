@@ -22,7 +22,8 @@ export const actions: Actions = {
       const settings = await getSettings();
 
       const dockerHost = formData.get("dockerHost") as string;
-      const autoUpdate = formData.get("autoUpdate") === "off";
+      const autoUpdate = formData.get("autoUpdate") === "on";
+      const pollingEnabled = formData.get("pollingInterval") === "on";
       const pollingIntervalStr = formData.get("pollingInterval") as string;
       const stacksDirectory = (formData.get("stacksDirectory") as string) || "";
 
@@ -33,16 +34,30 @@ export const actions: Actions = {
         });
       }
 
-      let pollingInterval = parseInt(pollingIntervalStr, 10);
-      if (
-        isNaN(pollingInterval) ||
-        pollingInterval < 5 ||
-        pollingInterval > 60
-      ) {
-        return fail(400, {
-          error: "Refresh interval must be between 5 and 60 seconds.",
-          values: Object.fromEntries(formData),
-        });
+      // Get the previous polling interval setting to use as default
+      let pollingInterval = settings.pollingInterval;
+
+      // Only validate polling interval if polling is enabled
+      if (pollingEnabled) {
+        const parsedInterval = parseInt(pollingIntervalStr, 10);
+        if (
+          !isNaN(parsedInterval) &&
+          parsedInterval >= 5 &&
+          parsedInterval <= 60
+        ) {
+          // Valid polling interval
+          pollingInterval = parsedInterval;
+        } else {
+          // Invalid polling interval, but only return error if polling is enabled
+          return fail(400, {
+            error: "Polling interval must be between 5 and 60 minutes.",
+            values: Object.fromEntries(formData),
+          });
+        }
+      } else {
+        // If polling is disabled, use the default or previous value
+        // This ensures we don't lose the setting if polling is temporarily disabled
+        pollingInterval = pollingInterval || 10;
       }
 
       if (!stacksDirectory) {
