@@ -2,7 +2,7 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Switch } from "$lib/components/ui/switch/index.js";
-  import { Database, Server, CircuitBoard } from "@lucide/svelte";
+  import { Database, CircuitBoard } from "@lucide/svelte";
   import type { ActionData, PageData } from "../$types";
 
   let { data, form } = $props<{ data: PageData; form: ActionData }>();
@@ -172,7 +172,7 @@
               <p class="text-sm">
                 <span class="font-medium">Usage:</span> When enabled, Valkey/Redis
                 will be used for caching and distributed state management, improving
-                performance for multi-instance deployments.
+                performance.
               </p>
             </div>
           </div>
@@ -199,7 +199,7 @@
     <Card.Content>
       <div class="text-center py-8 text-muted-foreground">
         <p>
-          Future services will include database connections, monitoring tools,
+          Future services MAY include database connections, monitoring tools,
           and more.
         </p>
         <p class="text-sm mt-2">
