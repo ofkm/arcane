@@ -1,7 +1,6 @@
 export type SettingsData = {
   dockerHost: string;
-  autoRefresh: boolean;
-  refreshInterval: number;
-  darkMode: boolean;
+  pollingInterval: number;
+  autoUpdate: boolean;
   stacksDirectory: string;
 };

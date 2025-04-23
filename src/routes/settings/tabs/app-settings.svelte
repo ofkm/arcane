@@ -13,23 +13,19 @@
   let dockerHost = $derived(
     form?.values?.dockerHost || settings?.dockerHost || ""
   );
-  let autoRefresh = $derived(
-    form?.values?.autoRefresh !== undefined
-      ? form.values.autoRefresh === "on"
-      : settings?.autoRefresh || false
-  );
-  let refreshInterval = $derived(
-    form?.values?.refreshInterval !== undefined
-      ? form.values.refreshInterval
-      : settings?.refreshInterval || 10
-  );
-  let darkMode = $derived(
-    form?.values?.darkMode !== undefined
-      ? form.values.darkMode === "on"
-      : settings?.darkMode || false
+  let pollingInterval = $derived(
+    form?.values?.pollingInterval !== undefined
+      ? form.values.pollingInterval
+      : settings?.pollingInterval || 10
   );
   let stacksDirectory = $derived(
     form?.values?.stacksDirectory || settings?.stacksDirectory || ""
+  );
+  // New auto update option for containers
+  let autoUpdate = $derived(
+    form?.values?.autoUpdate !== undefined
+      ? form.values.autoUpdate === "on"
+      : settings?.autoUpdate || false
   );
 
   // Registry credentials
@@ -111,7 +107,7 @@
   </Card.Root>
 
   <div class="space-y-6">
-    <!-- Auto Refresh Settings Card -->
+    <!-- Polling Settings Card -->
     <Card.Root class="border shadow-sm">
       <Card.Header class="pb-3">
         <div class="flex items-center gap-2">
@@ -119,8 +115,8 @@
             <RefreshCw class="h-5 w-5 text-amber-500" />
           </div>
           <div>
-            <Card.Title>Auto Refresh</Card.Title>
-            <Card.Description>Control data refresh behavior</Card.Description>
+            <Card.Title>Image Polling</Card.Title>
+            <Card.Description>Control container image polling</Card.Description>
           </div>
         </div>
       </Card.Header>
@@ -129,72 +125,61 @@
           class="flex items-center justify-between rounded-lg border p-4 bg-muted/30"
         >
           <div class="space-y-0.5">
-            <label for="autoRefreshSwitch" class="text-base font-medium"
-              >Auto Refresh</label
+            <label for="pollingIntervalSwitch" class="text-base font-medium"
+              >Check for New Images</label
             >
             <p class="text-sm text-muted-foreground">
-              Automatically refresh data periodically
+              Periodically check for newer versions of container images
             </p>
           </div>
           <Switch
-            id="autoRefreshSwitch"
-            name="autoRefresh"
-            bind:checked={autoRefresh}
+            id="pollingIntervalhSwitch"
+            name="pollingInterval"
+            bind:checked={pollingInterval}
           />
         </div>
 
-        {#if autoRefresh}
+        {#if pollingInterval}
           <div class="space-y-2 px-1">
-            <label for="refreshInterval" class="text-sm font-medium">
-              Refresh Interval (seconds)
+            <label for="pollingInterval" class="text-sm font-medium">
+              Polling Interval (minutes)
             </label>
             <Input
-              id="refreshInterval"
-              name="refreshInterval"
+              id="pollingInterval"
+              name="pollingInterval"
               type="number"
-              bind:value={refreshInterval}
+              bind:value={pollingInterval}
               min="5"
               max="60"
             />
-            {#if form?.error && form.values?.refreshInterval && (parseInt(String(form.values.refreshInterval), 10) < 5 || parseInt(String(form.values.refreshInterval), 10) > 60)}
+            {#if form?.error && form.values?.pollingInterval && (parseInt(String(form.values.pollingInterval), 10) < 5 || parseInt(String(form.values.pollingInterval), 10) > 60)}
               <p class="text-sm text-destructive">Must be between 5 and 60.</p>
             {:else}
               <p class="text-xs text-muted-foreground">
-                Set between 5-60 seconds. Lower values increase server load.
+                Set between 5-60 minutes.
               </p>
             {/if}
           </div>
-        {/if}
-      </Card.Content>
-    </Card.Root>
 
-    <!-- UI Settings Card -->
-    <Card.Root class="border shadow-sm">
-      <Card.Header class="pb-3">
-        <div class="flex items-center gap-2">
-          <div class="bg-purple-500/10 p-2 rounded-full">
-            <Save class="h-5 w-5 text-purple-500" />
+          <!-- Auto Update option -->
+          <div
+            class="flex items-center justify-between rounded-lg border p-4 bg-muted/30"
+          >
+            <div class="space-y-0.5">
+              <label for="autoUpdateSwitch" class="text-base font-medium"
+                >Auto Update Containers</label
+              >
+              <p class="text-sm text-muted-foreground">
+                Automatically update containers when newer images are available
+              </p>
+            </div>
+            <Switch
+              id="autoUpdateSwitch"
+              name="autoUpdate"
+              bind:checked={autoUpdate}
+            />
           </div>
-          <div>
-            <Card.Title>UI Settings</Card.Title>
-            <Card.Description>Customize the appearance</Card.Description>
-          </div>
-        </div>
-      </Card.Header>
-      <Card.Content>
-        <div
-          class="flex items-center justify-between rounded-lg border p-4 bg-muted/30"
-        >
-          <div class="space-y-0.5">
-            <label for="darkModeSwitch" class="text-base font-medium"
-              >Dark Mode</label
-            >
-            <p class="text-sm text-muted-foreground">
-              Enable the dark color theme
-            </p>
-          </div>
-          <Switch id="darkModeSwitch" name="darkMode" bind:checked={darkMode} />
-        </div>
+        {/if}
       </Card.Content>
     </Card.Root>
   </div>

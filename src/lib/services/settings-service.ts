@@ -10,9 +10,8 @@ const SETTINGS_FILE = path.resolve("/app/data/app-settings.json");
 // Default settings
 const DEFAULT_SETTINGS: SettingsData = {
   dockerHost: "unix:///var/run/docker.sock",
-  autoRefresh: true,
-  refreshInterval: 10,
-  darkMode: true,
+  autoUpdate: false,
+  pollingInterval: 10,
   stacksDirectory: path.resolve("/app/data/stacks"),
 };
 
