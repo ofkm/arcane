@@ -87,7 +87,7 @@
       class="grid grid-cols-4 sm:grid-cols-4 md:w-full md:max-w-3xl mb-4"
     >
       <Tabs.Trigger value="app-settings" class="whitespace-nowrap">
-        App Settings
+        General
       </Tabs.Trigger>
       <Tabs.Trigger value="user-management" class="whitespace-nowrap">
         User Management
