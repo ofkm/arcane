@@ -1,12 +1,29 @@
 import { error } from "@sveltejs/kit";
-import { loadComposeStacks } from "$lib/services/compose";
+import {
+  loadComposeStacks,
+  discoverExternalStacks,
+} from "$lib/services/compose";
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load() {
   try {
-    const stacks = await loadComposeStacks();
+    // Get managed stacks
+    const managedStacks = await loadComposeStacks();
+
+    // Discover external stacks
+    const externalStacks = await discoverExternalStacks();
+
+    // Combine both, ensuring no duplicates by ID
+    const combinedStacks = [...managedStacks];
+
+    for (const externalStack of externalStacks) {
+      if (!combinedStacks.some((stack) => stack.id === externalStack.id)) {
+        combinedStacks.push(externalStack);
+      }
+    }
+
     return {
-      stacks,
+      stacks: combinedStacks,
     };
   } catch (err) {
     console.error("Failed to load stacks:", err);

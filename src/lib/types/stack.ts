@@ -25,7 +25,8 @@ export interface Stack {
   createdAt: string;
   updatedAt: string;
   composeContent?: string;
-  compose?: any; // Don't include this in serialized responses
+  isExternal?: boolean;
+  compose?: any;
 }
 
 export interface StackUpdate {

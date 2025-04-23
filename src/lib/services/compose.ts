@@ -481,3 +481,163 @@ export async function removeStack(stackId: string): Promise<boolean> {
     throw new Error(`Failed to remove stack: ${errorMessage}`);
   }
 }
+
+/**
+ * Discover existing Docker Compose stacks by analyzing container labels
+ * @returns {Promise<Stack[]>} External stacks discovered
+ */
+export async function discoverExternalStacks(): Promise<Stack[]> {
+  try {
+    const docker = getDockerClient();
+    const containers = await docker.listContainers({ all: true });
+
+    // Docker Compose adds these labels to managed containers
+    const composeProjectLabel = "com.docker.compose.project";
+    const composeServiceLabel = "com.docker.compose.service";
+
+    // Group containers by project
+    const projectMap: Record<string, any[]> = {};
+
+    containers.forEach((container) => {
+      const labels = container.Labels || {};
+      const projectName = labels[composeProjectLabel];
+
+      if (projectName) {
+        if (!projectMap[projectName]) {
+          projectMap[projectName] = [];
+        }
+
+        projectMap[projectName].push({
+          id: container.Id,
+          name: labels[composeServiceLabel] || container.Names[0]?.substring(1),
+          state: {
+            Running: container.State === "running",
+            Status: container.State,
+            ExitCode: 0,
+          },
+        });
+      }
+    });
+
+    // Convert to our Stack format
+    const externalStacks: Stack[] = [];
+
+    for (const [projectName, services] of Object.entries(projectMap)) {
+      // Check if this stack is already in our managed stacks
+      const stackDir = getStackDir(projectName);
+      try {
+        await fs.access(stackDir);
+        // Stack is managed by Arcane, skip it
+        continue;
+      } catch {
+        // Stack is not managed by Arcane, include it
+      }
+
+      const serviceCount = services.length;
+      const runningCount = services.filter((s) => s.state.Running).length;
+
+      let status: Stack["status"] = "stopped";
+      if (runningCount === serviceCount && serviceCount > 0) {
+        status = "running";
+      } else if (runningCount > 0) {
+        status = "partially running";
+      }
+
+      externalStacks.push({
+        id: projectName,
+        name: projectName,
+        services,
+        serviceCount,
+        runningCount,
+        status,
+        isExternal: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    return externalStacks;
+  } catch (err) {
+    console.error("Error discovering external stacks:", err);
+    return [];
+  }
+}
+
+/**
+ * Import an external stack into Arcane
+ *
+ * @param stackId The ID of the external stack to import
+ * @returns The newly imported stack object
+ */
+export async function importExternalStack(stackId: string): Promise<Stack> {
+  // 1. First, check if we can find the stack by ID
+  const docker = getDockerClient();
+  const containers = await docker.listContainers({ all: true });
+
+  // Filter containers that belong to this stack
+  const stackContainers = containers.filter((container) => {
+    const labels = container.Labels || {};
+    return labels["com.docker.compose.project"] === stackId;
+  });
+
+  if (stackContainers.length === 0) {
+    throw new Error(`No containers found for stack '${stackId}'`);
+  }
+
+  // 2. Try to locate the compose file (if available)
+  let composeFilePath = "";
+  const container = stackContainers[0];
+  const labels = container.Labels || {};
+
+  if (labels["com.docker.compose.project.config_files"]) {
+    composeFilePath = labels["com.docker.compose.project.config_files"];
+  }
+
+  // 3. Read the compose file if available, or create a new one
+  let composeContent = "";
+
+  if (composeFilePath) {
+    try {
+      composeContent = await fs.readFile(composeFilePath, "utf8");
+    } catch (err) {
+      console.warn(`Couldn't read compose file at ${composeFilePath}:`, err);
+      // Will generate a new one below
+    }
+  }
+
+  // 4. If we couldn't read the compose file, generate one based on container inspection
+  if (!composeContent) {
+    // Create a basic compose file from container inspection
+    const services: Record<string, any> = {};
+
+    for (const container of stackContainers) {
+      const containerLabels = container.Labels || {};
+      const serviceName =
+        containerLabels["com.docker.compose.service"] ||
+        container.Names[0]?.replace(`/${stackId}_`, "").replace("_1", "") ||
+        `service_${container.Id.substring(0, 8)}`;
+
+      // Inspect the container to get more details
+      const containerDetails = await docker
+        .getContainer(container.Id)
+        .inspect();
+
+      services[serviceName] = {
+        image: container.Image,
+        // Add other properties based on containerDetails
+      };
+    }
+
+    // Generate the compose file content
+    composeContent = `# Generated compose file for imported stack: ${stackId}
+# This was automatically generated by Arcane from an external stack
+# You may need to adjust it manually for correct operation
+
+version: '3'
+services:
+${yaml.dump({ services }).substring(10)}`; // Remove the services: line
+  }
+
+  // 5. Create a new stack in Arcane's managed stacks
+  return await createStack(stackId, composeContent);
+}

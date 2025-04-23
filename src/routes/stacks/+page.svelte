@@ -37,6 +37,13 @@
     showCancel: false,
   });
 
+  let modalOpen = $state(false);
+  let modalProps = $state({
+    type: "info" as "info" | "success" | "error",
+    title: "",
+    message: "",
+  });
+
   // Calculate stack stats
   const totalStacks = $derived(stacks?.length || 0);
   const runningStacks = $derived(
@@ -197,6 +204,29 @@
       deleteDialogOpen = false;
 
       return async ({ result }) => {
+        if (result.type === "success" && result.data) {
+          const data = result.data as {
+            success: boolean;
+            stack?: { name: string };
+            error?: string;
+          };
+          if (data.success) {
+            modalProps = {
+              type: "success",
+              title: "Stack Imported",
+              message: `Stack '${data.stack?.name}' has been successfully imported.`,
+            };
+          } else {
+            modalProps = {
+              type: "error",
+              title: "Import Failed",
+              message: data.error || "Failed to import stack",
+            };
+          }
+          modalOpen = true;
+        }
+
+        await invalidateAll();
         isRemoving = false;
 
         if (result.type === "success") {
@@ -220,5 +250,13 @@
     okText={dialogProps.okText}
     cancelText={dialogProps.cancelText}
     showCancel={dialogProps.showCancel}
+  />
+
+  <UniversalModal
+    bind:open={modalOpen}
+    type={modalProps.type}
+    title={modalProps.title}
+    message={modalProps.message}
+    okText="OK"
   />
 </div>

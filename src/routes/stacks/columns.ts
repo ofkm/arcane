@@ -5,6 +5,7 @@ import StackActions from "./StackActions.svelte";
 import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
 import StackNameCell from "./StackNameCell.svelte";
 import StackDateCell from "./StackDateCell.svelte";
+import CustomBadge from "$lib/components/badges/custom-badge.svelte";
 
 export const columns: ColumnDef<Stack>[] = [
   {
@@ -38,12 +39,26 @@ export const columns: ColumnDef<Stack>[] = [
     },
   },
   {
+    header: "Source",
+    accessorKey: "isExternal",
+    cell: ({ row }) => {
+      const isExternal = row.getValue("isExternal");
+      return renderComponent(CustomBadge, {
+        variant: "outline",
+        bgColor: isExternal ? "amber-100" : "green-100",
+        text: isExternal ? "External" : "Managed",
+      });
+    },
+  },
+  {
     id: "actions",
     header: "",
     cell: ({ row }) => {
       return renderComponent(StackActions, {
         id: row.original.id,
         status: row.original.status,
+        name: row.original.name,
+        isExternal: row.original.isExternal,
       });
     },
     enableSorting: false,
