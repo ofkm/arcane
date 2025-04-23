@@ -2,10 +2,11 @@ import type { Stack } from "$lib/types/stack";
 import type { ColumnDef } from "@tanstack/table-core";
 import { renderComponent } from "$lib/components/ui/data-table/index.js";
 import StackActions from "./StackActions.svelte";
-import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
 import StackNameCell from "./StackNameCell.svelte";
 import StackDateCell from "./StackDateCell.svelte";
 import CustomBadge from "$lib/components/badges/custom-badge.svelte";
+import { capitalizeFirstLetter } from "$lib/utils";
+import { statusConfig } from "$lib/types/statuses";
 
 export const columns: ColumnDef<Stack>[] = [
   {
@@ -26,7 +27,19 @@ export const columns: ColumnDef<Stack>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-      return renderComponent(StatusBadge, { state: row.original.status });
+      const status = row.getValue("status");
+
+      const config = statusConfig[status as keyof typeof statusConfig] || {
+        bgColor: "blue-100",
+        textColor: "blue-900",
+      };
+
+      return renderComponent(CustomBadge, {
+        variant: "status",
+        rounded: true,
+        text: capitalizeFirstLetter(status as string),
+        ...config,
+      });
     },
   },
   {
@@ -45,7 +58,9 @@ export const columns: ColumnDef<Stack>[] = [
       const isExternal = row.getValue("isExternal");
       return renderComponent(CustomBadge, {
         variant: "outline",
-        bgColor: isExternal ? "amber-100" : "green-100",
+        rounded: true,
+        bgColor: isExternal ? "amber-100" : "indigo-100",
+        textColor: isExternal ? "amber-900" : "indigo-900",
         text: isExternal ? "External" : "Managed",
       });
     },

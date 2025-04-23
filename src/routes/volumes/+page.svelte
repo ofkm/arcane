@@ -2,16 +2,7 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import { toast } from "svelte-sonner";
-  import {
-    Plus,
-    AlertCircle,
-    HardDrive,
-    RefreshCw,
-    Filter,
-    ArrowUpDown,
-    Database,
-    Loader2,
-  } from "@lucide/svelte";
+  import { Plus, AlertCircle, HardDrive, Database } from "@lucide/svelte";
   import UniversalTable from "$lib/components/universal-table.svelte";
   import { columns } from "./columns";
   import type { PageData } from "./$types";

@@ -4,7 +4,9 @@ import type {
   ServiceImage,
 } from "$lib/services/docker-service";
 import { formatBytes } from "$lib/utils";
-import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
+import CustomBadge from "$lib/components/badges/custom-badge.svelte";
+import { capitalizeFirstLetter } from "$lib/utils";
+import { statusConfig } from "$lib/types/statuses";
 import { renderComponent } from "$lib/components/ui/data-table/index.js";
 
 // Column definitions for the dashboard containers table
@@ -21,9 +23,21 @@ export const dashboardContainerColumns: ColumnDef<ServiceContainer>[] = [
   },
   {
     accessorKey: "state",
-    header: "State",
+    header: "Status",
     cell: ({ row }) => {
-      return renderComponent(StatusBadge, { state: row.original.state });
+      const config = statusConfig[
+        row.getValue("state") as keyof typeof statusConfig
+      ] || {
+        bgColor: "blue-100",
+        textColor: "blue-900",
+      };
+
+      return renderComponent(CustomBadge, {
+        variant: "status",
+        rounded: true,
+        text: capitalizeFirstLetter(row.getValue("state") as string),
+        ...config,
+      });
     },
   },
   {

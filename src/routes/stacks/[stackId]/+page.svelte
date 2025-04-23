@@ -6,11 +6,6 @@
     ArrowLeft,
     Loader2,
     AlertCircle,
-    RefreshCw,
-    PlayCircle,
-    StopCircle,
-    RotateCw,
-    Trash2,
     Save,
     FileStack,
     Layers,
@@ -22,10 +17,11 @@
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
-  import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
   import YamlEditor from "$lib/components/yaml-editor.svelte";
   import { onMount } from "svelte";
   import ActionButtons from "$lib/components/action-buttons.svelte";
+  import CustomBadge from "$lib/components/badges/custom-badge.svelte";
+  import { capitalizeFirstLetter, getStatusColor } from "$lib/utils";
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
   let { stack } = $derived(data);
@@ -308,7 +304,18 @@
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <StatusBadge state={service.state?.Status || "unknown"} />
+                  <CustomBadge
+                    variant="status"
+                    text={capitalizeFirstLetter(
+                      service.state?.Status || "unknown"
+                    )}
+                    bgColor={getStatusColor(service.state?.Status || "unknown")
+                      .bg}
+                    textColor={getStatusColor(
+                      service.state?.Status || "unknown"
+                    ).text}
+                    iconClass="w-3 h-3 mr-1"
+                  />
                   {#if service.id}
                     <div class="text-xs text-blue-500 ml-2">
                       <span class="hidden sm:inline">View details</span>

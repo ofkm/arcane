@@ -2,16 +2,10 @@
   import type { PageData, ActionData } from "./$types";
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
-  import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
   import {
     ArrowLeft,
-    Loader2,
     AlertCircle,
     RefreshCw,
-    PlayCircle,
-    StopCircle,
-    RotateCw,
-    Trash2,
     HardDrive,
     Clock,
     Network,
@@ -24,6 +18,13 @@
   import { Separator } from "$lib/components/ui/separator/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import ActionButtons from "$lib/components/action-buttons.svelte";
+  import CustomBadge from "$lib/components/badges/custom-badge.svelte";
+  import {
+    capitalizeFirstLetter,
+    getStatusColor,
+    formatDate,
+    formatLogLine,
+  } from "$lib/utils";
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
   let { container, logs } = $derived(data);
@@ -34,31 +35,6 @@
   let removing = $state(false);
   let isRefreshing = $state(false);
 
-  function formatDate(dateString: string | undefined | null): string {
-    if (!dateString) return "Unknown";
-    try {
-      return new Date(dateString).toLocaleString();
-    } catch (e) {
-      return "Invalid Date";
-    }
-  }
-
-  // Function to format logs with some basic highlighting
-  function formatLogLine(line: string): string {
-    if (
-      line.includes("ERROR") ||
-      line.includes("FATAL") ||
-      line.includes("WARN")
-    ) {
-      return `<span class="text-red-400">${line}</span>`;
-    }
-    if (line.includes("INFO")) {
-      return `<span class="text-blue-400">${line}</span>`;
-    }
-    return line;
-  }
-
-  // Format all logs
   let formattedLogs = $derived(
     logs ? logs.split("\n").map(formatLogLine).join("\n") : ""
   );
@@ -114,7 +90,14 @@
           {container?.name || "Container Details"}
         </h1>
         {#if container}
-          <StatusBadge state={container.state?.Status ?? "unknown"} />
+          <CustomBadge
+            variant="status"
+            text={capitalizeFirstLetter(container.state?.Status || "unknown")}
+            bgColor={getStatusColor(container.state?.Status || "unknown").bg}
+            textColor={getStatusColor(container.state?.Status || "unknown")
+              .text}
+            iconClass="w-3 h-3 mr-1"
+          />
         {/if}
       </div>
     </div>

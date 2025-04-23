@@ -2,7 +2,9 @@ import type { ServiceContainer } from "$lib/services/docker-service";
 import type { ColumnDef } from "@tanstack/table-core";
 import { renderComponent } from "$lib/components/ui/data-table/index.js";
 import DataTableActions from "./ContainerActions.svelte";
-import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
+import { capitalizeFirstLetter } from "$lib/utils";
+import { statusConfig } from "$lib/types/statuses";
+import CustomBadge from "$lib/components/badges/custom-badge.svelte";
 import IdCell from "./IdCell.svelte";
 
 export const columns: ColumnDef<ServiceContainer>[] = [
@@ -24,9 +26,21 @@ export const columns: ColumnDef<ServiceContainer>[] = [
   },
   {
     accessorKey: "state",
-    header: "State",
+    header: "Status",
     cell: ({ row }) => {
-      return renderComponent(StatusBadge, { state: row.original.state });
+      const config = statusConfig[
+        row.getValue("state") as keyof typeof statusConfig
+      ] || {
+        bgColor: "blue-100",
+        textColor: "blue-900",
+      };
+
+      return renderComponent(CustomBadge, {
+        variant: "status",
+        rounded: true,
+        text: capitalizeFirstLetter(row.getValue("state") as string),
+        ...config,
+      });
     },
   },
   {

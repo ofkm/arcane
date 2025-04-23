@@ -2,9 +2,7 @@
   import type { PageData } from "./$types";
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
-  import * as Table from "$lib/components/ui/table/index.js";
   import UniversalTable from "$lib/components/universal-table.svelte";
-  import StatusBadge from "$lib/components/docker/StatusBadge.svelte";
   import { dashboardContainerColumns, dashboardImageColumns } from "./columns";
   import {
     AlertCircle,
@@ -20,7 +18,6 @@
   import * as Alert from "$lib/components/ui/alert/index.js";
   import { Progress } from "$lib/components/ui/progress/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
-  import { invalidateAll } from "$app/navigation";
   import { formatBytes } from "$lib/utils";
 
   let { data }: { data: PageData } = $props();
