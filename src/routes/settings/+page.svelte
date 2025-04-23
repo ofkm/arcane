@@ -25,12 +25,25 @@
   let activeTab = $state("app-settings");
   let saving = $state(false);
 
+  // Keep the tab IDs consistent with the trigger values
   const tabs = [
-    { id: "app", label: "General", component: AppSettings },
+    { id: "app-settings", label: "General", component: AppSettings },
+    {
+      id: "user-management",
+      label: "User Management",
+      component: UserManagement,
+    },
+    {
+      id: "authentication",
+      label: "Authentication",
+      component: Authentication,
+    },
     { id: "rbac", label: "RBAC", component: RbacSettings },
-    { id: "auth", label: "Authentication", component: Authentication },
-    { id: "users", label: "Users", component: UserManagement },
-    { id: "services", label: "External Services", component: ExternalServices },
+    {
+      id: "external-services",
+      label: "External Services",
+      component: ExternalServices,
+    },
   ];
 
   // Handle form submission result
@@ -93,21 +106,13 @@
     class="w-full"
   >
     <Tabs.List
-      class="grid grid-cols-4 sm:grid-cols-4 md:w-full md:max-w-3xl mb-4"
+      class="grid grid-cols-5 sm:grid-cols-5 md:w-full md:max-w-3xl mb-4"
     >
-      <Tabs.Trigger value="app-settings" class="whitespace-nowrap">
-        General
-      </Tabs.Trigger>
-      <Tabs.Trigger value="user-management" class="whitespace-nowrap">
-        User Management
-      </Tabs.Trigger>
-      <Tabs.Trigger value="authentication" class="whitespace-nowrap">
-        Authentication
-      </Tabs.Trigger>
-      <Tabs.Trigger value="rbac" class="whitespace-nowrap">RBAC</Tabs.Trigger>
-      <Tabs.Trigger value="external-services" class="whitespace-nowrap">
-        External Services
-      </Tabs.Trigger>
+      {#each tabs as tab}
+        <Tabs.Trigger value={tab.id} class="whitespace-nowrap">
+          {tab.label}
+        </Tabs.Trigger>
+      {/each}
     </Tabs.List>
 
     <!-- Tab Contents -->
@@ -127,25 +132,11 @@
       <!-- Add a hidden input with a CSRF token -->
       <input type="hidden" name="csrf_token" value={data.csrf} />
 
-      <Tabs.Content value="app-settings" class="space-y-4">
-        <AppSettings {data} {form} />
-      </Tabs.Content>
-
-      <Tabs.Content value="user-management" class="space-y-4">
-        <UserManagement {data} {form} />
-      </Tabs.Content>
-
-      <Tabs.Content value="authentication" class="space-y-4">
-        <Authentication {data} {form} />
-      </Tabs.Content>
-
-      <Tabs.Content value="rbac" class="space-y-4">
-        <RbacSettings {data} {form} />
-      </Tabs.Content>
-
-      <Tabs.Content value="external-services" class="space-y-4">
-        <ExternalServices {data} {form} />
-      </Tabs.Content>
+      {#each tabs as tab}
+        <Tabs.Content value={tab.id} class="space-y-4">
+          <svelte:component this={tab.component} {data} {form} />
+        </Tabs.Content>
+      {/each}
     </form>
   </Tabs.Root>
 </div>
