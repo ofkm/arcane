@@ -23,8 +23,10 @@ export const actions: Actions = {
 
       const dockerHost = formData.get("dockerHost") as string;
       const autoUpdate = formData.get("autoUpdate") === "on";
-      const pollingEnabled = formData.get("pollingInterval") === "on";
-      const pollingIntervalStr = formData.get("pollingInterval") as string;
+      const pollingEnabled = formData.get("pollingEnabled") === "on";
+      const pollingIntervalValue = formData.get(
+        "pollingIntervalValue"
+      ) as string;
       const stacksDirectory = (formData.get("stacksDirectory") as string) || "";
 
       if (!dockerHost) {
@@ -39,7 +41,7 @@ export const actions: Actions = {
 
       // Only validate polling interval if polling is enabled
       if (pollingEnabled) {
-        const parsedInterval = parseInt(pollingIntervalStr, 10);
+        const parsedInterval = parseInt(pollingIntervalValue, 10);
         if (
           !isNaN(parsedInterval) &&
           parsedInterval >= 5 &&
@@ -89,6 +91,7 @@ export const actions: Actions = {
         ...settings,
         dockerHost,
         autoUpdate,
+        pollingEnabled, // Add the pollingEnabled flag
         pollingInterval,
         stacksDirectory,
         externalServices,

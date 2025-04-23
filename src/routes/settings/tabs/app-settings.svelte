@@ -14,11 +14,11 @@
     form?.values?.dockerHost || settings?.dockerHost || ""
   );
 
-  // Separate states for polling toggle and interval value
+  // Use the actual pollingEnabled property instead of deriving from interval
   let pollingEnabled = $derived(
     form?.values?.pollingEnabled !== undefined
       ? form.values.pollingEnabled === "on"
-      : settings?.pollingInterval > 0
+      : settings?.pollingEnabled || false
   );
 
   let pollingIntervalValue = $derived(

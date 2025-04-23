@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
       : "unix:///var/run/docker.sock"
     : "unix:///var/run/docker.sock",
   autoUpdate: false,
+  pollingEnabled: true,
   pollingInterval: 10,
   stacksDirectory: path.resolve(BASE_PATH, "stacks"),
   externalServices: {
