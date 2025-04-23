@@ -1,4 +1,5 @@
 import { createClient, type RedisClientType } from "redis";
+import { getSettings } from "./settings-service";
 
 let client: RedisClientType | null = null;
 let isConnected = false;
@@ -55,6 +56,34 @@ export async function initValKeyClient(
   } catch (error) {
     console.error("Failed to initialize Valkey connection:", error);
     isConnected = false;
+  }
+}
+
+/**
+ * Initialize Valkey client based on application settings
+ */
+export async function initValKeyFromSettings(): Promise<boolean> {
+  try {
+    const settings = await getSettings();
+
+    // If Valkey is not enabled in settings, return false
+    if (!settings.externalServices?.valkey?.enabled) {
+      return false;
+    }
+
+    const valkeySettings = settings.externalServices.valkey;
+
+    await initValKeyClient({
+      host: valkeySettings.host,
+      port: valkeySettings.port,
+      username: valkeySettings.username,
+      password: valkeySettings.password,
+    });
+
+    return isConnected;
+  } catch (error) {
+    console.error("Failed to initialize Valkey from settings:", error);
+    return false;
   }
 }
 

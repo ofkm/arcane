@@ -8,12 +8,15 @@ export interface SettingsData {
     username: string;
     password: string;
   }>;
-  valkeyConfig?: {
-    enabled: boolean;
-    host: string;
-    port: number;
-    username?: string;
-    password?: string;
-    keyPrefix: string;
+  externalServices: {
+    valkey?: {
+      enabled: boolean;
+      host: string;
+      port: number;
+      username?: string;
+      password?: string;
+      keyPrefix: string;
+    };
+    // Other services can be added here in the future
   };
 }

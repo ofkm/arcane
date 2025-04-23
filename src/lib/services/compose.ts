@@ -10,33 +10,10 @@ import type {
   StackUpdate,
 } from "$lib/types/stack";
 import yaml from "js-yaml";
+import { getSettings, ensureStacksDirectory } from "./settings-service";
 
-let STACKS_DIR = process.env.STACKS_DIR || join("/app/data/stacks");
-
-/**
- * Update the stacks directory path
- * @param {string} directory New stacks directory path
- */
-export function updateStacksDirectory(directory: string): void {
-  if (directory) {
-    STACKS_DIR = directory;
-    console.log(`Stacks directory updated to: ${STACKS_DIR}`);
-    // No need to re-initialize anything here since
-    // each function call will use the updated STACKS_DIR
-  }
-}
-
-/**
- * Ensure stacks directory exists
- */
-async function ensureStacksDir(): Promise<void> {
-  try {
-    await fs.mkdir(STACKS_DIR, { recursive: true });
-  } catch (err) {
-    console.error("Error creating stacks directory:", err);
-    throw new Error("Failed to create stacks storage directory");
-  }
-}
+// This will be populated on initialization
+let STACKS_DIR = "";
 
 /**
  * Initialize the compose service with settings
@@ -44,24 +21,47 @@ async function ensureStacksDir(): Promise<void> {
  */
 export async function initComposeService(): Promise<void> {
   try {
-    // Update settings path to match the new location
-    const settingsPath = join("/app/data/app-settings.json");
-    const settingsData = await fs
-      .readFile(settingsPath, "utf8")
-      .catch(() => "{}");
-    const settings = JSON.parse(settingsData);
-
-    if (settings.stacksDirectory) {
-      STACKS_DIR = settings.stacksDirectory;
-      console.log(`Stacks directory initialized from settings: ${STACKS_DIR}`);
-    }
+    // Get settings to initialize the stacks directory
+    const settings = await getSettings();
+    STACKS_DIR = settings.stacksDirectory;
+    console.log(`Stacks directory initialized: ${STACKS_DIR}`);
 
     // Ensure the directory exists
     await ensureStacksDir();
   } catch (err) {
     console.error("Error initializing compose service:", err);
-    // Fall back to default directory and ensure it exists
-    await ensureStacksDir();
+    // We'll initialize again when needed in other functions
+  }
+}
+
+/**
+ * Update the stacks directory path - used when settings are updated
+ * @param {string} directory New stacks directory path
+ */
+export function updateStacksDirectory(directory: string): void {
+  if (directory) {
+    STACKS_DIR = directory;
+    console.log(`Stacks directory updated to: ${STACKS_DIR}`);
+  }
+}
+
+/**
+ * Ensure stacks directory exists and return the path
+ */
+async function ensureStacksDir(): Promise<string> {
+  try {
+    // If STACKS_DIR is empty, initialize from settings
+    if (!STACKS_DIR) {
+      // Get from settings service
+      STACKS_DIR = await ensureStacksDirectory();
+    } else {
+      // Just ensure the directory exists
+      await fs.mkdir(STACKS_DIR, { recursive: true });
+    }
+    return STACKS_DIR;
+  } catch (err) {
+    console.error("Error creating stacks directory:", err);
+    throw new Error("Failed to create stacks storage directory");
   }
 }
 
@@ -69,24 +69,27 @@ export async function initComposeService(): Promise<void> {
  * Get stack directory path
  * @param {string} stackId
  */
-function getStackDir(stackId: string): string {
-  return join(STACKS_DIR, stackId);
+async function getStackDir(stackId: string): Promise<string> {
+  const stacksDir = await ensureStacksDir();
+  return join(stacksDir, stackId);
 }
 
 /**
  * Get compose file path
  * @param {string} stackId
  */
-function getComposeFilePath(stackId: string): string {
-  return join(getStackDir(stackId), "docker-compose.yml");
+async function getComposeFilePath(stackId: string): Promise<string> {
+  const stackDir = await getStackDir(stackId);
+  return join(stackDir, "docker-compose.yml");
 }
 
 /**
  * Get stack metadata file path
  * @param {string} stackId
  */
-function getStackMetaPath(stackId: string): string {
-  return join(getStackDir(stackId), "meta.json");
+async function getStackMetaPath(stackId: string): Promise<string> {
+  const stackDir = await getStackDir(stackId);
+  return join(stackDir, "meta.json");
 }
 
 /**
@@ -95,8 +98,7 @@ function getStackMetaPath(stackId: string): string {
  */
 async function getComposeInstance(stackId: string): Promise<DockerodeCompose> {
   const docker = getDockerClient();
-  const composePath = getComposeFilePath(stackId);
-  // The third parameter is the project name, used as namespace for containers
+  const composePath = await getComposeFilePath(stackId);
   return new DockerodeCompose(docker, composePath, stackId);
 }
 
@@ -197,16 +199,16 @@ async function getStackServices(
  * @returns {Promise<Array<Stack>>} List of stacks
  */
 export async function loadComposeStacks(): Promise<Stack[]> {
-  await ensureStacksDir();
+  const stacksDir = await ensureStacksDir();
 
   try {
-    const stackDirs = await fs.readdir(STACKS_DIR);
+    const stackDirs = await fs.readdir(stacksDir);
     const stacks: Stack[] = [];
 
     for (const dir of stackDirs) {
       try {
-        const metaPath = getStackMetaPath(dir);
-        const composePath = getComposeFilePath(dir);
+        const metaPath = await getStackMetaPath(dir);
+        const composePath = await getComposeFilePath(dir);
 
         const [metaContent, composeContent] = await Promise.all([
           fs.readFile(metaPath, "utf8"),
@@ -256,8 +258,8 @@ export async function loadComposeStacks(): Promise<Stack[]> {
  */
 export async function getStack(stackId: string): Promise<Stack> {
   try {
-    const metaPath = getStackMetaPath(stackId);
-    const composePath = getComposeFilePath(stackId);
+    const metaPath = await getStackMetaPath(stackId);
+    const composePath = await getComposeFilePath(stackId);
 
     const [metaContent, composeContent] = await Promise.all([
       fs.readFile(metaPath, "utf8"),
@@ -308,12 +310,9 @@ export async function createStack(
   name: string,
   composeContent: string
 ): Promise<Stack> {
-  await ensureStacksDir();
-
-  const id = nanoid();
-  const stackDir = getStackDir(id);
-  const composePath = getComposeFilePath(id);
-  const metaPath = getStackMetaPath(id);
+  const stackDir = await getStackDir(nanoid());
+  const composePath = join(stackDir, "docker-compose.yml");
+  const metaPath = join(stackDir, "meta.json");
 
   const meta: StackMeta = {
     name,
@@ -329,7 +328,7 @@ export async function createStack(
     ]);
 
     return {
-      id,
+      id: nanoid(),
       name: meta.name,
       serviceCount: 0,
       runningCount: 0,
@@ -352,8 +351,8 @@ export async function updateStack(
   stackId: string,
   updates: StackUpdate
 ): Promise<Stack> {
-  const metaPath = getStackMetaPath(stackId);
-  const composePath = getComposeFilePath(stackId);
+  const metaPath = await getStackMetaPath(stackId);
+  const composePath = await getComposeFilePath(stackId);
 
   try {
     // Read existing meta
@@ -471,7 +470,7 @@ export async function removeStack(stackId: string): Promise<boolean> {
     await compose.down();
 
     // Then delete the stack files
-    const stackDir = getStackDir(stackId);
+    const stackDir = await getStackDir(stackId);
     await fs.rm(stackDir, { recursive: true, force: true });
 
     return true;
@@ -524,7 +523,7 @@ export async function discoverExternalStacks(): Promise<Stack[]> {
 
     for (const [projectName, services] of Object.entries(projectMap)) {
       // Check if this stack is already in our managed stacks
-      const stackDir = getStackDir(projectName);
+      const stackDir = await getStackDir(projectName);
       try {
         await fs.access(stackDir);
         // Stack is managed by Arcane, skip it

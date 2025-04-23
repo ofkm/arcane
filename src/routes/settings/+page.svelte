@@ -12,6 +12,7 @@
   import UserManagement from "./tabs/user-management.svelte";
   import Authentication from "./tabs/authentication.svelte";
   import RbacSettings from "./tabs/rbac-settings.svelte";
+  import ExternalServices from "./tabs/external-services.svelte";
 
   interface Props {
     data: PageData;
@@ -23,6 +24,14 @@
   // Track active tab
   let activeTab = $state("app-settings");
   let saving = $state(false);
+
+  const tabs = [
+    { id: "app", label: "General", component: AppSettings },
+    { id: "rbac", label: "RBAC", component: RbacSettings },
+    { id: "auth", label: "Authentication", component: Authentication },
+    { id: "users", label: "Users", component: UserManagement },
+    { id: "services", label: "External Services", component: ExternalServices },
+  ];
 
   // Handle form submission result
   run(() => {
@@ -96,6 +105,9 @@
         Authentication
       </Tabs.Trigger>
       <Tabs.Trigger value="rbac" class="whitespace-nowrap">RBAC</Tabs.Trigger>
+      <Tabs.Trigger value="external-services" class="whitespace-nowrap">
+        External Services
+      </Tabs.Trigger>
     </Tabs.List>
 
     <!-- Tab Contents -->
@@ -129,6 +141,10 @@
 
       <Tabs.Content value="rbac" class="space-y-4">
         <RbacSettings {data} {form} />
+      </Tabs.Content>
+
+      <Tabs.Content value="external-services" class="space-y-4">
+        <ExternalServices {data} {form} />
       </Tabs.Content>
     </form>
   </Tabs.Root>

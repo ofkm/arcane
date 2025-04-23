@@ -24,3 +24,5 @@ vite.config.ts.timestamp-*
 
 .arcane/*
 .arcane/stacks/*
+.dev-data/*
+.dev-data/settings/*
