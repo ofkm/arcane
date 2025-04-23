@@ -21,45 +21,29 @@ export const actions: Actions = {
       formData = await request.formData();
       const settings = await getSettings();
 
+      // Get all form values
       const dockerHost = formData.get("dockerHost") as string;
+
+      // Explicitly check for the "on" value for both toggle switches
       const autoUpdate = formData.get("autoUpdate") === "on";
       const pollingEnabled = formData.get("pollingEnabled") === "on";
-      const pollingIntervalValue = formData.get(
-        "pollingIntervalValue"
-      ) as string;
+
+      const pollingIntervalStr = formData.get("pollingInterval") as string;
       const stacksDirectory = (formData.get("stacksDirectory") as string) || "";
+
+      // Add logging to debug form values
+      console.log("Form data received:", {
+        dockerHost,
+        autoUpdate: formData.get("autoUpdate"),
+        pollingEnabled: formData.get("pollingEnabled"),
+        pollingInterval: pollingIntervalStr,
+      });
 
       if (!dockerHost) {
         return fail(400, {
           error: "Docker host cannot be empty.",
           values: Object.fromEntries(formData),
         });
-      }
-
-      // Get the previous polling interval setting to use as default
-      let pollingInterval = settings.pollingInterval;
-
-      // Only validate polling interval if polling is enabled
-      if (pollingEnabled) {
-        const parsedInterval = parseInt(pollingIntervalValue, 10);
-        if (
-          !isNaN(parsedInterval) &&
-          parsedInterval >= 5 &&
-          parsedInterval <= 60
-        ) {
-          // Valid polling interval
-          pollingInterval = parsedInterval;
-        } else {
-          // Invalid polling interval, but only return error if polling is enabled
-          return fail(400, {
-            error: "Polling interval must be between 5 and 60 minutes.",
-            values: Object.fromEntries(formData),
-          });
-        }
-      } else {
-        // If polling is disabled, use the default or previous value
-        // This ensures we don't lose the setting if polling is temporarily disabled
-        pollingInterval = pollingInterval || 10;
       }
 
       if (!stacksDirectory) {
@@ -69,10 +53,31 @@ export const actions: Actions = {
         });
       }
 
+      // Process polling interval only if polling is enabled
+      let pollingInterval = settings.pollingInterval || 10;
+      if (pollingEnabled) {
+        const parsedInterval = parseInt(pollingIntervalStr, 10);
+        if (
+          !isNaN(parsedInterval) &&
+          parsedInterval >= 5 &&
+          parsedInterval <= 60
+        ) {
+          pollingInterval = parsedInterval;
+        } else if (pollingIntervalStr) {
+          // Only show error if the user actually entered a value
+          return fail(400, {
+            error: "Polling interval must be between 5 and 60 minutes.",
+            values: {
+              ...Object.fromEntries(formData),
+              pollingEnabled: "on", // Make sure we retain the enabled state
+              autoUpdate: formData.get("autoUpdate"), // Preserve autoUpdate state as well
+            },
+          });
+        }
+      }
+
       // Extract Valkey settings
       const valkeyEnabled = formData.get("valkeyEnabled") === "on";
-
-      // Update external services settings
       const externalServices = {
         ...settings.externalServices,
         valkey: {
@@ -86,16 +91,22 @@ export const actions: Actions = {
         },
       };
 
-      // Update settings with all form values
       const updatedSettings: SettingsData = {
         ...settings,
         dockerHost,
         autoUpdate,
-        pollingEnabled, // Add the pollingEnabled flag
+        pollingEnabled,
         pollingInterval,
         stacksDirectory,
         externalServices,
       };
+
+      // Log what we're saving
+      console.log("Saving settings:", {
+        autoUpdate,
+        pollingEnabled,
+        pollingInterval,
+      });
 
       // Save updated settings
       await saveSettings(updatedSettings);

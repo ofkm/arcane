@@ -14,16 +14,17 @@
     form?.values?.dockerHost || settings?.dockerHost || ""
   );
 
-  // Use the actual pollingEnabled property instead of deriving from interval
+  // Make sure the pollingEnabled variable comes from settings.pollingEnabled
   let pollingEnabled = $derived(
     form?.values?.pollingEnabled !== undefined
       ? form.values.pollingEnabled === "on"
       : settings?.pollingEnabled || false
   );
 
-  let pollingIntervalValue = $derived(
-    form?.values?.pollingIntervalValue !== undefined
-      ? form.values.pollingIntervalValue
+  // Rename to pollingInterval to be consistent
+  let pollingInterval = $derived(
+    form?.values?.pollingInterval !== undefined
+      ? form.values.pollingInterval
       : settings?.pollingInterval || 10
   );
 
@@ -146,18 +147,18 @@
 
         {#if pollingEnabled}
           <div class="space-y-2 px-1">
-            <label for="pollingIntervalValue" class="text-sm font-medium">
+            <label for="pollingInterval" class="text-sm font-medium">
               Polling Interval (minutes)
             </label>
             <Input
-              id="pollingIntervalValue"
-              name="pollingIntervalValue"
+              id="pollingInterval"
+              name="pollingInterval"
               type="number"
-              bind:value={pollingIntervalValue}
+              bind:value={pollingInterval}
               min="5"
               max="60"
             />
-            {#if form?.error && form.values?.pollingIntervalValue && (parseInt(String(form.values.pollingIntervalValue), 10) < 5 || parseInt(String(form.values.pollingIntervalValue), 10) > 60)}
+            {#if form?.error && form.values?.pollingInterval && (parseInt(String(form.values.pollingInterval), 10) < 5 || parseInt(String(form.values.pollingInterval), 10) > 60)}
               <p class="text-sm text-destructive">
                 Must be between 5 and 60 minutes.
               </p>
