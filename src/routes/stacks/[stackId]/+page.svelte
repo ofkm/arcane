@@ -314,7 +314,6 @@
                     textColor={getStatusColor(
                       service.state?.Status || "unknown"
                     ).text}
-                    iconClass="w-3 h-3 mr-1"
                   />
                   {#if service.id}
                     <div class="text-xs text-blue-500 ml-2">
