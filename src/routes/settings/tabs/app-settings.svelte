@@ -2,7 +2,7 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Switch } from "$lib/components/ui/switch/index.js";
-  import { Save, RefreshCw } from "@lucide/svelte";
+  import { Save, RefreshCw, Key, Plus, Trash2 } from "@lucide/svelte";
   import type { ActionData, PageData } from "../$types";
 
   let { data, form } = $props<{ data: PageData; form: ActionData }>();
@@ -31,6 +31,26 @@
   let stacksDirectory = $derived(
     form?.values?.stacksDirectory || settings?.stacksDirectory || ""
   );
+
+  // Registry credentials
+  let registryCredentials = $derived(
+    form?.values?.registryCredentials || settings?.registryCredentials || []
+  );
+
+  // Default new registry entry
+  const defaultRegistry = { url: "", username: "", password: "" };
+
+  // Add a new registry
+  function addRegistry() {
+    registryCredentials = [...registryCredentials, { ...defaultRegistry }];
+  }
+
+  // Remove a registry
+  function removeRegistry(index: number) {
+    registryCredentials = registryCredentials.filter(
+      (_: unknown, i: number) => i !== index
+    );
+  }
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -178,4 +198,124 @@
       </Card.Content>
     </Card.Root>
   </div>
+
+  <!-- Docker Registry Credentials Card -->
+  <Card.Root class="border shadow-sm lg:col-span-2">
+    <Card.Header class="pb-3">
+      <div class="flex items-center gap-2">
+        <div class="bg-green-500/10 p-2 rounded-full">
+          <Key class="h-5 w-5 text-green-500" />
+        </div>
+        <div>
+          <Card.Title>Docker Registry Credentials</Card.Title>
+          <Card.Description>
+            Configure access to private Docker registries
+          </Card.Description>
+        </div>
+      </div>
+    </Card.Header>
+    <Card.Content>
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <p class="text-sm text-muted-foreground">
+            Add credentials for private registries like Docker Hub, GitHub
+            Container Registry (ghcr.io), or other private repositories.
+          </p>
+
+          {#if registryCredentials.length === 0}
+            <div
+              class="text-center py-4 text-muted-foreground text-sm border rounded-md"
+            >
+              No registry credentials configured yet
+            </div>
+          {:else}
+            <div class="space-y-4">
+              {#each registryCredentials as registry, index}
+                <div class="border rounded-md p-4 space-y-3">
+                  <div class="flex justify-between items-center">
+                    <h4 class="font-medium">Registry #{index + 1}</h4>
+                    <button
+                      type="button"
+                      class="text-destructive hover:text-destructive/80"
+                      onclick={() => removeRegistry(index)}
+                    >
+                      <Trash2 class="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div class="space-y-2">
+                    <label
+                      for={`registry-url-${index}`}
+                      class="text-sm font-medium">Registry URL</label
+                    >
+                    <Input
+                      type="text"
+                      id={`registry-url-${index}`}
+                      name={`registryCredentials[${index}].url`}
+                      bind:value={registry.url}
+                      placeholder="ghcr.io, registry.hub.docker.com, etc."
+                      required
+                    />
+                  </div>
+
+                  <div class="space-y-2">
+                    <label
+                      for={`registry-username-${index}`}
+                      class="text-sm font-medium">Username</label
+                    >
+                    <Input
+                      type="text"
+                      id={`registry-username-${index}`}
+                      name={`registryCredentials[${index}].username`}
+                      bind:value={registry.username}
+                      placeholder="Username"
+                      required
+                    />
+                  </div>
+
+                  <div class="space-y-2">
+                    <label
+                      for={`registry-password-${index}`}
+                      class="text-sm font-medium">Password / Access Token</label
+                    >
+                    <Input
+                      type="password"
+                      id={`registry-password-${index}`}
+                      name={`registryCredentials[${index}].password`}
+                      bind:value={registry.password}
+                      placeholder="Password or access token"
+                      required
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      For GitHub, use a personal access token with the
+                      appropriate scopes.
+                    </p>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+
+          <button
+            type="button"
+            class="w-full mt-4 flex items-center justify-center gap-2 border border-dashed rounded-md py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30"
+            onclick={addRegistry}
+          >
+            <Plus class="h-4 w-4" /> Add Registry Credentials
+          </button>
+
+          <p class="text-xs text-muted-foreground mt-2">
+            Common registry URLs:
+            <span class="font-medium">registry.hub.docker.com</span> (Docker
+            Hub),
+            <span class="font-medium">ghcr.io</span> (GitHub Container
+            Registry),
+            <span class="font-medium"
+              >[account].dkr.ecr.[region].amazonaws.com</span
+            > (AWS ECR)
+          </p>
+        </div>
+      </div>
+    </Card.Content>
+  </Card.Root>
 </div>
