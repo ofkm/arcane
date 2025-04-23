@@ -6,8 +6,6 @@
   import { Save, RefreshCw } from "@lucide/svelte";
   import type { ActionData, PageData } from "./$types";
   import { toast } from "svelte-sonner";
-  import * as Alert from "$lib/components/ui/alert/index.js";
-  import { AlertCircle } from "@lucide/svelte";
   import AppSettings from "./tabs/app-settings.svelte";
   import UserManagement from "./tabs/user-management.svelte";
   import Authentication from "./tabs/authentication.svelte";
@@ -46,7 +44,6 @@
     },
   ];
 
-  // Handle form submission result
   run(() => {
     if (form?.success) {
       toast.success("Settings saved successfully");
@@ -76,28 +73,6 @@
       {/if}
     </Button>
   </div>
-
-  <!-- Alerts -->
-  {#if form?.error}
-    <Alert.Root variant="destructive">
-      <AlertCircle class="h-4 w-4 mr-2" />
-      <Alert.Title>Error Saving Settings</Alert.Title>
-      <Alert.Description>{form.error}</Alert.Description>
-    </Alert.Root>
-  {/if}
-
-  {#if form?.success}
-    <Alert.Root
-      variant="default"
-      class="bg-primary/10 text-primary border border-primary"
-    >
-      <AlertCircle class="h-4 w-4 mr-2" />
-      <Alert.Title>Settings Saved</Alert.Title>
-      <Alert.Description
-        >Your settings have been updated successfully.</Alert.Description
-      >
-    </Alert.Root>
-  {/if}
 
   <!-- Tabs Navigation -->
   <Tabs.Root
