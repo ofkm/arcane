@@ -2,7 +2,7 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Switch } from "$lib/components/ui/switch/index.js";
-  import { Save, RefreshCw, Key, Plus, Trash2 } from "@lucide/svelte";
+  import { Save, RefreshCw, Key, Plus, Trash2, Database } from "@lucide/svelte";
   import type { ActionData, PageData } from "../$types";
 
   let { data, form } = $props<{ data: PageData; form: ActionData }>();
@@ -21,22 +21,18 @@
   let stacksDirectory = $derived(
     form?.values?.stacksDirectory || settings?.stacksDirectory || ""
   );
-  // New auto update option for containers
   let autoUpdate = $derived(
     form?.values?.autoUpdate !== undefined
       ? form.values.autoUpdate === "on"
       : settings?.autoUpdate || false
   );
 
-  // Registry credentials
   let registryCredentials = $derived(
     form?.values?.registryCredentials || settings?.registryCredentials || []
   );
 
-  // Default new registry entry
   const defaultRegistry = { url: "", username: "", password: "" };
 
-  // Add a new registry
   function addRegistry() {
     registryCredentials = [...registryCredentials, { ...defaultRegistry }];
   }
@@ -47,6 +43,37 @@
       (_: unknown, i: number) => i !== index
     );
   }
+
+  // Valkey settings
+  let valkeyEnabled = $derived(
+    form?.values?.valkeyEnabled !== undefined
+      ? form.values.valkeyEnabled === "on"
+      : settings?.valkeyConfig?.enabled || false
+  );
+
+  let valkeyHost = $derived(
+    form?.values?.valkeyHost || settings?.valkeyConfig?.host || "localhost"
+  );
+
+  let valkeyPort = $derived(
+    form?.values?.valkeyPort !== undefined
+      ? form.values.valkeyPort
+      : settings?.valkeyConfig?.port || 6379
+  );
+
+  let valkeyUsername = $derived(
+    form?.values?.valkeyUsername || settings?.valkeyConfig?.username || ""
+  );
+
+  let valkeyPassword = $derived(
+    form?.values?.valkeyPassword || settings?.valkeyConfig?.password || ""
+  );
+
+  let valkeyKeyPrefix = $derived(
+    form?.values?.valkeyKeyPrefix ||
+      settings?.valkeyConfig?.keyPrefix ||
+      "arcane:settings:"
+  );
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -300,6 +327,131 @@
             > (AWS ECR)
           </p>
         </div>
+      </div>
+    </Card.Content>
+  </Card.Root>
+
+  <!-- Valkey/Redis Settings Card -->
+  <Card.Root class="border shadow-sm lg:col-span-2">
+    <Card.Header class="pb-3">
+      <div class="flex items-center gap-2">
+        <div class="bg-purple-500/10 p-2 rounded-full">
+          <Database class="h-5 w-5 text-purple-500" />
+        </div>
+        <div>
+          <Card.Title>Valkey/Redis Configuration</Card.Title>
+          <Card.Description>
+            Configure Valkey or Redis for settings storage
+          </Card.Description>
+        </div>
+      </div>
+    </Card.Header>
+    <Card.Content>
+      <div class="space-y-4">
+        <div
+          class="flex items-center justify-between rounded-lg border p-4 bg-muted/30"
+        >
+          <div class="space-y-0.5">
+            <label for="valkeyEnabledSwitch" class="text-base font-medium"
+              >Enable Valkey/Redis Storage</label
+            >
+            <p class="text-sm text-muted-foreground">
+              Store settings in a Valkey/Redis server
+            </p>
+          </div>
+          <Switch
+            id="valkeyEnabledSwitch"
+            name="valkeyEnabled"
+            bind:checked={valkeyEnabled}
+          />
+        </div>
+
+        {#if valkeyEnabled}
+          <div
+            class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg"
+          >
+            <div class="space-y-2">
+              <label for="valkeyHost" class="text-sm font-medium"
+                >Server Host</label
+              >
+              <Input
+                type="text"
+                id="valkeyHost"
+                name="valkeyHost"
+                bind:value={valkeyHost}
+                placeholder="localhost"
+                required
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label for="valkeyPort" class="text-sm font-medium"
+                >Server Port</label
+              >
+              <Input
+                type="number"
+                id="valkeyPort"
+                name="valkeyPort"
+                bind:value={valkeyPort}
+                placeholder="6379"
+                required
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label for="valkeyUsername" class="text-sm font-medium"
+                >Username</label
+              >
+              <Input
+                type="text"
+                id="valkeyUsername"
+                name="valkeyUsername"
+                bind:value={valkeyUsername}
+                placeholder="(optional)"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label for="valkeyPassword" class="text-sm font-medium"
+                >Password</label
+              >
+              <Input
+                type="password"
+                id="valkeyPassword"
+                name="valkeyPassword"
+                bind:value={valkeyPassword}
+                placeholder="(optional)"
+              />
+            </div>
+
+            <div class="space-y-2 md:col-span-2">
+              <label for="valkeyKeyPrefix" class="text-sm font-medium"
+                >Key Prefix</label
+              >
+              <Input
+                type="text"
+                id="valkeyKeyPrefix"
+                name="valkeyKeyPrefix"
+                bind:value={valkeyKeyPrefix}
+                placeholder="arcane:settings:"
+              />
+              <p class="text-xs text-muted-foreground">
+                Prefix used for keys when storing settings
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="rounded-md bg-amber-50 p-3 text-sm text-amber-800 border border-amber-200"
+          >
+            <p class="font-medium">Important Note</p>
+            <p class="mt-1">
+              Settings stored in the JSON file will override Valkey/Redis
+              settings. This provides a fallback mechanism if the Valkey/Redis
+              server is unavailable.
+            </p>
+          </div>
+        {/if}
       </div>
     </Card.Content>
   </Card.Root>

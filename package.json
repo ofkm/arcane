@@ -52,6 +52,7 @@
     "dockerode-compose": "^1.4.0",
     "js-yaml": "^4.1.0",
     "nanoid": "^5.1.5",
+    "redis": "^4.7.0",
     "svelte-codemirror-editor": "^1.4.1"
   }
 }

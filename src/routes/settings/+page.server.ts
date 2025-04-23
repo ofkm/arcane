@@ -6,7 +6,6 @@ import type { SettingsData } from "$lib/types/settings";
 export const load: PageServerLoad = async ({ locals }) => {
   const settings = await getSettings();
 
-  // Generate a CSRF token
   const csrf = crypto.randomUUID();
 
   return {
@@ -20,9 +19,8 @@ export const actions: Actions = {
     const formData = await request.formData();
 
     const dockerHost = formData.get("dockerHost") as string;
-    const autoRefresh = formData.get("autoRefresh") === "on";
-    const refreshIntervalStr = formData.get("refreshInterval") as string;
-    const darkMode = formData.get("darkMode") === "on";
+    const autoUpdate = formData.get("autoUpdate") === "off";
+    const pollingIntervalStr = formData.get("pollingInterval") as string;
     const stacksDirectory = (formData.get("stacksDirectory") as string) || "";
 
     if (!dockerHost) {
@@ -32,8 +30,8 @@ export const actions: Actions = {
       });
     }
 
-    let refreshInterval = parseInt(refreshIntervalStr, 10);
-    if (isNaN(refreshInterval) || refreshInterval < 5 || refreshInterval > 60) {
+    let pollingInterval = parseInt(pollingIntervalStr, 10);
+    if (isNaN(pollingInterval) || pollingInterval < 5 || pollingInterval > 60) {
       return fail(400, {
         error: "Refresh interval must be between 5 and 60 seconds.",
         values: Object.fromEntries(formData),
@@ -47,12 +45,36 @@ export const actions: Actions = {
       });
     }
 
+    // Extract Valkey config from form
+    const valkeyEnabled = formData.get("valkeyEnabled") === "on";
+
+    // Only process Valkey settings if enabled
+    let valkeyConfig = null;
+    if (valkeyEnabled) {
+      valkeyConfig = {
+        enabled: true,
+        host: formData.get("valkeyHost")?.toString() || "localhost",
+        port: parseInt(formData.get("valkeyPort")?.toString() || "6379", 10),
+        username: formData.get("valkeyUsername")?.toString() || undefined,
+        password: formData.get("valkeyPassword")?.toString() || undefined,
+        keyPrefix:
+          formData.get("valkeyKeyPrefix")?.toString() || "arcane:settings:",
+      };
+    } else {
+      valkeyConfig = {
+        enabled: false,
+        host: "localhost",
+        port: 6379,
+        keyPrefix: "arcane:settings:",
+      };
+    }
+
     const updatedSettings: SettingsData = {
       dockerHost,
-      autoRefresh,
-      refreshInterval,
-      darkMode,
+      autoUpdate,
+      pollingInterval,
       stacksDirectory,
+      valkeyConfig,
     };
 
     try {
