@@ -101,13 +101,6 @@ export const actions: Actions = {
         externalServices,
       };
 
-      // Log what we're saving
-      console.log("Saving settings:", {
-        autoUpdate,
-        pollingEnabled,
-        pollingInterval,
-      });
-
       // Save updated settings
       await saveSettings(updatedSettings);
 
