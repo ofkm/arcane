@@ -6,7 +6,7 @@
   import type { ActionData, PageData } from "../$types";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 
-  const { data, form } = $props<{ data: PageData; form: ActionData }>();
+  let { data, form } = $props<{ data: PageData; form: ActionData }>();
 
   // Sample roles for demonstration
   const roles = [
