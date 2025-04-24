@@ -6,7 +6,7 @@
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
-  import { Loader2, Plus, Trash } from "@lucide/svelte";
+  import { Eye, EyeOff, Loader2, Plus, Trash } from "@lucide/svelte";
   import * as Select from "$lib/components/ui/select/index.js";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
 
@@ -49,8 +49,8 @@
   ]);
 
   // Environment variables
-  let envVars = $state<{ key: string; value: string }[]>([
-    { key: "", value: "" },
+  let envVars = $state<{ key: string; value: string; sensitive?: boolean }[]>([
+    { key: "", value: "", sensitive: true },
   ]);
 
   // Network and restart policy
@@ -330,12 +330,31 @@
                       <Label for={`env-value-${index}`} class="mb-2 block">
                         Value
                       </Label>
-                      <Input
-                        id={`env-value-${index}`}
-                        bind:value={env.value}
-                        placeholder="secret"
-                        disabled={isCreating}
-                      />
+                      <div class="flex items-center gap-2">
+                        <Input
+                          id={`env-value-${index}`}
+                          bind:value={env.value}
+                          type={env.sensitive ? "password" : "text"}
+                          placeholder="secret"
+                          disabled={isCreating}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          type="button"
+                          onclick={() => {
+                            env.sensitive = !env.sensitive;
+                          }}
+                          disabled={isCreating}
+                          title={env.sensitive ? "Show value" : "Hide value"}
+                        >
+                          {#if env.sensitive}
+                            <Eye class="h-4 w-4" />
+                          {:else}
+                            <EyeOff class="h-4 w-4" />
+                          {/if}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   <Button
