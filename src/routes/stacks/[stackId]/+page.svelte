@@ -14,7 +14,6 @@
   import * as Breadcrumb from "$lib/components/ui/breadcrumb/index.js";
   import { enhance } from "$app/forms";
   import * as Alert from "$lib/components/ui/alert/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
   import YamlEditor from "$lib/components/yaml-editor.svelte";

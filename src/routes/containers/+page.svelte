@@ -5,12 +5,17 @@
   import { Plus, Box, RefreshCw } from "@lucide/svelte";
   import UniversalTable from "$lib/components/universal-table.svelte";
   import { invalidateAll } from "$app/navigation";
+  import { toast } from "svelte-sonner";
+  import CreateContainerDialog from "./create-container-dialog.svelte";
+  import type { ContainerConfig } from "$lib/types/docker";
 
   let { data } = $props();
   const { containers } = data;
 
   let isRefreshing = $state(false);
   let selectedIds = $state([]);
+  let isCreateDialogOpen = $state(false);
+  let isCreatingContainer = $state(false);
 
   // Calculate running containers
   const runningContainers = $derived(
@@ -31,6 +36,46 @@
     setTimeout(() => {
       isRefreshing = false;
     }, 500);
+  }
+
+  function openCreateDialog() {
+    isCreateDialogOpen = true;
+  }
+
+  async function handleCreateContainerSubmit(containerData: ContainerConfig) {
+    isCreatingContainer = true;
+    try {
+      const response = await fetch("/api/containers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(containerData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      toast.success(
+        `Container "${result.container.name}" created successfully.`
+      );
+      isCreateDialogOpen = false;
+
+      // Force a refresh with a short timeout
+      setTimeout(async () => {
+        await refreshData();
+      }, 500);
+    } catch (err: any) {
+      console.error("Failed to create container:", err);
+      toast.error(`Failed to create container: ${err.message}`);
+    } finally {
+      isCreatingContainer = false;
+    }
   }
 </script>
 
@@ -98,7 +143,7 @@
           >
         </div>
         <div class="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onclick={openCreateDialog}>
             <Plus class="w-4 h-4" />
             Create Container
           </Button>
@@ -128,10 +173,25 @@
         Create a new container using the "Create Container" button above or use
         the Docker CLI
       </p>
-      <Button variant="outline" size="sm" onclick={refreshData}>
-        <RefreshCw class="h-4 w-4" />
-        Refresh
-      </Button>
+      <div class="flex gap-3 mt-4">
+        <Button variant="outline" size="sm" onclick={refreshData}>
+          <RefreshCw class="h-4 w-4" />
+          Refresh
+        </Button>
+        <Button variant="outline" size="sm" onclick={openCreateDialog}>
+          <Plus class="h-4 w-4" />
+          Create Container
+        </Button>
+      </div>
     </div>
   {/if}
+
+  <CreateContainerDialog
+    bind:open={isCreateDialogOpen}
+    isCreating={isCreatingContainer}
+    volumes={data.volumes || []}
+    networks={data.networks || []}
+    images={data.images || []}
+    onSubmit={handleCreateContainerSubmit}
+  />
 </div>

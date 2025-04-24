@@ -1,17 +1,35 @@
+import {
+  listContainers,
+  listVolumes,
+  listNetworks,
+  listImages,
+} from "$lib/services/docker-service";
 import type { PageServerLoad } from "./$types";
-import { listContainers } from "$lib/services/docker-service"; // Import the service function
 
 export const load: PageServerLoad = async () => {
   try {
-    const containers = await listContainers(true);
+    // Fetch all data in parallel
+    const [containers, volumes, networks, images] = await Promise.all([
+      listContainers(true),
+      listVolumes(),
+      listNetworks(),
+      listImages(),
+    ]);
+
     return {
       containers,
+      volumes,
+      networks,
+      images,
     };
   } catch (error: any) {
-    console.error("Failed to load containers:", error);
+    console.error("Error loading container data:", error);
     return {
       containers: [],
-      error: error.message || "Failed to connect to Docker or list containers.",
+      volumes: [],
+      networks: [],
+      images: [],
+      error: error.message,
     };
   }
 };

@@ -1,7 +1,12 @@
 import Docker from "dockerode";
-import type { VolumeInspectInfo, VolumeCreateOptions, Volume } from "dockerode"; // Import Volume type
+import type { VolumeInspectInfo, VolumeCreateOptions } from "dockerode";
 import { getSettings } from "$lib/services/settings-service";
-import type { DockerConnectionOptions } from "$lib/types/docker";
+import type {
+  DockerConnectionOptions,
+  ContainerConfig,
+  ContainerDetails,
+  ContainerCreate,
+} from "$lib/types/docker";
 
 let dockerClient: Docker | null = null;
 let dockerHost: string = "unix:///var/run/docker.sock"; // Default value
@@ -370,6 +375,80 @@ export async function getContainerLogs(
         error.message || ""
       }`
     );
+  }
+}
+
+/**
+ * Creates a new container
+ * @param config Container configuration
+ * @returns The created container information
+ */
+export async function createContainer(config: ContainerConfig) {
+  try {
+    const docker = getDockerClient();
+
+    // Create container options
+    const containerOptions: ContainerCreate = {
+      name: config.name,
+      Image: config.image,
+      Env: config.envVars?.map((env) => `${env.key}=${env.value}`) || [],
+      HostConfig: {
+        RestartPolicy: {
+          Name: config.restart || "no",
+        },
+      },
+    };
+
+    // Set up port bindings if provided
+    if (config.ports && config.ports.length > 0) {
+      containerOptions.ExposedPorts = {};
+      containerOptions.HostConfig = containerOptions.HostConfig || {};
+      containerOptions.HostConfig.PortBindings = {};
+
+      config.ports.forEach((port) => {
+        const containerPort = `${port.containerPort}/tcp`;
+        if (!containerOptions.ExposedPorts) containerOptions.ExposedPorts = {};
+        containerOptions.ExposedPorts[containerPort] = {};
+        if (!containerOptions.HostConfig) containerOptions.HostConfig = {};
+        if (!containerOptions.HostConfig.PortBindings)
+          containerOptions.HostConfig.PortBindings = {};
+        containerOptions.HostConfig.PortBindings[containerPort] = [
+          { HostPort: port.hostPort },
+        ];
+      });
+    }
+
+    // Set up volume mounts if provided
+    if (config.volumes && config.volumes.length > 0) {
+      containerOptions.HostConfig = containerOptions.HostConfig || {};
+      containerOptions.HostConfig.Binds = config.volumes.map(
+        (vol) => `${vol.source}:${vol.target}`
+      );
+    }
+
+    // Set up network if provided
+    if (config.network) {
+      containerOptions.HostConfig = containerOptions.HostConfig || {};
+      containerOptions.HostConfig.NetworkMode = config.network;
+    }
+
+    // Create and start the container
+    const container = await docker.createContainer(containerOptions);
+    await container.start();
+
+    // Get the container details
+    const containerInfo = await container.inspect();
+
+    return {
+      id: containerInfo.Id,
+      name: containerInfo.Name.substring(1), // Remove leading slash
+      state: containerInfo.State.Status,
+      status: containerInfo.State.Running ? "running" : "stopped",
+      created: containerInfo.Created,
+    };
+  } catch (error: any) {
+    console.error("Error creating container:", error);
+    throw new Error(`Failed to create container: ${error.message}`);
   }
 }
 
