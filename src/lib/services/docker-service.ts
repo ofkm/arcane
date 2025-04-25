@@ -429,7 +429,7 @@ export async function createContainer(config: ContainerConfig) {
     if (config.volumes && config.volumes.length > 0) {
       containerOptions.HostConfig = containerOptions.HostConfig || {};
       containerOptions.HostConfig.Binds = config.volumes.map(
-        (vol) => `${vol.source}:${vol.target}`
+        (vol) => `${vol.source}:${vol.target}${vol.readOnly ? ':ro' : ''}`
       );
     }
 
