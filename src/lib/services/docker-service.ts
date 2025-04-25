@@ -412,12 +412,23 @@ export async function createContainer(config: ContainerConfig) {
       containerOptions.HostConfig = containerOptions.HostConfig || {};
       containerOptions.HostConfig.PortBindings = {};
 
-      config.ports.forEach((port) => {
-        const containerPort = `${port.containerPort}/tcp`;
-        containerOptions.ExposedPorts![containerPort] = {};
-        containerOptions.HostConfig!.PortBindings![containerPort] = [
-          { HostPort: port.hostPort },
-        ];
+      config.ports.forEach(({ hostPort, containerPort }) => {
+        const hp = Number(hostPort);
+        const cp = Number(containerPort);
+        if (
+          !Number.isInteger(hp) ||
+          !Number.isInteger(cp) ||
+          hp < 1 || hp > 65535 ||
+          cp < 1 || cp > 65535
+        ) {
+          throw new Error(
+            `Invalid port mapping "${hostPort}:${containerPort}". Ports must be numeric (1-65535).`
+          );
+        }
+
+        const key = `${cp}/tcp`;
+        containerOptions.ExposedPorts[key] = {};
+        containerOptions.HostConfig.PortBindings[key] = [{ HostPort: `${hp}` }];
       });
     }
 
