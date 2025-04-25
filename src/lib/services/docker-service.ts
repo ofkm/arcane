@@ -415,7 +415,9 @@ export async function createContainer(config: ContainerConfig) {
           Name: config.restart || "no",
         },
         Memory: config.memoryLimit,
-        NanoCpus: config.cpuLimit ? config.cpuLimit * 1e9 : undefined,
+        NanoCpus: config.cpuLimit
+          ? Math.round(config.cpuLimit * 1_000_000_000)
+          : undefined,
       },
     };
 
