@@ -612,6 +612,35 @@ export async function isImageInUse(imageId: string): Promise<boolean> {
   }
 }
 
+/**
+ * Prunes unused Docker images (dangling images).
+ * @returns Information about reclaimed space.
+ */
+export async function pruneImages(): Promise<{
+  ImagesDeleted: Docker.ImageRemoveInfo[] | null;
+  SpaceReclaimed: number;
+}> {
+  try {
+    const docker = getDockerClient();
+    console.log("Docker Service: Pruning unused images...");
+    // Prune dangling images (those not tagged or used by containers)
+    const result = await docker.pruneImages({
+      filters: { dangling: ["true"] },
+    });
+    console.log(
+      `Docker Service: Image prune complete. Space reclaimed: ${result.SpaceReclaimed}`
+    );
+    return result;
+  } catch (error: any) {
+    console.error("Docker Service: Error pruning images:", error);
+    throw new Error(
+      `Failed to prune images using host "${dockerHost}". ${
+        error.message || error.reason || ""
+      }`
+    );
+  }
+}
+
 // Define and export the type returned by listNetworks
 export type ServiceNetwork = {
   id: string;

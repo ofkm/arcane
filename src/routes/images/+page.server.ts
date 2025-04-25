@@ -1,11 +1,6 @@
 import type { PageServerLoad } from "./$types";
 import { listImages, isImageInUse } from "$lib/services/docker-service";
-import type { ServiceImage } from "$lib/services/docker-service";
-
-// Enhanced type with usage info
-type EnhancedImageInfo = ServiceImage & {
-  inUse: boolean;
-};
+import type { EnhancedImageInfo } from "$lib/types/image";
 
 type ImageData = {
   images: EnhancedImageInfo[];
