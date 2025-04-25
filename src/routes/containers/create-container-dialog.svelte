@@ -17,11 +17,14 @@
   import * as Select from "$lib/components/ui/select/index.js";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
 
+  import { createEventDispatcher } from "svelte";
+  const dispatch = createEventDispatcher();
+
   // Functions for events
   export function onClose() {
     open = false;
+    dispatch("close");
   }
-
   interface Props {
     open?: boolean;
     isCreating?: boolean;
