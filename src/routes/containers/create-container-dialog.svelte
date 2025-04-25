@@ -6,7 +6,14 @@
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
-  import { Eye, EyeOff, Loader2, Plus, Trash } from "@lucide/svelte";
+  import {
+    AlertCircle,
+    Eye,
+    EyeOff,
+    Loader2,
+    Plus,
+    Trash,
+  } from "@lucide/svelte";
   import * as Select from "$lib/components/ui/select/index.js";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
 
@@ -39,9 +46,14 @@
   let selectedTab = $state("basic");
 
   // Ports mapping (host:container)
-  let ports = $state<{ hostPort: string; containerPort: string }[]>([
-    { hostPort: "", containerPort: "" },
-  ]);
+  let ports = $state<
+    {
+      hostPort: string;
+      containerPort: string;
+      hostError?: string;
+      containerError?: string;
+    }[]
+  >([{ hostPort: "", containerPort: "" }]);
 
   // Volume mounts
   let volumeMounts = $state<{ source: string; target: string }[]>([
@@ -56,6 +68,71 @@
   // Network and restart policy
   let network = $state("");
   let restartPolicy = $state("no"); // "no", "always", "on-failure", "unless-stopped"
+
+  // Port validation - improved
+  function validatePortNumber(port: string | number): {
+    isValid: boolean;
+    error?: string;
+  } {
+    // Convert to string if it's not already one
+    const portStr = typeof port === "number" ? port.toString() : port;
+
+    // Check if empty
+    if (!portStr || !portStr.trim()) return { isValid: true };
+
+    const portNum = parseInt(portStr, 10);
+
+    // Check if it's a valid number
+    if (isNaN(portNum) || portNum.toString() !== portStr.trim()) {
+      return { isValid: false, error: "Invalid port number" };
+    }
+
+    // Check port range (1-65535)
+    if (portNum < 1 || portNum > 65535) {
+      return { isValid: false, error: "Port must be between 1-65535" };
+    }
+
+    // Warning for privileged ports
+    if (portNum < 1024) {
+      return { isValid: true, error: "Privileged port (<1024)" };
+    }
+
+    return { isValid: true };
+  }
+
+  // Auto-validate on input
+  $effect(() => {
+    // Validate all ports when they change
+    ports.forEach((port, index) => {
+      // Only validate if there's content
+      if (port.hostPort !== undefined && port.hostPort !== "") {
+        const hostValidation = validatePortNumber(port.hostPort);
+        ports[index].hostError = hostValidation.error;
+      } else {
+        ports[index].hostError = undefined;
+      }
+
+      if (port.containerPort !== undefined && port.containerPort !== "") {
+        const containerValidation = validatePortNumber(port.containerPort);
+        ports[index].containerError = containerValidation.error;
+      } else {
+        ports[index].containerError = undefined;
+      }
+    });
+  });
+
+  // We can still keep this function for the submission check
+  function validatePort(index: number, type: "host" | "container"): void {
+    const port =
+      type === "host" ? ports[index].hostPort : ports[index].containerPort;
+    const validation = validatePortNumber(port);
+
+    if (type === "host") {
+      ports[index].hostError = validation.error;
+    } else {
+      ports[index].containerError = validation.error;
+    }
+  }
 
   // Add/remove functions for arrays
   function addPort() {
@@ -75,7 +152,7 @@
   }
 
   function addEnvVar() {
-    envVars = [...envVars, { key: "", value: "" }];
+    envVars = [...envVars, { key: "", value: "", sensitive: true }];
   }
 
   function removeEnvVar(index: number) {
@@ -85,10 +162,27 @@
   function handleSubmit() {
     if (!selectedImage || !containerName.trim()) return;
 
+    // Validate all ports
+    let hasInvalidPort = false;
+    ports.forEach((port) => {
+      // Check for invalid ports with content
+      if (
+        (port.hostPort && !validatePortNumber(port.hostPort).isValid) ||
+        (port.containerPort && !validatePortNumber(port.containerPort).isValid)
+      ) {
+        hasInvalidPort = true;
+      }
+    });
+
+    if (hasInvalidPort) {
+      return; // Stop submission if there are invalid ports
+    }
+
     // Filter out empty entries
-    const filteredPorts = ports.filter(
-      (p) => p.hostPort.trim() && p.containerPort.trim()
-    );
+    const filteredPorts = ports
+      .filter((p) => p.hostPort.trim() && p.containerPort.trim())
+      .map(({ hostPort, containerPort }) => ({ hostPort, containerPort })); // Remove error properties
+
     const filteredVolumes = volumeMounts.filter(
       (v) => v.source.trim() && v.target.trim()
     );
@@ -194,9 +288,9 @@
           <Tabs.Content value="ports">
             <div class="space-y-4">
               {#each ports as port, index}
-                <div class="flex space-x-3 items-end">
-                  <div class="flex-1 grid grid-cols-5 gap-2 items-center">
-                    <div class="col-span-2">
+                <div class="flex space-x-3 items-start">
+                  <div class="flex-1 grid grid-cols-5 gap-2">
+                    <div class="col-span-2 flex flex-col">
                       <Label for={`host-port-${index}`} class="mb-2 block">
                         Host Port
                       </Label>
@@ -205,12 +299,26 @@
                         bind:value={port.hostPort}
                         placeholder="8080"
                         disabled={isCreating}
+                        type="text"
+                        pattern="[0-9]*"
+                        inputmode="numeric"
+                        class={port.hostError && port.hostPort
+                          ? "border-red-500"
+                          : ""}
                       />
+                      {#if port.hostError && port.hostPort}
+                        <div
+                          class="flex items-center mt-1 text-xs text-red-500"
+                        >
+                          <AlertCircle class="h-3 w-3 mr-1" />
+                          {port.hostError}
+                        </div>
+                      {/if}
                     </div>
-                    <div class="flex items-center justify-center">
+                    <div class="flex items-center justify-center pt-10">
                       <span class="text-center text-xl">:</span>
                     </div>
-                    <div class="col-span-2">
+                    <div class="col-span-2 flex flex-col">
                       <Label for={`container-port-${index}`} class="mb-2 block">
                         Container Port
                       </Label>
@@ -219,7 +327,21 @@
                         bind:value={port.containerPort}
                         placeholder="80"
                         disabled={isCreating}
+                        type="text"
+                        pattern="[0-9]*"
+                        inputmode="numeric"
+                        class={port.containerError && port.containerPort
+                          ? "border-red-500"
+                          : ""}
                       />
+                      {#if port.containerError && port.containerPort}
+                        <div
+                          class="flex items-center mt-1 text-xs text-red-500"
+                        >
+                          <AlertCircle class="h-3 w-3 mr-1" />
+                          {port.containerError}
+                        </div>
+                      {/if}
                     </div>
                   </div>
                   <Button
@@ -228,7 +350,7 @@
                     type="button"
                     onclick={() => removePort(index)}
                     disabled={ports.length <= 1 || isCreating}
-                    class="flex-shrink-0"
+                    class="flex-shrink-0 mt-10"
                   >
                     <Trash class="h-4 w-4" />
                   </Button>
