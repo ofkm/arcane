@@ -414,11 +414,7 @@ export async function createContainer(config: ContainerConfig) {
 
       config.ports.forEach((port) => {
         const containerPort = `${port.containerPort}/tcp`;
-        if (!containerOptions.ExposedPorts) containerOptions.ExposedPorts = {};
         containerOptions.ExposedPorts[containerPort] = {};
-        if (!containerOptions.HostConfig) containerOptions.HostConfig = {};
-        if (!containerOptions.HostConfig.PortBindings)
-          containerOptions.HostConfig.PortBindings = {};
         containerOptions.HostConfig.PortBindings[containerPort] = [
           { HostPort: port.hostPort },
         ];
