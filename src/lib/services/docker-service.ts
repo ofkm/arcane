@@ -315,9 +315,13 @@ export async function removeContainer(
 }
 
 /**
- * Gets logs for a specific container.
- * @param containerId - The ID of the container.
- * @param options - Optional parameters for log retrieval
+ * Retrieves logs from a specific Docker container.
+ *
+ * @param containerId - The ID of the container to fetch logs from.
+ * @param options - Optional log retrieval settings, including tail count, time range, streaming, and output selection.
+ * @returns The container logs as a string, with Docker stream headers removed.
+ *
+ * @throws {Error} If log retrieval fails for the specified container.
  */
 export async function getContainerLogs(
   containerId: string,
@@ -379,9 +383,12 @@ export async function getContainerLogs(
 }
 
 /**
- * Creates a new container
- * @param config Container configuration
- * @returns The created container information
+ * Creates and starts a new Docker container using the specified configuration.
+ *
+ * @param config - The container configuration, including image, environment variables, ports, volumes, restart policy, and network.
+ * @returns An object containing the created container's ID, name, state, status, and creation timestamp.
+ *
+ * @throws {Error} If the container cannot be created or started.
  */
 export async function createContainer(config: ContainerConfig) {
   try {
