@@ -25,6 +25,7 @@ export interface ContainerConfig {
   volumes?: Array<{
     source: string;
     target: string;
+    readOnly?: boolean;
   }>;
   envVars?: Array<{
     key: string;

@@ -414,8 +414,8 @@ export async function createContainer(config: ContainerConfig) {
 
       config.ports.forEach((port) => {
         const containerPort = `${port.containerPort}/tcp`;
-        containerOptions.ExposedPorts[containerPort] = {};
-        containerOptions.HostConfig.PortBindings[containerPort] = [
+        containerOptions.ExposedPorts![containerPort] = {};
+        containerOptions.HostConfig!.PortBindings![containerPort] = [
           { HostPort: port.hostPort },
         ];
       });
@@ -425,7 +425,7 @@ export async function createContainer(config: ContainerConfig) {
     if (config.volumes && config.volumes.length > 0) {
       containerOptions.HostConfig = containerOptions.HostConfig || {};
       containerOptions.HostConfig.Binds = config.volumes.map(
-        (vol) => `${vol.source}:${vol.target}${vol.readOnly ? ':ro' : ''}`
+        (vol) => `${vol.source}:${vol.target}${vol.readOnly ? ":ro" : ""}`
       );
     }
 
@@ -451,7 +451,9 @@ export async function createContainer(config: ContainerConfig) {
     };
   } catch (error: any) {
     console.error("Error creating container:", error);
-    throw new Error(`Failed to create container with image "${config.image}": ${error.message}`);
+    throw new Error(
+      `Failed to create container with image "${config.image}": ${error.message}`
+    );
   }
 }
 
