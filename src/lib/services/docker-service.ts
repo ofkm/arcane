@@ -433,6 +433,28 @@ export async function createContainer(config: ContainerConfig) {
     if (config.network) {
       containerOptions.HostConfig = containerOptions.HostConfig || {};
       containerOptions.HostConfig.NetworkMode = config.network;
+
+      // If using user-defined networks and specific IP assignments
+      if (
+        config.networkConfig &&
+        config.network !== "host" &&
+        config.network !== "none" &&
+        config.network !== "bridge"
+      ) {
+        containerOptions.NetworkingConfig = {
+          EndpointsConfig: {
+            [config.network]: {
+              IPAMConfig: {
+                IPv4Address: config.networkConfig.ipv4Address || undefined, // Use undefined if empty
+                IPv6Address: config.networkConfig.ipv6Address || undefined, // Use undefined if empty
+              },
+            },
+          },
+        };
+        // When specifying NetworkingConfig, NetworkMode in HostConfig should not be set for user-defined networks
+        // Docker handles attaching to the specified network via EndpointsConfig
+        delete containerOptions.HostConfig.NetworkMode;
+      }
     }
 
     // Create and start the container
@@ -451,6 +473,12 @@ export async function createContainer(config: ContainerConfig) {
     };
   } catch (error: any) {
     console.error("Error creating container:", error);
+    // Provide more specific error feedback if possible
+    if (error.message && error.message.includes("IPAMConfig")) {
+      throw new Error(
+        `Failed to create container: Invalid IP address configuration for network "${config.network}". ${error.message}`
+      );
+    }
     throw new Error(
       `Failed to create container with image "${config.image}": ${error.message}`
     );

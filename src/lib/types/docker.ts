@@ -33,6 +33,10 @@ export interface ContainerConfig {
   }>;
   network?: string;
   restart?: "no" | "always" | "on-failure" | "unless-stopped";
+  networkConfig?: {
+    ipv4Address?: string;
+    ipv6Address?: string;
+  };
 }
 
 // Container port mapping

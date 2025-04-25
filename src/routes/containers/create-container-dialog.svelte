@@ -26,7 +26,7 @@
     open?: boolean;
     isCreating?: boolean;
     volumes?: { name: string }[];
-    networks?: { name: string }[];
+    networks?: { name: string; driver: string }[]; // Add driver property
     images?: { id: string; repo: string; tag: string }[];
     onSubmit?: (data: ContainerConfig) => void;
   }
@@ -68,6 +68,10 @@
   // Network and restart policy
   let network = $state("");
   let restartPolicy = $state("no"); // "no", "always", "on-failure", "unless-stopped"
+
+  // Add state for IP addresses
+  let ipv4Address = $state("");
+  let ipv6Address = $state("");
 
   // Port validation - improved
   function validatePortNumber(port: string | number): {
@@ -159,6 +163,15 @@
     envVars = envVars.filter((_, i) => i !== index);
   }
 
+  // Reactive check to see if the selected network is user-defined
+  const isUserDefinedNetwork = $derived(
+    network &&
+      network !== "" &&
+      network !== "host" &&
+      network !== "none" &&
+      network !== "bridge"
+  );
+
   function handleSubmit() {
     if (!selectedImage || !containerName.trim()) return;
 
@@ -200,6 +213,14 @@
         | "always"
         | "on-failure"
         | "unless-stopped",
+      // Add networkConfig if a user-defined network is selected and IPs are provided
+      networkConfig:
+        isUserDefinedNetwork && (ipv4Address.trim() || ipv6Address.trim())
+          ? {
+              ipv4Address: ipv4Address.trim() || undefined,
+              ipv6Address: ipv6Address.trim() || undefined,
+            }
+          : undefined,
     };
 
     // Pass the data to the parent component which handles the form submission
@@ -519,14 +540,43 @@
                   </Select.Trigger>
                   <Select.Content>
                     <Select.Item value="">Default Bridge</Select.Item>
-                    {#each networks as net}
+                    {#each networks.filter((n) => n.name !== "bridge" && n.name !== "host" && n.name !== "none") as net (net.name)}
                       <Select.Item value={net.name}>
-                        {net.name}
+                        {net.name} ({net.driver})
                       </Select.Item>
                     {/each}
                   </Select.Content>
                 </Select.Root>
               </div>
+
+              {#if isUserDefinedNetwork}
+                <div class="border-t pt-4 mt-4 space-y-4">
+                  <p class="text-sm text-muted-foreground">
+                    Optional: Assign static IP addresses (requires network with
+                    IPAM configured).
+                  </p>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 gap-2">
+                      <Label for="ipv4-address">IPv4 Address</Label>
+                      <Input
+                        id="ipv4-address"
+                        bind:value={ipv4Address}
+                        placeholder="e.g., 172.20.0.10"
+                        disabled={isCreating}
+                      />
+                    </div>
+                    <div class="grid grid-cols-1 gap-2">
+                      <Label for="ipv6-address">IPv6 Address</Label>
+                      <Input
+                        id="ipv6-address"
+                        bind:value={ipv6Address}
+                        placeholder="e.g., 2001:db8::10"
+                        disabled={isCreating}
+                      />
+                    </div>
+                  </div>
+                </div>
+              {/if}
             </div>
           </Tabs.Content>
         </form>
