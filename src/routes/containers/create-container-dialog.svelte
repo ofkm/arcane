@@ -98,9 +98,8 @@
 
     // Warning for privileged ports
     if (portNum < 1024) {
-      return { isValid: true, error: "Privileged port (<1024)" };
+      return { isValid: true, warning: "Privileged port (<1024)" };
     }
-
     return { isValid: true };
   }
 
