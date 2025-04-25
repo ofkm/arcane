@@ -422,16 +422,17 @@
           <Tabs.Content value="ports">
             <div class="space-y-4">
               {#each ports as port, index}
-                <div class="flex space-x-3 items-start">
-                  <div class="flex-1 grid grid-cols-5 gap-2">
-                    <div class="col-span-2 flex flex-col">
-                      <Label for={`host-port-${index}`} class="mb-2 block">
-                        Host Port
-                      </Label>
+                <div class="flex space-x-3 items-end">
+                  <div class="flex-1 grid grid-cols-2 gap-4">
+                    <div>
+                      <Label
+                        for={`host-port-${index}`}
+                        class="mb-2 block text-sm">Host Port</Label
+                      >
                       <Input
                         id={`host-port-${index}`}
                         bind:value={port.hostPort}
-                        placeholder="8080"
+                        placeholder="e.g., 8080"
                         disabled={isCreating}
                         type="text"
                         pattern="[0-9]*"
@@ -442,24 +443,23 @@
                       />
                       {#if port.hostError && port.hostPort}
                         <div
-                          class="flex items-center mt-1 text-xs text-red-500"
+                          class="flex items-center text-xs text-red-500 mt-1"
                         >
                           <AlertCircle class="h-3 w-3 mr-1" />
                           {port.hostError}
                         </div>
                       {/if}
                     </div>
-                    <div class="flex items-center justify-center pt-10">
-                      <span class="text-center text-xl">:</span>
-                    </div>
-                    <div class="col-span-2 flex flex-col">
-                      <Label for={`container-port-${index}`} class="mb-2 block">
-                        Container Port
-                      </Label>
+
+                    <div>
+                      <Label
+                        for={`container-port-${index}`}
+                        class="mb-2 block text-sm">Container Port</Label
+                      >
                       <Input
                         id={`container-port-${index}`}
                         bind:value={port.containerPort}
-                        placeholder="80"
+                        placeholder="e.g., 80"
                         disabled={isCreating}
                         type="text"
                         pattern="[0-9]*"
@@ -470,7 +470,7 @@
                       />
                       {#if port.containerError && port.containerPort}
                         <div
-                          class="flex items-center mt-1 text-xs text-red-500"
+                          class="flex items-center text-xs text-red-500 mt-1"
                         >
                           <AlertCircle class="h-3 w-3 mr-1" />
                           {port.containerError}
@@ -478,13 +478,14 @@
                       {/if}
                     </div>
                   </div>
+
                   <Button
                     variant="destructive"
                     size="icon"
                     type="button"
                     onclick={() => removePort(index)}
                     disabled={ports.length <= 1 || isCreating}
-                    class="flex-shrink-0 mt-10"
+                    class="flex-shrink-0"
                   >
                     <Trash class="h-4 w-4" />
                   </Button>
