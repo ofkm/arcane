@@ -1,5 +1,6 @@
 import Docker from "dockerode";
 import type { VolumeInspectInfo, VolumeCreateOptions } from "dockerode";
+import type { NetworkInspectInfo } from "dockerode"; // Add NetworkInspectInfo
 import { getSettings } from "$lib/services/settings-service";
 import type {
   DockerConnectionOptions,
@@ -674,6 +675,38 @@ export async function listNetworks(): Promise<ServiceNetwork[]> {
     console.error("Docker Service: Error listing networks:", error);
     throw new Error(
       `Failed to list Docker networks using host "${dockerHost}".`
+    );
+  }
+}
+
+/**
+ * Removes a Docker network.
+ * @param networkId - The ID or name of the network to remove.
+ */
+export async function removeNetwork(networkId: string): Promise<void> {
+  try {
+    const docker = getDockerClient();
+    const network = docker.getNetwork(networkId);
+    await network.remove();
+    console.log(`Docker Service: Network "${networkId}" removed successfully.`);
+  } catch (error: any) {
+    console.error(
+      `Docker Service: Error removing network "${networkId}":`,
+      error
+    );
+    if (error.statusCode === 404) {
+      throw new Error(`Network "${networkId}" not found.`);
+    }
+    if (error.statusCode === 409) {
+      // 409 Conflict usually means it's in use or predefined
+      throw new Error(
+        `Network "${networkId}" cannot be removed (possibly in use or predefined).`
+      );
+    }
+    throw new Error(
+      `Failed to remove network "${networkId}" using host "${dockerHost}". ${
+        error.message || error.reason || ""
+      }`
     );
   }
 }
