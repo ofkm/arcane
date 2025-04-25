@@ -6,6 +6,7 @@
     type SortingState,
     getFilteredRowModel,
     type ColumnFiltersState,
+    type RowData,
   } from "@tanstack/table-core";
   import {
     createSvelteTable,
@@ -25,12 +26,13 @@
   let {
     data,
     columns,
+    idKey,
     features = {},
     display = {},
     pagination = {},
     sort = {},
     selectedIds = $bindable<string[]>([]),
-  }: UniversalTableProps<TData> = $props();
+  }: UniversalTableProps<TData> & { idKey?: keyof TData } = $props();
 
   let {
     sorting: enableSorting = true,
@@ -92,6 +94,11 @@
       return data;
     },
     columns,
+    getRowId: idKey
+      ? (originalRow: TData, index: number, parent?: RowData) => {
+          return String(originalRow[idKey]);
+        }
+      : undefined,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: enableSorting ? getSortedRowModel() : undefined,
