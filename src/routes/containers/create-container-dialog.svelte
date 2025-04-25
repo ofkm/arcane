@@ -1,6 +1,7 @@
 <script lang="ts">
   import { preventDefault } from "svelte/legacy";
   import type { ContainerConfig } from "$lib/types/docker";
+  import type { HealthConfig } from "dockerode";
 
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
@@ -29,7 +30,7 @@
     open?: boolean;
     isCreating?: boolean;
     volumes?: { name: string }[];
-    networks?: { name: string; driver: string }[]; // Add driver property
+    networks?: { name: string; driver: string }[];
     images?: { id: string; repo: string; tag: string }[];
     onSubmit?: (data: ContainerConfig) => void;
   }
@@ -76,6 +77,14 @@
   let ipv4Address = $state("");
   let ipv6Address = $state("");
 
+  // Add state for Healthcheck
+  let enableHealthcheck = $state(false);
+  let healthcheckTest = $state<string[]>([""]); // Dockerode expects string[]
+  let healthcheckInterval = $state<number | undefined>(undefined); // In nanoseconds
+  let healthcheckTimeout = $state<number | undefined>(undefined); // In nanoseconds
+  let healthcheckRetries = $state<number | undefined>(undefined);
+  let healthcheckStartPeriod = $state<number | undefined>(undefined); // In nanoseconds
+
   // Port validation - improved
   function validatePortNumber(port: string | number): {
     isValid: boolean;
@@ -101,7 +110,7 @@
 
     // Warning for privileged ports
     if (portNum < 1024) {
-      return { isValid: true, warning: "Privileged port (<1024)" };
+      return { isValid: true, error: "Privileged port (<1024)" };
     }
     return { isValid: true };
   }
@@ -203,6 +212,26 @@
     );
     const filteredEnvVars = envVars.filter((e) => e.key.trim());
 
+    // Prepare healthcheck config if enabled and test command is provided
+    let healthcheckConfig: HealthConfig | undefined = undefined;
+    if (
+      enableHealthcheck &&
+      healthcheckTest.length > 0 &&
+      healthcheckTest[0].trim() !== ""
+    ) {
+      // Convert seconds to nanoseconds for Docker API
+      const toNano = (seconds: number | undefined) =>
+        seconds ? seconds * 1_000_000_000 : undefined;
+
+      healthcheckConfig = {
+        Test: healthcheckTest,
+        Interval: toNano(healthcheckInterval),
+        Timeout: toNano(healthcheckTimeout),
+        Retries: healthcheckRetries,
+        StartPeriod: toNano(healthcheckStartPeriod),
+      };
+    }
+
     const containerConfig: ContainerConfig = {
       name: containerName.trim(),
       image: selectedImage,
@@ -215,7 +244,6 @@
         | "always"
         | "on-failure"
         | "unless-stopped",
-      // Add networkConfig if a user-defined network is selected and IPs are provided
       networkConfig:
         isUserDefinedNetwork && (ipv4Address.trim() || ipv6Address.trim())
           ? {
@@ -223,6 +251,7 @@
               ipv6Address: ipv6Address.trim() || undefined,
             }
           : undefined,
+      healthcheck: healthcheckConfig, // Add healthcheck to config
     };
 
     // Pass the data to the parent component which handles the form submission
@@ -240,12 +269,25 @@
     </Dialog.Header>
 
     <Tabs.Root value={selectedTab} class="w-full">
-      <Tabs.List class="w-full grid grid-cols-5">
-        <Tabs.Trigger value="basic" class="px-1">Basic</Tabs.Trigger>
-        <Tabs.Trigger value="ports" class="px-1">Ports</Tabs.Trigger>
-        <Tabs.Trigger value="volumes" class="px-1">Volumes</Tabs.Trigger>
-        <Tabs.Trigger value="env" class="px-1">Environment</Tabs.Trigger>
-        <Tabs.Trigger value="network" class="px-1">Network</Tabs.Trigger>
+      <Tabs.List class="w-full grid grid-cols-6">
+        <Tabs.Trigger value="basic" class="px-1 text-xs sm:text-sm"
+          >Basic</Tabs.Trigger
+        >
+        <Tabs.Trigger value="ports" class="px-1 text-xs sm:text-sm"
+          >Ports</Tabs.Trigger
+        >
+        <Tabs.Trigger value="volumes" class="px-1 text-xs sm:text-sm"
+          >Volumes</Tabs.Trigger
+        >
+        <Tabs.Trigger value="env" class="px-1 text-xs sm:text-sm"
+          >Environment</Tabs.Trigger
+        >
+        <Tabs.Trigger value="network" class="px-1 text-xs sm:text-sm"
+          >Network</Tabs.Trigger
+        >
+        <Tabs.Trigger value="healthcheck" class="px-1 text-xs sm:text-sm"
+          >Healthcheck</Tabs.Trigger
+        >
       </Tabs.List>
 
       <div class="p-4">
@@ -575,6 +617,94 @@
                         placeholder="e.g., 2001:db8::10"
                         disabled={isCreating}
                       />
+                    </div>
+                  </div>
+                </div>
+              {/if}
+            </div>
+          </Tabs.Content>
+
+          <!-- Healthcheck Settings -->
+          <Tabs.Content value="healthcheck">
+            <div class="space-y-4">
+              <div class="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="enable-healthcheck"
+                  bind:checked={enableHealthcheck}
+                  disabled={isCreating}
+                  class="form-checkbox h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <Label for="enable-healthcheck" class="cursor-pointer"
+                  >Enable Healthcheck</Label
+                >
+              </div>
+
+              {#if enableHealthcheck}
+                <div class="space-y-6 border-t pt-6 mt-4">
+                  <div class="space-y-2">
+                    <Label for="healthcheck-test">Test Command</Label>
+                    <Input
+                      id="healthcheck-test"
+                      bind:value={healthcheckTest[0]}
+                      placeholder="e.g., CMD-SHELL curl -f http://localhost:80 || exit 1"
+                      disabled={isCreating}
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      Command to run inside the container. Use `CMD` or
+                      `CMD-SHELL`.
+                    </p>
+                  </div>
+
+                  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="space-y-2">
+                      <Label for="healthcheck-interval">Interval (s)</Label>
+                      <Input
+                        id="healthcheck-interval"
+                        type="number"
+                        min="1"
+                        bind:value={healthcheckInterval}
+                        placeholder="e.g., 30"
+                        disabled={isCreating}
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="healthcheck-timeout">Timeout (s)</Label>
+                      <Input
+                        id="healthcheck-timeout"
+                        type="number"
+                        min="1"
+                        bind:value={healthcheckTimeout}
+                        placeholder="e.g., 10"
+                        disabled={isCreating}
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="healthcheck-retries">Retries</Label>
+                      <Input
+                        id="healthcheck-retries"
+                        type="number"
+                        min="1"
+                        bind:value={healthcheckRetries}
+                        placeholder="e.g., 3"
+                        disabled={isCreating}
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="healthcheck-start-period"
+                        >Start Period (s)</Label
+                      >
+                      <Input
+                        id="healthcheck-start-period"
+                        type="number"
+                        min="0"
+                        bind:value={healthcheckStartPeriod}
+                        placeholder="e.g., 60"
+                        disabled={isCreating}
+                      />
+                      <p class="text-xs text-muted-foreground">
+                        Grace period for startup.
+                      </p>
                     </div>
                   </div>
                 </div>

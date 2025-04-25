@@ -399,6 +399,15 @@ export async function createContainer(config: ContainerConfig) {
       name: config.name,
       Image: config.image,
       Env: config.envVars?.map((env) => `${env.key}=${env.value}`) || [],
+      Healthcheck: config.healthcheck
+        ? {
+            Test: config.healthcheck.Test,
+            Interval: config.healthcheck.Interval,
+            Timeout: config.healthcheck.Timeout,
+            Retries: config.healthcheck.Retries,
+            StartPeriod: config.healthcheck.StartPeriod,
+          }
+        : undefined,
       HostConfig: {
         RestartPolicy: {
           Name: config.restart || "no",
@@ -412,23 +421,12 @@ export async function createContainer(config: ContainerConfig) {
       containerOptions.HostConfig = containerOptions.HostConfig || {};
       containerOptions.HostConfig.PortBindings = {};
 
-      config.ports.forEach(({ hostPort, containerPort }) => {
-        const hp = Number(hostPort);
-        const cp = Number(containerPort);
-        if (
-          !Number.isInteger(hp) ||
-          !Number.isInteger(cp) ||
-          hp < 1 || hp > 65535 ||
-          cp < 1 || cp > 65535
-        ) {
-          throw new Error(
-            `Invalid port mapping "${hostPort}:${containerPort}". Ports must be numeric (1-65535).`
-          );
-        }
-
-        const key = `${cp}/tcp`;
-        containerOptions.ExposedPorts[key] = {};
-        containerOptions.HostConfig.PortBindings[key] = [{ HostPort: `${hp}` }];
+      config.ports.forEach((port) => {
+        const containerPort = `${port.containerPort}/tcp`;
+        containerOptions.ExposedPorts![containerPort] = {};
+        containerOptions.HostConfig!.PortBindings![containerPort] = [
+          { HostPort: port.hostPort },
+        ];
       });
     }
 
@@ -443,9 +441,10 @@ export async function createContainer(config: ContainerConfig) {
     // Set up network if provided
     if (config.network) {
       containerOptions.HostConfig = containerOptions.HostConfig || {};
-      containerOptions.HostConfig.NetworkMode = config.network;
+      if (!containerOptions.NetworkingConfig) {
+        containerOptions.HostConfig.NetworkMode = config.network;
+      }
 
-      // If using user-defined networks and specific IP assignments
       if (
         config.networkConfig &&
         config.network !== "host" &&
@@ -456,14 +455,12 @@ export async function createContainer(config: ContainerConfig) {
           EndpointsConfig: {
             [config.network]: {
               IPAMConfig: {
-                IPv4Address: config.networkConfig.ipv4Address || undefined, // Use undefined if empty
-                IPv6Address: config.networkConfig.ipv6Address || undefined, // Use undefined if empty
+                IPv4Address: config.networkConfig.ipv4Address || undefined,
+                IPv6Address: config.networkConfig.ipv6Address || undefined,
               },
             },
           },
         };
-        // When specifying NetworkingConfig, NetworkMode in HostConfig should not be set for user-defined networks
-        // Docker handles attaching to the specified network via EndpointsConfig
         delete containerOptions.HostConfig.NetworkMode;
       }
     }
@@ -477,14 +474,13 @@ export async function createContainer(config: ContainerConfig) {
 
     return {
       id: containerInfo.Id,
-      name: containerInfo.Name.substring(1), // Remove leading slash
+      name: containerInfo.Name.substring(1),
       state: containerInfo.State.Status,
       status: containerInfo.State.Running ? "running" : "stopped",
       created: containerInfo.Created,
     };
   } catch (error: any) {
     console.error("Error creating container:", error);
-    // Provide more specific error feedback if possible
     if (error.message && error.message.includes("IPAMConfig")) {
       throw new Error(
         `Failed to create container: Invalid IP address configuration for network "${config.network}". ${error.message}`

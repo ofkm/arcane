@@ -1,4 +1,4 @@
-import type { ContainerCreateOptions } from "dockerode";
+import type { ContainerCreateOptions, HealthConfig } from "dockerode";
 
 export interface DockerConnectionOptions {
   socketPath?: string;
@@ -37,6 +37,7 @@ export interface ContainerConfig {
     ipv4Address?: string;
     ipv6Address?: string;
   };
+  healthcheck?: HealthConfig;
 }
 
 // Container port mapping
