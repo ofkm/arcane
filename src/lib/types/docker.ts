@@ -38,6 +38,11 @@ export interface ContainerConfig {
     ipv6Address?: string;
   };
   healthcheck?: HealthConfig;
+  labels?: { [key: string]: string };
+  command?: string[];
+  user?: string;
+  memoryLimit?: number;
+  cpuLimit?: number;
 }
 
 // Container port mapping

@@ -394,11 +394,13 @@ export async function createContainer(config: ContainerConfig) {
   try {
     const docker = getDockerClient();
 
-    // Create container options
     const containerOptions: ContainerCreate = {
       name: config.name,
       Image: config.image,
       Env: config.envVars?.map((env) => `${env.key}=${env.value}`) || [],
+      Labels: config.labels || {},
+      Cmd: config.command,
+      User: config.user,
       Healthcheck: config.healthcheck
         ? {
             Test: config.healthcheck.Test,
@@ -412,6 +414,8 @@ export async function createContainer(config: ContainerConfig) {
         RestartPolicy: {
           Name: config.restart || "no",
         },
+        Memory: config.memoryLimit,
+        NanoCpus: config.cpuLimit ? config.cpuLimit * 1e9 : undefined,
       },
     };
 
@@ -485,6 +489,13 @@ export async function createContainer(config: ContainerConfig) {
       throw new Error(
         `Failed to create container: Invalid IP address configuration for network "${config.network}". ${error.message}`
       );
+    }
+    // Add more specific error handling for resource limits if needed
+    if (error.message && error.message.includes("NanoCpus")) {
+      throw new Error(`Invalid CPU limit specified: ${error.message}`);
+    }
+    if (error.message && error.message.includes("Memory")) {
+      throw new Error(`Invalid Memory limit specified: ${error.message}`);
     }
     throw new Error(
       `Failed to create container with image "${config.image}": ${error.message}`

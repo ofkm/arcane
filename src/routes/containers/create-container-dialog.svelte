@@ -17,6 +17,7 @@
   } from "@lucide/svelte";
   import * as Select from "$lib/components/ui/select/index.js";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
+  import { parseBytes } from "$lib/utils/bytes";
 
   import { createEventDispatcher } from "svelte";
   const dispatch = createEventDispatcher();
@@ -84,6 +85,17 @@
   let healthcheckTimeout = $state<number | undefined>(undefined); // In nanoseconds
   let healthcheckRetries = $state<number | undefined>(undefined);
   let healthcheckStartPeriod = $state<number | undefined>(undefined); // In nanoseconds
+
+  // Add state for Labels
+  let labels = $state<{ key: string; value: string }[]>([
+    { key: "", value: "" },
+  ]);
+
+  // Add state for Command, User, Resources
+  let commandOverride = $state(""); // Input as string, will split later
+  let runAsUser = $state("");
+  let memoryLimitStr = $state(""); // Input as string (e.g., "512m", "1g")
+  let cpuLimitStr = $state(""); // Input as string (e.g., "0.5", "1")
 
   // Port validation - improved
   function validatePortNumber(port: string | number): {
@@ -174,6 +186,14 @@
     envVars = envVars.filter((_, i) => i !== index);
   }
 
+  function addLabel() {
+    labels = [...labels, { key: "", value: "" }];
+  }
+
+  function removeLabel(index: number) {
+    labels = labels.filter((_, i) => i !== index);
+  }
+
   // Reactive check to see if the selected network is user-defined
   const isUserDefinedNetwork = $derived(
     network &&
@@ -212,6 +232,17 @@
     );
     const filteredEnvVars = envVars.filter((e) => e.key.trim());
 
+    // Filter and format labels
+    const filteredLabels = labels
+      .filter((l) => l.key.trim())
+      .reduce(
+        (acc, label) => {
+          acc[label.key.trim()] = label.value.trim();
+          return acc;
+        },
+        {} as { [key: string]: string }
+      );
+
     // Prepare healthcheck config if enabled and test command is provided
     let healthcheckConfig: HealthConfig | undefined = undefined;
     if (
@@ -230,6 +261,35 @@
         Retries: healthcheckRetries,
         StartPeriod: toNano(healthcheckStartPeriod),
       };
+    }
+
+    // Parse command override (split by space, respecting quotes if needed - simple split for now)
+    const commandArray = commandOverride.trim()
+      ? commandOverride.trim().split(/\s+/)
+      : undefined;
+
+    // Parse resource limits
+    let memoryBytes: number | undefined;
+    try {
+      memoryBytes = memoryLimitStr.trim()
+        ? parseBytes(memoryLimitStr.trim())
+        : undefined;
+    } catch (e) {
+      console.error("Invalid memory format:", e);
+      return; // Stop submission on invalid format
+    }
+
+    let cpuUnits: number | undefined;
+    try {
+      cpuUnits = cpuLimitStr.trim()
+        ? parseFloat(cpuLimitStr.trim())
+        : undefined;
+      if (cpuUnits !== undefined && isNaN(cpuUnits)) {
+        throw new Error("CPU Limit must be a number");
+      }
+    } catch (e) {
+      console.error("Invalid CPU format:", e);
+      return; // Stop submission on invalid format
     }
 
     const containerConfig: ContainerConfig = {
@@ -251,16 +311,21 @@
               ipv6Address: ipv6Address.trim() || undefined,
             }
           : undefined,
-      healthcheck: healthcheckConfig, // Add healthcheck to config
+      healthcheck: healthcheckConfig,
+      labels:
+        Object.keys(filteredLabels).length > 0 ? filteredLabels : undefined,
+      command: commandArray,
+      user: runAsUser.trim() || undefined,
+      memoryLimit: memoryBytes,
+      cpuLimit: cpuUnits,
     };
 
-    // Pass the data to the parent component which handles the form submission
     onSubmit(containerConfig);
   }
 </script>
 
 <Dialog.Root bind:open>
-  <Dialog.Content class="sm:max-w-[600px]">
+  <Dialog.Content class="sm:max-w-[700px]">
     <Dialog.Header>
       <Dialog.Title>Create Container</Dialog.Title>
       <Dialog.Description>
@@ -269,7 +334,7 @@
     </Dialog.Header>
 
     <Tabs.Root value={selectedTab} class="w-full">
-      <Tabs.List class="w-full grid grid-cols-6">
+      <Tabs.List class="w-full grid grid-cols-7">
         <Tabs.Trigger value="basic" class="px-1 text-xs sm:text-sm"
           >Basic</Tabs.Trigger
         >
@@ -288,9 +353,12 @@
         <Tabs.Trigger value="healthcheck" class="px-1 text-xs sm:text-sm"
           >Healthcheck</Tabs.Trigger
         >
+        <Tabs.Trigger value="advanced" class="px-1 text-xs sm:text-sm"
+          >Advanced</Tabs.Trigger
+        >
       </Tabs.List>
 
-      <div class="p-4">
+      <div class="p-4 max-h-[60vh] overflow-y-auto">
         <form onsubmit={preventDefault(handleSubmit)} class="space-y-6">
           <!-- Basic Settings -->
           <Tabs.Content value="basic">
@@ -709,6 +777,131 @@
                   </div>
                 </div>
               {/if}
+            </div>
+          </Tabs.Content>
+
+          <!-- Advanced Settings -->
+          <Tabs.Content value="advanced">
+            <div class="space-y-6">
+              <!-- Labels -->
+              <div class="space-y-4 border-b pb-6">
+                <h3 class="text-lg font-medium">Labels</h3>
+                {#each labels as label, index}
+                  <div class="flex space-x-3 items-end">
+                    <div class="flex-1 grid grid-cols-2 gap-4">
+                      <div>
+                        <Label
+                          for={`label-key-${index}`}
+                          class="mb-2 block text-sm">Key</Label
+                        >
+                        <Input
+                          id={`label-key-${index}`}
+                          bind:value={label.key}
+                          placeholder="e.g., com.example.project"
+                          disabled={isCreating}
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          for={`label-value-${index}`}
+                          class="mb-2 block text-sm">Value</Label
+                        >
+                        <Input
+                          id={`label-value-${index}`}
+                          bind:value={label.value}
+                          placeholder="e.g., my-app"
+                          disabled={isCreating}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      type="button"
+                      onclick={() => removeLabel(index)}
+                      disabled={labels.length <= 1 || isCreating}
+                      class="flex-shrink-0"
+                    >
+                      <Trash class="h-4 w-4" />
+                    </Button>
+                  </div>
+                {/each}
+                <Button
+                  variant="outline"
+                  type="button"
+                  onclick={addLabel}
+                  class="w-full"
+                  disabled={isCreating}
+                >
+                  <Plus class="h-4 w-4 mr-2" /> Add Label
+                </Button>
+              </div>
+
+              <!-- Command & User -->
+              <div class="space-y-4 border-b pb-6">
+                <h3 class="text-lg font-medium">Execution</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="space-y-2">
+                    <Label for="command-override">Command Override</Label>
+                    <Input
+                      id="command-override"
+                      bind:value={commandOverride}
+                      placeholder="e.g., /app/run --config /etc/config.yml"
+                      disabled={isCreating}
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      Overrides the image's default command. Separate arguments
+                      with spaces.
+                    </p>
+                  </div>
+                  <div class="space-y-2">
+                    <Label for="run-as-user">Run as User</Label>
+                    <Input
+                      id="run-as-user"
+                      bind:value={runAsUser}
+                      placeholder="e.g., 1000:1000 or node"
+                      disabled={isCreating}
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      Specify user/group ID or name.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resource Limits -->
+              <div class="space-y-4">
+                <h3 class="text-lg font-medium">Resource Limits</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="space-y-2">
+                    <Label for="memory-limit">Memory Limit</Label>
+                    <Input
+                      id="memory-limit"
+                      bind:value={memoryLimitStr}
+                      placeholder="e.g., 512m, 1g"
+                      disabled={isCreating}
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      Format: number + unit (b, k, m, g). Minimum 4m.
+                    </p>
+                  </div>
+                  <div class="space-y-2">
+                    <Label for="cpu-limit">CPU Limit</Label>
+                    <Input
+                      id="cpu-limit"
+                      bind:value={cpuLimitStr}
+                      placeholder="e.g., 0.5, 1, 2"
+                      disabled={isCreating}
+                      type="number"
+                      step="0.1"
+                      min="0"
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      Number of CPU cores (e.g., 1.5 = 1.5 cores).
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </Tabs.Content>
         </form>
