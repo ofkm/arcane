@@ -203,6 +203,7 @@
     isRefreshing = true;
     try {
       await invalidateAll();
+      images = data.images;
     } catch (err) {
       console.error("Error refreshing images:", err);
       toast.error("Failed to refresh image list.");
