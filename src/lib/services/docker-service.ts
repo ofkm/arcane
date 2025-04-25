@@ -455,7 +455,7 @@ export async function createContainer(config: ContainerConfig) {
     };
   } catch (error: any) {
     console.error("Error creating container:", error);
-    throw new Error(`Failed to create container: ${error.message}`);
+    throw new Error(`Failed to create container with image "${config.image}": ${error.message}`);
   }
 }
 
