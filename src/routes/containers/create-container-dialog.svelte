@@ -202,6 +202,7 @@
         | "unless-stopped",
     };
 
+    // Pass the data to the parent component which handles the form submission
     onSubmit(containerConfig);
   }
 </script>
@@ -542,7 +543,7 @@
         Cancel
       </Button>
       <Button
-        type="submit"
+        type="button"
         onclick={handleSubmit}
         disabled={isCreating || !containerName.trim() || !selectedImage}
       >

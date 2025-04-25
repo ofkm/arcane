@@ -8,14 +8,20 @@
   import { toast } from "svelte-sonner";
   import CreateContainerDialog from "./create-container-dialog.svelte";
   import type { ContainerConfig } from "$lib/types/docker";
+  import { enhance } from "$app/forms";
 
-  let { data } = $props();
+  // Server data from load function
+  let { data, form } = $props();
   const { containers } = data;
 
   let isRefreshing = $state(false);
   let selectedIds = $state([]);
   let isCreateDialogOpen = $state(false);
   let isCreatingContainer = $state(false);
+  let containerData = $state<ContainerConfig | null>(null);
+
+  // Add a form reference
+  let formRef: HTMLFormElement;
 
   // Calculate running containers
   const runningContainers = $derived(
@@ -30,6 +36,21 @@
   // Calculate total containers
   const totalContainers = $derived(containers?.length || 0);
 
+  // Success message handling based on form action result
+  $effect(() => {
+    if (form?.success) {
+      toast.success(
+        `Container "${form.container?.name || "Unknown"}" created successfully.`
+      );
+      isCreateDialogOpen = false;
+      isCreatingContainer = false;
+    } else if (form?.error) {
+      toast.error(`Failed to create container: ${form.error}`);
+      isCreatingContainer = false;
+    }
+  });
+
+  // Simple refresh now - this just triggers a new SSR call
   async function refreshData() {
     isRefreshing = true;
     await invalidateAll();
@@ -41,41 +62,15 @@
   function openCreateDialog() {
     isCreateDialogOpen = true;
   }
-
-  async function handleCreateContainerSubmit(containerData: ContainerConfig) {
+  // This now prepares data for form action and submits the form
+  async function handleCreateContainerSubmit(config: ContainerConfig) {
     isCreatingContainer = true;
-    try {
-      const response = await fetch("/api/containers", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(containerData),
-      });
+    containerData = config;
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error || `HTTP error! status: ${response.status}`
-        );
-      }
-
-      toast.success(
-        `Container "${result.container.name}" created successfully.`
-      );
-      isCreateDialogOpen = false;
-
-      // Force a refresh with a short timeout
-      setTimeout(async () => {
-        await refreshData();
-      }, 500);
-    } catch (err: any) {
-      console.error("Failed to create container:", err);
-      toast.error(`Failed to create container: ${err.message}`);
-    } finally {
-      isCreatingContainer = false;
-    }
+    // This is key - explicitly submit the form after setting the data
+    setTimeout(() => {
+      formRef.requestSubmit();
+    }, 0);
   }
 </script>
 
@@ -186,12 +181,33 @@
     </div>
   {/if}
 
-  <CreateContainerDialog
-    bind:open={isCreateDialogOpen}
-    isCreating={isCreatingContainer}
-    volumes={data.volumes || []}
-    networks={data.networks || []}
-    images={data.images || []}
-    onSubmit={handleCreateContainerSubmit}
-  />
+  <form
+    bind:this={formRef}
+    method="POST"
+    action="?/create"
+    use:enhance={() => {
+      return async ({ result }) => {
+        isCreatingContainer = false;
+        if (result.type === "success") {
+          isCreateDialogOpen = false;
+          await invalidateAll();
+        }
+      };
+    }}
+  >
+    <input
+      type="hidden"
+      name="containerData"
+      value={containerData ? JSON.stringify(containerData) : ""}
+    />
+
+    <CreateContainerDialog
+      bind:open={isCreateDialogOpen}
+      isCreating={isCreatingContainer}
+      volumes={data.volumes || []}
+      networks={data.networks || []}
+      images={data.images || []}
+      onSubmit={handleCreateContainerSubmit}
+    />
+  </form>
 </div>

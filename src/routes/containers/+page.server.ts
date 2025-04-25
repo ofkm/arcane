@@ -1,14 +1,17 @@
+import { fail, redirect } from "@sveltejs/kit";
 import {
   listContainers,
   listVolumes,
   listNetworks,
   listImages,
+  createContainer,
 } from "$lib/services/docker-service";
-import type { PageServerLoad } from "./$types";
+import type { PageServerLoad, Actions } from "./$types";
+import type { ContainerConfig } from "$lib/types/docker";
 
 export const load: PageServerLoad = async () => {
   try {
-    // Fetch all data in parallel
+    // This is always executed server-side for SSR
     const [containers, volumes, networks, images] = await Promise.all([
       listContainers(true),
       listVolumes(),
@@ -32,4 +35,49 @@ export const load: PageServerLoad = async () => {
       error: error.message,
     };
   }
+};
+
+export const actions: Actions = {
+  create: async ({ request }) => {
+    try {
+      const formData = await request.formData();
+      const containerDataString = formData.get("containerData");
+
+      if (!containerDataString) {
+        return fail(400, {
+          success: false,
+          error: "No container data provided",
+        });
+      }
+
+      const containerData = JSON.parse(
+        containerDataString.toString()
+      ) as ContainerConfig;
+
+      // Validate required fields
+      if (!containerData.name || !containerData.image) {
+        return fail(400, {
+          success: false,
+          error: "Container name and image are required",
+        });
+      }
+
+      // Log for debugging
+      console.log("Creating container with data:", containerData);
+
+      // Create the container
+      const container = await createContainer(containerData);
+
+      return {
+        success: true,
+        container,
+      };
+    } catch (error: any) {
+      console.error("Error creating container:", error);
+      return fail(500, {
+        success: false,
+        error: error.message || "Failed to create container",
+      });
+    }
+  },
 };
