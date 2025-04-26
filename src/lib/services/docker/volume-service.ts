@@ -81,7 +81,7 @@ export async function isVolumeInUse(volumeName: string): Promise<boolean> {
  * - Labels: Any labels associated with the volume (defaults to an empty object if none provided)
  * - Scope: The scope of the volume (defaults to 'local' if not
  */
-export async function createVolume(options: VolumeCreateOptions): Promise<any> {
+export async function createVolume(options: VolumeCreateOptions): Promise<ServiceVolume> {
     try {
         const docker = getDockerClient();
         // createVolume returns the volume data directly - no need to inspect
@@ -91,12 +91,12 @@ export async function createVolume(options: VolumeCreateOptions): Promise<any> {
 
         // Return the creation response which contains basic info
         return {
-            Name: volume.Name,
-            Driver: volume.Driver,
-            Mountpoint: volume.Mountpoint,
-            Labels: volume.Labels || {},
-            Scope: volume.Scope || 'local',
-            CreatedAt: new Date().toISOString() // Since inspect would give us this
+            name: volume.Name,
+            driver: volume.Driver,
+            mountpoint: volume.Mountpoint,
+            labels: volume.Labels || {},
+            scope: volume.Scope || 'local',
+            createdAt: new Date().toISOString() // Since inspect would give us this
         };
     } catch (error: any) {
         console.error(`Docker Service: Error creating volume "${options.Name}":`, error);
