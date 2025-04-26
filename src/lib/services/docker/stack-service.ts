@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
+import { basename } from 'node:path';
 import DockerodeCompose from 'dockerode-compose';
 import yaml from 'js-yaml';
 import { nanoid } from 'nanoid';
@@ -72,7 +73,11 @@ async function ensureStacksDir(): Promise<string> {
  */
 async function getStackDir(stackId: string): Promise<string> {
 	const stacksDir = await ensureStacksDir();
-	return join(stacksDir, stackId);
+	const safeId = basename(stackId); // strips path
+	if (safeId !== stackId) {
+		throw new Error('Invalid stack id');
+	}
+	return join(stacksDir, safeId);
 }
 
 /**
