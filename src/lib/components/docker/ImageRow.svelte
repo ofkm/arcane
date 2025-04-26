@@ -2,13 +2,17 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import { Trash2, Info } from "@lucide/svelte";
 
-  export let image: {
+  interface Props {
+    image: {
     id: string;
     repo: string;
     tag: string;
     size: string;
     created?: string;
   };
+  }
+
+  let { image }: Props = $props();
 </script>
 
 <tr class="border-b">

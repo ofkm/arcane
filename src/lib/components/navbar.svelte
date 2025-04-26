@@ -14,7 +14,7 @@
     ExternalLink, // Add this for the update link icon
     type Icon as IconType,
   } from "@lucide/svelte";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import { fly } from "svelte/transition";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Separator } from "$lib/components/ui/separator/index.js";
@@ -150,8 +150,8 @@
   >
     {#each items as item}
       {@const isActive =
-        $page.url.pathname === item.href ||
-        ($page.url.pathname.startsWith(item.href) && item.href !== "/")}
+        page.url.pathname === item.href ||
+        (page.url.pathname.startsWith(item.href) && item.href !== "/")}
       {@const Icon = item.icon}
 
       <a

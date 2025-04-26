@@ -1,8 +1,12 @@
 <script lang="ts">
   import StatusBadge from "./status-badge.svelte";
 
-  export let name: string;
-  export let inUse: boolean | undefined;
+  interface Props {
+    name: string;
+    inUse: boolean | undefined;
+  }
+
+  let { name, inUse }: Props = $props();
 </script>
 
 <div class="flex items-center gap-2">

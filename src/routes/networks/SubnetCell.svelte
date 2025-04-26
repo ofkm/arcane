@@ -1,6 +1,10 @@
 <!-- filepath: /Users/kylemendell/dev/ofkm/arcane/src/routes/networks/SubnetCell.svelte -->
 <script lang="ts">
-  export let subnet: string | null;
+  interface Props {
+    subnet: string | null;
+  }
+
+  let { subnet }: Props = $props();
 </script>
 
 {#if subnet}

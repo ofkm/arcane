@@ -1,15 +1,16 @@
+<!-- @migration task: review uses of `navigating` -->
 <script lang="ts">
   import "../app.css";
   import { ModeWatcher } from "mode-watcher";
   import Nav from "$lib/components/navbar.svelte";
   import { Toaster } from "$lib/components/ui/sonner/index.js";
-  import { navigating } from "$app/stores";
+  import { navigating } from "$app/state";
 
   let { children, data } = $props();
 
   const versionInformation = data.versionInformation;
 
-  const isNavigating = $derived($navigating !== null);
+  const isNavigating = $derived(navigating !== null);
 </script>
 
 <svelte:head><title>Arcane</title></svelte:head>
