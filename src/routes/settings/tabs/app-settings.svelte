@@ -2,7 +2,16 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Switch } from "$lib/components/ui/switch/index.js";
-  import { Save, RefreshCw, Key, Plus, Trash2 } from "@lucide/svelte";
+  import {
+    Save,
+    RefreshCw,
+    Key,
+    Plus,
+    Trash2,
+    ImageMinus,
+  } from "@lucide/svelte";
+  import * as RadioGroup from "$lib/components/ui/radio-group/index.js";
+  import { Label } from "$lib/components/ui/label/index.js";
   import type { ActionData, PageData } from "../$types";
 
   let { data, form } = $props<{ data: PageData; form: ActionData }>();
@@ -14,17 +23,15 @@
     form?.values?.dockerHost || settings?.dockerHost || ""
   );
 
-  // Make sure the pollingEnabled variable comes from settings.pollingEnabled
   let pollingEnabled = $derived(
     form?.values?.pollingEnabled !== undefined
       ? form.values.pollingEnabled === "on"
       : settings?.pollingEnabled || false
   );
 
-  // Rename to pollingInterval to be consistent
   let pollingInterval = $derived(
     form?.values?.pollingInterval !== undefined
-      ? form.values.pollingInterval
+      ? Number(form.values.pollingInterval)
       : settings?.pollingInterval || 10
   );
 
@@ -37,8 +44,14 @@
       : settings?.autoUpdate || false
   );
 
+  let pruneMode = $derived<"all" | "dangling">(
+    form?.values?.pruneMode || settings?.pruneMode || "all"
+  );
+
   let registryCredentials = $derived(
-    form?.values?.registryCredentials || settings?.registryCredentials || []
+    typeof form?.values?.registryCredentials === "string"
+      ? JSON.parse(form.values.registryCredentials)
+      : form?.values?.registryCredentials || settings?.registryCredentials || []
   );
 
   const defaultRegistry = { url: "", username: "", password: "" };
@@ -47,7 +60,6 @@
     registryCredentials = [...registryCredentials, { ...defaultRegistry }];
   }
 
-  // Remove a registry
   function removeRegistry(index: number) {
     registryCredentials = registryCredentials.filter(
       (_: unknown, i: number) => i !== index
@@ -169,13 +181,12 @@
             {/if}
           </div>
 
-          <!-- Auto Update option -->
           <div
             class="flex items-center justify-between rounded-lg border p-4 bg-muted/30"
           >
             <div class="space-y-0.5">
-              <label for="autoUpdateSwitch" class="text-base font-medium"
-                >Auto Update Containers</label
+              <Label for="autoUpdateSwitch" class="text-base font-medium"
+                >Auto Update Containers</Label
               >
               <p class="text-sm text-muted-foreground">
                 Automatically update containers when newer images are available
@@ -188,6 +199,51 @@
             />
           </div>
         {/if}
+      </Card.Content>
+    </Card.Root>
+
+    <!-- Prune Settings Card -->
+    <Card.Root class="border shadow-sm">
+      <Card.Header class="pb-3">
+        <div class="flex items-center gap-2">
+          <div class="bg-purple-500/10 p-2 rounded-full">
+            <ImageMinus class="h-5 w-5 text-purple-500" />
+          </div>
+          <div>
+            <Card.Title>Image Pruning</Card.Title>
+            <Card.Description>Configure image prune behavior</Card.Description>
+          </div>
+        </div>
+      </Card.Header>
+      <Card.Content class="space-y-4">
+        <div>
+          <Label for="pruneMode" class="text-base font-medium block mb-2"
+            >Prune Action Behavior</Label
+          >
+          <RadioGroup.Root
+            bind:value={pruneMode}
+            name="pruneMode"
+            class="flex flex-col space-y-1"
+            id="pruneMode"
+          >
+            <div class="flex items-center space-x-2">
+              <RadioGroup.Item value="all" id="prune-all" />
+              <Label for="prune-all" class="font-normal">
+                All Unused Images (like `docker image prune -a`)
+              </Label>
+            </div>
+            <div class="flex items-center space-x-2">
+              <RadioGroup.Item value="dangling" id="prune-dangling" />
+              <Label for="prune-dangling" class="font-normal">
+                Dangling Images Only (like `docker image prune`)
+              </Label>
+            </div>
+          </RadioGroup.Root>
+          <p class="text-xs text-muted-foreground mt-2">
+            Select which images are removed by the "Prune Unused" action on the
+            Images page.
+          </p>
+        </div>
       </Card.Content>
     </Card.Root>
   </div>

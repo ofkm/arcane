@@ -614,20 +614,30 @@ export async function isImageInUse(imageId: string): Promise<boolean> {
 }
 
 /**
- * Prunes unused Docker images (dangling images).
+ * Prunes unused Docker images.
+ * @param mode - Mode of pruning ('all' or 'dangling').
  * @returns Information about reclaimed space.
  */
-export async function pruneImages(): Promise<{
+export async function pruneImages(mode: "all" | "dangling" = "all"): Promise<{
   ImagesDeleted: Docker.ImageRemoveInfo[] | null;
   SpaceReclaimed: number;
 }> {
   try {
     const docker = getDockerClient();
-    console.log("Docker Service: Pruning unused images...");
-    // Prune dangling images (those not tagged or used by containers)
-    const result = await docker.pruneImages({
-      filters: { dangling: ["true"] },
-    });
+    const filterValue = mode === "all" ? "false" : "true";
+    const logMessage =
+      mode === "all"
+        ? "Pruning all unused images (docker image prune -a)..."
+        : "Pruning dangling images (docker image prune)...";
+
+    console.log(`Docker Service: ${logMessage}`);
+
+    const pruneOptions = {
+      filters: { dangling: [filterValue] },
+    };
+
+    const result = await docker.pruneImages(pruneOptions); // Use the options object
+
     console.log(
       `Docker Service: Image prune complete. Space reclaimed: ${result.SpaceReclaimed}`
     );

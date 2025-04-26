@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
   autoUpdate: false,
   pollingEnabled: true,
   pollingInterval: 10,
+  pruneMode: "all",
   stacksDirectory: path.resolve(BASE_PATH, "stacks"),
   externalServices: {
     valkey: {

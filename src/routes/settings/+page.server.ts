@@ -31,6 +31,14 @@ export const actions: Actions = {
       const pollingIntervalStr = formData.get("pollingInterval") as string;
       const stacksDirectory = (formData.get("stacksDirectory") as string) || "";
 
+      // --- Read pruneMode from form data ---
+      const pruneModeValue = formData.get("pruneMode");
+      // Validate the value, default to current setting or 'all' if invalid/missing
+      const pruneMode: "all" | "dangling" =
+        pruneModeValue === "all" || pruneModeValue === "dangling"
+          ? pruneModeValue
+          : settings.pruneMode || "all"; // Fallback to current or default
+
       if (!dockerHost) {
         return fail(400, {
           error: "Docker host cannot be empty.",
@@ -90,6 +98,7 @@ export const actions: Actions = {
         pollingEnabled,
         pollingInterval,
         stacksDirectory,
+        pruneMode: pruneMode,
         externalServices,
       };
 
@@ -99,9 +108,10 @@ export const actions: Actions = {
       return { success: true };
     } catch (error: any) {
       console.error("Error updating settings:", error);
+      const formValues = Object.fromEntries(formData);
       return fail(500, {
         error: error.message || "Failed to save settings.",
-        values: Object.fromEntries(formData),
+        values: formValues,
       });
     }
   },

@@ -4,6 +4,7 @@ export interface SettingsData {
   pollingEnabled: boolean;
   pollingInterval: number;
   stacksDirectory: string;
+  pruneMode: "all" | "dangling";
   registryCredentials?: Array<{
     url: string;
     username: string;
