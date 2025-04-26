@@ -2,7 +2,6 @@ import { getDockerClient, dockerHost } from './core';
 import type { ContainerConfig, ContainerCreate } from '$lib/types/docker';
 import type { ServiceContainer } from '$lib/types/docker/container.type';
 
-
 /**
  * This TypeScript function lists Docker containers and returns an array of ServiceContainer objects.
  * @param [all=true] - The `all` parameter in the `listContainers` function is a boolean parameter that
@@ -14,27 +13,27 @@ import type { ServiceContainer } from '$lib/types/docker/container.type';
  * extracted from the Docker containers retrieved using the Docker client.
  */
 export async function listContainers(all = true): Promise<ServiceContainer[]> {
-    try {
-        const docker = getDockerClient();
-        const containers = await docker.listContainers({ all });
-        return containers.map(
-            (c): ServiceContainer => ({
-                id: c.Id,
-                names: c.Names,
-                name: c.Names[0]?.substring(1) || c.Id.substring(0, 12),
-                image: c.Image,
-                imageId: c.ImageID,
-                command: c.Command,
-                created: c.Created,
-                state: c.State,
-                status: c.Status,
-                ports: c.Ports
-            })
-        );
-    } catch (error: any) {
-        console.error('Docker Service: Error listing containers:', error);
-        throw new Error(`Failed to list Docker containers using host "${dockerHost}".`);
-    }
+	try {
+		const docker = getDockerClient();
+		const containers = await docker.listContainers({ all });
+		return containers.map(
+			(c): ServiceContainer => ({
+				id: c.Id,
+				names: c.Names,
+				name: c.Names[0]?.substring(1) || c.Id.substring(0, 12),
+				image: c.Image,
+				imageId: c.ImageID,
+				command: c.Command,
+				created: c.Created,
+				state: c.State,
+				status: c.Status,
+				ports: c.Ports
+			})
+		);
+	} catch (error: any) {
+		console.error('Docker Service: Error listing containers:', error);
+		throw new Error(`Failed to list Docker containers using host "${dockerHost}".`);
+	}
 }
 
 /**
@@ -49,29 +48,29 @@ export async function listContainers(all = true): Promise<ServiceContainer[]> {
  * occurs during the process, it will be caught and handled accordingly. If the
  */
 export async function getContainer(containerId: string) {
-    try {
-        const docker = getDockerClient();
-        const container = docker.getContainer(containerId);
-        const inspectData = await container.inspect();
-        return {
-            id: inspectData.Id,
-            name: inspectData.Name.substring(1),
-            created: inspectData.Created,
-            path: inspectData.Path,
-            args: inspectData.Args,
-            state: inspectData.State,
-            image: inspectData.Image,
-            config: inspectData.Config,
-            networkSettings: inspectData.NetworkSettings,
-            mounts: inspectData.Mounts
-        };
-    } catch (error: any) {
-        console.error(`Docker Service: Error getting container ${containerId}:`, error);
-        if (error.statusCode === 404) {
-            return null;
-        }
-        throw new Error(`Failed to get container details for ${containerId} using host "${dockerHost}".`);
-    }
+	try {
+		const docker = getDockerClient();
+		const container = docker.getContainer(containerId);
+		const inspectData = await container.inspect();
+		return {
+			id: inspectData.Id,
+			name: inspectData.Name.substring(1),
+			created: inspectData.Created,
+			path: inspectData.Path,
+			args: inspectData.Args,
+			state: inspectData.State,
+			image: inspectData.Image,
+			config: inspectData.Config,
+			networkSettings: inspectData.NetworkSettings,
+			mounts: inspectData.Mounts
+		};
+	} catch (error: any) {
+		console.error(`Docker Service: Error getting container ${containerId}:`, error);
+		if (error.statusCode === 404) {
+			return null;
+		}
+		throw new Error(`Failed to get container details for ${containerId} using host "${dockerHost}".`);
+	}
 }
 
 /**
@@ -224,101 +223,101 @@ export async function getContainerLogs(
  * - `created`: The timestamp indicating when the container was created
  */
 export async function createContainer(config: ContainerConfig) {
-    try {
-        const docker = getDockerClient();
+	try {
+		const docker = getDockerClient();
 
-        const containerOptions: ContainerCreate = {
-            name: config.name,
-            Image: config.image,
-            Env: config.envVars?.map((env) => `${env.key}=${env.value}`) || [],
-            Labels: config.labels || {},
-            Cmd: config.command,
-            User: config.user,
-            Healthcheck: config.healthcheck
-                ? {
-                        Test: config.healthcheck.Test,
-                        Interval: config.healthcheck.Interval,
-                        Timeout: config.healthcheck.Timeout,
-                        Retries: config.healthcheck.Retries,
-                        StartPeriod: config.healthcheck.StartPeriod
-                    }
-                : undefined,
-            HostConfig: {
-                RestartPolicy: {
-                    Name: config.restart || 'no'
-                },
-                Memory: config.memoryLimit,
-                NanoCpus: config.cpuLimit ? Math.round(config.cpuLimit * 1_000_000_000) : undefined
-            }
-        };
+		const containerOptions: ContainerCreate = {
+			name: config.name,
+			Image: config.image,
+			Env: config.envVars?.map((env) => `${env.key}=${env.value}`) || [],
+			Labels: config.labels || {},
+			Cmd: config.command,
+			User: config.user,
+			Healthcheck: config.healthcheck
+				? {
+						Test: config.healthcheck.Test,
+						Interval: config.healthcheck.Interval,
+						Timeout: config.healthcheck.Timeout,
+						Retries: config.healthcheck.Retries,
+						StartPeriod: config.healthcheck.StartPeriod
+					}
+				: undefined,
+			HostConfig: {
+				RestartPolicy: {
+					Name: config.restart || 'no'
+				},
+				Memory: config.memoryLimit,
+				NanoCpus: config.cpuLimit ? Math.round(config.cpuLimit * 1_000_000_000) : undefined
+			}
+		};
 
-        // Set up port bindings if provided
-        if (config.ports && config.ports.length > 0) {
-            containerOptions.ExposedPorts = {};
-            containerOptions.HostConfig = containerOptions.HostConfig || {};
-            containerOptions.HostConfig.PortBindings = {};
+		// Set up port bindings if provided
+		if (config.ports && config.ports.length > 0) {
+			containerOptions.ExposedPorts = {};
+			containerOptions.HostConfig = containerOptions.HostConfig || {};
+			containerOptions.HostConfig.PortBindings = {};
 
-            config.ports.forEach((port) => {
-                const containerPort = `${port.containerPort}/tcp`;
-                containerOptions.ExposedPorts![containerPort] = {};
-                containerOptions.HostConfig!.PortBindings![containerPort] = [{ HostPort: port.hostPort }];
-            });
-        }
+			config.ports.forEach((port) => {
+				const containerPort = `${port.containerPort}/tcp`;
+				containerOptions.ExposedPorts![containerPort] = {};
+				containerOptions.HostConfig!.PortBindings![containerPort] = [{ HostPort: port.hostPort }];
+			});
+		}
 
-        // Set up volume mounts if provided
-        if (config.volumes && config.volumes.length > 0) {
-            containerOptions.HostConfig = containerOptions.HostConfig || {};
-            containerOptions.HostConfig.Binds = config.volumes.map((vol) => `${vol.source}:${vol.target}${vol.readOnly ? ':ro' : ''}`);
-        }
+		// Set up volume mounts if provided
+		if (config.volumes && config.volumes.length > 0) {
+			containerOptions.HostConfig = containerOptions.HostConfig || {};
+			containerOptions.HostConfig.Binds = config.volumes.map((vol) => `${vol.source}:${vol.target}${vol.readOnly ? ':ro' : ''}`);
+		}
 
-        // Set up network if provided
-        if (config.network) {
-            containerOptions.HostConfig = containerOptions.HostConfig || {};
-            if (!containerOptions.NetworkingConfig) {
-                containerOptions.HostConfig.NetworkMode = config.network;
-            }
+		// Set up network if provided
+		if (config.network) {
+			containerOptions.HostConfig = containerOptions.HostConfig || {};
+			if (!containerOptions.NetworkingConfig) {
+				containerOptions.HostConfig.NetworkMode = config.network;
+			}
 
-            if (config.networkConfig && config.network !== 'host' && config.network !== 'none' && config.network !== 'bridge') {
-                containerOptions.NetworkingConfig = {
-                    EndpointsConfig: {
-                        [config.network]: {
-                            IPAMConfig: {
-                                IPv4Address: config.networkConfig.ipv4Address || undefined,
-                                IPv6Address: config.networkConfig.ipv6Address || undefined
-                            }
-                        }
-                    }
-                };
-                delete containerOptions.HostConfig.NetworkMode;
-            }
-        }
+			if (config.networkConfig && config.network !== 'host' && config.network !== 'none' && config.network !== 'bridge') {
+				containerOptions.NetworkingConfig = {
+					EndpointsConfig: {
+						[config.network]: {
+							IPAMConfig: {
+								IPv4Address: config.networkConfig.ipv4Address || undefined,
+								IPv6Address: config.networkConfig.ipv6Address || undefined
+							}
+						}
+					}
+				};
+				containerOptions.HostConfig.NetworkMode = undefined;
+			}
+		}
 
-        // Create and start the container
-        const container = await docker.createContainer(containerOptions);
-        await container.start();
+		// Create and start the container
+		const container = await docker.createContainer(containerOptions);
+		await container.start();
 
-        // Get the container details
-        const containerInfo = await container.inspect();
+		// Get the container details
+		const containerInfo = await container.inspect();
 
-        return {
-            id: containerInfo.Id,
-            name: containerInfo.Name.substring(1),
-            state: containerInfo.State.Status,
-            status: containerInfo.State.Running ? 'running' : 'stopped',
-            created: containerInfo.Created
-        };
-    } catch (error: any) {
-        console.error('Error creating container:', error);
-        if (error.message && error.message.includes('IPAMConfig')) {
-            throw new Error(`Failed to create container: Invalid IP address configuration for network "${config.network}". ${error.message}`);
-        }
-        // Add more specific error handling for resource limits if needed
-        if (error.message && error.message.includes('NanoCpus')) {
-            throw new Error(`Invalid CPU limit specified: ${error.message}`);
-        }
-        if (error.message && error.message.includes('Memory')) {
-            throw new Error(`Invalid Memory limit specified: ${error.message}`);
-        }
-        throw new Error(`Failed to create container with image "${config.image}": ${error.message}`);
-    }
+		return {
+			id: containerInfo.Id,
+			name: containerInfo.Name.substring(1),
+			state: containerInfo.State.Status,
+			status: containerInfo.State.Running ? 'running' : 'stopped',
+			created: containerInfo.Created
+		};
+	} catch (error: any) {
+		console.error('Error creating container:', error);
+		if (error.message && error.message.includes('IPAMConfig')) {
+			throw new Error(`Failed to create container: Invalid IP address configuration for network "${config.network}". ${error.message}`);
+		}
+		// Add more specific error handling for resource limits if needed
+		if (error.message && error.message.includes('NanoCpus')) {
+			throw new Error(`Invalid CPU limit specified: ${error.message}`);
+		}
+		if (error.message && error.message.includes('Memory')) {
+			throw new Error(`Invalid Memory limit specified: ${error.message}`);
+		}
+		throw new Error(`Failed to create container with image "${config.image}": ${error.message}`);
+	}
 }
