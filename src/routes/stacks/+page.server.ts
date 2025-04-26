@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { loadComposeStacks, discoverExternalStacks } from '$lib/services/compose';
+import { loadComposeStacks, discoverExternalStacks } from '$lib/services/docker/stack-service';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load() {

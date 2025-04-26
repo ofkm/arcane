@@ -1,5 +1,5 @@
-import { error, redirect } from '@sveltejs/kit';
-import { getStack, updateStack, startStack, stopStack, restartStack, removeStack } from '$lib/services/compose';
+import { error } from '@sveltejs/kit';
+import { getStack, updateStack, startStack, stopStack, restartStack, removeStack } from '$lib/services/docker/stack-service';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ params }) {

@@ -1,6 +1,8 @@
 import type { PageServerLoad } from './$types';
-import { getDockerInfo, listContainers, listImages } from '$lib/services/docker-service';
-import type { ServiceContainer, ServiceImage } from '$lib/services/docker-service';
+import { listContainers } from '$lib/services/docker/container-service';
+import { getDockerInfo } from '$lib/services/docker/core';
+import { listImages } from '$lib/services/docker/image-service';
+import type { ServiceContainer, ServiceImage } from '$lib/types/docker';
 
 // Infer the Docker Info type from the return type of getDockerInfo
 type DockerInfoType = Awaited<ReturnType<typeof getDockerInfo>>;

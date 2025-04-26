@@ -1,4 +1,4 @@
-import { initComposeService } from '$lib/services/compose';
+import { initComposeService } from '$lib/services/docker/stack-service';
 
 // Initialize needed services
 initComposeService().catch((err) => {

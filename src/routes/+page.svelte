@@ -7,7 +7,6 @@
 	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { formatBytes } from '$lib/utils';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 

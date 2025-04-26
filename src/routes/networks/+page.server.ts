@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
-import { listNetworks } from '$lib/services/docker-service';
-import type { ServiceNetwork } from '$lib/services/docker-service';
+import { listNetworks } from '$lib/services/docker/network-service';
+import type { ServiceNetwork } from '$lib/types/docker';
 
 // Define the shape of the data returned by the load function
 type NetworkPageData = {
