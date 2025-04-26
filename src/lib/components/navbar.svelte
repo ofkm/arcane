@@ -104,7 +104,7 @@
   >
     <div class="flex-shrink-0">
       <img
-        src="/img/nautix_logo_new.png"
+        src="/img/arcane.png"
         alt="Arcane"
         class="h-15 w-15"
         width="30"
