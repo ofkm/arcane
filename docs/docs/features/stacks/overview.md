@@ -39,7 +39,7 @@ With the Stacks feature, you can:
 Managed stack definitions (`docker-compose.yml` and `meta.json`) are stored within the directory specified by the `stacksDirectory` setting in your `app-settings.json`. By default, this is `/app/data/stacks` inside the Arcane container.
 
 :::tip Persistence
-To ensure your stack definitions are not lost when the Arcane container is recreated, it is crucial to mount the `/app/data` directory (or at least `/app/data/stacks`) as a volume, as shown in the recommended [Docker Compose setup](../getting-started/quickstart.md).
+To ensure your stack definitions are not lost when the Arcane container is recreated, it is crucial to mount the `/app/data` directory (or at least `/app/data/stacks`) as a volume, as shown in the recommended [Docker Compose setup](../getting-started/quickstart).
 :::
 
 ## Next Steps
