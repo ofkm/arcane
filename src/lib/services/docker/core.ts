@@ -22,30 +22,13 @@ export async function getDockerInfo() {
  * created or already existing based on the condition check for `dockerClient`.
  */
 export function getDockerClient(): Docker {
-    if (!dockerClient) {
-        const connectionOpts: Record<string, any> = {};
+	if (!dockerClient) {
+		const connectionOpts = createConnectionOptions(dockerHost);
 
-        // Parse the dockerHost to get the proper connection options
-        if (dockerHost.startsWith('unix://')) {
-            connectionOpts.socketPath = dockerHost.replace('unix://', '');
-        } else if (dockerHost.startsWith('tcp://')) {
-            const url = new URL(dockerHost);
-            connectionOpts.host = url.hostname;
-            connectionOpts.port = Number.parseInt(url.port || '2375', 10);
-        } else if (dockerHost.startsWith('https://')) {
-            const url = new URL(dockerHost);
-            connectionOpts.host = url.hostname;
-            connectionOpts.port = Number.parseInt(url.port || '2376', 10);
-            connectionOpts.protocol = 'https';
-        } else {
-            // If it doesn't have a prefix, assume it's a direct socket path
-            connectionOpts.socketPath = dockerHost;
-        }
-
-        dockerClient = new Docker(connectionOpts);
-        console.log(`Initialized Docker client with host: ${dockerHost}`, connectionOpts);
-    }
-    return dockerClient;
+		dockerClient = new Docker(connectionOpts);
+		console.log(`Initialized Docker client with host: ${dockerHost}`, connectionOpts);
+	}
+	return dockerClient;
 }
 
 /**
@@ -58,26 +41,26 @@ export function getDockerClient(): Docker {
  * initialized with the connection options provided in the `options` parameter.
  */
 export function initializeDocker(options: DockerConnectionOptions): Docker {
-    const connectionOpts: Record<string, any> = {};
+	const connectionOpts: Record<string, any> = {};
 
-    // Handle different connection types (socket, tcp, etc.)
-    if (options.socketPath) {
-        connectionOpts.socketPath = options.socketPath;
-        dockerHost = options.socketPath;
-    } else if (options.host && options.port) {
-        connectionOpts.host = options.host;
-        connectionOpts.port = options.port;
-        dockerHost = `${options.host}:${options.port}`;
+	// Handle different connection types (socket, tcp, etc.)
+	if (options.socketPath) {
+		connectionOpts.socketPath = options.socketPath;
+		dockerHost = options.socketPath;
+	} else if (options.host && options.port) {
+		connectionOpts.host = options.host;
+		connectionOpts.port = options.port;
+		dockerHost = `${options.host}:${options.port}`;
 
-        if (options.ca || options.cert || options.key) {
-            connectionOpts.ca = options.ca;
-            connectionOpts.cert = options.cert;
-            connectionOpts.key = options.key;
-        }
-    }
+		if (options.ca || options.cert || options.key) {
+			connectionOpts.ca = options.ca;
+			connectionOpts.cert = options.cert;
+			connectionOpts.key = options.key;
+		}
+	}
 
-    dockerClient = new Docker(connectionOpts);
-    return dockerClient;
+	dockerClient = new Docker(connectionOpts);
+	return dockerClient;
 }
 
 /**
@@ -89,42 +72,22 @@ export function initializeDocker(options: DockerConnectionOptions): Docker {
  * returns early without establishing a new Docker connection.
  */
 export function updateDockerConnection(host: string): void {
-    try {
-        // Only create a new connection if we have a valid host
-        if (!host) {
-            console.warn('No Docker host specified, connection not established');
-            return;
-        }
+	try {
+		// Only create a new connection if we have a valid host
+		if (!host) {
+			console.warn('No Docker host specified, connection not established');
+			return;
+		}
 
-        console.log(`Connecting to Docker at ${host}`);
-        let connectionOpts: any = {};
+		console.log(`Connecting to Docker at ${host}`);
+		const connectionOpts = createConnectionOptions(host);
 
-        // Parse the host string to determine connection type
-        if (host.startsWith('unix://')) {
-            // Unix socket connection - remove the unix:// prefix
-            connectionOpts.socketPath = host.replace('unix://', '');
-        } else if (host.startsWith('tcp://')) {
-            // TCP connection (no TLS)
-            const url = new URL(host);
-            connectionOpts.host = url.hostname;
-            connectionOpts.port = parseInt(url.port || '2375', 10);
-        } else if (host.startsWith('https://')) {
-            // HTTPS connection (TLS)
-            const url = new URL(host);
-            connectionOpts.host = url.hostname;
-            connectionOpts.port = parseInt(url.port || '2376', 10);
-            connectionOpts.protocol = 'https';
-        } else {
-            // If it doesn't have a prefix, assume it's a direct socket path
-            connectionOpts.socketPath = host;
-        }
-
-        dockerClient = new Docker(connectionOpts);
-        dockerHost = host;
-        console.log('Docker connection updated with options:', connectionOpts);
-    } catch (error) {
-        console.error('Error connecting to Docker:', error);
-    }
+		dockerClient = new Docker(connectionOpts);
+		dockerHost = host;
+		console.log('Docker connection updated with options:', connectionOpts);
+	} catch (error) {
+		console.error('Error connecting to Docker:', error);
+	}
 }
 
 /**
@@ -143,6 +106,37 @@ export async function testDockerConnection(): Promise<boolean> {
 		console.error('Docker connection test failed:', err);
 		return false;
 	}
+}
+
+/**
+ * The function `createConnectionOptions` parses a host string to create connection options for
+ * different types of connections such as Unix socket, TCP, and HTTPS.
+ * @param {string} host - The `createConnectionOptions` function takes a `host` parameter as input and
+ * based on the format of the host, it constructs connection options for different types of connections
+ * like Unix socket, TCP, or HTTPS.
+ * @returns The `createConnectionOptions` function returns a record object containing connection
+ * options based on the provided `host` parameter. The connection options include `socketPath`, `host`,
+ * `port`, and `protocol` properties depending on the format of the `host` string.
+ */
+function createConnectionOptions(host: string): Record<string, any> {
+	const connectionOpts: Record<string, any> = {};
+
+	if (host.startsWith('unix://')) {
+		connectionOpts.socketPath = host.replace('unix://', '');
+	} else if (host.startsWith('tcp://')) {
+		const url = new URL(host);
+		connectionOpts.host = url.hostname;
+		connectionOpts.port = Number.parseInt(url.port || '2375', 10);
+	} else if (host.startsWith('https://')) {
+		const url = new URL(host);
+		connectionOpts.host = url.hostname;
+		connectionOpts.port = Number.parseInt(url.port || '2376', 10);
+		connectionOpts.protocol = 'https';
+	} else {
+		connectionOpts.socketPath = host;
+	}
+
+	return connectionOpts;
 }
 
 /* The statement `export default getDockerClient;` is exporting the `getDockerClient` function as the
