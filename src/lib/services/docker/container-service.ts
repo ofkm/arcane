@@ -1,6 +1,5 @@
-import type Docker from 'dockerode';
 import { getDockerClient, dockerHost } from './core';
-import type { ContainerConfig, ContainerCreate, ContainerDetails } from '$lib/types/docker';
+import type { ContainerConfig, ContainerCreate } from '$lib/types/docker';
 import type { ServiceContainer } from '$lib/types/docker/container.type';
 
 
