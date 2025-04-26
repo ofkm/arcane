@@ -1,6 +1,6 @@
 import Docker from "dockerode";
 import type { VolumeInspectInfo, VolumeCreateOptions } from "dockerode";
-import type { NetworkInspectInfo } from "dockerode"; // Add NetworkInspectInfo
+import type { NetworkInspectInfo, NetworkCreateOptions } from "dockerode"; // Add NetworkCreateOptions
 import { getSettings } from "$lib/services/settings-service";
 import type {
   DockerConnectionOptions,
@@ -705,6 +705,50 @@ export async function removeNetwork(networkId: string): Promise<void> {
     }
     throw new Error(
       `Failed to remove network "${networkId}" using host "${dockerHost}". ${
+        error.message || error.reason || ""
+      }`
+    );
+  }
+}
+
+/**
+ * Creates a Docker network.
+ * @param options - Options for creating the network (e.g., Name, Driver, Labels, CheckDuplicate, Internal, IPAM).
+ */
+export async function createNetwork(
+  options: NetworkCreateOptions
+): Promise<NetworkInspectInfo> {
+  try {
+    const docker = getDockerClient();
+    console.log(
+      `Docker Service: Creating network "${options.Name}"...`,
+      options
+    );
+
+    // Dockerode's createNetwork returns the Network object, we need to inspect it after creation
+    const network = await docker.createNetwork(options);
+
+    // Inspect the newly created network to get full details
+    const inspectInfo = await network.inspect();
+
+    console.log(
+      `Docker Service: Network "${options.Name}" (ID: ${inspectInfo.Id}) created successfully.`
+    );
+    return inspectInfo; // Return the detailed inspect info
+  } catch (error: any) {
+    console.error(
+      `Docker Service: Error creating network "${options.Name}":`,
+      error
+    );
+    // Check for specific Docker errors
+    if (error.statusCode === 409) {
+      // Could be duplicate name if CheckDuplicate was true, or other conflicts
+      throw new Error(
+        `Network "${options.Name}" may already exist or conflict with an existing configuration.`
+      );
+    }
+    throw new Error(
+      `Failed to create network "${options.Name}" using host "${dockerHost}". ${
         error.message || error.reason || ""
       }`
     );

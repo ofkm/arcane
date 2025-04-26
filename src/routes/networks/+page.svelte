@@ -19,6 +19,8 @@
   import { cn } from "$lib/utils";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
+  import CreateNetworkDialog from "./CreateNetworkDialog.svelte";
+  import type { NetworkCreateOptions } from "dockerode";
 
   let { data }: { data: PageData } = $props();
   let networks = $state(data.networks || []);
@@ -28,6 +30,8 @@
   let isRefreshing = $state(false);
   let isDeletingSelected = $state(false);
   let isConfirmDeleteDialogOpen = $state(false);
+  let isCreateDialogOpen = $state(false);
+  let isCreatingNetwork = $state(false);
 
   $effect(() => {
     networks = data.networks || [];
@@ -42,8 +46,40 @@
     networks?.filter((n) => n.driver === "overlay").length || 0
   );
 
-  function createNetwork() {
-    toast.info("Create network functionality not yet implemented.");
+  function openCreateDialog() {
+    isCreateDialogOpen = true;
+  }
+
+  async function handleCreateNetworkSubmit(options: NetworkCreateOptions) {
+    isCreatingNetwork = true;
+    try {
+      const response = await fetch("/api/networks/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(options),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      toast.success(
+        result.message || `Network "${result.network.name}" created.`
+      );
+      isCreateDialogOpen = false;
+      setTimeout(async () => {
+        await refreshData();
+      }, 300);
+    } catch (err: any) {
+      console.error("Failed to create network:", err);
+      toast.error(`Failed to create network: ${err.message}`);
+    } finally {
+      isCreatingNetwork = false;
+    }
   }
 
   async function refreshData() {
@@ -122,7 +158,7 @@
     </div>
     <div class="flex items-center gap-2">
       <Button
-        variant="outline"
+        variant="secondary"
         size="icon"
         onclick={refreshData}
         disabled={isRefreshing}
@@ -130,8 +166,12 @@
         <RefreshCw class={cn("h-4 w-4", isRefreshing && "animate-spin")} />
         <span class="sr-only">Refresh</span>
       </Button>
-      <Button variant="outline" size="sm" onclick={createNetwork}>
-        <Plus class="w-4 h-4 mr-2" />
+      <Button
+        variant="secondary"
+        onclick={openCreateDialog}
+        disabled={isCreatingNetwork}
+      >
+        <Plus class="w-4 h-4" />
         Create Network
       </Button>
     </div>
@@ -263,7 +303,7 @@
               <RefreshCw class="h-4 w-4" />
               Refresh
             </Button>
-            <Button variant="outline" size="sm" onclick={createNetwork}>
+            <Button variant="outline" size="sm" onclick={openCreateDialog}>
               <Plus class="h-4 w-4" />
               Create Network
             </Button>
@@ -272,6 +312,12 @@
       {/if}
     </Card.Content>
   </Card.Root>
+
+  <CreateNetworkDialog
+    bind:open={isCreateDialogOpen}
+    isCreating={isCreatingNetwork}
+    onSubmit={handleCreateNetworkSubmit}
+  />
 
   <Dialog.Root bind:open={isConfirmDeleteDialogOpen}>
     <Dialog.Content>
