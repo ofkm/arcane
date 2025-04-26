@@ -695,6 +695,10 @@ export async function listNetworks(): Promise<ServiceNetwork[]> {
  */
 export async function removeNetwork(networkId: string): Promise<void> {
   try {
++    const DEFAULT_NETWORKS = new Set(["host", "bridge", "none", "ingress"]);
++    if (DEFAULT_NETWORKS.has(networkId)) {
++      throw new Error(`Network "${networkId}" is managed by Docker and cannot be removed.`);
++    }
     const docker = getDockerClient();
     const network = docker.getNetwork(networkId);
     await network.remove();
