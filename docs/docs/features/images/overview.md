@@ -37,4 +37,4 @@ Arcane represents image information using a structure defined in `image.type.ts`
 
 ## Next Steps
 
-- Learn how to perform specific actions in [Managing Images](./managing-images.md) (You'll need to create this file).
+- Learn how to perform specific actions in [Managing Images](./managing-images).

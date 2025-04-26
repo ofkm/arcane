@@ -44,4 +44,4 @@ To ensure your stack definitions are not lost when the Arcane container is recre
 
 ## Next Steps
 
-- Learn how to [Create and Manage Stacks](./managing-stacks.md) (You'll need to create this file).
+- Learn how to [Create and Manage Stacks](./managing-stacks).
