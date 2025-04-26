@@ -1,0 +1,79 @@
+/**
+ * Styles specifically for documentation pages
+ */
+
+/* Add a subtle background to the docs section */
+.docs-wrapper {
+	background-image: radial-gradient(circle at 25% 5%, rgba(139, 92, 246, 0.05) 0%, transparent 20%), radial-gradient(circle at 75% 80%, rgba(139, 92, 246, 0.07) 0%, transparent 25%);
+	min-height: 100vh;
+}
+
+/* Style for code blocks - add a fancy border */
+.theme-code-block pre {
+	border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+/* Make blockquotes more noticeable */
+blockquote {
+	margin: 1.5rem 0;
+	padding: 1rem 1.5rem;
+	border-left: 4px solid var(--ifm-color-primary);
+}
+
+/* Style for inline code */
+code:not([class*='language-']) {
+	background: rgba(139, 92, 246, 0.1);
+	border-radius: 3px;
+	padding: 0.2rem 0.4rem;
+	font-size: 85%;
+}
+
+/* Style table of contents */
+.table-of-contents {
+	padding: 1rem;
+	border-radius: 0.5rem;
+	background-color: var(--arcane-glass-bg);
+	backdrop-filter: blur(5px);
+	-webkit-backdrop-filter: blur(5px);
+	border: 1px solid var(--arcane-glass-border);
+}
+
+/* Special callout for important notes */
+.theme-admonition-note,
+.alert--info {
+	background: rgba(139, 92, 246, 0.08);
+	border-left-color: var(--ifm-color-primary);
+}
+
+/* Enhance the sidebar for better distinction */
+.theme-doc-sidebar-menu {
+	padding: 0.5rem;
+}
+
+/* Creating card-like elements for sections */
+.theme-doc-markdown > div > h2 {
+	margin-top: 3rem;
+	padding-bottom: 0.5rem;
+}
+
+/* Add a decorative badge for new/important features */
+.badge {
+	display: inline-block;
+	padding: 0.25rem 0.5rem;
+	margin-left: 0.5rem;
+	border-radius: 999px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	vertical-align: middle;
+}
+
+.badge--new {
+	background: linear-gradient(135deg, #9333ea, #6366f1);
+	color: white;
+}
+
+.badge--beta {
+	background: linear-gradient(135deg, #f59e0b, #ef4444);
+	color: white;
+}

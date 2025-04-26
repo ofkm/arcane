@@ -1,47 +1,42 @@
 ---
 sidebar_position: 1
+slug: /
 ---
 
-# Tutorial Intro
+# Introduction to Arcane
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Welcome to the documentation for Arcane!
+
+Arcane is a **Simple and Elegant Docker Management UI** written in Typescript and SvelteKit. It aims to provide an intuitive interface for managing your Docker containers, images, volumes, and networks.
+
+## Key Features
+
+- **Modern UI Interface** - Clean, intuitive design that makes Docker management a breeze
+- **Real-time Monitoring** - Live updates of container status, resource usage, and logs
+- **Container Management** - Start, stop, restart, and inspect containers with ease
+- **Image Management** - Pull, build, and manage Docker images
+- **Network Configuration** - Create and configure Docker networks
+- **Volume Management** - Create and manage persistent data with Docker volumes
+- **Resource Visualization** - Visual graphs for CPU, memory, and network usage
+- **Dark & Light Themes** - Supports both light and dark mode for comfortable viewing
 
 ## Getting Started
 
-Get started by **creating a new site**.
+To get started with Arcane, head over to the **[Installation](./installation)** guide.
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
-
-### What you'll need
-
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
-
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
-```
-
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+<div style={{
+  display: 'flex',
+  alignItems: 'center',
+  padding: '1rem',
+  backgroundColor: 'rgba(139, 92, 246, 0.1)',
+  borderRadius: '0.5rem',
+  border: '1px solid rgba(139, 92, 246, 0.2)',
+  marginTop: '2rem'
+}}>
+  <div style={{ marginRight: '1rem', color: 'var(--ifm-color-primary)' }}>
+    💡
+  </div>
+  <div>
+    <strong>Pro Tip:</strong> Arcane works best with Docker version 20.10.0 or higher. Check your version with <code>docker --version</code>.
+  </div>
+</div>

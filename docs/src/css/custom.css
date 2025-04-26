@@ -6,25 +6,167 @@
 
 /* You can override the default Infima variables here. */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
-  --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+	/* Using Arcane's light mode primary */
+	--ifm-color-primary: hsl(262.1 83.3% 57.8%);
+	--ifm-color-primary-dark: hsl(262.1 83.3% 52.8%); /* Slightly darker */
+	--ifm-color-primary-darker: hsl(262.1 83.3% 47.8%); /* Darker */
+	--ifm-color-primary-darkest: hsl(262.1 83.3% 40.8%); /* Much darker */
+	--ifm-color-primary-light: hsl(262.1 83.3% 62.8%); /* Slightly lighter */
+	--ifm-color-primary-lighter: hsl(262.1 83.3% 67.8%); /* Lighter */
+	--ifm-color-primary-lightest: hsl(262.1 83.3% 74.8%); /* Much lighter */
+
+	--ifm-code-font-size: 95%;
+	--docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+	/* Custom Arcane theme variables */
+	--arcane-glass-bg: rgba(255, 255, 255, 0.7);
+	--arcane-glass-border: rgba(139, 92, 246, 0.2);
+	--arcane-glass-shadow: 0 4px 20px rgba(139, 92, 246, 0.1);
+	--arcane-gradient: linear-gradient(135deg, hsl(262.1, 83.3%, 57.8%), hsl(263.4, 70%, 50.4%));
+
+	/* Override some Docusaurus defaults */
+	--ifm-navbar-background-color: var(--arcane-glass-bg);
+	--ifm-toc-border-color: var(--arcane-glass-border);
+	--ifm-font-family-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	--ifm-heading-font-weight: 600;
+	--ifm-global-radius: 0.5rem;
+	--ifm-navbar-shadow: var(--arcane-glass-shadow);
+
+	/* Adjust card styling */
+	--ifm-card-background-color: var(--arcane-glass-bg);
+	--ifm-card-border-radius: 0.75rem;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+	/* Using Arcane's dark mode primary */
+	--ifm-color-primary: hsl(263.4 70% 50.4%);
+	--ifm-color-primary-dark: hsl(263.4 70% 45.4%); /* Slightly darker */
+	--ifm-color-primary-darker: hsl(263.4 70% 40.4%); /* Darker */
+	--ifm-color-primary-darkest: hsl(263.4 70% 33.4%); /* Much darker */
+	--ifm-color-primary-light: hsl(263.4 70% 55.4%); /* Slightly lighter */
+	--ifm-color-primary-lighter: hsl(263.4 70% 60.4%); /* Lighter */
+	--ifm-color-primary-lightest: hsl(263.4 70% 67.4%); /* Much lighter */
+
+	--docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+
+	/* Custom dark theme overrides */
+	--arcane-glass-bg: rgba(30, 30, 40, 0.7);
+	--arcane-glass-border: rgba(139, 92, 246, 0.2);
+	--arcane-glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Apply glassmorphism to the navbar */
+.navbar {
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border-bottom: 1px solid var(--arcane-glass-border);
+	z-index: 100;
+}
+
+/* Apply glassmorphism to the sidebar */
+.theme-doc-sidebar-container {
+	background-color: var(--arcane-glass-bg);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border-right: 1px solid var(--arcane-glass-border);
+}
+
+/* Style the main documentation container */
+.theme-doc-markdown {
+	font-size: 1rem;
+	line-height: 1.7;
+}
+
+/* Style code blocks */
+.theme-code-block {
+	border-radius: 0.5rem;
+	box-shadow: var(--arcane-glass-shadow);
+}
+
+/* Style admonitions (info, warning boxes) */
+.admonition {
+	border-radius: 0.5rem;
+	border: 1px solid var(--arcane-glass-border);
+	background-color: var(--arcane-glass-bg);
+	backdrop-filter: blur(5px);
+	-webkit-backdrop-filter: blur(5px);
+}
+
+/* Style headings with gradient */
+.theme-doc-markdown h1,
+.theme-doc-markdown h2 {
+	background: var(--arcane-gradient);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	display: inline-block;
+	font-weight: 700;
+}
+
+/* Make tables look nicer */
+.table-of-contents {
+	font-size: 0.85rem;
+}
+
+.table-of-contents__link:hover {
+	background: rgba(139, 92, 246, 0.08);
+	border-radius: 0.25rem;
+}
+
+/* Style pagination buttons */
+.pagination-nav__link {
+	border: 1px solid var(--arcane-glass-border);
+	background-color: var(--arcane-glass-bg);
+	backdrop-filter: blur(5px);
+	-webkit-backdrop-filter: blur(5px);
+	transition: all 0.2s ease;
+}
+
+.pagination-nav__link:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--arcane-glass-shadow);
+	border-color: var(--ifm-color-primary-light);
+}
+
+/* Improving sidebar item styling */
+.menu__link {
+	border-radius: 0.25rem;
+	transition: all 0.2s ease;
+}
+
+.menu__link:hover {
+	background-color: rgba(139, 92, 246, 0.08);
+	transform: translateX(4px);
+}
+
+.menu__link--active {
+	font-weight: 600;
+}
+
+/* Style blockquotes */
+blockquote {
+	border-left: 3px solid var(--ifm-color-primary);
+	background-color: rgba(139, 92, 246, 0.05);
+	border-radius: 0 0.25rem 0.25rem 0;
+}
+
+/* Style tabs component */
+.tabs {
+	border-radius: 0.5rem;
+	overflow: hidden;
+}
+
+.tabs__item {
+	padding: 0.75rem 1rem;
+}
+
+.tabs__item--active {
+	border-bottom: 2px solid var(--ifm-color-primary);
+	font-weight: 600;
+}
+
+/* Add a subtle gradient to the hero section */
+.hero {
+	background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(107, 33, 168, 0.05) 100%);
 }

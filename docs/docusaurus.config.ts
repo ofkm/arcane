@@ -56,7 +56,7 @@ const config: Config = {
 					onUntruncatedBlogPosts: 'warn'
 				},
 				theme: {
-					customCss: './src/css/custom.css'
+					customCss: ['./src/css/custom.css', './src/css/docs.css']
 				}
 			} satisfies Preset.Options
 		]
@@ -74,9 +74,8 @@ const config: Config = {
 					type: 'docSidebar',
 					sidebarId: 'tutorialSidebar',
 					position: 'left',
-					label: 'Tutorial'
+					label: 'Docs'
 				},
-				{ to: '/release-notes', label: 'Release Notes', position: 'left' },
 				{
 					href: 'https://github.com/ofkm/arcane',
 					label: 'GitHub',

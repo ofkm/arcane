@@ -1,0 +1,52 @@
+.featureCard {
+	padding: 1.5rem;
+	border-radius: 0.75rem;
+	background: rgba(255, 255, 255, 0.05);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid rgba(139, 92, 246, 0.1);
+	transition: all 0.3s ease;
+	height: 100%;
+}
+
+[data-theme='dark'] .featureCard {
+	background: rgba(0, 0, 0, 0.2);
+}
+
+.featureCard:hover {
+	transform: translateY(-5px);
+	box-shadow:
+		0 20px 25px -5px rgba(139, 92, 246, 0.1),
+		0 10px 10px -5px rgba(139, 92, 246, 0.04);
+	border-color: rgba(139, 92, 246, 0.3);
+}
+
+.featureIconWrapper {
+	margin-bottom: 1.5rem;
+	width: 60px;
+	height: 60px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 100%);
+}
+
+.featureIcon {
+	width: 32px;
+	height: 32px;
+	color: var(--ifm-color-primary);
+}
+
+.featureTitle {
+	margin-bottom: 1rem;
+	font-size: 1.25rem;
+	font-weight: 600;
+}
+
+.featureDescription {
+	color: var(--ifm-color-emphasis-700);
+	margin-bottom: 0;
+	font-size: 0.9rem;
+	line-height: 1.6;
+}

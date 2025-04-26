@@ -1,0 +1,21 @@
+---
+sidebar_position: 2
+title: Features
+---
+
+import FeatureCard from '@site/src/components/FeatureCard';
+import ContainersIcon from '@site/src/components/icons/ContainersIcon';
+import ImagesIcon from '@site/src/components/icons/ImagesIcon';
+import NetworkIcon from '@site/src/components/icons/NetworkIcon';
+
+# Arcane Features
+
+Arcane provides a comprehensive set of features for managing your Docker environments.
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', marginTop: '2rem' }}>
+	<FeatureCard title="Container Management" description="Start, stop, and inspect containers with an intuitive interface." icon={<ContainersIcon />} />
+
+	<FeatureCard title="Image Handling" description="Browse and manage your Docker images. Pull from registries, build new images, and clean up unused ones." icon={<ImagesIcon />} />
+
+	<FeatureCard title="Network Visualization" description="Visualize and configure Docker networks to understand container communication." icon={<NetworkIcon />} />
+</div>

@@ -1,23 +1,427 @@
-/**
- * CSS files with the .module.css suffix will be treated as CSS modules
- * and scoped locally.
- */
-
 .heroBanner {
-  padding: 4rem 0;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
+	position: relative;
+	padding: 6rem 0;
+	text-align: center;
+	overflow: hidden;
+	min-height: 85vh;
+	display: flex;
+	align-items: center;
 }
 
-@media screen and (max-width: 996px) {
-  .heroBanner {
-    padding: 2rem;
-  }
+.heroBackground {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: -1;
+}
+
+.heroGradient {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(107, 33, 168, 0.1) 100%);
+}
+
+.heroGlass {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+}
+
+.heroContent {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 4rem;
+	max-width: 1200px;
+	margin: 0 auto;
+}
+
+.heroText {
+	flex: 1;
+	text-align: left;
+	padding-right: 2rem;
+}
+
+.heroTitle {
+	font-size: 4rem;
+	font-weight: 700;
+	margin-bottom: 1rem;
+	background: linear-gradient(to right, hsl(262.1, 83.3%, 57.8%), hsl(263.4, 70%, 50.4%));
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+.heroSubtitle {
+	font-size: 1.5rem;
+	margin-bottom: 2rem;
+	font-weight: 400;
+	color: var(--ifm-color-emphasis-700);
+}
+
+.heroImage {
+	flex: 1;
+	display: flex;
+	justify-content: flex-end;
 }
 
 .buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.buttonPrimary {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.75rem 1.5rem;
+	border-radius: 0.5rem;
+	background: linear-gradient(to right, hsl(262.1, 83.3%, 57.8%), hsl(263.4, 70%, 50.4%));
+	color: white;
+	font-weight: 500;
+	text-decoration: none;
+	transition: all 0.2s ease;
+	box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
+}
+
+.buttonPrimary:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+	text-decoration: none;
+	color: white;
+}
+
+.buttonSecondary {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.75rem 1.5rem;
+	border-radius: 0.5rem;
+	background: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(139, 92, 246, 0.2);
+	color: var(--ifm-color-emphasis-800);
+	font-weight: 500;
+	text-decoration: none;
+	transition: all 0.2s ease;
+}
+
+.buttonSecondary:hover {
+	background: rgba(255, 255, 255, 0.2);
+	text-decoration: none;
+}
+
+/* Mockup styling */
+.mockupWindow {
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 0.75rem;
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid rgba(139, 92, 246, 0.2);
+	width: 100%;
+	box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+	overflow: hidden;
+	max-width: 600px;
+}
+
+.mockupHeader {
+	padding: 0.75rem 1.25rem;
+	background: rgba(255, 255, 255, 0.1);
+	display: flex;
+	align-items: center;
+	border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.mockupButtons {
+	display: flex;
+	gap: 0.5rem;
+	margin-right: auto;
+}
+
+.mockupButtonRed,
+.mockupButtonYellow,
+.mockupButtonGreen {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+}
+
+.mockupButtonRed {
+	background-color: #ff5f56;
+}
+
+.mockupButtonYellow {
+	background-color: #ffbd2e;
+}
+
+.mockupButtonGreen {
+	background-color: #27c93f;
+}
+
+.mockupTitle {
+	font-size: 0.875rem;
+	color: var(--ifm-color-emphasis-700);
+}
+
+.mockupContent {
+	padding: 1.5rem;
+	min-height: 320px;
+}
+
+.mockupInterface {
+	display: flex;
+	gap: 1rem;
+	height: 100%;
+}
+
+.mockupSidebar {
+	width: 60px;
+	background: rgba(139, 92, 246, 0.1);
+	border-radius: 0.5rem;
+	padding: 1rem 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1rem;
+}
+
+.mockupSidebarItem {
+	width: 32px;
+	height: 32px;
+	border-radius: 0.5rem;
+	background: rgba(139, 92, 246, 0.2);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.mockupIcon {
+	width: 16px;
+	height: 16px;
+	border-radius: 2px;
+	background: rgba(139, 92, 246, 0.7);
+}
+
+.mockupMain {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	border-radius: 0.5rem;
+	overflow: hidden;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.mockupMain .mockupHeader {
+	background: rgba(139, 92, 246, 0.08);
+	padding: 0.75rem 1rem;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.mockupHeaderTitle {
+	font-weight: 500;
+	font-size: 0.9rem;
+	color: var(--ifm-color-emphasis-800);
+}
+
+.mockupHeaderActions {
+	display: flex;
+	gap: 0.5rem;
+}
+
+.mockupButton {
+	width: 24px;
+	height: 24px;
+	border-radius: 4px;
+	background: rgba(139, 92, 246, 0.2);
+}
+
+.mockupContainers {
+	padding: 1rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.mockupContainer {
+	padding: 0.75rem;
+	border-radius: 0.5rem;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(139, 92, 246, 0.1);
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.mockupContainerStatus {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+}
+
+.mockupContainer:nth-child(1) .mockupContainerStatus {
+	background-color: #27c93f; /* Running */
+}
+
+.mockupContainer:nth-child(2) .mockupContainerStatus {
+	background-color: #27c93f; /* Running */
+}
+
+.mockupContainer:nth-child(3) .mockupContainerStatus {
+	background-color: #ffbd2e; /* Pending/Warning */
+}
+
+.mockupContainerInfo {
+	flex: 1;
+}
+
+.mockupContainerName {
+	height: 12px;
+	width: 120px;
+	background: rgba(139, 92, 246, 0.2);
+	border-radius: 3px;
+	margin-bottom: 8px;
+}
+
+.mockupContainerDetails {
+	height: 8px;
+	width: 180px;
+	background: rgba(139, 92, 246, 0.1);
+	border-radius: 3px;
+}
+
+.mockupContainerActions {
+	display: flex;
+	gap: 0.5rem;
+}
+
+.mockupContainerActions::before,
+.mockupContainerActions::after {
+	content: '';
+	display: block;
+	width: 20px;
+	height: 20px;
+	border-radius: 4px;
+	background: rgba(139, 92, 246, 0.1);
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .mockupWindow {
+	background: rgba(30, 30, 40, 0.3);
+	border-color: rgba(139, 92, 246, 0.2);
+}
+
+[data-theme='dark'] .mockupHeader {
+	background: rgba(30, 30, 40, 0.5);
+}
+
+[data-theme='dark'] .mockupMain {
+	background: rgba(30, 30, 40, 0.3);
+}
+
+/* Features section */
+.features {
+	padding: 5rem 0;
+	background-color: var(--ifm-background-color);
+}
+
+.featureGrid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 2rem;
+}
+
+.featureCard {
+	padding: 2rem;
+	border-radius: 0.75rem;
+	background: rgba(255, 255, 255, 0.05);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(139, 92, 246, 0.1);
+	transition: all 0.3s ease;
+	text-align: center;
+}
+
+html[data-theme='dark'] .featureCard {
+	background: rgba(0, 0, 0, 0.2);
+}
+
+.featureCard:hover {
+	transform: translateY(-5px);
+	box-shadow:
+		0 20px 25px -5px rgba(139, 92, 246, 0.1),
+		0 10px 10px -5px rgba(139, 92, 246, 0.04);
+	border-color: rgba(139, 92, 246, 0.3);
+}
+
+.featureIconWrapper {
+	margin: 0 auto 1.5rem;
+	width: 60px;
+	height: 60px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 100%);
+}
+
+.featureIcon {
+	width: 32px;
+	height: 32px;
+	color: var(--ifm-color-primary);
+}
+
+.featureTitle {
+	margin-bottom: 1rem;
+	font-size: 1.5rem;
+}
+
+.featureDescription {
+	color: var(--ifm-color-emphasis-700);
+	font-size: 1rem;
+	line-height: 1.6;
+}
+
+/* Media queries for responsive design */
+@media screen and (max-width: 996px) {
+	.heroContent {
+		flex-direction: column;
+		gap: 3rem;
+		padding: 0 1rem;
+	}
+
+	.heroText {
+		text-align: center;
+		padding-right: 0;
+	}
+
+	.buttons {
+		justify-content: center;
+	}
+
+	.featureGrid {
+		grid-template-columns: 1fr;
+		gap: 1.5rem;
+		padding: 0 1rem;
+	}
+
+	.heroBanner {
+		padding: 3rem 0;
+		min-height: auto;
+	}
+}
+
+@media screen and (min-width: 997px) and (max-width: 1200px) {
+	.featureGrid {
+		grid-template-columns: repeat(2, 1fr);
+	}
 }
