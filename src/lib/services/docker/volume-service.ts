@@ -45,19 +45,13 @@ export async function isVolumeInUse(volumeName: string): Promise<boolean> {
 	try {
 		const docker = getDockerClient();
 		const containers = await docker.listContainers({ all: true });
-
-        try {
-            const docker = getDockerClient();
-            const containers = await docker.listContainers({ all: true });
-            // Inspect each container to check its mounts
-            for (const containerInfo of containers) {
-                const details = await docker.getContainer(containerInfo.Id).inspect();
-                if (details.Mounts?.some(m => m.Type === 'volume' && m.Name === volumeName)) {
-                    return true;
-                }
-            }
-            return false;
-
+		// Inspect each container to check its mounts
+		for (const containerInfo of containers) {
+			const details = await docker.getContainer(containerInfo.Id).inspect();
+			if (details.Mounts?.some((m) => m.Type === 'volume' && m.Name === volumeName)) {
+				return true;
+			}
+		}
 		return false;
 	} catch (error) {
 		console.error(`Error checking if volume ${volumeName} is in use:`, error);
@@ -94,8 +88,7 @@ export async function createVolume(options: VolumeCreateOptions): Promise<Servic
 			driver: volume.Driver,
 			mountpoint: volume.Mountpoint,
 			labels: volume.Labels || {},
-			scope: volume.Scope || 'local',
-			createdAt: new Date().toISOString() // Since inspect would give us this
+			scope: volume.Scope || 'local'
 		};
 	} catch (error: any) {
 		console.error(`Docker Service: Error creating volume "${options.Name}":`, error);
