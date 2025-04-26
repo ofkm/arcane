@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { removeImage } from '$lib/services/docker-service';
+import { removeImage } from '$lib/services/docker/image-service';
 
 export const DELETE: RequestHandler = async ({ params, url }) => {
 	const { id } = params;

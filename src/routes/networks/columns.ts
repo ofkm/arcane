@@ -2,7 +2,7 @@ import type { ColumnDef } from '@tanstack/table-core';
 import { renderComponent } from '$lib/components/ui/data-table/index.js';
 import NetworkActions from './NetworkActions.svelte';
 import SubnetCell from './SubnetCell.svelte';
-import type { ServiceNetwork } from '$lib/services/docker-service'; // Import the correct type
+import type { ServiceNetwork } from '$lib/types/docker';
 
 // Use the ServiceNetwork type directly
 export type NetworkInfo = ServiceNetwork;

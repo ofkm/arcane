@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import { getDockerClient } from '$lib/services/docker-service';
+import { getDockerClient } from '$lib/services/docker/core';
 
 export const GET: RequestHandler = async ({ params, request }) => {
 	const imageRef = params.name;

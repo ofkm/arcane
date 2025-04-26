@@ -129,3 +129,52 @@ export async function pruneImages(mode: 'all' | 'dangling' = 'all'): Promise<{
 		throw new Error(`Failed to prune images using host "${dockerHost}". ${error.message || error.reason || ''}`);
 	}
 }
+
+/**
+ * The function `pullImage` asynchronously pulls a Docker image using a specified image reference and
+ * optional platform.
+ * @param {string} imageRef - The `imageRef` parameter in the `pullImage` function is a string that
+ * represents the reference to the Docker image that you want to pull. It typically includes the image
+ * name and tag, such as `nginx:latest` or `myapp:v1.0`.
+ * @param {string} [platform] - The `platform` parameter in the `pullImage` function is an optional
+ * parameter that specifies the platform for which the image should be pulled. This parameter allows
+ * you to specify the architecture, operating system, and variant of the platform for which the image
+ * is intended. If provided, the Docker client will attempt
+ */
+export async function pullImage(imageRef: string, platform?: string): Promise<void> {
+	try {
+		const docker = getDockerClient();
+
+		const pullOptions: any = {};
+		if (platform) {
+			pullOptions.platform = platform;
+		}
+
+		console.log(`Docker Service: Pulling image "${imageRef}"...`);
+
+		// Pull the image - this returns a stream
+		const stream = await docker.pull(imageRef, pullOptions);
+
+		// Wait for the pull to complete by consuming the stream
+		await new Promise((resolve, reject) => {
+			docker.modem.followProgress(stream, (err: any, output: any) => {
+				if (err) {
+					reject(err);
+				} else {
+					resolve(output);
+				}
+			});
+		});
+
+		console.log(`Docker Service: Image "${imageRef}" pulled successfully.`);
+	} catch (error: any) {
+		console.error(`Docker Service: Error pulling image "${imageRef}":`, error);
+
+		// Handle specific error cases
+		if (error.statusCode === 404) {
+			throw new Error(`Image "${imageRef}" not found in registry.`);
+		}
+
+		throw new Error(`Failed to pull image "${imageRef}". ${error.message || error.reason || ''}`);
+	}
+}

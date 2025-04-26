@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { pullImage } from '$lib/services/docker-service';
+import { pullImage } from '$lib/services/docker/image-service';
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	try {
