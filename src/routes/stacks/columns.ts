@@ -1,4 +1,4 @@
-import type { Stack } from '$lib/types/stack';
+import type { Stack } from '$lib/types/docker/stack.type';
 import type { ColumnDef } from '@tanstack/table-core';
 import { renderComponent } from '$lib/components/ui/data-table/index.js';
 import StackActions from './StackActions.svelte';
