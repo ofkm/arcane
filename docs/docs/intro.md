@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 slug: /
+sidebar_label: Introduction
 ---
 
 # Introduction to Arcane
@@ -18,11 +19,10 @@ Arcane is a **Simple and Elegant Docker Management UI** written in Typescript an
 - **Network Configuration** - Create and configure Docker networks
 - **Volume Management** - Create and manage persistent data with Docker volumes
 - **Resource Visualization** - Visual graphs for CPU, memory, and network usage
-- **Dark & Light Themes** - Supports both light and dark mode for comfortable viewing
 
 ## Getting Started
 
-To get started with Arcane, head over to the **[Installation](./installation)** guide.
+To get started with Arcane, head over to the **[Installation](./getting-started/installation)** guide.
 
 <div style={{
   display: 'flex',

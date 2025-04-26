@@ -1,7 +1,6 @@
 import React from 'react';
 import Head from '@docusaurus/Head';
 
-// Default implementation, you can customize it
 export default function Root({ children }) {
 	return (
 		<>
