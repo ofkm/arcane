@@ -1,5 +1,5 @@
-import { promises as fs } from 'fs';
-import { join } from 'path';
+import { promises as fs } from 'node:fs';
+import { join } from 'node:path';
 import DockerodeCompose from 'dockerode-compose';
 import yaml from 'js-yaml';
 import { nanoid } from 'nanoid';
