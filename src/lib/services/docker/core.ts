@@ -23,7 +23,7 @@ export async function getDockerInfo() {
  */
 export function getDockerClient(): Docker {
     if (!dockerClient) {
-        let connectionOpts: any = {};
+        const connectionOpts: Record<string, any> = {};
 
         // Parse the dockerHost to get the proper connection options
         if (dockerHost.startsWith('unix://')) {
@@ -31,11 +31,11 @@ export function getDockerClient(): Docker {
         } else if (dockerHost.startsWith('tcp://')) {
             const url = new URL(dockerHost);
             connectionOpts.host = url.hostname;
-            connectionOpts.port = parseInt(url.port || '2375', 10);
+            connectionOpts.port = Number.parseInt(url.port || '2375', 10);
         } else if (dockerHost.startsWith('https://')) {
             const url = new URL(dockerHost);
             connectionOpts.host = url.hostname;
-            connectionOpts.port = parseInt(url.port || '2376', 10);
+            connectionOpts.port = Number.parseInt(url.port || '2376', 10);
             connectionOpts.protocol = 'https';
         } else {
             // If it doesn't have a prefix, assume it's a direct socket path
@@ -58,7 +58,7 @@ export function getDockerClient(): Docker {
  * initialized with the connection options provided in the `options` parameter.
  */
 export function initializeDocker(options: DockerConnectionOptions): Docker {
-    let connectionOpts: any = {};
+    const connectionOpts: Record<string, any> = {};
 
     // Handle different connection types (socket, tcp, etc.)
     if (options.socketPath) {
