@@ -2,7 +2,7 @@ import Docker from 'dockerode';
 import type { DockerConnectionOptions } from '$lib/types/docker';
 
 let dockerClient: Docker | null = null;
-export let dockerHost: string = 'unix:///var/run/docker.sock';
+export let dockerHost = 'unix:///var/run/docker.sock';
 
 /**
  * The function `getDockerInfo` asynchronously retrieves information about the Docker environment using
