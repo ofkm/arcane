@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDockerInfo } from '$lib/services/docker-service'; // Adjust path if needed
+import { getDockerInfo } from '$lib/services/docker/core'; // Adjust path if needed
 
 export const GET: RequestHandler = async ({ url }) => {
 	// Get the host to test from query parameters

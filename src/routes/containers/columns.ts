@@ -1,4 +1,4 @@
-import type { ServiceContainer } from '$lib/services/docker-service';
+import type { ServiceContainer } from '$lib/types/docker';
 import type { ColumnDef } from '@tanstack/table-core';
 import { renderComponent } from '$lib/components/ui/data-table/index.js';
 import DataTableActions from './ContainerActions.svelte';

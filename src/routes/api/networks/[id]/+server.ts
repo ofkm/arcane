@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { removeNetwork } from '$lib/services/docker-service';
+import { removeNetwork } from '$lib/services/docker/network-service';
 
 export const DELETE: RequestHandler = async ({ params }) => {
 	const networkId = params.id;

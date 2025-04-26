@@ -1,5 +1,5 @@
 import type { ColumnDef } from '@tanstack/table-core';
-import type { ServiceContainer, ServiceImage } from '$lib/services/docker-service';
+import type { ServiceContainer, ServiceImage } from '$lib/types/docker'
 import { formatBytes } from '$lib/utils';
 import { capitalizeFirstLetter } from '$lib/utils';
 import { statusVariantMap } from '$lib/types/statuses';

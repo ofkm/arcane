@@ -1,5 +1,5 @@
 import type { PageServerLoad, Actions } from './$types';
-import { getContainer, startContainer, stopContainer, restartContainer, removeContainer, getContainerLogs } from '$lib/services/docker-service';
+import { getContainer, startContainer, stopContainer, restartContainer, removeContainer, getContainerLogs } from '$lib/services/docker/container-service';
 import { error, fail, redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params }) => {

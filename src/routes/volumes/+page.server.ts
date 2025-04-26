@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
-import { listVolumes, isVolumeInUse } from '$lib/services/docker-service';
-import type { ServiceVolume } from '$lib/services/docker-service';
+import { listVolumes, isVolumeInUse } from '$lib/services/docker/volume-service';
+import type { ServiceVolume } from '$lib/types/docker';
 
 // Enhanced type with usage info
 type EnhancedVolumeInfo = ServiceVolume & {

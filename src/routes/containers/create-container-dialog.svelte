@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { preventDefault } from 'svelte/legacy';
-	import type { ContainerConfig } from '$lib/types/docker';
+	import type { ContainerConfig } from '$lib/types/docker/container.type';
 	import type { HealthConfig } from 'dockerode';
 
 	import { Button } from '$lib/components/ui/button/index.js';

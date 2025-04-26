@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type { EnhancedImageInfo } from '$lib/types/image';
+	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { columns } from './columns';
 	import { Button } from '$lib/components/ui/button/index.js';

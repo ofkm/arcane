@@ -1,5 +1,8 @@
-import { fail, redirect } from '@sveltejs/kit';
-import { listContainers, listVolumes, listNetworks, listImages, createContainer } from '$lib/services/docker-service';
+import { fail } from '@sveltejs/kit';
+import { listContainers, createContainer } from '$lib/services/docker/container-service';
+import { listImages } from '$lib/services/docker/image-service';
+import { listNetworks } from '$lib/services/docker/network-service';
+import { listVolumes } from '$lib/services/docker/volume-service';
 import type { PageServerLoad, Actions } from './$types';
 import type { ContainerConfig } from '$lib/types/docker';
 
@@ -48,9 +51,6 @@ export const actions: Actions = {
 					error: 'Container name and image are required'
 				});
 			}
-
-			// Log for debugging
-			console.log('Creating container with data:', containerData);
 
 			// Create the container
 			const container = await createContainer(containerData);

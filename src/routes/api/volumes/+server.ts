@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createVolume } from '$lib/services/docker-service';
+import { createVolume } from '$lib/services/docker/volume-service';
 import type { VolumeCreateOptions } from 'dockerode';
 
 export const POST: RequestHandler = async ({ request }) => {

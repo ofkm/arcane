@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { importExternalStack } from '$lib/services/compose';
+import { importExternalStack } from '$lib/services/docker/stack-service';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const data = await request.formData();

@@ -2,7 +2,7 @@ import type { ColumnDef } from '@tanstack/table-core';
 import { renderComponent } from '$lib/components/ui/data-table/index.js';
 import VolumeActions from './VolumeActions.svelte';
 import MountpointCell from './MountpointCell.svelte';
-import type { ServiceVolume } from '$lib/services/docker-service';
+import type { ServiceVolume } from '$lib/types/docker';
 import UnusedTextBadge from '$lib/components/badges/unused-text-badge.svelte';
 
 // Update the type to include the inUse property

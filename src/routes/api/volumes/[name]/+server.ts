@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { removeVolume } from '$lib/services/docker-service';
+import { removeVolume } from '$lib/services/docker/volume-service';
 
 export const DELETE: RequestHandler = async ({ params, url }) => {
 	const { name } = params;

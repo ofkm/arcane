@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createNetwork } from '$lib/services/docker-service';
+import { createNetwork } from '$lib/services/docker/network-service';
 import type { NetworkCreateOptions } from 'dockerode';
 
 export const POST: RequestHandler = async ({ request }) => {

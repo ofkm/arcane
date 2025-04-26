@@ -7,7 +7,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import CreateContainerDialog from './create-container-dialog.svelte';
-	import type { ContainerConfig } from '$lib/types/docker';
+	import type { ContainerConfig } from '$lib/types/docker/container.type';
 	import { enhance } from '$app/forms';
 
 	let { data, form } = $props();
@@ -19,11 +19,11 @@
 	let containerData = $state<ContainerConfig | null>(null);
 	let formRef: HTMLFormElement;
 
-	// Calculate running containers
-	const runningContainers = $derived(containers?.filter((c) => c.state === 'running').length || 0);
+	// TODO: Replace 'any' with the actual type for a container item
+	const runningContainers = $derived(containers?.filter((c: any) => c.state === 'running').length || 0);
 
-	// Calculate stopped containers
-	const stoppedContainers = $derived(containers?.filter((c) => c.state === 'exited').length || 0);
+	// TODO: Replace 'any' with the actual type for a container item
+	const stoppedContainers = $derived(containers?.filter((c: any) => c.state === 'exited').length || 0);
 
 	// Calculate total containers
 	const totalContainers = $derived(containers?.length || 0);

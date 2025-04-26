@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createContainer } from '$lib/services/docker-service';
+import { createContainer } from '$lib/services/docker/container-service';
 import type { ContainerConfig } from '$lib/types/docker';
 
 export const POST: RequestHandler = async ({ request }) => {
