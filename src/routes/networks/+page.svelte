@@ -249,11 +249,11 @@
                     aria-label={`Group actions for ${selectedIds.length} selected network(s)`}
                   >
                     {#if isDeletingSelected}
-                      <Loader2 class="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 class="w-4 h-4 animate-spin" />
                       Processing...
                     {:else}
                       Actions ({selectedIds.length})
-                      <ChevronDown class="w-4 h-4 ml-2" />
+                      <ChevronDown class="w-4 h-4" />
                     {/if}
                   </Button>
                 {/snippet}
@@ -261,10 +261,10 @@
               <DropdownMenu.Content>
                 <DropdownMenu.Item
                   onclick={() => (isConfirmDeleteDialogOpen = true)}
-                  class="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  class="text-red-500 focus:!text-red-700"
                   disabled={isDeletingSelected}
                 >
-                  <Trash2 class="w-4 h-4 mr-2" />
+                  <Trash2 class="w-4 h-4" />
                   Delete Selected
                 </DropdownMenu.Item>
               </DropdownMenu.Content>

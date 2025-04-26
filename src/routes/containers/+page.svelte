@@ -137,7 +137,7 @@
           >
         </div>
         <div class="flex items-center gap-2">
-          <Button variant="outline" size="sm" onclick={openCreateDialog}>
+          <Button variant="secondary" onclick={openCreateDialog}>
             <Plus class="w-4 h-4" />
             Create Container
           </Button>
@@ -168,11 +168,11 @@
         the Docker CLI
       </p>
       <div class="flex gap-3 mt-4">
-        <Button variant="outline" size="sm" onclick={refreshData}>
+        <Button variant="secondary" onclick={refreshData}>
           <RefreshCw class="h-4 w-4" />
           Refresh
         </Button>
-        <Button variant="outline" size="sm" onclick={openCreateDialog}>
+        <Button variant="secondary" onclick={openCreateDialog}>
           <Plus class="h-4 w-4" />
           Create Container
         </Button>

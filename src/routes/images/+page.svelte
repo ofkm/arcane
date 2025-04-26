@@ -12,7 +12,7 @@
     Trash2,
     Loader2,
     ChevronDown,
-    Layers,
+    CopyX,
   } from "@lucide/svelte";
   import * as Alert from "$lib/components/ui/alert/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
@@ -229,7 +229,7 @@
     </div>
     <div class="flex items-center gap-2">
       <Button
-        variant="outline"
+        variant="secondary"
         size="icon"
         onclick={refreshData}
         disabled={isRefreshing}
@@ -238,27 +238,25 @@
         <span class="sr-only">Refresh</span>
       </Button>
       <Button
-        variant="outline"
-        size="sm"
+        variant="secondary"
         onclick={() => (isConfirmPruneDialogOpen = true)}
         disabled={isPruning}
       >
         {#if isPruning}
-          <Loader2 class="w-4 h-4 mr-2 animate-spin" /> Pruning...
+          <Loader2 class="w-4 h-4 animate-spin" /> Pruning...
         {:else}
-          <Layers class="w-4 h-4 mr-2" /> Prune Unused
+          <CopyX class="w-4 h-4" /> Prune Unused
         {/if}
       </Button>
       <Button
-        variant="outline"
-        size="sm"
+        variant="secondary"
         onclick={openPullDialog}
         disabled={isPullingImage}
       >
         {#if isPullingImage}
-          <Loader2 class="w-4 h-4 mr-2 animate-spin" /> Pulling...
+          <Loader2 class="w-4 h-4 animate-spin" /> Pulling...
         {:else}
-          <Download class="w-4 h-4 mr-2" /> Pull Image
+          <Download class="w-4 h-4" /> Pull Image
         {/if}
       </Button>
     </div>
@@ -316,7 +314,6 @@
                     <Button
                       {...props}
                       variant="outline"
-                      size="sm"
                       disabled={isDeletingSelected}
                       aria-label={`Group actions for ${selectedIds.length} selected image(s)`}
                     >
@@ -333,10 +330,10 @@
                 <DropdownMenu.Content>
                   <DropdownMenu.Item
                     onclick={() => (isConfirmDeleteDialogOpen = true)}
-                    class="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    class="text-red-500 focus:!text-red-700"
                     disabled={isDeletingSelected}
                   >
-                    <Trash2 class="w-4 h-4 mr-2" />
+                    <Trash2 class="w-4 h-4" />
                     Delete Selected
                   </DropdownMenu.Item>
                 </DropdownMenu.Content>
