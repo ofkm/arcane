@@ -252,16 +252,19 @@ export async function createContainer(config: ContainerConfig) {
 		};
 
 		// Set up port bindings if provided
-		if (config.ports && config.ports.length > 0) {
-			containerOptions.ExposedPorts = {};
-			containerOptions.HostConfig = containerOptions.HostConfig || {};
-			containerOptions.HostConfig.PortBindings = {};
-
-			config.ports.forEach((port) => {
-				const containerPort = `${port.containerPort}/tcp`;
-				containerOptions.ExposedPorts![containerPort] = {};
-				containerOptions.HostConfig!.PortBindings![containerPort] = [{ HostPort: port.hostPort }];
-			});
+		if (config.ports?.length) {
+			const exposedPorts: Record<string, {}> = {};
+			const portBindings: Record<string, Array<{ HostPort: string }>> = {};
+			for (const p of config.ports) {
+				const key = `${p.containerPort}/tcp`;
+				exposedPorts[key] = {};
+				portBindings[key] = [{ HostPort: p.hostPort }];
+			}
+			containerOptions.ExposedPorts = exposedPorts;
+			containerOptions.HostConfig = {
+				...(containerOptions.HostConfig ?? {}),
+				PortBindings: portBindings
+			};
 		}
 
 		// Set up volume mounts if provided
