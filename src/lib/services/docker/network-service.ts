@@ -2,6 +2,13 @@ import { getDockerClient, dockerHost } from '$lib/services/docker/core';
 import type { ServiceNetwork } from '$lib/types/docker/network.type';
 import type { NetworkInspectInfo, NetworkCreateOptions } from 'dockerode';
 
+/* The line `const DEFAULT_NETWORK_NAMES = new Set(['host', 'bridge', 'none', 'ingress']);` is creating
+a Set named `DEFAULT_NETWORK_NAMES` that contains the default network names managed by Docker. These
+default network names are 'host', 'bridge', 'none', and 'ingress'. The purpose of this set is to
+provide a quick and efficient way to check if a given network name is one of the default networks
+when needed in the code. */
+export const DEFAULT_NETWORK_NAMES = new Set(['host', 'bridge', 'none', 'ingress']);
+
 /**
  * This TypeScript function asynchronously lists Docker networks and maps the network properties to a
  * custom ServiceNetwork type.
@@ -39,26 +46,25 @@ export async function listNetworks(): Promise<ServiceNetwork[]> {
  * `ingress`). If
  */
 export async function removeNetwork(networkId: string): Promise<void> {
-    try {
-        const DEFAULT_NETWORKS = new Set(['host', 'bridge', 'none', 'ingress']);
-        if (DEFAULT_NETWORKS.has(networkId)) {
-            throw new Error(`Network "${networkId}" is managed by Docker and cannot be removed.`);
-        }
-        const docker = getDockerClient();
-        const network = docker.getNetwork(networkId);
-        await network.remove();
-        console.log(`Docker Service: Network "${networkId}" removed successfully.`);
-    } catch (error: any) {
-        console.error(`Docker Service: Error removing network "${networkId}":`, error);
-        if (error.statusCode === 404) {
-            throw new Error(`Network "${networkId}" not found.`);
-        }
-        if (error.statusCode === 409) {
-            // 409 Conflict usually means it's in use or predefined
-            throw new Error(`Network "${networkId}" cannot be removed (possibly in use or predefined).`);
-        }
-        throw new Error(`Failed to remove network "${networkId}" using host "${dockerHost}". ${error.message || error.reason || ''}`);
-    }
+	try {
+		if (DEFAULT_NETWORK_NAMES.has(networkId)) {
+			throw new Error(`Network "${networkId}" is managed by Docker and cannot be removed.`);
+		}
+		const docker = getDockerClient();
+		const network = docker.getNetwork(networkId);
+		await network.remove();
+		console.log(`Docker Service: Network "${networkId}" removed successfully.`);
+	} catch (error: any) {
+		console.error(`Docker Service: Error removing network "${networkId}":`, error);
+		if (error.statusCode === 404) {
+			throw new Error(`Network "${networkId}" not found.`);
+		}
+		if (error.statusCode === 409) {
+			// 409 Conflict usually means it's in use or predefined
+			throw new Error(`Network "${networkId}" cannot be removed (possibly in use or predefined).`);
+		}
+		throw new Error(`Failed to remove network "${networkId}" using host "${dockerHost}". ${error.message || error.reason || ''}`);
+	}
 }
 
 /**
