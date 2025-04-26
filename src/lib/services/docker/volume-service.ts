@@ -42,29 +42,28 @@ export async function listVolumes(): Promise<ServiceVolume[]> {
  * container, the function returns `false`. In case of any errors during the process, the function
  */
 export async function isVolumeInUse(volumeName: string): Promise<boolean> {
-    try {
-        const docker = getDockerClient();
-        const containers = await docker.listContainers({ all: true });
+	try {
+		const docker = getDockerClient();
+		const containers = await docker.listContainers({ all: true });
 
-        // Inspect each container to check its mounts
-        for (const containerInfo of containers) {
-            const container = docker.getContainer(containerInfo.Id);
-            const details = await container.inspect();
-
-            // Check if any mount points to our volume
-            const volumeMounts = details.Mounts.filter((mount) => mount.Type === 'volume' && mount.Name === volumeName);
-
-            if (volumeMounts.length > 0) {
-                return true;
+        try {
+            const docker = getDockerClient();
+            const containers = await docker.listContainers({ all: true });
+            // Inspect each container to check its mounts
+            for (const containerInfo of containers) {
+                const details = await docker.getContainer(containerInfo.Id).inspect();
+                if (details.Mounts?.some(m => m.Type === 'volume' && m.Name === volumeName)) {
+                    return true;
+                }
             }
-        }
+            return false;
 
-        return false;
-    } catch (error) {
-        console.error(`Error checking if volume ${volumeName} is in use:`, error);
-        // Default to assuming it's in use for safety
-        return true;
-    }
+		return false;
+	} catch (error) {
+		console.error(`Error checking if volume ${volumeName} is in use:`, error);
+		// Default to assuming it's in use for safety
+		return true;
+	}
 }
 
 /**
@@ -82,34 +81,34 @@ export async function isVolumeInUse(volumeName: string): Promise<boolean> {
  * - Scope: The scope of the volume (defaults to 'local' if not
  */
 export async function createVolume(options: VolumeCreateOptions): Promise<ServiceVolume> {
-    try {
-        const docker = getDockerClient();
-        // createVolume returns the volume data directly - no need to inspect
-        const volume = await docker.createVolume(options);
+	try {
+		const docker = getDockerClient();
+		// createVolume returns the volume data directly - no need to inspect
+		const volume = await docker.createVolume(options);
 
-        console.log(`Docker Service: Volume "${options.Name}" created successfully.`);
+		console.log(`Docker Service: Volume "${options.Name}" created successfully.`);
 
-        // Return the creation response which contains basic info
-        return {
-            name: volume.Name,
-            driver: volume.Driver,
-            mountpoint: volume.Mountpoint,
-            labels: volume.Labels || {},
-            scope: volume.Scope || 'local',
-            createdAt: new Date().toISOString() // Since inspect would give us this
-        };
-    } catch (error: any) {
-        console.error(`Docker Service: Error creating volume "${options.Name}":`, error);
-        // Check for specific Docker errors, like volume already exists (often 409)
-        if (error.statusCode === 409) {
-            throw new Error(`Volume "${options.Name}" already exists.`);
-        }
-        throw new Error(
-            `Failed to create volume "${options.Name}" using host "${dockerHost}". ${
-                error.message || error.reason || '' // Include reason if available
-            }`
-        );
-    }
+		// Return the creation response which contains basic info
+		return {
+			name: volume.Name,
+			driver: volume.Driver,
+			mountpoint: volume.Mountpoint,
+			labels: volume.Labels || {},
+			scope: volume.Scope || 'local',
+			createdAt: new Date().toISOString() // Since inspect would give us this
+		};
+	} catch (error: any) {
+		console.error(`Docker Service: Error creating volume "${options.Name}":`, error);
+		// Check for specific Docker errors, like volume already exists (often 409)
+		if (error.statusCode === 409) {
+			throw new Error(`Volume "${options.Name}" already exists.`);
+		}
+		throw new Error(
+			`Failed to create volume "${options.Name}" using host "${dockerHost}". ${
+				error.message || error.reason || '' // Include reason if available
+			}`
+		);
+	}
 }
 
 /**
