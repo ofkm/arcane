@@ -22,7 +22,7 @@ export async function listNetworks(): Promise<ServiceNetwork[]> {
 				scope: net.Scope,
 				subnet: net.IPAM?.Config?.[0]?.Subnet ?? null,
 				gateway: net.IPAM?.Config?.[0]?.Gateway ?? null,
-				created: net.Created
+				created: net.Created ?? ''
 			})
 		);
 	} catch (error: any) {
