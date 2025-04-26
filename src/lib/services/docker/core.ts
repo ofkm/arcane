@@ -144,3 +144,9 @@ export async function testDockerConnection(): Promise<boolean> {
 		return false;
 	}
 }
+
+/* The statement `export default getDockerClient;` is exporting the `getDockerClient` function as the
+default export of the module. This means that when another module imports from this module without
+specifying a particular named export, it will receive the `getDockerClient` function as the default
+export. */
+export default getDockerClient;
