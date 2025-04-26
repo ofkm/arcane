@@ -90,19 +90,18 @@
     <div class="flex gap-2">
       <Button
         variant="outline"
-        size="sm"
+        size="icon"
         onclick={refreshData}
         disabled={isRefreshing}
       >
         <RefreshCw class={isRefreshing ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
-        Refresh
       </Button>
     </div>
   </div>
 
   {#if error}
     <Alert.Root variant="destructive">
-      <AlertCircle class="h-4 w-4 mr-2" />
+      <AlertCircle class="h-4 w-4" />
       <Alert.Title>Error Loading Stacks</Alert.Title>
       <Alert.Description>{error}</Alert.Description>
     </Alert.Root>
@@ -158,11 +157,11 @@
           <Card.Description>Manage Docker Compose stacks</Card.Description>
         </div>
         <div class="flex items-center gap-2">
-          <Button variant="outline" size="sm" onclick={importStack}>
+          <Button variant="secondary" onclick={importStack}>
             <Upload class="w-4 h-4" />
             Import
           </Button>
-          <Button variant="outline" size="sm" onclick={createStack}>
+          <Button variant="secondary" onclick={createStack}>
             <Plus class="w-4 h-4" />
             Create Stack
           </Button>

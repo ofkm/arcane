@@ -231,13 +231,13 @@
                   value={composeContent}
                   on:change={(e) => (composeContent = e.detail.value)}
                   height="400px"
-                  placeholder="Enter your docker-compose.yml content"
+                  placeholder="Enter your compose.yaml content"
                   forceDarkTheme={true}
                 />
               {/key}
               <p class="text-xs text-muted-foreground">
-                Edit your docker-compose.yml file directly. Syntax errors will
-                be highlighted.
+                Edit your <span class="font-bold">compose.yaml</span> file directly.
+                Syntax errors will be highlighted.
               </p>
             </div>
           </div>

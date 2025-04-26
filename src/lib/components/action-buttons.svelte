@@ -47,8 +47,7 @@
       type="submit"
       variant="default"
       disabled={loading.start}
-      size="sm"
-      class="font-medium h-9"
+      class="font-medium "
       formaction={formAction || "?/start"}
     >
       {#if loading.start}
@@ -63,14 +62,13 @@
       type="submit"
       variant="secondary"
       disabled={loading.stop}
-      size="sm"
-      class="font-medium h-9"
+      class="font-medium "
       formaction={formAction || "?/stop"}
     >
       {#if loading.stop}
-        <Loader2 class="w-4 h-4 mr-2 animate-spin" />
+        <Loader2 class="w-4 h-4 animate-spin" />
       {:else}
-        <StopCircle class="w-4 h-4 mr-2" />
+        <StopCircle class="w-4 h-4" />
       {/if}
       Stop
     </Button>
@@ -79,16 +77,15 @@
       type="submit"
       variant="outline"
       disabled={loading.restart}
-      size="sm"
-      class="font-medium h-9"
+      class="font-medium "
       formaction={formAction || "?/restart"}
       name="action"
       value="restart"
     >
       {#if loading.restart}
-        <Loader2 class="w-4 h-4 mr-2 animate-spin" />
+        <Loader2 class="w-4 h-4 animate-spin" />
       {:else}
-        <RotateCcw class="w-4 h-4 mr-2" />
+        <RotateCcw class="w-4 h-4" />
       {/if}
       Restart
     </Button>
@@ -99,8 +96,7 @@
       type="submit"
       variant="destructive"
       disabled={loading.remove}
-      size="sm"
-      class="font-medium h-9"
+      class="font-medium "
       formaction={formAction || "?/remove"}
       onclick={(e) => {
         if (!confirm(`Are you sure you want to remove this ${type}?`)) {
@@ -110,9 +106,9 @@
       }}
     >
       {#if loading.remove}
-        <Loader2 class="w-4 h-4 mr-2 animate-spin" />
+        <Loader2 class="w-4 h-4 animate-spin" />
       {:else}
-        <Trash2 class="w-4 h-4 mr-2" />
+        <Trash2 class="w-4 h-4" />
       {/if}
       Remove
     </Button>
@@ -122,14 +118,13 @@
       type="submit"
       variant="outline"
       disabled={loading.pull}
-      size="sm"
-      class="font-medium h-9"
+      class="font-medium"
       formaction={formAction || "?/pull"}
     >
       {#if loading.pull}
-        <Loader2 class="w-4 h-4 mr-2 animate-spin" />
+        <Loader2 class="w-4 h-4 animate-spin" />
       {:else}
-        <Download class="w-4 h-4 mr-2" />
+        <Download class="w-4 h-4" />
       {/if}
       Pull
     </Button>
@@ -138,8 +133,7 @@
       type="submit"
       variant="destructive"
       disabled={loading.remove}
-      size="sm"
-      class="font-medium h-9"
+      class="font-medium "
       formaction={formAction || "?/remove"}
       onclick={(e) => {
         if (!confirm(`Are you sure you want to remove this ${type}?`)) {
@@ -149,9 +143,9 @@
       }}
     >
       {#if loading.remove}
-        <Loader2 class="w-4 h-4 mr-2 animate-spin" />
+        <Loader2 class="w-4 h-4 animate-spin" />
       {:else}
-        <Trash2 class="w-4 h-4 mr-2" />
+        <Trash2 class="w-4 h-4" />
       {/if}
       Remove
     </Button>
