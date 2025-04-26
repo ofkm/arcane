@@ -11,41 +11,44 @@ import type Docker from 'dockerode';
  * from the Docker client and processed using the `parseRepoTag` function
  */
 export async function listImages(): Promise<ServiceImage[]> {
-    try {
-        const docker = getDockerClient();
-        const images = await docker.listImages({ all: false });
+	try {
+		const docker = getDockerClient();
+		const images = await docker.listImages({ all: false });
 
-        const parseRepoTag = (tag: string | undefined): { repo: string; tag: string } => {
-            if (!tag || tag === '<none>:<none>') {
-                return { repo: '<none>', tag: '<none>' };
-            }
-            const parts = tag.split(':');
-            if (parts.length === 1) {
-                return { repo: parts[0], tag: 'latest' };
-            }
-            const tagPart = parts.pop() || 'latest';
-            const repoPart = parts.join(':');
-            return { repo: repoPart, tag: tagPart };
-        };
+		const parseRepoTag = (tag: string | undefined): { repo: string; tag: string } => {
+			if (!tag || tag === '<none>:<none>') {
+				return { repo: '<none>', tag: '<none>' };
+			}
+			const withoutDigest = tag.split('@')[0];
+			const lastSlash = withoutDigest.lastIndexOf('/');
+			const lastColon = withoutDigest.lastIndexOf(':');
+			if (lastColon === -1 || lastColon < lastSlash) {
+				return { repo: withoutDigest, tag: 'latest' };
+			}
+			return {
+				repo: withoutDigest.substring(0, lastColon),
+				tag: withoutDigest.substring(lastColon + 1)
+			};
+		};
 
-        return images.map((img): ServiceImage => {
-            const { repo, tag } = parseRepoTag(img.RepoTags?.[0]);
-            return {
-                id: img.Id,
-                repoTags: img.RepoTags,
-                repoDigests: img.RepoDigests,
-                created: img.Created,
-                size: img.Size,
-                virtualSize: img.VirtualSize,
-                labels: img.Labels,
-                repo: repo,
-                tag: tag
-            };
-        });
-    } catch (error: any) {
-        console.error('Docker Service: Error listing images:', error);
-        throw new Error(`Failed to list Docker images using host "${dockerHost}".`);
-    }
+		return images.map((img): ServiceImage => {
+			const { repo, tag } = parseRepoTag(img.RepoTags?.[0]);
+			return {
+				id: img.Id,
+				repoTags: img.RepoTags,
+				repoDigests: img.RepoDigests,
+				created: img.Created,
+				size: img.Size,
+				virtualSize: img.VirtualSize,
+				labels: img.Labels,
+				repo: repo,
+				tag: tag
+			};
+		});
+	} catch (error: any) {
+		console.error('Docker Service: Error listing images:', error);
+		throw new Error(`Failed to list Docker images using host "${dockerHost}".`);
+	}
 }
 
 /**
@@ -83,17 +86,17 @@ export async function removeImage(imageId: string, force: boolean = false): Prom
  * assuming that the image is in use for safety reasons.
  */
 export async function isImageInUse(imageId: string): Promise<boolean> {
-    try {
-        const docker = getDockerClient();
-        const containers = await docker.listContainers({ all: true });
+	try {
+		const docker = getDockerClient();
+		const containers = await docker.listContainers({ all: true });
 
-        // Look for containers using this image
-        return containers.some((container) => container.ImageID === imageId || container.Image === imageId);
-    } catch (error) {
-        console.error(`Error checking if image ${imageId} is in use:`, error);
-        // Default to assuming it's in use for safety
-        return true;
-    }
+		// Look for containers using this image
+		return containers.some((container) => container.ImageID === imageId || container.Image === imageId);
+	} catch (error) {
+		console.error(`Error checking if image ${imageId} is in use:`, error);
+		// Default to assuming it's in use for safety
+		return true;
+	}
 }
 
 /**
