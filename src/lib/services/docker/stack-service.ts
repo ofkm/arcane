@@ -18,15 +18,15 @@ let STACKS_DIR = '';
  * TypeScript application.
  */
 export async function initComposeService(): Promise<void> {
-    try {
-        const settings = await getSettings();
-        STACKS_DIR = settings.stacksDirectory;
-        console.log(`Stacks directory initialized: ${STACKS_DIR}`);
+	try {
+		const settings = await getSettings();
+		STACKS_DIR = settings.stacksDirectory;
+		console.log(`Stacks directory initialized: ${STACKS_DIR}`);
 
-        await ensureStacksDir();
-    } catch (err) {
-        console.error('Error initializing compose service:', err);
-    }
+		await ensureStacksDir();
+	} catch (err) {
+		console.error('Error initializing compose service:', err);
+	}
 }
 
 /**
@@ -49,17 +49,17 @@ export function updateStacksDirectory(directory: string): void {
  * stacks directory exists.
  */
 async function ensureStacksDir(): Promise<string> {
-    try {
-        if (!STACKS_DIR) {
-            STACKS_DIR = await ensureStacksDirectory();
-        } else {
-            await fs.mkdir(STACKS_DIR, { recursive: true });
-        }
-        return STACKS_DIR;
-    } catch (err) {
-        console.error('Error creating stacks directory:', err);
-        throw new Error('Failed to create stacks storage directory');
-    }
+	try {
+		if (!STACKS_DIR) {
+			STACKS_DIR = await ensureStacksDirectory();
+		} else {
+			await fs.mkdir(STACKS_DIR, { recursive: true });
+		}
+		return STACKS_DIR;
+	} catch (err) {
+		console.error('Error creating stacks directory:', err);
+		throw new Error('Failed to create stacks storage directory');
+	}
 }
 
 /**
@@ -115,9 +115,9 @@ async function getStackMetaPath(stackId: string): Promise<string> {
  * `getComposeFilePath(stackId)`, and the `stackId` parameter.
  */
 async function getComposeInstance(stackId: string): Promise<DockerodeCompose> {
-    const docker = getDockerClient();
-    const composePath = await getComposeFilePath(stackId);
-    return new DockerodeCompose(docker, composePath, stackId);
+	const docker = getDockerClient();
+	const composePath = await getComposeFilePath(stackId);
+	return new DockerodeCompose(docker, composePath, stackId);
 }
 
 /**
@@ -136,74 +136,74 @@ async function getComposeInstance(stackId: string): Promise<DockerodeCompose> {
  * exit code). If an error occurs during the process, an empty array is returned.
  */
 async function getStackServices(stackId: string, composeContent: string): Promise<StackService[]> {
-    const docker = getDockerClient();
+	const docker = getDockerClient();
 
-    try {
-        const composeData = yaml.load(composeContent) as any;
-        if (!composeData || !composeData.services) {
-            return [];
-        }
+	try {
+		const composeData = yaml.load(composeContent) as any;
+		if (!composeData || !composeData.services) {
+			return [];
+		}
 
-        const serviceNames = Object.keys(composeData.services);
+		const serviceNames = Object.keys(composeData.services);
 
-        const containers = await docker.listContainers({ all: true });
+		const containers = await docker.listContainers({ all: true });
 
-        const stackPrefix = `${stackId}_`;
-        const stackContainers = containers.filter((container) => {
-            const names = container.Names || [];
-            return names.some((name) => name.startsWith(`/${stackPrefix}`));
-        });
+		const stackPrefix = `${stackId}_`;
+		const stackContainers = containers.filter((container) => {
+			const names = container.Names || [];
+			return names.some((name) => name.startsWith(`/${stackPrefix}`));
+		});
 
-        const services: StackService[] = [];
+		const services: StackService[] = [];
 
-        for (const containerData of stackContainers) {
-            let containerName = containerData.Names?.[0] || '';
-            containerName = containerName.substring(1);
+		for (const containerData of stackContainers) {
+			let containerName = containerData.Names?.[0] || '';
+			containerName = containerName.substring(1);
 
-            let serviceName = '';
-            for (const name of serviceNames) {
-                if (containerName.startsWith(`${stackId}_${name}_`) || containerName === `${stackId}_${name}`) {
-                    serviceName = name;
-                    break;
-                }
-            }
+			let serviceName = '';
+			for (const name of serviceNames) {
+				if (containerName.startsWith(`${stackId}_${name}_`) || containerName === `${stackId}_${name}`) {
+					serviceName = name;
+					break;
+				}
+			}
 
-            if (!serviceName) {
-                serviceName = containerName;
-            }
+			if (!serviceName) {
+				serviceName = containerName;
+			}
 
-            const service: StackService = {
-                id: containerData.Id,
-                name: serviceName,
-                state: {
-                    Running: containerData.State === 'running',
-                    Status: containerData.State,
-                    ExitCode: 0 
-                }
-            };
+			const service: StackService = {
+				id: containerData.Id,
+				name: serviceName,
+				state: {
+					Running: containerData.State === 'running',
+					Status: containerData.State,
+					ExitCode: 0
+				}
+			};
 
-            services.push(service);
-        }
+			services.push(service);
+		}
 
-        for (const name of serviceNames) {
-            if (!services.some((s) => s.name === name)) {
-                services.push({
-                    id: '',
-                    name: name,
-                    state: {
-                        Running: false,
-                        Status: 'not created',
-                        ExitCode: 0
-                    }
-                });
-            }
-        }
+		for (const name of serviceNames) {
+			if (!services.some((s) => s.name === name)) {
+				services.push({
+					id: '',
+					name: name,
+					state: {
+						Running: false,
+						Status: 'not created',
+						ExitCode: 0
+					}
+				});
+			}
+		}
 
-        return services;
-    } catch (err) {
-        console.error(`Error getting services for stack ${stackId}:`, err);
-        return [];
-    }
+		return services;
+	} catch (err) {
+		console.error(`Error getting services for stack ${stackId}:`, err);
+		return [];
+	}
 }
 
 /**
@@ -215,52 +215,52 @@ async function getStackServices(stackId: string, composeContent: string): Promis
  * `updatedAt`.
  */
 export async function loadComposeStacks(): Promise<Stack[]> {
-    const stacksDir = await ensureStacksDir();
+	const stacksDir = await ensureStacksDir();
 
-    try {
-        const stackDirs = await fs.readdir(stacksDir);
-        const stacks: Stack[] = [];
+	try {
+		const stackDirs = await fs.readdir(stacksDir);
+		const stacks: Stack[] = [];
 
-        for (const dir of stackDirs) {
-            try {
-                const metaPath = await getStackMetaPath(dir);
-                const composePath = await getComposeFilePath(dir);
+		for (const dir of stackDirs) {
+			try {
+				const metaPath = await getStackMetaPath(dir);
+				const composePath = await getComposeFilePath(dir);
 
-                const [metaContent, composeContent] = await Promise.all([fs.readFile(metaPath, 'utf8'), fs.readFile(composePath, 'utf8')]);
+				const [metaContent, composeContent] = await Promise.all([fs.readFile(metaPath, 'utf8'), fs.readFile(composePath, 'utf8')]);
 
-                const meta = JSON.parse(metaContent) as StackMeta;
+				const meta = JSON.parse(metaContent) as StackMeta;
 
-                const services = await getStackServices(dir, composeContent);
+				const services = await getStackServices(dir, composeContent);
 
-                const serviceCount = services.length;
-                const runningCount = services.filter((s) => s.state?.Running).length;
+				const serviceCount = services.length;
+				const runningCount = services.filter((s) => s.state?.Running).length;
 
-                let status: Stack['status'] = 'stopped';
-                if (runningCount === serviceCount && serviceCount > 0) {
-                    status = 'running';
-                } else if (runningCount > 0) {
-                    status = 'partially running';
-                }
+				let status: Stack['status'] = 'stopped';
+				if (runningCount === serviceCount && serviceCount > 0) {
+					status = 'running';
+				} else if (runningCount > 0) {
+					status = 'partially running';
+				}
 
-                stacks.push({
-                    id: dir,
-                    name: meta.name,
-                    serviceCount,
-                    runningCount,
-                    status,
-                    createdAt: meta.createdAt,
-                    updatedAt: meta.updatedAt
-                });
-            } catch (err) {
-                console.warn(`Error loading stack ${dir}:`, err);
-            }
-        }
+				stacks.push({
+					id: dir,
+					name: meta.name,
+					serviceCount,
+					runningCount,
+					status,
+					createdAt: meta.createdAt,
+					updatedAt: meta.updatedAt
+				});
+			} catch (err) {
+				console.warn(`Error loading stack ${dir}:`, err);
+			}
+		}
 
-        return stacks;
-    } catch (err) {
-        console.error('Error loading stacks:', err);
-        throw new Error('Failed to load compose stacks');
-    }
+		return stacks;
+	} catch (err) {
+		console.error('Error loading stacks:', err);
+		throw new Error('Failed to load compose stacks');
+	}
 }
 
 /**
@@ -275,41 +275,41 @@ export async function loadComposeStacks(): Promise<Stack[]> {
  * specific stack identified by `stackId`.
  */
 export async function getStack(stackId: string): Promise<Stack> {
-    try {
-        const metaPath = await getStackMetaPath(stackId);
-        const composePath = await getComposeFilePath(stackId);
+	try {
+		const metaPath = await getStackMetaPath(stackId);
+		const composePath = await getComposeFilePath(stackId);
 
-        const [metaContent, composeContent] = await Promise.all([fs.readFile(metaPath, 'utf8'), fs.readFile(composePath, 'utf8')]);
+		const [metaContent, composeContent] = await Promise.all([fs.readFile(metaPath, 'utf8'), fs.readFile(composePath, 'utf8')]);
 
-        const meta = JSON.parse(metaContent) as StackMeta;
+		const meta = JSON.parse(metaContent) as StackMeta;
 
-        const services = await getStackServices(stackId, composeContent);
+		const services = await getStackServices(stackId, composeContent);
 
-        const serviceCount = services.length;
-        const runningCount = services.filter((s) => s.state?.Running).length;
+		const serviceCount = services.length;
+		const runningCount = services.filter((s) => s.state?.Running).length;
 
-        let status: Stack['status'] = 'stopped';
-        if (runningCount === serviceCount && serviceCount > 0) {
-            status = 'running';
-        } else if (runningCount > 0) {
-            status = 'partially running';
-        }
+		let status: Stack['status'] = 'stopped';
+		if (runningCount === serviceCount && serviceCount > 0) {
+			status = 'running';
+		} else if (runningCount > 0) {
+			status = 'partially running';
+		}
 
-        return {
-            id: stackId,
-            name: meta.name,
-            services,
-            serviceCount,
-            runningCount,
-            status,
-            createdAt: meta.createdAt,
-            updatedAt: meta.updatedAt,
-            composeContent
-        };
-    } catch (err) {
-        console.error(`Error getting stack ${stackId}:`, err);
-        throw new Error(`Stack not found or cannot be accessed`);
-    }
+		return {
+			id: stackId,
+			name: meta.name,
+			services,
+			serviceCount,
+			runningCount,
+			status,
+			createdAt: meta.createdAt,
+			updatedAt: meta.updatedAt,
+			composeContent
+		};
+	} catch (err) {
+		console.error(`Error getting stack ${stackId}:`, err);
+		throw new Error(`Stack not found or cannot be accessed`);
+	}
 }
 
 /**
@@ -331,7 +331,7 @@ export async function getStack(stackId: string): Promise<Stack> {
  */
 export async function createStack(name: string, composeContent: string): Promise<Stack> {
 	const stackId = nanoid();
-	const stackDir = await getStackDir(stackId); 
+	const stackDir = await getStackDir(stackId);
 	const composePath = join(stackDir, 'docker-compose.yml');
 	const metaPath = join(stackDir, 'meta.json');
 
@@ -348,7 +348,7 @@ export async function createStack(name: string, composeContent: string): Promise
 		let serviceCount = 0;
 		try {
 			const composeData = yaml.load(composeContent) as any;
-			if (composeData && composeData.services) {
+			if (composeData?.services) {
 				serviceCount = Object.keys(composeData.services).length;
 			}
 		} catch (parseErr) {
@@ -356,14 +356,14 @@ export async function createStack(name: string, composeContent: string): Promise
 		}
 
 		return {
-			id: stackId, 
+			id: stackId,
 			name: meta.name,
-			serviceCount: serviceCount, 
+			serviceCount: serviceCount,
 			runningCount: 0,
 			status: 'stopped',
 			createdAt: meta.createdAt,
 			updatedAt: meta.updatedAt,
-			composeContent: composeContent 
+			composeContent: composeContent
 		};
 	} catch (err) {
 		console.error('Error creating stack:', err);
@@ -514,19 +514,19 @@ export async function restartStack(stackId: string): Promise<boolean> {
  * then throws a new `Error` with a message indicating the failure to remove the stack.
  */
 export async function removeStack(stackId: string): Promise<boolean> {
-    try {
-        const compose = await getComposeInstance(stackId);
-        await compose.down();
+	try {
+		const compose = await getComposeInstance(stackId);
+		await compose.down();
 
-        const stackDir = await getStackDir(stackId);
-        await fs.rm(stackDir, { recursive: true, force: true });
+		const stackDir = await getStackDir(stackId);
+		await fs.rm(stackDir, { recursive: true, force: true });
 
-        return true;
-    } catch (err: unknown) {
-        console.error(`Error removing stack ${stackId}:`, err);
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        throw new Error(`Failed to remove stack: ${errorMessage}`);
-    }
+		return true;
+	} catch (err: unknown) {
+		console.error(`Error removing stack ${stackId}:`, err);
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		throw new Error(`Failed to remove stack: ${errorMessage}`);
+	}
 }
 
 /**
