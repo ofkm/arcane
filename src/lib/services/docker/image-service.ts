@@ -158,16 +158,10 @@ export async function pullImage(imageRef: string, platform?: string): Promise<vo
 		// Pull the image - this returns a stream
 		const stream = await docker.pull(imageRef, pullOptions);
 
-		// Wait for the pull to complete by consuming the stream
-		await new Promise((resolve, reject) => {
-			docker.modem.followProgress(stream, (err: any, output: any) => {
-				if (err) {
-					reject(err);
-				} else {
-					resolve(output);
-				}
-			});
-		});
+		const pullTimeout = 10 * 60 * 1000; // 10 min
+
+		// Wait for the pull to complete by consuming the stream with 10 minute timeout
+		const result = await Promise.race([new Promise((resolve, reject) => docker.modem.followProgress(stream, (err, out) => (err ? reject(err) : resolve(out)))), new Promise((_, reject) => setTimeout(() => reject(new Error(`Pull timed-out after ${pullTimeout} ms`)), pullTimeout))]);
 
 		console.log(`Docker Service: Image "${imageRef}" pulled successfully.`);
 	} catch (error: any) {
