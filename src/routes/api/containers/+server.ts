@@ -1,4 +1,4 @@
-import { json, redirect } from "@sveltejs/kit";
+import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { createContainer } from "$lib/services/docker-service";
 import type { ContainerConfig } from "$lib/types/docker";

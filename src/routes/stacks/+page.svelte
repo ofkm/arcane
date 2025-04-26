@@ -174,6 +174,9 @@
         <UniversalTable
           data={stacks}
           {columns}
+          features={{
+            selection: false,
+          }}
           display={{
             filterPlaceholder: "Search stacks...",
             noResultsMessage: "No stacks found",

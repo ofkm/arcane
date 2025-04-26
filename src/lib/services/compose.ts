@@ -310,7 +310,8 @@ export async function createStack(
   name: string,
   composeContent: string
 ): Promise<Stack> {
-  const stackDir = await getStackDir(nanoid());
+  const stackId = nanoid(); // Generate ID here
+  const stackDir = await getStackDir(stackId); // Use the generated ID
   const composePath = join(stackDir, "docker-compose.yml");
   const metaPath = join(stackDir, "meta.json");
 
@@ -327,18 +328,42 @@ export async function createStack(
       fs.writeFile(metaPath, JSON.stringify(meta, null, 2), "utf8"),
     ]);
 
+    // Parse the compose content to estimate service count initially
+    let serviceCount = 0;
+    try {
+      const composeData = yaml.load(composeContent) as any;
+      if (composeData && composeData.services) {
+        serviceCount = Object.keys(composeData.services).length;
+      }
+    } catch (parseErr) {
+      console.warn(
+        `Could not parse compose file during creation for stack ${stackId}:`,
+        parseErr
+      );
+    }
+
     return {
-      id: nanoid(),
+      id: stackId, // Return the generated ID
       name: meta.name,
-      serviceCount: 0,
+      serviceCount: serviceCount, // Initial estimate
       runningCount: 0,
       status: "stopped",
       createdAt: meta.createdAt,
       updatedAt: meta.updatedAt,
+      composeContent: composeContent, // Include content for immediate use if needed
     };
   } catch (err) {
     console.error("Error creating stack:", err);
-    throw new Error("Failed to create stack");
+    // Attempt to clean up if creation failed partially
+    try {
+      await fs.rm(stackDir, { recursive: true, force: true });
+    } catch (cleanupErr) {
+      console.error(
+        `Failed to cleanup partially created stack directory ${stackDir}:`,
+        cleanupErr
+      );
+    }
+    throw new Error("Failed to create stack files");
   }
 }
 

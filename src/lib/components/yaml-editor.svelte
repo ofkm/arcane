@@ -14,6 +14,7 @@
     height = "400px",
     placeholder = "Enter YAML content",
     forceDarkTheme = true,
+    readOnly = false,
   } = $props();
 
   let darkMode = $state(forceDarkTheme || false);
@@ -55,6 +56,8 @@
   ]);
 
   function handleChange(e: Event) {
+    // No need to dispatch if readOnly
+    if (readOnly) return;
     const target = e.target as HTMLInputElement;
     value = target.value;
     dispatch("change", { value });
@@ -73,8 +76,17 @@
           fontSize: "14px",
           fontFamily: "JetBrains Mono, Menlo, Monaco, Consolas, monospace",
         },
+        // Optionally add styles for read-only state
+        "&.cm-editor[contenteditable=false]": {
+          backgroundColor: "#f8f8f8", // Example: slightly different background
+          cursor: "not-allowed",
+        },
+        ".cm-content[contenteditable=false]": {
+          cursor: "not-allowed",
+        },
       }}
       {placeholder}
+      readonly={readOnly}
     />
   </div>
 {/if}

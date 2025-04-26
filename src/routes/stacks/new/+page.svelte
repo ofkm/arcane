@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { ActionData } from "./$types";
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import {
@@ -10,22 +9,28 @@
     FileStack,
   } from "@lucide/svelte";
   import * as Breadcrumb from "$lib/components/ui/breadcrumb/index.js";
-  import { enhance } from "$app/forms";
   import * as Alert from "$lib/components/ui/alert/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
+  import { goto, invalidateAll } from "$app/navigation";
+  import { toast } from "svelte-sonner";
 
   import { oneDark } from "@codemirror/theme-one-dark";
   import { browser } from "$app/environment";
 
   import YamlEditor from "$lib/components/yaml-editor.svelte";
 
-  let { form }: { form: ActionData } = $props();
-
   let saving = $state(false);
   let darkMode = $state(false);
+  let apiError = $state<string | null>(null);
 
-  // Check for dark mode preference
+  function preventDefault(fn: (event: Event) => any) {
+    return function (this: any, event: Event) {
+      event.preventDefault();
+      fn.call(this, event);
+    };
+  }
+
   $effect(() => {
     if (browser) {
       darkMode =
@@ -34,15 +39,12 @@
     }
   });
 
-  // Set up CodeMirror extensions
   let extensions = $state([oneDark]);
 
-  // Dynamic theme based on dark mode
   $effect(() => {
     extensions = darkMode ? [oneDark] : [];
   });
 
-  // Default compose file template
   const defaultComposeTemplate = `services:
   web:
     image: nginx:alpine
@@ -56,10 +58,42 @@
 
   let name = $state("");
   let composeContent = $state(defaultComposeTemplate);
+
+  async function handleSubmit() {
+    saving = true;
+    apiError = null;
+
+    try {
+      const response = await fetch("/api/stacks/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, composeContent }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      toast.success(result.message || `Stack "${result.stack.name}" created.`);
+      await invalidateAll();
+      goto(`/stacks/${result.stack.id}`);
+    } catch (err: any) {
+      console.error("Failed to create stack:", err);
+      apiError = err.message || "An unknown error occurred.";
+      toast.error(`Failed to create stack: ${apiError}`);
+    } finally {
+      saving = false;
+    }
+  }
 </script>
 
 <div class="space-y-6 pb-8">
-  <!-- Breadcrumb Navigation -->
   <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
     <div>
       <Breadcrumb.Root>
@@ -82,27 +116,15 @@
     </div>
   </div>
 
-  <!-- Error Alert -->
-  {#if form?.error}
+  {#if apiError}
     <Alert.Root variant="destructive">
       <AlertCircle class="h-4 w-4 mr-2" />
       <Alert.Title>Failed to Create Stack</Alert.Title>
-      <Alert.Description>{form.error}</Alert.Description>
+      <Alert.Description>{apiError}</Alert.Description>
     </Alert.Root>
   {/if}
 
-  <!-- Stack Editor -->
-  <form
-    method="POST"
-    class="space-y-6"
-    use:enhance={() => {
-      saving = true;
-      return async ({ update }) => {
-        saving = false;
-        await update();
-      };
-    }}
-  >
+  <form class="space-y-6" onsubmit={preventDefault(handleSubmit)}>
     <Card.Root class="border shadow-sm">
       <Card.Header>
         <div class="flex items-center gap-3">
@@ -128,17 +150,14 @@
               bind:value={name}
               required
               placeholder="e.g., my-web-app"
+              disabled={saving}
             />
           </div>
 
           <div class="grid w-full items-center gap-1.5">
             <Label for="compose-editor">Docker Compose File</Label>
 
-            <!-- Hidden textarea to submit the form value -->
-            <input type="hidden" name="composeContent" value={composeContent} />
-
-            <!-- YamlEditor Component -->
-            <YamlEditor bind:value={composeContent} />
+            <YamlEditor bind:value={composeContent} readOnly={saving} />
 
             <p class="text-xs text-muted-foreground">
               Enter a valid compose.yaml file.
@@ -151,11 +170,16 @@
           variant="outline"
           type="button"
           onclick={() => window.history.back()}
+          disabled={saving}
         >
           <ArrowLeft class="w-4 h-4 mr-2" />
           Cancel
         </Button>
-        <Button type="submit" variant="default" disabled={saving}>
+        <Button
+          type="submit"
+          variant="default"
+          disabled={saving || !name || !composeContent}
+        >
           {#if saving}
             <Loader2 class="w-4 h-4 mr-2 animate-spin" />
           {:else}
