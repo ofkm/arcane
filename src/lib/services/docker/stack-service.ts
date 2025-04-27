@@ -181,7 +181,7 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 		const services: StackService[] = [];
 
 		for (const containerData of stackContainers) {
-			let containerName = containerData.Names?.[0]?.substring(1) || ''; // Remove leading '/'
+			const containerName = containerData.Names?.[0]?.substring(1) || ''; // Remove leading '/'
 			const labels = containerData.Labels || {};
 			// Prefer the standard compose service label for the service name
 			let serviceName = labels[composeServiceLabel];
