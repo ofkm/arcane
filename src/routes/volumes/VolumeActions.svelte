@@ -1,23 +1,30 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import { Trash2, Loader2 } from '@lucide/svelte';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import { Trash2, Loader2, Ellipsis, ScanSearch } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
+	import { goto, invalidateAll } from '$app/navigation';
+	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 
-	const { name, inUse = true } = $props<{ name: string; inUse: boolean }>();
+	const { name, inUse = false } = $props<{ name: string; inUse: boolean }>();
 
-	let isConfirmDialogOpen = $state(false);
+	let showRemoveConfirm = $state(false);
 	let isDeleting = $state(false);
 
-	async function handleDelete() {
-		if (inUse) {
-			toast.error('Cannot delete volume that is in use by containers');
-			return;
-		}
+	function viewVolume() {
+		goto(`/volumes/${encodeURIComponent(name)}`);
+	}
 
+	function triggerRemove() {
+		showRemoveConfirm = true;
+	}
+
+	async function handleRemoveConfirm(force?: boolean) {
+		showRemoveConfirm = false;
 		isDeleting = true;
 		try {
-			const response = await fetch(`/api/volumes/${name}`, {
+			const endpoint = `/api/volumes/${encodeURIComponent(name)}${force ? '?force=true' : ''}`;
+			const response = await fetch(endpoint, {
 				method: 'DELETE'
 			});
 
@@ -28,9 +35,7 @@
 			}
 
 			toast.success(`Volume "${name}" deleted successfully.`);
-			isConfirmDialogOpen = false;
-
-			window.location.href = `${window.location.pathname}?t=${Date.now()}`;
+			await invalidateAll();
 		} catch (err: any) {
 			console.error(`Failed to delete volume "${name}":`, err);
 			toast.error(`Failed to delete volume: ${err.message}`);
@@ -38,33 +43,39 @@
 			isDeleting = false;
 		}
 	}
+
+	const isAnyLoading = $derived(isDeleting);
+	const removeDescription = $derived(`Are you sure you want to delete volume "${name}"? This action cannot be undone.`);
 </script>
 
-<div class="flex gap-2">
-	<Button variant="destructive" size="sm" title="Delete Volume" onclick={() => (isConfirmDialogOpen = true)}>
-		<Trash2 class="w-4 h-4" />
-	</Button>
+<ConfirmDialog bind:open={showRemoveConfirm} itemType={'volume'} isRunning={inUse} title="Confirm Volume Removal" description={removeDescription} confirmLabel="Delete" variant="destructive" onConfirm={handleRemoveConfirm} />
 
-	<Dialog.Root bind:open={isConfirmDialogOpen}>
-		<Dialog.Content>
-			<Dialog.Header>
-				<Dialog.Title>Delete Volume</Dialog.Title>
-				<Dialog.Description>
-					Are you sure you want to delete volume "{name}"? This action cannot be undone.
-				</Dialog.Description>
-			</Dialog.Header>
+<DropdownMenu.Root>
+	<DropdownMenu.Trigger>
+		{#snippet child({ props })}
+			<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
+				<span class="sr-only">Open menu</span>
+				<Ellipsis />
+			</Button>
+		{/snippet}
+	</DropdownMenu.Trigger>
+	<DropdownMenu.Content>
+		<DropdownMenu.Group>
+			<DropdownMenu.Item onclick={viewVolume} disabled={isAnyLoading}>
+				<ScanSearch class="w-4 h-4" />
+				Inspect
+			</DropdownMenu.Item>
 
-			<div class="flex justify-end gap-3 pt-6">
-				<Button variant="outline" onclick={() => (isConfirmDialogOpen = false)} disabled={isDeleting}>Cancel</Button>
-				<Button variant="destructive" onclick={handleDelete} disabled={isDeleting}>
-					{#if isDeleting}
-						<Loader2 class="w-4 h-4 mr-2 animate-spin" />
-						Deleting...
-					{:else}
-						Delete
-					{/if}
-				</Button>
-			</div>
-		</Dialog.Content>
-	</Dialog.Root>
-</div>
+			<DropdownMenu.Separator />
+
+			<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={triggerRemove} disabled={isAnyLoading}>
+				{#if isDeleting}
+					<Loader2 class="w-4 h-4 animate-spin" />
+				{:else}
+					<Trash2 class="w-4 h-4" />
+				{/if}
+				Delete
+			</DropdownMenu.Item>
+		</DropdownMenu.Group>
+	</DropdownMenu.Content>
+</DropdownMenu.Root>

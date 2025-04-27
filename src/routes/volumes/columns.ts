@@ -13,11 +13,10 @@ export const columns: ColumnDef<VolumeInfo>[] = [
 		accessorKey: 'name',
 		header: 'Name',
 		cell: ({ row }) => {
-			const inUse = row.original.inUse;
-
 			return renderComponent(UnusedTextBadge, {
 				name: row.original.name,
-				inUse: inUse
+				inUse: row.original.inUse,
+				link: `/volumes/${row.original.name}`
 			});
 		}
 	},

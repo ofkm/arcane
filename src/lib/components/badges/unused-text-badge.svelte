@@ -12,8 +12,8 @@
 
 <div class="flex items-center gap-2">
 	{#if link}
-		<span class="">
-			<a href={link}>
+		<span class="truncate">
+			<a class="font-medium hover:underline" href={link}>
 				{name}
 			</a>
 		</span>

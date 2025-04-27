@@ -21,14 +21,18 @@
 	}
 
 	const defaultComposeTemplate = `services:
-  web:
+  nginx:
     image: nginx:alpine
-    container_name: my_web_container
-    restart: unless-stopped
-    volumes:
-      - ./data:/var/www/html
+    container_name: nginx_service
     ports:
-      - 8080:80
+      - "8080:80"
+    volumes:
+      - nginx_data:/usr/share/nginx/html
+    restart: unless-stopped
+
+volumes:
+  nginx_data:
+    driver: local
 `;
 
 	let name = $state('');

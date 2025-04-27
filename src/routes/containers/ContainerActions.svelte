@@ -96,7 +96,7 @@
 		<DropdownMenu.Group>
 			<DropdownMenu.Item onclick={viewContainer} disabled={isAnyLoading}>
 				<ScanSearch class="w-4 h-4" />
-				View
+				Inspect
 			</DropdownMenu.Item>
 
 			{#if !isRunning}

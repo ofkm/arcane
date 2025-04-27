@@ -1,6 +1,8 @@
 import { getDockerClient, dockerHost } from '$lib/services/docker/core';
 import type { ServiceVolume } from '$lib/types/docker/volume.type';
-import type { VolumeCreateOptions } from 'dockerode';
+import type { VolumeCreateOptions, VolumeInspectInfo } from 'dockerode'; // Import VolumeInspectInfo
+// Import custom errors
+import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors'; // #file:/Users/kylemendell/dev/ofkm/arcane/src/lib/types/errors.ts
 
 /**
  * This TypeScript function asynchronously lists Docker volumes and maps the response to a custom
@@ -61,6 +63,29 @@ export async function isVolumeInUse(volumeName: string): Promise<boolean> {
 }
 
 /**
+ * Retrieves detailed information about a specific Docker volume by its name.
+ * @param {string} volumeName - The name of the volume to inspect.
+ * @returns {Promise<VolumeInspectInfo>} A promise that resolves with the detailed volume information.
+ * @throws {NotFoundError} If the volume with the specified name does not exist.
+ * @throws {DockerApiError} For other errors during the Docker API interaction.
+ */
+export async function getVolume(volumeName: string): Promise<VolumeInspectInfo> {
+	try {
+		const docker = getDockerClient();
+		const volume = docker.getVolume(volumeName);
+		const inspectInfo = await volume.inspect();
+		console.log(`Docker Service: Inspected volume "${volumeName}" successfully.`);
+		return inspectInfo;
+	} catch (error: any) {
+		console.error(`Docker Service: Error inspecting volume "${volumeName}":`, error);
+		if (error.statusCode === 404) {
+			throw new NotFoundError(`Volume "${volumeName}" not found.`);
+		}
+		throw new DockerApiError(`Failed to inspect volume "${volumeName}": ${error.message || 'Unknown Docker error'}`, error.statusCode);
+	}
+}
+
+/**
  * The function `createVolume` creates a Docker volume with specified options and returns basic
  * information about the created volume.
  * @param {VolumeCreateOptions} options - The `options` parameter in the `createVolume` function is of
@@ -109,22 +134,27 @@ export async function createVolume(options: VolumeCreateOptions): Promise<Servic
  * flag to handle volume in use errors.
  * @param {string} name - The `name` parameter is a string that represents the name of the volume you
  * want to remove.
- * @param {boolean} [force=false] - The `force` parameter in the `removeVolume` function is a boolean
- * parameter that determines whether to forcefully remove the volume even if it is in use by a
- * container. By default, its value is set to `false`, meaning that the volume will not be removed if
- * it is in use. If
+ * @param {boolean} [force=false] - The `force` parameter determines whether to forcefully remove the volume even if it is in use by a
+ * container.
+ * @throws {NotFoundError} If the volume does not exist.
+ * @throws {ConflictError} If the volume is in use and force is false.
+ * @throws {DockerApiError} For other Docker API errors.
  */
 export async function removeVolume(name: string, force: boolean = false): Promise<void> {
 	try {
 		const docker = getDockerClient();
 		const volume = docker.getVolume(name);
 		await volume.remove({ force });
-		console.log(`Docker Service: Volume "${name}" removed successfully.`);
+		console.log(`Docker Service: Volume "${name}" removed successfully (force=${force}).`);
 	} catch (error: any) {
-		console.error(`Docker Service: Error removing volume "${name}":`, error);
-		if (error.statusCode === 409) {
-			throw new Error(`Volume "${name}" is in use by a container. Use force option to remove.`);
+		console.error(`Docker Service: Error removing volume "${name}" (force=${force}):`, error);
+		if (error.statusCode === 404) {
+			throw new NotFoundError(`Volume "${name}" not found.`);
 		}
-		throw new Error(`Failed to remove volume "${name}" using host "${dockerHost}". ${error.message || error.reason || ''}`);
+		if (error.statusCode === 409) {
+			// This usually means the volume is in use
+			throw new ConflictError(`Volume "${name}" is in use by a container. Stop the container or use the force option to remove.`);
+		}
+		throw new DockerApiError(`Failed to remove volume "${name}": ${error.message || error.reason || 'Unknown Docker error'}`, error.statusCode);
 	}
 }
