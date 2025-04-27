@@ -140,7 +140,7 @@ export async function createVolume(options: VolumeCreateOptions): Promise<Servic
  * @throws {ConflictError} If the volume is in use and force is false.
  * @throws {DockerApiError} For other Docker API errors.
  */
-export async function removeVolume(name: string, force: boolean = false): Promise<void> {
+export async function removeVolume(name: string, force = false): Promise<void> {
 	try {
 		const docker = getDockerClient();
 		const volume = docker.getVolume(name);
