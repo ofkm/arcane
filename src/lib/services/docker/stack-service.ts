@@ -142,58 +142,103 @@ async function getComposeInstance(stackId: string): Promise<DockerodeCompose> {
  */
 async function getStackServices(stackId: string, composeContent: string): Promise<StackService[]> {
 	const docker = getDockerClient();
+	const composeProjectLabel = 'com.docker.compose.project'; // Standard label
+	const composeServiceLabel = 'com.docker.compose.service'; // Standard service label
 
 	try {
 		const composeData = yaml.load(composeContent) as any;
 		if (!composeData || !composeData.services) {
+			console.warn(`No services found in compose content for stack ${stackId}`);
 			return [];
 		}
 
 		const serviceNames = Object.keys(composeData.services);
 
-		const containers = await docker.listContainers({ all: true });
-
-		const stackPrefix = `${stackId}_`;
-		const stackContainers = containers.filter((container) => {
-			const names = container.Names || [];
-			return names.some((name) => name.startsWith(`/${stackPrefix}`));
+		// List containers, potentially filtering by label for efficiency if needed
+		const containers = await docker.listContainers({
+			all: true
+			// Optional: Filter directly using Docker API if performance becomes an issue
+			// filters: JSON.stringify({ label: [`${composeProjectLabel}=${stackId}`] })
 		});
+
+		// Filter containers based on EITHER the project label OR the naming convention
+		const stackContainers = containers.filter((container) => {
+			const labels = container.Labels || {};
+			const names = container.Names || [];
+			// Check if any name starts with the conventional prefix (e.g., /stackId_service_1)
+			const nameStartsWithPrefix = names.some((name) => name.startsWith(`/${stackId}_`));
+			// Check if the standard compose project label matches the stackId
+			const hasCorrectLabel = labels[composeProjectLabel] === stackId;
+			// Include the container if either condition is true
+			return nameStartsWithPrefix || hasCorrectLabel;
+		});
+
+		if (stackContainers.length === 0) {
+			console.log(`No running or stopped containers found for stack ${stackId} based on name prefix or label.`);
+		}
 
 		const services: StackService[] = [];
 
 		for (const containerData of stackContainers) {
-			let containerName = containerData.Names?.[0] || '';
-			containerName = containerName.substring(1);
+			let containerName = containerData.Names?.[0]?.substring(1) || ''; // Remove leading '/'
+			const labels = containerData.Labels || {};
+			// Prefer the standard compose service label for the service name
+			let serviceName = labels[composeServiceLabel];
 
-			let serviceName = '';
-			for (const name of serviceNames) {
-				if (containerName.startsWith(`${stackId}_${name}_`) || containerName === `${stackId}_${name}`) {
-					serviceName = name;
-					break;
+			// Fallback to parsing from container name if the service label is missing
+			if (!serviceName) {
+				console.warn(`Container ${containerData.Id} in stack ${stackId} is missing the '${composeServiceLabel}' label. Attempting to parse name.`);
+				for (const name of serviceNames) {
+					// Match patterns like stackId_serviceName_1 or stackId_serviceName
+					// Ensure the match is precise to avoid partial overlaps (e.g., 'web' vs 'web-api')
+					const servicePrefixWithUnderscore = `${stackId}_${name}_`;
+					const servicePrefixExact = `${stackId}_${name}`;
+					if (containerName.startsWith(servicePrefixWithUnderscore) || containerName === servicePrefixExact) {
+						serviceName = name;
+						break;
+					}
 				}
 			}
 
+			// Final fallback if still no match (less ideal)
 			if (!serviceName) {
-				serviceName = containerName;
+				serviceName = containerName; // Use the full container name as a last resort
+				console.error(`Could not determine service name for container ${containerName} (ID: ${containerData.Id}) in stack ${stackId}. Using full container name.`);
 			}
 
 			const service: StackService = {
 				id: containerData.Id,
-				name: serviceName,
+				name: serviceName, // Use the determined service name
 				state: {
 					Running: containerData.State === 'running',
 					Status: containerData.State,
-					ExitCode: 0
+					// Note: listContainers doesn't provide ExitCode reliably, need inspect for that if required later
+					ExitCode: containerData.State === 'exited' ? -1 : 0 // Placeholder
 				}
 			};
 
-			services.push(service);
+			// Avoid adding duplicates if multiple containers map to the same service (e.g., scaled services)
+			// Check if a service with the same name already exists
+			const existingServiceIndex = services.findIndex((s) => s.name === serviceName);
+			if (existingServiceIndex !== -1) {
+				// If the existing service is just a placeholder ('not created'), replace it
+				if (!services[existingServiceIndex].id) {
+					services[existingServiceIndex] = service;
+				} else {
+					// Handle scaled services - maybe add instance number or just log for now
+					console.log(`Multiple containers found for service ${serviceName} in stack ${stackId}. Displaying first found.`);
+					// Or potentially create a unique name like serviceName + '-' + instanceNumber
+				}
+			} else {
+				services.push(service);
+			}
 		}
 
+		// Add placeholders for services defined in compose but not found among listed containers
 		for (const name of serviceNames) {
 			if (!services.some((s) => s.name === name)) {
 				services.push({
-					id: '',
+					id: '', // No container ID
 					name: name,
 					state: {
 						Running: false,
@@ -204,10 +249,13 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 			}
 		}
 
+		// Sort services alphabetically by name for consistent order
+		services.sort((a, b) => a.name.localeCompare(b.name));
+
 		return services;
 	} catch (err) {
 		console.error(`Error getting services for stack ${stackId}:`, err);
-		return [];
+		return []; // Return empty array on error
 	}
 }
 
