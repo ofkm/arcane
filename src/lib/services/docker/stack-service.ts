@@ -551,7 +551,12 @@ export async function stopStack(stackId: string): Promise<boolean> {
 				!containers.some((fc) => fc.Id === c.Id) && // Only check containers not already found by label
 				(c.Labels?.[composeProjectLabel] === stackId || c.Names?.some((name) => name.startsWith(`/${stackId}_`)))
 		);
-		const stackContainers = [...containers, ...nameFilteredContainers];
+		const seen = new Set<string>();
+		const stackContainers = [...containers, ...nameFilteredContainers].filter((c) => {
+			if (seen.has(c.Id)) return false;
+			seen.add(c.Id);
+			return true;
+		});
 
 		if (stackContainers.length === 0) {
 			return true; // Nothing to stop
