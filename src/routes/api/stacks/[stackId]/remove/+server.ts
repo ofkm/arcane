@@ -10,10 +10,10 @@ export const DELETE: RequestHandler = async ({ params }) => {
 		if (success) {
 			return json({ success: true, message: `Stack removed successfully` });
 		} else {
-			return json({ success: false, error: 'Failed to remove stack' }, { status: 500 });
+			return json({ success: false, error: 'Failed to remove stack' }, { status: 400 });
 		}
 	} catch (error: any) {
 		console.error(`API Error removing stack ${id}:`, error);
-		return json({ success: false, error: error.message || 'Failed to remove stack' }, { status: 500 });
+		return json({ success: false, error: error.message || 'Failed to remove stack' }, { status: 409 });
 	}
 };

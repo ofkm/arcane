@@ -19,7 +19,7 @@ export const DELETE: RequestHandler = async ({ params, url }) => {
 				success: false,
 				error: error.message || 'Failed to remove container'
 			},
-			{ status: 500 }
+			{ status: 409 }
 		);
 	}
 };
