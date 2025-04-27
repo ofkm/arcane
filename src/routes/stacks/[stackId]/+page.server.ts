@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getStack, updateStack, startStack, stopStack, restartStack, removeStack } from '$lib/services/docker/stack-service';
+import { getStack, updateStack, startStack, stopStack, restartStack, removeStack, fulllyRedployStack } from '$lib/services/docker/stack-service';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ params }) {
@@ -121,6 +121,19 @@ export const actions = {
 			return {
 				success: false,
 				error: err instanceof Error ? err.message : 'Failed to remove stack'
+			};
+		}
+	},
+
+	redeploy: async ({ params }) => {
+		try {
+			await fulllyRedployStack(params.stackId);
+			return { success: true, message: 'Stack redeployment initiated' };
+		} catch (err) {
+			console.error('Error redeploying stack:', err);
+			return {
+				success: false,
+				error: err instanceof Error ? err.message : 'Failed to redeploy stack'
 			};
 		}
 	}

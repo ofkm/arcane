@@ -121,7 +121,7 @@
 					<ActionButtons
 						id={stack.id}
 						type="stack"
-						state={stack.status}
+						itemState={stack.status}
 						loading={{
 							start: depoloying,
 							stop: stopping,

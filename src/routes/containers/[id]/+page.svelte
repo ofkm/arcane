@@ -96,7 +96,7 @@
 					<ActionButtons
 						id={container.id}
 						type="container"
-						state={container.state?.Running ? 'running' : 'stopped'}
+						itemState={container.state?.Running ? 'running' : 'stopped'}
 						loading={{
 							start: starting,
 							stop: stopping,

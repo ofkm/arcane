@@ -2,6 +2,7 @@ import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { updateStack } from '$lib/services/docker/stack-service';
 import { NotFoundError, ServiceError } from '$lib/types/errors';
+import { startStack } from '$lib/services/docker/stack-service';
 
 export const PATCH: RequestHandler = async ({ params, request }) => {
 	const stackId = params.stackId;
