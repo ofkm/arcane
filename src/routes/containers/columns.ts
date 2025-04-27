@@ -53,7 +53,7 @@ export const columns: ColumnDef<ServiceContainer>[] = [
 		cell: ({ row }) => {
 			return renderComponent(DataTableActions, {
 				id: row.original.id,
-				state: row.original.state
+				itemState: row.original.state
 			});
 		},
 		enableSorting: false
