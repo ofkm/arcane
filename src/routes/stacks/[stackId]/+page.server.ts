@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getStack, updateStack, startStack, stopStack, restartStack, removeStack, fulllyRedployStack } from '$lib/services/docker/stack-service';
+import { getStack, updateStack, startStack, stopStack, restartStack, removeStack, fullyRedeployStack } from '$lib/services/docker/stack-service';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ params }) {
@@ -127,7 +127,7 @@ export const actions = {
 
 	redeploy: async ({ params }) => {
 		try {
-			await fulllyRedployStack(params.stackId);
+			await fullyRedeployStack(params.stackId);
 			return { success: true, message: 'Stack redeployment initiated' };
 		} catch (err) {
 			console.error('Error redeploying stack:', err);

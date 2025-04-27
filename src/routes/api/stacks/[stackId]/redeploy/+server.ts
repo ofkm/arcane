@@ -1,12 +1,12 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { fulllyRedployStack } from '$lib/services/docker/stack-service';
+import { fullyRedeployStack } from '$lib/services/docker/stack-service';
 
 export const POST: RequestHandler = async ({ params }) => {
 	const id = params.stackId;
 
 	try {
-		const success = await fulllyRedployStack(id);
+		const success = await fullyRedeployStack(id);
 		if (success) {
 			return json({ success: true, message: `Stack redeployed successfully` });
 		} else {

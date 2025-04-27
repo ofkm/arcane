@@ -69,12 +69,14 @@
 
 		try {
 			const response = await fetch(endpoint, { method });
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error || `Failed to ${action} ${type}`);
+			// Gracefully fallback when there is no JSON body
+			let result: any = {};
+			if (response.headers.get('content-type')?.includes('application/json')) {
+				result = await response.json();
 			}
-
+			if (!response.ok) {
+				throw new Error(result.error ?? `Failed to ${action} ${type}`);
+			}
 			toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} ${action}ed successfully`);
 			await invalidateAll();
 			onActionComplete();
@@ -160,8 +162,8 @@
 			Remove
 		</Button>
 	{:else}
-		<Button type="button" variant="secondary" disabled={isRedeploying || loading.remove} class="font-medium" onclick={() => confirmAction('redeploy')}>
-			{#if isRedeploying || loading.remove}
+		<Button type="button" variant="secondary" disabled={isRedeploying || loading.redeploy} class="font-medium" onclick={() => confirmAction('redeploy')}>
+			{#if isRedeploying || loading.redeploy}
 				<Loader2 class="w-4 h-4 animate-spin" />
 			{:else}
 				<RefreshCcwDot class="w-4 h-4" />

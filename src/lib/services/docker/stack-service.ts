@@ -659,18 +659,18 @@ export async function restartStack(stackId: string): Promise<boolean> {
 }
 
 /**
- * The function `fulllyRedployStack` asynchronously stops, pulls latest images, and restarts a
+ * The function `fullyRedployStack` asynchronously stops, pulls latest images, and restarts a
  * specified stack, returning true if successful.
- * @param {string} stackId - The `stackId` parameter in the `fulllyRedployStack` function is a string
+ * @param {string} stackId - The `stackId` parameter in the `fullyRedeployStack` function is a string
  * that represents the identifier of the stack that you want to fully redeploy. This function stops the
  * stack, pulls the latest images, and then starts the stack again to ensure a full redeployment of the
  * specified
- * @returns The `fulllyRedployStack` function returns a `Promise<boolean>`. The function attempts to
+ * @returns The `fullyRedeployStack` function returns a `Promise<boolean>`. The function attempts to
  * fully redeploy a stack by stopping it, pulling the latest images, and then starting it again. If all
  * commands succeed, the function resolves the promise with a value of `true`. If an error occurs
  * during the process, the function catches the error, logs it, and then throws a new `
  */
-export async function fulllyRedployStack(stackId: string): Promise<boolean> {
+export async function fullyRedeployStack(stackId: string): Promise<boolean> {
 	console.log(`Attempting to fully redeploy stack ${stackId}...`);
 	try {
 		// Use the manual stop logic
