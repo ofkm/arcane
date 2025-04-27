@@ -49,11 +49,13 @@
 		}
 	}
 
-	async function handleRemoveConfirm() {
+	async function handleRemoveConfirm(force?: boolean) {
 		showRemoveConfirm = false;
 		isLoading.remove = true;
 		const method = 'DELETE';
-		const endpoint = `/api/containers/${id}/remove`;
+		const endpoint = `/api/containers/${id}/remove${force ? '?force=true' : ''}`;
+
+		console.log(`Attempting to remove container ${id} at endpoint: ${endpoint}`);
 
 		try {
 			const response = await fetch(endpoint, { method });
@@ -75,10 +77,11 @@
 
 	const isRunning = $derived(itemState === 'running');
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
+	const removeDescription = $derived(`Are you sure you want to remove container ${id}? This action cannot be undone.`);
 </script>
 
 <!-- Confirmation Dialog for Remove -->
-<ConfirmDialog bind:open={showRemoveConfirm} itemType={'container'} {isRunning} title="Confirm Removal" description={`Are you sure you want to remove container ${id}? This action cannot be undone.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} />
+<ConfirmDialog bind:open={showRemoveConfirm} itemType={'container'} {isRunning} title="Confirm Removal" description={removeDescription} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} />
 
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>

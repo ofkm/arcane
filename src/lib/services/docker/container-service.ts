@@ -1,6 +1,8 @@
 import { getDockerClient, dockerHost } from './core';
 import type { ContainerConfig, ContainerCreate } from '$lib/types/docker';
 import type { ServiceContainer } from '$lib/types/docker/container.type';
+// Import custom errors
+import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors';
 
 /**
  * This TypeScript function lists Docker containers and returns an array of ServiceContainer objects.
@@ -125,29 +127,40 @@ export async function restartContainer(containerId: string): Promise<void> {
 
 /**
  * The function `removeContainer` asynchronously removes a Docker container by its ID, with an option
- * to force removal if necessary.
+ * to force removal if necessary. It throws specific errors for common issues like 'not found' or 'conflict'.
  * @param {string} containerId - The `containerId` parameter is a string that represents the unique
- * identifier of the container that you want to remove. It is used to identify the specific container
- * within the Docker environment.
- * @param [force=false] - The `force` parameter in the `removeContainer` function is a boolean
- * parameter that determines whether to forcefully remove the container if it is currently running. If
- * `force` is set to `true`, the container will be removed even if it is running. If `force` is set to
- * `false
+ * identifier of the container that you want to remove.
+ * @param {boolean} [force=false] - The `force` parameter determines whether to forcefully remove the
+ * container if it is currently running. If `force` is set to `true`, the container will be stopped
+ * (if running) and then removed. If `force` is set to `false` (default), an error will be thrown if
+ * the container is running.
+ * @throws {NotFoundError} If the container with the specified ID does not exist.
+ * @throws {ConflictError} If trying to remove a running container without `force=true`.
+ * @throws {DockerApiError} For other errors during the Docker API interaction.
  */
 export async function removeContainer(containerId: string, force = false): Promise<void> {
 	try {
 		const docker = getDockerClient();
 		const container = docker.getContainer(containerId);
+
+		// Pass the force option directly to dockerode's remove method
 		await container.remove({ force });
+
+		console.log(`Docker Service: Container ${containerId} removed successfully (force=${force}).`);
 	} catch (error: any) {
-		console.error(`Docker Service: Error removing container ${containerId}:`, error);
+		console.error(`Docker Service: Error removing container ${containerId} (force=${force}):`, error);
+
+		// Use custom error types for better handling in the API layer
 		if (error.statusCode === 404) {
-			throw new Error(`Container ${containerId} not found.`);
+			throw new NotFoundError(`Container ${containerId} not found.`);
 		}
+		// 409 Conflict typically means trying to remove a running container without force
 		if (error.statusCode === 409) {
-			throw new Error(`Cannot remove running container ${containerId}. Stop it first or use force.`);
+			throw new ConflictError(`Cannot remove running container ${containerId}. Stop it first or use the force option.`);
 		}
-		throw new Error(`Failed to remove container ${containerId} using host "${dockerHost}". ${error.message || ''}`);
+
+		// Throw a more specific Docker API error for other cases
+		throw new DockerApiError(`Failed to remove container ${containerId}: ${error.message || 'Unknown Docker error'}`, error.statusCode);
 	}
 }
 
