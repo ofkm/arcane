@@ -5,6 +5,10 @@ import { removeStack } from '$lib/services/docker/stack-service';
 export const DELETE: RequestHandler = async ({ params }) => {
 	const id = params.stackId;
 
+	if (!id) {
+		return json({ success: false, error: 'Stack ID is required' }, { status: 400 });
+	}
+
 	try {
 		const success = await removeStack(id);
 		if (success) {

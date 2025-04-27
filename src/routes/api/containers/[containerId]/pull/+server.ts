@@ -3,6 +3,17 @@ import { json } from '@sveltejs/kit';
 import { getContainer } from '$lib/services/docker/container-service';
 import { pullImage } from '$lib/services/docker/image-service';
 
+/**
+ * This TypeScript function handles a POST request to pull an image associated with a container and
+ * returns success or error messages accordingly.
+ * @param  - The code snippet you provided is a TypeScript function that handles a POST request. It
+ * takes a containerId from the request parameters, retrieves the container information using the
+ * containerId, extracts the image name from the container, and then pulls the image. If successful, it
+ * returns a success message with the pulled image
+ * @returns The code snippet is an asynchronous function that handles a POST request. It attempts to
+ * pull an image associated with a container identified by `containerId`. Here is what is being
+ * returned based on the execution flow:
+ */
 export const POST: RequestHandler = async ({ params }) => {
 	const containerId = params.containerId;
 
