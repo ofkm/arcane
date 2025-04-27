@@ -8,14 +8,9 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-
-	import { oneDark } from '@codemirror/theme-one-dark';
-	import { browser } from '$app/environment';
-
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
 
 	let saving = $state(false);
-	let darkMode = $state(false);
 	let apiError = $state<string | null>(null);
 
 	function preventDefault(fn: (event: Event) => any) {
@@ -24,18 +19,6 @@
 			fn.call(this, event);
 		};
 	}
-
-	$effect(() => {
-		if (browser) {
-			darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches || document.documentElement.classList.contains('dark');
-		}
-	});
-
-	let extensions = $state([oneDark]);
-
-	$effect(() => {
-		extensions = darkMode ? [oneDark] : [];
-	});
 
 	const defaultComposeTemplate = `services:
   web:
