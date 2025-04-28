@@ -2,34 +2,42 @@ import type { PageServerLoad } from './$types';
 import { listContainers } from '$lib/services/docker/container-service';
 import { getDockerInfo } from '$lib/services/docker/core';
 import { listImages } from '$lib/services/docker/image-service';
+import { getSettings } from '$lib/services/settings-service'; // Import getSettings
 import type { ServiceContainer, ServiceImage } from '$lib/types/docker';
 
-// Infer the Docker Info type from the return type of getDockerInfo
 type DockerInfoType = Awaited<ReturnType<typeof getDockerInfo>>;
+type SettingsType = Awaited<ReturnType<typeof getSettings>>; // Infer settings type
 
-// Define a type for the combined data using the inferred type
+// Update DashboardData type
 type DashboardData = {
-	dockerInfo: DockerInfoType | null; // Use the inferred type
+	dockerInfo: DockerInfoType | null;
 	containers: ServiceContainer[];
 	images: ServiceImage[];
+	settings: Pick<SettingsType, 'pruneMode'> | null; // Only include pruneMode
 	error?: string;
 };
 
 export const load: PageServerLoad = async (): Promise<DashboardData> => {
 	try {
-		// Fetch all data concurrently
-		const [dockerInfo, containers, images] = await Promise.all([
+		// Fetch all data concurrently, including settings
+		const [dockerInfo, containers, images, settings] = await Promise.all([
 			getDockerInfo().catch((e) => {
 				console.error('Dashboard: Failed to get Docker info:', e.message);
-				return null; // Return null on error for this specific piece
+				return null;
 			}),
 			listContainers(true).catch((e) => {
+				// Ensure options object if needed
 				console.error('Dashboard: Failed to list containers:', e.message);
-				return []; // Return empty array on error
+				return [];
 			}),
 			listImages().catch((e) => {
 				console.error('Dashboard: Failed to list images:', e.message);
-				return []; // Return empty array on error
+				return [];
+			}),
+			getSettings().catch((e) => {
+				// Fetch settings
+				console.error('Dashboard: Failed to get settings:', e.message);
+				return null; // Handle settings fetch error
 			})
 		]);
 
@@ -39,6 +47,7 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 				dockerInfo: null,
 				containers: [],
 				images: [],
+				settings: settings ? { pruneMode: settings.pruneMode } : null, // Still return settings if available
 				error: 'Failed to connect to Docker Engine. Please check settings and ensure Docker is running.'
 			};
 		}
@@ -46,15 +55,16 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 		return {
 			dockerInfo,
 			containers,
-			images
+			images,
+			settings: settings ? { pruneMode: settings.pruneMode } : null // Pass only pruneMode
 		};
 	} catch (err: any) {
-		// Catch any unexpected errors during Promise.all or processing
 		console.error('Dashboard: Unexpected error loading data:', err);
 		return {
 			dockerInfo: null,
 			containers: [],
 			images: [],
+			settings: null,
 			error: err.message || 'An unexpected error occurred while loading dashboard data.'
 		};
 	}

@@ -11,18 +11,21 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
+	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	let dockerInfo = $state(data.dockerInfo);
 	let containers = $state(data.containers || []);
 	let images = $state(data.images || []);
+	let settings = $state(data.settings);
 	let error = $state(data.error);
 
 	let isRefreshing = $state(false);
 	let isStartingAll = $state(false);
 	let isStoppingAll = $state(false);
 	let isPruning = $state(false);
+	let isPruneDialogOpen = $state(false);
 
 	const runningContainers = $derived(containers?.filter((c) => c.state === 'running').length ?? 0);
 	const stoppedContainers = $derived(containers?.filter((c) => c.state === 'exited').length ?? 0);
@@ -33,6 +36,7 @@
 		dockerInfo = data.dockerInfo;
 		containers = data.containers || [];
 		images = data.images || [];
+		settings = data.settings;
 		error = data.error;
 		if (isRefreshing) isRefreshing = false;
 	});
@@ -92,23 +96,33 @@
 		}
 	}
 
-	async function handlePrune() {
-		if (isPruning || !dockerInfo) return;
-		console.warn('Prune confirmation needed!');
+	function openPruneDialog() {
+		if (!dockerInfo || isStartingAll || isStoppingAll || isPruning) return;
+		isPruneDialogOpen = true;
+	}
+
+	async function confirmPrune(selectedTypes: string[]) {
+		if (isPruning || selectedTypes.length === 0) return;
+
+		console.log(`Attempting to prune types: ${selectedTypes.join(', ')}`);
 		isPruning = true;
+		isPruneDialogOpen = false;
+
 		try {
-			const response = await fetch('/api/system/prune', { method: 'POST' });
+			const apiUrl = `/api/system/prune?types=${selectedTypes.join(',')}`;
+			const response = await fetch(apiUrl, { method: 'POST' });
 			const result = await response.json();
 
-			if (!response.ok) {
-				throw new Error(result.message || 'Failed to prune system');
+			if (!response.ok && !result.success) {
+				throw new Error(result.message || `Failed to prune system (status ${response.status})`);
 			}
 
-			let pruneMessage = result.message || 'System prune completed successfully.';
-			if (result.spaceReclaimed > 0) {
-				pruneMessage += ` Reclaimed ${formatBytes(result.spaceReclaimed)}.`;
+			if (!result.success && result.message) {
+				toast.warning(result.message);
+			} else {
+				toast.success(result.message || 'System prune completed.');
 			}
-			toast.success(pruneMessage);
+
 			await invalidateAll();
 		} catch (err: any) {
 			console.error('Error pruning system:', err);
@@ -266,13 +280,13 @@
 			</Card.Root>
 
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button onclick={handlePrune} class="w-full" variant="destructive" disabled={!dockerInfo || isStartingAll || isStoppingAll || isPruning}>
+				<Button onclick={openPruneDialog} class="w-full" variant="destructive" disabled={!dockerInfo || isStartingAll || isStoppingAll || isPruning}>
 					{#if isPruning}
 						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
 					{:else}
 						<Trash2 class="h-4 w-4 mr-2" />
 					{/if}
-					Prune System
+					Prune System...
 				</Button>
 				<p class="text-xs text-muted-foreground mt-2">Remove unused data</p>
 			</Card.Root>
@@ -408,4 +422,6 @@
 			</div>
 		</div>
 	</section>
+
+	<PruneConfirmationDialog bind:open={isPruneDialogOpen} {isPruning} imagePruneMode={settings?.pruneMode || 'dangling'} onConfirm={confirmPrune} onCancel={() => (isPruneDialogOpen = false)} />
 </div>
