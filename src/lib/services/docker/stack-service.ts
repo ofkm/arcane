@@ -358,7 +358,8 @@ export async function getStack(stackId: string): Promise<Stack> {
 			status,
 			createdAt: meta.createdAt,
 			updatedAt: meta.updatedAt,
-			composeContent
+			composeContent,
+			meta
 		};
 	} catch (err) {
 		console.error(`Error getting stack ${stackId}:`, err);
@@ -456,7 +457,9 @@ export async function updateStack(stackId: string, updates: StackUpdate): Promis
 		const updatedMeta: StackMeta = {
 			...meta,
 			name: updates.name || meta.name,
-			updatedAt: new Date().toISOString()
+			updatedAt: new Date().toISOString(),
+			// Add auto-update flag if provided
+			...(updates.autoUpdate !== undefined ? { autoUpdate: updates.autoUpdate } : {})
 		};
 
 		const promises = [fs.writeFile(metaPath, JSON.stringify(updatedMeta, null, 2), 'utf8')];
@@ -900,4 +903,42 @@ ${yaml.dump({ services }).substring(10)}`; // Remove the services: line
 
 	// 5. Create a new stack in Arcane's managed stacks
 	return await createStack(stackId, composeContent);
+}
+
+/**
+ * Lists all managed and optionally external stacks
+ */
+export async function listStacks(includeExternal: boolean = false): Promise<Stack[]> {
+	// Get managed stacks
+	const managedStacks = await loadComposeStacks();
+
+	// Add meta information to managed stacks
+	const enrichedManagedStacks = await Promise.all(
+		managedStacks.map(async (stack) => {
+			try {
+				// Read the meta file to get autoUpdate property
+				const metaPath = await getStackMetaPath(stack.id);
+				const metaContent = await fs.readFile(metaPath, 'utf8');
+				const meta = JSON.parse(metaContent) as StackMeta;
+
+				// Return stack with meta included
+				return {
+					...stack,
+					meta
+				};
+			} catch (err) {
+				console.warn(`Failed to read meta for stack ${stack.id}:`, err);
+				return stack; // Return stack without meta if there was an error
+			}
+		})
+	);
+
+	// Get external stacks if requested
+	let externalStacks: Stack[] = [];
+	if (includeExternal) {
+		externalStacks = await discoverExternalStacks();
+	}
+
+	// Combine managed and external stacks
+	return [...enrichedManagedStacks, ...externalStacks];
 }

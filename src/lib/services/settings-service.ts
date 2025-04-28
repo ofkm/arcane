@@ -16,6 +16,7 @@ const SETTINGS_FOLDER = path.join(BASE_PATH, 'settings');
 export const DEFAULT_SETTINGS: SettingsData = {
 	dockerHost: isDev ? (process.platform === 'win32' ? 'npipe:////./pipe/docker_engine' : 'unix:///var/run/docker.sock') : 'unix:///var/run/docker.sock',
 	autoUpdate: false,
+	autoUpdateInterval: 5,
 	pollingEnabled: true,
 	pollingInterval: 10,
 	pruneMode: 'all',

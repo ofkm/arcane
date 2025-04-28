@@ -26,6 +26,11 @@ export const actions: Actions = {
 
 			// Explicitly check for the "on" value for both toggle switches
 			const autoUpdate = formData.get('autoUpdate') === 'on';
+			const autoUpdateInterval = parseInt(formData.get('autoUpdateInterval') as string, 10) || 60;
+
+			// Validate interval range
+			const validatedAutoUpdateInterval = Math.min(Math.max(autoUpdateInterval, 5), 1440);
+
 			const pollingEnabled = formData.get('pollingEnabled') === 'on';
 
 			const pollingIntervalStr = formData.get('pollingInterval') as string;
@@ -89,6 +94,7 @@ export const actions: Actions = {
 				autoUpdate,
 				pollingEnabled,
 				pollingInterval,
+				autoUpdateInterval: validatedAutoUpdateInterval,
 				stacksDirectory,
 				pruneMode: pruneMode,
 				externalServices

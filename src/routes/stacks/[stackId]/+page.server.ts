@@ -17,7 +17,8 @@ export async function load({ params }) {
 				name: stack.name || '',
 				composeContent: stack.composeContent || '',
 				originalName: stack.name || '',
-				originalComposeContent: stack.composeContent || ''
+				originalComposeContent: stack.composeContent || '',
+				autoUpdate: stack.meta?.autoUpdate || false
 			}
 		};
 	} catch (err) {
@@ -30,7 +31,8 @@ export async function load({ params }) {
 				name: '',
 				composeContent: '',
 				originalName: '',
-				originalComposeContent: ''
+				originalComposeContent: '',
+				autoUpdate: false
 			}
 		};
 	}
@@ -44,23 +46,16 @@ export const actions = {
 
 		const name = formData.get('name')?.toString() || '';
 		const composeContent = formData.get('composeContent')?.toString() || '';
+		const autoUpdate = formData.get('autoUpdate') === 'on';
 
 		try {
-			await updateStack(stackId, { name, composeContent });
+			await updateStack(stackId, { name, composeContent, autoUpdate });
 			return {
 				success: true,
 				message: 'Stack updated successfully'
 			};
 		} catch (err) {
 			console.error('Error updating stack:', err);
-			// Consider using fail() for form action errors
-			// import { fail } from '@sveltejs/kit';
-			// return fail(422, { // Example: Unprocessable Entity
-			//  name, // Return submitted values for repopulation
-			//  composeContent,
-			//  error: err instanceof Error ? err.message : 'Failed to update stack'
-			// });
-			// Or keep the simple return for now:
 			return {
 				success: false,
 				error: err instanceof Error ? err.message : 'Failed to update stack'

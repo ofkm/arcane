@@ -17,6 +17,7 @@
 	let pollingEnabled = $derived(form?.values?.pollingEnabled !== undefined ? form.values.pollingEnabled === 'on' : settings?.pollingEnabled || false);
 
 	let pollingInterval = $derived(form?.values?.pollingInterval !== undefined ? Number(form.values.pollingInterval) : settings?.pollingInterval || 10);
+	let autoUpdateInterval = $derived(form?.values?.autoUpdateInterval !== undefined ? Number(form.values.autoUpdateInterval) : settings?.autoUpdateInterval || 10);
 
 	let stacksDirectory = $derived(form?.values?.stacksDirectory || settings?.stacksDirectory || '');
 	let autoUpdate = $derived(form?.values?.autoUpdate !== undefined ? form.values.autoUpdate === 'on' : settings?.autoUpdate || false);
@@ -109,6 +110,14 @@
 						</div>
 						<Switch id="autoUpdateSwitch" name="autoUpdate" bind:checked={autoUpdate} />
 					</div>
+
+					{#if autoUpdate}
+						<div class="space-y-2 mt-4">
+							<Label for="autoUpdateInterval" class="text-base font-medium">Auto-update check interval (minutes)</Label>
+							<Input id="autoUpdateInterval" name="autoUpdateInterval" type="number" min="5" max="1440" bind:value={autoUpdateInterval} />
+							<p class="text-sm text-muted-foreground">How often Arcane will check for container and stack updates (minimum 5 minutes, maximum 24 hours)</p>
+						</div>
+					{/if}
 				{/if}
 			</Card.Content>
 		</Card.Root>

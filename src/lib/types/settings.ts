@@ -1,6 +1,7 @@
 export interface SettingsData {
 	dockerHost: string;
 	autoUpdate: boolean;
+	autoUpdateInterval: number;
 	pollingEnabled: boolean;
 	pollingInterval: number;
 	stacksDirectory: string;

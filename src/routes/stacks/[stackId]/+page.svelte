@@ -15,6 +15,7 @@
 	import { toast } from 'svelte-sonner';
 	import { enhance } from '$app/forms';
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
+	import { Switch } from '$lib/components/ui/switch/index.js';
 
 	let { data }: { data: PageData; form: ActionData } = $props();
 	let { stack, editorState } = $derived(data);
@@ -29,8 +30,9 @@
 	let composeContent = $derived(editorState.composeContent);
 	let originalName = $derived(editorState.originalName);
 	let originalComposeContent = $derived(editorState.originalComposeContent);
+	let originalAutoUpdate = $derived(editorState.autoUpdate);
 
-	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent);
+	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || editorState.autoUpdate !== originalAutoUpdate);
 
 	$effect(() => {
 		depoloying = false;
@@ -52,7 +54,11 @@
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({ name, composeContent })
+				body: JSON.stringify({
+					name,
+					composeContent,
+					autoUpdate: editorState.autoUpdate
+				})
 			});
 
 			const result = await response.json();
@@ -66,6 +72,7 @@
 
 			originalName = name;
 			originalComposeContent = composeContent;
+			originalAutoUpdate = editorState.autoUpdate;
 
 			await invalidateAll();
 		} catch (error: any) {
@@ -204,6 +211,14 @@
 							<p class="text-xs text-muted-foreground">
 								Edit your <span class="font-bold">compose.yaml</span> file directly. Syntax errors will be highlighted.
 							</p>
+						</div>
+
+						<div class="flex items-center space-x-2 mt-4">
+							<Switch id="auto-update" name="autoUpdate" bind:checked={editorState.autoUpdate} />
+							<Label for="auto-update" class="font-medium">Enable auto-update</Label>
+							<div class="inline-block">
+								<p class="text-xs text-muted-foreground">When enabled, Arcane will periodically check for newer versions of all images in this stack and automatically redeploy it.</p>
+							</div>
 						</div>
 					</div>
 				</Card.Content>

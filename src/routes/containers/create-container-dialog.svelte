@@ -13,7 +13,7 @@
 	import { parseBytes } from '$lib/utils/bytes';
 
 	import { createEventDispatcher } from 'svelte';
-	import { optional } from 'zod';
+	import Switch from '$lib/components/ui/switch/switch.svelte';
 	const dispatch = createEventDispatcher();
 
 	// Functions for events
@@ -86,6 +86,9 @@
 	let runAsUser = $state('');
 	let memoryLimitStr = $state(''); // Input as string (e.g., "512m", "1g")
 	let cpuLimitStr = $state(''); // Input as string (e.g., "0.5", "1")
+
+	// Add state for Auto-update
+	let autoUpdate = $state(false);
 
 	// Port validation - improved
 	function validatePortNumber(port: string | number): {
@@ -218,6 +221,11 @@
 				},
 				{} as { [key: string]: string }
 			);
+
+		// Add auto-update label if enabled
+		if (autoUpdate) {
+			filteredLabels['arcane.auto-update'] = 'true';
+		}
 
 		// Prepare healthcheck config if enabled and test command is provided
 		let healthcheckConfig: HealthConfig | undefined = undefined;
@@ -605,6 +613,13 @@
 										<p class="text-xs text-muted-foreground">Number of CPU cores (e.g., 1.5 = 1.5 cores).</p>
 									</div>
 								</div>
+							</div>
+
+							<!-- Auto-update -->
+							<div class="flex items-center space-x-2 py-4 border-t">
+								<Switch id="auto-update" name="autoUpdate" bind:checked={autoUpdate} />
+								<Label for="auto-update" class="font-medium">Enable auto-update</Label>
+								<p class="text-xs text-muted-foreground">When enabled, Arcane will periodically check for newer versions of this container's image and automatically update it.</p>
 							</div>
 						</div>
 					</Tabs.Content>

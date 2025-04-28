@@ -2,6 +2,7 @@ export interface StackMeta {
 	name: string;
 	createdAt: string;
 	updatedAt: string;
+	autoUpdate?: boolean;
 }
 
 export interface StackService {
@@ -27,9 +28,11 @@ export interface Stack {
 	composeContent?: string;
 	isExternal?: boolean;
 	compose?: any;
+	meta?: StackMeta;
 }
 
 export interface StackUpdate {
 	name?: string;
 	composeContent?: string;
+	autoUpdate?: boolean;
 }
