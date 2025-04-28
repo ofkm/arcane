@@ -3,6 +3,7 @@ import { renderComponent } from '$lib/components/ui/data-table/index.js';
 import NetworkActions from './NetworkActions.svelte';
 import SubnetCell from './SubnetCell.svelte';
 import type { ServiceNetwork } from '$lib/types/docker';
+import NameCell from '$lib/components/badges/name-cell.svelte';
 
 // Use the ServiceNetwork type directly
 export type NetworkInfo = ServiceNetwork;
@@ -10,7 +11,10 @@ export type NetworkInfo = ServiceNetwork;
 export const columns: ColumnDef<NetworkInfo>[] = [
 	{
 		accessorKey: 'name',
-		header: 'Name'
+		header: 'Name',
+		cell: ({ row }) => {
+			return renderComponent(NameCell, { name: row.original.name, link: `/networks/${row.original.id}` });
+		}
 	},
 	{
 		accessorKey: 'driver',
