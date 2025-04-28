@@ -22,7 +22,7 @@ export const POST: RequestHandler = async ({ url }) => {
 		throw serverError(400, `No valid resource types provided for pruning. Allowed types: ${allowedPruneTypes.join(', ')}`);
 	}
 
-	console.log(`API: POST /api/docker/system/prune - Pruning types: ${validTypes.join(', ')}`);
+	console.log(`API: POST /api/system/prune - Pruning types: ${validTypes.join(', ')}`);
 
 	try {
 		const results = await pruneSystem(validTypes); // Pass validated types to service

@@ -3,7 +3,7 @@ import { listContainers, startContainer } from '$lib/services/docker/container-s
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async () => {
-	console.log('API: POST /api/docker/containers/start-all');
+	console.log('API: POST /api/containers/start-all');
 	try {
 		const containers = await listContainers(true); // Fetch all containers
 		const stopped = containers.filter((c) => c.state === 'exited');
