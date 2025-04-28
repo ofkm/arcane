@@ -4,44 +4,135 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { dashboardContainerColumns, dashboardImageColumns } from './columns';
-	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings } from '@lucide/svelte';
+	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2 } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { formatBytes } from '$lib/utils';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import { invalidateAll } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 
 	let { data }: { data: PageData } = $props();
-	const { dockerInfo, containers, images, error } = data;
+
+	let dockerInfo = $state(data.dockerInfo);
+	let containers = $state(data.containers || []);
+	let images = $state(data.images || []);
+	let error = $state(data.error);
+
 	let isRefreshing = $state(false);
+	let isStartingAll = $state(false);
+	let isStoppingAll = $state(false);
+	let isPruning = $state(false);
 
-	// Calculate running containers count
 	const runningContainers = $derived(containers?.filter((c) => c.state === 'running').length ?? 0);
-
-	// Calculate stopped containers count
 	const stoppedContainers = $derived(containers?.filter((c) => c.state === 'exited').length ?? 0);
-
-	// Calculate total image size
 	const totalImageSize = $derived(images?.reduce((sum, image) => sum + (image.size || 0), 0) ?? 0);
+
+	$effect(() => {
+		console.log('Dashboard data prop changed, updating local state.');
+		dockerInfo = data.dockerInfo;
+		containers = data.containers || [];
+		images = data.images || [];
+		error = data.error;
+		if (isRefreshing) isRefreshing = false;
+	});
+
+	async function refreshData() {
+		if (isRefreshing) return;
+		console.log('Refreshing dashboard data...');
+		isRefreshing = true;
+		try {
+			await invalidateAll();
+		} catch (err) {
+			console.error('Error during dashboard refresh:', err);
+			error = 'Failed to refresh dashboard data.';
+			isRefreshing = false;
+		}
+	}
+
+	async function handleStartAll() {
+		if (isStartingAll || !dockerInfo || stoppedContainers === 0) return;
+		isStartingAll = true;
+		try {
+			const response = await fetch('/api/containers/start-all', { method: 'POST' });
+			const result = await response.json();
+
+			if (!response.ok) {
+				throw new Error(result.message || 'Failed to start containers');
+			}
+
+			toast.success(result.message || `Successfully started ${result.count} container(s).`);
+			await invalidateAll();
+		} catch (err: any) {
+			console.error('Error starting all containers:', err);
+			toast.error(err.message || 'An error occurred while starting containers.');
+		} finally {
+			isStartingAll = false;
+		}
+	}
+
+	async function handleStopAll() {
+		if (isStoppingAll || !dockerInfo || runningContainers === 0) return;
+		isStoppingAll = true;
+		try {
+			const response = await fetch('/api/containers/stop-all', { method: 'POST' });
+			const result = await response.json();
+
+			if (!response.ok) {
+				throw new Error(result.message || 'Failed to stop containers');
+			}
+
+			toast.success(result.message || `Successfully stopped ${result.count} container(s).`);
+			await invalidateAll();
+		} catch (err: any) {
+			console.error('Error stopping all containers:', err);
+			toast.error(err.message || 'An error occurred while stopping containers.');
+		} finally {
+			isStoppingAll = false;
+		}
+	}
+
+	async function handlePrune() {
+		if (isPruning || !dockerInfo) return;
+		console.warn('Prune confirmation needed!');
+		isPruning = true;
+		try {
+			const response = await fetch('/api/system/prune', { method: 'POST' });
+			const result = await response.json();
+
+			if (!response.ok) {
+				throw new Error(result.message || 'Failed to prune system');
+			}
+
+			let pruneMessage = result.message || 'System prune completed successfully.';
+			if (result.spaceReclaimed > 0) {
+				pruneMessage += ` Reclaimed ${formatBytes(result.spaceReclaimed)}.`;
+			}
+			toast.success(pruneMessage);
+			await invalidateAll();
+		} catch (err: any) {
+			console.error('Error pruning system:', err);
+			toast.error(err.message || 'An error occurred while pruning the system.');
+		} finally {
+			isPruning = false;
+		}
+	}
 </script>
 
 <div class="space-y-8">
-	<!-- Header with refresh button -->
 	<div class="flex justify-between items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
 			<p class="text-sm text-muted-foreground mt-1">Overview of your Docker environment</p>
 		</div>
-		<!-- Dont remove this button -->
-		<!-- <Button
-      variant="outline"
-      size="sm"
-      class="h-9"
-      onclick={refreshData}
-      disabled={isRefreshing}
-    >
-      <RefreshCw class={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-      Refresh
-    </Button> -->
+		<Button variant="outline" size="sm" class="h-9" onclick={refreshData} disabled={isRefreshing || isStartingAll || isStoppingAll || isPruning}>
+			{#if isRefreshing}
+				<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+			{:else}
+				<RefreshCw class="h-4 w-4 mr-2" />
+			{/if}
+			Refresh
+		</Button>
 	</div>
 
 	{#if error}
@@ -55,14 +146,12 @@
 		</Alert.Root>
 	{/if}
 
-	<!-- Engine Overview Section -->
 	<section>
 		<div class="flex items-center justify-between mb-4">
 			<h2 class="text-lg font-semibold tracking-tight">Engine Overview</h2>
 		</div>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-			<!-- Running Containers Card -->
 			<Card.Root class="overflow-hidden border-l-4 border-l-green-500">
 				<Card.Content class="p-6">
 					<div class="flex justify-between items-start">
@@ -85,7 +174,6 @@
 				</Card.Content>
 			</Card.Root>
 
-			<!-- Images Card -->
 			<Card.Root class="overflow-hidden border-l-4 border-l-blue-500">
 				<Card.Content class="p-6">
 					<div class="flex justify-between items-start">
@@ -107,7 +195,6 @@
 				</Card.Content>
 			</Card.Root>
 
-			<!-- CPU Card -->
 			<Card.Root class="overflow-hidden border-l-4 border-l-purple-500">
 				<Card.Content class="p-6">
 					<div class="flex justify-between items-start">
@@ -125,7 +212,6 @@
 				</Card.Content>
 			</Card.Root>
 
-			<!-- Memory Card -->
 			<Card.Root class="overflow-hidden border-l-4 border-l-amber-500">
 				<Card.Content class="p-6">
 					<div class="flex justify-between items-start">
@@ -150,13 +236,16 @@
 		</div>
 	</section>
 
-	<!-- Quick Actions Section -->
 	<section>
 		<h2 class="text-lg font-semibold tracking-tight mb-4">Quick Actions</h2>
 		<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button class="w-full" disabled={!dockerInfo || stoppedContainers === 0} variant="default">
-					<PlayCircle class="h-4 w-4 mr-2" />
+				<Button onclick={handleStartAll} class="w-full" disabled={!dockerInfo || stoppedContainers === 0 || isStartingAll || isStoppingAll || isPruning} variant="default">
+					{#if isStartingAll}
+						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+					{:else}
+						<PlayCircle class="h-4 w-4 mr-2" />
+					{/if}
 					Start All Stopped
 					<StatusBadge variant="amber" text={stoppedContainers.toString()} />
 				</Button>
@@ -164,8 +253,12 @@
 			</Card.Root>
 
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button class="w-full" variant="secondary" disabled={!dockerInfo || runningContainers === 0}>
-					<StopCircle class="h-4 w-4 mr-2" />
+				<Button onclick={handleStopAll} class="w-full" variant="secondary" disabled={!dockerInfo || runningContainers === 0 || isStartingAll || isStoppingAll || isPruning}>
+					{#if isStoppingAll}
+						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+					{:else}
+						<StopCircle class="h-4 w-4 mr-2" />
+					{/if}
 					Stop All Running
 					<StatusBadge variant="amber" text={runningContainers.toString()} />
 				</Button>
@@ -173,8 +266,12 @@
 			</Card.Root>
 
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button class="w-full" variant="destructive" disabled={!dockerInfo}>
-					<Trash2 class="h-4 w-4 mr-2" />
+				<Button onclick={handlePrune} class="w-full" variant="destructive" disabled={!dockerInfo || isStartingAll || isStoppingAll || isPruning}>
+					{#if isPruning}
+						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+					{:else}
+						<Trash2 class="h-4 w-4 mr-2" />
+					{/if}
 					Prune System
 				</Button>
 				<p class="text-xs text-muted-foreground mt-2">Remove unused data</p>
@@ -182,11 +279,9 @@
 		</div>
 	</section>
 
-	<!-- Resources Section -->
 	<section>
 		<h2 class="text-lg font-semibold tracking-tight mb-4">Resources</h2>
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-			<!-- Containers List -->
 			<Card.Root class="border shadow-sm relative flex flex-col">
 				<Card.Header class="px-6">
 					<div class="flex items-center justify-between">
@@ -236,7 +331,6 @@
 				</Card.Content>
 			</Card.Root>
 
-			<!-- Images List -->
 			<Card.Root class="border shadow-sm relative flex flex-col">
 				<Card.Header class="px-6">
 					<div class="flex items-center justify-between">
@@ -291,7 +385,6 @@
 		</div>
 	</section>
 
-	<!-- Footer Links -->
 	<section class="border-t pt-4 mt-10">
 		<div class="flex justify-between items-center text-muted-foreground text-sm">
 			<div class="flex items-center">
