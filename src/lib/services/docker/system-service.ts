@@ -74,7 +74,7 @@ export async function pruneSystem(typesToPrune: PruneType[]): Promise<any> {
 		console.log('Docker System Prune results:', results);
 
 		// Check for individual errors within results
-		const errors = results.filter((r) => r && r.error);
+		const errors = results.filter((r) => r?.error);
 		if (errors.length > 0) {
 			// Optionally throw a combined error or return structured error info
 			console.error(`Errors occurred during prune: ${errors.map((e) => `${e.type}: ${e.error}`).join('; ')}`);
