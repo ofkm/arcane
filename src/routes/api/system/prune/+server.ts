@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ url }) => {
 		// Calculate total space reclaimed and check for errors
 		let totalSpaceReclaimed = 0;
 		let hasErrors = false;
-		let errorMessages: string[] = [];
+		const errorMessages: string[] = [];
 
 		if (Array.isArray(results)) {
 			results.forEach((res) => {

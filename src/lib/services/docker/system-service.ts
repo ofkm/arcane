@@ -34,7 +34,10 @@ export async function pruneSystem(typesToPrune: PruneType[]): Promise<any> {
 		}
 
 		if (typesToPrune.includes('images')) {
-			const imagePruneFilter = { dangling: settings.pruneMode === 'dangling' };
+			const imagePruneFilter =
+				settings.pruneMode === 'dangling'
+					? { dangling: ['true'] } // prune dangling only
+					: { dangling: ['false'] }; // prune all unused images
 			console.log(`Adding image prune (${settings.pruneMode}) to tasks.`);
 			prunePromises.push(
 				docker.pruneImages({ filters: imagePruneFilter }).catch((e) => {
