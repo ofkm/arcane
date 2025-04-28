@@ -1,6 +1,6 @@
 import { listContainers, getContainer, restartContainer } from './container-service';
 import { listStacks, getStack, fullyRedeployStack } from './stack-service';
-import { pullImage, getImage } from './image-service';
+import { pullImage, getImage, listImages } from './image-service';
 import { getSettings } from '../settings-service';
 import type { ServiceContainer } from '$lib/types/docker';
 import type { Stack } from '$lib/types/docker/stack.type';
@@ -178,51 +178,92 @@ async function checkContainerImageUpdate(container: ServiceContainer): Promise<b
 }
 
 /**
- * Checks if any images in a stack have updates available
+ * Checks if any images referenced in a stack's compose file have updates available.
+ * Iterates through all images and returns true if at least one has a new digest.
  */
 async function checkStackImagesUpdate(stack: Stack): Promise<boolean> {
+	let updateFound = false; // Flag to track if any update is found
+
 	try {
 		const fullStack = await getStack(stack.id);
-		if (!fullStack || !fullStack.composeContent) return false;
+		if (!fullStack || !fullStack.composeContent) {
+			console.warn(`Stack ${stack.name} (${stack.id}) compose content not found.`);
+			return false;
+		}
 
-		// Extract image references from compose file
+		// Extract image references from compose file (simplified parsing)
 		const composeLines = fullStack.composeContent.split('\n');
 		const imageLines = composeLines.filter((line) => line.trim().startsWith('image:') || line.includes(' image:'));
 
-		if (imageLines.length === 0) return false;
-
-		// Extract image names
-		const imageRefs = imageLines.map((line) => {
-			const imagePart = line.split('image:')[1].trim();
-			return imagePart.replace(/['"]/g, '').split(' ')[0];
-		});
-
-		// Check each image for updates
-		for (const imageRef of imageRefs) {
-			try {
-				// Skip images with no repository or tag (like sha256:...)
-				if (!imageRef.includes(':') && !imageRef.includes('/')) {
-					continue;
-				}
-
-				// Pull the image to check for updates
-				await pullImage(imageRef);
-
-				// For simplicity, if we successfully pulled a new image, we'll consider it an update
-				// A more sophisticated implementation would compare image digests
-				return true;
-			} catch (error) {
-				console.error(`Error checking image update for ${imageRef}:`, error);
-				// Continue with other images even if one fails
-			}
+		if (imageLines.length === 0) {
+			console.log(`No image references found in stack ${stack.name}.`);
+			return false;
 		}
 
-		return false;
-	} catch (error) {
-		console.error(`Error checking for stack updates for ${stack.name}:`, error);
-		return false;
+		const imageRefs = imageLines
+			.map((line) => {
+				const imagePart = line.split('image:')[1].trim();
+				// Handle potential comments or extra content on the line
+				return imagePart.replace(/['"]/g, '').split(/[\s#]/)[0];
+			})
+			.filter((ref) => ref && (ref.includes(':') || ref.includes('/'))); // Filter out invalid/local refs
+
+		const uniqueImageRefs = [...new Set(imageRefs)]; // Check each unique image only once
+		console.log(`Checking images for stack ${stack.name}: ${uniqueImageRefs.join(', ')}`);
+
+		// Check each unique image for updates
+		for (const imageRef of uniqueImageRefs) {
+			try {
+				// 1. Get current image details (if it exists locally)
+				let currentImageId: string | null = null;
+				try {
+					const currentImage = await getImage(imageRef);
+					if (currentImage) {
+						currentImageId = currentImage.Id; // Use the full ID (digest)
+					}
+				} catch (e: any) {
+					// Ignore errors if image doesn't exist locally yet
+					if (e.statusCode !== 404) {
+						console.warn(`Could not get current details for image ${imageRef}: ${e.message}`);
+					}
+				}
+
+				// 2. Pull the image to get the latest version
+				console.log(`Pulling ${imageRef} to check for updates...`);
+				await pullImage(imageRef); // This might throw if pull fails
+
+				// 3. Get new image details after pull
+				let newImageId: string | null = null;
+				try {
+					const newImage = await getImage(imageRef); // Get details of the potentially updated image
+					if (newImage) {
+						newImageId = newImage.Id;
+					} else {
+						console.warn(`Image ${imageRef} not found after pull.`);
+						continue; // Skip if image disappeared after pull (unlikely)
+					}
+				} catch (e: any) {
+					console.error(`Could not get details for image ${imageRef} after pull: ${e.message}`);
+					continue; // Skip this image if we can't get its details
+				}
+
+				// 4. Compare IDs
+				if (newImageId && newImageId !== currentImageId) {
+					console.log(`Update found for image ${imageRef} in stack ${stack.name}. New ID: ${newImageId}, Old ID: ${currentImageId}`);
+					updateFound = true;
+					// Do NOT return early, continue checking other images
+				} else {
+					console.log(`Image ${imageRef} is up-to-date.`);
+				}
+			} catch (error: any) {
+				console.error(`Error checking/pulling image update for ${imageRef} in stack ${stack.name}:`, error.message || error);
+				// Continue checking other images even if one fails
+			}
+		} // End of loop through imageRefs
+
+		return updateFound; // Return true only if at least one update was found
+	} catch (error: any) {
+		console.error(`Error processing stack updates for ${stack.name}:`, error.message || error);
+		return false; // Return false if there's an error processing the stack itself
 	}
 }
-
-// Helper function to properly import
-import { listImages } from './image-service';
