@@ -37,7 +37,6 @@
 		images = data.images;
 		settings = data.settings;
 		error = data.error;
-		isRefreshing = false;
 	});
 
 	async function refreshData() {
