@@ -109,7 +109,7 @@
 		isPruneDialogOpen = false;
 
 		try {
-			const apiUrl = `/api/system/prune?types=${selectedTypes.join(',')}`;
+			const apiUrl = `/api/system/prune?types=${encodeURIComponent(selectedTypes.join(','))}`;
 			const response = await fetch(apiUrl, { method: 'POST' });
 			const result = await response.json();
 
