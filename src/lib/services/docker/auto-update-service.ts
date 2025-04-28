@@ -25,11 +25,26 @@ export async function checkAndUpdateContainers(): Promise<{
 	}
 
 	const containers = await listContainers();
-	const eligibleContainers = containers.filter(
-		(c) =>
-			// Only consider running containers with auto-update enabled
-			c.state === 'running' && c.labels && c.labels['arcane.auto-update'] === 'true'
-	);
+
+	// Get detailed container info for each container to access labels
+	const eligibleContainers: ServiceContainer[] = [];
+
+	for (const container of containers) {
+		// Skip containers that aren't running
+		if (container.state !== 'running') continue;
+
+		try {
+			// Get detailed container info to access labels
+			const containerDetails = await getContainer(container.id);
+
+			// Check if auto-update label exists and is set to true
+			if (containerDetails && containerDetails.labels && containerDetails.labels['arcane.auto-update'] === 'true') {
+				eligibleContainers.push(container);
+			}
+		} catch (error) {
+			console.error(`Error fetching container details for ${container.id}:`, error);
+		}
+	}
 
 	const results = {
 		checked: eligibleContainers.length,

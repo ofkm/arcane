@@ -65,7 +65,8 @@ export async function getContainer(containerId: string) {
 			image: inspectData.Image,
 			config: inspectData.Config,
 			networkSettings: inspectData.NetworkSettings,
-			mounts: inspectData.Mounts
+			mounts: inspectData.Mounts,
+			labels: inspectData.Config.Labels
 		};
 	} catch (error: any) {
 		console.error(`Docker Service: Error getting container ${containerId}:`, error);
