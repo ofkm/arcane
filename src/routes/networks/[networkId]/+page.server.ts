@@ -34,6 +34,7 @@ export const actions: Actions = {
 			// Redirect back to the main networks list after successful removal
 			redirect(303, '/networks');
 		} catch (err: any) {
+			console.error(`Failed to remove network ${networkId}:`, err);
 			// Handle specific errors from removeNetwork
 			if (err instanceof NotFoundError || err instanceof ConflictError || err instanceof DockerApiError) {
 				return fail(err.status || 500, { error: err.message });

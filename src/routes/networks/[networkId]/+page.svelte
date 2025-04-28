@@ -30,10 +30,11 @@
 
 	async function refreshData() {
 		isRefreshing = true;
-		await invalidateAll();
-		setTimeout(() => {
+		try {
+			await invalidateAll();
+		} finally {
 			isRefreshing = false;
-		}, 500);
+		}
 	}
 
 	function triggerRemove() {
@@ -107,6 +108,7 @@
 					isRemoving = true;
 					return async ({ update }) => {
 						await update({ reset: false });
+						isRemoving = false;
 						// isRemoving will be reset by effect or on navigation
 					};
 				}}
@@ -287,7 +289,7 @@
 									{container.IPv4Address || container.IPv6Address || 'N/A'}
 								</span>
 							</div>
-							{#if !Object.is(connectedContainers.length - 1, connectedContainers.indexOf(container))}
+							{#if connectedContainers.indexOf(container) < connectedContainers.length - 1}
 								<Separator class="my-2" />
 							{/if}
 						{/each}
@@ -307,7 +309,7 @@
 								<span class="font-medium text-muted-foreground w-full sm:w-1/4 break-all">{key}:</span>
 								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-3/4">{value}</span>
 							</div>
-							{#if !Object.is(Object.keys(network.Labels).length - 1, Object.keys(network.Labels).indexOf(key))}
+							{#if Object.keys(network.Labels).indexOf(key) < Object.keys(network.Labels).length - 1}
 								<Separator class="my-2" />
 							{/if}
 						{/each}
@@ -327,7 +329,7 @@
 								<span class="font-medium text-muted-foreground w-full sm:w-1/4 break-all">{key}:</span>
 								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-3/4">{value}</span>
 							</div>
-							{#if !Object.is(Object.keys(network.Options).length - 1, Object.keys(network.Options).indexOf(key))}
+							{#if Object.keys(network.Options).indexOf(key) < Object.keys(network.Options).length - 1}
 								<Separator class="my-2" />
 							{/if}
 						{/each}
