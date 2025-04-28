@@ -1,13 +1,33 @@
 import { getDockerClient } from '$lib/services/docker/core';
 import type { PruneResult } from '$lib/types/docker/prune.type';
+import { getSettings } from '$lib/services/settings-service'; // Import getSettings
+import type { SettingsData } from '$lib/types/settings'; // Import SettingsData type
 
 type PruneType = 'containers' | 'images' | 'networks' | 'volumes';
 type PruneServiceResult = PruneResult & { type: PruneType; error?: string };
 const docker = getDockerClient();
 
-// Refactored pruneSystem function
+/**
+ * Prunes specified Docker resources sequentially, fetching settings to determine image prune mode.
+ * @param {PruneType[]} types - Array of resource types to prune.
+ * @returns {Promise<PruneServiceResult[]>} Results of each pruning operation.
+ */
 export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResult[]> {
 	const results: PruneServiceResult[] = [];
+
+	// Fetch settings first
+	let pruneMode: SettingsData['pruneMode'] = 'dangling'; // Default prune mode
+	try {
+		// Fetch settings INSIDE the function
+		const currentSettings = await getSettings();
+		if (currentSettings?.pruneMode) {
+			pruneMode = currentSettings.pruneMode;
+		}
+	} catch (settingsError: any) {
+		console.warn(`Could not fetch settings for prune operation, defaulting to 'dangling' image prune mode. Error: ${settingsError.message}`);
+	}
+
+	console.log(`Using image prune mode: ${pruneMode}`);
 
 	// Use a for...of loop for sequential execution
 	for (const type of types) {
@@ -15,42 +35,39 @@ export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResul
 		let error: string | undefined = undefined;
 
 		try {
-			console.log(`Pruning ${type}...`); // Log start
+			console.log(`Pruning ${type}...`);
 
 			switch (type) {
 				case 'containers':
-					// Add any specific filters if needed, e.g., { filters: '{"until": ["24h"]}' }
 					result = await docker.pruneContainers();
 					break;
 				case 'images':
-					// Add filters like dangling=true if needed: { filters: '{"dangling": ["true"]}' }
-					// Note: Pruning all images might take a long time and remove needed images.
-					// Consider adding filters based on settings (e.g., pruneMode)
-					result = await docker.pruneImages({ filters: '{"dangling": ["true"]}' }); // Example: Only prune dangling images
+					const filterValue = pruneMode === 'all' ? 'false' : 'true';
+					const logMessage = pruneMode === 'all' ? 'Pruning all unused images (docker image prune -a)...' : 'Pruning dangling images (docker image prune)...';
+					console.log(logMessage);
+					const pruneOptions = {
+						filters: { dangling: [filterValue] }
+					};
+
+					result = await docker.pruneImages(pruneOptions);
 					break;
 				case 'networks':
 					result = await docker.pruneNetworks();
 					break;
 				case 'volumes':
-					// Be cautious with volume pruning! Maybe filter by label?
-					// Example: { filters: '{"label!": ["keep=true"]}' }
-					result = await docker.pruneVolumes();
+					// result = await docker.pruneVolumes();
 					break;
 				default:
 					console.warn(`Unsupported prune type requested: ${type}`);
-					continue; // Skip unsupported types
+					continue;
 			}
 
-			console.log(`Pruning ${type} completed.`); // Log completion
-
-			// Add the type to the result object before pushing
-			results.push({ ...result, type, error });
+			console.log(`Pruning ${type} completed.`);
+			results.push({ ...(result || {}), type, error } as PruneServiceResult);
 		} catch (err: any) {
 			console.error(`Error pruning ${type}:`, err);
 			error = err.message || `Failed to prune ${type}`;
-			// Push an error result for this type
 			results.push({
-				// Provide default PruneResult fields in case of error
 				ContainersDeleted: type === 'containers' ? [] : undefined,
 				ImagesDeleted: type === 'images' ? [] : undefined,
 				NetworksDeleted: type === 'networks' ? [] : undefined,
@@ -61,12 +78,9 @@ export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResul
 			});
 		}
 	}
-
-	console.log('Docker System Prune results:', results);
 	return results;
 }
 
-// You might also want a function to get system info if not already present
 export async function getSystemInfo() {
 	try {
 		return await docker.info();
@@ -76,10 +90,9 @@ export async function getSystemInfo() {
 	}
 }
 
-// Function to get disk usage
 export async function getDiskUsage() {
 	try {
-		return await docker.df(); // Docker Disk Free
+		return await docker.df();
 	} catch (err: any) {
 		console.error('Error getting Docker disk usage:', err);
 		throw new Error(`Failed to get Docker disk usage: ${err.message}`);

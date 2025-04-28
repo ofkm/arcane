@@ -129,7 +129,7 @@ export async function isImageInUse(imageId: string): Promise<boolean> {
  * 'dangling') and returns information about the deleted images and space reclaimed.
  * @param {'all' | 'dangling'} [mode=all] - The `mode` parameter in the `pruneImages` function is used
  * to specify whether to prune all unused images or only dangling images. It is a string literal type
- * with two possible values: `'all'` or `'dangling'`. The default value is `'all'`, meaning that if
+ * with two possible values: `'all'` or `'dangling'`. The default value is `'all'`.
  * @returns The `pruneImages` function returns a Promise that resolves to an object with the following
  * properties:
  */
