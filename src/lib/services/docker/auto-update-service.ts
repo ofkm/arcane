@@ -38,7 +38,7 @@ export async function checkAndUpdateContainers(): Promise<{
 			const containerDetails = await getContainer(container.id);
 
 			// Check if auto-update label exists and is set to true
-			if (containerDetails && containerDetails.labels && containerDetails.labels['arcane.auto-update'] === 'true') {
+			if (containerDetails?.labels?.['arcane.auto-update'] === 'true') {
 				eligibleContainers.push(container);
 			}
 		} catch (error) {
