@@ -1,4 +1,4 @@
-import { listContainers, getContainer, restartContainer } from './container-service';
+import { listContainers, getContainer, recreateContainer } from './container-service'; // Import recreateContainer, remove restartContainer
 import { listStacks, getStack, fullyRedeployStack } from './stack-service';
 import { pullImage, getImage, listImages } from './image-service';
 import { getSettings } from '../settings-service';
@@ -54,30 +54,41 @@ export async function checkAndUpdateContainers(): Promise<{
 
 	// Process eligible containers
 	for (const container of eligibleContainers) {
+		const containerId = container.id; // Use consistent ID variable
 		try {
 			// Skip if already being updated
-			if (updatingContainers.has(container.id)) continue;
+			if (updatingContainers.has(containerId)) {
+				console.log(`Auto-update: Skipping ${container.name} (${containerId}), already in progress.`);
+				continue;
+			}
 
 			const updateAvailable = await checkContainerImageUpdate(container);
 			if (updateAvailable) {
-				updatingContainers.add(container.id);
+				updatingContainers.add(containerId);
+				console.log(`Auto-update: Update found for container ${container.name} (${containerId}). Recreating...`);
 
-				console.log(`Auto-update: Updating container ${container.name} (${container.id})`);
+				// Pull the latest image first
+				console.log(`Auto-update: Pulling latest image ${container.image} for ${container.name}...`);
 				await pullImage(container.image);
-				await restartContainer(container.id);
 
-				console.log(`Auto-update: Container ${container.name} updated successfully`);
+				// Recreate the container using the new helper function
+				await recreateContainer(containerId);
+
+				console.log(`Auto-update: Container ${container.name} recreated successfully`);
 				results.updated++;
 
-				updatingContainers.delete(container.id);
+				updatingContainers.delete(containerId);
+			} else {
+				console.log(`Auto-update: Container ${container.name} (${containerId}) is up-to-date.`);
 			}
 		} catch (error: any) {
-			console.error(`Auto-update error for container ${container.id}:`, error);
+			console.error(`Auto-update error for container ${containerId}:`, error);
 			results.errors.push({
-				id: container.id,
+				id: containerId,
 				error: error.message || 'Unknown error during auto-update'
 			});
-			updatingContainers.delete(container.id);
+			// Ensure the lock is released even on error
+			updatingContainers.delete(containerId);
 		}
 	}
 

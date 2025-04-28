@@ -397,3 +397,108 @@ export async function getContainerStats(containerId: string): Promise<Docker.Con
 		throw new DockerApiError(`Failed to get stats for container ${containerId}: ${error.message || 'Unknown Docker error'}`, error.statusCode);
 	}
 }
+
+/**
+ * Recreates a container with the same configuration but potentially a newer image.
+ * Stops, removes the old container, creates a new one, and starts it.
+ * Assumes the image tag used in the original config now points to the desired (potentially updated) image.
+ * @param {string} containerId - The ID of the container to recreate.
+ * @returns {Promise<ServiceContainer>} Information about the newly created and started container.
+ * @throws {DockerApiError} If any step fails.
+ */
+export async function recreateContainer(containerId: string): Promise<ServiceContainer> {
+	const docker = getDockerClient();
+	let originalContainer = null;
+
+	try {
+		console.log(`Recreating container ${containerId}: Fetching original config...`);
+		// 1. Get existing container details
+		originalContainer = await getContainer(containerId);
+		if (!originalContainer) {
+			throw new DockerApiError(`Container ${containerId} not found for recreation.`, 404);
+		}
+
+		// Extract necessary config parts
+		const createOptions: Docker.ContainerCreateOptions = {
+			name: originalContainer.name,
+			Image: originalContainer.config.Image,
+			Env: originalContainer.config.Env,
+			Labels: originalContainer.labels,
+			ExposedPorts: originalContainer.config.ExposedPorts,
+			HostConfig: {
+				PortBindings: originalContainer.networkSettings?.Ports || {},
+				NetworkMode: originalContainer.networkSettings?.Networks?.bridge ? 'bridge' : Object.keys(originalContainer.networkSettings?.Networks || {})[0] || undefined,
+				Binds: originalContainer.mounts?.filter((mount) => mount.Type === 'bind' || mount.Type === 'volume').map((mount) => `${mount.Source}:${mount.Destination}${mount.RW ? '' : ':ro'}`)
+			},
+			Cmd: originalContainer.config.Cmd,
+			Entrypoint: originalContainer.config.Entrypoint,
+			WorkingDir: originalContainer.config.WorkingDir,
+			User: originalContainer.config.User,
+			Volumes: originalContainer.config.Volumes,
+			Tty: originalContainer.config.Tty,
+			OpenStdin: originalContainer.config.OpenStdin,
+			StdinOnce: originalContainer.config.StdinOnce
+		};
+
+		// If we need to add custom network configuration for non-default networks
+		if (originalContainer.networkSettings?.Networks) {
+			const networks = Object.entries(originalContainer.networkSettings.Networks);
+			// If container uses a non-default network, set it up
+			if (networks.length > 0 && networks[0][0] !== 'bridge') {
+				const [networkName, networkConfig] = networks[0];
+				createOptions.HostConfig!.NetworkMode = networkName;
+
+				// If network has specific IP assignments, add NetworkingConfig
+				if (networkConfig.IPAddress) {
+					createOptions.NetworkingConfig = {
+						EndpointsConfig: {
+							[networkName]: {
+								IPAMConfig: {
+									IPv4Address: networkConfig.IPAddress
+								}
+							}
+						}
+					};
+				}
+			}
+		}
+
+		// 2. Stop the existing container (optional but safer)
+		try {
+			console.log(`Recreating container ${containerId}: Stopping...`);
+			await stopContainer(containerId);
+		} catch (stopError: any) {
+			// Ignore "already stopped" errors
+			if (stopError.statusCode !== 304 && stopError.statusCode !== 404) {
+				console.warn(`Could not stop container ${containerId} before removal: ${stopError.message}`);
+			}
+		}
+
+		// 3. Remove the existing container
+		console.log(`Recreating container ${containerId}: Removing...`);
+		await removeContainer(containerId, true); // Use force to ensure removal even if stop failed
+
+		// 4. Create the new container with the extracted config
+		console.log(`Recreating container ${containerId}: Creating new container with image ${createOptions.Image}...`);
+		const newContainer = await docker.createContainer(createOptions);
+
+		// 5. Start the new container
+		console.log(`Recreating container ${containerId}: Starting new container ${newContainer.id}...`);
+		await startContainer(newContainer.id);
+
+		console.log(`Recreating container ${containerId}: Successfully recreated and started as ${newContainer.id}.`);
+
+		// 6. Get basic container info to return as ServiceContainer
+		const containers = await listContainers(true); // Get all containers including the new one
+		const newServiceContainer = containers.find((c) => c.id === newContainer.id);
+
+		if (!newServiceContainer) {
+			throw new Error(`Container ${newContainer.id} was created but not found in container list`);
+		}
+
+		return newServiceContainer;
+	} catch (error: any) {
+		console.error(`Failed to recreate container ${containerId}:`, error);
+		throw new DockerApiError(`Failed to recreate container ${originalContainer?.name || containerId}: ${error.message || 'Unknown error'}`, error.statusCode);
+	}
+}
