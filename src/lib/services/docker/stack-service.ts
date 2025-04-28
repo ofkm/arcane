@@ -908,7 +908,7 @@ ${yaml.dump({ services }).substring(10)}`; // Remove the services: line
 /**
  * Lists all managed and optionally external stacks
  */
-export async function listStacks(includeExternal: boolean = false): Promise<Stack[]> {
+export async function listStacks(includeExternal = false): Promise<Stack[]> {
 	// Get managed stacks
 	const managedStacks = await loadComposeStacks();
 
