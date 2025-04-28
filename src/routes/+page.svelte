@@ -32,24 +32,23 @@
 	const totalImageSize = $derived(images?.reduce((sum, image) => sum + (image.size || 0), 0) ?? 0);
 
 	$effect(() => {
-		console.log('Dashboard data prop changed, updating local state.');
 		dockerInfo = data.dockerInfo;
-		containers = data.containers || [];
-		images = data.images || [];
+		containers = data.containers;
+		images = data.images;
 		settings = data.settings;
 		error = data.error;
-		if (isRefreshing) isRefreshing = false;
+		isRefreshing = false;
 	});
 
 	async function refreshData() {
 		if (isRefreshing) return;
-		console.log('Refreshing dashboard data...');
 		isRefreshing = true;
 		try {
 			await invalidateAll();
 		} catch (err) {
 			console.error('Error during dashboard refresh:', err);
 			error = 'Failed to refresh dashboard data.';
+		} finally {
 			isRefreshing = false;
 		}
 	}

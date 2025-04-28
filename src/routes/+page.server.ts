@@ -2,18 +2,18 @@ import type { PageServerLoad } from './$types';
 import { listContainers } from '$lib/services/docker/container-service';
 import { getDockerInfo } from '$lib/services/docker/core';
 import { listImages } from '$lib/services/docker/image-service';
-import { getSettings } from '$lib/services/settings-service'; // Import getSettings
+import { getSettings } from '$lib/services/settings-service';
 import type { ServiceContainer, ServiceImage } from '$lib/types/docker';
 
 type DockerInfoType = Awaited<ReturnType<typeof getDockerInfo>>;
-type SettingsType = Awaited<ReturnType<typeof getSettings>>; // Infer settings type
+type SettingsType = NonNullable<Awaited<ReturnType<typeof getSettings>>>;
 
 // Update DashboardData type
 type DashboardData = {
 	dockerInfo: DockerInfoType | null;
 	containers: ServiceContainer[];
 	images: ServiceImage[];
-	settings: Pick<SettingsType, 'pruneMode'> | null; // Only include pruneMode
+	settings: Pick<SettingsType, 'pruneMode'> | null;
 	error?: string;
 };
 
