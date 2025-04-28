@@ -26,7 +26,7 @@ export const actions: Actions = {
 
 			// Explicitly check for the "on" value for both toggle switches
 			const autoUpdate = formData.get('autoUpdate') === 'on';
-			const autoUpdateInterval = parseInt(formData.get('autoUpdateInterval') as string, 10) || 60;
+			const autoUpdateInterval = Number.parseInt(formData.get('autoUpdateInterval') as string, 10) || 60;
 
 			// Validate interval range
 			const validatedAutoUpdateInterval = Math.min(Math.max(autoUpdateInterval, 5), 1440);
