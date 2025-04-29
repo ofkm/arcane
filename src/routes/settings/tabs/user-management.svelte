@@ -11,10 +11,8 @@
 	// Get data from server
 	let { data } = $props<{ data: PageData }>();
 
-	// Use $state for mutable list, $derived is for computed values
 	let users = $state<User[]>(data.users || []);
 
-	// Re-initialize if data changes (e.g., after form action invalidation if you switch back)
 	$effect(() => {
 		users = data.users || [];
 	});
