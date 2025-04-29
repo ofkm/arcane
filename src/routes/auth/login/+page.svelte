@@ -21,14 +21,14 @@
 	let loading = $state(false);
 </script>
 
-<div class="flex min-h-screen flex-col justify-center py-12 sm:px-6 lg:px-8">
-	<div class="sm:mx-auto sm:w-full sm:max-w-md">
-		<img class="mx-auto h-12 w-auto" src="/img/arcane.png" alt="Arcane" />
-		<h2 class="mt-6 text-center text-2xl font-bold leading-9 tracking-tight">Sign in to Arcane</h2>
+<div class="flex max-h-screen flex-col justify-center my-auto py-12 sm:px-6 lg:px-8">
+	<div class="mx-auto w-full max-w-md">
+		<img class="h-40 w-auto mx-auto" src="/img/arcane.png" alt="Arcane" />
+		<h2 class="mt-2 text-center text-2xl font-bold leading-9 tracking-tight">Sign in to Arcane</h2>
 	</div>
 
-	<div class="mt-10 sm:mx-auto sm:w-full sm:max-w-[480px]">
-		<div class="bg-card px-6 py-12 shadow sm:rounded-lg sm:px-12">
+	<div class="mt-10 mx-auto w-full max-w-[480px]">
+		<div class="bg-card px-6 py-5 shadow sm:rounded-lg sm:px-12">
 			{#if form?.error}
 				<Alert.Root class="mb-4" variant="destructive">
 					<AlertCircle class="h-4 w-4 mr-2" />
