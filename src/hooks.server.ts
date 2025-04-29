@@ -4,7 +4,6 @@ import { initAutoUpdateScheduler } from '$lib/services/docker/scheduler-service'
 import { getSession } from '$lib/services/session-service';
 import { getUserByUsername, listUsers, saveUser, hashPassword } from '$lib/services/user-service';
 import { getSettings } from '$lib/services/settings-service';
-import { dev } from '$app/environment';
 
 // First-run check to create admin user if needed
 async function checkFirstRun() {
@@ -41,11 +40,7 @@ async function checkFirstRun() {
 
 // Initialize needed services
 try {
-	await Promise.all([
-		initComposeService(),
-		initAutoUpdateScheduler(),
-		checkFirstRun() // Add the first-run check
-	]);
+	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler()]);
 } catch (err) {
 	console.error('Critical service init failed, exiting:', err);
 	process.exit(1);

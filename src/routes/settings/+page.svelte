@@ -8,8 +8,6 @@
 	import AppSettings from './tabs/app-settings.svelte';
 	import UserManagement from './tabs/user-management.svelte';
 	import Authentication from './tabs/authentication.svelte';
-	import RbacSettings from './tabs/rbac-settings.svelte';
-	import ExternalServices from './tabs/external-services.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -18,7 +16,6 @@
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 
-	// Keep the tab IDs consistent with the trigger values
 	const tabs = [
 		{ id: 'app-settings', label: 'General', component: AppSettings },
 		{
@@ -30,13 +27,14 @@
 			id: 'authentication',
 			label: 'Authentication',
 			component: Authentication
-		},
-		{ id: 'rbac', label: 'RBAC', component: RbacSettings },
-		{
-			id: 'external-services',
-			label: 'External Services',
-			component: ExternalServices
 		}
+		// Uncomment the following lines once i add RBAC and External Services
+		// { id: 'rbac', label: 'RBAC', component: RbacSettings },
+		// {
+		// 	id: 'external-services',
+		// 	label: 'External Services',
+		// 	component: ExternalServices
+		// }
 	];
 
 	// New function to handle settings update via API
@@ -58,7 +56,7 @@
 			};
 
 			// Boolean fields - check if the switch elements are checked
-			const booleanFields = ['autoUpdate', 'pollingEnabled', 'rbacEnabled', 'enableLocalAuth', 'enableOAuth', 'enableLDAP'];
+			const booleanFields = ['autoUpdate', 'pollingEnabled', 'rbacEnabled', 'enableLocalAuth'];
 			booleanFields.forEach((field) => {
 				const element = document.getElementById(field) as HTMLInputElement;
 				settingsData[field] = element?.checked || false;
@@ -67,31 +65,9 @@
 			// Authentication settings
 			settingsData.authentication = {
 				enableLocalAuth: isSwitchChecked('enableLocalAuth'),
-				enableOAuth: isSwitchChecked('enableOAuth'),
-				enableLDAP: isSwitchChecked('enableLDAP'),
 				sessionTimeout: parseInt(getInputValue('sessionTimeout', '60')),
 				passwordPolicy: getInputValue('passwordPolicy', 'medium')
 			};
-
-			// External services - Valkey
-			if (isSwitchChecked('valkeyEnabled')) {
-				settingsData.externalServices = {
-					valkey: {
-						enabled: true,
-						host: getInputValue('valkeyHost', 'localhost'),
-						port: parseInt(getInputValue('valkeyPort', '6379')),
-						username: getInputValue('valkeyUsername', ''),
-						password: getInputValue('valkeyPassword', ''),
-						keyPrefix: getInputValue('valkeyKeyPrefix', 'arcane:')
-					}
-				};
-			} else {
-				settingsData.externalServices = {
-					valkey: {
-						enabled: false
-					}
-				};
-			}
 
 			// Registry credentials
 			const registryCredentialsInput = document.getElementById('registryCredentials') as HTMLInputElement;
@@ -166,7 +142,7 @@
 
 	<!-- Tabs Navigation -->
 	<Tabs.Root value={activeTab} onValueChange={(val) => (activeTab = val)} class="w-full">
-		<Tabs.List class="grid grid-cols-5 sm:grid-cols-5 md:w-full md:max-w-3xl mb-4">
+		<Tabs.List class="grid grid-cols-3 md:w-full md:max-w-3xl mb-4">
 			{#each tabs as tab}
 				<Tabs.Trigger value={tab.id} class="whitespace-nowrap">
 					{tab.label}
