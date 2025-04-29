@@ -129,10 +129,9 @@
 				<h1 class="text-2xl font-bold tracking-tight">
 					{container?.name || 'Container Details'}
 				</h1>
+
 				{#if container?.state}
-					<Badge variant={container.state.Running ? 'default' : 'destructive'} class="capitalize">
-						{container.state.Status}
-					</Badge>
+					<span class="self-start mt-1.5"><StatusBadge variant={container.state.Status === 'running' ? 'green' : container.state.Status === 'exited' ? 'red' : 'amber'} text={container.state.Status} /></span>
 				{/if}
 			</div>
 		</div>
