@@ -1,12 +1,16 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js'; // Ensure correct import path
+	import { onMount } from 'svelte';
+	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { toast } from 'svelte-sonner';
-	import { UserPlus, UserX, UserCheck, Shield, Loader2 } from '@lucide/svelte';
+	import { UserPlus, UserCheck, Loader2 } from '@lucide/svelte';
 	import type { PageData } from '../$types';
-	import type { User } from '$lib/services/user-service';
+	import type { UniversalTableProps } from '$lib/types/table-types';
+	import UniversalTable from '$lib/components/universal-table.svelte';
+	import { userTableColumns } from '$lib/types/table-columns/user-table-columns';
+	import type { User } from '$lib/types/user.type';
 
 	// Get data from server
 	let { data } = $props<{ data: PageData }>();
@@ -100,11 +104,55 @@
 			toast.error('An unexpected error occurred');
 		}
 	}
+
+	// Configure the table columns and props
+	const columns = userTableColumns(handleRemoveUser);
+
+	// Create table props
+	const tableProps: UniversalTableProps<User> = {
+		columns,
+		get data() {
+			return users;
+		},
+		features: {
+			sorting: true,
+			filtering: true,
+			selection: false
+		},
+		display: {
+			filterPlaceholder: 'Filter users...',
+			noResultsMessage: 'No users found'
+		},
+		pagination: {
+			pageSize: 10,
+			pageSizeOptions: [5, 10, 15, 20]
+		},
+		sort: {
+			defaultSort: {
+				id: 'user',
+				desc: false
+			}
+		}
+	};
+
+	// Set up global function for cell action buttons
+	onMount(() => {
+		// @ts-ignore
+		window.onUserRemove = (userId: string, username: string) => {
+			handleRemoveUser(userId, username);
+		};
+
+		// Clean up function when component is destroyed
+		return () => {
+			// @ts-ignore
+			delete window.onUserRemove;
+		};
+	});
 </script>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-	<!-- User List -->
-	<Card.Root class="border shadow-sm">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+	<!-- User List with Universal Table - Make card fill available height -->
+	<Card.Root class="border shadow-sm flex flex-col">
 		<Card.Header class="pb-3">
 			<div class="flex items-center gap-2">
 				<div class="bg-blue-500/10 p-2 rounded-full">
@@ -116,29 +164,12 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content>
+		<!-- Make the content area flex and grow to fill available space -->
+		<Card.Content class="flex-1 flex flex-col">
 			{#if users.length > 0}
-				<div class="space-y-4">
-					{#each users as user}
-						<div class="border rounded-md p-3 flex justify-between items-center">
-							<div>
-								<div class="font-medium">{user.displayName || user.username}</div>
-								<div class="text-xs text-muted-foreground">{user.email || 'No email'}</div>
-							</div>
-							<div class="flex items-center gap-2">
-								{#if user.roles?.includes('admin')}
-									<div class="bg-amber-500/10 text-amber-600 text-xs px-2 py-0.5 rounded-full flex items-center">
-										<Shield class="h-3 w-3 mr-1" />
-										Admin
-									</div>
-								{/if}
-								<Button variant="ghost" size="sm" onclick={() => handleRemoveUser(user.id, user.username)}>
-									<UserX class="h-4 w-4 mr-1" />
-									Remove
-								</Button>
-							</div>
-						</div>
-					{/each}
+				<!-- Make the table fill the available space -->
+				<div class="flex-1 flex flex-col h-full">
+					<UniversalTable {...tableProps} />
 				</div>
 			{:else}
 				<div class="text-center py-8 text-muted-foreground italic">No local users found</div>

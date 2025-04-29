@@ -4,23 +4,10 @@ import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 import proper from 'proper-lockfile';
 import { getBasePath } from './settings-service';
+import type { User } from '$lib/types/user.type';
 
 // User directory is under the same base path as settings
 const USER_DIR = path.join(getBasePath(), 'users');
-
-export interface User {
-	id: string;
-	username: string;
-	passwordHash: string;
-	displayName?: string;
-	email?: string;
-	roles: string[];
-	mfaEnabled: boolean;
-	mfaSecret?: string;
-	createdAt: string;
-	lastLogin?: string;
-	requirePasswordChange?: boolean;
-}
 
 // Ensure user directory exists
 async function ensureUserDir() {
