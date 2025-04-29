@@ -1,26 +1,22 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Save, RefreshCw } from '@lucide/svelte';
-	import type { ActionData, PageData } from './$types';
+	import type { PageData } from './$types';
 	import { toast } from 'svelte-sonner';
+	import { invalidateAll } from '$app/navigation';
 	import AppSettings from './tabs/app-settings.svelte';
 	import UserManagement from './tabs/user-management.svelte';
 	import Authentication from './tabs/authentication.svelte';
 	import RbacSettings from './tabs/rbac-settings.svelte';
 	import ExternalServices from './tabs/external-services.svelte';
 
-	interface Props {
-		data: PageData;
-		form: ActionData;
-	}
-
-	let { data, form }: Props = $props();
+	let { data } = $props<{ data: PageData }>();
 
 	// Track active tab
 	let activeTab = $state('app-settings');
 	let saving = $state(false);
+	let error = $state<string | null>(null);
 
 	// Keep the tab IDs consistent with the trigger values
 	const tabs = [
@@ -43,13 +39,102 @@
 		}
 	];
 
-	$effect(() => {
-		if (form?.success) {
+	// New function to handle settings update via API
+	async function saveSettings() {
+		if (saving) return;
+
+		saving = true;
+		error = null;
+
+		try {
+			// Gather all form values from the settings form
+			const form = document.getElementById('settings-form') as HTMLFormElement;
+			const formData = new FormData(form);
+
+			// Basic settings (direct properties)
+			const settingsData: any = {
+				dockerHost: formData.get('dockerHost')?.toString() || '',
+				stacksDirectory: formData.get('stacksDirectory')?.toString() || '',
+				autoUpdateInterval: parseInt(formData.get('autoUpdateInterval')?.toString() || '60', 10),
+				pollingInterval: parseInt(formData.get('pollingInterval')?.toString() || '10', 10),
+				pruneMode: formData.get('pruneMode')?.toString() || 'all'
+			};
+
+			// Boolean fields
+			const booleanFields = ['autoUpdate', 'pollingEnabled', 'rbacEnabled', 'enableLocalAuth', 'enableOAuth', 'enableLDAP'];
+
+			booleanFields.forEach((field) => {
+				settingsData[field] = formData.has(field);
+			});
+
+			// Authentication settings
+			settingsData.authentication = {
+				enableLocalAuth: formData.has('enableLocalAuth'),
+				enableOAuth: formData.has('enableOAuth'),
+				enableLDAP: formData.has('enableLDAP'),
+				sessionTimeout: parseInt(formData.get('sessionTimeout')?.toString() || '60', 10),
+				passwordPolicy: formData.get('passwordPolicy')?.toString() || 'medium'
+			};
+
+			// External services - Valkey
+			if (formData.has('valkeyEnabled')) {
+				settingsData.externalServices = {
+					valkey: {
+						enabled: true,
+						host: formData.get('valkeyHost')?.toString() || 'localhost',
+						port: parseInt(formData.get('valkeyPort')?.toString() || '6379', 10),
+						username: formData.get('valkeyUsername')?.toString() || '',
+						password: formData.get('valkeyPassword')?.toString() || '',
+						keyPrefix: formData.get('valkeyKeyPrefix')?.toString() || 'arcane:'
+					}
+				};
+			} else {
+				settingsData.externalServices = {
+					valkey: {
+						enabled: false
+					}
+				};
+			}
+
+			// Registry credentials
+			const registryData = [];
+			let registriesJSON = formData.get('registryCredentials');
+			if (registriesJSON && typeof registriesJSON === 'string') {
+				try {
+					const parsedRegistry = JSON.parse(registriesJSON);
+					if (Array.isArray(parsedRegistry)) {
+						settingsData.registryCredentials = parsedRegistry;
+					}
+				} catch (e) {
+					console.error('Error parsing registry credentials', e);
+				}
+			}
+
+			// Send the data to the API
+			const response = await fetch('/api/settings', {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(settingsData)
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				throw new Error(result.error || `HTTP error! status: ${response.status}`);
+			}
+
 			toast.success('Settings saved successfully');
-		} else if (form?.error) {
-			toast.error(form.error);
+			await invalidateAll();
+		} catch (err: any) {
+			console.error('Error saving settings:', err);
+			error = err.message || 'An error occurred while saving settings';
+			if (error) toast.error(error);
+		} finally {
+			saving = false;
 		}
-	});
+	}
 </script>
 
 <div class="space-y-6">
@@ -60,7 +145,7 @@
 			<p class="text-sm text-muted-foreground mt-1">Configure Arcane's settings and permissions</p>
 		</div>
 
-		<Button type="submit" form="settings-form" disabled={saving} class="h-10">
+		<Button onclick={saveSettings} disabled={saving} class="h-10">
 			{#if saving}
 				<RefreshCw class="mr-2 h-4 w-4 animate-spin" />
 				Saving...
@@ -81,28 +166,22 @@
 			{/each}
 		</Tabs.List>
 
-		<!-- Tab Contents
+		<!-- Wrap tab content in a form for easy data collection -->
 		<form
-			method="POST"
-			action="?"
 			id="settings-form"
-			class="space-y-6"
-			use:enhance={() => {
-				saving = true;
-				return async ({ update }) => {
-					saving = false;
-					await update();
-				};
+			onsubmit={(e) => {
+				e.preventDefault();
+				saveSettings();
 			}}
-		> -->
-		<!-- Add a hidden input with a CSRF token -->
-		<input type="hidden" name="csrf_token" value={data.csrf} />
+		>
+			<!-- Add a hidden input with a CSRF token -->
+			<input type="hidden" name="csrf_token" value={data.csrf} />
 
-		{#each tabs as tab}
-			<Tabs.Content value={tab.id} class="space-y-4">
-				<tab.component {data} {form} />
-			</Tabs.Content>
-		{/each}
-		<!-- </form> -->
+			{#each tabs as tab}
+				<Tabs.Content value={tab.id} class="space-y-4">
+					<tab.component {data} />
+				</Tabs.Content>
+			{/each}
+		</form>
 	</Tabs.Root>
 </div>

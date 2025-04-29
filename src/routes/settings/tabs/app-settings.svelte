@@ -5,26 +5,20 @@
 	import { Save, RefreshCw, Key, Plus, Trash2, ImageMinus } from '@lucide/svelte';
 	import * as RadioGroup from '$lib/components/ui/radio-group/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import type { ActionData, PageData } from '../$types';
+	import type { PageData } from '../$types';
 
-	let { data, form } = $props<{ data: PageData; form: ActionData }>();
+	let { data } = $props<{ data: PageData }>();
 
 	let settings = $derived(data.settings);
 
-	// Update form values from form.values if there was an error, otherwise from settings
-	let dockerHost = $derived(form?.values?.dockerHost || settings?.dockerHost || '');
-
-	let pollingEnabled = $derived(form?.values?.pollingEnabled !== undefined ? form.values.pollingEnabled === 'on' : settings?.pollingEnabled || false);
-
-	let pollingInterval = $derived(form?.values?.pollingInterval !== undefined ? Number(form.values.pollingInterval) : settings?.pollingInterval || 10);
-	let autoUpdateInterval = $derived(form?.values?.autoUpdateInterval !== undefined ? Number(form.values.autoUpdateInterval) : settings?.autoUpdateInterval || 10);
-
-	let stacksDirectory = $derived(form?.values?.stacksDirectory || settings?.stacksDirectory || '');
-	let autoUpdate = $derived(form?.values?.autoUpdate !== undefined ? form.values.autoUpdate === 'on' : settings?.autoUpdate || false);
-
-	let pruneMode = $derived<'all' | 'dangling'>(form?.values?.pruneMode || settings?.pruneMode || 'all');
-
-	let registryCredentials = $derived(typeof form?.values?.registryCredentials === 'string' ? JSON.parse(form.values.registryCredentials) : form?.values?.registryCredentials || settings?.registryCredentials || []);
+	let dockerHost = $derived(settings?.dockerHost || '');
+	let autoUpdate = $derived(settings?.autoUpdate || false);
+	let pollingEnabled = $derived(settings?.pollingEnabled || false);
+	let pollingInterval = $derived(settings?.pollingInterval || 10);
+	let autoUpdateInterval = $derived(settings?.autoUpdateInterval || 10);
+	let stacksDirectory = $derived(settings?.stacksDirectory || '');
+	let pruneMode = $derived<'all' | 'dangling'>(settings?.pruneMode || 'all');
+	let registryCredentials = $derived(settings?.registryCredentials || []);
 
 	const defaultRegistry = { url: '', username: '', password: '' };
 
@@ -96,11 +90,7 @@
 					<div class="space-y-2 px-1">
 						<label for="pollingInterval" class="text-sm font-medium"> Polling Interval (minutes) </label>
 						<Input id="pollingInterval" name="pollingInterval" type="number" bind:value={pollingInterval} min="5" max="60" />
-						{#if form?.error && form.values?.pollingInterval && (parseInt(String(form.values.pollingInterval), 10) < 5 || parseInt(String(form.values.pollingInterval), 10) > 60)}
-							<p class="text-sm text-destructive">Must be between 5 and 60 minutes.</p>
-						{:else}
-							<p class="text-xs text-muted-foreground">Set between 5-60 minutes.</p>
-						{/if}
+						<p class="text-xs text-muted-foreground">Set between 5-60 minutes.</p>
 					</div>
 
 					<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">

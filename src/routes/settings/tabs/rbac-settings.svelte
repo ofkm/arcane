@@ -3,10 +3,15 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Shield, Plus, Users, Settings } from '@lucide/svelte';
-	import type { ActionData, PageData } from '../$types';
+	import type { PageData } from '../$types';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import Switch from '$lib/components/ui/switch/switch.svelte';
 
-	let { data, form } = $props<{ data: PageData; form: ActionData }>();
+	let { data } = $props<{ data: PageData }>();
+
+	let settings = $derived(data.settings);
+
+	let rbacEnabled = $derived(settings?.rbacEnabled ?? false);
 
 	// Sample roles for demonstration
 	const roles = [
@@ -60,6 +65,16 @@
 
 	let selectedRole = $state(roles[0]);
 </script>
+
+<div class="mb-6">
+	<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
+		<div class="space-y-0.5">
+			<label for="rbacEnabledSwitch" class="text-base font-medium">Enable Role-Based Access Control</label>
+			<p class="text-sm text-muted-foreground">Control user permissions with customizable roles</p>
+		</div>
+		<Switch id="rbacEnabledSwitch" name="rbacEnabled" bind:checked={rbacEnabled} />
+	</div>
+</div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 	<!-- Roles List -->

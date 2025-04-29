@@ -4,17 +4,18 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { Lock, Key, Shield } from '@lucide/svelte';
-	import type { ActionData, PageData } from '../$types';
+	import type { PageData } from '../$types';
 	import * as Form from '$lib/components/ui/form/index.js';
 
-	let { data, form } = $props<{ data: PageData; form: ActionData }>();
+	let { data } = $props<{ data: PageData }>();
 
-	// Authentication settings
-	let enableLocalAuth = $state(true);
-	let enableOAuth = $state(false);
-	let enableLDAP = $state(false);
-	let sessionTimeout = $state(60);
-	let passwordPolicy = $state('medium');
+	let settings = $derived(data.settings);
+
+	let enableLocalAuth = $derived(settings?.authentication?.enableLocalAuth ?? true);
+	let enableOAuth = $derived(settings?.authentication?.enableOAuth ?? false);
+	let enableLDAP = $derived(settings?.authentication?.enableLDAP ?? false);
+	let sessionTimeout = $derived(settings?.authentication?.sessionTimeout ?? 60);
+	let passwordPolicy = $derived(settings?.authentication?.passwordPolicy ?? 'medium');
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
