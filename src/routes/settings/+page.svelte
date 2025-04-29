@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { run } from 'svelte/legacy';
 	import { enhance } from '$app/forms';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -44,7 +43,7 @@
 		}
 	];
 
-	run(() => {
+	$effect(() => {
 		if (form?.success) {
 			toast.success('Settings saved successfully');
 		} else if (form?.error) {
