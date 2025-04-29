@@ -3,7 +3,7 @@ import path from 'path';
 import * as client from 'openid-client'; // Renamed the import to match example
 import proper from 'proper-lockfile';
 import { getBasePath, getSettings } from './settings-service';
-import type { User } from './user-service';
+import type { User } from '$lib/types/user.type';
 import { string } from 'zod';
 
 // OIDC configuration directory

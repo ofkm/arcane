@@ -1,11 +1,10 @@
-import { dev } from '$app/environment';
 import fs from 'fs/promises';
-import path from 'path';
+import path from 'node:path';
 import { nanoid } from 'nanoid';
 import proper from 'proper-lockfile';
 import { getBasePath, getSettings } from './settings-service';
 import { isValKeyConnected, getValue, setValue } from './valkey-service';
-import type { User } from './user-service';
+import type { User } from '$lib/types/user.type';
 
 // Session directory is under the same base path as settings
 const SESSION_DIR = path.join(getBasePath(), 'sessions');

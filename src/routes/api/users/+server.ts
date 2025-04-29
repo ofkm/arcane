@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getUserByUsername, hashPassword, saveUser, listUsers } from '$lib/services/user-service';
-import type { User } from '$lib/services/user-service';
+import type { User } from '$lib/types/user.type';
 import { getSettings } from '$lib/services/settings-service';
 
 // GET users endpoint
