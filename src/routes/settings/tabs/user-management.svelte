@@ -6,13 +6,11 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { toast } from 'svelte-sonner';
 	import { UserPlus, UserX, UserCheck, Shield } from '@lucide/svelte';
-	import type { ActionData, PageData } from '../$types';
-	import { preventDefault } from '$lib/utils/form.utils';
+	import type { PageData } from '../$types';
+	import type { User } from '$lib/services/user-service';
 
-	let { data } = $props<{ data: PageData }>();
-
-	// Assuming data.users is loaded from the server with a list of users
-	let users = $state(data.users || []);
+	// Get data from server
+	let { data, users } = $props<{ data: PageData; users: User[] }>();
 
 	// New user form state
 	let newUsername = $state('');
@@ -29,43 +27,13 @@
 		{ id: 'viewer', name: 'Viewer (read-only)' }
 	];
 
-	async function handleCreateUser() {
-		isCreating = true;
-
-		try {
-			const response = await fetch('/api/users', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					username: newUsername,
-					password: newPassword,
-					displayName: newDisplayName,
-					email: newEmail,
-					roles: [newRole]
-				})
-			});
-
-			const result = await response.json();
-
-			if (response.ok) {
-				// Add the new user to the list
-				users = [...users, result.user];
-
-				// Clear form
-				newUsername = '';
-				newPassword = '';
-				newDisplayName = '';
-				newEmail = '';
-
-				toast.success('User created successfully');
-			} else {
-				toast.error(result.error || 'Failed to create user');
-			}
-		} catch (error) {
-			toast.error('An unexpected error occurred');
-		} finally {
-			isCreating = false;
-		}
+	// Reset form fields
+	function resetForm() {
+		newUsername = '';
+		newPassword = '';
+		newDisplayName = '';
+		newEmail = '';
+		newRole = 'user';
 	}
 </script>
 
@@ -84,9 +52,13 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			{#if users.length > 0}
+			{#if !data.users}
+				<div class="flex justify-center items-center py-8">
+					<div class="loading loading-spinner loading-md"></div>
+				</div>
+			{:else if data.users.length > 0}
 				<div class="space-y-4">
-					{#each users as user}
+					{#each data.users as user}
 						<div class="border rounded-md p-3 flex justify-between items-center">
 							<div>
 								<div class="font-medium">{user.displayName || user.username}</div>
@@ -99,10 +71,25 @@
 										Admin
 									</div>
 								{/if}
-								<Button variant="ghost" size="sm">
-									<UserX class="h-4 w-4 mr-1" />
-									Remove
-								</Button>
+								<form
+									action="?/removeUser"
+									method="POST"
+									use:enhance={() => {
+										return async ({ result }) => {
+											if (result.type === 'success') {
+												toast.success(String(result.data?.message || 'User removed'));
+											} else if (result.type === 'failure') {
+												toast.error(String(result.data?.error || 'Failed to remove user'));
+											}
+										};
+									}}
+								>
+									<input type="hidden" name="userId" value={user.id} />
+									<Button variant="ghost" size="sm" type="submit">
+										<UserX class="h-4 w-4 mr-1" />
+										Remove
+									</Button>
+								</form>
 							</div>
 						</div>
 					{/each}
@@ -127,30 +114,48 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			<form class="space-y-4" onsubmit={preventDefault(handleCreateUser)}>
+			<form
+				class="space-y-4"
+				action="?/createUser"
+				method="POST"
+				use:enhance={() => {
+					isCreating = true;
+
+					return async ({ result }) => {
+						isCreating = false;
+
+						if (result.type === 'success') {
+							toast.success(String(result.data?.message) || 'User created successfully');
+							resetForm();
+						} else if (result.type === 'failure') {
+							toast.error(String(result.data?.error) || 'Failed to create user');
+						}
+					};
+				}}
+			>
 				<div class="space-y-2">
 					<Label for="username">Username</Label>
-					<Input id="username" bind:value={newUsername} required placeholder="Username" />
+					<Input id="username" name="username" bind:value={newUsername} required placeholder="Username" />
 				</div>
 
 				<div class="space-y-2">
 					<Label for="password">Password</Label>
-					<Input id="password" type="password" bind:value={newPassword} required placeholder="Password" />
+					<Input id="password" name="password" type="password" bind:value={newPassword} required placeholder="Password" />
 				</div>
 
 				<div class="space-y-2">
 					<Label for="displayName">Display Name</Label>
-					<Input id="displayName" bind:value={newDisplayName} placeholder="Display Name" />
+					<Input id="displayName" name="displayName" bind:value={newDisplayName} placeholder="Display Name" />
 				</div>
 
 				<div class="space-y-2">
 					<Label for="email">Email</Label>
-					<Input id="email" type="email" bind:value={newEmail} placeholder="Email Address" />
+					<Input id="email" name="email" type="email" bind:value={newEmail} placeholder="Email Address" />
 				</div>
 
 				<div class="space-y-2">
 					<Label for="role">Role</Label>
-					<select id="role" bind:value={newRole} class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+					<select id="role" name="role" bind:value={newRole} class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
 						{#each roles as role}
 							<option value={role.id}>{role.name}</option>
 						{/each}

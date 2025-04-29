@@ -54,6 +54,27 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 	}
 }
 
+// Get user by ID
+export async function getUserById(id: string): Promise<User | null> {
+	try {
+		await ensureUserDir();
+
+		const userFile = path.join(USER_DIR, `${id}.json`);
+
+		try {
+			await fs.access(userFile);
+		} catch {
+			return null; // File doesn't exist
+		}
+
+		const userData = await fs.readFile(userFile, 'utf-8');
+		return JSON.parse(userData) as User;
+	} catch (error) {
+		console.error(`Error getting user by ID ${id}:`, error);
+		return null;
+	}
+}
+
 // Create or update user
 export async function saveUser(user: User): Promise<User> {
 	await ensureUserDir();
@@ -107,10 +128,15 @@ export async function listUsers(): Promise<User[]> {
 		for (const file of files) {
 			if (!file.endsWith('.json')) continue;
 
-			const userData = await fs.readFile(path.join(USER_DIR, file), 'utf-8');
-			users.push(JSON.parse(userData) as User);
+			try {
+				const userData = await fs.readFile(path.join(USER_DIR, file), 'utf-8');
+				users.push(JSON.parse(userData) as User);
+			} catch (err) {
+				console.error(`Error reading user file ${file}:`, err);
+			}
 		}
 
+		console.log(`Found ${users.length} users`);
 		return users;
 	} catch (error) {
 		console.error('Error listing users:', error);

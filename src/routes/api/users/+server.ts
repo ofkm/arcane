@@ -4,18 +4,17 @@ import { getUserByUsername, hashPassword, saveUser, listUsers } from '$lib/servi
 import type { User } from '$lib/services/user-service';
 import { getSettings } from '$lib/services/settings-service';
 
+// GET users endpoint
 export const GET: RequestHandler = async ({ locals }) => {
 	try {
-		// Only admins should be able to list users
-		const user = locals.user as User;
-
-		if (!user || !user.roles.includes('admin')) {
+		// Check authentication - only admins can list users
+		if (!locals.user || !locals.user.roles.includes('admin')) {
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
 		const users = await listUsers();
 
-		// Remove sensitive information
+		// Remove sensitive data before sending
 		const sanitizedUsers = users.map((user) => {
 			const { passwordHash, mfaSecret, ...rest } = user;
 			return rest;
