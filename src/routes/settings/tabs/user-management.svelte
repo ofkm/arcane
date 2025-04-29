@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -10,7 +9,9 @@
 	import type { User } from '$lib/services/user-service';
 
 	// Get data from server
-	let { data, users } = $props<{ data: PageData; users: User[] }>();
+	let { data } = $props<{ data: PageData }>();
+
+	let users = $state<User[]>(data.users);
 
 	// New user form state
 	let newUsername = $state('');
@@ -19,6 +20,7 @@
 	let newEmail = $state('');
 	let newRole = $state('user'); // Default role
 	let isCreating = $state(false);
+	let loading = $state(true);
 
 	// Available roles
 	const roles = [
@@ -34,6 +36,66 @@
 		newDisplayName = '';
 		newEmail = '';
 		newRole = 'user';
+	}
+
+	// Handle user creation via API
+	async function handleCreateUser(event: Event) {
+		event.preventDefault();
+
+		try {
+			isCreating = true;
+
+			const response = await fetch('/api/users', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					username: newUsername,
+					password: newPassword,
+					displayName: newDisplayName,
+					email: newEmail,
+					roles: [newRole]
+				})
+			});
+
+			const result = await response.json();
+
+			if (response.ok) {
+				// Add new user to the list
+				users = [...users, result.user];
+				toast.success('User created successfully');
+				resetForm();
+			} else {
+				toast.error(result.error || 'Failed to create user');
+			}
+		} catch (error) {
+			console.error('Error creating user:', error);
+			toast.error('An unexpected error occurred');
+		} finally {
+			isCreating = false;
+		}
+	}
+
+	// Handle user removal via API
+	async function handleRemoveUser(userId: string, username: string) {
+		try {
+			const response = await fetch(`/api/users/${userId}`, {
+				method: 'DELETE'
+			});
+
+			if (response.ok) {
+				// Remove user from list
+				users = users.filter((user: User) => user.id !== userId);
+				toast.success(`User ${username} removed successfully`);
+			} else {
+				const result = await response.json();
+				toast.error(result.error || 'Failed to remove user');
+			}
+		} catch (error) {
+			console.error('Error removing user:', error);
+			toast.error('An unexpected error occurred');
+		}
 	}
 </script>
 
@@ -52,7 +114,7 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			{#if !users}
+			{#if loading}
 				<div class="flex justify-center items-center py-8">
 					<div class="loading loading-spinner loading-md"></div>
 				</div>
@@ -65,31 +127,16 @@
 								<div class="text-xs text-muted-foreground">{user.email || 'No email'}</div>
 							</div>
 							<div class="flex items-center gap-2">
-								{#if user.roles.includes('admin')}
+								{#if user.roles?.includes('admin')}
 									<div class="bg-amber-500/10 text-amber-600 text-xs px-2 py-0.5 rounded-full flex items-center">
 										<Shield class="h-3 w-3 mr-1" />
 										Admin
 									</div>
 								{/if}
-								<form
-									action="?/removeUser"
-									method="POST"
-									use:enhance={() => {
-										return async ({ result }) => {
-											if (result.type === 'success') {
-												toast.success(String(result.data?.message || 'User removed'));
-											} else if (result.type === 'failure') {
-												toast.error(String(result.data?.error || 'Failed to remove user'));
-											}
-										};
-									}}
-								>
-									<input type="hidden" name="userId" value={user.id} />
-									<Button variant="ghost" size="sm" type="submit">
-										<UserX class="h-4 w-4 mr-1" />
-										Remove
-									</Button>
-								</form>
+								<Button variant="ghost" size="sm" onclick={() => handleRemoveUser(user.id, user.username)}>
+									<UserX class="h-4 w-4 mr-1" />
+									Remove
+								</Button>
 							</div>
 						</div>
 					{/each}
@@ -114,25 +161,7 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			<form
-				class="space-y-4"
-				action="?/createUser"
-				method="POST"
-				use:enhance={() => {
-					isCreating = true;
-
-					return async ({ result }) => {
-						isCreating = false;
-
-						if (result.type === 'success') {
-							toast.success(String(result.data?.message) || 'User created successfully');
-							resetForm();
-						} else if (result.type === 'failure') {
-							toast.error(String(result.data?.error) || 'Failed to create user');
-						}
-					};
-				}}
-			>
+			<form class="space-y-4" onsubmit={handleCreateUser}>
 				<div class="space-y-2">
 					<Label for="username">Username</Label>
 					<Input id="username" name="username" bind:value={newUsername} required placeholder="Username" />
