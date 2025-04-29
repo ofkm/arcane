@@ -1,17 +1,14 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
 	import { toast } from 'svelte-sonner';
-	import { UserPlus, UserCheck, Loader2 } from '@lucide/svelte';
+	import { UserPlus, UserCheck } from '@lucide/svelte';
 	import type { PageData } from '../$types';
 	import type { UniversalTableProps } from '$lib/types/table-types';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { userTableColumns } from '$lib/types/table-columns/user-table-columns';
 	import type { User } from '$lib/types/user.type';
-	import * as Select from '$lib/components/ui/select';
+	import UserFormDialog from '$lib/components/dialogs/user-form-dialog.svelte';
 
 	// Get data from server
 	let { data } = $props<{ data: PageData }>();
@@ -22,13 +19,10 @@
 		users = data.users || [];
 	});
 
-	// New user form state
-	let newUsername = $state('');
-	let newPassword = $state('');
-	let newDisplayName = $state('');
-	let newEmail = $state('');
-	let newRole = $state('user'); // Default role
-	let isCreating = $state(false);
+	// Dialog state
+	let isUserDialogOpen = $state(false);
+	let userToEdit = $state<User | null>(null);
+	let userDialogRef: UserFormDialog | null = $state(null);
 
 	// Available roles
 	const roles = [
@@ -37,64 +31,69 @@
 		{ id: 'viewer', name: 'Viewer (read-only)' }
 	];
 
-	// Reset form fields
-	function resetForm() {
-		newUsername = '';
-		newPassword = '';
-		newDisplayName = '';
-		newEmail = '';
-		newRole = 'user';
+	// Function to open dialog for creating
+	function openCreateUserDialog() {
+		userToEdit = null;
+		isUserDialogOpen = true;
 	}
 
-	// Handle user creation via API
-	async function handleCreateUser(event: Event) {
-		event.preventDefault(); // Keep preventDefault
+	// Function to open dialog for editing
+	function openEditUserDialog(user: User) {
+		userToEdit = user;
+		isUserDialogOpen = true;
+	}
+
+	// Handle submission from the dialog
+	async function handleDialogSubmit(event: CustomEvent) {
+		const { user: userData, isEditMode, userId } = event.detail;
+
+		const url = isEditMode ? `/api/users/${userId}` : '/api/users';
+		const method = isEditMode ? 'PUT' : 'POST';
 
 		try {
-			isCreating = true;
-
-			const response = await fetch('/api/users', {
-				method: 'POST',
+			const response = await fetch(url, {
+				method: method,
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({
-					username: newUsername,
-					password: newPassword,
-					displayName: newDisplayName,
-					email: newEmail,
-					roles: [newRole]
-				})
+				body: JSON.stringify(userData)
 			});
 
 			const result = await response.json();
 
 			if (response.ok) {
-				// Add new user to the list
-				users = [...users, result.user]; // Update the state variable
-				toast.success('User created successfully');
-				resetForm();
+				if (isEditMode) {
+					users = users.map((u) => (u.id === userId ? { ...u, ...result.user } : u));
+					toast.success('User updated successfully');
+				} else {
+					users = [...users, result.user];
+					toast.success('User created successfully');
+				}
+				isUserDialogOpen = false;
 			} else {
-				toast.error(result.error || 'Failed to create user');
+				userDialogRef?.setSaveError(result.error || `Failed to ${isEditMode ? 'update' : 'create'} user`);
 			}
 		} catch (error) {
-			console.error('Error creating user:', error);
-			toast.error('An unexpected error occurred');
+			console.error(`Error ${isEditMode ? 'updating' : 'creating'} user:`, error);
+			userDialogRef?.setSaveError(`An unexpected error occurred.`);
 		} finally {
-			isCreating = false;
+			userDialogRef?.resetSavingState();
 		}
 	}
 
 	// Handle user removal via API
 	async function handleRemoveUser(userId: string, username: string) {
+		if (!confirm(`Are you sure you want to remove user "${username}"?`)) {
+			return;
+		}
+
 		try {
 			const response = await fetch(`/api/users/${userId}`, {
 				method: 'DELETE'
 			});
 
 			if (response.ok) {
-				// Remove user from list
-				users = users.filter((user) => user.id !== userId); // Update the state variable
+				users = users.filter((user) => user.id !== userId);
 				toast.success(`User ${username} removed successfully`);
 			} else {
 				const result = await response.json();
@@ -106,8 +105,8 @@
 		}
 	}
 
-	// Configure the table columns and props
-	const columns = userTableColumns(handleRemoveUser);
+	// Configure the table columns, passing edit handler
+	const columns = userTableColumns(handleRemoveUser, openEditUserDialog);
 
 	// Create table props
 	const tableProps: UniversalTableProps<User> = {
@@ -135,26 +134,14 @@
 			}
 		}
 	};
-
-	// Set up global function for cell action buttons
-	onMount(() => {
-		// @ts-ignore
-		window.onUserRemove = (userId: string, username: string) => {
-			handleRemoveUser(userId, username);
-		};
-
-		// Clean up function when component is destroyed
-		return () => {
-			// @ts-ignore
-			delete window.onUserRemove;
-		};
-	});
 </script>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-	<!-- User List with Universal Table - Make card fill available height -->
+<UserFormDialog bind:open={isUserDialogOpen} bind:userToEdit {roles} on:submit={handleDialogSubmit} bind:this={userDialogRef} />
+
+<div class="grid grid-cols-1 gap-6 h-full">
+	<!-- User List Card -->
 	<Card.Root class="border shadow-sm flex flex-col">
-		<Card.Header class="pb-3">
+		<Card.Header class="pb-3 flex flex-row items-center justify-between space-y-0">
 			<div class="flex items-center gap-2">
 				<div class="bg-blue-500/10 p-2 rounded-full">
 					<UserCheck class="h-5 w-5 text-blue-500" />
@@ -164,82 +151,20 @@
 					<Card.Description>Manage local user accounts</Card.Description>
 				</div>
 			</div>
+			<!-- Add Create User Button -->
+			<Button size="sm" onclick={openCreateUserDialog}>
+				<UserPlus class="mr-2 h-4 w-4" />
+				Create User
+			</Button>
 		</Card.Header>
-		<!-- Make the content area flex and grow to fill available space -->
 		<Card.Content class="flex-1 flex flex-col">
 			{#if users.length > 0}
-				<!-- Make the table fill the available space -->
 				<div class="flex-1 flex flex-col h-full">
 					<UniversalTable {...tableProps} />
 				</div>
 			{:else}
 				<div class="text-center py-8 text-muted-foreground italic">No local users found</div>
 			{/if}
-		</Card.Content>
-	</Card.Root>
-
-	<!-- Create User Form -->
-	<Card.Root class="border shadow-sm">
-		<Card.Header class="pb-3">
-			<div class="flex items-center gap-2">
-				<div class="bg-green-500/10 p-2 rounded-full">
-					<UserPlus class="h-5 w-5 text-green-500" />
-				</div>
-				<div>
-					<Card.Title>Create User</Card.Title>
-					<Card.Description>Add a new local user account</Card.Description>
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content>
-			<form class="space-y-4" onsubmit={handleCreateUser}>
-				<div class="space-y-2">
-					<Label for="username">Username</Label>
-					<Input id="username" name="username" bind:value={newUsername} required placeholder="Username" />
-				</div>
-
-				<div class="space-y-2">
-					<Label for="password">Password</Label>
-					<Input id="password" name="password" type="password" bind:value={newPassword} required placeholder="Password" />
-				</div>
-
-				<div class="space-y-2">
-					<Label for="displayName">Display Name</Label>
-					<Input id="displayName" name="displayName" bind:value={newDisplayName} placeholder="Display Name" />
-				</div>
-
-				<div class="space-y-2">
-					<Label for="email">Email</Label>
-					<Input id="email" name="email" type="email" bind:value={newEmail} placeholder="Email Address" />
-				</div>
-
-				<div class="space-y-2">
-					<Label for="role">User Role</Label>
-					<Select.Root name="role" type="single" bind:value={newRole} disabled={isCreating}>
-						<Select.Trigger class="w-full">
-							<span>{roles.find((r) => r.id === newRole)?.name || 'Select a role'}</span>
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Group>
-								{#each roles as role}
-									<Select.Item value={role.id}>
-										{role.name}
-									</Select.Item>
-								{/each}
-							</Select.Group>
-						</Select.Content>
-					</Select.Root>
-				</div>
-
-				<Button type="submit" class="w-full" disabled={isCreating}>
-					{#if isCreating}
-						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
-					{:else}
-						<UserPlus class="h-4 w-4 mr-2" />
-					{/if}
-					Create User
-				</Button>
-			</form>
 		</Card.Content>
 	</Card.Root>
 </div>

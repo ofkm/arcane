@@ -1,0 +1,163 @@
+<script lang="ts">
+	import { createEventDispatcher } from 'svelte';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
+	import { Input } from '$lib/components/ui/input/index.js';
+	import { Label } from '$lib/components/ui/label/index.js';
+	import * as Select from '$lib/components/ui/select/index.js';
+	import { Loader2, UserPlus, Save } from '@lucide/svelte';
+	import type { User } from '$lib/types/user.type';
+	import { preventDefault } from '$lib/utils/form.utils';
+
+	// Props
+	let {
+		open = $bindable(false),
+		userToEdit = $bindable<User | null>(null), // User object for editing, null for creating
+		roles = [] // Pass available roles from parent
+	}: {
+		open?: boolean;
+		userToEdit?: User | null;
+		roles: { id: string; name: string }[];
+	} = $props();
+
+	const dispatch = createEventDispatcher();
+
+	// Form state
+	let username = $state('');
+	let password = $state(''); // Only for creation or password change
+	let displayName = $state('');
+	let email = $state('');
+	let selectedRole = $state('user');
+	let isSaving = $state(false);
+	let error = $state<string | null>(null);
+
+	// Determine mode and title
+	let isEditMode = $derived(!!userToEdit);
+	let dialogTitle = $derived(isEditMode ? 'Edit User' : 'Create User');
+	let submitButtonText = $derived(isEditMode ? 'Save Changes' : 'Create User');
+	let SubmitIcon = $derived(isEditMode ? Save : UserPlus);
+
+	// Initialize form when dialog opens or userToEdit changes
+	$effect(() => {
+		if (open) {
+			error = null; // Clear errors on open
+			if (userToEdit) {
+				// Edit mode
+				username = userToEdit.username;
+				password = ''; // Clear password field for edit
+				displayName = userToEdit.displayName || '';
+				email = userToEdit.email || '';
+				selectedRole = userToEdit.roles?.[0] || 'user'; // Assuming single role for now
+			} else {
+				// Create mode
+				username = '';
+				password = '';
+				displayName = '';
+				email = '';
+				selectedRole = 'user'; // Default role
+			}
+		}
+	});
+
+	async function handleSubmit() {
+		if (isSaving) return;
+		isSaving = true;
+		error = null;
+
+		const userData: Partial<User> & { password?: string } = {
+			username,
+			displayName,
+			email,
+			roles: [selectedRole]
+		};
+
+		// Include password only if creating or if it's entered in edit mode
+		if (!isEditMode || (isEditMode && password)) {
+			userData.password = password;
+		}
+
+		try {
+			// Dispatch event with user data and mode
+			dispatch('submit', { user: userData, isEditMode, userId: userToEdit?.id });
+			// Parent component will handle API call and closing dialog on success
+		} catch (err: any) {
+			error = err.message || 'An unexpected error occurred.';
+		} finally {
+			// Let parent handle isSaving state based on API response
+			// isSaving = false; // Parent should reset this
+		}
+	}
+
+	// Function to be called by parent on successful save
+	export function resetSavingState() {
+		isSaving = false;
+	}
+
+	// Function to be called by parent on error
+	export function setSaveError(errorMessage: string) {
+		error = errorMessage;
+		isSaving = false;
+	}
+</script>
+
+<Dialog.Root bind:open>
+	<Dialog.Content class="sm:max-w-[425px]">
+		<Dialog.Header>
+			<Dialog.Title>{dialogTitle}</Dialog.Title>
+			{#if !isEditMode}
+				<Dialog.Description>Enter the details for the new user.</Dialog.Description>
+			{/if}
+		</Dialog.Header>
+
+		<form class="grid gap-4 py-4" onsubmit={preventDefault(handleSubmit)}>
+			<div class="grid grid-cols-4 items-center gap-4">
+				<Label for="username" class="text-right">Username</Label>
+				<Input id="username" bind:value={username} required class="col-span-3" disabled={isEditMode} />
+			</div>
+			<div class="grid grid-cols-4 items-center gap-4">
+				<Label for="password" class="text-right">Password</Label>
+				<Input id="password" type="password" bind:value={password} required={!isEditMode} placeholder={isEditMode ? 'Leave blank to keep current' : 'Required'} class="col-span-3" />
+			</div>
+			<div class="grid grid-cols-4 items-center gap-4">
+				<Label for="displayName" class="text-right">Display Name</Label>
+				<Input id="displayName" bind:value={displayName} class="col-span-3" />
+			</div>
+			<div class="grid grid-cols-4 items-center gap-4">
+				<Label for="email" class="text-right">Email</Label>
+				<Input id="email" type="email" bind:value={email} class="col-span-3" />
+			</div>
+			<div class="grid grid-cols-4 items-center gap-4">
+				<Label for="role" class="text-right">Role</Label>
+				<Select.Root name="role" type="single" bind:value={selectedRole} disabled={isSaving}>
+					<Select.Trigger class="col-span-3">
+						<span>{roles.find((r) => r.id === selectedRole)?.name || 'Select a role'}</span>
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Group>
+							{#each roles as role}
+								<Select.Item value={role.id}>{role.name}</Select.Item>
+							{/each}
+						</Select.Group>
+					</Select.Content>
+				</Select.Root>
+			</div>
+
+			{#if error}
+				<p class="text-sm text-destructive text-center col-span-4">{error}</p>
+			{/if}
+
+			<Dialog.Footer>
+				<Button type="button" variant="outline" onclick={() => (open = false)} disabled={isSaving}>Cancel</Button>
+				<Button type="submit" disabled={isSaving}>
+					{#if isSaving}
+						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+						Saving...
+					{:else}
+						<SubmitIcon class="mr-2 h-4 w-4" />
+						{submitButtonText}
+					{/if}
+				</Button>
+			</Dialog.Footer>
+		</form>
+	</Dialog.Content>
+</Dialog.Root>

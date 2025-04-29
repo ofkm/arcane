@@ -1,5 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getUserById, saveUser, hashPassword } from '$lib/services/user-service';
+import type { User } from '$lib/types/user.type';
+import { getSettings } from '$lib/services/settings-service';
 import fs from 'fs/promises';
 import path from 'path';
 import { getBasePath } from '$lib/services/settings-service';
@@ -7,6 +10,66 @@ import { getBasePath } from '$lib/services/settings-service';
 // Get USER_DIR from base path
 const USER_DIR = path.join(getBasePath(), 'users');
 
+// PUT endpoint for updating a user
+export const PUT: RequestHandler = async ({ params, request, locals }) => {
+	try {
+		// Only admins or the user themselves can update
+		if (!locals.user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		const userIdToUpdate = params.id;
+		const requestingUser = locals.user as User;
+
+		// Check if user is admin or updating their own profile
+		if (!requestingUser.roles.includes('admin') && requestingUser.id !== userIdToUpdate) {
+			return json({ error: 'Forbidden' }, { status: 403 });
+		}
+
+		const existingUser = await getUserById(userIdToUpdate);
+		if (!existingUser) {
+			return json({ error: 'User not found' }, { status: 404 });
+		}
+
+		const updateData = await request.json();
+		const { password, displayName, email, roles } = updateData;
+
+		// Prepare updated user object
+		const updatedUser: User = { ...existingUser };
+
+		if (displayName !== undefined) updatedUser.displayName = displayName;
+		if (email !== undefined) updatedUser.email = email;
+		if (roles !== undefined && requestingUser.roles.includes('admin')) {
+			// Only admins can change roles
+			updatedUser.roles = roles;
+		}
+
+		// Handle password change
+		if (password) {
+			// Get password policy from settings
+			const settings = await getSettings();
+			const policy = settings.auth?.passwordPolicy || 'medium';
+
+			// Validate password according to policy
+			// if (!validatePassword(password, policy)) {
+			// 	return json({ error: 'Password does not meet requirements' }, { status: 400 });
+			// }
+			updatedUser.passwordHash = await hashPassword(password);
+			updatedUser.requirePasswordChange = false; // Reset flag if password is changed
+		}
+
+		const savedUser = await saveUser(updatedUser);
+
+		// Return sanitized user
+		const { passwordHash: _, mfaSecret, ...sanitizedUser } = savedUser;
+		return json({ success: true, user: sanitizedUser });
+	} catch (error) {
+		console.error('Error updating user:', error);
+		return json({ error: 'Failed to update user' }, { status: 500 });
+	}
+};
+
+// DELETE endpoint
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	try {
 		// Only admins should be able to delete users

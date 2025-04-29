@@ -2,17 +2,24 @@
 	import { Ellipsis, Pencil, UserX } from '@lucide/svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import type { User } from '$lib/types/user.type';
 
 	interface Props {
 		userId: string;
 		username: string;
+		user: User;
 		onRemove: (userId: string, username: string) => void;
+		onEdit: (user: User) => void;
 	}
 
-	let { userId, username, onRemove }: Props = $props();
+	let { userId, user, username, onRemove, onEdit }: Props = $props();
 
 	function handleRemove() {
 		onRemove(userId, username);
+	}
+
+	function handleEdit() {
+		onEdit(user);
 	}
 </script>
 
@@ -25,7 +32,7 @@
 	</DropdownMenu.Trigger>
 	<DropdownMenu.Content align="end">
 		<DropdownMenu.Group>
-			<DropdownMenu.Item>
+			<DropdownMenu.Item onclick={handleEdit}>
 				<Pencil class="w-4 h-4" />
 				Edit
 			</DropdownMenu.Item>

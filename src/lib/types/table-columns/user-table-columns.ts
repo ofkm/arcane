@@ -7,7 +7,7 @@ import RolesCell from '$lib/components/table-cells/user-roles.cell.svelte';
 import UserTableActions from '$lib/components/table-cells/user-table-actions.svelte';
 
 // Column definitions for the user management table
-export const userTableColumns = (onRemoveUser: (userId: string, username: string) => void): ColumnDef<User>[] => [
+export const userTableColumns = (onRemoveUser: (userId: string, username: string) => void, onEdit: (user: User) => void): ColumnDef<User>[] => [
 	{
 		id: 'user',
 		header: 'User',
@@ -46,7 +46,9 @@ export const userTableColumns = (onRemoveUser: (userId: string, username: string
 			return renderComponent(UserTableActions, {
 				userId: row.original.id,
 				username: row.original.username,
-				onRemove: onRemoveUser
+				user: row.original,
+				onRemove: onRemoveUser,
+				onEdit: onEdit
 			});
 		},
 		enableSorting: false
