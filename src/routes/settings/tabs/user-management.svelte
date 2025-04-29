@@ -11,6 +11,7 @@
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { userTableColumns } from '$lib/types/table-columns/user-table-columns';
 	import type { User } from '$lib/types/user.type';
+	import * as Select from '$lib/components/ui/select';
 
 	// Get data from server
 	let { data } = $props<{ data: PageData }>();
@@ -213,12 +214,21 @@
 				</div>
 
 				<div class="space-y-2">
-					<Label for="role">Role</Label>
-					<select id="role" name="role" bind:value={newRole} class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
-						{#each roles as role}
-							<option value={role.id}>{role.name}</option>
-						{/each}
-					</select>
+					<Label for="role">User Role</Label>
+					<Select.Root name="role" type="single" bind:value={newRole} disabled={isCreating}>
+						<Select.Trigger class="w-full">
+							<span>{roles.find((r) => r.id === newRole)?.name || 'Select a role'}</span>
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Group>
+								{#each roles as role}
+									<Select.Item value={role.id}>
+										{role.name}
+									</Select.Item>
+								{/each}
+							</Select.Group>
+						</Select.Content>
+					</Select.Root>
 				</div>
 
 				<Button type="submit" class="w-full" disabled={isCreating}>
