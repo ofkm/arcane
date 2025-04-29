@@ -106,39 +106,5 @@
 				</div>
 			</Card.Content>
 		</Card.Root>
-
-		<!-- 2FA Settings -->
-		<Card.Root class="border shadow-sm">
-			<Card.Header class="pb-3">
-				<div class="flex items-center gap-2">
-					<div class="bg-emerald-500/10 p-2 rounded-full">
-						<Shield class="h-5 w-5 text-emerald-500" />
-					</div>
-					<div>
-						<Card.Title>Two-Factor Authentication</Card.Title>
-						<Card.Description>Extra security layer</Card.Description>
-					</div>
-				</div>
-			</Card.Header>
-			<Card.Content>
-				<div class="space-y-4">
-					<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
-						<div class="space-y-0.5">
-							<label for="require2faSwitch" class="text-base font-medium">Require 2FA</label>
-							<p class="text-sm text-muted-foreground">Force all users to set up two-factor authentication</p>
-						</div>
-						<Switch id="require2faSwitch" name="require2fa" />
-					</div>
-
-					<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
-						<div class="space-y-0.5">
-							<label for="allowTotpSwitch" class="text-base font-medium">Allow App-Based 2FA</label>
-							<p class="text-sm text-muted-foreground">Allow authentication apps (TOTP)</p>
-						</div>
-						<Switch id="allowTotpSwitch" name="allowTotp" checked />
-					</div>
-				</div>
-			</Card.Content>
-		</Card.Root>
 	</div>
 </div>
