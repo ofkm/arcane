@@ -41,15 +41,6 @@
 					</div>
 					<Switch id="localAuthSwitch" name="enableLocalAuth" bind:checked={enableLocalAuth} />
 				</div>
-
-				<!-- OAuth -->
-				<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
-					<div class="space-y-0.5">
-						<label for="oauthSwitch" class="text-base font-medium">OAuth/OpenID Connect</label>
-						<p class="text-sm text-muted-foreground">Single sign-on with external providers</p>
-					</div>
-					<Switch disabled={true} aria-details="OIDC Authentication Coming Soon" id="oauthSwitch" name="enableOAuth" bind:checked={enableOAuth} />
-				</div>
 			</div>
 		</Card.Content>
 	</Card.Root>

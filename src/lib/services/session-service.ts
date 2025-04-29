@@ -1,23 +1,14 @@
 import fs from 'fs/promises';
 import path from 'node:path';
-import { nanoid } from 'nanoid';
-import proper from 'proper-lockfile';
+import { randomBytes } from 'crypto';
 import { getBasePath, getSettings } from './settings-service';
-import { isValKeyConnected, getValue, setValue } from './valkey-service';
-import type { User } from '$lib/types/user.type';
+import type { UserSession } from '$lib/types/session.type';
 
 // Session directory is under the same base path as settings
 const SESSION_DIR = path.join(getBasePath(), 'sessions');
 
-export interface Session {
-	id: string;
-	userId: string;
-	username: string;
-	created: string;
-	expires: string;
-	ip?: string;
-	userAgent?: string;
-}
+// In-memory session store
+const sessions = new Map<string, UserSession>();
 
 // Ensure session directory exists
 async function ensureSessionDir() {
@@ -25,95 +16,42 @@ async function ensureSessionDir() {
 }
 
 // Create a new session
-export async function createSession(user: User, ip?: string, userAgent?: string): Promise<Session> {
+export async function createSession(userId: string, username: string): Promise<string> {
 	const settings = await getSettings();
-	const sessionTimeout = settings.auth?.sessionTimeout || 60; // minutes
-
-	const session: Session = {
-		id: nanoid(32),
-		userId: user.id,
-		username: user.username,
-		created: new Date().toISOString(),
-		expires: new Date(Date.now() + sessionTimeout * 60 * 1000).toISOString(),
-		ip,
-		userAgent
+	const sessionId = randomBytes(32).toString('hex');
+	const sessionData: UserSession = {
+		userId,
+		username,
+		createdAt: Date.now(),
+		lastAccessed: Date.now()
 	};
 
-	// Try to use Valkey/Redis for sessions if enabled and connected
-	if (isValKeyConnected()) {
-		const keyPrefix = settings.externalServices?.valkey?.keyPrefix || 'arcane:';
-		await setValue(`${keyPrefix}session:${session.id}`, JSON.stringify(session));
-		return session;
-	}
-
-	// Fall back to file storage
-	await ensureSessionDir();
-	const filePath = path.join(SESSION_DIR, `${session.id}.json`);
-	await fs.writeFile(filePath, JSON.stringify(session, null, 2));
-
-	return session;
+	// Fallback to in-memory store
+	sessions.set(sessionId, sessionData);
+	return sessionId;
 }
 
 // Get a session by ID
-export async function getSession(sessionId: string): Promise<Session | null> {
-	try {
-		// Check Valkey/Redis first if it's connected
-		if (isValKeyConnected()) {
-			const settings = await getSettings();
-			const keyPrefix = settings.externalServices?.valkey?.keyPrefix || 'arcane:';
-			const sessionData = await getValue(`${keyPrefix}session:${sessionId}`);
+export async function getSession(sessionId: string): Promise<UserSession | null> {
+	const settings = await getSettings();
 
-			if (sessionData) {
-				const session = JSON.parse(sessionData) as Session;
-				// Check if session is expired
-				if (new Date(session.expires) < new Date()) {
-					return null;
-				}
-				return session;
-			}
-		}
-
-		// Fall back to file storage
-		await ensureSessionDir();
-		const filePath = path.join(SESSION_DIR, `${sessionId}.json`);
-
-		try {
-			const sessionData = await fs.readFile(filePath, 'utf-8');
-			const session = JSON.parse(sessionData) as Session;
-
-			// Check if session is expired
-			if (new Date(session.expires) < new Date()) {
-				await fs.unlink(filePath).catch(() => {});
-				return null;
-			}
-
-			return session;
-		} catch (error) {
-			return null;
-		}
-	} catch (error) {
-		console.error('Error getting session:', error);
-		return null;
+	// Check in-memory store
+	const sessionData = sessions.get(sessionId);
+	if (sessionData) {
+		// Optionally check session expiry based on settings.auth?.sessionTimeout
+		sessionData.lastAccessed = Date.now();
+		return sessionData;
 	}
+
+	return null;
 }
 
 // Delete a session by ID
 export async function deleteSession(sessionId: string): Promise<void> {
-	// Try Valkey/Redis first if connected
-	if (isValKeyConnected()) {
-		const settings = await getSettings();
-		const keyPrefix = settings.externalServices?.valkey?.keyPrefix || 'arcane:';
-		await setValue(`${keyPrefix}session:${sessionId}`, '');
-	}
+	const settings = await getSettings();
 
-	// Also try file storage in case we switched between approaches
-	try {
-		await ensureSessionDir();
-		const filePath = path.join(SESSION_DIR, `${sessionId}.json`);
-		await fs.unlink(filePath).catch(() => {});
-	} catch (error) {
-		console.error('Error deleting session:', error);
-	}
+	// Remove from memory store
+	sessions.delete(sessionId);
 }
 
 // Purge expired sessions (maintenance task)
@@ -129,9 +67,12 @@ export async function purgeExpiredSessions(): Promise<number> {
 			const filePath = path.join(SESSION_DIR, file);
 			try {
 				const sessionData = await fs.readFile(filePath, 'utf-8');
-				const session = JSON.parse(sessionData) as Session;
+				const session = JSON.parse(sessionData) as UserSession;
 
-				if (new Date(session.expires) < new Date()) {
+				// Check if session has expired based on lastAccessed and settings
+				const settings = await getSettings();
+				const sessionTimeout = settings.auth?.sessionTimeout || 24 * 60 * 60 * 1000; // Default 24h
+				if (Date.now() - session.lastAccessed > sessionTimeout) {
 					await fs.unlink(filePath);
 					purgedCount++;
 				}

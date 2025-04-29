@@ -11,24 +11,11 @@ export interface SettingsData {
 		username: string;
 		password: string;
 	}>;
-	externalServices: {
-		valkey?: {
-			enabled: boolean;
-			host: string;
-			port: number;
-			username?: string;
-			password?: string;
-			keyPrefix: string;
-		};
-	};
+	externalServices?: {};
 	auth?: {
 		localAuthEnabled: boolean;
-		oidcEnabled: boolean;
-		ldapEnabled: boolean;
 		sessionTimeout: number;
 		passwordPolicy: 'low' | 'medium' | 'high';
-		require2fa: boolean;
-		allowTotp: boolean;
 		rbacEnabled: boolean;
 	};
 }

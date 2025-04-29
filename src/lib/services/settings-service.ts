@@ -20,17 +20,7 @@ export const DEFAULT_SETTINGS: SettingsData = {
 	pollingEnabled: true,
 	pollingInterval: 10,
 	pruneMode: 'all',
-	stacksDirectory: path.resolve(BASE_PATH, 'stacks'),
-	externalServices: {
-		valkey: {
-			enabled: false,
-			host: 'localhost',
-			port: 6379,
-			username: '',
-			password: '',
-			keyPrefix: 'arcane:settings:'
-		}
-	}
+	stacksDirectory: path.resolve(BASE_PATH, 'stacks')
 };
 
 // Path getter functions

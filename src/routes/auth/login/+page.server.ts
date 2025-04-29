@@ -3,7 +3,6 @@ import type { Actions, PageServerLoad } from './$types';
 import { getUserByUsername, verifyPassword } from '$lib/services/user-service';
 import { createSession } from '$lib/services/session-service';
 import { getSettings } from '$lib/services/settings-service';
-import { createAuthorizationUrl, getOidcProviders } from '$lib/services/oidc-service';
 
 // Define a proper ActionData type
 interface LoginActionData {
@@ -19,38 +18,7 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
 		throw redirect(302, '/');
 	}
 
-	// Get OIDC providers for the login page
-	const providers = await getOidcProviders();
-
-	// Generate authorization URLs for each provider
-	const providerUrls: Record<string, string> = {};
-	// Store states for callback verification
-	const states: Record<string, string> = {};
-
-	for (const provider of providers) {
-		// The new createAuthorizationUrl returns both the URL and state
-		const result = await createAuthorizationUrl(provider.id);
-		if (result) {
-			providerUrls[provider.id] = result.url;
-			states[provider.id] = result.state;
-		}
-	}
-
-	// Store states in a cookie for verification during callback
-	if (Object.keys(states).length > 0) {
-		cookies.set('oidc_states', JSON.stringify(states), {
-			path: '/',
-			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
-			maxAge: 10 * 60, // 10 minutes
-			sameSite: 'lax'
-		});
-	}
-
-	return {
-		providers,
-		providerUrls
-	};
+	return {};
 };
 
 export const actions: Actions = {
@@ -86,13 +54,13 @@ export const actions: Actions = {
 		// Create session
 		const ip = getClientAddress();
 		const userAgent = request.headers.get('user-agent') || undefined;
-		const session = await createSession(user, ip, userAgent);
+		const session = await createSession(user.id, user.username);
 
 		// Set session cookie
 		const settings = await getSettings();
 		const sessionTimeout = settings.auth?.sessionTimeout || 60; // minutes
 
-		cookies.set('session_id', session.id, {
+		cookies.set('session_id', session, {
 			path: '/',
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',

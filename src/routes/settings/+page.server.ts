@@ -46,9 +46,7 @@ export const actions: Actions = {
 			const stacksDirectory = (formData.get('stacksDirectory') as string) || '';
 
 			// --- Read pruneMode from form data ---
-			const pruneModeValue = formData.get('pruneMode');
-			// Validate the value, default to current setting or 'all' if invalid/missing
-			const pruneMode: 'all' | 'dangling' = pruneModeValue === 'all' || pruneModeValue === 'dangling' ? pruneModeValue : settings.pruneMode || 'all'; // Fallback to current or default
+			const pruneMode = formData.get('pruneMode')?.toString() as 'all' | 'dangling' | undefined;
 
 			if (!dockerHost) {
 				return fail(400, {
@@ -83,28 +81,12 @@ export const actions: Actions = {
 				}
 			}
 
-			// Extract Valkey settings
-			const valkeyEnabled = formData.get('valkeyEnabled') === 'on';
-			const externalServices = {
-				...settings.externalServices,
-				valkey: {
-					enabled: valkeyEnabled,
-					host: formData.get('valkeyHost')?.toString() || 'localhost',
-					port: parseInt(formData.get('valkeyPort')?.toString() || '6379', 10),
-					username: formData.get('valkeyUsername')?.toString() || '',
-					password: formData.get('valkeyPassword')?.toString() || '',
-					keyPrefix: formData.get('valkeyKeyPrefix')?.toString() || 'arcane:settings:'
-				}
-			};
+			// Extract Auth settings
+			const localAuthEnabled = formData.get('localAuthEnabled') === 'on';
+			const sessionTimeoutStr = formData.get('sessionTimeout')?.toString();
+			const sessionTimeout = sessionTimeoutStr ? parseInt(sessionTimeoutStr, 10) : undefined;
 
-			// Authentication settings
-			const enableLocalAuth = formData.get('enableLocalAuth') === 'on';
-			const enableOAuth = formData.get('enableOAuth') === 'on';
-			const enableLDAP = formData.get('enableLDAP') === 'on';
-			const sessionTimeout = parseInt(formData.get('sessionTimeout') as string, 10) || 60;
 			const passwordPolicy = (formData.get('passwordPolicy') as 'low' | 'medium' | 'high') || 'medium';
-			const require2fa = formData.get('require2fa') === 'on';
-			const allowTotp = formData.get('allowTotp') === 'on';
 			const rbacEnabled = formData.get('rbacEnabled') === 'on';
 
 			const updatedSettings: SettingsData = {
@@ -115,16 +97,12 @@ export const actions: Actions = {
 				pollingInterval,
 				autoUpdateInterval: validatedAutoUpdateInterval,
 				stacksDirectory,
-				pruneMode: pruneMode,
-				externalServices,
+				pruneMode: pruneMode || settings.pruneMode,
+				externalServices: {},
 				auth: {
-					localAuthEnabled: enableLocalAuth,
-					oidcEnabled: enableOAuth,
-					ldapEnabled: enableLDAP,
-					sessionTimeout,
+					localAuthEnabled,
+					sessionTimeout: sessionTimeout || settings.auth?.sessionTimeout || 60,
 					passwordPolicy,
-					require2fa,
-					allowTotp,
 					rbacEnabled
 				}
 			};

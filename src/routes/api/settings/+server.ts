@@ -48,7 +48,7 @@ export const PUT: RequestHandler = async ({ request }) => {
 		}
 
 		// Normalize boolean values (handle string representation from form data)
-		const booleanFields = ['autoUpdate', 'pollingEnabled', 'rbacEnabled', 'enableLocalAuth', 'enableOAuth', 'enableLDAP', 'require2fa', 'allowTotp'];
+		const booleanFields = ['autoUpdate', 'pollingEnabled', 'rbacEnabled', 'enableLocalAuth'];
 
 		booleanFields.forEach((field) => {
 			if (field in body) {
@@ -85,22 +85,9 @@ export const PUT: RequestHandler = async ({ request }) => {
 			}
 		}
 
-		// Handle external services (Valkey/Redis)
-		if (body.externalServices) {
-			// Handle nested Valkey settings
-			if (typeof body.externalServices.valkey === 'string') {
-				try {
-					body.externalServices.valkey = JSON.parse(body.externalServices.valkey);
-				} catch (e) {
-					console.error('Error parsing valkey settings', e);
-					// Use default or current settings
-					body.externalServices.valkey = currentSettings.externalServices?.valkey || { enabled: false };
-				}
-			}
-		} else {
-			// Keep current external services
-			body.externalServices = currentSettings.externalServices;
-		}
+		// Ensure nested objects exist if they are partially updated
+		if (!body.externalServices) body.externalServices = {};
+		if (!body.auth) body.auth = {};
 
 		// Handle registry credentials
 		if (body.registryCredentials && typeof body.registryCredentials === 'string') {
@@ -122,6 +109,17 @@ export const PUT: RequestHandler = async ({ request }) => {
 				// Use current authentication settings
 				body.authentication = currentSettings.auth;
 			}
+		}
+
+		// Handle Auth settings
+		if (body.auth !== undefined) {
+			body.auth = {
+				localAuthEnabled: body.auth.localAuthEnabled ?? currentSettings.auth?.localAuthEnabled ?? true,
+				sessionTimeout: body.auth.sessionTimeout ?? currentSettings.auth?.sessionTimeout ?? 60
+			};
+		} else if (currentSettings.auth) {
+			// Keep current auth settings if not provided in update
+			body.auth = currentSettings.auth;
 		}
 
 		// Merge settings
