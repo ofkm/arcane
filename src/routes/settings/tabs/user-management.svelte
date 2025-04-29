@@ -7,6 +7,7 @@
 	import { toast } from 'svelte-sonner';
 	import { UserPlus, UserX, UserCheck, Shield } from '@lucide/svelte';
 	import type { ActionData, PageData } from '../$types';
+	import { preventDefault } from '$lib/utils/form.utils';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -126,7 +127,7 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			<form class="space-y-4" on:submit|preventDefault={handleCreateUser}>
+			<form class="space-y-4" onsubmit={preventDefault(handleCreateUser)}>
 				<div class="space-y-2">
 					<Label for="username">Username</Label>
 					<Input id="username" bind:value={newUsername} required placeholder="Username" />
