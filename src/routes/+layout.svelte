@@ -9,7 +9,7 @@
 	let { children, data } = $props();
 
 	const versionInformation = data.versionInformation;
-	const user = data.user; // Access the user from data
+	const user = $derived(data.user); // Access the user from data
 
 	const isNavigating = $derived(navigating !== null);
 	const isAuthenticated = $derived(!!user); // Check if user exists

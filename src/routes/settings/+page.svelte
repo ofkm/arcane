@@ -47,45 +47,42 @@
 		error = null;
 
 		try {
-			// Gather all form values from the settings form
-			const form = document.getElementById('settings-form') as HTMLFormElement;
-			const formData = new FormData(form);
-
+			// Instead of using FormData, collect settings directly from the DOM
 			// Basic settings (direct properties)
 			const settingsData: any = {
-				dockerHost: formData.get('dockerHost')?.toString() || '',
-				stacksDirectory: formData.get('stacksDirectory')?.toString() || '',
-				autoUpdateInterval: parseInt(formData.get('autoUpdateInterval')?.toString() || '60', 10),
-				pollingInterval: parseInt(formData.get('pollingInterval')?.toString() || '10', 10),
-				pruneMode: formData.get('pruneMode')?.toString() || 'all'
+				dockerHost: getInputValue('dockerHost', ''),
+				stacksDirectory: getInputValue('stacksDirectory', ''),
+				autoUpdateInterval: parseInt(getInputValue('autoUpdateInterval', '60')),
+				pollingInterval: parseInt(getInputValue('pollingInterval', '10')),
+				pruneMode: getInputValue('pruneMode', 'all')
 			};
 
-			// Boolean fields
+			// Boolean fields - check if the switch elements are checked
 			const booleanFields = ['autoUpdate', 'pollingEnabled', 'rbacEnabled', 'enableLocalAuth', 'enableOAuth', 'enableLDAP'];
-
 			booleanFields.forEach((field) => {
-				settingsData[field] = formData.has(field);
+				const element = document.getElementById(field) as HTMLInputElement;
+				settingsData[field] = element?.checked || false;
 			});
 
 			// Authentication settings
 			settingsData.authentication = {
-				enableLocalAuth: formData.has('enableLocalAuth'),
-				enableOAuth: formData.has('enableOAuth'),
-				enableLDAP: formData.has('enableLDAP'),
-				sessionTimeout: parseInt(formData.get('sessionTimeout')?.toString() || '60', 10),
-				passwordPolicy: formData.get('passwordPolicy')?.toString() || 'medium'
+				enableLocalAuth: isSwitchChecked('enableLocalAuth'),
+				enableOAuth: isSwitchChecked('enableOAuth'),
+				enableLDAP: isSwitchChecked('enableLDAP'),
+				sessionTimeout: parseInt(getInputValue('sessionTimeout', '60')),
+				passwordPolicy: getInputValue('passwordPolicy', 'medium')
 			};
 
 			// External services - Valkey
-			if (formData.has('valkeyEnabled')) {
+			if (isSwitchChecked('valkeyEnabled')) {
 				settingsData.externalServices = {
 					valkey: {
 						enabled: true,
-						host: formData.get('valkeyHost')?.toString() || 'localhost',
-						port: parseInt(formData.get('valkeyPort')?.toString() || '6379', 10),
-						username: formData.get('valkeyUsername')?.toString() || '',
-						password: formData.get('valkeyPassword')?.toString() || '',
-						keyPrefix: formData.get('valkeyKeyPrefix')?.toString() || 'arcane:'
+						host: getInputValue('valkeyHost', 'localhost'),
+						port: parseInt(getInputValue('valkeyPort', '6379')),
+						username: getInputValue('valkeyUsername', ''),
+						password: getInputValue('valkeyPassword', ''),
+						keyPrefix: getInputValue('valkeyKeyPrefix', 'arcane:')
 					}
 				};
 			} else {
@@ -97,11 +94,10 @@
 			}
 
 			// Registry credentials
-			const registryData = [];
-			let registriesJSON = formData.get('registryCredentials');
-			if (registriesJSON && typeof registriesJSON === 'string') {
+			const registryCredentialsInput = document.getElementById('registryCredentials') as HTMLInputElement;
+			if (registryCredentialsInput?.value) {
 				try {
-					const parsedRegistry = JSON.parse(registriesJSON);
+					const parsedRegistry = JSON.parse(registryCredentialsInput.value);
 					if (Array.isArray(parsedRegistry)) {
 						settingsData.registryCredentials = parsedRegistry;
 					}
@@ -135,6 +131,18 @@
 			saving = false;
 		}
 	}
+
+	// Helper function to get input values from the DOM
+	function getInputValue(id: string, defaultValue: string = ''): string {
+		const element = document.getElementById(id) as HTMLInputElement;
+		return element?.value || defaultValue;
+	}
+
+	// Helper function to check if a switch is checked
+	function isSwitchChecked(id: string): boolean {
+		const element = document.getElementById(id) as HTMLInputElement;
+		return element?.checked || false;
+	}
 </script>
 
 <div class="space-y-6">
@@ -166,22 +174,16 @@
 			{/each}
 		</Tabs.List>
 
-		<!-- Wrap tab content in a form for easy data collection -->
-		<form
-			id="settings-form"
-			onsubmit={(e) => {
-				e.preventDefault();
-				saveSettings();
-			}}
-		>
+		<!-- Replace form with div to avoid refresh errors -->
+		<div id="settings-container">
 			<!-- Add a hidden input with a CSRF token -->
-			<input type="hidden" name="csrf_token" value={data.csrf} />
+			<input type="hidden" id="csrf_token" value={data.csrf} />
 
 			{#each tabs as tab}
 				<Tabs.Content value={tab.id} class="space-y-4">
 					<tab.component {data} />
 				</Tabs.Content>
 			{/each}
-		</form>
+		</div>
 	</Tabs.Root>
 </div>
