@@ -160,9 +160,8 @@ export async function checkAndUpdateStacks(): Promise<{
 async function checkContainerImageUpdate(container: ServiceContainer): Promise<boolean> {
 	try {
 		const imageRef = container.image;
-
-		// Skip images with no repository or tag (like sha256:...)
-		if (!imageRef.includes(':') && !imageRef.includes('/')) {
+		// Skip digest-only references (e.g. sha256:… – they can’t be updated by tag)
+		if (/^sha256:[A-Fa-f0-9]{64}$/.test(imageRef)) {
 			return false;
 		}
 
