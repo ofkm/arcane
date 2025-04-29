@@ -81,7 +81,7 @@
 			{/each}
 		</Tabs.List>
 
-		<!-- Tab Contents -->
+		<!-- Tab Contents
 		<form
 			method="POST"
 			action="?"
@@ -94,15 +94,15 @@
 					await update();
 				};
 			}}
-		>
-			<!-- Add a hidden input with a CSRF token -->
-			<input type="hidden" name="csrf_token" value={data.csrf} />
+		> -->
+		<!-- Add a hidden input with a CSRF token -->
+		<input type="hidden" name="csrf_token" value={data.csrf} />
 
-			{#each tabs as tab}
-				<Tabs.Content value={tab.id} class="space-y-4">
-					<tab.component {data} {form} />
-				</Tabs.Content>
-			{/each}
-		</form>
+		{#each tabs as tab}
+			<Tabs.Content value={tab.id} class="space-y-4">
+				<tab.component {data} {form} />
+			</Tabs.Content>
+		{/each}
+		<!-- </form> -->
 	</Tabs.Root>
 </div>

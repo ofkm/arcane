@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Card from '$lib/components/ui/card/index.js'; // Ensure correct import path
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -11,7 +11,13 @@
 	// Get data from server
 	let { data } = $props<{ data: PageData }>();
 
-	let users = $state<User[]>(data.users);
+	// Use $state for mutable list, $derived is for computed values
+	let users = $state<User[]>(data.users || []);
+
+	// Re-initialize if data changes (e.g., after form action invalidation if you switch back)
+	$effect(() => {
+		users = data.users || [];
+	});
 
 	// New user form state
 	let newUsername = $state('');
@@ -20,7 +26,6 @@
 	let newEmail = $state('');
 	let newRole = $state('user'); // Default role
 	let isCreating = $state(false);
-	let loading = $state(true);
 
 	// Available roles
 	const roles = [
@@ -40,7 +45,7 @@
 
 	// Handle user creation via API
 	async function handleCreateUser(event: Event) {
-		event.preventDefault();
+		event.preventDefault(); // Keep preventDefault
 
 		try {
 			isCreating = true;
@@ -63,7 +68,7 @@
 
 			if (response.ok) {
 				// Add new user to the list
-				users = [...users, result.user];
+				users = [...users, result.user]; // Update the state variable
 				toast.success('User created successfully');
 				resetForm();
 			} else {
@@ -86,7 +91,7 @@
 
 			if (response.ok) {
 				// Remove user from list
-				users = users.filter((user: User) => user.id !== userId);
+				users = users.filter((user) => user.id !== userId); // Update the state variable
 				toast.success(`User ${username} removed successfully`);
 			} else {
 				const result = await response.json();
