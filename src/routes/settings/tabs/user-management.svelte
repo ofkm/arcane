@@ -4,7 +4,7 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { toast } from 'svelte-sonner';
-	import { UserPlus, UserX, UserCheck, Shield } from '@lucide/svelte';
+	import { UserPlus, UserX, UserCheck, Shield, Loader2 } from '@lucide/svelte';
 	import type { PageData } from '../$types';
 	import type { User } from '$lib/services/user-service';
 
@@ -116,7 +116,7 @@
 		<Card.Content>
 			{#if loading}
 				<div class="flex justify-center items-center py-8">
-					<div class="loading loading-spinner loading-md"></div>
+					<Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
 				</div>
 			{:else if users.length > 0}
 				<div class="space-y-4">
@@ -193,7 +193,9 @@
 
 				<Button type="submit" class="w-full" disabled={isCreating}>
 					{#if isCreating}
-						<span class="loading loading-spinner loading-xs mr-2"></span>
+						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+					{:else}
+						<UserPlus class="h-4 w-4 mr-2" />
 					{/if}
 					Create User
 				</Button>
