@@ -8,7 +8,7 @@ import type { LayoutServerLoad } from './$types';
 let versionInformation: AppVersionInformation;
 let versionInformationLastUpdated: number;
 
-export const load = (async () => {
+export const load = (async (locals) => {
 	// If update checks are disabled via env var, return only current version
 	const updateCheckDisabled = env.UPDATE_CHECK_DISABLED === 'true';
 
@@ -16,7 +16,8 @@ export const load = (async () => {
 		return {
 			versionInformation: {
 				currentVersion
-			} as AppVersionInformation
+			} as AppVersionInformation,
+			user: locals.locals.user || null
 		};
 	}
 
@@ -36,6 +37,7 @@ export const load = (async () => {
 	}
 
 	return {
-		versionInformation
+		versionInformation,
+		user: locals.locals.user || null
 	};
 }) satisfies LayoutServerLoad;

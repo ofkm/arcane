@@ -20,6 +20,15 @@ export interface SettingsData {
 			password?: string;
 			keyPrefix: string;
 		};
-		// Other services can be added here in the future
+	};
+	auth?: {
+		localAuthEnabled: boolean;
+		oidcEnabled: boolean;
+		ldapEnabled: boolean;
+		sessionTimeout: number;
+		passwordPolicy: 'low' | 'medium' | 'high';
+		require2fa: boolean;
+		allowTotp: boolean;
+		rbacEnabled: boolean;
 	};
 }

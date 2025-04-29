@@ -88,6 +88,16 @@ export const actions: Actions = {
 				}
 			};
 
+			// Authentication settings
+			const enableLocalAuth = formData.get('enableLocalAuth') === 'on';
+			const enableOAuth = formData.get('enableOAuth') === 'on';
+			const enableLDAP = formData.get('enableLDAP') === 'on';
+			const sessionTimeout = parseInt(formData.get('sessionTimeout') as string, 10) || 60;
+			const passwordPolicy = (formData.get('passwordPolicy') as 'low' | 'medium' | 'high') || 'medium';
+			const require2fa = formData.get('require2fa') === 'on';
+			const allowTotp = formData.get('allowTotp') === 'on';
+			const rbacEnabled = formData.get('rbacEnabled') === 'on';
+
 			const updatedSettings: SettingsData = {
 				...settings,
 				dockerHost,
@@ -97,7 +107,17 @@ export const actions: Actions = {
 				autoUpdateInterval: validatedAutoUpdateInterval,
 				stacksDirectory,
 				pruneMode: pruneMode,
-				externalServices
+				externalServices,
+				auth: {
+					localAuthEnabled: enableLocalAuth,
+					oidcEnabled: enableOAuth,
+					ldapEnabled: enableLDAP,
+					sessionTimeout,
+					passwordPolicy,
+					require2fa,
+					allowTotp,
+					rbacEnabled
+				}
 			};
 
 			// Save updated settings
