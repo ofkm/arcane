@@ -173,7 +173,9 @@ async function checkContainerImageUpdate(container: ServiceContainer): Promise<b
 		await pullImage(imageRef);
 
 		// Get the fresh image info
-		const [imageName, tag] = imageRef.includes(':') ? imageRef.split(':') : [imageRef, 'latest'];
+		const lastColon = imageRef.lastIndexOf(':');
+		const imageName = lastColon === -1 ? imageRef : imageRef.slice(0, lastColon);
+		const tag = lastColon === -1 ? 'latest' : imageRef.slice(lastColon + 1);
 		const freshImages = await listImages();
 		const freshImage = freshImages.find((img) => (img.repo === imageName || img.repo.endsWith(`/${imageName}`)) && img.tag === tag);
 
