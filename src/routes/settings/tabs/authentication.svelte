@@ -1,11 +1,10 @@
 <script lang="ts">
+	import type { PageData } from '../$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
-	import { Lock, Key, Shield } from '@lucide/svelte';
-	import type { PageData } from '../$types';
-	import * as Form from '$lib/components/ui/form/index.js';
+	import { Lock, Key } from '@lucide/svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -49,16 +48,7 @@
 						<label for="oauthSwitch" class="text-base font-medium">OAuth/OpenID Connect</label>
 						<p class="text-sm text-muted-foreground">Single sign-on with external providers</p>
 					</div>
-					<Switch id="oauthSwitch" name="enableOAuth" bind:checked={enableOAuth} />
-				</div>
-
-				<!-- LDAP -->
-				<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
-					<div class="space-y-0.5">
-						<label for="ldapSwitch" class="text-base font-medium">LDAP/Active Directory</label>
-						<p class="text-sm text-muted-foreground">Authentication via directory service</p>
-					</div>
-					<Switch id="ldapSwitch" name="enableLDAP" bind:checked={enableLDAP} />
+					<Switch disabled={true} aria-details="OIDC Authentication Coming Soon" id="oauthSwitch" name="enableOAuth" bind:checked={enableOAuth} />
 				</div>
 			</div>
 		</Card.Content>
