@@ -114,11 +114,7 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			{#if loading}
-				<div class="flex justify-center items-center py-8">
-					<Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
-				</div>
-			{:else if users.length > 0}
+			{#if users.length > 0}
 				<div class="space-y-4">
 					{#each users as user}
 						<div class="border rounded-md p-3 flex justify-between items-center">
