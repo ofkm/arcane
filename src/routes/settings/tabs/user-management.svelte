@@ -52,13 +52,13 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			{#if !data.users}
+			{#if !users}
 				<div class="flex justify-center items-center py-8">
 					<div class="loading loading-spinner loading-md"></div>
 				</div>
-			{:else if data.users.length > 0}
+			{:else if users.length > 0}
 				<div class="space-y-4">
-					{#each data.users as user}
+					{#each users as user}
 						<div class="border rounded-md p-3 flex justify-between items-center">
 							<div>
 								<div class="font-medium">{user.displayName || user.username}</div>

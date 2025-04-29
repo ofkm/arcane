@@ -1,5 +1,3 @@
-<!-- @migration-task Error while migrating Svelte code: Cannot use `export let` in runes mode — use `$props()` instead
-https://svelte.dev/e/legacy_export_invalid -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import * as Card from '$lib/components/ui/card/index.js';
@@ -8,9 +6,15 @@ https://svelte.dev/e/legacy_export_invalid -->
 	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { AlertCircle } from '@lucide/svelte';
-	import type { PageData, ActionData } from './$types';
+	import type { PageData } from './$types';
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+	// Define a proper type for form data
+	type ActionData = {
+		error?: string;
+		username?: string;
+	};
+
+	let { data, form }: { data: PageData; form: ActionData | null } = $props();
 
 	const { providers, providerUrls } = data;
 
@@ -48,7 +52,7 @@ https://svelte.dev/e/legacy_export_invalid -->
 				<div>
 					<Label for="username" class="block text-sm font-medium leading-6">Username</Label>
 					<div class="mt-2">
-						<Input id="username" name="username" type="text" autocomplete="username" required value={form?.username || ''} />
+						<Input id="username" name="username" type="text" autocomplete="username" required value={form?.username ?? ''} />
 					</div>
 				</div>
 

@@ -5,6 +5,13 @@ import { createSession } from '$lib/services/session-service';
 import { getSettings } from '$lib/services/settings-service';
 import { createAuthorizationUrl, getOidcProviders } from '$lib/services/oidc-service';
 
+// Define a proper ActionData type
+interface LoginActionData {
+	error?: string;
+	username?: string;
+	[key: string]: unknown;
+}
+
 export const load: PageServerLoad = async ({ url, cookies }) => {
 	// Check if already logged in
 	const sessionId = cookies.get('session_id');
@@ -63,7 +70,7 @@ export const actions: Actions = {
 			return fail(400, {
 				error: 'Invalid username or password',
 				username
-			});
+			} as LoginActionData);
 		}
 
 		// Verify password
@@ -73,7 +80,7 @@ export const actions: Actions = {
 			return fail(400, {
 				error: 'Invalid username or password',
 				username
-			});
+			} as LoginActionData);
 		}
 
 		// Create session
