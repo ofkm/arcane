@@ -32,7 +32,7 @@
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-	<!-- Docker Connection Card -->
+	<!-- Docker Connection Card - Updated to include Registry Credentials -->
 	<Card.Root class="border shadow-sm">
 		<Card.Header class="pb-3">
 			<div class="flex items-center gap-2">
@@ -41,7 +41,7 @@
 				</div>
 				<div>
 					<Card.Title>Docker Settings</Card.Title>
-					<Card.Description>Configure your Docker connection</Card.Description>
+					<Card.Description>Configure Docker connection and registry credentials</Card.Description>
 				</div>
 			</div>
 		</Card.Header>
@@ -58,6 +58,65 @@
 					<Input type="text" id="stacksDirectory" name="stacksDirectory" bind:value={stacksDirectory} placeholder="/app/data/stacks" required />
 					<p class="text-xs text-muted-foreground">Directory where Docker Compose stacks will be stored inside the container.</p>
 					<p class="text-xs font-bold text-destructive">Changing this setting will not move existing stacks!</p>
+				</div>
+
+				<div class="pt-4 border-t mt-4">
+					<div class="flex items-center gap-2 mb-3">
+						<div class="bg-green-500/10 p-2 rounded-full">
+							<Key class="h-5 w-5 text-green-500" />
+						</div>
+						<div>
+							<h3 class="font-medium">Docker Registry Credentials</h3>
+							<p class="text-sm text-muted-foreground">Configure access to private Docker registries</p>
+						</div>
+					</div>
+					<div class="space-y-2">
+						<p class="text-sm text-muted-foreground">Add credentials for private registries like Docker Hub, GitHub Container Registry (ghcr.io), or other private repositories.</p>
+
+						{#if registryCredentials.length === 0}
+							<div class="text-center py-4 text-muted-foreground text-sm border rounded-md">No registry credentials configured yet</div>
+						{:else}
+							<div class="space-y-4">
+								{#each registryCredentials as registry, index}
+									<div class="border rounded-md p-4 space-y-3 bg-muted/20">
+										<div class="flex justify-between items-center">
+											<h4 class="font-medium">Registry #{index + 1}</h4>
+											<button type="button" class="text-destructive hover:text-destructive/80" onclick={() => removeRegistry(index)}>
+												<Trash2 class="h-4 w-4" />
+											</button>
+										</div>
+
+										<div class="space-y-2">
+											<label for={`registry-url-${index}`} class="text-sm font-medium">Registry URL</label>
+											<Input type="text" id={`registry-url-${index}`} name={`registryCredentials[${index}].url`} bind:value={registry.url} placeholder="ghcr.io, registry.hub.docker.com, etc." required />
+										</div>
+
+										<div class="space-y-2">
+											<label for={`registry-username-${index}`} class="text-sm font-medium">Username</label>
+											<Input type="text" id={`registry-username-${index}`} name={`registryCredentials[${index}].username`} bind:value={registry.username} placeholder="Username" required />
+										</div>
+
+										<div class="space-y-2">
+											<label for={`registry-password-${index}`} class="text-sm font-medium">Password / Access Token</label>
+											<Input type="password" id={`registry-password-${index}`} name={`registryCredentials[${index}].password`} bind:value={registry.password} placeholder="Password or access token" required />
+											<p class="text-xs text-muted-foreground">For GitHub, use a personal access token with the appropriate scopes.</p>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						<button type="button" class="w-full mt-4 flex items-center justify-center gap-2 border border-dashed rounded-md py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30" onclick={addRegistry}>
+							<Plus class="h-4 w-4" /> Add Registry Credentials
+						</button>
+
+						<p class="text-xs text-muted-foreground mt-2">
+							Common registry URLs:
+							<span class="font-medium">registry.hub.docker.com</span> (Docker Hub),
+							<span class="font-medium">ghcr.io</span> (GitHub Container Registry),
+							<span class="font-medium">[account].dkr.ecr.[region].amazonaws.com</span> (AWS ECR)
+						</p>
+					</div>
 				</div>
 			</div>
 		</Card.Content>
@@ -143,70 +202,4 @@
 			</Card.Content>
 		</Card.Root>
 	</div>
-
-	<!-- Docker Registry Credentials Card -->
-	<Card.Root class="border shadow-sm lg:col-span-2">
-		<Card.Header class="pb-3">
-			<div class="flex items-center gap-2">
-				<div class="bg-green-500/10 p-2 rounded-full">
-					<Key class="h-5 w-5 text-green-500" />
-				</div>
-				<div>
-					<Card.Title>Docker Registry Credentials</Card.Title>
-					<Card.Description>Configure access to private Docker registries</Card.Description>
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content>
-			<div class="space-y-4">
-				<div class="space-y-2">
-					<p class="text-sm text-muted-foreground">Add credentials for private registries like Docker Hub, GitHub Container Registry (ghcr.io), or other private repositories.</p>
-
-					{#if registryCredentials.length === 0}
-						<div class="text-center py-4 text-muted-foreground text-sm border rounded-md">No registry credentials configured yet</div>
-					{:else}
-						<div class="space-y-4">
-							{#each registryCredentials as registry, index}
-								<div class="border rounded-md p-4 space-y-3">
-									<div class="flex justify-between items-center">
-										<h4 class="font-medium">Registry #{index + 1}</h4>
-										<button type="button" class="text-destructive hover:text-destructive/80" onclick={() => removeRegistry(index)}>
-											<Trash2 class="h-4 w-4" />
-										</button>
-									</div>
-
-									<div class="space-y-2">
-										<label for={`registry-url-${index}`} class="text-sm font-medium">Registry URL</label>
-										<Input type="text" id={`registry-url-${index}`} name={`registryCredentials[${index}].url`} bind:value={registry.url} placeholder="ghcr.io, registry.hub.docker.com, etc." required />
-									</div>
-
-									<div class="space-y-2">
-										<label for={`registry-username-${index}`} class="text-sm font-medium">Username</label>
-										<Input type="text" id={`registry-username-${index}`} name={`registryCredentials[${index}].username`} bind:value={registry.username} placeholder="Username" required />
-									</div>
-
-									<div class="space-y-2">
-										<label for={`registry-password-${index}`} class="text-sm font-medium">Password / Access Token</label>
-										<Input type="password" id={`registry-password-${index}`} name={`registryCredentials[${index}].password`} bind:value={registry.password} placeholder="Password or access token" required />
-										<p class="text-xs text-muted-foreground">For GitHub, use a personal access token with the appropriate scopes.</p>
-									</div>
-								</div>
-							{/each}
-						</div>
-					{/if}
-
-					<button type="button" class="w-full mt-4 flex items-center justify-center gap-2 border border-dashed rounded-md py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30" onclick={addRegistry}>
-						<Plus class="h-4 w-4" /> Add Registry Credentials
-					</button>
-
-					<p class="text-xs text-muted-foreground mt-2">
-						Common registry URLs:
-						<span class="font-medium">registry.hub.docker.com</span> (Docker Hub),
-						<span class="font-medium">ghcr.io</span> (GitHub Container Registry),
-						<span class="font-medium">[account].dkr.ecr.[region].amazonaws.com</span> (AWS ECR)
-					</p>
-				</div>
-			</div>
-		</Card.Content>
-	</Card.Root>
 </div>
