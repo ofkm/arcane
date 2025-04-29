@@ -12,6 +12,7 @@
 	import ActionButtons from '$lib/components/action-buttons.svelte';
 	import { formatDate, formatLogLine, formatBytes } from '$lib/utils';
 	import type Docker from 'dockerode';
+	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let { container, logs, stats } = $derived(data);
@@ -306,6 +307,151 @@
 						{:else}
 							<div class="text-sm text-muted-foreground italic">No environment variables set</div>
 						{/if}
+					</Card.Content>
+				</Card.Root>
+
+				<!-- Volumes/Mounts -->
+				<Card.Root class="border shadow-sm">
+					<Card.Header>
+						<Card.Title>Volumes & Mounts</Card.Title>
+						<Card.Description>Container filesystem mounts</Card.Description>
+					</Card.Header>
+					<Card.Content class="max-h-[180px] overflow-y-auto">
+						{#if container.mounts && container.mounts.length > 0}
+							<div class="space-y-2">
+								{#each container.mounts as mount}
+									<div class="flex flex-col rounded-md bg-muted/40 p-2">
+										<div class="flex gap-2 items-center">
+											<Badge variant="outline">{mount.Type}</Badge>
+											<span class="text-xs">{mount.RW ? 'Read/Write' : 'Read Only'}</span>
+										</div>
+										<div class="text-xs mt-1">
+											<div class="font-semibold">Source:</div>
+											<div class="break-all">{mount.Source}</div>
+										</div>
+										<div class="text-xs mt-1">
+											<div class="font-semibold">Destination:</div>
+											<div class="break-all">{mount.Destination}</div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<div class="text-sm text-muted-foreground italic">No volumes or mounts configured</div>
+						{/if}
+					</Card.Content>
+				</Card.Root>
+
+				<!-- Labels -->
+				<Card.Root class="border shadow-sm">
+					<Card.Header>
+						<Card.Title>Labels</Card.Title>
+						<Card.Description>Container metadata labels</Card.Description>
+					</Card.Header>
+					<Card.Content class="max-h-[180px] overflow-y-auto">
+						{#if container.labels && Object.keys(container.labels).length > 0}
+							<div class="space-y-2">
+								{#each Object.entries(container.labels) as [key, value]}
+									<div class="text-xs flex overflow-hidden">
+										<div class="flex w-full">
+											<span class="font-semibold mr-2 min-w-[120px] max-w-[180px] truncate flex-shrink-0" title={key}>{key}:</span>
+											<span class="truncate flex-1" title={value?.toString()}>{value?.toString() || ''}</span>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<div class="text-sm text-muted-foreground italic">No labels defined</div>
+						{/if}
+					</Card.Content>
+				</Card.Root>
+
+				<!-- Networks -->
+				<Card.Root class="border shadow-sm">
+					<Card.Header>
+						<Card.Title>Networks</Card.Title>
+						<Card.Description>Connected container networks</Card.Description>
+					</Card.Header>
+					<Card.Content class="max-h-[180px] overflow-y-auto">
+						{#if container.networkSettings?.Networks && Object.keys(container.networkSettings.Networks).length > 0}
+							<div class="space-y-2">
+								{#each Object.entries(container.networkSettings.Networks) as [networkName, networkConfig]}
+									<div class="rounded-md bg-muted/40 p-2">
+										<div class="text-sm font-medium">{networkName}</div>
+										<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 mt-1">
+											<div class="text-xs">
+												<span class="font-semibold">IP Address:</span>
+												{networkConfig.IPAddress || 'N/A'}
+											</div>
+											<div class="text-xs">
+												<span class="font-semibold">Gateway:</span>
+												{networkConfig.Gateway || 'N/A'}
+											</div>
+											<div class="text-xs">
+												<span class="font-semibold">MAC Address:</span>
+												{networkConfig.MacAddress || 'N/A'}
+											</div>
+											{#if networkConfig.Aliases && networkConfig.Aliases.length > 0}
+												<div class="text-xs col-span-full">
+													<span class="font-semibold">Aliases:</span>
+													{networkConfig.Aliases.join(', ')}
+												</div>
+											{/if}
+										</div>
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<div class="text-sm text-muted-foreground italic">No networks connected</div>
+						{/if}
+					</Card.Content>
+				</Card.Root>
+
+				<!-- Advanced Container Info -->
+				<Card.Root class="border shadow-sm">
+					<Card.Header>
+						<Card.Title>Container Configuration</Card.Title>
+						<Card.Description>Additional container settings</Card.Description>
+					</Card.Header>
+					<Card.Content>
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+							<!-- Container ID -->
+							<div>
+								<span class="font-semibold">Container ID:</span>
+								<div class="font-mono mt-1 text-xs break-all">{container.id}</div>
+							</div>
+
+							<!-- Working Directory -->
+							{#if container.config?.WorkingDir}
+								<div>
+									<span class="font-semibold">Working Directory:</span>
+									<div class="mt-1 break-all">{container.config.WorkingDir}</div>
+								</div>
+							{/if}
+
+							<!-- User -->
+							{#if container.config?.User}
+								<div>
+									<span class="font-semibold">User:</span>
+									<div class="mt-1">{container.config.User}</div>
+								</div>
+							{/if}
+
+							<!-- Health Check section -->
+							{#if container.state?.Health}
+								<div class="col-span-full">
+									<span class="font-semibold">Health Status:</span>
+									<div class="mt-1 flex gap-2 items-center">
+										<StatusBadge variant={container.state.Health.Status === 'healthy' ? 'green' : container.state.Health.Status === 'unhealthy' ? 'red' : 'amber'} text={container.state.Health.Status} />
+										{#if container.state.Health.Log && container.state.Health.Log.length > 0}
+											<span class="text-xs text-muted-foreground">
+												Last check: {new Date(container.state.Health.Log[0].Start).toLocaleString()}
+											</span>
+										{/if}
+									</div>
+								</div>
+							{/if}
+						</div>
 					</Card.Content>
 				</Card.Root>
 			</div>
