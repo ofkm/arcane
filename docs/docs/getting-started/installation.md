@@ -16,18 +16,33 @@ Before installing Arcane, ensure you have:
 
 ## Installation Methods
 
-### Using Docker
+### Using Docker Compose
 
-```bash
-docker pull arcane/arcane:latest
-docker run -d -p 3000:3000 -v /var/run/docker.sock:/var/run/docker.sock arcane/arcane:latest
+```yaml
+services:
+  arcane:
+    image: ghcr.io/ofkm/arcane:latest
+    container_name: arcane
+    ports:
+      - '3000:3000'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./arcane-data:/app/data
+
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - DOCKER_GID=998 # getent group docker | cut -d: -f3
+    restart: unless-stopped
+# Optional: Define the volume if you want Docker to manage it
+# volumes:
+#   arcane-data:
 ```
 
-### Using NPM
+Start the container
 
 ```bash
-npm install -g arcane-ui
-arcane-ui
+docker compose up -d
 ```
 
 Once installed, you can access Arcane at [http://localhost:3000](http://localhost:3000).

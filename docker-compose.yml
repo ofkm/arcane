@@ -7,13 +7,13 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./arcane-data:/app/data
-      # - ./arcane-data/app-settings.json:/app/app-settings.json
 
     environment:
       - PUID=1000
       - PGID=1000
       - DOCKER_GID=998 # getent group docker | cut -d: -f3
     restart: unless-stopped
+
 # Optional: Define the volume if you want Docker to manage it
 # volumes:
 #   arcane-data:
