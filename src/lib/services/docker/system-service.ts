@@ -1,7 +1,7 @@
 import { getDockerClient } from '$lib/services/docker/core';
 import type { PruneResult } from '$lib/types/docker/prune.type';
 import { getSettings } from '$lib/services/settings-service'; // Import getSettings
-import type { SettingsData } from '$lib/types/settings'; // Import SettingsData type
+import type { SettingsData } from '$lib/types/settings.type'; // Import SettingsData type
 
 type PruneType = 'containers' | 'images' | 'networks' | 'volumes';
 type PruneServiceResult = PruneResult & { type: PruneType; error?: string };

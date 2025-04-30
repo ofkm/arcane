@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import proper from 'proper-lockfile';
-import type { SettingsData } from '$lib/types/settings';
+import type { SettingsData } from '$lib/types/settings.type';
 
 // Determine if we're in development or production
 const isDev = process.env.NODE_ENV === 'development';

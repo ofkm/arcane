@@ -7,134 +7,139 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import type { PageData } from '../$types';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import { settingsStore } from '$lib/stores/settings-store';
 
 	let { data } = $props<{ data: PageData }>();
 
-	let settings = $derived(data.settings);
-
-	let dockerHost = $derived(settings?.dockerHost || '');
-	let autoUpdate = $derived(settings?.autoUpdate || false);
-	let pollingEnabled = $derived(settings?.pollingEnabled || false);
-	let pollingInterval = $derived(settings?.pollingInterval || 10);
-	let autoUpdateInterval = $derived(settings?.autoUpdateInterval || 10);
-	let stacksDirectory = $derived(settings?.stacksDirectory || '');
-	let pruneMode = $derived<'all' | 'dangling'>(settings?.pruneMode || 'all');
-	let registryCredentials = $derived(settings?.registryCredentials || []);
+	$effect(() => {
+		if (data.settings) {
+			settingsStore.update((current) => ({
+				...current,
+				...data.settings
+			}));
+		}
+	});
 
 	const defaultRegistry = { url: '', username: '', password: '' };
 
 	function addRegistry() {
-		registryCredentials = [...registryCredentials, { ...defaultRegistry }];
+		settingsStore.update((current) => ({
+			...current,
+			registryCredentials: [...(current.registryCredentials || []), { ...defaultRegistry }]
+		}));
 	}
 
 	function removeRegistry(index: number) {
-		registryCredentials = registryCredentials.filter((_: unknown, i: number) => i !== index);
+		settingsStore.update((current) => ({
+			...current,
+			registryCredentials: (current.registryCredentials || []).filter((_, i) => i !== index)
+		}));
+	}
+
+	function updateRegistry(index: number, field: string, value: string) {
+		settingsStore.update((current) => {
+			const updatedCredentials = [...(current.registryCredentials || [])];
+			updatedCredentials[index] = {
+				...updatedCredentials[index],
+				[field]: value
+			};
+			return {
+				...current,
+				registryCredentials: updatedCredentials
+			};
+		});
 	}
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-	<!-- Left Column: Docker Connection & Registry Credentials -->
-	<div class="space-y-6">
-		<!-- Docker Connection Card -->
-		<Card.Root class="border shadow-sm">
-			<Card.Header class="pb-3">
-				<div class="flex items-center gap-2">
-					<div class="bg-blue-500/10 p-2 rounded-full">
-						<Server class="h-5 w-5 text-blue-500" />
-					</div>
-					<div>
-						<Card.Title>Docker Connection</Card.Title>
-						<Card.Description>Configure Docker host and stacks directory</Card.Description>
-					</div>
+	<!-- Docker Connection Card -->
+	<Card.Root class="border shadow-sm">
+		<Card.Header class="pb-3">
+			<div class="flex items-center gap-2">
+				<div class="bg-blue-500/10 p-2 rounded-full">
+					<Server class="h-5 w-5 text-blue-500" />
 				</div>
-			</Card.Header>
-			<Card.Content>
-				<div class="space-y-4">
-					<div class="space-y-2">
-						<label for="dockerHost" class="text-sm font-medium">Docker Host</label>
-						<Input type="text" id="dockerHost" name="dockerHost" bind:value={dockerHost} placeholder="unix:///var/run/docker.sock" required />
-						<p class="text-xs text-muted-foreground">For local Docker: unix:///var/run/docker.sock (Unix) or npipe:////./pipe/docker_engine (Windows)</p>
-					</div>
-
-					<div class="space-y-2">
-						<label for="stacksDirectory" class="text-sm font-medium">Stacks Directory</label>
-						<Input type="text" id="stacksDirectory" name="stacksDirectory" bind:value={stacksDirectory} placeholder="/app/data/stacks" required />
-						<p class="text-xs text-muted-foreground">Directory where Docker Compose stacks will be stored inside the container.</p>
-						<p class="text-xs font-bold text-destructive">Changing this setting will not move existing stacks!</p>
-					</div>
+				<div>
+					<Card.Title>Docker Settings</Card.Title>
+					<Card.Description>Configure Docker connection and registry credentials</Card.Description>
 				</div>
-			</Card.Content>
-		</Card.Root>
-
-		<!-- Docker Registry Credentials Card -->
-		<Card.Root class="border shadow-sm">
-			<Card.Header class="pb-3">
-				<div class="flex items-center gap-2">
-					<div class="bg-green-500/10 p-2 rounded-full">
-						<Key class="h-5 w-5 text-green-500" />
-					</div>
-					<div>
-						<Card.Title>Docker Registry Credentials</Card.Title>
-						<Card.Description>Configure access to private Docker registries</Card.Description>
-					</div>
+			</div>
+		</Card.Header>
+		<Card.Content>
+			<div class="space-y-4">
+				<div class="space-y-2">
+					<label for="dockerHost" class="text-sm font-medium">Docker Host</label>
+					<Input type="text" id="dockerHost" name="dockerHost" bind:value={$settingsStore.dockerHost} placeholder="unix:///var/run/docker.sock" required />
+					<p class="text-xs text-muted-foreground">For local Docker: unix:///var/run/docker.sock (Unix) or npipe:////./pipe/docker_engine (Windows)</p>
 				</div>
-			</Card.Header>
-			<Card.Content>
-				<div class="space-y-4">
-					<p class="text-sm text-muted-foreground">Add credentials for private registries like Docker Hub, GitHub Container Registry (ghcr.io), or other private repositories.</p>
 
-					{#if registryCredentials.length === 0}
-						<div class="text-center py-4 text-muted-foreground text-sm border rounded-md">No registry credentials configured yet</div>
-					{:else}
-						<div class="space-y-4">
-							{#each registryCredentials as registry, index}
-								<div class="border rounded-md p-4 space-y-3 bg-muted/20">
-									<div class="flex justify-between items-center">
-										<h4 class="font-medium">Registry #{index + 1}</h4>
-										<Button variant="ghost" size="icon" class="text-destructive hover:text-destructive/80 h-7 w-7" type="button" onclick={() => removeRegistry(index)}>
-											<Trash2 class="h-4 w-4" />
-											<span class="sr-only">Remove Registry</span>
-										</Button>
-									</div>
+				<div class="space-y-2">
+					<label for="stacksDirectory" class="text-sm font-medium">Stacks Directory</label>
+					<Input type="text" id="stacksDirectory" name="stacksDirectory" bind:value={$settingsStore.stacksDirectory} placeholder="/app/data/stacks" required />
+					<p class="text-xs text-muted-foreground">Directory where Docker Compose stacks will be stored inside the container.</p>
+					<p class="text-xs font-bold text-destructive">Changing this setting will not move existing stacks!</p>
+				</div>
 
-									<div class="space-y-2">
-										<label for={`registry-url-${index}`} class="text-sm font-medium">Registry URL</label>
-										<Input type="text" id={`registry-url-${index}`} name={`registryCredentials[${index}].url`} bind:value={registry.url} placeholder="ghcr.io, registry.hub.docker.com, etc." required />
-									</div>
-
-									<div class="space-y-2">
-										<label for={`registry-username-${index}`} class="text-sm font-medium">Username</label>
-										<Input type="text" id={`registry-username-${index}`} name={`registryCredentials[${index}].username`} bind:value={registry.username} placeholder="Username" required />
-									</div>
-
-									<div class="space-y-2">
-										<label for={`registry-password-${index}`} class="text-sm font-medium">Password / Access Token</label>
-										<Input type="password" id={`registry-password-${index}`} name={`registryCredentials[${index}].password`} bind:value={registry.password} placeholder="Password or access token" required />
-										<p class="text-xs text-muted-foreground">For GitHub, use a personal access token with the appropriate scopes.</p>
-									</div>
-								</div>
-							{/each}
+				<!-- Registry Credentials Section -->
+				<div class="pt-4 border-t mt-4">
+					<div class="flex items-center gap-2 mb-3">
+						<div class="bg-green-500/10 p-2 rounded-full">
+							<Key class="h-5 w-5 text-green-500" />
 						</div>
-					{/if}
+						<div>
+							<h3 class="font-medium">Docker Registry Credentials</h3>
+							<p class="text-sm text-muted-foreground">Configure access to private Docker registries</p>
+						</div>
+					</div>
 
-					<Button type="button" variant="outline" class="w-full mt-4" onclick={addRegistry}>
-						<Plus class="mr-2 h-4 w-4" /> Add Registry Credentials
-					</Button>
+					<div class="space-y-2">
+						<p class="text-sm text-muted-foreground">Add credentials for private registries like Docker Hub, GitHub Container Registry (ghcr.io), or other private repositories.</p>
 
-					<p class="text-xs text-muted-foreground mt-2">
-						Common registry URLs:
-						<span class="font-medium">registry.hub.docker.com</span> (Docker Hub),
-						<span class="font-medium">ghcr.io</span> (GitHub Container Registry),
-						<span class="font-medium">[account].dkr.ecr.[region].amazonaws.com</span> (AWS ECR)
-					</p>
+						{#if $settingsStore.registryCredentials.length === 0}
+							<div class="text-center py-4 text-muted-foreground text-sm border rounded-md">No registry credentials configured yet</div>
+						{:else}
+							<div class="space-y-4">
+								{#each $settingsStore.registryCredentials as registry, index}
+									<div class="border rounded-md p-4 space-y-3 bg-muted/20">
+										<div class="flex justify-between items-center">
+											<h4 class="font-medium">Registry #{index + 1}</h4>
+											<Button variant="ghost" size="icon" class="text-destructive hover:text-destructive/80 h-7 w-7" type="button" onclick={() => removeRegistry(index)}>
+												<Trash2 class="h-4 w-4" />
+												<span class="sr-only">Remove Registry</span>
+											</Button>
+										</div>
+
+										<div class="space-y-2">
+											<label for={`registry-url-${index}`} class="text-sm font-medium">Registry URL</label>
+											<Input type="text" id={`registry-url-${index}`} value={registry.url} oninput={(e: Event) => updateRegistry(index, 'url', (e.target as HTMLInputElement).value)} placeholder="ghcr.io, registry.hub.docker.com, etc." required />
+										</div>
+
+										<div class="space-y-2">
+											<label for={`registry-username-${index}`} class="text-sm font-medium">Username</label>
+											<Input type="text" id={`registry-username-${index}`} value={registry.username} oninput={(e: Event) => updateRegistry(index, 'username', (e.target as HTMLInputElement).value)} placeholder="Username" required />
+										</div>
+
+										<div class="space-y-2">
+											<label for={`registry-password-${index}`} class="text-sm font-medium">Password / Access Token</label>
+											<Input type="password" id={`registry-password-${index}`} value={registry.password} oninput={(e: Event) => updateRegistry(index, 'password', (e.target as HTMLInputElement).value)} placeholder="Password or access token" required />
+											<p class="text-xs text-muted-foreground">For GitHub, use a personal access token with the appropriate scopes.</p>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						<Button variant="outline" class="w-full mt-4 flex items-center justify-center gap-2" onclick={addRegistry}>
+							<Plus class="h-4 w-4" /> Add Registry Credentials
+						</Button>
+					</div>
 				</div>
-			</Card.Content>
-		</Card.Root>
-	</div>
+			</div>
+		</Card.Content>
+	</Card.Root>
 
-	<!-- Right Column: Polling & Pruning -->
+	<!-- Polling and Image Pruning Settings -->
 	<div class="space-y-6">
-		<!-- Polling Settings Card -->
 		<Card.Root class="border shadow-sm">
 			<Card.Header class="pb-3">
 				<div class="flex items-center gap-2">
@@ -153,13 +158,20 @@
 						<label for="pollingEnabledSwitch" class="text-base font-medium">Check for New Images</label>
 						<p class="text-sm text-muted-foreground">Periodically check for newer versions of container images</p>
 					</div>
-					<Switch id="pollingEnabledSwitch" name="pollingEnabled" bind:checked={pollingEnabled} />
+					<Switch
+						id="pollingEnabledSwitch"
+						name="pollingEnabled"
+						checked={$settingsStore.pollingEnabled}
+						onCheckedChange={(checked) => {
+							settingsStore.update((current) => ({ ...current, pollingEnabled: checked }));
+						}}
+					/>
 				</div>
 
-				{#if pollingEnabled}
+				{#if $settingsStore.pollingEnabled}
 					<div class="space-y-2 px-1">
 						<label for="pollingInterval" class="text-sm font-medium"> Polling Interval (minutes) </label>
-						<Input id="pollingInterval" name="pollingInterval" type="number" bind:value={pollingInterval} min="5" max="60" />
+						<Input id="pollingInterval" type="number" bind:value={$settingsStore.pollingInterval} min="5" max="60" />
 						<p class="text-xs text-muted-foreground">Set between 5-60 minutes.</p>
 					</div>
 
@@ -168,13 +180,19 @@
 							<Label for="autoUpdateSwitch" class="text-base font-medium">Auto Update Containers</Label>
 							<p class="text-sm text-muted-foreground">Automatically update containers when newer images are available</p>
 						</div>
-						<Switch id="autoUpdateSwitch" name="autoUpdate" bind:checked={autoUpdate} />
+						<Switch
+							id="autoUpdateSwitch"
+							checked={$settingsStore.autoUpdate}
+							onCheckedChange={(checked) => {
+								settingsStore.update((current) => ({ ...current, autoUpdate: checked }));
+							}}
+						/>
 					</div>
 
-					{#if autoUpdate}
-						<div class="space-y-2 mt-4 px-1">
+					{#if $settingsStore.autoUpdate}
+						<div class="space-y-2 mt-4">
 							<Label for="autoUpdateInterval" class="text-base font-medium">Auto-update check interval (minutes)</Label>
-							<Input id="autoUpdateInterval" name="autoUpdateInterval" type="number" min="5" max="1440" bind:value={autoUpdateInterval} />
+							<Input id="autoUpdateInterval" type="number" bind:value={$settingsStore.autoUpdateInterval} min="5" max="1440" />
 							<p class="text-sm text-muted-foreground">How often Arcane will check for container and stack updates (minimum 5 minutes, maximum 24 hours)</p>
 						</div>
 					{/if}
@@ -198,7 +216,14 @@
 			<Card.Content class="space-y-4">
 				<div>
 					<Label for="pruneMode" class="text-base font-medium block mb-2">Prune Action Behavior</Label>
-					<RadioGroup.Root bind:value={pruneMode} name="pruneMode" class="flex flex-col space-y-1" id="pruneMode">
+					<RadioGroup.Root
+						value={$settingsStore.pruneMode}
+						onValueChange={(val) => {
+							settingsStore.update((current) => ({ ...current, pruneMode: val as 'all' | 'dangling' }));
+						}}
+						class="flex flex-col space-y-1"
+						id="pruneMode"
+					>
 						<div class="flex items-center space-x-2">
 							<RadioGroup.Item value="all" id="prune-all" />
 							<Label for="prune-all" class="font-normal">All Unused Images (like `docker image prune -a`)</Label>

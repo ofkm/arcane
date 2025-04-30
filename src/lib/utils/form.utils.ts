@@ -4,3 +4,9 @@ export function preventDefault(fn: (event: Event) => any) {
 		fn.call(this, event);
 	};
 }
+
+// Helper function to get input values from the DOM
+export function getInputValue(id: string, defaultValue: string = ''): string {
+	const element = document.getElementById(id) as HTMLInputElement;
+	return element?.value || defaultValue;
+}

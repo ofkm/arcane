@@ -8,88 +8,37 @@
 	import AppSettings from './tabs/app-settings.svelte';
 	import UserManagement from './tabs/user-management.svelte';
 	import Authentication from './tabs/authentication.svelte';
+	import { saveSettingsToServer, updateSettingsStore } from '$lib/stores/settings-store';
 
 	let { data } = $props<{ data: PageData }>();
 
-	// Track active tab
+	// Initialize settings store from server data
+	$effect(() => {
+		if (data.settings) {
+			updateSettingsStore(data.settings);
+		}
+	});
+
 	let activeTab = $state('app-settings');
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 
 	const tabs = [
 		{ id: 'app-settings', label: 'General', component: AppSettings },
-		{
-			id: 'user-management',
-			label: 'User Management',
-			component: UserManagement
-		},
-		{
-			id: 'authentication',
-			label: 'Authentication',
-			component: Authentication
-		}
-		// Uncomment the following lines once i add RBAC and External Services
-		// { id: 'rbac', label: 'RBAC', component: RbacSettings },
-		// {
-		// 	id: 'external-services',
-		// 	label: 'External Services',
-		// 	component: ExternalServices
-		// }
+		{ id: 'user-management', label: 'User Management', component: UserManagement },
+		{ id: 'authentication', label: 'Authentication', component: Authentication }
+		// Uncommented tabs can be added back when needed
 	];
 
-	// New function to handle settings update via API
+	// Simplified save function using the store
 	async function saveSettings() {
 		if (saving) return;
-
 		saving = true;
 		error = null;
 
 		try {
-			// Instead of using FormData, collect settings directly from the DOM
-			// Basic settings (direct properties)
-			const settingsData: any = {
-				dockerHost: getInputValue('dockerHost', ''),
-				stacksDirectory: getInputValue('stacksDirectory', ''),
-				autoUpdateInterval: parseInt(getInputValue('autoUpdateInterval', '60')),
-				pollingInterval: parseInt(getInputValue('pollingInterval', '10')),
-				pruneMode: getInputValue('pruneMode', 'all')
-			};
-
-			// Boolean fields - check if the switch elements are checked
-			const booleanFields = ['autoUpdate', 'pollingEnabled', 'rbacEnabled'];
-			booleanFields.forEach((field) => {
-				const element = document.getElementById(field) as HTMLInputElement;
-				settingsData[field] = element?.checked || false;
-			});
-
-			// Registry credentials
-			const registryCredentialsInput = document.getElementById('registryCredentials') as HTMLInputElement;
-			if (registryCredentialsInput?.value) {
-				try {
-					const parsedRegistry = JSON.parse(registryCredentialsInput.value);
-					if (Array.isArray(parsedRegistry)) {
-						settingsData.registryCredentials = parsedRegistry;
-					}
-				} catch (e) {
-					console.error('Error parsing registry credentials', e);
-				}
-			}
-
-			// Send the data to the API
-			const response = await fetch('/api/settings', {
-				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(settingsData)
-			});
-
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error || `HTTP error! status: ${response.status}`);
-			}
-
+			// Save everything in the store
+			await saveSettingsToServer();
 			toast.success('Settings saved successfully');
 			await invalidateAll();
 		} catch (err: any) {
@@ -99,18 +48,6 @@
 		} finally {
 			saving = false;
 		}
-	}
-
-	// Helper function to get input values from the DOM
-	function getInputValue(id: string, defaultValue: string = ''): string {
-		const element = document.getElementById(id) as HTMLInputElement;
-		return element?.value || defaultValue;
-	}
-
-	// Helper function to check if a switch is checked
-	function isSwitchChecked(id: string): boolean {
-		const element = document.getElementById(id) as HTMLInputElement;
-		return element?.checked || false;
 	}
 </script>
 
@@ -143,11 +80,8 @@
 			{/each}
 		</Tabs.List>
 
-		<!-- Replace form with div to avoid refresh errors -->
 		<div id="settings-container">
-			<!-- Add a hidden input with a CSRF token -->
 			<input type="hidden" id="csrf_token" value={data.csrf} />
-
 			{#each tabs as tab}
 				<Tabs.Content value={tab.id} class="space-y-4">
 					<tab.component {data} />
