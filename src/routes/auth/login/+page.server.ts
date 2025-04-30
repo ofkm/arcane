@@ -56,16 +56,17 @@ export const actions: Actions = {
 		const userAgent = request.headers.get('user-agent') || undefined;
 		const session = await createSession(user.id, user.username);
 
-		// Set session cookie
+		// Set session cookie with enhanced security
 		const settings = await getSettings();
 		const sessionTimeout = settings.auth?.sessionTimeout || 60; // minutes
 
 		cookies.set('session_id', session, {
 			path: '/',
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
+			secure: true, // Always use secure cookies
 			maxAge: sessionTimeout * 60, // Convert to seconds
-			sameSite: 'lax'
+			sameSite: 'strict', // Enhanced from 'lax'
+			partitioned: true // Use partitioned cookies for added security in supported browsers
 		});
 
 		// Get redirect URL from query params or go to home

@@ -1,24 +1,23 @@
 import fs from 'fs/promises';
-import path from 'node:path';
-import { randomBytes } from 'crypto';
-import { getBasePath, getSettings } from './settings-service';
+import path from 'path';
+import crypto from 'crypto';
+import { encrypt, decrypt } from './encryption-service';
+import { SESSIONS_DIR, ensureDirectory } from './paths-service';
 import type { UserSession } from '$lib/types/session.type';
 
-// Session directory is under the same base path as settings
-const SESSION_DIR = path.join(getBasePath(), 'sessions');
+// Create a Map to store sessions in memory
+const sessions = new Map<string, string>();
 
-// In-memory session store
-const sessions = new Map<string, UserSession>();
-
-// Ensure session directory exists
+// Create a session directory if it doesn't exist
 async function ensureSessionDir() {
-	await fs.mkdir(SESSION_DIR, { recursive: true });
+	await ensureDirectory(SESSIONS_DIR, 0o700);
 }
 
-// Create a new session
+// Create a new session with encryption
 export async function createSession(userId: string, username: string): Promise<string> {
-	const settings = await getSettings();
-	const sessionId = randomBytes(32).toString('hex');
+	const sessionId = crypto.randomBytes(32).toString('hex');
+
+	// Create session data
 	const sessionData: UserSession = {
 		userId,
 		username,
@@ -26,21 +25,74 @@ export async function createSession(userId: string, username: string): Promise<s
 		lastAccessed: Date.now()
 	};
 
-	// Fallback to in-memory store
-	sessions.set(sessionId, sessionData);
+	// Encrypt session data before storing
+	const encryptedData = await encryptSessionData(sessionData);
+
+	// Store encrypted data
+	sessions.set(sessionId, encryptedData);
+
+	// Also save to disk for persistence across restarts
+	await saveSessionToDisk(sessionId, encryptedData);
+
 	return sessionId;
+}
+
+// Helper function to encrypt session data
+async function encryptSessionData(data: UserSession): Promise<string> {
+	return encrypt(data);
+}
+
+// Helper function to decrypt session data
+async function decryptSessionData(encryptedData: string): Promise<UserSession> {
+	return await decrypt(encryptedData);
 }
 
 // Get a session by ID
 export async function getSession(sessionId: string): Promise<UserSession | null> {
-	const settings = await getSettings();
-
 	// Check in-memory store
-	const sessionData = sessions.get(sessionId);
-	if (sessionData) {
-		// Optionally check session expiry based on settings.auth?.sessionTimeout
-		sessionData.lastAccessed = Date.now();
-		return sessionData;
+	const encryptedData = sessions.get(sessionId);
+	if (encryptedData) {
+		try {
+			// Decrypt the session data
+			const sessionData = await decryptSessionData(encryptedData);
+
+			// Check if session has expired
+			const sessionTimeout = 60; // minutes
+			const maxAge = sessionTimeout * 60 * 1000; // Convert to milliseconds
+
+			if (Date.now() - sessionData.lastAccessed > maxAge) {
+				// Session expired
+				sessions.delete(sessionId);
+				await removeSessionFromDisk(sessionId);
+				return null;
+			}
+
+			// Update last accessed time
+			sessionData.lastAccessed = Date.now();
+
+			// Re-encrypt with new timestamp and store
+			const updatedEncrypted = await encryptSessionData(sessionData);
+			sessions.set(sessionId, updatedEncrypted);
+			await saveSessionToDisk(sessionId, updatedEncrypted);
+
+			return sessionData;
+		} catch (error) {
+			console.error('Error decrypting session:', error);
+			return null;
+		}
+	}
+
+	// Try to load from disk
+	try {
+		const encryptedFromDisk = await loadSessionFromDisk(sessionId);
+		if (encryptedFromDisk) {
+			// Store in memory for future access
+			sessions.set(sessionId, encryptedFromDisk);
+			// Now process as if it was found in memory
+			return await getSession(sessionId);
+		}
+	} catch (error) {
+		console.error('Error loading session from disk:', error);
 	}
 
 	return null;
@@ -48,31 +100,29 @@ export async function getSession(sessionId: string): Promise<UserSession | null>
 
 // Delete a session by ID
 export async function deleteSession(sessionId: string): Promise<void> {
-	const settings = await getSettings();
-
 	// Remove from memory store
 	sessions.delete(sessionId);
+	await removeSessionFromDisk(sessionId);
 }
 
 // Purge expired sessions (maintenance task)
 export async function purgeExpiredSessions(): Promise<number> {
 	try {
 		await ensureSessionDir();
-		const files = await fs.readdir(SESSION_DIR);
+		const files = await fs.readdir(SESSIONS_DIR);
 		let purgedCount = 0;
 
 		for (const file of files) {
-			if (!file.endsWith('.json')) continue;
+			if (!file.endsWith('.dat')) continue;
 
-			const filePath = path.join(SESSION_DIR, file);
+			const filePath = path.join(SESSIONS_DIR, file);
 			try {
-				const sessionData = await fs.readFile(filePath, 'utf-8');
-				const session = JSON.parse(sessionData) as UserSession;
+				const encryptedData = await fs.readFile(filePath, 'utf-8');
+				const sessionData = await decryptSessionData(encryptedData);
 
-				// Check if session has expired based on lastAccessed and settings
-				const settings = await getSettings();
-				const sessionTimeout = settings.auth?.sessionTimeout || 24 * 60 * 60 * 1000; // Default 24h
-				if (Date.now() - session.lastAccessed > sessionTimeout) {
+				// Check if session has expired based on lastAccessed
+				const sessionTimeout = 24 * 60 * 60 * 1000; // Default 24h
+				if (Date.now() - sessionData.lastAccessed > sessionTimeout) {
 					await fs.unlink(filePath);
 					purgedCount++;
 				}
@@ -85,5 +135,32 @@ export async function purgeExpiredSessions(): Promise<number> {
 	} catch (error) {
 		console.error('Error purging sessions:', error);
 		return 0;
+	}
+}
+
+// Save session to disk
+async function saveSessionToDisk(sessionId: string, encryptedData: string): Promise<void> {
+	await ensureSessionDir();
+	const sessionFile = path.join(SESSIONS_DIR, `${sessionId}.dat`);
+	await fs.writeFile(sessionFile, encryptedData, { mode: 0o600 });
+}
+
+// Helper function to load session from disk
+async function loadSessionFromDisk(sessionId: string): Promise<string | null> {
+	const filePath = path.join(SESSIONS_DIR, `${sessionId}.dat`);
+	try {
+		return await fs.readFile(filePath, 'utf-8');
+	} catch {
+		return null;
+	}
+}
+
+// Helper function to remove session from disk
+async function removeSessionFromDisk(sessionId: string): Promise<void> {
+	const filePath = path.join(SESSIONS_DIR, `${sessionId}.dat`);
+	try {
+		await fs.unlink(filePath);
+	} catch {
+		// Ignore errors
 	}
 }

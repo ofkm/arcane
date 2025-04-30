@@ -1,17 +1,15 @@
 import fs from 'fs/promises';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import { nanoid } from 'nanoid';
-import proper from 'proper-lockfile';
-import { getBasePath } from './settings-service';
+import { encrypt, decrypt } from './encryption-service';
+import { USER_DIR, ensureDirectory } from './paths-service';
 import type { User } from '$lib/types/user.type';
-
-// User directory is under the same base path as settings
-const USER_DIR = path.join(getBasePath(), 'users');
 
 // Ensure user directory exists
 async function ensureUserDir() {
-	await fs.mkdir(USER_DIR, { recursive: true });
+	await ensureDirectory(USER_DIR, 0o700);
 }
 
 // Get user by username
@@ -24,10 +22,10 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 
 		// Find user by username (case insensitive)
 		for (const file of files) {
-			if (!file.endsWith('.json')) continue;
+			if (!file.endsWith('.dat')) continue;
 
-			const userData = await fs.readFile(path.join(USER_DIR, file), 'utf-8');
-			const user = JSON.parse(userData) as User;
+			const encryptedData = await fs.readFile(path.join(USER_DIR, file), 'utf-8');
+			const user = (await decrypt(encryptedData)) as User;
 
 			if (user.username.toLowerCase() === username.toLowerCase()) {
 				return user;
@@ -41,28 +39,28 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 	}
 }
 
-// Get user by ID
+// Get user by ID with decryption
 export async function getUserById(id: string): Promise<User | null> {
 	try {
 		await ensureUserDir();
 
-		const userFile = path.join(USER_DIR, `${id}.json`);
+		const filePath = path.join(USER_DIR, `${id}.dat`);
 
-		try {
-			await fs.access(userFile);
-		} catch {
-			return null; // File doesn't exist
-		}
+		// Check if file exists
+		await fs.access(filePath);
 
-		const userData = await fs.readFile(userFile, 'utf-8');
-		return JSON.parse(userData) as User;
+		// Read and decrypt
+		const encryptedData = await fs.readFile(filePath, 'utf8');
+		const user = (await decrypt(encryptedData)) as User;
+
+		return user;
 	} catch (error) {
-		console.error(`Error getting user by ID ${id}:`, error);
+		// File doesn't exist or decryption failed
 		return null;
 	}
 }
 
-// Create or update user
+// Save user with encryption
 export async function saveUser(user: User): Promise<User> {
 	await ensureUserDir();
 
@@ -72,23 +70,17 @@ export async function saveUser(user: User): Promise<User> {
 		user.createdAt = new Date().toISOString();
 	}
 
-	const filePath = path.join(USER_DIR, `${user.id}.json`);
+	const filePath = path.join(USER_DIR, `${user.id}.dat`); // Changed extension
 
-	// Create the file if it doesn't exist
-	try {
-		await fs.access(filePath);
-	} catch {
-		await fs.writeFile(filePath, '{}');
-	}
-
-	// Acquire a lock
-	const release = await proper.lock(filePath, { retries: 5 });
+	// Encrypt user data
+	const encryptedData = await encrypt(user);
 
 	try {
-		await fs.writeFile(filePath, JSON.stringify(user, null, 2));
-	} finally {
-		// Release the lock
-		await release();
+		// Create/overwrite the file
+		await fs.writeFile(filePath, encryptedData, { mode: 0o600 }); // Only owner can read/write
+	} catch (error) {
+		console.error('Error saving encrypted user data:', error);
+		throw error;
 	}
 
 	return user;
@@ -99,32 +91,52 @@ export async function verifyPassword(user: User, password: string): Promise<bool
 	return await bcrypt.compare(password, user.passwordHash);
 }
 
-// Hash a password
+// Hash a password with stronger settings
 export async function hashPassword(password: string): Promise<string> {
-	return await bcrypt.hash(password, 12);
+	// Use a higher cost factor for bcrypt
+	return await bcrypt.hash(password, 14); // Increased from 12
 }
 
-// List all users
+// Add a key stretching function for additional security
+export async function deriveKeyFromPassword(password: string, salt: string): Promise<string> {
+	return new Promise((resolve, reject) => {
+		crypto.pbkdf2(
+			password,
+			salt,
+			150000, // High iteration count for key stretching
+			64, // 512-bit key
+			'sha512',
+			(err, derivedKey) => {
+				if (err) reject(err);
+				else resolve(derivedKey.toString('hex'));
+			}
+		);
+	});
+}
+
+// List users with decryption
 export async function listUsers(): Promise<User[]> {
 	try {
 		await ensureUserDir();
 
 		const files = await fs.readdir(USER_DIR);
-		const users: User[] = [];
+		const userFiles = files.filter((file) => file.endsWith('.dat'));
 
-		for (const file of files) {
-			if (!file.endsWith('.json')) continue;
+		const users = await Promise.all(
+			userFiles.map(async (file) => {
+				try {
+					const filePath = path.join(USER_DIR, file);
+					const encryptedData = await fs.readFile(filePath, 'utf8');
+					return (await decrypt(encryptedData)) as User;
+				} catch (error) {
+					console.error(`Error reading user file ${file}:`, error);
+					return null;
+				}
+			})
+		);
 
-			try {
-				const userData = await fs.readFile(path.join(USER_DIR, file), 'utf-8');
-				users.push(JSON.parse(userData) as User);
-			} catch (err) {
-				console.error(`Error reading user file ${file}:`, err);
-			}
-		}
-
-		console.log(`Found ${users.length} users`);
-		return users;
+		// Filter out any null results from failed reads
+		return users.filter((user): user is User => user !== null);
 	} catch (error) {
 		console.error('Error listing users:', error);
 		return [];
