@@ -9,9 +9,8 @@ This guide provides the fastest way to get Arcane up and running using Docker Co
 
 ## Prerequisites
 
-- **Docker Engine:** Installed and running.
-- **Docker Compose:** Installed.
-- **Git:** Installed (for cloning the repository).
+- **Docker and Docker Compose:** Installed and running.
+- **Git:** Installed (optional only for cloning the repository).
 
 ## Steps
 

@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		// Remove sensitive data before sending
 		const sanitizedUsers = users.map((user) => {
-			const { passwordHash, mfaSecret, ...rest } = user;
+			const { passwordHash, ...rest } = user;
 			return rest;
 		});
 
@@ -70,14 +70,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			displayName: displayName || username,
 			email,
 			roles: roles || ['user'],
-			mfaEnabled: false,
 			createdAt: new Date().toISOString()
 		};
 
 		const savedUser = await saveUser(newUser);
 
 		// Return sanitized user (remove sensitive fields)
-		const { passwordHash: _, mfaSecret, ...sanitizedUser } = savedUser;
+		const { passwordHash: _, ...sanitizedUser } = savedUser;
 
 		return json({
 			success: true,

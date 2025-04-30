@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	// Remove sensitive data before sending to client
 	const sanitizedUsers = users.map((user) => {
-		const { passwordHash, mfaSecret, ...rest } = user;
+		const { passwordHash, ...rest } = user;
 		return rest;
 	});
 
