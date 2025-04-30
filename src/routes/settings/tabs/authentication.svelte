@@ -10,11 +10,9 @@
 
 	let settings = $derived(data.settings);
 
-	let enableLocalAuth = $derived(settings?.authentication?.enableLocalAuth ?? true);
-	let enableOAuth = $derived(settings?.authentication?.enableOAuth ?? false);
-	let enableLDAP = $derived(settings?.authentication?.enableLDAP ?? false);
-	let sessionTimeout = $derived(settings?.authentication?.sessionTimeout ?? 60);
-	let passwordPolicy = $derived(settings?.authentication?.passwordPolicy ?? 'medium');
+	let localAuthEnabled = $derived(settings?.auth?.localAuthEnabled ?? true);
+	let sessionTimeout = $derived(settings?.auth?.sessionTimeout ?? 60);
+	let passwordPolicy = $derived(settings?.auth?.passwordPolicy ?? 'medium');
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -39,7 +37,7 @@
 						<label for="localAuthSwitch" class="text-base font-medium">Local Authentication</label>
 						<p class="text-sm text-muted-foreground">Username and password stored in the system</p>
 					</div>
-					<Switch id="localAuthSwitch" name="enableLocalAuth" bind:checked={enableLocalAuth} />
+					<Switch id="localAuthSwitch" name="localAuthEnabled" bind:checked={localAuthEnabled} />
 				</div>
 			</div>
 		</Card.Content>

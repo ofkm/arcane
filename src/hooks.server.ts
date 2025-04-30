@@ -19,17 +19,17 @@ async function checkFirstRun() {
 
 			await saveUser({
 				id: 'admin',
-				username: 'admin',
+				username: 'arcane',
 				passwordHash,
-				displayName: 'Administrator',
-				email: '',
+				displayName: 'Arcane Admin',
+				email: 'arcane@local',
 				roles: ['admin'],
 				mfaEnabled: false,
 				createdAt: new Date().toISOString()
 			});
 
 			console.log('Default admin user created successfully');
-			console.log('Username: admin');
+			console.log('Username: arcane');
 			console.log('Password: arcane-admin');
 			console.log('IMPORTANT: Please change this password immediately after first login!');
 		}

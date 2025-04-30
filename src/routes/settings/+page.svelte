@@ -56,18 +56,11 @@
 			};
 
 			// Boolean fields - check if the switch elements are checked
-			const booleanFields = ['autoUpdate', 'pollingEnabled', 'rbacEnabled', 'enableLocalAuth'];
+			const booleanFields = ['autoUpdate', 'pollingEnabled', 'rbacEnabled'];
 			booleanFields.forEach((field) => {
 				const element = document.getElementById(field) as HTMLInputElement;
 				settingsData[field] = element?.checked || false;
 			});
-
-			// Authentication settings
-			settingsData.authentication = {
-				enableLocalAuth: isSwitchChecked('enableLocalAuth'),
-				sessionTimeout: parseInt(getInputValue('sessionTimeout', '60')),
-				passwordPolicy: getInputValue('passwordPolicy', 'medium')
-			};
 
 			// Registry credentials
 			const registryCredentialsInput = document.getElementById('registryCredentials') as HTMLInputElement;

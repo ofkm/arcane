@@ -1,8 +1,8 @@
 // npx tsx scripts/create-admin.ts
 // npx tsx scripts/create-admin.ts mypassword
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import bcrypt from 'bcryptjs';
 import { fileURLToPath } from 'url';
 

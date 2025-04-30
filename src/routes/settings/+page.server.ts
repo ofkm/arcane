@@ -28,86 +28,74 @@ export const actions: Actions = {
 		let formData = new FormData();
 		try {
 			formData = await request.formData();
-			const settings = await getSettings();
+			// Get current settings primarily to access fields NOT editable in this form (like registryCredentials)
+			// and for default values if form fields are missing.
+			const currentSettings = await getSettings();
 
-			// Get all form values
+			// --- Get values from form ---
 			const dockerHost = formData.get('dockerHost') as string;
-
-			// Explicitly check for the "on" value for both toggle switches
 			const autoUpdate = formData.get('autoUpdate') === 'on';
-			const autoUpdateInterval = Number.parseInt(formData.get('autoUpdateInterval') as string, 10) || 60;
-
-			// Validate interval range
-			const validatedAutoUpdateInterval = Math.min(Math.max(autoUpdateInterval, 5), 1440);
-
+			const autoUpdateIntervalStr = formData.get('autoUpdateInterval') as string;
 			const pollingEnabled = formData.get('pollingEnabled') === 'on';
-
 			const pollingIntervalStr = formData.get('pollingInterval') as string;
 			const stacksDirectory = (formData.get('stacksDirectory') as string) || '';
-
-			// --- Read pruneMode from form data ---
 			const pruneMode = formData.get('pruneMode')?.toString() as 'all' | 'dangling' | undefined;
+			const localAuthEnabled = formData.get('localAuthEnabled') === 'on';
+			const sessionTimeoutStr = formData.get('sessionTimeout')?.toString();
+			const passwordPolicy = (formData.get('passwordPolicy') as 'low' | 'medium' | 'high') || 'medium';
+			const rbacEnabled = formData.get('rbacEnabled') === 'on';
 
+			// --- Validation ---
 			if (!dockerHost) {
-				return fail(400, {
-					error: 'Docker host cannot be empty.',
-					values: Object.fromEntries(formData)
-				});
+				return fail(400, { error: 'Docker host cannot be empty.', values: Object.fromEntries(formData) });
 			}
-
 			if (!stacksDirectory) {
-				return fail(400, {
-					error: 'Stacks directory cannot be empty.',
-					values: Object.fromEntries(formData)
-				});
+				return fail(400, { error: 'Stacks directory cannot be empty.', values: Object.fromEntries(formData) });
 			}
 
-			// Process polling interval only if polling is enabled
-			let pollingInterval = settings.pollingInterval || 10;
+			const autoUpdateInterval = Number.parseInt(autoUpdateIntervalStr, 10) || currentSettings.autoUpdateInterval || 60;
+			const validatedAutoUpdateInterval = Math.min(Math.max(autoUpdateInterval, 5), 1440);
+
+			let pollingInterval = currentSettings.pollingInterval || 10;
 			if (pollingEnabled) {
 				const parsedInterval = parseInt(pollingIntervalStr, 10);
 				if (!isNaN(parsedInterval) && parsedInterval >= 5 && parsedInterval <= 60) {
 					pollingInterval = parsedInterval;
 				} else if (pollingIntervalStr) {
-					// Only show error if the user actually entered a value
-					return fail(400, {
-						error: 'Polling interval must be between 5 and 60 minutes.',
-						values: {
-							...Object.fromEntries(formData),
-							pollingEnabled: 'on', // Make sure we retain the enabled state
-							autoUpdate: formData.get('autoUpdate') // Preserve autoUpdate state as well
-						}
-					});
+					return fail(400, { error: 'Polling interval must be between 5 and 60 minutes.', values: Object.fromEntries(formData) });
 				}
 			}
 
-			// Extract Auth settings
-			const localAuthEnabled = formData.get('localAuthEnabled') === 'on';
-			const sessionTimeoutStr = formData.get('sessionTimeout')?.toString();
-			const sessionTimeout = sessionTimeoutStr ? parseInt(sessionTimeoutStr, 10) : undefined;
+			const sessionTimeout = sessionTimeoutStr ? parseInt(sessionTimeoutStr, 10) : currentSettings.auth?.sessionTimeout || 60;
 
-			const passwordPolicy = (formData.get('passwordPolicy') as 'low' | 'medium' | 'high') || 'medium';
-			const rbacEnabled = formData.get('rbacEnabled') === 'on';
-
+			// --- Construct the settings object explicitly ---
 			const updatedSettings: SettingsData = {
-				...settings,
+				// Fields from the form
 				dockerHost,
 				autoUpdate,
+				autoUpdateInterval: validatedAutoUpdateInterval,
 				pollingEnabled,
 				pollingInterval,
-				autoUpdateInterval: validatedAutoUpdateInterval,
 				stacksDirectory,
-				pruneMode: pruneMode || settings.pruneMode,
-				externalServices: {},
+				pruneMode: pruneMode || currentSettings.pruneMode || 'all', // Use current or default if not set
+
+				// Explicitly define nested objects with only current fields
+				externalServices: {
+					// No valkey here
+				},
 				auth: {
 					localAuthEnabled,
-					sessionTimeout: sessionTimeout || settings.auth?.sessionTimeout || 60,
+					sessionTimeout,
 					passwordPolicy,
 					rbacEnabled
-				}
+					// No oidcEnabled here
+				},
+
+				// Include fields NOT managed by this form, preserving their current value
+				registryCredentials: currentSettings.registryCredentials || []
 			};
 
-			// Save updated settings
+			// Save the explicitly constructed settings
 			await saveSettings(updatedSettings);
 
 			return { success: true };

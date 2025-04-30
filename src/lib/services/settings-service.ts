@@ -36,14 +36,6 @@ export function getStacksDirectory(): string {
 	return DEFAULT_SETTINGS.stacksDirectory;
 }
 
-// Log configured paths on startup
-console.log(`Settings service configured with:
-- Environment: ${isDev ? 'Development' : 'Production'}
-- Settings file: ${SETTINGS_FILE}
-- Settings folder: ${SETTINGS_FOLDER}
-- Default stacks directory: ${DEFAULT_SETTINGS.stacksDirectory}
-`);
-
 // Make sure directories exist
 async function ensureDirs() {
 	await fs.mkdir(path.dirname(SETTINGS_FILE), { recursive: true });
@@ -179,9 +171,20 @@ export async function saveSettings(settings: SettingsData): Promise<void> {
 		// In development mode, ensure paths are relative to the current environment
 		let settingsToSave = { ...settings };
 
-		// If we're in development and the stacks directory is still a production path
 		if (isDev && settingsToSave.stacksDirectory?.startsWith('/app/data')) {
 			settingsToSave.stacksDirectory = settingsToSave.stacksDirectory.replace('/app/data', BASE_PATH);
+		}
+
+		// Delete all existing individual settings files first
+		try {
+			const files = await fs.readdir(SETTINGS_FOLDER);
+			for (const file of files) {
+				if (file.endsWith('.json')) {
+					await fs.unlink(path.join(SETTINGS_FOLDER, file));
+				}
+			}
+		} catch (error) {
+			console.warn('Error cleaning settings directory:', error);
 		}
 
 		// Save each setting to its own file for granular access
