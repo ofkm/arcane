@@ -18,13 +18,12 @@ async function checkFirstRun() {
 			const passwordHash = await hashPassword('arcane-admin'); // Default password
 
 			await saveUser({
-				id: 'admin',
+				id: crypto.randomUUID(),
 				username: 'arcane',
 				passwordHash,
 				displayName: 'Arcane Admin',
 				email: 'arcane@local',
 				roles: ['admin'],
-				mfaEnabled: false,
 				createdAt: new Date().toISOString()
 			});
 
@@ -58,7 +57,7 @@ const protectedPathPermissions: Record<string, string[]> = {
 };
 
 export const handle: Handle = async ({ event, resolve }) => {
-	const { cookies, url, route } = event;
+	const { cookies, url } = event;
 	const path = url.pathname;
 
 	// Check if the path is public/doesn't require auth

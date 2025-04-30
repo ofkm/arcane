@@ -57,7 +57,8 @@ export async function getSession(sessionId: string): Promise<UserSession | null>
 			const sessionData = await decryptSessionData(encryptedData);
 
 			// Check if session has expired
-			const sessionTimeout = 60; // minutes
+			const { auth } = await import('$lib/services/settings-service').then((m) => m.getSettings());
+			const sessionTimeout = auth?.sessionTimeout ?? 60; // minutes
 			const maxAge = sessionTimeout * 60 * 1000; // Convert to milliseconds
 
 			if (Date.now() - sessionData.lastAccessed > maxAge) {

@@ -54,13 +54,13 @@ export const actions: Actions = {
 		// Create session
 		const ip = getClientAddress();
 		const userAgent = request.headers.get('user-agent') || undefined;
-		const session = await createSession(user.id, user.username);
+		const sessionId = await createSession(user.id, user.username);
 
 		// Set session cookie with enhanced security
 		const settings = await getSettings();
 		const sessionTimeout = settings.auth?.sessionTimeout || 60; // minutes
 
-		cookies.set('session_id', session, {
+		cookies.set('session_id', sessionId, {
 			path: '/',
 			httpOnly: true,
 			secure: true, // Always use secure cookies

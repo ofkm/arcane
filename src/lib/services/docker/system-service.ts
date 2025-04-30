@@ -1,7 +1,7 @@
 import { getDockerClient } from '$lib/services/docker/core';
 import type { PruneResult } from '$lib/types/docker/prune.type';
-import { getSettings } from '$lib/services/settings-service'; // Import getSettings
-import type { SettingsData } from '$lib/types/settings.type'; // Import SettingsData type
+import { getSettings } from '$lib/services/settings-service';
+import type { Settings } from '$lib/types/settings.type';
 
 type PruneType = 'containers' | 'images' | 'networks' | 'volumes';
 type PruneServiceResult = PruneResult & { type: PruneType; error?: string };
@@ -16,7 +16,7 @@ export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResul
 	const results: PruneServiceResult[] = [];
 
 	// Fetch settings first
-	let pruneMode: SettingsData['pruneMode'] = 'dangling'; // Default prune mode
+	let pruneMode: Settings['pruneMode'] = 'dangling'; // Default prune mode
 	try {
 		// Fetch settings INSIDE the function
 		const currentSettings = await getSettings();

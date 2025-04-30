@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, get as getStore } from 'svelte/store';
 import type { Settings } from '$lib/types/settings.type';
 
 // Initialize with default values
@@ -39,13 +39,17 @@ export function updateSettingsStore(serverData: Partial<Settings>) {
 }
 
 // Function to get current settings value
+// export function getSettings(): Settings {
+// 	let currentSettings: Settings;
+// 	const unsubscribe = settingsStore.subscribe((value) => {
+// 		currentSettings = value;
+// 	});
+// 	unsubscribe();
+// 	return currentSettings!;
+// }
+
 export function getSettings(): Settings {
-	let currentSettings: Settings;
-	const unsubscribe = settingsStore.subscribe((value) => {
-		currentSettings = value;
-	});
-	unsubscribe();
-	return currentSettings!;
+	return getStore(settingsStore);
 }
 
 // Helper to save settings to the server

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getSettings, saveSettings } from '$lib/services/settings-service';
-import type { SettingsData } from '$lib/types/settings.type';
+import type { Settings } from '$lib/types/settings.type';
 import { initComposeService } from '$lib/services/docker/stack-service';
 import { initAutoUpdateScheduler, stopAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
 
@@ -123,7 +123,7 @@ export const PUT: RequestHandler = async ({ request }) => {
 		}
 
 		// Merge settings
-		const updatedSettings: SettingsData = {
+		const updatedSettings: Settings = {
 			...currentSettings,
 			...body
 		};

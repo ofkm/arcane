@@ -5,7 +5,7 @@ import type { User } from '$lib/types/user.type';
 import { getSettings } from '$lib/services/settings-service';
 import fs from 'fs/promises';
 import path from 'node:path';
-import { getBasePath } from '$lib/services/settings-service';
+import { getBasePath } from '$lib/services/paths-service';
 
 // Get USER_DIR from base path
 const USER_DIR = path.join(getBasePath(), 'users');
@@ -41,7 +41,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		if (email !== undefined) updatedUser.email = email;
 		if (roles !== undefined && requestingUser.roles.includes('admin')) {
 			// Only admins can change roles
-			updatedUser.roles = roles;
+			const ALLOWED = ['admin', 'user', 'viewer'];
+			updatedUser.roles = Array.isArray(roles) ? roles.filter((r) => ALLOWED.includes(r)) : updatedUser.roles;
 		}
 
 		// Handle password change
@@ -61,7 +62,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const savedUser = await saveUser(updatedUser);
 
 		// Return sanitized user
-		const { passwordHash: _, mfaSecret, ...sanitizedUser } = savedUser;
+		const { passwordHash: _, ...sanitizedUser } = savedUser;
 		return json({ success: true, user: sanitizedUser });
 	} catch (error) {
 		console.error('Error updating user:', error);
@@ -84,7 +85,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return json({ error: 'Cannot delete your own account' }, { status: 400 });
 		}
 
-		const userFile = path.join(USER_DIR, `${userId}.json`);
+		const userFile = path.join(USER_DIR, `${userId}.dat`);
 
 		try {
 			await fs.access(userFile);

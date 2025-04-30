@@ -32,10 +32,10 @@ export const userTableColumns = (onRemoveUser: (userId: string, username: string
 	{
 		id: 'roles',
 		header: 'Roles',
-		accessorFn: (row) => row.roles?.join(', ') || '',
+		accessorFn: (row) => row.roles.join(', '),
 		cell: ({ row }) => {
 			return renderComponent(RolesCell, {
-				roles: row.original.roles || []
+				roles: row.original.roles
 			});
 		}
 	},

@@ -5,8 +5,6 @@ export type User = {
 	displayName?: string;
 	email?: string;
 	roles: string[];
-	mfaEnabled: boolean;
-	mfaSecret?: string;
 	createdAt: string;
 	lastLogin?: string;
 	requirePasswordChange?: boolean;

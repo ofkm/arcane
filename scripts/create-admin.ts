@@ -4,6 +4,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'url';
 
 // Get the directory of the current script
@@ -23,18 +24,17 @@ async function createAdminUser() {
 		await fs.mkdir(usersDir, { recursive: true });
 
 		// Generate password hash
-		const password = process.argv[2] || 'admin123';
+		const password = process.argv[2] || crypto.randomBytes(12).toString('hex');
 		const passwordHash = await bcrypt.hash(password, 12);
 
-		const userId = 'admin';
+		const userId = crypto.randomUUID();
 		const adminUser = {
 			id: userId,
 			username: 'admin',
 			passwordHash,
 			displayName: 'Administrator',
-			email: 'admin@example.com',
+			email: 'arcane@local',
 			roles: ['admin'],
-			mfaEnabled: false,
 			createdAt: new Date().toISOString()
 		};
 

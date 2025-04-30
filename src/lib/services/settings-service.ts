@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import proper from 'proper-lockfile';
-import type { SettingsData } from '$lib/types/settings.type';
+import type { Settings } from '$lib/types/settings.type';
 import { encrypt, decrypt } from './encryption-service';
 import { SETTINGS_FILE, SETTINGS_FOLDER, SETTINGS_DIR, DEFAULT_STACKS_DIR, ensureDirectory } from './paths-service';
 
@@ -9,42 +9,41 @@ import { SETTINGS_FILE, SETTINGS_FOLDER, SETTINGS_DIR, DEFAULT_STACKS_DIR, ensur
 const isDev = process.env.NODE_ENV === 'development';
 
 // Default settings - also adapt paths for development environment
-export const DEFAULT_SETTINGS: SettingsData = {
+export const DEFAULT_SETTINGS: Settings = {
 	dockerHost: isDev ? (process.platform === 'win32' ? 'npipe:////./pipe/docker_engine' : 'unix:///var/run/docker.sock') : 'unix:///var/run/docker.sock',
 	autoUpdate: false,
 	autoUpdateInterval: 5,
 	pollingEnabled: true,
 	pollingInterval: 10,
 	pruneMode: 'all',
-	stacksDirectory: DEFAULT_STACKS_DIR
+	stacksDirectory: DEFAULT_STACKS_DIR,
+	registryCredentials: [],
+	auth: {
+		localAuthEnabled: true,
+		sessionTimeout: 60,
+		passwordPolicy: 'medium',
+		rbacEnabled: false
+	}
 };
-
-// Path getter functions
-export function getBasePath(): string {
-	return path.dirname(SETTINGS_FILE);
-}
-
-export function getSettingsFilePath(): string {
-	return SETTINGS_FILE;
-}
-
-export function getStacksDirectory(): string {
-	return DEFAULT_SETTINGS.stacksDirectory;
-}
-
-// Make sure directories exist
-async function ensureDirs() {
-	await ensureDirectory(path.dirname(SETTINGS_FILE));
-	await ensureDirectory(SETTINGS_FOLDER);
-}
 
 // Ensure settings directory exists with proper permissions
 async function ensureSettingsDir() {
 	try {
 		await ensureDirectory(SETTINGS_DIR, 0o700); // Only owner can access
 
-		// Ensure correct permissions even if directory already existed
-		await fs.chmod(SETTINGS_DIR, 0o700);
+		// Only apply chmod on non-Windows platforms
+		// Windows doesn't fully support POSIX permissions
+		if (process.platform !== 'win32') {
+			try {
+				// Ensure correct permissions even if directory already existed
+				await fs.chmod(SETTINGS_DIR, 0o700);
+			} catch (chmodError: unknown) {
+				// Ignore specific errors related to unsupported operations
+				if (chmodError && typeof chmodError === 'object' && 'code' in chmodError && chmodError.code !== 'EINVAL' && chmodError.code !== 'ENOTSUP') {
+					console.warn('Non-critical error setting permissions:', chmodError);
+				}
+			}
+		}
 	} catch (error) {
 		console.error('Error ensuring settings directory with proper permissions:', error);
 		throw error;
@@ -117,7 +116,7 @@ async function getSetting(key: string): Promise<any | null> {
 }
 
 // Get all settings
-export async function getSettings(): Promise<SettingsData> {
+export async function getSettings(): Promise<Settings> {
 	try {
 		await ensureSettingsDir();
 		const filePath = path.join(SETTINGS_DIR, 'settings.dat');
@@ -130,17 +129,20 @@ export async function getSettings(): Promise<SettingsData> {
 		}
 
 		const rawData = await fs.readFile(filePath, 'utf8');
-		const settings = JSON.parse(rawData);
+		const settingsData = JSON.parse(rawData);
 
 		// Decrypt sensitive data if available
-		if (settings._encrypted) {
-			const decryptedData = await decrypt(settings._encrypted);
-			delete settings._encrypted;
-			return { ...settings, ...decryptedData };
+		if (settingsData._encrypted) {
+			// Use destructuring to separate _encrypted from the rest of the settings
+			const { _encrypted, ...nonSensitiveSettings } = settingsData;
+			const decryptedData = await decrypt(_encrypted);
+
+			// Merge the non-sensitive settings with decrypted data
+			return { ...nonSensitiveSettings, ...decryptedData };
 		}
 
 		// Fallback for old format settings
-		return settings;
+		return settingsData;
 	} catch (error) {
 		console.error('Error loading settings:', error);
 		return getDefaultSettings();
@@ -148,20 +150,46 @@ export async function getSettings(): Promise<SettingsData> {
 }
 
 // Save all settings
-export async function saveSettings(settings: SettingsData): Promise<void> {
+export async function saveSettings(settings: Settings): Promise<void> {
 	await ensureSettingsDir();
 	const filePath = path.join(SETTINGS_DIR, 'settings.dat');
 
-	// Separate sensitive and non-sensitive settings
-	const { auth, registryCredentials, ...nonSensitiveSettings } = settings;
+	// Acquire a lock on the settings file
+	let release;
+	try {
+		release = await proper.lock(filePath, {
+			retries: 5, // Try up to 5 times
+			stale: 10000, // Consider lock stale after 10 seconds
+			onCompromised: (err) => {
+				console.error('Lock was compromised:', err);
+			}
+		});
 
-	// Create a settings object with encrypted sensitive data
-	const dataToSave = {
-		...nonSensitiveSettings,
-		_encrypted: await encrypt({ auth, registryCredentials })
-	};
+		// Separate sensitive and non-sensitive settings
+		const { auth, registryCredentials, ...nonSensitiveSettings } = settings;
 
-	await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), { mode: 0o600 });
+		// Create a settings object with encrypted sensitive data
+		const dataToSave = {
+			...nonSensitiveSettings,
+			_encrypted: await encrypt({ auth, registryCredentials })
+		};
+
+		// Write the settings with proper permissions
+		await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), { mode: 0o600 });
+	} catch (error) {
+		console.error('Error saving settings with lock:', error);
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		throw new Error(`Failed to save settings: ${errorMessage}`);
+	} finally {
+		// Always release the lock if we acquired it
+		if (release) {
+			try {
+				await release();
+			} catch (releaseError) {
+				console.error('Error releasing lock:', releaseError);
+			}
+		}
+	}
 }
 
 // Helper function to flatten nested objects
@@ -186,6 +214,6 @@ function tryParse(value: string): any {
 	}
 }
 
-function getDefaultSettings(): SettingsData {
+function getDefaultSettings(): Settings {
 	return DEFAULT_SETTINGS;
 }

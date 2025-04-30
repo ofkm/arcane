@@ -171,7 +171,18 @@
 				{#if $settingsStore.pollingEnabled}
 					<div class="space-y-2 px-1">
 						<label for="pollingInterval" class="text-sm font-medium"> Polling Interval (minutes) </label>
-						<Input id="pollingInterval" type="number" bind:value={$settingsStore.pollingInterval} min="5" max="60" />
+						<Input
+							id="pollingInterval"
+							type="number"
+							value={$settingsStore.pollingInterval}
+							oninput={(e: Event) =>
+								settingsStore.update((cur) => ({
+									...cur,
+									pollingInterval: +(e.target as HTMLInputElement).value
+								}))}
+							min="5"
+							max="60"
+						/>
 						<p class="text-xs text-muted-foreground">Set between 5-60 minutes.</p>
 					</div>
 
@@ -192,7 +203,18 @@
 					{#if $settingsStore.autoUpdate}
 						<div class="space-y-2 mt-4">
 							<Label for="autoUpdateInterval" class="text-base font-medium">Auto-update check interval (minutes)</Label>
-							<Input id="autoUpdateInterval" type="number" bind:value={$settingsStore.autoUpdateInterval} min="5" max="1440" />
+							<Input
+								id="autoUpdateInterval"
+								type="number"
+								value={$settingsStore.autoUpdateInterval}
+								oninput={(e: Event) =>
+									settingsStore.update((cur) => ({
+										...cur,
+										autoUpdateInterval: +(e.target as HTMLInputElement).value
+									}))}
+								min="5"
+								max="1440"
+							/>
 							<p class="text-sm text-muted-foreground">How often Arcane will check for container and stack updates (minimum 5 minutes, maximum 24 hours)</p>
 						</div>
 					{/if}

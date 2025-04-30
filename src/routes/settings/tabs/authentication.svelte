@@ -31,6 +31,7 @@
 					<div class="space-y-0.5">
 						<label for="localAuthSwitch" class="text-base font-medium">Local Authentication</label>
 						<p class="text-sm text-muted-foreground">Username and password stored in the system</p>
+						<p class="text-xs text-muted-foreground mt-1">This setting cannot be changed currently</p>
 					</div>
 					<Switch
 						id="localAuthSwitch"
@@ -73,7 +74,7 @@
 							type="number"
 							id="sessionTimeout"
 							name="sessionTimeout"
-							value={$settingsStore.auth?.sessionTimeout}
+							value={$settingsStore.auth?.sessionTimeout ?? 60}
 							min="15"
 							max="1440"
 							oninput={(event) => {
@@ -81,7 +82,7 @@
 								settingsStore.update((current) => ({
 									...current,
 									auth: {
-										...current.auth,
+										...(current.auth ?? {}),
 										sessionTimeout: parseInt(target.value)
 									}
 								}));

@@ -1,4 +1,5 @@
-import path from 'path';
+import path from 'node:path';
+import fs from 'node:fs/promises';
 
 // Determine if we're in development or production
 const isDev = process.env.NODE_ENV === 'development';
@@ -31,7 +32,6 @@ export const DEFAULT_STACKS_DIR = path.resolve(BASE_PATH, 'stacks');
 
 // Helper function to ensure directories exist with proper permissions
 export async function ensureDirectory(dir: string, mode = 0o755): Promise<void> {
-	const fs = await import('fs/promises');
 	try {
 		await fs.mkdir(dir, { recursive: true, mode });
 	} catch (error) {

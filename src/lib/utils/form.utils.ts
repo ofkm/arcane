@@ -6,7 +6,10 @@ export function preventDefault(fn: (event: Event) => any) {
 }
 
 // Helper function to get input values from the DOM
-export function getInputValue(id: string, defaultValue: string = ''): string {
-	const element = document.getElementById(id) as HTMLInputElement;
-	return element?.value || defaultValue;
+export function getInputValue(id: string, defaultValue = ''): string {
+	const element = document.getElementById(id);
+	if (!element || !(element instanceof HTMLInputElement)) {
+		return defaultValue;
+	}
+	return element.value || defaultValue;
 }
