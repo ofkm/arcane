@@ -26,7 +26,7 @@
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
 		<Button variant="ghost" size="icon" class="h-8 w-8">
-			<Ellipsis class="h-4 w-4" />
+			<Ellipsis class="w-4 h-4" />
 			<span class="sr-only">Open menu</span>
 		</Button>
 	</DropdownMenu.Trigger>
