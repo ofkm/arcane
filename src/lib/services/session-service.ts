@@ -17,12 +17,18 @@ async function ensureSessionDir() {
 export async function createSession(userId: string, username: string): Promise<string> {
 	const sessionId = crypto.randomBytes(32).toString('hex');
 
-	// Create session data
+	// Get session timeout from settings
+	const { auth } = await import('$lib/services/settings-service').then((m) => m.getSettings());
+	const sessionTimeout = auth?.sessionTimeout ?? 60; // minutes
+	const expiryTime = Date.now() + sessionTimeout * 60 * 1000;
+
+	// Create session data with explicit expiry time
 	const sessionData: UserSession = {
 		userId,
 		username,
 		createdAt: Date.now(),
-		lastAccessed: Date.now()
+		lastAccessed: Date.now(),
+		expires: expiryTime
 	};
 
 	// Encrypt session data before storing
@@ -56,22 +62,34 @@ export async function getSession(sessionId: string): Promise<UserSession | null>
 			// Decrypt the session data
 			const sessionData = await decryptSessionData(encryptedData);
 
-			// Check if session has expired
+			// Get current settings for session timeout
 			const { auth } = await import('$lib/services/settings-service').then((m) => m.getSettings());
 			const sessionTimeout = auth?.sessionTimeout ?? 60; // minutes
 			const maxAge = sessionTimeout * 60 * 1000; // Convert to milliseconds
 
-			if (Date.now() - sessionData.lastAccessed > maxAge) {
-				// Session expired
+			// Check if session has expired - first check explicit expiry if it exists
+			if (sessionData.expires && Date.now() > sessionData.expires) {
+				// Session explicitly expired
 				sessions.delete(sessionId);
 				await removeSessionFromDisk(sessionId);
 				return null;
 			}
 
-			// Update last accessed time
+			// Fall back to lastAccessed-based expiry if no explicit expires field
+			if (!sessionData.expires && Date.now() - sessionData.lastAccessed > maxAge) {
+				// Session expired based on activity
+				sessions.delete(sessionId);
+				await removeSessionFromDisk(sessionId);
+				return null;
+			}
+
+			// Update last accessed time and possibly extend expiry
 			sessionData.lastAccessed = Date.now();
 
-			// Re-encrypt with new timestamp and store
+			// Update expiry based on current settings (sliding expiration)
+			sessionData.expires = Date.now() + maxAge;
+
+			// Re-encrypt with updated timestamp and store
 			const updatedEncrypted = await encryptSessionData(sessionData);
 			sessions.set(sessionId, updatedEncrypted);
 			await saveSessionToDisk(sessionId, updatedEncrypted);
@@ -121,9 +139,8 @@ export async function purgeExpiredSessions(): Promise<number> {
 				const encryptedData = await fs.readFile(filePath, 'utf-8');
 				const sessionData = await decryptSessionData(encryptedData);
 
-				// Check if session has expired based on lastAccessed
-				const sessionTimeout = 24 * 60 * 60 * 1000; // Default 24h
-				if (Date.now() - sessionData.lastAccessed > sessionTimeout) {
+				// Check if session has expired - prefer explicit expiry time
+				if ((sessionData.expires && Date.now() > sessionData.expires) || (!sessionData.expires && Date.now() - sessionData.lastAccessed > 24 * 60 * 60 * 1000)) {
 					await fs.unlink(filePath);
 					purgedCount++;
 				}

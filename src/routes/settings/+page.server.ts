@@ -1,9 +1,8 @@
-import type { PageServerLoad, Actions } from './$types';
-import { fail } from '@sveltejs/kit';
-import { getSettings, saveSettings } from '$lib/services/settings-service';
-import { listUsers, saveUser, getUserById, hashPassword } from '$lib/services/user-service';
+import type { PageServerLoad } from './$types';
+import { getSettings } from '$lib/services/settings-service';
+import { listUsers } from '$lib/services/user-service';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async () => {
 	const settings = await getSettings();
 	const users = await listUsers();
 

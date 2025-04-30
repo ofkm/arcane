@@ -1,6 +1,33 @@
 import { writable, get as getStore } from 'svelte/store';
 import type { Settings } from '$lib/types/settings.type';
 
+// Deep clone utility function that properly handles various data types
+function deepClone<T>(obj: T): T {
+	if (obj === null || typeof obj !== 'object') {
+		return obj;
+	}
+
+	// Handle Date objects
+	if (obj instanceof Date) {
+		return new Date(obj.getTime()) as unknown as T;
+	}
+
+	// Handle arrays
+	if (Array.isArray(obj)) {
+		return obj.map((item) => deepClone(item)) as unknown as T;
+	}
+
+	// Handle objects
+	const clonedObj = {} as T;
+	for (const key in obj) {
+		if (Object.prototype.hasOwnProperty.call(obj, key)) {
+			clonedObj[key] = deepClone(obj[key]);
+		}
+	}
+
+	return clonedObj;
+}
+
 // Initialize with default values
 export const settingsStore = writable<Settings>({
 	dockerHost: '',
@@ -21,8 +48,8 @@ export const settingsStore = writable<Settings>({
 
 // Function to update settings from server data
 export function updateSettingsStore(serverData: Partial<Settings>) {
-	// Create a clone to prevent direct references
-	const dataToUpdate = JSON.parse(JSON.stringify(serverData));
+	// Create a deep clone to prevent direct references
+	const dataToUpdate = deepClone(serverData);
 
 	settingsStore.update((current) => {
 		// Merge settings carefully
@@ -37,16 +64,6 @@ export function updateSettingsStore(serverData: Partial<Settings>) {
 		};
 	});
 }
-
-// Function to get current settings value
-// export function getSettings(): Settings {
-// 	let currentSettings: Settings;
-// 	const unsubscribe = settingsStore.subscribe((value) => {
-// 		currentSettings = value;
-// 	});
-// 	unsubscribe();
-// 	return currentSettings!;
-// }
 
 export function getSettings(): Settings {
 	return getStore(settingsStore);

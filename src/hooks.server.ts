@@ -78,8 +78,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return await resolve(event);
 	}
 
-	// Validate the session
-	const session = await getSession(sessionId);
+	// Validate the session - store in event.locals to cache for this request
+	// This prevents multiple calls to getSession during the same request
+	if (!event.locals.session) {
+		event.locals.session = await getSession(sessionId);
+	}
+
+	const session = event.locals.session;
 
 	if (!session) {
 		// Invalid or expired session
@@ -87,17 +92,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(path)}`);
 	}
 
-	// Get the user
-	const user = await getUserByUsername(session.username);
+	// Get the user - also cache in locals
+	if (!event.locals.user) {
+		event.locals.user = await getUserByUsername(session.username);
+	}
+
+	const user = event.locals.user;
 
 	if (!user) {
 		cookies.delete('session_id', { path: '/' });
 		throw redirect(302, `/auth/login?error=invalid-session`);
 	}
-
-	// Set user in the event locals for access in endpoints and pages
-	event.locals.user = user;
-	event.locals.session = session;
 
 	// Check permissions for protected paths
 	const settings = await getSettings();

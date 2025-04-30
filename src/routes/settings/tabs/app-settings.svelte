@@ -2,7 +2,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
-	import { Save, RefreshCw, Key, Plus, Trash2, ImageMinus, Server } from '@lucide/svelte';
+	import { RefreshCw, Key, Plus, Trash2, ImageMinus, Server } from '@lucide/svelte';
 	import * as RadioGroup from '$lib/components/ui/radio-group/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import type { PageData } from '../$types';
