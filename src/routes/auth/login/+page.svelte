@@ -16,8 +16,6 @@
 
 	let { data, form }: { data: PageData; form: ActionData | null } = $props();
 
-	const { providers, providerUrls } = data;
-
 	let loading = $state(false);
 </script>
 
@@ -45,6 +43,10 @@
 					loading = true;
 					return async ({ result, update }) => {
 						loading = false;
+						// Handle other result states like error
+						if (result.type === 'error') {
+							console.error('An unexpected error occurred during login');
+						}
 						await update();
 					};
 				}}
@@ -72,27 +74,6 @@
 					</Button>
 				</div>
 			</form>
-
-			{#if providers && providers.length > 0}
-				<div class="mt-10">
-					<div class="relative">
-						<div class="absolute inset-0 flex items-center">
-							<div class="w-full border-t"></div>
-						</div>
-						<div class="relative flex justify-center text-sm font-medium leading-6">
-							<span class="bg-card px-6 text-muted-foreground">Or continue with</span>
-						</div>
-					</div>
-
-					<div class="mt-6 grid grid-cols-1 gap-4">
-						{#each providers as provider}
-							<a href={providerUrls[provider.id]} class="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0">
-								{provider.name}
-							</a>
-						{/each}
-					</div>
-				</div>
-			{/if}
 		</div>
 	</div>
 </div>
