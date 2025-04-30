@@ -1,13 +1,9 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Switch } from '$lib/components/ui/switch/index.js';
-	import { Database, Key } from '@lucide/svelte';
+	import { Key } from '@lucide/svelte';
 	import type { PageData } from '../$types';
 
 	let { data } = $props<{ data: PageData }>();
-
-	let settings = $derived(data.settings);
 </script>
 
 <div class="grid grid-cols-1 gap-6">
