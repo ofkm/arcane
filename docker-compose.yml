@@ -13,7 +13,6 @@ services:
       - PGID=1000
       - DOCKER_GID=998 # getent group docker | cut -d: -f3
     restart: unless-stopped
-
 # Optional: Define the volume if you want Docker to manage it
 # volumes:
 #   arcane-data:

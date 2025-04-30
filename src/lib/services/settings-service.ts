@@ -175,24 +175,24 @@ export async function saveSettings(settings: SettingsData): Promise<void> {
 			settingsToSave.stacksDirectory = settingsToSave.stacksDirectory.replace('/app/data', BASE_PATH);
 		}
 
-        // Delete all existing individual settings files first
-        try {
-            // Get the keys from the flattened settings
-            const flatSettings = flattenObject(settingsToSave);
-            const files = await fs.readdir(SETTINGS_FOLDER);
-            // Only delete files that correspond to settings we're about to save
-            for (const file of files) {
-                if (file.endsWith('.json')) {
-                    const key = file.replace('.json', '');
-                    // Delete the file if we're going to save a new version
-                    if (key in flatSettings) {
-                        await fs.unlink(path.join(SETTINGS_FOLDER, file));
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn('Error cleaning settings files:', error);
-        }
+		// Delete all existing individual settings files first
+		try {
+			// Get the keys from the flattened settings
+			const flatSettings = flattenObject(settingsToSave);
+			const files = await fs.readdir(SETTINGS_FOLDER);
+			// Only delete files that correspond to settings we're about to save
+			for (const file of files) {
+				if (file.endsWith('.json')) {
+					const key = file.replace('.json', '');
+					// Delete the file if we're going to save a new version
+					if (key in flatSettings) {
+						await fs.unlink(path.join(SETTINGS_FOLDER, file));
+					}
+				}
+			}
+		} catch (error) {
+			console.warn('Error cleaning settings files:', error);
+		}
 
 		// Save each setting to its own file for granular access
 		const flatSettings = flattenObject(settingsToSave);
