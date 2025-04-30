@@ -5,14 +5,9 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { Lock, Key } from '@lucide/svelte';
+	import { settingsStore } from '$lib/stores/settings-store';
 
 	let { data } = $props<{ data: PageData }>();
-
-	let settings = $derived(data.settings);
-
-	let localAuthEnabled = $derived(settings?.auth?.localAuthEnabled ?? true);
-	let sessionTimeout = $derived(settings?.auth?.sessionTimeout ?? 60);
-	let passwordPolicy = $derived(settings?.auth?.passwordPolicy ?? 'medium');
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -37,7 +32,20 @@
 						<label for="localAuthSwitch" class="text-base font-medium">Local Authentication</label>
 						<p class="text-sm text-muted-foreground">Username and password stored in the system</p>
 					</div>
-					<Switch id="localAuthSwitch" name="localAuthEnabled" bind:checked={localAuthEnabled} />
+					<Switch
+						id="localAuthSwitch"
+						checked={$settingsStore.auth?.localAuthEnabled ?? true}
+						disabled={true}
+						onCheckedChange={(checked) => {
+							settingsStore.update((current) => ({
+								...current,
+								auth: {
+									...(current.auth || {}),
+									localAuthEnabled: checked
+								}
+							}));
+						}}
+					/>
 				</div>
 			</div>
 		</Card.Content>
@@ -61,22 +69,75 @@
 				<div class="space-y-4">
 					<div class="space-y-2">
 						<label for="sessionTimeout" class="text-sm font-medium">Session Timeout (minutes)</label>
-						<Input type="number" id="sessionTimeout" name="sessionTimeout" bind:value={sessionTimeout} min="15" max="1440" />
+						<Input
+							type="number"
+							id="sessionTimeout"
+							name="sessionTimeout"
+							value={$settingsStore.auth?.sessionTimeout}
+							min="15"
+							max="1440"
+							oninput={(event) => {
+								const target = event.target as HTMLInputElement;
+								settingsStore.update((current) => ({
+									...current,
+									auth: {
+										...current.auth,
+										sessionTimeout: parseInt(target.value)
+									}
+								}));
+							}}
+						/>
 						<p class="text-xs text-muted-foreground">Time until inactive sessions are automatically logged out (15-1440 minutes)</p>
 					</div>
 
 					<div class="space-y-2">
 						<label for="passwordPolicy" class="text-sm font-medium">Password Policy</label>
 						<div class="grid grid-cols-3 gap-2">
-							<Button variant={passwordPolicy === 'low' ? 'default' : 'outline'} class="w-full" onclick={() => (passwordPolicy = 'low')}>Basic</Button>
-							<Button variant={passwordPolicy === 'medium' ? 'default' : 'outline'} class="w-full" onclick={() => (passwordPolicy = 'medium')}>Standard</Button>
-							<Button variant={passwordPolicy === 'high' ? 'default' : 'outline'} class="w-full" onclick={() => (passwordPolicy = 'high')}>Strong</Button>
+							<Button
+								variant={$settingsStore.auth?.passwordPolicy === 'low' ? 'default' : 'outline'}
+								class="w-full"
+								onclick={() => {
+									settingsStore.update((current) => ({
+										...current,
+										auth: {
+											...current.auth,
+											passwordPolicy: 'low'
+										}
+									}));
+								}}>Basic</Button
+							>
+							<Button
+								variant={$settingsStore.auth?.passwordPolicy === 'medium' ? 'default' : 'outline'}
+								class="w-full"
+								onclick={() => {
+									settingsStore.update((current) => ({
+										...current,
+										auth: {
+											...current.auth,
+											passwordPolicy: 'medium'
+										}
+									}));
+								}}>Standard</Button
+							>
+							<Button
+								variant={$settingsStore.auth?.passwordPolicy === 'high' ? 'default' : 'outline'}
+								class="w-full"
+								onclick={() => {
+									settingsStore.update((current) => ({
+										...current,
+										auth: {
+											...current.auth,
+											passwordPolicy: 'high'
+										}
+									}));
+								}}>Strong</Button
+							>
 						</div>
-						<input type="hidden" id="passwordPolicy" name="passwordPolicy" value={passwordPolicy} />
+						<input type="hidden" id="passwordPolicy" name="passwordPolicy" value={$settingsStore.auth?.passwordPolicy} />
 						<p class="text-xs text-muted-foreground mt-1">
-							{#if passwordPolicy === 'low'}
+							{#if $settingsStore.auth?.passwordPolicy === 'low'}
 								Basic: Minimum 8 characters
-							{:else if passwordPolicy === 'medium'}
+							{:else if $settingsStore.auth?.passwordPolicy === 'medium'}
 								Standard: Minimum 10 characters, requires mixed case and numbers
 							{:else}
 								Strong: Minimum 12 characters, requires mixed case, numbers and special characters

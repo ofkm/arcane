@@ -4,14 +4,10 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Shield, Plus, Users, Settings } from '@lucide/svelte';
 	import type { PageData } from '../$types';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import Switch from '$lib/components/ui/switch/switch.svelte';
+	import { settingsStore } from '$lib/stores/settings-store';
 
 	let { data } = $props<{ data: PageData }>();
-
-	let settings = $derived(data.settings);
-
-	let rbacEnabled = $derived(settings?.rbacEnabled ?? false);
 
 	// Sample roles for demonstration
 	const roles = [
@@ -72,7 +68,20 @@
 			<label for="rbacEnabledSwitch" class="text-base font-medium">Enable Role-Based Access Control</label>
 			<p class="text-sm text-muted-foreground">Control user permissions with customizable roles</p>
 		</div>
-		<Switch id="rbacEnabledSwitch" name="rbacEnabled" bind:checked={rbacEnabled} />
+		<Switch
+			id="rbacEnabledSwitch"
+			name="rbacEnabled"
+			checked={$settingsStore.auth?.rbacEnabled}
+			onCheckedChange={(checked) => {
+				settingsStore.update((current) => ({
+					...current,
+					auth: {
+						...current.auth,
+						rbacEnabled: checked
+					}
+				}));
+			}}
+		/>
 	</div>
 </div>
 

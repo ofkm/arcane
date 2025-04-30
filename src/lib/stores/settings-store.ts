@@ -13,7 +13,7 @@ export const settingsStore = writable<Settings>({
 	registryCredentials: [],
 	auth: {
 		localAuthEnabled: true,
-		sessionTimeout: 60,
+		sessionTimeout: 30,
 		passwordPolicy: 'medium',
 		rbacEnabled: false
 	}
@@ -21,10 +21,21 @@ export const settingsStore = writable<Settings>({
 
 // Function to update settings from server data
 export function updateSettingsStore(serverData: Partial<Settings>) {
-	settingsStore.update((current) => ({
-		...current,
-		...serverData
-	}));
+	// Create a clone to prevent direct references
+	const dataToUpdate = JSON.parse(JSON.stringify(serverData));
+
+	settingsStore.update((current) => {
+		// Merge settings carefully
+		return {
+			...current,
+			...dataToUpdate,
+			// Handle nested objects like auth
+			auth: {
+				...(current.auth || {}),
+				...(dataToUpdate.auth || {})
+			}
+		};
+	});
 }
 
 // Function to get current settings value
