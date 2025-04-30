@@ -26,14 +26,14 @@
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
 		<Button variant="ghost" size="icon" class="h-8 w-8">
-			<Ellipsis class="w-4 h-4" />
+			<Ellipsis class="h-4 w-4" />
 			<span class="sr-only">Open menu</span>
 		</Button>
 	</DropdownMenu.Trigger>
 	<DropdownMenu.Content align="end">
 		<DropdownMenu.Group>
 			<DropdownMenu.Item onclick={handleEdit}>
-				<Pencil class="w-4 h-4" />
+				<Pencil class="h-4 w-4" />
 				Edit
 			</DropdownMenu.Item>
 			<DropdownMenu.Item onclick={handleRemove} class="text-red-500 focus:!text-red-700">
