@@ -48,8 +48,10 @@ export const PUT: RequestHandler = async ({ request }) => {
 		}
 
 		// Normalize boolean values (handle string representation from form data)
-		const booleanFields = ['autoUpdate', 'pollingEnabled', 'rbacEnabled', 'enableLocalAuth'];
+		const booleanFields = ['autoUpdate', 'pollingEnabled'];
+		const nestedAuthBooleanFields = ['localAuthEnabled', 'rbacEnabled'];
 
+		// Handle top-level boolean fields
 		booleanFields.forEach((field) => {
 			if (field in body) {
 				// Convert string "true"/"false" to actual boolean if needed
@@ -58,6 +60,18 @@ export const PUT: RequestHandler = async ({ request }) => {
 				}
 			}
 		});
+
+		// Handle nested auth boolean fields
+		if (body.auth) {
+			nestedAuthBooleanFields.forEach((field) => {
+				if (field in body.auth) {
+					// Convert string "true"/"false" to actual boolean if needed
+					if (typeof body.auth[field] === 'string') {
+						body.auth[field] = body.auth[field] === 'true';
+					}
+				}
+			});
+		}
 
 		// Validate polling interval if polling is enabled
 		if (body.pollingEnabled) {
