@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { Shield } from '@lucide/svelte';
 	import StatusBadge from '../badges/status-badge.svelte';
 	interface Props {
 		roles?: string[];
