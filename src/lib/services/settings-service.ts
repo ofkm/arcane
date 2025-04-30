@@ -154,6 +154,14 @@ export async function saveSettings(settings: Settings): Promise<void> {
 	await ensureSettingsDir();
 	const filePath = path.join(SETTINGS_DIR, 'settings.dat');
 
+	// Create the file if it doesn't exist
+	try {
+		await fs.access(filePath);
+	} catch {
+		// File doesn't exist, create an empty file
+		await fs.writeFile(filePath, '{}', { mode: 0o600 });
+	}
+
 	// Acquire a lock on the settings file
 	let release;
 	try {
