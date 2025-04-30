@@ -22,7 +22,7 @@ Arcane is a **Simple and Elegant Docker Management UI** written in Typescript an
 
 ## Getting Started
 
-To get started with Arcane, head over to the **[Installation](./getting-started/installation)** guide.
+To get started with Arcane, head over to the **[Quickstart](./getting-started/quickstart)** guide.
 
 <div style={{
   display: 'flex',

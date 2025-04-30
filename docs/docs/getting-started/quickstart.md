@@ -19,7 +19,7 @@ This guide provides the fastest way to get Arcane up and running using Docker Co
     Open your terminal and clone the Arcane repository:
 
     ```bash
-    git clone https://github.com/ofkm/arcane arcane
+    git clone https://github.com/ofkm/arcane
     cd arcane
     ```
 
@@ -57,5 +57,4 @@ This guide provides the fastest way to get Arcane up and running using Docker Co
 ## Next Steps
 
 - Explore the Arcane interface to manage your containers, images, volumes, and networks.
-- For more detailed installation options or troubleshooting, see the full **[Installation](./installation.md)** guide.
 - Learn how to customize Arcane's behavior in the **[Configuration](./configuration.md)** guide.

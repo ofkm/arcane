@@ -54,7 +54,7 @@ Thank you for your interest in contributing to Arcane! We welcome contributions 
 9.  **Keep Your Branch Updated:** Periodically update your branch with the latest changes from the upstream repository:
     ```bash
     git fetch upstream
-    git rebase upstream/main # Or the appropriate default branch name
+    git rebase upstream/main
     ```
 10. **Push Your Branch:** Push your changes to your forked repository:
     ```bash
@@ -67,10 +67,6 @@ Thank you for your interest in contributing to Arcane! We welcome contributions 
 
 ## Code Style
 
-Arcane uses [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) to enforce code style and consistency. Please run `npm run lint` and `npm run format` before committing your changes. Configuration files (`.eslintrc.cjs`, `.prettierrc.json`) are included in the repository.
-
-## Code of Conduct
-
-While we don't have a formal Code of Conduct document yet, we expect all contributors to interact respectfully and constructively. Please be welcoming and considerate of others in all discussions and contributions.
+Arcane uses [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) to enforce code style and consistency. Please run `npm run lint` and `npm run format` before committing your changes. Configuration files (`.eslint.config.js`, `.prettierrc`) are included in the repository.
 
 Thank you again for contributing to Arcane!

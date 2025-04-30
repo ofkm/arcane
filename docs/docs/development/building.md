@@ -17,10 +17,10 @@ This guide explains how to build the Arcane application from its source code. Th
 ## Steps
 
 1.  **Clone the Repository:**
-    Open your terminal and clone the Arcane repository (replace `<your-repository-url>` with the actual URL):
+    Open your terminal and clone the Arcane repository:
 
     ```bash
-    git clone <your-repository-url> arcane
+    git clone https://github.com/ofkm/arcane
     cd arcane
     ```
 
@@ -42,7 +42,7 @@ This guide explains how to build the Arcane application from its source code. Th
     npm run dev
     ```
 
-    This will start a local development server, typically accessible at `http://localhost:5173` (check the terminal output for the exact URL).
+    This will start a local development server, typically accessible at `http://localhost:3000` .
 
 4.  **Linting and Formatting (Optional):**
     Before building, you might want to check for code style issues:

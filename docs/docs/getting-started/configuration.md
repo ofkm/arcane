@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 2
 title: Configuration
 ---
 
@@ -11,17 +11,28 @@ Arcane offers several ways to configure its behavior, primarily through a JSON c
 
 The main configuration for Arcane is managed through the `app-settings.json` file located in the application's data directory (typically `/app/data` inside the container).
 
-Here's the default structure and settings:
+Here's the example structure and settings:
 
 ```json
 // filepath: /app/data/app-settings.json
 {
-	"dockerHost": "unix:///var/run/docker.sock",
-	"autoRefresh": true,
-	"pollingInterval": 5,
-	"stacksDirectory": "/app/data/stacks"
+  "dockerHost": "unix:///var/run/docker.sock",
+  "autoUpdate": false,
+  "autoUpdateInterval": 60,
+  "pollingEnabled": false,
+  "pollingInterval": 10,
+  "pruneMode": "all",
+  "stacksDirectory": "/app/data/stacks",
+  "auth.sessionTimeout": 60,
+  "externalServices": {},
+  "auth": {
+    "localAuthEnabled": true,
+    "sessionTimeout": 60
+  }
 }
 ```
+
+**_While you can mount a config file, Its recommended to use the Arcane UI to configure the settings._**
 
 ### Configuration Options
 
@@ -52,7 +63,7 @@ Here's the default structure and settings:
 
 ## Configuration with Docker
 
-When running Arcane using Docker or Docker Compose (as shown in the example [`docker-compose.yml`](#docker-composeyml)), you can manage configuration in a few ways:
+When running Arcane using Docker or Docker Compose (as shown in the example [`docker-compose.yml`](https://github.com/ofkm/arcane/blob/main/docker-compose.yml)), you can manage configuration in a few ways:
 
 ### 1. Mounting the Data Directory
 
