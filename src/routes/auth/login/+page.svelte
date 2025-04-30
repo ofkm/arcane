@@ -64,7 +64,7 @@
 				</div>
 
 				<div>
-					<Button type="submit" class="w-full" disabled={loading}>
+					<Button type="submit" class="w-full" disabled={loading} aria-busy={loading}>
 						{#if loading}
 							<span class="loading loading-spinner loading-xs mr-2"></span>
 						{/if}
