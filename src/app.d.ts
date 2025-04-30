@@ -1,24 +1,13 @@
 import type { VolumeInspectInfo as OriginalVolumeInspectInfo } from 'dockerode';
 import type { User } from '$lib/types/user.type';
+import type { UserSession } from '$lib/types/session.type';
 
 declare global {
 	namespace App {
 		// interface Error {}
-		declare global {
-			namespace App {
-				interface Locals {
-					user?: User;
-					session?: {
-						id: string;
-						userId: string;
-						username: string;
-						created: string;
-						expires: string;
-						ip?: string;
-						userAgent?: string;
-					};
-				}
-			}
+		interface Locals {
+			user?: User;
+			session?: UserSession;
 		}
 		// interface PageData {}
 		// interface PageState {}
