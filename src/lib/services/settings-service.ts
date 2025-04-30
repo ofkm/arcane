@@ -3,7 +3,7 @@ import path from 'path';
 import proper from 'proper-lockfile';
 import type { Settings } from '$lib/types/settings.type';
 import { encrypt, decrypt } from './encryption-service';
-import { SETTINGS_FILE, SETTINGS_FOLDER, SETTINGS_DIR, DEFAULT_STACKS_DIR, ensureDirectory } from './paths-service';
+import { SETTINGS_FILE, SETTINGS_DIR, STACKS_DIR, ensureDirectory } from './paths-service';
 
 // Determine if we're in development or production
 const isDev = process.env.NODE_ENV === 'development';
@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	pollingEnabled: true,
 	pollingInterval: 10,
 	pruneMode: 'all',
-	stacksDirectory: DEFAULT_STACKS_DIR,
+	stacksDirectory: STACKS_DIR,
 	registryCredentials: [],
 	auth: {
 		localAuthEnabled: true,
@@ -64,8 +64,8 @@ export async function ensureStacksDirectory(): Promise<string> {
 		console.error('Error ensuring stacks directory:', err);
 		// Fall back to default
 		try {
-			await ensureDirectory(DEFAULT_STACKS_DIR);
-			return DEFAULT_STACKS_DIR;
+			await ensureDirectory(STACKS_DIR);
+			return STACKS_DIR;
 		} catch (innerErr) {
 			console.error('Failed to create default stacks directory:', innerErr);
 			throw new Error('Unable to create stacks directory');
@@ -75,7 +75,7 @@ export async function ensureStacksDirectory(): Promise<string> {
 
 // Save a setting to its own file
 async function saveSetting(key: string, value: any): Promise<void> {
-	const filePath = path.join(SETTINGS_FOLDER, `${key}.json`);
+	const filePath = path.join(SETTINGS_DIR, `${key}.json`);
 
 	// Make sure the directory exists
 	await ensureDirectory(path.dirname(filePath));
@@ -100,18 +100,6 @@ async function saveSetting(key: string, value: any): Promise<void> {
 	} catch (error) {
 		console.error(`Error saving setting ${key}:`, error);
 		throw error;
-	}
-}
-
-// Get a setting from its own file
-async function getSetting(key: string): Promise<any | null> {
-	const filePath = path.join(SETTINGS_FOLDER, `${key}.json`);
-
-	try {
-		const data = await fs.readFile(filePath, 'utf-8');
-		return JSON.parse(data);
-	} catch (error) {
-		return null;
 	}
 }
 
@@ -197,28 +185,6 @@ export async function saveSettings(settings: Settings): Promise<void> {
 				console.error('Error releasing lock:', releaseError);
 			}
 		}
-	}
-}
-
-// Helper function to flatten nested objects
-function flattenObject(obj: any, prefix = ''): Record<string, any> {
-	return Object.keys(obj).reduce((acc: Record<string, any>, k: string) => {
-		const pre = prefix.length ? `${prefix}.` : '';
-		if (typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])) {
-			Object.assign(acc, flattenObject(obj[k], `${pre}${k}`));
-		} else {
-			acc[`${pre}${k}`] = obj[k];
-		}
-		return acc;
-	}, {});
-}
-
-// Helper to parse JSON values
-function tryParse(value: string): any {
-	try {
-		return JSON.parse(value);
-	} catch {
-		return value;
 	}
 }
 

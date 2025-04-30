@@ -5,10 +5,10 @@ import type { User } from '$lib/types/user.type';
 import { getSettings } from '$lib/services/settings-service';
 import fs from 'fs/promises';
 import path from 'node:path';
-import { getBasePath } from '$lib/services/paths-service';
+import { BASE_PATH } from '$lib/services/paths-service';
 
 // Get USER_DIR from base path
-const USER_DIR = path.join(getBasePath(), 'users');
+const USER_DIR = path.join(BASE_PATH, 'users');
 
 // PUT endpoint for updating a user
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
