@@ -1,8 +1,6 @@
 import type { PageServerLoad, Actions } from './$types';
-// Import getContainerStats
 import { getContainer, startContainer, stopContainer, restartContainer, removeContainer, getContainerLogs, getContainerStats } from '$lib/services/docker/container-service';
 import { error, fail, redirect } from '@sveltejs/kit';
-import type Docker from 'dockerode'; // Import Docker type for stats
 
 export const load: PageServerLoad = async ({ params }) => {
 	const containerId = params.id;

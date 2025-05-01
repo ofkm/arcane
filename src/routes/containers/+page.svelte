@@ -16,6 +16,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { statusVariantMap } from '$lib/types/statuses';
 	import { capitalizeFirstLetter } from '$lib/utils';
+	import { handleApiReponse } from '$lib/utils/api.util';
 
 	const containerApi = new ContainerAPIService();
 
@@ -81,17 +82,15 @@
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
-					const result = await tryCatch(containerApi.remove(id));
-					if (result.error) {
-						console.error(`Failed to remove container ${id}:`, result.error);
-						toast.error(`Failed to remove container: ${result.error.message}`);
-						isLoading['remove'] = false;
-						return;
-					}
-
-					toast.success('Container removed successfully.');
-					await invalidateAll();
-					isLoading['remove'] = false;
+					handleApiReponse(
+						await tryCatch(containerApi.remove(id)),
+						'Failed to Remove Container',
+						(value) => (isLoading.remove = value),
+						async () => {
+							toast.success('Container Removed Successfully.');
+							await invalidateAll();
+						}
+					);
 				}
 			}
 		});
@@ -99,41 +98,37 @@
 
 	async function performContainerAction(action: 'start' | 'stop' | 'restart', id: string) {
 		isLoading[action] = true;
-		let result;
 
 		if (action === 'start') {
-			result = await tryCatch(containerApi.start(id));
-			if (result.error) {
-				console.error(`Failed to start container ${id}:`, result.error);
-				toast.error(`Failed to start container: ${result.error.message}`);
-				isLoading['start'] = false;
-				return;
-			}
-			toast.success('Container started successfully.');
-			await invalidateAll();
-			isLoading['start'] = false;
+			handleApiReponse(
+				await tryCatch(containerApi.start(id)),
+				'Failed to Start Container',
+				(value) => (isLoading.start = value),
+				async () => {
+					toast.success('Container Started Successfully.');
+					await invalidateAll();
+				}
+			);
 		} else if (action === 'stop') {
-			result = await tryCatch(containerApi.stop(id));
-			if (result.error) {
-				console.error(`Failed to stop container ${id}:`, result.error);
-				toast.error(`Failed to stop container: ${result.error.message}`);
-				isLoading['stop'] = false;
-				return;
-			}
-			toast.success('Container stopped successfully.');
-			await invalidateAll();
-			isLoading['stop'] = false;
+			handleApiReponse(
+				await tryCatch(containerApi.stop(id)),
+				'Failed to Stop Container',
+				(value) => (isLoading.stop = value),
+				async () => {
+					toast.success('Container Stopped Successfully.');
+					await invalidateAll();
+				}
+			);
 		} else if (action === 'restart') {
-			result = await tryCatch(containerApi.restart(id));
-			if (result.error) {
-				console.error(`Failed to restart container ${id}:`, result.error);
-				toast.error(`Failed to restart container: ${result.error.message}`);
-				isLoading['restart'] = false;
-				return;
-			}
-			toast.success('Container restarted successfully.');
-			await invalidateAll();
-			isLoading['restart'] = false;
+			handleApiReponse(
+				await tryCatch(containerApi.restart(id)),
+				'Failed to Restart Container',
+				(value) => (isLoading.stop = value),
+				async () => {
+					toast.success('Container Restarted Successfully.');
+					await invalidateAll();
+				}
+			);
 		} else {
 			console.error('An Unknown Error Occurred');
 			toast.error('An Unknown Error Occurred');
