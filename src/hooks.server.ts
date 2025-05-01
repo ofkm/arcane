@@ -15,7 +15,7 @@ try {
 }
 
 // Whitelisted paths that don't require auth
-const publicPaths = ['/auth/login', '/auth/callback', '/api/health', '/assets'];
+const publicPaths = ['/auth/login', '/img'];
 
 // Protected paths that require specific permissions
 const protectedPathPermissions: Record<string, string[]> = {
