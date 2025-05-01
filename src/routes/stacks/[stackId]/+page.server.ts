@@ -1,18 +1,15 @@
-import { error } from '@sveltejs/kit';
 import { getStack, updateStack, startStack, stopStack, restartStack, removeStack, fullyRedeployStack } from '$lib/services/docker/stack-service';
+import type { PageServerLoad, Actions } from './$types';
 
-/** @type {import('./$types').PageServerLoad} */
-export async function load({ params }) {
+export const load: PageServerLoad = async ({ params }) => {
 	const { stackId } = params;
 
 	try {
 		const stack = await getStack(stackId);
 
-		// Pre-populate the editor state values for SSR
 		return {
 			stack,
 			error: null,
-			// These will be available directly in the svelte component's data prop
 			editorState: {
 				name: stack.name || '',
 				composeContent: stack.composeContent || '',
@@ -21,7 +18,7 @@ export async function load({ params }) {
 				autoUpdate: stack.meta?.autoUpdate || false
 			}
 		};
-	} catch (err) {
+	} catch (err: unknown) {
 		console.error(`Error loading stack ${stackId}:`, err);
 		const errorMessage = err instanceof Error ? err.message : String(err);
 		return {
@@ -36,10 +33,9 @@ export async function load({ params }) {
 			}
 		};
 	}
-}
+};
 
-/** @type {import('./$types').Actions} */
-export const actions = {
+export const actions: Actions = {
 	update: async ({ params, request }) => {
 		const { stackId } = params;
 		const formData = await request.formData();
@@ -54,7 +50,7 @@ export const actions = {
 				success: true,
 				message: 'Stack updated successfully'
 			};
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error('Error updating stack:', err);
 			return {
 				success: false,
@@ -67,7 +63,7 @@ export const actions = {
 		try {
 			await startStack(params.stackId);
 			return { success: true };
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error('Error starting stack:', err);
 			return {
 				success: false,
@@ -80,7 +76,7 @@ export const actions = {
 		try {
 			await stopStack(params.stackId);
 			return { success: true };
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error('Error stopping stack:', err);
 			return {
 				success: false,
@@ -93,7 +89,7 @@ export const actions = {
 		try {
 			await restartStack(params.stackId);
 			return { success: true };
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error('Error restarting stack:', err);
 			return {
 				success: false,
@@ -106,12 +102,10 @@ export const actions = {
 		try {
 			const success = await removeStack(params.stackId);
 			if (success) {
-				// Redirect can be handled differently, maybe client-side after success
-				// Or use SvelteKit's redirect helper if needed server-side
 				return { success: true, message: 'Stack removal initiated' };
 			}
 			return { success: false, error: 'Failed to remove stack' };
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error('Error removing stack:', err);
 			return {
 				success: false,
@@ -124,7 +118,7 @@ export const actions = {
 		try {
 			await fullyRedeployStack(params.stackId);
 			return { success: true, message: 'Stack redeployment initiated' };
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error('Error redeploying stack:', err);
 			return {
 				success: false,

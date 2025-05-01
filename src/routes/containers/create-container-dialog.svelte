@@ -30,7 +30,7 @@
 		onSubmit?: (data: ContainerConfig) => void;
 	}
 
-	let { open = $bindable(false), isCreating = false, volumes = [], networks = [], images = [], onSubmit = (data: ContainerConfig) => {} }: Props = $props();
+	let { open = $bindable(false), isCreating = false, volumes = [], networks = [], images = [], onSubmit = (_data: ContainerConfig) => {} }: Props = $props();
 
 	// Internal state
 	let containerName = $state('');
@@ -140,18 +140,6 @@
 			}
 		});
 	});
-
-	// We can still keep this function for the submission check
-	function validatePort(index: number, type: 'host' | 'container'): void {
-		const port = type === 'host' ? ports[index].hostPort : ports[index].containerPort;
-		const validation = validatePortNumber(port);
-
-		if (type === 'host') {
-			ports[index].hostError = validation.error;
-		} else {
-			ports[index].containerError = validation.error;
-		}
-	}
 
 	// Add/remove functions for arrays
 	function addPort() {
@@ -328,7 +316,7 @@
 									</Select.Trigger>
 									<Select.Content>
 										<Select.Group>
-											{#each images as image}
+											{#each images as image (image.id)}
 												<Select.Item value={image.repo + ':' + image.tag}>
 													{image.repo + ':' + image.tag}
 												</Select.Item>
@@ -345,7 +333,7 @@
 										<span>{selectedRestartPolicyLabel}</span>
 									</Select.Trigger>
 									<Select.Content>
-										{#each restartPolicyOptions as option}
+										{#each restartPolicyOptions as option (option.value)}
 											<Select.Item label={option.label} value={option.value}>{option.label}</Select.Item>
 										{/each}
 									</Select.Content>
@@ -357,7 +345,7 @@
 					<!-- Port Mappings -->
 					<Tabs.Content value="ports">
 						<div class="space-y-4">
-							{#each ports as port, index}
+							{#each ports as port, index (index)}
 								<div class="flex space-x-3 items-end">
 									<div class="flex-1 grid grid-cols-2 gap-4">
 										<div>
@@ -397,7 +385,7 @@
 					<!-- Volume Mounts -->
 					<Tabs.Content value="volumes">
 						<div class="space-y-4">
-							{#each volumeMounts as mount, index}
+							{#each volumeMounts as mount, index (index)}
 								<div class="flex space-x-3 items-end">
 									<div class="flex-1 grid grid-cols-2 gap-4">
 										<div>
@@ -407,7 +395,7 @@
 													<span>{mount.source || 'Select volume'}</span>
 												</Select.Trigger>
 												<Select.Content>
-													{#each volumes as volume}
+													{#each volumes as volume (volume.name)}
 														<Select.Item value={volume.name}>
 															{volume.name}
 														</Select.Item>
@@ -434,7 +422,7 @@
 					<!-- Environment Variables -->
 					<Tabs.Content value="env">
 						<div class="space-y-4">
-							{#each envVars as env, index}
+							{#each envVars as env, index (index)}
 								<div class="flex space-x-3 items-end">
 									<div class="flex-1 grid grid-cols-2 gap-4">
 										<div>
@@ -559,7 +547,7 @@
 							<!-- Labels -->
 							<div class="space-y-4 border-b pb-6">
 								<h3 class="text-lg font-medium">Labels</h3>
-								{#each labels as label, index}
+								{#each labels as label, index (index)}
 									<div class="flex space-x-3 items-end">
 										<div class="flex-1 grid grid-cols-2 gap-4">
 											<div>

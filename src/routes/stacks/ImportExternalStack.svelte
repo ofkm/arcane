@@ -4,7 +4,7 @@
 	import { Import, Loader2 } from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 
-	const { id, name, isExternal } = $props();
+	const { id, name, isExternal } = $props<{ id: string; name: string; isExternal: boolean }>();
 	let stack = $derived({ id, name, isExternal });
 
 	let importing = $state(false);
@@ -16,7 +16,7 @@
 		action="/stacks/import"
 		use:enhance={() => {
 			importing = true;
-			return async ({ result }) => {
+			return async () => {
 				await invalidateAll();
 				importing = false;
 			};

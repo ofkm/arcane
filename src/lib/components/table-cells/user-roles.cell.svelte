@@ -8,7 +8,7 @@
 </script>
 
 <div class="flex flex-wrap">
-	{#each roles as role}
+	{#each roles as role (role)}
 		{@const isAdmin = role === 'admin'}
 		<StatusBadge text={isAdmin ? 'Admin' : 'User'} variant={isAdmin ? 'amber' : 'blue'} />
 	{/each}

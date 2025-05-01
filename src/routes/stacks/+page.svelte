@@ -16,11 +16,8 @@
 	let selectedIds = $state([]);
 
 	let isRefreshing = $state(false);
-	let isRemoving = $state(false);
-	let deleteDialogOpen = $state(false);
-	let id = $state(''); // Store the ID of the stack to be deleted
+	let id = $state('');
 
-	// Message Dialog state
 	let dialogOpen = $state(false);
 	let dialogProps = $state({
 		type: 'info' as const,
@@ -38,7 +35,6 @@
 		message: ''
 	});
 
-	// Calculate stack stats
 	const totalStacks = $derived(stacks?.length || 0);
 	const runningStacks = $derived(stacks?.filter((s) => s.status === 'running').length || 0);
 	const partialStacks = $derived(stacks?.filter((s) => s.status === 'partially running').length || 0);
@@ -73,7 +69,6 @@
 </script>
 
 <div class="space-y-6">
-	<!-- Header with refresh and create buttons -->
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Stacks</h1>
@@ -94,7 +89,6 @@
 		</Alert.Root>
 	{/if}
 
-	<!-- Stack stats summary -->
 	<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 		<Card.Root>
 			<Card.Content class="p-4 flex items-center justify-between">
@@ -133,7 +127,6 @@
 		</Card.Root>
 	</div>
 
-	<!-- Main stacks table -->
 	<Card.Root class="border shadow-sm">
 		<Card.Header class="px-6">
 			<div class="flex items-center justify-between">
@@ -181,9 +174,8 @@
 		method="POST"
 		action={`/stacks/${id}?/remove`}
 		use:enhance={() => {
-			isRemoving = true;
-			deleteDialogOpen = false;
-			deleteDialogOpen = false;
+			let isRemoving = true;
+			let deleteDialogOpen = false;
 
 			return async ({ result }) => {
 				if (result.type === 'success' && result.data) {
@@ -212,7 +204,6 @@
 				isRemoving = false;
 
 				if (result.type === 'success') {
-					// Force navigation to the stacks page after successful deletion
 					window.location.href = '/stacks';
 				} else {
 					console.error('Error removing stack:', result);
@@ -220,9 +211,7 @@
 				}
 			};
 		}}
-	>
-		<!-- Button remains the same -->
-	</form>
+	></form>
 
 	<UniversalModal bind:open={dialogOpen} type={dialogProps.type} title={dialogProps.title} message={dialogProps.message} okText={dialogProps.okText} cancelText={dialogProps.cancelText} showCancel={dialogProps.showCancel} />
 

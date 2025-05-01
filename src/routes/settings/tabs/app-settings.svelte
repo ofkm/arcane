@@ -52,7 +52,6 @@
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-	<!-- Docker Connection Card -->
 	<Card.Root class="border shadow-sm">
 		<Card.Header class="pb-3">
 			<div class="flex items-center gap-2">
@@ -80,7 +79,6 @@
 					<p class="text-xs font-bold text-destructive">Changing this setting will not move existing stacks!</p>
 				</div>
 
-				<!-- Registry Credentials Section -->
 				<div class="pt-4 border-t mt-4">
 					<div class="flex items-center gap-2 mb-3">
 						<div class="bg-green-500/10 p-2 rounded-full">
@@ -99,7 +97,7 @@
 							<div class="text-center py-4 text-muted-foreground text-sm border rounded-md">No registry credentials configured yet</div>
 						{:else}
 							<div class="space-y-4">
-								{#each $settingsStore.registryCredentials as registry, index}
+								{#each $settingsStore.registryCredentials as registry, index (index)}
 									<div class="border rounded-md p-4 space-y-3 bg-muted/20">
 										<div class="flex justify-between items-center">
 											<h4 class="font-medium">Registry #{index + 1}</h4>
@@ -138,7 +136,6 @@
 		</Card.Content>
 	</Card.Root>
 
-	<!-- Polling and Image Pruning Settings -->
 	<div class="space-y-6">
 		<Card.Root class="border shadow-sm">
 			<Card.Header class="pb-3">
@@ -222,7 +219,6 @@
 			</Card.Content>
 		</Card.Root>
 
-		<!-- Prune Settings Card -->
 		<Card.Root class="border shadow-sm">
 			<Card.Header class="pb-3">
 				<div class="flex items-center gap-2">

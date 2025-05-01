@@ -12,7 +12,6 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	// Initialize settings store from server data
 	$effect(() => {
 		if (data.settings) {
 			updateSettingsStore(data.settings);
@@ -27,23 +26,20 @@
 		{ id: 'app-settings', label: 'General', component: AppSettings },
 		{ id: 'user-management', label: 'User Management', component: UserManagement },
 		{ id: 'authentication', label: 'Authentication', component: Authentication }
-		// Uncommented tabs can be added back when needed
 	];
 
-	// Simplified save function using the store
 	async function saveSettings() {
 		if (saving) return;
 		saving = true;
 		error = null;
 
 		try {
-			// Save everything in the store
 			await saveSettingsToServer();
 			toast.success('Settings saved successfully');
 			await invalidateAll();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('Error saving settings:', err);
-			error = err.message || 'An error occurred while saving settings';
+			error = err instanceof Error ? err.message : 'An error occurred while saving settings';
 			if (error) toast.error(error);
 		} finally {
 			saving = false;
@@ -52,7 +48,6 @@
 </script>
 
 <div class="space-y-6">
-	<!-- Header -->
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Settings</h1>
@@ -70,10 +65,9 @@
 		</Button>
 	</div>
 
-	<!-- Tabs Navigation -->
 	<Tabs.Root value={activeTab} onValueChange={(val) => (activeTab = val)} class="w-full">
 		<Tabs.List class="grid grid-cols-3 md:w-full md:max-w-3xl mb-4">
-			{#each tabs as tab}
+			{#each tabs as tab, i (tab.id)}
 				<Tabs.Trigger value={tab.id} class="whitespace-nowrap">
 					{tab.label}
 				</Tabs.Trigger>
@@ -82,7 +76,7 @@
 
 		<div id="settings-container">
 			<input type="hidden" id="csrf_token" value={data.csrf} />
-			{#each tabs as tab}
+			{#each tabs as tab, i (tab.id)}
 				<Tabs.Content value={tab.id} class="space-y-4">
 					<tab.component {data} />
 				</Tabs.Content>

@@ -8,7 +8,6 @@
 
 	let { children }: Props = $props();
 
-	// Define the onboarding steps
 	const steps = [
 		{ id: 'welcome', label: 'Welcome', path: '/onboarding/welcome', icon: CheckCircle2 },
 		{ id: 'password', label: 'Admin Password', path: '/onboarding/password', icon: Key },
@@ -16,12 +15,10 @@
 		{ id: 'complete', label: 'Complete', path: '/onboarding/complete', icon: CheckCircle2 }
 	];
 
-	// Determine current step
 	let currentStep = $derived(steps.findIndex((step) => page.url.pathname === step.path));
 </script>
 
 <div class="min-h-screen flex flex-col">
-	<!-- Header -->
 	<header class="pb-6 px-8 border-b">
 		<div class="flex items-center">
 			<img src="/img/arcane.png" alt="Arcane" class="h-12" />
@@ -29,10 +26,9 @@
 		</div>
 	</header>
 
-	<!-- Progress indicator -->
 	<div class="container mx-auto px-4 py-6">
 		<div class="flex items-center justify-between mb-8">
-			{#each steps as step, i}
+			{#each steps as step, i (step.id)}
 				<div class="flex flex-col items-center">
 					<div class={`rounded-full w-10 h-10 flex items-center justify-center ${i <= currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
 						<step.icon class="h-5 w-5" />
@@ -47,7 +43,6 @@
 		</div>
 	</div>
 
-	<!-- Main content -->
 	<main class="flex-1 container mx-auto px-4 py-6">
 		{@render children?.()}
 	</main>

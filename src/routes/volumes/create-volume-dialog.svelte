@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { preventDefault } from 'svelte/legacy';
-
+	import { preventDefault } from '$lib/utils/form.utils';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -10,29 +9,31 @@
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 
-	// Functions for events
 	export function onClose() {
 		open = false;
 	}
 
+	type VolumeSubmitData = {
+		name: string;
+		driver?: string;
+		driverOpts?: Record<string, string>;
+		labels?: Record<string, string>;
+	};
+
 	interface Props {
-		// Simple boolean prop for open state
 		open?: boolean;
 		isCreating?: boolean;
-		onSubmit?: any;
+		// Fixed: Use specific function type instead of any
+		onSubmit?: (data: VolumeSubmitData) => void;
 	}
 
-	let { open = $bindable(false), isCreating = false, onSubmit = (data: { name: string; driver?: string; driverOpts?: Record<string, string>; labels?: Record<string, string> }) => {} }: Props = $props();
+	let { open = $bindable(false), isCreating = false, onSubmit = (_data: VolumeSubmitData) => {} }: Props = $props();
 
-	// Internal state
 	let volumeName = $state('');
 	let driver = $state('local');
-	let showAdvanced = $state(false);
-
 	let driverOptsText = $state('');
 	let labelsText = $state('');
 
-	// Available volume drivers
 	const drivers = [
 		{ label: 'Local', value: 'local' },
 		{ label: 'NFS', value: 'nfs' },
@@ -52,7 +53,7 @@
 			if (!trimmed || !trimmed.includes('=')) continue;
 
 			const [key, ...valueParts] = trimmed.split('=');
-			const value = valueParts.join('='); // Handle values that might contain =
+			const value = valueParts.join('=');
 
 			if (key.trim()) {
 				result[key.trim()] = value.trim();
@@ -85,7 +86,6 @@
 		</Dialog.Header>
 
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
-			<!-- Basic volume settings -->
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="volume-name" class="text-right">Name</Label>
 				<Input id="volume-name" bind:value={volumeName} class="col-span-3" placeholder="e.g., my-app-data" required disabled={isCreating} />
@@ -99,7 +99,7 @@
 							<span>{drivers.find((d) => d.value === driver)?.label || 'Select a driver'}</span>
 						</Select.Trigger>
 						<Select.Content>
-							{#each drivers as driverOption}
+							{#each drivers as driverOption (driverOption.value)}
 								<Select.Item value={driverOption.value}>
 									{driverOption.label}
 								</Select.Item>
@@ -109,7 +109,6 @@
 				</div>
 			</div>
 
-			<!-- Advanced settings -->
 			<Accordion.Root type="single">
 				<Accordion.Item value="advanced">
 					<Accordion.Trigger>Advanced Settings</Accordion.Trigger>

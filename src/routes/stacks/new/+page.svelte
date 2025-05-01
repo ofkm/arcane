@@ -13,8 +13,8 @@
 	let saving = $state(false);
 	let apiError = $state<string | null>(null);
 
-	function preventDefault(fn: (event: Event) => any) {
-		return function (this: any, event: Event) {
+	function preventDefault(fn: (event: Event) => void) {
+		return function (this: unknown, event: Event) {
 			event.preventDefault();
 			fn.call(this, event);
 		};
@@ -60,9 +60,10 @@ volumes:
 			toast.success(result.message || `Stack "${result.stack.name}" created.`);
 			await invalidateAll();
 			goto(`/stacks/${result.stack.id}`);
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('Failed to create stack:', err);
-			apiError = err.message || 'An unknown error occurred.';
+			const message = err instanceof Error ? err.message : 'An unknown error occurred.';
+			apiError = message;
 			toast.error(`Failed to create stack: ${apiError}`);
 		} finally {
 			saving = false;

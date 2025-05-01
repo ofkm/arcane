@@ -7,11 +7,11 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
 	import { formatDate, formatLogLine, formatBytes } from '$lib/utils';
 	import type Docker from 'dockerode';
+	import type { ContainerInspectInfo } from 'dockerode';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 
@@ -24,7 +24,7 @@
 	let removing = $state(false);
 	let isRefreshing = $state(false);
 
-	let formattedLogs = $derived(logs ? logs.split('\n').map(formatLogLine).join('\n') : '');
+	let formattedLogLines = $derived(logs ? logs.split('\n').map(formatLogLine) : []);
 
 	let logsContainer = $state<HTMLDivElement | undefined>(undefined);
 
@@ -54,27 +54,22 @@
 	// --- End Stats Calculation ---
 
 	// --- Helper to find Primary IP Address ---
-	// Type is any to avoid TypeScript errors, but ideally should be replaced with a proper type definition for networkSettings.
-	const getPrimaryIpAddress = (networkSettings: any | undefined | null): string => {
+	const getPrimaryIpAddress = (networkSettings: ContainerInspectInfo['NetworkSettings'] | undefined | null): string => {
 		if (!networkSettings) return 'N/A';
 
-		// 1. Check top-level IPAddress (common for bridge)
 		if (networkSettings.IPAddress) {
 			return networkSettings.IPAddress;
 		}
 
-		// 2. Check IPs within the Networks object (common for ipvlan, macvlan, custom bridges)
 		if (networkSettings.Networks) {
 			for (const networkName in networkSettings.Networks) {
 				const network = networkSettings.Networks[networkName];
 				if (network?.IPAddress) {
-					// Return the first valid IP found in the networks list
 					return network.IPAddress;
 				}
 			}
 		}
 
-		// 3. Fallback if no IP found
 		return 'N/A';
 	};
 
@@ -90,7 +85,10 @@
 
 	$effect(() => {
 		if (logsContainer && logs) {
-			logsContainer.scrollTop = logsContainer.scrollHeight;
+			const shouldScroll = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 50;
+			if (shouldScroll) {
+				logsContainer.scrollTop = logsContainer.scrollHeight;
+			}
 		}
 	});
 
@@ -138,7 +136,6 @@
 
 		{#if container}
 			<div class="flex gap-2 flex-wrap">
-				<!-- Use ActionButtons for container actions -->
 				<form
 					method="POST"
 					action={container.state?.Running ? '?/stop' : '?/start'}
@@ -179,7 +176,6 @@
 	{/if}
 
 	{#if container}
-		<!-- NEW: Tabbed Interface -->
 		<Tabs.Root value={activeTab} onValueChange={(val) => (activeTab = val)} class="space-y-4">
 			<Tabs.List>
 				<Tabs.Trigger value="overview">Overview</Tabs.Trigger>
@@ -192,7 +188,6 @@
 
 			<!-- Overview Tab -->
 			<Tabs.Content value="overview" class="space-y-6">
-				<!-- Container Details Card -->
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<Card.Title>Container Details</Card.Title>
@@ -200,7 +195,6 @@
 					</Card.Header>
 					<Card.Content>
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-							<!-- Image -->
 							<div class="flex items-start gap-3">
 								<div class="bg-blue-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
 									<HardDrive class="h-5 w-5 text-blue-500" />
@@ -215,7 +209,6 @@
 								</div>
 							</div>
 
-							<!-- Created -->
 							<div class="flex items-start gap-3">
 								<div class="bg-green-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
 									<Clock class="h-5 w-5 text-green-500" />
@@ -228,7 +221,6 @@
 								</div>
 							</div>
 
-							<!-- IP Address -->
 							<div class="flex items-start gap-3">
 								<div class="bg-purple-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
 									<Network class="h-5 w-5 text-purple-500" />
@@ -241,7 +233,6 @@
 								</div>
 							</div>
 
-							<!-- Command -->
 							<div class="flex items-start gap-3">
 								<div class="bg-amber-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
 									<Terminal class="h-5 w-5 text-amber-500" />
@@ -257,7 +248,6 @@
 					</Card.Content>
 				</Card.Root>
 
-				<!-- Advanced Container Info -->
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<Card.Title>Container Configuration</Card.Title>
@@ -265,13 +255,11 @@
 					</Card.Header>
 					<Card.Content>
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-							<!-- Container ID -->
 							<div>
 								<span class="font-semibold">Container ID:</span>
 								<div class="font-mono mt-1 text-xs break-all">{container.id}</div>
 							</div>
 
-							<!-- Working Directory -->
 							{#if container.config?.WorkingDir}
 								<div>
 									<span class="font-semibold">Working Directory:</span>
@@ -279,7 +267,6 @@
 								</div>
 							{/if}
 
-							<!-- User -->
 							{#if container.config?.User}
 								<div>
 									<span class="font-semibold">User:</span>
@@ -287,7 +274,6 @@
 								</div>
 							{/if}
 
-							<!-- Health Check section -->
 							{#if container.state?.Health}
 								<div class="col-span-full">
 									<span class="font-semibold">Health Status:</span>
@@ -308,7 +294,6 @@
 
 			<!-- Configuration Tab -->
 			<Tabs.Content value="config" class="space-y-6">
-				<!-- Environment Variables -->
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<Card.Title>Environment Variables</Card.Title>
@@ -317,7 +302,7 @@
 					<Card.Content class="max-h-[360px] overflow-y-auto">
 						{#if container.config?.Env && container.config.Env.length > 0}
 							<div class="space-y-2">
-								{#each container.config.Env as env}
+								{#each container.config.Env as env, index (index)}
 									<div class="text-xs flex overflow-hidden">
 										{#if env.includes('=')}
 											{@const [key, ...valueParts] = env.split('=')}
@@ -338,7 +323,6 @@
 					</Card.Content>
 				</Card.Root>
 
-				<!-- Ports -->
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<Card.Title>Ports</Card.Title>
@@ -347,7 +331,7 @@
 					<Card.Content>
 						{#if container.networkSettings?.Ports && Object.keys(container.networkSettings.Ports).length > 0}
 							<div class="space-y-2">
-								{#each Object.entries(container.networkSettings.Ports) as [containerPort, hostBindings], i}
+								{#each Object.entries(container.networkSettings.Ports) as [containerPort, hostBindings] (containerPort)}
 									<div class="flex flex-col sm:flex-row sm:items-center justify-between rounded-md bg-muted/40 p-2 px-3 gap-1">
 										<div class="font-mono text-sm truncate" title={containerPort}>
 											{containerPort}
@@ -355,7 +339,7 @@
 										<div class="flex flex-wrap items-center gap-2">
 											<span class="text-xs text-muted-foreground">→</span>
 											{#if hostBindings && hostBindings.length > 0}
-												{#each hostBindings as binding}
+												{#each hostBindings as binding (binding.HostIp + ':' + binding.HostPort)}
 													<Badge variant="outline" class="font-mono truncate max-w-[150px]" title="{binding.HostIp || '0.0.0.0'}:{binding.HostPort}">
 														{binding.HostIp || '0.0.0.0'}:{binding.HostPort}
 													</Badge>
@@ -373,7 +357,6 @@
 					</Card.Content>
 				</Card.Root>
 
-				<!-- Labels -->
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<Card.Title>Labels</Card.Title>
@@ -382,7 +365,7 @@
 					<Card.Content class="max-h-[360px] overflow-y-auto">
 						{#if container.labels && Object.keys(container.labels).length > 0}
 							<div class="space-y-2">
-								{#each Object.entries(container.labels) as [key, value]}
+								{#each Object.entries(container.labels) as [key, value] (key)}
 									<div class="text-xs flex overflow-hidden">
 										<div class="flex w-full">
 											<span class="font-semibold mr-2 min-w-[120px] max-w-[180px] truncate flex-shrink-0" title={key}>{key}:</span>
@@ -400,7 +383,6 @@
 
 			<!-- Networks Tab -->
 			<Tabs.Content value="network" class="space-y-6">
-				<!-- Networks -->
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<Card.Title>Connected Networks</Card.Title>
@@ -409,7 +391,7 @@
 					<Card.Content>
 						{#if container.networkSettings?.Networks && Object.keys(container.networkSettings.Networks).length > 0}
 							<div class="space-y-4">
-								{#each Object.entries(container.networkSettings.Networks) as [networkName, networkConfig]}
+								{#each Object.entries(container.networkSettings.Networks) as [networkName, networkConfig] (networkName)}
 									<div class="rounded-md bg-muted/40 p-3">
 										<div class="text-sm font-medium">{networkName}</div>
 										<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 mt-2">
@@ -454,7 +436,6 @@
 
 			<!-- Storage Tab -->
 			<Tabs.Content value="storage" class="space-y-6">
-				<!-- Volumes/Mounts -->
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<Card.Title>Volumes & Mounts</Card.Title>
@@ -463,43 +444,17 @@
 					<Card.Content>
 						{#if container.mounts && container.mounts.length > 0}
 							<div class="space-y-4">
-								<!-- Mount Type Summary -->
-								<div class="flex flex-wrap gap-2 pb-2">
-									{#if container.mounts.filter((m) => m.Type === 'bind').length > 0}
-										<Badge variant="outline" class="bg-blue-500/10 text-blue-600 border-blue-200">
-											{container.mounts.filter((m) => m.Type === 'bind').length} bind
-											{container.mounts.filter((m) => m.Type === 'bind').length === 1 ? 'mount' : 'mounts'}
-										</Badge>
-									{/if}
-									{#if container.mounts.filter((m) => m.Type === 'volume').length > 0}
-										<Badge variant="outline" class="bg-purple-500/10 text-purple-600 border-purple-200">
-											{container.mounts.filter((m) => m.Type === 'volume').length}
-											{container.mounts.filter((m) => m.Type === 'volume').length === 1 ? 'volume' : 'volumes'}
-										</Badge>
-									{/if}
-									{#if container.mounts.filter((m) => m.Type === 'tmpfs').length > 0}
-										<Badge variant="outline" class="bg-amber-500/10 text-amber-600 border-amber-200">
-											{container.mounts.filter((m) => m.Type === 'tmpfs').length} tmpfs
-											{container.mounts.filter((m) => m.Type === 'tmpfs').length === 1 ? 'mount' : 'mounts'}
-										</Badge>
-									{/if}
-								</div>
-
-								<!-- Mount List -->
-								{#each container.mounts as mount}
+								{#each container.mounts as mount (mount.Destination)}
 									<div class="rounded-md overflow-hidden border border-muted">
-										<!-- Mount Header -->
 										<div
 											class={`p-3 flex items-center justify-between gap-2 
 											${mount.Type === 'volume' ? 'bg-purple-500/5 border-b border-purple-200/30' : mount.Type === 'bind' ? 'bg-blue-500/5 border-b border-blue-200/30' : 'bg-amber-500/5 border-b border-amber-200/30'}`}
 										>
-											<!-- Mount Type Icon & Info -->
 											<div class="flex items-center gap-2">
 												<div
 													class={`p-1.5 rounded-md 
 														${mount.Type === 'volume' ? 'bg-purple-500/10' : mount.Type === 'bind' ? 'bg-blue-500/10' : 'bg-amber-500/10'}`}
 												>
-													<!-- Display appropriate icon based on mount type -->
 													{#if mount.Type === 'volume'}
 														<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-600">
 															<path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10"></path>
@@ -530,16 +485,13 @@
 												</div>
 											</div>
 
-											<!-- Access Badge -->
 											<Badge variant={mount.RW ? 'outline' : 'secondary'}>
 												{mount.RW ? 'Read/Write' : 'Read Only'}
 											</Badge>
 										</div>
 
-										<!-- Mount Details -->
 										<div class="bg-card p-3">
 											<div class="grid gap-3 text-sm">
-												<!-- Destination Path -->
 												<div class="flex items-start gap-2">
 													<div class="min-w-[80px] text-xs font-semibold pt-0.5 text-muted-foreground">CONTAINER</div>
 													<div class="font-mono text-xs bg-muted/50 py-1 px-2 rounded break-all flex-1">
@@ -547,7 +499,6 @@
 													</div>
 												</div>
 
-												<!-- Source Path -->
 												<div class="flex items-start gap-2">
 													<div class="min-w-[80px] text-xs font-semibold pt-0.5 text-muted-foreground">
 														{mount.Type === 'volume' ? 'VOLUME' : mount.Type === 'bind' ? 'HOST' : 'SOURCE'}
@@ -557,7 +508,6 @@
 													</div>
 												</div>
 
-												<!-- Additional Info -->
 												{#if mount.Driver || mount.Mode || (mount.Propagation && mount.Propagation !== 'rprivate')}
 													<div class="pt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
 														{#if mount.Driver}
@@ -603,7 +553,6 @@
 
 			<!-- Logs Tab -->
 			<Tabs.Content value="logs" class="space-y-6">
-				<!-- Logs Card -->
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-4">
@@ -620,12 +569,14 @@
 
 					<Card.Content>
 						<div class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs h-[500px] overflow-auto whitespace-pre-wrap border" bind:this={logsContainer} id="logs-container" style="word-break: break-all;">
-							{#if logs}
-								{@html formattedLogs}
+							{#if formattedLogLines.length > 0}
+								{#each formattedLogLines as line, index (index)}
+									{@html line}
+								{/each}
 							{:else}
 								<div class="flex flex-col items-center justify-center h-full text-center">
 									<Terminal class="h-8 w-8 text-muted-foreground mb-3 opacity-40" />
-									<p class="text-muted-foreground italic">No logs available. The container may not have started yet.</p>
+									<p class="text-muted-foreground italic">No logs available. The container may not have started yet or produces no output.</p>
 								</div>
 							{/if}
 						</div>
@@ -639,7 +590,6 @@
 
 			<!-- Metrics Tab -->
 			<Tabs.Content value="stats" class="space-y-6">
-				<!-- Stats Card -->
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<div class="flex justify-between items-center">
@@ -656,7 +606,6 @@
 					<Card.Content>
 						{#if stats && container.state?.Running}
 							<div class="space-y-6">
-								<!-- CPU Usage -->
 								<div>
 									<div class="flex justify-between items-center mb-2">
 										<span class="text-sm font-medium flex items-center gap-2"><Cpu class="h-4 w-4 text-muted-foreground" /> CPU Usage</span>
@@ -667,7 +616,6 @@
 									</div>
 								</div>
 
-								<!-- Memory Usage -->
 								<div>
 									<div class="flex justify-between items-center mb-2">
 										<span class="text-sm font-medium flex items-center gap-2"><MemoryStick class="h-4 w-4 text-muted-foreground" /> Memory Usage</span>
@@ -678,7 +626,6 @@
 									</div>
 								</div>
 
-								<!-- Network I/O -->
 								<div>
 									<h4 class="text-sm font-medium mb-2 flex items-center gap-2">
 										<Network class="h-4 w-4 text-muted-foreground" /> Network I/O
@@ -695,7 +642,6 @@
 									</div>
 								</div>
 
-								<!-- Block I/O -->
 								{#if stats.blkio_stats && stats.blkio_stats.io_service_bytes_recursive && stats.blkio_stats.io_service_bytes_recursive.length > 0}
 									<div>
 										<h4 class="text-sm font-medium mb-2">Block I/O</h4>
@@ -716,7 +662,6 @@
 									</div>
 								{/if}
 
-								<!-- Process Count -->
 								{#if stats.pids_stats && stats.pids_stats.current !== undefined}
 									<div class="text-sm">
 										<span class="font-medium">Process count:</span>

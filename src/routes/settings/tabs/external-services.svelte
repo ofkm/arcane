@@ -7,13 +7,11 @@
 </script>
 
 <div class="grid grid-cols-1 gap-6">
-	<!-- External Services Header -->
 	<div class="space-y-2">
 		<h2 class="text-2xl font-bold tracking-tight">External Services</h2>
 		<p class="text-muted-foreground">Configure connections to external services for enhanced functionality.</p>
 	</div>
 
-	<!-- Placeholder for future services -->
 	<Card.Root class="border shadow-sm border-dashed">
 		<Card.Header class="pb-3">
 			<div class="flex items-center gap-2">

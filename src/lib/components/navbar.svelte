@@ -87,7 +87,7 @@
 
 	<!-- Navigation links -->
 	<nav class={cn('p-2 flex-1 overflow-y-auto overflow-x-hidden', isCollapsed && 'py-2 px-1')}>
-		{#each items as item}
+		{#each items as item (item.href)}
 			{@const isActive = page.url.pathname === item.href || (page.url.pathname.startsWith(item.href) && item.href !== '/')}
 			{@const Icon = item.icon}
 

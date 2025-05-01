@@ -11,7 +11,6 @@
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-	<!-- General Auth Settings -->
 	<Card.Root class="border shadow-sm">
 		<Card.Header class="pb-3">
 			<div class="flex items-center gap-2">
@@ -26,7 +25,6 @@
 		</Card.Header>
 		<Card.Content>
 			<div class="space-y-4">
-				<!-- Local Auth -->
 				<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
 					<div class="space-y-0.5">
 						<label for="localAuthSwitch" class="text-base font-medium">Local Authentication</label>
@@ -52,7 +50,6 @@
 		</Card.Content>
 	</Card.Root>
 
-	<!-- Session Settings -->
 	<div class="space-y-6">
 		<Card.Root class="border shadow-sm">
 			<Card.Header class="pb-3">

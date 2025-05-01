@@ -81,11 +81,12 @@ export async function checkAndUpdateContainers(): Promise<{
 			} else {
 				console.log(`Auto-update: Container ${container.name} (${containerId}) is up-to-date.`);
 			}
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error(`Auto-update error for container ${containerId}:`, error);
+			const msg = error instanceof Error ? error.message : String(error);
 			results.errors.push({
 				id: containerId,
-				error: error.message || 'Unknown error during auto-update'
+				error: msg
 			});
 			// Ensure the lock is released even on error
 			updatingContainers.delete(containerId);
@@ -141,11 +142,12 @@ export async function checkAndUpdateStacks(): Promise<{
 
 				updatingStacks.delete(stack.id);
 			}
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error(`Auto-update error for stack ${stack.id}:`, error);
+			const msg = error instanceof Error ? error.message : String(error);
 			results.errors.push({
 				id: stack.id,
-				error: error.message || 'Unknown error during auto-update'
+				error: msg
 			});
 			updatingStacks.delete(stack.id);
 		}
@@ -183,7 +185,7 @@ async function checkContainerImageUpdate(container: ServiceContainer): Promise<b
 
 		// Compare image IDs - if different, update is available
 		return freshImage.id !== container.imageId;
-	} catch (error) {
+	} catch (error: unknown) {
 		console.error(`Error checking for image update for ${container.name}:`, error);
 		return false;
 	}
@@ -267,15 +269,15 @@ async function checkStackImagesUpdate(stack: Stack): Promise<boolean> {
 				} else {
 					console.log(`Image ${imageRef} is up-to-date.`);
 				}
-			} catch (error: any) {
-				console.error(`Error checking/pulling image update for ${imageRef} in stack ${stack.name}:`, error.message || error);
-				// Continue checking other images even if one fails
+			} catch (error: unknown) {
+				console.error(`Error checking/pulling image update for ${imageRef} in stack ${stack.name}:`, error);
+				// continue to next image
 			}
 		} // End of loop through imageRefs
 
 		return updateFound; // Return true only if at least one update was found
-	} catch (error: any) {
-		console.error(`Error processing stack updates for ${stack.name}:`, error.message || error);
+	} catch (error: unknown) {
+		console.error(`Error processing stack updates for ${stack.name}:`, error);
 		return false; // Return false if there's an error processing the stack itself
 	}
 }

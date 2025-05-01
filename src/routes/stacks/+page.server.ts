@@ -1,16 +1,10 @@
-import { error } from '@sveltejs/kit';
 import { loadComposeStacks, discoverExternalStacks } from '$lib/services/docker/stack-service';
+import type { PageServerLoad } from './$types';
 
-/** @type {import('./$types').PageServerLoad} */
-export async function load() {
+export const load: PageServerLoad = async () => {
 	try {
-		// Get managed stacks
 		const managedStacks = await loadComposeStacks();
-
-		// Discover external stacks
 		const externalStacks = await discoverExternalStacks();
-
-		// Combine both, ensuring no duplicates by ID
 		const combinedStacks = [...managedStacks];
 
 		for (const externalStack of externalStacks) {
@@ -22,7 +16,7 @@ export async function load() {
 		return {
 			stacks: combinedStacks
 		};
-	} catch (err) {
+	} catch (err: unknown) {
 		console.error('Failed to load stacks:', err);
 		const errorMessage = err instanceof Error ? err.message : String(err);
 		return {
@@ -30,4 +24,4 @@ export async function load() {
 			error: 'Failed to load Docker Compose stacks: ' + errorMessage
 		};
 	}
-}
+};

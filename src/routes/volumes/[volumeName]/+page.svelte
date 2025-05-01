@@ -174,7 +174,7 @@
 						<Card.Title class="flex items-center gap-2"><Tag class="h-5 w-5 text-muted-foreground" /> Labels</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
-						{#each Object.entries(volume.Labels) as [key, value]}
+						{#each Object.entries(volume.Labels) as [key, value] (key)}
 							<div class="text-sm flex flex-col sm:flex-row sm:items-center">
 								<span class="font-medium text-muted-foreground w-full sm:w-1/4 break-all">{key}:</span>
 								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-3/4">{value}</span>
@@ -193,7 +193,7 @@
 						<Card.Title>Driver Options</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
-						{#each Object.entries(volume.Options) as [key, value]}
+						{#each Object.entries(volume.Options) as [key, value] (key)}
 							<div class="text-sm flex flex-col sm:flex-row sm:items-center">
 								<span class="font-medium text-muted-foreground w-full sm:w-1/4 break-all">{key}:</span>
 								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-3/4">{value}</span>

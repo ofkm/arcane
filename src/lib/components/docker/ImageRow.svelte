@@ -8,7 +8,6 @@
 			repo: string;
 			tag: string;
 			size: string;
-			created?: string;
 		};
 	}
 

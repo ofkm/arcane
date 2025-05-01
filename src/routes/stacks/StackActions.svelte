@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Play, CircleStop, Trash2, Settings, RefreshCw, Loader2, AlertTriangle, Import } from '@lucide/svelte';
+	import type { ActionResult } from '@sveltejs/kit';
 
 	interface Props {
 		id: string;
@@ -17,46 +18,37 @@
 
 	const isRunning = status === 'running' || status === 'partially running';
 
-	// Loading states
 	let isStarting = $state(false);
 	let isStopping = $state(false);
 	let isRestarting = $state(false);
 	let isRemoving = $state(false);
 	let isImporting = $state(false);
 
-	// Delete dialog state
 	let deleteDialogOpen = $state(false);
 
-	// Check if we're on the stack detail page or the stacks list page
 	let isStackDetailPage = $derived($page.route.id === '/stacks/[stackId]');
 
-	// Handle form submission with proper redirection
 	const handleDeleteSubmit = () => {
 		isRemoving = true;
 		deleteDialogOpen = false;
 
-		return async ({ result }: { result: { type: string; data?: { redirectTo?: string } } }) => {
+		return async ({ result }: { result: ActionResult }) => {
 			if (result.type === 'success') {
 				if (isStackDetailPage && result.data?.redirectTo) {
-					// Only redirect if we're on the stack detail page
 					goto(result.data.redirectTo);
 				} else {
-					// Otherwise just refresh the data
 					await invalidateAll();
 				}
 			} else {
-				// Handle errors
 				console.error('Error removing stack:', result);
-				// Show error message
 			}
 			isRemoving = false;
 		};
 	};
 
-	// Handle import functionality
 	const handleImport = () => {
 		isImporting = true;
-		return async ({}) => {
+		return async () => {
 			await invalidateAll();
 			isImporting = false;
 		};
@@ -65,7 +57,6 @@
 
 <div class="flex items-center gap-2 justify-end">
 	{#if isExternal}
-		<!-- Show import button for external stacks -->
 		<form method="POST" action="/api/stacks/import" use:enhance={handleImport}>
 			<input type="hidden" name="stackId" value={id} />
 			<input type="hidden" name="stackName" value={name} />
@@ -80,14 +71,13 @@
 			</Button>
 		</form>
 	{:else}
-		<!-- Show regular action buttons for managed stacks -->
 		{#if isRunning}
 			<form
 				method="POST"
 				action="/stacks/{id}?/stop"
 				use:enhance={() => {
 					isStopping = true;
-					return async ({ result }) => {
+					return async () => {
 						await invalidateAll();
 						isStopping = false;
 					};
@@ -107,7 +97,7 @@
 				action="/stacks/{id}?/start"
 				use:enhance={() => {
 					isStarting = true;
-					return async ({ result }) => {
+					return async () => {
 						await invalidateAll();
 						isStarting = false;
 					};
@@ -128,7 +118,7 @@
 			action="/stacks/{id}?/restart"
 			use:enhance={() => {
 				isRestarting = true;
-				return async ({ result }) => {
+				return async () => {
 					await invalidateAll();
 					isRestarting = false;
 				};
@@ -154,7 +144,6 @@
 		</Button>
 	{/if}
 
-	<!-- Delete confirmation dialog -->
 	{#if !isExternal}
 		<Dialog.Root bind:open={deleteDialogOpen}>
 			<Dialog.Content class="sm:max-w-[425px]">

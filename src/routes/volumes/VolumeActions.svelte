@@ -36,9 +36,10 @@
 
 			toast.success(`Volume "${name}" deleted successfully.`);
 			await invalidateAll();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error(`Failed to delete volume "${name}":`, err);
-			toast.error(`Failed to delete volume: ${err.message}`);
+			const message = err instanceof Error ? err.message : String(err);
+			toast.error(`Failed to delete volume: ${message}`);
 		} finally {
 			isDeleting = false;
 		}
@@ -48,7 +49,7 @@
 	const removeDescription = $derived(`Are you sure you want to delete volume "${name}"? This action cannot be undone.`);
 </script>
 
-<ConfirmDialog bind:open={showRemoveConfirm} itemType={'volume'} isRunning={inUse} title="Confirm Volume Removal" description={removeDescription} confirmLabel="Delete" variant="destructive" onConfirm={handleRemoveConfirm} />
+<ConfirmDialog bind:open={showRemoveConfirm} itemType="volume" isRunning={inUse} title="Confirm Volume Removal" description={removeDescription} confirmLabel="Delete" variant="destructive" onConfirm={handleRemoveConfirm} />
 
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>

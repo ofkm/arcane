@@ -8,9 +8,8 @@ export const load: PageServerLoad = async () => {
 
 	const csrf = crypto.randomUUID();
 
-	// Remove sensitive data before sending to client
 	const sanitizedUsers = users.map((user) => {
-		const { passwordHash, ...rest } = user;
+		const { passwordHash: _passwordHash, ...rest } = user;
 		return rest;
 	});
 

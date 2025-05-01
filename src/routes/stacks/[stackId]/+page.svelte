@@ -17,7 +17,7 @@
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 
-	let { data }: { data: PageData; form: ActionData } = $props();
+	let { data }: { data: PageData } = $props();
 	let { stack, editorState } = $derived(data);
 
 	let depoloying = $state(false);
@@ -75,9 +75,10 @@
 			originalAutoUpdate = editorState.autoUpdate;
 
 			await invalidateAll();
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error('Error saving stack:', error);
-			toast.error(`Failed to update stack: ${error.message}`);
+			const message = error instanceof Error ? error.message : String(error);
+			toast.error(`Failed to update stack: ${message}`);
 		} finally {
 			saving = false;
 		}
@@ -246,7 +247,7 @@
 			<Card.Content>
 				<div class="space-y-2">
 					{#if stack.services && stack.services.length > 0}
-						{#each stack.services as service}
+						{#each stack.services as service (service.id || service.name)}
 							{@const status = service.state?.Status || 'unknown'}
 							{@const variant = statusVariantMap[status.toLowerCase()] || 'gray'}
 							<a href={service.id ? `/containers/${service.id}` : undefined} class={`flex items-center justify-between p-3 border rounded-md ${service.id ? 'hover:bg-muted/50 transition-colors cursor-pointer' : 'cursor-default'}`}>

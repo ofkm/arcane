@@ -3,6 +3,7 @@
 	import { Play, StopCircle, RotateCcw, Download, Trash2, Loader2, RefreshCcwDot } from '@lucide/svelte';
 	import ConfirmDialog from './confirm-dialog.svelte';
 	import { invalidateAll } from '$app/navigation';
+	import type { ApiResponse } from '$lib/types/api-response.type';
 	import { toast } from 'svelte-sonner';
 
 	type TargetType = 'container' | 'stack';
@@ -70,7 +71,7 @@
 		try {
 			const response = await fetch(endpoint, { method });
 			// Gracefully fallback when there is no JSON body
-			let result: any = {};
+			let result: ApiResponse = {};
 			if (response.headers.get('content-type')?.includes('application/json')) {
 				result = await response.json();
 			}
@@ -80,9 +81,10 @@
 			toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} ${action}ed successfully`);
 			await invalidateAll();
 			onActionComplete();
-		} catch (error: any) {
+		} catch (error: Error | unknown) {
 			console.error(`Error ${action}ing ${type}:`, error);
-			toast.error(`Failed to ${action} ${type}: ${error.message}`);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			toast.error(`Failed to ${action} ${type}: ${errorMessage}`);
 		} finally {
 			loadingStateSetter(false);
 		}

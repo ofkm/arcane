@@ -14,9 +14,6 @@ try {
 	process.exit(1);
 }
 
-// Whitelisted paths that don't require auth
-const publicPaths = ['/auth/login', '/img'];
-
 // Protected paths that require specific permissions
 const protectedPathPermissions: Record<string, string[]> = {
 	'/containers': ['containers:view'],
@@ -30,7 +27,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const path = url.pathname;
 
 	// Define paths that don't require authentication
-	const publicPaths = ['/auth/login', '/auth/callback', '/api/health', '/assets'];
+	const publicPaths = ['/auth/login', '/img'];
 	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
 
 	// Always allow access to public paths

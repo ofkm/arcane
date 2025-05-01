@@ -1,8 +1,8 @@
 import { getDockerClient, dockerHost } from './core';
 import type { ContainerConfig, ContainerCreate } from '$lib/types/docker';
 import type { ServiceContainer } from '$lib/types/docker/container.type';
-// Import custom errors
-import { NotFoundError, ConflictError, DockerApiError, ContainerStateError } from '$lib/types/errors';
+// Import custom errors - remove unused ContainerStateError
+import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors';
 import type Docker from 'dockerode';
 
 /**
@@ -33,7 +33,7 @@ export async function listContainers(all = true): Promise<ServiceContainer[]> {
 				ports: c.Ports
 			})
 		);
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error('Docker Service: Error listing containers:', error);
 		throw new Error(`Failed to list Docker containers using host "${dockerHost}".`);
 	}
@@ -68,9 +68,9 @@ export async function getContainer(containerId: string) {
 			mounts: inspectData.Mounts,
 			labels: inspectData.Config.Labels
 		};
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error getting container ${containerId}:`, error);
-		if (error.statusCode === 404) {
+		if (error instanceof Error && 'statusCode' in error && (error as any).statusCode === 404) {
 			return null;
 		}
 		throw new Error(`Failed to get container details for ${containerId} using host "${dockerHost}".`);
@@ -88,9 +88,10 @@ export async function startContainer(containerId: string): Promise<void> {
 		const docker = getDockerClient();
 		const container = docker.getContainer(containerId);
 		await container.start();
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error starting container ${containerId}:`, error);
-		throw new Error(`Failed to start container ${containerId} using host "${dockerHost}". ${error.message || ''}`);
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		throw new Error(`Failed to start container ${containerId} using host "${dockerHost}". ${errorMessage}`);
 	}
 }
 
@@ -105,9 +106,10 @@ export async function stopContainer(containerId: string): Promise<void> {
 		const docker = getDockerClient();
 		const container = docker.getContainer(containerId);
 		await container.stop();
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error stopping container ${containerId}:`, error);
-		throw new Error(`Failed to stop container ${containerId} using host "${dockerHost}". ${error.message || ''}`);
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		throw new Error(`Failed to stop container ${containerId} using host "${dockerHost}". ${errorMessage}`);
 	}
 }
 
@@ -121,9 +123,10 @@ export async function restartContainer(containerId: string): Promise<void> {
 		const docker = getDockerClient();
 		const container = docker.getContainer(containerId);
 		await container.restart();
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error restarting container ${containerId}:`, error);
-		throw new Error(`Failed to restart container ${containerId} using host "${dockerHost}". ${error.message || ''}`);
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		throw new Error(`Failed to restart container ${containerId} using host "${dockerHost}". ${errorMessage}`);
 	}
 }
 
@@ -149,20 +152,28 @@ export async function removeContainer(containerId: string, force = false): Promi
 		await container.remove({ force });
 
 		console.log(`Docker Service: Container ${containerId} removed successfully (force=${force}).`);
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error removing container ${containerId} (force=${force}):`, error);
 
-		// Use custom error types for better handling in the API layer
-		if (error.statusCode === 404) {
-			throw new NotFoundError(`Container ${containerId} not found.`);
-		}
-		// 409 Conflict typically means trying to remove a running container without force
-		if (error.statusCode === 409) {
-			throw new ConflictError(`Cannot remove running container ${containerId}. Stop it first or use the force option.`);
+		// Type guard and handle custom error types
+		if (error instanceof Error && 'statusCode' in error) {
+			const dockerError = error as Error & { statusCode: number };
+
+			// Use custom error types for better handling in the API layer
+			if (dockerError.statusCode === 404) {
+				throw new NotFoundError(`Container ${containerId} not found.`);
+			}
+			// 409 Conflict typically means trying to remove a running container without force
+			if (dockerError.statusCode === 409) {
+				throw new ConflictError(`Cannot remove running container ${containerId}. Stop it first or use the force option.`);
+			}
+
+			// Throw a more specific Docker API error for other cases
+			throw new DockerApiError(`Failed to remove container ${containerId}: ${dockerError.message || 'Unknown Docker error'}`, dockerError.statusCode);
 		}
 
-		// Throw a more specific Docker API error for other cases
-		throw new DockerApiError(`Failed to remove container ${containerId}: ${error.message || 'Unknown Docker error'}`, error.statusCode);
+		// Generic error case
+		throw new DockerApiError(`Failed to remove container ${containerId}: ${error instanceof Error ? error.message : String(error)}`, 500);
 	}
 }
 
@@ -218,9 +229,10 @@ export async function getContainerLogs(
 		}
 
 		return logString;
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error getting logs for container ${containerId}:`, error);
-		throw new Error(`Failed to get logs for container ${containerId} using host "${dockerHost}". ${error.message || ''}`);
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		throw new Error(`Failed to get logs for container ${containerId} using host "${dockerHost}". ${errorMessage}`);
 	}
 }
 
@@ -268,7 +280,7 @@ export async function createContainer(config: ContainerConfig) {
 
 		// Set up port bindings if provided
 		if (config.ports?.length) {
-			const exposedPorts: Record<string, {}> = {};
+			const exposedPorts: Record<string, Record<string, never>> = {};
 			const portBindings: Record<string, Array<{ HostPort: string }>> = {};
 			for (const p of config.ports) {
 				const key = `${p.containerPort}/tcp`;
@@ -324,19 +336,26 @@ export async function createContainer(config: ContainerConfig) {
 			status: containerInfo.State.Running ? 'running' : 'stopped',
 			created: containerInfo.Created
 		};
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error('Error creating container:', error);
-		if (error.message && error.message.includes('IPAMConfig')) {
-			throw new Error(`Failed to create container: Invalid IP address configuration for network "${config.network}". ${error.message}`);
+
+		if (error instanceof Error) {
+			const errorMessage = error.message || '';
+
+			if (errorMessage.includes('IPAMConfig')) {
+				throw new Error(`Failed to create container: Invalid IP address configuration for network "${config.network}". ${errorMessage}`);
+			}
+			// Add more specific error handling for resource limits if needed
+			if (errorMessage.includes('NanoCpus')) {
+				throw new Error(`Invalid CPU limit specified: ${errorMessage}`);
+			}
+			if (errorMessage.includes('Memory')) {
+				throw new Error(`Invalid Memory limit specified: ${errorMessage}`);
+			}
+			throw new Error(`Failed to create container with image "${config.image}": ${errorMessage}`);
 		}
-		// Add more specific error handling for resource limits if needed
-		if (error.message && error.message.includes('NanoCpus')) {
-			throw new Error(`Invalid CPU limit specified: ${error.message}`);
-		}
-		if (error.message && error.message.includes('Memory')) {
-			throw new Error(`Invalid Memory limit specified: ${error.message}`);
-		}
-		throw new Error(`Failed to create container with image "${config.image}": ${error.message}`);
+
+		throw new Error(`Failed to create container with image "${config.image}": Unknown error`);
 	}
 }
 
@@ -355,8 +374,8 @@ export async function getContainerStats(containerId: string): Promise<Docker.Con
 		// Check if container exists first (inspect is a good way)
 		try {
 			await container.inspect();
-		} catch (inspectError: any) {
-			if (inspectError.statusCode === 404) {
+		} catch (inspectError: unknown) {
+			if (inspectError instanceof Error && 'statusCode' in inspectError && (inspectError as any).statusCode === 404) {
 				throw new NotFoundError(`Container ${containerId} not found when trying to get stats.`);
 			}
 			// Rethrow other inspect errors
@@ -375,16 +394,20 @@ export async function getContainerStats(containerId: string): Promise<Docker.Con
 		}
 
 		return stats as Docker.ContainerStats;
-	} catch (error: any) {
+	} catch (error: unknown) {
 		// Handle cases where stats fails because the container isn't running (often a 404 or 500 from Docker API)
-		if (error.statusCode === 404) {
-			// Could be container not found OR container not running (Docker API might return 404 for stats on stopped container)
-			console.warn(`Docker Service: Container ${containerId} not found or not running when fetching stats.`);
-			return null; // Return null if not running or not found
-		}
-		if (error.statusCode === 500 && error.message?.includes('is not running')) {
-			console.warn(`Docker Service: Container ${containerId} is not running when fetching stats.`);
-			return null; // Return null if not running
+		if (error instanceof Error && 'statusCode' in error) {
+			const dockerError = error as Error & { statusCode: number; message?: string };
+
+			if (dockerError.statusCode === 404) {
+				// Could be container not found OR container not running (Docker API might return 404 for stats on stopped container)
+				console.warn(`Docker Service: Container ${containerId} not found or not running when fetching stats.`);
+				return null; // Return null if not running or not found
+			}
+			if (dockerError.statusCode === 500 && dockerError.message?.includes('is not running')) {
+				console.warn(`Docker Service: Container ${containerId} is not running when fetching stats.`);
+				return null; // Return null if not running
+			}
 		}
 
 		// Handle specific NotFoundError from the inspect check
@@ -394,7 +417,9 @@ export async function getContainerStats(containerId: string): Promise<Docker.Con
 
 		console.error(`Docker Service: Error getting stats for container ${containerId}:`, error);
 		// Throw a DockerApiError for unexpected issues
-		throw new DockerApiError(`Failed to get stats for container ${containerId}: ${error.message || 'Unknown Docker error'}`, error.statusCode);
+		const statusCode = error instanceof Error && 'statusCode' in error ? (error as any).statusCode : 500;
+		const message = error instanceof Error ? error.message : String(error);
+		throw new DockerApiError(`Failed to get stats for container ${containerId}: ${message || 'Unknown Docker error'}`, statusCode);
 	}
 }
 
@@ -467,10 +492,10 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 		try {
 			console.log(`Recreating container ${containerId}: Stopping...`);
 			await stopContainer(containerId);
-		} catch (stopError: any) {
+		} catch (stopError: unknown) {
 			// Ignore "already stopped" errors
-			if (stopError.statusCode !== 304 && stopError.statusCode !== 404) {
-				console.warn(`Could not stop container ${containerId} before removal: ${stopError.message}`);
+			if (stopError instanceof Error && 'statusCode' in stopError && (stopError as any).statusCode !== 304 && (stopError as any).statusCode !== 404) {
+				console.warn(`Could not stop container ${containerId} before removal: ${stopError instanceof Error ? stopError.message : 'Unknown error'}`);
 			}
 		}
 
@@ -497,8 +522,12 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 		}
 
 		return newServiceContainer;
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Failed to recreate container ${containerId}:`, error);
-		throw new DockerApiError(`Failed to recreate container ${originalContainer?.name || containerId}: ${error.message || 'Unknown error'}`, error.statusCode);
+
+		const statusCode = error instanceof Error && 'statusCode' in error ? (error as any).statusCode : 500;
+		const message = error instanceof Error ? error.message : String(error);
+
+		throw new DockerApiError(`Failed to recreate container ${originalContainer?.name || containerId}: ${message || 'Unknown error'}`, statusCode);
 	}
 }

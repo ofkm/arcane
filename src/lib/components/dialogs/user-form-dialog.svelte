@@ -9,11 +9,10 @@
 	import type { User } from '$lib/types/user.type';
 	import { preventDefault } from '$lib/utils/form.utils';
 
-	// Props
 	let {
 		open = $bindable(false),
-		userToEdit = $bindable<User | null>(null), // User object for editing, null for creating
-		roles = [] // Pass available roles from parent
+		userToEdit = $bindable<User | null>(null),
+		roles = []
 	}: {
 		open?: boolean;
 		userToEdit?: User | null;
@@ -22,39 +21,34 @@
 
 	const dispatch = createEventDispatcher();
 
-	// Form state
 	let username = $state('');
-	let password = $state(''); // Only for creation or password change
+	let password = $state('');
 	let displayName = $state('');
 	let email = $state('');
 	let selectedRole = $state('user');
 	let isSaving = $state(false);
 	let error = $state<string | null>(null);
 
-	// Determine mode and title
 	let isEditMode = $derived(!!userToEdit);
 	let dialogTitle = $derived(isEditMode ? 'Edit User' : 'Create User');
 	let submitButtonText = $derived(isEditMode ? 'Save Changes' : 'Create User');
 	let SubmitIcon = $derived(isEditMode ? Save : UserPlus);
 
-	// Initialize form when dialog opens or userToEdit changes
 	$effect(() => {
 		if (open) {
-			error = null; // Clear errors on open
+			error = null;
 			if (userToEdit) {
-				// Edit mode
 				username = userToEdit.username;
-				password = ''; // Clear password field for edit
+				password = '';
 				displayName = userToEdit.displayName || '';
 				email = userToEdit.email || '';
-				selectedRole = userToEdit.roles?.[0] || 'user'; // Assuming single role for now
+				selectedRole = userToEdit.roles?.[0] || 'user';
 			} else {
-				// Create mode
 				username = '';
 				password = '';
 				displayName = '';
 				email = '';
-				selectedRole = 'user'; // Default role
+				selectedRole = 'user';
 			}
 		}
 	});
@@ -71,29 +65,22 @@
 			roles: [selectedRole]
 		};
 
-		// Include password only if creating or if it's entered in edit mode
 		if (!isEditMode || (isEditMode && password)) {
 			userData.password = password;
 		}
 
 		try {
-			// Dispatch event with user data and mode
 			dispatch('submit', { user: userData, isEditMode, userId: userToEdit?.id });
-			// Parent component will handle API call and closing dialog on success
-		} catch (err: any) {
-			error = err.message || 'An unexpected error occurred.';
-		} finally {
-			// Let parent handle isSaving state based on API response
-			// isSaving = false; // Parent should reset this
+		} catch (err: unknown) {
+			const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
+			error = errorMessage;
 		}
 	}
 
-	// Function to be called by parent on successful save
 	export function resetSavingState() {
 		isSaving = false;
 	}
 
-	// Function to be called by parent on error
 	export function setSaveError(errorMessage: string) {
 		error = errorMessage;
 		isSaving = false;
@@ -134,7 +121,7 @@
 					</Select.Trigger>
 					<Select.Content>
 						<Select.Group>
-							{#each roles as role}
+							{#each roles as role (role.id)}
 								<Select.Item value={role.id}>{role.name}</Select.Item>
 							{/each}
 						</Select.Group>

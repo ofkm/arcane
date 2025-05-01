@@ -16,7 +16,6 @@
 	let { error } = $state(data);
 	let volumes = $state(data.volumes);
 	let selectedIds = $state<string[]>([]);
-	let isRefreshing = $state(false);
 	let isCreateDialogOpen = $state(false);
 	let isCreatingVolume = $state(false);
 	let isDeletingSelected = $state(false);
@@ -52,21 +51,23 @@
 			isCreateDialogOpen = false;
 
 			await refreshData();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('Failed to create volume:', err);
-			toast.error(`Failed to create volume: ${err.message}`);
+			const message = err instanceof Error ? err.message : String(err);
+			toast.error(`Failed to create volume: ${message}`);
 		} finally {
 			isCreatingVolume = false;
 		}
 	}
 
 	async function refreshData() {
-		isRefreshing = true;
 		try {
 			await invalidateAll();
 			volumes = data.volumes;
-		} finally {
-			isRefreshing = false;
+		} catch (err: unknown) {
+			console.error('Failed to refresh volume data:', err);
+			const message = err instanceof Error ? err.message : String(err);
+			toast.error(`Failed to refresh volumes: ${message}`);
 		}
 	}
 
@@ -88,9 +89,10 @@
 					throw new Error(result.error || `HTTP error! status: ${response.status}`);
 				}
 				return { name, success: true };
-			} catch (err: any) {
+			} catch (err: unknown) {
 				console.error(`Failed to delete volume "${name}":`, err);
-				return { name, success: false, error: err.message };
+				const message = err instanceof Error ? err.message : String(err);
+				return { name, success: false, error: message };
 			}
 		});
 
@@ -132,9 +134,7 @@
 			<h1 class="text-3xl font-bold tracking-tight">Volumes</h1>
 			<p class="text-sm text-muted-foreground mt-1">Manage persistent data storage for containers</p>
 		</div>
-		<div class="flex gap-2">
-			<!-- put buttons here -->
-		</div>
+		<div class="flex gap-2"></div>
 	</div>
 
 	{#if error}

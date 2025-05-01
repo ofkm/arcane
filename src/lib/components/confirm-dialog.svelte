@@ -14,7 +14,7 @@
 		cancelLabel = $bindable('Cancel'),
 		variant = $bindable<ButtonVariant>('destructive' as ButtonVariant),
 		open = $bindable(false),
-		onConfirm = $bindable((force?: boolean) => {}),
+		onConfirm = $bindable((_force?: boolean) => {}),
 		itemType = $bindable<'container' | 'stack' | string | undefined>(undefined),
 		isRunning = $bindable<boolean | undefined>(undefined)
 	} = $props();

@@ -41,9 +41,10 @@
 			toast.success(`Network "${name}" deleted successfully.`);
 			isConfirmDeleteDialogOpen = false; // Close dialog
 			await invalidateAll(); // Refresh the list on the parent page
-		} catch (err: any) {
+		} catch (err) {
 			console.error(`Failed to delete network ${id}:`, err);
-			toast.error(`Failed to delete network "${name}": ${err.message}`);
+			const message = err instanceof Error ? err.message : String(err); // Get message safely
+			toast.error(`Failed to delete network "${name}": ${message}`);
 			// Keep dialog open on error? Optional.
 			// isConfirmDeleteDialogOpen = false;
 		} finally {

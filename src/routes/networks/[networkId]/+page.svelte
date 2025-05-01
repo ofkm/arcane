@@ -57,7 +57,7 @@
 </script>
 
 <!-- Confirmation Dialog for Remove -->
-<ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Network Removal" description={`Are you sure you want to remove network "${network?.Name}" (${shortId})? This action cannot be undone. Ensure no containers are connected.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType={'network'} isRunning={inUse} />
+<ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Network Removal" description={`Are you sure you want to remove network "${network?.Name}" (${shortId})? This action cannot be undone. Ensure no containers are connected.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType="network" isRunning={inUse} />
 
 <div class="space-y-6 pb-8">
 	<!-- Breadcrumb Navigation -->
@@ -236,7 +236,7 @@
 						<Card.Title>IPAM Configuration</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-4">
-						{#each network.IPAM.Config as config, i}
+						{#each network.IPAM.Config as config, i (i)}
 							<div class="space-y-1">
 								{#if config.Subnet}
 									<p class="text-sm"><span class="font-medium text-muted-foreground">Subnet:</span> <span class="font-mono text-xs">{config.Subnet}</span></p>
@@ -250,7 +250,7 @@
 								{#if config.AuxiliaryAddresses && Object.keys(config.AuxiliaryAddresses).length > 0}
 									<p class="text-sm font-medium text-muted-foreground mt-1">Auxiliary Addresses:</p>
 									<ul class="list-disc list-inside pl-4">
-										{#each Object.entries(config.AuxiliaryAddresses) as [name, addr]}
+										{#each Object.entries(config.AuxiliaryAddresses) as [name, addr] (name)}
 											<li class="text-xs font-mono">{name}: {addr}</li>
 										{/each}
 									</ul>
@@ -265,7 +265,7 @@
 						{/if}
 						{#if network.IPAM.Options && Object.keys(network.IPAM.Options).length > 0}
 							<p class="text-sm font-medium text-muted-foreground mt-2">IPAM Options:</p>
-							{#each Object.entries(network.IPAM.Options) as [key, value]}
+							{#each Object.entries(network.IPAM.Options) as [key, value] (key)}
 								<p class="text-xs font-mono pl-4">{key}: {value}</p>
 							{/each}
 						{/if}
@@ -280,7 +280,7 @@
 						<Card.Title class="flex items-center gap-2"><Container class="h-5 w-5 text-muted-foreground" /> Connected Containers ({connectedContainers.length})</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
-						{#each connectedContainers as container}
+						{#each connectedContainers as container (container.Name)}
 							<div class="text-sm flex flex-col sm:flex-row sm:items-center">
 								<span class="font-medium w-full sm:w-1/3 break-all">
 									<a href="/containers/{container.Name}" class="hover:underline text-primary">{container.Name}</a>
@@ -304,7 +304,7 @@
 						<Card.Title class="flex items-center gap-2"><Tag class="h-5 w-5 text-muted-foreground" /> Labels</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
-						{#each Object.entries(network.Labels) as [key, value]}
+						{#each Object.entries(network.Labels) as [key, value] (key)}
 							<div class="text-sm flex flex-col sm:flex-row sm:items-center">
 								<span class="font-medium text-muted-foreground w-full sm:w-1/4 break-all">{key}:</span>
 								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-3/4">{value}</span>
@@ -324,7 +324,7 @@
 						<Card.Title>Options</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
-						{#each Object.entries(network.Options) as [key, value]}
+						{#each Object.entries(network.Options) as [key, value] (key)}
 							<div class="text-sm flex flex-col sm:flex-row sm:items-center">
 								<span class="font-medium text-muted-foreground w-full sm:w-1/4 break-all">{key}:</span>
 								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-3/4">{value}</span>
