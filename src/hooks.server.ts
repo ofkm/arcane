@@ -29,25 +29,19 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const { cookies, url } = event;
 	const path = url.pathname;
 
-	// Define public paths
+	// Define paths that don't require authentication
 	const publicPaths = ['/auth/login', '/auth/callback', '/api/health', '/assets'];
-
-	// Check if the path is public
 	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
 
+	// Always allow access to public paths
 	if (isPublicPath) {
 		return await resolve(event);
 	}
 
-	// Get session from cookie
+	// For all other paths, we need authentication
 	const sessionId = cookies.get('session_id');
-
 	if (!sessionId) {
-		// No session found, redirect to login
-		if (!isPublicPath) {
-			throw redirect(302, `/auth/login?redirect=${encodeURIComponent(path)}`);
-		}
-		return await resolve(event);
+		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(path)}`);
 	}
 
 	// Cache the session in event.locals
@@ -77,12 +71,27 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// Get settings
 	const settings = await getSettings();
-	const isApiRoute = (path: string) => path.startsWith('/api/');
 
-	// Check if onboarding is needed - only after successful authentication
-	if (!path.startsWith('/onboarding') && !isApiRoute && !settings.onboarding?.completed) {
-		// User is authenticated and onboarding is not complete
+	// Helper functions to determine path types
+	const isOnboardingPath = path.startsWith('/onboarding');
+	const isApiRoute = path.startsWith('/api/');
+
+	// Critical check: For ANY non-onboarding path, redirect to onboarding if not completed
+	// This is the key change to prevent bypassing onboarding
+	if (!isOnboardingPath && !isApiRoute && !settings?.onboarding?.completed) {
 		throw redirect(302, '/onboarding/welcome');
+	}
+
+	// During onboarding, only allow API calls needed for onboarding
+	// Optional enhancement to allow specific API calls during onboarding
+	if (isApiRoute && !settings?.onboarding?.completed) {
+		// Only allow these specific API endpoints during onboarding
+		const allowedApiDuringOnboarding = ['/api/settings', '/api/users/password'];
+		const isAllowedApi = allowedApiDuringOnboarding.some((api) => path.startsWith(api));
+
+		if (!isAllowedApi) {
+			throw redirect(302, '/onboarding/welcome');
+		}
 	}
 
 	// Continue with permission checks as before
