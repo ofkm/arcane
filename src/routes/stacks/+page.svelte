@@ -259,8 +259,8 @@
 						{@const stateVariant = statusVariantMap[item.status.toLowerCase()]}
 						<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.id}/">{item.name}</a></Table.Cell>
 						<Table.Cell>{item.serviceCount}</Table.Cell>
-						<Table.Cell><StatusBadge variant={item.isExternal ? 'amber' : 'green'} text={item.isExternal ? 'External' : 'Managed'} /></Table.Cell>
 						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} /></Table.Cell>
+						<Table.Cell><StatusBadge variant={item.isExternal ? 'amber' : 'green'} text={item.isExternal ? 'External' : 'Managed'} /></Table.Cell>
 						<Table.Cell>{item.createdAt}</Table.Cell>
 						<Table.Cell>
 							{#if item.isExternal}
