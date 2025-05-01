@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PageData, ActionData } from './$types';
+	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { ArrowLeft, Loader2, AlertCircle, Save, FileStack, Layers, ArrowRight } from '@lucide/svelte';
@@ -16,6 +16,10 @@
 	import { enhance } from '$app/forms';
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
 	import { Switch } from '$lib/components/ui/switch/index.js';
+	import { tryCatch } from '$lib/utils/try-catch';
+	import StackAPIService from '$lib/services/api/stack-api-service';
+
+	const stackApi = new StackAPIService();
 
 	let { data }: { data: PageData } = $props();
 	let { stack, editorState } = $derived(data);
@@ -46,42 +50,23 @@
 		if (!stack || !hasChanges) return;
 
 		saving = true;
-		console.log('Saving stack via API...');
 
-		try {
-			const response = await fetch(`/api/stacks/${stack.id}`, {
-				method: 'PATCH',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					name,
-					composeContent,
-					autoUpdate: editorState.autoUpdate
-				})
-			});
-
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error || `HTTP error! status: ${response.status}`);
-			}
-
-			console.log('Stack save successful:', result);
-			toast.success('Stack updated successfully!');
-
-			originalName = name;
-			originalComposeContent = composeContent;
-			originalAutoUpdate = editorState.autoUpdate;
-
-			await invalidateAll();
-		} catch (error: unknown) {
-			console.error('Error saving stack:', error);
-			const message = error instanceof Error ? error.message : String(error);
-			toast.error(`Failed to update stack: ${message}`);
-		} finally {
+		const result = await tryCatch(stackApi.save(stack.id, name, composeContent, editorState.autoUpdate));
+		if (result.error) {
 			saving = false;
+			console.error(`Failed to start Stack ${stack.id}:`, result.error);
+			toast.error(`Failed to start Stack: ${result.error.message}`);
 		}
+
+		originalName = name;
+		originalComposeContent = composeContent;
+		originalAutoUpdate = editorState.autoUpdate;
+
+		await invalidateAll();
+
+		console.log('Stack save successful:', result);
+		toast.success('Stack updated successfully!');
+		saving = false;
 	}
 </script>
 

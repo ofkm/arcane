@@ -8,9 +8,8 @@
 	import type { EditorView } from 'codemirror';
 
 	// Make value bindable
-	let { value = $bindable(''), height = '400px', placeholder = 'Enter YAML content', readOnly = false } = $props();
+	let { value = $bindable(''), placeholder = 'Enter YAML content', readOnly = false } = $props();
 
-	// Reference to the CodeMirror instance (for debugging if needed)
 	let editorView: EditorView;
 
 	// YAML linting function
