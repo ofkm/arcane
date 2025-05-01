@@ -1,24 +1,20 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, Loader2, AlertCircle, Save, FileStack } from '@lucide/svelte';
+	import { ArrowLeft, Loader2, Save, FileStack } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
-	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
+	import StackAPIService from '$lib/services/api/stack-api-service';
+	import { preventDefault } from '$lib/utils/form.utils';
+	import { tryCatch } from '$lib/utils/try-catch';
+	import { handleApiReponse } from '$lib/utils/api.util';
 
+	const stackApi = new StackAPIService();
 	let saving = $state(false);
-	let apiError = $state<string | null>(null);
-
-	function preventDefault(fn: (event: Event) => void) {
-		return function (this: unknown, event: Event) {
-			event.preventDefault();
-			fn.call(this, event);
-		};
-	}
 
 	const defaultComposeTemplate = `services:
   nginx:
@@ -40,34 +36,17 @@ volumes:
 
 	async function handleSubmit() {
 		saving = true;
-		apiError = null;
 
-		try {
-			const response = await fetch('/api/stacks/create', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ name, composeContent })
-			});
-
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.message || `HTTP error! status: ${response.status}`);
+		handleApiReponse(
+			await tryCatch(stackApi.create(name, composeContent)),
+			'Failed to Create Stack',
+			(value) => (saving = value),
+			async (data) => {
+				toast.success(`Stack "${data.stack.name}" created.`);
+				await invalidateAll();
+				goto(`/stacks/${data.stack.id}`);
 			}
-
-			toast.success(result.message || `Stack "${result.stack.name}" created.`);
-			await invalidateAll();
-			goto(`/stacks/${result.stack.id}`);
-		} catch (err: unknown) {
-			console.error('Failed to create stack:', err);
-			const message = err instanceof Error ? err.message : 'An unknown error occurred.';
-			apiError = message;
-			toast.error(`Failed to create stack: ${apiError}`);
-		} finally {
-			saving = false;
-		}
+		);
 	}
 </script>
 
@@ -93,14 +72,6 @@ volumes:
 			<h1 class="text-2xl font-bold tracking-tight mt-2">Create New Stack</h1>
 		</div>
 	</div>
-
-	{#if apiError}
-		<Alert.Root variant="destructive">
-			<AlertCircle class="h-4 w-4 mr-2" />
-			<Alert.Title>Failed to Create Stack</Alert.Title>
-			<Alert.Description>{apiError}</Alert.Description>
-		</Alert.Root>
-	{/if}
 
 	<form class="space-y-6" onsubmit={preventDefault(handleSubmit)}>
 		<Card.Root class="border shadow-sm">

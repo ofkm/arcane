@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Plus, AlertCircle, Layers, RefreshCw, Upload, FileStack, Loader2, Play, RotateCcw, StopCircle, Trash2, Ellipsis, Pen, Import } from '@lucide/svelte';
+	import { Plus, AlertCircle, Layers, Upload, FileStack, Loader2, Play, RotateCcw, StopCircle, Trash2, Ellipsis, Pen, Import } from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import * as Table from '$lib/components/ui/table';
@@ -15,6 +15,8 @@
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StackAPIService from '$lib/services/api/stack-api-service';
+	import { handleApiReponse } from '$lib/utils/api.util';
+	import type { StackActions } from '$lib/types/actions.type';
 
 	let { data }: { data: PageData } = $props();
 	let stacks = $state(data.stacks);
@@ -33,7 +35,6 @@
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 
 	const stackApi = new StackAPIService();
-	type StackActions = 'start' | 'stop' | 'restart' | 'redeploy' | 'import' | 'destroy' | 'pull';
 
 	const totalStacks = $derived(stacks?.length || 0);
 	const runningStacks = $derived(stacks?.filter((s) => s.status === 'running').length || 0);
@@ -41,63 +42,57 @@
 
 	async function performStackAction(action: StackActions, id: string) {
 		isLoading[action] = true;
-		let result;
 
 		if (action === 'start') {
-			result = await tryCatch(stackApi.start(id));
-			if (result.error) {
-				console.error(`Failed to start Stack ${id}:`, result.error);
-				toast.error(`Failed to start Stack: ${result.error.message}`);
-				isLoading['start'] = false;
-				return;
-			}
-			toast.success('Stack started successfully.');
-			await invalidateAll();
-			isLoading['start'] = false;
+			handleApiReponse(
+				await tryCatch(stackApi.start(id)),
+				'Failed to Start Stack',
+				(value) => (isLoading.start = value),
+				async () => {
+					toast.success('Stack Started Successfully.');
+					await invalidateAll();
+				}
+			);
 		} else if (action === 'stop') {
-			result = await tryCatch(stackApi.stop(id));
-			if (result.error) {
-				console.error(`Failed to stop Stack ${id}:`, result.error);
-				toast.error(`Failed to stop Stack: ${result.error.message}`);
-				isLoading['stop'] = false;
-				return;
-			}
-			toast.success('Stack stopped successfully.');
-			await invalidateAll();
-			isLoading['stop'] = false;
+			handleApiReponse(
+				await tryCatch(stackApi.stop(id)),
+				'Failed to Stop Stack',
+				(value) => (isLoading.stop = value),
+				async () => {
+					toast.success('Stack Stopped Successfully.');
+					await invalidateAll();
+				}
+			);
 		} else if (action === 'restart') {
-			result = await tryCatch(stackApi.restart(id));
-			if (result.error) {
-				console.error(`Failed to restart Stack ${id}:`, result.error);
-				toast.error(`Failed to restart Stack: ${result.error.message}`);
-				isLoading['restart'] = false;
-				return;
-			}
-			toast.success('Stack restarted successfully.');
-			await invalidateAll();
-			isLoading['restart'] = false;
+			handleApiReponse(
+				await tryCatch(stackApi.restart(id)),
+				'Failed to Restart Stack',
+				(value) => (isLoading.restart = value),
+				async () => {
+					toast.success('Stack Restarted Successfully.');
+					await invalidateAll();
+				}
+			);
 		} else if (action === 'redeploy') {
-			result = await tryCatch(stackApi.redeploy(id));
-			if (result.error) {
-				console.error(`Failed to redeploy Stack ${id}:`, result.error);
-				toast.error(`Failed to redeploy Stack: ${result.error.message}`);
-				isLoading['restart'] = false;
-				return;
-			}
-			toast.success('Stack redeployed successfully.');
-			await invalidateAll();
-			isLoading['redeploy'] = false;
+			handleApiReponse(
+				await tryCatch(stackApi.redeploy(id)),
+				'Failed to Redeploy Stack',
+				(value) => (isLoading.redeploy = value),
+				async () => {
+					toast.success('Stack redeployed successfully.');
+					await invalidateAll();
+				}
+			);
 		} else if (action === 'pull') {
-			result = await tryCatch(stackApi.pull(id));
-			if (result.error) {
-				console.error(`Failed to pull Stack ${id}:`, result.error);
-				toast.error(`Failed to pull Stack: ${result.error.message}`);
-				isLoading['pull'] = false;
-				return;
-			}
-			toast.success('Stack Pulled successfully.');
-			await invalidateAll();
-			isLoading['pull'] = false;
+			handleApiReponse(
+				await tryCatch(stackApi.pull(id)),
+				'Failed to pull Stack',
+				(value) => (isLoading.pull = value),
+				async () => {
+					toast.success('Stack Pulled successfully.');
+					await invalidateAll();
+				}
+			);
 		} else if (action === 'destroy') {
 			openConfirmDialog({
 				title: `Confirm Removal`,
@@ -106,18 +101,15 @@
 					label: 'Remove',
 					destructive: true,
 					action: async () => {
-						isLoading.destroy = true;
-						const result = await tryCatch(stackApi.remove(id));
-						if (result.error) {
-							console.error(`Failed to remove Stack ${id}:`, result.error);
-							toast.error(`Failed to remove Stack: ${result.error.message}`);
-							isLoading.destroy = false;
-							return;
-						}
-
-						toast.success('Stack removed successfully');
-						await invalidateAll();
-						isLoading.destroy = false;
+						handleApiReponse(
+							await tryCatch(stackApi.remove(id)),
+							'Failed to Remove Stack',
+							(value) => (isLoading.destroy = value),
+							async () => {
+								toast.success('Stack Removed Successfully');
+								await invalidateAll();
+							}
+						);
 					}
 				}
 			});
@@ -283,7 +275,7 @@
 											</DropdownMenu.Item>
 
 											{#if item.status !== 'running'}
-												<DropdownMenu.Item onclick={() => performStackAction('stop', item.id)} disabled={isLoading.start || isAnyLoading}>
+												<DropdownMenu.Item onclick={() => performStackAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
 													{#if isLoading.start}
 														<Loader2 class="w-4 h-4 animate-spin" />
 													{:else}

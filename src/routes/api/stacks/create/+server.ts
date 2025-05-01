@@ -9,11 +9,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		const composeContent = body.composeContent?.toString();
 
 		if (!name) {
-			throw error(400, 'Stack name is required');
+			throw error(502, 'Stack name is required');
 		}
 
 		if (!composeContent) {
-			throw error(400, 'Compose file content is required');
+			throw error(503, 'Compose file content is required');
 		}
 
 		const newStack = await createStack(name, composeContent);

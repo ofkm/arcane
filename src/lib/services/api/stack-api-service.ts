@@ -48,6 +48,14 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
+	async create(name: string, content: string) {
+		const res = await this.api.post('/stacks/create', {
+			name,
+			composeContent: content
+		});
+		return res.data;
+	}
+
 	async list() {
 		const res = await this.api.get('');
 		return res.data;

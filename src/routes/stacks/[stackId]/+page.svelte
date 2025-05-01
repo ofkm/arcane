@@ -18,13 +18,14 @@
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StackAPIService from '$lib/services/api/stack-api-service';
+	import { handleApiReponse } from '$lib/utils/api.util';
 
 	const stackApi = new StackAPIService();
 
 	let { data }: { data: PageData } = $props();
 	let { stack, editorState } = $derived(data);
 
-	let depoloying = $state(false);
+	let deploying = $state(false);
 	let stopping = $state(false);
 	let restarting = $state(false);
 	let removing = $state(false);
@@ -39,7 +40,7 @@
 	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || editorState.autoUpdate !== originalAutoUpdate);
 
 	$effect(() => {
-		depoloying = false;
+		deploying = false;
 		stopping = false;
 		restarting = false;
 		removing = false;
@@ -49,24 +50,22 @@
 	async function handleSaveChanges() {
 		if (!stack || !hasChanges) return;
 
-		saving = true;
+		handleApiReponse(
+			await tryCatch(stackApi.save(stack.id, name, composeContent, editorState.autoUpdate)),
+			'Failed to Save Stack',
+			(value) => (saving = value),
+			async (data) => {
+				toast.success(`Stack "${data.stack.name}" Saved Successfully.`);
 
-		const result = await tryCatch(stackApi.save(stack.id, name, composeContent, editorState.autoUpdate));
-		if (result.error) {
-			saving = false;
-			console.error(`Failed to start Stack ${stack.id}:`, result.error);
-			toast.error(`Failed to start Stack: ${result.error.message}`);
-		}
+				originalName = name;
+				originalComposeContent = composeContent;
+				originalAutoUpdate = editorState.autoUpdate;
 
-		originalName = name;
-		originalComposeContent = composeContent;
-		originalAutoUpdate = editorState.autoUpdate;
-
-		await invalidateAll();
-
-		console.log('Stack save successful:', result);
-		toast.success('Stack updated successfully!');
-		saving = false;
+				console.log('Stack save successful:', data);
+				toast.success('Stack updated successfully!');
+				await invalidateAll();
+			}
+		);
 	}
 </script>
 
@@ -103,7 +102,7 @@
 					action={stack.status === 'running' || stack.status === 'partially running' ? '?/stop' : '?/start'}
 					use:enhance={() => {
 						const isStarting = stack.status !== 'running' && stack.status !== 'partially running';
-						if (isStarting) depoloying = true;
+						if (isStarting) deploying = true;
 						else stopping = true;
 						return async ({ update }) => {
 							await update({ reset: false });
@@ -116,7 +115,7 @@
 						type="stack"
 						itemState={stack.status}
 						loading={{
-							start: depoloying,
+							start: deploying,
 							stop: stopping,
 							restart: restarting,
 							remove: removing
@@ -192,7 +191,7 @@
 						<div class="grid w-full items-center gap-1.5">
 							<Label for="compose-editor">Docker Compose File</Label>
 							<div class="border rounded-md overflow-hidden">
-								<YamlEditor bind:value={composeContent} readOnly={saving || depoloying || stopping || restarting || removing} />
+								<YamlEditor bind:value={composeContent} readOnly={saving || deploying || stopping || restarting || removing} />
 							</div>
 							<p class="text-xs text-muted-foreground">
 								Edit your <span class="font-bold">compose.yaml</span> file directly. Syntax errors will be highlighted.
