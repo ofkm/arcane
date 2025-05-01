@@ -4,7 +4,7 @@
 	import { Trash2, Loader2, Ellipsis, ScanSearch } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { goto, invalidateAll } from '$app/navigation';
-	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
+	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte';
 
 	const { name, inUse = false } = $props<{ name: string; inUse: boolean }>();
 

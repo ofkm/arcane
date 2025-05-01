@@ -1,14 +1,17 @@
 <script lang="ts">
+	import { ScanSearch, Play, RotateCcw, StopCircle, Trash2, Loader2, Plus, Box, RefreshCw, Ellipsis } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { columns } from './columns';
-	import { Plus, Box, RefreshCw } from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
-	import { invalidateAll } from '$app/navigation';
-	import { toast } from 'svelte-sonner';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import * as Table from '$lib/components/ui/table';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import CreateContainerDialog from './create-container-dialog.svelte';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 	import type { ContainerConfig, ServiceContainer } from '$lib/types/docker/container.type';
 	import { enhance } from '$app/forms';
+	import axios from 'axios';
 
 	let { data, form } = $props();
 	let containers = $state(data.containers);
@@ -18,11 +21,15 @@
 	let isCreatingContainer = $state(false);
 	let containerData = $state<ContainerConfig | null>(null);
 	let formRef: HTMLFormElement;
-
+	let isLoading = $state({
+		start: false,
+		stop: false,
+		restart: false,
+		remove: false
+	});
+	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 	const runningContainers = $derived(containers?.filter((c: ServiceContainer) => c.state === 'running').length || 0);
 	const stoppedContainers = $derived(containers?.filter((c: ServiceContainer) => c.state === 'exited').length || 0);
-
-	// Calculate total containers
 	const totalContainers = $derived(containers?.length || 0);
 
 	$effect(() => {
@@ -32,7 +39,6 @@
 		}
 	});
 
-	// Success message handling based on form action result
 	$effect(() => {
 		if (form?.success) {
 			toast.success(`Container "${form.container?.name || 'Unknown'}" created successfully.`);
@@ -59,12 +65,57 @@
 	function openCreateDialog() {
 		isCreateDialogOpen = true;
 	}
-	// This now prepares data for form action and submits the form
+
+	async function performContainerAction(action: 'start' | 'stop' | 'restart' | 'remove', id: string, force?: boolean) {
+		if (action === 'remove') {
+			const endpoint = `/api/containers/${id}/remove${force ? '?force=true' : ''}`;
+			openConfirmDialog({
+				title: 'Delete Container',
+				message: 'Are you sure you want to delete this container? This action cannot be undone.',
+				confirm: {
+					label: 'Delete',
+					destructive: true,
+					action: async () => {
+						try {
+							isLoading[action] = true;
+							await axios.delete(endpoint);
+						} catch (e) {
+							isLoading[action] = false;
+							console.error(`Failed to remove container ${id}:`, e);
+							toast.error(`Failed to remove container: ${e}`);
+						}
+						isLoading[action] = false;
+						toast.success('Container removed successfully.');
+					}
+				}
+			});
+		} else {
+			isLoading[action] = true;
+			const method = 'POST';
+			const endpoint = `/api/containers/${id}/${action}`;
+
+			try {
+				const response = await fetch(endpoint, { method });
+				const result = await response.json();
+
+				if (!response.ok) {
+					throw new Error(result.error?.message || `Failed to ${action} container`);
+				}
+
+				toast.success(`Container ${action}ed successfully.`);
+				await invalidateAll();
+			} catch (error: any) {
+				console.error(`Failed to ${action} container ${id}:`, error);
+				toast.error(`Failed to ${action} container: ${error.message}`);
+			} finally {
+				isLoading[action] = false;
+			}
+		}
+	}
+
 	async function handleCreateContainerSubmit(config: ContainerConfig) {
 		isCreatingContainer = true;
 		containerData = config;
-
-		// This is key - explicitly submit the form after setting the data
 		setTimeout(() => {
 			formRef.requestSubmit();
 		}, 0);
@@ -158,13 +209,88 @@
 			<Card.Content>
 				<UniversalTable
 					data={containers}
-					{columns}
+					columns={[
+						{ accessorKey: 'name', header: 'Name' },
+						{ accessorKey: 'id', header: 'ID' },
+						{ accessorKey: 'image', header: 'Image' },
+						{ accessorKey: 'state', header: 'State' },
+						{ accessorKey: 'status', header: 'Status' },
+						{ accessorKey: 'actions', header: ' ', enableSorting: false }
+					]}
 					display={{
 						filterPlaceholder: 'Search containers...',
 						noResultsMessage: 'No containers found'
 					}}
 					bind:selectedIds
-				/>
+				>
+					{#snippet rows({ item })}
+						<Table.Cell>{item.name}</Table.Cell>
+						<Table.Cell>{item.id}</Table.Cell>
+						<Table.Cell>{item.image}</Table.Cell>
+						<Table.Cell>{item.state}</Table.Cell>
+						<Table.Cell>{item.status}</Table.Cell>
+						<Table.Cell>
+							<DropdownMenu.Root>
+								<DropdownMenu.Trigger>
+									{#snippet child({ props })}
+										<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
+											<span class="sr-only">Open menu</span>
+											<Ellipsis />
+										</Button>
+									{/snippet}
+								</DropdownMenu.Trigger>
+								<DropdownMenu.Content>
+									<DropdownMenu.Group>
+										<DropdownMenu.Item onclick={() => goto(`/containers/${item.id}`)} disabled={isAnyLoading}>
+											<ScanSearch class="w-4 h-4" />
+											Inspect
+										</DropdownMenu.Item>
+
+										{#if item.state !== 'running'}
+											<DropdownMenu.Item onclick={() => performContainerAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
+												{#if isLoading.start}
+													<Loader2 class="w-4 h-4 animate-spin" />
+												{:else}
+													<Play class="w-4 h-4" />
+												{/if}
+												Start
+											</DropdownMenu.Item>
+										{:else}
+											<DropdownMenu.Item onclick={() => performContainerAction('restart', item.id)} disabled={isLoading.restart || isAnyLoading}>
+												{#if isLoading.restart}
+													<Loader2 class="w-4 h-4 animate-spin" />
+												{:else}
+													<RotateCcw class="w-4 h-4" />
+												{/if}
+												Restart
+											</DropdownMenu.Item>
+
+											<DropdownMenu.Item onclick={() => performContainerAction('stop', item.id)} disabled={isLoading.stop || isAnyLoading}>
+												{#if isLoading.stop}
+													<Loader2 class="w-4 h-4 animate-spin" />
+												{:else}
+													<StopCircle class="w-4 h-4" />
+												{/if}
+												Stop
+											</DropdownMenu.Item>
+										{/if}
+
+										<DropdownMenu.Separator />
+
+										<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => performContainerAction('remove', item.id)} disabled={isLoading.remove || isAnyLoading}>
+											{#if isLoading.remove}
+												<Loader2 class="w-4 h-4 animate-spin" />
+											{:else}
+												<Trash2 class="w-4 h-4" />
+											{/if}
+											Remove
+										</DropdownMenu.Item>
+									</DropdownMenu.Group>
+								</DropdownMenu.Content>
+							</DropdownMenu.Root>
+						</Table.Cell>
+					{/snippet}
+				</UniversalTable>
 			</Card.Content>
 		</Card.Root>
 	{/if}

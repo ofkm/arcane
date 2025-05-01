@@ -10,7 +10,7 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { formatDate, formatBytes } from '$lib/utils';
-	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
+	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let { image } = $derived(data);

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Play, StopCircle, RotateCcw, Download, Trash2, Loader2, RefreshCcwDot } from '@lucide/svelte';
-	import ConfirmDialog from './confirm-dialog.svelte';
+	import ConfirmDialog from './confirm-dialog/confirm-dialog-old.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import type { ApiResponse } from '$lib/types/api-response.type';
 	import { toast } from 'svelte-sonner';

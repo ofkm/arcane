@@ -5,7 +5,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { ScanSearch, Play, RotateCcw, StopCircle, Trash2, Loader2 } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
-	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
+	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte';
 
 	let { id, itemState }: { id: string; itemState: string } = $props();
 

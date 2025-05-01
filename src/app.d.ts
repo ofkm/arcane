@@ -4,7 +4,10 @@ import type { UserSession } from '$lib/types/session.type';
 
 declare global {
 	namespace App {
-		// interface Error {}
+		interface Error {
+			message: string;
+			status?: number;
+		}
 		interface Locals {
 			user?: User | null;
 			session?: UserSession | null;

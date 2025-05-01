@@ -11,8 +11,23 @@
 	import { ChevronDown } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 	import type { UniversalTableProps } from '$lib/types/table-types';
+	import type { Snippet } from 'svelte';
 
-	let { data, columns, idKey, features = {}, display = {}, pagination = {}, sort = {}, selectedIds = $bindable<string[]>([]) }: UniversalTableProps<TData> & { idKey?: keyof TData } = $props();
+	let {
+		data,
+		columns,
+		idKey,
+		features = {},
+		display = {},
+		pagination = {},
+		sort = {},
+		selectedIds = $bindable<string[]>([]),
+		rows
+	}: UniversalTableProps<TData> & {
+		idKey?: keyof TData;
+		rows?: Snippet<[{ item: TData }]>;
+	} = $props();
+
 	let { sorting: enableSorting = true, filtering: enableFiltering = true, selection: enableSelection = true } = features;
 	let { pageSize: initialPageSize = 10, pageSizeOptions = [10, 20, 50, 100], itemsPerPageLabel = 'Items per page' } = pagination;
 	let { filterPlaceholder = 'Search...', noResultsMessage = 'No results found', isDashboardTable = false, class: className = '' } = display;
@@ -49,7 +64,7 @@
 		},
 		columns,
 		getRowId: idKey
-			? (originalRow: TData, index: number, parent?: RowData) => {
+			? (originalRow: TData, _index: number, _parent?: RowData) => {
 					return String(originalRow[idKey]);
 				}
 			: undefined,
@@ -180,11 +195,16 @@
 									/>
 								</Table.Cell>
 							{/if}
-							{#each row.getVisibleCells() as cell (cell.id)}
-								<Table.Cell>
-									<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
-								</Table.Cell>
-							{/each}
+
+							{#if rows}
+								{@render rows({ item: row.original })}
+							{:else}
+								{#each row.getVisibleCells() as cell (cell.id)}
+									<Table.Cell>
+										<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+									</Table.Cell>
+								{/each}
+							{/if}
 						</Table.Row>
 					{/each}
 				{:else}

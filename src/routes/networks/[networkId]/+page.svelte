@@ -10,7 +10,7 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { formatDate } from '$lib/utils'; // #file:/Users/kylemendell/dev/ofkm/arcane/src/lib/utils.ts
-	import ConfirmDialog from '$lib/components/confirm-dialog.svelte'; // #file:/Users/kylemendell/dev/ofkm/arcane/src/lib/components/confirm-dialog.svelte
+	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte'; // #file:/Users/kylemendell/dev/ofkm/arcane/src/lib/components/confirm-dialog.svelte
 	import type { NetworkInspectInfo } from 'dockerode';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
