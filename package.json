@@ -26,7 +26,7 @@
 		"@types/dockerode-compose": "^1.4.1",
 		"@types/js-yaml": "^4.0.9",
 		"@types/proper-lockfile": "^4.1.4",
-		"bits-ui": "^1.4.2",
+		"bits-ui": "^1.4.3",
 		"clsx": "^2.1.1",
 		"eslint": "^9.25.1",
 		"eslint-plugin-svelte": "^3.0.0",
