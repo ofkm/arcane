@@ -3,9 +3,7 @@ import type { RequestHandler } from './$types';
 import { importExternalStack } from '$lib/services/docker/stack-service';
 
 export const POST: RequestHandler = async ({ request }) => {
-	const data = await request.formData();
-	const stackId = data.get('stackId')?.toString();
-	const stackName = data.get('stackName')?.toString();
+	const { stackId, stackName } = await request.json();
 
 	if (!stackId) {
 		return json({ success: false, error: 'Stack ID is required' }, { status: 400 });
