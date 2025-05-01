@@ -9,6 +9,7 @@
 	import { settingsStore, saveSettingsToServer, updateSettingsStore } from '$lib/stores/settings-store';
 	import { preventDefault } from '$lib/utils/form.utils';
 	import { goto } from '$app/navigation';
+	import { isDev } from '$lib/constants';
 
 	let error = $state('');
 	let loading = $state(false);
@@ -19,6 +20,9 @@
 	let pollingInterval = $derived($settingsStore.pollingInterval || 10);
 	let autoUpdate = $derived($settingsStore.autoUpdate !== undefined ? $settingsStore.autoUpdate : false);
 
+	// Get the appropriate stacks directory based on environment
+	const defaultStacksDirectory = isDev ? './.dev-data/stacks' : '/app/data/stacks';
+
 	async function handleSubmit() {
 		loading = true;
 		error = '';
@@ -28,7 +32,7 @@
 
 			const settingsPayload = {
 				dockerHost,
-				stacksDirectory: currentSettings.stacksDirectory || '/app/data/stacks',
+				stacksDirectory: currentSettings.stacksDirectory || defaultStacksDirectory,
 				pollingEnabled,
 				pollingInterval: parseInt(pollingInterval.toString()),
 				autoUpdate,

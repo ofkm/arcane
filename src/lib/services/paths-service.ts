@@ -1,8 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
-
-// Determine if we're in development or production
-const isDev = process.env.NODE_ENV === 'development';
+import { isDev } from '$lib/constants';
 
 // Configure paths based on environment
 export const BASE_PATH = isDev ? path.resolve(process.cwd(), '.dev-data') : '/app/data';
