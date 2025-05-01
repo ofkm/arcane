@@ -4,7 +4,7 @@
 	import { ModeWatcher } from 'mode-watcher';
 	import Nav from '$lib/components/navbar.svelte';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
-	import { navigating } from '$app/state';
+	import { navigating, page } from '$app/state';
 
 	let { children, data } = $props();
 
@@ -13,6 +13,10 @@
 
 	const isNavigating = $derived(navigating !== null);
 	const isAuthenticated = $derived(!!user); // Check if user exists
+
+	const isOnboardingPage = $derived(page.url.pathname.startsWith('/onboarding'));
+	// Only show sidebar when authenticated AND not in onboarding
+	const showSidebar = $derived(isAuthenticated && !isOnboardingPage);
 </script>
 
 <svelte:head><title>Arcane</title></svelte:head>
@@ -27,7 +31,7 @@
 
 <div class="flex min-h-screen bg-background">
 	<!-- Only show sidebar when authenticated -->
-	{#if isAuthenticated}
+	{#if showSidebar}
 		<Nav {versionInformation} />
 	{/if}
 

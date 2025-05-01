@@ -11,6 +11,11 @@ export interface RegistryCredential {
 	password: string;
 }
 
+export interface Onboarding {
+	completed?: boolean;
+	completedAt?: string;
+}
+
 export interface Settings {
 	dockerHost: string;
 	stacksDirectory: string;
@@ -21,4 +26,5 @@ export interface Settings {
 	pruneMode: 'all' | 'dangling';
 	registryCredentials: RegistryCredential[];
 	auth: AuthSettings;
+	onboarding?: Onboarding;
 }

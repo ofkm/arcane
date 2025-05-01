@@ -6,6 +6,7 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { AlertCircle } from '@lucide/svelte';
 	import type { PageData } from './$types';
+	import { goto } from '$app/navigation';
 
 	// Define a proper type for form data
 	type ActionData = {
@@ -45,6 +46,8 @@
 						// Handle other result states like error
 						if (result.type === 'error') {
 							console.error('An unexpected error occurred during login');
+						} else if (result.type === 'success') {
+							goto(data.redirectTo);
 						}
 						await update();
 					};

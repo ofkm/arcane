@@ -8,4 +8,5 @@ export type User = {
 	createdAt: string;
 	lastLogin?: string;
 	requirePasswordChange?: boolean;
+	updatedAt?: string;
 };

@@ -40,7 +40,7 @@ RUN mkdir -p /app/data && chmod 755 /app/data
 # Copy only necessary files from builder
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/static ./static
-COPY --chown=arcane:arcane app-settings.json /app/data/app-settings.json.default
+# COPY --chown=arcane:arcane app-settings.json /app/data/app-settings.json.default
 
 # Copy entrypoint script
 COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh

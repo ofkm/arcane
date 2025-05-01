@@ -15,10 +15,19 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
 	// Check if already logged in
 	const sessionId = cookies.get('session_id');
 	if (sessionId) {
-		throw redirect(302, '/');
+		// Check if onboarding is needed for logged-in users
+		const settings = await getSettings();
+
+		if (!settings.onboarding?.completed) {
+			throw redirect(302, '/onboarding/welcome');
+		} else {
+			throw redirect(302, '/');
+		}
 	}
 
-	return {};
+	// Pass the redirect URL from the query string to the form
+	const redirectTo = url.searchParams.get('redirect') || '/';
+	return { redirectTo };
 };
 
 export const actions: Actions = {
@@ -68,6 +77,11 @@ export const actions: Actions = {
 			sameSite: 'strict', // Enhanced from 'lax'
 			partitioned: true // Use partitioned cookies for added security in supported browsers
 		});
+
+		// Check if onboarding is needed
+		if (!settings.onboarding?.completed) {
+			throw redirect(302, '/onboarding/welcome');
+		}
 
 		// Get redirect URL from query params or go to home
 		const redirectTo = url.searchParams.get('redirect') || '/';

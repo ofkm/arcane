@@ -3,7 +3,7 @@ import path from 'path';
 import proper from 'proper-lockfile';
 import type { Settings } from '$lib/types/settings.type';
 import { encrypt, decrypt } from './encryption-service';
-import { SETTINGS_FILE, SETTINGS_DIR, STACKS_DIR, ensureDirectory } from './paths-service';
+import { SETTINGS_DIR, STACKS_DIR, ensureDirectory } from './paths-service';
 
 // Determine if we're in development or production
 const isDev = process.env.NODE_ENV === 'development';

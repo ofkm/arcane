@@ -136,6 +136,19 @@ export const PUT: RequestHandler = async ({ request }) => {
 			body.auth = currentSettings.auth;
 		}
 
+		// Add onboarding to accepted fields
+		// Validate and normalize onboarding status
+		if (body.onboarding) {
+			if (typeof body.onboarding.completed === 'string') {
+				body.onboarding.completed = body.onboarding.completed === 'true';
+			}
+
+			// Ensure completedAt is a valid date string
+			if (!body.onboarding.completedAt) {
+				body.onboarding.completedAt = new Date().toISOString();
+			}
+		}
+
 		// Merge settings
 		const updatedSettings: Settings = {
 			...currentSettings,
