@@ -18,7 +18,7 @@
 		"@eslint/js": "^9.18.0",
 		"@lucide/svelte": "^0.503.0",
 		"@sveltejs/adapter-node": "^5.2.12",
-		"@sveltejs/kit": "^2.16.0",
+		"@sveltejs/kit": "^2.20.8",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"@tailwindcss/vite": "^4.0.0",
 		"@types/bcryptjs": "^2.4.6",
