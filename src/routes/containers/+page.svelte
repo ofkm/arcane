@@ -11,7 +11,13 @@
 	import { toast } from 'svelte-sonner';
 	import type { ContainerConfig, ServiceContainer } from '$lib/types/docker/container.type';
 	import { enhance } from '$app/forms';
-	import axios from 'axios';
+	import ContainerAPIService from '$lib/services/api/container-api-service';
+	import { tryCatch } from '$lib/utils/try-catch';
+	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import { statusVariantMap } from '$lib/types/statuses';
+	import { capitalizeFirstLetter } from '$lib/utils';
+
+	const containerApi = new ContainerAPIService();
 
 	let { data, form } = $props();
 	let containers = $state(data.containers);
@@ -66,50 +72,71 @@
 		isCreateDialogOpen = true;
 	}
 
-	async function performContainerAction(action: 'start' | 'stop' | 'restart' | 'remove', id: string, force?: boolean) {
-		if (action === 'remove') {
-			const endpoint = `/api/containers/${id}/remove${force ? '?force=true' : ''}`;
-			openConfirmDialog({
-				title: 'Delete Container',
-				message: 'Are you sure you want to delete this container? This action cannot be undone.',
-				confirm: {
-					label: 'Delete',
-					destructive: true,
-					action: async () => {
-						try {
-							isLoading[action] = true;
-							await axios.delete(endpoint);
-						} catch (e) {
-							isLoading[action] = false;
-							console.error(`Failed to remove container ${id}:`, e);
-							toast.error(`Failed to remove container: ${e}`);
-						}
-						isLoading[action] = false;
-						toast.success('Container removed successfully.');
+	async function handleRemoveContainer(id: string, force?: boolean) {
+		const endpoint = `/api/containers/${id}/remove${force ? '?force=true' : ''}`;
+		openConfirmDialog({
+			title: 'Delete Container',
+			message: 'Are you sure you want to delete this container? This action cannot be undone.',
+			confirm: {
+				label: 'Delete',
+				destructive: true,
+				action: async () => {
+					const result = await tryCatch(containerApi.remove(id));
+					if (result.error) {
+						console.error(`Failed to remove container ${id}:`, result.error);
+						toast.error(`Failed to remove container: ${result.error.message}`);
+						isLoading['remove'] = false;
+						return;
 					}
+
+					toast.success('Container removed successfully.');
+					await invalidateAll();
+					isLoading['remove'] = false;
 				}
-			});
-		} else {
-			isLoading[action] = true;
-			const method = 'POST';
-			const endpoint = `/api/containers/${id}/${action}`;
-
-			try {
-				const response = await fetch(endpoint, { method });
-				const result = await response.json();
-
-				if (!response.ok) {
-					throw new Error(result.error?.message || `Failed to ${action} container`);
-				}
-
-				toast.success(`Container ${action}ed successfully.`);
-				await invalidateAll();
-			} catch (error: any) {
-				console.error(`Failed to ${action} container ${id}:`, error);
-				toast.error(`Failed to ${action} container: ${error.message}`);
-			} finally {
-				isLoading[action] = false;
 			}
+		});
+	}
+
+	async function performContainerAction(action: 'start' | 'stop' | 'restart', id: string) {
+		isLoading[action] = true;
+		let result;
+
+		if (action === 'start') {
+			result = await tryCatch(containerApi.start(id));
+			if (result.error) {
+				console.error(`Failed to start container ${id}:`, result.error);
+				toast.error(`Failed to start container: ${result.error.message}`);
+				isLoading['start'] = false;
+				return;
+			}
+			toast.success('Container started successfully.');
+			await invalidateAll();
+			isLoading['start'] = false;
+		} else if (action === 'stop') {
+			result = await tryCatch(containerApi.stop(id));
+			if (result.error) {
+				console.error(`Failed to stop container ${id}:`, result.error);
+				toast.error(`Failed to stop container: ${result.error.message}`);
+				isLoading['stop'] = false;
+				return;
+			}
+			toast.success('Container stopped successfully.');
+			await invalidateAll();
+			isLoading['stop'] = false;
+		} else if (action === 'restart') {
+			result = await tryCatch(containerApi.restart(id));
+			if (result.error) {
+				console.error(`Failed to restart container ${id}:`, result.error);
+				toast.error(`Failed to restart container: ${result.error.message}`);
+				isLoading['restart'] = false;
+				return;
+			}
+			toast.success('Container restarted successfully.');
+			await invalidateAll();
+			isLoading['restart'] = false;
+		} else {
+			console.error('An Unknown Error Occurred');
+			toast.error('An Unknown Error Occurred');
 		}
 	}
 
@@ -224,10 +251,11 @@
 					bind:selectedIds
 				>
 					{#snippet rows({ item })}
-						<Table.Cell>{item.name}</Table.Cell>
+						{@const stateVariant = statusVariantMap[item.state.toLowerCase()]}
+						<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.id}/">{item.name}</a></Table.Cell>
 						<Table.Cell>{item.id}</Table.Cell>
 						<Table.Cell>{item.image}</Table.Cell>
-						<Table.Cell>{item.state}</Table.Cell>
+						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.state)} /></Table.Cell>
 						<Table.Cell>{item.status}</Table.Cell>
 						<Table.Cell>
 							<DropdownMenu.Root>
@@ -277,7 +305,7 @@
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => performContainerAction('remove', item.id)} disabled={isLoading.remove || isAnyLoading}>
+										<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveContainer(item.id, item.state === 'running' ? true : false)} disabled={isLoading.remove || isAnyLoading}>
 											{#if isLoading.remove}
 												<Loader2 class="w-4 h-4 animate-spin" />
 											{:else}

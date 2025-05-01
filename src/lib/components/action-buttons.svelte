@@ -1,21 +1,18 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button/index.js';
 	import { Play, StopCircle, RotateCcw, Download, Trash2, Loader2, RefreshCcwDot } from '@lucide/svelte';
-	import ConfirmDialog from './confirm-dialog/confirm-dialog-old.svelte';
+	import { Button } from '$lib/components/ui/button/index.js';
+	import { openConfirmDialog } from './confirm-dialog';
 	import { invalidateAll } from '$app/navigation';
-	import type { ApiResponse } from '$lib/types/api-response.type';
 	import { toast } from 'svelte-sonner';
+	import type { LoadingStates } from '$lib/types/loading-states.type';
+	import ContainerAPIService from '$lib/services/api/container-api-service';
+	import StackAPIService from '$lib/services/api/stack-api-service';
+	import { tryCatch } from '$lib/utils/try-catch';
+
+	const containerApi = new ContainerAPIService();
+	const stackApi = new StackAPIService();
 
 	type TargetType = 'container' | 'stack';
-	type LoadingStates = {
-		start?: boolean;
-		stop?: boolean;
-		restart?: boolean;
-		pull?: boolean;
-		deploy?: boolean;
-		redeploy?: boolean;
-		remove?: boolean;
-	};
 
 	let {
 		id,
@@ -31,10 +28,6 @@
 		onActionComplete?: () => void;
 	} = $props();
 
-	// Track dialog states
-	let showRemoveDialog = $state(false);
-	let showRedeployDialog = $state(false);
-
 	// Track loading states for each action
 	let isStarting = $state(false);
 	let isStopping = $state(false);
@@ -48,85 +41,127 @@
 	// Handle showing confirmation dialogs
 	function confirmAction(action: string) {
 		if (action === 'remove') {
-			showRemoveDialog = true;
+			openConfirmDialog({
+				title: `Confirm Removal`,
+				message: `Are you sure you want to remove this ${type}? This action cannot be undone.`,
+				confirm: {
+					label: 'Remove',
+					destructive: true,
+					action: async () => {
+						isRemoving = true;
+						const result = await tryCatch(type === 'container' ? containerApi.remove(id) : stackApi.remove(id));
+						if (result.error) {
+							console.error(`Failed to remove container ${id}:`, result.error);
+							toast.error(`Failed to remove container: ${result.error.message}`);
+							isRemoving = false;
+							return;
+						}
+
+						toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} removed successfully`);
+						await invalidateAll();
+						onActionComplete();
+						isRemoving = false;
+
+						toast.success(`${type} removed successfully.`);
+					}
+				}
+			});
 		} else if (action === 'redeploy') {
-			showRedeployDialog = true;
-		}
-	}
+			openConfirmDialog({
+				title: `Confirm Redeploy`,
+				message: `Are you sure you want to redeploy this ${type}?`,
+				confirm: {
+					label: 'Redeploy',
+					action: async () => {
+						isRedeploying = true;
+						const result = await tryCatch(stackApi.redeploy(id));
+						if (result.error) {
+							isRedeploying = false;
+							console.error(`Error Redeploying ${type}:`, result.error);
+							toast.error(`Failed to Redeploy ${type}: ${result.error.message}`);
+							return;
+						}
 
-	// Generic API call function
-	async function callApi(action: string, loadingStateSetter: (value: boolean) => void) {
-		loadingStateSetter(true);
-
-		// Different endpoint format for stacks vs containers
-		let endpoint;
-		if (type === 'stack') {
-			endpoint = `/api/stacks/${id}/${action}`; // No plural, no separator between "stack" and ID
-		} else {
-			endpoint = `/api/${type}s/${id}/${action}`; // Plural with separator for containers
-		}
-
-		const method = action === 'remove' ? 'DELETE' : 'POST';
-
-		try {
-			const response = await fetch(endpoint, { method });
-			// Gracefully fallback when there is no JSON body
-			let result: ApiResponse = {};
-			if (response.headers.get('content-type')?.includes('application/json')) {
-				result = await response.json();
-			}
-			if (!response.ok) {
-				throw new Error(result.error ?? `Failed to ${action} ${type}`);
-			}
-			toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} ${action}ed successfully`);
-			await invalidateAll();
-			onActionComplete();
-		} catch (error: Error | unknown) {
-			console.error(`Error ${action}ing ${type}:`, error);
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			toast.error(`Failed to ${action} ${type}: ${errorMessage}`);
-		} finally {
-			loadingStateSetter(false);
+						toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} redeployed successfully`);
+						await invalidateAll();
+						onActionComplete();
+						isRedeploying = false;
+					}
+				}
+			});
 		}
 	}
 
 	// Action handlers
 	async function handleStart() {
-		await callApi('start', (value) => (isStarting = value));
+		isStarting = true;
+		const result = await tryCatch(type === 'container' ? containerApi.start(id) : stackApi.start(id));
+		if (result.error) {
+			isStarting = false;
+			console.error(`Error startinging ${type}:`, result.error);
+			toast.error(`Failed to Start ${type}: ${result.error.message}`);
+			return;
+		}
+
+		toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} started successfully`);
+		await invalidateAll();
+		onActionComplete();
+		isStarting = false;
 	}
 
 	async function handleStop() {
-		await callApi('stop', (value) => (isStopping = value));
+		isStopping = true;
+		const result = await tryCatch(type === 'container' ? containerApi.stop(id) : stackApi.stop(id));
+		if (result.error) {
+			isStopping = false;
+			console.error(`Error Stopping ${type}:`, result.error);
+			toast.error(`Failed to Stop ${type}: ${result.error.message}`);
+			return;
+		}
+
+		toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} stopped successfully`);
+		await invalidateAll();
+		onActionComplete();
+		isStopping = false;
 	}
 
 	async function handleRestart() {
-		await callApi('restart', (value) => (isRestarting = value));
-	}
+		isRestarting = true;
+		const result = await tryCatch(type === 'container' ? containerApi.restart(id) : stackApi.restart(id));
+		if (result.error) {
+			isRestarting = false;
+			console.error(`Error Restarting ${type}:`, result.error);
+			toast.error(`Failed to Restart ${type}: ${result.error.message}`);
+			return;
+		}
 
-	async function handleRedeploy() {
-		showRedeployDialog = false;
-		await callApi('redeploy', (value) => (isRedeploying = value));
-	}
-
-	async function handleRemove() {
-		showRemoveDialog = false;
-		await callApi('remove', (value) => (isRemoving = value));
+		toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} restarted successfully`);
+		await invalidateAll();
+		onActionComplete();
+		isRestarting = false;
 	}
 
 	async function handlePull() {
-		await callApi('pull', (value) => (isPulling = value));
+		isPulling = true;
+		const result = await tryCatch(type === 'container' ? containerApi.pull(id) : stackApi.pull(id));
+		if (result.error) {
+			isPulling = false;
+			console.error(`Error Pulling Images for ${type}:`, result.error);
+			toast.error(`Failed to Pull Images for ${type}: ${result.error.message}`);
+			return;
+		}
+
+		toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} images pulled successfully`);
+		await invalidateAll();
+		onActionComplete();
+		isPulling = false;
 	}
 </script>
-
-<!-- Confirmation Dialogs -->
-<ConfirmDialog bind:open={showRemoveDialog} title="Confirm Removal" description={`Are you sure you want to remove this ${type}? This action cannot be undone.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemove} />
-
-<ConfirmDialog bind:open={showRedeployDialog} title="Confirm Redeploy" description={`Are you sure you want to redeploy this ${type}?`} confirmLabel="Redeploy" variant="default" onConfirm={handleRedeploy} />
 
 <!-- Action buttons -->
 <div class="flex items-center gap-2">
 	{#if !isRunning}
-		<Button type="button" variant="default" disabled={isStarting || loading.start} class="font-medium" onclick={handleStart}>
+		<Button type="button" variant="default" disabled={isStarting || loading.start} class="font-medium" onclick={() => handleStart()}>
 			{#if isStarting || loading.start}
 				<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 			{:else}
@@ -135,7 +170,7 @@
 			{type === 'stack' ? 'Deploy' : 'Start'}
 		</Button>
 	{:else}
-		<Button type="button" variant="secondary" disabled={isStopping || loading.stop} class="font-medium" onclick={handleStop}>
+		<Button type="button" variant="secondary" disabled={isStopping || loading.stop} class="font-medium" onclick={() => handleStop()}>
 			{#if isStopping || loading.stop}
 				<Loader2 class="w-4 h-4 animate-spin" />
 			{:else}

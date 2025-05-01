@@ -5,6 +5,7 @@
 	import Nav from '$lib/components/navbar.svelte';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { navigating, page } from '$app/state';
+	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog.svelte';
 
 	let { children, data } = $props();
 
@@ -23,6 +24,7 @@
 
 <ModeWatcher />
 <Toaster />
+<ConfirmDialog />
 
 <!-- Apply a loading state to the page during navigation -->
 {#if isNavigating}
