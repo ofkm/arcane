@@ -123,6 +123,29 @@
 			toast.success('Stack Pulled successfully.');
 			await invalidateAll();
 			isLoading['pull'] = false;
+		} else if (action === 'destroy') {
+			openConfirmDialog({
+				title: `Confirm Removal`,
+				message: `Are you sure you want to remove this Stack? This action cannot be undone.`,
+				confirm: {
+					label: 'Remove',
+					destructive: true,
+					action: async () => {
+						isLoading.destroy = true;
+						const result = await tryCatch(stackApi.remove(id));
+						if (result.error) {
+							console.error(`Failed to remove Stack ${id}:`, result.error);
+							toast.error(`Failed to remove Stack: ${result.error.message}`);
+							isLoading.destroy = false;
+							return;
+						}
+
+						toast.success('Stack removed successfully');
+						await invalidateAll();
+						isLoading.destroy = false;
+					}
+				}
+			});
 		} else {
 			console.error('An Unknown Error Occurred');
 			toast.error('An Unknown Error Occurred');
