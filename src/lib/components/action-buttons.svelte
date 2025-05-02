@@ -8,6 +8,7 @@
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { tryCatch } from '$lib/utils/try-catch';
+	import { handleApiReponse } from '$lib/utils/api.util';
 
 	const containerApi = new ContainerAPIService();
 	const stackApi = new StackAPIService();
@@ -28,17 +29,17 @@
 		onActionComplete?: () => void;
 	} = $props();
 
-	// Track loading states for each action
-	let isStarting = $state(false);
-	let isStopping = $state(false);
-	let isRestarting = $state(false);
-	let isRedeploying = $state(false);
-	let isRemoving = $state(false);
-	let isPulling = $state(false);
+	let isLoading = $state({
+		start: false,
+		stop: false,
+		restart: false,
+		remove: false,
+		pulling: false,
+		redeploy: false
+	});
 
 	const isRunning = $derived(itemState === 'running' || (type === 'stack' && itemState === 'partially running'));
 
-	// Handle showing confirmation dialogs
 	function confirmAction(action: string) {
 		if (action === 'remove') {
 			openConfirmDialog({
@@ -48,21 +49,15 @@
 					label: 'Remove',
 					destructive: true,
 					action: async () => {
-						isRemoving = true;
-						const result = await tryCatch(type === 'container' ? containerApi.remove(id) : stackApi.remove(id));
-						if (result.error) {
-							console.error(`Failed to remove container ${id}:`, result.error);
-							toast.error(`Failed to remove container: ${result.error.message}`);
-							isRemoving = false;
-							return;
-						}
-
-						toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} removed successfully`);
-						await invalidateAll();
-						onActionComplete();
-						isRemoving = false;
-
-						toast.success(`${type} removed successfully.`);
+						handleApiReponse(
+							await tryCatch(type === 'container' ? containerApi.remove(id) : stackApi.remove(id)),
+							`Failed to Remove ${type}`,
+							(value) => (isLoading.remove = value),
+							async () => {
+								toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Removed Successfully`);
+								await invalidateAll();
+							}
+						);
 					}
 				}
 			});
@@ -73,96 +68,74 @@
 				confirm: {
 					label: 'Redeploy',
 					action: async () => {
-						isRedeploying = true;
-						const result = await tryCatch(stackApi.redeploy(id));
-						if (result.error) {
-							isRedeploying = false;
-							console.error(`Error Redeploying ${type}:`, result.error);
-							toast.error(`Failed to Redeploy ${type}: ${result.error.message}`);
-							return;
-						}
-
-						toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} redeployed successfully`);
-						await invalidateAll();
-						onActionComplete();
-						isRedeploying = false;
+						handleApiReponse(
+							await tryCatch(stackApi.redeploy(id)),
+							`Failed to Redeploy ${type}`,
+							(value) => (isLoading.redeploy = value),
+							async () => {
+								toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Redeployed Successfully`);
+								await invalidateAll();
+							}
+						);
 					}
 				}
 			});
 		}
 	}
 
-	// Action handlers
 	async function handleStart() {
-		isStarting = true;
-		const result = await tryCatch(type === 'container' ? containerApi.start(id) : stackApi.start(id));
-		if (result.error) {
-			isStarting = false;
-			console.error(`Error startinging ${type}:`, result.error);
-			toast.error(`Failed to Start ${type}: ${result.error.message}`);
-			return;
-		}
-
-		toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} started successfully`);
-		await invalidateAll();
-		onActionComplete();
-		isStarting = false;
+		handleApiReponse(
+			await tryCatch(type === 'container' ? containerApi.start(id) : stackApi.start(id)),
+			`Failed to Start ${type}`,
+			(value) => (isLoading.start = value),
+			async () => {
+				toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Started Successfully`);
+				await invalidateAll();
+			}
+		);
 	}
 
 	async function handleStop() {
-		isStopping = true;
-		const result = await tryCatch(type === 'container' ? containerApi.stop(id) : stackApi.stop(id));
-		if (result.error) {
-			isStopping = false;
-			console.error(`Error Stopping ${type}:`, result.error);
-			toast.error(`Failed to Stop ${type}: ${result.error.message}`);
-			return;
-		}
-
-		toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} stopped successfully`);
-		await invalidateAll();
-		onActionComplete();
-		isStopping = false;
+		handleApiReponse(
+			await tryCatch(type === 'container' ? containerApi.stop(id) : stackApi.stop(id)),
+			`Failed to Stop ${type}`,
+			(value) => (isLoading.stop = value),
+			async () => {
+				toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Stopped Successfully`);
+				await invalidateAll();
+			}
+		);
 	}
 
 	async function handleRestart() {
-		isRestarting = true;
-		const result = await tryCatch(type === 'container' ? containerApi.restart(id) : stackApi.restart(id));
-		if (result.error) {
-			isRestarting = false;
-			console.error(`Error Restarting ${type}:`, result.error);
-			toast.error(`Failed to Restart ${type}: ${result.error.message}`);
-			return;
-		}
-
-		toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} restarted successfully`);
-		await invalidateAll();
-		onActionComplete();
-		isRestarting = false;
+		handleApiReponse(
+			await tryCatch(type === 'container' ? containerApi.restart(id) : stackApi.restart(id)),
+			`Failed to Restart ${type}`,
+			(value) => (isLoading.restart = value),
+			async () => {
+				toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Restarted Successfully`);
+				await invalidateAll();
+			}
+		);
 	}
 
 	async function handlePull() {
-		isPulling = true;
-		const result = await tryCatch(type === 'container' ? containerApi.pull(id) : stackApi.pull(id));
-		if (result.error) {
-			isPulling = false;
-			console.error(`Error Pulling Images for ${type}:`, result.error);
-			toast.error(`Failed to Pull Images for ${type}: ${result.error.message}`);
-			return;
-		}
-
-		toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} images pulled successfully`);
-		await invalidateAll();
-		onActionComplete();
-		isPulling = false;
+		handleApiReponse(
+			await tryCatch(type === 'container' ? containerApi.pull(id) : stackApi.pull(id)),
+			'Failed to Pull Image(s)',
+			(value) => (isLoading.pulling = value),
+			async () => {
+				toast.success('Image(s) Pulled Successfully.');
+				await invalidateAll();
+			}
+		);
 	}
 </script>
 
-<!-- Action buttons -->
 <div class="flex items-center gap-2">
 	{#if !isRunning}
-		<Button type="button" variant="default" disabled={isStarting || loading.start} class="font-medium" onclick={() => handleStart()}>
-			{#if isStarting || loading.start}
+		<Button type="button" variant="default" disabled={isLoading.start || loading.start} class="font-medium" onclick={() => handleStart()}>
+			{#if isLoading.start || loading.start}
 				<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 			{:else}
 				<Play class="w-4 h-4 mr-2" />
@@ -170,8 +143,8 @@
 			{type === 'stack' ? 'Deploy' : 'Start'}
 		</Button>
 	{:else}
-		<Button type="button" variant="secondary" disabled={isStopping || loading.stop} class="font-medium" onclick={() => handleStop()}>
-			{#if isStopping || loading.stop}
+		<Button type="button" variant="secondary" disabled={isLoading.stop || loading.stop} class="font-medium" onclick={() => handleStop()}>
+			{#if isLoading.stop || loading.stop}
 				<Loader2 class="w-4 h-4 animate-spin" />
 			{:else}
 				<StopCircle class="w-4 h-4" />
@@ -179,8 +152,8 @@
 			Stop
 		</Button>
 
-		<Button type="button" variant="outline" disabled={isRestarting || loading.restart} class="font-medium" onclick={handleRestart}>
-			{#if isRestarting || loading.restart}
+		<Button type="button" variant="outline" disabled={isLoading.restart || loading.restart} class="font-medium" onclick={() => handleRestart()}>
+			{#if isLoading.restart || loading.restart}
 				<Loader2 class="w-4 h-4 animate-spin" />
 			{:else}
 				<RotateCcw class="w-4 h-4" />
@@ -190,8 +163,8 @@
 	{/if}
 
 	{#if type === 'container'}
-		<Button type="button" variant="destructive" disabled={isRemoving || loading.remove} class="font-medium" onclick={() => confirmAction('remove')}>
-			{#if isRemoving || loading.remove}
+		<Button type="button" variant="destructive" disabled={isLoading.remove || loading.remove} class="font-medium" onclick={() => confirmAction('remove')}>
+			{#if isLoading.remove || loading.remove}
 				<Loader2 class="w-4 h-4 animate-spin" />
 			{:else}
 				<Trash2 class="w-4 h-4" />
@@ -199,8 +172,8 @@
 			Remove
 		</Button>
 	{:else}
-		<Button type="button" variant="secondary" disabled={isRedeploying || loading.redeploy} class="font-medium" onclick={() => confirmAction('redeploy')}>
-			{#if isRedeploying || loading.redeploy}
+		<Button type="button" variant="secondary" disabled={isLoading.redeploy || loading.redeploy} class="font-medium" onclick={() => confirmAction('redeploy')}>
+			{#if isLoading.redeploy || loading.redeploy}
 				<Loader2 class="w-4 h-4 animate-spin" />
 			{:else}
 				<RefreshCcwDot class="w-4 h-4" />
@@ -208,8 +181,8 @@
 			Redeploy
 		</Button>
 
-		<Button type="button" variant="outline" disabled={isPulling || loading.pull} class="font-medium" onclick={handlePull}>
-			{#if isPulling || loading.pull}
+		<Button type="button" variant="outline" disabled={isLoading.pulling || loading.pull} class="font-medium" onclick={() => handlePull()}>
+			{#if isLoading.pulling || loading.pull}
 				<Loader2 class="w-4 h-4 animate-spin" />
 			{:else}
 				<Download class="w-4 h-4" />
@@ -217,8 +190,8 @@
 			Pull
 		</Button>
 
-		<Button type="button" variant="destructive" disabled={isRemoving || loading.remove} class="font-medium" onclick={() => confirmAction('remove')}>
-			{#if isRemoving || loading.remove}
+		<Button type="button" variant="destructive" disabled={isLoading.remove || loading.remove} class="font-medium" onclick={() => confirmAction('remove')}>
+			{#if isLoading.remove || loading.remove}
 				<Loader2 class="w-4 h-4 animate-spin" />
 			{:else}
 				<Trash2 class="w-4 h-4" />

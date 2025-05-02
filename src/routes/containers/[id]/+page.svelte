@@ -94,17 +94,6 @@
 		}, 500);
 	}
 
-	async function handleActionComplete() {
-		setTimeout(() => {
-			starting = false;
-			stopping = false;
-			restarting = false;
-			removing = false;
-		}, 300);
-
-		await invalidateAll();
-	}
-
 	let activeTab = $state('overview');
 </script>
 
