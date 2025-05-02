@@ -1,32 +1,91 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { toast } from 'svelte-sonner';
-	import { Plus, AlertCircle, HardDrive, Database, Trash2, Loader2, ChevronDown } from '@lucide/svelte';
+	import { Plus, AlertCircle, HardDrive, Database, Trash2, Loader2, ChevronDown, Ellipsis, ScanSearch } from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
-	import { columns } from './columns';
-	import type { PageData } from './$types';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import CreateVolumeDialog from './create-volume-dialog.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import * as Table from '$lib/components/ui/table';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import { handleApiReponse } from '$lib/utils/api.util';
+	import { tryCatch } from '$lib/utils/try-catch';
+	import VolumeAPIService from '$lib/services/api/volume-api-service';
+	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 
 	let { data }: { data: PageData } = $props();
 	let { error } = $state(data);
 	let volumes = $state(data.volumes);
 	let selectedIds = $state<string[]>([]);
-	let isCreateDialogOpen = $state(false);
-	let isCreatingVolume = $state(false);
-	let isDeletingSelected = $state(false);
-	let isConfirmDeleteDialogOpen = $state(false);
+
+	const volumeApi = new VolumeAPIService();
+
+	let isDialogOpen = $state({
+		create: false,
+		remove: false
+	});
+
+	let isLoading = $state({
+		remove: false,
+		creating: false
+	});
 
 	const totalVolumes = $derived(volumes?.length || 0);
+
+	async function handleRemoveVolumeConfirm(volumeName: string) {
+		openConfirmDialog({
+			title: 'Delete Volume',
+			message: 'Are you sure you want to delete this volume? This action cannot be undone.',
+			confirm: {
+				label: 'Delete',
+				destructive: true,
+				action: async () => {
+					handleApiReponse(
+						await tryCatch(volumeApi.remove(volumeName)),
+						'Failed to Remove Volume',
+						(value) => (isLoading.remove = value),
+						async () => {
+							toast.success('Volume Removed Successfully.');
+							await invalidateAll();
+						}
+					);
+				}
+			}
+		});
+
+		// showRemoveConfirm = false;
+		// isDeleting = true;
+		// try {
+		// 	const endpoint = `/api/volumes/${encodeURIComponent(name)}${force ? '?force=true' : ''}`;
+		// 	const response = await fetch(endpoint, {
+		// 		method: 'DELETE'
+		// 	});
+
+		// 	const result = await response.json();
+
+		// 	if (!response.ok) {
+		// 		throw new Error(result.error || `HTTP error! status: ${response.status}`);
+		// 	}
+
+		// 	toast.success(`Volume "${name}" deleted successfully.`);
+		// 	await invalidateAll();
+		// } catch (err: unknown) {
+		// 	console.error(`Failed to delete volume "${name}":`, err);
+		// 	const message = err instanceof Error ? err.message : String(err);
+		// 	toast.error(`Failed to delete volume: ${message}`);
+		// } finally {
+		// 	isDeleting = false;
+		// }
+	}
 
 	async function handleCreateVolumeSubmit(event: { name: string; driver?: string; driverOpts?: Record<string, string>; labels?: Record<string, string> }) {
 		const { name, driver, driverOpts, labels } = event;
 
-		isCreatingVolume = true;
+		isLoading.creating = true;
 		try {
 			const response = await fetch('/api/volumes', {
 				method: 'POST',
@@ -48,7 +107,7 @@
 			}
 
 			toast.success(`Volume "${result.volume.Name}" created successfully.`);
-			isCreateDialogOpen = false;
+			isDialogOpen.create = false;
 
 			await refreshData();
 		} catch (err: unknown) {
@@ -56,7 +115,7 @@
 			const message = err instanceof Error ? err.message : String(err);
 			toast.error(`Failed to create volume: ${message}`);
 		} finally {
-			isCreatingVolume = false;
+			isLoading.creating = false;
 		}
 	}
 
@@ -72,7 +131,7 @@
 	}
 
 	async function handleDeleteSelected() {
-		isDeletingSelected = true;
+		isLoading.remove = true;
 		const deletePromises = selectedIds.map(async (name) => {
 			try {
 				const volume = volumes?.find((v) => v.name === name);
@@ -114,17 +173,16 @@
 			}
 		});
 
-		isDeletingSelected = false;
-		isConfirmDeleteDialogOpen = false;
+		isLoading.remove = false;
+		isDialogOpen.remove = false;
 	}
 
 	function openCreateDialog() {
-		isCreateDialogOpen = true;
+		isDialogOpen.create = true;
 	}
 
 	$effect(() => {
 		volumes = data.volumes;
-		error = data.error;
 	});
 </script>
 
@@ -183,8 +241,8 @@
 						<DropdownMenu.Root>
 							<DropdownMenu.Trigger>
 								{#snippet child({ props })}
-									<Button {...props} variant="outline" disabled={isDeletingSelected} aria-label={`Group actions for ${selectedIds.length} selected volume(s)`}>
-										{#if isDeletingSelected}
+									<Button {...props} variant="outline" disabled={isLoading.remove} aria-label={`Group actions for ${selectedIds.length} selected volume(s)`}>
+										{#if isLoading.remove}
 											<Loader2 class="w-4 h-4 animate-spin" />
 											Processing...
 										{:else}
@@ -195,7 +253,7 @@
 								{/snippet}
 							</DropdownMenu.Trigger>
 							<DropdownMenu.Content>
-								<DropdownMenu.Item onclick={() => (isConfirmDeleteDialogOpen = true)} class="text-red-500 focus:!text-red-700" disabled={isDeletingSelected}>
+								<DropdownMenu.Item onclick={() => (isDialogOpen.remove = true)} class="text-red-500 focus:!text-red-700" disabled={isLoading.remove}>
 									<Trash2 class="w-4 h-4" />
 									Delete Selected
 								</DropdownMenu.Item>
@@ -213,14 +271,64 @@
 			{#if volumes && volumes.length > 0}
 				<UniversalTable
 					data={volumes}
-					{columns}
-					idKey="name"
+					columns={[
+						{ accessorKey: 'name', header: 'Name' },
+						{ accessorKey: 'mountpoint', header: 'Mountpoint' },
+						{ accessorKey: 'driver', header: 'Driver' },
+						{ accessorKey: 'actions', header: ' ', enableSorting: false }
+					]}
 					display={{
 						filterPlaceholder: 'Search volumes...',
 						noResultsMessage: 'No volumes found'
 					}}
 					bind:selectedIds
-				/>
+				>
+					{#snippet rows({ item })}
+						<Table.Cell>
+							<div class="flex items-center gap-2">
+								<span class="truncate">
+									<a class="font-medium hover:underline" href="/volumes/{item.name}/">{item.name}</a>
+								</span>
+								{#if !item.inUse}
+									<StatusBadge text="Unused" variant="amber" />
+								{/if}
+							</div>
+						</Table.Cell>
+						<Table.Cell>{item.mountpoint}</Table.Cell>
+						<Table.Cell>{item.driver}</Table.Cell>
+						<Table.Cell>
+							<DropdownMenu.Root>
+								<DropdownMenu.Trigger>
+									{#snippet child({ props })}
+										<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
+											<span class="sr-only">Open menu</span>
+											<Ellipsis />
+										</Button>
+									{/snippet}
+								</DropdownMenu.Trigger>
+								<DropdownMenu.Content>
+									<DropdownMenu.Group>
+										<DropdownMenu.Item onclick={() => goto(`/volumes/${encodeURIComponent(item.name)}`)} disabled={isLoading.remove}>
+											<ScanSearch class="w-4 h-4" />
+											Inspect
+										</DropdownMenu.Item>
+
+										<DropdownMenu.Separator />
+
+										<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveVolumeConfirm(item.name)} disabled={isLoading.remove}>
+											{#if isLoading.remove}
+												<Loader2 class="w-4 h-4 animate-spin" />
+											{:else}
+												<Trash2 class="w-4 h-4" />
+											{/if}
+											Delete
+										</DropdownMenu.Item>
+									</DropdownMenu.Group>
+								</DropdownMenu.Content>
+							</DropdownMenu.Root>
+						</Table.Cell>
+					{/snippet}
+				</UniversalTable>
 			{:else if !error}
 				<div class="flex flex-col items-center justify-center py-12 px-6 text-center">
 					<Database class="h-12 w-12 text-muted-foreground mb-4 opacity-40" />
@@ -231,27 +339,5 @@
 		</Card.Content>
 	</Card.Root>
 
-	<CreateVolumeDialog bind:open={isCreateDialogOpen} isCreating={isCreatingVolume} onSubmit={handleCreateVolumeSubmit} />
-
-	<Dialog.Root bind:open={isConfirmDeleteDialogOpen}>
-		<Dialog.Content>
-			<Dialog.Header>
-				<Dialog.Title>Delete Selected Volumes</Dialog.Title>
-				<Dialog.Description>
-					Are you sure you want to delete {selectedIds.length} selected volume(s)? This action cannot be undone. Volumes currently in use by containers will not be deleted.
-				</Dialog.Description>
-			</Dialog.Header>
-			<div class="flex justify-end gap-3 pt-6">
-				<Button variant="outline" onclick={() => (isConfirmDeleteDialogOpen = false)} disabled={isDeletingSelected}>Cancel</Button>
-				<Button variant="destructive" onclick={handleDeleteSelected} disabled={isDeletingSelected}>
-					{#if isDeletingSelected}
-						<Loader2 class="w-4 h-4 mr-2 animate-spin" />
-						Deleting...
-					{:else}
-						Delete {selectedIds.length} Volume{#if selectedIds.length > 1}s{/if}
-					{/if}
-				</Button>
-			</div>
-		</Dialog.Content>
-	</Dialog.Root>
+	<CreateVolumeDialog bind:open={isDialogOpen.create} isCreating={isLoading.creating} onSubmit={handleCreateVolumeSubmit} />
 </div>

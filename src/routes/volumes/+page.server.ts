@@ -16,7 +16,6 @@ export const load: PageServerLoad = async (): Promise<VolumePageData> => {
 	try {
 		const volumes = await listVolumes();
 
-		// Enhance volumes with usage information
 		const enhancedVolumes = await Promise.all(
 			volumes.map(async (volume): Promise<EnhancedVolumeInfo> => {
 				const inUse = await isVolumeInUse(volume.name);
