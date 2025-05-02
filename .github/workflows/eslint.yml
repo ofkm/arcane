@@ -1,50 +1,51 @@
-name: Run ESLint
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+# ESLint is a tool for identifying and reporting on patterns
+# found in ECMAScript/JavaScript code.
+# More details at https://github.com/eslint/eslint
+# and https://eslint.org
+
+name: ESLint
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - '.github/workflows/eslint.yml'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.eslintrc.cjs'
-      - 'tsconfig.json'
+    branches: [ "main" ]
   pull_request:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - '.github/workflows/eslint.yml'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.eslintr.config.js'
-      - 'tsconfig.json'
-  workflow_dispatch:
+    branches: [ "main" ]
+  schedule:
+    - cron: '41 18 * * 3'
 
 jobs:
-  lint:
-    name: Run ESLint
-    if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-22.04
+  eslint:
+    name: Run eslint scanning
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
-
+      security-events: write
+      actions: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Setup problem matcher
-        run: echo "::add-matcher::.github/eslint-matcher.json"
+      - name: Install ESLint
+        run: |
+          npm install eslint@9.25.1
+          npm install @microsoft/eslint-formatter-sarif@3.1.0
 
       - name: Run ESLint
-        run: npm run lint
+        env:
+          SARIF_ESLINT_IGNORE_SUPPRESSED: "true"
+        run: npx eslint ./src
+          --config eslint.config.js
+          --ext .js,.jsx,.ts,.tsx
+          --format @microsoft/eslint-formatter-sarif
+          --output-file eslint-results.sarif
+        continue-on-error: true
+
+      - name: Upload analysis results to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: eslint-results.sarif
+          wait-for-processing: true
