@@ -17,22 +17,16 @@ RUN NODE_ENV=build npm run build
 # Stage 3: Production image
 FROM node:22-alpine AS runner
 
-# Delete default node user first (combine with package installation to reduce layers)
-RUN deluser --remove-home node && \
-    apk add --no-cache su-exec curl shadow
+# Delete default node user first (combine with system upgrade package installation to reduce layers)
+RUN deluser --remove-home node && apk upgrade -a && apk add --no-cache su-exec curl shadow
 
 WORKDIR /app
 
 # Set up environment variables early for better caching
-ENV DOCKER_GID=998 \
-    PUID=1000 \
-    PGID=1000
+ENV DOCKER_GID=998 PUID=1000 PGID=1000
 
 # Create necessary groups and users
-RUN addgroup -g ${PGID} arcane && \
-    adduser -D -u ${PUID} -G arcane arcane && \
-    addgroup -g ${DOCKER_GID} docker && \
-    adduser arcane docker
+RUN addgroup -g ${PGID} arcane && adduser -D -u ${PUID} -G arcane arcane && addgroup -g ${DOCKER_GID} docker && adduser arcane docker
 
 # Set up directories and permissions
 RUN mkdir -p /app/data && chmod 755 /app/data
@@ -40,16 +34,13 @@ RUN mkdir -p /app/data && chmod 755 /app/data
 # Copy only necessary files from builder
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/static ./static
-# COPY --chown=arcane:arcane app-settings.json /app/data/app-settings.json.default
 
 # Copy entrypoint script
 COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Install only production dependencies
 COPY package*.json ./
-RUN npm install --omit=dev && \
-    npm cache clean --force && \
-    chown -R arcane:arcane /app
+RUN npm install --omit=dev && npm cache clean --force && chown -R arcane:arcane /app
 
 # Configure container
 EXPOSE 3000
