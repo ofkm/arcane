@@ -16,6 +16,7 @@
 	import { statusVariantMap } from '$lib/types/statuses';
 	import { capitalizeFirstLetter } from '$lib/utils';
 	import { handleApiReponse } from '$lib/utils/api.util';
+	import { shortId } from '$lib/utils/string.utils';
 
 	const containerApi = new ContainerAPIService();
 
@@ -219,7 +220,7 @@
 					{#snippet rows({ item })}
 						{@const stateVariant = statusVariantMap[item.state.toLowerCase()]}
 						<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.id}/">{item.name}</a></Table.Cell>
-						<Table.Cell>{item.id}</Table.Cell>
+						<Table.Cell>{shortId(item.id)}</Table.Cell>
 						<Table.Cell>{item.image}</Table.Cell>
 						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.state)} /></Table.Cell>
 						<Table.Cell>{item.status}</Table.Cell>

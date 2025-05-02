@@ -3,107 +3,102 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import UniversalTable from '$lib/components/universal-table.svelte';
-	import { dashboardContainerColumns, dashboardImageColumns } from './columns';
 	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2 } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
-	import { formatBytes } from '$lib/utils';
+	import { capitalizeFirstLetter, formatBytes } from '$lib/utils';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
+	import * as Table from '$lib/components/ui/table';
+	import { statusVariantMap } from '$lib/types/statuses';
+	import { shortId } from '$lib/utils/string.utils';
+	import { handleApiReponse } from '$lib/utils/api.util';
+	import { tryCatch } from '$lib/utils/try-catch';
+	import ContainerAPIService from '$lib/services/api/container-api-service';
 
 	let { data }: { data: PageData } = $props();
 
-	let dockerInfo = $state(data.dockerInfo);
-	let containers = $state(data.containers || []);
-	let images = $state(data.images || []);
-	let settings = $state(data.settings);
-	let error = $state(data.error);
+	const containerApi = new ContainerAPIService();
 
-	let isRefreshing = $state(false);
-	let isStartingAll = $state(false);
-	let isStoppingAll = $state(false);
-	let isPruning = $state(false);
-	let isPruneDialogOpen = $state(false);
+	let dashboardStates = $state({
+		dockerInfo: data.dockerInfo,
+		containers: data.containers,
+		images: data.images,
+		settings: data.settings,
+		error: data.error,
+		isPruneDialogOpen: false
+	});
 
-	const runningContainers = $derived(containers?.filter((c) => c.state === 'running').length ?? 0);
-	const stoppedContainers = $derived(containers?.filter((c) => c.state === 'exited').length ?? 0);
-	const totalImageSize = $derived(images?.reduce((sum, image) => sum + (image.size || 0), 0) ?? 0);
+	let isLoading = $state({
+		starting: false,
+		stopping: false,
+		refreshing: false,
+		pruning: false
+	});
+
+	const runningContainers = $derived(dashboardStates.containers?.filter((c) => c.state === 'running').length ?? 0);
+	const stoppedContainers = $derived(dashboardStates.containers?.filter((c) => c.state === 'exited').length ?? 0);
+	const totalImageSize = $derived(dashboardStates.images?.reduce((sum, image) => sum + (image.size || 0), 0) ?? 0);
 
 	$effect(() => {
-		dockerInfo = data.dockerInfo;
-		containers = data.containers;
-		images = data.images;
-		settings = data.settings;
-		error = data.error;
+		dashboardStates.dockerInfo = data.dockerInfo;
+		dashboardStates.containers = data.containers;
+		dashboardStates.images = data.images;
+		dashboardStates.settings = data.settings;
+		dashboardStates.error = data.error;
 	});
 
 	async function refreshData() {
-		if (isRefreshing) return;
-		isRefreshing = true;
+		if (isLoading.refreshing) return;
+		isLoading.refreshing = true;
 		try {
 			await invalidateAll();
 		} catch (err) {
 			console.error('Error during dashboard refresh:', err);
-			error = 'Failed to refresh dashboard data.';
+			dashboardStates.error = 'Failed to refresh dashboard data.';
 		} finally {
-			isRefreshing = false;
+			isLoading.refreshing = false;
 		}
 	}
 
 	async function handleStartAll() {
-		if (isStartingAll || !dockerInfo || stoppedContainers === 0) return;
-		isStartingAll = true;
-		try {
-			const response = await fetch('/api/containers/start-all', { method: 'POST' });
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.message || 'Failed to start containers');
+		if (isLoading.starting || !dashboardStates.dockerInfo || stoppedContainers === 0) return;
+		handleApiReponse(
+			await tryCatch(containerApi.startAll()),
+			`Failed to Start All Containers`,
+			(value) => (isLoading.starting = value),
+			async () => {
+				toast.success(`All Containers Started Successfully.`);
+				await invalidateAll();
 			}
-
-			toast.success(result.message || `Successfully started ${result.count} container(s).`);
-			await invalidateAll();
-		} catch (err: any) {
-			console.error('Error starting all containers:', err);
-			toast.error(err.message || 'An error occurred while starting containers.');
-		} finally {
-			isStartingAll = false;
-		}
+		);
 	}
 
 	async function handleStopAll() {
-		if (isStoppingAll || !dockerInfo || runningContainers === 0) return;
-		isStoppingAll = true;
-		try {
-			const response = await fetch('/api/containers/stop-all', { method: 'POST' });
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.message || 'Failed to stop containers');
+		if (isLoading.stopping || !dashboardStates.dockerInfo || runningContainers === 0) return;
+		handleApiReponse(
+			await tryCatch(containerApi.stopAll()),
+			`Failed to Stop All Running Containers`,
+			(value) => (isLoading.starting = value),
+			async () => {
+				toast.success(`All Containers Stopped Successfully.`);
+				await invalidateAll();
 			}
-
-			toast.success(result.message || `Successfully stopped ${result.count} container(s).`);
-			await invalidateAll();
-		} catch (err: any) {
-			console.error('Error stopping all containers:', err);
-			toast.error(err.message || 'An error occurred while stopping containers.');
-		} finally {
-			isStoppingAll = false;
-		}
+		);
 	}
 
 	function openPruneDialog() {
-		if (!dockerInfo || isStartingAll || isStoppingAll || isPruning) return;
+		if (!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning) return;
 		isPruneDialogOpen = true;
 	}
 
 	async function confirmPrune(selectedTypes: string[]) {
-		if (isPruning || selectedTypes.length === 0) return;
+		if (isLoading.pruning || selectedTypes.length === 0) return;
 
 		console.log(`Attempting to prune types: ${selectedTypes.join(', ')}`);
-		isPruning = true;
+		isLoading.pruning = true;
 		isPruneDialogOpen = false;
 
 		try {
@@ -126,7 +121,7 @@
 			console.error('Error pruning system:', err);
 			toast.error(err.message || 'An error occurred while pruning the system.');
 		} finally {
-			isPruning = false;
+			isLoading.pruning = false;
 		}
 	}
 </script>
@@ -137,8 +132,8 @@
 			<h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
 			<p class="text-sm text-muted-foreground mt-1">Overview of your Docker environment</p>
 		</div>
-		<Button variant="outline" size="sm" class="h-9" onclick={refreshData} disabled={isRefreshing || isStartingAll || isStoppingAll || isPruning}>
-			{#if isRefreshing}
+		<Button variant="outline" size="sm" class="h-9" onclick={refreshData} disabled={isLoading.refreshing || isLoading.starting || isLoading.stopping || isLoading.pruning}>
+			{#if isLoading.refreshing}
 				<Loader2 class="h-4 w-4 mr-2 animate-spin" />
 			{:else}
 				<RefreshCw class="h-4 w-4 mr-2" />
@@ -147,12 +142,12 @@
 		</Button>
 	</div>
 
-	{#if error}
+	{#if dashboardStates.error}
 		<Alert.Root variant="destructive">
 			<AlertCircle class="h-4 w-4 mr-2" />
 			<Alert.Title>Connection Error</Alert.Title>
 			<Alert.Description>
-				{error} Please check your Docker connection in
+				{dashboardStates.error} Please check your Docker connection in
 				<a href="/settings" class="underline">Settings</a>.
 			</Alert.Description>
 		</Alert.Root>
@@ -172,7 +167,7 @@
 							<div class="mt-1">
 								<p class="text-2xl font-bold">
 									{runningContainers}
-									<span class="text-xs font-normal text-muted-foreground ml-1">/ {containers?.length || 0}</span>
+									<span class="text-xs font-normal text-muted-foreground ml-1">/ {dashboardStates.containers?.length || 0}</span>
 								</p>
 							</div>
 						</div>
@@ -180,8 +175,8 @@
 							<Box class="h-5 w-5 text-green-500" />
 						</div>
 					</div>
-					{#if containers?.length}
-						<Progress value={(runningContainers / containers.length) * 100} class="h-1 mt-4" />
+					{#if dashboardStates.containers?.length}
+						<Progress value={(runningContainers / dashboardStates.containers.length) * 100} class="h-1 mt-4" />
 					{/if}
 				</Card.Content>
 			</Card.Root>
@@ -191,7 +186,7 @@
 					<div class="flex justify-between items-start">
 						<div>
 							<p class="text-sm font-medium text-muted-foreground">Images</p>
-							<p class="text-2xl font-bold mt-1">{dockerInfo?.Images || 0}</p>
+							<p class="text-2xl font-bold mt-1">{dashboardStates.dockerInfo?.Images || 0}</p>
 						</div>
 						<div class="bg-blue-500/10 p-2 rounded-full">
 							<HardDrive class="h-5 w-5 text-blue-500" />
@@ -201,7 +196,7 @@
 						<div class="mt-4 text-xs text-muted-foreground">
 							Total size: {formatBytes(totalImageSize)}
 						</div>
-					{:else if dockerInfo?.Images === 0}
+					{:else if dashboardStates.dockerInfo?.Images === 0}
 						<div class="mt-4 text-xs text-muted-foreground">No images stored</div>
 					{/if}
 				</Card.Content>
@@ -212,14 +207,14 @@
 					<div class="flex justify-between items-start">
 						<div>
 							<p class="text-sm font-medium text-muted-foreground">CPU</p>
-							<p class="text-2xl font-bold mt-1">{dockerInfo?.NCPU || 'N/A'}</p>
+							<p class="text-2xl font-bold mt-1">{dashboardStates.dockerInfo?.NCPU || 'N/A'}</p>
 						</div>
 						<div class="bg-purple-500/10 p-2 rounded-full">
 							<Cpu class="h-5 w-5 text-purple-500" />
 						</div>
 					</div>
 					<div class="mt-4 text-xs text-muted-foreground">
-						{dockerInfo?.Architecture || 'Unknown architecture'}
+						{dashboardStates.dockerInfo?.Architecture || 'Unknown architecture'}
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -230,7 +225,7 @@
 						<div>
 							<p class="text-sm font-medium text-muted-foreground">Memory</p>
 							<p class="text-2xl font-bold mt-1">
-								{formatBytes(dockerInfo?.MemTotal, 0)}
+								{formatBytes(dashboardStates.dockerInfo?.MemTotal, 0)}
 							</p>
 						</div>
 						<div class="bg-amber-500/10 p-2 rounded-full">
@@ -238,9 +233,9 @@
 						</div>
 					</div>
 					<div class="mt-4 text-xs text-muted-foreground">
-						{dockerInfo?.OperatingSystem || 'Unknown OS'}
-						{#if dockerInfo?.ServerVersion}
-							<span class="ml-1">• v{dockerInfo.ServerVersion}</span>
+						{dashboardStates.dockerInfo?.OperatingSystem || 'Unknown OS'}
+						{#if dashboardStates.dockerInfo?.ServerVersion}
+							<span class="ml-1">• v{dashboardStates.dockerInfo.ServerVersion}</span>
 						{/if}
 					</div>
 				</Card.Content>
@@ -252,8 +247,8 @@
 		<h2 class="text-lg font-semibold tracking-tight mb-4">Quick Actions</h2>
 		<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button onclick={handleStartAll} class="w-full" disabled={!dockerInfo || stoppedContainers === 0 || isStartingAll || isStoppingAll || isPruning} variant="default">
-					{#if isStartingAll}
+				<Button onclick={handleStartAll} class="w-full" disabled={!dashboardStates.dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} variant="default">
+					{#if isLoading.starting}
 						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
 					{:else}
 						<PlayCircle class="h-4 w-4 mr-2" />
@@ -265,8 +260,8 @@
 			</Card.Root>
 
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button onclick={handleStopAll} class="w-full" variant="secondary" disabled={!dockerInfo || runningContainers === 0 || isStartingAll || isStoppingAll || isPruning}>
-					{#if isStoppingAll}
+				<Button onclick={handleStopAll} class="w-full" variant="secondary" disabled={!dashboardStates.dockerInfo || runningContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}>
+					{#if isLoading.stopping}
 						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
 					{:else}
 						<StopCircle class="h-4 w-4 mr-2" />
@@ -278,8 +273,8 @@
 			</Card.Root>
 
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button onclick={openPruneDialog} class="w-full" variant="destructive" disabled={!dockerInfo || isStartingAll || isStoppingAll || isPruning}>
-					{#if isPruning}
+				<Button onclick={openPruneDialog} class="w-full" variant="destructive" disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}>
+					{#if isLoading.pruning}
 						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
 					{:else}
 						<Trash2 class="h-4 w-4 mr-2" />
@@ -301,19 +296,25 @@
 							<Card.Title>Containers</Card.Title>
 							<Card.Description class="pb-3">Recent containers</Card.Description>
 						</div>
-						<Button variant="ghost" size="sm" href="/containers" disabled={!dockerInfo}>
+						<Button variant="ghost" size="sm" href="/containers" disabled={!dashboardStates.dockerInfo}>
 							View All
 							<ArrowRight class="ml-2 h-4 w-4" />
 						</Button>
 					</div>
 				</Card.Header>
 				<Card.Content class="p-0 flex-1">
-					{#if containers?.length > 0}
+					{#if dashboardStates.containers?.length > 0}
 						<div class="flex flex-col h-full">
 							<div class="flex-1">
 								<UniversalTable
-									data={containers.slice(0, 5)}
-									columns={dashboardContainerColumns}
+									data={dashboardStates.containers.slice(0, 5)}
+									columns={[
+										{ accessorKey: 'name', header: 'Name' },
+										{ accessorKey: 'id', header: 'ID' },
+										{ accessorKey: 'image', header: 'Image' },
+										{ accessorKey: 'state', header: 'State' },
+										{ accessorKey: 'status', header: 'Status' }
+									]}
 									features={{
 										filtering: false,
 										selection: false
@@ -325,15 +326,24 @@
 									display={{
 										isDashboardTable: true
 									}}
-								/>
+								>
+									{#snippet rows({ item })}
+										{@const stateVariant = statusVariantMap[item.state.toLowerCase()]}
+										<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.id}/">{item.name}</a></Table.Cell>
+										<Table.Cell>{shortId(item.id)}</Table.Cell>
+										<Table.Cell>{item.image}</Table.Cell>
+										<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.state)} /></Table.Cell>
+										<Table.Cell>{item.status}</Table.Cell>
+									{/snippet}
+								</UniversalTable>
 							</div>
-							{#if containers.length > 5}
+							{#if dashboardStates.containers.length > 5}
 								<div class="bg-muted/40 py-2 px-6 text-xs text-muted-foreground border-t">
-									Showing 5 of {containers.length} containers
+									Showing 5 of {dashboardStates.containers.length} containers
 								</div>
 							{/if}
 						</div>
-					{:else if !error}
+					{:else if !dashboardStates.error}
 						<div class="flex flex-col items-center justify-center py-10 px-6 text-center">
 							<Box class="h-8 w-8 text-muted-foreground mb-2 opacity-40" />
 							<p class="text-sm text-muted-foreground">No containers found</p>
@@ -350,19 +360,24 @@
 							<Card.Title>Images</Card.Title>
 							<Card.Description class="pb-3">Recent images</Card.Description>
 						</div>
-						<Button variant="ghost" size="sm" href="/images" disabled={!dockerInfo}>
+						<Button variant="ghost" size="sm" href="/images" disabled={!dashboardStates.dockerInfo}>
 							View All
 							<ArrowRight class="ml-2 h-4 w-4" />
 						</Button>
 					</div>
 				</Card.Header>
 				<Card.Content class="p-0 flex-1">
-					{#if images?.length > 0}
+					{#if dashboardStates.images?.length > 0}
 						<div class="flex flex-col h-full">
 							<div class="flex-1">
 								<UniversalTable
-									data={images.slice(0, 5)}
-									columns={dashboardImageColumns}
+									data={dashboardStates.images.slice(0, 5)}
+									columns={[
+										{ accessorKey: 'repo', header: 'Name' },
+										{ accessorKey: 'tag', header: 'Tag' },
+										{ accessorKey: 'id', header: 'Image ID', enableSorting: false },
+										{ accessorKey: 'size', header: 'Size' }
+									]}
 									features={{
 										filtering: false,
 										selection: false
@@ -377,15 +392,33 @@
 									sort={{
 										defaultSort: { id: 'repo', desc: false }
 									}}
-								/>
+								>
+									{#snippet rows({ item })}
+										<Table.Cell>
+											<div class="flex items-center gap-2">
+												<span class="truncate">
+													<a class="font-medium hover:underline" href="/images/{item.id}/">
+														{item.repo}
+													</a>
+												</span>
+												{#if !item.inUse}
+													<StatusBadge text="Unused" variant="amber" />
+												{/if}
+											</div>
+										</Table.Cell>
+										<Table.Cell>{item.tag}</Table.Cell>
+										<Table.Cell>{shortId(item.id)}</Table.Cell>
+										<Table.Cell>{formatBytes(item.size)}</Table.Cell>
+									{/snippet}
+								</UniversalTable>
 							</div>
-							{#if images.length > 5}
+							{#if dashboardStates.images.length > 5}
 								<div class="bg-muted/40 py-2 px-6 text-xs text-muted-foreground border-t">
-									Showing 5 of {images.length} images
+									Showing 5 of {dashboardStates.images.length} images
 								</div>
 							{/if}
 						</div>
-					{:else if !error}
+					{:else if !dashboardStates.error}
 						<div class="flex flex-col items-center justify-center py-10 px-6 text-center">
 							<HardDrive class="h-8 w-8 text-muted-foreground mb-2 opacity-40" />
 							<p class="text-sm text-muted-foreground">No images found</p>
@@ -415,11 +448,9 @@
 					<span class="sr-only">GitHub</span>
 				</a>
 			</div>
-			<div>
-				<!-- Optional: Add version or other info here -->
-			</div>
+			<div></div>
 		</div>
 	</section>
 
-	<PruneConfirmationDialog bind:open={isPruneDialogOpen} {isPruning} imagePruneMode={settings?.pruneMode || 'dangling'} onConfirm={confirmPrune} onCancel={() => (isPruneDialogOpen = false)} />
+	<PruneConfirmationDialog bind:open={isPruneDialogOpen} isPruning={isLoading.pruning} imagePruneMode={dashboardStates.settings?.pruneMode || 'dangling'} onConfirm={confirmPrune} onCancel={() => (isPruneDialogOpen = false)} />
 </div>

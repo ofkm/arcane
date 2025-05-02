@@ -1,9 +1,9 @@
 import type { PageServerLoad } from './$types';
 import { listContainers } from '$lib/services/docker/container-service';
 import { getDockerInfo } from '$lib/services/docker/core';
-import { listImages } from '$lib/services/docker/image-service';
+import { isImageInUse, listImages } from '$lib/services/docker/image-service';
 import { getSettings } from '$lib/services/settings-service';
-import type { ServiceContainer, ServiceImage } from '$lib/types/docker';
+import type { EnhancedImageInfo, ServiceContainer, ServiceImage } from '$lib/types/docker';
 
 type DockerInfoType = Awaited<ReturnType<typeof getDockerInfo>>;
 type SettingsType = NonNullable<Awaited<ReturnType<typeof getSettings>>>;
@@ -41,13 +41,22 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 			})
 		]);
 
-		// Check if the primary connection failed
+		const enhancedImages = await Promise.all(
+			images.map(async (image): Promise<EnhancedImageInfo> => {
+				const inUse = await isImageInUse(image.id);
+				return {
+					...image,
+					inUse
+				};
+			})
+		);
+
 		if (!dockerInfo) {
 			return {
 				dockerInfo: null,
 				containers: [],
-				images: [],
-				settings: settings ? { pruneMode: settings.pruneMode } : null, // Still return settings if available
+				images: [] as EnhancedImageInfo[],
+				settings: settings ? { pruneMode: settings.pruneMode } : null,
 				error: 'Failed to connect to Docker Engine. Please check settings and ensure Docker is running.'
 			};
 		}
@@ -55,8 +64,8 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 		return {
 			dockerInfo,
 			containers,
-			images,
-			settings: settings ? { pruneMode: settings.pruneMode } : null // Pass only pruneMode
+			images: enhancedImages,
+			settings: settings ? { pruneMode: settings.pruneMode } : null
 		};
 	} catch (err: any) {
 		console.error('Dashboard: Unexpected error loading data:', err);
