@@ -56,7 +56,7 @@
 </script>
 
 <!-- Confirmation Dialog for Remove -->
-<ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Image Removal" description={`Are you sure you want to remove image ${shortId}? This action cannot be undone.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType={'image'} isRunning={potentiallyInUse} />
+<ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Image Removal" description={`Are you sure you want to remove image ${shortId}? This action cannot be undone.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType="image" isRunning={potentiallyInUse} />
 
 <div class="space-y-6 pb-8">
 	<!-- Breadcrumb Navigation -->

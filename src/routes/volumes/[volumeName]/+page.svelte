@@ -44,7 +44,7 @@
 	}
 </script>
 
-<ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Volume Removal" description={`Are you sure you want to remove volume "${volume?.Name}"? This action cannot be undone.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType={'volume'} isRunning={inUse} />
+<ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Volume Removal" description={`Are you sure you want to remove volume "${volume?.Name}"? This action cannot be undone.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType="volume" isRunning={inUse} />
 
 <div class="space-y-6 pb-8">
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">

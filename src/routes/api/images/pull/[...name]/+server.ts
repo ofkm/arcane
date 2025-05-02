@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		const platform = body?.platform;
 		const tag = body?.tag || 'latest';
 
-		let imageRef = fullPath.includes(':') ? fullPath : `${fullPath}:${tag}`;
+		const imageRef = fullPath.includes(':') ? fullPath : `${fullPath}:${tag}`;
 
 		console.log(`API: Pulling image "${imageRef}"...`);
 		await pullImage(imageRef, platform);

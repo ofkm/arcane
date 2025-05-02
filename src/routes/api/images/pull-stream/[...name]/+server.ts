@@ -35,7 +35,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 				// Pass options to docker.pull
 				const pullStream = await docker.pull(fullImageRef, pullOptions);
 
-				let layers: Record<string, any> = {};
+				const layers: Record<string, any> = {};
 				let totalProgress = 0;
 
 				docker.modem.followProgress(
