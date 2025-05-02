@@ -16,11 +16,5 @@ Arcane comes with built-in user management to help you control who can access yo
 
 ## Adding Users
 
-- Only admins can add new users.
-- Go to the user management section in the app (or use the API if you are a developer).
+- Go to the Settings in the sidebar then USer Management, and click Create User.
 - Fill in the required details: username, display name, email, and password.
-
-## Changing Passwords
-
-- Users can change their own password after logging in.
-- Admins can reset passwords for other users.
