@@ -1,12 +1,10 @@
 <script lang="ts">
-	import type { PageData, ActionData } from './$types';
+	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { ArrowLeft, AlertCircle, RefreshCw, HardDrive, Clock, Network, Terminal, Cpu, MemoryStick } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
-	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
 	import { formatDate, formatLogLine, formatBytes } from '$lib/utils';
@@ -15,7 +13,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+	let { data }: { data: PageData } = $props();
 	let { container, logs, stats } = $derived(data);
 
 	let starting = $state(false);
@@ -23,9 +21,7 @@
 	let restarting = $state(false);
 	let removing = $state(false);
 	let isRefreshing = $state(false);
-
-	let formattedLogLines = $derived(logs ? logs.split('\n').map(formatLogLine) : []);
-
+	let formattedLogHtml = $derived(logs ? logs.split('\n').map(formatLogLine).join('<br />') : '');
 	let logsContainer = $state<HTMLDivElement | undefined>(undefined);
 
 	// --- Stats Calculation ---
@@ -77,19 +73,17 @@
 	// --- End Helper ---
 
 	$effect(() => {
-		starting = false;
-		stopping = false;
-		restarting = false;
-		removing = false;
-	});
-
-	$effect(() => {
 		if (logsContainer && logs) {
 			const shouldScroll = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 50;
 			if (shouldScroll) {
 				logsContainer.scrollTop = logsContainer.scrollHeight;
 			}
 		}
+
+		starting = false;
+		stopping = false;
+		restarting = false;
+		removing = false;
 	});
 
 	async function refreshData() {
@@ -98,6 +92,17 @@
 		setTimeout(() => {
 			isRefreshing = false;
 		}, 500);
+	}
+
+	async function handleActionComplete() {
+		setTimeout(() => {
+			starting = false;
+			stopping = false;
+			restarting = false;
+			removing = false;
+		}, 300);
+
+		await invalidateAll();
 	}
 
 	let activeTab = $state('overview');
@@ -136,44 +141,20 @@
 
 		{#if container}
 			<div class="flex gap-2 flex-wrap">
-				<form
-					method="POST"
-					action={container.state?.Running ? '?/stop' : '?/start'}
-					use:enhance={() => {
-						if (container.state?.Running) {
-							stopping = true;
-						} else {
-							starting = true;
-						}
-						return async ({ update }) => {
-							await update({ reset: false });
-						};
+				<ActionButtons
+					id={container.id}
+					type="container"
+					itemState={container.state?.Running ? 'running' : 'stopped'}
+					loading={{
+						start: starting,
+						stop: stopping,
+						restart: restarting,
+						remove: removing
 					}}
-				>
-					<ActionButtons
-						id={container.id}
-						type="container"
-						itemState={container.state?.Running ? 'running' : 'stopped'}
-						loading={{
-							start: starting,
-							stop: stopping,
-							restart: restarting,
-							remove: removing
-						}}
-					/>
-				</form>
+				/>
 			</div>
 		{/if}
 	</div>
-
-	<!-- Error Alert -->
-	{#if form?.error}
-		<Alert.Root variant="destructive">
-			<AlertCircle class="h-4 w-4 mr-2" />
-			<Alert.Title>Action Failed</Alert.Title>
-			<Alert.Description>{form.error}</Alert.Description>
-		</Alert.Root>
-	{/if}
 
 	{#if container}
 		<Tabs.Root value={activeTab} onValueChange={(val) => (activeTab = val)} class="space-y-4">
@@ -539,7 +520,7 @@
 							<div class="text-center py-8 border rounded-md border-dashed">
 								<div class="mb-3 w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground">
-										<path d="M21 5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5Z"></path>
+										<path d="M21 5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2V5Z"></path>
 										<path d="M2 10h20"></path>
 									</svg>
 								</div>
@@ -569,10 +550,8 @@
 
 					<Card.Content>
 						<div class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs h-[500px] overflow-auto whitespace-pre-wrap border" bind:this={logsContainer} id="logs-container" style="word-break: break-all;">
-							{#if formattedLogLines.length > 0}
-								{#each formattedLogLines as line, index (index)}
-									{@html line}
-								{/each}
+							{#if formattedLogHtml}
+								{@html formattedLogHtml}
 							{:else}
 								<div class="flex flex-col items-center justify-center h-full text-center">
 									<Terminal class="h-8 w-8 text-muted-foreground mb-3 opacity-40" />
@@ -581,10 +560,6 @@
 							{/if}
 						</div>
 					</Card.Content>
-
-					<Card.Footer class="flex justify-end border-t pt-4">
-						<Button variant="outline" size="sm" href="/containers/{container.id}/logs" class="text-sm">View full logs</Button>
-					</Card.Footer>
 				</Card.Root>
 			</Tabs.Content>
 
