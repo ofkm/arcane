@@ -289,7 +289,7 @@
 										</Button>
 									{/snippet}
 								</DropdownMenu.Trigger>
-								<DropdownMenu.Content>
+								<DropdownMenu.Content align="end">
 									<DropdownMenu.Item onclick={() => handleDeleteSelected()} class="text-red-500 focus:!text-red-700" disabled={isLoading.removing}>
 										<Trash2 class="w-4 h-4" />
 										Delete Selected
@@ -346,7 +346,7 @@
 										</Button>
 									{/snippet}
 								</DropdownMenu.Trigger>
-								<DropdownMenu.Content>
+								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
 										<DropdownMenu.Item onclick={() => goto(`/images/${item.id}`)}>
 											<ScanSearch class="h-4 w-4" />

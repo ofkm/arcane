@@ -9,7 +9,6 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import CreateVolumeDialog from './create-volume-dialog.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Table from '$lib/components/ui/table';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiReponse } from '$lib/utils/api.util';
@@ -18,11 +17,12 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 
 	let { data }: { data: PageData } = $props();
-	let { error } = $state(data);
-	let volumes = $state(data.volumes);
-	let selectedIds = $state<string[]>([]);
 
-	const volumeApi = new VolumeAPIService();
+	let volumePageStates = $state({
+		volumes: data.volumes,
+		selectedIds: <string[]>[],
+		error: data.error
+	});
 
 	let isDialogOpen = $state({
 		create: false,
@@ -34,7 +34,9 @@
 		creating: false
 	});
 
-	const totalVolumes = $derived(volumes?.length || 0);
+	const totalVolumes = $derived(volumePageStates.volumes.length);
+
+	const volumeApi = new VolumeAPIService();
 
 	async function handleRemoveVolumeConfirm(volumeName: string) {
 		openConfirmDialog({
@@ -56,30 +58,6 @@
 				}
 			}
 		});
-
-		// showRemoveConfirm = false;
-		// isDeleting = true;
-		// try {
-		// 	const endpoint = `/api/volumes/${encodeURIComponent(name)}${force ? '?force=true' : ''}`;
-		// 	const response = await fetch(endpoint, {
-		// 		method: 'DELETE'
-		// 	});
-
-		// 	const result = await response.json();
-
-		// 	if (!response.ok) {
-		// 		throw new Error(result.error || `HTTP error! status: ${response.status}`);
-		// 	}
-
-		// 	toast.success(`Volume "${name}" deleted successfully.`);
-		// 	await invalidateAll();
-		// } catch (err: unknown) {
-		// 	console.error(`Failed to delete volume "${name}":`, err);
-		// 	const message = err instanceof Error ? err.message : String(err);
-		// 	toast.error(`Failed to delete volume: ${message}`);
-		// } finally {
-		// 	isDeleting = false;
-		// }
 	}
 
 	async function handleCreateVolumeSubmit(event: { name: string; driver?: string; driverOpts?: Record<string, string>; labels?: Record<string, string> }) {
@@ -122,7 +100,7 @@
 	async function refreshData() {
 		try {
 			await invalidateAll();
-			volumes = data.volumes;
+			volumePageStates.volumes = data.volumes;
 		} catch (err: unknown) {
 			console.error('Failed to refresh volume data:', err);
 			const message = err instanceof Error ? err.message : String(err);
@@ -131,58 +109,61 @@
 	}
 
 	async function handleDeleteSelected() {
-		isLoading.remove = true;
-		const deletePromises = selectedIds.map(async (name) => {
-			try {
-				const volume = volumes?.find((v) => v.name === name);
-				if (volume?.inUse) {
-					toast.error(`Volume "${name}" is in use and cannot be deleted.`);
-					return { name, success: false, error: 'Volume in use' };
-				}
+		openConfirmDialog({
+			title: 'Delete Selected Volumes',
+			message: `Are you sure you want to delete ${volumePageStates.selectedIds.length} selected images? This action cannot be undone. Images currently used by containers will not be deleted.
+`,
+			confirm: {
+				label: 'Delete',
+				destructive: true,
+				action: async () => {
+					isLoading.remove = true;
 
-				const response = await fetch(`/api/volumes/${name}`, {
-					method: 'DELETE'
-				});
-				const result = await response.json();
-				if (!response.ok) {
-					throw new Error(result.error || `HTTP error! status: ${response.status}`);
+					let successCount = 0;
+					let failureCount = 0;
+
+					for (const name of volumePageStates.selectedIds) {
+						const volume = volumePageStates.volumes?.find((v) => v.name === name);
+
+						if (volume?.inUse) {
+							toast.error(`Volume "${volume.name}" is in use and cannot be deleted.`);
+							failureCount++;
+							continue;
+						}
+
+						if (!volume?.name) continue;
+						const result = await tryCatch(volumeApi.remove(volume.name));
+						handleApiReponse(
+							result,
+							`Failed to delete image "${volume.name}"`,
+							(value) => (isLoading.remove = value),
+							async () => {
+								toast.success(`Volume "${volume.name}" deleted successfully.`);
+								successCount++;
+							}
+						);
+
+						if (result.error) {
+							failureCount++;
+						}
+					}
+
+					console.log(`Finished deleting. Success: ${successCount}, Failed: ${failureCount}`);
+					if (successCount > 0) {
+						setTimeout(async () => {
+							await invalidateAll();
+							volumePageStates.selectedIds = [];
+						}, 500);
+					} else {
+						volumePageStates.selectedIds = [];
+					}
 				}
-				return { name, success: true };
-			} catch (err: unknown) {
-				console.error(`Failed to delete volume "${name}":`, err);
-				const message = err instanceof Error ? err.message : String(err);
-				return { name, success: false, error: message };
 			}
 		});
-
-		const results = await Promise.all(deletePromises);
-		const successfulDeletes = results.filter((r) => r.success);
-		const failedDeletes = results.filter((r) => !r.success);
-
-		if (successfulDeletes.length > 0) {
-			toast.success(`Successfully deleted ${successfulDeletes.length} volume(s).`);
-			setTimeout(async () => {
-				await refreshData();
-				selectedIds = [];
-			}, 500);
-		}
-
-		failedDeletes.forEach((r) => {
-			if (r.error !== 'Volume in use') {
-				toast.error(`Failed to delete volume "${r.name}": ${r.error}`);
-			}
-		});
-
-		isLoading.remove = false;
-		isDialogOpen.remove = false;
-	}
-
-	function openCreateDialog() {
-		isDialogOpen.create = true;
 	}
 
 	$effect(() => {
-		volumes = data.volumes;
+		volumePageStates.volumes = data.volumes;
 	});
 </script>
 
@@ -195,11 +176,11 @@
 		<div class="flex gap-2"></div>
 	</div>
 
-	{#if error}
+	{#if volumePageStates.error}
 		<Alert.Root variant="destructive">
 			<AlertCircle class="h-4 w-4 mr-2" />
 			<Alert.Title>Error Loading Volumes</Alert.Title>
-			<Alert.Description>{error}</Alert.Description>
+			<Alert.Description>{volumePageStates.error}</Alert.Description>
 		</Alert.Root>
 	{/if}
 
@@ -237,30 +218,30 @@
 					<Card.Description>Manage persistent data storage</Card.Description>
 				</div>
 				<div class="flex items-center gap-2">
-					{#if selectedIds.length > 0}
+					{#if volumePageStates.selectedIds.length > 0}
 						<DropdownMenu.Root>
 							<DropdownMenu.Trigger>
 								{#snippet child({ props })}
-									<Button {...props} variant="outline" disabled={isLoading.remove} aria-label={`Group actions for ${selectedIds.length} selected volume(s)`}>
+									<Button {...props} variant="outline" disabled={isLoading.remove} aria-label={`Group actions for ${volumePageStates.selectedIds.length} selected volume(s)`}>
 										{#if isLoading.remove}
 											<Loader2 class="w-4 h-4 animate-spin" />
 											Processing...
 										{:else}
-											Actions ({selectedIds.length})
+											Actions ({volumePageStates.selectedIds.length})
 											<ChevronDown class="w-4 h-4" />
 										{/if}
 									</Button>
 								{/snippet}
 							</DropdownMenu.Trigger>
-							<DropdownMenu.Content>
-								<DropdownMenu.Item onclick={() => (isDialogOpen.remove = true)} class="text-red-500 focus:!text-red-700" disabled={isLoading.remove}>
+							<DropdownMenu.Content align="end">
+								<DropdownMenu.Item onclick={() => handleDeleteSelected()} class="text-red-500 focus:!text-red-700" disabled={isLoading.remove}>
 									<Trash2 class="w-4 h-4" />
 									Delete Selected
 								</DropdownMenu.Item>
 							</DropdownMenu.Content>
 						</DropdownMenu.Root>
 					{/if}
-					<Button variant="secondary" onclick={openCreateDialog}>
+					<Button variant="secondary" onclick={() => (isDialogOpen.create = true)}>
 						<Plus class="w-4 h-4" />
 						Create Volume
 					</Button>
@@ -268,9 +249,10 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			{#if volumes && volumes.length > 0}
+			{#if volumePageStates.volumes && volumePageStates.volumes.length > 0}
 				<UniversalTable
-					data={volumes}
+					data={volumePageStates.volumes}
+					idKey="name"
 					columns={[
 						{ accessorKey: 'name', header: 'Name' },
 						{ accessorKey: 'mountpoint', header: 'Mountpoint' },
@@ -281,7 +263,7 @@
 						filterPlaceholder: 'Search volumes...',
 						noResultsMessage: 'No volumes found'
 					}}
-					bind:selectedIds
+					bind:selectedIds={volumePageStates.selectedIds}
 				>
 					{#snippet rows({ item })}
 						<Table.Cell>
@@ -306,7 +288,7 @@
 										</Button>
 									{/snippet}
 								</DropdownMenu.Trigger>
-								<DropdownMenu.Content>
+								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
 										<DropdownMenu.Item onclick={() => goto(`/volumes/${encodeURIComponent(item.name)}`)} disabled={isLoading.remove}>
 											<ScanSearch class="w-4 h-4" />
@@ -329,7 +311,7 @@
 						</Table.Cell>
 					{/snippet}
 				</UniversalTable>
-			{:else if !error}
+			{:else if !volumePageStates.error}
 				<div class="flex flex-col items-center justify-center py-12 px-6 text-center">
 					<Database class="h-12 w-12 text-muted-foreground mb-4 opacity-40" />
 					<p class="text-lg font-medium">No volumes found</p>

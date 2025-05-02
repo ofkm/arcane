@@ -233,7 +233,7 @@
 										</Button>
 									{/snippet}
 								</DropdownMenu.Trigger>
-								<DropdownMenu.Content>
+								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
 										<DropdownMenu.Item onclick={() => goto(`/containers/${item.id}`)} disabled={isAnyLoading}>
 											<ScanSearch class="w-4 h-4" />
