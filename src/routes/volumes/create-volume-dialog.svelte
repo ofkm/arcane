@@ -8,31 +8,22 @@
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
-
-	export function onClose() {
-		open = false;
-	}
-
-	type VolumeSubmitData = {
-		name: string;
-		driver?: string;
-		driverOpts?: Record<string, string>;
-		labels?: Record<string, string>;
-	};
+	import type { VolumeCreateOptions } from 'dockerode';
 
 	interface Props {
 		open?: boolean;
 		isCreating?: boolean;
-		// Fixed: Use specific function type instead of any
-		onSubmit?: (data: VolumeSubmitData) => void;
+		onSubmit?: (data: VolumeCreateOptions) => void;
 	}
 
-	let { open = $bindable(false), isCreating = false, onSubmit = (_data: VolumeSubmitData) => {} }: Props = $props();
+	let { open = $bindable(false), isCreating = false, onSubmit = (_data: VolumeCreateOptions) => {} }: Props = $props();
 
-	let volumeName = $state('');
-	let driver = $state('local');
-	let driverOptsText = $state('');
-	let labelsText = $state('');
+	let volumeCreateStates = $state({
+		volumeName: '',
+		volumeDriver: 'local',
+		volumeOptText: '',
+		volumeLabels: ''
+	});
 
 	const drivers = [
 		{ label: 'Local', value: 'local' },
@@ -64,17 +55,20 @@
 	}
 
 	function handleSubmit() {
-		if (!volumeName.trim()) return;
+		if (!volumeCreateStates.volumeName.trim()) return;
 
-		const driverOpts = parseKeyValuePairs(driverOptsText);
-		const labels = parseKeyValuePairs(labelsText);
+		const driverOpts = parseKeyValuePairs(volumeCreateStates.volumeOptText);
+		const labels = parseKeyValuePairs(volumeCreateStates.volumeLabels);
 
-		onSubmit({
-			name: volumeName.trim(),
-			driver,
-			driverOpts: Object.keys(driverOpts).length ? driverOpts : undefined,
-			labels: Object.keys(labels).length ? labels : undefined
-		});
+		const volumeOptions: VolumeCreateOptions = {
+			Name: volumeCreateStates.volumeName.trim(),
+			Driver: volumeCreateStates.volumeDriver,
+			DriverOpts: Object.keys(driverOpts).length ? driverOpts : undefined,
+			Labels: Object.keys(labels).length ? labels : undefined
+		};
+
+		onSubmit(volumeOptions);
+		open = false;
 	}
 </script>
 
@@ -88,15 +82,15 @@
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="volume-name" class="text-right">Name</Label>
-				<Input id="volume-name" bind:value={volumeName} class="col-span-3" placeholder="e.g., my-app-data" required disabled={isCreating} />
+				<Input id="volume-name" bind:value={volumeCreateStates.volumeName} class="col-span-3" placeholder="e.g., my-app-data" required disabled={isCreating} />
 			</div>
 
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="volume-driver" class="text-right">Driver</Label>
 				<div class="col-span-3">
-					<Select.Root type="single" bind:value={driver} disabled={isCreating}>
+					<Select.Root type="single" bind:value={volumeCreateStates.volumeDriver} disabled={isCreating}>
 						<Select.Trigger class="w-full">
-							<span>{drivers.find((d) => d.value === driver)?.label || 'Select a driver'}</span>
+							<span>{drivers.find((d) => d.value === volumeCreateStates.volumeDriver)?.label || 'Select a driver'}</span>
 						</Select.Trigger>
 						<Select.Content>
 							{#each drivers as driverOption (driverOption.value)}
@@ -116,12 +110,12 @@
 						<div class="grid gap-4 pt-2">
 							<div>
 								<Label for="driver-opts">Driver Options</Label>
-								<Textarea id="driver-opts" bind:value={driverOptsText} placeholder="key=value&#10;key2=value2" disabled={isCreating} />
+								<Textarea id="driver-opts" bind:value={volumeCreateStates.volumeOptText} placeholder="key=value&#10;key2=value2" disabled={isCreating} />
 								<p class="text-xs text-muted-foreground mt-1">Enter driver-specific options as key=value pairs, one per line</p>
 							</div>
 							<div>
 								<Label for="labels">Labels</Label>
-								<Textarea id="labels" bind:value={labelsText} placeholder="com.example.description=Production data&#10;com.example.department=Finance" disabled={isCreating} />
+								<Textarea id="labels" bind:value={volumeCreateStates.volumeLabels} placeholder="com.example.description=Production data&#10;com.example.department=Finance" disabled={isCreating} />
 								<p class="text-xs text-muted-foreground mt-1">Enter metadata labels as key=value pairs, one per line</p>
 							</div>
 						</div>
@@ -131,8 +125,8 @@
 		</form>
 
 		<Dialog.Footer>
-			<Button variant="outline" onclick={onClose} disabled={isCreating}>Cancel</Button>
-			<Button type="submit" onclick={handleSubmit} disabled={isCreating || !volumeName.trim()}>
+			<Button variant="outline" onclick={() => (open = false)} disabled={isCreating}>Cancel</Button>
+			<Button type="submit" onclick={handleSubmit} disabled={isCreating || !volumeCreateStates.volumeName.trim()}>
 				{#if isCreating}
 					<Loader2 class="h-4 w-4 mr-2 animate-spin" /> Creating...
 				{:else}

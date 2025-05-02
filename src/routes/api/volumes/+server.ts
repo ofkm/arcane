@@ -5,27 +5,20 @@ import type { VolumeCreateOptions } from 'dockerode';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const body = await request.json();
+		const body: VolumeCreateOptions = await request.json();
 
-		if (!body.name || typeof body.name !== 'string' || body.name.trim() === '') {
-			return json({ error: 'Volume name is required.' }, { status: 400 });
+		if (!body.Name) {
+			return json({ error: 'Volume name is required.' }, { status: 409 });
 		}
 
-		const options: VolumeCreateOptions = {
-			Name: body.name.trim(),
-			Driver: body.driver || 'local',
-			Labels: body.labels || {},
-			DriverOpts: body.driverOpts || {}
-		};
-
-		const volumeInfo = await createVolume(options);
+		const volumeInfo = await createVolume(body);
 
 		return json(
 			{
 				success: true,
 				volume: {
 					...volumeInfo,
-					Name: body.name.trim() // Ensure Name is set correctly
+					Name: volumeInfo.name
 				}
 			},
 			{ status: 201 }

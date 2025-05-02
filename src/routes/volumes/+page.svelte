@@ -15,6 +15,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import VolumeAPIService from '$lib/services/api/volume-api-service';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import type { VolumeCreateOptions } from 'dockerode';
 
 	let { data }: { data: PageData } = $props();
 
@@ -60,53 +61,54 @@
 		});
 	}
 
-	async function handleCreateVolumeSubmit(event: { name: string; driver?: string; driverOpts?: Record<string, string>; labels?: Record<string, string> }) {
-		const { name, driver, driverOpts, labels } = event;
-
-		isLoading.creating = true;
-		try {
-			const response = await fetch('/api/volumes', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					name,
-					driver,
-					driverOpts,
-					labels
-				})
-			});
-
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error || `HTTP error! status: ${response.status}`);
+	async function handleCreateVolume(volumeCreate: VolumeCreateOptions) {
+		handleApiReponse(
+			await tryCatch(volumeApi.create(volumeCreate)),
+			`Failed to Create Volume "${volumeCreate.Name}"`,
+			(value) => (isLoading.creating = value),
+			async () => {
+				toast.success(`Volume "${volumeCreate.Name}" Create successfully.`);
+				await invalidateAll();
 			}
-
-			toast.success(`Volume "${result.volume.Name}" created successfully.`);
-			isDialogOpen.create = false;
-
-			await refreshData();
-		} catch (err: unknown) {
-			console.error('Failed to create volume:', err);
-			const message = err instanceof Error ? err.message : String(err);
-			toast.error(`Failed to create volume: ${message}`);
-		} finally {
-			isLoading.creating = false;
-		}
+		);
 	}
 
-	async function refreshData() {
-		try {
-			await invalidateAll();
-			volumePageStates.volumes = data.volumes;
-		} catch (err: unknown) {
-			console.error('Failed to refresh volume data:', err);
-			const message = err instanceof Error ? err.message : String(err);
-			toast.error(`Failed to refresh volumes: ${message}`);
-		}
-	}
+	// async function handleCreateVolumeSubmit(event: { name: string; driver?: string; driverOpts?: Record<string, string>; labels?: Record<string, string> }) {
+	// 	const { name, driver, driverOpts, labels } = event;
+
+	// 	isLoading.creating = true;
+	// 	try {
+	// 		const response = await fetch('/api/volumes', {
+	// 			method: 'POST',
+	// 			headers: {
+	// 				'Content-Type': 'application/json'
+	// 			},
+	// 			body: JSON.stringify({
+	// 				name,
+	// 				driver,
+	// 				driverOpts,
+	// 				labels
+	// 			})
+	// 		});
+
+	// 		const result = await response.json();
+
+	// 		if (!response.ok) {
+	// 			throw new Error(result.error || `HTTP error! status: ${response.status}`);
+	// 		}
+
+	// 		toast.success(`Volume "${result.volume.Name}" created successfully.`);
+	// 		isDialogOpen.create = false;
+
+	// 		await refreshData();
+	// 	} catch (err: unknown) {
+	// 		console.error('Failed to create volume:', err);
+	// 		const message = err instanceof Error ? err.message : String(err);
+	// 		toast.error(`Failed to create volume: ${message}`);
+	// 	} finally {
+	// 		isLoading.creating = false;
+	// 	}
+	// }
 
 	async function handleDeleteSelected() {
 		openConfirmDialog({
@@ -321,5 +323,5 @@
 		</Card.Content>
 	</Card.Root>
 
-	<CreateVolumeDialog bind:open={isDialogOpen.create} isCreating={isLoading.creating} onSubmit={handleCreateVolumeSubmit} />
+	<CreateVolumeDialog bind:open={isDialogOpen.create} isCreating={isLoading.creating} onSubmit={(volumeCreateData) => handleCreateVolume(volumeCreateData)} />
 </div>
