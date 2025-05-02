@@ -2,9 +2,10 @@ import { json, error as serverError } from '@sveltejs/kit';
 import { pruneSystem } from '$lib/services/docker/system-service';
 import type { RequestHandler } from './$types';
 import { formatBytes } from '$lib/utils'; // Import formatBytes
+import type { PruneType } from '$lib/types/actions.type';
 
 // Define allowed types
-type PruneType = 'containers' | 'images' | 'networks' | 'volumes';
+
 const allowedPruneTypes: PruneType[] = ['containers', 'images', 'networks', 'volumes'];
 
 export const POST: RequestHandler = async ({ url }) => {

@@ -17,10 +17,12 @@
 	import { handleApiReponse } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
+	import SystemAPIService from '$lib/services/api/system-api-service';
 
 	let { data }: { data: PageData } = $props();
 
 	const containerApi = new ContainerAPIService();
+	const systemApi = new SystemAPIService();
 
 	let dashboardStates = $state({
 		dockerInfo: data.dockerInfo,
@@ -89,40 +91,20 @@
 		);
 	}
 
-	function openPruneDialog() {
-		if (!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning) return;
-		isPruneDialogOpen = true;
-	}
-
 	async function confirmPrune(selectedTypes: string[]) {
 		if (isLoading.pruning || selectedTypes.length === 0) return;
 
-		console.log(`Attempting to prune types: ${selectedTypes.join(', ')}`);
-		isLoading.pruning = true;
-		isPruneDialogOpen = false;
-
-		try {
-			const apiUrl = `/api/system/prune?types=${encodeURIComponent(selectedTypes.join(','))}`;
-			const response = await fetch(apiUrl, { method: 'POST' });
-			const result = await response.json();
-
-			if (!response.ok && !result.success) {
-				throw new Error(result.message || `Failed to prune system (status ${response.status})`);
+		handleApiReponse(
+			await tryCatch(systemApi.prune(['containers', 'images'])),
+			`Failed to Prune ${selectedTypes}`,
+			(value) => (isLoading.pruning = value),
+			async () => {
+				dashboardStates.isPruneDialogOpen = false;
+				const formattedTypes = selectedTypes.map((type) => capitalizeFirstLetter(type)).join(', ');
+				toast.success(`${formattedTypes} ${selectedTypes.length > 1 ? 'were' : 'was'} pruned successfully.`);
+				await invalidateAll();
 			}
-
-			if (!result.success && result.message) {
-				toast.warning(result.message);
-			} else {
-				toast.success(result.message || 'System prune completed.');
-			}
-
-			await invalidateAll();
-		} catch (err: any) {
-			console.error('Error pruning system:', err);
-			toast.error(err.message || 'An error occurred while pruning the system.');
-		} finally {
-			isLoading.pruning = false;
-		}
+		);
 	}
 </script>
 
@@ -273,7 +255,7 @@
 			</Card.Root>
 
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button onclick={openPruneDialog} class="w-full" variant="destructive" disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}>
+				<Button onclick={() => (dashboardStates.isPruneDialogOpen = true)} class="w-full" variant="destructive" disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}>
 					{#if isLoading.pruning}
 						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
 					{:else}
@@ -452,5 +434,5 @@
 		</div>
 	</section>
 
-	<PruneConfirmationDialog bind:open={isPruneDialogOpen} isPruning={isLoading.pruning} imagePruneMode={dashboardStates.settings?.pruneMode || 'dangling'} onConfirm={confirmPrune} onCancel={() => (isPruneDialogOpen = false)} />
+	<PruneConfirmationDialog bind:open={dashboardStates.isPruneDialogOpen} isPruning={isLoading.pruning} imagePruneMode={dashboardStates.settings?.pruneMode || 'dangling'} onConfirm={confirmPrune} onCancel={() => (dashboardStates.isPruneDialogOpen = false)} />
 </div>
