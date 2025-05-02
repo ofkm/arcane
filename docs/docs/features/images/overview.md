@@ -1,40 +1,45 @@
 ---
 sidebar_position: 1
-title: Images Overview
+title: Image Management
 ---
 
-# Images Overview
+# Image Management
 
-The "Images" section in Arcane provides tools to manage the Docker images available on your connected Docker host. Docker images are the blueprints used to create containers.
+## What Can You Do With Images in Arcane?
 
-## Key Concepts
+- **View Images:** See a list of all Docker images on your system, including their tags, size, and when they were created.
+- **Pull Images:** Download new images from Docker Hub or another registry by entering the image name and tag (like `nginx:latest`).
+- **Inspect Images:** Click on an image to see more details, such as its ID, tags, creation date, and configuration.
+- **Remove Images:** Delete images you no longer need. Arcane will warn you if an image is in use by a container.
+- **Prune Images:** Clean up unused images to free up disk space. You can remove dangling images (those without tags) or all images not used by any container.
 
-- **Image:** A read-only template containing application code, libraries, dependencies, tools, and other files needed for an application to run.
-- **Tag:** A label applied to an image to distinguish different versions or variants (e.g., `latest`, `1.2.0`, `alpine`). An image can have multiple tags.
-- **Image ID:** A unique identifier (SHA256 hash) for an image's content.
-- **Registry:** A storage and distribution system for Docker images (e.g., Docker Hub, GitHub Container Registry, private registries).
-- **Dangling Image:** An image layer that is not associated with any tagged image. These often result from building new versions of an image without removing the old one.
+## How to Use
 
-## Core Functionality
+### Viewing Images
 
-Based on the `image-service.ts` and related components, Arcane allows you to perform the following actions on Docker images:
+1. Go to the **Images** section in the sidebar.
+2. You’ll see a table listing all your Docker images with their tags, size, and creation date.
 
-- **List Images:** View all images currently present on the Docker host, including their tags, size, creation date, and ID.
-- **Pull Images:** Download new images from a specified registry (like Docker Hub). You can specify the image name and tag (e.g., `nginx:latest`, `redis:7-alpine`). The UI includes a dedicated dialog (`pull-image-dialog.svelte`) for this purpose.
-- **Inspect Images:** View detailed information about a specific image, potentially including its layers, environment variables, exposed ports, and command history.
-- **Remove Images:** Delete one or more images from the Docker host to free up disk space. You can typically only remove images that are not currently being used by any containers (stopped or running). Arcane might offer options to force removal.
-- **Prune Images:** Remove unused images, specifically dangling images (those without tags) and potentially all images not associated with at least one container. This helps reclaim disk space efficiently.
+### Pulling a New Image
 
-## Image Data
+1. Click the **Pull Image** button.
+2. Enter the image name and tag (for example, `redis:latest`).
+3. Click **Pull**. The image will be downloaded and added to your list.
 
-Arcane represents image information using a structure defined in `image.type.ts`, likely including fields such as:
+### Inspecting an Image
 
-- `Id`: The unique image ID.
-- `RepoTags`: A list of repository names and tags associated with the image.
-- `Created`: Timestamp of when the image was created.
-- `Size`: The virtual size of the image.
-- `Labels`: Any metadata labels applied to the image.
+1. Find the image you want to inspect in the list.
+2. Click on its name, ID, or the **Inspect** button to see more details.
 
-## Next Steps
+### Removing an Image
 
-- Learn how to perform specific actions in [Managing Images](./managing-images).
+1. In the images list, find the image you want to remove.
+2. Click the **Remove** button (trash icon) next to it.
+3. Confirm the deletion in the dialog.
+   > **Note:** You cannot remove images that are currently used by running containers.
+
+### Pruning Images
+
+1. Click the **Prune Images** button.
+2. Choose whether to remove only dangling images or all unused images.
+3. Confirm the action to free up disk space.

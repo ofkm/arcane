@@ -5,43 +5,57 @@ title: Stacks Overview
 
 # Stacks Overview
 
-The "Stacks" feature in Arcane allows you to manage multi-container applications defined using Docker Compose files directly within the Arcane UI. It provides a convenient way to deploy, monitor, and control complex applications composed of multiple services.
+## What is a Stack?
 
-## Key Concepts
+A **Stack** is a collection of services defined in a `compose.yaml` file. For example, a stack might include a web server, a database, and a cache, all running together.
 
-- **Stack:** Represents a multi-container application defined by a `docker-compose.yml` file. Arcane uses the `docker-compose` command-line tool (or equivalent library like `dockerode-compose`) under the hood to manage these.
-- **Managed Stack:** A stack created or imported within Arcane. Its definition (`docker-compose.yml` and metadata) is stored within Arcane's configured data directory (see [Storage](#storage)).
-- **External Stack:** A stack detected running on the Docker host (identified by the `com.docker.compose.project` label) but whose definition is not stored or managed by Arcane. You can import these to manage them within Arcane.
-- **Stack Definition:** Consists primarily of the `docker-compose.yml` content and associated metadata like name and timestamps stored by Arcane.
-- **Stack Status:** Arcane determines the status based on the state of the containers belonging to the stack:
-  - `running`: All services defined in the compose file are running.
-  - `partially running`: Some, but not all, services are running.
-  - `stopped`: No services belonging to the stack are running.
+---
 
-## Core Functionality
+## What Can You Do With Stacks in Arcane?
 
-With the Stacks feature, you can:
+- **View Stacks:** See all your managed stacks and any external stacks detected on your Docker host.
+- **Create Stacks:** Add a new stack by giving it a name and pasting your `compose.yaml` content.
+- **Start/Stop Stacks:** Easily start or stop all services in a stack with one click.
+- **Restart or Redeploy:** Restart a stack or redeploy it to pull the latest images for your services.
+- **Update Stacks:** Change the stack’s name or update its compose file.
+- **Remove Stacks:** Delete a stack and its definition from Arcane.
+- **Import External Stacks:** Bring existing stacks (not yet managed by Arcane) under Arcane’s control.
 
-- **Create Stacks:** Define and deploy new applications by providing a name and the `docker-compose.yml` content.
-- **List Stacks:** View all managed stacks and discovered external stacks.
-- **Inspect Stacks:** See details of a stack, including its services, their status, running container count, and the underlying `docker-compose.yml` content.
-- **Control Stacks:**
-  - **Start:** Bring up all services defined in the stack (`compose up`).
-  - **Stop:** Stop and remove the stack's containers (`compose down`).
-  - **Restart:** Stop and then start the stack (`compose down` followed by `compose up`).
-  - **Redeploy:** Stop the stack, pull the latest images for all services, and then start the stack again (`compose down`, `compose pull`, `compose up`).
-- **Update Stacks:** Modify the name or the `docker-compose.yml` content of a managed stack.
-- **Remove Stacks:** Stop the stack's services and permanently delete the stack definition from Arcane's storage.
-- **Import External Stacks:** Bring an existing, externally managed stack under Arcane's control by saving its definition.
+---
 
-## Storage
+## How to Use Stacks
 
-Managed stack definitions (`docker-compose.yml` and `meta.json`) are stored within the directory specified by the `stacksDirectory` setting in your `app-settings.json`. By default, this is `/app/data/stacks` inside the Arcane container.
+### Viewing Stacks
 
-:::tip Persistence
-To ensure your stack definitions are not lost when the Arcane container is recreated, it is crucial to mount the `/app/data` directory (or at least `/app/data/stacks`) as a volume, as shown in the recommended [Docker Compose setup](../getting-started/quickstart).
-:::
+1. Go to the **Stacks** section in the sidebar.
+2. You’ll see a list of all stacks, including their names, status (running, partially running, stopped), and how many services are running.
 
-## Next Steps
+### Creating a Stack
 
-- Learn how to [Create and Manage Stacks](./managing-stacks).
+1. Click the **Create Stack** button.
+2. Enter a name for your stack.
+3. Paste or write your `compose.yaml` content.
+4. Click **Create**. Arcane will save your stack and try to start it.
+
+### Controlling a Stack
+
+- **Start:** Click the **Start** button to launch all services in the stack.
+- **Stop:** Click **Stop** to stop and remove all containers in the stack.
+- **Restart:** Click **Restart** to stop and then start the stack again.
+- **Redeploy:** Click **Redeploy** to pull the latest images and restart the stack.
+
+### Updating or Removing a Stack
+
+- To update, open the stack and click **Edit**. Change the name or compose file, then save.
+- To remove, click the **Remove** button. Confirm the action to delete the stack from Arcane.
+
+### Importing External Stacks
+
+If Arcane detects a stack running on your Docker host that it doesn’t manage yet, you’ll see an **Import** option. Click it to bring the stack under Arcane’s management.
+
+---
+
+## Where Are My Stacks Stored?
+
+Arcane saves your stack definitions (compose files and metadata) in its data directory (by default `/app/data/stacks`).  
+**Tip:** To keep your stacks safe, make sure to mount this directory as a Docker volume if you’re running Arcane in a container.
