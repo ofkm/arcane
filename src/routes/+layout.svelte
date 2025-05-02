@@ -12,7 +12,8 @@
 	const versionInformation = data.versionInformation;
 	const user = $derived(data.user); // Access the user from data
 
-	const isNavigating = $derived(navigating !== null);
+	// Correct check: Check if the 'type' property is not null
+	const isNavigating = $derived(navigating.type !== null);
 	const isAuthenticated = $derived(!!user); // Check if user exists
 
 	const isOnboardingPage = $derived(page.url.pathname.startsWith('/onboarding'));
@@ -26,9 +27,11 @@
 <Toaster />
 <ConfirmDialog />
 
-<!-- Apply a loading state to the page during navigation -->
+<!-- Loading Indicator -->
 {#if isNavigating}
-	<!-- add a loading indicator here -->
+	<div class="fixed top-0 left-0 right-0 h-2 z-50">
+		<div class="h-full bg-primary animate-pulse"></div>
+	</div>
 {/if}
 
 <div class="flex min-h-screen bg-background">
