@@ -23,7 +23,7 @@ export default class ContainerAPIService extends BaseAPIService {
 	}
 
 	async pull(id: string) {
-		const res = await this.api.delete(`/containers/${id}/pull`);
+		const res = await this.api.post(`/containers/${id}/pull`);
 		return res.data;
 	}
 

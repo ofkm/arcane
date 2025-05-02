@@ -11,7 +11,6 @@ export const load: PageServerLoad = async (): Promise<ImageData> => {
 	try {
 		const images = await listImages();
 
-		// Enhance images with usage information
 		const enhancedImages = await Promise.all(
 			images.map(async (image): Promise<EnhancedImageInfo> => {
 				const inUse = await isImageInUse(image.id);

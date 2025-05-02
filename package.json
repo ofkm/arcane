@@ -9,7 +9,7 @@
 		"preview": "vite preview --port 3000",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"format": "prettier --write .",
+		"format": "prettier --write ./src",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "eslint ./src",
 		"lint:fix": "eslint ./src --fix"

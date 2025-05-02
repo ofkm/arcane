@@ -1,62 +1,55 @@
 <script lang="ts">
-	import type { PageData, ActionData } from './$types';
+	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, RefreshCw, HardDrive, Clock, Tag, Layers, Hash, Trash2, Loader2, Cpu } from '@lucide/svelte';
+	import { ArrowLeft, HardDrive, Clock, Tag, Layers, Hash, Trash2, Loader2, Cpu } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
-	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
-	import * as Alert from '$lib/components/ui/alert/index.js';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { formatDate, formatBytes } from '$lib/utils';
-	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import { handleApiReponse } from '$lib/utils/api.util';
+	import { tryCatch } from '$lib/utils/try-catch';
+	import ImageAPIService from '$lib/services/api/image-api-service';
+	import { toast } from 'svelte-sonner';
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+	let { data }: { data: PageData } = $props();
 	let { image } = $derived(data);
+	const imageApi = new ImageAPIService();
 
-	let isRefreshing = $state(false);
-	let isRemoving = $state(false);
-	let showRemoveConfirm = $state(false);
-	let forceRemove = $state(false); // State for the force remove checkbox
+	let isLoading = $state({
+		pulling: false,
+		removing: false,
+		refreshing: false
+	});
 
-	// Helper to format the image ID
 	const shortId = $derived(image?.Id.split(':')[1].substring(0, 12) || 'N/A');
 	const createdDate = $derived(image?.Created ? formatDate(image.Created) : 'N/A');
 	const imageSize = $derived(formatBytes(image?.Size || 0));
 
-	// Determine if the image is potentially in use (basic check, more robust check might be needed)
-	// A more reliable check would involve fetching containers using this image ID in the load function
-	const potentiallyInUse = $derived(false); // Placeholder - Needs data from load function
-
-	async function refreshData() {
-		isRefreshing = true;
-		await invalidateAll();
-		setTimeout(() => {
-			isRefreshing = false;
-		}, 500);
-	}
-
-	function triggerRemove() {
-		forceRemove = false; // Reset force state when opening dialog
-		showRemoveConfirm = true;
-	}
-
-	// This function is called by the ConfirmDialog
-	function handleRemoveConfirm(forceConfirm: boolean) {
-		forceRemove = forceConfirm; // Set the force state based on checkbox
-		// Find the form and submit it
-		const removeForm = document.getElementById('remove-image-form') as HTMLFormElement;
-		if (removeForm) {
-			// Optionally add force parameter to form action or hidden input if needed by server action
-			// Since we read from URL in server action, just submit
-			removeForm.submit();
-		}
+	async function handleImageRemove(id: string) {
+		openConfirmDialog({
+			title: 'Delete Image',
+			message: `Are you sure you want to delete this image? This action cannot be undone.`,
+			confirm: {
+				label: 'Delete',
+				destructive: true,
+				action: async () => {
+					handleApiReponse(
+						await tryCatch(imageApi.remove(id)),
+						'Failed to Remove Image',
+						(value) => (isLoading.removing = value),
+						async () => {
+							toast.success('Image Removed Successfully.');
+							goto('/images');
+						}
+					);
+				}
+			}
+		});
 	}
 </script>
-
-<!-- Confirmation Dialog for Remove -->
-<ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Image Removal" description={`Are you sure you want to remove image ${shortId}? This action cannot be undone.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType="image" isRunning={potentiallyInUse} />
 
 <div class="space-y-6 pb-8">
 	<!-- Breadcrumb Navigation -->
@@ -77,53 +70,21 @@
 				<h1 class="text-2xl font-bold tracking-tight break-all">
 					{image?.RepoTags?.[0] || shortId}
 				</h1>
-				<!-- Add badges for tags if needed -->
 			</div>
 		</div>
 
 		<div class="flex gap-2 flex-wrap">
-			<Button variant="outline" size="sm" onclick={refreshData} disabled={isRefreshing}>
-				<RefreshCw class={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Refresh
-			</Button>
-			<!-- Remove Button triggers dialog -->
-			<Button variant="destructive" size="sm" onclick={triggerRemove} disabled={isRemoving}>
-				{#if isRemoving}
+			<Button variant="destructive" size="sm" onclick={() => handleImageRemove(image.Id)} disabled={isLoading.removing}>
+				{#if isLoading.removing}
 					<Loader2 class="h-4 w-4 mr-2 animate-spin" />
 				{:else}
 					<Trash2 class="h-4 w-4 mr-2" />
 				{/if} Remove
 			</Button>
-			<!-- Hidden form for removal action -->
-			<form
-				id="remove-image-form"
-				method="POST"
-				action="?/remove{forceRemove ? '&force=true' : ''}"
-				use:enhance={() => {
-					isRemoving = true;
-					return async ({ update }) => {
-						await update({ reset: false });
-						// isRemoving will be reset by effect or on navigation
-					};
-				}}
-				class="hidden"
-			>
-				<input type="hidden" name="imageId" value={image?.Id} />
-				<button type="submit">Submit</button>
-			</form>
 		</div>
 	</div>
 
-	<!-- Error Alert -->
-	{#if form?.error}
-		<Alert.Root variant="destructive">
-			<AlertCircle class="h-4 w-4 mr-2" />
-			<Alert.Title>Action Failed</Alert.Title>
-			<Alert.Description>{form.error}</Alert.Description>
-		</Alert.Root>
-	{/if}
-
 	{#if image}
-		<!-- Image Details Section -->
 		<div class="space-y-6">
 			<Card.Root class="border shadow-sm">
 				<Card.Header>
@@ -224,17 +185,8 @@
 					</Card.Content>
 				</Card.Root>
 			{/if}
-
-			<!-- Layers/History (Optional - can be large) -->
-			<!-- {#if image.RootFS?.Layers}
-            <Card.Root>
-                <Card.Header><Card.Title>Layers</Card.Title></Card.Header>
-                <Card.Content>...</Card.Content>
-            </Card.Root>
-            {/if} -->
 		</div>
 	{:else}
-		<!-- Image Not Found Section -->
 		<div class="text-center py-12">
 			<p class="text-lg font-medium text-muted-foreground">Image not found.</p>
 			<Button href="/images" variant="outline" size="sm" class="mt-4">

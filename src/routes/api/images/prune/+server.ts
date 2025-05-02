@@ -9,7 +9,7 @@ export const POST: RequestHandler = async () => {
 		const settings = await getSettings();
 		const pruneMode = settings.pruneMode;
 
-		const result = await pruneImages(pruneMode); // Pass the mode
+		const result = await pruneImages(pruneMode);
 		const spaceReclaimedFormatted = formatBytes(result.SpaceReclaimed || 0);
 		const message = result.ImagesDeleted && result.ImagesDeleted.length > 0 ? `Successfully pruned ${result.ImagesDeleted.length} image(s). Space reclaimed: ${spaceReclaimedFormatted}.` : `No unused images found to prune. Space reclaimed: ${spaceReclaimedFormatted}.`;
 
