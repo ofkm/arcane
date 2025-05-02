@@ -14,7 +14,7 @@
 		"lint": "eslint ./src"
 	},
 	"devDependencies": {
-		"@eslint/compat": "^1.2.5",
+		"@eslint/compat": "^1.2.9",
 		"@eslint/js": "^9.18.0",
 		"@lucide/svelte": "^0.503.0",
 		"@sveltejs/adapter-node": "^5.2.12",
