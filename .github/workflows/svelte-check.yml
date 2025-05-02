@@ -1,0 +1,55 @@
+name: Svelte Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - '.github/workflows/type-check.yml'
+      - '.github/svelte-check-matcher.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'svelte.config.js'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - '.github/workflows/type-check.yml'
+      - '.github/svelte-check-matcher.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'svelte.config.js'
+  workflow_dispatch:
+
+jobs:
+  type-check:
+    name: Run Svelte Check
+    # Don't run on dependabot branches
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Add svelte-check problem matcher
+        run: echo "::add-matcher::.github/svelte-check-matcher.json"
+
+      - name: Run svelte-check via npm script
+        run: npm run check
