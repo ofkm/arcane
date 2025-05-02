@@ -6,8 +6,9 @@ export default class ImageAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async pull(id: string) {
-		const res = await this.api.delete(`/images/${id}/pull`);
+	async pull(imageRef: string, tag: string) {
+		const encodedImageRef = encodeURIComponent(imageRef);
+		const res = await this.api.post(`/images/pull/${encodedImageRef}`, { tag });
 		return res.data;
 	}
 

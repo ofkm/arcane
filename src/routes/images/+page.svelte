@@ -34,10 +34,7 @@
 	const imageApi = new ImageAPIService();
 
 	let isPullDialogOpen = $state(false);
-	let isPullingImage = $state(false);
 	let pullProgress = $state(0);
-
-	let isConfirmDeleteDialogOpen = $state(false);
 
 	let isConfirmPruneDialogOpen = $state(false);
 
@@ -47,7 +44,7 @@
 	async function handlePullImageSubmit(event: { imageRef: string; tag?: string; platform?: string }) {
 		const { imageRef, tag = 'latest', platform } = event;
 
-		isPullingImage = true;
+		isLoading.pulling = true;
 
 		try {
 			const encodedImageRef = encodeURIComponent(imageRef);
@@ -59,7 +56,7 @@
 				if (data.error) {
 					eventSource.close();
 					toast.error(`Pull failed: ${data.error}`);
-					isPullingImage = false;
+					isLoading.pulling = false;
 					return;
 				}
 
@@ -76,7 +73,7 @@
 					setTimeout(async () => {
 						await invalidateAll();
 					}, 500);
-					isPullingImage = false;
+					isLoading.pulling = false;
 				}
 			};
 
@@ -84,12 +81,12 @@
 				console.error('EventSource error:', err);
 				eventSource.close();
 				toast.error('Connection to server lost while pulling image');
-				isPullingImage = false;
+				isLoading.pulling = false;
 			};
 		} catch (err: any) {
 			console.error('Failed to pull image:', err);
 			toast.error(`Failed to pull image: ${err.message}`);
-			isPullingImage = false;
+			isLoading.pulling = false;
 		}
 	}
 
@@ -106,7 +103,6 @@
 
 					let successCount = 0;
 					let failureCount = 0;
-					const totalToDelete = selectedIds.length;
 
 					for (const id of selectedIds) {
 						const image = images.find((img) => img.id === id);
@@ -161,7 +157,25 @@
 		);
 	}
 
-	async function handleImagePull(image: string) {}
+	async function pullImageByRepoTag(repoTag: string | undefined) {
+		if (!repoTag) {
+			toast.error('Cannot pull image without a repository tag');
+			return;
+		}
+
+		let [imageRef, tag] = repoTag.split(':');
+		tag = tag || 'latest';
+
+		handleApiReponse(
+			await tryCatch(imageApi.pull(imageRef, tag)),
+			`Failed to pull image "${repoTag}"`,
+			(value) => (isLoading.pulling = value),
+			async () => {
+				toast.success(`Image "${repoTag}" pulled successfully.`);
+				await invalidateAll();
+			}
+		);
+	}
 
 	async function handleImageRemove(id: string) {
 		const image = images.find((img) => img.id === id);
@@ -188,10 +202,6 @@
 		});
 	}
 
-	function openPullDialog() {
-		isPullDialogOpen = true;
-	}
-
 	$effect(() => {
 		images = data.images;
 	});
@@ -211,8 +221,8 @@
 					<CopyX class="w-4 h-4" /> Prune Unused
 				{/if}
 			</Button>
-			<Button variant="secondary" onclick={openPullDialog} disabled={isPullingImage}>
-				{#if isPullingImage}
+			<Button variant="secondary" onclick={() => (isPullDialogOpen = true)} disabled={isLoading.pulling}>
+				{#if isLoading.pulling}
 					<Loader2 class="w-4 h-4 animate-spin" /> Pulling...
 				{:else}
 					<Download class="w-4 h-4" /> Pull Image
@@ -342,7 +352,7 @@
 											<ScanSearch class="h-4 w-4" />
 											Inspect
 										</DropdownMenu.Item>
-										<DropdownMenu.Item onclick={() => handleImagePull(item.id)} disabled={isLoading.pulling || !item.tag}>
+										<DropdownMenu.Item onclick={() => pullImageByRepoTag(item.repoTags?.[0])} disabled={isLoading.pulling || !item.repoTags?.[0]}>
 											{#if isLoading.pulling}
 												<Loader2 class="h-4 w-4 animate-spin" />
 												Pulling...
@@ -369,7 +379,7 @@
 			<p class="text-lg font-medium">No images found</p>
 			<p class="text-sm text-muted-foreground mt-1 max-w-md">Pull a new image using the "Pull Image" button above or use the Docker CLI</p>
 			<div class="flex gap-3 mt-4">
-				<Button variant="outline" size="sm" onclick={openPullDialog}>
+				<Button variant="outline" size="sm" onclick={() => (isPullDialogOpen = true)}>
 					<Download class="h-4 w-4" />
 					Pull Image
 				</Button>
@@ -377,7 +387,7 @@
 		</div>
 	{/if}
 
-	<PullImageDialog bind:open={isPullDialogOpen} isPulling={isPullingImage} {pullProgress} onSubmit={handlePullImageSubmit} />
+	<PullImageDialog bind:open={isPullDialogOpen} isPulling={isLoading.pulling} {pullProgress} onSubmit={handlePullImageSubmit} />
 
 	<Dialog.Root bind:open={isConfirmPruneDialogOpen}>
 		<Dialog.Content>
