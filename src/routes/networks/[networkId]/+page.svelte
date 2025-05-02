@@ -9,8 +9,8 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { formatDate } from '$lib/utils'; // #file:/Users/kylemendell/dev/ofkm/arcane/src/lib/utils.ts
-	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte'; // #file:/Users/kylemendell/dev/ofkm/arcane/src/lib/components/confirm-dialog.svelte
+	import { formatDate } from '$lib/utils';
+	// import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte';
 	import type { NetworkInspectInfo } from 'dockerode';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -57,7 +57,7 @@
 </script>
 
 <!-- Confirmation Dialog for Remove -->
-<ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Network Removal" description={`Are you sure you want to remove network "${network?.Name}" (${shortId})? This action cannot be undone. Ensure no containers are connected.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType="network" isRunning={inUse} />
+<!-- <ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Network Removal" description={`Are you sure you want to remove network "${network?.Name}" (${shortId})? This action cannot be undone. Ensure no containers are connected.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType="network" isRunning={inUse} /> -->
 
 <div class="space-y-6 pb-8">
 	<!-- Breadcrumb Navigation -->

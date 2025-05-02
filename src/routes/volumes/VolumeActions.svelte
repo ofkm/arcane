@@ -4,7 +4,7 @@
 	import { Trash2, Loader2, Ellipsis, ScanSearch } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { goto, invalidateAll } from '$app/navigation';
-	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte';
+	// import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte';
 
 	const { name, inUse = false } = $props<{ name: string; inUse: boolean }>();
 
@@ -49,7 +49,7 @@
 	const removeDescription = $derived(`Are you sure you want to delete volume "${name}"? This action cannot be undone.`);
 </script>
 
-<ConfirmDialog bind:open={showRemoveConfirm} itemType="volume" isRunning={inUse} title="Confirm Volume Removal" description={removeDescription} confirmLabel="Delete" variant="destructive" onConfirm={handleRemoveConfirm} />
+<!-- <ConfirmDialog bind:open={showRemoveConfirm} itemType="volume" isRunning={inUse} title="Confirm Volume Removal" description={removeDescription} confirmLabel="Delete" variant="destructive" onConfirm={handleRemoveConfirm} /> -->
 
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
