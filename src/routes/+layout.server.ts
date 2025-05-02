@@ -4,7 +4,6 @@ import AppConfigService from '$lib/services/app-config-service';
 import type { AppVersionInformation } from '$lib/types/application-configuration';
 import type { LayoutServerLoad } from './$types';
 
-// Cache the version information
 let versionInformation: AppVersionInformation;
 let versionInformationLastUpdated: number;
 

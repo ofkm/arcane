@@ -7,7 +7,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const config = (await request.json()) as ContainerConfig;
 
-		// Validate required fields
 		if (!config.name || !config.image) {
 			return json({ success: false, error: 'Container name and image are required' }, { status: 400 });
 		}

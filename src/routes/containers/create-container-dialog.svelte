@@ -1,8 +1,6 @@
 <script lang="ts">
-	import { preventDefault } from 'svelte/legacy';
 	import type { ContainerConfig } from '$lib/types/docker/container.type';
-	import type { HealthConfig } from 'dockerode';
-
+	import { type HealthConfig } from 'dockerode';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -11,28 +9,27 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { parseBytes } from '$lib/utils/bytes';
-
-	import { createEventDispatcher } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import { invalidateAll } from '$app/navigation';
 	import Switch from '$lib/components/ui/switch/switch.svelte';
-	const dispatch = createEventDispatcher();
+	import { handleApiReponse } from '$lib/utils/api.util';
+	import { tryCatch } from '$lib/utils/try-catch';
+	import ContainerAPIService from '$lib/services/api/container-api-service';
 
-	// Functions for events
-	export function onClose() {
-		open = false;
-		dispatch('close');
-	}
 	interface Props {
 		open?: boolean;
-		isCreating?: boolean;
 		volumes?: { name: string }[];
 		networks?: { name: string; driver: string }[];
 		images?: { id: string; repo: string; tag: string }[];
-		onSubmit?: (data: ContainerConfig) => void;
+		onClose?: () => void;
 	}
 
-	let { open = $bindable(false), isCreating = false, volumes = [], networks = [], images = [], onSubmit = (_data: ContainerConfig) => {} }: Props = $props();
+	let { open = $bindable(false), volumes = [], networks = [], images = [], onClose: onCloseProp = () => {} }: Props = $props();
+
+	const containerApi = new ContainerAPIService();
 
 	// Internal state
+	let isCreating = $state(false);
 	let containerName = $state('');
 	let selectedImage = $state('');
 	let selectedTab = $state('basic');
@@ -90,41 +87,40 @@
 	// Add state for Auto-update
 	let autoUpdate = $state(false);
 
+	function handleClose() {
+		open = false;
+		if (onCloseProp) {
+			onCloseProp();
+		}
+	}
+
 	// Port validation - improved
 	function validatePortNumber(port: string | number): {
 		isValid: boolean;
 		error?: string;
 	} {
-		// Convert to string if it's not already one
 		const portStr = typeof port === 'number' ? port.toString() : port;
 
-		// Check if empty
 		if (!portStr || !portStr.trim()) return { isValid: true };
 
 		const portNum = parseInt(portStr, 10);
 
-		// Check if it's a valid number
 		if (isNaN(portNum) || portNum.toString() !== portStr.trim()) {
 			return { isValid: false, error: 'Invalid port number' };
 		}
 
-		// Check port range (1-65535)
 		if (portNum < 1 || portNum > 65535) {
 			return { isValid: false, error: 'Port must be between 1-65535' };
 		}
 
-		// Warning for privileged ports
 		if (portNum < 1024) {
 			return { isValid: true, error: 'Privileged port (<1024)' };
 		}
 		return { isValid: true };
 	}
 
-	// Auto-validate on input
 	$effect(() => {
-		// Validate all ports when they change
 		ports.forEach((port, index) => {
-			// Only validate if there's content
 			if (port.hostPort !== undefined && port.hostPort !== '') {
 				const hostValidation = validatePortNumber(port.hostPort);
 				ports[index].hostError = hostValidation.error;
@@ -141,7 +137,6 @@
 		});
 	});
 
-	// Add/remove functions for arrays
 	function addPort() {
 		ports = [...ports, { hostPort: '', containerPort: '' }];
 	}
@@ -174,32 +169,26 @@
 		labels = labels.filter((_, i) => i !== index);
 	}
 
-	// Reactive check to see if the selected network is user-defined
 	const isUserDefinedNetwork = $derived(network && network !== '' && network !== 'host' && network !== 'none' && network !== 'bridge');
 
-	function handleSubmit() {
-		if (!selectedImage || !containerName.trim()) return;
+	async function handleSubmit() {
+		if (!selectedImage || !containerName.trim() || isCreating) return;
 
-		// Validate all ports
 		let hasInvalidPort = false;
 		ports.forEach((port) => {
-			// Check for invalid ports with content
 			if ((port.hostPort && !validatePortNumber(port.hostPort).isValid) || (port.containerPort && !validatePortNumber(port.containerPort).isValid)) {
 				hasInvalidPort = true;
 			}
 		});
 
 		if (hasInvalidPort) {
-			return; // Stop submission if there are invalid ports
+			toast.error('Please fix invalid port numbers before submitting.');
+			return;
 		}
 
-		// Filter out empty entries
-		const filteredPorts = ports.filter((p) => p.hostPort.trim() && p.containerPort.trim()).map(({ hostPort, containerPort }) => ({ hostPort, containerPort })); // Remove error properties
-
+		const filteredPorts = ports.filter((p) => p.hostPort.trim() && p.containerPort.trim()).map(({ hostPort, containerPort }) => ({ hostPort, containerPort }));
 		const filteredVolumes = volumeMounts.filter((v) => v.source.trim() && v.target.trim());
 		const filteredEnvVars = envVars.filter((e) => e.key.trim());
-
-		// Filter and format labels
 		const filteredLabels = labels
 			.filter((l) => l.key.trim())
 			.reduce(
@@ -210,17 +199,13 @@
 				{} as { [key: string]: string }
 			);
 
-		// Add auto-update label if enabled
 		if (autoUpdate) {
 			filteredLabels['arcane.auto-update'] = 'true';
 		}
 
-		// Prepare healthcheck config if enabled and test command is provided
 		let healthcheckConfig: HealthConfig | undefined = undefined;
 		if (enableHealthcheck && healthcheckTest.length > 0 && healthcheckTest[0].trim() !== '') {
-			// Convert seconds to nanoseconds for Docker API
 			const toNano = (seconds: number | undefined) => (seconds ? seconds * 1_000_000_000 : undefined);
-
 			healthcheckConfig = {
 				Test: healthcheckTest,
 				Interval: toNano(healthcheckInterval),
@@ -230,16 +215,15 @@
 			};
 		}
 
-		// Parse command override (split by space, respecting quotes if needed - simple split for now)
 		const commandArray = commandOverride.trim() ? commandOverride.trim().split(/\s+/) : undefined;
 
-		// Parse resource limits
 		let memoryBytes: number | undefined;
 		try {
 			memoryBytes = memoryLimitStr.trim() ? parseBytes(memoryLimitStr.trim()) : undefined;
 		} catch (e) {
 			console.error('Invalid memory format:', e);
-			return; // Stop submission on invalid format
+			toast.error(`Invalid memory format: ${memoryLimitStr}`);
+			return;
 		}
 
 		let cpuUnits: number | undefined;
@@ -250,7 +234,8 @@
 			}
 		} catch (e) {
 			console.error('Invalid CPU format:', e);
-			return; // Stop submission on invalid format
+			toast.error(`Invalid CPU format: ${cpuLimitStr}`);
+			return;
 		}
 
 		const containerConfig: ContainerConfig = {
@@ -276,7 +261,18 @@
 			cpuLimit: cpuUnits
 		};
 
-		onSubmit(containerConfig);
+		isCreating = true;
+
+		handleApiReponse(
+			await tryCatch(containerApi.create(containerConfig)),
+			'Failed to Create Container',
+			(value) => (isCreating = value),
+			async () => {
+				toast.success(`Container "${containerConfig.name}" created successfully!`);
+				await invalidateAll();
+				handleClose();
+			}
+		);
 	}
 </script>
 
@@ -299,7 +295,7 @@
 			</Tabs.List>
 
 			<div class="p-4 max-h-[60vh] overflow-y-auto">
-				<form onsubmit={preventDefault(handleSubmit)} class="space-y-6">
+				<div class="space-y-6">
 					<!-- Basic Settings -->
 					<Tabs.Content value="basic">
 						<div class="space-y-4">
@@ -611,12 +607,12 @@
 							</div>
 						</div>
 					</Tabs.Content>
-				</form>
+				</div>
 			</div>
 		</Tabs.Root>
 
 		<Dialog.Footer class="pt-4">
-			<Button variant="outline" onclick={onClose} disabled={isCreating} class="mr-2">Cancel</Button>
+			<Button variant="outline" onclick={handleClose} disabled={isCreating} class="mr-2">Cancel</Button>
 			<Button type="button" onclick={handleSubmit} disabled={isCreating || !containerName.trim() || !selectedImage}>
 				{#if isCreating}
 					<Loader2 class="h-4 w-4 mr-2 animate-spin" /> Creating...

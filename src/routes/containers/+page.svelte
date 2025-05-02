@@ -9,8 +9,7 @@
 	import CreateContainerDialog from './create-container-dialog.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import type { ContainerConfig, ServiceContainer } from '$lib/types/docker/container.type';
-	import { enhance } from '$app/forms';
+	import type { ServiceContainer } from '$lib/types/docker/container.type';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
@@ -20,14 +19,11 @@
 
 	const containerApi = new ContainerAPIService();
 
-	let { data, form } = $props();
+	let { data } = $props();
 	let containers = $state(data.containers);
 	let isRefreshing = $state(false);
 	let selectedIds = $state([]);
 	let isCreateDialogOpen = $state(false);
-	let isCreatingContainer = $state(false);
-	let containerData = $state<ContainerConfig | null>(null);
-	let formRef: HTMLFormElement;
 	let isLoading = $state({
 		start: false,
 		stop: false,
@@ -43,17 +39,6 @@
 		containers = data.containers;
 		if (isRefreshing) {
 			isRefreshing = false;
-		}
-	});
-
-	$effect(() => {
-		if (form?.success) {
-			toast.success(`Container "${form.container?.name || 'Unknown'}" created successfully.`);
-			isCreateDialogOpen = false;
-			isCreatingContainer = false;
-		} else if (form?.error) {
-			toast.error(`Failed to create container: ${form.error}`);
-			isCreatingContainer = false;
 		}
 	});
 
@@ -134,29 +119,16 @@
 			toast.error('An Unknown Error Occurred');
 		}
 	}
-
-	async function handleCreateContainerSubmit(config: ContainerConfig) {
-		isCreatingContainer = true;
-		containerData = config;
-		setTimeout(() => {
-			formRef.requestSubmit();
-		}, 0);
-	}
 </script>
 
 <div class="space-y-6">
-	<!-- Header with refresh button -->
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Containers</h1>
 			<p class="text-sm text-muted-foreground mt-1">Manage your Docker containers</p>
 		</div>
-		<div class="flex gap-2">
-			<!-- put buttons here -->
-		</div>
 	</div>
 
-	<!-- Container stats summary -->
 	<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 		<Card.Root>
 			<Card.Content class="p-4 flex items-center justify-between">
@@ -212,7 +184,6 @@
 			</div>
 		</div>
 	{:else}
-		<!-- Main container table -->
 		<Card.Root class="border shadow-sm">
 			<Card.Header class="px-6">
 				<div class="flex items-center justify-between">
@@ -318,22 +289,5 @@
 		</Card.Root>
 	{/if}
 
-	<form
-		bind:this={formRef}
-		method="POST"
-		action="?/create"
-		use:enhance={() => {
-			return async ({ result }) => {
-				isCreatingContainer = false;
-				if (result.type === 'success') {
-					isCreateDialogOpen = false;
-					await refreshData();
-				}
-			};
-		}}
-	>
-		<input type="hidden" name="containerData" value={containerData ? JSON.stringify(containerData) : ''} />
-
-		<CreateContainerDialog bind:open={isCreateDialogOpen} isCreating={isCreatingContainer} volumes={data.volumes || []} networks={data.networks || []} images={data.images || []} onSubmit={handleCreateContainerSubmit} />
-	</form>
+	<CreateContainerDialog bind:open={isCreateDialogOpen} volumes={data.volumes || []} networks={data.networks || []} images={data.images || []} />
 </div>

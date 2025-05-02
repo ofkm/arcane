@@ -1,3 +1,4 @@
+import type { ContainerConfig } from '$lib/types/docker';
 import BaseAPIService from './api-service';
 
 export default class ContainerAPIService extends BaseAPIService {
@@ -33,6 +34,11 @@ export default class ContainerAPIService extends BaseAPIService {
 
 	async stopAll() {
 		const res = await this.api.post(`/containers/stop-all`);
+		return res.data;
+	}
+
+	async create(config: ContainerConfig) {
+		const res = await this.api.post('/containers', config);
 		return res.data;
 	}
 
