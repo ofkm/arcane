@@ -1,4 +1,3 @@
-<!-- @migration task: review uses of `navigating` -->
 <script lang="ts">
 	import '../app.css';
 	import { ModeWatcher } from 'mode-watcher';
@@ -10,14 +9,11 @@
 	let { children, data } = $props();
 
 	const versionInformation = data.versionInformation;
-	const user = $derived(data.user); // Access the user from data
-
-	// Correct check: Check if the 'type' property is not null
+	const user = $derived(data.user);
 	const isNavigating = $derived(navigating.type !== null);
-	const isAuthenticated = $derived(!!user); // Check if user exists
+	const isAuthenticated = $derived(!!user);
 
 	const isOnboardingPage = $derived(page.url.pathname.startsWith('/onboarding'));
-	// Only show sidebar when authenticated AND not in onboarding
 	const showSidebar = $derived(isAuthenticated && !isOnboardingPage);
 </script>
 
