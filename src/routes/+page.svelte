@@ -18,6 +18,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import SystemAPIService from '$lib/services/api/system-api-service';
+	import type { EnhancedImageInfo } from '$lib/types/docker';
 
 	let { data }: { data: PageData } = $props();
 
@@ -27,7 +28,7 @@
 	let dashboardStates = $state({
 		dockerInfo: data.dockerInfo,
 		containers: data.containers,
-		images: data.images,
+		images: data.images as EnhancedImageInfo[],
 		settings: data.settings,
 		error: data.error,
 		isPruneDialogOpen: false
@@ -47,8 +48,7 @@
 	$effect(() => {
 		dashboardStates.dockerInfo = data.dockerInfo;
 		dashboardStates.containers = data.containers;
-		dashboardStates.images = data.images;
-		dashboardStates.settings = data.settings;
+		(dashboardStates.images = data.images as EnhancedImageInfo[]), (dashboardStates.settings = data.settings);
 		dashboardStates.error = data.error;
 	});
 
