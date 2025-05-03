@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { getDockerClient } from '$lib/services/docker/core';
-import { URL } from 'url'; // Import URL
+import { URL } from 'url';
 
 export const GET: RequestHandler = async ({ params, request }) => {
 	const imageName = params.name;
@@ -8,7 +8,6 @@ export const GET: RequestHandler = async ({ params, request }) => {
 	const tag = url.searchParams.get('tag') || 'latest';
 	const platform = url.searchParams.get('platform');
 
-	// Set up SSE headers
 	const headers = new Headers({
 		'Content-Type': 'text/event-stream',
 		'Cache-Control': 'no-cache',
@@ -35,7 +34,11 @@ export const GET: RequestHandler = async ({ params, request }) => {
 				// Pass options to docker.pull
 				const pullStream = await docker.pull(fullImageRef, pullOptions);
 
-				const layers: Record<string, any> = {};
+				type LayerProgress = {
+					current: number;
+					total: number;
+				};
+				const layers: Record<string, LayerProgress> = {};
 				let totalProgress = 0;
 
 				docker.modem.followProgress(
