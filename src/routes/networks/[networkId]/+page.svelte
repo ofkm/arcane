@@ -88,9 +88,6 @@
 		</div>
 
 		<div class="flex gap-2 flex-wrap">
-			<Button variant="outline" size="sm" onclick={refreshData} disabled={isRefreshing}>
-				<RefreshCw class={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Refresh
-			</Button>
 			<!-- Remove Button triggers dialog -->
 			<Button variant="destructive" size="sm" onclick={triggerRemove} disabled={isRemoving || isPredefined} title={isPredefined ? 'Cannot remove predefined networks' : ''}>
 				{#if isRemoving}
