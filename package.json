@@ -12,12 +12,17 @@
 		"format": "prettier --write ./src",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "eslint ./src",
-		"lint:fix": "eslint ./src --fix"
+		"lint:fix": "eslint ./src --fix",
+		"test:init": "APP_ENV=TEST npx tsx scripts/init-test-env.ts",
+		"test:e2e": "APP_ENV=TEST npm run test:init && playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"test:e2e:report": "playwright show-report"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
 		"@eslint/js": "^9.18.0",
 		"@lucide/svelte": "^0.503.0",
+		"@playwright/test": "^1.52.0",
 		"@sveltejs/adapter-node": "^5.2.12",
 		"@sveltejs/kit": "^2.20.8",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",

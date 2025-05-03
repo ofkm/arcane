@@ -6,6 +6,9 @@ import { getUserByUsername } from '$lib/services/user-service';
 import { getSettings } from '$lib/services/settings-service';
 import { checkFirstRun } from '$lib/utils/onboarding.utils';
 
+// Get environment variable
+const isTestEnvironment = process.env.APP_ENV === 'TEST';
+
 // Initialize needed services
 try {
 	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler()]);
@@ -73,21 +76,22 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const isOnboardingPath = path.startsWith('/onboarding');
 	const isApiRoute = path.startsWith('/api/');
 
-	// Critical check: For ANY non-onboarding path, redirect to onboarding if not completed
-	// This is the key change to prevent bypassing onboarding
-	if (!isOnboardingPath && !isApiRoute && !settings?.onboarding?.completed) {
-		throw redirect(302, '/onboarding/welcome');
-	}
-
-	// During onboarding, only allow API calls needed for onboarding
-	// Optional enhancement to allow specific API calls during onboarding
-	if (isApiRoute && !settings?.onboarding?.completed) {
-		// Only allow these specific API endpoints during onboarding
-		const allowedApiDuringOnboarding = ['/api/settings', '/api/users/password'];
-		const isAllowedApi = allowedApiDuringOnboarding.some((api) => path.startsWith(api));
-
-		if (!isAllowedApi) {
+	// Skip onboarding checks in test environment
+	if (!isTestEnvironment) {
+		// Critical check: For ANY non-onboarding path, redirect to onboarding if not completed
+		if (!isOnboardingPath && !isApiRoute && !settings?.onboarding?.completed) {
 			throw redirect(302, '/onboarding/welcome');
+		}
+
+		// During onboarding, only allow API calls needed for onboarding
+		if (isApiRoute && !settings?.onboarding?.completed) {
+			// Only allow these specific API endpoints during onboarding
+			const allowedApiDuringOnboarding = ['/api/settings', '/api/users/password'];
+			const isAllowedApi = allowedApiDuringOnboarding.some((api) => path.startsWith(api));
+
+			if (!isAllowedApi) {
+				throw redirect(302, '/onboarding/welcome');
+			}
 		}
 	}
 

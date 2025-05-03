@@ -1,9 +1,9 @@
-import path from 'node:path';
+import * as path from 'path';
 import fs from 'node:fs/promises';
-import { isDev } from '$lib/constants';
+import { isDev, isTest } from '$lib/constants';
 
 // Configure paths based on environment
-export const BASE_PATH = isDev ? path.resolve(process.cwd(), '.dev-data') : '/app/data';
+export const BASE_PATH = isTest ? path.resolve(process.cwd(), '.test-data') : isDev ? path.resolve(process.cwd(), '.dev-data') : '/app/data';
 
 export const SETTINGS_FILE = path.join(BASE_PATH, 'app-settings.json');
 export const SETTINGS_DIR = path.join(BASE_PATH, 'settings');
