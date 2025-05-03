@@ -150,7 +150,7 @@
 			<p class="text-sm text-muted-foreground mt-1">Manage Docker container networking</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<Button variant="secondary" onclick={() => (networkPageStates.isCreateDialogOpen = true)} disabled={isLoading.create}>
+			<Button variant="secondary" data-testid="create-network-button" onclick={() => (networkPageStates.isCreateDialogOpen = true)} disabled={isLoading.create}>
 				<Plus class="w-4 h-4" />
 				Create Network
 			</Button>

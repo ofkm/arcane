@@ -98,7 +98,7 @@
 <Dialog.Root bind:open>
 	<Dialog.Content class="sm:max-w-[600px]">
 		<Dialog.Header>
-			<Dialog.Title>Create Network</Dialog.Title>
+			<Dialog.Title data-testid="create-network-dialog-header">Create Network</Dialog.Title>
 			<Dialog.Description>Configure and create a new Docker network.</Dialog.Description>
 		</Dialog.Header>
 

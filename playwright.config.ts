@@ -11,8 +11,8 @@ export default defineConfig({
 	reporter: process.env.CI ? [['html', { outputFolder: 'tests/.report' }], ['github']] : [['line'], ['html', { open: 'never', outputFolder: 'tests/.report' }]],
 	use: {
 		baseURL: 'http://localhost:3000',
-
-		trace: 'on-first-retry'
+		trace: 'on-first-retry',
+		video: 'retain-on-failure'
 	},
 	projects: [
 		{ name: 'setup', testMatch: /.*\.setup\.ts/ },
