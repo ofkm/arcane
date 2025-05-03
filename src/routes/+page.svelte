@@ -48,7 +48,8 @@
 	$effect(() => {
 		dashboardStates.dockerInfo = data.dockerInfo;
 		dashboardStates.containers = data.containers;
-		(dashboardStates.images = data.images as EnhancedImageInfo[]), (dashboardStates.settings = data.settings);
+		dashboardStates.images = data.images as EnhancedImageInfo[];
+		dashboardStates.settings = data.settings;
 		dashboardStates.error = data.error;
 	});
 
