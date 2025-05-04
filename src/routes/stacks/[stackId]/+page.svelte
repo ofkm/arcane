@@ -13,7 +13,6 @@
 	import { capitalizeFirstLetter } from '$lib/utils';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { enhance } from '$app/forms';
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -55,14 +54,14 @@
 			'Failed to Save Stack',
 			(value) => (saving = value),
 			async (data) => {
-				toast.success(`Stack "${data.stack.name}" Saved Successfully.`);
-
 				originalName = name;
 				originalComposeContent = composeContent;
 				originalAutoUpdate = editorState.autoUpdate;
 
 				console.log('Stack save successful:', data);
 				toast.success('Stack updated successfully!');
+
+				await new Promise((resolve) => setTimeout(resolve, 200));
 				await invalidateAll();
 			}
 		);
@@ -97,31 +96,17 @@
 
 		{#if stack}
 			<div class="flex gap-2 flex-wrap">
-				<form
-					method="POST"
-					action={stack.status === 'running' || stack.status === 'partially running' ? '?/stop' : '?/start'}
-					use:enhance={() => {
-						const isStarting = stack.status !== 'running' && stack.status !== 'partially running';
-						if (isStarting) deploying = true;
-						else stopping = true;
-						return async ({ update }) => {
-							await update({ reset: false });
-						};
+				<ActionButtons
+					id={stack.id}
+					type="stack"
+					itemState={stack.status}
+					loading={{
+						start: deploying,
+						stop: stopping,
+						restart: restarting,
+						remove: removing
 					}}
-				>
-					<input type="hidden" name="action" value={stack.status === 'running' || stack.status === 'partially running' ? 'stop' : 'start'} />
-					<ActionButtons
-						id={stack.id}
-						type="stack"
-						itemState={stack.status}
-						loading={{
-							start: deploying,
-							stop: stopping,
-							restart: restarting,
-							remove: removing
-						}}
-					/>
-				</form>
+				/>
 			</div>
 		{/if}
 	</div>

@@ -2,11 +2,12 @@ import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { updateStack } from '$lib/services/docker/stack-service';
 
-export const PATCH: RequestHandler = async ({ params, request }) => {
+export const PUT: RequestHandler = async ({ params, request }) => {
 	const { stackId } = params;
 	const { name, composeContent, autoUpdate } = await request.json();
 
 	try {
+		// From your API endpoint
 		await updateStack(stackId, { name, composeContent, autoUpdate });
 		return json({ success: true, message: 'Stack updated successfully' });
 	} catch (error: any) {

@@ -4,7 +4,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { ArrowLeft, HardDrive, Clock, Tag, Layers, Hash, Trash2, Loader2, Cpu } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { formatDate, formatBytes } from '$lib/utils';
