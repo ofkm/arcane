@@ -62,8 +62,8 @@
 
 <Dialog.Root bind:open>
 	<Dialog.Content class="sm:max-w-[500px]">
-		<Dialog.Header>
-			<Dialog.Title>Pull Docker Image</Dialog.Title>
+		<Dialog.Header data-testid="pull-docker-image-header">
+			<Dialog.Title data-testid="pull-docker-image-header">Pull Docker Image</Dialog.Title>
 			<Dialog.Description>Enter the image reference you want to pull from a registry.</Dialog.Description>
 		</Dialog.Header>
 

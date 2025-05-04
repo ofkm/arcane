@@ -2,10 +2,10 @@
   "cookies": [
     {
       "name": "session_id",
-      "value": "3026cc1a6b497e71f282decca60a8e70b1282d6bb020522274f6d40226b26fa3",
+      "value": "ff3866c740296d5d9d1a1b1137af1908bc29c6b01ba9c79aa766739f5fedd66a",
       "domain": "localhost",
       "path": "/",
-      "expires": 1746333807.809435,
+      "expires": 1746336862.42101,
       "httpOnly": true,
       "secure": true,
       "sameSite": "Strict"
