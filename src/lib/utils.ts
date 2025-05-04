@@ -28,11 +28,6 @@ export function formatBytes(bytes: number, decimals = 2): string {
 	return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
-export const capitalizeFirstLetter = (text: string) => {
-	if (!text) return '';
-	return text.charAt(0).toUpperCase() + text.slice(1);
-};
-
 export function formatDate(dateString: string | undefined | null): string {
 	if (!dateString) return 'Unknown';
 	try {

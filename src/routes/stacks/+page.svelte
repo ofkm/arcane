@@ -10,7 +10,7 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { capitalizeFirstLetter } from '$lib/utils';
+	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { statusVariantMap } from '$lib/types/statuses';
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';

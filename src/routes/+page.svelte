@@ -6,7 +6,8 @@
 	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2 } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
-	import { capitalizeFirstLetter, formatBytes } from '$lib/utils';
+	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
+	import { formatBytes } from '$lib/utils';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';

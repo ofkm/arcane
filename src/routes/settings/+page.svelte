@@ -9,6 +9,8 @@
 	import UserManagement from './tabs/user-management.svelte';
 	import Authentication from './tabs/authentication.svelte';
 	import { saveSettingsToServer, updateSettingsStore } from '$lib/stores/settings-store';
+	import { handleApiReponse } from '$lib/utils/api.util';
+	import { tryCatch } from '$lib/utils/try-catch';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -18,9 +20,15 @@
 		}
 	});
 
-	let activeTab = $state('app-settings');
-	let saving = $state(false);
-	let error = $state<string | null>(null);
+	let settingsPageStates = $state({
+		start: false,
+		error: <string | null>null,
+		activeTab: 'app-settings'
+	});
+
+	let isLoading = $state({
+		saving: false
+	});
 
 	const tabs = [
 		{ id: 'app-settings', label: 'General', component: AppSettings },
@@ -29,21 +37,19 @@
 	];
 
 	async function saveSettings() {
-		if (saving) return;
-		saving = true;
-		error = null;
+		if (isLoading.saving) return;
+		isLoading.saving = true;
+		settingsPageStates.error = null;
 
-		try {
-			await saveSettingsToServer();
-			toast.success('Settings saved successfully');
-			await invalidateAll();
-		} catch (err: unknown) {
-			console.error('Error saving settings:', err);
-			error = err instanceof Error ? err.message : 'An error occurred while saving settings';
-			if (error) toast.error(error);
-		} finally {
-			saving = false;
-		}
+		handleApiReponse(
+			await tryCatch(saveSettingsToServer()),
+			'Error Saving Settings',
+			(value) => (isLoading.saving = value),
+			async () => {
+				toast.success(`Settings Saved Successfully`);
+				await invalidateAll();
+			}
+		);
 	}
 </script>
 
@@ -54,8 +60,8 @@
 			<p class="text-sm text-muted-foreground mt-1">Configure Arcane's settings and permissions</p>
 		</div>
 
-		<Button onclick={saveSettings} disabled={saving} class="h-10">
-			{#if saving}
+		<Button onclick={saveSettings} disabled={isLoading.saving} class="h-10">
+			{#if isLoading.saving}
 				<RefreshCw class="mr-2 h-4 w-4 animate-spin" />
 				Saving...
 			{:else}
@@ -65,7 +71,7 @@
 		</Button>
 	</div>
 
-	<Tabs.Root value={activeTab} onValueChange={(val) => (activeTab = val)} class="w-full">
+	<Tabs.Root value={settingsPageStates.activeTab} onValueChange={(val) => (settingsPageStates.activeTab = val)} class="w-full">
 		<Tabs.List class="grid grid-cols-3 md:w-full md:max-w-3xl mb-4">
 			{#each tabs as tab, i (tab.id)}
 				<Tabs.Trigger value={tab.id} class="whitespace-nowrap">

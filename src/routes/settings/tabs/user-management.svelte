@@ -2,13 +2,15 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { toast } from 'svelte-sonner';
-	import { UserPlus, UserCheck } from '@lucide/svelte';
+	import { UserPlus, UserCheck, Ellipsis, Pencil, UserX } from '@lucide/svelte';
 	import type { PageData } from '../$types';
 	import type { UniversalTableProps } from '$lib/types/table-types';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { userTableColumns } from '$lib/types/table-columns/user-table-columns';
 	import type { User } from '$lib/types/user.type';
 	import UserFormDialog from '$lib/components/dialogs/user-form-dialog.svelte';
+	import * as Table from '$lib/components/ui/table';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 
 	// Get data from server
 	let { data } = $props<{ data: PageData }>();
@@ -109,31 +111,33 @@
 	const columns = userTableColumns(handleRemoveUser, openEditUserDialog);
 
 	// Create table props
-	const tableProps: UniversalTableProps<User> = {
-		columns,
-		get data() {
-			return users;
-		},
-		features: {
-			sorting: true,
-			filtering: true,
-			selection: false
-		},
-		display: {
-			filterPlaceholder: 'Filter users...',
-			noResultsMessage: 'No users found'
-		},
-		pagination: {
-			pageSize: 10,
-			pageSizeOptions: [5, 10, 15, 20]
-		},
-		sort: {
-			defaultSort: {
-				id: 'user',
-				desc: false
-			}
-		}
-	};
+	// const tableProps: UniversalTableProps<User> = {
+	// 	columns={[
+	// 		{ accessorKey: 'name', header: 'Name' },
+	// 	]},
+	// 	get data() {
+	// 		return users;
+	// 	},
+	// 	features: {
+	// 		sorting: true,
+	// 		filtering: true,
+	// 		selection: false
+	// 	},
+	// 	display: {
+	// 		filterPlaceholder: 'Filter users...',
+	// 		noResultsMessage: 'No users found'
+	// 	},
+	// 	pagination: {
+	// 		pageSize: 10,
+	// 		pageSizeOptions: [5, 10, 15, 20]
+	// 	},
+	// 	sort: {
+	// 		defaultSort: {
+	// 			id: 'user',
+	// 			desc: false
+	// 		}
+	// 	}
+	// };
 </script>
 
 <UserFormDialog bind:open={isUserDialogOpen} bind:userToEdit {roles} on:submit={handleDialogSubmit} bind:this={userDialogRef} />
@@ -151,7 +155,6 @@
 					<Card.Description>Manage local user accounts</Card.Description>
 				</div>
 			</div>
-			<!-- Add Create User Button -->
 			<Button size="sm" onclick={openCreateUserDialog}>
 				<UserPlus class="mr-2 h-4 w-4" />
 				Create User
@@ -160,7 +163,63 @@
 		<Card.Content class="flex-1 flex flex-col">
 			{#if users.length > 0}
 				<div class="flex-1 flex flex-col h-full">
-					<UniversalTable {...tableProps} />
+					<UniversalTable
+						data={users}
+						columns={[
+							{ accessorKey: 'user', header: 'User' },
+							{ accessorKey: 'email', header: 'Email' },
+							{ accessorKey: 'roles', header: 'Roles' },
+							{ accessorKey: 'actions', header: ' ' }
+						]}
+						features={{
+							sorting: true,
+							filtering: true,
+							selection: false
+						}}
+						pagination={{
+							pageSize: 10,
+							pageSizeOptions: [5, 10, 15, 20]
+						}}
+						display={{
+							filterPlaceholder: 'Filter users...',
+							noResultsMessage: 'No users found'
+						}}
+						sort={{
+							defaultSort: {
+								id: 'user',
+								desc: false
+							}
+						}}
+					>
+						<!-- TODO make sure the currect rows are brought over from the old table cells -->
+						{#snippet rows({ item })}
+							<Table.Cell>{item.username}</Table.Cell>
+							<Table.Cell>{item.email}</Table.Cell>
+							<Table.Cell>{item.roles}</Table.Cell>
+							<Table.Cell>
+								<DropdownMenu.Root>
+									<DropdownMenu.Trigger>
+										<Button variant="ghost" size="icon" class="h-8 w-8">
+											<Ellipsis class="h-4 w-4" />
+											<span class="sr-only">Open menu</span>
+										</Button>
+									</DropdownMenu.Trigger>
+									<DropdownMenu.Content align="end">
+										<DropdownMenu.Group>
+											<DropdownMenu.Item>
+												<Pencil class="h-4 w-4" />
+												Edit
+											</DropdownMenu.Item>
+											<DropdownMenu.Item class="text-red-500 focus:!text-red-700">
+												<UserX class="h-4 w-4" />
+												Remove User
+											</DropdownMenu.Item>
+										</DropdownMenu.Group>
+									</DropdownMenu.Content>
+								</DropdownMenu.Root>
+							</Table.Cell>
+						{/snippet}
+					</UniversalTable>
 				</div>
 			{:else}
 				<div class="text-center py-8 text-muted-foreground italic">No local users found</div>

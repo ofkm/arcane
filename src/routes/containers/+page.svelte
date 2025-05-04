@@ -14,7 +14,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { statusVariantMap } from '$lib/types/statuses';
-	import { capitalizeFirstLetter } from '$lib/utils';
+	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { handleApiReponse } from '$lib/utils/api.util';
 	import { shortId } from '$lib/utils/string.utils';
 
