@@ -20,6 +20,7 @@
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import SystemAPIService from '$lib/services/api/system-api-service';
 	import type { EnhancedImageInfo } from '$lib/types/docker';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 
 	let { data }: { data: PageData } = $props();
 
@@ -69,6 +70,7 @@
 
 	async function handleStartAll() {
 		if (isLoading.starting || !dashboardStates.dockerInfo || stoppedContainers === 0) return;
+		isLoading.starting = true;
 		handleApiReponse(
 			await tryCatch(containerApi.startAll()),
 			`Failed to Start All Containers`,
@@ -76,26 +78,39 @@
 			async () => {
 				toast.success(`All Containers Started Successfully.`);
 				await invalidateAll();
+				isLoading.starting = false;
 			}
 		);
 	}
 
 	async function handleStopAll() {
 		if (isLoading.stopping || !dashboardStates.dockerInfo || runningContainers === 0) return;
-		handleApiReponse(
-			await tryCatch(containerApi.stopAll()),
-			`Failed to Stop All Running Containers`,
-			(value) => (isLoading.starting = value),
-			async () => {
-				toast.success(`All Containers Stopped Successfully.`);
-				await invalidateAll();
+		isLoading.stopping = true;
+		openConfirmDialog({
+			title: 'Stop All Containers',
+			message: 'Are you sure you want to stop all running containers?',
+			confirm: {
+				label: 'Confirm',
+				destructive: false,
+				action: async () => {
+					handleApiReponse(
+						await tryCatch(containerApi.stopAll()),
+						`Failed to Stop All Running Containers`,
+						(value) => (isLoading.starting = value),
+						async () => {
+							toast.success(`All Containers Stopped Successfully.`);
+							await invalidateAll();
+							isLoading.stopping = false;
+						}
+					);
+				}
 			}
-		);
+		});
 	}
 
 	async function confirmPrune(selectedTypes: string[]) {
 		if (isLoading.pruning || selectedTypes.length === 0) return;
-
+		isLoading.pruning = true;
 		handleApiReponse(
 			await tryCatch(systemApi.prune(['containers', 'images'])),
 			`Failed to Prune ${selectedTypes}`,
@@ -105,6 +120,7 @@
 				const formattedTypes = selectedTypes.map((type) => capitalizeFirstLetter(type)).join(', ');
 				toast.success(`${formattedTypes} ${selectedTypes.length > 1 ? 'were' : 'was'} pruned successfully.`);
 				await invalidateAll();
+				isLoading.pruning = false;
 			}
 		);
 	}
