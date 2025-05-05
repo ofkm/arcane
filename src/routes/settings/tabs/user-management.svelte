@@ -2,145 +2,95 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { toast } from 'svelte-sonner';
-	import { UserPlus, UserCheck, Ellipsis, Pencil, UserX } from '@lucide/svelte';
+	import { UserPlus, UserCheck, Ellipsis, Pencil, UserX, Mail } from '@lucide/svelte';
 	import type { PageData } from '../$types';
-	import type { UniversalTableProps } from '$lib/types/table-types';
 	import UniversalTable from '$lib/components/universal-table.svelte';
-	import { userTableColumns } from '$lib/types/table-columns/user-table-columns';
 	import type { User } from '$lib/types/user.type';
 	import UserFormDialog from '$lib/components/dialogs/user-form-dialog.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import { handleApiReponse } from '$lib/utils/api.util';
+	import { tryCatch } from '$lib/utils/try-catch';
+	import UserAPIService from '$lib/services/api/user-api-service';
+	import { invalidateAll } from '$app/navigation';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 
-	// Get data from server
 	let { data } = $props<{ data: PageData }>();
 
-	let users = $state<User[]>(data.users || []);
+	const userApi = new UserAPIService();
 
-	$effect(() => {
-		users = data.users || [];
+	let userPageStates = $state({
+		users: <User[]>data.users,
+		isUserDialogOpen: false,
+		userToEdit: <User | null>null
 	});
 
-	// Dialog state
-	let isUserDialogOpen = $state(false);
-	let userToEdit = $state<User | null>(null);
+	let isLoading = $state({
+		saving: false
+	});
+
 	let userDialogRef: UserFormDialog | null = $state(null);
 
-	// Available roles
+	$effect(() => {
+		userPageStates.users = data.users;
+	});
+
 	const roles = [
 		{ id: 'admin', name: 'Administrator' },
 		{ id: 'user', name: 'Standard User' },
 		{ id: 'viewer', name: 'Viewer (read-only)' }
 	];
 
-	// Function to open dialog for creating
 	function openCreateUserDialog() {
-		userToEdit = null;
-		isUserDialogOpen = true;
+		userPageStates.userToEdit = null;
+		userPageStates.isUserDialogOpen = true;
 	}
 
-	// Function to open dialog for editing
 	function openEditUserDialog(user: User) {
-		userToEdit = user;
-		isUserDialogOpen = true;
+		userPageStates.userToEdit = user;
+		userPageStates.isUserDialogOpen = true;
 	}
 
-	// Handle submission from the dialog
-	async function handleDialogSubmit(event: CustomEvent) {
-		const { user: userData, isEditMode, userId } = event.detail;
+	async function handleDialogSubmit({ user: userData, isEditMode, userId }: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) {
+		isLoading.saving = true;
 
-		const url = isEditMode ? `/api/users/${userId}` : '/api/users';
-		const method = isEditMode ? 'PUT' : 'POST';
+		handleApiReponse(
+			await tryCatch(isEditMode ? userApi.update(userId || '', userData as User) : userApi.create(userData as User)),
+			isEditMode ? 'Error Updating User' : 'Error Creating User',
+			(value) => (isLoading.saving = value),
+			async () => {
+				userPageStates.isUserDialogOpen = false;
+				toast.success(isEditMode ? 'User Updated Successfully' : 'User Created Successfully');
+				await invalidateAll();
+			}
+		);
+	}
 
-		try {
-			const response = await fetch(url, {
-				method: method,
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(userData)
-			});
-
-			const result = await response.json();
-
-			if (response.ok) {
-				if (isEditMode) {
-					users = users.map((u) => (u.id === userId ? { ...u, ...result.user } : u));
-					toast.success('User updated successfully');
-				} else {
-					users = [...users, result.user];
-					toast.success('User created successfully');
+	async function handleRemoveUser(userId: string) {
+		openConfirmDialog({
+			title: 'Delete Container',
+			message: 'Are you sure you want to delete this container? This action cannot be undone.',
+			confirm: {
+				label: 'Delete',
+				destructive: true,
+				action: async () => {
+					handleApiReponse(
+						await tryCatch(userApi.delete(userId)),
+						'Failed to Delete User',
+						(value) => (isLoading.saving = value),
+						async () => {
+							toast.success('User Deleted Successfully.');
+							await invalidateAll();
+						}
+					);
 				}
-				isUserDialogOpen = false;
-			} else {
-				userDialogRef?.setSaveError(result.error || `Failed to ${isEditMode ? 'update' : 'create'} user`);
 			}
-		} catch (error) {
-			console.error(`Error ${isEditMode ? 'updating' : 'creating'} user:`, error);
-			userDialogRef?.setSaveError(`An unexpected error occurred.`);
-		} finally {
-			userDialogRef?.resetSavingState();
-		}
+		});
 	}
-
-	// Handle user removal via API
-	async function handleRemoveUser(userId: string, username: string) {
-		if (!confirm(`Are you sure you want to remove user "${username}"?`)) {
-			return;
-		}
-
-		try {
-			const response = await fetch(`/api/users/${userId}`, {
-				method: 'DELETE'
-			});
-
-			if (response.ok) {
-				users = users.filter((user) => user.id !== userId);
-				toast.success(`User ${username} removed successfully`);
-			} else {
-				const result = await response.json();
-				toast.error(result.error || 'Failed to remove user');
-			}
-		} catch (error) {
-			console.error('Error removing user:', error);
-			toast.error('An unexpected error occurred');
-		}
-	}
-
-	// Configure the table columns, passing edit handler
-	const columns = userTableColumns(handleRemoveUser, openEditUserDialog);
-
-	// Create table props
-	// const tableProps: UniversalTableProps<User> = {
-	// 	columns={[
-	// 		{ accessorKey: 'name', header: 'Name' },
-	// 	]},
-	// 	get data() {
-	// 		return users;
-	// 	},
-	// 	features: {
-	// 		sorting: true,
-	// 		filtering: true,
-	// 		selection: false
-	// 	},
-	// 	display: {
-	// 		filterPlaceholder: 'Filter users...',
-	// 		noResultsMessage: 'No users found'
-	// 	},
-	// 	pagination: {
-	// 		pageSize: 10,
-	// 		pageSizeOptions: [5, 10, 15, 20]
-	// 	},
-	// 	sort: {
-	// 		defaultSort: {
-	// 			id: 'user',
-	// 			desc: false
-	// 		}
-	// 	}
-	// };
 </script>
 
-<UserFormDialog bind:open={isUserDialogOpen} bind:userToEdit {roles} on:submit={handleDialogSubmit} bind:this={userDialogRef} />
+<UserFormDialog bind:open={userPageStates.isUserDialogOpen} bind:userToEdit={userPageStates.userToEdit} {roles} onSubmit={handleDialogSubmit} bind:this={userDialogRef} />
 
 <div class="grid grid-cols-1 gap-6 h-full">
 	<!-- User List Card -->
@@ -161,10 +111,10 @@
 			</Button>
 		</Card.Header>
 		<Card.Content class="flex-1 flex flex-col">
-			{#if users.length > 0}
+			{#if userPageStates.users.length > 0}
 				<div class="flex-1 flex flex-col h-full">
 					<UniversalTable
-						data={users}
+						data={userPageStates.users}
 						columns={[
 							{ accessorKey: 'user', header: 'User' },
 							{ accessorKey: 'email', header: 'Email' },
@@ -191,11 +141,24 @@
 							}
 						}}
 					>
-						<!-- TODO make sure the currect rows are brought over from the old table cells -->
 						{#snippet rows({ item })}
-							<Table.Cell>{item.username}</Table.Cell>
-							<Table.Cell>{item.email}</Table.Cell>
-							<Table.Cell>{item.roles}</Table.Cell>
+							<Table.Cell>
+								{item.displayName}
+							</Table.Cell>
+							<Table.Cell>
+								<div class="flex items-center gap-1.5">
+									<Mail class="h-3.5 w-3.5 text-muted-foreground" />
+									{item.email}
+								</div>
+							</Table.Cell>
+							<Table.Cell>
+								<div class="flex flex-wrap">
+									{#each item.roles as role (role)}
+										{@const isAdmin = role === 'admin'}
+										<StatusBadge text={isAdmin ? 'Admin' : 'User'} variant={isAdmin ? 'amber' : 'blue'} />
+									{/each}
+								</div>
+							</Table.Cell>
 							<Table.Cell>
 								<DropdownMenu.Root>
 									<DropdownMenu.Trigger>
@@ -206,11 +169,11 @@
 									</DropdownMenu.Trigger>
 									<DropdownMenu.Content align="end">
 										<DropdownMenu.Group>
-											<DropdownMenu.Item>
+											<DropdownMenu.Item onclick={() => openEditUserDialog(item)}>
 												<Pencil class="h-4 w-4" />
 												Edit
 											</DropdownMenu.Item>
-											<DropdownMenu.Item class="text-red-500 focus:!text-red-700">
+											<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveUser(item.id)}>
 												<UserX class="h-4 w-4" />
 												Remove User
 											</DropdownMenu.Item>

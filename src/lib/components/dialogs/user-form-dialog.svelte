@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -12,14 +11,14 @@
 	let {
 		open = $bindable(false),
 		userToEdit = $bindable<User | null>(null),
-		roles = []
+		roles = [],
+		onSubmit = $bindable((_data: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) => {})
 	}: {
 		open?: boolean;
 		userToEdit?: User | null;
 		roles: { id: string; name: string }[];
+		onSubmit?: (data: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) => void;
 	} = $props();
-
-	const dispatch = createEventDispatcher();
 
 	let username = $state('');
 	let password = $state('');
@@ -42,13 +41,13 @@
 				password = '';
 				displayName = userToEdit.displayName || '';
 				email = userToEdit.email || '';
-				selectedRole = userToEdit.roles?.[0] || 'user';
+				selectedRole = userToEdit.roles?.[0] || 'admin';
 			} else {
 				username = '';
 				password = '';
 				displayName = '';
 				email = '';
-				selectedRole = 'user';
+				selectedRole = 'admin';
 			}
 		}
 	});
@@ -70,20 +69,13 @@
 		}
 
 		try {
-			dispatch('submit', { user: userData, isEditMode, userId: userToEdit?.id });
+			onSubmit({ user: userData, isEditMode, userId: userToEdit?.id });
+			isSaving = false;
 		} catch (err: unknown) {
 			const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
 			error = errorMessage;
+			isSaving = false;
 		}
-	}
-
-	export function resetSavingState() {
-		isSaving = false;
-	}
-
-	export function setSaveError(errorMessage: string) {
-		error = errorMessage;
-		isSaving = false;
 	}
 </script>
 
@@ -96,26 +88,26 @@
 			{/if}
 		</Dialog.Header>
 
-		<form class="grid gap-4 py-4" onsubmit={preventDefault(handleSubmit)}>
+		<form class="grid gap-4 py-4" onsubmit={preventDefault(handleSubmit)} autocomplete="off">
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="username" class="text-right">Username</Label>
-				<Input id="username" bind:value={username} required class="col-span-3" disabled={isEditMode} />
+				<Input autocomplete="off" id="username" bind:value={username} required class="col-span-3" disabled={isEditMode} />
 			</div>
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="password" class="text-right">Password</Label>
-				<Input id="password" type="password" bind:value={password} required={!isEditMode} placeholder={isEditMode ? 'Leave blank to keep current' : 'Required'} class="col-span-3" />
+				<Input autocomplete="off" id="password" type="password" bind:value={password} required={!isEditMode} placeholder={isEditMode ? 'Leave blank to keep current' : 'Required'} class="col-span-3" />
 			</div>
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="displayName" class="text-right">Display Name</Label>
-				<Input id="displayName" bind:value={displayName} class="col-span-3" />
+				<Input autocomplete="off" id="displayName" bind:value={displayName} class="col-span-3" />
 			</div>
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="email" class="text-right">Email</Label>
-				<Input id="email" type="email" bind:value={email} class="col-span-3" />
+				<Input autocomplete="off" id="email" type="email" bind:value={email} class="col-span-3" />
 			</div>
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="role" class="text-right">Role</Label>
-				<Select.Root name="role" type="single" bind:value={selectedRole} disabled={isSaving}>
+				<Select.Root name="role" type="single" bind:value={selectedRole} disabled={true}>
 					<Select.Trigger class="col-span-3">
 						<span>{roles.find((r) => r.id === selectedRole)?.name || 'Select a role'}</span>
 					</Select.Trigger>
