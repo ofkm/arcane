@@ -133,14 +133,6 @@
 		isLoading['import'] = false;
 	}
 
-	async function refreshData() {
-		isRefreshing = true;
-		await invalidateAll();
-		setTimeout(() => {
-			isRefreshing = false;
-		}, 500);
-	}
-
 	$effect(() => {
 		stacks = data.stacks;
 	});
@@ -208,10 +200,6 @@
 					<Card.Description>Manage Docker Compose stacks</Card.Description>
 				</div>
 				<div class="flex items-center gap-2">
-					<Button variant="secondary">
-						<Upload class="w-4 h-4" />
-						Import
-					</Button>
 					<Button variant="secondary" onclick={() => goto(`/stacks/new`)}>
 						<Plus class="w-4 h-4" />
 						Create Stack

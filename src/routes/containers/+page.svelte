@@ -59,7 +59,7 @@
 		isCreateDialogOpen = true;
 	}
 
-	async function handleRemoveContainer(id: string, force?: boolean) {
+	async function handleRemoveContainer(id: string) {
 		// const endpoint = `/api/containers/${id}/remove${force ? '?force=true' : ''}`;
 		openConfirmDialog({
 			title: 'Delete Container',
@@ -272,7 +272,7 @@
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveContainer(item.id, item.state === 'running' ? true : false)} disabled={isLoading.remove || isAnyLoading}>
+										<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveContainer(item.id)} disabled={isLoading.remove || isAnyLoading}>
 											{#if isLoading.remove}
 												<Loader2 class="w-4 h-4 animate-spin" />
 											{:else}

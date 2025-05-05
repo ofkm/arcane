@@ -3,7 +3,7 @@
 	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch } from '@lucide/svelte';
+	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch, Plus } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -213,22 +213,6 @@
 			<h1 class="text-3xl font-bold tracking-tight">Docker Images</h1>
 			<p class="text-sm text-muted-foreground mt-1">Manage your Docker images</p>
 		</div>
-		<div class="flex items-center gap-2">
-			<Button variant="secondary" onclick={() => (isConfirmPruneDialogOpen = true)} disabled={isLoading.pruning}>
-				{#if isLoading.pruning}
-					<Loader2 class="w-4 h-4 animate-spin" /> Pruning...
-				{:else}
-					<CopyX class="w-4 h-4" /> Prune Unused
-				{/if}
-			</Button>
-			<Button variant="secondary" onclick={() => (isPullDialogOpen = true)} disabled={isLoading.pulling}>
-				{#if isLoading.pulling}
-					<Loader2 class="w-4 h-4 animate-spin" /> Pulling...
-				{:else}
-					<Download class="w-4 h-4" /> Pull Image
-				{/if}
-			</Button>
-		</div>
 	</div>
 
 	{#if error}
@@ -238,7 +222,6 @@
 			<Alert.Description>{error}</Alert.Description>
 		</Alert.Root>
 	{/if}
-
 	<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 		<Card.Root>
 			<Card.Content class="p-4 flex items-center justify-between">
@@ -273,6 +256,7 @@
 						<Card.Title>Image List</Card.Title>
 						<Card.Description>View and manage your Docker images</Card.Description>
 					</div>
+
 					<div class="flex items-center gap-2">
 						{#if selectedIds.length > 0}
 							<DropdownMenu.Root>
@@ -297,6 +281,20 @@
 								</DropdownMenu.Content>
 							</DropdownMenu.Root>
 						{/if}
+						<Button variant="secondary" onclick={() => (isConfirmPruneDialogOpen = true)} disabled={isLoading.pruning}>
+							{#if isLoading.pruning}
+								<Loader2 class="w-4 h-4 animate-spin" /> Pruning...
+							{:else}
+								<CopyX class="w-4 h-4" /> Prune Unused
+							{/if}
+						</Button>
+						<Button variant="secondary" onclick={() => (isPullDialogOpen = true)} disabled={isLoading.pulling}>
+							{#if isLoading.pulling}
+								<Loader2 class="w-4 h-4 animate-spin" /> Pulling...
+							{:else}
+								<Download class="w-4 h-4" /> Pull Image
+							{/if}
+						</Button>
 					</div>
 				</div>
 			</Card.Header>
