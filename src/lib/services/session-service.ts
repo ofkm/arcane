@@ -1,9 +1,11 @@
 import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import type { Cookies } from '@sveltejs/kit';
 import { encrypt, decrypt } from './encryption-service';
 import { SESSIONS_DIR, ensureDirectory } from './paths-service';
 import type { UserSession } from '$lib/types/session.type';
+import type { Settings } from '$lib/types/settings.type';
 
 // Create a Map to store sessions in memory
 const sessions = new Map<string, string>();
@@ -183,4 +185,25 @@ async function removeSessionFromDisk(sessionId: string): Promise<void> {
 	} catch {
 		// Ignore errors
 	}
+}
+
+/**
+ * Sets a session cookie with appropriate security settings
+ */
+export function setSessionCookie(cookies: Cookies, sessionId: string, request: Request, settings: Settings): void {
+	const sessionTimeout = settings.auth?.sessionTimeout || 60; // minutes
+
+	// More reliable HTTPS detection
+	const isSecureConnection = request.url.includes('https:') || request.headers?.get('x-forwarded-proto') === 'https';
+
+	// Log what's happening
+	console.log(`Setting session cookie with secure=${isSecureConnection}`);
+
+	cookies.set('session_id', sessionId, {
+		path: '/',
+		httpOnly: true,
+		secure: isSecureConnection, // Only use secure when actually on HTTPS
+		maxAge: sessionTimeout * 60,
+		sameSite: 'lax' // Change to lax for better compatibility
+	});
 }

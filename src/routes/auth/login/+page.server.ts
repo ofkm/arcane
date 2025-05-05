@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getUserByUsername, verifyPassword } from '$lib/services/user-service';
-import { createSession } from '$lib/services/session-service';
+import { createSession, setSessionCookie } from '$lib/services/session-service';
 import { getSettings } from '$lib/services/settings-service';
 
 // Define a proper ActionData type
@@ -67,16 +67,17 @@ export const actions: Actions = {
 
 		// Set session cookie with enhanced security
 		const settings = await getSettings();
-		const sessionTimeout = settings.auth?.sessionTimeout || 60; // minutes
 
-		cookies.set('session_id', sessionId, {
-			path: '/',
-			httpOnly: true,
-			secure: true, // Always use secure cookies
-			maxAge: sessionTimeout * 60, // Convert to seconds
-			sameSite: 'strict', // Enhanced from 'lax'
-			partitioned: true // Use partitioned cookies for added security in supported browsers
-		});
+		setSessionCookie(cookies, sessionId, request, settings);
+
+		// cookies.set('session_id', sessionId, {
+		// 	path: '/',
+		// 	httpOnly: true,
+		// 	secure: true, // Always use secure cookies
+		// 	maxAge: sessionTimeout * 60, // Convert to seconds
+		// 	sameSite: 'strict', // Enhanced from 'lax'
+		// 	partitioned: true // Use partitioned cookies for added security in supported browsers
+		// });
 
 		// Check if onboarding is needed
 		if (!settings.onboarding?.completed) {
