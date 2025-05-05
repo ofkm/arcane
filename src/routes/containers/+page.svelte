@@ -60,7 +60,7 @@
 	}
 
 	async function handleRemoveContainer(id: string, force?: boolean) {
-		const endpoint = `/api/containers/${id}/remove${force ? '?force=true' : ''}`;
+		// const endpoint = `/api/containers/${id}/remove${force ? '?force=true' : ''}`;
 		openConfirmDialog({
 			title: 'Delete Container',
 			message: 'Are you sure you want to delete this container? This action cannot be undone.',
