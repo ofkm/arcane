@@ -14,7 +14,8 @@
 	const isAuthenticated = $derived(!!user);
 
 	const isOnboardingPage = $derived(page.url.pathname.startsWith('/onboarding'));
-	const showSidebar = $derived(isAuthenticated && !isOnboardingPage);
+	const isLoginPage = $derived(page.url.pathname === '/login' || page.url.pathname.startsWith('/auth/login') || page.url.pathname === '/auth' || page.url.pathname.includes('/login'));
+	const showSidebar = $derived(isAuthenticated && !isOnboardingPage && !isLoginPage);
 </script>
 
 <svelte:head><title>Arcane</title></svelte:head>
