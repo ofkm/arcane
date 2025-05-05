@@ -211,6 +211,9 @@
 						{ accessorKey: 'status', header: 'Status' },
 						{ accessorKey: 'actions', header: ' ', enableSorting: false }
 					]}
+					features={{
+						selection: false
+					}}
 					display={{
 						filterPlaceholder: 'Search containers...',
 						noResultsMessage: 'No containers found'
