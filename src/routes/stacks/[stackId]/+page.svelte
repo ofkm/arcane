@@ -32,11 +32,12 @@
 
 	let name = $derived(editorState.name);
 	let composeContent = $derived(editorState.composeContent);
+	let autoUpdate = $derived(editorState.autoUpdate);
 	let originalName = $derived(editorState.originalName);
 	let originalComposeContent = $derived(editorState.originalComposeContent);
 	let originalAutoUpdate = $derived(editorState.autoUpdate);
 
-	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || editorState.autoUpdate !== originalAutoUpdate);
+	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || autoUpdate !== originalAutoUpdate);
 
 	$effect(() => {
 		deploying = false;
@@ -50,13 +51,13 @@
 		if (!stack || !hasChanges) return;
 
 		handleApiReponse(
-			await tryCatch(stackApi.save(stack.id, name, composeContent, editorState.autoUpdate)),
+			await tryCatch(stackApi.save(stack.id, name, composeContent, autoUpdate)),
 			'Failed to Save Stack',
 			(value) => (saving = value),
 			async (data) => {
 				originalName = name;
 				originalComposeContent = composeContent;
-				originalAutoUpdate = editorState.autoUpdate;
+				originalAutoUpdate = autoUpdate;
 
 				console.log('Stack save successful:', data);
 				toast.success('Stack updated successfully!');
@@ -184,7 +185,7 @@
 						</div>
 
 						<div class="flex items-center space-x-2 mt-4">
-							<Switch id="auto-update" name="autoUpdate" bind:checked={editorState.autoUpdate} />
+							<Switch id="auto-update" name="autoUpdate" bind:checked={autoUpdate} />
 							<Label for="auto-update" class="font-medium">Enable auto-update</Label>
 							<div class="inline-block">
 								<p class="text-xs text-muted-foreground">When enabled, Arcane will periodically check for newer versions of all images in this stack and automatically redeploy it.</p>
