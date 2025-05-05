@@ -34,9 +34,9 @@ else
     LATEST_TAG=$(git describe --tags --abbrev=0)
 
     # Check for "feat" or "fix" in the commit messages since the latest tag
-    if git log "$LATEST_TAG"..HEAD --oneline | grep -q "feat"; then
+    if git log "$LATEST_TAG"..HEAD --oneline | grep -E "feat(\(.*\))?:" | grep -q .; then
         RELEASE_TYPE="minor"
-    elif git log "$LATEST_TAG"..HEAD --oneline | grep -q "fix"; then
+    elif git log "$LATEST_TAG"..HEAD --oneline | grep -E "fix(\(.*\))?:" | grep -q .; then
         RELEASE_TYPE="patch"
     else
         echo "No 'fix' or 'feat' commits found since the latest release. No new release will be created."

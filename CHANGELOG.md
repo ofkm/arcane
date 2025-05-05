@@ -1,3 +1,8 @@
+## [0.4.1](https://github.com/ofkm/arcane/compare/v0.4.0...v0.4.1) (2025-05-05)
+
+### Bug Fixes
+
+* adjust ownership handling in entrypoint script ([a3ec54a](https://github.com/ofkm/arcane/commit/a3ec54a058548a66ae9e637cdd6e34228c5e995b))
 ## [0.4.0](https://github.com/ofkm/arcane/compare/v0.3.0...v0.4.0) (2025-05-05)
 
 ### Features
