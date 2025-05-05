@@ -66,6 +66,7 @@
     "prettier-plugin-svelte": "^3.3.3",
     "proper-lockfile": "^4.1.2",
     "svelte-codemirror-editor": "^1.4.1",
+    "svelte-kit-cookie-session": "^4.1.1",
     "thememirror": "^2.0.1"
   }
 }

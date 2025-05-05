@@ -1,10 +1,11 @@
 import { redirect, type Handle } from '@sveltejs/kit';
+import { sequence } from '@sveltejs/kit/hooks';
 import { initComposeService } from '$lib/services/docker/stack-service';
 import { initAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
-import { getSession } from '$lib/services/session-service';
 import { getUserByUsername } from '$lib/services/user-service';
 import { getSettings } from '$lib/services/settings-service';
 import { checkFirstRun } from '$lib/utils/onboarding.utils';
+import { sessionHandler } from '$lib/services/session-handler';
 
 // Get environment variable
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
@@ -25,8 +26,9 @@ const protectedPathPermissions: Record<string, string[]> = {
 	// Add other path patterns as needed
 };
 
-export const handle: Handle = async ({ event, resolve }) => {
-	const { cookies, url } = event;
+// Authentication and authorization handler
+const authHandler: Handle = async ({ event, resolve }) => {
+	const { url } = event;
 	const path = url.pathname;
 
 	// Define paths that don't require authentication
@@ -38,34 +40,30 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return await resolve(event);
 	}
 
-	// For all other paths, we need authentication
-	const sessionId = cookies.get('session_id');
-	if (!sessionId) {
-		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(path)}`);
-	}
+	// Get session data using the updated API
+	const session = event.locals.session.data;
 
-	// Cache the session in event.locals
-	if (!event.locals.session) {
-		event.locals.session = await getSession(sessionId);
-	}
-
-	const session = event.locals.session;
-
-	if (!session) {
-		// Invalid or expired session
-		cookies.delete('session_id', { path: '/' });
+	if (!session || !session.userId) {
+		// No valid session
+		await event.locals.session.destroy();
 		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(path)}`);
 	}
 
 	// Cache the user in event.locals
 	if (!event.locals.user) {
-		event.locals.user = await getUserByUsername(session.username);
+		try {
+			event.locals.user = await getUserByUsername(session.username);
+		} catch (error) {
+			// Invalid user in session
+			await event.locals.session.destroy();
+			throw redirect(302, `/auth/login?error=invalid-session`);
+		}
 	}
 
 	const user = event.locals.user;
 
 	if (!user) {
-		cookies.delete('session_id', { path: '/' });
+		await event.locals.session.destroy();
 		throw redirect(302, `/auth/login?error=invalid-session`);
 	}
 
@@ -111,3 +109,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// Proceed to resolve the route with the authenticated user
 	return await resolve(event);
 };
+
+// Combine handlers using sequence
+export const handle = sequence(sessionHandler, authHandler);

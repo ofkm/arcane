@@ -10,7 +10,7 @@ declare global {
 		}
 		interface Locals {
 			user?: User | null;
-			session?: UserSession | null;
+			session: Session<SessionData>;
 		}
 		// interface PageData {}
 		// interface PageState {}

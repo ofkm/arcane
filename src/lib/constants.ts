@@ -1,2 +1,7 @@
-export const isDev = process.env.NODE_ENV === 'development';
-export const isTest = process.env.APP_ENV === 'TEST';
+import { dev } from '$app/environment';
+
+// Simply use SvelteKit's built-in dev flag
+export const isDev = dev;
+
+// For test environment, we can use a safer approach
+export const isTest = false; // Default for browser
