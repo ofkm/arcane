@@ -38,7 +38,7 @@
     "eslint-plugin-svelte": "^3.0.0",
     "formsnap": "^2.0.1",
     "globals": "^16.0.0",
-    "mode-watcher": "^1.0.2",
+    "mode-watcher": "^1.0.6",
     "svelte": "^5.28.2",
     "svelte-check": "^4.1.7",
     "svelte-sonner": "^0.3.28",
