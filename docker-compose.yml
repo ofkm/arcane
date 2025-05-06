@@ -2,15 +2,15 @@ services:
   arcane:
     image: ghcr.io/ofkm/arcane:latest
     container_name: arcane
+    user: root
     ports:
       - '3000:3000'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./arcane-data:/app/data
     environment:
-      - PUID=1000
-      - PGID=1000
       - DOCKER_GID=998 # getent group docker | cut -d: -f3
+      - PUBLIC_SESSION_SECRET=your-secure-random-32-character-string-here #openssl rand -base64 32
     restart: unless-stopped
 
 # Optional: Define the volume if you want Docker to manage it
