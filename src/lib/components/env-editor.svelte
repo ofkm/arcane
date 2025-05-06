@@ -4,17 +4,14 @@
 	import { coolGlow } from 'thememirror';
 	import { StreamLanguage } from '@codemirror/language';
 	import { properties } from '@codemirror/legacy-modes/mode/properties';
-	import type { EditorView as EditorViewType } from 'codemirror';
 
 	let { value = $bindable(''), placeholder = '# Add environment variables here', readOnly = false } = $props();
-	let editorView: EditorViewType;
 </script>
 
 {#if browser}
 	<div class="border rounded-md overflow-hidden">
 		<CodeMirror
 			bind:value
-			on:ready={(e) => (editorView = e.detail)}
 			theme={coolGlow}
 			extensions={[StreamLanguage.define(properties)]}
 			styles={{
