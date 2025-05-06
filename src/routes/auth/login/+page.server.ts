@@ -30,12 +30,7 @@ export const actions: Actions = {
 		const password = formData.get('password')?.toString() || '';
 		const redirectTo = formData.get('redirectTo')?.toString() || '/';
 
-		// Add detailed logging
-		console.log(`Login attempt for user: ${username}`);
-
 		try {
-			// Fetch user data
-			console.log(`Fetching user data for: ${username}`);
 			const user = await getUserByUsername(username);
 
 			if (!user) {
@@ -43,8 +38,6 @@ export const actions: Actions = {
 				return fail(400, { error: 'Invalid username or password', username });
 			}
 
-			// Verify password
-			console.log('Verifying password...');
 			const passwordValid = await verifyPassword(user, password);
 
 			if (!passwordValid) {
@@ -52,8 +45,6 @@ export const actions: Actions = {
 				return fail(400, { error: 'Invalid username or password', username });
 			}
 
-			// Set session data
-			console.log('Password verified, creating session...');
 			try {
 				await locals.session.set({
 					userId: user.id,
@@ -61,7 +52,6 @@ export const actions: Actions = {
 					createdAt: Date.now(),
 					lastAccessed: Date.now()
 				});
-				console.log('Session created successfully');
 			} catch (sessionError) {
 				console.error('Session creation error:', sessionError);
 				throw sessionError;
