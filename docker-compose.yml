@@ -9,8 +9,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./arcane-data:/app/data
     environment:
-      - DOCKER_GID=998 # getent group docker | cut -d: -f3
-      - PUBLIC_SESSION_SECRET=your-secure-random-32-character-string-here #openssl rand -base64 32
+      - DOCKER_GID=998 # Find using: getent group docker | cut -d: -f3
+      - PUBLIC_SESSION_SECRET=your-secure-random-32-character-string-here # Generate using: openssl rand -base64 32
+      # - PUBLIC_ALLOW_INSECURE_COOKIES=true # Uncomment only for local HTTP testing without SSL/TLS
     restart: unless-stopped
 
 # Optional: Define the volume if you want Docker to manage it

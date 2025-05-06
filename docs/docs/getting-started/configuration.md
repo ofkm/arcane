@@ -99,12 +99,28 @@ services:
 
 With this setup, configuration changes made through the UI are persisted across container restarts.
 
-### 2. Environment Variables (Permissions)
+### 2. Environment Variables
 
-The `docker-compose.yml` example includes environment variables for setting correct file permissions:
+While most application settings are configured via the UI, certain environment variables are crucial for initial setup, permissions, and security, especially when running via Docker.
 
-- **`PUID`** / **`PGID`**: Set these to the user ID and group ID of the user on your host machine.
-- **`DOCKER_GID`**: Set this to the group ID of the `docker` group on your host machine.
+#### Permissions & Docker Socket Access
+
+- **`DOCKER_GID`**: **Required.** Set this to the group ID of the `docker` group on your host machine (or the group that owns `/var/run/docker.sock`). This grants Arcane permission to interact with the Docker daemon. Find the ID using `getent group docker | cut -d: -f3` or `stat -c '%g' /var/run/docker.sock` on Linux.
+
+#### Session Security
+
+- **`PUBLIC_SESSION_SECRET`**: **Required.** This secret is used to sign and encrypt user session cookies, ensuring their integrity and confidentiality. You **must** provide a strong, unique, random string of at least 32 characters. Generate a suitable secret using:
+
+  ```bash
+  openssl rand -base64 32
+  ```
+
+  Replace the placeholder in your `docker-compose.yml` or environment setup with the generated secret. **Keep this secret confidential.**
+
+- **`PUBLIC_ALLOW_INSECURE_COOKIES`**: **Optional (Use with Caution).** By default (`false` or not set), session cookies are marked `Secure`, requiring an HTTPS connection. For **local development or testing only** where you are accessing Arcane over HTTP (e.g., `http://localhost:3000`) and cannot use HTTPS, you can set this variable to `true`. This allows the session cookie to be sent over insecure HTTP connections.
+  **Warning:** Setting this to `true` in a production environment or any environment exposed to untrusted networks is **highly insecure** and strongly discouraged. Always use HTTPS in production.
+
+#### Example `docker-compose.yml` Environment Section
 
 ```yaml
 # docker-compose.yml excerpt
@@ -112,9 +128,12 @@ services:
   arcane:
     # ... other settings
     environment:
-      - PUID=1000
-      - PGID=1000
+      # Permissions
       - DOCKER_GID=998 # Example GID, replace with yours
+
+      # Session Security
+      - PUBLIC_SESSION_SECRET=your-secure-random-32-character-string-here # Replace with generated secret
+      # - PUBLIC_ALLOW_INSECURE_COOKIES=true # Uncomment only for local HTTP testing
     # ... other settings
 ```
 
@@ -122,7 +141,8 @@ services:
 
 - **Direct file editing not supported:** Due to encryption, you cannot manually edit the `settings.dat` file.
 - **First-run setup:** On first run, Arcane will create default settings and generate encryption keys.
-- **Backup considerations:** When backing up your Arcane installation, ensure you include the entire data directory to preserve both settings and encryption keys.
+- **Backup considerations:** When backing up your Arcane installation, ensure you include the entire data directory (e.g., `/app/data` inside the container) to preserve settings, stacks, users, sessions, and encryption keys.
+- **HTTPS Recommended:** For security, especially if exposing Arcane beyond your local machine, running it behind a reverse proxy with HTTPS enabled is strongly recommended. This protects login credentials and session cookies.
 
 ## Initial Setup
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Home, Box, Image, Network, HardDrive, Settings, Menu, X, ChevronRight, ChevronLeft, FileStack, ExternalLink, type Icon as IconType } from '@lucide/svelte';
+	import { Home, Box, Image, Network, HardDrive, Settings, Menu, X, ChevronRight, ChevronLeft, FileStack, ExternalLink, LogOut, type Icon as IconType } from '@lucide/svelte';
 	import { page } from '$app/state';
 	import { fly } from 'svelte/transition';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -136,6 +136,19 @@
 			{/if}
 		</div>
 	{/if}
+
+	<!-- Logout Button -->
+	<div class="mt-auto p-2">
+		<Separator class="mb-2" />
+		<form action="/auth/logout" method="POST">
+			<Button variant="ghost" class={cn('w-full flex items-center text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground', isCollapsed ? 'justify-center px-2 py-2' : 'justify-start gap-3 px-3 py-2')} title={isCollapsed ? 'Logout' : undefined} type="submit">
+				<LogOut size={16} />
+				{#if !isCollapsed}
+					<span>Logout</span>
+				{/if}
+			</Button>
+		</form>
+	</div>
 </div>
 
 <!-- Overlay for mobile -->

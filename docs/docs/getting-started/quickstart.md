@@ -20,15 +20,16 @@ services:
   arcane:
     image: ghcr.io/ofkm/arcane:latest
     container_name: arcane
+    user: root
     ports:
       - '3000:3000'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - arcane-data:/app/data
     environment:
-      - PUID=1000
-      - PGID=1000
-      - DOCKER_GID=998 # getent group docker | cut -d: -f3
+      - DOCKER_GID=998 # Find using: getent group docker | cut -d: -f3
+      - PUBLIC_SESSION_SECRET=your-secure-random-32-character-string-here # Generate using: openssl rand -base64 32
+      # - PUBLIC_ALLOW_INSECURE_COOKIES=true # Uncomment only for local HTTP testing without SSL/TLS
     restart: unless-stopped
 
 volumes:
@@ -47,13 +48,21 @@ You may need to modify the environment variables to fit your setup. Mainly the `
 
     - **Permissions (Important):**
 
-      - The `PUID` and `PGID` (default `1000`) control the ownership of the `/app/data` volume inside the container. Adjust if your user ID/group ID is different.
-
       - You **must** set `DOCKER_GID` to match the group ID of the Docker socket (`/var/run/docker.sock`) on your host machine. This allows Arcane to communicate with Docker. Find your Docker group ID using one of these commands in your terminal:
         - Linux: `getent group docker | cut -d: -f3`
         - Linux (alternative): `stat -c '%g' /var/run/docker.sock`
         - macOS (if Docker group exists): `dscl . -read /Groups/docker PrimaryGroupID | awk '{print $2}'` (Often not needed on standard Docker Desktop for Mac setups).
       - Update the `DOCKER_GID=999` line in the `docker-compose.yml` file with the correct ID.
+
+      - **Session Secret:** Set `PUBLIC_SESSION_SECRET` to a secure random 32-character string. You can generate one using:
+
+        ```bash
+        openssl rand -base64 32
+        ```
+
+        This secret is used for securing sessions.
+
+      - **Insecure Cookies:** Uncomment `PUBLIC_ALLOW_INSECURE_COOKIES=true` only for local HTTP testing without SSL/TLS. Do not use this in production.
 
 3.  **Start Arcane:**
     Open your terminal, navigate to the directory where you saved `docker-compose.yml`, and run:
