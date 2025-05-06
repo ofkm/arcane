@@ -56,7 +56,24 @@ const config: Config = {
 			theme: prismThemes.vsLight,
 			darkTheme: prismThemes.vsDark
 		}
-	} satisfies Preset.ThemeConfig
+	} satisfies Preset.ThemeConfig,
+
+	plugins: [
+		// Only include the analytics plugin if the environment variable exists
+		// This ensures analytics won't run during local development
+		...(process.env.UMAMI_WEBSITE_ID
+			? [
+					[
+						'@dipakparmar/docusaurus-plugin-umami',
+						/** @type {import('@dipakparmar/docusaurus-plugin-umami').Options} */
+						{
+							websiteID: process.env.UMAMI_WEBSITE_ID,
+							analyticsDomain: process.env.UMAMI_ANALYTICS_DOMAIN
+						}
+					]
+				]
+			: [])
+	]
 };
 
 export default config;
