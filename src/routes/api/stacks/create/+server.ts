@@ -7,6 +7,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const body = await request.json();
 		const name = body.name?.toString();
 		const composeContent = body.composeContent?.toString();
+		const envContent = body.envContent?.toString();
 
 		if (!name) {
 			throw error(502, 'Stack name is required');
@@ -16,7 +17,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			throw error(503, 'Compose file content is required');
 		}
 
-		const newStack = await createStack(name, composeContent);
+		const newStack = await createStack(name, composeContent, envContent);
 
 		return json({
 			success: true,

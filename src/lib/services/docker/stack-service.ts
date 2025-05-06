@@ -110,6 +110,51 @@ async function getStackMetaPath(stackId: string): Promise<string> {
 }
 
 /**
+ * Gets the path to the .env file for a specific stack
+ */
+async function getEnvFilePath(stackId: string): Promise<string> {
+	const stackDir = await getStackDir(stackId);
+	return join(stackDir, '.env');
+}
+
+/**
+ * Saves environment variables to a .env file in the stack directory
+ * Handles empty content gracefully
+ */
+async function saveEnvFile(stackId: string, content?: string): Promise<void> {
+	const envPath = await getEnvFilePath(stackId);
+
+	// If content is undefined/null/empty string, create empty file or remove existing one
+	if (content === undefined || content === null) {
+		content = '';
+	}
+
+	await fs.writeFile(envPath, content, 'utf8');
+	console.log(`Saved .env file for stack ${stackId}`);
+}
+
+/**
+ * Loads environment variables from a .env file in the stack directory
+ * Returns empty string if the file doesn't exist
+ */
+async function loadEnvFile(stackId: string): Promise<string> {
+	const envPath = await getEnvFilePath(stackId);
+
+	try {
+		return await fs.readFile(envPath, 'utf8');
+	} catch (err) {
+		const nodeErr = err as NodeJS.ErrnoException;
+		// Return empty string if file doesn't exist
+		if (nodeErr.code === 'ENOENT') {
+			console.log(`No .env file found for stack ${stackId}`);
+			return '';
+		}
+		console.error(`Error reading .env file for stack ${stackId}:`, err);
+		throw new Error(`Failed to read .env file: ${nodeErr.message}`);
+	}
+}
+
+/**
  * The function `getComposeInstance` returns a new instance of `DockerodeCompose` using a Docker
  * client, compose file path, and stack ID.
  * @param {string} stackId - The `stackId` parameter is a string that represents the identifier of a
@@ -318,25 +363,69 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 }
 
 /**
- * This TypeScript function retrieves information about a stack, including its services and status,
- * based on the provided stack ID.
- * @param {string} stackId - The `stackId` parameter is a string that represents the unique identifier
- * of a stack. It is used to retrieve information about a specific stack, such as its metadata,
- * services, status, and content.
- * @returns The `getStack` function returns a Promise that resolves to an object of type `Stack`. The
- * `Stack` object contains properties such as `id`, `name`, `services`, `serviceCount`, `runningCount`,
- * `status`, `createdAt`, `updatedAt`, and `composeContent`. These properties hold information about a
- * specific stack identified by `stackId`.
+ * Creates a new stack with a compose file and optional .env file
+ */
+export async function createStack(name: string, composeContent: string, envContent?: string): Promise<Stack> {
+	const stackId = nanoid();
+	const stackDir = await getStackDir(stackId);
+	const composePath = join(stackDir, 'docker-compose.yml');
+	const metaPath = join(stackDir, 'meta.json');
+
+	const meta: StackMeta = {
+		name,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
+	};
+
+	try {
+		await fs.mkdir(stackDir, { recursive: true });
+
+		// Write all files in parallel
+		await Promise.all([fs.writeFile(composePath, composeContent, 'utf8'), fs.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf8'), saveEnvFile(stackId, envContent)]);
+
+		let serviceCount = 0;
+		try {
+			const composeData = yaml.load(composeContent) as any;
+			if (composeData?.services) {
+				serviceCount = Object.keys(composeData.services).length;
+			}
+		} catch (parseErr) {
+			console.warn(`Could not parse compose file during creation for stack ${stackId}:`, parseErr);
+		}
+
+		return {
+			id: stackId,
+			name: meta.name,
+			serviceCount: serviceCount,
+			runningCount: 0,
+			status: 'stopped',
+			createdAt: meta.createdAt,
+			updatedAt: meta.updatedAt,
+			composeContent: composeContent,
+			envContent: envContent || ''
+		};
+	} catch (err) {
+		console.error('Error creating stack:', err);
+		try {
+			await fs.rm(stackDir, { recursive: true, force: true });
+		} catch (cleanupErr) {
+			console.error(`Failed to cleanup partially created stack directory ${stackDir}:`, cleanupErr);
+		}
+		throw new Error('Failed to create stack files');
+	}
+}
+
+/**
+ * Gets information about a specific stack including its .env file
  */
 export async function getStack(stackId: string): Promise<Stack> {
 	try {
 		const metaPath = await getStackMetaPath(stackId);
 		const composePath = await getComposeFilePath(stackId);
 
-		const [metaContent, composeContent] = await Promise.all([fs.readFile(metaPath, 'utf8'), fs.readFile(composePath, 'utf8')]);
+		const [metaContent, composeContent, envContent] = await Promise.all([fs.readFile(metaPath, 'utf8'), fs.readFile(composePath, 'utf8'), loadEnvFile(stackId)]);
 
 		const meta = JSON.parse(metaContent) as StackMeta;
-
 		const services = await getStackServices(stackId, composeContent);
 
 		const serviceCount = services.length;
@@ -359,6 +448,7 @@ export async function getStack(stackId: string): Promise<Stack> {
 			createdAt: meta.createdAt,
 			updatedAt: meta.updatedAt,
 			composeContent,
+			envContent,
 			meta
 		};
 	} catch (err) {
@@ -368,83 +458,7 @@ export async function getStack(stackId: string): Promise<Stack> {
 }
 
 /**
- * The function `createStack` creates a new stack with a unique ID, saves the stack's metadata and
- * Docker Compose file to disk, and returns information about the created stack.
- * @param {string} name - The `name` parameter is a string that represents the name of the stack being
- * created. It is used to identify the stack and is included in the metadata of the stack.
- * @param {string} composeContent - The `composeContent` parameter in the `createStack` function is a
- * string that represents the content of a Docker Compose file. This file defines the services,
- * networks, and volumes for a Docker application. It is used to configure and run multiple Docker
- * containers as a single application.
- * @returns The `createStack` function returns a Promise that resolves to a `Stack` object with the
- * following properties:
- * - `id`: The unique identifier of the stack
- * - `name`: The name of the stack
- * - `serviceCount`: The number of services defined in the Docker Compose file
- * - `runningCount`: The number of services currently running
- * - `status`: The status of the
- */
-export async function createStack(name: string, composeContent: string): Promise<Stack> {
-	const stackId = nanoid();
-	const stackDir = await getStackDir(stackId);
-	const composePath = join(stackDir, 'docker-compose.yml');
-	const metaPath = join(stackDir, 'meta.json');
-
-	const meta: StackMeta = {
-		name,
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString()
-	};
-
-	try {
-		await fs.mkdir(stackDir, { recursive: true });
-		await Promise.all([fs.writeFile(composePath, composeContent, 'utf8'), fs.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf8')]);
-
-		let serviceCount = 0;
-		try {
-			const composeData = yaml.load(composeContent) as any;
-			if (composeData?.services) {
-				serviceCount = Object.keys(composeData.services).length;
-			}
-		} catch (parseErr) {
-			console.warn(`Could not parse compose file during creation for stack ${stackId}:`, parseErr);
-		}
-
-		return {
-			id: stackId,
-			name: meta.name,
-			serviceCount: serviceCount,
-			runningCount: 0,
-			status: 'stopped',
-			createdAt: meta.createdAt,
-			updatedAt: meta.updatedAt,
-			composeContent: composeContent
-		};
-	} catch (err) {
-		console.error('Error creating stack:', err);
-		try {
-			await fs.rm(stackDir, { recursive: true, force: true });
-		} catch (cleanupErr) {
-			console.error(`Failed to cleanup partially created stack directory ${stackDir}:`, cleanupErr);
-		}
-		throw new Error('Failed to create stack files');
-	}
-}
-
-/**
- * The function `updateStack` updates a stack's metadata and compose file, calculates the status of the
- * stack based on its services, and returns the updated stack information.
- * @param {string} stackId - The `stackId` parameter is a string that represents the unique identifier
- * of the stack that you want to update.
- * @param {StackUpdate} updates - The `updates` parameter in the `updateStack` function is an object
- * that contains the changes you want to apply to the stack. It can have the following properties:
- * @returns The `updateStack` function returns a Promise that resolves to a `Stack` object with the
- * following properties:
- * - `id`: The ID of the stack
- * - `name`: The updated name of the stack
- * - `serviceCount`: The total number of services in the stack
- * - `runningCount`: The number of services currently running in the stack
- * - `status`: The status of the
+ * Updates a stack with new configuration and/or .env file
  */
 export async function updateStack(stackId: string, updates: StackUpdate): Promise<Stack> {
 	const metaPath = await getStackMetaPath(stackId);
@@ -458,7 +472,6 @@ export async function updateStack(stackId: string, updates: StackUpdate): Promis
 			...meta,
 			name: updates.name || meta.name,
 			updatedAt: new Date().toISOString(),
-			// Add auto-update flag if provided
 			...(updates.autoUpdate !== undefined ? { autoUpdate: updates.autoUpdate } : {})
 		};
 
@@ -468,9 +481,15 @@ export async function updateStack(stackId: string, updates: StackUpdate): Promis
 			promises.push(fs.writeFile(composePath, updates.composeContent, 'utf8'));
 		}
 
+		if (updates.envContent !== undefined) {
+			promises.push(saveEnvFile(stackId, updates.envContent));
+		}
+
 		await Promise.all(promises);
 
 		const composeContent = updates.composeContent || (await fs.readFile(composePath, 'utf8'));
+		const envContent = updates.envContent !== undefined ? updates.envContent : await loadEnvFile(stackId);
+
 		const services = await getStackServices(stackId, composeContent);
 
 		const serviceCount = services.length;
@@ -490,7 +509,9 @@ export async function updateStack(stackId: string, updates: StackUpdate): Promis
 			runningCount,
 			status,
 			createdAt: updatedMeta.createdAt,
-			updatedAt: updatedMeta.updatedAt
+			updatedAt: updatedMeta.updatedAt,
+			composeContent,
+			envContent
 		};
 	} catch (err) {
 		console.error(`Error updating stack ${stackId}:`, err);

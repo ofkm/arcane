@@ -7,16 +7,20 @@ export const load: PageServerLoad = async ({ params }) => {
 	try {
 		const stack = await getStack(stackId);
 
+		// Create editor state with all current values
+		const editorState = {
+			name: stack.name,
+			composeContent: stack.composeContent || '',
+			envContent: stack.envContent || '', // Include env content
+			autoUpdate: stack.meta?.autoUpdate || false,
+			originalName: stack.name,
+			originalComposeContent: stack.composeContent || '',
+			originalEnvContent: stack.envContent || '' // Include original env content
+		};
+
 		return {
 			stack,
-			error: null,
-			editorState: {
-				name: stack.name || '',
-				composeContent: stack.composeContent || '',
-				originalName: stack.name || '',
-				originalComposeContent: stack.composeContent || '',
-				autoUpdate: stack.meta?.autoUpdate || false
-			}
+			editorState
 		};
 	} catch (err: unknown) {
 		console.error(`Error loading stack ${stackId}:`, err);
@@ -27,8 +31,10 @@ export const load: PageServerLoad = async ({ params }) => {
 			editorState: {
 				name: '',
 				composeContent: '',
+				envContent: '', // Include env content
 				originalName: '',
 				originalComposeContent: '',
+				originalEnvContent: '', // Include original env content
 				autoUpdate: false
 			}
 		};

@@ -4,11 +4,11 @@ import { updateStack } from '$lib/services/docker/stack-service';
 
 export const PUT: RequestHandler = async ({ params, request }) => {
 	const { stackId } = params;
-	const { name, composeContent, autoUpdate } = await request.json();
+	const { name, composeContent, autoUpdate, envContent } = await request.json();
 
 	try {
 		// From your API endpoint
-		await updateStack(stackId, { name, composeContent, autoUpdate });
+		await updateStack(stackId, { name, composeContent, autoUpdate, envContent });
 		return json({ success: true, message: 'Stack updated successfully' });
 	} catch (error: any) {
 		console.error('Error updating stack:', error);

@@ -26,6 +26,7 @@ export interface Stack {
 	createdAt: string;
 	updatedAt: string;
 	composeContent?: string;
+	envContent?: string;
 	isExternal?: boolean;
 	compose?: any;
 	meta?: StackMeta;
@@ -34,5 +35,6 @@ export interface Stack {
 export interface StackUpdate {
 	name?: string;
 	composeContent?: string;
+	envContent?: string;
 	autoUpdate?: boolean;
 }

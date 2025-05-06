@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, Loader2, AlertCircle, Save, FileStack, Layers, ArrowRight } from '@lucide/svelte';
+	import { ArrowLeft, Loader2, AlertCircle, Save, FileStack, Layers, ArrowRight, FileCode } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -14,6 +14,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
+	import EnvEditor from '$lib/components/env-editor.svelte';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StackAPIService from '$lib/services/api/stack-api-service';
@@ -32,12 +33,14 @@
 
 	let name = $derived(editorState.name);
 	let composeContent = $derived(editorState.composeContent);
+	let envContent = $derived(editorState.envContent || '');
 	let autoUpdate = $derived(editorState.autoUpdate);
 	let originalName = $derived(editorState.originalName);
 	let originalComposeContent = $derived(editorState.originalComposeContent);
+	let originalEnvContent = $derived(editorState.originalEnvContent || '');
 	let originalAutoUpdate = $derived(editorState.autoUpdate);
 
-	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || autoUpdate !== originalAutoUpdate);
+	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || envContent !== originalEnvContent || autoUpdate !== originalAutoUpdate);
 
 	$effect(() => {
 		deploying = false;
@@ -51,12 +54,13 @@
 		if (!stack || !hasChanges) return;
 
 		handleApiReponse(
-			await tryCatch(stackApi.save(stack.id, name, composeContent, autoUpdate)),
+			await tryCatch(stackApi.save(stack.id, name, composeContent, autoUpdate, envContent)),
 			'Failed to Save Stack',
 			(value) => (saving = value),
 			async (data) => {
 				originalName = name;
 				originalComposeContent = composeContent;
+				originalEnvContent = envContent;
 				originalAutoUpdate = autoUpdate;
 
 				console.log('Stack save successful:', data);
@@ -165,7 +169,7 @@
 			<Card.Root class="border shadow-sm">
 				<Card.Header>
 					<Card.Title>Stack Configuration</Card.Title>
-					<Card.Description>Edit stack settings and compose file</Card.Description>
+					<Card.Description>Edit stack settings, compose file, and environment variables</Card.Description>
 				</Card.Header>
 				<Card.Content>
 					<div class="space-y-4">
@@ -174,14 +178,25 @@
 							<Input type="text" id="name" name="name" bind:value={name} required disabled={saving} />
 						</div>
 
-						<div class="grid w-full items-center gap-1.5">
-							<Label for="compose-editor">Docker Compose File</Label>
-							<div class="border rounded-md overflow-hidden">
-								<YamlEditor bind:value={composeContent} readOnly={saving || deploying || stopping || restarting || removing} />
+						<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+							<div class="md:col-span-2 space-y-2">
+								<Label for="compose-editor">Docker Compose File</Label>
+								<div class="border rounded-md overflow-hidden h-[550px]">
+									<YamlEditor bind:value={composeContent} readOnly={saving || deploying || stopping || restarting || removing} />
+								</div>
+								<p class="text-xs text-muted-foreground">
+									Edit your <span class="font-bold">compose.yaml</span> file directly. Syntax errors will be highlighted.
+								</p>
 							</div>
-							<p class="text-xs text-muted-foreground">
-								Edit your <span class="font-bold">compose.yaml</span> file directly. Syntax errors will be highlighted.
-							</p>
+
+							<div class="space-y-2">
+								<Label for="env-editor" class="flex-1">Environment Configuration (.env)</Label>
+
+								<div class="border rounded-md overflow-hidden h-[550px]">
+									<EnvEditor bind:value={envContent} readOnly={saving || deploying || stopping || restarting || removing} />
+								</div>
+								<p class="text-xs text-muted-foreground">Define environment variables in KEY=value format. These will be saved as a .env file.</p>
+							</div>
 						</div>
 
 						<div class="flex items-center space-x-2 mt-4">

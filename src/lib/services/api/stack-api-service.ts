@@ -39,19 +39,21 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async save(stackId: string, name: string, composeContent: string, autoUpdate: boolean) {
-		const res = await this.api.put(`/stacks/${stackId}`, {
+	async save(id: string, name: string, content: string, autoUpdate: boolean, envContent?: string) {
+		const res = await this.api.put(`/stacks/${id}`, {
 			name,
-			composeContent,
-			autoUpdate
+			composeContent: content,
+			autoUpdate,
+			envContent
 		});
 		return res.data;
 	}
 
-	async create(name: string, content: string) {
+	async create(name: string, content: string, envContent?: string) {
 		const res = await this.api.post('/stacks/create', {
 			name,
-			composeContent: content
+			composeContent: content,
+			envContent: envContent || ''
 		});
 		return res.data;
 	}
