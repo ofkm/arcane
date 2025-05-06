@@ -27,6 +27,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - arcane-data:/app/data
     environment:
+      - APP_ENV=production # Ensures the application uses production paths
       - DOCKER_GID=998 # Find using: getent group docker | cut -d: -f3
       - PUBLIC_SESSION_SECRET=your-secure-random-32-character-string-here # Generate using: openssl rand -base64 32
       # - PUBLIC_ALLOW_INSECURE_COOKIES=true # Uncomment only for local HTTP testing without SSL/TLS
@@ -47,6 +48,8 @@ You may need to modify the environment variables to fit your setup. Mainly the `
     - **Data Persistence:**: You can mount a volume or local mount to `/app/data` inside the container. This will store Arcane's settings, stacks, users, sessions, and encryption keys.
 
     - **Permissions (Important):**
+
+      - **`APP_ENV`**: This should be set to `production` when running in Docker. This ensures the application uses the correct data paths (`/app/data`) rather than development paths. Without this, the application might incorrectly use development paths (`.dev-data`), causing data persistence issues.
 
       - You **must** set `DOCKER_GID` to match the group ID of the Docker socket (`/var/run/docker.sock`) on your host machine. This allows Arcane to communicate with Docker. Find your Docker group ID using one of these commands in your terminal:
         - Linux: `getent group docker | cut -d: -f3`

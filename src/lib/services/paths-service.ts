@@ -1,9 +1,13 @@
 import * as path from 'path';
 import fs from 'node:fs/promises';
 import { isDev, isTest } from '$lib/constants';
+import { env } from '$env/dynamic/private'; // Use SvelteKit's private env system
 
 // Configure paths based on environment
-export const BASE_PATH = isTest ? path.resolve(process.cwd(), '.test-data') : isDev ? path.resolve(process.cwd(), '.dev-data') : '/app/data';
+// Default to production paths unless APP_ENV is explicitly set to something else
+// or we're in a development or test context
+const useProductionPaths = env.APP_ENV === undefined || env.APP_ENV === 'production' || (!isTest && !isDev);
+export const BASE_PATH = isTest ? path.resolve(process.cwd(), '.test-data') : useProductionPaths ? '/app/data' : path.resolve(process.cwd(), '.dev-data');
 
 export const SETTINGS_FILE = path.join(BASE_PATH, 'app-settings.json');
 export const SETTINGS_DIR = path.join(BASE_PATH, 'settings');

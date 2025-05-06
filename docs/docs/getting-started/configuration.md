@@ -107,6 +107,14 @@ While most application settings are configured via the UI, certain environment v
 
 - **`DOCKER_GID`**: **Required.** Set this to the group ID of the `docker` group on your host machine (or the group that owns `/var/run/docker.sock`). This grants Arcane permission to interact with the Docker daemon. Find the ID using `getent group docker | cut -d: -f3` or `stat -c '%g' /var/run/docker.sock` on Linux.
 
+#### Application Environment
+
+- **`APP_ENV`**: **Required for Docker.** Controls which file system paths Arcane uses for data storage. When running in Docker, this must be set to `production` to ensure all data is stored in `/app/data` where the volume is mounted. Without this setting, the application may incorrectly use development paths (`.dev-data`) resulting in data not being persisted across container restarts.
+  ```yaml
+  environment:
+    - APP_ENV=production # Ensures proper data paths in Docker
+  ```
+
 #### Session Security
 
 - **`PUBLIC_SESSION_SECRET`**: **Required.** This secret is used to sign and encrypt user session cookies, ensuring their integrity and confidentiality. You **must** provide a strong, unique, random string of at least 32 characters. Generate a suitable secret using:
@@ -128,6 +136,9 @@ services:
   arcane:
     # ... other settings
     environment:
+      # Application Environment
+      - APP_ENV=production # Required for Docker deployment
+
       # Permissions
       - DOCKER_GID=998 # Example GID, replace with yours
 
