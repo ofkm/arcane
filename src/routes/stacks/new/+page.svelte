@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, Loader2, Save, FileStack, FileCode } from '@lucide/svelte';
+	import { ArrowLeft, Loader2, Save, FileStack } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -12,41 +12,11 @@
 	import { preventDefault } from '$lib/utils/form.utils';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiReponse } from '$lib/utils/api.util';
-	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import EnvEditor from '$lib/components/env-editor.svelte';
+	import { defaultEnvTemplate, defaultComposeTemplate } from '$lib/constants';
 
 	const stackApi = new StackAPIService();
 	let saving = $state(false);
-
-	const defaultComposeTemplate = `services:
-  nginx:
-    image: nginx:alpine
-    container_name: nginx_service
-    env_file:
-      - .env
-    ports:
-      - "8080:80"
-    volumes:
-      - nginx_data:/usr/share/nginx/html
-    restart: unless-stopped
-
-volumes:
-  nginx_data:
-    driver: local
-`;
-
-	const defaultEnvTemplate = `# Environment Variables
-# These variables will be available to your stack services
-# Format: VARIABLE_NAME=value
-
-NGINX_HOST=localhost
-NGINX_PORT=80
-
-# Example Database Configuration
-# DB_USER=myuser
-# DB_PASSWORD=mypassword
-# DB_NAME=mydatabase
-`;
 
 	let name = $state('');
 	let composeContent = $state(defaultComposeTemplate);
@@ -56,7 +26,6 @@ NGINX_PORT=80
 		saving = true;
 
 		handleApiReponse(
-			// await tryCatch(stackApi.create(name, composeContent, envContent)),
 			await tryCatch(stackApi.create(name, composeContent, envContent)),
 			'Failed to Create Stack',
 			(value) => (saving = value),
@@ -114,17 +83,17 @@ NGINX_PORT=80
 
 					<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 						<div class="md:col-span-2 space-y-2">
-							<Label for="compose-editor">Docker Compose File</Label>
-							<div class="border rounded-md overflow-hidden h-[550px]">
+							<Label for="compose-editor" class="mb-2">Docker Compose File</Label>
+							<div class="border rounded-md overflow-hidden h-[550px] mt-2">
 								<YamlEditor bind:value={composeContent} readOnly={saving} />
 							</div>
 							<p class="text-xs text-muted-foreground">Enter a valid compose.yaml file.</p>
 						</div>
 
 						<div class="space-y-2">
-							<Label for="env-editor" class="flex-1">Environment Configuration (.env)</Label>
+							<Label for="env-editor" class="mb-2">Environment Configuration (.env)</Label>
 
-							<div class="border rounded-md overflow-hidden h-[550px]">
+							<div class="border rounded-md overflow-hidden h-[550px] mt-2">
 								<EnvEditor bind:value={envContent} readOnly={saving} />
 							</div>
 							<p class="text-xs text-muted-foreground">Define environment variables in KEY=value format. These will be saved as a .env file in the stack directory.</p>

@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, Loader2, AlertCircle, Save, FileStack, Layers, ArrowRight, FileCode } from '@lucide/svelte';
+	import { ArrowLeft, Loader2, AlertCircle, Save, FileStack, Layers, ArrowRight } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -180,8 +180,8 @@
 
 						<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 							<div class="md:col-span-2 space-y-2">
-								<Label for="compose-editor">Docker Compose File</Label>
-								<div class="border rounded-md overflow-hidden h-[550px]">
+								<Label for="compose-editor" class="mb-2">Docker Compose File</Label>
+								<div class="border rounded-md overflow-hidden h-[550px] mt-2">
 									<YamlEditor bind:value={composeContent} readOnly={saving || deploying || stopping || restarting || removing} />
 								</div>
 								<p class="text-xs text-muted-foreground">
@@ -190,12 +190,12 @@
 							</div>
 
 							<div class="space-y-2">
-								<Label for="env-editor" class="flex-1">Environment Configuration (.env)</Label>
+								<Label for="env-editor" class="mb-2">Environment Configuration (.env)</Label>
 
-								<div class="border rounded-md overflow-hidden h-[550px]">
+								<div class="border rounded-md overflow-hidden h-[550px] mt-2">
 									<EnvEditor bind:value={envContent} readOnly={saving || deploying || stopping || restarting || removing} />
 								</div>
-								<p class="text-xs text-muted-foreground">Define environment variables in KEY=value format. These will be saved as a .env file.</p>
+								<p class="text-xs text-muted-foreground">Define environment variables in KEY=value format. These will be saved as a .env file in the stack directory.</p>
 							</div>
 						</div>
 
