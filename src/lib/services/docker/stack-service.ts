@@ -124,12 +124,10 @@ async function getEnvFilePath(stackId: string): Promise<string> {
 async function saveEnvFile(stackId: string, content?: string): Promise<void> {
 	const envPath = await getEnvFilePath(stackId);
 
-	// If content is undefined/null/empty string, create empty file or remove existing one
-	if (content === undefined || content === null) {
-		content = '';
-	}
+	// Create a new local variable instead of reassigning the parameter
+	const fileContent = content === undefined || content === null ? '' : content;
 
-	await fs.writeFile(envPath, content, 'utf8');
+	await fs.writeFile(envPath, fileContent, 'utf8');
 	console.log(`Saved .env file for stack ${stackId}`);
 }
 
@@ -150,7 +148,7 @@ async function loadEnvFile(stackId: string): Promise<string> {
 			return '';
 		}
 		console.error(`Error reading .env file for stack ${stackId}:`, err);
-		throw new Error(`Failed to read .env file: ${nodeErr.message}`);
+		throw new Error(`Failed to read .env file: ${nodeErr.message}`, { cause: err });
 	}
 }
 
