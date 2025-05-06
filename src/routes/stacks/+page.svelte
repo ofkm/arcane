@@ -21,7 +21,6 @@
 	let { data }: { data: PageData } = $props();
 	let stacks = $state(data.stacks);
 	let selectedIds = $state([]);
-	let isRefreshing = $state(false);
 	let isLoading = $state({
 		start: false,
 		stop: false,
