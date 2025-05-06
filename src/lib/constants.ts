@@ -19,19 +19,20 @@ NGINX_PORT=80
 # DB_NAME=mydatabase
 `;
 
-export const defaultComposeTemplate = `services:
-nginx:
-  image: nginx:alpine
-  container_name: nginx_service
-  env_file:
-    - .env
-  ports:
-    - "8080:80"
-  volumes:
-    - nginx_data:/usr/share/nginx/html
-  restart: unless-stopped
+export const defaultComposeTemplate = `
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_service
+    env_file:
+      - .env
+    ports:
+      - "8080:80"
+    volumes:
+      - nginx_data:/usr/share/nginx/html
+    restart: unless-stopped
 
 volumes:
-nginx_data:
-  driver: local
+  nginx_data:
+    driver: local
 `;
