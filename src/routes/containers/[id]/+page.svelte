@@ -28,6 +28,7 @@
 	let autoScrollLogs = $state(true);
 
 	let logEventSource: EventSource | null = $state(null);
+	let statsEventSource: EventSource | null = $state(null);
 
 	function scrollLogsToBottom() {
 		if (logsContainer) {
@@ -89,8 +90,60 @@
 		}
 	}
 
+	function startStatsStream() {
+		if (statsEventSource || !container?.id || !container.state?.Running) return;
+
+		try {
+			const url = `/api/containers/${container.id}/stats/stream`;
+			const eventSource = new EventSource(url);
+			statsEventSource = eventSource;
+
+			eventSource.onmessage = (event) => {
+				if (!event.data) return;
+
+				try {
+					const statsData = JSON.parse(event.data);
+
+					if (statsData.removed) {
+						invalidateAll();
+						return;
+					}
+
+					// Update stats in-place
+					stats = statsData;
+				} catch (err) {
+					console.error('Error parsing stats data:', err);
+				}
+			};
+
+			eventSource.onerror = (err) => {
+				console.error('Stats EventSource error:', err);
+				eventSource.close();
+				statsEventSource = null;
+			};
+		} catch (error) {
+			console.error('Failed to connect to stats stream:', error);
+		}
+	}
+
+	function closeStatsStream() {
+		if (statsEventSource) {
+			statsEventSource.close();
+			statsEventSource = null;
+		}
+	}
+
+	$effect(() => {
+		if (activeTab === 'stats' && container?.state?.Running) {
+			startStatsStream();
+		} else if (statsEventSource) {
+			closeStatsStream();
+		}
+	});
+
 	onDestroy(() => {
 		closeLogStream();
+		closeStatsStream();
 	});
 
 	const calculateCPUPercent = (statsData: Docker.ContainerStats | null): number => {
