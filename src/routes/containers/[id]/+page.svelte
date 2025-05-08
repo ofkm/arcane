@@ -25,56 +25,43 @@
 	let formattedLogHtml = $derived(logs ? logs.split('\n').map(formatLogLine).join('<br />') : '');
 	let logsContainer = $state<HTMLDivElement | undefined>(undefined);
 	let activeTab = $state('overview');
-	let autoScrollLogs = $state(true); // Add this state variable for auto-scrolling toggle
+	let autoScrollLogs = $state(true);
 
-	// Add this for EventSource connection to stream logs
-	let logWebSocket: WebSocket | null = $state(null);
+	let logEventSource: EventSource | null = $state(null);
 
-	// Function to scroll logs to bottom
 	function scrollLogsToBottom() {
 		if (logsContainer) {
 			logsContainer.scrollTop = logsContainer.scrollHeight;
 		}
 	}
 
-	// Effect when logs change or tab changes to logs
 	$effect(() => {
 		if (logsContainer && logs && activeTab === 'logs' && autoScrollLogs) {
 			scrollLogsToBottom();
 		}
 	});
 
-	// Effect to handle tab switching
 	$effect(() => {
 		if (activeTab === 'logs') {
-			// Start logs streaming when tab is selected
 			startLogStream();
 
-			// Give time for the DOM to update before scrolling
 			setTimeout(scrollLogsToBottom, 100);
-		} else if (logWebSocket) {
-			// Close EventSource when leaving logs tab
+		} else if (logEventSource) {
 			closeLogStream();
 		}
 	});
 
-	// Function to start the log stream via EventSource
 	function startLogStream() {
-		if (logWebSocket || !container?.id) return;
+		if (logEventSource || !container?.id) return;
 
-		// Use EventSource instead of WebSocket for SSE
 		try {
 			const url = `/api/containers/${container.id}/logs/stream`;
 
-			// Create an EventSource connection
 			const eventSource = new EventSource(url);
 
-			// Store it in our state for cleanup
-			logWebSocket = eventSource as unknown as WebSocket;
+			logEventSource = eventSource;
 
-			// Handle incoming messages
 			eventSource.onmessage = (event) => {
-				// Append new logs
 				if (event.data) {
 					logs = (logs || '') + event.data;
 					formattedLogHtml = logs.split('\n').map(formatLogLine).join('<br />');
@@ -85,31 +72,27 @@
 				}
 			};
 
-			// Handle connection close
 			eventSource.onerror = (error) => {
 				console.error('EventSource error:', error);
 				eventSource.close();
-				logWebSocket = null;
+				logEventSource = null;
 			};
 		} catch (error) {
 			console.error('Failed to connect to log stream:', error);
 		}
 	}
 
-	// Function to close the log stream
 	function closeLogStream() {
-		if (logWebSocket) {
-			(logWebSocket as unknown as EventSource).close();
-			logWebSocket = null;
+		if (logEventSource) {
+			logEventSource.close();
+			logEventSource = null;
 		}
 	}
 
-	// Clean up EventSource when component is destroyed
 	onDestroy(() => {
 		closeLogStream();
 	});
 
-	// --- Stats Calculation ---
 	const calculateCPUPercent = (statsData: Docker.ContainerStats | null): number => {
 		if (!statsData || !statsData.cpu_stats || !statsData.precpu_stats) {
 			return 0;
