@@ -42,6 +42,11 @@ jobs:
           docker pull nginx:latest
           docker pull busybox:latest
 
+      - name: Create Docker volumes for tests
+        run: |
+          docker volume create my-app-data
+          docker volume create cache
+
       - name: Install dependencies
         run: npm ci
 
@@ -52,6 +57,7 @@ jobs:
         run: npm run test:e2e
 
       - name: List Playwright report directory
+        if: always()
         run: ls -lR tests/.report || echo "No report directory"
 
       - name: Upload Playwright HTML report
