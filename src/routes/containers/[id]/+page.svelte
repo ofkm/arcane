@@ -12,6 +12,7 @@
 	import type { ContainerInspectInfo } from 'dockerode';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
+	import { onDestroy } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 	let { container, logs, stats } = $derived(data);
@@ -23,6 +24,90 @@
 	let isRefreshing = $state(false);
 	let formattedLogHtml = $derived(logs ? logs.split('\n').map(formatLogLine).join('<br />') : '');
 	let logsContainer = $state<HTMLDivElement | undefined>(undefined);
+	let activeTab = $state('overview');
+	let autoScrollLogs = $state(true); // Add this state variable for auto-scrolling toggle
+
+	// Add this for EventSource connection to stream logs
+	let logWebSocket: WebSocket | null = $state(null);
+
+	// Function to scroll logs to bottom
+	function scrollLogsToBottom() {
+		if (logsContainer) {
+			logsContainer.scrollTop = logsContainer.scrollHeight;
+		}
+	}
+
+	// Effect when logs change or tab changes to logs
+	$effect(() => {
+		if (logsContainer && logs && activeTab === 'logs' && autoScrollLogs) {
+			scrollLogsToBottom();
+		}
+	});
+
+	// Effect to handle tab switching
+	$effect(() => {
+		if (activeTab === 'logs') {
+			// Start logs streaming when tab is selected
+			startLogStream();
+
+			// Give time for the DOM to update before scrolling
+			setTimeout(scrollLogsToBottom, 100);
+		} else if (logWebSocket) {
+			// Close EventSource when leaving logs tab
+			closeLogStream();
+		}
+	});
+
+	// Function to start the log stream via EventSource
+	function startLogStream() {
+		if (logWebSocket || !container?.id) return;
+
+		// Use EventSource instead of WebSocket for SSE
+		try {
+			const url = `/api/containers/${container.id}/logs/stream`;
+
+			// Create an EventSource connection
+			const eventSource = new EventSource(url);
+
+			// Store it in our state for cleanup
+			logWebSocket = eventSource as unknown as WebSocket;
+
+			// Handle incoming messages
+			eventSource.onmessage = (event) => {
+				// Append new logs
+				if (event.data) {
+					logs = (logs || '') + event.data;
+					formattedLogHtml = logs.split('\n').map(formatLogLine).join('<br />');
+
+					if (autoScrollLogs) {
+						scrollLogsToBottom();
+					}
+				}
+			};
+
+			// Handle connection close
+			eventSource.onerror = (error) => {
+				console.error('EventSource error:', error);
+				eventSource.close();
+				logWebSocket = null;
+			};
+		} catch (error) {
+			console.error('Failed to connect to log stream:', error);
+		}
+	}
+
+	// Function to close the log stream
+	function closeLogStream() {
+		if (logWebSocket) {
+			(logWebSocket as unknown as EventSource).close();
+			logWebSocket = null;
+		}
+	}
+
+	// Clean up EventSource when component is destroyed
+	onDestroy(() => {
+		closeLogStream();
+	});
 
 	// --- Stats Calculation ---
 	const calculateCPUPercent = (statsData: Docker.ContainerStats | null): number => {
@@ -93,8 +178,6 @@
 			isRefreshing = false;
 		}, 500);
 	}
-
-	let activeTab = $state('overview');
 </script>
 
 <div class="space-y-6 pb-8">
@@ -530,15 +613,35 @@
 								<Card.Title class="text-lg font-semibold">Container Logs</Card.Title>
 								<Card.Description>Recent output from the container</Card.Description>
 							</div>
-							<Button variant="outline" size="sm" onclick={refreshData} disabled={isRefreshing}>
-								<RefreshCw class={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-								Refresh Logs
-							</Button>
+							<div class="flex items-center gap-2">
+								<div class="flex items-center">
+									<input type="checkbox" id="auto-scroll" class="mr-2" checked={autoScrollLogs} onchange={(e) => (autoScrollLogs = e.currentTarget.checked)} />
+									<label for="auto-scroll" class="text-xs">Auto-scroll</label>
+								</div>
+								<Button variant="outline" size="sm" onclick={refreshData} disabled={isRefreshing}>
+									<RefreshCw class={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+									Refresh Logs
+								</Button>
+							</div>
 						</div>
 					</Card.Header>
 
 					<Card.Content>
-						<div class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs h-[500px] overflow-auto whitespace-pre-wrap border" bind:this={logsContainer} id="logs-container" style="word-break: break-all;">
+						<div
+							class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs h-[500px] overflow-auto whitespace-pre-wrap border"
+							bind:this={logsContainer}
+							id="logs-container"
+							style="word-break: break-all;"
+							onscroll={() => {
+								// Detect if user manually scrolled up
+								if (logsContainer) {
+									const atBottom = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 50;
+									if (!atBottom && autoScrollLogs) {
+										autoScrollLogs = false;
+									}
+								}
+							}}
+						>
 							{#if formattedLogHtml}
 								{@html formattedLogHtml}
 							{:else}
