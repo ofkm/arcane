@@ -317,32 +317,46 @@
 						{#each stack.services as service (service.id || service.name)}
 							{@const status = service.state?.Status || 'unknown'}
 							{@const variant = statusVariantMap[status.toLowerCase()] || 'gray'}
-							<div class={`flex flex-col p-3 border rounded-md ${service.id ? 'hover:bg-muted/50 transition-colors' : ''}`}>
-								<div class="flex items-center justify-between">
-									<div class="flex items-center gap-3">
-										<div class="bg-muted rounded-md p-1">
-											<Layers class="h-4 w-4" />
+
+							{#if service.id}
+								<a href={`/containers/${service.id}`} class="flex flex-col p-3 border rounded-md hover:bg-muted/50 transition-colors">
+									<div class="flex items-center justify-between">
+										<div class="flex items-center gap-3">
+											<div class="bg-muted rounded-md p-1">
+												<Layers class="h-4 w-4" />
+											</div>
+											<div>
+												<p class="font-medium flex items-center gap-1">{service.name}</p>
+												<p class="text-xs text-muted-foreground">{service.id.substring(0, 12)}</p>
+											</div>
 										</div>
-										<div>
-											<p class="font-medium flex items-center gap-1">
-												{service.name}
-											</p>
-											<p class="text-xs text-muted-foreground">
-												{service.id ? service.id.substring(0, 12) : 'Not created'}
-											</p>
-										</div>
-									</div>
-									<div class="flex items-center gap-2">
-										<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
-										{#if service.id}
-											<a href={`/containers/${service.id}`} class="text-xs text-blue-500 ml-2 flex items-center">
+										<div class="flex items-center gap-2">
+											<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
+											<span class="text-xs text-blue-500 ml-2 flex items-center">
 												<span class="hidden sm:inline">View details</span>
 												<ArrowRight class="inline-block ml-1 h-3 w-3" />
-											</a>
-										{/if}
+											</span>
+										</div>
+									</div>
+								</a>
+							{:else}
+								<div class="flex flex-col p-3 border rounded-md">
+									<div class="flex items-center justify-between">
+										<div class="flex items-center gap-3">
+											<div class="bg-muted rounded-md p-1">
+												<Layers class="h-4 w-4" />
+											</div>
+											<div>
+												<p class="font-medium flex items-center gap-1">{service.name}</p>
+												<p class="text-xs text-muted-foreground">Not created</p>
+											</div>
+										</div>
+										<div class="flex items-center gap-2">
+											<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
+										</div>
 									</div>
 								</div>
-							</div>
+							{/if}
 						{/each}
 					{:else}
 						<div class="text-center py-6 text-muted-foreground">
