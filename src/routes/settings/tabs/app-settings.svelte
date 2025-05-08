@@ -81,7 +81,7 @@
 
 				<div class="space-y-2">
 					<label for="baseServerUrl" class="text-sm font-medium">Base Server URL</label>
-					<Input type="text" id="baseServerUrl" name="baseServerUrl" bind:value={$settingsStore.baseServerUrl} placeholder="localhost" required />
+					<Input type="text" id="baseServerUrl" name="baseServerUrl" bind:value={$settingsStore.baseServerUrl} placeholder="localhost" />
 					<p class="text-xs text-muted-foreground">Host/IP used when accessing container services that aren't on ipvlan or macvlan networks</p>
 				</div>
 
