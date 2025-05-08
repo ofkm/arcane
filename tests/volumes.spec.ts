@@ -40,6 +40,7 @@ test.describe('Volumes Page UI', () => {
 
 	test('should open the "Create Volume" dialog', async ({ page }) => {
 		await page.goto('/volumes');
+
 		await page.waitForLoadState('networkidle');
 		await page.getByRole('button', { name: 'Create Volume' }).click();
 		await expect(page.getByText('Create New Volume')).toBeVisible();
