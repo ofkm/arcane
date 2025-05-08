@@ -102,36 +102,24 @@
 		[key: string]: any;
 	}
 
-	// Add this interface to your existing interfaces
-	interface PortBinding {
-		HostIp?: string;
-		HostPort?: string;
-	}
-
-	// Update your getServicePortUrl function to handle different port structures
 	function getServicePortUrl(service: any, port: string | number | Port, protocol = 'http'): string {
 		const host = getHostForService(service);
 
-		// Handle string port format (most common case according to your type definition)
 		if (typeof port === 'string') {
-			// Port might be in format like "8080/tcp" or just "8080"
 			const parts = port.split('/');
 			const portNumber = parseInt(parts[0], 10);
 
-			// If port includes protocol info and it's udp, use https instead of http
 			if (parts.length > 1 && parts[1] === 'udp') {
-				protocol = 'https';
+				protocol = 'udp';
 			}
 
 			return `${protocol}://${host}:${portNumber}`;
 		}
 
-		// Handle numeric port
 		if (typeof port === 'number') {
 			return `${protocol}://${host}:${port}`;
 		}
 
-		// Handle Port interface (probably won't be used based on your type definition)
 		if (port && typeof port === 'object') {
 			const portNumber = port.PublicPort || port.PrivatePort || 80;
 			if (port.Type) {
@@ -140,7 +128,6 @@
 			return `${protocol}://${host}:${portNumber}`;
 		}
 
-		// Fallback
 		return `${protocol}://${host}:80`;
 	}
 </script>
