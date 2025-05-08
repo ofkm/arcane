@@ -27,4 +27,5 @@ export interface Settings {
 	registryCredentials: RegistryCredential[];
 	auth: AuthSettings;
 	onboarding?: Onboarding;
+	baseServerUrl?: string;
 }

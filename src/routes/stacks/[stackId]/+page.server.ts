@@ -1,4 +1,6 @@
 import { getStack, updateStack, startStack, stopStack, restartStack, removeStack, fullyRedeployStack } from '$lib/services/docker/stack-service';
+import { getSettings } from '$lib/services/settings-service';
+import { getContainer } from '$lib/services/docker/container-service';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -7,20 +9,56 @@ export const load: PageServerLoad = async ({ params }) => {
 	try {
 		const stack = await getStack(stackId);
 
-		// Create editor state with all current values
 		const editorState = {
 			name: stack.name,
 			composeContent: stack.composeContent || '',
-			envContent: stack.envContent || '', // Include env content
+			envContent: stack.envContent || '',
 			autoUpdate: stack.meta?.autoUpdate || false,
 			originalName: stack.name,
 			originalComposeContent: stack.composeContent || '',
-			originalEnvContent: stack.envContent || '' // Include original env content
+			originalEnvContent: stack.envContent || ''
 		};
+
+		const settings = await getSettings();
+
+		const servicePorts: Record<string, string[]> = {};
+		if (stack.services) {
+			for (const service of stack.services) {
+				if (service.id) {
+					try {
+						const containerData = await getContainer(service.id);
+						if (containerData && containerData.networkSettings?.Ports) {
+							const portBindings = containerData.networkSettings.Ports;
+							const parsedPorts: string[] = [];
+
+							for (const containerPort in portBindings) {
+								if (portBindings.hasOwnProperty(containerPort)) {
+									const bindings = portBindings[containerPort];
+									if (bindings && Array.isArray(bindings) && bindings.length > 0) {
+										bindings.forEach((binding: any) => {
+											if (binding.HostPort) {
+												const portType = containerPort.split('/')[1] || 'tcp';
+												parsedPorts.push(`${binding.HostPort}:${containerPort.split('/')[0]}/${portType}`);
+											}
+										});
+									}
+								}
+							}
+
+							servicePorts[service.id] = parsedPorts;
+						}
+					} catch (error) {
+						console.error(`Failed to fetch ports for service ${service.id}:`, error);
+					}
+				}
+			}
+		}
 
 		return {
 			stack,
-			editorState
+			servicePorts,
+			editorState,
+			settings
 		};
 	} catch (err: unknown) {
 		console.error(`Error loading stack ${stackId}:`, err);

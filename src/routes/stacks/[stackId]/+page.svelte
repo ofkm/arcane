@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, Loader2, AlertCircle, Save, FileStack, Layers, ArrowRight } from '@lucide/svelte';
+	import { ArrowLeft, Loader2, AlertCircle, Save, FileStack, Layers, ArrowRight, ExternalLink } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -23,7 +23,7 @@
 	const stackApi = new StackAPIService();
 
 	let { data }: { data: PageData } = $props();
-	let { stack, editorState } = $derived(data);
+	let { stack, editorState, servicePorts, settings } = $derived(data);
 
 	let isLoading = $state({
 		deploying: false,
@@ -47,6 +47,8 @@
 	let originalAutoUpdate = $derived(editorState.autoUpdate);
 
 	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || envContent !== originalEnvContent || autoUpdate !== originalAutoUpdate);
+
+	const baseServerUrl = $derived(settings?.baseServerUrl || 'localhost');
 
 	$effect(() => {
 		isLoading.deploying = false;
@@ -77,6 +79,70 @@
 			}
 		);
 	}
+
+	function getHostForService(service: any): string {
+		if (!service || !service.networkSettings?.Networks) return baseServerUrl;
+
+		const networks = service.networkSettings.Networks;
+		for (const networkName in networks) {
+			const network = networks[networkName];
+			if (network.Driver === 'macvlan' || network.Driver === 'ipvlan') {
+				if (network.IPAddress) return network.IPAddress;
+			}
+		}
+
+		return baseServerUrl;
+	}
+
+	// Define a more specific interface for the port type
+	interface Port {
+		PublicPort?: number;
+		PrivatePort?: number;
+		Type?: string;
+		[key: string]: any;
+	}
+
+	// Add this interface to your existing interfaces
+	interface PortBinding {
+		HostIp?: string;
+		HostPort?: string;
+	}
+
+	// Update your getServicePortUrl function to handle different port structures
+	function getServicePortUrl(service: any, port: string | number | Port, protocol = 'http'): string {
+		const host = getHostForService(service);
+
+		// Handle string port format (most common case according to your type definition)
+		if (typeof port === 'string') {
+			// Port might be in format like "8080/tcp" or just "8080"
+			const parts = port.split('/');
+			const portNumber = parseInt(parts[0], 10);
+
+			// If port includes protocol info and it's udp, use https instead of http
+			if (parts.length > 1 && parts[1] === 'udp') {
+				protocol = 'https';
+			}
+
+			return `${protocol}://${host}:${portNumber}`;
+		}
+
+		// Handle numeric port
+		if (typeof port === 'number') {
+			return `${protocol}://${host}:${port}`;
+		}
+
+		// Handle Port interface (probably won't be used based on your type definition)
+		if (port && typeof port === 'object') {
+			const portNumber = port.PublicPort || port.PrivatePort || 80;
+			if (port.Type) {
+				protocol = port.Type.toLowerCase() === 'tcp' ? 'http' : 'https';
+			}
+			return `${protocol}://${host}:${portNumber}`;
+		}
+
+		// Fallback
+		return `${protocol}://${host}:80`;
+	}
 </script>
 
 <div class="space-y-6 pb-8">
@@ -99,8 +165,18 @@
 			</Breadcrumb.Root>
 
 			<div class="mt-2 flex items-center gap-2">
-				<h1 class="text-2xl font-bold tracking-tight">
+				<h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
 					{stack?.name || 'Stack Details'}
+					{#if stack && servicePorts && Object.keys(servicePorts).length > 0}
+						{#each Object.values(servicePorts) as ports}
+							{#each ports as port}
+								<a href={getServicePortUrl(stack, port)} target="_blank" rel="noopener noreferrer" class="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md hover:bg-blue-500/20 transition-colors flex items-center gap-1">
+									{port}
+									<ExternalLink class="h-3 w-3" />
+								</a>
+							{/each}
+						{/each}
+					{/if}
 				</h1>
 			</div>
 		</div>
@@ -241,28 +317,32 @@
 						{#each stack.services as service (service.id || service.name)}
 							{@const status = service.state?.Status || 'unknown'}
 							{@const variant = statusVariantMap[status.toLowerCase()] || 'gray'}
-							<a href={service.id ? `/containers/${service.id}` : undefined} class={`flex items-center justify-between p-3 border rounded-md ${service.id ? 'hover:bg-muted/50 transition-colors cursor-pointer' : 'cursor-default'}`}>
-								<div class="flex items-center gap-3">
-									<div class="bg-muted rounded-md p-1">
-										<Layers class="h-4 w-4" />
-									</div>
-									<div>
-										<p class="font-medium">{service.name}</p>
-										<p class="text-xs text-muted-foreground">
-											{service.id ? service.id.substring(0, 12) : 'Not created'}
-										</p>
-									</div>
-								</div>
-								<div class="flex items-center gap-2">
-									<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
-									{#if service.id}
-										<div class="text-xs text-blue-500 ml-2">
-											<span class="hidden sm:inline">View details</span>
-											<ArrowRight class="inline-block ml-1 h-3 w-3" />
+							<div class={`flex flex-col p-3 border rounded-md ${service.id ? 'hover:bg-muted/50 transition-colors' : ''}`}>
+								<div class="flex items-center justify-between">
+									<div class="flex items-center gap-3">
+										<div class="bg-muted rounded-md p-1">
+											<Layers class="h-4 w-4" />
 										</div>
-									{/if}
+										<div>
+											<p class="font-medium flex items-center gap-1">
+												{service.name}
+											</p>
+											<p class="text-xs text-muted-foreground">
+												{service.id ? service.id.substring(0, 12) : 'Not created'}
+											</p>
+										</div>
+									</div>
+									<div class="flex items-center gap-2">
+										<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
+										{#if service.id}
+											<a href={`/containers/${service.id}`} class="text-xs text-blue-500 ml-2 flex items-center">
+												<span class="hidden sm:inline">View details</span>
+												<ArrowRight class="inline-block ml-1 h-3 w-3" />
+											</a>
+										{/if}
+									</div>
 								</div>
-							</a>
+							</div>
 						{/each}
 					{:else}
 						<div class="text-center py-6 text-muted-foreground">
