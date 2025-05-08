@@ -4,6 +4,8 @@ test.describe('Volumes Page UI', () => {
 	test('should display the page title, description, and summary cards', async ({ page }) => {
 		await page.goto('/volumes');
 
+		await page.waitForLoadState('networkidle');
+
 		await expect(page.getByRole('heading', { name: 'Volumes' })).toBeVisible();
 		await expect(page.getByText('Manage persistent data storage for containers')).toBeVisible();
 		await expect(page.getByText('Total Volumes')).toBeVisible();
@@ -13,6 +15,8 @@ test.describe('Volumes Page UI', () => {
 
 	test('should display the volume list table with correct columns and rows', async ({ page }) => {
 		await page.goto('/volumes');
+
+		await page.waitForLoadState('networkidle');
 
 		await expect(page.getByRole('table')).toBeVisible();
 		await expect(page.getByRole('columnheader', { name: 'Name' })).toBeVisible();
@@ -29,22 +33,17 @@ test.describe('Volumes Page UI', () => {
 
 	test('should show "Unused" badge for unused volumes', async ({ page }) => {
 		await page.goto('/volumes');
+
+		await page.waitForLoadState('networkidle');
 		await expect(page.getByText('Unused')).toBeVisible();
 	});
 
 	test('should open the "Create Volume" dialog', async ({ page }) => {
 		await page.goto('/volumes');
+		await page.waitForLoadState('networkidle');
 		await page.getByRole('button', { name: 'Create Volume' }).click();
 		await expect(page.getByText('Create New Volume')).toBeVisible();
 		await expect(page.getByLabel('Name')).toBeVisible();
 		await expect(page.getByLabel('Driver')).toBeVisible();
-	});
-
-	test('should show "No volumes found" message when there are no volumes', async ({ page }) => {
-		// This test will only pass if there are no Docker volumes present.
-		// You may want to skip or adjust this in CI if volumes are always created.
-		await page.goto('/volumes');
-		await expect(page.getByText('No volumes found')).toBeVisible();
-		await expect(page.getByText('Create a new volume using the "Create Volume" button above or use the Docker CLI')).toBeVisible();
 	});
 });
