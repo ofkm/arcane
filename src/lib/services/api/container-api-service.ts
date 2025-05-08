@@ -46,4 +46,9 @@ export default class ContainerAPIService extends BaseAPIService {
 		const res = await this.api.get('');
 		return res.data;
 	}
+
+	async get(id: string) {
+		const res = await this.api.get(`/containers/${id}`);
+		return res.data;
+	}
 }

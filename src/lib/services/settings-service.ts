@@ -1,5 +1,5 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import proper from 'proper-lockfile';
 import type { Settings } from '$lib/types/settings.type';
 import { encrypt, decrypt } from './encryption-service';

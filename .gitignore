@@ -30,3 +30,4 @@ vite.config.ts.timestamp-*
 test-results/*
 tests/.report/*
 .test-data/*
+data/*

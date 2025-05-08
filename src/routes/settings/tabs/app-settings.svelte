@@ -79,6 +79,12 @@
 					<p class="text-xs font-bold text-destructive">Changing this setting will not move existing stacks!</p>
 				</div>
 
+				<div class="space-y-2">
+					<label for="baseServerUrl" class="text-sm font-medium">Base Server URL</label>
+					<Input type="text" id="baseServerUrl" name="baseServerUrl" bind:value={$settingsStore.baseServerUrl} placeholder="localhost" />
+					<p class="text-xs text-muted-foreground">Host/IP used when accessing container services that aren't on ipvlan or macvlan networks</p>
+				</div>
+
 				<div class="pt-4 border-t mt-4">
 					<div class="flex items-center gap-2 mb-3">
 						<div class="bg-green-500/10 p-2 rounded-full">
