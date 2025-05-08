@@ -2,7 +2,7 @@ import { getDockerClient } from '$lib/services/docker/core';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET: RequestHandler = async ({ params }) => {
 	const { id } = params;
 	const docker = getDockerClient();
 
