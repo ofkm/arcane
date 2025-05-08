@@ -23,13 +23,14 @@ export default defineConfig({
 		}
 	],
 	webServer: {
-		command: 'PUBLIC_APP_ENV=TEST APP_ENV=TEST npm run dev',
+		command: 'PUBLIC_SESSION_SECRET=XphMa9HahGNoFC01/rMqAriMvt+H0YT332UPcTtPcMM= PUBLIC_APP_ENV=TEST APP_ENV=TEST npm run dev',
 		url: 'http://localhost:3000',
 		reuseExistingServer: !process.env.CI,
 		timeout: 120 * 1000,
 		env: {
 			APP_ENV: 'TEST',
-			PUBLIC_APP_ENV: 'TEST'
+			PUBLIC_APP_ENV: 'TEST',
+			PUBLIC_SESSION_SECRET: 'XphMa9HahGNoFC01/rMqAriMvt+H0YT332UPcTtPcMM='
 		}
 	}
 });
