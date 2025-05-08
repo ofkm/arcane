@@ -16,8 +16,9 @@
 	let loading = $state(false);
 	let welcomeStepCompleted = $state(false);
 
-	// Add default Docker host
+	// Add default values for required settings
 	const defaultDockerHost = 'unix:///var/run/docker.sock';
+	const defaultStacksDirectory = 'data/stacks';
 
 	// Check for completed steps on mount
 	onMount(async () => {
@@ -93,8 +94,9 @@
 			updateSettingsStore({
 				// Keep all other existing settings
 				...$settingsStore,
-				// Ensure Docker host is set to prevent validation errors
+				// Ensure required fields have defaults to prevent validation errors
 				dockerHost: $settingsStore.dockerHost || defaultDockerHost,
+				stacksDirectory: $settingsStore.stacksDirectory || defaultStacksDirectory,
 				// Update onboarding progress
 				onboarding: {
 					...$settingsStore.onboarding,
