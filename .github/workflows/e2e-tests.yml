@@ -37,28 +37,6 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-browsers-universal
 
-      - name: Install Docker (clean)
-        uses: docker-practice/actions-setup-docker@v1
-
-      - name: Check Docker version
-        run: docker --version
-
-      - name: Check Docker systemd status
-        run: |
-          if command -v systemctl &> /dev/null; then
-            sudo systemctl status docker || true
-          else
-            echo "systemctl not available"
-          fi
-
-      - name: Show default Docker daemon.json content
-        run: |
-          if [ -f /etc/docker/daemon.json ]; then
-            cat /etc/docker/daemon.json
-          else
-            echo "/etc/docker/daemon.json does not exist"
-          fi
-
       - name: Pull required Docker images
         run: |
           docker pull nginx:latest
