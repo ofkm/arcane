@@ -66,3 +66,4 @@ jobs:
         with:
           name: playwright-report
           path: tests/.report
+          include-hidden-files: true
