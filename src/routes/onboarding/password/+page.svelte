@@ -5,11 +5,54 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { AlertCircle, ChevronRight } from '@lucide/svelte';
 	import { preventDefault } from '$lib/utils/form.utils';
+	import { settingsStore, updateSettingsStore, saveSettingsToServer } from '$lib/stores/settings-store';
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 
-	let password = '';
-	let confirmPassword = '';
-	let error = '';
-	let loading = false;
+	let password = $state('');
+	let confirmPassword = $state('');
+	let error = $state('');
+	let loading = $state(false);
+	let welcomeStepCompleted = $state(false);
+
+	// Add default Docker host
+	const defaultDockerHost = 'unix:///var/run/docker.sock';
+
+	// Check for completed steps on mount
+	onMount(async () => {
+		// If we've already completed the password step, go to settings
+		if (browser && $settingsStore.onboarding?.steps?.password) {
+			goto('/onboarding/settings');
+			return;
+		}
+
+		// Ensure welcome step is set as completed - this fixes the issue
+		// if someone has already visited the welcome page but the state wasn't persisted
+		updateSettingsStore({
+			onboarding: {
+				...$settingsStore.onboarding,
+				steps: {
+					...$settingsStore.onboarding?.steps,
+					welcome: true
+				},
+				completed: $settingsStore.onboarding?.completed ?? false,
+				completedAt: $settingsStore.onboarding?.completedAt
+			}
+		});
+
+		// Save to ensure persistence
+		try {
+			if (browser) {
+				await saveSettingsToServer();
+			}
+		} catch (err) {
+			console.error('Failed to save settings:', err);
+		}
+
+		// Update local state
+		welcomeStepCompleted = true;
+	});
 
 	async function handleSubmit() {
 		loading = true;
@@ -46,8 +89,30 @@
 				throw new Error(data.error || 'Failed to change password');
 			}
 
-			// Redirect to next step
-			window.location.href = '/onboarding/settings';
+			// Mark password step as completed in settings while preserving other settings
+			updateSettingsStore({
+				// Keep all other existing settings
+				...$settingsStore,
+				// Ensure Docker host is set to prevent validation errors
+				dockerHost: $settingsStore.dockerHost || defaultDockerHost,
+				// Update onboarding progress
+				onboarding: {
+					...$settingsStore.onboarding,
+					steps: {
+						...$settingsStore.onboarding?.steps,
+						welcome: true,
+						password: true
+					},
+					completed: $settingsStore.onboarding?.completed ?? false,
+					completedAt: $settingsStore.onboarding?.completedAt
+				}
+			});
+
+			// Save settings to server before navigating
+			await saveSettingsToServer();
+
+			// Then navigate
+			goto('/onboarding/settings');
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
 		} finally {
@@ -88,7 +153,19 @@
 		</div>
 
 		<div class="flex justify-between pt-8">
-			<Button href="/onboarding/welcome" variant="outline" class="h-12 px-6">Back</Button>
+			<Button
+				href="/onboarding/welcome"
+				variant="outline"
+				class="h-12 px-6"
+				disabled={!welcomeStepCompleted || loading}
+				onclick={(e) => {
+					if (!welcomeStepCompleted) {
+						e.preventDefault();
+					}
+				}}
+			>
+				Back
+			</Button>
 			<Button type="submit" disabled={loading} class="h-12 px-8 flex items-center gap-2">
 				{#if loading}
 					<span class="inline-block w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></span>

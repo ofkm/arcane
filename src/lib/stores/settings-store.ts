@@ -93,3 +93,18 @@ export async function saveSettingsToServer(): Promise<boolean> {
 		throw error;
 	}
 }
+
+// Add this initialization if not already present
+export function initializeSettingsStore() {
+	updateSettingsStore({
+		onboarding: {
+			completed: false,
+			completedAt: '',
+			steps: {
+				welcome: false,
+				password: false,
+				settings: false
+			}
+		}
+	});
+}
