@@ -59,10 +59,10 @@
 		</div>
 	</div>
 
-	<div class="flex justify-end pt-8">
-		<Button onclick={handleContinue} class="h-12 px-8 flex items-center gap-2">
+	<div class="flex justify-center pt-8">
+		<Button onclick={handleContinue} class="h-12 w-[80%] px-8 flex items-center gap-2">
 			Continue
-			<ChevronRight class="h-4 w-4 ml-1" />
+			<ChevronRight class="h-4 w-4" />
 		</Button>
 	</div>
 </div>

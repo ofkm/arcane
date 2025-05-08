@@ -127,10 +127,7 @@
 	<h1 class="text-3xl font-bold mb-8 text-center">Change Admin Password</h1>
 
 	<div class="mb-8 space-y-2">
-		<p class="text-center text-lg">For security reasons, please change the default admin password.</p>
-		<p class="text-center text-muted-foreground">
-			Your account currently uses the default password: <code class="bg-muted/30 px-1.5 py-0.5 rounded">arcane-admin</code>
-		</p>
+		<p class="text-center text-md">For security reasons, please change the default admin password.</p>
 	</div>
 
 	{#if error}
@@ -154,13 +151,13 @@
 			</div>
 		</div>
 
-		<div class="flex justify-between pt-8">
-			<Button type="submit" disabled={loading} class="h-12 px-8 flex items-center gap-2">
+		<div class="flex pt-8 justify-center">
+			<Button type="submit" disabled={loading} class="h-12 w-[80%] px-8 flex items-center">
 				{#if loading}
 					<span class="inline-block w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></span>
 				{/if}
 				Continue
-				<ChevronRight class="h-4 w-4 ml-1" />
+				<ChevronRight class="h-4 w-4" />
 			</Button>
 		</div>
 	</form>

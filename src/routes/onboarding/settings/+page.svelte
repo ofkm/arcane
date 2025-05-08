@@ -166,8 +166,8 @@
 			</Card.Content>
 		</Card.Root>
 
-		<div class="flex justify-between pt-4">
-			<Button type="submit" disabled={loading} class="h-12 px-8 flex items-center gap-2">
+		<div class="flex justify-center pt-4">
+			<Button type="submit" disabled={loading} class="h-12 px-8 w-[80%] flex items-center gap-2">
 				{#if loading}
 					<span class="inline-block w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></span>
 				{/if}
