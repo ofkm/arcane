@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 							controller.enqueue(encoder.encode(`data: ${JSON.stringify(stats)}\n\n`));
 						} catch (err) {
 							// Controller is closed
-							if (err.code === 'ERR_INVALID_STATE') {
+							if (err && typeof err === 'object' && 'code' in err && (err as any).code === 'ERR_INVALID_STATE') {
 								cleanup();
 							} else {
 								console.error('Enqueue error:', err);
