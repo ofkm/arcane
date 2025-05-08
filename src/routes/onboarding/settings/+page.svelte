@@ -167,19 +167,6 @@
 		</Card.Root>
 
 		<div class="flex justify-between pt-4">
-			<Button
-				href="/onboarding/password"
-				variant="outline"
-				class="h-12 px-6"
-				disabled={passwordStepCompleted || loading}
-				onclick={(e) => {
-					if (passwordStepCompleted) {
-						e.preventDefault();
-					}
-				}}
-			>
-				Back
-			</Button>
 			<Button type="submit" disabled={loading} class="h-12 px-8 flex items-center gap-2">
 				{#if loading}
 					<span class="inline-block w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></span>

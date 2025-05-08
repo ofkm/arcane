@@ -155,19 +155,6 @@
 		</div>
 
 		<div class="flex justify-between pt-8">
-			<Button
-				href="/onboarding/welcome"
-				variant="outline"
-				class="h-12 px-6"
-				disabled={!welcomeStepCompleted || loading}
-				onclick={(e) => {
-					if (!welcomeStepCompleted) {
-						e.preventDefault();
-					}
-				}}
-			>
-				Back
-			</Button>
 			<Button type="submit" disabled={loading} class="h-12 px-8 flex items-center gap-2">
 				{#if loading}
 					<span class="inline-block w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></span>
