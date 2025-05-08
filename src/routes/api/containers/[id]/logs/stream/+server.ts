@@ -10,7 +10,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const container = docker.getContainer(id);
 
 		// Check if container exists
-		await container.inspect();
+		const containerInfo = await container.inspect();
+		const hasTty = containerInfo.Config.Tty === true;
 
 		// Create a stream for Server-Sent Events (SSE)
 		const encoder = new TextEncoder();
@@ -28,8 +29,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 					// Handle data chunks
 					logStream.on('data', (chunk) => {
+						let log;
 						// Remove Docker header (first 8 bytes)
-						const log = chunk.slice(8).toString('utf8');
+						if (!hasTty) {
+							// Remove Docker header (first 8 bytes)
+							log = chunk.slice(8).toString('utf8');
+						} else {
+							// For TTY-enabled containers, use the chunk as-is
+							log = chunk.toString('utf8');
+						}
 
 						// Format as SSE message
 						controller.enqueue(encoder.encode(`data: ${log}\n\n`));
