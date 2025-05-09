@@ -12,7 +12,7 @@
 	import CreateNetworkDialog from './CreateNetworkDialog.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import type { NetworkCreateOptions } from 'dockerode';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import NetworkAPIService from '$lib/services/api/network-api-service';
@@ -46,16 +46,16 @@
 	const networkApi = new NetworkAPIService();
 
 	async function handleCreateNetworkSubmit(options: NetworkCreateOptions) {
-		handleApiReponse(
-			await tryCatch(networkApi.create(options)),
-			'Failed to Create Network',
-			(value) => (isLoading.create = value),
-			async () => {
+		handleApiResultWithCallbacks({
+			result: await tryCatch(networkApi.create(options)),
+			message: 'Failed to Create Network',
+			setLoadingState: (value) => (isLoading.create = value),
+			onSuccess: async () => {
 				toast.success('Network Created Successfully.');
 				await invalidateAll();
 				networkPageStates.isCreateDialogOpen = false;
 			}
-		);
+		});
 	}
 
 	async function handleDeleteNetwork(id: string) {
@@ -66,15 +66,15 @@
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
-					handleApiReponse(
-						await tryCatch(networkApi.remove(encodeURIComponent(id))),
-						'Failed to Remove Container',
-						(value) => (isLoading.remove = value),
-						async () => {
+					handleApiResultWithCallbacks({
+						result: await tryCatch(networkApi.remove(encodeURIComponent(id))),
+						message: 'Failed to Remove Network',
+						setLoadingState: (value) => (isLoading.remove = value),
+						onSuccess: async () => {
 							toast.success('Network Removed Successfully.');
 							await invalidateAll();
 						}
-					);
+					});
 				}
 			}
 		});
@@ -113,15 +113,15 @@
 
 					for (const network of selectedNetworks) {
 						const result = await tryCatch(networkApi.remove(encodeURIComponent(network.id)));
-						handleApiReponse(
+						handleApiResultWithCallbacks({
 							result,
-							`Failed to delete network "${network.name}"`,
-							(value) => (isLoading.remove = value),
-							async () => {
+							message: `Failed to delete network "${network.name}"`,
+							setLoadingState: (value) => (isLoading.remove = value),
+							onSuccess: async () => {
 								toast.success(`Network "${network.name}" deleted successfully.`);
 								successCount++;
 							}
-						);
+						});
 
 						if (result.error) {
 							failureCount++;

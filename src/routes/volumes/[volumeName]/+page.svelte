@@ -10,7 +10,6 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { formatDate } from '$lib/utils';
-	// import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let { volume, inUse } = $derived(data);
@@ -33,18 +32,7 @@
 		forceRemove = false;
 		showRemoveConfirm = true;
 	}
-
-	function handleRemoveConfirm(forceConfirm: boolean) {
-		forceRemove = forceConfirm;
-		const removeForm = document.getElementById('remove-volume-form') as HTMLFormElement;
-		if (removeForm) {
-			removeForm.action = `?/remove${forceRemove ? '&force=true' : ''}`;
-			removeForm.submit();
-		}
-	}
 </script>
-
-<!-- <ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Volume Removal" description={`Are you sure you want to remove volume "${volume?.Name}"? This action cannot be undone.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType="volume" isRunning={inUse} /> -->
 
 <div class="space-y-6 pb-8">
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">

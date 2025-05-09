@@ -9,7 +9,7 @@
 	import UserManagement from './tabs/user-management.svelte';
 	import Authentication from './tabs/authentication.svelte';
 	import { saveSettingsToServer, updateSettingsStore } from '$lib/stores/settings-store';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 
 	let { data } = $props<{ data: PageData }>();
@@ -41,15 +41,15 @@
 		isLoading.saving = true;
 		settingsPageStates.error = null;
 
-		handleApiReponse(
-			await tryCatch(saveSettingsToServer()),
-			'Error Saving Settings',
-			(value) => (isLoading.saving = value),
-			async () => {
+		handleApiResultWithCallbacks({
+			result: await tryCatch(saveSettingsToServer()),
+			message: 'Error Saving Settings',
+			setLoadingState: (value) => (isLoading.saving = value),
+			onSuccess: async () => {
 				toast.success(`Settings Saved Successfully`);
 				await invalidateAll();
 			}
-		);
+		});
 	}
 </script>
 

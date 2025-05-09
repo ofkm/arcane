@@ -16,9 +16,8 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import ImageAPIService from '$lib/services/api/image-api-service';
-	import { handleApiReponse, handleApiResultWithCallbacks } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import type { ApiErrorResponse } from '$lib/types/errors.type';
 
 	let { data }: { data: PageData } = $props();
 	let images = $state<EnhancedImageInfo[]>(data.images || []);

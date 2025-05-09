@@ -2,62 +2,37 @@
 	import type { PageData, ActionData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, RefreshCw, HardDrive, Clock, Tag, Layers, Hash, Trash2, Loader2, Network, Globe, Settings, ListTree, Container } from '@lucide/svelte';
+	import { ArrowLeft, AlertCircle, HardDrive, Clock, Tag, Layers, Hash, Trash2, Loader2, Network, Globe, Settings, ListTree, Container } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { formatDate } from '$lib/utils';
-	// import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog-old.svelte';
 	import type { NetworkInspectInfo } from 'dockerode';
+	import { toast } from 'svelte-sonner';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let { network }: { network: NetworkInspectInfo | null | undefined } = $derived(data);
 
-	let isRefreshing = $state(false);
 	let isRemoving = $state(false);
 	let showRemoveConfirm = $state(false);
 
 	const shortId = $derived(network?.Id?.substring(0, 12) || 'N/A');
 	const createdDate = $derived(network?.Created ? formatDate(network.Created) : 'N/A');
 	const connectedContainers = $derived(network?.Containers ? Object.values(network.Containers) : []);
-	// Determine if network is potentially in use (basic check)
 	const inUse = $derived(connectedContainers.length > 0);
-	// Determine if network is predefined (cannot be removed)
 	const isPredefined = $derived(network?.Name === 'bridge' || network?.Name === 'host' || network?.Name === 'none');
-
-	async function refreshData() {
-		isRefreshing = true;
-		try {
-			await invalidateAll();
-		} finally {
-			isRefreshing = false;
-		}
-	}
 
 	function triggerRemove() {
 		if (isPredefined) {
-			// Optionally show a toast or alert instead of the dialog
+			toast.error('Cannot Remove Predefined Networks');
 			console.warn('Cannot remove predefined network');
 			return;
 		}
 		showRemoveConfirm = true;
 	}
-
-	// This function is called by the ConfirmDialog
-	function handleRemoveConfirm() {
-		// No 'force' option for network removal in standard Docker API
-		const removeForm = document.getElementById('remove-network-form') as HTMLFormElement;
-		if (removeForm) {
-			removeForm.submit();
-		}
-	}
 </script>
-
-<!-- Confirmation Dialog for Remove -->
-<!-- <ConfirmDialog bind:open={showRemoveConfirm} title="Confirm Network Removal" description={`Are you sure you want to remove network "${network?.Name}" (${shortId})? This action cannot be undone. Ensure no containers are connected.`} confirmLabel="Remove" variant="destructive" onConfirm={handleRemoveConfirm} itemType="network" isRunning={inUse} /> -->
 
 <div class="space-y-6 pb-8">
 	<!-- Breadcrumb Navigation -->
