@@ -1,26 +1,36 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getContainer } from '$lib/services/docker/container-service';
+import { tryCatch } from '$lib/utils/try-catch';
+import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
+import { extractDockerErrorMessage } from '$lib/utils/errors.util';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const containerId = params.containerId;
 
-	try {
-		const container = await getContainer(containerId);
+	const result = await tryCatch(getContainer(containerId));
 
-		if (!container) {
-			return json({ success: false, error: 'Container not found' }, { status: 404 });
-		}
+	if (result.error) {
+		console.error(`API Error getting container ${containerId}:`, result.error);
 
-		return json(container);
-	} catch (error: any) {
-		console.error(`API Error getting container ${containerId}:`, error);
-		return json(
-			{
-				success: false,
-				error: error.message || 'Failed to get container information'
-			},
-			{ status: 500 }
-		);
+		const response: ApiErrorResponse = {
+			success: false,
+			error: extractDockerErrorMessage(result.error),
+			code: ApiErrorCode.DOCKER_API_ERROR,
+			details: result.error
+		};
+
+		return json(response, { status: 500 });
 	}
+
+	if (!result.data) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Container not found',
+			code: ApiErrorCode.NOT_FOUND
+		};
+		return json(response, { status: 404 });
+	}
+
+	return json(result.data);
 };
