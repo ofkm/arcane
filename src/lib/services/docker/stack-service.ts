@@ -4,11 +4,10 @@ import { basename } from 'node:path';
 import DockerodeCompose from 'dockerode-compose';
 import yaml from 'js-yaml';
 import { nanoid } from 'nanoid';
-import Dockerode from 'dockerode';
-
+import slugify from 'slugify';
+import { directoryExists } from '$lib/utils/fs.utils';
 import { getDockerClient } from '$lib/services/docker/core';
 import { getSettings, ensureStacksDirectory } from '$lib/services/settings-service';
-
 import type { Stack, StackMeta, StackService, StackUpdate } from '$lib/types/docker/stack.type';
 
 /* The above code is declaring a variable `STACKS_DIR` with an empty string as its initial value in
@@ -364,53 +363,58 @@ export async function loadComposeStacks(): Promise<Stack[]> {
  * Creates a new stack with a compose file and optional .env file
  */
 export async function createStack(name: string, composeContent: string, envContent?: string): Promise<Stack> {
-	const stackId = nanoid();
-	const stackDir = await getStackDir(stackId);
-	const composePath = join(stackDir, 'docker-compose.yml');
-	const metaPath = join(stackDir, 'meta.json');
+	// Generate a unique ID for references (still needed for APIs)
+	const id = nanoid();
 
-	const meta: StackMeta = {
+	// Create a safe directory name from the stack name
+	const dirName = slugify(name, {
+		lower: true, // Convert to lowercase
+		strict: true, // Strip special chars
+		replacement: '-', // Replace spaces with hyphens
+		trim: true // Trim leading/trailing spaces
+	});
+
+	// Ensure directory name is unique - add suffix if needed
+	const stacksDir = await ensureStacksDirectory();
+	let counter = 1;
+	let uniqueDirName = dirName;
+
+	while (await directoryExists(join(stacksDir, uniqueDirName))) {
+		uniqueDirName = `${dirName}-${counter}`;
+		counter++;
+	}
+
+	// Create stack directory with the name-based folder
+	const stackDir = join(stacksDir, uniqueDirName);
+	await fs.mkdir(stackDir, { recursive: true });
+
+	// Save compose file
+	await fs.writeFile(join(stackDir, 'compose.yaml'), composeContent);
+
+	// Save env file if provided
+	if (envContent) {
+		await fs.writeFile(join(stackDir, '.env'), envContent);
+	}
+
+	// Create stack metadata file with the ID reference
+	const meta = {
+		id,
 		name,
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString()
+		dirName: uniqueDirName,
+		createdAt: new Date().toISOString()
 	};
 
-	try {
-		await fs.mkdir(stackDir, { recursive: true });
+	await fs.writeFile(join(stackDir, '.stack.json'), JSON.stringify(meta, null, 2));
 
-		// Write all files in parallel
-		await Promise.all([fs.writeFile(composePath, composeContent, 'utf8'), fs.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf8'), saveEnvFile(stackId, envContent)]);
-
-		let serviceCount = 0;
-		try {
-			const composeData = yaml.load(composeContent) as any;
-			if (composeData?.services) {
-				serviceCount = Object.keys(composeData.services).length;
-			}
-		} catch (parseErr) {
-			console.warn(`Could not parse compose file during creation for stack ${stackId}:`, parseErr);
-		}
-
-		return {
-			id: stackId,
-			name: meta.name,
-			serviceCount: serviceCount,
-			runningCount: 0,
-			status: 'stopped',
-			createdAt: meta.createdAt,
-			updatedAt: meta.updatedAt,
-			composeContent: composeContent,
-			envContent: envContent || ''
-		};
-	} catch (err) {
-		console.error('Error creating stack:', err);
-		try {
-			await fs.rm(stackDir, { recursive: true, force: true });
-		} catch (cleanupErr) {
-			console.error(`Failed to cleanup partially created stack directory ${stackDir}:`, cleanupErr);
-		}
-		throw new Error('Failed to create stack files');
-	}
+	// Return the stack object
+	return {
+		id,
+		name,
+		dirName: uniqueDirName,
+		path: stackDir,
+		composeContent,
+		envContent: envContent || ''
+	};
 }
 
 /**

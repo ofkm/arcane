@@ -32,7 +32,7 @@
 			async (data) => {
 				toast.success(`Stack "${data.stack.name}" created with environment file.`);
 				await invalidateAll();
-				goto(`/stacks/${data.stack.id}`);
+				goto(`/stacks/${data.stack.name}`);
 			}
 		);
 	}

@@ -19,16 +19,17 @@ export interface StackService {
 export interface Stack {
 	id: string;
 	name: string;
+	dirName?: string;
+	path?: string;
 	services?: StackService[];
-	serviceCount: number;
-	runningCount: number;
-	status: 'running' | 'partially running' | 'stopped';
-	createdAt: string;
-	updatedAt: string;
+	serviceCount?: number;
+	runningCount?: number;
+	status?: 'running' | 'stopped' | 'partially running';
+	isExternal?: boolean;
+	createdAt?: string;
+	updatedAt?: string;
 	composeContent?: string;
 	envContent?: string;
-	isExternal?: boolean;
-	compose?: any;
 	meta?: StackMeta;
 }
 
