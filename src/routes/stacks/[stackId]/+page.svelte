@@ -224,7 +224,7 @@
 					<div>
 						<p class="text-sm font-medium text-muted-foreground">Created</p>
 						<p class="text-lg font-medium">
-							{new Date(stack.createdAt).toLocaleString()}
+							{new Date(stack.createdAt ?? '').toLocaleString()}
 						</p>
 					</div>
 					<div class="bg-blue-500/10 p-2 rounded-full">
