@@ -15,7 +15,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import { statusVariantMap } from '$lib/types/statuses';
 	import { shortId } from '$lib/utils/string.utils';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import SystemAPIService from '$lib/services/api/system-api-service';
@@ -71,16 +71,16 @@
 	async function handleStartAll() {
 		if (isLoading.starting || !dashboardStates.dockerInfo || stoppedContainers === 0) return;
 		isLoading.starting = true;
-		handleApiReponse(
-			await tryCatch(containerApi.startAll()),
-			`Failed to Start All Containers`,
-			(value) => (isLoading.starting = value),
-			async () => {
-				toast.success(`All Containers Started Successfully.`);
+		handleApiResultWithCallbacks({
+			result: await tryCatch(containerApi.startAll()),
+			message: 'Failed to Start All Containers',
+			setLoadingState: (value) => (isLoading.starting = value),
+			onSuccess: async () => {
+				toast.success('All Containers Started Successfully.');
 				await invalidateAll();
 				isLoading.starting = false;
 			}
-		);
+		});
 	}
 
 	async function handleStopAll() {
@@ -93,16 +93,16 @@
 				label: 'Confirm',
 				destructive: false,
 				action: async () => {
-					handleApiReponse(
-						await tryCatch(containerApi.stopAll()),
-						`Failed to Stop All Running Containers`,
-						(value) => (isLoading.starting = value),
-						async () => {
-							toast.success(`All Containers Stopped Successfully.`);
+					handleApiResultWithCallbacks({
+						result: await tryCatch(containerApi.stopAll()),
+						message: 'Failed to Stop All Running Containers',
+						setLoadingState: (value) => (isLoading.stopping = value),
+						onSuccess: async () => {
+							toast.success('All Containers Stopped Successfully.');
 							await invalidateAll();
 							isLoading.stopping = false;
 						}
-					);
+					});
 				}
 			}
 		});
@@ -111,18 +111,18 @@
 	async function confirmPrune(selectedTypes: string[]) {
 		if (isLoading.pruning || selectedTypes.length === 0) return;
 		isLoading.pruning = true;
-		handleApiReponse(
-			await tryCatch(systemApi.prune(['containers', 'images'])),
-			`Failed to Prune ${selectedTypes}`,
-			(value) => (isLoading.pruning = value),
-			async () => {
+		handleApiResultWithCallbacks({
+			result: await tryCatch(systemApi.prune(['containers', 'images'])),
+			message: `Failed to Prune ${selectedTypes}`,
+			setLoadingState: (value) => (isLoading.pruning = value),
+			onSuccess: async () => {
 				dashboardStates.isPruneDialogOpen = false;
 				const formattedTypes = selectedTypes.map((type) => capitalizeFirstLetter(type)).join(', ');
 				toast.success(`${formattedTypes} ${selectedTypes.length > 1 ? 'were' : 'was'} pruned successfully.`);
 				await invalidateAll();
 				isLoading.pruning = false;
 			}
-		);
+		});
 	}
 </script>
 

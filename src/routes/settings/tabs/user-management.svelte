@@ -9,7 +9,7 @@
 	import UserFormDialog from '$lib/components/dialogs/user-form-dialog.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import UserAPIService from '$lib/services/api/user-api-service';
 	import { invalidateAll } from '$app/navigation';
@@ -55,17 +55,17 @@
 	async function handleDialogSubmit({ user: userData, isEditMode, userId }: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) {
 		isLoading.saving = true;
 
-		handleApiReponse(
-			await tryCatch(isEditMode ? userApi.update(userId || '', userData as User) : userApi.create(userData as User)),
-			isEditMode ? 'Error Updating User' : 'Error Creating User',
-			(value) => (isLoading.saving = value),
-			async () => {
+		handleApiResultWithCallbacks({
+			result: await tryCatch(isEditMode ? userApi.update(userId || '', userData as User) : userApi.create(userData as User)),
+			message: isEditMode ? 'Error Updating User' : 'Error Creating User',
+			setLoadingState: (value) => (isLoading.saving = value),
+			onSuccess: async () => {
 				userPageStates.isUserDialogOpen = false;
 				toast.success(isEditMode ? 'User Updated Successfully' : 'User Created Successfully');
 				await invalidateAll();
 				isLoading.saving = false;
 			}
-		);
+		});
 	}
 
 	async function handleRemoveUser(userId: string) {
@@ -76,15 +76,15 @@
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
-					handleApiReponse(
-						await tryCatch(userApi.delete(userId)),
-						'Failed to Delete User',
-						(value) => (isLoading.saving = value),
-						async () => {
+					handleApiResultWithCallbacks({
+						result: await tryCatch(userApi.delete(userId)),
+						message: 'Failed to Delete User',
+						setLoadingState: (value) => (isLoading.saving = value),
+						onSuccess: async () => {
 							toast.success('User Deleted Successfully.');
 							await invalidateAll();
 						}
-					);
+					});
 				}
 			}
 		});

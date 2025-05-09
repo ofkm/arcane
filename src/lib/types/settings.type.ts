@@ -12,8 +12,13 @@ export interface RegistryCredential {
 }
 
 export interface Onboarding {
-	completed?: boolean;
+	completed: boolean;
 	completedAt?: string;
+	steps?: {
+		welcome?: boolean;
+		password?: boolean;
+		settings?: boolean;
+	};
 }
 
 export interface Settings {

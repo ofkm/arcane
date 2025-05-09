@@ -1,14 +1,13 @@
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
+import path, { join } from 'node:path';
 import { basename } from 'node:path';
 import DockerodeCompose from 'dockerode-compose';
 import yaml from 'js-yaml';
 import { nanoid } from 'nanoid';
-import Dockerode from 'dockerode';
-
+import slugify from 'slugify';
+import { directoryExists } from '$lib/utils/fs.utils';
 import { getDockerClient } from '$lib/services/docker/core';
 import { getSettings, ensureStacksDirectory } from '$lib/services/settings-service';
-
 import type { Stack, StackMeta, StackService, StackUpdate } from '$lib/types/docker/stack.type';
 
 /* The above code is declaring a variable `STACKS_DIR` with an empty string as its initial value in
@@ -50,7 +49,7 @@ export function updateStacksDirectory(directory: string): void {
  * @returns The function `ensureStacksDir()` returns the `STACKS_DIR` variable after ensuring that the
  * stacks directory exists.
  */
-async function ensureStacksDir(): Promise<string> {
+export async function ensureStacksDir(): Promise<string> {
 	try {
 		if (!STACKS_DIR) {
 			STACKS_DIR = await ensureStacksDirectory();
@@ -65,16 +64,11 @@ async function ensureStacksDir(): Promise<string> {
 }
 
 /**
- * The function `getStackDir` returns the directory path for a given stack ID after ensuring the
- * existence of the stacks directory.
- * @param {string} stackId - The `stackId` parameter is a string that represents the unique identifier
- * of a stack.
- * @returns The function `getStackDir` returns a Promise that resolves to a string representing the
- * directory path where the stack with the given `stackId` is located.
+ * Returns the stack directory for a given stackId (unchanged)
  */
 async function getStackDir(stackId: string): Promise<string> {
 	const stacksDir = await ensureStacksDir();
-	const safeId = basename(stackId); // strips path
+	const safeId = basename(stackId);
 	if (safeId !== stackId) {
 		throw new Error('Invalid stack id');
 	}
@@ -82,35 +76,39 @@ async function getStackDir(stackId: string): Promise<string> {
 }
 
 /**
- * The function `getComposeFilePath` returns the path to the docker-compose.yml file within the
- * directory of a given stack ID.
- * @param {string} stackId - The `stackId` parameter is a string that represents the unique identifier
- * of a stack in a system.
- * @returns The function `getComposeFilePath` returns a Promise that resolves to a string representing
- * the file path of the `docker-compose.yml` file within the directory of the stack identified by
- * `stackId`.
+ * Returns the path to the compose file, prioritizing compose.yaml, fallback to docker-compose.yml
  */
 async function getComposeFilePath(stackId: string): Promise<string> {
 	const stackDir = await getStackDir(stackId);
-	return join(stackDir, 'docker-compose.yml');
+	const newPath = join(stackDir, 'compose.yaml');
+	const oldPath = join(stackDir, 'docker-compose.yml');
+	try {
+		await fs.access(newPath);
+		return newPath;
+	} catch {
+		await fs.access(oldPath);
+		return oldPath;
+	}
 }
 
 /**
- * The function `getStackMetaPath` returns the path to the meta.json file within the directory of a
- * given stack ID.
- * @param {string} stackId - StackId is a string parameter that represents the unique identifier of a
- * stack.
- * @returns The function `getStackMetaPath` returns a `Promise` that resolves to a string representing
- * the path to the `meta.json` file within the directory of the stack identified by the `stackId`
- * parameter.
+ * Returns the path to the meta file, prioritizing .stack.json, fallback to meta.json
  */
 async function getStackMetaPath(stackId: string): Promise<string> {
 	const stackDir = await getStackDir(stackId);
-	return join(stackDir, 'meta.json');
+	const newPath = join(stackDir, '.stack.json');
+	const oldPath = join(stackDir, 'meta.json');
+	try {
+		await fs.access(newPath);
+		return newPath;
+	} catch {
+		await fs.access(oldPath);
+		return oldPath;
+	}
 }
 
 /**
- * Gets the path to the .env file for a specific stack
+ * Returns the path to the .env file (no fallback needed, just .env)
  */
 async function getEnvFilePath(stackId: string): Promise<string> {
 	const stackDir = await getStackDir(stackId);
@@ -319,13 +317,36 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 		const stacks: Stack[] = [];
 
 		for (const dir of stackDirs) {
+			const stackDir = path.join(stacksDir, dir);
+
+			// Skip if not a directory (e.g., .DS_Store or other files)
+			let stat;
 			try {
-				const metaPath = await getStackMetaPath(dir);
-				const composePath = await getComposeFilePath(dir);
+				stat = await fs.stat(stackDir);
+			} catch {
+				continue;
+			}
+			if (!stat.isDirectory()) continue;
 
-				const [metaContent, composeContent] = await Promise.all([fs.readFile(metaPath, 'utf8'), fs.readFile(composePath, 'utf8')]);
+			try {
+				const newMetaPath = path.join(stackDir, '.stack.json');
+				const newComposePath = path.join(stackDir, 'compose.yaml');
 
-				const meta = JSON.parse(metaContent) as StackMeta;
+				let metaContent: string;
+				let composeContent: string;
+				let meta: StackMeta;
+
+				try {
+					[metaContent, composeContent] = await Promise.all([fs.readFile(newMetaPath, 'utf8'), fs.readFile(newComposePath, 'utf8')]);
+					meta = JSON.parse(metaContent) as StackMeta;
+				} catch (newWayErr) {
+					// Fallback to old way
+					const oldMetaPath = await getStackMetaPath(dir);
+					const oldComposePath = await getComposeFilePath(dir);
+
+					[metaContent, composeContent] = await Promise.all([fs.readFile(oldMetaPath, 'utf8'), fs.readFile(oldComposePath, 'utf8')]);
+					meta = JSON.parse(metaContent) as StackMeta;
+				}
 
 				const services = await getStackServices(dir, composeContent);
 
@@ -339,6 +360,11 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 					status = 'partially running';
 				}
 
+				const isLegacy = !(await fs.access(path.join(stackDir, '.stack.json')).then(
+					() => true,
+					() => false
+				));
+
 				stacks.push({
 					id: dir,
 					name: meta.name,
@@ -346,7 +372,8 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 					runningCount,
 					status,
 					createdAt: meta.createdAt,
-					updatedAt: meta.updatedAt
+					updatedAt: meta.updatedAt,
+					isLegacy
 				});
 			} catch (err) {
 				console.warn(`Error loading stack ${dir}:`, err);
@@ -364,53 +391,73 @@ export async function loadComposeStacks(): Promise<Stack[]> {
  * Creates a new stack with a compose file and optional .env file
  */
 export async function createStack(name: string, composeContent: string, envContent?: string): Promise<Stack> {
-	const stackId = nanoid();
-	const stackDir = await getStackDir(stackId);
-	const composePath = join(stackDir, 'docker-compose.yml');
-	const metaPath = join(stackDir, 'meta.json');
+	// Generate a unique ID for references (still needed for APIs)
+	const id = nanoid();
 
-	const meta: StackMeta = {
+	// Create a safe directory name from the stack name
+	const dirName = slugify(name, {
+		lower: true, // Convert to lowercase
+		strict: true, // Strip special chars
+		replacement: '-', // Replace spaces with hyphens
+		trim: true // Trim leading/trailing spaces
+	});
+
+	// Ensure directory name is unique - add suffix if needed
+	const stacksDir = await ensureStacksDirectory();
+	let counter = 1;
+	let uniqueDirName = dirName;
+
+	while (await directoryExists(join(stacksDir, uniqueDirName))) {
+		uniqueDirName = `${dirName}-${counter}`;
+		counter++;
+	}
+
+	// Create stack directory with the name-based folder
+	const stackDir = join(stacksDir, uniqueDirName);
+	await fs.mkdir(stackDir, { recursive: true });
+
+	// Save compose file
+	await fs.writeFile(join(stackDir, 'compose.yaml'), composeContent);
+
+	// Save env file if provided
+	if (envContent) {
+		await fs.writeFile(join(stackDir, '.env'), envContent);
+	}
+
+	// Create stack metadata file with the ID reference
+	const meta = {
+		id,
 		name,
+		dirName: uniqueDirName,
+		path: stackDir,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString()
 	};
 
+	await fs.writeFile(join(stackDir, '.stack.json'), JSON.stringify(meta, null, 2));
+
+	let serviceCount = 0;
 	try {
-		await fs.mkdir(stackDir, { recursive: true });
-
-		// Write all files in parallel
-		await Promise.all([fs.writeFile(composePath, composeContent, 'utf8'), fs.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf8'), saveEnvFile(stackId, envContent)]);
-
-		let serviceCount = 0;
-		try {
-			const composeData = yaml.load(composeContent) as any;
-			if (composeData?.services) {
-				serviceCount = Object.keys(composeData.services).length;
-			}
-		} catch (parseErr) {
-			console.warn(`Could not parse compose file during creation for stack ${stackId}:`, parseErr);
+		const composeData = yaml.load(composeContent) as any;
+		if (composeData?.services) {
+			serviceCount = Object.keys(composeData.services).length;
 		}
-
-		return {
-			id: stackId,
-			name: meta.name,
-			serviceCount: serviceCount,
-			runningCount: 0,
-			status: 'stopped',
-			createdAt: meta.createdAt,
-			updatedAt: meta.updatedAt,
-			composeContent: composeContent,
-			envContent: envContent || ''
-		};
-	} catch (err) {
-		console.error('Error creating stack:', err);
-		try {
-			await fs.rm(stackDir, { recursive: true, force: true });
-		} catch (cleanupErr) {
-			console.error(`Failed to cleanup partially created stack directory ${stackDir}:`, cleanupErr);
-		}
-		throw new Error('Failed to create stack files');
+	} catch (parseErr) {
+		console.warn(`Could not parse compose file during creation for stack ${meta.name}:`, parseErr);
 	}
+
+	return {
+		id: meta.id,
+		name: meta.name,
+		serviceCount: serviceCount,
+		runningCount: 0,
+		status: 'stopped',
+		createdAt: meta.createdAt,
+		updatedAt: meta.updatedAt,
+		composeContent: composeContent,
+		envContent: envContent || '',
+		meta
+	};
 }
 
 /**
@@ -418,14 +465,29 @@ export async function createStack(name: string, composeContent: string, envConte
  */
 export async function getStack(stackId: string): Promise<Stack> {
 	try {
-		const metaPath = await getStackMetaPath(stackId);
-		const composePath = await getComposeFilePath(stackId);
+		// Try the new way first (.stack.json and compose.yaml)
+		const stackDir = await getStackDir(stackId);
+		const newMetaPath = path.join(stackDir, '.stack.json');
+		const newComposePath = path.join(stackDir, 'compose.yaml');
 
-		const [metaContent, composeContent, envContent] = await Promise.all([fs.readFile(metaPath, 'utf8'), fs.readFile(composePath, 'utf8'), loadEnvFile(stackId)]);
+		let metaContent: string;
+		let composeContent: string;
+		let envContent: string;
+		let meta: StackMeta;
 
-		const meta = JSON.parse(metaContent) as StackMeta;
+		try {
+			[metaContent, composeContent, envContent] = await Promise.all([fs.readFile(newMetaPath, 'utf8'), fs.readFile(newComposePath, 'utf8'), loadEnvFile(stackId)]);
+			meta = JSON.parse(metaContent) as StackMeta;
+		} catch (newWayErr) {
+			// If new way fails, fall back to old way (meta.json and docker-compose.yml)
+			const oldMetaPath = await getStackMetaPath(stackId);
+			const oldComposePath = await getComposeFilePath(stackId);
+
+			[metaContent, composeContent, envContent] = await Promise.all([fs.readFile(oldMetaPath, 'utf8'), fs.readFile(oldComposePath, 'utf8'), loadEnvFile(stackId)]);
+			meta = JSON.parse(metaContent) as StackMeta;
+		}
+
 		const services = await getStackServices(stackId, composeContent);
-
 		const serviceCount = services.length;
 		const runningCount = services.filter((s) => s.state?.Running).length;
 
@@ -960,4 +1022,35 @@ export async function listStacks(includeExternal = false): Promise<Stack[]> {
 
 	// Combine managed and external stacks
 	return [...enrichedManagedStacks, ...externalStacks];
+}
+
+/**
+ * Checks if any service in the stack is currently running.
+ * @param {string} stackId - The stack/project name or directory.
+ * @returns {Promise<boolean>} - True if any container in the stack is running.
+ */
+export async function isStackRunning(stackId: string): Promise<boolean> {
+	const docker = getDockerClient();
+	const composeProjectLabel = 'com.docker.compose.project';
+
+	try {
+		// Find containers belonging to the stack (by label or name convention)
+		const containers = await docker.listContainers({
+			all: true,
+			filters: JSON.stringify({
+				label: [`${composeProjectLabel}=${stackId}`]
+			})
+		});
+
+		// Fallback: Also check by name prefix if label is missing
+		const allContainers = await docker.listContainers({ all: true });
+		const nameFilteredContainers = allContainers.filter((c) => !containers.some((fc) => fc.Id === c.Id) && (c.Labels?.[composeProjectLabel] === stackId || c.Names?.some((name) => name.startsWith(`/${stackId}_`))));
+
+		const stackContainers = [...containers, ...nameFilteredContainers];
+		// If any container is running, the stack is considered running
+		return stackContainers.some((c) => c.State === 'running');
+	} catch (err) {
+		console.error(`Error checking if stack ${stackId} is running:`, err);
+		return false;
+	}
 }

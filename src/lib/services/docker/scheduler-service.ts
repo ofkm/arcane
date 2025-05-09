@@ -56,7 +56,7 @@ async function runAutoUpdateChecks(): Promise<void> {
 /**
  * Stop the auto-update scheduler
  */
-export function stopAutoUpdateScheduler(): void {
+export async function stopAutoUpdateScheduler(): Promise<void> {
 	if (autoUpdateTimer) {
 		clearInterval(autoUpdateTimer);
 		autoUpdateTimer = null;

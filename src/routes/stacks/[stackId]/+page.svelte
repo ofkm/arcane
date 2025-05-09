@@ -18,7 +18,7 @@
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StackAPIService from '$lib/services/api/stack-api-service';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 
 	const stackApi = new StackAPIService();
 
@@ -61,23 +61,22 @@
 	async function handleSaveChanges() {
 		if (!stack || !hasChanges) return;
 
-		handleApiReponse(
-			await tryCatch(stackApi.save(stack.id, name, composeContent, autoUpdate, envContent)),
-			'Failed to Save Stack',
-			(value) => (isLoading.saving = value),
-			async (data) => {
+		handleApiResultWithCallbacks({
+			result: await tryCatch(stackApi.save(stack.id, name, composeContent, autoUpdate, envContent)),
+			message: 'Failed to Save Stack',
+			setLoadingState: (value) => (isLoading.saving = value),
+			onSuccess: async () => {
 				originalName = name;
 				originalComposeContent = composeContent;
 				originalEnvContent = envContent;
 				originalAutoUpdate = autoUpdate;
 
-				console.log('Stack save successful:', data);
+				console.log('Stack save successful');
 				toast.success('Stack updated successfully!');
-
 				await new Promise((resolve) => setTimeout(resolve, 200));
 				await invalidateAll();
 			}
-		);
+		});
 	}
 
 	function getHostForService(service: any): string {
@@ -224,7 +223,7 @@
 					<div>
 						<p class="text-sm font-medium text-muted-foreground">Created</p>
 						<p class="text-lg font-medium">
-							{new Date(stack.createdAt).toLocaleString()}
+							{new Date(stack.createdAt ?? '').toLocaleString()}
 						</p>
 					</div>
 					<div class="bg-blue-500/10 p-2 rounded-full">

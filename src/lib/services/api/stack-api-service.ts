@@ -58,6 +58,11 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
+	async migrate(id: string) {
+		const res = await this.api.post(`/stacks/${id}/migrate`);
+		return res.data;
+	}
+
 	async list() {
 		const res = await this.api.get('');
 		return res.data;

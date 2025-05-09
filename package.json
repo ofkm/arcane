@@ -1,7 +1,7 @@
 {
   "name": "arcane",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3000",
@@ -66,6 +66,7 @@
     "prettier": "^3.5.3",
     "prettier-plugin-svelte": "^3.3.3",
     "proper-lockfile": "^4.1.2",
+    "slugify": "^1.6.6",
     "svelte-codemirror-editor": "^1.4.1",
     "svelte-kit-cookie-session": "^4.1.1",
     "thememirror": "^2.0.1"

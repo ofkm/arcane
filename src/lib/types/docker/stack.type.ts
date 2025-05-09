@@ -1,8 +1,11 @@
 export interface StackMeta {
+	id: string;
 	name: string;
 	createdAt: string;
 	updatedAt: string;
 	autoUpdate?: boolean;
+	dirName?: string;
+	path: string;
 }
 
 export interface StackService {
@@ -20,16 +23,16 @@ export interface Stack {
 	id: string;
 	name: string;
 	services?: StackService[];
-	serviceCount: number;
-	runningCount: number;
-	status: 'running' | 'partially running' | 'stopped';
-	createdAt: string;
-	updatedAt: string;
+	serviceCount?: number;
+	runningCount?: number;
+	status: 'running' | 'stopped' | 'partially running';
+	isExternal?: boolean;
+	createdAt?: string;
+	updatedAt?: string;
 	composeContent?: string;
 	envContent?: string;
-	isExternal?: boolean;
-	compose?: any;
 	meta?: StackMeta;
+	isLegacy?: boolean;
 }
 
 export interface StackUpdate {

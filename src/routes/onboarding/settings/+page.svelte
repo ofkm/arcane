@@ -10,9 +10,39 @@
 	import { preventDefault } from '$lib/utils/form.utils';
 	import { goto } from '$app/navigation';
 	import { isDev } from '$lib/constants';
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 
 	let error = $state('');
 	let loading = $state(false);
+
+	// Add this to track if the user has passed the password step
+	let passwordStepCompleted = $state(false);
+
+	// Check for completed steps on mount
+	onMount(() => {
+		// If previous step not completed, redirect to start
+		if (browser && !$settingsStore.onboarding?.steps?.password) {
+			goto('/onboarding/welcome');
+			return;
+		}
+
+		// Mark this step as viewed
+		updateSettingsStore({
+			onboarding: {
+				...$settingsStore.onboarding,
+				completed: $settingsStore.onboarding?.completed ?? false,
+				completedAt: $settingsStore.onboarding?.completedAt ?? '',
+				steps: {
+					...$settingsStore.onboarding?.steps,
+					password: true
+				}
+			}
+		});
+
+		// Update local state
+		passwordStepCompleted = true;
+	});
 
 	// Initialize settings
 	let dockerHost = $derived($settingsStore.dockerHost || 'unix:///var/run/docker.sock');
@@ -21,7 +51,7 @@
 	let autoUpdate = $derived($settingsStore.autoUpdate !== undefined ? $settingsStore.autoUpdate : false);
 
 	// Get the appropriate stacks directory based on environment
-	const defaultStacksDirectory = isDev ? './.dev-data/stacks' : '/app/data/stacks';
+	const defaultStacksDirectory = isDev ? './.dev-data/stacks' : 'data/stacks';
 
 	async function handleSubmit() {
 		loading = true;
@@ -48,7 +78,13 @@
 				},
 				onboarding: {
 					completed: true,
-					completedAt: new Date().toISOString()
+					completedAt: new Date().toISOString(),
+					steps: {
+						...(currentSettings.onboarding?.steps || {}),
+						welcome: true,
+						password: true,
+						settings: true
+					}
 				}
 			};
 
@@ -130,9 +166,8 @@
 			</Card.Content>
 		</Card.Root>
 
-		<div class="flex justify-between pt-4">
-			<Button href="/onboarding/password" variant="outline" class="h-12 px-6">Back</Button>
-			<Button type="submit" disabled={loading} class="h-12 px-8 flex items-center gap-2">
+		<div class="flex justify-center pt-4">
+			<Button type="submit" disabled={loading} class="h-12 px-8 w-[80%] flex items-center gap-2">
 				{#if loading}
 					<span class="inline-block w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></span>
 				{/if}

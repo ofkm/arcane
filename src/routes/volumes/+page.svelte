@@ -11,7 +11,7 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Table from '$lib/components/ui/table';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import VolumeAPIService from '$lib/services/api/volume-api-service';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
@@ -47,68 +47,31 @@
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
-					handleApiReponse(
-						await tryCatch(volumeApi.remove(volumeName)),
-						'Failed to Remove Volume',
-						(value) => (isLoading.remove = value),
-						async () => {
+					handleApiResultWithCallbacks({
+						result: await tryCatch(volumeApi.remove(volumeName)),
+						message: 'Failed to Remove Volume',
+						setLoadingState: (value) => (isLoading.remove = value),
+						onSuccess: async () => {
 							toast.success('Volume Removed Successfully.');
 							await invalidateAll();
 						}
-					);
+					});
 				}
 			}
 		});
 	}
 
 	async function handleCreateVolume(volumeCreate: VolumeCreateOptions) {
-		handleApiReponse(
-			await tryCatch(volumeApi.create(volumeCreate)),
-			`Failed to Create Volume "${volumeCreate.Name}"`,
-			(value) => (isLoading.creating = value),
-			async () => {
-				toast.success(`Volume "${volumeCreate.Name}" Create successfully.`);
+		handleApiResultWithCallbacks({
+			result: await tryCatch(volumeApi.create(volumeCreate)),
+			message: `Failed to Create Volume "${volumeCreate.Name}"`,
+			setLoadingState: (value) => (isLoading.creating = value),
+			onSuccess: async () => {
+				toast.success(`Volume "${volumeCreate.Name}" created successfully.`);
 				await invalidateAll();
 			}
-		);
+		});
 	}
-
-	// async function handleCreateVolumeSubmit(event: { name: string; driver?: string; driverOpts?: Record<string, string>; labels?: Record<string, string> }) {
-	// 	const { name, driver, driverOpts, labels } = event;
-
-	// 	isLoading.creating = true;
-	// 	try {
-	// 		const response = await fetch('/api/volumes', {
-	// 			method: 'POST',
-	// 			headers: {
-	// 				'Content-Type': 'application/json'
-	// 			},
-	// 			body: JSON.stringify({
-	// 				name,
-	// 				driver,
-	// 				driverOpts,
-	// 				labels
-	// 			})
-	// 		});
-
-	// 		const result = await response.json();
-
-	// 		if (!response.ok) {
-	// 			throw new Error(result.error || `HTTP error! status: ${response.status}`);
-	// 		}
-
-	// 		toast.success(`Volume "${result.volume.Name}" created successfully.`);
-	// 		isDialogOpen.create = false;
-
-	// 		await refreshData();
-	// 	} catch (err: unknown) {
-	// 		console.error('Failed to create volume:', err);
-	// 		const message = err instanceof Error ? err.message : String(err);
-	// 		toast.error(`Failed to create volume: ${message}`);
-	// 	} finally {
-	// 		isLoading.creating = false;
-	// 	}
-	// }
 
 	async function handleDeleteSelected() {
 		openConfirmDialog({
@@ -135,15 +98,15 @@
 
 						if (!volume?.name) continue;
 						const result = await tryCatch(volumeApi.remove(volume.name));
-						handleApiReponse(
+						handleApiResultWithCallbacks({
 							result,
-							`Failed to delete image "${volume.name}"`,
-							(value) => (isLoading.remove = value),
-							async () => {
+							message: `Failed to delete image "${volume.name}"`,
+							setLoadingState: (value) => (isLoading.remove = value),
+							onSuccess: async () => {
 								toast.success(`Volume "${volume.name}" deleted successfully.`);
 								successCount++;
 							}
-						);
+						});
 
 						if (result.error) {
 							failureCount++;

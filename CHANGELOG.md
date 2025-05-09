@@ -1,3 +1,19 @@
+## [0.7.0](https://github.com/ofkm/arcane/compare/v0.6.0...v0.7.0) (2025-05-09)
+
+### Features
+
+* container service link for stacks ([#131](https://github.com/ofkm/arcane/issues/131)) ([420cf91](https://github.com/ofkm/arcane/commit/420cf918851b7530ad9c505f8d93b06277309f20))
+* use stack names as folder names ([#143](https://github.com/ofkm/arcane/issues/143)) ([537ea9f](https://github.com/ofkm/arcane/commit/537ea9f42f36becb2d5f70e1192cb47ca4c90deb))
+
+### Bug Fixes
+
+* container logs not streaming from server ([#138](https://github.com/ofkm/arcane/issues/138)) ([e5d9903](https://github.com/ofkm/arcane/commit/e5d990332e442c70b72ec6b88efabaaaa297d396))
+* container stats not live updating ([#139](https://github.com/ofkm/arcane/issues/139)) ([d4f773c](https://github.com/ofkm/arcane/commit/d4f773c6bf11e6f9e634d14cc623617a8da428f4))
+* onboarding errors and protections ([#142](https://github.com/ofkm/arcane/issues/142)) ([bceb0ec](https://github.com/ofkm/arcane/commit/bceb0ec49d4bae1a5d050262b00a8fe068a4c82f))
+* redirect to list view after removing a container or stack ([0fa0f03](https://github.com/ofkm/arcane/commit/0fa0f03aa36c6a4da482d06226c075921c232c1e))
+* remove stack name link when its external ([7499aee](https://github.com/ofkm/arcane/commit/7499aeeac6ebda4fa1fd5b24cb71b44a1aca30a2))
+* use data in relative path for base directory ([29ba132](https://github.com/ofkm/arcane/commit/29ba132eae64fc6eb3e1da57455623b9d3eeeab4))
+* use data in relative path for base directory ([7f8dd2c](https://github.com/ofkm/arcane/commit/7f8dd2cb213476ee30baac7faee990d41089d703))
 ## [0.6.0](https://github.com/ofkm/arcane/compare/v0.5.0...v0.6.0) (2025-05-06)
 
 ### Features

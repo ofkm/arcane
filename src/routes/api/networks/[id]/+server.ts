@@ -1,26 +1,59 @@
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { removeNetwork } from '$lib/services/docker/network-service';
+import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
+import { extractDockerErrorMessage } from '$lib/utils/errors.util';
+import { tryCatch } from '$lib/utils/try-catch';
 
 export const DELETE: RequestHandler = async ({ params }) => {
 	const networkId = params.id;
 
 	if (!networkId) {
-		throw error(400, 'Network ID is required');
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Network ID is required',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
 	}
 
-	try {
-		await removeNetwork(networkId);
-		return json({ success: true, message: `Network ${networkId} deleted.` });
-	} catch (err: any) {
-		console.error(`API Error removing network ${networkId}:`, err);
-		// Pass specific error messages from the service
-		if (err.message.includes('not found')) {
-			throw error(404, err.message);
+	const result = await tryCatch(removeNetwork(networkId));
+
+	if (result.error) {
+		console.error(`API Error removing network ${networkId}:`, result.error);
+
+		// Handle specific error cases with appropriate status codes
+		if (result.error.message?.includes('not found')) {
+			const response: ApiErrorResponse = {
+				success: false,
+				error: result.error.message,
+				code: ApiErrorCode.NOT_FOUND,
+				details: result.error
+			};
+			return json(response, { status: 404 });
 		}
-		if (err.message.includes('cannot be removed')) {
-			throw error(409, err.message); // 409 Conflict
+
+		if (result.error.message?.includes('cannot be removed')) {
+			const response: ApiErrorResponse = {
+				success: false,
+				error: result.error.message,
+				code: ApiErrorCode.CONFLICT,
+				details: result.error
+			};
+			return json(response, { status: 409 });
 		}
-		throw error(500, err.message || 'Failed to remove network');
+
+		const response: ApiErrorResponse = {
+			success: false,
+			error: extractDockerErrorMessage(result.error),
+			code: ApiErrorCode.DOCKER_API_ERROR,
+			details: result.error
+		};
+		return json(response, { status: 500 });
 	}
+
+	return json({
+		success: true,
+		message: `Network ${networkId} deleted.`
+	});
 };

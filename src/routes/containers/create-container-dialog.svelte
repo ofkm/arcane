@@ -12,7 +12,7 @@
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
 	import Switch from '$lib/components/ui/switch/switch.svelte';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 
@@ -263,16 +263,16 @@
 
 		isCreating = true;
 
-		handleApiReponse(
-			await tryCatch(containerApi.create(containerConfig)),
-			'Failed to Create Container',
-			(value) => (isCreating = value),
-			async () => {
+		handleApiResultWithCallbacks({
+			result: await tryCatch(containerApi.create(containerConfig)),
+			message: 'Failed to Create Container',
+			setLoadingState: (value) => (isCreating = value),
+			onSuccess: async () => {
 				toast.success(`Container "${containerConfig.name}" created successfully!`);
 				await invalidateAll();
 				handleClose();
 			}
-		);
+		});
 	}
 </script>
 

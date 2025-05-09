@@ -9,7 +9,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { formatDate, formatBytes } from '$lib/utils';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ImageAPIService from '$lib/services/api/image-api-service';
 	import { toast } from 'svelte-sonner';
@@ -36,15 +36,15 @@
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
-					handleApiReponse(
-						await tryCatch(imageApi.remove(id)),
-						'Failed to Remove Image',
-						(value) => (isLoading.removing = value),
-						async () => {
+					await handleApiResultWithCallbacks({
+						result: await tryCatch(imageApi.remove(id)),
+						message: 'Failed to Remove Image',
+						setLoadingState: (value) => (isLoading.removing = value),
+						onSuccess: async () => {
 							toast.success('Image Removed Successfully.');
 							goto('/images');
 						}
-					);
+					});
 				}
 			}
 		});

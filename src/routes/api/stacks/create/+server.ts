@@ -1,36 +1,58 @@
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createStack } from '$lib/services/docker/stack-service';
+import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
+import { tryCatch } from '$lib/utils/try-catch';
 
 export const POST: RequestHandler = async ({ request }) => {
-	try {
-		const body = await request.json();
-		const name = body.name?.toString();
-		const composeContent = body.composeContent?.toString();
-		const envContent = body.envContent?.toString();
-
-		if (!name) {
-			throw error(502, 'Stack name is required');
-		}
-
-		if (!composeContent) {
-			throw error(503, 'Compose file content is required');
-		}
-
-		const newStack = await createStack(name, composeContent, envContent);
-
-		return json({
-			success: true,
-			stack: newStack,
-			message: `Stack "${newStack.name}" created successfully.`
-		});
-	} catch (err: any) {
-		// Handle specific SvelteKit errors or re-throw them
-		if (err.status >= 400 && err.status < 600) {
-			throw err;
-		}
-		// Handle errors from createStack
-		console.error('API Error creating stack:', err);
-		throw error(500, err.message || 'Failed to create stack');
+	const bodyResult = await tryCatch(request.json());
+	if (bodyResult.error) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Invalid JSON payload',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
 	}
+	const body = bodyResult.data;
+	const name = body.name?.toString();
+	const composeContent = body.composeContent?.toString();
+	const envContent = body.envContent?.toString();
+
+	if (!name) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Stack name is required',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
+	}
+
+	if (!composeContent) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Compose file content is required',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
+	}
+
+	const result = await tryCatch(createStack(name, composeContent, envContent));
+	if (result.error) {
+		console.error('API Error creating stack:', result.error);
+		const response: ApiErrorResponse = {
+			success: false,
+			error: result.error.message || 'Failed to create stack',
+			code: ApiErrorCode.INTERNAL_SERVER_ERROR,
+			details: result.error
+		};
+		return json(response, { status: 500 });
+	}
+
+	const newStack = result.data;
+	return json({
+		success: true,
+		stack: newStack,
+		message: `Stack "${newStack.name}" created successfully.`
+	});
 };

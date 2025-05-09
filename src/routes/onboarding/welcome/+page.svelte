@@ -1,6 +1,24 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import { CheckCircle2, ChevronRight } from '@lucide/svelte';
+	import { settingsStore, updateSettingsStore } from '$lib/stores/settings-store';
+	import { goto } from '$app/navigation';
+
+	function handleContinue() {
+		updateSettingsStore({
+			onboarding: {
+				...$settingsStore.onboarding,
+				completed: $settingsStore.onboarding?.completed ?? false,
+				completedAt: $settingsStore.onboarding?.completedAt ?? '',
+				steps: {
+					...$settingsStore.onboarding?.steps,
+					welcome: true
+				}
+			}
+		});
+
+		goto('/onboarding/password');
+	}
 </script>
 
 <div class="max-w-3xl mx-auto">
@@ -39,9 +57,9 @@
 		</div>
 	</div>
 
-	<div class="flex justify-end mt-8">
-		<Button href="/onboarding/password" class="flex items-center gap-2">
-			Get Started
+	<div class="flex justify-center pt-8">
+		<Button type="button" onclick={handleContinue} class="h-12 w-[80%] px-8 flex items-center gap-2">
+			Continue
 			<ChevronRight class="h-4 w-4" />
 		</Button>
 	</div>

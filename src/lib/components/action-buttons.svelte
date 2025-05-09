@@ -2,13 +2,13 @@
 	import { Play, StopCircle, RotateCcw, Download, Trash2, Loader2, RefreshCcwDot } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { openConfirmDialog } from './confirm-dialog';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import type { LoadingStates } from '$lib/types/loading-states.type';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 
 	const containerApi = new ContainerAPIService();
 	const stackApi = new StackAPIService();
@@ -59,15 +59,16 @@
 					destructive: true,
 					action: async () => {
 						isLoading.remove = true;
-						handleApiReponse(
-							await tryCatch(type === 'container' ? containerApi.remove(id) : stackApi.remove(id)),
-							`Failed to Remove ${type}`,
-							(value) => (isLoading.remove = value),
-							async () => {
+						handleApiResultWithCallbacks({
+							result: await tryCatch(type === 'container' ? containerApi.remove(id) : stackApi.remove(id)),
+							message: `Failed to Remove ${type}`,
+							setLoadingState: (value) => (isLoading.remove = value),
+							onSuccess: async () => {
 								toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Removed Successfully`);
 								await invalidateAll();
+								goto(`/${type}s`);
 							}
-						);
+						});
 					}
 				}
 			});
@@ -79,15 +80,15 @@
 					label: 'Redeploy',
 					action: async () => {
 						isLoading.redeploy = true;
-						handleApiReponse(
-							await tryCatch(stackApi.redeploy(id)),
-							`Failed to Redeploy ${type}`,
-							(value) => (isLoading.redeploy = value),
-							async () => {
+						handleApiResultWithCallbacks({
+							result: await tryCatch(stackApi.redeploy(id)),
+							message: `Failed to Redeploy ${type}`,
+							setLoadingState: (value) => (isLoading.redeploy = value),
+							onSuccess: async () => {
 								toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Redeployed Successfully`);
 								await invalidateAll();
 							}
-						);
+						});
 					}
 				}
 			});
@@ -96,54 +97,54 @@
 
 	async function handleStart() {
 		isLoading.start = true;
-		handleApiReponse(
-			await tryCatch(type === 'container' ? containerApi.start(id) : stackApi.start(id)),
-			`Failed to Start ${type}`,
-			(value) => (isLoading.start = value),
-			async () => {
+		handleApiResultWithCallbacks({
+			result: await tryCatch(type === 'container' ? containerApi.start(id) : stackApi.start(id)),
+			message: `Failed to Start ${type}`,
+			setLoadingState: (value) => (isLoading.start = value),
+			onSuccess: async () => {
 				toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Started Successfully`);
 				await invalidateAll();
 			}
-		);
+		});
 	}
 
 	async function handleStop() {
 		isLoading.stop = true;
-		handleApiReponse(
-			await tryCatch(type === 'container' ? containerApi.stop(id) : stackApi.stop(id)),
-			`Failed to Stop ${type}`,
-			(value) => (isLoading.stop = value),
-			async () => {
+		handleApiResultWithCallbacks({
+			result: await tryCatch(type === 'container' ? containerApi.stop(id) : stackApi.stop(id)),
+			message: `Failed to Stop ${type}`,
+			setLoadingState: (value) => (isLoading.stop = value),
+			onSuccess: async () => {
 				toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Stopped Successfully`);
 				await invalidateAll();
 			}
-		);
+		});
 	}
 
 	async function handleRestart() {
 		isLoading.restart = true;
-		handleApiReponse(
-			await tryCatch(type === 'container' ? containerApi.restart(id) : stackApi.restart(id)),
-			`Failed to Restart ${type}`,
-			(value) => (isLoading.restart = value),
-			async () => {
+		handleApiResultWithCallbacks({
+			result: await tryCatch(type === 'container' ? containerApi.restart(id) : stackApi.restart(id)),
+			message: `Failed to Restart ${type}`,
+			setLoadingState: (value) => (isLoading.restart = value),
+			onSuccess: async () => {
 				toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Restarted Successfully`);
 				await invalidateAll();
 			}
-		);
+		});
 	}
 
 	async function handlePull() {
 		isLoading.pulling = true;
-		handleApiReponse(
-			await tryCatch(type === 'container' ? containerApi.pull(id) : stackApi.pull(id)),
-			'Failed to Pull Image(s)',
-			(value) => (isLoading.pulling = value),
-			async () => {
+		handleApiResultWithCallbacks({
+			result: await tryCatch(type === 'container' ? containerApi.pull(id) : stackApi.pull(id)),
+			message: 'Failed to Pull Image(s)',
+			setLoadingState: (value) => (isLoading.pulling = value),
+			onSuccess: async () => {
 				toast.success('Image(s) Pulled Successfully.');
 				await invalidateAll();
 			}
-		);
+		});
 	}
 </script>
 

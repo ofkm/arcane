@@ -48,8 +48,8 @@ RUN npm install --omit=dev && npm cache clean --force && chown -R arcane:arcane 
 EXPOSE 3000
 VOLUME ["/app/data"]
 
-ARG VERSION="0.6.0"
-ARG REVISION="976cd83"
+ARG VERSION="0.7.0"
+ARG REVISION="7499aee"
 
 # Add OCI standard labels (reading version/revision from files)
 LABEL org.opencontainers.image.authors="OFKM Technologies"

@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Plus, AlertCircle, Layers, Upload, FileStack, Loader2, Play, RotateCcw, StopCircle, Trash2, Ellipsis, Pen, Import } from '@lucide/svelte';
+	import { Plus, AlertCircle, Layers, FileStack, Loader2, Play, RotateCcw, StopCircle, Trash2, Ellipsis, Pen, Import } from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import * as Table from '$lib/components/ui/table';
@@ -15,7 +15,7 @@
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StackAPIService from '$lib/services/api/stack-api-service';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import type { StackActions } from '$lib/types/actions.type';
 
 	let { data }: { data: PageData } = $props();
@@ -29,7 +29,8 @@
 		import: false,
 		redeploy: false,
 		destroy: false,
-		pull: false
+		pull: false,
+		migrate: false
 	});
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 
@@ -43,55 +44,55 @@
 		isLoading[action] = true;
 
 		if (action === 'start') {
-			handleApiReponse(
-				await tryCatch(stackApi.start(id)),
-				'Failed to Start Stack',
-				(value) => (isLoading.start = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.start(id)),
+				message: 'Failed to Start Stack',
+				setLoadingState: (value) => (isLoading.start = value),
+				onSuccess: async () => {
 					toast.success('Stack Started Successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'stop') {
-			handleApiReponse(
-				await tryCatch(stackApi.stop(id)),
-				'Failed to Stop Stack',
-				(value) => (isLoading.stop = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.stop(id)),
+				message: 'Failed to Stop Stack',
+				setLoadingState: (value) => (isLoading.stop = value),
+				onSuccess: async () => {
 					toast.success('Stack Stopped Successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'restart') {
-			handleApiReponse(
-				await tryCatch(stackApi.restart(id)),
-				'Failed to Restart Stack',
-				(value) => (isLoading.restart = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.restart(id)),
+				message: 'Failed to Restart Stack',
+				setLoadingState: (value) => (isLoading.restart = value),
+				onSuccess: async () => {
 					toast.success('Stack Restarted Successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'redeploy') {
-			handleApiReponse(
-				await tryCatch(stackApi.redeploy(id)),
-				'Failed to Redeploy Stack',
-				(value) => (isLoading.redeploy = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.redeploy(id)),
+				message: 'Failed to Redeploy Stack',
+				setLoadingState: (value) => (isLoading.redeploy = value),
+				onSuccess: async () => {
 					toast.success('Stack redeployed successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'pull') {
-			handleApiReponse(
-				await tryCatch(stackApi.pull(id)),
-				'Failed to pull Stack',
-				(value) => (isLoading.pull = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.pull(id)),
+				message: 'Failed to pull Stack',
+				setLoadingState: (value) => (isLoading.pull = value),
+				onSuccess: async () => {
 					toast.success('Stack Pulled successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'destroy') {
 			openConfirmDialog({
 				title: `Confirm Removal`,
@@ -100,16 +101,26 @@
 					label: 'Remove',
 					destructive: true,
 					action: async () => {
-						handleApiReponse(
-							await tryCatch(stackApi.remove(id)),
-							'Failed to Remove Stack',
-							(value) => (isLoading.destroy = value),
-							async () => {
+						handleApiResultWithCallbacks({
+							result: await tryCatch(stackApi.remove(id)),
+							message: 'Failed to Remove Stack',
+							setLoadingState: (value) => (isLoading.destroy = value),
+							onSuccess: async () => {
 								toast.success('Stack Removed Successfully');
 								await invalidateAll();
 							}
-						);
+						});
 					}
+				}
+			});
+		} else if (action === 'migrate') {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.migrate(id)),
+				message: 'Failed to Migrate Stack',
+				setLoadingState: (value) => (isLoading.migrate = value),
+				onSuccess: async () => {
+					toast.success('Stack Migrated Successfully.');
+					await invalidateAll();
 				}
 			});
 		} else {
@@ -229,7 +240,22 @@
 				>
 					{#snippet rows({ item })}
 						{@const stateVariant = statusVariantMap[item.status.toLowerCase()]}
-						<Table.Cell><a class="font-medium hover:underline" href="/stacks/{item.id}/">{item.name}</a></Table.Cell>
+						<Table.Cell>
+							{#if item.isExternal}
+								{item.name}
+							{:else}
+								<div class="flex items-center gap-2">
+									<a class="font-medium hover:underline" href="/stacks/{item.id}/">
+										{item.name}
+									</a>
+									{#if item.isLegacy}
+										<span title="This stack uses the legacy layout. Migrate to the new layout from the dropdown menu." class="ml-1 flex items-center" style="filter: drop-shadow(0 0 4px #fbbf24);">
+											<AlertCircle class="w-4 h-4 text-amber-400 animate-pulse" />
+										</span>
+									{/if}
+								</div>
+							{/if}
+						</Table.Cell>
 						<Table.Cell>{item.serviceCount}</Table.Cell>
 						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} /></Table.Cell>
 						<Table.Cell><StatusBadge variant={item.isExternal ? 'amber' : 'green'} text={item.isExternal ? 'External' : 'Managed'} /></Table.Cell>
@@ -287,6 +313,15 @@
 														<StopCircle class="w-4 h-4" />
 													{/if}
 													Stop
+												</DropdownMenu.Item>
+											{/if}
+
+											{#if item.isLegacy}
+												<DropdownMenu.Item onclick={() => performStackAction('migrate', item.id)} class="text-amber-600 hover:text-amber-800 flex items-center">
+													<span title="This stack uses the legacy layout. Migrate to the new layout." class="mr-2 flex items-center">
+														<AlertCircle class="w-4 h-4 text-amber-500" />
+													</span>
+													Migrate
 												</DropdownMenu.Item>
 											{/if}
 

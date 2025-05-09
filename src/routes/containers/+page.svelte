@@ -15,7 +15,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { statusVariantMap } from '$lib/types/statuses';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { shortId } from '$lib/utils/string.utils';
 
 	const containerApi = new ContainerAPIService();
@@ -60,7 +60,6 @@
 	}
 
 	async function handleRemoveContainer(id: string) {
-		// const endpoint = `/api/containers/${id}/remove${force ? '?force=true' : ''}`;
 		openConfirmDialog({
 			title: 'Delete Container',
 			message: 'Are you sure you want to delete this container? This action cannot be undone.',
@@ -68,15 +67,15 @@
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
-					handleApiReponse(
-						await tryCatch(containerApi.remove(id)),
-						'Failed to Remove Container',
-						(value) => (isLoading.remove = value),
-						async () => {
+					handleApiResultWithCallbacks({
+						result: await tryCatch(containerApi.remove(id)),
+						message: 'Failed to Remove Container',
+						setLoadingState: (value) => (isLoading.remove = value),
+						onSuccess: async () => {
 							toast.success('Container Removed Successfully.');
 							await invalidateAll();
 						}
-					);
+					});
 				}
 			}
 		});
@@ -86,35 +85,35 @@
 		isLoading[action] = true;
 
 		if (action === 'start') {
-			handleApiReponse(
-				await tryCatch(containerApi.start(id)),
-				'Failed to Start Container',
-				(value) => (isLoading.start = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(containerApi.start(id)),
+				message: 'Failed to Start Container',
+				setLoadingState: (value) => (isLoading.start = value),
+				async onSuccess() {
 					toast.success('Container Started Successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'stop') {
-			handleApiReponse(
-				await tryCatch(containerApi.stop(id)),
-				'Failed to Stop Container',
-				(value) => (isLoading.stop = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(containerApi.stop(id)),
+				message: 'Failed to Stop Container',
+				setLoadingState: (value) => (isLoading.stop = value),
+				async onSuccess() {
 					toast.success('Container Stopped Successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'restart') {
-			handleApiReponse(
-				await tryCatch(containerApi.restart(id)),
-				'Failed to Restart Container',
-				(value) => (isLoading.stop = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(containerApi.restart(id)),
+				message: 'Failed to Restart Container',
+				setLoadingState: (value) => (isLoading.restart = value),
+				async onSuccess() {
 					toast.success('Container Restarted Successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else {
 			console.error('An Unknown Error Occurred');
 			toast.error('An Unknown Error Occurred');

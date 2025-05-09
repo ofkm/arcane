@@ -2,29 +2,38 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createContainer } from '$lib/services/docker/container-service';
 import type { ContainerConfig } from '$lib/types/docker';
+import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
+import { extractDockerErrorMessage } from '$lib/utils/errors.util';
+import { tryCatch } from '$lib/utils/try-catch';
 
 export const POST: RequestHandler = async ({ request }) => {
-	try {
-		const config = (await request.json()) as ContainerConfig;
+	const config = (await request.json()) as ContainerConfig;
 
-		if (!config.name || !config.image) {
-			return json({ success: false, error: 'Container name and image are required' }, { status: 400 });
-		}
-
-		const container = await createContainer(config);
-
-		return json({
-			success: true,
-			container
-		});
-	} catch (error: any) {
-		console.error('Error creating container:', error);
-		return json(
-			{
-				success: false,
-				error: error.message || 'Failed to create container'
-			},
-			{ status: 500 }
-		);
+	if (!config.name || !config.image) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Container name and image are required',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
 	}
+
+	const result = await tryCatch(createContainer(config));
+
+	if (result.error) {
+		console.error('Error creating container:', result.error);
+
+		const response: ApiErrorResponse = {
+			success: false,
+			error: extractDockerErrorMessage(result.error),
+			code: ApiErrorCode.DOCKER_API_ERROR,
+			details: result.error
+		};
+		return json(response, { status: 500 });
+	}
+
+	return json({
+		success: true,
+		container: result.data
+	});
 };
