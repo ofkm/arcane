@@ -32,6 +32,7 @@ export interface Stack {
 	composeContent?: string;
 	envContent?: string;
 	meta?: StackMeta;
+	isLegacy?: boolean;
 }
 
 export interface StackUpdate {

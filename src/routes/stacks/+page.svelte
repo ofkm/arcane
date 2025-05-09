@@ -29,7 +29,8 @@
 		import: false,
 		redeploy: false,
 		destroy: false,
-		pull: false
+		pull: false,
+		migrate: false
 	});
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 
@@ -112,6 +113,16 @@
 					}
 				}
 			});
+		} else if (action === 'migrate') {
+			// handleApiReponse(
+			// 	await tryCatch(stackApi.migrate(id)),
+			// 	'Failed to Migrate Stack',
+			// 	(value) => (isLoading.migrate = value),
+			// 	async () => {
+			// 		toast.success('Stack Migrated Successfully.');
+			// 		await invalidateAll();
+			// 	}
+			// );
 		} else {
 			console.error('An Unknown Error Occurred');
 			toast.error('An Unknown Error Occurred');
@@ -229,7 +240,18 @@
 				>
 					{#snippet rows({ item })}
 						{@const stateVariant = statusVariantMap[item.status.toLowerCase()]}
-						<Table.Cell><a class="font-medium hover:underline" href="/stacks/{item.id}/">{item.name}</a></Table.Cell>
+						<Table.Cell>
+							<div class="flex items-center gap-2">
+								<a class="font-medium hover:underline" href="/stacks/{item.id}/">
+									{item.name}
+								</a>
+								{#if item.isLegacy}
+									<span title="This stack uses the legacy layout. Migrate to the new layout from the dropdown menu." class="ml-1 flex items-center" style="filter: drop-shadow(0 0 4px #fbbf24);">
+										<AlertCircle class="w-4 h-4 text-amber-400 animate-pulse" />
+									</span>
+								{/if}
+							</div>
+						</Table.Cell>
 						<Table.Cell>{item.serviceCount}</Table.Cell>
 						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} /></Table.Cell>
 						<Table.Cell><StatusBadge variant={item.isExternal ? 'amber' : 'green'} text={item.isExternal ? 'External' : 'Managed'} /></Table.Cell>
@@ -287,6 +309,15 @@
 														<StopCircle class="w-4 h-4" />
 													{/if}
 													Stop
+												</DropdownMenu.Item>
+											{/if}
+
+											{#if item.isLegacy}
+												<DropdownMenu.Item onclick={() => performStackAction('migrate', item.id)} class="text-amber-600 hover:text-amber-800 flex items-center">
+													<span title="This stack uses the legacy layout. Migrate to the new layout." class="mr-2 flex items-center">
+														<AlertCircle class="w-4 h-4 text-amber-500" />
+													</span>
+													Migrate
 												</DropdownMenu.Item>
 											{/if}
 

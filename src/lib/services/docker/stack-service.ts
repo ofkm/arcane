@@ -350,6 +350,11 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 					status = 'partially running';
 				}
 
+				const isLegacy = !(await fs.access(join(stackDir, '.stack.json')).then(
+					() => true,
+					() => false
+				));
+
 				stacks.push({
 					id: dir,
 					name: meta.name,
@@ -357,7 +362,8 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 					runningCount,
 					status,
 					createdAt: meta.createdAt,
-					updatedAt: meta.updatedAt
+					updatedAt: meta.updatedAt,
+					isLegacy
 				});
 			} catch (err) {
 				console.warn(`Error loading stack ${dir}:`, err);
