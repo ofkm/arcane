@@ -5,7 +5,6 @@
 	import { goto } from '$app/navigation';
 
 	function handleContinue() {
-		// Mark welcome step as completed
 		updateSettingsStore({
 			onboarding: {
 				...$settingsStore.onboarding,
@@ -18,7 +17,6 @@
 			}
 		});
 
-		// Navigate to password page
 		goto('/onboarding/password');
 	}
 </script>
@@ -60,7 +58,7 @@
 	</div>
 
 	<div class="flex justify-center pt-8">
-		<Button onclick={handleContinue} class="h-12 w-[80%] px-8 flex items-center gap-2">
+		<Button type="button" onclick={handleContinue} class="h-12 w-[80%] px-8 flex items-center gap-2">
 			Continue
 			<ChevronRight class="h-4 w-4" />
 		</Button>

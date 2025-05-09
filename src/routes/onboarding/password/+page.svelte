@@ -90,14 +90,9 @@
 				throw new Error(data.error || 'Failed to change password');
 			}
 
-			// Mark password step as completed in settings while preserving other settings
 			updateSettingsStore({
-				// Keep all other existing settings
-				...$settingsStore,
-				// Ensure required fields have defaults to prevent validation errors
 				dockerHost: $settingsStore.dockerHost || defaultDockerHost,
 				stacksDirectory: $settingsStore.stacksDirectory || defaultStacksDirectory,
-				// Update onboarding progress
 				onboarding: {
 					...$settingsStore.onboarding,
 					steps: {
@@ -110,10 +105,8 @@
 				}
 			});
 
-			// Save settings to server before navigating
 			await saveSettingsToServer();
 
-			// Then navigate
 			goto('/onboarding/settings');
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
