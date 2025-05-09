@@ -2,7 +2,7 @@
 	import { Play, StopCircle, RotateCcw, Download, Trash2, Loader2, RefreshCcwDot } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { openConfirmDialog } from './confirm-dialog';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import type { LoadingStates } from '$lib/types/loading-states.type';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
@@ -66,6 +66,7 @@
 							async () => {
 								toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Removed Successfully`);
 								await invalidateAll();
+								goto(`/${type}s`);
 							}
 						);
 					}
