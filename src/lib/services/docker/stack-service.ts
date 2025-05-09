@@ -317,8 +317,18 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 		const stacks: Stack[] = [];
 
 		for (const dir of stackDirs) {
+			const stackDir = path.join(stacksDir, dir);
+
+			// Skip if not a directory (e.g., .DS_Store or other files)
+			let stat;
 			try {
-				const stackDir = path.join(stacksDir, dir);
+				stat = await fs.stat(stackDir);
+			} catch {
+				continue;
+			}
+			if (!stat.isDirectory()) continue;
+
+			try {
 				const newMetaPath = path.join(stackDir, '.stack.json');
 				const newComposePath = path.join(stackDir, 'compose.yaml');
 
@@ -350,7 +360,7 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 					status = 'partially running';
 				}
 
-				const isLegacy = !(await fs.access(join(stackDir, '.stack.json')).then(
+				const isLegacy = !(await fs.access(path.join(stackDir, '.stack.json')).then(
 					() => true,
 					() => false
 				));
