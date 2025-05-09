@@ -82,7 +82,7 @@
 
 		<div id="settings-container">
 			<input type="hidden" id="csrf_token" value={data.csrf} />
-			{#each tabs as tab, i (tab.id)}
+			{#each tabs as tab (tab.id)}
 				<Tabs.Content value={tab.id} class="space-y-4">
 					<tab.component {data} />
 				</Tabs.Content>

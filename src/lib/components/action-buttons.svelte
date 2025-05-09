@@ -8,7 +8,7 @@
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { handleApiReponse, handleApiResultWithCallbacks } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 
 	const containerApi = new ContainerAPIService();
 	const stackApi = new StackAPIService();

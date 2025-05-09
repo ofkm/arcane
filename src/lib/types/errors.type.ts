@@ -15,5 +15,5 @@ export interface ApiErrorResponse {
 	success: false;
 	error: string;
 	code: ApiErrorCode;
-	details?: any;
+	details?: unknown;
 }

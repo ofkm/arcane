@@ -16,7 +16,7 @@
 		onSubmit?: (data: VolumeCreateOptions) => void;
 	}
 
-	let { open = $bindable(false), isCreating = false, onSubmit = (_data: VolumeCreateOptions) => {} }: Props = $props();
+	let { open = $bindable(false), isCreating = false, onSubmit = () => {} }: Props = $props();
 
 	let volumeCreateStates = $state({
 		volumeName: '',
