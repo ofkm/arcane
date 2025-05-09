@@ -61,6 +61,7 @@
     "codemirror": "^6.0.1",
     "dockerode": "^4.0.6",
     "dockerode-compose": "^1.4.0",
+    "dotenv": "^16.5.0",
     "js-yaml": "^4.1.0",
     "nanoid": "^5.1.5",
     "prettier": "^3.5.3",

@@ -5,10 +5,13 @@ import DockerodeCompose from 'dockerode-compose';
 import yaml from 'js-yaml';
 import { nanoid } from 'nanoid';
 import slugify from 'slugify';
+import dotenv from 'dotenv';
 import { directoryExists } from '$lib/utils/fs.utils';
 import { getDockerClient } from '$lib/services/docker/core';
 import { getSettings, ensureStacksDirectory } from '$lib/services/settings-service';
 import type { Stack, StackMeta, StackService, StackUpdate } from '$lib/types/docker/stack.type';
+import Compose from 'dockerode-compose';
+import os from 'node:os'; // Add at top if not present
 
 /* The above code is declaring a variable `STACKS_DIR` with an empty string as its initial value in
 TypeScript. */
@@ -588,9 +591,24 @@ export async function updateStack(stackId: string, updates: StackUpdate): Promis
  */
 export async function startStack(stackId: string): Promise<boolean> {
 	try {
-		const compose = await getComposeInstance(stackId);
+		const composePath = await getComposeFilePath(stackId);
+		const composeContent = await fs.readFile(composePath, 'utf8');
+		const envVars = await loadEnvVars(stackId);
+
+		const composeData = yaml.load(composeContent) as any;
+		mergeEnvIntoComposeServices(composeData, envVars);
+
+		const tmpComposePath = path.join(os.tmpdir(), `arcane-${stackId}-compose.yaml`);
+		await fs.writeFile(tmpComposePath, yaml.dump(composeData), 'utf8');
+
+		const docker = getDockerClient();
+		const compose = new DockerodeCompose(docker, tmpComposePath, stackId);
+
 		await compose.pull();
 		await compose.up();
+
+		await fs.unlink(tmpComposePath);
+
 		return true;
 	} catch (err: unknown) {
 		console.error(`Error starting stack ${stackId}:`, err);
@@ -721,18 +739,30 @@ export async function stopStack(stackId: string): Promise<boolean> {
 export async function restartStack(stackId: string): Promise<boolean> {
 	console.log(`Attempting to restart stack ${stackId}...`);
 	try {
-		// Use the manual stop logic
 		const stopped = await stopStack(stackId);
 		if (!stopped) {
-			// If stopStack indicates failure (if you modify it to return false on error)
 			console.error(`Restart failed because stop step failed for stack ${stackId}.`);
 			return false;
 		}
 
-		// Now start it again using compose.up()
-		console.log(`Starting stack ${stackId} after stopping...`);
-		const compose = await getComposeInstance(stackId);
-		await compose.up(); // Assuming compose.up() works correctly
+		// Use the same env-injection logic as startStack
+		const composePath = await getComposeFilePath(stackId);
+		const composeContent = await fs.readFile(composePath, 'utf8');
+		const envVars = await loadEnvVars(stackId);
+
+		const composeData = yaml.load(composeContent) as any;
+		mergeEnvIntoComposeServices(composeData, envVars);
+
+		const tmpComposePath = path.join(os.tmpdir(), `arcane-${stackId}-compose.yaml`);
+		await fs.writeFile(tmpComposePath, yaml.dump(composeData), 'utf8');
+
+		const docker = getDockerClient();
+		const compose = new DockerodeCompose(docker, tmpComposePath, stackId);
+
+		await compose.up();
+
+		await fs.unlink(tmpComposePath);
+
 		console.log(`Stack ${stackId} started.`);
 		return true;
 	} catch (err: unknown) {
@@ -757,24 +787,31 @@ export async function restartStack(stackId: string): Promise<boolean> {
 export async function fullyRedeployStack(stackId: string): Promise<boolean> {
 	console.log(`Attempting to fully redeploy stack ${stackId}...`);
 	try {
-		// Use the manual stop logic
 		const stopped = await stopStack(stackId);
 		if (!stopped) {
 			console.error(`Redeploy failed because stop step failed for stack ${stackId}.`);
 			return false;
 		}
 
-		// Pull the latest images
-		console.log(`Pulling images for stack ${stackId}...`);
-		const compose = await getComposeInstance(stackId); // Get instance again for pull/up
+		const composePath = await getComposeFilePath(stackId);
+		const composeContent = await fs.readFile(composePath, 'utf8');
+		const envVars = await loadEnvVars(stackId);
+
+		const composeData = yaml.load(composeContent) as any;
+		mergeEnvIntoComposeServices(composeData, envVars);
+
+		const tmpComposePath = path.join(os.tmpdir(), `arcane-${stackId}-compose.yaml`);
+		await fs.writeFile(tmpComposePath, yaml.dump(composeData), 'utf8');
+
+		const docker = getDockerClient();
+		const compose = new DockerodeCompose(docker, tmpComposePath, stackId);
+
 		await compose.pull();
-		console.log(`Images pulled for stack ${stackId}.`);
-
-		// Start the stack again
-		console.log(`Starting stack ${stackId} after pull...`);
 		await compose.up();
-		console.log(`Stack ${stackId} started.`);
 
+		await fs.unlink(tmpComposePath);
+
+		console.log(`Stack ${stackId} started.`);
 		return true;
 	} catch (err: unknown) {
 		console.error(`Error fully redeploying stack ${stackId}:`, err);
@@ -1052,5 +1089,50 @@ export async function isStackRunning(stackId: string): Promise<boolean> {
 	} catch (err) {
 		console.error(`Error checking if stack ${stackId} is running:`, err);
 		return false;
+	}
+}
+
+/**
+ * Loads environment variables from a .env file in the stack directory and returns them as an array of strings.
+ * @param {string} stackId - The stack/project name or directory.
+ * @returns {Promise<string[]>} - An array of environment variables in the format ["KEY=value", ...].
+ */
+export async function loadEnvVars(stackId: string): Promise<string[]> {
+	const envPath = path.join(await getStackDir(stackId), '.env');
+	try {
+		const envContent = await fs.readFile(envPath, 'utf8');
+		const parsed = dotenv.parse(envContent);
+		// Convert to Docker's Env array format: ["KEY=value", ...]
+		return Object.entries(parsed).map(([k, v]) => `${k}=${v}`);
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Merges environment variables into compose services.
+ * @param {any} composeData - The parsed compose file data.
+ * @param {string[]} envVars - The environment variables to merge.
+ */
+function mergeEnvIntoComposeServices(composeData: any, envVars: string[]) {
+	if (!composeData?.services) return;
+	const envObj: Record<string, string> = {};
+	for (const pair of envVars) {
+		const [k, ...rest] = pair.split('=');
+		envObj[k] = rest.join('=');
+	}
+	for (const service of Object.values<any>(composeData.services)) {
+		if (!service.environment) {
+			service.environment = { ...envObj };
+		} else if (Array.isArray(service.environment)) {
+			const arrObj: Record<string, string> = {};
+			for (const entry of service.environment) {
+				const [k, ...rest] = entry.split('=');
+				arrObj[k] = rest.join('=');
+			}
+			service.environment = { ...envObj, ...arrObj };
+		} else {
+			service.environment = { ...envObj, ...service.environment };
+		}
 	}
 }
