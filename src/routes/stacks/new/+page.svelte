@@ -11,7 +11,7 @@
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { preventDefault } from '$lib/utils/form.utils';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import EnvEditor from '$lib/components/env-editor.svelte';
 	import { defaultEnvTemplate, defaultComposeTemplate } from '$lib/constants';
 
@@ -23,18 +23,16 @@
 	let envContent = $state(defaultEnvTemplate);
 
 	async function handleSubmit() {
-		saving = true;
-
-		handleApiReponse(
-			await tryCatch(stackApi.create(name, composeContent, envContent)),
-			'Failed to Create Stack',
-			(value) => (saving = value),
-			async (data) => {
-				toast.success(`Stack "${data.stack.name}" created with environment file.`);
+		handleApiResultWithCallbacks({
+			result: await tryCatch(stackApi.create(name, composeContent, envContent)),
+			message: 'Failed to Create Stack',
+			setLoadingState: (value) => (saving = value),
+			onSuccess: async () => {
+				toast.success(`Stack "${name}" created with environment file.`);
 				await invalidateAll();
-				goto(`/stacks/${data.stack.name}`);
+				goto(`/stacks/${name}`);
 			}
-		);
+		});
 	}
 </script>
 

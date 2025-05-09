@@ -15,7 +15,7 @@
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StackAPIService from '$lib/services/api/stack-api-service';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import type { StackActions } from '$lib/types/actions.type';
 
 	let { data }: { data: PageData } = $props();
@@ -44,55 +44,55 @@
 		isLoading[action] = true;
 
 		if (action === 'start') {
-			handleApiReponse(
-				await tryCatch(stackApi.start(id)),
-				'Failed to Start Stack',
-				(value) => (isLoading.start = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.start(id)),
+				message: 'Failed to Start Stack',
+				setLoadingState: (value) => (isLoading.start = value),
+				onSuccess: async () => {
 					toast.success('Stack Started Successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'stop') {
-			handleApiReponse(
-				await tryCatch(stackApi.stop(id)),
-				'Failed to Stop Stack',
-				(value) => (isLoading.stop = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.stop(id)),
+				message: 'Failed to Stop Stack',
+				setLoadingState: (value) => (isLoading.stop = value),
+				onSuccess: async () => {
 					toast.success('Stack Stopped Successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'restart') {
-			handleApiReponse(
-				await tryCatch(stackApi.restart(id)),
-				'Failed to Restart Stack',
-				(value) => (isLoading.restart = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.restart(id)),
+				message: 'Failed to Restart Stack',
+				setLoadingState: (value) => (isLoading.restart = value),
+				onSuccess: async () => {
 					toast.success('Stack Restarted Successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'redeploy') {
-			handleApiReponse(
-				await tryCatch(stackApi.redeploy(id)),
-				'Failed to Redeploy Stack',
-				(value) => (isLoading.redeploy = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.redeploy(id)),
+				message: 'Failed to Redeploy Stack',
+				setLoadingState: (value) => (isLoading.redeploy = value),
+				onSuccess: async () => {
 					toast.success('Stack redeployed successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'pull') {
-			handleApiReponse(
-				await tryCatch(stackApi.pull(id)),
-				'Failed to pull Stack',
-				(value) => (isLoading.pull = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.pull(id)),
+				message: 'Failed to pull Stack',
+				setLoadingState: (value) => (isLoading.pull = value),
+				onSuccess: async () => {
 					toast.success('Stack Pulled successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else if (action === 'destroy') {
 			openConfirmDialog({
 				title: `Confirm Removal`,
@@ -101,28 +101,28 @@
 					label: 'Remove',
 					destructive: true,
 					action: async () => {
-						handleApiReponse(
-							await tryCatch(stackApi.remove(id)),
-							'Failed to Remove Stack',
-							(value) => (isLoading.destroy = value),
-							async () => {
+						handleApiResultWithCallbacks({
+							result: await tryCatch(stackApi.remove(id)),
+							message: 'Failed to Remove Stack',
+							setLoadingState: (value) => (isLoading.destroy = value),
+							onSuccess: async () => {
 								toast.success('Stack Removed Successfully');
 								await invalidateAll();
 							}
-						);
+						});
 					}
 				}
 			});
 		} else if (action === 'migrate') {
-			handleApiReponse(
-				await tryCatch(stackApi.migrate(id)),
-				'Failed to Migrate Stack',
-				(value) => (isLoading.migrate = value),
-				async () => {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(stackApi.migrate(id)),
+				message: 'Failed to Migrate Stack',
+				setLoadingState: (value) => (isLoading.migrate = value),
+				onSuccess: async () => {
 					toast.success('Stack Migrated Successfully.');
 					await invalidateAll();
 				}
-			);
+			});
 		} else {
 			console.error('An Unknown Error Occurred');
 			toast.error('An Unknown Error Occurred');

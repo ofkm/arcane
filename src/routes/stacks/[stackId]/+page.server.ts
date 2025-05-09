@@ -2,81 +2,81 @@ import { getStack, updateStack, startStack, stopStack, restartStack, removeStack
 import { getSettings } from '$lib/services/settings-service';
 import { getContainer } from '$lib/services/docker/container-service';
 import type { PageServerLoad, Actions } from './$types';
+import { tryCatch } from '$lib/utils/try-catch';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { stackId } = params;
 
-	try {
-		const stack = await getStack(stackId);
-
-		const editorState = {
-			name: stack.name,
-			composeContent: stack.composeContent || '',
-			envContent: stack.envContent || '',
-			autoUpdate: stack.meta?.autoUpdate || false,
-			originalName: stack.name,
-			originalComposeContent: stack.composeContent || '',
-			originalEnvContent: stack.envContent || ''
-		};
-
-		const settings = await getSettings();
-
-		const servicePorts: Record<string, string[]> = {};
-		if (stack.services) {
-			for (const service of stack.services) {
-				if (service.id) {
-					try {
-						const containerData = await getContainer(service.id);
-						if (containerData && containerData.networkSettings?.Ports) {
-							const portBindings = containerData.networkSettings.Ports;
-							const parsedPorts: string[] = [];
-
-							for (const containerPort in portBindings) {
-								if (portBindings.hasOwnProperty(containerPort)) {
-									const bindings = portBindings[containerPort];
-									if (bindings && Array.isArray(bindings) && bindings.length > 0) {
-										bindings.forEach((binding: any) => {
-											if (binding.HostPort) {
-												const portType = containerPort.split('/')[1] || 'tcp';
-												parsedPorts.push(`${binding.HostPort}:${containerPort.split('/')[0]}/${portType}`);
-											}
-										});
-									}
-								}
-							}
-
-							servicePorts[service.id] = parsedPorts;
-						}
-					} catch (error) {
-						console.error(`Failed to fetch ports for service ${service.id}:`, error);
-					}
-				}
-			}
-		}
-
-		return {
-			stack,
-			servicePorts,
-			editorState,
-			settings
-		};
-	} catch (err: unknown) {
-		console.error(`Error loading stack ${stackId}:`, err);
-		const errorMessage = err instanceof Error ? err.message : String(err);
+	const stackResult = await tryCatch(getStack(stackId));
+	if (stackResult.error || !stackResult.data) {
+		console.error(`Error loading stack ${stackId}:`, stackResult.error);
+		const errorMessage = stackResult.error?.message ?? 'Stack not found or failed to load';
 		return {
 			stack: null,
 			error: `Stack not found or failed to load: ${errorMessage}`,
 			editorState: {
 				name: '',
 				composeContent: '',
-				envContent: '', // Include env content
+				envContent: '',
 				originalName: '',
 				originalComposeContent: '',
-				originalEnvContent: '', // Include original env content
+				originalEnvContent: '',
 				autoUpdate: false
 			}
 		};
 	}
+	const stack = stackResult.data;
+
+	const editorState = {
+		name: stack.name,
+		composeContent: stack.composeContent || '',
+		envContent: stack.envContent || '',
+		autoUpdate: stack.meta?.autoUpdate || false,
+		originalName: stack.name,
+		originalComposeContent: stack.composeContent || '',
+		originalEnvContent: stack.envContent || ''
+	};
+
+	const settingsResult = await tryCatch(getSettings());
+	const settings = settingsResult.data;
+
+	const servicePorts: Record<string, string[]> = {};
+	if (stack.services) {
+		for (const service of stack.services) {
+			if (service.id) {
+				const containerResult = await tryCatch(getContainer(service.id));
+				if (!containerResult.error && containerResult.data && containerResult.data.networkSettings?.Ports) {
+					const portBindings = containerResult.data.networkSettings.Ports;
+					const parsedPorts: string[] = [];
+
+					for (const containerPort in portBindings) {
+						if (portBindings.hasOwnProperty(containerPort)) {
+							const bindings = portBindings[containerPort];
+							if (bindings && Array.isArray(bindings) && bindings.length > 0) {
+								bindings.forEach((binding: any) => {
+									if (binding.HostPort) {
+										const portType = containerPort.split('/')[1] || 'tcp';
+										parsedPorts.push(`${binding.HostPort}:${containerPort.split('/')[0]}/${portType}`);
+									}
+								});
+							}
+						}
+					}
+
+					servicePorts[service.id] = parsedPorts;
+				} else if (containerResult.error) {
+					console.error(`Failed to fetch ports for service ${service.id}:`, containerResult.error);
+				}
+			}
+		}
+	}
+
+	return {
+		stack,
+		servicePorts,
+		editorState,
+		settings
+	};
 };
 
 export const actions: Actions = {
@@ -88,85 +88,82 @@ export const actions: Actions = {
 		const composeContent = formData.get('composeContent')?.toString() || '';
 		const autoUpdate = formData.get('autoUpdate') === 'on';
 
-		try {
-			await updateStack(stackId, { name, composeContent, autoUpdate });
+		const result = await tryCatch(updateStack(stackId, { name, composeContent, autoUpdate }));
+		if (!result.error) {
 			return {
 				success: true,
 				message: 'Stack updated successfully'
 			};
-		} catch (err: unknown) {
-			console.error('Error updating stack:', err);
+		} else {
+			console.error('Error updating stack:', result.error);
 			return {
 				success: false,
-				error: err instanceof Error ? err.message : 'Failed to update stack'
+				error: result.error instanceof Error ? result.error.message : 'Failed to update stack'
 			};
 		}
 	},
 
 	start: async ({ params }) => {
-		try {
-			await startStack(params.stackId);
+		const result = await tryCatch(startStack(params.stackId));
+		if (!result.error) {
 			return { success: true };
-		} catch (err: unknown) {
-			console.error('Error starting stack:', err);
+		} else {
+			console.error('Error starting stack:', result.error);
 			return {
 				success: false,
-				error: err instanceof Error ? err.message : 'Failed to start stack'
+				error: result.error instanceof Error ? result.error.message : 'Failed to start stack'
 			};
 		}
 	},
 
 	stop: async ({ params }) => {
-		try {
-			await stopStack(params.stackId);
+		const result = await tryCatch(stopStack(params.stackId));
+		if (!result.error) {
 			return { success: true };
-		} catch (err: unknown) {
-			console.error('Error stopping stack:', err);
+		} else {
+			console.error('Error stopping stack:', result.error);
 			return {
 				success: false,
-				error: err instanceof Error ? err.message : 'Failed to stop stack'
+				error: result.error instanceof Error ? result.error.message : 'Failed to stop stack'
 			};
 		}
 	},
 
 	restart: async ({ params }) => {
-		try {
-			await restartStack(params.stackId);
+		const result = await tryCatch(restartStack(params.stackId));
+		if (!result.error) {
 			return { success: true };
-		} catch (err: unknown) {
-			console.error('Error restarting stack:', err);
+		} else {
+			console.error('Error restarting stack:', result.error);
 			return {
 				success: false,
-				error: err instanceof Error ? err.message : 'Failed to restart stack'
+				error: result.error instanceof Error ? result.error.message : 'Failed to restart stack'
 			};
 		}
 	},
 
 	remove: async ({ params }) => {
-		try {
-			const success = await removeStack(params.stackId);
-			if (success) {
-				return { success: true, message: 'Stack removal initiated' };
-			}
-			return { success: false, error: 'Failed to remove stack' };
-		} catch (err: unknown) {
-			console.error('Error removing stack:', err);
+		const result = await tryCatch(removeStack(params.stackId));
+		if (!result.error && result.data) {
+			return { success: true, message: 'Stack removal initiated' };
+		} else {
+			console.error('Error removing stack:', result.error);
 			return {
 				success: false,
-				error: err instanceof Error ? err.message : 'Failed to remove stack'
+				error: result.error instanceof Error ? result.error.message : 'Failed to remove stack'
 			};
 		}
 	},
 
 	redeploy: async ({ params }) => {
-		try {
-			await fullyRedeployStack(params.stackId);
+		const result = await tryCatch(fullyRedeployStack(params.stackId));
+		if (!result.error) {
 			return { success: true, message: 'Stack redeployment initiated' };
-		} catch (err: unknown) {
-			console.error('Error redeploying stack:', err);
+		} else {
+			console.error('Error redeploying stack:', result.error);
 			return {
 				success: false,
-				error: err instanceof Error ? err.message : 'Failed to redeploy stack'
+				error: result.error instanceof Error ? result.error.message : 'Failed to redeploy stack'
 			};
 		}
 	}
