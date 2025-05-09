@@ -1,47 +1,77 @@
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createNetwork } from '$lib/services/docker/network-service';
 import type { NetworkCreateOptions } from 'dockerode';
+import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
+import { extractDockerErrorMessage } from '$lib/utils/errors.util';
+import { tryCatch } from '$lib/utils/try-catch';
 
 export const POST: RequestHandler = async ({ request }) => {
-	try {
-		const options: NetworkCreateOptions = await request.json();
+	let options: NetworkCreateOptions;
 
-		if (!options.Name) {
-			throw error(400, 'Network name (Name) is required');
-		}
+	const requestBodyResult = await tryCatch(request.json());
 
-		// Add default CheckDuplicate if not provided, common use case
-		if (options.CheckDuplicate === undefined) {
-			options.CheckDuplicate = true;
-		}
-
-		// Call the service function
-		const networkInfo = await createNetwork(options);
-
-		// Return the details of the created network
-		return json({
-			success: true,
-			network: {
-				// Map inspectInfo to ServiceNetwork shape if needed, or return full info
-				id: networkInfo.Id,
-				name: networkInfo.Name,
-				driver: networkInfo.Driver,
-				scope: networkInfo.Scope,
-				subnet: networkInfo.IPAM?.Config?.[0]?.Subnet ?? null,
-				gateway: networkInfo.IPAM?.Config?.[0]?.Gateway ?? null,
-				created: networkInfo.Created
-				// Add other relevant fields from NetworkInspectInfo if desired
-			},
-			message: `Network "${networkInfo.Name}" created successfully.`
-		});
-	} catch (err: any) {
-		// Handle specific SvelteKit errors or re-throw them
-		if (err.status >= 400 && err.status < 600) {
-			throw err;
-		}
-		// Handle errors from createNetwork
-		console.error('API Error creating network:', err);
-		throw error(500, err.message || 'Failed to create network');
+	if (requestBodyResult.error) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Invalid JSON payload',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
 	}
+
+	options = requestBodyResult.data;
+
+	if (!options.Name) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Network name (Name) is required',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
+	}
+
+	if (options.CheckDuplicate === undefined) {
+		options.CheckDuplicate = true;
+	}
+
+	const result = await tryCatch(createNetwork(options));
+
+	if (result.error) {
+		console.error('API Error creating network:', result.error);
+
+		if (result.error.message?.includes('already exists')) {
+			const response: ApiErrorResponse = {
+				success: false,
+				error: `Network with name "${options.Name}" already exists`,
+				code: ApiErrorCode.CONFLICT,
+				details: result.error
+			};
+			return json(response, { status: 409 });
+		}
+
+		const response: ApiErrorResponse = {
+			success: false,
+			error: extractDockerErrorMessage(result.error),
+			code: ApiErrorCode.DOCKER_API_ERROR,
+			details: result.error
+		};
+		return json(response, { status: 500 });
+	}
+
+	const networkInfo = result.data;
+
+	return json({
+		success: true,
+		network: {
+			id: networkInfo.Id,
+			name: networkInfo.Name,
+			driver: networkInfo.Driver,
+			scope: networkInfo.Scope,
+			subnet: networkInfo.IPAM?.Config?.[0]?.Subnet ?? null,
+			gateway: networkInfo.IPAM?.Config?.[0]?.Gateway ?? null,
+			created: networkInfo.Created
+		},
+		message: `Network "${networkInfo.Name}" created successfully.`
+	});
 };
