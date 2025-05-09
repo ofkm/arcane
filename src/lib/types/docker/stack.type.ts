@@ -1,8 +1,11 @@
 export interface StackMeta {
+	id: string;
 	name: string;
 	createdAt: string;
 	updatedAt: string;
 	autoUpdate?: boolean;
+	dirName?: string;
+	path: string;
 }
 
 export interface StackService {
@@ -19,12 +22,10 @@ export interface StackService {
 export interface Stack {
 	id: string;
 	name: string;
-	dirName?: string;
-	path?: string;
 	services?: StackService[];
 	serviceCount?: number;
 	runningCount?: number;
-	status?: 'running' | 'stopped' | 'partially running';
+	status: 'running' | 'stopped' | 'partially running';
 	isExternal?: boolean;
 	createdAt?: string;
 	updatedAt?: string;

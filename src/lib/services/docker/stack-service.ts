@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
+import path, { join } from 'node:path';
 import { basename } from 'node:path';
 import DockerodeCompose from 'dockerode-compose';
 import yaml from 'js-yaml';
@@ -49,7 +49,7 @@ export function updateStacksDirectory(directory: string): void {
  * @returns The function `ensureStacksDir()` returns the `STACKS_DIR` variable after ensuring that the
  * stacks directory exists.
  */
-async function ensureStacksDir(): Promise<string> {
+export async function ensureStacksDir(): Promise<string> {
 	try {
 		if (!STACKS_DIR) {
 			STACKS_DIR = await ensureStacksDirectory();
@@ -401,19 +401,34 @@ export async function createStack(name: string, composeContent: string, envConte
 		id,
 		name,
 		dirName: uniqueDirName,
-		createdAt: new Date().toISOString()
+		path: stackDir,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
 	};
 
 	await fs.writeFile(join(stackDir, '.stack.json'), JSON.stringify(meta, null, 2));
 
-	// Return the stack object
+	let serviceCount = 0;
+	try {
+		const composeData = yaml.load(composeContent) as any;
+		if (composeData?.services) {
+			serviceCount = Object.keys(composeData.services).length;
+		}
+	} catch (parseErr) {
+		console.warn(`Could not parse compose file during creation for stack ${meta.name}:`, parseErr);
+	}
+
 	return {
-		id,
-		name,
-		dirName: uniqueDirName,
-		path: stackDir,
-		composeContent,
-		envContent: envContent || ''
+		id: meta.id,
+		name: meta.name,
+		serviceCount: serviceCount,
+		runningCount: 0,
+		status: 'stopped',
+		createdAt: meta.createdAt,
+		updatedAt: meta.updatedAt,
+		composeContent: composeContent,
+		envContent: envContent || '',
+		meta
 	};
 }
 
