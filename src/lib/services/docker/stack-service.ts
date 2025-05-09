@@ -1013,3 +1013,34 @@ export async function listStacks(includeExternal = false): Promise<Stack[]> {
 	// Combine managed and external stacks
 	return [...enrichedManagedStacks, ...externalStacks];
 }
+
+/**
+ * Checks if any service in the stack is currently running.
+ * @param {string} stackId - The stack/project name or directory.
+ * @returns {Promise<boolean>} - True if any container in the stack is running.
+ */
+export async function isStackRunning(stackId: string): Promise<boolean> {
+	const docker = getDockerClient();
+	const composeProjectLabel = 'com.docker.compose.project';
+
+	try {
+		// Find containers belonging to the stack (by label or name convention)
+		const containers = await docker.listContainers({
+			all: true,
+			filters: JSON.stringify({
+				label: [`${composeProjectLabel}=${stackId}`]
+			})
+		});
+
+		// Fallback: Also check by name prefix if label is missing
+		const allContainers = await docker.listContainers({ all: true });
+		const nameFilteredContainers = allContainers.filter((c) => !containers.some((fc) => fc.Id === c.Id) && (c.Labels?.[composeProjectLabel] === stackId || c.Names?.some((name) => name.startsWith(`/${stackId}_`))));
+
+		const stackContainers = [...containers, ...nameFilteredContainers];
+		// If any container is running, the stack is considered running
+		return stackContainers.some((c) => c.State === 'running');
+	} catch (err) {
+		console.error(`Error checking if stack ${stackId} is running:`, err);
+		return false;
+	}
+}

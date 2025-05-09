@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import slugify from 'slugify';
-import { ensureStacksDir, stopStack } from './stack-service';
+import { ensureStacksDir, stopStack, startStack, isStackRunning } from './stack-service';
 
 export async function migrateStacksToNameFolders() {
 	const stacksDir = await ensureStacksDir();
@@ -16,6 +16,8 @@ export async function migrateStacksToNameFolders() {
 
 		const metaPath = path.join(oldDirPath, 'meta.json');
 		const newMetaPath = path.join(oldDirPath, '.stack.json');
+		const oldComposePath = path.join(oldDirPath, 'docker-compose.yml');
+		const newComposePath = path.join(oldDirPath, 'compose.yaml');
 
 		// Only migrate if meta.json exists and .stack.json does not
 		try {
@@ -27,6 +29,14 @@ export async function migrateStacksToNameFolders() {
 			await fs.access(newMetaPath);
 			continue; // Already migrated
 		} catch {}
+
+		// Check if stack is running before migration
+		let wasRunning = false;
+		try {
+			wasRunning = await isStackRunning(dir);
+		} catch {
+			wasRunning = false;
+		}
 
 		// Stop the stack before migration
 		try {
@@ -54,6 +64,20 @@ export async function migrateStacksToNameFolders() {
 			await fs.rename(oldDirPath, newDirPath);
 		}
 
+		// Migrate docker-compose.yml to compose.yaml if needed
+		try {
+			await fs.access(path.join(newDirPath, 'docker-compose.yml'));
+			try {
+				await fs.access(path.join(newDirPath, 'compose.yaml'));
+				// compose.yaml already exists, do nothing
+			} catch {
+				await fs.rename(path.join(newDirPath, 'docker-compose.yml'), path.join(newDirPath, 'compose.yaml'));
+				console.log(`Migrated docker-compose.yml to compose.yaml in "${newDirName}"`);
+			}
+		} catch {
+			// docker-compose.yml does not exist, nothing to do
+		}
+
 		// Update and write .stack.json
 		meta.dirName = newDirName;
 		meta.path = newDirPath;
@@ -63,6 +87,16 @@ export async function migrateStacksToNameFolders() {
 		await fs.rm(path.join(newDirPath, 'meta.json'));
 
 		console.log(`Migrated stack "${meta.name}" to folder "${newDirName}"`);
+
+		// Start the stack after migration if it was running before
+		if (wasRunning) {
+			try {
+				await startStack(newDirName);
+				console.log(`Started stack "${newDirName}" after migration.`);
+			} catch (err) {
+				console.warn(`Failed to start stack "${newDirName}" after migration:`, err);
+			}
+		}
 	}
 }
 
@@ -76,6 +110,8 @@ export async function migrateStackToNameFolder(stackId: string): Promise<void> {
 
 	const metaPath = path.join(oldDirPath, 'meta.json');
 	const newMetaPath = path.join(oldDirPath, '.stack.json');
+	const oldComposePath = path.join(oldDirPath, 'docker-compose.yml');
+	const newComposePath = path.join(oldDirPath, 'compose.yaml');
 
 	// Only migrate if meta.json exists and .stack.json does not
 	try {
@@ -87,6 +123,14 @@ export async function migrateStackToNameFolder(stackId: string): Promise<void> {
 		await fs.access(newMetaPath);
 		throw new Error(`Stack "${stackId}" is already migrated`);
 	} catch {}
+
+	// Check if stack is running before migration
+	let wasRunning = false;
+	try {
+		wasRunning = await isStackRunning(stackId);
+	} catch {
+		wasRunning = false;
+	}
 
 	// Stop the stack before migration
 	try {
@@ -115,6 +159,20 @@ export async function migrateStackToNameFolder(stackId: string): Promise<void> {
 		await fs.rename(oldDirPath, newDirPath);
 	}
 
+	// Migrate docker-compose.yml to compose.yaml if needed
+	try {
+		await fs.access(path.join(newDirPath, 'docker-compose.yml'));
+		try {
+			await fs.access(path.join(newDirPath, 'compose.yaml'));
+			// compose.yaml already exists, do nothing
+		} catch {
+			await fs.rename(path.join(newDirPath, 'docker-compose.yml'), path.join(newDirPath, 'compose.yaml'));
+			console.log(`Migrated docker-compose.yml to compose.yaml in "${newDirName}"`);
+		}
+	} catch {
+		// docker-compose.yml does not exist, nothing to do
+	}
+
 	// Update and write .stack.json
 	meta.dirName = newDirName;
 	meta.path = newDirPath;
@@ -124,4 +182,14 @@ export async function migrateStackToNameFolder(stackId: string): Promise<void> {
 	await fs.rm(path.join(newDirPath, 'meta.json'));
 
 	console.log(`Migrated stack "${meta.name}" to folder "${newDirName}"`);
+
+	// Start the stack after migration if it was running before
+	if (wasRunning) {
+		try {
+			await startStack(newDirName);
+			console.log(`Started stack "${newDirName}" after migration.`);
+		} catch (err) {
+			console.warn(`Failed to start stack "${newDirName}" after migration:`, err);
+		}
+	}
 }
