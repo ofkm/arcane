@@ -3,89 +3,143 @@ import type { RequestHandler } from './$types';
 import { getUserByUsername, hashPassword, saveUser, listUsers } from '$lib/services/user-service';
 import type { User } from '$lib/types/user.type';
 import { getSettings } from '$lib/services/settings-service';
+import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
+import { tryCatch } from '$lib/utils/try-catch';
 
 // GET users endpoint
 export const GET: RequestHandler = async ({ locals }) => {
-	try {
-		// Check authentication - only admins can list users
-		if (!locals.user || !locals.user.roles.includes('admin')) {
-			return json({ error: 'Unauthorized' }, { status: 403 });
-		}
-
-		const users = await listUsers();
-
-		// Remove sensitive data before sending
-		const sanitizedUsers = users.map((user) => {
-			const { passwordHash, ...rest } = user;
-			return rest;
-		});
-
-		return json({ users: sanitizedUsers });
-	} catch (error) {
-		console.error('Error listing users:', error);
-		return json({ error: 'Failed to list users' }, { status: 500 });
+	// Only admins can list users
+	if (!locals.user || !locals.user.roles.includes('admin')) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Unauthorized',
+			code: ApiErrorCode.FORBIDDEN
+		};
+		return json(response, { status: 403 });
 	}
+
+	const usersResult = await tryCatch(listUsers());
+	if (usersResult.error) {
+		console.error('Error listing users:', usersResult.error);
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Failed to list users',
+			code: ApiErrorCode.INTERNAL_SERVER_ERROR,
+			details: usersResult.error
+		};
+		return json(response, { status: 500 });
+	}
+
+	const sanitizedUsers = usersResult.data.map((user: User) => {
+		const { passwordHash, ...rest } = user;
+		return rest;
+	});
+
+	return json({ success: true, users: sanitizedUsers });
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	try {
-		// Only admins should be able to create users
-		const currentUser = locals.user as User;
+	// Only admins should be able to create users
+	const currentUser = locals.user as User;
 
-		if (!currentUser || !currentUser.roles.includes('admin')) {
-			return json({ error: 'Unauthorized' }, { status: 403 });
-		}
-
-		const userData = await request.json();
-		const { username, password, displayName, email, roles } = userData;
-
-		// Validate input
-		if (!username || !password) {
-			return json({ error: 'Username and password are required' }, { status: 400 });
-		}
-
-		// Check if username already exists
-		const existingUser = await getUserByUsername(username);
-
-		if (existingUser) {
-			return json({ error: 'Username already exists' }, { status: 409 });
-		}
-
-		// Get password policy from settings
-		const settings = await getSettings();
-		const policy = settings.auth?.passwordPolicy || 'strong';
-
-		// Validate password according to policy
-		if (!validatePassword(password, policy)) {
-			return json({ error: 'Password does not meet requirements' }, { status: 400 });
-		}
-
-		// Create the user
-		const passwordHash = await hashPassword(password);
-
-		const newUser: User = {
-			id: '', // Will be generated in saveUser
-			username,
-			passwordHash,
-			displayName: displayName || username,
-			email,
-			roles: roles || ['user'],
-			createdAt: new Date().toISOString()
+	if (!currentUser || !currentUser.roles.includes('admin')) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Unauthorized',
+			code: ApiErrorCode.FORBIDDEN
 		};
-
-		const savedUser = await saveUser(newUser);
-
-		// Return sanitized user (remove sensitive fields)
-		const { passwordHash: _, ...sanitizedUser } = savedUser;
-
-		return json({
-			success: true,
-			user: sanitizedUser
-		});
-	} catch (error) {
-		console.error('Error creating user:', error);
-		return json({ error: 'Failed to create user' }, { status: 500 });
+		return json(response, { status: 403 });
 	}
+
+	const userDataResult = await tryCatch(request.json());
+	if (userDataResult.error) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Invalid JSON payload',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
+	}
+	const { username, password, displayName, email, roles } = userDataResult.data;
+
+	// Validate input
+	if (!username || !password) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Username and password are required',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
+	}
+
+	// Check if username already exists
+	const existingUserResult = await tryCatch(getUserByUsername(username));
+	if (existingUserResult.data) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Username already exists',
+			code: ApiErrorCode.CONFLICT
+		};
+		return json(response, { status: 409 });
+	}
+
+	// Get password policy from settings
+	const settingsResult = await tryCatch(getSettings());
+	const settings = settingsResult.data;
+	const policy = settings?.auth?.passwordPolicy || 'strong';
+
+	// Validate password according to policy
+	if (!validatePassword(password, policy)) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Password does not meet requirements',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
+	}
+
+	// Create the user
+	const hashResult = await tryCatch(hashPassword(password));
+	if (hashResult.error) {
+		console.error('Error hashing password:', hashResult.error);
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Failed to hash password',
+			code: ApiErrorCode.INTERNAL_SERVER_ERROR,
+			details: hashResult.error
+		};
+		return json(response, { status: 500 });
+	}
+
+	const newUser: User = {
+		id: '', // Will be generated in saveUser
+		username,
+		passwordHash: hashResult.data,
+		displayName: displayName || username,
+		email,
+		roles: roles || ['user'],
+		createdAt: new Date().toISOString()
+	};
+
+	const saveResult = await tryCatch(saveUser(newUser));
+	if (saveResult.error) {
+		console.error('Error saving user:', saveResult.error);
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Failed to create user',
+			code: ApiErrorCode.INTERNAL_SERVER_ERROR,
+			details: saveResult.error
+		};
+		return json(response, { status: 500 });
+	}
+
+	// Return sanitized user (remove sensitive fields)
+	const { passwordHash: _, ...sanitizedUser } = saveResult.data;
+
+	return json({
+		success: true,
+		user: sanitizedUser
+	});
 };
 
 // Validate password based on policy

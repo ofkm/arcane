@@ -2,45 +2,50 @@ import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { getSettings } from '$lib/services/settings-service';
 import { checkAndUpdateContainers, checkAndUpdateStacks } from '$lib/services/docker/auto-update-service';
+import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
+import { tryCatch } from '$lib/utils/try-catch';
 
 export const GET: RequestHandler = async () => {
-	try {
-		const settings = await getSettings();
+	const settingsResult = await tryCatch(getSettings());
 
-		return json({
-			enabled: settings.autoUpdate,
-			interval: settings.autoUpdateInterval || 60,
-			message: settings.autoUpdate ? `Auto-update is enabled and checks every ${settings.autoUpdateInterval || 60} minutes` : 'Auto-update is disabled'
-		});
-	} catch (error: any) {
-		console.error('Error getting auto-update status:', error);
-		return json(
-			{
-				error: error.message || 'Failed to get auto-update status',
-				enabled: false
-			},
-			{ status: 500 }
-		);
+	if (settingsResult.error) {
+		console.error('Error getting auto-update status:', settingsResult.error);
+		const response: ApiErrorResponse = {
+			success: false,
+			error: settingsResult.error.message || 'Failed to get auto-update status',
+			code: ApiErrorCode.INTERNAL_SERVER_ERROR,
+			details: settingsResult.error
+		};
+		return json(response, { status: 500 });
 	}
+
+	const settings = settingsResult.data;
+	return json({
+		success: true,
+		enabled: settings.autoUpdate,
+		interval: settings.autoUpdateInterval || 60,
+		message: settings.autoUpdate ? `Auto-update is enabled and checks every ${settings.autoUpdateInterval || 60} minutes` : 'Auto-update is disabled'
+	});
 };
 
 export const POST: RequestHandler = async () => {
-	try {
-		const [containerResults, stackResults] = await Promise.all([checkAndUpdateContainers(), checkAndUpdateStacks()]);
+	const containerResult = await tryCatch(checkAndUpdateContainers());
+	const stackResult = await tryCatch(checkAndUpdateStacks());
 
-		return json({
-			success: true,
-			containers: containerResults,
-			stacks: stackResults
-		});
-	} catch (error: any) {
-		console.error('Error running manual update check:', error);
-		return json(
-			{
-				success: false,
-				error: error.message || 'Failed to run update check'
-			},
-			{ status: 500 }
-		);
+	if (containerResult.error || stackResult.error) {
+		console.error('Error running manual update check:', containerResult.error || stackResult.error);
+		const response: ApiErrorResponse = {
+			success: false,
+			error: containerResult.error?.message || stackResult.error?.message || 'Failed to run update check',
+			code: ApiErrorCode.INTERNAL_SERVER_ERROR,
+			details: containerResult.error || stackResult.error
+		};
+		return json(response, { status: 500 });
 	}
+
+	return json({
+		success: true,
+		containers: containerResult.data,
+		stacks: stackResult.data
+	});
 };

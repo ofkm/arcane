@@ -16,8 +16,9 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import ImageAPIService from '$lib/services/api/image-api-service';
-	import { handleApiReponse } from '$lib/utils/api.util';
+	import { handleApiReponse, handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
+	import type { ApiErrorResponse } from '$lib/types/errors.type';
 
 	let { data }: { data: PageData } = $props();
 	let images = $state<EnhancedImageInfo[]>(data.images || []);
@@ -114,20 +115,15 @@
 							continue;
 						}
 
-						const result = await tryCatch(imageApi.remove(id));
-						handleApiReponse(
-							result,
-							`Failed to delete image "${imageIdentifier}"`,
-							(value) => (isLoading.removing = value),
-							async () => {
+						await handleApiResultWithCallbacks({
+							result: await tryCatch(imageApi.remove(id)),
+							message: `Failed to delete image "${imageIdentifier}"`,
+							setLoadingState: (value) => (isLoading.removing = value),
+							onSuccess: async () => {
 								toast.success(`Image "${imageIdentifier}" deleted successfully.`);
 								successCount++;
 							}
-						);
-
-						if (result.error) {
-							failureCount++;
-						}
+						});
 					}
 
 					console.log(`Finished deleting. Success: ${successCount}, Failed: ${failureCount}`);
@@ -145,16 +141,16 @@
 	}
 
 	async function handlePruneImages() {
-		handleApiReponse(
-			await tryCatch(imageApi.prune()),
-			'Failed to Prune Images',
-			(value) => (isLoading.pruning = value),
-			async (result) => {
+		await handleApiResultWithCallbacks({
+			result: await tryCatch(imageApi.prune()),
+			message: 'Failed to Prune Images',
+			setLoadingState: (value) => (isLoading.pruning = value),
+			onSuccess: async (result: any) => {
 				isConfirmPruneDialogOpen = false;
-				toast.success(result.message);
+				toast.success(result?.message ?? 'Images pruned successfully.');
 				await invalidateAll();
 			}
-		);
+		});
 	}
 
 	async function pullImageByRepoTag(repoTag: string | undefined) {
@@ -166,15 +162,15 @@
 		let [imageRef, tag] = repoTag.split(':');
 		tag = tag || 'latest';
 
-		handleApiReponse(
-			await tryCatch(imageApi.pull(imageRef, tag)),
-			`Failed to pull image "${repoTag}"`,
-			(value) => (isLoading.pulling = value),
-			async () => {
+		await handleApiResultWithCallbacks({
+			result: await tryCatch(imageApi.pull(imageRef, tag)),
+			message: `Failed to pull image "${repoTag}"`,
+			setLoadingState: (value) => (isLoading.pulling = value),
+			onSuccess: async () => {
 				toast.success(`Image "${repoTag}" pulled successfully.`);
 				await invalidateAll();
 			}
-		);
+		});
 	}
 
 	async function handleImageRemove(id: string) {
@@ -188,15 +184,15 @@
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
-					handleApiReponse(
-						await tryCatch(imageApi.remove(id)),
-						'Failed to Remove Image',
-						(value) => (isLoading.removing = value),
-						async () => {
+					await handleApiResultWithCallbacks({
+						result: await tryCatch(imageApi.remove(id)),
+						message: 'Failed to Remove Image',
+						setLoadingState: (value) => (isLoading.removing = value),
+						onSuccess: async () => {
 							toast.success(`Image "${imageIdentifier}" deleted successfully.`);
 							await invalidateAll();
 						}
-					);
+					});
 				}
 			}
 		});
