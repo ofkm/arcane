@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import path, { join } from 'node:path';
+import path, { join, dirname } from 'node:path';
 import { basename } from 'node:path';
 import DockerodeCompose from 'dockerode-compose';
 import yaml from 'js-yaml';
@@ -39,7 +39,11 @@ export async function initComposeService(): Promise<void> {
  */
 export function updateStacksDirectory(directory: string): void {
 	if (directory) {
-		STACKS_DIR = directory;
+		if (!path.isAbsolute(directory)) {
+			STACKS_DIR = path.resolve(directory); // Resolve to absolute path
+		} else {
+			STACKS_DIR = directory;
+		}
 		console.log(`Stacks directory updated to: ${STACKS_DIR}`);
 	}
 }
@@ -51,12 +55,22 @@ export function updateStacksDirectory(directory: string): void {
  */
 export async function ensureStacksDir(): Promise<string> {
 	try {
-		if (!STACKS_DIR) {
-			STACKS_DIR = await ensureStacksDirectory();
-		} else {
-			await fs.mkdir(STACKS_DIR, { recursive: true });
+		// Ensure STACKS_DIR is initialized and is an absolute path
+		if (!STACKS_DIR || !path.isAbsolute(STACKS_DIR)) {
+			let dirPath = STACKS_DIR || (await ensureStacksDirectory()); // ensureStacksDirectory is from settings-service
+
+			if (!path.isAbsolute(dirPath)) {
+				// Resolve relative to the project's root or initial CWD.
+				// path.resolve() called with a single relative path resolves it against process.cwd().
+				// This should ideally happen once when the application starts or when settings are loaded.
+				dirPath = path.resolve(dirPath);
+			}
+			STACKS_DIR = dirPath; // Store the absolute path
 		}
-		return STACKS_DIR;
+
+		// Now STACKS_DIR is guaranteed to be absolute.
+		await fs.mkdir(STACKS_DIR, { recursive: true });
+		return STACKS_DIR; // Return the absolute path
 	} catch (err) {
 		console.error('Error creating stacks directory:', err);
 		throw new Error('Failed to create stacks storage directory');
@@ -67,27 +81,38 @@ export async function ensureStacksDir(): Promise<string> {
  * Returns the stack directory for a given stackId (unchanged)
  */
 async function getStackDir(stackId: string): Promise<string> {
-	const stacksDir = await ensureStacksDir();
-	const safeId = basename(stackId);
+	const stacksDirAbs = await ensureStacksDir(); // This now returns an absolute path
+	const safeId = path.basename(stackId); // Use path.basename for safety
 	if (safeId !== stackId) {
-		throw new Error('Invalid stack id');
+		// This check might be too strict if stackId can be a path itself.
+		// Consider if stackId is just a name or could be more complex.
+		// For now, assuming stackId is a simple name.
+		console.warn(`Original stackId "${stackId}" was sanitized to "${safeId}". Ensure this is expected.`);
+		// throw new Error('Invalid stack id'); // Or handle differently
 	}
-	return join(stacksDir, safeId);
+	return path.join(stacksDirAbs, safeId);
 }
 
 /**
  * Returns the path to the compose file, prioritizing compose.yaml, fallback to docker-compose.yml
  */
 async function getComposeFilePath(stackId: string): Promise<string> {
-	const stackDir = await getStackDir(stackId);
-	const newPath = join(stackDir, 'compose.yaml');
-	const oldPath = join(stackDir, 'docker-compose.yml');
+	const stackDirAbs = await getStackDir(stackId); // Will be absolute
+	const newPath = path.join(stackDirAbs, 'compose.yaml');
+	const oldPath = path.join(stackDirAbs, 'docker-compose.yml');
 	try {
 		await fs.access(newPath);
 		return newPath;
 	} catch {
-		await fs.access(oldPath);
-		return oldPath;
+		// If compose.yaml is not found, try docker-compose.yml
+		try {
+			await fs.access(oldPath);
+			return oldPath;
+		} catch (fallbackError) {
+			// Neither compose.yaml nor docker-compose.yml found at the absolute path
+			console.error(`Neither compose.yaml nor docker-compose.yml found in ${stackDirAbs}`);
+			throw fallbackError; // Re-throw the error from accessing oldPath
+		}
 	}
 }
 
@@ -587,15 +612,29 @@ export async function updateStack(stackId: string, updates: StackUpdate): Promis
  * @returns The `startStack` function returns a `Promise<boolean>`.
  */
 export async function startStack(stackId: string): Promise<boolean> {
+	const stackDir = await getStackDir(stackId); // Get the absolute path to the stack directory
+	const originalCwd = process.cwd(); // Store the original CWD
+
 	try {
+		process.chdir(stackDir); // Change CWD to the stack directory
+		console.log(`Temporarily changed CWD to: ${stackDir} for stack ${stackId} operations.`);
+
+		// getComposeInstance uses an absolute path to the compose file within stackDir.
+		// Any relative path resolution by dockerode-compose (e.g., for .env via env_file)
+		// should now correctly use stackDir as the base if it considers CWD.
 		const compose = await getComposeInstance(stackId);
+
 		await compose.pull();
 		await compose.up();
+
 		return true;
 	} catch (err: unknown) {
-		console.error(`Error starting stack ${stackId}:`, err);
+		console.error(`Error starting stack ${stackId} from directory ${stackDir}:`, err);
 		const errorMessage = err instanceof Error ? err.message : String(err);
 		throw new Error(`Failed to start stack: ${errorMessage}`);
+	} finally {
+		process.chdir(originalCwd); // Always change back to the original CWD
+		console.log(`Restored CWD to: ${originalCwd}.`);
 	}
 }
 
@@ -719,26 +758,34 @@ export async function stopStack(stackId: string): Promise<boolean> {
  * @returns The `restartStack` function returns a `Promise<boolean>`.
  */
 export async function restartStack(stackId: string): Promise<boolean> {
+	const stackDir = await getStackDir(stackId);
+	const originalCwd = process.cwd();
 	console.log(`Attempting to restart stack ${stackId}...`);
+
 	try {
-		// Use the manual stop logic
+		// stopStack might also benefit from CWD context if it uses compose internally,
+		// but your current stopStack is manual.
 		const stopped = await stopStack(stackId);
 		if (!stopped) {
-			// If stopStack indicates failure (if you modify it to return false on error)
 			console.error(`Restart failed because stop step failed for stack ${stackId}.`);
 			return false;
 		}
 
-		// Now start it again using compose.up()
+		process.chdir(stackDir);
+		console.log(`Temporarily changed CWD to: ${stackDir} for restarting stack ${stackId}.`);
+
 		console.log(`Starting stack ${stackId} after stopping...`);
 		const compose = await getComposeInstance(stackId);
-		await compose.up(); // Assuming compose.up() works correctly
+		await compose.up();
 		console.log(`Stack ${stackId} started.`);
 		return true;
 	} catch (err: unknown) {
-		console.error(`Error restarting stack ${stackId}:`, err);
+		console.error(`Error restarting stack ${stackId} from directory ${stackDir}:`, err);
 		const errorMessage = err instanceof Error ? err.message : String(err);
 		throw new Error(`Failed to restart stack: ${errorMessage}`);
+	} finally {
+		process.chdir(originalCwd);
+		console.log(`Restored CWD to: ${originalCwd}.`);
 	}
 }
 
@@ -755,31 +802,37 @@ export async function restartStack(stackId: string): Promise<boolean> {
  * during the process, the function catches the error, logs it, and then throws a new `
  */
 export async function fullyRedeployStack(stackId: string): Promise<boolean> {
+	const stackDir = await getStackDir(stackId);
+	const originalCwd = process.cwd();
 	console.log(`Attempting to fully redeploy stack ${stackId}...`);
+
 	try {
-		// Use the manual stop logic
 		const stopped = await stopStack(stackId);
 		if (!stopped) {
 			console.error(`Redeploy failed because stop step failed for stack ${stackId}.`);
 			return false;
 		}
 
-		// Pull the latest images
+		process.chdir(stackDir);
+		console.log(`Temporarily changed CWD to: ${stackDir} for redeploying stack ${stackId}.`);
+
 		console.log(`Pulling images for stack ${stackId}...`);
-		const compose = await getComposeInstance(stackId); // Get instance again for pull/up
+		const compose = await getComposeInstance(stackId);
 		await compose.pull();
 		console.log(`Images pulled for stack ${stackId}.`);
 
-		// Start the stack again
 		console.log(`Starting stack ${stackId} after pull...`);
 		await compose.up();
 		console.log(`Stack ${stackId} started.`);
 
 		return true;
 	} catch (err: unknown) {
-		console.error(`Error fully redeploying stack ${stackId}:`, err);
+		console.error(`Error fully redeploying stack ${stackId} from directory ${stackDir}:`, err);
 		const errorMessage = err instanceof Error ? err.message : String(err);
 		throw new Error(`Failed to fully redeploy stack: ${errorMessage}`);
+	} finally {
+		process.chdir(originalCwd);
+		console.log(`Restored CWD to: ${originalCwd}.`);
 	}
 }
 

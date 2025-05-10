@@ -25,10 +25,8 @@ RUN delgroup ping && apk del iputils
 WORKDIR /app
 
 # Set up environment variables early for better caching
+# These will serve as defaults if not overridden in docker-compose.yml
 ENV DOCKER_GID=998 PUID=1000 PGID=1000
-
-# Create necessary groups and users
-RUN addgroup -g ${PGID} arcane && adduser -D -u ${PUID} -G arcane arcane && addgroup -g ${DOCKER_GID} docker && adduser arcane docker
 
 # Set up directories and permissions
 RUN mkdir -p /app/data && chmod 755 /app/data
@@ -42,14 +40,15 @@ COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Install only production dependencies
 COPY package*.json ./
-RUN npm install --omit=dev && npm cache clean --force && chown -R arcane:arcane /app
+# The chown part is removed as 'arcane' user might not exist here
+RUN npm install --omit=dev && npm cache clean --force
 
 # Configure container
 EXPOSE 3000
 VOLUME ["/app/data"]
 
-ARG VERSION="0.7.0"
-ARG REVISION="7499aee"
+ARG VERSION="0.7.1"
+ARG REVISION="dde20c0"
 
 # Add OCI standard labels (reading version/revision from files)
 LABEL org.opencontainers.image.authors="OFKM Technologies"

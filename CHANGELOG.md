@@ -1,3 +1,10 @@
+## [0.7.1](https://github.com/ofkm/arcane/compare/v0.7.0...v0.7.1) (2025-05-10)
+
+### Bug Fixes
+
+* compose stacks not starting from the stack directory ([7090c4e](https://github.com/ofkm/arcane/commit/7090c4e0950274e0334bc229e5c3b1435ee3e22d))
+* container permissions and removed the need for DOCKER_GID ([dde20c0](https://github.com/ofkm/arcane/commit/dde20c0cff5dea6812e29677dae8254ad41abaa1))
+* show error messages in toasts ([#148](https://github.com/ofkm/arcane/issues/148)) ([c5d6b90](https://github.com/ofkm/arcane/commit/c5d6b9069fc9d20f4781452bfe7cc4ead89c9cc9))
 ## [0.7.0](https://github.com/ofkm/arcane/compare/v0.6.0...v0.7.0) (2025-05-09)
 
 ### Features

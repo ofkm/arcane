@@ -2,19 +2,42 @@ services:
   arcane:
     image: ghcr.io/ofkm/arcane:latest
     container_name: arcane
-    user: root
     ports:
-      - '3000:3000'
+      - '3000:3000' # Exposes Arcane's web interface on port 3000 of the host.
     volumes:
+      # Mount the Docker socket to allow Arcane to manage Docker.
       - /var/run/docker.sock:/var/run/docker.sock
+      # Mount a volume for Arcane's persistent data (stacks, settings, etc.).
+      # Replace './arcane-data' with your preferred host path.
       - ./arcane-data:/app/data
     environment:
-      - APP_ENV=production
-      - DOCKER_GID=998 # Find using: getent group docker | cut -d: -f3
-      - PUBLIC_SESSION_SECRET=your-secure-random-32-character-string-here # Generate using: openssl rand -base64 32
-      # - PUBLIC_ALLOW_INSECURE_COOKIES=true # Uncomment only for local HTTP testing without SSL/TLS
-    restart: unless-stopped
+      - APP_ENV=production # Sets the application environment to production.
 
-# Optional: Define the volume if you want Docker to manage it
+      # --- User and Group ID Configuration (Optional but Recommended for Volume Permissions) ---
+      # These variables control the user and group Arcane runs as inside the container.
+      # Matching these to your host user's UID/GID can help avoid permission issues
+      # with the mounted /app/data volume.
+      - PUID=1000 # User ID for the 'arcane' user inside the container. Defaults to 1000.
+      - PGID=1000 # Group ID for the 'arcane' group inside the container. Defaults to 1000.
+
+      # --- Docker Group ID (Usually Handled Automatically) ---
+      # - DOCKER_GID=998 # GID for the 'docker' group inside the container.
+                         # The entrypoint script typically auto-detects and sets this based on the
+                         # GID of the mounted /var/run/docker.sock.
+                         # Only set this if you have a specific need or the auto-detection fails.
+
+      # --- Session Configuration ---
+      # Generate a strong secret using: openssl rand -base64 32
+      - PUBLIC_SESSION_SECRET=your-secure-random-32-character-string-here
+
+      # --- Advanced/Debugging (Uncomment if needed) ---
+      # - PUBLIC_ALLOW_INSECURE_COOKIES=true # Uncomment only for local HTTP testing without SSL/TLS.
+      # - NODE_ENV=development # For development-specific behaviors (not recommended for production).
+
+    restart: unless-stopped # Ensures the container restarts automatically unless manually stopped.
+
+# Optional: Define the volume if you want Docker to manage it explicitly.
+# This allows for easier management with `docker volume` commands.
 # volumes:
 #   arcane-data:
+#     driver: local # Or your preferred volume driver

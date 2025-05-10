@@ -8,26 +8,27 @@ if [ "$(id -u)" -ne 0 ]; then
     exec "$@"
 fi
 
-echo "Entrypoint: Running as root. Setting up user and permissions..."
+echo "Entrypoint: Setting up user and permissions..."
 
 # Default PUID/PGID if not provided
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
 DOCKER_GID=${DOCKER_GID:-998}
 APP_USER="arcane"
-APP_GROUP="arcane"
+APP_GROUP_FALLBACK="arcane" # Fallback group name if PGID group exists with different name
 APP_DIR="/app"
+DATA_DIR="${APP_DIR}/data"
 
 echo "Entrypoint: Using PUID=${PUID}, PGID=${PGID}, DOCKER_GID=${DOCKER_GID}"
 
-# Create the arcane group if it doesn't exist
-if ! getent group "$PGID" > /dev/null 2>&1; then
+# Determine the group name for PGID
+if getent group "$PGID" > /dev/null 2>&1; then
+    APP_GROUP=$(getent group "$PGID" | cut -d: -f1)
+    echo "Entrypoint: Group with GID ${PGID} already exists: ${APP_GROUP}"
+else
+    APP_GROUP="$APP_GROUP_FALLBACK"
     echo "Entrypoint: Creating group ${APP_GROUP} with GID ${PGID}..."
     addgroup -g "$PGID" "$APP_GROUP"
-else
-    # If group with PGID exists, find its name
-    GROUP_NAME=$(getent group "$PGID" | cut -d: -f1)
-    echo "Entrypoint: Group with GID ${PGID} already exists: ${GROUP_NAME}"
 fi
 
 # Ensure the docker group exists with correct GID
@@ -42,20 +43,30 @@ else
     fi
 fi
 
-# Create the arcane user if it doesn't exist
-if ! getent passwd "$PUID" > /dev/null 2>&1; then
-    echo "Entrypoint: Creating user ${APP_USER} with UID ${PUID}..."
-    adduser -D -u "$PUID" -G "$APP_GROUP" "$APP_USER"
-else
-    # If user with PUID exists, find their name
+# Create the arcane user if it doesn't exist or ensure it uses the correct PUID/PGID
+if getent passwd "$PUID" > /dev/null 2>&1; then
     USERNAME=$(getent passwd "$PUID" | cut -d: -f1)
     echo "Entrypoint: User with UID ${PUID} already exists: ${USERNAME}"
     
-    # Don't try to rename the root user or if username already matches
+    # Ensure existing user is part of the target APP_GROUP
+    if ! id -nG "$USERNAME" | grep -qw "$APP_GROUP"; then
+        echo "Entrypoint: Adding user ${USERNAME} (UID ${PUID}) to group ${APP_GROUP} (GID ${PGID})..."
+        usermod -a -G "$APP_GROUP" "$USERNAME"
+    fi
+    # Ensure primary group is correct
+    if [ "$(id -g "$USERNAME")" != "$PGID" ]; then
+        echo "Entrypoint: Setting primary group for ${USERNAME} (UID ${PUID}) to ${APP_GROUP} (GID ${PGID})..."
+        usermod -g "$PGID" "$USERNAME"
+    fi
+
+    # If username is not 'arcane', and not 'root', consider renaming
     if [ "$USERNAME" != "$APP_USER" ] && [ "$USERNAME" != "root" ]; then
-        echo "Entrypoint: Renaming user from ${USERNAME} to ${APP_USER}..."
+        echo "Entrypoint: Renaming user from ${USERNAME} to ${APP_USER} (UID ${PUID})..."
         usermod -l "$APP_USER" "$USERNAME"
     fi
+else
+    echo "Entrypoint: Creating user ${APP_USER} with UID ${PUID} and GID ${PGID}..."
+    adduser -D -u "$PUID" -G "$APP_GROUP" "$APP_USER"
 fi
 
 # Ensure arcane user is in the docker group
@@ -66,53 +77,37 @@ fi
 
 # Fix permissions for the Docker socket if it exists
 if [ -S /var/run/docker.sock ]; then
-    # Get the GID of the docker socket
     SOCKET_GID=$(stat -c '%g' /var/run/docker.sock)
-    
-    # If we have a different GID than expected, recreate the docker group
-    if [ "${SOCKET_GID}" != "${DOCKER_GID}" ]; then
-        echo "Docker socket GID (${SOCKET_GID}) doesn't match configured DOCKER_GID (${DOCKER_GID})"
-        echo "Updating docker group to match socket GID"
-        
-        # Delete existing docker group
+    if [ "${SOCKET_GID}" != "$(getent group docker | cut -d: -f3)" ]; then
+        echo "Docker socket GID (${SOCKET_GID}) doesn't match configured docker group GID."
+        echo "Updating docker group to match socket GID: ${SOCKET_GID}"
         delgroup docker >/dev/null 2>&1 || true
-        
-        # Create new docker group with socket GID
         addgroup -g "${SOCKET_GID}" docker
-        
-        # Add arcane user to the new docker group
-        adduser arcane docker
+        adduser "$APP_USER" docker
     fi
-    
-    echo "Docker socket accessible at /var/run/docker.sock (GID: ${SOCKET_GID})"
+    echo "Docker socket accessible at /var/run/docker.sock (GID: $(getent group docker | cut -d: -f3))"
 else
     echo "WARNING: Docker socket not found at /var/run/docker.sock"
     echo "Make sure to mount the Docker socket when running this container"
 fi
 
-# Ensure data directory exists
-mkdir -p /app/data
+# Ensure data directory exists and set ownership
+echo "Entrypoint: Ensuring data directory exists and setting ownership..."
+mkdir -p "$DATA_DIR"
+chown -R "${PUID}:${PGID}" "$DATA_DIR"
 
 # If settings don't exist, copy the default
-if [ ! -f /app/data/app-settings.json ]; then
-  if [ -f /app/data/app-settings.json.default ]; then
-    cp /app/data/app-settings.json.default /app/data/app-settings.json
+if [ ! -f "${DATA_DIR}/app-settings.json" ]; then
+  if [ -f "${DATA_DIR}/app-settings.json.default" ]; then # Check if default is in data dir
+    echo "Entrypoint: Copying default settings to ${DATA_DIR}/app-settings.json"
+    cp "${DATA_DIR}/app-settings.json.default" "${DATA_DIR}/app-settings.json"
+    chown "${PUID}:${PGID}" "${DATA_DIR}/app-settings.json"
+  elif [ -f "${APP_DIR}/app-settings.json.default" ]; then # Check if default is in app dir (e.g. copied during build)
+    echo "Entrypoint: Copying default settings from ${APP_DIR}/app-settings.json.default to ${DATA_DIR}/app-settings.json"
+    cp "${APP_DIR}/app-settings.json.default" "${DATA_DIR}/app-settings.json"
+    chown "${PUID}:${PGID}" "${DATA_DIR}/app-settings.json"
   fi
 fi
 
-# Ensure permissions
-chmod 755 /app/data
-chmod 644 /app/data/app-settings.json 2>/dev/null || true
-
-# Change ownership of application directories
-echo "Entrypoint: Setting permissions on critical directories..."
-chown "$PUID":"$PGID" "$APP_DIR"
-chown -R "$PUID":"$PGID" "$APP_DIR/data"
-
-if [ "$PUID" = "0" ]; then
-    echo "Starting Arcane as root user (PUID=0 was specified)..."
-    exec "$@"
-else
-    echo "Starting Arcane as user arcane ($(id -u arcane):$(id -g arcane))..."
-    exec su-exec arcane "$@"
-fi
+echo "Entrypoint: Setup complete. Executing command as user ${APP_USER} (UID: ${PUID}, GID: ${PGID})..."
+exec su-exec "$APP_USER" "$@"
