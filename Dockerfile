@@ -26,7 +26,7 @@ WORKDIR /app
 
 # Set up environment variables early for better caching
 # These will serve as defaults if not overridden in docker-compose.yml
-ENV DOCKER_GID=998 PUID=1000 PGID=1000
+ENV DOCKER_GID=998 PUID=2000 PGID=2000
 
 # Set up directories and permissions
 RUN mkdir -p /app/data && chmod 755 /app/data

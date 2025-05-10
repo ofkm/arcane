@@ -11,8 +11,8 @@ fi
 echo "Entrypoint: Setting up user and permissions..."
 
 # Default PUID/PGID if not provided
-PUID=${PUID:-1000}
-PGID=${PGID:-1000}
+PUID=${PUID:-2000}
+PGID=${PGID:-2000}
 DOCKER_GID=${DOCKER_GID:-998}
 APP_USER="arcane"
 APP_GROUP_FALLBACK="arcane" # Fallback group name if PGID group exists with different name
