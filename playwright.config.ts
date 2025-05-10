@@ -7,7 +7,7 @@ export default defineConfig({
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
-	workers: process.env.CI ? 1 : undefined,
+	workers: process.env.CI ? 4 : undefined,
 	reporter: process.env.CI ? [['html', { outputFolder: 'tests/.report' }], ['github']] : [['line'], ['html', { open: 'never', outputFolder: 'tests/.report' }]],
 	use: {
 		baseURL: 'http://localhost:3000',
@@ -23,12 +23,14 @@ export default defineConfig({
 		}
 	],
 	webServer: {
-		command: 'APP_ENV=TEST npm run dev',
+		command: 'PUBLIC_SESSION_SECRET=XphMa9HahGNoFC01/rMqAriMvt+H0YT332UPcTtPcMM= PUBLIC_APP_ENV=TEST APP_ENV=TEST npm run dev',
 		url: 'http://localhost:3000',
 		reuseExistingServer: !process.env.CI,
 		timeout: 120 * 1000,
 		env: {
-			APP_ENV: 'TEST'
+			APP_ENV: 'TEST',
+			PUBLIC_APP_ENV: 'TEST',
+			PUBLIC_SESSION_SECRET: 'XphMa9HahGNoFC01/rMqAriMvt+H0YT332UPcTtPcMM='
 		}
 	}
 });

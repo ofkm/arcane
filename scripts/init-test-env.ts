@@ -8,7 +8,7 @@ import { DEFAULT_SETTINGS } from '../src/lib/services/settings-service';
 // --- Configuration ---
 const TEST_USERNAME = 'admin';
 const TEST_PASSWORD = 'admin'; // Use a simple password for testing
-const TEST_DATA_DIR = process.env.APP_ENV === 'TEST' ? path.resolve(process.cwd(), '.test-data') : null;
+const TEST_DATA_DIR = process.env.APP_ENV === 'TEST' ? path.resolve(process.cwd(), 'data') : null;
 // --- End Configuration ---
 
 async function setupTestEnvironment() {

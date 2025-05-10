@@ -6,9 +6,10 @@ import { getUserByUsername } from '$lib/services/user-service';
 import { getSettings } from '$lib/services/settings-service';
 import { checkFirstRun } from '$lib/utils/onboarding.utils';
 import { sessionHandler } from '$lib/services/session-handler';
+import { env } from '$env/dynamic/public';
 
 // Get environment variable
-const isTestEnvironment = process.env.APP_ENV === 'TEST';
+const isTestEnvironment = env.PUBLIC_APP_ENV === 'TEST';
 
 // Initialize needed services
 try {

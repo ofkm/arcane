@@ -1,10 +1,11 @@
 import { dev } from '$app/environment';
+import { env } from '$env/dynamic/public';
 
 // Simply use SvelteKit's built-in dev flag
 export const isDev = dev;
 
 // For test environment, we can use a safer approach
-export const isTest = false; // Default for browser
+export const isTest = env.PUBLIC_APP_ENV === 'TEST';
 
 export const defaultEnvTemplate = `# Environment Variables
 # These variables will be available to your stack services
