@@ -6,9 +6,9 @@ import { tryCatch } from '$lib/utils/try-catch';
 
 export const PUT: RequestHandler = async ({ params, request }) => {
 	const { stackId } = params;
-	const { name, composeContent, autoUpdate, envContent } = await request.json();
+	const { name, composeContent, envContent } = await request.json();
 
-	const result = await tryCatch(updateStack(stackId, { name, composeContent, autoUpdate, envContent }));
+	const result = await tryCatch(updateStack(stackId, { name, composeContent, envContent }));
 
 	if (result.error) {
 		console.error('Error updating stack:', result.error);

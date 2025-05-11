@@ -15,7 +15,6 @@
 	import { toast } from 'svelte-sonner';
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
 	import EnvEditor from '$lib/components/env-editor.svelte';
-	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -40,13 +39,11 @@
 	let name = $derived(editorState.name);
 	let composeContent = $derived(editorState.composeContent);
 	let envContent = $derived(editorState.envContent || '');
-	let autoUpdate = $derived(editorState.autoUpdate);
 	let originalName = $derived(editorState.originalName);
 	let originalComposeContent = $derived(editorState.originalComposeContent);
 	let originalEnvContent = $derived(editorState.originalEnvContent || '');
-	let originalAutoUpdate = $derived(editorState.autoUpdate);
 
-	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || envContent !== originalEnvContent || autoUpdate !== originalAutoUpdate);
+	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || envContent !== originalEnvContent);
 
 	const baseServerUrl = $derived(settings?.baseServerUrl || 'localhost');
 
@@ -62,14 +59,13 @@
 		if (!stack || !hasChanges) return;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(stackApi.save(stack.id, name, composeContent, autoUpdate, envContent)),
+			result: await tryCatch(stackApi.save(stack.id, name, composeContent, envContent)),
 			message: 'Failed to Save Stack',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async () => {
 				originalName = name;
 				originalComposeContent = composeContent;
 				originalEnvContent = envContent;
-				originalAutoUpdate = autoUpdate;
 
 				console.log('Stack save successful');
 				toast.success('Stack updated successfully!');
@@ -264,14 +260,6 @@
 									<EnvEditor bind:value={envContent} readOnly={isLoading.saving || isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} />
 								</div>
 								<p class="text-xs text-muted-foreground">Define environment variables in KEY=value format. These will be saved as a .env file in the stack directory.</p>
-							</div>
-						</div>
-
-						<div class="flex items-center space-x-2 mt-4">
-							<Switch id="auto-update" name="autoUpdate" bind:checked={autoUpdate} />
-							<Label for="auto-update" class="font-medium">Enable auto-update</Label>
-							<div class="inline-block">
-								<p class="text-xs text-muted-foreground">When enabled, Arcane will periodically check for newer versions of all images in this stack and automatically redeploy it.</p>
 							</div>
 						</div>
 					</div>

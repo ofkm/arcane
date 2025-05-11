@@ -31,7 +31,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		name: stack.name,
 		composeContent: stack.composeContent || '',
 		envContent: stack.envContent || '',
-		autoUpdate: stack.meta?.autoUpdate || false,
 		originalName: stack.name,
 		originalComposeContent: stack.composeContent || '',
 		originalEnvContent: stack.envContent || ''
