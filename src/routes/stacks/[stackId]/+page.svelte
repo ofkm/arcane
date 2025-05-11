@@ -250,7 +250,10 @@
 					<div class="space-y-4">
 						<div class="grid w-full max-w-sm items-center gap-1.5">
 							<Label for="name">Stack Name</Label>
-							<Input type="text" id="name" name="name" bind:value={name} required disabled={isLoading.saving} />
+							<Input type="text" id="name" name="name" bind:value={name} required disabled={isLoading.saving || stack?.status === 'running' || stack?.status === 'partially running'} />
+							{#if stack?.status === 'running' || stack?.status === 'partially running'}
+								<p class="text-xs text-muted-foreground">Stack name cannot be changed while the stack is running. Please stop the stack first.</p>
+							{/if}
 						</div>
 
 						<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
