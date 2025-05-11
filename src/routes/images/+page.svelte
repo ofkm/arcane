@@ -18,6 +18,7 @@
 	import ImageAPIService from '$lib/services/api/image-api-service';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
+	import { settingsStore } from '$lib/stores/settings-store';
 
 	let { data }: { data: PageData } = $props();
 	let images = $state<EnhancedImageInfo[]>(data.images || []);
@@ -31,6 +32,15 @@
 		pruning: false
 	});
 
+	$effect(() => {
+		if (data.settings) {
+			settingsStore.update((current) => ({
+				...current,
+				...data.settings
+			}));
+		}
+	});
+
 	const imageApi = new ImageAPIService();
 
 	let isPullDialogOpen = $state(false);
@@ -41,14 +51,39 @@
 	const totalImages = $derived(images?.length || 0);
 	const totalSize = $derived(images?.reduce((acc, img) => acc + (img.size || 0), 0) || 0);
 
-	async function handlePullImageSubmit(event: { imageRef: string; tag?: string; platform?: string }) {
-		const { imageRef, tag = 'latest', platform } = event;
+	async function handlePullImageSubmit(event: { imageRef: string; tag?: string; platform?: string; registryUrl?: string }) {
+		const { imageRef, tag = 'latest', platform, registryUrl } = event;
 
 		isLoading.pulling = true;
+		pullProgress = 0; // Reset progress
 
 		try {
 			const encodedImageRef = encodeURIComponent(imageRef);
-			const eventSource = new EventSource(`/api/images/pull-stream/${encodedImageRef}?tag=${tag}${platform ? `&platform=${platform}` : ''}`);
+			let apiUrl = `/api/images/pull-stream/${encodedImageRef}?tag=${tag}`;
+
+			if (platform) {
+				apiUrl += `&platform=${encodeURIComponent(platform)}`;
+			}
+
+			if (registryUrl) {
+				const credentials = $settingsStore.registryCredentials || [];
+				const foundCredential = credentials.find((cred) => cred.url === registryUrl);
+
+				if (foundCredential && foundCredential.username) {
+					apiUrl += `&authServer=${encodeURIComponent(foundCredential.url)}`;
+					apiUrl += `&authUser=${encodeURIComponent(foundCredential.username)}`;
+					if (foundCredential.password) {
+						// Password is optional
+						apiUrl += `&authPass=${encodeURIComponent(foundCredential.password)}`;
+					}
+					toast.info(`Attempting pull from ${foundCredential.url} with user ${foundCredential.username}`);
+				} else if (registryUrl !== 'docker.io' && registryUrl !== '') {
+					// Avoid warning for default Docker Hub
+					toast.error(`Credentials not found for ${registryUrl}. Attempting unauthenticated pull.`);
+				}
+			}
+
+			const eventSource = new EventSource(apiUrl);
 
 			eventSource.onmessage = (event) => {
 				const data = JSON.parse(event.data);
@@ -58,6 +93,12 @@
 					toast.error(`Pull failed: ${data.error}`);
 					isLoading.pulling = false;
 					return;
+				}
+
+				if (data.type === 'info' || data.type === 'warning') {
+					if (data.type === 'info') toast.info(data.message);
+					if (data.type === 'warning') toast.error(data.message);
+					return; // Don't process as progress/completion
 				}
 
 				if (data.progress !== undefined) {
@@ -72,7 +113,7 @@
 
 					setTimeout(async () => {
 						await invalidateAll();
-					}, 500);
+					}, 500); // Give Docker a moment before invalidating
 					isLoading.pulling = false;
 				}
 			};

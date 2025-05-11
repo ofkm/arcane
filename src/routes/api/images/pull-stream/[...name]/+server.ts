@@ -5,6 +5,12 @@ import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { extractDockerErrorMessage } from '$lib/utils/errors.util';
 import { json } from '@sveltejs/kit';
 
+interface AuthConfig {
+	username: string;
+	password?: string;
+	serveraddress: string;
+}
+
 export const GET: RequestHandler = async ({ params, request }) => {
 	const imageName = params.name;
 
@@ -17,9 +23,13 @@ export const GET: RequestHandler = async ({ params, request }) => {
 		return json(response, { status: 400 });
 	}
 
-	const url = new URL(request.url);
-	const tag = url.searchParams.get('tag') || 'latest';
-	const platform = url.searchParams.get('platform');
+	const reqUrl = new URL(request.url);
+	const tag = reqUrl.searchParams.get('tag') || 'latest';
+	const platform = reqUrl.searchParams.get('platform');
+
+	const authServer = reqUrl.searchParams.get('authServer');
+	const authUser = reqUrl.searchParams.get('authUser');
+	const authPass = reqUrl.searchParams.get('authPass');
 
 	const headers = new Headers({
 		'Content-Type': 'text/event-stream',
@@ -37,14 +47,23 @@ export const GET: RequestHandler = async ({ params, request }) => {
 				}
 
 				const fullImageRef = `${imageName}:${tag}`;
+				const pullOptions: { platform?: string; authconfig?: AuthConfig } = {};
 
-				// Construct pull options
-				const pullOptions: { platform?: string } = {};
 				if (platform) {
 					pullOptions.platform = platform;
 				}
 
-				// Pass options to docker.pull
+				if (authServer && authUser) {
+					pullOptions.authconfig = {
+						username: authUser,
+						password: authPass || undefined,
+						serveraddress: authServer
+					};
+					send({ type: 'info', message: `Attempting authenticated pull for ${authServer} as ${authUser}` });
+				} else if (authServer) {
+					send({ type: 'info', message: `Attempting pull from ${authServer} (no specific user credentials provided)` });
+				}
+
 				const pullStream = await docker.pull(fullImageRef, pullOptions);
 
 				type LayerProgress = {
@@ -52,12 +71,10 @@ export const GET: RequestHandler = async ({ params, request }) => {
 					total: number;
 				};
 				const layers: Record<string, LayerProgress> = {};
-				let totalProgress = 0;
 
 				docker.modem.followProgress(
 					pullStream,
-					(err: Error | null, output: any[]) => {
-						// Pull complete
+					(err: Error | null) => {
 						if (err) {
 							const errorResponse: ApiErrorResponse = {
 								success: false,
@@ -70,7 +87,8 @@ export const GET: RequestHandler = async ({ params, request }) => {
 							send({
 								success: true,
 								complete: true,
-								progress: 100
+								progress: 100,
+								status: 'Download complete'
 							});
 						}
 						controller.close();
@@ -87,35 +105,39 @@ export const GET: RequestHandler = async ({ params, request }) => {
 							}
 
 							let totalSize = 0;
-							let currentProgress = 0;
+							let currentProgressSum = 0;
+							let calculatedProgress = 0;
 
-							Object.values(layers).forEach((layer: any) => {
+							Object.values(layers).forEach((layer: LayerProgress) => {
 								if (layer.total > 0) {
 									totalSize += layer.total;
-									currentProgress += layer.current;
+									currentProgressSum += layer.current;
 								}
 							});
 
 							if (totalSize > 0) {
-								totalProgress = Math.min(99, Math.floor((currentProgress / totalSize) * 100));
+								calculatedProgress = Math.min(99, Math.floor((currentProgressSum / totalSize) * 100));
 								send({
 									success: true,
-									progress: totalProgress,
-									status: event.status
+									progress: calculatedProgress,
+									status: event.status,
+									id: event.id
 								});
-							} else {
-								// Send initial status even if progress can't be calculated yet
+							} else if (event.status) {
 								send({
 									success: true,
 									progress: 0,
-									status: event.status
+									status: event.status,
+									id: event.id
 								});
 							}
 						} else if (event.status) {
-							// Send status updates that don't have layer progress
+							const lastLayerKey = Object.keys(layers).pop();
+							const lastKnownProgress = lastLayerKey && layers[lastLayerKey]?.total > 0 ? Math.min(99, Math.floor((layers[lastLayerKey].current / layers[lastLayerKey].total) * 100)) : 0;
 							send({
 								success: true,
-								status: event.status
+								status: event.status,
+								progress: lastKnownProgress
 							});
 						}
 					}
