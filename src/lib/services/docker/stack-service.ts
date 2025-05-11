@@ -530,44 +530,67 @@ export async function getStack(stackId: string): Promise<Stack> {
 /**
  * Updates a stack with new configuration and/or .env file
  */
-export async function updateStack(stackId: string, updates: StackUpdate): Promise<Stack> {
-	// stackId is dirName
-	const stackDir = await getStackDir(stackId);
-	let composePath = await getComposeFilePath(stackId); // May be null if only .env is being updated and compose doesn't exist yet (edge case)
+export async function updateStack(currentStackId: string, updates: StackUpdate): Promise<Stack> {
+	let effectiveStackId = currentStackId;
+	let stackAfterRename: Stack | null = null;
 
-	// If a name update is provided, it's ignored as the name is the directory name.
-	if (updates.name && updates.name !== stackId) {
-		console.warn(`Updating stack name via 'updateStack' is not supported. Stack name is derived from directory: ${stackId}.`);
+	// 1. Handle potential rename first
+	if (updates.name) {
+		const newSlugifiedName = slugify(updates.name, {
+			lower: true,
+			strict: true,
+			replacement: '-',
+			trim: true
+		});
+
+		if (newSlugifiedName !== currentStackId) {
+			console.log(`Rename requested for stack '${currentStackId}' to '${updates.name}' (slug: '${newSlugifiedName}').`);
+			// renameStack will throw an error if the stack is running or if other rename conditions are not met.
+			stackAfterRename = await renameStack(currentStackId, updates.name);
+			effectiveStackId = stackAfterRename.id;
+			console.log(`Stack '${currentStackId}' successfully renamed to '${effectiveStackId}'.`);
+		} else {
+			// Name provided is the same as current, or slugifies to the same. No rename action needed.
+			console.log(`Provided name '${updates.name}' is effectively the same as current stack ID '${currentStackId}'. No rename action.`);
+		}
 	}
 
-	try {
-		const promises = [];
+	// 2. Handle content updates (compose or .env)
+	// These updates will apply to the new directory if a rename occurred.
+	let contentUpdated = false;
+	const stackDirForContent = await getStackDir(effectiveStackId);
 
-		if (updates.composeContent !== undefined) {
-			// Determine the correct compose file path to write to, defaulting to compose.yaml
-			const targetComposePath = composePath || path.join(stackDir, 'compose.yaml');
-			promises.push(fs.writeFile(targetComposePath, updates.composeContent, 'utf8'));
-			composePath = targetComposePath; // Update composePath if it was initially null
-		}
+	const promises = [];
 
-		if (updates.envContent !== undefined) {
-			promises.push(saveEnvFile(stackId, updates.envContent));
-		}
+	if (updates.composeContent !== undefined) {
+		let currentComposePath = await getComposeFilePath(effectiveStackId); // Check existing, might be null
+		const targetComposePath = currentComposePath || path.join(stackDirForContent, 'compose.yaml'); // Default to compose.yaml if not found
 
-		if (promises.length === 0 && !updates.name) {
-			// Check if any actual file update was requested
-			console.warn(`No content updates provided for stack ${stackId}.`);
-			return getStack(stackId); // Return current stack data
-		}
+		promises.push(fs.writeFile(targetComposePath, updates.composeContent, 'utf8'));
+		contentUpdated = true;
+		console.log(`Updating composeContent for stack '${effectiveStackId}'.`);
+	}
 
+	if (updates.envContent !== undefined) {
+		promises.push(saveEnvFile(effectiveStackId, updates.envContent));
+		contentUpdated = true;
+		console.log(`Updating envContent for stack '${effectiveStackId}'.`);
+	}
+
+	if (promises.length > 0) {
 		await Promise.all(promises);
+	}
 
-		// Re-fetch stack data to reflect changes and get updated modification times
-		// This is simpler than trying to manually update parts of the Stack object.
-		return getStack(stackId);
-	} catch (err) {
-		console.error(`Error updating stack ${stackId}:`, err);
-		throw new Error(`Failed to update stack ${stackId}`);
+	// 3. Return the final stack state
+	if (stackAfterRename && !contentUpdated) {
+		// Only a rename occurred, no subsequent content changes in this call.
+		// The stackAfterRename object is fresh from renameStack's getStack call.
+		return stackAfterRename;
+	} else {
+		// Content was updated, or no rename occurred but content might have.
+		// Or both rename and content update occurred.
+		// Fetch the latest stack details.
+		return getStack(effectiveStackId);
 	}
 }
 
@@ -845,6 +868,83 @@ export async function removeStack(stackId: string): Promise<boolean> {
 		const errorMessage = err instanceof Error ? err.message : String(err);
 		// Ensure a specific error message is thrown
 		throw new Error(`Failed to remove stack ${stackId}: ${errorMessage}`);
+	}
+}
+
+export async function renameStack(currentStackId: string, newName: string): Promise<Stack> {
+	if (!currentStackId || !newName) {
+		throw new Error('Current stack ID and new name must be provided.');
+	}
+
+	const currentStackDir = await getStackDir(currentStackId);
+	try {
+		await fs.access(currentStackDir); // Check if current stack directory exists
+	} catch (e) {
+		throw new Error(`Stack with ID '${currentStackId}' not found at ${currentStackDir}.`);
+	}
+
+	// Slugify the new name to create a valid base for the directory name
+	const newDirBaseName = slugify(newName, {
+		lower: true,
+		strict: true,
+		replacement: '-',
+		trim: true
+	});
+
+	if (newDirBaseName === currentStackId) {
+		throw new Error(`The new name '${newName}' (resolves to '${newDirBaseName}') is effectively the same as the current stack ID '${currentStackId}'. No changes made.`);
+	}
+
+	// Check if the stack is running
+	const running = await isStackRunning(currentStackId);
+	if (running) {
+		throw new Error(`Stack '${currentStackId}' is currently running. Please stop it before renaming.`);
+	}
+
+	const stacksDir = await ensureStacksDir();
+	let newUniqueDirName = newDirBaseName;
+	let counter = 1;
+	const MAX_ATTEMPTS = 100; // Safety break for the loop
+
+	// Find a unique directory name that is not the currentStackId
+	while (counter <= MAX_ATTEMPTS) {
+		const pathToCheck = join(stacksDir, newUniqueDirName);
+		const exists = await directoryExists(pathToCheck);
+
+		if (!exists && newUniqueDirName !== currentStackId) {
+			break; // Found a suitable unique name
+		}
+
+		// If it exists or it's the same as currentStackId, generate a new one
+		newUniqueDirName = `${newDirBaseName}-${counter}`;
+		counter++;
+	}
+
+	if (counter > MAX_ATTEMPTS || newUniqueDirName === currentStackId || (await directoryExists(join(stacksDir, newUniqueDirName)))) {
+		// This means after MAX_ATTEMPTS, we couldn't find a suitable unique name
+		throw new Error(`Could not generate a unique directory name for '${newName}' that is different from '${currentStackId}' and does not already exist. Please try a different name.`);
+	}
+
+	const newStackDir = join(stacksDir, newUniqueDirName);
+
+	try {
+		console.log(`Renaming stack directory from '${currentStackDir}' to '${newStackDir}'...`);
+		await fs.rename(currentStackDir, newStackDir);
+		console.log(`Stack directory for '${currentStackId}' successfully renamed to '${newUniqueDirName}'.`);
+
+		// The stack was stopped. When it's started next using `startStack(newUniqueDirName)`,
+		// dockerode-compose will use `newUniqueDirName` as the project name,
+		// effectively creating a "new" project from Docker's perspective with the existing files.
+		// Old Docker resources (containers, networks, volumes) tied to `currentStackId` will remain
+		// until manually pruned or if they conflict and Docker handles it.
+
+		return await getStack(newUniqueDirName); // Return the stack info under its new ID/name
+	} catch (err) {
+		console.error(`Error renaming stack directory for '${currentStackId}' to '${newUniqueDirName}':`, err);
+		// If fs.rename fails, the original directory should ideally still be there.
+		// No complex rollback needed for fs.rename itself.
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		throw new Error(`Failed to rename stack: ${errorMessage}`);
 	}
 }
 

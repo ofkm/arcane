@@ -11,7 +11,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { statusVariantMap } from '$lib/types/statuses';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
 	import EnvEditor from '$lib/components/env-editor.svelte';
@@ -58,19 +58,30 @@
 	async function handleSaveChanges() {
 		if (!stack || !hasChanges) return;
 
+		// Store the original stack ID before saving, in case it changes
+		const currentStackId = stack.id;
+
 		handleApiResultWithCallbacks({
-			result: await tryCatch(stackApi.save(stack.id, name, composeContent, envContent)),
+			result: await tryCatch(stackApi.save(currentStackId, name, composeContent, envContent)),
 			message: 'Failed to Save Stack',
 			setLoadingState: (value) => (isLoading.saving = value),
-			onSuccess: async () => {
-				originalName = name;
+			onSuccess: async (updatedStack) => {
+				console.log('Stack save successful', updatedStack);
+				toast.success('Stack updated successfully!');
+
+				// Update local state for "original" values to reset hasChanges
+				originalName = updatedStack.name;
 				originalComposeContent = composeContent;
 				originalEnvContent = envContent;
 
-				console.log('Stack save successful');
-				toast.success('Stack updated successfully!');
 				await new Promise((resolve) => setTimeout(resolve, 200));
-				await invalidateAll();
+
+				if (updatedStack && updatedStack.id !== currentStackId) {
+					console.log(`Stack ID changed from ${currentStackId} to ${updatedStack.id}. Navigating...`);
+					await goto(`/stacks/${name}`, { invalidateAll: true });
+				} else {
+					await invalidateAll();
+				}
 			}
 		});
 	}
