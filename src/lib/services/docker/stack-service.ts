@@ -250,10 +250,6 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 			return nameStartsWithPrefix || hasCorrectLabel;
 		});
 
-		if (stackContainers.length === 0) {
-			console.log(`No running or stopped containers found for stack ${stackId} based on name prefix or label.`);
-		}
-
 		const services: StackService[] = [];
 
 		for (const containerData of stackContainers) {
