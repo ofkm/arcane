@@ -25,7 +25,7 @@
 		rows
 	}: UniversalTableProps<TData> & {
 		idKey?: keyof TData;
-		rows?: Snippet<[{ item: TData }]>;
+		rows?: Snippet<[{ item: TData; index?: number }]>;
 	} = $props();
 
 	let { sorting: enableSorting = true, filtering: enableFiltering = true, selection: enableSelection = true } = features;
@@ -197,7 +197,7 @@
 							{/if}
 
 							{#if rows}
-								{@render rows({ item: row.original })}
+								{@render rows({ item: row.original, index: row.index })}
 							{:else}
 								{#each row.getVisibleCells() as cell (cell.id)}
 									<Table.Cell>
@@ -221,23 +221,25 @@
 	<!-- Pagination Controls -->
 	{#if (pageCount > 1 || pageSizeOptions.length > 1) && !isDashboardTable}
 		<div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-			<div class="flex items-center gap-4">
-				<span class="text-sm my-auto">{itemsPerPageLabel}</span>
-				<Select.Root type="single" value={pageSize.toString()} onValueChange={(value) => handlePageSizeChange(value)}>
-					<Select.Trigger class="h-8 w-[70px]" id="pageSize">
-						<span>
-							{pageSize}
-						</span>
-					</Select.Trigger>
-					<Select.Content>
-						{#each pageSizeOptions as size}
-							<Select.Item value={size.toString()}>
-								{size}
-							</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-			</div>
+			{#if pageSizeOptions.length > 1}
+				<div class="flex items-center gap-4">
+					<span class="text-sm my-auto">{itemsPerPageLabel}</span>
+					<Select.Root type="single" value={pageSize.toString()} onValueChange={(value) => handlePageSizeChange(value)}>
+						<Select.Trigger class="h-8 w-[70px]" id="pageSize">
+							<span>
+								{pageSize}
+							</span>
+						</Select.Trigger>
+						<Select.Content>
+							{#each pageSizeOptions as size}
+								<Select.Item value={size.toString()}>
+									{size}
+								</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>
+			{/if}
 
 			<div class="ml-auto">
 				<Pagination.Root count={filteredRowCount} perPage={pageSize} bind:page={currentPage}>
