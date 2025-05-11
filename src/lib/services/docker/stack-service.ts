@@ -1059,6 +1059,7 @@ export async function importExternalStack(stackId: string): Promise<Stack> {
 
 	// 3. Read the compose file if available, or create a new one
 	let composeContent = '';
+	let envContent: string | undefined = undefined; // Variable to store .env content
 	let actualComposeFilePathUsed = ''; // For logging the path that was attempted
 
 	const configFilesLabel = labels['com.docker.compose.project.config_files'];
@@ -1094,6 +1095,21 @@ export async function importExternalStack(stackId: string): Promise<Stack> {
 				console.log(`Attempting to read compose file for import from: ${actualComposeFilePathUsed}`);
 				composeContent = await fs.readFile(actualComposeFilePathUsed, 'utf8');
 				console.log(`Successfully read compose file: ${actualComposeFilePathUsed}. Content length: ${composeContent.length}`);
+
+				// Attempt to read .env file from the same directory
+				const composeFileDir = path.dirname(actualComposeFilePathUsed);
+				const envFilePath = path.join(composeFileDir, '.env');
+				try {
+					envContent = await fs.readFile(envFilePath, 'utf8');
+					console.log(`Successfully read .env file from: ${envFilePath}`);
+				} catch (envErr) {
+					const nodeEnvErr = envErr as NodeJS.ErrnoException;
+					if (nodeEnvErr.code === 'ENOENT') {
+						console.log(`.env file not found at ${envFilePath}, proceeding without it.`);
+					} else {
+						console.warn(`Could not read .env file at ${envFilePath} during import:`, envErr);
+					}
+				}
 			} catch (err) {
 				console.warn(`Could not read compose file at ${actualComposeFilePathUsed} during import:`, err);
 				// composeContent will remain empty, leading to generation logic below
@@ -1117,7 +1133,7 @@ export async function importExternalStack(stackId: string): Promise<Stack> {
 			const serviceName = containerLabels['com.docker.compose.service'] || cont.Names[0]?.replace(`/${stackId}_`, '').replace(/_\d+$/, '') || `service_${cont.Id.substring(0, 8)}`;
 
 			// Inspect the container to get more details
-			const containerDetails = await docker.getContainer(cont.Id).inspect();
+			// const containerDetails = await docker.getContainer(cont.Id).inspect(); // Uncomment if more details are needed
 
 			services[serviceName] = {
 				image: cont.Image
@@ -1135,11 +1151,12 @@ export async function importExternalStack(stackId: string): Promise<Stack> {
 
 services:
 ${yaml.dump({ services }, { indent: 2 }).substring('services:'.length).trimStart()}`;
+		// Note: If compose file is generated, we don't have a path to look for an associated .env file.
+		// envContent will remain undefined in this case.
 	}
 
 	// 5. Create a new stack in Arcane's managed stacks
-	// The createStack function will set hasArcaneMeta to true.
-	return await createStack(stackId, composeContent);
+	return await createStack(stackId, composeContent, envContent); // Pass envContent here
 }
 
 /**
