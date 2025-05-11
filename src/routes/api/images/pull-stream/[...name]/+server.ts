@@ -4,6 +4,8 @@ import { URL } from 'url';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { extractDockerErrorMessage } from '$lib/utils/errors.util';
 import { json } from '@sveltejs/kit';
+import { getSettings } from '$lib/services/settings-service';
+import { areRegistriesEquivalent } from '$lib/utils/registry.utils';
 
 interface AuthConfig {
 	username: string;
@@ -27,6 +29,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 	const tag = reqUrl.searchParams.get('tag') || 'latest';
 	const platform = reqUrl.searchParams.get('platform');
 
+	// Explicit credentials from query params (will override auto-detected credentials)
 	const authServer = reqUrl.searchParams.get('authServer');
 	const authUser = reqUrl.searchParams.get('authUser');
 	const authPass = reqUrl.searchParams.get('authPass');
@@ -41,6 +44,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 		async start(controller) {
 			try {
 				const docker = getDockerClient();
+				const settings = await getSettings();
 
 				function send(data: any) {
 					controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
@@ -53,6 +57,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 					pullOptions.platform = platform;
 				}
 
+				// If explicit credentials are provided via query params, use those
 				if (authServer && authUser) {
 					pullOptions.authconfig = {
 						username: authUser,
@@ -60,8 +65,35 @@ export const GET: RequestHandler = async ({ params, request }) => {
 						serveraddress: authServer
 					};
 					send({ type: 'info', message: `Attempting authenticated pull for ${authServer} as ${authUser}` });
-				} else if (authServer) {
-					send({ type: 'info', message: `Attempting pull from ${authServer} (no specific user credentials provided)` });
+				} else {
+					// Extract registry host from image name
+					const imageRegistryHost = imageName.includes('/') ? (imageName.split('/')[0].includes('.') || imageName.split('/')[0].includes(':') ? imageName.split('/')[0] : 'docker.io') : 'docker.io';
+
+					// Check for credentials in settings
+					if (settings.registryCredentials && settings.registryCredentials.length > 0) {
+						const storedCredential = settings.registryCredentials.find((cred) => areRegistriesEquivalent(cred.url, imageRegistryHost));
+
+						if (storedCredential) {
+							// Docker Hub's canonical serveraddress for authconfig
+							const serverAddress = imageRegistryHost === 'docker.io' ? 'https://index.docker.io/v1/' : imageRegistryHost;
+
+							pullOptions.authconfig = {
+								username: storedCredential.username,
+								password: storedCredential.password,
+								serveraddress: serverAddress
+							};
+							send({
+								type: 'info',
+								message: `Using stored credentials for ${imageRegistryHost} as ${storedCredential.username}`
+							});
+						} else if (imageRegistryHost !== 'docker.io') {
+							// Only warn about missing credentials for non-Docker Hub registries
+							send({
+								type: 'warning',
+								message: `No stored credentials found for ${imageRegistryHost}. Attempting unauthenticated pull.`
+							});
+						}
+					}
 				}
 
 				const pullStream = await docker.pull(fullImageRef, pullOptions);

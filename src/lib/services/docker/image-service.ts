@@ -160,43 +160,25 @@ export async function pruneImages(mode: 'all' | 'dangling' = 'all'): Promise<{
 
 /**
  * The function `pullImage` asynchronously pulls a Docker image using a specified image reference and
- * optional platform.
+ * platform.
  * @param {string} imageRef - The `imageRef` parameter in the `pullImage` function is a string that
- * represents the reference to the Docker image that you want to pull. It typically includes the image
- * name and tag, such as `nginx:latest` or `myapp:v1.0`.
+ * represents the reference to a Docker image. This typically includes the repository name and optionally
+ * a tag or digest.
  * @param {string} [platform] - The `platform` parameter in the `pullImage` function is an optional
- * parameter that specifies the platform for which the image should be pulled. This parameter allows
- * you to specify the architecture, operating system, and variant of the platform for which the image
- * is intended. If provided, the Docker client will attempt
+ * parameter that specifies the platform for which the Docker image should be pulled.
+ * @param {object} [authConfig] - Optional authentication configuration for private registries
  */
-export async function pullImage(imageRef: string, platform?: string): Promise<void> {
-	try {
-		const docker = getDockerClient();
+export async function pullImage(imageRef: string, platform?: string, authConfig?: any): Promise<void> {
+	const docker = getDockerClient();
+	const pullOptions: any = {};
 
-		const pullOptions: any = {};
-		if (platform) {
-			pullOptions.platform = platform;
-		}
-
-		console.log(`Docker Service: Pulling image "${imageRef}"...`);
-
-		// Pull the image - this returns a stream
-		const stream = await docker.pull(imageRef, pullOptions);
-
-		const pullTimeout = 10 * 60 * 1000; // 10 min
-
-		// Wait for the pull to complete by consuming the stream with 10 minute timeout
-		const result = await Promise.race([new Promise((resolve, reject) => docker.modem.followProgress(stream, (err, out) => (err ? reject(err) : resolve(out)))), new Promise((_, reject) => setTimeout(() => reject(new Error(`Pull timed-out after ${pullTimeout} ms`)), pullTimeout))]);
-
-		console.log(`Docker Service: Image "${imageRef}" pulled successfully.`);
-	} catch (error: any) {
-		console.error(`Docker Service: Error pulling image "${imageRef}":`, error);
-
-		// Handle specific error cases
-		if (error.statusCode === 404) {
-			throw new Error(`Image "${imageRef}" not found in registry.`);
-		}
-
-		throw new Error(`Failed to pull image "${imageRef}". ${error.message || error.reason || ''}`);
+	if (platform) {
+		pullOptions.platform = platform;
 	}
+
+	if (authConfig && Object.keys(authConfig).length > 0) {
+		pullOptions.authconfig = authConfig;
+	}
+
+	await docker.pull(imageRef, pullOptions);
 }
