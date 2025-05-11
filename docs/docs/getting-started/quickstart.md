@@ -52,7 +52,7 @@ This guide provides the fastest way to get Arcane up and running using Docker Co
       If you have existing `docker-compose.yml` files on your host machine that you want to import into Arcane, you need to make them accessible to the Arcane container:
 
       1.  **Mount the Host Directory:** Add an additional volume mount to your Arcane `docker-compose.yml` file. This maps the directory on your host (where your stacks are) to a path inside the Arcane container.
-          For example, if your stacks are in `/opt/my-docker-stacks` on your host, you could map them to `/mnt/imported-stacks` inside the container:
+          For example, if your stacks are in `/opt/my-docker-stacks` on your host, you need to map them to `/opt/my-docker-stacks` inside the container:
           ```yaml
           services:
             arcane:
