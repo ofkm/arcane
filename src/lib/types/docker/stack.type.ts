@@ -25,15 +25,13 @@ export interface Stack {
 	services?: StackService[];
 	serviceCount?: number;
 	runningCount?: number;
-	status: 'running' | 'stopped' | 'partially running';
+	status: 'running' | 'stopped' | 'partially running' | 'unknown';
 	isExternal?: boolean;
 	createdAt?: string;
 	updatedAt?: string;
 	composeContent?: string;
 	envContent?: string;
-	meta?: StackMeta;
 	isLegacy?: boolean;
-	hasArcaneMeta?: boolean;
 }
 
 export interface StackUpdate {
