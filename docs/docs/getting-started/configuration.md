@@ -71,6 +71,34 @@ services:
 
 When you do this, any settings you change in the Arcane web UI will be saved in that `arcane-data` folder and will still be there even if you restart Arcane.
 
+#### Accessing Other Host Directories (e.g., for Importing Stacks)
+
+Arcane, running inside its container, can't see your computer's files directly unless you tell Docker to share specific folders. If you want to use features like "Import Stacks" to bring in `docker-compose.yml` files from a directory on your computer (that's not already part of the main `arcane-data` volume), you need to:
+
+1.  **Mount the Host Directory as a Volume:**
+    Add another line to the `volumes` section in your Arcane `docker-compose.yml`. This maps the directory on your computer (where your stacks are) to a path _inside_ the Arcane container.
+
+    For example, if your existing stacks are in `/home/user/my-docker-projects` on your host server, you need to map this to the same folder inside the Arcane container like this:
+
+    ```yaml
+    # In your docker-compose.yml file
+    services:
+      arcane:
+        # ... other settings ...
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - arcane-data:/app/data
+          - /home/user/my-docker-projects:/home/user/my-docker-projects:ro # Host path : Container path
+        # ... other settings ...
+    ```
+
+    - **Tip:** Using `:ro` (read-only) for the volume is a good idea if Arcane only needs to read these files (like for importing) and not change them. This helps prevent accidental modifications to your original files.
+
+2.  **Use the Container Path in Arcane:**
+    When Arcane's "Import Stacks" feature asks for a directory path to scan, you must provide the path _as seen from inside the container_ (e.g., `/home/user/my-docker-projects` from the example above). Arcane will then look for your `docker-compose.yml` files there.
+
+    Once imported, Arcane typically copies or manages these stack configurations within its own data directory (e.g., in a subfolder of `/app/data/stacks`), so the original files in your mounted import directory are usually just read during the import process.
+
 ### 2. Special Instructions for Arcane (Environment Variables)
 
 Think of these like sticky notes you give to Arcane when it starts up. Some are really important for it to work correctly in Docker.

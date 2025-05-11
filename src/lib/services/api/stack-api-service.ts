@@ -39,11 +39,10 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async save(id: string, name: string, content: string, autoUpdate: boolean, envContent?: string) {
+	async save(id: string, name: string, content: string, envContent?: string) {
 		const res = await this.api.put(`/stacks/${id}`, {
 			name,
 			composeContent: content,
-			autoUpdate,
 			envContent
 		});
 		return res.data;

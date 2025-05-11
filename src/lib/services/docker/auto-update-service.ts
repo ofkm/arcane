@@ -2,6 +2,7 @@ import { listContainers, getContainer, recreateContainer } from './container-ser
 import { listStacks, getStack, fullyRedeployStack } from './stack-service';
 import { pullImage, getImage, listImages } from './image-service';
 import { getSettings } from '../settings-service';
+import yaml from 'js-yaml'; // Add js-yaml import
 import type { ServiceContainer } from '$lib/types/docker';
 import type { Stack } from '$lib/types/docker/stack.type';
 
@@ -111,45 +112,98 @@ export async function checkAndUpdateStacks(): Promise<{
 		return { checked: 0, updated: 0, errors: [] };
 	}
 
-	const stacks = await listStacks();
-	const eligibleStacks = stacks.filter(
-		(s) =>
-			// Only consider running stacks with auto-update enabled
-			(s.status === 'running' || s.status === 'partially running') && s.meta && s.meta.autoUpdate === true
-	);
+	const allListedStacks = await listStacks();
+	const eligibleStacksForProcessing: Stack[] = [];
+
+	for (const listedStack of allListedStacks) {
+		// Only consider running or partially running stacks
+		if (listedStack.status !== 'running' && listedStack.status !== 'partially running') {
+			continue;
+		}
+
+		try {
+			// Fetch full stack details to get composeContent for label checking
+			const fullStack = await getStack(listedStack.id);
+			if (!fullStack.composeContent) {
+				console.warn(`Auto-update: Stack ${listedStack.id} has no compose content, skipping eligibility check.`);
+				continue;
+			}
+
+			const composeData = yaml.load(fullStack.composeContent) as any;
+			let stackIsEligibleByLabel = false;
+
+			if (composeData && composeData.services) {
+				for (const serviceName in composeData.services) {
+					const service = composeData.services[serviceName];
+					if (service.labels) {
+						let labelValue: string | undefined = undefined;
+						// Docker Compose labels can be an array of "key=value" strings or a map/object
+						if (Array.isArray(service.labels)) {
+							const foundLabel = service.labels.find((l: string) => l.startsWith('arcane.stack.auto-update='));
+							if (foundLabel) {
+								labelValue = foundLabel.split('=')[1];
+							}
+						} else if (typeof service.labels === 'object' && service.labels !== null) {
+							labelValue = service.labels['arcane.stack.auto-update'];
+						}
+
+						if (labelValue === 'true') {
+							stackIsEligibleByLabel = true;
+							break; // Found one service with the label, stack is eligible
+						}
+					}
+				}
+			}
+
+			if (stackIsEligibleByLabel) {
+				// Use the listedStack object as it's from the initial list.
+				// fullStack could also be used if preferred, ensure types are compatible.
+				eligibleStacksForProcessing.push(listedStack);
+			}
+		} catch (error) {
+			console.error(`Auto-update: Error checking eligibility for stack ${listedStack.id}:`, error);
+		}
+	}
 
 	const results = {
-		checked: eligibleStacks.length,
+		checked: eligibleStacksForProcessing.length, // Number of stacks found eligible and processed
 		updated: 0,
 		errors: [] as Array<{ id: string; error: string }>
 	};
 
 	// Process eligible stacks
-	for (const stack of eligibleStacks) {
+	for (const stackToUpdate of eligibleStacksForProcessing) {
 		try {
 			// Skip if already being updated
-			if (updatingStacks.has(stack.id)) continue;
+			if (updatingStacks.has(stackToUpdate.id)) {
+				console.log(`Auto-update: Skipping stack ${stackToUpdate.name} (${stackToUpdate.id}), already in progress.`);
+				continue;
+			}
 
-			const updateAvailable = await checkStackImagesUpdate(stack);
+			// checkStackImagesUpdate will call getStack internally again to ensure it has the latest
+			// composeContent before checking images. This is acceptable.
+			const updateAvailable = await checkStackImagesUpdate(stackToUpdate);
 			if (updateAvailable) {
-				updatingStacks.add(stack.id);
+				updatingStacks.add(stackToUpdate.id);
 
-				console.log(`Auto-update: Redeploying stack ${stack.name} (${stack.id})`);
-				await fullyRedeployStack(stack.id);
+				console.log(`Auto-update: Redeploying stack ${stackToUpdate.name} (${stackToUpdate.id})`);
+				await fullyRedeployStack(stackToUpdate.id);
 
-				console.log(`Auto-update: Stack ${stack.name} redeployed successfully`);
+				console.log(`Auto-update: Stack ${stackToUpdate.name} redeployed successfully`);
 				results.updated++;
 
-				updatingStacks.delete(stack.id);
+				updatingStacks.delete(stackToUpdate.id);
+			} else {
+				console.log(`Auto-update: Stack ${stackToUpdate.name} (${stackToUpdate.id}) is up-to-date or no images triggered an update.`);
 			}
 		} catch (error: unknown) {
-			console.error(`Auto-update error for stack ${stack.id}:`, error);
+			console.error(`Auto-update error for stack ${stackToUpdate.id}:`, error);
 			const msg = error instanceof Error ? error.message : String(error);
 			results.errors.push({
-				id: stack.id,
+				id: stackToUpdate.id,
 				error: msg
 			});
-			updatingStacks.delete(stack.id);
+			updatingStacks.delete(stackToUpdate.id); // Ensure lock is released on error
 		}
 	}
 

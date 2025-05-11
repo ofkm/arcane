@@ -46,7 +46,26 @@ This guide provides the fastest way to get Arcane up and running using Docker Co
     Before starting, review the `docker-compose.yml` file:
 
     - **Docker Socket:** Mounts `/var/run/docker.sock` to allow Arcane to manage Docker.
-    - **Data Persistence:** Uses a volume named `arcane-data` (or a host path like `./arcane-data`) mapped to `/app/data` inside the container. This stores Arcane's settings, stacks, users, sessions, and encryption keys.
+    - **Data Persistence:** Uses a volume named `arcane-data` (or a host path like `./arcane-data`) mapped to `/app/data` inside the container. This stores Arcane's settings, stacks, users, sessions, and encryption keys. By default, Arcane-managed stack files are stored within this volume (e.g., at `/app/data/stacks` inside the container).
+
+    - **Importing Existing Stacks from a Host Directory:**
+      If you have existing `docker-compose.yml` files on your host machine that you want to import into Arcane, you need to make them accessible to the Arcane container:
+
+      1.  **Mount the Host Directory:** Add an additional volume mount to your Arcane `docker-compose.yml` file. This maps the directory on your host (where your stacks are) to a path inside the Arcane container.
+          For example, if your stacks are in `/opt/my-docker-stacks` on your host, you need to map them to `/opt/my-docker-stacks` inside the container:
+          ```yaml
+          services:
+            arcane:
+              # ... other settings ...
+              volumes:
+                - /var/run/docker.sock:/var/run/docker.sock
+                - arcane-data:/app/data
+                - /opt/my-docker-stacks:/opt/my-docker-stacks:ro # Host path : Container path
+          # ...
+          ```
+          _Note: Using `:ro` (read-only) for the import volume is a good practice if Arcane only needs to read these files for import._
+      2.  **Provide Container Path to Arcane:** When using Arcane's "Import Stacks" feature, you will specify the path _inside the container_ where Arcane can find these files (e.g., `/opt/my-docker-stacks` from the example above). Arcane will then scan this directory for `docker-compose.yml` files.
+      3.  Once imported, Arcane will typically copy or manage these stack configurations within its own data directory (e.g., `/app/data/stacks`), depending on its import logic. The original files in your mounted import directory are usually just read during the import process.
 
     - **Permissions & Environment Variables (Important):**
 

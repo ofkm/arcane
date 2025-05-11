@@ -11,11 +11,10 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { statusVariantMap } from '$lib/types/statuses';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
 	import EnvEditor from '$lib/components/env-editor.svelte';
-	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -40,13 +39,11 @@
 	let name = $derived(editorState.name);
 	let composeContent = $derived(editorState.composeContent);
 	let envContent = $derived(editorState.envContent || '');
-	let autoUpdate = $derived(editorState.autoUpdate);
 	let originalName = $derived(editorState.originalName);
 	let originalComposeContent = $derived(editorState.originalComposeContent);
 	let originalEnvContent = $derived(editorState.originalEnvContent || '');
-	let originalAutoUpdate = $derived(editorState.autoUpdate);
 
-	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || envContent !== originalEnvContent || autoUpdate !== originalAutoUpdate);
+	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || envContent !== originalEnvContent);
 
 	const baseServerUrl = $derived(settings?.baseServerUrl || 'localhost');
 
@@ -61,20 +58,30 @@
 	async function handleSaveChanges() {
 		if (!stack || !hasChanges) return;
 
+		// Store the original stack ID before saving, in case it changes
+		const currentStackId = stack.id;
+
 		handleApiResultWithCallbacks({
-			result: await tryCatch(stackApi.save(stack.id, name, composeContent, autoUpdate, envContent)),
+			result: await tryCatch(stackApi.save(currentStackId, name, composeContent, envContent)),
 			message: 'Failed to Save Stack',
 			setLoadingState: (value) => (isLoading.saving = value),
-			onSuccess: async () => {
-				originalName = name;
+			onSuccess: async (updatedStack) => {
+				console.log('Stack save successful', updatedStack);
+				toast.success('Stack updated successfully!');
+
+				// Update local state for "original" values to reset hasChanges
+				originalName = updatedStack.name;
 				originalComposeContent = composeContent;
 				originalEnvContent = envContent;
-				originalAutoUpdate = autoUpdate;
 
-				console.log('Stack save successful');
-				toast.success('Stack updated successfully!');
 				await new Promise((resolve) => setTimeout(resolve, 200));
-				await invalidateAll();
+
+				if (updatedStack && updatedStack.id !== currentStackId) {
+					console.log(`Stack ID changed from ${currentStackId} to ${updatedStack.id}. Navigating...`);
+					await goto(`/stacks/${name}`, { invalidateAll: true });
+				} else {
+					await invalidateAll();
+				}
 			}
 		});
 	}
@@ -243,7 +250,10 @@
 					<div class="space-y-4">
 						<div class="grid w-full max-w-sm items-center gap-1.5">
 							<Label for="name">Stack Name</Label>
-							<Input type="text" id="name" name="name" bind:value={name} required disabled={isLoading.saving} />
+							<Input type="text" id="name" name="name" bind:value={name} required disabled={isLoading.saving || stack?.status === 'running' || stack?.status === 'partially running'} />
+							{#if stack?.status === 'running' || stack?.status === 'partially running'}
+								<p class="text-xs text-muted-foreground">Stack name cannot be changed while the stack is running. Please stop the stack first.</p>
+							{/if}
 						</div>
 
 						<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -264,14 +274,6 @@
 									<EnvEditor bind:value={envContent} readOnly={isLoading.saving || isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} />
 								</div>
 								<p class="text-xs text-muted-foreground">Define environment variables in KEY=value format. These will be saved as a .env file in the stack directory.</p>
-							</div>
-						</div>
-
-						<div class="flex items-center space-x-2 mt-4">
-							<Switch id="auto-update" name="autoUpdate" bind:checked={autoUpdate} />
-							<Label for="auto-update" class="font-medium">Enable auto-update</Label>
-							<div class="inline-block">
-								<p class="text-xs text-muted-foreground">When enabled, Arcane will periodically check for newer versions of all images in this stack and automatically redeploy it.</p>
 							</div>
 						</div>
 					</div>

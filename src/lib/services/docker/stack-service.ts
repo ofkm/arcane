@@ -94,9 +94,10 @@ async function getStackDir(stackId: string): Promise<string> {
 }
 
 /**
- * Returns the path to the compose file, prioritizing compose.yaml, fallback to docker-compose.yml
+ * Returns the path to the compose file, prioritizing compose.yaml, fallback to docker-compose.yml.
+ * Returns null if neither is found.
  */
-async function getComposeFilePath(stackId: string): Promise<string> {
+async function getComposeFilePath(stackId: string): Promise<string | null> {
 	const stackDirAbs = await getStackDir(stackId); // Will be absolute
 	const newPath = path.join(stackDirAbs, 'compose.yaml');
 	const oldPath = path.join(stackDirAbs, 'docker-compose.yml');
@@ -108,18 +109,18 @@ async function getComposeFilePath(stackId: string): Promise<string> {
 		try {
 			await fs.access(oldPath);
 			return oldPath;
-		} catch (fallbackError) {
-			// Neither compose.yaml nor docker-compose.yml found at the absolute path
-			console.error(`Neither compose.yaml nor docker-compose.yml found in ${stackDirAbs}`);
-			throw fallbackError; // Re-throw the error from accessing oldPath
+		} catch {
+			// Neither compose.yaml nor docker-compose.yml found
+			return null;
 		}
 	}
 }
 
 /**
- * Returns the path to the meta file, prioritizing .stack.json, fallback to meta.json
+ * Returns the path to the meta file, prioritizing .stack.json, fallback to meta.json.
+ * Returns null if neither is found.
  */
-async function getStackMetaPath(stackId: string): Promise<string> {
+async function getStackMetaPath(stackId: string): Promise<string | null> {
 	const stackDir = await getStackDir(stackId);
 	const newPath = join(stackDir, '.stack.json');
 	const oldPath = join(stackDir, 'meta.json');
@@ -127,8 +128,14 @@ async function getStackMetaPath(stackId: string): Promise<string> {
 		await fs.access(newPath);
 		return newPath;
 	} catch {
-		await fs.access(oldPath);
-		return oldPath;
+		// .stack.json not accessible, try meta.json
+		try {
+			await fs.access(oldPath);
+			return oldPath;
+		} catch {
+			// meta.json also not accessible
+			return null;
+		}
 	}
 }
 
@@ -189,6 +196,9 @@ async function loadEnvFile(stackId: string): Promise<string> {
 async function getComposeInstance(stackId: string): Promise<DockerodeCompose> {
 	const docker = getDockerClient();
 	const composePath = await getComposeFilePath(stackId);
+	if (!composePath) {
+		throw new Error(`Compose file not found for stack ${stackId}`);
+	}
 	return new DockerodeCompose(docker, composePath, stackId);
 }
 
@@ -239,10 +249,6 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 			// Include the container if either condition is true
 			return nameStartsWithPrefix || hasCorrectLabel;
 		});
-
-		if (stackContainers.length === 0) {
-			console.log(`No running or stopped containers found for stack ${stackId} based on name prefix or label.`);
-		}
 
 		const services: StackService[] = [];
 
@@ -338,76 +344,76 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 	const stacksDir = await ensureStacksDir();
 
 	try {
-		const stackDirs = await fs.readdir(stacksDir);
+		const stackDirEntries = await fs.readdir(stacksDir, { withFileTypes: true });
 		const stacks: Stack[] = [];
 
-		for (const dir of stackDirs) {
-			const stackDir = path.join(stacksDir, dir);
-
-			// Skip if not a directory (e.g., .DS_Store or other files)
-			let stat;
-			try {
-				stat = await fs.stat(stackDir);
-			} catch {
+		for (const entry of stackDirEntries) {
+			if (!entry.isDirectory()) {
 				continue;
 			}
-			if (!stat.isDirectory()) continue;
+			const dirName = entry.name; // This is the stack's ID and name
+			const stackDir = path.join(stacksDir, dirName);
 
-			try {
-				const newMetaPath = path.join(stackDir, '.stack.json');
-				const newComposePath = path.join(stackDir, 'compose.yaml');
+			let composeFilePath: string | null = null;
+			let composeContent: string | null = null;
 
-				let metaContent: string;
-				let composeContent: string;
-				let meta: StackMeta;
+			const potentialComposePaths = [path.join(stackDir, 'compose.yaml'), path.join(stackDir, 'docker-compose.yml')];
 
+			for (const p of potentialComposePaths) {
 				try {
-					[metaContent, composeContent] = await Promise.all([fs.readFile(newMetaPath, 'utf8'), fs.readFile(newComposePath, 'utf8')]);
-					meta = JSON.parse(metaContent) as StackMeta;
-				} catch (newWayErr) {
-					// Fallback to old way
-					const oldMetaPath = await getStackMetaPath(dir);
-					const oldComposePath = await getComposeFilePath(dir);
-
-					[metaContent, composeContent] = await Promise.all([fs.readFile(oldMetaPath, 'utf8'), fs.readFile(oldComposePath, 'utf8')]);
-					meta = JSON.parse(metaContent) as StackMeta;
+					await fs.access(p);
+					composeContent = await fs.readFile(p, 'utf8');
+					composeFilePath = p;
+					break;
+				} catch {
+					// File not accessible or doesn't exist, try next
 				}
-
-				const services = await getStackServices(dir, composeContent);
-
-				const serviceCount = services.length;
-				const runningCount = services.filter((s) => s.state?.Running).length;
-
-				let status: Stack['status'] = 'stopped';
-				if (runningCount === serviceCount && serviceCount > 0) {
-					status = 'running';
-				} else if (runningCount > 0) {
-					status = 'partially running';
-				}
-
-				const isLegacy = !(await fs.access(path.join(stackDir, '.stack.json')).then(
-					() => true,
-					() => false
-				));
-
-				stacks.push({
-					id: dir,
-					name: meta.name,
-					serviceCount,
-					runningCount,
-					status,
-					createdAt: meta.createdAt,
-					updatedAt: meta.updatedAt,
-					isLegacy
-				});
-			} catch (err) {
-				console.warn(`Error loading stack ${dir}:`, err);
 			}
+
+			if (!composeContent || !composeFilePath) {
+				console.warn(`No compose file found in directory ${dirName}, skipping.`);
+				continue;
+			}
+
+			// All stacks are now treated based on directory and compose file presence
+			const services = await getStackServices(dirName, composeContent);
+			const serviceCount = services.length;
+			const runningCount = services.filter((s) => s.state?.Running).length;
+
+			let status: Stack['status'] = 'stopped';
+			if (serviceCount === 0) {
+				status = 'unknown'; // Or 'stopped' if preferred for empty compose
+			} else if (runningCount === serviceCount) {
+				status = 'running';
+			} else if (runningCount > 0) {
+				status = 'partially running';
+			}
+
+			let dirStat;
+			try {
+				dirStat = await fs.stat(stackDir);
+			} catch (statErr) {
+				console.error(`Could not stat directory ${stackDir}:`, statErr);
+				const now = new Date().toISOString();
+				dirStat = { birthtime: new Date(now), mtime: new Date(now) }; // Fallback
+			}
+
+			stacks.push({
+				id: dirName,
+				name: dirName, // Name is the directory name
+				serviceCount,
+				runningCount,
+				status,
+				createdAt: dirStat.birthtime.toISOString(),
+				updatedAt: dirStat.mtime.toISOString(), // Use directory mtime as a general update timestamp
+				isExternal: false
+				// composeContent and envContent are loaded on demand by getStack
+			});
 		}
 
 		return stacks;
 	} catch (err) {
-		console.error('Error loading stacks:', err);
+		console.error('Error loading stacks from STACKS_DIR:', err);
 		throw new Error('Failed to load compose stacks');
 	}
 }
@@ -416,9 +422,6 @@ export async function loadComposeStacks(): Promise<Stack[]> {
  * Creates a new stack with a compose file and optional .env file
  */
 export async function createStack(name: string, composeContent: string, envContent?: string): Promise<Stack> {
-	// Generate a unique ID for references (still needed for APIs)
-	const id = nanoid();
-
 	// Create a safe directory name from the stack name
 	const dirName = slugify(name, {
 		lower: true, // Convert to lowercase
@@ -427,7 +430,6 @@ export async function createStack(name: string, composeContent: string, envConte
 		trim: true // Trim leading/trailing spaces
 	});
 
-	// Ensure directory name is unique - add suffix if needed
 	const stacksDir = await ensureStacksDirectory();
 	let counter = 1;
 	let uniqueDirName = dirName;
@@ -437,29 +439,16 @@ export async function createStack(name: string, composeContent: string, envConte
 		counter++;
 	}
 
-	// Create stack directory with the name-based folder
 	const stackDir = join(stacksDir, uniqueDirName);
 	await fs.mkdir(stackDir, { recursive: true });
 
-	// Save compose file
 	await fs.writeFile(join(stackDir, 'compose.yaml'), composeContent);
 
-	// Save env file if provided
 	if (envContent) {
 		await fs.writeFile(join(stackDir, '.env'), envContent);
 	}
 
-	// Create stack metadata file with the ID reference
-	const meta = {
-		id,
-		name,
-		dirName: uniqueDirName,
-		path: stackDir,
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString()
-	};
-
-	await fs.writeFile(join(stackDir, '.stack.json'), JSON.stringify(meta, null, 2));
+	// No .stack.json is created.
 
 	let serviceCount = 0;
 	try {
@@ -468,20 +457,22 @@ export async function createStack(name: string, composeContent: string, envConte
 			serviceCount = Object.keys(composeData.services).length;
 		}
 	} catch (parseErr) {
-		console.warn(`Could not parse compose file during creation for stack ${meta.name}:`, parseErr);
+		console.warn(`Could not parse compose file during creation for stack ${uniqueDirName}:`, parseErr);
 	}
 
+	const dirStat = await fs.stat(stackDir);
+
 	return {
-		id: meta.id,
-		name: meta.name,
+		id: uniqueDirName, // ID is the directory name
+		name: uniqueDirName, // Name is also the directory name
 		serviceCount: serviceCount,
-		runningCount: 0,
+		runningCount: 0, // New stacks are initially stopped
 		status: 'stopped',
-		createdAt: meta.createdAt,
-		updatedAt: meta.updatedAt,
+		createdAt: dirStat.birthtime.toISOString(),
+		updatedAt: dirStat.mtime.toISOString(),
 		composeContent: composeContent,
 		envContent: envContent || '',
-		meta
+		isExternal: false
 	};
 }
 
@@ -489,118 +480,117 @@ export async function createStack(name: string, composeContent: string, envConte
  * Gets information about a specific stack including its .env file
  */
 export async function getStack(stackId: string): Promise<Stack> {
+	const stackDir = await getStackDir(stackId); // stackId is dirName
+
 	try {
-		// Try the new way first (.stack.json and compose.yaml)
-		const stackDir = await getStackDir(stackId);
-		const newMetaPath = path.join(stackDir, '.stack.json');
-		const newComposePath = path.join(stackDir, 'compose.yaml');
-
-		let metaContent: string;
-		let composeContent: string;
-		let envContent: string;
-		let meta: StackMeta;
-
-		try {
-			[metaContent, composeContent, envContent] = await Promise.all([fs.readFile(newMetaPath, 'utf8'), fs.readFile(newComposePath, 'utf8'), loadEnvFile(stackId)]);
-			meta = JSON.parse(metaContent) as StackMeta;
-		} catch (newWayErr) {
-			// If new way fails, fall back to old way (meta.json and docker-compose.yml)
-			const oldMetaPath = await getStackMetaPath(stackId);
-			const oldComposePath = await getComposeFilePath(stackId);
-
-			[metaContent, composeContent, envContent] = await Promise.all([fs.readFile(oldMetaPath, 'utf8'), fs.readFile(oldComposePath, 'utf8'), loadEnvFile(stackId)]);
-			meta = JSON.parse(metaContent) as StackMeta;
+		const composePath = await getComposeFilePath(stackId);
+		if (!composePath) {
+			throw new Error(`Stack '${stackId}' is missing a compose file (compose.yaml or docker-compose.yml).`);
 		}
+		const composeContent = await fs.readFile(composePath, 'utf8');
+		const envContent = await loadEnvFile(stackId);
 
 		const services = await getStackServices(stackId, composeContent);
 		const serviceCount = services.length;
 		const runningCount = services.filter((s) => s.state?.Running).length;
 
 		let status: Stack['status'] = 'stopped';
-		if (runningCount === serviceCount && serviceCount > 0) {
+		if (serviceCount === 0) {
+			status = 'unknown';
+		} else if (runningCount === serviceCount) {
 			status = 'running';
 		} else if (runningCount > 0) {
 			status = 'partially running';
 		}
 
+		const dirStat = await fs.stat(stackDir);
+
 		return {
-			id: stackId,
-			name: meta.name,
+			id: stackId, // Directory name
+			name: stackId, // Directory name
 			services,
 			serviceCount,
 			runningCount,
 			status,
-			createdAt: meta.createdAt,
-			updatedAt: meta.updatedAt,
+			createdAt: dirStat.birthtime.toISOString(),
+			updatedAt: dirStat.mtime.toISOString(), // Or could be composePath mtime
 			composeContent,
 			envContent,
-			meta
+			isExternal: false
 		};
 	} catch (err) {
-		console.error(`Error getting stack ${stackId}:`, err);
-		throw new Error(`Stack not found or cannot be accessed`);
+		console.error(`Error in getStack for stackId '${stackId}':`, err);
+		if (err instanceof Error && err.message.includes('missing a compose file')) {
+			throw err;
+		}
+		throw new Error(`Stack '${stackId}' not found or cannot be accessed.`);
 	}
 }
 
 /**
  * Updates a stack with new configuration and/or .env file
  */
-export async function updateStack(stackId: string, updates: StackUpdate): Promise<Stack> {
-	const metaPath = await getStackMetaPath(stackId);
-	const composePath = await getComposeFilePath(stackId);
+export async function updateStack(currentStackId: string, updates: StackUpdate): Promise<Stack> {
+	let effectiveStackId = currentStackId;
+	let stackAfterRename: Stack | null = null;
 
-	try {
-		const metaContent = await fs.readFile(metaPath, 'utf8');
-		const meta = JSON.parse(metaContent) as StackMeta;
+	// 1. Handle potential rename first
+	if (updates.name) {
+		const newSlugifiedName = slugify(updates.name, {
+			lower: true,
+			strict: true,
+			replacement: '-',
+			trim: true
+		});
 
-		const updatedMeta: StackMeta = {
-			...meta,
-			name: updates.name || meta.name,
-			updatedAt: new Date().toISOString(),
-			...(updates.autoUpdate !== undefined ? { autoUpdate: updates.autoUpdate } : {})
-		};
-
-		const promises = [fs.writeFile(metaPath, JSON.stringify(updatedMeta, null, 2), 'utf8')];
-
-		if (updates.composeContent) {
-			promises.push(fs.writeFile(composePath, updates.composeContent, 'utf8'));
+		if (newSlugifiedName !== currentStackId) {
+			console.log(`Rename requested for stack '${currentStackId}' to '${updates.name}' (slug: '${newSlugifiedName}').`);
+			// renameStack will throw an error if the stack is running or if other rename conditions are not met.
+			stackAfterRename = await renameStack(currentStackId, updates.name);
+			effectiveStackId = stackAfterRename.id;
+			console.log(`Stack '${currentStackId}' successfully renamed to '${effectiveStackId}'.`);
+		} else {
+			// Name provided is the same as current, or slugifies to the same. No rename action needed.
+			console.log(`Provided name '${updates.name}' is effectively the same as current stack ID '${currentStackId}'. No rename action.`);
 		}
+	}
 
-		if (updates.envContent !== undefined) {
-			promises.push(saveEnvFile(stackId, updates.envContent));
-		}
+	// 2. Handle content updates (compose or .env)
+	// These updates will apply to the new directory if a rename occurred.
+	let contentUpdated = false;
+	const stackDirForContent = await getStackDir(effectiveStackId);
 
+	const promises = [];
+
+	if (updates.composeContent !== undefined) {
+		let currentComposePath = await getComposeFilePath(effectiveStackId); // Check existing, might be null
+		const targetComposePath = currentComposePath || path.join(stackDirForContent, 'compose.yaml'); // Default to compose.yaml if not found
+
+		promises.push(fs.writeFile(targetComposePath, updates.composeContent, 'utf8'));
+		contentUpdated = true;
+		console.log(`Updating composeContent for stack '${effectiveStackId}'.`);
+	}
+
+	if (updates.envContent !== undefined) {
+		promises.push(saveEnvFile(effectiveStackId, updates.envContent));
+		contentUpdated = true;
+		console.log(`Updating envContent for stack '${effectiveStackId}'.`);
+	}
+
+	if (promises.length > 0) {
 		await Promise.all(promises);
+	}
 
-		const composeContent = updates.composeContent || (await fs.readFile(composePath, 'utf8'));
-		const envContent = updates.envContent !== undefined ? updates.envContent : await loadEnvFile(stackId);
-
-		const services = await getStackServices(stackId, composeContent);
-
-		const serviceCount = services.length;
-		const runningCount = services.filter((s) => s.state?.Running).length;
-
-		let status: Stack['status'] = 'stopped';
-		if (runningCount === serviceCount && serviceCount > 0) {
-			status = 'running';
-		} else if (runningCount > 0) {
-			status = 'partially running';
-		}
-
-		return {
-			id: stackId,
-			name: updatedMeta.name,
-			serviceCount,
-			runningCount,
-			status,
-			createdAt: updatedMeta.createdAt,
-			updatedAt: updatedMeta.updatedAt,
-			composeContent,
-			envContent
-		};
-	} catch (err) {
-		console.error(`Error updating stack ${stackId}:`, err);
-		throw new Error('Failed to update stack');
+	// 3. Return the final stack state
+	if (stackAfterRename && !contentUpdated) {
+		// Only a rename occurred, no subsequent content changes in this call.
+		// The stackAfterRename object is fresh from renameStack's getStack call.
+		return stackAfterRename;
+	} else {
+		// Content was updated, or no rename occurred but content might have.
+		// Or both rename and content update occurred.
+		// Fetch the latest stack details.
+		return getStack(effectiveStackId);
 	}
 }
 
@@ -881,6 +871,83 @@ export async function removeStack(stackId: string): Promise<boolean> {
 	}
 }
 
+export async function renameStack(currentStackId: string, newName: string): Promise<Stack> {
+	if (!currentStackId || !newName) {
+		throw new Error('Current stack ID and new name must be provided.');
+	}
+
+	const currentStackDir = await getStackDir(currentStackId);
+	try {
+		await fs.access(currentStackDir); // Check if current stack directory exists
+	} catch (e) {
+		throw new Error(`Stack with ID '${currentStackId}' not found at ${currentStackDir}.`);
+	}
+
+	// Slugify the new name to create a valid base for the directory name
+	const newDirBaseName = slugify(newName, {
+		lower: true,
+		strict: true,
+		replacement: '-',
+		trim: true
+	});
+
+	if (newDirBaseName === currentStackId) {
+		throw new Error(`The new name '${newName}' (resolves to '${newDirBaseName}') is effectively the same as the current stack ID '${currentStackId}'. No changes made.`);
+	}
+
+	// Check if the stack is running
+	const running = await isStackRunning(currentStackId);
+	if (running) {
+		throw new Error(`Stack '${currentStackId}' is currently running. Please stop it before renaming.`);
+	}
+
+	const stacksDir = await ensureStacksDir();
+	let newUniqueDirName = newDirBaseName;
+	let counter = 1;
+	const MAX_ATTEMPTS = 100; // Safety break for the loop
+
+	// Find a unique directory name that is not the currentStackId
+	while (counter <= MAX_ATTEMPTS) {
+		const pathToCheck = join(stacksDir, newUniqueDirName);
+		const exists = await directoryExists(pathToCheck);
+
+		if (!exists && newUniqueDirName !== currentStackId) {
+			break; // Found a suitable unique name
+		}
+
+		// If it exists or it's the same as currentStackId, generate a new one
+		newUniqueDirName = `${newDirBaseName}-${counter}`;
+		counter++;
+	}
+
+	if (counter > MAX_ATTEMPTS || newUniqueDirName === currentStackId || (await directoryExists(join(stacksDir, newUniqueDirName)))) {
+		// This means after MAX_ATTEMPTS, we couldn't find a suitable unique name
+		throw new Error(`Could not generate a unique directory name for '${newName}' that is different from '${currentStackId}' and does not already exist. Please try a different name.`);
+	}
+
+	const newStackDir = join(stacksDir, newUniqueDirName);
+
+	try {
+		console.log(`Renaming stack directory from '${currentStackDir}' to '${newStackDir}'...`);
+		await fs.rename(currentStackDir, newStackDir);
+		console.log(`Stack directory for '${currentStackId}' successfully renamed to '${newUniqueDirName}'.`);
+
+		// The stack was stopped. When it's started next using `startStack(newUniqueDirName)`,
+		// dockerode-compose will use `newUniqueDirName` as the project name,
+		// effectively creating a "new" project from Docker's perspective with the existing files.
+		// Old Docker resources (containers, networks, volumes) tied to `currentStackId` will remain
+		// until manually pruned or if they conflict and Docker handles it.
+
+		return await getStack(newUniqueDirName); // Return the stack info under its new ID/name
+	} catch (err) {
+		console.error(`Error renaming stack directory for '${currentStackId}' to '${newUniqueDirName}':`, err);
+		// If fs.rename fails, the original directory should ideally still be there.
+		// No complex rollback needed for fs.rename itself.
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		throw new Error(`Failed to rename stack: ${errorMessage}`);
+	}
+}
+
 /**
  * The function `discoverExternalStacks` asynchronously discovers external Docker stacks and their
  * services, categorizing them based on their running status.
@@ -987,94 +1054,141 @@ export async function importExternalStack(stackId: string): Promise<Stack> {
 	}
 
 	// 2. Try to locate the compose file (if available)
-	let composeFilePath = '';
-	const container = stackContainers[0];
+	const container = stackContainers[0]; // Use the first container to get labels
 	const labels = container.Labels || {};
-
-	if (labels['com.docker.compose.project.config_files']) {
-		composeFilePath = labels['com.docker.compose.project.config_files'];
-	}
 
 	// 3. Read the compose file if available, or create a new one
 	let composeContent = '';
+	let envContent: string | undefined = undefined; // Variable to store .env content
+	let actualComposeFilePathUsed = ''; // For logging the path that was attempted
 
-	if (composeFilePath) {
-		try {
-			composeContent = await fs.readFile(composeFilePath, 'utf8');
-		} catch (err) {
-			console.warn(`Couldn't read compose file at ${composeFilePath}:`, err);
-			// Will generate a new one below
+	const configFilesLabel = labels['com.docker.compose.project.config_files'];
+
+	if (configFilesLabel) {
+		const potentialComposePaths = configFilesLabel
+			.split(',')
+			.map((p) => p.trim())
+			.filter((p) => p);
+
+		let pathToTry = '';
+		if (potentialComposePaths.length > 0) {
+			// Prioritize common primary compose file names
+			const primaryNames = ['compose.yaml', 'docker-compose.yml', 'compose.yml', 'docker-compose.yaml'];
+			for (const name of primaryNames) {
+				// Check if any of the paths end with a primary name
+				const foundPath = potentialComposePaths.find((p) => path.basename(p) === name);
+				if (foundPath) {
+					pathToTry = foundPath;
+					break;
+				}
+			}
+
+			// If no primary name found in the list, try the first one from the list.
+			if (!pathToTry) {
+				pathToTry = potentialComposePaths[0];
+			}
 		}
+
+		if (pathToTry) {
+			actualComposeFilePathUsed = pathToTry;
+			try {
+				console.log(`Attempting to read compose file for import from: ${actualComposeFilePathUsed}`);
+				composeContent = await fs.readFile(actualComposeFilePathUsed, 'utf8');
+				console.log(`Successfully read compose file: ${actualComposeFilePathUsed}. Content length: ${composeContent.length}`);
+
+				// Attempt to read .env file from the same directory
+				const composeFileDir = path.dirname(actualComposeFilePathUsed);
+				const envFilePath = path.join(composeFileDir, '.env');
+				try {
+					envContent = await fs.readFile(envFilePath, 'utf8');
+					console.log(`Successfully read .env file from: ${envFilePath}`);
+				} catch (envErr) {
+					const nodeEnvErr = envErr as NodeJS.ErrnoException;
+					if (nodeEnvErr.code === 'ENOENT') {
+						console.log(`.env file not found at ${envFilePath}, proceeding without it.`);
+					} else {
+						console.warn(`Could not read .env file at ${envFilePath} during import:`, envErr);
+					}
+				}
+			} catch (err) {
+				console.warn(`Could not read compose file at ${actualComposeFilePathUsed} during import:`, err);
+				// composeContent will remain empty, leading to generation logic below
+			}
+		} else {
+			console.warn(`No suitable compose file path found in 'com.docker.compose.project.config_files' label: "${configFilesLabel}"`);
+		}
+	} else {
+		console.warn(`Label 'com.docker.compose.project.config_files' not found for stack '${stackId}'. Will attempt to generate compose file.`);
 	}
 
 	// 4. If we couldn't read the compose file, generate one based on container inspection
 	if (!composeContent) {
+		console.log(`Generating compose file for stack '${stackId}' as no existing file could be read or found.`);
 		// Create a basic compose file from container inspection
 		const services: Record<string, any> = {};
 
-		for (const container of stackContainers) {
-			const containerLabels = container.Labels || {};
-			const serviceName = containerLabels['com.docker.compose.service'] || container.Names[0]?.replace(`/${stackId}_`, '').replace('_1', '') || `service_${container.Id.substring(0, 8)}`;
+		for (const cont of stackContainers) {
+			// Renamed to 'cont' to avoid conflict with outer 'container'
+			const containerLabels = cont.Labels || {};
+			const serviceName = containerLabels['com.docker.compose.service'] || cont.Names[0]?.replace(`/${stackId}_`, '').replace(/_\d+$/, '') || `service_${cont.Id.substring(0, 8)}`;
 
 			// Inspect the container to get more details
-			const containerDetails = await docker.getContainer(container.Id).inspect();
+			// const containerDetails = await docker.getContainer(cont.Id).inspect(); // Uncomment if more details are needed
 
 			services[serviceName] = {
-				image: container.Image
-				// Add other properties based on containerDetails
+				image: cont.Image
+				// Add other properties based on containerDetails if needed
+				// e.g., ports, volumes, environment variables.
+				// This part can be expanded for a more comprehensive generated file.
 			};
 		}
 
 		// Generate the compose file content
 		composeContent = `# Generated compose file for imported stack: ${stackId}
-# This was automatically generated by Arcane from an external stack
-# You may need to adjust it manually for correct operation
+# This was automatically generated by Arcane from an external stack.
+# The original compose file could not be read from: ${actualComposeFilePathUsed || 'path not specified in labels'}.
+# You may need to adjust this manually for correct operation.
 
-version: '3'
 services:
-${yaml.dump({ services }).substring(10)}`; // Remove the services: line
+${yaml.dump({ services }, { indent: 2 }).substring('services:'.length).trimStart()}`;
+		// Note: If compose file is generated, we don't have a path to look for an associated .env file.
+		// envContent will remain undefined in this case.
 	}
 
 	// 5. Create a new stack in Arcane's managed stacks
-	return await createStack(stackId, composeContent);
+	return await createStack(stackId, composeContent, envContent); // Pass envContent here
 }
 
 /**
- * Lists all managed and optionally external stacks
+ * Lists all managed stacks (from STACKS_DIR) and optionally external Docker Compose projects.
+ * Managed stacks from STACKS_DIR will have their metadata loaded if `hasArcaneMeta` is true.
+ * Stacks in STACKS_DIR without Arcane metadata are also listed (`hasArcaneMeta: false`).
+ * `stack.id` for all returned stacks refers to their primary identifier (directory name for local, project name for external).
  */
 export async function listStacks(includeExternal = false): Promise<Stack[]> {
-	// Get managed stacks
+	// Get managed stacks from STACKS_DIR.
+	// Assumes loadComposeStacks returns Stack[] where:
+	//  - stack.id is the directory name.
+	//  - stack.meta is populated if stack.hasArcaneMeta is true.
+	//  - stack.isExternal is set to false.
+	//  - stack.hasArcaneMeta is correctly set.
 	const managedStacks = await loadComposeStacks();
 
-	// Add meta information to managed stacks
-	const enrichedManagedStacks = await Promise.all(
-		managedStacks.map(async (stack) => {
-			try {
-				// Read the meta file to get autoUpdate property
-				const metaPath = await getStackMetaPath(stack.id);
-				const metaContent = await fs.readFile(metaPath, 'utf8');
-				const meta = JSON.parse(metaContent) as StackMeta;
+	let allStacks: Stack[] = [...managedStacks];
 
-				// Return stack with meta included
-				return {
-					...stack,
-					meta
-				};
-			} catch (err) {
-				console.warn(`Failed to read meta for stack ${stack.id}:`, err);
-				return stack; // Return stack without meta if there was an error
-			}
-		})
-	);
-
-	// Get external stacks if requested
-	let externalStacks: Stack[] = [];
 	if (includeExternal) {
-		externalStacks = await discoverExternalStacks();
+		const externalStacksList = await discoverExternalStacks();
+		// discoverExternalStacks sets isExternal: true.
+		// Ensure hasArcaneMeta is consistently false for these, as they are not from STACKS_DIR.
+		const processedExternalStacks = externalStacksList.map((stack) => ({
+			...stack,
+			hasArcaneMeta: false // External stacks don't have Arcane meta in STACKS_DIR
+			// meta property will be undefined for external stacks from discoverExternalStacks
+		}));
+		allStacks = [...allStacks, ...processedExternalStacks];
 	}
 
-	// Combine managed and external stacks
-	return [...enrichedManagedStacks, ...externalStacks];
+	return allStacks;
 }
 
 /**
