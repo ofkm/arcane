@@ -60,11 +60,11 @@ This guide provides the fastest way to get Arcane up and running using Docker Co
               volumes:
                 - /var/run/docker.sock:/var/run/docker.sock
                 - arcane-data:/app/data
-                - /opt/my-docker-stacks:/mnt/imported-stacks:ro # Host path : Container path
+                - /opt/my-docker-stacks:/opt/my-docker-stacks:ro # Host path : Container path
           # ...
           ```
           _Note: Using `:ro` (read-only) for the import volume is a good practice if Arcane only needs to read these files for import._
-      2.  **Provide Container Path to Arcane:** When using Arcane's "Import Stacks" feature, you will specify the path _inside the container_ where Arcane can find these files (e.g., `/mnt/imported-stacks` from the example above). Arcane will then scan this directory for `docker-compose.yml` files.
+      2.  **Provide Container Path to Arcane:** When using Arcane's "Import Stacks" feature, you will specify the path _inside the container_ where Arcane can find these files (e.g., `/opt/my-docker-stacks` from the example above). Arcane will then scan this directory for `docker-compose.yml` files.
       3.  Once imported, Arcane will typically copy or manage these stack configurations within its own data directory (e.g., `/app/data/stacks`), depending on its import logic. The original files in your mounted import directory are usually just read during the import process.
 
     - **Permissions & Environment Variables (Important):**

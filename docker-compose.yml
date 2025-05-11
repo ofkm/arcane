@@ -10,6 +10,9 @@ services:
       # Mount a volume for Arcane's persistent data (stacks, settings, etc.).
       # Replace './arcane-data' with your preferred host path.
       - ./arcane-data:/app/data
+      # This is where you existing stack files are located if you want to import them, when arcane tries
+      # to import it it will need to read from the path the compose file is at, hence why onl read only is needed.
+      - /opt/my-docker-stacks:/opt/my-docker-stacks:ro # Host path : Container path
     environment:
       - APP_ENV=production # Sets the application environment to production.
 
