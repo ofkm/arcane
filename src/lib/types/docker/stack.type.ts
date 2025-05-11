@@ -33,6 +33,7 @@ export interface Stack {
 	envContent?: string;
 	meta?: StackMeta;
 	isLegacy?: boolean;
+	hasArcaneMeta?: boolean;
 }
 
 export interface StackUpdate {

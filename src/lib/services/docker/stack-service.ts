@@ -338,43 +338,68 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 	const stacksDir = await ensureStacksDir();
 
 	try {
-		const stackDirs = await fs.readdir(stacksDir);
+		const stackDirEntries = await fs.readdir(stacksDir, { withFileTypes: true });
 		const stacks: Stack[] = [];
 
-		for (const dir of stackDirs) {
-			const stackDir = path.join(stacksDir, dir);
-
-			// Skip if not a directory (e.g., .DS_Store or other files)
-			let stat;
-			try {
-				stat = await fs.stat(stackDir);
-			} catch {
+		for (const entry of stackDirEntries) {
+			if (!entry.isDirectory()) {
 				continue;
 			}
-			if (!stat.isDirectory()) continue;
+			const dir = entry.name;
+			const stackDir = path.join(stacksDir, dir);
 
-			try {
-				const newMetaPath = path.join(stackDir, '.stack.json');
-				const newComposePath = path.join(stackDir, 'compose.yaml');
+			let composeFilePath: string | null = null;
+			let composeContent: string | null = null;
 
-				let metaContent: string;
-				let composeContent: string;
-				let meta: StackMeta;
+			// Try to find a compose file (compose.yaml or docker-compose.yml)
+			const potentialComposePaths = [path.join(stackDir, 'compose.yaml'), path.join(stackDir, 'docker-compose.yml')];
 
+			for (const p of potentialComposePaths) {
 				try {
-					[metaContent, composeContent] = await Promise.all([fs.readFile(newMetaPath, 'utf8'), fs.readFile(newComposePath, 'utf8')]);
-					meta = JSON.parse(metaContent) as StackMeta;
-				} catch (newWayErr) {
-					// Fallback to old way
-					const oldMetaPath = await getStackMetaPath(dir);
-					const oldComposePath = await getComposeFilePath(dir);
-
-					[metaContent, composeContent] = await Promise.all([fs.readFile(oldMetaPath, 'utf8'), fs.readFile(oldComposePath, 'utf8')]);
-					meta = JSON.parse(metaContent) as StackMeta;
+					// Check access first to see if file exists
+					await fs.access(p);
+					composeContent = await fs.readFile(p, 'utf8');
+					composeFilePath = p;
+					break; // Found a compose file
+				} catch {
+					// File not accessible or doesn't exist, try next
 				}
+			}
 
+			// If no compose file found in this directory, it's not a stack we can process here
+			if (!composeContent || !composeFilePath) {
+				console.warn(`No compose file found in directory ${dir}, skipping.`);
+				continue;
+			}
+
+			let meta: StackMeta | null = null;
+			let isArcaneManaged = false;
+			let isDefinitelyLegacy = false;
+
+			// Try to load .stack.json (new way)
+			const newMetaFilePath = path.join(stackDir, '.stack.json');
+			try {
+				const metaContentJson = await fs.readFile(newMetaFilePath, 'utf8');
+				meta = JSON.parse(metaContentJson) as StackMeta;
+				isArcaneManaged = true;
+				// isDefinitelyLegacy remains false as .stack.json was found
+			} catch {
+				// .stack.json not found or failed to parse, try meta.json (old way)
+				const oldMetaFilePath = path.join(stackDir, 'meta.json');
+				try {
+					const metaContentJson = await fs.readFile(oldMetaFilePath, 'utf8');
+					meta = JSON.parse(metaContentJson) as StackMeta;
+					isArcaneManaged = true;
+					isDefinitelyLegacy = true; // Found meta.json, and .stack.json was not found earlier
+				} catch {
+					// Neither .stack.json nor meta.json found
+					isArcaneManaged = false;
+				}
+			}
+
+			if (isArcaneManaged && meta) {
+				// This is an Arcane-managed stack (new or legacy)
 				const services = await getStackServices(dir, composeContent);
-
 				const serviceCount = services.length;
 				const runningCount = services.filter((s) => s.state?.Running).length;
 
@@ -385,29 +410,62 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 					status = 'partially running';
 				}
 
-				const isLegacy = !(await fs.access(path.join(stackDir, '.stack.json')).then(
-					() => true,
-					() => false
-				));
-
 				stacks.push({
-					id: dir,
+					id: dir, // For managed stacks, dir name is the ID
 					name: meta.name,
 					serviceCount,
 					runningCount,
 					status,
 					createdAt: meta.createdAt,
 					updatedAt: meta.updatedAt,
-					isLegacy
+					isLegacy: isDefinitelyLegacy,
+					hasArcaneMeta: true
+					// composeContent and envContent are typically loaded on demand for the stack detail page
 				});
-			} catch (err) {
-				console.warn(`Error loading stack ${dir}:`, err);
+			} else {
+				// Manually added stack (compose file exists, but no Arcane metadata)
+				console.log(`Found manually added stack in directory: ${dir} (no .stack.json or meta.json)`);
+				let serviceCount = 0;
+				try {
+					const composeData = yaml.load(composeContent) as any;
+					if (composeData?.services) {
+						serviceCount = Object.keys(composeData.services).length;
+					}
+				} catch (parseErr) {
+					console.warn(`Could not parse compose file for manually added stack ${dir}:`, parseErr);
+				}
+
+				let dirStat;
+				try {
+					dirStat = await fs.stat(stackDir);
+				} catch (statErr) {
+					console.error(`Could not stat directory ${stackDir}:`, statErr);
+					// Fallback dates if stat fails
+					const now = new Date().toISOString();
+					dirStat = { birthtime: new Date(now), mtime: new Date(now) };
+				}
+
+				stacks.push({
+					id: dir, // Use directory name as ID
+					name: dir, // Use directory name as name by default
+					serviceCount,
+					runningCount: 0, // Assume 0, as we are not checking live Docker status here
+					status: 'stopped', // Or 'unknown'; these are not actively managed/running from Arcane's PoV yet
+					createdAt: dirStat.birthtime.toISOString(),
+					updatedAt: dirStat.mtime.toISOString(),
+					isLegacy: false, // Not legacy in Arcane terms, just uninitialized
+					hasArcaneMeta: false, // Mark as not having Arcane metadata
+					isExternal: false // It's in the managed stacks directory
+				});
 			}
 		}
 
 		return stacks;
 	} catch (err) {
-		console.error('Error loading stacks:', err);
+		console.error('Error loading stacks from STACKS_DIR:', err);
+		// It's important to rethrow or handle this error appropriately.
+		// Depending on application structure, you might return [] or throw.
+		// For now, rethrowing to align with original behavior on fs.readdir failure.
 		throw new Error('Failed to load compose stacks');
 	}
 }
@@ -472,7 +530,7 @@ export async function createStack(name: string, composeContent: string, envConte
 	}
 
 	return {
-		id: meta.id,
+		id: meta.id, // Use the generated nanoid as the primary ID for Arcane
 		name: meta.name,
 		serviceCount: serviceCount,
 		runningCount: 0,
@@ -481,7 +539,8 @@ export async function createStack(name: string, composeContent: string, envConte
 		updatedAt: meta.updatedAt,
 		composeContent: composeContent,
 		envContent: envContent || '',
-		meta
+		meta,
+		hasArcaneMeta: true // Stacks created by Arcane have metadata
 	};
 }
 
@@ -987,55 +1046,91 @@ export async function importExternalStack(stackId: string): Promise<Stack> {
 	}
 
 	// 2. Try to locate the compose file (if available)
-	let composeFilePath = '';
-	const container = stackContainers[0];
+	const container = stackContainers[0]; // Use the first container to get labels
 	const labels = container.Labels || {};
-
-	if (labels['com.docker.compose.project.config_files']) {
-		composeFilePath = labels['com.docker.compose.project.config_files'];
-	}
 
 	// 3. Read the compose file if available, or create a new one
 	let composeContent = '';
+	let actualComposeFilePathUsed = ''; // For logging the path that was attempted
 
-	if (composeFilePath) {
-		try {
-			composeContent = await fs.readFile(composeFilePath, 'utf8');
-		} catch (err) {
-			console.warn(`Couldn't read compose file at ${composeFilePath}:`, err);
-			// Will generate a new one below
+	const configFilesLabel = labels['com.docker.compose.project.config_files'];
+
+	if (configFilesLabel) {
+		const potentialComposePaths = configFilesLabel
+			.split(',')
+			.map((p) => p.trim())
+			.filter((p) => p);
+
+		let pathToTry = '';
+		if (potentialComposePaths.length > 0) {
+			// Prioritize common primary compose file names
+			const primaryNames = ['compose.yaml', 'docker-compose.yml', 'compose.yml', 'docker-compose.yaml'];
+			for (const name of primaryNames) {
+				// Check if any of the paths end with a primary name
+				const foundPath = potentialComposePaths.find((p) => path.basename(p) === name);
+				if (foundPath) {
+					pathToTry = foundPath;
+					break;
+				}
+			}
+
+			// If no primary name found in the list, try the first one from the list.
+			if (!pathToTry) {
+				pathToTry = potentialComposePaths[0];
+			}
 		}
+
+		if (pathToTry) {
+			actualComposeFilePathUsed = pathToTry;
+			try {
+				console.log(`Attempting to read compose file for import from: ${actualComposeFilePathUsed}`);
+				composeContent = await fs.readFile(actualComposeFilePathUsed, 'utf8');
+				console.log(`Successfully read compose file: ${actualComposeFilePathUsed}. Content length: ${composeContent.length}`);
+			} catch (err) {
+				console.warn(`Could not read compose file at ${actualComposeFilePathUsed} during import:`, err);
+				// composeContent will remain empty, leading to generation logic below
+			}
+		} else {
+			console.warn(`No suitable compose file path found in 'com.docker.compose.project.config_files' label: "${configFilesLabel}"`);
+		}
+	} else {
+		console.warn(`Label 'com.docker.compose.project.config_files' not found for stack '${stackId}'. Will attempt to generate compose file.`);
 	}
 
 	// 4. If we couldn't read the compose file, generate one based on container inspection
 	if (!composeContent) {
+		console.log(`Generating compose file for stack '${stackId}' as no existing file could be read or found.`);
 		// Create a basic compose file from container inspection
 		const services: Record<string, any> = {};
 
-		for (const container of stackContainers) {
-			const containerLabels = container.Labels || {};
-			const serviceName = containerLabels['com.docker.compose.service'] || container.Names[0]?.replace(`/${stackId}_`, '').replace('_1', '') || `service_${container.Id.substring(0, 8)}`;
+		for (const cont of stackContainers) {
+			// Renamed to 'cont' to avoid conflict with outer 'container'
+			const containerLabels = cont.Labels || {};
+			const serviceName = containerLabels['com.docker.compose.service'] || cont.Names[0]?.replace(`/${stackId}_`, '').replace(/_\d+$/, '') || `service_${cont.Id.substring(0, 8)}`;
 
 			// Inspect the container to get more details
-			const containerDetails = await docker.getContainer(container.Id).inspect();
+			const containerDetails = await docker.getContainer(cont.Id).inspect();
 
 			services[serviceName] = {
-				image: container.Image
-				// Add other properties based on containerDetails
+				image: cont.Image
+				// Add other properties based on containerDetails if needed
+				// e.g., ports, volumes, environment variables.
+				// This part can be expanded for a more comprehensive generated file.
 			};
 		}
 
 		// Generate the compose file content
 		composeContent = `# Generated compose file for imported stack: ${stackId}
-# This was automatically generated by Arcane from an external stack
-# You may need to adjust it manually for correct operation
+# This was automatically generated by Arcane from an external stack.
+# The original compose file could not be read from: ${actualComposeFilePathUsed || 'path not specified in labels'}.
+# You may need to adjust this manually for correct operation.
 
-version: '3'
 services:
-${yaml.dump({ services }).substring(10)}`; // Remove the services: line
+${yaml.dump({ services }, { indent: 2 }).substring('services:'.length).trimStart()}`;
 	}
 
 	// 5. Create a new stack in Arcane's managed stacks
+	// The createStack function will set hasArcaneMeta to true.
 	return await createStack(stackId, composeContent);
 }
 
