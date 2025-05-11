@@ -94,9 +94,10 @@ async function getStackDir(stackId: string): Promise<string> {
 }
 
 /**
- * Returns the path to the compose file, prioritizing compose.yaml, fallback to docker-compose.yml
+ * Returns the path to the compose file, prioritizing compose.yaml, fallback to docker-compose.yml.
+ * Returns null if neither is found.
  */
-async function getComposeFilePath(stackId: string): Promise<string> {
+async function getComposeFilePath(stackId: string): Promise<string | null> {
 	const stackDirAbs = await getStackDir(stackId); // Will be absolute
 	const newPath = path.join(stackDirAbs, 'compose.yaml');
 	const oldPath = path.join(stackDirAbs, 'docker-compose.yml');
@@ -108,18 +109,18 @@ async function getComposeFilePath(stackId: string): Promise<string> {
 		try {
 			await fs.access(oldPath);
 			return oldPath;
-		} catch (fallbackError) {
-			// Neither compose.yaml nor docker-compose.yml found at the absolute path
-			console.error(`Neither compose.yaml nor docker-compose.yml found in ${stackDirAbs}`);
-			throw fallbackError; // Re-throw the error from accessing oldPath
+		} catch {
+			// Neither compose.yaml nor docker-compose.yml found
+			return null;
 		}
 	}
 }
 
 /**
- * Returns the path to the meta file, prioritizing .stack.json, fallback to meta.json
+ * Returns the path to the meta file, prioritizing .stack.json, fallback to meta.json.
+ * Returns null if neither is found.
  */
-async function getStackMetaPath(stackId: string): Promise<string> {
+async function getStackMetaPath(stackId: string): Promise<string | null> {
 	const stackDir = await getStackDir(stackId);
 	const newPath = join(stackDir, '.stack.json');
 	const oldPath = join(stackDir, 'meta.json');
@@ -127,8 +128,14 @@ async function getStackMetaPath(stackId: string): Promise<string> {
 		await fs.access(newPath);
 		return newPath;
 	} catch {
-		await fs.access(oldPath);
-		return oldPath;
+		// .stack.json not accessible, try meta.json
+		try {
+			await fs.access(oldPath);
+			return oldPath;
+		} catch {
+			// meta.json also not accessible
+			return null;
+		}
 	}
 }
 
@@ -189,6 +196,9 @@ async function loadEnvFile(stackId: string): Promise<string> {
 async function getComposeInstance(stackId: string): Promise<DockerodeCompose> {
 	const docker = getDockerClient();
 	const composePath = await getComposeFilePath(stackId);
+	if (!composePath) {
+		throw new Error(`Compose file not found for stack ${stackId}`);
+	}
 	return new DockerodeCompose(docker, composePath, stackId);
 }
 
@@ -548,56 +558,115 @@ export async function createStack(name: string, composeContent: string, envConte
  * Gets information about a specific stack including its .env file
  */
 export async function getStack(stackId: string): Promise<Stack> {
+	const stackDir = await getStackDir(stackId);
+
+	let composeContent: string;
+	let envContent: string;
+	let meta: StackMeta | null = null;
+	let isLegacyMeta = false;
+	let hasArcaneMeta = false;
+
 	try {
-		// Try the new way first (.stack.json and compose.yaml)
-		const stackDir = await getStackDir(stackId);
-		const newMetaPath = path.join(stackDir, '.stack.json');
-		const newComposePath = path.join(stackDir, 'compose.yaml');
+		// 1. Load Compose File
+		const composePath = await getComposeFilePath(stackId); // Returns string | null
+		if (!composePath) {
+			throw new Error(`Stack '${stackId}' is missing a compose file (compose.yaml or docker-compose.yml).`);
+		}
+		composeContent = await fs.readFile(composePath, 'utf8');
 
-		let metaContent: string;
-		let composeContent: string;
-		let envContent: string;
-		let meta: StackMeta;
+		// 2. Load .env file
+		envContent = await loadEnvFile(stackId); // loadEnvFile handles non-existent .env by returning ''
 
-		try {
-			[metaContent, composeContent, envContent] = await Promise.all([fs.readFile(newMetaPath, 'utf8'), fs.readFile(newComposePath, 'utf8'), loadEnvFile(stackId)]);
-			meta = JSON.parse(metaContent) as StackMeta;
-		} catch (newWayErr) {
-			// If new way fails, fall back to old way (meta.json and docker-compose.yml)
-			const oldMetaPath = await getStackMetaPath(stackId);
-			const oldComposePath = await getComposeFilePath(stackId);
+		// 3. Load Metadata
+		const metaPath = await getStackMetaPath(stackId); // Returns string | null
 
-			[metaContent, composeContent, envContent] = await Promise.all([fs.readFile(oldMetaPath, 'utf8'), fs.readFile(oldComposePath, 'utf8'), loadEnvFile(stackId)]);
-			meta = JSON.parse(metaContent) as StackMeta;
+		if (metaPath) {
+			try {
+				const metaContentJson = await fs.readFile(metaPath, 'utf8');
+				meta = JSON.parse(metaContentJson) as StackMeta;
+				hasArcaneMeta = true;
+				// Determine if it's legacy based on the filename found
+				isLegacyMeta = path.basename(metaPath) === 'meta.json';
+			} catch (e) {
+				console.warn(`Error reading or parsing metadata file ${metaPath} for stack ${stackId}:`, e);
+				// If meta file exists but is unreadable/corrupt, treat as if no meta for this call
+				hasArcaneMeta = false;
+				meta = null;
+			}
+		} else {
+			// No metadata file (.stack.json or meta.json) found
+			hasArcaneMeta = false;
+			meta = null;
 		}
 
-		const services = await getStackServices(stackId, composeContent);
+		// 4. Get services and status
+		const services = await getStackServices(stackId, composeContent); // stackId is dirName
 		const serviceCount = services.length;
 		const runningCount = services.filter((s) => s.state?.Running).length;
 
 		let status: Stack['status'] = 'stopped';
-		if (runningCount === serviceCount && serviceCount > 0) {
+		if (serviceCount === 0) {
+			// No services defined in compose
+			status = 'stopped';
+		} else if (runningCount === serviceCount) {
 			status = 'running';
 		} else if (runningCount > 0) {
 			status = 'partially running';
 		}
+		// if runningCount is 0 and serviceCount > 0, status remains 'stopped'
 
-		return {
-			id: stackId,
-			name: meta.name,
-			services,
-			serviceCount,
-			runningCount,
-			status,
-			createdAt: meta.createdAt,
-			updatedAt: meta.updatedAt,
-			composeContent,
-			envContent,
-			meta
-		};
+		if (hasArcaneMeta && meta) {
+			return {
+				id: meta.id, // Use the nanoid from meta as the primary ID
+				name: meta.name,
+				services,
+				serviceCount,
+				runningCount,
+				status,
+				createdAt: meta.createdAt,
+				updatedAt: meta.updatedAt,
+				composeContent,
+				envContent,
+				meta, // Full meta object
+				isLegacy: isLegacyMeta,
+				hasArcaneMeta: true,
+				isExternal: false // It's from STACKS_DIR
+			};
+		} else {
+			// Manually added stack or meta read/parse failed: construct a minimal Stack object
+			let dirStat;
+			try {
+				dirStat = await fs.stat(stackDir);
+			} catch (statErr) {
+				// Fallback dates if stat fails (should be rare if stackDir itself exists)
+				const now = new Date().toISOString();
+				dirStat = { birthtime: new Date(now), mtime: new Date(now) };
+			}
+
+			return {
+				id: stackId, // Use directory name as the ID
+				name: stackId, // Use directory name as the name
+				services,
+				serviceCount,
+				runningCount,
+				status,
+				createdAt: dirStat.birthtime.toISOString(),
+				updatedAt: dirStat.mtime.toISOString(),
+				composeContent,
+				envContent,
+				meta: undefined, // No valid meta object
+				isLegacy: false, // Not considered legacy if no Arcane meta
+				hasArcaneMeta: false,
+				isExternal: false // It's from STACKS_DIR
+			};
+		}
 	} catch (err) {
-		console.error(`Error getting stack ${stackId}:`, err);
-		throw new Error(`Stack not found or cannot be accessed`);
+		console.error(`Error in getStack for stackId '${stackId}':`, err);
+		// Propagate specific error messages or a generic one
+		if (err instanceof Error && err.message.includes('missing a compose file')) {
+			throw err;
+		}
+		throw new Error(`Stack '${stackId}' not found or cannot be accessed.`);
 	}
 }
 
@@ -605,8 +674,16 @@ export async function getStack(stackId: string): Promise<Stack> {
  * Updates a stack with new configuration and/or .env file
  */
 export async function updateStack(stackId: string, updates: StackUpdate): Promise<Stack> {
-	const metaPath = await getStackMetaPath(stackId);
-	const composePath = await getComposeFilePath(stackId);
+	const metaPath = await getStackMetaPath(stackId); // Now returns string | null
+	const composePath = await getComposeFilePath(stackId); // Now returns string | null
+
+	if (!metaPath) {
+		throw new Error(`Cannot update stack '${stackId}': Metadata file (.stack.json or meta.json) not found.`);
+	}
+	if (!composePath && updates.composeContent === undefined) {
+		// If trying to update something other than composeContent, but compose file is missing
+		throw new Error(`Cannot update stack '${stackId}': Compose file not found and no new content provided.`);
+	}
 
 	try {
 		const metaContent = await fs.readFile(metaPath, 'utf8');
@@ -622,7 +699,11 @@ export async function updateStack(stackId: string, updates: StackUpdate): Promis
 		const promises = [fs.writeFile(metaPath, JSON.stringify(updatedMeta, null, 2), 'utf8')];
 
 		if (updates.composeContent) {
-			promises.push(fs.writeFile(composePath, updates.composeContent, 'utf8'));
+			if (composePath) {
+				promises.push(fs.writeFile(composePath, updates.composeContent, 'utf8'));
+			} else {
+				throw new Error(`Compose file path is null for stack '${stackId}'.`);
+			}
 		}
 
 		if (updates.envContent !== undefined) {
@@ -631,7 +712,7 @@ export async function updateStack(stackId: string, updates: StackUpdate): Promis
 
 		await Promise.all(promises);
 
-		const composeContent = updates.composeContent || (await fs.readFile(composePath, 'utf8'));
+		const composeContent = updates.composeContent || (composePath ? await fs.readFile(composePath, 'utf8') : '');
 		const envContent = updates.envContent !== undefined ? updates.envContent : await loadEnvFile(stackId);
 
 		const services = await getStackServices(stackId, composeContent);
@@ -1135,41 +1216,35 @@ ${yaml.dump({ services }, { indent: 2 }).substring('services:'.length).trimStart
 }
 
 /**
- * Lists all managed and optionally external stacks
+ * Lists all managed stacks (from STACKS_DIR) and optionally external Docker Compose projects.
+ * Managed stacks from STACKS_DIR will have their metadata loaded if `hasArcaneMeta` is true.
+ * Stacks in STACKS_DIR without Arcane metadata are also listed (`hasArcaneMeta: false`).
+ * `stack.id` for all returned stacks refers to their primary identifier (directory name for local, project name for external).
  */
 export async function listStacks(includeExternal = false): Promise<Stack[]> {
-	// Get managed stacks
+	// Get managed stacks from STACKS_DIR.
+	// Assumes loadComposeStacks returns Stack[] where:
+	//  - stack.id is the directory name.
+	//  - stack.meta is populated if stack.hasArcaneMeta is true.
+	//  - stack.isExternal is set to false.
+	//  - stack.hasArcaneMeta is correctly set.
 	const managedStacks = await loadComposeStacks();
 
-	// Add meta information to managed stacks
-	const enrichedManagedStacks = await Promise.all(
-		managedStacks.map(async (stack) => {
-			try {
-				// Read the meta file to get autoUpdate property
-				const metaPath = await getStackMetaPath(stack.id);
-				const metaContent = await fs.readFile(metaPath, 'utf8');
-				const meta = JSON.parse(metaContent) as StackMeta;
+	let allStacks: Stack[] = [...managedStacks];
 
-				// Return stack with meta included
-				return {
-					...stack,
-					meta
-				};
-			} catch (err) {
-				console.warn(`Failed to read meta for stack ${stack.id}:`, err);
-				return stack; // Return stack without meta if there was an error
-			}
-		})
-	);
-
-	// Get external stacks if requested
-	let externalStacks: Stack[] = [];
 	if (includeExternal) {
-		externalStacks = await discoverExternalStacks();
+		const externalStacksList = await discoverExternalStacks();
+		// discoverExternalStacks sets isExternal: true.
+		// Ensure hasArcaneMeta is consistently false for these, as they are not from STACKS_DIR.
+		const processedExternalStacks = externalStacksList.map((stack) => ({
+			...stack,
+			hasArcaneMeta: false // External stacks don't have Arcane meta in STACKS_DIR
+			// meta property will be undefined for external stacks from discoverExternalStacks
+		}));
+		allStacks = [...allStacks, ...processedExternalStacks];
 	}
 
-	// Combine managed and external stacks
-	return [...enrichedManagedStacks, ...externalStacks];
+	return allStacks;
 }
 
 /**
