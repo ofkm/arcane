@@ -17,39 +17,30 @@
 	const isOidcForcedByPublicEnv = publicEnv.PUBLIC_OIDC_ENABLED === 'true';
 
 	let showOidcConfigDialog = $state(false);
-	// oidcConfigForm is primarily for the setup/editing mode
-	// It uses data.settings which already incorporates server-side env vars if they were set
 	let oidcConfigForm = $state({
 		clientId: data.settings?.auth?.oidc?.clientId || '',
-		clientSecret: '', // Client secret is not pre-filled for security, even in guidance
-		redirectUri: data.settings?.auth?.oidc?.redirectUri || 'http://localhost:5173/auth/oidc/callback',
+		clientSecret: '',
+		redirectUri: data.settings?.auth?.oidc?.redirectUri || 'http://localhost:3000/auth/oidc/callback',
 		authorizationEndpoint: data.settings?.auth?.oidc?.authorizationEndpoint || '',
 		tokenEndpoint: data.settings?.auth?.oidc?.tokenEndpoint || '',
 		userinfoEndpoint: data.settings?.auth?.oidc?.userinfoEndpoint || '',
 		scopes: data.settings?.auth?.oidc?.scopes || 'openid email profile'
 	});
 
-	// This derived state determines if the dialog is for viewing (true) or setup (false)
-	// View mode is active if the *private* server-side OIDC variables are configured.
 	let isOidcViewMode = $derived(data.oidcEnvVarsConfigured);
-
-	// New derived state to check if OIDC is configured via application settings
 	let oidcConfiguredViaAppSettings = $derived(!!(data.settings?.auth?.oidc?.clientId && data.settings?.auth?.oidc?.redirectUri && data.settings?.auth?.oidc?.authorizationEndpoint && data.settings?.auth?.oidc?.tokenEndpoint));
 
 	onMount(() => {
 		if (isOidcForcedByPublicEnv) {
-			// If PUBLIC_OIDC_ENABLED=true, ensure the store reflects OIDC as enabled.
 			if (!$settingsStore.auth?.oidcEnabled) {
 				settingsStore.update((current) => ({
 					...current,
 					auth: {
 						...(current.auth || {}),
-						oidcEnabled: true // Force store to true
+						oidcEnabled: true
 					}
 				}));
 			}
-			// If forced ON by public env, but private server vars are missing,
-			// automatically show the guidance dialog.
 			if (!data.oidcEnvVarsConfigured) {
 				showOidcConfigDialog = true;
 			}
@@ -57,8 +48,6 @@
 	});
 
 	function handleOidcSwitchChange(checked: boolean) {
-		// This handler is only effectively called if isOidcForcedByPublicEnv is false,
-		// as the switch is disabled otherwise.
 		settingsStore.update((current) => ({
 			...current,
 			auth: {
@@ -67,27 +56,22 @@
 			}
 		}));
 
-		// If user enables (and not forced by env) AND private server vars are not configured,
-		// open dialog for setup guidance.
 		if (checked && !data.oidcEnvVarsConfigured) {
 			showOidcConfigDialog = true;
 		}
 	}
 
 	function openOidcDialog() {
-		// This function is mainly for the "View Status" or "Configure" buttons.
 		showOidcConfigDialog = true;
 	}
 
 	async function handleSaveOidcConfig() {
-		// This function is called when !isOidcViewMode (form is visible for configuration)
 		try {
 			settingsStore.update((current) => {
 				const existingAuth = { ...(current.auth || {}) };
-				// Preserve other auth settings, replace OIDC config
 				const newOidcConfig = {
 					clientId: oidcConfigForm.clientId,
-					clientSecret: oidcConfigForm.clientSecret, // Ensure backend handles this securely
+					clientSecret: oidcConfigForm.clientSecret,
 					redirectUri: oidcConfigForm.redirectUri,
 					authorizationEndpoint: oidcConfigForm.authorizationEndpoint,
 					tokenEndpoint: oidcConfigForm.tokenEndpoint,
@@ -99,17 +83,16 @@
 					...current,
 					auth: {
 						...existingAuth,
-						oidcEnabled: true, // Enable OIDC when configuring it
+						oidcEnabled: true,
 						oidc: newOidcConfig
 					}
 				};
 			});
 
-			await saveSettingsToServer(); // Assumes this function persists the settingsStore
+			await saveSettingsToServer();
 
 			toast.success('OIDC configuration saved successfully.');
 			showOidcConfigDialog = false;
-			// Consider if data needs to be reloaded or updated after save, e.g., to refresh `data.settings`
 		} catch (error) {
 			console.error('Failed to save OIDC configuration:', error);
 			toast.error('Failed to save OIDC configuration.', {
@@ -138,7 +121,7 @@
 					<div class="space-y-0.5">
 						<label for="localAuthSwitch" class="text-base font-medium">Local Authentication</label>
 						<p class="text-sm text-muted-foreground">Username and password stored in the system</p>
-						<p class="text-xs text-muted-foreground mt-1">Enable this as a fallback option if OIDC authentication is unavailable.</p>
+						<p class="text-xs text-muted-foreground mt-1">This is recommended to be enabled as a fallback option if OIDC authentication is unavailable.</p>
 					</div>
 					<Switch
 						id="localAuthSwitch"
@@ -228,8 +211,6 @@
 						<p class="mt-2 text-xs">Changes to these settings must be made in your server's environment configuration.</p>
 					{:else}
 						Configure the OIDC settings for your application. These settings will be saved and used for OIDC authentication.
-						<br />
-						<strong class="text-amber-600 text-xs">Note: If your server is also configured with OIDC environment variables, those might take precedence, especially for sensitive values like the Client Secret.</strong>
 						{#if isOidcForcedByPublicEnv && !data.oidcEnvVarsConfigured}
 							<br />
 							<strong class="text-orange-600 text-xs mt-1 block">OIDC usage is currently forced ON by <code>PUBLIC_OIDC_ENABLED</code>, but critical server-side OIDC environment variables appear to be missing. Please configure them below and save, or ensure the corresponding server environment variables are set.</strong>

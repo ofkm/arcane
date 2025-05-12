@@ -18,13 +18,11 @@
 
 	let loading = $state(false);
 
-	// Determine if OIDC login should be shown
 	const oidcForcedByEnv = env.PUBLIC_OIDC_ENABLED === 'true';
 	const oidcEnabledBySettings = data.settings?.auth?.oidcEnabled === true;
 	const showOidcLoginButton = $derived(oidcForcedByEnv || oidcEnabledBySettings);
 
-	// Determine if local login form should be shown
-	const localAuthEnabledBySettings = data.settings?.auth?.localAuthEnabled !== false; // Default to true if not set
+	const localAuthEnabledBySettings = data.settings?.auth?.localAuthEnabled !== false;
 	const showLocalLoginForm = $derived(localAuthEnabledBySettings);
 
 	function handleOidcLogin() {
@@ -32,7 +30,6 @@
 		goto(`/auth/oidc/login?redirect=${encodeURIComponent(currentRedirect)}`);
 	}
 
-	// Determine if the "Or continue with" divider should be shown
 	const showDivider = $derived(showOidcLoginButton && showLocalLoginForm);
 </script>
 

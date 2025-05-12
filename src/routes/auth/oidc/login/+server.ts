@@ -12,20 +12,13 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
 
-	// Use createAuthorizationURLWithPKCE for PKCE flow
-	const authUrl = await oidcClient.createAuthorizationURLWithPKCE(
-		OIDC_AUTHORIZATION_ENDPOINT,
-		state,
-		CodeChallengeMethod.S256, // Pass CodeChallengeMethod directly
-		codeVerifier, // Pass codeVerifier directly
-		OIDC_SCOPES // Pass OIDC_SCOPES (string[]) directly as the scopes
-	);
+	const authUrl = await oidcClient.createAuthorizationURLWithPKCE(OIDC_AUTHORIZATION_ENDPOINT, state, CodeChallengeMethod.S256, codeVerifier, OIDC_SCOPES);
 
 	cookies.set('oidc_state', state, {
 		path: '/',
 		secure: import.meta.env.PROD,
 		httpOnly: true,
-		maxAge: 60 * 10, // 10 minutes
+		maxAge: 60 * 10,
 		sameSite: 'lax'
 	});
 
@@ -33,7 +26,7 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 		path: '/',
 		secure: import.meta.env.PROD,
 		httpOnly: true,
-		maxAge: 60 * 10, // 10 minutes
+		maxAge: 60 * 10,
 		sameSite: 'lax'
 	});
 
