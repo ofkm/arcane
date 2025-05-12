@@ -6,6 +6,8 @@
 	import { Loader2 } from '@lucide/svelte';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
+	import type { RegistryCredential } from '$lib/types/settings.type';
+	import { settingsStore } from '$lib/stores/settings-store';
 
 	function preventDefault(handler: (event: SubmitEvent) => void) {
 		return (event: SubmitEvent) => {
@@ -22,14 +24,22 @@
 		open?: boolean;
 		isPulling?: boolean;
 		pullProgress?: number;
-		onSubmit?: any;
+		onSubmit?: (data: { imageRef: string; tag?: string; platform?: string; registryUrl?: string }) => void; // Updated onSubmit type
+		// Removed registryCredentials prop
 	}
 
-	let { open = $bindable(false), isPulling = false, pullProgress = 0, onSubmit = (data: { imageRef: string; tag?: string; platform?: string }) => {} }: Props = $props();
+	let {
+		open = $bindable(false),
+		isPulling = false,
+		pullProgress = 0,
+		onSubmit = (data) => console.log('Pull submitted:', data) // Default onSubmit
+		// Removed registryCredentials from destructuring
+	}: Props = $props();
 
 	let imageRef = $state('');
 	let tag = $state('latest');
 	let platform = $state('');
+	let selectedRegistryUrl = $state(''); // State for selected registry URL
 
 	// Available platforms
 	const platforms = [
@@ -40,24 +50,39 @@
 		{ label: 'windows/amd64', value: 'windows/amd64' }
 	];
 
+	function getRegistryLabel(url: string | undefined): string {
+		if (!url || url.toLowerCase() === 'docker.io') {
+			return 'Default (Docker Hub / Public)';
+		}
+		return url;
+	}
+
 	function handleSubmit() {
 		if (!imageRef.trim()) return;
 
-		let urlPath = imageRef.trim();
+		let imageName = imageRef.trim();
 		let imageTag = tag.trim();
 
-		if (urlPath.includes(':')) {
-			const parts = urlPath.split(':');
-			urlPath = parts[0];
-			imageTag = parts[1];
+		if (imageName.includes(':')) {
+			const parts = imageName.split(':');
+			imageName = parts[0];
+			if (parts.length > 1 && parts[1].trim() !== '') {
+				imageTag = parts[1].trim();
+			}
+		}
+		if (!imageTag) {
+			imageTag = 'latest';
 		}
 
 		onSubmit({
-			imageRef: urlPath,
+			imageRef: imageName,
 			tag: imageTag,
-			platform: platform || undefined
+			platform: platform || undefined,
+			registryUrl: selectedRegistryUrl || undefined
 		});
 	}
+
+	console.log($settingsStore.registryCredentials.length);
 </script>
 
 <Dialog.Root bind:open>
@@ -73,7 +98,7 @@
 				<Label for="image-ref">Image</Label>
 				<div class="flex items-center gap-2">
 					<div class="flex-1">
-						<Input id="image-ref" bind:value={imageRef} placeholder="e.g., nginx or ubuntu" required disabled={isPulling} />
+						<Input id="image-ref" bind:value={imageRef} placeholder="e.g., nginx or myregistry.com/ubuntu" required disabled={isPulling} />
 					</div>
 					<div class="flex items-center">
 						<span class="text-lg font-medium text-muted-foreground">:</span>
@@ -85,7 +110,7 @@
 			</div>
 
 			<!-- Advanced settings -->
-			<Accordion.Root type="single">
+			<Accordion.Root type="single" class="w-full">
 				<Accordion.Item value="advanced">
 					<Accordion.Trigger>Advanced Settings</Accordion.Trigger>
 					<Accordion.Content>
@@ -106,8 +131,7 @@
 										{/each}
 									</Select.Content>
 								</Select.Root>
-
-								<p class="text-xs text-muted-foreground mt-1">Platform specifies the architecture and OS for multi-architecture images. Leave empty to use your system's default platform.</p>
+								<p class="text-xs text-muted-foreground mt-1">Specifies architecture/OS for multi-arch images. Default uses your system's platform.</p>
 							</div>
 						</div>
 					</Accordion.Content>

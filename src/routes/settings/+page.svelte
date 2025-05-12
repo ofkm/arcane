@@ -11,6 +11,7 @@
 	import { saveSettingsToServer, updateSettingsStore } from '$lib/stores/settings-store';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
+	import DockerSettings from './tabs/docker-settings.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -32,6 +33,7 @@
 
 	const tabs = [
 		{ id: 'app-settings', label: 'General', component: AppSettings },
+		{ id: 'docker-settings', label: 'Docker', component: DockerSettings },
 		{ id: 'user-management', label: 'User Management', component: UserManagement },
 		{ id: 'authentication', label: 'Authentication', component: Authentication }
 	];
@@ -72,7 +74,7 @@
 	</div>
 
 	<Tabs.Root value={settingsPageStates.activeTab} onValueChange={(val) => (settingsPageStates.activeTab = val)} class="w-full">
-		<Tabs.List class="grid grid-cols-3 md:w-full md:max-w-3xl mb-4">
+		<Tabs.List class="grid grid-cols-4 md:w-full md:max-w-3xl mb-4">
 			{#each tabs as tab, i (tab.id)}
 				<Tabs.Trigger value={tab.id} class="whitespace-nowrap">
 					{tab.label}

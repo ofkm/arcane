@@ -212,27 +212,15 @@
 				</div>
 				<div class="flex items-center gap-2">
 					{#if networkPageStates.selectedNetworks.length > 0}
-						<DropdownMenu.Root>
-							<DropdownMenu.Trigger>
-								{#snippet child({ props })}
-									<Button {...props} variant="outline" size="sm" disabled={isLoading.remove} aria-label={`Group actions for ${networkPageStates.selectedNetworks.length} selected network(s)`}>
-										{#if isLoading.remove}
-											<Loader2 class="w-4 h-4 animate-spin" />
-											Processing...
-										{:else}
-											Actions ({networkPageStates.selectedNetworks.length})
-											<ChevronDown class="w-4 h-4" />
-										{/if}
-									</Button>
-								{/snippet}
-							</DropdownMenu.Trigger>
-							<DropdownMenu.Content>
-								<DropdownMenu.Item onclick={() => handleDeleteSelected()} class="text-red-500 focus:!text-red-700" disabled={isLoading.remove}>
-									<Trash2 class="w-4 h-4" />
-									Delete Selected
-								</DropdownMenu.Item>
-							</DropdownMenu.Content>
-						</DropdownMenu.Root>
+						<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.remove}>
+							{#if isLoading.remove}
+								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+								Processing...
+							{:else}
+								<Trash2 class="w-4 h-4" />
+								Delete Selected
+							{/if}
+						</Button>
 					{/if}
 				</div>
 			</div>

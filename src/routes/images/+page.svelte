@@ -18,6 +18,7 @@
 	import ImageAPIService from '$lib/services/api/image-api-service';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
+	import { settingsStore } from '$lib/stores/settings-store';
 
 	let { data }: { data: PageData } = $props();
 	let images = $state<EnhancedImageInfo[]>(data.images || []);
@@ -31,6 +32,15 @@
 		pruning: false
 	});
 
+	$effect(() => {
+		if (data.settings) {
+			settingsStore.update((current) => ({
+				...current,
+				...data.settings
+			}));
+		}
+	});
+
 	const imageApi = new ImageAPIService();
 
 	let isPullDialogOpen = $state(false);
@@ -41,14 +51,33 @@
 	const totalImages = $derived(images?.length || 0);
 	const totalSize = $derived(images?.reduce((acc, img) => acc + (img.size || 0), 0) || 0);
 
-	async function handlePullImageSubmit(event: { imageRef: string; tag?: string; platform?: string }) {
-		const { imageRef, tag = 'latest', platform } = event;
+	async function handlePullImageSubmit(event: { imageRef: string; tag?: string; platform?: string; registryUrl?: string }) {
+		const { imageRef, tag = 'latest', platform, registryUrl } = event;
 
 		isLoading.pulling = true;
+		pullProgress = 0; // Reset progress
 
 		try {
 			const encodedImageRef = encodeURIComponent(imageRef);
-			const eventSource = new EventSource(`/api/images/pull-stream/${encodedImageRef}?tag=${tag}${platform ? `&platform=${platform}` : ''}`);
+			let apiUrl = `/api/images/pull-stream/${encodedImageRef}?tag=${tag}`;
+
+			if (platform) {
+				apiUrl += `&platform=${encodeURIComponent(platform)}`;
+			}
+
+			if (registryUrl) {
+				const credentials = $settingsStore.registryCredentials || [];
+				const foundCredential = credentials.find((cred) => cred.url === registryUrl);
+
+				if (foundCredential && foundCredential.username) {
+					toast.info(`Attempting pull from ${foundCredential.url} with user ${foundCredential.username}`);
+				} else if (registryUrl !== 'docker.io' && registryUrl !== '') {
+					// Avoid warning for default Docker Hub
+					toast.error(`Credentials not found for ${registryUrl}. Attempting unauthenticated pull.`);
+				}
+			}
+
+			const eventSource = new EventSource(apiUrl);
 
 			eventSource.onmessage = (event) => {
 				const data = JSON.parse(event.data);
@@ -58,6 +87,12 @@
 					toast.error(`Pull failed: ${data.error}`);
 					isLoading.pulling = false;
 					return;
+				}
+
+				if (data.type === 'info' || data.type === 'warning') {
+					if (data.type === 'info') toast.info(data.message);
+					if (data.type === 'warning') toast.error(data.message);
+					return; // Don't process as progress/completion
 				}
 
 				if (data.progress !== undefined) {
@@ -72,7 +107,7 @@
 
 					setTimeout(async () => {
 						await invalidateAll();
-					}, 500);
+					}, 500); // Give Docker a moment before invalidating
 					isLoading.pulling = false;
 				}
 			};
@@ -254,27 +289,15 @@
 
 					<div class="flex items-center gap-2">
 						{#if selectedIds.length > 0}
-							<DropdownMenu.Root>
-								<DropdownMenu.Trigger>
-									{#snippet child({ props })}
-										<Button {...props} variant="outline" disabled={isLoading.removing} aria-label={`Group actions for ${selectedIds.length} selected image(s)`}>
-											{#if isLoading.removing}
-												<Loader2 class="w-4 h-4 mr-2 animate-spin" />
-												Processing...
-											{:else}
-												Actions ({selectedIds.length})
-												<ChevronDown class="w-4 h-4 ml-2" />
-											{/if}
-										</Button>
-									{/snippet}
-								</DropdownMenu.Trigger>
-								<DropdownMenu.Content align="end">
-									<DropdownMenu.Item onclick={() => handleDeleteSelected()} class="text-red-500 focus:!text-red-700" disabled={isLoading.removing}>
-										<Trash2 class="w-4 h-4" />
-										Delete Selected
-									</DropdownMenu.Item>
-								</DropdownMenu.Content>
-							</DropdownMenu.Root>
+							<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.removing}>
+								{#if isLoading.removing}
+									<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+									Processing...
+								{:else}
+									<Trash2 class="w-4 h-4" />
+									Delete Selected
+								{/if}
+							</Button>
 						{/if}
 						<Button variant="secondary" onclick={() => (isConfirmPruneDialogOpen = true)} disabled={isLoading.pruning}>
 							{#if isLoading.pruning}

@@ -4,6 +4,14 @@ import { URL } from 'url';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { extractDockerErrorMessage } from '$lib/utils/errors.util';
 import { json } from '@sveltejs/kit';
+import { getSettings } from '$lib/services/settings-service';
+import { areRegistriesEquivalent } from '$lib/utils/registry.utils';
+
+interface AuthConfig {
+	username: string;
+	password?: string;
+	serveraddress: string;
+}
 
 export const GET: RequestHandler = async ({ params, request }) => {
 	const imageName = params.name;
@@ -17,9 +25,9 @@ export const GET: RequestHandler = async ({ params, request }) => {
 		return json(response, { status: 400 });
 	}
 
-	const url = new URL(request.url);
-	const tag = url.searchParams.get('tag') || 'latest';
-	const platform = url.searchParams.get('platform');
+	const reqUrl = new URL(request.url);
+	const tag = reqUrl.searchParams.get('tag') || 'latest';
+	const platform = reqUrl.searchParams.get('platform');
 
 	const headers = new Headers({
 		'Content-Type': 'text/event-stream',
@@ -31,20 +39,48 @@ export const GET: RequestHandler = async ({ params, request }) => {
 		async start(controller) {
 			try {
 				const docker = getDockerClient();
+				const settings = await getSettings();
 
 				function send(data: any) {
 					controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
 				}
 
 				const fullImageRef = `${imageName}:${tag}`;
+				const pullOptions: { platform?: string; authconfig?: AuthConfig } = {};
 
-				// Construct pull options
-				const pullOptions: { platform?: string } = {};
 				if (platform) {
 					pullOptions.platform = platform;
 				}
 
-				// Pass options to docker.pull
+				// Extract registry host from image name
+				const imageRegistryHost = imageName.includes('/') ? (imageName.split('/')[0].includes('.') || imageName.split('/')[0].includes(':') ? imageName.split('/')[0] : 'docker.io') : 'docker.io';
+
+				// Check for credentials in settings
+				if (settings.registryCredentials && settings.registryCredentials.length > 0) {
+					const storedCredential = settings.registryCredentials.find((cred) => areRegistriesEquivalent(cred.url, imageRegistryHost));
+
+					if (storedCredential) {
+						// Docker Hub's canonical serveraddress for authconfig
+						const serverAddress = imageRegistryHost === 'docker.io' ? 'https://index.docker.io/v1/' : imageRegistryHost;
+
+						pullOptions.authconfig = {
+							username: storedCredential.username,
+							password: storedCredential.password,
+							serveraddress: serverAddress
+						};
+						send({
+							type: 'info',
+							message: `Using stored credentials for ${imageRegistryHost} as ${storedCredential.username}`
+						});
+					} else if (imageRegistryHost !== 'docker.io') {
+						// Only warn about missing credentials for non-Docker Hub registries
+						send({
+							type: 'warning',
+							message: `No stored credentials found for ${imageRegistryHost}. Attempting unauthenticated pull.`
+						});
+					}
+				}
+
 				const pullStream = await docker.pull(fullImageRef, pullOptions);
 
 				type LayerProgress = {
@@ -52,12 +88,10 @@ export const GET: RequestHandler = async ({ params, request }) => {
 					total: number;
 				};
 				const layers: Record<string, LayerProgress> = {};
-				let totalProgress = 0;
 
 				docker.modem.followProgress(
 					pullStream,
-					(err: Error | null, output: any[]) => {
-						// Pull complete
+					(err: Error | null) => {
 						if (err) {
 							const errorResponse: ApiErrorResponse = {
 								success: false,
@@ -70,7 +104,8 @@ export const GET: RequestHandler = async ({ params, request }) => {
 							send({
 								success: true,
 								complete: true,
-								progress: 100
+								progress: 100,
+								status: 'Download complete'
 							});
 						}
 						controller.close();
@@ -87,35 +122,39 @@ export const GET: RequestHandler = async ({ params, request }) => {
 							}
 
 							let totalSize = 0;
-							let currentProgress = 0;
+							let currentProgressSum = 0;
+							let calculatedProgress = 0;
 
-							Object.values(layers).forEach((layer: any) => {
+							Object.values(layers).forEach((layer: LayerProgress) => {
 								if (layer.total > 0) {
 									totalSize += layer.total;
-									currentProgress += layer.current;
+									currentProgressSum += layer.current;
 								}
 							});
 
 							if (totalSize > 0) {
-								totalProgress = Math.min(99, Math.floor((currentProgress / totalSize) * 100));
+								calculatedProgress = Math.min(99, Math.floor((currentProgressSum / totalSize) * 100));
 								send({
 									success: true,
-									progress: totalProgress,
-									status: event.status
+									progress: calculatedProgress,
+									status: event.status,
+									id: event.id
 								});
-							} else {
-								// Send initial status even if progress can't be calculated yet
+							} else if (event.status) {
 								send({
 									success: true,
 									progress: 0,
-									status: event.status
+									status: event.status,
+									id: event.id
 								});
 							}
 						} else if (event.status) {
-							// Send status updates that don't have layer progress
+							const lastLayerKey = Object.keys(layers).pop();
+							const lastKnownProgress = lastLayerKey && layers[lastLayerKey]?.total > 0 ? Math.min(99, Math.floor((layers[lastLayerKey].current / layers[lastLayerKey].total) * 100)) : 0;
 							send({
 								success: true,
-								status: event.status
+								status: event.status,
+								progress: lastKnownProgress
 							});
 						}
 					}
