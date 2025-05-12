@@ -3,7 +3,7 @@
 	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch, Plus } from '@lucide/svelte';
+	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch, Plus, Funnel } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -24,6 +24,14 @@
 	let images = $state<EnhancedImageInfo[]>(data.images || []);
 	let error = $state(data.error);
 	let selectedIds = $state<string[]>([]);
+
+	let imageFilters = $state({
+		showUsed: true,
+		showUnused: true
+	});
+
+	// Add with other derived values
+	const filteredImages = $derived(images.filter((img) => (imageFilters.showUsed && img.inUse) || (imageFilters.showUnused && !img.inUse)));
 
 	let isLoading = $state({
 		pulling: false,
@@ -288,6 +296,36 @@
 					</div>
 
 					<div class="flex items-center gap-2">
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger>
+								{#snippet child({ props })}
+									<Button {...props} variant="outline">
+										<Funnel class="w-4 h-4" />
+										Filter
+										<ChevronDown class="w-4 h-4" />
+									</Button>
+								{/snippet}
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content>
+								<DropdownMenu.Label>Image Usage</DropdownMenu.Label>
+								<DropdownMenu.CheckboxItem
+									checked={imageFilters.showUsed}
+									onCheckedChange={(checked) => {
+										imageFilters.showUsed = checked;
+									}}
+								>
+									Show Used Images
+								</DropdownMenu.CheckboxItem>
+								<DropdownMenu.CheckboxItem
+									checked={imageFilters.showUnused}
+									onCheckedChange={(checked) => {
+										imageFilters.showUnused = checked;
+									}}
+								>
+									Show Unused Images
+								</DropdownMenu.CheckboxItem>
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
 						{#if selectedIds.length > 0}
 							<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.removing}>
 								{#if isLoading.removing}
@@ -318,7 +356,7 @@
 			</Card.Header>
 			<Card.Content>
 				<UniversalTable
-					data={images}
+					data={filteredImages}
 					columns={[
 						{ accessorKey: 'repo', header: 'Name' },
 						{ accessorKey: 'tag', header: 'Tag' },

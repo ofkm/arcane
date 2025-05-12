@@ -3,7 +3,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { toast } from 'svelte-sonner';
-	import { Plus, AlertCircle, HardDrive, Database, Trash2, Loader2, ChevronDown, Ellipsis, ScanSearch } from '@lucide/svelte';
+	import { Plus, AlertCircle, HardDrive, Database, Trash2, Loader2, ChevronDown, Ellipsis, ScanSearch, Funnel } from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -22,8 +22,12 @@
 	let volumePageStates = $state({
 		volumes: data.volumes,
 		selectedIds: <string[]>[],
-		error: data.error
+		error: data.error,
+		showUsed: true,
+		showUnused: true
 	});
+
+	const filteredVolumes = $derived(volumePageStates.volumes.filter((vol) => (volumePageStates.showUsed && vol.inUse) || (volumePageStates.showUnused && !vol.inUse)));
 
 	let isDialogOpen = $state({
 		create: false,
@@ -183,6 +187,36 @@
 					<Card.Description>Manage persistent data storage</Card.Description>
 				</div>
 				<div class="flex items-center gap-2">
+					<DropdownMenu.Root>
+						<DropdownMenu.Trigger>
+							{#snippet child({ props })}
+								<Button {...props} variant="outline">
+									<Funnel class="w-4 h-4" />
+									Filter
+									<ChevronDown class="w-4 h-4" />
+								</Button>
+							{/snippet}
+						</DropdownMenu.Trigger>
+						<DropdownMenu.Content>
+							<DropdownMenu.Label>Volume Usage</DropdownMenu.Label>
+							<DropdownMenu.CheckboxItem
+								checked={volumePageStates.showUsed}
+								onCheckedChange={(checked) => {
+									volumePageStates.showUsed = checked;
+								}}
+							>
+								Show Used Volumes
+							</DropdownMenu.CheckboxItem>
+							<DropdownMenu.CheckboxItem
+								checked={volumePageStates.showUnused}
+								onCheckedChange={(checked) => {
+									volumePageStates.showUnused = checked;
+								}}
+							>
+								Show Unused Volumes
+							</DropdownMenu.CheckboxItem>
+						</DropdownMenu.Content>
+					</DropdownMenu.Root>
 					{#if volumePageStates.selectedIds.length > 0}
 						<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.remove}>
 							{#if isLoading.remove}
@@ -204,7 +238,7 @@
 		<Card.Content>
 			{#if volumePageStates.volumes && volumePageStates.volumes.length > 0}
 				<UniversalTable
-					data={volumePageStates.volumes}
+					data={filteredVolumes}
 					idKey="name"
 					columns={[
 						{ accessorKey: 'name', header: 'Name' },
