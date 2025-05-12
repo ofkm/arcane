@@ -1,9 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import proper from 'proper-lockfile';
-import type { Settings } from '$lib/types/settings.type';
+import type { Settings, OidcConfig } from '$lib/types/settings.type';
 import { encrypt, decrypt } from './encryption-service';
 import { SETTINGS_DIR, STACKS_DIR, ensureDirectory } from './paths-service';
+import { env } from '$env/dynamic/private';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -93,31 +94,83 @@ async function saveSetting(key: string, value: any): Promise<void> {
 }
 
 export async function getSettings(): Promise<Settings> {
+	let effectiveSettings: Settings;
+
 	try {
 		await ensureSettingsDir();
 		const filePath = path.join(SETTINGS_DIR, 'settings.dat');
 
 		try {
 			await fs.access(filePath);
-		} catch {
-			return getDefaultSettings();
+			const rawData = await fs.readFile(filePath, 'utf8');
+			const settingsFromFile = JSON.parse(rawData);
+
+			let baseSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
+
+			if (settingsFromFile._encrypted) {
+				const { _encrypted, ...nonSensitiveSettings } = settingsFromFile;
+				const decryptedData = await decrypt(_encrypted);
+
+				effectiveSettings = {
+					...baseSettings,
+					...nonSensitiveSettings,
+					auth: {
+						...baseSettings.auth,
+						...(nonSensitiveSettings.auth || {}),
+						...(decryptedData.auth || {})
+					},
+					registryCredentials: decryptedData.registryCredentials || baseSettings.registryCredentials,
+					onboarding: nonSensitiveSettings.onboarding || baseSettings.onboarding,
+					baseServerUrl: nonSensitiveSettings.baseServerUrl || baseSettings.baseServerUrl
+				};
+			} else {
+				effectiveSettings = {
+					...baseSettings,
+					...settingsFromFile,
+					auth: {
+						...baseSettings.auth,
+						...(settingsFromFile.auth || {})
+					},
+					registryCredentials: settingsFromFile.registryCredentials || baseSettings.registryCredentials,
+					onboarding: settingsFromFile.onboarding || baseSettings.onboarding,
+					baseServerUrl: settingsFromFile.baseServerUrl || baseSettings.baseServerUrl
+				};
+			}
+		} catch (fileError) {
+			console.warn('Settings file not found or unreadable, using default settings.', fileError instanceof Error ? fileError.message : fileError);
+			effectiveSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
 		}
-
-		const rawData = await fs.readFile(filePath, 'utf8');
-		const settingsData = JSON.parse(rawData);
-
-		if (settingsData._encrypted) {
-			const { _encrypted, ...nonSensitiveSettings } = settingsData;
-			const decryptedData = await decrypt(_encrypted);
-
-			return { ...nonSensitiveSettings, ...decryptedData };
-		}
-
-		return settingsData;
-	} catch (error) {
-		console.error('Error loading settings:', error);
-		return getDefaultSettings();
+	} catch (dirError) {
+		console.error('Critical error ensuring settings directory or reading settings file:', dirError);
+		effectiveSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
 	}
+
+	const oidcClientId = env.OIDC_CLIENT_ID;
+	const oidcClientSecret = env.OIDC_CLIENT_SECRET;
+	const oidcRedirectUri = env.OIDC_REDIRECT_URI;
+	const oidcAuthorizationEndpoint = env.OIDC_AUTHORIZATION_ENDPOINT;
+	const oidcTokenEndpoint = env.OIDC_TOKEN_ENDPOINT;
+	const oidcUserinfoEndpoint = env.OIDC_USERINFO_ENDPOINT;
+	const oidcScopesEnv = env.OIDC_SCOPES;
+
+	if (oidcClientId && oidcClientSecret && oidcRedirectUri && oidcAuthorizationEndpoint && oidcTokenEndpoint && oidcUserinfoEndpoint) {
+		if (!effectiveSettings.auth) {
+			effectiveSettings.auth = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.auth));
+		}
+
+		const oidcConfigFromEnv: OidcConfig = {
+			clientId: oidcClientId,
+			clientSecret: oidcClientSecret,
+			redirectUri: oidcRedirectUri,
+			authorizationEndpoint: oidcAuthorizationEndpoint,
+			tokenEndpoint: oidcTokenEndpoint,
+			userinfoEndpoint: oidcUserinfoEndpoint,
+			scopes: oidcScopesEnv || effectiveSettings.auth.oidc?.scopes || DEFAULT_SETTINGS.auth.oidc?.scopes || 'openid email profile'
+		};
+		effectiveSettings.auth.oidc = oidcConfigFromEnv;
+	}
+
+	return effectiveSettings;
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
@@ -144,7 +197,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
 
 		const dataToSave = {
 			...nonSensitiveSettings,
-			_encrypted: await encrypt({ auth, registryCredentials })
+			_encrypted: await encrypt({ auth: auth || DEFAULT_SETTINGS.auth, registryCredentials: registryCredentials || [] })
 		};
 
 		await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), { mode: 0o600 });
@@ -161,8 +214,4 @@ export async function saveSettings(settings: Settings): Promise<void> {
 			}
 		}
 	}
-}
-
-function getDefaultSettings(): Settings {
-	return DEFAULT_SETTINGS;
 }
