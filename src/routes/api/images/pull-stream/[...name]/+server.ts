@@ -29,11 +29,6 @@ export const GET: RequestHandler = async ({ params, request }) => {
 	const tag = reqUrl.searchParams.get('tag') || 'latest';
 	const platform = reqUrl.searchParams.get('platform');
 
-	// Explicit credentials from query params (will override auto-detected credentials)
-	const authServer = reqUrl.searchParams.get('authServer');
-	const authUser = reqUrl.searchParams.get('authUser');
-	const authPass = reqUrl.searchParams.get('authPass');
-
 	const headers = new Headers({
 		'Content-Type': 'text/event-stream',
 		'Cache-Control': 'no-cache',
@@ -57,42 +52,32 @@ export const GET: RequestHandler = async ({ params, request }) => {
 					pullOptions.platform = platform;
 				}
 
-				// If explicit credentials are provided via query params, use those
-				if (authServer && authUser) {
-					pullOptions.authconfig = {
-						username: authUser,
-						password: authPass || undefined,
-						serveraddress: authServer
-					};
-					send({ type: 'info', message: `Attempting authenticated pull for ${authServer} as ${authUser}` });
-				} else {
-					// Extract registry host from image name
-					const imageRegistryHost = imageName.includes('/') ? (imageName.split('/')[0].includes('.') || imageName.split('/')[0].includes(':') ? imageName.split('/')[0] : 'docker.io') : 'docker.io';
+				// Extract registry host from image name
+				const imageRegistryHost = imageName.includes('/') ? (imageName.split('/')[0].includes('.') || imageName.split('/')[0].includes(':') ? imageName.split('/')[0] : 'docker.io') : 'docker.io';
 
-					// Check for credentials in settings
-					if (settings.registryCredentials && settings.registryCredentials.length > 0) {
-						const storedCredential = settings.registryCredentials.find((cred) => areRegistriesEquivalent(cred.url, imageRegistryHost));
+				// Check for credentials in settings
+				if (settings.registryCredentials && settings.registryCredentials.length > 0) {
+					const storedCredential = settings.registryCredentials.find((cred) => areRegistriesEquivalent(cred.url, imageRegistryHost));
 
-						if (storedCredential) {
-							// Docker Hub's canonical serveraddress for authconfig
-							const serverAddress = imageRegistryHost === 'docker.io' ? 'https://index.docker.io/v1/' : imageRegistryHost;
+					if (storedCredential) {
+						// Docker Hub's canonical serveraddress for authconfig
+						const serverAddress = imageRegistryHost === 'docker.io' ? 'https://index.docker.io/v1/' : imageRegistryHost;
 
-							pullOptions.authconfig = {
-								username: storedCredential.username,
-								password: storedCredential.password,
-								serveraddress: serverAddress
-							};
-							send({
-								type: 'info',
-								message: `Using stored credentials for ${imageRegistryHost} as ${storedCredential.username}`
-							});
-						} else if (imageRegistryHost !== 'docker.io') {
-							// Only warn about missing credentials for non-Docker Hub registries
-							send({
-								type: 'warning',
-								message: `No stored credentials found for ${imageRegistryHost}. Attempting unauthenticated pull.`
-							});
-						}
+						pullOptions.authconfig = {
+							username: storedCredential.username,
+							password: storedCredential.password,
+							serveraddress: serverAddress
+						};
+						send({
+							type: 'info',
+							message: `Using stored credentials for ${imageRegistryHost} as ${storedCredential.username}`
+						});
+					} else if (imageRegistryHost !== 'docker.io') {
+						// Only warn about missing credentials for non-Docker Hub registries
+						send({
+							type: 'warning',
+							message: `No stored credentials found for ${imageRegistryHost}. Attempting unauthenticated pull.`
+						});
 					}
 				}
 

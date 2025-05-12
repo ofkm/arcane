@@ -133,28 +133,6 @@
 								</Select.Root>
 								<p class="text-xs text-muted-foreground mt-1">Specifies architecture/OS for multi-arch images. Default uses your system's platform.</p>
 							</div>
-
-							{#if $settingsStore.registryCredentials}
-								<div class="flex flex-col gap-2 border-t pt-4 mt-2">
-									<Label for="registry">Registry</Label>
-									<Select.Root type="single" bind:value={selectedRegistryUrl} disabled={isPulling}>
-										<Select.Trigger class="w-full" id="registry">
-											<span>
-												{getRegistryLabel(selectedRegistryUrl) || 'Default (Docker Hub / Public)'}
-											</span>
-										</Select.Trigger>
-										<Select.Content collisionPadding={10}>
-											<Select.Item value="">Default (Docker Hub / Public)</Select.Item>
-											{#each $settingsStore.registryCredentials as cred (cred.url)}
-												<Select.Item value={cred.url}>
-													{cred.url} ({cred.username})
-												</Select.Item>
-											{/each}
-										</Select.Content>
-									</Select.Root>
-									<p class="text-xs text-muted-foreground mt-1">Select a pre-configured private registry. If your image is on Docker Hub or another public registry, leave as default.</p>
-								</div>
-							{/if}
 						</div>
 					</Accordion.Content>
 				</Accordion.Item>

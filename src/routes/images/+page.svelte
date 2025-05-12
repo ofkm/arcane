@@ -70,12 +70,6 @@
 				const foundCredential = credentials.find((cred) => cred.url === registryUrl);
 
 				if (foundCredential && foundCredential.username) {
-					apiUrl += `&authServer=${encodeURIComponent(foundCredential.url)}`;
-					apiUrl += `&authUser=${encodeURIComponent(foundCredential.username)}`;
-					if (foundCredential.password) {
-						// Password is optional
-						apiUrl += `&authPass=${encodeURIComponent(foundCredential.password)}`;
-					}
 					toast.info(`Attempting pull from ${foundCredential.url} with user ${foundCredential.username}`);
 				} else if (registryUrl !== 'docker.io' && registryUrl !== '') {
 					// Avoid warning for default Docker Hub
