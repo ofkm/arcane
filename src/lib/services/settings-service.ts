@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	registryCredentials: [],
 	auth: {
 		localAuthEnabled: true,
+		oidcEnabled: false,
 		sessionTimeout: 60,
 		passwordPolicy: 'strong',
 		rbacEnabled: false

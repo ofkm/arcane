@@ -29,18 +29,36 @@
 					<div class="space-y-0.5">
 						<label for="localAuthSwitch" class="text-base font-medium">Local Authentication</label>
 						<p class="text-sm text-muted-foreground">Username and password stored in the system</p>
-						<p class="text-xs text-muted-foreground mt-1">This setting cannot be changed currently</p>
+						<p class="text-xs text-muted-foreground mt-1">Enable this as a fallback option if OIDC authentication is unavailable.</p>
 					</div>
 					<Switch
 						id="localAuthSwitch"
 						checked={$settingsStore.auth?.localAuthEnabled ?? true}
-						disabled={true}
 						onCheckedChange={(checked) => {
 							settingsStore.update((current) => ({
 								...current,
 								auth: {
 									...(current.auth || {}),
 									localAuthEnabled: checked
+								}
+							}));
+						}}
+					/>
+				</div>
+				<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
+					<div class="space-y-0.5">
+						<label for="localAuthSwitch" class="text-base font-medium">OIDC Authentication</label>
+						<p class="text-sm text-muted-foreground">Use a External OIDC Provider for Authntication</p>
+					</div>
+					<Switch
+						id="oidcAuthSwitch"
+						checked={$settingsStore.auth?.oidcEnabled ?? false}
+						onCheckedChange={(checked) => {
+							settingsStore.update((current) => ({
+								...current,
+								auth: {
+									...(current.auth || {}),
+									oidcEnabled: checked
 								}
 							}));
 						}}

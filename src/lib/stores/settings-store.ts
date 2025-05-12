@@ -35,6 +35,7 @@ export const settingsStore = writable<Settings>({
 	registryCredentials: [],
 	auth: {
 		localAuthEnabled: true,
+		oidcEnabled: false,
 		sessionTimeout: 30,
 		passwordPolicy: 'strong',
 		rbacEnabled: false

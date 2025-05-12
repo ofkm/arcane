@@ -1,5 +1,6 @@
 export interface AuthSettings {
 	localAuthEnabled: boolean;
+	oidcEnabled: boolean;
 	sessionTimeout: number;
 	passwordPolicy: 'basic' | 'standard' | 'strong';
 	rbacEnabled: boolean;
