@@ -120,3 +120,9 @@ export async function listUsers(): Promise<User[]> {
 		return [];
 	}
 }
+
+export async function getUserByOidcSubjectId(oidcSubjectId: string): Promise<User | null> {
+	const users = await listUsers();
+	const user = users.find((u) => u.oidcSubjectId === oidcSubjectId);
+	return user || null;
+}

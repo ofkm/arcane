@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { OAuth2RequestError } from 'arctic';
 import { oidcClient, OIDC_TOKEN_ENDPOINT, OIDC_USERINFO_ENDPOINT } from '$lib/services/oidc-service';
-import { getUserByUsername, saveUser, getUserById } from '$lib/services/user-service'; // Assuming you might want to use email as username or have a dedicated field
+import { getUserByUsername, saveUser, getUserById, getUserByOidcSubjectId } from '$lib/services/user-service';
 import type { User } from '$lib/types/user.type';
 import { nanoid } from 'nanoid';
 import type { RequestHandler } from './$types';
@@ -38,7 +38,7 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 
 		const userInfoResponse = await fetch(OIDC_USERINFO_ENDPOINT, {
 			headers: {
-				Authorization: `Bearer ${tokens.accessToken()}` // Make sure to call accessToken()
+				Authorization: `Bearer ${tokens.accessToken()}`
 			}
 		});
 
@@ -49,50 +49,57 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 
 		const oidcUser = await userInfoResponse.json();
 
-		// Extract user information - field names depend on your OIDC provider and scopes requested
-		// Common OIDC claims:
-		// 'sub': Subject Identifier (unique ID for the user at the provider) - REQUIRED
-		// 'email': User's email address
-		// 'email_verified': Boolean indicating if email is verified
-		// 'name': User's full name
-		// 'preferred_username': Shorthand name by which the End-User wishes to be referred to
-		// 'given_name': User's first name
-		// 'family_name': User's last name
-		// 'picture': URL of the End-User's profile picture
-
 		const oidcSubjectId = oidcUser.sub;
 		const oidcUserEmail = oidcUser.email;
-		const oidcUserDisplayName = oidcUser.name;
-		// Use preferred_username, or email, or generate one if not available or suitable for your system
-		const oidcUsername = oidcUser.preferred_username || oidcUser.email || `user-${oidcUser.sub.slice(0, 8)}`;
+		const oidcUserDisplayName = oidcUser.name || oidcUser.preferred_username;
+		const oidcUsername = oidcUser.preferred_username || oidcUser.email || `user-${oidcUser.sub?.slice(0, 8)}`;
 
 		if (!oidcSubjectId) {
 			console.error('OIDC userinfo response missing "sub" (subject identifier).');
 			throw redirect(302, '/auth/login?error=oidc_missing_sub');
 		}
-		if (!oidcUserEmail) {
-			// Decide how to handle missing email - it might be optional depending on your setup
-			console.warn('OIDC userinfo response missing "email".');
-			// Potentially throw an error or proceed without it if your system allows
-		}
-
-		// Find or create user in your system
-		// It's best to use oidcSubjectId to find the user if they've logged in before with OIDC.
-		// You might need to add a field like `oidcSubject` to your User model and a new service function.
-		// For now, we'll try by email if available, then by username as a fallback for lookup.
-		// Creating a new user will use the OIDC details.
 
 		let user: User | null = null;
-		// Example: if you add a getUserByOidcSubjectId function
-		// user = await getUserByOidcSubjectId(oidcSubjectId);
+		let needsUpdate = false;
 
-		if (!user && oidcUserEmail) {
-			user = await getUserByUsername(oidcUserEmail); // Assuming username can be an email
+		user = await getUserByOidcSubjectId(oidcSubjectId);
+
+		if (user) {
+			if (oidcUserDisplayName && user.displayName !== oidcUserDisplayName) {
+				user.displayName = oidcUserDisplayName;
+				needsUpdate = true;
+			}
+			if (oidcUserEmail && user.email !== oidcUserEmail) {
+				user.email = oidcUserEmail;
+				needsUpdate = true;
+			}
+			if (needsUpdate) {
+				user.updatedAt = new Date().toISOString();
+			}
+		} else if (oidcUserEmail) {
+			const userByEmail = await getUserByUsername(oidcUserEmail);
+			if (userByEmail) {
+				if (!userByEmail.oidcSubjectId) {
+					userByEmail.oidcSubjectId = oidcSubjectId;
+					userByEmail.displayName = oidcUserDisplayName || userByEmail.displayName;
+					userByEmail.updatedAt = new Date().toISOString();
+					user = userByEmail;
+					needsUpdate = true;
+				} else if (userByEmail.oidcSubjectId === oidcSubjectId) {
+					user = userByEmail;
+					if (oidcUserDisplayName && user.displayName !== oidcUserDisplayName) {
+						user.displayName = oidcUserDisplayName;
+						needsUpdate = true;
+					}
+					if (needsUpdate) {
+						user.updatedAt = new Date().toISOString();
+					}
+				} else {
+					console.error(`OIDC login attempt for email ${oidcUserEmail} with new OIDC subjectId ${oidcSubjectId}, but email is already linked to OIDC subjectId ${userByEmail.oidcSubjectId}.`);
+					throw redirect(302, '/auth/login?error=oidc_email_collision');
+				}
+			}
 		}
-		// If not found by email, or email is not primary, you might try by a derived username
-		// if (!user) {
-		// user = await getUserByUsername(oidcUsername);
-		// }
 
 		if (!user) {
 			const newUser: User = {
@@ -101,16 +108,17 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 				email: oidcUserEmail,
 				displayName: oidcUserDisplayName,
 				oidcSubjectId: oidcSubjectId,
-				roles: ['admin'],
-				createdAt: new Date().toISOString()
+				roles: ['user'],
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				lastLogin: new Date().toISOString()
 			};
-			user = await saveUser(newUser);
-		} else {
-			// Optionally, update existing user's details if they've changed at the OIDC provider
-			// For example, if their email or name changed.
-			// user.email = oidcUserEmail;
-			// user.name = oidcUser.name; // if you store name
-			// await saveUser(user); // or an updateUser function
+			user = newUser;
+			needsUpdate = true;
+		}
+
+		if (needsUpdate && user) {
+			await saveUser(user);
 		}
 
 		if (!user || !user.id || !user.username) {
@@ -118,7 +126,12 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 			throw redirect(302, '/auth/login?error=user_processing_failed');
 		}
 
-		// Create session
+		if (user && !needsUpdate) {
+			user.lastLogin = new Date().toISOString();
+			user.updatedAt = new Date().toISOString();
+			await saveUser(user);
+		}
+
 		const userSession: UserSession = {
 			userId: user.id,
 			username: user.username,
@@ -131,8 +144,10 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 	} catch (e) {
 		console.error('OIDC callback processing error:', e);
 		if (e instanceof OAuth2RequestError) {
-			// e.code, e.description
 			throw redirect(302, `/auth/login?error=oidc_token_error&code=${e.code || 'unknown'}`);
+		}
+		if (e instanceof Error && e.message.includes('/auth/login?error=oidc_email_collision')) {
+			throw e;
 		}
 		throw redirect(302, '/auth/login?error=oidc_generic_error');
 	}
