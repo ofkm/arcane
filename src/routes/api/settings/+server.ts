@@ -1,14 +1,19 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getSettings, saveSettings } from '$lib/services/settings-service';
+import { getSettings as getPersistedSettings, saveSettings as persistSettings } from '$lib/services/settings-service';
 import type { Settings } from '$lib/types/settings.type';
 import { initComposeService } from '$lib/services/docker/stack-service';
 import { initAutoUpdateScheduler, stopAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
+import { updateSettingsStore } from '$lib/stores/settings-store'; // To update server-side store instance
+import {
+	updateDockerConnection,
+	dockerHost as currentCoreDockerHost // Import the current host from core.ts
+} from '$lib/services/docker/core';
 
 export const GET: RequestHandler = async () => {
-	const result = await tryCatch(getSettings());
+	const result = await tryCatch(getPersistedSettings());
 	if (result.error) {
 		console.error('API Error fetching settings:', result.error);
 		const response: ApiErrorResponse = {
@@ -32,23 +37,10 @@ export const PUT: RequestHandler = async ({ request }) => {
 		};
 		return json(response, { status: 400 });
 	}
-	const body = bodyResult.data;
+	const newSettingsData = bodyResult.data as Settings; // Renamed for clarity
 
-	const currentSettingsResult = await tryCatch(getSettings());
-	if (currentSettingsResult.error) {
-		console.error('API Error fetching current settings:', currentSettingsResult.error);
-		const response: ApiErrorResponse = {
-			success: false,
-			error: currentSettingsResult.error.message || 'Failed to fetch current settings',
-			code: ApiErrorCode.INTERNAL_SERVER_ERROR,
-			details: currentSettingsResult.error
-		};
-		return json(response, { status: 500 });
-	}
-	const currentSettings = currentSettingsResult.data;
-
-	// Validate required fields
-	if (!body.dockerHost) {
+	// Validate required fields (using newSettingsData)
+	if (!newSettingsData.dockerHost) {
 		const response: ApiErrorResponse = {
 			success: false,
 			error: 'Docker host cannot be empty.',
@@ -56,7 +48,7 @@ export const PUT: RequestHandler = async ({ request }) => {
 		};
 		return json(response, { status: 400 });
 	}
-	if (!body.stacksDirectory) {
+	if (!newSettingsData.stacksDirectory) {
 		const response: ApiErrorResponse = {
 			success: false,
 			error: 'Stacks directory cannot be empty.',
@@ -65,25 +57,39 @@ export const PUT: RequestHandler = async ({ request }) => {
 		return json(response, { status: 400 });
 	}
 
-	// Normalize boolean values (handle string representation from form data)
-	const booleanFields = ['autoUpdate', 'pollingEnabled'];
-	const nestedAuthBooleanFields = ['localAuthEnabled', 'rbacEnabled'];
+	// Normalize boolean values.
+	// Ensure that the keys listed in booleanFields correspond to properties in Settings
+	// that are intended to be booleans (e.g., defined as `boolean` or `boolean | undefined`).
+	const booleanFields: Array<keyof Settings> = ['autoUpdate', 'pollingEnabled'];
 	booleanFields.forEach((field) => {
-		if (field in body && typeof body[field] === 'string') {
-			body[field] = body[field] === 'true';
+		const currentValue = newSettingsData[field];
+		if (typeof currentValue === 'string') {
+			// If currentValue is a string, convert it to boolean and assign back.
+			// Using `as Record<string, any>` for the assignment target can help if TypeScript
+			// has issues with the specific indexed assignment `newSettingsData[field] = boolean_value;`
+			(newSettingsData as Record<string, any>)[field] = currentValue.toLowerCase() === 'true';
 		}
 	});
-	if (body.auth) {
+
+	// Normalize boolean values for nested auth settings.
+	// Ensure keys in nestedAuthBooleanFields correspond to boolean properties in Settings['auth'].
+	if (newSettingsData.auth) {
+		// Define keys more safely based on the actual type of newSettingsData.auth
+		const nestedAuthBooleanFields: Array<keyof typeof newSettingsData.auth> = ['localAuthEnabled', 'rbacEnabled'];
 		nestedAuthBooleanFields.forEach((field) => {
-			if (field in body.auth && typeof body.auth[field] === 'string') {
-				body.auth[field] = body.auth[field] === 'true';
+			// Ensure the field is a key of newSettingsData.auth before accessing
+			if (Object.prototype.hasOwnProperty.call(newSettingsData.auth, field)) {
+				const currentValue = newSettingsData.auth[field];
+				if (typeof currentValue === 'string') {
+					(newSettingsData.auth as Record<string, any>)[field] = currentValue.toLowerCase() === 'true';
+				}
 			}
 		});
 	}
 
 	// Validate polling interval if polling is enabled
-	if (body.pollingEnabled) {
-		const pollingInterval = parseInt(body.pollingInterval, 10);
+	if (newSettingsData.pollingEnabled) {
+		const pollingInterval = parseInt(String(newSettingsData.pollingInterval), 10);
 		if (isNaN(pollingInterval) || pollingInterval < 5 || pollingInterval > 60) {
 			const response: ApiErrorResponse = {
 				success: false,
@@ -92,76 +98,26 @@ export const PUT: RequestHandler = async ({ request }) => {
 			};
 			return json(response, { status: 400 });
 		}
-		body.pollingInterval = pollingInterval;
+		newSettingsData.pollingInterval = pollingInterval;
 	}
 
 	// Validate auto-update interval if enabled
-	if (body.autoUpdate) {
-		const autoUpdateInterval = parseInt(body.autoUpdateInterval, 10);
+	if (newSettingsData.autoUpdate) {
+		const autoUpdateInterval = parseInt(String(newSettingsData.autoUpdateInterval), 10);
 		if (isNaN(autoUpdateInterval) || autoUpdateInterval < 5) {
-			body.autoUpdateInterval = 60;
-		} else {
-			const validatedAutoUpdateInterval = Math.min(Math.max(autoUpdateInterval, 5), 1440);
-			body.autoUpdateInterval = validatedAutoUpdateInterval;
+			const response: ApiErrorResponse = {
+				success: false,
+				error: 'Auto-update interval must be at least 5 minutes.',
+				code: ApiErrorCode.BAD_REQUEST
+			};
+			return json(response, { status: 400 });
 		}
+		newSettingsData.autoUpdateInterval = autoUpdateInterval;
 	}
 
-	// Ensure nested objects exist if they are partially updated
-	if (!body.externalServices) body.externalServices = {};
-	if (!body.auth) body.auth = {};
+	// Persist the validated new settings to disk
+	const saveResult = await tryCatch(persistSettings(newSettingsData));
 
-	// Handle registry credentials
-	if (body.registryCredentials && typeof body.registryCredentials === 'string') {
-		try {
-			body.registryCredentials = JSON.parse(body.registryCredentials);
-		} catch (e) {
-			console.error('Error parsing registry credentials', e);
-			body.registryCredentials = currentSettings.registryCredentials;
-		}
-	}
-
-	// Handle authentication settings
-	if (body.authentication && typeof body.authentication === 'string') {
-		try {
-			body.authentication = JSON.parse(body.authentication);
-		} catch (e) {
-			console.error('Error parsing authentication settings', e);
-			body.authentication = currentSettings.auth;
-		}
-	}
-
-	// Handle Auth settings
-	if (body.auth !== undefined) {
-		body.auth = {
-			localAuthEnabled: body.auth.localAuthEnabled ?? currentSettings.auth?.localAuthEnabled ?? true,
-			sessionTimeout: body.auth.sessionTimeout ?? currentSettings.auth?.sessionTimeout ?? 60,
-			passwordPolicy: body.auth.passwordPolicy ?? currentSettings.auth?.passwordPolicy ?? 'strong'
-		};
-	} else if (currentSettings.auth) {
-		body.auth = currentSettings.auth;
-	}
-
-	// Add onboarding to accepted fields
-	if (body.onboarding) {
-		if (typeof body.onboarding.completed === 'string') {
-			body.onboarding.completed = body.onboarding.completed === 'true';
-		}
-		if (!body.onboarding.completedAt) {
-			body.onboarding.completedAt = new Date().toISOString();
-		}
-	}
-
-	// Merge settings
-	const updatedSettings: Settings = {
-		...currentSettings,
-		...body
-	};
-	if (body.pruneMode) {
-		updatedSettings.pruneMode = body.pruneMode as 'all' | 'dangling';
-	}
-
-	// Save updated settings
-	const saveResult = await tryCatch(saveSettings(updatedSettings));
 	if (saveResult.error) {
 		console.error('API Error saving settings:', saveResult.error);
 		const response: ApiErrorResponse = {
@@ -173,34 +129,27 @@ export const PUT: RequestHandler = async ({ request }) => {
 		return json(response, { status: 500 });
 	}
 
-	// Handle Docker connection changes
-	const dockerHostChanged = currentSettings.dockerHost !== updatedSettings.dockerHost;
-	const stacksDirChanged = currentSettings.stacksDirectory !== updatedSettings.stacksDirectory;
-	if (dockerHostChanged || stacksDirChanged) {
-		const initResult = await tryCatch(initComposeService());
-		if (initResult.error) {
-			console.error('API Error initializing compose service:', initResult.error);
-			// Not returning error since settings were saved successfully
-		}
+	console.log('API: Settings saved to disk successfully.');
+
+	// Update the server-side in-memory Svelte store instance.
+	updateSettingsStore(newSettingsData);
+	console.log('API: Server-side settingsStore updated.');
+
+	// Check if Docker host changed and update Docker connection in core.ts if needed
+	const newDockerHost = newSettingsData.dockerHost;
+	if (newDockerHost && newDockerHost !== currentCoreDockerHost) {
+		console.log(`API: Docker host changed from "${currentCoreDockerHost}" to "${newDockerHost}". Updating Docker connection.`);
+		updateDockerConnection(newDockerHost);
+	} else if (newDockerHost) {
+		console.log(`API: Docker host "${newDockerHost}" is the same as current "${currentCoreDockerHost}". No Docker connection update forced from API.`);
 	}
 
-	// Handle auto-update changes
-	const autoUpdateChanged = currentSettings.autoUpdate !== updatedSettings.autoUpdate || currentSettings.autoUpdateInterval !== updatedSettings.autoUpdateInterval;
-	if (autoUpdateChanged) {
-		if (updatedSettings.autoUpdate) {
-			await tryCatch(stopAutoUpdateScheduler());
-			const schedulerResult = await tryCatch(initAutoUpdateScheduler());
-			if (schedulerResult.error) {
-				console.error('API Error initializing auto-update scheduler:', schedulerResult.error);
-			}
-		} else {
-			await tryCatch(stopAutoUpdateScheduler());
-		}
+	// Re-initialize services that depend on settings
+	await tryCatch(initComposeService());
+	await tryCatch(stopAutoUpdateScheduler());
+	if (newSettingsData.autoUpdate) {
+		await tryCatch(initAutoUpdateScheduler());
 	}
 
-	return json({
-		success: true,
-		message: 'Settings updated successfully',
-		settings: updatedSettings
-	});
+	return json({ success: true, message: 'Settings updated successfully' });
 };

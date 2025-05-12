@@ -14,7 +14,7 @@ import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors'
  */
 export async function listVolumes(): Promise<ServiceVolume[]> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const volumeResponse = await docker.listVolumes();
 		const volumes = volumeResponse.Volumes || [];
 
@@ -45,7 +45,7 @@ export async function listVolumes(): Promise<ServiceVolume[]> {
  */
 export async function isVolumeInUse(volumeName: string): Promise<boolean> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const containers = await docker.listContainers({ all: true });
 		// Inspect each container to check its mounts
 		for (const containerInfo of containers) {
@@ -71,7 +71,7 @@ export async function isVolumeInUse(volumeName: string): Promise<boolean> {
  */
 export async function getVolume(volumeName: string): Promise<VolumeInspectInfo> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const volume = docker.getVolume(volumeName);
 		const inspectInfo = await volume.inspect();
 		console.log(`Docker Service: Inspected volume "${volumeName}" successfully.`);
@@ -101,7 +101,7 @@ export async function getVolume(volumeName: string): Promise<VolumeInspectInfo> 
  */
 export async function createVolume(options: VolumeCreateOptions): Promise<ServiceVolume> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		// createVolume returns the volume data directly - no need to inspect
 		const volume = await docker.createVolume(options);
 
@@ -142,7 +142,7 @@ export async function createVolume(options: VolumeCreateOptions): Promise<Servic
  */
 export async function removeVolume(name: string, force = false): Promise<void> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const volume = docker.getVolume(name);
 		await volume.remove({ force });
 		console.log(`Docker Service: Volume "${name}" removed successfully (force=${force}).`);

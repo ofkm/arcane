@@ -14,7 +14,7 @@ import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors'
  */
 export async function listImages(): Promise<ServiceImage[]> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const images = await docker.listImages({ all: false });
 
 		const parseRepoTag = (tag: string | undefined): { repo: string; tag: string } => {
@@ -62,7 +62,7 @@ export async function listImages(): Promise<ServiceImage[]> {
  */
 export async function getImage(imageId: string): Promise<Docker.ImageInspectInfo> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const image = docker.getImage(imageId);
 		const inspectInfo = await image.inspect();
 		console.log(`Docker Service: Inspected image "${imageId}" successfully.`);
@@ -88,7 +88,7 @@ export async function getImage(imageId: string): Promise<Docker.ImageInspectInfo
  */
 export async function removeImage(imageId: string, force: boolean = false): Promise<void> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const image = docker.getImage(imageId);
 		await image.remove({ force });
 		console.log(`Docker Service: Image "${imageId}" removed successfully.`);
@@ -112,7 +112,7 @@ export async function removeImage(imageId: string, force: boolean = false): Prom
  */
 export async function isImageInUse(imageId: string): Promise<boolean> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const containers = await docker.listContainers({ all: true });
 
 		// Look for containers using this image
@@ -138,7 +138,7 @@ export async function pruneImages(mode: 'all' | 'dangling' = 'all'): Promise<{
 	SpaceReclaimed: number;
 }> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const filterValue = mode === 'all' ? 'false' : 'true';
 		const logMessage = mode === 'all' ? 'Pruning all unused images (docker image prune -a)...' : 'Pruning dangling images (docker image prune)...';
 
@@ -169,7 +169,7 @@ export async function pruneImages(mode: 'all' | 'dangling' = 'all'): Promise<{
  * @param {object} [authConfig] - Optional authentication configuration for private registries
  */
 export async function pullImage(imageRef: string, platform?: string, authConfig?: any): Promise<void> {
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const pullOptions: any = {};
 
 	if (platform) {

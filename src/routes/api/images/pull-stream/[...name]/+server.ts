@@ -38,7 +38,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 	const stream = new ReadableStream({
 		async start(controller) {
 			try {
-				const docker = getDockerClient();
+				const docker = await getDockerClient();
 				const settings = await getSettings();
 
 				function send(data: any) {

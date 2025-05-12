@@ -194,7 +194,7 @@ async function loadEnvFile(stackId: string): Promise<string> {
  * `getComposeFilePath(stackId)`, and the `stackId` parameter.
  */
 async function getComposeInstance(stackId: string): Promise<DockerodeCompose> {
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const composePath = await getComposeFilePath(stackId);
 	if (!composePath) {
 		throw new Error(`Compose file not found for stack ${stackId}`);
@@ -218,7 +218,7 @@ async function getComposeInstance(stackId: string): Promise<DockerodeCompose> {
  * exit code). If an error occurs during the process, an empty array is returned.
  */
 async function getStackServices(stackId: string, composeContent: string): Promise<StackService[]> {
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const composeProjectLabel = 'com.docker.compose.project'; // Standard label
 	const composeServiceLabel = 'com.docker.compose.service'; // Standard service label
 
@@ -641,7 +641,7 @@ export async function startStack(stackId: string): Promise<boolean> {
  */
 export async function stopStack(stackId: string): Promise<boolean> {
 	console.log(`Attempting to stop stack ${stackId} by manually stopping containers...`);
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const composeProjectLabel = 'com.docker.compose.project';
 	let stoppedCount = 0;
 	let removedCount = 0;
@@ -959,7 +959,7 @@ export async function renameStack(currentStackId: string, newName: string): Prom
  */
 export async function discoverExternalStacks(): Promise<Stack[]> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const containers = await docker.listContainers({ all: true });
 
 		const composeProjectLabel = 'com.docker.compose.project';
@@ -1040,7 +1040,7 @@ export async function discoverExternalStacks(): Promise<Stack[]> {
  */
 export async function importExternalStack(stackId: string): Promise<Stack> {
 	// 1. First, check if we can find the stack by ID
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const containers = await docker.listContainers({ all: true });
 
 	// Filter containers that belong to this stack
@@ -1197,7 +1197,7 @@ export async function listStacks(includeExternal = false): Promise<Stack[]> {
  * @returns {Promise<boolean>} - True if any container in the stack is running.
  */
 export async function isStackRunning(stackId: string): Promise<boolean> {
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const composeProjectLabel = 'com.docker.compose.project';
 
 	try {

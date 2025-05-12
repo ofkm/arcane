@@ -7,7 +7,7 @@ import { tryCatch } from '$lib/utils/try-catch';
 
 export const GET: RequestHandler = async ({ params, request }) => {
 	const { containerId } = params;
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 
 	const result = await tryCatch(
 		(async () => {
