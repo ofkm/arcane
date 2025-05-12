@@ -17,7 +17,7 @@
 	});
 </script>
 
-<div class="grid grid-cols-auto lg:grid-cols-auto gap-6">
+<div class="grid auto-cols-auto lg:auto-cols-auto gap-6">
 	<Card.Root class="border shadow-sm">
 		<Card.Header class="pb-3">
 			<div class="flex items-center gap-2">
