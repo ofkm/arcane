@@ -33,6 +33,9 @@
 	// View mode is active if the *private* server-side OIDC variables are configured.
 	let isOidcViewMode = $derived(data.oidcEnvVarsConfigured);
 
+	// New derived state to check if OIDC is configured via application settings
+	let oidcConfiguredViaAppSettings = $derived(!!(data.settings?.auth?.oidc?.clientId && data.settings?.auth?.oidc?.redirectUri && data.settings?.auth?.oidc?.authorizationEndpoint && data.settings?.auth?.oidc?.tokenEndpoint));
+
 	onMount(() => {
 		if (isOidcForcedByPublicEnv) {
 			// If PUBLIC_OIDC_ENABLED=true, ensure the store reflects OIDC as enabled.
@@ -77,19 +80,42 @@
 	}
 
 	async function handleSaveOidcConfig() {
-		// This function is only relevant if !isOidcViewMode (setup guidance mode)
-		if (isOidcViewMode) {
-			// Equivalent to data.oidcEnvVarsConfigured
-			toast.info('OIDC is already configured via server environment variables. No action taken.');
-			showOidcConfigDialog = false;
-			return;
-		}
+		// This function is called when !isOidcViewMode (form is visible for configuration)
+		try {
+			settingsStore.update((current) => {
+				const existingAuth = { ...(current.auth || {}) };
+				// Preserve other auth settings, replace OIDC config
+				const newOidcConfig = {
+					clientId: oidcConfigForm.clientId,
+					clientSecret: oidcConfigForm.clientSecret, // Ensure backend handles this securely
+					redirectUri: oidcConfigForm.redirectUri,
+					authorizationEndpoint: oidcConfigForm.authorizationEndpoint,
+					tokenEndpoint: oidcConfigForm.tokenEndpoint,
+					userinfoEndpoint: oidcConfigForm.userinfoEndpoint,
+					scopes: oidcConfigForm.scopes
+				};
 
-		console.log('Acknowledging OIDC setup guidance:', oidcConfigForm);
-		toast.info('OIDC Configuration Guidance', {
-			description: 'This dialog helps you identify the settings needed for server-side environment variables. This action is for demonstration and acknowledgement.'
-		});
-		showOidcConfigDialog = false;
+				return {
+					...current,
+					auth: {
+						...existingAuth,
+						oidcEnabled: true, // Enable OIDC when configuring it
+						oidc: newOidcConfig
+					}
+				};
+			});
+
+			await saveSettingsToServer(); // Assumes this function persists the settingsStore
+
+			toast.success('OIDC configuration saved successfully.');
+			showOidcConfigDialog = false;
+			// Consider if data needs to be reloaded or updated after save, e.g., to refresh `data.settings`
+		} catch (error) {
+			console.error('Failed to save OIDC configuration:', error);
+			toast.error('Failed to save OIDC configuration.', {
+				description: error instanceof Error ? error.message : 'An unknown error occurred.'
+			});
+		}
 	}
 </script>
 
@@ -148,11 +174,16 @@
 									<Info class="h-3 w-3 mr-1" />
 									OIDC is configured on server. View Status.
 								</Button>
+							{:else if oidcConfiguredViaAppSettings}
+								<Button variant="link" class="p-0 h-auto text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
+									<Info class="h-3 w-3 mr-1" />
+									OIDC configured via application settings. Click to Manage Them.
+								</Button>
 							{:else if !showOidcConfigDialog}
-								<!-- This case: Not forced by public env, store has it enabled, but private server vars missing -->
+								<!-- This case: Not forced by public env, store has it enabled, but neither server vars nor app settings are fully configured -->
 								<Button variant="link" class="p-0 h-auto text-xs text-destructive hover:underline" onclick={openOidcDialog}>
 									<AlertTriangle class="h-3 w-3 mr-1" />
-									OIDC server variables not configured. Click to see required settings.
+									OIDC application settings not configured. Click to configure.
 								</Button>
 							{/if}
 						{/if}
@@ -168,7 +199,7 @@
 		<Dialog.Content class="sm:max-w-[600px]">
 			<Dialog.Header>
 				<Dialog.Title
-					>{#if isOidcViewMode}OIDC Configuration Status{:else}Configure OIDC Provider (Guidance){/if}</Dialog.Title
+					>{#if isOidcViewMode}OIDC Configuration Status{:else}Configure OIDC Provider{/if}</Dialog.Title
 				>
 				<Dialog.Description>
 					{#if isOidcViewMode}
@@ -196,19 +227,22 @@
 						</ul>
 						<p class="mt-2 text-xs">Changes to these settings must be made in your server's environment configuration.</p>
 					{:else}
-						To enable OIDC, you need to set specific environment variables on your server. This dialog helps you identify the necessary settings.
+						Configure the OIDC settings for your application. These settings will be saved and used for OIDC authentication.
 						<br />
-						<strong class="text-destructive">Note: You cannot set these environment variables directly from this UI. This is for guidance only.</strong>
-						{#if isOidcForcedByPublicEnv}
+						<strong class="text-amber-600 text-xs">Note: If your server is also configured with OIDC environment variables, those might take precedence, especially for sensitive values like the Client Secret.</strong>
+						{#if isOidcForcedByPublicEnv && !data.oidcEnvVarsConfigured}
 							<br />
-							<strong class="text-orange-600">OIDC usage is currently forced ON by a public environment variable (<code>PUBLIC_OIDC_ENABLED</code>), but the required server-side settings above are missing. Ensure they are correctly set on the server.</strong>
+							<strong class="text-orange-600 text-xs mt-1 block">OIDC usage is currently forced ON by <code>PUBLIC_OIDC_ENABLED</code>, but critical server-side OIDC environment variables appear to be missing. Please configure them below and save, or ensure the corresponding server environment variables are set.</strong>
+						{:else if isOidcForcedByPublicEnv}
+							<br />
+							<strong class="text-orange-600 text-xs mt-1 block">OIDC usage is currently forced ON by <code>PUBLIC_OIDC_ENABLED</code>.</strong>
 						{/if}
 					{/if}
 				</Dialog.Description>
 			</Dialog.Header>
 
 			{#if !isOidcViewMode}
-				<!-- Form for setup guidance -->
+				<!-- Form for setup/configuration -->
 				<div class="grid gap-4 py-4 max-h-[50vh] overflow-y-auto pr-2">
 					<div class="grid grid-cols-4 items-center gap-4">
 						<Label for="oidcClientId" class="text-right col-span-1">Client ID</Label>
@@ -220,7 +254,7 @@
 					</div>
 					<div class="grid grid-cols-4 items-center gap-4">
 						<Label for="oidcRedirectUri" class="text-right col-span-1">Redirect URI</Label>
-						<Input id="oidcRedirectUri" bind:value={oidcConfigForm.redirectUri} placeholder="e.g., http://localhost:5173/auth/oidc/callback" class="col-span-3" />
+						<Input id="oidcRedirectUri" bind:value={oidcConfigForm.redirectUri} placeholder="e.g., http://localhost:3000/auth/oidc/callback" class="col-span-3" />
 					</div>
 					<div class="grid grid-cols-4 items-center gap-4">
 						<Label for="oidcAuthEndpoint" class="text-right col-span-1">Authorization URL</Label>
@@ -244,7 +278,7 @@
 			<Dialog.Footer>
 				<Button variant="outline" onclick={() => (showOidcConfigDialog = false)}>Close</Button>
 				{#if !isOidcViewMode}
-					<Button onclick={handleSaveOidcConfig}>Acknowledge Settings</Button>
+					<Button onclick={handleSaveOidcConfig}>Save Configuration</Button>
 				{/if}
 			</Dialog.Footer>
 		</Dialog.Content>
