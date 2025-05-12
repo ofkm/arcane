@@ -55,6 +55,7 @@
   "dependencies": {
     "@codemirror/lang-yaml": "^6.1.2",
     "@codemirror/legacy-modes": "^6.5.1",
+    "@swimlane/docker-reference": "^2.0.1",
     "@tanstack/table-core": "^8.21.3",
     "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
