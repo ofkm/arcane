@@ -108,7 +108,7 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 				email: oidcUserEmail,
 				displayName: oidcUserDisplayName,
 				oidcSubjectId: oidcSubjectId,
-				roles: ['user'],
+				roles: ['admin'], //This will be part of the rbac feature, user or admin doesnt really matter right now
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				lastLogin: new Date().toISOString()
