@@ -120,6 +120,7 @@
 							{ accessorKey: 'user', header: 'User' },
 							{ accessorKey: 'email', header: 'Email' },
 							{ accessorKey: 'roles', header: 'Roles' },
+							{ accessorKey: 'source', header: 'Source', enableSorting: false },
 							{ accessorKey: 'actions', header: ' ' }
 						]}
 						features={{
@@ -148,7 +149,6 @@
 							</Table.Cell>
 							<Table.Cell>
 								<div class="flex items-center gap-1.5">
-									<Mail class="h-3.5 w-3.5 text-muted-foreground" />
 									{item.email}
 								</div>
 							</Table.Cell>
@@ -161,6 +161,9 @@
 								</div>
 							</Table.Cell>
 							<Table.Cell>
+								<StatusBadge text={item.oidcSubjectId ? 'OIDC' : 'Local'} variant={item.oidcSubjectId ? 'blue' : 'purple'} />
+							</Table.Cell>
+							<Table.Cell>
 								<DropdownMenu.Root>
 									<DropdownMenu.Trigger>
 										<Button variant="ghost" size="icon" class="h-8 w-8">
@@ -170,10 +173,12 @@
 									</DropdownMenu.Trigger>
 									<DropdownMenu.Content align="end">
 										<DropdownMenu.Group>
-											<DropdownMenu.Item onclick={() => openEditUserDialog(item)}>
-												<Pencil class="h-4 w-4" />
-												Edit
-											</DropdownMenu.Item>
+											{#if !item.oidcSubjectId}
+												<DropdownMenu.Item onclick={() => openEditUserDialog(item)}>
+													<Pencil class="h-4 w-4" />
+													Edit
+												</DropdownMenu.Item>
+											{/if}
 											<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveUser(item.id)}>
 												<UserX class="h-4 w-4" />
 												Remove User

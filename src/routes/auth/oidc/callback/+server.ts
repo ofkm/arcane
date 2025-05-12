@@ -14,7 +14,6 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 	const codeVerifier = cookies.get('oidc_code_verifier');
 	const finalRedirectTo = cookies.get('oidc_redirect') || '/';
 
-	// Clear cookies
 	cookies.delete('oidc_state', { path: '/' });
 	cookies.delete('oidc_code_verifier', { path: '/' });
 	cookies.delete('oidc_redirect', { path: '/' });
@@ -96,13 +95,12 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 		// }
 
 		if (!user) {
-			// Create a new user if one doesn't exist
 			const newUser: User = {
 				id: nanoid(),
-				username: oidcUsername, // Ensure this is unique in your system
+				username: oidcUsername,
 				email: oidcUserEmail,
 				displayName: oidcUserDisplayName,
-				// oidcSubjectId: oidcSubjectId, // Store this for future logins
+				oidcSubjectId: oidcSubjectId,
 				roles: ['admin'],
 				createdAt: new Date().toISOString()
 			};

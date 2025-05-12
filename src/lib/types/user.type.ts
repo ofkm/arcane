@@ -9,4 +9,5 @@ export type User = {
 	lastLogin?: string;
 	requirePasswordChange?: boolean;
 	updatedAt?: string;
+	oidcSubjectId?: string;
 };
