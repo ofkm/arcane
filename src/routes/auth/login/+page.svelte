@@ -4,12 +4,11 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { AlertCircle, LogIn } from '@lucide/svelte'; // Added LogIn icon
+	import { AlertCircle, LogIn } from '@lucide/svelte';
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
-	import { env } from '$env/dynamic/public'; // Import public env variables
+	import { env } from '$env/dynamic/public';
 
-	// Define a proper type for form data
 	type ActionData = {
 		error?: string;
 		username?: string;
@@ -18,13 +17,23 @@
 	let { data, form }: { data: PageData; form: ActionData | null } = $props();
 
 	let loading = $state(false);
-	const oidcEnabled = env.PUBLIC_OIDC_ENABLED === 'true';
+
+	// Determine if OIDC login should be shown
+	const oidcForcedByEnv = env.PUBLIC_OIDC_ENABLED === 'true';
+	const oidcEnabledBySettings = data.settings?.auth?.oidcEnabled === true;
+	const showOidcLoginButton = $derived(oidcForcedByEnv || oidcEnabledBySettings);
+
+	// Determine if local login form should be shown
+	const localAuthEnabledBySettings = data.settings?.auth?.localAuthEnabled !== false; // Default to true if not set
+	const showLocalLoginForm = $derived(localAuthEnabledBySettings);
 
 	function handleOidcLogin() {
-		// Optionally pass the current redirect target to the OIDC login flow
 		const currentRedirect = data.redirectTo || '/';
 		goto(`/auth/oidc/login?redirect=${encodeURIComponent(currentRedirect)}`);
 	}
+
+	// Determine if the "Or continue with" divider should be shown
+	const showDivider = $derived(showOidcLoginButton && showLocalLoginForm);
 </script>
 
 <div class="flex max-h-screen flex-col justify-center my-auto py-12 sm:px-6 lg:px-8">
@@ -35,6 +44,31 @@
 
 	<div class="mt-10 mx-auto w-full max-w-[480px]">
 		<div class="bg-card px-6 py-5 shadow sm:rounded-lg sm:px-12">
+			{#if data.error}
+				<Alert.Root class="mb-4" variant="destructive">
+					<AlertCircle class="h-4 w-4 mr-2" />
+					<Alert.Title>Login Problem</Alert.Title>
+					<Alert.Description>
+						{#if data.error === 'oidc_invalid_response'}
+							There was an issue with the OIDC login response. Please try again.
+						{:else if data.error === 'oidc_misconfigured'}
+							OIDC is not configured correctly on the server. Please contact an administrator.
+						{:else if data.error === 'oidc_userinfo_failed'}
+							Could not retrieve your user information from the OIDC provider.
+						{:else if data.error === 'oidc_missing_sub'}
+							Your OIDC provider did not return a subject identifier.
+						{:else if data.error === 'oidc_email_collision'}
+							An account with your email already exists but is linked to a different OIDC identity. Please contact an administrator.
+						{:else if data.error === 'oidc_token_error'}
+							There was an error obtaining tokens from the OIDC provider.
+						{:else if data.error === 'user_processing_failed'}
+							An error occurred while processing your user account.
+						{:else}
+							An unexpected error occurred. Please try again.
+						{/if}
+					</Alert.Description>
+				</Alert.Root>
+			{/if}
 			{#if form?.error}
 				<Alert.Root class="mb-4" variant="destructive">
 					<AlertCircle class="h-4 w-4 mr-2" />
@@ -43,56 +77,59 @@
 				</Alert.Root>
 			{/if}
 
-			<form
-				class="space-y-6"
-				method="POST"
-				action="?/login"
-				use:enhance={() => {
-					loading = true;
-					return async ({ result, update }) => {
-						loading = false;
-						// Handle other result states like error
-						if (result.type === 'error') {
-							console.error('An unexpected error occurred during login');
-						} else if (result.type === 'success' || result.type === 'redirect') {
-							// also handle redirect
-							// goto is handled by SvelteKit for form actions resulting in redirect
-							// if you need to manually redirect after success for non-redirect results:
-							// if (result.type === 'success' && result.location) goto(result.location);
-							// else goto(data.redirectTo);
-						}
-						if (result.type !== 'redirect') {
-							// only update if not a redirect
-							await update();
-						}
-					};
-				}}
-			>
-				<div>
-					<Label for="username" class="block text-sm font-medium leading-6">Username</Label>
-					<div class="mt-2">
-						<Input id="username" name="username" type="text" autocomplete="username" required value={form?.username ?? ''} />
+			{#if !showLocalLoginForm && !showOidcLoginButton}
+				<Alert.Root variant="destructive">
+					<AlertCircle class="h-4 w-4 mr-2" />
+					<Alert.Title>No Login Methods Configured</Alert.Title>
+					<Alert.Description>There are currently no login methods enabled. Please contact an administrator.</Alert.Description>
+				</Alert.Root>
+			{/if}
+
+			{#if showLocalLoginForm}
+				<form
+					class="space-y-6"
+					method="POST"
+					action="?/login"
+					use:enhance={() => {
+						loading = true;
+						return async ({ result, update }) => {
+							loading = false;
+							if (result.type === 'error') {
+								console.error('An unexpected error occurred during login form submission');
+							}
+							if (result.type !== 'redirect') {
+								await update();
+							}
+						};
+					}}
+				>
+					<input type="hidden" name="redirectTo" value={data.redirectTo} />
+					<div>
+						<Label for="username" class="block text-sm font-medium leading-6">Username or Email</Label>
+						<div class="mt-2">
+							<Input id="username" name="username" type="text" autocomplete="username" required value={form?.username ?? ''} />
+						</div>
 					</div>
-				</div>
 
-				<div>
-					<Label for="password" class="block text-sm font-medium leading-6">Password</Label>
-					<div class="mt-2">
-						<Input id="password" name="password" type="password" autocomplete="current-password" required />
+					<div>
+						<Label for="password" class="block text-sm font-medium leading-6">Password</Label>
+						<div class="mt-2">
+							<Input id="password" name="password" type="password" autocomplete="current-password" required />
+						</div>
 					</div>
-				</div>
 
-				<div>
-					<Button type="submit" class="w-full" disabled={loading} aria-busy={loading}>
-						{#if loading}
-							<span class="loading loading-spinner loading-xs mr-2"></span>
-						{/if}
-						Sign in
-					</Button>
-				</div>
-			</form>
+					<div>
+						<Button type="submit" class="w-full" disabled={loading} aria-busy={loading}>
+							{#if loading}
+								<span class="loading loading-spinner loading-xs mr-2"></span>
+							{/if}
+							Sign in
+						</Button>
+					</div>
+				</form>
+			{/if}
 
-			{#if oidcEnabled}
+			{#if showDivider}
 				<div class="mt-6">
 					<div class="relative">
 						<div class="absolute inset-0 flex items-center">
@@ -102,14 +139,15 @@
 							<span class="bg-card px-2 text-muted-foreground">Or continue with</span>
 						</div>
 					</div>
+				</div>
+			{/if}
 
-					<div class="mt-6">
-						<Button onclick={handleOidcLogin} variant="outline" class="w-full">
-							<LogIn class="mr-2 h-4 w-4" />
-							<!-- Example Icon -->
-							Sign in with OIDC Provider
-						</Button>
-					</div>
+			{#if showOidcLoginButton}
+				<div class="mt-6 {showLocalLoginForm ? '' : 'pt-0'}">
+					<Button onclick={handleOidcLogin} variant="outline" class="w-full">
+						<LogIn class="mr-2 h-4 w-4" />
+						Sign in with OIDC Provider
+					</Button>
 				</div>
 			{/if}
 		</div>
