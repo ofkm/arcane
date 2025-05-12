@@ -6,7 +6,6 @@ import { getDockerClient } from '$lib/services/docker/core';
 import { extractDockerErrorMessage } from '$lib/utils/errors.util';
 import { URL } from 'url';
 import { getSettings } from '$lib/services/settings-service';
-import type { RegistryCredential } from '$lib/types/settings.type';
 import { areRegistriesEquivalent, parseImageNameForRegistry } from '$lib/utils/registry.utils';
 import { json } from '@sveltejs/kit';
 
@@ -19,7 +18,7 @@ interface AuthConfig {
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const id = params.stackId;
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 
 	const reqUrl = new URL(request.url);
 	const platform = reqUrl.searchParams.get('platform');
