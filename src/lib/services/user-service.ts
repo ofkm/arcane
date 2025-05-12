@@ -75,6 +75,9 @@ export async function saveUser(user: User): Promise<User> {
 }
 
 export async function verifyPassword(user: User, password: string): Promise<boolean> {
+	if (typeof user.passwordHash !== 'string') {
+		return false;
+	}
 	return await bcrypt.compare(password, user.passwordHash);
 }
 

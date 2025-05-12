@@ -1,7 +1,7 @@
 export type User = {
 	id: string;
 	username: string;
-	passwordHash: string;
+	passwordHash?: string;
 	displayName?: string;
 	email?: string;
 	roles: string[];

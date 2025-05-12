@@ -4,9 +4,10 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { AlertCircle } from '@lucide/svelte';
+	import { AlertCircle, LogIn } from '@lucide/svelte'; // Added LogIn icon
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
+	import { env } from '$env/dynamic/public'; // Import public env variables
 
 	// Define a proper type for form data
 	type ActionData = {
@@ -17,6 +18,13 @@
 	let { data, form }: { data: PageData; form: ActionData | null } = $props();
 
 	let loading = $state(false);
+	const oidcEnabled = env.PUBLIC_OIDC_ENABLED === 'true';
+
+	function handleOidcLogin() {
+		// Optionally pass the current redirect target to the OIDC login flow
+		const currentRedirect = data.redirectTo || '/';
+		goto(`/auth/oidc/login?redirect=${encodeURIComponent(currentRedirect)}`);
+	}
 </script>
 
 <div class="flex max-h-screen flex-col justify-center my-auto py-12 sm:px-6 lg:px-8">
@@ -46,10 +54,17 @@
 						// Handle other result states like error
 						if (result.type === 'error') {
 							console.error('An unexpected error occurred during login');
-						} else if (result.type === 'success') {
-							goto(data.redirectTo);
+						} else if (result.type === 'success' || result.type === 'redirect') {
+							// also handle redirect
+							// goto is handled by SvelteKit for form actions resulting in redirect
+							// if you need to manually redirect after success for non-redirect results:
+							// if (result.type === 'success' && result.location) goto(result.location);
+							// else goto(data.redirectTo);
 						}
-						await update();
+						if (result.type !== 'redirect') {
+							// only update if not a redirect
+							await update();
+						}
 					};
 				}}
 			>
@@ -76,6 +91,27 @@
 					</Button>
 				</div>
 			</form>
+
+			{#if oidcEnabled}
+				<div class="mt-6">
+					<div class="relative">
+						<div class="absolute inset-0 flex items-center">
+							<div class="w-full border-t border-border"></div>
+						</div>
+						<div class="relative flex justify-center text-sm">
+							<span class="bg-card px-2 text-muted-foreground">Or continue with</span>
+						</div>
+					</div>
+
+					<div class="mt-6">
+						<Button onclick={handleOidcLogin} variant="outline" class="w-full">
+							<LogIn class="mr-2 h-4 w-4" />
+							<!-- Example Icon -->
+							Sign in with OIDC Provider
+						</Button>
+					</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>

@@ -32,7 +32,7 @@ const authHandler: Handle = async ({ event, resolve }) => {
 	const path = url.pathname;
 
 	// Define paths that don't require authentication
-	const publicPaths = ['/auth/login', '/img'];
+	const publicPaths = ['/auth/login', '/img', '/auth/oidc/login', '/auth/oidc/callback'];
 	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
 
 	// Always allow access to public paths
