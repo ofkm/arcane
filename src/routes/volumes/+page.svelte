@@ -184,27 +184,15 @@
 				</div>
 				<div class="flex items-center gap-2">
 					{#if volumePageStates.selectedIds.length > 0}
-						<DropdownMenu.Root>
-							<DropdownMenu.Trigger>
-								{#snippet child({ props })}
-									<Button {...props} variant="outline" disabled={isLoading.remove} aria-label={`Group actions for ${volumePageStates.selectedIds.length} selected volume(s)`}>
-										{#if isLoading.remove}
-											<Loader2 class="w-4 h-4 animate-spin" />
-											Processing...
-										{:else}
-											Actions ({volumePageStates.selectedIds.length})
-											<ChevronDown class="w-4 h-4" />
-										{/if}
-									</Button>
-								{/snippet}
-							</DropdownMenu.Trigger>
-							<DropdownMenu.Content align="end">
-								<DropdownMenu.Item onclick={() => handleDeleteSelected()} class="text-red-500 focus:!text-red-700" disabled={isLoading.remove}>
-									<Trash2 class="w-4 h-4" />
-									Delete Selected
-								</DropdownMenu.Item>
-							</DropdownMenu.Content>
-						</DropdownMenu.Root>
+						<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.remove}>
+							{#if isLoading.remove}
+								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+								Processing...
+							{:else}
+								<Trash2 class="w-4 h-4" />
+								Delete Selected
+							{/if}
+						</Button>
 					{/if}
 					<Button variant="secondary" onclick={() => (isDialogOpen.create = true)}>
 						<Plus class="w-4 h-4" />

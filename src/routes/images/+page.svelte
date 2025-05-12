@@ -289,27 +289,15 @@
 
 					<div class="flex items-center gap-2">
 						{#if selectedIds.length > 0}
-							<DropdownMenu.Root>
-								<DropdownMenu.Trigger>
-									{#snippet child({ props })}
-										<Button {...props} variant="outline" disabled={isLoading.removing} aria-label={`Group actions for ${selectedIds.length} selected image(s)`}>
-											{#if isLoading.removing}
-												<Loader2 class="w-4 h-4 mr-2 animate-spin" />
-												Processing...
-											{:else}
-												Actions ({selectedIds.length})
-												<ChevronDown class="w-4 h-4 ml-2" />
-											{/if}
-										</Button>
-									{/snippet}
-								</DropdownMenu.Trigger>
-								<DropdownMenu.Content align="end">
-									<DropdownMenu.Item onclick={() => handleDeleteSelected()} class="text-red-500 focus:!text-red-700" disabled={isLoading.removing}>
-										<Trash2 class="w-4 h-4" />
-										Delete Selected
-									</DropdownMenu.Item>
-								</DropdownMenu.Content>
-							</DropdownMenu.Root>
+							<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.removing}>
+								{#if isLoading.removing}
+									<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+									Processing...
+								{:else}
+									<Trash2 class="w-4 h-4" />
+									Delete Selected
+								{/if}
+							</Button>
 						{/if}
 						<Button variant="secondary" onclick={() => (isConfirmPruneDialogOpen = true)} disabled={isLoading.pruning}>
 							{#if isLoading.pruning}
