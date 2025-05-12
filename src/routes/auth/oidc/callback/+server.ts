@@ -63,6 +63,7 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 
 		const oidcSubjectId = oidcUser.sub;
 		const oidcUserEmail = oidcUser.email;
+		const oidcUserDisplayName = oidcUser.name;
 		// Use preferred_username, or email, or generate one if not available or suitable for your system
 		const oidcUsername = oidcUser.preferred_username || oidcUser.email || `user-${oidcUser.sub.slice(0, 8)}`;
 
@@ -100,8 +101,9 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 				id: nanoid(),
 				username: oidcUsername, // Ensure this is unique in your system
 				email: oidcUserEmail,
+				displayName: oidcUserDisplayName,
 				// oidcSubjectId: oidcSubjectId, // Store this for future logins
-				roles: ['user'],
+				roles: ['admin'],
 				createdAt: new Date().toISOString()
 			};
 			user = await saveUser(newUser);
