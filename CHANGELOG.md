@@ -1,3 +1,17 @@
+## [0.8.0](https://github.com/ofkm/arcane/compare/v0.7.1...v0.8.0) (2025-05-12)
+
+### Features
+
+* private docker registries ([#162](https://github.com/ofkm/arcane/issues/162)) ([cfeffd2](https://github.com/ofkm/arcane/commit/cfeffd2698e07731ff943f9a816ad1c128e0e3a5))
+* remove delete button from actions dropdown menu for bulk removing ([#169](https://github.com/ofkm/arcane/issues/169)) ([cc15fae](https://github.com/ofkm/arcane/commit/cc15fae16b589f6a4fa7e2f09357c8ca9012f177))
+* used/unused filtering for images and volumes ([#170](https://github.com/ofkm/arcane/issues/170)) ([451abf8](https://github.com/ofkm/arcane/commit/451abf8a3811bedd6df0619263070273caae7389))
+
+### Bug Fixes
+
+* dockerhost from settings not being respected ([#171](https://github.com/ofkm/arcane/issues/171)) ([258c3f8](https://github.com/ofkm/arcane/commit/258c3f8db2e14572bc70c138dd7c75f19f6d1e12))
+* importing stacks if files are in the data/stacks directory ([#161](https://github.com/ofkm/arcane/issues/161)) ([9bfb479](https://github.com/ofkm/arcane/commit/9bfb4795ca57b90d6786200b2ab35b4d67d4b82d))
+* remove id columns from dashboard tables ([a414cbb](https://github.com/ofkm/arcane/commit/a414cbb5777468b0e2cd4346eac83ba709f03eaa))
+* use uid/gid 200 in container ([#156](https://github.com/ofkm/arcane/issues/156)) ([bae85ae](https://github.com/ofkm/arcane/commit/bae85aeb65059d50f4f1ab3f3bc33594e14f966a))
 ## [0.7.1](https://github.com/ofkm/arcane/compare/v0.7.0...v0.7.1) (2025-05-10)
 
 ### Bug Fixes

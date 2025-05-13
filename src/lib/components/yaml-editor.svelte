@@ -7,12 +7,10 @@
 	import { coolGlow } from 'thememirror';
 	import type { EditorView } from 'codemirror';
 
-	// Make value bindable
 	let { value = $bindable(''), placeholder = 'Enter YAML content', readOnly = false } = $props();
 
 	let editorView: EditorView;
 
-	// YAML linting function
 	function yamlLinter(view: { state: { doc: { toString(): string } } }) {
 		const diagnostics = [];
 		try {
@@ -31,7 +29,6 @@
 		return diagnostics;
 	}
 
-	// Combined extensions array
 	const lintExtension = linter(yamlLinter);
 </script>
 

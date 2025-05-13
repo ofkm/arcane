@@ -5,7 +5,7 @@ import type { Settings } from '$lib/types/settings.type';
 
 type PruneType = 'containers' | 'images' | 'networks' | 'volumes';
 type PruneServiceResult = PruneResult & { type: PruneType; error?: string };
-const docker = getDockerClient();
+const docker = await getDockerClient();
 
 /**
  * Prunes specified Docker resources sequentially, fetching settings to determine image prune mode.

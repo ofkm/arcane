@@ -1,7 +1,6 @@
 <script lang="ts">
 	interface Props {
 		text: string;
-		// Updated variant list
 		variant?: 'red' | 'purple' | 'green' | 'blue' | 'gray' | 'amber';
 	}
 

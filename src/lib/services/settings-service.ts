@@ -1,14 +1,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import proper from 'proper-lockfile';
-import type { Settings } from '$lib/types/settings.type';
+import type { Settings, OidcConfig } from '$lib/types/settings.type';
 import { encrypt, decrypt } from './encryption-service';
 import { SETTINGS_DIR, STACKS_DIR, ensureDirectory } from './paths-service';
+import { env } from '$env/dynamic/private';
 
-// Determine if we're in development or production
 const isDev = process.env.NODE_ENV === 'development';
 
-// Default settings - also adapt paths for development environment
 export const DEFAULT_SETTINGS: Settings = {
 	dockerHost: isDev ? (process.platform === 'win32' ? 'npipe:////./pipe/docker_engine' : 'unix:///var/run/docker.sock') : 'unix:///var/run/docker.sock',
 	autoUpdate: false,
@@ -20,25 +19,21 @@ export const DEFAULT_SETTINGS: Settings = {
 	registryCredentials: [],
 	auth: {
 		localAuthEnabled: true,
+		oidcEnabled: false,
 		sessionTimeout: 60,
 		passwordPolicy: 'strong',
 		rbacEnabled: false
 	}
 };
 
-// Ensure settings directory exists with proper permissions
 async function ensureSettingsDir() {
 	try {
-		await ensureDirectory(SETTINGS_DIR, 0o700); // Only owner can access
+		await ensureDirectory(SETTINGS_DIR, 0o700);
 
-		// Only apply chmod on non-Windows platforms
-		// Windows doesn't fully support POSIX permissions
 		if (process.platform !== 'win32') {
 			try {
-				// Ensure correct permissions even if directory already existed
 				await fs.chmod(SETTINGS_DIR, 0o700);
 			} catch (chmodError: unknown) {
-				// Ignore specific errors related to unsupported operations
 				if (chmodError && typeof chmodError === 'object' && 'code' in chmodError && chmodError.code !== 'EINVAL' && chmodError.code !== 'ENOTSUP') {
 					console.warn('Non-critical error setting permissions:', chmodError);
 				}
@@ -73,28 +68,23 @@ export async function ensureStacksDirectory(): Promise<string> {
 	}
 }
 
-// Save a setting to its own file
 async function saveSetting(key: string, value: any): Promise<void> {
 	const filePath = path.join(SETTINGS_DIR, `${key}.json`);
 
-	// Make sure the directory exists
 	await ensureDirectory(path.dirname(filePath));
 
 	try {
-		// Create the file if it doesn't exist
 		try {
 			await fs.access(filePath);
 		} catch {
 			await fs.writeFile(filePath, '{}');
 		}
 
-		// Acquire a lock
 		const release = await proper.lock(filePath, { retries: 5 });
 
 		try {
 			await fs.writeFile(filePath, JSON.stringify(value));
 		} finally {
-			// Release the lock
 			await release();
 		}
 	} catch (error) {
@@ -103,81 +93,119 @@ async function saveSetting(key: string, value: any): Promise<void> {
 	}
 }
 
-// Get all settings
 export async function getSettings(): Promise<Settings> {
+	let effectiveSettings: Settings;
+
 	try {
 		await ensureSettingsDir();
 		const filePath = path.join(SETTINGS_DIR, 'settings.dat');
 
 		try {
 			await fs.access(filePath);
-		} catch {
-			// Settings file doesn't exist, return default settings
-			return getDefaultSettings();
+			const rawData = await fs.readFile(filePath, 'utf8');
+			const settingsFromFile = JSON.parse(rawData);
+
+			let baseSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
+
+			if (settingsFromFile._encrypted) {
+				const { _encrypted, ...nonSensitiveSettings } = settingsFromFile;
+				const decryptedData = await decrypt(_encrypted);
+
+				effectiveSettings = {
+					...baseSettings,
+					...nonSensitiveSettings,
+					auth: {
+						...baseSettings.auth,
+						...(nonSensitiveSettings.auth || {}),
+						...(decryptedData.auth || {})
+					},
+					registryCredentials: decryptedData.registryCredentials || baseSettings.registryCredentials,
+					onboarding: nonSensitiveSettings.onboarding || baseSettings.onboarding,
+					baseServerUrl: nonSensitiveSettings.baseServerUrl || baseSettings.baseServerUrl
+				};
+			} else {
+				effectiveSettings = {
+					...baseSettings,
+					...settingsFromFile,
+					auth: {
+						...baseSettings.auth,
+						...(settingsFromFile.auth || {})
+					},
+					registryCredentials: settingsFromFile.registryCredentials || baseSettings.registryCredentials,
+					onboarding: settingsFromFile.onboarding || baseSettings.onboarding,
+					baseServerUrl: settingsFromFile.baseServerUrl || baseSettings.baseServerUrl
+				};
+			}
+		} catch (fileError) {
+			console.warn('Settings file not found or unreadable, using default settings.', fileError instanceof Error ? fileError.message : fileError);
+			effectiveSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
 		}
-
-		const rawData = await fs.readFile(filePath, 'utf8');
-		const settingsData = JSON.parse(rawData);
-
-		// Decrypt sensitive data if available
-		if (settingsData._encrypted) {
-			// Use destructuring to separate _encrypted from the rest of the settings
-			const { _encrypted, ...nonSensitiveSettings } = settingsData;
-			const decryptedData = await decrypt(_encrypted);
-
-			// Merge the non-sensitive settings with decrypted data
-			return { ...nonSensitiveSettings, ...decryptedData };
-		}
-
-		// Fallback for old format settings
-		return settingsData;
-	} catch (error) {
-		console.error('Error loading settings:', error);
-		return getDefaultSettings();
+	} catch (dirError) {
+		console.error('Critical error ensuring settings directory or reading settings file:', dirError);
+		effectiveSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
 	}
+
+	const oidcClientId = env.OIDC_CLIENT_ID;
+	const oidcClientSecret = env.OIDC_CLIENT_SECRET;
+	const oidcRedirectUri = env.OIDC_REDIRECT_URI;
+	const oidcAuthorizationEndpoint = env.OIDC_AUTHORIZATION_ENDPOINT;
+	const oidcTokenEndpoint = env.OIDC_TOKEN_ENDPOINT;
+	const oidcUserinfoEndpoint = env.OIDC_USERINFO_ENDPOINT;
+	const oidcScopesEnv = env.OIDC_SCOPES;
+
+	if (oidcClientId && oidcClientSecret && oidcRedirectUri && oidcAuthorizationEndpoint && oidcTokenEndpoint && oidcUserinfoEndpoint) {
+		if (!effectiveSettings.auth) {
+			effectiveSettings.auth = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.auth));
+		}
+
+		const oidcConfigFromEnv: OidcConfig = {
+			clientId: oidcClientId,
+			clientSecret: oidcClientSecret,
+			redirectUri: oidcRedirectUri,
+			authorizationEndpoint: oidcAuthorizationEndpoint,
+			tokenEndpoint: oidcTokenEndpoint,
+			userinfoEndpoint: oidcUserinfoEndpoint,
+			scopes: oidcScopesEnv || effectiveSettings.auth.oidc?.scopes || DEFAULT_SETTINGS.auth.oidc?.scopes || 'openid email profile'
+		};
+		effectiveSettings.auth.oidc = oidcConfigFromEnv;
+	}
+
+	return effectiveSettings;
 }
 
-// Save all settings
 export async function saveSettings(settings: Settings): Promise<void> {
 	await ensureSettingsDir();
 	const filePath = path.join(SETTINGS_DIR, 'settings.dat');
 
-	// Create the file if it doesn't exist
 	try {
 		await fs.access(filePath);
 	} catch {
-		// File doesn't exist, create an empty file
 		await fs.writeFile(filePath, '{}', { mode: 0o600 });
 	}
 
-	// Acquire a lock on the settings file
 	let release;
 	try {
 		release = await proper.lock(filePath, {
-			retries: 5, // Try up to 5 times
-			stale: 10000, // Consider lock stale after 10 seconds
+			retries: 5,
+			stale: 10000,
 			onCompromised: (err) => {
 				console.error('Lock was compromised:', err);
 			}
 		});
 
-		// Separate sensitive and non-sensitive settings
 		const { auth, registryCredentials, ...nonSensitiveSettings } = settings;
 
-		// Create a settings object with encrypted sensitive data
 		const dataToSave = {
 			...nonSensitiveSettings,
-			_encrypted: await encrypt({ auth, registryCredentials })
+			_encrypted: await encrypt({ auth: auth || DEFAULT_SETTINGS.auth, registryCredentials: registryCredentials || [] })
 		};
 
-		// Write the settings with proper permissions
 		await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), { mode: 0o600 });
 	} catch (error) {
 		console.error('Error saving settings with lock:', error);
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		throw new Error(`Failed to save settings: ${errorMessage}`);
 	} finally {
-		// Always release the lock if we acquired it
 		if (release) {
 			try {
 				await release();
@@ -186,8 +214,4 @@ export async function saveSettings(settings: Settings): Promise<void> {
 			}
 		}
 	}
-}
-
-function getDefaultSettings(): Settings {
-	return DEFAULT_SETTINGS;
 }

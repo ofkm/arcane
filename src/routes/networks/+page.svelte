@@ -132,11 +132,9 @@
 					if (successCount > 0) {
 						setTimeout(async () => {
 							await invalidateAll();
-							networkPageStates.selectedNetworks = [];
 						}, 500);
-					} else {
-						networkPageStates.selectedNetworks = [];
 					}
+					networkPageStates.selectedNetworks = [];
 				}
 			}
 		});

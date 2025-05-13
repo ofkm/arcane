@@ -279,7 +279,7 @@
 					{:else}
 						<Trash2 class="h-4 w-4 mr-2" />
 					{/if}
-					Prune System...
+					Prune System
 				</Button>
 				<p class="text-xs text-muted-foreground mt-2">Remove unused data</p>
 			</Card.Root>
@@ -310,7 +310,6 @@
 									data={dashboardStates.containers.slice(0, 5)}
 									columns={[
 										{ accessorKey: 'name', header: 'Name' },
-										{ accessorKey: 'id', header: 'ID' },
 										{ accessorKey: 'image', header: 'Image' },
 										{ accessorKey: 'state', header: 'State' },
 										{ accessorKey: 'status', header: 'Status' }
@@ -330,7 +329,6 @@
 									{#snippet rows({ item })}
 										{@const stateVariant = statusVariantMap[item.state.toLowerCase()]}
 										<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.id}/">{item.name}</a></Table.Cell>
-										<Table.Cell>{shortId(item.id)}</Table.Cell>
 										<Table.Cell>{item.image}</Table.Cell>
 										<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.state)} /></Table.Cell>
 										<Table.Cell>{item.status}</Table.Cell>
@@ -375,7 +373,6 @@
 									columns={[
 										{ accessorKey: 'repo', header: 'Name' },
 										{ accessorKey: 'tag', header: 'Tag' },
-										{ accessorKey: 'id', header: 'Image ID', enableSorting: false },
 										{ accessorKey: 'size', header: 'Size' }
 									]}
 									features={{
@@ -407,7 +404,6 @@
 											</div>
 										</Table.Cell>
 										<Table.Cell>{item.tag}</Table.Cell>
-										<Table.Cell>{shortId(item.id)}</Table.Cell>
 										<Table.Cell>{formatBytes(item.size)}</Table.Cell>
 									{/snippet}
 								</UniversalTable>

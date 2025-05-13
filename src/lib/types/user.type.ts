@@ -1,7 +1,7 @@
 export type User = {
 	id: string;
 	username: string;
-	passwordHash: string;
+	passwordHash?: string;
 	displayName?: string;
 	email?: string;
 	roles: string[];
@@ -9,4 +9,5 @@ export type User = {
 	lastLogin?: string;
 	requirePasswordChange?: boolean;
 	updatedAt?: string;
+	oidcSubjectId?: string;
 };

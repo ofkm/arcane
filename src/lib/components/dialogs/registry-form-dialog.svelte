@@ -40,7 +40,6 @@
 	function handleOpenChange(newOpenState: boolean) {
 		open = newOpenState;
 		if (!newOpenState) {
-			// Reset on close if needed, or rely on $effect
 			credentialToEdit = null;
 		}
 	}

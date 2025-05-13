@@ -7,20 +7,16 @@ import { encrypt, decrypt } from './encryption-service';
 import { USER_DIR, ensureDirectory } from './paths-service';
 import type { User } from '$lib/types/user.type';
 
-// Ensure user directory exists
 async function ensureUserDir() {
 	await ensureDirectory(USER_DIR, 0o700);
 }
 
-// Get user by username
 export async function getUserByUsername(username: string): Promise<User | null> {
 	try {
 		await ensureUserDir();
 
-		// List all user files
 		const files = await fs.readdir(USER_DIR);
 
-		// Find user by username (case insensitive)
 		for (const file of files) {
 			if (!file.endsWith('.dat')) continue;
 
@@ -39,45 +35,37 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 	}
 }
 
-// Get user by ID with decryption
 export async function getUserById(id: string): Promise<User | null> {
 	try {
 		await ensureUserDir();
 
 		const filePath = path.join(USER_DIR, `${id}.dat`);
 
-		// Check if file exists
 		await fs.access(filePath);
 
-		// Read and decrypt
 		const encryptedData = await fs.readFile(filePath, 'utf8');
 		const user = (await decrypt(encryptedData)) as User;
 
 		return user;
 	} catch (error) {
-		// File doesn't exist or decryption failed
 		return null;
 	}
 }
 
-// Save user with encryption
 export async function saveUser(user: User): Promise<User> {
 	await ensureUserDir();
 
-	// Generate ID if it doesn't exist
 	if (!user.id) {
 		user.id = nanoid();
 		user.createdAt = new Date().toISOString();
 	}
 
-	const filePath = path.join(USER_DIR, `${user.id}.dat`); // Changed extension
+	const filePath = path.join(USER_DIR, `${user.id}.dat`);
 
-	// Encrypt user data
 	const encryptedData = await encrypt(user);
 
 	try {
-		// Create/overwrite the file
-		await fs.writeFile(filePath, encryptedData, { mode: 0o600 }); // Only owner can read/write
+		await fs.writeFile(filePath, encryptedData, { mode: 0o600 });
 	} catch (error) {
 		console.error('Error saving encrypted user data:', error);
 		throw error;
@@ -86,35 +74,26 @@ export async function saveUser(user: User): Promise<User> {
 	return user;
 }
 
-// Verify a password
 export async function verifyPassword(user: User, password: string): Promise<boolean> {
+	if (typeof user.passwordHash !== 'string') {
+		return false;
+	}
 	return await bcrypt.compare(password, user.passwordHash);
 }
 
-// Hash a password with stronger settings
 export async function hashPassword(password: string): Promise<string> {
-	// Use a higher cost factor for bcrypt
-	return await bcrypt.hash(password, 14); // Increased from 12
+	return await bcrypt.hash(password, 14);
 }
 
-// Add a key stretching function for additional security
 export async function deriveKeyFromPassword(password: string, salt: string): Promise<string> {
 	return new Promise((resolve, reject) => {
-		crypto.pbkdf2(
-			password,
-			salt,
-			150000, // High iteration count for key stretching
-			64, // 512-bit key
-			'sha512',
-			(err, derivedKey) => {
-				if (err) reject(err);
-				else resolve(derivedKey.toString('hex'));
-			}
-		);
+		crypto.pbkdf2(password, salt, 150000, 64, 'sha512', (err, derivedKey) => {
+			if (err) reject(err);
+			else resolve(derivedKey.toString('hex'));
+		});
 	});
 }
 
-// List users with decryption
 export async function listUsers(): Promise<User[]> {
 	try {
 		await ensureUserDir();
@@ -135,10 +114,15 @@ export async function listUsers(): Promise<User[]> {
 			})
 		);
 
-		// Filter out any null results from failed reads
 		return users.filter((user): user is User => user !== null);
 	} catch (error) {
 		console.error('Error listing users:', error);
 		return [];
 	}
+}
+
+export async function getUserByOidcSubjectId(oidcSubjectId: string): Promise<User | null> {
+	const users = await listUsers();
+	const user = users.find((u) => u.oidcSubjectId === oidcSubjectId);
+	return user || null;
 }

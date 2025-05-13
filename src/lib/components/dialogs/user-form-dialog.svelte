@@ -12,13 +12,13 @@
 		open = $bindable(false),
 		userToEdit = $bindable<User | null>(null),
 		roles = [],
-		isLoading = $bindable(false), // Add this prop to control loading state from parent
+		isLoading = $bindable(false),
 		onSubmit = $bindable((_data: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) => {})
 	}: {
 		open?: boolean;
 		userToEdit?: User | null;
 		roles: { id: string; name: string }[];
-		isLoading?: boolean; // New prop
+		isLoading?: boolean;
 		onSubmit?: (data: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) => void;
 	} = $props();
 

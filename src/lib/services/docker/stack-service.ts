@@ -194,7 +194,7 @@ async function loadEnvFile(stackId: string): Promise<string> {
  * `getComposeFilePath(stackId)`, and the `stackId` parameter.
  */
 async function getComposeInstance(stackId: string): Promise<DockerodeCompose> {
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const composePath = await getComposeFilePath(stackId);
 	if (!composePath) {
 		throw new Error(`Compose file not found for stack ${stackId}`);
@@ -218,7 +218,7 @@ async function getComposeInstance(stackId: string): Promise<DockerodeCompose> {
  * exit code). If an error occurs during the process, an empty array is returned.
  */
 async function getStackServices(stackId: string, composeContent: string): Promise<StackService[]> {
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const composeProjectLabel = 'com.docker.compose.project'; // Standard label
 	const composeServiceLabel = 'com.docker.compose.service'; // Standard service label
 
@@ -442,7 +442,8 @@ export async function createStack(name: string, composeContent: string, envConte
 	const stackDir = join(stacksDir, uniqueDirName);
 	await fs.mkdir(stackDir, { recursive: true });
 
-	await fs.writeFile(join(stackDir, 'compose.yaml'), composeContent);
+	const normalizedComposeContent = normalizeHealthcheckTest(composeContent);
+	await fs.writeFile(join(stackDir, 'compose.yaml'), normalizedComposeContent);
 
 	if (envContent) {
 		await fs.writeFile(join(stackDir, '.env'), envContent);
@@ -563,10 +564,11 @@ export async function updateStack(currentStackId: string, updates: StackUpdate):
 	const promises = [];
 
 	if (updates.composeContent !== undefined) {
+		const normalizedComposeContent = normalizeHealthcheckTest(updates.composeContent);
 		let currentComposePath = await getComposeFilePath(effectiveStackId); // Check existing, might be null
 		const targetComposePath = currentComposePath || path.join(stackDirForContent, 'compose.yaml'); // Default to compose.yaml if not found
 
-		promises.push(fs.writeFile(targetComposePath, updates.composeContent, 'utf8'));
+		promises.push(fs.writeFile(targetComposePath, normalizedComposeContent, 'utf8'));
 		contentUpdated = true;
 		console.log(`Updating composeContent for stack '${effectiveStackId}'.`);
 	}
@@ -606,6 +608,19 @@ export async function startStack(stackId: string): Promise<boolean> {
 	const originalCwd = process.cwd(); // Store the original CWD
 
 	try {
+		// ---- START: Ensure compose file is normalized before use ----
+		const composePath = await getComposeFilePath(stackId);
+		if (!composePath) {
+			throw new Error(`Compose file not found for stack ${stackId} during start.`);
+		}
+		const currentComposeContent = await fs.readFile(composePath, 'utf8');
+		const normalizedComposeContent = normalizeHealthcheckTest(currentComposeContent);
+		if (currentComposeContent !== normalizedComposeContent) {
+			console.log(`Normalizing healthcheck.test in compose file for stack ${stackId} before start.`);
+			await fs.writeFile(composePath, normalizedComposeContent, 'utf8');
+		}
+		// ---- END: Ensure compose file is normalized ----
+
 		process.chdir(stackDir); // Change CWD to the stack directory
 		console.log(`Temporarily changed CWD to: ${stackDir} for stack ${stackId} operations.`);
 
@@ -641,7 +656,7 @@ export async function startStack(stackId: string): Promise<boolean> {
  */
 export async function stopStack(stackId: string): Promise<boolean> {
 	console.log(`Attempting to stop stack ${stackId} by manually stopping containers...`);
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const composeProjectLabel = 'com.docker.compose.project';
 	let stoppedCount = 0;
 	let removedCount = 0;
@@ -753,13 +768,24 @@ export async function restartStack(stackId: string): Promise<boolean> {
 	console.log(`Attempting to restart stack ${stackId}...`);
 
 	try {
-		// stopStack might also benefit from CWD context if it uses compose internally,
-		// but your current stopStack is manual.
 		const stopped = await stopStack(stackId);
 		if (!stopped) {
 			console.error(`Restart failed because stop step failed for stack ${stackId}.`);
 			return false;
 		}
+
+		// ---- START: Ensure compose file is normalized before use ----
+		const composePath = await getComposeFilePath(stackId);
+		if (!composePath) {
+			throw new Error(`Compose file not found for stack ${stackId} during restart.`);
+		}
+		const currentComposeContent = await fs.readFile(composePath, 'utf8');
+		const normalizedComposeContent = normalizeHealthcheckTest(currentComposeContent);
+		if (currentComposeContent !== normalizedComposeContent) {
+			console.log(`Normalizing healthcheck.test in compose file for stack ${stackId} before restart.`);
+			await fs.writeFile(composePath, normalizedComposeContent, 'utf8');
+		}
+		// ---- END: Ensure compose file is normalized ----
 
 		process.chdir(stackDir);
 		console.log(`Temporarily changed CWD to: ${stackDir} for restarting stack ${stackId}.`);
@@ -803,16 +829,34 @@ export async function fullyRedeployStack(stackId: string): Promise<boolean> {
 			return false;
 		}
 
+		// ---- START: Ensure compose file is normalized before use ----
+		const composePath = await getComposeFilePath(stackId);
+		if (!composePath) {
+			throw new Error(`Compose file not found for stack ${stackId} during redeploy.`);
+		}
+		const currentComposeContent = await fs.readFile(composePath, 'utf8');
+		// The normalizeHealthcheckTest function is defined at the end of your file
+		const normalizedComposeContent = normalizeHealthcheckTest(currentComposeContent);
+
+		// Only write back to disk if the normalization actually changed the content
+		// This avoids unnecessary file modifications and mtime updates.
+		if (currentComposeContent !== normalizedComposeContent) {
+			console.log(`Normalizing healthcheck.test in compose file for stack ${stackId} before redeploy.`);
+			await fs.writeFile(composePath, normalizedComposeContent, 'utf8');
+		}
+		// ---- END: Ensure compose file is normalized ----
+
 		process.chdir(stackDir);
 		console.log(`Temporarily changed CWD to: ${stackDir} for redeploying stack ${stackId}.`);
 
 		console.log(`Pulling images for stack ${stackId}...`);
+		// getComposeInstance will now read the potentially corrected (normalized) file from disk
 		const compose = await getComposeInstance(stackId);
 		await compose.pull();
 		console.log(`Images pulled for stack ${stackId}.`);
 
 		console.log(`Starting stack ${stackId} after pull...`);
-		await compose.up();
+		await compose.up(); // This should now use the corrected compose configuration
 		console.log(`Stack ${stackId} started.`);
 
 		return true;
@@ -959,7 +1003,7 @@ export async function renameStack(currentStackId: string, newName: string): Prom
  */
 export async function discoverExternalStacks(): Promise<Stack[]> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const containers = await docker.listContainers({ all: true });
 
 		const composeProjectLabel = 'com.docker.compose.project';
@@ -1040,7 +1084,7 @@ export async function discoverExternalStacks(): Promise<Stack[]> {
  */
 export async function importExternalStack(stackId: string): Promise<Stack> {
 	// 1. First, check if we can find the stack by ID
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const containers = await docker.listContainers({ all: true });
 
 	// Filter containers that belong to this stack
@@ -1156,7 +1200,7 @@ ${yaml.dump({ services }, { indent: 2 }).substring('services:'.length).trimStart
 	}
 
 	// 5. Create a new stack in Arcane's managed stacks
-	return await createStack(stackId, composeContent, envContent); // Pass envContent here
+	return await createStack(stackId, normalizeHealthcheckTest(composeContent), envContent); // Pass envContent here
 }
 
 /**
@@ -1197,7 +1241,7 @@ export async function listStacks(includeExternal = false): Promise<Stack[]> {
  * @returns {Promise<boolean>} - True if any container in the stack is running.
  */
 export async function isStackRunning(stackId: string): Promise<boolean> {
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	const composeProjectLabel = 'com.docker.compose.project';
 
 	try {
@@ -1220,4 +1264,41 @@ export async function isStackRunning(stackId: string): Promise<boolean> {
 		console.error(`Error checking if stack ${stackId} is running:`, err);
 		return false;
 	}
+}
+
+/**
+ * Normalizes healthcheck.test in compose content to ensure it is always an array.
+ * @param {string} composeContent - The YAML content of the compose file.
+ * @returns {string} - The normalized YAML content.
+ */
+function normalizeHealthcheckTest(composeContent: string): string {
+	let doc: any;
+	try {
+		doc = yaml.load(composeContent);
+	} catch (e) {
+		console.warn('Could not parse compose YAML for healthcheck normalization:', e);
+		return composeContent; // Return original if parsing fails
+	}
+	if (!doc?.services) {
+		return composeContent; // Return original if no services found
+	}
+
+	let modified = false;
+	for (const service of Object.values(doc.services)) {
+		const svc = service as { healthcheck?: { test?: unknown } }; // Type assertion
+		if (svc.healthcheck && svc.healthcheck.test) {
+			if (typeof svc.healthcheck.test === 'string') {
+				svc.healthcheck.test = svc.healthcheck.test
+					.trim()
+					.split(/\s+/)
+					.filter((s) => s.length > 0);
+				modified = true;
+			}
+		}
+	}
+
+	if (modified) {
+		return yaml.dump(doc, { lineWidth: -1 }); // Dump the modified doc
+	}
+	return composeContent; // Return original content if no modification was made
 }

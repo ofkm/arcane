@@ -186,7 +186,6 @@
 										checked={row.getIsSelected()}
 										disabled={isDisabled}
 										onCheckedChange={(checked) => {
-											// Only toggle if not disabled
 											if (!isDisabled) {
 												row.toggleSelected(!!checked);
 											}

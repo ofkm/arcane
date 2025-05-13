@@ -1,12 +1,14 @@
 <script lang="ts">
-	import { Home, Box, Image, Network, HardDrive, Settings, Menu, X, ChevronRight, ChevronLeft, FileStack, ExternalLink, LogOut, type Icon as IconType } from '@lucide/svelte';
+	import { Home, Box, Image, Network, HardDrive, Settings, Menu, X, ChevronRight, ChevronLeft, FileStack, ExternalLink, LogOut, Sun, Moon, type Icon as IconType } from '@lucide/svelte';
 	import { page } from '$app/state';
 	import { fly } from 'svelte/transition';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { cn } from '$lib/utils';
 	import { browser } from '$app/environment';
+	import { mode, toggleMode } from 'mode-watcher';
 	import type { AppVersionInformation } from '$lib/types/application-configuration';
+	import type { User } from '$lib/types/user.type';
 
 	let {
 		items = [
@@ -18,10 +20,12 @@
 			{ href: '/volumes', label: 'Volumes', icon: HardDrive },
 			{ href: '/settings', label: 'Settings', icon: Settings }
 		] as MenuItem[],
-		versionInformation
+		versionInformation,
+		user
 	} = $props<{
 		items?: MenuItem[];
 		versionInformation?: AppVersionInformation;
+		user?: User | null;
 	}>();
 
 	type MenuItem = {
@@ -57,12 +61,10 @@
 	{/if}
 </Button>
 
-<!-- Sidebar navigation -->
 <div class={cn('fixed md:sticky top-0 left-0 h-screen md:h-[100dvh] transition-all duration-300 ease-in-out', 'bg-card border-r shadow-sm z-40', 'flex flex-col', isCollapsed ? 'w-[70px]' : 'w-64', isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')}>
-	<!-- Logo/App name -->
 	<div class={cn('flex items-center h-14 transition-all duration-300', isCollapsed ? 'justify-center px-2' : 'gap-3 px-5 p-4')}>
 		<div class="flex-shrink-0">
-			<img src="/img/arcane.png" alt="Arcane" class="h-15 w-15" width="30" height="30" />
+			<img src="/img/arcane.svg" alt="Arcane" class="h-15 w-15" width="30" height="30" />
 		</div>
 		{#if !isCollapsed}
 			<div class="flex flex-col justify-center">
@@ -74,7 +76,6 @@
 
 	<Separator />
 
-	<!-- Collapse button (positioned between header and navigation) -->
 	<div class="hidden md:flex justify-end px-2 -mt-1 mb-1 relative">
 		<Button variant="outline" size="icon" class="h-6 w-6 rounded-full bg-background absolute right-0 translate-x-1/2" onclick={toggleCollapse} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
 			{#if isCollapsed}
@@ -85,7 +86,6 @@
 		</Button>
 	</div>
 
-	<!-- Navigation links -->
 	<nav class={cn('p-2 flex-1 overflow-y-auto overflow-x-hidden', isCollapsed && 'py-2 px-1')}>
 		{#each items as item (item.href)}
 			{@const isActive = page.url.pathname === item.href || (page.url.pathname.startsWith(item.href) && item.href !== '/')}
@@ -115,11 +115,9 @@
 		{/each}
 	</nav>
 
-	<!-- Only show update section if an update is available -->
 	{#if updateAvailable}
 		<Separator />
 
-		<!-- Update available notification -->
 		<div class={cn('transition-all px-3 py-2', isCollapsed ? 'text-center' : '')}>
 			{#if !isCollapsed}
 				<a href={versionInformation.releaseUrl} target="_blank" rel="noopener noreferrer" class="flex items-center justify-between text-blue-500 hover:underline text-sm">
@@ -137,9 +135,25 @@
 		</div>
 	{/if}
 
-	<!-- Logout Button -->
 	<div class="mt-auto p-2">
 		<Separator class="mb-2" />
+		{#if user && user.displayName && !isCollapsed}
+			<div class="px-3 py-2 text-sm text-muted-foreground truncate" title={user.displayName}>
+				{user.displayName}
+			</div>
+		{/if}
+
+		<Button variant="ghost" class={cn('w-full flex items-center text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground', isCollapsed ? 'justify-center px-2 py-2' : 'justify-start gap-3 px-3 py-2')} title={isCollapsed ? 'Toggle theme' : 'Toggle theme'} onclick={toggleMode}>
+			{#if mode.current === 'dark'}
+				<Sun size={16} />
+			{:else}
+				<Moon size={16} />
+			{/if}
+			{#if !isCollapsed}
+				<span>Toggle theme</span>
+			{/if}
+		</Button>
+
 		<form action="/auth/logout" method="POST">
 			<Button variant="ghost" class={cn('w-full flex items-center text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground', isCollapsed ? 'justify-center px-2 py-2' : 'justify-start gap-3 px-3 py-2')} title={isCollapsed ? 'Logout' : undefined} type="submit">
 				<LogOut size={16} />
@@ -151,7 +165,6 @@
 	</div>
 </div>
 
-<!-- Overlay for mobile -->
 {#if isOpen}
 	<button type="button" class="md:hidden fixed inset-0 w-full h-full bg-background/80 backdrop-blur-sm z-30 border-none" aria-label="Close menu" onclick={() => (isOpen = false)} transition:fly={{ duration: 150, y: -5 }}></button>
 {/if}

@@ -20,7 +20,7 @@ export const DEFAULT_NETWORK_NAMES = new Set(['host', 'bridge', 'none', 'ingress
  */
 export async function listNetworks(): Promise<ServiceNetwork[]> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const networks = await docker.listNetworks();
 		return networks.map(
 			(net): ServiceNetwork => ({
@@ -48,7 +48,7 @@ export async function listNetworks(): Promise<ServiceNetwork[]> {
  */
 export async function getNetwork(networkId: string): Promise<NetworkInspectInfo> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const network = docker.getNetwork(networkId);
 		const inspectInfo = await network.inspect();
 		console.log(`Docker Service: Inspected network "${networkId}" successfully.`);
@@ -81,7 +81,7 @@ export async function removeNetwork(networkId: string): Promise<void> {
 		if (DEFAULT_NETWORK_NAMES.has(networkId)) {
 			throw new ConflictError(`Network "${networkId}" is managed by Docker and cannot be removed.`);
 		}
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const network = docker.getNetwork(networkId);
 		await network.remove();
 		console.log(`Docker Service: Network "${networkId}" removed successfully.`);
@@ -114,7 +114,7 @@ export async function removeNetwork(networkId: string): Promise<void> {
  */
 export async function createNetwork(options: NetworkCreateOptions): Promise<NetworkInspectInfo> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		console.log(`Docker Service: Creating network "${options.Name}"...`, options);
 
 		// Dockerode's createNetwork returns the Network object, we need to inspect it after creation

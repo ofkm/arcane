@@ -17,9 +17,9 @@ import type Docker from 'dockerode';
  */
 export async function listContainers(all = true): Promise<ServiceContainer[]> {
 	try {
-		const docker = getDockerClient();
-		const containers = await docker.listContainers({ all });
-		return containers.map(
+		const docker = await getDockerClient();
+		const containersData = await docker.listContainers({ all });
+		return containersData.map(
 			(c): ServiceContainer => ({
 				id: c.Id,
 				names: c.Names,
@@ -52,7 +52,7 @@ export async function listContainers(all = true): Promise<ServiceContainer[]> {
  */
 export async function getContainer(containerId: string) {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 		const inspectData = await container.inspect();
 		return {
@@ -85,7 +85,7 @@ export async function getContainer(containerId: string) {
  */
 export async function startContainer(containerId: string): Promise<void> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 		await container.start();
 	} catch (error: unknown) {
@@ -103,7 +103,7 @@ export async function startContainer(containerId: string): Promise<void> {
  */
 export async function stopContainer(containerId: string): Promise<void> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 		await container.stop();
 	} catch (error: unknown) {
@@ -120,7 +120,7 @@ export async function stopContainer(containerId: string): Promise<void> {
  */
 export async function restartContainer(containerId: string): Promise<void> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 		await container.restart();
 	} catch (error: unknown) {
@@ -145,7 +145,7 @@ export async function restartContainer(containerId: string): Promise<void> {
  */
 export async function removeContainer(containerId: string, force = false): Promise<void> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 
 		// Pass the force option directly to dockerode's remove method
@@ -198,7 +198,7 @@ export async function getContainerLogs(
 	} = {}
 ): Promise<string> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 
 		const logOptions = {
@@ -251,7 +251,7 @@ export async function getContainerLogs(
  */
 export async function createContainer(config: ContainerConfig) {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 
 		const containerOptions: ContainerCreate = {
 			name: config.name,
@@ -368,7 +368,7 @@ export async function createContainer(config: ContainerConfig) {
  */
 export async function getContainerStats(containerId: string): Promise<Docker.ContainerStats | null> {
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 
 		// Check if container exists first (inspect is a good way)
@@ -432,7 +432,7 @@ export async function getContainerStats(containerId: string): Promise<Docker.Con
  * @throws {DockerApiError} If any step fails.
  */
 export async function recreateContainer(containerId: string): Promise<ServiceContainer> {
-	const docker = getDockerClient();
+	const docker = await getDockerClient();
 	let originalContainer = null;
 
 	try {

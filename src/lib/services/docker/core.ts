@@ -1,49 +1,68 @@
 import Docker from 'dockerode';
 import type { DockerConnectionOptions } from '$lib/types/docker';
+import { getSettings } from '$lib/services/settings-service'; // Assuming getSettings is async and available here
 
 let dockerClient: Docker | null = null;
-export let dockerHost = 'unix:///var/run/docker.sock';
+export let dockerHost = 'unix:///var/run/docker.sock'; // Default and cache for the last used host
 
 /**
- * The function `getDockerInfo` asynchronously retrieves information about the Docker environment using
- * a Docker client.
- * @returns The `getDockerInfo` function is returning information about the Docker engine, such as its
- * version, number of containers, images, and other relevant details.
+ * The function `getDockerInfo` asynchronously retrieves information about the Docker environment.
  */
 export async function getDockerInfo() {
-	const docker = getDockerClient();
+	const docker = await getDockerClient(); // Changed: await getDockerClient
 	return await docker.info();
 }
 
 /**
- * The function `getDockerClient` initializes and returns a Docker client based on the provided
- * `dockerHost` connection options.
- * @returns The function `getDockerClient()` returns the Docker client instance that is either newly
- * created or already existing based on the condition check for `dockerClient`.
+ * The function `getDockerClient` initializes and returns a Docker client.
+ * It fetches Docker host from settings if the client is not already initialized.
  */
-export function getDockerClient(): Docker {
+export async function getDockerClient(): Promise<Docker> {
+	// Changed: now async
 	if (!dockerClient) {
-		const connectionOpts = createConnectionOptions(dockerHost);
+		console.log('Docker client is null, attempting to initialize.');
+		let hostToUse = dockerHost; // Start with current module-level host (default or last used)
+		try {
+			const currentSettings = await getSettings();
+			if (currentSettings?.dockerHost) {
+				hostToUse = currentSettings.dockerHost;
+				console.log(`Fetched dockerHost from settings: "${hostToUse}"`);
+			} else {
+				console.log('No dockerHost found in settings, will use current module dockerHost or default.');
+			}
+		} catch (err) {
+			console.error('Failed to get settings for Docker client initialization, using fallback:', err);
+			// hostToUse remains as the current dockerHost or default
+		}
 
-		dockerClient = new Docker(connectionOpts);
-		console.log(`Initialized Docker client with host: ${dockerHost}`, connectionOpts);
+		console.log(`Initializing Docker client with host: "${hostToUse}".`);
+		const connectionOpts = createConnectionOptions(hostToUse);
+		try {
+			dockerClient = new Docker(connectionOpts);
+			dockerHost = hostToUse; // Update module-level variable to the host actually used.
+			console.log(`Docker client initialized successfully with host: ${dockerHost}`, connectionOpts);
+		} catch (initError) {
+			console.error(`Failed to initialize Docker client with host ${hostToUse}:`, initError);
+			dockerClient = null; // Ensure client is null if initialization fails
+			dockerHost = 'unix:///var/run/docker.sock'; // Reset to default on failure to avoid broken state
+			throw initError; // Re-throw error so caller knows initialization failed
+		}
+	}
+	if (!dockerClient) {
+		console.error('PANIC: Docker client is still null after initialization attempt without throwing error.');
+		throw new Error('Failed to obtain Docker client instance.');
 	}
 	return dockerClient;
 }
 
 /**
- * The function initializes a Docker connection based on the provided options, supporting different
- * connection types such as socket and TCP.
- * @param {DockerConnectionOptions} options - The `options` parameter in the `initializeDocker`
- * function is of type `DockerConnectionOptions`. This parameter is an object that can contain the
- * following properties:
- * @returns The function `initializeDocker` is returning an instance of the Docker client that is
- * initialized with the connection options provided in the `options` parameter.
+ * The function initializes a Docker connection based on the provided options.
+ * This function is typically called by createConnectionOptions or directly if needed.
+ * Note: This function directly mutates dockerClient and dockerHost module variables.
  */
 export function initializeDocker(options: DockerConnectionOptions): Docker {
 	const connectionOpts: Record<string, any> = {};
 
-	// Handle different connection types (socket, tcp, etc.)
 	if (options.socketPath) {
 		connectionOpts.socketPath = options.socketPath;
 		dockerHost = options.socketPath;
@@ -65,41 +84,40 @@ export function initializeDocker(options: DockerConnectionOptions): Docker {
 
 /**
  * The function `updateDockerConnection` establishes a connection to a Docker host based on the
- * provided host string.
- * @param {string} host - The `host` parameter in the `updateDockerConnection` function is a string
- * that represents the connection endpoint for Docker. It can be in one of the following formats:
- * @returns If the `host` parameter is empty or falsy, a warning message is logged and the function
- * returns early without establishing a new Docker connection.
+ * provided host string. This forces a re-initialization of the client.
  */
-export function updateDockerConnection(host: string): void {
+export function updateDockerConnection(newHost: string): void {
 	try {
-		// Only create a new connection if we have a valid host
-		if (!host) {
-			console.warn('No Docker host specified, connection not established');
+		if (!newHost) {
+			console.warn('No Docker host specified for updateDockerConnection, connection not established');
 			return;
 		}
 
-		console.log(`Connecting to Docker at ${host}`);
-		const connectionOpts = createConnectionOptions(host);
+		if (newHost === dockerHost && dockerClient !== null) {
+			console.log(`Docker host for updateDockerConnection (${newHost}) is the same as current and client exists. No update forced.`);
+			return;
+		}
 
-		dockerClient = new Docker(connectionOpts);
-		dockerHost = host;
-		console.log('Docker connection updated with options:', connectionOpts);
+		console.log(`updateDockerConnection called. Forcing connection update to Docker at ${newHost}`);
+
+		const connectionOpts = createConnectionOptions(newHost);
+		dockerClient = new Docker(connectionOpts); // Create new client
+		dockerHost = newHost; // Update module-level variable
+
+		console.log('Docker connection explicitly updated with options:', connectionOpts);
 	} catch (error) {
-		console.error('Error connecting to Docker:', error);
+		console.error(`Error explicitly updating Docker connection to ${newHost}:`, error);
+		dockerClient = null; // Ensure client is null if update fails
 	}
 }
 
 /**
- * The function `testDockerConnection` checks if a connection to Docker can be established and returns
- * a boolean indicating the success of the connection test.
- * @returns The `testDockerConnection` function returns a Promise that resolves to a boolean value. If
- * the Docker connection test is successful, it will return `true`. If the test fails, it will return
- * `false`.
+ * The function `testDockerConnection` checks if a connection to Docker can be established.
  */
 export async function testDockerConnection(): Promise<boolean> {
+	// Changed: now async
 	try {
-		const docker = getDockerClient();
+		const docker = await getDockerClient(); // Changed: await getDockerClient
 		const info = await docker.info();
 		return !!info;
 	} catch (err) {
@@ -140,7 +158,12 @@ function createConnectionOptions(host: string): Record<string, any> {
 }
 
 /* The statement `export default getDockerClient;` is exporting the `getDockerClient` function as the
-default export of the module. This means that when another module imports from this module without
-specifying a particular named export, it will receive the `getDockerClient` function as the default
-export. */
+default export of the module. */
 export default getDockerClient;
+
+/**
+ * Perform any other necessary cleanup for this module if needed.
+ */
+export function cleanup() {
+	console.log('core.ts cleanup called.');
+}

@@ -11,18 +11,12 @@
 	interface Props {
 		open?: boolean;
 		isPruning?: boolean;
-		imagePruneMode?: 'dangling' | 'all'; // Accept prune mode as prop
+		imagePruneMode?: 'dangling' | 'all';
 		onConfirm?: (selectedTypes: PruneType[]) => void;
 		onCancel?: () => void;
 	}
 
-	let {
-		open = $bindable(),
-		isPruning = false,
-		imagePruneMode = 'dangling', // Default if not provided
-		onConfirm = () => {},
-		onCancel = () => {}
-	}: Props = $props();
+	let { open = $bindable(), isPruning = false, imagePruneMode = 'dangling', onConfirm = () => {}, onCancel = () => {} }: Props = $props();
 
 	let pruneContainers = $state(true);
 	let pruneImages = $state(true);
