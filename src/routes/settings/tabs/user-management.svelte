@@ -5,7 +5,7 @@
 	import { UserPlus, UserCheck, Ellipsis, Pencil, UserX, Mail } from '@lucide/svelte';
 	import type { PageData } from '../$types';
 	import UniversalTable from '$lib/components/universal-table.svelte';
-	import type { User } from '$lib/types/user.type';
+	import type { User, NewUser } from '$lib/types/user.type';
 	import UserFormDialog from '$lib/components/dialogs/user-form-dialog.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
@@ -15,6 +15,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import UserForm from '../forms/user-form.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -23,7 +24,7 @@
 	let userPageStates = $state({
 		users: <User[]>data.users,
 		isUserDialogOpen: false,
-		userToEdit: <User | null>null
+		userToEdit: <User | undefined>undefined
 	});
 
 	let isLoading = $state({
@@ -43,7 +44,7 @@
 	];
 
 	function openCreateUserDialog() {
-		userPageStates.userToEdit = null;
+		userPageStates.userToEdit = undefined;
 		userPageStates.isUserDialogOpen = true;
 	}
 
@@ -89,9 +90,34 @@
 			}
 		});
 	}
+
+	// Add this wrapper function to adapt your existing handler to the expected callback signature
+	async function userFormCallback(userData: NewUser): Promise<boolean> {
+		const isEditMode = !!userPageStates.userToEdit;
+		const userId = userPageStates.userToEdit?.id;
+		let result = false;
+		await handleApiResultWithCallbacks({
+			result: await tryCatch(isEditMode ? userApi.update(userId || '', userData as User) : userApi.create(userData as User)),
+			message: isEditMode ? 'Error Updating User' : 'Error Creating User',
+			setLoadingState: (value) => (isLoading.saving = value),
+			onSuccess: async () => {
+				userPageStates.isUserDialogOpen = false;
+				toast.success(isEditMode ? 'User Updated Successfully' : 'User Created Successfully');
+				await invalidateAll();
+				isLoading.saving = false;
+				result = true;
+			},
+			onError(error) {
+				isLoading.saving = false;
+				toast.error('Error saving user');
+				result = false;
+			}
+		});
+		return result;
+	}
 </script>
 
-<UserFormDialog bind:open={userPageStates.isUserDialogOpen} bind:userToEdit={userPageStates.userToEdit} {roles} onSubmit={handleDialogSubmit} bind:this={userDialogRef} isLoading={isLoading.saving} />
+<UserForm bind:open={userPageStates.isUserDialogOpen} bind:userToEdit={userPageStates.userToEdit} {roles} callback={userFormCallback} />
 
 <div class="grid grid-cols-1 gap-6 h-full">
 	<!-- User List Card -->

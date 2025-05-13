@@ -6,7 +6,9 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { Loader2, UserPlus, Save } from '@lucide/svelte';
 	import type { User } from '$lib/types/user.type';
+	import UserForm from '../../../routes/settings/forms/user-form.svelte';
 	import { preventDefault } from '$lib/utils/form.utils';
+	import { z } from 'zod';
 
 	let {
 		open = $bindable(false),
@@ -86,11 +88,10 @@
 			{/if}
 		</Dialog.Header>
 
+		<!-- 
 		<form class="grid gap-4 py-4" onsubmit={preventDefault(handleSubmit)} autocomplete="off">
-			<div class="grid grid-cols-4 items-center gap-4">
-				<Label for="username" class="text-right">Username</Label>
-				<Input autocomplete="off" id="username" bind:value={username} required class="col-span-3" disabled={isEditMode} />
-			</div>
+			<div class="grid grid-cols-4 items-center gap-4"></div>
+
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="password" class="text-right">Password</Label>
 				<Input autocomplete="off" id="password" type="password" bind:value={password} required={!isEditMode} placeholder={isEditMode ? 'Leave blank to keep current' : 'Required'} class="col-span-3" />
@@ -135,6 +136,6 @@
 					{/if}
 				</Button>
 			</Dialog.Footer>
-		</form>
+		</form> -->
 	</Dialog.Content>
 </Dialog.Root>

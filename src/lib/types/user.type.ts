@@ -11,3 +11,5 @@ export type User = {
 	updatedAt?: string;
 	oidcSubjectId?: string;
 };
+
+export type NewUser = Omit<User, 'id' | 'createdAt'>;
