@@ -21,7 +21,7 @@
 <svelte:head><title>Arcane</title></svelte:head>
 
 <ModeWatcher />
-<Toaster />
+<Toaster richColors />
 <ConfirmDialog />
 
 <!-- Loading Indicator -->
