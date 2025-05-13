@@ -30,8 +30,22 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 		sameSite: 'lax'
 	});
 
-	const redirectTo = url.searchParams.get('redirect') || '/';
-	cookies.set('oidc_redirect', redirectTo, {
+	// Add validation for the redirect URL
+	function isSafeRedirect(redirect: string | null): boolean {
+		if (!redirect) return false;
+		try {
+			// Only allow relative paths (no protocol, no host)
+			const parsed = new URL(redirect, 'http://dummy');
+			return parsed.origin === 'http://dummy' && redirect.startsWith('/');
+		} catch {
+			return false;
+		}
+	}
+
+	const redirectUrl = url.searchParams.get('redirect');
+	const safeRedirect = isSafeRedirect(redirectUrl) ? redirectUrl : '/';
+
+	cookies.set('oidc_redirect', safeRedirect ?? '/', {
 		path: '/',
 		secure: import.meta.env.PROD,
 		httpOnly: true,
