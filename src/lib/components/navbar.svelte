@@ -61,9 +61,9 @@
 	{/if}
 </Button>
 
-<div class={cn('fixed md:sticky top-0 left-0 h-screen md:h-[100dvh] transition-all duration-300 ease-in-out', 'bg-card border-r shadow-sm z-40', 'flex flex-col', isCollapsed ? 'w-[70px]' : 'w-64', isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')}>
+<div class={cn('fixed md:sticky top-0 left-0 h-screen md:h-dvh transition-all duration-300 ease-in-out', 'bg-card border-r shadow-sm z-40', 'flex flex-col', isCollapsed ? 'w-[70px]' : 'w-64', isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')}>
 	<div class={cn('flex items-center h-14 transition-all duration-300', isCollapsed ? 'justify-center px-2' : 'gap-3 px-5 p-4')}>
-		<div class="flex-shrink-0">
+		<div class="shrink-0">
 			<img src="/img/arcane.svg" alt="Arcane" class="h-15 w-15" width="30" height="30" />
 		</div>
 		{#if !isCollapsed}

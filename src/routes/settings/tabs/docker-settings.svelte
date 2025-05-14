@@ -196,7 +196,7 @@
 														<Pencil class="mr-2 h-4 w-4" />
 														Edit
 													</DropdownMenu.Item>
-													<DropdownMenu.Item onclick={() => confirmRemoveRegistry(index)} class="text-red-500 focus:!text-red-700 focus:bg-destructive/10">
+													<DropdownMenu.Item onclick={() => confirmRemoveRegistry(index)} class="text-red-500 focus:text-red-700! focus:bg-destructive/10">
 														<Trash2 class="mr-2 h-4 w-4" />
 														Remove
 													</DropdownMenu.Item>

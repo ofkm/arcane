@@ -179,7 +179,7 @@
 													Edit
 												</DropdownMenu.Item>
 											{/if}
-											<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveUser(item.id)}>
+											<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveUser(item.id)}>
 												<UserX class="h-4 w-4" />
 												Remove User
 											</DropdownMenu.Item>

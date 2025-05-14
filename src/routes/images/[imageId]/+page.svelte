@@ -95,7 +95,7 @@
 					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 						<!-- ID -->
 						<div class="flex items-start gap-3">
-							<div class="bg-gray-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
+							<div class="bg-gray-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
 								<Hash class="h-5 w-5 text-gray-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -106,7 +106,7 @@
 
 						<!-- Size -->
 						<div class="flex items-start gap-3">
-							<div class="bg-blue-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
+							<div class="bg-blue-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
 								<HardDrive class="h-5 w-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -117,7 +117,7 @@
 
 						<!-- Created -->
 						<div class="flex items-start gap-3">
-							<div class="bg-green-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
+							<div class="bg-green-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
 								<Clock class="h-5 w-5 text-green-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -128,7 +128,7 @@
 
 						<!-- Architecture -->
 						<div class="flex items-start gap-3">
-							<div class="bg-orange-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
+							<div class="bg-orange-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
 								<Cpu class="h-5 w-5 text-orange-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -139,7 +139,7 @@
 
 						<!-- OS -->
 						<div class="flex items-start gap-3">
-							<div class="bg-indigo-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
+							<div class="bg-indigo-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
 								<Layers class="h-5 w-5 text-indigo-500" />
 							</div>
 							<div class="min-w-0 flex-1">

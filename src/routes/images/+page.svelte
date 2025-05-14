@@ -537,7 +537,7 @@
 									<!-- End Maturity Indicator -->
 
 									<!-- Repository name as a separate element -->
-									<a class="font-medium hover:underline flex-shrink truncate" href="/images/{item.id}/">
+									<a class="font-medium hover:underline shrink truncate" href="/images/{item.id}/">
 										{item.repo}
 									</a>
 								</div>
@@ -578,7 +578,7 @@
 												Pull
 											{/if}
 										</DropdownMenu.Item>
-										<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleImageRemove(item.id)}>
+										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleImageRemove(item.id)}>
 											<Trash2 class="h-4 w-4" />
 											Remove
 										</DropdownMenu.Item>

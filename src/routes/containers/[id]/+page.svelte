@@ -289,7 +289,7 @@
 					<Card.Content>
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
 							<div class="flex items-start gap-3">
-								<div class="bg-blue-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
+								<div class="bg-blue-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
 									<HardDrive class="h-5 w-5 text-blue-500" />
 								</div>
 								<div class="min-w-0 flex-1">
@@ -303,7 +303,7 @@
 							</div>
 
 							<div class="flex items-start gap-3">
-								<div class="bg-green-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
+								<div class="bg-green-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
 									<Clock class="h-5 w-5 text-green-500" />
 								</div>
 								<div class="min-w-0 flex-1">
@@ -315,7 +315,7 @@
 							</div>
 
 							<div class="flex items-start gap-3">
-								<div class="bg-purple-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
+								<div class="bg-purple-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
 									<Network class="h-5 w-5 text-purple-500" />
 								</div>
 								<div class="min-w-0 flex-1">
@@ -327,7 +327,7 @@
 							</div>
 
 							<div class="flex items-start gap-3">
-								<div class="bg-amber-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
+								<div class="bg-amber-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
 									<Terminal class="h-5 w-5 text-amber-500" />
 								</div>
 								<div class="min-w-0 flex-1">
@@ -400,7 +400,7 @@
 											{@const [key, ...valueParts] = env.split('=')}
 											{@const value = valueParts.join('=')}
 											<div class="flex w-full">
-												<span class="font-semibold mr-2 min-w-[120px] max-w-[180px] truncate flex-shrink-0" title={key}>{key}:</span>
+												<span class="font-semibold mr-2 min-w-[120px] max-w-[180px] truncate shrink-0" title={key}>{key}:</span>
 												<span class="truncate flex-1" title={value}>{value}</span>
 											</div>
 										{:else}
@@ -460,7 +460,7 @@
 								{#each Object.entries(container.labels) as [key, value] (key)}
 									<div class="text-xs flex overflow-hidden">
 										<div class="flex w-full">
-											<span class="font-semibold mr-2 min-w-[120px] max-w-[180px] truncate flex-shrink-0" title={key}>{key}:</span>
+											<span class="font-semibold mr-2 min-w-[120px] max-w-[180px] truncate shrink-0" title={key}>{key}:</span>
 											<span class="truncate flex-1" title={value?.toString()}>{value?.toString() || ''}</span>
 										</div>
 									</div>

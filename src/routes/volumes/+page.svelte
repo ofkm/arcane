@@ -282,7 +282,7 @@
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveVolumeConfirm(item.name)} disabled={isLoading.remove}>
+										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveVolumeConfirm(item.name)} disabled={isLoading.remove}>
 											{#if isLoading.remove}
 												<Loader2 class="w-4 h-4 animate-spin" />
 											{:else}

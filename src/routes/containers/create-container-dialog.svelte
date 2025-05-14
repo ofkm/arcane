@@ -367,7 +367,7 @@
 										</div>
 									</div>
 
-									<Button variant="destructive" size="icon" type="button" onclick={() => removePort(index)} disabled={ports.length <= 1 || isCreating} class="flex-shrink-0">
+									<Button variant="destructive" size="icon" type="button" onclick={() => removePort(index)} disabled={ports.length <= 1 || isCreating} class="shrink-0">
 										<Trash class="h-4 w-4" />
 									</Button>
 								</div>
@@ -404,7 +404,7 @@
 											<Input id={`volume-target-${index}`} bind:value={mount.target} placeholder="/data" disabled={isCreating} />
 										</div>
 									</div>
-									<Button variant="destructive" size="icon" type="button" onclick={() => removeVolumeMount(index)} disabled={volumeMounts.length <= 1 || isCreating} class="flex-shrink-0">
+									<Button variant="destructive" size="icon" type="button" onclick={() => removeVolumeMount(index)} disabled={volumeMounts.length <= 1 || isCreating} class="shrink-0">
 										<Trash class="h-4 w-4" />
 									</Button>
 								</div>
@@ -448,7 +448,7 @@
 											</div>
 										</div>
 									</div>
-									<Button variant="destructive" size="icon" type="button" onclick={() => removeEnvVar(index)} disabled={envVars.length <= 1 || isCreating} class="flex-shrink-0">
+									<Button variant="destructive" size="icon" type="button" onclick={() => removeEnvVar(index)} disabled={envVars.length <= 1 || isCreating} class="shrink-0">
 										<Trash class="h-4 w-4" />
 									</Button>
 								</div>
@@ -555,7 +555,7 @@
 												<Input id={`label-value-${index}`} bind:value={label.value} placeholder="e.g., my-app" disabled={isCreating} />
 											</div>
 										</div>
-										<Button variant="destructive" size="icon" type="button" onclick={() => removeLabel(index)} disabled={labels.length <= 1 || isCreating} class="flex-shrink-0">
+										<Button variant="destructive" size="icon" type="button" onclick={() => removeLabel(index)} disabled={labels.length <= 1 || isCreating} class="shrink-0">
 											<Trash class="h-4 w-4" />
 										</Button>
 									</div>
