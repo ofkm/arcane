@@ -439,7 +439,7 @@
 													</span>
 												</Tooltip.Trigger>
 												<!-- Tooltip content updated -->
-												<Tooltip.Content side="top" class="p-3 max-w-[200px]">
+												<Tooltip.Content side="right" class="p-3 max-w-[200px] relative tooltip-with-arrow" align="center">
 													<div class="space-y-2">
 														<div class="flex items-center gap-2">
 															{#if !item.maturity.updatesAvailable}
@@ -579,3 +579,57 @@
 		</Dialog.Content>
 	</Dialog.Root>
 </div>
+
+<style>
+	:global(.tooltip-with-arrow) {
+		position: relative;
+		overflow: visible;
+	}
+
+	:global(.tooltip-with-arrow::before) {
+		content: '';
+		position: absolute;
+		width: 8px;
+		height: 8px;
+		background-color: hsl(var(--popover));
+		border: 1px solid hsl(var(--border));
+		z-index: 1;
+	}
+
+	/* Top side: Arrow on bottom of tooltip pointing down */
+	:global(.tooltip-with-arrow[data-side='top']::before) {
+		bottom: -4px;
+		left: 50%;
+		transform: translateX(-50%) rotate(45deg);
+		border-top: none;
+		border-left: none;
+	}
+
+	/* Bottom side: Arrow on top of tooltip pointing up */
+	:global(.tooltip-with-arrow[data-side='bottom']::before) {
+		top: -4px;
+		left: 50%;
+		transform: translateX(-50%) rotate(225deg);
+		border-bottom: none;
+		border-right: none;
+	}
+
+	/* Left side: Arrow on right of tooltip pointing right */
+	:global(.tooltip-with-arrow[data-side='left']::before) {
+		top: 50%;
+		right: -4px;
+		transform: translateY(-50%) rotate(-45deg);
+		border-left: none;
+		border-bottom: none;
+	}
+
+	/* Right side: Arrow on left of tooltip pointing left - improved */
+	:global(.tooltip-with-arrow[data-side='right']::before) {
+		top: 50%;
+		left: -4px;
+		transform: translateY(-50%) rotate(-45deg);
+		border-left: none;
+		border-top: none;
+		box-shadow: -1px 1px 1px rgba(0, 0, 0, 0.05);
+	}
+</style>
