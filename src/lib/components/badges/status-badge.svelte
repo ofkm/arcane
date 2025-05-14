@@ -1,41 +1,42 @@
 <script lang="ts">
-	interface Props {
+	import { cn } from '$lib/utils';
+
+	type Variant = 'red' | 'purple' | 'green' | 'blue' | 'gray' | 'amber' | 'pink' | 'indigo' | 'cyan' | 'lime' | 'emerald' | 'teal' | 'sky' | 'violet' | 'fuchsia' | 'rose' | 'orange';
+
+	let {
+		text,
+		variant = 'gray',
+		class: className = '',
+		...restProps
+	} = $props<{
 		text: string;
-		variant?: 'red' | 'purple' | 'green' | 'blue' | 'gray' | 'amber';
-	}
+		variant?: Variant;
+		class?: string;
+	}>();
 
-	let { text, variant = 'gray' }: Props = $props();
+	const typedVariant: Variant = variant;
 
-	// Updated variant classes based on provided RGBA values and Tailwind colors (dark mode removed)
-	let variantClasses = $derived(
-		{
-			// red: bg: rgba(239, 68, 68, 0.15), color: rgb(185, 28, 28), border: rgba(239, 68, 68, 0.15)
-			// Closest Tailwind: bg-red-500/15, text-red-700, border-red-700
-			red: 'bg-red-500/15 text-red-700 border border-red-700/20',
-
-			// purple: bg: rgba(139, 92, 246, 0.15), color: rgb(107, 33, 168), border: rgba(139, 92, 246, 0.15)
-			// Closest Tailwind: bg-purple-500/15, text-purple-700, border-purple-700
-			purple: 'bg-purple-500/15 text-purple-700 border border-purple-700/20',
-
-			// green: bg: rgba(34, 197, 94, 0.2), color: rgb(63, 185, 80), border: rgba(34, 197, 94, 0.2)
-			// Closest Tailwind: bg-green-500/20, text-green-600, border-green-600
-			green: 'bg-green-500/20 text-green-600 border border-green-600/20',
-
-			// blue: bg: rgba(59, 130, 246, 0.15), color: rgb(37, 99, 235), border: rgba(59, 130, 246, 0.15)
-			// Closest Tailwind: bg-blue-500/15, text-blue-700, border-blue-700
-			blue: 'bg-blue-500/15 text-blue-700 border border-blue-700/20',
-
-			// gray: bg: rgba(156, 163, 175, 0.15), color: rgb(75, 85, 99), border: rgba(156, 163, 175, 0.15)
-			// Closest Tailwind: bg-gray-400/15, text-gray-600, border-gray-600
-			gray: 'bg-gray-400/15 text-gray-600 border border-gray-600-20',
-
-			// amber: bg: rgba(234, 179, 8, 0.2), color: rgb(210, 153, 34), border: rgba(234, 179, 8, 0.2)
-			// Closest Tailwind: bg-amber-500/20, text-amber-600, border-amber-600
-			amber: 'bg-amber-500/20 text-amber-600 border border-amber-600/20'
-		}[variant]
-	);
+	const variantStyles = {
+		red: 'bg-red-500/15 text-red-700 border border-red-700/20',
+		purple: 'bg-purple-500/15 text-purple-700 border border-purple-700/20',
+		green: 'bg-green-500/20 text-green-600 border border-green-600/20',
+		blue: 'bg-blue-500/15 text-blue-700 border border-blue-700/20',
+		gray: 'bg-gray-400/15 text-gray-600 border border-gray-600-20',
+		amber: 'bg-amber-500/20 text-amber-600 border border-amber-600/20',
+		pink: 'bg-pink-500/15 text-pink-700 border border-pink-700/20',
+		indigo: 'bg-indigo-500/15 text-indigo-700 border border-indigo-700/20',
+		cyan: 'bg-cyan-500/15 text-cyan-700 border border-cyan-700/20',
+		lime: 'bg-lime-500/15 text-lime-700 border border-lime-700/20',
+		emerald: 'bg-emerald-500/20 text-emerald-700 border border-emerald-700/20',
+		teal: 'bg-teal-500/15 text-teal-700 border border-teal-700/20',
+		sky: 'bg-sky-500/15 text-sky-700 border border-sky-700/20',
+		violet: 'bg-violet-500/15 text-violet-700 border border-violet-700/20',
+		fuchsia: 'bg-fuchsia-500/15 text-fuchsia-700 border border-fuchsia-700/20',
+		rose: 'bg-rose-500/15 text-rose-700 border border-rose-700/20',
+		orange: 'bg-orange-500/15 text-orange-700 border border-orange-700/20'
+	};
 </script>
 
-<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {variantClasses}">
+<span class={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', variantStyles[typedVariant], className)} {...restProps}>
 	{text}
 </span>

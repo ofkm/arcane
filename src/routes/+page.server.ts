@@ -1,14 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { listContainers } from '$lib/services/docker/container-service';
 import { getDockerInfo } from '$lib/services/docker/core';
-import { isImageInUse, listImages } from '$lib/services/docker/image-service';
+import { isImageInUse, listImages, checkImageMaturity } from '$lib/services/docker/image-service';
 import { getSettings } from '$lib/services/settings-service';
 import type { EnhancedImageInfo, ServiceContainer, ServiceImage } from '$lib/types/docker';
 
 type DockerInfoType = Awaited<ReturnType<typeof getDockerInfo>>;
 type SettingsType = NonNullable<Awaited<ReturnType<typeof getSettings>>>;
 
-// Update DashboardData type
 type DashboardData = {
 	dockerInfo: DockerInfoType | null;
 	containers: ServiceContainer[];
@@ -19,14 +18,12 @@ type DashboardData = {
 
 export const load: PageServerLoad = async (): Promise<DashboardData> => {
 	try {
-		// Fetch all data concurrently, including settings
 		const [dockerInfo, containers, images, settings] = await Promise.all([
 			getDockerInfo().catch((e) => {
 				console.error('Dashboard: Failed to get Docker info:', e.message);
 				return null;
 			}),
 			listContainers(true).catch((e) => {
-				// Ensure options object if needed
 				console.error('Dashboard: Failed to list containers:', e.message);
 				return [];
 			}),
@@ -35,18 +32,28 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 				return [];
 			}),
 			getSettings().catch((e) => {
-				// Fetch settings
 				console.error('Dashboard: Failed to get settings:', e.message);
-				return null; // Handle settings fetch error
+				return null;
 			})
 		]);
 
 		const enhancedImages = await Promise.all(
 			images.map(async (image): Promise<EnhancedImageInfo> => {
 				const inUse = await isImageInUse(image.id);
+
+				let maturity = undefined;
+				try {
+					if (image.repo !== '<none>' && image.tag !== '<none>') {
+						maturity = await checkImageMaturity(image.id);
+					}
+				} catch (maturityError) {
+					console.error(`Dashboard: Failed to check maturity for image ${image.id}:`, maturityError);
+				}
+
 				return {
 					...image,
-					inUse
+					inUse,
+					maturity
 				};
 			})
 		);

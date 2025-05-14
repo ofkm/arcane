@@ -6,7 +6,6 @@
 	import { Loader2 } from '@lucide/svelte';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
-	import { settingsStore } from '$lib/stores/settings-store';
 
 	function preventDefault(handler: (event: SubmitEvent) => void) {
 		return (event: SubmitEvent) => {
@@ -23,22 +22,15 @@
 		open?: boolean;
 		isPulling?: boolean;
 		pullProgress?: number;
-		onSubmit?: (data: { imageRef: string; tag?: string; platform?: string; registryUrl?: string }) => void; // Updated onSubmit type
-		// Removed registryCredentials prop
+		onSubmit?: (data: { imageRef: string; tag?: string; platform?: string; registryUrl?: string }) => void;
 	}
 
-	let {
-		open = $bindable(false),
-		isPulling = false,
-		pullProgress = 0,
-		onSubmit = (data) => console.log('Pull submitted:', data) // Default onSubmit
-		// Removed registryCredentials from destructuring
-	}: Props = $props();
+	let { open = $bindable(false), isPulling = false, pullProgress = 0, onSubmit = (data) => console.log('Pull submitted:', data) }: Props = $props();
 
 	let imageRef = $state('');
 	let tag = $state('latest');
 	let platform = $state('');
-	let selectedRegistryUrl = $state(''); // State for selected registry URL
+	let selectedRegistryUrl = $state('');
 
 	// Available platforms
 	const platforms = [

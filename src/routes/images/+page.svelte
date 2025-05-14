@@ -20,6 +20,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { settingsStore } from '$lib/stores/settings-store';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+	import MaturityItem from '$lib/components/maturity-item.svelte';
 
 	let { data }: { data: PageData } = $props();
 	let images = $state<EnhancedImageInfo[]>(data.images || []);
@@ -455,88 +456,7 @@
 						<Table.Cell>
 							<div class="flex items-center gap-2">
 								<div class="flex items-center flex-1">
-									<!-- Maturity Indicator with proper Tooltip -->
-									{#if item.maturity}
-										<Tooltip.Provider>
-											<Tooltip.Root>
-												<Tooltip.Trigger>
-													<span class="inline-flex items-center justify-center align-middle mr-2 size-4">
-														{#if !item.maturity.updatesAvailable}
-															<!-- Green checkmark for up-to-date images -->
-
-															<CircleCheck class="text-green-500 size-10" fill="none" stroke="currentColor" strokeWidth="2" />
-															<!-- <CircleFadingArrowUp class="text-green-500 size-4" fill="none" stroke="currentColor" strokeWidth="2" /> -->
-														{:else if item.maturity.status === 'Not Matured'}
-															<!-- Yellow warning icon for non-matured updates -->
-															<CircleFadingArrowUp class="text-yellow-500 size-10" fill="none" stroke="currentColor" stroke-width="2" />
-														{:else}
-															<!-- Blue checkmark for matured updates -->
-															<CircleArrowUp class="text-blue-500 size-10" fill="none" stroke="currentColor" stroke-width="2" />
-														{/if}
-													</span>
-												</Tooltip.Trigger>
-												<!-- Tooltip content updated -->
-												<Tooltip.Content side="right" class="p-3 max-w-[200px] relative tooltip-with-arrow" align="center">
-													<div class="space-y-2">
-														<div class="flex items-center gap-2">
-															{#if !item.maturity.updatesAvailable}
-																<!-- Green checkmark in tooltip -->
-																<CircleCheck class="text-green-500 size-5" fill="none" stroke="currentColor" strokeWidth="2" />
-																<span class="font-medium">Image Up to Date</span>
-															{:else if item.maturity.status === 'Not Matured'}
-																<!-- Yellow warning icon in tooltip -->
-																<CircleFadingArrowUp class="text-yellow-500 size-5" fill="none" stroke="currentColor" stroke-width="2" />
-																<span class="font-medium">Update Available (Not Matured)</span>
-															{:else}
-																<!-- Blue info icon in tooltip -->
-																<CircleArrowUp class="text-blue-500 size-5" fill="none" stroke="currentColor" stroke-width="2" />
-																<span class="font-medium">Matured Update Available</span>
-															{/if}
-														</div>
-
-														<div class="pt-1 border-t border-gray-200 dark:border-gray-700 justify-between">
-															<div class="flex justify-between text-xs">
-																<span class="text-muted-foreground">Version:</span>
-																<span class="font-medium">{item.maturity.version || 'N/A'}</span>
-															</div>
-
-															<div class="flex justify-between text-xs mt-1">
-																<span class="text-muted-foreground">Released:</span>
-																<span>{item.maturity.date || 'Unknown'}</span>
-															</div>
-
-															<div class="flex justify-between text-xs mt-1">
-																<span class="text-muted-foreground">Status:</span>
-																<span class={item.maturity.status === 'Matured' ? 'text-green-500' : 'text-amber-500'}>
-																	{item.maturity.status || 'Unknown'}
-																</span>
-															</div>
-														</div>
-													</div>
-												</Tooltip.Content>
-											</Tooltip.Root>
-										</Tooltip.Provider>
-									{:else}
-										<!-- Tooltip for missing maturity info -->
-										<Tooltip.Provider>
-											<Tooltip.Root>
-												<Tooltip.Trigger>
-													<span class="inline-flex items-center justify-center mr-2 opacity-30 size-4">
-														<svg class="text-gray-500 size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-															<circle cx="12" cy="12" r="10" />
-															<path d="M9 12l2 2 4-4" />
-														</svg>
-													</span>
-												</Tooltip.Trigger>
-												<Tooltip.Content side="right" class="p-2 relative tooltip-with-arrow" align="center">
-													<span class="text-xs">Maturity status not available.</span>
-												</Tooltip.Content>
-											</Tooltip.Root>
-										</Tooltip.Provider>
-									{/if}
-									<!-- End Maturity Indicator -->
-
-									<!-- Repository name as a separate element -->
+									<MaturityItem maturity={item.maturity} />
 									<a class="font-medium hover:underline shrink truncate" href="/images/{item.id}/">
 										{item.repo}
 									</a>

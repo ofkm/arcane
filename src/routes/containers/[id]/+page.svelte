@@ -271,13 +271,13 @@
 
 	{#if container}
 		<Tabs.Root value={activeTab} onValueChange={(val) => (activeTab = val)} class="space-y-4">
-			<Tabs.List>
-				<Tabs.Trigger value="overview">Overview</Tabs.Trigger>
-				<Tabs.Trigger value="config">Configuration</Tabs.Trigger>
-				<Tabs.Trigger value="network">Networks</Tabs.Trigger>
-				<Tabs.Trigger value="storage">Storage</Tabs.Trigger>
-				<Tabs.Trigger value="logs">Logs</Tabs.Trigger>
-				<Tabs.Trigger value="stats">Metrics</Tabs.Trigger>
+			<Tabs.List class="dark:bg-slate-900 grid grid-cols-6 md:w-full md:max-w-3xl mb-4">
+				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="overview">Overview</Tabs.Trigger>
+				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="config">Configuration</Tabs.Trigger>
+				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="network">Networks</Tabs.Trigger>
+				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="storage">Storage</Tabs.Trigger>
+				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="logs">Logs</Tabs.Trigger>
+				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="stats">Metrics</Tabs.Trigger>
 			</Tabs.List>
 
 			<Tabs.Content value="overview" class="space-y-6">
@@ -655,7 +655,7 @@
 									<label for="auto-scroll" class="text-xs">Auto-scroll</label>
 								</div>
 								<Button variant="outline" size="sm" onclick={refreshData} disabled={isRefreshing}>
-									<RefreshCw class={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+									<RefreshCw class={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
 									Refresh Logs
 								</Button>
 							</div>
@@ -664,7 +664,7 @@
 
 					<Card.Content>
 						<div
-							class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs overflow-auto border size-[500px]"
+							class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs overflow-auto border h-[500px]"
 							bind:this={logsContainer}
 							id="logs-container"
 							style="overflow-x: auto;"

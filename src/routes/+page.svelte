@@ -20,6 +20,7 @@
 	import SystemAPIService from '$lib/services/api/system-api-service';
 	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import MaturityItem from '$lib/components/maturity-item.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -244,44 +245,51 @@
 
 	<section>
 		<h2 class="text-lg font-semibold tracking-tight mb-4">Quick Actions</h2>
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button onclick={handleStartAll} class="w-full" disabled={!dashboardStates.dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} variant="default">
+		<div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+			<!-- Start All Button -->
+			<button class="group relative flex flex-col items-center p-5 rounded-xl border bg-card shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-sm" disabled={!dashboardStates.dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} onclick={handleStartAll}>
+				<div class="size-10 rounded-full flex items-center justify-center mb-3 bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
 					{#if isLoading.starting}
-						<Loader2 class="mr-2 animate-spin size-4" />
+						<Loader2 class="text-green-500 animate-spin size-5" />
 					{:else}
-						<PlayCircle class="mr-2 size-4" />
+						<PlayCircle class="text-green-500 size-5" />
 					{/if}
-					Start All Stopped
-					<StatusBadge variant="amber" text={stoppedContainers.toString()} />
-				</Button>
-				<p class="text-xs text-muted-foreground mt-2">Start all stopped containers</p>
-			</Card.Root>
+				</div>
+				<span class="text-base font-medium mb-2">Start All Stopped</span>
+				<StatusBadge variant="sky" text={stoppedContainers.toString()} class="mb-3" />
+				<p class="text-xs text-muted-foreground">Start all stopped containers</p>
+			</button>
 
-			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button onclick={handleStopAll} class="w-full" variant="secondary" disabled={!dashboardStates.dockerInfo || runningContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}>
+			<!-- Stop All Button -->
+			<button class="group relative flex flex-col items-center p-5 rounded-xl border bg-card shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-sm" disabled={!dashboardStates.dockerInfo || runningContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} onclick={handleStopAll}>
+				<div class="size-10 rounded-full flex items-center justify-center mb-3 bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
 					{#if isLoading.stopping}
-						<Loader2 class="mr-2 animate-spin size-4" />
+						<Loader2 class="text-blue-500 animate-spin size-5" />
 					{:else}
-						<StopCircle class="mr-2 size-4" />
+						<StopCircle class="text-blue-500 size-5" />
 					{/if}
-					Stop All Running
-					<StatusBadge variant="amber" text={runningContainers.toString()} />
-				</Button>
-				<p class="text-xs text-muted-foreground mt-2">Stop all running containers</p>
-			</Card.Root>
+				</div>
+				<span class="text-base font-medium mb-2">Stop All Running</span>
+				<StatusBadge variant="sky" text={runningContainers.toString()} class="mb-3" />
+				<p class="text-xs text-muted-foreground">Stop all running containers</p>
+			</button>
 
-			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
-				<Button onclick={() => (dashboardStates.isPruneDialogOpen = true)} class="w-full" variant="destructive" disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}>
+			<!-- Prune System Button -->
+			<button
+				class="group relative flex flex-col items-center p-5 rounded-xl border bg-card shadow-sm hover:shadow-md hover:border-destructive/50 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-sm disabled:hover:border-border"
+				disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
+				onclick={() => (dashboardStates.isPruneDialogOpen = true)}
+			>
+				<div class="size-10 rounded-full flex items-center justify-center mb-3 bg-red-500/10 group-hover:bg-red-500/20 transition-colors">
 					{#if isLoading.pruning}
-						<Loader2 class="mr-2 animate-spin size-4" />
+						<Loader2 class="text-red-500 animate-spin size-5" />
 					{:else}
-						<Trash2 class="mr-2 size-4" />
+						<Trash2 class="text-red-500 size-5" />
 					{/if}
-					Prune System
-				</Button>
-				<p class="text-xs text-muted-foreground mt-2">Remove unused data</p>
-			</Card.Root>
+				</div>
+				<span class="text-base font-medium mb-2">Prune System</span>
+				<p class="text-xs text-muted-foreground">Remove unused data</p>
+			</button>
 		</div>
 	</section>
 
@@ -374,6 +382,7 @@
 									data={dashboardStates.images.slice(0, 5)}
 									columns={[
 										{ accessorKey: 'repo', header: 'Name' },
+										{ accessorKey: 'inUse', header: ' ', enableSorting: false },
 										{ accessorKey: 'tag', header: 'Tag' },
 										{ accessorKey: 'size', header: 'Size' }
 									]}
@@ -395,15 +404,20 @@
 									{#snippet rows({ item })}
 										<Table.Cell>
 											<div class="flex items-center gap-2">
-												<span class="truncate">
-													<a class="font-medium hover:underline" href="/images/{item.id}/">
+												<div class="flex items-center flex-1">
+													<MaturityItem maturity={item.maturity} />
+													<a class="font-medium hover:underline shrink truncate" href="/images/{item.id}/">
 														{item.repo}
 													</a>
-												</span>
-												{#if !item.inUse}
-													<StatusBadge text="Unused" variant="amber" />
-												{/if}
+												</div>
 											</div>
+										</Table.Cell>
+										<Table.Cell>
+											{#if !item.inUse}
+												<StatusBadge text="Unused" variant="amber" />
+											{:else}
+												<StatusBadge text="In Use" variant="green" />
+											{/if}
 										</Table.Cell>
 										<Table.Cell>{item.tag}</Table.Cell>
 										<Table.Cell>{formatBytes(item.size)}</Table.Cell>
