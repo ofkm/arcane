@@ -6,6 +6,99 @@ import { NotFoundError, DockerApiError } from '$lib/types/errors';
 import { RegistryRateLimitError, PublicRegistryError, PrivateRegistryError } from '$lib/types/errors.type';
 import { parseImageNameForRegistry, areRegistriesEquivalent } from '$lib/utils/registry.utils';
 import { getSettings } from '$lib/services/settings-service';
+// Add this import
+import { updateImageMaturity } from '$lib/stores/maturity-store';
+
+// Add this variable to track the polling interval timer
+let maturityPollingInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Starts the maturity polling scheduler based on user settings
+ */
+export async function initMaturityPollingScheduler(): Promise<void> {
+	const settings = await getSettings();
+
+	// Clear any existing timer
+	if (maturityPollingInterval) {
+		clearInterval(maturityPollingInterval);
+		maturityPollingInterval = null;
+	}
+
+	// If polling is disabled, do nothing
+	if (!settings.pollingEnabled) {
+		console.log('Image maturity polling is disabled in settings');
+		return;
+	}
+
+	// Use the configured polling interval (default to 10 minutes if not set)
+	const intervalMinutes = settings.pollingInterval || 10;
+	const intervalMs = intervalMinutes * 60 * 1000;
+
+	console.log(`Starting image maturity polling with interval of ${intervalMinutes} minutes`);
+
+	// Schedule regular checks
+	maturityPollingInterval = setInterval(runMaturityChecks, intervalMs);
+}
+
+/**
+ * Stops the maturity polling scheduler
+ */
+export async function stopMaturityPollingScheduler(): Promise<void> {
+	if (maturityPollingInterval) {
+		clearInterval(maturityPollingInterval);
+		maturityPollingInterval = null;
+		console.log('Image maturity polling scheduler stopped');
+	}
+}
+
+/**
+ * Run maturity checks for all images
+ */
+async function runMaturityChecks(): Promise<void> {
+	console.log('Running scheduled image maturity checks...');
+
+	try {
+		// Get all images
+		const images = await listImages();
+		let checkedCount = 0;
+		let updatesFound = 0;
+
+		// Check each image for maturity info, with a small delay between checks
+		for (const image of images) {
+			// Skip images without proper tags
+			if (image.repo === '<none>' || image.tag === '<none>') {
+				continue;
+			}
+
+			try {
+				const maturityInfo = await checkImageMaturity(image.id);
+				checkedCount++;
+
+				if (maturityInfo?.updatesAvailable) {
+					updatesFound++;
+				}
+
+				// Small delay to avoid overwhelming registries
+				await new Promise((resolve) => setTimeout(resolve, 200));
+			} catch (error) {
+				console.error(`Error checking maturity for ${image.repo}:${image.tag}`);
+			}
+		}
+
+		console.log(`Maturity check completed: Checked ${checkedCount} images, found ${updatesFound} updates`);
+
+		// Emit an event that the UI can listen to for updates
+		if (typeof window !== 'undefined') {
+			window.dispatchEvent(
+				new CustomEvent('maturity-check-complete', {
+					detail: { checkedCount, updatesFound }
+				})
+			);
+		}
+	} catch (error) {
+		console.error('Error during scheduled maturity check:', error);
+	}
+}
 
 /**
  * The function `listImages` retrieves a list of Docker images and parses their information into a
@@ -51,7 +144,6 @@ export async function listImages(): Promise<ServiceImage[]> {
 			};
 		});
 	} catch (error: any) {
-		console.error('Docker Service: Error listing images:', error);
 		throw new Error(`Failed to list Docker images using host "${dockerHost}".`);
 	}
 }
@@ -68,10 +160,8 @@ export async function getImage(imageId: string): Promise<Docker.ImageInspectInfo
 		const docker = await getDockerClient();
 		const image = docker.getImage(imageId);
 		const inspectInfo = await image.inspect();
-		console.log(`Docker Service: Inspected image "${imageId}" successfully.`);
 		return inspectInfo;
 	} catch (error: any) {
-		console.error(`Docker Service: Error inspecting image "${imageId}":`, error);
 		if (error.statusCode === 404) {
 			throw new NotFoundError(`Image "${imageId}" not found.`);
 		}
@@ -94,9 +184,7 @@ export async function removeImage(imageId: string, force: boolean = false): Prom
 		const docker = await getDockerClient();
 		const image = docker.getImage(imageId);
 		await image.remove({ force });
-		console.log(`Docker Service: Image "${imageId}" removed successfully.`);
 	} catch (error: any) {
-		console.error(`Docker Service: Error removing image "${imageId}":`, error);
 		if (error.statusCode === 409) {
 			throw new Error(`Image "${imageId}" is being used by a container. Use force option to remove.`);
 		}
@@ -121,7 +209,6 @@ export async function isImageInUse(imageId: string): Promise<boolean> {
 		// Look for containers using this image
 		return containers.some((container) => container.ImageID === imageId || container.Image === imageId);
 	} catch (error) {
-		console.error(`Error checking if image ${imageId} is in use:`, error);
 		// Default to assuming it's in use for safety
 		return true;
 	}
@@ -143,20 +230,14 @@ export async function pruneImages(mode: 'all' | 'dangling' = 'all'): Promise<{
 	try {
 		const docker = await getDockerClient();
 		const filterValue = mode === 'all' ? 'false' : 'true';
-		const logMessage = mode === 'all' ? 'Pruning all unused images (docker image prune -a)...' : 'Pruning dangling images (docker image prune)...';
-
-		console.log(`Docker Service: ${logMessage}`);
 
 		const pruneOptions = {
 			filters: { dangling: [filterValue] }
 		};
 
 		const result = await docker.pruneImages(pruneOptions); // Use the options object
-
-		console.log(`Docker Service: Image prune complete. Space reclaimed: ${result.SpaceReclaimed}`);
 		return result;
 	} catch (error: any) {
-		console.error('Docker Service: Error pruning images:', error);
 		throw new Error(`Failed to prune images using host "${dockerHost}". ${error.message || error.reason || ''}`);
 	}
 }
@@ -189,97 +270,53 @@ export async function pullImage(imageRef: string, platform?: string, authConfig?
 /**
  * Checks if a newer version of an image is available in the registry
  * and returns maturity information.
- * @param {string} imageId - The ID of the image to check
- * @returns {Promise<ImageMaturity | undefined>} Maturity information if available
  */
 export async function checkImageMaturity(imageId: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
-	console.log(`Starting maturity check for image ID: ${imageId}`);
 	try {
-		// Get image details
 		const imageDetails = await getImage(imageId);
-
-		// Extract repo and tag from image
 		const repoTag = imageDetails.RepoTags?.[0];
-		console.log(`Image ${imageId} has repo tag: ${repoTag}`);
 
 		if (!repoTag || repoTag.includes('<none>')) {
-			console.log(`Skipping maturity check for ${imageId}: No repo tag or <none>`);
+			updateImageMaturity(imageId, undefined);
 			return undefined;
 		}
 
-		// Parse the repo and tag
 		const lastColon = repoTag.lastIndexOf(':');
 		if (lastColon === -1) {
-			console.log(`Skipping maturity check for ${imageId}: Invalid format (no colon)`);
+			updateImageMaturity(imageId, undefined);
 			return undefined;
 		}
 
 		const repository = repoTag.substring(0, lastColon);
 		const currentTag = repoTag.substring(lastColon + 1);
-		console.log(`Parsed ${repoTag} as repo=${repository}, tag=${currentTag}`);
 
-		// Skip 'latest' tag as it's ambiguous
 		if (currentTag === 'latest') {
-			console.log(`Skipping maturity check for ${imageId}: Using 'latest' tag`);
+			updateImageMaturity(imageId, undefined);
 			return undefined;
 		}
 
-		// For debugging, force nginx:alpine to show update available
-		if (repository === 'nginx' && currentTag === 'alpine') {
-			console.log(`Adding mock maturity data for nginx:alpine`);
-			return {
-				version: 'alpine-2.0',
-				date: 'Today',
-				status: 'Not Matured',
-				updatesAvailable: true
-			};
-		}
-
-		// Check registry for newer versions
-		console.log(`Checking registry for ${repository}:${currentTag}`);
 		const registryInfo = await getRegistryInfo(repository, currentTag);
 
 		if (!registryInfo) {
-			console.log(`No maturity info found for ${imageId}`);
+			updateImageMaturity(imageId, undefined);
 			return undefined;
 		}
 
-		console.log(`Found maturity info for ${imageId}:`, registryInfo);
+		updateImageMaturity(imageId, registryInfo);
 		return registryInfo;
 	} catch (error) {
-		console.error(`Error checking maturity for image ${imageId}:`, error);
-
-		// FOR TESTING ONLY: Return mock data for ~50% of images
-		if (Math.random() > 0.5) {
-			const mockMaturity = {
-				version: '24.04',
-				date: 'Today',
-				status: 'Not Matured' as 'Not Matured',
-				updatesAvailable: true
-			};
-			console.log(`Adding mock maturity data for ${imageId}:`, mockMaturity);
-			return mockMaturity;
-		}
-
+		updateImageMaturity(imageId, undefined);
 		return undefined;
 	}
 }
 
 /**
  * Contacts the Docker registry to get latest version information
- * @param {string} repository - The image repository
- * @param {string} currentTag - The current tag
- * @returns {Promise<ImageMaturity | undefined>} Maturity information if available
  */
 async function getRegistryInfo(repository: string, currentTag: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
 	try {
-		console.log(`Checking registry info for ${repository}:${currentTag}`);
-
-		// Extract registry domain from repository name
 		const { registry: registryDomain } = parseImageNameForRegistry(repository);
-		console.log(`Registry domain for ${repository}: ${registryDomain}`);
 
-		// First try without authentication (public registry access)
 		try {
 			const maturityInfo = await checkPublicRegistry(repository, registryDomain, currentTag);
 			if (maturityInfo) {
@@ -287,20 +324,12 @@ async function getRegistryInfo(repository: string, currentTag: string): Promise<
 			}
 		} catch (error: any) {
 			if (error.response?.status === 429) {
-				throw new RegistryRateLimitError(
-					'Rate limit exceeded',
-					registryDomain,
-					repository,
-					new Date(Date.now() + 3600000) // Default: reset after 1 hour
-				);
+				throw new RegistryRateLimitError('Rate limit exceeded', registryDomain, repository, new Date(Date.now() + 3600000));
 			} else if (error.response?.status === 401) {
 				throw new PublicRegistryError('Authentication required', registryDomain, repository, 401);
 			}
-			console.log(`Public registry check failed: ${error.message}`);
-			// Continue to private registry attempt
 		}
 
-		// If public registry check fails, try with authentication
 		try {
 			const settings = await getSettings();
 
@@ -308,25 +337,19 @@ async function getRegistryInfo(repository: string, currentTag: string): Promise<
 				const storedCredential = settings.registryCredentials.find((cred) => areRegistriesEquivalent(cred.url, registryDomain));
 
 				if (storedCredential) {
-					console.log(`Found credentials for ${registryDomain}, attempting authenticated check`);
 					return await checkPrivateRegistry(repository, registryDomain, currentTag, storedCredential);
 				}
 			}
 		} catch (error: any) {
-			// Use our custom error type
 			if (error instanceof PrivateRegistryError) {
 				console.error(`Private registry check failed: ${error.message} for ${error.registry}`);
 			} else {
-				// Wrap other errors in our custom error type
-				console.error(`Private registry check failed: ${error.message}`);
 				throw new PrivateRegistryError(error.message || 'Unknown error accessing private registry', registryDomain, repository, error.status || error.statusCode);
 			}
 		}
 
-		// If we reach here, no update information was found
 		return undefined;
 	} catch (error) {
-		console.error(`Error getting registry info for ${repository}:${currentTag}:`, error);
 		return undefined;
 	}
 }
@@ -348,30 +371,18 @@ async function checkPrivateRegistry(repository: string, registryDomain: string, 
 
 /**
  * Check a registry using the Docker Registry HTTP API v2
- * (works for most registries including Docker Hub, GHCR, Quay.io, etc.)
  */
 async function checkRegistryV2(repository: string, registryDomain: string, currentTag: string, auth?: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
-	console.log(`Checking registry ${registryDomain} using Registry API v2`);
-
 	try {
-		// Format the repository correctly - remove the registry domain prefix if present
 		const repoPath = repository.replace(`${registryDomain}/`, '');
-
-		// Special case for Docker Hub which requires library/ prefix for official images
 		const adjustedRepoPath = registryDomain === 'docker.io' && !repoPath.includes('/') ? `library/${repoPath}` : repoPath;
-
-		// Construct base URL for the registry API
 		const baseUrl = registryDomain === 'docker.io' ? 'https://registry-1.docker.io' : `https://${registryDomain}`;
-
-		// First, we need to get the list of tags
 		const tagsUrl = `${baseUrl}/v2/${adjustedRepoPath}/tags/list`;
-		console.log(`Fetching tags from: ${tagsUrl}`);
 
 		const headers: Record<string, string> = {
 			Accept: 'application/json'
 		};
 
-		// Add authentication if provided
 		if (auth) {
 			headers['Authorization'] = `Basic ${auth}`;
 		}
@@ -379,18 +390,14 @@ async function checkRegistryV2(repository: string, registryDomain: string, curre
 		const tagsResponse = await fetch(tagsUrl, { headers });
 
 		if (tagsResponse.status === 401) {
-			// Authentication required - look for WWW-Authenticate header
 			const authHeader = tagsResponse.headers.get('WWW-Authenticate');
 			if (authHeader && authHeader.includes('Bearer')) {
-				// Need to get a token
 				const realm = authHeader.match(/realm="([^"]+)"/)?.[1];
 				const service = authHeader.match(/service="([^"]+)"/)?.[1];
 				const scope = authHeader.match(/scope="([^"]+)"/)?.[1];
 
 				if (realm) {
-					// Get token
 					const tokenUrl = `${realm}?service=${service || ''}&scope=${scope || ''}`;
-					console.log(`Getting auth token from: ${tokenUrl}`);
 
 					const tokenHeaders: Record<string, string> = {};
 					if (auth) {
@@ -409,7 +416,6 @@ async function checkRegistryV2(repository: string, registryDomain: string, curre
 						throw new PublicRegistryError('Registry authentication failed - no token', registryDomain, repository);
 					}
 
-					// Retry with token
 					headers['Authorization'] = `Bearer ${token}`;
 					const authenticatedResponse = await fetch(tagsUrl, { headers });
 
@@ -445,35 +451,24 @@ async function checkRegistryV2(repository: string, registryDomain: string, curre
  */
 async function processTagsData(tagsData: any, repository: string, registryDomain: string, currentTag: string, headers: Record<string, string>): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
 	const tags = tagsData.tags || [];
-	console.log(`Found ${tags.length} tags for ${repository}`);
-
-	// Find similar tags to the current one and check if it's a special tag
 	const { newerTags, isSpecialTag } = findNewerVersionsOfSameTag(tags, currentTag);
 
-	// If it's a special tag that exists in the registry, return it as up-to-date
 	if (isSpecialTag && newerTags.length === 0) {
-		// This is an existing special tag like 'next', 'latest', etc.
-		// Return it as "up-to-date" with no updates available
 		return {
 			version: currentTag,
 			date: new Date().toLocaleDateString(),
 			status: 'Matured',
-			updatesAvailable: false // Important: mark as not having updates
+			updatesAvailable: false
 		};
 	}
 
 	if (newerTags.length > 0) {
 		const newestTag = newerTags[0];
-		console.log(`Found newer tag: ${newestTag}`);
 
 		try {
-			// Get the creation date from the image manifest
 			const baseUrl = registryDomain === 'docker.io' ? 'https://registry-1.docker.io' : `https://${registryDomain}`;
-
 			const repoPath = repository.replace(`${registryDomain}/`, '');
 			const adjustedRepoPath = registryDomain === 'docker.io' && !repoPath.includes('/') ? `library/${repoPath}` : repoPath;
-
-			// First get the manifest to find the config digest
 			const manifestUrl = `${baseUrl}/v2/${adjustedRepoPath}/manifests/${newestTag}`;
 			const manifestResponse = await fetch(manifestUrl, {
 				headers: {
@@ -487,7 +482,6 @@ async function processTagsData(tagsData: any, repository: string, registryDomain
 				const configDigest = manifest.config?.digest;
 
 				if (configDigest) {
-					// Get the image config which contains creation info
 					const configUrl = `${baseUrl}/v2/${adjustedRepoPath}/blobs/${configDigest}`;
 					const configResponse = await fetch(configUrl, { headers });
 
@@ -508,16 +502,13 @@ async function processTagsData(tagsData: any, repository: string, registryDomain
 				}
 			}
 
-			// If we couldn't get detailed creation info, return a basic response
 			return {
 				version: newestTag,
 				date: new Date().toLocaleDateString(),
-				status: 'Not Matured', // Assume not matured if we can't verify
+				status: 'Not Matured',
 				updatesAvailable: true
 			};
 		} catch (error) {
-			console.error(`Error getting creation date for ${newestTag}:`, error);
-			// Still return the update info even if we couldn't get creation date
 			return {
 				version: newestTag,
 				date: new Date().toLocaleDateString(),
@@ -527,7 +518,6 @@ async function processTagsData(tagsData: any, repository: string, registryDomain
 		}
 	}
 
-	// If we reach here and it's a special tag, return it as up-to-date
 	if (isSpecialTag) {
 		return {
 			version: currentTag,
@@ -537,7 +527,7 @@ async function processTagsData(tagsData: any, repository: string, registryDomain
 		};
 	}
 
-	return undefined; // No updates found for regular tags
+	return undefined;
 }
 
 /**
@@ -574,50 +564,34 @@ function getTagPattern(tag: string): { pattern: string; version: string | null }
 
 /**
  * Find newer versions of similar tags
- * This function also now checks for updates to special tags by finding newer special tags
  */
 function findNewerVersionsOfSameTag(allTags: string[], currentTag: string): { newerTags: string[]; isSpecialTag: boolean } {
-	// Get the pattern for the current tag
 	const { pattern, version } = getTagPattern(currentTag);
-	console.log(`Analyzing tag ${currentTag}: pattern=${pattern}, version=${version}`);
 
-	// For special tags like "next", "development", etc.
 	if (!version) {
 		const exactMatches = allTags.filter((tag) => tag === currentTag);
 
-		// Check if the tag exists in this registry
 		if (exactMatches.length > 0) {
-			console.log(`Special tag ${currentTag} exists in registry, no meaningful updates available`);
-			return { newerTags: [], isSpecialTag: true }; // Special tag exists, mark as special
+			return { newerTags: [], isSpecialTag: true };
 		}
 
-		// If we're here, the special tag doesn't exist in this registry
-		// See if there's a newer alternative tag we could suggest
 		const specialTags = ['latest', 'stable', 'development', 'main', 'master'];
 		const alternatives = allTags.filter((tag) => specialTags.includes(tag));
 
 		if (alternatives.length > 0) {
-			console.log(`Special tag ${currentTag} not found, suggesting alternatives: ${alternatives.join(', ')}`);
 			return { newerTags: alternatives, isSpecialTag: true };
 		}
 
-		// No good alternative found
-		console.log(`Special tag ${currentTag} not found, no good alternatives available`);
 		return { newerTags: [], isSpecialTag: true };
 	}
 
-	// For normal versioned tags, find tags with the same pattern
 	const similarTags = allTags
 		.filter((tag) => {
 			const tagInfo = getTagPattern(tag);
-			// Only compare tags with the same pattern/type
 			return tagInfo.pattern === pattern && tagInfo.version;
 		})
-		.filter((tag) => tag !== currentTag); // Exclude the current tag itself
+		.filter((tag) => tag !== currentTag);
 
-	console.log(`Found ${similarTags.length} similar tags for ${currentTag}: ${similarTags.join(', ')}`);
-
-	// Sort tags by version and return newer ones
 	const sortedTags = sortTagsByVersion([currentTag, ...similarTags]);
 	const newerTags = sortedTags.filter((tag) => tag !== currentTag);
 
@@ -626,7 +600,6 @@ function findNewerVersionsOfSameTag(allTags: string[], currentTag: string): { ne
 
 /**
  * Sort tags by their semantic version
- * This handles both numeric versions and special formats
  */
 function sortTagsByVersion(tags: string[]): string[] {
 	return [...tags].sort((a, b) => {
@@ -659,8 +632,6 @@ function sortTagsByVersion(tags: string[]): string[] {
 
 /**
  * Calculates days between now and a given date
- * @param {Date} date - The date to compare against
- * @returns {number} Number of days
  */
 function getDaysSinceDate(date: Date): number {
 	const now = new Date();

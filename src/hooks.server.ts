@@ -6,13 +6,14 @@ import { getUserByUsername } from '$lib/services/user-service';
 import { getSettings } from '$lib/services/settings-service';
 import { checkFirstRun } from '$lib/utils/onboarding.utils';
 import { sessionHandler } from '$lib/services/session-handler';
+import { initMaturityPollingScheduler } from '$lib/services/docker/image-service';
 
 // Get environment variable
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
 
 // Initialize needed services
 try {
-	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler()]);
+	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler(), initMaturityPollingScheduler()]);
 } catch (err) {
 	console.error('Critical service init failed, exiting:', err);
 	process.exit(1);
