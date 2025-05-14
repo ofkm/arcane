@@ -244,28 +244,42 @@
 		isLoading.checking = true;
 
 		try {
-			// Check maturity for each image, but limit concurrency
-			const results = [];
-			for (const image of images) {
-				if (image.id) {
-					try {
-						console.log(`Checking maturity for ${image.repo}:${image.tag}`);
-						const result = await imageApi.checkMaturity(image.id);
-						results.push({ id: image.id, success: true, data: result });
-					} catch (error) {
-						console.error(`Failed to check maturity for ${image.repo}:${image.tag}:`, error);
-						results.push({ id: image.id, success: false, error });
-					}
-					// Small delay to avoid overwhelming APIs
-					await new Promise((r) => setTimeout(r, 200));
-				}
+			// Filter out images without IDs
+			const imageIds = images.filter((image) => image.id).map((image) => image.id);
+
+			if (imageIds.length === 0) {
+				toast.info('No images to check for updates');
+				return;
 			}
 
-			console.log(`Maturity check results: ${results.filter((r) => r.success).length} successful, ${results.filter((r) => !r.success).length} failed`);
-			await invalidateAll();
+			// Make a single API call that handles concurrency on the server
+			console.log(`Checking maturity for ${imageIds.length} images...`);
+			const batchResult = await imageApi.checkMaturityBatch(imageIds);
+
+			if (!batchResult.success) {
+				toast.error(`Failed to check updates: ${batchResult.error}`);
+				return;
+			}
+
+			const { success, failed, total } = batchResult.stats;
+
+			console.log(`Maturity check completed: ${success} successful, ${failed} failed out of ${total}`);
+
+			if (success > 0) {
+				toast.success(`Checked updates for ${success} images`);
+
+				if (failed > 0) {
+					toast.warning(`Failed to check ${failed} images`);
+				}
+
+				// Refresh data to show the new maturity status
+				await invalidateAll();
+			} else if (failed > 0) {
+				toast.error(`Failed to check updates for all ${failed} images`);
+			}
 		} catch (error) {
 			console.error('Error checking maturity:', error);
-			toast.error('Failed to check image updates');
+			toast.error(`Failed to check image updates: ${(error as Error).message}`);
 		} finally {
 			isLoading.checking = false;
 		}
