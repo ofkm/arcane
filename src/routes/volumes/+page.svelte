@@ -240,6 +240,7 @@
 					idKey="name"
 					columns={[
 						{ accessorKey: 'name', header: 'Name' },
+						{ accessorKey: 'inUse', header: ' ', enableSorting: false },
 						{ accessorKey: 'mountpoint', header: 'Mountpoint' },
 						{ accessorKey: 'driver', header: 'Driver' },
 						{ accessorKey: 'actions', header: ' ', enableSorting: false }
@@ -256,10 +257,10 @@
 								<span class="truncate">
 									<a class="font-medium hover:underline" href="/volumes/{item.name}/">{item.name}</a>
 								</span>
-								{#if !item.inUse}
-									<StatusBadge text="Unused" variant="amber" />
-								{/if}
 							</div>
+						</Table.Cell>
+						<Table.Cell>
+							<StatusBadge text={item.inUse ? 'In Use' : 'Unused'} variant={item.inUse ? 'green' : 'amber'} />
 						</Table.Cell>
 						<Table.Cell>{item.mountpoint}</Table.Cell>
 						<Table.Cell>{item.driver}</Table.Cell>
