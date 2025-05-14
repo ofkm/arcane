@@ -6,7 +6,6 @@
 	import { Loader2 } from '@lucide/svelte';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
-	import type { RegistryCredential } from '$lib/types/settings.type';
 	import { settingsStore } from '$lib/stores/settings-store';
 
 	function preventDefault(handler: (event: SubmitEvent) => void) {
@@ -50,13 +49,6 @@
 		{ label: 'windows/amd64', value: 'windows/amd64' }
 	];
 
-	function getRegistryLabel(url: string | undefined): string {
-		if (!url || url.toLowerCase() === 'docker.io') {
-			return 'Default (Docker Hub / Public)';
-		}
-		return url;
-	}
-
 	function handleSubmit() {
 		if (!imageRef.trim()) return;
 
@@ -81,8 +73,6 @@
 			registryUrl: selectedRegistryUrl || undefined
 		});
 	}
-
-	console.log($settingsStore.registryCredentials.length);
 </script>
 
 <Dialog.Root bind:open>

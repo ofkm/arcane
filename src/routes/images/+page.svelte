@@ -19,6 +19,7 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { settingsStore } from '$lib/stores/settings-store';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
 	let { data }: { data: PageData } = $props();
 	let images = $state<EnhancedImageInfo[]>(data.images || []);
@@ -37,7 +38,8 @@
 		pulling: false,
 		removing: false,
 		refreshing: false,
-		pruning: false
+		pruning: false,
+		checking: false
 	});
 
 	$effect(() => {
@@ -238,6 +240,37 @@
 		});
 	}
 
+	async function checkAllMaturity() {
+		isLoading.checking = true;
+
+		try {
+			// Check maturity for each image, but limit concurrency
+			const results = [];
+			for (const image of images) {
+				if (image.id) {
+					try {
+						console.log(`Checking maturity for ${image.repo}:${image.tag}`);
+						const result = await imageApi.checkMaturity(image.id);
+						results.push({ id: image.id, success: true, data: result });
+					} catch (error) {
+						console.error(`Failed to check maturity for ${image.repo}:${image.tag}:`, error);
+						results.push({ id: image.id, success: false, error });
+					}
+					// Small delay to avoid overwhelming APIs
+					await new Promise((r) => setTimeout(r, 200));
+				}
+			}
+
+			console.log(`Maturity check results: ${results.filter((r) => r.success).length} successful, ${results.filter((r) => !r.success).length} failed`);
+			await invalidateAll();
+		} catch (error) {
+			console.error('Error checking maturity:', error);
+			toast.error('Failed to check image updates');
+		} finally {
+			isLoading.checking = false;
+		}
+	}
+
 	$effect(() => {
 		images = data.images;
 	});
@@ -349,14 +382,32 @@
 								<Download class="w-4 h-4" /> Pull Image
 							{/if}
 						</Button>
+						<Button variant="outline" onclick={() => checkAllMaturity()} disabled={isLoading.checking}>
+							{#if isLoading.checking}
+								<Loader2 class="w-4 h-4 mr-2 animate-spin" /> Checking...
+							{:else}
+								<ScanSearch class="w-4 h-4 mr-2" /> Check Updates
+							{/if}
+						</Button>
 					</div>
 				</div>
 			</Card.Header>
+
+			<div class="hidden">
+				<!-- Debug info - won't display but will log -->
+				{#each filteredImages as image}
+					{() => {
+						console.log(`Image ${image.repo}:${image.tag} maturity:`, image.maturity ? `Updates: ${image.maturity.updatesAvailable}, Status: ${image.maturity.status}` : 'No maturity info');
+					}}
+				{/each}
+			</div>
+
 			<Card.Content>
 				<UniversalTable
 					data={filteredImages}
 					columns={[
 						{ accessorKey: 'repo', header: 'Name' },
+						{ accessorKey: 'inUse', header: ' ', enableSorting: false },
 						{ accessorKey: 'tag', header: 'Tag' },
 						{ accessorKey: 'id', header: 'Image ID', enableSorting: false },
 						{ accessorKey: 'size', header: 'Size' },
@@ -375,15 +426,105 @@
 					{#snippet rows({ item })}
 						<Table.Cell>
 							<div class="flex items-center gap-2">
-								<span class="truncate">
-									<a class="font-medium hover:underline" href="/images/{item.id}/">
+								<div class="flex items-center flex-1">
+									<!-- Maturity Indicator with proper Tooltip -->
+									{#if item.maturity}
+										<Tooltip.Provider>
+											<Tooltip.Root>
+												<Tooltip.Trigger>
+													<span class="inline-flex items-center justify-center align-middle w-4 h-4 mr-2">
+														{#if !item.maturity.updatesAvailable}
+															<!-- Green checkmark for up-to-date images -->
+															<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+																<circle cx="12" cy="12" r="10" />
+																<path d="M8 12l2 2 6-6" />
+															</svg>
+														{:else if item.maturity.status === 'Not Matured'}
+															<!-- Yellow warning icon for non-matured updates -->
+															<svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+																<circle cx="12" cy="12" r="10" />
+																<text x="12" y="16" text-anchor="middle" font-size="12" fill="currentColor">!</text>
+															</svg>
+														{:else}
+															<!-- Blue checkmark for matured updates -->
+															<svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+																<circle cx="12" cy="12" r="10" />
+																<path d="M8 12l2 2 6-6" />
+															</svg>
+														{/if}
+													</span>
+												</Tooltip.Trigger>
+												<!-- Tooltip content updated -->
+												<Tooltip.Content side="top" class="p-3 max-w-[200px]">
+													<div class="space-y-2">
+														<div class="flex items-center gap-2">
+															{#if !item.maturity.updatesAvailable}
+																<!-- Green checkmark in tooltip -->
+																<svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 24 24">
+																	<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.13 14l-4.9-4.9 1.41-1.41 3.43 3.43 8.08-8.08 1.41 1.41-9.43 9.55z" />
+																</svg>
+																<span class="font-medium">Up to Date</span>
+															{:else if item.maturity.status === 'Not Matured'}
+																<!-- Yellow warning icon in tooltip -->
+																<svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+																	<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+																</svg>
+																<span class="font-medium">Update Available (Not Matured)</span>
+															{:else}
+																<!-- Blue info icon in tooltip -->
+																<svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+																	<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+																</svg>
+																<span class="font-medium">Matured Update Available</span>
+															{/if}
+														</div>
+
+														<div class="pt-1 border-t border-gray-200 dark:border-gray-700">
+															<div class="flex justify-between text-xs">
+																<span class="text-muted-foreground">Version:</span>
+																<span class="font-medium">{item.maturity.version || 'N/A'}</span>
+															</div>
+
+															<div class="flex justify-between text-xs mt-1">
+																<span class="text-muted-foreground">Released:</span>
+																<span>{item.maturity.date || 'Unknown'}</span>
+															</div>
+
+															<div class="flex justify-between text-xs mt-1">
+																<span class="text-muted-foreground">Status:</span>
+																<span class={item.maturity.status === 'Matured' ? 'text-green-500' : 'text-amber-500'}>
+																	{item.maturity.status || 'Unknown'}
+																</span>
+															</div>
+														</div>
+													</div>
+												</Tooltip.Content>
+											</Tooltip.Root>
+										</Tooltip.Provider>
+									{:else}
+										<!-- Show a placeholder or "checking" icon when maturity info is missing -->
+										<span class="inline-flex items-center justify-center w-4 h-4 mr-2 opacity-30">
+											<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+												<circle cx="12" cy="12" r="10" />
+												<path d="M9 12l2 2 4-4" />
+											</svg>
+										</span>
+									{/if}
+									<!-- End Maturity Indicator -->
+
+									<!-- Repository name as a separate element -->
+									<a class="font-medium hover:underline flex-shrink truncate" href="/images/{item.id}/">
 										{item.repo}
 									</a>
-								</span>
-								{#if !item.inUse}
-									<StatusBadge text="Unused" variant="amber" />
-								{/if}
+								</div>
 							</div>
+						</Table.Cell>
+						<Table.Cell>
+							{#if !item.inUse}
+								<StatusBadge text="Unused" variant="amber" />
+							{:else}
+								<StatusBadge text="In Use" variant="green" />
+							{/if}
 						</Table.Cell>
 						<Table.Cell>{item.tag}</Table.Cell>
 						<Table.Cell class="truncate">{item.id}</Table.Cell>

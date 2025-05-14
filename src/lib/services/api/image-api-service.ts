@@ -17,6 +17,11 @@ export default class ImageAPIService extends BaseAPIService {
 		return res.data;
 	}
 
+	async checkMaturity(id: string) {
+		const res = await this.api.post(`/images/${id}/maturity`);
+		return res.data;
+	}
+
 	async list() {
 		const res = await this.api.get('');
 		return res.data;
