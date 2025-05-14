@@ -1,15 +1,12 @@
 import { getDockerClient, dockerHost } from './core';
 import type { ServiceImage } from '$lib/types/docker/image.type';
 import type Docker from 'dockerode';
-// Import custom errors
 import { NotFoundError, DockerApiError } from '$lib/types/errors';
 import { RegistryRateLimitError, PublicRegistryError, PrivateRegistryError } from '$lib/types/errors.type';
 import { parseImageNameForRegistry, areRegistriesEquivalent } from '$lib/utils/registry.utils';
 import { getSettings } from '$lib/services/settings-service';
-// Add this import
 import { updateImageMaturity } from '$lib/stores/maturity-store';
-
-// Add this variable to track the polling interval timer
+import { tryCatch } from '$lib/utils/try-catch';
 let maturityPollingInterval: NodeJS.Timeout | null = null;
 
 /**
@@ -57,46 +54,46 @@ export async function stopMaturityPollingScheduler(): Promise<void> {
 async function runMaturityChecks(): Promise<void> {
 	console.log('Running scheduled image maturity checks...');
 
-	try {
-		// Get all images
-		const images = await listImages();
-		let checkedCount = 0;
-		let updatesFound = 0;
+	const imagesResult = await tryCatch(listImages());
+	if (imagesResult.error) {
+		console.error('Error during scheduled maturity check:', imagesResult.error);
+		return;
+	}
 
-		// Check each image for maturity info, with a small delay between checks
-		for (const image of images) {
-			// Skip images without proper tags
-			if (image.repo === '<none>' || image.tag === '<none>') {
-				continue;
-			}
+	const images = imagesResult.data;
+	let checkedCount = 0;
+	let updatesFound = 0;
 
-			try {
-				const maturityInfo = await checkImageMaturity(image.id);
-				checkedCount++;
+	// Check each image for maturity info, with a small delay between checks
+	for (const image of images) {
+		// Skip images without proper tags
+		if (image.repo === '<none>' || image.tag === '<none>') {
+			continue;
+		}
 
-				if (maturityInfo?.updatesAvailable) {
-					updatesFound++;
-				}
+		const maturityResult = await tryCatch(checkImageMaturity(image.id));
+		const maturityInfo = maturityResult.data;
 
-				// Small delay to avoid overwhelming registries
-				await new Promise((resolve) => setTimeout(resolve, 200));
-			} catch (error) {
-				console.error(`Error checking maturity for ${image.repo}:${image.tag}`);
+		if (!maturityResult.error) {
+			checkedCount++;
+			if (maturityInfo?.updatesAvailable) {
+				updatesFound++;
 			}
 		}
 
-		console.log(`Maturity check completed: Checked ${checkedCount} images, found ${updatesFound} updates`);
+		// Small delay to avoid overwhelming registries
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	}
 
-		// Emit an event that the UI can listen to for updates
-		if (typeof window !== 'undefined') {
-			window.dispatchEvent(
-				new CustomEvent('maturity-check-complete', {
-					detail: { checkedCount, updatesFound }
-				})
-			);
-		}
-	} catch (error) {
-		console.error('Error during scheduled maturity check:', error);
+	console.log(`Maturity check completed: Checked ${checkedCount} images, found ${updatesFound} updates`);
+
+	// Emit an event that the UI can listen to for updates
+	if (typeof window !== 'undefined') {
+		window.dispatchEvent(
+			new CustomEvent('maturity-check-complete', {
+				detail: { checkedCount, updatesFound }
+			})
+		);
 	}
 }
 
@@ -109,43 +106,50 @@ async function runMaturityChecks(): Promise<void> {
  * from the Docker client and processed using the `parseRepoTag` function
  */
 export async function listImages(): Promise<ServiceImage[]> {
-	try {
-		const docker = await getDockerClient();
-		const images = await docker.listImages({ all: false });
-
-		const parseRepoTag = (tag: string | undefined): { repo: string; tag: string } => {
-			if (!tag || tag === '<none>:<none>') {
-				return { repo: '<none>', tag: '<none>' };
-			}
-			const withoutDigest = tag.split('@')[0];
-			const lastSlash = withoutDigest.lastIndexOf('/');
-			const lastColon = withoutDigest.lastIndexOf(':');
-			if (lastColon === -1 || lastColon < lastSlash) {
-				return { repo: withoutDigest, tag: 'latest' };
-			}
-			return {
-				repo: withoutDigest.substring(0, lastColon),
-				tag: withoutDigest.substring(lastColon + 1)
-			};
-		};
-
-		return images.map((img): ServiceImage => {
-			const { repo, tag } = parseRepoTag(img.RepoTags?.[0]);
-			return {
-				id: img.Id,
-				repoTags: img.RepoTags,
-				repoDigests: img.RepoDigests,
-				created: img.Created,
-				size: img.Size,
-				virtualSize: img.VirtualSize,
-				labels: img.Labels,
-				repo: repo,
-				tag: tag
-			};
-		});
-	} catch (error: any) {
+	const dockerClientResult = await tryCatch(getDockerClient());
+	if (dockerClientResult.error) {
 		throw new Error(`Failed to list Docker images using host "${dockerHost}".`);
 	}
+
+	const docker = dockerClientResult.data;
+	const imagesResult = await tryCatch(docker.listImages({ all: false }));
+
+	if (imagesResult.error) {
+		throw new Error(`Failed to list Docker images using host "${dockerHost}".`);
+	}
+
+	const images = imagesResult.data;
+
+	const parseRepoTag = (tag: string | undefined): { repo: string; tag: string } => {
+		if (!tag || tag === '<none>:<none>') {
+			return { repo: '<none>', tag: '<none>' };
+		}
+		const withoutDigest = tag.split('@')[0];
+		const lastSlash = withoutDigest.lastIndexOf('/');
+		const lastColon = withoutDigest.lastIndexOf(':');
+		if (lastColon === -1 || lastColon < lastSlash) {
+			return { repo: withoutDigest, tag: 'latest' };
+		}
+		return {
+			repo: withoutDigest.substring(0, lastColon),
+			tag: withoutDigest.substring(lastColon + 1)
+		};
+	};
+
+	return images.map((img): ServiceImage => {
+		const { repo, tag } = parseRepoTag(img.RepoTags?.[0]);
+		return {
+			id: img.Id,
+			repoTags: img.RepoTags,
+			repoDigests: img.RepoDigests,
+			created: img.Created,
+			size: img.Size,
+			virtualSize: img.VirtualSize,
+			labels: img.Labels,
+			repo: repo,
+			tag: tag
+		};
+	});
 }
 
 /**
@@ -156,17 +160,24 @@ export async function listImages(): Promise<ServiceImage[]> {
  * @throws {DockerApiError} For other errors during the Docker API interaction.
  */
 export async function getImage(imageId: string): Promise<Docker.ImageInspectInfo> {
-	try {
-		const docker = await getDockerClient();
-		const image = docker.getImage(imageId);
-		const inspectInfo = await image.inspect();
-		return inspectInfo;
-	} catch (error: any) {
+	const dockerResult = await tryCatch(getDockerClient());
+	if (dockerResult.error) {
+		throw new DockerApiError(`Failed to get Docker client: ${dockerResult.error.message}`, 500);
+	}
+
+	const docker = dockerResult.data;
+	const image = docker.getImage(imageId);
+
+	const inspectResult = await tryCatch(image.inspect());
+	if (inspectResult.error) {
+		const error = inspectResult.error as any;
 		if (error.statusCode === 404) {
 			throw new NotFoundError(`Image "${imageId}" not found.`);
 		}
 		throw new DockerApiError(`Failed to inspect image "${imageId}": ${error.message || 'Unknown Docker error'}`, error.statusCode);
 	}
+
+	return inspectResult.data;
 }
 
 /**
@@ -272,42 +283,48 @@ export async function pullImage(imageRef: string, platform?: string, authConfig?
  * and returns maturity information.
  */
 export async function checkImageMaturity(imageId: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
-	try {
-		const imageDetails = await getImage(imageId);
-		const repoTag = imageDetails.RepoTags?.[0];
-
-		if (!repoTag || repoTag.includes('<none>')) {
-			updateImageMaturity(imageId, undefined);
-			return undefined;
-		}
-
-		const lastColon = repoTag.lastIndexOf(':');
-		if (lastColon === -1) {
-			updateImageMaturity(imageId, undefined);
-			return undefined;
-		}
-
-		const repository = repoTag.substring(0, lastColon);
-		const currentTag = repoTag.substring(lastColon + 1);
-
-		if (currentTag === 'latest') {
-			updateImageMaturity(imageId, undefined);
-			return undefined;
-		}
-
-		const registryInfo = await getRegistryInfo(repository, currentTag);
-
-		if (!registryInfo) {
-			updateImageMaturity(imageId, undefined);
-			return undefined;
-		}
-
-		updateImageMaturity(imageId, registryInfo);
-		return registryInfo;
-	} catch (error) {
+	const imageResult = await tryCatch(getImage(imageId));
+	if (imageResult.error) {
 		updateImageMaturity(imageId, undefined);
 		return undefined;
 	}
+
+	const imageDetails = imageResult.data;
+	const repoTag = imageDetails.RepoTags?.[0];
+
+	if (!repoTag || repoTag.includes('<none>')) {
+		updateImageMaturity(imageId, undefined);
+		return undefined;
+	}
+
+	const lastColon = repoTag.lastIndexOf(':');
+	if (lastColon === -1) {
+		updateImageMaturity(imageId, undefined);
+		return undefined;
+	}
+
+	const repository = repoTag.substring(0, lastColon);
+	const currentTag = repoTag.substring(lastColon + 1);
+
+	if (currentTag === 'latest') {
+		updateImageMaturity(imageId, undefined);
+		return undefined;
+	}
+
+	const registryInfoResult = await tryCatch(getRegistryInfo(repository, currentTag));
+	if (registryInfoResult.error) {
+		updateImageMaturity(imageId, undefined);
+		return undefined;
+	}
+
+	const registryInfo = registryInfoResult.data;
+	if (!registryInfo) {
+		updateImageMaturity(imageId, undefined);
+		return undefined;
+	}
+
+	updateImageMaturity(imageId, registryInfo);
+	return registryInfo;
 }
 
 /**
@@ -370,13 +387,23 @@ async function checkPrivateRegistry(repository: string, registryDomain: string, 
 }
 
 /**
+ * Helper function to convert ghcr.io to docker.pkg.github.com
+ */
+function mapGitHubRegistry(domain: string): string {
+	return domain === 'ghcr.io' ? 'ghcr.io' : domain;
+}
+
+/**
  * Check a registry using the Docker Registry HTTP API v2
  */
 async function checkRegistryV2(repository: string, registryDomain: string, currentTag: string, auth?: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
 	try {
+		// Map GitHub registry domains
+		const mappedDomain = mapGitHubRegistry(registryDomain);
+
 		const repoPath = repository.replace(`${registryDomain}/`, '');
-		const adjustedRepoPath = registryDomain === 'docker.io' && !repoPath.includes('/') ? `library/${repoPath}` : repoPath;
-		const baseUrl = registryDomain === 'docker.io' ? 'https://registry-1.docker.io' : `https://${registryDomain}`;
+		const adjustedRepoPath = mappedDomain === 'docker.io' && !repoPath.includes('/') ? `library/${repoPath}` : repoPath;
+		const baseUrl = mappedDomain === 'docker.io' ? 'https://registry-1.docker.io' : `https://${mappedDomain}`;
 		const tagsUrl = `${baseUrl}/v2/${adjustedRepoPath}/tags/list`;
 
 		const headers: Record<string, string> = {
@@ -453,81 +480,302 @@ async function processTagsData(tagsData: any, repository: string, registryDomain
 	const tags = tagsData.tags || [];
 	const { newerTags, isSpecialTag } = findNewerVersionsOfSameTag(tags, currentTag);
 
+	// If it's a special tag with no updates, mark as up-to-date
 	if (isSpecialTag && newerTags.length === 0) {
-		return {
-			version: currentTag,
-			date: new Date().toLocaleDateString(),
-			status: 'Matured',
-			updatesAvailable: false
-		};
+		// Try to get creation date from the registry for the current tag
+		try {
+			const dateInfo = await getImageCreationDate(repository, registryDomain, currentTag, headers);
+			return {
+				version: currentTag,
+				date: dateInfo.date,
+				status: dateInfo.daysSince > 30 ? 'Matured' : 'Not Matured',
+				updatesAvailable: false
+			};
+		} catch (error) {
+			// If we can't get the date, use a more appropriate fallback than "today"
+			return {
+				version: currentTag,
+				date: 'Unknown date',
+				status: 'Matured', // Assume matured if we can't verify
+				updatesAvailable: false
+			};
+		}
 	}
 
 	if (newerTags.length > 0) {
 		const newestTag = newerTags[0];
 
 		try {
-			const baseUrl = registryDomain === 'docker.io' ? 'https://registry-1.docker.io' : `https://${registryDomain}`;
-			const repoPath = repository.replace(`${registryDomain}/`, '');
-			const adjustedRepoPath = registryDomain === 'docker.io' && !repoPath.includes('/') ? `library/${repoPath}` : repoPath;
-			const manifestUrl = `${baseUrl}/v2/${adjustedRepoPath}/manifests/${newestTag}`;
-			const manifestResponse = await fetch(manifestUrl, {
-				headers: {
-					...headers,
-					Accept: 'application/vnd.docker.distribution.manifest.v2+json'
-				}
-			});
-
-			if (manifestResponse.ok) {
-				const manifest = await manifestResponse.json();
-				const configDigest = manifest.config?.digest;
-
-				if (configDigest) {
-					const configUrl = `${baseUrl}/v2/${adjustedRepoPath}/blobs/${configDigest}`;
-					const configResponse = await fetch(configUrl, { headers });
-
-					if (configResponse.ok) {
-						const configData = await configResponse.json();
-						if (configData.created) {
-							const creationDate = new Date(configData.created);
-							const daysSinceCreation = getDaysSinceDate(creationDate);
-
-							return {
-								version: newestTag,
-								date: creationDate.toLocaleDateString(),
-								status: daysSinceCreation > 30 ? 'Matured' : 'Not Matured',
-								updatesAvailable: true
-							};
-						}
-					}
-				}
-			}
+			const dateInfo = await getImageCreationDate(repository, registryDomain, newestTag, headers);
 
 			return {
 				version: newestTag,
-				date: new Date().toLocaleDateString(),
-				status: 'Not Matured',
+				date: dateInfo.date,
+				status: dateInfo.daysSince > 30 ? 'Matured' : 'Not Matured',
 				updatesAvailable: true
 			};
 		} catch (error) {
+			// If we can't get the date info but we know a newer tag exists
+			console.error(`Failed to get creation date for ${repository}:${newestTag}:`, error);
 			return {
 				version: newestTag,
-				date: new Date().toLocaleDateString(),
-				status: 'Not Matured',
+				date: 'Unknown date',
+				status: 'Unknown',
 				updatesAvailable: true
 			};
 		}
 	}
 
+	// Return existing special tag data
 	if (isSpecialTag) {
-		return {
-			version: currentTag,
-			date: new Date().toLocaleDateString(),
-			status: 'Matured',
-			updatesAvailable: false
-		};
+		try {
+			const dateInfo = await getImageCreationDate(repository, registryDomain, currentTag, headers);
+			return {
+				version: currentTag,
+				date: dateInfo.date,
+				status: dateInfo.daysSince > 30 ? 'Matured' : 'Not Matured',
+				updatesAvailable: false
+			};
+		} catch (error) {
+			return {
+				version: currentTag,
+				date: 'Unknown date',
+				status: 'Matured',
+				updatesAvailable: false
+			};
+		}
 	}
 
 	return undefined;
+}
+
+/**
+ * Helper function to get image creation date from registry
+ */
+async function getImageCreationDate(repository: string, registryDomain: string, tag: string, headers: Record<string, string>): Promise<{ date: string; daysSince: number }> {
+	// Map GitHub registry domains
+	const mappedDomain = mapGitHubRegistry(registryDomain);
+
+	const baseUrl = mappedDomain === 'docker.io' ? 'https://registry-1.docker.io' : `https://${mappedDomain}`;
+	const repoPath = repository.replace(`${registryDomain}/`, '');
+	const adjustedRepoPath = mappedDomain === 'docker.io' && !repoPath.includes('/') ? `library/${repoPath}` : repoPath;
+
+	// First get the manifest to find the config digest
+	const manifestUrl = `${baseUrl}/v2/${adjustedRepoPath}/manifests/${tag}`;
+
+	const manifestResult = await tryCatch(
+		fetch(manifestUrl, {
+			headers: {
+				...headers,
+				// Accept multiple manifest formats
+				Accept: 'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json'
+			}
+		})
+	);
+
+	if (manifestResult.error || !manifestResult.data.ok) {
+		// If this is Docker Hub, try the fallback
+		if (registryDomain === 'docker.io' || registryDomain === 'registry-1.docker.io') {
+			const dockerHubResult = await tryCatch(getDockerHubCreationDate(repoPath, tag));
+			if (!dockerHubResult.error) {
+				return dockerHubResult.data;
+			}
+		}
+
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const manifestResponse = manifestResult.data;
+	const manifestDataResult = await tryCatch(manifestResponse.json());
+
+	if (manifestDataResult.error) {
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const manifest = manifestDataResult.data;
+
+	// First try to get date from annotations (OCI format)
+	if (manifest.annotations && manifest.annotations['org.opencontainers.image.created']) {
+		const createdDate = new Date(manifest.annotations['org.opencontainers.image.created']);
+
+		if (!isNaN(createdDate.getTime())) {
+			const daysSince = getDaysSinceDate(createdDate);
+			const dateFormatOptions: Intl.DateTimeFormatOptions = {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric'
+			};
+
+			return {
+				date: createdDate.toLocaleDateString(undefined, dateFormatOptions),
+				daysSince: daysSince
+			};
+		}
+	}
+
+	// Check for created date in manifest descriptors (some OCI registries)
+	if (manifest.manifests && Array.isArray(manifest.manifests)) {
+		for (const descriptor of manifest.manifests) {
+			if (descriptor.annotations && descriptor.annotations['org.opencontainers.image.created']) {
+				const createdDate = new Date(descriptor.annotations['org.opencontainers.image.created']);
+
+				if (!isNaN(createdDate.getTime())) {
+					const daysSince = getDaysSinceDate(createdDate);
+					const dateFormatOptions: Intl.DateTimeFormatOptions = {
+						year: 'numeric',
+						month: 'short',
+						day: 'numeric'
+					};
+
+					return {
+						date: createdDate.toLocaleDateString(undefined, dateFormatOptions),
+						daysSince: daysSince
+					};
+				}
+			}
+		}
+	}
+
+	// If no date in annotations, fall back to checking the config blob
+	const configDigest = manifest.config?.digest;
+
+	if (!configDigest) {
+		// If this is Docker Hub, try the fallback
+		if (registryDomain === 'docker.io' || registryDomain === 'registry-1.docker.io') {
+			const dockerHubResult = await tryCatch(getDockerHubCreationDate(repoPath, tag));
+			if (!dockerHubResult.error) {
+				return dockerHubResult.data;
+			}
+		}
+
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	// Get the image config which contains creation date
+	const configUrl = `${baseUrl}/v2/${adjustedRepoPath}/blobs/${configDigest}`;
+	const configResult = await tryCatch(fetch(configUrl, { headers }));
+
+	if (configResult.error || !configResult.data.ok) {
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const configResponse = configResult.data;
+	const configDataResult = await tryCatch(configResponse.json());
+
+	if (configDataResult.error) {
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const configData = configDataResult.data;
+
+	// Check for the created date in config
+	if (configData.created) {
+		const creationDate = new Date(configData.created);
+
+		if (!isNaN(creationDate.getTime())) {
+			const daysSince = getDaysSinceDate(creationDate);
+			const dateFormatOptions: Intl.DateTimeFormatOptions = {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric'
+			};
+
+			return {
+				date: creationDate.toLocaleDateString(undefined, dateFormatOptions),
+				daysSince: daysSince
+			};
+		}
+	}
+
+	// Last resort check: look for created date in container config
+	if (configData.config && configData.config.Labels && configData.config.Labels['org.opencontainers.image.created']) {
+		const labelDate = new Date(configData.config.Labels['org.opencontainers.image.created']);
+
+		if (!isNaN(labelDate.getTime())) {
+			const daysSince = getDaysSinceDate(labelDate);
+			const dateFormatOptions: Intl.DateTimeFormatOptions = {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric'
+			};
+
+			return {
+				date: labelDate.toLocaleDateString(undefined, dateFormatOptions),
+				daysSince: daysSince
+			};
+		}
+	}
+
+	// If we couldn't find any date, try Docker Hub API as last resort
+	if (registryDomain === 'docker.io' || registryDomain === 'registry-1.docker.io') {
+		const dockerHubResult = await tryCatch(getDockerHubCreationDate(repoPath, tag));
+		if (!dockerHubResult.error) {
+			return dockerHubResult.data;
+		}
+	}
+
+	return {
+		date: 'Unknown date',
+		daysSince: -1
+	};
+}
+
+/**
+ * Fallback to get image creation date from Docker Hub API
+ */
+async function getDockerHubCreationDate(repository: string, tag: string): Promise<{ date: string; daysSince: number }> {
+	// Remove library/ prefix for official images in Docker Hub API
+	const repoPath = repository.startsWith('library/') ? repository.substring(8) : repository;
+	const url = `https://hub.docker.com/v2/repositories/${repoPath}/tags/${tag}`;
+
+	const responseResult = await tryCatch(fetch(url));
+	if (responseResult.error || !responseResult.data.ok) {
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const response = responseResult.data;
+	const dataResult = await tryCatch(response.json());
+
+	if (dataResult.error || !dataResult.data.last_updated) {
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const data = dataResult.data;
+	const creationDate = new Date(data.last_updated);
+	const daysSince = getDaysSinceDate(creationDate);
+
+	// Format the date properly for display
+	const dateFormatOptions: Intl.DateTimeFormatOptions = {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric'
+	};
+
+	return {
+		date: creationDate.toLocaleDateString(undefined, dateFormatOptions),
+		daysSince: daysSince
+	};
 }
 
 /**

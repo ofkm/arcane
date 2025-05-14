@@ -13,7 +13,7 @@ export type ServiceImage = {
 export interface ImageMaturity {
 	version: string;
 	date: string;
-	status: 'Matured' | 'Not Matured';
+	status: 'Matured' | 'Not Matured' | 'Unknown';
 	updatesAvailable: boolean;
 }
 
