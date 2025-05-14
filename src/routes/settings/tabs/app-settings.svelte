@@ -1,20 +1,74 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
+	import FormInput from '$lib/components/form/form-input.svelte';
 	import { Cog } from '@lucide/svelte';
 	import type { PageData } from '../$types';
 	import { settingsStore } from '$lib/stores/settings-store';
+	import type { FormInput as FormInputType } from '$lib/types/form.type';
 
 	let { data } = $props<{ data: PageData }>();
 
+	// Initialize settings from page data once
+	let initialized = false;
 	$effect(() => {
-		if (data.settings) {
+		if (data.settings && !initialized) {
 			settingsStore.update((current) => ({
 				...current,
 				...data.settings
 			}));
+			initialized = true;
 		}
 	});
+
+	// Create local form state with initial values
+	let stacksDirectoryInput = $state<FormInputType<string>>({
+		value: $settingsStore.stacksDirectory || '',
+		valid: true,
+		touched: false,
+		error: null,
+		errors: []
+	});
+
+	let baseServerUrlInput = $state<FormInputType<string>>({
+		value: $settingsStore.baseServerUrl || '',
+		valid: true,
+		touched: false,
+		error: null,
+		errors: []
+	});
+
+	let maturityThresholdInput = $state<FormInputType<number>>({
+		value: $settingsStore.maturityThresholdDays || 30,
+		valid: true,
+		touched: false,
+		error: null,
+		errors: []
+	});
+
+	// No automatic syncing - just event handlers for changes
+	function onStacksDirectoryChange() {
+		stacksDirectoryInput.touched = true;
+		settingsStore.update((settings) => ({
+			...settings,
+			stacksDirectory: stacksDirectoryInput.value
+		}));
+	}
+
+	function onBaseServerUrlChange() {
+		baseServerUrlInput.touched = true;
+		settingsStore.update((settings) => ({
+			...settings,
+			baseServerUrl: baseServerUrlInput.value
+		}));
+	}
+
+	function onMaturityThresholdChange() {
+		maturityThresholdInput.touched = true;
+		settingsStore.update((settings) => ({
+			...settings,
+			maturityThresholdDays: maturityThresholdInput.value
+		}));
+	}
 </script>
 
 <div class="grid auto-cols-auto lg:auto-cols-auto gap-6">
@@ -32,18 +86,29 @@
 		</Card.Header>
 		<Card.Content>
 			<div class="space-y-6">
-				<div class="space-y-2">
-					<label for="stacksDirectory" class="text-sm font-medium block mb-1.5">Stack Projects Directory</label>
-					<Input type="text" id="stacksDirectory" name="stacksDirectory" bind:value={$settingsStore.stacksDirectory} placeholder="/opt/arcane/stacks" required />
-					<p class="text-xs text-muted-foreground">The primary folder where Arcane will store and manage your Docker Compose stack projects. This path is inside Arcane's container.</p>
-					<p class="text-xs font-bold text-destructive">Important: Changing this path will not automatically move existing stack projects.</p>
-				</div>
+				<FormInput
+					bind:input={stacksDirectoryInput}
+					type="text"
+					id="stacksDirectory"
+					label="Stack Projects Directory"
+					placeholder="/opt/arcane/stacks"
+					required
+					description="The primary folder where Arcane will store and manage your Docker Compose stack projects. This path is inside Arcane's container."
+					warningText="Important: Changing this path will not automatically move existing stack projects."
+					oninput={() => onStacksDirectoryChange()}
+				/>
 
-				<div class="space-y-2">
-					<label for="baseServerUrl" class="text-sm font-medium block mb-1.5">Default Service Access URL</label>
-					<Input type="text" id="baseServerUrl" name="baseServerUrl" bind:value={$settingsStore.baseServerUrl} placeholder="localhost" />
-					<p class="text-xs text-muted-foreground">When Arcane provides links to your services (e.g., web UIs), this URL (like 'localhost' or an IP address) is used as the default. This is primarily for services not on directly accessible networks (e.g., macvlan).</p>
-				</div>
+				<FormInput
+					bind:input={baseServerUrlInput}
+					type="text"
+					id="baseServerUrl"
+					label="Default Service Access URL"
+					placeholder="localhost"
+					description="When Arcane provides links to your services (e.g., web UIs), this URL (like 'localhost' or an IP address) is used as the default. This is primarily for services not on directly accessible networks (e.g., macvlan)."
+					oninput={() => onBaseServerUrlChange()}
+				/>
+
+				<FormInput bind:input={maturityThresholdInput} type="number" id="maturityThresholdDays" label="Image Maturity Threshold (days)" placeholder="30" required description="The number of days after an image release before it's considered 'matured'." warningText="Higher values mean more caution with new images." oninput={() => onMaturityThresholdChange()} />
 			</div>
 		</Card.Content>
 	</Card.Root>

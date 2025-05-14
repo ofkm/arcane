@@ -3,7 +3,7 @@
 	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch, Plus, Funnel } from '@lucide/svelte';
+	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch, CircleFadingArrowUp, Funnel, CircleCheck, CircleArrowUp } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -393,15 +393,6 @@
 				</div>
 			</Card.Header>
 
-			<div class="hidden">
-				<!-- Debug info - won't display but will log -->
-				{#each filteredImages as image}
-					{() => {
-						console.log(`Image ${image.repo}:${image.tag} maturity:`, image.maturity ? `Updates: ${image.maturity.updatesAvailable}, Status: ${image.maturity.status}` : 'No maturity info');
-					}}
-				{/each}
-			</div>
-
 			<Card.Content>
 				<UniversalTable
 					data={filteredImages}
@@ -435,22 +426,15 @@
 													<span class="inline-flex items-center justify-center align-middle w-4 h-4 mr-2">
 														{#if !item.maturity.updatesAvailable}
 															<!-- Green checkmark for up-to-date images -->
-															<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-																<circle cx="12" cy="12" r="10" />
-																<path d="M8 12l2 2 6-6" />
-															</svg>
+
+															<CircleCheck class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" />
+															<!-- <CircleFadingArrowUp class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" /> -->
 														{:else if item.maturity.status === 'Not Matured'}
 															<!-- Yellow warning icon for non-matured updates -->
-															<svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-																<circle cx="12" cy="12" r="10" />
-																<text x="12" y="16" text-anchor="middle" font-size="12" fill="currentColor">!</text>
-															</svg>
+															<CircleFadingArrowUp class="w-10 h-10 text-yellow-500" fill="none" stroke="currentColor" stroke-width="2" />
 														{:else}
 															<!-- Blue checkmark for matured updates -->
-															<svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-																<circle cx="12" cy="12" r="10" />
-																<path d="M8 12l2 2 6-6" />
-															</svg>
+															<CircleArrowUp class="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" />
 														{/if}
 													</span>
 												</Tooltip.Trigger>
@@ -460,26 +444,20 @@
 														<div class="flex items-center gap-2">
 															{#if !item.maturity.updatesAvailable}
 																<!-- Green checkmark in tooltip -->
-																<svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 24 24">
-																	<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.13 14l-4.9-4.9 1.41-1.41 3.43 3.43 8.08-8.08 1.41 1.41-9.43 9.55z" />
-																</svg>
-																<span class="font-medium">Up to Date</span>
+																<CircleCheck class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" />
+																<span class="font-medium">Image Up to Date</span>
 															{:else if item.maturity.status === 'Not Matured'}
 																<!-- Yellow warning icon in tooltip -->
-																<svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-																	<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-																</svg>
+																<CircleFadingArrowUp class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" stroke-width="2" />
 																<span class="font-medium">Update Available (Not Matured)</span>
 															{:else}
 																<!-- Blue info icon in tooltip -->
-																<svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-																	<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-																</svg>
+																<CircleArrowUp class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" />
 																<span class="font-medium">Matured Update Available</span>
 															{/if}
 														</div>
 
-														<div class="pt-1 border-t border-gray-200 dark:border-gray-700">
+														<div class="pt-1 border-t border-gray-200 dark:border-gray-700 justify-between">
 															<div class="flex justify-between text-xs">
 																<span class="text-muted-foreground">Version:</span>
 																<span class="font-medium">{item.maturity.version || 'N/A'}</span>

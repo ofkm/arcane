@@ -480,23 +480,25 @@ async function processTagsData(tagsData: any, repository: string, registryDomain
 	const tags = tagsData.tags || [];
 	const { newerTags, isSpecialTag } = findNewerVersionsOfSameTag(tags, currentTag);
 
+	// Get the configured maturity threshold from settings
+	const settings = await getSettings();
+	const maturityThreshold = settings.maturityThresholdDays || 30; // Fallback to 30 if not set
+
 	// If it's a special tag with no updates, mark as up-to-date
 	if (isSpecialTag && newerTags.length === 0) {
-		// Try to get creation date from the registry for the current tag
 		try {
 			const dateInfo = await getImageCreationDate(repository, registryDomain, currentTag, headers);
 			return {
 				version: currentTag,
 				date: dateInfo.date,
-				status: dateInfo.daysSince > 30 ? 'Matured' : 'Not Matured',
+				status: dateInfo.daysSince > maturityThreshold ? 'Matured' : 'Not Matured',
 				updatesAvailable: false
 			};
 		} catch (error) {
-			// If we can't get the date, use a more appropriate fallback than "today"
 			return {
 				version: currentTag,
 				date: 'Unknown date',
-				status: 'Matured', // Assume matured if we can't verify
+				status: 'Matured',
 				updatesAvailable: false
 			};
 		}
@@ -511,11 +513,10 @@ async function processTagsData(tagsData: any, repository: string, registryDomain
 			return {
 				version: newestTag,
 				date: dateInfo.date,
-				status: dateInfo.daysSince > 30 ? 'Matured' : 'Not Matured',
+				status: dateInfo.daysSince > maturityThreshold ? 'Matured' : 'Not Matured',
 				updatesAvailable: true
 			};
 		} catch (error) {
-			// If we can't get the date info but we know a newer tag exists
 			console.error(`Failed to get creation date for ${repository}:${newestTag}:`, error);
 			return {
 				version: newestTag,
@@ -533,7 +534,7 @@ async function processTagsData(tagsData: any, repository: string, registryDomain
 			return {
 				version: currentTag,
 				date: dateInfo.date,
-				status: dateInfo.daysSince > 30 ? 'Matured' : 'Not Matured',
+				status: dateInfo.daysSince > maturityThreshold ? 'Matured' : 'Not Matured',
 				updatesAvailable: false
 			};
 		} catch (error) {
