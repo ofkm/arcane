@@ -35,6 +35,8 @@ export class BaseError extends Error {
 export class NotFoundError extends BaseError {
 	constructor(message: string) {
 		super(message);
+		// Object.setPrototypeOf(this, NotFoundError.prototype); might be needed here too.
+		// However, the prompt is specific to the registry errors.
 	}
 }
 
@@ -44,19 +46,22 @@ export class DockerApiError extends BaseError {
 	constructor(message: string, statusCode: number) {
 		super(message);
 		this.statusCode = statusCode;
+		// If targeting ES5 and BaseError directly extends Error,
+		// Object.setPrototypeOf(this, DockerApiError.prototype); might be needed here too.
 	}
 }
 
 export class RegistryRateLimitError extends BaseError {
 	registry: string;
 	repository: string;
-	retryAfter: Date;
+	retryAfter?: Date;
 
-	constructor(message: string, registry: string, repository: string, retryAfter: Date) {
+	constructor(message: string, registry: string, repository: string, retryAfter?: Date) {
 		super(message);
 		this.registry = registry;
 		this.repository = repository;
 		this.retryAfter = retryAfter;
+		Object.setPrototypeOf(this, RegistryRateLimitError.prototype);
 	}
 }
 
@@ -70,6 +75,7 @@ export class PublicRegistryError extends BaseError {
 		this.registry = registry;
 		this.repository = repository;
 		this.statusCode = statusCode;
+		Object.setPrototypeOf(this, PublicRegistryError.prototype);
 	}
 }
 
@@ -83,5 +89,6 @@ export class PrivateRegistryError extends BaseError {
 		this.registry = registry;
 		this.repository = repository;
 		this.statusCode = statusCode;
+		Object.setPrototypeOf(this, PrivateRegistryError.prototype);
 	}
 }
