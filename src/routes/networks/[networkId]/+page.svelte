@@ -7,7 +7,7 @@
 	import { enhance } from '$app/forms';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
+	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { formatDate } from '$lib/utils/string.utils';
 	import type { NetworkInspectInfo } from 'dockerode';
 	import { toast } from 'svelte-sonner';
@@ -35,42 +35,61 @@
 </script>
 
 <div class="space-y-6 pb-8">
-	<!-- Breadcrumb Navigation -->
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-		<div>
-			<Breadcrumb.Root>
-				<Breadcrumb.List>
-					<Breadcrumb.Item>
-						<Breadcrumb.Link href="/networks">Networks</Breadcrumb.Link>
-					</Breadcrumb.Item>
-					<Breadcrumb.Separator />
-					<Breadcrumb.Item>
-						<Breadcrumb.Page>{network?.Name || shortId}</Breadcrumb.Page>
-					</Breadcrumb.Item>
-				</Breadcrumb.List>
-			</Breadcrumb.Root>
-			<div class="mt-2 flex items-center gap-2">
-				<h1 class="text-2xl font-bold tracking-tight break-all">
-					{network?.Name || 'Network Details'}
-				</h1>
-				{#if inUse}
-					<Badge variant="outline"><Container class="mr-1 size-3" /> In Use</Badge>
-				{/if}
-				{#if isPredefined}
-					<Badge variant="secondary">Predefined</Badge>
-				{/if}
-			</div>
-		</div>
+	<!-- Improved Header with Better Visual Hierarchy -->
+	<div class="flex flex-col space-y-4">
+		<Breadcrumb.Root>
+			<Breadcrumb.List>
+				<Breadcrumb.Item>
+					<Breadcrumb.Link href="/networks">Networks</Breadcrumb.Link>
+				</Breadcrumb.Item>
+				<Breadcrumb.Separator />
+				<Breadcrumb.Item>
+					<Breadcrumb.Page>{network?.Name || shortId}</Breadcrumb.Page>
+				</Breadcrumb.Item>
+			</Breadcrumb.List>
+		</Breadcrumb.Root>
 
-		<div class="flex gap-2 flex-wrap">
-			<!-- Remove Button triggers dialog -->
-			<Button variant="destructive" size="sm" onclick={triggerRemove} disabled={isRemoving || isPredefined} title={isPredefined ? 'Cannot remove predefined networks' : ''}>
-				{#if isRemoving}
-					<Loader2 class="mr-2 animate-spin size-4" />
-				{:else}
-					<Trash2 class="mr-2 size-4" />
-				{/if} Remove
-			</Button>
+		<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+			<div class="flex flex-col">
+				<div class="flex items-center gap-3">
+					<h1 class="text-2xl font-bold tracking-tight">
+						{network?.Name || 'Network Details'}
+					</h1>
+
+					<!-- Network ID pill -->
+					<div class="hidden sm:block">
+						<StatusBadge variant="gray" text={`ID: ${shortId}`} />
+					</div>
+				</div>
+
+				<!-- Status badges in a row -->
+				<div class="flex gap-2 mt-2">
+					{#if inUse}
+						<StatusBadge variant="green" text={`In Use (${connectedContainers.length})`} />
+					{:else}
+						<StatusBadge variant="amber" text="Unused" />
+					{/if}
+
+					{#if isPredefined}
+						<StatusBadge variant="blue" text="Predefined" />
+					{/if}
+
+					<StatusBadge variant="purple" text={network?.Driver || 'Unknown'} />
+				</div>
+			</div>
+
+			<!-- Action Button -->
+			<div class="self-start">
+				<Button variant="destructive" size="sm" onclick={triggerRemove} disabled={isRemoving || isPredefined} title={isPredefined ? 'Cannot remove predefined networks' : ''} class="w-full sm:w-auto">
+					{#if isRemoving}
+						<Loader2 class="mr-2 animate-spin size-4" />
+					{:else}
+						<Trash2 class="mr-2 size-4" />
+					{/if}
+					Remove Network
+				</Button>
+			</div>
+
 			<!-- Hidden form for removal action -->
 			<form
 				id="remove-network-form"
@@ -81,7 +100,6 @@
 					return async ({ update }) => {
 						await update({ reset: false });
 						isRemoving = false;
-						// isRemoving will be reset by effect or on navigation
 					};
 				}}
 				class="hidden"
@@ -102,14 +120,18 @@
 	{/if}
 
 	{#if network}
-		<!-- Network Details Section -->
 		<div class="space-y-6">
+			<!-- Network Details Card: Improved Layout -->
 			<Card.Root class="border shadow-sm">
-				<Card.Header>
-					<Card.Title>Network Details</Card.Title>
+				<Card.Header class="pb-0">
+					<Card.Title class="flex items-center gap-2 text-lg">
+						<Network class="text-primary size-5" />
+						Network Details
+					</Card.Title>
+					<Card.Description>Basic information about this Docker network</Card.Description>
 				</Card.Header>
-				<Card.Content>
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+				<Card.Content class="pt-6">
+					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-8 gap-x-6">
 						<!-- ID -->
 						<div class="flex items-start gap-3">
 							<div class="bg-gray-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
@@ -117,7 +139,7 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">ID</p>
-								<p class="text-base font-semibold mt-1 truncate" title={network.Id}>{shortId}</p>
+								<p class="text-base font-semibold mt-1 truncate" title={network.Id}>{network.Id}</p>
 							</div>
 						</div>
 
@@ -128,7 +150,7 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Name</p>
-								<p class="text-base font-semibold mt-1 break-all">{network.Name}</p>
+								<p class="text-base font-semibold mt-1 break-words">{network.Name}</p>
 							</div>
 						</div>
 
@@ -172,7 +194,9 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Attachable</p>
-								<p class="text-base font-semibold mt-1">{network.Attachable ? 'Yes' : 'No'}</p>
+								<p class="text-base font-semibold mt-1">
+									<StatusBadge variant={network.Attachable ? 'green' : 'gray'} text={network.Attachable ? 'Yes' : 'No'} />
+								</p>
 							</div>
 						</div>
 
@@ -183,7 +207,9 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Internal</p>
-								<p class="text-base font-semibold mt-1">{network.Internal ? 'Yes' : 'No'}</p>
+								<p class="text-base font-semibold mt-1">
+									<StatusBadge variant={network.Internal ? 'blue' : 'gray'} text={network.Internal ? 'Yes' : 'No'} />
+								</p>
 							</div>
 						</div>
 
@@ -194,126 +220,194 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">IPv6 Enabled</p>
-								<p class="text-base font-semibold mt-1">{network.EnableIPv6 ? 'Yes' : 'No'}</p>
+								<p class="text-base font-semibold mt-1">
+									<StatusBadge variant={network.EnableIPv6 ? 'indigo' : 'gray'} text={network.EnableIPv6 ? 'Yes' : 'No'} />
+								</p>
 							</div>
 						</div>
 					</div>
 				</Card.Content>
 			</Card.Root>
 
-			<!-- IPAM Configuration Card -->
+			<!-- IPAM Configuration Card with improved styling -->
 			{#if network.IPAM?.Config && network.IPAM.Config.length > 0}
 				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title>IPAM Configuration</Card.Title>
+					<Card.Header class="pb-0">
+						<Card.Title class="flex items-center gap-2 text-lg">
+							<Settings class="text-primary size-5" />
+							IPAM Configuration
+						</Card.Title>
+						<Card.Description>IP Address Management settings for this network</Card.Description>
 					</Card.Header>
-					<Card.Content class="space-y-4">
+					<Card.Content class="pt-6">
 						{#each network.IPAM.Config as config, i (i)}
-							<div class="space-y-1">
-								{#if config.Subnet}
-									<p class="text-sm"><span class="font-medium text-muted-foreground">Subnet:</span> <span class="font-mono text-xs">{config.Subnet}</span></p>
-								{/if}
-								{#if config.Gateway}
-									<p class="text-sm"><span class="font-medium text-muted-foreground">Gateway:</span> <span class="font-mono text-xs">{config.Gateway}</span></p>
-								{/if}
-								{#if config.IPRange}
-									<p class="text-sm"><span class="font-medium text-muted-foreground">IP Range:</span> <span class="font-mono text-xs">{config.IPRange}</span></p>
-								{/if}
-								{#if config.AuxiliaryAddresses && Object.keys(config.AuxiliaryAddresses).length > 0}
-									<p class="text-sm font-medium text-muted-foreground mt-1">Auxiliary Addresses:</p>
-									<ul class="list-disc list-inside pl-4">
-										{#each Object.entries(config.AuxiliaryAddresses) as [name, addr] (name)}
-											<li class="text-xs font-mono">{name}: {addr}</li>
-										{/each}
-									</ul>
-								{/if}
+							<div class="p-4 rounded-lg bg-card/50 border mb-4 last:mb-0">
+								<div class="space-y-2">
+									{#if config.Subnet}
+										<div class="flex flex-col sm:flex-row sm:items-center">
+											<span class="text-sm font-medium text-muted-foreground w-full sm:w-24">Subnet:</span>
+											<code class="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono text-xs sm:text-sm mt-1 sm:mt-0">
+												{config.Subnet}
+											</code>
+										</div>
+									{/if}
+
+									{#if config.Gateway}
+										<div class="flex flex-col sm:flex-row sm:items-center">
+											<span class="text-sm font-medium text-muted-foreground w-full sm:w-24">Gateway:</span>
+											<code class="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono text-xs sm:text-sm mt-1 sm:mt-0">
+												{config.Gateway}
+											</code>
+										</div>
+									{/if}
+
+									{#if config.IPRange}
+										<div class="flex flex-col sm:flex-row sm:items-center">
+											<span class="text-sm font-medium text-muted-foreground w-full sm:w-24">IP Range:</span>
+											<code class="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono text-xs sm:text-sm mt-1 sm:mt-0">
+												{config.IPRange}
+											</code>
+										</div>
+									{/if}
+
+									{#if config.AuxiliaryAddresses && Object.keys(config.AuxiliaryAddresses).length > 0}
+										<div class="mt-3">
+											<p class="text-sm font-medium text-muted-foreground mb-1">Auxiliary Addresses:</p>
+											<ul class="space-y-1 ml-4">
+												{#each Object.entries(config.AuxiliaryAddresses) as [name, addr] (name)}
+													<li class="text-xs font-mono flex">
+														<span class="text-muted-foreground mr-2">{name}:</span>
+														<code class="px-1 py-0.5 rounded bg-muted text-muted-foreground">{addr}</code>
+													</li>
+												{/each}
+											</ul>
+										</div>
+									{/if}
+								</div>
 							</div>
-							{#if i < network.IPAM.Config.length - 1}
-								<Separator />
-							{/if}
 						{/each}
+
 						{#if network.IPAM.Driver}
-							<p class="text-sm mt-2"><span class="font-medium text-muted-foreground">IPAM Driver:</span> {network.IPAM.Driver}</p>
+							<div class="flex items-center mt-4">
+								<span class="text-sm font-medium text-muted-foreground mr-2">IPAM Driver:</span>
+								<StatusBadge variant="cyan" text={network.IPAM.Driver} />
+							</div>
 						{/if}
+
 						{#if network.IPAM.Options && Object.keys(network.IPAM.Options).length > 0}
-							<p class="text-sm font-medium text-muted-foreground mt-2">IPAM Options:</p>
-							{#each Object.entries(network.IPAM.Options) as [key, value] (key)}
-								<p class="text-xs font-mono pl-4">{key}: {value}</p>
-							{/each}
+							<div class="mt-4">
+								<p class="text-sm font-medium text-muted-foreground mb-2">IPAM Options:</p>
+								<div class="bg-muted/50 p-3 rounded-lg border">
+									{#each Object.entries(network.IPAM.Options) as [key, value] (key)}
+										<div class="flex justify-between text-xs font-mono mb-1 last:mb-0">
+											<span class="text-muted-foreground">{key}:</span>
+											<span>{value}</span>
+										</div>
+									{/each}
+								</div>
+							</div>
 						{/if}
 					</Card.Content>
 				</Card.Root>
 			{/if}
 
-			<!-- Connected Containers Card -->
+			<!-- Connected Containers Card - Refined -->
 			{#if connectedContainers.length > 0}
 				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title class="flex items-center gap-2"><Container class="text-muted-foreground size-5" /> Connected Containers ({connectedContainers.length})</Card.Title>
+					<Card.Header class="pb-0">
+						<Card.Title class="flex items-center gap-2 text-lg">
+							<Container class="text-primary size-5" />
+							Connected Containers
+						</Card.Title>
+						<Card.Description>
+							{connectedContainers.length} container{connectedContainers.length === 1 ? '' : 's'} connected to this network
+						</Card.Description>
 					</Card.Header>
-					<Card.Content class="space-y-2">
-						{#each connectedContainers as container (container.Name)}
-							<div class="text-sm flex flex-col sm:flex-row sm:items-center">
-								<span class="font-medium w-full sm:w-1/3 break-all">
-									<a href="/containers/{container.Name}" class="hover:underline text-primary">{container.Name}</a>
-								</span>
-								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-2/3">
-									{container.IPv4Address || container.IPv6Address || 'N/A'}
-								</span>
-							</div>
-							{#if connectedContainers.indexOf(container) < connectedContainers.length - 1}
-								<Separator class="my-2" />
-							{/if}
-						{/each}
+					<Card.Content class="pt-6">
+						<div class="bg-card rounded-lg border divide-y">
+							{#each connectedContainers as container (container.Name)}
+								<div class="p-3 flex flex-col sm:flex-row sm:items-center">
+									<div class="font-medium w-full sm:w-1/3 break-all mb-2 sm:mb-0">
+										<a href="/containers/{container.Name}" class="hover:underline text-primary flex items-center">
+											<Container class="size-3.5 mr-1.5 text-muted-foreground" />
+											{container.Name}
+										</a>
+									</div>
+									<div class="w-full sm:w-2/3 pl-0 sm:pl-4">
+										<code class="px-1.5 py-0.5 text-xs sm:text-sm rounded bg-muted text-muted-foreground font-mono break-all">
+											{container.IPv4Address || container.IPv6Address || 'N/A'}
+										</code>
+									</div>
+								</div>
+							{/each}
+						</div>
 					</Card.Content>
 				</Card.Root>
 			{/if}
 
-			<!-- Labels Card -->
+			<!-- Labels Card - Enhanced -->
 			{#if network.Labels && Object.keys(network.Labels).length > 0}
 				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title class="flex items-center gap-2"><Tag class="text-muted-foreground size-5" /> Labels</Card.Title>
+					<Card.Header class="pb-0">
+						<Card.Title class="flex items-center gap-2 text-lg">
+							<Tag class="text-primary size-5" />
+							Labels
+						</Card.Title>
+						<Card.Description>User-defined metadata attached to this network</Card.Description>
 					</Card.Header>
-					<Card.Content class="space-y-2">
-						{#each Object.entries(network.Labels) as [key, value] (key)}
-							<div class="text-sm flex flex-col sm:flex-row sm:items-center">
-								<span class="font-medium text-muted-foreground w-full sm:w-1/4 break-all">{key}:</span>
-								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-3/4">{value}</span>
-							</div>
-							{#if Object.keys(network.Labels).indexOf(key) < Object.keys(network.Labels).length - 1}
-								<Separator class="my-2" />
-							{/if}
-						{/each}
+					<Card.Content class="pt-6">
+						<div class="bg-card rounded-lg border divide-y">
+							{#each Object.entries(network.Labels) as [key, value] (key)}
+								<div class="p-3 flex flex-col sm:flex-row">
+									<div class="font-medium text-muted-foreground w-full sm:w-1/3 break-all mb-2 sm:mb-0">
+										{key}
+									</div>
+									<div class="font-mono text-xs sm:text-sm break-all w-full sm:w-2/3 bg-muted/50 p-2 rounded">
+										{value}
+									</div>
+								</div>
+							{/each}
+						</div>
 					</Card.Content>
 				</Card.Root>
 			{/if}
 
-			<!-- Options Card -->
+			<!-- Options Card - Enhanced -->
 			{#if network.Options && Object.keys(network.Options).length > 0}
 				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title>Options</Card.Title>
+					<Card.Header class="pb-0">
+						<Card.Title class="flex items-center gap-2 text-lg">
+							<Settings class="text-primary size-5" />
+							Options
+						</Card.Title>
+						<Card.Description>Network driver-specific options</Card.Description>
 					</Card.Header>
-					<Card.Content class="space-y-2">
-						{#each Object.entries(network.Options) as [key, value] (key)}
-							<div class="text-sm flex flex-col sm:flex-row sm:items-center">
-								<span class="font-medium text-muted-foreground w-full sm:w-1/4 break-all">{key}:</span>
-								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-3/4">{value}</span>
-							</div>
-							{#if Object.keys(network.Options).indexOf(key) < Object.keys(network.Options).length - 1}
-								<Separator class="my-2" />
-							{/if}
-						{/each}
+					<Card.Content class="pt-6">
+						<div class="bg-card rounded-lg border divide-y">
+							{#each Object.entries(network.Options) as [key, value] (key)}
+								<div class="p-3 flex flex-col sm:flex-row">
+									<div class="font-medium text-muted-foreground w-full sm:w-1/3 break-all mb-2 sm:mb-0">
+										{key}
+									</div>
+									<div class="font-mono text-xs sm:text-sm break-all w-full sm:w-2/3 bg-muted/50 p-2 rounded">
+										{value}
+									</div>
+								</div>
+							{/each}
+						</div>
 					</Card.Content>
 				</Card.Root>
 			{/if}
 		</div>
 	{:else}
-		<!-- Network Not Found Section -->
-		<div class="text-center py-12">
-			<p class="text-lg font-medium text-muted-foreground">Network not found.</p>
-			<Button href="/networks" variant="outline" size="sm" class="mt-4">
+		<!-- Network Not Found with improved styling -->
+		<div class="flex flex-col items-center justify-center py-16 px-4 text-center">
+			<div class="bg-muted/30 rounded-full p-4 mb-4">
+				<Network class="text-muted-foreground size-10 opacity-70" />
+			</div>
+			<h2 class="text-xl font-medium mb-2">Network Not Found</h2>
+			<p class="text-muted-foreground mb-6">The requested network could not be found or is no longer available.</p>
+			<Button href="/networks" variant="outline" size="sm">
 				<ArrowLeft class="mr-2 size-4" /> Back to Networks
 			</Button>
 		</div>
