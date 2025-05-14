@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap');
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
 @config '../tailwind.config.ts';
 
