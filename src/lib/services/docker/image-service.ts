@@ -1,8 +1,7 @@
 import { getDockerClient, dockerHost } from './core';
 import type { ServiceImage } from '$lib/types/docker/image.type';
 import type Docker from 'dockerode';
-import { NotFoundError, DockerApiError } from '$lib/types/errors';
-import { RegistryRateLimitError, PublicRegistryError, PrivateRegistryError } from '$lib/types/errors.type';
+import { NotFoundError, DockerApiError, RegistryRateLimitError, PublicRegistryError, PrivateRegistryError, ApiErrorCode } from '$lib/types/errors.type';
 import { parseImageNameForRegistry, areRegistriesEquivalent } from '$lib/utils/registry.utils';
 import { getSettings } from '$lib/services/settings-service';
 import { updateImageMaturity } from '$lib/stores/maturity-store';
