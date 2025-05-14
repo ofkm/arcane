@@ -64,10 +64,26 @@
 
 	function onMaturityThresholdChange() {
 		maturityThresholdInput.touched = true;
-		settingsStore.update((settings) => ({
-			...settings,
-			maturityThresholdDays: maturityThresholdInput.value
-		}));
+		// The value from the input element (via bind:input) might be a string.
+		const rawValue = maturityThresholdInput.value;
+		const numericValue = parseInt(String(rawValue), 10);
+
+		if (!isNaN(numericValue)) {
+			// Update the local state's value to be a number for type consistency
+			maturityThresholdInput.value = numericValue;
+			settingsStore.update((settings) => ({
+				...settings,
+				maturityThresholdDays: numericValue
+			}));
+			maturityThresholdInput.valid = true;
+			maturityThresholdInput.error = null;
+		} else {
+			// If parsing fails (e.g., empty input), mark as invalid.
+			// The maturityThresholdInput.value will remain the unparsed (e.g. empty string) value.
+			maturityThresholdInput.valid = false;
+			maturityThresholdInput.error = 'Please enter a valid whole number.';
+			// The store is not updated with NaN.
+		}
 	}
 </script>
 
