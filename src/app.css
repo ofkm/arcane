@@ -1,6 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap');
 @import 'tailwindcss';
 
 @config '../tailwind.config.ts';
+
+@theme {
+	--font-sans: 'Kantumruy Pro', sans-serif;
+}
 
 @layer base {
 	:root {
