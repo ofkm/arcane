@@ -284,7 +284,8 @@ export async function pullImage(imageRef: string, platform?: string, authConfig?
 export async function checkImageMaturity(imageId: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
 	const imageResult = await tryCatch(getImage(imageId));
 	if (imageResult.error) {
-		updateImageMaturity(imageId, undefined);
+		console.warn(`checkImageMaturity: Failed to get image details for ${imageId}:`, imageResult.error);
+		updateImageMaturity(imageId, undefined); // Ensure store is cleared if image details fail
 		return undefined;
 	}
 
@@ -305,22 +306,31 @@ export async function checkImageMaturity(imageId: string): Promise<import('$lib/
 	const repository = repoTag.substring(0, lastColon);
 	const currentTag = repoTag.substring(lastColon + 1);
 
-	if (currentTag === 'latest') {
-		updateImageMaturity(imageId, undefined);
-		return undefined;
+	let localCreatedDate: Date | undefined = undefined;
+	if (imageDetails.Created) {
+		// Directly parse the ISO 8601 date string
+		const parsedDate = new Date(imageDetails.Created);
+		if (!isNaN(parsedDate.getTime())) {
+			localCreatedDate = parsedDate;
+		} else {
+			console.warn(`checkImageMaturity: Invalid Created date string for image ${imageId}: ${imageDetails.Created}`);
+		}
 	}
 
-	const registryInfoResult = await tryCatch(getRegistryInfo(repository, currentTag));
+	const registryInfoResult = await tryCatch(getRegistryInfo(repository, currentTag, localCreatedDate));
 	if (registryInfoResult.error) {
-		updateImageMaturity(imageId, undefined);
+		if (registryInfoResult.error instanceof RegistryRateLimitError) {
+			console.warn(`Registry rate limit hit for ${repository}:${currentTag}: ${registryInfoResult.error.message}`);
+		} else if (registryInfoResult.error instanceof PublicRegistryError || registryInfoResult.error instanceof PrivateRegistryError) {
+			console.warn(`Registry access error for ${repository}:${currentTag}: ${registryInfoResult.error.message}`);
+		} else {
+			console.error(`Error getting registry info for ${repository}:${currentTag}:`, registryInfoResult.error);
+		}
+		updateImageMaturity(imageId, undefined); // Clear maturity on error
 		return undefined;
 	}
 
 	const registryInfo = registryInfoResult.data;
-	if (!registryInfo) {
-		updateImageMaturity(imageId, undefined);
-		return undefined;
-	}
 
 	updateImageMaturity(imageId, registryInfo);
 	return registryInfo;
@@ -329,43 +339,76 @@ export async function checkImageMaturity(imageId: string): Promise<import('$lib/
 /**
  * Contacts the Docker registry to get latest version information
  */
-async function getRegistryInfo(repository: string, currentTag: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+async function getRegistryInfo(repository: string, currentTag: string, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
 	try {
 		const { registry: registryDomain } = parseImageNameForRegistry(repository);
 
+		// Attempt 1: Try public registry first
 		try {
-			const maturityInfo = await checkPublicRegistry(repository, registryDomain, currentTag);
-			if (maturityInfo) {
-				return maturityInfo;
+			const publicMaturityInfo = await checkPublicRegistry(repository, registryDomain, currentTag, localCreatedDate);
+			if (publicMaturityInfo) {
+				return publicMaturityInfo;
 			}
 		} catch (error: any) {
-			if (error.response?.status === 429) {
-				throw new RegistryRateLimitError('Rate limit exceeded', registryDomain, repository, new Date(Date.now() + 3600000));
-			} else if (error.response?.status === 401) {
-				throw new PublicRegistryError('Authentication required', registryDomain, repository, 401);
+			if (error instanceof RegistryRateLimitError) {
+				// If public check hits a rate limit, re-throw immediately.
+				// It's unlikely trying private credentials for the same domain will bypass this.
+				throw error;
 			}
+			// For other PublicRegistryErrors (e.g., 401/403 on a public endpoint for a private image),
+			// or other general errors, log and proceed to try private credentials.
+			console.warn(`Public registry check failed for ${repository}:${currentTag} (will try private if configured): ${error.message}`);
 		}
 
-		try {
-			const settings = await getSettings();
+		// Attempt 2: Try private registries if configured
+		const settings = await getSettings();
+		if (settings.registryCredentials && settings.registryCredentials.length > 0) {
+			// Filter all credentials that match the current registry domain
+			const matchingCredentials = settings.registryCredentials.filter((cred) => areRegistriesEquivalent(cred.url, registryDomain));
 
-			if (settings.registryCredentials && settings.registryCredentials.length > 0) {
-				const storedCredential = settings.registryCredentials.find((cred) => areRegistriesEquivalent(cred.url, registryDomain));
+			if (matchingCredentials.length > 0) {
+				console.log(`Found ${matchingCredentials.length} potential private credential(s) for domain ${registryDomain} for image ${repository}:${currentTag}.`);
+			}
 
-				if (storedCredential) {
-					return await checkPrivateRegistry(repository, registryDomain, currentTag, storedCredential);
+			for (const credential of matchingCredentials) {
+				try {
+					console.log(`Attempting private registry check for ${repository}:${currentTag} using credential for URL: ${credential.url}`);
+					const privateMaturityInfo = await checkPrivateRegistry(repository, registryDomain, currentTag, credential, localCreatedDate);
+					if (privateMaturityInfo) {
+						// If a check with a credential succeeds, return the info
+						return privateMaturityInfo;
+					}
+					// If privateMaturityInfo is undefined but no error, it means the check was "successful"
+					// but no maturity info was determined (e.g. image/tag not found with these creds).
+					// We should continue to try other credentials if any.
+				} catch (error: any) {
+					if (error instanceof RegistryRateLimitError) {
+						// If a rate limit is hit with any private credential, re-throw.
+						console.warn(`Private registry check for ${repository}:${currentTag} hit rate limit with credential for ${credential.url}.`);
+						throw error;
+					} else if (error instanceof PrivateRegistryError) {
+						// Log specific private registry errors (like auth failure for *this* credential)
+						// and continue to the next credential.
+						console.warn(`Private registry check failed for ${repository}:${currentTag} with credential for ${credential.url}: ${error.message}. Trying next if available.`);
+					} else {
+						// For other unexpected errors during a specific private check, log and continue.
+						console.error(`Unexpected error during private registry check for ${repository}:${currentTag} with credential for ${credential.url}:`, error);
+					}
 				}
 			}
-		} catch (error: any) {
-			if (error instanceof PrivateRegistryError) {
-				console.error(`Private registry check failed: ${error.message} for ${error.registry}`);
-			} else {
-				throw new PrivateRegistryError(error.message || 'Unknown error accessing private registry', registryDomain, repository, error.status || error.statusCode);
-			}
 		}
-
+		// If all attempts (public and all matching private credentials) fail to yield maturity info
 		return undefined;
 	} catch (error) {
+		// Catch errors re-thrown from within (like critical RateLimitErrors)
+		if (error instanceof RegistryRateLimitError || error instanceof PublicRegistryError || error instanceof PrivateRegistryError) {
+			// These are "expected" errors that should have been handled or logged appropriately above,
+			// but if they are re-thrown to here, it means we should stop processing for this image.
+			// The calling function (checkImageMaturity) will handle this.
+			throw error;
+		}
+		// For other unexpected errors in getRegistryInfo logic itself
+		console.error(`Unexpected error in getRegistryInfo for ${repository}:${currentTag}:`, error);
 		return undefined;
 	}
 }
@@ -373,16 +416,16 @@ async function getRegistryInfo(repository: string, currentTag: string): Promise<
 /**
  * Check a public registry using Registry API v2
  */
-async function checkPublicRegistry(repository: string, registryDomain: string, currentTag: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
-	return checkRegistryV2(repository, registryDomain, currentTag);
+async function checkPublicRegistry(repository: string, registryDomain: string, currentTag: string, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+	return checkRegistryV2(repository, registryDomain, currentTag, undefined, localCreatedDate);
 }
 
 /**
  * Check a private registry using Registry API v2 with authentication
  */
-async function checkPrivateRegistry(repository: string, registryDomain: string, currentTag: string, credentials: { username: string; password: string; url: string }): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+async function checkPrivateRegistry(repository: string, registryDomain: string, currentTag: string, credentials: { username: string; password: string; url: string }, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
 	const auth = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
-	return checkRegistryV2(repository, registryDomain, currentTag, auth);
+	return checkRegistryV2(repository, registryDomain, currentTag, auth, localCreatedDate);
 }
 
 /**
@@ -395,9 +438,8 @@ function mapGitHubRegistry(domain: string): string {
 /**
  * Check a registry using the Docker Registry HTTP API v2
  */
-async function checkRegistryV2(repository: string, registryDomain: string, currentTag: string, auth?: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+async function checkRegistryV2(repository: string, registryDomain: string, currentTag: string, auth?: string, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
 	try {
-		// Map GitHub registry domains
 		const mappedDomain = mapGitHubRegistry(registryDomain);
 
 		const repoPath = repository.replace(`${registryDomain}/`, '');
@@ -448,12 +490,10 @@ async function checkRegistryV2(repository: string, registryDomain: string, curre
 					if (!authenticatedResponse.ok) {
 						throw new PublicRegistryError(`Registry API returned ${authenticatedResponse.status}`, registryDomain, repository, authenticatedResponse.status);
 					}
-
 					const tagsData = await authenticatedResponse.json();
-					return processTagsData(tagsData, repository, registryDomain, currentTag, headers);
+					return processTagsData(tagsData, repository, registryDomain, currentTag, headers, localCreatedDate);
 				}
 			}
-
 			throw new PublicRegistryError('Registry requires authentication', registryDomain, repository, 401);
 		}
 
@@ -462,119 +502,103 @@ async function checkRegistryV2(repository: string, registryDomain: string, curre
 		}
 
 		const tagsData = await tagsResponse.json();
-		return processTagsData(tagsData, repository, registryDomain, currentTag, headers);
+		return processTagsData(tagsData, repository, registryDomain, currentTag, headers, localCreatedDate);
 	} catch (error: any) {
-		if (error instanceof PublicRegistryError || error instanceof PrivateRegistryError) {
+		if (error instanceof PublicRegistryError || error instanceof PrivateRegistryError || error instanceof RegistryRateLimitError) {
 			throw error;
 		}
-
-		throw new PublicRegistryError(`Registry API error: ${error.message}`, registryDomain, repository);
+		throw new PublicRegistryError(`Registry API error for ${repository}: ${error.message}`, registryDomain, repository);
 	}
 }
 
 /**
  * Process tags data from the registry API
  */
-async function processTagsData(tagsData: any, repository: string, registryDomain: string, currentTag: string, headers: Record<string, string>): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+async function processTagsData(tagsData: any, repository: string, registryDomain: string, currentTag: string, headers: Record<string, string>, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
 	const tags = tagsData.tags || [];
-	const { newerTags, isSpecialTag } = findNewerVersionsOfSameTag(tags, currentTag);
-
-	// Get the configured maturity threshold from settings
-	const settings = await getSettings();
-	const maturityThreshold = settings.maturityThresholdDays || 30; // Fallback to 30 if not set
-
-	// If it's a special tag with no updates, mark as up-to-date
-	if (isSpecialTag && newerTags.length === 0) {
-		try {
-			const dateInfo = await getImageCreationDate(repository, registryDomain, currentTag, headers);
-			return {
-				version: currentTag,
-				date: dateInfo.date,
-				status: dateInfo.daysSince > maturityThreshold ? 'Matured' : 'Not Matured',
-				updatesAvailable: false
-			};
-		} catch (error) {
-			return {
-				version: currentTag,
-				date: 'Unknown date',
-				status: 'Matured',
-				updatesAvailable: false
-			};
-		}
+	if (!Array.isArray(tags)) {
+		console.warn(`processTagsData: tagsData.tags is not an array for ${repository}. Received:`, tagsData);
+		return undefined;
 	}
+	const { newerTags } = findNewerVersionsOfSameTag(tags, currentTag);
+
+	const settings = await getSettings();
+	const maturityThreshold = settings.maturityThresholdDays || 30;
+
+	const createMaturityObject = (version: string, dateSource: Date | { date: string; daysSince: number }, updatesAvailable: boolean): import('$lib/types/docker/image.type').ImageMaturity => {
+		let dateString: string;
+		let daysSince: number;
+		const dateFormatOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+
+		if (dateSource instanceof Date) {
+			if (isNaN(dateSource.getTime())) {
+				dateString = 'Invalid date';
+				daysSince = -1;
+			} else {
+				dateString = dateSource.toLocaleDateString(undefined, dateFormatOptions);
+				daysSince = getDaysSinceDate(dateSource);
+			}
+		} else {
+			dateString = dateSource.date;
+			daysSince = dateSource.daysSince;
+		}
+
+		const status: import('$lib/types/docker/image.type').ImageMaturity['status'] = daysSince === -1 || dateString === 'Invalid date' || dateString === 'Unknown date' ? 'Unknown' : daysSince > maturityThreshold ? 'Matured' : 'Not Matured';
+
+		return {
+			version,
+			date: dateString,
+			status,
+			updatesAvailable
+		};
+	};
 
 	if (newerTags.length > 0) {
 		const newestTag = newerTags[0];
-
 		try {
-			const dateInfo = await getImageCreationDate(repository, registryDomain, newestTag, headers);
-
-			return {
-				version: newestTag,
-				date: dateInfo.date,
-				status: dateInfo.daysSince > maturityThreshold ? 'Matured' : 'Not Matured',
-				updatesAvailable: true
-			};
+			const dateInfoFromRegistry = await getImageCreationDate(repository, registryDomain, newestTag, headers);
+			return createMaturityObject(newestTag, dateInfoFromRegistry, true);
 		} catch (error) {
-			console.error(`Failed to get creation date for ${repository}:${newestTag}:`, error);
-			return {
-				version: newestTag,
-				date: 'Unknown date',
-				status: 'Unknown',
-				updatesAvailable: true
-			};
+			console.error(`Failed to get creation date from registry for newer tag ${repository}:${newestTag}:`, error);
+			return createMaturityObject(newestTag, { date: 'Unknown date', daysSince: -1 }, true);
+		}
+	} else {
+		if (localCreatedDate) {
+			return createMaturityObject(currentTag, localCreatedDate, false);
+		} else {
+			try {
+				const dateInfoFromRegistry = await getImageCreationDate(repository, registryDomain, currentTag, headers);
+				return createMaturityObject(currentTag, dateInfoFromRegistry, false);
+			} catch (error) {
+				console.error(`Failed to get creation date from registry for current tag ${repository}:${currentTag}:`, error);
+				return createMaturityObject(currentTag, { date: 'Unknown date', daysSince: -1 }, false);
+			}
 		}
 	}
-
-	// Return existing special tag data
-	if (isSpecialTag) {
-		try {
-			const dateInfo = await getImageCreationDate(repository, registryDomain, currentTag, headers);
-			return {
-				version: currentTag,
-				date: dateInfo.date,
-				status: dateInfo.daysSince > maturityThreshold ? 'Matured' : 'Not Matured',
-				updatesAvailable: false
-			};
-		} catch (error) {
-			return {
-				version: currentTag,
-				date: 'Unknown date',
-				status: 'Matured',
-				updatesAvailable: false
-			};
-		}
-	}
-
-	return undefined;
 }
 
 /**
  * Helper function to get image creation date from registry
  */
 async function getImageCreationDate(repository: string, registryDomain: string, tag: string, headers: Record<string, string>): Promise<{ date: string; daysSince: number }> {
-	// Map GitHub registry domains
 	const mappedDomain = mapGitHubRegistry(registryDomain);
 
 	const baseUrl = mappedDomain === 'docker.io' ? 'https://registry-1.docker.io' : `https://${mappedDomain}`;
 	const repoPath = repository.replace(`${registryDomain}/`, '');
 	const adjustedRepoPath = mappedDomain === 'docker.io' && !repoPath.includes('/') ? `library/${repoPath}` : repoPath;
 
-	// First get the manifest to find the config digest
 	const manifestUrl = `${baseUrl}/v2/${adjustedRepoPath}/manifests/${tag}`;
 
 	const manifestResult = await tryCatch(
 		fetch(manifestUrl, {
 			headers: {
 				...headers,
-				// Accept multiple manifest formats
 				Accept: 'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json'
 			}
 		})
 	);
 
 	if (manifestResult.error || !manifestResult.data.ok) {
-		// If this is Docker Hub, try the fallback
 		if (registryDomain === 'docker.io' || registryDomain === 'registry-1.docker.io') {
 			const dockerHubResult = await tryCatch(getDockerHubCreationDate(repoPath, tag));
 			if (!dockerHubResult.error) {
@@ -600,7 +624,6 @@ async function getImageCreationDate(repository: string, registryDomain: string, 
 
 	const manifest = manifestDataResult.data;
 
-	// First try to get date from annotations (OCI format)
 	if (manifest.annotations && manifest.annotations['org.opencontainers.image.created']) {
 		const createdDate = new Date(manifest.annotations['org.opencontainers.image.created']);
 
@@ -619,7 +642,6 @@ async function getImageCreationDate(repository: string, registryDomain: string, 
 		}
 	}
 
-	// Check for created date in manifest descriptors (some OCI registries)
 	if (manifest.manifests && Array.isArray(manifest.manifests)) {
 		for (const descriptor of manifest.manifests) {
 			if (descriptor.annotations && descriptor.annotations['org.opencontainers.image.created']) {
@@ -642,11 +664,9 @@ async function getImageCreationDate(repository: string, registryDomain: string, 
 		}
 	}
 
-	// If no date in annotations, fall back to checking the config blob
 	const configDigest = manifest.config?.digest;
 
 	if (!configDigest) {
-		// If this is Docker Hub, try the fallback
 		if (registryDomain === 'docker.io' || registryDomain === 'registry-1.docker.io') {
 			const dockerHubResult = await tryCatch(getDockerHubCreationDate(repoPath, tag));
 			if (!dockerHubResult.error) {
@@ -660,7 +680,6 @@ async function getImageCreationDate(repository: string, registryDomain: string, 
 		};
 	}
 
-	// Get the image config which contains creation date
 	const configUrl = `${baseUrl}/v2/${adjustedRepoPath}/blobs/${configDigest}`;
 	const configResult = await tryCatch(fetch(configUrl, { headers }));
 
@@ -683,7 +702,6 @@ async function getImageCreationDate(repository: string, registryDomain: string, 
 
 	const configData = configDataResult.data;
 
-	// Check for the created date in config
 	if (configData.created) {
 		const creationDate = new Date(configData.created);
 
@@ -702,7 +720,6 @@ async function getImageCreationDate(repository: string, registryDomain: string, 
 		}
 	}
 
-	// Last resort check: look for created date in container config
 	if (configData.config && configData.config.Labels && configData.config.Labels['org.opencontainers.image.created']) {
 		const labelDate = new Date(configData.config.Labels['org.opencontainers.image.created']);
 
@@ -721,7 +738,6 @@ async function getImageCreationDate(repository: string, registryDomain: string, 
 		}
 	}
 
-	// If we couldn't find any date, try Docker Hub API as last resort
 	if (registryDomain === 'docker.io' || registryDomain === 'registry-1.docker.io') {
 		const dockerHubResult = await tryCatch(getDockerHubCreationDate(repoPath, tag));
 		if (!dockerHubResult.error) {
@@ -739,7 +755,6 @@ async function getImageCreationDate(repository: string, registryDomain: string, 
  * Fallback to get image creation date from Docker Hub API
  */
 async function getDockerHubCreationDate(repository: string, tag: string): Promise<{ date: string; daysSince: number }> {
-	// Remove library/ prefix for official images in Docker Hub API
 	const repoPath = repository.startsWith('library/') ? repository.substring(8) : repository;
 	const url = `https://hub.docker.com/v2/repositories/${repoPath}/tags/${tag}`;
 
@@ -765,7 +780,6 @@ async function getDockerHubCreationDate(repository: string, tag: string): Promis
 	const creationDate = new Date(data.last_updated);
 	const daysSince = getDaysSinceDate(creationDate);
 
-	// Format the date properly for display
 	const dateFormatOptions: Intl.DateTimeFormatOptions = {
 		year: 'numeric',
 		month: 'short',
@@ -783,29 +797,22 @@ async function getDockerHubCreationDate(repository: string, tag: string): Promis
  * This allows comparing similar versions while avoiding unrelated tags
  */
 function getTagPattern(tag: string): { pattern: string; version: string | null } {
-	// Special tags that should only be compared with themselves
 	const exactMatchTags = ['latest', 'stable', 'unstable', 'dev', 'devel', 'development', 'test', 'testing', 'prod', 'production', 'main', 'master', 'stage', 'staging', 'canary', 'nightly', 'edge', 'next', 'private-registries', 'data-path', 'env-fix', 'oidc'];
 
-	// Try to extract version number
 	const versionMatch = tag.match(/(\d+(?:\.\d+)*)/);
 	const version = versionMatch ? versionMatch[1] : null;
 
-	// Get the non-version prefix for type-based tags (e.g. "alpine" from "alpine-3.14")
 	const prefixMatch = tag.match(/^([a-z][\w-]*?)[\.-]?\d/i);
 	const prefix = prefixMatch ? prefixMatch[1] : null;
 
-	// Check if it's an exact match special tag first
 	if (exactMatchTags.includes(tag)) {
 		return { pattern: tag, version: null };
 	} else if (prefix && version) {
-		// It's a prefixed version like "alpine-3.14"
 		return { pattern: prefix, version };
 	} else if (version) {
-		// It's a pure version like "1.2.3"
 		const majorVersion = version.split('.')[0];
 		return { pattern: majorVersion, version };
 	} else {
-		// It's something else - treat as exact match
 		return { pattern: tag, version: null };
 	}
 }
@@ -851,29 +858,25 @@ function findNewerVersionsOfSameTag(allTags: string[], currentTag: string): { ne
  */
 function sortTagsByVersion(tags: string[]): string[] {
 	return [...tags].sort((a, b) => {
-		// Extract version numbers
 		const getVersionParts = (tag: string) => {
 			const verMatch = tag.match(/(\d+(?:\.\d+)*)/);
-			if (!verMatch) return [0]; // No version number found
+			if (!verMatch) return [0];
 
-			// Convert "1.2.3" to [1, 2, 3]
 			return verMatch[1].split('.').map(Number);
 		};
 
 		const aVer = getVersionParts(a);
 		const bVer = getVersionParts(b);
 
-		// Compare version numbers
 		for (let i = 0; i < Math.max(aVer.length, bVer.length); i++) {
 			const aNum = aVer[i] || 0;
 			const bNum = bVer[i] || 0;
 
 			if (aNum !== bNum) {
-				return bNum - aNum; // Sort descending (newer first)
+				return bNum - aNum;
 			}
 		}
 
-		// If versions are equal, sort alphabetically
 		return b.localeCompare(a);
 	});
 }

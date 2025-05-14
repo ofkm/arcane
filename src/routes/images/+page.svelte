@@ -243,43 +243,66 @@
 	async function checkAllMaturity() {
 		isLoading.checking = true;
 
+		const imageIdsToCheck = images.filter((image) => image.id).map((image) => image.id);
+
+		if (imageIdsToCheck.length === 0) {
+			toast.info('No images to check for updates.');
+			isLoading.checking = false;
+			return;
+		}
+
+		console.log(`Client: Attempting to check maturity for ${imageIdsToCheck.length} images.`);
+
 		try {
-			// Filter out images without IDs
-			const imageIds = images.filter((image) => image.id).map((image) => image.id);
+			const batchResult = await imageApi.checkMaturityBatch(imageIdsToCheck);
 
-			if (imageIds.length === 0) {
-				toast.info('No images to check for updates');
+			if (!batchResult || typeof batchResult.success !== 'boolean') {
+				toast.error('Maturity check failed: Invalid response from server.');
+				isLoading.checking = false;
 				return;
 			}
 
-			// Make a single API call that handles concurrency on the server
-			console.log(`Checking maturity for ${imageIds.length} images...`);
-			const batchResult = await imageApi.checkMaturityBatch(imageIds);
+			const stats = batchResult.stats || { total: 0, success: 0, failed: 0 };
+			const numSuccessfullyUpdated = stats.success || 0; // Images for which new data was likely returned
+			const numFailedByBackend = stats.failed || 0;
+			const numAttemptedByBackend = stats.total || numSuccessfullyUpdated + numFailedByBackend;
 
-			if (!batchResult.success) {
-				toast.error(`Failed to check updates: ${batchResult.error}`);
-				return;
-			}
+			console.log(`Backend Response: Attempted to process ${numAttemptedByBackend}, Succeeded (updated) ${numSuccessfullyUpdated}, Failed ${numFailedByBackend}.`);
 
-			const { success, failed, total } = batchResult.stats;
-
-			console.log(`Maturity check completed: ${success} successful, ${failed} failed out of ${total}`);
-
-			if (success > 0) {
-				toast.success(`Checked updates for ${success} images`);
-
-				if (failed > 0) {
-					toast.warning(`Failed to check ${failed} images`);
+			if (batchResult.success) {
+				// Overall API call was successful
+				if (numSuccessfullyUpdated > 0) {
+					toast.success(`Successfully retrieved updates for ${numSuccessfullyUpdated} image(s).`);
+				}
+				if (numFailedByBackend > 0) {
+					toast.warning(`Backend failed to check updates for ${numFailedByBackend} image(s).`);
 				}
 
-				// Refresh data to show the new maturity status
+				if (imageIdsToCheck.length > numAttemptedByBackend && numAttemptedByBackend >= 0) {
+					const notAttemptedCount = imageIdsToCheck.length - numAttemptedByBackend;
+					toast.info(`Server processed ${numAttemptedByBackend} of ${imageIdsToCheck.length} images. ${notAttemptedCount} were not processed by the backend.`);
+				} else if (numAttemptedByBackend > numSuccessfullyUpdated + numFailedByBackend) {
+					// This case implies some images were "attempted" but neither succeeded in update nor explicitly failed.
+					const processedWithoutUpdate = numAttemptedByBackend - (numSuccessfullyUpdated + numFailedByBackend);
+					if (processedWithoutUpdate > 0) {
+						toast.info(`${processedWithoutUpdate} image(s) were checked by the backend but had no new update status reported.`);
+					}
+				}
+
+				if (numSuccessfullyUpdated === 0 && numFailedByBackend === 0 && numAttemptedByBackend === 0 && imageIdsToCheck.length > 0) {
+					toast.info('Maturity check ran, but the backend reported no images were processed or updated.');
+				}
+
+				// Always invalidate if the API call itself was successful,
+				// as some images might have been updated.
 				await invalidateAll();
-			} else if (failed > 0) {
-				toast.error(`Failed to check updates for all ${failed} images`);
+			} else {
+				// The API call itself failed (e.g., HTTP 500, or batchResult.success is false)
+				toast.error(`Maturity check request failed: ${batchResult.error || 'Unknown server error.'}`);
 			}
 		} catch (error) {
-			console.error('Error checking maturity:', error);
-			toast.error(`Failed to check image updates: ${(error as Error).message}`);
+			console.error('Client-side error during checkAllMaturity:', error);
+			toast.error(`Client-side error checking image updates: ${(error as Error).message}`);
 		} finally {
 			isLoading.checking = false;
 		}
@@ -494,13 +517,22 @@
 											</Tooltip.Root>
 										</Tooltip.Provider>
 									{:else}
-										<!-- Show a placeholder or "checking" icon when maturity info is missing -->
-										<span class="inline-flex items-center justify-center w-4 h-4 mr-2 opacity-30">
-											<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-												<circle cx="12" cy="12" r="10" />
-												<path d="M9 12l2 2 4-4" />
-											</svg>
-										</span>
+										<!-- Tooltip for missing maturity info -->
+										<Tooltip.Provider>
+											<Tooltip.Root>
+												<Tooltip.Trigger>
+													<span class="inline-flex items-center justify-center w-4 h-4 mr-2 opacity-30">
+														<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+															<circle cx="12" cy="12" r="10" />
+															<path d="M9 12l2 2 4-4" />
+														</svg>
+													</span>
+												</Tooltip.Trigger>
+												<Tooltip.Content side="right" class="p-2 relative tooltip-with-arrow" align="center">
+													<span class="text-xs">Maturity status not available.</span>
+												</Tooltip.Content>
+											</Tooltip.Root>
+										</Tooltip.Provider>
 									{/if}
 									<!-- End Maturity Indicator -->
 
