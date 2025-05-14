@@ -137,7 +137,7 @@
 					<p class="text-2xl font-bold">{totalContainers}</p>
 				</div>
 				<div class="bg-primary/10 p-2 rounded-full">
-					<Box class="h-5 w-5 text-primary" />
+					<Box class="text-primary size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -149,7 +149,7 @@
 					<p class="text-2xl font-bold">{runningContainers}</p>
 				</div>
 				<div class="bg-green-500/10 p-2 rounded-full">
-					<Box class="h-5 w-5 text-green-500" />
+					<Box class="text-green-500 size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -161,7 +161,7 @@
 					<p class="text-2xl font-bold">{stoppedContainers}</p>
 				</div>
 				<div class="bg-amber-500/10 p-2 rounded-full">
-					<Box class="h-5 w-5 text-amber-500" />
+					<Box class="text-amber-500 size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -169,16 +169,16 @@
 
 	{#if containers?.length === 0}
 		<div class="flex flex-col items-center justify-center py-12 px-6 text-center border rounded-lg bg-card">
-			<Box class="h-12 w-12 text-muted-foreground mb-4 opacity-40" />
+			<Box class="text-muted-foreground mb-4 opacity-40 size-12" />
 			<p class="text-lg font-medium">No containers found</p>
 			<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new container using the "Create Container" button above or use the Docker CLI</p>
 			<div class="flex gap-3 mt-4">
 				<Button variant="secondary" onclick={refreshData}>
-					<RefreshCw class="h-4 w-4" />
+					<RefreshCw class="size-4" />
 					Refresh
 				</Button>
 				<Button variant="secondary" onclick={openCreateDialog}>
-					<Plus class="h-4 w-4" />
+					<Plus class="size-4" />
 					Create Container
 				</Button>
 			</div>
@@ -193,7 +193,7 @@
 					</div>
 					<div class="flex items-center gap-2">
 						<Button variant="secondary" onclick={openCreateDialog}>
-							<Plus class="w-4 h-4" />
+							<Plus class="size-4" />
 							Create Container
 						</Button>
 					</div>
@@ -239,34 +239,34 @@
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
 										<DropdownMenu.Item onclick={() => goto(`/containers/${item.id}`)} disabled={isAnyLoading}>
-											<ScanSearch class="w-4 h-4" />
+											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
 
 										{#if item.state !== 'running'}
 											<DropdownMenu.Item onclick={() => performContainerAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
 												{#if isLoading.start}
-													<Loader2 class="w-4 h-4 animate-spin" />
+													<Loader2 class="animate-spin size-4" />
 												{:else}
-													<Play class="w-4 h-4" />
+													<Play class="size-4" />
 												{/if}
 												Start
 											</DropdownMenu.Item>
 										{:else}
 											<DropdownMenu.Item onclick={() => performContainerAction('restart', item.id)} disabled={isLoading.restart || isAnyLoading}>
 												{#if isLoading.restart}
-													<Loader2 class="w-4 h-4 animate-spin" />
+													<Loader2 class="animate-spin size-4" />
 												{:else}
-													<RotateCcw class="w-4 h-4" />
+													<RotateCcw class="size-4" />
 												{/if}
 												Restart
 											</DropdownMenu.Item>
 
 											<DropdownMenu.Item onclick={() => performContainerAction('stop', item.id)} disabled={isLoading.stop || isAnyLoading}>
 												{#if isLoading.stop}
-													<Loader2 class="w-4 h-4 animate-spin" />
+													<Loader2 class="animate-spin size-4" />
 												{:else}
-													<StopCircle class="w-4 h-4" />
+													<StopCircle class="size-4" />
 												{/if}
 												Stop
 											</DropdownMenu.Item>
@@ -274,11 +274,11 @@
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveContainer(item.id)} disabled={isLoading.remove || isAnyLoading}>
+										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveContainer(item.id)} disabled={isLoading.remove || isAnyLoading}>
 											{#if isLoading.remove}
-												<Loader2 class="w-4 h-4 animate-spin" />
+												<Loader2 class="animate-spin size-4" />
 											{:else}
-												<Trash2 class="w-4 h-4" />
+												<Trash2 class="size-4" />
 											{/if}
 											Remove
 										</DropdownMenu.Item>

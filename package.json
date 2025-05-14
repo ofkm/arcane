@@ -41,12 +41,12 @@
 		"mode-watcher": "^1.0.7",
 		"svelte": "^5.28.2",
 		"svelte-check": "^4.1.7",
-		"svelte-sonner": "^1.0.0",
+		"svelte-sonner": "^1.0.1",
 		"sveltekit-superforms": "^2.25.0",
 		"tailwind-merge": "^3.3.0",
 		"tailwind-variants": "^1.0.0",
-		"tailwindcss": "^4.0.0",
-		"tailwindcss-animate": "^1.0.7",
+		"tailwindcss": "^4.1.6",
+		"tw-animate-css": "^1.2.9",
 		"typescript": "^5.8.0",
 		"typescript-eslint": "^8.32.0",
 		"vite": "^6.3.5",
@@ -65,12 +65,14 @@
 		"dockerode-compose": "^1.4.0",
 		"js-yaml": "^4.1.0",
 		"nanoid": "^5.1.5",
+		"paneforge": "^1.0.0-next.5",
 		"prettier": "^3.5.3",
 		"prettier-plugin-svelte": "^3.3.3",
 		"proper-lockfile": "^4.1.2",
 		"slugify": "^1.6.6",
 		"svelte-codemirror-editor": "^1.4.1",
 		"svelte-kit-cookie-session": "^4.1.1",
-		"thememirror": "^2.0.1"
+		"thememirror": "^2.0.1",
+		"vaul-svelte": "^1.0.0-next.7"
 	}
 }

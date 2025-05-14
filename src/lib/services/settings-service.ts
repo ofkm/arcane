@@ -23,7 +23,8 @@ export const DEFAULT_SETTINGS: Settings = {
 		sessionTimeout: 60,
 		passwordPolicy: 'strong',
 		rbacEnabled: false
-	}
+	},
+	maturityThresholdDays: 30
 };
 
 async function ensureSettingsDir() {

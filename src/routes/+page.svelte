@@ -7,14 +7,13 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { capitalizeFirstLetter, truncateString } from '$lib/utils/string.utils';
-	import { formatBytes } from '$lib/utils';
+	import { formatBytes } from '$lib/utils/bytes.util';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import { statusVariantMap } from '$lib/types/statuses';
-	import { shortId } from '$lib/utils/string.utils';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
@@ -134,9 +133,9 @@
 		</div>
 		<Button variant="outline" size="sm" class="h-9" onclick={refreshData} disabled={isLoading.refreshing || isLoading.starting || isLoading.stopping || isLoading.pruning}>
 			{#if isLoading.refreshing}
-				<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+				<Loader2 class="mr-2 animate-spin size-4" />
 			{:else}
-				<RefreshCw class="h-4 w-4 mr-2" />
+				<RefreshCw class="mr-2 size-4" />
 			{/if}
 			Refresh
 		</Button>
@@ -144,7 +143,7 @@
 
 	{#if dashboardStates.error}
 		<Alert.Root variant="destructive">
-			<AlertCircle class="h-4 w-4 mr-2" />
+			<AlertCircle class="mr-2 size-4" />
 			<Alert.Title>Connection Error</Alert.Title>
 			<Alert.Description>
 				{dashboardStates.error} Please check your Docker connection in
@@ -172,11 +171,11 @@
 							</div>
 						</div>
 						<div class="bg-green-500/10 p-2 rounded-full">
-							<Box class="h-5 w-5 text-green-500" />
+							<Box class="text-green-500 size-5" />
 						</div>
 					</div>
 					{#if dashboardStates.containers?.length}
-						<Progress value={(runningContainers / dashboardStates.containers.length) * 100} class="h-1 mt-4" />
+						<Progress value={(runningContainers / dashboardStates.containers.length) * 100} class="mt-4 h-2" />
 					{/if}
 				</Card.Content>
 			</Card.Root>
@@ -189,7 +188,7 @@
 							<p class="text-2xl font-bold mt-1">{dashboardStates.dockerInfo?.Images || 0}</p>
 						</div>
 						<div class="bg-blue-500/10 p-2 rounded-full">
-							<HardDrive class="h-5 w-5 text-blue-500" />
+							<HardDrive class="text-blue-500 size-5" />
 						</div>
 					</div>
 					{#if totalImageSize > 0}
@@ -210,7 +209,7 @@
 							<p class="text-2xl font-bold mt-1">{dashboardStates.dockerInfo?.NCPU || 'N/A'}</p>
 						</div>
 						<div class="bg-purple-500/10 p-2 rounded-full">
-							<Cpu class="h-5 w-5 text-purple-500" />
+							<Cpu class="text-purple-500 size-5" />
 						</div>
 					</div>
 					<div class="mt-4 text-xs text-muted-foreground">
@@ -229,7 +228,7 @@
 							</p>
 						</div>
 						<div class="bg-amber-500/10 p-2 rounded-full">
-							<MemoryStick class="h-5 w-5 text-amber-500" />
+							<MemoryStick class="text-amber-500 size-5" />
 						</div>
 					</div>
 					<div class="mt-4 text-xs text-muted-foreground">
@@ -249,9 +248,9 @@
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
 				<Button onclick={handleStartAll} class="w-full" disabled={!dashboardStates.dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} variant="default">
 					{#if isLoading.starting}
-						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+						<Loader2 class="mr-2 animate-spin size-4" />
 					{:else}
-						<PlayCircle class="h-4 w-4 mr-2" />
+						<PlayCircle class="mr-2 size-4" />
 					{/if}
 					Start All Stopped
 					<StatusBadge variant="amber" text={stoppedContainers.toString()} />
@@ -262,9 +261,9 @@
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
 				<Button onclick={handleStopAll} class="w-full" variant="secondary" disabled={!dashboardStates.dockerInfo || runningContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}>
 					{#if isLoading.stopping}
-						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+						<Loader2 class="mr-2 animate-spin size-4" />
 					{:else}
-						<StopCircle class="h-4 w-4 mr-2" />
+						<StopCircle class="mr-2 size-4" />
 					{/if}
 					Stop All Running
 					<StatusBadge variant="amber" text={runningContainers.toString()} />
@@ -275,9 +274,9 @@
 			<Card.Root class="flex flex-col justify-center items-center p-5 h-full">
 				<Button onclick={() => (dashboardStates.isPruneDialogOpen = true)} class="w-full" variant="destructive" disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}>
 					{#if isLoading.pruning}
-						<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+						<Loader2 class="mr-2 animate-spin size-4" />
 					{:else}
-						<Trash2 class="h-4 w-4 mr-2" />
+						<Trash2 class="mr-2 size-4" />
 					{/if}
 					Prune System
 				</Button>
@@ -298,7 +297,7 @@
 						</div>
 						<Button variant="ghost" size="sm" href="/containers" disabled={!dashboardStates.dockerInfo}>
 							View All
-							<ArrowRight class="ml-2 h-4 w-4" />
+							<ArrowRight class="ml-2 size-4" />
 						</Button>
 					</div>
 				</Card.Header>
@@ -346,7 +345,7 @@
 						</div>
 					{:else if !dashboardStates.error}
 						<div class="flex flex-col items-center justify-center py-10 px-6 text-center">
-							<Box class="h-8 w-8 text-muted-foreground mb-2 opacity-40" />
+							<Box class="text-muted-foreground mb-2 opacity-40 size-8" />
 							<p class="text-sm text-muted-foreground">No containers found</p>
 							<p class="text-xs text-muted-foreground mt-1">Use Docker CLI or another tool to create containers</p>
 						</div>
@@ -363,7 +362,7 @@
 						</div>
 						<Button variant="ghost" size="sm" href="/images" disabled={!dashboardStates.dockerInfo}>
 							View All
-							<ArrowRight class="ml-2 h-4 w-4" />
+							<ArrowRight class="ml-2 size-4" />
 						</Button>
 					</div>
 				</Card.Header>
@@ -419,7 +418,7 @@
 						</div>
 					{:else if !dashboardStates.error}
 						<div class="flex flex-col items-center justify-center py-10 px-6 text-center">
-							<HardDrive class="h-8 w-8 text-muted-foreground mb-2 opacity-40" />
+							<HardDrive class="text-muted-foreground mb-2 opacity-40 size-8" />
 							<p class="text-sm text-muted-foreground">No images found</p>
 							<p class="text-xs text-muted-foreground mt-1">Pull images using Docker CLI or another tool</p>
 						</div>
@@ -433,12 +432,12 @@
 		<div class="flex justify-between items-center text-muted-foreground text-sm">
 			<div class="flex items-center">
 				<a href="/settings" class="hover:text-foreground transition-colors" title="Settings">
-					<Settings class="h-4 w-4" />
+					<Settings class="size-4" />
 					<span class="sr-only">Settings</span>
 				</a>
 				<span class="mx-2">•</span>
 				<a href="https://github.com/ofkm/arcane" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors" title="GitHub">
-					<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 fill-current">
+					<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="fill-current size-4">
 						<title>GitHub</title>
 						<path
 							d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"

@@ -1,51 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap');
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
 @config '../tailwind.config.ts';
 
-@layer base {
-	:root {
-		--background: 0 0% 100%;
-		--foreground: 224 71.4% 4.1%;
-		--card: 0 0% 100%;
-		--card-foreground: 224 71.4% 4.1%;
-		--popover: 0 0% 100%;
-		--popover-foreground: 224 71.4% 4.1%;
-		--primary: 262.1 83.3% 57.8%;
-		--primary-foreground: 210 20% 98%;
-		--secondary: 220 14.3% 95.9%;
-		--secondary-foreground: 220.9 39.3% 11%;
-		--muted: 220 14.3% 95.9%;
-		--muted-foreground: 220 8.9% 46.1%;
-		--accent: 220 14.3% 95.9%;
-		--accent-foreground: 220.9 39.3% 11%;
-		--destructive: 0 72.22% 50.59%;
-		--destructive-foreground: 210 20% 98%;
-		--border: 220 13% 91%;
-		--input: 220 13% 91%;
-		--ring: 262.1 83.3% 57.8%;
-		--radius: 1rem;
-	}
-	.dark {
-		--background: 224 71.4% 4.1%;
-		--foreground: 210 20% 98%;
-		--card: 224 71.4% 4.1%;
-		--card-foreground: 210 20% 98%;
-		--popover: 224 71.4% 4.1%;
-		--popover-foreground: 210 20% 98%;
-		--primary: 263.4 70% 50.4%;
-		--primary-foreground: 210 20% 98%;
-		--secondary: 215 27.9% 16.9%;
-		--secondary-foreground: 210 20% 98%;
-		--muted: 215 27.9% 16.9%;
-		--muted-foreground: 217.9 10.6% 64.9%;
-		--accent: 215 27.9% 16.9%;
-		--accent-foreground: 210 20% 98%;
-		--destructive: 0 62.8% 30.6%;
-		--destructive-foreground: 210 20% 98%;
-		--border: 215 27.9% 16.9%;
-		--input: 215 27.9% 16.9%;
-		--ring: 263.4 70% 50.4%;
-	}
+@theme {
+	--font-sans: 'Kantumruy Pro', sans-serif;
+}
+
+/* Move :root and .dark outside of @layer base with hsl() wrappers */
+:root {
+	--background: hsl(0 0% 100%);
+	--foreground: hsl(224 71.4% 4.1%);
+	--card: hsl(0 0% 100%);
+	--card-foreground: hsl(224 71.4% 4.1%);
+	--popover: hsl(0 0% 100%);
+	--popover-foreground: hsl(224 71.4% 4.1%);
+	--primary: hsl(262.1 83.3% 57.8%);
+	--primary-foreground: hsl(210 20% 98%);
+	--secondary: hsl(220 14.3% 95.9%);
+	--secondary-foreground: hsl(220.9 39.3% 11%);
+	--muted: hsl(220 14.3% 95.9%);
+	--muted-foreground: hsl(220 8.9% 46.1%);
+	--accent: hsl(220 14.3% 95.9%);
+	--accent-foreground: hsl(220.9 39.3% 11%);
+	--destructive: hsl(0 72.22% 50.59%);
+	--destructive-foreground: hsl(210 20% 98%);
+	--border: hsl(220 13% 91%);
+	--input: hsl(220 13% 91%);
+	--ring: hsl(262.1 83.3% 57.8%);
+	--radius: 1rem;
+}
+
+.dark {
+	--background: hsl(224 71.4% 4.1%);
+	--foreground: hsl(210 20% 98%);
+	--card: hsl(224 71.4% 4.1%);
+	--card-foreground: hsl(210 20% 98%);
+	--popover: hsl(224 71.4% 4.1%);
+	--popover-foreground: hsl(210 20% 98%);
+	--primary: hsl(263.4 70% 50.4%);
+	--primary-foreground: hsl(210 20% 98%);
+	--secondary: hsl(215 27.9% 16.9%);
+	--secondary-foreground: hsl(210 20% 98%);
+	--muted: hsl(215 27.9% 16.9%);
+	--muted-foreground: hsl(217.9 10.6% 64.9%);
+	--accent: hsl(215 27.9% 16.9%);
+	--accent-foreground: hsl(210 20% 98%);
+	--destructive: hsl(0 62.8% 30.6%);
+	--destructive-foreground: hsl(210 20% 98%);
+	--border: hsl(215 27.9% 16.9%);
+	--input: hsl(215 27.9% 16.9%);
+	--ring: hsl(263.4 70% 50.4%);
+}
+
+/* Add @theme inline block */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--radius: var(--radius);
 }
 
 @layer base {

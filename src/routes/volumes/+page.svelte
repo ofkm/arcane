@@ -145,7 +145,7 @@
 
 	{#if volumePageStates.error}
 		<Alert.Root variant="destructive">
-			<AlertCircle class="h-4 w-4 mr-2" />
+			<AlertCircle class="mr-2 size-4" />
 			<Alert.Title>Error Loading Volumes</Alert.Title>
 			<Alert.Description>{volumePageStates.error}</Alert.Description>
 		</Alert.Root>
@@ -159,7 +159,7 @@
 					<p class="text-2xl font-bold">{totalVolumes}</p>
 				</div>
 				<div class="bg-amber-500/10 p-2 rounded-full">
-					<Database class="h-5 w-5 text-amber-500" />
+					<Database class="text-amber-500 size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -171,7 +171,7 @@
 					<p class="text-2xl font-bold">local</p>
 				</div>
 				<div class="bg-blue-500/10 p-2 rounded-full">
-					<HardDrive class="h-5 w-5 text-blue-500" />
+					<HardDrive class="text-blue-500 size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -189,9 +189,9 @@
 						<DropdownMenu.Trigger>
 							{#snippet child({ props })}
 								<Button {...props} variant="outline">
-									<Funnel class="w-4 h-4" />
+									<Funnel class="size-4" />
 									Filter
-									<ChevronDown class="w-4 h-4" />
+									<ChevronDown class="size-4" />
 								</Button>
 							{/snippet}
 						</DropdownMenu.Trigger>
@@ -218,16 +218,16 @@
 					{#if volumePageStates.selectedIds.length > 0}
 						<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.remove}>
 							{#if isLoading.remove}
-								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+								<Loader2 class="mr-2 animate-spin size-4" />
 								Processing...
 							{:else}
-								<Trash2 class="w-4 h-4" />
+								<Trash2 class="size-4" />
 								Delete Selected
 							{/if}
 						</Button>
 					{/if}
 					<Button variant="secondary" onclick={() => (isDialogOpen.create = true)}>
-						<Plus class="w-4 h-4" />
+						<Plus class="size-4" />
 						Create Volume
 					</Button>
 				</div>
@@ -276,17 +276,17 @@
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
 										<DropdownMenu.Item onclick={() => goto(`/volumes/${encodeURIComponent(item.name)}`)} disabled={isLoading.remove}>
-											<ScanSearch class="w-4 h-4" />
+											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveVolumeConfirm(item.name)} disabled={isLoading.remove}>
+										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveVolumeConfirm(item.name)} disabled={isLoading.remove}>
 											{#if isLoading.remove}
-												<Loader2 class="w-4 h-4 animate-spin" />
+												<Loader2 class="animate-spin size-4" />
 											{:else}
-												<Trash2 class="w-4 h-4" />
+												<Trash2 class="size-4" />
 											{/if}
 											Delete
 										</DropdownMenu.Item>
@@ -298,7 +298,7 @@
 				</UniversalTable>
 			{:else if !volumePageStates.error}
 				<div class="flex flex-col items-center justify-center py-12 px-6 text-center">
-					<Database class="h-12 w-12 text-muted-foreground mb-4 opacity-40" />
+					<Database class="text-muted-foreground mb-4 opacity-40 size-12" />
 					<p class="text-lg font-medium">No volumes found</p>
 					<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new volume using the "Create Volume" button above or use the Docker CLI</p>
 				</div>

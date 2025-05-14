@@ -17,6 +17,24 @@ export default class ImageAPIService extends BaseAPIService {
 		return res.data;
 	}
 
+	async checkMaturity(id: string) {
+		// Change from POST to GET
+		const res = await this.api.get(`/images/${id}/maturity`);
+		return res.data;
+	}
+
+	async checkMaturityBatch(imageIds: string[]) {
+		// Use the first image ID for the endpoint URL
+		// This is a bit unusual, but following your requirement
+		if (!imageIds || imageIds.length === 0) {
+			throw new Error('No image IDs provided for batch check');
+		}
+
+		const firstId = imageIds[0];
+		const res = await this.api.post(`/images/${firstId}/maturity`, { imageIds });
+		return res.data;
+	}
+
 	async list() {
 		const res = await this.api.get('');
 		return res.data;

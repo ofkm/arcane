@@ -7,7 +7,8 @@
 	import { goto } from '$app/navigation';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { formatDate, formatBytes } from '$lib/utils';
+	import { formatDate } from '$lib/utils/string.utils';
+	import { formatBytes } from '$lib/utils/bytes.util';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -76,9 +77,9 @@
 		<div class="flex gap-2 flex-wrap">
 			<Button variant="destructive" size="sm" onclick={() => handleImageRemove(image.Id)} disabled={isLoading.removing}>
 				{#if isLoading.removing}
-					<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+					<Loader2 class="mr-2 animate-spin size-4" />
 				{:else}
-					<Trash2 class="h-4 w-4 mr-2" />
+					<Trash2 class="mr-2 size-4" />
 				{/if} Remove
 			</Button>
 		</div>
@@ -94,8 +95,8 @@
 					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 						<!-- ID -->
 						<div class="flex items-start gap-3">
-							<div class="bg-gray-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Hash class="h-5 w-5 text-gray-500" />
+							<div class="bg-gray-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Hash class="text-gray-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">ID</p>
@@ -105,8 +106,8 @@
 
 						<!-- Size -->
 						<div class="flex items-start gap-3">
-							<div class="bg-blue-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<HardDrive class="h-5 w-5 text-blue-500" />
+							<div class="bg-blue-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<HardDrive class="text-blue-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Size</p>
@@ -116,8 +117,8 @@
 
 						<!-- Created -->
 						<div class="flex items-start gap-3">
-							<div class="bg-green-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Clock class="h-5 w-5 text-green-500" />
+							<div class="bg-green-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Clock class="text-green-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Created</p>
@@ -127,8 +128,8 @@
 
 						<!-- Architecture -->
 						<div class="flex items-start gap-3">
-							<div class="bg-orange-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Cpu class="h-5 w-5 text-orange-500" />
+							<div class="bg-orange-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Cpu class="text-orange-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Architecture</p>
@@ -138,8 +139,8 @@
 
 						<!-- OS -->
 						<div class="flex items-start gap-3">
-							<div class="bg-indigo-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Layers class="h-5 w-5 text-indigo-500" />
+							<div class="bg-indigo-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Layers class="text-indigo-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">OS</p>
@@ -154,7 +155,7 @@
 			{#if image.RepoTags && image.RepoTags.length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
-						<Card.Title class="flex items-center gap-2"><Tag class="h-5 w-5 text-muted-foreground" /> Tags</Card.Title>
+						<Card.Title class="flex items-center gap-2"><Tag class="text-muted-foreground size-5" /> Tags</Card.Title>
 					</Card.Header>
 					<Card.Content>
 						<div class="flex flex-wrap gap-2">
@@ -190,7 +191,7 @@
 		<div class="text-center py-12">
 			<p class="text-lg font-medium text-muted-foreground">Image not found.</p>
 			<Button href="/images" variant="outline" size="sm" class="mt-4">
-				<ArrowLeft class="h-4 w-4 mr-2" /> Back to Images
+				<ArrowLeft class="mr-2 size-4" /> Back to Images
 			</Button>
 		</div>
 	{/if}

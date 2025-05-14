@@ -8,7 +8,7 @@
 </script>
 
 {#snippet Fallback()}
-	<ChevronRight class="h-4 w-4" />
+	<ChevronRight class="size-4" />
 {/snippet}
 
 <PaginationPrimitive.NextButton

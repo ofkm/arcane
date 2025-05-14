@@ -33,21 +33,21 @@
 			<div class="space-y-3">
 				<div class="flex items-start gap-3">
 					<div class="rounded-full bg-primary/10 p-1 mt-0.5">
-						<CheckCircle2 class="h-4 w-4 text-primary" />
+						<CheckCircle2 class="text-primary size-4" />
 					</div>
 					<p>Change the default admin password for security</p>
 				</div>
 
 				<div class="flex items-start gap-3">
 					<div class="rounded-full bg-primary/10 p-1 mt-0.5">
-						<CheckCircle2 class="h-4 w-4 text-primary" />
+						<CheckCircle2 class="text-primary size-4" />
 					</div>
 					<p>Configure your Docker connection</p>
 				</div>
 
 				<div class="flex items-start gap-3">
 					<div class="rounded-full bg-primary/10 p-1 mt-0.5">
-						<CheckCircle2 class="h-4 w-4 text-primary" />
+						<CheckCircle2 class="text-primary size-4" />
 					</div>
 					<p>Set basic application preferences</p>
 				</div>
@@ -58,9 +58,9 @@
 	</div>
 
 	<div class="flex justify-center pt-8">
-		<Button type="button" onclick={handleContinue} class="h-12 w-[80%] px-8 flex items-center gap-2">
+		<Button type="button" onclick={handleContinue} class="px-8 flex items-center gap-2 h-12 w-[80%]">
 			Continue
-			<ChevronRight class="h-4 w-4" />
+			<ChevronRight class="size-4" />
 		</Button>
 	</div>
 </div>

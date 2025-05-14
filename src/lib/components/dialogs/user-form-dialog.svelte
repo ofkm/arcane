@@ -127,10 +127,10 @@
 				<Button type="button" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
 				<Button type="submit" disabled={isLoading}>
 					{#if isLoading}
-						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+						<Loader2 class="mr-2 animate-spin size-4" />
 						Creating...
 					{:else}
-						<SubmitIcon class="mr-2 h-4 w-4" />
+						<SubmitIcon class="mr-2 size-4" />
 						{submitButtonText}
 					{/if}
 				</Button>

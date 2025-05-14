@@ -39,7 +39,8 @@ export const settingsStore = writable<Settings>({
 		sessionTimeout: 30,
 		passwordPolicy: 'strong',
 		rbacEnabled: false
-	}
+	},
+	maturityThresholdDays: 30
 });
 
 export function updateSettingsStore(serverData: Partial<Settings>) {

@@ -110,7 +110,7 @@
 
 	{#if error}
 		<Alert.Root class="mb-6" variant="destructive">
-			<AlertCircle class="h-4 w-4 mr-2" />
+			<AlertCircle class="mr-2 size-4" />
 			<Alert.Title>Error</Alert.Title>
 			<Alert.Description>{error}</Alert.Description>
 		</Alert.Root>
@@ -125,7 +125,7 @@
 			<Card.Content class="pt-0 pb-4">
 				<div class="space-y-3">
 					<Label for="dockerHost" class="text-base block mb-2">Docker Host</Label>
-					<Input id="dockerHost" bind:value={dockerHost} placeholder="unix:///var/run/docker.sock" class="h-12 px-4 bg-muted/10" />
+					<Input id="dockerHost" bind:value={dockerHost} placeholder="unix:///var/run/docker.sock" class="px-4 bg-muted/10 size-12" />
 					<p class="text-xs text-muted-foreground">
 						Examples: Unix: <code class="bg-muted/30 px-1 py-0.5 rounded">unix:///var/run/docker.sock</code>
 						Windows: <code class="bg-muted/30 px-1 py-0.5 rounded">npipe:////./pipe/docker_engine</code>
@@ -151,7 +151,7 @@
 				{#if pollingEnabled}
 					<div class="px-4">
 						<Label for="pollingInterval" class="text-base block mb-2">Polling Interval (minutes)</Label>
-						<Input id="pollingInterval" type="number" bind:value={pollingInterval} min="5" max="60" class="h-12 px-4 bg-muted/10" />
+						<Input id="pollingInterval" type="number" bind:value={pollingInterval} min="5" max="60" class="px-4 bg-muted/10 size-12" />
 						<p class="text-xs text-muted-foreground mt-1">Set between 5-60 minutes.</p>
 					</div>
 				{/if}
@@ -167,12 +167,12 @@
 		</Card.Root>
 
 		<div class="flex justify-center pt-4">
-			<Button type="submit" disabled={loading} class="h-12 px-8 w-[80%] flex items-center gap-2">
+			<Button type="submit" disabled={loading} class="px-8 flex items-center gap-2 size-12 size-[80%]">
 				{#if loading}
-					<span class="inline-block w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></span>
+					<span class="inline-block border-2 border-t-transparent border-white rounded-full animate-spin size-4"></span>
 				{/if}
 				Continue
-				<ChevronRight class="h-4 w-4" />
+				<ChevronRight class="size-4" />
 			</Button>
 		</div>
 	</form>

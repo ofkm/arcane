@@ -1,8 +1,100 @@
 import { getDockerClient, dockerHost } from './core';
 import type { ServiceImage } from '$lib/types/docker/image.type';
 import type Docker from 'dockerode';
-// Import custom errors
-import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors';
+import { NotFoundError, DockerApiError, RegistryRateLimitError, PublicRegistryError, PrivateRegistryError, ApiErrorCode } from '$lib/types/errors.type';
+import { parseImageNameForRegistry, areRegistriesEquivalent } from '$lib/utils/registry.utils';
+import { getSettings } from '$lib/services/settings-service';
+import { updateImageMaturity } from '$lib/stores/maturity-store';
+import { tryCatch } from '$lib/utils/try-catch';
+let maturityPollingInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Starts the maturity polling scheduler based on user settings
+ */
+export async function initMaturityPollingScheduler(): Promise<void> {
+	const settings = await getSettings();
+
+	// Clear any existing timer
+	if (maturityPollingInterval) {
+		clearInterval(maturityPollingInterval);
+		maturityPollingInterval = null;
+	}
+
+	// If polling is disabled, do nothing
+	if (!settings.pollingEnabled) {
+		console.log('Image maturity polling is disabled in settings');
+		return;
+	}
+
+	// Use the configured polling interval (default to 10 minutes if not set)
+	const intervalMinutes = settings.pollingInterval || 10;
+	const intervalMs = intervalMinutes * 60 * 1000;
+
+	console.log(`Starting image maturity polling with interval of ${intervalMinutes} minutes`);
+
+	// Schedule regular checks
+	maturityPollingInterval = setInterval(runMaturityChecks, intervalMs);
+}
+
+/**
+ * Stops the maturity polling scheduler
+ */
+export async function stopMaturityPollingScheduler(): Promise<void> {
+	if (maturityPollingInterval) {
+		clearInterval(maturityPollingInterval);
+		maturityPollingInterval = null;
+		console.log('Image maturity polling scheduler stopped');
+	}
+}
+
+/**
+ * Run maturity checks for all images
+ */
+async function runMaturityChecks(): Promise<void> {
+	console.log('Running scheduled image maturity checks...');
+
+	const imagesResult = await tryCatch(listImages());
+	if (imagesResult.error) {
+		console.error('Error during scheduled maturity check:', imagesResult.error);
+		return;
+	}
+
+	const images = imagesResult.data;
+	let checkedCount = 0;
+	let updatesFound = 0;
+
+	// Check each image for maturity info, with a small delay between checks
+	for (const image of images) {
+		// Skip images without proper tags
+		if (image.repo === '<none>' || image.tag === '<none>') {
+			continue;
+		}
+
+		const maturityResult = await tryCatch(checkImageMaturity(image.id));
+		const maturityInfo = maturityResult.data;
+
+		if (!maturityResult.error) {
+			checkedCount++;
+			if (maturityInfo?.updatesAvailable) {
+				updatesFound++;
+			}
+		}
+
+		// Small delay to avoid overwhelming registries
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	}
+
+	console.log(`Maturity check completed: Checked ${checkedCount} images, found ${updatesFound} updates`);
+
+	// Emit an event that the UI can listen to for updates
+	if (typeof window !== 'undefined') {
+		window.dispatchEvent(
+			new CustomEvent('maturity-check-complete', {
+				detail: { checkedCount, updatesFound }
+			})
+		);
+	}
+}
 
 /**
  * The function `listImages` retrieves a list of Docker images and parses their information into a
@@ -13,44 +105,50 @@ import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors'
  * from the Docker client and processed using the `parseRepoTag` function
  */
 export async function listImages(): Promise<ServiceImage[]> {
-	try {
-		const docker = await getDockerClient();
-		const images = await docker.listImages({ all: false });
-
-		const parseRepoTag = (tag: string | undefined): { repo: string; tag: string } => {
-			if (!tag || tag === '<none>:<none>') {
-				return { repo: '<none>', tag: '<none>' };
-			}
-			const withoutDigest = tag.split('@')[0];
-			const lastSlash = withoutDigest.lastIndexOf('/');
-			const lastColon = withoutDigest.lastIndexOf(':');
-			if (lastColon === -1 || lastColon < lastSlash) {
-				return { repo: withoutDigest, tag: 'latest' };
-			}
-			return {
-				repo: withoutDigest.substring(0, lastColon),
-				tag: withoutDigest.substring(lastColon + 1)
-			};
-		};
-
-		return images.map((img): ServiceImage => {
-			const { repo, tag } = parseRepoTag(img.RepoTags?.[0]);
-			return {
-				id: img.Id,
-				repoTags: img.RepoTags,
-				repoDigests: img.RepoDigests,
-				created: img.Created,
-				size: img.Size,
-				virtualSize: img.VirtualSize,
-				labels: img.Labels,
-				repo: repo,
-				tag: tag
-			};
-		});
-	} catch (error: any) {
-		console.error('Docker Service: Error listing images:', error);
+	const dockerClientResult = await tryCatch(getDockerClient());
+	if (dockerClientResult.error) {
 		throw new Error(`Failed to list Docker images using host "${dockerHost}".`);
 	}
+
+	const docker = dockerClientResult.data;
+	const imagesResult = await tryCatch(docker.listImages({ all: false }));
+
+	if (imagesResult.error) {
+		throw new Error(`Failed to list Docker images using host "${dockerHost}".`);
+	}
+
+	const images = imagesResult.data;
+
+	const parseRepoTag = (tag: string | undefined): { repo: string; tag: string } => {
+		if (!tag || tag === '<none>:<none>') {
+			return { repo: '<none>', tag: '<none>' };
+		}
+		const withoutDigest = tag.split('@')[0];
+		const lastSlash = withoutDigest.lastIndexOf('/');
+		const lastColon = withoutDigest.lastIndexOf(':');
+		if (lastColon === -1 || lastColon < lastSlash) {
+			return { repo: withoutDigest, tag: 'latest' };
+		}
+		return {
+			repo: withoutDigest.substring(0, lastColon),
+			tag: withoutDigest.substring(lastColon + 1)
+		};
+	};
+
+	return images.map((img): ServiceImage => {
+		const { repo, tag } = parseRepoTag(img.RepoTags?.[0]);
+		return {
+			id: img.Id,
+			repoTags: img.RepoTags,
+			repoDigests: img.RepoDigests,
+			created: img.Created,
+			size: img.Size,
+			virtualSize: img.VirtualSize,
+			labels: img.Labels,
+			repo: repo,
+			tag: tag
+		};
+	});
 }
 
 /**
@@ -61,19 +159,24 @@ export async function listImages(): Promise<ServiceImage[]> {
  * @throws {DockerApiError} For other errors during the Docker API interaction.
  */
 export async function getImage(imageId: string): Promise<Docker.ImageInspectInfo> {
-	try {
-		const docker = await getDockerClient();
-		const image = docker.getImage(imageId);
-		const inspectInfo = await image.inspect();
-		console.log(`Docker Service: Inspected image "${imageId}" successfully.`);
-		return inspectInfo;
-	} catch (error: any) {
-		console.error(`Docker Service: Error inspecting image "${imageId}":`, error);
+	const dockerResult = await tryCatch(getDockerClient());
+	if (dockerResult.error) {
+		throw new DockerApiError(`Failed to get Docker client: ${dockerResult.error.message}`, 500);
+	}
+
+	const docker = dockerResult.data;
+	const image = docker.getImage(imageId);
+
+	const inspectResult = await tryCatch(image.inspect());
+	if (inspectResult.error) {
+		const error = inspectResult.error as any;
 		if (error.statusCode === 404) {
 			throw new NotFoundError(`Image "${imageId}" not found.`);
 		}
 		throw new DockerApiError(`Failed to inspect image "${imageId}": ${error.message || 'Unknown Docker error'}`, error.statusCode);
 	}
+
+	return inspectResult.data;
 }
 
 /**
@@ -91,9 +194,7 @@ export async function removeImage(imageId: string, force: boolean = false): Prom
 		const docker = await getDockerClient();
 		const image = docker.getImage(imageId);
 		await image.remove({ force });
-		console.log(`Docker Service: Image "${imageId}" removed successfully.`);
 	} catch (error: any) {
-		console.error(`Docker Service: Error removing image "${imageId}":`, error);
 		if (error.statusCode === 409) {
 			throw new Error(`Image "${imageId}" is being used by a container. Use force option to remove.`);
 		}
@@ -118,7 +219,6 @@ export async function isImageInUse(imageId: string): Promise<boolean> {
 		// Look for containers using this image
 		return containers.some((container) => container.ImageID === imageId || container.Image === imageId);
 	} catch (error) {
-		console.error(`Error checking if image ${imageId} is in use:`, error);
 		// Default to assuming it's in use for safety
 		return true;
 	}
@@ -140,20 +240,14 @@ export async function pruneImages(mode: 'all' | 'dangling' = 'all'): Promise<{
 	try {
 		const docker = await getDockerClient();
 		const filterValue = mode === 'all' ? 'false' : 'true';
-		const logMessage = mode === 'all' ? 'Pruning all unused images (docker image prune -a)...' : 'Pruning dangling images (docker image prune)...';
-
-		console.log(`Docker Service: ${logMessage}`);
 
 		const pruneOptions = {
 			filters: { dangling: [filterValue] }
 		};
 
 		const result = await docker.pruneImages(pruneOptions); // Use the options object
-
-		console.log(`Docker Service: Image prune complete. Space reclaimed: ${result.SpaceReclaimed}`);
 		return result;
 	} catch (error: any) {
-		console.error('Docker Service: Error pruning images:', error);
 		throw new Error(`Failed to prune images using host "${dockerHost}". ${error.message || error.reason || ''}`);
 	}
 }
@@ -181,4 +275,617 @@ export async function pullImage(imageRef: string, platform?: string, authConfig?
 	}
 
 	await docker.pull(imageRef, pullOptions);
+}
+
+/**
+ * Checks if a newer version of an image is available in the registry
+ * and returns maturity information.
+ */
+export async function checkImageMaturity(imageId: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+	const imageResult = await tryCatch(getImage(imageId));
+	if (imageResult.error) {
+		console.warn(`checkImageMaturity: Failed to get image details for ${imageId}:`, imageResult.error);
+		updateImageMaturity(imageId, undefined); // Ensure store is cleared if image details fail
+		return undefined;
+	}
+
+	const imageDetails = imageResult.data;
+	const repoTag = imageDetails.RepoTags?.[0];
+
+	if (!repoTag || repoTag.includes('<none>')) {
+		updateImageMaturity(imageId, undefined);
+		return undefined;
+	}
+
+	const lastColon = repoTag.lastIndexOf(':');
+	if (lastColon === -1) {
+		updateImageMaturity(imageId, undefined);
+		return undefined;
+	}
+
+	const repository = repoTag.substring(0, lastColon);
+	const currentTag = repoTag.substring(lastColon + 1);
+
+	let localCreatedDate: Date | undefined = undefined;
+	if (imageDetails.Created) {
+		// Directly parse the ISO 8601 date string
+		const parsedDate = new Date(imageDetails.Created);
+		if (!isNaN(parsedDate.getTime())) {
+			localCreatedDate = parsedDate;
+		} else {
+			console.warn(`checkImageMaturity: Invalid Created date string for image ${imageId}: ${imageDetails.Created}`);
+		}
+	}
+
+	const registryInfoResult = await tryCatch(getRegistryInfo(repository, currentTag, localCreatedDate));
+	if (registryInfoResult.error) {
+		if (registryInfoResult.error instanceof RegistryRateLimitError) {
+			console.warn(`Registry rate limit hit for ${repository}:${currentTag}: ${registryInfoResult.error.message}`);
+		} else if (registryInfoResult.error instanceof PublicRegistryError || registryInfoResult.error instanceof PrivateRegistryError) {
+			console.warn(`Registry access error for ${repository}:${currentTag}: ${registryInfoResult.error.message}`);
+		} else {
+			console.error(`Error getting registry info for ${repository}:${currentTag}:`, registryInfoResult.error);
+		}
+		updateImageMaturity(imageId, undefined); // Clear maturity on error
+		return undefined;
+	}
+
+	const registryInfo = registryInfoResult.data;
+
+	updateImageMaturity(imageId, registryInfo);
+	return registryInfo;
+}
+
+/**
+ * Contacts the Docker registry to get latest version information
+ */
+async function getRegistryInfo(repository: string, currentTag: string, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+	try {
+		const { registry: registryDomain } = parseImageNameForRegistry(repository);
+
+		// Attempt 1: Try public registry first
+		try {
+			const publicMaturityInfo = await checkPublicRegistry(repository, registryDomain, currentTag, localCreatedDate);
+			if (publicMaturityInfo) {
+				return publicMaturityInfo;
+			}
+		} catch (error: any) {
+			if (error instanceof RegistryRateLimitError) {
+				// If public check hits a rate limit, re-throw immediately.
+				// It's unlikely trying private credentials for the same domain will bypass this.
+				throw error;
+			}
+			// For other PublicRegistryErrors (e.g., 401/403 on a public endpoint for a private image),
+			// or other general errors, log and proceed to try private credentials.
+			console.warn(`Public registry check failed for ${repository}:${currentTag} (will try private if configured): ${error.message}`);
+		}
+
+		// Attempt 2: Try private registries if configured
+		const settings = await getSettings();
+		if (settings.registryCredentials && settings.registryCredentials.length > 0) {
+			// Filter all credentials that match the current registry domain
+			const matchingCredentials = settings.registryCredentials.filter((cred) => areRegistriesEquivalent(cred.url, registryDomain));
+
+			if (matchingCredentials.length > 0) {
+				console.log(`Found ${matchingCredentials.length} potential private credential(s) for domain ${registryDomain} for image ${repository}:${currentTag}.`);
+			}
+
+			for (const credential of matchingCredentials) {
+				try {
+					console.log(`Attempting private registry check for ${repository}:${currentTag} using credential for URL: ${credential.url}`);
+					const privateMaturityInfo = await checkPrivateRegistry(repository, registryDomain, currentTag, credential, localCreatedDate);
+					if (privateMaturityInfo) {
+						// If a check with a credential succeeds, return the info
+						return privateMaturityInfo;
+					}
+					// If privateMaturityInfo is undefined but no error, it means the check was "successful"
+					// but no maturity info was determined (e.g. image/tag not found with these creds).
+					// We should continue to try other credentials if any.
+				} catch (error: any) {
+					if (error instanceof RegistryRateLimitError) {
+						// If a rate limit is hit with any private credential, re-throw.
+						console.warn(`Private registry check for ${repository}:${currentTag} hit rate limit with credential for ${credential.url}.`);
+						throw error;
+					} else if (error instanceof PrivateRegistryError) {
+						// Log specific private registry errors (like auth failure for *this* credential)
+						// and continue to the next credential.
+						console.warn(`Private registry check failed for ${repository}:${currentTag} with credential for ${credential.url}: ${error.message}. Trying next if available.`);
+					} else {
+						// For other unexpected errors during a specific private check, log and continue.
+						console.error(`Unexpected error during private registry check for ${repository}:${currentTag} with credential for ${credential.url}:`, error);
+					}
+				}
+			}
+		}
+		// If all attempts (public and all matching private credentials) fail to yield maturity info
+		return undefined;
+	} catch (error) {
+		// Catch errors re-thrown from within (like critical RateLimitErrors)
+		if (error instanceof RegistryRateLimitError || error instanceof PublicRegistryError || error instanceof PrivateRegistryError) {
+			// These are "expected" errors that should have been handled or logged appropriately above,
+			// but if they are re-thrown to here, it means we should stop processing for this image.
+			// The calling function (checkImageMaturity) will handle this.
+			throw error;
+		}
+		// For other unexpected errors in getRegistryInfo logic itself
+		console.error(`Unexpected error in getRegistryInfo for ${repository}:${currentTag}:`, error);
+		return undefined;
+	}
+}
+
+/**
+ * Check a public registry using Registry API v2
+ */
+async function checkPublicRegistry(repository: string, registryDomain: string, currentTag: string, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+	return checkRegistryV2(repository, registryDomain, currentTag, undefined, localCreatedDate);
+}
+
+/**
+ * Check a private registry using Registry API v2 with authentication
+ */
+async function checkPrivateRegistry(repository: string, registryDomain: string, currentTag: string, credentials: { username: string; password: string; url: string }, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+	const auth = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
+	return checkRegistryV2(repository, registryDomain, currentTag, auth, localCreatedDate);
+}
+
+/**
+ * Helper function to convert ghcr.io to docker.pkg.github.com
+ */
+function mapGitHubRegistry(domain: string): string {
+	return domain === 'ghcr.io' ? 'ghcr.io' : domain;
+}
+
+/**
+ * Check a registry using the Docker Registry HTTP API v2
+ */
+async function checkRegistryV2(repository: string, registryDomain: string, currentTag: string, auth?: string, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+	try {
+		const mappedDomain = mapGitHubRegistry(registryDomain);
+
+		const repoPath = repository.replace(`${registryDomain}/`, '');
+		const adjustedRepoPath = mappedDomain === 'docker.io' && !repoPath.includes('/') ? `library/${repoPath}` : repoPath;
+		const baseUrl = mappedDomain === 'docker.io' ? 'https://registry-1.docker.io' : `https://${mappedDomain}`;
+		const tagsUrl = `${baseUrl}/v2/${adjustedRepoPath}/tags/list`;
+
+		const headers: Record<string, string> = {
+			Accept: 'application/json'
+		};
+
+		if (auth) {
+			headers['Authorization'] = `Basic ${auth}`;
+		}
+
+		const tagsResponse = await fetch(tagsUrl, { headers });
+
+		if (tagsResponse.status === 401) {
+			const authHeader = tagsResponse.headers.get('WWW-Authenticate');
+			if (authHeader && authHeader.includes('Bearer')) {
+				const realm = authHeader.match(/realm="([^"]+)"/)?.[1];
+				const service = authHeader.match(/service="([^"]+)"/)?.[1];
+				const scope = authHeader.match(/scope="([^"]+)"/)?.[1];
+
+				if (realm) {
+					const tokenUrl = `${realm}?service=${service || ''}&scope=${scope || ''}`;
+
+					const tokenHeaders: Record<string, string> = {};
+					if (auth) {
+						tokenHeaders['Authorization'] = `Basic ${auth}`;
+					}
+
+					const tokenResponse = await fetch(tokenUrl, { headers: tokenHeaders });
+					if (!tokenResponse.ok) {
+						throw new PublicRegistryError(`Failed to authenticate with registry: ${tokenResponse.status}`, registryDomain, repository, tokenResponse.status);
+					}
+
+					const tokenData = await tokenResponse.json();
+					const token = tokenData.token || tokenData.access_token;
+
+					if (!token) {
+						throw new PublicRegistryError('Registry authentication failed - no token', registryDomain, repository);
+					}
+
+					headers['Authorization'] = `Bearer ${token}`;
+					const authenticatedResponse = await fetch(tagsUrl, { headers });
+
+					if (!authenticatedResponse.ok) {
+						throw new PublicRegistryError(`Registry API returned ${authenticatedResponse.status}`, registryDomain, repository, authenticatedResponse.status);
+					}
+					const tagsData = await authenticatedResponse.json();
+					return processTagsData(tagsData, repository, registryDomain, currentTag, headers, localCreatedDate);
+				}
+			}
+			throw new PublicRegistryError('Registry requires authentication', registryDomain, repository, 401);
+		}
+
+		if (!tagsResponse.ok) {
+			throw new PublicRegistryError(`Registry API returned ${tagsResponse.status}`, registryDomain, repository, tagsResponse.status);
+		}
+
+		const tagsData = await tagsResponse.json();
+		return processTagsData(tagsData, repository, registryDomain, currentTag, headers, localCreatedDate);
+	} catch (error: any) {
+		if (error instanceof PublicRegistryError || error instanceof PrivateRegistryError || error instanceof RegistryRateLimitError) {
+			throw error;
+		}
+		throw new PublicRegistryError(`Registry API error for ${repository}: ${error.message}`, registryDomain, repository);
+	}
+}
+
+/**
+ * Process tags data from the registry API
+ */
+async function processTagsData(tagsData: any, repository: string, registryDomain: string, currentTag: string, headers: Record<string, string>, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+	const tags = tagsData.tags || [];
+	if (!Array.isArray(tags)) {
+		console.warn(`processTagsData: tagsData.tags is not an array for ${repository}. Received:`, tagsData);
+		return undefined;
+	}
+	const { newerTags } = findNewerVersionsOfSameTag(tags, currentTag);
+
+	const settings = await getSettings();
+	const maturityThreshold = settings.maturityThresholdDays || 30;
+
+	const createMaturityObject = (version: string, dateSource: Date | { date: string; daysSince: number }, updatesAvailable: boolean): import('$lib/types/docker/image.type').ImageMaturity => {
+		let dateString: string;
+		let daysSince: number;
+		const dateFormatOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+
+		if (dateSource instanceof Date) {
+			if (isNaN(dateSource.getTime())) {
+				dateString = 'Invalid date';
+				daysSince = -1;
+			} else {
+				dateString = dateSource.toLocaleDateString(undefined, dateFormatOptions);
+				daysSince = getDaysSinceDate(dateSource);
+			}
+		} else {
+			dateString = dateSource.date;
+			daysSince = dateSource.daysSince;
+		}
+
+		const status: import('$lib/types/docker/image.type').ImageMaturity['status'] = daysSince === -1 || dateString === 'Invalid date' || dateString === 'Unknown date' ? 'Unknown' : daysSince > maturityThreshold ? 'Matured' : 'Not Matured';
+
+		return {
+			version,
+			date: dateString,
+			status,
+			updatesAvailable
+		};
+	};
+
+	if (newerTags.length > 0) {
+		const newestTag = newerTags[0];
+		try {
+			const dateInfoFromRegistry = await getImageCreationDate(repository, registryDomain, newestTag, headers);
+			return createMaturityObject(newestTag, dateInfoFromRegistry, true);
+		} catch (error) {
+			console.error(`Failed to get creation date from registry for newer tag ${repository}:${newestTag}:`, error);
+			return createMaturityObject(newestTag, { date: 'Unknown date', daysSince: -1 }, true);
+		}
+	} else {
+		if (localCreatedDate) {
+			return createMaturityObject(currentTag, localCreatedDate, false);
+		} else {
+			try {
+				const dateInfoFromRegistry = await getImageCreationDate(repository, registryDomain, currentTag, headers);
+				return createMaturityObject(currentTag, dateInfoFromRegistry, false);
+			} catch (error) {
+				console.error(`Failed to get creation date from registry for current tag ${repository}:${currentTag}:`, error);
+				return createMaturityObject(currentTag, { date: 'Unknown date', daysSince: -1 }, false);
+			}
+		}
+	}
+}
+
+/**
+ * Helper function to get image creation date from registry
+ */
+async function getImageCreationDate(repository: string, registryDomain: string, tag: string, headers: Record<string, string>): Promise<{ date: string; daysSince: number }> {
+	const mappedDomain = mapGitHubRegistry(registryDomain);
+
+	const baseUrl = mappedDomain === 'docker.io' ? 'https://registry-1.docker.io' : `https://${mappedDomain}`;
+	const repoPath = repository.replace(`${registryDomain}/`, '');
+	const adjustedRepoPath = mappedDomain === 'docker.io' && !repoPath.includes('/') ? `library/${repoPath}` : repoPath;
+
+	const manifestUrl = `${baseUrl}/v2/${adjustedRepoPath}/manifests/${tag}`;
+
+	const manifestResult = await tryCatch(
+		fetch(manifestUrl, {
+			headers: {
+				...headers,
+				Accept: 'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.oci.image.index.v1+json'
+			}
+		})
+	);
+
+	if (manifestResult.error || !manifestResult.data.ok) {
+		if (registryDomain === 'docker.io' || registryDomain === 'registry-1.docker.io') {
+			const dockerHubResult = await tryCatch(getDockerHubCreationDate(repoPath, tag));
+			if (!dockerHubResult.error) {
+				return dockerHubResult.data;
+			}
+		}
+
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const manifestResponse = manifestResult.data;
+	const manifestDataResult = await tryCatch(manifestResponse.json());
+
+	if (manifestDataResult.error) {
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const manifest = manifestDataResult.data;
+
+	if (manifest.annotations && manifest.annotations['org.opencontainers.image.created']) {
+		const createdDate = new Date(manifest.annotations['org.opencontainers.image.created']);
+
+		if (!isNaN(createdDate.getTime())) {
+			const daysSince = getDaysSinceDate(createdDate);
+			const dateFormatOptions: Intl.DateTimeFormatOptions = {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric'
+			};
+
+			return {
+				date: createdDate.toLocaleDateString(undefined, dateFormatOptions),
+				daysSince: daysSince
+			};
+		}
+	}
+
+	if (manifest.manifests && Array.isArray(manifest.manifests)) {
+		for (const descriptor of manifest.manifests) {
+			if (descriptor.annotations && descriptor.annotations['org.opencontainers.image.created']) {
+				const createdDate = new Date(descriptor.annotations['org.opencontainers.image.created']);
+
+				if (!isNaN(createdDate.getTime())) {
+					const daysSince = getDaysSinceDate(createdDate);
+					const dateFormatOptions: Intl.DateTimeFormatOptions = {
+						year: 'numeric',
+						month: 'short',
+						day: 'numeric'
+					};
+
+					return {
+						date: createdDate.toLocaleDateString(undefined, dateFormatOptions),
+						daysSince: daysSince
+					};
+				}
+			}
+		}
+	}
+
+	const configDigest = manifest.config?.digest;
+
+	if (!configDigest) {
+		if (registryDomain === 'docker.io' || registryDomain === 'registry-1.docker.io') {
+			const dockerHubResult = await tryCatch(getDockerHubCreationDate(repoPath, tag));
+			if (!dockerHubResult.error) {
+				return dockerHubResult.data;
+			}
+		}
+
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const configUrl = `${baseUrl}/v2/${adjustedRepoPath}/blobs/${configDigest}`;
+	const configResult = await tryCatch(fetch(configUrl, { headers }));
+
+	if (configResult.error || !configResult.data.ok) {
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const configResponse = configResult.data;
+	const configDataResult = await tryCatch(configResponse.json());
+
+	if (configDataResult.error) {
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const configData = configDataResult.data;
+
+	if (configData.created) {
+		const creationDate = new Date(configData.created);
+
+		if (!isNaN(creationDate.getTime())) {
+			const daysSince = getDaysSinceDate(creationDate);
+			const dateFormatOptions: Intl.DateTimeFormatOptions = {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric'
+			};
+
+			return {
+				date: creationDate.toLocaleDateString(undefined, dateFormatOptions),
+				daysSince: daysSince
+			};
+		}
+	}
+
+	if (configData.config && configData.config.Labels && configData.config.Labels['org.opencontainers.image.created']) {
+		const labelDate = new Date(configData.config.Labels['org.opencontainers.image.created']);
+
+		if (!isNaN(labelDate.getTime())) {
+			const daysSince = getDaysSinceDate(labelDate);
+			const dateFormatOptions: Intl.DateTimeFormatOptions = {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric'
+			};
+
+			return {
+				date: labelDate.toLocaleDateString(undefined, dateFormatOptions),
+				daysSince: daysSince
+			};
+		}
+	}
+
+	if (registryDomain === 'docker.io' || registryDomain === 'registry-1.docker.io') {
+		const dockerHubResult = await tryCatch(getDockerHubCreationDate(repoPath, tag));
+		if (!dockerHubResult.error) {
+			return dockerHubResult.data;
+		}
+	}
+
+	return {
+		date: 'Unknown date',
+		daysSince: -1
+	};
+}
+
+/**
+ * Fallback to get image creation date from Docker Hub API
+ */
+async function getDockerHubCreationDate(repository: string, tag: string): Promise<{ date: string; daysSince: number }> {
+	const repoPath = repository.startsWith('library/') ? repository.substring(8) : repository;
+	const url = `https://hub.docker.com/v2/repositories/${repoPath}/tags/${tag}`;
+
+	const responseResult = await tryCatch(fetch(url));
+	if (responseResult.error || !responseResult.data.ok) {
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const response = responseResult.data;
+	const dataResult = await tryCatch(response.json());
+
+	if (dataResult.error || !dataResult.data.last_updated) {
+		return {
+			date: 'Unknown date',
+			daysSince: -1
+		};
+	}
+
+	const data = dataResult.data;
+	const creationDate = new Date(data.last_updated);
+	const daysSince = getDaysSinceDate(creationDate);
+
+	const dateFormatOptions: Intl.DateTimeFormatOptions = {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric'
+	};
+
+	return {
+		date: creationDate.toLocaleDateString(undefined, dateFormatOptions),
+		daysSince: daysSince
+	};
+}
+
+/**
+ * Get the tag pattern for semantic comparison between tags
+ * This allows comparing similar versions while avoiding unrelated tags
+ */
+function getTagPattern(tag: string): { pattern: string; version: string | null } {
+	const exactMatchTags = ['latest', 'stable', 'unstable', 'dev', 'devel', 'development', 'test', 'testing', 'prod', 'production', 'main', 'master', 'stage', 'staging', 'canary', 'nightly', 'edge', 'next', 'private-registries', 'data-path', 'env-fix', 'oidc'];
+
+	const versionMatch = tag.match(/(\d+(?:\.\d+)*)/);
+	const version = versionMatch ? versionMatch[1] : null;
+
+	const prefixMatch = tag.match(/^([a-z][\w-]*?)[\.-]?\d/i);
+	const prefix = prefixMatch ? prefixMatch[1] : null;
+
+	if (exactMatchTags.includes(tag)) {
+		return { pattern: tag, version: null };
+	} else if (prefix && version) {
+		return { pattern: prefix, version };
+	} else if (version) {
+		const majorVersion = version.split('.')[0];
+		return { pattern: majorVersion, version };
+	} else {
+		return { pattern: tag, version: null };
+	}
+}
+
+/**
+ * Find newer versions of similar tags
+ */
+function findNewerVersionsOfSameTag(allTags: string[], currentTag: string): { newerTags: string[]; isSpecialTag: boolean } {
+	const { pattern, version } = getTagPattern(currentTag);
+
+	if (!version) {
+		const exactMatches = allTags.filter((tag) => tag === currentTag);
+
+		if (exactMatches.length > 0) {
+			return { newerTags: [], isSpecialTag: true };
+		}
+
+		const specialTags = ['latest', 'stable', 'development', 'main', 'master'];
+		const alternatives = allTags.filter((tag) => specialTags.includes(tag));
+
+		if (alternatives.length > 0) {
+			return { newerTags: alternatives, isSpecialTag: true };
+		}
+
+		return { newerTags: [], isSpecialTag: true };
+	}
+
+	const similarTags = allTags
+		.filter((tag) => {
+			const tagInfo = getTagPattern(tag);
+			return tagInfo.pattern === pattern && tagInfo.version;
+		})
+		.filter((tag) => tag !== currentTag);
+
+	const sortedTags = sortTagsByVersion([currentTag, ...similarTags]);
+	const newerTags = sortedTags.filter((tag) => tag !== currentTag);
+
+	return { newerTags, isSpecialTag: false };
+}
+
+/**
+ * Sort tags by their semantic version
+ */
+function sortTagsByVersion(tags: string[]): string[] {
+	return [...tags].sort((a, b) => {
+		const getVersionParts = (tag: string) => {
+			const verMatch = tag.match(/(\d+(?:\.\d+)*)/);
+			if (!verMatch) return [0];
+
+			return verMatch[1].split('.').map(Number);
+		};
+
+		const aVer = getVersionParts(a);
+		const bVer = getVersionParts(b);
+
+		for (let i = 0; i < Math.max(aVer.length, bVer.length); i++) {
+			const aNum = aVer[i] || 0;
+			const bNum = bVer[i] || 0;
+
+			if (aNum !== bNum) {
+				return bNum - aNum;
+			}
+		}
+
+		return b.localeCompare(a);
+	});
+}
+
+/**
+ * Calculates days between now and a given date
+ */
+function getDaysSinceDate(date: Date): number {
+	const now = new Date();
+	const diffTime = Math.abs(now.getTime() - date.getTime());
+	return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }

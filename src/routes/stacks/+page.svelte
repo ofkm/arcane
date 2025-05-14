@@ -158,7 +158,7 @@
 
 	{#if data.error}
 		<Alert.Root variant="destructive">
-			<AlertCircle class="h-4 w-4" />
+			<AlertCircle class="size-4" />
 			<Alert.Title>Error Loading Stacks</Alert.Title>
 			<Alert.Description>{data.error}</Alert.Description>
 		</Alert.Root>
@@ -172,7 +172,7 @@
 					<p class="text-2xl font-bold">{totalStacks}</p>
 				</div>
 				<div class="bg-primary/10 p-2 rounded-full">
-					<FileStack class="h-5 w-5 text-primary" />
+					<FileStack class="text-primary size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -184,7 +184,7 @@
 					<p class="text-2xl font-bold">{runningStacks}</p>
 				</div>
 				<div class="bg-green-500/10 p-2 rounded-full">
-					<Layers class="h-5 w-5 text-green-500" />
+					<Layers class="text-green-500 size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -196,7 +196,7 @@
 					<p class="text-2xl font-bold">{partialStacks}</p>
 				</div>
 				<div class="bg-amber-500/10 p-2 rounded-full">
-					<Layers class="h-5 w-5 text-amber-500" />
+					<Layers class="text-amber-500 size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -211,7 +211,7 @@
 				</div>
 				<div class="flex items-center gap-2">
 					<Button variant="secondary" onclick={() => goto(`/stacks/new`)}>
-						<Plus class="w-4 h-4" />
+						<Plus class="size-4" />
 						Create Stack
 					</Button>
 				</div>
@@ -250,7 +250,7 @@
 									</a>
 									{#if item.isLegacy}
 										<span title="This stack uses the legacy layout. Migrate to the new layout from the dropdown menu." class="ml-1 flex items-center" style="filter: drop-shadow(0 0 4px #fbbf24);">
-											<AlertCircle class="w-4 h-4 text-amber-400 animate-pulse" />
+											<AlertCircle class="text-amber-400 animate-pulse size-4" />
 										</span>
 									{/if}
 								</div>
@@ -264,9 +264,9 @@
 							{#if item.isExternal}
 								<Button onclick={() => handleImportStack(item.id, item.name)} variant="outline" title="Import Stack to Arcane" disabled={isLoading.import} class="flex items-center">
 									{#if isLoading.import}
-										<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+										<Loader2 class="mr-2 animate-spin size-4" />
 									{:else}
-										<Import class="h-4 w-4 mr-2" />
+										<Import class="mr-2 size-4" />
 									{/if}
 									Import
 								</Button>
@@ -283,34 +283,34 @@
 									<DropdownMenu.Content align="end">
 										<DropdownMenu.Group>
 											<DropdownMenu.Item onclick={() => goto(`/stacks/${item.id}`)} disabled={isAnyLoading}>
-												<Pen class="w-4 h-4" />
+												<Pen class="size-4" />
 												Edit
 											</DropdownMenu.Item>
 
 											{#if item.status !== 'running'}
 												<DropdownMenu.Item onclick={() => performStackAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
 													{#if isLoading.start}
-														<Loader2 class="w-4 h-4 animate-spin" />
+														<Loader2 class="animate-spin size-4" />
 													{:else}
-														<Play class="w-4 h-4" />
+														<Play class="size-4" />
 													{/if}
 													Start
 												</DropdownMenu.Item>
 											{:else}
 												<DropdownMenu.Item onclick={() => performStackAction('restart', item.id)} disabled={isLoading.restart || isAnyLoading}>
 													{#if isLoading.restart}
-														<Loader2 class="w-4 h-4 animate-spin" />
+														<Loader2 class="animate-spin size-4" />
 													{:else}
-														<RotateCcw class="w-4 h-4" />
+														<RotateCcw class="size-4" />
 													{/if}
 													Restart
 												</DropdownMenu.Item>
 
 												<DropdownMenu.Item onclick={() => performStackAction('stop', item.id)} disabled={isLoading.stop || isAnyLoading}>
 													{#if isLoading.stop}
-														<Loader2 class="w-4 h-4 animate-spin" />
+														<Loader2 class="animate-spin size-4" />
 													{:else}
-														<StopCircle class="w-4 h-4" />
+														<StopCircle class="size-4" />
 													{/if}
 													Stop
 												</DropdownMenu.Item>
@@ -319,7 +319,7 @@
 											{#if item.isLegacy}
 												<DropdownMenu.Item onclick={() => performStackAction('migrate', item.id)} class="text-amber-600 hover:text-amber-800 flex items-center">
 													<span title="This stack uses the legacy layout. Migrate to the new layout." class="mr-2 flex items-center">
-														<AlertCircle class="w-4 h-4 text-amber-500" />
+														<AlertCircle class="text-amber-500 size-4" />
 													</span>
 													Migrate
 												</DropdownMenu.Item>
@@ -327,11 +327,11 @@
 
 											<DropdownMenu.Separator />
 
-											<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => performStackAction('destroy', item.id)} disabled={isLoading.remove || isAnyLoading}>
+											<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => performStackAction('destroy', item.id)} disabled={isLoading.remove || isAnyLoading}>
 												{#if isLoading.remove}
-													<Loader2 class="w-4 h-4 animate-spin" />
+													<Loader2 class="animate-spin size-4" />
 												{:else}
-													<Trash2 class="w-4 h-4" />
+													<Trash2 class="size-4" />
 												{/if}
 												Destroy
 											</DropdownMenu.Item>
@@ -344,7 +344,7 @@
 				</UniversalTable>
 			{:else if !data.error}
 				<div class="flex flex-col items-center justify-center py-12 px-6 text-center">
-					<FileStack class="h-12 w-12 text-muted-foreground mb-4 opacity-40" />
+					<FileStack class="text-muted-foreground mb-4 opacity-40 size-12" />
 					<p class="text-lg font-medium">No stacks found</p>
 					<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new stack using the "Create Stack" button above or import an existing compose file</p>
 				</div>

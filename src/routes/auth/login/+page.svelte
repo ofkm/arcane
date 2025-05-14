@@ -35,7 +35,7 @@
 
 <div class="flex max-h-screen flex-col justify-center my-auto py-12 sm:px-6 lg:px-8">
 	<div class="mx-auto w-full max-w-md">
-		<img class="h-40 w-auto mx-auto" src="/img/arcane.png" alt="Arcane" />
+		<img class="w-auto mx-auto size-40" src="/img/arcane.png" alt="Arcane" />
 		<h2 class="mt-2 text-center text-2xl font-bold leading-9 tracking-tight">Sign in to Arcane</h2>
 	</div>
 
@@ -43,7 +43,7 @@
 		<div class="bg-card px-6 py-5 shadow sm:rounded-lg sm:px-12">
 			{#if data.error}
 				<Alert.Root class="mb-4" variant="destructive">
-					<AlertCircle class="h-4 w-4 mr-2" />
+					<AlertCircle class="mr-2 size-4" />
 					<Alert.Title>Login Problem</Alert.Title>
 					<Alert.Description>
 						{#if data.error === 'oidc_invalid_response'}
@@ -68,7 +68,7 @@
 			{/if}
 			{#if form?.error}
 				<Alert.Root class="mb-4" variant="destructive">
-					<AlertCircle class="h-4 w-4 mr-2" />
+					<AlertCircle class="mr-2 size-4" />
 					<Alert.Title>Authentication Failed</Alert.Title>
 					<Alert.Description>{form.error}</Alert.Description>
 				</Alert.Root>
@@ -76,7 +76,7 @@
 
 			{#if !showLocalLoginForm && !showOidcLoginButton}
 				<Alert.Root variant="destructive">
-					<AlertCircle class="h-4 w-4 mr-2" />
+					<AlertCircle class="mr-2 size-4" />
 					<Alert.Title>No Login Methods Configured</Alert.Title>
 					<Alert.Description>There are currently no login methods enabled. Please contact an administrator.</Alert.Description>
 				</Alert.Root>
@@ -142,7 +142,7 @@
 			{#if showOidcLoginButton}
 				<div class="mt-6 {showLocalLoginForm ? '' : 'pt-0'}">
 					<Button onclick={handleOidcLogin} variant="outline" class="w-full">
-						<LogIn class="mr-2 h-4 w-4" />
+						<LogIn class="mr-2 size-4" />
 						Sign in with OIDC Provider
 					</Button>
 				</div>

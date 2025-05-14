@@ -16,7 +16,7 @@
 		<Card.Header class="pb-3">
 			<div class="flex items-center gap-2">
 				<div class="bg-gray-500/10 p-2 rounded-full">
-					<Key class="h-5 w-5 text-gray-500" />
+					<Key class="text-gray-500 size-5" />
 				</div>
 				<div>
 					<Card.Title>Additional Services</Card.Title>

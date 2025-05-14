@@ -152,7 +152,7 @@
 				{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
 					<Table.Row>
 						{#if enableSelection}
-							<Table.Head class="w-12">
+							<Table.Head class="size-12">
 								<Checkbox checked={allRowsSelected} onCheckedChange={(checked) => table.toggleAllPageRowsSelected(!!checked)} />
 							</Table.Head>
 						{/if}
@@ -181,7 +181,7 @@
 						{@const isDisabled = 'isExternal' in row.original && !!row.original.isExternal}
 						<Table.Row data-state={row.getIsSelected() && 'selected'}>
 							{#if enableSelection}
-								<Table.Cell class="w-12">
+								<Table.Cell class="size-12">
 									<Checkbox
 										checked={row.getIsSelected()}
 										disabled={isDisabled}
@@ -208,7 +208,7 @@
 					{/each}
 				{:else}
 					<Table.Row>
-						<Table.Cell colspan={enableSelection ? columns.length + 1 : columns.length} class="h-24 text-center">
+						<Table.Cell colspan={enableSelection ? columns.length + 1 : columns.length} class="text-center size-24">
 							{noResultsMessage}
 						</Table.Cell>
 					</Table.Row>

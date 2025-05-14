@@ -8,7 +8,7 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { formatDate } from '$lib/utils';
+	import { formatDate } from '$lib/utils/string.utils';
 	import type { NetworkInspectInfo } from 'dockerode';
 	import { toast } from 'svelte-sonner';
 
@@ -54,7 +54,7 @@
 					{network?.Name || 'Network Details'}
 				</h1>
 				{#if inUse}
-					<Badge variant="outline"><Container class="h-3 w-3 mr-1" /> In Use</Badge>
+					<Badge variant="outline"><Container class="mr-1 size-3" /> In Use</Badge>
 				{/if}
 				{#if isPredefined}
 					<Badge variant="secondary">Predefined</Badge>
@@ -66,9 +66,9 @@
 			<!-- Remove Button triggers dialog -->
 			<Button variant="destructive" size="sm" onclick={triggerRemove} disabled={isRemoving || isPredefined} title={isPredefined ? 'Cannot remove predefined networks' : ''}>
 				{#if isRemoving}
-					<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+					<Loader2 class="mr-2 animate-spin size-4" />
 				{:else}
-					<Trash2 class="h-4 w-4 mr-2" />
+					<Trash2 class="mr-2 size-4" />
 				{/if} Remove
 			</Button>
 			<!-- Hidden form for removal action -->
@@ -95,7 +95,7 @@
 	<!-- Error Alert -->
 	{#if form?.error}
 		<Alert.Root variant="destructive">
-			<AlertCircle class="h-4 w-4 mr-2" />
+			<AlertCircle class="mr-2 size-4" />
 			<Alert.Title>Action Failed</Alert.Title>
 			<Alert.Description>{form.error}</Alert.Description>
 		</Alert.Root>
@@ -112,8 +112,8 @@
 					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 						<!-- ID -->
 						<div class="flex items-start gap-3">
-							<div class="bg-gray-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Hash class="h-5 w-5 text-gray-500" />
+							<div class="bg-gray-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Hash class="text-gray-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">ID</p>
@@ -123,8 +123,8 @@
 
 						<!-- Name -->
 						<div class="flex items-start gap-3">
-							<div class="bg-blue-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Network class="h-5 w-5 text-blue-500" />
+							<div class="bg-blue-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Network class="text-blue-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Name</p>
@@ -134,8 +134,8 @@
 
 						<!-- Driver -->
 						<div class="flex items-start gap-3">
-							<div class="bg-orange-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<HardDrive class="h-5 w-5 text-orange-500" />
+							<div class="bg-orange-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<HardDrive class="text-orange-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Driver</p>
@@ -145,8 +145,8 @@
 
 						<!-- Scope -->
 						<div class="flex items-start gap-3">
-							<div class="bg-purple-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Globe class="h-5 w-5 text-purple-500" />
+							<div class="bg-purple-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Globe class="text-purple-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Scope</p>
@@ -156,8 +156,8 @@
 
 						<!-- Created -->
 						<div class="flex items-start gap-3">
-							<div class="bg-green-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Clock class="h-5 w-5 text-green-500" />
+							<div class="bg-green-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Clock class="text-green-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Created</p>
@@ -167,8 +167,8 @@
 
 						<!-- Attachable -->
 						<div class="flex items-start gap-3">
-							<div class="bg-yellow-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Layers class="h-5 w-5 text-yellow-500" />
+							<div class="bg-yellow-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Layers class="text-yellow-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Attachable</p>
@@ -178,8 +178,8 @@
 
 						<!-- Internal -->
 						<div class="flex items-start gap-3">
-							<div class="bg-red-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Settings class="h-5 w-5 text-red-500" />
+							<div class="bg-red-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Settings class="text-red-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Internal</p>
@@ -189,8 +189,8 @@
 
 						<!-- EnableIPv6 -->
 						<div class="flex items-start gap-3">
-							<div class="bg-indigo-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<ListTree class="h-5 w-5 text-indigo-500" />
+							<div class="bg-indigo-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<ListTree class="text-indigo-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">IPv6 Enabled</p>
@@ -249,7 +249,7 @@
 			{#if connectedContainers.length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
-						<Card.Title class="flex items-center gap-2"><Container class="h-5 w-5 text-muted-foreground" /> Connected Containers ({connectedContainers.length})</Card.Title>
+						<Card.Title class="flex items-center gap-2"><Container class="text-muted-foreground size-5" /> Connected Containers ({connectedContainers.length})</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
 						{#each connectedContainers as container (container.Name)}
@@ -273,7 +273,7 @@
 			{#if network.Labels && Object.keys(network.Labels).length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
-						<Card.Title class="flex items-center gap-2"><Tag class="h-5 w-5 text-muted-foreground" /> Labels</Card.Title>
+						<Card.Title class="flex items-center gap-2"><Tag class="text-muted-foreground size-5" /> Labels</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
 						{#each Object.entries(network.Labels) as [key, value] (key)}
@@ -314,7 +314,7 @@
 		<div class="text-center py-12">
 			<p class="text-lg font-medium text-muted-foreground">Network not found.</p>
 			<Button href="/networks" variant="outline" size="sm" class="mt-4">
-				<ArrowLeft class="h-4 w-4 mr-2" /> Back to Networks
+				<ArrowLeft class="mr-2 size-4" /> Back to Networks
 			</Button>
 		</div>
 	{/if}

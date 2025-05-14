@@ -9,7 +9,7 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { formatDate } from '$lib/utils';
+	import { formatDate } from '$lib/utils/string.utils';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let { volume, inUse } = $derived(data);
@@ -53,7 +53,7 @@
 					{volume?.Name || 'Volume Details'}
 				</h1>
 				{#if inUse}
-					<Badge variant="outline"><Info class="h-3 w-3 mr-1" /> In Use</Badge>
+					<Badge variant="outline"><Info class="mr-1 size-3" /> In Use</Badge>
 				{/if}
 			</div>
 		</div>
@@ -64,9 +64,9 @@
 			</Button>
 			<Button variant="destructive" size="sm" onclick={triggerRemove} disabled={isRemoving}>
 				{#if isRemoving}
-					<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+					<Loader2 class="mr-2 animate-spin size-4" />
 				{:else}
-					<Trash2 class="h-4 w-4 mr-2" />
+					<Trash2 class="mr-2 size-4" />
 				{/if} Remove
 			</Button>
 			<form
@@ -89,7 +89,7 @@
 
 	{#if form?.error}
 		<Alert.Root variant="destructive">
-			<AlertCircle class="h-4 w-4 mr-2" />
+			<AlertCircle class="mr-2 size-4" />
 			<Alert.Title>Action Failed</Alert.Title>
 			<Alert.Description>{form.error}</Alert.Description>
 		</Alert.Root>
@@ -104,8 +104,8 @@
 				<Card.Content>
 					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 						<div class="flex items-start gap-3">
-							<div class="bg-gray-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Database class="h-5 w-5 text-gray-500" />
+							<div class="bg-gray-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Database class="text-gray-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Name</p>
@@ -114,8 +114,8 @@
 						</div>
 
 						<div class="flex items-start gap-3">
-							<div class="bg-blue-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<HardDrive class="h-5 w-5 text-blue-500" />
+							<div class="bg-blue-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<HardDrive class="text-blue-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Driver</p>
@@ -124,8 +124,8 @@
 						</div>
 
 						<div class="flex items-start gap-3">
-							<div class="bg-green-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Clock class="h-5 w-5 text-green-500" />
+							<div class="bg-green-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Clock class="text-green-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Created</p>
@@ -134,8 +134,8 @@
 						</div>
 
 						<div class="flex items-start gap-3">
-							<div class="bg-purple-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Globe class="h-5 w-5 text-purple-500" />
+							<div class="bg-purple-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Globe class="text-purple-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Scope</p>
@@ -144,8 +144,8 @@
 						</div>
 
 						<div class="flex items-start gap-3 col-span-1 sm:col-span-2">
-							<div class="bg-teal-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-								<Layers class="h-5 w-5 text-teal-500" />
+							<div class="bg-teal-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+								<Layers class="text-teal-500 size-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm font-medium text-muted-foreground">Mountpoint</p>
@@ -159,7 +159,7 @@
 			{#if volume.Labels && Object.keys(volume.Labels).length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
-						<Card.Title class="flex items-center gap-2"><Tag class="h-5 w-5 text-muted-foreground" /> Labels</Card.Title>
+						<Card.Title class="flex items-center gap-2"><Tag class="text-muted-foreground size-5" /> Labels</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
 						{#each Object.entries(volume.Labels) as [key, value] (key)}
@@ -198,7 +198,7 @@
 		<div class="text-center py-12">
 			<p class="text-lg font-medium text-muted-foreground">Volume not found.</p>
 			<Button href="/volumes" variant="outline" size="sm" class="mt-4">
-				<ArrowLeft class="h-4 w-4 mr-2" /> Back to Volumes
+				<ArrowLeft class="mr-2 size-4" /> Back to Volumes
 			</Button>
 		</div>
 	{/if}

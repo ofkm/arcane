@@ -99,7 +99,7 @@
 		<Card.Header class="pb-3 flex flex-row items-center justify-between space-y-0">
 			<div class="flex items-center gap-2">
 				<div class="bg-blue-500/10 p-2 rounded-full">
-					<UserCheck class="h-5 w-5 text-blue-500" />
+					<UserCheck class="text-blue-500 size-5" />
 				</div>
 				<div>
 					<Card.Title>User Accounts</Card.Title>
@@ -107,7 +107,7 @@
 				</div>
 			</div>
 			<Button size="sm" onclick={openCreateUserDialog}>
-				<UserPlus class="mr-2 h-4 w-4" />
+				<UserPlus class="mr-2 size-4" />
 				Create User
 			</Button>
 		</Card.Header>
@@ -166,8 +166,8 @@
 							<Table.Cell>
 								<DropdownMenu.Root>
 									<DropdownMenu.Trigger>
-										<Button variant="ghost" size="icon" class="h-8 w-8">
-											<Ellipsis class="h-4 w-4" />
+										<Button variant="ghost" size="icon" class="size-8">
+											<Ellipsis class="size-4" />
 											<span class="sr-only">Open menu</span>
 										</Button>
 									</DropdownMenu.Trigger>
@@ -175,12 +175,12 @@
 										<DropdownMenu.Group>
 											{#if !item.oidcSubjectId}
 												<DropdownMenu.Item onclick={() => openEditUserDialog(item)}>
-													<Pencil class="h-4 w-4" />
+													<Pencil class="size-4" />
 													Edit
 												</DropdownMenu.Item>
 											{/if}
-											<DropdownMenu.Item class="text-red-500 focus:!text-red-700" onclick={() => handleRemoveUser(item.id)}>
-												<UserX class="h-4 w-4" />
+											<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveUser(item.id)}>
+												<UserX class="size-4" />
 												Remove User
 											</DropdownMenu.Item>
 										</DropdownMenu.Group>

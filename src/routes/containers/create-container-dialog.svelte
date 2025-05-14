@@ -8,7 +8,7 @@
 	import { AlertCircle, Eye, EyeOff, Loader2, Plus, Trash } from '@lucide/svelte';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
-	import { parseBytes } from '$lib/utils/bytes';
+	import { parseBytes } from '$lib/utils/bytes.util';
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
 	import Switch from '$lib/components/ui/switch/switch.svelte';
@@ -349,7 +349,7 @@
 											<Input id={`host-port-${index}`} bind:value={port.hostPort} placeholder="e.g., 8080" disabled={isCreating} type="text" pattern="[0-9]*" inputmode="numeric" class={port.hostError && port.hostPort ? 'border-red-500' : ''} />
 											{#if port.hostError && port.hostPort}
 												<div class="flex items-center text-xs text-red-500 mt-1">
-													<AlertCircle class="h-3 w-3 mr-1" />
+													<AlertCircle class="mr-1 size-3" />
 													{port.hostError}
 												</div>
 											{/if}
@@ -360,20 +360,20 @@
 											<Input id={`container-port-${index}`} bind:value={port.containerPort} placeholder="e.g., 80" disabled={isCreating} type="text" pattern="[0-9]*" inputmode="numeric" class={port.containerError && port.containerPort ? 'border-red-500' : ''} />
 											{#if port.containerError && port.containerPort}
 												<div class="flex items-center text-xs text-red-500 mt-1">
-													<AlertCircle class="h-3 w-3 mr-1" />
+													<AlertCircle class="mr-1 size-3" />
 													{port.containerError}
 												</div>
 											{/if}
 										</div>
 									</div>
 
-									<Button variant="destructive" size="icon" type="button" onclick={() => removePort(index)} disabled={ports.length <= 1 || isCreating} class="flex-shrink-0">
-										<Trash class="h-4 w-4" />
+									<Button variant="destructive" size="icon" type="button" onclick={() => removePort(index)} disabled={ports.length <= 1 || isCreating} class="shrink-0">
+										<Trash class="size-4" />
 									</Button>
 								</div>
 							{/each}
 							<Button variant="outline" type="button" onclick={addPort} class="w-full" disabled={isCreating}>
-								<Plus class="h-4 w-4 mr-2" /> Add Port Mapping
+								<Plus class="mr-2 size-4" /> Add Port Mapping
 							</Button>
 						</div>
 					</Tabs.Content>
@@ -404,13 +404,13 @@
 											<Input id={`volume-target-${index}`} bind:value={mount.target} placeholder="/data" disabled={isCreating} />
 										</div>
 									</div>
-									<Button variant="destructive" size="icon" type="button" onclick={() => removeVolumeMount(index)} disabled={volumeMounts.length <= 1 || isCreating} class="flex-shrink-0">
-										<Trash class="h-4 w-4" />
+									<Button variant="destructive" size="icon" type="button" onclick={() => removeVolumeMount(index)} disabled={volumeMounts.length <= 1 || isCreating} class="shrink-0">
+										<Trash class="size-4" />
 									</Button>
 								</div>
 							{/each}
 							<Button variant="outline" type="button" onclick={addVolumeMount} class="w-full" disabled={isCreating}>
-								<Plus class="h-4 w-4 mr-2" /> Add Volume Mount
+								<Plus class="mr-2 size-4" /> Add Volume Mount
 							</Button>
 						</div>
 					</Tabs.Content>
@@ -440,21 +440,21 @@
 													title={env.sensitive ? 'Show value' : 'Hide value'}
 												>
 													{#if env.sensitive}
-														<Eye class="h-4 w-4" />
+														<Eye class="size-4" />
 													{:else}
-														<EyeOff class="h-4 w-4" />
+														<EyeOff class="size-4" />
 													{/if}
 												</Button>
 											</div>
 										</div>
 									</div>
-									<Button variant="destructive" size="icon" type="button" onclick={() => removeEnvVar(index)} disabled={envVars.length <= 1 || isCreating} class="flex-shrink-0">
-										<Trash class="h-4 w-4" />
+									<Button variant="destructive" size="icon" type="button" onclick={() => removeEnvVar(index)} disabled={envVars.length <= 1 || isCreating} class="shrink-0">
+										<Trash class="size-4" />
 									</Button>
 								</div>
 							{/each}
 							<Button variant="outline" type="button" onclick={addEnvVar} class="w-full" disabled={isCreating}>
-								<Plus class="h-4 w-4 mr-2" /> Add Environment Variable
+								<Plus class="mr-2 size-4" /> Add Environment Variable
 							</Button>
 						</div>
 					</Tabs.Content>
@@ -501,7 +501,7 @@
 					<Tabs.Content value="healthcheck">
 						<div class="space-y-4">
 							<div class="flex items-center space-x-2">
-								<input type="checkbox" id="enable-healthcheck" bind:checked={enableHealthcheck} disabled={isCreating} class="form-checkbox h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" />
+								<input type="checkbox" id="enable-healthcheck" bind:checked={enableHealthcheck} disabled={isCreating} class="form-checkbox text-primary focus:ring-primary border-gray-300 rounded size-4" />
 								<Label for="enable-healthcheck" class="cursor-pointer">Enable Healthcheck</Label>
 							</div>
 
@@ -555,13 +555,13 @@
 												<Input id={`label-value-${index}`} bind:value={label.value} placeholder="e.g., my-app" disabled={isCreating} />
 											</div>
 										</div>
-										<Button variant="destructive" size="icon" type="button" onclick={() => removeLabel(index)} disabled={labels.length <= 1 || isCreating} class="flex-shrink-0">
-											<Trash class="h-4 w-4" />
+										<Button variant="destructive" size="icon" type="button" onclick={() => removeLabel(index)} disabled={labels.length <= 1 || isCreating} class="shrink-0">
+											<Trash class="size-4" />
 										</Button>
 									</div>
 								{/each}
 								<Button variant="outline" type="button" onclick={addLabel} class="w-full" disabled={isCreating}>
-									<Plus class="h-4 w-4 mr-2" /> Add Label
+									<Plus class="mr-2 size-4" /> Add Label
 								</Button>
 							</div>
 
@@ -615,7 +615,7 @@
 			<Button variant="outline" onclick={handleClose} disabled={isCreating} class="mr-2">Cancel</Button>
 			<Button type="button" onclick={handleSubmit} disabled={isCreating || !containerName.trim() || !selectedImage}>
 				{#if isCreating}
-					<Loader2 class="h-4 w-4 mr-2 animate-spin" /> Creating...
+					<Loader2 class="mr-2 animate-spin size-4" /> Creating...
 				{:else}
 					Create Container
 				{/if}

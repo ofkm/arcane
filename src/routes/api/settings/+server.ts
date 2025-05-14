@@ -115,6 +115,18 @@ export const PUT: RequestHandler = async ({ request }) => {
 		newSettingsData.autoUpdateInterval = autoUpdateInterval;
 	}
 
+	// Validate maturity threshold days
+	const maturityThresholdDays = parseInt(String(newSettingsData.maturityThresholdDays), 10);
+	if (isNaN(maturityThresholdDays) || maturityThresholdDays < 1 || maturityThresholdDays > 365) {
+		const response: ApiErrorResponse = {
+			success: false,
+			error: 'Maturity threshold must be between 1 and 365 days.',
+			code: ApiErrorCode.BAD_REQUEST
+		};
+		return json(response, { status: 400 });
+	}
+	newSettingsData.maturityThresholdDays = maturityThresholdDays;
+
 	// Persist the validated new settings to disk
 	const saveResult = await tryCatch(persistSettings(newSettingsData));
 

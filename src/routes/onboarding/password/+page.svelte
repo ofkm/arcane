@@ -125,7 +125,7 @@
 
 	{#if error}
 		<Alert.Root class="mb-8" variant="destructive">
-			<AlertCircle class="h-5 w-5 mr-2" />
+			<AlertCircle class="mr-2 size-5" />
 			<Alert.Title>Error</Alert.Title>
 			<Alert.Description>{error}</Alert.Description>
 		</Alert.Root>
@@ -135,22 +135,22 @@
 		<div class="space-y-6">
 			<div class="space-y-4">
 				<Label for="password" class="text-base block mb-2">New Password</Label>
-				<Input id="password" type="password" bind:value={password} placeholder="Enter new password" class="h-12 px-4 bg-muted/10" required />
+				<Input id="password" type="password" bind:value={password} placeholder="Enter new password" class="px-4 bg-muted/10 size-12" required />
 			</div>
 
 			<div class="space-y-4">
 				<Label for="confirmPassword" class="text-base block mb-2">Confirm Password</Label>
-				<Input id="confirmPassword" type="password" bind:value={confirmPassword} placeholder="Confirm new password" class="h-12 px-4 bg-muted/10" required />
+				<Input id="confirmPassword" type="password" bind:value={confirmPassword} placeholder="Confirm new password" class="px-4 bg-muted/10 size-12" required />
 			</div>
 		</div>
 
 		<div class="flex pt-8 justify-center">
-			<Button type="submit" disabled={loading} class="h-12 w-[80%] px-8 flex items-center">
+			<Button type="submit" disabled={loading} class="px-8 flex items-center size-12 size-[80%]">
 				{#if loading}
-					<span class="inline-block w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></span>
+					<span class="inline-block border-2 border-t-transparent border-white rounded-full animate-spin size-4"></span>
 				{/if}
 				Continue
-				<ChevronRight class="h-4 w-4" />
+				<ChevronRight class="size-4" />
 			</Button>
 		</div>
 	</form>

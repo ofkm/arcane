@@ -61,10 +61,10 @@
 	{/if}
 </Button>
 
-<div class={cn('fixed md:sticky top-0 left-0 h-screen md:h-[100dvh] transition-all duration-300 ease-in-out', 'bg-card border-r shadow-sm z-40', 'flex flex-col', isCollapsed ? 'w-[70px]' : 'w-64', isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')}>
+<div class={cn('fixed md:sticky top-0 left-0 h-screen md:h-dvh transition-all duration-300 ease-in-out', 'bg-card border-r shadow-sm z-40', 'flex flex-col', isCollapsed ? 'w-[70px]' : 'w-64', isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')}>
 	<div class={cn('flex items-center h-14 transition-all duration-300', isCollapsed ? 'justify-center px-2' : 'gap-3 px-5 p-4')}>
-		<div class="flex-shrink-0">
-			<img src="/img/arcane.svg" alt="Arcane" class="h-15 w-15" width="30" height="30" />
+		<div class="shrink-0">
+			<img src="/img/arcane.svg" alt="Arcane" class="size-15" width="30" height="30" />
 		</div>
 		{#if !isCollapsed}
 			<div class="flex flex-col justify-center">
@@ -77,7 +77,7 @@
 	<Separator />
 
 	<div class="hidden md:flex justify-end px-2 -mt-1 mb-1 relative">
-		<Button variant="outline" size="icon" class="h-6 w-6 rounded-full bg-background absolute right-0 translate-x-1/2" onclick={toggleCollapse} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+		<Button variant="outline" size="icon" class="rounded-full bg-background absolute right-0 translate-x-1/2 size-6" onclick={toggleCollapse} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
 			{#if isCollapsed}
 				<ChevronRight size={14} />
 			{:else}
@@ -124,12 +124,12 @@
 					<span>Update available</span>
 					<span class="flex items-center">
 						v{versionInformation.newestVersion}
-						<ExternalLink class="ml-1 h-3 w-3" />
+						<ExternalLink class="ml-1 size-3" />
 					</span>
 				</a>
 			{:else}
 				<a href={versionInformation.releaseUrl} target="_blank" rel="noopener noreferrer" title="Update available: v{versionInformation.newestVersion}" class="flex justify-center text-blue-500">
-					<ExternalLink class="h-4 w-4" />
+					<ExternalLink class="size-4" />
 				</a>
 			{/if}
 		</div>

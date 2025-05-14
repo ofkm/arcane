@@ -165,7 +165,7 @@
 						{#each allUniquePorts as port}
 							<a href={getServicePortUrl(stack, port)} target="_blank" rel="noopener noreferrer" class="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md hover:bg-blue-500/20 transition-colors flex items-center gap-1 self-start mt-1.5">
 								{port}
-								<ExternalLink class="h-3 w-3" />
+								<ExternalLink class="size-3" />
 							</a>
 						{/each}
 					{/if}
@@ -192,7 +192,7 @@
 
 	{#if data.error}
 		<Alert.Root variant="destructive">
-			<AlertCircle class="h-4 w-4" />
+			<AlertCircle class="size-4" />
 			<Alert.Title>Error Loading Stack</Alert.Title>
 			<Alert.Description>{data.error}</Alert.Description>
 		</Alert.Root>
@@ -207,7 +207,7 @@
 						<p class="text-2xl font-bold">{stack.serviceCount}</p>
 					</div>
 					<div class="bg-primary/10 p-2 rounded-full">
-						<Layers class="h-5 w-5 text-primary" />
+						<Layers class="text-primary size-5" />
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -219,7 +219,7 @@
 						<p class="text-2xl font-bold">{stack.runningCount}</p>
 					</div>
 					<div class="bg-green-500/10 p-2 rounded-full">
-						<Layers class="h-5 w-5 text-green-500" />
+						<Layers class="text-green-500 size-5" />
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -233,7 +233,7 @@
 						</p>
 					</div>
 					<div class="bg-blue-500/10 p-2 rounded-full">
-						<FileStack class="h-5 w-5 text-blue-500" />
+						<FileStack class="text-blue-500 size-5" />
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -258,7 +258,7 @@
 						<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 							<div class="md:col-span-2 space-y-2">
 								<Label for="compose-editor" class="mb-2">Docker Compose File</Label>
-								<div class="border rounded-md overflow-hidden h-[550px] mt-2">
+								<div class="border rounded-md overflow-hidden mt-2 h-[550px]">
 									<YamlEditor bind:value={composeContent} readOnly={isLoading.saving || isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} />
 								</div>
 								<p class="text-xs text-muted-foreground">
@@ -269,7 +269,7 @@
 							<div class="space-y-2">
 								<Label for="env-editor" class="mb-2">Environment Configuration (.env)</Label>
 
-								<div class="border rounded-md overflow-hidden h-[550px] mt-2">
+								<div class="border rounded-md overflow-hidden mt-2 h-[550px]">
 									<EnvEditor bind:value={envContent} readOnly={isLoading.saving || isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} />
 								</div>
 								<p class="text-xs text-muted-foreground">Define environment variables in KEY=value format. These will be saved as a .env file in the stack directory.</p>
@@ -279,14 +279,14 @@
 				</Card.Content>
 				<Card.Footer class="flex justify-between">
 					<Button variant="outline" type="button" onclick={() => window.history.back()} disabled={isLoading.saving}>
-						<ArrowLeft class="w-4 h-4 mr-2" />
+						<ArrowLeft class="mr-2 size-4" />
 						Back
 					</Button>
 					<Button type="button" variant="default" onclick={handleSaveChanges} disabled={isLoading.saving || !hasChanges}>
 						{#if isLoading.saving}
-							<Loader2 class="w-4 h-4 mr-2 animate-spin" /> Saving...
+							<Loader2 class="mr-2 animate-spin size-4" /> Saving...
 						{:else}
-							<Save class="w-4 h-4 mr-2" /> Save Changes
+							<Save class="mr-2 size-4" /> Save Changes
 						{/if}
 					</Button>
 				</Card.Footer>
@@ -310,7 +310,7 @@
 									<div class="flex items-center justify-between">
 										<div class="flex items-center gap-3">
 											<div class="bg-muted rounded-md p-1">
-												<Layers class="h-4 w-4" />
+												<Layers class="size-4" />
 											</div>
 											<div>
 												<p class="font-medium flex items-center gap-1">{service.name}</p>
@@ -321,7 +321,7 @@
 											<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
 											<span class="text-xs text-blue-500 ml-2 flex items-center">
 												<span class="hidden sm:inline">View details</span>
-												<ArrowRight class="inline-block ml-1 h-3 w-3" />
+												<ArrowRight class="inline-block ml-1 size-3" />
 											</span>
 										</div>
 									</div>
@@ -331,7 +331,7 @@
 									<div class="flex items-center justify-between">
 										<div class="flex items-center gap-3">
 											<div class="bg-muted rounded-md p-1">
-												<Layers class="h-4 w-4" />
+												<Layers class="size-4" />
 											</div>
 											<div>
 												<p class="font-medium flex items-center gap-1">{service.name}</p>
@@ -356,13 +356,13 @@
 	{:else if !data.error}
 		<div class="flex flex-col items-center justify-center py-12 border rounded-lg shadow-sm bg-card">
 			<div class="rounded-full bg-muted/50 p-4 mb-4">
-				<AlertCircle class="h-8 w-8 text-muted-foreground" />
+				<AlertCircle class="text-muted-foreground size-8" />
 			</div>
 			<h2 class="text-lg font-medium mb-2">Stack Not Found</h2>
 			<p class="text-center text-muted-foreground max-w-md">Could not load stack data. It may have been removed or the Docker engine is not accessible.</p>
 			<div class="flex gap-3 mt-6">
 				<Button variant="outline" href="/stacks">
-					<ArrowLeft class="h-4 w-4 mr-2" />
+					<ArrowLeft class="mr-2 size-4" />
 					Back to Stacks
 				</Button>
 			</div>

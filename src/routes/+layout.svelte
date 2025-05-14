@@ -26,7 +26,7 @@
 
 <!-- Loading Indicator -->
 {#if isNavigating}
-	<div class="fixed top-0 left-0 right-0 h-2 z-50">
+	<div class="fixed top-0 left-0 right-0 z-50 h-2">
 		<div class="h-full bg-primary animate-pulse"></div>
 	</div>
 {/if}

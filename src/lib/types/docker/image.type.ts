@@ -10,6 +10,14 @@ export type ServiceImage = {
 	tag: string;
 };
 
+export interface ImageMaturity {
+	version: string;
+	date: string;
+	status: 'Matured' | 'Not Matured' | 'Unknown';
+	updatesAvailable: boolean;
+}
+
 export type EnhancedImageInfo = ServiceImage & {
 	inUse: boolean;
+	maturity?: ImageMaturity;
 };
