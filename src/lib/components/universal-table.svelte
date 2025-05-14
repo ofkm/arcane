@@ -224,7 +224,7 @@
 				<div class="flex items-center gap-4">
 					<span class="text-sm my-auto">{itemsPerPageLabel}</span>
 					<Select.Root type="single" value={pageSize.toString()} onValueChange={(value) => handlePageSizeChange(value)}>
-						<Select.Trigger class="size-8 size-[70px]" id="pageSize">
+						<Select.Trigger class="h-8 w-[70px]" id="pageSize">
 							<span>
 								{pageSize}
 							</span>

@@ -140,7 +140,7 @@
 			{/if}
 
 			{#if showOidcLoginButton}
-				<div class="mt-6 {showLocalLoginForm ?"' : 'pt-0'}">
+				<div class="mt-6 {showLocalLoginForm ? '' : 'pt-0'}">
 					<Button onclick={handleOidcLogin} variant="outline" class="w-full">
 						<LogIn class="mr-2 size-4" />
 						Sign in with OIDC Provider

@@ -103,13 +103,10 @@
 			<Card.Content>
 				<div class="space-y-2">
 					{#each roles as role (role.id)}
-						<button
-							class="w-full text-left p-3 rounded-md border transition-colors flex items-center justify-between {selectedRole.id === role.id ?"bg-primary text-primary-foreground border-primary' : 'hover:bg-muted/50'}"
-							onclick={() => (selectedRole = role)}
-						>
+						<button class="w-full text-left p-3 rounded-md border transition-colors flex items-center justify-between {selectedRole.id === role.id ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted/50'}" onclick={() => (selectedRole = role)}>
 							<div>
 								<div class="font-medium">{role.name}</div>
-								<div class="text-xs {selectedRole.id === role.id ?"text-primary-foreground/90' : 'text-muted-foreground'}">
+								<div class="text-xs {selectedRole.id === role.id ? 'text-primary-foreground/90' : 'text-muted-foreground'}">
 									{role.description}
 								</div>
 							</div>
