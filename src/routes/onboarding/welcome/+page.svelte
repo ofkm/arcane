@@ -58,7 +58,7 @@
 	</div>
 
 	<div class="flex justify-center pt-8">
-		<Button type="button" onclick={handleContinue} class="px-8 flex items-center gap-2 size-12 size-[80%]">
+		<Button type="button" onclick={handleContinue} class="px-8 flex items-center gap-2 h-12 w-[80%]">
 			Continue
 			<ChevronRight class="size-4" />
 		</Button>
