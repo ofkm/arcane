@@ -27,7 +27,7 @@ export const GET: RequestHandler = async ({ params }) => {
 							stdout: true,
 							stderr: true,
 							timestamps: false,
-							tail: 300
+							tail: 0
 						});
 
 						logStream.on('data', (chunk) => {

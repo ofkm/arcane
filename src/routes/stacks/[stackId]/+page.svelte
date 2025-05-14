@@ -161,13 +161,12 @@
 				<h1 class="text-2xl font-bold tracking-tight flex items-center gap-2">
 					{stack?.name || 'Stack Details'}
 					{#if stack && servicePorts && Object.keys(servicePorts).length > 0}
-						{#each Object.values(servicePorts) as ports}
-							{#each ports as port}
-								<a href={getServicePortUrl(stack, port)} target="_blank" rel="noopener noreferrer" class="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md hover:bg-blue-500/20 transition-colors flex items-center gap-1">
-									{port}
-									<ExternalLink class="h-3 w-3" />
-								</a>
-							{/each}
+						{@const allUniquePorts = [...new Set(Object.values(servicePorts).flat())]}
+						{#each allUniquePorts as port}
+							<a href={getServicePortUrl(stack, port)} target="_blank" rel="noopener noreferrer" class="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md hover:bg-blue-500/20 transition-colors flex items-center gap-1 self-start mt-1.5">
+								{port}
+								<ExternalLink class="h-3 w-3" />
+							</a>
 						{/each}
 					{/if}
 				</h1>

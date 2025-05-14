@@ -15,14 +15,27 @@
 	import { onDestroy } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
-	let { container, logs, stats } = $derived(data);
+	let { container, logs: initialLogsFromServer, stats } = $derived(data);
+
+	let displayedLogs = $derived(initialLogsFromServer || '');
 
 	let starting = $state(false);
 	let stopping = $state(false);
 	let restarting = $state(false);
 	let removing = $state(false);
 	let isRefreshing = $state(false);
-	let formattedLogHtml = $derived(logs ? logs.split('\n').map(formatLogLine).join('<br />') : '');
+
+	let formattedLogHtml = $derived(
+		displayedLogs
+			? displayedLogs
+					.split('\n')
+					.map((line) => {
+						const cleanedLine = line.replace(/[\x00-\x09\x0B-\x1F\x7F-\x9F]/g, '');
+						return formatLogLine(cleanedLine);
+					})
+					.join('\n')
+			: ''
+	);
 	let logsContainer = $state<HTMLDivElement | undefined>(undefined);
 	let activeTab = $state('overview');
 	let autoScrollLogs = $state(true);
@@ -37,7 +50,7 @@
 	}
 
 	$effect(() => {
-		if (logsContainer && logs && activeTab === 'logs' && autoScrollLogs) {
+		if (logsContainer && displayedLogs && activeTab === 'logs' && autoScrollLogs) {
 			scrollLogsToBottom();
 		}
 	});
@@ -45,7 +58,6 @@
 	$effect(() => {
 		if (activeTab === 'logs') {
 			startLogStream();
-
 			setTimeout(scrollLogsToBottom, 100);
 		} else if (logEventSource) {
 			closeLogStream();
@@ -57,15 +69,12 @@
 
 		try {
 			const url = `/api/containers/${container.id}/logs/stream`;
-
 			const eventSource = new EventSource(url);
-
 			logEventSource = eventSource;
 
 			eventSource.onmessage = (event) => {
 				if (event.data) {
-					logs = (logs || '') + event.data;
-					formattedLogHtml = logs.split('\n').map(formatLogLine).join('<br />');
+					displayedLogs = (displayedLogs || '') + event.data;
 
 					if (autoScrollLogs) {
 						scrollLogsToBottom();
@@ -109,7 +118,6 @@
 						return;
 					}
 
-					// Update stats in-place
 					stats = statsData;
 				} catch (err) {
 					console.error('Error parsing stats data:', err);
@@ -168,9 +176,7 @@
 	const memoryUsageFormatted = $derived(formatBytes(memoryUsageBytes));
 	const memoryLimitFormatted = $derived(formatBytes(memoryLimitBytes));
 	const memoryUsagePercent = $derived(memoryLimitBytes > 0 ? (memoryUsageBytes / memoryLimitBytes) * 100 : 0);
-	// --- End Stats Calculation ---
 
-	// --- Helper to find Primary IP Address ---
 	const getPrimaryIpAddress = (networkSettings: ContainerInspectInfo['NetworkSettings'] | undefined | null): string => {
 		if (!networkSettings) return 'N/A';
 
@@ -191,13 +197,12 @@
 	};
 
 	const primaryIpAddress = $derived(getPrimaryIpAddress(container?.networkSettings));
-	// --- End Helper ---
 
 	$effect(() => {
-		if (logsContainer && logs) {
-			const shouldScroll = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 50;
-			if (shouldScroll) {
-				logsContainer.scrollTop = logsContainer.scrollHeight;
+		if (logsContainer && displayedLogs && autoScrollLogs) {
+			const atBottom = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 50;
+			if (atBottom) {
+				scrollLogsToBottom();
 			}
 		}
 
@@ -217,7 +222,6 @@
 </script>
 
 <div class="space-y-6 pb-8">
-	<!-- Breadcrumb Navigation -->
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
 		<div>
 			<Breadcrumb.Root>
@@ -275,7 +279,6 @@
 				<Tabs.Trigger value="stats">Metrics</Tabs.Trigger>
 			</Tabs.List>
 
-			<!-- Overview Tab -->
 			<Tabs.Content value="overview" class="space-y-6">
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
@@ -381,7 +384,6 @@
 				</Card.Root>
 			</Tabs.Content>
 
-			<!-- Configuration Tab -->
 			<Tabs.Content value="config" class="space-y-6">
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
@@ -470,7 +472,6 @@
 				</Card.Root>
 			</Tabs.Content>
 
-			<!-- Networks Tab -->
 			<Tabs.Content value="network" class="space-y-6">
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
@@ -523,7 +524,6 @@
 				</Card.Root>
 			</Tabs.Content>
 
-			<!-- Storage Tab -->
 			<Tabs.Content value="storage" class="space-y-6">
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
@@ -640,7 +640,6 @@
 				</Card.Root>
 			</Tabs.Content>
 
-			<!-- Logs Tab -->
 			<Tabs.Content value="logs" class="space-y-6">
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
@@ -664,12 +663,11 @@
 
 					<Card.Content>
 						<div
-							class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs h-[500px] overflow-auto whitespace-pre-wrap border"
+							class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs h-[500px] overflow-auto border"
 							bind:this={logsContainer}
 							id="logs-container"
-							style="word-break: break-all;"
+							style="overflow-x: auto;"
 							onscroll={() => {
-								// Detect if user manually scrolled up
 								if (logsContainer) {
 									const atBottom = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 50;
 									if (!atBottom && autoScrollLogs) {
@@ -679,7 +677,7 @@
 							}}
 						>
 							{#if formattedLogHtml}
-								{@html formattedLogHtml}
+								<pre class="m-0 whitespace-pre-wrap break-words">{@html formattedLogHtml}</pre>
 							{:else}
 								<div class="flex flex-col items-center justify-center h-full text-center">
 									<Terminal class="h-8 w-8 text-muted-foreground mb-3 opacity-40" />
@@ -691,7 +689,6 @@
 				</Card.Root>
 			</Tabs.Content>
 
-			<!-- Metrics Tab -->
 			<Tabs.Content value="stats" class="space-y-6">
 				<Card.Root class="border shadow-sm">
 					<Card.Header>

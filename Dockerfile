@@ -8,6 +8,16 @@ RUN npm ci
 # Stage 2: Build the application
 FROM node:22-alpine AS builder
 WORKDIR /app
+
+# Set OIDC variables to dummy values for build time if they are checked
+ARG OIDC_CLIENT_ID_BUILD="dummy_client_id"
+ARG OIDC_CLIENT_SECRET_BUILD="dummy_client_secret"
+ARG OIDC_REDIRECT_URI_BUILD="http://localhost/dummy_callback"
+
+ENV OIDC_CLIENT_ID=$OIDC_CLIENT_ID_BUILD
+ENV OIDC_CLIENT_SECRET=$OIDC_CLIENT_SECRET_BUILD
+ENV OIDC_REDIRECT_URI=$OIDC_REDIRECT_URI_BUILD
+
 # Copy dependencies from previous stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

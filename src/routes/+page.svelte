@@ -6,7 +6,7 @@
 	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2 } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
-	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
+	import { capitalizeFirstLetter, truncateString } from '$lib/utils/string.utils';
 	import { formatBytes } from '$lib/utils';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -318,6 +318,9 @@
 										filtering: false,
 										selection: false
 									}}
+									sort={{
+										defaultSort: { id: 'status', desc: false }
+									}}
 									pagination={{
 										pageSize: 5,
 										pageSizeOptions: [5]
@@ -329,7 +332,7 @@
 									{#snippet rows({ item })}
 										{@const stateVariant = statusVariantMap[item.state.toLowerCase()]}
 										<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.id}/">{item.name}</a></Table.Cell>
-										<Table.Cell>{item.image}</Table.Cell>
+										<Table.Cell title={item.image}>{truncateString(item.image, 40)}</Table.Cell>
 										<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.state)} /></Table.Cell>
 										<Table.Cell>{item.status}</Table.Cell>
 									{/snippet}
@@ -356,7 +359,7 @@
 					<div class="flex items-center justify-between">
 						<div>
 							<Card.Title>Images</Card.Title>
-							<Card.Description class="pb-3">Recent images</Card.Description>
+							<Card.Description class="pb-3">Top 5 Largest Images</Card.Description>
 						</div>
 						<Button variant="ghost" size="sm" href="/images" disabled={!dashboardStates.dockerInfo}>
 							View All
@@ -387,7 +390,7 @@
 										isDashboardTable: true
 									}}
 									sort={{
-										defaultSort: { id: 'repo', desc: false }
+										defaultSort: { id: 'size', desc: true }
 									}}
 								>
 									{#snippet rows({ item })}
