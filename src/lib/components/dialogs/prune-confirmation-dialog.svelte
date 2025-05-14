@@ -85,7 +85,7 @@
 
 			{#if pruneVolumes}
 				<Alert.Root variant="destructive" class="mt-2">
-					<AlertCircle class="h-4 w-4" />
+					<AlertCircle class="size-4" />
 					<Alert.Title>Warning: Pruning Volumes</Alert.Title>
 					<Alert.Description>Pruning volumes permanently deletes data. Ensure you have backups if necessary.</Alert.Description>
 				</Alert.Root>
@@ -96,9 +96,9 @@
 			<Button variant="outline" onclick={handleCancel} disabled={isPruning}>Cancel</Button>
 			<Button variant="destructive" onclick={handleConfirm} disabled={selectedTypes.length === 0 || isPruning}>
 				{#if isPruning}
-					<Loader2 class="h-4 w-4 mr-2 animate-spin" /> Pruning...
+					<Loader2 class="mr-2 animate-spin size-4" /> Pruning...
 				{:else}
-					<Trash2 class="h-4 w-4 mr-2" /> Prune Selected ({selectedTypes.length})
+					<Trash2 class="mr-2 size-4" /> Prune Selected ({selectedTypes.length})
 				{/if}
 			</Button>
 		</Dialog.Footer>

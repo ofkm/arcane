@@ -289,8 +289,8 @@
 					<Card.Content>
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
 							<div class="flex items-start gap-3">
-								<div class="bg-blue-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
-									<HardDrive class="h-5 w-5 text-blue-500" />
+								<div class="bg-blue-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+									<HardDrive class="text-blue-500 size-5" />
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium text-muted-foreground">Image</p>
@@ -303,8 +303,8 @@
 							</div>
 
 							<div class="flex items-start gap-3">
-								<div class="bg-green-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
-									<Clock class="h-5 w-5 text-green-500" />
+								<div class="bg-green-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+									<Clock class="text-green-500 size-5" />
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium text-muted-foreground">Created</p>
@@ -315,8 +315,8 @@
 							</div>
 
 							<div class="flex items-start gap-3">
-								<div class="bg-purple-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
-									<Network class="h-5 w-5 text-purple-500" />
+								<div class="bg-purple-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+									<Network class="text-purple-500 size-5" />
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium text-muted-foreground">IP Address</p>
@@ -327,8 +327,8 @@
 							</div>
 
 							<div class="flex items-start gap-3">
-								<div class="bg-amber-500/10 p-2 rounded-full h-10 w-10 flex items-center justify-center shrink-0">
-									<Terminal class="h-5 w-5 text-amber-500" />
+								<div class="bg-amber-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
+									<Terminal class="text-amber-500 size-5" />
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium text-muted-foreground">Command</p>
@@ -627,7 +627,7 @@
 							</div>
 						{:else}
 							<div class="text-center py-8 border rounded-md border-dashed">
-								<div class="mb-3 w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto">
+								<div class="mb-3 rounded-full bg-muted/50 flex items-center justify-center mx-auto size-12">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground">
 										<path d="M21 5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2V5Z"></path>
 										<path d="M2 10h20"></path>
@@ -664,7 +664,7 @@
 
 					<Card.Content>
 						<div
-							class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs h-[500px] overflow-auto border"
+							class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs overflow-auto border size-[500px]"
 							bind:this={logsContainer}
 							id="logs-container"
 							style="overflow-x: auto;"
@@ -681,7 +681,7 @@
 								<pre class="m-0 whitespace-pre-wrap break-words">{@html formattedLogHtml}</pre>
 							{:else}
 								<div class="flex flex-col items-center justify-center h-full text-center">
-									<Terminal class="h-8 w-8 text-muted-foreground mb-3 opacity-40" />
+									<Terminal class="text-muted-foreground mb-3 opacity-40 size-8" />
 									<p class="text-muted-foreground italic">No logs available. The container may not have started yet or produces no output.</p>
 								</div>
 							{/if}
@@ -709,27 +709,27 @@
 							<div class="space-y-6">
 								<div>
 									<div class="flex justify-between items-center mb-2">
-										<span class="text-sm font-medium flex items-center gap-2"><Cpu class="h-4 w-4 text-muted-foreground" /> CPU Usage</span>
+										<span class="text-sm font-medium flex items-center gap-2"><Cpu class="text-muted-foreground size-4" /> CPU Usage</span>
 										<span class="text-sm font-semibold">{cpuUsagePercent.toFixed(2)}%</span>
 									</div>
-									<div class="w-full bg-secondary rounded-full h-3 overflow-hidden">
-										<div class="bg-primary h-3 rounded-full transition-all duration-300" style="width: {Math.min(cpuUsagePercent, 100)}%"></div>
+									<div class="w-full bg-secondary rounded-full overflow-hidden size-3">
+										<div class="bg-primary rounded-full transition-all duration-300 size-3" style="width: {Math.min(cpuUsagePercent, 100)}%"></div>
 									</div>
 								</div>
 
 								<div>
 									<div class="flex justify-between items-center mb-2">
-										<span class="text-sm font-medium flex items-center gap-2"><MemoryStick class="h-4 w-4 text-muted-foreground" /> Memory Usage</span>
+										<span class="text-sm font-medium flex items-center gap-2"><MemoryStick class="text-muted-foreground size-4" /> Memory Usage</span>
 										<span class="text-sm font-semibold">{memoryUsageFormatted} / {memoryLimitFormatted}</span>
 									</div>
-									<div class="w-full bg-secondary rounded-full h-3 overflow-hidden">
-										<div class="bg-primary h-3 rounded-full transition-all duration-300" style="width: {memoryUsagePercent.toFixed(2)}%"></div>
+									<div class="w-full bg-secondary rounded-full overflow-hidden size-3">
+										<div class="bg-primary rounded-full transition-all duration-300 size-3" style="width: {memoryUsagePercent.toFixed(2)}%"></div>
 									</div>
 								</div>
 
 								<div>
 									<h4 class="text-sm font-medium mb-2 flex items-center gap-2">
-										<Network class="h-4 w-4 text-muted-foreground" /> Network I/O
+										<Network class="text-muted-foreground size-4" /> Network I/O
 									</h4>
 									<div class="grid grid-cols-2 gap-4 bg-muted/30 p-3 rounded-md">
 										<div>
@@ -782,17 +782,17 @@
 	{:else}
 		<div class="flex flex-col items-center justify-center py-12 border rounded-lg shadow-sm bg-card">
 			<div class="rounded-full bg-muted/50 p-4 mb-4">
-				<AlertCircle class="h-8 w-8 text-muted-foreground" />
+				<AlertCircle class="text-muted-foreground size-8" />
 			</div>
 			<h2 class="text-lg font-medium mb-2">Container Not Found</h2>
 			<p class="text-center text-muted-foreground max-w-md">Could not load container data. It may have been removed or the Docker engine is not accessible.</p>
 			<div class="flex gap-3 mt-6">
 				<Button variant="outline" href="/containers">
-					<ArrowLeft class="h-4 w-4 mr-2" />
+					<ArrowLeft class="mr-2 size-4" />
 					Back to Containers
 				</Button>
 				<Button variant="default" onclick={refreshData}>
-					<RefreshCw class="h-4 w-4 mr-2" />
+					<RefreshCw class="mr-2 size-4" />
 					Retry
 				</Button>
 			</div>

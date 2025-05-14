@@ -152,27 +152,27 @@
 	{#if !isRunning}
 		<Button type="button" variant="default" disabled={isLoading.start || loading.start} class="font-medium" onclick={() => handleStart()}>
 			{#if isLoading.start || loading.start}
-				<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+				<Loader2 class="mr-2 animate-spin size-4" />
 			{:else}
-				<Play class="w-4 h-4 mr-2" />
+				<Play class="mr-2 size-4" />
 			{/if}
 			{type === 'stack' ? 'Deploy' : 'Start'}
 		</Button>
 	{:else}
 		<Button type="button" variant="secondary" disabled={isLoading.stop || loading.stop} class="font-medium" onclick={() => handleStop()}>
 			{#if isLoading.stop || loading.stop}
-				<Loader2 class="w-4 h-4 animate-spin" />
+				<Loader2 class="animate-spin size-4" />
 			{:else}
-				<StopCircle class="w-4 h-4" />
+				<StopCircle class="size-4" />
 			{/if}
 			Stop
 		</Button>
 
 		<Button type="button" variant="outline" disabled={isLoading.restart || loading.restart} class="font-medium" onclick={() => handleRestart()}>
 			{#if isLoading.restart || loading.restart}
-				<Loader2 class="w-4 h-4 animate-spin" />
+				<Loader2 class="animate-spin size-4" />
 			{:else}
-				<RotateCcw class="w-4 h-4" />
+				<RotateCcw class="size-4" />
 			{/if}
 			Restart
 		</Button>
@@ -181,36 +181,36 @@
 	{#if type === 'container'}
 		<Button type="button" variant="destructive" disabled={isLoading.remove || loading.remove} class="font-medium" onclick={() => confirmAction('remove')}>
 			{#if isLoading.remove || loading.remove}
-				<Loader2 class="w-4 h-4 animate-spin" />
+				<Loader2 class="animate-spin size-4" />
 			{:else}
-				<Trash2 class="w-4 h-4" />
+				<Trash2 class="size-4" />
 			{/if}
 			Remove
 		</Button>
 	{:else}
 		<Button type="button" variant="secondary" disabled={isLoading.redeploy || loading.redeploy} class="font-medium" onclick={() => confirmAction('redeploy')}>
 			{#if isLoading.redeploy || loading.redeploy}
-				<Loader2 class="w-4 h-4 animate-spin" />
+				<Loader2 class="animate-spin size-4" />
 			{:else}
-				<RefreshCcwDot class="w-4 h-4" />
+				<RefreshCcwDot class="size-4" />
 			{/if}
 			Redeploy
 		</Button>
 
 		<Button type="button" variant="outline" disabled={isLoading.pulling || loading.pull} class="font-medium" onclick={() => handlePull()}>
 			{#if isLoading.pulling || loading.pull}
-				<Loader2 class="w-4 h-4 animate-spin" />
+				<Loader2 class="animate-spin size-4" />
 			{:else}
-				<Download class="w-4 h-4" />
+				<Download class="size-4" />
 			{/if}
 			Pull
 		</Button>
 
 		<Button type="button" variant="destructive" disabled={isLoading.remove || loading.remove} class="font-medium" onclick={() => confirmAction('remove')}>
 			{#if isLoading.remove || loading.remove}
-				<Loader2 class="w-4 h-4 animate-spin" />
+				<Loader2 class="animate-spin size-4" />
 			{:else}
-				<Trash2 class="w-4 h-4" />
+				<Trash2 class="size-4" />
 			{/if}
 			Remove
 		</Button>

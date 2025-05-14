@@ -135,7 +135,7 @@
 					<span>Pulling image...</span>
 					<span>{Math.round(pullProgress)}%</span>
 				</div>
-				<div class="w-full bg-secondary h-2 rounded-full overflow-hidden">
+				<div class="w-full bg-secondary rounded-full overflow-hidden size-2">
 					<div class="bg-primary h-full transition-all duration-300 ease-in-out" style="width: {pullProgress}%"></div>
 				</div>
 				<p class="text-xs text-muted-foreground mt-1">This may take a while depending on the image size and your internet connection.</p>
@@ -151,7 +151,7 @@
 							<circle class="text-primary-400/20" cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="8" />
 							<circle class="text-primary-500" cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-dasharray={283} stroke-dashoffset={283 * (1 - pullProgress / 100)} transform="rotate(-90 50 50)" />
 						</svg>
-						<Loader2 class="h-4 w-4 animate-spin" />
+						<Loader2 class="animate-spin size-4" />
 					</div>
 					<span class="opacity-0">Pull Image</span>
 				{:else}

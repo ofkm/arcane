@@ -91,12 +91,12 @@
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-2">
 						<div class="bg-blue-500/10 p-2 rounded-full">
-							<Users class="h-5 w-5 text-blue-500" />
+							<Users class="text-blue-500 size-5" />
 						</div>
 						<Card.Title>Roles</Card.Title>
 					</div>
 					<Button variant="outline" size="sm">
-						<Plus class="h-4 w-4 mr-1" /> Add
+						<Plus class="mr-1 size-4" /> Add
 					</Button>
 				</div>
 			</Card.Header>
@@ -104,17 +104,16 @@
 				<div class="space-y-2">
 					{#each roles as role (role.id)}
 						<button
-							class="w-full text-left p-3 rounded-md border transition-colors flex items-center justify-between
-                     {selectedRole.id === role.id ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted/50'}"
+							class="w-full text-left p-3 rounded-md border transition-colors flex items-center justify-between {selectedRole.id === role.id ?"bg-primary text-primary-foreground border-primary' : 'hover:bg-muted/50'}"
 							onclick={() => (selectedRole = role)}
 						>
 							<div>
 								<div class="font-medium">{role.name}</div>
-								<div class="text-xs {selectedRole.id === role.id ? 'text-primary-foreground/90' : 'text-muted-foreground'}">
+								<div class="text-xs {selectedRole.id === role.id ?"text-primary-foreground/90' : 'text-muted-foreground'}">
 									{role.description}
 								</div>
 							</div>
-							<Shield class="h-4 w-4 opacity-70" />
+							<Shield class="opacity-70 size-4" />
 						</button>
 					{/each}
 				</div>
@@ -128,7 +127,7 @@
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-2">
 						<div class="bg-purple-500/10 p-2 rounded-full">
-							<Settings class="h-5 w-5 text-purple-500" />
+							<Settings class="text-purple-500 size-5" />
 						</div>
 						<div>
 							<Card.Title>Role: {selectedRole.name}</Card.Title>

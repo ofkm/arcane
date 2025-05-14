@@ -21,7 +21,7 @@
 <div class="min-h-screen flex flex-col">
 	<header class="pb-6 px-8 border-b">
 		<div class="flex items-center">
-			<img src="/img/arcane.png" alt="Arcane" class="h-12" />
+			<img src="/img/arcane.png" alt="Arcane" class="size-12" />
 			<h1 class="ml-4 text-2xl font-bold">Arcane Setup</h1>
 		</div>
 	</header>
@@ -31,7 +31,7 @@
 			{#each steps as step, i (step.id)}
 				<div class="flex flex-col items-center">
 					<div class={`rounded-full w-10 h-10 flex items-center justify-center ${i <= currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-						<step.icon class="h-5 w-5" />
+						<step.icon class="size-5" />
 					</div>
 					<span class={`text-sm mt-2 ${i <= currentStep ? 'text-foreground' : 'text-muted-foreground'}`}>{step.label}</span>
 				</div>

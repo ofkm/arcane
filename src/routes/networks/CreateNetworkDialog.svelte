@@ -151,12 +151,12 @@
 							<Input placeholder="Key" bind:value={label.key} class="flex-1" disabled={isCreating} />
 							<Input placeholder="Value" bind:value={label.value} class="flex-1" disabled={isCreating} />
 							<Button type="button" variant="ghost" size="icon" onclick={() => removeLabel(index)} disabled={isCreating || labels.length <= 1} class="text-destructive hover:text-destructive" title="Remove Label">
-								<X class="w-4 h-4" />
+								<X class="size-4" />
 							</Button>
 						</div>
 					{/each}
 					<Button type="button" variant="outline" size="sm" onclick={addLabel} disabled={isCreating}>
-						<Plus class="w-4 h-4 mr-2" /> Add Label
+						<Plus class="mr-2 size-4" /> Add Label
 					</Button>
 				</div>
 			</div>
@@ -183,7 +183,7 @@
 				<Button type="button" variant="outline" onclick={() => (open = false)} disabled={isCreating}>Cancel</Button>
 				<Button type="submit" disabled={isCreating || !name.trim()}>
 					{#if isCreating}
-						<Loader2 class="w-4 h-4 mr-2 animate-spin" /> Creating...
+						<Loader2 class="mr-2 animate-spin size-4" /> Creating...
 					{:else}
 						Create Network
 					{/if}

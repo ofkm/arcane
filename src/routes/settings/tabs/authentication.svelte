@@ -107,7 +107,7 @@
 		<Card.Header class="pb-3">
 			<div class="flex items-center gap-2">
 				<div class="bg-indigo-500/10 p-2 rounded-full">
-					<Lock class="h-5 w-5 text-indigo-500" />
+					<Lock class="text-indigo-500 size-5" />
 				</div>
 				<div>
 					<Card.Title>Authentication Methods</Card.Title>
@@ -149,23 +149,23 @@
 						{#if isOidcForcedByPublicEnv || $settingsStore.auth?.oidcEnabled}
 							{#if isOidcForcedByPublicEnv && !data.oidcEnvVarsConfigured}
 								<Button variant="link" class="p-0 h-auto text-xs text-destructive hover:underline" onclick={openOidcDialog}>
-									<AlertTriangle class="h-3 w-3 mr-1" />
+									<AlertTriangle class="mr-1 size-3" />
 									OIDC is forced ON, but critical server settings are missing. Click for details.
 								</Button>
 							{:else if data.oidcEnvVarsConfigured}
 								<Button variant="link" class="p-0 h-auto text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
-									<Info class="h-3 w-3 mr-1" />
+									<Info class="mr-1 size-3" />
 									OIDC is configured on server. View Status.
 								</Button>
 							{:else if oidcConfiguredViaAppSettings}
 								<Button variant="link" class="p-0 h-auto text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
-									<Info class="h-3 w-3 mr-1" />
+									<Info class="mr-1 size-3" />
 									OIDC configured via application settings. Click to Manage Them.
 								</Button>
 							{:else if !showOidcConfigDialog}
 								<!-- This case: Not forced by public env, store has it enabled, but neither server vars nor app settings are fully configured -->
 								<Button variant="link" class="p-0 h-auto text-xs text-destructive hover:underline" onclick={openOidcDialog}>
-									<AlertTriangle class="h-3 w-3 mr-1" />
+									<AlertTriangle class="mr-1 size-3" />
 									OIDC application settings not configured. Click to configure.
 								</Button>
 							{/if}
@@ -270,7 +270,7 @@
 			<Card.Header class="pb-3">
 				<div class="flex items-center gap-2">
 					<div class="bg-cyan-500/10 p-2 rounded-full">
-						<Key class="h-5 w-5 text-cyan-500" />
+						<Key class="text-cyan-500 size-5" />
 					</div>
 					<div>
 						<Card.Title>Session Settings</Card.Title>

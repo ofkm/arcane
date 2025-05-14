@@ -6,7 +6,7 @@
 <div class="max-w-2xl mx-auto text-center">
 	<div class="mb-6 flex justify-center">
 		<div class="rounded-full bg-green-100 p-4 dark:bg-green-900/20">
-			<CheckCircle class="h-12 w-12 text-green-600 dark:text-green-400" />
+			<CheckCircle class="text-green-600 dark:text-green-400 size-12" />
 		</div>
 	</div>
 

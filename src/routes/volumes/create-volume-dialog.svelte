@@ -128,7 +128,7 @@
 			<Button variant="outline" onclick={() => (open = false)} disabled={isCreating}>Cancel</Button>
 			<Button type="submit" onclick={handleSubmit} disabled={isCreating || !volumeCreateStates.volumeName.trim()}>
 				{#if isCreating}
-					<Loader2 class="h-4 w-4 mr-2 animate-spin" /> Creating...
+					<Loader2 class="mr-2 animate-spin size-4" /> Creating...
 				{:else}
 					Create Volume
 				{/if}

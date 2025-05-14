@@ -323,7 +323,7 @@
 
 	{#if error}
 		<Alert.Root variant="destructive">
-			<AlertCircle class="h-4 w-4 mr-2" />
+			<AlertCircle class="mr-2 size-4" />
 			<Alert.Title>Error Loading Images</Alert.Title>
 			<Alert.Description>{error}</Alert.Description>
 		</Alert.Root>
@@ -336,7 +336,7 @@
 					<p class="text-2xl font-bold">{totalImages}</p>
 				</div>
 				<div class="bg-blue-500/10 p-2 rounded-full">
-					<HardDrive class="h-5 w-5 text-blue-500" />
+					<HardDrive class="text-blue-500 size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -348,7 +348,7 @@
 					<p class="text-2xl font-bold">{formatBytes(totalSize)}</p>
 				</div>
 				<div class="bg-purple-500/10 p-2 rounded-full">
-					<HardDrive class="h-5 w-5 text-purple-500" />
+					<HardDrive class="text-purple-500 size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -368,9 +368,9 @@
 							<DropdownMenu.Trigger>
 								{#snippet child({ props })}
 									<Button {...props} variant="outline">
-										<Funnel class="w-4 h-4" />
+										<Funnel class="size-4" />
 										Filter
-										<ChevronDown class="w-4 h-4" />
+										<ChevronDown class="size-4" />
 									</Button>
 								{/snippet}
 							</DropdownMenu.Trigger>
@@ -397,33 +397,33 @@
 						{#if selectedIds.length > 0}
 							<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.removing}>
 								{#if isLoading.removing}
-									<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+									<Loader2 class="mr-2 animate-spin size-4" />
 									Processing...
 								{:else}
-									<Trash2 class="w-4 h-4" />
+									<Trash2 class="size-4" />
 									Delete Selected
 								{/if}
 							</Button>
 						{/if}
 						<Button variant="secondary" onclick={() => (isConfirmPruneDialogOpen = true)} disabled={isLoading.pruning}>
 							{#if isLoading.pruning}
-								<Loader2 class="w-4 h-4 animate-spin" /> Pruning...
+								<Loader2 class="animate-spin size-4" /> Pruning...
 							{:else}
-								<CopyX class="w-4 h-4" /> Prune Unused
+								<CopyX class="size-4" /> Prune Unused
 							{/if}
 						</Button>
 						<Button variant="secondary" onclick={() => (isPullDialogOpen = true)} disabled={isLoading.pulling}>
 							{#if isLoading.pulling}
-								<Loader2 class="w-4 h-4 animate-spin" /> Pulling...
+								<Loader2 class="animate-spin size-4" /> Pulling...
 							{:else}
-								<Download class="w-4 h-4" /> Pull Image
+								<Download class="size-4" /> Pull Image
 							{/if}
 						</Button>
 						<Button variant="outline" onclick={() => checkAllMaturity()} disabled={isLoading.checking}>
 							{#if isLoading.checking}
-								<Loader2 class="w-4 h-4 mr-2 animate-spin" /> Checking...
+								<Loader2 class="mr-2 animate-spin size-4" /> Checking...
 							{:else}
-								<ScanSearch class="w-4 h-4 mr-2" /> Check Updates
+								<ScanSearch class="mr-2 size-4" /> Check Updates
 							{/if}
 						</Button>
 					</div>
@@ -460,18 +460,18 @@
 										<Tooltip.Provider>
 											<Tooltip.Root>
 												<Tooltip.Trigger>
-													<span class="inline-flex items-center justify-center align-middle w-4 h-4 mr-2">
+													<span class="inline-flex items-center justify-center align-middle mr-2 size-4">
 														{#if !item.maturity.updatesAvailable}
 															<!-- Green checkmark for up-to-date images -->
 
-															<CircleCheck class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" />
-															<!-- <CircleFadingArrowUp class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" /> -->
+															<CircleCheck class="text-green-500 size-10" fill="none" stroke="currentColor" strokeWidth="2" />
+															<!-- <CircleFadingArrowUp class="text-green-500 size-4" fill="none" stroke="currentColor" strokeWidth="2" /> -->
 														{:else if item.maturity.status === 'Not Matured'}
 															<!-- Yellow warning icon for non-matured updates -->
-															<CircleFadingArrowUp class="w-10 h-10 text-yellow-500" fill="none" stroke="currentColor" stroke-width="2" />
+															<CircleFadingArrowUp class="text-yellow-500 size-10" fill="none" stroke="currentColor" stroke-width="2" />
 														{:else}
 															<!-- Blue checkmark for matured updates -->
-															<CircleArrowUp class="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" />
+															<CircleArrowUp class="text-blue-500 size-10" fill="none" stroke="currentColor" stroke-width="2" />
 														{/if}
 													</span>
 												</Tooltip.Trigger>
@@ -481,15 +481,15 @@
 														<div class="flex items-center gap-2">
 															{#if !item.maturity.updatesAvailable}
 																<!-- Green checkmark in tooltip -->
-																<CircleCheck class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" />
+																<CircleCheck class="text-green-500 size-5" fill="none" stroke="currentColor" strokeWidth="2" />
 																<span class="font-medium">Image Up to Date</span>
 															{:else if item.maturity.status === 'Not Matured'}
 																<!-- Yellow warning icon in tooltip -->
-																<CircleFadingArrowUp class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" stroke-width="2" />
+																<CircleFadingArrowUp class="text-yellow-500 size-5" fill="none" stroke="currentColor" stroke-width="2" />
 																<span class="font-medium">Update Available (Not Matured)</span>
 															{:else}
 																<!-- Blue info icon in tooltip -->
-																<CircleArrowUp class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" />
+																<CircleArrowUp class="text-blue-500 size-5" fill="none" stroke="currentColor" stroke-width="2" />
 																<span class="font-medium">Matured Update Available</span>
 															{/if}
 														</div>
@@ -521,8 +521,8 @@
 										<Tooltip.Provider>
 											<Tooltip.Root>
 												<Tooltip.Trigger>
-													<span class="inline-flex items-center justify-center w-4 h-4 mr-2 opacity-30">
-														<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+													<span class="inline-flex items-center justify-center mr-2 opacity-30 size-4">
+														<svg class="text-gray-500 size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
 															<circle cx="12" cy="12" r="10" />
 															<path d="M9 12l2 2 4-4" />
 														</svg>
@@ -566,20 +566,20 @@
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
 										<DropdownMenu.Item onclick={() => goto(`/images/${item.id}`)}>
-											<ScanSearch class="h-4 w-4" />
+											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
 										<DropdownMenu.Item onclick={() => pullImageByRepoTag(item.repoTags?.[0])} disabled={isLoading.pulling || !item.repoTags?.[0]}>
 											{#if isLoading.pulling}
-												<Loader2 class="h-4 w-4 animate-spin" />
+												<Loader2 class="animate-spin size-4" />
 												Pulling...
 											{:else}
-												<Download class="h-4 w-4" />
+												<Download class="size-4" />
 												Pull
 											{/if}
 										</DropdownMenu.Item>
 										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleImageRemove(item.id)}>
-											<Trash2 class="h-4 w-4" />
+											<Trash2 class="size-4" />
 											Remove
 										</DropdownMenu.Item>
 									</DropdownMenu.Group>
@@ -592,12 +592,12 @@
 		</Card.Root>
 	{:else if !error}
 		<div class="flex flex-col items-center justify-center py-12 px-6 text-center border rounded-lg bg-card">
-			<HardDrive class="h-12 w-12 text-muted-foreground mb-4 opacity-40" />
+			<HardDrive class="text-muted-foreground mb-4 opacity-40 size-12" />
 			<p class="text-lg font-medium">No images found</p>
 			<p class="text-sm text-muted-foreground mt-1 max-w-md">Pull a new image using the "Pull Image" button above or use the Docker CLI</p>
 			<div class="flex gap-3 mt-4">
 				<Button variant="outline" size="sm" onclick={() => (isPullDialogOpen = true)}>
-					<Download class="h-4 w-4" />
+					<Download class="size-4" />
 					Pull Image
 				</Button>
 			</div>
@@ -616,7 +616,7 @@
 				<Button variant="outline" onclick={() => (isConfirmPruneDialogOpen = false)} disabled={isLoading.pruning}>Cancel</Button>
 				<Button variant="destructive" onclick={handlePruneImages} disabled={isLoading.pruning}>
 					{#if isLoading.pruning}
-						<Loader2 class="w-4 h-4 mr-2 animate-spin" /> Pruning...
+						<Loader2 class="mr-2 animate-spin size-4" /> Pruning...
 					{:else}
 						Prune Images
 					{/if}

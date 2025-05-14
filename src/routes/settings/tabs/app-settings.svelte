@@ -92,7 +92,7 @@
 		<Card.Header class="pb-3">
 			<div class="flex items-center gap-2">
 				<div class="bg-primary/10 p-2 rounded-full">
-					<Cog class="h-5 w-5 text-primary" />
+					<Cog class="text-primary size-5" />
 				</div>
 				<div>
 					<Card.Title>Core Arcane Configuration</Card.Title>

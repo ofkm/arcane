@@ -64,10 +64,10 @@
 
 		<Button onclick={saveSettings} disabled={isLoading.saving} class="h-10">
 			{#if isLoading.saving}
-				<RefreshCw class="mr-2 h-4 w-4 animate-spin" />
+				<RefreshCw class="animate-spin size-4" />
 				Saving...
 			{:else}
-				<Save class="mr-2 h-4 w-4" />
+				<Save class="size-4" />
 				Save Settings
 			{/if}
 		</Button>
@@ -85,7 +85,7 @@
 		<div id="settings-container">
 			<input type="hidden" id="csrf_token" value={data.csrf} />
 			{#each tabs as tab (tab.id)}
-				<Tabs.Content value={tab.id} class="space-y-4 ">
+				<Tabs.Content value={tab.id} class="space-y-4">
 					<tab.component {data} />
 				</Tabs.Content>
 			{/each}
