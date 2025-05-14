@@ -7,7 +7,8 @@
 	import { invalidateAll } from '$app/navigation';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
-	import { formatDate, formatLogLine, formatBytes } from '$lib/utils';
+	import { formatDate, formatLogLine } from '$lib/utils/string.utils';
+	import { formatBytes } from '$lib/utils/bytes.util';
 	import type Docker from 'dockerode';
 	import type { ContainerInspectInfo } from 'dockerode';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';

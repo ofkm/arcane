@@ -7,14 +7,13 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { capitalizeFirstLetter, truncateString } from '$lib/utils/string.utils';
-	import { formatBytes } from '$lib/utils';
+	import { formatBytes } from '$lib/utils/bytes.util';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import { statusVariantMap } from '$lib/types/statuses';
-	import { shortId } from '$lib/utils/string.utils';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ContainerAPIService from '$lib/services/api/container-api-service';

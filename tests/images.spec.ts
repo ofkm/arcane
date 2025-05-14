@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { formatBytes } from '../src/lib/utils'; // Assuming utils are accessible
+import { formatBytes } from '../src/lib/utils/bytes.util';
 
 // Mock data for images
 const mockImages = [

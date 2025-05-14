@@ -8,7 +8,7 @@
 	import { AlertCircle, Eye, EyeOff, Loader2, Plus, Trash } from '@lucide/svelte';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
-	import { parseBytes } from '$lib/utils/bytes';
+	import { parseBytes } from '$lib/utils/bytes.util';
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
 	import Switch from '$lib/components/ui/switch/switch.svelte';

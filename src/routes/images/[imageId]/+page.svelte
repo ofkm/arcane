@@ -7,7 +7,8 @@
 	import { goto } from '$app/navigation';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { formatDate, formatBytes } from '$lib/utils';
+	import { formatDate } from '$lib/utils/string.utils';
+	import { formatBytes } from '$lib/utils/bytes.util';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';

@@ -8,7 +8,7 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { formatDate } from '$lib/utils';
+	import { formatDate } from '$lib/utils/string.utils';
 	import type { NetworkInspectInfo } from 'dockerode';
 	import { toast } from 'svelte-sonner';
 

@@ -9,7 +9,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import PullImageDialog from './pull-image-dialog.svelte';
-	import { formatBytes } from '$lib/utils';
+	import { formatBytes } from '$lib/utils/bytes.util';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import * as Table from '$lib/components/ui/table';

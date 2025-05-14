@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { pruneImages } from '$lib/services/docker/image-service';
 import { getSettings } from '$lib/services/settings-service';
-import { formatBytes } from '$lib/utils';
+import { formatBytes } from '$lib/utils/bytes.util';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { extractDockerErrorMessage } from '$lib/utils/errors.util';
 import { tryCatch } from '$lib/utils/try-catch';

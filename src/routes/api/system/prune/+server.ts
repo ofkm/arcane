@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { pruneSystem } from '$lib/services/docker/system-service';
 import type { RequestHandler } from './$types';
-import { formatBytes } from '$lib/utils';
+import { formatBytes } from '$lib/utils/bytes.util';
 import type { PruneType } from '$lib/types/actions.type';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
