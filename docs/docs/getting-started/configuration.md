@@ -64,22 +64,22 @@ To import stacks, Arcane needs access to your Compose files. Add a bind mount so
 
 ## Environment Variables
 
-| Variable                        | Purpose                            | Default/Example                                 | Notes               |
-| ------------------------------- | ---------------------------------- | ----------------------------------------------- | ------------------- |
-| `PUID`                          | File owner user ID                 | `1000`                                          | Use your user ID    |
-| `PGID`                          | File owner group ID                | `1000`                                          | Use your group ID   |
-| `DOCKER_GID`                    | Docker group ID                    | (auto)                                          | Only if needed      |
-| `APP_ENV`                       | App environment                    | `production`                                    | Required for Docker |
-| `PUBLIC_SESSION_SECRET`         | Session secret                     | (set this!)                                     | Use a strong value  |
-| `PUBLIC_ALLOW_INSECURE_COOKIES` | Allow insecure cookies             | (unset)                                         | For local HTTP only |
-| `PUBLIC_OIDC_ENABLED`           | Enable OIDC login                  | `true`                                          |
-| `OIDC_CLIENT_ID`                | Client ID from your OIDC provider  | `your_arcane_client_id_from_provider`           |
-| `OIDC_CLIENT_SECRET`            | Client Secret from provider        | `your_super_secret_client_secret_from_provider` |
-| `OIDC_REDIRECT_URI`             | Redirect URI (must match provider) | `http://localhost:3000/auth/oidc/callback`      |
-| `OIDC_AUTHORIZATION_ENDPOINT`   | Auth endpoint URL                  | `https://your-provider.com/oauth2/authorize`    |
-| `OIDC_TOKEN_ENDPOINT`           | Token endpoint URL                 | `https://your-provider.com/oauth2/token`        |
-| `OIDC_USERINFO_ENDPOINT`        | Userinfo endpoint URL              | `https://your-provider.com/oauth2/userinfo`     |
-| `OIDC_SCOPES`                   | Scopes to request                  | `openid email profile` (default)                |
+| Variable                        | Purpose                            | Default/Example                                 | Notes                        |
+| ------------------------------- | ---------------------------------- | ----------------------------------------------- | ---------------------------- |
+| `PUID`                          | File owner user ID                 | `1000`                                          | Use your user ID             |
+| `PGID`                          | File owner group ID                | `1000`                                          | Use your group ID            |
+| `DOCKER_GID`                    | Docker group ID                    | (auto)                                          | Only if needed               |
+| `APP_ENV`                       | App environment                    | `production`                                    | Required for Docker          |
+| `PUBLIC_SESSION_SECRET`         | Session secret                     | (set this!)                                     | Use a strong value           |
+| `PUBLIC_ALLOW_INSECURE_COOKIES` | Allow insecure cookies             | (unset)                                         | For local HTTP only          |
+| `PUBLIC_OIDC_ENABLED`           | Enable OIDC login                  | `true`                                          | Sets OIDC Auth to be enabled |
+| `OIDC_CLIENT_ID`                | Client ID from your OIDC provider  | `your_arcane_client_id_from_provider`           | NA                           |
+| `OIDC_CLIENT_SECRET`            | Client Secret from provider        | `your_super_secret_client_secret_from_provider` | NA                           |
+| `OIDC_REDIRECT_URI`             | Redirect URI (must match provider) | `http://localhost:3000/auth/oidc/callback`      | NA                           |
+| `OIDC_AUTHORIZATION_ENDPOINT`   | Auth endpoint URL                  | `https://your-provider.com/oauth2/authorize`    | NA                           |
+| `OIDC_TOKEN_ENDPOINT`           | Token endpoint URL                 | `https://your-provider.com/oauth2/token`        | NA                           |
+| `OIDC_USERINFO_ENDPOINT`        | Userinfo endpoint URL              | `https://your-provider.com/oauth2/userinfo`     | NA                           |
+| `OIDC_SCOPES`                   | Scopes to request                  | `openid email profile` (default)                | NA                           |
 
 ---
 
