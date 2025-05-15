@@ -6,11 +6,11 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
 	title: 'Arcane - Documentation',
-	tagline: 'Simple and Elegant Docker Management UI written in Typescript and SvelteKit',
+	tagline: 'Modern Docker management, designed for everyone',
 	favicon: 'img/arcane.png',
 
 	// Set the production url of your site here
-	url: 'https://ofkm.github.io',
+	url: 'https://arcane.ofkm.dev',
 	// Set the /<baseUrl>/ pathname under which your site is served
 	// For GitHub pages deployment, it is often '/<projectName>/'
 	baseUrl: '/',
