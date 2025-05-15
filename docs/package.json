@@ -23,8 +23,7 @@
 		"prism-react-renderer": "^2.3.0",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
-		"react-feather": "^2.0.10",
-		"react-icons": "^5.5.0"
+		"react-feather": "^2.0.10"
 	},
 	"devDependencies": {
 		"@docusaurus/module-type-aliases": "3.7.0",
