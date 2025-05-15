@@ -6,6 +6,7 @@ import { parseImageNameForRegistry, areRegistriesEquivalent } from '$lib/utils/r
 import { getSettings } from '$lib/services/settings-service';
 import { updateImageMaturity } from '$lib/stores/maturity-store';
 import { tryCatch } from '$lib/utils/try-catch';
+import { maturityCache } from './maturity-cache-service';
 let maturityPollingInterval: NodeJS.Timeout | null = null;
 
 /**
@@ -282,10 +283,16 @@ export async function pullImage(imageRef: string, platform?: string, authConfig?
  * and returns maturity information.
  */
 export async function checkImageMaturity(imageId: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+	// First check cache
+	const cachedMaturity = maturityCache.get(imageId);
+	if (cachedMaturity) {
+		return cachedMaturity;
+	}
+
 	const imageResult = await tryCatch(getImage(imageId));
 	if (imageResult.error) {
 		console.warn(`checkImageMaturity: Failed to get image details for ${imageId}:`, imageResult.error);
-		updateImageMaturity(imageId, undefined); // Ensure store is cleared if image details fail
+		maturityCache.set(imageId, undefined);
 		return undefined;
 	}
 
@@ -293,13 +300,13 @@ export async function checkImageMaturity(imageId: string): Promise<import('$lib/
 	const repoTag = imageDetails.RepoTags?.[0];
 
 	if (!repoTag || repoTag.includes('<none>')) {
-		updateImageMaturity(imageId, undefined);
+		maturityCache.set(imageId, undefined);
 		return undefined;
 	}
 
 	const lastColon = repoTag.lastIndexOf(':');
 	if (lastColon === -1) {
-		updateImageMaturity(imageId, undefined);
+		maturityCache.set(imageId, undefined);
 		return undefined;
 	}
 
@@ -326,13 +333,13 @@ export async function checkImageMaturity(imageId: string): Promise<import('$lib/
 		} else {
 			console.error(`Error getting registry info for ${repository}:${currentTag}:`, registryInfoResult.error);
 		}
-		updateImageMaturity(imageId, undefined); // Clear maturity on error
+		maturityCache.set(imageId, undefined); // Clear maturity on error
 		return undefined;
 	}
 
 	const registryInfo = registryInfoResult.data;
 
-	updateImageMaturity(imageId, registryInfo);
+	maturityCache.set(imageId, registryInfo);
 	return registryInfo;
 }
 

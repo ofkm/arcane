@@ -3,7 +3,7 @@
 	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch, CircleFadingArrowUp, Funnel, CircleCheck, CircleArrowUp } from '@lucide/svelte';
+	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch, Funnel } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -19,8 +19,9 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { settingsStore } from '$lib/stores/settings-store';
-	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import MaturityItem from '$lib/components/maturity-item.svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { maturityStore } from '$lib/stores/maturity-store';
 
 	let { data }: { data: PageData } = $props();
 	let images = $state<EnhancedImageInfo[]>(data.images || []);
@@ -31,9 +32,6 @@
 		showUsed: true,
 		showUnused: true
 	});
-
-	// Add with other derived values
-	const filteredImages = $derived(images.filter((img) => (imageFilters.showUsed && img.inUse) || (imageFilters.showUnused && !img.inUse)));
 
 	let isLoading = $state({
 		pulling: false,
@@ -61,6 +59,51 @@
 
 	const totalImages = $derived(images?.length || 0);
 	const totalSize = $derived(images?.reduce((acc, img) => acc + (img.size || 0), 0) || 0);
+
+	// let enhancedImages: EnhancedImageInfo[] = [];
+	const enhancedImages = $derived(
+		images.map((image) => {
+			const storedMaturity = $maturityStore.maturityData[image.id];
+			return {
+				...image,
+				maturity: storedMaturity || image.maturity
+			};
+		})
+	);
+
+	const filteredImages = $derived(enhancedImages.filter((img) => (imageFilters.showUsed && img.inUse) || (imageFilters.showUnused && !img.inUse)) as EnhancedImageInfo[]);
+
+	onMount(async () => {
+		await loadMaturityData();
+	});
+
+	async function loadMaturityData() {
+		// Only check visible images based on pagination
+		const visibleImageIds = images
+			.filter((img) => img.repo !== '<none>' && img.tag !== '<none>')
+			.slice(0, 20) // Limit to visible images
+			.map((img) => img.id);
+
+		if (visibleImageIds.length === 0) return;
+
+		isLoading.checking = true;
+		try {
+			// Process in smaller batches to avoid overwhelming the server
+			const BATCH_SIZE = 5;
+			for (let i = 0; i < visibleImageIds.length; i += BATCH_SIZE) {
+				const batch = visibleImageIds.slice(i, i + BATCH_SIZE);
+				await imageApi.checkMaturityBatch(batch);
+				// Give UI time to update between batches
+				if (i + BATCH_SIZE < visibleImageIds.length) {
+					await new Promise((resolve) => setTimeout(resolve, 50));
+				}
+			}
+		} catch (error) {
+			console.error('Error loading maturity data:', error);
+		} finally {
+			isLoading.checking = false;
+		}
+	}
 
 	async function handlePullImageSubmit(event: { imageRef: string; tag?: string; platform?: string; registryUrl?: string }) {
 		const { imageRef, tag = 'latest', platform, registryUrl } = event;
@@ -312,6 +355,43 @@
 	$effect(() => {
 		images = data.images;
 	});
+
+	let observer: IntersectionObserver | null = null;
+
+	onMount(() => {
+		// Lazily load maturity data for visible rows
+		observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (entry.isIntersecting) {
+						const imageId = entry.target.getAttribute('data-image-id');
+						if (imageId) {
+							loadImageMaturity(imageId);
+						}
+					}
+				});
+			},
+			{ rootMargin: '200px' }
+		);
+
+		setTimeout(() => {
+			document.querySelectorAll('[data-image-id]').forEach((el) => {
+				observer?.observe(el);
+			});
+		}, 100);
+	});
+
+	onDestroy(() => {
+		observer?.disconnect();
+	});
+
+	async function loadImageMaturity(imageId: string) {
+		try {
+			await imageApi.checkMaturity(imageId);
+		} catch (error) {
+			console.error(`Error loading maturity for image ${imageId}:`, error);
+		}
+	}
 </script>
 
 <div class="space-y-6">
@@ -453,7 +533,7 @@
 					bind:selectedIds
 				>
 					{#snippet rows({ item })}
-						<Table.Cell>
+						<Table.Cell data-image-id={item.id}>
 							<div class="flex items-center gap-2">
 								<div class="flex items-center flex-1">
 									<MaturityItem maturity={item.maturity} />

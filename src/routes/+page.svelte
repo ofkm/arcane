@@ -21,11 +21,16 @@
 	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import MaturityItem from '$lib/components/maturity-item.svelte';
+	import { onMount } from 'svelte';
+	import { maturityStore } from '$lib/stores/maturity-store';
+	import { maturityCache } from '$lib/services/docker/maturity-cache-service';
+	import ImageAPIService from '$lib/services/api/image-api-service';
 
 	let { data }: { data: PageData } = $props();
 
 	const containerApi = new ContainerAPIService();
 	const systemApi = new SystemAPIService();
+	const imageApi = new ImageAPIService();
 
 	let dashboardStates = $state({
 		dockerInfo: data.dockerInfo,
@@ -53,6 +58,11 @@
 		dashboardStates.images = data.images as EnhancedImageInfo[];
 		dashboardStates.settings = data.settings;
 		dashboardStates.error = data.error;
+	});
+
+	onMount(async () => {
+		// Asynchronously load maturity data for the top images after dashboard loads
+		await loadTopImagesMaturity();
 	});
 
 	async function refreshData() {
@@ -123,6 +133,46 @@
 				isLoading.pruning = false;
 			}
 		});
+	}
+
+	async function loadTopImagesMaturity() {
+		// Only process if there are images
+		if (!dashboardStates.images || dashboardStates.images.length === 0) return;
+
+		// Get the IDs of the largest 5 images (which are displayed in the dashboard)
+		const topImageIds = [...dashboardStates.images]
+			.sort((a, b) => (b.size || 0) - (a.size || 0))
+			.slice(0, 5)
+			.filter((img) => img.repo !== '<none>' && img.tag !== '<none>')
+			.map((img) => img.id);
+
+		if (topImageIds.length === 0) return;
+
+		// Load maturity data in the background
+		try {
+			// Process in small batches to keep UI responsive
+			const BATCH_SIZE = 2;
+			for (let i = 0; i < topImageIds.length; i += BATCH_SIZE) {
+				const batch = topImageIds.slice(i, i + BATCH_SIZE);
+				await imageApi.checkMaturityBatch(batch);
+
+				// Update the dashboardStates.images with the latest maturity info
+				dashboardStates.images = dashboardStates.images.map((image) => {
+					const storedMaturity = $maturityStore.maturityData[image.id];
+					return {
+						...image,
+						maturity: storedMaturity || image.maturity
+					};
+				});
+
+				// Short delay between batches
+				if (i + BATCH_SIZE < topImageIds.length) {
+					await new Promise((resolve) => setTimeout(resolve, 50));
+				}
+			}
+		} catch (error) {
+			console.error('Error loading maturity data for dashboard images:', error);
+		}
 	}
 </script>
 
@@ -405,7 +455,7 @@
 										<Table.Cell>
 											<div class="flex items-center gap-2">
 												<div class="flex items-center flex-1">
-													<MaturityItem maturity={item.maturity} />
+													<MaturityItem maturity={item.maturity} isLoadingInBackground={!item.maturity} />
 													<a class="font-medium hover:underline shrink truncate" href="/images/{item.id}/">
 														{item.repo}
 													</a>

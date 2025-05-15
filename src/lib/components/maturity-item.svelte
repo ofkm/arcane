@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
-	import { CircleCheck, CircleFadingArrowUp, CircleArrowUp } from '@lucide/svelte';
+	import { CircleCheck, CircleFadingArrowUp, CircleArrowUp, Loader2 } from '@lucide/svelte';
 
 	interface Props {
 		maturity?:
@@ -11,9 +11,10 @@
 					date?: string;
 			  }
 			| undefined;
+		isLoadingInBackground?: boolean;
 	}
 
-	let { maturity = undefined }: Props = $props();
+	let { maturity = undefined, isLoadingInBackground = false }: Props = $props();
 </script>
 
 {#if maturity}
@@ -64,6 +65,19 @@
 						</div>
 					</div>
 				</div>
+			</Tooltip.Content>
+		</Tooltip.Root>
+	</Tooltip.Provider>
+{:else if isLoadingInBackground}
+	<Tooltip.Provider>
+		<Tooltip.Root>
+			<Tooltip.Trigger>
+				<span class="inline-flex items-center justify-center align-middle mr-2 size-4">
+					<Loader2 class="text-blue-400 size-4 animate-spin" />
+				</span>
+			</Tooltip.Trigger>
+			<Tooltip.Content side="right" class="p-2 relative tooltip-with-arrow" align="center">
+				<span class="text-xs">Checking maturity status...</span>
 			</Tooltip.Content>
 		</Tooltip.Root>
 	</Tooltip.Provider>

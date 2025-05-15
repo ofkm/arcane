@@ -3,6 +3,7 @@ import { listContainers } from '$lib/services/docker/container-service';
 import { getDockerInfo } from '$lib/services/docker/core';
 import { isImageInUse, listImages, checkImageMaturity } from '$lib/services/docker/image-service';
 import { getSettings } from '$lib/services/settings-service';
+import { maturityCache } from '$lib/services/docker/maturity-cache-service';
 import type { EnhancedImageInfo, ServiceContainer, ServiceImage } from '$lib/types/docker';
 
 type DockerInfoType = Awaited<ReturnType<typeof getDockerInfo>>;
@@ -41,13 +42,18 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 			images.map(async (image): Promise<EnhancedImageInfo> => {
 				const inUse = await isImageInUse(image.id);
 
-				let maturity = undefined;
-				try {
-					if (image.repo !== '<none>' && image.tag !== '<none>') {
-						maturity = await checkImageMaturity(image.id);
+				// Check maturity cache first before returning
+				const cachedMaturity = maturityCache.get(image.id);
+
+				let maturity = cachedMaturity;
+				if (maturity === undefined) {
+					try {
+						if (image.repo !== '<none>' && image.tag !== '<none>') {
+							maturity = await checkImageMaturity(image.id);
+						}
+					} catch (maturityError) {
+						console.error(`Dashboard: Failed to check maturity for image ${image.id}:`, maturityError);
 					}
-				} catch (maturityError) {
-					console.error(`Dashboard: Failed to check maturity for image ${image.id}:`, maturityError);
 				}
 
 				return {

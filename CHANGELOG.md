@@ -1,3 +1,8 @@
+## [0.9.2](https://github.com/ofkm/arcane/compare/v0.9.1...v0.9.2) (2025-05-15)
+
+### Bug Fixes
+
+* cache image maturity results to improve page loading ([ee6eb1e](https://github.com/ofkm/arcane/commit/ee6eb1e52d31aa319f8148bce902e2d5696b97d4))
 ## [0.9.1](https://github.com/ofkm/arcane/compare/v0.9.0...v0.9.1) (2025-05-15)
 
 ### Bug Fixes
