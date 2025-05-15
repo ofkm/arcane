@@ -23,6 +23,10 @@ Introduced in version 0.9.0
 
 ### Recommended: Configure OIDC in the UI
 
+:::important
+Arcane requires the use of PKCE for OIDC Authentication
+:::
+
 - Go to **Settings → Authentication** in Arcane.
 - Enter your OIDC provider details (Issuer URL, Client ID, Client Secret, Redirect URI, etc).
 - Save and test the connection.
