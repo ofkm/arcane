@@ -19,21 +19,32 @@ Arcane stores all settings securely and lets you manage them easily from the web
 3. Change what you need
 4. Click **Save**
 
-## Config Options
+## Example settings.json
 
-| Setting                 | Description                     | Default                       | Notes                             |
-| ----------------------- | ------------------------------- | ----------------------------- | --------------------------------- |
-| `dockerHost`            | Docker engine address           | `unix:///var/run/docker.sock` | Use `tcp://...` for remote Docker |
-| `autoUpdate`            | Auto-update running apps        | `false`                       | -                                 |
-| `autoUpdateInterval`    | Update check interval (minutes) | `60`                          | Only if autoUpdate is enabled     |
-| `pollingEnabled`        | Poll Docker for status updates  | `true`                        | -                                 |
-| `pollingInterval`       | Status poll interval (minutes)  | `10`                          | -                                 |
-| `pruneMode`             | Image cleanup mode              | `all`                         | `dangling` = only untagged images |
-| `stacksDirectory`       | Where Compose files are stored  | `/app/data/stacks`            | -                                 |
-| `auth.localAuthEnabled` | Enable username/password login  | `true`                        | -                                 |
-| `auth.sessionTimeout`   | Idle session timeout (minutes)  | `60`                          | -                                 |
-| `auth.passwordPolicy`   | Password strength requirement   | `medium`                      | -                                 |
-| `registryCredentials`   | Private registry authentication | -                             | Not fully implemented             |
+```json
+{
+	"dockerHost": "unix:///var/run/docker.sock",
+	"stacksDirectory": "data/stacks",
+	"autoUpdate": true,
+	"autoUpdateInterval": 60,
+	"pollingEnabled": true,
+	"pollingInterval": 10,
+	"pruneMode": "dangling",
+	"maturityThresholdDays": 5,
+	"onboarding": {
+		"completed": true,
+		"completedAt": "2025-05-11T00:25:24.435Z",
+		"steps": {
+			"welcome": true,
+			"password": true,
+			"settings": true
+		}
+	},
+	"externalServices": {},
+	"baseServerUrl": "localhost",
+	"_encrypted": "ENCRYPTED_DATA_STRING"
+}
+```
 
 ## Docker Setup (Quick)
 
