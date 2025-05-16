@@ -4,7 +4,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { ArrowLeft, AlertCircle, HardDrive, Clock, Tag, Layers, Trash2, Loader2, Database, Globe, Info } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { formatDate } from '$lib/utils/string.utils';
@@ -17,14 +17,12 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let { volume, inUse } = $derived(data);
 
-	let isRefreshing = $state(false);
 	let isLoading = $state({ remove: false });
 	const createdDate = $derived(volume?.CreatedAt ? formatDate(volume.CreatedAt) : 'N/A');
 
 	const volumeApi = new VolumeAPIService();
 
 	async function handleRemoveVolumeConfirm(volumeName: string) {
-		// Build a custom message that includes warnings for volumes in use
 		let message = 'Are you sure you want to delete this volume? This action cannot be undone.';
 
 		if (inUse) {

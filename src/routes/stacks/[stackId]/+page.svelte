@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import type { Stack, StackService, StackPort } from '$lib/types/docker/stack.type';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { ArrowLeft, Loader2, AlertCircle, Save, FileStack, Layers, ArrowRight, ExternalLink } from '@lucide/svelte';
@@ -60,18 +61,17 @@
 	async function handleSaveChanges() {
 		if (!stack || !hasChanges) return;
 
-		// Store the original stack ID before saving, in case it changes
 		const currentStackId = stack.id;
 
 		handleApiResultWithCallbacks({
 			result: await tryCatch(stackApi.save(currentStackId, name, composeContent, envContent)),
 			message: 'Failed to Save Stack',
 			setLoadingState: (value) => (isLoading.saving = value),
-			onSuccess: async (updatedStack) => {
+			onSuccess: async (updatedStack: Stack) => {
+				// Changed from any to Stack
 				console.log('Stack save successful', updatedStack);
 				toast.success('Stack updated successfully!');
 
-				// Update local state for "original" values to reset hasChanges
 				originalName = updatedStack.name;
 				originalComposeContent = composeContent;
 				originalEnvContent = envContent;
@@ -88,7 +88,7 @@
 		});
 	}
 
-	function getHostForService(service: any): string {
+	function getHostForService(service: StackService): string {
 		if (!service || !service.networkSettings?.Networks) return baseServerUrl;
 
 		const networks = service.networkSettings.Networks;
@@ -103,14 +103,8 @@
 	}
 
 	// Define a more specific interface for the port type
-	interface Port {
-		PublicPort?: number;
-		PrivatePort?: number;
-		Type?: string;
-		[key: string]: any;
-	}
 
-	function getServicePortUrl(service: any, port: string | number | Port, protocol = 'http'): string {
+	function getServicePortUrl(service: StackService, port: string | number | StackPort, protocol = 'http'): string {
 		const host = getHostForService(service);
 
 		if (typeof port === 'string') {
@@ -169,7 +163,7 @@
 				{#if stack && servicePorts && Object.keys(servicePorts).length > 0}
 					{@const allUniquePorts = [...new Set(Object.values(servicePorts).flat())]}
 					<div class="flex flex-wrap gap-2 mt-2">
-						{#each allUniquePorts as port}
+						{#each allUniquePorts as port (port)}
 							<a href={getServicePortUrl(stack, port)} target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-2 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium hover:bg-blue-500/20 transition-colors">
 								Port {port}
 								<ExternalLink class="size-3 ml-1" />

@@ -114,7 +114,6 @@
 					id="stacksDirectory"
 					label="Stack Projects Directory"
 					placeholder="data/stacks"
-					required
 					description="The primary folder where Arcane will store and manage your Docker Compose stack projects. This path is inside Arcane's container."
 					warningText="Important: Changing this path will not automatically move existing stack projects."
 					oninput={() => onStacksDirectoryChange()}
@@ -130,7 +129,7 @@
 					oninput={() => onBaseServerUrlChange()}
 				/>
 
-				<FormInput bind:input={maturityThresholdInput} type="number" id="maturityThresholdDays" label="Image Maturity Threshold (days)" placeholder="30" required description="The number of days after an image release before it's considered 'matured'." warningText="Higher values mean more caution with new images." oninput={() => onMaturityThresholdChange()} />
+				<FormInput bind:input={maturityThresholdInput} type="number" id="maturityThresholdDays" label="Image Maturity Threshold (days)" placeholder="30" description="The number of days after an image release before it's considered 'matured'." warningText="Higher values mean more caution with new images." oninput={() => onMaturityThresholdChange()} />
 			</div>
 		</Card.Content>
 	</Card.Root>

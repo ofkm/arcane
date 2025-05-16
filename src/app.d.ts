@@ -1,6 +1,5 @@
 import type { VolumeInspectInfo as OriginalVolumeInspectInfo } from 'dockerode';
 import type { User } from '$lib/types/user.type';
-import type { UserSession } from '$lib/types/session.type';
 
 declare global {
 	namespace App {

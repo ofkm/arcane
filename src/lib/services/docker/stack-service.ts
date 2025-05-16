@@ -1,14 +1,12 @@
 import { promises as fs } from 'node:fs';
-import path, { join, dirname } from 'node:path';
-import { basename } from 'node:path';
+import path, { join } from 'node:path';
 import DockerodeCompose from 'dockerode-compose';
 import yaml from 'js-yaml';
-import { nanoid } from 'nanoid';
 import slugify from 'slugify';
 import { directoryExists } from '$lib/utils/fs.utils';
 import { getDockerClient } from '$lib/services/docker/core';
 import { getSettings, ensureStacksDirectory } from '$lib/services/settings-service';
-import type { Stack, StackMeta, StackService, StackUpdate } from '$lib/types/docker/stack.type';
+import type { Stack, StackService, StackUpdate } from '$lib/types/docker/stack.type';
 
 /* The above code is declaring a variable `STACKS_DIR` with an empty string as its initial value in
 TypeScript. */
@@ -117,29 +115,6 @@ async function getComposeFilePath(stackId: string): Promise<string | null> {
 }
 
 /**
- * Returns the path to the meta file, prioritizing .stack.json, fallback to meta.json.
- * Returns null if neither is found.
- */
-async function getStackMetaPath(stackId: string): Promise<string | null> {
-	const stackDir = await getStackDir(stackId);
-	const newPath = join(stackDir, '.stack.json');
-	const oldPath = join(stackDir, 'meta.json');
-	try {
-		await fs.access(newPath);
-		return newPath;
-	} catch {
-		// .stack.json not accessible, try meta.json
-		try {
-			await fs.access(oldPath);
-			return oldPath;
-		} catch {
-			// meta.json also not accessible
-			return null;
-		}
-	}
-}
-
-/**
  * Returns the path to the .env file (no fallback needed, just .env)
  */
 async function getEnvFilePath(stackId: string): Promise<string> {
@@ -223,13 +198,13 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 	const composeServiceLabel = 'com.docker.compose.service'; // Standard service label
 
 	try {
-		const composeData = yaml.load(composeContent) as any;
+		const composeData = yaml.load(composeContent) as Record<string, unknown>;
 		if (!composeData || !composeData.services) {
 			console.warn(`No services found in compose content for stack ${stackId}`);
 			return [];
 		}
 
-		const serviceNames = Object.keys(composeData.services);
+		const serviceNames = Object.keys(composeData.services as Record<string, unknown>);
 
 		// List containers, potentially filtering by label for efficiency if needed
 		const containers = await docker.listContainers({
@@ -453,9 +428,9 @@ export async function createStack(name: string, composeContent: string, envConte
 
 	let serviceCount = 0;
 	try {
-		const composeData = yaml.load(composeContent) as any;
+		const composeData = yaml.load(composeContent) as Record<string, unknown>;
 		if (composeData?.services) {
-			serviceCount = Object.keys(composeData.services).length;
+			serviceCount = Object.keys(composeData.services as Record<string, unknown>).length;
 		}
 	} catch (parseErr) {
 		console.warn(`Could not parse compose file during creation for stack ${uniqueDirName}:`, parseErr);
@@ -565,7 +540,7 @@ export async function updateStack(currentStackId: string, updates: StackUpdate):
 
 	if (updates.composeContent !== undefined) {
 		const normalizedComposeContent = normalizeHealthcheckTest(updates.composeContent);
-		let currentComposePath = await getComposeFilePath(effectiveStackId); // Check existing, might be null
+		const currentComposePath = await getComposeFilePath(effectiveStackId); // Check existing, might be null
 		const targetComposePath = currentComposePath || path.join(stackDirForContent, 'compose.yaml'); // Default to compose.yaml if not found
 
 		promises.push(fs.writeFile(targetComposePath, normalizedComposeContent, 'utf8'));
@@ -899,10 +874,9 @@ export async function removeStack(stackId: string): Promise<boolean> {
 		try {
 			await fs.rm(stackDir, { recursive: true, force: true });
 			console.log(`Stack directory ${stackDir} removed.`);
-		} catch (e) {
-			console.error(`Failed to remove stack directory ${stackDir}:`, e);
-			// Even if containers were removed, directory removal failed
-			throw new Error(`Failed to remove stack directory: ${e instanceof Error ? e.message : String(e)}`);
+		} catch {
+			console.error(`Failed to remove stack directory ${stackDir}`);
+			throw new Error(`Failed to remove stack directory`);
 		}
 
 		return true;
@@ -1009,7 +983,7 @@ export async function discoverExternalStacks(): Promise<Stack[]> {
 		const composeProjectLabel = 'com.docker.compose.project';
 		const composeServiceLabel = 'com.docker.compose.service';
 
-		const projectMap: Record<string, any[]> = {};
+		const projectMap: Record<string, Array<{ id: string; name: string; state: { Running: boolean; Status: string; ExitCode: number } }>> = {};
 
 		containers.forEach((container) => {
 			const labels = container.Labels || {};
@@ -1169,7 +1143,7 @@ export async function importExternalStack(stackId: string): Promise<Stack> {
 	if (!composeContent) {
 		console.log(`Generating compose file for stack '${stackId}' as no existing file could be read or found.`);
 		// Create a basic compose file from container inspection
-		const services: Record<string, any> = {};
+		const services: Record<string, { image: string }> = {};
 
 		for (const cont of stackContainers) {
 			// Renamed to 'cont' to avoid conflict with outer 'container'
@@ -1272,9 +1246,9 @@ export async function isStackRunning(stackId: string): Promise<boolean> {
  * @returns {string} - The normalized YAML content.
  */
 function normalizeHealthcheckTest(composeContent: string): string {
-	let doc: any;
+	let doc: Record<string, unknown> | undefined;
 	try {
-		doc = yaml.load(composeContent);
+		doc = yaml.load(composeContent) as Record<string, unknown>;
 	} catch (e) {
 		console.warn('Could not parse compose YAML for healthcheck normalization:', e);
 		return composeContent; // Return original if parsing fails
@@ -1284,7 +1258,7 @@ function normalizeHealthcheckTest(composeContent: string): string {
 	}
 
 	let modified = false;
-	for (const service of Object.values(doc.services)) {
+	for (const service of Object.values(doc.services as Record<string, unknown>)) {
 		const svc = service as { healthcheck?: { test?: unknown } }; // Type assertion
 		if (svc.healthcheck && svc.healthcheck.test) {
 			if (typeof svc.healthcheck.test === 'string') {

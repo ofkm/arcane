@@ -13,7 +13,7 @@
 		userToEdit = $bindable<User | null>(null),
 		roles = [],
 		isLoading = $bindable(false),
-		onSubmit = $bindable((_data: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) => {})
+		onSubmit = $bindable(() => {})
 	}: {
 		open?: boolean;
 		userToEdit?: User | null;

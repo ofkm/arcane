@@ -159,7 +159,7 @@
 					</Card.Header>
 					<Card.Content>
 						<div class="flex flex-wrap gap-2">
-							{#each image.RepoTags as tag}
+							{#each image.RepoTags as tag (tag)}
 								<Badge variant="secondary">{tag}</Badge>
 							{/each}
 						</div>
@@ -174,7 +174,7 @@
 						<Card.Title>Labels</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
-						{#each Object.entries(image.Config.Labels) as [key, value]}
+						{#each Object.entries(image.Config.Labels) as [key, value] (key)}
 							<div class="text-sm flex flex-col sm:flex-row sm:items-center">
 								<span class="font-medium text-muted-foreground w-full sm:w-1/4 break-all">{key}:</span>
 								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-3/4">{value}</span>

@@ -17,18 +17,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 			const stream = new ReadableStream({
 				start(controller) {
 					let isActive = true;
-					let pollInterval: ReturnType<typeof setInterval>;
-					let pingInterval: ReturnType<typeof setInterval>;
-
-					const cleanup = () => {
-						isActive = false;
-						clearInterval(pollInterval);
-						clearInterval(pingInterval);
-					};
-
-					request.signal.addEventListener('abort', cleanup);
-
-					pollInterval = setInterval(async () => {
+					const pollInterval: ReturnType<typeof setInterval> = setInterval(async () => {
 						if (!isActive) return;
 
 						try {
@@ -37,7 +26,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 							try {
 								controller.enqueue(encoder.encode(`data: ${JSON.stringify(stats)}\n\n`));
 							} catch (err) {
-								if (err && typeof err === 'object' && 'code' in err && (err as any).code === 'ERR_INVALID_STATE') {
+								if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ERR_INVALID_STATE') {
 									cleanup();
 								} else {
 									console.error('Enqueue error:', err);
@@ -46,12 +35,12 @@ export const GET: RequestHandler = async ({ params, request }) => {
 						} catch (err) {
 							if (!isActive) return;
 
-							if ((err as any).statusCode === 404) {
+							if ((err as { statusCode?: number }).statusCode === 404) {
 								try {
 									controller.enqueue(encoder.encode(`data: ${JSON.stringify({ removed: true })}\n\n`));
 									cleanup();
 									controller.close();
-								} catch (e) {
+								} catch {
 									cleanup();
 								}
 							} else {
@@ -60,16 +49,24 @@ export const GET: RequestHandler = async ({ params, request }) => {
 						}
 					}, 2000);
 
-					pingInterval = setInterval(() => {
+					const pingInterval: ReturnType<typeof setInterval> = setInterval(() => {
 						if (!isActive) return;
 						try {
 							controller.enqueue(encoder.encode(':\n\n'));
 						} catch (err) {
-							if (err && typeof err === 'object' && 'code' in err && (err as any).code === 'ERR_INVALID_STATE') {
+							if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ERR_INVALID_STATE') {
 								cleanup();
 							}
 						}
 					}, 15000);
+
+					const cleanup = () => {
+						isActive = false;
+						clearInterval(pollInterval);
+						clearInterval(pingInterval);
+					};
+
+					request.signal.addEventListener('abort', cleanup);
 
 					return cleanup;
 				},

@@ -75,7 +75,7 @@
 
 	<Tabs.Root value={settingsPageStates.activeTab} onValueChange={(val) => (settingsPageStates.activeTab = val)} class="w-full">
 		<Tabs.List class="grid grid-cols-4 md:w-full md:max-w-3xl mb-4 dark:bg-slate-900">
-			{#each tabs as tab, i (tab.id)}
+			{#each tabs as tab (tab.id)}
 				<Tabs.Trigger value={tab.id} class="whitespace-nowrap data-[state=active]:border data-[state=active]:border-primary/60">
 					{tab.label}
 				</Tabs.Trigger>

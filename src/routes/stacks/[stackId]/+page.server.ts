@@ -3,6 +3,7 @@ import { getSettings } from '$lib/services/settings-service';
 import { getContainer } from '$lib/services/docker/container-service';
 import type { PageServerLoad, Actions } from './$types';
 import { tryCatch } from '$lib/utils/try-catch';
+import type { PortBinding } from 'dockerode';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { stackId } = params;
@@ -49,10 +50,10 @@ export const load: PageServerLoad = async ({ params }) => {
 					const parsedPorts: string[] = [];
 
 					for (const containerPort in portBindings) {
-						if (portBindings.hasOwnProperty(containerPort)) {
+						if (Object.prototype.hasOwnProperty.call(portBindings, containerPort)) {
 							const bindings = portBindings[containerPort];
 							if (bindings && Array.isArray(bindings) && bindings.length > 0) {
-								bindings.forEach((binding: any) => {
+								bindings.forEach((binding: PortBinding) => {
 									if (binding.HostPort) {
 										const portType = containerPort.split('/')[1] || 'tcp';
 										parsedPorts.push(`${binding.HostPort}:${containerPort.split('/')[0]}/${portType}`);

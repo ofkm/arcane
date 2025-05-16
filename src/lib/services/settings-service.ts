@@ -106,7 +106,7 @@ export async function getSettings(): Promise<Settings> {
 			const rawData = await fs.readFile(filePath, 'utf8');
 			const settingsFromFile = JSON.parse(rawData);
 
-			let baseSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
+			const baseSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
 
 			if (settingsFromFile._encrypted) {
 				const { _encrypted, ...nonSensitiveSettings } = settingsFromFile;

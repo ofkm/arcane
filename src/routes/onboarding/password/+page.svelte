@@ -14,22 +14,16 @@
 	let confirmPassword = $state('');
 	let error = $state('');
 	let loading = $state(false);
-	let welcomeStepCompleted = $state(false);
 
-	// Add default values for required settings
 	const defaultDockerHost = 'unix:///var/run/docker.sock';
 	const defaultStacksDirectory = 'data/stacks';
 
-	// Check for completed steps on mount
 	onMount(async () => {
-		// If we've already completed the password step, go to settings
 		if (browser && $settingsStore.onboarding?.steps?.password) {
 			goto('/onboarding/settings');
 			return;
 		}
 
-		// Ensure welcome step is set as completed - this fixes the issue
-		// if someone has already visited the welcome page but the state wasn't persisted
 		updateSettingsStore({
 			onboarding: {
 				...$settingsStore.onboarding,
@@ -42,7 +36,6 @@
 			}
 		});
 
-		// Save to ensure persistence
 		try {
 			if (browser) {
 				await saveSettingsToServer();
@@ -50,16 +43,12 @@
 		} catch (err) {
 			console.error('Failed to save settings:', err);
 		}
-
-		// Update local state
-		welcomeStepCompleted = true;
 	});
 
 	async function handleSubmit() {
 		loading = true;
 		error = '';
 
-		// Validate passwords
 		if (!password || password.length < 8) {
 			error = 'Password must be at least 8 characters long';
 			loading = false;
@@ -73,14 +62,13 @@
 		}
 
 		try {
-			// Call API to change password
 			const response = await fetch('/api/users/password', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					currentPassword: 'arcane-admin', // Default password
+					currentPassword: 'arcane-admin',
 					newPassword: password
 				})
 			});
@@ -145,7 +133,7 @@
 		</div>
 
 		<div class="flex pt-8 justify-center">
-			<Button type="submit" disabled={loading} class="px-8 flex items-center size-12 size-[80%]">
+			<Button type="submit" disabled={loading} class="px-8 flex items-center h-12 w-[80%]">
 				{#if loading}
 					<span class="inline-block border-2 border-t-transparent border-white rounded-full animate-spin size-4"></span>
 				{/if}

@@ -1,5 +1,5 @@
 <script lang="ts" generics="TData extends object">
-	import { getCoreRowModel, getPaginationRowModel, getSortedRowModel, type SortingState, getFilteredRowModel, type ColumnFiltersState, type RowData } from '@tanstack/table-core';
+	import { getCoreRowModel, getPaginationRowModel, getSortedRowModel, type SortingState, getFilteredRowModel, type ColumnFiltersState } from '@tanstack/table-core';
 	import { createSvelteTable, FlexRender } from '$lib/components/ui/data-table/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import * as Pagination from '$lib/components/ui/pagination/index.js';
@@ -39,7 +39,7 @@
 	let sorting = $state<SortingState>(defaultSort ? [defaultSort] : []);
 	let columnFilters = $state<ColumnFiltersState>([]);
 	let globalFilter = $state<string>('');
-	let selectedRowIds = $state<Record<string, boolean>>({});
+	let selectedRowIds = $derived<Record<string, boolean>>({});
 
 	$effect(() => {
 		const newTanstackSelectionState: Record<string, boolean> = {};
@@ -74,7 +74,7 @@
 		},
 		columns,
 		getRowId: idKey
-			? (originalRow: TData, _index: number, _parent?: RowData) => {
+			? (originalRow: TData) => {
 					return String(originalRow[idKey]);
 				}
 			: undefined,
@@ -129,7 +129,7 @@
 			}
 
 			const newSelectedIdsArray = Object.entries(selectedRowIds)
-				.filter(([_, selected]) => selected)
+				.filter(([key, selected]) => selected)
 				.map(([id]) => id);
 
 			const sortedCurrentProp = [...(selectedIds || [])].sort();

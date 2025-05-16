@@ -54,7 +54,7 @@ const authHandler: Handle = async ({ event, resolve }) => {
 	if (!event.locals.user) {
 		try {
 			event.locals.user = await getUserByUsername(session.username);
-		} catch (error) {
+		} catch {
 			// Invalid user in session
 			await event.locals.session.destroy();
 			throw redirect(302, `/auth/login?error=invalid-session`);

@@ -41,7 +41,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 				const docker = await getDockerClient();
 				const settings = await getSettings();
 
-				function send(data: any) {
+				function send(data: unknown) {
 					controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
 				}
 
@@ -110,15 +110,15 @@ export const GET: RequestHandler = async ({ params, request }) => {
 						}
 						controller.close();
 					},
-					(event: any) => {
+					(event: Record<string, unknown>) => {
 						if (event.id && event.status) {
-							if (!layers[event.id]) {
-								layers[event.id] = { current: 0, total: 0 };
+							if (!layers[event.id as string]) {
+								layers[event.id as string] = { current: 0, total: 0 };
 							}
 
-							if (event.progressDetail && event.progressDetail.current && event.progressDetail.total) {
-								layers[event.id].current = event.progressDetail.current;
-								layers[event.id].total = event.progressDetail.total;
+							if (event.progressDetail && (event.progressDetail as Record<string, number>).current && (event.progressDetail as Record<string, number>).total) {
+								layers[event.id as string].current = (event.progressDetail as Record<string, number>).current;
+								layers[event.id as string].total = (event.progressDetail as Record<string, number>).total;
 							}
 
 							let totalSize = 0;
@@ -159,10 +159,10 @@ export const GET: RequestHandler = async ({ params, request }) => {
 						}
 					}
 				);
-			} catch (error: any) {
+			} catch (error: unknown) {
 				const errorResponse: ApiErrorResponse = {
 					success: false,
-					error: error.message || 'Unknown error pulling image',
+					error: error instanceof Error ? error.message : 'Unknown error pulling image',
 					code: ApiErrorCode.DOCKER_API_ERROR,
 					details: error
 				};

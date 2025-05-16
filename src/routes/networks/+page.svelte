@@ -1,14 +1,13 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Plus, AlertCircle, Network, Trash2, Loader2, ChevronDown, ScanSearch, Ellipsis } from '@lucide/svelte';
+	import { Plus, AlertCircle, Network, Trash2, Loader2, ScanSearch, Ellipsis } from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import type { PageData } from './$types';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import CreateNetworkDialog from './CreateNetworkDialog.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import type { NetworkCreateOptions } from 'dockerode';

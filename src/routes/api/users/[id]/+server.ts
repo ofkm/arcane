@@ -9,12 +9,9 @@ import { BASE_PATH } from '$lib/services/paths-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
 
-// Get USER_DIR from base path
 const USER_DIR = path.join(BASE_PATH, 'users');
 
-// PUT endpoint for updating a user
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
-	// Only admins or the user themselves can update
 	if (!locals.user) {
 		const response: ApiErrorResponse = {
 			success: false,
@@ -27,7 +24,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	const userIdToUpdate = params.id;
 	const requestingUser = locals.user as User;
 
-	// Check if user is admin or updating their own profile
 	if (!requestingUser.roles.includes('admin') && requestingUser.id !== userIdToUpdate) {
 		const response: ApiErrorResponse = {
 			success: false,
@@ -59,24 +55,16 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	}
 	const { password, displayName, email, roles } = updateDataResult.data;
 
-	// Prepare updated user object
 	const updatedUser: User = { ...existingUser };
 
 	if (displayName !== undefined) updatedUser.displayName = displayName;
 	if (email !== undefined) updatedUser.email = email;
 	if (roles !== undefined && requestingUser.roles.includes('admin')) {
-		// Only admins can change roles
 		const ALLOWED = ['admin', 'user', 'viewer'];
 		updatedUser.roles = Array.isArray(roles) ? roles.filter((r) => ALLOWED.includes(r)) : updatedUser.roles;
 	}
 
-	// Handle password change
 	if (password) {
-		const settingsResult = await tryCatch(getSettings());
-		const settings = settingsResult.data;
-		const policy = settings?.auth?.passwordPolicy || 'medium';
-
-		// Password validation can be added here if needed
 		const hashResult = await tryCatch(hashPassword(password));
 		if (hashResult.error) {
 			const response: ApiErrorResponse = {
@@ -103,13 +91,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		return json(response, { status: 500 });
 	}
 
-	const { passwordHash: _, ...sanitizedUser } = saveResult.data;
+	const { passwordHash: _unused, ...sanitizedUser } = saveResult.data;
 	return json({ success: true, user: sanitizedUser });
 };
 
-// DELETE endpoint
 export const DELETE: RequestHandler = async ({ params, locals }) => {
-	// Only admins should be able to delete users
 	if (!locals.user || !locals.user.roles.includes('admin')) {
 		const response: ApiErrorResponse = {
 			success: false,
@@ -121,7 +107,6 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 	const userId = params.id;
 
-	// Don't allow deleting yourself
 	if (userId === locals.user.id) {
 		const response: ApiErrorResponse = {
 			success: false,
