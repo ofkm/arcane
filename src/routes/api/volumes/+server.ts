@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createVolume } from '$lib/services/docker/volume-service';
-import type { VolumeCreateOptions } from 'dockerode';
+import type { VolumeCreateOptions, VolumeInspectInfo } from 'dockerode';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
 
@@ -20,32 +20,32 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!body.Name) {
 		const response: ApiErrorResponse = {
 			success: false,
-			error: 'Volume name is required.',
+			error: 'Volume name (Name) is required.',
 			code: ApiErrorCode.BAD_REQUEST
 		};
 		return json(response, { status: 400 });
 	}
 
 	const volumeResult = await tryCatch(createVolume(body));
+
 	if (volumeResult.error) {
 		console.error('API Error creating volume:', volumeResult.error);
+		const typedError = volumeResult.error as any;
 		const response: ApiErrorResponse = {
 			success: false,
-			error: volumeResult.error.message || 'Failed to create volume',
-			code: ApiErrorCode.INTERNAL_SERVER_ERROR,
-			details: volumeResult.error
+			error: typedError.message || 'Failed to create volume',
+			code: typedError.code || ApiErrorCode.INTERNAL_SERVER_ERROR,
+			details: typedError.details || typedError
 		};
-		return json(response, { status: 500 });
+		const status = typeof typedError.statusCode === 'number' ? typedError.statusCode : 500;
+		return json(response, { status });
 	}
 
-	const volumeInfo = volumeResult.data;
+	const volumeInfo: VolumeInspectInfo = volumeResult.data;
 	return json(
 		{
 			success: true,
-			volume: {
-				...volumeInfo,
-				Name: volumeInfo.name
-			}
+			volume: volumeInfo
 		},
 		{ status: 201 }
 	);

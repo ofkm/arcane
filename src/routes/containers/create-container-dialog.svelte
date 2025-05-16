@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type HealthConfig, type ContainerCreateOptions } from 'dockerode'; // Import ContainerCreateOptions
+	import { type HealthConfig, type ContainerCreateOptions, type VolumeInspectInfo } from 'dockerode'; // Import VolumeInspectInfo
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -17,7 +17,7 @@
 
 	interface Props {
 		open?: boolean;
-		volumes?: { name: string }[];
+		volumes?: VolumeInspectInfo[];
 		networks?: { name: string; driver: string }[];
 		images?: { id: string; repo: string; tag: string }[];
 		onClose?: () => void;
@@ -32,22 +32,18 @@
 	let selectedImage = $state('');
 	let selectedTab = $state('basic');
 
-	// Ports mapping (host:container)
 	let ports = $state<
 		{
 			hostPort: string;
 			containerPort: string;
-			protocol?: 'tcp' | 'udp' | 'sctp'; // Added protocol
+			protocol?: 'tcp' | 'udp' | 'sctp';
 			hostError?: string;
 			containerError?: string;
 		}[]
 	>([{ hostPort: '', containerPort: '', protocol: 'tcp' }]);
 
-	// Volume mounts (bind mounts or named volumes)
-	// For named volumes, source is the volume name. For bind mounts, source is the host path.
 	let volumeMounts = $state<{ source: string; target: string; readOnly?: boolean }[]>([{ source: '', target: '', readOnly: false }]);
 
-	// Environment variables
 	let envVars = $state<{ key: string; value: string; sensitive?: boolean }[]>([{ key: '', value: '', sensitive: true }]);
 
 	const restartPolicyOptions = [
@@ -57,17 +53,14 @@
 		{ value: 'unless-stopped', label: 'Unless Stopped' }
 	];
 
-	// Network and restart policy
-	let networkMode = $state(''); // Corresponds to HostConfig.NetworkMode or a custom network name
+	let networkMode = $state('');
 	let restartPolicy = $state('unless-stopped');
 
 	const selectedRestartPolicyLabel = $derived(restartPolicyOptions.find((opt) => opt.value === restartPolicy)?.label || restartPolicy);
 
-	// Add state for IP addresses (for custom networks)
 	let ipv4Address = $state('');
 	let ipv6Address = $state('');
 
-	// Add state for Healthcheck
 	let enableHealthcheck = $state(false);
 	let healthcheckTest = $state<string[]>(['']);
 	let healthcheckInterval = $state<number | undefined>(undefined);
@@ -75,16 +68,13 @@
 	let healthcheckRetries = $state<number | undefined>(undefined);
 	let healthcheckStartPeriod = $state<number | undefined>(undefined);
 
-	// Add state for Labels
 	let labels = $state<{ key: string; value: string }[]>([{ key: '', value: '' }]);
 
-	// Add state for Command, User, Resources
 	let commandOverride = $state('');
 	let runAsUser = $state('');
 	let memoryLimitStr = $state('');
-	let cpuLimitStr = $state(''); // Number of CPUs (e.g., "0.5", "1")
+	let cpuLimitStr = $state('');
 
-	// Add state for Auto-update (managed via labels)
 	let autoUpdate = $state(false);
 
 	function handleClose() {

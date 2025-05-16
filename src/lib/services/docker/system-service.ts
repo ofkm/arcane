@@ -26,7 +26,6 @@ export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResul
 	for (const type of types) {
 		let result: PruneResult | null = null;
 		let error: string | undefined = undefined;
-		let pruneOptions: { filters: { dangling: string[] } } | undefined;
 		let filterValue: string | undefined;
 		let logMessage: string | undefined;
 
@@ -41,16 +40,16 @@ export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResul
 					filterValue = pruneMode === 'all' ? 'false' : 'true';
 					logMessage = pruneMode === 'all' ? 'Pruning all unused images (docker image prune -a)...' : 'Pruning dangling images (docker image prune)...';
 					console.log(logMessage);
-					pruneOptions = {
+					const imagePruneOptions: { filters: { dangling: string[] } } = {
 						filters: { dangling: [filterValue] }
 					};
-					result = await docker.pruneImages(pruneOptions);
+					result = await docker.pruneImages(imagePruneOptions);
 					break;
 				case 'networks':
 					result = await docker.pruneNetworks();
 					break;
 				case 'volumes':
-					// result = await docker.pruneVolumes();
+					result = await docker.pruneVolumes();
 					break;
 				default:
 					console.warn(`Unsupported prune type requested: ${type}`);
@@ -58,7 +57,7 @@ export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResul
 			}
 
 			console.log(`Pruning ${type} completed.`);
-			results.push({ ...(result || {}), type, error } as PruneServiceResult);
+			results.push({ ...(result || { SpaceReclaimed: 0 }), type, error } as PruneServiceResult);
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
 			console.error(`Error pruning ${type}:`, err);

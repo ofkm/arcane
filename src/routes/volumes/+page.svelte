@@ -15,7 +15,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import VolumeAPIService from '$lib/services/api/volume-api-service';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import type { VolumeCreateOptions } from 'dockerode';
+	import type { VolumeCreateOptions, VolumeInspectInfo } from 'dockerode';
 
 	let { data }: { data: PageData } = $props();
 
@@ -46,17 +46,17 @@
 	async function handleRemoveVolumeConfirm(volumeName: string) {
 		openConfirmDialog({
 			title: 'Delete Volume',
-			message: 'Are you sure you want to delete this volume? This action cannot be undone.',
+			message: `Are you sure you want to delete volume "${volumeName}"? This action cannot be undone.`,
 			confirm: {
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
 						result: await tryCatch(volumeApi.remove(volumeName)),
-						message: 'Failed to Remove Volume',
+						message: `Failed to Remove Volume "${volumeName}"`,
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
-							toast.success('Volume Removed Successfully.');
+							toast.success(`Volume "${volumeName}" Removed Successfully.`);
 							await invalidateAll();
 						}
 					});
@@ -73,6 +73,7 @@
 			onSuccess: async () => {
 				toast.success(`Volume "${volumeCreate.Name}" created successfully.`);
 				await invalidateAll();
+				isDialogOpen.create = false;
 			}
 		});
 	}
@@ -80,8 +81,7 @@
 	async function handleDeleteSelected() {
 		openConfirmDialog({
 			title: 'Delete Selected Volumes',
-			message: `Are you sure you want to delete ${volumePageStates.selectedIds.length} selected images? This action cannot be undone. Images currently used by containers will not be deleted.
-`,
+			message: `Are you sure you want to delete ${volumePageStates.selectedIds.length} selected volume(s)? This action cannot be undone. Volumes currently used by containers will not be deleted.`,
 			confirm: {
 				label: 'Delete',
 				destructive: true,
@@ -92,22 +92,22 @@
 					let failureCount = 0;
 
 					for (const name of volumePageStates.selectedIds) {
-						const volume = volumePageStates.volumes?.find((v) => v.name === name);
+						const volume = volumePageStates.volumes?.find((v) => v.Name === name);
 
 						if (volume?.inUse) {
-							toast.error(`Volume "${volume.name}" is in use and cannot be deleted.`);
+							toast.error(`Volume "${volume.Name}" is in use and cannot be deleted.`);
 							failureCount++;
 							continue;
 						}
 
-						if (!volume?.name) continue;
-						const result = await tryCatch(volumeApi.remove(volume.name));
+						if (!volume?.Name) continue;
+						const result = await tryCatch(volumeApi.remove(volume.Name));
 						handleApiResultWithCallbacks({
 							result,
-							message: `Failed to delete image "${volume.name}"`,
+							message: `Failed to delete volume "${volume.Name}"`,
 							setLoadingState: (value) => (isLoading.remove = value),
 							onSuccess: async () => {
-								toast.success(`Volume "${volume.name}" deleted successfully.`);
+								toast.success(`Volume "${volume.Name}" deleted successfully.`);
 								successCount++;
 							}
 						});
@@ -116,6 +116,7 @@
 							failureCount++;
 						}
 					}
+					isLoading.remove = false;
 
 					console.log(`Finished deleting. Success: ${successCount}, Failed: ${failureCount}`);
 					if (successCount > 0) {
@@ -167,7 +168,7 @@
 		<Card.Root>
 			<Card.Content class="p-4 flex items-center justify-between">
 				<div>
-					<p class="text-sm font-medium text-muted-foreground">Driver</p>
+					<p class="text-sm font-medium text-muted-foreground">Default Driver</p>
 					<p class="text-2xl font-bold">local</p>
 				</div>
 				<div class="bg-blue-500/10 p-2 rounded-full">
@@ -199,7 +200,7 @@
 							<DropdownMenu.CheckboxItem
 								checked={volumePageStates.showUsed}
 								onCheckedChange={(checked) => {
-									volumePageStates.showUsed = checked;
+									volumePageStates.showUsed = !!checked;
 								}}
 							>
 								Show Used Volumes
@@ -207,7 +208,7 @@
 							<DropdownMenu.CheckboxItem
 								checked={volumePageStates.showUnused}
 								onCheckedChange={(checked) => {
-									volumePageStates.showUnused = checked;
+									volumePageStates.showUnused = !!checked;
 								}}
 							>
 								Show Unused Volumes
@@ -221,7 +222,7 @@
 								Processing...
 							{:else}
 								<Trash2 class="size-4" />
-								Delete Selected
+								Delete Selected ({volumePageStates.selectedIds.length})
 							{/if}
 						</Button>
 					{/if}
@@ -236,33 +237,33 @@
 			{#if volumePageStates.volumes && volumePageStates.volumes.length > 0}
 				<UniversalTable
 					data={filteredVolumes}
-					idKey="name"
+					idKey="Name"
 					columns={[
-						{ accessorKey: 'name', header: 'Name' },
+						{ accessorKey: 'Name', header: 'Name' },
 						{ accessorKey: 'inUse', header: ' ', enableSorting: false },
-						{ accessorKey: 'mountpoint', header: 'Mountpoint' },
-						{ accessorKey: 'driver', header: 'Driver' },
+						{ accessorKey: 'Mountpoint', header: 'Mountpoint' },
+						{ accessorKey: 'Driver', header: 'Driver' },
 						{ accessorKey: 'actions', header: ' ', enableSorting: false }
 					]}
 					display={{
 						filterPlaceholder: 'Search volumes...',
-						noResultsMessage: 'No volumes found'
+						noResultsMessage: 'No volumes found matching your filters.'
 					}}
 					bind:selectedIds={volumePageStates.selectedIds}
 				>
-					{#snippet rows({ item })}
+					{#snippet rows({ item }: { item: PageData['volumes'][0] })}
 						<Table.Cell>
 							<div class="flex items-center gap-2">
 								<span class="truncate">
-									<a class="font-medium hover:underline" href="/volumes/{item.name}/">{item.name}</a>
+									<a class="font-medium hover:underline" href="/volumes/{encodeURIComponent(item.Name)}/">{item.Name}</a>
 								</span>
 							</div>
 						</Table.Cell>
 						<Table.Cell>
 							<StatusBadge text={item.inUse ? 'In Use' : 'Unused'} variant={item.inUse ? 'green' : 'amber'} />
 						</Table.Cell>
-						<Table.Cell>{item.mountpoint}</Table.Cell>
-						<Table.Cell>{item.driver}</Table.Cell>
+						<Table.Cell>{item.Mountpoint}</Table.Cell>
+						<Table.Cell>{item.Driver}</Table.Cell>
 						<Table.Cell>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
@@ -275,15 +276,15 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item onclick={() => goto(`/volumes/${encodeURIComponent(item.name)}`)} disabled={isLoading.remove}>
+										<DropdownMenu.Item onclick={() => goto(`/volumes/${encodeURIComponent(item.Name)}`)} disabled={isLoading.remove}>
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveVolumeConfirm(item.name)} disabled={isLoading.remove}>
-											{#if isLoading.remove}
+										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveVolumeConfirm(item.Name)} disabled={isLoading.remove || item.inUse}>
+											{#if isLoading.remove && volumePageStates.selectedIds.includes(item.Name)}
 												<Loader2 class="animate-spin size-4" />
 											{:else}
 												<Trash2 class="size-4" />

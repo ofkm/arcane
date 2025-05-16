@@ -1,35 +1,26 @@
 import { getDockerClient, dockerHost } from '$lib/services/docker/core';
-import type { ServiceVolume } from '$lib/types/docker/volume.type';
-import type { VolumeCreateOptions, VolumeInspectInfo } from 'dockerode'; // Import VolumeInspectInfo
+// ServiceVolume might still be used by other parts of the application,
+// but this service will primarily return Dockerode's VolumeInspectInfo.
+// import type { ServiceVolume } from '$lib/types/docker/volume.type';
+import type { VolumeCreateOptions, VolumeInspectInfo } from 'dockerode';
 // Import custom errors
 import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors'; // #file:/Users/kylemendell/dev/ofkm/arcane/src/lib/types/errors.ts
 
 /**
- * This TypeScript function asynchronously lists Docker volumes and maps the response to a custom
- * ServiceVolume type.
- * @returns The `listVolumes` function returns a Promise that resolves to an array of `ServiceVolume`
- * objects. Each `ServiceVolume` object contains properties such as `name`, `driver`, `scope`,
- * `mountpoint`, and `labels` extracted from the volumes obtained from the Docker client. If an error
- * occurs during the process, an error message is logged and a new Error is thrown with a failure
+ * Asynchronously lists Docker volumes.
+ * @returns A Promise that resolves to an array of `VolumeInspectInfo` objects from Docker.
+ * @throws {Error} If an error occurs during the process.
  */
-export async function listVolumes(): Promise<ServiceVolume[]> {
+export async function listVolumes(): Promise<VolumeInspectInfo[]> {
 	try {
 		const docker = await getDockerClient();
 		const volumeResponse = await docker.listVolumes();
-		const volumes = volumeResponse.Volumes || [];
-
-		return volumes.map(
-			(vol): ServiceVolume => ({
-				name: vol.Name,
-				driver: vol.Driver,
-				scope: vol.Scope,
-				mountpoint: vol.Mountpoint,
-				labels: vol.Labels
-			})
-		);
+		// The Volumes array in the response directly contains objects conforming to VolumeInspectInfo
+		return volumeResponse.Volumes || [];
 	} catch (error: unknown) {
 		console.error('Docker Service: Error listing volumes:', error);
-		throw new Error(`Failed to list Docker volumes using host "${dockerHost}".`);
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		throw new Error(`Failed to list Docker volumes using host "${dockerHost}". ${errorMessage}`);
 	}
 }
 
@@ -49,6 +40,7 @@ export async function isVolumeInUse(volumeName: string): Promise<boolean> {
 		const containers = await docker.listContainers({ all: true });
 		// Inspect each container to check its mounts
 		for (const containerInfo of containers) {
+			// Use getContainer and inspect to get detailed mount information
 			const details = await docker.getContainer(containerInfo.Id).inspect();
 			if (details.Mounts?.some((m) => m.Type === 'volume' && m.Name === volumeName)) {
 				return true;
@@ -57,8 +49,11 @@ export async function isVolumeInUse(volumeName: string): Promise<boolean> {
 		return false;
 	} catch (error: unknown) {
 		console.error(`Error checking if volume ${volumeName} is in use:`, error);
-		// Default to assuming it's in use for safety
-		return true;
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		// Rethrow or handle more gracefully depending on requirements.
+		// Defaulting to true might be too restrictive if the check itself fails.
+		// Consider throwing a new error or returning a specific error state.
+		throw new Error(`Failed to check if volume ${volumeName} is in use: ${errorMessage}`);
 	}
 }
 
@@ -73,7 +68,7 @@ export async function getVolume(volumeName: string): Promise<VolumeInspectInfo> 
 	try {
 		const docker = await getDockerClient();
 		const volume = docker.getVolume(volumeName);
-		const inspectInfo = await volume.inspect();
+		const inspectInfo = await volume.inspect(); // This directly returns VolumeInspectInfo
 		console.log(`Docker Service: Inspected volume "${volumeName}" successfully.`);
 		return inspectInfo;
 	} catch (error: unknown) {
@@ -81,59 +76,41 @@ export async function getVolume(volumeName: string): Promise<VolumeInspectInfo> 
 		if ((error as { statusCode?: number }).statusCode === 404) {
 			throw new NotFoundError(`Volume "${volumeName}" not found.`);
 		}
-		throw new DockerApiError(`Failed to inspect volume "${volumeName}": ${(error as { message?: string }).message || 'Unknown Docker error'}`, (error as { statusCode?: number }).statusCode);
+		const errorMessage = (error as { message?: string; reason?: string }).message || (error as { reason?: string }).reason || 'Unknown Docker error';
+		throw new DockerApiError(`Failed to inspect volume "${volumeName}": ${errorMessage}`, (error as { statusCode?: number }).statusCode);
 	}
 }
 
 /**
- * The function `createVolume` creates a Docker volume with specified options and returns basic
- * information about the created volume.
- * @param {VolumeCreateOptions} options - The `options` parameter in the `createVolume` function is of
- * type `VolumeCreateOptions`. This object likely contains the necessary information to create a volume
- * in Docker, such as the volume name, driver, labels, and scope. The function uses this information to
- * create a volume using the Docker client
- * @returns The `createVolume` function returns an object with the following properties:
- * - Name: The name of the created volume
- * - Driver: The driver used for the volume
- * - Mountpoint: The mountpoint of the volume
- * - Labels: Any labels associated with the volume (defaults to an empty object if none provided)
- * - Scope: The scope of the volume (defaults to 'local' if not
+ * Creates a Docker volume with specified options.
+ * @param {VolumeCreateOptions} options - The `VolumeCreateOptions` object containing configuration for the new volume.
+ * @returns {Promise<VolumeInspectInfo>} A promise that resolves with the `VolumeInspectInfo` of the created volume.
+ * @throws {ConflictError} If a volume with the same name already exists.
+ * @throws {DockerApiError} For other Docker API errors or issues during creation.
  */
-export async function createVolume(options: VolumeCreateOptions): Promise<ServiceVolume> {
+export async function createVolume(options: VolumeCreateOptions): Promise<VolumeInspectInfo> {
 	try {
 		const docker = await getDockerClient();
-		// createVolume returns the volume data directly - no need to inspect
-		const volume = await docker.createVolume(options);
+		// docker.createVolume(options) returns a Promise<any>, which resolves to the API response body.
+		// This body is effectively the VolumeInspectInfo for the created volume.
+		const volumeInfo = (await docker.createVolume(options)) as VolumeInspectInfo;
 
 		console.log(`Docker Service: Volume "${options.Name}" created successfully.`);
-
-		// Return the creation response which contains basic info
-		return {
-			name: volume.Name,
-			driver: volume.Driver,
-			mountpoint: volume.Mountpoint,
-			labels: volume.Labels || {},
-			scope: volume.Scope || 'local'
-		};
+		return volumeInfo;
 	} catch (error: unknown) {
 		console.error(`Docker Service: Error creating volume "${options.Name}":`, error);
-		// Check for specific Docker errors, like volume already exists (often 409)
 		if ((error as { statusCode?: number }).statusCode === 409) {
-			throw new Error(`Volume "${options.Name}" already exists.`);
+			throw new ConflictError(`Volume "${options.Name}" already exists.`);
 		}
-		throw new Error(
-			`Failed to create volume "${options.Name}" using host "${dockerHost}". ` + ((error as { message?: string; reason?: string }).message || (error as { reason?: string }).reason || '') // Include reason if available
-		);
+		const errorMessage = (error as { message?: string; reason?: string }).message || (error as { reason?: string }).reason || 'Unknown Docker error';
+		throw new DockerApiError(`Failed to create volume "${options.Name}" using host "${dockerHost}". ${errorMessage}`, (error as { statusCode?: number }).statusCode);
 	}
 }
 
 /**
- * The function `removeVolume` asynchronously removes a Docker volume by name, with an optional force
- * flag to handle volume in use errors.
- * @param {string} name - The `name` parameter is a string that represents the name of the volume you
- * want to remove.
- * @param {boolean} [force=false] - The `force` parameter determines whether to forcefully remove the volume even if it is in use by a
- * container.
+ * Removes a Docker volume by name.
+ * @param {string} name - The name of the volume to remove.
+ * @param {boolean} [force=false] - If true, forces removal even if the volume is in use.
  * @throws {NotFoundError} If the volume does not exist.
  * @throws {ConflictError} If the volume is in use and force is false.
  * @throws {DockerApiError} For other Docker API errors.
@@ -150,9 +127,9 @@ export async function removeVolume(name: string, force = false): Promise<void> {
 			throw new NotFoundError(`Volume "${name}" not found.`);
 		}
 		if ((error as { statusCode?: number }).statusCode === 409) {
-			// This usually means the volume is in use
-			throw new ConflictError(`Volume "${name}" is in use by a container. Stop the container or use the force option to remove.`);
+			throw new ConflictError(`Volume "${name}" is in use. Use the force option to remove if necessary.`);
 		}
-		throw new DockerApiError(`Failed to remove volume "${name}": ${(error as { message?: string; reason?: string }).message || (error as { reason?: string }).reason || 'Unknown Docker error'}`, (error as { statusCode?: number }).statusCode);
+		const errorMessage = (error as { message?: string; reason?: string }).message || (error as { reason?: string }).reason || 'Unknown Docker error';
+		throw new DockerApiError(`Failed to remove volume "${name}": ${errorMessage}`, (error as { statusCode?: number }).statusCode);
 	}
 }
