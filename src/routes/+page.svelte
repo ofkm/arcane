@@ -51,7 +51,7 @@
 
 	const runningContainers = $derived(dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'running').length ?? 0);
 	const stoppedContainers = $derived(dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'exited').length ?? 0);
-	const totalImageSize = $derived(dashboardStates.images?.reduce((sum, image) => sum + (image.size || 0), 0) ?? 0);
+	const totalImageSize = $derived(dashboardStates.images?.reduce((sum, image) => sum + (image.Size || 0), 0) ?? 0);
 
 	function getContainerDisplayName(container: ContainerInfo): string {
 		if (container.Names && container.Names.length > 0) {
@@ -143,10 +143,10 @@
 		if (!dashboardStates.images || dashboardStates.images.length === 0) return;
 
 		const topImageIds = [...dashboardStates.images]
-			.sort((a, b) => (b.size || 0) - (a.size || 0))
+			.sort((a, b) => (b.Size || 0) - (a.Size || 0))
 			.slice(0, 5)
 			.filter((img) => img.repo !== '<none>' && img.tag !== '<none>')
-			.map((img) => img.id);
+			.map((img) => img.Id);
 
 		if (topImageIds.length === 0) return;
 
@@ -157,7 +157,7 @@
 				await imageApi.checkMaturityBatch(batch);
 
 				dashboardStates.images = dashboardStates.images.map((image) => {
-					const storedMaturity = $maturityStore.maturityData[image.id];
+					const storedMaturity = $maturityStore.maturityData[image.Id];
 					return {
 						...image,
 						maturity: storedMaturity !== undefined ? storedMaturity : image.maturity
@@ -429,7 +429,7 @@
 										{ accessorKey: 'repo', header: 'Name' },
 										{ accessorKey: 'inUse', header: ' ', enableSorting: false },
 										{ accessorKey: 'tag', header: 'Tag' },
-										{ accessorKey: 'size', header: 'Size' }
+										{ accessorKey: 'Size', header: 'Size' }
 									]}
 									features={{
 										filtering: false,
@@ -443,7 +443,7 @@
 										isDashboardTable: true
 									}}
 									sort={{
-										defaultSort: { id: 'size', desc: true }
+										defaultSort: { id: 'Size', desc: true }
 									}}
 								>
 									{#snippet rows({ item }: { item: EnhancedImageInfo })}
@@ -451,7 +451,7 @@
 											<div class="flex items-center gap-2">
 												<div class="flex items-center flex-1">
 													<MaturityItem maturity={item.maturity} isLoadingInBackground={!item.maturity} />
-													<a class="font-medium hover:underline shrink truncate" href="/images/{item.id}/">
+													<a class="font-medium hover:underline shrink truncate" href="/images/{item.Id}/">
 														{item.repo}
 													</a>
 												</div>
@@ -465,7 +465,7 @@
 											{/if}
 										</Table.Cell>
 										<Table.Cell>{item.tag}</Table.Cell>
-										<Table.Cell>{formatBytes(item.size)}</Table.Cell>
+										<Table.Cell>{formatBytes(item.Size)}</Table.Cell>
 									{/snippet}
 								</UniversalTable>
 							</div>

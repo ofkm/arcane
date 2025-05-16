@@ -1,15 +1,17 @@
-export type ServiceImage = {
-	id: string;
-	repoTags: string[] | undefined;
-	repoDigests: string[] | undefined;
-	created: number;
-	size: number;
-	virtualSize: number;
-	labels: { [label: string]: string } | undefined;
-	repo: string;
-	tag: string;
+import type Docker from 'dockerode';
+
+/**
+ * Represents a Docker image, extending Dockerode's ImageInfo with parsed repo and tag.
+ * Properties like Id, RepoTags, Created, Size, etc., are inherited from Docker.ImageInfo.
+ */
+export type ServiceImage = Docker.ImageInfo & {
+	repo: string; // Parsed repository name
+	tag: string; // Parsed tag
 };
 
+/**
+ * Represents the maturity status of a Docker image.
+ */
 export interface ImageMaturity {
 	version: string;
 	date: string;
@@ -17,6 +19,9 @@ export interface ImageMaturity {
 	updatesAvailable: boolean;
 }
 
+/**
+ * Extends ServiceImage with application-specific information like usage status and maturity.
+ */
 export type EnhancedImageInfo = ServiceImage & {
 	inUse: boolean;
 	maturity?: ImageMaturity;

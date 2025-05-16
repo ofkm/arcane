@@ -70,7 +70,7 @@ async function runMaturityChecks(): Promise<void> {
 			continue;
 		}
 
-		const maturityResult = await tryCatch(checkImageMaturity(image.id));
+		const maturityResult = await tryCatch(checkImageMaturity(image.Id));
 		const maturityInfo = maturityResult.data;
 
 		if (!maturityResult.error) {
@@ -107,27 +107,29 @@ async function runMaturityChecks(): Promise<void> {
 export async function listImages(): Promise<ServiceImage[]> {
 	const dockerClientResult = await tryCatch(getDockerClient());
 	if (dockerClientResult.error) {
-		throw new Error(`Failed to list Docker images using host "${dockerHost}".`);
+		throw new DockerApiError(`Failed to get Docker client: ${dockerClientResult.error.message}`, 500);
 	}
-
 	const docker = dockerClientResult.data;
-	const imagesResult = await tryCatch(docker.listImages({ all: false }));
 
+	const imagesResult = await tryCatch(docker.listImages({ all: false }));
 	if (imagesResult.error) {
-		throw new Error(`Failed to list Docker images using host "${dockerHost}".`);
+		throw new DockerApiError(`Failed to list Docker images: ${(imagesResult.error as Error).message}`, 500);
 	}
 
-	const images = imagesResult.data;
+	const dockerImages: Docker.ImageInfo[] = imagesResult.data || [];
 
-	const parseRepoTag = (tag: string | undefined): { repo: string; tag: string } => {
-		if (!tag || tag === '<none>:<none>') {
+	const parseRepoTag = (tagString: string | undefined): { repo: string; tag: string } => {
+		if (!tagString || tagString === '<none>:<none>') {
 			return { repo: '<none>', tag: '<none>' };
 		}
-		const withoutDigest = tag.split('@')[0];
-		const lastSlash = withoutDigest.lastIndexOf('/');
+		const withoutDigest = tagString.split('@')[0]; // Remove digest if present
 		const lastColon = withoutDigest.lastIndexOf(':');
-		if (lastColon === -1 || lastColon < lastSlash) {
-			return { repo: withoutDigest, tag: 'latest' };
+		const lastSlash = withoutDigest.lastIndexOf('/'); // To handle scoped repos like gcr.io/project/image:tag
+
+		// If no colon, or colon is part of a port in the repo name (e.g. localhost:5000/myimage)
+		// or if colon is part of a scoped repo name before the final tag.
+		if (lastColon === -1 || (lastSlash !== -1 && lastColon < lastSlash)) {
+			return { repo: withoutDigest, tag: 'latest' }; // Default to 'latest' if no tag specified
 		}
 		return {
 			repo: withoutDigest.substring(0, lastColon),
@@ -135,16 +137,12 @@ export async function listImages(): Promise<ServiceImage[]> {
 		};
 	};
 
-	return images.map((img): ServiceImage => {
-		const { repo, tag } = parseRepoTag(img.RepoTags?.[0]);
+	return dockerImages.map((img: Docker.ImageInfo): ServiceImage => {
+		// RepoTags can be null or an empty array for untagged images
+		const { repo, tag } = parseRepoTag(img.RepoTags?.[0]); // Use optional chaining and take the first tag
+
 		return {
-			id: img.Id,
-			repoTags: img.RepoTags,
-			repoDigests: img.RepoDigests,
-			created: img.Created,
-			size: img.Size,
-			virtualSize: img.VirtualSize,
-			labels: img.Labels,
+			...img, // Spread all properties from Docker.ImageInfo (e.g., Id, Created, Size, Labels)
 			repo: repo,
 			tag: tag
 		};
@@ -165,18 +163,19 @@ export async function getImage(imageId: string): Promise<Docker.ImageInspectInfo
 	}
 
 	const docker = dockerResult.data;
-	const image = docker.getImage(imageId);
+	const image = docker.getImage(imageId); // imageId can be name:tag or ID
 
 	const inspectResult = await tryCatch(image.inspect());
 	if (inspectResult.error) {
-		const error = inspectResult.error as { statusCode?: number; message?: string };
+		const error = inspectResult.error as { statusCode?: number; json?: { message?: string }; message?: string }; // Dockerode errors often have a json.message
 		if (error.statusCode === 404) {
 			throw new NotFoundError(`Image "${imageId}" not found.`);
 		}
-		throw new DockerApiError(`Failed to inspect image "${imageId}": ${error.message || 'Unknown Docker error'}`, error.statusCode ?? 500);
+		const errorMessage = error.json?.message || error.message || 'Unknown Docker error';
+		throw new DockerApiError(`Failed to inspect image "${imageId}": ${errorMessage}`, error.statusCode ?? 500);
 	}
 
-	return inspectResult.data;
+	return inspectResult.data; // This is Docker.ImageInspectInfo
 }
 
 /**

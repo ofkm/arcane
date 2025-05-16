@@ -58,12 +58,11 @@
 	let isConfirmPruneDialogOpen = $state(false);
 
 	const totalImages = $derived(images?.length || 0);
-	const totalSize = $derived(images?.reduce((acc, img) => acc + (img.size || 0), 0) || 0);
+	const totalSize = $derived(images?.reduce((acc, img) => acc + (img.Size || 0), 0) || 0);
 
-	// let enhancedImages: EnhancedImageInfo[] = [];
 	const enhancedImages = $derived(
 		images.map((image) => {
-			const storedMaturity = $maturityStore.maturityData[image.id];
+			const storedMaturity = $maturityStore.maturityData[image.Id];
 			return {
 				...image,
 				maturity: storedMaturity || image.maturity
@@ -78,22 +77,19 @@
 	});
 
 	async function loadMaturityData() {
-		// Only check visible images based on pagination
 		const visibleImageIds = images
 			.filter((img) => img.repo !== '<none>' && img.tag !== '<none>')
-			.slice(0, 20) // Limit to visible images
-			.map((img) => img.id);
+			.slice(0, 20)
+			.map((img) => img.Id);
 
 		if (visibleImageIds.length === 0) return;
 
 		isLoading.checking = true;
 		try {
-			// Process in smaller batches to avoid overwhelming the server
 			const BATCH_SIZE = 5;
 			for (let i = 0; i < visibleImageIds.length; i += BATCH_SIZE) {
 				const batch = visibleImageIds.slice(i, i + BATCH_SIZE);
 				await imageApi.checkMaturityBatch(batch);
-				// Give UI time to update between batches
 				if (i + BATCH_SIZE < visibleImageIds.length) {
 					await new Promise((resolve) => setTimeout(resolve, 50));
 				}
@@ -109,7 +105,7 @@
 		const { imageRef, tag = 'latest', platform, registryUrl } = event;
 
 		isLoading.pulling = true;
-		pullProgress = 0; // Reset progress
+		pullProgress = 0;
 
 		try {
 			const encodedImageRef = encodeURIComponent(imageRef);
@@ -126,7 +122,6 @@
 				if (foundCredential && foundCredential.username) {
 					toast.info(`Attempting pull from ${foundCredential.url} with user ${foundCredential.username}`);
 				} else if (registryUrl !== 'docker.io' && registryUrl !== '') {
-					// Avoid warning for default Docker Hub
 					toast.error(`Credentials not found for ${registryUrl}. Attempting unauthenticated pull.`);
 				}
 			}
@@ -146,7 +141,7 @@
 				if (data.type === 'info' || data.type === 'warning') {
 					if (data.type === 'info') toast.info(data.message);
 					if (data.type === 'warning') toast.error(data.message);
-					return; // Don't process as progress/completion
+					return;
 				}
 
 				if (data.progress !== undefined) {
@@ -161,7 +156,7 @@
 
 					setTimeout(async () => {
 						await invalidateAll();
-					}, 500); // Give Docker a moment before invalidating
+					}, 500);
 					isLoading.pulling = false;
 				}
 			};
@@ -194,8 +189,8 @@
 					let failureCount = 0;
 
 					for (const id of selectedIds) {
-						const image = images.find((img) => img.id === id);
-						const imageIdentifier = image?.repoTags?.[0] || id.substring(0, 12);
+						const image = images.find((img) => img.Id === id);
+						const imageIdentifier = image?.RepoTags?.[0] || id.substring(0, 12);
 
 						if (image?.inUse) {
 							toast.error(`Image "${imageIdentifier}" is in use and cannot be deleted.`);
@@ -260,8 +255,8 @@
 	}
 
 	async function handleImageRemove(id: string) {
-		const image = images.find((img) => img.id === id);
-		const imageIdentifier = image?.repoTags?.[0] || id.substring(0, 12);
+		const image = images.find((img) => img.Id === id);
+		const imageIdentifier = image?.RepoTags?.[0] || id.substring(0, 12);
 
 		openConfirmDialog({
 			title: 'Delete Image',
@@ -287,7 +282,7 @@
 	async function checkAllMaturity() {
 		isLoading.checking = true;
 
-		const imageIdsToCheck = images.filter((image) => image.id).map((image) => image.id);
+		const imageIdsToCheck = images.filter((image) => image.Id).map((image) => image.Id);
 
 		if (imageIdsToCheck.length === 0) {
 			toast.info('No images to check for updates.');
@@ -307,14 +302,13 @@
 			}
 
 			const stats = batchResult.stats || { total: 0, success: 0, failed: 0 };
-			const numSuccessfullyUpdated = stats.success || 0; // Images for which new data was likely returned
+			const numSuccessfullyUpdated = stats.success || 0;
 			const numFailedByBackend = stats.failed || 0;
 			const numAttemptedByBackend = stats.total || numSuccessfullyUpdated + numFailedByBackend;
 
 			console.log(`Backend Response: Attempted to process ${numAttemptedByBackend}, Succeeded (updated) ${numSuccessfullyUpdated}, Failed ${numFailedByBackend}.`);
 
 			if (batchResult.success) {
-				// Overall API call was successful
 				if (numSuccessfullyUpdated > 0) {
 					toast.success(`Successfully retrieved updates for ${numSuccessfullyUpdated} image(s).`);
 				}
@@ -326,7 +320,6 @@
 					const notAttemptedCount = imageIdsToCheck.length - numAttemptedByBackend;
 					toast.info(`Server processed ${numAttemptedByBackend} of ${imageIdsToCheck.length} images. ${notAttemptedCount} were not processed by the backend.`);
 				} else if (numAttemptedByBackend > numSuccessfullyUpdated + numFailedByBackend) {
-					// This case implies some images were "attempted" but neither succeeded in update nor explicitly failed.
 					const processedWithoutUpdate = numAttemptedByBackend - (numSuccessfullyUpdated + numFailedByBackend);
 					if (processedWithoutUpdate > 0) {
 						toast.info(`${processedWithoutUpdate} image(s) were checked by the backend but had no new update status reported.`);
@@ -337,11 +330,8 @@
 					toast.info('Maturity check ran, but the backend reported no images were processed or updated.');
 				}
 
-				// Always invalidate if the API call itself was successful,
-				// as some images might have been updated.
 				await invalidateAll();
 			} else {
-				// The API call itself failed (e.g., HTTP 500, or batchResult.success is false)
 				toast.error(`Maturity check request failed: ${batchResult.error || 'Unknown server error.'}`);
 			}
 		} catch (error) {
@@ -355,7 +345,6 @@
 	let observer: IntersectionObserver | null = null;
 
 	onMount(() => {
-		// Lazily load maturity data for visible rows
 		observer = new IntersectionObserver(
 			(entries) => {
 				entries.forEach((entry) => {
@@ -513,11 +502,11 @@
 						{ accessorKey: 'repo', header: 'Name' },
 						{ accessorKey: 'inUse', header: ' ', enableSorting: false },
 						{ accessorKey: 'tag', header: 'Tag' },
-						{ accessorKey: 'id', header: 'Image ID', enableSorting: false },
-						{ accessorKey: 'size', header: 'Size' },
+						{ accessorKey: 'Id', header: 'Image ID', enableSorting: false },
+						{ accessorKey: 'Size', header: 'Size' },
 						{ accessorKey: 'actions', header: ' ', enableSorting: false }
 					]}
-					idKey="id"
+					idKey="Id"
 					display={{
 						filterPlaceholder: 'Search images...',
 						noResultsMessage: 'No images found'
@@ -528,11 +517,11 @@
 					bind:selectedIds
 				>
 					{#snippet rows({ item })}
-						<Table.Cell data-image-id={item.id}>
+						<Table.Cell data-image-id={item.Id}>
 							<div class="flex items-center gap-2">
 								<div class="flex items-center flex-1">
 									<MaturityItem maturity={item.maturity} />
-									<a class="font-medium hover:underline shrink truncate" href="/images/{item.id}/">
+									<a class="font-medium hover:underline shrink truncate" href="/images/{item.Id}/">
 										{item.repo}
 									</a>
 								</div>
@@ -546,8 +535,8 @@
 							{/if}
 						</Table.Cell>
 						<Table.Cell>{item.tag}</Table.Cell>
-						<Table.Cell class="truncate">{item.id}</Table.Cell>
-						<Table.Cell>{formatBytes(item.size)}</Table.Cell>
+						<Table.Cell class="truncate">{item.Id}</Table.Cell>
+						<Table.Cell>{formatBytes(item.Size)}</Table.Cell>
 						<Table.Cell>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
@@ -560,11 +549,11 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item onclick={() => goto(`/images/${item.id}`)}>
+										<DropdownMenu.Item onclick={() => goto(`/images/${item.Id}`)}>
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
-										<DropdownMenu.Item onclick={() => pullImageByRepoTag(item.repoTags?.[0])} disabled={isLoading.pulling || !item.repoTags?.[0]}>
+										<DropdownMenu.Item onclick={() => pullImageByRepoTag(item.RepoTags?.[0])} disabled={isLoading.pulling || !item.RepoTags?.[0]}>
 											{#if isLoading.pulling}
 												<Loader2 class="animate-spin size-4" />
 												Pulling...
@@ -573,7 +562,7 @@
 												Pull
 											{/if}
 										</DropdownMenu.Item>
-										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleImageRemove(item.id)}>
+										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleImageRemove(item.Id)}>
 											<Trash2 class="size-4" />
 											Remove
 										</DropdownMenu.Item>
@@ -637,7 +626,6 @@
 		z-index: 1;
 	}
 
-	/* Top side: Arrow on bottom of tooltip pointing down */
 	:global(.tooltip-with-arrow[data-side='top']::before) {
 		bottom: -4px;
 		left: 50%;
@@ -646,7 +634,6 @@
 		border-left: none;
 	}
 
-	/* Bottom side: Arrow on top of tooltip pointing up */
 	:global(.tooltip-with-arrow[data-side='bottom']::before) {
 		top: -4px;
 		left: 50%;
@@ -655,7 +642,6 @@
 		border-right: none;
 	}
 
-	/* Left side: Arrow on right of tooltip pointing right */
 	:global(.tooltip-with-arrow[data-side='left']::before) {
 		top: 50%;
 		right: -4px;
@@ -664,7 +650,6 @@
 		border-bottom: none;
 	}
 
-	/* Right side: Arrow on left of tooltip pointing left - improved */
 	:global(.tooltip-with-arrow[data-side='right']::before) {
 		top: 50%;
 		left: -4px;

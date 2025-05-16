@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type HealthConfig, type ContainerCreateOptions, type VolumeInspectInfo, type NetworkInspectInfo } from 'dockerode'; // Import NetworkInfo
+	import { type HealthConfig, type ContainerCreateOptions, type VolumeInspectInfo, type NetworkInspectInfo } from 'dockerode';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -14,12 +14,13 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
+	import type { ServiceImage } from '$lib/types/docker';
 
 	interface Props {
 		open?: boolean;
 		volumes?: VolumeInspectInfo[];
-		networks?: NetworkInspectInfo[]; // Changed to NetworkInfo[]
-		images?: { id: string; repo: string; tag: string }[];
+		networks?: NetworkInspectInfo[];
+		images?: ServiceImage[];
 		onClose?: () => void;
 	}
 
@@ -339,7 +340,7 @@
 									</Select.Trigger>
 									<Select.Content>
 										<Select.Group>
-											{#each images as image (image.id)}
+											{#each images as image (image.Id)}
 												<Select.Item value={image.repo + ':' + image.tag}>
 													{image.repo + ':' + image.tag}
 												</Select.Item>
