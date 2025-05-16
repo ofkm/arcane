@@ -5,6 +5,25 @@ import type { ServiceContainer } from '$lib/types/docker/container.type';
 import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors';
 import type Docker from 'dockerode';
 
+// Add a container cache with TTL
+const containerCache = new Map();
+const CONTAINER_CACHE_TTL = 15000; // 15 seconds - slightly shorter than stacks cache
+
+/**
+ * Helper function to invalidate container cache entries
+ * @param {string} containerId - The ID of the container to invalidate (optional)
+ */
+function invalidateContainerCache(containerId?: string) {
+	if (containerId) {
+		// Remove specific container entry
+		containerCache.delete(`container-${containerId}`);
+	}
+
+	// Always invalidate container lists as they're affected by any change
+	containerCache.delete('list-containers-all');
+	containerCache.delete('list-containers-running');
+}
+
 /**
  * This TypeScript function lists Docker containers and returns an array of ServiceContainer objects.
  * @param [all=true] - The `all` parameter in the `listContainers` function is a boolean parameter that
@@ -16,10 +35,18 @@ import type Docker from 'dockerode';
  * extracted from the Docker containers retrieved using the Docker client.
  */
 export async function listContainers(all = true): Promise<ServiceContainer[]> {
+	const cacheKey = `list-containers-${all ? 'all' : 'running'}`;
+	const cachedData = containerCache.get(cacheKey);
+
+	// Return cached data if valid
+	if (cachedData && Date.now() - cachedData.timestamp < CONTAINER_CACHE_TTL) {
+		return cachedData.data;
+	}
+
 	try {
 		const docker = await getDockerClient();
 		const containersData = await docker.listContainers({ all });
-		return containersData.map(
+		const result = containersData.map(
 			(c): ServiceContainer => ({
 				id: c.Id,
 				names: c.Names,
@@ -33,6 +60,14 @@ export async function listContainers(all = true): Promise<ServiceContainer[]> {
 				ports: c.Ports
 			})
 		);
+
+		// Cache the result
+		containerCache.set(cacheKey, {
+			data: result,
+			timestamp: Date.now()
+		});
+
+		return result;
 	} catch (error: unknown) {
 		console.error('Docker Service: Error listing containers:', error);
 		throw new Error(`Failed to list Docker containers using host "${dockerHost}".`);
@@ -51,11 +86,20 @@ export async function listContainers(all = true): Promise<ServiceContainer[]> {
  * occurs during the process, it will be caught and handled accordingly. If the
  */
 export async function getContainer(containerId: string) {
+	const cacheKey = `container-${containerId}`;
+	const cachedData = containerCache.get(cacheKey);
+
+	// Return cached data if valid
+	if (cachedData && Date.now() - cachedData.timestamp < CONTAINER_CACHE_TTL) {
+		return cachedData.data;
+	}
+
 	try {
 		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 		const inspectData = await container.inspect();
-		return {
+
+		const result = {
 			id: inspectData.Id,
 			name: inspectData.Name.substring(1),
 			created: inspectData.Created,
@@ -68,6 +112,14 @@ export async function getContainer(containerId: string) {
 			mounts: inspectData.Mounts,
 			labels: inspectData.Config.Labels
 		};
+
+		// Cache the result
+		containerCache.set(cacheKey, {
+			data: result,
+			timestamp: Date.now()
+		});
+
+		return result;
 	} catch (error: unknown) {
 		console.error(`Docker Service: Error getting container ${containerId}:`, error);
 		if (error instanceof Error && 'statusCode' in error && (error as { statusCode?: number }).statusCode === 404) {
@@ -88,6 +140,9 @@ export async function startContainer(containerId: string): Promise<void> {
 		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 		await container.start();
+
+		// Invalidate cache for this container
+		invalidateContainerCache(containerId);
 	} catch (error: unknown) {
 		console.error(`Docker Service: Error starting container ${containerId}:`, error);
 		const errorMessage = error instanceof Error ? error.message : String(error);
@@ -106,6 +161,9 @@ export async function stopContainer(containerId: string): Promise<void> {
 		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 		await container.stop();
+
+		// Invalidate cache for this container
+		invalidateContainerCache(containerId);
 	} catch (error: unknown) {
 		console.error(`Docker Service: Error stopping container ${containerId}:`, error);
 		const errorMessage = error instanceof Error ? error.message : String(error);
@@ -123,6 +181,9 @@ export async function restartContainer(containerId: string): Promise<void> {
 		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 		await container.restart();
+
+		// Invalidate cache for this container
+		invalidateContainerCache(containerId);
 	} catch (error: unknown) {
 		console.error(`Docker Service: Error restarting container ${containerId}:`, error);
 		const errorMessage = error instanceof Error ? error.message : String(error);
@@ -150,6 +211,9 @@ export async function removeContainer(containerId: string, force = false): Promi
 
 		// Pass the force option directly to dockerode's remove method
 		await container.remove({ force });
+
+		// Invalidate cache for this container
+		invalidateContainerCache(containerId);
 
 		console.log(`Docker Service: Container ${containerId} removed successfully (force=${force}).`);
 	} catch (error: unknown) {
@@ -329,6 +393,9 @@ export async function createContainer(config: ContainerConfig) {
 		// Get the container details
 		const containerInfo = await container.inspect();
 
+		// Invalidate container cache
+		invalidateContainerCache();
+
 		return {
 			id: containerInfo.Id,
 			name: containerInfo.Name.substring(1),
@@ -431,6 +498,19 @@ export async function getContainerStats(containerId: string): Promise<Docker.Con
  * @returns {Promise<ServiceContainer>} Information about the newly created and started container.
  * @throws {DockerApiError} If any step fails.
  */
+
+// Define the Mount interface
+interface DockerMount {
+	Type: string;
+	Source: string;
+	Destination: string;
+	RW: boolean;
+	Name?: string;
+	Driver?: string;
+	Mode?: string;
+	Propagation?: string;
+}
+
 export async function recreateContainer(containerId: string): Promise<ServiceContainer> {
 	const docker = await getDockerClient();
 	let originalContainer = null;
@@ -453,7 +533,7 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 			HostConfig: {
 				PortBindings: originalContainer.networkSettings?.Ports || {},
 				NetworkMode: originalContainer.networkSettings?.Networks?.bridge ? 'bridge' : Object.keys(originalContainer.networkSettings?.Networks || {})[0] || undefined,
-				Binds: originalContainer.mounts?.filter((mount) => mount.Type === 'bind' || mount.Type === 'volume').map((mount) => `${mount.Source}:${mount.Destination}${mount.RW ? '' : ':ro'}`)
+				Binds: originalContainer.mounts?.filter((mount: DockerMount) => mount.Type === 'bind' || mount.Type === 'volume').map((mount: DockerMount) => `${mount.Source}:${mount.Destination}${mount.RW ? '' : ':ro'}`)
 			},
 			Cmd: originalContainer.config.Cmd,
 			Entrypoint: originalContainer.config.Entrypoint,
@@ -467,11 +547,26 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 
 		// If we need to add custom network configuration for non-default networks
 		if (originalContainer.networkSettings?.Networks) {
-			const networks = Object.entries(originalContainer.networkSettings.Networks);
+			interface DockerNetworkConfig {
+				IPAddress?: string;
+				IPPrefixLen?: number;
+				Gateway?: string;
+				MacAddress?: string;
+				[key: string]: any;
+			}
+
+			type NetworkEntry = [string, DockerNetworkConfig];
+
+			const networks = Object.entries(originalContainer.networkSettings.Networks) as NetworkEntry[];
+
 			// If container uses a non-default network, set it up
 			if (networks.length > 0 && networks[0][0] !== 'bridge') {
 				const [networkName, networkConfig] = networks[0];
-				createOptions.HostConfig!.NetworkMode = networkName;
+
+				// Set the network mode in the host config
+				if (createOptions.HostConfig) {
+					createOptions.HostConfig.NetworkMode = networkName;
+				}
 
 				// If network has specific IP assignments, add NetworkingConfig
 				if (networkConfig.IPAddress) {
@@ -510,6 +605,9 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 		// 5. Start the new container
 		console.log(`Recreating container ${containerId}: Starting new container ${newContainer.id}...`);
 		await startContainer(newContainer.id);
+
+		// Invalidate container cache after recreation
+		invalidateContainerCache();
 
 		console.log(`Recreating container ${containerId}: Successfully recreated and started as ${newContainer.id}.`);
 
