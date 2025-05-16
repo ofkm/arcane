@@ -637,8 +637,37 @@ async function startStackWithExternalNetworks(stackId: string, composeData: any,
 		if (serviceImage) {
 			console.log(`Pulling image for service ${serviceName}: ${serviceImage}`);
 			try {
-				await docker.pull(serviceImage);
-				console.log(`Successfully pulled image: ${serviceImage}`);
+				// Create a proper Promise that resolves when the pull is complete
+				await new Promise((resolve, reject) => {
+					docker.pull(serviceImage, (pullError: Error, stream: NodeJS.ReadableStream) => {
+						if (pullError) {
+							reject(pullError);
+							return;
+						}
+
+						// Track pull progress
+						docker.modem.followProgress(
+							stream,
+							// onFinished callback
+							(progressError: Error | null, output: any[]) => {
+								if (progressError) {
+									reject(progressError);
+								} else {
+									console.log(`Successfully pulled image: ${serviceImage}`);
+									resolve(output);
+								}
+							},
+							// onProgress callback (optional)
+							(event: any) => {
+								if (event.progress) {
+									console.log(`${serviceImage}: ${event.status} ${event.progress}`);
+								} else if (event.status) {
+									console.log(`${serviceImage}: ${event.status}`);
+								}
+							}
+						);
+					});
+				});
 			} catch (pullErr) {
 				console.warn(`Warning: Failed to pull image ${serviceImage} for service ${serviceName}:`, pullErr);
 				// Continue with other images - the service might still start with an existing image
