@@ -788,13 +788,13 @@ async function startStackWithExternalNetworks(stackId: string, composeData: any,
 }
 
 // Helper functions to prepare container configuration
-function prepareEnvironmentVariables(env: any, stackDir: string): string[] {
+async function prepareEnvironmentVariables(env: any, stackDir: string): Promise<string[]> {
 	const result: string[] = [];
 
 	// Load .env file if it exists
 	try {
 		const envPath = path.join(stackDir, '.env');
-		const envContent = readFileSync(envPath, 'utf8');
+		const envContent = await fs.readFile(envPath, 'utf8');
 		const envLines = envContent.split('\n');
 
 		for (const line of envLines) {
