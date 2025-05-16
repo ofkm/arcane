@@ -1,8 +1,6 @@
 import { getDockerClient, dockerHost } from './core';
-import type { ContainerConfig } from '$lib/types/docker';
 import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors';
 import type Docker from 'dockerode';
-import type { ContainerInspectInfo } from 'dockerode';
 
 // Add a container cache with TTL
 const containerCache = new Map<string, { timestamp: number; data: any }>();
@@ -268,104 +266,32 @@ export async function getContainerLogs(
 }
 
 /**
- * The function `createContainer` in TypeScript creates a Docker container based on the provided
- * configuration and returns information about the created container.
- * @param {ContainerConfig} config - The `config` parameter in the `createContainer` function is an
- * object that contains various properties used to configure and create a Docker container. Here are
- * the properties that can be included in the `config` object:
- * @returns The `createContainer` function returns an object with the following properties:
- * - `id`: The ID of the created container
- * - `name`: The name of the container
- * - `state`: The status of the container (e.g., "running", "stopped")
- * - `status`: Indicates whether the container is running or stopped
- * - `created`: The timestamp indicating when the container was created
+ * Creates a Docker container based on the provided Docker-specific configuration options.
+ * @param {Docker.ContainerCreateOptions} config - The Docker container creation options,
+ * conforming to `dockerode`'s `ContainerCreateOptions` type. This object is passed
+ * with minimal modifications to the Docker API.
+ * @returns An object with the `id`, `name`, `state`, `status`, and `created` time of the new container.
+ * @throws {ConflictError} If the container name is already in use.
+ * @throws {Error} For other Docker API errors or issues during creation.
  */
-export async function createContainer(config: ContainerConfig) {
+export async function createContainer(config: Docker.ContainerCreateOptions) {
 	try {
 		const docker = await getDockerClient();
 
-		const containerOptions: Docker.ContainerCreateOptions = {
-			name: config.name,
-			Image: config.image,
-			Env: config.envVars?.map((env) => `${env.key}=${env.value}`) || [],
-			Labels: config.labels || {},
-			Cmd: config.command,
-			User: config.user,
-			Healthcheck: config.healthcheck
-				? {
-						Test: config.healthcheck.Test,
-						Interval: config.healthcheck.Interval,
-						Timeout: config.healthcheck.Timeout,
-						Retries: config.healthcheck.Retries,
-						StartPeriod: config.healthcheck.StartPeriod
-					}
-				: undefined,
-			HostConfig: {
-				RestartPolicy: {
-					Name: config.restart || 'no'
-				},
-				Memory: config.memoryLimit,
-				NanoCpus: config.cpuLimit ? Math.round(config.cpuLimit * 1_000_000_000) : undefined
-			}
-		};
+		// The 'config' parameter is already Docker.ContainerCreateOptions.
+		// We can pass it (or a copy) directly.
+		const containerOptions: Docker.ContainerCreateOptions = { ...config };
 
-		// Set up port bindings if provided
-		if (config.ports?.length) {
-			const exposedPorts: Record<string, Record<string, never>> = {};
-			const portBindings: Record<string, Array<{ HostPort: string }>> = {};
-			for (const p of config.ports) {
-				const key = `${p.containerPort}/tcp`;
-				exposedPorts[key] = {};
-				portBindings[key] = [{ HostPort: p.hostPort }];
-			}
-			containerOptions.ExposedPorts = exposedPorts;
-			containerOptions.HostConfig = {
-				...(containerOptions.HostConfig ?? {}),
-				PortBindings: portBindings
-			};
-		}
-
-		// Set up volume mounts if provided
-		if (config.volumes && config.volumes.length > 0) {
-			containerOptions.HostConfig = containerOptions.HostConfig || {};
-			containerOptions.HostConfig.Binds = config.volumes.map((vol) => `${vol.source}:${vol.target}${vol.readOnly ? ':ro' : ''}`);
-		}
-
-		// Set up network if provided
-		if (config.network) {
-			containerOptions.HostConfig = containerOptions.HostConfig || {};
-			if (!containerOptions.NetworkingConfig) {
-				containerOptions.HostConfig.NetworkMode = config.network;
-			}
-
-			if (config.networkConfig && config.network !== 'host' && config.network !== 'none' && config.network !== 'bridge') {
-				containerOptions.NetworkingConfig = {
-					EndpointsConfig: {
-						[config.network]: {
-							IPAMConfig: {
-								IPv4Address: config.networkConfig.ipv4Address || undefined,
-								IPv6Address: config.networkConfig.ipv6Address || undefined
-							}
-						}
-					}
-				};
-				containerOptions.HostConfig.NetworkMode = undefined;
-			}
-		}
-
-		// Create and start the container
 		const container = await docker.createContainer(containerOptions);
 		await container.start();
 
-		// Get the container details
 		const containerInfo = await container.inspect();
 
-		// Invalidate container cache
 		invalidateContainerCache();
 
 		return {
 			id: containerInfo.Id,
-			name: containerInfo.Name.substring(1),
+			name: containerInfo.Name.substring(1), // Docker names often start with /
 			state: containerInfo.State.Status,
 			status: containerInfo.State.Running ? 'running' : 'stopped',
 			created: containerInfo.Created
@@ -373,23 +299,30 @@ export async function createContainer(config: ContainerConfig) {
 	} catch (error: unknown) {
 		console.error('Error creating container:', error);
 
+		// Use properties from Docker.ContainerCreateOptions for error messages
+		const imageName = config.Image || 'unknown image';
+		const containerName = config.name || 'unnamed container';
+
 		if (error instanceof Error) {
 			const errorMessage = error.message || '';
 
 			if (errorMessage.includes('IPAMConfig')) {
-				throw new Error(`Failed to create container: Invalid IP address configuration for network "${config.network}". ${errorMessage}`);
+				// The specific network name would be in config.NetworkingConfig.EndpointsConfig or config.HostConfig.NetworkMode
+				throw new Error(`Failed to create container: Invalid IP address configuration. ${errorMessage}`);
 			}
-			// Add more specific error handling for resource limits if needed
 			if (errorMessage.includes('NanoCpus')) {
 				throw new Error(`Invalid CPU limit specified: ${errorMessage}`);
 			}
 			if (errorMessage.includes('Memory')) {
 				throw new Error(`Invalid Memory limit specified: ${errorMessage}`);
 			}
-			throw new Error(`Failed to create container with image "${config.image}": ${errorMessage}`);
+			if (errorMessage.toLowerCase().includes('name is already in use by container') || (error as any).statusCode === 409) {
+				throw new ConflictError(`Failed to create container: The name "${containerName}" is already in use.`);
+			}
+			throw new Error(`Failed to create container with image "${imageName}": ${errorMessage}`);
 		}
 
-		throw new Error(`Failed to create container with image "${config.image}": Unknown error`);
+		throw new Error(`Failed to create container with image "${imageName}": Unknown error`);
 	}
 }
 

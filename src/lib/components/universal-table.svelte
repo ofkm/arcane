@@ -31,7 +31,7 @@
 	let { sorting: enableSorting = true, filtering: enableFiltering = true, selection: enableSelection = true } = features;
 	let { pageSize: initialPageSize = 10, pageSizeOptions = [10, 20, 50, 100], itemsPerPageLabel = 'Items per page' } = pagination;
 	let { filterPlaceholder = 'Search...', noResultsMessage = 'No results found', isDashboardTable = false, class: className = '' } = display;
-	let { defaultSort = { id: 'name', desc: false } } = sort;
+	let { defaultSort = { id: 'Name', desc: false } } = sort;
 
 	let pageSize = $state(initialPageSize);
 	let pageIndex = $state(0);

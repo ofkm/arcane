@@ -1,15 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createContainer } from '$lib/services/docker/container-service';
-import type { ContainerConfig } from '$lib/types/docker';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { extractDockerErrorMessage } from '$lib/utils/errors.util';
 import { tryCatch } from '$lib/utils/try-catch';
+import type { ContainerInspectInfo } from 'dockerode';
 
 export const POST: RequestHandler = async ({ request }) => {
-	const config = (await request.json()) as ContainerConfig;
+	const config = (await request.json()) as ContainerInspectInfo;
 
-	if (!config.name || !config.image) {
+	if (!config.Name || !config.Image) {
 		const response: ApiErrorResponse = {
 			success: false,
 			error: 'Container name and image are required',

@@ -11,7 +11,6 @@
 	import { formatBytes } from '$lib/utils/bytes.util';
 	import type Docker from 'dockerode';
 	import type { ContainerInspectInfo } from 'dockerode';
-	import type { ContainerDetails } from '$lib/types/docker/container.type';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { onDestroy } from 'svelte';

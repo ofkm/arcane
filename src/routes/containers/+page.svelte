@@ -219,6 +219,9 @@
 					features={{
 						selection: false
 					}}
+					sort={{
+						defaultSort: { id: 'displayName', desc: false }
+					}}
 					display={{
 						filterPlaceholder: 'Search containers...',
 						noResultsMessage: 'No containers found'

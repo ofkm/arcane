@@ -1,6 +1,5 @@
 <script lang="ts">
-	import type { ContainerConfig } from '$lib/types/docker/container.type';
-	import { type HealthConfig } from 'dockerode';
+	import { type HealthConfig, type ContainerCreateOptions } from 'dockerode'; // Import ContainerCreateOptions
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -28,7 +27,6 @@
 
 	const containerApi = new ContainerAPIService();
 
-	// Internal state
 	let isCreating = $state(false);
 	let containerName = $state('');
 	let selectedImage = $state('');
@@ -39,13 +37,15 @@
 		{
 			hostPort: string;
 			containerPort: string;
+			protocol?: 'tcp' | 'udp' | 'sctp'; // Added protocol
 			hostError?: string;
 			containerError?: string;
 		}[]
-	>([{ hostPort: '', containerPort: '' }]);
+	>([{ hostPort: '', containerPort: '', protocol: 'tcp' }]);
 
-	// Volume mounts
-	let volumeMounts = $state<{ source: string; target: string }[]>([{ source: '', target: '' }]);
+	// Volume mounts (bind mounts or named volumes)
+	// For named volumes, source is the volume name. For bind mounts, source is the host path.
+	let volumeMounts = $state<{ source: string; target: string; readOnly?: boolean }[]>([{ source: '', target: '', readOnly: false }]);
 
 	// Environment variables
 	let envVars = $state<{ key: string; value: string; sensitive?: boolean }[]>([{ key: '', value: '', sensitive: true }]);
@@ -58,33 +58,33 @@
 	];
 
 	// Network and restart policy
-	let network = $state('');
-	let restartPolicy = $state('unless-stopped'); // "no", "always", "on-failure", "unless-stopped"
+	let networkMode = $state(''); // Corresponds to HostConfig.NetworkMode or a custom network name
+	let restartPolicy = $state('unless-stopped');
 
 	const selectedRestartPolicyLabel = $derived(restartPolicyOptions.find((opt) => opt.value === restartPolicy)?.label || restartPolicy);
 
-	// Add state for IP addresses
+	// Add state for IP addresses (for custom networks)
 	let ipv4Address = $state('');
 	let ipv6Address = $state('');
 
 	// Add state for Healthcheck
 	let enableHealthcheck = $state(false);
-	let healthcheckTest = $state<string[]>(['']); // Dockerode expects string[]
-	let healthcheckInterval = $state<number | undefined>(undefined); // In nanoseconds
-	let healthcheckTimeout = $state<number | undefined>(undefined); // In nanoseconds
+	let healthcheckTest = $state<string[]>(['']);
+	let healthcheckInterval = $state<number | undefined>(undefined);
+	let healthcheckTimeout = $state<number | undefined>(undefined);
 	let healthcheckRetries = $state<number | undefined>(undefined);
-	let healthcheckStartPeriod = $state<number | undefined>(undefined); // In nanoseconds
+	let healthcheckStartPeriod = $state<number | undefined>(undefined);
 
 	// Add state for Labels
 	let labels = $state<{ key: string; value: string }[]>([{ key: '', value: '' }]);
 
 	// Add state for Command, User, Resources
-	let commandOverride = $state(''); // Input as string, will split later
+	let commandOverride = $state('');
 	let runAsUser = $state('');
-	let memoryLimitStr = $state(''); // Input as string (e.g., "512m", "1g")
-	let cpuLimitStr = $state(''); // Input as string (e.g., "0.5", "1")
+	let memoryLimitStr = $state('');
+	let cpuLimitStr = $state(''); // Number of CPUs (e.g., "0.5", "1")
 
-	// Add state for Auto-update
+	// Add state for Auto-update (managed via labels)
 	let autoUpdate = $state(false);
 
 	function handleClose() {
@@ -92,30 +92,23 @@
 		if (onCloseProp) {
 			onCloseProp();
 		}
+		// Optionally reset form fields here
 	}
 
-	// Port validation - improved
 	function validatePortNumber(port: string | number): {
 		isValid: boolean;
 		error?: string;
 	} {
 		const portStr = typeof port === 'number' ? port.toString() : port;
-
-		if (!portStr || !portStr.trim()) return { isValid: true };
-
+		if (!portStr || !portStr.trim()) return { isValid: true }; // Empty is fine, will be filtered
 		const portNum = parseInt(portStr, 10);
-
 		if (isNaN(portNum) || portNum.toString() !== portStr.trim()) {
 			return { isValid: false, error: 'Invalid port number' };
 		}
-
 		if (portNum < 1 || portNum > 65535) {
 			return { isValid: false, error: 'Port must be between 1-65535' };
 		}
-
-		if (portNum < 1024) {
-			return { isValid: true, error: 'Privileged port (<1024)' };
-		}
+		// Warning for privileged ports can be handled by UI, not strict validation fail
 		return { isValid: true };
 	}
 
@@ -138,19 +131,21 @@
 	});
 
 	function addPort() {
-		ports = [...ports, { hostPort: '', containerPort: '' }];
+		ports = [...ports, { hostPort: '', containerPort: '', protocol: 'tcp' }];
 	}
 
 	function removePort(index: number) {
 		ports = ports.filter((_, i) => i !== index);
+		if (ports.length === 0) addPort(); // Ensure at least one port row
 	}
 
 	function addVolumeMount() {
-		volumeMounts = [...volumeMounts, { source: '', target: '' }];
+		volumeMounts = [...volumeMounts, { source: '', target: '', readOnly: false }];
 	}
 
 	function removeVolumeMount(index: number) {
 		volumeMounts = volumeMounts.filter((_, i) => i !== index);
+		if (volumeMounts.length === 0) addVolumeMount(); // Ensure at least one volume row
 	}
 
 	function addEnvVar() {
@@ -159,6 +154,7 @@
 
 	function removeEnvVar(index: number) {
 		envVars = envVars.filter((_, i) => i !== index);
+		if (envVars.length === 0) addEnvVar(); // Ensure at least one env var row
 	}
 
 	function addLabel() {
@@ -167,16 +163,17 @@
 
 	function removeLabel(index: number) {
 		labels = labels.filter((_, i) => i !== index);
+		if (labels.length === 0) addLabel(); // Ensure at least one label row
 	}
 
-	const isUserDefinedNetwork = $derived(network && network !== '' && network !== 'host' && network !== 'none' && network !== 'bridge');
+	const isUserDefinedNetworkSelected = $derived(networkMode && networkMode !== '' && networkMode !== 'host' && networkMode !== 'none' && networkMode !== 'bridge');
 
 	async function handleSubmit() {
 		if (!selectedImage || !containerName.trim() || isCreating) return;
 
 		let hasInvalidPort = false;
 		ports.forEach((port) => {
-			if ((port.hostPort && !validatePortNumber(port.hostPort).isValid) || (port.containerPort && !validatePortNumber(port.containerPort).isValid)) {
+			if ((port.hostPort && validatePortNumber(port.hostPort).error && validatePortNumber(port.hostPort).error !== 'Privileged port (<1024)') || (port.containerPort && validatePortNumber(port.containerPort).error && validatePortNumber(port.containerPort).error !== 'Privileged port (<1024)')) {
 				hasInvalidPort = true;
 			}
 		});
@@ -186,10 +183,10 @@
 			return;
 		}
 
-		const filteredPorts = ports.filter((p) => p.hostPort.trim() && p.containerPort.trim()).map(({ hostPort, containerPort }) => ({ hostPort, containerPort }));
-		const filteredVolumes = volumeMounts.filter((v) => v.source.trim() && v.target.trim());
-		const filteredEnvVars = envVars.filter((e) => e.key.trim());
-		const filteredLabels = labels
+		isCreating = true;
+
+		// Construct Docker.ContainerCreateOptions
+		const finalLabels = labels
 			.filter((l) => l.key.trim())
 			.reduce(
 				(acc, label) => {
@@ -200,22 +197,36 @@
 			);
 
 		if (autoUpdate) {
-			filteredLabels['arcane.auto-update'] = 'true';
+			finalLabels['arcane.auto-update'] = 'true';
 		}
+
+		const exposedPorts: { [port: string]: Record<string, never> } = {};
+		const portBindings: { [portAndProtocol: string]: { HostPort: string }[] } = {};
+
+		ports
+			.filter((p) => p.hostPort.trim() && p.containerPort.trim())
+			.forEach((p) => {
+				const key = `${p.containerPort.trim()}/${p.protocol || 'tcp'}`;
+				exposedPorts[key] = {};
+				portBindings[key] = [{ HostPort: p.hostPort.trim() }];
+			});
+
+		const binds = volumeMounts.filter((v) => v.source.trim() && v.target.trim()).map((v) => `${v.source.trim()}:${v.target.trim()}${v.readOnly ? ':ro' : ''}`);
+
+		const env = envVars.filter((e) => e.key.trim()).map((e) => `${e.key.trim()}=${e.value}`);
 
 		let healthcheckConfig: HealthConfig | undefined = undefined;
 		if (enableHealthcheck && healthcheckTest.length > 0 && healthcheckTest[0].trim() !== '') {
 			const toNano = (seconds: number | undefined) => (seconds ? seconds * 1_000_000_000 : undefined);
 			healthcheckConfig = {
-				Test: healthcheckTest,
+				Test: healthcheckTest.filter((t) => t.trim() !== ''), // Ensure Test is not empty strings
 				Interval: toNano(healthcheckInterval),
 				Timeout: toNano(healthcheckTimeout),
 				Retries: healthcheckRetries,
 				StartPeriod: toNano(healthcheckStartPeriod)
 			};
+			if (healthcheckConfig && healthcheckConfig.Test && healthcheckConfig.Test.length === 0) healthcheckConfig = undefined;
 		}
-
-		const commandArray = commandOverride.trim() ? commandOverride.trim().split(/\s+/) : undefined;
 
 		let memoryBytes: number | undefined;
 		try {
@@ -223,54 +234,80 @@
 		} catch (e) {
 			console.error('Invalid memory format:', e);
 			toast.error(`Invalid memory format: ${memoryLimitStr}`);
+			isCreating = false;
 			return;
 		}
 
-		let cpuUnits: number | undefined;
+		let nanoCPUs: number | undefined;
 		try {
-			cpuUnits = cpuLimitStr.trim() ? parseFloat(cpuLimitStr.trim()) : undefined;
-			if (cpuUnits !== undefined && isNaN(cpuUnits)) {
-				throw new Error('CPU Limit must be a number');
+			const cpuVal = cpuLimitStr.trim() ? parseFloat(cpuLimitStr.trim()) : undefined;
+			if (cpuVal !== undefined) {
+				if (isNaN(cpuVal) || cpuVal <= 0) {
+					throw new Error('CPU Limit must be a positive number');
+				}
+				nanoCPUs = cpuVal * 1_000_000_000;
 			}
-		} catch (e) {
+		} catch (e: any) {
 			console.error('Invalid CPU format:', e);
-			toast.error(`Invalid CPU format: ${cpuLimitStr}`);
+			toast.error(e.message || `Invalid CPU format: ${cpuLimitStr}`);
+			isCreating = false;
 			return;
 		}
 
-		const containerConfig: ContainerConfig = {
+		const createOptions: ContainerCreateOptions = {
 			name: containerName.trim(),
-			image: selectedImage,
-			ports: filteredPorts.length > 0 ? filteredPorts : undefined,
-			volumes: filteredVolumes.length > 0 ? filteredVolumes : undefined,
-			envVars: filteredEnvVars.length > 0 ? filteredEnvVars : undefined,
-			network: network || undefined,
-			restart: restartPolicy as 'no' | 'always' | 'on-failure' | 'unless-stopped',
-			networkConfig:
-				isUserDefinedNetwork && (ipv4Address.trim() || ipv6Address.trim())
-					? {
-							ipv4Address: ipv4Address.trim() || undefined,
-							ipv6Address: ipv6Address.trim() || undefined
-						}
-					: undefined,
-			healthcheck: healthcheckConfig,
-			labels: Object.keys(filteredLabels).length > 0 ? filteredLabels : undefined,
-			command: commandArray,
-			user: runAsUser.trim() || undefined,
-			memoryLimit: memoryBytes,
-			cpuLimit: cpuUnits
+			Image: selectedImage,
+			Cmd: commandOverride.trim() ? commandOverride.trim().split(/\s+/) : undefined,
+			User: runAsUser.trim() || undefined,
+			Labels: Object.keys(finalLabels).length > 0 ? finalLabels : undefined,
+			Env: env.length > 0 ? env : undefined,
+			ExposedPorts: Object.keys(exposedPorts).length > 0 ? exposedPorts : undefined,
+			Healthcheck: healthcheckConfig,
+			HostConfig: {
+				PortBindings: Object.keys(portBindings).length > 0 ? portBindings : undefined,
+				Binds: binds.length > 0 ? binds : undefined,
+				RestartPolicy: { Name: restartPolicy as 'no' | 'always' | 'on-failure' | 'unless-stopped' },
+				Memory: memoryBytes,
+				NanoCpus: nanoCPUs,
+				NetworkMode: networkMode || undefined // Default is 'bridge' if empty string
+			}
 		};
 
-		isCreating = true;
+		if (isUserDefinedNetworkSelected && (ipv4Address.trim() || ipv6Address.trim())) {
+			createOptions.NetworkingConfig = {
+				EndpointsConfig: {
+					[networkMode]: {
+						// networkMode here is the name of the user-defined network
+						IPAMConfig: {
+							IPv4Address: ipv4Address.trim() || undefined,
+							IPv6Address: ipv6Address.trim() || undefined
+						}
+					}
+				}
+			};
+			// If using NetworkingConfig for a specific network, NetworkMode in HostConfig might be redundant
+			// or should match. Docker typically handles this, but for clarity, if networkMode is a custom one,
+			// it's often set in HostConfig.NetworkMode.
+			if (createOptions.HostConfig) {
+				createOptions.HostConfig.NetworkMode = networkMode;
+			}
+		} else if (networkMode && createOptions.HostConfig) {
+			// For standard modes like 'bridge', 'host', 'none'
+			createOptions.HostConfig.NetworkMode = networkMode;
+		}
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(containerApi.create(containerConfig)),
+			result: await tryCatch(containerApi.create(createOptions)), // Pass ContainerCreateOptions
 			message: 'Failed to Create Container',
 			setLoadingState: (value) => (isCreating = value),
 			onSuccess: async () => {
-				toast.success(`Container "${containerConfig.name}" created successfully!`);
+				toast.success(`Container "${createOptions.name}" created successfully!`);
 				await invalidateAll();
 				handleClose();
+			},
+			onError: () => {
+				// Ensure isCreating is reset on error too
+				isCreating = false;
 			}
 		});
 	}
@@ -343,12 +380,12 @@
 						<div class="space-y-4">
 							{#each ports as port, index (index)}
 								<div class="flex space-x-3 items-end">
-									<div class="flex-1 grid grid-cols-2 gap-4">
+									<div class="flex-1 grid grid-cols-3 gap-4">
 										<div>
 											<Label for={`host-port-${index}`} class="mb-2 block text-sm">Host Port</Label>
-											<Input id={`host-port-${index}`} bind:value={port.hostPort} placeholder="e.g., 8080" disabled={isCreating} type="text" pattern="[0-9]*" inputmode="numeric" class={port.hostError && port.hostPort ? 'border-red-500' : ''} />
+											<Input id={`host-port-${index}`} bind:value={port.hostPort} placeholder="e.g., 8080" disabled={isCreating} type="text" pattern="[0-9]*" inputmode="numeric" class={port.hostError && port.hostPort && port.hostError !== 'Privileged port (<1024)' ? 'border-red-500' : ''} />
 											{#if port.hostError && port.hostPort}
-												<div class="flex items-center text-xs text-red-500 mt-1">
+												<div class="flex items-center text-xs mt-1 {port.hostError === 'Privileged port (<1024)' ? 'text-amber-600' : 'text-red-500'}">
 													<AlertCircle class="mr-1 size-3" />
 													{port.hostError}
 												</div>
@@ -357,17 +394,30 @@
 
 										<div>
 											<Label for={`container-port-${index}`} class="mb-2 block text-sm">Container Port</Label>
-											<Input id={`container-port-${index}`} bind:value={port.containerPort} placeholder="e.g., 80" disabled={isCreating} type="text" pattern="[0-9]*" inputmode="numeric" class={port.containerError && port.containerPort ? 'border-red-500' : ''} />
+											<Input id={`container-port-${index}`} bind:value={port.containerPort} placeholder="e.g., 80" disabled={isCreating} type="text" pattern="[0-9]*" inputmode="numeric" class={port.containerError && port.containerPort && port.containerError !== 'Privileged port (<1024)' ? 'border-red-500' : ''} />
 											{#if port.containerError && port.containerPort}
-												<div class="flex items-center text-xs text-red-500 mt-1">
+												<div class="flex items-center text-xs mt-1 {port.containerError === 'Privileged port (<1024)' ? 'text-amber-600' : 'text-red-500'}">
 													<AlertCircle class="mr-1 size-3" />
 													{port.containerError}
 												</div>
 											{/if}
 										</div>
+										<div>
+											<Label for={`port-protocol-${index}`} class="mb-2 block text-sm">Protocol</Label>
+											<Select.Root type="single" bind:value={port.protocol} disabled={isCreating}>
+												<Select.Trigger class="w-full">
+													<span>{port.protocol?.toUpperCase() || 'TCP'}</span>
+												</Select.Trigger>
+												<Select.Content>
+													<Select.Item value="tcp">TCP</Select.Item>
+													<Select.Item value="udp">UDP</Select.Item>
+													<Select.Item value="sctp">SCTP</Select.Item>
+												</Select.Content>
+											</Select.Root>
+										</div>
 									</div>
 
-									<Button variant="destructive" size="icon" type="button" onclick={() => removePort(index)} disabled={ports.length <= 1 || isCreating} class="shrink-0">
+									<Button variant="destructive" size="icon" type="button" onclick={() => removePort(index)} disabled={(ports.length <= 1 && !ports[0].hostPort && !ports[0].containerPort) || isCreating} class="shrink-0">
 										<Trash class="size-4" />
 									</Button>
 								</div>
@@ -383,28 +433,25 @@
 						<div class="space-y-4">
 							{#each volumeMounts as mount, index (index)}
 								<div class="flex space-x-3 items-end">
-									<div class="flex-1 grid grid-cols-2 gap-4">
+									<div class="flex-1 grid grid-cols-2 gap-4 items-center">
 										<div>
-											<Label for={`volume-source-${index}`} class="mb-2 block">Source Volume</Label>
-											<Select.Root type="single" bind:value={mount.source} disabled={isCreating}>
-												<Select.Trigger class="w-full">
-													<span>{mount.source || 'Select volume'}</span>
-												</Select.Trigger>
-												<Select.Content>
-													{#each volumes as volume (volume.name)}
-														<Select.Item value={volume.name}>
-															{volume.name}
-														</Select.Item>
-													{/each}
-												</Select.Content>
-											</Select.Root>
+											<Label for={`volume-source-${index}`} class="mb-2 block">Host Path / Volume Name</Label>
+											<Input id={`volume-source-${index}`} bind:value={mount.source} placeholder="e.g., /path/on/host or my_volume" disabled={isCreating} />
+											<!-- 
+                                                Future improvement: Differentiate between selecting existing named volumes 
+                                                and entering a host path. For now, user types it.
+                                            -->
 										</div>
 										<div>
 											<Label for={`volume-target-${index}`} class="mb-2 block">Container Path</Label>
-											<Input id={`volume-target-${index}`} bind:value={mount.target} placeholder="/data" disabled={isCreating} />
+											<Input id={`volume-target-${index}`} bind:value={mount.target} placeholder="/data_in_container" disabled={isCreating} />
 										</div>
 									</div>
-									<Button variant="destructive" size="icon" type="button" onclick={() => removeVolumeMount(index)} disabled={volumeMounts.length <= 1 || isCreating} class="shrink-0">
+									<div class="flex items-center pt-6">
+										<Switch id={`volume-readonly-${index}`} bind:checked={mount.readOnly} disabled={isCreating} />
+										<Label for={`volume-readonly-${index}`} class="ml-2 text-sm">Read-only</Label>
+									</div>
+									<Button variant="destructive" size="icon" type="button" onclick={() => removeVolumeMount(index)} disabled={(volumeMounts.length <= 1 && !volumeMounts[0].source && !volumeMounts[0].target) || isCreating} class="shrink-0">
 										<Trash class="size-4" />
 									</Button>
 								</div>
@@ -448,7 +495,7 @@
 											</div>
 										</div>
 									</div>
-									<Button variant="destructive" size="icon" type="button" onclick={() => removeEnvVar(index)} disabled={envVars.length <= 1 || isCreating} class="shrink-0">
+									<Button variant="destructive" size="icon" type="button" onclick={() => removeEnvVar(index)} disabled={(envVars.length <= 1 && !envVars[0].key && !envVars[0].value) || isCreating} class="shrink-0">
 										<Trash class="size-4" />
 									</Button>
 								</div>
@@ -463,13 +510,15 @@
 					<Tabs.Content value="network">
 						<div class="space-y-4">
 							<div class="grid grid-cols-1 gap-2">
-								<Label for="container-network">Network</Label>
-								<Select.Root type="single" bind:value={network} disabled={isCreating}>
+								<Label for="container-network">Network Mode / Name</Label>
+								<Select.Root type="single" bind:value={networkMode} disabled={isCreating}>
 									<Select.Trigger class="w-full">
-										<span>{network || 'Default Bridge'}</span>
+										<span>{networkMode || 'Default (bridge)'}</span>
 									</Select.Trigger>
 									<Select.Content>
-										<Select.Item value="">Default Bridge</Select.Item>
+										<Select.Item value="">Default (bridge)</Select.Item>
+										<Select.Item value="host">Host</Select.Item>
+										<Select.Item value="none">None</Select.Item>
 										{#each networks.filter((n) => n.name !== 'bridge' && n.name !== 'host' && n.name !== 'none') as net (net.name)}
 											<Select.Item value={net.name}>
 												{net.name} ({net.driver})
@@ -479,7 +528,7 @@
 								</Select.Root>
 							</div>
 
-							{#if isUserDefinedNetwork}
+							{#if isUserDefinedNetworkSelected}
 								<div class="border-t pt-4 mt-4 space-y-4">
 									<p class="text-sm text-muted-foreground">Optional: Assign static IP addresses (requires network with IPAM configured).</p>
 									<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -501,7 +550,7 @@
 					<Tabs.Content value="healthcheck">
 						<div class="space-y-4">
 							<div class="flex items-center space-x-2">
-								<input type="checkbox" id="enable-healthcheck" bind:checked={enableHealthcheck} disabled={isCreating} class="form-checkbox text-primary focus:ring-primary border-gray-300 rounded size-4" />
+								<Switch id="enable-healthcheck" bind:checked={enableHealthcheck} disabled={isCreating} />
 								<Label for="enable-healthcheck" class="cursor-pointer">Enable Healthcheck</Label>
 							</div>
 
@@ -510,7 +559,7 @@
 									<div class="space-y-2">
 										<Label for="healthcheck-test">Test Command</Label>
 										<Input id="healthcheck-test" bind:value={healthcheckTest[0]} placeholder="e.g., CMD-SHELL curl -f http://localhost:80 || exit 1" disabled={isCreating} />
-										<p class="text-xs text-muted-foreground">Command to run inside the container. Use `CMD` or `CMD-SHELL`.</p>
+										<p class="text-xs text-muted-foreground">Command to run inside the container. Use `CMD` or `CMD-SHELL`. For multiple arguments, use advanced settings or configure directly in compose.</p>
 									</div>
 
 									<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -555,7 +604,7 @@
 												<Input id={`label-value-${index}`} bind:value={label.value} placeholder="e.g., my-app" disabled={isCreating} />
 											</div>
 										</div>
-										<Button variant="destructive" size="icon" type="button" onclick={() => removeLabel(index)} disabled={labels.length <= 1 || isCreating} class="shrink-0">
+										<Button variant="destructive" size="icon" type="button" onclick={() => removeLabel(index)} disabled={(labels.length <= 1 && !labels[0].key && !labels[0].value) || isCreating} class="shrink-0">
 											<Trash class="size-4" />
 										</Button>
 									</div>
@@ -592,8 +641,8 @@
 										<p class="text-xs text-muted-foreground">Format: number + unit (b, k, m, g). Minimum 4m.</p>
 									</div>
 									<div class="space-y-2">
-										<Label for="cpu-limit">CPU Limit</Label>
-										<Input id="cpu-limit" bind:value={cpuLimitStr} placeholder="e.g., 0.5, 1, 2" disabled={isCreating} type="number" step="0.1" min="0" />
+										<Label for="cpu-limit">CPU Limit (cores)</Label>
+										<Input id="cpu-limit" bind:value={cpuLimitStr} placeholder="e.g., 0.5, 1, 2" disabled={isCreating} type="number" step="0.1" min="0.01" />
 										<p class="text-xs text-muted-foreground">Number of CPU cores (e.g., 1.5 = 1.5 cores).</p>
 									</div>
 								</div>

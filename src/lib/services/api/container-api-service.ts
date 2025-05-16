@@ -1,5 +1,5 @@
-import type { ContainerConfig } from '$lib/types/docker';
 import BaseAPIService from './api-service';
+import type Docker from 'dockerode';
 
 export default class ContainerAPIService extends BaseAPIService {
 	async start(id: string) {
@@ -37,7 +37,7 @@ export default class ContainerAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async create(config: ContainerConfig) {
+	async create(config: Docker.ContainerCreateOptions) {
 		const res = await this.api.post('/containers', config);
 		return res.data;
 	}
