@@ -19,7 +19,7 @@ Arcane stores all settings securely and lets you manage them easily from the web
 3. Change what you need
 4. Click **Save**
 
-## Example settings.json
+## Example settings.dat
 
 ```json
 {

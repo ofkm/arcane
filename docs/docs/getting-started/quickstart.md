@@ -5,110 +5,73 @@ title: Quick Start
 
 # Quick Start Guide
 
-This guide provides the fastest way to get Arcane up and running using Docker Compose, the recommended method.
+Get Arcane running fast with Docker Compose.
 
 ## Prerequisites
 
-- `Docker and Docker Compose`
+- Docker & Docker Compose
 
 ## Steps
 
-1.  Create a `docker-compose.yml` file with the following content:
+1. **Create `docker-compose.yml`:**
 
-    ```yaml
-    services:
-      arcane:
-        image: ghcr.io/ofkm/arcane:latest
-        container_name: arcane
-        ports:
-          - '3000:3000'
-        volumes:
-          - /var/run/docker.sock:/var/run/docker.sock
-          - arcane-data:/app/data # Persists Arcane's data
-        environment:
-          - APP_ENV=production # Required for Docker
-          - PUBLIC_SESSION_SECRET=your_super_strong_random_secret_here # Generate with: openssl rand -base64 32
-          # --- Optional: For matching volume permissions to your host user ---
-          - PUID=1000
-          - PGID=1000
-          # --- Optional: Usually auto-detected, set if Docker access fails ---
-          # - DOCKER_GID=998 # GID of the 'docker' group or docker.sock
-          # --- Optional: For local HTTP testing ONLY ---
-          # - PUBLIC_ALLOW_INSECURE_COOKIES=true
-        restart: unless-stopped
+   ```yaml
+   services:
+     arcane:
+       image: ghcr.io/ofkm/arcane:latest
+       container_name: arcane
+       ports:
+         - '3000:3000'
+       volumes:
+         - /var/run/docker.sock:/var/run/docker.sock
+         - arcane-data:/app/data
+       environment:
+         - APP_ENV=production # Required
+         - PUBLIC_SESSION_SECRET=your_super_strong_random_secret_here # Generate: openssl rand -base64 32
+         # Optional: Match your host user for permissions
+         - PUID=2000
+         - PGID=2000
+         # Optional: Set if Docker access fails
+         # - DOCKER_GID=998
+         # Optional: For local HTTP testing only
+         # - PUBLIC_ALLOW_INSECURE_COOKIES=true
+       restart: unless-stopped
 
-    volumes:
-      arcane-data: # Defines the named volume used above
-        driver: local
-    ```
+   volumes:
+     arcane-data:
+       driver: local
+   ```
 
-2.  **Review Configuration & Permissions:**
-    Before starting, review the `docker-compose.yml` file:
+2. **Review Volumes & Imports:**
 
-    - **Docker Socket:** Mounts `/var/run/docker.sock` to allow Arcane to manage Docker.
-    - **Data Persistence:** Uses a volume named `arcane-data` (or a host path like `./arcane-data`) mapped to `/app/data` inside the container. This stores Arcane's settings, stacks, users, sessions, and encryption keys. By default, Arcane-managed stack files are stored within this volume (e.g., at `/app/data/stacks` inside the container).
+   - `/var/run/docker.sock`: Lets Arcane manage Docker.
+   - `arcane-data`: Persists settings, stacks, users, etc.
+   - To import existing stacks, add a mount where you exsisting stacks are located:
+     ```yaml
+     - /host/path/to/stacks:/host/path/to/stacks:ro
+     ```
+     Use `:ro` for read-only access.
 
-    - **Importing Existing Stacks from a Host Directory:**
-      If you have existing `docker-compose.yml` files on your host machine that you want to import into Arcane, you need to make them accessible to the Arcane container:
+3. **Permissions & Environment Variables:**
 
-      1.  **Mount the Host Directory:** Add an additional volume mount to your Arcane `docker-compose.yml` file. This maps the directory on your host (where your stacks are) to a path inside the Arcane container.
-          For example, if your stacks are in `/opt/my-docker-stacks` on your host, you need to map them to `/opt/my-docker-stacks` inside the container:
-          ```yaml
-          services:
-            arcane:
-              # ... other settings ...
-              volumes:
-                - /var/run/docker.sock:/var/run/docker.sock
-                - arcane-data:/app/data
-                - /opt/my-docker-stacks:/opt/my-docker-stacks:ro # Host path : Container path
-          # ...
-          ```
-          _Note: Using `:ro` (read-only) for the import volume is a good practice if Arcane only needs to read these files for import._
-      2.  **Provide Container Path to Arcane:** When using Arcane's "Import Stacks" feature, you will specify the path _inside the container_ where Arcane can find these files (e.g., `/opt/my-docker-stacks` from the example above). Arcane will then scan this directory for `docker-compose.yml` files.
-      3.  Once imported, Arcane will typically copy or manage these stack configurations within its own data directory (e.g., `/app/data/stacks`), depending on its import logic. The original files in your mounted import directory are usually just read during the import process.
+   - `APP_ENV=production`: Always set for Docker.
+   - `PUBLIC_SESSION_SECRET`: Must be a secure random string.
+   - `PUID`/`PGID`: Set to your host user/group IDs to avoid permission issues (`id -u`, `id -g`).
+   - `DOCKER_GID`: Usually auto-detected. Set only if Arcane can't access Docker (`stat -c '%g' /var/run/docker.sock`).
+   - `PUBLIC_ALLOW_INSECURE_COOKIES`: Only for local HTTP testing.
 
-    - **Permissions & Environment Variables (Important):**
+4. **Start Arcane:**
 
-      - **`APP_ENV=production`**: **Required when running in Docker.** This ensures Arcane uses the correct data paths (`/app/data`) for persistent storage.
+   ```bash
+   docker compose up -d
+   ```
 
-      - **`PUBLIC_SESSION_SECRET`**: **You MUST set this** to a secure random 32-character string. Generate one using `openssl rand -base64 32` in your terminal. This secret is crucial for securing user login sessions.
+   _(Use `docker-compose up -d` if needed)_
 
-      - **`PUID` and `PGID` (Optional but Recommended):**
-
-        - These variables set the User ID (`PUID`) and Group ID (`PGID`) for the `arcane` user inside the container.
-        - **Why?** To avoid permission issues with files Arcane creates in the mounted `/app/data` volume. Matching these to your host user's UID/GID ensures you can easily access these files on your host machine.
-        - **Find your IDs (Linux/Mac):** `id -u` (for PUID) and `id -g` (for PGID).
-        - Defaults if not set: `PUID=1000`, `PGID=1000`.
-
-      - **`DOCKER_GID` (Usually Handled Automatically):**
-
-        - Arcane needs to communicate with the Docker daemon, typically via the Docker socket.
-        - The entrypoint script inside the Arcane container is smart: it usually **auto-detects and sets the correct Group ID for Docker access** based on the GID of the mounted `/var/run/docker.sock`.
-        - **You generally do not need to set `DOCKER_GID` manually.**
-        - If, in rare cases, Arcane cannot access Docker, you can try setting `DOCKER_GID` to the GID of the `docker` group on your host or the GID of the `/var/run/docker.sock` file.
-          - Find it with: `stat -c '%g' /var/run/docker.sock` or `getent group docker | cut -d: -f3` (Linux).
-
-      - **`PUBLIC_ALLOW_INSECURE_COOKIES=true` (For Local HTTP Testing Only):**
-        - Uncomment this **only** if you are testing Arcane locally using `http://localhost:3000` and cannot use HTTPS.
-        - **Never use this in a production environment or if Arcane is accessible over a network, as it's insecure.**
-
-3.  **Start Arcane:**
-    Open your terminal, navigate to the directory where you saved `docker-compose.yml`, and run:
-
-    ```bash
-    docker compose up -d
-    ```
-
-    _(Note: some older systems might use `docker-compose up -d`)_
-
-4.  **Access Arcane:**
-    Open your web browser and navigate to:
-
-    `http://localhost:3000`
-
-    You should now see the Arcane UI. The first time you access it, you'll be guided through the initial setup.
+5. **Access Arcane:**
+   Go to [http://localhost:3000](http://localhost:3000) in your browser and follow the setup.
 
 ## Next Steps
 
-- Explore the Arcane interface to manage your containers, images, volumes, and networks.
-- Learn more about advanced settings in the **[Configuration](./configuration.md)** guide.
+- Manage containers, images, volumes, and networks in the UI.
+- See the [Configuration](./configuration.md) guide for more options.
