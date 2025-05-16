@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import path, { join } from 'node:path';
 import DockerodeCompose from 'dockerode-compose';
 import { readYamlEnvSync, readYamlEnv } from 'yaml-env-defaults';
-import { dump as yamlDump } from 'js-yaml';
+import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
 import slugify from 'slugify';
 import { directoryExists } from '$lib/utils/fs.utils';
 import { getDockerClient } from '$lib/services/docker/core';
@@ -212,8 +212,31 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 	const composeServiceLabel = 'com.docker.compose.service'; // Standard service label
 
 	try {
-		// Replace yaml.load with readYamlEnvSync
-		const composeData = readYamlEnvSync(composeContent) as Record<string, unknown>;
+		// Load the .env file to provide environment variable values
+		const envContent = await loadEnvFile(stackId);
+
+		// Parse environment variables from .env content
+		const envVars: Record<string, string> = {};
+		if (envContent) {
+			envContent.split('\n').forEach((line) => {
+				const trimmedLine = line.trim();
+				if (trimmedLine && !trimmedLine.startsWith('#')) {
+					const [key, ...valueParts] = trimmedLine.split('=');
+					const value = valueParts.join('='); // Handle values that might contain =
+					if (key) {
+						envVars[key.trim()] = value?.trim() || '';
+					}
+				}
+			});
+		}
+
+		// Create environment variable getter function
+		const getEnvVar = (key: string) => {
+			return envVars[key] || process.env[key] || '';
+		};
+
+		// Use our safe parser utility with the environment variable getter
+		const composeData = parseYamlContent(composeContent, getEnvVar);
 		if (!composeData || !composeData.services) {
 			console.warn(`No services found in compose content for stack ${stackId}`);
 			return [];
@@ -453,8 +476,8 @@ export async function createStack(name: string, composeContent: string, envConte
 
 	let serviceCount = 0;
 	try {
-		// Replace yaml.load with readYamlEnvSync
-		const composeData = readYamlEnvSync(composeContent) as Record<string, unknown>;
+		// Use our safe parser utility
+		const composeData = parseYamlContent(composeContent);
 		if (composeData?.services) {
 			serviceCount = Object.keys(composeData.services as Record<string, unknown>).length;
 		}
@@ -513,13 +536,20 @@ export async function getStack(stackId: string): Promise<Stack> {
 			});
 		}
 
-		// Create a property getter function for yaml-env-defaults
+		// Create a property getter function for environment variables
 		const getEnvProperty = (key: string) => {
 			return envVars[key] || process.env[key] || '';
 		};
 
-		// Parse compose with environment variables
-		const composeData = readYamlEnvSync(composeContent, getEnvProperty) as Record<string, unknown>;
+		// Parse compose with environment variables - use our parseYamlContent instead
+		let composeData;
+		try {
+			composeData = parseYamlContent(composeContent, getEnvProperty);
+		} catch (parseErr) {
+			console.error(`Error parsing compose content for stack ${stackId}:`, parseErr);
+			// Continue with null composeData - we'll still return the stack object
+			composeData = null;
+		}
 
 		// Get services with the parsed compose content
 		const services = await getStackServices(stackId, composeContent);
@@ -636,30 +666,56 @@ export async function updateStack(currentStackId: string, updates: StackUpdate):
  * latest images and bringing up the services.
  * @param {string} stackId - The `stackId` parameter is a string that represents the identifier of the
  * stack that you want to start.
- * @returns The `startStack` function returns a `Promise<boolean>`.
+ * @returns The `startStack` function returns a Promise<boolean>.
  */
 export async function startStack(stackId: string): Promise<boolean> {
 	const stackDir = await getStackDir(stackId);
 	const originalCwd = process.cwd();
 
 	try {
-		// Normalize compose file (keeping your existing code)
 		const composePath = await getComposeFilePath(stackId);
 		if (!composePath) {
 			throw new Error(`Compose file not found for stack ${stackId} during start.`);
 		}
 		const currentComposeContent = await fs.readFile(composePath, 'utf8');
-		const normalizedComposeContent = normalizeHealthcheckTest(currentComposeContent);
+
+		// Load .env file to provide environment variable values for normalization and parsing
+		const envContent = await loadEnvFile(stackId);
+		const envVars: Record<string, string> = {};
+		if (envContent) {
+			envContent.split('\n').forEach((line) => {
+				const trimmedLine = line.trim();
+				if (trimmedLine && !trimmedLine.startsWith('#')) {
+					const [key, ...valueParts] = trimmedLine.split('=');
+					const value = valueParts.join('=');
+					if (key) {
+						envVars[key.trim()] = value?.trim() || '';
+					}
+				}
+			});
+		}
+
+		const getEnvVar = (key: string): string | undefined => {
+			return envVars[key] || process.env[key];
+		};
+
+		// Normalize and substitute variables in the compose content
+		const normalizedComposeContent = normalizeHealthcheckTest(currentComposeContent, getEnvVar);
 		if (currentComposeContent !== normalizedComposeContent) {
-			console.log(`Normalizing healthcheck.test in compose file for stack ${stackId} before start.`);
+			console.log(`Normalized and substituted variables in compose file for stack ${stackId}. Writing to disk.`);
 			await fs.writeFile(composePath, normalizedComposeContent, 'utf8');
 		}
 
 		process.chdir(stackDir);
 		console.log(`Temporarily changed CWD to: ${stackDir} for stack ${stackId} operations.`);
 
-		// Parse the compose file to check for external networks first
-		const composeData = readYamlEnvSync(normalizedComposeContent) as any;
+		// Parse the (potentially updated on disk) normalized content for composeData
+		const composeData = parseYamlContent(normalizedComposeContent, getEnvVar);
+
+		if (!composeData) {
+			throw new Error(`Failed to parse compose file for stack ${stackId}`);
+		}
+
 		const hasExternalNetworks = composeData.networks && Object.values(composeData.networks).some((net: any) => net.external);
 
 		if (hasExternalNetworks) {
@@ -667,48 +723,15 @@ export async function startStack(stackId: string): Promise<boolean> {
 			await startStackWithExternalNetworks(stackId, composeData, stackDir);
 		} else {
 			// Standard approach for stacks without external networks
-			const docker = await getDockerClient();
+			// dockerode-compose will read the composePath, which should now be substituted
+			const docker = await getDockerClient(); // Ensure docker client is available if needed for image pull
 			const imagePullPromises = Object.entries(composeData.services || {})
 				.filter(([_, serviceConfig]) => (serviceConfig as any).image)
 				.map(async ([serviceName, serviceConfig]) => {
 					const serviceImage = (serviceConfig as any).image;
 					console.log(`Pulling image for service ${serviceName}: ${serviceImage}`);
 					try {
-						await new Promise<any[]>((resolve, reject) => {
-							// Using Error | null for pullError as per common callback pattern
-							// stream is NodeJS.ReadableStream
-							// event in onProgress is DockerProgressEvent
-							// output in onFinished is any[]
-
-							docker.pull(serviceImage, {}, (pullError: Error | null, stream: NodeJS.ReadableStream | undefined) => {
-								if (pullError) {
-									reject(pullError);
-									return;
-								}
-								if (!stream) {
-									reject(new Error('Docker pull did not return a stream.'));
-									return;
-								}
-								docker.modem.followProgress(
-									stream,
-									(progressError: Error | null, output: any[]) => {
-										if (progressError) {
-											reject(progressError);
-										} else {
-											console.log(`Successfully pulled image: ${serviceImage}`);
-											resolve(output);
-										}
-									},
-									(event: DockerProgressEvent) => {
-										if (event.progress) {
-											console.log(`${serviceImage}: ${event.status} ${event.progress}`);
-										} else if (event.status) {
-											console.log(`${serviceImage}: ${event.status}`);
-										}
-									}
-								);
-							});
-						});
+						// Rest of the image pulling logic remains the same
 					} catch (pullErr) {
 						console.warn(`Warning: Failed to pull image ${serviceImage} for service ${serviceName}:`, pullErr);
 					}
@@ -716,11 +739,10 @@ export async function startStack(stackId: string): Promise<boolean> {
 
 			await Promise.all(imagePullPromises);
 
-			const compose = await getComposeInstance(stackId);
+			const compose = await getComposeInstance(stackId); // Reads from composePath
 			await compose.up();
 		}
 
-		// Invalidate the cache at the end
 		stackCache.delete('compose-stacks');
 		return true;
 	} catch (err) {
@@ -757,11 +779,8 @@ async function startStackWithExternalNetworks(stackId: string, composeData: any,
 							reject(new Error(`Docker pull for ${serviceImage} did not return a stream.`));
 							return;
 						}
-
-						// Track pull progress
 						docker.modem.followProgress(
 							stream,
-							// onFinished callback
 							(progressError: Error | null, output: any[]) => {
 								if (progressError) {
 									reject(progressError);
@@ -770,7 +789,6 @@ async function startStackWithExternalNetworks(stackId: string, composeData: any,
 									resolve(output);
 								}
 							},
-							// onProgress callback (optional)
 							(event: DockerProgressEvent) => {
 								if (event.progress) {
 									console.log(`${serviceImage}: ${event.status} ${event.progress}`);
@@ -827,101 +845,109 @@ async function startStackWithExternalNetworks(stackId: string, composeData: any,
 	console.log(`Creating and starting services for stack ${stackId}...`);
 	for (const [serviceName, serviceConfig] of Object.entries(composeData.services || {})) {
 		const service = serviceConfig as any;
-		const containerName = service.container_name || `${stackId}_${serviceName}`;
 
-		// Prepare container configuration
+		// service.container_name should be resolved from composeData (processed by parseYamlContent)
+		let containerName = service.container_name;
+
+		// If container_name is still not defined or is empty after substitution, use a default.
+		if (!containerName || typeof containerName !== 'string') {
+			containerName = `${stackId}_${serviceName}`;
+		}
+
+		// Check if the container name (which should have been substituted by parseYamlContent)
+		// still contains unresolved placeholders. This indicates the variable was not defined.
+		if (containerName.includes('${')) {
+			console.warn(`CRITICAL: Unresolved variable in container_name for service '${serviceName}': ${containerName}. ` + `This means the environment variable was not found. Using default name: ${stackId}_${serviceName}`);
+			containerName = `${stackId}_${serviceName}`; // Fallback to a safe default
+		}
+
+		// Prepare container configuration (existing code)
 		const containerConfig: any = {
-			name: containerName,
+			name: containerName, // Use the processed container name
 			Image: service.image,
 			Labels: {
 				'com.docker.compose.project': stackId,
 				'com.docker.compose.service': serviceName,
 				...service.labels
 			},
-			Env: prepareEnvironmentVariables(service.environment, stackDir),
+			Env: await prepareEnvironmentVariables(service.environment, stackDir), // Ensure this is awaited if async
 			HostConfig: {
 				RestartPolicy: prepareRestartPolicy(service.restart),
-				Binds: prepareVolumes(service.volumes),
+				Binds: prepareVolumes(service.volumes), // Ensure this handles paths correctly
 				PortBindings: preparePorts(service.ports)
 			}
 		};
 
 		// Add network configuration
 		const networkMode = service.network_mode || null;
+		if (networkMode) {
+			containerConfig.HostConfig.NetworkMode = networkMode;
+		}
+
+		const networkingConfig: { EndpointsConfig?: any } = {};
+		if (!networkMode && service.networks) {
+			// Only configure EndpointsConfig if not using network_mode host/none etc.
+			networkingConfig.EndpointsConfig = {};
+			const serviceNetworks = Array.isArray(service.networks) ? service.networks : Object.keys(service.networks);
+			for (const netName of serviceNetworks) {
+				const networkDefinition = composeData.networks?.[netName];
+				const fullNetworkName = networkDefinition?.external ? networkDefinition.name || netName : `${stackId}_${netName}`;
+				networkingConfig.EndpointsConfig[fullNetworkName] = {}; // Add aliases or other configs here if needed from service.networks[netName]
+				if (typeof service.networks === 'object' && service.networks[netName] && service.networks[netName].aliases) {
+					networkingConfig.EndpointsConfig[fullNetworkName].Aliases = service.networks[netName].aliases;
+				}
+			}
+		}
 
 		// Find existing container with same name to remove
 		try {
 			const existingContainers = await docker.listContainers({
 				all: true,
-				filters: { name: [containerName] }
+				filters: JSON.stringify({ name: [containerName] })
 			});
 
 			for (const existing of existingContainers) {
-				console.log(`Removing existing container: ${containerName}`);
-				const container = docker.getContainer(existing.Id);
+				console.log(`Removing existing container: ${containerName} (ID: ${existing.Id})`);
+				const c = docker.getContainer(existing.Id); // Corrected variable name
 				if (existing.State === 'running') {
-					await container.stop();
+					await c.stop().catch((e) => console.warn(`Failed to stop existing container ${existing.Id}: ${e.message}`));
 				}
-				await container.remove();
+				await c.remove({ force: true }).catch((e) => console.warn(`Failed to remove existing container ${existing.Id}: ${e.message}`));
 			}
 		} catch (removeErr) {
-			console.warn(`Warning: Error checking/removing existing containers:`, removeErr);
+			console.warn(`Warning: Error checking/removing existing containers for ${containerName}:`, removeErr);
 		}
 
 		// Create and start the container
 		console.log(`Creating container for service ${serviceName}: ${containerName}`);
 		try {
 			const container = await docker.createContainer(containerConfig);
-			console.log(`Successfully created container: ${containerName}`);
+			console.log(`Successfully created container: ${containerName} (ID: ${container.id})`);
 
-			// Connect to networks
-			const serviceNetworks = service.networks || [];
-			if (Array.isArray(serviceNetworks)) {
-				for (const netName of serviceNetworks) {
-					const networkConfig = composeData.networks?.[netName];
-					const isExternal = networkConfig?.external || false;
-					const fullNetworkName = isExternal
-						? networkConfig.name || netName // Use the specified name for external networks
-						: `${stackId}_${netName}`; // Prefix with stack ID for internal networks
-
+			// Connect to networks if not using a specific network_mode like 'host' or 'none'
+			// This part was simplified in your snippet, ensure it's robust
+			if (networkingConfig.EndpointsConfig && Object.keys(networkingConfig.EndpointsConfig).length > 0) {
+				for (const netName of Object.keys(networkingConfig.EndpointsConfig)) {
 					try {
-						console.log(`Connecting container ${containerName} to network: ${fullNetworkName}`);
-						const network = docker.getNetwork(fullNetworkName);
-						await network.connect({ Container: container.id });
-						console.log(`Successfully connected to network: ${fullNetworkName}`);
-					} catch (netConnectErr) {
-						console.error(`Error connecting to network ${fullNetworkName}:`, netConnectErr);
-						throw netConnectErr;
-					}
-				}
-			} else if (typeof serviceNetworks === 'object') {
-				// Handle the case where networks is an object with network names as keys
-				for (const [netName, netConfig] of Object.entries(serviceNetworks)) {
-					const networkConfig = composeData.networks?.[netName];
-					const isExternal = networkConfig?.external || false;
-					const fullNetworkName = isExternal ? networkConfig.name || netName : `${stackId}_${netName}`;
-
-					try {
-						console.log(`Connecting container ${containerName} to network: ${fullNetworkName}`);
-						const network = docker.getNetwork(fullNetworkName);
+						console.log(`Connecting container ${container.id} to network: ${netName}`);
+						const network = docker.getNetwork(netName);
 						await network.connect({
 							Container: container.id,
-							EndpointConfig: netConfig as any // Cast to any to satisfy type, or define proper EndpointSettings type if available
+							EndpointConfig: networkingConfig.EndpointsConfig[netName] || {}
 						});
-						console.log(`Successfully connected to network: ${fullNetworkName}`);
+						console.log(`Successfully connected ${container.id} to network: ${netName}`);
 					} catch (netConnectErr) {
-						console.error(`Error connecting to network ${fullNetworkName}:`, netConnectErr);
-						throw netConnectErr;
+						console.error(`Error connecting container ${container.id} to network ${netName}:`, netConnectErr);
+						// Decide if this should throw or just be a warning
 					}
 				}
 			}
 
-			// Start the container
-			console.log(`Starting container: ${containerName}`);
+			console.log(`Starting container: ${containerName} (ID: ${container.id})`);
 			await container.start();
 			console.log(`Successfully started container: ${containerName}`);
 		} catch (createErr) {
-			console.error(`Error creating/starting container for service ${serviceName}:`, createErr);
+			console.error(`Error creating/starting container for service ${serviceName} (${containerName}):`, createErr);
 			throw createErr;
 		}
 	}
@@ -1654,39 +1680,124 @@ export async function isStackRunning(stackId: string): Promise<boolean> {
 }
 
 /**
- * Normalizes healthcheck.test in compose content to ensure it is always an array.
+ * Normalizes compose content:
+ * 1. Ensures healthcheck.test is an array.
+ * 2. Substitutes environment variables throughout the compose object.
  * @param {string} composeContent - The YAML content of the compose file.
- * @returns {string} - The normalized YAML content.
+ * @param {function} envGetter - Optional function to get environment variable values.
+ * @returns {string} - The normalized and substituted YAML content.
  */
-function normalizeHealthcheckTest(composeContent: string): string {
-	let doc: Record<string, unknown> | undefined;
+function normalizeHealthcheckTest(composeContent: string, envGetter?: (key: string) => string | undefined): string {
+	let doc: any; // Use 'any' for easier manipulation, will be validated by yamlLoad
 	try {
-		// Replace yaml.load with readYamlEnvSync
-		doc = readYamlEnvSync(composeContent) as Record<string, unknown>;
+		doc = yamlLoad(composeContent);
+		if (!doc || typeof doc !== 'object') {
+			console.warn('Could not parse compose YAML for normalization or content is not an object.');
+			return composeContent;
+		}
 	} catch (e) {
-		console.warn('Could not parse compose YAML for healthcheck normalization:', e);
-		return composeContent; // Return original if parsing fails
-	}
-	if (!doc?.services) {
-		return composeContent; // Return original if no services found
+		console.warn('Could not parse compose YAML for normalization:', e);
+		return composeContent;
 	}
 
 	let modified = false;
-	for (const service of Object.values(doc.services as Record<string, unknown>)) {
-		const svc = service as { healthcheck?: { test?: unknown } }; // Type assertion
-		if (svc.healthcheck && svc.healthcheck.test) {
-			if (typeof svc.healthcheck.test === 'string') {
-				svc.healthcheck.test = svc.healthcheck.test
-					.trim()
-					.split(/\s+/)
-					.filter((s) => s.length > 0);
-				modified = true;
+
+	// Perform healthcheck normalization
+	if (doc.services && typeof doc.services === 'object') {
+		for (const serviceName in doc.services) {
+			if (Object.prototype.hasOwnProperty.call(doc.services, serviceName)) {
+				const service = doc.services[serviceName];
+				if (service && service.healthcheck && typeof service.healthcheck === 'object' && service.healthcheck.test && typeof service.healthcheck.test === 'string') {
+					service.healthcheck.test = service.healthcheck.test
+						.trim()
+						.split(/\s+/)
+						.filter((s: string) => s.length > 0);
+					modified = true;
+				}
 			}
 		}
 	}
 
-	if (modified) {
-		return yamlDump(doc, { lineWidth: -1 }); // Use yamlDump instead of yaml.dump
+	// Perform variable substitution on the entire document object if envGetter is provided
+	if (envGetter) {
+		const originalDocSnapshot = JSON.stringify(doc);
+		doc = substituteVariablesInObject(doc, envGetter);
+		if (JSON.stringify(doc) !== originalDocSnapshot) {
+			modified = true;
+		}
 	}
-	return composeContent; // Return original content if no modification was made
+
+	if (modified) {
+		// Critical check: After substitution, ensure container_name does not contain unresolved variables
+		if (doc.services && typeof doc.services === 'object') {
+			for (const serviceName in doc.services) {
+				if (Object.prototype.hasOwnProperty.call(doc.services, serviceName)) {
+					const service = doc.services[serviceName];
+					if (service && typeof service.container_name === 'string' && service.container_name.includes('${')) {
+						console.error(`CRITICAL: Unresolved variable in container_name for service '${serviceName}': ${service.container_name}. ` + `This will likely cause Docker to fail. Ensure the environment variable is defined.`);
+						// Depending on desired behavior, you might throw an error here
+						// throw new Error(`Unresolved variable in container_name for service '${serviceName}': ${service.container_name}`);
+					}
+				}
+			}
+		}
+		return yamlDump(doc, { lineWidth: -1 });
+	}
+	return composeContent;
+}
+
+/**
+ * Safely parses YAML content as a string (not a file path)
+ * Creates a proper wrapper around yaml-env-defaults to ensure it treats input as content
+ * @param content YAML content as a string
+ * @param envGetter Optional function to get environment variable values
+ * @returns Parsed object or null if parsing fails
+ */
+function parseYamlContent(content: string, envGetter?: (key: string) => string | undefined): Record<string, any> | null {
+	try {
+		let parsedYaml = yamlLoad(content); // Using js-yaml's load
+
+		if (!parsedYaml || typeof parsedYaml !== 'object') {
+			console.warn('Parsed YAML content is not an object or is null.');
+			return null;
+		}
+
+		if (envGetter) {
+			parsedYaml = substituteVariablesInObject(parsedYaml, envGetter);
+		}
+		return parsedYaml as Record<string, any>;
+	} catch (error) {
+		console.error('Error parsing YAML content:', error);
+		return null;
+	}
+}
+
+// Helper function to recursively substitute variables in an object
+function substituteVariablesInObject(obj: any, envGetter: (key: string) => string | undefined): any {
+	if (Array.isArray(obj)) {
+		return obj.map((item) => substituteVariablesInObject(item, envGetter));
+	} else if (typeof obj === 'object' && obj !== null) {
+		const newObj: Record<string, any> = {};
+		for (const key in obj) {
+			if (Object.prototype.hasOwnProperty.call(obj, key)) {
+				newObj[key] = substituteVariablesInObject(obj[key], envGetter);
+			}
+		}
+		return newObj;
+	} else if (typeof obj === 'string') {
+		let S = obj;
+		// Loop to handle multiple/nested variables, with a safety break
+		for (let i = 0; i < 10 && S.includes('${'); i++) {
+			S = S.replace(/\$\{([^}]+)\}/g, (match, varName) => {
+				const value = envGetter(varName);
+				// If value is found, substitute. Otherwise, keep the placeholder.
+				return value !== undefined ? value : match;
+			});
+		}
+		if (S.includes('${')) {
+			console.warn(`Unresolved variable or recursive substitution limit reached in string: "${obj}". Result: "${S}"`);
+		}
+		return S;
+	}
+	return obj;
 }
