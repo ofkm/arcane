@@ -35,7 +35,7 @@
     "bits-ui": "^1.4.8",
     "clsx": "^2.1.1",
     "eslint": "^9.26.0",
-    "eslint-plugin-svelte": "^3.0.0",
+    "eslint-plugin-svelte": "^3.7.0",
     "formsnap": "^2.0.1",
     "globals": "^16.1.0",
     "mode-watcher": "^1.0.7",
