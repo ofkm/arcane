@@ -3,7 +3,7 @@ import { getSettings } from '$lib/services/settings-service';
 import { getContainer } from '$lib/services/docker/container-service';
 import type { PageServerLoad, Actions } from './$types';
 import { tryCatch } from '$lib/utils/try-catch';
-import type { PortBinding } from 'dockerode';
+import type { PortBinding, ContainerInspectInfo } from 'dockerode';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { stackId } = params;
@@ -45,13 +45,15 @@ export const load: PageServerLoad = async ({ params }) => {
 		for (const service of stack.services) {
 			if (service.id) {
 				const containerResult = await tryCatch(getContainer(service.id));
-				if (!containerResult.error && containerResult.data && containerResult.data.networkSettings?.Ports) {
-					const portBindings = containerResult.data.networkSettings.Ports;
+				const containerData: ContainerInspectInfo | null = containerResult.data;
+
+				if (!containerResult.error && containerData && containerData.NetworkSettings?.Ports) {
+					const portBindings = containerData.NetworkSettings.Ports;
 					const parsedPorts: string[] = [];
 
 					for (const containerPort in portBindings) {
 						if (Object.prototype.hasOwnProperty.call(portBindings, containerPort)) {
-							const bindings = portBindings[containerPort];
+							const bindings: PortBinding[] | null = portBindings[containerPort];
 							if (bindings && Array.isArray(bindings) && bindings.length > 0) {
 								bindings.forEach((binding: PortBinding) => {
 									if (binding.HostPort) {

@@ -6,7 +6,7 @@
 	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2 } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
-	import { capitalizeFirstLetter, truncateString } from '$lib/utils/string.utils';
+	import { capitalizeFirstLetter, truncateString, shortId } from '$lib/utils/string.utils';
 	import { formatBytes } from '$lib/utils/bytes.util';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -19,14 +19,15 @@
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import SystemAPIService from '$lib/services/api/system-api-service';
 	import type { EnhancedImageInfo } from '$lib/types/docker';
+	import type { ContainerInfo } from 'dockerode';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import MaturityItem from '$lib/components/maturity-item.svelte';
 	import { onMount } from 'svelte';
 	import { maturityStore } from '$lib/stores/maturity-store';
-	import { maturityCache } from '$lib/services/docker/maturity-cache-service';
 	import ImageAPIService from '$lib/services/api/image-api-service';
+	import type { PruneType } from '$lib/types/actions.type';
 
-	let { data }: { data: PageData } = $props();
+	let { data }: { data: PageData & { containers: ContainerInfo[] } } = $props();
 
 	const containerApi = new ContainerAPIService();
 	const systemApi = new SystemAPIService();
@@ -48,9 +49,16 @@
 		pruning: false
 	});
 
-	const runningContainers = $derived(dashboardStates.containers?.filter((c) => c.state === 'running').length ?? 0);
-	const stoppedContainers = $derived(dashboardStates.containers?.filter((c) => c.state === 'exited').length ?? 0);
+	const runningContainers = $derived(dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'running').length ?? 0);
+	const stoppedContainers = $derived(dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'exited').length ?? 0);
 	const totalImageSize = $derived(dashboardStates.images?.reduce((sum, image) => sum + (image.size || 0), 0) ?? 0);
+
+	function getContainerDisplayName(container: ContainerInfo): string {
+		if (container.Names && container.Names.length > 0) {
+			return container.Names[0].startsWith('/') ? container.Names[0].substring(1) : container.Names[0];
+		}
+		return shortId(container.Id);
+	}
 
 	$effect(() => {
 		dashboardStates.dockerInfo = data.dockerInfo;
@@ -61,7 +69,6 @@
 	});
 
 	onMount(async () => {
-		// Asynchronously load maturity data for the top images after dashboard loads
 		await loadTopImagesMaturity();
 	});
 
@@ -88,7 +95,6 @@
 			onSuccess: async () => {
 				toast.success('All Containers Started Successfully.');
 				await invalidateAll();
-				isLoading.starting = false;
 			}
 		});
 	}
@@ -110,7 +116,6 @@
 						onSuccess: async () => {
 							toast.success('All Containers Stopped Successfully.');
 							await invalidateAll();
-							isLoading.stopping = false;
 						}
 					});
 				}
@@ -118,28 +123,25 @@
 		});
 	}
 
-	async function confirmPrune(selectedTypes: string[]) {
+	async function confirmPrune(selectedTypes: PruneType[]) {
 		if (isLoading.pruning || selectedTypes.length === 0) return;
 		isLoading.pruning = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(systemApi.prune(['containers', 'images'])),
-			message: `Failed to Prune ${selectedTypes}`,
+			result: await tryCatch(systemApi.prune(selectedTypes)),
+			message: `Failed to Prune ${selectedTypes.join(', ')}`,
 			setLoadingState: (value) => (isLoading.pruning = value),
 			onSuccess: async () => {
 				dashboardStates.isPruneDialogOpen = false;
 				const formattedTypes = selectedTypes.map((type) => capitalizeFirstLetter(type)).join(', ');
 				toast.success(`${formattedTypes} ${selectedTypes.length > 1 ? 'were' : 'was'} pruned successfully.`);
 				await invalidateAll();
-				isLoading.pruning = false;
 			}
 		});
 	}
 
 	async function loadTopImagesMaturity() {
-		// Only process if there are images
 		if (!dashboardStates.images || dashboardStates.images.length === 0) return;
 
-		// Get the IDs of the largest 5 images (which are displayed in the dashboard)
 		const topImageIds = [...dashboardStates.images]
 			.sort((a, b) => (b.size || 0) - (a.size || 0))
 			.slice(0, 5)
@@ -148,24 +150,20 @@
 
 		if (topImageIds.length === 0) return;
 
-		// Load maturity data in the background
 		try {
-			// Process in small batches to keep UI responsive
 			const BATCH_SIZE = 2;
 			for (let i = 0; i < topImageIds.length; i += BATCH_SIZE) {
 				const batch = topImageIds.slice(i, i + BATCH_SIZE);
 				await imageApi.checkMaturityBatch(batch);
 
-				// Update the dashboardStates.images with the latest maturity info
 				dashboardStates.images = dashboardStates.images.map((image) => {
 					const storedMaturity = $maturityStore.maturityData[image.id];
 					return {
 						...image,
-						maturity: storedMaturity || image.maturity
+						maturity: storedMaturity !== undefined ? storedMaturity : image.maturity
 					};
 				});
 
-				// Short delay between batches
 				if (i + BATCH_SIZE < topImageIds.length) {
 					await new Promise((resolve) => setTimeout(resolve, 50));
 				}
@@ -226,7 +224,7 @@
 						</div>
 					</div>
 					{#if dashboardStates.containers?.length}
-						<Progress value={(runningContainers / dashboardStates.containers.length) * 100} class="mt-4 h-2" />
+						<Progress value={(runningContainers / (dashboardStates.containers.length || 1)) * 100} class="mt-4 h-2" />
 					{/if}
 				</Card.Content>
 			</Card.Root>
@@ -275,7 +273,7 @@
 						<div>
 							<p class="text-sm font-medium text-muted-foreground">Memory</p>
 							<p class="text-2xl font-bold mt-1">
-								{formatBytes(dashboardStates.dockerInfo?.MemTotal, 0)}
+								{dashboardStates.dockerInfo?.MemTotal ? formatBytes(dashboardStates.dockerInfo.MemTotal, 0) : 'N/A'}
 							</p>
 						</div>
 						<div class="bg-amber-500/10 p-2 rounded-full">
@@ -296,7 +294,6 @@
 	<section>
 		<h2 class="text-lg font-semibold tracking-tight mb-4">Quick Actions</h2>
 		<div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-			<!-- Start All Button -->
 			<button class="group relative flex flex-col items-center p-5 rounded-xl border bg-card shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-sm" disabled={!dashboardStates.dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} onclick={handleStartAll}>
 				<div class="size-10 rounded-full flex items-center justify-center mb-3 bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
 					{#if isLoading.starting}
@@ -310,7 +307,6 @@
 				<p class="text-xs text-muted-foreground">Start all stopped containers</p>
 			</button>
 
-			<!-- Stop All Button -->
 			<button class="group relative flex flex-col items-center p-5 rounded-xl border bg-card shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-sm" disabled={!dashboardStates.dockerInfo || runningContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} onclick={handleStopAll}>
 				<div class="size-10 rounded-full flex items-center justify-center mb-3 bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
 					{#if isLoading.stopping}
@@ -324,7 +320,6 @@
 				<p class="text-xs text-muted-foreground">Stop all running containers</p>
 			</button>
 
-			<!-- Prune System Button -->
 			<button
 				class="group relative flex flex-col items-center p-5 rounded-xl border bg-card shadow-sm hover:shadow-md hover:border-destructive/50 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-sm disabled:hover:border-border"
 				disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
@@ -364,19 +359,19 @@
 						<div class="flex flex-col h-full">
 							<div class="flex-1">
 								<UniversalTable
-									data={dashboardStates.containers.slice(0, 5)}
+									data={dashboardStates.containers.slice(0, 5).map((c) => ({ ...c, displayName: getContainerDisplayName(c) }))}
 									columns={[
-										{ accessorKey: 'name', header: 'Name' },
-										{ accessorKey: 'image', header: 'Image' },
-										{ accessorKey: 'state', header: 'State' },
-										{ accessorKey: 'status', header: 'Status' }
+										{ accessorKey: 'displayName', header: 'Name' },
+										{ accessorKey: 'Image', header: 'Image' },
+										{ accessorKey: 'State', header: 'State' },
+										{ accessorKey: 'Status', header: 'Status' }
 									]}
 									features={{
 										filtering: false,
 										selection: false
 									}}
 									sort={{
-										defaultSort: { id: 'status', desc: false }
+										defaultSort: { id: 'Status', desc: false }
 									}}
 									pagination={{
 										pageSize: 5,
@@ -386,12 +381,12 @@
 										isDashboardTable: true
 									}}
 								>
-									{#snippet rows({ item })}
-										{@const stateVariant = statusVariantMap[item.state.toLowerCase()]}
-										<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.id}/">{item.name}</a></Table.Cell>
-										<Table.Cell title={item.image}>{truncateString(item.image, 40)}</Table.Cell>
-										<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.state)} /></Table.Cell>
-										<Table.Cell>{item.status}</Table.Cell>
+									{#snippet rows({ item }: { item: ContainerInfo & { displayName: string } })}
+										{@const stateVariant = statusVariantMap[item.State.toLowerCase()]}
+										<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.Id}/">{item.displayName}</a></Table.Cell>
+										<Table.Cell title={item.Image}>{truncateString(item.Image, 40)}</Table.Cell>
+										<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.State)} /></Table.Cell>
+										<Table.Cell>{item.Status}</Table.Cell>
 									{/snippet}
 								</UniversalTable>
 							</div>
@@ -451,7 +446,7 @@
 										defaultSort: { id: 'size', desc: true }
 									}}
 								>
-									{#snippet rows({ item })}
+									{#snippet rows({ item }: { item: EnhancedImageInfo })}
 										<Table.Cell>
 											<div class="flex items-center gap-2">
 												<div class="flex items-center flex-1">

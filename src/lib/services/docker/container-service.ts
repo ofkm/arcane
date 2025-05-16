@@ -1,12 +1,11 @@
 import { getDockerClient, dockerHost } from './core';
-import type { ContainerConfig, ContainerCreate } from '$lib/types/docker';
-import type { ServiceContainer } from '$lib/types/docker/container.type';
-// Import custom errors - remove unused ContainerStateError
+import type { ContainerConfig } from '$lib/types/docker';
 import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors';
 import type Docker from 'dockerode';
+import type { ContainerInspectInfo } from 'dockerode';
 
 // Add a container cache with TTL
-const containerCache = new Map();
+const containerCache = new Map<string, { timestamp: number; data: any }>();
 const CONTAINER_CACHE_TTL = 15000; // 15 seconds - slightly shorter than stacks cache
 
 /**
@@ -25,49 +24,33 @@ function invalidateContainerCache(containerId?: string) {
 }
 
 /**
- * This TypeScript function lists Docker containers and returns an array of ServiceContainer objects.
+ * This TypeScript function lists Docker containers and returns an array of Docker.ContainerInfo objects.
  * @param [all=true] - The `all` parameter in the `listContainers` function is a boolean parameter that
  * determines whether to list all containers or only running containers. When `all` is set to `true`,
  * all containers (including stopped containers) will be listed. If `all` is set to `false`, only
  * @returns The `listContainers` function returns a Promise that resolves to an array of
- * `ServiceContainer` objects. Each `ServiceContainer` object contains properties such as `id`,
- * `names`, `name`, `image`, `imageId`, `command`, `created`, `state`, `status`, and `ports`, which are
- * extracted from the Docker containers retrieved using the Docker client.
+ * `Docker.ContainerInfo` objects.
  */
-export async function listContainers(all = true): Promise<ServiceContainer[]> {
+export async function listContainers(all = true): Promise<Docker.ContainerInfo[]> {
 	const cacheKey = `list-containers-${all ? 'all' : 'running'}`;
 	const cachedData = containerCache.get(cacheKey);
 
 	// Return cached data if valid
 	if (cachedData && Date.now() - cachedData.timestamp < CONTAINER_CACHE_TTL) {
-		return cachedData.data;
+		return cachedData.data as Docker.ContainerInfo[];
 	}
 
 	try {
 		const docker = await getDockerClient();
 		const containersData = await docker.listContainers({ all });
-		const result = containersData.map(
-			(c): ServiceContainer => ({
-				id: c.Id,
-				names: c.Names,
-				name: c.Names[0]?.substring(1) || c.Id.substring(0, 12),
-				image: c.Image,
-				imageId: c.ImageID,
-				command: c.Command,
-				created: c.Created,
-				state: c.State,
-				status: c.Status,
-				ports: c.Ports
-			})
-		);
 
 		// Cache the result
 		containerCache.set(cacheKey, {
-			data: result,
+			data: containersData,
 			timestamp: Date.now()
 		});
 
-		return result;
+		return containersData;
 	} catch (error: unknown) {
 		console.error('Docker Service: Error listing containers:', error);
 		throw new Error(`Failed to list Docker containers using host "${dockerHost}".`);
@@ -80,18 +63,16 @@ export async function listContainers(all = true): Promise<ServiceContainer[]> {
  * @param {string} containerId - The `getContainer` function you provided is an asynchronous function
  * that retrieves information about a Docker container based on the `containerId` provided as a
  * parameter. The function uses the Docker API to inspect the container and return relevant details.
- * @returns The function `getContainer` returns an object containing various details of the Docker
- * container with the specified `containerId`. The object includes properties such as `id`, `name`,
- * `created`, `path`, `args`, `state`, `image`, `config`, `networkSettings`, and `mounts`. If an error
- * occurs during the process, it will be caught and handled accordingly. If the
+ * @returns The function `getContainer` returns a Promise that resolves to a `Docker.ContainerInspectInfo`
+ * object, or null if not found.
  */
-export async function getContainer(containerId: string) {
+export async function getContainer(containerId: string): Promise<Docker.ContainerInspectInfo | null> {
 	const cacheKey = `container-${containerId}`;
 	const cachedData = containerCache.get(cacheKey);
 
 	// Return cached data if valid
 	if (cachedData && Date.now() - cachedData.timestamp < CONTAINER_CACHE_TTL) {
-		return cachedData.data;
+		return cachedData.data as Docker.ContainerInspectInfo | null;
 	}
 
 	try {
@@ -99,27 +80,13 @@ export async function getContainer(containerId: string) {
 		const container = docker.getContainer(containerId);
 		const inspectData = await container.inspect();
 
-		const result = {
-			id: inspectData.Id,
-			name: inspectData.Name.substring(1),
-			created: inspectData.Created,
-			path: inspectData.Path,
-			args: inspectData.Args,
-			state: inspectData.State,
-			image: inspectData.Image,
-			config: inspectData.Config,
-			networkSettings: inspectData.NetworkSettings,
-			mounts: inspectData.Mounts,
-			labels: inspectData.Config.Labels
-		};
-
 		// Cache the result
 		containerCache.set(cacheKey, {
-			data: result,
+			data: inspectData,
 			timestamp: Date.now()
 		});
 
-		return result;
+		return inspectData;
 	} catch (error: unknown) {
 		console.error(`Docker Service: Error getting container ${containerId}:`, error);
 		if (error instanceof Error && 'statusCode' in error && (error as { statusCode?: number }).statusCode === 404) {
@@ -317,7 +284,7 @@ export async function createContainer(config: ContainerConfig) {
 	try {
 		const docker = await getDockerClient();
 
-		const containerOptions: ContainerCreate = {
+		const containerOptions: Docker.ContainerCreateOptions = {
 			name: config.name,
 			Image: config.image,
 			Env: config.envVars?.map((env) => `${env.key}=${env.value}`) || [],
@@ -495,58 +462,46 @@ export async function getContainerStats(containerId: string): Promise<Docker.Con
  * Stops, removes the old container, creates a new one, and starts it.
  * Assumes the image tag used in the original config now points to the desired (potentially updated) image.
  * @param {string} containerId - The ID of the container to recreate.
- * @returns {Promise<ServiceContainer>} Information about the newly created and started container.
+ * @returns {Promise<Docker.ContainerInfo>} Information about the newly created and started container.
  * @throws {DockerApiError} If any step fails.
  */
-
-// Define the Mount interface
-interface DockerMount {
-	Type: string;
-	Source: string;
-	Destination: string;
-	RW: boolean;
-	Name?: string;
-	Driver?: string;
-	Mode?: string;
-	Propagation?: string;
-}
-
-export async function recreateContainer(containerId: string): Promise<ServiceContainer> {
+export async function recreateContainer(containerId: string): Promise<Docker.ContainerInfo> {
 	const docker = await getDockerClient();
-	let originalContainer = null;
+	let originalContainer: Docker.ContainerInspectInfo | null = null;
 
 	try {
 		console.log(`Recreating container ${containerId}: Fetching original config...`);
-		// 1. Get existing container details
 		originalContainer = await getContainer(containerId);
 		if (!originalContainer) {
 			throw new DockerApiError(`Container ${containerId} not found for recreation.`, 404);
 		}
 
-		// Extract necessary config parts
 		const createOptions: Docker.ContainerCreateOptions = {
-			name: originalContainer.name,
-			Image: originalContainer.config.Image,
-			Env: originalContainer.config.Env,
-			Labels: originalContainer.labels,
-			ExposedPorts: originalContainer.config.ExposedPorts,
+			name: originalContainer.Name?.substring(1),
+			Image: originalContainer.Config?.Image,
+			Env: originalContainer.Config?.Env,
+			Labels: originalContainer.Config?.Labels,
+			ExposedPorts: originalContainer.Config?.ExposedPorts,
 			HostConfig: {
-				PortBindings: originalContainer.networkSettings?.Ports || {},
-				NetworkMode: originalContainer.networkSettings?.Networks?.bridge ? 'bridge' : Object.keys(originalContainer.networkSettings?.Networks || {})[0] || undefined,
-				Binds: originalContainer.mounts?.filter((mount: DockerMount) => mount.Type === 'bind' || mount.Type === 'volume').map((mount: DockerMount) => `${mount.Source}:${mount.Destination}${mount.RW ? '' : ':ro'}`)
+				PortBindings: originalContainer.HostConfig?.PortBindings || {},
+				NetworkMode: originalContainer.HostConfig?.NetworkMode || (originalContainer.NetworkSettings?.Networks?.bridge ? 'bridge' : Object.keys(originalContainer.NetworkSettings?.Networks || {})[0] || undefined),
+				Binds: originalContainer.HostConfig?.Binds || originalContainer.Mounts?.filter((mount) => mount.Type === 'bind' || mount.Type === 'volume').map((mount) => `${mount.Source}:${mount.Destination}${mount.RW ? '' : ':ro'}`),
+				RestartPolicy: originalContainer.HostConfig?.RestartPolicy,
+				Memory: originalContainer.HostConfig?.Memory,
+				NanoCpus: originalContainer.HostConfig?.NanoCpus
 			},
-			Cmd: originalContainer.config.Cmd,
-			Entrypoint: originalContainer.config.Entrypoint,
-			WorkingDir: originalContainer.config.WorkingDir,
-			User: originalContainer.config.User,
-			Volumes: originalContainer.config.Volumes,
-			Tty: originalContainer.config.Tty,
-			OpenStdin: originalContainer.config.OpenStdin,
-			StdinOnce: originalContainer.config.StdinOnce
+			Cmd: originalContainer.Config?.Cmd,
+			Entrypoint: originalContainer.Config?.Entrypoint,
+			WorkingDir: originalContainer.Config?.WorkingDir,
+			User: originalContainer.Config?.User,
+			Volumes: originalContainer.Config?.Volumes,
+			Tty: originalContainer.Config?.Tty,
+			OpenStdin: originalContainer.Config?.OpenStdin,
+			StdinOnce: originalContainer.Config?.StdinOnce
 		};
 
 		// If we need to add custom network configuration for non-default networks
-		if (originalContainer.networkSettings?.Networks) {
+		if (originalContainer.NetworkSettings?.Networks && createOptions.HostConfig) {
 			interface DockerNetworkConfig {
 				IPAddress?: string;
 				IPPrefixLen?: number;
@@ -554,27 +509,24 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 				MacAddress?: string;
 				[key: string]: any;
 			}
-
 			type NetworkEntry = [string, DockerNetworkConfig];
 
-			const networks = Object.entries(originalContainer.networkSettings.Networks) as NetworkEntry[];
+			const networks = Object.entries(originalContainer.NetworkSettings.Networks) as NetworkEntry[];
 
-			// If container uses a non-default network, set it up
-			if (networks.length > 0 && networks[0][0] !== 'bridge') {
-				const [networkName, networkConfig] = networks[0];
+			if (networks.length > 0 && networks[0][0] !== 'bridge' && createOptions.HostConfig.NetworkMode !== networks[0][0]) {
+				const [networkName, networkConfigValue] = networks[0];
+				const networkConfig = networkConfigValue as Docker.EndpointSettings;
 
-				// Set the network mode in the host config
-				if (createOptions.HostConfig) {
+				if (createOptions.HostConfig.NetworkMode !== networkName) {
 					createOptions.HostConfig.NetworkMode = networkName;
 				}
 
-				// If network has specific IP assignments, add NetworkingConfig
-				if (networkConfig.IPAddress) {
+				if (networkConfig.IPAMConfig?.IPv4Address) {
 					createOptions.NetworkingConfig = {
 						EndpointsConfig: {
 							[networkName]: {
 								IPAMConfig: {
-									IPv4Address: networkConfig.IPAddress
+									IPv4Address: networkConfig.IPAMConfig.IPv4Address
 								}
 							}
 						}
@@ -583,26 +535,25 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 			}
 		}
 
-		// 2. Stop the existing container (optional but safer)
+		// Stop the existing container
 		try {
 			console.log(`Recreating container ${containerId}: Stopping...`);
 			await stopContainer(containerId);
 		} catch (stopError: unknown) {
-			// Ignore "already stopped" errors
 			if (stopError instanceof Error && 'statusCode' in stopError && (stopError as { statusCode?: number }).statusCode !== 304 && (stopError as { statusCode?: number }).statusCode !== 404) {
 				console.warn(`Could not stop container ${containerId} before removal: ${stopError instanceof Error ? stopError.message : 'Unknown error'}`);
 			}
 		}
 
-		// 3. Remove the existing container
+		// Remove the existing container
 		console.log(`Recreating container ${containerId}: Removing...`);
-		await removeContainer(containerId, true); // Use force to ensure removal even if stop failed
+		await removeContainer(containerId, true);
 
-		// 4. Create the new container with the extracted config
+		// Create the new container with the extracted config
 		console.log(`Recreating container ${containerId}: Creating new container with image ${createOptions.Image}...`);
 		const newContainer = await docker.createContainer(createOptions);
 
-		// 5. Start the new container
+		// Start the new container
 		console.log(`Recreating container ${containerId}: Starting new container ${newContainer.id}...`);
 		await startContainer(newContainer.id);
 
@@ -611,9 +562,9 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 
 		console.log(`Recreating container ${containerId}: Successfully recreated and started as ${newContainer.id}.`);
 
-		// 6. Get basic container info to return as ServiceContainer
-		const containers = await listContainers(true); // Get all containers including the new one
-		const newServiceContainer = containers.find((c) => c.id === newContainer.id);
+		// Get basic container info to return as Docker.ContainerInfo
+		const allContainers = await listContainers(true);
+		const newServiceContainer = allContainers.find((c) => c.Id === newContainer.id);
 
 		if (!newServiceContainer) {
 			throw new Error(`Container ${newContainer.id} was created but not found in container list`);
@@ -626,6 +577,6 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 		const statusCode = error instanceof Error && 'statusCode' in error ? (error as { statusCode?: number }).statusCode : 500;
 		const message = error instanceof Error ? error.message : String(error);
 
-		throw new DockerApiError(`Failed to recreate container ${originalContainer?.name || containerId}: ${message || 'Unknown error'}`, statusCode);
+		throw new DockerApiError(`Failed to recreate container ${originalContainer?.Name?.substring(1) || containerId}: ${message || 'Unknown error'}`, statusCode);
 	}
 }

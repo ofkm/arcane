@@ -9,11 +9,11 @@ export const POST: RequestHandler = async () => {
 	const result = await tryCatch(
 		(async () => {
 			const containers = await listContainers(true);
-			const running = containers.filter((c) => c.state === 'running');
+			const running = containers.filter((c) => c.State === 'running');
 			if (running.length === 0) {
 				return { count: 0, message: 'No running containers to stop.' };
 			}
-			await Promise.all(running.map((c) => stopContainer(c.id)));
+			await Promise.all(running.map((c) => stopContainer(c.Id)));
 			console.log(`API: Stopped ${running.length} containers.`);
 			return { count: running.length, message: `Successfully stopped ${running.length} container(s).` };
 		})()

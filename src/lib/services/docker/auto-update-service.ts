@@ -3,8 +3,8 @@ import { listStacks, getStack, fullyRedeployStack } from './stack-service';
 import { pullImage, getImage, listImages } from './image-service';
 import { getSettings } from '../settings-service';
 import yaml from 'js-yaml';
-import type { ServiceContainer } from '$lib/types/docker';
 import type { Stack } from '$lib/types/docker/stack.type';
+import type { ContainerInfo } from 'dockerode';
 
 const updatingContainers = new Set<string>();
 const updatingStacks = new Set<string>();
@@ -21,17 +21,17 @@ export async function checkAndUpdateContainers(): Promise<{
 	}
 
 	const containers = await listContainers();
-	const eligibleContainers: ServiceContainer[] = [];
+	const eligibleContainers: ContainerInfo[] = [];
 
 	for (const container of containers) {
-		if (container.state !== 'running') continue;
+		if (container.State !== 'running') continue;
 		try {
-			const containerDetails = await getContainer(container.id);
-			if (containerDetails?.labels?.['arcane.auto-update'] === 'true') {
+			const containerDetails = await getContainer(container.Id);
+			if (containerDetails?.Config.Labels?.['arcane.auto-update'] === 'true') {
 				eligibleContainers.push(container);
 			}
 		} catch (error) {
-			console.error(`Error fetching container details for ${container.id}:`, error);
+			console.error(`Error fetching container details for ${container.Id}:`, error);
 		}
 	}
 
@@ -42,25 +42,26 @@ export async function checkAndUpdateContainers(): Promise<{
 	};
 
 	for (const container of eligibleContainers) {
-		const containerId = container.id;
+		const containerId = container.Id;
+		const containerName = container.Names && container.Names.length > 0 ? container.Names[0].substring(1) : containerId;
 		try {
 			if (updatingContainers.has(containerId)) {
-				console.log(`Auto-update: Skipping ${container.name} (${containerId}), already in progress.`);
+				console.log(`Auto-update: Skipping ${containerName} (${containerId}), already in progress.`);
 				continue;
 			}
 
 			const updateAvailable = await checkContainerImageUpdate(container);
 			if (updateAvailable) {
 				updatingContainers.add(containerId);
-				console.log(`Auto-update: Update found for container ${container.name} (${containerId}). Recreating...`);
-				console.log(`Auto-update: Pulling latest image ${container.image} for ${container.name}...`);
-				await pullImage(container.image);
+				console.log(`Auto-update: Update found for container ${containerName} (${containerId}). Recreating...`);
+				console.log(`Auto-update: Pulling latest image ${container.Image} for ${containerName}...`);
+				await pullImage(container.Image);
 				await recreateContainer(containerId);
-				console.log(`Auto-update: Container ${container.name} recreated successfully`);
+				console.log(`Auto-update: Container ${containerName} recreated successfully`);
 				results.updated++;
 				updatingContainers.delete(containerId);
 			} else {
-				console.log(`Auto-update: Container ${container.name} (${containerId}) is up-to-date.`);
+				console.log(`Auto-update: Container ${containerName} (${containerId}) is up-to-date.`);
 			}
 		} catch (error: unknown) {
 			console.error(`Auto-update error for container ${containerId}:`, error);
@@ -168,24 +169,38 @@ export async function checkAndUpdateStacks(): Promise<{
 	return results;
 }
 
-async function checkContainerImageUpdate(container: ServiceContainer): Promise<boolean> {
+async function checkContainerImageUpdate(container: ContainerInfo): Promise<boolean> {
+	const containerName = container.Names && container.Names.length > 0 ? container.Names[0].substring(1) : container.Id;
 	try {
-		const imageRef = container.image;
+		const imageRef = container.Image;
 		if (/^sha256:[A-Fa-f0-9]{64}$/.test(imageRef)) {
+			console.log(`Auto-update: Skipping image check for ${containerName}, image is by digest: ${imageRef}`);
 			return false;
 		}
-		const currentImage = await getImage(container.imageId);
-		if (!currentImage) return false;
+		const currentImage = await getImage(container.ImageID);
+		if (!currentImage) {
+			console.warn(`Auto-update: Current image details not found for ${containerName} (ImageID: ${container.ImageID})`);
+			return false;
+		}
+
+		console.log(`Auto-update: Pulling image ${imageRef} for ${containerName} to check for updates...`);
 		await pullImage(imageRef);
-		const lastColon = imageRef.lastIndexOf(':');
-		const imageName = lastColon === -1 ? imageRef : imageRef.slice(0, lastColon);
-		const tag = lastColon === -1 ? 'latest' : imageRef.slice(lastColon + 1);
-		const freshImages = await listImages();
-		const freshImage = freshImages.find((img) => (img.repo === imageName || img.repo.endsWith(`/${imageName}`)) && img.tag === tag);
-		if (!freshImage) return false;
-		return freshImage.id !== container.imageId;
+
+		const freshPulledImageDetails = await getImage(imageRef);
+		if (!freshPulledImageDetails) {
+			console.warn(`Auto-update: Image details for ${imageRef} not found after pull for ${containerName}.`);
+			return false;
+		}
+
+		if (freshPulledImageDetails.Id !== container.ImageID) {
+			console.log(`Auto-update: New image version found for ${containerName}. Current: ${container.ImageID}, New: ${freshPulledImageDetails.Id}`);
+			return true;
+		} else {
+			console.log(`Auto-update: Image ${imageRef} for ${containerName} is already up-to-date (ID: ${container.ImageID}).`);
+			return false;
+		}
 	} catch (error: unknown) {
-		console.error(`Error checking for image update for ${container.name}:`, error);
+		console.error(`Error checking for image update for ${containerName}:`, error);
 		return false;
 	}
 }

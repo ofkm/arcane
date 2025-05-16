@@ -4,14 +4,15 @@ import { getDockerInfo } from '$lib/services/docker/core';
 import { isImageInUse, listImages, checkImageMaturity } from '$lib/services/docker/image-service';
 import { getSettings } from '$lib/services/settings-service';
 import { maturityCache } from '$lib/services/docker/maturity-cache-service';
-import type { EnhancedImageInfo, ServiceContainer, ServiceImage } from '$lib/types/docker';
+import type { EnhancedImageInfo, ServiceImage } from '$lib/types/docker';
+import type { ContainerInfo } from 'dockerode';
 
 type DockerInfoType = Awaited<ReturnType<typeof getDockerInfo>>;
 type SettingsType = NonNullable<Awaited<ReturnType<typeof getSettings>>>;
 
 type DashboardData = {
 	dockerInfo: DockerInfoType | null;
-	containers: ServiceContainer[];
+	containers: ContainerInfo[];
 	images: ServiceImage[];
 	settings: Pick<SettingsType, 'pruneMode'> | null;
 	error?: string;
@@ -19,14 +20,14 @@ type DashboardData = {
 
 export const load: PageServerLoad = async (): Promise<DashboardData> => {
 	try {
-		const [dockerInfo, containers, images, settings] = await Promise.all([
+		const [dockerInfo, containersData, imagesData, settings] = await Promise.all([
 			getDockerInfo().catch((e) => {
 				console.error('Dashboard: Failed to get Docker info:', e.message);
 				return null;
 			}),
 			listContainers(true).catch((e) => {
 				console.error('Dashboard: Failed to list containers:', e.message);
-				return [];
+				return [] as ContainerInfo[];
 			}),
 			listImages().catch((e) => {
 				console.error('Dashboard: Failed to list images:', e.message);
@@ -39,7 +40,7 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 		]);
 
 		const enhancedImages = await Promise.all(
-			images.map(async (image): Promise<EnhancedImageInfo> => {
+			imagesData.map(async (image): Promise<EnhancedImageInfo> => {
 				const inUse = await isImageInUse(image.id);
 
 				// Check maturity cache first before returning
@@ -67,7 +68,7 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 		if (!dockerInfo) {
 			return {
 				dockerInfo: null,
-				containers: [],
+				containers: [] as ContainerInfo[],
 				images: [] as EnhancedImageInfo[],
 				settings: settings ? { pruneMode: settings.pruneMode } : null,
 				error: 'Failed to connect to Docker Engine. Please check settings and ensure Docker is running.'
@@ -76,7 +77,7 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 
 		return {
 			dockerInfo,
-			containers,
+			containers: containersData,
 			images: enhancedImages,
 			settings: settings ? { pruneMode: settings.pruneMode } : null
 		};
@@ -84,7 +85,7 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 		console.error('Dashboard: Unexpected error loading data:', err);
 		return {
 			dockerInfo: null,
-			containers: [],
+			containers: [] as ContainerInfo[],
 			images: [],
 			settings: null,
 			error: err.message || 'An unexpected error occurred while loading dashboard data.'

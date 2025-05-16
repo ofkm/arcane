@@ -83,10 +83,10 @@
 	});
 
 	function startLogStream() {
-		if (logEventSource || !container?.id) return;
+		if (logEventSource || !container?.Id) return;
 
 		try {
-			const url = `/api/containers/${container.id}/logs/stream`;
+			const url = `/api/containers/${container.Id}/logs/stream`;
 			const eventSource = new EventSource(url);
 			logEventSource = eventSource;
 
@@ -118,10 +118,10 @@
 	}
 
 	function startStatsStream() {
-		if (statsEventSource || !container?.id || !container.state?.Running) return;
+		if (statsEventSource || !container?.Id || !container.State?.Running) return;
 
 		try {
-			const url = `/api/containers/${container.id}/stats/stream`;
+			const url = `/api/containers/${container.Id}/stats/stream`;
 			const eventSource = new EventSource(url);
 			statsEventSource = eventSource;
 
@@ -160,7 +160,7 @@
 	}
 
 	$effect(() => {
-		if (activeTab === 'stats' && container?.state?.Running) {
+		if (activeTab === 'stats' && container?.State?.Running) {
 			startStatsStream();
 		} else if (statsEventSource) {
 			closeStatsStream();
@@ -214,7 +214,7 @@
 		return 'N/A';
 	};
 
-	const primaryIpAddress = $derived(getPrimaryIpAddress(container?.networkSettings));
+	const primaryIpAddress = $derived(getPrimaryIpAddress(container?.NetworkSettings));
 
 	$effect(() => {
 		if (logsContainer && displayedLogs && autoScrollLogs) {
@@ -253,18 +253,18 @@
 					</Breadcrumb.Item>
 					<Breadcrumb.Separator />
 					<Breadcrumb.Item>
-						<Breadcrumb.Page>{container?.name || 'Loading...'}</Breadcrumb.Page>
+						<Breadcrumb.Page>{container?.Name || 'Loading...'}</Breadcrumb.Page>
 					</Breadcrumb.Item>
 				</Breadcrumb.List>
 			</Breadcrumb.Root>
 
 			<div class="mt-2 flex items-center gap-2">
 				<h1 class="text-2xl font-bold tracking-tight">
-					{container?.name || 'Container Details'}
+					{container?.Name || 'Container Details'}
 				</h1>
 
-				{#if container?.state}
-					<span class="self-start mt-1.5"><StatusBadge variant={container.state.Status === 'running' ? 'green' : container.state.Status === 'exited' ? 'red' : 'amber'} text={container.state.Status} /></span>
+				{#if container?.State}
+					<span class="self-start mt-1.5"><StatusBadge variant={container.State.Status === 'running' ? 'green' : container.State.Status === 'exited' ? 'red' : 'amber'} text={container.State.Status} /></span>
 				{/if}
 			</div>
 		</div>
@@ -272,9 +272,9 @@
 		{#if container}
 			<div class="flex gap-2 flex-wrap">
 				<ActionButtons
-					id={container.id}
+					id={container.Id}
 					type="container"
-					itemState={container.state?.Running ? 'running' : 'stopped'}
+					itemState={container.State?.Running ? 'running' : 'stopped'}
 					loading={{
 						start: starting,
 						stop: stopping,
@@ -312,8 +312,8 @@
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium text-muted-foreground">Image</p>
 									<p class="text-base font-semibold mt-1 break-all">
-										<span class="truncate block" title={container.config?.Image || 'N/A'}>
-											{container.config?.Image || 'N/A'}
+										<span class="truncate block" title={container.Config?.Image || 'N/A'}>
+											{container.Config?.Image || 'N/A'}
 										</span>
 									</p>
 								</div>
@@ -325,8 +325,8 @@
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium text-muted-foreground">Created</p>
-									<p class="text-base font-semibold mt-1 truncate" title={formatDate(container.created)}>
-										{formatDate(container.created)}
+									<p class="text-base font-semibold mt-1 truncate" title={formatDate(container.Created)}>
+										{formatDate(container.Created)}
 									</p>
 								</div>
 							</div>
@@ -349,8 +349,8 @@
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium text-muted-foreground">Command</p>
-									<p class="text-base font-semibold mt-1 truncate" title={container.config?.Cmd?.join(' ') || 'N/A'}>
-										{container.config?.Cmd?.join(' ') || 'N/A'}
+									<p class="text-base font-semibold mt-1 truncate" title={container.Config?.Cmd?.join(' ') || 'N/A'}>
+										{container.Config?.Cmd?.join(' ') || 'N/A'}
 									</p>
 								</div>
 							</div>
@@ -367,31 +367,31 @@
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
 							<div>
 								<span class="font-semibold">Container ID:</span>
-								<div class="font-mono mt-1 text-xs break-all">{container.id}</div>
+								<div class="font-mono mt-1 text-xs break-all">{container.Id}</div>
 							</div>
 
-							{#if container.config?.WorkingDir}
+							{#if container.Config?.WorkingDir}
 								<div>
 									<span class="font-semibold">Working Directory:</span>
-									<div class="mt-1 break-all">{container.config.WorkingDir}</div>
+									<div class="mt-1 break-all">{container.Config.WorkingDir}</div>
 								</div>
 							{/if}
 
-							{#if container.config?.User}
+							{#if container.Config?.User}
 								<div>
 									<span class="font-semibold">User:</span>
-									<div class="mt-1">{container.config.User}</div>
+									<div class="mt-1">{container.Config.User}</div>
 								</div>
 							{/if}
 
-							{#if container.state?.Health}
+							{#if container.State?.Health}
 								<div class="col-span-full">
 									<span class="font-semibold">Health Status:</span>
 									<div class="mt-1 flex gap-2 items-center">
-										<StatusBadge variant={container.state.Health.Status === 'healthy' ? 'green' : container.state.Health.Status === 'unhealthy' ? 'red' : 'amber'} text={container.state.Health.Status} />
-										{#if container.state.Health.Log && container.state.Health.Log.length > 0}
+										<StatusBadge variant={container.State.Health.Status === 'healthy' ? 'green' : container.State.Health.Status === 'unhealthy' ? 'red' : 'amber'} text={container.State.Health.Status} />
+										{#if container.State.Health.Log && container.State.Health.Log.length > 0}
 											<span class="text-xs text-muted-foreground">
-												Last check: {new Date(container.state.Health.Log[0].Start).toLocaleString()}
+												Last check: {new Date(container.State.Health.Log[0].Start).toLocaleString()}
 											</span>
 										{/if}
 									</div>
@@ -409,9 +409,9 @@
 						<Card.Description>Container environment configuration</Card.Description>
 					</Card.Header>
 					<Card.Content class="max-h-[360px] overflow-y-auto">
-						{#if container.config?.Env && container.config.Env.length > 0}
+						{#if container.Config?.Env && container.Config.Env.length > 0}
 							<div class="space-y-2">
-								{#each container.config.Env as env, index (index)}
+								{#each container.Config.Env as env, index (index)}
 									<div class="text-xs flex overflow-hidden">
 										{#if env.includes('=')}
 											{@const [key, ...valueParts] = env.split('=')}
@@ -438,9 +438,9 @@
 						<Card.Description>Container port mappings</Card.Description>
 					</Card.Header>
 					<Card.Content>
-						{#if container.networkSettings?.Ports && Object.keys(container.networkSettings.Ports).length > 0}
+						{#if container.NetworkSettings?.Ports && Object.keys(container.NetworkSettings.Ports).length > 0}
 							<div class="space-y-2">
-								{#each Object.entries(container.networkSettings.Ports) as [containerPort, hostBindings] (containerPort)}
+								{#each Object.entries(container.NetworkSettings.Ports) as [containerPort, hostBindings] (containerPort)}
 									<div class="flex flex-col sm:flex-row sm:items-center justify-between rounded-md bg-muted/40 p-2 px-3 gap-1">
 										<div class="font-mono text-sm truncate" title={containerPort}>
 											{containerPort}
@@ -472,9 +472,9 @@
 						<Card.Description>Container metadata labels</Card.Description>
 					</Card.Header>
 					<Card.Content class="max-h-[360px] overflow-y-auto">
-						{#if container.labels && Object.keys(container.labels).length > 0}
+						{#if container.Config.Labels && Object.keys(container.Config.Labels).length > 0}
 							<div class="space-y-2">
-								{#each Object.entries(container.labels) as [key, value] (key)}
+								{#each Object.entries(container.Config.Labels) as [key, value] (key)}
 									<div class="text-xs flex overflow-hidden">
 										<div class="flex w-full">
 											<span class="font-semibold mr-2 min-w-[120px] max-w-[180px] truncate shrink-0" title={key}>{key}:</span>
@@ -497,9 +497,9 @@
 						<Card.Description>Network settings and connections</Card.Description>
 					</Card.Header>
 					<Card.Content>
-						{#if container.networkSettings?.Networks && Object.keys(container.networkSettings.Networks).length > 0}
+						{#if container.NetworkSettings?.Networks && Object.keys(container.NetworkSettings.Networks).length > 0}
 							<div class="space-y-4">
-								{#each Object.entries(container.networkSettings.Networks) as [networkName, rawNetworkConfig] (networkName)}
+								{#each Object.entries(container.NetworkSettings.Networks) as [networkName, rawNetworkConfig] (networkName)}
 									{@const networkConfig = ensureNetworkConfig(rawNetworkConfig)}
 									<div class="rounded-md bg-muted/40 p-3">
 										<div class="text-sm font-medium">{networkName}</div>
@@ -550,9 +550,9 @@
 						<Card.Description>Container filesystem mounts</Card.Description>
 					</Card.Header>
 					<Card.Content>
-						{#if container.mounts && container.mounts.length > 0}
+						{#if container.Mounts && container.Mounts.length > 0}
 							<div class="space-y-4">
-								{#each container.mounts as mount (mount.Destination)}
+								{#each container.Mounts as mount (mount.Destination)}
 									<div class="rounded-md overflow-hidden border border-muted">
 										<div
 											class={`p-3 flex items-center justify-between gap-2 
@@ -723,7 +723,7 @@
 					</Card.Header>
 
 					<Card.Content>
-						{#if stats && container.state?.Running}
+						{#if stats && container.State?.Running}
 							<div class="space-y-6">
 								<div>
 									<div class="flex justify-between items-center mb-2">
@@ -788,7 +788,7 @@
 									</div>
 								{/if}
 							</div>
-						{:else if !container.state?.Running}
+						{:else if !container.State?.Running}
 							<div class="text-center text-sm text-muted-foreground italic py-12">Container is not running. Stats unavailable.</div>
 						{:else}
 							<div class="text-center text-sm text-muted-foreground italic py-12">Could not load stats.</div>

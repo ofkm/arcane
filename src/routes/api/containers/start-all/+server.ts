@@ -4,16 +4,17 @@ import type { RequestHandler } from './$types';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { extractDockerErrorMessage } from '$lib/utils/errors.util';
 import { tryCatch } from '$lib/utils/try-catch';
+import type { ContainerInfo } from 'dockerode';
 
 export const POST: RequestHandler = async () => {
 	const result = await tryCatch(
 		(async () => {
-			const containers = await listContainers(true);
-			const stopped = containers.filter((c) => c.state === 'exited');
+			const containers: ContainerInfo[] = await listContainers(true);
+			const stopped = containers.filter((c) => c.State === 'exited');
 			if (stopped.length === 0) {
 				return { count: 0, message: 'No stopped containers to start.' };
 			}
-			await Promise.all(stopped.map((c) => startContainer(c.id)));
+			await Promise.all(stopped.map((c) => startContainer(c.Id)));
 			return { count: stopped.length, message: `Successfully started ${stopped.length} container(s).` };
 		})()
 	);

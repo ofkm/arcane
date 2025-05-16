@@ -9,7 +9,7 @@
 	import CreateContainerDialog from './create-container-dialog.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import type { ServiceContainer } from '$lib/types/docker/container.type';
+	import type { ContainerInfo } from 'dockerode';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
@@ -17,10 +17,11 @@
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { shortId } from '$lib/utils/string.utils';
+	import type { PageData } from './$types';
 
 	const containerApi = new ContainerAPIService();
 
-	let { data } = $props();
+	let { data }: { data: PageData & { containers: ContainerInfo[] } } = $props();
 	let containers = $state(data.containers);
 	let isRefreshing = $state(false);
 	let selectedIds = $state([]);
@@ -32,9 +33,16 @@
 		remove: false
 	});
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
-	const runningContainers = $derived(containers?.filter((c: ServiceContainer) => c.state === 'running').length || 0);
-	const stoppedContainers = $derived(containers?.filter((c: ServiceContainer) => c.state === 'exited').length || 0);
+	const runningContainers = $derived(containers?.filter((c: ContainerInfo) => c.State === 'running').length || 0);
+	const stoppedContainers = $derived(containers?.filter((c: ContainerInfo) => c.State === 'exited').length || 0);
 	const totalContainers = $derived(containers?.length || 0);
+
+	function getContainerDisplayName(container: ContainerInfo): string {
+		if (container.Names && container.Names.length > 0) {
+			return container.Names[0].startsWith('/') ? container.Names[0].substring(1) : container.Names[0];
+		}
+		return shortId(container.Id);
+	}
 
 	$effect(() => {
 		containers = data.containers;
@@ -47,7 +55,6 @@
 		isRefreshing = true;
 		try {
 			await invalidateAll();
-			containers = data.containers;
 		} finally {
 			setTimeout(() => {
 				isRefreshing = false;
@@ -200,13 +207,13 @@
 			</Card.Header>
 			<Card.Content>
 				<UniversalTable
-					data={containers}
+					data={containers.map((c) => ({ ...c, displayName: getContainerDisplayName(c) }))}
 					columns={[
-						{ accessorKey: 'name', header: 'Name' },
-						{ accessorKey: 'id', header: 'ID' },
-						{ accessorKey: 'image', header: 'Image' },
-						{ accessorKey: 'state', header: 'State' },
-						{ accessorKey: 'status', header: 'Status' },
+						{ accessorKey: 'displayName', header: 'Name' },
+						{ accessorKey: 'Id', header: 'ID' },
+						{ accessorKey: 'Image', header: 'Image' },
+						{ accessorKey: 'State', header: 'State' },
+						{ accessorKey: 'Status', header: 'Status' },
 						{ accessorKey: 'actions', header: ' ', enableSorting: false }
 					]}
 					features={{
@@ -218,13 +225,13 @@
 					}}
 					bind:selectedIds
 				>
-					{#snippet rows({ item })}
-						{@const stateVariant = statusVariantMap[item.state.toLowerCase()]}
-						<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.id}/">{item.name}</a></Table.Cell>
-						<Table.Cell>{shortId(item.id)}</Table.Cell>
-						<Table.Cell>{item.image}</Table.Cell>
-						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.state)} /></Table.Cell>
-						<Table.Cell>{item.status}</Table.Cell>
+					{#snippet rows({ item }: { item: ContainerInfo & { displayName: string } })}
+						{@const stateVariant = statusVariantMap[item.State.toLowerCase()]}
+						<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.Id}/">{item.displayName}</a></Table.Cell>
+						<Table.Cell>{shortId(item.Id)}</Table.Cell>
+						<Table.Cell>{item.Image}</Table.Cell>
+						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.State)} /></Table.Cell>
+						<Table.Cell>{item.Status}</Table.Cell>
 						<Table.Cell>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
@@ -237,13 +244,13 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item onclick={() => goto(`/containers/${item.id}`)} disabled={isAnyLoading}>
+										<DropdownMenu.Item onclick={() => goto(`/containers/${item.Id}`)} disabled={isAnyLoading}>
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
 
-										{#if item.state !== 'running'}
-											<DropdownMenu.Item onclick={() => performContainerAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
+										{#if item.State !== 'running'}
+											<DropdownMenu.Item onclick={() => performContainerAction('start', item.Id)} disabled={isLoading.start || isAnyLoading}>
 												{#if isLoading.start}
 													<Loader2 class="animate-spin size-4" />
 												{:else}
@@ -252,7 +259,7 @@
 												Start
 											</DropdownMenu.Item>
 										{:else}
-											<DropdownMenu.Item onclick={() => performContainerAction('restart', item.id)} disabled={isLoading.restart || isAnyLoading}>
+											<DropdownMenu.Item onclick={() => performContainerAction('restart', item.Id)} disabled={isLoading.restart || isAnyLoading}>
 												{#if isLoading.restart}
 													<Loader2 class="animate-spin size-4" />
 												{:else}
@@ -261,7 +268,7 @@
 												Restart
 											</DropdownMenu.Item>
 
-											<DropdownMenu.Item onclick={() => performContainerAction('stop', item.id)} disabled={isLoading.stop || isAnyLoading}>
+											<DropdownMenu.Item onclick={() => performContainerAction('stop', item.Id)} disabled={isLoading.stop || isAnyLoading}>
 												{#if isLoading.stop}
 													<Loader2 class="animate-spin size-4" />
 												{:else}
@@ -273,7 +280,7 @@
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveContainer(item.id)} disabled={isLoading.remove || isAnyLoading}>
+										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveContainer(item.Id)} disabled={isLoading.remove || isAnyLoading}>
 											{#if isLoading.remove}
 												<Loader2 class="animate-spin size-4" />
 											{:else}

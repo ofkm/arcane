@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ params }) => {
 		return json(response, { status: 404 });
 	}
 
-	const imageName = getResult.data.image;
+	const imageName = getResult.data.Image;
 
 	// Try to pull the image
 	const pullResult = await tryCatch(pullImage(imageName));
