@@ -1,14 +1,14 @@
 import { promises as fs } from 'node:fs';
 import path, { join } from 'node:path';
 import DockerodeCompose from 'dockerode-compose';
-import yaml from 'js-yaml';
+import { readYamlEnvSync, readYamlEnv } from 'yaml-env-defaults';
+import { dump as yamlDump } from 'js-yaml';
 import slugify from 'slugify';
 import { directoryExists } from '$lib/utils/fs.utils';
 import { getDockerClient } from '$lib/services/docker/core';
 import { getSettings, ensureStacksDirectory } from '$lib/services/settings-service';
 import type { Stack, StackService, StackUpdate } from '$lib/types/docker/stack.type';
 
-// Define a more accurate type for the progress event
 interface DockerProgressEvent {
 	status: string;
 	progressDetail?: {
@@ -212,7 +212,8 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 	const composeServiceLabel = 'com.docker.compose.service'; // Standard service label
 
 	try {
-		const composeData = yaml.load(composeContent) as Record<string, unknown>;
+		// Replace yaml.load with readYamlEnvSync
+		const composeData = readYamlEnvSync(composeContent) as Record<string, unknown>;
 		if (!composeData || !composeData.services) {
 			console.warn(`No services found in compose content for stack ${stackId}`);
 			return [];
@@ -223,8 +224,6 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 		// List containers, potentially filtering by label for efficiency if needed
 		const containers = await docker.listContainers({
 			all: true
-			// Optional: Filter directly using Docker API if performance becomes an issue
-			// filters: JSON.stringify({ label: [`${composeProjectLabel}=${stackId}`] })
 		});
 
 		// Filter containers based on EITHER the project label OR the naming convention
@@ -454,7 +453,8 @@ export async function createStack(name: string, composeContent: string, envConte
 
 	let serviceCount = 0;
 	try {
-		const composeData = yaml.load(composeContent) as Record<string, unknown>;
+		// Replace yaml.load with readYamlEnvSync
+		const composeData = readYamlEnvSync(composeContent) as Record<string, unknown>;
 		if (composeData?.services) {
 			serviceCount = Object.keys(composeData.services as Record<string, unknown>).length;
 		}
@@ -498,7 +498,32 @@ export async function getStack(stackId: string): Promise<Stack> {
 		const composeContent = await fs.readFile(composePath, 'utf8');
 		const envContent = await loadEnvFile(stackId);
 
+		// Parse environment variables from .env content
+		const envVars: Record<string, string> = {};
+		if (envContent) {
+			envContent.split('\n').forEach((line) => {
+				const trimmedLine = line.trim();
+				if (trimmedLine && !trimmedLine.startsWith('#')) {
+					const [key, ...valueParts] = trimmedLine.split('=');
+					const value = valueParts.join('='); // Handle values that might contain =
+					if (key) {
+						envVars[key.trim()] = value?.trim() || '';
+					}
+				}
+			});
+		}
+
+		// Create a property getter function for yaml-env-defaults
+		const getEnvProperty = (key: string) => {
+			return envVars[key] || process.env[key] || '';
+		};
+
+		// Parse compose with environment variables
+		const composeData = readYamlEnvSync(composeContent, getEnvProperty) as Record<string, unknown>;
+
+		// Get services with the parsed compose content
 		const services = await getStackServices(stackId, composeContent);
+
 		const serviceCount = services.length;
 		const runningCount = services.filter((s) => s.state?.Running).length;
 
@@ -634,7 +659,7 @@ export async function startStack(stackId: string): Promise<boolean> {
 		console.log(`Temporarily changed CWD to: ${stackDir} for stack ${stackId} operations.`);
 
 		// Parse the compose file to check for external networks first
-		const composeData = yaml.load(normalizedComposeContent) as any;
+		const composeData = readYamlEnvSync(normalizedComposeContent) as any;
 		const hasExternalNetworks = composeData.networks && Object.values(composeData.networks).some((net: any) => net.external);
 
 		if (hasExternalNetworks) {
@@ -1553,7 +1578,7 @@ export async function importExternalStack(stackId: string): Promise<Stack> {
 # You may need to adjust this manually for correct operation.
 
 services:
-${yaml.dump({ services }, { indent: 2 }).substring('services:'.length).trimStart()}`;
+${yamlDump({ services }, { indent: 2 }).substring('services:'.length).trimStart()}`;
 		// Note: If compose file is generated, we don't have a path to look for an associated .env file.
 		// envContent will remain undefined in this case.
 	}
@@ -1636,7 +1661,8 @@ export async function isStackRunning(stackId: string): Promise<boolean> {
 function normalizeHealthcheckTest(composeContent: string): string {
 	let doc: Record<string, unknown> | undefined;
 	try {
-		doc = yaml.load(composeContent) as Record<string, unknown>;
+		// Replace yaml.load with readYamlEnvSync
+		doc = readYamlEnvSync(composeContent) as Record<string, unknown>;
 	} catch (e) {
 		console.warn('Could not parse compose YAML for healthcheck normalization:', e);
 		return composeContent; // Return original if parsing fails
@@ -1660,7 +1686,7 @@ function normalizeHealthcheckTest(composeContent: string): string {
 	}
 
 	if (modified) {
-		return yaml.dump(doc, { lineWidth: -1 }); // Dump the modified doc
+		return yamlDump(doc, { lineWidth: -1 }); // Use yamlDump instead of yaml.dump
 	}
 	return composeContent; // Return original content if no modification was made
 }
