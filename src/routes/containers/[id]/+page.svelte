@@ -11,9 +11,26 @@
 	import { formatBytes } from '$lib/utils/bytes.util';
 	import type Docker from 'dockerode';
 	import type { ContainerInspectInfo } from 'dockerode';
+	import type { ContainerDetails } from '$lib/types/docker/container.type';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { onDestroy } from 'svelte';
+
+	// Define the network config interface to match what Docker actually returns
+	interface NetworkConfig {
+		IPAddress?: string;
+		IPPrefixLen?: number;
+		Gateway?: string;
+		MacAddress?: string;
+		Aliases?: string[];
+		Links?: string[];
+		[key: string]: any;
+	}
+
+	// Type assertion helper for network settings
+	function ensureNetworkConfig(config: any): NetworkConfig {
+		return config as NetworkConfig;
+	}
 
 	let { data }: { data: PageData } = $props();
 	let { container, logs: initialLogsFromServer, stats } = $derived(data);
@@ -430,7 +447,7 @@
 										</div>
 										<div class="flex flex-wrap items-center gap-2">
 											<span class="text-xs text-muted-foreground">→</span>
-											{#if hostBindings && hostBindings.length > 0}
+											{#if Array.isArray(hostBindings) && hostBindings.length > 0}
 												{#each hostBindings as binding (binding.HostIp + ':' + binding.HostPort)}
 													<Badge variant="outline" class="font-mono truncate max-w-[150px]" title="{binding.HostIp || '0.0.0.0'}:{binding.HostPort}">
 														{binding.HostIp || '0.0.0.0'}:{binding.HostPort}
@@ -482,7 +499,8 @@
 					<Card.Content>
 						{#if container.networkSettings?.Networks && Object.keys(container.networkSettings.Networks).length > 0}
 							<div class="space-y-4">
-								{#each Object.entries(container.networkSettings.Networks) as [networkName, networkConfig] (networkName)}
+								{#each Object.entries(container.networkSettings.Networks) as [networkName, rawNetworkConfig] (networkName)}
+									{@const networkConfig = ensureNetworkConfig(rawNetworkConfig)}
 									<div class="rounded-md bg-muted/40 p-3">
 										<div class="text-sm font-medium">{networkName}</div>
 										<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 mt-2">
