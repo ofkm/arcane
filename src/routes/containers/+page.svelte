@@ -125,7 +125,7 @@
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Containers</h1>
-			<p class="text-sm text-muted-foreground mt-1">Manage your Docker containers</p>
+			<p class="text-sm text-muted-foreground mt-1">View and Manage your Containers</p>
 		</div>
 	</div>
 
@@ -189,7 +189,6 @@
 				<div class="flex items-center justify-between">
 					<div>
 						<Card.Title>Container List</Card.Title>
-						<Card.Description>View and manage your Docker containers</Card.Description>
 					</div>
 					<div class="flex items-center gap-2">
 						<Button variant="secondary" onclick={openCreateDialog}>
