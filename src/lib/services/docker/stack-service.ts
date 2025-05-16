@@ -579,11 +579,11 @@ export async function updateStack(currentStackId: string, updates: StackUpdate):
  * @returns The `startStack` function returns a `Promise<boolean>`.
  */
 export async function startStack(stackId: string): Promise<boolean> {
-	const stackDir = await getStackDir(stackId); // Get the absolute path to the stack directory
-	const originalCwd = process.cwd(); // Store the original CWD
+	const stackDir = await getStackDir(stackId);
+	const originalCwd = process.cwd();
 
 	try {
-		// ---- START: Ensure compose file is normalized before use ----
+		// Normalize compose file (keeping your existing code)
 		const composePath = await getComposeFilePath(stackId);
 		if (!composePath) {
 			throw new Error(`Compose file not found for stack ${stackId} during start.`);
@@ -594,28 +594,311 @@ export async function startStack(stackId: string): Promise<boolean> {
 			console.log(`Normalizing healthcheck.test in compose file for stack ${stackId} before start.`);
 			await fs.writeFile(composePath, normalizedComposeContent, 'utf8');
 		}
-		// ---- END: Ensure compose file is normalized ----
 
-		process.chdir(stackDir); // Change CWD to the stack directory
+		process.chdir(stackDir);
 		console.log(`Temporarily changed CWD to: ${stackDir} for stack ${stackId} operations.`);
 
-		// getComposeInstance uses an absolute path to the compose file within stackDir.
-		// Any relative path resolution by dockerode-compose (e.g., for .env via env_file)
-		// should now correctly use stackDir as the base if it considers CWD.
-		const compose = await getComposeInstance(stackId);
+		// Parse the compose file to check for external networks first
+		const composeData = yaml.load(normalizedComposeContent) as any;
+		const hasExternalNetworks = composeData.networks && Object.values(composeData.networks).some((net: any) => net.external);
 
-		await compose.pull();
-		await compose.up();
+		if (hasExternalNetworks) {
+			console.log(`Stack ${stackId} contains external networks. Using custom deployment approach.`);
+			await startStackWithExternalNetworks(stackId, composeData, stackDir);
+		} else {
+			// Standard approach for stacks without external networks
+			const compose = await getComposeInstance(stackId);
+			await compose.pull();
+			await compose.up();
+		}
 
 		return true;
-	} catch (err: unknown) {
+	} catch (err) {
 		console.error(`Error starting stack ${stackId} from directory ${stackDir}:`, err);
 		const errorMessage = err instanceof Error ? err.message : String(err);
 		throw new Error(`Failed to start stack: ${errorMessage}`);
 	} finally {
-		process.chdir(originalCwd); // Always change back to the original CWD
+		process.chdir(originalCwd);
 		console.log(`Restored CWD to: ${originalCwd}.`);
 	}
+}
+
+/**
+ * Custom function to deploy stacks with external networks
+ * This uses direct Docker API calls to avoid the disconnect() issue
+ */
+async function startStackWithExternalNetworks(stackId: string, composeData: any, stackDir: string): Promise<void> {
+	const docker = await getDockerClient();
+
+	// Step 1: Pull all images
+	console.log(`Pulling images for stack ${stackId} with external networks...`);
+	for (const [serviceName, serviceConfig] of Object.entries(composeData.services || {})) {
+		const serviceImage = (serviceConfig as any).image;
+		if (serviceImage) {
+			console.log(`Pulling image for service ${serviceName}: ${serviceImage}`);
+			try {
+				// Create a proper Promise that resolves when the pull is complete
+				await new Promise((resolve, reject) => {
+					docker.pull(serviceImage, (pullError: Error, stream: NodeJS.ReadableStream) => {
+						if (pullError) {
+							reject(pullError);
+							return;
+						}
+
+						// Track pull progress
+						docker.modem.followProgress(
+							stream,
+							// onFinished callback
+							(progressError: Error | null, output: any[]) => {
+								if (progressError) {
+									reject(progressError);
+								} else {
+									console.log(`Successfully pulled image: ${serviceImage}`);
+									resolve(output);
+								}
+							},
+							// onProgress callback (optional)
+							(event: any) => {
+								if (event.progress) {
+									console.log(`${serviceImage}: ${event.status} ${event.progress}`);
+								} else if (event.status) {
+									console.log(`${serviceImage}: ${event.status}`);
+								}
+							}
+						);
+					});
+				});
+			} catch (pullErr) {
+				console.warn(`Warning: Failed to pull image ${serviceImage} for service ${serviceName}:`, pullErr);
+				// Continue with other images - the service might still start with an existing image
+			}
+		}
+	}
+
+	// Step 2: Create non-external networks
+	console.log(`Creating networks for stack ${stackId}...`);
+	for (const [networkName, networkConfig] of Object.entries(composeData.networks || {})) {
+		// Skip external networks - they should already exist
+		if ((networkConfig as any).external) {
+			console.log(`Skipping creation of external network: ${networkName}`);
+			continue;
+		}
+
+		// Create the network if it doesn't exist
+		const networkToCreate = {
+			Name: (networkConfig as any).name || `${stackId}_${networkName}`,
+			Driver: (networkConfig as any).driver || 'bridge',
+			Labels: {
+				'com.docker.compose.project': stackId,
+				'com.docker.compose.network': networkName
+			},
+			Options: (networkConfig as any).driver_opts || {}
+		};
+
+		try {
+			console.log(`Creating network: ${networkToCreate.Name}`);
+			await docker.createNetwork(networkToCreate);
+			console.log(`Successfully created network: ${networkToCreate.Name}`);
+		} catch (netErr: any) {
+			// If network already exists (HTTP 409), that's fine
+			if (netErr.statusCode === 409) {
+				console.log(`Network ${networkToCreate.Name} already exists, reusing it.`);
+			} else {
+				console.error(`Error creating network ${networkToCreate.Name}:`, netErr);
+				throw netErr;
+			}
+		}
+	}
+
+	// Step 3: Create and start each service
+	console.log(`Creating and starting services for stack ${stackId}...`);
+	for (const [serviceName, serviceConfig] of Object.entries(composeData.services || {})) {
+		const service = serviceConfig as any;
+		const containerName = service.container_name || `${stackId}_${serviceName}`;
+
+		// Prepare container configuration
+		const containerConfig: any = {
+			name: containerName,
+			Image: service.image,
+			Labels: {
+				'com.docker.compose.project': stackId,
+				'com.docker.compose.service': serviceName,
+				...service.labels
+			},
+			Env: prepareEnvironmentVariables(service.environment, stackDir),
+			HostConfig: {
+				RestartPolicy: prepareRestartPolicy(service.restart),
+				Binds: prepareVolumes(service.volumes),
+				PortBindings: preparePorts(service.ports)
+			}
+		};
+
+		// Add network configuration
+		const networkMode = service.network_mode || null;
+
+		// Find existing container with same name to remove
+		try {
+			const existingContainers = await docker.listContainers({
+				all: true,
+				filters: { name: [containerName] }
+			});
+
+			for (const existing of existingContainers) {
+				console.log(`Removing existing container: ${containerName}`);
+				const container = docker.getContainer(existing.Id);
+				if (existing.State === 'running') {
+					await container.stop();
+				}
+				await container.remove();
+			}
+		} catch (removeErr) {
+			console.warn(`Warning: Error checking/removing existing containers:`, removeErr);
+		}
+
+		// Create and start the container
+		console.log(`Creating container for service ${serviceName}: ${containerName}`);
+		try {
+			const container = await docker.createContainer(containerConfig);
+			console.log(`Successfully created container: ${containerName}`);
+
+			// Connect to networks
+			const serviceNetworks = service.networks || [];
+			if (Array.isArray(serviceNetworks)) {
+				for (const netName of serviceNetworks) {
+					const networkConfig = composeData.networks?.[netName];
+					const isExternal = networkConfig?.external || false;
+					const fullNetworkName = isExternal
+						? networkConfig.name || netName // Use the specified name for external networks
+						: `${stackId}_${netName}`; // Prefix with stack ID for internal networks
+
+					try {
+						console.log(`Connecting container ${containerName} to network: ${fullNetworkName}`);
+						const network = docker.getNetwork(fullNetworkName);
+						await network.connect({ Container: container.id });
+						console.log(`Successfully connected to network: ${fullNetworkName}`);
+					} catch (netConnectErr) {
+						console.error(`Error connecting to network ${fullNetworkName}:`, netConnectErr);
+						throw netConnectErr;
+					}
+				}
+			} else if (typeof serviceNetworks === 'object') {
+				// Handle the case where networks is an object with network names as keys
+				for (const [netName, netConfig] of Object.entries(serviceNetworks)) {
+					const networkConfig = composeData.networks?.[netName];
+					const isExternal = networkConfig?.external || false;
+					const fullNetworkName = isExternal ? networkConfig.name || netName : `${stackId}_${netName}`;
+
+					try {
+						console.log(`Connecting container ${containerName} to network: ${fullNetworkName}`);
+						const network = docker.getNetwork(fullNetworkName);
+						await network.connect({
+							Container: container.id,
+							EndpointConfig: netConfig as any // Cast to any to satisfy type, or define proper EndpointSettings type if available
+						});
+						console.log(`Successfully connected to network: ${fullNetworkName}`);
+					} catch (netConnectErr) {
+						console.error(`Error connecting to network ${fullNetworkName}:`, netConnectErr);
+						throw netConnectErr;
+					}
+				}
+			}
+
+			// Start the container
+			console.log(`Starting container: ${containerName}`);
+			await container.start();
+			console.log(`Successfully started container: ${containerName}`);
+		} catch (createErr) {
+			console.error(`Error creating/starting container for service ${serviceName}:`, createErr);
+			throw createErr;
+		}
+	}
+
+	console.log(`Successfully deployed stack ${stackId} with external networks`);
+}
+
+// Helper functions to prepare container configuration
+async function prepareEnvironmentVariables(env: any, stackDir: string): Promise<string[]> {
+	const result: string[] = [];
+
+	// Load .env file if it exists
+	try {
+		const envPath = path.join(stackDir, '.env');
+		const envContent = await fs.readFile(envPath, 'utf8');
+		const envLines = envContent.split('\n');
+
+		for (const line of envLines) {
+			const trimmed = line.trim();
+			if (trimmed && !trimmed.startsWith('#')) {
+				result.push(trimmed);
+			}
+		}
+	} catch (err) {
+		// .env file doesn't exist or can't be read, that's okay
+	}
+
+	// Add environment variables from the service definition
+	if (env) {
+		if (Array.isArray(env)) {
+			result.push(...env);
+		} else if (typeof env === 'object') {
+			for (const [key, value] of Object.entries(env)) {
+				result.push(`${key}=${value}`);
+			}
+		}
+	}
+
+	return result;
+}
+
+function prepareRestartPolicy(restart: string | undefined): any {
+	if (!restart) return { Name: 'no' };
+
+	switch (restart) {
+		case 'no':
+			return { Name: 'no' };
+		case 'always':
+			return { Name: 'always' };
+		case 'on-failure':
+			return { Name: 'on-failure' };
+		case 'unless-stopped':
+			return { Name: 'unless-stopped' };
+		default:
+			// For more complex policies like "on-failure:3", parse the max retry count
+			if (restart.startsWith('on-failure:')) {
+				const maxRetryCount = parseInt(restart.split(':')[1], 10);
+				return { Name: 'on-failure', MaximumRetryCount: maxRetryCount };
+			}
+			return { Name: 'no' };
+	}
+}
+
+function prepareVolumes(volumes: any[] | undefined): string[] {
+	if (!volumes) return [];
+
+	return volumes
+		.filter((vol) => typeof vol === 'string' && vol.includes(':'))
+		.map((vol) => {
+			// Handle volume paths correctly
+			const parts = vol.split(':');
+			return `${parts[0]}:${parts[1]}${parts[2] ? `:${parts[2]}` : ''}`;
+		});
+}
+
+function preparePorts(ports: any[] | undefined): any {
+	if (!ports) return {};
+
+	const portBindings: any = {};
+
+	for (const port of ports) {
+		if (typeof port === 'string' && port.includes(':')) {
+			const [hostPort, containerPort] = port.split(':');
+			const containerPortWithProto = containerPort.includes('/') ? containerPort : `${containerPort}/tcp`;
+
+			portBindings[containerPortWithProto] = [{ HostPort: hostPort }];
+		}
+	}
+
+	return portBindings;
 }
 
 /**
