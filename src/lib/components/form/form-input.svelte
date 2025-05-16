@@ -14,7 +14,6 @@
 		warningText,
 		placeholder,
 		disabled = false,
-		required = false,
 		type = 'text',
 		children,
 		...restProps
@@ -26,7 +25,6 @@
 		warningText?: string;
 		placeholder?: string;
 		disabled?: boolean;
-		required?: boolean;
 		type?: 'text' | 'password' | 'email' | 'number' | 'checkbox' | 'date';
 		children?: Snippet;
 	} = $props();
@@ -45,7 +43,7 @@
 		{#if children}
 			{@render children()}
 		{:else if input}
-			<Input {id} {placeholder} {type} bind:value={input.value} {disabled} required />
+			<Input {id} {placeholder} {type} bind:value={input.value} {disabled} />
 		{/if}
 		{#if input?.error}
 			<p class="mt-1 text-sm text-red-500">{input.error}</p>

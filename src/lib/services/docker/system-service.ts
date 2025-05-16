@@ -7,32 +7,28 @@ type PruneType = 'containers' | 'images' | 'networks' | 'volumes';
 type PruneServiceResult = PruneResult & { type: PruneType; error?: string };
 const docker = await getDockerClient();
 
-/**
- * Prunes specified Docker resources sequentially, fetching settings to determine image prune mode.
- * @param {PruneType[]} types - Array of resource types to prune.
- * @returns {Promise<PruneServiceResult[]>} Results of each pruning operation.
- */
 export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResult[]> {
 	const results: PruneServiceResult[] = [];
 
-	// Fetch settings first
-	let pruneMode: Settings['pruneMode'] = 'dangling'; // Default prune mode
+	let pruneMode: Settings['pruneMode'] = 'dangling';
 	try {
-		// Fetch settings INSIDE the function
 		const currentSettings = await getSettings();
 		if (currentSettings?.pruneMode) {
 			pruneMode = currentSettings.pruneMode;
 		}
-	} catch (settingsError: any) {
-		console.warn(`Could not fetch settings for prune operation, defaulting to 'dangling' image prune mode. Error: ${settingsError.message}`);
+	} catch (settingsError: unknown) {
+		const msg = settingsError instanceof Error ? settingsError.message : String(settingsError);
+		console.warn(`Could not fetch settings for prune operation, defaulting to 'dangling' image prune mode. Error: ${msg}`);
 	}
 
 	console.log(`Using image prune mode: ${pruneMode}`);
 
-	// Use a for...of loop for sequential execution
 	for (const type of types) {
 		let result: PruneResult | null = null;
 		let error: string | undefined = undefined;
+		let pruneOptions: { filters: { dangling: string[] } } | undefined;
+		let filterValue: string | undefined;
+		let logMessage: string | undefined;
 
 		try {
 			console.log(`Pruning ${type}...`);
@@ -42,13 +38,12 @@ export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResul
 					result = await docker.pruneContainers();
 					break;
 				case 'images':
-					const filterValue = pruneMode === 'all' ? 'false' : 'true';
-					const logMessage = pruneMode === 'all' ? 'Pruning all unused images (docker image prune -a)...' : 'Pruning dangling images (docker image prune)...';
+					filterValue = pruneMode === 'all' ? 'false' : 'true';
+					logMessage = pruneMode === 'all' ? 'Pruning all unused images (docker image prune -a)...' : 'Pruning dangling images (docker image prune)...';
 					console.log(logMessage);
-					const pruneOptions = {
+					pruneOptions = {
 						filters: { dangling: [filterValue] }
 					};
-
 					result = await docker.pruneImages(pruneOptions);
 					break;
 				case 'networks':
@@ -64,9 +59,10 @@ export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResul
 
 			console.log(`Pruning ${type} completed.`);
 			results.push({ ...(result || {}), type, error } as PruneServiceResult);
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : String(err);
 			console.error(`Error pruning ${type}:`, err);
-			error = err.message || `Failed to prune ${type}`;
+			error = msg || `Failed to prune ${type}`;
 			results.push({
 				ContainersDeleted: type === 'containers' ? [] : undefined,
 				ImagesDeleted: type === 'images' ? [] : undefined,
@@ -84,17 +80,19 @@ export async function pruneSystem(types: PruneType[]): Promise<PruneServiceResul
 export async function getSystemInfo() {
 	try {
 		return await docker.info();
-	} catch (err: any) {
+	} catch (err: unknown) {
+		const msg = err instanceof Error ? err.message : String(err);
 		console.error('Error getting Docker system info:', err);
-		throw new Error(`Failed to get Docker info: ${err.message}`);
+		throw new Error(`Failed to get Docker info: ${msg}`);
 	}
 }
 
 export async function getDiskUsage() {
 	try {
 		return await docker.df();
-	} catch (err: any) {
+	} catch (err: unknown) {
+		const msg = err instanceof Error ? err.message : String(err);
 		console.error('Error getting Docker disk usage:', err);
-		throw new Error(`Failed to get Docker disk usage: ${err.message}`);
+		throw new Error(`Failed to get Docker disk usage: ${msg}`);
 	}
 }

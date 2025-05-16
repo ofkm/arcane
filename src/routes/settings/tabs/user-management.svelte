@@ -2,7 +2,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { toast } from 'svelte-sonner';
-	import { UserPlus, UserCheck, Ellipsis, Pencil, UserX, Mail } from '@lucide/svelte';
+	import { UserPlus, UserCheck, Ellipsis, Pencil, UserX } from '@lucide/svelte';
 	import type { PageData } from '../$types';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import type { User } from '$lib/types/user.type';

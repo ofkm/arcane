@@ -106,7 +106,7 @@
 										</span>
 									</Select.Trigger>
 									<Select.Content>
-										{#each platforms as platformOption}
+										{#each platforms as platformOption (platformOption.value)}
 											<Select.Item value={platformOption.value}>
 												{platformOption.label}
 											</Select.Item>

@@ -10,6 +10,7 @@ export const load: PageServerLoad = async () => {
 	const csrf = crypto.randomUUID();
 
 	const sanitizedUsers = users.map((user) => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { passwordHash: _passwordHash, ...rest } = user;
 		return rest;
 	});

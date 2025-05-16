@@ -70,7 +70,7 @@ export async function getContainer(containerId: string) {
 		};
 	} catch (error: unknown) {
 		console.error(`Docker Service: Error getting container ${containerId}:`, error);
-		if (error instanceof Error && 'statusCode' in error && (error as any).statusCode === 404) {
+		if (error instanceof Error && 'statusCode' in error && (error as { statusCode?: number }).statusCode === 404) {
 			return null;
 		}
 		throw new Error(`Failed to get container details for ${containerId} using host "${dockerHost}".`);
@@ -157,7 +157,7 @@ export async function removeContainer(containerId: string, force = false): Promi
 
 		// Type guard and handle custom error types
 		if (error instanceof Error && 'statusCode' in error) {
-			const dockerError = error as Error & { statusCode: number };
+			const dockerError = error as Error & { statusCode?: number };
 
 			// Use custom error types for better handling in the API layer
 			if (dockerError.statusCode === 404) {
@@ -375,7 +375,7 @@ export async function getContainerStats(containerId: string): Promise<Docker.Con
 		try {
 			await container.inspect();
 		} catch (inspectError: unknown) {
-			if (inspectError instanceof Error && 'statusCode' in inspectError && (inspectError as any).statusCode === 404) {
+			if (inspectError instanceof Error && 'statusCode' in inspectError && (inspectError as { statusCode?: number }).statusCode === 404) {
 				throw new NotFoundError(`Container ${containerId} not found when trying to get stats.`);
 			}
 			// Rethrow other inspect errors
@@ -397,7 +397,7 @@ export async function getContainerStats(containerId: string): Promise<Docker.Con
 	} catch (error: unknown) {
 		// Handle cases where stats fails because the container isn't running (often a 404 or 500 from Docker API)
 		if (error instanceof Error && 'statusCode' in error) {
-			const dockerError = error as Error & { statusCode: number; message?: string };
+			const dockerError = error as Error & { statusCode?: number; message?: string };
 
 			if (dockerError.statusCode === 404) {
 				// Could be container not found OR container not running (Docker API might return 404 for stats on stopped container)
@@ -417,7 +417,7 @@ export async function getContainerStats(containerId: string): Promise<Docker.Con
 
 		console.error(`Docker Service: Error getting stats for container ${containerId}:`, error);
 		// Throw a DockerApiError for unexpected issues
-		const statusCode = error instanceof Error && 'statusCode' in error ? (error as any).statusCode : 500;
+		const statusCode = error instanceof Error && 'statusCode' in error ? (error as { statusCode?: number }).statusCode : 500;
 		const message = error instanceof Error ? error.message : String(error);
 		throw new DockerApiError(`Failed to get stats for container ${containerId}: ${message || 'Unknown Docker error'}`, statusCode);
 	}
@@ -494,7 +494,7 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 			await stopContainer(containerId);
 		} catch (stopError: unknown) {
 			// Ignore "already stopped" errors
-			if (stopError instanceof Error && 'statusCode' in stopError && (stopError as any).statusCode !== 304 && (stopError as any).statusCode !== 404) {
+			if (stopError instanceof Error && 'statusCode' in stopError && (stopError as { statusCode?: number }).statusCode !== 304 && (stopError as { statusCode?: number }).statusCode !== 404) {
 				console.warn(`Could not stop container ${containerId} before removal: ${stopError instanceof Error ? stopError.message : 'Unknown error'}`);
 			}
 		}
@@ -525,7 +525,7 @@ export async function recreateContainer(containerId: string): Promise<ServiceCon
 	} catch (error: unknown) {
 		console.error(`Failed to recreate container ${containerId}:`, error);
 
-		const statusCode = error instanceof Error && 'statusCode' in error ? (error as any).statusCode : 500;
+		const statusCode = error instanceof Error && 'statusCode' in error ? (error as { statusCode?: number }).statusCode : 500;
 		const message = error instanceof Error ? error.message : String(error);
 
 		throw new DockerApiError(`Failed to recreate container ${originalContainer?.name || containerId}: ${message || 'Unknown error'}`, statusCode);

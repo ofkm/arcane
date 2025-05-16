@@ -16,18 +16,12 @@
 	let error = $state('');
 	let loading = $state(false);
 
-	// Add this to track if the user has passed the password step
-	let passwordStepCompleted = $state(false);
-
-	// Check for completed steps on mount
 	onMount(() => {
-		// If previous step not completed, redirect to start
 		if (browser && !$settingsStore.onboarding?.steps?.password) {
 			goto('/onboarding/welcome');
 			return;
 		}
 
-		// Mark this step as viewed
 		updateSettingsStore({
 			onboarding: {
 				...$settingsStore.onboarding,
@@ -39,18 +33,13 @@
 				}
 			}
 		});
-
-		// Update local state
-		passwordStepCompleted = true;
 	});
 
-	// Initialize settings
 	let dockerHost = $derived($settingsStore.dockerHost || 'unix:///var/run/docker.sock');
 	let pollingEnabled = $derived($settingsStore.pollingEnabled !== undefined ? $settingsStore.pollingEnabled : true);
 	let pollingInterval = $derived($settingsStore.pollingInterval || 10);
 	let autoUpdate = $derived($settingsStore.autoUpdate !== undefined ? $settingsStore.autoUpdate : false);
 
-	// Get the appropriate stacks directory based on environment
 	const defaultStacksDirectory = isDev ? './.dev-data/stacks' : 'data/stacks';
 
 	async function handleSubmit() {
@@ -88,7 +77,6 @@
 				}
 			};
 
-			// Update the store
 			updateSettingsStore(settingsPayload);
 
 			await saveSettingsToServer();
@@ -167,7 +155,7 @@
 		</Card.Root>
 
 		<div class="flex justify-center pt-4">
-			<Button type="submit" disabled={loading} class="px-8 flex items-center gap-2 size-12 size-[80%]">
+			<Button type="submit" disabled={loading} class="px-8 flex items-center gap-2 h-12 w-[80%]">
 				{#if loading}
 					<span class="inline-block border-2 border-t-transparent border-white rounded-full animate-spin size-4"></span>
 				{/if}

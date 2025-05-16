@@ -19,7 +19,6 @@ export const load: PageServerLoad = async (): Promise<ImageData> => {
 			images.map(async (image): Promise<EnhancedImageInfo> => {
 				const inUse = await isImageInUse(image.id);
 
-				// Add maturity check without modifying existing logic
 				let maturity = undefined;
 				try {
 					if (image.repo !== '<none>' && image.tag !== '<none>') {
@@ -27,13 +26,12 @@ export const load: PageServerLoad = async (): Promise<ImageData> => {
 					}
 				} catch (maturityError) {
 					console.error(`Failed to check maturity for image ${image.id}:`, maturityError);
-					// Don't let maturity errors affect the main flow
 				}
 
 				return {
 					...image,
 					inUse,
-					maturity // Add maturity info if available
+					maturity
 				};
 			})
 		);

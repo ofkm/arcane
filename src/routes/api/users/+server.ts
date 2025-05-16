@@ -6,9 +6,7 @@ import { getSettings } from '$lib/services/settings-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
 
-// GET users endpoint
 export const GET: RequestHandler = async ({ locals }) => {
-	// Only admins can list users
 	if (!locals.user || !locals.user.roles.includes('admin')) {
 		const response: ApiErrorResponse = {
 			success: false,
@@ -39,7 +37,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	// Only admins should be able to create users
 	const currentUser = locals.user as User;
 
 	if (!currentUser || !currentUser.roles.includes('admin')) {
@@ -62,7 +59,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 	const { username, password, displayName, email, roles } = userDataResult.data;
 
-	// Validate input
 	if (!username || !password) {
 		const response: ApiErrorResponse = {
 			success: false,
@@ -72,7 +68,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json(response, { status: 400 });
 	}
 
-	// Check if username already exists
 	const existingUserResult = await tryCatch(getUserByUsername(username));
 	if (existingUserResult.data) {
 		const response: ApiErrorResponse = {
@@ -83,12 +78,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json(response, { status: 409 });
 	}
 
-	// Get password policy from settings
 	const settingsResult = await tryCatch(getSettings());
 	const settings = settingsResult.data;
 	const policy = settings?.auth?.passwordPolicy || 'strong';
 
-	// Validate password according to policy
 	if (!validatePassword(password, policy)) {
 		const response: ApiErrorResponse = {
 			success: false,
@@ -98,7 +91,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json(response, { status: 400 });
 	}
 
-	// Create the user
 	const hashResult = await tryCatch(hashPassword(password));
 	if (hashResult.error) {
 		console.error('Error hashing password:', hashResult.error);
@@ -112,7 +104,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const newUser: User = {
-		id: '', // Will be generated in saveUser
+		id: '',
 		username,
 		passwordHash: hashResult.data,
 		displayName: displayName || username,
@@ -133,8 +125,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json(response, { status: 500 });
 	}
 
-	// Return sanitized user (remove sensitive fields)
-	const { passwordHash: _, ...sanitizedUser } = saveResult.data;
+	const { passwordHash: _unused, ...sanitizedUser } = saveResult.data;
 
 	return json({
 		success: true,
@@ -142,7 +133,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 };
 
-// Validate password based on policy
 function validatePassword(password: string, policy: 'basic' | 'standard' | 'strong'): boolean {
 	switch (policy) {
 		case 'basic':

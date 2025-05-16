@@ -19,8 +19,8 @@
 	import type { StackActions } from '$lib/types/actions.type';
 
 	let { data }: { data: PageData } = $props();
-	let stacks = $state(data.stacks);
-	let selectedIds = $state([]);
+	let stacks = $derived(data.stacks);
+	let selectedIds = $state<string[]>([]);
 	let isLoading = $state({
 		start: false,
 		stop: false,
@@ -142,10 +142,6 @@
 		await invalidateAll();
 		isLoading['import'] = false;
 	}
-
-	$effect(() => {
-		stacks = data.stacks;
-	});
 </script>
 
 <div class="space-y-6">

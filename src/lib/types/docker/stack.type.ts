@@ -8,6 +8,13 @@ export interface StackMeta {
 	path: string;
 }
 
+export interface StackPort {
+	PublicPort?: number;
+	PrivatePort?: number;
+	Type?: string;
+	[key: string]: any;
+}
+
 export interface StackService {
 	id: string;
 	name: string;
@@ -16,7 +23,19 @@ export interface StackService {
 		Status: string;
 		ExitCode: number;
 	};
-	ports?: string[];
+	ports?: StackPort[];
+	networkSettings?: {
+		Networks?: Record<
+			string,
+			{
+				IPAddress?: string;
+				Gateway?: string;
+				MacAddress?: string;
+				Driver?: string;
+				[key: string]: any;
+			}
+		>;
+	};
 }
 
 export interface Stack {

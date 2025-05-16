@@ -6,17 +6,16 @@
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { enhance } from '$app/forms';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { formatDate } from '$lib/utils/string.utils';
 	import type { NetworkInspectInfo } from 'dockerode';
 	import { toast } from 'svelte-sonner';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let { network }: { network: NetworkInspectInfo | null | undefined } = $derived(data);
 
 	let isRemoving = $state(false);
-	let showRemoveConfirm = $state(false);
 
 	const shortId = $derived(network?.Id?.substring(0, 12) || 'N/A');
 	const createdDate = $derived(network?.Created ? formatDate(network.Created) : 'N/A');
@@ -30,12 +29,22 @@
 			console.warn('Cannot remove predefined network');
 			return;
 		}
-		showRemoveConfirm = true;
+		openConfirmDialog({
+			title: 'Remove Network',
+			message: `Are you sure you want to remove the network "${network?.Name || shortId}"? This action cannot be undone.`,
+			confirm: {
+				label: 'Remove',
+				destructive: true,
+				action: () => {
+					const formElement = document.getElementById('remove-network-form') as HTMLFormElement | null;
+					formElement?.requestSubmit();
+				}
+			}
+		});
 	}
 </script>
 
 <div class="space-y-6 pb-8">
-	<!-- Improved Header with Better Visual Hierarchy -->
 	<div class="flex flex-col space-y-4">
 		<Breadcrumb.Root>
 			<Breadcrumb.List>
@@ -56,13 +65,11 @@
 						{network?.Name || 'Network Details'}
 					</h1>
 
-					<!-- Network ID pill -->
 					<div class="hidden sm:block">
 						<StatusBadge variant="gray" text={`ID: ${shortId}`} />
 					</div>
 				</div>
 
-				<!-- Status badges in a row -->
 				<div class="flex gap-2 mt-2">
 					{#if inUse}
 						<StatusBadge variant="green" text={`In Use (${connectedContainers.length})`} />
@@ -78,7 +85,6 @@
 				</div>
 			</div>
 
-			<!-- Action Button -->
 			<div class="self-start">
 				<Button variant="destructive" size="sm" onclick={triggerRemove} disabled={isRemoving || isPredefined} title={isPredefined ? 'Cannot remove predefined networks' : ''} class="w-full sm:w-auto">
 					{#if isRemoving}
@@ -90,7 +96,6 @@
 				</Button>
 			</div>
 
-			<!-- Hidden form for removal action -->
 			<form
 				id="remove-network-form"
 				method="POST"
@@ -110,7 +115,6 @@
 		</div>
 	</div>
 
-	<!-- Error Alert -->
 	{#if form?.error}
 		<Alert.Root variant="destructive">
 			<AlertCircle class="mr-2 size-4" />
@@ -121,7 +125,6 @@
 
 	{#if network}
 		<div class="space-y-6">
-			<!-- Network Details Card: Improved Layout -->
 			<Card.Root class="border shadow-sm">
 				<Card.Header class="pb-0">
 					<Card.Title class="flex items-center gap-2 text-lg">
@@ -132,7 +135,6 @@
 				</Card.Header>
 				<Card.Content class="pt-6">
 					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-8 gap-x-6">
-						<!-- ID -->
 						<div class="flex items-start gap-3">
 							<div class="bg-gray-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
 								<Hash class="text-gray-500 size-5" />
@@ -143,7 +145,6 @@
 							</div>
 						</div>
 
-						<!-- Name -->
 						<div class="flex items-start gap-3">
 							<div class="bg-blue-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
 								<Network class="text-blue-500 size-5" />
@@ -154,7 +155,6 @@
 							</div>
 						</div>
 
-						<!-- Driver -->
 						<div class="flex items-start gap-3">
 							<div class="bg-orange-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
 								<HardDrive class="text-orange-500 size-5" />
@@ -165,7 +165,6 @@
 							</div>
 						</div>
 
-						<!-- Scope -->
 						<div class="flex items-start gap-3">
 							<div class="bg-purple-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
 								<Globe class="text-purple-500 size-5" />
@@ -176,7 +175,6 @@
 							</div>
 						</div>
 
-						<!-- Created -->
 						<div class="flex items-start gap-3">
 							<div class="bg-green-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
 								<Clock class="text-green-500 size-5" />
@@ -187,7 +185,6 @@
 							</div>
 						</div>
 
-						<!-- Attachable -->
 						<div class="flex items-start gap-3">
 							<div class="bg-yellow-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
 								<Layers class="text-yellow-500 size-5" />
@@ -200,7 +197,6 @@
 							</div>
 						</div>
 
-						<!-- Internal -->
 						<div class="flex items-start gap-3">
 							<div class="bg-red-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
 								<Settings class="text-red-500 size-5" />
@@ -213,7 +209,6 @@
 							</div>
 						</div>
 
-						<!-- EnableIPv6 -->
 						<div class="flex items-start gap-3">
 							<div class="bg-indigo-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
 								<ListTree class="text-indigo-500 size-5" />
@@ -229,7 +224,6 @@
 				</Card.Content>
 			</Card.Root>
 
-			<!-- IPAM Configuration Card with improved styling -->
 			{#if network.IPAM?.Config && network.IPAM.Config.length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header class="pb-0">
@@ -311,7 +305,6 @@
 				</Card.Root>
 			{/if}
 
-			<!-- Connected Containers Card - Refined -->
 			{#if connectedContainers.length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header class="pb-0">
@@ -345,7 +338,6 @@
 				</Card.Root>
 			{/if}
 
-			<!-- Labels Card - Enhanced -->
 			{#if network.Labels && Object.keys(network.Labels).length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header class="pb-0">
@@ -372,7 +364,6 @@
 				</Card.Root>
 			{/if}
 
-			<!-- Options Card - Enhanced -->
 			{#if network.Options && Object.keys(network.Options).length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header class="pb-0">
@@ -400,7 +391,6 @@
 			{/if}
 		</div>
 	{:else}
-		<!-- Network Not Found with improved styling -->
 		<div class="flex flex-col items-center justify-center py-16 px-4 text-center">
 			<div class="bg-muted/30 rounded-full p-4 mb-4">
 				<Network class="text-muted-foreground size-10 opacity-70" />

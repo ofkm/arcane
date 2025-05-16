@@ -27,7 +27,7 @@ export async function listVolumes(): Promise<ServiceVolume[]> {
 				labels: vol.Labels
 			})
 		);
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error('Docker Service: Error listing volumes:', error);
 		throw new Error(`Failed to list Docker volumes using host "${dockerHost}".`);
 	}
@@ -55,7 +55,7 @@ export async function isVolumeInUse(volumeName: string): Promise<boolean> {
 			}
 		}
 		return false;
-	} catch (error) {
+	} catch (error: unknown) {
 		console.error(`Error checking if volume ${volumeName} is in use:`, error);
 		// Default to assuming it's in use for safety
 		return true;
@@ -76,12 +76,12 @@ export async function getVolume(volumeName: string): Promise<VolumeInspectInfo> 
 		const inspectInfo = await volume.inspect();
 		console.log(`Docker Service: Inspected volume "${volumeName}" successfully.`);
 		return inspectInfo;
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error inspecting volume "${volumeName}":`, error);
-		if (error.statusCode === 404) {
+		if ((error as { statusCode?: number }).statusCode === 404) {
 			throw new NotFoundError(`Volume "${volumeName}" not found.`);
 		}
-		throw new DockerApiError(`Failed to inspect volume "${volumeName}": ${error.message || 'Unknown Docker error'}`, error.statusCode);
+		throw new DockerApiError(`Failed to inspect volume "${volumeName}": ${(error as { message?: string }).message || 'Unknown Docker error'}`, (error as { statusCode?: number }).statusCode);
 	}
 }
 
@@ -115,16 +115,14 @@ export async function createVolume(options: VolumeCreateOptions): Promise<Servic
 			labels: volume.Labels || {},
 			scope: volume.Scope || 'local'
 		};
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error creating volume "${options.Name}":`, error);
 		// Check for specific Docker errors, like volume already exists (often 409)
-		if (error.statusCode === 409) {
+		if ((error as { statusCode?: number }).statusCode === 409) {
 			throw new Error(`Volume "${options.Name}" already exists.`);
 		}
 		throw new Error(
-			`Failed to create volume "${options.Name}" using host "${dockerHost}". ${
-				error.message || error.reason || '' // Include reason if available
-			}`
+			`Failed to create volume "${options.Name}" using host "${dockerHost}". ` + ((error as { message?: string; reason?: string }).message || (error as { reason?: string }).reason || '') // Include reason if available
 		);
 	}
 }
@@ -146,15 +144,15 @@ export async function removeVolume(name: string, force = false): Promise<void> {
 		const volume = docker.getVolume(name);
 		await volume.remove({ force });
 		console.log(`Docker Service: Volume "${name}" removed successfully (force=${force}).`);
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error removing volume "${name}" (force=${force}):`, error);
-		if (error.statusCode === 404) {
+		if ((error as { statusCode?: number }).statusCode === 404) {
 			throw new NotFoundError(`Volume "${name}" not found.`);
 		}
-		if (error.statusCode === 409) {
+		if ((error as { statusCode?: number }).statusCode === 409) {
 			// This usually means the volume is in use
 			throw new ConflictError(`Volume "${name}" is in use by a container. Stop the container or use the force option to remove.`);
 		}
-		throw new DockerApiError(`Failed to remove volume "${name}": ${error.message || error.reason || 'Unknown Docker error'}`, error.statusCode);
+		throw new DockerApiError(`Failed to remove volume "${name}": ${(error as { message?: string; reason?: string }).message || (error as { reason?: string }).reason || 'Unknown Docker error'}`, (error as { statusCode?: number }).statusCode);
 	}
 }

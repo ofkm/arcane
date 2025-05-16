@@ -24,7 +24,7 @@
 	import { maturityStore } from '$lib/stores/maturity-store';
 
 	let { data }: { data: PageData } = $props();
-	let images = $state<EnhancedImageInfo[]>(data.images || []);
+	let images = $derived(data.images || []);
 	let error = $state(data.error);
 	let selectedIds = $state<string[]>([]);
 
@@ -172,9 +172,9 @@
 				toast.error('Connection to server lost while pulling image');
 				isLoading.pulling = false;
 			};
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('Failed to pull image:', err);
-			toast.error(`Failed to pull image: ${err.message}`);
+			toast.error(`Failed to pull image: ${err instanceof Error ? err.message : String(err)}`);
 			isLoading.pulling = false;
 		}
 	}
@@ -231,7 +231,7 @@
 			result: await tryCatch(imageApi.prune()),
 			message: 'Failed to Prune Images',
 			setLoadingState: (value) => (isLoading.pruning = value),
-			onSuccess: async (result: any) => {
+			onSuccess: async (result: { message?: string }) => {
 				isConfirmPruneDialogOpen = false;
 				toast.success(result?.message ?? 'Images pruned successfully.');
 				await invalidateAll();
@@ -351,10 +351,6 @@
 			isLoading.checking = false;
 		}
 	}
-
-	$effect(() => {
-		images = data.images;
-	});
 
 	let observer: IntersectionObserver | null = null;
 

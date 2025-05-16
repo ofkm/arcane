@@ -15,19 +15,13 @@
 		onSubmit: (options: NetworkCreateOptions) => void;
 	};
 
-	let {
-		open = $bindable(),
-		isCreating = false, // Default value for the prop
-		onSubmit
-	}: Props = $props();
+	let { open = $bindable(), isCreating = false, onSubmit }: Props = $props();
 
-	// Form state
 	let name = $state('');
-	let driver = $state('bridge'); // Default driver
+	let driver = $state('bridge');
 	let checkDuplicate = $state(true);
 	let internal = $state(false);
 	let labels = $state<{ key: string; value: string }[]>([{ key: '', value: '' }]);
-	// Basic IPAM config state (optional)
 	let enableIpam = $state(false);
 	let subnet = $state('');
 	let gateway = $state('');
@@ -68,10 +62,9 @@
 				ipamConfig.Gateway = trimmedGateway;
 			}
 
-			// Only add IPAM config if Subnet or Gateway is provided
 			if (Object.keys(ipamConfig).length > 0) {
 				options.IPAM = {
-					Driver: 'default', // Usually 'default'
+					Driver: 'default',
 					Config: [ipamConfig]
 				};
 			}
@@ -80,7 +73,6 @@
 		onSubmit(options);
 	}
 
-	// Reset form when dialog opens/closes
 	$effect(() => {
 		if (!open) {
 			name = '';
@@ -103,16 +95,13 @@
 		</Dialog.Header>
 
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
-			<!-- Name -->
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="network-name" class="text-right">Name</Label>
 				<Input id="network-name" bind:value={name} required class="col-span-3" placeholder="e.g., my-app-network" disabled={isCreating} />
 			</div>
 
-			<!-- Driver -->
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="network-driver" class="text-right">Driver</Label>
-				<!-- Update the Select component structure -->
 				<Select.Root type="single" bind:value={driver}>
 					<Select.Trigger class="col-span-3" id="network-driver" disabled={isCreating}>
 						<span>{driver}</span>
@@ -127,7 +116,6 @@
 				</Select.Root>
 			</div>
 
-			<!-- Options: Check Duplicate, Internal -->
 			<div class="grid grid-cols-4 items-center gap-4">
 				<span class="text-right text-sm font-medium">Options</span>
 				<div class="col-span-3 flex items-center space-x-4">
@@ -142,11 +130,10 @@
 				</div>
 			</div>
 
-			<!-- Labels -->
 			<div class="grid grid-cols-4 items-start gap-4">
 				<Label class="text-right pt-2">Labels</Label>
 				<div class="col-span-3 space-y-2">
-					{#each labels as label, index}
+					{#each labels as label, index (index)}
 						<div class="flex gap-2 items-center">
 							<Input placeholder="Key" bind:value={label.key} class="flex-1" disabled={isCreating} />
 							<Input placeholder="Value" bind:value={label.value} class="flex-1" disabled={isCreating} />
@@ -161,7 +148,6 @@
 				</div>
 			</div>
 
-			<!-- IPAM Configuration (Optional) -->
 			<div class="grid grid-cols-4 items-start gap-4 border-t pt-4 mt-2">
 				<div class="flex items-center space-x-2 col-span-4">
 					<Checkbox id="enable-ipam" bind:checked={enableIpam} disabled={isCreating} />

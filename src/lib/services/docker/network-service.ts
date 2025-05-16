@@ -33,7 +33,7 @@ export async function listNetworks(): Promise<ServiceNetwork[]> {
 				created: net.Created ?? ''
 			})
 		);
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error('Docker Service: Error listing networks:', error);
 		throw new Error(`Failed to list Docker networks using host "${dockerHost}".`);
 	}
@@ -53,16 +53,17 @@ export async function getNetwork(networkId: string): Promise<NetworkInspectInfo>
 		const inspectInfo = await network.inspect();
 		console.log(`Docker Service: Inspected network "${networkId}" successfully.`);
 		return inspectInfo;
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error inspecting network "${networkId}":`, error);
-		if (error.statusCode === 404) {
+		const err = error as { statusCode?: number; message?: string; reason?: string };
+		if (err.statusCode === 404) {
 			throw new NotFoundError(`Network "${networkId}" not found.`);
 		}
 		// Docker might return 500 for built-in networks if trying to inspect by name sometimes
-		if (error.statusCode === 500 && (networkId === 'bridge' || networkId === 'host' || networkId === 'none')) {
+		if (err.statusCode === 500 && (networkId === 'bridge' || networkId === 'host' || networkId === 'none')) {
 			throw new NotFoundError(`Cannot inspect built-in network "${networkId}" by name, use ID if available.`);
 		}
-		throw new DockerApiError(`Failed to inspect network "${networkId}": ${error.message || 'Unknown Docker error'}`, error.statusCode);
+		throw new DockerApiError(`Failed to inspect network "${networkId}": ${err.message || 'Unknown Docker error'}`, err.statusCode);
 	}
 }
 
@@ -85,20 +86,21 @@ export async function removeNetwork(networkId: string): Promise<void> {
 		const network = docker.getNetwork(networkId);
 		await network.remove();
 		console.log(`Docker Service: Network "${networkId}" removed successfully.`);
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error removing network "${networkId}":`, error);
-		if (error.statusCode === 404) {
+		const err = error as { statusCode?: number; message?: string; reason?: string };
+		if (err.statusCode === 404) {
 			throw new NotFoundError(`Network "${networkId}" not found.`);
 		}
-		if (error.statusCode === 409 || (error.reason && error.reason.includes('active endpoints'))) {
+		if (err.statusCode === 409 || (err.reason && err.reason.includes('active endpoints'))) {
 			// 409 or specific reason indicates it's likely in use
 			throw new ConflictError(`Network "${networkId}" has active endpoints (containers connected). Disconnect containers before removal.`);
 		}
 		// Handle removal of predefined networks (usually forbidden)
-		if (error.statusCode === 403 || (error.reason && error.reason.includes('predefined network'))) {
+		if (err.statusCode === 403 || (err.reason && err.reason.includes('predefined network'))) {
 			throw new ConflictError(`Cannot remove predefined network "${networkId}".`);
 		}
-		throw new DockerApiError(`Failed to remove network "${networkId}": ${error.message || error.reason || 'Unknown Docker error'}`, error.statusCode);
+		throw new DockerApiError(`Failed to remove network "${networkId}": ${err.message || err.reason || 'Unknown Docker error'}`, err.statusCode);
 	}
 }
 
@@ -125,13 +127,13 @@ export async function createNetwork(options: NetworkCreateOptions): Promise<Netw
 
 		console.log(`Docker Service: Network "${options.Name}" (ID: ${inspectInfo.Id}) created successfully.`);
 		return inspectInfo; // Return the detailed inspect info
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`Docker Service: Error creating network "${options.Name}":`, error);
-		// Check for specific Docker errors
-		if (error.statusCode === 409) {
+		const err = error as { statusCode?: number; message?: string; reason?: string };
+		if (err.statusCode === 409) {
 			// Could be duplicate name if CheckDuplicate was true, or other conflicts
 			throw new Error(`Network "${options.Name}" may already exist or conflict with an existing configuration.`);
 		}
-		throw new Error(`Failed to create network "${options.Name}" using host "${dockerHost}". ${error.message || error.reason || ''}`);
+		throw new Error(`Failed to create network "${options.Name}" using host "${dockerHost}". ${err.message || err.reason || ''}`);
 	}
 }

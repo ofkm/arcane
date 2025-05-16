@@ -1,5 +1,5 @@
 <script lang="ts" generics="TData extends object">
-	import { getCoreRowModel, getPaginationRowModel, getSortedRowModel, type SortingState, getFilteredRowModel, type ColumnFiltersState, type RowData } from '@tanstack/table-core';
+	import { getCoreRowModel, getPaginationRowModel, getSortedRowModel, type SortingState, getFilteredRowModel, type ColumnFiltersState } from '@tanstack/table-core';
 	import { createSvelteTable, FlexRender } from '$lib/components/ui/data-table/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import * as Pagination from '$lib/components/ui/pagination/index.js';
@@ -39,12 +39,22 @@
 	let sorting = $state<SortingState>(defaultSort ? [defaultSort] : []);
 	let columnFilters = $state<ColumnFiltersState>([]);
 	let globalFilter = $state<string>('');
-	let selectedRowIds = $state<Record<string, boolean>>({});
+	let selectedRowIds = $derived<Record<string, boolean>>({});
 
 	$effect(() => {
-		selectedIds = Object.entries(selectedRowIds)
-			.filter(([_, selected]) => selected)
-			.map(([id]) => id);
+		const newTanstackSelectionState: Record<string, boolean> = {};
+		(selectedIds || []).forEach((id) => {
+			newTanstackSelectionState[id] = true;
+		});
+
+		const currentTanstackSelectedKeys = Object.keys(selectedRowIds)
+			.filter((k) => selectedRowIds[k])
+			.sort();
+		const newPropSelectedKeys = Object.keys(newTanstackSelectionState).sort();
+
+		if (JSON.stringify(currentTanstackSelectedKeys) !== JSON.stringify(newPropSelectedKeys)) {
+			table.setRowSelection(newTanstackSelectionState);
+		}
 	});
 
 	$effect(() => {
@@ -64,7 +74,7 @@
 		},
 		columns,
 		getRowId: idKey
-			? (originalRow: TData, _index: number, _parent?: RowData) => {
+			? (originalRow: TData) => {
 					return String(originalRow[idKey]);
 				}
 			: undefined,
@@ -112,10 +122,21 @@
 			currentPage = 1;
 		},
 		onRowSelectionChange: (updater) => {
-			if (typeof updater === 'function') {
-				selectedRowIds = updater(selectedRowIds);
-			} else {
-				selectedRowIds = updater;
+			const newInternalState = typeof updater === 'function' ? updater(selectedRowIds) : updater;
+
+			if (JSON.stringify(newInternalState) !== JSON.stringify(selectedRowIds)) {
+				selectedRowIds = newInternalState;
+			}
+
+			const newSelectedIdsArray = Object.entries(selectedRowIds)
+				.filter(([key, selected]) => selected)
+				.map(([id]) => id);
+
+			const sortedCurrentProp = [...(selectedIds || [])].sort();
+			const sortedNewInternal = [...newSelectedIdsArray].sort();
+
+			if (JSON.stringify(sortedCurrentProp) !== JSON.stringify(sortedNewInternal)) {
+				selectedIds = newSelectedIdsArray;
 			}
 		},
 		enableRowSelection: enableSelection

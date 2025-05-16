@@ -1,10 +1,9 @@
 import { getDockerClient, dockerHost } from './core';
 import type { ServiceImage } from '$lib/types/docker/image.type';
 import type Docker from 'dockerode';
-import { NotFoundError, DockerApiError, RegistryRateLimitError, PublicRegistryError, PrivateRegistryError, ApiErrorCode } from '$lib/types/errors.type';
+import { NotFoundError, DockerApiError, RegistryRateLimitError, PublicRegistryError, PrivateRegistryError } from '$lib/types/errors.type';
 import { parseImageNameForRegistry, areRegistriesEquivalent } from '$lib/utils/registry.utils';
 import { getSettings } from '$lib/services/settings-service';
-import { updateImageMaturity } from '$lib/stores/maturity-store';
 import { tryCatch } from '$lib/utils/try-catch';
 import { maturityCache } from './maturity-cache-service';
 let maturityPollingInterval: NodeJS.Timeout | null = null;
@@ -170,11 +169,11 @@ export async function getImage(imageId: string): Promise<Docker.ImageInspectInfo
 
 	const inspectResult = await tryCatch(image.inspect());
 	if (inspectResult.error) {
-		const error = inspectResult.error as any;
+		const error = inspectResult.error as { statusCode?: number; message?: string };
 		if (error.statusCode === 404) {
 			throw new NotFoundError(`Image "${imageId}" not found.`);
 		}
-		throw new DockerApiError(`Failed to inspect image "${imageId}": ${error.message || 'Unknown Docker error'}`, error.statusCode);
+		throw new DockerApiError(`Failed to inspect image "${imageId}": ${error.message || 'Unknown Docker error'}`, error.statusCode ?? 500);
 	}
 
 	return inspectResult.data;
@@ -195,11 +194,11 @@ export async function removeImage(imageId: string, force: boolean = false): Prom
 		const docker = await getDockerClient();
 		const image = docker.getImage(imageId);
 		await image.remove({ force });
-	} catch (error: any) {
-		if (error.statusCode === 409) {
+	} catch (error: unknown) {
+		if ((error as { statusCode?: number }).statusCode === 409) {
 			throw new Error(`Image "${imageId}" is being used by a container. Use force option to remove.`);
 		}
-		throw new Error(`Failed to remove image "${imageId}" using host "${dockerHost}". ${error.message || error.reason || ''}`);
+		throw new Error(`Failed to remove image "${imageId}" using host "${dockerHost}". ${(error as { message?: string; reason?: string }).message || (error as { reason?: string }).reason || ''}`);
 	}
 }
 
@@ -248,8 +247,8 @@ export async function pruneImages(mode: 'all' | 'dangling' = 'all'): Promise<{
 
 		const result = await docker.pruneImages(pruneOptions); // Use the options object
 		return result;
-	} catch (error: any) {
-		throw new Error(`Failed to prune images using host "${dockerHost}". ${error.message || error.reason || ''}`);
+	} catch (error: unknown) {
+		throw new Error(`Failed to prune images using host "${dockerHost}". ${(error as { message?: string; reason?: string }).message || (error as { reason?: string }).reason || ''}`);
 	}
 }
 
@@ -263,9 +262,9 @@ export async function pruneImages(mode: 'all' | 'dangling' = 'all'): Promise<{
  * parameter that specifies the platform for which the Docker image should be pulled.
  * @param {object} [authConfig] - Optional authentication configuration for private registries
  */
-export async function pullImage(imageRef: string, platform?: string, authConfig?: any): Promise<void> {
+export async function pullImage(imageRef: string, platform?: string, authConfig?: Record<string, unknown>): Promise<void> {
 	const docker = await getDockerClient();
-	const pullOptions: any = {};
+	const pullOptions: Record<string, unknown> = {};
 
 	if (platform) {
 		pullOptions.platform = platform;
@@ -356,7 +355,7 @@ async function getRegistryInfo(repository: string, currentTag: string, localCrea
 			if (publicMaturityInfo) {
 				return publicMaturityInfo;
 			}
-		} catch (error: any) {
+		} catch (error: unknown) {
 			if (error instanceof RegistryRateLimitError) {
 				// If public check hits a rate limit, re-throw immediately.
 				// It's unlikely trying private credentials for the same domain will bypass this.
@@ -364,7 +363,7 @@ async function getRegistryInfo(repository: string, currentTag: string, localCrea
 			}
 			// For other PublicRegistryErrors (e.g., 401/403 on a public endpoint for a private image),
 			// or other general errors, log and proceed to try private credentials.
-			console.warn(`Public registry check failed for ${repository}:${currentTag} (will try private if configured): ${error.message}`);
+			console.warn(`Public registry check failed for ${repository}:${currentTag} (will try private if configured): ${(error as { message?: string }).message}`);
 		}
 
 		// Attempt 2: Try private registries if configured
@@ -388,7 +387,7 @@ async function getRegistryInfo(repository: string, currentTag: string, localCrea
 					// If privateMaturityInfo is undefined but no error, it means the check was "successful"
 					// but no maturity info was determined (e.g. image/tag not found with these creds).
 					// We should continue to try other credentials if any.
-				} catch (error: any) {
+				} catch (error: unknown) {
 					if (error instanceof RegistryRateLimitError) {
 						// If a rate limit is hit with any private credential, re-throw.
 						console.warn(`Private registry check for ${repository}:${currentTag} hit rate limit with credential for ${credential.url}.`);
@@ -396,7 +395,7 @@ async function getRegistryInfo(repository: string, currentTag: string, localCrea
 					} else if (error instanceof PrivateRegistryError) {
 						// Log specific private registry errors (like auth failure for *this* credential)
 						// and continue to the next credential.
-						console.warn(`Private registry check failed for ${repository}:${currentTag} with credential for ${credential.url}: ${error.message}. Trying next if available.`);
+						console.warn(`Private registry check failed for ${repository}:${currentTag} with credential for ${credential.url}: ${(error as { message?: string }).message}. Trying next if available.`);
 					} else {
 						// For other unexpected errors during a specific private check, log and continue.
 						console.error(`Unexpected error during private registry check for ${repository}:${currentTag} with credential for ${credential.url}:`, error);
@@ -510,18 +509,18 @@ async function checkRegistryV2(repository: string, registryDomain: string, curre
 
 		const tagsData = await tagsResponse.json();
 		return processTagsData(tagsData, repository, registryDomain, currentTag, headers, localCreatedDate);
-	} catch (error: any) {
+	} catch (error: unknown) {
 		if (error instanceof PublicRegistryError || error instanceof PrivateRegistryError || error instanceof RegistryRateLimitError) {
 			throw error;
 		}
-		throw new PublicRegistryError(`Registry API error for ${repository}: ${error.message}`, registryDomain, repository);
+		throw new PublicRegistryError(`Registry API error for ${repository}: ${(error as { message?: string }).message}`, registryDomain, repository);
 	}
 }
 
 /**
  * Process tags data from the registry API
  */
-async function processTagsData(tagsData: any, repository: string, registryDomain: string, currentTag: string, headers: Record<string, string>, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
+async function processTagsData(tagsData: Record<string, unknown>, repository: string, registryDomain: string, currentTag: string, headers: Record<string, string>, localCreatedDate?: Date): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
 	const tags = tagsData.tags || [];
 	if (!Array.isArray(tags)) {
 		console.warn(`processTagsData: tagsData.tags is not an array for ${repository}. Received:`, tagsData);
@@ -809,7 +808,7 @@ function getTagPattern(tag: string): { pattern: string; version: string | null }
 	const versionMatch = tag.match(/(\d+(?:\.\d+)*)/);
 	const version = versionMatch ? versionMatch[1] : null;
 
-	const prefixMatch = tag.match(/^([a-z][\w-]*?)[\.-]?\d/i);
+	const prefixMatch = tag.match(/^([a-z][\w-]*?)[.-]?\d/i);
 	const prefix = prefixMatch ? prefixMatch[1] : null;
 
 	if (exactMatchTags.includes(tag)) {
