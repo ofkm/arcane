@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type HealthConfig, type ContainerCreateOptions, type VolumeInspectInfo } from 'dockerode'; // Import VolumeInspectInfo
+	import { type HealthConfig, type ContainerCreateOptions, type VolumeInspectInfo, type NetworkInspectInfo } from 'dockerode'; // Import NetworkInfo
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -18,7 +18,7 @@
 	interface Props {
 		open?: boolean;
 		volumes?: VolumeInspectInfo[];
-		networks?: { name: string; driver: string }[];
+		networks?: NetworkInspectInfo[]; // Changed to NetworkInfo[]
 		images?: { id: string; repo: string; tag: string }[];
 		onClose?: () => void;
 	}
@@ -509,9 +509,9 @@
 										<Select.Item value="">Default (bridge)</Select.Item>
 										<Select.Item value="host">Host</Select.Item>
 										<Select.Item value="none">None</Select.Item>
-										{#each networks.filter((n) => n.name !== 'bridge' && n.name !== 'host' && n.name !== 'none') as net (net.name)}
-											<Select.Item value={net.name}>
-												{net.name} ({net.driver})
+										{#each networks.filter((n) => n.Name !== 'bridge' && n.Name !== 'host' && n.Name !== 'none') as net (net.Id)}
+											<Select.Item value={net.Name}>
+												{net.Name} ({net.Driver})
 											</Select.Item>
 										{/each}
 									</Select.Content>

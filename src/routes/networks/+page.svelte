@@ -10,16 +10,17 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import CreateNetworkDialog from './CreateNetworkDialog.svelte';
 	import * as Table from '$lib/components/ui/table';
-	import type { NetworkCreateOptions } from 'dockerode';
+	import type { NetworkCreateOptions, NetworkInspectInfo } from 'dockerode';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import NetworkAPIService from '$lib/services/api/network-api-service';
+	import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
 
 	let { data }: { data: PageData } = $props();
 
 	let networkPageStates = $state({
-		networks: data.networks,
+		networks: data.networks as NetworkInspectInfo[],
 		selectedNetworks: <string[]>[],
 		error: data.error,
 		isCreateDialogOpen: false
@@ -34,43 +35,48 @@
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 
 	$effect(() => {
-		networkPageStates.networks = data.networks;
+		networkPageStates.networks = data.networks as NetworkInspectInfo[];
 		networkPageStates.error = data.error;
 	});
 
 	const totalNetworks = $derived(networkPageStates.networks.length);
-	const bridgeNetworks = $derived(networkPageStates.networks.filter((n) => n.driver === 'bridge').length);
-	const overlayNetworks = $derived(networkPageStates.networks.filter((n) => n.driver === 'overlay').length);
+	// NetworkInfo uses 'Driver' (capital D)
+	const bridgeNetworks = $derived(networkPageStates.networks.filter((n) => n.Driver === 'bridge').length);
+	const overlayNetworks = $derived(networkPageStates.networks.filter((n) => n.Driver === 'overlay').length);
 
 	const networkApi = new NetworkAPIService();
 
 	async function handleCreateNetworkSubmit(options: NetworkCreateOptions) {
 		handleApiResultWithCallbacks({
 			result: await tryCatch(networkApi.create(options)),
-			message: 'Failed to Create Network',
+			message: `Failed to Create Network "${options.Name}"`,
 			setLoadingState: (value) => (isLoading.create = value),
 			onSuccess: async () => {
-				toast.success('Network Created Successfully.');
+				toast.success(`Network "${options.Name}" Created Successfully.`);
 				await invalidateAll();
 				networkPageStates.isCreateDialogOpen = false;
 			}
 		});
 	}
 
-	async function handleDeleteNetwork(id: string) {
+	async function handleDeleteNetwork(id: string, name: string) {
+		if (DEFAULT_NETWORK_NAMES.has(name)) {
+			toast.error(`Cannot delete default network: ${name}`);
+			return;
+		}
 		openConfirmDialog({
 			title: 'Delete Network',
-			message: 'Are you sure you want to delete this network? This action cannot be undone.',
+			message: `Are you sure you want to delete network "${name}" (ID: ${id.substring(0, 12)})? This action cannot be undone.`,
 			confirm: {
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
 						result: await tryCatch(networkApi.remove(encodeURIComponent(id))),
-						message: 'Failed to Remove Network',
+						message: `Failed to Remove Network "${name}"`,
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
-							toast.success('Network Removed Successfully.');
+							toast.success(`Network "${name}" Removed Successfully.`);
 							await invalidateAll();
 						}
 					});
@@ -80,21 +86,20 @@
 	}
 
 	async function handleDeleteSelected() {
-		// Check if any selected networks are default networks
-		const selectedNetworks = networkPageStates.selectedNetworks.map((id) => {
-			const network = networkPageStates.networks.find((n) => n.id === id);
+		const selectedNetworkDetails = networkPageStates.selectedNetworks.map((id) => {
+			const network = networkPageStates.networks.find((n) => n.Id === id);
 			return {
 				id,
-				name: network?.name || id.substring(0, 12),
-				isDefault: network?.driver === 'host' || network?.name === 'bridge' || network?.name === 'none'
+				name: network?.Name || id.substring(0, 12),
+				isDefault: DEFAULT_NETWORK_NAMES.has(network?.Name || '')
 			};
 		});
 
-		const defaultNetworks = selectedNetworks.filter((n) => n.isDefault);
+		const defaultNetworksSelected = selectedNetworkDetails.filter((n) => n.isDefault);
 
-		if (defaultNetworks.length > 0) {
-			const names = defaultNetworks.map((n) => n.name).join(', ');
-			toast.error(`Cannot delete default networks: ${names}`);
+		if (defaultNetworksSelected.length > 0) {
+			const names = defaultNetworksSelected.map((n) => n.name).join(', ');
+			toast.error(`Cannot delete default networks: ${names}. Please deselect them.`);
 			return;
 		}
 
@@ -106,37 +111,42 @@
 				destructive: true,
 				action: async () => {
 					isLoading.remove = true;
-
 					let successCount = 0;
 					let failureCount = 0;
 
-					for (const network of selectedNetworks) {
+					for (const network of selectedNetworkDetails) {
+						// Iterate over details which includes name
 						const result = await tryCatch(networkApi.remove(encodeURIComponent(network.id)));
-						handleApiResultWithCallbacks({
-							result,
-							message: `Failed to delete network "${network.name}"`,
-							setLoadingState: (value) => (isLoading.remove = value),
-							onSuccess: async () => {
-								toast.success(`Network "${network.name}" deleted successfully.`);
-								successCount++;
-							}
-						});
-
-						if (result.error) {
+						// The setLoadingState in a loop like this will just toggle the global remove state
+						// For individual item loading, a more complex state management would be needed.
+						if (result.data) {
+							toast.success(`Network "${network.name}" deleted successfully.`);
+							successCount++;
+						} else if (result.error) {
+							const error = result.error as any;
+							toast.error(`Failed to delete network "${network.name}": ${error.message || 'Unknown error'}`);
 							failureCount++;
 						}
 					}
+					isLoading.remove = false; // Reset after all operations
 
 					console.log(`Finished deleting. Success: ${successCount}, Failed: ${failureCount}`);
 					if (successCount > 0) {
 						setTimeout(async () => {
 							await invalidateAll();
-						}, 500);
+						}, 500); // Delay to allow toasts to show before list updates
 					}
-					networkPageStates.selectedNetworks = [];
+					networkPageStates.selectedNetworks = []; // Clear selection
 				}
 			}
 		});
+	}
+
+	function getNetworkSubnet(network: NetworkInspectInfo): string {
+		if (network.IPAM && network.IPAM.Config && network.IPAM.Config.length > 0 && network.IPAM.Config[0].Subnet) {
+			return network.IPAM.Config[0].Subnet;
+		}
+		return 'N/A';
 	}
 </script>
 
@@ -145,12 +155,6 @@
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Networks</h1>
 			<p class="text-sm text-muted-foreground mt-1">View and Manage Container Networking</p>
-		</div>
-		<div class="flex items-center gap-2">
-			<Button variant="secondary" data-testid="create-network-button" onclick={() => (networkPageStates.isCreateDialogOpen = true)} disabled={isLoading.create}>
-				<Plus class="size-4" />
-				Create Network
-			</Button>
 		</div>
 	</div>
 
@@ -214,10 +218,14 @@
 								Processing...
 							{:else}
 								<Trash2 class="size-4" />
-								Delete Selected
+								Delete Selected ({networkPageStates.selectedNetworks.length})
 							{/if}
 						</Button>
 					{/if}
+					<Button variant="secondary" data-testid="create-network-button" onclick={() => (networkPageStates.isCreateDialogOpen = true)} disabled={isLoading.create}>
+						<Plus class="size-4" />
+						Create Network
+					</Button>
 				</div>
 			</div>
 		</Card.Header>
@@ -226,28 +234,28 @@
 				<UniversalTable
 					data={networkPageStates.networks}
 					columns={[
-						{ accessorKey: 'name', header: 'Name' },
-						{ accessorKey: 'driver', header: 'Driver' },
-						{ accessorKey: 'scope', header: 'Scope' },
-						{ accessorKey: 'subnet', header: 'Subnet' },
+						{ accessorKey: 'Name', header: 'Name' },
+						{ accessorKey: 'Driver', header: 'Driver' },
+						{ accessorKey: 'Scope', header: 'Scope' },
+						{ accessorFn: (row) => getNetworkSubnet(row), header: 'Subnet', id: 'subnet' },
 						{ accessorKey: 'actions', header: ' ', enableSorting: false }
 					]}
-					idKey="id"
+					idKey="Id"
 					display={{
 						filterPlaceholder: 'Search networks...',
 						noResultsMessage: 'No networks found'
 					}}
 					sort={{
-						defaultSort: { id: 'name', desc: false }
+						defaultSort: { id: 'Name', desc: false }
 					}}
 					bind:selectedIds={networkPageStates.selectedNetworks}
 				>
-					{#snippet rows({ item })}
-						{@const isDefaultNetwork = item.driver === 'host' || item.name === 'bridge' || item.name === 'none'}
-						<Table.Cell><a class="font-medium hover:underline" href="/networks/{item.id}/">{item.name}</a></Table.Cell>
-						<Table.Cell>{item.driver}</Table.Cell>
-						<Table.Cell>{item.scope}</Table.Cell>
-						<Table.Cell>{item.subnet}</Table.Cell>
+					{#snippet rows({ item }: { item: NetworkInspectInfo })}
+						{@const isDefaultNetwork = DEFAULT_NETWORK_NAMES.has(item.Name)}
+						<Table.Cell><a class="font-medium hover:underline" href="/networks/{encodeURIComponent(item.Id)}/">{item.Name}</a></Table.Cell>
+						<Table.Cell>{item.Driver}</Table.Cell>
+						<Table.Cell>{item.Scope}</Table.Cell>
+						<Table.Cell>{getNetworkSubnet(item)}</Table.Cell>
 						<Table.Cell>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
@@ -260,15 +268,14 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item onclick={() => goto(`/networks/${item.id}`)} disabled={isAnyLoading}>
+										<DropdownMenu.Item onclick={() => goto(`/networks/${encodeURIComponent(item.Id)}`)} disabled={isAnyLoading}>
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
 										{#if !isDefaultNetwork}
 											<DropdownMenu.Separator />
-
-											<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleDeleteNetwork(item.id)} disabled={isLoading.remove || isAnyLoading}>
-												{#if isLoading.remove}
+											<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleDeleteNetwork(item.Id, item.Name)} disabled={isLoading.remove || isAnyLoading}>
+												{#if isLoading.remove && networkPageStates.selectedNetworks.includes(item.Id)}
 													<Loader2 class="animate-spin size-4" />
 												{:else}
 													<Trash2 class="size-4" />

@@ -1,41 +1,24 @@
 import { getDockerClient, dockerHost } from '$lib/services/docker/core';
-import type { ServiceNetwork } from '$lib/types/docker/network.type';
-import type { NetworkInspectInfo, NetworkCreateOptions } from 'dockerode';
+import type { NetworkInspectInfo, NetworkCreateOptions } from 'dockerode'; // Added NetworkInfo
 import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors'; // #file:/Users/kylemendell/dev/ofkm/arcane/src/lib/types/errors.ts
-
-/* The line `const DEFAULT_NETWORK_NAMES = new Set(['host', 'bridge', 'none', 'ingress']);` is creating
-a Set named `DEFAULT_NETWORK_NAMES` that contains the default network names managed by Docker. These
-default network names are 'host', 'bridge', 'none', and 'ingress'. The purpose of this set is to
-provide a quick and efficient way to check if a given network name is one of the default networks
-when needed in the code. */
-export const DEFAULT_NETWORK_NAMES = new Set(['host', 'bridge', 'none', 'ingress']);
+import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
 
 /**
- * This TypeScript function asynchronously lists Docker networks and maps the network properties to a
- * custom ServiceNetwork type.
- * @returns The `listNetworks` function returns a Promise that resolves to an array of `ServiceNetwork`
- * objects. Each `ServiceNetwork` object contains properties such as `id`, `name`, `driver`, `scope`,
- * `subnet`, `gateway`, and `created`, which are extracted from the networks obtained from the Docker
- * client.
+ * This TypeScript function asynchronously lists Docker networks.
+ * @returns The `listNetworks` function returns a Promise that resolves to an array of `NetworkInspectInfo`
+ * objects, representing the summary information for each network.
  */
-export async function listNetworks(): Promise<ServiceNetwork[]> {
+export async function listNetworks(): Promise<NetworkInspectInfo[]> {
+	// Changed return type
 	try {
 		const docker = await getDockerClient();
 		const networks = await docker.listNetworks();
-		return networks.map(
-			(net): ServiceNetwork => ({
-				id: net.Id,
-				name: net.Name,
-				driver: net.Driver,
-				scope: net.Scope,
-				subnet: net.IPAM?.Config?.[0]?.Subnet ?? null,
-				gateway: net.IPAM?.Config?.[0]?.Gateway ?? null,
-				created: net.Created ?? ''
-			})
-		);
+		// docker.listNetworks() directly returns an array of objects conforming to NetworkInspectInfo[]
+		return networks; // Return Dockerode's NetworkInspectInfo[] directly
 	} catch (error: unknown) {
 		console.error('Docker Service: Error listing networks:', error);
-		throw new Error(`Failed to list Docker networks using host "${dockerHost}".`);
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		throw new Error(`Failed to list Docker networks using host "${dockerHost}". ${errorMessage}`);
 	}
 }
 
@@ -63,7 +46,7 @@ export async function getNetwork(networkId: string): Promise<NetworkInspectInfo>
 		if (err.statusCode === 500 && (networkId === 'bridge' || networkId === 'host' || networkId === 'none')) {
 			throw new NotFoundError(`Cannot inspect built-in network "${networkId}" by name, use ID if available.`);
 		}
-		throw new DockerApiError(`Failed to inspect network "${networkId}": ${err.message || 'Unknown Docker error'}`, err.statusCode);
+		throw new DockerApiError(`Failed to inspect network "${networkId}": ${err.message || err.reason || 'Unknown Docker error'}`, err.statusCode);
 	}
 }
 
@@ -132,8 +115,9 @@ export async function createNetwork(options: NetworkCreateOptions): Promise<Netw
 		const err = error as { statusCode?: number; message?: string; reason?: string };
 		if (err.statusCode === 409) {
 			// Could be duplicate name if CheckDuplicate was true, or other conflicts
-			throw new Error(`Network "${options.Name}" may already exist or conflict with an existing configuration.`);
+			throw new ConflictError(`Network "${options.Name}" may already exist or conflict with an existing configuration.`);
 		}
-		throw new Error(`Failed to create network "${options.Name}" using host "${dockerHost}". ${err.message || err.reason || ''}`);
+		const errorMessage = err.message || err.reason || 'Unknown error during network creation.';
+		throw new DockerApiError(`Failed to create network "${options.Name}" using host "${dockerHost}". ${errorMessage}`, err.statusCode);
 	}
 }
