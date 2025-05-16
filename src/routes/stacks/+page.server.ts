@@ -3,8 +3,7 @@ import type { PageServerLoad } from './$types';
 import { tryCatch } from '$lib/utils/try-catch';
 
 export const load: PageServerLoad = async () => {
-	const managedResult = await tryCatch(loadComposeStacks());
-	const externalResult = await tryCatch(discoverExternalStacks());
+	const [managedResult, externalResult] = await Promise.all([tryCatch(loadComposeStacks()), tryCatch(discoverExternalStacks())]);
 
 	if (managedResult.error || externalResult.error) {
 		console.error('Failed to load stacks:', managedResult.error || externalResult.error);

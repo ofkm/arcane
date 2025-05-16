@@ -12,6 +12,9 @@ import type { Stack, StackService, StackUpdate } from '$lib/types/docker/stack.t
 TypeScript. */
 let STACKS_DIR = '';
 
+const stackCache = new Map();
+const CACHE_TTL = 30000; // 30 seconds
+
 /**
  * The function `initComposeService` initializes the stacks directory and ensures its existence in a
  * TypeScript application.
@@ -316,6 +319,13 @@ async function getStackServices(stackId: string, composeContent: string): Promis
  * `updatedAt`.
  */
 export async function loadComposeStacks(): Promise<Stack[]> {
+	const cacheKey = 'compose-stacks';
+	const cachedData = stackCache.get(cacheKey);
+
+	if (cachedData && Date.now() - cachedData.timestamp < CACHE_TTL) {
+		return cachedData.data;
+	}
+
 	const stacksDir = await ensureStacksDir();
 
 	try {
@@ -386,6 +396,11 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 			});
 		}
 
+		stackCache.set(cacheKey, {
+			data: stacks,
+			timestamp: Date.now()
+		});
+
 		return stacks;
 	} catch (err) {
 		console.error('Error loading stacks from STACKS_DIR:', err);
@@ -438,11 +453,12 @@ export async function createStack(name: string, composeContent: string, envConte
 
 	const dirStat = await fs.stat(stackDir);
 
-	return {
-		id: uniqueDirName, // ID is the directory name
-		name: uniqueDirName, // Name is also the directory name
+	// Create the stack object
+	const newStack: Stack = {
+		id: uniqueDirName,
+		name: uniqueDirName,
 		serviceCount: serviceCount,
-		runningCount: 0, // New stacks are initially stopped
+		runningCount: 0,
 		status: 'stopped',
 		createdAt: dirStat.birthtime.toISOString(),
 		updatedAt: dirStat.mtime.toISOString(),
@@ -450,6 +466,11 @@ export async function createStack(name: string, composeContent: string, envConte
 		envContent: envContent || '',
 		isExternal: false
 	};
+
+	// Invalidate the cache to ensure the new stack appears immediately
+	stackCache.delete('compose-stacks');
+
+	return newStack;
 }
 
 /**
@@ -558,6 +579,9 @@ export async function updateStack(currentStackId: string, updates: StackUpdate):
 		await Promise.all(promises);
 	}
 
+	// Invalidate the cache after any update
+	stackCache.delete('compose-stacks');
+
 	// 3. Return the final stack state
 	if (stackAfterRename && !contentUpdated) {
 		// Only a rename occurred, no subsequent content changes in this call.
@@ -607,11 +631,60 @@ export async function startStack(stackId: string): Promise<boolean> {
 			await startStackWithExternalNetworks(stackId, composeData, stackDir);
 		} else {
 			// Standard approach for stacks without external networks
+			const docker = await getDockerClient();
+			const imagePullPromises = Object.entries(composeData.services || {})
+				.filter(([_, serviceConfig]) => (serviceConfig as any).image)
+				.map(async ([serviceName, serviceConfig]) => {
+					const serviceImage = (serviceConfig as any).image;
+					console.log(`Pulling image for service ${serviceName}: ${serviceImage}`);
+					try {
+						await new Promise((resolve, reject) => {
+							interface PullError extends Error {}
+							interface PullStream extends NodeJS.ReadableStream {}
+							interface ProgressEvent {
+								status?: string;
+								progress?: string;
+							}
+							interface ProgressOutput {}
+
+							docker.pull(serviceImage, (pullError: PullError | null, stream: PullStream) => {
+								if (pullError) {
+									reject(pullError);
+									return;
+								}
+								docker.modem.followProgress(
+									stream,
+									(progressError: Error | null, output: ProgressOutput[]) => {
+										if (progressError) {
+											reject(progressError);
+										} else {
+											console.log(`Successfully pulled image: ${serviceImage}`);
+											resolve(output);
+										}
+									},
+									(event: ProgressEvent) => {
+										if (event.progress) {
+											console.log(`${serviceImage}: ${event.status} ${event.progress}`);
+										} else if (event.status) {
+											console.log(`${serviceImage}: ${event.status}`);
+										}
+									}
+								);
+							});
+						});
+					} catch (pullErr) {
+						console.warn(`Warning: Failed to pull image ${serviceImage} for service ${serviceName}:`, pullErr);
+					}
+				});
+
+			await Promise.all(imagePullPromises);
+
 			const compose = await getComposeInstance(stackId);
-			await compose.pull();
 			await compose.up();
 		}
 
+		// Invalidate the cache at the end
+		stackCache.delete('compose-stacks');
 		return true;
 	} catch (err) {
 		console.error(`Error starting stack ${stackId} from directory ${stackDir}:`, err);
@@ -1004,6 +1077,10 @@ export async function stopStack(stackId: string): Promise<boolean> {
 		}
 
 		console.log(`Stack ${stackId} processing complete. Stopped: ${stoppedCount}, Removed: ${removedCount}.`);
+
+		// Invalidate the cache after stopping
+		stackCache.delete('compose-stacks');
+
 		return true; // Indicate overall success even if some individual steps had errors (adjust if needed)
 	} catch (err: unknown) {
 		// Log the specific error
@@ -1052,6 +1129,10 @@ export async function restartStack(stackId: string): Promise<boolean> {
 		const compose = await getComposeInstance(stackId);
 		await compose.up();
 		console.log(`Stack ${stackId} started.`);
+
+		// Invalidate the cache after restarting
+		stackCache.delete('compose-stacks');
+
 		return true;
 	} catch (err: unknown) {
 		console.error(`Error restarting stack ${stackId} from directory ${stackDir}:`, err);
@@ -1162,6 +1243,9 @@ export async function removeStack(stackId: string): Promise<boolean> {
 			throw new Error(`Failed to remove stack directory`);
 		}
 
+		// Invalidate the cache after removing a stack
+		stackCache.delete('compose-stacks');
+
 		return true;
 	} catch (err: unknown) {
 		// Catch errors from stopStack or directory removal
@@ -1232,6 +1316,9 @@ export async function renameStack(currentStackId: string, newName: string): Prom
 		console.log(`Renaming stack directory from '${currentStackDir}' to '${newStackDir}'...`);
 		await fs.rename(currentStackDir, newStackDir);
 		console.log(`Stack directory for '${currentStackId}' successfully renamed to '${newUniqueDirName}'.`);
+
+		// Invalidate the cache after renaming
+		stackCache.delete('compose-stacks');
 
 		// The stack was stopped. When it's started next using `startStack(newUniqueDirName)`,
 		// dockerode-compose will use `newUniqueDirName` as the project name,
@@ -1455,6 +1542,9 @@ ${yaml.dump({ services }, { indent: 2 }).substring('services:'.length).trimStart
 		// Note: If compose file is generated, we don't have a path to look for an associated .env file.
 		// envContent will remain undefined in this case.
 	}
+
+	// Invalidate the cache after importing
+	stackCache.delete('compose-stacks');
 
 	// 5. Create a new stack in Arcane's managed stacks
 	return await createStack(stackId, normalizeHealthcheckTest(composeContent), envContent); // Pass envContent here
