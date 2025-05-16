@@ -145,7 +145,7 @@
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Networks</h1>
-			<p class="text-sm text-muted-foreground mt-1">Manage Docker container networking</p>
+			<p class="text-sm text-muted-foreground mt-1">View and Manage Container Networking</p>
 		</div>
 		<div class="flex items-center gap-2">
 			<Button variant="secondary" data-testid="create-network-button" onclick={() => (networkPageStates.isCreateDialogOpen = true)} disabled={isLoading.create}>
@@ -206,7 +206,6 @@
 			<div class="flex items-center justify-between">
 				<div>
 					<Card.Title>Network List</Card.Title>
-					<Card.Description>Manage container communication</Card.Description>
 				</div>
 				<div class="flex items-center gap-2">
 					{#if networkPageStates.selectedNetworks.length > 0}

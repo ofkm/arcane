@@ -3,176 +3,86 @@ sidebar_position: 2
 title: Configuration
 ---
 
-# Configuring Arcane
+# Arcane Configuration
 
-Arcane is pretty smart and usually, the best way to change its settings is right in its web pages. It keeps all your settings safe and sound by encrypting them.
+Arcane stores all settings securely and lets you manage them easily from the web UI.
 
-## Where Arcane Keeps Its Secrets (Settings)
+## Where Settings Are Stored
 
-Arcane saves its settings in a special locked box (an encrypted file called `settings.dat`). This box is usually found at `/app/data/settings` inside the Arcane container. Because it's locked up tight, you can't (and shouldn't try to) open or edit this file directly.
+- All settings are stored in `/app/data/settings/settings.dat` inside the container All the `sensitive` settings are encrypted.
+- While it is possible to edit certain settings from the file directly, IT is recomended to use the Settings UI to configure all settings.
 
-## Best Way to Change Settings: Use the Web UI
+## How to Change Settings
 
-Seriously, the easiest and safest way is:
+1. Open Arcane in your browser
+2. Go to **Settings**
+3. Change what you need
+4. Click **Save**
 
-1.  Open Arcane in your web browser.
-2.  Go to the "Settings" page.
-3.  Make your changes.
-4.  Hit "Save."
+## Example settings.dat
 
-Done! Arcane makes sure everything is correct and keeps it secure.
-
-## What You Can Configure (The Nitty-Gritty)
-
-Here are some of the things you can tell Arcane to do:
-
-- **`dockerHost`**: Where your Docker "engine" lives.
-  - Usually: `"unix:///var/run/docker.sock"` (like a special phone line to Docker on the same computer)
-  - If Docker is on another computer: `"tcp://192.168.1.100:2375"` (but be careful with this!)
-- **`autoUpdate`**: Should Arcane automatically update your running apps when a new version comes out?
-  - Default: `false` (No)
-- **`autoUpdateInterval`**: If auto-update is on, how often should it check (in minutes)?
-  - Default: `60` (once an hour)
-- **`pollingEnabled`**: Should Arcane keep asking Docker "Hey, what's up with the apps?"
-  - Default: `true` (Yes)
-- **`pollingInterval`**: How often to ask (in minutes)?
-  - Default: `10`
-- **`pruneMode`**: When cleaning up old Docker images, how much should it throw away?
-  - `"all"`: Get rid of all unused images.
-  - `"dangling"`: Only get rid of images that aren't tagged (like lost socks).
-  - Default: `"all"`
-- **`stacksDirectory`**: Where Arcane keeps the instruction manuals (Docker Compose files) for your app collections.
-  - Default: `"/app/data/stacks"`
-- **`auth`**: Settings for logging into Arcane.
-  - `localAuthEnabled`: Can you log in with a username/password created in Arcane? Default: `true` (Yes)
-  - `sessionTimeout`: How long before Arcane logs you out if you're not doing anything? Default: `60` minutes.
-  - `passwordPolicy`: How strong do passwords need to be? Default: `"medium"`
-- **`registryCredentials`**: (Heads up: This bit isn't fully working in version 0.4.0) For telling Arcane how to log into private places to get app images.
-
-## Setting Up Arcane with Docker (The Easy Way)
-
-If you're running Arcane in a Docker container (which is super common), here's how you tell it what to do:
-
-### 1. Give Arcane a Place to Store Its Stuff (Mounting a Volume)
-
-This is the **most important part** for keeping your Arcane settings and app data safe. You tell Docker to give Arcane a folder on your computer to use.
-
-```yaml
-# In your docker-compose.yml file
-services:
-  arcane:
-    # ... other settings like image name ...
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # Lets Arcane talk to Docker
-      - arcane-data:/app/data # IMPORTANT: Arcane stores everything here!
-        # './arcane-data' on your computer becomes '/app/data' inside Arcane.
-    # ... other settings ...
+```json
+{
+	"dockerHost": "unix:///var/run/docker.sock",
+	"stacksDirectory": "data/stacks",
+	"autoUpdate": true,
+	"autoUpdateInterval": 60,
+	"pollingEnabled": true,
+	"pollingInterval": 10,
+	"pruneMode": "dangling",
+	"maturityThresholdDays": 5,
+	"onboarding": {
+		"completed": true,
+		"completedAt": "2025-05-11T00:25:24.435Z",
+		"steps": {
+			"welcome": true,
+			"password": true,
+			"settings": true
+		}
+	},
+	"externalServices": {},
+	"baseServerUrl": "localhost",
+	"_encrypted": "ENCRYPTED_DATA_STRING"
+}
 ```
 
-When you do this, any settings you change in the Arcane web UI will be saved in that `arcane-data` folder and will still be there even if you restart Arcane.
+## Docker Setup (Quick)
 
-#### Accessing Other Host Directories (e.g., for Importing Stacks)
-
-Arcane, running inside its container, can't see your computer's files directly unless you tell Docker to share specific folders. If you want to use features like "Import Stacks" to bring in `docker-compose.yml` files from a directory on your computer (that's not already part of the main `arcane-data` volume), you need to:
-
-1.  **Mount the Host Directory as a Volume:**
-    Add another line to the `volumes` section in your Arcane `docker-compose.yml`. This maps the directory on your computer (where your stacks are) to a path _inside_ the Arcane container.
-
-    For example, if your existing stacks are in `/home/user/my-docker-projects` on your host server, you need to map this to the same folder inside the Arcane container like this:
-
-    ```yaml
-    # In your docker-compose.yml file
-    services:
-      arcane:
-        # ... other settings ...
-        volumes:
-          - /var/run/docker.sock:/var/run/docker.sock
-          - arcane-data:/app/data
-          - /home/user/my-docker-projects:/home/user/my-docker-projects:ro # Host path : Container path
-        # ... other settings ...
-    ```
-
-    - **Tip:** Using `:ro` (read-only) for the volume is a good idea if Arcane only needs to read these files (like for importing) and not change them. This helps prevent accidental modifications to your original files.
-
-2.  **Use the Container Path in Arcane:**
-    When Arcane's "Import Stacks" feature asks for a directory path to scan, you must provide the path _as seen from inside the container_ (e.g., `/home/user/my-docker-projects` from the example above). Arcane will then look for your `docker-compose.yml` files there.
-
-    Once imported, Arcane typically copies or manages these stack configurations within its own data directory (e.g., in a subfolder of `/app/data/stacks`), so the original files in your mounted import directory are usually just read during the import process.
-
-### 2. Special Instructions for Arcane (Environment Variables)
-
-Think of these like sticky notes you give to Arcane when it starts up. Some are really important for it to work correctly in Docker.
-
-#### Who Owns the Files? (`PUID` and `PGID`)
-
-- **`PUID`**: This is like telling Arcane, "The person who owns the files inside your container should have User ID number X."
-- **`PGID`**: And "Their group ID number should be Y."
-
-Why care? If Arcane saves files in that `arcane-data` folder (from the `volumes` part above), you want to make sure _you_ can still access those files on your computer. Setting `PUID` and `PGID` to _your_ user's ID numbers on your computer helps avoid "permission denied" headaches.
-
-- **How to find your IDs (on Linux/Mac):**
-  - Your User ID (PUID): Open a terminal and type `id -u`
-  - Your Group ID (PGID): Open a terminal and type `id -g`
-- **Defaults if you don't set them:** `PUID=1000`, `PGID=1000` (common for the first user on many Linux systems).
-
-#### Letting Arcane Talk to Docker (`DOCKER_GID`)
-
-- **`DOCKER_GID`**: Arcane needs permission to chat with your main Docker engine. This is usually handled by making sure Arcane is part of a special "docker" group.
-- **Good news!** Arcane is pretty smart. When you connect it to `/var/run/docker.sock` (like in the `volumes` example), Arcane's entrypoint script usually figures out the right Group ID for this "docker" group automatically.
-- **So, you often don't need to set `DOCKER_GID` yourself.**
-- If, for some strange reason, it doesn't work, you _can_ set it. Find the ID by typing `getent group docker | cut -d: -f3` or `stat -c '%g' /var/run/docker.sock` in your terminal.
-
-#### Telling Arcane It's in "Production Mode" (`APP_ENV`)
-
-- **`APP_ENV=production`**: **Super important for Docker!** This tells Arcane, "You're running for real now, save all your important stuff in the `/app/data` folder." If you forget this, Arcane might try to save things in temporary spots, and you'll lose your settings when it restarts.
-
-#### Keeping Your Login Safe (`PUBLIC_SESSION_SECRET`)
-
-- **`PUBLIC_SESSION_SECRET`**: **You MUST set this!** This is like a secret password Arcane uses to make sure nobody messes with your login session.
-- **Make it strong and random!** Don't just type "password".
-- **How to make one:** Open a terminal and run `openssl rand -base64 32`. Copy the crazy string it gives you.
-- **Keep this secret safe!**
-
-#### For Local Testing Only (`PUBLIC_ALLOW_INSECURE_COOKIES`)
-
-- **`PUBLIC_ALLOW_INSECURE_COOKIES=true`**: **Warning! Only use this if you're testing Arcane on your own computer and can't use HTTPS (the secure web lock icon).**
-- Normally, Arcane insists on using secure cookies. If you're just running `http://localhost:3000`, you might need to set this to `true` to log in.
-- **Never use `true` if other people can access your Arcane.** It's like leaving your front door unlocked.
-
-#### Example Sticky Notes for Arcane (`docker-compose.yml`):
+Mount a volume to keep your settings and data:
 
 ```yaml
-# In your docker-compose.yml file
-services:
-  arcane:
-    # ... image, ports, volumes ...
-    environment:
-      # Tell Arcane it's running for real
-      - APP_ENV=production # Required for Docker!
-
-      # Who owns the files? (Change these to your computer's user/group IDs)
-      - PUID=1000
-      - PGID=1000
-
-      # Letting Arcane talk to Docker (Usually figured out automatically)
-      # - DOCKER_GID=998 # Only set if auto-detection fails. Replace 998 with your Docker group's GID.
-
-      # Your secret login handshake
-      - PUBLIC_SESSION_SECRET=put_your_super_long_random_secret_here # Replace this!
-
-
-      # For local HTTP testing ONLY (dangerous otherwise!)
-      # - PUBLIC_ALLOW_INSECURE_COOKIES=true
-    # ... other settings ...
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+  - arcane-data:/app/data
 ```
 
-## Quick Reminders
+To import stacks, Arcane needs access to your Compose files. Add a bind mount so the path to your Compose files is the same inside and outside the container. (This mount is in addition to the normal `arcane-data` mount)
 
-- **Don't touch `settings.dat`!** Use the web UI.
-- **First time you run Arcane?** It'll set itself up with some defaults.
-- **Backups are your friend!** If you back up Arcane, make sure you grab that whole `arcane-data` folder.
-- **HTTPS is good!** If Arcane is on a network, put it behind a web server that does HTTPS to keep things extra safe.
+```yaml
+- /host/path/to/stacks:/host/path/to/stacks:ro
+```
 
-## Getting Started
+## Environment Variables
 
-When you first open Arcane, it will walk you through setting up the main things. You can always change them later on the Settings page.
+| Variable                        | Purpose                            | Default/Example                                 | Notes                        |
+| ------------------------------- | ---------------------------------- | ----------------------------------------------- | ---------------------------- |
+| `PUID`                          | File owner user ID                 | `1000`                                          | Use your user ID             |
+| `PGID`                          | File owner group ID                | `1000`                                          | Use your group ID            |
+| `DOCKER_GID`                    | Docker group ID                    | (auto)                                          | Only if needed               |
+| `APP_ENV`                       | App environment                    | `production`                                    | Required for Docker          |
+| `PUBLIC_SESSION_SECRET`         | Session secret                     | (set this!)                                     | Use a strong value           |
+| `PUBLIC_ALLOW_INSECURE_COOKIES` | Allow insecure cookies             | (unset)                                         | For local HTTP only          |
+| `PUBLIC_OIDC_ENABLED`           | Enable OIDC login                  | `true`                                          | Sets OIDC Auth to be enabled |
+| `OIDC_CLIENT_ID`                | Client ID from your OIDC provider  | `your_arcane_client_id_from_provider`           | NA                           |
+| `OIDC_CLIENT_SECRET`            | Client Secret from provider        | `your_super_secret_client_secret_from_provider` | NA                           |
+| `OIDC_REDIRECT_URI`             | Redirect URI (must match provider) | `http://localhost:3000/auth/oidc/callback`      | NA                           |
+| `OIDC_AUTHORIZATION_ENDPOINT`   | Auth endpoint URL                  | `https://your-provider.com/oauth2/authorize`    | NA                           |
+| `OIDC_TOKEN_ENDPOINT`           | Token endpoint URL                 | `https://your-provider.com/oauth2/token`        | NA                           |
+| `OIDC_USERINFO_ENDPOINT`        | Userinfo endpoint URL              | `https://your-provider.com/oauth2/userinfo`     | NA                           |
+| `OIDC_SCOPES`                   | Scopes to request                  | `openid email profile` (default)                | NA                           |
+
+---
+
+- Don't touch `settings.dat` directly — all changes should be made in the Arcane UI for safety.
+- Back up your `arcane-data` folder regularly to avoid losing settings and stacks.
+- Use HTTPS in production to protect your credentials and sessions.

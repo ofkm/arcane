@@ -182,7 +182,6 @@
 			<div class="flex items-center justify-between">
 				<div>
 					<Card.Title>Volume List</Card.Title>
-					<Card.Description>Manage persistent data storage</Card.Description>
 				</div>
 				<div class="flex items-center gap-2">
 					<DropdownMenu.Root>

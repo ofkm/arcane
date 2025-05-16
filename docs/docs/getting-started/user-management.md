@@ -1,20 +1,77 @@
 ---
-sidebar_position: 4
-title: User Management
+sidebar_position: 2
+title: User Management & SSO
 ---
 
-# User Management
+# User Management & Single Sign-On (OIDC)
 
-Arcane comes with built-in user management to help you control who can access your app.
+Arcane supports both local user management and Single Sign-On (OIDC) for flexible, secure access control.
 
-## Default Admin User
+## Local User Management
 
-- On your first run, Arcane will automatically create a default admin user if no users exist.
-- **Username:** `arcane`
-- **Password:** `arcane-admin`
-- The onboarding flow will force you to change this password on first run as well.
+- On first run, Arcane creates a default admin user if no users exist.
+  - **Username:** `arcane`
+  - **Password:** `arcane-admin`
+  - You must change this password during onboarding.
+- To add users: Go to **Settings → User Management** and click **Create User**. Fill in username, display name, email, and password.
 
-## Adding Users
+## Single Sign-On (OIDC)
 
-- Go to the Settings in the sidebar then USer Management, and click Create User.
-- Fill in the required details: username, display name, email, and password.
+:::info
+Introduced in version 0.9.0
+:::
+
+### Recommended: Configure OIDC in the UI
+
+:::important
+Arcane requires the use of PKCE for OIDC Authentication
+:::
+
+- Go to **Settings → Authentication** in Arcane.
+- Enter your OIDC provider details (Issuer URL, Client ID, Client Secret, Redirect URI, etc).
+- Save and test the connection.
+- The UI will guide you through any missing or invalid fields.
+
+OIDC users are auto-provisioned on first login. You can disable local login for stricter security.
+
+### Alternative: Environment Variables
+
+You can also configure OIDC using environment variables:
+
+| Variable                      | Description                        | Example/Default                                 |
+| ----------------------------- | ---------------------------------- | ----------------------------------------------- |
+| `PUBLIC_OIDC_ENABLED`         | Enable OIDC login                  | `true`                                          |
+| `OIDC_CLIENT_ID`              | Client ID from your OIDC provider  | `your_arcane_client_id_from_provider`           |
+| `OIDC_CLIENT_SECRET`          | Client Secret from provider        | `your_super_secret_client_secret_from_provider` |
+| `OIDC_REDIRECT_URI`           | Redirect URI (must match provider) | `http://localhost:3000/auth/oidc/callback`      |
+| `OIDC_AUTHORIZATION_ENDPOINT` | Auth endpoint URL                  | `https://your-provider.com/oauth2/authorize`    |
+| `OIDC_TOKEN_ENDPOINT`         | Token endpoint URL                 | `https://your-provider.com/oauth2/token`        |
+| `OIDC_USERINFO_ENDPOINT`      | Userinfo endpoint URL              | `https://your-provider.com/oauth2/userinfo`     |
+| `OIDC_SCOPES`                 | Scopes to request                  | `openid email profile` (default)                |
+
+#### Example docker-compose
+
+```yaml
+services:
+  arcane:
+    # ... image, ports, volumes ...
+    environment:
+      - APP_ENV=production
+      - PUID=1000
+      - PGID=1000
+      - PUBLIC_SESSION_SECRET=your_super_long_random_secret_here
+      - PUBLIC_OIDC_ENABLED=true
+      - OIDC_CLIENT_ID=your_arcane_client_id_from_provider
+      - OIDC_CLIENT_SECRET=your_super_secret_client_secret_from_provider
+      - OIDC_REDIRECT_URI=http://your-arcane-address/auth/oidc/callback
+      - OIDC_AUTHORIZATION_ENDPOINT=https://your-provider.com/oauth2/authorize
+      - OIDC_TOKEN_ENDPOINT=https://your-provider.com/oauth2/token
+      - OIDC_USERINFO_ENDPOINT=https://your-provider.com/oauth2/userinfo
+      - OIDC_SCOPES=openid email profile
+```
+
+**Note:** Env vars always override UI settings. The Redirect URI in Arcane and your OIDC provider must match exactly.
+
+---
+
+For troubleshooting, check both your OIDC provider and Arcane logs for errors.

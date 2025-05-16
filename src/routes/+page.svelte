@@ -180,7 +180,7 @@
 	<div class="flex justify-between items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
-			<p class="text-sm text-muted-foreground mt-1">Overview of your Docker environment</p>
+			<p class="text-sm text-muted-foreground mt-1">Overview of your Container Environment</p>
 		</div>
 		<Button variant="outline" size="sm" class="h-9" onclick={refreshData} disabled={isLoading.refreshing || isLoading.starting || isLoading.stopping || isLoading.pruning}>
 			{#if isLoading.refreshing}

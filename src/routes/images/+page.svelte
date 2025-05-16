@@ -397,8 +397,8 @@
 <div class="space-y-6">
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
 		<div>
-			<h1 class="text-3xl font-bold tracking-tight">Docker Images</h1>
-			<p class="text-sm text-muted-foreground mt-1">Manage your Docker images</p>
+			<h1 class="text-3xl font-bold tracking-tight">Container Images</h1>
+			<p class="text-sm text-muted-foreground mt-1">View and Manage your Container Images</p>
 		</div>
 	</div>
 
@@ -441,7 +441,6 @@
 				<div class="flex items-center justify-between">
 					<div>
 						<Card.Title>Image List</Card.Title>
-						<Card.Description>View and manage your Docker images</Card.Description>
 					</div>
 
 					<div class="flex items-center gap-2">
