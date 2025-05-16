@@ -8,6 +8,17 @@ import { getDockerClient } from '$lib/services/docker/core';
 import { getSettings, ensureStacksDirectory } from '$lib/services/settings-service';
 import type { Stack, StackService, StackUpdate } from '$lib/types/docker/stack.type';
 
+// Define a more accurate type for the progress event
+interface DockerProgressEvent {
+	status: string;
+	progressDetail?: {
+		current: number;
+		total: number;
+	};
+	progress?: string;
+	id?: string;
+}
+
 /* The above code is declaring a variable `STACKS_DIR` with an empty string as its initial value in
 TypeScript. */
 let STACKS_DIR = '';
@@ -638,23 +649,24 @@ export async function startStack(stackId: string): Promise<boolean> {
 					const serviceImage = (serviceConfig as any).image;
 					console.log(`Pulling image for service ${serviceName}: ${serviceImage}`);
 					try {
-						await new Promise((resolve, reject) => {
-							interface PullError extends Error {}
-							interface PullStream extends NodeJS.ReadableStream {}
-							interface ProgressEvent {
-								status?: string;
-								progress?: string;
-							}
-							interface ProgressOutput {}
+						await new Promise<any[]>((resolve, reject) => {
+							// Using Error | null for pullError as per common callback pattern
+							// stream is NodeJS.ReadableStream
+							// event in onProgress is DockerProgressEvent
+							// output in onFinished is any[]
 
-							docker.pull(serviceImage, (pullError: PullError | null, stream: PullStream) => {
+							docker.pull(serviceImage, {}, (pullError: Error | null, stream: NodeJS.ReadableStream | undefined) => {
 								if (pullError) {
 									reject(pullError);
 									return;
 								}
+								if (!stream) {
+									reject(new Error('Docker pull did not return a stream.'));
+									return;
+								}
 								docker.modem.followProgress(
 									stream,
-									(progressError: Error | null, output: ProgressOutput[]) => {
+									(progressError: Error | null, output: any[]) => {
 										if (progressError) {
 											reject(progressError);
 										} else {
@@ -662,7 +674,7 @@ export async function startStack(stackId: string): Promise<boolean> {
 											resolve(output);
 										}
 									},
-									(event: ProgressEvent) => {
+									(event: DockerProgressEvent) => {
 										if (event.progress) {
 											console.log(`${serviceImage}: ${event.status} ${event.progress}`);
 										} else if (event.status) {
@@ -710,11 +722,14 @@ async function startStackWithExternalNetworks(stackId: string, composeData: any,
 		if (serviceImage) {
 			console.log(`Pulling image for service ${serviceName}: ${serviceImage}`);
 			try {
-				// Create a proper Promise that resolves when the pull is complete
-				await new Promise((resolve, reject) => {
-					docker.pull(serviceImage, (pullError: Error, stream: NodeJS.ReadableStream) => {
+				await new Promise<any[]>((resolve, reject) => {
+					docker.pull(serviceImage, {}, (pullError: Error | null, stream?: NodeJS.ReadableStream) => {
 						if (pullError) {
 							reject(pullError);
+							return;
+						}
+						if (!stream) {
+							reject(new Error(`Docker pull for ${serviceImage} did not return a stream.`));
 							return;
 						}
 
@@ -731,7 +746,7 @@ async function startStackWithExternalNetworks(stackId: string, composeData: any,
 								}
 							},
 							// onProgress callback (optional)
-							(event: any) => {
+							(event: DockerProgressEvent) => {
 								if (event.progress) {
 									console.log(`${serviceImage}: ${event.status} ${event.progress}`);
 								} else if (event.status) {

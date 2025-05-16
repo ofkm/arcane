@@ -73,6 +73,7 @@
     "svelte-codemirror-editor": "^1.4.1",
     "svelte-kit-cookie-session": "^4.1.1",
     "thememirror": "^2.0.1",
-    "vaul-svelte": "^1.0.0-next.7"
+    "vaul-svelte": "^1.0.0-next.7",
+    "yaml-env-defaults": "^2.0.5"
   }
 }
