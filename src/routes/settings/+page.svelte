@@ -62,7 +62,7 @@
 			<p class="text-sm text-muted-foreground mt-1">Configure Arcane's settings and permissions</p>
 		</div>
 
-		<Button onclick={saveSettings} disabled={isLoading.saving} class="h-10">
+		<Button onclick={saveSettings} disabled={isLoading.saving} class="h-10 arcane-button-save">
 			{#if isLoading.saving}
 				<RefreshCw class="animate-spin size-4" />
 				Saving...

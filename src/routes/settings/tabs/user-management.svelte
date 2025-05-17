@@ -106,8 +106,8 @@
 					<Card.Description>Manage local user accounts</Card.Description>
 				</div>
 			</div>
-			<Button size="sm" onclick={openCreateUserDialog}>
-				<UserPlus class="mr-2 size-4" />
+			<Button class="arcane-button-save" onclick={openCreateUserDialog}>
+				<UserPlus class="size-4" />
 				Create User
 			</Button>
 		</Card.Header>

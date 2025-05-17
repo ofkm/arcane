@@ -1,6 +1,6 @@
 import { listContainers, getContainer, recreateContainer } from './container-service';
 import { listStacks, getStack, fullyRedeployStack } from './stack-service';
-import { pullImage, getImage, listImages } from './image-service';
+import { pullImage, getImage } from './image-service';
 import { getSettings } from '../settings-service';
 import yaml from 'js-yaml';
 import type { Stack } from '$lib/types/docker/stack.type';

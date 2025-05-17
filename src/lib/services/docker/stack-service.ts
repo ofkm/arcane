@@ -1754,7 +1754,8 @@ function normalizeHealthcheckTest(composeContent: string, envGetter?: (key: stri
  */
 function parseYamlContent(content: string, envGetter?: (key: string) => string | undefined): Record<string, any> | null {
 	try {
-		let parsedYaml = yamlLoad(content); // Using js-yaml's load
+		// Use js-yaml directly without any potential CommonJS dependencies
+		const parsedYaml = yamlLoad(content);
 
 		if (!parsedYaml || typeof parsedYaml !== 'object') {
 			console.warn('Parsed YAML content is not an object or is null.');
@@ -1762,7 +1763,7 @@ function parseYamlContent(content: string, envGetter?: (key: string) => string |
 		}
 
 		if (envGetter) {
-			parsedYaml = substituteVariablesInObject(parsedYaml, envGetter);
+			return substituteVariablesInObject(parsedYaml, envGetter);
 		}
 		return parsedYaml as Record<string, any>;
 	} catch (error) {

@@ -308,7 +308,7 @@
 						<div class="grid grid-cols-3 gap-2">
 							<Button
 								variant={($settingsStore.auth?.passwordPolicy || 'strong') === 'basic' ? 'default' : 'outline'}
-								class="w-full"
+								class={($settingsStore.auth?.passwordPolicy || 'strong') === 'basic' ? 'w-full arcane-button-create' : 'w-full arcane-button-restart'}
 								onclick={() => {
 									settingsStore.update((current) => ({
 										...current,
@@ -321,7 +321,7 @@
 							>
 							<Button
 								variant={($settingsStore.auth?.passwordPolicy || 'strong') === 'standard' ? 'default' : 'outline'}
-								class="w-full"
+								class={($settingsStore.auth?.passwordPolicy || 'strong') === 'standard' ? 'w-full arcane-button-create' : 'w-full arcane-button-restart'}
 								onclick={() => {
 									settingsStore.update((current) => ({
 										...current,
@@ -334,7 +334,7 @@
 							>
 							<Button
 								variant={($settingsStore.auth?.passwordPolicy || 'strong') === 'strong' ? 'default' : 'outline'}
-								class="w-full"
+								class={($settingsStore.auth?.passwordPolicy || 'strong') === 'strong' ? 'w-full arcane-button-create' : 'w-full arcane-button-restart'}
 								onclick={() => {
 									settingsStore.update((current) => ({
 										...current,

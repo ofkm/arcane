@@ -145,8 +145,8 @@
 								<p class="text-sm text-muted-foreground">Configure access to private Docker registries</p>
 							</div>
 						</div>
-						<Button size="sm" variant="outline" onclick={openCreateRegistryDialog}>
-							<Plus class="mr-2 size-4" /> Add Registry
+						<Button onclick={openCreateRegistryDialog} class="arcane-button-save">
+							<Plus class="size-4" /> Add Registry
 						</Button>
 					</div>
 
