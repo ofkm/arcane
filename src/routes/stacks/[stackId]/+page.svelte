@@ -287,7 +287,7 @@
 
 							<!-- Save button positioned right -->
 							<div class="self-start">
-								<ArcaneButton action="save" onClick={handleSaveChanges} loading={isLoading.saving} />
+								<ArcaneButton action="save" disabled={!hasChanges} onClick={handleSaveChanges} loading={isLoading.saving} />
 							</div>
 						</div>
 
