@@ -16,6 +16,7 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import NetworkAPIService from '$lib/services/api/network-api-service';
 	import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -212,20 +213,9 @@
 				</div>
 				<div class="flex items-center gap-2">
 					{#if networkPageStates.selectedNetworks.length > 0}
-						<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.remove}>
-							{#if isLoading.remove}
-								<Loader2 class="mr-2 animate-spin size-4" />
-								Processing...
-							{:else}
-								<Trash2 class="size-4" />
-								Delete Selected ({networkPageStates.selectedNetworks.length})
-							{/if}
-						</Button>
+						<ArcaneButton action="remove" customLabel="Delete Selected ({networkPageStates.selectedNetworks.length})" onClick={() => handleDeleteSelected()} loading={isLoading.remove} loadingLabel="Processing..." disabled={isLoading.remove} />
 					{/if}
-					<Button variant="secondary" data-testid="create-network-button" onclick={() => (networkPageStates.isCreateDialogOpen = true)} disabled={isLoading.create}>
-						<Plus class="size-4" />
-						Create Network
-					</Button>
+					<ArcaneButton action="create" customLabel="Create Network" onClick={() => (networkPageStates.isCreateDialogOpen = true)} disabled={isLoading.create} />
 				</div>
 			</div>
 		</Card.Header>
@@ -295,10 +285,7 @@
 					<p class="text-lg font-medium">No networks found</p>
 					<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new network using the "Create Network" button above or use the Docker CLI</p>
 					<div class="flex gap-3 mt-4">
-						<Button variant="outline" size="sm" onclick={() => (networkPageStates.isCreateDialogOpen = true)}>
-							<Plus class="size-4" />
-							Create Network
-						</Button>
+						<ArcaneButton action="create" customLabel="Create Network" onClick={() => (networkPageStates.isCreateDialogOpen = true)} size="sm" />
 					</div>
 				</div>
 			{/if}

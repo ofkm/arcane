@@ -16,6 +16,7 @@
 	import VolumeAPIService from '$lib/services/api/volume-api-service';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import type { VolumeCreateOptions, VolumeInspectInfo } from 'dockerode';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -216,20 +217,9 @@
 						</DropdownMenu.Content>
 					</DropdownMenu.Root>
 					{#if volumePageStates.selectedIds.length > 0}
-						<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.remove}>
-							{#if isLoading.remove}
-								<Loader2 class="mr-2 animate-spin size-4" />
-								Processing...
-							{:else}
-								<Trash2 class="size-4" />
-								Delete Selected ({volumePageStates.selectedIds.length})
-							{/if}
-						</Button>
+						<ArcaneButton action="remove" customLabel="Delete Selected ({volumePageStates.selectedIds.length})" onClick={handleDeleteSelected} loading={isLoading.remove} loadingLabel="Processing..." disabled={isLoading.remove} />
 					{/if}
-					<Button variant="secondary" onclick={() => (isDialogOpen.create = true)}>
-						<Plus class="size-4" />
-						Create Volume
-					</Button>
+					<ArcaneButton action="create" customLabel="Create Volume" onClick={() => (isDialogOpen.create = true)} />
 				</div>
 			</div>
 		</Card.Header>
@@ -302,6 +292,9 @@
 					<Database class="text-muted-foreground mb-4 opacity-40 size-12" />
 					<p class="text-lg font-medium">No volumes found</p>
 					<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new volume using the "Create Volume" button above or use the Docker CLI</p>
+					<div class="flex gap-3 mt-4">
+						<ArcaneButton action="create" customLabel="Create Volume" onClick={() => (isDialogOpen.create = true)} size="sm" />
+					</div>
 				</div>
 			{/if}
 		</Card.Content>

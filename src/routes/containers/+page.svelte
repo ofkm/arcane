@@ -18,6 +18,7 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { shortId } from '$lib/utils/string.utils';
 	import type { PageData } from './$types';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	const containerApi = new ContainerAPIService();
 
@@ -184,10 +185,7 @@
 					<RefreshCw class="size-4" />
 					Refresh
 				</Button>
-				<Button variant="secondary" onclick={openCreateDialog}>
-					<Plus class="size-4" />
-					Create Container
-				</Button>
+				<ArcaneButton action="create" label="Create Container" onClick={openCreateDialog} />
 			</div>
 		</div>
 	{:else}
@@ -198,10 +196,7 @@
 						<Card.Title>Container List</Card.Title>
 					</div>
 					<div class="flex items-center gap-2">
-						<Button variant="secondary" onclick={openCreateDialog}>
-							<Plus class="size-4" />
-							Create Container
-						</Button>
+						<ArcaneButton action="create" label="Create Container" onClick={openCreateDialog} />
 					</div>
 				</div>
 			</Card.Header>

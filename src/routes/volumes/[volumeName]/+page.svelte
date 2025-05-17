@@ -13,6 +13,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import VolumeAPIService from '$lib/services/api/volume-api-service';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let { volume, inUse } = $derived(data);
@@ -92,15 +93,9 @@
 				</div>
 			</div>
 
-			<!-- Action Buttons -->
+			<!-- Action Buttons - Replace with ArcaneButton -->
 			<div class="flex gap-2 self-start">
-				<Button variant="destructive" size="sm" onclick={() => handleRemoveVolumeConfirm(volume?.Name)} disabled={isLoading.remove}>
-					{#if isLoading.remove}
-						<Loader2 class="animate-spin size-4" />
-					{:else}
-						<Trash2 class="size-4" />
-					{/if} Remove Volume
-				</Button>
+				<ArcaneButton action="remove" customLabel="Remove Volume" onClick={() => handleRemoveVolumeConfirm(volume?.Name)} loading={isLoading.remove} disabled={isLoading.remove} />
 			</div>
 		</div>
 	</div>
@@ -280,9 +275,8 @@
 			</div>
 			<h2 class="text-xl font-medium mb-2">Volume Not Found</h2>
 			<p class="text-muted-foreground mb-6">The requested volume could not be found or is no longer available.</p>
-			<Button href="/volumes" variant="outline" size="sm">
-				<ArrowLeft class="mr-2 size-4" /> Back to Volumes
-			</Button>
+
+			<ArcaneButton action="cancel" customLabel="Back to Volumes" onClick={() => goto('/volumes')} size="sm" />
 		</div>
 	{/if}
 </div>

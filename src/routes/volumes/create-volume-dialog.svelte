@@ -9,6 +9,7 @@
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import type { VolumeCreateOptions } from 'dockerode';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -125,14 +126,9 @@
 		</form>
 
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (open = false)} disabled={isCreating}>Cancel</Button>
-			<Button type="submit" onclick={handleSubmit} disabled={isCreating || !volumeCreateStates.volumeName.trim()}>
-				{#if isCreating}
-					<Loader2 class="mr-2 animate-spin size-4" /> Creating...
-				{:else}
-					Create Volume
-				{/if}
-			</Button>
+			<ArcaneButton action="cancel" onClick={() => (open = false)} disabled={isCreating} />
+
+			<ArcaneButton action="create" customLabel="Create Volume" onClick={handleSubmit} loading={isCreating} loadingLabel="Creating..." disabled={isCreating || !volumeCreateStates.volumeName.trim()} />
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

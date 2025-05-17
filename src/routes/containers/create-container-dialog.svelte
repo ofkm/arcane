@@ -15,6 +15,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import type { ServiceImage } from '$lib/types/docker';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -652,14 +653,8 @@
 		</Tabs.Root>
 
 		<Dialog.Footer class="pt-4">
-			<Button variant="outline" onclick={handleClose} disabled={isCreating} class="mr-2">Cancel</Button>
-			<Button type="button" onclick={handleSubmit} disabled={isCreating || !containerName.trim() || !selectedImage}>
-				{#if isCreating}
-					<Loader2 class="mr-2 animate-spin size-4" /> Creating...
-				{:else}
-					Create Container
-				{/if}
-			</Button>
+			<ArcaneButton action="cancel" onClick={handleClose} disabled={isCreating} class="mr-2" />
+			<ArcaneButton action="create" loading={isCreating} onClick={handleSubmit} disabled={isCreating || !containerName.trim() || !selectedImage} />
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

@@ -14,6 +14,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ImageAPIService from '$lib/services/api/image-api-service';
 	import { toast } from 'svelte-sonner';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	let { data }: { data: PageData } = $props();
 	let { image } = $derived(data);
@@ -75,13 +76,7 @@
 		</div>
 
 		<div class="flex gap-2 flex-wrap">
-			<Button variant="destructive" size="sm" onclick={() => handleImageRemove(image.Id)} disabled={isLoading.removing}>
-				{#if isLoading.removing}
-					<Loader2 class="mr-2 animate-spin size-4" />
-				{:else}
-					<Trash2 class="mr-2 size-4" />
-				{/if} Remove
-			</Button>
+			<ArcaneButton action="remove" onClick={() => handleImageRemove(image.Id)} loading={isLoading.removing} disabled={isLoading.removing} size="sm" />
 		</div>
 	</div>
 
@@ -190,9 +185,7 @@
 	{:else}
 		<div class="text-center py-12">
 			<p class="text-lg font-medium text-muted-foreground">Image not found.</p>
-			<Button href="/images" variant="outline" size="sm" class="mt-4">
-				<ArrowLeft class="mr-2 size-4" /> Back to Images
-			</Button>
+			<ArcaneButton action="cancel" customLabel="Back to Images" onClick={() => goto('/images')} size="sm" class="mt-4" />
 		</div>
 	{/if}
 </div>

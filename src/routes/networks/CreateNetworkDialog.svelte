@@ -8,6 +8,7 @@
 	import { Loader2, Plus, X } from '@lucide/svelte';
 	import type { NetworkCreateOptions } from 'dockerode';
 	import { preventDefault } from '$lib/utils/form.utils';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	type Props = {
 		open: boolean;
@@ -142,9 +143,7 @@
 							</Button>
 						</div>
 					{/each}
-					<Button type="button" variant="outline" size="sm" onclick={addLabel} disabled={isCreating}>
-						<Plus class="mr-2 size-4" /> Add Label
-					</Button>
+					<ArcaneButton action="create" customLabel="Add Label" onClick={addLabel} disabled={isCreating} size="sm" />
 				</div>
 			</div>
 
@@ -166,14 +165,8 @@
 			</div>
 
 			<Dialog.Footer>
-				<Button type="button" variant="outline" onclick={() => (open = false)} disabled={isCreating}>Cancel</Button>
-				<Button type="submit" disabled={isCreating || !name.trim()}>
-					{#if isCreating}
-						<Loader2 class="mr-2 animate-spin size-4" /> Creating...
-					{:else}
-						Create Network
-					{/if}
-				</Button>
+				<ArcaneButton action="cancel" onClick={() => (open = false)} disabled={isCreating} />
+				<ArcaneButton action="create" customLabel="Create Network" onClick={handleSubmit} loading={isCreating} loadingLabel="Creating..." disabled={isCreating || !name.trim()} />
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

@@ -15,22 +15,40 @@
 		disabled?: boolean;
 		/** Custom label for the button. Overrides the default label for the action. */
 		label?: string;
+		/** Custom loading label for the button. Overrides the default loading label for the action. */
+		loadingLabel?: string;
 		/** If true (default), shows the label text. If false, button will be icon-only. */
 		showLabel?: boolean;
 		/** Additional CSS classes to apply to the button. */
 		class?: string;
 		/** Button size. If 'icon', showLabel is effectively false for rendering purposes. */
 		size?: ButtonProps['size'];
+		/** Alias for label to maintain compatibility */
+		customLabel?: string;
 	}
 
-	let { action, onClick, loading = false, disabled = false, label: customLabel = undefined, showLabel = true, class: extraClass = '', size: customSize = 'default' }: Props = $props();
+	let {
+		action,
+		onClick,
+		loading = false,
+		disabled = false,
+		label: propLabel = undefined,
+		customLabel = undefined, // Alternate name for label
+		loadingLabel: customLoadingLabel = undefined,
+		showLabel = true,
+		class: extraClass = '',
+		size: customSize = 'default'
+	}: Props = $props();
+
+	// Use customLabel as fallback for compatibility
+	const label = propLabel ?? customLabel;
 
 	type ActionConfig = {
 		defaultLabel: string;
 		IconComponent: typeof IconType;
 		variant: ButtonProps['variant'];
 		loadingLabel?: string;
-		customClass?: string; // Add customClass property
+		customClass?: string;
 	};
 
 	const actionConfigs: Record<Action, ActionConfig> = {
@@ -51,8 +69,9 @@
 	};
 
 	let config = $derived(actionConfigs[action]);
-	let displayLabel = $derived(customLabel ?? config.defaultLabel);
-	let displayLoadingLabel = $derived(config.loadingLabel ?? 'Processing...');
+	let displayLabel = $derived(label ?? config.defaultLabel);
+	// Use custom loading label if provided, otherwise use the config's default loading label
+	let displayLoadingLabel = $derived(customLoadingLabel ?? config.loadingLabel ?? 'Processing...');
 
 	// Determine if the button should render as an icon-only button
 	let isIconOnlyButton = $derived(customSize === 'icon' || !showLabel);

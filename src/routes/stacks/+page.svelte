@@ -17,6 +17,7 @@
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import type { StackActions } from '$lib/types/actions.type';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	let { data }: { data: PageData } = $props();
 	let stacks = $derived(data.stacks);
@@ -205,10 +206,7 @@
 					<Card.Title>Stack List</Card.Title>
 				</div>
 				<div class="flex items-center gap-2">
-					<Button variant="secondary" onclick={() => goto(`/stacks/new`)}>
-						<Plus class="size-4" />
-						Create Stack
-					</Button>
+					<ArcaneButton action="create" customLabel="Create Stack" onClick={() => goto(`/stacks/new`)} />
 				</div>
 			</div>
 		</Card.Header>
@@ -257,14 +255,7 @@
 						<Table.Cell>{item.createdAt}</Table.Cell>
 						<Table.Cell>
 							{#if item.isExternal}
-								<Button onclick={() => handleImportStack(item.id, item.name)} variant="outline" title="Import Stack to Arcane" disabled={isLoading.import} class="flex items-center">
-									{#if isLoading.import}
-										<Loader2 class="mr-2 animate-spin size-4" />
-									{:else}
-										<Import class="mr-2 size-4" />
-									{/if}
-									Import
-								</Button>
+								<ArcaneButton action="pull" customLabel="Import" onClick={() => handleImportStack(item.id, item.name)} loading={isLoading.import} disabled={isLoading.import} />
 							{:else}
 								<DropdownMenu.Root>
 									<DropdownMenu.Trigger>
@@ -342,6 +333,9 @@
 					<FileStack class="text-muted-foreground mb-4 opacity-40 size-12" />
 					<p class="text-lg font-medium">No stacks found</p>
 					<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new stack using the "Create Stack" button above or import an existing compose file</p>
+					<div class="flex gap-3 mt-4">
+						<ArcaneButton action="create" customLabel="Create Stack" onClick={() => goto(`/stacks/new`)} size="sm" />
+					</div>
 				</div>
 			{/if}
 		</Card.Content>

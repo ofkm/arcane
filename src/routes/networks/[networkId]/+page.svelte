@@ -11,6 +11,8 @@
 	import type { NetworkInspectInfo } from 'dockerode';
 	import { toast } from 'svelte-sonner';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { goto } from '$app/navigation';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let { network }: { network: NetworkInspectInfo | null | undefined } = $derived(data);
@@ -86,14 +88,7 @@
 			</div>
 
 			<div class="self-start">
-				<Button variant="destructive" size="sm" onclick={triggerRemove} disabled={isRemoving || isPredefined} title={isPredefined ? 'Cannot remove predefined networks' : ''} class="w-full sm:w-auto">
-					{#if isRemoving}
-						<Loader2 class="mr-2 animate-spin size-4" />
-					{:else}
-						<Trash2 class="mr-2 size-4" />
-					{/if}
-					Remove Network
-				</Button>
+				<ArcaneButton action="remove" customLabel="Remove Network" onClick={triggerRemove} loading={isRemoving} disabled={isRemoving || isPredefined} label={isPredefined ? 'Cannot remove predefined networks' : ''} />
 			</div>
 
 			<form
@@ -397,9 +392,7 @@
 			</div>
 			<h2 class="text-xl font-medium mb-2">Network Not Found</h2>
 			<p class="text-muted-foreground mb-6">The requested network could not be found or is no longer available.</p>
-			<Button href="/networks" variant="outline" size="sm">
-				<ArrowLeft class="mr-2 size-4" /> Back to Networks
-			</Button>
+			<ArcaneButton action="cancel" customLabel="Back to Networks" onClick={() => goto('/networks')} size="sm" />
 		</div>
 	{/if}
 </div>

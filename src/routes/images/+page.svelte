@@ -22,6 +22,7 @@
 	import MaturityItem from '$lib/components/maturity-item.svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { maturityStore } from '$lib/stores/maturity-store';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	let { data }: { data: PageData } = $props();
 	let images = $derived(data.images || []);
@@ -460,37 +461,11 @@
 							</DropdownMenu.Content>
 						</DropdownMenu.Root>
 						{#if selectedIds.length > 0}
-							<Button variant="destructive" onclick={() => handleDeleteSelected()} disabled={isLoading.removing}>
-								{#if isLoading.removing}
-									<Loader2 class="mr-2 animate-spin size-4" />
-									Processing...
-								{:else}
-									<Trash2 class="size-4" />
-									Delete Selected
-								{/if}
-							</Button>
+							<ArcaneButton action="remove" onClick={() => handleDeleteSelected()} loading={isLoading.removing} disabled={isLoading.removing} />
 						{/if}
-						<Button variant="secondary" onclick={() => (isConfirmPruneDialogOpen = true)} disabled={isLoading.pruning}>
-							{#if isLoading.pruning}
-								<Loader2 class="animate-spin size-4" /> Pruning...
-							{:else}
-								<CopyX class="size-4" /> Prune Unused
-							{/if}
-						</Button>
-						<Button variant="secondary" onclick={() => (isPullDialogOpen = true)} disabled={isLoading.pulling}>
-							{#if isLoading.pulling}
-								<Loader2 class="animate-spin size-4" /> Pulling...
-							{:else}
-								<Download class="size-4" /> Pull Image
-							{/if}
-						</Button>
-						<Button variant="outline" onclick={() => checkAllMaturity()} disabled={isLoading.checking}>
-							{#if isLoading.checking}
-								<Loader2 class="mr-2 animate-spin size-4" /> Checking...
-							{:else}
-								<ScanSearch class="mr-2 size-4" /> Check Updates
-							{/if}
-						</Button>
+						<ArcaneButton action="remove" label="Prune Unused" onClick={() => (isConfirmPruneDialogOpen = true)} loading={isLoading.pruning} loadingLabel="Pruning..." disabled={isLoading.pruning} />
+						<ArcaneButton action="pull" label="Pull Image" onClick={() => (isPullDialogOpen = true)} loading={isLoading.pulling} loadingLabel="Pulling..." disabled={isLoading.pulling} />
+						<ArcaneButton action="inspect" label="Check Updates" onClick={() => checkAllMaturity()} loading={isLoading.checking} loadingLabel="Checking..." disabled={isLoading.checking} />
 					</div>
 				</div>
 			</Card.Header>
