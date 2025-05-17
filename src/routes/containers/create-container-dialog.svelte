@@ -161,7 +161,26 @@
 	const isUserDefinedNetworkSelected = $derived(networkMode && networkMode !== '' && networkMode !== 'host' && networkMode !== 'none' && networkMode !== 'bridge');
 
 	async function handleSubmit() {
-		if (!selectedImage || !containerName.trim() || isCreating) return;
+		if (!selectedImage) {
+			toast.error('Image selection is required');
+			return;
+		}
+
+		if (!containerName.trim()) {
+			toast.error('Container name is required');
+			return;
+		}
+
+		if (isCreating) {
+			return; // Already processing
+		}
+
+		// Console log for debugging
+		console.log('Creating container with options:', {
+			Name: containerName.trim(),
+			Image: selectedImage
+			// log other important options
+		});
 
 		let hasInvalidPort = false;
 		ports.forEach((port) => {

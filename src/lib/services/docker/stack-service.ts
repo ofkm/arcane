@@ -1,7 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path, { join } from 'node:path';
 import DockerodeCompose from 'dockerode-compose';
-import { readYamlEnvSync, readYamlEnv } from 'yaml-env-defaults';
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
 import slugify from 'slugify';
 import { directoryExists } from '$lib/utils/fs.utils';

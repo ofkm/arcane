@@ -5,7 +5,7 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
-	import { Loader2, Plus, X } from '@lucide/svelte';
+	import { X } from '@lucide/svelte';
 	import type { NetworkCreateOptions } from 'dockerode';
 	import { preventDefault } from '$lib/utils/form.utils';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
