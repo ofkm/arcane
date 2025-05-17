@@ -101,7 +101,6 @@
 
 	async function handleStopAll() {
 		if (isLoading.stopping || !dashboardStates.dockerInfo || runningContainers === 0) return;
-		isLoading.stopping = true;
 		openConfirmDialog({
 			title: 'Stop All Containers',
 			message: 'Are you sure you want to stop all running containers?',
@@ -180,7 +179,7 @@
 			<h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
 			<p class="text-sm text-muted-foreground mt-1">Overview of your Container Environment</p>
 		</div>
-		<Button variant="outline" size="sm" class="h-9" onclick={refreshData} disabled={isLoading.refreshing || isLoading.starting || isLoading.stopping || isLoading.pruning}>
+		<Button variant="outline" size="sm" class="h-9 arcane-button-restart" onclick={refreshData} disabled={isLoading.refreshing || isLoading.starting || isLoading.stopping || isLoading.pruning}>
 			{#if isLoading.refreshing}
 				<Loader2 class="mr-2 animate-spin size-4" />
 			{:else}
@@ -345,7 +344,7 @@
 				<Card.Header class="px-6">
 					<div class="flex items-center justify-between">
 						<div>
-							<Card.Title>Containers</Card.Title>
+							<Card.Title><a class="font-medium hover:underline" href="/containers">Containers</a></Card.Title>
 							<Card.Description class="pb-3">Recent containers</Card.Description>
 						</div>
 						<Button variant="ghost" size="sm" href="/containers" disabled={!dashboardStates.dockerInfo}>
@@ -410,7 +409,7 @@
 				<Card.Header class="px-6">
 					<div class="flex items-center justify-between">
 						<div>
-							<Card.Title>Images</Card.Title>
+							<Card.Title><a class="font-medium hover:underline" href="/images">Images</a></Card.Title>
 							<Card.Description class="pb-3">Top 5 Largest Images</Card.Description>
 						</div>
 						<Button variant="ghost" size="sm" href="/images" disabled={!dashboardStates.dockerInfo}>

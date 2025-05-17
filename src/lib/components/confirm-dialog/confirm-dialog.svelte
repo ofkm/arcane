@@ -27,8 +27,9 @@
 
 		<Dialog.Footer class="mt-6">
 			<div class="flex justify-end gap-2">
-				<Button variant="outline" onclick={() => ($confirmDialogStore.open = false)}>Cancel</Button>
+				<Button class="arcane-button-cancel" variant="outline" onclick={() => ($confirmDialogStore.open = false)}>Cancel</Button>
 				<Button
+					class="arcane-button-create"
 					variant={$confirmDialogStore.confirm.destructive ? 'destructive' : 'default'}
 					onclick={() => {
 						$confirmDialogStore.confirm.action();

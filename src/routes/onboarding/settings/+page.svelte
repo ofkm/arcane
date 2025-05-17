@@ -116,7 +116,6 @@
 					<Input id="dockerHost" bind:value={dockerHost} placeholder="unix:///var/run/docker.sock" class="px-4 bg-muted/10 size-12" />
 					<p class="text-xs text-muted-foreground">
 						Examples: Unix: <code class="bg-muted/30 px-1 py-0.5 rounded">unix:///var/run/docker.sock</code>
-						Windows: <code class="bg-muted/30 px-1 py-0.5 rounded">npipe:////./pipe/docker_engine</code>
 					</p>
 				</div>
 			</Card.Content>

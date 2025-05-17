@@ -124,13 +124,13 @@
 			{/if}
 
 			<Dialog.Footer>
-				<Button type="button" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
-				<Button type="submit" disabled={isLoading}>
+				<Button type="button" class="arcane-button-cancel" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
+				<Button type="submit" class="arcane-button-create" disabled={isLoading}>
 					{#if isLoading}
-						<Loader2 class="mr-2 animate-spin size-4" />
+						<Loader2 class="animate-spin size-4" />
 						Creating...
 					{:else}
-						<SubmitIcon class="mr-2 size-4" />
+						<SubmitIcon class="size-4" />
 						{submitButtonText}
 					{/if}
 				</Button>

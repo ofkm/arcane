@@ -92,7 +92,7 @@
 			<!-- OIDC Login Button (when only OIDC is available) -->
 			{#if showOidcLoginButton && !showLocalLoginForm}
 				<div class="pt-2">
-					<Button onclick={handleOidcLogin} variant="default" class="w-full py-6 text-base">
+					<Button onclick={handleOidcLogin} variant="default" class="w-full py-6 text-base arcane-button-restart">
 						<LogIn class="mr-3 size-5" />
 						Sign in with OIDC Provider
 					</Button>
@@ -146,7 +146,7 @@
 
 					<!-- Sign In Button -->
 					<div class="pt-2">
-						<Button type="submit" class="w-full py-6 text-base" disabled={loading} aria-busy={loading}>
+						<Button type="submit" class="w-full py-6 text-base arcane-button-create" disabled={loading} aria-busy={loading}>
 							{#if loading}
 								<div class="mr-2 size-4 border-2 border-t-transparent rounded-full animate-spin"></div>
 							{/if}
@@ -169,7 +169,7 @@
 
 				<!-- OIDC Login Button (when both methods are available) -->
 				{#if showOidcLoginButton && showDivider}
-					<Button onclick={handleOidcLogin} variant="outline" class="w-full py-5">
+					<Button onclick={handleOidcLogin} variant="outline" class="w-full py-5 arcane-button-restart">
 						<LogIn class="mr-2 size-4" />
 						Sign in with OIDC Provider
 					</Button>

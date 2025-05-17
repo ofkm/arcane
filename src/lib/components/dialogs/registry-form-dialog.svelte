@@ -68,8 +68,8 @@
 			</div>
 			<p class="text-xs text-muted-foreground col-span-full text-center px-4">For Docker Hub, if URL is empty or 'docker.io', it defaults to Docker Hub. For others like GHCR, provide the full URL.</p>
 			<Dialog.Footer>
-				<Button type="button" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
-				<Button type="submit" disabled={isLoading}>
+				<Button type="button" class="arcane-button-cancel" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
+				<Button type="submit" class="arcane-button-create" disabled={isLoading}>
 					{#if isLoading}
 						<Loader2 class="mr-2 animate-spin size-4" />
 					{/if}

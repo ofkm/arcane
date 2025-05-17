@@ -93,8 +93,8 @@
 		</div>
 
 		<Dialog.Footer>
-			<Button variant="outline" onclick={handleCancel} disabled={isPruning}>Cancel</Button>
-			<Button variant="destructive" onclick={handleConfirm} disabled={selectedTypes.length === 0 || isPruning}>
+			<Button class="arcane-button-cancel" variant="outline" onclick={handleCancel} disabled={isPruning}>Cancel</Button>
+			<Button class="arcane-button-remove" variant="destructive" onclick={handleConfirm} disabled={selectedTypes.length === 0 || isPruning}>
 				{#if isPruning}
 					<Loader2 class="mr-2 animate-spin size-4" /> Pruning...
 				{:else}
