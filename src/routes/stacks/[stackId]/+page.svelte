@@ -19,6 +19,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	const stackApi = new StackAPIService();
 
@@ -286,13 +287,7 @@
 
 							<!-- Save button positioned right -->
 							<div class="self-start">
-								<Button type="button" variant={hasChanges ? 'default' : 'secondary'} onclick={handleSaveChanges} disabled={isLoading.saving || !hasChanges} class="min-w-[120px]">
-									{#if isLoading.saving}
-										<Loader2 class="mr-2 animate-spin size-4" /> Saving...
-									{:else}
-										<Save class="mr-2 size-4" /> Save Changes
-									{/if}
-								</Button>
+								<ArcaneButton action="save" onClick={handleSaveChanges} loading={isLoading.saving} />
 							</div>
 						</div>
 

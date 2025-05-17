@@ -14,6 +14,7 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import EnvEditor from '$lib/components/env-editor.svelte';
 	import { defaultEnvTemplate, defaultComposeTemplate } from '$lib/constants';
+	import ArcaneButton from '$lib/components/arcane-button.svelte'; // Add this import
 
 	const stackApi = new StackAPIService();
 	let saving = $state(false);
@@ -62,14 +63,17 @@
 	<form class="space-y-6" onsubmit={preventDefault(handleSubmit)}>
 		<Card.Root class="border shadow-sm">
 			<Card.Header>
-				<div class="flex items-center gap-3">
-					<div class="bg-primary/10 p-2 rounded-full">
-						<FileStack class="text-primary size-5" />
+				<div class="flex items-center justify-between w-full">
+					<div class="flex items-center gap-3">
+						<div class="bg-primary/10 p-2 rounded-full">
+							<FileStack class="text-primary size-5" />
+						</div>
+						<div>
+							<Card.Title>Stack Configuration</Card.Title>
+							<Card.Description>Create a new Docker Compose stack with environment variables</Card.Description>
+						</div>
 					</div>
-					<div>
-						<Card.Title>Stack Configuration</Card.Title>
-						<Card.Description>Create a new Docker Compose stack with environment variables</Card.Description>
-					</div>
+					<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
 				</div>
 			</Card.Header>
 			<Card.Content>
@@ -103,14 +107,6 @@
 				<Button variant="outline" type="button" onclick={() => window.history.back()} disabled={saving}>
 					<ArrowLeft class="mr-2 size-4" />
 					Cancel
-				</Button>
-				<Button type="submit" variant="default" disabled={saving || !name || !composeContent}>
-					{#if saving}
-						<Loader2 class="mr-2 animate-spin size-4" />
-					{:else}
-						<Save class="mr-2 size-4" />
-					{/if}
-					Create Stack
 				</Button>
 			</Card.Footer>
 		</Card.Root>

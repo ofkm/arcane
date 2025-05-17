@@ -150,3 +150,127 @@
 	transform: rotate(180deg);
 	opacity: 0.7;
 }
+
+/* Button Styles - Minimalist design with purple accent */
+
+/* Common button styles for all arcane buttons */
+[class*='arcane-button-'] {
+	position: relative;
+	transition: all 0.2s ease;
+	border-radius: 0.5rem !important; /* Slightly smaller radius for a cleaner look */
+	overflow: visible !important;
+	z-index: 0;
+	font-weight: 500;
+	letter-spacing: 0.01em;
+	box-shadow: none !important; /* Remove default shadows */
+}
+
+/* Subtle hover effect */
+[class*='arcane-button-']:hover {
+	transform: translateY(-1px); /* Subtle lift effect */
+}
+
+/* Primary action buttons - solid purple */
+.arcane-button-start,
+.arcane-button-deploy,
+.arcane-button-confirm,
+.arcane-button-save,
+.arcane-button-create {
+	background-color: var(--primary) !important;
+	color: white !important;
+	border: none !important;
+}
+.arcane-button-start:hover,
+.arcane-button-deploy:hover,
+.arcane-button-confirm:hover,
+.arcane-button-save:hover,
+.arcane-button-create:hover {
+	background-color: hsl(262.1 83.3% 52%) !important;
+}
+
+/* Add specific styles for create button (slightly brighter accent) */
+.arcane-button-create {
+	background-color: hsl(262.1 83.3% 62%) !important;
+}
+.arcane-button-create:hover {
+	background-color: hsl(262.1 83.3% 57%) !important;
+}
+
+/* Destructive action buttons - outlined red (matching secondary button style) */
+.arcane-button-stop,
+.arcane-button-remove {
+	background-color: transparent !important;
+	color: var(--destructive) !important;
+	border: 1px solid var(--destructive) !important;
+}
+.arcane-button-stop:hover,
+.arcane-button-remove:hover {
+	background-color: hsla(0, 72.22%, 50.59%, 0.1) !important;
+}
+
+/* Dark mode overrides for destructive buttons */
+.dark .arcane-button-stop,
+.dark .arcane-button-remove {
+	color: hsl(0 72.22% 65%) !important;
+	border-color: hsl(0 72.22% 50%) !important;
+}
+.dark .arcane-button-stop:hover,
+.dark .arcane-button-remove:hover {
+	background-color: hsla(0, 72.22%, 50%, 0.15) !important;
+}
+
+/* Secondary action buttons - borderless with purple text */
+.arcane-button-restart,
+.arcane-button-pull,
+.arcane-button-redeploy,
+.arcane-button-edit {
+	background-color: transparent !important;
+	color: var(--primary) !important;
+	border: 1px solid var(--primary) !important;
+}
+.arcane-button-restart:hover,
+.arcane-button-pull:hover,
+.arcane-button-redeploy:hover,
+.arcane-button-edit:hover {
+	background-color: hsla(262.1, 83.3%, 50%, 0.1) !important;
+}
+
+/* Dark mode overrides for secondary buttons */
+.dark .arcane-button-restart,
+.dark .arcane-button-pull,
+.dark .arcane-button-redeploy,
+.dark .arcane-button-edit {
+	color: hsl(263.4 70% 80%) !important;
+	border-color: hsl(263.4 70% 60%) !important;
+}
+.dark .arcane-button-restart:hover,
+.dark .arcane-button-pull:hover,
+.dark .arcane-button-redeploy:hover,
+.dark .arcane-button-edit:hover {
+	background-color: hsla(263.4, 70%, 60%, 0.15) !important;
+}
+
+/* Subtle action buttons */
+.arcane-button-inspect,
+.arcane-button-logs,
+.arcane-button-cancel {
+	background-color: transparent !important;
+	color: var(--muted-foreground) !important;
+	border: 1px solid var(--muted) !important;
+}
+.arcane-button-inspect:hover,
+.arcane-button-logs:hover,
+.arcane-button-cancel:hover {
+	background-color: hsla(220, 14.3%, 50%, 0.1) !important;
+}
+.dark .arcane-button-inspect,
+.dark .arcane-button-logs,
+.dark .arcane-button-cancel {
+	color: hsl(217.9 10.6% 74.9%) !important;
+	border-color: hsl(215 27.9% 30%) !important;
+}
+.dark .arcane-button-inspect:hover,
+.dark .arcane-button-logs:hover,
+.dark .arcane-button-cancel:hover {
+	background-color: hsla(215, 27.9%, 40%, 0.15) !important;
+}

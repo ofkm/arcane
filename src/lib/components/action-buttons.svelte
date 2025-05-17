@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { Play, StopCircle, RotateCcw, Download, Trash2, Loader2, RefreshCcwDot } from '@lucide/svelte';
-	import { Button } from '$lib/components/ui/button/index.js';
 	import { openConfirmDialog } from './confirm-dialog';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -9,6 +7,7 @@
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
+	import ArcaneButton from './arcane-button.svelte';
 
 	const containerApi = new ContainerAPIService();
 	const stackApi = new StackAPIService();
@@ -150,69 +149,17 @@
 
 <div class="flex items-center gap-2">
 	{#if !isRunning}
-		<Button type="button" variant="default" disabled={isLoading.start || loading.start} class="font-medium" onclick={() => handleStart()}>
-			{#if isLoading.start || loading.start}
-				<Loader2 class="mr-2 animate-spin size-4" />
-			{:else}
-				<Play class="mr-2 size-4" />
-			{/if}
-			{type === 'stack' ? 'Deploy' : 'Start'}
-		</Button>
+		<ArcaneButton action={type === 'container' ? 'start' : 'deploy'} onClick={() => handleStart()} loading={isLoading.start} />
 	{:else}
-		<Button type="button" variant="secondary" disabled={isLoading.stop || loading.stop} class="font-medium" onclick={() => handleStop()}>
-			{#if isLoading.stop || loading.stop}
-				<Loader2 class="animate-spin size-4" />
-			{:else}
-				<StopCircle class="size-4" />
-			{/if}
-			Stop
-		</Button>
-
-		<Button type="button" variant="outline" disabled={isLoading.restart || loading.restart} class="font-medium" onclick={() => handleRestart()}>
-			{#if isLoading.restart || loading.restart}
-				<Loader2 class="animate-spin size-4" />
-			{:else}
-				<RotateCcw class="size-4" />
-			{/if}
-			Restart
-		</Button>
+		<ArcaneButton action="stop" onClick={() => handleStop()} loading={isLoading.stop} />
+		<ArcaneButton action="restart" onClick={() => handleRestart()} loading={isLoading.restart} />
 	{/if}
 
 	{#if type === 'container'}
-		<Button type="button" variant="destructive" disabled={isLoading.remove || loading.remove} class="font-medium" onclick={() => confirmAction('remove')}>
-			{#if isLoading.remove || loading.remove}
-				<Loader2 class="animate-spin size-4" />
-			{:else}
-				<Trash2 class="size-4" />
-			{/if}
-			Remove
-		</Button>
+		<ArcaneButton action="remove" onClick={() => confirmAction('remove')} loading={isLoading.remove} />
 	{:else}
-		<Button type="button" variant="secondary" disabled={isLoading.redeploy || loading.redeploy} class="font-medium" onclick={() => confirmAction('redeploy')}>
-			{#if isLoading.redeploy || loading.redeploy}
-				<Loader2 class="animate-spin size-4" />
-			{:else}
-				<RefreshCcwDot class="size-4" />
-			{/if}
-			Redeploy
-		</Button>
-
-		<Button type="button" variant="outline" disabled={isLoading.pulling || loading.pull} class="font-medium" onclick={() => handlePull()}>
-			{#if isLoading.pulling || loading.pull}
-				<Loader2 class="animate-spin size-4" />
-			{:else}
-				<Download class="size-4" />
-			{/if}
-			Pull
-		</Button>
-
-		<Button type="button" variant="destructive" disabled={isLoading.remove || loading.remove} class="font-medium" onclick={() => confirmAction('remove')}>
-			{#if isLoading.remove || loading.remove}
-				<Loader2 class="animate-spin size-4" />
-			{:else}
-				<Trash2 class="size-4" />
-			{/if}
-			Remove
-		</Button>
+		<ArcaneButton action="redeploy" onClick={() => confirmAction('redeploy')} loading={isLoading.redeploy} />
+		<ArcaneButton action="pull" onClick={() => confirmAction('pull')} loading={isLoading.pulling} />
+		<ArcaneButton action="remove" onClick={() => confirmAction('remove')} loading={isLoading.remove} />
 	{/if}
 </div>
