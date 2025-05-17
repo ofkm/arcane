@@ -24,19 +24,3 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 	}
 };
-
-export const actions: Actions = {
-	remove: async ({ params }) => {
-		const networkId = params.networkId;
-		try {
-			await removeNetwork(networkId);
-			redirect(303, '/networks');
-		} catch (err: unknown) {
-			console.error(`Failed to remove network ${networkId}:`, err);
-			if (err instanceof NotFoundError || err instanceof ConflictError || err instanceof DockerApiError) {
-				return fail('status' in err ? err.status : 500, { error: err.message });
-			}
-			return fail(500, { error: err instanceof Error ? err.message : 'An unexpected error occurred during removal.' });
-		}
-	}
-};

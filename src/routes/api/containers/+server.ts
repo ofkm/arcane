@@ -9,7 +9,7 @@ import type { ContainerInspectInfo } from 'dockerode';
 export const POST: RequestHandler = async ({ request }) => {
 	const config = (await request.json()) as ContainerInspectInfo;
 
-	if ((!config.Name && !config.name) || !config.Image) {
+	if (!config.Name || !config.Image) {
 		const response: ApiErrorResponse = {
 			success: false,
 			error: 'Container name and image are required',

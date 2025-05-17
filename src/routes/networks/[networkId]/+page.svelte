@@ -1,10 +1,8 @@
 <script lang="ts">
-	import type { PageData, ActionData } from './$types';
+	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, HardDrive, Clock, Tag, Layers, Hash, Trash2, Loader2, Network, Globe, Settings, ListTree, Container } from '@lucide/svelte';
+	import { AlertCircle, HardDrive, Clock, Tag, Layers, Hash, Network, Globe, Settings, ListTree, Container } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
-	import { enhance } from '$app/forms';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { formatDate } from '$lib/utils/string.utils';
@@ -13,11 +11,16 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { goto } from '$app/navigation';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
+	import { tryCatch } from '$lib/utils/try-catch';
+	import NetworkAPIService from '$lib/services/api/network-api-service';
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+	let { data }: { data: PageData } = $props();
 	let { network }: { network: NetworkInspectInfo | null | undefined } = $derived(data);
+	let errorMessage = $state('');
 
 	let isRemoving = $state(false);
+	const networkApi = new NetworkAPIService();
 
 	const shortId = $derived(network?.Id?.substring(0, 12) || 'N/A');
 	const createdDate = $derived(network?.Created ? formatDate(network.Created) : 'N/A');
@@ -31,15 +34,32 @@
 			console.warn('Cannot remove predefined network');
 			return;
 		}
+
+		if (!network?.Id) {
+			toast.error('Network ID is missing');
+			return;
+		}
+
 		openConfirmDialog({
 			title: 'Remove Network',
 			message: `Are you sure you want to remove the network "${network?.Name || shortId}"? This action cannot be undone.`,
 			confirm: {
 				label: 'Remove',
 				destructive: true,
-				action: () => {
-					const formElement = document.getElementById('remove-network-form') as HTMLFormElement | null;
-					formElement?.requestSubmit();
+				action: async () => {
+					handleApiResultWithCallbacks({
+						result: await tryCatch(networkApi.remove(network.Id)),
+						message: 'Failed to remove network',
+						setLoadingState: (value) => (isRemoving = value),
+						onSuccess: async () => {
+							toast.success(`Network "${network.Name || shortId}" removed successfully`);
+							goto('/networks');
+						},
+						onError: (error) => {
+							errorMessage = error?.message || 'An error occurred while removing the network';
+							toast.error(errorMessage);
+						}
+					});
 				}
 			}
 		});
@@ -88,33 +108,16 @@
 			</div>
 
 			<div class="self-start">
-				<ArcaneButton action="remove" customLabel="Remove Network" onClick={triggerRemove} loading={isRemoving} disabled={isRemoving || isPredefined} label={isPredefined ? 'Cannot remove predefined networks' : ''} />
+				<ArcaneButton action="remove" customLabel="Remove Network" onClick={triggerRemove} loading={isRemoving} disabled={isRemoving || isPredefined} label={isPredefined ? 'Cannot remove predefined networks' : 'Delete Network'} />
 			</div>
-
-			<form
-				id="remove-network-form"
-				method="POST"
-				action="?/remove"
-				use:enhance={() => {
-					isRemoving = true;
-					return async ({ update }) => {
-						await update({ reset: false });
-						isRemoving = false;
-					};
-				}}
-				class="hidden"
-			>
-				<input type="hidden" name="networkId" value={network?.Id} />
-				<button type="submit">Submit</button>
-			</form>
 		</div>
 	</div>
 
-	{#if form?.error}
+	{#if errorMessage}
 		<Alert.Root variant="destructive">
 			<AlertCircle class="mr-2 size-4" />
 			<Alert.Title>Action Failed</Alert.Title>
-			<Alert.Description>{form.error}</Alert.Description>
+			<Alert.Description>{errorMessage}</Alert.Description>
 		</Alert.Root>
 	{/if}
 
