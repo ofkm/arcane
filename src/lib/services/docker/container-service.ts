@@ -56,6 +56,61 @@ export async function listContainers(all = true): Promise<Docker.ContainerInfo[]
 }
 
 /**
+ * Lists containers with server-side pagination and filtering
+ */
+export async function listContainersWithPagination(page: number = 1, pageSize: number = 25, filters?: { state?: string; name?: string }): Promise<{ containers: Docker.ContainerInfo[]; total: number; totalPages: number }> {
+	try {
+		// Use the existing cache mechanism
+		const cacheKey = `list-containers-all`;
+		const cachedData = containerCache.get(cacheKey);
+
+		let allContainers: Docker.ContainerInfo[];
+
+		// Return cached data if valid
+		if (cachedData && Date.now() - cachedData.timestamp < CONTAINER_CACHE_TTL) {
+			allContainers = cachedData.data as Docker.ContainerInfo[];
+		} else {
+			// Otherwise fetch from Docker
+			const docker = await getDockerClient();
+			allContainers = await docker.listContainers({ all: true });
+
+			// Cache the result
+			containerCache.set(cacheKey, {
+				data: allContainers,
+				timestamp: Date.now()
+			});
+		}
+
+		// Apply filters
+		let filtered = [...allContainers];
+
+		if (filters?.state) {
+			filtered = filtered.filter((c) => c.State === filters.state);
+		}
+
+		if (filters?.name) {
+			filtered = filtered.filter((c) => {
+				if (!c.Names || c.Names.length === 0) return false;
+				const containerName = c.Names[0].startsWith('/') ? c.Names[0].substring(1) : c.Names[0];
+				return containerName.toLowerCase().includes(filters.name!.toLowerCase());
+			});
+		}
+
+		const total = filtered.length;
+		const totalPages = Math.ceil(total / pageSize);
+
+		// Apply pagination
+		const start = (page - 1) * pageSize;
+		const containers = filtered.slice(start, start + pageSize);
+
+		return { containers, total, totalPages };
+	} catch (error) {
+		console.error('Error listing containers with pagination:', error);
+		throw error;
+	}
+}
+
+/**
  * This TypeScript function retrieves details of a Docker container by its ID and handles errors
  * appropriately.
  * @param {string} containerId - The `getContainer` function you provided is an asynchronous function

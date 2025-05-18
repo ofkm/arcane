@@ -35,7 +35,7 @@
 
 	let pageSize = $state(initialPageSize);
 	let pageIndex = $state(0);
-	let currentPage = $state(1);
+	let currentPage = $state(pagination.currentPage || 1);
 	let sorting = $state<SortingState>(defaultSort ? [defaultSort] : []);
 	let columnFilters = $state<ColumnFiltersState>([]);
 	let globalFilter = $state<string>('');
@@ -65,6 +65,12 @@
 		const tablePageIndex = table.getState().pagination.pageIndex;
 		if (tablePageIndex !== pageIndex) {
 			currentPage = tablePageIndex + 1;
+		}
+	});
+
+	$effect(() => {
+		if (pagination.currentPage !== undefined) {
+			currentPage = pagination.currentPage;
 		}
 	});
 

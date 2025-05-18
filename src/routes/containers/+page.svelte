@@ -19,10 +19,24 @@
 	import { shortId } from '$lib/utils/string.utils';
 	import type { PageData } from './$types';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { page } from '$app/stores';
 
 	const containerApi = new ContainerAPIService();
 
-	let { data }: { data: PageData & { containers: ContainerInfo[] } } = $props();
+	let {
+		data
+	}: {
+		data: PageData & {
+			containers: ContainerInfo[];
+			totalContainers: number;
+			pagination: {
+				currentPage: number;
+				pageSize: number;
+				totalPages: number;
+			};
+		};
+	} = $props();
+
 	let containers = $state(data.containers);
 	let isRefreshing = $state(false);
 	let selectedIds = $state([]);
@@ -33,10 +47,15 @@
 		restart: false,
 		remove: false
 	});
+
+	let currentPage = $state(data.pagination?.currentPage || 1);
+	let pageSize = $state(data.pagination?.pageSize || 25);
+	let totalPages = $state(data.pagination?.totalPages || 1);
+
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 	const runningContainers = $derived(containers?.filter((c: ContainerInfo) => c.State === 'running').length || 0);
 	const stoppedContainers = $derived(containers?.filter((c: ContainerInfo) => c.State === 'exited').length || 0);
-	const totalContainers = $derived(containers?.length || 0);
+	const totalContainers = $derived(data.totalContainers || 0);
 
 	function getContainerDisplayName(container: ContainerInfo): string {
 		if (container.Names && container.Names.length > 0) {
@@ -47,15 +66,28 @@
 
 	$effect(() => {
 		containers = data.containers;
+		currentPage = data.pagination?.currentPage || 1;
+		pageSize = data.pagination?.pageSize || 25;
+		totalPages = data.pagination?.totalPages || 1;
+
 		if (isRefreshing) {
 			isRefreshing = false;
 		}
 	});
 
+	function changePage(newPage: number) {
+		if (newPage === currentPage) return;
+
+		const params = new URLSearchParams($page.url.searchParams);
+		params.set('page', newPage.toString());
+		goto(`?${params.toString()}`);
+	}
+
 	async function refreshData() {
 		isRefreshing = true;
 		try {
-			await invalidateAll();
+			const currentUrl = $page.url.toString();
+			await goto(currentUrl, { invalidateAll: true });
 		} finally {
 			setTimeout(() => {
 				isRefreshing = false;
@@ -220,6 +252,12 @@
 					display={{
 						filterPlaceholder: 'Search containers...',
 						noResultsMessage: 'No containers found'
+					}}
+					pagination={{
+						currentPage: currentPage,
+						pageSize: pageSize,
+						totalPages: totalPages,
+						totalItems: totalContainers
 					}}
 					bind:selectedIds
 				>

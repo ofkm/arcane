@@ -10,6 +10,10 @@ export type PaginationOptions = {
 	pageSize?: number;
 	pageSizeOptions?: number[];
 	itemsPerPageLabel?: string;
+	serverSide?: boolean;
+	currentPage?: number;
+	totalPages?: number;
+	totalItems?: number;
 };
 
 export type DisplayOptions = {
