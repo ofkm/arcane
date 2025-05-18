@@ -868,28 +868,23 @@ async function startStackWithExternalNetworks(stackId: string, composeData: any,
 				RestartPolicy: prepareRestartPolicy(service.restart),
 				Binds: prepareVolumes(service.volumes),
 				PortBindings: preparePorts(service.ports),
-				Dns: service.dns || [], // Add DNS servers
-				DnsOptions: service.dns_opt || [], // Add DNS options
-				DnsSearch: service.dns_search || [] // Add DNS search domains
+				Dns: service.dns || [],
+				DnsOptions: service.dns_opt || [],
+				DnsSearch: service.dns_search || []
 			}
 		};
 
 		const networkMode = service.network_mode || null;
-		let primaryNetworkName = null; // Track the primary network name
-
+		let primaryNetworkName = null;
 		if (networkMode) {
-			// If explicit network_mode is defined, use it
 			containerConfig.HostConfig.NetworkMode = networkMode;
 		} else if (service.networks) {
-			// Get all network names for this service
 			const serviceNetworks = Array.isArray(service.networks) ? service.networks : Object.keys(service.networks);
 
 			if (serviceNetworks.length > 0) {
-				// Use the first network as the primary network (instead of 'none')
 				const firstNetName = serviceNetworks[0];
 				const networkDefinition = composeData.networks?.[firstNetName];
 
-				// Determine the actual network name
 				let actualExternalNetIdentifier = firstNetName;
 				if (networkDefinition?.external && networkDefinition.name) {
 					if (typeof networkDefinition.name === 'string' && networkDefinition.name.includes('${') && networkDefinition.name.includes('}')) {
@@ -1317,24 +1312,19 @@ export async function fullyRedeployStack(stackId: string): Promise<boolean> {
 }
 
 /**
- * The function `removeStack` removes a Docker stack by stopping its services and deleting its
- * directory.
- * @param {string} stackId - The `stackId` parameter is a string that represents the unique identifier
- * of the stack that needs to be removed.
- * @returns The `removeStack` function returns a `Promise<boolean>`. The function attempts to remove a
- * stack identified by `stackId`. If the removal process is successful, it resolves the promise with a
- * value of `true`. If an error occurs during the removal process, it catches the error, logs it, and
- * then throws a new `Error` with a message indicating the failure to remove the stack.
+ * The function `destroyStack` completely removes a Docker stack by stopping its services,
+ * removing containers, networks, and deleting all stack files.
+ * @param {string} stackId - The unique identifier of the stack to destroy
+ * @returns {Promise<boolean>} - True if the stack was successfully destroyed
  */
-export async function removeStack(stackId: string): Promise<boolean> {
-	console.log(`Attempting to remove stack ${stackId}...`);
+export async function destroyStack(stackId: string): Promise<boolean> {
+	console.log(`Attempting to destroy stack ${stackId} (containers and files)...`);
 	try {
-		// Manually stop and remove containers first
+		// First stop and remove all containers
 		const stopped = await stopStack(stackId);
 		if (!stopped) {
-			console.error(`Removal failed because stop/remove container step failed for stack ${stackId}.`);
-			// Decide if you want to proceed with directory removal anyway
-			// return false; // Option 1: Stop here
+			console.error(`Destruction step 1 failed: stop/remove containers failed for stack ${stackId}.`);
+			// We'll continue anyway to try to remove files
 		} else {
 			console.log(`Containers for stack ${stackId} stopped and removed.`);
 		}
@@ -1345,9 +1335,9 @@ export async function removeStack(stackId: string): Promise<boolean> {
 		try {
 			await fs.rm(stackDir, { recursive: true, force: true });
 			console.log(`Stack directory ${stackDir} removed.`);
-		} catch {
-			console.error(`Failed to remove stack directory ${stackDir}`);
-			throw new Error(`Failed to remove stack directory`);
+		} catch (rmErr) {
+			console.error(`Failed to remove stack directory ${stackDir}:`, rmErr);
+			throw new Error(`Failed to remove stack directory: ${rmErr instanceof Error ? rmErr.message : String(rmErr)}`);
 		}
 
 		// Invalidate the cache after removing a stack
@@ -1355,11 +1345,38 @@ export async function removeStack(stackId: string): Promise<boolean> {
 
 		return true;
 	} catch (err: unknown) {
-		// Catch errors from stopStack or directory removal
-		console.error(`Error removing stack ${stackId}:`, err);
+		console.error(`Error destroying stack ${stackId}:`, err);
 		const errorMessage = err instanceof Error ? err.message : String(err);
-		// Ensure a specific error message is thrown
-		throw new Error(`Failed to remove stack ${stackId}: ${errorMessage}`);
+		throw new Error(`Failed to destroy stack ${stackId}: ${errorMessage}`);
+	}
+}
+
+/**
+ * The function `removeStack` stops and removes all containers and networks for a stack
+ * but preserves the stack files for potential redeployment.
+ * @param {string} stackId - The unique identifier of the stack to remove containers from
+ * @returns {Promise<boolean>} - True if the stack's containers were successfully removed
+ */
+export async function removeStack(stackId: string): Promise<boolean> {
+	console.log(`Attempting to remove containers for stack ${stackId} (preserving files)...`);
+	try {
+		// Stop and remove all containers
+		const stopped = await stopStack(stackId);
+		if (!stopped) {
+			console.error(`Remove operation failed: stop/remove containers failed for stack ${stackId}.`);
+			throw new Error(`Failed to stop/remove containers for stack ${stackId}`);
+		}
+
+		console.log(`Stack ${stackId} containers successfully removed. Stack files preserved.`);
+
+		// Invalidate the cache after container removal
+		stackCache.delete('compose-stacks');
+
+		return true;
+	} catch (err: unknown) {
+		console.error(`Error removing containers for stack ${stackId}:`, err);
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		throw new Error(`Failed to remove containers for stack ${stackId}: ${errorMessage}`);
 	}
 }
 

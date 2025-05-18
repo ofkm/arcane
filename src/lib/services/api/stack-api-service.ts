@@ -6,7 +6,7 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async stop(id: string) {
+	async down(id: string) {
 		const res = await this.api.post(`/stacks/${id}/stop`);
 		return res.data;
 	}
@@ -16,7 +16,7 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async remove(id: string) {
+	async destroy(id: string) {
 		const res = await this.api.delete(`/stacks/${id}/remove`);
 		return res.data;
 	}
