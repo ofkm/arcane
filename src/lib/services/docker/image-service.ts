@@ -6,6 +6,11 @@ import { parseImageNameForRegistry, areRegistriesEquivalent } from '$lib/utils/r
 import { getSettings } from '$lib/services/settings-service';
 import { tryCatch } from '$lib/utils/try-catch';
 import { maturityCache } from './maturity-cache-service';
+
+// Simple in-memory cache for images
+const imageListCache = new Map<string, { data: any; timestamp: number }>();
+const IMAGE_LIST_CACHE_TTL = 60 * 1000; // 1 minute TTL
+
 let maturityPollingInterval: NodeJS.Timeout | null = null;
 
 /**
@@ -147,6 +152,58 @@ export async function listImages(): Promise<ServiceImage[]> {
 			tag: tag
 		};
 	});
+}
+
+/**
+ * Lists images with server-side pagination and filtering.
+ * Uses the same ServiceImage type as listImages.
+ */
+export async function listImagesWithPagination(
+	page: number = 1,
+	pageSize: number = 10,
+	filters?: { name?: string; dangling?: boolean } // name can be repo or tag, dangling is a common filter
+): Promise<{ images: ServiceImage[]; total: number; totalPages: number }> {
+	try {
+		const cacheKey = `list-images-all-paginated`; // Distinct cache key
+		const cachedData = imageListCache.get(cacheKey);
+		let allServiceImages: ServiceImage[];
+
+		if (cachedData && Date.now() - cachedData.timestamp < IMAGE_LIST_CACHE_TTL) {
+			allServiceImages = cachedData.data as ServiceImage[];
+		} else {
+			// We'll use the existing listImages logic to get the parsed ServiceImage objects
+			allServiceImages = await listImages(); // This already handles fetching and parsing
+			imageListCache.set(cacheKey, { data: allServiceImages, timestamp: Date.now() });
+		}
+
+		let filtered = [...allServiceImages];
+
+		if (filters?.name) {
+			const nameLower = filters.name.toLowerCase();
+			filtered = filtered.filter((img) => img.repo.toLowerCase().includes(nameLower) || img.tag.toLowerCase().includes(nameLower) || (img.RepoTags && img.RepoTags.some((rt) => rt.toLowerCase().includes(nameLower))));
+		}
+
+		if (filters?.dangling !== undefined) {
+			// Dangling images are those with <none>:<none> RepoTags or no RepoTags
+			// listImages already sets repo and tag to '<none>' for these.
+			if (filters.dangling) {
+				filtered = filtered.filter((img) => img.repo === '<none>' && img.tag === '<none>');
+			} else {
+				// If dangling is false, we want non-dangling images
+				filtered = filtered.filter((img) => !(img.repo === '<none>' && img.tag === '<none>'));
+			}
+		}
+
+		const total = filtered.length;
+		const totalPages = Math.ceil(total / pageSize);
+		const start = (page - 1) * pageSize;
+		const images = filtered.slice(start, start + pageSize);
+
+		return { images, total, totalPages };
+	} catch (error) {
+		console.error('Error listing images with pagination:', error);
+		throw error;
+	}
 }
 
 /**

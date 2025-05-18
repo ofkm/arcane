@@ -2,7 +2,6 @@ import { getDockerClient, dockerHost } from './core';
 import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors';
 import type Docker from 'dockerode';
 
-// Add a container cache with TTL
 const containerCache = new Map<string, { timestamp: number; data: any }>();
 const CONTAINER_CACHE_TTL = 15000; // 15 seconds - slightly shorter than stacks cache
 
@@ -58,7 +57,7 @@ export async function listContainers(all = true): Promise<Docker.ContainerInfo[]
 /**
  * Lists containers with server-side pagination and filtering
  */
-export async function listContainersWithPagination(page: number = 1, pageSize: number = 25, filters?: { state?: string; name?: string }): Promise<{ containers: Docker.ContainerInfo[]; total: number; totalPages: number }> {
+export async function listContainersWithPagination(page: number = 1, pageSize: number = 10, filters?: { state?: string; name?: string }): Promise<{ containers: Docker.ContainerInfo[]; total: number; totalPages: number }> {
 	try {
 		// Use the existing cache mechanism
 		const cacheKey = `list-containers-all`;

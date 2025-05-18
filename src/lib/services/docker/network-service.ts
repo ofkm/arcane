@@ -1,7 +1,11 @@
 import { getDockerClient, dockerHost } from '$lib/services/docker/core';
-import type { NetworkInspectInfo, NetworkCreateOptions } from 'dockerode'; // Added NetworkInfo
+import type { NetworkInspectInfo, NetworkCreateOptions } from 'dockerode';
 import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors'; // #file:/Users/kylemendell/dev/ofkm/arcane/src/lib/types/errors.ts
 import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
+
+// Simple in-memory cache for networks
+const networkCache = new Map<string, { data: any; timestamp: number }>();
+const NETWORK_CACHE_TTL = 60 * 1000; // 1 minute TTL
 
 /**
  * This TypeScript function asynchronously lists Docker networks.
@@ -9,7 +13,6 @@ import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
  * objects, representing the summary information for each network.
  */
 export async function listNetworks(): Promise<NetworkInspectInfo[]> {
-	// Changed return type
 	try {
 		const docker = await getDockerClient();
 		const networks = await docker.listNetworks();
@@ -19,6 +22,45 @@ export async function listNetworks(): Promise<NetworkInspectInfo[]> {
 		console.error('Docker Service: Error listing networks:', error);
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		throw new Error(`Failed to list Docker networks using host "${dockerHost}". ${errorMessage}`);
+	}
+}
+
+/**
+ * Lists networks with server-side pagination and filtering.
+ */
+export async function listNetworksWithPagination(page: number = 1, pageSize: number = 10, filters?: { name?: string; driver?: string }): Promise<{ networks: NetworkInspectInfo[]; total: number; totalPages: number }> {
+	try {
+		const cacheKey = `list-networks-all`;
+		const cachedData = networkCache.get(cacheKey);
+		let allNetworks: NetworkInspectInfo[];
+
+		if (cachedData && Date.now() - cachedData.timestamp < NETWORK_CACHE_TTL) {
+			allNetworks = cachedData.data as NetworkInspectInfo[];
+		} else {
+			const docker = await getDockerClient();
+			allNetworks = await docker.listNetworks();
+			networkCache.set(cacheKey, { data: allNetworks, timestamp: Date.now() });
+		}
+
+		let filtered = [...allNetworks];
+
+		if (filters?.name) {
+			filtered = filtered.filter((n) => n.Name.toLowerCase().includes(filters.name!.toLowerCase()));
+		}
+
+		if (filters?.driver) {
+			filtered = filtered.filter((n) => n.Driver && n.Driver.toLowerCase().includes(filters.driver!.toLowerCase()));
+		}
+
+		const total = filtered.length;
+		const totalPages = Math.ceil(total / pageSize);
+		const start = (page - 1) * pageSize;
+		const networks = filtered.slice(start, start + pageSize);
+
+		return { networks, total, totalPages };
+	} catch (error) {
+		console.error('Error listing networks with pagination:', error);
+		throw error;
 	}
 }
 

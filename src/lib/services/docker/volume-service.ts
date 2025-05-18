@@ -1,10 +1,10 @@
 import { getDockerClient, dockerHost } from '$lib/services/docker/core';
-// ServiceVolume might still be used by other parts of the application,
-// but this service will primarily return Dockerode's VolumeInspectInfo.
-// import type { ServiceVolume } from '$lib/types/docker/volume.type';
 import type { VolumeCreateOptions, VolumeInspectInfo } from 'dockerode';
-// Import custom errors
 import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors'; // #file:/Users/kylemendell/dev/ofkm/arcane/src/lib/types/errors.ts
+
+// Simple in-memory cache for volumes (replace with your actual cache implementation if you have one)
+const volumeCache = new Map<string, { data: any; timestamp: number }>();
+const VOLUME_CACHE_TTL = 60 * 1000; // 1 minute TTL for example
 
 /**
  * Asynchronously lists Docker volumes.
@@ -21,6 +21,43 @@ export async function listVolumes(): Promise<VolumeInspectInfo[]> {
 		console.error('Docker Service: Error listing volumes:', error);
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		throw new Error(`Failed to list Docker volumes using host "${dockerHost}". ${errorMessage}`);
+	}
+}
+
+/**
+ * Lists volumes with server-side pagination and filtering.
+ */
+export async function listVolumesWithPagination(page: number = 1, pageSize: number = 10, filters?: { name?: string }): Promise<{ volumes: VolumeInspectInfo[]; total: number; totalPages: number }> {
+	try {
+		const cacheKey = `list-volumes-all`;
+		const cachedData = volumeCache.get(cacheKey);
+		let allVolumes: VolumeInspectInfo[];
+
+		if (cachedData && Date.now() - cachedData.timestamp < VOLUME_CACHE_TTL) {
+			allVolumes = cachedData.data as VolumeInspectInfo[];
+		} else {
+			const docker = await getDockerClient();
+			const volumeResponse = await docker.listVolumes();
+			allVolumes = volumeResponse.Volumes || [];
+			volumeCache.set(cacheKey, { data: allVolumes, timestamp: Date.now() });
+		}
+
+		let filtered = [...allVolumes];
+
+		if (filters?.name) {
+			filtered = filtered.filter((v) => v.Name.toLowerCase().includes(filters.name!.toLowerCase()));
+		}
+
+		const total = filtered.length;
+		const totalPages = Math.ceil(total / pageSize);
+		const start = (page - 1) * pageSize;
+		const volumes = filtered.slice(start, start + pageSize);
+
+		return { volumes, total, totalPages };
+	} catch (error) {
+		console.error('Error listing volumes with pagination:', error);
+		// Consider re-throwing a more specific error or handling it as per your app's needs
+		throw error;
 	}
 }
 

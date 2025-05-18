@@ -78,10 +78,7 @@
 	});
 
 	async function loadMaturityData() {
-		const visibleImageIds = images
-			.filter((img) => img.repo !== '<none>' && img.tag !== '<none>')
-			.slice(0, 20)
-			.map((img) => img.Id);
+		const visibleImageIds = images.filter((img) => img.repo !== '<none>' && img.tag !== '<none>').map((img) => img.Id);
 
 		if (visibleImageIds.length === 0) return;
 
@@ -491,7 +488,7 @@
 					}}
 					bind:selectedIds
 				>
-					{#snippet rows({ item })}
+					{#snippet rows({ item }: { item: EnhancedImageInfo })}
 						<Table.Cell data-image-id={item.Id}>
 							<div class="flex items-center gap-2">
 								<div class="flex items-center flex-1">
