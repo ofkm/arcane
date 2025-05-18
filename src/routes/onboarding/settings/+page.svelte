@@ -113,7 +113,7 @@
 			<Card.Content class="pt-0 pb-4">
 				<div class="space-y-3">
 					<Label for="dockerHost" class="text-base block mb-2">Docker Host</Label>
-					<Input id="dockerHost" bind:value={dockerHost} placeholder="unix:///var/run/docker.sock" class="px-4 bg-muted/10 size-12" />
+					<Input id="dockerHost" bind:value={dockerHost} placeholder="unix:///var/run/docker.sock" class="px-4 bg-muted/10 h-12" />
 					<p class="text-xs text-muted-foreground">
 						Examples: Unix: <code class="bg-muted/30 px-1 py-0.5 rounded">unix:///var/run/docker.sock</code>
 					</p>
@@ -138,7 +138,7 @@
 				{#if pollingEnabled}
 					<div class="px-4">
 						<Label for="pollingInterval" class="text-base block mb-2">Polling Interval (minutes)</Label>
-						<Input id="pollingInterval" type="number" bind:value={pollingInterval} min="5" max="60" class="px-4 bg-muted/10 size-12" />
+						<Input id="pollingInterval" type="number" bind:value={pollingInterval} min="5" max="60" class="px-4 bg-muted/10 h-12" />
 						<p class="text-xs text-muted-foreground mt-1">Set between 5-60 minutes.</p>
 					</div>
 				{/if}

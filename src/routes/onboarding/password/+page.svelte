@@ -123,12 +123,12 @@
 		<div class="space-y-6">
 			<div class="space-y-4">
 				<Label for="password" class="text-base block mb-2">New Password</Label>
-				<Input id="password" type="password" bind:value={password} placeholder="Enter new password" class="px-4 bg-muted/10 size-12" required />
+				<Input id="password" type="password" bind:value={password} placeholder="Enter new password" class="px-4 bg-muted/10 h-12" required />
 			</div>
 
 			<div class="space-y-4">
 				<Label for="confirmPassword" class="text-base block mb-2">Confirm Password</Label>
-				<Input id="confirmPassword" type="password" bind:value={confirmPassword} placeholder="Confirm new password" class="px-4 bg-muted/10 size-12" required />
+				<Input id="confirmPassword" type="password" bind:value={confirmPassword} placeholder="Confirm new password" class="px-4 bg-muted/10 h-12" required />
 			</div>
 		</div>
 

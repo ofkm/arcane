@@ -194,6 +194,7 @@
 							restart: isLoading.restarting,
 							remove: isLoading.removing
 						}}
+						onActionComplete={() => invalidateAll()}
 					/>
 				</div>
 			{/if}
