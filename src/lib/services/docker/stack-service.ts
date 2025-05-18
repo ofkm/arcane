@@ -845,99 +845,141 @@ async function startStackWithExternalNetworks(stackId: string, composeData: any,
 	for (const [serviceName, serviceConfig] of Object.entries(composeData.services || {})) {
 		const service = serviceConfig as any;
 
-		// service.container_name should be resolved from composeData (processed by parseYamlContent)
 		let containerName = service.container_name;
-
-		// If container_name is still not defined or is empty after substitution, use a default.
 		if (!containerName || typeof containerName !== 'string') {
 			containerName = `${stackId}_${serviceName}`;
 		}
-
-		// Check if the container name (which should have been substituted by parseYamlContent)
-		// still contains unresolved placeholders. This indicates the variable was not defined.
 		if (containerName.includes('${')) {
-			console.warn(`CRITICAL: Unresolved variable in container_name for service '${serviceName}': ${containerName}. ` + `This means the environment variable was not found. Using default name: ${stackId}_${serviceName}`);
-			containerName = `${stackId}_${serviceName}`; // Fallback to a safe default
+			console.warn(`CRITICAL: Unresolved variable in container_name for service '${serviceName}': ${containerName}. Using default name: ${stackId}_${serviceName}`);
+			containerName = `${stackId}_${serviceName}`;
 		}
 
-		// Prepare container configuration (existing code)
 		const containerConfig: any = {
-			name: containerName, // Use the processed container name
+			name: containerName,
 			Image: service.image,
+			User: service.user || '', // Add User field
 			Labels: {
 				'com.docker.compose.project': stackId,
 				'com.docker.compose.service': serviceName,
 				...service.labels
 			},
-			Env: await prepareEnvironmentVariables(service.environment, stackDir), // Ensure this is awaited if async
+			Env: await prepareEnvironmentVariables(service.environment, stackDir),
 			HostConfig: {
 				RestartPolicy: prepareRestartPolicy(service.restart),
-				Binds: prepareVolumes(service.volumes), // Ensure this handles paths correctly
-				PortBindings: preparePorts(service.ports)
+				Binds: prepareVolumes(service.volumes),
+				PortBindings: preparePorts(service.ports),
+				Dns: service.dns || [], // Add DNS servers
+				DnsOptions: service.dns_opt || [], // Add DNS options
+				DnsSearch: service.dns_search || [] // Add DNS search domains
 			}
 		};
 
-		// Add network configuration
 		const networkMode = service.network_mode || null;
+		let primaryNetworkName = null; // Track the primary network name
+
 		if (networkMode) {
+			// If explicit network_mode is defined, use it
 			containerConfig.HostConfig.NetworkMode = networkMode;
+		} else if (service.networks) {
+			// Get all network names for this service
+			const serviceNetworks = Array.isArray(service.networks) ? service.networks : Object.keys(service.networks);
+
+			if (serviceNetworks.length > 0) {
+				// Use the first network as the primary network (instead of 'none')
+				const firstNetName = serviceNetworks[0];
+				const networkDefinition = composeData.networks?.[firstNetName];
+
+				// Determine the actual network name
+				let actualExternalNetIdentifier = firstNetName;
+				if (networkDefinition?.external && networkDefinition.name) {
+					if (typeof networkDefinition.name === 'string' && networkDefinition.name.includes('${') && networkDefinition.name.includes('}')) {
+						console.warn(`External network key '${firstNetName}' has an unresolved variable in name attribute. Using key '${firstNetName}' as identifier.`);
+					} else {
+						actualExternalNetIdentifier = networkDefinition.name;
+					}
+				}
+
+				// Set the primary network name
+				primaryNetworkName = networkDefinition?.external ? actualExternalNetIdentifier : `${stackId}_${firstNetName}`;
+				containerConfig.HostConfig.NetworkMode = primaryNetworkName;
+				console.log(`Service ${serviceName} will use '${primaryNetworkName}' as primary network.`);
+			}
 		}
 
+		// When preparing the EndpointsConfig, only include additional networks
 		const networkingConfig: { EndpointsConfig?: any } = {};
 		if (!networkMode && service.networks) {
-			// Only configure EndpointsConfig if not using network_mode host/none etc.
-			networkingConfig.EndpointsConfig = {};
 			const serviceNetworks = Array.isArray(service.networks) ? service.networks : Object.keys(service.networks);
-			for (const netName of serviceNetworks) {
-				const networkDefinition = composeData.networks?.[netName];
-				const fullNetworkName = networkDefinition?.external ? networkDefinition.name || netName : `${stackId}_${netName}`;
-				networkingConfig.EndpointsConfig[fullNetworkName] = {}; // Add aliases or other configs here if needed from service.networks[netName]
-				if (typeof service.networks === 'object' && service.networks[netName] && service.networks[netName].aliases) {
-					networkingConfig.EndpointsConfig[fullNetworkName].Aliases = service.networks[netName].aliases;
+
+			// Skip the first network if we're using it as the primary NetworkMode
+			const additionalNetworks = primaryNetworkName ? serviceNetworks.slice(1) : serviceNetworks;
+
+			if (additionalNetworks.length > 0) {
+				networkingConfig.EndpointsConfig = {};
+
+				for (const netName of additionalNetworks) {
+					const serviceNetConfig = typeof service.networks === 'object' ? service.networks[netName] : {};
+					const networkDefinition = composeData.networks?.[netName];
+
+					let actualExternalNetIdentifier = netName;
+					if (networkDefinition?.external && networkDefinition.name) {
+						if (typeof networkDefinition.name === 'string' && networkDefinition.name.includes('${') && networkDefinition.name.includes('}')) {
+							console.warn(`External network key '${netName}' in stack '${stackId}' has a 'name' attribute '${networkDefinition.name}' that appears to be an unresolved variable. Using the network key '${netName}' as the identifier for connection.`);
+						} else {
+							actualExternalNetIdentifier = networkDefinition.name;
+						}
+					}
+					const fullNetworkName = networkDefinition?.external ? actualExternalNetIdentifier : `${stackId}_${netName}`;
+
+					// Create the endpoint config properly with all possible options
+					const endpointConfig: any = {};
+
+					// Handle network aliases
+					if (typeof serviceNetConfig === 'object' && serviceNetConfig.aliases) {
+						endpointConfig.Aliases = serviceNetConfig.aliases;
+					}
+
+					// Handle static IP configuration - CRITICAL for networks like vlan25
+					if (typeof serviceNetConfig === 'object') {
+						const ipamConfig: any = {};
+
+						if (serviceNetConfig.ipv4_address) {
+							ipamConfig.IPv4Address = serviceNetConfig.ipv4_address;
+						}
+
+						if (serviceNetConfig.ipv6_address) {
+							ipamConfig.IPv6Address = serviceNetConfig.ipv6_address;
+						}
+
+						if (Object.keys(ipamConfig).length > 0) {
+							endpointConfig.IPAMConfig = ipamConfig;
+						}
+					}
+
+					networkingConfig.EndpointsConfig[fullNetworkName] = endpointConfig;
 				}
 			}
 		}
 
-		// Find existing container with same name to remove
-		try {
-			const existingContainers = await docker.listContainers({
-				all: true,
-				filters: JSON.stringify({ name: [containerName] })
-			});
-
-			for (const existing of existingContainers) {
-				console.log(`Removing existing container: ${containerName} (ID: ${existing.Id})`);
-				const c = docker.getContainer(existing.Id); // Corrected variable name
-				if (existing.State === 'running') {
-					await c.stop().catch((e) => console.warn(`Failed to stop existing container ${existing.Id}: ${e.message}`));
-				}
-				await c.remove({ force: true }).catch((e) => console.warn(`Failed to remove existing container ${existing.Id}: ${e.message}`));
-			}
-		} catch (removeErr) {
-			console.warn(`Warning: Error checking/removing existing containers for ${containerName}:`, removeErr);
-		}
-
-		// Create and start the container
-		console.log(`Creating container for service ${serviceName}: ${containerName}`);
 		try {
 			const container = await docker.createContainer(containerConfig);
 			console.log(`Successfully created container: ${containerName} (ID: ${container.id})`);
 
-			// Connect to networks if not using a specific network_mode like 'host' or 'none'
-			// This part was simplified in your snippet, ensure it's robust
 			if (networkingConfig.EndpointsConfig && Object.keys(networkingConfig.EndpointsConfig).length > 0) {
-				for (const netName of Object.keys(networkingConfig.EndpointsConfig)) {
+				for (const netNameKey of Object.keys(networkingConfig.EndpointsConfig)) {
 					try {
-						console.log(`Connecting container ${container.id} to network: ${netName}`);
-						const network = docker.getNetwork(netName);
+						// Log the actual config we're using to connect to the network
+						console.log(`Connecting container ${container.id} to network: ${netNameKey} with config:`, JSON.stringify(networkingConfig.EndpointsConfig[netNameKey]));
+
+						const network = docker.getNetwork(netNameKey);
 						await network.connect({
 							Container: container.id,
-							EndpointConfig: networkingConfig.EndpointsConfig[netName] || {}
+							EndpointConfig: networkingConfig.EndpointsConfig[netNameKey] || {}
 						});
-						console.log(`Successfully connected ${container.id} to network: ${netName}`);
+						console.log(`Successfully connected ${container.id} to network: ${netNameKey}`);
 					} catch (netConnectErr) {
-						console.error(`Error connecting container ${container.id} to network ${netName}:`, netConnectErr);
-						// Decide if this should throw or just be a warning
+						console.error(`Error connecting container ${container.id} to network ${netNameKey}:`, netConnectErr);
+						throw new Error(`Failed to connect container ${container.id} to network ${netNameKey}: ${netConnectErr instanceof Error ? netConnectErr.message : String(netConnectErr)}`);
 					}
 				}
 			}
