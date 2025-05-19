@@ -33,7 +33,7 @@ jobs:
       uses: actions/checkout@v4
     - name: nodejsscan scan
       id: njsscan
-      uses: ajinabraham/njsscan-action@7237412fdd36af517e2745077cedbf9d6900d711
+      uses: ajinabraham/njsscan-action@231750a435d85095d33be7d192d52ec650625146
       with:
         args: '. --sarif --output results.sarif || true'
     - name: Upload njsscan report
