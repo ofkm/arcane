@@ -46,9 +46,12 @@ export async function deployStack(stackId: string): Promise<boolean> {
 		const envVars = parseEnvContent(envContent);
 		const getEnvVar = (key: string): string | undefined => envVars[key] || process.env[key];
 
-		// Normalize and parse compose content
+		// Normalize content for healthchecks but don't write it back to the file
 		const normalizedContent = normalizeHealthcheckTest(composeContent, getEnvVar);
-		if (normalizedContent !== composeContent) {
+
+		// Only write back if it's specifically a healthcheck normalization issue
+		// Don't write back the env var interpolations
+		if (normalizedContent !== composeContent && normalizedContent.includes('healthcheck') && composeContent.includes('healthcheck')) {
 			await fs.writeFile(composePath, normalizedContent, 'utf8');
 		}
 
@@ -210,6 +213,47 @@ async function pullStackImages(docker: Dockerode, services: Record<string, any>)
 		});
 
 	await Promise.all(pullPromises);
+}
+
+/**
+ * Pulls all images for a stack without deploying
+ */
+export async function pullImagesForStack(stackId: string): Promise<boolean> {
+	console.log(`Pulling images for stack ${stackId}...`);
+
+	try {
+		// Load and normalize compose file
+		const composePath = await getComposeFilePath(stackId);
+		if (!composePath) {
+			throw new Error(`Compose file not found for stack ${stackId}`);
+		}
+
+		const composeContent = await fs.readFile(composePath, 'utf8');
+		const envContent = await loadEnvFile(stackId);
+
+		// Parse env variables and create getter
+		const envVars = parseEnvContent(envContent);
+		const getEnvVar = (key: string): string | undefined => envVars[key] || process.env[key];
+
+		// Normalize and parse compose content
+		const normalizedContent = normalizeHealthcheckTest(composeContent, getEnvVar);
+		const composeData = parseYamlContent(normalizedContent, getEnvVar);
+
+		if (!composeData) {
+			throw new Error(`Failed to parse compose file for stack ${stackId}`);
+		}
+
+		// Get docker client
+		const docker = await getDockerClient();
+
+		// Call the internal pullStackImages function with correct arguments
+		await pullStackImages(docker, composeData.services || {});
+
+		return true;
+	} catch (err) {
+		console.error(`Error pulling images for stack ${stackId}:`, err);
+		throw new Error(`Failed to pull images: ${err instanceof Error ? err.message : String(err)}`);
+	}
 }
 
 /**
@@ -736,5 +780,32 @@ export async function stopStack(stackId: string): Promise<boolean> {
 	} catch (err) {
 		console.error(`Error stopping stack ${stackId}:`, err);
 		throw new Error(`Failed to stop stack: ${err instanceof Error ? err.message : String(err)}`);
+	}
+}
+
+/**
+ * Redeploys a stack by stopping it, pulling images, and redeploying
+ */
+export async function redeployStack(stackId: string): Promise<boolean> {
+	console.log(`Redeploying stack ${stackId}...`);
+
+	try {
+		// First stop the stack
+		console.log(`Stopping existing stack ${stackId}...`);
+		await stopStack(stackId);
+
+		// Pull fresh images
+		console.log(`Pulling fresh images for stack ${stackId}...`);
+		await pullImagesForStack(stackId);
+
+		// Deploy the stack with fresh images
+		console.log(`Deploying stack ${stackId}...`);
+		const result = await deployStack(stackId);
+
+		console.log(`Stack ${stackId} has been successfully redeployed`);
+		return result;
+	} catch (err) {
+		console.error(`Error redeploying stack ${stackId}:`, err);
+		throw new Error(`Failed to redeploy stack: ${err instanceof Error ? err.message : String(err)}`);
 	}
 }

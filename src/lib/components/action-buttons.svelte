@@ -74,7 +74,7 @@
 		} else if (action === 'redeploy') {
 			openConfirmDialog({
 				title: `Confirm Redeploy`,
-				message: `Are you sure you want to redeploy this ${type}?`,
+				message: `Are you sure you want to redeploy this stack? This will STOP, PULL, and START the Stack.`,
 				confirm: {
 					label: 'Redeploy',
 					action: async () => {

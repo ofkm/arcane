@@ -1,13 +1,13 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { fullyRedeployStack } from '$lib/services/docker/stack-service';
+import { redeployStack } from '$lib/services/docker/stack-custom-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
 
 export const POST: RequestHandler = async ({ params }) => {
 	const id = params.stackId;
 
-	const result = await tryCatch(fullyRedeployStack(id));
+	const result = await tryCatch(redeployStack(id));
 
 	if (result.error) {
 		console.error(`API Error redeploying stack ${id}:`, result.error);

@@ -9,7 +9,6 @@ import { getSettings } from '$lib/services/settings-service';
 import { areRegistriesEquivalent, parseImageNameForRegistry } from '$lib/utils/registry.utils';
 import { json } from '@sveltejs/kit';
 
-// Define AuthConfig interface (as used by dockerode)
 interface AuthConfig {
 	username: string;
 	password?: string;
