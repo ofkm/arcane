@@ -1,78 +1,94 @@
 import { getDockerClient } from '$lib/services/docker/core';
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
-import { extractDockerErrorMessage } from '$lib/utils/errors.util';
-import { tryCatch } from '$lib/utils/try-catch';
+import type { RequestHandler } from '@sveltejs/kit';
+import type { Readable } from 'stream';
+
+// Define a custom interface for our stream source
+interface LogStreamSource extends UnderlyingDefaultSource<Uint8Array> {
+	logStream?: Readable;
+}
 
 export const GET: RequestHandler = async ({ params }) => {
-	const { containerId } = params;
-	const docker = await getDockerClient();
-
-	const result = await tryCatch(
-		(async () => {
-			const container = docker.getContainer(containerId);
-
-			// Check if container exists
-			const containerInfo = await container.inspect();
-			const hasTty = containerInfo.Config.Tty === true;
-
-			// Create a stream for Server-Sent Events (SSE)
-			const encoder = new TextEncoder();
-			const stream = new ReadableStream({
-				async start(controller) {
-					try {
-						const logStream = await container.logs({
-							follow: true,
-							stdout: true,
-							stderr: true,
-							timestamps: false,
-							tail: 0
-						});
-
-						logStream.on('data', (chunk) => {
-							let log;
-							if (!hasTty) {
-								log = chunk.slice(8).toString('utf8');
-							} else {
-								log = chunk.toString('utf8');
-							}
-							controller.enqueue(encoder.encode(`data: ${log}\n\n`));
-						});
-
-						logStream.on('end', () => {
-							controller.close();
-						});
-
-						logStream.on('error', (err) => {
-							console.error('Log stream error:', err);
-							controller.error(err);
-						});
-					} catch (err) {
-						console.error('Error setting up log stream:', err);
-						controller.error(err);
-					}
-				}
-			});
-
-			return stream;
-		})()
-	);
-
-	if (result.error) {
-		console.error('Error streaming container logs:', result.error);
-
-		const response: ApiErrorResponse = {
-			success: false,
-			error: extractDockerErrorMessage(result.error),
-			code: ApiErrorCode.DOCKER_API_ERROR,
-			details: result.error
-		};
-
-		return json(response, { status: 500 });
+	if (!params.containerId) {
+		return new Response('Container ID is required', { status: 400 });
 	}
 
-	return new Response(result.data, {
+	const docker = await getDockerClient();
+	const container = docker.getContainer(params.containerId);
+
+	// Create a ReadableStream with our custom source type
+	const stream = new ReadableStream<Uint8Array>({
+		async start(controller) {
+			try {
+				// Get logs stream from Docker
+				const logStream = (await container.logs({
+					follow: true,
+					stdout: true,
+					stderr: true,
+					timestamps: true
+				})) as Readable;
+
+				// Track controller state
+				let isControllerClosed = false;
+
+				// Set up cleanup for client disconnection
+				const cleanup = () => {
+					isControllerClosed = true;
+					if (logStream && logStream.destroy) {
+						logStream.destroy();
+					}
+				};
+
+				// Handle Docker stream events
+				logStream.on('data', (chunk) => {
+					try {
+						// Only enqueue if controller is still open
+						if (!isControllerClosed) {
+							controller.enqueue(chunk);
+						}
+					} catch (error: any) {
+						// Handle "controller closed" errors gracefully
+						if (error.code === 'ERR_INVALID_STATE') {
+							cleanup();
+						} else {
+							console.error('Error streaming logs:', error);
+						}
+					}
+				});
+
+				logStream.on('end', () => {
+					if (!isControllerClosed) {
+						controller.close();
+						isControllerClosed = true;
+					}
+				});
+
+				logStream.on('error', (err) => {
+					console.error('Docker logs stream error:', err);
+					if (!isControllerClosed) {
+						controller.error(err);
+						isControllerClosed = true;
+					}
+				});
+
+				// Store for cleanup in cancel
+				(this as LogStreamSource).logStream = logStream;
+			} catch (error) {
+				console.error('Error starting logs stream:', error);
+				controller.error(error);
+			}
+		},
+
+		cancel() {
+			// Called when client disconnects
+			console.log('Client disconnected from logs stream');
+			const self = this as LogStreamSource;
+			if (self.logStream && self.logStream.destroy) {
+				self.logStream.destroy();
+			}
+		}
+	} as LogStreamSource);
+
+	return new Response(stream, {
 		headers: {
 			'Content-Type': 'text/event-stream',
 			'Cache-Control': 'no-cache',
