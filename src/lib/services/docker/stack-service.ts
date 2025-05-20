@@ -1263,60 +1263,6 @@ export async function stopStack(stackId: string): Promise<boolean> {
 }
 
 /**
- * The `restartStack` function asynchronously restarts a Docker stack identified by its ID, handling
- * errors and returning a boolean indicating success.
- * @param {string} stackId - The `stackId` parameter is a string that represents the identifier of the
- * stack that you want to restart.
- * @returns The `restartStack` function returns a `Promise<boolean>`.
- */
-export async function restartStack(stackId: string): Promise<boolean> {
-	const stackDir = await getStackDir(stackId);
-	const originalCwd = process.cwd();
-	console.log(`Attempting to restart stack ${stackId}...`);
-
-	try {
-		const stopped = await stopStack(stackId);
-		if (!stopped) {
-			console.error(`Restart failed because stop step failed for stack ${stackId}.`);
-			return false;
-		}
-
-		// ---- START: Ensure compose file is normalized before use ----
-		const composePath = await getComposeFilePath(stackId);
-		if (!composePath) {
-			throw new Error(`Compose file not found for stack ${stackId} during restart.`);
-		}
-		const currentComposeContent = await fs.readFile(composePath, 'utf8');
-		const normalizedComposeContent = normalizeHealthcheckTest(currentComposeContent);
-		if (currentComposeContent !== normalizedComposeContent) {
-			console.log(`Normalizing healthcheck.test in compose file for stack ${stackId} before restart.`);
-			await fs.writeFile(composePath, normalizedComposeContent, 'utf8');
-		}
-		// ---- END: Ensure compose file is normalized ----
-
-		process.chdir(stackDir);
-		console.log(`Temporarily changed CWD to: ${stackDir} for restarting stack ${stackId}.`);
-
-		console.log(`Starting stack ${stackId} after stopping...`);
-		const compose = await getComposeInstance(stackId);
-		await compose.up();
-		console.log(`Stack ${stackId} started.`);
-
-		// Invalidate the cache after restarting
-		stackCache.delete('compose-stacks');
-
-		return true;
-	} catch (err: unknown) {
-		console.error(`Error restarting stack ${stackId} from directory ${stackDir}:`, err);
-		const errorMessage = err instanceof Error ? err.message : String(err);
-		throw new Error(`Failed to restart stack: ${errorMessage}`);
-	} finally {
-		process.chdir(originalCwd);
-		console.log(`Restored CWD to: ${originalCwd}.`);
-	}
-}
-
-/**
  * The function `destroyStack` completely removes a Docker stack by stopping its services,
  * removing containers, networks, and deleting all stack files.
  * @param {string} stackId - The unique identifier of the stack to destroy

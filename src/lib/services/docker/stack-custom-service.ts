@@ -809,3 +809,58 @@ export async function redeployStack(stackId: string): Promise<boolean> {
 		throw new Error(`Failed to redeploy stack: ${err instanceof Error ? err.message : String(err)}`);
 	}
 }
+
+/**
+ * Restarts all containers in a stack without redeploying
+ */
+export async function restartStack(stackId: string): Promise<boolean> {
+	console.log(`Restarting stack ${stackId}...`);
+	const docker = await getDockerClient();
+	const composeProjectLabel = 'com.docker.compose.project';
+
+	try {
+		// Find containers belonging to this stack
+		const containers = await docker.listContainers({
+			all: true,
+			filters: JSON.stringify({
+				label: [`${composeProjectLabel}=${stackId}`]
+			})
+		});
+
+		// Also find by name convention as fallback
+		const containersByName = await docker.listContainers({
+			all: true,
+			filters: JSON.stringify({
+				name: [`${stackId}_`]
+			})
+		});
+
+		// Combine the results (removing duplicates)
+		const allContainerIds = new Set([...containers.map((c) => c.Id), ...containersByName.map((c) => c.Id)]);
+
+		if (allContainerIds.size === 0) {
+			console.log(`No containers found for stack ${stackId}, nothing to restart`);
+			return false;
+		}
+
+		// Restart all containers
+		for (const containerId of allContainerIds) {
+			const container = docker.getContainer(containerId);
+
+			try {
+				const containerInfo = await container.inspect();
+				console.log(`Restarting container ${containerInfo.Name}...`);
+				await container.restart({ t: 10 }); // 10 second timeout for restart
+			} catch (err) {
+				console.warn(`Error restarting container ${containerId}:`, err);
+				throw err;
+			}
+		}
+
+		console.log(`Successfully restarted all containers in stack ${stackId}`);
+		return true;
+	} catch (err) {
+		console.error(`Error restarting stack ${stackId}:`, err);
+		throw new Error(`Failed to restart stack: ${err instanceof Error ? err.message : String(err)}`);
+	}
+}

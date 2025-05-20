@@ -1,13 +1,13 @@
 import BaseAPIService from './api-service';
 
 export default class StackAPIService extends BaseAPIService {
-	async start(id: string) {
-		const res = await this.api.post(`/stacks/${id}/start`);
+	async deploy(id: string) {
+		const res = await this.api.post(`/stacks/${id}/deploy`);
 		return res.data;
 	}
 
 	async down(id: string) {
-		const res = await this.api.post(`/stacks/${id}/stop`);
+		const res = await this.api.post(`/stacks/${id}/down`);
 		return res.data;
 	}
 
@@ -59,16 +59,6 @@ export default class StackAPIService extends BaseAPIService {
 
 	async migrate(id: string) {
 		const res = await this.api.post(`/stacks/${id}/migrate`);
-		return res.data;
-	}
-
-	async deployCustom(id: string) {
-		const res = await this.api.post(`/stacks/${id}/deploy`);
-		return res.data;
-	}
-
-	async downCustom(id: string) {
-		const res = await this.api.post(`/stacks/${id}/down`);
 		return res.data;
 	}
 

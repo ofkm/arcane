@@ -97,7 +97,7 @@
 	async function handleStart() {
 		isLoading.start = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? containerApi.start(id) : stackApi.deployCustom(id)),
+			result: await tryCatch(type === 'container' ? containerApi.start(id) : stackApi.deploy(id)),
 			message: `Failed to Start ${type}`,
 			setLoadingState: (value) => (isLoading.start = value),
 			onSuccess: async () => {
@@ -110,7 +110,7 @@
 	async function handleStop() {
 		isLoading.stop = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? containerApi.stop(id) : stackApi.downCustom(id)),
+			result: await tryCatch(type === 'container' ? containerApi.stop(id) : stackApi.down(id)),
 			message: `Failed to Stop ${type}`,
 			setLoadingState: (value) => (isLoading.stop = value),
 			onSuccess: async () => {
