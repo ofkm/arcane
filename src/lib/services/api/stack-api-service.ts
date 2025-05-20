@@ -16,8 +16,19 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async destroy(id: string) {
-		const res = await this.api.delete(`/stacks/${id}/remove`);
+	async destroy(id: string, removeVolumes = false, removeFiles = false) {
+		console.log('API service - removeVolumes:', removeVolumes, 'removeFiles:', removeFiles);
+
+		const queryParams = {
+			removeVolumes: removeVolumes ? 'true' : 'false',
+			removeFiles: removeFiles ? 'true' : 'false'
+		};
+
+		console.log('Query params:', queryParams);
+
+		const res = await this.api.delete(`/stacks/${id}/destroy`, {
+			params: queryParams
+		});
 		return res.data;
 	}
 

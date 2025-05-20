@@ -1,11 +1,13 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { removeStack } from '$lib/services/docker/stack-service';
+import { destroyStack } from '$lib/services/docker/stack-custom-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
 
-export const DELETE: RequestHandler = async ({ params }) => {
+export const DELETE: RequestHandler = async ({ params, url }) => {
 	const id = params.stackId;
+	const removeFiles = url.searchParams.get('removeFiles') === 'true';
+	const removeVolumes = url.searchParams.get('removeVolumes') === 'true';
 
 	if (!id) {
 		const response: ApiErrorResponse = {
@@ -16,13 +18,14 @@ export const DELETE: RequestHandler = async ({ params }) => {
 		return json(response, { status: 400 });
 	}
 
-	const result = await tryCatch(removeStack(id));
+	// Pass removeFiles parameter to destroyStack function
+	const result = await tryCatch(destroyStack(id, removeVolumes, removeFiles));
 
 	if (result.error) {
-		console.error(`API Error removing stack ${id}:`, result.error);
+		console.error(`API Error destroying stack ${id}:`, result.error);
 		const response: ApiErrorResponse = {
 			success: false,
-			error: result.error.message || 'Failed to remove stack',
+			error: result.error.message || 'Failed to destroy stack',
 			code: ApiErrorCode.INTERNAL_SERVER_ERROR,
 			details: result.error
 		};
@@ -32,7 +35,7 @@ export const DELETE: RequestHandler = async ({ params }) => {
 	if (result.data) {
 		return json({
 			success: true,
-			message: `Stack removed successfully`
+			message: `Stack Destroyed Successfully${removeFiles ? ' (including files)' : ''}`
 		});
 	} else {
 		const response: ApiErrorResponse = {

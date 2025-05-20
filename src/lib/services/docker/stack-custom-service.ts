@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import Dockerode from 'dockerode';
 import { getComposeFilePath, getStackDir, loadEnvFile, parseYamlContent, normalizeHealthcheckTest } from './stack-service';
 import { getDockerClient } from './core';
+import { removeVolume } from './volume-service';
 
 const stackCache = new Map();
 
@@ -862,5 +863,101 @@ export async function restartStack(stackId: string): Promise<boolean> {
 	} catch (err) {
 		console.error(`Error restarting stack ${stackId}:`, err);
 		throw new Error(`Failed to restart stack: ${err instanceof Error ? err.message : String(err)}`);
+	}
+}
+
+/**
+ * Completely destroys a stack, removing containers, networks, and optionally volumes and files
+ */
+export async function destroyStack(stackId: string, removeVolumes: boolean = false, removeFiles: boolean = false): Promise<boolean> {
+	console.log(`Destroying stack ${stackId}${removeVolumes ? ' including volumes' : ''}...`);
+	const docker = await getDockerClient();
+	const composeProjectLabel = 'com.docker.compose.project';
+
+	try {
+		// First stop and remove all containers
+		console.log(`Stopping and removing containers for stack ${stackId}...`);
+		await cleanupFailedDeployment(stackId);
+
+		// Remove networks
+		console.log(`Removing networks for stack ${stackId}...`);
+		const networks = await docker.listNetworks({
+			filters: JSON.stringify({
+				label: [`${composeProjectLabel}=${stackId}`]
+			})
+		});
+
+		// Also find networks by name convention
+		const networksByName = await docker.listNetworks({
+			filters: JSON.stringify({
+				name: [`${stackId}_`]
+			})
+		});
+
+		// Combine network results (removing duplicates)
+		const allNetworkIds = new Set([...networks.map((n) => n.Id), ...networksByName.map((n) => n.Id)]);
+
+		for (const networkId of allNetworkIds) {
+			try {
+				const network = docker.getNetwork(networkId);
+				const networkInfo = await network.inspect();
+				console.log(`Removing network ${networkInfo.Name}...`);
+				await network.remove();
+			} catch (err) {
+				console.warn(`Error removing network ${networkId}:`, err);
+			}
+		}
+
+		// Remove volumes if requested
+		if (removeVolumes) {
+			console.log(`Removing volumes for stack ${stackId}...`);
+			const volumes = await docker.listVolumes({
+				filters: JSON.stringify({
+					label: [`${composeProjectLabel}=${stackId}`]
+				})
+			});
+
+			// Also find volumes by name convention
+			const volumesByName =
+				(
+					await docker.listVolumes({
+						filters: JSON.stringify({
+							name: [`${stackId}_`]
+						})
+					})
+				).Volumes || [];
+
+			const allVolumeNames = new Set([...(volumes.Volumes || []).map((v) => v.Name), ...volumesByName.map((v) => v.Name)]);
+
+			for (const volumeName of allVolumeNames) {
+				try {
+					console.log(`Removing volume ${volumeName}...`);
+					await removeVolume(volumeName);
+				} catch (err) {
+					console.warn(`Error removing volume ${volumeName}:`, err);
+				}
+			}
+		}
+
+		// Remove stack files if requested
+		if (removeFiles) {
+			console.log(`Removing stack files for ${stackId}...`);
+			const stackDir = await getStackDir(stackId);
+			try {
+				await fs.rm(stackDir, { recursive: true, force: true });
+				console.log(`Successfully removed stack directory: ${stackDir}`);
+			} catch (err) {
+				console.warn(`Error removing stack files at ${stackDir}:`, err);
+				// Continue execution - don't fail if files can't be removed
+			}
+		}
+
+		// Clear cache
+		stackCache.delete('compose-stacks');
+		console.log(`Stack ${stackId} has been successfully destroyed`);
+		return true;
+	} catch (err) {
+		console.error(`Error destroying stack ${stackId}:`, err);
+		throw new Error(`Failed to destroy stack: ${err instanceof Error ? err.message : String(err)}`);
 	}
 }

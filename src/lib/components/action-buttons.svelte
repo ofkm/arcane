@@ -52,15 +52,23 @@
 		if (action === 'remove') {
 			openConfirmDialog({
 				title: `Confirm ${type === 'stack' ? 'Destroy' : 'Removal'}`,
-				message: `Are you sure you want to ${type === 'stack' ? 'destroy' : 'remove'} this ${type}? This action cannot be undone.`,
+				message: `Are you sure you want to ${type === 'stack' ? 'destroy' : 'remove'} this ${type}? This action is DESTRUCTIVE and cannot be undone.`,
 				confirm: {
 					label: type === 'stack' ? 'Destroy' : 'Remove',
 					destructive: true,
-					action: async () => {
+					action: async (checkboxStates) => {
+						console.log('Debug - received checkbox states:', checkboxStates);
+
+						// Ensure these are proper booleans
+						const removeFiles = checkboxStates['removeFiles'] === true;
+						const removeVolumes = checkboxStates['removeVolumes'] === true;
+
+						console.log('Debug - removeFiles:', removeFiles, 'removeVolumes:', removeVolumes);
+
 						isLoading.remove = true;
 						handleApiResultWithCallbacks({
-							result: await tryCatch(type === 'container' ? containerApi.remove(id) : stackApi.destroy(id)),
-							message: `Failed to ${type === 'stack' ? 'Destroy' : 'Removal'} ${type}`,
+							result: await tryCatch(type === 'container' ? containerApi.remove(id) : stackApi.destroy(id, removeVolumes, removeFiles)),
+							message: `Failed to ${type === 'stack' ? 'Destroy' : 'Remove'} ${type}`,
 							setLoadingState: (value) => (isLoading.remove = value),
 							onSuccess: async () => {
 								toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} ${type === 'stack' ? 'Destroyed' : 'Removed'} Successfully`);
@@ -69,7 +77,11 @@
 							}
 						});
 					}
-				}
+				},
+				checkboxes: [
+					{ id: 'removeFiles', label: 'Remove stack files', initialState: false },
+					{ id: 'removeVolumes', label: 'Remove volumes (Warning: Data will be lost)', initialState: false }
+				]
 			});
 		} else if (action === 'redeploy') {
 			openConfirmDialog({

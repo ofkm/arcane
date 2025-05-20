@@ -47,7 +47,7 @@
 
 		if (action === 'start') {
 			handleApiResultWithCallbacks({
-				result: await tryCatch(stackApi.start(id)),
+				result: await tryCatch(stackApi.deploy(id)),
 				message: 'Failed to Start Stack',
 				setLoadingState: (value) => (isLoading.start = value),
 				onSuccess: async () => {
@@ -216,7 +216,7 @@
 				<UniversalTable
 					data={stacks}
 					columns={[
-						{ accessorKey: 'name', header: 'Name' },
+						{ accessorKey: 'Name', header: 'Name' },
 						{ accessorKey: 'serviceCount', header: 'Services' },
 						{ accessorKey: 'status', header: 'Status' },
 						{ accessorKey: 'source', header: 'Source' },

@@ -1,7 +1,23 @@
 import { writable } from 'svelte/store';
 import ConfirmDialog from './confirm-dialog.svelte';
 
-export const confirmDialogStore = writable({
+interface ConfirmDialogStore {
+	open: boolean;
+	title: string;
+	message: string;
+	confirm: {
+		label?: string;
+		destructive?: boolean;
+		action: (checkboxStates: Record<string, boolean>) => void;
+	};
+	checkboxes?: Array<{
+		id: string;
+		label: string;
+		initialState?: boolean;
+	}>;
+}
+
+export const confirmDialogStore = writable<ConfirmDialogStore>({
 	open: false,
 	title: '',
 	message: '',
@@ -15,15 +31,21 @@ export const confirmDialogStore = writable({
 function openConfirmDialog({
 	title,
 	message,
-	confirm
+	confirm,
+	checkboxes
 }: {
 	title: string;
 	message: string;
 	confirm: {
 		label?: string;
 		destructive?: boolean;
-		action: () => void;
+		action: (checkboxStates: Record<string, boolean>) => void;
 	};
+	checkboxes?: Array<{
+		id: string;
+		label: string;
+		initialState?: boolean;
+	}>;
 }) {
 	confirmDialogStore.update((val) => ({
 		open: true,
@@ -32,7 +54,8 @@ function openConfirmDialog({
 		confirm: {
 			...val.confirm,
 			...confirm
-		}
+		},
+		checkboxes
 	}));
 }
 
