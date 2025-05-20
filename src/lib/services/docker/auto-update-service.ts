@@ -1,5 +1,6 @@
 import { listContainers, getContainer, recreateContainer } from './container-service';
-import { listStacks, getStack, fullyRedeployStack } from './stack-service';
+import { listStacks, getStack } from './stack-service';
+import { redeployStack } from './stack-custom-service';
 import { pullImage, getImage } from './image-service';
 import { getSettings } from '../settings-service';
 import yaml from 'js-yaml';
@@ -148,7 +149,7 @@ export async function checkAndUpdateStacks(): Promise<{
 			if (updateAvailable) {
 				updatingStacks.add(stackToUpdate.id);
 				console.log(`Auto-update: Redeploying stack ${stackToUpdate.name} (${stackToUpdate.id})`);
-				await fullyRedeployStack(stackToUpdate.id);
+				await redeployStack(stackToUpdate.id);
 				console.log(`Auto-update: Stack ${stackToUpdate.name} redeployed successfully`);
 				results.updated++;
 				updatingStacks.delete(stackToUpdate.id);

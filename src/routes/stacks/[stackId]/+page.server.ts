@@ -1,7 +1,7 @@
-import { getStack, updateStack, startStack, stopStack, restartStack, removeStack, fullyRedeployStack } from '$lib/services/docker/stack-service';
+import { getStack } from '$lib/services/docker/stack-service';
 import { getSettings } from '$lib/services/settings-service';
 import { getContainer } from '$lib/services/docker/container-service';
-import type { PageServerLoad, Actions } from './$types';
+import type { PageServerLoad } from './$types';
 import { tryCatch } from '$lib/utils/try-catch';
 import type { PortBinding, ContainerInspectInfo } from 'dockerode';
 
@@ -81,92 +81,27 @@ export const load: PageServerLoad = async ({ params }) => {
 	};
 };
 
-export const actions: Actions = {
-	update: async ({ params, request }) => {
-		const { stackId } = params;
-		const formData = await request.formData();
+// export const actions: Actions = {
+// 	update: async ({ params, request }) => {
+// 		const { stackId } = params;
+// 		const formData = await request.formData();
 
-		const name = formData.get('name')?.toString() || '';
-		const composeContent = formData.get('composeContent')?.toString() || '';
-		const autoUpdate = formData.get('autoUpdate') === 'on';
+// 		const name = formData.get('name')?.toString() || '';
+// 		const composeContent = formData.get('composeContent')?.toString() || '';
+// 		const autoUpdate = formData.get('autoUpdate') === 'on';
 
-		const result = await tryCatch(updateStack(stackId, { name, composeContent, autoUpdate }));
-		if (!result.error) {
-			return {
-				success: true,
-				message: 'Stack updated successfully'
-			};
-		} else {
-			console.error('Error updating stack:', result.error);
-			return {
-				success: false,
-				error: result.error instanceof Error ? result.error.message : 'Failed to update stack'
-			};
-		}
-	},
-
-	start: async ({ params }) => {
-		const result = await tryCatch(startStack(params.stackId));
-		if (!result.error) {
-			return { success: true };
-		} else {
-			console.error('Error starting stack:', result.error);
-			return {
-				success: false,
-				error: result.error instanceof Error ? result.error.message : 'Failed to start stack'
-			};
-		}
-	},
-
-	stop: async ({ params }) => {
-		const result = await tryCatch(stopStack(params.stackId));
-		if (!result.error) {
-			return { success: true };
-		} else {
-			console.error('Error stopping stack:', result.error);
-			return {
-				success: false,
-				error: result.error instanceof Error ? result.error.message : 'Failed to stop stack'
-			};
-		}
-	},
-
-	restart: async ({ params }) => {
-		const result = await tryCatch(restartStack(params.stackId));
-		if (!result.error) {
-			return { success: true };
-		} else {
-			console.error('Error restarting stack:', result.error);
-			return {
-				success: false,
-				error: result.error instanceof Error ? result.error.message : 'Failed to restart stack'
-			};
-		}
-	},
-
-	remove: async ({ params }) => {
-		const result = await tryCatch(removeStack(params.stackId));
-		if (!result.error && result.data) {
-			return { success: true, message: 'Stack removal initiated' };
-		} else {
-			console.error('Error removing stack:', result.error);
-			return {
-				success: false,
-				error: result.error instanceof Error ? result.error.message : 'Failed to remove stack'
-			};
-		}
-	},
-
-	redeploy: async ({ params }) => {
-		const result = await tryCatch(fullyRedeployStack(params.stackId));
-		if (!result.error) {
-			return { success: true, message: 'Stack redeployment initiated' };
-		} else {
-			console.error('Error redeploying stack:', result.error);
-			return {
-				success: false,
-				error: result.error instanceof Error ? result.error.message : 'Failed to redeploy stack'
-			};
-		}
-	}
-};
+// 		const result = await tryCatch(updateStack(stackId, { name, composeContent, autoUpdate }));
+// 		if (!result.error) {
+// 			return {
+// 				success: true,
+// 				message: 'Stack updated successfully'
+// 			};
+// 		} else {
+// 			console.error('Error updating stack:', result.error);
+// 			return {
+// 				success: false,
+// 				error: result.error instanceof Error ? result.error.message : 'Failed to update stack'
+// 			};
+// 		}
+// 	}
+// };
