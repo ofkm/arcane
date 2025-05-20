@@ -91,7 +91,7 @@ export async function ensureStacksDir(): Promise<string> {
 /**
  * Returns the stack directory for a given stackId (unchanged)
  */
-async function getStackDir(stackId: string): Promise<string> {
+export async function getStackDir(stackId: string): Promise<string> {
 	const stacksDirAbs = await ensureStacksDir(); // This now returns an absolute path
 	const safeId = path.basename(stackId); // Use path.basename for safety
 	if (safeId !== stackId) {
@@ -108,7 +108,7 @@ async function getStackDir(stackId: string): Promise<string> {
  * Returns the path to the compose file, prioritizing compose.yaml, fallback to docker-compose.yml.
  * Returns null if neither is found.
  */
-async function getComposeFilePath(stackId: string): Promise<string | null> {
+export async function getComposeFilePath(stackId: string): Promise<string | null> {
 	const stackDirAbs = await getStackDir(stackId); // Will be absolute
 	const newPath = path.join(stackDirAbs, 'compose.yaml');
 	const oldPath = path.join(stackDirAbs, 'docker-compose.yml');
@@ -153,7 +153,7 @@ async function saveEnvFile(stackId: string, content?: string): Promise<void> {
  * Loads environment variables from a .env file in the stack directory
  * Returns empty string if the file doesn't exist
  */
-async function loadEnvFile(stackId: string): Promise<string> {
+export async function loadEnvFile(stackId: string): Promise<string> {
 	const envPath = await getEnvFilePath(stackId);
 
 	try {
@@ -1815,7 +1815,7 @@ export async function isStackRunning(stackId: string): Promise<boolean> {
  * @param {function} envGetter - Optional function to get environment variable values.
  * @returns {string} - The normalized and substituted YAML content.
  */
-function normalizeHealthcheckTest(composeContent: string, envGetter?: (key: string) => string | undefined): string {
+export function normalizeHealthcheckTest(composeContent: string, envGetter?: (key: string) => string | undefined): string {
 	let doc: any; // Use 'any' for easier manipulation, will be validated by yamlLoad
 	try {
 		doc = yamlLoad(composeContent);
@@ -1881,7 +1881,7 @@ function normalizeHealthcheckTest(composeContent: string, envGetter?: (key: stri
  * @param envGetter Optional function to get environment variable values
  * @returns Parsed object or null if parsing fails
  */
-function parseYamlContent(content: string, envGetter?: (key: string) => string | undefined): Record<string, any> | null {
+export function parseYamlContent(content: string, envGetter?: (key: string) => string | undefined): Record<string, any> | null {
 	try {
 		// Use js-yaml directly without any potential CommonJS dependencies
 		const parsedYaml = yamlLoad(content);

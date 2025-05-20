@@ -62,6 +62,16 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
+	async deployCustom(id: string) {
+		const res = await this.api.post(`/stacks/${id}/deploy`);
+		return res.data;
+	}
+
+	async downCustom(id: string) {
+		const res = await this.api.post(`/stacks/${id}/down`);
+		return res.data;
+	}
+
 	async list() {
 		const res = await this.api.get('');
 		return res.data;
