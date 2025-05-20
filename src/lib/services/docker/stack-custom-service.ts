@@ -383,12 +383,29 @@ function buildEndpointConfig(networkConfig: any): any {
 
 	const config: any = {};
 
+	// IPv4 address configuration - this is the part that needs fixing
 	if (networkConfig.ipv4_address) {
-		config.IPAddress = networkConfig.ipv4_address;
+		// Create IPAMConfig structure as required by Docker API
+		config.IPAMConfig = config.IPAMConfig || {};
+		config.IPAMConfig.IPv4Address = networkConfig.ipv4_address;
+		console.log(`Setting static IPv4 address: ${networkConfig.ipv4_address}`);
 	}
 
+	// IPv6 address configuration
+	if (networkConfig.ipv6_address) {
+		config.IPAMConfig = config.IPAMConfig || {};
+		config.IPAMConfig.IPv6Address = networkConfig.ipv6_address;
+	}
+
+	// DNS aliases - crucial for service discovery
 	if (networkConfig.aliases && Array.isArray(networkConfig.aliases)) {
 		config.Aliases = networkConfig.aliases;
+	}
+
+	// Link-local IPs
+	if (networkConfig.link_local_ips && Array.isArray(networkConfig.link_local_ips)) {
+		config.IPAMConfig = config.IPAMConfig || {};
+		config.IPAMConfig.LinkLocalIPs = networkConfig.link_local_ips;
 	}
 
 	return config;
@@ -587,27 +604,35 @@ async function buildContainerOptions(docker: Dockerode, stackId: string, service
 	if (serviceConfig.network_mode) {
 		options.HostConfig = options.HostConfig || {};
 		options.HostConfig.NetworkMode = serviceConfig.network_mode;
-	} else {
-		// Determine the network to use
-		let networkName;
+	} else if (serviceConfig.networks && Object.keys(serviceConfig.networks).length > 0) {
+		// For containers with explicit network configurations
+		const defaultNetwork = Object.keys(serviceConfig.networks)[0];
+		const networkConfig = composeData.networks?.[defaultNetwork];
 
-		if (serviceConfig.networks && Object.keys(serviceConfig.networks).length > 0) {
-			// Use the first specified network
-			const defaultNetwork = Object.keys(serviceConfig.networks)[0];
-			const networkConfig = composeData.networks?.[defaultNetwork];
+		// Get the primary network name
+		const networkName = networkConfig?.name || (networkConfig?.external ? defaultNetwork : `${stackId}_${defaultNetwork}`);
 
-			if (networkConfig) {
-				networkName = networkConfig.name || (networkConfig.external ? defaultNetwork : `${stackId}_${defaultNetwork}`);
-			} else {
-				// If network config not found but name specified, use stack-prefixed name
-				networkName = `${stackId}_${defaultNetwork}`;
+		// Set the primary network
+		options.HostConfig = options.HostConfig || {};
+		options.HostConfig.NetworkMode = networkName;
+
+		// Add advanced network settings for the default network
+		if (serviceConfig.networks[defaultNetwork]) {
+			const endpointConfig = buildEndpointConfig(serviceConfig.networks[defaultNetwork]);
+
+			// If we have DNS settings for the primary network, add them to NetworkingConfig
+			if (Object.keys(endpointConfig).length > 0) {
+				options.NetworkingConfig = {
+					EndpointsConfig: {
+						[networkName]: endpointConfig
+					}
+				};
+				console.log(`Adding network config for primary network ${networkName}:`, endpointConfig);
 			}
-		} else {
-			// No networks specified, use the default network
-			networkName = `${stackId}_default`;
 		}
-
-		console.log(`Setting network mode for ${serviceName} to: ${networkName}`);
+	} else {
+		// No networks specified, use the default network
+		const networkName = `${stackId}_default`;
 		options.HostConfig = options.HostConfig || {};
 		options.HostConfig.NetworkMode = networkName;
 	}
@@ -666,6 +691,36 @@ async function buildContainerOptions(docker: Dockerode, stackId: string, service
 			Type: serviceConfig.logging.driver || 'json-file',
 			Config: serviceConfig.logging.options || {}
 		};
+	}
+
+	// Handle DNS settings
+	if (serviceConfig.dns || serviceConfig.dns_search || serviceConfig.dns_opt) {
+		options.HostConfig = options.HostConfig || {};
+
+		// Configure DNS servers
+		if (serviceConfig.dns) {
+			options.HostConfig.Dns = Array.isArray(serviceConfig.dns) ? serviceConfig.dns : [serviceConfig.dns];
+			console.log(`Setting DNS servers for ${serviceName}:`, options.HostConfig.Dns);
+		}
+
+		// Configure DNS search domains
+		if (serviceConfig.dns_search) {
+			options.HostConfig.DnsSearch = Array.isArray(serviceConfig.dns_search) ? serviceConfig.dns_search : [serviceConfig.dns_search];
+			console.log(`Setting DNS search domains for ${serviceName}:`, options.HostConfig.DnsSearch);
+		}
+
+		// Configure DNS options
+		if (serviceConfig.dns_opt) {
+			options.HostConfig.DnsOptions = Array.isArray(serviceConfig.dns_opt) ? serviceConfig.dns_opt : [serviceConfig.dns_opt];
+			console.log(`Setting DNS options for ${serviceName}:`, options.HostConfig.DnsOptions);
+		}
+	}
+
+	// Handle extra_hosts (add entries to /etc/hosts)
+	if (serviceConfig.extra_hosts) {
+		options.HostConfig = options.HostConfig || {};
+		options.HostConfig.ExtraHosts = Array.isArray(serviceConfig.extra_hosts) ? serviceConfig.extra_hosts : [serviceConfig.extra_hosts];
+		console.log(`Setting extra hosts for ${serviceName}:`, options.HostConfig.ExtraHosts);
 	}
 
 	return options;
