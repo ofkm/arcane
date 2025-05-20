@@ -58,6 +58,9 @@ export async function deployStack(stackId: string): Promise<boolean> {
 			throw new Error(`Failed to parse compose file for stack ${stackId}`);
 		}
 
+		// Store environment variables in compose data for later use
+		composeData._envVars = envVars;
+
 		// Change directory for relative paths
 		process.chdir(stackDir);
 		console.log(`Temporarily changed CWD to: ${stackDir} for stack operations`);
@@ -426,6 +429,16 @@ async function buildContainerOptions(docker: Dockerode, stackId: string, service
 			for (const [key, value] of Object.entries(serviceConfig.environment)) {
 				options.Env.push(`${key}=${value}`);
 			}
+		}
+	}
+
+	// Add .env file variables to container environment
+	const envVars = composeData._envVars || {};
+	for (const [key, value] of Object.entries(envVars)) {
+		// Only add if not already set by service config
+		if (!options.Env || !options.Env.some((env: string) => env.startsWith(`${key}=`))) {
+			options.Env = options.Env || [];
+			options.Env.push(`${key}=${value}`);
 		}
 	}
 
