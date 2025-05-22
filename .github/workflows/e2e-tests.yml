@@ -45,6 +45,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create .env
+        run: echo PUBLIC_SESSION_SECRET=your-secure-random-string-here > .env
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
