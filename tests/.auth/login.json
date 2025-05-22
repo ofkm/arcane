@@ -1,14 +1,14 @@
 {
   "cookies": [
     {
-      "name": "session_id",
-      "value": "ff3866c740296d5d9d1a1b1137af1908bc29c6b01ba9c79aa766739f5fedd66a",
+      "name": "kit.session",
+      "value": "34c4e6426282ba6a47fe970a6f0426cad1a56b60e1d23ad8b3189735e382bdb6d8c879b86246f19b62c8dfd26a54fbe8fb044aee7fa8fa99f28fcff23d99e30f19df1e98356ac1abe4bd7f3c81359f7d01f010f82130dfda6b3d4660bf93d755ce99625d4aa1b3812917de1fcd439ced20ac8be6f183a62f8c1c333b41655372988d8e514bc74e174bb8fe6bd10a73e6aced4423608e501c38fc67b82f31702185de1e772e44a90ed057e871dac58029ba32b06bb387a2f7f403a055d7%26id%3D1",
       "domain": "localhost",
       "path": "/",
-      "expires": 1746336862.42101,
+      "expires": 1782498902.815969,
       "httpOnly": true,
-      "secure": true,
-      "sameSite": "Strict"
+      "secure": false,
+      "sameSite": "Lax"
     }
   ],
   "origins": [

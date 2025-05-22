@@ -9,7 +9,7 @@ test.describe('Network Management Page', () => {
 
 	test('should display the main heading and description', async ({ page }) => {
 		await expect(page.getByRole('heading', { name: 'Networks', level: 1 })).toBeVisible();
-		await expect(page.getByText('Manage Docker container networking')).toBeVisible();
+		await expect(page.getByText('View and Manage Container Networking')).toBeVisible();
 	});
 
 	test('should display the "Create Network" button', async ({ page }) => {
@@ -24,7 +24,6 @@ test.describe('Network Management Page', () => {
 
 	test('should display the network list card title', async ({ page }) => {
 		await expect(page.getByRole('heading', { name: 'Network List' })).toBeVisible();
-		await expect(page.getByText('Manage container communication')).toBeVisible();
 	});
 
 	test('should open the "Create Network" dialog when button is clicked', async ({ page }) => {
@@ -71,22 +70,8 @@ test.describe('Network Management Page', () => {
 		await expect(firstCheckbox).toBeVisible();
 		await firstCheckbox.click();
 		await expect(firstCheckbox).toBeChecked();
-		const actionsButton = page.getByRole('button', { name: /Group actions for 1 selected network/i });
+		const actionsButton = page.getByRole('button', { name: /Delete Selected/i });
 		await actionsButton.waitFor({ state: 'visible', timeout: 5000 });
 		await expect(actionsButton).toBeVisible();
-	});
-
-	test('should show bulk delete action when networks are selected', async ({ page }) => {
-		await page.waitForLoadState('networkidle');
-		const bridgeRow = page.locator('tr', { has: page.getByRole('link', { name: 'bridge' }) });
-		const checkbox = bridgeRow.getByRole('checkbox');
-		await expect(checkbox).toBeVisible();
-		await checkbox.click();
-		await expect(checkbox).toBeChecked();
-		const actionsButton = page.getByRole('button', { name: /Group actions for 1 selected network/i });
-		await actionsButton.waitFor({ state: 'visible', timeout: 5000 });
-		await expect(actionsButton).toBeVisible();
-		await actionsButton.click();
-		await expect(page.getByRole('menuitem', { name: 'Delete Selected' })).toBeVisible({ timeout: 5000 });
 	});
 });

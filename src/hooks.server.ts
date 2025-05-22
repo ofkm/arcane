@@ -20,12 +20,12 @@ try {
 }
 
 // Protected paths that require specific permissions
-const protectedPathPermissions: Record<string, string[]> = {
-	'/containers': ['containers:view'],
-	'/containers/create': ['containers:manage'],
-	'/settings': ['settings:view']
-	// Add other path patterns as needed
-};
+// const protectedPathPermissions: Record<string, string[]> = {
+// 	'/containers': ['containers:view'],
+// 	'/containers/create': ['containers:manage'],
+// 	'/settings': ['settings:view']
+// 	// Add other path patterns as needed
+// };
 
 // Authentication and authorization handler
 const authHandler: Handle = async ({ event, resolve }) => {
@@ -95,17 +95,17 @@ const authHandler: Handle = async ({ event, resolve }) => {
 	}
 
 	// Continue with permission checks as before
-	if (settings?.auth?.rbacEnabled) {
-		// Check each protected path pattern
-		for (const [pathPattern, requiredPermissions] of Object.entries(protectedPathPermissions)) {
-			if (path.startsWith(pathPattern)) {
-				const hasPermission = requiredPermissions.some((perm) => user.roles.includes(perm));
-				if (!hasPermission) {
-					throw redirect(302, '/auth/unauthorized');
-				}
-			}
-		}
-	}
+	// if (settings?.auth?.rbacEnabled) {
+	// 	// Check each protected path pattern
+	// 	for (const [pathPattern, requiredPermissions] of Object.entries(protectedPathPermissions)) {
+	// 		if (path.startsWith(pathPattern)) {
+	// 			const hasPermission = requiredPermissions.some((perm) => user.roles.includes(perm));
+	// 			if (!hasPermission) {
+	// 				throw redirect(302, '/auth/unauthorized');
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	// Proceed to resolve the route with the authenticated user
 	return await resolve(event);

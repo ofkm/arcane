@@ -4,7 +4,13 @@ import proper from 'proper-lockfile';
 import type { Settings, OidcConfig } from '$lib/types/settings.type';
 import { encrypt, decrypt } from './encryption-service';
 import { SETTINGS_DIR, STACKS_DIR, ensureDirectory } from './paths-service';
-import { env } from '$env/dynamic/private';
+let env: any;
+try {
+	env = await import('$env/static/private');
+} catch (e) {
+	// Fallback for tests
+	env = process.env;
+}
 
 const isDev = process.env.NODE_ENV === 'development';
 

@@ -14,7 +14,8 @@
 		"lint": "eslint ./src",
 		"lint:fix": "eslint ./src --fix",
 		"test:init": "APP_ENV=TEST npx tsx scripts/init-test-env.ts",
-		"test:e2e": "APP_ENV=TEST npm run test:init && playwright test",
+		"test:setup": "npx tsx scripts/setup-test-images.ts",
+		"test:e2e": "APP_ENV=TEST npm run test:init && npm run test:setup && playwright test",
 		"test:e2e:ui": "playwright test --ui",
 		"test:e2e:report": "playwright show-report"
 	},

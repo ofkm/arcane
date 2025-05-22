@@ -1,14 +1,14 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import bcrypt from 'bcryptjs'; // Make sure bcryptjs is installed as a dev dependency
 import { encrypt } from '../src/lib/services/encryption-service';
 import { ensureDirectory } from '../src/lib/services/paths-service';
 import { DEFAULT_SETTINGS } from '../src/lib/services/settings-service';
 
 // --- Configuration ---
-const TEST_USERNAME = 'admin';
-const TEST_PASSWORD = 'admin'; // Use a simple password for testing
-const TEST_DATA_DIR = process.env.APP_ENV === 'TEST' ? path.resolve(process.cwd(), '.test-data') : null;
+const TEST_USERNAME = 'arcane';
+const TEST_PASSWORD = 'arcane-admin'; // Use a simple password for testing
+const TEST_DATA_DIR = process.env.APP_ENV === 'TEST' ? path.resolve(process.cwd(), 'data') : null;
 // --- End Configuration ---
 
 async function setupTestEnvironment() {
