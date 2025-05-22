@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Add this helper function at the top of your file
 async function fetchImagesWithRetry(page: Page, maxRetries = 3): Promise<any[]> {
 	let retries = 0;
 	while (retries < maxRetries) {
@@ -20,19 +19,14 @@ async function fetchImagesWithRetry(page: Page, maxRetries = 3): Promise<any[]> 
 	return [];
 }
 
-// We'll fetch real images dynamically rather than using static mocks
 let realImages: any[] = [];
 
-// Set up test context with real images
 test.beforeEach(async ({ page }) => {
-	// Navigate to page first to ensure authentication is handled
 	await page.goto('/images');
 	await page.waitForLoadState('networkidle');
 
-	// Now fetch the real images from the API with retry logic
 	try {
 		realImages = await fetchImagesWithRetry(page);
-		console.log('Fetched real images:', realImages);
 	} catch (error) {
 		console.warn('Could not fetch images after multiple retries:', error);
 		// Use default images if all retries fail
@@ -125,19 +119,15 @@ test.describe('Images Page', () => {
 
 		await page.waitForLoadState('networkidle');
 
-		// Make sure we have at least one image that can be deleted (non-used)
 		const deleteableImage = realImages.find((img) => !img.inUse);
 		test.skip(deleteableImage, 'No deletable images available');
 
-		// Find that specific image in the table and click its menu
 		const imageRow = page.locator(`tr:has-text("${deleteableImage.repoTags?.[0] || deleteableImage.id.substring(7, 19)}")`);
 		await imageRow.getByRole('button', { name: 'Open menu' }).click();
 		await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-		// Confirm the dialog
 		await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Delete Image")')).toBeVisible();
 
-		// Wait for the actual DELETE request with the correct real image ID
 		const removePromise = page.waitForRequest((req) => req.url().includes(`/api/images/${deleteableImage.id}`) && req.method() === 'DELETE');
 
 		await page.locator('button:has-text("Delete")').click();
@@ -145,7 +135,6 @@ test.describe('Images Page', () => {
 
 		expect(removeRequest).toBeTruthy();
 
-		// Wait for success notification (without checking specific text)
 		await expect(page.locator('li[data-sonner-toast][data-type="success"] div[data-title]')).toBeVisible();
 	});
 	test('should call prune API on prune click and confirmation', async ({ page }) => {
@@ -154,8 +143,6 @@ test.describe('Images Page', () => {
 		await page.waitForLoadState('networkidle');
 
 		await page.locator('button:has-text("Prune Unused")').click();
-
-		// Confirm the dialog
 
 		await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Prune Unused Images")')).toBeVisible();
 		const prunePromise = page.waitForRequest((req) => req.url().includes('/api/images/prune') && req.method() === 'POST');
@@ -181,15 +168,13 @@ test.describe('Images Page', () => {
 		await page.locator('input[id="image-ref"]').fill(imageName);
 		await page.locator('input[id="image-tag"]').fill(imageTag);
 
-		// Expect the EventSource request
 		const eventSourcePromise = page.waitForRequest((req) => req.url().includes(`/api/images/pull-stream/${imageName}?tag=${imageTag}`) && req.method() === 'GET');
 		await page.locator('button[type="submit"]:has-text("Pull Image")').click();
 		const eventSourceRequest = await eventSourcePromise;
 
 		expect(eventSourceRequest).toBeTruthy();
-		// Wait for the success toast which indicates the EventSource mock sent 'complete'
+
 		await expect(page.locator(`li[data-sonner-toast][data-type="success"] div[data-title]:has-text("Image \\"${imageName}:${imageTag}\\" pulled successfully.")`)).toBeVisible();
-		// Dialog should close on success
 		await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Pull Docker Image")')).not.toBeVisible();
 	});
 });
