@@ -26,6 +26,7 @@
 	import { maturityStore } from '$lib/stores/maturity-store';
 	import ImageAPIService from '$lib/services/api/image-api-service';
 	import type { PruneType } from '$lib/types/actions.type';
+	import * as Accordion from '$lib/components/ui/accordion/index.js';
 
 	let { data }: { data: PageData & { containers: ContainerInfo[] } } = $props();
 
@@ -202,92 +203,115 @@
 
 	<section>
 		<div class="flex items-center justify-between mb-4">
-			<h2 class="text-lg font-semibold tracking-tight">Engine Overview</h2>
+			<h2 class="text-lg font-semibold tracking-tight">Arcane Dashboard</h2>
 		</div>
 
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-			<Card.Root class="overflow-hidden border-l-4 border-l-green-500">
-				<Card.Content class="p-6">
-					<div class="flex justify-between items-start">
-						<div>
-							<p class="text-sm font-medium text-muted-foreground">Running Containers</p>
-							<div class="mt-1">
-								<p class="text-2xl font-bold">
-									{runningContainers}
-									<span class="text-xs font-normal text-muted-foreground ml-1">/ {dashboardStates.containers?.length || 0}</span>
-								</p>
-							</div>
-						</div>
-						<div class="bg-green-500/10 p-2 rounded-full">
-							<Box class="text-green-500 size-5" />
-						</div>
-					</div>
-					{#if dashboardStates.containers?.length}
-						<Progress value={(runningContainers / (dashboardStates.containers.length || 1)) * 100} class="mt-4 h-2" />
-					{/if}
-				</Card.Content>
-			</Card.Root>
+		<Accordion.Root type="single">
+			<Accordion.Item value="overview">
+				<Accordion.Trigger class="text-base font-medium py-2">System Overview</Accordion.Trigger>
+				<Accordion.Content>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+						<Card.Root class="overflow-hidden border-l-4 border-l-green-500">
+							<Card.Content class="p-6">
+								<div class="flex justify-between items-start">
+									<div>
+										<p class="text-sm font-medium text-muted-foreground">Running Containers</p>
+										<div class="mt-1">
+											<p class="text-2xl font-bold">
+												{runningContainers}
+												<span class="text-xs font-normal text-muted-foreground ml-1">/ {dashboardStates.containers?.length || 0}</span>
+											</p>
+										</div>
+									</div>
+									<div class="bg-green-500/10 p-2 rounded-full">
+										<Box class="text-green-500 size-5" />
+									</div>
+								</div>
+								{#if dashboardStates.containers?.length}
+									<Progress value={(runningContainers / (dashboardStates.containers.length || 1)) * 100} class="mt-4 h-2" />
+								{/if}
+							</Card.Content>
+						</Card.Root>
 
-			<Card.Root class="overflow-hidden border-l-4 border-l-blue-500">
-				<Card.Content class="p-6">
-					<div class="flex justify-between items-start">
-						<div>
-							<p class="text-sm font-medium text-muted-foreground">Images</p>
-							<p class="text-2xl font-bold mt-1">{dashboardStates.dockerInfo?.Images || 0}</p>
-						</div>
-						<div class="bg-blue-500/10 p-2 rounded-full">
-							<HardDrive class="text-blue-500 size-5" />
-						</div>
-					</div>
-					{#if totalImageSize > 0}
-						<div class="mt-4 text-xs text-muted-foreground">
-							Total size: {formatBytes(totalImageSize)}
-						</div>
-					{:else if dashboardStates.dockerInfo?.Images === 0}
-						<div class="mt-4 text-xs text-muted-foreground">No images stored</div>
-					{/if}
-				</Card.Content>
-			</Card.Root>
+						<Card.Root class="overflow-hidden border-l-4 border-l-blue-500">
+							<Card.Content class="p-6">
+								<div class="flex justify-between items-start">
+									<div>
+										<p class="text-sm font-medium text-muted-foreground">Images</p>
+										<p class="text-2xl font-bold mt-1">{dashboardStates.dockerInfo?.Images || 0}</p>
+									</div>
+									<div class="bg-blue-500/10 p-2 rounded-full">
+										<HardDrive class="text-blue-500 size-5" />
+									</div>
+								</div>
+								{#if totalImageSize > 0}
+									<div class="mt-4 text-xs text-muted-foreground">
+										Total size: {formatBytes(totalImageSize)}
+									</div>
+								{:else if dashboardStates.dockerInfo?.Images === 0}
+									<div class="mt-4 text-xs text-muted-foreground">No images stored</div>
+								{/if}
+							</Card.Content>
+						</Card.Root>
 
-			<Card.Root class="overflow-hidden border-l-4 border-l-purple-500">
-				<Card.Content class="p-6">
-					<div class="flex justify-between items-start">
-						<div>
-							<p class="text-sm font-medium text-muted-foreground">CPU</p>
-							<p class="text-2xl font-bold mt-1">{dashboardStates.dockerInfo?.NCPU || 'N/A'}</p>
-						</div>
-						<div class="bg-purple-500/10 p-2 rounded-full">
-							<Cpu class="text-purple-500 size-5" />
-						</div>
-					</div>
-					<div class="mt-4 text-xs text-muted-foreground">
-						{dashboardStates.dockerInfo?.Architecture || 'Unknown architecture'}
-					</div>
-				</Card.Content>
-			</Card.Root>
+						<Card.Root class="overflow-hidden border-l-4 border-l-purple-500">
+							<Card.Content class="p-6">
+								<div class="flex justify-between items-start">
+									<div>
+										<p class="text-sm font-medium text-muted-foreground">Hardware Resources</p>
+										<div class="grid grid-cols-2 gap-x-4 mt-2">
+											<div>
+												<p class="text-xs text-muted-foreground">CPU</p>
+												<p class="text-lg font-semibold">{dashboardStates.dockerInfo?.NCPU || 'N/A'}</p>
+											</div>
+											<div>
+												<p class="text-xs text-muted-foreground">Memory</p>
+												<p class="text-lg font-semibold">{dashboardStates.dockerInfo?.MemTotal ? formatBytes(dashboardStates.dockerInfo.MemTotal, 0) : 'N/A'}</p>
+											</div>
+										</div>
+									</div>
+									<div class="bg-purple-500/10 p-2 rounded-full">
+										<Cpu class="text-purple-500 size-5" />
+									</div>
+								</div>
+								<div class="mt-4 text-xs text-muted-foreground">
+									{dashboardStates.dockerInfo?.Architecture || 'Unknown architecture'}
+								</div>
+							</Card.Content>
+						</Card.Root>
 
-			<Card.Root class="overflow-hidden border-l-4 border-l-amber-500">
-				<Card.Content class="p-6">
-					<div class="flex justify-between items-start">
-						<div>
-							<p class="text-sm font-medium text-muted-foreground">Memory</p>
-							<p class="text-2xl font-bold mt-1">
-								{dashboardStates.dockerInfo?.MemTotal ? formatBytes(dashboardStates.dockerInfo.MemTotal, 0) : 'N/A'}
-							</p>
-						</div>
-						<div class="bg-amber-500/10 p-2 rounded-full">
-							<MemoryStick class="text-amber-500 size-5" />
-						</div>
+						<Card.Root class="overflow-hidden border-l-4 border-l-amber-500">
+							<Card.Content class="p-6">
+								<div class="flex justify-between items-start">
+									<div>
+										<p class="text-sm font-medium text-muted-foreground">Docker Engine</p>
+										<p class="text-xl font-semibold mt-1">
+											{dashboardStates.dockerInfo?.ServerVersion || 'Unknown version'}
+										</p>
+									</div>
+									<div class="bg-amber-500/10 p-2 rounded-full">
+										<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500 size-5">
+											<path d="M8 17v2a3 3 0 0 1-3 3H3"></path><path d="M12 17h10"></path><path d="M16 7H3a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h7"></path>
+											<circle cx="20" cy="9" r="2"></circle>
+										</svg>
+									</div>
+								</div>
+								<div class="mt-4 grid grid-cols-2 gap-2">
+									<div>
+										<p class="text-xs font-medium text-muted-foreground">Operating System</p>
+										<p class="text-sm">{dashboardStates.dockerInfo?.OperatingSystem || 'Unknown OS'}</p>
+									</div>
+									<div>
+										<p class="text-xs font-medium text-muted-foreground">Kernel Version</p>
+										<p class="text-sm">{dashboardStates.dockerInfo?.KernelVersion || 'Unknown'}</p>
+									</div>
+								</div>
+							</Card.Content>
+						</Card.Root>
 					</div>
-					<div class="mt-4 text-xs text-muted-foreground">
-						{dashboardStates.dockerInfo?.OperatingSystem || 'Unknown OS'}
-						{#if dashboardStates.dockerInfo?.ServerVersion}
-							<span class="ml-1">• v{dashboardStates.dockerInfo.ServerVersion}</span>
-						{/if}
-					</div>
-				</Card.Content>
-			</Card.Root>
-		</div>
+				</Accordion.Content>
+			</Accordion.Item>
+		</Accordion.Root>
 	</section>
 
 	<section>
