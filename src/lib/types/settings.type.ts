@@ -40,7 +40,7 @@ export interface Settings {
 	autoUpdateInterval: number;
 	pollingEnabled: boolean;
 	pollingInterval: number;
-	pruneMode: 'all' | 'dangling';
+	pruneMode: 'all' | 'dangling' | undefined;
 	registryCredentials: RegistryCredential[];
 	auth: AuthSettings;
 	onboarding?: Onboarding;

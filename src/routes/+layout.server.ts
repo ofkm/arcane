@@ -10,6 +10,7 @@ let versionInformationLastUpdated: number;
 export const load = (async (locals) => {
 	// If update checks are disabled via env var, return only current version
 	const updateCheckDisabled = env.UPDATE_CHECK_DISABLED === 'true';
+	const csrf = crypto.randomUUID();
 
 	if (updateCheckDisabled) {
 		return {
@@ -37,6 +38,7 @@ export const load = (async (locals) => {
 
 	return {
 		versionInformation,
-		user: locals.locals.user || null
+		user: locals.locals.user || null,
+		csrf
 	};
 }) satisfies LayoutServerLoad;

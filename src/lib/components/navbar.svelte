@@ -36,11 +36,11 @@
 				icon: Settings,
 				children: [
 					{ href: '/settings/general', label: 'General', icon: Settings },
+					{ href: '/settings/docker', label: 'Docker', icon: Database },
 					{ href: '/settings/users', label: 'Users', icon: UserIcon },
-					{ href: '/settings/security', label: 'Security', icon: Shield },
-					{ href: '/settings/notifications', label: 'Notifications', icon: Bell },
-					{ href: '/settings/appearance', label: 'Appearance', icon: Palette },
-					{ href: '/settings/docker', label: 'Docker', icon: Database }
+					{ href: '/settings/security', label: 'Security', icon: Shield }
+					// { href: '/settings/notifications', label: 'Notifications', icon: Bell },
+					// { href: '/settings/appearance', label: 'Appearance', icon: Palette }
 				]
 			}
 		] as MenuItem[],
