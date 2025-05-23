@@ -33,7 +33,7 @@
 		"@types/dockerode-compose": "^1.4.1",
 		"@types/js-yaml": "^4.0.9",
 		"@types/proper-lockfile": "^4.1.4",
-		"bits-ui": "^1.6.1",
+		"bits-ui": "^1.7.0",
 		"clsx": "^2.1.1",
 		"eslint": "^9.27.0",
 		"eslint-plugin-svelte": "^3.8.1",
@@ -42,7 +42,7 @@
 		"mode-watcher": "^1.0.7",
 		"svelte": "5.33.1",
 		"svelte-check": "^4.2.1",
-		"svelte-sonner": "^1.0.2",
+		"svelte-sonner": "^1.0.3",
 		"sveltekit-superforms": "^2.25.0",
 		"tailwind-merge": "^3.3.0",
 		"tailwind-variants": "^1.0.0",
@@ -51,7 +51,7 @@
 		"typescript": "^5.8.0",
 		"typescript-eslint": "^8.32.1",
 		"vite": "^6.3.5",
-		"zod": "^3.25.23"
+		"zod": "^3.25.24"
 	},
 	"dependencies": {
 		"@codemirror/lang-yaml": "^6.1.2",
