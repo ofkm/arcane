@@ -1,9 +1,28 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createVolume } from '$lib/services/docker/volume-service';
+import { createVolume, listVolumes } from '$lib/services/docker/volume-service';
 import type { VolumeCreateOptions, VolumeInspectInfo } from 'dockerode';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
+
+export const GET: RequestHandler = async () => {
+	const volumesResult = await tryCatch(listVolumes());
+
+	if (volumesResult.error) {
+		console.error('API Error fetching volumes:', volumesResult.error);
+		const typedError = volumesResult.error as any;
+		const response: ApiErrorResponse = {
+			success: false,
+			error: typedError.message || 'Failed to fetch volumes',
+			code: typedError.code || ApiErrorCode.INTERNAL_SERVER_ERROR,
+			details: typedError.details || typedError
+		};
+		const status = typeof typedError.statusCode === 'number' ? typedError.statusCode : 500;
+		return json(response, { status });
+	}
+
+	return json(volumesResult.data, { status: 200 });
+};
 
 export const POST: RequestHandler = async ({ request }) => {
 	const bodyResult = await tryCatch(request.json());
