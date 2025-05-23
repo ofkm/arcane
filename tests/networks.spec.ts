@@ -31,7 +31,7 @@ test.describe('Network Management Page', () => {
 		await page.getByRole('button', { name: 'Create Network' }).click();
 		const dialogTitle = page.getByTestId('create-network-dialog-header');
 		await expect(dialogTitle).toBeVisible({ timeout: 10000 });
-		await expect(page.getByLabel('Name')).toBeVisible();
+		await expect(page.getByRole('textbox', { name: 'Name' })).toBeVisible();
 		await page.getByRole('button', { name: 'Cancel' }).click();
 		await expect(dialogTitle).not.toBeVisible({ timeout: 5000 });
 	});
