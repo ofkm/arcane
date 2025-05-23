@@ -43,7 +43,7 @@ export default class ContainerAPIService extends BaseAPIService {
 	}
 
 	async list() {
-		const res = await this.api.get('');
+		const res = await this.api.get('/containers');
 		return res.data;
 	}
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type HealthConfig, type ContainerCreateOptions, type VolumeInspectInfo, type NetworkInspectInfo } from 'dockerode';
+	import { type HealthConfig, type ContainerCreateOptions, type VolumeInspectInfo, type NetworkInspectInfo, type ContainerInfo } from 'dockerode';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -14,18 +14,19 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
-	import type { ServiceImage } from '$lib/types/docker';
+	import type { ServiceImage, EnhancedImageInfo } from '$lib/types/docker';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	interface Props {
 		open?: boolean;
 		volumes?: VolumeInspectInfo[];
 		networks?: NetworkInspectInfo[];
-		images?: ServiceImage[];
+		images?: EnhancedImageInfo[];
 		onClose?: () => void;
+		oncreated?: (event: { detail: { container: ContainerInfo } }) => void;
 	}
 
-	let { open = $bindable(false), volumes = [], networks = [], images = [], onClose: onCloseProp = () => {} }: Props = $props();
+	let { open = $bindable(false), volumes = [], networks = [], images = [], onClose: onCloseProp = () => {}, oncreated }: Props = $props();
 
 	const containerApi = new ContainerAPIService();
 
@@ -308,16 +309,25 @@
 		}
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(containerApi.create(createOptions)), // Pass ContainerCreateOptions
+			result: await tryCatch(containerApi.create(createOptions)),
 			message: 'Failed to Create Container',
 			setLoadingState: (value) => (isCreating = value),
-			onSuccess: async () => {
+			onSuccess: async (createdContainer) => {
 				toast.success(`Container "${createOptions.name}" created successfully!`);
+
+				// Pass the actual created container, not the create options
+				if (oncreated && createdContainer) {
+					oncreated({
+						detail: {
+							container: createdContainer // This should be ContainerInfo from the API response
+						}
+					});
+				}
+
 				await invalidateAll();
 				handleClose();
 			},
 			onError: () => {
-				// Ensure isCreating is reset on error too
 				isCreating = false;
 			}
 		});
