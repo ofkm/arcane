@@ -6,11 +6,17 @@ import { getDockerClient } from './core';
 import { removeVolume } from './volume-service';
 import type { Readable } from 'stream';
 
+// ==================== TYPES & CONSTANTS ====================
+
 export type LogCallback = (message: string) => void;
 
 const stackCache = new Map();
 
-// Helper function to parse environment file content
+// ==================== UTILITY FUNCTIONS ====================
+
+/**
+ * Helper function to parse environment file content
+ */
 export function parseEnvContent(envContent: string | null): Record<string, string> {
 	const envVars: Record<string, string> = {};
 	if (envContent) {
@@ -68,103 +74,118 @@ function parseDockerLogs(buffer: Buffer): string {
 }
 
 /**
- * Custom stack deployment function using dockerode directly
+ * Parses a time string to nanoseconds (Docker API format)
  */
-export async function deployStack(stackId: string, logCallback?: LogCallback): Promise<boolean> {
-	const stackDir = await getStackDir(stackId);
-	const originalCwd = process.cwd();
-	let deploymentStarted = false;
+function parseTimeString(timeStr: string | undefined, defaultValue: number): number {
+	if (!timeStr) return defaultValue;
 
-	// Helper function to log messages
-	const log = (message: string) => {
-		if (logCallback) {
-			logCallback(message);
-		}
-		console.log(message); // Keep console logging for non-streaming calls
+	const match = timeStr.match(/^(\d+)(ms|s|m|h)$/);
+	if (!match) return defaultValue;
+
+	const value = parseInt(match[1]);
+	const unit = match[2];
+
+	const multipliers: Record<string, number> = {
+		ms: 1000000, // milliseconds to nanoseconds
+		s: 1000000000, // seconds to nanoseconds
+		m: 60000000000, // minutes to nanoseconds
+		h: 3600000000000 // hours to nanoseconds
 	};
 
-	try {
-		log(`Starting deployment for stack: ${stackId}`);
+	return value * multipliers[unit];
+}
 
-		// Load and normalize compose file
-		const composePath = await getComposeFilePath(stackId);
-		if (!composePath) {
-			throw new Error(`Compose file not found for stack ${stackId}`);
+/**
+ * Parses restart policy string to Docker format
+ */
+function parseRestartPolicy(policy: string): any {
+	if (policy === 'no' || policy === 'none') {
+		return { Name: 'no' };
+	} else if (policy === 'always') {
+		return { Name: 'always' };
+	} else if (policy === 'unless-stopped') {
+		return { Name: 'unless-stopped' };
+	} else if (policy.startsWith('on-failure')) {
+		const parts = policy.split(':');
+		if (parts.length > 1) {
+			return { Name: 'on-failure', MaximumRetryCount: parseInt(parts[1]) };
+		} else {
+			return { Name: 'on-failure' };
 		}
+	}
 
-		log('Loading compose file...');
-		const composeContent = await fs.readFile(composePath, 'utf8');
-		const envContent = await loadEnvFile(stackId);
+	// Default
+	return { Name: 'no' };
+}
 
-		// Parse env variables and create getter
-		const envVars = parseEnvContent(envContent);
-		const getEnvVar = (key: string): string | undefined => envVars[key] || process.env[key];
+/**
+ * Builds the optimal service start order based on dependencies
+ */
+function buildServiceStartOrder(services: Record<string, any>): string[] {
+	const visited = new Set<string>();
+	const result: string[] = [];
 
-		// Normalize content for healthchecks but don't write it back to the file
-		log('Parsing compose configuration...');
-		const normalizedContent = normalizeHealthcheckTest(composeContent, getEnvVar);
+	// DFS function to process services
+	function visit(serviceName: string) {
+		if (visited.has(serviceName)) return;
+		visited.add(serviceName);
 
-		// Only write back if it's specifically a healthcheck normalization issue
-		if (normalizedContent !== composeContent && normalizedContent.includes('healthcheck') && composeContent.includes('healthcheck')) {
-			await fs.writeFile(composePath, normalizedContent, 'utf8');
-		}
-
-		// Parse normalized content
-		const composeData = parseYamlContent(normalizedContent, getEnvVar);
-		if (!composeData) {
-			throw new Error(`Failed to parse compose file for stack ${stackId}`);
-		}
-
-		// Store environment variables in compose data for later use
-		composeData._envVars = envVars;
-
-		// Change directory for relative paths
-		process.chdir(stackDir);
-		log(`Switched to stack directory: ${stackDir}`);
-
-		// Get docker client
-		const docker = await getDockerClient();
-		deploymentStarted = true;
-
-		// Deploy in sequence with real-time logging:
-		// 1. Create networks
-		log('Creating networks...');
-		await createStackNetworks(docker, stackId, composeData.networks || {}, log);
-
-		// 2. Pull images with streaming progress
-		log('Pulling images...');
-		await pullStackImagesWithLogs(docker, composeData.services || {}, log);
-
-		// 3. Create volumes
-		log('Creating volumes...');
-		await createStackVolumes(docker, stackId, composeData.volumes || {}, log);
-
-		// 4. Create and start containers with logs
-		log('Creating and starting containers...');
-		await createAndStartContainersWithLogs(docker, stackId, composeData, stackDir, log);
-
-		// If everything succeeds, invalidate cache
-		stackCache.delete('compose-stacks');
-		log('Deployment completed successfully!');
-		return true;
-	} catch (err) {
-		if (deploymentStarted) {
-			try {
-				log('Cleaning up failed deployment...');
-				await cleanupFailedDeployment(stackId);
-			} catch (cleanupErr) {
-				console.error(`Error cleaning up failed deployment for stack ${stackId}:`, cleanupErr);
+		// Process dependencies first
+		const deps = services[serviceName]?.depends_on || {};
+		if (typeof deps === 'object') {
+			// Handle both array format and object format of depends_on
+			const depNames = Array.isArray(deps) ? deps : Object.keys(deps);
+			for (const dep of depNames) {
+				visit(dep);
 			}
 		}
 
-		log(`Error deploying stack ${stackId}: ${err instanceof Error ? err.message : String(err)}`);
-		const errorMessage = err instanceof Error ? err.message : String(err);
-		throw new Error(`Failed to deploy stack: ${errorMessage}`);
-	} finally {
-		process.chdir(originalCwd);
-		log(`Restored working directory`);
+		result.push(serviceName);
 	}
+
+	// Visit all services
+	Object.keys(services).forEach(visit);
+
+	return result;
 }
+
+/**
+ * Build endpoint configuration for network connection
+ */
+function buildEndpointConfig(networkConfig: any): any {
+	if (!networkConfig) return {};
+
+	const config: any = {};
+
+	// IPv4 address configuration - this is the part that needs fixing
+	if (networkConfig.ipv4_address) {
+		// Create IPAMConfig structure as required by Docker API
+		config.IPAMConfig = config.IPAMConfig || {};
+		config.IPAMConfig.IPv4Address = networkConfig.ipv4_address;
+		console.log(`Setting static IPv4 address: ${networkConfig.ipv4_address}`);
+	}
+
+	// IPv6 address configuration
+	if (networkConfig.ipv6_address) {
+		config.IPAMConfig = config.IPAMConfig || {};
+		config.IPAMConfig.IPv6Address = networkConfig.ipv6_address;
+	}
+
+	// DNS aliases - crucial for service discovery
+	if (networkConfig.aliases && Array.isArray(networkConfig.aliases)) {
+		config.Aliases = networkConfig.aliases;
+	}
+
+	// Link-local IPs
+	if (networkConfig.link_local_ips && Array.isArray(networkConfig.link_local_ips)) {
+		config.IPAMConfig = config.IPAMConfig || {};
+		config.IPAMConfig.LinkLocalIPs = networkConfig.link_local_ips;
+	}
+
+	return config;
+}
+
+// ==================== NETWORK MANAGEMENT ====================
 
 /**
  * Creates networks with logging
@@ -227,6 +248,8 @@ async function createStackNetworks(docker: Dockerode, stackId: string, networks:
 		}
 	}
 }
+
+// ==================== IMAGE MANAGEMENT ====================
 
 /**
  * Pulls images with real-time streaming logs
@@ -350,6 +373,8 @@ async function pullImagesForStack(stackId: string): Promise<void> {
 	await Promise.all(pullPromises);
 }
 
+// ==================== VOLUME MANAGEMENT ====================
+
 /**
  * Creates volumes with logging
  */
@@ -385,184 +410,7 @@ async function createStackVolumes(docker: Dockerode, stackId: string, volumes: R
 	}
 }
 
-/**
- * Creates and starts containers with real-time logs
- */
-async function createAndStartContainersWithLogs(docker: Dockerode, stackId: string, composeData: any, stackDir: string, log: LogCallback): Promise<void> {
-	const services = composeData.services || {};
-
-	// Build dependency order
-	const serviceList = buildServiceStartOrder(services);
-
-	for (const serviceName of serviceList) {
-		const serviceConfig = services[serviceName];
-		log(`Creating container for service: ${serviceName}`);
-
-		// Generate container name
-		const containerName = serviceConfig.container_name || `${stackId}_${serviceName}`;
-
-		// Check if container already exists
-		const existingContainers = await docker.listContainers({
-			all: true,
-			filters: { name: [containerName] }
-		});
-
-		if (existingContainers.length > 0) {
-			log(`Container ${containerName} already exists. Removing it...`);
-			const container = docker.getContainer(existingContainers[0].Id);
-			if (existingContainers[0].State === 'running') {
-				log(`Stopping container ${containerName}...`);
-				await container.stop();
-			}
-			await container.remove();
-			log(`✓ Removed old container ${containerName}`);
-		}
-
-		// Build container creation options
-		const createOptions = await buildContainerOptions(docker, stackId, serviceName, serviceConfig, stackDir, composeData);
-
-		// Create the container
-		log(`Creating container ${containerName}...`);
-		const container = await docker.createContainer(createOptions);
-		log(`✓ Created container ${containerName}`);
-
-		// Connect to additional networks if specified
-		if (serviceConfig.networks && !serviceConfig.network_mode) {
-			for (const [networkName, networkConfig] of Object.entries(serviceConfig.networks)) {
-				// Skip the default network which is already connected
-				if (networkName === 'default') continue;
-
-				// Get actual network name
-				const actualNetworkName = composeData.networks?.[networkName]?.name || (composeData.networks?.[networkName]?.external ? networkName : `${stackId}_${networkName}`);
-
-				try {
-					// Verify network exists before connecting
-					const networks = await docker.listNetworks({
-						filters: JSON.stringify({ name: [actualNetworkName] })
-					});
-
-					if (networks.length === 0) {
-						log(`Network ${actualNetworkName} not found, creating it...`);
-						await docker.createNetwork({
-							Name: actualNetworkName,
-							Driver: 'bridge',
-							Labels: {
-								'com.docker.compose.project': stackId,
-								'com.docker.compose.network': networkName
-							}
-						});
-					}
-
-					log(`Connecting container ${containerName} to network: ${actualNetworkName}`);
-					const network = docker.getNetwork(actualNetworkName);
-					await network.connect({
-						Container: container.id,
-						EndpointConfig: buildEndpointConfig(networkConfig)
-					});
-					log(`✓ Connected ${containerName} to network ${actualNetworkName}`);
-				} catch (err) {
-					log(`Failed to connect container to network ${actualNetworkName}: ${err}`);
-					throw err;
-				}
-			}
-		}
-
-		// Start the container and stream its startup logs
-		log(`Starting container: ${containerName}`);
-		await container.start();
-
-		// Get initial logs to show startup progress
-		try {
-			// Get logs as a buffer first
-			const logBuffer = await container.logs({
-				follow: false,
-				stdout: true,
-				stderr: true,
-				tail: 10
-			});
-
-			// Convert buffer to string and parse Docker log format
-			if (logBuffer && logBuffer.length > 0) {
-				const logData = parseDockerLogs(logBuffer);
-				if (logData.trim()) {
-					log(`Container ${containerName} startup logs:\n${logData.trim()}`);
-				}
-			}
-		} catch (logErr) {
-			// Don't fail deployment if we can't get logs
-			log(`Could not retrieve startup logs for ${containerName}`);
-		}
-
-		log(`✓ Started container: ${containerName}`);
-	}
-}
-
-/**
- * Build endpoint configuration for network connection
- */
-function buildEndpointConfig(networkConfig: any): any {
-	if (!networkConfig) return {};
-
-	const config: any = {};
-
-	// IPv4 address configuration - this is the part that needs fixing
-	if (networkConfig.ipv4_address) {
-		// Create IPAMConfig structure as required by Docker API
-		config.IPAMConfig = config.IPAMConfig || {};
-		config.IPAMConfig.IPv4Address = networkConfig.ipv4_address;
-		console.log(`Setting static IPv4 address: ${networkConfig.ipv4_address}`);
-	}
-
-	// IPv6 address configuration
-	if (networkConfig.ipv6_address) {
-		config.IPAMConfig = config.IPAMConfig || {};
-		config.IPAMConfig.IPv6Address = networkConfig.ipv6_address;
-	}
-
-	// DNS aliases - crucial for service discovery
-	if (networkConfig.aliases && Array.isArray(networkConfig.aliases)) {
-		config.Aliases = networkConfig.aliases;
-	}
-
-	// Link-local IPs
-	if (networkConfig.link_local_ips && Array.isArray(networkConfig.link_local_ips)) {
-		config.IPAMConfig = config.IPAMConfig || {};
-		config.IPAMConfig.LinkLocalIPs = networkConfig.link_local_ips;
-	}
-
-	return config;
-}
-
-/**
- * Builds the optimal service start order based on dependencies
- */
-function buildServiceStartOrder(services: Record<string, any>): string[] {
-	const visited = new Set<string>();
-	const result: string[] = [];
-
-	// DFS function to process services
-	function visit(serviceName: string) {
-		if (visited.has(serviceName)) return;
-		visited.add(serviceName);
-
-		// Process dependencies first
-		const deps = services[serviceName]?.depends_on || {};
-		if (typeof deps === 'object') {
-			// Handle both array format and object format of depends_on
-			const depNames = Array.isArray(deps) ? deps : Object.keys(deps);
-			for (const dep of depNames) {
-				visit(dep);
-			}
-		}
-
-		result.push(serviceName);
-	}
-
-	// Visit all services
-	Object.keys(services).forEach(visit);
-
-	return result;
-}
+// ==================== CONTAINER CONFIGURATION ====================
 
 /**
  * Builds container creation options from service configuration
@@ -848,50 +696,121 @@ async function buildContainerOptions(docker: Dockerode, stackId: string, service
 	return options;
 }
 
-/**
- * Parses a time string to nanoseconds (Docker API format)
- */
-function parseTimeString(timeStr: string | undefined, defaultValue: number): number {
-	if (!timeStr) return defaultValue;
-
-	const match = timeStr.match(/^(\d+)(ms|s|m|h)$/);
-	if (!match) return defaultValue;
-
-	const value = parseInt(match[1]);
-	const unit = match[2];
-
-	const multipliers: Record<string, number> = {
-		ms: 1000000, // milliseconds to nanoseconds
-		s: 1000000000, // seconds to nanoseconds
-		m: 60000000000, // minutes to nanoseconds
-		h: 3600000000000 // hours to nanoseconds
-	};
-
-	return value * multipliers[unit];
-}
+// ==================== CONTAINER MANAGEMENT ====================
 
 /**
- * Parses restart policy string to Docker format
+ * Creates and starts containers with real-time logs
  */
-function parseRestartPolicy(policy: string): any {
-	if (policy === 'no' || policy === 'none') {
-		return { Name: 'no' };
-	} else if (policy === 'always') {
-		return { Name: 'always' };
-	} else if (policy === 'unless-stopped') {
-		return { Name: 'unless-stopped' };
-	} else if (policy.startsWith('on-failure')) {
-		const parts = policy.split(':');
-		if (parts.length > 1) {
-			return { Name: 'on-failure', MaximumRetryCount: parseInt(parts[1]) };
-		} else {
-			return { Name: 'on-failure' };
+async function createAndStartContainersWithLogs(docker: Dockerode, stackId: string, composeData: any, stackDir: string, log: LogCallback): Promise<void> {
+	const services = composeData.services || {};
+
+	// Build dependency order
+	const serviceList = buildServiceStartOrder(services);
+
+	for (const serviceName of serviceList) {
+		const serviceConfig = services[serviceName];
+		log(`Creating container for service: ${serviceName}`);
+
+		// Generate container name
+		const containerName = serviceConfig.container_name || `${stackId}_${serviceName}`;
+
+		// Check if container already exists
+		const existingContainers = await docker.listContainers({
+			all: true,
+			filters: { name: [containerName] }
+		});
+
+		if (existingContainers.length > 0) {
+			log(`Container ${containerName} already exists. Removing it...`);
+			const container = docker.getContainer(existingContainers[0].Id);
+			if (existingContainers[0].State === 'running') {
+				log(`Stopping container ${containerName}...`);
+				await container.stop();
+			}
+			await container.remove();
+			log(`✓ Removed old container ${containerName}`);
 		}
-	}
 
-	// Default
-	return { Name: 'no' };
+		// Build container creation options
+		const createOptions = await buildContainerOptions(docker, stackId, serviceName, serviceConfig, stackDir, composeData);
+
+		// Create the container
+		log(`Creating container ${containerName}...`);
+		const container = await docker.createContainer(createOptions);
+		log(`✓ Created container ${containerName}`);
+
+		// Connect to additional networks if specified
+		if (serviceConfig.networks && !serviceConfig.network_mode) {
+			for (const [networkName, networkConfig] of Object.entries(serviceConfig.networks)) {
+				// Skip the default network which is already connected
+				if (networkName === 'default') continue;
+
+				// Get actual network name
+				const actualNetworkName = composeData.networks?.[networkName]?.name || (composeData.networks?.[networkName]?.external ? networkName : `${stackId}_${networkName}`);
+
+				try {
+					// Verify network exists before connecting
+					const networks = await docker.listNetworks({
+						filters: JSON.stringify({ name: [actualNetworkName] })
+					});
+
+					if (networks.length === 0) {
+						log(`Network ${actualNetworkName} not found, creating it...`);
+						await docker.createNetwork({
+							Name: actualNetworkName,
+							Driver: 'bridge',
+							Labels: {
+								'com.docker.compose.project': stackId,
+								'com.docker.compose.network': networkName
+							}
+						});
+					}
+
+					log(`Connecting container ${containerName} to network: ${actualNetworkName}`);
+					const network = docker.getNetwork(actualNetworkName);
+					await network.connect({
+						Container: container.id,
+						EndpointConfig: buildEndpointConfig(networkConfig)
+					});
+					log(`✓ Connected ${containerName} to network ${actualNetworkName}`);
+				} catch (err) {
+					log(`Failed to connect container to network ${actualNetworkName}: ${err}`);
+					throw err;
+				}
+			}
+		}
+
+		// Start the container and stream its startup logs
+		log(`Starting container: ${containerName}`);
+		await container.start();
+
+		// Get initial logs to show startup progress
+		try {
+			// Get logs as a buffer first
+			const logBuffer = await container.logs({
+				follow: false,
+				stdout: true,
+				stderr: true,
+				tail: 10
+			});
+
+			// Convert buffer to string and parse Docker log format
+			if (logBuffer && logBuffer.length > 0) {
+				const logData = parseDockerLogs(logBuffer);
+				if (logData.trim()) {
+					log(`Container ${containerName} startup logs:\n${logData.trim()}`);
+				}
+			}
+		} catch (logErr) {
+			// Don't fail deployment if we can't get logs
+			log(`Could not retrieve startup logs for ${containerName}`);
+		}
+
+		log(`✓ Started container: ${containerName}`);
+	}
 }
+
+// ==================== CLEANUP FUNCTIONS ====================
 
 /**
  * Cleans up containers from a failed stack deployment
@@ -943,6 +862,107 @@ async function cleanupFailedDeployment(stackId: string): Promise<void> {
 	} catch (err) {
 		console.error(`Error during cleanup of stack ${stackId}:`, err);
 		throw err;
+	}
+}
+
+// ==================== MAIN STACK OPERATIONS ====================
+
+/**
+ * Custom stack deployment function using dockerode directly
+ */
+export async function deployStack(stackId: string, logCallback?: LogCallback): Promise<boolean> {
+	const stackDir = await getStackDir(stackId);
+	const originalCwd = process.cwd();
+	let deploymentStarted = false;
+
+	// Helper function to log messages
+	const log = (message: string) => {
+		if (logCallback) {
+			logCallback(message);
+		}
+		console.log(message); // Keep console logging for non-streaming calls
+	};
+
+	try {
+		log(`Starting deployment for stack: ${stackId}`);
+
+		// Load and normalize compose file
+		const composePath = await getComposeFilePath(stackId);
+		if (!composePath) {
+			throw new Error(`Compose file not found for stack ${stackId}`);
+		}
+
+		log('Loading compose file...');
+		const composeContent = await fs.readFile(composePath, 'utf8');
+		const envContent = await loadEnvFile(stackId);
+
+		// Parse env variables and create getter
+		const envVars = parseEnvContent(envContent);
+		const getEnvVar = (key: string): string | undefined => envVars[key] || process.env[key];
+
+		// Normalize content for healthchecks but don't write it back to the file
+		log('Parsing compose configuration...');
+		const normalizedContent = normalizeHealthcheckTest(composeContent, getEnvVar);
+
+		// Only write back if it's specifically a healthcheck normalization issue
+		if (normalizedContent !== composeContent && normalizedContent.includes('healthcheck') && composeContent.includes('healthcheck')) {
+			await fs.writeFile(composePath, normalizedContent, 'utf8');
+		}
+
+		// Parse normalized content
+		const composeData = parseYamlContent(normalizedContent, getEnvVar);
+		if (!composeData) {
+			throw new Error(`Failed to parse compose file for stack ${stackId}`);
+		}
+
+		// Store environment variables in compose data for later use
+		composeData._envVars = envVars;
+
+		// Change directory for relative paths
+		process.chdir(stackDir);
+		log(`Switched to stack directory: ${stackDir}`);
+
+		// Get docker client
+		const docker = await getDockerClient();
+		deploymentStarted = true;
+
+		// Deploy in sequence with real-time logging:
+		// 1. Create networks
+		log('Creating networks...');
+		await createStackNetworks(docker, stackId, composeData.networks || {}, log);
+
+		// 2. Pull images with streaming progress
+		log('Pulling images...');
+		await pullStackImagesWithLogs(docker, composeData.services || {}, log);
+
+		// 3. Create volumes
+		log('Creating volumes...');
+		await createStackVolumes(docker, stackId, composeData.volumes || {}, log);
+
+		// 4. Create and start containers with logs
+		log('Creating and starting containers...');
+		await createAndStartContainersWithLogs(docker, stackId, composeData, stackDir, log);
+
+		// If everything succeeds, invalidate cache
+		stackCache.delete('compose-stacks');
+		log('Deployment completed successfully!');
+		return true;
+	} catch (err) {
+		if (deploymentStarted) {
+			try {
+				log('Cleaning up failed deployment...');
+				await cleanupFailedDeployment(stackId);
+			} catch (cleanupErr) {
+				console.error(`Error cleaning up failed deployment for stack ${stackId}:`, cleanupErr);
+			}
+		}
+
+		log(`Error deploying stack ${stackId}: ${err instanceof Error ? err.message : String(err)}`);
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		throw new Error(`Failed to deploy stack: ${errorMessage}`);
+	} finally {
+		process.chdir(originalCwd);
+		log(`Restored working directory`);
 	}
 }
 
