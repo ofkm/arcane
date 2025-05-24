@@ -7,268 +7,475 @@ import yaml from 'js-yaml';
 import type { Stack } from '$lib/types/docker/stack.type';
 import type { ContainerInfo } from 'dockerode';
 
-const updatingContainers = new Set<string>();
-const updatingStacks = new Set<string>();
+// ==================== TYPES & CONSTANTS ====================
 
-export async function checkAndUpdateContainers(): Promise<{
+interface UpdateResult {
 	checked: number;
 	updated: number;
 	errors: Array<{ id: string; error: string }>;
-}> {
-	const settings = await getSettings();
+}
 
-	if (!settings.autoUpdate) {
-		return { checked: 0, updated: 0, errors: [] };
+interface ImageUpdateCheck {
+	imageRef: string;
+	currentImageId: string | null;
+	newImageId: string | null;
+	hasUpdate: boolean;
+}
+
+// ==================== STATE MANAGEMENT ====================
+
+const updatingContainers = new Set<string>();
+const updatingStacks = new Set<string>();
+
+// ==================== UTILITY FUNCTIONS ====================
+
+/**
+ * Checks if auto-update is enabled in settings
+ */
+async function isAutoUpdateEnabled(): Promise<boolean> {
+	const settings = await getSettings();
+	return settings.autoUpdate;
+}
+
+/**
+ * Safely extracts container name from container info
+ */
+function getContainerName(container: ContainerInfo): string {
+	return container.Names && container.Names.length > 0 ? container.Names[0].substring(1) : container.Id;
+}
+
+/**
+ * Checks if an image reference is a digest (SHA256)
+ */
+function isImageDigest(imageRef: string): boolean {
+	return /^sha256:[A-Fa-f0-9]{64}$/.test(imageRef);
+}
+
+/**
+ * Extracts image references from compose content
+ */
+function extractImageReferences(composeContent: string): string[] {
+	const composeLines = composeContent.split('\n');
+	const imageLines = composeLines.filter((line) => line.trim().startsWith('image:') || line.includes(' image:'));
+
+	if (imageLines.length === 0) {
+		return [];
 	}
 
+	const imageRefs = imageLines
+		.map((line) => {
+			const imagePart = line.split('image:')[1]?.trim();
+			if (!imagePart) return '';
+			return imagePart.replace(/['"]/g, '').split(/[\s#]/)[0];
+		})
+		.filter((ref) => ref && (ref.includes(':') || ref.includes('/')));
+
+	return [...new Set(imageRefs)]; // Remove duplicates
+}
+
+/**
+ * Safely handles errors and returns a standardized error message
+ */
+function handleError(error: unknown, context: string): string {
+	const message = error instanceof Error ? error.message : String(error);
+	console.error(`${context}:`, error);
+	return message;
+}
+
+// ==================== CONTAINER ELIGIBILITY ====================
+
+/**
+ * Checks if a container is eligible for auto-update
+ */
+async function isContainerEligible(container: ContainerInfo): Promise<boolean> {
+	if (container.State !== 'running') {
+		return false;
+	}
+
+	try {
+		const containerDetails = await getContainer(container.Id);
+		return containerDetails?.Config.Labels?.['arcane.auto-update'] === 'true';
+	} catch (error) {
+		console.error(`Error fetching container details for ${container.Id}:`, error);
+		return false;
+	}
+}
+
+/**
+ * Gets all containers eligible for auto-update
+ */
+async function getEligibleContainers(): Promise<ContainerInfo[]> {
 	const containers = await listContainers();
 	const eligibleContainers: ContainerInfo[] = [];
 
 	for (const container of containers) {
-		if (container.State !== 'running') continue;
-		try {
-			const containerDetails = await getContainer(container.Id);
-			if (containerDetails?.Config.Labels?.['arcane.auto-update'] === 'true') {
-				eligibleContainers.push(container);
-			}
-		} catch (error) {
-			console.error(`Error fetching container details for ${container.Id}:`, error);
+		if (await isContainerEligible(container)) {
+			eligibleContainers.push(container);
 		}
 	}
 
-	const results = {
-		checked: eligibleContainers.length,
-		updated: 0,
-		errors: [] as Array<{ id: string; error: string }>
-	};
-
-	for (const container of eligibleContainers) {
-		const containerId = container.Id;
-		const containerName = container.Names && container.Names.length > 0 ? container.Names[0].substring(1) : containerId;
-		try {
-			if (updatingContainers.has(containerId)) {
-				console.log(`Auto-update: Skipping ${containerName} (${containerId}), already in progress.`);
-				continue;
-			}
-
-			const updateAvailable = await checkContainerImageUpdate(container);
-			if (updateAvailable) {
-				updatingContainers.add(containerId);
-				console.log(`Auto-update: Update found for container ${containerName} (${containerId}). Recreating...`);
-				console.log(`Auto-update: Pulling latest image ${container.Image} for ${containerName}...`);
-				await pullImage(container.Image);
-				await recreateContainer(containerId);
-				console.log(`Auto-update: Container ${containerName} recreated successfully`);
-				results.updated++;
-				updatingContainers.delete(containerId);
-			} else {
-				console.log(`Auto-update: Container ${containerName} (${containerId}) is up-to-date.`);
-			}
-		} catch (error: unknown) {
-			console.error(`Auto-update error for container ${containerId}:`, error);
-			const msg = error instanceof Error ? error.message : String(error);
-			results.errors.push({
-				id: containerId,
-				error: msg
-			});
-			updatingContainers.delete(containerId);
-		}
-	}
-
-	return results;
+	return eligibleContainers;
 }
 
-export async function checkAndUpdateStacks(): Promise<{
-	checked: number;
-	updated: number;
-	errors: Array<{ id: string; error: string }>;
-}> {
-	const settings = await getSettings();
+// ==================== STACK ELIGIBILITY ====================
 
-	if (!settings.autoUpdate) {
-		return { checked: 0, updated: 0, errors: [] };
+/**
+ * Checks if a stack service has auto-update enabled
+ */
+function isServiceAutoUpdateEnabled(service: any): boolean {
+	if (!service.labels) {
+		return false;
 	}
 
-	const allListedStacks = await listStacks();
-	const eligibleStacksForProcessing: Stack[] = [];
+	let labelValue: string | undefined = undefined;
 
-	for (const listedStack of allListedStacks) {
-		if (listedStack.status !== 'running' && listedStack.status !== 'partially running') {
-			continue;
+	if (Array.isArray(service.labels)) {
+		const foundLabel = service.labels.find((l: string) => l.startsWith('arcane.stack.auto-update='));
+		if (foundLabel) {
+			labelValue = foundLabel.split('=')[1];
 		}
-		try {
-			const fullStack = await getStack(listedStack.id);
-			if (!fullStack.composeContent) {
-				console.warn(`Auto-update: Stack ${listedStack.id} has no compose content, skipping eligibility check.`);
-				continue;
-			}
-			const composeData = yaml.load(fullStack.composeContent) as Record<string, unknown>;
-			let stackIsEligibleByLabel = false;
-			if (composeData && typeof composeData === 'object' && 'services' in composeData) {
-				const services = (composeData as { services: Record<string, any> }).services;
-				for (const serviceName in services) {
-					const service = services[serviceName];
-					if (service.labels) {
-						let labelValue: string | undefined = undefined;
-						if (Array.isArray(service.labels)) {
-							const foundLabel = service.labels.find((l: string) => l.startsWith('arcane.stack.auto-update='));
-							if (foundLabel) {
-								labelValue = foundLabel.split('=')[1];
-							}
-						} else if (typeof service.labels === 'object' && service.labels !== null) {
-							labelValue = service.labels['arcane.stack.auto-update'];
-						}
-						if (labelValue === 'true') {
-							stackIsEligibleByLabel = true;
-							break;
-						}
-					}
-				}
-			}
-			if (stackIsEligibleByLabel) {
-				eligibleStacksForProcessing.push(listedStack);
-			}
-		} catch (error) {
-			console.error(`Auto-update: Error checking eligibility for stack ${listedStack.id}:`, error);
-		}
+	} else if (typeof service.labels === 'object' && service.labels !== null) {
+		labelValue = service.labels['arcane.stack.auto-update'];
 	}
 
-	const results = {
-		checked: eligibleStacksForProcessing.length,
-		updated: 0,
-		errors: [] as Array<{ id: string; error: string }>
-	};
-
-	for (const stackToUpdate of eligibleStacksForProcessing) {
-		try {
-			if (updatingStacks.has(stackToUpdate.id)) {
-				console.log(`Auto-update: Skipping stack ${stackToUpdate.name} (${stackToUpdate.id}), already in progress.`);
-				continue;
-			}
-			const updateAvailable = await checkStackImagesUpdate(stackToUpdate);
-			if (updateAvailable) {
-				updatingStacks.add(stackToUpdate.id);
-				console.log(`Auto-update: Redeploying stack ${stackToUpdate.name} (${stackToUpdate.id})`);
-				await redeployStack(stackToUpdate.id);
-				console.log(`Auto-update: Stack ${stackToUpdate.name} redeployed successfully`);
-				results.updated++;
-				updatingStacks.delete(stackToUpdate.id);
-			} else {
-				console.log(`Auto-update: Stack ${stackToUpdate.name} (${stackToUpdate.id}) is up-to-date or no images triggered an update.`);
-			}
-		} catch (error: unknown) {
-			console.error(`Auto-update error for stack ${stackToUpdate.id}:`, error);
-			const msg = error instanceof Error ? error.message : String(error);
-			results.errors.push({
-				id: stackToUpdate.id,
-				error: msg
-			});
-			updatingStacks.delete(stackToUpdate.id);
-		}
-	}
-
-	return results;
+	return labelValue === 'true';
 }
 
+/**
+ * Checks if a stack is eligible for auto-update
+ */
+async function isStackEligible(stack: Stack): Promise<boolean> {
+	if (stack.status !== 'running' && stack.status !== 'partially running') {
+		return false;
+	}
+
+	try {
+		const fullStack = await getStack(stack.id);
+		if (!fullStack?.composeContent) {
+			console.warn(`Auto-update: Stack ${stack.id} has no compose content, skipping eligibility check.`);
+			return false;
+		}
+
+		const composeData = yaml.load(fullStack.composeContent) as Record<string, unknown>;
+
+		if (!composeData || typeof composeData !== 'object' || !('services' in composeData)) {
+			return false;
+		}
+
+		const services = (composeData as { services: Record<string, any> }).services;
+
+		// Check if any service has auto-update enabled
+		for (const serviceName in services) {
+			const service = services[serviceName];
+			if (isServiceAutoUpdateEnabled(service)) {
+				return true;
+			}
+		}
+
+		return false;
+	} catch (error) {
+		console.error(`Auto-update: Error checking eligibility for stack ${stack.id}:`, error);
+		return false;
+	}
+}
+
+/**
+ * Gets all stacks eligible for auto-update
+ */
+async function getEligibleStacks(): Promise<Stack[]> {
+	const allStacks = await listStacks();
+	const eligibleStacks: Stack[] = [];
+
+	for (const stack of allStacks) {
+		if (await isStackEligible(stack)) {
+			eligibleStacks.push(stack);
+		}
+	}
+
+	return eligibleStacks;
+}
+
+// ==================== IMAGE UPDATE CHECKING ====================
+
+/**
+ * Checks if a container image has an update available
+ */
 async function checkContainerImageUpdate(container: ContainerInfo): Promise<boolean> {
-	const containerName = container.Names && container.Names.length > 0 ? container.Names[0].substring(1) : container.Id;
+	const containerName = getContainerName(container);
+
 	try {
 		const imageRef = container.Image;
-		if (/^sha256:[A-Fa-f0-9]{64}$/.test(imageRef)) {
+
+		// Skip digest-based images
+		if (isImageDigest(imageRef)) {
 			console.log(`Auto-update: Skipping image check for ${containerName}, image is by digest: ${imageRef}`);
 			return false;
 		}
+
+		// Get current image details
 		const currentImage = await getImage(container.ImageID);
 		if (!currentImage) {
 			console.warn(`Auto-update: Current image details not found for ${containerName} (ImageID: ${container.ImageID})`);
 			return false;
 		}
 
+		// Pull latest image
 		console.log(`Auto-update: Pulling image ${imageRef} for ${containerName} to check for updates...`);
 		await pullImage(imageRef);
 
-		const freshPulledImageDetails = await getImage(imageRef);
-		if (!freshPulledImageDetails) {
+		// Get fresh image details
+		const freshImage = await getImage(imageRef);
+		if (!freshImage) {
 			console.warn(`Auto-update: Image details for ${imageRef} not found after pull for ${containerName}.`);
 			return false;
 		}
 
-		if (freshPulledImageDetails.Id !== container.ImageID) {
-			console.log(`Auto-update: New image version found for ${containerName}. Current: ${container.ImageID}, New: ${freshPulledImageDetails.Id}`);
-			return true;
+		// Compare image IDs
+		const hasUpdate = freshImage.Id !== container.ImageID;
+
+		if (hasUpdate) {
+			console.log(`Auto-update: New image version found for ${containerName}. Current: ${container.ImageID}, New: ${freshImage.Id}`);
 		} else {
 			console.log(`Auto-update: Image ${imageRef} for ${containerName} is already up-to-date (ID: ${container.ImageID}).`);
-			return false;
 		}
-	} catch (error: unknown) {
+
+		return hasUpdate;
+	} catch (error) {
 		console.error(`Error checking for image update for ${containerName}:`, error);
 		return false;
 	}
 }
 
+/**
+ * Checks a single image for updates
+ */
+async function checkSingleImageUpdate(imageRef: string, stackName: string): Promise<ImageUpdateCheck> {
+	const result: ImageUpdateCheck = {
+		imageRef,
+		currentImageId: null,
+		newImageId: null,
+		hasUpdate: false
+	};
+
+	try {
+		// Get current image ID
+		try {
+			const currentImage = await getImage(imageRef);
+			if (currentImage) {
+				result.currentImageId = currentImage.Id;
+			}
+		} catch (error: any) {
+			// Only warn if it's not a 404 (image not found locally)
+			if (error.statusCode !== 404) {
+				console.warn(`Could not get current details for image ${imageRef}: ${error.message}`);
+			}
+		}
+
+		// Pull latest image
+		console.log(`Pulling ${imageRef} to check for updates...`);
+		await pullImage(imageRef);
+
+		// Get new image ID
+		try {
+			const newImage = await getImage(imageRef);
+			if (newImage) {
+				result.newImageId = newImage.Id;
+			} else {
+				console.warn(`Image ${imageRef} not found after pull.`);
+				return result;
+			}
+		} catch (error) {
+			console.error(`Could not get details for image ${imageRef} after pull: ${error instanceof Error ? error.message : String(error)}`);
+			return result;
+		}
+
+		// Check for updates
+		if (result.newImageId && result.newImageId !== result.currentImageId) {
+			console.log(`Update found for image ${imageRef} in stack ${stackName}. New ID: ${result.newImageId}, Old ID: ${result.currentImageId}`);
+			result.hasUpdate = true;
+		} else {
+			console.log(`Image ${imageRef} is up-to-date.`);
+		}
+	} catch (error) {
+		console.error(`Error checking/pulling image update for ${imageRef} in stack ${stackName}:`, error);
+	}
+
+	return result;
+}
+
+/**
+ * Checks if any images in a stack have updates available
+ */
 async function checkStackImagesUpdate(stack: Stack): Promise<boolean> {
-	let updateFound = false;
 	try {
 		const fullStack = await getStack(stack.id);
-		if (!fullStack || !fullStack.composeContent) {
+		if (!fullStack?.composeContent) {
 			console.warn(`Stack ${stack.name} (${stack.id}) compose content not found.`);
 			return false;
 		}
-		const composeLines = fullStack.composeContent.split('\n');
-		const imageLines = composeLines.filter((line) => line.trim().startsWith('image:') || line.includes(' image:'));
-		if (imageLines.length === 0) {
+
+		// Extract image references from compose content
+		const imageRefs = extractImageReferences(fullStack.composeContent);
+
+		if (imageRefs.length === 0) {
 			console.log(`No image references found in stack ${stack.name}.`);
 			return false;
 		}
-		const imageRefs = imageLines
-			.map((line) => {
-				const imagePart = line.split('image:')[1].trim();
-				return imagePart.replace(/['"]/g, '').split(/[\s#]/)[0];
-			})
-			.filter((ref) => ref && (ref.includes(':') || ref.includes('/')));
-		const uniqueImageRefs = [...new Set(imageRefs)];
-		console.log(`Checking images for stack ${stack.name}: ${uniqueImageRefs.join(', ')}`);
-		for (const imageRef of uniqueImageRefs) {
-			try {
-				let currentImageId: string | null = null;
-				try {
-					const currentImage = await getImage(imageRef);
-					if (currentImage) {
-						currentImageId = currentImage.Id;
-					}
-				} catch (e: unknown) {
-					if (e instanceof Error && 'statusCode' in e && (e as { statusCode?: number }).statusCode !== 404) {
-						console.warn(`Could not get current details for image ${imageRef}: ${e.message}`);
-					}
-				}
-				console.log(`Pulling ${imageRef} to check for updates...`);
-				await pullImage(imageRef);
-				let newImageId: string | null = null;
-				try {
-					const newImage = await getImage(imageRef);
-					if (newImage) {
-						newImageId = newImage.Id;
-					} else {
-						console.warn(`Image ${imageRef} not found after pull.`);
-						continue;
-					}
-				} catch (e: unknown) {
-					console.error(`Could not get details for image ${imageRef} after pull: ${e instanceof Error ? e.message : String(e)}`);
-					continue;
-				}
-				if (newImageId && newImageId !== currentImageId) {
-					console.log(`Update found for image ${imageRef} in stack ${stack.name}. New ID: ${newImageId}, Old ID: ${currentImageId}`);
-					updateFound = true;
-				} else {
-					console.log(`Image ${imageRef} is up-to-date.`);
-				}
-			} catch (error: unknown) {
-				console.error(`Error checking/pulling image update for ${imageRef} in stack ${stack.name}:`, error);
+
+		console.log(`Checking images for stack ${stack.name}: ${imageRefs.join(', ')}`);
+
+		// Check each image for updates
+		let updateFound = false;
+		for (const imageRef of imageRefs) {
+			const updateCheck = await checkSingleImageUpdate(imageRef, stack.name);
+			if (updateCheck.hasUpdate) {
+				updateFound = true;
 			}
 		}
+
 		return updateFound;
-	} catch (error: unknown) {
+	} catch (error) {
 		console.error(`Error processing stack updates for ${stack.name}:`, error);
 		return false;
 	}
+}
+
+// ==================== UPDATE OPERATIONS ====================
+
+/**
+ * Updates a single container
+ */
+async function updateContainer(container: ContainerInfo): Promise<void> {
+	const containerId = container.Id;
+	const containerName = getContainerName(container);
+
+	if (updatingContainers.has(containerId)) {
+		console.log(`Auto-update: Skipping ${containerName} (${containerId}), already in progress.`);
+		return;
+	}
+
+	try {
+		updatingContainers.add(containerId);
+
+		const updateAvailable = await checkContainerImageUpdate(container);
+		if (!updateAvailable) {
+			console.log(`Auto-update: Container ${containerName} (${containerId}) is up-to-date.`);
+			return;
+		}
+
+		console.log(`Auto-update: Update found for container ${containerName} (${containerId}). Recreating...`);
+		console.log(`Auto-update: Pulling latest image ${container.Image} for ${containerName}...`);
+
+		await pullImage(container.Image);
+		await recreateContainer(containerId);
+
+		console.log(`Auto-update: Container ${containerName} recreated successfully`);
+	} finally {
+		updatingContainers.delete(containerId);
+	}
+}
+
+/**
+ * Updates a single stack
+ */
+async function updateStack(stack: Stack): Promise<void> {
+	if (updatingStacks.has(stack.id)) {
+		console.log(`Auto-update: Skipping stack ${stack.name} (${stack.id}), already in progress.`);
+		return;
+	}
+
+	try {
+		updatingStacks.add(stack.id);
+
+		const updateAvailable = await checkStackImagesUpdate(stack);
+		if (!updateAvailable) {
+			console.log(`Auto-update: Stack ${stack.name} (${stack.id}) is up-to-date or no images triggered an update.`);
+			return;
+		}
+
+		console.log(`Auto-update: Redeploying stack ${stack.name} (${stack.id})`);
+		await redeployStack(stack.id);
+		console.log(`Auto-update: Stack ${stack.name} redeployed successfully`);
+	} finally {
+		updatingStacks.delete(stack.id);
+	}
+}
+
+// ==================== MAIN EXPORTED FUNCTIONS ====================
+
+/**
+ * Checks and updates all eligible containers
+ */
+export async function checkAndUpdateContainers(): Promise<UpdateResult> {
+	if (!(await isAutoUpdateEnabled())) {
+		return { checked: 0, updated: 0, errors: [] };
+	}
+
+	const eligibleContainers = await getEligibleContainers();
+	const results: UpdateResult = {
+		checked: eligibleContainers.length,
+		updated: 0,
+		errors: []
+	};
+
+	for (const container of eligibleContainers) {
+		const containerId = container.Id;
+		const containerName = getContainerName(container);
+
+		try {
+			await updateContainer(container);
+
+			// Check if container was actually updated (not skipped)
+			if (!updatingContainers.has(containerId)) {
+				const updateWasAvailable = await checkContainerImageUpdate(container);
+				if (updateWasAvailable) {
+					results.updated++;
+				}
+			}
+		} catch (error) {
+			const errorMessage = handleError(error, `Auto-update error for container ${containerId}`);
+			results.errors.push({
+				id: containerId,
+				error: errorMessage
+			});
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Checks and updates all eligible stacks
+ */
+export async function checkAndUpdateStacks(): Promise<UpdateResult> {
+	if (!(await isAutoUpdateEnabled())) {
+		return { checked: 0, updated: 0, errors: [] };
+	}
+
+	const eligibleStacks = await getEligibleStacks();
+	const results: UpdateResult = {
+		checked: eligibleStacks.length,
+		updated: 0,
+		errors: []
+	};
+
+	for (const stack of eligibleStacks) {
+		try {
+			const hadUpdate = await checkStackImagesUpdate(stack);
+			await updateStack(stack);
+
+			// Only increment if there was actually an update available
+			if (hadUpdate && !updatingStacks.has(stack.id)) {
+				results.updated++;
+			}
+		} catch (error) {
+			const errorMessage = handleError(error, `Auto-update error for stack ${stack.id}`);
+			results.errors.push({
+				id: stack.id,
+				error: errorMessage
+			});
+		}
+	}
+
+	return results;
 }
