@@ -3,9 +3,10 @@
 	import type { Stack, StackService, StackPort } from '$lib/types/docker/stack.type';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink } from '@lucide/svelte';
+	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, Terminal, X } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
@@ -20,6 +21,7 @@
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { onDestroy } from 'svelte';
 
 	const stackApi = new StackAPIService();
 
@@ -37,6 +39,14 @@
 		pulling: false,
 		saving: false
 	});
+
+	// Real-time logs dialog state
+	let showLogsDialog = $state(false);
+	let deploymentLogs = $state('');
+	let logsEventSource: EventSource | null = $state(null);
+	let logsContainer = $state<HTMLDivElement | undefined>(undefined);
+	let autoScrollLogs = $state(true);
+	let deploymentComplete = $state(false);
 
 	let name = $derived(editorState.name);
 	let composeContent = $derived(editorState.composeContent);
@@ -59,6 +69,108 @@
 		isLoading.saving = false;
 	});
 
+	// Auto-scroll logs to bottom
+	function scrollLogsToBottom() {
+		if (logsContainer) {
+			logsContainer.scrollTop = logsContainer.scrollHeight;
+		}
+	}
+
+	// Auto-scroll effect
+	$effect(() => {
+		if (logsContainer && deploymentLogs && autoScrollLogs) {
+			scrollLogsToBottom();
+		}
+	});
+
+	// Start real-time logs stream
+	function startDeploymentLogsStream(stackId: string) {
+		if (logsEventSource) return;
+
+		try {
+			const url = `/api/stacks/${stackId}/logs`;
+			const eventSource = new EventSource(url);
+			logsEventSource = eventSource;
+
+			eventSource.onmessage = (event) => {
+				try {
+					const data = JSON.parse(event.data);
+
+					if (data.type === 'log') {
+						deploymentLogs += data.message + '\n';
+					} else if (data.type === 'complete') {
+						deploymentLogs += '\n[SUCCESS] Deployment completed successfully!\n';
+						deploymentComplete = true;
+						isLoading.deploying = false;
+						closeLogsStream();
+						toast.success('Stack deployed successfully!');
+						invalidateAll();
+					} else if (data.type === 'error') {
+						deploymentLogs += `\n[ERROR] ${data.message}\n`;
+						deploymentComplete = true;
+						isLoading.deploying = false;
+						closeLogsStream();
+						toast.error('Deployment failed');
+					}
+				} catch (error) {
+					console.error('Error parsing log data:', error);
+					deploymentLogs += '[ERROR] Failed to parse log data\n';
+				}
+			};
+
+			eventSource.onerror = (error) => {
+				console.error('Logs stream error:', error);
+				deploymentLogs += '[ERROR] Connection to logs stream lost.\n';
+				deploymentComplete = true;
+				isLoading.deploying = false;
+				closeLogsStream();
+			};
+		} catch (error) {
+			console.error('Failed to connect to deployment logs stream:', error);
+			deploymentLogs += '[ERROR] Failed to connect to logs stream.\n';
+			deploymentComplete = true;
+			isLoading.deploying = false;
+		}
+	}
+
+	// Handle deployment with logs dialog
+	async function handleDeployWithLogs() {
+		if (!stack) return;
+
+		// Reset logs state
+		deploymentLogs = '';
+		deploymentComplete = false;
+		showLogsDialog = true;
+		isLoading.deploying = true; // Set loading state
+
+		// Add initial message
+		deploymentLogs = '[INFO] Starting deployment...\n';
+
+		// ONLY start logs stream - don't call regular deploy endpoint
+		startDeploymentLogsStream(stack.id);
+	}
+
+	// Close logs stream
+	function closeLogsStream() {
+		if (logsEventSource) {
+			logsEventSource.close();
+			logsEventSource = null;
+		}
+	}
+
+	// Close dialog and cleanup
+	function closeLogsDialog() {
+		showLogsDialog = false;
+		closeLogsStream();
+		deploymentLogs = '';
+		deploymentComplete = false;
+	}
+
+	// Cleanup on component destroy
+	onDestroy(() => {
+		closeLogsStream();
+	});
+
 	async function handleSaveChanges() {
 		if (!stack || !hasChanges) return;
 
@@ -69,7 +181,6 @@
 			message: 'Failed to Save Stack',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Stack) => {
-				// Changed from any to Stack
 				console.log('Stack save successful', updatedStack);
 				toast.success('Stack updated successfully!');
 
@@ -102,8 +213,6 @@
 
 		return baseServerUrl;
 	}
-
-	// Define a more specific interface for the port type
 
 	function getServicePortUrl(service: StackService, port: string | number | StackPort, protocol = 'http'): string {
 		const host = getHostForService(service);
@@ -181,9 +290,22 @@
 				{/if}
 			</div>
 
-			<!-- Better positioned action buttons -->
+			<!-- Enhanced action buttons with deploy logs -->
 			{#if stack}
-				<div class="self-start">
+				<div class="self-start flex gap-2">
+					{#if stack.status !== 'running' && stack.status !== 'partially running'}
+						<Button onclick={handleDeployWithLogs} disabled={isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} class="gap-2 shadow-sm hover:shadow-md transition-all">
+							{#if isLoading.deploying}
+								<svg class="animate-spin size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+								</svg>
+							{:else}
+								<FileStack class="size-4" />
+							{/if}
+							Deploy with Logs
+						</Button>
+					{/if}
 					<ActionButtons
 						id={stack.id}
 						type="stack"
@@ -200,6 +322,88 @@
 			{/if}
 		</div>
 	</div>
+
+	<!-- Real-time Deployment Logs Dialog -->
+	<Dialog.Root bind:open={showLogsDialog}>
+		<Dialog.Content class="max-w-4xl max-h-[80vh] flex flex-col">
+			<Dialog.Header class="flex-shrink-0">
+				<div class="flex items-center justify-between">
+					<div>
+						<Dialog.Title class="text-lg font-semibold flex items-center gap-2">
+							<div class="bg-green-500/10 p-2 rounded-lg">
+								<Terminal class="text-green-500 size-4" />
+							</div>
+							Deployment Logs
+						</Dialog.Title>
+						<Dialog.Description class="text-sm text-muted-foreground mt-1">
+							Real-time deployment progress for stack: {stack?.name}
+						</Dialog.Description>
+					</div>
+					<div class="flex items-center gap-2">
+						{#if !deploymentComplete}
+							<div class="flex items-center gap-2 text-sm text-muted-foreground">
+								<div class="animate-pulse bg-green-500 size-2 rounded-full"></div>
+								Deploying...
+							</div>
+						{:else}
+							<div class="flex items-center gap-2 text-sm text-green-600">
+								<div class="bg-green-500 size-2 rounded-full"></div>
+								Complete
+							</div>
+						{/if}
+						<label class="flex items-center gap-2 text-xs">
+							<input type="checkbox" class="rounded border-border" checked={autoScrollLogs} onchange={(e) => (autoScrollLogs = e.currentTarget.checked)} />
+							Auto-scroll
+						</label>
+					</div>
+				</div>
+			</Dialog.Header>
+
+			<div class="flex-1 overflow-hidden">
+				<div
+					class="bg-slate-950 text-green-400 p-4 rounded-lg font-mono text-xs overflow-auto border h-[500px] scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent"
+					bind:this={logsContainer}
+					onscroll={() => {
+						if (logsContainer) {
+							const atBottom = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 50;
+							if (!atBottom && autoScrollLogs) {
+								autoScrollLogs = false;
+							}
+						}
+					}}
+				>
+					{#if deploymentLogs}
+						<pre class="m-0 whitespace-pre-wrap break-words leading-relaxed">{deploymentLogs}</pre>
+					{:else}
+						<div class="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+							<Terminal class="size-12 mb-4 opacity-40" />
+							<p class="text-sm">Waiting for deployment to start...</p>
+							<p class="text-xs mt-1 opacity-70">Logs will appear here in real-time</p>
+						</div>
+					{/if}
+				</div>
+			</div>
+
+			<Dialog.Footer class="flex-shrink-0 border-t pt-4">
+				<div class="flex justify-between items-center w-full">
+					<div class="text-xs text-muted-foreground">
+						{#if deploymentComplete}
+							Deployment completed
+						{:else}
+							Streaming live deployment logs...
+						{/if}
+					</div>
+					<div class="flex gap-2">
+						{#if deploymentComplete}
+							<Button variant="outline" onclick={closeLogsDialog}>Close</Button>
+						{:else}
+							<Button variant="outline" onclick={closeLogsDialog}>Run in Background</Button>
+						{/if}
+					</div>
+				</div>
+			</Dialog.Footer>
+		</Dialog.Content>
+	</Dialog.Root>
 
 	<!-- Error Alert -->
 	{#if data.error}
