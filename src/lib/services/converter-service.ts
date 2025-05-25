@@ -233,21 +233,66 @@ export function parseDockerRunCommand(command: string): DockerRunCommand {
 						break;
 
 					default:
-						// If it doesn't start with '-', it's likely the image or command
-						if (!token.startsWith('-')) {
+						// Handle unknown flags
+						if (token.startsWith('-')) {
+							// Check if it's a flag that expects a value
+							const flagsWithValues = ['-p', '--port', '--publish', '-v', '--volume', '-e', '--env', '--network', '--restart', '-w', '--workdir', '-u', '--user', '--entrypoint', '--health-cmd', '-m', '--memory', '--cpus', '--label', '--name'];
+
+							// Check if it's a combined short flag (e.g., -it for -i -t)
+							if (token.startsWith('-') && !token.startsWith('--') && token.length > 2) {
+								// Handle combined short flags like -it, -dit, etc.
+								const flags = token.slice(1).split('');
+								for (const flag of flags) {
+									switch (flag) {
+										case 'd':
+											result.detached = true;
+											break;
+										case 'i':
+											result.interactive = true;
+											break;
+										case 't':
+											result.tty = true;
+											break;
+										default:
+											console.warn(`Unknown short flag in combined flag: -${flag}`);
+											break;
+									}
+								}
+								break;
+							}
+
+							// For unknown flags, check if they expect a value
+							const isKnownFlag = flagsWithValues.includes(token);
+							if (!isKnownFlag) {
+								// Unknown flag - decide whether to throw error or warn
+								console.warn(`Unknown docker run flag: ${token}`);
+
+								// Skip potential value if next token doesn't look like a flag or image
+								if (i + 1 < tokens.length && !tokens[i + 1].startsWith('-') && !result.image && tokens[i + 1].includes(':')) {
+									// Likely this unknown flag has a value, skip it
+									i++;
+								}
+							}
+						} else {
+							// Token doesn't start with '-', it's either image or command
 							if (!result.image) {
 								if (!token) {
 									throw new Error('Image name cannot be empty');
 								}
+								// Validate image name format (basic check)
+								if (!/^[a-zA-Z0-9._/-]+(:[\w.-]+)?$/.test(token)) {
+									console.warn(`Image name "${token}" may not be valid`);
+								}
 								result.image = token;
 							} else {
-								// Everything after image is the command
-								result.command = tokens.slice(i).join(' ');
+								// Everything from this point forward is part of the command
+								// Join all remaining tokens to handle multi-argument commands properly
+								const remainingTokens = tokens.slice(i);
+								result.command = remainingTokens.join(' ');
+
+								// Important: return here to stop processing since we've captured the command
 								return result;
 							}
-						} else {
-							// Unknown flag - log warning but continue parsing
-							console.warn(`Unknown docker run flag: ${token}`);
 						}
 						break;
 				}
