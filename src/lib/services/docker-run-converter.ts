@@ -56,65 +56,104 @@ export function parseDockerRunCommand(command: string): DockerRunCommand {
 				break;
 
 			case '--name':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for --name flag');
+				}
 				result.name = tokens[++i];
 				break;
 
 			case '-p':
 			case '--port':
 			case '--publish':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for port flag');
+				}
 				if (!result.ports) result.ports = [];
 				result.ports.push(tokens[++i]);
 				break;
 
 			case '-v':
 			case '--volume':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for volume flag');
+				}
 				if (!result.volumes) result.volumes = [];
 				result.volumes.push(tokens[++i]);
 				break;
 
 			case '-e':
 			case '--env':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for environment flag');
+				}
 				if (!result.environment) result.environment = [];
 				result.environment.push(tokens[++i]);
 				break;
 
 			case '--network':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for --network flag');
+				}
 				if (!result.networks) result.networks = [];
 				result.networks.push(tokens[++i]);
 				break;
 
 			case '--restart':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for --restart flag');
+				}
 				result.restart = tokens[++i];
 				break;
 
 			case '-w':
 			case '--workdir':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for workdir flag');
+				}
 				result.workdir = tokens[++i];
 				break;
 
 			case '-u':
 			case '--user':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for user flag');
+				}
 				result.user = tokens[++i];
 				break;
 
 			case '--entrypoint':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for --entrypoint flag');
+				}
 				result.entrypoint = tokens[++i];
 				break;
 
 			case '--health-cmd':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for --health-cmd flag');
+				}
 				result.healthCheck = tokens[++i];
 				break;
 
 			case '-m':
 			case '--memory':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for memory flag');
+				}
 				result.memoryLimit = tokens[++i];
 				break;
 
 			case '--cpus':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for --cpus flag');
+				}
 				result.cpuLimit = tokens[++i];
 				break;
 
 			case '--label':
+				if (i + 1 >= tokens.length) {
+					throw new Error('Missing value for --label flag');
+				}
 				if (!result.labels) result.labels = [];
 				result.labels.push(tokens[++i]);
 				break;
