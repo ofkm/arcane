@@ -15,7 +15,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json(response, { status: 400 });
 	}
 
-	const { dockerRunCommand } = bodyResult.data;
+	const { dockerRunCommand } = bodyResult.data as { dockerRunCommand: string };
 
 	if (!dockerRunCommand || !dockerRunCommand.trim()) {
 		const response: ApiErrorResponse = {
