@@ -1,0 +1,22 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_service
+    env_file:
+      - .env
+    networks:
+      - test_ext
+    ports:
+      - "8080:80"
+    volumes:
+      - nginx_data:/usr/share/nginx/html
+    restart: unless-stopped
+
+volumes:
+  nginx_data:
+    driver: local
+
+networks:
+    default:
+        external: true
+        name: test_ext

@@ -1,0 +1,15 @@
+{
+  "dockerHost": "unix:///var/run/docker.sock",
+  "autoUpdate": false,
+  "autoUpdateInterval": 5,
+  "pollingEnabled": true,
+  "pollingInterval": 10,
+  "pruneMode": "all",
+  "stacksDirectory": "data/stacks",
+  "maturityThresholdDays": 30,
+  "onboarding": {
+    "completed": true,
+    "completedAt": "2025-05-25T04:54:32.953Z"
+  },
+  "_encrypted": "d8f2e1eb2b01a05401be16cf86c183af0e6078fc0a2a4b00bf3e83cc142e11ab:86da81d3c70f57c0a7e1492ddd07bed6:0ba7dbbdc50adb4bf3aed60b76061c3d:d54c372450e9ff15112a6d5b54e92e440253342fe056f4a16590ad0c3c9e94b532fa59eb9cc1af372b89aa8c89607ec38919e8afc303fab087b5aa2092b7be413ff19df6365d8832a9c3410c07805887de21209d42252f4823544979f71f079e02bead855a29825e776d1b930dfb9a7aef9490d9ef48e7ed9234d469"
+}

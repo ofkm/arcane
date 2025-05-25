@@ -1,0 +1,15 @@
+[
+  {
+    "username": "arcane",
+    "password": "$2b$10$sys2H2seHxALfGueTyIznObwa/gZo2MhPzH54bGB/he5S1AbCTTvi",
+    "roles": [
+      "admin",
+      "containers:view",
+      "containers:manage",
+      "settings:view",
+      "networks:view",
+      "networks:manage"
+    ],
+    "createdAt": "2025-05-25T04:54:32.952Z"
+  }
+]
