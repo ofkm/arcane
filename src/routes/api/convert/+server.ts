@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './docker-run/$types';
+import type { RequestHandler } from './$types';
 import { parseDockerRunCommand, convertToDockerCompose } from '$lib/services/docker-run-converter';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
