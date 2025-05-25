@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, FileStack } from '@lucide/svelte';
+	import { ArrowLeft, FileStack, Terminal, Copy, Wand2, Loader2 } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -15,13 +15,17 @@
 	import EnvEditor from '$lib/components/env-editor.svelte';
 	import { defaultEnvTemplate, defaultComposeTemplate } from '$lib/constants';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { Textarea } from '$lib/components/ui/textarea/index.js';
+	import DropdownCard from '$lib/components/dropdown-card.svelte';
 
 	const stackApi = new StackAPIService();
 	let saving = $state(false);
+	let converting = $state(false);
 
 	let name = $state('');
 	let composeContent = $state(defaultComposeTemplate);
 	let envContent = $state(defaultEnvTemplate);
+	let dockerRunCommand = $state('');
 
 	async function handleSubmit() {
 		handleApiResultWithCallbacks({
@@ -34,6 +38,40 @@
 				goto(`/stacks/${name}`);
 			}
 		});
+	}
+
+	async function handleConvertDockerRun() {
+		if (!dockerRunCommand.trim()) {
+			toast.error('Please enter a docker run command');
+			return;
+		}
+
+		handleApiResultWithCallbacks({
+			result: await tryCatch(stackApi.convertDockerRun(dockerRunCommand)),
+			message: 'Failed to Convert Docker Run Command',
+			setLoadingState: (value) => (converting = value),
+			onSuccess: (data) => {
+				const { dockerCompose, envVars, serviceName } = data;
+
+				composeContent = dockerCompose;
+				if (envVars) {
+					envContent = envVars;
+				}
+				if (serviceName && !name) {
+					name = serviceName;
+				}
+
+				toast.success('Docker run command converted successfully!');
+				// Clear the command after successful conversion
+				dockerRunCommand = '';
+			}
+		});
+	}
+
+	const exampleCommands = ['docker run -d --name nginx -p 8080:80 -v nginx_data:/usr/share/nginx/html nginx:alpine', 'docker run -d --name postgres -e POSTGRES_DB=mydb -e POSTGRES_USER=user -e POSTGRES_PASSWORD=pass -v postgres_data:/var/lib/postgresql/data postgres:15', 'docker run -d --name redis -p 6379:6379 --restart unless-stopped redis:alpine'];
+
+	function useExample(command: string) {
+		dockerRunCommand = command;
 	}
 </script>
 
@@ -59,6 +97,40 @@
 			<h1 class="text-2xl font-bold tracking-tight mt-2">Create New Stack</h1>
 		</div>
 	</div>
+
+	<!-- Docker Run to Compose Converter -->
+	<DropdownCard id="docker-run-converter" title="Docker Run to Compose Converter" description="Convert existing docker run commands to Docker Compose format" icon={Terminal}>
+		<div class="space-y-4">
+			<div class="space-y-2">
+				<Label for="dockerRunCommand">Docker Run Command</Label>
+				<Textarea id="dockerRunCommand" bind:value={dockerRunCommand} placeholder="docker run -d --name my-app -p 8080:80 nginx:alpine" rows={3} disabled={converting} class="font-mono text-sm" />
+			</div>
+
+			<div class="flex items-center gap-2">
+				<Button type="button" disabled={!dockerRunCommand.trim() || converting} size="sm" onclick={handleConvertDockerRun}>
+					{#if converting}
+						<Loader2 class="mr-2 size-4 animate-spin" />
+						Converting...
+					{:else}
+						<Wand2 class="mr-2 size-4" />
+						Convert to Compose
+					{/if}
+				</Button>
+			</div>
+
+			<div class="space-y-2">
+				<Label class="text-xs text-muted-foreground">Example Commands:</Label>
+				<div class="space-y-1">
+					{#each exampleCommands as command}
+						<Button type="button" variant="ghost" size="sm" class="h-auto p-2 text-xs font-mono text-left justify-start w-full" onclick={() => useExample(command)}>
+							<Copy class="mr-2 size-3" />
+							{command}
+						</Button>
+					{/each}
+				</div>
+			</div>
+		</div>
+	</DropdownCard>
 
 	<form class="space-y-6" onsubmit={preventDefault(handleSubmit)}>
 		<Card.Root class="border shadow-sm">

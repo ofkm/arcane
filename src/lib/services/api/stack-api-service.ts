@@ -77,4 +77,11 @@ export default class StackAPIService extends BaseAPIService {
 		const res = await this.api.get('');
 		return res.data;
 	}
+
+	async convertDockerRun(dockerRunCommand: string) {
+		const res = await this.api.post('/convert', {
+			dockerRunCommand
+		});
+		return res.data;
+	}
 }
