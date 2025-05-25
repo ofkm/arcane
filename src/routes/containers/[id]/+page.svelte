@@ -14,6 +14,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { onDestroy } from 'svelte';
+	import LogViewer from '$lib/components/LogViewer.svelte';
 
 	// Define the network config interface to match what Docker actually returns
 	interface NetworkConfig {
@@ -34,87 +35,19 @@
 	let { data }: { data: PageData } = $props();
 	let { container, logs: initialLogsFromServer, stats } = $derived(data);
 
-	let displayedLogs = $derived(initialLogsFromServer || '');
-
 	let starting = $state(false);
 	let stopping = $state(false);
 	let restarting = $state(false);
 	let removing = $state(false);
 	let isRefreshing = $state(false);
 
-	let formattedLogHtml = $derived(
-		displayedLogs
-			? displayedLogs
-					.split('\n')
-					.map((line) => {
-						const cleanedLine = line.replace(/[\x00-\x09\x0B-\x1F\x7F-\x9F]/g, '');
-						return formatLogLine(cleanedLine);
-					})
-					.join('\n')
-			: ''
-	);
-	let logsContainer = $state<HTMLDivElement | undefined>(undefined);
 	let activeTab = $state('overview');
 	let autoScrollLogs = $state(true);
+	let isStreaming = $state(false);
 
-	let logEventSource: EventSource | null = $state(null);
+	let logViewer = $state<LogViewer>();
+
 	let statsEventSource: EventSource | null = $state(null);
-
-	function scrollLogsToBottom() {
-		if (logsContainer) {
-			logsContainer.scrollTop = logsContainer.scrollHeight;
-		}
-	}
-
-	$effect(() => {
-		if (logsContainer && displayedLogs && activeTab === 'logs' && autoScrollLogs) {
-			scrollLogsToBottom();
-		}
-	});
-
-	$effect(() => {
-		if (activeTab === 'logs') {
-			startLogStream();
-			setTimeout(scrollLogsToBottom, 100);
-		} else if (logEventSource) {
-			closeLogStream();
-		}
-	});
-
-	function startLogStream() {
-		if (logEventSource || !container?.Id) return;
-
-		try {
-			const url = `/api/containers/${container.Id}/logs/stream`;
-			const eventSource = new EventSource(url);
-			logEventSource = eventSource;
-
-			eventSource.onmessage = (event) => {
-				if (event.data) {
-					displayedLogs = (displayedLogs || '') + event.data;
-
-					if (autoScrollLogs) {
-						scrollLogsToBottom();
-					}
-				}
-			};
-
-			eventSource.onerror = (error) => {
-				console.error('EventSource error:', error);
-				eventSource.close();
-				logEventSource = null;
-			};
-		} catch (error) {
-			console.error('Failed to connect to log stream:', error);
-		}
-	}
-
-	function closeLogStream() {
-		if (logEventSource) {
-			logEventSource.close();
-			logEventSource = null;
-		}
-	}
 
 	function startStatsStream() {
 		if (statsEventSource || !container?.Id || !container.State?.Running) return;
@@ -167,7 +100,6 @@
 	});
 
 	onDestroy(() => {
-		closeLogStream();
 		closeStatsStream();
 	});
 
@@ -216,13 +148,6 @@
 	const primaryIpAddress = $derived(getPrimaryIpAddress(container?.NetworkSettings));
 
 	$effect(() => {
-		if (logsContainer && displayedLogs && autoScrollLogs) {
-			const atBottom = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 50;
-			if (atBottom) {
-				scrollLogsToBottom();
-			}
-		}
-
 		starting = false;
 		stopping = false;
 		restarting = false;
@@ -235,6 +160,23 @@
 		setTimeout(() => {
 			isRefreshing = false;
 		}, 500);
+	}
+
+	// LogViewer callback functions
+	function handleLogStart() {
+		isStreaming = true;
+	}
+
+	function handleLogStop() {
+		isStreaming = false;
+	}
+
+	function handleLogClear() {
+		// Custom logic when logs are cleared if needed
+	}
+
+	function handleToggleAutoScroll() {
+		// Custom logic when auto-scroll is toggled if needed
 	}
 </script>
 
@@ -664,45 +606,36 @@
 						<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-4">
 							<div>
 								<Card.Title class="text-lg font-semibold">Container Logs</Card.Title>
-								<Card.Description>Recent output from the container</Card.Description>
+								<Card.Description>Live output from the container</Card.Description>
 							</div>
 							<div class="flex items-center gap-2">
 								<div class="flex items-center">
-									<input type="checkbox" id="auto-scroll" class="mr-2" checked={autoScrollLogs} onchange={(e) => (autoScrollLogs = e.currentTarget.checked)} />
+									<input type="checkbox" id="auto-scroll" class="mr-2" bind:checked={autoScrollLogs} />
 									<label for="auto-scroll" class="text-xs">Auto-scroll</label>
 								</div>
+
+								<Button variant="outline" size="sm" onclick={() => logViewer?.clearLogs()}>Clear</Button>
+
+								{#if isStreaming}
+									<div class="flex items-center space-x-1">
+										<div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+										<span class="text-xs text-green-400">Live</span>
+									</div>
+									<Button variant="outline" size="sm" onclick={() => logViewer?.stopLogStream()}>Stop</Button>
+								{:else}
+									<Button variant="outline" size="sm" onclick={() => logViewer?.startLogStream()} disabled={!container?.Id}>Start</Button>
+								{/if}
+
 								<Button variant="outline" size="sm" onclick={refreshData} disabled={isRefreshing}>
 									<RefreshCw class={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-									Refresh Logs
+									Refresh
 								</Button>
 							</div>
 						</div>
 					</Card.Header>
 
 					<Card.Content>
-						<div
-							class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs overflow-auto border h-[500px]"
-							bind:this={logsContainer}
-							id="logs-container"
-							style="overflow-x: auto;"
-							onscroll={() => {
-								if (logsContainer) {
-									const atBottom = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 50;
-									if (!atBottom && autoScrollLogs) {
-										autoScrollLogs = false;
-									}
-								}
-							}}
-						>
-							{#if formattedLogHtml}
-								<pre class="m-0 whitespace-pre-wrap break-words">{@html formattedLogHtml}</pre>
-							{:else}
-								<div class="flex flex-col items-center justify-center h-full text-center">
-									<Terminal class="text-muted-foreground mb-3 opacity-40 size-8" />
-									<p class="text-muted-foreground italic">No logs available. The container may not have started yet or produces no output.</p>
-								</div>
-							{/if}
-						</div>
+						<LogViewer bind:this={logViewer} bind:autoScroll={autoScrollLogs} containerId={container?.Id} maxLines={500} showTimestamps={true} height="500px" onStart={handleLogStart} onStop={handleLogStop} onClear={handleLogClear} onToggleAutoScroll={handleToggleAutoScroll} />
 					</Card.Content>
 				</Card.Root>
 			</Tabs.Content>

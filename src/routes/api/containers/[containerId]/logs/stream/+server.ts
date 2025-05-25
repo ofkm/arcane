@@ -1,98 +1,148 @@
-import { getDockerClient } from '$lib/services/docker/core';
-import type { RequestHandler } from '@sveltejs/kit';
-import type { Readable } from 'stream';
+import { error } from '@sveltejs/kit';
+import Docker from 'dockerode';
+import { Writable } from 'stream';
+import type { RequestHandler } from './$types';
 
-// Define a custom interface for our stream source
-interface LogStreamSource extends UnderlyingDefaultSource<Uint8Array> {
-	logStream?: Readable;
-}
+const docker = new Docker();
 
-export const GET: RequestHandler = async ({ params }) => {
-	if (!params.containerId) {
-		return new Response('Container ID is required', { status: 400 });
+export const GET: RequestHandler = async ({ params, request }) => {
+	const { containerId } = params;
+
+	if (!containerId) {
+		throw error(400, 'Container ID is required');
 	}
 
-	const docker = await getDockerClient();
-	const container = docker.getContainer(params.containerId);
+	try {
+		const container = docker.getContainer(containerId);
+		await container.inspect();
 
-	// Create a ReadableStream with our custom source type
-	const stream = new ReadableStream<Uint8Array>({
-		async start(controller) {
-			try {
-				// Get logs stream from Docker
-				const logStream = (await container.logs({
-					follow: true,
-					stdout: true,
-					stderr: true,
-					timestamps: true
-				})) as Readable;
+		const stream = new ReadableStream({
+			start(controller) {
+				const encoder = new TextEncoder();
+				let isClosed = false;
+				let logStream: NodeJS.ReadableStream | null = null;
 
-				// Track controller state
-				let isControllerClosed = false;
-
-				// Set up cleanup for client disconnection
-				const cleanup = () => {
-					isControllerClosed = true;
-					if (logStream && logStream.destroy) {
-						logStream.destroy();
+				const safeEnqueue = (data: string) => {
+					if (!isClosed) {
+						try {
+							controller.enqueue(encoder.encode(data));
+						} catch (err) {
+							isClosed = true;
+						}
 					}
 				};
 
-				// Handle Docker stream events
-				logStream.on('data', (chunk) => {
-					try {
-						// Only enqueue if controller is still open
-						if (!isControllerClosed) {
-							controller.enqueue(chunk);
+				const stdoutStream = new Writable({
+					write(chunk, encoding, callback) {
+						if (isClosed) {
+							callback();
+							return;
 						}
-					} catch (error: any) {
-						// Handle "controller closed" errors gracefully
-						if (error.code === 'ERR_INVALID_STATE') {
-							cleanup();
+
+						const message = chunk.toString();
+						const data = JSON.stringify({
+							level: 'stdout',
+							message: message,
+							timestamp: new Date().toISOString()
+						});
+
+						safeEnqueue(`data: ${data}\n\n`);
+						callback();
+					}
+				});
+
+				const stderrStream = new Writable({
+					write(chunk, encoding, callback) {
+						if (isClosed) {
+							callback();
+							return;
+						}
+
+						const message = chunk.toString();
+						const data = JSON.stringify({
+							level: 'stderr',
+							message: message,
+							timestamp: new Date().toISOString()
+						});
+
+						safeEnqueue(`data: ${data}\n\n`);
+						callback();
+					}
+				});
+
+				const cleanup = () => {
+					isClosed = true;
+					if (logStream) {
+						try {
+							if (typeof (logStream as any).destroy === 'function') {
+								(logStream as any).destroy();
+							}
+						} catch (err) {
+							// Silent cleanup
+						}
+					}
+				};
+
+				container.logs(
+					{
+						follow: true,
+						stdout: true,
+						stderr: true,
+						timestamps: true,
+						tail: 50
+					},
+					(err, stream) => {
+						if (err) {
+							if (!isClosed) {
+								controller.error(err);
+							}
+							return;
+						}
+
+						logStream = stream || null;
+
+						if (stream && !isClosed) {
+							container.modem.demuxStream(stream, stdoutStream, stderrStream);
+
+							stream.on('end', () => {
+								cleanup();
+								if (!isClosed) {
+									controller.close();
+								}
+							});
+
+							stream.on('error', (streamErr) => {
+								cleanup();
+								if (!isClosed) {
+									controller.error(streamErr);
+								}
+							});
+
+							stream.on('close', () => {
+								cleanup();
+							});
 						} else {
-							console.error('Error streaming logs:', error);
+							cleanup();
 						}
 					}
+				);
+
+				request.signal.addEventListener('abort', () => {
+					cleanup();
 				});
 
-				logStream.on('end', () => {
-					if (!isControllerClosed) {
-						controller.close();
-						isControllerClosed = true;
-					}
-				});
-
-				logStream.on('error', (err) => {
-					console.error('Docker logs stream error:', err);
-					if (!isControllerClosed) {
-						controller.error(err);
-						isControllerClosed = true;
-					}
-				});
-
-				// Store for cleanup in cancel
-				(this as LogStreamSource).logStream = logStream;
-			} catch (error) {
-				console.error('Error starting logs stream:', error);
-				controller.error(error);
+				return cleanup;
 			}
-		},
+		});
 
-		cancel() {
-			// Called when client disconnects
-			console.log('Client disconnected from logs stream');
-			const self = this as LogStreamSource;
-			if (self.logStream && self.logStream.destroy) {
-				self.logStream.destroy();
+		return new Response(stream, {
+			headers: {
+				'Content-Type': 'text/event-stream',
+				'Cache-Control': 'no-cache',
+				Connection: 'keep-alive'
 			}
-		}
-	} as LogStreamSource);
-
-	return new Response(stream, {
-		headers: {
-			'Content-Type': 'text/event-stream',
-			'Cache-Control': 'no-cache',
-			Connection: 'keep-alive'
-		}
-	});
+		});
+	} catch (err) {
+		throw error(500, 'Failed to stream container logs');
+	}
 };
