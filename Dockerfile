@@ -1,12 +1,12 @@
 # Stage 1: Build dependencies
-FROM node:22-alpine AS deps
+FROM oven/bun:1-alpine AS deps
 WORKDIR /app
-COPY package*.json ./
+COPY package.json bun.lockb ./
 # Install dependencies first (better layer caching)
-RUN npm ci
+RUN bun install --frozen-lockfile
 
 # Stage 2: Build the application
-FROM node:22-alpine AS builder
+FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 
 # Set OIDC variables to dummy values for build time if they are checked
@@ -22,7 +22,7 @@ ENV OIDC_REDIRECT_URI=$OIDC_REDIRECT_URI_BUILD
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # When building, set NODE_ENV to "build" to prevent connection attempts
-RUN NODE_ENV=build npm run build
+RUN NODE_ENV=build bun run build
 
 # Stage 3: Production image
 FROM node:22-alpine AS runner
@@ -49,9 +49,9 @@ COPY --from=builder /app/static ./static
 COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Install only production dependencies
-COPY package*.json ./
+COPY package.json bun.lockb ./
 # The chown part is removed as 'arcane' user might not exist here
-RUN npm install --omit=dev && npm cache clean --force
+RUN bun install --frozen-lockfile --production && bun cache clean --force
 
 # Configure container
 EXPOSE 3000

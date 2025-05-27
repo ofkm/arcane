@@ -25,11 +25,22 @@ jobs:
         with:
           node-version: 22
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
           path: ~/.npm
           key: npm-cache-universal
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-cache-universal
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -43,16 +54,16 @@ jobs:
           docker volume create cache
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Create .env
         run: echo PUBLIC_SESSION_SECRET=your-secure-random-string-here > .env
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+        run: bunx playwright install
 
       - name: Run Playwright E2E tests
-        run: npm run test:e2e
+        run: bun run test:e2e
 
       - name: List Playwright report directory
         if: always()

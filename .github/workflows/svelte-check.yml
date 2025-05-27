@@ -8,7 +8,7 @@ on:
       - '.github/workflows/type-check.yml'
       - '.github/svelte-check-matcher.json'
       - 'package.json'
-      - 'package-lock.json'
+      - 'bun.lock'
       - 'tsconfig.json'
       - 'svelte.config.js'
   pull_request:
@@ -18,7 +18,7 @@ on:
       - '.github/workflows/type-check.yml'
       - '.github/svelte-check-matcher.json'
       - 'package.json'
-      - 'package-lock.json'
+      - 'bun.lock'
       - 'tsconfig.json'
       - 'svelte.config.js'
   workflow_dispatch:
@@ -38,18 +38,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 'lts/*'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
+          bun-version: latest
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Add svelte-check problem matcher
         run: echo "::add-matcher::.github/svelte-check-matcher.json"
 
-      - name: Run svelte-check via npm script
-        run: npm run check
+      - name: Run svelte-check via bun script
+        run: bun run check

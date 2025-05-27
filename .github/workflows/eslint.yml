@@ -11,7 +11,7 @@ name: ESLint
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
   schedule:
     - cron: '41 18 * * 3'
 
@@ -27,15 +27,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Install ESLint
         run: |
-          npm install eslint@9.25.1
-          npm install @microsoft/eslint-formatter-sarif@3.1.0
+          bun add eslint@9.25.1
+          bun add @microsoft/eslint-formatter-sarif@3.1.0
 
       - name: Run ESLint
         env:
-          SARIF_ESLINT_IGNORE_SUPPRESSED: "true"
-        run: npx eslint ./src
+          SARIF_ESLINT_IGNORE_SUPPRESSED: 'true'
+        run: bunx eslint ./src
           --config eslint.config.js
           --ext .js,.jsx,.ts,.tsx
           --format @microsoft/eslint-formatter-sarif
