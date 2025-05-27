@@ -10,6 +10,7 @@
 
 	interface Props {
 		containerId?: string | null;
+		type?: 'container' | 'stack';
 		maxLines?: number;
 		autoScroll?: boolean;
 		showTimestamps?: boolean;
@@ -20,7 +21,7 @@
 		onStop?: () => void;
 	}
 
-	let { containerId = null, maxLines = 1000, autoScroll = $bindable(true), showTimestamps = true, height = '400px', onClear, onToggleAutoScroll, onStart, onStop }: Props = $props();
+	let { containerId = null, type = 'container', maxLines = 1000, autoScroll = $bindable(true), showTimestamps = true, height = '400px', onClear, onToggleAutoScroll, onStart, onStop }: Props = $props();
 
 	let logs: LogEntry[] = $state([]);
 	let logContainer: HTMLElement | undefined = $state();
@@ -37,12 +38,25 @@
 			error = null;
 			onStart?.();
 
+			// Use different API endpoint based on type
+			const endpoint = type === 'stack' ? `/api/stacks/${containerId}/logs` : `/api/containers/${containerId}/logs/stream`;
+
 			// Create SSE connection for log streaming
-			eventSource = new EventSource(`/api/containers/${containerId}/logs/stream`);
+			eventSource = new EventSource(endpoint);
 
 			eventSource.onmessage = (event) => {
-				const logData = JSON.parse(event.data);
-				addLogEntry(logData);
+				if (type === 'stack') {
+					// Stack logs come as plain text
+					addLogEntry({
+						level: 'stdout',
+						message: event.data,
+						timestamp: new Date().toISOString()
+					});
+				} else {
+					// Container logs come as JSON
+					const logData = JSON.parse(event.data);
+					addLogEntry(logData);
+				}
 			};
 
 			eventSource.onerror = (event) => {

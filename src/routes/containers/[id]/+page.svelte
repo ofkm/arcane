@@ -635,7 +635,7 @@
 					</Card.Header>
 
 					<Card.Content>
-						<LogViewer bind:this={logViewer} bind:autoScroll={autoScrollLogs} containerId={container?.Id} maxLines={500} showTimestamps={true} height="500px" onStart={handleLogStart} onStop={handleLogStop} onClear={handleLogClear} onToggleAutoScroll={handleToggleAutoScroll} />
+						<LogViewer bind:this={logViewer} bind:autoScroll={autoScrollLogs} type="container" containerId={container?.Id} maxLines={500} showTimestamps={true} height="500px" onStart={handleLogStart} onStop={handleLogStop} onClear={handleLogClear} onToggleAutoScroll={handleToggleAutoScroll} />
 					</Card.Content>
 				</Card.Root>
 			</Tabs.Content>

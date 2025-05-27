@@ -20,6 +20,7 @@
 	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import LogViewer from '$lib/components/LogViewer.svelte';
 
 	const stackApi = new StackAPIService();
 
@@ -50,10 +51,9 @@
 	const baseServerUrl = $derived(settings?.baseServerUrl || 'localhost');
 
 	let activeTab = $state('config');
-	let stackLogsEventSource: EventSource | null = $state(null);
-	let displayedStackLogs = $state('');
 	let autoScrollStackLogs = $state(true);
-	let stackLogsContainer = $state<HTMLDivElement | undefined>(undefined);
+	let isStackLogsStreaming = $state(false);
+	let stackLogViewer = $state<LogViewer>();
 
 	$effect(() => {
 		isLoading.deploying = false;
@@ -138,78 +138,21 @@
 		return `${protocol}://${host}:80`;
 	}
 
-	function scrollStackLogsToBottom() {
-		if (stackLogsContainer) {
-			stackLogsContainer.scrollTop = stackLogsContainer.scrollHeight;
-		}
+	function handleStackLogStart() {
+		isStackLogsStreaming = true;
 	}
 
-	$effect(() => {
-		if (stackLogsContainer && displayedStackLogs && activeTab === 'logs' && autoScrollStackLogs) {
-			scrollStackLogsToBottom();
-		}
-	});
-
-	$effect(() => {
-		if (activeTab === 'logs' && stack?.id) {
-			startStackLogsStream();
-			setTimeout(scrollStackLogsToBottom, 100);
-		} else if (stackLogsEventSource) {
-			closeStackLogsStream();
-		}
-	});
-
-	function startStackLogsStream() {
-		if (stackLogsEventSource || !stack?.id) return;
-
-		// Reset logs when starting a new stream (like container logs do)
-		displayedStackLogs = '';
-
-		try {
-			const url = `/api/stacks/${stack.id}/logs`;
-			const eventSource = new EventSource(url);
-			stackLogsEventSource = eventSource;
-
-			eventSource.onmessage = (event) => {
-				if (event.data) {
-					// Ensure proper newline formatting
-					const logLine = event.data;
-					const formattedLine = logLine.endsWith('\n') ? logLine : logLine + '\n';
-
-					displayedStackLogs = (displayedStackLogs || '') + formattedLine;
-
-					if (autoScrollStackLogs) {
-						scrollStackLogsToBottom();
-					}
-				}
-			};
-
-			eventSource.onerror = (error) => {
-				console.error('Stack logs EventSource error:', error);
-				eventSource.close();
-				stackLogsEventSource = null;
-			};
-		} catch (error) {
-			console.error('Failed to connect to stack logs stream:', error);
-		}
+	function handleStackLogStop() {
+		isStackLogsStreaming = false;
 	}
 
-	function closeStackLogsStream() {
-		if (stackLogsEventSource) {
-			stackLogsEventSource.close();
-			stackLogsEventSource = null;
-		}
+	function handleStackLogClear() {
+		// Custom logic when logs are cleared if needed
 	}
 
-	function clearStackLogs() {
-		displayedStackLogs = '';
+	function handleToggleStackAutoScroll() {
+		// Custom logic when auto-scroll is toggled if needed
 	}
-
-	$effect(() => {
-		return () => {
-			closeStackLogsStream();
-		};
-	});
 </script>
 
 <div class="space-y-6 pb-8">
@@ -417,16 +360,28 @@
 							</div>
 							<div class="flex items-center gap-2">
 								<div class="flex items-center">
-									<input type="checkbox" id="auto-scroll-stack" class="mr-2" checked={autoScrollStackLogs} onchange={(e) => (autoScrollStackLogs = e.currentTarget.checked)} />
+									<input type="checkbox" id="auto-scroll-stack" class="mr-2" bind:checked={autoScrollStackLogs} />
 									<label for="auto-scroll-stack" class="text-xs">Auto-scroll</label>
 								</div>
-								<Button variant="outline" size="sm" onclick={clearStackLogs}>Clear Logs</Button>
+
+								<Button variant="outline" size="sm" onclick={() => stackLogViewer?.clearLogs()}>Clear Logs</Button>
+
+								{#if isStackLogsStreaming}
+									<div class="flex items-center space-x-1">
+										<div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+										<span class="text-xs text-green-400">Live</span>
+									</div>
+									<Button variant="outline" size="sm" onclick={() => stackLogViewer?.stopLogStream()}>Stop</Button>
+								{:else}
+									<Button variant="outline" size="sm" onclick={() => stackLogViewer?.startLogStream()} disabled={!stack?.id}>Start</Button>
+								{/if}
+
 								<Button
 									variant="outline"
 									size="sm"
 									onclick={() => {
-										closeStackLogsStream();
-										startStackLogsStream();
+										stackLogViewer?.stopLogStream();
+										stackLogViewer?.startLogStream();
 									}}
 								>
 									<RefreshCw class="size-4" />
@@ -435,29 +390,8 @@
 							</div>
 						</div>
 
-						<!-- Logs Container -->
-						<div
-							class="bg-muted/50 text-foreground p-4 rounded-md font-mono text-xs overflow-auto border h-[600px]"
-							bind:this={stackLogsContainer}
-							style="overflow-x: auto;"
-							onscroll={() => {
-								if (stackLogsContainer) {
-									const atBottom = stackLogsContainer.scrollHeight - stackLogsContainer.scrollTop <= stackLogsContainer.clientHeight + 50;
-									if (!atBottom && autoScrollStackLogs) {
-										autoScrollStackLogs = false;
-									}
-								}
-							}}
-						>
-							{#if displayedStackLogs}
-								<pre class="m-0 whitespace-pre-wrap break-words">{displayedStackLogs}</pre>
-							{:else}
-								<div class="flex flex-col items-center justify-center h-full text-center">
-									<Terminal class="text-muted-foreground mb-3 opacity-40 size-8" />
-									<p class="text-muted-foreground italic">No logs available. Containers may not have started yet or produce no output.</p>
-								</div>
-							{/if}
-						</div>
+						<!-- LogViewer Component -->
+						<LogViewer bind:this={stackLogViewer} bind:autoScroll={autoScrollStackLogs} containerId={stack?.id} maxLines={500} showTimestamps={true} height="600px" onStart={handleStackLogStart} onStop={handleStackLogStop} onClear={handleStackLogClear} onToggleAutoScroll={handleToggleStackAutoScroll} />
 					</div>
 				</Card.Content>
 			{:else}
