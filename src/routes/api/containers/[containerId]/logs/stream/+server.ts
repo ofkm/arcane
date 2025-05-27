@@ -1,9 +1,7 @@
 import { error } from '@sveltejs/kit';
-import Docker from 'dockerode';
+import { getDockerClient } from '$lib/services/docker/core';
 import { Writable } from 'stream';
 import type { RequestHandler } from './$types';
-
-const docker = new Docker();
 
 export const GET: RequestHandler = async ({ params, request }) => {
 	const { containerId } = params;
@@ -13,6 +11,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 	}
 
 	try {
+		const docker = await getDockerClient();
 		const container = docker.getContainer(containerId);
 		await container.inspect();
 
@@ -139,7 +138,9 @@ export const GET: RequestHandler = async ({ params, request }) => {
 			headers: {
 				'Content-Type': 'text/event-stream',
 				'Cache-Control': 'no-cache',
-				Connection: 'keep-alive'
+				Connection: 'keep-alive',
+				'Access-Control-Allow-Origin': '*',
+				'Access-Control-Allow-Headers': 'Cache-Control'
 			}
 		});
 	} catch (err) {
