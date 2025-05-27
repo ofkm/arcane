@@ -1,126 +1,307 @@
+import { error } from '@sveltejs/kit';
 import { getDockerClient } from '$lib/services/docker/core';
-import type { RequestHandler } from '@sveltejs/kit';
-import type { Readable } from 'stream';
+import { Writable } from 'stream';
+import type { RequestHandler } from './$types';
 
-interface StackLogStreamSource extends UnderlyingDefaultSource<Uint8Array> {
-	logStreams?: Map<string, Readable>;
-}
+export const GET: RequestHandler = async ({ params, request, url }) => {
+	const { stackId } = params;
 
-export const GET: RequestHandler = async ({ params }) => {
-	if (!params.stackId) {
-		return new Response('Stack ID is required', { status: 400 });
+	if (!stackId) {
+		throw error(400, 'Stack ID is required');
 	}
 
-	const docker = await getDockerClient();
+	// Get query parameters for log configuration
+	const tail = parseInt(url.searchParams.get('tail') || '50');
+	const timestamps = url.searchParams.get('timestamps') !== 'false';
+	const follow = url.searchParams.get('follow') !== 'false';
 
-	const stream = new ReadableStream<Uint8Array>({
-		async start(controller) {
-			try {
-				const containers = await docker.listContainers({
-					all: true,
-					filters: { label: [`com.docker.compose.project=${params.stackId}`] }
+	console.log(`Starting stack logs for ${stackId}, follow=${follow}, tail=${tail}`);
+
+	try {
+		const docker = await getDockerClient();
+
+		// Get all containers for this stack
+		const containers = await docker.listContainers({
+			all: true,
+			filters: {
+				label: [`com.docker.compose.project=${stackId}`]
+			}
+		});
+
+		console.log(`Found ${containers.length} containers for stack ${stackId}`);
+
+		if (containers.length === 0) {
+			throw error(404, `No containers found for stack: ${stackId}`);
+		}
+
+		const stream = new ReadableStream({
+			start(controller) {
+				const encoder = new TextEncoder();
+				let isClosed = false;
+				const activeStreams = new Map<string, NodeJS.ReadableStream>();
+				const containerNames = new Map<string, string>();
+
+				// Build container name mapping
+				containers.forEach((containerInfo) => {
+					const serviceName = containerInfo.Labels['com.docker.compose.service'] || containerInfo.Names[0]?.replace(/^\//, '') || containerInfo.Id.substring(0, 12);
+					containerNames.set(containerInfo.Id, serviceName);
+					console.log(`Container ${containerInfo.Id.substring(0, 12)} -> Service: ${serviceName}`);
 				});
 
-				const logStreams = new Map<string, Readable>();
-				let isControllerClosed = false;
-
-				const cleanup = () => {
-					isControllerClosed = true;
-					logStreams.forEach((stream, containerId) => {
-						if (stream && stream.destroy) {
-							stream.destroy();
+				const safeEnqueue = (data: string) => {
+					if (!isClosed) {
+						try {
+							controller.enqueue(encoder.encode(data));
+						} catch (err) {
+							console.error('Error enqueuing data:', err);
+							isClosed = true;
+							cleanup();
 						}
-					});
-					logStreams.clear();
+					}
 				};
 
-				for (const containerInfo of containers) {
+				const createLogProcessor = (containerId: string, serviceName: string) => {
+					const stdoutStream = new Writable({
+						write(chunk, encoding, callback) {
+							if (isClosed) {
+								callback();
+								return;
+							}
+
+							try {
+								const message = chunk.toString().trim();
+								if (message) {
+									const data = JSON.stringify({
+										level: 'stdout',
+										message: message,
+										timestamp: new Date().toISOString(),
+										service: serviceName,
+										containerId: containerId.substring(0, 12)
+									});
+
+									safeEnqueue(`data: ${data}\n\n`);
+								}
+								callback();
+							} catch (err) {
+								console.error(`Error processing stdout for ${serviceName}:`, err);
+								callback();
+							}
+						}
+					});
+
+					const stderrStream = new Writable({
+						write(chunk, encoding, callback) {
+							if (isClosed) {
+								callback();
+								return;
+							}
+
+							try {
+								const message = chunk.toString().trim();
+								if (message) {
+									const data = JSON.stringify({
+										level: 'stderr',
+										message: message,
+										timestamp: new Date().toISOString(),
+										service: serviceName,
+										containerId: containerId.substring(0, 12)
+									});
+
+									safeEnqueue(`data: ${data}\n\n`);
+								}
+								callback();
+							} catch (err) {
+								console.error(`Error processing stderr for ${serviceName}:`, err);
+								callback();
+							}
+						}
+					});
+
+					return { stdoutStream, stderrStream };
+				};
+
+				const cleanup = () => {
+					if (isClosed) return;
+					console.log(`Cleaning up stack logs for ${stackId}`);
+					isClosed = true;
+
+					activeStreams.forEach((stream, containerId) => {
+						try {
+							if (typeof (stream as any).destroy === 'function') {
+								(stream as any).destroy();
+							}
+						} catch (err) {
+							console.error(`Error cleaning up stream for container ${containerId}:`, err);
+						}
+					});
+
+					activeStreams.clear();
+				};
+
+				// Send initial connection message
+				const initialData = JSON.stringify({
+					level: 'info',
+					message: `Starting logs for stack ${stackId} (${containers.length} containers)`,
+					timestamp: new Date().toISOString(),
+					service: 'system',
+					containerId: 'N/A'
+				});
+				safeEnqueue(`data: ${initialData}\n\n`);
+
+				// Start log streams for each container
+				const streamPromises = containers.map(async (containerInfo) => {
+					console.log('Container id: ', containerInfo.Id, 'Service name:', containerNames.get(containerInfo.Id));
 					const container = docker.getContainer(containerInfo.Id);
-					const serviceName = containerInfo.Labels['com.docker.compose.service'] || containerInfo.Names[0]?.replace('/', '') || 'unknown';
+					const serviceName = containerNames.get(containerInfo.Id)!;
 
 					try {
-						const logStream = (await container.logs({
-							follow: true,
-							stdout: true,
-							stderr: true,
-							timestamps: true
-						})) as Readable;
+						// Check if container exists and is accessible
+						const containerInspect = await container.inspect();
+						console.log(`Container ${serviceName} state: ${containerInspect.State.Status}`);
 
-						logStreams.set(containerInfo.Id, logStream);
+						return new Promise<void>((resolve) => {
+							container.logs(
+								{
+									follow: follow as true,
+									stdout: true,
+									stderr: true,
+									timestamps: timestamps,
+									tail: Math.min(tail, 100)
+								},
+								(err, logStream) => {
+									if (err) {
+										console.error(`Failed to get logs for ${serviceName}:`, err);
+										const errorData = JSON.stringify({
+											level: 'error',
+											message: `Failed to get logs: ${err.message}`,
+											timestamp: new Date().toISOString(),
+											service: serviceName,
+											containerId: containerInfo.Id.substring(0, 12)
+										});
+										safeEnqueue(`data: ${errorData}\n\n`);
+										resolve();
+										return;
+									}
 
-						logStream.on('data', (chunk) => {
-							try {
-								if (!isControllerClosed) {
-									const logData = chunk.toString();
-									const lines = logData.split('\n');
+									if (!logStream || isClosed) {
+										resolve();
+										return;
+									}
 
-									for (const line of lines) {
-										if (line.length > 8) {
-											// Remove Docker's 8-byte header
-											const cleanLine = line.substring(8);
-											if (cleanLine.trim()) {
-												// Format each line with service prefix and ensure it ends with newline
-												const formattedLine = `[${serviceName}] ${cleanLine}\n`;
-												controller.enqueue(new TextEncoder().encode(`data: ${formattedLine}\n\n`));
-											}
-										}
+									activeStreams.set(containerInfo.Id, logStream);
+									const { stdoutStream, stderrStream } = createLogProcessor(containerInfo.Id, serviceName);
+
+									try {
+										// Demux the Docker stream
+										container.modem.demuxStream(logStream, stdoutStream, stderrStream);
+
+										logStream.on('end', () => {
+											console.log(`Log stream ended for ${serviceName}`);
+											activeStreams.delete(containerInfo.Id);
+											resolve();
+										});
+
+										logStream.on('error', (streamErr) => {
+											console.error(`Log stream error for ${serviceName}:`, streamErr);
+											activeStreams.delete(containerInfo.Id);
+											resolve();
+										});
+
+										logStream.on('close', () => {
+											console.log(`Log stream closed for ${serviceName}`);
+											activeStreams.delete(containerInfo.Id);
+										});
+
+										// Send connection confirmation
+										const connectionData = JSON.stringify({
+											level: 'info',
+											message: `Connected to ${serviceName} logs`,
+											timestamp: new Date().toISOString(),
+											service: serviceName,
+											containerId: containerInfo.Id.substring(0, 12)
+										});
+										safeEnqueue(`data: ${connectionData}\n\n`);
+									} catch (demuxError) {
+										console.error(`Error setting up demux for ${serviceName}:`, demuxError);
+										resolve();
 									}
 								}
-							} catch (error: any) {
-								if (error.code === 'ERR_INVALID_STATE') {
-									cleanup();
-								} else {
-									console.error(`Error streaming logs for ${serviceName}:`, error);
-								}
-							}
+							);
 						});
-
-						logStream.on('end', () => {
-							logStreams.delete(containerInfo.Id);
-							if (logStreams.size === 0 && !isControllerClosed) {
-								controller.close();
-								isControllerClosed = true;
-							}
+					} catch (inspectError) {
+						console.error(`Container ${serviceName} not accessible:`, inspectError);
+						const errorMessage = inspectError instanceof Error ? inspectError.message : String(inspectError);
+						const errorData = JSON.stringify({
+							level: 'error',
+							message: `Container ${serviceName} is not accessible: ${errorMessage}`,
+							timestamp: new Date().toISOString(),
+							service: serviceName,
+							containerId: containerInfo.Id.substring(0, 12)
 						});
-
-						logStream.on('error', (err) => {
-							console.error(`Docker logs stream error for ${serviceName}:`, err);
-							logStreams.delete(containerInfo.Id);
-						});
-					} catch (error) {
-						console.error(`Failed to start log stream for ${serviceName}:`, error);
-					}
-				}
-
-				(this as StackLogStreamSource).logStreams = logStreams;
-
-				if (containers.length === 0) {
-					controller.enqueue(new TextEncoder().encode(`data: No containers found in this stack\n\n`));
-				}
-			} catch (error) {
-				console.error('Error starting stack logs stream:', error);
-				controller.error(error);
-			}
-		},
-
-		cancel() {
-			console.log('Client disconnected from stack logs stream');
-			const self = this as StackLogStreamSource;
-			if (self.logStreams) {
-				self.logStreams.forEach((stream) => {
-					if (stream && stream.destroy) {
-						stream.destroy();
+						safeEnqueue(`data: ${errorData}\n\n`);
+						return Promise.resolve();
 					}
 				});
-			}
-		}
-	} as StackLogStreamSource);
 
-	return new Response(stream, {
-		headers: {
-			'Content-Type': 'text/event-stream',
-			'Cache-Control': 'no-cache',
-			Connection: 'keep-alive'
-		}
-	});
+				// Wait for all stream setups to complete
+				Promise.allSettled(streamPromises)
+					.then((results) => {
+						console.log(`Stream setup complete for ${stackId}. Active streams: ${activeStreams.size}`);
+
+						results.forEach((result, index) => {
+							if (result.status === 'rejected') {
+								console.error(`Stream setup failed for container ${index}:`, result.reason);
+							}
+						});
+
+						if (!isClosed && activeStreams.size === 0) {
+							const finalData = JSON.stringify({
+								level: 'warning',
+								message: 'No active log streams available - containers may be stopped',
+								timestamp: new Date().toISOString(),
+								service: 'system',
+								containerId: 'N/A'
+							});
+							safeEnqueue(`data: ${finalData}\n\n`);
+						}
+					})
+					.catch((setupError) => {
+						console.error('Error setting up log streams:', setupError);
+						if (!isClosed) {
+							const errorData = JSON.stringify({
+								level: 'error',
+								message: `Failed to setup log streams: ${setupError.message}`,
+								timestamp: new Date().toISOString(),
+								service: 'system',
+								containerId: 'N/A'
+							});
+							safeEnqueue(`data: ${errorData}\n\n`);
+						}
+					});
+
+				// Handle client disconnect
+				request.signal.addEventListener('abort', cleanup);
+
+				// Return cleanup function
+				return cleanup;
+			},
+
+			cancel() {
+				console.log(`Client disconnected from stack ${stackId} logs`);
+			}
+		});
+
+		return new Response(stream, {
+			headers: {
+				'Content-Type': 'text/event-stream',
+				'Cache-Control': 'no-cache',
+				Connection: 'keep-alive',
+				'Access-Control-Allow-Origin': '*',
+				'Access-Control-Allow-Headers': 'Cache-Control'
+			}
+		});
+	} catch (err: any) {
+		console.error(`Error streaming logs for stack ${stackId}:`, err);
+		throw error(500, `Failed to stream stack logs: ${err.message}`);
+	}
 };

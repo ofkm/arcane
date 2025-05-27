@@ -391,7 +391,7 @@
 						</div>
 
 						<!-- LogViewer Component -->
-						<LogViewer bind:this={stackLogViewer} bind:autoScroll={autoScrollStackLogs} containerId={stack?.id} maxLines={500} showTimestamps={true} height="600px" onStart={handleStackLogStart} onStop={handleStackLogStop} onClear={handleStackLogClear} onToggleAutoScroll={handleToggleStackAutoScroll} />
+						<LogViewer bind:this={stackLogViewer} bind:autoScroll={autoScrollStackLogs} stackId={stack?.id} type="stack" maxLines={500} showTimestamps={true} height="600px" onStart={handleStackLogStart} onStop={handleStackLogStop} onClear={handleStackLogClear} onToggleAutoScroll={handleToggleStackAutoScroll} />
 					</div>
 				</Card.Content>
 			{:else}
