@@ -112,7 +112,7 @@
 </Button>
 
 <!-- Main sidebar container - Modern glassmorphism design -->
-<div class={cn('fixed md:sticky top-0 left-0 h-screen md:h-dvh transition-all duration-300 ease-out', 'bg-gradient-to-b from-card/95 to-background/90 backdrop-blur-xl border-r border-border/40 shadow-2xl z-40 flex flex-col', isCollapsed ? 'w-[70px]' : 'w-64', isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')}>
+<div class={cn('fixed md:sticky top-0 left-0 h-screen md:h-dvh transition-all duration-300 ease-out', 'bg-linear-to-b from-card/95 to-background/90 backdrop-blur-xl border-r border-border/40 shadow-2xl z-40 flex flex-col', isCollapsed ? 'w-[70px]' : 'w-64', isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')}>
 	<!-- Logo header - Enhanced with subtle glow effect -->
 	<div class={cn('flex items-center h-16 transition-all duration-300 border-b border-border/30', isCollapsed ? 'justify-center px-2' : 'gap-3 px-6')}>
 		<div class="shrink-0 flex items-center justify-center relative">
@@ -121,7 +121,7 @@
 		</div>
 		{#if !isCollapsed}
 			<div class="flex flex-col justify-center min-w-0">
-				<span class="text-lg font-bold tracking-tight leading-none bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text"> Arcane </span>
+				<span class="text-lg font-bold tracking-tight leading-none bg-linear-to-r from-foreground to-foreground/80 bg-clip-text"> Arcane </span>
 				<span class="text-xs text-muted-foreground/80 font-medium">
 					v{versionInformation?.currentVersion}
 				</span>
@@ -158,7 +158,7 @@
 							class={cn(
 								'flex items-center justify-center rounded-xl p-3 text-sm font-medium transition-all duration-200 group w-full',
 								'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
-								hasActiveChild ? 'bg-gradient-to-br from-primary/15 to-primary/10 text-primary shadow-sm ring-1 ring-primary/20' : 'text-muted-foreground hover:bg-gradient-to-br hover:from-muted/80 hover:to-muted/60 hover:text-foreground'
+								hasActiveChild ? 'bg-linear-to-br from-primary/15 to-primary/10 text-primary shadow-sm ring-1 ring-primary/20' : 'text-muted-foreground hover:bg-linear-to-br hover:from-muted/80 hover:to-muted/60 hover:text-foreground'
 							)}
 							title={`${item.label} (${item.children.length} items)`}
 							onclick={() => toggleSection(item.label)}
@@ -173,7 +173,7 @@
 							class={cn(
 								'flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 group w-full',
 								'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
-								hasActiveChild || isExpanded ? 'bg-gradient-to-br from-primary/15 to-primary/10 text-primary shadow-sm ring-1 ring-primary/20' : 'text-muted-foreground hover:bg-gradient-to-br hover:from-muted/80 hover:to-muted/60 hover:text-foreground'
+								hasActiveChild || isExpanded ? 'bg-linear-to-br from-primary/15 to-primary/10 text-primary shadow-sm ring-1 ring-primary/20' : 'text-muted-foreground hover:bg-linear-to-br hover:from-muted/80 hover:to-muted/60 hover:text-foreground'
 							)}
 							onclick={() => toggleSection(item.label)}
 						>
@@ -195,7 +195,7 @@
 
 									<a
 										href={child.href}
-										class={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200', 'hover:scale-[1.01] active:scale-[0.99]', isActive ? 'bg-gradient-to-r from-primary/20 to-primary/10 text-primary shadow-sm border border-primary/20' : 'text-muted-foreground hover:bg-gradient-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground')}
+										class={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200', 'hover:scale-[1.01] active:scale-[0.99]', isActive ? 'bg-linear-to-r from-primary/20 to-primary/10 text-primary shadow-sm border border-primary/20' : 'text-muted-foreground hover:bg-linear-to-r hover:from-muted/60 hover:to-muted/40 hover:text-foreground')}
 										aria-current={isActive ? 'page' : undefined}
 									>
 										<div class={cn('p-1 rounded-md transition-all duration-200', isActive ? 'bg-primary/30' : 'bg-transparent')}>
@@ -222,7 +222,7 @@
 						'flex items-center justify-between rounded-xl text-sm font-medium mb-1 transition-all duration-200 group',
 						'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
 						isCollapsed ? 'px-2 py-3 flex-col gap-1' : 'px-3 py-2.5',
-						isActive ? 'bg-gradient-to-br from-primary/15 to-primary/10 text-primary shadow-sm ring-1 ring-primary/20' : 'text-muted-foreground hover:bg-gradient-to-br hover:from-muted/80 hover:to-muted/60 hover:text-foreground'
+						isActive ? 'bg-linear-to-br from-primary/15 to-primary/10 text-primary shadow-sm ring-1 ring-primary/20' : 'text-muted-foreground hover:bg-linear-to-br hover:from-muted/80 hover:to-muted/60 hover:text-foreground'
 					)}
 					aria-current={isActive ? 'page' : undefined}
 					title={isCollapsed ? item.label : undefined}
@@ -249,7 +249,7 @@
 		<div class="px-4 pb-2">
 			<Separator class="mb-3 opacity-30" />
 
-			<div class={cn('transition-all rounded-xl p-3 bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20', 'hover:shadow-md hover:scale-[1.02] hover:from-blue-500/15 hover:to-blue-600/10', isCollapsed ? 'text-center' : '')}>
+			<div class={cn('transition-all rounded-xl p-3 bg-linear-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20', 'hover:shadow-md hover:scale-[1.02] hover:from-blue-500/15 hover:to-blue-600/10', isCollapsed ? 'text-center' : '')}>
 				{#if !isCollapsed}
 					<a href={versionInformation?.releaseUrl} target="_blank" rel="noopener noreferrer" class="flex items-center justify-between text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 group">
 						<div class="flex flex-col gap-1">
@@ -270,8 +270,8 @@
 	<!-- User controls section - Modern design with enhanced spacing -->
 	<div class="mt-auto p-4 border-t border-border/30">
 		{#if user && user.displayName && !isCollapsed}
-			<div class="px-3 py-2.5 mb-3 text-sm font-medium text-foreground truncate flex items-center gap-3 rounded-xl bg-gradient-to-br from-muted/50 to-muted/30 transition-all duration-200" title={user.displayName}>
-				<div class="size-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary flex items-center justify-center text-sm font-semibold border border-primary/20">
+			<div class="px-3 py-2.5 mb-3 text-sm font-medium text-foreground truncate flex items-center gap-3 rounded-xl bg-linear-to-br from-muted/50 to-muted/30 transition-all duration-200" title={user.displayName}>
+				<div class="size-8 rounded-full bg-linear-to-br from-primary/20 to-primary/10 text-primary flex items-center justify-center text-sm font-semibold border border-primary/20">
 					{user.displayName.charAt(0).toUpperCase()}
 				</div>
 				<span class="truncate font-medium">{user.displayName}</span>
@@ -281,7 +281,7 @@
 		<!-- Theme toggle button - Enhanced with modern styling -->
 		<Button
 			variant="ghost"
-			class={cn('w-full flex items-center text-sm font-medium transition-all duration-200 text-muted-foreground hover:bg-gradient-to-br hover:from-muted/80 hover:to-muted/60 hover:text-foreground rounded-xl mb-1', 'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]', isCollapsed ? 'justify-center px-2 py-3 h-11' : 'justify-start gap-3 px-3 py-2.5 h-11')}
+			class={cn('w-full flex items-center text-sm font-medium transition-all duration-200 text-muted-foreground hover:bg-linear-to-br hover:from-muted/80 hover:to-muted/60 hover:text-foreground rounded-xl mb-1', 'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]', isCollapsed ? 'justify-center px-2 py-3 h-11' : 'justify-start gap-3 px-3 py-2.5 h-11')}
 			title={isCollapsed ? 'Toggle theme' : undefined}
 			onclick={toggleMode}
 		>
@@ -301,7 +301,7 @@
 		<form action="/auth/logout" method="POST">
 			<Button
 				variant="ghost"
-				class={cn('w-full flex items-center text-sm font-medium transition-all duration-200 text-muted-foreground rounded-xl', 'hover:bg-gradient-to-br hover:from-destructive/10 hover:to-destructive/5 hover:text-destructive hover:shadow-md hover:scale-[1.02] active:scale-[0.98]', isCollapsed ? 'justify-center px-2 py-3 h-11' : 'justify-start gap-3 px-3 py-2.5 h-11')}
+				class={cn('w-full flex items-center text-sm font-medium transition-all duration-200 text-muted-foreground rounded-xl', 'hover:bg-linear-to-br hover:from-destructive/10 hover:to-destructive/5 hover:text-destructive hover:shadow-md hover:scale-[1.02] active:scale-[0.98]', isCollapsed ? 'justify-center px-2 py-3 h-11' : 'justify-start gap-3 px-3 py-2.5 h-11')}
 				title={isCollapsed ? 'Logout' : undefined}
 				type="submit"
 			>

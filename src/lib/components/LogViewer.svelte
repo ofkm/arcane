@@ -200,17 +200,17 @@
 			{#each logs as log (log.timestamp + log.message + (log.service || ''))}
 				<div class="flex px-3 py-1 hover:bg-gray-900/50 border-l-2 border-transparent hover:border-blue-500 transition-colors">
 					{#if showTimestamps}
-						<span class="text-gray-500 text-xs mr-3 flex-shrink-0 w-20">
+						<span class="text-gray-500 text-xs mr-3 shrink-0 w-20">
 							{formatTimestamp(log.timestamp)}
 						</span>
 					{/if}
 
-					<span class="text-xs mr-2 flex-shrink-0 w-12 {getLevelClass(log.level)}">
+					<span class="text-xs mr-2 shrink-0 w-12 {getLevelClass(log.level)}">
 						{log.level.toUpperCase()}
 					</span>
 
 					{#if type === 'stack' && log.service}
-						<span class="text-blue-400 text-xs mr-2 flex-shrink-0 w-16 truncate" title={log.service}>
+						<span class="text-blue-400 text-xs mr-2 shrink-0 w-16 truncate" title={log.service}>
 							{log.service}
 						</span>
 					{/if}
