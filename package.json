@@ -41,7 +41,7 @@
 		"globals": "^16.2.0",
 		"mode-watcher": "^1.0.7",
 		"paneforge": "^1.0.0-next.5",
-		"svelte": "5.33.2",
+		"svelte": "5.33.3",
 		"svelte-check": "^4.2.1",
 		"svelte-sonner": "^1.0.3",
 		"sveltekit-superforms": "^2.25.0",
@@ -52,7 +52,7 @@
 		"typescript": "^5.8.0",
 		"typescript-eslint": "^8.32.1",
 		"vite": "^6.3.5",
-		"zod": "^3.25.28"
+		"zod": "^3.25.30"
 	},
 	"dependencies": {
 		"@codemirror/lang-yaml": "^6.1.2",
