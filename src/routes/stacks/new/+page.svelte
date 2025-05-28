@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, FileStack, Terminal, Copy, Wand2, Loader2, LayoutTemplate } from '@lucide/svelte';
+	import { ArrowLeft, FileStack, Terminal, Copy, Loader2, Wand } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -134,7 +134,7 @@
 						<Loader2 class="mr-2 size-4 animate-spin" />
 						Converting...
 					{:else}
-						<Wand2 class="mr-2 size-4" />
+						<Wand class="mr-2 size-4" />
 						Convert to Compose
 					{/if}
 				</Button>
@@ -168,10 +168,6 @@
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
-						<!-- <Button type="button" variant="outline" onclick={() => (showTemplateDialog = true)} class="flex items-center gap-2" disabled={saving || converting}>
-							<LayoutTemplate class="size-4" />
-							Use Template
-						</Button> -->
 						<ArcaneButton action="template" onClick={() => (showTemplateDialog = true)} loading={saving} disabled={saving || converting} />
 						<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
 					</div>
