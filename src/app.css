@@ -6,6 +6,24 @@
 	--font-sans: 'Kantumruy Pro', sans-serif;
 }
 
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+ 
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+	*,
+	::after,
+	::before,
+	::backdrop,
+	::file-selector-button {
+		border-color: var(--color-gray-200, currentcolor);
+	}
+}
+
 :root {
 	--radius: 0.5rem;
 	--background: oklch(1 0 0);
@@ -75,83 +93,52 @@
 	--sidebar-ring: oklch(0.541 0.281 293.009);
 }
 
-/* :root {
-	--background: hsl(0 0% 100%);
-	--foreground: hsl(224 71.4% 4.1%);
-	--card: hsl(0 0% 100%);
-	--card-foreground: hsl(224 71.4% 4.1%);
-	--popover: hsl(0 0% 100%);
-	--popover-foreground: hsl(224 71.4% 4.1%);
-	--primary: hsl(262.1 83.3% 57.8%);
-	--primary-foreground: hsl(210 20% 98%);
-	--secondary: hsl(220 14.3% 95.9%);
-	--secondary-foreground: hsl(220.9 39.3% 11%);
-	--muted: hsl(220 14.3% 95.9%);
-	--muted-foreground: hsl(220 8.9% 46.1%);
-	--accent: hsl(220 14.3% 95.9%);
-	--accent-foreground: hsl(220.9 39.3% 11%);
-	--destructive: hsl(0 72.22% 50.59%);
-	--destructive-foreground: hsl(210 20% 98%);
-	--border: hsl(220 13% 91%);
-	--input: hsl(220 13% 91%);
-	--ring: hsl(262.1 83.3% 57.8%);
-	--radius: 1rem;
-}
-
-.dark {
-	--background: hsl(224 71.4% 4.1%);
-	--foreground: hsl(210 20% 98%);
-	--card: hsl(224 71.4% 4.1%);
-	--card-foreground: hsl(210 20% 98%);
-	--popover: hsl(224 71.4% 4.1%);
-	--popover-foreground: hsl(210 20% 98%);
-	--primary: hsl(263.4 70% 50.4%);
-	--primary-foreground: hsl(210 20% 98%);
-	--secondary: hsl(215 27.9% 16.9%);
-	--secondary-foreground: hsl(210 20% 98%);
-	--muted: hsl(215 27.9% 16.9%);
-	--muted-foreground: hsl(217.9 10.6% 64.9%);
-	--accent: hsl(215 27.9% 16.9%);
-	--accent-foreground: hsl(210 20% 98%);
-	--destructive: hsl(0 62.8% 30.6%);
-	--destructive-foreground: hsl(210 20% 98%);
-	--border: hsl(215 27.9% 16.9%);
-	--input: hsl(215 27.9% 16.9%);
-	--ring: hsl(263.4 70% 50.4%);
-} */
-
-/* Add @theme inline block */
 @theme inline {
+	/* Radius (for rounded-*) */
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+
+	/* Colors */
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
-	--color-card: var(--card);
-	--color-card-foreground: var(--card-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
 	--color-popover: var(--popover);
 	--color-popover-foreground: var(--popover-foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
 	--color-primary: var(--primary);
 	--color-primary-foreground: var(--primary-foreground);
 	--color-secondary: var(--secondary);
 	--color-secondary-foreground: var(--secondary-foreground);
-	--color-muted: var(--muted);
-	--color-muted-foreground: var(--muted-foreground);
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
-	--color-border: var(--border);
-	--color-input: var(--input);
 	--color-ring: var(--ring);
-	--radius: var(--radius);
+	--color-radius: var(--radius);
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
 }
 
 @layer base {
 	* {
 		@apply border-border;
 	}
+
 	body {
 		@apply bg-background text-foreground;
 	}
-
 	button {
 		@apply cursor-pointer;
 	}

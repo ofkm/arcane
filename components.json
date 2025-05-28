@@ -3,7 +3,7 @@
 	"style": "default",
 	"tailwind": {
 		"css": "src/app.css",
-		"baseColor": "gray"
+		"baseColor": "violet"
 	},
 	"aliases": {
 		"components": "$lib/components",
