@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, FileStack, Terminal, Copy, Wand2, Loader2 } from '@lucide/svelte';
+	import { ArrowLeft, FileStack, Terminal, Copy, Wand2, Loader2, LayoutTemplate } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -18,15 +18,28 @@
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
 	import * as Resizable from '$lib/components/ui/resizable/index.js';
+	import TemplateSelectionDialog from '$lib/components/template-selection-dialog.svelte';
+	import type { ComposeTemplate } from '$lib/services/template-service';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	const stackApi = new StackAPIService();
 	let saving = $state(false);
 	let converting = $state(false);
+	let showTemplateDialog = $state(false);
 
 	let name = $state('');
 	let composeContent = $state(defaultComposeTemplate);
-	let envContent = $state(defaultEnvTemplate);
+	let envContent = $state(data.envTemplate || defaultEnvTemplate);
 	let dockerRunCommand = $state('');
+
+	// Initialize with default template if available
+	$effect(() => {
+		if (data.defaultTemplate && !composeContent) {
+			composeContent = data.defaultTemplate;
+		}
+	});
 
 	async function handleSubmit() {
 		handleApiResultWithCallbacks({
@@ -67,6 +80,14 @@
 				dockerRunCommand = '';
 			}
 		});
+	}
+
+	function handleTemplateSelect(template: ComposeTemplate) {
+		composeContent = template.content;
+		if (!name.trim()) {
+			name = template.name.toLowerCase().replace(/\s+/g, '-');
+		}
+		toast.success(`Template "${template.name}" loaded successfully!`);
 	}
 
 	const exampleCommands = ['docker run -d --name nginx -p 8080:80 -v nginx_data:/usr/share/nginx/html nginx:alpine', 'docker run -d --name postgres -e POSTGRES_DB=mydb -e POSTGRES_USER=user -e POSTGRES_PASSWORD=pass -v postgres_data:/var/lib/postgresql/data postgres:15', 'docker run -d --name redis -p 6379:6379 --restart unless-stopped redis:alpine'];
@@ -146,7 +167,14 @@
 							<Card.Description>Create a new Docker Compose stack with environment variables</Card.Description>
 						</div>
 					</div>
-					<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
+					<div class="flex items-center gap-2">
+						<!-- <Button type="button" variant="outline" onclick={() => (showTemplateDialog = true)} class="flex items-center gap-2" disabled={saving || converting}>
+							<LayoutTemplate class="size-4" />
+							Use Template
+						</Button> -->
+						<ArcaneButton action="template" onClick={() => (showTemplateDialog = true)} loading={saving} disabled={saving || converting} />
+						<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
+					</div>
 				</div>
 			</Card.Header>
 			<Card.Content>
@@ -163,7 +191,7 @@
 								<div class="border rounded-md overflow-hidden mt-2 h-[550px]">
 									<YamlEditor bind:value={composeContent} readOnly={saving} />
 								</div>
-								<p class="text-xs text-muted-foreground">Enter a valid compose.yaml file.</p>
+								<p class="text-xs text-muted-foreground">Enter a valid compose.yaml file or choose from templates using the "Use Template" button above.</p>
 							</div>
 						</Resizable.Pane>
 						<Resizable.Handle />
@@ -173,7 +201,13 @@
 								<div class="border rounded-md overflow-hidden mt-2 h-[550px]">
 									<EnvEditor bind:value={envContent} readOnly={saving} />
 								</div>
-								<p class="text-xs text-muted-foreground">Define environment variables in KEY=value format. These will be saved as a .env file in the stack directory.</p>
+								<p class="text-xs text-muted-foreground">
+									{#if data.envTemplate}
+										Environment variables loaded from template. Modify as needed.
+									{:else}
+										Define environment variables in KEY=value format. These will be saved as a .env file in the stack directory.
+									{/if}
+								</p>
 							</div>
 						</Resizable.Pane>
 					</Resizable.PaneGroup>
@@ -188,3 +222,6 @@
 		</Card.Root>
 	</form>
 </div>
+
+<!-- Template Selection Dialog -->
+<TemplateSelectionDialog bind:open={showTemplateDialog} templates={data.composeTemplates || []} onSelect={handleTemplateSelect} />

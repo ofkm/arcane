@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Button, type Props as ButtonProps } from '$lib/components/ui/button/index.js';
-	import { Play, StopCircle, RotateCcw, Download, Trash2, Loader2, RefreshCcwDot, ScanSearch, FileText, EditIcon as Edit, Check, X, Save, PlusCircle, type Icon as IconType } from '@lucide/svelte';
+	import { Play, StopCircle, RotateCcw, Download, Trash2, Loader2, RefreshCcwDot, ScanSearch, FileText, EditIcon as Edit, Check, X, Save, PlusCircle, type Icon as IconType, LayoutTemplate } from '@lucide/svelte';
 
-	type Action = 'start' | 'deploy' | 'stop' | 'restart' | 'remove' | 'pull' | 'redeploy' | 'inspect' | 'logs' | 'edit' | 'confirm' | 'cancel' | 'save' | 'create';
+	type Action = 'start' | 'deploy' | 'stop' | 'restart' | 'remove' | 'pull' | 'redeploy' | 'inspect' | 'logs' | 'edit' | 'confirm' | 'cancel' | 'save' | 'create' | 'template';
 
 	interface Props {
 		/** The type of action this button represents. Determines icon, default label, and variant. */
@@ -65,7 +65,8 @@
 		confirm: { defaultLabel: 'Confirm', IconComponent: Check, variant: 'default', loadingLabel: 'Confirming...', customClass: 'arcane-button-confirm' },
 		cancel: { defaultLabel: 'Cancel', IconComponent: X, variant: 'ghost', loadingLabel: 'Cancelling...', customClass: 'arcane-button-cancel' },
 		save: { defaultLabel: 'Save', IconComponent: Save, variant: 'default', loadingLabel: 'Saving...', customClass: 'arcane-button-save' },
-		create: { defaultLabel: 'Create', IconComponent: PlusCircle, variant: 'default', loadingLabel: 'Creating...', customClass: 'arcane-button-create' }
+		create: { defaultLabel: 'Create', IconComponent: PlusCircle, variant: 'default', loadingLabel: 'Creating...', customClass: 'arcane-button-create' },
+		template: { defaultLabel: 'Use Template', IconComponent: LayoutTemplate, variant: 'secondary', loadingLabel: 'Creating...', customClass: 'arcane-button-restart' }
 	};
 
 	let config = $derived(actionConfigs[action]);
