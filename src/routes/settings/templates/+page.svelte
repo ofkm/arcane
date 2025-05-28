@@ -18,8 +18,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Form state
-	let newRegistryName = $state('');
+	// Form state - only need URL now
 	let newRegistryUrl = $state('');
 
 	// Loading states
@@ -55,8 +54,8 @@
 
 	// Add registry function
 	async function addRegistry() {
-		if (!newRegistryName.trim() || !newRegistryUrl.trim()) {
-			toast.error('Registry name and URL are required');
+		if (!newRegistryUrl.trim()) {
+			toast.error('Registry URL is required');
 			return;
 		}
 
@@ -64,21 +63,29 @@
 		isLoading.addingRegistry = true;
 
 		try {
-			// Test the registry before adding
-			const config: TemplateRegistryConfig = {
+			// Test the registry first to get its name
+			const testConfig: TemplateRegistryConfig = {
 				url: newRegistryUrl.trim(),
-				name: newRegistryName.trim(),
+				name: 'Loading...', // Temporary name
 				enabled: true
 			};
 
-			console.log('Testing registry config:', config);
-			const registry = await templateRegistryService.fetchRegistry(config);
+			console.log('Testing registry URL:', testConfig.url);
+			const registry = await templateRegistryService.fetchRegistry(testConfig);
 			if (!registry) {
 				toast.error('Failed to fetch registry or invalid format');
 				return;
 			}
 
-			console.log('Registry test successful, adding to store');
+			// Create config with the registry's actual name
+			const config: TemplateRegistryConfig = {
+				url: newRegistryUrl.trim(),
+				name: registry.name, // Use name from registry JSON
+				enabled: true
+			};
+
+			console.log('Registry test successful, adding to store with name:', registry.name);
+
 			// Add to settings store
 			settingsStore.update((settings) => ({
 				...settings,
@@ -86,10 +93,9 @@
 			}));
 
 			// Save immediately
-			const saved = await saveSettingsAndHandle('Registry added and saved successfully');
+			const saved = await saveSettingsAndHandle(`Registry "${registry.name}" added and saved successfully`);
 			if (saved) {
 				// Clear form only if save was successful
-				newRegistryName = '';
 				newRegistryUrl = '';
 			}
 		} catch (error) {
@@ -143,10 +149,18 @@
 				return;
 			}
 
-			// Update last_updated timestamp
+			// Update last_updated timestamp and name (in case it changed)
 			settingsStore.update((settings) => ({
 				...settings,
-				templateRegistries: (settings.templateRegistries || []).map((r) => (r.url === url ? { ...r, last_updated: new Date().toISOString() } : r))
+				templateRegistries: (settings.templateRegistries || []).map((r) =>
+					r.url === url
+						? {
+								...r,
+								name: registry.name, // Update name from registry
+								last_updated: new Date().toISOString()
+							}
+						: r
+				)
 			}));
 
 			// Save immediately
@@ -270,7 +284,7 @@
 		<Alert.Root>
 			<Globe class="size-4" />
 			<Alert.Title>Remote Registries</Alert.Title>
-			<Alert.Description>Add remote template registries to access community templates. Registries should provide a JSON manifest with template metadata and download URLs. Changes are saved automatically.</Alert.Description>
+			<Alert.Description>Add remote template registries to access community templates. Registry names are automatically detected from the JSON manifest. Changes are saved automatically.</Alert.Description>
 		</Alert.Root>
 
 		<Alert.Root class="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
@@ -291,20 +305,17 @@
 		<!-- Add New Registry Form -->
 		<Card class="p-4">
 			<h3 class="font-medium mb-3">Add Registry</h3>
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-				<div>
-					<Label for="name">Name</Label>
-					<Input id="name" bind:value={newRegistryName} placeholder="My Templates" disabled={isLoading.addingRegistry} required />
-				</div>
+			<div class="space-y-3">
 				<div>
 					<Label for="url">Registry URL</Label>
-					<Input id="url" bind:value={newRegistryUrl} type="url" placeholder="https://example.com/templates.json" disabled={isLoading.addingRegistry} required />
+					<Input id="url" bind:value={newRegistryUrl} type="url" placeholder="https://raw.githubusercontent.com/username/repo/main/registry.json" disabled={isLoading.addingRegistry} required />
+					<p class="text-xs text-muted-foreground mt-1">The registry name will be automatically detected from the JSON file</p>
 				</div>
+				<Button onclick={addRegistry} disabled={isLoading.addingRegistry || !newRegistryUrl.trim()}>
+					<Plus class="size-4 mr-2" />
+					{isLoading.addingRegistry ? 'Testing & Adding...' : 'Add Registry'}
+				</Button>
 			</div>
-			<Button onclick={addRegistry} class="mt-3" disabled={isLoading.addingRegistry || !newRegistryName.trim() || !newRegistryUrl.trim()}>
-				<Plus class="size-4 mr-2" />
-				{isLoading.addingRegistry ? 'Adding...' : 'Add Registry'}
-			</Button>
 		</Card>
 
 		<!-- Registry List -->
