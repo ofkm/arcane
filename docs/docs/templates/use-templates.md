@@ -53,7 +53,7 @@ data/templates/compose/
 
 ## Community Registry
 
-Don't want to create your own? Use our community registry with 50+ pre-built templates:
+Don't want to create your own? Use our community registry with pre-built templates:
 
 **Registry URL:** `https://raw.githubusercontent.com/ofkm/arcane-templates/main/registry.json`
 

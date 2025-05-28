@@ -277,7 +277,7 @@
 			<Users class="size-4" />
 			<Alert.Title>Community Registry</Alert.Title>
 			<Alert.Description class="space-y-2">
-				<p>Get started quickly with our community registry containing 50+ popular templates:</p>
+				<p>Get started quickly with our community registry containing popular templates:</p>
 				<div class="flex items-center gap-2 mt-2">
 					<code class="bg-white dark:bg-gray-800 px-2 py-1 rounded text-xs"> https://raw.githubusercontent.com/ofkm/arcane-templates/main/registry.json </code>
 					<Button size="sm" variant="outline" onclick={() => copyToClipboard('https://raw.githubusercontent.com/ofkm/arcane-templates/main/registry.json')}>
