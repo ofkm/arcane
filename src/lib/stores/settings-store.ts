@@ -33,6 +33,7 @@ export const settingsStore = writable<Settings>({
 	pollingInterval: 10,
 	pruneMode: 'all',
 	registryCredentials: [],
+	templateRegistries: [],
 	auth: {
 		localAuthEnabled: true,
 		oidcEnabled: false,

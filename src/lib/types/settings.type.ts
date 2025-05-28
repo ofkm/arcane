@@ -33,6 +33,14 @@ export interface Onboarding {
 	};
 }
 
+export interface TemplateRegistryConfig {
+	url: string;
+	name: string;
+	enabled: boolean;
+	last_updated?: string;
+	cache_ttl?: number;
+}
+
 export interface Settings {
 	dockerHost: string;
 	stacksDirectory: string;
@@ -42,6 +50,7 @@ export interface Settings {
 	pollingInterval: number;
 	pruneMode: 'all' | 'dangling' | undefined;
 	registryCredentials: RegistryCredential[];
+	templateRegistries: TemplateRegistryConfig[]; // Add this new field
 	auth: AuthSettings;
 	onboarding?: Onboarding;
 	baseServerUrl?: string;

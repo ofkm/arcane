@@ -13,6 +13,7 @@ export interface RemoteTemplate {
 	author?: string;
 	tags?: string[];
 	compose_url: string;
+	env_url?: string;
 	documentation_url?: string;
 	icon_url?: string;
 	updated_at: string;

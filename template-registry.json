@@ -11,6 +11,7 @@
 			"author": "Community",
 			"tags": ["cms", "blog", "php", "mysql"],
 			"compose_url": "https://raw.githubusercontent.com/example/templates/main/wordpress/docker-compose.yml",
+			"env_url": "https://raw.githubusercontent.com/example/templates/main/wordpress/.env.example",
 			"documentation_url": "https://github.com/example/templates/tree/main/wordpress",
 			"icon_url": "https://example.com/icons/wordpress.svg",
 			"updated_at": "2025-05-28T10:00:00Z"
@@ -23,6 +24,7 @@
 			"author": "Community",
 			"tags": ["react", "nextjs", "postgresql", "frontend"],
 			"compose_url": "https://raw.githubusercontent.com/example/templates/main/nextjs/docker-compose.yml",
+			"env_url": "https://raw.githubusercontent.com/example/templates/main/nextjs/.env.example",
 			"documentation_url": "https://github.com/example/templates/tree/main/nextjs",
 			"updated_at": "2025-05-28T09:30:00Z"
 		}

@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	pruneMode: 'all',
 	stacksDirectory: STACKS_DIR,
 	registryCredentials: [],
+	templateRegistries: [],
 	auth: {
 		localAuthEnabled: true,
 		oidcEnabled: false,
@@ -127,6 +128,7 @@ export async function getSettings(): Promise<Settings> {
 						...(decryptedData.auth || {})
 					},
 					registryCredentials: decryptedData.registryCredentials || baseSettings.registryCredentials,
+					templateRegistries: nonSensitiveSettings.templateRegistries || baseSettings.templateRegistries,
 					onboarding: nonSensitiveSettings.onboarding || baseSettings.onboarding,
 					baseServerUrl: nonSensitiveSettings.baseServerUrl || baseSettings.baseServerUrl
 				};
@@ -139,6 +141,7 @@ export async function getSettings(): Promise<Settings> {
 						...(settingsFromFile.auth || {})
 					},
 					registryCredentials: settingsFromFile.registryCredentials || baseSettings.registryCredentials,
+					templateRegistries: settingsFromFile.templateRegistries || baseSettings.templateRegistries,
 					onboarding: settingsFromFile.onboarding || baseSettings.onboarding,
 					baseServerUrl: settingsFromFile.baseServerUrl || baseSettings.baseServerUrl
 				};

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -7,122 +6,199 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
-	import { Trash2, Plus, ExternalLink, RefreshCw, FileText, Globe, FolderOpen } from '@lucide/svelte';
-	import type { TemplateRegistryConfig } from '$lib/types/template-registry';
-	import { TemplateService } from '$lib/services/template-service';
+	import { Trash2, Plus, ExternalLink, RefreshCw, FileText, Globe, FolderOpen, Save } from '@lucide/svelte';
+	import type { PageData } from './$types';
+	import { settingsStore, saveSettingsToServer, updateSettingsStore } from '$lib/stores/settings-store';
 	import { templateRegistryService } from '$lib/services/template-registry-service';
+	import type { TemplateRegistryConfig } from '$lib/types/settings.type';
+	import { toast } from 'svelte-sonner';
+	import { invalidateAll } from '$app/navigation';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
+	import { tryCatch } from '$lib/utils/try-catch';
 
-	let registries = $state<TemplateRegistryConfig[]>([]);
-	let localTemplateCount = $state(0);
-	let remoteTemplateCount = $state(0);
-	let isLoading = $state(false);
-	let error = $state<string | null>(null);
-	const templateService = new TemplateService();
+	let { data }: { data: PageData } = $props();
 
-	let newRegistryUrl = $state('');
+	// Form state
 	let newRegistryName = $state('');
+	let newRegistryUrl = $state('');
 
-	onMount(async () => {
-		await loadData();
+	// Loading states
+	let isLoading = $state({
+		saving: false,
+		addingRegistry: false,
+		refreshing: new Set<string>(),
+		removing: new Set<string>()
 	});
 
-	async function loadData() {
-		try {
-			registries = templateService.getRegistries();
-			const templates = await templateService.loadAllTemplates();
-			localTemplateCount = templates.filter((t) => !t.isRemote).length;
-			remoteTemplateCount = templates.filter((t) => t.isRemote).length;
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load template data';
+	// Initialize settings from page data
+	$effect(() => {
+		if (data.settings) {
+			updateSettingsStore(data.settings);
+		}
+	});
+
+	// Get template registries from settings store
+	const templateRegistries = $derived($settingsStore.templateRegistries || []);
+
+	// Helper function to save settings and handle result
+	async function saveSettingsAndHandle(successMessage: string) {
+		const result = await tryCatch(saveSettingsToServer());
+		if (result.error) {
+			toast.error(result.error.message || 'Failed to save settings');
+			return false;
+		} else {
+			toast.success(successMessage);
+			await invalidateAll();
+			return true;
 		}
 	}
 
-	async function handleAddRegistry() {
-		if (!newRegistryUrl || !newRegistryName) return;
+	// Add registry function
+	async function addRegistry() {
+		if (!newRegistryName.trim() || !newRegistryUrl.trim()) {
+			toast.error('Registry name and URL are required');
+			return;
+		}
 
-		isLoading = true;
-		error = null;
+		if (isLoading.addingRegistry) return;
+		isLoading.addingRegistry = true;
 
 		try {
+			// Test the registry before adding
 			const config: TemplateRegistryConfig = {
-				url: newRegistryUrl,
-				name: newRegistryName,
+				url: newRegistryUrl.trim(),
+				name: newRegistryName.trim(),
 				enabled: true
 			};
 
-			// Test the registry before adding
+			console.log('Testing registry config:', config);
 			const registry = await templateRegistryService.fetchRegistry(config);
 			if (!registry) {
-				throw new Error('Failed to fetch registry or invalid format');
+				toast.error('Failed to fetch registry or invalid format');
+				return;
 			}
 
-			templateService.addRegistry(config);
-			registries = templateService.getRegistries();
+			console.log('Registry test successful, adding to store');
+			// Add to settings store
+			settingsStore.update((settings) => ({
+				...settings,
+				templateRegistries: [...(settings.templateRegistries || []), config]
+			}));
 
-			newRegistryUrl = '';
-			newRegistryName = '';
-
-			await loadData(); // Refresh counts
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to add registry';
+			// Save immediately
+			const saved = await saveSettingsAndHandle('Registry added and saved successfully');
+			if (saved) {
+				// Clear form only if save was successful
+				newRegistryName = '';
+				newRegistryUrl = '';
+			}
+		} catch (error) {
+			console.error('Error adding registry:', error);
+			toast.error(error instanceof Error ? error.message : 'Failed to add registry');
 		} finally {
-			isLoading = false;
+			isLoading.addingRegistry = false;
 		}
 	}
 
-	async function handleRemoveRegistry(url: string) {
-		templateService.removeRegistry(url);
-		registries = templateService.getRegistries();
-		await loadData(); // Refresh counts
-	}
-
-	async function handleRefreshRegistry(url: string) {
-		isLoading = true;
-		error = null;
+	// Remove registry function
+	async function removeRegistry(url: string) {
+		if (isLoading.removing.has(url)) return;
+		isLoading.removing.add(url);
 
 		try {
+			settingsStore.update((settings) => ({
+				...settings,
+				templateRegistries: (settings.templateRegistries || []).filter((r) => r.url !== url)
+			}));
+
+			// Save immediately
+			await saveSettingsAndHandle('Registry removed and saved successfully');
+		} catch (error) {
+			toast.error('Failed to remove registry');
+		} finally {
+			isLoading.removing.delete(url);
+		}
+	}
+
+	// Refresh registry function
+	async function refreshRegistry(url: string) {
+		if (isLoading.refreshing.has(url)) return;
+		isLoading.refreshing.add(url);
+
+		try {
+			const registries = $settingsStore.templateRegistries || [];
 			const config = registries.find((r) => r.url === url);
-			if (!config) return;
+
+			if (!config) {
+				toast.error('Registry not found');
+				return;
+			}
 
 			// Clear cache and refetch
 			templateRegistryService.clearCache();
 			const registry = await templateRegistryService.fetchRegistry(config);
 
-			if (registry) {
-				// Update last_updated timestamp
-				config.last_updated = new Date().toISOString();
-				await loadData(); // Refresh counts
-			} else {
-				throw new Error('Failed to refresh registry');
+			if (!registry) {
+				toast.error('Failed to refresh registry');
+				return;
 			}
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to refresh registry';
+
+			// Update last_updated timestamp
+			settingsStore.update((settings) => ({
+				...settings,
+				templateRegistries: (settings.templateRegistries || []).map((r) => (r.url === url ? { ...r, last_updated: new Date().toISOString() } : r))
+			}));
+
+			// Save immediately
+			await saveSettingsAndHandle('Registry refreshed and saved successfully');
+		} catch (error) {
+			toast.error('Failed to refresh registry');
 		} finally {
-			isLoading = false;
+			isLoading.refreshing.delete(url);
 		}
 	}
 
-	function clearError() {
-		error = null;
+	// Manual save settings function (for any other changes)
+	async function saveSettings() {
+		if (isLoading.saving) return;
+		isLoading.saving = true;
+
+		console.log('Saving settings to server:', $settingsStore);
+
+		handleApiResultWithCallbacks({
+			result: await tryCatch(saveSettingsToServer()),
+			message: 'Error Saving Settings',
+			setLoadingState: (value) => (isLoading.saving = value),
+			onSuccess: async () => {
+				toast.success('Settings saved successfully');
+				await invalidateAll();
+			}
+		});
 	}
 </script>
 
-<div class="space-y-6">
-	<div>
-		<h1 class="text-3xl font-bold">Template Settings</h1>
-		<p class="text-muted-foreground">Manage Docker Compose template sources and registries</p>
-	</div>
+<svelte:head>
+	<title>Template Settings - Arcane</title>
+</svelte:head>
 
-	<!-- Error Alert -->
-	{#if error}
-		<Alert.Root variant="destructive">
-			<Alert.Title>Error</Alert.Title>
-			<Alert.Description class="flex items-center justify-between">
-				<span>{error}</span>
-				<Button variant="ghost" size="sm" onclick={clearError}>Dismiss</Button>
-			</Alert.Description>
-		</Alert.Root>
-	{/if}
+<div class="space-y-6">
+	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+		<div>
+			<h1 class="text-3xl font-bold tracking-tight">Template Settings</h1>
+			<p class="text-sm text-muted-foreground mt-1">Manage Docker Compose template sources and registries</p>
+		</div>
+
+		<!-- Keep save button for any future manual settings that might be added -->
+		<Button onclick={saveSettings} disabled={isLoading.saving} class="h-10 arcane-button-save" variant="outline">
+			{#if isLoading.saving}
+				<RefreshCw class="animate-spin size-4" />
+				Saving...
+			{:else}
+				<Save class="size-4" />
+				Save Settings
+			{/if}
+		</Button>
+	</div>
 
 	<!-- Template Statistics -->
 	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -130,7 +206,7 @@
 			<div class="flex items-center gap-3">
 				<FolderOpen class="size-8 text-blue-500" />
 				<div>
-					<p class="text-2xl font-bold">{localTemplateCount}</p>
+					<p class="text-2xl font-bold">{data.localTemplateCount}</p>
 					<p class="text-sm text-muted-foreground">Local Templates</p>
 				</div>
 			</div>
@@ -139,7 +215,7 @@
 			<div class="flex items-center gap-3">
 				<Globe class="size-8 text-green-500" />
 				<div>
-					<p class="text-2xl font-bold">{remoteTemplateCount}</p>
+					<p class="text-2xl font-bold">{data.remoteTemplateCount}</p>
 					<p class="text-sm text-muted-foreground">Remote Templates</p>
 				</div>
 			</div>
@@ -148,7 +224,7 @@
 			<div class="flex items-center gap-3">
 				<FileText class="size-8 text-purple-500" />
 				<div>
-					<p class="text-2xl font-bold">{registries.length}</p>
+					<p class="text-2xl font-bold">{templateRegistries.length}</p>
 					<p class="text-sm text-muted-foreground">Registries</p>
 				</div>
 			</div>
@@ -164,7 +240,7 @@
 			<FolderOpen class="size-4" />
 			<Alert.Title>Local Template Directory</Alert.Title>
 			<Alert.Description>
-				Place your custom Docker Compose templates in the <code class="bg-muted px-1 rounded text-xs">data/templates/compose/</code> directory. Templates should be YAML files with a descriptive filename.
+				Place your custom Docker Compose templates in the <code class="bg-muted px-1 rounded text-xs">data/templates/compose/</code> directory. Templates should be YAML files with a descriptive filename. You can also include matching <code class="bg-muted px-1 rounded text-xs">.env</code> files for environment variables.
 			</Alert.Description>
 		</Alert.Root>
 	</div>
@@ -180,32 +256,32 @@
 		<Alert.Root>
 			<Globe class="size-4" />
 			<Alert.Title>Remote Registries</Alert.Title>
-			<Alert.Description>Add remote template registries to access community templates. Registries should provide a JSON manifest with template metadata and download URLs.</Alert.Description>
+			<Alert.Description>Add remote template registries to access community templates. Registries should provide a JSON manifest with template metadata and download URLs. Changes are saved automatically.</Alert.Description>
 		</Alert.Root>
 
-		<!-- Add New Registry -->
+		<!-- Add New Registry Form -->
 		<Card class="p-4">
 			<h3 class="font-medium mb-3">Add Registry</h3>
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
 				<div>
-					<Label for="registry-name">Name</Label>
-					<Input id="registry-name" bind:value={newRegistryName} placeholder="My Templates" disabled={isLoading} />
+					<Label for="name">Name</Label>
+					<Input id="name" bind:value={newRegistryName} placeholder="My Templates" disabled={isLoading.addingRegistry} required />
 				</div>
 				<div>
-					<Label for="registry-url">Registry URL</Label>
-					<Input id="registry-url" bind:value={newRegistryUrl} placeholder="https://example.com/templates.json" disabled={isLoading} />
+					<Label for="url">Registry URL</Label>
+					<Input id="url" bind:value={newRegistryUrl} type="url" placeholder="https://example.com/templates.json" disabled={isLoading.addingRegistry} required />
 				</div>
 			</div>
-			<Button onclick={handleAddRegistry} class="mt-3" disabled={!newRegistryUrl || !newRegistryName || isLoading}>
+			<Button onclick={addRegistry} class="mt-3" disabled={isLoading.addingRegistry || !newRegistryName.trim() || !newRegistryUrl.trim()}>
 				<Plus class="size-4 mr-2" />
-				{isLoading ? 'Adding...' : 'Add Registry'}
+				{isLoading.addingRegistry ? 'Adding...' : 'Add Registry'}
 			</Button>
 		</Card>
 
 		<!-- Registry List -->
-		{#if registries.length > 0}
+		{#if templateRegistries.length > 0}
 			<div class="space-y-3">
-				{#each registries as registry}
+				{#each templateRegistries as registry}
 					<Card class="p-4">
 						<div class="flex items-center justify-between">
 							<div class="flex-1">
@@ -223,13 +299,15 @@
 								{/if}
 							</div>
 							<div class="flex items-center gap-2">
-								<Button variant="outline" size="sm" onclick={() => handleRefreshRegistry(registry.url)} disabled={isLoading}>
-									<RefreshCw class="size-4" />
+								<Button variant="outline" size="sm" onclick={() => refreshRegistry(registry.url)} disabled={isLoading.refreshing.has(registry.url)}>
+									<RefreshCw class={`size-4 ${isLoading.refreshing.has(registry.url) ? 'animate-spin' : ''}`} />
 								</Button>
+
 								<Button variant="outline" size="sm" onclick={() => window.open(registry.url, '_blank')}>
 									<ExternalLink class="size-4" />
 								</Button>
-								<Button variant="destructive" size="sm" onclick={() => handleRemoveRegistry(registry.url)} disabled={isLoading}>
+
+								<Button variant="destructive" size="sm" onclick={() => removeRegistry(registry.url)} disabled={isLoading.removing.has(registry.url)}>
 									<Trash2 class="size-4" />
 								</Button>
 							</div>

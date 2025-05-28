@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Home, Box, Image, Network, HardDrive, Settings, Menu, X, ChevronRight, ChevronLeft, FileStack, ExternalLink, LogOut, Sun, Moon, ChevronDown, UserIcon, Shield, Bell, Palette, Database, type Icon as IconType, ShieldCheck } from '@lucide/svelte';
+	import { Home, Box, Image, Network, HardDrive, Settings, Menu, X, ChevronRight, ChevronLeft, FileStack, ExternalLink, LogOut, Sun, Moon, ChevronDown, UserIcon, Shield, Bell, Palette, Database, type Icon as IconType, ShieldCheck, LayoutTemplate } from '@lucide/svelte';
 	import { page } from '$app/state';
 	import { fly, slide } from 'svelte/transition';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -37,9 +37,11 @@
 				children: [
 					{ href: '/settings/general', label: 'General', icon: Settings },
 					{ href: '/settings/docker', label: 'Docker', icon: Database },
+					{ href: '/settings/templates', label: 'Templates', icon: LayoutTemplate },
 					{ href: '/settings/users', label: 'Users', icon: UserIcon },
 					// { href: '/settings/rbac', label: 'RBAC', icon: ShieldCheck },
 					{ href: '/settings/security', label: 'Security', icon: Shield }
+
 					// { href: '/settings/notifications', label: 'Notifications', icon: Bell },
 					// { href: '/settings/appearance', label: 'Appearance', icon: Palette }
 				]

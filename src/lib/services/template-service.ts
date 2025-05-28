@@ -1,13 +1,15 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import type { TemplateRegistryConfig } from '$lib/types/template-registry';
+import type { TemplateRegistryConfig } from '$lib/types/settings.type'; // Import from settings
 import { templateRegistryService } from './template-registry-service';
+import { getSettings, saveSettings } from './settings-service';
 
 export interface ComposeTemplate {
 	id: string;
 	name: string;
 	description: string;
 	content: string;
+	envContent?: string; // Optional environment content
 	isCustom: boolean;
 	isRemote?: boolean;
 	metadata?: {
@@ -16,6 +18,7 @@ export interface ComposeTemplate {
 		tags?: string[];
 		registry?: string;
 		remoteUrl?: string;
+		envUrl?: string; // Optional environment URL
 		documentationUrl?: string;
 		iconUrl?: string;
 		updatedAt?: string;
@@ -26,7 +29,6 @@ export class TemplateService {
 	private static templatesDir = path.join(process.cwd(), 'data/templates');
 	private static composeTemplatesDir = path.join(this.templatesDir, 'compose');
 	private static envTemplateFile = path.join(this.templatesDir, '.env.template');
-	private registryConfigs: TemplateRegistryConfig[] = [];
 
 	/**
 	 * Get all available compose templates from the file system
@@ -49,25 +51,37 @@ export class TemplateService {
 				// Try to extract description from comment at top of file
 				const description = this.extractDescriptionFromFile(content);
 
+				// Check for accompanying .env file
+				const envContent = await this.loadTemplateEnvFile(id);
+
 				templates.push({
 					id,
 					name: this.formatTemplateName(id),
-					description: description || this.getDefaultDescription(id),
+					description: description || 'Custom Docker Compose template',
 					content,
-					isCustom: !this.isBuiltInTemplate(id)
+					envContent,
+					isCustom: true,
+					isRemote: false
 				});
 			}
 
-			return templates.sort((a, b) => {
-				// Sort built-in templates first, then custom templates
-				if (a.isCustom !== b.isCustom) {
-					return a.isCustom ? 1 : -1;
-				}
-				return a.name.localeCompare(b.name);
-			});
+			return templates.sort((a, b) => a.name.localeCompare(b.name));
 		} catch (error) {
 			console.error('Error loading compose templates:', error);
 			return [];
+		}
+	}
+
+	/**
+	 * Load environment file for a specific template
+	 */
+	private static async loadTemplateEnvFile(templateId: string): Promise<string | undefined> {
+		const envPath = path.join(this.composeTemplatesDir, `${templateId}.env`);
+		try {
+			return await fs.readFile(envPath, 'utf8');
+		} catch (error) {
+			// No env file found, that's okay
+			return undefined;
 		}
 	}
 
@@ -87,7 +101,7 @@ export class TemplateService {
 	/**
 	 * Create a new template from content
 	 */
-	static async createTemplate(name: string, content: string, description?: string): Promise<void> {
+	static async createTemplate(name: string, content: string, description?: string, envContent?: string): Promise<void> {
 		await this.ensureDirectoriesExist();
 
 		const filename = `${name.toLowerCase().replace(/[^a-z0-9-]/g, '-')}.yaml`;
@@ -100,6 +114,13 @@ export class TemplateService {
 		}
 
 		await fs.writeFile(filePath, fileContent, 'utf8');
+
+		// Save environment file if provided
+		if (envContent) {
+			const envFilename = `${name.toLowerCase().replace(/[^a-z0-9-]/g, '-')}.env`;
+			const envFilePath = path.join(this.composeTemplatesDir, envFilename);
+			await fs.writeFile(envFilePath, envContent, 'utf8');
+		}
 	}
 
 	/**
@@ -118,6 +139,14 @@ export class TemplateService {
 			} catch (error) {
 				// File doesn't exist with this extension, try next
 			}
+		}
+
+		// Also try to delete the env file
+		try {
+			const envFilePath = path.join(this.composeTemplatesDir, `${id}.env`);
+			await fs.unlink(envFilePath);
+		} catch (error) {
+			// Env file doesn't exist, that's okay
 		}
 
 		if (!deleted) {
@@ -172,10 +201,11 @@ This directory contains templates for creating Docker Compose stacks.
 - \`compose/\` - Docker Compose template files (.yaml or .yml)
 - \`.env.template\` - Default environment variables template
 
-## Adding Custom Templates
+## Adding Templates
 
-1. **Compose Templates**: Place your Docker Compose files in the \`compose/\` directory
+1. **Local Templates**: Place your Docker Compose files in the \`compose/\` directory
    - Use \`.yaml\` or \`.yml\` extension
+   - Optionally add a matching \`.env\` file with the same name (e.g., \`my-app.yaml\` and \`my-app.env\`)
    - Add a comment at the top to describe the template:
      \`\`\`yaml
      # My Custom Application Stack
@@ -185,8 +215,25 @@ This directory contains templates for creating Docker Compose stacks.
          # ... rest of your compose file
      \`\`\`
 
-2. **Environment Template**: Create or edit \`.env.template\` to set default environment variables
-   - This will be loaded automatically when creating new stacks
+2. **Template Environment Files**: Create \`.env\` files alongside your templates
+   - File name should match your template: \`wordpress.yaml\` → \`wordpress.env\`
+   - These will be loaded automatically when the template is selected
+   - Example structure:
+     \`\`\`
+     compose/
+     ├── wordpress.yaml
+     ├── wordpress.env
+     ├── nextjs.yaml
+     └── nextjs.env
+     \`\`\`
+
+3. **Remote Templates**: Configure remote registries in the Template Settings page
+   - Access community-maintained templates
+   - Automatically synced from registry sources
+   - Can include both compose and environment files
+
+4. **Environment Template**: Create or edit \`.env.template\` to set default environment variables
+   - This will be used as fallback when templates don't provide their own environment
    - Use KEY=value format
 
 ## Template Naming
@@ -195,14 +242,14 @@ This directory contains templates for creating Docker Compose stacks.
 - \`my-web-app.yaml\` becomes "My Web App"
 - Use hyphens or underscores to separate words
 
-## Examples
+## Example Templates
 
-See the built-in templates for examples of common configurations:
-- nginx.yaml - Simple web server
-- postgres.yaml - PostgreSQL database
-- wordpress.yaml - WordPress with MySQL
+You can find example templates in community registries or create your own:
+- wordpress.yaml + wordpress.env - WordPress with MySQL
+- nextjs.yaml + nextjs.env - Next.js application
+- postgres.yaml + postgres.env - PostgreSQL database
 
-Templates added here will automatically appear in the Arcane UI when creating new stacks.
+All templates added here will automatically appear in the Arcane UI when creating new stacks.
 `;
 
 		await fs.writeFile(path.join(this.templatesDir, 'README.md'), readmeContent, 'utf8');
@@ -230,30 +277,6 @@ Templates added here will automatically appear in the Arcane UI when creating ne
 			.split(/[-_]/)
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(' ');
-	}
-
-	/**
-	 * Check if template is a built-in one
-	 */
-	private static isBuiltInTemplate(id: string): boolean {
-		const builtInTemplates = ['nginx', 'postgres', 'wordpress', 'mysql', 'redis', 'mongodb'];
-		return builtInTemplates.includes(id);
-	}
-
-	/**
-	 * Get default description for known templates
-	 */
-	private static getDefaultDescription(id: string): string {
-		const descriptions: Record<string, string> = {
-			nginx: 'Simple web server with volume mounting',
-			postgres: 'PostgreSQL database with persistent storage',
-			wordpress: 'WordPress with MySQL database',
-			mysql: 'MySQL database server',
-			redis: 'Redis in-memory data store',
-			mongodb: 'MongoDB NoSQL database'
-		};
-
-		return descriptions[id] || 'Custom Docker Compose template';
 	}
 
 	/**
@@ -317,23 +340,21 @@ POSTGRES_PORT=5432
 				// Try to extract description from comment at top of file
 				const description = TemplateService.extractDescriptionFromFile(content);
 
+				// Check for accompanying .env file
+				const envContent = await TemplateService.loadTemplateEnvFile(id);
+
 				templates.push({
 					id,
 					name: TemplateService.formatTemplateName(id),
-					description: description || TemplateService.getDefaultDescription(id),
+					description: description || 'Custom Docker Compose template',
 					content,
-					isCustom: !TemplateService.isBuiltInTemplate(id),
+					envContent,
+					isCustom: true,
 					isRemote: false
 				});
 			}
 
-			return templates.sort((a, b) => {
-				// Sort built-in templates first, then custom templates
-				if (a.isCustom !== b.isCustom) {
-					return a.isCustom ? 1 : -1;
-				}
-				return a.name.localeCompare(b.name);
-			});
+			return templates.sort((a, b) => a.name.localeCompare(b.name));
 		} catch (error) {
 			console.error('Error loading local templates:', error);
 			return [];
@@ -345,8 +366,10 @@ POSTGRES_PORT=5432
 	 */
 	async loadRemoteTemplates(): Promise<ComposeTemplate[]> {
 		const templates: ComposeTemplate[] = [];
+		const settings = await getSettings();
+		const registryConfigs = settings.templateRegistries || [];
 
-		for (const config of this.registryConfigs) {
+		for (const config of registryConfigs) {
 			if (!config.enabled) continue;
 
 			const registry = await templateRegistryService.fetchRegistry(config);
@@ -362,9 +385,9 @@ POSTGRES_PORT=5432
 	}
 
 	/**
-	 * Load template content
+	 * Load template content and environment
 	 */
-	async loadTemplateContent(template: ComposeTemplate): Promise<string> {
+	async loadTemplateContent(template: ComposeTemplate): Promise<{ content: string; envContent?: string }> {
 		if (template.isRemote && template.metadata?.remoteUrl) {
 			const content = await templateRegistryService.fetchTemplateContent({
 				id: template.id,
@@ -372,31 +395,104 @@ POSTGRES_PORT=5432
 				description: template.description,
 				version: template.metadata.version || '1.0.0',
 				compose_url: template.metadata.remoteUrl,
+				env_url: template.metadata.envUrl,
 				updated_at: template.metadata.updatedAt || new Date().toISOString()
 			});
-			return content || template.content;
+
+			let envContent: string | undefined;
+			if (template.metadata.envUrl) {
+				try {
+					envContent = (await templateRegistryService.fetchEnvContent(template.metadata.envUrl)) || undefined;
+				} catch (error) {
+					// Only log if it's not a 404 - missing env files are expected
+					if (error instanceof Error && !error.message.includes('404') && !error.message.includes('Not Found')) {
+						console.error('Error fetching env content:', error);
+					}
+					envContent = undefined;
+				}
+			}
+
+			return {
+				content: content || template.content,
+				envContent: envContent || template.envContent
+			};
 		}
-		return template.content;
+		return {
+			content: template.content,
+			envContent: template.envContent
+		};
+	}
+
+	/**
+	 * Load just the compose content for a template (without env file)
+	 */
+	async loadComposeContent(template: ComposeTemplate): Promise<string> {
+		if (!template.isRemote) {
+			return template.content;
+		}
+
+		// For remote templates, fetch the compose content
+		if (!template.metadata?.remoteUrl) {
+			throw new Error('Remote template missing compose URL');
+		}
+
+		const remoteTemplate = {
+			id: template.id,
+			name: template.name,
+			description: template.description,
+			version: template.metadata.version || '1.0.0',
+			compose_url: template.metadata.remoteUrl,
+			env_url: template.metadata.envUrl,
+			updated_at: template.metadata.updatedAt || new Date().toISOString()
+		};
+
+		const content = await templateRegistryService.fetchTemplateContent(remoteTemplate);
+		if (!content) {
+			throw new Error('Failed to fetch template content');
+		}
+
+		return content;
 	}
 
 	/**
 	 * Add a registry configuration
 	 */
-	addRegistry(config: TemplateRegistryConfig): void {
-		this.registryConfigs.push(config);
+	async addRegistry(config: TemplateRegistryConfig): Promise<void> {
+		const settings = await getSettings();
+		settings.templateRegistries = settings.templateRegistries || [];
+		settings.templateRegistries.push(config);
+		await saveSettings(settings);
 	}
 
 	/**
 	 * Remove a registry configuration
 	 */
-	removeRegistry(url: string): void {
-		this.registryConfigs = this.registryConfigs.filter((c) => c.url !== url);
+	async removeRegistry(url: string): Promise<void> {
+		const settings = await getSettings();
+		settings.templateRegistries = (settings.templateRegistries || []).filter((c) => c.url !== url);
+		await saveSettings(settings);
+	}
+
+	/**
+	 * Update a registry configuration
+	 */
+	async updateRegistry(url: string, updates: Partial<TemplateRegistryConfig>): Promise<void> {
+		const settings = await getSettings();
+		const registryIndex = (settings.templateRegistries || []).findIndex((c) => c.url === url);
+		if (registryIndex !== -1) {
+			settings.templateRegistries[registryIndex] = {
+				...settings.templateRegistries[registryIndex],
+				...updates
+			};
+			await saveSettings(settings);
+		}
 	}
 
 	/**
 	 * Get all registry configurations
 	 */
-	getRegistries(): TemplateRegistryConfig[] {
-		return [...this.registryConfigs];
+	async getRegistries(): Promise<TemplateRegistryConfig[]> {
+		const settings = await getSettings();
+		return settings.templateRegistries || [];
 	}
 }

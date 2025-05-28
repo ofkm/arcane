@@ -4,10 +4,12 @@ import type { PageServerLoad } from './$types';
 
 export const load = (async () => {
 	try {
-		const [composeTemplates, envTemplate] = await Promise.all([TemplateService.getComposeTemplates(), TemplateService.getEnvTemplate()]);
+		const templateService = new TemplateService();
+
+		const [allTemplates, envTemplate] = await Promise.all([templateService.loadAllTemplates(), TemplateService.getEnvTemplate()]);
 
 		return {
-			composeTemplates,
+			composeTemplates: allTemplates,
 			envTemplate,
 			defaultTemplate: defaultComposeTemplate
 		};

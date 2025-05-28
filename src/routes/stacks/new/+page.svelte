@@ -84,9 +84,17 @@
 
 	function handleTemplateSelect(template: ComposeTemplate) {
 		composeContent = template.content;
-		if (!name.trim()) {
-			name = template.name.toLowerCase().replace(/\s+/g, '-');
+
+		// If template has environment content, use it
+		if (template.envContent) {
+			envContent = template.envContent;
 		}
+
+		// Auto-populate name if empty
+		if (!name.trim()) {
+			name = template.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+		}
+
 		toast.success(`Template "${template.name}" loaded successfully!`);
 	}
 
