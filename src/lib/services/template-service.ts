@@ -1,5 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import type { TemplateRegistryConfig } from '$lib/types/template-registry';
+import { templateRegistryService } from './template-registry-service';
 
 export interface ComposeTemplate {
 	id: string;
@@ -7,12 +9,24 @@ export interface ComposeTemplate {
 	description: string;
 	content: string;
 	isCustom: boolean;
+	isRemote?: boolean;
+	metadata?: {
+		version?: string;
+		author?: string;
+		tags?: string[];
+		registry?: string;
+		remoteUrl?: string;
+		documentationUrl?: string;
+		iconUrl?: string;
+		updatedAt?: string;
+	};
 }
 
 export class TemplateService {
 	private static templatesDir = path.join(process.cwd(), 'data/templates');
 	private static composeTemplatesDir = path.join(this.templatesDir, 'compose');
 	private static envTemplateFile = path.join(this.templatesDir, '.env.template');
+	private registryConfigs: TemplateRegistryConfig[] = [];
 
 	/**
 	 * Get all available compose templates from the file system
@@ -265,5 +279,124 @@ POSTGRES_PORT=5432
 # SECRET_KEY=your_secret_key_here
 # DEBUG=false
 `;
+	}
+
+	/**
+	 * Load all templates (local and remote)
+	 */
+	async loadAllTemplates(): Promise<ComposeTemplate[]> {
+		const templates: ComposeTemplate[] = [];
+
+		// Load local templates
+		templates.push(...(await this.loadLocalTemplates()));
+
+		// Load remote templates
+		templates.push(...(await this.loadRemoteTemplates()));
+
+		return templates;
+	}
+
+	/**
+	 * Load local templates from the file system
+	 */
+	async loadLocalTemplates(): Promise<ComposeTemplate[]> {
+		try {
+			// Ensure directories exist
+			await TemplateService.ensureDirectoriesExist();
+
+			const files = await fs.readdir(TemplateService.composeTemplatesDir);
+			const yamlFiles = files.filter((file) => (file.endsWith('.yaml') || file.endsWith('.yml')) && !file.startsWith('.'));
+
+			const templates: ComposeTemplate[] = [];
+
+			for (const file of yamlFiles) {
+				const filePath = path.join(TemplateService.composeTemplatesDir, file);
+				const content = await fs.readFile(filePath, 'utf8');
+				const id = path.basename(file, path.extname(file));
+
+				// Try to extract description from comment at top of file
+				const description = TemplateService.extractDescriptionFromFile(content);
+
+				templates.push({
+					id,
+					name: TemplateService.formatTemplateName(id),
+					description: description || TemplateService.getDefaultDescription(id),
+					content,
+					isCustom: !TemplateService.isBuiltInTemplate(id),
+					isRemote: false
+				});
+			}
+
+			return templates.sort((a, b) => {
+				// Sort built-in templates first, then custom templates
+				if (a.isCustom !== b.isCustom) {
+					return a.isCustom ? 1 : -1;
+				}
+				return a.name.localeCompare(b.name);
+			});
+		} catch (error) {
+			console.error('Error loading local templates:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Load remote templates
+	 */
+	async loadRemoteTemplates(): Promise<ComposeTemplate[]> {
+		const templates: ComposeTemplate[] = [];
+
+		for (const config of this.registryConfigs) {
+			if (!config.enabled) continue;
+
+			const registry = await templateRegistryService.fetchRegistry(config);
+			if (!registry) continue;
+
+			for (const remoteTemplate of registry.templates) {
+				const template = templateRegistryService.convertToComposeTemplate(remoteTemplate, config.name);
+				templates.push(template);
+			}
+		}
+
+		return templates;
+	}
+
+	/**
+	 * Load template content
+	 */
+	async loadTemplateContent(template: ComposeTemplate): Promise<string> {
+		if (template.isRemote && template.metadata?.remoteUrl) {
+			const content = await templateRegistryService.fetchTemplateContent({
+				id: template.id,
+				name: template.name,
+				description: template.description,
+				version: template.metadata.version || '1.0.0',
+				compose_url: template.metadata.remoteUrl,
+				updated_at: template.metadata.updatedAt || new Date().toISOString()
+			});
+			return content || template.content;
+		}
+		return template.content;
+	}
+
+	/**
+	 * Add a registry configuration
+	 */
+	addRegistry(config: TemplateRegistryConfig): void {
+		this.registryConfigs.push(config);
+	}
+
+	/**
+	 * Remove a registry configuration
+	 */
+	removeRegistry(url: string): void {
+		this.registryConfigs = this.registryConfigs.filter((c) => c.url !== url);
+	}
+
+	/**
+	 * Get all registry configurations
+	 */
+	getRegistries(): TemplateRegistryConfig[] {
+		return [...this.registryConfigs];
 	}
 }

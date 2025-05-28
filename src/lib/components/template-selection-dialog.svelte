@@ -59,35 +59,6 @@
 					</Alert.Description>
 				</Alert.Root>
 
-				<!-- Built-in Templates -->
-				{#if builtInTemplates.length > 0}
-					<div>
-						<h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
-							<Star class="size-5 text-yellow-500" />
-							Built-in Templates
-						</h3>
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-							{#each builtInTemplates as template}
-								<Card class="cursor-pointer hover:bg-muted/50 transition-colors border-2 hover:border-primary/20">
-									<button type="button" class="w-full text-left p-4" onclick={() => handleSelect(template)}>
-										<div class="flex items-start justify-between mb-2">
-											<h4 class="font-semibold">{template.name}</h4>
-											<Badge variant="secondary" class="ml-2">
-												<Code class="size-3 mr-1" />
-												Built-in
-											</Badge>
-										</div>
-										<p class="text-sm text-muted-foreground mb-3">
-											{template.description}
-										</p>
-										<div class="text-xs text-muted-foreground">Click to use this template</div>
-									</button>
-								</Card>
-							{/each}
-						</div>
-					</div>
-				{/if}
-
 				<!-- Custom Templates -->
 				{#if customTemplates.length > 0}
 					<div>
@@ -104,6 +75,35 @@
 											<Badge variant="outline" class="ml-2">
 												<User class="size-3 mr-1" />
 												Custom
+											</Badge>
+										</div>
+										<p class="text-sm text-muted-foreground mb-3">
+											{template.description}
+										</p>
+										<div class="text-xs text-muted-foreground">Click to use this template</div>
+									</button>
+								</Card>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
+				<!-- Built-in Templates -->
+				{#if builtInTemplates.length > 0}
+					<div>
+						<h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
+							<Star class="size-5 text-yellow-500" />
+							Built-in Templates
+						</h3>
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							{#each builtInTemplates as template}
+								<Card class="cursor-pointer hover:bg-muted/50 transition-colors border-2 hover:border-primary/20">
+									<button type="button" class="w-full text-left p-4" onclick={() => handleSelect(template)}>
+										<div class="flex items-start justify-between mb-2">
+											<h4 class="font-semibold">{template.name}</h4>
+											<Badge variant="secondary" class="ml-2">
+												<Code class="size-3 mr-1" />
+												Built-in
 											</Badge>
 										</div>
 										<p class="text-sm text-muted-foreground mb-3">
