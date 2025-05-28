@@ -90,10 +90,10 @@ echo "Updating Dockerfile ARG REVISION..."
 sed -i.bak "s/^ARG REVISION=.*$/ARG REVISION=\"$LATEST_REVISION\"/" Dockerfile && rm Dockerfile.bak
 git add Dockerfile
 
-# Check if conventional-changelog is installed, if not install it
-if ! command -v conventional-changelog &>/dev/null; then
-    echo "conventional-changelog not found, installing..."
-    npm install -g conventional-changelog-cli
+# Check if conventional-changelog-cli is installed, if not install it
+if ! command -v conventional-changelog-cli &> /dev/null; then
+    echo "Installing conventional-changelog-cli..."
+    yarn global add conventional-changelog-cli
 fi
 
 # Generate changelog

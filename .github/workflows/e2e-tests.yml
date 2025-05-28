@@ -1,10 +1,22 @@
-name: Playwright E2E Tests
+name: E2E Tests
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'playwright.config.ts'
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'playwright.config.ts'
 
 permissions:
   contents: read
@@ -13,55 +25,35 @@ permissions:
   pull-requests: write
 
 jobs:
-  e2e:
+  test:
+    timeout-minutes: 60
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
+          cache: 'yarn'
 
-      - name: Cache npm dependencies
+      - name: Cache yarn dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.npm
-          key: npm-cache-universal
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-browsers-universal
-
-      - name: Create Docker volumes for tests
-        run: |
-          docker volume create my-app-data
-          docker volume create cache
+          path: ~/.cache/yarn
+          key: yarn-cache-universal
 
       - name: Install dependencies
-        run: npm ci
+        run: yarn install --frozen-lockfile
 
-      - name: Create .env
-        run: echo PUBLIC_SESSION_SECRET=your-secure-random-string-here > .env
+      - name: Install Playwright Browsers
+        run: yarn playwright install --with-deps
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+      - name: Run Playwright tests
+        run: yarn test:e2e
 
-      - name: Run Playwright E2E tests
-        run: npm run test:e2e
-
-      - name: List Playwright report directory
+      - uses: actions/upload-artifact@v4
         if: always()
-        run: ls -lR tests/.report || echo "No report directory"
-
-      - name: Upload Playwright HTML report
-        if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: tests/.report
-          include-hidden-files: true
+          path: playwright-report/
+          retention-days: 30

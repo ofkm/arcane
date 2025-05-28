@@ -14,6 +14,28 @@ Thank you for your interest in contributing to Arcane! We welcome contributions 
 - **Code Contributions:** If you'd like to contribute code, please follow the process outlined below.
 - **Documentation:** Improvements to the documentation are always welcome.
 
+## Development Setup
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone https://github.com/ofkm/arcane.git
+   cd arcane
+   ```
+
+2. **Install dependencies:**
+
+   ```bash
+   yarn install
+   yarn dev
+   ```
+
+3. **Code quality:**
+   ```bash
+   yarn lint
+   yarn format
+   ```
+
 ## Code Contribution Process
 
 1.  **Fork the Repository:** Start by forking the main Arcane repository on GitHub.
@@ -63,6 +85,6 @@ Thank you for your interest in contributing to Arcane! We welcome contributions 
 
 ## Code Style
 
-Arcane uses [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) to enforce code style and consistency. Please run `npm run lint` and `npm run format` before committing your changes. Configuration files (`.eslint.config.js`, `.prettierrc`) are included in the repository.
+Arcane uses [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) to enforce code style and consistency. Please run `yarn lint` and `yarn format` before committing your changes. Configuration files (`.eslint.config.js`, `.prettierrc`) are included in the repository.
 
 Thank you again for contributing to Arcane!

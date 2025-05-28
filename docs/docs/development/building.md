@@ -9,62 +9,44 @@ This guide explains how to build the Arcane application from its source code. Th
 
 ## Prerequisites
 
-- Node.js: Version 22 or higher.
-- npm, yarn, pnpm, or bun: A Node.js package manager. Examples will use `npm`.
-- Git: Required to clone the repository.
-- Docker Engine: Required if you intend to build the Docker image, and test functionality locally.
+Before building Arcane, ensure you have the following installed:
 
-## Steps
+- **Node.js**: Version 24 or higher. Download from [nodejs.org](https://nodejs.org/).
+- **yarn**: A Node.js package manager. Install globally with `npm install -g yarn`.
+- **Docker**: For containerized deployments. Download from [docker.com](https://www.docker.com/).
 
-1.  **Clone the Repository:**
-    Open your terminal and clone the Arcane repository:
+## Development Setup
 
-    ```bash
-    git clone https://github.com/ofkm/arcane
-    cd arcane
-    ```
+1. **Clone the repository:**
 
-2.  **Install Dependencies:**
-    Install the necessary project dependencies using your preferred package manager:
+   ```bash
+   git clone https://github.com/ofkm/arcane.git
+   cd arcane
+   ```
 
-    ```bash
-    npm install
-    ```
+2. **Install dependencies:**
 
-3.  **Run the Development Server (Optional):**
-    To run Arcane in development mode with hot-reloading:
+   ```bash
+   yarn install
+   ```
 
-    ```bash
-    npm run dev
-    ```
+3. **Start the development server:**
 
-    This will start a local development server, typically accessible at `http://localhost:3000` .
+   ```bash
+   yarn dev
+   ```
 
-4.  **Linting and Formatting:**
-    Before building, you might want to check for code style issues:
+4. **Code quality checks:**
 
-    ```bash
-    npm run lint
-    npm run format
-    ```
+   ```bash
+   yarn lint
+   yarn format
+   ```
 
-5.  **Create a Production Build:**
-    To build the optimized production version of Arcane:
-
-    ```bash
-    npm run build
-    ```
-
-    This command uses SvelteKit's build process (powered by Vite) and the `@sveltejs/adapter-node` adapter. The output will be placed in the `build/` directory by default. This directory contains the standalone Node.js server and static assets needed to run Arcane.
-
-6.  **Run the Production Build:**
-    After a successful build, you can run the production server:
-
-    ```bash
-    node build/index.js
-    ```
-
-    Arcane should now be running using the built artifacts, typically accessible at `http://localhost:3000` (or the port configured for the production environment).
+5. **Build for production:**
+   ```bash
+   yarn build
+   ```
 
 ## Building the Docker Image
 

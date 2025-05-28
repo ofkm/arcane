@@ -1,49 +1,49 @@
 version: 2
 updates:
-  - package-ecosystem: 'npm'
+  - package-ecosystem: 'yarn'
     directory: '/'
     schedule:
       interval: 'daily'
     groups:
       prod-dependencies:
         patterns:
-          - "*"
+          - '*'
         exclude-patterns:
-          - "@types/*"
-          - "typescript"
-          - "eslint*"
-          - "prettier*"
-          - "vite"
-          - "*-plugin"
-          - "*-loader"
-          - "jest*"
-          - "vitest*"
-          - "@testing-library/*"
-          - "@playwright/*"
+          - '@types/*'
+          - 'typescript'
+          - 'eslint*'
+          - 'prettier*'
+          - 'vite'
+          - '*-plugin'
+          - '*-loader'
+          - 'jest*'
+          - 'vitest*'
+          - '@testing-library/*'
+          - '@playwright/*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       dev-dependencies:
         patterns:
-          - "@types/*"
-          - "typescript"
-          - "eslint*"
-          - "prettier*"
-          - "vite"
-          - "*-plugin"
-          - "*-loader"
-          - "jest*"
-          - "vitest*"
-          - "@testing-library/*"
-          - "@playwright/*"
+          - '@types/*'
+          - 'typescript'
+          - 'eslint*'
+          - 'prettier*'
+          - 'vite'
+          - '*-plugin'
+          - '*-loader'
+          - 'jest*'
+          - 'vitest*'
+          - '@testing-library/*'
+          - '@playwright/*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       frontend-major-updates:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "major"
+          - 'major'
 
   - package-ecosystem: 'github-actions'
     directory: '/'

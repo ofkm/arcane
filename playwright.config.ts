@@ -23,7 +23,7 @@ export default defineConfig({
 		}
 	],
 	webServer: {
-		command: 'APP_ENV=TEST npm run dev',
+		command: 'APP_ENV=TEST yarn dev',
 		url: 'http://localhost:3000',
 		reuseExistingServer: !process.env.CI,
 		timeout: 120 * 1000,

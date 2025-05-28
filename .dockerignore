@@ -41,9 +41,11 @@ tests
 .temp
 .cache
 **/.DS_Store
+
+# Package manager files
 npm-debug.log
-yarn-debug.log
-yarn-error.log
+yarn-debug.log*
+yarn-error.log*
 pnpm-debug.log
 
 # Large media files that should be mounted or stored elsewhere

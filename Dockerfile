@@ -1,12 +1,12 @@
 # Stage 1: Build dependencies
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
-COPY package*.json ./
+COPY package*.json yarn.lock ./
 # Install dependencies first (better layer caching)
-RUN npm ci
+RUN yarn install --frozen-lockfile
 
 # Stage 2: Build the application
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Set OIDC variables to dummy values for build time if they are checked
@@ -22,10 +22,10 @@ ENV OIDC_REDIRECT_URI=$OIDC_REDIRECT_URI_BUILD
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # When building, set NODE_ENV to "build" to prevent connection attempts
-RUN NODE_ENV=build npm run build
+RUN NODE_ENV=build yarn build
 
 # Stage 3: Production image
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 
 # Delete default node user first (combine with system upgrade package installation to reduce layers)
 RUN deluser --remove-home node && apk upgrade && apk add --no-cache su-exec curl shadow
@@ -49,9 +49,9 @@ COPY --from=builder /app/static ./static
 COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Install only production dependencies
-COPY package*.json ./
+COPY package*.json yarn.lock ./
 # The chown part is removed as 'arcane' user might not exist here
-RUN npm install --omit=dev && npm cache clean --force
+RUN yarn install --production --frozen-lockfile && yarn cache clean
 
 # Configure container
 EXPOSE 3000
@@ -70,7 +70,7 @@ LABEL org.opencontainers.image.revision=$REVISION
 LABEL org.opencontainers.image.licenses="BSD-3-Clause"
 LABEL org.opencontainers.image.ref.name="arcane"
 LABEL org.opencontainers.image.title="Arcane"
-LABEL org.opencontainers.image.description="Simple and Elegant Docker Management UI written in Typescript and SvelteKit"
+LABEL org.opencontainers.image.description="Modern Docker Management, Designed for Everyone"
 
 # Set the entrypoint and command
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

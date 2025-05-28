@@ -11,32 +11,40 @@ name: ESLint
 
 on:
   push:
-    branches: [ "main" ]
-  schedule:
-    - cron: '41 18 * * 3'
+    branches: [main]
+    paths:
+      - 'src/**'
+      - '.eslintrc.js'
+      - 'package.json'
+      - 'yarn.lock'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - '.eslintrc.js'
+      - 'package.json'
+      - 'yarn.lock'
 
 jobs:
   eslint:
-    name: Run eslint scanning
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
       actions: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install ESLint
         run: |
-          npm install eslint@9.25.1
-          npm install @microsoft/eslint-formatter-sarif@3.1.0
+          yarn add --dev eslint@9.25.1
+          yarn add --dev @microsoft/eslint-formatter-sarif@3.1.0
 
       - name: Run ESLint
-        env:
-          SARIF_ESLINT_IGNORE_SUPPRESSED: "true"
-        run: npx eslint ./src
-          --config eslint.config.js
+        run: yarn eslint .
+          --config .eslint.config.js
           --ext .js,.jsx,.ts,.tsx
           --format @microsoft/eslint-formatter-sarif
           --output-file eslint-results.sarif

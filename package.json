@@ -15,7 +15,7 @@
 		"lint:fix": "eslint ./src --fix",
 		"test:init": "APP_ENV=TEST npx tsx scripts/init-test-env.ts",
 		"test:setup": "npx tsx scripts/setup-test-images.ts",
-		"test:e2e": "APP_ENV=TEST npm run test:init && npm run test:setup && playwright test",
+		"test:e2e": "APP_ENV=TEST yarn run test:init && yarn run test:setup && playwright test",
 		"test:e2e:ui": "playwright test --ui",
 		"test:e2e:report": "playwright show-report"
 	},
@@ -57,6 +57,7 @@
 	"dependencies": {
 		"@codemirror/lang-yaml": "^6.1.2",
 		"@codemirror/legacy-modes": "^6.5.1",
+		"@internationalized/date": "^3.8.1",
 		"@swimlane/docker-reference": "^2.0.1",
 		"@tanstack/table-core": "^8.21.3",
 		"arctic": "^3.7.0",
@@ -76,5 +77,9 @@
 		"svelte-kit-cookie-session": "^4.1.1",
 		"thememirror": "^2.0.1",
 		"yaml-env-defaults": "^2.0.5"
-	}
+	},
+	"main": "index.js",
+	"repository": "https://github.com/ofkm/arcane.git",
+	"author": "Kyle Mendell <ksm@ofkm.us>",
+	"license": "MIT"
 }
