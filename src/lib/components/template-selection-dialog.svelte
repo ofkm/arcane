@@ -98,7 +98,7 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
+	<Dialog.Content class="sm:max-w-[900px] max-h-screen overflow-y-auto">
 		<Dialog.Header>
 			<Dialog.Title class="flex items-center gap-2">
 				<FileText class="size-5" />

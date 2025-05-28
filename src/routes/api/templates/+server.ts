@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			const response = await fetch(registryUrl, {
 				headers: {
 					'User-Agent': 'Arcane-Template-Registry/1.0',
-					Accept: 'application/json'
+					Accept: 'application/json, text/plain'
 				},
 				// Add timeout to prevent hanging requests
 				signal: AbortSignal.timeout(30000) // 30 second timeout
@@ -36,19 +36,27 @@ export const GET: RequestHandler = async ({ url }) => {
 			}
 
 			const contentType = response.headers.get('content-type');
-			if (!contentType?.includes('application/json') && !contentType?.includes('text/json')) {
+			// GitHub serves JSON files with text/plain content type
+			const isGitHub = registryUrl.includes('githubusercontent.com');
+			const isValidContentType = contentType?.includes('application/json') || contentType?.includes('text/json') || (isGitHub && contentType?.includes('text/plain'));
+
+			if (!isValidContentType) {
 				console.warn(`Registry at ${registryUrl} returned unexpected content type: ${contentType}`);
 			}
 
-			const data = await response.json();
+			let data;
+			try {
+				data = await response.json();
+			} catch (jsonError) {
+				return error(400, { message: 'Invalid JSON response from registry' });
+			}
 
 			// Add CORS headers to allow client-side access
 			return json(data, {
 				headers: {
 					'Access-Control-Allow-Origin': '*',
 					'Access-Control-Allow-Methods': 'GET',
-					'Access-Control-Allow-Headers': 'Content-Type',
-					'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
+					'Access-Control-Allow-Headers': 'Content-Type'
 				}
 			});
 		} catch (fetchError) {
