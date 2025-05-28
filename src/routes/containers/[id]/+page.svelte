@@ -2,17 +2,15 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, RefreshCw, HardDrive, Clock, Network, Terminal, Cpu, MemoryStick } from '@lucide/svelte';
-	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
+	import { ArrowLeft, AlertCircle, RefreshCw, HardDrive, Clock, Network, Terminal, Cpu, MemoryStick, Settings, Activity, FileText, Database } from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
-	import { formatDate, formatLogLine } from '$lib/utils/string.utils';
+	import { formatDate } from '$lib/utils/string.utils';
 	import { formatBytes } from '$lib/utils/bytes.util';
 	import type Docker from 'dockerode';
 	import type { ContainerInspectInfo } from 'dockerode';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { onDestroy } from 'svelte';
 	import LogViewer from '$lib/components/LogViewer.svelte';
 
@@ -33,7 +31,7 @@
 	}
 
 	let { data }: { data: PageData } = $props();
-	let { container, logs: initialLogsFromServer, stats } = $derived(data);
+	let { container, stats } = $derived(data);
 
 	let starting = $state(false);
 	let stopping = $state(false);
@@ -41,13 +39,21 @@
 	let removing = $state(false);
 	let isRefreshing = $state(false);
 
-	let activeTab = $state('overview');
+	let activeSection = $state<string>('overview');
 	let autoScrollLogs = $state(true);
 	let isStreaming = $state(false);
 
 	let logViewer = $state<LogViewer>();
-
 	let statsEventSource: EventSource | null = $state(null);
+
+	// Helper function to clean container name
+	const cleanContainerName = (name: string | undefined): string => {
+		if (!name) return 'Container Details';
+		// Remove leading slash and any extra slashes
+		return name.replace(/^\/+/, '');
+	};
+
+	const containerDisplayName = $derived(cleanContainerName(container?.Name));
 
 	function startStatsStream() {
 		if (statsEventSource || !container?.Id || !container.State?.Running) return;
@@ -92,7 +98,7 @@
 	}
 
 	$effect(() => {
-		if (activeTab === 'stats' && container?.State?.Running) {
+		if (activeSection === 'stats' && container?.State?.Running) {
 			startStatsStream();
 		} else if (statsEventSource) {
 			closeStatsStream();
@@ -178,573 +184,587 @@
 	function handleToggleAutoScroll() {
 		// Custom logic when auto-scroll is toggled if needed
 	}
+
+	// Navigation sections for single-page layout
+	const navigationSections = [
+		{ id: 'overview', label: 'Overview', icon: HardDrive },
+		{ id: 'stats', label: 'Metrics', icon: Activity },
+		{ id: 'logs', label: 'Logs', icon: FileText },
+		{ id: 'config', label: 'Configuration', icon: Settings },
+		{ id: 'network', label: 'Networks', icon: Network },
+		{ id: 'storage', label: 'Storage', icon: Database }
+	] as const;
+
+	type SectionId = (typeof navigationSections)[number]['id'];
+
+	function scrollToSection(sectionId: SectionId) {
+		activeSection = sectionId;
+		const element = document.getElementById(sectionId);
+		if (element) {
+			element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}
+	}
 </script>
 
-<div class="space-y-6 pb-8">
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-		<div>
-			<Breadcrumb.Root>
-				<Breadcrumb.List>
-					<Breadcrumb.Item>
-						<Breadcrumb.Link href="/">Dashboard</Breadcrumb.Link>
-					</Breadcrumb.Item>
-					<Breadcrumb.Separator />
-					<Breadcrumb.Item>
-						<Breadcrumb.Link href="/containers">Containers</Breadcrumb.Link>
-					</Breadcrumb.Item>
-					<Breadcrumb.Separator />
-					<Breadcrumb.Item>
-						<Breadcrumb.Page>{container?.Name || 'Loading...'}</Breadcrumb.Page>
-					</Breadcrumb.Item>
-				</Breadcrumb.List>
-			</Breadcrumb.Root>
+<div class="min-h-screen bg-background">
+	{#if container}
+		<!-- Fixed Header -->
+		<div class="sticky top-0 z-10 bg-background/95 backdrop-blur border-b">
+			<div class="container mx-auto px-4 py-3">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<Button variant="ghost" size="sm" href="/containers">
+							<ArrowLeft class="size-4 mr-2" />
+							Back
+						</Button>
+						<div class="h-4 w-px bg-border"></div>
+						<div class="flex items-center gap-2">
+							<h1 class="text-lg font-semibold truncate max-w-[300px]" title={containerDisplayName}>
+								{containerDisplayName}
+							</h1>
+							{#if container?.State}
+								<StatusBadge variant={container.State.Status === 'running' ? 'green' : container.State.Status === 'exited' ? 'red' : 'amber'} text={container.State.Status} />
+							{/if}
+						</div>
+					</div>
 
-			<div class="mt-2 flex items-center gap-2">
-				<h1 class="text-2xl font-bold tracking-tight">
-					{container?.Name || 'Container Details'}
-				</h1>
-
-				{#if container?.State}
-					<span class="self-start mt-1.5"><StatusBadge variant={container.State.Status === 'running' ? 'green' : container.State.Status === 'exited' ? 'red' : 'amber'} text={container.State.Status} /></span>
-				{/if}
+					<div class="flex items-center gap-2">
+						{#if container}
+							<ActionButtons
+								id={container.Id}
+								type="container"
+								itemState={container.State?.Running ? 'running' : 'stopped'}
+								loading={{
+									start: starting,
+									stop: stopping,
+									restart: restarting,
+									remove: removing
+								}}
+							/>
+						{/if}
+					</div>
+				</div>
 			</div>
 		</div>
 
-		{#if container}
-			<div class="flex gap-2 flex-wrap">
-				<ActionButtons
-					id={container.Id}
-					type="container"
-					itemState={container.State?.Running ? 'running' : 'stopped'}
-					loading={{
-						start: starting,
-						stop: stopping,
-						restart: restarting,
-						remove: removing
-					}}
-				/>
-			</div>
-		{/if}
-	</div>
+		<div class="container mx-auto px-4 py-6">
+			<div class="flex gap-6">
+				<!-- Fixed Sidebar Navigation -->
+				<div class="w-56 shrink-0">
+					<div class="sticky top-20">
+						<nav class="space-y-1">
+							{#each navigationSections as section}
+								{@const IconComponent = section.icon}
+								<button
+									onclick={() => scrollToSection(section.id)}
+									class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors
+                                        {activeSection === section.id ? 'bg-primary/10 text-primary border border-primary/20' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+								>
+									<IconComponent class="size-4" />
+									{section.label}
+								</button>
+							{/each}
+						</nav>
+					</div>
+				</div>
 
-	{#if container}
-		<Tabs.Root value={activeTab} onValueChange={(val) => (activeTab = val)} class="space-y-4">
-			<Tabs.List class="dark:bg-slate-900 grid grid-cols-6 md:w-full md:max-w-3xl mb-4">
-				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="overview">Overview</Tabs.Trigger>
-				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="config">Configuration</Tabs.Trigger>
-				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="network">Networks</Tabs.Trigger>
-				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="storage">Storage</Tabs.Trigger>
-				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="logs">Logs</Tabs.Trigger>
-				<Tabs.Trigger class="data-[state=active]:border data-[state=active]:border-primary/60" value="stats">Metrics</Tabs.Trigger>
-			</Tabs.List>
+				<!-- Main Content -->
+				<div class="flex-1 min-w-0 space-y-8">
+					<!-- Overview Section -->
+					<section id="overview" class="scroll-mt-20">
+						<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<HardDrive class="size-5" />
+							Overview
+						</h2>
 
-			<Tabs.Content value="overview" class="space-y-6">
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title>Container Details</Card.Title>
-						<Card.Description>Basic information about the container</Card.Description>
-					</Card.Header>
-					<Card.Content>
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-							<div class="flex items-start gap-3">
-								<div class="bg-blue-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
-									<HardDrive class="text-blue-500 size-5" />
-								</div>
-								<div class="min-w-0 flex-1">
-									<p class="text-sm font-medium text-muted-foreground">Image</p>
-									<p class="text-base font-semibold mt-1 break-all">
-										<span class="truncate block" title={container.Config?.Image || 'N/A'}>
-											{container.Config?.Image || 'N/A'}
-										</span>
-									</p>
-								</div>
-							</div>
+						<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+							<!-- Basic Info Card -->
+							<Card.Root class="border">
+								<Card.Header class="pb-4">
+									<Card.Title>Container Details</Card.Title>
+								</Card.Header>
+								<Card.Content class="space-y-4">
+									<div class="flex items-center gap-3">
+										<div class="bg-blue-50 dark:bg-blue-950/20 p-2 rounded">
+											<HardDrive class="size-4 text-blue-600" />
+										</div>
+										<div class="min-w-0 flex-1">
+											<div class="text-sm text-muted-foreground">Image</div>
+											<div class="font-medium truncate" title={container.Config?.Image}>
+												{container.Config?.Image || 'N/A'}
+											</div>
+										</div>
+									</div>
 
-							<div class="flex items-start gap-3">
-								<div class="bg-green-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
-									<Clock class="text-green-500 size-5" />
-								</div>
-								<div class="min-w-0 flex-1">
-									<p class="text-sm font-medium text-muted-foreground">Created</p>
-									<p class="text-base font-semibold mt-1 truncate" title={formatDate(container.Created)}>
-										{formatDate(container.Created)}
-									</p>
-								</div>
-							</div>
+									<div class="flex items-center gap-3">
+										<div class="bg-green-50 dark:bg-green-950/20 p-2 rounded">
+											<Clock class="size-4 text-green-600" />
+										</div>
+										<div class="min-w-0 flex-1">
+											<div class="text-sm text-muted-foreground">Created</div>
+											<div class="font-medium" title={formatDate(container.Created)}>
+												{formatDate(container.Created)}
+											</div>
+										</div>
+									</div>
 
-							<div class="flex items-start gap-3">
-								<div class="bg-purple-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
-									<Network class="text-purple-500 size-5" />
-								</div>
-								<div class="min-w-0 flex-1">
-									<p class="text-sm font-medium text-muted-foreground">IP Address</p>
-									<p class="text-base font-semibold mt-1 truncate" title={primaryIpAddress}>
-										{primaryIpAddress}
-									</p>
-								</div>
-							</div>
+									<div class="flex items-center gap-3">
+										<div class="bg-purple-50 dark:bg-purple-950/20 p-2 rounded">
+											<Network class="size-4 text-purple-600" />
+										</div>
+										<div class="min-w-0 flex-1">
+											<div class="text-sm text-muted-foreground">IP Address</div>
+											<div class="font-medium">{primaryIpAddress}</div>
+										</div>
+									</div>
 
-							<div class="flex items-start gap-3">
-								<div class="bg-amber-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
-									<Terminal class="text-amber-500 size-5" />
-								</div>
-								<div class="min-w-0 flex-1">
-									<p class="text-sm font-medium text-muted-foreground">Command</p>
-									<p class="text-base font-semibold mt-1 truncate" title={container.Config?.Cmd?.join(' ') || 'N/A'}>
-										{container.Config?.Cmd?.join(' ') || 'N/A'}
-									</p>
-								</div>
-							</div>
+									<div class="flex items-center gap-3">
+										<div class="bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+											<Terminal class="size-4 text-amber-600" />
+										</div>
+										<div class="min-w-0 flex-1">
+											<div class="text-sm text-muted-foreground">Command</div>
+											<div class="font-medium truncate" title={container.Config?.Cmd?.join(' ')}>
+												{container.Config?.Cmd?.join(' ') || 'N/A'}
+											</div>
+										</div>
+									</div>
+								</Card.Content>
+							</Card.Root>
+
+							<!-- Quick Stats Card -->
+							<Card.Root class="border">
+								<Card.Header class="pb-4">
+									<Card.Title>Quick Stats</Card.Title>
+								</Card.Header>
+								<Card.Content class="space-y-4">
+									{#if stats && container.State?.Running}
+										<div class="space-y-3">
+											<div class="flex justify-between items-center">
+												<span class="text-muted-foreground flex items-center gap-2">
+													<Cpu class="size-4" /> CPU
+												</span>
+												<span class="font-medium">{cpuUsagePercent.toFixed(1)}%</span>
+											</div>
+											<div class="w-full bg-secondary rounded-full h-2">
+												<div class="bg-primary rounded-full h-2 transition-all duration-300" style="width: {Math.min(cpuUsagePercent, 100)}%"></div>
+											</div>
+										</div>
+
+										<div class="space-y-3">
+											<div class="flex justify-between items-center">
+												<span class="text-muted-foreground flex items-center gap-2">
+													<MemoryStick class="size-4" /> Memory
+												</span>
+												<span class="font-medium">{memoryUsageFormatted}</span>
+											</div>
+											<div class="w-full bg-secondary rounded-full h-2">
+												<div class="bg-primary rounded-full h-2 transition-all duration-300" style="width: {memoryUsagePercent.toFixed(2)}%"></div>
+											</div>
+										</div>
+									{:else}
+										<div class="text-muted-foreground text-center py-8">
+											{container.State?.Running ? 'Loading stats...' : 'Container not running'}
+										</div>
+									{/if}
+								</Card.Content>
+							</Card.Root>
 						</div>
-					</Card.Content>
-				</Card.Root>
 
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title>Container Configuration</Card.Title>
-						<Card.Description>Additional container settings</Card.Description>
-					</Card.Header>
-					<Card.Content>
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-							<div>
-								<span class="font-semibold">Container ID:</span>
-								<div class="font-mono mt-1 text-xs break-all">{container.Id}</div>
-							</div>
-
-							{#if container.Config?.WorkingDir}
+						<!-- Container ID and Health -->
+						<Card.Root class="border">
+							<Card.Header class="pb-4">
+								<Card.Title>System Information</Card.Title>
+							</Card.Header>
+							<Card.Content class="space-y-4">
 								<div>
-									<span class="font-semibold">Working Directory:</span>
-									<div class="mt-1 break-all">{container.Config.WorkingDir}</div>
+									<div class="text-sm text-muted-foreground mb-2">Container ID</div>
+									<div class="font-mono bg-muted/50 p-3 rounded text-sm break-all">{container.Id}</div>
 								</div>
-							{/if}
 
-							{#if container.Config?.User}
-								<div>
-									<span class="font-semibold">User:</span>
-									<div class="mt-1">{container.Config.User}</div>
-								</div>
-							{/if}
-
-							{#if container.State?.Health}
-								<div class="col-span-full">
-									<span class="font-semibold">Health Status:</span>
-									<div class="mt-1 flex gap-2 items-center">
-										<StatusBadge variant={container.State.Health.Status === 'healthy' ? 'green' : container.State.Health.Status === 'unhealthy' ? 'red' : 'amber'} text={container.State.Health.Status} />
-										{#if container.State.Health.Log && container.State.Health.Log.length > 0}
-											<span class="text-xs text-muted-foreground">
-												Last check: {new Date(container.State.Health.Log[0].Start).toLocaleString()}
-											</span>
-										{/if}
+								{#if container.Config?.WorkingDir}
+									<div>
+										<div class="text-sm text-muted-foreground mb-2">Working Directory</div>
+										<div class="font-mono bg-muted/50 p-3 rounded break-all">{container.Config.WorkingDir}</div>
 									</div>
-								</div>
-							{/if}
-						</div>
-					</Card.Content>
-				</Card.Root>
-			</Tabs.Content>
+								{/if}
 
-			<Tabs.Content value="config" class="space-y-6">
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title>Environment Variables</Card.Title>
-						<Card.Description>Container environment configuration</Card.Description>
-					</Card.Header>
-					<Card.Content class="max-h-[360px] overflow-y-auto">
-						{#if container.Config?.Env && container.Config.Env.length > 0}
-							<div class="space-y-2">
-								{#each container.Config.Env as env, index (index)}
-									<div class="text-xs flex overflow-hidden">
-										{#if env.includes('=')}
-											{@const [key, ...valueParts] = env.split('=')}
-											{@const value = valueParts.join('=')}
-											<div class="flex w-full">
-												<span class="font-semibold mr-2 min-w-[120px] max-w-[180px] truncate shrink-0" title={key}>{key}:</span>
-												<span class="truncate flex-1" title={value}>{value}</span>
-											</div>
-										{:else}
-											<span>{env}</span>
-										{/if}
+								{#if container.Config?.User}
+									<div>
+										<div class="text-sm text-muted-foreground mb-2">User</div>
+										<div class="font-mono bg-muted/50 p-3 rounded">{container.Config.User}</div>
 									</div>
-								{/each}
-							</div>
-						{:else}
-							<div class="text-sm text-muted-foreground italic">No environment variables set</div>
-						{/if}
-					</Card.Content>
-				</Card.Root>
+								{/if}
 
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title>Ports</Card.Title>
-						<Card.Description>Container port mappings</Card.Description>
-					</Card.Header>
-					<Card.Content>
-						{#if container.NetworkSettings?.Ports && Object.keys(container.NetworkSettings.Ports).length > 0}
-							<div class="space-y-2">
-								{#each Object.entries(container.NetworkSettings.Ports) as [containerPort, hostBindings] (containerPort)}
-									<div class="flex flex-col sm:flex-row sm:items-center justify-between rounded-md bg-muted/40 p-2 px-3 gap-1">
-										<div class="font-mono text-sm truncate" title={containerPort}>
-											{containerPort}
-										</div>
-										<div class="flex flex-wrap items-center gap-2">
-											<span class="text-xs text-muted-foreground">→</span>
-											{#if Array.isArray(hostBindings) && hostBindings.length > 0}
-												{#each hostBindings as binding (binding.HostIp + ':' + binding.HostPort)}
-													<Badge variant="outline" class="font-mono truncate max-w-[150px]" title="{binding.HostIp || '0.0.0.0'}:{binding.HostPort}">
-														{binding.HostIp || '0.0.0.0'}:{binding.HostPort}
-													</Badge>
-												{/each}
-											{:else}
-												<span class="text-xs text-muted-foreground">Not published</span>
+								{#if container.State?.Health}
+									<div>
+										<div class="text-sm text-muted-foreground mb-2">Health Status</div>
+										<div class="flex items-center gap-3">
+											<StatusBadge variant={container.State.Health.Status === 'healthy' ? 'green' : container.State.Health.Status === 'unhealthy' ? 'red' : 'amber'} text={container.State.Health.Status} />
+											{#if container.State.Health.Log && container.State.Health.Log.length > 0}
+												<span class="text-sm text-muted-foreground">
+													Last check: {new Date(container.State.Health.Log[0].Start).toLocaleString()}
+												</span>
 											{/if}
 										</div>
 									</div>
-								{/each}
-							</div>
-						{:else}
-							<div class="text-sm text-muted-foreground italic">No ports exposed</div>
-						{/if}
-					</Card.Content>
-				</Card.Root>
+								{/if}
+							</Card.Content>
+						</Card.Root>
+					</section>
 
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title>Labels</Card.Title>
-						<Card.Description>Container metadata labels</Card.Description>
-					</Card.Header>
-					<Card.Content class="max-h-[360px] overflow-y-auto">
-						{#if container.Config.Labels && Object.keys(container.Config.Labels).length > 0}
-							<div class="space-y-2">
-								{#each Object.entries(container.Config.Labels) as [key, value] (key)}
-									<div class="text-xs flex overflow-hidden">
-										<div class="flex w-full">
-											<span class="font-semibold mr-2 min-w-[120px] max-w-[180px] truncate shrink-0" title={key}>{key}:</span>
-											<span class="truncate flex-1" title={value?.toString()}>{value?.toString() || ''}</span>
+					<!-- Stats Section -->
+					<section id="stats" class="scroll-mt-20">
+						<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<Activity class="size-5" />
+							Resource Metrics
+						</h2>
+
+						<Card.Root class="border">
+							<Card.Content class="p-6">
+								{#if stats && container.State?.Running}
+									<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+										<!-- CPU and Memory -->
+										<div class="space-y-6">
+											<div>
+												<div class="flex justify-between items-center mb-3">
+													<span class="text-muted-foreground flex items-center gap-2">
+														<Cpu class="size-4" /> CPU Usage
+													</span>
+													<span class="font-medium">{cpuUsagePercent.toFixed(2)}%</span>
+												</div>
+												<div class="w-full bg-secondary rounded-full h-3">
+													<div class="bg-blue-500 rounded-full h-3 transition-all duration-300" style="width: {Math.min(cpuUsagePercent, 100)}%"></div>
+												</div>
+											</div>
+
+											<div>
+												<div class="flex justify-between items-center mb-3">
+													<span class="text-muted-foreground flex items-center gap-2">
+														<MemoryStick class="size-4" /> Memory Usage
+													</span>
+													<span class="font-medium">{memoryUsageFormatted} / {memoryLimitFormatted}</span>
+												</div>
+												<div class="w-full bg-secondary rounded-full h-3">
+													<div class="bg-green-500 rounded-full h-3 transition-all duration-300" style="width: {memoryUsagePercent.toFixed(2)}%"></div>
+												</div>
+											</div>
 										</div>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<div class="text-sm text-muted-foreground italic">No labels defined</div>
-						{/if}
-					</Card.Content>
-				</Card.Root>
-			</Tabs.Content>
 
-			<Tabs.Content value="network" class="space-y-6">
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title>Connected Networks</Card.Title>
-						<Card.Description>Network settings and connections</Card.Description>
-					</Card.Header>
-					<Card.Content>
-						{#if container.NetworkSettings?.Networks && Object.keys(container.NetworkSettings.Networks).length > 0}
-							<div class="space-y-4">
-								{#each Object.entries(container.NetworkSettings.Networks) as [networkName, rawNetworkConfig] (networkName)}
-									{@const networkConfig = ensureNetworkConfig(rawNetworkConfig)}
-									<div class="rounded-md bg-muted/40 p-3">
-										<div class="text-sm font-medium">{networkName}</div>
-										<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 mt-2">
-											<div class="text-xs">
-												<span class="font-semibold">IP Address:</span>
-												{networkConfig.IPAddress || 'N/A'}
-											</div>
-											<div class="text-xs">
-												<span class="font-semibold">Gateway:</span>
-												{networkConfig.Gateway || 'N/A'}
-											</div>
-											<div class="text-xs">
-												<span class="font-semibold">MAC Address:</span>
-												{networkConfig.MacAddress || 'N/A'}
-											</div>
-											<div class="text-xs">
-												<span class="font-semibold">Subnet:</span>
-												{networkConfig.IPPrefixLen ? `${networkConfig.IPAddress}/${networkConfig.IPPrefixLen}` : 'N/A'}
-											</div>
-											{#if networkConfig.Aliases && networkConfig.Aliases.length > 0}
-												<div class="text-xs col-span-full">
-													<span class="font-semibold">Aliases:</span>
-													{networkConfig.Aliases.join(', ')}
+										<!-- Network I/O -->
+										<div class="space-y-6">
+											<div>
+												<h4 class="font-medium mb-4 flex items-center gap-2">
+													<Network class="size-4" /> Network I/O
+												</h4>
+												<div class="grid grid-cols-2 gap-4">
+													<div class="bg-muted/30 p-4 rounded">
+														<div class="text-sm text-muted-foreground">Received</div>
+														<div class="font-medium mt-1">{formatBytes(stats.networks?.eth0?.rx_bytes || 0)}</div>
+													</div>
+													<div class="bg-muted/30 p-4 rounded">
+														<div class="text-sm text-muted-foreground">Transmitted</div>
+														<div class="font-medium mt-1">{formatBytes(stats.networks?.eth0?.tx_bytes || 0)}</div>
+													</div>
 												</div>
-											{/if}
-											{#if networkConfig.Links && networkConfig.Links.length > 0}
-												<div class="text-xs col-span-full">
-													<span class="font-semibold">Links:</span>
-													{networkConfig.Links.join(', ')}
-												</div>
-											{/if}
-										</div>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<div class="text-sm text-muted-foreground italic">No networks connected</div>
-						{/if}
-					</Card.Content>
-				</Card.Root>
-			</Tabs.Content>
+											</div>
 
-			<Tabs.Content value="storage" class="space-y-6">
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title>Volumes & Mounts</Card.Title>
-						<Card.Description>Container filesystem mounts</Card.Description>
-					</Card.Header>
-					<Card.Content>
-						{#if container.Mounts && container.Mounts.length > 0}
-							<div class="space-y-4">
-								{#each container.Mounts as mount (mount.Destination)}
-									<div class="rounded-md overflow-hidden border border-muted">
-										<div
-											class={`p-3 flex items-center justify-between gap-2 
-											${mount.Type === 'volume' ? 'bg-purple-500/5 border-b border-purple-200/30' : mount.Type === 'bind' ? 'bg-blue-500/5 border-b border-blue-200/30' : 'bg-amber-500/5 border-b border-amber-200/30'}`}
-										>
-											<div class="flex items-center gap-2">
-												<div
-													class={`p-1.5 rounded-md 
-														${mount.Type === 'volume' ? 'bg-purple-500/10' : mount.Type === 'bind' ? 'bg-blue-500/10' : 'bg-amber-500/10'}`}
-												>
-													{#if mount.Type === 'volume'}
-														<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-600">
-															<path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10"></path>
-															<path d="m16 2 5 5-9 9H7v-5l9-9Z"></path>
-														</svg>
-													{:else if mount.Type === 'bind'}
-														<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600">
-															<path d="M20 6v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6"></path>
-															<path d="M3 6h18"></path>
-															<path d="M15 3h-6a2 2 0 0 0-2 2v1h10V5a2 2 0 0 0-2-2Z"></path>
-														</svg>
-													{:else}
-														<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-600">
-															<path d="m14 12-8.5 8.5a2.12 2.12 0 1 1-3-3L11 9"></path>
-															<path d="M15 3h6v6"></path>
-															<path d="M14 4 21 11"></path>
-														</svg>
-													{/if}
-												</div>
-
+											{#if stats.blkio_stats && stats.blkio_stats.io_service_bytes_recursive && stats.blkio_stats.io_service_bytes_recursive.length > 0}
 												<div>
-													<div class="text-sm font-medium">
-														{mount.Type === 'tmpfs' ? 'Temporary filesystem' : mount.Type === 'volume' ? mount.Name || 'Docker volume' : 'Host directory'}
-													</div>
-													<div class="text-xs text-muted-foreground">
-														{mount.Type} mount {mount.RW ? '(read-write)' : '(read-only)'}
+													<h4 class="font-medium mb-4">Block I/O</h4>
+													<div class="grid grid-cols-2 gap-4">
+														<div class="bg-muted/30 p-4 rounded">
+															<div class="text-sm text-muted-foreground">Read</div>
+															<div class="font-medium mt-1">
+																{formatBytes(stats.blkio_stats.io_service_bytes_recursive.filter((item) => item.op === 'Read').reduce((acc, item) => acc + item.value, 0))}
+															</div>
+														</div>
+														<div class="bg-muted/30 p-4 rounded">
+															<div class="text-sm text-muted-foreground">Write</div>
+															<div class="font-medium mt-1">
+																{formatBytes(stats.blkio_stats.io_service_bytes_recursive.filter((item) => item.op === 'Write').reduce((acc, item) => acc + item.value, 0))}
+															</div>
+														</div>
 													</div>
 												</div>
-											</div>
-
-											<Badge variant={mount.RW ? 'outline' : 'secondary'}>
-												{mount.RW ? 'Read/Write' : 'Read Only'}
-											</Badge>
-										</div>
-
-										<div class="bg-card p-3">
-											<div class="grid gap-3 text-sm">
-												<div class="flex items-start gap-2">
-													<div class="min-w-[80px] text-xs font-semibold pt-0.5 text-muted-foreground">CONTAINER</div>
-													<div class="font-mono text-xs bg-muted/50 py-1 px-2 rounded break-all flex-1">
-														{mount.Destination}
-													</div>
-												</div>
-
-												<div class="flex items-start gap-2">
-													<div class="min-w-[80px] text-xs font-semibold pt-0.5 text-muted-foreground">
-														{mount.Type === 'volume' ? 'VOLUME' : mount.Type === 'bind' ? 'HOST' : 'SOURCE'}
-													</div>
-													<div class="font-mono text-xs bg-muted/50 py-1 px-2 rounded break-all flex-1">
-														{mount.Source}
-													</div>
-												</div>
-
-												{#if mount.Driver || mount.Mode || (mount.Propagation && mount.Propagation !== 'rprivate')}
-													<div class="pt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-														{#if mount.Driver}
-															<div>
-																<span class="font-semibold">Driver:</span>
-																{mount.Driver}
-															</div>
-														{/if}
-														{#if mount.Mode}
-															<div>
-																<span class="font-semibold">Mode:</span>
-																{mount.Mode}
-															</div>
-														{/if}
-														{#if mount.Propagation && mount.Propagation !== 'rprivate'}
-															<div>
-																<span class="font-semibold">Propagation:</span>
-																{mount.Propagation}
-															</div>
-														{/if}
-													</div>
-												{/if}
-											</div>
+											{/if}
 										</div>
 									</div>
-								{/each}
-							</div>
-						{:else}
-							<div class="text-center py-8 border rounded-md border-dashed">
-								<div class="mb-3 rounded-full bg-muted/50 flex items-center justify-center mx-auto size-12">
-									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground">
-										<path d="M21 5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2V5Z"></path>
-										<path d="M2 10h20"></path>
-									</svg>
-								</div>
-								<div class="text-sm text-muted-foreground">No volumes or mounts configured</div>
-								<div class="text-xs text-muted-foreground/70 mt-1">This container runs without persistent storage</div>
-							</div>
-						{/if}
-					</Card.Content>
-				</Card.Root>
-			</Tabs.Content>
 
-			<Tabs.Content value="logs" class="space-y-6">
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-4">
-							<div>
-								<Card.Title class="text-lg font-semibold">Container Logs</Card.Title>
-								<Card.Description>Live output from the container</Card.Description>
-							</div>
-							<div class="flex items-center gap-2">
-								<div class="flex items-center">
-									<input type="checkbox" id="auto-scroll" class="mr-2" bind:checked={autoScrollLogs} />
-									<label for="auto-scroll" class="text-xs">Auto-scroll</label>
-								</div>
+									{#if stats.pids_stats && stats.pids_stats.current !== undefined}
+										<div class="mt-6 pt-6 border-t">
+											<div class="text-sm">
+												<span class="text-muted-foreground">Process count:</span>
+												<span class="ml-2 font-medium">{stats.pids_stats.current}</span>
+											</div>
+										</div>
+									{/if}
+								{:else if !container.State?.Running}
+									<div class="text-center text-muted-foreground py-12">Container is not running. Stats unavailable.</div>
+								{:else}
+									<div class="text-center text-muted-foreground py-12">Loading stats...</div>
+								{/if}
+							</Card.Content>
+						</Card.Root>
+					</section>
 
+					<!-- Logs Section -->
+					<section id="logs" class="scroll-mt-20">
+						<div class="flex items-center justify-between mb-6">
+							<h2 class="text-xl font-semibold flex items-center gap-2">
+								<FileText class="size-5" />
+								Container Logs
+							</h2>
+							<div class="flex items-center gap-3">
+								<label class="flex items-center gap-2">
+									<input type="checkbox" bind:checked={autoScrollLogs} class="size-4" />
+									Auto-scroll
+								</label>
 								<Button variant="outline" size="sm" onclick={() => logViewer?.clearLogs()}>Clear</Button>
-
 								{#if isStreaming}
-									<div class="flex items-center space-x-1">
-										<div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-										<span class="text-xs text-green-400">Live</span>
+									<div class="flex items-center gap-2">
+										<div class="size-2 bg-green-500 rounded-full animate-pulse"></div>
+										<span class="text-green-600 text-sm font-medium">Live</span>
 									</div>
 									<Button variant="outline" size="sm" onclick={() => logViewer?.stopLogStream()}>Stop</Button>
 								{:else}
 									<Button variant="outline" size="sm" onclick={() => logViewer?.startLogStream()} disabled={!container?.Id}>Start</Button>
 								{/if}
-
-								<Button variant="outline" size="sm" onclick={refreshData} disabled={isRefreshing}>
-									<RefreshCw class={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-									Refresh
-								</Button>
 							</div>
 						</div>
-					</Card.Header>
 
-					<Card.Content>
-						<LogViewer bind:this={logViewer} bind:autoScroll={autoScrollLogs} type="container" containerId={container?.Id} maxLines={500} showTimestamps={true} height="500px" onStart={handleLogStart} onStop={handleLogStop} onClear={handleLogClear} onToggleAutoScroll={handleToggleAutoScroll} />
-					</Card.Content>
-				</Card.Root>
-			</Tabs.Content>
+						<Card.Root class="border">
+							<Card.Content class="p-0">
+								<LogViewer bind:this={logViewer} bind:autoScroll={autoScrollLogs} type="container" containerId={container?.Id} maxLines={500} showTimestamps={true} height="400px" onStart={handleLogStart} onStop={handleLogStop} onClear={handleLogClear} onToggleAutoScroll={handleToggleAutoScroll} />
+							</Card.Content>
+						</Card.Root>
+					</section>
 
-			<Tabs.Content value="stats" class="space-y-6">
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<div class="flex justify-between items-center">
-							<div>
-								<Card.Title class="text-lg font-semibold">Resource Usage</Card.Title>
-								<Card.Description>Live container metrics</Card.Description>
-							</div>
-							<Button variant="ghost" size="icon" onclick={refreshData} disabled={isRefreshing} title="Refresh Stats">
-								<RefreshCw class={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-							</Button>
+					<!-- Configuration Section -->
+					<section id="config" class="scroll-mt-20">
+						<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<Settings class="size-5" />
+							Configuration
+						</h2>
+
+						<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+							<!-- Environment Variables -->
+							<Card.Root class="border">
+								<Card.Header class="pb-4">
+									<Card.Title>Environment Variables</Card.Title>
+								</Card.Header>
+								<Card.Content class="max-h-80 overflow-y-auto">
+									{#if container.Config?.Env && container.Config.Env.length > 0}
+										<div class="space-y-2">
+											{#each container.Config.Env as env, index (index)}
+												{#if env.includes('=')}
+													{@const [key, ...valueParts] = env.split('=')}
+													{@const value = valueParts.join('=')}
+													<div class="flex border-b border-muted/30 py-2">
+														<span class="font-medium w-1/3 pr-3 truncate" title={key}>{key}</span>
+														<span class="w-2/3 truncate text-muted-foreground" title={value}>{value}</span>
+													</div>
+												{:else}
+													<div class="border-b border-muted/30 py-2">{env}</div>
+												{/if}
+											{/each}
+										</div>
+									{:else}
+										<div class="text-muted-foreground text-center py-8">No environment variables</div>
+									{/if}
+								</Card.Content>
+							</Card.Root>
+
+							<!-- Ports -->
+							<Card.Root class="border">
+								<Card.Header class="pb-4">
+									<Card.Title>Port Mappings</Card.Title>
+								</Card.Header>
+								<Card.Content>
+									{#if container.NetworkSettings?.Ports && Object.keys(container.NetworkSettings.Ports).length > 0}
+										<div class="space-y-3">
+											{#each Object.entries(container.NetworkSettings.Ports) as [containerPort, hostBindings] (containerPort)}
+												<div class="flex items-center justify-between p-3 bg-muted/20 rounded">
+													<span class="font-mono">{containerPort}</span>
+													<div class="flex items-center gap-2">
+														<span class="text-muted-foreground">→</span>
+														{#if Array.isArray(hostBindings) && hostBindings.length > 0}
+															{#each hostBindings as binding (binding.HostIp + ':' + binding.HostPort)}
+																<Badge variant="outline" class="font-mono">
+																	{binding.HostIp || '0.0.0.0'}:{binding.HostPort}
+																</Badge>
+															{/each}
+														{:else}
+															<span class="text-muted-foreground">Not published</span>
+														{/if}
+													</div>
+												</div>
+											{/each}
+										</div>
+									{:else}
+										<div class="text-muted-foreground text-center py-8">No ports exposed</div>
+									{/if}
+								</Card.Content>
+							</Card.Root>
 						</div>
-					</Card.Header>
 
-					<Card.Content>
-						{#if stats && container.State?.Running}
-							<div class="space-y-6">
-								<div>
-									<div class="flex justify-between items-center mb-2">
-										<span class="text-sm font-medium flex items-center gap-2"><Cpu class="text-muted-foreground size-4" /> CPU Usage</span>
-										<span class="text-sm font-semibold">{cpuUsagePercent.toFixed(2)}%</span>
+						<!-- Labels -->
+						<Card.Root class="border mt-6">
+							<Card.Header class="pb-4">
+								<Card.Title>Labels</Card.Title>
+							</Card.Header>
+							<Card.Content class="max-h-60 overflow-y-auto">
+								{#if container.Config?.Labels && Object.keys(container.Config.Labels).length > 0}
+									<div class="space-y-2">
+										{#each Object.entries(container.Config.Labels) as [key, value] (key)}
+											<div class="flex border-b border-muted/30 py-2">
+												<span class="font-medium w-1/3 pr-3 truncate" title={key}>{key}</span>
+												<span class="w-2/3 truncate text-muted-foreground" title={value?.toString()}>{value?.toString() || ''}</span>
+											</div>
+										{/each}
 									</div>
-									<div class="w-full bg-secondary rounded-full overflow-hidden size-3">
-										<div class="bg-primary rounded-full transition-all duration-300 size-3" style="width: {Math.min(cpuUsagePercent, 100)}%"></div>
-									</div>
-								</div>
+								{:else}
+									<div class="text-muted-foreground text-center py-8">No labels defined</div>
+								{/if}
+							</Card.Content>
+						</Card.Root>
+					</section>
 
-								<div>
-									<div class="flex justify-between items-center mb-2">
-										<span class="text-sm font-medium flex items-center gap-2"><MemoryStick class="text-muted-foreground size-4" /> Memory Usage</span>
-										<span class="text-sm font-semibold">{memoryUsageFormatted} / {memoryLimitFormatted}</span>
-									</div>
-									<div class="w-full bg-secondary rounded-full overflow-hidden size-3">
-										<div class="bg-primary rounded-full transition-all duration-300 size-3" style="width: {memoryUsagePercent.toFixed(2)}%"></div>
-									</div>
-								</div>
+					<!-- Network Section -->
+					<section id="network" class="scroll-mt-20">
+						<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<Network class="size-5" />
+							Networks
+						</h2>
 
-								<div>
-									<h4 class="text-sm font-medium mb-2 flex items-center gap-2">
-										<Network class="text-muted-foreground size-4" /> Network I/O
-									</h4>
-									<div class="grid grid-cols-2 gap-4 bg-muted/30 p-3 rounded-md">
-										<div>
-											<div class="text-xs text-muted-foreground">Received</div>
-											<div class="text-sm font-medium mt-1">{formatBytes(stats.networks?.eth0?.rx_bytes || 0)}</div>
-										</div>
-										<div>
-											<div class="text-xs text-muted-foreground">Transmitted</div>
-											<div class="text-sm font-medium mt-1">{formatBytes(stats.networks?.eth0?.tx_bytes || 0)}</div>
-										</div>
-									</div>
-								</div>
-
-								{#if stats.blkio_stats && stats.blkio_stats.io_service_bytes_recursive && stats.blkio_stats.io_service_bytes_recursive.length > 0}
-									<div>
-										<h4 class="text-sm font-medium mb-2">Block I/O</h4>
-										<div class="grid grid-cols-2 gap-4 bg-muted/30 p-3 rounded-md">
-											<div>
-												<div class="text-xs text-muted-foreground">Read</div>
-												<div class="text-sm font-medium mt-1">
-													{formatBytes(stats.blkio_stats.io_service_bytes_recursive.filter((item) => item.op === 'Read').reduce((acc, item) => acc + item.value, 0))}
+						<Card.Root class="border">
+							<Card.Content class="p-6">
+								{#if container.NetworkSettings?.Networks && Object.keys(container.NetworkSettings.Networks).length > 0}
+									<div class="space-y-6">
+										{#each Object.entries(container.NetworkSettings.Networks) as [networkName, rawNetworkConfig] (networkName)}
+											{@const networkConfig = ensureNetworkConfig(rawNetworkConfig)}
+											<div class="border rounded p-4">
+												<div class="font-medium mb-4">{networkName}</div>
+												<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+													<div>
+														<div class="text-sm text-muted-foreground">IP Address</div>
+														<div class="font-mono">{networkConfig.IPAddress || 'N/A'}</div>
+													</div>
+													<div>
+														<div class="text-sm text-muted-foreground">Gateway</div>
+														<div class="font-mono">{networkConfig.Gateway || 'N/A'}</div>
+													</div>
+													<div>
+														<div class="text-sm text-muted-foreground">MAC Address</div>
+														<div class="font-mono">{networkConfig.MacAddress || 'N/A'}</div>
+													</div>
+													<div>
+														<div class="text-sm text-muted-foreground">Subnet</div>
+														<div class="font-mono">
+															{networkConfig.IPPrefixLen ? `${networkConfig.IPAddress}/${networkConfig.IPPrefixLen}` : 'N/A'}
+														</div>
+													</div>
+													{#if networkConfig.Aliases && networkConfig.Aliases.length > 0}
+														<div class="col-span-2">
+															<div class="text-sm text-muted-foreground">Aliases</div>
+															<div class="font-mono">{networkConfig.Aliases.join(', ')}</div>
+														</div>
+													{/if}
 												</div>
 											</div>
-											<div>
-												<div class="text-xs text-muted-foreground">Write</div>
-												<div class="text-sm font-medium mt-1">
-													{formatBytes(stats.blkio_stats.io_service_bytes_recursive.filter((item) => item.op === 'Write').reduce((acc, item) => acc + item.value, 0))}
+										{/each}
+									</div>
+								{:else}
+									<div class="text-muted-foreground text-center py-12">No networks connected</div>
+								{/if}
+							</Card.Content>
+						</Card.Root>
+					</section>
+
+					<!-- Storage Section -->
+					<section id="storage" class="scroll-mt-20">
+						<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<Database class="size-5" />
+							Storage & Mounts
+						</h2>
+
+						<Card.Root class="border">
+							<Card.Content class="p-6">
+								{#if container.Mounts && container.Mounts.length > 0}
+									<div class="space-y-4">
+										{#each container.Mounts as mount (mount.Destination)}
+											<div class="border rounded overflow-hidden">
+												<div class="flex items-center justify-between p-4 bg-muted/20">
+													<div class="flex items-center gap-3">
+														<div class="p-2 rounded {mount.Type === 'volume' ? 'bg-purple-100 dark:bg-purple-950' : mount.Type === 'bind' ? 'bg-blue-100 dark:bg-blue-950' : 'bg-amber-100 dark:bg-amber-950'}">
+															{#if mount.Type === 'volume'}
+																<Database class="size-4 text-purple-600" />
+															{:else if mount.Type === 'bind'}
+																<HardDrive class="size-4 text-blue-600" />
+															{:else}
+																<Terminal class="size-4 text-amber-600" />
+															{/if}
+														</div>
+														<div>
+															<div class="font-medium">
+																{mount.Type === 'tmpfs' ? 'Temporary filesystem' : mount.Type === 'volume' ? mount.Name || 'Docker volume' : 'Host directory'}
+															</div>
+															<div class="text-sm text-muted-foreground">
+																{mount.Type} mount {mount.RW ? '(read-write)' : '(read-only)'}
+															</div>
+														</div>
+													</div>
+													<Badge variant={mount.RW ? 'outline' : 'secondary'}>
+														{mount.RW ? 'RW' : 'RO'}
+													</Badge>
+												</div>
+												<div class="p-4 space-y-3">
+													<div class="flex">
+														<span class="w-24 text-muted-foreground font-medium">Container:</span>
+														<span class="font-mono bg-muted/50 px-2 py-1 rounded flex-1">{mount.Destination}</span>
+													</div>
+													<div class="flex">
+														<span class="w-24 text-muted-foreground font-medium">
+															{mount.Type === 'volume' ? 'Volume:' : mount.Type === 'bind' ? 'Host:' : 'Source:'}
+														</span>
+														<span class="font-mono bg-muted/50 px-2 py-1 rounded flex-1">{mount.Source}</span>
+													</div>
 												</div>
 											</div>
+										{/each}
+									</div>
+								{:else}
+									<div class="text-center py-12">
+										<div class="mb-4 rounded-full bg-muted/50 flex items-center justify-center mx-auto size-16">
+											<Database class="size-6 text-muted-foreground" />
 										</div>
+										<div class="text-muted-foreground">No volumes or mounts configured</div>
 									</div>
 								{/if}
-
-								{#if stats.pids_stats && stats.pids_stats.current !== undefined}
-									<div class="text-sm">
-										<span class="font-medium">Process count:</span>
-										<span class="ml-2">{stats.pids_stats.current}</span>
-									</div>
-								{/if}
-							</div>
-						{:else if !container.State?.Running}
-							<div class="text-center text-sm text-muted-foreground italic py-12">Container is not running. Stats unavailable.</div>
-						{:else}
-							<div class="text-center text-sm text-muted-foreground italic py-12">Could not load stats.</div>
-						{/if}
-					</Card.Content>
-				</Card.Root>
-			</Tabs.Content>
-		</Tabs.Root>
-	{:else}
-		<div class="flex flex-col items-center justify-center py-12 border rounded-lg shadow-sm bg-card">
-			<div class="rounded-full bg-muted/50 p-4 mb-4">
-				<AlertCircle class="text-muted-foreground size-8" />
+							</Card.Content>
+						</Card.Root>
+					</section>
+				</div>
 			</div>
-			<h2 class="text-lg font-medium mb-2">Container Not Found</h2>
-			<p class="text-center text-muted-foreground max-w-md">Could not load container data. It may have been removed or the Docker engine is not accessible.</p>
-			<div class="flex gap-3 mt-6">
-				<Button variant="outline" href="/containers">
-					<ArrowLeft class="mr-2 size-4" />
-					Back to Containers
-				</Button>
-				<Button variant="default" onclick={refreshData}>
-					<RefreshCw class="mr-2 size-4" />
-					Retry
-				</Button>
+		</div>
+	{:else}
+		<div class="min-h-screen flex items-center justify-center">
+			<div class="text-center">
+				<div class="rounded-full bg-muted/50 p-6 mb-6 inline-flex">
+					<AlertCircle class="text-muted-foreground size-10" />
+				</div>
+				<h2 class="text-2xl font-medium mb-3">Container Not Found</h2>
+				<p class="text-center text-muted-foreground max-w-md mb-8">Could not load container data. It may have been removed or the Docker engine is not accessible.</p>
+				<div class="flex gap-4 justify-center">
+					<Button variant="outline" href="/containers">
+						<ArrowLeft class="mr-2 size-4" />
+						Back to Containers
+					</Button>
+					<Button variant="default" onclick={refreshData}>
+						<RefreshCw class="mr-2 size-4" />
+						Retry
+					</Button>
+				</div>
 			</div>
 		</div>
 	{/if}
