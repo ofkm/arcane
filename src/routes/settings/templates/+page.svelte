@@ -6,7 +6,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
-	import { Trash2, Plus, ExternalLink, RefreshCw, FileText, Globe, FolderOpen, Save } from '@lucide/svelte';
+	import { Trash2, Plus, ExternalLink, RefreshCw, FileText, Globe, FolderOpen, Save, Users, Copy } from '@lucide/svelte';
 	import type { PageData } from './$types';
 	import { settingsStore, saveSettingsToServer, updateSettingsStore } from '$lib/stores/settings-store';
 	import { templateRegistryService } from '$lib/services/template-registry-service';
@@ -175,6 +175,17 @@
 			}
 		});
 	}
+
+	function copyToClipboard(text: string) {
+		navigator.clipboard
+			.writeText(text)
+			.then(() => {
+				toast.success('Copied to clipboard');
+			})
+			.catch(() => {
+				toast.error('Failed to copy');
+			});
+	}
 </script>
 
 <svelte:head>
@@ -185,7 +196,10 @@
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Template Settings</h1>
-			<p class="text-sm text-muted-foreground mt-1">Manage Docker Compose template sources and registries</p>
+			<p class="text-sm text-muted-foreground mt-1">
+				Manage Docker Compose template sources and registries
+				<a href="https://arcane.ofkm.dev/docs/templates/use-templates" class="text-primary hover:underline ml-1">→ Learn more</a>
+			</p>
 		</div>
 
 		<!-- Keep save button for any future manual settings that might be added -->
@@ -257,6 +271,21 @@
 			<Globe class="size-4" />
 			<Alert.Title>Remote Registries</Alert.Title>
 			<Alert.Description>Add remote template registries to access community templates. Registries should provide a JSON manifest with template metadata and download URLs. Changes are saved automatically.</Alert.Description>
+		</Alert.Root>
+
+		<Alert.Root class="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+			<Users class="size-4" />
+			<Alert.Title>Community Registry</Alert.Title>
+			<Alert.Description class="space-y-2">
+				<p>Get started quickly with our community registry containing 50+ popular templates:</p>
+				<div class="flex items-center gap-2 mt-2">
+					<code class="bg-white dark:bg-gray-800 px-2 py-1 rounded text-xs"> https://raw.githubusercontent.com/ofkm/arcane-templates/main/registry.json </code>
+					<Button size="sm" variant="outline" onclick={() => copyToClipboard('https://raw.githubusercontent.com/ofkm/arcane-templates/main/registry.json')}>
+						<Copy class="size-3 mr-1" />
+						Copy
+					</Button>
+				</div>
+			</Alert.Description>
 		</Alert.Root>
 
 		<!-- Add New Registry Form -->
