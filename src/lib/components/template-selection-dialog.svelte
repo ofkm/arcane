@@ -115,13 +115,6 @@
 					<p class="text-sm">Configure remote registries in <a href="/settings/templates" class="text-primary hover:underline">Template Settings</a> to access community templates</p>
 				</div>
 			{:else}
-				<!-- Info Alert -->
-				<Alert.Root>
-					<FileText class="size-4" />
-					<Alert.Title>Template Actions</Alert.Title>
-					<Alert.Description>Click any template to use it immediately in your stack. For remote templates, you can also download them to save locally for offline use.</Alert.Description>
-				</Alert.Root>
-
 				<!-- Local Templates -->
 				{#if localTemplates.length > 0}
 					<div>
