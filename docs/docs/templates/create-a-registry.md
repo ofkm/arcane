@@ -160,7 +160,7 @@ Here's a minimal GitHub setup:
 
 Don't want to maintain your own? Contribute to our community registry:
 
-**GitHub**: [https://github.com/arcane-docker/community-templates](https://github.com/arcane-docker/community-templates)
+**GitHub**: [https://github.com/ofkm/arcane-templates](https://github.com/ofkm/arcane-templates)
 
 Submit pull requests to add your templates to the community collection!
 
@@ -178,5 +178,3 @@ Submit pull requests to add your templates to the community collection!
 - Verify file URLs are direct download links
 - Check that files exist at specified URLs
 - Ensure proper file permissions
-
-**Need help?** Open an issue in our [GitHub repository](https://github.com/arcane-docker/arcane/issues) with your registry URL and error details.
