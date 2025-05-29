@@ -37,7 +37,8 @@ export const GET: RequestHandler = async ({ url }) => {
 
 			const contentType = response.headers.get('content-type');
 			// GitHub serves JSON files with text/plain content type
-			const isGitHub = registryUrl.includes('githubusercontent.com');
+			const allowedHosts = ['raw.githubusercontent.com', 'githubusercontent.com'];
+			const isGitHub = allowedHosts.includes(urlObj.host);
 			const isValidContentType = contentType?.includes('application/json') || contentType?.includes('text/json') || (isGitHub && contentType?.includes('text/plain'));
 
 			if (!isValidContentType) {
