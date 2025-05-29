@@ -137,44 +137,6 @@
 		}
 	}
 
-	async function loadMetricsDetails() {
-		if (!agent || agent.status !== 'online') return;
-
-		loadingDetails = true;
-		try {
-			// Send commands to get detailed data
-			const commands = [
-				{ type: 'docker_command', payload: { command: 'ps', args: ['-a', '--format', 'json'] } },
-				{ type: 'docker_command', payload: { command: 'images', args: ['--format', 'json'] } },
-				{ type: 'docker_command', payload: { command: 'network', args: ['ls', '--format', 'json'] } },
-				{ type: 'docker_command', payload: { command: 'volume', args: ['ls', '--format', 'json'] } },
-				{ type: 'docker_command', payload: { command: 'stack', args: ['ls', '--format', 'json'] } }
-			];
-
-			const results = await Promise.allSettled(
-				commands.map(async (cmd) => {
-					const response = await fetch(`/api/agents/${agentId}/tasks`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(cmd)
-					});
-
-					if (!response.ok) throw new Error(`Failed to execute ${cmd.payload.command}`);
-					return response.json();
-				})
-			);
-
-			// Parse results when tasks complete
-			// This is a simplified version - in reality you'd need to poll for task completion
-			// and parse the JSON results from the agent
-		} catch (err) {
-			console.error('Failed to load metrics details:', err);
-			toast.error('Failed to load detailed metrics');
-		} finally {
-			loadingDetails = false;
-		}
-	}
-
 	async function loadResourcesData() {
 		if (!agent || agent.status !== 'online') {
 			resourcesError = 'Agent must be online to load resource data';
@@ -1194,7 +1156,7 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<!-- Quick Container Dialog
+<!-- Quick Container Dialog -->
 <Dialog.Root bind:open={containerDialogOpen}>
 	<Dialog.Content class="sm:max-w-xl">
 		<Dialog.Header>
@@ -1204,4 +1166,4 @@
 
 		<QuickContainerForm {agentId} onClose={() => (containerDialogOpen = false)} onRun={handleContainerRun} />
 	</Dialog.Content>
-</Dialog.Root> -->
+</Dialog.Root>
