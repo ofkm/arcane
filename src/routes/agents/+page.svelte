@@ -102,7 +102,7 @@
 			<p class="text-gray-600 dark:text-gray-400 mb-4">Get started by connecting your first agent</p>
 			<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-w-md mx-auto">
 				<p class="text-sm text-gray-600 dark:text-gray-400">Make sure your Go agent is running and connecting to:</p>
-				<code class="text-sm font-mono bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded mt-2 inline-block"> ws://localhost:3001/agent/connect </code>
+				<code class="text-sm font-mono bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded mt-2 inline-block"> http://localhost:3000/agent/register </code>
 			</div>
 		</div>
 	{:else}
