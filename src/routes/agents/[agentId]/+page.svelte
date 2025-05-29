@@ -82,7 +82,8 @@
 
 	async function loadAgentTasks() {
 		try {
-			const response = await fetch(`/api/agents/${agentId}/tasks`);
+			// Add admin flag to get full task data including results
+			const response = await fetch(`/api/agents/${agentId}/tasks?admin=true`);
 			if (response.ok) {
 				const responseData = await response.json();
 				tasks = responseData.tasks || [];
@@ -384,22 +385,50 @@
 					{#if tasks.length > 0}
 						<div class="space-y-3 max-h-96 overflow-y-auto">
 							{#each tasks.slice(0, 10) as task}
-								<div class="flex items-center justify-between p-3 border rounded-lg">
-									<div class="flex-1">
+								<div class="border rounded-lg p-3">
+									<div class="flex items-center justify-between mb-2">
 										<div class="flex items-center gap-2">
 											<p class="font-medium text-sm">{task.type.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}</p>
-											<!-- Replace StatusBadge with inline span -->
 											<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getTaskStatusClasses(task.status)}">
 												{task.status}
 											</span>
 										</div>
-										<p class="text-xs text-muted-foreground mt-1">
+										<p class="text-xs text-muted-foreground">
 											{formatDistanceToNow(new Date(task.createdAt))} ago
 										</p>
-										{#if task.error}
-											<p class="text-xs text-red-500 mt-1">{task.error}</p>
-										{/if}
 									</div>
+
+									<!-- Show command details -->
+									{#if task.payload?.command}
+										<div class="text-xs text-muted-foreground mb-2">
+											<code class="bg-muted px-1 rounded">
+												{task.payload.command}
+												{#if task.payload.args?.length > 0}
+													{task.payload.args.join(' ')}
+												{/if}
+											</code>
+										</div>
+									{/if}
+
+									<!-- Show results for completed tasks -->
+									{#if task.status === 'completed' && task.result}
+										<details class="mt-2">
+											<summary class="cursor-pointer text-xs text-green-600 hover:text-green-500"> View Output </summary>
+											<div class="mt-2 p-2 bg-muted rounded text-xs font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
+												{typeof task.result === 'string' ? task.result : JSON.stringify(task.result, null, 2)}
+											</div>
+										</details>
+									{/if}
+
+									<!-- Show errors for failed tasks -->
+									{#if task.error}
+										<details class="mt-2">
+											<summary class="cursor-pointer text-xs text-red-600 hover:text-red-500"> View Error </summary>
+											<div class="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs text-red-600 dark:text-red-400 max-h-32 overflow-y-auto">
+												{task.error}
+											</div>
+										</details>
+									{/if}
 								</div>
 							{/each}
 						</div>

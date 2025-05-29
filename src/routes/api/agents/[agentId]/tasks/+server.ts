@@ -3,27 +3,33 @@ import type { RequestHandler } from './$types';
 import { getAgent, listTasks, sendTaskToAgent } from '$lib/services/agent/agent-manager';
 
 // GET - Agent requests pending tasks (no auth required for agents)
-// This is allowed by the regex pattern in hooks.server.ts
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, url }) => {
 	try {
 		const agentId = params.agentId;
 
-		// Get all pending tasks for this agent
-		const allTasks = await listTasks(agentId);
-		const pendingTasks = allTasks.filter((task) => task.status === 'pending');
+		// Check if this is an admin request (has auth) vs agent request (no auth)
+		const isAdminRequest = url.searchParams.has('admin') || url.searchParams.has('include_results');
 
-		// Return tasks in the format the agent expects
-		const formattedTasks = pendingTasks.map((task) => ({
-			id: task.id,
-			type: task.type,
-			payload: task.payload
-		}));
+		if (isAdminRequest) {
+			// This is an admin request from the UI - return full task data
+			const allTasks = await listTasks(agentId);
+			return json({ tasks: allTasks });
+		} else {
+			// This is an agent request - return only pending tasks for execution
+			const allTasks = await listTasks(agentId);
+			const pendingTasks = allTasks.filter((task) => task.status === 'pending');
 
-		console.log(`📋 Agent ${agentId} requested tasks, returning ${formattedTasks.length} pending tasks`);
+			const formattedTasks = pendingTasks.map((task) => ({
+				id: task.id,
+				type: task.type,
+				payload: task.payload
+			}));
 
-		return json(formattedTasks);
+			console.log(`📋 Agent ${agentId} requested tasks, returning ${formattedTasks.length} pending tasks`);
+			return json(formattedTasks);
+		}
 	} catch (error) {
-		console.error('Error fetching pending tasks:', error);
+		console.error('Error fetching tasks:', error);
 		return json({ error: 'Failed to fetch tasks' }, { status: 500 });
 	}
 };

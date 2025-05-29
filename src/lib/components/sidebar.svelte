@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Home, Box, Image, Network, HardDrive, Settings, Menu, X, ChevronRight, ChevronLeft, FileStack, ExternalLink, LogOut, Sun, Moon, ChevronDown, UserIcon, Shield, Bell, Palette, Database, type Icon as IconType, ShieldCheck, LayoutTemplate } from '@lucide/svelte';
+	import { Home, Box, Image, Network, HardDrive, Settings, Menu, X, ChevronRight, Computer, ChevronLeft, FileStack, ExternalLink, LogOut, Sun, Moon, ChevronDown, UserIcon, Shield, Bell, Palette, Database, type Icon as IconType, ShieldCheck, LayoutTemplate } from '@lucide/svelte';
 	import { page } from '$app/state';
 	import { fly, slide } from 'svelte/transition';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -26,6 +26,7 @@
 	let {
 		items = [
 			{ href: '/', label: 'Dashboard', icon: Home },
+			{ href: '/agents', label: 'Agents', icon: Computer },
 			{ href: '/containers', label: 'Containers', icon: Box },
 			{ href: '/stacks', label: 'Stacks', icon: FileStack },
 			{ href: '/images', label: 'Images', icon: Image },
