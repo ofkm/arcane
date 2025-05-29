@@ -36,7 +36,6 @@
 		"@types/proper-lockfile": "^4.1.4",
 		"bits-ui": "^2.2.0",
 		"clsx": "^2.1.1",
-		"concurrently": "^9.1.2",
 		"eslint": "^9.27.0",
 		"eslint-plugin-svelte": "^3.8.1",
 		"formsnap": "^2.0.1",
