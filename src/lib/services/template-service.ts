@@ -102,24 +102,82 @@ export class TemplateService {
 	 * Create a new template from content
 	 */
 	static async createTemplate(name: string, content: string, description?: string, envContent?: string): Promise<void> {
+		// Validate inputs
+		if (!name || name.trim() === '') {
+			throw new Error('Template name cannot be empty');
+		}
+
+		if (!content || content.trim() === '') {
+			throw new Error('Template content cannot be empty');
+		}
+
+		// Basic YAML validation - check if it starts with valid YAML structure
+		const trimmedContent = content.trim();
+		if (!trimmedContent.startsWith('version:') && !trimmedContent.startsWith('services:')) {
+			console.warn('Template content may not be valid Docker Compose YAML - missing version or services section');
+		}
+
 		await this.ensureDirectoriesExist();
 
-		const filename = `${name.toLowerCase().replace(/[^a-z0-9-]/g, '-')}.yaml`;
+		// Improved filename sanitization - convert to lowercase first, then sanitize
+		const sanitizedName = name
+			.toLowerCase()
+			.replace(/[^a-z0-9\s-_]/g, '') // Remove invalid chars, keep spaces, hyphens, underscores
+			.replace(/\s+/g, '-') // Replace spaces with hyphens
+			.replace(/[-_]+/g, '-') // Collapse multiple hyphens/underscores
+			.replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+
+		if (!sanitizedName) {
+			throw new Error('Template name contains no valid characters');
+		}
+
+		// Check for existing files and create unique filename if needed
+		const baseFilename = sanitizedName;
+		let filename = `${baseFilename}.yaml`;
+		let envFilename = `${baseFilename}.env`;
+		let counter = 1;
+
+		// Find unique filenames
+		while (await this.fileExists(path.join(this.composeTemplatesDir, filename))) {
+			filename = `${baseFilename}-${counter}.yaml`;
+			envFilename = `${baseFilename}-${counter}.env`;
+			counter++;
+		}
+
 		const filePath = path.join(this.composeTemplatesDir, filename);
 
-		// Add description as comment if provided
+		// Safely add description as YAML comment block
 		let fileContent = content;
-		if (description) {
-			fileContent = `# ${description}\n${content}`;
+		if (description && description.trim()) {
+			// Ensure description doesn't break YAML by properly formatting as comments
+			const descriptionLines = description.trim().split('\n');
+			const commentBlock = descriptionLines.map((line) => `# ${line}`).join('\n');
+
+			// Add comment block before the content with proper spacing
+			fileContent = `${commentBlock}\n#\n${content}`;
 		}
 
 		await fs.writeFile(filePath, fileContent, 'utf8');
 
 		// Save environment file if provided
-		if (envContent) {
-			const envFilename = `${name.toLowerCase().replace(/[^a-z0-9-]/g, '-')}.env`;
+		if (envContent && envContent.trim()) {
 			const envFilePath = path.join(this.composeTemplatesDir, envFilename);
-			await fs.writeFile(envFilePath, envContent, 'utf8');
+			// Only create env file if it doesn't exist (since we already checked for compose file uniqueness)
+			if (!(await this.fileExists(envFilePath))) {
+				await fs.writeFile(envFilePath, envContent, 'utf8');
+			}
+		}
+	}
+
+	/**
+	 * Helper method to check if a file exists
+	 */
+	private static async fileExists(filePath: string): Promise<boolean> {
+		try {
+			await fs.access(filePath);
+			return true;
+		} catch {
+			return false;
 		}
 	}
 
