@@ -460,7 +460,15 @@ POSTGRES_PORT=5432
 	async addRegistry(config: TemplateRegistryConfig): Promise<void> {
 		const settings = await getSettings();
 		settings.templateRegistries = settings.templateRegistries || [];
-		settings.templateRegistries.push(config);
+
+		// Check if registry with same URL already exists
+		const isDuplicate = settings.templateRegistries.some((existingRegistry) => existingRegistry.url === config.url);
+
+		// Only add if not a duplicate
+		if (!isDuplicate) {
+			settings.templateRegistries.push(config);
+		}
+
 		await saveSettings(settings);
 	}
 
