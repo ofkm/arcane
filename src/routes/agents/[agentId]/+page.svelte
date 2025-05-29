@@ -13,9 +13,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
-	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, Download, Trash2, Container, HardDrive, Network, ArrowLeft } from '@lucide/svelte';
+	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft } from '@lucide/svelte';
 
 	// Get data from SSR
 	let { data } = $props();
