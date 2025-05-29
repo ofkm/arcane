@@ -1,13 +1,13 @@
-import { redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
-import { initComposeService } from '$lib/services/docker/stack-service';
-import { initAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
+import type { Handle } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { getUserByUsername } from '$lib/services/user-service';
 import { getSettings } from '$lib/services/settings-service';
 import { checkFirstRun } from '$lib/utils/onboarding.utils';
 import { sessionHandler } from '$lib/services/session-handler';
+import { initComposeService } from '$lib/services/docker/stack-service';
+import { initAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
 import { initMaturityPollingScheduler } from '$lib/services/docker/image-service';
-import { agentWSManager } from '$lib/services/agent/websocket-service';
 
 // Get environment variable
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
@@ -20,41 +20,31 @@ try {
 	process.exit(1);
 }
 
-// WebSocket handler for agent connections
-const websocketHandler: Handle = async ({ event, resolve }) => {
-	// Handle WebSocket upgrade requests
-	if (event.request.headers.get('upgrade') === 'websocket') {
-		const url = new URL(event.request.url);
-		if (url.pathname === '/agent/connect') {
-			// For SvelteKit, we need to handle this differently
-			// The actual WebSocket upgrade happens in the adapter
-			console.log('WebSocket upgrade request for agent connection');
-
-			// Return a response that indicates WebSocket upgrade is expected
-			return new Response('WebSocket upgrade required', {
-				status: 426,
-				headers: {
-					Upgrade: 'websocket',
-					Connection: 'Upgrade'
-				}
-			});
-		}
-	}
-
-	return await resolve(event);
-};
-
 // Authentication and authorization handler
 const authHandler: Handle = async ({ event, resolve }) => {
 	const { url } = event;
 	const path = url.pathname;
 
 	// Define paths that don't require authentication
-	const publicPaths = ['/auth/login', '/img', '/auth/oidc/login', '/auth/oidc/callback', '/agent/connect'];
-	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
+	const publicPaths = [
+		'/auth/login',
+		'/img',
+		'/auth/oidc/login',
+		'/auth/oidc/callback',
+		'/api/agents/register', // Agent registration
+		'/api/agents/heartbeat' // Agent heartbeat
+	];
 
-	// Always allow access to public paths
-	if (isPublicPath) {
+	// Check for specific agent polling patterns that should be public
+	const agentPollingPattern = /^\/api\/agents\/[^\/]+\/tasks$/; // GET /api/agents/{agentId}/tasks
+	const agentResultPattern = /^\/api\/agents\/[^\/]+\/tasks\/[^\/]+\/result$/; // POST /api/agents/{agentId}/tasks/{taskId}/result
+
+	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
+	const isAgentPolling = agentPollingPattern.test(path) && event.request.method === 'GET';
+	const isAgentResult = agentResultPattern.test(path) && event.request.method === 'POST';
+
+	// Allow access to public paths and specific agent endpoints
+	if (isPublicPath || isAgentPolling || isAgentResult) {
 		return await resolve(event);
 	}
 
@@ -111,13 +101,7 @@ const authHandler: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	// Continue with existing permission checks...
-
 	return await resolve(event);
 };
 
-// Combine handlers using sequence - websocketHandler first to catch upgrades early
-export const handle = sequence(websocketHandler, sessionHandler, authHandler);
-
-// Export WebSocket handler for use with adapters that support it
-export const handleWebSocket = agentWSManager.handleUpgrade.bind(agentWSManager);
+export const handle = sequence(sessionHandler, authHandler);

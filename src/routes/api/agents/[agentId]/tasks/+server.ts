@@ -1,7 +1,35 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getAgent } from '$lib/services/agent/agent-manager';
+import { getAgent, listTasks, sendTaskToAgent } from '$lib/services/agent/agent-manager';
 
+// GET - Agent requests pending tasks (no auth required for agents)
+// This is allowed by the regex pattern in hooks.server.ts
+export const GET: RequestHandler = async ({ params }) => {
+	try {
+		const agentId = params.agentId;
+
+		// Get all pending tasks for this agent
+		const allTasks = await listTasks(agentId);
+		const pendingTasks = allTasks.filter((task) => task.status === 'pending');
+
+		// Return tasks in the format the agent expects
+		const formattedTasks = pendingTasks.map((task) => ({
+			id: task.id,
+			type: task.type,
+			payload: task.payload
+		}));
+
+		console.log(`📋 Agent ${agentId} requested tasks, returning ${formattedTasks.length} pending tasks`);
+
+		return json(formattedTasks);
+	} catch (error) {
+		console.error('Error fetching pending tasks:', error);
+		return json({ error: 'Failed to fetch tasks' }, { status: 500 });
+	}
+};
+
+// POST - Admin/UI creates new tasks (requires auth)
+// This will require authentication since it's not covered by the regex patterns
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user?.roles.includes('admin')) {
 		return json({ error: 'Unauthorized' }, { status: 403 });
@@ -19,68 +47,19 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ error: `Agent is not online (status: ${agent.status})` }, { status: 400 });
 		}
 
-		// In development, send task to the WebSocket dev server
-		const isDev = process.env.NODE_ENV !== 'production';
+		// Create the task - it will be picked up by the agent on next poll
+		const task = await sendTaskToAgent(params.agentId, type, payload);
 
-		if (isDev) {
-			try {
-				// Send task to development WebSocket server
-				const devServerResponse = await fetch(`http://localhost:3001/api/agents/${params.agentId}/tasks`, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({ type, payload })
-				});
+		console.log(`📋 Task ${task.id} created for agent ${params.agentId}`);
 
-				if (!devServerResponse.ok) {
-					const errorData = await devServerResponse.json();
-					throw new Error(errorData.error || 'Failed to send task to dev server');
-				}
-
-				const result = await devServerResponse.json();
-				return json({
-					success: true,
-					taskId: result.taskId,
-					message: 'Task sent to agent via development server'
-				});
-			} catch (error) {
-				console.error('Failed to send task to dev server:', error);
-				return json(
-					{
-						error: error instanceof Error ? error.message : 'Failed to send task to development server'
-					},
-					{ status: 500 }
-				);
-			}
-		} else {
-			// Production logic - use the actual agent manager
-			const { sendTaskToAgent } = await import('$lib/services/agent/agent-manager');
-			const task = await sendTaskToAgent(params.agentId, type, payload);
-			return json({ success: true, task });
-		}
+		return json({ success: true, task });
 	} catch (error) {
-		console.error('Error sending task to agent:', error);
+		console.error('Error creating task:', error);
 		return json(
 			{
-				error: error instanceof Error ? error.message : 'Failed to send task'
+				error: error instanceof Error ? error.message : 'Failed to create task'
 			},
 			{ status: 500 }
 		);
-	}
-};
-
-export const GET: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user?.roles.includes('admin')) {
-		return json({ error: 'Unauthorized' }, { status: 403 });
-	}
-
-	try {
-		const { listTasks } = await import('$lib/services/agent/agent-manager');
-		const tasks = await listTasks(params.agentId);
-		return json({ tasks });
-	} catch (error) {
-		console.error('Error fetching agent tasks:', error);
-		return json({ error: 'Failed to fetch tasks' }, { status: 500 });
 	}
 };

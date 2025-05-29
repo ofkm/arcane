@@ -3,7 +3,6 @@ import path from 'node:path';
 import { BASE_PATH } from '$lib/services/paths-service';
 import type { Agent, AgentTask } from '$lib/types/agent.type';
 import { nanoid } from 'nanoid';
-import { agentWSManager } from './websocket-service';
 
 const AGENTS_DIR = path.join(BASE_PATH, 'agents');
 const TASKS_DIR = path.join(BASE_PATH, 'agent-tasks');
@@ -92,22 +91,7 @@ export async function listAgents(): Promise<Agent[]> {
 	}
 }
 
-export async function createTask(agentId: string, taskType: string, payload: any): Promise<AgentTask> {
-	const task: AgentTask = {
-		id: nanoid(),
-		agentId,
-		type: taskType as any,
-		payload,
-		status: 'pending',
-		createdAt: new Date().toISOString()
-	};
-
-	const filePath = path.join(TASKS_DIR, `${task.id}.json`);
-	await fs.writeFile(filePath, JSON.stringify(task, null, 2));
-
-	return task;
-}
-
+// Simplified task creation - no WebSocket sending needed
 export async function sendTaskToAgent(agentId: string, taskType: string, payload: any): Promise<AgentTask> {
 	const agent = await getAgent(agentId);
 	if (!agent) {
@@ -124,37 +108,15 @@ export async function sendTaskToAgent(agentId: string, taskType: string, payload
 		agentId,
 		type: taskType as any,
 		payload,
-		status: 'pending',
+		status: 'pending', // Agent will pick this up on next poll
 		createdAt: new Date().toISOString()
 	};
 
-	// Save task to file
+	// Save task to file - agent will fetch this via HTTP
 	const filePath = path.join(TASKS_DIR, `${task.id}.json`);
 	await fs.writeFile(filePath, JSON.stringify(task, null, 2));
 
-	// Send task via WebSocket
-	const message = {
-		type: 'task',
-		agent_id: agentId,
-		timestamp: new Date().toISOString(),
-		data: {
-			id: task.id,
-			type: taskType,
-			payload
-		}
-	};
-
-	const sent = agentWSManager.sendMessageToAgent(agentId, message);
-	if (!sent) {
-		task.status = 'failed';
-		task.error = 'Failed to send task to agent - WebSocket connection not available';
-		await fs.writeFile(filePath, JSON.stringify(task, null, 2));
-		throw new Error('Failed to send task to agent - WebSocket connection not available');
-	}
-
-	// Mark task as running
-	task.status = 'running';
-	await fs.writeFile(filePath, JSON.stringify(task, null, 2));
+	console.log(`📋 Task ${task.id} created for agent ${agentId} (will be picked up on next poll)`);
 
 	return task;
 }
@@ -162,21 +124,22 @@ export async function sendTaskToAgent(agentId: string, taskType: string, payload
 export async function updateTaskStatus(taskId: string, status: AgentTask['status'], result?: any, error?: string): Promise<AgentTask> {
 	const task = await getTask(taskId);
 	if (!task) {
-		throw new Error('Task not found');
+		throw new Error(`Task ${taskId} not found`);
 	}
 
-	const updated: AgentTask = {
+	const updatedTask: AgentTask = {
 		...task,
 		status,
 		result,
 		error,
-		updatedAt: new Date().toISOString()
+		updatedAt: new Date().toISOString(),
+		...(status === 'completed' && { completedAt: new Date().toISOString() })
 	};
 
 	const filePath = path.join(TASKS_DIR, `${taskId}.json`);
-	await fs.writeFile(filePath, JSON.stringify(updated, null, 2));
+	await fs.writeFile(filePath, JSON.stringify(updatedTask, null, 2));
 
-	return updated;
+	return updatedTask;
 }
 
 export async function getTask(taskId: string): Promise<AgentTask | null> {
@@ -212,7 +175,7 @@ export async function listTasks(agentId?: string): Promise<AgentTask[]> {
 	}
 }
 
-// Docker command helpers
+// Helper functions remain the same
 export async function sendDockerCommand(agentId: string, command: string, args: string[] = []): Promise<AgentTask> {
 	return sendTaskToAgent(agentId, 'docker_command', {
 		command,

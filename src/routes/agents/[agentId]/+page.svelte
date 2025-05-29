@@ -69,16 +69,8 @@
 			}
 			const responseData = await response.json();
 
-			// Update agent with connection status
-			if (agent) {
-				agent = {
-					...agent,
-					...responseData.agent,
-					connected: responseData.agent.connected
-				};
-			} else {
-				agent = responseData.agent;
-			}
+			// Just update with the agent data
+			agent = responseData.agent;
 			error = '';
 		} catch (err) {
 			console.error('Failed to load agent details:', err);

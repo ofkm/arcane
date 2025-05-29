@@ -4,9 +4,7 @@
 	"version": "0.14.0",
 	"type": "module",
 	"scripts": {
-		"dev": "concurrently \"vite dev --port 3000\" \"node websocket-dev-server.js\"",
-		"dev:app": "vite dev --port 3000",
-		"dev:ws": "node websocket-dev-server.js",
+		"dev": "vite dev --port 3000",
 		"build": "vite build",
 		"preview": "vite preview --port 3000",
 		"prepare": "svelte-kit sync || echo ''",

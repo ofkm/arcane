@@ -4,7 +4,7 @@
 	import type { Agent } from '$lib/types/agent.type';
 	import { formatDistanceToNow } from 'date-fns';
 
-	let agents: (Agent & { connected: boolean })[] = $state([]);
+	let agents: Agent[] = $state([]); // ← Remove the connected property
 	let loading = $state(true);
 	let error = $state('');
 
@@ -37,14 +37,14 @@
 		}
 	}
 
-	function getStatusColor(agent: Agent & { connected: boolean }) {
-		if (agent.connected) return 'bg-green-500';
-		if (agent.status === 'online') return 'bg-yellow-500';
+	function getStatusColor(agent: Agent) {
+		// ← Remove connected property
+		if (agent.status === 'online') return 'bg-green-500';
 		return 'bg-red-500';
 	}
 
-	function getStatusText(agent: Agent & { connected: boolean }) {
-		if (agent.connected) return 'Connected';
+	function getStatusText(agent: Agent) {
+		// ← Remove connected property
 		if (agent.status === 'online') return 'Online';
 		return 'Offline';
 	}
@@ -132,7 +132,7 @@
 								<p class="text-xs text-gray-500 dark:text-gray-400 font-mono">{agent.id}</p>
 							</div>
 						</div>
-						<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {agent.connected ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : agent.status === 'online' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'}">
+						<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {agent.status === 'online' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'}">
 							{getStatusText(agent)}
 						</span>
 					</div>
@@ -171,7 +171,7 @@
 					</div>
 
 					<!-- Connected Status -->
-					{#if agent.connected}
+					{#if agent.status === 'online'}
 						<div class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
 							<div class="flex items-center gap-2">
 								<svg class="h-4 w-4 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
@@ -185,7 +185,7 @@
 					<!-- Action Buttons -->
 					<div class="mt-4 flex gap-2">
 						<button onclick={() => viewAgentDetails(agent.id)} class="flex-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"> View Details </button>
-						{#if agent.connected}
+						{#if agent.status === 'online'}
 							<button onclick={() => viewAgentDetails(agent.id)} class="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"> Send Command </button>
 						{/if}
 					</div>
