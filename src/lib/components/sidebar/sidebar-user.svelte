@@ -11,9 +11,19 @@
 	import Moon from '@lucide/svelte/icons/moon';
 	import { mode, toggleMode } from 'mode-watcher';
 	import { cn } from '$lib/utils';
+	import { createHash } from 'crypto';
 
 	let { user, isCollapsed }: { user: User; isCollapsed: boolean } = $props();
 	const sidebar = useSidebar();
+
+	// Generate Gravatar URL
+	function getGravatarUrl(email: string, size = 40): string {
+		if (!email) return '';
+		const hash = createHash('md5').update(email.toLowerCase().trim()).digest('hex');
+		return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=mp&r=g`;
+	}
+
+	const gravatarUrl = $derived(user?.email ? getGravatarUrl(user.email) : '');
 </script>
 
 <Sidebar.Menu>
@@ -24,10 +34,10 @@
 					<Sidebar.MenuButton size="lg" class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground" {...props}>
 						{#if user && user.displayName}
 							<Avatar.Root class="size-8 rounded-lg">
-								<div class="size-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary flex items-center justify-center text-sm font-semibold border border-primary/20">
-									<Avatar.Image src={user.displayName?.charAt(0).toUpperCase()} alt={user.displayName?.charAt(0).toUpperCase()} />
-									<Avatar.Fallback class="rounded-lg">{user.displayName?.charAt(0).toUpperCase()}</Avatar.Fallback>
-								</div>
+								<Avatar.Image src={gravatarUrl} alt={user.displayName} />
+								<Avatar.Fallback class="rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 text-primary border border-primary/20">
+									{user.displayName?.charAt(0).toUpperCase()}
+								</Avatar.Fallback>
 							</Avatar.Root>
 							{#if !isCollapsed}
 								<div class="grid flex-1 text-left text-sm leading-tight">
@@ -44,10 +54,10 @@
 				<DropdownMenu.Label class="p-0 font-normal">
 					<div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
 						<Avatar.Root class="size-8 rounded-lg">
-							<div class="size-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary flex items-center justify-center text-sm font-semibold border border-primary/20">
-								<Avatar.Image src={user.displayName?.charAt(0).toUpperCase()} alt={user.displayName?.charAt(0).toUpperCase()} />
-								<Avatar.Fallback class="rounded-lg">{user.displayName?.charAt(0).toUpperCase()}</Avatar.Fallback>
-							</div>
+							<Avatar.Image src={gravatarUrl} alt={user.displayName} />
+							<Avatar.Fallback class="rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 text-primary border border-primary/20">
+								{user.displayName?.charAt(0).toUpperCase()}
+							</Avatar.Fallback>
 						</Avatar.Root>
 						<div class="grid flex-1 text-left text-sm leading-tight">
 							<span class="truncate font-medium">{user.displayName}</span>
