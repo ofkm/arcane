@@ -7,6 +7,7 @@ import { getSettings } from '$lib/services/settings-service';
 import { checkFirstRun } from '$lib/utils/onboarding.utils';
 import { sessionHandler } from '$lib/services/session-handler';
 import { initMaturityPollingScheduler } from '$lib/services/docker/image-service';
+import { agentWSManager } from '$lib/services/agent/websocket-service';
 
 // Get environment variable
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
@@ -19,13 +20,29 @@ try {
 	process.exit(1);
 }
 
-// Protected paths that require specific permissions
-// const protectedPathPermissions: Record<string, string[]> = {
-// 	'/containers': ['containers:view'],
-// 	'/containers/create': ['containers:manage'],
-// 	'/settings': ['settings:view']
-// 	// Add other path patterns as needed
-// };
+// WebSocket handler for agent connections
+const websocketHandler: Handle = async ({ event, resolve }) => {
+	// Handle WebSocket upgrade requests
+	if (event.request.headers.get('upgrade') === 'websocket') {
+		const url = new URL(event.request.url);
+		if (url.pathname === '/agent/connect') {
+			// For SvelteKit, we need to handle this differently
+			// The actual WebSocket upgrade happens in the adapter
+			console.log('WebSocket upgrade request for agent connection');
+
+			// Return a response that indicates WebSocket upgrade is expected
+			return new Response('WebSocket upgrade required', {
+				status: 426,
+				headers: {
+					Upgrade: 'websocket',
+					Connection: 'Upgrade'
+				}
+			});
+		}
+	}
+
+	return await resolve(event);
+};
 
 // Authentication and authorization handler
 const authHandler: Handle = async ({ event, resolve }) => {
@@ -33,7 +50,7 @@ const authHandler: Handle = async ({ event, resolve }) => {
 	const path = url.pathname;
 
 	// Define paths that don't require authentication
-	const publicPaths = ['/auth/login', '/img', '/auth/oidc/login', '/auth/oidc/callback'];
+	const publicPaths = ['/auth/login', '/img', '/auth/oidc/login', '/auth/oidc/callback', '/agent/connect'];
 	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
 
 	// Always allow access to public paths
@@ -94,22 +111,13 @@ const authHandler: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	// Continue with permission checks as before
-	// if (settings?.auth?.rbacEnabled) {
-	// 	// Check each protected path pattern
-	// 	for (const [pathPattern, requiredPermissions] of Object.entries(protectedPathPermissions)) {
-	// 		if (path.startsWith(pathPattern)) {
-	// 			const hasPermission = requiredPermissions.some((perm) => user.roles.includes(perm));
-	// 			if (!hasPermission) {
-	// 				throw redirect(302, '/auth/unauthorized');
-	// 			}
-	// 		}
-	// 	}
-	// }
+	// Continue with existing permission checks...
 
-	// Proceed to resolve the route with the authenticated user
 	return await resolve(event);
 };
 
-// Combine handlers using sequence
-export const handle = sequence(sessionHandler, authHandler);
+// Combine handlers using sequence - websocketHandler first to catch upgrades early
+export const handle = sequence(websocketHandler, sessionHandler, authHandler);
+
+// Export WebSocket handler for use with adapters that support it
+export const handleWebSocket = agentWSManager.handleUpgrade.bind(agentWSManager);
