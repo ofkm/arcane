@@ -5,6 +5,8 @@
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { navigating, page } from '$app/state';
 	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog.svelte';
+	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import ArcaneSidebar from '$lib/components/arcane-sidebar.svelte';
 
 	let { children, data } = $props();
 
@@ -34,12 +36,14 @@
 <div class="flex min-h-screen bg-background">
 	<!-- Only show sidebar when authenticated -->
 	{#if showSidebar}
-		<Nav {versionInformation} {user} />
+		<!-- <Nav {versionInformation} {user} /> -->
+		<Sidebar.Provider>
+			<ArcaneSidebar />
+			<main class="flex-1">
+				<section class="p-6">
+					{@render children()}
+				</section>
+			</main>
+		</Sidebar.Provider>
 	{/if}
-
-	<main class="flex-1">
-		<section class="p-6">
-			{@render children()}
-		</section>
-	</main>
 </div>
