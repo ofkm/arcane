@@ -7,26 +7,25 @@
 	import type { PageData } from './$types';
 	import { getActualAgentStatus } from '$lib/utils/agent-status.utils';
 
-	interface Props {
-		data: PageData;
-	}
+	let { data } = $props();
 
-	let { data }: Props = $props();
-
+	// Initialize from SSR data
 	let agents: Agent[] = $state(data.agents || []);
 	let loading = $state(false);
-	let error = $state(data.error || '');
+	let error = $state('');
 
 	onMount(() => {
-		// Refresh every 10 seconds for real-time updates
-		const interval = setInterval(loadAgents, 10000);
+		// Refresh every 30 seconds for real-time updates (less frequent since we have SSR)
+		const interval = setInterval(refreshAgents, 30000);
 		return () => clearInterval(interval);
 	});
 
-	async function loadAgents() {
+	// Simplified refresh function - only for periodic updates
+	async function refreshAgents() {
+		if (loading) return;
+
 		try {
 			loading = true;
-			console.log('Client: Loading agents...');
 			const response = await fetch('/api/agents');
 
 			if (!response.ok) {
@@ -34,12 +33,32 @@
 			}
 
 			const responseData = await response.json();
-			console.log('Client: Agents loaded:', responseData);
-
 			agents = responseData.agents || [];
 			error = '';
 		} catch (err) {
-			console.error('Client: Failed to load agents:', err);
+			console.error('Failed to refresh agents:', err);
+			// Don't show error for background refresh failures
+		} finally {
+			loading = false;
+		}
+	}
+
+	// Manual refresh triggered by user
+	async function loadAgents() {
+		try {
+			loading = true;
+			error = '';
+
+			const response = await fetch('/api/agents');
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+
+			const responseData = await response.json();
+			agents = responseData.agents || [];
+		} catch (err) {
+			console.error('Failed to load agents:', err);
 			error = err instanceof Error ? err.message : 'Unknown error';
 		} finally {
 			loading = false;
@@ -60,17 +79,6 @@
 
 	function viewAgentDetails(agentId: string) {
 		goto(`/agents/${agentId}`);
-	}
-
-	function isAgentOffline(agent: Agent): boolean {
-		if (!agent.lastSeen) return true;
-
-		const now = new Date();
-		const lastSeen = new Date(agent.lastSeen);
-		const timeSinceLastSeen = now.getTime() - lastSeen.getTime();
-		const timeout = 5 * 60 * 1000; // 5 minutes
-
-		return timeSinceLastSeen > timeout;
 	}
 </script>
 
@@ -102,13 +110,8 @@
 		</div>
 	{/if}
 
-	<!-- Loading State (only show during client-side refreshes) -->
-	{#if loading && agents.length === 0}
-		<div class="flex flex-col items-center justify-center py-16">
-			<Loader2 class="h-8 w-8 text-blue-600 mb-4 animate-spin" />
-			<p class="text-gray-600 dark:text-gray-400">Loading agents...</p>
-		</div>
-	{:else if agents.length === 0}
+	<!-- Agents content - data is immediately available from SSR -->
+	{#if agents.length === 0}
 		<!-- Empty State -->
 		<div class="text-center py-16">
 			<Monitor class="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -188,7 +191,6 @@
 								</div>
 							</div>
 						{:else}
-							<!-- Debug: Show when metrics are missing -->
 							<div class="py-3 border-t border-gray-100 dark:border-gray-700">
 								<p class="text-xs text-gray-400 text-center">No metrics data available</p>
 							</div>
@@ -239,6 +241,14 @@
 					</div>
 				</div>
 			{/each}
+		</div>
+	{/if}
+
+	<!-- Show subtle loading indicator during background refresh -->
+	{#if loading && agents.length > 0}
+		<div class="fixed bottom-4 right-4 bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-2">
+			<Loader2 class="h-4 w-4 animate-spin" />
+			<span class="text-sm">Refreshing...</span>
 		</div>
 	{/if}
 </div>

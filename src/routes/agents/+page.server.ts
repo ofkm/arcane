@@ -1,10 +1,20 @@
 import type { PageServerLoad } from './$types';
 import { listAgents } from '$lib/services/agent/agent-manager';
+import { error } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+	// Check if user has admin role
+	if (!locals.user?.roles.includes('admin')) {
+		throw error(403, {
+			message: 'Unauthorized access'
+		});
+	}
+
 	try {
+		// Load agents with actual status calculation
 		const agents = await listAgents();
 
+		// Calculate actual status on server side
 		const now = new Date();
 		const timeout = 5 * 60 * 1000; // 5 minutes
 
@@ -19,14 +29,12 @@ export const load: PageServerLoad = async () => {
 		});
 
 		return {
-			agents: agentsWithStatus,
-			error: null
+			agents: agentsWithStatus
 		};
 	} catch (err) {
 		console.error('SSR: Failed to load agents:', err);
-		return {
-			agents: [],
-			error: err instanceof Error ? err.message : 'Unknown error'
-		};
+		throw error(500, {
+			message: err instanceof Error ? err.message : 'Failed to load agents'
+		});
 	}
 };
