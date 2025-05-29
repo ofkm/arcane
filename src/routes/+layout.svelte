@@ -1,12 +1,11 @@
 <script lang="ts">
 	import '../app.css';
 	import { ModeWatcher } from 'mode-watcher';
-	import Nav from '$lib/components/sidebar.svelte';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { navigating, page } from '$app/state';
 	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog.svelte';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
-	import ArcaneSidebar from '$lib/components/arcane-sidebar.svelte';
+	import AppSidebar from '$lib/components/sidebar/sidebar.svelte';
 
 	let { children, data } = $props();
 
@@ -38,7 +37,7 @@
 	{#if showSidebar}
 		<!-- <Nav {versionInformation} {user} /> -->
 		<Sidebar.Provider>
-			<ArcaneSidebar />
+			<AppSidebar {versionInformation} {user} />
 			<main class="flex-1">
 				<section class="p-6">
 					{@render children()}
