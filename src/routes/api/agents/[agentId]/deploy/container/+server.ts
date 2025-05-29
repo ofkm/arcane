@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { sendTaskToAgent, getAgent } from '$lib/services/agent/agent-manager';
+import { createContainerDeployment } from '$lib/services/deployment-service';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user?.roles.includes('admin')) {
@@ -65,9 +66,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		});
 
 		// Add environment variables
-		envVars.forEach((envVar: { key: string; value: string }) => {
-			if (envVar.key && envVar.value) {
-				args.push('-e', `${envVar.key}=${envVar.value}`);
+		envVars.forEach((env: { key: string; value: string }) => {
+			if (env.key && env.value) {
+				args.push('-e', `${env.key}=${env.value}`);
 			}
 		});
 
@@ -80,18 +81,29 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			args: args.slice(1) // Remove 'run' since it's the command
 		});
 
-		console.log(`📋 Container run task ${task.id} created for agent ${agentId}: ${imageName}`);
+		// Create deployment record
+		const deployment = await createContainerDeployment(
+			agentId,
+			containerName || imageName,
+			imageName,
+			ports.map((p: any) => `${p.host}:${p.container}`),
+			volumes.map((v: any) => `${v.host}:${v.container}`),
+			task.id
+		);
+
+		console.log(`🐳 Container deployment task ${task.id} created for agent ${agentId}: ${containerName || imageName}`);
 
 		return json({
 			success: true,
 			task,
-			message: `Container run task created: ${imageName}`
+			deployment,
+			message: `Container deployment task created: ${containerName || imageName}`
 		});
 	} catch (error) {
-		console.error('Error creating container run task:', error);
+		console.error('Error creating container deployment task:', error);
 		return json(
 			{
-				error: error instanceof Error ? error.message : 'Failed to create container run task'
+				error: error instanceof Error ? error.message : 'Failed to create container deployment task'
 			},
 			{ status: 500 }
 		);

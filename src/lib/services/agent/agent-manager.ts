@@ -3,6 +3,7 @@ import path from 'node:path';
 import { BASE_PATH } from '$lib/services/paths-service';
 import type { Agent, AgentTask } from '$lib/types/agent.type';
 import { nanoid } from 'nanoid';
+import { updateDeploymentFromTask } from '$lib/services/deployment-service';
 
 const AGENTS_DIR = path.join(BASE_PATH, 'agents');
 const TASKS_DIR = path.join(BASE_PATH, 'agent-tasks');
@@ -121,25 +122,26 @@ export async function sendTaskToAgent(agentId: string, taskType: string, payload
 	return task;
 }
 
-export async function updateTaskStatus(taskId: string, status: AgentTask['status'], result?: any, error?: string): Promise<AgentTask> {
-	const task = await getTask(taskId);
-	if (!task) {
-		throw new Error(`Task ${taskId} not found`);
+export async function updateTaskStatus(taskId: string, status: string, result?: any, error?: string): Promise<void> {
+	try {
+		const filePath = path.join(TASKS_DIR, `${taskId}.json`);
+		const taskData = await fs.readFile(filePath, 'utf-8');
+		const task = JSON.parse(taskData);
+
+		task.status = status;
+		task.result = result;
+		task.error = error;
+		task.completedAt = status === 'completed' || status === 'failed' ? new Date().toISOString() : undefined;
+
+		await fs.writeFile(filePath, JSON.stringify(task, null, 2));
+
+		// Update corresponding deployment if it exists
+		await updateDeploymentFromTask(taskId, status, result, error);
+
+		console.log(`Task ${taskId} status updated to: ${status}`);
+	} catch (error) {
+		console.error('Error updating task status:', error);
 	}
-
-	const updatedTask: AgentTask = {
-		...task,
-		status,
-		result,
-		error,
-		updatedAt: new Date().toISOString(),
-		...(status === 'completed' && { completedAt: new Date().toISOString() })
-	};
-
-	const filePath = path.join(TASKS_DIR, `${taskId}.json`);
-	await fs.writeFile(filePath, JSON.stringify(updatedTask, null, 2));
-
-	return updatedTask;
 }
 
 export async function getTask(taskId: string): Promise<AgentTask | null> {
@@ -173,6 +175,11 @@ export async function listTasks(agentId?: string): Promise<AgentTask[]> {
 		console.error('Error listing tasks:', error);
 		return [];
 	}
+}
+
+// Add this function - it's an alias for listTasks to match the expected API
+export async function getAgentTasks(agentId: string): Promise<AgentTask[]> {
+	return listTasks(agentId);
 }
 
 // Helper functions remain the same

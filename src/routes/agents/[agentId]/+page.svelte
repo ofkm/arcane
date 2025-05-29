@@ -23,16 +23,17 @@
 	import QuickContainerForm from '$lib/components/forms/QuickContainerForm.svelte';
 	import { getActualAgentStatus } from '$lib/utils/agent-status.utils';
 
-	// Get data from SSR
 	let { data } = $props();
 
+	// Initialize from SSR data
 	let agent: Agent | null = $state(data.agent);
 	let tasks: AgentTask[] = $state(data.tasks);
+	let deployments: Deployment[] = $state(data.deployments);
 	let agentId = data.agentId;
+
+	// Remove most of the initial loading states since data comes from SSR
 	let loading = $state(false);
 	let error = $state('');
-	let commandDialogOpen = $state(false);
-	let taskExecuting = $state(false);
 
 	// Resource data states
 	let resourcesLoading = $state(false);
@@ -56,11 +57,14 @@
 	let commandArgs = $state('');
 	let customCommand = $state('');
 
+	// Add missing state variables
+	let commandDialogOpen = $state(false);
+	let taskExecuting = $state(false);
+
 	// Deployment states with proper typing
 	let deployDialogOpen = $state(false);
 	let imageDialogOpen = $state(false);
 	let containerDialogOpen = $state(false);
-	let deployments = $state<Deployment[]>([]);
 	let deploying = $state(false);
 
 	// Predefined commands
@@ -75,58 +79,54 @@
 		{ value: 'custom', label: 'Custom Command' }
 	];
 
+	// Keep only periodic refresh logic
 	onMount(() => {
-		// Initial load to get connection status
-		loadAgentDetails();
-		loadDeployments();
-
-		// Refresh every 10 seconds to get real-time connection status
+		// Refresh every 10 seconds for real-time updates
 		const interval = setInterval(() => {
-			loadAgentDetails();
-			loadAgentTasks();
-			loadDeployments();
+			refreshAgentData();
 		}, 10000);
 		return () => clearInterval(interval);
 	});
 
-	async function loadAgentDetails() {
-		try {
-			const response = await fetch(`/api/agents/${agentId}`);
-			if (!response.ok) {
-				if (response.status === 404) {
-					error = 'Agent not found';
-					return;
-				}
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-			}
-			const responseData = await response.json();
+	// Simplified refresh function - only for periodic updates
+	async function refreshAgentData() {
+		if (loading) return;
 
-			// Just update with the agent data
-			agent = responseData.agent;
+		try {
+			loading = true;
+
+			// Use parallel requests for updates
+			const [agentResponse, tasksResponse, deploymentsResponse] = await Promise.allSettled([fetch(`/api/agents/${agentId}`), fetch(`/api/agents/${agentId}/tasks?admin=true`), fetch(`/api/agents/${agentId}/deployments`)]);
+
+			// Update agent data
+			if (agentResponse.status === 'fulfilled' && agentResponse.value.ok) {
+				const agentData = await agentResponse.value.json();
+				agent = agentData.agent;
+			}
+
+			// Update tasks
+			if (tasksResponse.status === 'fulfilled' && tasksResponse.value.ok) {
+				const tasksData = await tasksResponse.value.json();
+				tasks = tasksData.tasks || [];
+			}
+
+			// Update deployments
+			if (deploymentsResponse.status === 'fulfilled' && deploymentsResponse.value.ok) {
+				const deploymentsData = await deploymentsResponse.value.json();
+				deployments = deploymentsData.deployments || [];
+			}
+
 			error = '';
 		} catch (err) {
-			console.error('Failed to load agent details:', err);
-			error = err instanceof Error ? err.message : 'Failed to load agent';
+			console.error('Failed to refresh agent data:', err);
+			// Don't set error for refresh failures - keep showing existing data
 		} finally {
 			loading = false;
 		}
 	}
 
-	async function loadAgentTasks() {
-		try {
-			// Add admin flag to get full task data including results
-			const response = await fetch(`/api/agents/${agentId}/tasks?admin=true`);
-			if (response.ok) {
-				const responseData = await response.json();
-				tasks = responseData.tasks || [];
-			}
-		} catch (err) {
-			console.error('Failed to load agent tasks:', err);
-		}
-	}
-
 	async function loadResourcesData() {
-		if (!agent || agent.status !== 'online') {
+		if (!agent || getActualAgentStatus(agent) !== 'online') {
 			resourcesError = 'Agent must be online to load resource data';
 			return;
 		}
@@ -345,7 +345,7 @@
 			customCommand = '';
 
 			// Refresh tasks
-			setTimeout(loadAgentTasks, 1000);
+			setTimeout(refreshAgentData, 1000);
 		} catch (err) {
 			console.error('Failed to send command:', err);
 			toast.error(err instanceof Error ? err.message : 'Failed to send command');
@@ -401,8 +401,6 @@
 		return statusLower;
 	}
 
-	// Add these functions to your script section
-
 	async function handleStackDeploy(data: any) {
 		try {
 			const response = await fetch(`/api/agents/${agentId}/deploy/stack`, {
@@ -421,7 +419,7 @@
 			toast.success(`Stack deployment started: ${result.task?.id || 'Unknown task'}`);
 
 			// Refresh deployments list
-			setTimeout(() => loadDeployments(), 1000);
+			setTimeout(() => refreshAgentData(), 1000);
 		} catch (err) {
 			console.error('Stack deploy error:', err);
 			throw err;
@@ -469,20 +467,6 @@
 		} catch (err) {
 			console.error('Container run error:', err);
 			throw err;
-		}
-	}
-
-	async function loadDeployments() {
-		try {
-			const response = await fetch(`/api/agents/${agentId}/deployments`, {
-				credentials: 'include'
-			});
-			if (response.ok) {
-				const data = await response.json();
-				deployments = data.deployments || [];
-			}
-		} catch (err) {
-			console.error('Failed to load deployments:', err);
 		}
 	}
 </script>
@@ -536,13 +520,6 @@
 			<Alert.Title>Error</Alert.Title>
 			<Alert.Description>{error}</Alert.Description>
 		</Alert.Root>
-	{/if}
-
-	<!-- Loading State -->
-	{#if loading}
-		<div class="flex items-center justify-center py-16">
-			<RefreshCw class="size-8 animate-spin text-muted-foreground" />
-		</div>
 	{:else if agent}
 		<!-- Agent Overview -->
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -990,7 +967,7 @@
 				<Card.Header>
 					<div class="flex items-center justify-between">
 						<Card.Title>Recent Tasks</Card.Title>
-						<Button variant="outline" size="sm" onclick={loadAgentTasks}>
+						<Button variant="outline" size="sm" onclick={refreshAgentData}>
 							<RefreshCw class="size-4" />
 						</Button>
 					</div>

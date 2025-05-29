@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getAgent } from '$lib/services/agent/agent-manager';
-import type { Deployment } from '$lib/types/deployment.type';
+import { getDeployments } from '$lib/services/deployment-service';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user?.roles.includes('admin')) {
@@ -17,38 +17,12 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 			return json({ error: 'Agent not found' }, { status: 404 });
 		}
 
-		// For now, return mock data since we don't have a deployments table yet
-		// In a real implementation, you'd query your database for deployments
-		const mockDeployments: Deployment[] = [
-			{
-				id: 'deploy-1',
-				name: 'nginx-web',
-				type: 'container',
-				status: 'running',
-				agentId: agentId,
-				createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
-				metadata: {
-					containerName: 'nginx-web',
-					imageName: 'nginx:alpine',
-					ports: ['80:80']
-				}
-			},
-			{
-				id: 'deploy-2',
-				name: 'redis-cache',
-				type: 'image',
-				status: 'completed',
-				agentId: agentId,
-				createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-				metadata: {
-					imageName: 'redis:alpine'
-				}
-			}
-		];
+		// Get real deployments from the service
+		const deployments = await getDeployments(agentId);
 
 		return json({
 			success: true,
-			deployments: mockDeployments
+			deployments
 		});
 	} catch (error) {
 		console.error('Error fetching deployments:', error);

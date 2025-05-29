@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { sendTaskToAgent, getAgent } from '$lib/services/agent/agent-manager';
+import { createStackDeployment } from '$lib/services/deployment-service';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user?.roles.includes('admin')) {
@@ -11,14 +12,10 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const data = await request.json();
 		const agentId = params.agentId;
 
-		const { stackName, composeContent, envContent, mode = 'compose' } = data;
+		const { stackName, composeContent, envContent, mode } = data;
 
-		if (!stackName) {
-			return json({ error: 'Stack name is required' }, { status: 400 });
-		}
-
-		if (mode === 'compose' && !composeContent) {
-			return json({ error: 'Compose content is required' }, { status: 400 });
+		if (!stackName || !composeContent) {
+			return json({ error: 'Stack name and compose content are required' }, { status: 400 });
 		}
 
 		// Verify agent exists and is online
@@ -39,11 +36,15 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			mode
 		});
 
+		// Create deployment record
+		const deployment = await createStackDeployment(agentId, stackName, composeContent, envContent, task.id);
+
 		console.log(`📋 Stack deployment task ${task.id} created for agent ${agentId}: ${stackName}`);
 
 		return json({
 			success: true,
 			task,
+			deployment,
 			message: `Stack deployment task created: ${stackName}`
 		});
 	} catch (error) {
