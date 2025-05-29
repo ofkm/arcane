@@ -1,17 +1,23 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { updateAgentHeartbeat } from '$lib/services/agent/agent-manager';
+import { updateAgent } from '$lib/services/agent/agent-manager';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { agent_id, status, timestamp } = await request.json();
+		const { agent_id, status, timestamp, metrics } = await request.json();
 
 		if (!agent_id) {
 			return json({ error: 'agent_id is required' }, { status: 400 });
 		}
 
-		await updateAgentHeartbeat(agent_id);
-		console.log(`💓 Heartbeat received from ${agent_id}`);
+		// Update agent with heartbeat data including metrics
+		await updateAgent(agent_id, {
+			status: 'online',
+			lastSeen: new Date().toISOString(),
+			...(metrics && { metrics }) // Only include metrics if provided
+		});
+
+		console.log(`💓 Heartbeat received from ${agent_id}${metrics ? ' (with metrics)' : ''}`);
 
 		return json({
 			success: true,

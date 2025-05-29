@@ -10,10 +10,12 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
+	import DropdownCard from '$lib/components/dropdown-card.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft } from '@lucide/svelte';
+	import { Badge } from '$lib/components/ui/badge/index.js';
+	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, ChevronDown, ChevronRight, ExternalLink } from '@lucide/svelte';
 
 	// Get data from SSR
 	let { data } = $props();
@@ -25,6 +27,17 @@
 	let error = $state('');
 	let commandDialogOpen = $state(false);
 	let taskExecuting = $state(false);
+
+	// Metrics detail states
+	let metricsExpanded = $state(false);
+	let detailData = $state<{
+		containers?: any[];
+		images?: any[];
+		stacks?: any[];
+		networks?: any[];
+		volumes?: any[];
+	}>({});
+	let loadingDetails = $state(false);
 
 	// Command form state
 	let selectedCommand = $state<{ value: string; label: string } | undefined>(undefined);
@@ -88,6 +101,44 @@
 			}
 		} catch (err) {
 			console.error('Failed to load agent tasks:', err);
+		}
+	}
+
+	async function loadMetricsDetails() {
+		if (!agent || agent.status !== 'online') return;
+
+		loadingDetails = true;
+		try {
+			// Send commands to get detailed data
+			const commands = [
+				{ type: 'docker_command', payload: { command: 'ps', args: ['-a', '--format', 'json'] } },
+				{ type: 'docker_command', payload: { command: 'images', args: ['--format', 'json'] } },
+				{ type: 'docker_command', payload: { command: 'network', args: ['ls', '--format', 'json'] } },
+				{ type: 'docker_command', payload: { command: 'volume', args: ['ls', '--format', 'json'] } },
+				{ type: 'docker_command', payload: { command: 'stack', args: ['ls', '--format', 'json'] } }
+			];
+
+			const results = await Promise.allSettled(
+				commands.map(async (cmd) => {
+					const response = await fetch(`/api/agents/${agentId}/tasks`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(cmd)
+					});
+
+					if (!response.ok) throw new Error(`Failed to execute ${cmd.payload.command}`);
+					return response.json();
+				})
+			);
+
+			// Parse results when tasks complete
+			// This is a simplified version - in reality you'd need to poll for task completion
+			// and parse the JSON results from the agent
+		} catch (err) {
+			console.error('Failed to load metrics details:', err);
+			toast.error('Failed to load detailed metrics');
+		} finally {
+			loadingDetails = false;
 		}
 	}
 
@@ -307,6 +358,98 @@
 				</Card.Content>
 			</Card.Root>
 		</div>
+
+		<!-- Resource Metrics -->
+		{#if agent.metrics}
+			<DropdownCard id="agent-metrics" title="Resource Metrics" description="View detailed Docker resource information" defaultExpanded={false} icon={Activity}>
+				<!-- Metrics Overview -->
+				<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+					<div class="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+						<Container class="size-6 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
+						<p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{agent.metrics.containerCount ?? 0}</p>
+						<p class="text-sm text-blue-600/80 dark:text-blue-400/80">Containers</p>
+					</div>
+					<div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+						<HardDrive class="size-6 text-green-600 dark:text-green-400 mx-auto mb-1" />
+						<p class="text-2xl font-bold text-green-600 dark:text-green-400">{agent.metrics.imageCount ?? 0}</p>
+						<p class="text-sm text-green-600/80 dark:text-green-400/80">Images</p>
+					</div>
+					<div class="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+						<Layers class="size-6 text-purple-600 dark:text-purple-400 mx-auto mb-1" />
+						<p class="text-2xl font-bold text-purple-600 dark:text-purple-400">{agent.metrics.stackCount ?? 0}</p>
+						<p class="text-sm text-purple-600/80 dark:text-purple-400/80">Stacks</p>
+					</div>
+					<div class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+						<Network class="size-6 text-orange-600 dark:text-orange-400 mx-auto mb-1" />
+						<p class="text-2xl font-bold text-orange-600 dark:text-orange-400">{agent.metrics.networkCount ?? 0}</p>
+						<p class="text-sm text-orange-600/80 dark:text-orange-400/80">Networks</p>
+					</div>
+					<div class="text-center p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
+						<Database class="size-6 text-cyan-600 dark:text-cyan-400 mx-auto mb-1" />
+						<p class="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{agent.metrics.volumeCount ?? 0}</p>
+						<p class="text-sm text-cyan-600/80 dark:text-cyan-400/80">Volumes</p>
+					</div>
+				</div>
+
+				<!-- Quick Actions Section -->
+				{#if agent.status === 'online'}
+					<div class="space-y-4 pt-4 border-t border-border">
+						<div>
+							<h4 class="font-medium mb-3">Quick Actions</h4>
+							<p class="text-sm text-muted-foreground mb-3">Get detailed information about Docker resources running on this agent</p>
+						</div>
+
+						<!-- Quick Action Buttons -->
+						<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+							<Button
+								variant="outline"
+								class="flex flex-col items-center p-4 h-auto"
+								onclick={() => {
+									selectedCommand = predefinedCommands.find((cmd) => cmd.value === 'docker_ps');
+									commandDialogOpen = true;
+								}}
+							>
+								<Container class="size-5 mb-2 text-blue-600 dark:text-blue-400" />
+								<span class="text-sm font-medium">List Containers</span>
+								<span class="text-xs text-muted-foreground mt-1">View all containers</span>
+							</Button>
+
+							<Button
+								variant="outline"
+								class="flex flex-col items-center p-4 h-auto"
+								onclick={() => {
+									selectedCommand = predefinedCommands.find((cmd) => cmd.value === 'docker_images');
+									commandDialogOpen = true;
+								}}
+							>
+								<HardDrive class="size-5 mb-2 text-green-600 dark:text-green-400" />
+								<span class="text-sm font-medium">List Images</span>
+								<span class="text-xs text-muted-foreground mt-1">View all images</span>
+							</Button>
+
+							<Button
+								variant="outline"
+								class="flex flex-col items-center p-4 h-auto"
+								onclick={() => {
+									selectedCommand = predefinedCommands.find((cmd) => cmd.value === 'docker_info');
+									commandDialogOpen = true;
+								}}
+							>
+								<Database class="size-5 mb-2 text-purple-600 dark:text-purple-400" />
+								<span class="text-sm font-medium">Docker Info</span>
+								<span class="text-xs text-muted-foreground mt-1">System information</span>
+							</Button>
+						</div>
+					</div>
+				{:else}
+					<div class="text-center py-8 text-muted-foreground border-t border-border">
+						<AlertCircle class="size-12 mx-auto mb-4 opacity-50" />
+						<p class="font-medium">Agent Offline</p>
+						<p class="text-sm">Connect the agent to view detailed metrics and perform actions</p>
+					</div>
+				{/if}
+			</DropdownCard>
+		{/if}
 
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 			<!-- Agent Information -->

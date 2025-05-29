@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import type { Agent } from '$lib/types/agent.type';
 	import { formatDistanceToNow } from 'date-fns';
-	import { RefreshCw, AlertCircle, Loader2, Monitor, CheckCircle, Eye, Send } from '@lucide/svelte';
+	import { RefreshCw, AlertCircle, Loader2, Monitor, CheckCircle, Eye, Send, Container, HardDrive, Layers } from '@lucide/svelte';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -141,6 +141,44 @@
 								<p class="font-medium text-gray-900 dark:text-white">{agent.version}</p>
 							</div>
 						</div>
+
+						<!-- Resource Metrics -->
+						{#if agent.metrics}
+							<div class="grid grid-cols-3 gap-2 py-3 border-t border-gray-100 dark:border-gray-700">
+								<div class="text-center">
+									<div class="flex items-center justify-center gap-1 mb-1">
+										<Container class="h-3 w-3 text-blue-600 dark:text-blue-400" />
+										<span class="text-xs text-gray-500 dark:text-gray-400">Containers</span>
+									</div>
+									<p class="text-sm font-semibold text-gray-900 dark:text-white">
+										{agent.metrics.containerCount ?? 0}
+									</p>
+								</div>
+								<div class="text-center">
+									<div class="flex items-center justify-center gap-1 mb-1">
+										<HardDrive class="h-3 w-3 text-green-600 dark:text-green-400" />
+										<span class="text-xs text-gray-500 dark:text-gray-400">Images</span>
+									</div>
+									<p class="text-sm font-semibold text-gray-900 dark:text-white">
+										{agent.metrics.imageCount ?? 0}
+									</p>
+								</div>
+								<div class="text-center">
+									<div class="flex items-center justify-center gap-1 mb-1">
+										<Layers class="h-3 w-3 text-purple-600 dark:text-purple-400" />
+										<span class="text-xs text-gray-500 dark:text-gray-400">Stacks</span>
+									</div>
+									<p class="text-sm font-semibold text-gray-900 dark:text-white">
+										{agent.metrics.stackCount ?? 0}
+									</p>
+								</div>
+							</div>
+						{:else}
+							<!-- Debug: Show when metrics are missing -->
+							<div class="py-3 border-t border-gray-100 dark:border-gray-700">
+								<p class="text-xs text-gray-400 text-center">No metrics data available</p>
+							</div>
+						{/if}
 
 						<div>
 							<span class="text-gray-500 dark:text-gray-400 text-sm">Capabilities</span>

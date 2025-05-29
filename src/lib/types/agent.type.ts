@@ -1,11 +1,21 @@
+export interface AgentMetrics {
+	containerCount?: number;
+	imageCount?: number;
+	stackCount?: number;
+	networkCount?: number;
+	volumeCount?: number;
+}
+
 export interface Agent {
 	id: string;
 	hostname: string;
 	platform: string;
 	version: string;
 	capabilities: string[];
-	status: 'online' | 'offline' | 'error';
+	status: 'online' | 'offline';
 	lastSeen: string;
+	registeredAt: string;
+	metrics?: AgentMetrics;
 	dockerInfo?: {
 		version: string;
 		containers: number;
