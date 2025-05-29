@@ -10,12 +10,14 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
+	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
+	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, ChevronDown, ChevronRight, ExternalLink } from '@lucide/svelte';
+	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2 } from '@lucide/svelte';
 
 	// Get data from SSR
 	let { data } = $props();
@@ -38,6 +40,23 @@
 		volumes?: any[];
 	}>({});
 	let loadingDetails = $state(false);
+
+	// Resource data states
+	let resourcesLoading = $state(false);
+	let resourcesError = $state('');
+	let resourcesData = $state<{
+		containers: any[];
+		images: any[];
+		networks: any[];
+		volumes: any[];
+		stacks: any[];
+	}>({
+		containers: [],
+		images: [],
+		networks: [],
+		volumes: [],
+		stacks: []
+	});
 
 	// Command form state
 	let selectedCommand = $state<{ value: string; label: string } | undefined>(undefined);
@@ -140,6 +159,161 @@
 		} finally {
 			loadingDetails = false;
 		}
+	}
+
+	async function loadResourcesData() {
+		if (!agent || agent.status !== 'online') {
+			resourcesError = 'Agent must be online to load resource data';
+			return;
+		}
+
+		resourcesLoading = true;
+		resourcesError = '';
+
+		try {
+			// Send commands to get resource data - using docker compose instead of stack
+			const commands = [
+				{ type: 'docker_command', payload: { command: 'ps', args: ['-a', '--format', 'json'] } },
+				{ type: 'docker_command', payload: { command: 'images', args: ['--format', 'json'] } },
+				{ type: 'docker_command', payload: { command: 'network', args: ['ls', '--format', 'json'] } },
+				{ type: 'docker_command', payload: { command: 'volume', args: ['ls', '--format', 'json'] } },
+				{ type: 'docker_command', payload: { command: 'compose', args: ['ls', '--format', 'json'] } }
+			];
+
+			const results = await Promise.allSettled(
+				commands.map(async (cmd, index) => {
+					const response = await fetch(`/api/agents/${agentId}/tasks`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(cmd)
+					});
+
+					if (!response.ok) throw new Error(`Failed to execute ${cmd.payload.command}`);
+					const result = await response.json();
+
+					console.log('Task creation response:', result);
+
+					// The task ID should be in result.task.id based on the API endpoint
+					if (!result.task?.id) {
+						throw new Error(`No task ID returned for ${cmd.payload.command}`);
+					}
+
+					const taskId = result.task.id;
+					return pollTaskCompletion(taskId, ['containers', 'images', 'networks', 'volumes', 'composes'][index]);
+				})
+			);
+
+			// Process results
+			results.forEach((result, index) => {
+				if (result.status === 'fulfilled' && result.value) {
+					const resourceType = ['containers', 'images', 'networks', 'volumes', 'stacks'][index] as keyof typeof resourcesData;
+					resourcesData[resourceType] = result.value;
+				}
+			});
+		} catch (err) {
+			console.error('Failed to load resources data:', err);
+			resourcesError = err instanceof Error ? err.message : 'Failed to load resource data';
+			toast.error('Failed to load resource data');
+		} finally {
+			resourcesLoading = false;
+		}
+	}
+
+	async function pollTaskCompletion(taskId: string, resourceType: string): Promise<any[]> {
+		const maxAttempts = 30; // 30 seconds max
+		const delay = 1000; // 1 second
+
+		console.log(`Polling task ${taskId} for ${resourceType}`);
+
+		for (let i = 0; i < maxAttempts; i++) {
+			await new Promise((resolve) => setTimeout(resolve, delay));
+
+			try {
+				const response = await fetch(`/api/agents/${agentId}/tasks/${taskId}`, {
+					credentials: 'include'
+				});
+				
+				console.log(`Task ${taskId} polling attempt ${i + 1}: ${response.status}`);
+				
+				if (!response.ok) {
+					if (response.status === 403) {
+						console.error(`Authentication failed for task ${taskId}`);
+					}
+					console.error(`Failed to fetch task ${taskId}: ${response.status} ${response.statusText}`);
+					continue;
+				}
+
+				const responseData = await response.json();
+				console.log(`Task ${taskId} response:`, responseData);
+				
+				const task = responseData.task;
+				
+				if (!task) {
+					console.error(`No task data in response for ${taskId}`);
+					continue;
+				}
+
+				console.log(`Task ${taskId} status: ${task.status}`);
+
+				if (task.status === 'completed') {
+					console.log(`Task ${taskId} completed with result:`, task.result);
+					
+					if (!task.result) {
+						console.warn(`Task ${taskId} completed but has no result`);
+						return [];
+					}
+
+					// Parse the result - the actual Docker output is in task.result.output
+					let data: any[] = [];
+					let outputString = '';
+
+					// Extract the output string from the nested result structure
+					if (task.result && typeof task.result === 'object' && task.result.output) {
+						outputString = task.result.output;
+					} else if (typeof task.result === 'string') {
+						outputString = task.result;
+					} else {
+						console.warn(`Unexpected result format for task ${taskId}:`, task.result);
+						return [];
+					}
+
+					console.log(`Raw output for ${resourceType}:`, outputString);
+
+					if (outputString) {
+						// Split by lines and parse each line as JSON
+						const lines = outputString.split('\n').filter((line: string) => line.trim());
+						console.log(`Task ${taskId} has ${lines.length} lines to parse`);
+						
+						for (const line of lines) {
+							try {
+								const parsed = JSON.parse(line.trim());
+								data.push(parsed);
+							} catch (parseError) {
+								console.warn(`Failed to parse line as JSON:`, line, parseError);
+								// Skip invalid JSON lines
+							}
+						}
+					}
+
+					console.log(`Parsed data for ${resourceType}:`, data);
+					return data;
+					
+				} else if (task.status === 'failed') {
+					console.error(`Task ${taskId} failed:`, task.error);
+					throw new Error(task.error || 'Task failed');
+				} else if (task.status === 'running') {
+					console.log(`Task ${taskId} is still running...`);
+				} else {
+					console.log(`Task ${taskId} is ${task.status}, continuing to poll...`);
+				}
+			} catch (err) {
+				console.error(`Error polling task ${taskId}:`, err);
+				// Don't break the loop on network errors, continue polling
+			}
+		}
+
+		console.error(`Task ${taskId} timed out after ${maxAttempts} seconds`);
+		throw new Error(`Task ${taskId} timed out after ${maxAttempts} seconds`);
 	}
 
 	async function sendCommand() {
@@ -246,6 +420,22 @@
 			default:
 				return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
 		}
+	}
+
+	function formatBytes(bytes: number): string {
+		if (bytes === 0) return '0 Bytes';
+		const k = 1024;
+		const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+	}
+
+	function getContainerStatus(status: string): string {
+		if (!status) return 'unknown';
+		const statusLower = status.toLowerCase();
+		if (statusLower.includes('up')) return 'running';
+		if (statusLower.includes('exit')) return 'stopped';
+		return statusLower;
 	}
 </script>
 
@@ -391,61 +581,212 @@
 					</div>
 				</div>
 
-				<!-- Quick Actions Section -->
+				<!-- Resources Data Section -->
 				{#if agent.status === 'online'}
 					<div class="space-y-4 pt-4 border-t border-border">
-						<div>
-							<h4 class="font-medium mb-3">Quick Actions</h4>
-							<p class="text-sm text-muted-foreground mb-3">Get detailed information about Docker resources running on this agent</p>
-						</div>
-
-						<!-- Quick Action Buttons -->
-						<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-							<Button
-								variant="outline"
-								class="flex flex-col items-center p-4 h-auto"
-								onclick={() => {
-									selectedCommand = predefinedCommands.find((cmd) => cmd.value === 'docker_ps');
-									commandDialogOpen = true;
-								}}
-							>
-								<Container class="size-5 mb-2 text-blue-600 dark:text-blue-400" />
-								<span class="text-sm font-medium">List Containers</span>
-								<span class="text-xs text-muted-foreground mt-1">View all containers</span>
-							</Button>
-
-							<Button
-								variant="outline"
-								class="flex flex-col items-center p-4 h-auto"
-								onclick={() => {
-									selectedCommand = predefinedCommands.find((cmd) => cmd.value === 'docker_images');
-									commandDialogOpen = true;
-								}}
-							>
-								<HardDrive class="size-5 mb-2 text-green-600 dark:text-green-400" />
-								<span class="text-sm font-medium">List Images</span>
-								<span class="text-xs text-muted-foreground mt-1">View all images</span>
-							</Button>
-
-							<Button
-								variant="outline"
-								class="flex flex-col items-center p-4 h-auto"
-								onclick={() => {
-									selectedCommand = predefinedCommands.find((cmd) => cmd.value === 'docker_info');
-									commandDialogOpen = true;
-								}}
-							>
-								<Database class="size-5 mb-2 text-purple-600 dark:text-purple-400" />
-								<span class="text-sm font-medium">Docker Info</span>
-								<span class="text-xs text-muted-foreground mt-1">System information</span>
+						<div class="flex items-center justify-between">
+							<div>
+								<h4 class="font-medium mb-1">Resource Details</h4>
+								<p class="text-sm text-muted-foreground">View detailed information about Docker resources</p>
+							</div>
+							<Button variant="outline" size="sm" onclick={loadResourcesData} disabled={resourcesLoading}>
+								{#if resourcesLoading}
+									<Loader2 class="size-4 mr-2 animate-spin" />
+									Loading...
+								{:else}
+									<RefreshCw class="size-4 mr-2" />
+									Load Resources
+								{/if}
 							</Button>
 						</div>
+
+						{#if resourcesError}
+							<Alert.Root variant="destructive">
+								<AlertCircle class="size-4" />
+								<Alert.Title>Error Loading Resources</Alert.Title>
+								<Alert.Description>{resourcesError}</Alert.Description>
+							</Alert.Root>
+						{/if}
+
+						<!-- Resource Tables -->
+						<!-- Always show tabs if any resource loading has been attempted -->
+						{#if resourcesData.containers.length > 0 || resourcesData.images.length > 0 || resourcesData.networks.length > 0 || resourcesData.volumes.length > 0 || resourcesData.stacks.length > 0}
+							<Tabs.Root value="containers" class="w-full">
+								<Tabs.List class="grid w-full grid-cols-5">
+									<Tabs.Trigger value="containers" class="flex items-center gap-2">
+										<Container class="size-4" />
+										Containers ({resourcesData.containers.length})
+									</Tabs.Trigger>
+									<Tabs.Trigger value="images" class="flex items-center gap-2">
+										<HardDrive class="size-4" />
+										Images ({resourcesData.images.length})
+									</Tabs.Trigger>
+									<Tabs.Trigger value="networks" class="flex items-center gap-2">
+										<Network class="size-4" />
+										Networks ({resourcesData.networks.length})
+									</Tabs.Trigger>
+									<Tabs.Trigger value="volumes" class="flex items-center gap-2">
+										<Database class="size-4" />
+										Volumes ({resourcesData.volumes.length})
+									</Tabs.Trigger>
+									<Tabs.Trigger value="stacks" class="flex items-center gap-2">
+										<Layers class="size-4" />
+										Stacks ({resourcesData.stacks.length})
+									</Tabs.Trigger>
+								</Tabs.List>
+
+								<!-- Containers Tab -->
+								<Tabs.Content value="containers" class="mt-4">
+									{#if resourcesData.containers.length > 0}
+										<UniversalTable
+											data={resourcesData.containers}
+											columns={[
+												{ accessorKey: 'Names', header: 'Name' },
+												{ accessorKey: 'Image', header: 'Image' },
+												{ accessorKey: 'Status', header: 'Status' },
+												{ accessorKey: 'Ports', header: 'Ports' },
+												{ accessorKey: 'CreatedAt', header: 'Created' }
+											]}
+											idKey="ID"
+											features={{ selection: false }}
+											display={{
+												filterPlaceholder: 'Search containers...',
+												noResultsMessage: 'No containers found'
+											}}
+											pagination={{ pageSize: 10 }}
+										/>
+									{:else}
+										<div class="text-center py-8 text-muted-foreground">
+											<Container class="size-12 mx-auto mb-4 opacity-50" />
+											<p>No containers found</p>
+										</div>
+									{/if}
+								</Tabs.Content>
+
+								<!-- Images Tab -->
+								<Tabs.Content value="images" class="mt-4">
+									{#if resourcesData.images.length > 0}
+										<UniversalTable
+											data={resourcesData.images}
+											columns={[
+												{ accessorKey: 'Repository', header: 'Repository' },
+												{ accessorKey: 'Tag', header: 'Tag' },
+												{ accessorKey: 'ID', header: 'Image ID' },
+												{ accessorKey: 'CreatedAt', header: 'Created' },
+												{ accessorKey: 'Size', header: 'Size' }
+											]}
+											idKey="ID"
+											features={{ selection: false }}
+											display={{
+												filterPlaceholder: 'Search images...',
+												noResultsMessage: 'No images found'
+											}}
+											pagination={{ pageSize: 10 }}
+										/>
+									{:else}
+										<div class="text-center py-8 text-muted-foreground">
+											<HardDrive class="size-12 mx-auto mb-4 opacity-50" />
+											<p>No images found</p>
+										</div>
+									{/if}
+								</Tabs.Content>
+
+								<!-- Networks Tab -->
+								<Tabs.Content value="networks" class="mt-4">
+									{#if resourcesData.networks.length > 0}
+										<UniversalTable
+											data={resourcesData.networks}
+											columns={[
+												{ accessorKey: 'Name', header: 'Name' },
+												{ accessorKey: 'Driver', header: 'Driver' },
+												{ accessorKey: 'Scope', header: 'Scope' },
+												{ accessorKey: 'ID', header: 'Network ID' },
+												{ accessorKey: 'CreatedAt', header: 'Created' }
+											]}
+											idKey="ID"
+											features={{ selection: false }}
+											display={{
+												filterPlaceholder: 'Search networks...',
+												noResultsMessage: 'No networks found'
+											}}
+											pagination={{ pageSize: 10 }}
+										/>
+									{:else}
+										<div class="text-center py-8 text-muted-foreground">
+											<Network class="size-12 mx-auto mb-4 opacity-50" />
+											<p>No networks found</p>
+										</div>
+									{/if}
+								</Tabs.Content>
+
+								<!-- Volumes Tab -->
+								<Tabs.Content value="volumes" class="mt-4">
+									{#if resourcesData.volumes.length > 0}
+										<UniversalTable
+											data={resourcesData.volumes}
+											columns={[
+												{ accessorKey: 'Name', header: 'Name' },
+												{ accessorKey: 'Driver', header: 'Driver' },
+												{ accessorKey: 'Mountpoint', header: 'Mountpoint' },
+												{ accessorKey: 'CreatedAt', header: 'Created' }
+											]}
+											idKey="Name"
+											features={{ selection: false }}
+											display={{
+												filterPlaceholder: 'Search volumes...',
+												noResultsMessage: 'No volumes found'
+											}}
+											pagination={{ pageSize: 10 }}
+										/>
+									{:else}
+										<div class="text-center py-8 text-muted-foreground">
+											<Database class="size-12 mx-auto mb-4 opacity-50" />
+											<p>No volumes found</p>
+										</div>
+									{/if}
+								</Tabs.Content>
+
+								<!-- Stacks Tab -->
+								<Tabs.Content value="stacks" class="mt-4">
+									{#if resourcesData.stacks.length > 0}
+										<UniversalTable
+											data={resourcesData.stacks}
+											columns={[
+												{ accessorKey: 'Name', header: 'Project Name' },
+												{ accessorKey: 'Status', header: 'Status' },
+												{ accessorKey: 'ConfigFiles', header: 'Config Files' },
+												{ accessorKey: 'Services', header: 'Services' }
+											]}
+											idKey="Name"
+											features={{ selection: false }}
+											display={{
+												filterPlaceholder: 'Search compose projects...',
+												noResultsMessage: 'No compose projects found'
+											}}
+											pagination={{ pageSize: 10 }}
+										/>
+									{:else}
+										<div class="text-center py-8 text-muted-foreground">
+											<Layers class="size-12 mx-auto mb-4 opacity-50" />
+											<p>No compose projects found</p>
+										</div>
+									{/if}
+								</Tabs.Content>
+							</Tabs.Root>
+						{:else}
+							<!-- Show this only when no data has been loaded yet -->
+							<div class="text-center py-8 text-muted-foreground">
+								<Database class="size-12 mx-auto mb-4 opacity-50" />
+								<p class="font-medium">No Resource Data Loaded</p>
+								<p class="text-sm">Click "Load Resources" to fetch Docker resource information</p>
+							</div>
+						{/if}
 					</div>
 				{:else}
 					<div class="text-center py-8 text-muted-foreground border-t border-border">
 						<AlertCircle class="size-12 mx-auto mb-4 opacity-50" />
 						<p class="font-medium">Agent Offline</p>
-						<p class="text-sm">Connect the agent to view detailed metrics and perform actions</p>
+						<p class="text-sm">Connect the agent to view detailed resources</p>
 					</div>
 				{/if}
 			</DropdownCard>
