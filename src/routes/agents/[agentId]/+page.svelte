@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { formatDistanceToNow } from 'date-fns';
 	import { toast } from 'svelte-sonner';
@@ -17,12 +16,12 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2, Download } from '@lucide/svelte';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import ImagePullForm from '$lib/components/forms/ImagePullForm.svelte';
 	import StackDeploymentForm from '$lib/components/forms/StackDeploymentForm.svelte';
 	import QuickContainerForm from '$lib/components/forms/QuickContainerForm.svelte';
+	import { getActualAgentStatus } from '$lib/utils/agent-status.utils';
 
 	// Get data from SSR
 	let { data } = $props();
@@ -30,21 +29,10 @@
 	let agent: Agent | null = $state(data.agent);
 	let tasks: AgentTask[] = $state(data.tasks);
 	let agentId = data.agentId;
-	let loading = $state(false); // Start false since we have SSR data
+	let loading = $state(false);
 	let error = $state('');
 	let commandDialogOpen = $state(false);
 	let taskExecuting = $state(false);
-
-	// Metrics detail states
-	let metricsExpanded = $state(false);
-	let detailData = $state<{
-		containers?: any[];
-		images?: any[];
-		stacks?: any[];
-		networks?: any[];
-		volumes?: any[];
-	}>({});
-	let loadingDetails = $state(false);
 
 	// Resource data states
 	let resourcesLoading = $state(false);
@@ -147,7 +135,6 @@
 		resourcesError = '';
 
 		try {
-			// Send commands to get resource data - using docker compose instead of stack
 			const commands = [
 				{ type: 'docker_command', payload: { command: 'ps', args: ['-a', '--format', 'json'] } },
 				{ type: 'docker_command', payload: { command: 'images', args: ['--format', 'json'] } },
@@ -368,18 +355,19 @@
 	}
 
 	function getStatusClasses(agent: Agent) {
-		if (agent.status === 'online') return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+		const actualStatus = getActualAgentStatus(agent);
+		if (actualStatus === 'online') return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
 		return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
 	}
 
 	function getStatusText(agent: Agent) {
-		if (agent.status === 'online') return 'Online';
+		const actualStatus = getActualAgentStatus(agent);
+		if (actualStatus === 'online') return 'Online';
 		return 'Offline';
 	}
 
-	// Add this function to check if agent can receive commands
 	function canSendCommands(agent: Agent) {
-		return agent.status === 'online';
+		return getActualAgentStatus(agent) === 'online';
 	}
 
 	function getTaskStatusClasses(status: string) {
@@ -532,8 +520,8 @@
 				<ArrowLeft class="size-4 mr-2" />
 				Back to Agents
 			</Button>
-			{#if agent && canSendCommands(agent)}
-				<Button onclick={() => (commandDialogOpen = true)}>
+			{#if agent && getActualAgentStatus(agent) === 'online'}
+				<Button onclick={() => (commandDialogOpen = true)} disabled={taskExecuting}>
 					<Terminal class="size-4 mr-2" />
 					Send Command
 				</Button>
@@ -844,7 +832,7 @@
 					</div>
 				{/if}
 
-				{#if agent.status === 'online'}
+				{#if getActualAgentStatus(agent) === 'online'}
 					<div class="space-y-4 pt-4 border-t border-border">
 						<div class="flex items-center justify-between">
 							<div>

@@ -10,11 +10,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'agent_id is required' }, { status: 400 });
 		}
 
-		// Update agent with heartbeat data including metrics
 		await updateAgent(agent_id, {
 			status: 'online',
 			lastSeen: new Date().toISOString(),
-			...(metrics && { metrics }) // Only include metrics if provided
+			...(metrics && { metrics })
 		});
 
 		console.log(`💓 Heartbeat received from ${agent_id}${metrics ? ' (with metrics)' : ''}`);

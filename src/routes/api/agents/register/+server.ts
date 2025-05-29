@@ -19,7 +19,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			status: 'online',
 			lastSeen: new Date().toISOString(),
 			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString()
+			updatedAt: new Date().toISOString(),
+			registeredAt: new Date().toISOString()
 		});
 
 		console.log(`✅ Agent ${agent_id} registered successfully`);

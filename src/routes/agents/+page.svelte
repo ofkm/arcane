@@ -5,6 +5,7 @@
 	import { formatDistanceToNow } from 'date-fns';
 	import { RefreshCw, AlertCircle, Loader2, Monitor, CheckCircle, Eye, Send, Container, HardDrive, Layers } from '@lucide/svelte';
 	import type { PageData } from './$types';
+	import { getActualAgentStatus } from '$lib/utils/agent-status.utils';
 
 	interface Props {
 		data: PageData;
@@ -46,17 +47,30 @@
 	}
 
 	function getStatusColor(agent: Agent) {
-		if (agent.status === 'online') return 'bg-green-500';
+		const actualStatus = getActualAgentStatus(agent);
+		if (actualStatus === 'online') return 'bg-green-500';
 		return 'bg-red-500';
 	}
 
 	function getStatusText(agent: Agent) {
-		if (agent.status === 'online') return 'Online';
+		const actualStatus = getActualAgentStatus(agent);
+		if (actualStatus === 'online') return 'Online';
 		return 'Offline';
 	}
 
 	function viewAgentDetails(agentId: string) {
 		goto(`/agents/${agentId}`);
+	}
+
+	function isAgentOffline(agent: Agent): boolean {
+		if (!agent.lastSeen) return true;
+
+		const now = new Date();
+		const lastSeen = new Date(agent.lastSeen);
+		const timeSinceLastSeen = now.getTime() - lastSeen.getTime();
+		const timeout = 5 * 60 * 1000; // 5 minutes
+
+		return timeSinceLastSeen > timeout;
 	}
 </script>
 
@@ -124,7 +138,7 @@
 								<p class="text-xs text-gray-500 dark:text-gray-400 font-mono">{agent.id}</p>
 							</div>
 						</div>
-						<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {agent.status === 'online' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'}">
+						<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getActualAgentStatus(agent) === 'online' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'}">
 							{getStatusText(agent)}
 						</span>
 					</div>
@@ -201,7 +215,7 @@
 					</div>
 
 					<!-- Connected Status -->
-					{#if agent.status === 'online'}
+					{#if getActualAgentStatus(agent) === 'online'}
 						<div class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
 							<div class="flex items-center gap-2">
 								<CheckCircle class="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -216,10 +230,10 @@
 							<Eye class="h-4 w-4" />
 							View Details
 						</button>
-						{#if agent.status === 'online'}
+						{#if getActualAgentStatus(agent) === 'online'}
 							<button onclick={() => viewAgentDetails(agent.id)} class="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center justify-center gap-2">
 								<Send class="h-4 w-4" />
-								Send Command
+								Manage
 							</button>
 						{/if}
 					</div>
