@@ -5,6 +5,7 @@
 	import { formatDistanceToNow } from 'date-fns';
 	import { toast } from 'svelte-sonner';
 	import type { Agent, AgentTask } from '$lib/types/agent.type';
+	import type { Deployment } from '$lib/types/deployment.type';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
@@ -17,7 +18,11 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2 } from '@lucide/svelte';
+	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2, Download } from '@lucide/svelte';
+	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import ImagePullForm from '$lib/components/forms/ImagePullForm.svelte';
+	import StackDeploymentForm from '$lib/components/forms/StackDeploymentForm.svelte';
+	import QuickContainerForm from '$lib/components/forms/QuickContainerForm.svelte';
 
 	// Get data from SSR
 	let { data } = $props();
@@ -63,6 +68,13 @@
 	let commandArgs = $state('');
 	let customCommand = $state('');
 
+	// Deployment states with proper typing
+	let deployDialogOpen = $state(false);
+	let imageDialogOpen = $state(false);
+	let containerDialogOpen = $state(false);
+	let deployments = $state<Deployment[]>([]);
+	let deploying = $state(false);
+
 	// Predefined commands
 	const predefinedCommands = [
 		{ value: 'docker_version', label: 'Docker Version' },
@@ -78,11 +90,13 @@
 	onMount(() => {
 		// Initial load to get connection status
 		loadAgentDetails();
+		loadDeployments();
 
 		// Refresh every 10 seconds to get real-time connection status
 		const interval = setInterval(() => {
 			loadAgentDetails();
 			loadAgentTasks();
+			loadDeployments();
 		}, 10000);
 		return () => clearInterval(interval);
 	});
@@ -232,9 +246,9 @@
 				const response = await fetch(`/api/agents/${agentId}/tasks/${taskId}`, {
 					credentials: 'include'
 				});
-				
+
 				console.log(`Task ${taskId} polling attempt ${i + 1}: ${response.status}`);
-				
+
 				if (!response.ok) {
 					if (response.status === 403) {
 						console.error(`Authentication failed for task ${taskId}`);
@@ -245,9 +259,9 @@
 
 				const responseData = await response.json();
 				console.log(`Task ${taskId} response:`, responseData);
-				
+
 				const task = responseData.task;
-				
+
 				if (!task) {
 					console.error(`No task data in response for ${taskId}`);
 					continue;
@@ -257,7 +271,7 @@
 
 				if (task.status === 'completed') {
 					console.log(`Task ${taskId} completed with result:`, task.result);
-					
+
 					if (!task.result) {
 						console.warn(`Task ${taskId} completed but has no result`);
 						return [];
@@ -283,7 +297,7 @@
 						// Split by lines and parse each line as JSON
 						const lines = outputString.split('\n').filter((line: string) => line.trim());
 						console.log(`Task ${taskId} has ${lines.length} lines to parse`);
-						
+
 						for (const line of lines) {
 							try {
 								const parsed = JSON.parse(line.trim());
@@ -297,7 +311,6 @@
 
 					console.log(`Parsed data for ${resourceType}:`, data);
 					return data;
-					
 				} else if (task.status === 'failed') {
 					console.error(`Task ${taskId} failed:`, task.error);
 					throw new Error(task.error || 'Task failed');
@@ -436,6 +449,91 @@
 		if (statusLower.includes('up')) return 'running';
 		if (statusLower.includes('exit')) return 'stopped';
 		return statusLower;
+	}
+
+	// Add these functions to your script section
+
+	async function handleStackDeploy(data: any) {
+		try {
+			const response = await fetch(`/api/agents/${agentId}/deploy/stack`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data),
+				credentials: 'include'
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || `Failed to deploy stack: ${response.statusText}`);
+			}
+
+			const result = await response.json();
+			toast.success(`Stack deployment started: ${result.task?.id || 'Unknown task'}`);
+
+			// Refresh deployments list
+			setTimeout(() => loadDeployments(), 1000);
+		} catch (err) {
+			console.error('Stack deploy error:', err);
+			throw err;
+		}
+	}
+
+	async function handleImagePull(imageName: string) {
+		try {
+			const response = await fetch(`/api/agents/${agentId}/deploy/image`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ imageName }),
+				credentials: 'include'
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || `Failed to pull image: ${response.statusText}`);
+			}
+
+			const result = await response.json();
+			toast.success(`Image pull started: ${result.task?.id || 'Unknown task'}`);
+		} catch (err) {
+			console.error('Image pull error:', err);
+			throw err;
+		}
+	}
+
+	async function handleContainerRun(data: any) {
+		try {
+			const response = await fetch(`/api/agents/${agentId}/deploy/container`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data),
+				credentials: 'include'
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || `Failed to run container: ${response.statusText}`);
+			}
+
+			const result = await response.json();
+			toast.success(`Container started: ${result.task?.id || 'Unknown task'}`);
+		} catch (err) {
+			console.error('Container run error:', err);
+			throw err;
+		}
+	}
+
+	async function loadDeployments() {
+		try {
+			const response = await fetch(`/api/agents/${agentId}/deployments`, {
+				credentials: 'include'
+			});
+			if (response.ok) {
+				const data = await response.json();
+				deployments = data.deployments || [];
+			}
+		} catch (err) {
+			console.error('Failed to load deployments:', err);
+		}
 	}
 </script>
 
@@ -782,11 +880,95 @@
 							</div>
 						{/if}
 					</div>
-				{:else}
-					<div class="text-center py-8 text-muted-foreground border-t border-border">
-						<AlertCircle class="size-12 mx-auto mb-4 opacity-50" />
-						<p class="font-medium">Agent Offline</p>
-						<p class="text-sm">Connect the agent to view detailed resources</p>
+				{/if}
+
+				{#if agent.status === 'online'}
+					<div class="space-y-4 pt-4 border-t border-border">
+						<div class="flex items-center justify-between">
+							<div>
+								<h4 class="font-medium mb-1">Deploy Resources</h4>
+								<p class="text-sm text-muted-foreground">Deploy stacks, containers, or images to this agent</p>
+							</div>
+						</div>
+
+						<!-- Quick Deploy Cards -->
+						<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+							<!-- Deploy Stack Card -->
+							<Card.Root class="cursor-pointer hover:border-primary/50 transition-colors" onclick={() => (deployDialogOpen = true)}>
+								<Card.Content class="p-4">
+									<div class="flex items-center space-x-3">
+										<div class="bg-blue-500/10 p-2 rounded-lg">
+											<Layers class="size-5 text-blue-500" />
+										</div>
+										<div>
+											<h5 class="font-medium">Deploy Stack</h5>
+											<p class="text-sm text-muted-foreground">Deploy a complete application stack</p>
+										</div>
+									</div>
+								</Card.Content>
+							</Card.Root>
+
+							<!-- Pull Image Card -->
+							<Card.Root class="cursor-pointer hover:border-primary/50 transition-colors" onclick={() => (imageDialogOpen = true)}>
+								<Card.Content class="p-4">
+									<div class="flex items-center space-x-3">
+										<div class="bg-green-500/10 p-2 rounded-lg">
+											<Download class="size-5 text-green-500" />
+										</div>
+										<div>
+											<h5 class="font-medium">Pull Image</h5>
+											<p class="text-sm text-muted-foreground">Download a Docker image</p>
+										</div>
+									</div>
+								</Card.Content>
+							</Card.Root>
+
+							<!-- Quick Container Card -->
+							<Card.Root class="cursor-pointer hover:border-primary/50 transition-colors" onclick={() => (containerDialogOpen = true)}>
+								<Card.Content class="p-4">
+									<div class="flex items-center space-x-3">
+										<div class="bg-purple-500/10 p-2 rounded-lg">
+											<Container class="size-5 text-purple-500" />
+										</div>
+										<div>
+											<h5 class="font-medium">Run Container</h5>
+											<p class="text-sm text-muted-foreground">Start a single container</p>
+										</div>
+									</div>
+								</Card.Content>
+							</Card.Root>
+						</div>
+
+						<!-- Recent Deployments -->
+						{#if deployments.length > 0}
+							<div class="space-y-2">
+								<h5 class="font-medium">Recent Deployments</h5>
+								<div class="space-y-2">
+									{#each deployments.slice(0, 3) as deployment}
+										<div class="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+											<div class="flex items-center space-x-3">
+												<div class="bg-blue-500/10 p-1.5 rounded">
+													{#if deployment.type === 'stack'}
+														<Layers class="size-4 text-blue-500" />
+													{:else if deployment.type === 'image'}
+														<Download class="size-4 text-green-500" />
+													{:else}
+														<Container class="size-4 text-purple-500" />
+													{/if}
+												</div>
+												<div>
+													<p class="font-medium text-sm">{deployment.name}</p>
+													<p class="text-xs text-muted-foreground">
+														{deployment.type} • {formatDistanceToNow(new Date(deployment.createdAt))} ago
+													</p>
+												</div>
+											</div>
+											<StatusBadge variant={deployment.status === 'running' ? 'green' : deployment.status === 'failed' ? 'red' : 'amber'} text={deployment.status} />
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</DropdownCard>
@@ -987,3 +1169,39 @@
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
+
+<!-- Stack Deployment Dialog -->
+<Dialog.Root bind:open={deployDialogOpen}>
+	<Dialog.Content class="sm:max-w-2xl">
+		<Dialog.Header>
+			<Dialog.Title>Deploy Stack to {agent?.hostname}</Dialog.Title>
+			<Dialog.Description>Choose a stack to deploy or create a new one</Dialog.Description>
+		</Dialog.Header>
+
+		<StackDeploymentForm {agentId} onClose={() => (deployDialogOpen = false)} onDeploy={handleStackDeploy} />
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- Image Pull Dialog -->
+<Dialog.Root bind:open={imageDialogOpen}>
+	<Dialog.Content class="sm:max-w-md">
+		<Dialog.Header>
+			<Dialog.Title>Pull Image to {agent?.hostname}</Dialog.Title>
+			<Dialog.Description>Enter the image name to download</Dialog.Description>
+		</Dialog.Header>
+
+		<ImagePullForm {agentId} onClose={() => (imageDialogOpen = false)} onPull={handleImagePull} />
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- Quick Container Dialog
+<Dialog.Root bind:open={containerDialogOpen}>
+	<Dialog.Content class="sm:max-w-xl">
+		<Dialog.Header>
+			<Dialog.Title>Run Container on {agent?.hostname}</Dialog.Title>
+			<Dialog.Description>Quickly start a container from an image</Dialog.Description>
+		</Dialog.Header>
+
+		<QuickContainerForm {agentId} onClose={() => (containerDialogOpen = false)} onRun={handleContainerRun} />
+	</Dialog.Content>
+</Dialog.Root> -->
