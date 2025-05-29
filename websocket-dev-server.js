@@ -3,26 +3,23 @@ import { WebSocketServer } from 'ws';
 import fs from 'fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'url';
+import url from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const BASE_PATH = path.join(__dirname, 'data');
-
 const AGENTS_DIR = path.join(BASE_PATH, 'agents');
 
 // Ensure agents directory exists
 await fs.mkdir(AGENTS_DIR, { recursive: true });
 
 const server = createServer();
-const wss = new WebSocketServer({
-	noServer: true,
-	perMessageDeflate: false
-});
+const wss = new WebSocketServer({ noServer: true });
 
 // Keep in-memory connections map
 const agents = new Map();
 
-// Agent management functions (simplified versions)
+// Agent management functions
 async function saveAgent(agent) {
 	const filePath = path.join(AGENTS_DIR, `${agent.id}.json`);
 	await fs.writeFile(filePath, JSON.stringify(agent, null, 2));
@@ -57,33 +54,161 @@ async function updateAgent(agentId, updates) {
 
 async function registerAgent(agentData) {
 	const existing = await getAgent(agentData.id);
-
 	if (existing) {
-		// Update existing agent
 		return await updateAgent(agentData.id, {
 			...agentData,
 			status: 'online',
-			lastSeen: new Date().toISOString(),
-			updatedAt: new Date().toISOString()
+			lastSeen: new Date().toISOString()
 		});
 	} else {
-		// Create new agent
 		const newAgent = {
 			...agentData,
-			status: 'online',
-			lastSeen: new Date().toISOString(),
 			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString()
+			updatedAt: new Date().toISOString(),
+			status: 'online',
+			lastSeen: new Date().toISOString()
 		};
-
 		return await saveAgent(newAgent);
 	}
 }
 
+// Add a function to send tasks to agents
+function sendTaskToAgent(agentId, taskData) {
+	const connection = agents.get(agentId);
+	if (!connection || connection.ws.readyState !== connection.ws.OPEN) {
+		console.log(`❌ Cannot send task to agent ${agentId} - not connected`);
+		return false;
+	}
+
+	try {
+		const message = {
+			type: 'task',
+			agent_id: agentId,
+			timestamp: new Date().toISOString(),
+			data: taskData
+		};
+
+		connection.ws.send(JSON.stringify(message));
+		console.log(`📋 Task sent to agent ${agentId}:`, taskData.type);
+		return true;
+	} catch (error) {
+		console.error(`❌ Failed to send task to agent ${agentId}:`, error);
+		return false;
+	}
+}
+
+// Handle HTTP requests
+server.on('request', async (req, res) => {
+	// Add CORS headers
+	res.setHeader('Access-Control-Allow-Origin', '*');
+	res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+	res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+	// Handle preflight requests
+	if (req.method === 'OPTIONS') {
+		res.writeHead(200);
+		res.end();
+		return;
+	}
+
+	console.log(`📥 HTTP ${req.method} ${req.url}`);
+
+	try {
+		const parsedUrl = url.parse(req.url, true);
+		const pathParts = parsedUrl.pathname.split('/').filter((part) => part);
+
+		// Handle /api/agents/{agentId}/tasks
+		if (req.method === 'POST' && pathParts.length === 4 && pathParts[0] === 'api' && pathParts[1] === 'agents' && pathParts[3] === 'tasks') {
+			const agentId = pathParts[2];
+
+			let body = '';
+			req.on('data', (chunk) => {
+				body += chunk.toString();
+			});
+
+			req.on('end', async () => {
+				try {
+					const { type, payload } = JSON.parse(body);
+					console.log(`📋 Task request for agent ${agentId}: ${type}`);
+
+					// Check if agent is connected
+					const connection = agents.get(agentId);
+					if (!connection || connection.ws.readyState !== connection.ws.OPEN) {
+						console.log(`❌ Agent ${agentId} not connected`);
+						res.writeHead(400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'Agent not connected' }));
+						return;
+					}
+
+					// Create task data
+					const taskData = {
+						id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+						type,
+						payload
+					};
+
+					// Send task to agent
+					const sent = sendTaskToAgent(agentId, taskData);
+					if (sent) {
+						console.log(`✅ Task ${taskData.id} sent to agent ${agentId}`);
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(
+							JSON.stringify({
+								success: true,
+								taskId: taskData.id,
+								message: `Task sent to agent ${agentId}`
+							})
+						);
+					} else {
+						console.log(`❌ Failed to send task to agent ${agentId}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'Failed to send task to agent' }));
+					}
+				} catch (error) {
+					console.error('❌ Error parsing task request:', error);
+					res.writeHead(400, { 'Content-Type': 'application/json' });
+					res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+				}
+			});
+
+			req.on('error', (error) => {
+				console.error('❌ Request error:', error);
+				res.writeHead(400, { 'Content-Type': 'application/json' });
+				res.end(JSON.stringify({ error: 'Request error' }));
+			});
+		} else {
+			// Handle other routes or return 404
+			console.log(`❌ Route not found: ${req.method} ${req.url}`);
+			res.writeHead(404, { 'Content-Type': 'application/json' });
+			res.end(JSON.stringify({ error: 'Not found' }));
+		}
+	} catch (error) {
+		console.error('❌ Server error:', error);
+		res.writeHead(500, { 'Content-Type': 'application/json' });
+		res.end(JSON.stringify({ error: 'Internal server error' }));
+	}
+});
+
+// Handle WebSocket upgrades
+server.on('upgrade', (request, socket, head) => {
+	const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
+	console.log(`🔄 WebSocket upgrade request for: ${pathname}`);
+
+	if (pathname === '/agent/connect') {
+		console.log('✅ Valid agent connection path');
+		wss.handleUpgrade(request, socket, head, (ws) => {
+			wss.emit('connection', ws, request);
+		});
+	} else {
+		console.log('❌ Invalid path, destroying socket');
+		socket.destroy();
+	}
+});
+
+// WebSocket connection handling
 wss.on('connection', (ws, request) => {
 	console.log('🔗 New agent connection attempt from:', request.socket.remoteAddress);
 
-	// Set up ping/pong for connection health
 	ws.isAlive = true;
 	ws.on('pong', () => {
 		ws.isAlive = true;
@@ -108,7 +233,6 @@ wss.on('connection', (ws, request) => {
 					};
 
 					try {
-						// Save agent to file system
 						const savedAgent = await registerAgent(agentData);
 						console.log('💾 Agent saved to file:', savedAgent.id);
 
@@ -147,7 +271,6 @@ wss.on('connection', (ws, request) => {
 						connection.lastHeartbeat = new Date();
 						console.log(`💓 Heartbeat from ${message.agent_id}`);
 
-						// Update agent's last seen in file
 						try {
 							await updateAgent(message.agent_id, {
 								status: 'online',
@@ -179,14 +302,12 @@ wss.on('connection', (ws, request) => {
 	});
 
 	ws.on('close', async (code, reason) => {
-		// Find and remove the disconnected agent
 		for (const [agentId, connection] of agents.entries()) {
 			if (connection.ws === ws) {
 				agents.delete(agentId);
 				console.log(`🔌 Agent ${agentId} disconnected (code: ${code}, reason: ${reason})`);
 				console.log(`📊 Total agents: ${agents.size}`);
 
-				// Update agent status in file
 				try {
 					await updateAgent(agentId, {
 						status: 'offline',
@@ -206,30 +327,13 @@ wss.on('connection', (ws, request) => {
 	});
 });
 
-server.on('upgrade', (request, socket, head) => {
-	const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
-
-	console.log(`🔄 WebSocket upgrade request for: ${pathname}`);
-
-	if (pathname === '/agent/connect') {
-		console.log('✅ Valid agent connection path');
-		wss.handleUpgrade(request, socket, head, (ws) => {
-			wss.emit('connection', ws, request);
-		});
-	} else {
-		console.log('❌ Invalid path, destroying socket');
-		socket.destroy();
-	}
-});
-
-// Health check interval - ping agents and remove dead connections
+// Health check interval
 setInterval(async () => {
 	const now = new Date();
-	const timeout = 90000; // 90 seconds timeout
+	const timeout = 90000; // 90 seconds
 
 	console.log(`🔍 Health check: ${agents.size} agents, ${wss.clients.size} WebSocket connections`);
 
-	// Check WebSocket connections
 	wss.clients.forEach((ws) => {
 		if (!ws.isAlive) {
 			console.log('💀 Terminating dead connection');
@@ -242,7 +346,6 @@ setInterval(async () => {
 		}
 	});
 
-	// Check agent heartbeats
 	for (const [agentId, connection] of agents.entries()) {
 		const timeSinceHeartbeat = now.getTime() - connection.lastHeartbeat.getTime();
 
@@ -253,7 +356,6 @@ setInterval(async () => {
 			}
 			agents.delete(agentId);
 
-			// Update agent status in file
 			try {
 				await updateAgent(agentId, {
 					status: 'offline',
@@ -264,7 +366,6 @@ setInterval(async () => {
 				console.error('Failed to update timed-out agent status:', error);
 			}
 		} else if (connection.ws.readyState === connection.ws.OPEN) {
-			// Send ping to check if agent is still alive
 			connection.ws.send(
 				JSON.stringify({
 					type: 'ping',
@@ -273,11 +374,11 @@ setInterval(async () => {
 			);
 		}
 	}
-}, 30000); // Check every 30 seconds
+}, 30000);
 
 const port = 3001;
 server.listen(port, () => {
-	console.log(`🚀 WebSocket server for agents listening on port ${port}`);
-	console.log(`🔗 Agents should connect to: ws://localhost:${port}/agent/connect`);
-	console.log(`📁 Agent data will be saved to: ${AGENTS_DIR}`);
+	console.log(`🚀 WebSocket development server running on port ${port}`);
+	console.log(`📡 Agent connection endpoint: ws://localhost:${port}/agent/connect`);
+	console.log(`🌐 HTTP API endpoint: http://localhost:${port}/api/agents/{agentId}/tasks`);
 });

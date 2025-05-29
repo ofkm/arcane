@@ -1,7 +1,7 @@
 import { WebSocketServer } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
-import { processAgentMessage, registerAgent, updateAgentHeartbeat } from './agent-manager';
+import { registerAgent, updateAgentHeartbeat } from './agent-manager';
 
 interface AgentConnection {
 	id: string;
@@ -119,6 +119,7 @@ class AgentWebSocketManager {
 
 	private async handleTaskResult(agentId: string, data: any) {
 		console.log(`Task result from ${agentId}:`, data);
+		// TODO: Save task result to database/file
 	}
 
 	private async handlePong(agentId: string) {
@@ -150,7 +151,7 @@ class AgentWebSocketManager {
 					console.log(`Agent ${agentId} timed out, removing connection`);
 					connection.ws.terminate();
 					this.agents.delete(agentId);
-				} else {
+				} else if (connection.ws.readyState === connection.ws.OPEN) {
 					connection.ws.send(
 						JSON.stringify({
 							type: 'ping',
@@ -162,19 +163,22 @@ class AgentWebSocketManager {
 		}, 30000);
 	}
 
-	public sendTaskToAgent(agentId: string, task: any): boolean {
+	// Fixed method - this is what agent-manager calls
+	public sendMessageToAgent(agentId: string, message: any): boolean {
 		const connection = this.agents.get(agentId);
-		if (connection) {
-			connection.ws.send(
-				JSON.stringify({
-					type: 'task',
-					task_id: task.id,
-					data: task
-				})
-			);
-			return true;
+		if (!connection || connection.ws.readyState !== connection.ws.OPEN) {
+			console.log(`Cannot send message to agent ${agentId} - not connected`);
+			return false;
 		}
-		return false;
+
+		try {
+			connection.ws.send(JSON.stringify(message));
+			console.log(`Message sent to agent ${agentId}:`, message.type);
+			return true;
+		} catch (error) {
+			console.error(`Failed to send message to agent ${agentId}:`, error);
+			return false;
+		}
 	}
 
 	public handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
@@ -190,11 +194,13 @@ class AgentWebSocketManager {
 	}
 
 	public getConnectedAgents() {
-		return Array.from(this.agents.values()).map((conn) => ({
-			id: conn.id,
-			lastHeartbeat: conn.lastHeartbeat,
-			metadata: conn.metadata
-		}));
+		return Array.from(this.agents.values())
+			.filter((conn) => conn.ws.readyState === conn.ws.OPEN)
+			.map((conn) => ({
+				id: conn.id,
+				lastHeartbeat: conn.lastHeartbeat,
+				metadata: conn.metadata
+			}));
 	}
 }
 

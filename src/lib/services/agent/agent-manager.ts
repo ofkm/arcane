@@ -109,20 +109,52 @@ export async function createTask(agentId: string, taskType: string, payload: any
 }
 
 export async function sendTaskToAgent(agentId: string, taskType: string, payload: any): Promise<AgentTask> {
-	// Create the task
-	const task = await createTask(agentId, taskType, payload);
-
-	// Send it to the agent via WebSocket
-	const sent = agentWSManager.sendTaskToAgent(agentId, task);
-
-	if (!sent) {
-		// Update task status to failed if agent is not connected
-		await updateTaskStatus(task.id, 'failed', null, 'Agent not connected');
-		throw new Error(`Agent ${agentId} is not connected`);
+	const agent = await getAgent(agentId);
+	if (!agent) {
+		throw new Error(`Agent ${agentId} not found`);
 	}
 
-	// Update task status to running
-	await updateTaskStatus(task.id, 'running');
+	if (agent.status !== 'online') {
+		throw new Error(`Agent ${agentId} is not online (status: ${agent.status})`);
+	}
+
+	// Create task
+	const task: AgentTask = {
+		id: nanoid(),
+		agentId,
+		type: taskType as any,
+		payload,
+		status: 'pending',
+		createdAt: new Date().toISOString()
+	};
+
+	// Save task to file
+	const filePath = path.join(TASKS_DIR, `${task.id}.json`);
+	await fs.writeFile(filePath, JSON.stringify(task, null, 2));
+
+	// Send task via WebSocket
+	const message = {
+		type: 'task',
+		agent_id: agentId,
+		timestamp: new Date().toISOString(),
+		data: {
+			id: task.id,
+			type: taskType,
+			payload
+		}
+	};
+
+	const sent = agentWSManager.sendMessageToAgent(agentId, message);
+	if (!sent) {
+		task.status = 'failed';
+		task.error = 'Failed to send task to agent - WebSocket connection not available';
+		await fs.writeFile(filePath, JSON.stringify(task, null, 2));
+		throw new Error('Failed to send task to agent - WebSocket connection not available');
+	}
+
+	// Mark task as running
+	task.status = 'running';
+	await fs.writeFile(filePath, JSON.stringify(task, null, 2));
 
 	return task;
 }
