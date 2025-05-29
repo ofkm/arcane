@@ -3,34 +3,42 @@
 	import { goto } from '$app/navigation';
 	import type { Agent } from '$lib/types/agent.type';
 	import { formatDistanceToNow } from 'date-fns';
+	import { RefreshCw, AlertCircle, Loader2, Monitor, CheckCircle, Eye, Send } from '@lucide/svelte';
+	import type { PageData } from './$types';
 
-	let agents: Agent[] = $state([]); // ← Remove the connected property
-	let loading = $state(true);
-	let error = $state('');
+	interface Props {
+		data: PageData;
+	}
+
+	let { data }: Props = $props();
+
+	let agents: Agent[] = $state(data.agents || []);
+	let loading = $state(false);
+	let error = $state(data.error || '');
 
 	onMount(() => {
-		loadAgents();
-		// Refresh every 10 seconds for debugging
+		// Refresh every 10 seconds for real-time updates
 		const interval = setInterval(loadAgents, 10000);
 		return () => clearInterval(interval);
 	});
 
 	async function loadAgents() {
 		try {
-			console.log('Loading agents...');
+			loading = true;
+			console.log('Client: Loading agents...');
 			const response = await fetch('/api/agents');
 
 			if (!response.ok) {
 				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 			}
 
-			const data = await response.json();
-			console.log('Agents loaded:', data);
+			const responseData = await response.json();
+			console.log('Client: Agents loaded:', responseData);
 
-			agents = data.agents || [];
+			agents = responseData.agents || [];
 			error = '';
 		} catch (err) {
-			console.error('Failed to load agents:', err);
+			console.error('Client: Failed to load agents:', err);
 			error = err instanceof Error ? err.message : 'Unknown error';
 		} finally {
 			loading = false;
@@ -38,13 +46,11 @@
 	}
 
 	function getStatusColor(agent: Agent) {
-		// ← Remove connected property
 		if (agent.status === 'online') return 'bg-green-500';
 		return 'bg-red-500';
 	}
 
 	function getStatusText(agent: Agent) {
-		// ← Remove connected property
 		if (agent.status === 'online') return 'Online';
 		return 'Offline';
 	}
@@ -63,14 +69,9 @@
 		</div>
 		<button onclick={loadAgents} class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading}>
 			{#if loading}
-				<svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-				</svg>
+				<Loader2 class="h-4 w-4 animate-spin" />
 			{:else}
-				<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-				</svg>
+				<RefreshCw class="h-4 w-4" />
 			{/if}
 			{loading ? 'Loading...' : 'Refresh'}
 		</button>
@@ -80,30 +81,23 @@
 	{#if error}
 		<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
 			<div class="flex items-center gap-2">
-				<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-					<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-				</svg>
+				<AlertCircle class="h-5 w-5" />
 				<strong>Error:</strong>
 				{error}
 			</div>
 		</div>
 	{/if}
 
-	<!-- Loading State -->
-	{#if loading}
+	<!-- Loading State (only show during client-side refreshes) -->
+	{#if loading && agents.length === 0}
 		<div class="flex flex-col items-center justify-center py-16">
-			<svg class="animate-spin h-8 w-8 text-blue-600 mb-4" fill="none" viewBox="0 0 24 24">
-				<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-				<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-			</svg>
+			<Loader2 class="h-8 w-8 text-blue-600 mb-4 animate-spin" />
 			<p class="text-gray-600 dark:text-gray-400">Loading agents...</p>
 		</div>
 	{:else if agents.length === 0}
 		<!-- Empty State -->
 		<div class="text-center py-16">
-			<svg class="h-16 w-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-			</svg>
+			<Monitor class="h-16 w-16 text-gray-400 mx-auto mb-4" />
 			<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No agents registered</h3>
 			<p class="text-gray-600 dark:text-gray-400 mb-4">Get started by connecting your first agent</p>
 			<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-w-md mx-auto">
@@ -121,9 +115,7 @@
 						<div class="flex items-center gap-3">
 							<div class="relative">
 								<div class="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-									<svg class="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-									</svg>
+									<Monitor class="h-6 w-6 text-gray-600 dark:text-gray-400" />
 								</div>
 								<div class="absolute -top-1 -right-1 w-4 h-4 {getStatusColor(agent)} rounded-full border-2 border-white dark:border-gray-800"></div>
 							</div>
@@ -174,9 +166,7 @@
 					{#if agent.status === 'online'}
 						<div class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
 							<div class="flex items-center gap-2">
-								<svg class="h-4 w-4 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-								</svg>
+								<CheckCircle class="h-4 w-4 text-green-600 dark:text-green-400" />
 								<p class="text-sm font-medium text-green-700 dark:text-green-400">Ready to receive commands</p>
 							</div>
 						</div>
@@ -184,9 +174,15 @@
 
 					<!-- Action Buttons -->
 					<div class="mt-4 flex gap-2">
-						<button onclick={() => viewAgentDetails(agent.id)} class="flex-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"> View Details </button>
+						<button onclick={() => viewAgentDetails(agent.id)} class="flex-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors flex items-center justify-center gap-2">
+							<Eye class="h-4 w-4" />
+							View Details
+						</button>
 						{#if agent.status === 'online'}
-							<button onclick={() => viewAgentDetails(agent.id)} class="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"> Send Command </button>
+							<button onclick={() => viewAgentDetails(agent.id)} class="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center justify-center gap-2">
+								<Send class="h-4 w-4" />
+								Send Command
+							</button>
 						{/if}
 					</div>
 				</div>
