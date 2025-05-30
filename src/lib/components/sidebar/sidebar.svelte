@@ -1,21 +1,7 @@
 <script lang="ts" module>
-	import AudioWaveformIcon from '@lucide/svelte/icons/audio-waveform';
-	import GalleryVerticalEndIcon from '@lucide/svelte/icons/gallery-vertical-end';
-	import { Computer, FileStack, HardDrive, Home, Network, Container, ImageIcon, SettingsIcon, DatabaseIcon, LayoutTemplate, UserIcon, Shield, ComputerIcon, Paintbrush2Icon } from '@lucide/svelte';
+	import { FileStack, HardDrive, Home, Network, Container, ImageIcon, SettingsIcon, DatabaseIcon, LayoutTemplate, UserIcon, Shield, ComputerIcon } from '@lucide/svelte';
 
 	const staticData = {
-		// agents: [
-		// 	{
-		// 		name: 'Local Docker Socket',
-		// 		logo: GalleryVerticalEndIcon,
-		// 		plan: 'unix:///var/run/docker.sock'
-		// 	},
-		// 	{
-		// 		name: 'Arcane-Agent',
-		// 		logo: AudioWaveformIcon,
-		// 		plan: 'agent-AGENTNAME-666666'
-		// 	}
-		// ],
 		settingsItems: [
 			{
 				title: 'Settings',
@@ -40,7 +26,7 @@
 		managementItems: [
 			{ title: 'Dashboard', url: '/', icon: Home },
 			{ title: 'Containers', url: '/containers', icon: Container },
-			{ title: 'Stacks', url: '/stacks', icon: FileStack },
+			{ title: 'Compose Projects', url: '/compose', icon: FileStack },
 			{ title: 'Images', url: '/images', icon: ImageIcon },
 			{ title: 'Networks', url: '/networks', icon: Network },
 			{ title: 'Volumes', url: '/volumes', icon: HardDrive }
@@ -84,7 +70,8 @@
 <Sidebar.Root {collapsible} {...restProps}>
 	<Sidebar.Header>
 		<SidebarLogo {isCollapsed} {versionInformation} />
-		<SidebarAgentSwitcher {hasLocalDocker} {agents} />
+		<!-- Add back once we add in better agent switching -->
+		<!-- <SidebarAgentSwitcher {hasLocalDocker} {agents} /> -->
 	</Sidebar.Header>
 	<Sidebar.Content>
 		<SidebarItemGroup label="Management" items={staticData.managementItems} />
