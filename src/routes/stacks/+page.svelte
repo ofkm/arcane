@@ -239,23 +239,27 @@
 		isRemoteActionLoading = actionId;
 
 		try {
-			let command: string = '';
-			let args: string[] = [];
-			let taskType: string = 'docker_command';
-			let payload: any = {};
+			let taskType: string;
+			let payload: any;
 
 			switch (action) {
 				case 'up':
-					command = 'compose';
-					args = [stackName, 'up', '-d'];
+					taskType = 'compose_up';
+					payload = {
+						project_name: stackName
+					};
 					break;
 				case 'down':
-					command = 'compose';
-					args = [stackName, 'down'];
+					taskType = 'compose_down';
+					payload = {
+						project_name: stackName
+					};
 					break;
 				case 'restart':
-					command = 'compose';
-					args = [stackName, 'restart'];
+					taskType = 'compose_restart';
+					payload = {
+						project_name: stackName
+					};
 					break;
 				case 'remove':
 					taskType = 'compose_remove';
@@ -264,25 +268,21 @@
 					};
 					break;
 				case 'pull':
-					command = 'compose';
-					args = [stackName, 'pull'];
+					taskType = 'compose_pull';
+					payload = {
+						project_name: stackName
+					};
 					break;
 			}
 
-			let requestBody: any;
-			if (taskType === 'compose_remove') {
-				requestBody = payload;
-			} else {
-				requestBody = { command, args };
-			}
-
-			// Choose the right endpoint based on task type
-			const endpoint = taskType === 'compose_remove' ? `/api/agents/${agentId}/tasks` : `/api/agents/${agentId}/command`;
-
-			const response = await fetch(endpoint, {
+			// All operations now use the tasks API endpoint with proper types
+			const response = await fetch(`/api/agents/${agentId}/tasks`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(taskType === 'compose_remove' ? { type: taskType, payload: requestBody } : requestBody)
+				body: JSON.stringify({
+					type: taskType,
+					payload: payload
+				})
 			});
 
 			if (!response.ok) {
@@ -295,13 +295,16 @@
 			// For pull action, follow with an 'up' command
 			if (action === 'pull' && result.success) {
 				toast.success(`Images pulled for ${stackName}`);
+
 				// Execute the up command after pull
-				const upResponse = await fetch(`/api/agents/${agentId}/command`, {
+				const upResponse = await fetch(`/api/agents/${agentId}/tasks`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						command: 'compose',
-						args: ['up', '-d', '--project-name', stackName]
+						type: 'compose_up',
+						payload: {
+							project_name: stackName
+						}
 					})
 				});
 
