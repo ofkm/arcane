@@ -6,7 +6,7 @@
 	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2, Monitor } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
-	import { capitalizeFirstLetter, truncateString, shortId } from '$lib/utils/string.utils';
+	import { capitalizeFirstLetter, truncateString, shortId, parseStatusTime } from '$lib/utils/string.utils';
 	import { formatBytes } from '$lib/utils/bytes.util';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -371,12 +371,12 @@
 						<div class="flex flex-col h-full">
 							<div class="flex-1">
 								<UniversalTable
-									data={dashboardStates.containers.slice(0, 5).map((c) => ({ ...c, displayName: getContainerDisplayName(c) }))}
+									data={dashboardStates.containers.slice(0, 5).map((c) => ({ ...c, displayName: getContainerDisplayName(c), statusSortValue: parseStatusTime(c.Status) }))}
 									columns={[
 										{ accessorKey: 'displayName', header: 'Name' },
 										{ accessorKey: 'Image', header: 'Image' },
 										{ accessorKey: 'State', header: 'State' },
-										{ accessorKey: 'Status', header: 'Status' }
+										{ accessorKey: 'statusSortValue', header: 'Status' }
 									]}
 									features={{
 										filtering: false,
