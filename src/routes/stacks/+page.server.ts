@@ -34,12 +34,18 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	const agentStacksResult = await tryCatch(getAllAgentStacks(onlineAgents, { fetch }));
 	const agentStacks = agentStacksResult.data || [];
 
+	// Create a set of agent stack names to filter out duplicates from external stacks
+	const agentStackNames = new Set(agentStacks.map((stack) => stack.name));
+
 	// Merge all stacks together
 	const combinedStacks = [...managedStacks];
 
 	// Add external stacks if they don't already exist in combined stacks
+	// AND they're not agent stacks (to prevent duplicates)
 	for (const externalStack of externalStacks) {
-		if (!combinedStacks.some((stack) => stack.id === externalStack.id)) {
+		const isDuplicate = combinedStacks.some((stack) => stack.id === externalStack.id) || agentStackNames.has(externalStack.name);
+
+		if (!isDuplicate) {
 			combinedStacks.push(externalStack);
 		}
 	}
@@ -48,14 +54,12 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	for (const agentStack of agentStacks) {
 		// Create a unique ID for agent stacks that won't collide with local stacks
 		const uniqueId = `agent:${agentStack.agentId}:${agentStack.name || agentStack.id}`;
-		console.log(`Processing agent stack: ${agentStack} (ID: ${uniqueId})`);
 
 		// Only add if not already in the combined stack list
 		if (!combinedStacks.some((stack) => stack.id === uniqueId || (stack.name === agentStack.name && stack.agentId === agentStack.agentId))) {
 			combinedStacks.push({
 				...agentStack,
 				id: uniqueId, // Ensure unique ID
-				name: agentStack.name,
 				status: agentStack.status || 'unknown' // Ensure status is always defined
 			});
 		}
