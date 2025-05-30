@@ -33,9 +33,7 @@
 {/if}
 
 <div class="flex min-h-screen bg-background">
-	<!-- Only show sidebar when authenticated -->
 	{#if showSidebar}
-		<!-- <Nav {versionInformation} {user} /> -->
 		<Sidebar.Provider>
 			<AppSidebar {versionInformation} {user} />
 			<main class="flex-1">
@@ -44,5 +42,9 @@
 				</section>
 			</main>
 		</Sidebar.Provider>
+	{:else}
+		<main class="flex-1">
+			{@render children()}
+		</main>
 	{/if}
 </div>

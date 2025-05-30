@@ -11,19 +11,33 @@
 	import Moon from '@lucide/svelte/icons/moon';
 	import { mode, toggleMode } from 'mode-watcher';
 	import { cn } from '$lib/utils';
-	import { createHash } from 'crypto';
 
 	let { user, isCollapsed }: { user: User; isCollapsed: boolean } = $props();
 	const sidebar = useSidebar();
 
-	// Generate Gravatar URL
-	function getGravatarUrl(email: string, size = 40): string {
+	// Generate Gravatar URL using browser's crypto API
+	async function getGravatarUrl(email: string, size = 40): Promise<string> {
 		if (!email) return '';
-		const hash = createHash('md5').update(email.toLowerCase().trim()).digest('hex');
+
+		const encoder = new TextEncoder();
+		const data = encoder.encode(email.toLowerCase().trim());
+		const hashBuffer = await crypto.subtle.digest('MD5', data);
+		const hashArray = Array.from(new Uint8Array(hashBuffer));
+		const hash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+
 		return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=mp&r=g`;
 	}
 
-	const gravatarUrl = $derived(user?.email ? getGravatarUrl(user.email) : '');
+	let gravatarUrl = $state('');
+	$effect(() => {
+		if (user?.email) {
+			getGravatarUrl(user.email).then((url) => {
+				gravatarUrl = url;
+			});
+		} else {
+			gravatarUrl = '';
+		}
+	});
 </script>
 
 <Sidebar.Menu>
@@ -89,7 +103,7 @@
 				<form action="/auth/logout" method="POST">
 					<Button.Root
 						variant="ghost"
-						class={cn('w-full flex items-center text-sm font-medium transition-all duration-200 text-muted-foreground rounded-xl', 'hover:bg-linear-to-br hover:from-destructive/10 hover:to-destructive/5 hover:text-destructive hover:shadow-md hover:scale-[1.02] active:scale-[0.98]', isCollapsed ? 'justify-center px-2 py-3 h-11' : 'justify-start gap-3 px-3 py-2.5 h-11')}
+						class={cn('w-full flex items-center text-sm font-medium transition-all duration-200 text-muted-foreground rounded-xl', 'hover:bg-gradient-to-br hover:from-destructive/10 hover:to-destructive/5 hover:text-destructive hover:shadow-md hover:scale-[1.02] active:scale-[0.98]', isCollapsed ? 'justify-center px-2 py-3 h-11' : 'justify-start gap-3 px-3 py-2.5 h-11')}
 						title={isCollapsed ? 'Logout' : undefined}
 						type="submit"
 					>
