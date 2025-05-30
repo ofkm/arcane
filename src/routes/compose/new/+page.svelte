@@ -19,7 +19,7 @@
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
 	import * as Resizable from '$lib/components/ui/resizable/index.js';
 	import TemplateSelectionDialog from '$lib/components/template-selection-dialog.svelte';
-	import DropdownButton from '$lib/components/dropdown-button.svelte';
+	import * as DropdownButton from '$lib/components/ui/dropdown-button/index.js';
 	import type { ComposeTemplate } from '$lib/services/template-service';
 	import type { PageData } from './$types';
 
@@ -246,7 +246,35 @@
 						<ArcaneButton action="template" onClick={() => (showTemplateDialog = true)} loading={saving} disabled={saving || converting} />
 
 						{#if onlineAgents.length > 0}
-							<DropdownButton buttonText={selectedAgent ? `Deploy to ${selectedAgent.hostname}` : 'Deploy Locally'} icon={Send} options={agentOptions} selectedId={selectedAgentId} disabled={!name || !composeContent || saving} loading={saving} onButtonClick={handleDeployButtonClick} onOptionSelect={handleAgentSelect} />
+							<DropdownButton.DropdownRoot>
+								<DropdownButton.Root>
+									<DropdownButton.Main variant="default" disabled={!name || !composeContent || saving} onclick={handleDeployButtonClick}>
+										{#if saving}
+											<Loader2 class="size-4 mr-2 animate-spin" />
+										{:else}
+											<Send class="size-4 mr-2" />
+										{/if}
+										{selectedAgent ? `Deploy to ${selectedAgent.hostname}` : 'Deploy Locally'}
+									</DropdownButton.Main>
+
+									<DropdownButton.DropdownTrigger>
+										<DropdownButton.Trigger variant="default" disabled={!name || !composeContent || saving} />
+									</DropdownButton.DropdownTrigger>
+								</DropdownButton.Root>
+
+								<DropdownButton.Content align="end" class="min-w-[200px]">
+									<DropdownButton.Item onclick={() => handleAgentSelect({ id: '', label: 'Deploy Locally' })}>Deploy Locally</DropdownButton.Item>
+
+									{#if agentOptions.length > 0}
+										<DropdownButton.Separator />
+										{#each agentOptions as option}
+											<DropdownButton.Item onclick={() => handleAgentSelect(option)}>
+												{option.label}
+											</DropdownButton.Item>
+										{/each}
+									{/if}
+								</DropdownButton.Content>
+							</DropdownButton.DropdownRoot>
 						{:else}
 							<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
 						{/if}
