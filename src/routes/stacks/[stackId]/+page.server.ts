@@ -1,6 +1,7 @@
 import { getStack } from '$lib/services/docker/stack-service';
 import { getSettings } from '$lib/services/settings-service';
 import { getContainer } from '$lib/services/docker/container-service';
+import { listAgents } from '$lib/services/agent/agent-manager';
 import type { PageServerLoad } from './$types';
 import { tryCatch } from '$lib/utils/try-catch';
 import type { PortBinding, ContainerInspectInfo } from 'dockerode';
@@ -73,11 +74,28 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 	}
 
+	const agents = await listAgents();
+
+	// Calculate actual status on server side
+	const now = new Date();
+	const timeout = 5 * 60 * 1000; // 5 minutes
+
+	const agentsWithStatus = agents.map((agent) => {
+		const lastSeen = new Date(agent.lastSeen);
+		const timeSinceLastSeen = now.getTime() - lastSeen.getTime();
+
+		return {
+			...agent,
+			status: timeSinceLastSeen > timeout ? 'offline' : agent.status
+		};
+	});
+
 	return {
 		stack,
 		servicePorts,
 		editorState,
-		settings
+		settings,
+		agents: agentsWithStatus
 	};
 };
 
