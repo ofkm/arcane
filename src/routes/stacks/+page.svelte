@@ -19,11 +19,15 @@
 	import type { StackActions } from '$lib/types/actions.type';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
+	import type { Agent } from '$lib/types/agent.type';
 
 	let { data }: { data: PageData } = $props();
 	let stacks = $derived(data.stacks);
-	let selectedIds = $state<string[]>([]);
-	let isLoading = $state({
+	let agents = $derived(data.agents || []);
+	let agentStacks = $state<any[]>([]);
+	let loadingAgentStacks = $state(false);
+
+	const isLoading = $state({
 		start: false,
 		stop: false,
 		restart: false,
@@ -38,9 +42,10 @@
 
 	const stackApi = new StackAPIService();
 
-	const totalStacks = $derived(stacks?.length || 0);
-	const runningStacks = $derived(stacks?.filter((s) => s.status === 'running').length || 0);
-	const partialStacks = $derived(stacks?.filter((s) => s.status === 'partially running').length || 0);
+	const allStacks = $derived([...stacks, ...agentStacks]);
+	const totalStacks = $derived(allStacks?.length || 0);
+	const runningStacks = $derived(allStacks?.filter((s) => s.status === 'running').length || 0);
+	const partialStacks = $derived(allStacks?.filter((s) => s.status === 'partially running').length || 0);
 
 	async function performStackAction(action: StackActions, id: string) {
 		isLoading[action] = true;
@@ -144,6 +149,53 @@
 		await invalidateAll();
 		isLoading['import'] = false;
 	}
+
+	// Function to load stacks from agents
+	async function loadAgentStacks() {
+		if (agents.length === 0) return;
+
+		loadingAgentStacks = true;
+		try {
+			const agentStackPromises = agents.map(async (agent) => {
+				try {
+					const response = await fetch(`/api/agents/${agent.id}/stacks`);
+					if (!response.ok) throw new Error(`Failed to fetch stacks from ${agent.hostname}`);
+
+					const data = await response.json();
+					return (data.stacks || []).map((stack: any) => ({
+						...stack,
+						agentId: agent.id,
+						agentHostname: agent.hostname,
+						isRemote: true,
+						id: `${agent.id}:${stack.Name || stack.id}`, // Ensure unique IDs
+						name: stack.Name || stack.name,
+						status: stack.Status?.toLowerCase() || 'unknown',
+						serviceCount: stack.ServiceCount || 0,
+						source: 'Remote',
+						createdAt: stack.CreatedAt || new Date().toISOString()
+					}));
+				} catch (error) {
+					console.error(`Failed to load stacks from agent ${agent.hostname}:`, error);
+					return [];
+				}
+			});
+
+			const results = await Promise.all(agentStackPromises);
+			agentStacks = results.flat();
+		} catch (error) {
+			console.error('Failed to load agent stacks:', error);
+			toast.error('Failed to load some remote stacks');
+		} finally {
+			loadingAgentStacks = false;
+		}
+	}
+
+	// Load agent stacks on component mount
+	$effect(() => {
+		if (agents.length > 0) {
+			loadAgentStacks();
+		}
+	});
 </script>
 
 <div class="space-y-6">
@@ -205,16 +257,25 @@
 			<div class="flex items-center justify-between">
 				<div>
 					<Card.Title>Stack List</Card.Title>
+					{#if loadingAgentStacks}
+						<p class="text-sm text-muted-foreground">Loading remote stacks...</p>
+					{/if}
 				</div>
 				<div class="flex items-center gap-2">
+					<Button variant="outline" size="sm" onclick={loadAgentStacks} disabled={loadingAgentStacks}>
+						{#if loadingAgentStacks}
+							<Loader2 class="size-4 animate-spin mr-2" />
+						{/if}
+						Refresh Remote
+					</Button>
 					<ArcaneButton action="create" customLabel="Create Stack" onClick={() => goto(`/stacks/new`)} />
 				</div>
 			</div>
 		</Card.Header>
 		<Card.Content>
-			{#if stacks && stacks.length > 0}
+			{#if allStacks && allStacks.length > 0}
 				<UniversalTable
-					data={stacks}
+					data={allStacks}
 					columns={[
 						{ accessorKey: 'Name', header: 'Name' },
 						{ accessorKey: 'serviceCount', header: 'Services' },
@@ -236,13 +297,19 @@
 						filterPlaceholder: 'Search stacks...',
 						noResultsMessage: 'No stacks found'
 					}}
-					bind:selectedIds
 				>
 					{#snippet rows({ item })}
 						{@const stateVariant = statusVariantMap[item.status.toLowerCase()]}
 						<Table.Cell>
-							{#if item.isExternal}
-								{item.name}
+							{#if item.isExternal || item.isRemote}
+								<div class="flex items-center gap-2">
+									{item.name}
+									{#if item.isRemote}
+										<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+											{item.agentHostname}
+										</span>
+									{/if}
+								</div>
 							{:else}
 								<div class="flex items-center gap-2">
 									<a class="font-medium hover:underline" href="/stacks/{item.id}/">
@@ -258,11 +325,30 @@
 						</Table.Cell>
 						<Table.Cell>{item.serviceCount}</Table.Cell>
 						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} /></Table.Cell>
-						<Table.Cell><StatusBadge variant={item.isExternal ? 'amber' : 'green'} text={item.isExternal ? 'External' : 'Managed'} /></Table.Cell>
+						<Table.Cell>
+							<StatusBadge variant={item.isExternal ? 'amber' : item.isRemote ? 'blue' : 'green'} text={item.isExternal ? 'External' : item.isRemote ? 'Remote' : 'Managed'} />
+						</Table.Cell>
 						<Table.Cell>{item.createdAt}</Table.Cell>
 						<Table.Cell>
 							{#if item.isExternal}
 								<ArcaneButton action="pull" customLabel="Import" onClick={() => handleImportStack(item.id, item.name)} loading={isLoading.import} disabled={isLoading.import} />
+							{:else if item.isRemote}
+								<DropdownMenu.Root>
+									<DropdownMenu.Trigger>
+										{#snippet child({ props })}
+											<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
+												<span class="sr-only">Open menu</span>
+												<Ellipsis />
+											</Button>
+										{/snippet}
+									</DropdownMenu.Trigger>
+									<DropdownMenu.Content align="end">
+										<DropdownMenu.Group>
+											<DropdownMenu.Item onclick={() => goto(`/agents/${item.agentId}`)}>View Agent</DropdownMenu.Item>
+											<!-- Add remote stack actions here -->
+										</DropdownMenu.Group>
+									</DropdownMenu.Content>
+								</DropdownMenu.Root>
 							{:else}
 								<DropdownMenu.Root>
 									<DropdownMenu.Trigger>
