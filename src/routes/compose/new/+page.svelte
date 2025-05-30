@@ -69,7 +69,7 @@
 			onSuccess: async () => {
 				toast.success(`Stack "${name}" created with environment file.`);
 				await invalidateAll();
-				goto(`/stacks/${name}`);
+				goto(`/compose/${name}`);
 			}
 		});
 	}
@@ -101,15 +101,15 @@
 
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.error || `Failed to deploy stack: ${response.statusText}`);
+				throw new Error(errorData.error || `Failed to deploy Compose Project: ${response.statusText}`);
 			}
 
 			const result = await response.json();
-			toast.success(`Stack "${name}" deployed to agent ${selectedAgent.hostname}!`);
+			toast.success(`Compose Project "${name}" deployed to agent ${selectedAgent.hostname}!`);
 			goto(`/agents/${selectedAgentId}`);
 		} catch (error) {
 			console.error('Deploy error:', error);
-			toast.error(error instanceof Error ? error.message : 'Failed to deploy stack');
+			toast.error(error instanceof Error ? error.message : 'Failed to deploy Compose Project');
 		} finally {
 			saving = false;
 		}
@@ -176,7 +176,7 @@
 					</Breadcrumb.Item>
 					<Breadcrumb.Separator />
 					<Breadcrumb.Item>
-						<Breadcrumb.Link href="/stacks">Stacks</Breadcrumb.Link>
+						<Breadcrumb.Link href="/compose">Compose Project</Breadcrumb.Link>
 					</Breadcrumb.Item>
 					<Breadcrumb.Separator />
 					<Breadcrumb.Item>
@@ -185,7 +185,7 @@
 				</Breadcrumb.List>
 			</Breadcrumb.Root>
 
-			<h1 class="text-2xl font-bold tracking-tight mt-2">Create New Stack</h1>
+			<h1 class="text-2xl font-bold tracking-tight mt-2">Create New Compose Project</h1>
 		</div>
 	</div>
 
@@ -232,8 +232,8 @@
 							<FileStack class="text-primary size-5" />
 						</div>
 						<div>
-							<Card.Title>Stack Configuration</Card.Title>
-							<Card.Description>Create a new Docker Compose stack with environment variables</Card.Description>
+							<Card.Title>Compose Project Configuration</Card.Title>
+							<Card.Description>Create a new Docker Compose Project with environment variables</Card.Description>
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
@@ -280,7 +280,7 @@
 			<Card.Content>
 				<div class="space-y-4">
 					<div class="grid w-full max-w-sm items-center gap-1.5">
-						<Label for="name">Stack Name</Label>
+						<Label for="name">Compose Project Name</Label>
 						<Input type="text" id="name" name="name" bind:value={name} required placeholder="e.g., my-web-app" disabled={saving} />
 					</div>
 

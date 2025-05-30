@@ -140,7 +140,7 @@
 			<div class="max-w-full px-4 py-3">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
-						<Button variant="ghost" size="sm" href="/stacks">
+						<Button variant="ghost" size="sm" href="/compose">
 							<ArrowLeft class="size-4 mr-2" />
 							Back
 						</Button>
@@ -386,7 +386,7 @@
 				</div>
 				<h2 class="text-2xl font-medium mb-3">Stack Not Found</h2>
 				<p class="text-center text-muted-foreground max-w-md mb-8">Could not load agent stack data. The stack may not exist on the agent or the agent may be offline.</p>
-				<Button variant="outline" href="/stacks">
+				<Button variant="outline" href="/compose">
 					<ArrowLeft class="mr-2 size-4" />
 					Back to Stacks
 				</Button>
