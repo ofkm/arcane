@@ -245,37 +245,27 @@
 			switch (action) {
 				case 'up':
 					taskType = 'compose_up';
-					payload = {
-						project_name: stackName
-					};
+					payload = { project_name: stackName };
 					break;
 				case 'down':
 					taskType = 'compose_down';
-					payload = {
-						project_name: stackName
-					};
+					payload = { project_name: stackName };
 					break;
 				case 'restart':
 					taskType = 'compose_restart';
-					payload = {
-						project_name: stackName
-					};
+					payload = { project_name: stackName };
 					break;
 				case 'remove':
 					taskType = 'compose_remove';
-					payload = {
-						project_name: stackName
-					};
+					payload = { project_name: stackName };
 					break;
 				case 'pull':
 					taskType = 'compose_pull';
-					payload = {
-						project_name: stackName
-					};
+					payload = { project_name: stackName };
 					break;
 			}
 
-			// All operations now use the tasks API endpoint with proper types
+			// Send the task to the agent
 			const response = await fetch(`/api/agents/${agentId}/tasks`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -291,9 +281,46 @@
 			}
 
 			const result = await response.json();
+			const taskId = result.task?.id;
 
-			// For pull action, follow with an 'up' command
-			if (action === 'pull' && result.success) {
+			if (!taskId) {
+				throw new Error('No task ID returned from agent');
+			}
+
+			// Poll for task completion
+			const pollTask = async (taskId: string): Promise<boolean> => {
+				const maxAttempts = 30; // 30 seconds timeout
+				const delay = 1000; // 1 second between polls
+
+				for (let i = 0; i < maxAttempts; i++) {
+					await new Promise((resolve) => setTimeout(resolve, delay));
+
+					try {
+						const taskResponse = await fetch(`/api/agents/${agentId}/tasks/${taskId}`);
+						if (!taskResponse.ok) continue;
+
+						const taskData = await taskResponse.json();
+						const taskStatus = taskData.task?.status;
+
+						if (taskStatus === 'completed') {
+							return true;
+						} else if (taskStatus === 'failed') {
+							throw new Error(taskData.task?.error || 'Task failed');
+						}
+						// Continue polling if still pending/running
+					} catch (pollError) {
+						console.warn(`Polling attempt ${i + 1} failed:`, pollError);
+					}
+				}
+
+				throw new Error('Task polling timed out');
+			};
+
+			// Wait for the task to complete
+			await pollTask(taskId);
+
+			// Handle pull action with follow-up
+			if (action === 'pull') {
 				toast.success(`Images pulled for ${stackName}`);
 
 				// Execute the up command after pull
@@ -302,14 +329,15 @@
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						type: 'compose_up',
-						payload: {
-							project_name: stackName
-						}
+						payload: { project_name: stackName }
 					})
 				});
 
-				if (!upResponse.ok) {
-					throw new Error('Failed to restart stack after pull');
+				if (upResponse.ok) {
+					const upResult = await upResponse.json();
+					if (upResult.task?.id) {
+						await pollTask(upResult.task.id);
+					}
 				}
 
 				toast.success(`Stack ${stackName} redeployed with new images`);
@@ -319,7 +347,7 @@
 				toast.success(`Stack ${stackName} ${action === 'up' ? 'started' : action === 'down' ? 'stopped' : 'restarted'} successfully`);
 			}
 
-			// Refresh the list of stacks after the action completes
+			// Refresh the list of stacks after the action actually completes
 			await invalidateAll();
 		} catch (error) {
 			console.error(`Failed to ${action} remote stack:`, error);
