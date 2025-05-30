@@ -3,7 +3,7 @@
 	import type { Stack, StackService, StackPort } from '$lib/types/docker/stack.type';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, RefreshCw, Terminal, Settings, Activity, FileText, Play, Square, RotateCcw, Trash2 } from '@lucide/svelte';
+	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, RefreshCw, Terminal, Settings, Activity, FileText, Play, Square, RotateCcw, Trash2, Send, Users, Loader2 } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -20,6 +20,8 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import LogViewer from '$lib/components/LogViewer.svelte';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import * as Select from '$lib/components/ui/select/index.js';
 
 	const stackApi = new StackAPIService();
 
@@ -53,6 +55,13 @@
 	let autoScrollStackLogs = $state(true);
 	let isStackLogsStreaming = $state(false);
 	let stackLogViewer = $state<LogViewer>();
+
+	let deployDialogOpen = $state(false);
+	let deploying = $state(false);
+	let selectedAgentId = $state('');
+
+	// Get online agents for deployment
+	const onlineAgents = $derived((data.agents || []).filter((agent) => agent.status === 'online'));
 
 	$effect(() => {
 		isLoading.deploying = false;
@@ -89,6 +98,53 @@
 				}
 			}
 		});
+	}
+
+	async function handleDeployToAgent() {
+		if (!selectedAgentId) {
+			toast.error('Please select an agent for deployment');
+			return;
+		}
+
+		const selectedAgent = onlineAgents.find((agent) => agent.id === selectedAgentId);
+		if (!selectedAgent) {
+			toast.error('Selected agent not found or offline');
+			return;
+		}
+
+		if (!data.stack) {
+			toast.error('Stack data not available');
+			return;
+		}
+
+		deploying = true;
+		try {
+			const response = await fetch(`/api/agents/${selectedAgentId}/deploy/stack`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					stackName: data.stack.name,
+					composeContent: data.stack.composeContent,
+					envContent: data.stack.envContent,
+					mode: 'compose'
+				})
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || `Failed to deploy stack: ${response.statusText}`);
+			}
+
+			const result = await response.json();
+			toast.success(`Stack "${data.stack?.name || 'Unknown'}" deployed to agent ${selectedAgent.hostname}!`);
+			deployDialogOpen = false;
+			selectedAgentId = '';
+		} catch (error) {
+			console.error('Deploy error:', error);
+			toast.error(error instanceof Error ? error.message : 'Failed to deploy stack');
+		} finally {
+			deploying = false;
+		}
 	}
 
 	function getHostForService(service: StackService): string {
@@ -204,6 +260,12 @@
 							}}
 							onActionComplete={() => invalidateAll()}
 						/>
+						{#if onlineAgents.length > 0}
+							<Button variant="outline" size="sm" onclick={() => (deployDialogOpen = true)} disabled={Object.values(isLoading).some(Boolean)}>
+								<Send class="size-4 mr-2" />
+								Deploy to Agent
+							</Button>
+						{/if}
 					</div>
 				</div>
 			</div>
@@ -506,3 +568,47 @@
 		</div>
 	{/if}
 </div>
+
+<Dialog.Root bind:open={deployDialogOpen}>
+	<Dialog.Content>
+		<Dialog.Header>
+			<Dialog.Title>Deploy Stack to Agent</Dialog.Title>
+			<Dialog.Description>
+				Deploy "{data.stack?.name || 'Unknown Stack'}" to a remote agent
+			</Dialog.Description>
+		</Dialog.Header>
+		<div class="space-y-4 py-4">
+			<div class="space-y-2">
+				<Label for="agent-select">Select Agent</Label>
+				<Select.Root type="single" bind:value={selectedAgentId} disabled={deploying}>
+					<Select.Trigger>
+						{selectedAgentId}
+					</Select.Trigger>
+					<Select.Content>
+						{#each onlineAgents as agent}
+							<Select.Item value={agent.id}>
+								<div class="flex items-center gap-2">
+									<div class="size-2 rounded-full bg-green-500"></div>
+									<span>{agent.hostname}</span>
+									<span class="text-xs text-muted-foreground">({agent.platform})</span>
+								</div>
+							</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+				<p class="text-xs text-muted-foreground">This will deploy the current stack configuration to the selected agent.</p>
+			</div>
+		</div>
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => (deployDialogOpen = false)} disabled={deploying}>Cancel</Button>
+			<Button onclick={handleDeployToAgent} disabled={!selectedAgentId || deploying}>
+				{#if deploying}
+					<Loader2 class="size-4 mr-2 animate-spin" />
+				{:else}
+					<Send class="size-4 mr-2" />
+				{/if}
+				Deploy
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>

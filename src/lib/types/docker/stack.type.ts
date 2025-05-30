@@ -51,6 +51,9 @@ export interface Stack {
 	composeContent?: string;
 	envContent?: string;
 	isLegacy?: boolean;
+	agentId?: string;
+	agentHostname?: string;
+	isRemote?: boolean;
 }
 
 export interface StackUpdate {

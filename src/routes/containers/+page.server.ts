@@ -7,7 +7,6 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async () => {
 	try {
 		const [containers, volumes, networks, images] = await Promise.all([listContainers(true), listVolumes(), listNetworks(), listImages()]);
-
 		return {
 			containers,
 			volumes,

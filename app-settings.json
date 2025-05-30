@@ -1,6 +1,0 @@
-{
-	"dockerHost": "unix:///var/run/docker.sock",
-	"autoRefresh": true,
-	"pollingInterval": 5,
-	"stacksDirectory": "/app/data/stacks"
-}

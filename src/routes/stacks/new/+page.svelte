@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, FileStack, Terminal, Copy, Loader2, Wand } from '@lucide/svelte';
+	import { ArrowLeft, FileStack, Terminal, Copy, Loader2, Wand, Send } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -21,6 +21,8 @@
 	import TemplateSelectionDialog from '$lib/components/template-selection-dialog.svelte';
 	import type { ComposeTemplate } from '$lib/services/template-service';
 	import type { PageData } from './$types';
+	import * as Select from '$lib/components/ui/select/index.js';
+	import type { Agent } from '$lib/types/agent.type';
 
 	let { data }: { data: PageData } = $props();
 
@@ -28,12 +30,17 @@
 	let saving = $state(false);
 	let converting = $state(false);
 	let showTemplateDialog = $state(false);
+	let deployToAgent = $state(false);
+	let selectedAgentId = $state('');
+	let selectedAgent: Agent | undefined = $state();
 
 	let name = $state('');
 	let composeContent = $state(defaultComposeTemplate);
 	let envContent = $state(data.envTemplate || defaultEnvTemplate);
 	let dockerRunCommand = $state('');
 
+	// Get online agents for deployment
+	const onlineAgents = $derived(data.agents || []);
 	// Initialize with default template if available
 	$effect(() => {
 		if (data.defaultTemplate && !composeContent) {
@@ -41,7 +48,20 @@
 		}
 	});
 
+	// Update selectedAgentId when selectedAgent changes
+	$effect(() => {
+		selectedAgentId = selectedAgent?.id || '';
+	});
+
 	async function handleSubmit() {
+		if (deployToAgent && selectedAgentId) {
+			await handleDeployToAgent();
+		} else {
+			await handleCreateStack();
+		}
+	}
+
+	async function handleCreateStack() {
 		handleApiResultWithCallbacks({
 			result: await tryCatch(stackApi.create(name, composeContent, envContent)),
 			message: 'Failed to Create Stack',
@@ -52,6 +72,47 @@
 				goto(`/stacks/${name}`);
 			}
 		});
+	}
+
+	async function handleDeployToAgent() {
+		if (!selectedAgentId) {
+			toast.error('Please select an agent for deployment');
+			return;
+		}
+
+		const selectedAgent = onlineAgents.find((agent) => agent.id === selectedAgentId);
+		if (!selectedAgent) {
+			toast.error('Selected agent not found or offline');
+			return;
+		}
+
+		saving = true;
+		try {
+			const response = await fetch(`/api/agents/${selectedAgentId}/deploy/stack`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					stackName: name,
+					composeContent,
+					envContent,
+					mode: 'compose'
+				})
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || `Failed to deploy stack: ${response.statusText}`);
+			}
+
+			const result = await response.json();
+			toast.success(`Stack "${name}" deployed to agent ${selectedAgent.hostname}!`);
+			goto(`/agents/${selectedAgentId}`);
+		} catch (error) {
+			console.error('Deploy error:', error);
+			toast.error(error instanceof Error ? error.message : 'Failed to deploy stack');
+		} finally {
+			saving = false;
+		}
 	}
 
 	async function handleConvertDockerRun() {
@@ -176,8 +237,43 @@
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
+						<!-- Agent Selection moved here -->
+						{#if onlineAgents.length > 0}
+							<div class="flex items-center gap-2">
+								<input type="checkbox" id="deployToAgent" bind:checked={deployToAgent} disabled={saving} class="rounded border-gray-300" />
+								<Label for="deployToAgent" class="text-sm font-medium whitespace-nowrap">Deploy to Agent</Label>
+								{#if deployToAgent}
+									<Select.Root type="single" bind:value={selectedAgentId} disabled={saving}>
+										<Select.Trigger class="w-[180px]">
+											<span class="text-sm">
+												{onlineAgents.find((agent) => agent.id === selectedAgentId)?.hostname || 'Select agent...'}
+											</span>
+										</Select.Trigger>
+										<Select.Content>
+											{#each onlineAgents as agent}
+												<Select.Item value={agent.id}>
+													{agent.hostname} ({agent.platform})
+												</Select.Item>
+											{/each}
+										</Select.Content>
+									</Select.Root>
+								{/if}
+							</div>
+						{/if}
+
 						<ArcaneButton action="template" onClick={() => (showTemplateDialog = true)} loading={saving} disabled={saving || converting} />
-						<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
+						{#if deployToAgent}
+							<Button type="submit" disabled={!name || !composeContent || !selectedAgentId || saving}>
+								{#if saving}
+									<Loader2 class="size-4 mr-2 animate-spin" />
+								{:else}
+									<Send class="size-4 mr-2" />
+								{/if}
+								Deploy to Agent
+							</Button>
+						{:else}
+							<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
+						{/if}
 					</div>
 				</div>
 			</Card.Header>

@@ -1,15 +1,17 @@
 <script lang="ts">
 	import '../app.css';
 	import { ModeWatcher } from 'mode-watcher';
-	import Nav from '$lib/components/sidebar.svelte';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { navigating, page } from '$app/state';
 	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog.svelte';
+	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import AppSidebar from '$lib/components/sidebar/sidebar.svelte';
 
 	let { children, data } = $props();
 
 	const versionInformation = data.versionInformation;
 	const user = $derived(data.user);
+	const agents = $derived(data.agents);
 	const isNavigating = $derived(navigating.type !== null);
 	const isAuthenticated = $derived(!!user);
 
@@ -32,14 +34,18 @@
 {/if}
 
 <div class="flex min-h-screen bg-background">
-	<!-- Only show sidebar when authenticated -->
 	{#if showSidebar}
-		<Nav {versionInformation} {user} />
-	{/if}
-
-	<main class="flex-1">
-		<section class="p-6">
+		<Sidebar.Provider>
+			<AppSidebar hasLocalDocker={data.hasLocalDocker || false} agents={agents || []} {versionInformation} {user} />
+			<main class="flex-1">
+				<section class="p-6">
+					{@render children()}
+				</section>
+			</main>
+		</Sidebar.Provider>
+	{:else}
+		<main class="flex-1">
 			{@render children()}
-		</section>
-	</main>
+		</main>
+	{/if}
 </div>
