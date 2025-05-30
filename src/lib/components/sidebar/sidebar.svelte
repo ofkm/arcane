@@ -39,7 +39,6 @@
 		],
 		managementItems: [
 			{ title: 'Dashboard', url: '/', icon: Home },
-			{ title: 'Agents', url: '/agents', icon: Computer },
 			{ title: 'Containers', url: '/containers', icon: Container },
 			{ title: 'Stacks', url: '/stacks', icon: FileStack },
 			{ title: 'Images', url: '/images', icon: ImageIcon },
