@@ -11,6 +11,7 @@
 
 	const versionInformation = data.versionInformation;
 	const user = $derived(data.user);
+	const agents = $derived(data.agents);
 	const isNavigating = $derived(navigating.type !== null);
 	const isAuthenticated = $derived(!!user);
 
@@ -35,7 +36,7 @@
 <div class="flex min-h-screen bg-background">
 	{#if showSidebar}
 		<Sidebar.Provider>
-			<AppSidebar {versionInformation} {user} />
+			<AppSidebar hasLocalDocker={data.hasLocalDocker || false} agents={agents || []} {versionInformation} {user} />
 			<main class="flex-1">
 				<section class="p-6">
 					{@render children()}

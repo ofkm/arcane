@@ -3,19 +3,19 @@
 	import GalleryVerticalEndIcon from '@lucide/svelte/icons/gallery-vertical-end';
 	import { Computer, FileStack, HardDrive, Home, Network, Container, ImageIcon, SettingsIcon, DatabaseIcon, LayoutTemplate, UserIcon, Shield, ComputerIcon, Paintbrush2Icon } from '@lucide/svelte';
 
-	const data = {
-		agents: [
-			{
-				name: 'Local Docker Socket',
-				logo: GalleryVerticalEndIcon,
-				plan: 'unix:///var/run/docker.sock'
-			},
-			{
-				name: 'Arcane-Agent',
-				logo: AudioWaveformIcon,
-				plan: 'agent-AGENTNAME-666666'
-			}
-		],
+	const staticData = {
+		// agents: [
+		// 	{
+		// 		name: 'Local Docker Socket',
+		// 		logo: GalleryVerticalEndIcon,
+		// 		plan: 'unix:///var/run/docker.sock'
+		// 	},
+		// 	{
+		// 		name: 'Arcane-Agent',
+		// 		logo: AudioWaveformIcon,
+		// 		plan: 'agent-AGENTNAME-666666'
+		// 	}
+		// ],
 		settingsItems: [
 			{
 				title: 'Settings',
@@ -60,16 +60,21 @@
 	import type { AppVersionInformation } from '$lib/types/application-configuration';
 	import SidebarLogo from './sidebar-logo.svelte';
 	import SidebarUpdatebanner from './sidebar-updatebanner.svelte';
+	import type { Agent } from '$lib/types/agent.type';
 
 	let {
 		ref = $bindable(null),
 		collapsible = 'icon',
 		user,
 		versionInformation,
+		hasLocalDocker,
+		agents,
 		...restProps
 	}: ComponentProps<typeof Sidebar.Root> & {
 		versionInformation: AppVersionInformation;
+		hasLocalDocker: boolean;
 		user?: User | null;
+		agents: Agent[];
 	} = $props();
 
 	const sidebar = useSidebar();
@@ -80,12 +85,12 @@
 <Sidebar.Root {collapsible} {...restProps}>
 	<Sidebar.Header>
 		<SidebarLogo {isCollapsed} {versionInformation} />
-		<SidebarAgentSwitcher agents={data.agents} />
+		<SidebarAgentSwitcher {hasLocalDocker} {agents} />
 	</Sidebar.Header>
 	<Sidebar.Content>
-		<SidebarItemGroup label="Management" items={data.managementItems} />
-		<SidebarItemGroup label="Customization" items={data.customizationItems} />
-		<SidebarItemGroup label="Administration" items={data.settingsItems} />
+		<SidebarItemGroup label="Management" items={staticData.managementItems} />
+		<SidebarItemGroup label="Customization" items={staticData.customizationItems} />
+		<SidebarItemGroup label="Administration" items={staticData.settingsItems} />
 	</Sidebar.Content>
 	<Sidebar.Footer>
 		<SidebarUpdatebanner {isCollapsed} {versionInformation} updateAvailable={versionInformation.updateAvailable} />
