@@ -511,6 +511,11 @@
 									</DropdownMenu.Trigger>
 									<DropdownMenu.Content align="end">
 										<DropdownMenu.Group>
+											<DropdownMenu.Item onclick={() => goto(`/stacks/agent/${item.agentId}/${item.name}`)} disabled={!!isRemoteActionLoading}>
+												<Pen class="size-4" />
+												Edit
+											</DropdownMenu.Item>
+
 											<DropdownMenu.Item onclick={() => goto(`/agents/${item.agentId}`)}>View Agent</DropdownMenu.Item>
 
 											{#if item.status !== 'running'}
