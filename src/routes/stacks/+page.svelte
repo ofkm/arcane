@@ -24,7 +24,6 @@
 	let { data }: { data: PageData } = $props();
 	let stacks = $derived(data.stacks);
 	let agents = $derived(data.agents || []);
-	let agentStacks = $state<any[]>([]);
 	let loadingAgentStacks = $state(false);
 
 	const isLoading = $state({
@@ -42,10 +41,13 @@
 
 	const stackApi = new StackAPIService();
 
-	const allStacks = $derived([...stacks, ...agentStacks]);
+	const allStacks = $derived(stacks);
 	const totalStacks = $derived(allStacks?.length || 0);
 	const runningStacks = $derived(allStacks?.filter((s) => s.status === 'running').length || 0);
 	const partialStacks = $derived(allStacks?.filter((s) => s.status === 'partially running').length || 0);
+
+	// Add this variable to track loading state for remote stack actions
+	let isRemoteActionLoading = $state<string | null>(null);
 
 	async function performStackAction(action: StackActions, id: string) {
 		isLoading[action] = true;
@@ -150,6 +152,47 @@
 		isLoading['import'] = false;
 	}
 
+	async function handleRemoveRemoteStack(agentId: string, stackName: string) {
+		openConfirmDialog({
+			title: `Confirm Stack Removal`,
+			message: `Are you sure you want to remove the stack "${stackName}" from agent "${agentId}"? This action cannot be undone.`,
+			confirm: {
+				label: 'Remove',
+				destructive: true,
+				action: async () => {
+					isRemoteActionLoading = `${agentId}:${stackName}:remove`;
+
+					try {
+						// Send the stack_destroy task to the agent
+						const response = await fetch(`/api/agents/${agentId}/tasks`, {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								type: 'stack_destroy',
+								payload: {
+									project_name: stackName
+								}
+							})
+						});
+
+						if (!response.ok) {
+							const errorData = await response.json();
+							throw new Error(errorData.error || 'Failed to remove stack');
+						}
+
+						toast.success(`Stack ${stackName} destroyed successfully`);
+						await invalidateAll();
+					} catch (error) {
+						console.error(`Failed to remove remote stack:`, error);
+						toast.error(`Failed to remove stack: ${error instanceof Error ? error.message : 'Unknown error'}`);
+					} finally {
+						isRemoteActionLoading = null;
+					}
+				}
+			}
+		});
+	}
+
 	// Function to load stacks from agents
 	async function loadAgentStacks() {
 		if (agents.length === 0) return;
@@ -167,7 +210,7 @@
 						agentId: agent.id,
 						agentHostname: agent.hostname,
 						isRemote: true,
-						id: `${agent.id}:${stack.Name || stack.id}`, // Ensure unique IDs
+						id: `${agent.id}:${stack.Name || stack.id}`,
 						name: stack.Name || stack.name,
 						status: stack.Status?.toLowerCase() || 'unknown',
 						serviceCount: stack.ServiceCount || 0,
@@ -180,8 +223,8 @@
 				}
 			});
 
-			const results = await Promise.all(agentStackPromises);
-			agentStacks = results.flat();
+			await invalidateAll();
+			toast.success('Remote stacks refreshed');
 		} catch (error) {
 			console.error('Failed to load agent stacks:', error);
 			toast.error('Failed to load some remote stacks');
@@ -190,12 +233,105 @@
 		}
 	}
 
-	// Load agent stacks on component mount
-	$effect(() => {
-		if (agents.length > 0) {
-			loadAgentStacks();
+	// Function to handle remote stack actions
+	async function handleRemoteStackAction(agentId: string, stackName: string, action: 'up' | 'down' | 'restart' | 'pull' | 'remove') {
+		const actionId = `${agentId}:${stackName}:${action}`;
+		isRemoteActionLoading = actionId;
+
+		try {
+			let command: string = '';
+			let args: string[] = [];
+			let taskType: string = 'docker_command';
+			let payload: any = {};
+
+			switch (action) {
+				case 'up':
+					command = 'compose';
+					args = [stackName, 'up', '-d'];
+					break;
+				case 'down':
+					command = 'compose';
+					args = [stackName, 'down'];
+					break;
+				case 'restart':
+					command = 'compose';
+					args = [stackName, 'restart'];
+					break;
+				case 'remove':
+					taskType = 'compose_remove';
+					payload = {
+						project_name: stackName
+					};
+					break;
+				case 'pull':
+					command = 'compose';
+					args = [stackName, 'pull'];
+					break;
+			}
+
+			let requestBody: any;
+			if (taskType === 'compose_remove') {
+				requestBody = payload;
+			} else {
+				requestBody = { command, args };
+			}
+
+			// Choose the right endpoint based on task type
+			const endpoint = taskType === 'compose_remove' ? `/api/agents/${agentId}/tasks` : `/api/agents/${agentId}/command`;
+
+			const response = await fetch(endpoint, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(taskType === 'compose_remove' ? { type: taskType, payload: requestBody } : requestBody)
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || `Failed to ${action} stack`);
+			}
+
+			const result = await response.json();
+
+			// For pull action, follow with an 'up' command
+			if (action === 'pull' && result.success) {
+				toast.success(`Images pulled for ${stackName}`);
+				// Execute the up command after pull
+				const upResponse = await fetch(`/api/agents/${agentId}/command`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						command: 'compose',
+						args: ['up', '-d', '--project-name', stackName]
+					})
+				});
+
+				if (!upResponse.ok) {
+					throw new Error('Failed to restart stack after pull');
+				}
+
+				toast.success(`Stack ${stackName} redeployed with new images`);
+			} else if (action === 'remove') {
+				toast.success(`Stack ${stackName} destroyed successfully`);
+			} else {
+				toast.success(`Stack ${stackName} ${action === 'up' ? 'started' : action === 'down' ? 'stopped' : 'restarted'} successfully`);
+			}
+
+			// Refresh the list of stacks after the action completes
+			await invalidateAll();
+		} catch (error) {
+			console.error(`Failed to ${action} remote stack:`, error);
+			toast.error(`Failed to ${action} stack: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		} finally {
+			isRemoteActionLoading = null;
 		}
-	});
+	}
+
+	// // Load agent stacks on component mount
+	// $effect(() => {
+	// 	if (agents.length > 0) {
+	// 		loadAgentStacks();
+	// 	}
+	// });
 </script>
 
 <div class="space-y-6">
@@ -277,7 +413,7 @@
 				<UniversalTable
 					data={allStacks}
 					columns={[
-						{ accessorKey: 'Name', header: 'Name' },
+						{ accessorKey: 'name', header: 'Name' },
 						{ accessorKey: 'serviceCount', header: 'Services' },
 						{ accessorKey: 'status', header: 'Status' },
 						{ accessorKey: 'source', header: 'Source' },
@@ -299,14 +435,14 @@
 					}}
 				>
 					{#snippet rows({ item })}
-						{@const stateVariant = statusVariantMap[item.status.toLowerCase()]}
+						{@const stateVariant = item.status ? statusVariantMap[item.status.toLowerCase()] : 'gray'}
 						<Table.Cell>
 							{#if item.isExternal || item.isRemote}
 								<div class="flex items-center gap-2">
 									{item.name}
 									{#if item.isRemote}
 										<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-											{item.agentHostname}
+											On {item.agentId}
 										</span>
 									{/if}
 								</div>
@@ -345,7 +481,54 @@
 									<DropdownMenu.Content align="end">
 										<DropdownMenu.Group>
 											<DropdownMenu.Item onclick={() => goto(`/agents/${item.agentId}`)}>View Agent</DropdownMenu.Item>
-											<!-- Add remote stack actions here -->
+
+											{#if item.status !== 'running'}
+												<DropdownMenu.Item onclick={() => handleRemoteStackAction(item.agentId || '', item.name, 'up')} disabled={!!isRemoteActionLoading}>
+													{#if isRemoteActionLoading === `${item.agentId}:${item.name}:up`}
+														<Loader2 class="animate-spin size-4" />
+													{:else}
+														<Play class="size-4" />
+													{/if}
+													Start
+												</DropdownMenu.Item>
+											{:else}
+												<DropdownMenu.Item onclick={() => handleRemoteStackAction(item.agentId || '', item.name, 'restart')} disabled={!!isRemoteActionLoading}>
+													{#if isRemoteActionLoading === `${item.agentId}:${item.name}:restart`}
+														<Loader2 class="animate-spin size-4" />
+													{:else}
+														<RotateCcw class="size-4" />
+													{/if}
+													Restart
+												</DropdownMenu.Item>
+
+												<DropdownMenu.Item onclick={() => handleRemoteStackAction(item.agentId || '', item.name, 'down')} disabled={!!isRemoteActionLoading}>
+													{#if isRemoteActionLoading === `${item.agentId}:${item.name}:down`}
+														<Loader2 class="animate-spin size-4" />
+													{:else}
+														<StopCircle class="size-4" />
+													{/if}
+													Stop
+												</DropdownMenu.Item>
+											{/if}
+
+											<DropdownMenu.Item onclick={() => handleRemoteStackAction(item.agentId || '', item.name, 'pull')} disabled={!!isRemoteActionLoading}>
+												{#if isRemoteActionLoading === `${item.agentId}:${item.name}:pull`}
+													<Loader2 class="animate-spin size-4" />
+												{:else}
+													<RotateCcw class="size-4" />
+												{/if}
+												Pull & Redeploy
+											</DropdownMenu.Item>
+											<DropdownMenu.Separator />
+
+											<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveRemoteStack(item.agentId || '', item.name)} disabled={!!isRemoteActionLoading}>
+												{#if isRemoteActionLoading}
+													<Loader2 class="animate-spin size-4" />
+												{:else}
+													<Trash2 class="size-4" />
+												{/if}
+												Remove
+											</DropdownMenu.Item>
 										</DropdownMenu.Group>
 									</DropdownMenu.Content>
 								</DropdownMenu.Root>
