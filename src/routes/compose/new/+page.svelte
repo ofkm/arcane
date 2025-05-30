@@ -19,10 +19,9 @@
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
 	import * as Resizable from '$lib/components/ui/resizable/index.js';
 	import TemplateSelectionDialog from '$lib/components/template-selection-dialog.svelte';
+	import * as DropdownButton from '$lib/components/ui/dropdown-button/index.js';
 	import type { ComposeTemplate } from '$lib/services/template-service';
 	import type { PageData } from './$types';
-	import * as Select from '$lib/components/ui/select/index.js';
-	import type { Agent } from '$lib/types/agent.type';
 
 	let { data }: { data: PageData } = $props();
 
@@ -30,31 +29,33 @@
 	let saving = $state(false);
 	let converting = $state(false);
 	let showTemplateDialog = $state(false);
-	let deployToAgent = $state(false);
 	let selectedAgentId = $state('');
-	let selectedAgent: Agent | undefined = $state();
 
 	let name = $state('');
 	let composeContent = $state(defaultComposeTemplate);
 	let envContent = $state(data.envTemplate || defaultEnvTemplate);
 	let dockerRunCommand = $state('');
 
-	// Get online agents for deployment
 	const onlineAgents = $derived(data.agents || []);
-	// Initialize with default template if available
+
+	const agentOptions = $derived(
+		onlineAgents.map((agent) => ({
+			id: agent.id,
+			label: `${agent.hostname} (${agent.platform})`,
+			disabled: false
+		}))
+	);
+
+	const selectedAgent = $derived(onlineAgents.find((agent) => agent.id === selectedAgentId));
+
 	$effect(() => {
 		if (data.defaultTemplate && !composeContent) {
 			composeContent = data.defaultTemplate;
 		}
 	});
 
-	// Update selectedAgentId when selectedAgent changes
-	$effect(() => {
-		selectedAgentId = selectedAgent?.id || '';
-	});
-
 	async function handleSubmit() {
-		if (deployToAgent && selectedAgentId) {
+		if (selectedAgentId) {
 			await handleDeployToAgent();
 		} else {
 			await handleCreateStack();
@@ -80,8 +81,8 @@
 			return;
 		}
 
-		const selectedAgent = onlineAgents.find((agent) => agent.id === selectedAgentId);
-		if (!selectedAgent) {
+		const agent = onlineAgents.find((agent) => agent.id === selectedAgentId);
+		if (!agent) {
 			toast.error('Selected agent not found or offline');
 			return;
 		}
@@ -105,7 +106,7 @@
 			}
 
 			const result = await response.json();
-			toast.success(`Compose Project "${name}" deployed to agent ${selectedAgent.hostname}!`);
+			toast.success(`Compose Project "${name}" deployed to agent ${agent.hostname}!`);
 			goto(`/agents/${selectedAgentId}`);
 		} catch (error) {
 			console.error('Deploy error:', error);
@@ -113,6 +114,14 @@
 		} finally {
 			saving = false;
 		}
+	}
+
+	function handleDeployButtonClick() {
+		handleSubmit();
+	}
+
+	function handleAgentSelect(option: { id: string; label: string }) {
+		selectedAgentId = option.id;
 	}
 
 	async function handleConvertDockerRun() {
@@ -137,7 +146,6 @@
 				}
 
 				toast.success('Docker run command converted successfully!');
-				// Clear the command after successful conversion
 				dockerRunCommand = '';
 			}
 		});
@@ -146,12 +154,10 @@
 	function handleTemplateSelect(template: ComposeTemplate) {
 		composeContent = template.content;
 
-		// If template has environment content, use it
 		if (template.envContent) {
 			envContent = template.envContent;
 		}
 
-		// Auto-populate name if empty
 		if (!name.trim()) {
 			name = template.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 		}
@@ -176,11 +182,11 @@
 					</Breadcrumb.Item>
 					<Breadcrumb.Separator />
 					<Breadcrumb.Item>
-						<Breadcrumb.Link href="/compose">Compose Project</Breadcrumb.Link>
+						<Breadcrumb.Link href="/compose">Compose</Breadcrumb.Link>
 					</Breadcrumb.Item>
 					<Breadcrumb.Separator />
 					<Breadcrumb.Item>
-						<Breadcrumb.Page>New Stack</Breadcrumb.Page>
+						<Breadcrumb.Page>New Project</Breadcrumb.Page>
 					</Breadcrumb.Item>
 				</Breadcrumb.List>
 			</Breadcrumb.Root>
@@ -237,40 +243,38 @@
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
-						<!-- Agent Selection moved here -->
-						{#if onlineAgents.length > 0}
-							<div class="flex items-center gap-2">
-								<input type="checkbox" id="deployToAgent" bind:checked={deployToAgent} disabled={saving} class="rounded border-gray-300" />
-								<Label for="deployToAgent" class="text-sm font-medium whitespace-nowrap">Deploy to Agent</Label>
-								{#if deployToAgent}
-									<Select.Root type="single" bind:value={selectedAgentId} disabled={saving}>
-										<Select.Trigger class="w-[180px]">
-											<span class="text-sm">
-												{onlineAgents.find((agent) => agent.id === selectedAgentId)?.hostname || 'Select agent...'}
-											</span>
-										</Select.Trigger>
-										<Select.Content>
-											{#each onlineAgents as agent}
-												<Select.Item value={agent.id}>
-													{agent.hostname} ({agent.platform})
-												</Select.Item>
-											{/each}
-										</Select.Content>
-									</Select.Root>
-								{/if}
-							</div>
-						{/if}
-
 						<ArcaneButton action="template" onClick={() => (showTemplateDialog = true)} loading={saving} disabled={saving || converting} />
-						{#if deployToAgent}
-							<Button type="submit" disabled={!name || !composeContent || !selectedAgentId || saving}>
-								{#if saving}
-									<Loader2 class="size-4 mr-2 animate-spin" />
-								{:else}
-									<Send class="size-4 mr-2" />
-								{/if}
-								Deploy to Agent
-							</Button>
+
+						{#if onlineAgents.length > 0}
+							<DropdownButton.DropdownRoot>
+								<DropdownButton.Root>
+									<DropdownButton.Main variant="default" disabled={!name || !composeContent || saving} onclick={handleDeployButtonClick}>
+										{#if saving}
+											<Loader2 class="size-4 mr-2 animate-spin" />
+										{:else}
+											<Send class="size-4 mr-2" />
+										{/if}
+										{selectedAgent ? `Deploy to ${selectedAgent.hostname}` : 'Deploy Locally'}
+									</DropdownButton.Main>
+
+									<DropdownButton.DropdownTrigger>
+										<DropdownButton.Trigger variant="default" disabled={!name || !composeContent || saving} />
+									</DropdownButton.DropdownTrigger>
+								</DropdownButton.Root>
+
+								<DropdownButton.Content align="end" class="min-w-[200px]">
+									<DropdownButton.Item onclick={() => handleAgentSelect({ id: '', label: 'Deploy Locally' })}>Deploy Locally</DropdownButton.Item>
+
+									{#if agentOptions.length > 0}
+										<DropdownButton.Separator />
+										{#each agentOptions as option}
+											<DropdownButton.Item onclick={() => handleAgentSelect(option)}>
+												{option.label}
+											</DropdownButton.Item>
+										{/each}
+									{/if}
+								</DropdownButton.Content>
+							</DropdownButton.DropdownRoot>
 						{:else}
 							<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
 						{/if}
