@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { AlertCircle, Layers, FileStack, Loader2, Play, RotateCcw, StopCircle, Trash2, Ellipsis, Pen } from '@lucide/svelte';
+	import { AlertCircle, Layers, FileStack, Loader2, Play, RotateCcw, StopCircle, Trash2, Ellipsis, Pen, Inspect } from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import * as Table from '$lib/components/ui/table';
@@ -520,8 +520,6 @@
 												Edit
 											</DropdownMenu.Item>
 
-											<DropdownMenu.Item onclick={() => goto(`/agents/${item.agentId}`)}>View Agent</DropdownMenu.Item>
-
 											{#if item.status !== 'running'}
 												<DropdownMenu.Item onclick={() => handleRemoteStackAction(item.agentId || '', item.name, 'up')} disabled={!!isRemoteActionLoading}>
 													{#if isRemoteActionLoading === `${item.agentId}:${item.name}:up`}
@@ -568,6 +566,13 @@
 													<Trash2 class="size-4" />
 												{/if}
 												Remove
+											</DropdownMenu.Item>
+
+											<DropdownMenu.Separator />
+
+											<DropdownMenu.Item onclick={() => goto(`/agents/${item.agentId}`)}>
+												<Inspect class="size-4" />
+												View Agent
 											</DropdownMenu.Item>
 										</DropdownMenu.Group>
 									</DropdownMenu.Content>
