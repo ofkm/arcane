@@ -468,20 +468,24 @@
 					{#snippet rows({ item })}
 						{@const stateVariant = item.status ? statusVariantMap[item.status.toLowerCase()] : 'gray'}
 						<Table.Cell>
-							{#if item.isExternal || item.isRemote}
+							{#if item.isExternal}
 								<div class="flex items-center gap-2">
 									{item.name}
-									{#if item.isRemote}
-										<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-											On {item.agentId}
-										</span>
-									{/if}
 								</div>
 							{:else}
 								<div class="flex items-center gap-2">
-									<a class="font-medium hover:underline" href="/stacks/{item.id}/">
-										{item.name}
-									</a>
+									{#if item.isRemote}
+										<a class="font-medium hover:underline" href="/stacks/agent/{item.agentId}/{item.name}">
+											{item.name}
+										</a>
+										<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+											On {item.agentId}
+										</span>
+									{:else}
+										<a class="font-medium hover:underline" href="/stacks/{item.id}/">
+											{item.name}
+										</a>
+									{/if}
 									{#if item.isLegacy}
 										<span title="This stack uses the legacy layout. Migrate to the new layout from the dropdown menu." class="ml-1 flex items-center" style="filter: drop-shadow(0 0 4px #fbbf24);">
 											<AlertCircle class="text-amber-400 animate-pulse size-4" />
