@@ -28,7 +28,7 @@
 			{ href: '/', label: 'Dashboard', icon: Home },
 			{ href: '/agents', label: 'Agents', icon: Computer },
 			{ href: '/containers', label: 'Containers', icon: Box },
-			{ href: '/stacks', label: 'Stacks', icon: FileStack },
+			{ href: '/compose', label: 'Stacks', icon: FileStack },
 			{ href: '/images', label: 'Images', icon: Image },
 			{ href: '/networks', label: 'Networks', icon: Network },
 			{ href: '/volumes', label: 'Volumes', icon: HardDrive },

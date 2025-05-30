@@ -342,15 +342,15 @@
 
 				toast.success(`Stack ${stackName} redeployed with new images`);
 			} else if (action === 'remove') {
-				toast.success(`Stack ${stackName} destroyed successfully`);
+				toast.success(`Compose Project ${stackName} destroyed successfully`);
 			} else {
-				toast.success(`Stack ${stackName} ${action === 'up' ? 'started' : action === 'down' ? 'stopped' : 'restarted'} successfully`);
+				toast.success(`Compose Project ${stackName} ${action === 'up' ? 'started' : action === 'down' ? 'stopped' : 'restarted'} successfully`);
 			}
 
 			// Refresh the list of stacks after the action actually completes
 			await invalidateAll();
 		} catch (error) {
-			console.error(`Failed to ${action} remote stack:`, error);
+			console.error(`Failed to ${action} remote Compose Project:`, error);
 			toast.error(`Failed to ${action} stack: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		} finally {
 			isRemoteActionLoading = null;
@@ -368,15 +368,15 @@
 <div class="space-y-6">
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
 		<div>
-			<h1 class="text-3xl font-bold tracking-tight">Stacks</h1>
-			<p class="text-sm text-muted-foreground mt-1">View and Manage Compose Stacks</p>
+			<h1 class="text-3xl font-bold tracking-tight">Compose Projects</h1>
+			<p class="text-sm text-muted-foreground mt-1">View and Manage Compose Projects</p>
 		</div>
 	</div>
 
 	{#if data.error}
 		<Alert.Root variant="destructive">
 			<AlertCircle class="size-4" />
-			<Alert.Title>Error Loading Stacks</Alert.Title>
+			<Alert.Title>Error Loading Compose Projects</Alert.Title>
 			<Alert.Description>{data.error}</Alert.Description>
 		</Alert.Root>
 	{/if}
@@ -385,7 +385,7 @@
 		<Card.Root>
 			<Card.Content class="p-4 flex items-center justify-between">
 				<div>
-					<p class="text-sm font-medium text-muted-foreground">Total Stacks</p>
+					<p class="text-sm font-medium text-muted-foreground">Total Compose Projects</p>
 					<p class="text-2xl font-bold">{totalStacks}</p>
 				</div>
 				<div class="bg-primary/10 p-2 rounded-full">
@@ -423,9 +423,9 @@
 		<Card.Header class="px-6">
 			<div class="flex items-center justify-between">
 				<div>
-					<Card.Title>Stack List</Card.Title>
+					<Card.Title>Compose Projects List</Card.Title>
 					{#if loadingAgentStacks}
-						<p class="text-sm text-muted-foreground">Loading remote stacks...</p>
+						<p class="text-sm text-muted-foreground">Loading remote compose projects...</p>
 					{/if}
 				</div>
 				<div class="flex items-center gap-2">
@@ -435,7 +435,7 @@
 						{/if}
 						Refresh Remote
 					</Button>
-					<ArcaneButton action="create" customLabel="Create Stack" onClick={() => goto(`/stacks/new`)} />
+					<ArcaneButton action="create" customLabel="Create Compose Project" onClick={() => goto(`/compose/new`)} />
 				</div>
 			</div>
 		</Card.Header>
@@ -461,7 +461,7 @@
 						tablePersistence.setPageSize('stacks', newSize);
 					}}
 					display={{
-						filterPlaceholder: 'Search stacks...',
+						filterPlaceholder: 'Search compose projects...',
 						noResultsMessage: 'No stacks found'
 					}}
 				>
@@ -475,14 +475,14 @@
 							{:else}
 								<div class="flex items-center gap-2">
 									{#if item.isRemote}
-										<a class="font-medium hover:underline" href="/stacks/agent/{item.agentId}/{item.name}">
+										<a class="font-medium hover:underline" href="/compose/agent/{item.agentId}/{item.name}">
 											{item.name}
 										</a>
 										<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
 											On {item.agentId}
 										</span>
 									{:else}
-										<a class="font-medium hover:underline" href="/stacks/{item.id}/">
+										<a class="font-medium hover:underline" href="/compose/{item.id}/">
 											{item.name}
 										</a>
 									{/if}
@@ -515,7 +515,7 @@
 									</DropdownMenu.Trigger>
 									<DropdownMenu.Content align="end">
 										<DropdownMenu.Group>
-											<DropdownMenu.Item onclick={() => goto(`/stacks/agent/${item.agentId}/${item.name}`)} disabled={!!isRemoteActionLoading}>
+											<DropdownMenu.Item onclick={() => goto(`/compose/agent/${item.agentId}/${item.name}`)} disabled={!!isRemoteActionLoading}>
 												<Pen class="size-4" />
 												Edit
 											</DropdownMenu.Item>
@@ -589,7 +589,7 @@
 									</DropdownMenu.Trigger>
 									<DropdownMenu.Content align="end">
 										<DropdownMenu.Group>
-											<DropdownMenu.Item onclick={() => goto(`/stacks/${item.id}`)} disabled={isAnyLoading}>
+											<DropdownMenu.Item onclick={() => goto(`/compose/${item.id}`)} disabled={isAnyLoading}>
 												<Pen class="size-4" />
 												Edit
 											</DropdownMenu.Item>
@@ -655,7 +655,7 @@
 					<p class="text-lg font-medium">No stacks found</p>
 					<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new stack using the "Create Stack" button above or import an existing compose file</p>
 					<div class="flex gap-3 mt-4">
-						<ArcaneButton action="create" customLabel="Create Stack" onClick={() => goto(`/stacks/new`)} size="sm" />
+						<ArcaneButton action="create" customLabel="Create Stack" onClick={() => goto(`/compose/new`)} size="sm" />
 					</div>
 				</div>
 			{/if}

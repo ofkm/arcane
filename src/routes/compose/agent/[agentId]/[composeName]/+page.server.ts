@@ -4,7 +4,7 @@ import { getAgent } from '$lib/services/agent/agent-manager';
 import { getStacksFromAgent } from '$lib/services/agent/agent-stack-service';
 
 export const load: PageServerLoad = async ({ params, fetch }) => {
-	const { agentId, stackName } = params;
+	const { agentId, composeName } = params;
 
 	try {
 		// Get the agent
@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 
 		// Get the specific stack from the agent
 		const stacks = await getStacksFromAgent(agent, { fetch });
-		const stack = stacks.find((s) => s.name === stackName);
+		const stack = stacks.find((s) => s.name === composeName);
 
 		if (!stack) {
 			throw error(404, 'Stack not found on agent');
@@ -28,7 +28,7 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 		return {
 			agent,
 			stack,
-			stackName
+			composeName
 		};
 	} catch (err) {
 		console.error('Error loading agent stack:', err);

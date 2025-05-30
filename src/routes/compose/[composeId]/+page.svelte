@@ -78,11 +78,11 @@
 
 		handleApiResultWithCallbacks({
 			result: await tryCatch(stackApi.save(currentStackId, name, composeContent, envContent)),
-			message: 'Failed to Save Stack',
+			message: 'Failed to Save Compose Project',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Stack) => {
-				console.log('Stack save successful', updatedStack);
-				toast.success('Stack updated successfully!');
+				console.log('Compose Project save successful', updatedStack);
+				toast.success('Compose Project updated successfully!');
 
 				originalName = updatedStack.name;
 				originalComposeContent = composeContent;
@@ -92,7 +92,7 @@
 
 				if (updatedStack && updatedStack.id !== currentStackId) {
 					console.log(`Stack ID changed from ${currentStackId} to ${updatedStack.id}. Navigating...`);
-					await goto(`/stacks/${name}`, { invalidateAll: true });
+					await goto(`/compose/${name}`, { invalidateAll: true });
 				} else {
 					await invalidateAll();
 				}
@@ -232,7 +232,7 @@
 			<div class="max-w-full px-4 py-3">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
-						<Button variant="ghost" size="sm" href="/stacks">
+						<Button variant="ghost" size="sm" href="/compose">
 							<ArrowLeft class="size-4 mr-2" />
 							Back
 						</Button>
@@ -560,7 +560,7 @@
 				</div>
 				<h2 class="text-2xl font-medium mb-3">Stack Not Found</h2>
 				<p class="text-center text-muted-foreground max-w-md mb-8">Could not load stack data. It may have been removed or the Docker engine is not accessible.</p>
-				<Button variant="outline" href="/stacks">
+				<Button variant="outline" href="/compose">
 					<ArrowLeft class="mr-2 size-4" />
 					Back to Stacks
 				</Button>

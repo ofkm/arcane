@@ -4,9 +4,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { ArrowLeft, AlertCircle, FileStack, Layers, Terminal, Settings, Activity, Users, Play, Square, RotateCcw, Loader2 } from '@lucide/svelte';
-	import * as Alert from '$lib/components/ui/alert';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { ArrowLeft, FileStack, Layers, Settings, Activity, Users, Play, Square, RotateCcw, Loader2 } from '@lucide/svelte';
+	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { statusVariantMap } from '$lib/types/statuses';
@@ -16,12 +15,12 @@
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	let { data }: { data: PageData } = $props();
-	let { agent, stack, stackName } = data;
+	let { agent, stack, composeName } = data;
 
-	let name = $state(stackName);
+	let name = $state(composeName);
 	let composeContent = $state(stack.composeContent || '');
 	let envContent = $state(stack.envContent || '');
-	let originalName = stackName;
+	let originalName = composeName;
 	let originalComposeContent = stack.composeContent || '';
 	let originalEnvContent = stack.envContent || '';
 
@@ -47,7 +46,7 @@
 				body: JSON.stringify({
 					type: 'stack_update',
 					payload: {
-						project_name: stackName,
+						project_name: composeName,
 						compose_content: composeContent,
 						env_content: envContent
 					}
@@ -97,7 +96,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					type: taskType,
-					payload: { project_name: stackName }
+					payload: { project_name: composeName }
 				})
 			});
 
@@ -141,7 +140,7 @@
 			<div class="max-w-full px-4 py-3">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
-						<Button variant="ghost" size="sm" href="/stacks">
+						<Button variant="ghost" size="sm" href="/compose">
 							<ArrowLeft class="size-4 mr-2" />
 							Back
 						</Button>
@@ -387,7 +386,7 @@
 				</div>
 				<h2 class="text-2xl font-medium mb-3">Stack Not Found</h2>
 				<p class="text-center text-muted-foreground max-w-md mb-8">Could not load agent stack data. The stack may not exist on the agent or the agent may be offline.</p>
-				<Button variant="outline" href="/stacks">
+				<Button variant="outline" href="/compose">
 					<ArrowLeft class="mr-2 size-4" />
 					Back to Stacks
 				</Button>

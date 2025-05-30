@@ -7,12 +7,12 @@ import { tryCatch } from '$lib/utils/try-catch';
 import type { PortBinding, ContainerInspectInfo } from 'dockerode';
 
 export const load: PageServerLoad = async ({ params }) => {
-	const { stackId } = params;
+	const { composeId } = params;
 
 	// Handle local stacks only
-	const stackResult = await tryCatch(getStack(stackId));
+	const stackResult = await tryCatch(getStack(composeId));
 	if (stackResult.error || !stackResult.data) {
-		console.error(`Error loading stack ${stackId}:`, stackResult.error);
+		console.error(`Error loading stack ${composeId}:`, stackResult.error);
 		const errorMessage = stackResult.error?.message ?? 'Stack not found or failed to load';
 		return {
 			stack: null,
