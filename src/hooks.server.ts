@@ -1,11 +1,12 @@
-import { redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
-import { initComposeService } from '$lib/services/docker/stack-service';
-import { initAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
+import type { Handle } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { getUserByUsername } from '$lib/services/user-service';
 import { getSettings } from '$lib/services/settings-service';
 import { checkFirstRun } from '$lib/utils/onboarding.utils';
 import { sessionHandler } from '$lib/services/session-handler';
+import { initComposeService } from '$lib/services/docker/stack-service';
+import { initAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
 import { initMaturityPollingScheduler } from '$lib/services/docker/image-service';
 
 // Get environment variable
@@ -19,25 +20,31 @@ try {
 	process.exit(1);
 }
 
-// Protected paths that require specific permissions
-// const protectedPathPermissions: Record<string, string[]> = {
-// 	'/containers': ['containers:view'],
-// 	'/containers/create': ['containers:manage'],
-// 	'/settings': ['settings:view']
-// 	// Add other path patterns as needed
-// };
-
 // Authentication and authorization handler
 const authHandler: Handle = async ({ event, resolve }) => {
 	const { url } = event;
 	const path = url.pathname;
 
 	// Define paths that don't require authentication
-	const publicPaths = ['/auth/login', '/img', '/auth/oidc/login', '/auth/oidc/callback'];
-	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
+	const publicPaths = [
+		'/auth/login',
+		'/img',
+		'/auth/oidc/login',
+		'/auth/oidc/callback',
+		'/api/agents/register', // Agent registration
+		'/api/agents/heartbeat' // Agent heartbeat
+	];
 
-	// Always allow access to public paths
-	if (isPublicPath) {
+	// Check for specific agent polling patterns that should be public
+	const agentPollingPattern = /^\/api\/agents\/[^\/]+\/tasks$/; // GET /api/agents/{agentId}/tasks
+	const agentResultPattern = /^\/api\/agents\/[^\/]+\/tasks\/[^\/]+\/result$/; // POST /api/agents/{agentId}/tasks/{taskId}/result
+
+	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
+	const isAgentPolling = agentPollingPattern.test(path) && event.request.method === 'GET';
+	const isAgentResult = agentResultPattern.test(path) && event.request.method === 'POST';
+
+	// Allow access to public paths and specific agent endpoints
+	if (isPublicPath || isAgentPolling || isAgentResult) {
 		return await resolve(event);
 	}
 
@@ -94,22 +101,7 @@ const authHandler: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	// Continue with permission checks as before
-	// if (settings?.auth?.rbacEnabled) {
-	// 	// Check each protected path pattern
-	// 	for (const [pathPattern, requiredPermissions] of Object.entries(protectedPathPermissions)) {
-	// 		if (path.startsWith(pathPattern)) {
-	// 			const hasPermission = requiredPermissions.some((perm) => user.roles.includes(perm));
-	// 			if (!hasPermission) {
-	// 				throw redirect(302, '/auth/unauthorized');
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	// Proceed to resolve the route with the authenticated user
 	return await resolve(event);
 };
 
-// Combine handlers using sequence
 export const handle = sequence(sessionHandler, authHandler);

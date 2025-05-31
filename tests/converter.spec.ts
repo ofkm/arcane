@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Docker Run to Compose Converter', () => {
 	test.beforeEach(async ({ page }) => {
 		// Navigate to the new stack page
-		await page.goto('/stacks/new');
+		await page.goto('/compose/new');
 		await page.waitForLoadState('networkidle');
 	});
 

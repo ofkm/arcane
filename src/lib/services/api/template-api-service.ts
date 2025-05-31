@@ -1,6 +1,4 @@
 import BaseAPIService from './api-service';
-import type { ComposeTemplate } from '$lib/services/template-service';
-import type { TemplateRegistryConfig } from '$lib/types/settings.type';
 
 export default class TemplateAPIService extends BaseAPIService {
 	/**

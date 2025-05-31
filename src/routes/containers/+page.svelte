@@ -21,6 +21,7 @@
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
 	import StatCard from '$lib/components/stat-card.svelte';
+	import { parseStatusTime } from '$lib/utils/string.utils';
 
 	const containerApi = new ContainerAPIService();
 
@@ -172,13 +173,17 @@
 			</Card.Header>
 			<Card.Content>
 				<UniversalTable
-					data={containers.map((c) => ({ ...c, displayName: getContainerDisplayName(c) }))}
+					data={containers.map((c) => ({
+						...c,
+						displayName: getContainerDisplayName(c),
+						statusSortValue: parseStatusTime(c.Status)
+					}))}
 					columns={[
 						{ accessorKey: 'displayName', header: 'Name' },
 						{ accessorKey: 'Id', header: 'ID' },
 						{ accessorKey: 'Image', header: 'Image' },
 						{ accessorKey: 'State', header: 'State' },
-						{ accessorKey: 'Status', header: 'Status' },
+						{ accessorKey: 'statusSortValue', header: 'Status' },
 						{ accessorKey: 'actions', header: ' ', enableSorting: false }
 					]}
 					features={{
@@ -199,13 +204,14 @@
 					}}
 					bind:selectedIds
 				>
-					{#snippet rows({ item }: { item: ContainerInfo & { displayName: string } })}
+					{#snippet rows({ item }: { item: ContainerInfo & { displayName: string; statusSortValue: number } })}
 						{@const stateVariant = statusVariantMap[item.State.toLowerCase()]}
 						<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.Id}/">{item.displayName}</a></Table.Cell>
 						<Table.Cell>{shortId(item.Id)}</Table.Cell>
 						<Table.Cell>{item.Image}</Table.Cell>
 						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.State)} /></Table.Cell>
 						<Table.Cell>{item.Status}</Table.Cell>
+						<!-- Still displays the original status text -->
 						<Table.Cell>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>

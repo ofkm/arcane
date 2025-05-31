@@ -279,7 +279,7 @@
 								{@render rows({ item: row.original, index: row.index })}
 							{:else}
 								{#each row.getVisibleCells() as cell (cell.id)}
-									<Table.Cell>
+									<Table.Cell class="w-32">
 										<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
 									</Table.Cell>
 								{/each}
