@@ -4,6 +4,7 @@ import { BASE_PATH } from '$lib/services/paths-service';
 import type { Agent, AgentTask } from '$lib/types/agent.type';
 import { nanoid } from 'nanoid';
 import { updateDeploymentFromTask } from '$lib/services/deployment-service';
+import { hybridAgentService } from '$lib/services/hybrid-agent-service';
 
 const AGENTS_DIR = path.join(BASE_PATH, 'agents');
 const TASKS_DIR = path.join(BASE_PATH, 'agent-tasks');
@@ -92,7 +93,8 @@ export async function listAgents(): Promise<Agent[]> {
 	}
 }
 
-// Simplified task creation - no WebSocket sending needed
+// --- AGENT TASKS: FILE-BASED IMPLEMENTATION ---
+
 export async function sendTaskToAgent(agentId: string, taskType: string, payload: any): Promise<AgentTask> {
 	const agent = await getAgent(agentId);
 	if (!agent) {
@@ -103,17 +105,16 @@ export async function sendTaskToAgent(agentId: string, taskType: string, payload
 		throw new Error(`Agent ${agentId} is not online (status: ${agent.status})`);
 	}
 
-	// Create task
 	const task: AgentTask = {
 		id: nanoid(),
 		agentId,
 		type: taskType as any,
 		payload,
-		status: 'pending', // Agent will pick this up on next poll
-		createdAt: new Date().toISOString()
+		status: 'pending',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
 	};
 
-	// Save task to file - agent will fetch this via HTTP
 	const filePath = path.join(TASKS_DIR, `${task.id}.json`);
 	await fs.writeFile(filePath, JSON.stringify(task, null, 2));
 
@@ -123,33 +124,29 @@ export async function sendTaskToAgent(agentId: string, taskType: string, payload
 }
 
 export async function updateTaskStatus(taskId: string, status: string, result?: any, error?: string): Promise<void> {
+	const filePath = path.join(TASKS_DIR, `${taskId}.json`);
 	try {
-		const filePath = path.join(TASKS_DIR, `${taskId}.json`);
-		const taskData = await fs.readFile(filePath, 'utf-8');
-		const task = JSON.parse(taskData);
-
-		task.status = status;
+		const data = await fs.readFile(filePath, 'utf-8');
+		const task: AgentTask = JSON.parse(data);
+		task.status = status as any;
 		task.result = result;
 		task.error = error;
-		task.completedAt = status === 'completed' || status === 'failed' ? new Date().toISOString() : undefined;
-
+		task.updatedAt = new Date().toISOString();
 		await fs.writeFile(filePath, JSON.stringify(task, null, 2));
 
-		// Update corresponding deployment if it exists
 		await updateDeploymentFromTask(taskId, status, result, error);
-
 		console.log(`Task ${taskId} status updated to: ${status}`);
-	} catch (error) {
-		console.error('Error updating task status:', error);
+	} catch (err) {
+		console.error(`Failed to update task status for ${taskId}:`, err);
 	}
 }
 
 export async function getTask(taskId: string): Promise<AgentTask | null> {
+	const filePath = path.join(TASKS_DIR, `${taskId}.json`);
 	try {
-		const filePath = path.join(TASKS_DIR, `${taskId}.json`);
-		const taskData = await fs.readFile(filePath, 'utf-8');
-		return JSON.parse(taskData);
-	} catch (error) {
+		const data = await fs.readFile(filePath, 'utf-8');
+		return JSON.parse(data);
+	} catch (err) {
 		return null;
 	}
 }
@@ -158,26 +155,23 @@ export async function listTasks(agentId?: string): Promise<AgentTask[]> {
 	try {
 		const files = await fs.readdir(TASKS_DIR);
 		const tasks: AgentTask[] = [];
-
 		for (const file of files) {
 			if (file.endsWith('.json')) {
-				const taskData = await fs.readFile(path.join(TASKS_DIR, file), 'utf-8');
-				const task = JSON.parse(taskData);
-
+				const data = await fs.readFile(path.join(TASKS_DIR, file), 'utf-8');
+				const task: AgentTask = JSON.parse(data);
 				if (!agentId || task.agentId === agentId) {
 					tasks.push(task);
 				}
 			}
 		}
-
-		return tasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-	} catch (error) {
-		console.error('Error listing tasks:', error);
+		tasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+		return tasks;
+	} catch (err) {
+		console.error('Error listing agent tasks:', err);
 		return [];
 	}
 }
 
-// Add this function - it's an alias for listTasks to match the expected API
 export async function getAgentTasks(agentId: string): Promise<AgentTask[]> {
 	return listTasks(agentId);
 }
