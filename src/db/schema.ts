@@ -23,3 +23,21 @@ export const settingsTable = sqliteTable('settings_table', {
 		.notNull()
 		.default(sql`(unixepoch())`)
 });
+
+export const usersTable = sqliteTable('users_table', {
+	id: text('id').primaryKey(), // Make sure the column name is explicit
+	username: text('username').notNull().unique(),
+	passwordHash: text('password_hash'), // Use snake_case for column names
+	displayName: text('display_name'),
+	email: text('email'),
+	roles: text('roles', { mode: 'json' }).notNull().default('[]'),
+	requirePasswordChange: integer('require_password_change', { mode: 'boolean' }).notNull().default(false),
+	oidcSubjectId: text('oidc_subject_id'),
+	lastLogin: int('last_login', { mode: 'timestamp' }),
+	createdAt: int('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: int('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});

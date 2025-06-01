@@ -1,5 +1,3 @@
-import { env } from '$env/dynamic/private';
-import { drizzle } from 'drizzle-orm/libsql';
 import { eq } from 'drizzle-orm';
 import { settingsTable } from '../../../db/schema';
 import { getSettings as getFileSettings, saveSettings as saveFileSettings } from '../settings-service';

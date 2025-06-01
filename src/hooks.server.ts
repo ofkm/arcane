@@ -9,13 +9,16 @@ import { initComposeService } from '$lib/services/docker/stack-service';
 import { initAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
 import { initMaturityPollingScheduler } from '$lib/services/docker/image-service';
 import { migrateSettingsToDatabase } from '$lib/services/database/settings-db-service';
+import { migrateUsersToDatabase } from '$lib/services/database/user-db-service';
 
 // Get environment variable
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
 
 // Initialize needed services
 try {
-	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler(), initMaturityPollingScheduler(), migrateSettingsToDatabase()]);
+	await Promise.all([migrateSettingsToDatabase(), migrateUsersToDatabase()]);
+
+	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler(), initMaturityPollingScheduler()]);
 } catch (err) {
 	console.error('Critical service init failed, exiting:', err);
 	process.exit(1);

@@ -1,15 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getUserById, saveUser, hashPassword } from '$lib/services/user-service';
+import { deleteUserFromDb } from '$lib/services/database/user-db-service';
 import type { User } from '$lib/types/user.type';
 import { getSettings } from '$lib/services/settings-service';
-import fs from 'fs/promises';
-import path from 'node:path';
-import { BASE_PATH } from '$lib/services/paths-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
-
-const USER_DIR = path.join(BASE_PATH, 'users');
 
 export const PUT: RequestHandler = async ({ request, params, locals }) => {
 	try {
@@ -34,10 +30,11 @@ export const PUT: RequestHandler = async ({ request, params, locals }) => {
 		// Create updated user object
 		const updatedUser: User = {
 			...existingUser,
-			...(username !== undefined && { username }), // Make sure this line is included
+			...(username !== undefined && { username }),
 			...(displayName !== undefined && { displayName }),
 			...(email !== undefined && { email }),
-			...(roles !== undefined && { roles })
+			...(roles !== undefined && { roles }),
+			updatedAt: new Date().toISOString()
 		};
 
 		// Handle password update if provided
@@ -53,7 +50,7 @@ export const PUT: RequestHandler = async ({ request, params, locals }) => {
 			success: true,
 			user: {
 				...updatedUser,
-				passwordHash: undefined // Don't return password hash
+				passwordHash: undefined
 			}
 		});
 	} catch (error) {
@@ -83,29 +80,40 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return json(response, { status: 400 });
 	}
 
-	const userFile = path.join(USER_DIR, `${userId}.dat`);
+	try {
+		// Check if user exists in database
+		const existingUser = await getUserById(userId);
+		if (!existingUser) {
+			const response: ApiErrorResponse = {
+				success: false,
+				error: 'User not found',
+				code: ApiErrorCode.NOT_FOUND
+			};
+			return json(response, { status: 404 });
+		}
 
-	const accessResult = await tryCatch(fs.access(userFile));
-	if (accessResult.error) {
-		const response: ApiErrorResponse = {
-			success: false,
-			error: 'User not found',
-			code: ApiErrorCode.NOT_FOUND
-		};
-		return json(response, { status: 404 });
-	}
+		// Delete user from database
+		const deleteResult = await tryCatch(deleteUserFromDb(userId));
+		if (deleteResult.error) {
+			console.error('Error deleting user from database:', deleteResult.error);
+			const response: ApiErrorResponse = {
+				success: false,
+				error: 'Failed to delete user',
+				code: ApiErrorCode.INTERNAL_SERVER_ERROR,
+				details: deleteResult.error
+			};
+			return json(response, { status: 500 });
+		}
 
-	const unlinkResult = await tryCatch(fs.unlink(userFile));
-	if (unlinkResult.error) {
-		console.error('Error deleting user:', unlinkResult.error);
+		return json({ success: true });
+	} catch (error) {
+		console.error('Error deleting user:', error);
 		const response: ApiErrorResponse = {
 			success: false,
 			error: 'Failed to delete user',
 			code: ApiErrorCode.INTERNAL_SERVER_ERROR,
-			details: unlinkResult.error
+			details: error
 		};
 		return json(response, { status: 500 });
 	}
-
-	return json({ success: true });
 };

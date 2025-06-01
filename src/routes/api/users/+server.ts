@@ -5,6 +5,7 @@ import type { User } from '$lib/types/user.type';
 import { getSettings } from '$lib/services/settings-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
+import { nanoid } from 'nanoid'; // Add this import
 
 export const GET: RequestHandler = async ({ locals }) => {
 	if (!locals.user || !locals.user.roles.includes('admin')) {
@@ -104,7 +105,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const newUser: User = {
-		id: '',
+		id: nanoid(), // Generate a unique ID
 		username,
 		passwordHash: hashResult.data,
 		displayName: displayName || username,
