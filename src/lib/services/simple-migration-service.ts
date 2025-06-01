@@ -24,7 +24,8 @@ export class SimpleMigrationService {
 
 	async getDatabaseInfo() {
 		await this.init();
-		const sqlite = dbManager.getSqlite();
+		const dbInstance = dbManager.getDatabase();
+		const sqlite = dbInstance.$client;
 
 		try {
 			const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[];

@@ -1,69 +1,64 @@
-import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { schema } from './schema';
-import { join, dirname } from 'path';
-import { mkdirSync, existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
+import { dirname } from 'path';
+import * as schema from './schema';
 
-// Database configuration
-const DATABASE_PATH = process.env.DATABASE_PATH || './data/database/arcane.db';
-const MIGRATIONS_PATH = './src/lib/database/migrations';
+const DATABASE_PATH = process.env.DATABASE_URL || './data/database/arcane.db';
+
+// Ensure database directory exists
+const dbDir = dirname(DATABASE_PATH);
+if (!existsSync(dbDir)) {
+	mkdirSync(dbDir, { recursive: true });
+}
 
 class DatabaseManager {
-	private static instance: DatabaseManager;
-	private db: ReturnType<typeof drizzle>;
 	private sqlite: Database.Database;
+	private drizzle: ReturnType<typeof drizzle>;
+	private initialized = false;
 
-	private constructor() {
-		// Ensure database directory exists
-		const dbDir = dirname(DATABASE_PATH);
-		if (!existsSync(dbDir)) {
-			mkdirSync(dbDir, { recursive: true });
-		}
-
-		// Initialize SQLite database
+	constructor() {
 		this.sqlite = new Database(DATABASE_PATH);
-
-		// Enable foreign keys and WAL mode for better performance
-		this.sqlite.pragma('foreign_keys = ON');
 		this.sqlite.pragma('journal_mode = WAL');
-		this.sqlite.pragma('synchronous = NORMAL');
-		this.sqlite.pragma('cache_size = 1000');
-		this.sqlite.pragma('temp_store = memory');
+		this.sqlite.pragma('foreign_keys = ON');
 
-		// Initialize Drizzle ORM
-		this.db = drizzle(this.sqlite, { schema });
+		this.drizzle = drizzle(this.sqlite, { schema });
 
 		console.log(`Database initialized at: ${DATABASE_PATH}`);
 	}
 
-	public static getInstance(): DatabaseManager {
-		if (!DatabaseManager.instance) {
-			DatabaseManager.instance = new DatabaseManager();
-		}
-		return DatabaseManager.instance;
-	}
+	async initialize(): Promise<void> {
+		if (this.initialized) return;
 
-	public getDatabase() {
-		return this.db;
-	}
-
-	public getSqlite() {
-		return this.sqlite;
-	}
-
-	public async runMigrations() {
+		console.log('Running database migrations...');
 		try {
-			console.log('Running database migrations...');
-			await migrate(this.db, { migrationsFolder: MIGRATIONS_PATH });
+			migrate(this.drizzle, { migrationsFolder: './src/lib/database/migrations' });
 			console.log('Database migrations completed successfully');
 		} catch (error) {
-			console.error('Failed to run database migrations:', error);
+			console.error('Database migration failed:', error);
 			throw error;
+		}
+
+		this.initialized = true;
+		console.log('Database initialization completed');
+	}
+
+	getDatabase() {
+		return this.drizzle;
+	}
+
+	async healthCheck(): Promise<boolean> {
+		try {
+			const result = this.sqlite.prepare('SELECT 1').get();
+			return result !== undefined;
+		} catch (error) {
+			console.error('Database health check failed:', error);
+			return false;
 		}
 	}
 
-	public async backup(backupPath?: string) {
+	async backup(backupPath?: string) {
 		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 		const defaultPath = `./data/backups/arcane-backup-${timestamp}.db`;
 		const path = backupPath || defaultPath;
@@ -84,7 +79,7 @@ class DatabaseManager {
 		}
 	}
 
-	public async vacuum() {
+	async vacuum() {
 		try {
 			this.sqlite.prepare('VACUUM').run();
 			console.log('Database vacuum completed');
@@ -94,45 +89,41 @@ class DatabaseManager {
 		}
 	}
 
-	public async close() {
+	async getStats(): Promise<{
+		size: number;
+		pageCount: number;
+		pageSize: number;
+		freePages: number;
+	}> {
 		try {
-			this.sqlite.close();
-			console.log('Database connection closed');
+			const sizeResult = this.sqlite.prepare('SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()').get() as { size: number };
+			const pageCount = this.sqlite.prepare('PRAGMA page_count').get() as { page_count: number };
+			const pageSize = this.sqlite.prepare('PRAGMA page_size').get() as { page_size: number };
+			const freePages = this.sqlite.prepare('PRAGMA freelist_count').get() as { freelist_count: number };
+
+			return {
+				size: sizeResult.size,
+				pageCount: pageCount.page_count,
+				pageSize: pageSize.page_size,
+				freePages: freePages.freelist_count
+			};
 		} catch (error) {
-			console.error('Failed to close database connection:', error);
+			console.error('Failed to get database stats:', error);
 			throw error;
 		}
 	}
 
-	// Health check
-	public async healthCheck(): Promise<boolean> {
-		try {
-			const result = this.sqlite.prepare('SELECT 1 as health').get() as { health: number } | undefined;
-			return result?.health === 1;
-		} catch (error) {
-			console.error('Database health check failed:', error);
-			return false;
+	close() {
+		if (this.sqlite) {
+			this.sqlite.close();
 		}
-	}
-
-	// Transaction wrapper
-	public transaction<T>(fn: (tx: typeof this.db) => T): T {
-		return this.sqlite.transaction(() => fn(this.db))();
 	}
 }
 
-// Export singleton instance
-export const dbManager = DatabaseManager.getInstance();
+// Create singleton instance
+export const dbManager = new DatabaseManager();
 export const db = dbManager.getDatabase();
-export { schema };
 
-// Initialize database on module load
-export async function initializeDatabase() {
-	try {
-		await dbManager.runMigrations();
-		console.log('Database initialization completed');
-	} catch (error) {
-		console.error('Database initialization failed:', error);
-		throw error;
-	}
+export async function initializeDatabase(): Promise<void> {
+	await dbManager.initialize();
 }

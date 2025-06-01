@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getAgent, listTasks, sendTaskToAgent } from '$lib/services/agent/agent-manager';
+import { databaseAgentTasksService } from '$lib/services/database-agent-tasks-service';
 
 // GET - Agent requests pending tasks (no auth required for agents)
 export const GET: RequestHandler = async ({ params, url }) => {
@@ -16,9 +17,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			return json({ tasks: allTasks });
 		} else {
 			// This is an agent request - return only pending tasks for execution
-			const allTasks = await listTasks(agentId);
-			const pendingTasks = allTasks.filter((task) => task.status === 'pending');
-
+			const pendingTasks = await databaseAgentTasksService.getPendingAgentTasks(agentId);
 			const formattedTasks = pendingTasks.map((task) => ({
 				id: task.id,
 				type: task.type,
@@ -35,7 +34,6 @@ export const GET: RequestHandler = async ({ params, url }) => {
 };
 
 // POST - Admin/UI creates new tasks (requires auth)
-// This will require authentication since it's not covered by the regex patterns
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user?.roles.includes('admin')) {
 		return json({ error: 'Unauthorized' }, { status: 403 });

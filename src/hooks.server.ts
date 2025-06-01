@@ -6,7 +6,7 @@ import { getSettings } from '$lib/services/settings-service';
 import { checkFirstRun } from '$lib/utils/onboarding.utils';
 import { sessionHandler } from '$lib/services/session-handler';
 import { initComposeService } from '$lib/services/docker/stack-service';
-import { initAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
+import { initAutoUpdateScheduler, initCleanupScheduler } from '$lib/services/docker/scheduler-service';
 import { initMaturityPollingScheduler } from '$lib/services/docker/image-service';
 
 // Get environment variable
@@ -14,7 +14,7 @@ const isTestEnvironment = process.env.APP_ENV === 'TEST';
 
 // Initialize needed services
 try {
-	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler(), initMaturityPollingScheduler()]);
+	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler(), initCleanupScheduler(), initMaturityPollingScheduler()]);
 } catch (err) {
 	console.error('Critical service init failed, exiting:', err);
 	process.exit(1);
