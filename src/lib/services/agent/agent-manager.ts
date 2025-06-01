@@ -1,17 +1,8 @@
-import fs from 'fs/promises';
-import path from 'node:path';
-import { BASE_PATH } from '$lib/services/paths-service';
 import type { Agent, AgentTask } from '$lib/types/agent.type';
 import { nanoid } from 'nanoid';
 import { updateDeploymentFromTask } from '$lib/services/deployment-service';
-import { hybridAgentService } from '$lib/services/hybrid-agent-service';
-
-const AGENTS_DIR = path.join(BASE_PATH, 'agents');
-const TASKS_DIR = path.join(BASE_PATH, 'agent-tasks');
-
-// Ensure directories exist
-await fs.mkdir(AGENTS_DIR, { recursive: true });
-await fs.mkdir(TASKS_DIR, { recursive: true });
+import { databaseAgentService } from '$lib/services/database-agent-service';
+import { databaseAgentTasksService } from '$lib/services/database-agent-tasks-service';
 
 export async function registerAgent(agent: Agent): Promise<Agent> {
 	const existing = await getAgent(agent.id);
@@ -31,26 +22,16 @@ export async function registerAgent(agent: Agent): Promise<Agent> {
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString()
 		};
-
-		const filePath = path.join(AGENTS_DIR, `${agent.id}.json`);
-		await fs.writeFile(filePath, JSON.stringify(newAgent, null, 2));
-
-		return newAgent;
+		return await databaseAgentService.saveAgent(newAgent);
 	}
 }
 
 export async function getAgent(agentId: string): Promise<Agent | null> {
-	try {
-		const filePath = path.join(AGENTS_DIR, `${agentId}.json`);
-		const agentData = await fs.readFile(filePath, 'utf-8');
-		return JSON.parse(agentData);
-	} catch (error) {
-		return null;
-	}
+	return await databaseAgentService.getAgentById(agentId);
 }
 
 export async function updateAgent(agentId: string, updates: Partial<Agent>): Promise<Agent> {
-	const existing = await getAgent(agentId);
+	const existing = await databaseAgentService.getAgentById(agentId);
 	if (!existing) {
 		throw new Error('Agent not found');
 	}
@@ -61,10 +42,7 @@ export async function updateAgent(agentId: string, updates: Partial<Agent>): Pro
 		updatedAt: new Date().toISOString()
 	};
 
-	const filePath = path.join(AGENTS_DIR, `${agentId}.json`);
-	await fs.writeFile(filePath, JSON.stringify(updated, null, 2));
-
-	return updated;
+	return await databaseAgentService.saveAgent(updated);
 }
 
 export async function updateAgentHeartbeat(agentId: string): Promise<void> {
@@ -75,25 +53,10 @@ export async function updateAgentHeartbeat(agentId: string): Promise<void> {
 }
 
 export async function listAgents(): Promise<Agent[]> {
-	try {
-		const files = await fs.readdir(AGENTS_DIR);
-		const agents: Agent[] = [];
-
-		for (const file of files) {
-			if (file.endsWith('.json')) {
-				const agentData = await fs.readFile(path.join(AGENTS_DIR, file), 'utf-8');
-				agents.push(JSON.parse(agentData));
-			}
-		}
-
-		return agents.sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
-	} catch (error) {
-		console.error('Error listing agents:', error);
-		return [];
-	}
+	return await databaseAgentService.listAgents();
 }
 
-// --- AGENT TASKS: FILE-BASED IMPLEMENTATION ---
+// --- AGENT TASKS: DATABASE ONLY ---
 
 export async function sendTaskToAgent(agentId: string, taskType: string, payload: any): Promise<AgentTask> {
 	const agent = await getAgent(agentId);
@@ -115,61 +78,26 @@ export async function sendTaskToAgent(agentId: string, taskType: string, payload
 		updatedAt: new Date().toISOString()
 	};
 
-	const filePath = path.join(TASKS_DIR, `${task.id}.json`);
-	await fs.writeFile(filePath, JSON.stringify(task, null, 2));
-
+	await databaseAgentTasksService.saveAgentTask(task);
 	console.log(`📋 Task ${task.id} created for agent ${agentId} (will be picked up on next poll)`);
-
 	return task;
 }
 
 export async function updateTaskStatus(taskId: string, status: string, result?: any, error?: string): Promise<void> {
-	const filePath = path.join(TASKS_DIR, `${taskId}.json`);
-	try {
-		const data = await fs.readFile(filePath, 'utf-8');
-		const task: AgentTask = JSON.parse(data);
-		task.status = status as any;
-		task.result = result;
-		task.error = error;
-		task.updatedAt = new Date().toISOString();
-		await fs.writeFile(filePath, JSON.stringify(task, null, 2));
-
-		await updateDeploymentFromTask(taskId, status, result, error);
-		console.log(`Task ${taskId} status updated to: ${status}`);
-	} catch (err) {
-		console.error(`Failed to update task status for ${taskId}:`, err);
-	}
+	await databaseAgentTasksService.updateAgentTaskStatus(taskId, status, result, error);
+	await updateDeploymentFromTask(taskId, status, result, error);
+	console.log(`Task ${taskId} status updated to: ${status}`);
 }
 
 export async function getTask(taskId: string): Promise<AgentTask | null> {
-	const filePath = path.join(TASKS_DIR, `${taskId}.json`);
-	try {
-		const data = await fs.readFile(filePath, 'utf-8');
-		return JSON.parse(data);
-	} catch (err) {
-		return null;
-	}
+	return await databaseAgentTasksService.getAgentTaskById(taskId);
 }
 
 export async function listTasks(agentId?: string): Promise<AgentTask[]> {
-	try {
-		const files = await fs.readdir(TASKS_DIR);
-		const tasks: AgentTask[] = [];
-		for (const file of files) {
-			if (file.endsWith('.json')) {
-				const data = await fs.readFile(path.join(TASKS_DIR, file), 'utf-8');
-				const task: AgentTask = JSON.parse(data);
-				if (!agentId || task.agentId === agentId) {
-					tasks.push(task);
-				}
-			}
-		}
-		tasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-		return tasks;
-	} catch (err) {
-		console.error('Error listing agent tasks:', err);
-		return [];
+	if (agentId) {
+		return await databaseAgentTasksService.listAgentTasksByAgent(agentId);
 	}
+	return await databaseAgentTasksService.listAgentTasks();
 }
 
 export async function getAgentTasks(agentId: string): Promise<AgentTask[]> {
