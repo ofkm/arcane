@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { updateStack } from '$lib/services/docker/stack-service';
+import { databaseStackService } from '$lib/services/database/database-stack-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
 
@@ -8,7 +8,7 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 	const { stackId } = params;
 	const { name, composeContent, envContent } = await request.json();
 
-	const result = await tryCatch(updateStack(stackId, { name, composeContent, envContent }));
+	const result = await tryCatch(databaseStackService.updateStack(stackId, { name, composeContent, envContent }));
 
 	if (result.error) {
 		console.error('Error updating stack:', result.error);

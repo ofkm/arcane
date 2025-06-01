@@ -376,10 +376,14 @@ export class MigrationService {
 			for (const stackDir of stackDirs) {
 				try {
 					const stackPath = join(stacksDir, stackDir);
-					const composeFile = join(stackPath, 'docker-compose.yml');
+					const composeFileYml = join(stackPath, 'docker-compose.yml');
+					const composeFileYaml = join(stackPath, 'compose.yaml');
 
-					if (!existsSync(composeFile)) {
-						console.log(`No docker-compose.yml found in ${stackDir}, skipping...`);
+					// Check for either file variant
+					const composeFile = existsSync(composeFileYml) ? 'docker-compose.yml' : existsSync(composeFileYaml) ? 'compose.yaml' : null;
+
+					if (!composeFile) {
+						console.log(`No compose file found in ${stackDir}, skipping...`);
 						continue;
 					}
 
@@ -395,14 +399,14 @@ export class MigrationService {
 						name: stackDir,
 						description: `Migrated stack: ${stackDir}`,
 						path: stackDir,
-						composeFile: 'docker-compose.yml',
+						composeFile,
 						isTemplate: false,
 						isActive: true,
 						createdAt: new Date().toISOString(),
 						updatedAt: new Date().toISOString()
 					});
 
-					console.log(`Migrated stack: ${stackDir}`);
+					console.log(`Migrated stack: ${stackDir} (using ${composeFile})`);
 				} catch (stackError) {
 					const errorMsg = `Failed to migrate stack ${stackDir}: ${stackError instanceof Error ? stackError.message : String(stackError)}`;
 					console.error(errorMsg);

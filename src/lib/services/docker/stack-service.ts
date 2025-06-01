@@ -5,7 +5,8 @@ import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
 import slugify from 'slugify';
 import { directoryExists } from '$lib/utils/fs.utils';
 import { getDockerClient } from '$lib/services/docker/core';
-import { getSettings, ensureStacksDirectory } from '$lib/services/settings-service';
+import { getSettings } from '$lib/services/settings-service';
+import { ensureDirectory } from '$lib/services/paths-service';
 import type { Stack, StackService, StackUpdate } from '$lib/types/docker/stack.type';
 
 interface DockerProgressEvent {

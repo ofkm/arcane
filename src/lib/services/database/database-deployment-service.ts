@@ -308,4 +308,168 @@ export class DatabaseDeploymentService {
 			throw new Error(`Failed to get deployments by status: ${error}`);
 		}
 	}
+
+	/**
+	 * Create a new deployment (equivalent to createDeployment from file service)
+	 */
+	async createDeployment(deployment: Omit<Deployment, 'id' | 'createdAt'>): Promise<Deployment> {
+		const { nanoid } = await import('nanoid');
+
+		const newDeployment: Deployment = {
+			...deployment,
+			id: nanoid(),
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString()
+		};
+
+		return await this.saveDeployment(newDeployment);
+	}
+
+	/**
+	 * Update a deployment (equivalent to updateDeployment from file service)
+	 */
+	async updateDeployment(deploymentId: string, updates: Partial<Deployment>): Promise<Deployment | null> {
+		await this.init();
+
+		try {
+			const existingDeployment = await this.getDeploymentById(deploymentId);
+			if (!existingDeployment) {
+				return null;
+			}
+
+			const updatedDeployment = {
+				...existingDeployment,
+				...updates,
+				updatedAt: new Date().toISOString()
+			};
+
+			await this.saveDeployment(updatedDeployment);
+			return updatedDeployment;
+		} catch (error) {
+			console.error('❌ Error updating deployment:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Get a deployment by ID (alias for getDeploymentById for compatibility)
+	 */
+	async getDeployment(deploymentId: string): Promise<Deployment | null> {
+		return await this.getDeploymentById(deploymentId);
+	}
+
+	/**
+	 * Get deployments (equivalent to getDeployments from file service)
+	 */
+	async getDeployments(agentId?: string): Promise<Deployment[]> {
+		if (agentId) {
+			return await this.listDeploymentsByAgent(agentId);
+		}
+		return await this.listDeployments();
+	}
+
+	/**
+	 * Delete a deployment and return success status
+	 */
+	async deleteDeploymentWithStatus(deploymentId: string): Promise<boolean> {
+		try {
+			await this.deleteDeployment(deploymentId);
+			return true;
+		} catch (error) {
+			console.error('Error deleting deployment:', error);
+			return false;
+		}
+	}
+
+	/**
+	 * Create a stack deployment (equivalent to createStackDeployment from file service)
+	 */
+	async createStackDeployment(agentId: string, stackName: string, composeContent: string, envContent?: string, taskId?: string): Promise<Deployment> {
+		return await this.createDeployment({
+			name: stackName,
+			type: 'stack',
+			status: 'pending',
+			agentId,
+			metadata: {
+				stackName,
+				composeContent,
+				envContent
+			},
+			taskId
+		});
+	}
+
+	/**
+	 * Create a container deployment (equivalent to createContainerDeployment from file service)
+	 */
+	async createContainerDeployment(agentId: string, containerName: string, imageName: string, ports?: string[], volumes?: string[], taskId?: string): Promise<Deployment> {
+		return await this.createDeployment({
+			name: containerName || imageName,
+			type: 'container',
+			status: 'pending',
+			agentId,
+			metadata: {
+				containerName,
+				imageName,
+				ports,
+				volumes
+			},
+			taskId
+		});
+	}
+
+	/**
+	 * Create an image deployment (equivalent to createImageDeployment from file service)
+	 */
+	async createImageDeployment(agentId: string, imageName: string, taskId?: string): Promise<Deployment> {
+		return await this.createDeployment({
+			name: imageName,
+			type: 'image',
+			status: 'pending',
+			agentId,
+			metadata: {
+				imageName
+			},
+			taskId
+		});
+	}
+
+	/**
+	 * Update deployment from task (equivalent to updateDeploymentFromTask from file service)
+	 */
+	async updateDeploymentFromTask(taskId: string, status: string, result?: any, error?: string): Promise<void> {
+		try {
+			// Find deployment by taskId
+			const deployments = await this.listDeployments();
+			const deployment = deployments.find((d) => d.taskId === taskId);
+
+			if (deployment) {
+				let deploymentStatus: Deployment['status'];
+
+				switch (status) {
+					case 'completed':
+						deploymentStatus = 'completed';
+						break;
+					case 'failed':
+						deploymentStatus = 'failed';
+						break;
+					case 'running':
+						deploymentStatus = 'running';
+						break;
+					default:
+						deploymentStatus = 'pending';
+				}
+
+				await this.updateDeployment(deployment.id, {
+					status: deploymentStatus,
+					error: status === 'failed' ? error : undefined
+				});
+			}
+		} catch (err) {
+			console.error('Error updating deployment from task:', err);
+		}
+	}
 }
+
+// Export singleton instance
+export const databaseDeploymentService = DatabaseDeploymentService.getInstance();

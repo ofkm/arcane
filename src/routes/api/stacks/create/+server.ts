@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createStack } from '$lib/services/docker/stack-service';
+import { databaseStackService } from '$lib/services/database/database-stack-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
 
@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json(response, { status: 400 });
 	}
 
-	const result = await tryCatch(createStack(name, composeContent, envContent));
+	const result = await tryCatch(databaseStackService.createStack(name, composeContent, envContent));
 	if (result.error) {
 		console.error('API Error creating stack:', result.error);
 		const response: ApiErrorResponse = {
