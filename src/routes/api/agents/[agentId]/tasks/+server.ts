@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getAgent, listTasks, sendTaskToAgent } from '$lib/services/agent/agent-manager';
-import { databaseAgentTasksService } from '$lib/services/database-agent-tasks-service';
+import { databaseAgentTasksService } from '$lib/services/database/database-agent-tasks-service';
 
 // GET - Agent requests pending tasks (no auth required for agents)
 export const GET: RequestHandler = async ({ params, url }) => {

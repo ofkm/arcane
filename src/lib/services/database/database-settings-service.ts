@@ -1,8 +1,8 @@
-import { db, dbManager, initializeDatabase } from '../database';
+import { db, dbManager, initializeDatabase } from '$lib/database';
 import { eq, and, desc, asc } from 'drizzle-orm';
-import { settings, authSettings, oidcConfig, registryCredentials, templateRegistries } from '../database/schema/settings';
-import type { Settings, AuthSettings, OidcConfig, RegistryCredential, TemplateRegistryConfig } from '../types/settings.type';
-import { encrypt, decrypt } from './encryption-service';
+import { settings, authSettings, oidcConfig, registryCredentials, templateRegistries } from '$lib/database/schema/settings';
+import type { Settings, AuthSettings, OidcConfig, RegistryCredential, TemplateRegistryConfig } from '$lib/types/settings.type';
+import { encrypt, decrypt } from '$lib/services/encryption-service';
 
 export class DatabaseSettingsService {
 	private initialized = false;

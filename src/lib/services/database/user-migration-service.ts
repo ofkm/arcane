@@ -1,11 +1,11 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
-import { db, initializeDatabase } from '../database';
+import { db, initializeDatabase } from '../../database';
 import { eq } from 'drizzle-orm';
-import { users } from '../database/schema/users';
-import { decrypt } from './encryption-service';
+import { users } from '../../database/schema/users';
+import { decrypt } from '../encryption-service';
 import { nanoid } from 'nanoid';
-import type { User } from '../types/user.type';
+import type { User } from '../../types/user.type';
 
 export class UserMigrationService {
 	private dataPath = './data';
@@ -131,7 +131,7 @@ export class UserMigrationService {
 					let encryptedPasswordHash: Buffer | null = null;
 					if (userData.passwordHash) {
 						// Re-encrypt the password hash for database storage
-						const { encrypt } = await import('./encryption-service');
+						const { encrypt } = await import('../encryption-service');
 						const reEncryptedHash = await encrypt(userData.passwordHash);
 						encryptedPasswordHash = Buffer.from(reEncryptedHash, 'utf8');
 					}

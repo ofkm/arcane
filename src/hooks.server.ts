@@ -8,12 +8,16 @@ import { sessionHandler } from '$lib/services/session-handler';
 import { initComposeService } from '$lib/services/docker/stack-service';
 import { initAutoUpdateScheduler, initCleanupScheduler } from '$lib/services/docker/scheduler-service';
 import { initMaturityPollingScheduler } from '$lib/services/docker/image-service';
+import { migrationService } from '$lib/services/database/migration-service';
 
 // Get environment variable
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
 
 // Initialize needed services
 try {
+	// Run migration before anything else
+	await migrationService.migrateFromFileStorage();
+
 	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler(), initCleanupScheduler(), initMaturityPollingScheduler()]);
 } catch (err) {
 	console.error('Critical service init failed, exiting:', err);

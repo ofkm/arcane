@@ -1,11 +1,11 @@
-import { db, initializeDatabase } from '../database';
+import { db, initializeDatabase } from '$lib/database';
 import { eq, and, sql } from 'drizzle-orm';
-import { users, userSessions } from '../database/schema/users';
-import { encrypt, decrypt } from './encryption-service';
+import { users, userSessions } from '$lib/database/schema/users';
+import { encrypt, decrypt } from '$lib/services/encryption-service';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { nanoid } from 'nanoid';
-import type { User } from '../types/user.type';
+import type { User } from '$lib/types/user.type';
 
 export class DatabaseUserService {
 	private initialized = false;

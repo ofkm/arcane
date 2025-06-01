@@ -1,4 +1,4 @@
-import { DatabaseAgentService } from './database-agent-service.js';
+import { DatabaseAgentService } from './database/database-agent-service.js';
 import type { Agent } from '$lib/types/agent.type';
 import * as fs from 'fs';
 import * as path from 'path';

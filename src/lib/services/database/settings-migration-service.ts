@@ -1,8 +1,8 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { db, initializeDatabase } from '../database';
-import { settings, authSettings, oidcConfig, registryCredentials, templateRegistries } from '../database/schema/settings';
-import { decrypt, encrypt } from './encryption-service';
+import { db, initializeDatabase } from '../../database';
+import { settings, authSettings, oidcConfig, registryCredentials, templateRegistries } from '../../database/schema/settings';
+import { decrypt, encrypt } from '../encryption-service';
 import type { Settings } from '$lib/types/settings.type';
 
 export class SettingsMigrationService {

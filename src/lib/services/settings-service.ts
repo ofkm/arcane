@@ -1,5 +1,5 @@
 import type { Settings } from '$lib/types/settings.type';
-import { databaseSettingsService } from './database-settings-service';
+import { databaseSettingsService } from '$lib/services/database/database-settings-service';
 
 const isDev = process.env.NODE_ENV === 'development';
 

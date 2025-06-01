@@ -9,7 +9,7 @@ import { db, initializeDatabase } from '../database';
 import { users } from '../database/schema/users';
 import { eq } from 'drizzle-orm';
 import type { User } from '$lib/types/user.type';
-import { databaseUserService } from './database-user-service';
+import { databaseUserService } from '$lib/services/database/database-user-service';
 
 export async function getUserByUsername(username: string): Promise<User | null> {
 	await initializeDatabase();

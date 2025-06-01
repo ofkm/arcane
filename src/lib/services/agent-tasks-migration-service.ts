@@ -5,7 +5,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { DatabaseAgentTasksService } from './database-agent-tasks-service';
+import { DatabaseAgentTasksService } from './database/database-agent-tasks-service';
 import type { AgentTask } from '$lib/types/agent.type';
 
 export class AgentTasksMigrationService {

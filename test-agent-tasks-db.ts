@@ -1,4 +1,4 @@
-import { databaseAgentTasksService } from './src/lib/services/database-agent-tasks-service.js';
+import { databaseAgentTasksService } from './src/lib/services/database/database-agent-tasks-service.js';
 import { nanoid } from 'nanoid';
 
 async function testAgentTasksDatabase() {

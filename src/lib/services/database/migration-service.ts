@@ -1,13 +1,13 @@
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
-import { db, dbManager, initializeDatabase } from '../database';
+import { db, dbManager, initializeDatabase } from '../../database';
 import { eq } from 'drizzle-orm';
-import { users, userSessions } from '../database/schema/users';
-import { agents, agentTasks } from '../database/schema/agents';
-import { deployments } from '../database/schema/deployments';
-import { stacks } from '../database/schema/stacks';
-import { settings } from '../database/schema/settings';
-import { decrypt as legacyDecrypt } from './encryption-service';
+import { users, userSessions } from '../../database/schema/users';
+import { agents, agentTasks } from '../../database/schema/agents';
+import { deployments } from '../../database/schema/deployments';
+import { stacks } from '../../database/schema/stacks';
+import { settings } from '../../database/schema/settings';
+import { decrypt as legacyDecrypt } from '../encryption-service';
 import { nanoid } from 'nanoid';
 import type { Settings } from '$lib/types/settings.type';
 

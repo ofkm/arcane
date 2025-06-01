@@ -1,8 +1,8 @@
 import type { Agent, AgentTask } from '$lib/types/agent.type';
 import { nanoid } from 'nanoid';
 import { updateDeploymentFromTask } from '$lib/services/deployment-service';
-import { databaseAgentService } from '$lib/services/database-agent-service';
-import { databaseAgentTasksService } from '$lib/services/database-agent-tasks-service';
+import { databaseAgentService } from '$lib/services/database/database-agent-service';
+import { databaseAgentTasksService } from '$lib/services/database/database-agent-tasks-service';
 
 export async function registerAgent(agent: Agent): Promise<Agent> {
 	const existing = await getAgent(agent.id);
