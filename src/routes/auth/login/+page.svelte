@@ -179,7 +179,7 @@
 
 		<!-- Footer Text -->
 		<p class="text-center text-xs text-muted-foreground">
-			<a href="https://github.com/arcane-docker/arcane" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">View on GitHub</a>
+			<a href="https://github.com/ofkm/arcane" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">View on GitHub</a>
 		</p>
 	</div>
 </div>
