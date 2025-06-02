@@ -7,6 +7,166 @@ export const SUPPORTED_COMPOSE_VERSIONS = ['3.0', '3.1', '3.2', '3.3', '3.4', '3
 export const DEFAULT_COMPOSE_VERSION = '3.8';
 
 /**
+ * Docker Compose profile-related types
+ */
+export interface ProfileConfig {
+	description?: string;
+	depends_on?: string[];
+	conflicts?: string[];
+}
+
+export interface ServiceProfile {
+	service: string;
+	profiles: string[];
+}
+
+export interface ProfileDeploymentCheck {
+	shouldDeploy: boolean;
+	reason: string;
+}
+
+export interface ProfileServiceFiltering {
+	deployableServices: Record<string, any>;
+	skippedServices: Array<{ name: string; reason: string }>;
+	profileSummary: {
+		totalServices: number;
+		deployableServices: number;
+		skippedServices: number;
+		activeProfiles: string[];
+	};
+}
+
+export interface ProfileResolution {
+	resolvedProfiles: string[];
+	warnings: string[];
+	errors: string[];
+}
+
+export interface ProfileDeploymentPlan {
+	plan: {
+		servicesToDeploy: string[];
+		servicesToSkip: Array<{ name: string; reason: string }>;
+		volumesToCreate: string[];
+		networksToCreate: string[];
+	};
+	summary: {
+		totalServices: number;
+		deployableServices: number;
+		skippedServices: number;
+		activeProfiles: string[];
+		allDefinedProfiles: string[];
+	};
+	warnings: string[];
+	errors: string[];
+}
+
+export interface ProfileUsageStats {
+	totalProfiles: number;
+	profilesWithServices: Array<{ profile: string; serviceCount: number; services: string[] }>;
+	servicesWithoutProfiles: string[];
+	servicesWithProfiles: ServiceProfile[];
+}
+
+export interface ComposeData {
+	version?: string;
+	services?: Record<string, ServiceConfig>;
+	volumes?: Record<string, VolumeConfig>;
+	networks?: Record<string, NetworkConfig>;
+	profiles?: Record<string, ProfileConfig> | string[];
+	[key: string]: any;
+}
+
+export interface ServiceConfig {
+	image?: string;
+	build?: string | BuildConfig;
+	profiles?: string | string[];
+	depends_on?: string[] | Record<string, DependencyConfig>;
+	volumes?: VolumeMount[];
+	networks?: string[] | Record<string, NetworkServiceConfig>;
+	ports?: PortMapping[];
+	environment?: string[] | Record<string, string>;
+	healthcheck?: HealthcheckConfig;
+	restart?: string;
+	[key: string]: any;
+}
+
+export interface VolumeConfig {
+	driver?: string;
+	driver_opts?: Record<string, string>;
+	external?: boolean | { name: string };
+	labels?: Record<string, string>;
+	[key: string]: any;
+}
+
+export interface NetworkConfig {
+	driver?: string;
+	driver_opts?: Record<string, string>;
+	external?: boolean | { name: string };
+	labels?: Record<string, string>;
+	[key: string]: any;
+}
+
+export interface BuildConfig {
+	context: string;
+	dockerfile?: string;
+	args?: Record<string, string>;
+	[key: string]: any;
+}
+
+export interface DependencyConfig {
+	condition?: 'service_started' | 'service_healthy' | 'service_completed_successfully';
+	restart?: boolean;
+}
+
+export interface NetworkServiceConfig {
+	aliases?: string[];
+	ipv4_address?: string;
+	ipv6_address?: string;
+	[key: string]: any;
+}
+
+export interface VolumeMount {
+	type?: 'bind' | 'volume' | 'tmpfs';
+	source?: string;
+	target: string;
+	read_only?: boolean;
+	consistency?: 'cached' | 'delegated' | 'consistent';
+	bind?: {
+		propagation?: 'shared' | 'slave' | 'private' | 'rshared' | 'rslave' | 'rprivate';
+		create_host_path?: boolean;
+	};
+	volume?: {
+		nocopy?: boolean;
+	};
+	tmpfs?: {
+		size?: string | number;
+		mode?: string | number;
+		uid?: number;
+		gid?: number;
+		noexec?: boolean;
+		nosuid?: boolean;
+		nodev?: boolean;
+	};
+}
+
+export interface PortMapping {
+	target: number;
+	published?: number;
+	protocol?: 'tcp' | 'udp';
+	mode?: 'host' | 'ingress';
+	host_ip?: string;
+}
+
+export interface HealthcheckConfig {
+	test?: string | string[];
+	interval?: string;
+	timeout?: string;
+	retries?: number;
+	start_period?: string;
+	disable?: boolean;
+}
+
+/**
  * Parse environment file content with proper .env spec support
  */
 export function parseEnvContent(envContent: string | null): Record<string, string> {
@@ -52,7 +212,7 @@ export function parseEnvContent(envContent: string | null): Record<string, strin
 /**
  * Validate compose file version and structure according to spec
  */
-export function validateComposeStructure(composeData: any): { valid: boolean; errors: string[]; warnings: string[] } {
+export function validateComposeStructure(composeData: ComposeData): { valid: boolean; errors: string[]; warnings: string[] } {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -78,10 +238,8 @@ export function validateComposeStructure(composeData: any): { valid: boolean; er
 
 	// Validate each service
 	for (const [serviceName, serviceConfig] of Object.entries(composeData.services)) {
-		const service = serviceConfig as any;
-
 		// Each service must have image or build
-		if (!service.image && !service.build) {
+		if (!serviceConfig.image && !serviceConfig.build) {
 			errors.push(`Service '${serviceName}' must have either 'image' or 'build' field`);
 		}
 
@@ -91,15 +249,15 @@ export function validateComposeStructure(composeData: any): { valid: boolean; er
 		}
 
 		// Validate depends_on
-		if (service.depends_on) {
-			if (Array.isArray(service.depends_on)) {
-				for (const dep of service.depends_on) {
+		if (serviceConfig.depends_on) {
+			if (Array.isArray(serviceConfig.depends_on)) {
+				for (const dep of serviceConfig.depends_on) {
 					if (!composeData.services[dep]) {
 						errors.push(`Service '${serviceName}' depends on '${dep}' which doesn't exist`);
 					}
 				}
-			} else if (typeof service.depends_on === 'object') {
-				for (const dep of Object.keys(service.depends_on)) {
+			} else if (typeof serviceConfig.depends_on === 'object') {
+				for (const dep of Object.keys(serviceConfig.depends_on)) {
 					if (!composeData.services[dep]) {
 						errors.push(`Service '${serviceName}' depends on '${dep}' which doesn't exist`);
 					}
@@ -108,15 +266,15 @@ export function validateComposeStructure(composeData: any): { valid: boolean; er
 		}
 
 		// Validate networks
-		if (service.networks) {
-			if (Array.isArray(service.networks)) {
-				for (const network of service.networks) {
+		if (serviceConfig.networks) {
+			if (Array.isArray(serviceConfig.networks)) {
+				for (const network of serviceConfig.networks) {
 					if (typeof network === 'string' && composeData.networks && !composeData.networks[network]) {
 						warnings.push(`Service '${serviceName}' references network '${network}' which is not defined`);
 					}
 				}
-			} else if (typeof service.networks === 'object') {
-				for (const network of Object.keys(service.networks)) {
+			} else if (typeof serviceConfig.networks === 'object') {
+				for (const network of Object.keys(serviceConfig.networks)) {
 					if (composeData.networks && !composeData.networks[network]) {
 						warnings.push(`Service '${serviceName}' references network '${network}' which is not defined`);
 					}
@@ -125,8 +283,8 @@ export function validateComposeStructure(composeData: any): { valid: boolean; er
 		}
 
 		// Validate volumes
-		if (service.volumes) {
-			for (const volume of service.volumes) {
+		if (serviceConfig.volumes) {
+			for (const volume of serviceConfig.volumes) {
 				if (typeof volume === 'object' && volume.source && volume.type === 'volume') {
 					if (composeData.volumes && !composeData.volumes[volume.source]) {
 						warnings.push(`Service '${serviceName}' references volume '${volume.source}' which is not defined`);
@@ -136,8 +294,8 @@ export function validateComposeStructure(composeData: any): { valid: boolean; er
 		}
 
 		// Validate ports format
-		if (service.ports) {
-			for (const port of service.ports) {
+		if (serviceConfig.ports) {
+			for (const port of serviceConfig.ports) {
 				if (typeof port === 'string') {
 					const portRegex = /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:)?(\d+:)?\d+(\/[a-z]+)?$/;
 					if (!portRegex.test(port)) {
@@ -151,14 +309,12 @@ export function validateComposeStructure(composeData: any): { valid: boolean; er
 	// Validate networks section
 	if (composeData.networks) {
 		for (const [networkName, networkConfig] of Object.entries(composeData.networks)) {
-			const network = networkConfig as any;
-
-			if (network.external && typeof network.external === 'object' && !network.external.name) {
+			if (networkConfig.external && typeof networkConfig.external === 'object' && !networkConfig.external.name) {
 				warnings.push(`External network '${networkName}' should have a name specified`);
 			}
 
-			if (network.driver && !['bridge', 'host', 'overlay', 'macvlan', 'none'].includes(network.driver)) {
-				warnings.push(`Network '${networkName}' uses uncommon driver '${network.driver}'`);
+			if (networkConfig.driver && !['bridge', 'host', 'overlay', 'macvlan', 'none'].includes(networkConfig.driver)) {
+				warnings.push(`Network '${networkName}' uses uncommon driver '${networkConfig.driver}'`);
 			}
 		}
 	}
@@ -166,9 +322,7 @@ export function validateComposeStructure(composeData: any): { valid: boolean; er
 	// Validate volumes section
 	if (composeData.volumes) {
 		for (const [volumeName, volumeConfig] of Object.entries(composeData.volumes)) {
-			const volume = volumeConfig as any;
-
-			if (volume.external && typeof volume.external === 'object' && !volume.external.name) {
+			if (volumeConfig.external && typeof volumeConfig.external === 'object' && !volumeConfig.external.name) {
 				warnings.push(`External volume '${volumeName}' should have a name specified`);
 			}
 		}
@@ -257,7 +411,7 @@ export function normalizeHealthcheckTest(composeContent: string, envGetter?: (ke
 /**
  * Parse YAML content with proper Compose spec validation
  */
-export function parseYamlContent(content: string, envGetter?: (key: string) => string | undefined): Record<string, any> | null {
+export function parseYamlContent(content: string, envGetter?: (key: string) => string | undefined): ComposeData | null {
 	try {
 		const parsedYaml = yamlLoad(content);
 
@@ -267,7 +421,7 @@ export function parseYamlContent(content: string, envGetter?: (key: string) => s
 		}
 
 		// Validate structure
-		const validation = validateComposeStructure(parsedYaml);
+		const validation = validateComposeStructure(parsedYaml as ComposeData);
 		if (!validation.valid) {
 			console.error('Compose validation errors:', validation.errors);
 		}
@@ -275,11 +429,11 @@ export function parseYamlContent(content: string, envGetter?: (key: string) => s
 			console.warn('Compose validation warnings:', validation.warnings);
 		}
 
-		let result = parsedYaml as Record<string, any>;
+		let result = parsedYaml as ComposeData;
 
 		// Apply environment variable substitution
 		if (envGetter) {
-			result = substituteVariablesInObject(result, envGetter);
+			result = substituteVariablesInObject(result, envGetter) as ComposeData;
 		}
 
 		// Ensure we have a default network if none specified
@@ -1050,7 +1204,7 @@ export function parseTimeToNanoseconds(timeStr: string | number): number {
 export function validateComposeContent(content: string): { valid: boolean; errors: string[]; warnings: string[] } {
 	try {
 		const parsed = yamlLoad(content);
-		return validateComposeStructure(parsed);
+		return validateComposeStructure(parsed as ComposeData);
 	} catch (parseError) {
 		return {
 			valid: false,
@@ -1435,4 +1589,484 @@ export function validateAllDependencies(services: Record<string, any>): {
 		errors,
 		warnings
 	};
+}
+
+/**
+ * Parse profiles from command line arguments or environment
+ * Handles Docker Compose profile specification: --profile prof1 --profile prof2
+ */
+export function parseActiveProfiles(args?: string[], env?: Record<string, string>): string[] {
+	const profiles = new Set<string>();
+
+	// Parse from command line arguments
+	if (args) {
+		for (let i = 0; i < args.length; i++) {
+			if (args[i] === '--profile' && i + 1 < args.length) {
+				profiles.add(args[i + 1]);
+				i++; // Skip the profile value
+			}
+		}
+	}
+
+	// Parse from environment variables
+	if (env) {
+		// COMPOSE_PROFILES environment variable (comma-separated)
+		const composeProfiles = env['COMPOSE_PROFILES'];
+		if (composeProfiles) {
+			composeProfiles.split(',').forEach((profile) => {
+				const trimmed = profile.trim();
+				if (trimmed) profiles.add(trimmed);
+			});
+		}
+	}
+
+	// Default profile if none specified
+	const profilesArray = Array.from(profiles);
+	return profilesArray.length > 0 ? profilesArray : ['default'];
+}
+
+/**
+ * Validate profile configuration in compose data
+ */
+export function validateProfiles(composeData: ComposeData): { valid: boolean; errors: string[]; warnings: string[] } {
+	const errors: string[] = [];
+	const warnings: string[] = [];
+
+	if (!composeData || typeof composeData !== 'object') {
+		return { valid: true, errors, warnings };
+	}
+
+	// Check if profiles are defined at top level
+	const topLevelProfiles = composeData.profiles;
+	if (topLevelProfiles && !Array.isArray(topLevelProfiles) && typeof topLevelProfiles !== 'object') {
+		errors.push('Top-level profiles must be an array or object');
+	}
+
+	// Validate service profiles
+	if (composeData.services) {
+		for (const [serviceName, serviceConfig] of Object.entries(composeData.services)) {
+			if (serviceConfig && typeof serviceConfig === 'object') {
+				if (serviceConfig.profiles) {
+					// Profiles can be string, array of strings, or not present
+					if (typeof serviceConfig.profiles === 'string') {
+						// Single profile as string is valid
+						continue;
+					} else if (Array.isArray(serviceConfig.profiles)) {
+						// Array of profiles
+						for (const profile of serviceConfig.profiles) {
+							if (typeof profile !== 'string') {
+								errors.push(`Service '${serviceName}' has invalid profile type. Profiles must be strings.`);
+							}
+							if (!profile.trim()) {
+								errors.push(`Service '${serviceName}' has empty profile name.`);
+							}
+						}
+					} else {
+						errors.push(`Service '${serviceName}' profiles must be a string or array of strings.`);
+					}
+				}
+			}
+		}
+	}
+
+	return {
+		valid: errors.length === 0,
+		errors,
+		warnings
+	};
+}
+
+/**
+ * Get all profiles defined in the compose file
+ */
+export function getAllDefinedProfiles(composeData: ComposeData): string[] {
+	const allProfiles = new Set<string>();
+
+	if (!composeData || typeof composeData !== 'object') {
+		return [];
+	}
+
+	// Add top-level defined profiles
+	if (composeData.profiles) {
+		if (Array.isArray(composeData.profiles)) {
+			composeData.profiles.forEach((profile) => {
+				if (typeof profile === 'string') {
+					allProfiles.add(profile);
+				}
+			});
+		} else if (typeof composeData.profiles === 'object') {
+			Object.keys(composeData.profiles).forEach((profile) => {
+				allProfiles.add(profile);
+			});
+		}
+	}
+
+	// Extract profiles from services
+	if (composeData.services) {
+		for (const serviceConfig of Object.values(composeData.services)) {
+			if (serviceConfig && typeof serviceConfig === 'object') {
+				if (serviceConfig.profiles) {
+					if (typeof serviceConfig.profiles === 'string') {
+						allProfiles.add(serviceConfig.profiles);
+					} else if (Array.isArray(serviceConfig.profiles)) {
+						serviceConfig.profiles.forEach((profile: string) => {
+							if (typeof profile === 'string') {
+								allProfiles.add(profile);
+							}
+						});
+					}
+				}
+			}
+		}
+	}
+
+	return Array.from(allProfiles).sort();
+}
+
+/**
+ * Check if a service should be deployed based on active profiles
+ */
+export function shouldDeployService(serviceConfig: ServiceConfig, activeProfiles: string[], defaultBehavior: 'include' | 'exclude' = 'include'): ProfileDeploymentCheck {
+	// If no profiles are specified on the service, use default behavior
+	if (!serviceConfig.profiles) {
+		return {
+			shouldDeploy: defaultBehavior === 'include',
+			reason: defaultBehavior === 'include' ? 'No profiles specified, included by default' : 'No profiles specified, excluded by default'
+		};
+	}
+
+	// Normalize service profiles to array
+	const serviceProfiles = Array.isArray(serviceConfig.profiles) ? serviceConfig.profiles : [serviceConfig.profiles];
+
+	// Check if any of the service's profiles are in the active profiles
+	const matchingProfiles = serviceProfiles.filter((profile) => activeProfiles.includes(profile));
+
+	if (matchingProfiles.length > 0) {
+		return {
+			shouldDeploy: true,
+			reason: `Service profiles [${serviceProfiles.join(', ')}] match active profiles [${matchingProfiles.join(', ')}]`
+		};
+	}
+
+	return {
+		shouldDeploy: false,
+		reason: `Service profiles [${serviceProfiles.join(', ')}] do not match active profiles [${activeProfiles.join(', ')}]`
+	};
+}
+
+/**
+ * Filter services based on profiles
+ */
+export function filterServicesByProfiles(services: Record<string, ServiceConfig>, activeProfiles: string[]): ProfileServiceFiltering {
+	const deployableServices: Record<string, ServiceConfig> = {};
+	const skippedServices: Array<{ name: string; reason: string }> = [];
+
+	for (const [serviceName, serviceConfig] of Object.entries(services)) {
+		const deploymentCheck = shouldDeployService(serviceConfig, activeProfiles);
+
+		if (deploymentCheck.shouldDeploy) {
+			deployableServices[serviceName] = serviceConfig;
+		} else {
+			skippedServices.push({
+				name: serviceName,
+				reason: deploymentCheck.reason
+			});
+		}
+	}
+
+	return {
+		deployableServices,
+		skippedServices,
+		profileSummary: {
+			totalServices: Object.keys(services).length,
+			deployableServices: Object.keys(deployableServices).length,
+			skippedServices: skippedServices.length,
+			activeProfiles
+		}
+	};
+}
+
+/**
+ * Resolve profile dependencies and conflicts
+ */
+export function resolveProfileDependencies(composeData: ComposeData, requestedProfiles: string[]): ProfileResolution {
+	const warnings: string[] = [];
+	const errors: string[] = [];
+	const resolvedProfiles = new Set(requestedProfiles);
+
+	// If no profiles requested, use default
+	if (requestedProfiles.length === 0) {
+		resolvedProfiles.add('default');
+	}
+
+	// Check for profile definitions and dependencies
+	if (composeData.profiles && typeof composeData.profiles === 'object' && !Array.isArray(composeData.profiles)) {
+		for (const [profileName, profileConfig] of Object.entries(composeData.profiles)) {
+			if (resolvedProfiles.has(profileName) && profileConfig && typeof profileConfig === 'object') {
+				// Handle profile dependencies
+				if (profileConfig.depends_on && Array.isArray(profileConfig.depends_on)) {
+					for (const dependency of profileConfig.depends_on) {
+						if (typeof dependency === 'string') {
+							resolvedProfiles.add(dependency);
+							warnings.push(`Profile '${profileName}' requires profile '${dependency}' - added automatically`);
+						}
+					}
+				}
+
+				// Handle profile conflicts
+				if (profileConfig.conflicts && Array.isArray(profileConfig.conflicts)) {
+					for (const conflict of profileConfig.conflicts) {
+						if (typeof conflict === 'string' && resolvedProfiles.has(conflict)) {
+							errors.push(`Profile '${profileName}' conflicts with profile '${conflict}'`);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Validate that all resolved profiles exist
+	const definedProfiles = getAllDefinedProfiles(composeData);
+	for (const profile of resolvedProfiles) {
+		if (profile !== 'default' && !definedProfiles.includes(profile)) {
+			warnings.push(`Profile '${profile}' is not defined in the compose file`);
+		}
+	}
+
+	return {
+		resolvedProfiles: Array.from(resolvedProfiles).sort(),
+		warnings,
+		errors
+	};
+}
+
+/**
+ * Create deployment plan based on profiles
+ */
+export function createProfileDeploymentPlan(composeData: ComposeData, activeProfiles: string[]): ProfileDeploymentPlan {
+	const warnings: string[] = [];
+	const errors: string[] = [];
+
+	// Validate profiles
+	const profileValidation = validateProfiles(composeData);
+	warnings.push(...profileValidation.warnings);
+	errors.push(...profileValidation.errors);
+
+	// Resolve profile dependencies
+	const resolution = resolveProfileDependencies(composeData, activeProfiles);
+	warnings.push(...resolution.warnings);
+	errors.push(...resolution.errors);
+
+	const finalActiveProfiles = resolution.resolvedProfiles;
+
+	// Filter services by profiles
+	const serviceFiltering = filterServicesByProfiles(composeData.services || {}, finalActiveProfiles);
+
+	// Determine volumes and networks needed for deployable services
+	const volumesToCreate = new Set<string>();
+	const networksToCreate = new Set<string>();
+
+	// Add volumes used by deployable services
+	for (const serviceName of Object.keys(serviceFiltering.deployableServices)) {
+		const serviceConfig = serviceFiltering.deployableServices[serviceName];
+
+		// Collect volume references
+		if (serviceConfig.volumes) {
+			const volumes = Array.isArray(serviceConfig.volumes) ? serviceConfig.volumes : [];
+			for (const volume of volumes) {
+				if (typeof volume === 'string') {
+					// Short syntax: extract volume name
+					const parts = volume.split(':');
+					const source = parts[0];
+					if (!source.startsWith('/') && !source.startsWith('./') && !source.startsWith('../')) {
+						// It's a named volume
+						volumesToCreate.add(source);
+					}
+				} else if (typeof volume === 'object' && volume.source && volume.type === 'volume') {
+					// Long syntax: volume mount
+					volumesToCreate.add(volume.source);
+				}
+			}
+		}
+
+		// Collect network references
+		if (serviceConfig.networks) {
+			if (Array.isArray(serviceConfig.networks)) {
+				serviceConfig.networks.forEach((network: string) => networksToCreate.add(network));
+			} else if (typeof serviceConfig.networks === 'object') {
+				Object.keys(serviceConfig.networks).forEach((network) => networksToCreate.add(network));
+			}
+		}
+	}
+
+	// Only include volumes that are actually defined in the compose file
+	const definedVolumes = composeData.volumes ? Object.keys(composeData.volumes) : [];
+	const filteredVolumes = Array.from(volumesToCreate).filter((vol) => definedVolumes.includes(vol));
+
+	// Only include networks that are actually defined in the compose file
+	const definedNetworks = composeData.networks ? Object.keys(composeData.networks) : [];
+	const filteredNetworks = Array.from(networksToCreate).filter((net) => definedNetworks.includes(net));
+
+	return {
+		plan: {
+			servicesToDeploy: Object.keys(serviceFiltering.deployableServices),
+			servicesToSkip: serviceFiltering.skippedServices,
+			volumesToCreate: filteredVolumes,
+			networksToCreate: filteredNetworks
+		},
+		summary: {
+			totalServices: serviceFiltering.profileSummary.totalServices,
+			deployableServices: serviceFiltering.profileSummary.deployableServices,
+			skippedServices: serviceFiltering.profileSummary.skippedServices,
+			activeProfiles: finalActiveProfiles,
+			allDefinedProfiles: getAllDefinedProfiles(composeData)
+		},
+		warnings,
+		errors
+	};
+}
+
+/**
+ * Apply profile filtering to compose data
+ * Returns a new compose data object with only the services that should be deployed
+ */
+export function applyProfileFiltering(
+	composeData: ComposeData,
+	activeProfiles: string[]
+): {
+	filteredComposeData: ComposeData;
+	deploymentPlan: ProfileDeploymentPlan;
+} {
+	const deploymentPlan = createProfileDeploymentPlan(composeData, activeProfiles);
+
+	// Create filtered compose data
+	const filteredComposeData: ComposeData = {
+		...composeData,
+		services: {},
+		volumes: {},
+		networks: {}
+	};
+
+	// Add deployable services
+	for (const serviceName of deploymentPlan.plan.servicesToDeploy) {
+		if (composeData.services && composeData.services[serviceName]) {
+			filteredComposeData.services![serviceName] = composeData.services[serviceName];
+		}
+	}
+
+	// Add required volumes
+	for (const volumeName of deploymentPlan.plan.volumesToCreate) {
+		if (composeData.volumes && composeData.volumes[volumeName]) {
+			filteredComposeData.volumes![volumeName] = composeData.volumes[volumeName];
+		}
+	}
+
+	// Add required networks
+	for (const networkName of deploymentPlan.plan.networksToCreate) {
+		if (composeData.networks && composeData.networks[networkName]) {
+			filteredComposeData.networks![networkName] = composeData.networks[networkName];
+		}
+	}
+
+	// Always ensure default network exists if no networks specified
+	if (Object.keys(filteredComposeData.networks!).length === 0 && Object.keys(filteredComposeData.services!).length > 0) {
+		filteredComposeData.networks!.default = {
+			driver: 'bridge'
+		};
+	}
+
+	return {
+		filteredComposeData,
+		deploymentPlan
+	};
+}
+
+/**
+ * Get profile usage statistics from a compose file
+ */
+export function getProfileUsageStats(composeData: ComposeData): ProfileUsageStats {
+	const allProfiles = getAllDefinedProfiles(composeData);
+	const profileServiceMap = new Map<string, string[]>();
+	const servicesWithoutProfiles: string[] = [];
+	const servicesWithProfiles: ServiceProfile[] = [];
+
+	// Initialize profile map
+	allProfiles.forEach((profile) => {
+		profileServiceMap.set(profile, []);
+	});
+
+	// Process services
+	if (composeData.services) {
+		for (const [serviceName, serviceConfig] of Object.entries(composeData.services)) {
+			if (serviceConfig && typeof serviceConfig === 'object') {
+				if (serviceConfig.profiles) {
+					const serviceProfiles = Array.isArray(serviceConfig.profiles) ? serviceConfig.profiles : [serviceConfig.profiles];
+
+					servicesWithProfiles.push({
+						service: serviceName,
+						profiles: serviceProfiles
+					});
+
+					// Add service to each of its profiles
+					serviceProfiles.forEach((profile) => {
+						if (!profileServiceMap.has(profile)) {
+							profileServiceMap.set(profile, []);
+						}
+						profileServiceMap.get(profile)!.push(serviceName);
+					});
+				} else {
+					servicesWithoutProfiles.push(serviceName);
+				}
+			}
+		}
+	}
+
+	const profilesWithServices = Array.from(profileServiceMap.entries()).map(([profile, services]) => ({
+		profile,
+		serviceCount: services.length,
+		services: services.sort()
+	}));
+
+	return {
+		totalProfiles: allProfiles.length,
+		profilesWithServices,
+		servicesWithoutProfiles: servicesWithoutProfiles.sort(),
+		servicesWithProfiles
+	};
+}
+
+/**
+ * Generate profile documentation/help text
+ */
+export function generateProfileHelp(composeData: ComposeData): string {
+	const stats = getProfileUsageStats(composeData);
+	const allProfiles = getAllDefinedProfiles(composeData);
+
+	let help = 'Docker Compose Profiles Available:\n\n';
+
+	if (allProfiles.length === 0) {
+		help += 'No profiles are defined in this compose file.\n';
+		help += 'All services will be deployed by default.\n';
+		return help;
+	}
+
+	help += `Total profiles defined: ${stats.totalProfiles}\n\n`;
+
+	// List profiles with their services
+	for (const profileInfo of stats.profilesWithServices) {
+		help += `Profile: ${profileInfo.profile}\n`;
+		help += `  Services (${profileInfo.serviceCount}): ${profileInfo.services.join(', ')}\n\n`;
+	}
+
+	// Show services without profiles
+	if (stats.servicesWithoutProfiles.length > 0) {
+		help += `Services without profiles (always deployed): ${stats.servicesWithoutProfiles.join(', ')}\n\n`;
+	}
+
+	help += 'Usage:\n';
+	help += '  Deploy specific profile: --profile <profile-name>\n';
+	help += '  Deploy multiple profiles: --profile prof1 --profile prof2\n';
+	help += '  Environment variable: COMPOSE_PROFILES=prof1,prof2\n';
+
+	return help;
 }
