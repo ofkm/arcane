@@ -12,7 +12,7 @@
 					{ title: 'Docker', url: '/settings/docker', icon: DatabaseIcon },
 					{ title: 'Users', url: '/settings/users', icon: UserIcon },
 					{ title: 'Security', url: '/settings/security', icon: Shield },
-					{ title: 'Agents', url: '/agents', icon: ComputerIcon }
+					{ title: 'Agents (Preview)', url: '/agents', icon: ComputerIcon }
 				]
 			}
 		],
