@@ -15,17 +15,18 @@
 	let { user, isCollapsed }: { user: User; isCollapsed: boolean } = $props();
 	const sidebar = useSidebar();
 
-	// Generate Gravatar URL using browser's crypto API
+	// Generate Gravatar URL using SHA-256
 	async function getGravatarUrl(email: string, size = 40): Promise<string> {
 		if (!email) return '';
 
 		const encoder = new TextEncoder();
 		const data = encoder.encode(email.toLowerCase().trim());
-		const hashBuffer = await crypto.subtle.digest('MD5', data);
+		const hashBuffer = await crypto.subtle.digest('SHA-256', data);
 		const hashArray = Array.from(new Uint8Array(hashBuffer));
 		const hash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 
-		return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=mp&r=g`;
+		// Use Gravatar's SHA-256 endpoint
+		return `https://www.gravatar.com/avatar/${hash}?s=${size}`;
 	}
 
 	let gravatarUrl = $state('');
