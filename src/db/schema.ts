@@ -1,4 +1,5 @@
 import { int, sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { relations } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 
 export const settingsTable = sqliteTable('settings_table', {
@@ -187,3 +188,52 @@ export const agentRelations = {
 		// deploymentsTable.taskId -> agentTasksTable.id
 	}
 };
+
+// Define proper relations using Drizzle's relations function
+export const agentsRelations = relations(agentsTable, ({ many }) => ({
+	tasks: many(agentTasksTable),
+	tokens: many(agentTokensTable),
+	remoteStacks: many(stacksTable),
+	deployments: many(deploymentsTable)
+}));
+
+export const agentTasksRelations = relations(agentTasksTable, ({ one, many }) => ({
+	agent: one(agentsTable, {
+		fields: [agentTasksTable.agentId],
+		references: [agentsTable.id]
+	}),
+	deployments: many(deploymentsTable)
+}));
+
+export const agentTokensRelations = relations(agentTokensTable, ({ one }) => ({
+	agent: one(agentsTable, {
+		fields: [agentTokensTable.agentId],
+		references: [agentsTable.id]
+	})
+}));
+
+export const stacksRelations = relations(stacksTable, ({ one }) => ({
+	agent: one(agentsTable, {
+		fields: [stacksTable.agentId],
+		references: [agentsTable.id]
+	})
+}));
+
+export const deploymentsRelations = relations(deploymentsTable, ({ one }) => ({
+	agent: one(agentsTable, {
+		fields: [deploymentsTable.agentId],
+		references: [agentsTable.id]
+	}),
+	task: one(agentTasksTable, {
+		fields: [deploymentsTable.taskId],
+		references: [agentTasksTable.id]
+	})
+}));
+
+export const usersRelations = relations(usersTable, ({ many }) => ({
+	// Add user relations if needed in the future
+}));
+
+export const settingsRelations = relations(settingsTable, ({ many }) => ({
+	// Settings is typically a singleton, no relations needed
+}));
