@@ -284,6 +284,7 @@ export async function getStackByNameFromDb(name: string): Promise<Stack | null> 
 export async function listStacksFromDb(): Promise<Stack[]> {
 	try {
 		const result = await db.select().from(stacksTable);
+
 		return result.map((dbStack) => ({
 			id: dbStack.id,
 			name: dbStack.name,
@@ -297,9 +298,9 @@ export async function listStacksFromDb(): Promise<Stack[]> {
 			agentHostname: dbStack.agentHostname || undefined,
 			createdAt: dbStack.createdAt.toISOString(),
 			updatedAt: dbStack.updatedAt.toISOString(),
-			lastPolled: dbStack.lastPolled ? dbStack.lastPolled.toISOString() : undefined,
 			composeContent: dbStack.composeContent || undefined,
-			envContent: dbStack.envContent || undefined
+			envContent: dbStack.envContent || undefined,
+			services: []
 		}));
 	} catch (error) {
 		console.error('Failed to list stacks from database:', error);

@@ -186,12 +186,38 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 	try {
 		// Try to load from database first
 		const dbStacks = await listStacksFromDb();
+		console.log(`Loaded ${dbStacks.length} stacks from database`);
 
 		// Update runtime information for each stack
 		const stacksWithRuntimeInfo = await Promise.all(
 			dbStacks.map(async (stack) => {
 				try {
-					const services = await getStackServices(stack.id, stack.composeContent || '');
+					console.log(`Processing stack ${stack.id}, composeContent length: ${stack.composeContent?.length || 0}`);
+
+					// If no composeContent in database, try to load from file
+					let composeContent = stack.composeContent;
+					if (!composeContent) {
+						console.log(`No composeContent in database for stack ${stack.id}, trying file system`);
+						try {
+							const composePath = await getComposeFilePath(stack.id);
+							if (composePath) {
+								composeContent = await fs.readFile(composePath, 'utf8');
+								console.log(`Loaded composeContent from file for stack ${stack.id}`);
+
+								// Update database with the content
+								await updateStackContentInDb(stack.id, { composeContent });
+							}
+						} catch (fileError) {
+							console.error(`Could not load compose file for stack ${stack.id}:`, fileError);
+						}
+					}
+
+					const services = await getStackServices(stack.id, composeContent || '');
+					console.log(
+						`Found ${services.length} services for stack ${stack.id}:`,
+						services.map((s) => `${s.name}(${s.state?.Status})`)
+					);
+
 					const serviceCount = services.length;
 					const runningCount = services.filter((s) => s.state?.Running).length;
 
@@ -209,11 +235,13 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 						status,
 						serviceCount,
 						runningCount,
-						lastPolled: Math.floor(Date.now() / 1000) // ← Solution: Unix timestamp
+						lastPolled: new Date() // Pass Date object here
 					});
 
+					// Return the complete stack with services
 					return {
 						...stack,
+						composeContent,
 						services,
 						serviceCount,
 						runningCount,
@@ -221,7 +249,11 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 					};
 				} catch (error) {
 					console.error(`Error updating runtime info for stack ${stack.id}:`, error);
-					return stack;
+					// Return stack without services on error
+					return {
+						...stack,
+						services: [] // ← Make sure services is always an array
+					};
 				}
 			})
 		);
@@ -231,6 +263,7 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 			timestamp: Date.now()
 		});
 
+		console.log(`Returning ${stacksWithRuntimeInfo.length} stacks with services`);
 		return stacksWithRuntimeInfo;
 	} catch (error) {
 		console.error('Error loading stacks from database, falling back to file-based approach:', error);
@@ -328,36 +361,66 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 	const composeProjectLabel = 'com.docker.compose.project';
 	const composeServiceLabel = 'com.docker.compose.service';
 
+	console.log(`Getting services for stack ${stackId}, composeContent length: ${composeContent.length}`);
+
 	try {
 		// Load the .env file to provide environment variable values
-		const envContent = await loadEnvFile(stackId);
-		const envVars = parseEnvContent(envContent);
+		let envContent = '';
+		let envVars: Record<string, string> = {};
+
+		try {
+			envContent = await loadEnvFile(stackId);
+			envVars = parseEnvContent(envContent);
+		} catch (envError) {
+			console.log(`No .env file found for stack ${stackId}, continuing without env vars`);
+		}
 
 		// Create environment variable getter function
 		const getEnvVar = (key: string) => {
 			return envVars[key] || process.env[key] || '';
 		};
 
-		// Use our safe parser utility with the environment variable getter
-		const composeData = parseYamlContent(composeContent, getEnvVar);
-		if (!composeData || !composeData.services) {
-			console.warn(`No services found in compose content for stack ${stackId}`);
-			return [];
+		// Parse compose content to get service definitions
+		let composeData: Record<string, any> | null = null;
+		let serviceNames: string[] = [];
+
+		if (composeContent.trim()) {
+			composeData = parseYamlContent(composeContent, getEnvVar);
+			if (composeData && composeData.services) {
+				serviceNames = Object.keys(composeData.services as Record<string, unknown>);
+				console.log(`Found ${serviceNames.length} services defined in compose: [${serviceNames.join(', ')}]`);
+			} else {
+				console.warn(`No services found in compose content for stack ${stackId}`);
+			}
+		} else {
+			console.warn(`Empty compose content for stack ${stackId}`);
 		}
 
-		const serviceNames = Object.keys(composeData.services as Record<string, unknown>);
-
-		// List containers
+		// List all containers
 		const containers = await docker.listContainers({ all: true });
+		console.log(`Total containers found: ${containers.length}`);
 
-		// Filter containers based on EITHER the project label OR the naming convention
+		// Filter containers based on labels and naming convention
 		const stackContainers = containers.filter((container) => {
 			const labels = container.Labels || {};
 			const names = container.Names || [];
-			const nameStartsWithPrefix = names.some((name) => name.startsWith(`/${stackId}_`));
+
+			// Check if container belongs to this stack
 			const hasCorrectLabel = labels[composeProjectLabel] === stackId;
-			return nameStartsWithPrefix || hasCorrectLabel;
+			const nameStartsWithPrefix = names.some((name) => name.startsWith(`/${stackId}_`));
+
+			const belongs = hasCorrectLabel || nameStartsWithPrefix;
+
+			if (belongs) {
+				console.log(`Container ${container.Id} (${names[0]}) belongs to stack ${stackId}`);
+				console.log(`  - Labels: ${JSON.stringify(labels)}`);
+				console.log(`  - State: ${container.State}`);
+			}
+
+			return belongs;
 		});
+
+		console.log(`Found ${stackContainers.length} containers for stack ${stackId}`);
 
 		const services: StackService[] = [];
 
@@ -366,14 +429,17 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 			const labels = containerData.Labels || {};
 			let serviceName = labels[composeServiceLabel];
 
+			console.log(`Processing container ${containerData.Id} (${containerName})`);
+
 			// Fallback to parsing from container name if the service label is missing
-			if (!serviceName) {
-				console.warn(`Container ${containerData.Id} in stack ${stackId} is missing the '${composeServiceLabel}' label. Attempting to parse name.`);
+			if (!serviceName && serviceNames.length > 0) {
+				console.log(`Container ${containerData.Id} missing service label, trying to parse from name`);
 				for (const name of serviceNames) {
 					const servicePrefixWithUnderscore = `${stackId}_${name}_`;
 					const servicePrefixExact = `${stackId}_${name}`;
 					if (containerName.startsWith(servicePrefixWithUnderscore) || containerName === servicePrefixExact) {
 						serviceName = name;
+						console.log(`Matched service name: ${serviceName}`);
 						break;
 					}
 				}
@@ -381,8 +447,16 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 
 			// Final fallback if still no match
 			if (!serviceName) {
-				serviceName = containerName;
-				console.error(`Could not determine service name for container ${containerName} (ID: ${containerData.Id}) in stack ${stackId}. Using full container name.`);
+				// Extract service name from container name pattern: stackId_serviceName_instance
+				const namePattern = new RegExp(`^${stackId}_([^_]+)(?:_\\d+)?$`);
+				const match = containerName.match(namePattern);
+				if (match) {
+					serviceName = match[1];
+					console.log(`Extracted service name from container name: ${serviceName}`);
+				} else {
+					serviceName = containerName.replace(`${stackId}_`, '').replace(/_\d+$/, '') || containerName;
+					console.log(`Using fallback service name: ${serviceName}`);
+				}
 			}
 
 			const service: StackService = {
@@ -395,36 +469,47 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 				}
 			};
 
+			console.log(`Created service: ${JSON.stringify(service)}`);
+
 			// Avoid adding duplicates
 			const existingServiceIndex = services.findIndex((s) => s.name === serviceName);
 			if (existingServiceIndex !== -1) {
 				if (!services[existingServiceIndex].id) {
 					services[existingServiceIndex] = service;
+					console.log(`Updated existing service ${serviceName} with container data`);
 				} else {
-					console.log(`Multiple containers found for service ${serviceName} in stack ${stackId}. Displaying first found.`);
+					console.log(`Multiple containers found for service ${serviceName} in stack ${stackId}. Keeping first found.`);
 				}
 			} else {
 				services.push(service);
+				console.log(`Added new service ${serviceName}`);
 			}
 		}
 
 		// Add placeholders for services defined in compose but not found among listed containers
-		for (const name of serviceNames) {
-			if (!services.some((s) => s.name === name)) {
-				services.push({
-					id: '',
-					name: name,
-					state: {
-						Running: false,
-						Status: 'not created',
-						ExitCode: 0
-					}
-				});
+		if (serviceNames.length > 0) {
+			for (const name of serviceNames) {
+				if (!services.some((s) => s.name === name)) {
+					const placeholderService: StackService = {
+						id: '',
+						name: name,
+						state: {
+							Running: false,
+							Status: 'not created',
+							ExitCode: 0
+						}
+					};
+					services.push(placeholderService);
+					console.log(`Added placeholder service for ${name}`);
+				}
 			}
 		}
 
 		// Sort services alphabetically by name for consistent order
 		services.sort((a, b) => a.name.localeCompare(b.name));
+
+		console.log(`Final services for stack ${stackId}: ${services.length} services`);
+		services.forEach((s) => console.log(`  - ${s.name}: ${s.state?.Status} (id: ${s.id || 'none'})`));
 
 		return services;
 	} catch (err) {
@@ -441,7 +526,62 @@ export async function getStack(stackId: string): Promise<Stack> {
 		// Try database first
 		const dbStack = await getStackByIdFromDb(stackId);
 		if (dbStack) {
-			return dbStack;
+			console.log(`Found stack ${stackId} in database, now getting services...`);
+
+			// Get the compose content (from db or file)
+			let composeContent = dbStack.composeContent;
+			if (!composeContent) {
+				console.log(`No composeContent in database for stack ${stackId}, trying file system`);
+				try {
+					const composePath = await getComposeFilePath(stackId);
+					if (composePath) {
+						composeContent = await fs.readFile(composePath, 'utf8');
+						console.log(`Loaded composeContent from file for stack ${stackId}`);
+
+						// Update database with the content
+						await updateStackContentInDb(stackId, { composeContent });
+					}
+				} catch (fileError) {
+					console.error(`Could not load compose file for stack ${stackId}:`, fileError);
+				}
+			}
+
+			// Get services for this specific stack
+			const services = await getStackServices(stackId, composeContent || '');
+			console.log(
+				`Found ${services.length} services for stack ${stackId}:`,
+				services.map((s) => `${s.name}(${s.state?.Status})`)
+			);
+
+			const serviceCount = services.length;
+			const runningCount = services.filter((s) => s.state?.Running).length;
+
+			let status: Stack['status'] = 'stopped';
+			if (serviceCount === 0) {
+				status = 'unknown';
+			} else if (runningCount === serviceCount) {
+				status = 'running';
+			} else if (runningCount > 0) {
+				status = 'partially running';
+			}
+
+			// Update runtime info in database
+			await updateStackRuntimeInfoInDb(stackId, {
+				status,
+				serviceCount,
+				runningCount,
+				lastPolled: new Date()
+			});
+
+			// Return the complete stack with services
+			return {
+				...dbStack,
+				composeContent,
+				services, // ← This is the key fix!
+				serviceCount,
+				runningCount,
+				status
+			};
 		}
 	} catch (error) {
 		console.error(`Error loading stack ${stackId} from database:`, error);
