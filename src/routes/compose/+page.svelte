@@ -19,7 +19,7 @@
 	import type { StackActions } from '$lib/types/actions.type';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
-	import type { Agent } from '$lib/types/agent.type';
+	import { formatRelativeTime, formatFriendlyDate } from '$lib/utils/date.utils';
 
 	let { data }: { data: PageData } = $props();
 	let stacks = $derived(data.stacks);
@@ -499,7 +499,8 @@
 						<Table.Cell>
 							<StatusBadge variant={item.isExternal ? 'amber' : item.isRemote ? 'blue' : 'green'} text={item.isExternal ? 'External' : item.isRemote ? 'Remote' : 'Managed'} />
 						</Table.Cell>
-						<Table.Cell>{item.createdAt}</Table.Cell>
+						<!-- Simple single line format -->
+						<Table.Cell>{formatFriendlyDate(item.createdAt || '')}</Table.Cell>
 						<Table.Cell>
 							{#if item.isExternal}
 								<ArcaneButton action="pull" customLabel="Import" onClick={() => handleImportStack(item.id, item.name)} loading={isLoading.import} disabled={isLoading.import} />
