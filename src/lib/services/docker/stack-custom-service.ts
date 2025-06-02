@@ -173,102 +173,98 @@ export async function loadEnvFile(stackId: string): Promise<string> {
 }
 
 /**
- * Load compose stacks - uses database with file fallback
+ * Load compose stacks - FAST version (no runtime updates)
  */
 export async function loadComposeStacks(): Promise<Stack[]> {
 	const cacheKey = 'compose-stacks';
 	const cachedData = stackCache.get(cacheKey);
 
-	if (cachedData && Date.now() - cachedData.timestamp < CACHE_TTL) {
+	// Extend cache TTL to 5 minutes for better performance
+	const EXTENDED_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+	if (cachedData && Date.now() - cachedData.timestamp < EXTENDED_CACHE_TTL) {
+		console.log(`Returning ${cachedData.data.length} stacks from cache`);
 		return cachedData.data;
 	}
 
 	try {
-		// Try to load from database first
+		// Just load from database - NO file system reads, NO service queries
 		const dbStacks = await listStacksFromDb();
-		console.log(`Loaded ${dbStacks.length} stacks from database`);
+		console.log(`Loaded ${dbStacks.length} stacks from database (fast mode)`);
 
-		// Update runtime information for each stack
-		const stacksWithRuntimeInfo = await Promise.all(
-			dbStacks.map(async (stack) => {
-				try {
-					console.log(`Processing stack ${stack.id}, composeContent length: ${stack.composeContent?.length || 0}`);
-
-					// If no composeContent in database, try to load from file
-					let composeContent = stack.composeContent;
-					if (!composeContent) {
-						console.log(`No composeContent in database for stack ${stack.id}, trying file system`);
-						try {
-							const composePath = await getComposeFilePath(stack.id);
-							if (composePath) {
-								composeContent = await fs.readFile(composePath, 'utf8');
-								console.log(`Loaded composeContent from file for stack ${stack.id}`);
-
-								// Update database with the content
-								await updateStackContentInDb(stack.id, { composeContent });
-							}
-						} catch (fileError) {
-							console.error(`Could not load compose file for stack ${stack.id}:`, fileError);
-						}
-					}
-
-					const services = await getStackServices(stack.id, composeContent || '');
-					console.log(
-						`Found ${services.length} services for stack ${stack.id}:`,
-						services.map((s) => `${s.name}(${s.state?.Status})`)
-					);
-
-					const serviceCount = services.length;
-					const runningCount = services.filter((s) => s.state?.Running).length;
-
-					let status: Stack['status'] = 'stopped';
-					if (serviceCount === 0) {
-						status = 'unknown';
-					} else if (runningCount === serviceCount) {
-						status = 'running';
-					} else if (runningCount > 0) {
-						status = 'partially running';
-					}
-
-					// Update runtime info in database
-					await updateStackRuntimeInfoInDb(stack.id, {
-						status,
-						serviceCount,
-						runningCount,
-						lastPolled: new Date() // Pass Date object here
-					});
-
-					// Return the complete stack with services
-					return {
-						...stack,
-						composeContent,
-						services,
-						serviceCount,
-						runningCount,
-						status
-					};
-				} catch (error) {
-					console.error(`Error updating runtime info for stack ${stack.id}:`, error);
-					// Return stack without services on error
-					return {
-						...stack,
-						services: [] // ← Make sure services is always an array
-					};
-				}
-			})
-		);
+		// Return stacks with minimal processing
+		const fastStacks = dbStacks.map((stack) => ({
+			...stack,
+			services: [] // Empty services array for fast loading
+		}));
 
 		stackCache.set(cacheKey, {
-			data: stacksWithRuntimeInfo,
+			data: fastStacks,
 			timestamp: Date.now()
 		});
 
-		console.log(`Returning ${stacksWithRuntimeInfo.length} stacks with services`);
-		return stacksWithRuntimeInfo;
+		console.log(`Fast load completed: ${fastStacks.length} stacks`);
+		return fastStacks;
 	} catch (error) {
 		console.error('Error loading stacks from database, falling back to file-based approach:', error);
 		return loadComposeStacksFromFiles();
 	}
+}
+
+/**
+ * Load stacks with full runtime info (use sparingly)
+ */
+export async function loadComposeStacksWithRuntimeInfo(): Promise<Stack[]> {
+	// This is the current heavy function - only use when needed
+	const dbStacks = await listStacksFromDb();
+
+	return Promise.all(
+		dbStacks.map(async (stack) => {
+			try {
+				let composeContent = stack.composeContent;
+
+				if (!composeContent) {
+					try {
+						const composePath = await getComposeFilePath(stack.id);
+						if (composePath) {
+							composeContent = await fs.readFile(composePath, 'utf8');
+							// Don't update DB on every load - do this in background
+						}
+					} catch (fileError) {
+						console.warn(`Could not load compose file for stack ${stack.id}`);
+					}
+				}
+
+				const services = await getStackServices(stack.id, composeContent || '');
+				const serviceCount = services.length;
+				const runningCount = services.filter((s) => s.state?.Running).length;
+
+				let status: Stack['status'] = 'stopped';
+				if (serviceCount === 0) {
+					status = 'unknown';
+				} else if (runningCount === serviceCount) {
+					status = 'running';
+				} else if (runningCount > 0) {
+					status = 'partially running';
+				}
+
+				return {
+					...stack,
+					composeContent,
+					services,
+					serviceCount,
+					runningCount,
+					status
+				};
+			} catch (error) {
+				console.error(`Error processing stack ${stack.id}:`, error);
+				return {
+					...stack,
+					services: []
+				};
+			}
+		})
+	);
 }
 
 /**
@@ -519,40 +515,27 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 }
 
 /**
- * Get a specific stack - uses database with file fallback
+ * Get a specific stack - FAST version for detail pages
  */
 export async function getStack(stackId: string): Promise<Stack> {
 	try {
 		// Try database first
 		const dbStack = await getStackByIdFromDb(stackId);
 		if (dbStack) {
-			console.log(`Found stack ${stackId} in database, now getting services...`);
+			console.log(`Found stack ${stackId} in database`);
 
-			// Get the compose content (from db or file)
+			// Get services and update status ONLY for single stack view
 			let composeContent = dbStack.composeContent;
 			if (!composeContent) {
-				console.log(`No composeContent in database for stack ${stackId}, trying file system`);
-				try {
-					const composePath = await getComposeFilePath(stackId);
-					if (composePath) {
-						composeContent = await fs.readFile(composePath, 'utf8');
-						console.log(`Loaded composeContent from file for stack ${stackId}`);
-
-						// Update database with the content
-						await updateStackContentInDb(stackId, { composeContent });
-					}
-				} catch (fileError) {
-					console.error(`Could not load compose file for stack ${stackId}:`, fileError);
+				const composePath = await getComposeFilePath(stackId);
+				if (composePath) {
+					composeContent = await fs.readFile(composePath, 'utf8');
+					// Update in background, don't wait
+					updateStackContentInDb(stackId, { composeContent }).catch(console.error);
 				}
 			}
 
-			// Get services for this specific stack
 			const services = await getStackServices(stackId, composeContent || '');
-			console.log(
-				`Found ${services.length} services for stack ${stackId}:`,
-				services.map((s) => `${s.name}(${s.state?.Status})`)
-			);
-
 			const serviceCount = services.length;
 			const runningCount = services.filter((s) => s.state?.Running).length;
 
@@ -565,19 +548,18 @@ export async function getStack(stackId: string): Promise<Stack> {
 				status = 'partially running';
 			}
 
-			// Update runtime info in database
-			await updateStackRuntimeInfoInDb(stackId, {
+			// Update runtime info in background
+			updateStackRuntimeInfoInDb(stackId, {
 				status,
 				serviceCount,
 				runningCount,
 				lastPolled: new Date()
-			});
+			}).catch(console.error);
 
-			// Return the complete stack with services
 			return {
 				...dbStack,
 				composeContent,
-				services, // ← This is the key fix!
+				services,
 				serviceCount,
 				runningCount,
 				status
@@ -2258,3 +2240,96 @@ export async function destroyStack(stackId: string, removeVolumes = false, remov
 		throw error;
 	}
 }
+
+/**
+ * Background service to update stack runtime info
+ */
+export class StackRuntimeUpdater {
+	private updateInterval: NodeJS.Timeout | null = null;
+	private isUpdating = false;
+
+	start(intervalMinutes = 2) {
+		if (this.updateInterval) return;
+
+		this.updateInterval = setInterval(
+			async () => {
+				if (this.isUpdating) return;
+
+				this.isUpdating = true;
+				try {
+					await this.updateAllStacksRuntimeInfo();
+				} catch (error) {
+					console.error('Background stack runtime update failed:', error);
+				} finally {
+					this.isUpdating = false;
+				}
+			},
+			intervalMinutes * 60 * 1000
+		);
+
+		console.log(`Stack runtime updater started (${intervalMinutes}m interval)`);
+	}
+
+	stop() {
+		if (this.updateInterval) {
+			clearInterval(this.updateInterval);
+			this.updateInterval = null;
+		}
+	}
+
+	private async updateAllStacksRuntimeInfo() {
+		try {
+			const stacks = await listStacksFromDb();
+			console.log(`Background updating runtime info for ${stacks.length} stacks`);
+
+			for (const stack of stacks) {
+				try {
+					await this.updateSingleStackRuntimeInfo(stack.id);
+				} catch (error) {
+					console.warn(`Failed to update runtime info for stack ${stack.id}:`, error);
+				}
+			}
+
+			// Invalidate cache after updates
+			stackCache.delete('compose-stacks');
+		} catch (error) {
+			console.error('Background runtime update failed:', error);
+		}
+	}
+
+	private async updateSingleStackRuntimeInfo(stackId: string) {
+		const stack = await getStackByIdFromDb(stackId);
+		if (!stack) return;
+
+		let composeContent = stack.composeContent;
+		if (!composeContent) {
+			const composePath = await getComposeFilePath(stackId);
+			if (composePath) {
+				composeContent = await fs.readFile(composePath, 'utf8');
+				await updateStackContentInDb(stackId, { composeContent });
+			}
+		}
+
+		const services = await getStackServices(stackId, composeContent || '');
+		const serviceCount = services.length;
+		const runningCount = services.filter((s) => s.state?.Running).length;
+
+		let status: Stack['status'] = 'stopped';
+		if (serviceCount === 0) {
+			status = 'unknown';
+		} else if (runningCount === serviceCount) {
+			status = 'running';
+		} else if (runningCount > 0) {
+			status = 'partially running';
+		}
+
+		await updateStackRuntimeInfoInDb(stackId, {
+			status,
+			serviceCount,
+			runningCount,
+			lastPolled: new Date()
+		});
+	}
+}
+
+export const stackRuntimeUpdater = new StackRuntimeUpdater();

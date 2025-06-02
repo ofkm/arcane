@@ -5,7 +5,7 @@ import { getUserByUsername } from '$lib/services/user-service';
 import { getSettings } from '$lib/services/settings-service';
 import { checkFirstRun } from '$lib/utils/onboarding.utils';
 import { sessionHandler } from '$lib/services/session-handler';
-import { initComposeService } from '$lib/services/docker/stack-custom-service';
+import { initComposeService, stackRuntimeUpdater } from '$lib/services/docker/stack-custom-service';
 import { initAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
 import { initMaturityPollingScheduler } from '$lib/services/docker/image-service';
 import { migrateSettingsToDatabase } from '$lib/services/database/settings-db-service';
@@ -20,8 +20,9 @@ const isTestEnvironment = process.env.APP_ENV === 'TEST';
 try {
 	await runMigrations();
 	await Promise.all([migrateSettingsToDatabase(), migrateUsersToDatabase(), migrateStacksToDatabase()]);
-
 	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler(), initMaturityPollingScheduler()]);
+
+	stackRuntimeUpdater.start(2);
 } catch (err) {
 	console.error('Critical service init failed, exiting:', err);
 	process.exit(1);
