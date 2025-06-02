@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'; // Make sure bcryptjs is installed as a dev depen
 import { encrypt } from '../src/lib/services/encryption-service';
 import { ensureDirectory } from '../src/lib/services/paths-service';
 import { DEFAULT_SETTINGS } from '../src/lib/services/settings-service';
+import { runMigrations } from '../src/db/migrate';
 
 // --- Configuration ---
 const TEST_USERNAME = 'arcane';
@@ -26,6 +27,16 @@ async function setupTestEnvironment() {
 	await ensureDirectory(settingsDir);
 	await ensureDirectory(usersDir);
 	console.log('Directories ensured.');
+
+	// --- Initialize Database ---
+	console.log('Running database migrations...');
+	try {
+		await runMigrations();
+		console.log('Database migrations completed.');
+	} catch (error) {
+		console.error('Error running migrations:', error);
+		throw error;
+	}
 
 	// --- Initialize Test User ---
 	console.log(`Initializing test user: ${TEST_USERNAME}`);
