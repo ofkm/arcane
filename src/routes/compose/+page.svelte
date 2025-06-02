@@ -460,6 +460,9 @@
 					onPageSizeChange={(newSize) => {
 						tablePersistence.setPageSize('stacks', newSize);
 					}}
+					sort={{
+						defaultSort: { id: 'name', desc: false }
+					}}
 					display={{
 						filterPlaceholder: 'Search compose projects...',
 						noResultsMessage: 'No stacks found'
