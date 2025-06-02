@@ -22,6 +22,13 @@
       "when": 1748837434871,
       "tag": "0002_chunky_silverclaw",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1748886756139,
+      "tag": "0003_typical_ogun",
+      "breakpoints": true
     }
   ]
 }
