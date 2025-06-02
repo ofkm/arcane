@@ -54,6 +54,9 @@ export interface Stack {
 	agentId?: string;
 	agentHostname?: string;
 	isRemote?: boolean;
+	dirName?: string;
+	lastPolled?: string;
+	path?: string;
 }
 
 export interface StackUpdate {

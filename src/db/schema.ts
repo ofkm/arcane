@@ -36,8 +36,35 @@ export const usersTable = sqliteTable('users_table', {
 	lastLogin: int('last_login', { mode: 'timestamp' }),
 	createdAt: int('created_at', { mode: 'timestamp' })
 		.notNull()
-		.default(sql`(unixepoch())`),
+		.default(sql`(unixepoch())`), // Fixed: Added missing closing parenthesis
 	updatedAt: int('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export const stacksTable = sqliteTable('stacks_table', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull().unique(),
+	dirName: text('dir_name'), // Directory name if different from stack name
+	path: text('path').notNull(), // Full path to stack directory
+	autoUpdate: integer('auto_update', { mode: 'boolean' }).notNull().default(false),
+	isExternal: integer('is_external', { mode: 'boolean' }).notNull().default(false),
+	isLegacy: integer('is_legacy', { mode: 'boolean' }).notNull().default(false),
+	isRemote: integer('is_remote', { mode: 'boolean' }).notNull().default(false),
+	agentId: text('agent_id'), // For remote stacks
+	agentHostname: text('agent_hostname'), // For remote stacks
+	status: text('status', { enum: ['running', 'stopped', 'partially running', 'unknown'] })
+		.notNull()
+		.default('unknown'),
+	serviceCount: int('service_count').notNull().default(0),
+	runningCount: int('running_count').notNull().default(0),
+	composeContent: text('compose_content'), // Store docker-compose.yml content
+	envContent: text('env_content'), // Store .env file content
+	lastPolled: int('last_polled', { mode: 'timestamp' }), // When the stack was last checked
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`)
 });

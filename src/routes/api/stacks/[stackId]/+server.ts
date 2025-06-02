@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { updateStack } from '$lib/services/docker/stack-service';
+import { updateStack } from '$lib/services/docker/stack-custom-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
 

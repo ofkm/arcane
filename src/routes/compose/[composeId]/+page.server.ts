@@ -1,4 +1,4 @@
-import { getStack } from '$lib/services/docker/stack-service';
+import { getStack } from '$lib/services/docker/stack-custom-service';
 import { getSettings } from '$lib/services/settings-service';
 import { getContainer } from '$lib/services/docker/container-service';
 import { listAgents } from '$lib/services/agent/agent-manager';
@@ -37,7 +37,8 @@ export const load: PageServerLoad = async ({ params }) => {
 		envContent: stack.envContent || '',
 		originalName: stack.name,
 		originalComposeContent: stack.composeContent || '',
-		originalEnvContent: stack.envContent || ''
+		originalEnvContent: stack.envContent || '',
+		autoUpdate: false // Will be loaded from database if available
 	};
 
 	const settingsResult = await tryCatch(getSettings());

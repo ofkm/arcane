@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import { getStack } from '$lib/services/docker/stack-service';
+import { getStack } from '$lib/services/docker/stack-custom-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';
 import { getDockerClient } from '$lib/services/docker/core';
