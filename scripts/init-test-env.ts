@@ -1,16 +1,23 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import bcrypt from 'bcryptjs'; // Make sure bcryptjs is installed as a dev dependency
-import { encrypt } from '../src/lib/services/encryption-service';
-import { ensureDirectory } from '../src/lib/services/paths-service';
-import { DEFAULT_SETTINGS } from '../src/lib/services/settings-service';
-import { runMigrations } from '../src/db/migrate';
+import bcrypt from 'bcryptjs';
 
 // --- Configuration ---
 const TEST_USERNAME = 'arcane';
-const TEST_PASSWORD = 'arcane-admin'; // Use a simple password for testing
+const TEST_PASSWORD = 'arcane-admin';
 const TEST_DATA_DIR = process.env.APP_ENV === 'TEST' ? path.resolve(process.cwd(), 'data') : null;
 // --- End Configuration ---
+
+async function ensureDirectoryExists(dirPath: string) {
+	try {
+		await fs.access(dirPath);
+		console.log(`Directory already exists: ${dirPath}`);
+	} catch {
+		console.log(`Creating directory: ${dirPath}`);
+		await fs.mkdir(dirPath, { recursive: true, mode: 0o755 });
+		console.log(`Directory created: ${dirPath}`);
+	}
+}
 
 async function setupTestEnvironment() {
 	console.log('Starting test environment setup...');
@@ -19,14 +26,20 @@ async function setupTestEnvironment() {
 		throw new Error('This script should only run in TEST environment (APP_ENV=TEST)');
 	}
 
-	// --- Ensure Directories Exist ---
+	// --- Ensure Directories Exist FIRST ---
 	console.log(`Ensuring test data directory exists: ${TEST_DATA_DIR}`);
 	const settingsDir = path.join(TEST_DATA_DIR, 'settings');
 	const usersDir = path.join(TEST_DATA_DIR, 'users');
-	await ensureDirectory(TEST_DATA_DIR);
-	await ensureDirectory(settingsDir);
-	await ensureDirectory(usersDir);
-	console.log('Directories ensured.');
+
+	await ensureDirectoryExists(TEST_DATA_DIR);
+	await ensureDirectoryExists(settingsDir);
+	await ensureDirectoryExists(usersDir);
+	console.log('All directories ensured.');
+
+	// --- NOW import database modules (after directories exist) ---
+	const { encrypt } = await import('../src/lib/services/encryption-service');
+	const { DEFAULT_SETTINGS } = await import('../src/lib/services/settings-service');
+	const { runMigrations } = await import('../src/db/migrate');
 
 	// --- Initialize Database ---
 	console.log('Running database migrations...');
@@ -45,10 +58,9 @@ async function setupTestEnvironment() {
 	const testUser = {
 		username: TEST_USERNAME,
 		password: hashedPassword,
-		roles: ['admin', 'containers:view', 'containers:manage', 'settings:view', 'networks:view', 'networks:manage'], // Add all necessary roles for tests
+		roles: ['admin', 'containers:view', 'containers:manage', 'settings:view', 'networks:view', 'networks:manage'],
 		createdAt: new Date().toISOString()
 	};
-	// Write user data (overwriting if exists)
 	await fs.writeFile(usersFilePath, JSON.stringify([testUser], null, 2), { mode: 0o600 });
 	console.log(`Test user data written to ${usersFilePath}`);
 
