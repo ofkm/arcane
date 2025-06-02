@@ -7,8 +7,31 @@ import { directoryExists } from '$lib/utils/fs.utils';
 import { getDockerClient } from './core';
 import { getSettings, ensureStacksDirectory } from '$lib/services/settings-service';
 import type { Stack, StackService, StackUpdate } from '$lib/types/docker/stack.type';
-// Database imports
 import { listStacksFromDb, getStackByIdFromDb, saveStackToDb, updateStackRuntimeInfoInDb, updateStackContentInDb, deleteStackFromDb, updateStackAutoUpdateInDb, getAutoUpdateStacksFromDb } from '$lib/services/database/compose-db-service';
+import {
+	parseEnvContent,
+	validateComposeStructure,
+	normalizeHealthcheckTest,
+	parseYamlContent,
+	prepareVolumes,
+	preparePorts,
+	prepareEnvironmentVariables,
+	prepareRestartPolicy,
+	resolveDependencyOrder,
+	generateConfigHash,
+	prepareExtraHosts,
+	prepareUlimits,
+	prepareLogConfig,
+	prepareHealthcheck,
+	parseMemory,
+	parseTimeToNanoseconds,
+	validateComposeContent,
+	DEFAULT_COMPOSE_VERSION,
+	substituteVariablesInObject,
+	extractTmpfsMounts,
+	createVolumeDefinitions,
+	validateVolumeConfiguration
+} from '$lib/utils/compose.utils';
 
 interface DockerProgressEvent {
 	status: string;
@@ -24,26 +47,8 @@ let STACKS_DIR = '';
 const stackCache = new Map();
 const CACHE_TTL = 30000; // 30 seconds
 
-// Helper function to parse environment file content
-export function parseEnvContent(envContent: string | null): Record<string, string> {
-	const envVars: Record<string, string> = {};
-	if (envContent) {
-		envContent.split('\n').forEach((line) => {
-			const trimmedLine = line.trim();
-			if (trimmedLine && !trimmedLine.startsWith('#')) {
-				const [key, ...valueParts] = trimmedLine.split('=');
-				const value = valueParts.join('=');
-				if (key) {
-					envVars[key.trim()] = value?.trim() || '';
-				}
-			}
-		});
-	}
-	return envVars;
-}
-
 /**
- * Initialize compose service - includes database check
+ * Initialize compose service with proper validation
  */
 export async function initComposeService(): Promise<void> {
 	try {
@@ -64,25 +69,28 @@ export async function initComposeService(): Promise<void> {
 		}
 	} catch (err) {
 		console.error('Error initializing compose service:', err);
+		throw new Error('Failed to initialize compose service');
 	}
 }
 
 /**
- * Update stacks directory
+ * Update stacks directory with validation
  */
 export function updateStacksDirectory(directory: string): void {
-	if (directory) {
-		if (!path.isAbsolute(directory)) {
-			STACKS_DIR = path.resolve(directory);
-		} else {
-			STACKS_DIR = directory;
-		}
-		console.log(`Stacks directory updated to: ${STACKS_DIR}`);
+	if (!directory || typeof directory !== 'string') {
+		throw new Error('Directory path must be a non-empty string');
 	}
+
+	if (!path.isAbsolute(directory)) {
+		STACKS_DIR = path.resolve(directory);
+	} else {
+		STACKS_DIR = directory;
+	}
+	console.log(`Stacks directory updated to: ${STACKS_DIR}`);
 }
 
 /**
- * Ensure stacks directory exists
+ * Ensure stacks directory exists with proper error handling
  */
 export async function ensureStacksDir(): Promise<string> {
 	try {
@@ -96,6 +104,14 @@ export async function ensureStacksDir(): Promise<string> {
 		}
 
 		await fs.mkdir(STACKS_DIR, { recursive: true });
+
+		// Verify directory is writable
+		try {
+			await fs.access(STACKS_DIR, fs.constants.W_OK);
+		} catch {
+			throw new Error(`Stacks directory ${STACKS_DIR} is not writable`);
+		}
+
 		return STACKS_DIR;
 	} catch (err) {
 		console.error('Error creating stacks directory:', err);
@@ -104,39 +120,56 @@ export async function ensureStacksDir(): Promise<string> {
 }
 
 /**
- * Get stack directory for a given stackId
+ * Get stack directory with path sanitization
  */
 export async function getStackDir(stackId: string): Promise<string> {
+	if (!stackId || typeof stackId !== 'string') {
+		throw new Error('Stack ID must be a non-empty string');
+	}
+
 	const stacksDirAbs = await ensureStacksDir();
 	const safeId = path.basename(stackId);
+
 	if (safeId !== stackId) {
-		console.warn(`Original stackId "${stackId}" was sanitized to "${safeId}". Ensure this is expected.`);
+		console.warn(`Stack ID "${stackId}" was sanitized to "${safeId}" for security`);
 	}
+
+	// Additional validation to ensure safe directory name
+	if (!/^[a-zA-Z0-9._-]+$/.test(safeId)) {
+		throw new Error(`Invalid stack ID: "${safeId}". Use only letters, numbers, dots, hyphens, and underscores.`);
+	}
+
 	return path.join(stacksDirAbs, safeId);
 }
 
 /**
- * Get compose file path, prioritizing compose.yaml over docker-compose.yml
+ * Get compose file path with spec-compliant priority
  */
 export async function getComposeFilePath(stackId: string): Promise<string | null> {
 	const stackDirAbs = await getStackDir(stackId);
-	const newPath = path.join(stackDirAbs, 'compose.yaml');
-	const oldPath = path.join(stackDirAbs, 'docker-compose.yml');
-	try {
-		await fs.access(newPath);
-		return newPath;
-	} catch {
+
+	// Docker Compose specification file priority
+	const composePaths = [
+		path.join(stackDirAbs, 'compose.yaml'), // Preferred format
+		path.join(stackDirAbs, 'compose.yml'), // Alternative YAML
+		path.join(stackDirAbs, 'docker-compose.yaml'), // Legacy format
+		path.join(stackDirAbs, 'docker-compose.yml') // Legacy format
+	];
+
+	for (const composePath of composePaths) {
 		try {
-			await fs.access(oldPath);
-			return oldPath;
+			await fs.access(composePath, fs.constants.R_OK);
+			return composePath;
 		} catch {
-			return null;
+			// Continue to next path
 		}
 	}
+
+	return null;
 }
 
 /**
- * Get .env file path
+ * Get .env file path with validation
  */
 async function getEnvFilePath(stackId: string): Promise<string> {
 	const stackDir = await getStackDir(stackId);
@@ -144,23 +177,42 @@ async function getEnvFilePath(stackId: string): Promise<string> {
 }
 
 /**
- * Save environment variables to .env file
+ * Save environment variables to .env file with proper formatting
  */
 async function saveEnvFile(stackId: string, content?: string): Promise<void> {
 	const envPath = await getEnvFilePath(stackId);
 	const fileContent = content === undefined || content === null ? '' : content;
+
+	// Validate env content format if not empty
+	if (fileContent.trim()) {
+		try {
+			parseEnvContent(fileContent);
+		} catch (error) {
+			throw new Error(`Invalid .env file format: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
 	await fs.writeFile(envPath, fileContent, 'utf8');
 	console.log(`Saved .env file for stack ${stackId}`);
 }
 
 /**
- * Load environment variables from .env file
+ * Load environment variables from .env file with proper error handling
  */
 export async function loadEnvFile(stackId: string): Promise<string> {
 	const envPath = await getEnvFilePath(stackId);
 
 	try {
-		return await fs.readFile(envPath, 'utf8');
+		const content = await fs.readFile(envPath, 'utf8');
+
+		// Validate the content can be parsed
+		try {
+			parseEnvContent(content);
+		} catch (parseError) {
+			console.warn(`Warning: .env file for stack ${stackId} has parsing issues:`, parseError);
+		}
+
+		return content;
 	} catch (err) {
 		const nodeErr = err as NodeJS.ErrnoException;
 		if (nodeErr.code === 'ENOENT') {
@@ -173,7 +225,7 @@ export async function loadEnvFile(stackId: string): Promise<string> {
 }
 
 /**
- * Load compose stacks - FAST version (no runtime updates)
+ * Load compose stacks with enhanced caching and validation
  */
 export async function loadComposeStacks(): Promise<Stack[]> {
 	const cacheKey = 'compose-stacks';
@@ -192,11 +244,22 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 		const dbStacks = await listStacksFromDb();
 		console.log(`Loaded ${dbStacks.length} stacks from database (fast mode)`);
 
-		// Return stacks with minimal processing
-		const fastStacks = dbStacks.map((stack) => ({
-			...stack,
-			services: [] // Empty services array for fast loading
-		}));
+		// Return stacks with minimal processing and validation
+		const fastStacks = dbStacks
+			.map((stack) => {
+				// Basic validation of stack data
+				if (!stack.id || typeof stack.id !== 'string') {
+					console.warn('Stack missing valid ID, skipping');
+					return null;
+				}
+
+				return {
+					...stack,
+					services: [], // Empty services array for fast loading
+					status: stack.status || 'unknown'
+				};
+			})
+			.filter(Boolean) as Stack[];
 
 		stackCache.set(cacheKey, {
 			data: fastStacks,
@@ -212,10 +275,9 @@ export async function loadComposeStacks(): Promise<Stack[]> {
 }
 
 /**
- * Load stacks with full runtime info (use sparingly)
+ * Load stacks with full runtime info and compose validation
  */
 export async function loadComposeStacksWithRuntimeInfo(): Promise<Stack[]> {
-	// This is the current heavy function - only use when needed
 	const dbStacks = await listStacksFromDb();
 
 	return Promise.all(
@@ -228,7 +290,15 @@ export async function loadComposeStacksWithRuntimeInfo(): Promise<Stack[]> {
 						const composePath = await getComposeFilePath(stack.id);
 						if (composePath) {
 							composeContent = await fs.readFile(composePath, 'utf8');
-							// Don't update DB on every load - do this in background
+
+							// Validate compose content
+							const validation = validateComposeContent(composeContent);
+							if (!validation.valid) {
+								console.warn(`Compose validation errors for stack ${stack.id}:`, validation.errors);
+							}
+							if (validation.warnings.length > 0) {
+								console.warn(`Compose validation warnings for stack ${stack.id}:`, validation.warnings);
+							}
 						}
 					} catch (fileError) {
 						console.warn(`Could not load compose file for stack ${stack.id}`);
@@ -260,7 +330,8 @@ export async function loadComposeStacksWithRuntimeInfo(): Promise<Stack[]> {
 				console.error(`Error processing stack ${stack.id}:`, error);
 				return {
 					...stack,
-					services: []
+					services: [],
+					status: 'unknown' as Stack['status']
 				};
 			}
 		})
@@ -350,17 +421,17 @@ async function loadComposeStacksFromFiles(): Promise<Stack[]> {
 }
 
 /**
- * Get stack services from containers
+ * Get stack services from containers with Docker Compose spec compliance
  */
 async function getStackServices(stackId: string, composeContent: string): Promise<StackService[]> {
 	const docker = await getDockerClient();
 	const composeProjectLabel = 'com.docker.compose.project';
 	const composeServiceLabel = 'com.docker.compose.service';
 
-	console.log(`Getting services for stack ${stackId}, composeContent length: ${composeContent.length}`);
+	console.log(`Getting services for stack ${stackId} (compose content length: ${composeContent.length})`);
 
 	try {
-		// Load the .env file to provide environment variable values
+		// Load and parse environment variables
 		let envContent = '';
 		let envVars: Record<string, string> = {};
 
@@ -372,21 +443,37 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 		}
 
 		// Create environment variable getter function
-		const getEnvVar = (key: string) => {
-			return envVars[key] || process.env[key] || '';
+		const getEnvVar = (key: string): string | undefined => {
+			return envVars[key] || process.env[key];
 		};
 
-		// Parse compose content to get service definitions
+		// Parse and validate compose content
 		let composeData: Record<string, any> | null = null;
 		let serviceNames: string[] = [];
 
 		if (composeContent.trim()) {
+			// Validate compose content first
+			const validation = validateComposeContent(composeContent);
+			if (!validation.valid) {
+				console.warn(`Compose validation errors for stack ${stackId}:`, validation.errors);
+			}
+
+			// Parse with variable substitution
 			composeData = parseYamlContent(composeContent, getEnvVar);
-			if (composeData && composeData.services) {
-				serviceNames = Object.keys(composeData.services as Record<string, unknown>);
-				console.log(`Found ${serviceNames.length} services defined in compose: [${serviceNames.join(', ')}]`);
-			} else {
-				console.warn(`No services found in compose content for stack ${stackId}`);
+
+			// Validate compose structure
+			if (composeData) {
+				const structureValidation = validateComposeStructure(composeData);
+				if (!structureValidation.valid) {
+					console.warn(`Compose structure validation errors for stack ${stackId}:`, structureValidation.errors);
+				}
+
+				if (composeData.services) {
+					serviceNames = Object.keys(composeData.services as Record<string, unknown>);
+					console.log(`Found ${serviceNames.length} services defined in compose: [${serviceNames.join(', ')}]`);
+				} else {
+					console.warn(`No services found in compose content for stack ${stackId}`);
+				}
 			}
 		} else {
 			console.warn(`Empty compose content for stack ${stackId}`);
@@ -396,13 +483,15 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 		const containers = await docker.listContainers({ all: true });
 		console.log(`Total containers found: ${containers.length}`);
 
-		// Filter containers based on labels and naming convention
+		// Filter containers based on Docker Compose labels and naming convention
 		const stackContainers = containers.filter((container) => {
 			const labels = container.Labels || {};
 			const names = container.Names || [];
 
-			// Check if container belongs to this stack
+			// Primary filter: Docker Compose project label
 			const hasCorrectLabel = labels[composeProjectLabel] === stackId;
+
+			// Secondary filter: naming convention for backwards compatibility
 			const nameStartsWithPrefix = names.some((name) => name.startsWith(`/${stackId}_`));
 
 			const belongs = hasCorrectLabel || nameStartsWithPrefix;
@@ -420,6 +509,7 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 
 		const services: StackService[] = [];
 
+		// Process existing containers
 		for (const containerData of stackContainers) {
 			const containerName = containerData.Names?.[0]?.substring(1) || '';
 			const labels = containerData.Labels || {};
@@ -431,6 +521,7 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 			if (!serviceName && serviceNames.length > 0) {
 				console.log(`Container ${containerData.Id} missing service label, trying to parse from name`);
 				for (const name of serviceNames) {
+					// Docker Compose naming pattern: {project}_{service}_{replica}
 					const servicePrefixWithUnderscore = `${stackId}_${name}_`;
 					const servicePrefixExact = `${stackId}_${name}`;
 					if (containerName.startsWith(servicePrefixWithUnderscore) || containerName === servicePrefixExact) {
@@ -441,9 +532,9 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 				}
 			}
 
-			// Final fallback if still no match
+			// Final fallback using Docker Compose naming convention
 			if (!serviceName) {
-				// Extract service name from container name pattern: stackId_serviceName_instance
+				// Extract service name from container name pattern: {project}_{service}_{replica}
 				const namePattern = new RegExp(`^${stackId}_([^_]+)(?:_\\d+)?$`);
 				const match = containerName.match(namePattern);
 				if (match) {
@@ -467,7 +558,7 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 
 			console.log(`Created service: ${JSON.stringify(service)}`);
 
-			// Avoid adding duplicates
+			// Avoid adding duplicates (handle multiple replicas)
 			const existingServiceIndex = services.findIndex((s) => s.name === serviceName);
 			if (existingServiceIndex !== -1) {
 				if (!services[existingServiceIndex].id) {
@@ -482,7 +573,7 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 			}
 		}
 
-		// Add placeholders for services defined in compose but not found among listed containers
+		// Add placeholders for services defined in compose but not found among containers
 		if (serviceNames.length > 0) {
 			for (const name of serviceNames) {
 				if (!services.some((s) => s.name === name)) {
@@ -501,13 +592,35 @@ async function getStackServices(stackId: string, composeContent: string): Promis
 			}
 		}
 
-		// Sort services alphabetically by name for consistent order
-		services.sort((a, b) => a.name.localeCompare(b.name));
+		// Sort services by dependency order if possible, otherwise alphabetically
+		let sortedServices = services;
+		if (composeData && composeData.services) {
+			try {
+				const dependencyOrder = resolveDependencyOrder(composeData.services);
+				sortedServices = services.sort((a, b) => {
+					const aIndex = dependencyOrder.indexOf(a.name);
+					const bIndex = dependencyOrder.indexOf(b.name);
 
-		console.log(`Final services for stack ${stackId}: ${services.length} services`);
-		services.forEach((s) => console.log(`  - ${s.name}: ${s.state?.Status} (id: ${s.id || 'none'})`));
+					// If both services are in dependency order, sort by that
+					if (aIndex !== -1 && bIndex !== -1) {
+						return aIndex - bIndex;
+					}
 
-		return services;
+					// Otherwise, alphabetical sort
+					return a.name.localeCompare(b.name);
+				});
+			} catch (depError) {
+				console.warn(`Could not resolve dependency order for stack ${stackId}, using alphabetical sort:`, depError);
+				sortedServices = services.sort((a, b) => a.name.localeCompare(b.name));
+			}
+		} else {
+			sortedServices = services.sort((a, b) => a.name.localeCompare(b.name));
+		}
+
+		console.log(`Final services for stack ${stackId}: ${sortedServices.length} services`);
+		sortedServices.forEach((s) => console.log(`  - ${s.name}: ${s.state?.Status} (id: ${s.id || 'none'})`));
+
+		return sortedServices;
 	} catch (err) {
 		console.error(`Error getting services for stack ${stackId}:`, err);
 		return [];
@@ -1331,116 +1444,6 @@ export async function getAutoUpdateStacks(): Promise<Stack[]> {
 }
 
 /**
- * Normalize healthcheck test and substitute variables
- */
-export function normalizeHealthcheckTest(composeContent: string, envGetter?: (key: string) => string | undefined): string {
-	let doc: any;
-	try {
-		doc = yamlLoad(composeContent);
-		if (!doc || typeof doc !== 'object') {
-			console.warn('Could not parse compose YAML for normalization or content is not an object.');
-			return composeContent;
-		}
-	} catch (e) {
-		console.warn('Could not parse compose YAML for normalization:', e);
-		return composeContent;
-	}
-
-	let modified = false;
-
-	// Perform healthcheck normalization
-	if (doc.services && typeof doc.services === 'object') {
-		for (const serviceName in doc.services) {
-			if (Object.prototype.hasOwnProperty.call(doc.services, serviceName)) {
-				const service = doc.services[serviceName];
-				if (service && service.healthcheck && typeof service.healthcheck === 'object' && service.healthcheck.test && typeof service.healthcheck.test === 'string') {
-					service.healthcheck.test = service.healthcheck.test
-						.trim()
-						.split(/\s+/)
-						.filter((s: string) => s.length > 0);
-					modified = true;
-				}
-			}
-		}
-	}
-
-	// Perform variable substitution if envGetter is provided
-	if (envGetter) {
-		const originalDocSnapshot = JSON.stringify(doc);
-		doc = substituteVariablesInObject(doc, envGetter);
-		if (JSON.stringify(doc) !== originalDocSnapshot) {
-			modified = true;
-		}
-	}
-
-	if (modified) {
-		// Critical check: ensure container_name does not contain unresolved variables
-		if (doc.services && typeof doc.services === 'object') {
-			for (const serviceName in doc.services) {
-				if (Object.prototype.hasOwnProperty.call(doc.services, serviceName)) {
-					const service = doc.services[serviceName];
-					if (service && typeof service.container_name === 'string' && service.container_name.includes('${')) {
-						console.error(`CRITICAL: Unresolved variable in container_name for service '${serviceName}': ${service.container_name}. ` + `This will likely cause Docker to fail. Ensure the environment variable is defined.`);
-					}
-				}
-			}
-		}
-		return yamlDump(doc, { lineWidth: -1 });
-	}
-	return composeContent;
-}
-
-/**
- * Parse YAML content safely
- */
-export function parseYamlContent(content: string, envGetter?: (key: string) => string | undefined): Record<string, any> | null {
-	try {
-		const parsedYaml = yamlLoad(content);
-
-		if (!parsedYaml || typeof parsedYaml !== 'object') {
-			console.warn('Parsed YAML content is not an object or is null.');
-			return null;
-		}
-
-		if (envGetter) {
-			return substituteVariablesInObject(parsedYaml, envGetter);
-		}
-		return parsedYaml as Record<string, any>;
-	} catch (error) {
-		console.error('Error parsing YAML content:', error);
-		return null;
-	}
-}
-
-// Helper function to recursively substitute variables in an object
-function substituteVariablesInObject(obj: any, envGetter: (key: string) => string | undefined): any {
-	if (Array.isArray(obj)) {
-		return obj.map((item) => substituteVariablesInObject(item, envGetter));
-	} else if (typeof obj === 'object' && obj !== null) {
-		const newObj: Record<string, any> = {};
-		for (const key in obj) {
-			if (Object.prototype.hasOwnProperty.call(obj, key)) {
-				newObj[key] = substituteVariablesInObject(obj[key], envGetter);
-			}
-		}
-		return newObj;
-	} else if (typeof obj === 'string') {
-		let S = obj;
-		for (let i = 0; i < 10 && S.includes('${'); i++) {
-			S = S.replace(/\$\{([^}]+)\}/g, (match, varName) => {
-				const value = envGetter(varName);
-				return value !== undefined ? value : match;
-			});
-		}
-		if (S.includes('${')) {
-			console.warn(`Unresolved variable or recursive substitution limit reached in string: "${obj}". Result: "${S}"`);
-		}
-		return S;
-	}
-	return obj;
-}
-
-/**
  * Creates all networks defined in the compose file
  */
 async function createStackNetworks(docker: Dockerode, stackId: string, networks: Record<string, any>): Promise<void> {
@@ -1537,110 +1540,247 @@ async function pullImage(docker: Dockerode, imageTag: string): Promise<void> {
 }
 
 /**
- * Create and start all services
+ * Create and start all services with proper Docker Compose spec compliance
  */
 async function createAndStartServices(docker: Dockerode, stackId: string, composeData: any, stackDir: string): Promise<void> {
-	for (const [serviceName, serviceConfig] of Object.entries(composeData.services || {})) {
-		const service = serviceConfig as any;
+	if (!composeData || !composeData.services) {
+		throw new Error(`No services defined in compose file for stack ${stackId}`);
+	}
 
-		let containerName = service.container_name;
+	// Load environment variables for substitution
+	let envVars: Record<string, string> = {};
+	try {
+		const envContent = await loadEnvFile(stackId);
+		envVars = parseEnvContent(envContent);
+	} catch (envError) {
+		console.log(`No .env file found for stack ${stackId}, proceeding without env vars`);
+	}
+
+	const getEnvVar = (key: string): string | undefined => {
+		return envVars[key] || process.env[key];
+	};
+
+	// Substitute variables in the entire compose data
+	const processedComposeData = substituteVariablesInObject(composeData, getEnvVar);
+
+	// Resolve service dependency order for proper startup sequence
+	let serviceOrder: string[];
+	try {
+		serviceOrder = resolveDependencyOrder(processedComposeData.services);
+		console.log(`Service startup order for stack ${stackId}: [${serviceOrder.join(', ')}]`);
+	} catch (depError) {
+		console.warn(`Could not resolve dependencies for stack ${stackId}, using alphabetical order:`, depError);
+		serviceOrder = Object.keys(processedComposeData.services).sort();
+	}
+
+	// Before creating containers, create required volumes
+	const volumeDefinitions = createVolumeDefinitions(processedComposeData, stackId);
+	for (const volumeDef of volumeDefinitions) {
+		try {
+			console.log(`Creating volume: ${volumeDef.name}`);
+			await docker.createVolume({
+				Name: volumeDef.name,
+				...volumeDef.config
+			});
+			console.log(`Successfully created volume: ${volumeDef.name}`);
+		} catch (createErr: any) {
+			if (createErr.statusCode === 409) {
+				console.log(`Volume ${volumeDef.name} already exists, reusing it.`);
+			} else {
+				console.error(`Error creating volume ${volumeDef.name}:`, createErr);
+				throw createErr;
+			}
+		}
+	}
+
+	// Create and start services in dependency order
+	for (const serviceName of serviceOrder) {
+		const serviceConfig = processedComposeData.services[serviceName];
+		if (!serviceConfig) {
+			console.warn(`Service ${serviceName} not found in processed compose data, skipping`);
+			continue;
+		}
+
+		console.log(`Creating service: ${serviceName}`);
+
+		// Determine container name using Docker Compose convention
+		let containerName = serviceConfig.container_name;
 		if (!containerName || typeof containerName !== 'string') {
-			containerName = `${stackId}_${serviceName}`;
-		}
-		if (containerName.includes('${')) {
-			console.warn(`CRITICAL: Unresolved variable in container_name for service '${serviceName}': ${containerName}. Using default name: ${stackId}_${serviceName}`);
-			containerName = `${stackId}_${serviceName}`;
+			containerName = `${stackId}_${serviceName}_1`; // Docker Compose default pattern
 		}
 
+		// Validate container name doesn't have unresolved variables
+		if (containerName.includes('${')) {
+			console.warn(`CRITICAL: Unresolved variable in container_name for service '${serviceName}': ${containerName}. Using default name: ${stackId}_${serviceName}_1`);
+			containerName = `${stackId}_${serviceName}_1`;
+		}
+
+		// Prepare container configuration using compose utilities
 		const containerConfig: any = {
 			name: containerName,
-			Image: service.image,
-			User: service.user || '',
+			Image: serviceConfig.image,
 			Labels: {
 				'com.docker.compose.project': stackId,
 				'com.docker.compose.service': serviceName,
-				...service.labels
+				'com.docker.compose.config-hash': generateConfigHash(serviceConfig),
+				'com.docker.compose.container-number': '1',
+				'com.docker.compose.version': DEFAULT_COMPOSE_VERSION,
+				...serviceConfig.labels
 			},
-			Env: await prepareEnvironmentVariables(service.environment, stackDir),
+			WorkingDir: serviceConfig.working_dir || '',
+			User: serviceConfig.user || '',
+			Cmd: serviceConfig.command,
+			Entrypoint: serviceConfig.entrypoint,
+			Env: await prepareEnvironmentVariables(serviceConfig.environment || {}, stackDir),
+			ExposedPorts: {},
 			HostConfig: {
-				RestartPolicy: prepareRestartPolicy(service.restart),
-				Binds: prepareVolumes(service.volumes),
-				PortBindings: preparePorts(service.ports),
-				Dns: service.dns || [],
-				DnsOptions: service.dns_opt || [],
-				DnsSearch: service.dns_search || []
+				RestartPolicy: prepareRestartPolicy(serviceConfig.restart),
+				Binds: prepareVolumes(serviceConfig.volumes || [], processedComposeData, stackId),
+				PortBindings: preparePorts(serviceConfig.ports || []),
+				ExtraHosts: prepareExtraHosts(serviceConfig.extra_hosts || []),
+				Ulimits: prepareUlimits(serviceConfig.ulimits || {}),
+				LogConfig: prepareLogConfig(serviceConfig.logging || {}),
+				Dns: serviceConfig.dns || [],
+				DnsOptions: serviceConfig.dns_opt || [],
+				DnsSearch: serviceConfig.dns_search || [],
+				CapAdd: serviceConfig.cap_add || [],
+				CapDrop: serviceConfig.cap_drop || [],
+				Privileged: serviceConfig.privileged || false,
+				ReadonlyRootfs: serviceConfig.read_only || false
 			}
 		};
 
-		const networkMode = service.network_mode || null;
-		let primaryNetworkName = null;
-		if (networkMode) {
-			containerConfig.HostConfig.NetworkMode = networkMode;
-		} else if (service.networks) {
-			const serviceNetworks = Array.isArray(service.networks) ? service.networks : Object.keys(service.networks);
-
-			if (serviceNetworks.length > 0) {
-				const firstNetName = serviceNetworks[0];
-				const networkDefinition = composeData.networks?.[firstNetName];
-
-				let actualExternalNetIdentifier = firstNetName;
-				if (networkDefinition?.external && networkDefinition.name) {
-					if (typeof networkDefinition.name === 'string' && networkDefinition.name.includes('${') && networkDefinition.name.includes('}')) {
-						console.warn(`External network key '${firstNetName}' has an unresolved variable in name attribute. Using key '${firstNetName}' as identifier.`);
-					} else {
-						actualExternalNetIdentifier = networkDefinition.name;
-					}
-				}
-
-				primaryNetworkName = networkDefinition?.external ? actualExternalNetIdentifier : `${stackId}_${firstNetName}`;
-				containerConfig.HostConfig.NetworkMode = primaryNetworkName;
-				console.log(`Service ${serviceName} will use '${primaryNetworkName}' as primary network.`);
+		// Validate volumes before processing
+		if (serviceConfig.volumes) {
+			const volumeValidation = validateVolumeConfiguration(serviceConfig.volumes);
+			if (!volumeValidation.valid) {
+				console.warn(`Volume validation warnings for service ${serviceName}:`, volumeValidation.errors);
 			}
 		}
 
-		// Handle additional networks
+		// Prepare volume binds and tmpfs mounts
+		const volumeBinds = prepareVolumes(serviceConfig.volumes, processedComposeData, stackId);
+		const tmpfsMounts = extractTmpfsMounts(serviceConfig.volumes || []);
+
+		// Update the container configuration
+		containerConfig.HostConfig.Binds = volumeBinds;
+
+		// Handle tmpfs mounts separately
+		if (tmpfsMounts.length > 0) {
+			containerConfig.HostConfig.Tmpfs = {};
+			for (const tmpfs of tmpfsMounts) {
+				const options: string[] = [];
+
+				if (tmpfs.options.size) options.push(`size=${tmpfs.options.size}`);
+				if (tmpfs.options.mode) options.push(`mode=${tmpfs.options.mode}`);
+				if (tmpfs.options.uid !== undefined) options.push(`uid=${tmpfs.options.uid}`);
+				if (tmpfs.options.gid !== undefined) options.push(`gid=${tmpfs.options.gid}`);
+				if (tmpfs.options.noexec) options.push('noexec');
+				if (tmpfs.options.nosuid) options.push('nosuid');
+				if (tmpfs.options.nodev) options.push('nodev');
+
+				containerConfig.HostConfig.Tmpfs[tmpfs.target] = options.join(',');
+			}
+		}
+
+		// Handle memory and CPU limits
+		if (serviceConfig.mem_limit) {
+			try {
+				containerConfig.HostConfig.Memory = parseMemory(serviceConfig.mem_limit);
+			} catch (memError) {
+				console.warn(`Invalid memory limit for service ${serviceName}: ${serviceConfig.mem_limit}`);
+			}
+		}
+
+		if (serviceConfig.cpus) {
+			containerConfig.HostConfig.NanoCpus = Math.floor(parseFloat(serviceConfig.cpus) * 1000000000);
+		}
+
+		// Handle healthcheck
+		if (serviceConfig.healthcheck) {
+			try {
+				containerConfig.Healthcheck = prepareHealthcheck(serviceConfig.healthcheck);
+			} catch (healthError) {
+				console.warn(`Invalid healthcheck configuration for service ${serviceName}:`, healthError);
+			}
+		}
+
+		// Prepare exposed ports
+		if (serviceConfig.expose) {
+			for (const port of serviceConfig.expose) {
+				containerConfig.ExposedPorts[`${port}/tcp`] = {};
+			}
+		}
+
+		// Handle networking
+		const networkMode = serviceConfig.network_mode || null;
+		let primaryNetworkName = null;
+
+		if (networkMode) {
+			containerConfig.HostConfig.NetworkMode = networkMode;
+		} else if (serviceConfig.networks) {
+			const serviceNetworks = Array.isArray(serviceConfig.networks) ? serviceConfig.networks : Object.keys(serviceConfig.networks);
+
+			if (serviceNetworks.length > 0) {
+				const firstNetName = serviceNetworks[0];
+				const networkDefinition = processedComposeData.networks?.[firstNetName];
+
+				let actualNetworkIdentifier = firstNetName;
+				if (networkDefinition?.external && networkDefinition.name) {
+					actualNetworkIdentifier = networkDefinition.name;
+				}
+
+				primaryNetworkName = networkDefinition?.external ? actualNetworkIdentifier : `${stackId}_${firstNetName}`;
+
+				containerConfig.HostConfig.NetworkMode = primaryNetworkName;
+				console.log(`Service ${serviceName} will use '${primaryNetworkName}' as primary network.`);
+			}
+		} else {
+			// Use default network if no networks specified
+			primaryNetworkName = `${stackId}_default`;
+			containerConfig.HostConfig.NetworkMode = primaryNetworkName;
+		}
+
+		// Prepare additional network connections
 		const networkingConfig: { EndpointsConfig?: any } = {};
-		if (!networkMode && service.networks) {
-			const serviceNetworks = Array.isArray(service.networks) ? service.networks : Object.keys(service.networks);
+		if (!networkMode && serviceConfig.networks) {
+			const serviceNetworks = Array.isArray(serviceConfig.networks) ? serviceConfig.networks : Object.keys(serviceConfig.networks);
+
+			// Skip primary network, handle additional networks
 			const additionalNetworks = primaryNetworkName ? serviceNetworks.slice(1) : serviceNetworks;
 
 			if (additionalNetworks.length > 0) {
 				networkingConfig.EndpointsConfig = {};
 
 				for (const netName of additionalNetworks) {
-					const serviceNetConfig = typeof service.networks === 'object' ? service.networks[netName] : {};
-					const networkDefinition = composeData.networks?.[netName];
+					const serviceNetConfig = typeof serviceConfig.networks === 'object' ? serviceConfig.networks[netName] || {} : {};
 
-					let actualExternalNetIdentifier = netName;
+					const networkDefinition = processedComposeData.networks?.[netName];
+
+					let actualNetworkIdentifier = netName;
 					if (networkDefinition?.external && networkDefinition.name) {
-						if (typeof networkDefinition.name === 'string' && networkDefinition.name.includes('${') && networkDefinition.name.includes('}')) {
-							console.warn(`External network key '${netName}' in stack '${stackId}' has a 'name' attribute '${networkDefinition.name}' that appears to be an unresolved variable. Using the network key '${netName}' as the identifier for connection.`);
-						} else {
-							actualExternalNetIdentifier = networkDefinition.name;
-						}
+						actualNetworkIdentifier = networkDefinition.name;
 					}
-					const fullNetworkName = networkDefinition?.external ? actualExternalNetIdentifier : `${stackId}_${netName}`;
+
+					const fullNetworkName = networkDefinition?.external ? actualNetworkIdentifier : `${stackId}_${netName}`;
 
 					const endpointConfig: any = {};
 
-					if (typeof serviceNetConfig === 'object' && serviceNetConfig.aliases) {
+					// Handle network aliases
+					if (serviceNetConfig.aliases) {
 						endpointConfig.Aliases = serviceNetConfig.aliases;
 					}
 
-					if (typeof serviceNetConfig === 'object') {
-						const ipamConfig: any = {};
-
-						if (serviceNetConfig.ipv4_address) {
-							ipamConfig.IPv4Address = serviceNetConfig.ipv4_address;
-						}
-
-						if (serviceNetConfig.ipv6_address) {
-							ipamConfig.IPv6Address = serviceNetConfig.ipv6_address;
-						}
-
-						if (Object.keys(ipamConfig).length > 0) {
-							endpointConfig.IPAMConfig = ipamConfig;
-						}
+					// Handle static IP configuration
+					const ipamConfig: any = {};
+					if (serviceNetConfig.ipv4_address) {
+						ipamConfig.IPv4Address = serviceNetConfig.ipv4_address;
+					}
+					if (serviceNetConfig.ipv6_address) {
+						ipamConfig.IPv6Address = serviceNetConfig.ipv6_address;
+					}
+					if (Object.keys(ipamConfig).length > 0) {
+						endpointConfig.IPAMConfig = ipamConfig;
 					}
 
 					networkingConfig.EndpointsConfig[fullNetworkName] = endpointConfig;
@@ -1648,36 +1788,70 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 			}
 		}
 
+		// Validate image is present (required by spec)
+		if (!serviceConfig.image && !serviceConfig.build) {
+			throw new Error(`Service ${serviceName} must specify either 'image' or 'build'`);
+		}
+
+		// Handle profiles (if stack is deployed with specific profiles)
+		if (serviceConfig.profiles && processedComposeData.profiles) {
+			const activeProfiles = processedComposeData.profiles || ['default'];
+			const serviceProfiles = Array.isArray(serviceConfig.profiles) ? serviceConfig.profiles : [serviceConfig.profiles];
+
+			const shouldDeploy: boolean = serviceProfiles.some((profile: string) => activeProfiles.includes(profile));
+			if (!shouldDeploy) {
+				console.log(`Skipping service ${serviceName} - profile not active`);
+				continue;
+			}
+		}
+
+		// Add proper dependency condition handling
+		if (serviceConfig.depends_on) {
+			const dependencies = Array.isArray(serviceConfig.depends_on) ? serviceConfig.depends_on : Object.keys(serviceConfig.depends_on);
+
+			// Wait for dependencies based on conditions
+			for (const dep of dependencies) {
+				const condition = typeof serviceConfig.depends_on === 'object' ? serviceConfig.depends_on[dep]?.condition : 'service_started';
+
+				await waitForDependency(stackId, dep, condition);
+			}
+		}
+
 		try {
+			// Create container
+			console.log(`Creating container: ${containerName} for service: ${serviceName}`);
 			const container = await docker.createContainer(containerConfig);
 			console.log(`Successfully created container: ${containerName} (ID: ${container.id})`);
 
+			// Connect to additional networks if needed
 			if (networkingConfig.EndpointsConfig && Object.keys(networkingConfig.EndpointsConfig).length > 0) {
-				for (const netNameKey of Object.keys(networkingConfig.EndpointsConfig)) {
+				for (const [netName, endpointConfig] of Object.entries(networkingConfig.EndpointsConfig)) {
 					try {
-						console.log(`Connecting container ${container.id} to network: ${netNameKey} with config:`, JSON.stringify(networkingConfig.EndpointsConfig[netNameKey]));
-
-						const network = docker.getNetwork(netNameKey);
+						console.log(`Connecting container ${container.id} to network: ${netName}`);
+						const network = docker.getNetwork(netName);
 						await network.connect({
 							Container: container.id,
-							EndpointConfig: networkingConfig.EndpointsConfig[netNameKey] || {}
+							EndpointConfig: endpointConfig || {}
 						});
-						console.log(`Successfully connected ${container.id} to network: ${netNameKey}`);
+						console.log(`Successfully connected ${container.id} to network: ${netName}`);
 					} catch (netConnectErr) {
-						console.error(`Error connecting container ${container.id} to network ${netNameKey}:`, netConnectErr);
-						throw new Error(`Failed to connect container ${container.id} to network ${netNameKey}: ${netConnectErr instanceof Error ? netConnectErr.message : String(netConnectErr)}`);
+						console.error(`Error connecting container ${container.id} to network ${netName}:`, netConnectErr);
+						throw new Error(`Failed to connect container to network ${netName}: ${netConnectErr instanceof Error ? netConnectErr.message : String(netConnectErr)}`);
 					}
 				}
 			}
 
+			// Start container
 			console.log(`Starting container: ${containerName} (ID: ${container.id})`);
 			await container.start();
 			console.log(`Successfully started container: ${containerName}`);
 		} catch (createErr) {
 			console.error(`Error creating/starting container for service ${serviceName} (${containerName}):`, createErr);
-			throw createErr;
+			throw new Error(`Failed to create/start service ${serviceName}: ${createErr instanceof Error ? createErr.message : String(createErr)}`);
 		}
 	}
+
+	console.log(`Successfully created and started all services for stack ${stackId}`);
 }
 
 /**
@@ -1752,128 +1926,6 @@ async function cleanupFailedDeployment(stackId: string): Promise<void> {
 	} catch (err) {
 		console.error(`Error cleaning up failed deployment for stack ${stackId}:`, err);
 	}
-}
-
-/**
- * Prepare environment variables for container creation
- */
-async function prepareEnvironmentVariables(environment: any, stackDir: string): Promise<string[]> {
-	const envArray: string[] = [];
-
-	if (Array.isArray(environment)) {
-		// Handle array format: ['KEY=value', 'KEY2=value2']
-		envArray.push(...environment);
-	} else if (typeof environment === 'object' && environment !== null) {
-		// Handle object format: { KEY: 'value', KEY2: 'value2' }
-		for (const [key, value] of Object.entries(environment)) {
-			envArray.push(`${key}=${value}`);
-		}
-	}
-
-	// Load .env file and add variables if they don't already exist
-	try {
-		const envFilePath = path.join(stackDir, '.env');
-		const envFileContent = await fs.readFile(envFilePath, 'utf8');
-		const envVars = parseEnvContent(envFileContent);
-
-		for (const [key, value] of Object.entries(envVars)) {
-			// Only add if not already defined in compose environment
-			const keyExists = envArray.some((env) => env.startsWith(`${key}=`));
-			if (!keyExists) {
-				envArray.push(`${key}=${value}`);
-			}
-		}
-	} catch (envError) {
-		// .env file doesn't exist or can't be read, that's okay
-	}
-
-	return envArray;
-}
-
-/**
- * Prepare restart policy for container
- */
-function prepareRestartPolicy(restart: string | undefined): any {
-	if (!restart) {
-		return { Name: 'no' };
-	}
-
-	switch (restart) {
-		case 'always':
-			return { Name: 'always' };
-		case 'unless-stopped':
-			return { Name: 'unless-stopped' };
-		case 'on-failure':
-			return { Name: 'on-failure', MaximumRetryCount: 0 };
-		case 'no':
-			return { Name: 'no' };
-		default:
-			// Handle on-failure:5 format
-			if (restart.startsWith('on-failure:')) {
-				const retryCount = parseInt(restart.split(':')[1]) || 0;
-				return { Name: 'on-failure', MaximumRetryCount: retryCount };
-			}
-			return { Name: 'no' };
-	}
-}
-
-/**
- * Prepare volumes for container
- */
-function prepareVolumes(volumes: any[]): string[] {
-	if (!Array.isArray(volumes)) {
-		return [];
-	}
-
-	return volumes
-		.map((volume) => {
-			if (typeof volume === 'string') {
-				return volume;
-			} else if (typeof volume === 'object' && volume.type === 'bind') {
-				// Handle long format: { type: 'bind', source: '/host/path', target: '/container/path' }
-				const readonly = volume.read_only ? ':ro' : '';
-				return `${volume.source}:${volume.target}${readonly}`;
-			}
-			return '';
-		})
-		.filter((v) => v);
-}
-
-/**
- * Prepare port bindings for container
- */
-function preparePorts(ports: any[]): any {
-	if (!Array.isArray(ports)) {
-		return {};
-	}
-
-	const portBindings: any = {};
-
-	for (const port of ports) {
-		if (typeof port === 'string') {
-			// Handle "8080:80" or "80" format
-			const parts = port.split(':');
-			if (parts.length === 2) {
-				const [hostPort, containerPort] = parts;
-				const containerPortKey = containerPort.includes('/') ? containerPort : `${containerPort}/tcp`;
-				portBindings[containerPortKey] = [{ HostPort: hostPort }];
-			} else if (parts.length === 1) {
-				// Just container port, let Docker assign host port
-				const containerPortKey = parts[0].includes('/') ? parts[0] : `${parts[0]}/tcp`;
-				portBindings[containerPortKey] = [{}];
-			}
-		} else if (typeof port === 'object') {
-			// Handle long format: { target: 80, published: 8080, protocol: 'tcp' }
-			const containerPortKey = `${port.target}/${port.protocol || 'tcp'}`;
-			if (port.published) {
-				portBindings[containerPortKey] = [{ HostPort: port.published.toString() }];
-			} else {
-				portBindings[containerPortKey] = [{}];
-			}
-		}
-	}
-
-	return portBindings;
 }
 
 /**
@@ -2029,66 +2081,6 @@ export async function getStackStats(stackId: string): Promise<any> {
 		console.error(`Error getting stats for stack ${stackId}:`, error);
 		throw error;
 	}
-}
-
-/**
- * Validate compose content
- */
-export function validateComposeContent(content: string): { valid: boolean; errors: string[] } {
-	const errors: string[] = [];
-
-	try {
-		const parsed = yamlLoad(content);
-
-		if (!parsed || typeof parsed !== 'object') {
-			errors.push('Compose content must be a valid YAML object');
-			return { valid: false, errors };
-		}
-
-		const compose = parsed as any;
-
-		// Check for required version (optional but recommended)
-		if (!compose.version && !compose.services) {
-			errors.push('Compose file should have either a version field or services field');
-		}
-
-		// Check services
-		if (!compose.services || typeof compose.services !== 'object') {
-			errors.push('Compose file must have a services section');
-		} else {
-			// Validate each service
-			for (const [serviceName, serviceConfig] of Object.entries(compose.services)) {
-				const service = serviceConfig as any;
-
-				if (!service.image && !service.build) {
-					errors.push(`Service '${serviceName}' must have either an 'image' or 'build' field`);
-				}
-
-				// Check for common misconfigurations
-				if (service.container_name && typeof service.container_name === 'string' && service.container_name.includes('${')) {
-					errors.push(`Service '${serviceName}' has unresolved variables in container_name: ${service.container_name}`);
-				}
-			}
-		}
-
-		// Validate networks if present
-		if (compose.networks && typeof compose.networks === 'object') {
-			for (const [networkName, networkConfig] of Object.entries(compose.networks)) {
-				const network = networkConfig as any;
-
-				if (network.external && !network.name && typeof networkName !== 'string') {
-					errors.push(`External network '${networkName}' should have a name field`);
-				}
-			}
-		}
-	} catch (parseError) {
-		errors.push(`YAML parsing error: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
-	}
-
-	return {
-		valid: errors.length === 0,
-		errors
-	};
 }
 
 /**
@@ -2330,6 +2322,103 @@ export class StackRuntimeUpdater {
 			lastPolled: new Date()
 		});
 	}
+}
+
+async function waitForDependency(stackId: string, depServiceName: string, condition: string = 'service_started'): Promise<void> {
+	const docker = await getDockerClient();
+	const maxWaitTime = 30000; // 30 seconds timeout
+	const pollInterval = 1000; // 1 second
+	const startTime = Date.now();
+
+	console.log(`Waiting for dependency '${depServiceName}' with condition '${condition}' for stack ${stackId}`);
+
+	while (Date.now() - startTime < maxWaitTime) {
+		try {
+			// Find the dependency container
+			const containers = await docker.listContainers({
+				all: true,
+				filters: JSON.stringify({
+					label: [`com.docker.compose.project=${stackId}`, `com.docker.compose.service=${depServiceName}`]
+				})
+			});
+
+			if (containers.length === 0) {
+				// If no container found, wait a bit more
+				await new Promise((resolve) => setTimeout(resolve, pollInterval));
+				continue;
+			}
+
+			const depContainer = containers[0];
+
+			switch (condition) {
+				case 'service_started':
+					// Container just needs to be created and started
+					if (depContainer.State === 'running') {
+						console.log(`Dependency '${depServiceName}' is running`);
+						return;
+					}
+					break;
+
+				case 'service_healthy':
+					// Container needs to be running and healthy
+					if (depContainer.State === 'running') {
+						try {
+							const container = docker.getContainer(depContainer.Id);
+							const details = await container.inspect();
+
+							if (details.State.Health) {
+								if (details.State.Health.Status === 'healthy') {
+									console.log(`Dependency '${depServiceName}' is healthy`);
+									return;
+								}
+							} else {
+								// No healthcheck defined, consider running as healthy
+								console.log(`Dependency '${depServiceName}' is running (no healthcheck)`);
+								return;
+							}
+						} catch (inspectError) {
+							console.warn(`Error inspecting dependency container ${depServiceName}:`, inspectError);
+						}
+					}
+					break;
+
+				case 'service_completed_successfully':
+					// Container needs to have exited with code 0
+					if (depContainer.State === 'exited') {
+						try {
+							const container = docker.getContainer(depContainer.Id);
+							const details = await container.inspect();
+
+							if (details.State.ExitCode === 0) {
+								console.log(`Dependency '${depServiceName}' completed successfully`);
+								return;
+							}
+						} catch (inspectError) {
+							console.warn(`Error inspecting dependency container ${depServiceName}:`, inspectError);
+						}
+					}
+					break;
+
+				default:
+					// Default to service_started behavior
+					if (depContainer.State === 'running') {
+						console.log(`Dependency '${depServiceName}' is running (default condition)`);
+						return;
+					}
+					break;
+			}
+
+			// Wait before next poll
+			await new Promise((resolve) => setTimeout(resolve, pollInterval));
+		} catch (error) {
+			console.warn(`Error checking dependency ${depServiceName}:`, error);
+			await new Promise((resolve) => setTimeout(resolve, pollInterval));
+		}
+	}
+
+	// Timeout reached
+	console.warn(`Timeout waiting for dependency '${depServiceName}' with condition '${condition}' for stack ${stackId}`);
+	// Don't throw error, just warn - Docker Compose is sometimes lenient with dependencies
 }
 
 export const stackRuntimeUpdater = new StackRuntimeUpdater();
