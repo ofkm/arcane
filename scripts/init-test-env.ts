@@ -30,16 +30,29 @@ async function setupTestEnvironment() {
 	console.log(`Ensuring test data directory exists: ${TEST_DATA_DIR}`);
 	const settingsDir = path.join(TEST_DATA_DIR, 'settings');
 	const usersDir = path.join(TEST_DATA_DIR, 'users');
+	const stacksDir = path.join(TEST_DATA_DIR, 'stacks');
 
 	await ensureDirectoryExists(TEST_DATA_DIR);
 	await ensureDirectoryExists(settingsDir);
 	await ensureDirectoryExists(usersDir);
+	await ensureDirectoryExists(stacksDir);
 	console.log('All directories ensured.');
+
+	// --- Clean existing database to ensure fresh state ---
+	const dbPath = path.join(TEST_DATA_DIR, 'arcane.db');
+	try {
+		await fs.unlink(dbPath);
+		console.log('Removed existing database file');
+	} catch (e) {
+		console.log('No existing database file to remove');
+	}
 
 	// --- NOW import database modules (after directories exist) ---
 	const { encrypt } = await import('../src/lib/services/encryption-service');
 	const { DEFAULT_SETTINGS } = await import('../src/lib/services/settings-service');
 	const { runMigrations } = await import('../src/db/migrate');
+	const { db } = await import('../src/db/index');
+	const { settingsTable } = await import('../src/db/schema');
 
 	// --- Initialize Database ---
 	console.log('Running database migrations...');
@@ -48,6 +61,47 @@ async function setupTestEnvironment() {
 		console.log('Database migrations completed.');
 	} catch (error) {
 		console.error('Error running migrations:', error);
+		throw error;
+	}
+
+	// --- Insert initial settings into database ---
+	console.log('Inserting initial settings into database...');
+	const testSettings = {
+		...DEFAULT_SETTINGS,
+		onboarding: {
+			completed: true,
+			completedAt: new Date().toISOString()
+		},
+		auth: {
+			rbacEnabled: true,
+			localAuthEnabled: true,
+			sessionTimeout: 60,
+			passwordPolicy: 'medium'
+		},
+		registryCredentials: []
+	};
+
+	const { auth, registryCredentials, ...otherSettings } = testSettings;
+
+	try {
+		await db.insert(settingsTable).values({
+			dockerHost: otherSettings.dockerHost,
+			stacksDirectory: otherSettings.stacksDirectory,
+			autoUpdate: otherSettings.autoUpdate,
+			autoUpdateInterval: otherSettings.autoUpdateInterval,
+			pollingEnabled: otherSettings.pollingEnabled,
+			pollingInterval: otherSettings.pollingInterval,
+			pruneMode: otherSettings.pruneMode,
+			registryCredentials: JSON.stringify(registryCredentials),
+			templateRegistries: JSON.stringify(otherSettings.templateRegistries),
+			auth: JSON.stringify(auth),
+			onboarding: JSON.stringify(otherSettings.onboarding),
+			baseServerUrl: otherSettings.baseServerUrl,
+			maturityThresholdDays: otherSettings.maturityThresholdDays
+		});
+		console.log('Initial settings inserted into database.');
+	} catch (error) {
+		console.error('Failed to insert settings:', error);
 		throw error;
 	}
 
@@ -64,27 +118,12 @@ async function setupTestEnvironment() {
 	await fs.writeFile(usersFilePath, JSON.stringify([testUser], null, 2), { mode: 0o600 });
 	console.log(`Test user data written to ${usersFilePath}`);
 
-	// --- Initialize Settings ---
-	console.log('Initializing settings...');
-	const testSettings = {
-		...DEFAULT_SETTINGS,
-		onboarding: {
-			completed: true,
-			completedAt: new Date().toISOString()
-		},
-		auth: {
-			rbacEnabled: true,
-			localAuthEnabled: true,
-			sessionTimeout: 60,
-			passwordPolicy: 'medium'
-		},
-		registryCredentials: []
-	};
-
-	const { auth, registryCredentials, ...nonSensitiveSettings } = testSettings;
+	// --- Initialize Settings Files (backup) ---
+	console.log('Initializing settings files...');
+	const { auth: authSettings, registryCredentials: regCreds, ...nonSensitiveSettings } = testSettings;
 	const dataToSave = {
 		...nonSensitiveSettings,
-		_encrypted: await encrypt({ auth, registryCredentials })
+		_encrypted: await encrypt({ auth: authSettings, registryCredentials: regCreds })
 	};
 
 	const settingsDatPath = path.join(settingsDir, 'settings.dat');
