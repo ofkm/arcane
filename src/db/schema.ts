@@ -10,10 +10,10 @@ export const settingsTable = sqliteTable('settings_table', {
 	pollingEnabled: integer({ mode: 'boolean' }).notNull().default(true),
 	pollingInterval: int().notNull().default(5),
 	pruneMode: text({ enum: ['all', 'dangling'] }),
-	registryCredentials: text({ mode: 'json' }).notNull().default('[]'), // JSON array of RegistryCredential
-	templateRegistries: text({ mode: 'json' }).notNull().default('[]'), // JSON array of TemplateRegistryConfig
-	auth: text({ mode: 'json' }).notNull(), // JSON object of AuthSettings
-	onboarding: text({ mode: 'json' }), // JSON object of Onboarding (optional)
+	registryCredentials: text({ mode: 'json' }).notNull().default('[]'),
+	templateRegistries: text({ mode: 'json' }).notNull().default('[]'),
+	auth: text({ mode: 'json' }).notNull(),
+	onboarding: text({ mode: 'json' }),
 	baseServerUrl: text(),
 	maturityThresholdDays: int().notNull().default(30),
 	createdAt: int({ mode: 'timestamp' })
@@ -25,9 +25,9 @@ export const settingsTable = sqliteTable('settings_table', {
 });
 
 export const usersTable = sqliteTable('users_table', {
-	id: text('id').primaryKey(), // Make sure the column name is explicit
+	id: text('id').primaryKey(),
 	username: text('username').notNull().unique(),
-	passwordHash: text('password_hash'), // Use snake_case for column names
+	passwordHash: text('password_hash'),
 	displayName: text('display_name'),
 	email: text('email'),
 	roles: text('roles', { mode: 'json' }).notNull().default('[]'),
@@ -36,7 +36,7 @@ export const usersTable = sqliteTable('users_table', {
 	lastLogin: int('last_login', { mode: 'timestamp' }),
 	createdAt: int('created_at', { mode: 'timestamp' })
 		.notNull()
-		.default(sql`(unixepoch())`), // Fixed: Added missing closing parenthesis
+		.default(sql`(unixepoch())`),
 	updatedAt: int('updated_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`)
@@ -45,8 +45,8 @@ export const usersTable = sqliteTable('users_table', {
 export const stacksTable = sqliteTable('stacks_table', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull().unique(),
-	dirName: text('dir_name'), // Directory name if different from stack name
-	path: text('path').notNull(), // Full path to stack directory
+	dirName: text('dir_name'),
+	path: text('path').notNull(),
 	autoUpdate: integer('auto_update', { mode: 'boolean' }).notNull().default(false),
 	isExternal: integer('is_external', { mode: 'boolean' }).notNull().default(false),
 	isLegacy: integer('is_legacy', { mode: 'boolean' }).notNull().default(false),
@@ -58,9 +58,9 @@ export const stacksTable = sqliteTable('stacks_table', {
 		.default('unknown'),
 	serviceCount: int('service_count').notNull().default(0),
 	runningCount: int('running_count').notNull().default(0),
-	composeContent: text('compose_content'), // Store docker-compose.yml content
-	envContent: text('env_content'), // Store .env file content
-	lastPolled: int('last_polled', { mode: 'timestamp' }), // When the stack was last checked
+	composeContent: text('compose_content'),
+	envContent: text('env_content'),
+	lastPolled: int('last_polled', { mode: 'timestamp' }),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`),
@@ -68,3 +68,96 @@ export const stacksTable = sqliteTable('stacks_table', {
 		.notNull()
 		.default(sql`(unixepoch())`)
 });
+
+export const agentsTable = sqliteTable('agents_table', {
+	id: text('id').primaryKey(),
+	hostname: text('hostname').notNull(),
+	platform: text('platform').notNull(),
+	version: text('version').notNull(),
+	capabilities: text('capabilities', { mode: 'json' }).notNull().default('[]'),
+	status: text('status', { enum: ['online', 'offline'] })
+		.notNull()
+		.default('offline'),
+	lastSeen: integer('last_seen', { mode: 'timestamp' }).notNull(),
+	registeredAt: integer('registered_at', { mode: 'timestamp' }).notNull(),
+
+	// Metrics (optional)
+	containerCount: int('container_count'),
+	imageCount: int('image_count'),
+	stackCount: int('stack_count'),
+	networkCount: int('network_count'),
+	volumeCount: int('volume_count'),
+
+	// Docker info (optional)
+	dockerVersion: text('docker_version'),
+	dockerContainers: int('docker_containers'),
+	dockerImages: int('docker_images'),
+
+	// Metadata (optional JSON object)
+	metadata: text('metadata', { mode: 'json' }),
+
+	createdAt: int('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: int('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+export const agentTasksTable = sqliteTable('agent_tasks_table', {
+	id: text('id').primaryKey(),
+	agentId: text('agent_id').notNull(),
+	type: text('type', {
+		enum: ['docker_command', 'stack_deploy', 'image_pull', 'health_check', 'container_start', 'container_stop', 'container_restart', 'container_remove', 'agent_upgrade']
+	}).notNull(),
+	payload: text('payload', { mode: 'json' }).notNull(),
+	status: text('status', { enum: ['pending', 'running', 'completed', 'failed'] })
+		.notNull()
+		.default('pending'),
+	result: text('result', { mode: 'json' }),
+	error: text('error'),
+
+	// Execution timing
+	startedAt: integer('started_at', { mode: 'timestamp' }),
+	completedAt: integer('completed_at', { mode: 'timestamp' }),
+
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+// Optional: Agent authentication/security table
+export const agentTokensTable = sqliteTable('agent_tokens_table', {
+	id: text('id').primaryKey(),
+	agentId: text('agent_id').notNull(),
+	token: text('token').notNull().unique(), // Hashed token for authentication
+	name: text('name'), // Human-readable name for the token
+	permissions: text('permissions', { mode: 'json' }).notNull().default('[]'), // JSON array of permissions
+	lastUsed: integer('last_used', { mode: 'timestamp' }),
+	expiresAt: integer('expires_at', { mode: 'timestamp' }), // Optional expiration
+	isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+// Add foreign key relationships if you want referential integrity
+// Note: SQLite foreign keys need to be enabled at runtime
+export const agentRelations = {
+	agentTasks: {
+		// agentTasksTable.agentId -> agentsTable.id
+	},
+	agentTokens: {
+		// agentTokensTable.agentId -> agentsTable.id
+	},
+	remoteStacks: {
+		// stacksTable.agentId -> agentsTable.id (existing relationship)
+	}
+};
