@@ -30,7 +30,16 @@ import {
 	substituteVariablesInObject,
 	extractTmpfsMounts,
 	createVolumeDefinitions,
-	validateVolumeConfiguration
+	validateVolumeConfiguration,
+	parseDependsOn,
+	validateDependencyConditions,
+	hasHealthcheck,
+	getDependencyChain,
+	detectCircularDependencies,
+	resolveDependencyOrderWithConditions,
+	createDependencyWaitConfig,
+	canSatisfyDependencyCondition,
+	validateAllDependencies
 } from '$lib/utils/compose.utils';
 
 interface DockerProgressEvent {
@@ -946,7 +955,7 @@ export async function deployStack(stackId: string): Promise<boolean> {
 				// Create networks
 				await createStackNetworks(docker, stackId, composeData.networks || {});
 
-				// Deploy services
+				// Deploy services (dependency resolution happens inside this function)
 				await createAndStartServices(docker, stackId, composeData, stackDir);
 			}
 
@@ -1805,15 +1814,32 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 			}
 		}
 
-		// Add proper dependency condition handling
+		// Enhanced dependency condition handling
 		if (serviceConfig.depends_on) {
-			const dependencies = Array.isArray(serviceConfig.depends_on) ? serviceConfig.depends_on : Object.keys(serviceConfig.depends_on);
+			const dependencyConfig = createDependencyWaitConfig(serviceName, serviceConfig);
 
-			// Wait for dependencies based on conditions
-			for (const dep of dependencies) {
-				const condition = typeof serviceConfig.depends_on === 'object' ? serviceConfig.depends_on[dep]?.condition : 'service_started';
+			if (dependencyConfig.warnings.length > 0) {
+				console.warn(`Dependency warnings for service ${serviceName}:`, dependencyConfig.warnings);
+			}
 
-				await waitForDependency(stackId, dep, condition);
+			// Wait for all dependencies
+			for (const dep of dependencyConfig.dependencies) {
+				console.log(`Waiting for dependency: ${dep.service} (condition: ${dep.condition}, timeout: ${dep.timeout}ms)`);
+
+				try {
+					await waitForDependency(stackId, dep.service, dep.condition, dep.timeout, dep.restart);
+				} catch (depError) {
+					const errorMsg = `Failed to satisfy dependency '${dep.service}' for service '${serviceName}': ${depError instanceof Error ? depError.message : String(depError)}`;
+					console.error(errorMsg);
+
+					// For critical conditions, fail the deployment
+					if (dep.condition === 'service_healthy' || dep.condition === 'service_completed_successfully') {
+						throw new Error(errorMsg);
+					} else {
+						// For service_started, just warn and continue
+						console.warn(`Continuing deployment despite dependency failure: ${errorMsg}`);
+					}
+				}
 			}
 		}
 
@@ -2324,15 +2350,17 @@ export class StackRuntimeUpdater {
 	}
 }
 
-async function waitForDependency(stackId: string, depServiceName: string, condition: string = 'service_started'): Promise<void> {
+/**
+ * Enhanced dependency waiting with support for all Docker Compose conditions
+ */
+async function waitForDependency(stackId: string, depServiceName: string, condition: string = 'service_started', timeout: number = 30000, restart: boolean = false): Promise<void> {
 	const docker = await getDockerClient();
-	const maxWaitTime = 30000; // 30 seconds timeout
 	const pollInterval = 1000; // 1 second
 	const startTime = Date.now();
 
-	console.log(`Waiting for dependency '${depServiceName}' with condition '${condition}' for stack ${stackId}`);
+	console.log(`Waiting for dependency '${depServiceName}' with condition '${condition}' for stack ${stackId} (timeout: ${timeout}ms)`);
 
-	while (Date.now() - startTime < maxWaitTime) {
+	while (Date.now() - startTime < timeout) {
 		try {
 			// Find the dependency container
 			const containers = await docker.listContainers({
@@ -2349,63 +2377,23 @@ async function waitForDependency(stackId: string, depServiceName: string, condit
 			}
 
 			const depContainer = containers[0];
+			const conditionMet = await checkDependencyCondition(docker, depContainer, condition);
 
-			switch (condition) {
-				case 'service_started':
-					// Container just needs to be created and started
-					if (depContainer.State === 'running') {
-						console.log(`Dependency '${depServiceName}' is running`);
-						return;
-					}
-					break;
+			if (conditionMet.satisfied) {
+				console.log(`Dependency '${depServiceName}' satisfied condition '${condition}': ${conditionMet.reason}`);
+				return;
+			}
 
-				case 'service_healthy':
-					// Container needs to be running and healthy
-					if (depContainer.State === 'running') {
-						try {
-							const container = docker.getContainer(depContainer.Id);
-							const details = await container.inspect();
-
-							if (details.State.Health) {
-								if (details.State.Health.Status === 'healthy') {
-									console.log(`Dependency '${depServiceName}' is healthy`);
-									return;
-								}
-							} else {
-								// No healthcheck defined, consider running as healthy
-								console.log(`Dependency '${depServiceName}' is running (no healthcheck)`);
-								return;
-							}
-						} catch (inspectError) {
-							console.warn(`Error inspecting dependency container ${depServiceName}:`, inspectError);
-						}
-					}
-					break;
-
-				case 'service_completed_successfully':
-					// Container needs to have exited with code 0
-					if (depContainer.State === 'exited') {
-						try {
-							const container = docker.getContainer(depContainer.Id);
-							const details = await container.inspect();
-
-							if (details.State.ExitCode === 0) {
-								console.log(`Dependency '${depServiceName}' completed successfully`);
-								return;
-							}
-						} catch (inspectError) {
-							console.warn(`Error inspecting dependency container ${depServiceName}:`, inspectError);
-						}
-					}
-					break;
-
-				default:
-					// Default to service_started behavior
-					if (depContainer.State === 'running') {
-						console.log(`Dependency '${depServiceName}' is running (default condition)`);
-						return;
-					}
-					break;
+			// If condition not met and restart is enabled, check if we need to restart
+			if (restart && conditionMet.shouldRestart) {
+				console.log(`Restarting dependency '${depServiceName}' due to: ${conditionMet.reason}`);
+				try {
+					const container = docker.getContainer(depContainer.Id);
+					await container.restart();
+					console.log(`Restarted dependency container '${depServiceName}'`);
+				} catch (restartError) {
+					console.warn(`Failed to restart dependency '${depServiceName}':`, restartError);
+				}
 			}
 
 			// Wait before next poll
@@ -2417,8 +2405,107 @@ async function waitForDependency(stackId: string, depServiceName: string, condit
 	}
 
 	// Timeout reached
-	console.warn(`Timeout waiting for dependency '${depServiceName}' with condition '${condition}' for stack ${stackId}`);
-	// Don't throw error, just warn - Docker Compose is sometimes lenient with dependencies
+	const message = `Timeout waiting for dependency '${depServiceName}' with condition '${condition}' for stack ${stackId} (${timeout}ms)`;
+	console.warn(message);
+
+	// For health and completion conditions, this might be more critical
+	if (condition === 'service_healthy' || condition === 'service_completed_successfully') {
+		throw new Error(message);
+	}
+
+	// For service_started, just warn - Docker Compose is sometimes lenient
+}
+
+/**
+ * Check if a dependency condition is satisfied
+ */
+async function checkDependencyCondition(docker: Dockerode, containerInfo: any, condition: string): Promise<{ satisfied: boolean; reason: string; shouldRestart: boolean }> {
+	switch (condition) {
+		case 'service_started':
+			return {
+				satisfied: containerInfo.State === 'running',
+				reason: containerInfo.State === 'running' ? 'Container is running' : `Container state: ${containerInfo.State}`,
+				shouldRestart: false
+			};
+
+		case 'service_healthy':
+			if (containerInfo.State !== 'running') {
+				return {
+					satisfied: false,
+					reason: `Container not running (state: ${containerInfo.State})`,
+					shouldRestart: containerInfo.State === 'exited'
+				};
+			}
+
+			try {
+				const container = docker.getContainer(containerInfo.Id);
+				const details = await container.inspect();
+
+				if (!details.State.Health) {
+					// No healthcheck defined, but container is running
+					return {
+						satisfied: true,
+						reason: 'No healthcheck defined, considering running container as healthy',
+						shouldRestart: false
+					};
+				}
+
+				const healthStatus = details.State.Health.Status;
+				const isHealthy = healthStatus === 'healthy';
+
+				return {
+					satisfied: isHealthy,
+					reason: `Health status: ${healthStatus}${details.State.Health.Log ? ` (last check: ${details.State.Health.Log[details.State.Health.Log.length - 1]?.Output?.trim() || 'no output'})` : ''}`,
+					shouldRestart: healthStatus === 'unhealthy'
+				};
+			} catch (inspectError) {
+				return {
+					satisfied: false,
+					reason: `Failed to inspect container: ${inspectError instanceof Error ? inspectError.message : String(inspectError)}`,
+					shouldRestart: false
+				};
+			}
+
+		case 'service_completed_successfully':
+			if (containerInfo.State === 'exited') {
+				try {
+					const container = docker.getContainer(containerInfo.Id);
+					const details = await container.inspect();
+					const exitCode = details.State.ExitCode;
+
+					return {
+						satisfied: exitCode === 0,
+						reason: `Container exited with code ${exitCode}`,
+						shouldRestart: exitCode !== 0
+					};
+				} catch (inspectError) {
+					return {
+						satisfied: false,
+						reason: `Failed to inspect exited container: ${inspectError instanceof Error ? inspectError.message : String(inspectError)}`,
+						shouldRestart: false
+					};
+				}
+			} else if (containerInfo.State === 'running') {
+				return {
+					satisfied: false,
+					reason: 'Container is still running, waiting for completion',
+					shouldRestart: false
+				};
+			} else {
+				return {
+					satisfied: false,
+					reason: `Container in unexpected state for completion check: ${containerInfo.State}`,
+					shouldRestart: true
+				};
+			}
+
+		default:
+			return {
+				satisfied: false,
+				reason: `Unknown dependency condition: ${condition}`,
+				shouldRestart: false
+			};
+	}
 }
 
 export const stackRuntimeUpdater = new StackRuntimeUpdater();

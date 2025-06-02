@@ -1059,3 +1059,380 @@ export function validateComposeContent(content: string): { valid: boolean; error
 		};
 	}
 }
+
+/**
+ * Parse and validate depends_on configuration
+ * Supports both short and long syntax as per Docker Compose spec
+ */
+export function parseDependsOn(dependsOn: any): Array<{ service: string; condition: string; restart?: boolean }> {
+	if (!dependsOn) {
+		return [];
+	}
+
+	const dependencies: Array<{ service: string; condition: string; restart?: boolean }> = [];
+
+	if (Array.isArray(dependsOn)) {
+		// Short syntax: depends_on: [service1, service2]
+		for (const serviceName of dependsOn) {
+			if (typeof serviceName === 'string') {
+				dependencies.push({
+					service: serviceName,
+					condition: 'service_started',
+					restart: false
+				});
+			}
+		}
+	} else if (typeof dependsOn === 'object' && dependsOn !== null) {
+		// Long syntax: depends_on: { service1: { condition: "service_healthy" } }
+		for (const [serviceName, config] of Object.entries(dependsOn)) {
+			const depConfig = config as any;
+
+			dependencies.push({
+				service: serviceName,
+				condition: depConfig?.condition || 'service_started',
+				restart: depConfig?.restart || false
+			});
+		}
+	}
+
+	return dependencies;
+}
+
+/**
+ * Validate dependency conditions according to Docker Compose spec
+ */
+export function validateDependencyConditions(dependencies: Array<{ service: string; condition: string }>): { valid: boolean; errors: string[] } {
+	const errors: string[] = [];
+	const validConditions = ['service_started', 'service_healthy', 'service_completed_successfully'];
+
+	for (const dep of dependencies) {
+		if (!dep.service || typeof dep.service !== 'string') {
+			errors.push(`Invalid service name in dependency: ${dep.service}`);
+		}
+
+		if (!validConditions.includes(dep.condition)) {
+			errors.push(`Invalid dependency condition '${dep.condition}' for service '${dep.service}'. Valid conditions: ${validConditions.join(', ')}`);
+		}
+	}
+
+	return {
+		valid: errors.length === 0,
+		errors
+	};
+}
+
+/**
+ * Check if a service has a healthcheck defined
+ */
+export function hasHealthcheck(serviceConfig: any): boolean {
+	return !!(serviceConfig?.healthcheck && serviceConfig.healthcheck !== false && serviceConfig.healthcheck.disable !== true);
+}
+
+/**
+ * Get service dependency chain for debugging
+ */
+export function getDependencyChain(services: Record<string, any>, startService: string, visited = new Set<string>()): string[] {
+	if (visited.has(startService)) {
+		return []; // Circular dependency detected
+	}
+
+	visited.add(startService);
+	const chain = [startService];
+
+	const serviceConfig = services[startService];
+	if (serviceConfig?.depends_on) {
+		const dependencies = parseDependsOn(serviceConfig.depends_on);
+
+		for (const dep of dependencies) {
+			if (services[dep.service]) {
+				const subChain = getDependencyChain(services, dep.service, new Set(visited));
+				chain.unshift(...subChain);
+			}
+		}
+	}
+
+	return [...new Set(chain)]; // Remove duplicates while preserving order
+}
+
+/**
+ * Detect circular dependencies in compose services
+ */
+export function detectCircularDependencies(services: Record<string, any>): { hasCircular: boolean; cycles: string[][] } {
+	const visited = new Set<string>();
+	const recursionStack = new Set<string>();
+	const cycles: string[][] = [];
+
+	function dfs(serviceName: string, path: string[]): boolean {
+		if (recursionStack.has(serviceName)) {
+			// Found a cycle
+			const cycleStart = path.indexOf(serviceName);
+			if (cycleStart !== -1) {
+				cycles.push([...path.slice(cycleStart), serviceName]);
+			}
+			return true;
+		}
+
+		if (visited.has(serviceName)) {
+			return false;
+		}
+
+		visited.add(serviceName);
+		recursionStack.add(serviceName);
+		path.push(serviceName);
+
+		const serviceConfig = services[serviceName];
+		if (serviceConfig?.depends_on) {
+			const dependencies = parseDependsOn(serviceConfig.depends_on);
+
+			for (const dep of dependencies) {
+				if (services[dep.service] && dfs(dep.service, [...path])) {
+					// Continue checking other dependencies to find all cycles
+				}
+			}
+		}
+
+		recursionStack.delete(serviceName);
+		path.pop();
+		return false;
+	}
+
+	for (const serviceName of Object.keys(services)) {
+		if (!visited.has(serviceName)) {
+			dfs(serviceName, []);
+		}
+	}
+
+	return {
+		hasCircular: cycles.length > 0,
+		cycles
+	};
+}
+
+/**
+ * Enhanced dependency order resolution with condition awareness
+ */
+export function resolveDependencyOrderWithConditions(services: Record<string, any>): {
+	order: string[];
+	batches: string[][];
+	warnings: string[];
+} {
+	const warnings: string[] = [];
+
+	// First check for circular dependencies
+	const circularCheck = detectCircularDependencies(services);
+	if (circularCheck.hasCircular) {
+		warnings.push(`Circular dependencies detected: ${circularCheck.cycles.map((cycle) => cycle.join(' -> ')).join(', ')}`);
+	}
+
+	// Build dependency graph
+	const graph: Record<string, Set<string>> = {};
+	const inDegree: Record<string, number> = {};
+	const healthyServices = new Set<string>();
+	const completionServices = new Set<string>();
+
+	// Initialize graph
+	for (const serviceName of Object.keys(services)) {
+		graph[serviceName] = new Set();
+		inDegree[serviceName] = 0;
+
+		// Track services that need health checks or completion
+		const serviceConfig = services[serviceName];
+		if (hasHealthcheck(serviceConfig)) {
+			healthyServices.add(serviceName);
+		}
+	}
+
+	// Build edges and track dependency types
+	for (const [serviceName, serviceConfig] of Object.entries(services)) {
+		if (serviceConfig?.depends_on) {
+			const dependencies = parseDependsOn(serviceConfig.depends_on);
+
+			for (const dep of dependencies) {
+				if (services[dep.service]) {
+					graph[dep.service].add(serviceName);
+					inDegree[serviceName]++;
+
+					// Track completion dependencies
+					if (dep.condition === 'service_completed_successfully') {
+						completionServices.add(dep.service);
+					}
+				} else {
+					warnings.push(`Service '${serviceName}' depends on undefined service '${dep.service}'`);
+				}
+			}
+		}
+	}
+
+	// Topological sort with batching
+	const result: string[] = [];
+	const batches: string[][] = [];
+	const queue: string[] = [];
+	const tempInDegree = { ...inDegree };
+
+	// Find initial services with no dependencies
+	for (const [serviceName, degree] of Object.entries(tempInDegree)) {
+		if (degree === 0) {
+			queue.push(serviceName);
+		}
+	}
+
+	while (queue.length > 0) {
+		const batch: string[] = [...queue];
+		batches.push(batch);
+		queue.length = 0;
+
+		for (const serviceName of batch) {
+			result.push(serviceName);
+
+			// Process neighbors
+			for (const neighbor of graph[serviceName]) {
+				tempInDegree[neighbor]--;
+				if (tempInDegree[neighbor] === 0) {
+					queue.push(neighbor);
+				}
+			}
+		}
+	}
+
+	// Check if all services were processed (detect remaining cycles)
+	if (result.length !== Object.keys(services).length) {
+		const remaining = Object.keys(services).filter((name) => !result.includes(name));
+		warnings.push(`Could not resolve dependencies for services: ${remaining.join(', ')} (possible circular dependencies)`);
+		// Add remaining services to the end
+		result.push(...remaining);
+	}
+
+	return {
+		order: result,
+		batches,
+		warnings
+	};
+}
+
+/**
+ * Create dependency wait configuration for a service
+ */
+export function createDependencyWaitConfig(
+	serviceName: string,
+	serviceConfig: any
+): {
+	dependencies: Array<{ service: string; condition: string; timeout: number; restart?: boolean }>;
+	warnings: string[];
+} {
+	const warnings: string[] = [];
+	const dependencies: Array<{ service: string; condition: string; timeout: number; restart?: boolean }> = [];
+
+	if (!serviceConfig?.depends_on) {
+		return { dependencies, warnings };
+	}
+
+	const parsedDeps = parseDependsOn(serviceConfig.depends_on);
+	const validation = validateDependencyConditions(parsedDeps);
+
+	if (!validation.valid) {
+		warnings.push(...validation.errors);
+	}
+
+	for (const dep of parsedDeps) {
+		let timeout = 30000; // Default 30 seconds
+
+		// Adjust timeout based on condition type
+		switch (dep.condition) {
+			case 'service_healthy':
+				timeout = 60000; // Health checks may take longer
+				break;
+			case 'service_completed_successfully':
+				timeout = 120000; // Completion may take much longer
+				break;
+			case 'service_started':
+			default:
+				timeout = 30000; // Standard startup timeout
+				break;
+		}
+
+		dependencies.push({
+			service: dep.service,
+			condition: dep.condition,
+			timeout,
+			restart: dep.restart
+		});
+	}
+
+	return { dependencies, warnings };
+}
+
+/**
+ * Check if a dependency condition can be satisfied
+ */
+export function canSatisfyDependencyCondition(condition: string, serviceConfig: any): { canSatisfy: boolean; reason?: string } {
+	switch (condition) {
+		case 'service_started':
+			return { canSatisfy: true };
+
+		case 'service_healthy':
+			if (!hasHealthcheck(serviceConfig)) {
+				return {
+					canSatisfy: false,
+					reason: 'Service has no healthcheck defined but dependency requires service_healthy condition'
+				};
+			}
+			return { canSatisfy: true };
+
+		case 'service_completed_successfully':
+			// Any service can potentially complete successfully
+			return { canSatisfy: true };
+
+		default:
+			return {
+				canSatisfy: false,
+				reason: `Unknown dependency condition: ${condition}`
+			};
+	}
+}
+
+/**
+ * Validate all dependency configurations in a compose file
+ */
+export function validateAllDependencies(services: Record<string, any>): {
+	valid: boolean;
+	errors: string[];
+	warnings: string[];
+} {
+	const errors: string[] = [];
+	const warnings: string[] = [];
+
+	// Check for circular dependencies
+	const circularCheck = detectCircularDependencies(services);
+	if (circularCheck.hasCircular) {
+		errors.push(`Circular dependencies detected: ${circularCheck.cycles.map((cycle) => cycle.join(' -> ')).join(', ')}`);
+	}
+
+	// Validate each service's dependencies
+	for (const [serviceName, serviceConfig] of Object.entries(services)) {
+		if (serviceConfig?.depends_on) {
+			const { dependencies, warnings: depWarnings } = createDependencyWaitConfig(serviceName, serviceConfig);
+			warnings.push(...depWarnings);
+
+			// Check if dependency services exist and can satisfy conditions
+			for (const dep of dependencies) {
+				if (!services[dep.service]) {
+					errors.push(`Service '${serviceName}' depends on undefined service '${dep.service}'`);
+					continue;
+				}
+
+				const dependencyServiceConfig = services[dep.service];
+				const satisfyCheck = canSatisfyDependencyCondition(dep.condition, dependencyServiceConfig);
+
+				if (!satisfyCheck.canSatisfy) {
+					warnings.push(`Service '${serviceName}' dependency on '${dep.service}' with condition '${dep.condition}': ${satisfyCheck.reason}`);
+				}
+			}
+		}
+	}
+
+	return {
+		valid: errors.length === 0,
+		errors,
+		warnings
+	};
+}
