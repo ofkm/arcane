@@ -1,4 +1,4 @@
-import { eq, desc, and, asc } from 'drizzle-orm';
+import { eq, desc, and, asc, or, lt } from 'drizzle-orm';
 import { agentsTable, agentTasksTable } from '../../../db/schema';
 import type { Agent, AgentTask } from '$lib/types/agent.type';
 import { db } from '../../../db';
@@ -356,16 +356,19 @@ export async function cleanupOldTasksFromDb(olderThanDays = 30): Promise<number>
 	try {
 		const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
 
-		// Note: This is a simplified cleanup - you may want to add more conditions
+		// Delete completed and failed tasks older than cutoff date
 		const result = await db.delete(agentTasksTable).where(
 			and(
-				eq(agentTasksTable.status, 'completed')
-				// Add date comparison when Drizzle supports it better
+				// Only delete completed or failed tasks
+				or(eq(agentTasksTable.status, 'completed'), eq(agentTasksTable.status, 'failed')),
+				// Only delete tasks completed before cutoff date
+				lt(agentTasksTable.completedAt, cutoffDate)
 			)
 		);
 
-		console.log(`Cleaned up old tasks older than ${olderThanDays} days`);
-		return 0; // Return 0 for now
+		const deletedCount = result.rowsAffected || 0;
+		console.log(`Cleaned up ${deletedCount} old tasks older than ${olderThanDays} days`);
+		return deletedCount;
 	} catch (error) {
 		console.error('Failed to cleanup old tasks from database:', error);
 		throw error;

@@ -392,11 +392,6 @@
 									{#if stack.services && stack.services.length > 0}
 										<div class="space-y-4">
 											{#each stack.services as service (service.id || service.name)}
-												<!-- Debug info -->
-												<div class="text-xs text-muted-foreground mb-2">
-													Debug: Service {service.name}, ID: {service.id || 'none'}, Status: {service.state?.Status}
-												</div>
-
 												{@const status = service.state?.Status || 'unknown'}
 												{@const variant = statusVariantMap[status.toLowerCase()] || 'gray'}
 
@@ -439,13 +434,7 @@
 											<div class="mb-4 rounded-full bg-muted/50 flex items-center justify-center mx-auto size-16">
 												<Layers class="size-6 text-muted-foreground" />
 											</div>
-											<div class="text-muted-foreground">
-												No services found for this stack
-												<!-- Debug info -->
-												<div class="text-xs mt-2">
-													Debug: Stack ID: {stack.id}, Service Count: {stack.serviceCount}, Services Array Length: {stack.services?.length || 0}
-												</div>
-											</div>
+											<div class="text-muted-foreground">No services found for this stack</div>
 										</div>
 									{/if}
 								</Card.Content>
