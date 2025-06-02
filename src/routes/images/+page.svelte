@@ -224,6 +224,7 @@
 	}
 
 	async function handlePruneImages() {
+		isLoading.pruning = true;
 		await handleApiResultWithCallbacks({
 			result: await tryCatch(imageApi.prune()),
 			message: 'Failed to Prune Images',
