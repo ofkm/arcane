@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getSettings as getPersistedSettings, saveSettings as persistSettings } from '$lib/services/settings-service';
 import type { Settings } from '$lib/types/settings.type';
-import { initComposeService } from '$lib/services/docker/stack-service';
+import { initComposeService } from '$lib/services/docker/stack-custom-service';
 import { initAutoUpdateScheduler, stopAutoUpdateScheduler } from '$lib/services/docker/scheduler-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { tryCatch } from '$lib/utils/try-catch';

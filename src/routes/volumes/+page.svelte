@@ -242,6 +242,9 @@
 					onPageSizeChange={(newSize) => {
 						tablePersistence.setPageSize('volumes', newSize);
 					}}
+					sort={{
+						defaultSort: { id: 'Name', desc: false }
+					}}
 					display={{
 						filterPlaceholder: 'Search volumes...',
 						noResultsMessage: 'No volumes found matching your filters.'

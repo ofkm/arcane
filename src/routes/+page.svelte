@@ -383,7 +383,7 @@
 										selection: false
 									}}
 									sort={{
-										defaultSort: { id: 'Status', desc: false }
+										defaultSort: { id: 'statusSortValue', desc: false }
 									}}
 									pagination={{
 										pageSize: 5,

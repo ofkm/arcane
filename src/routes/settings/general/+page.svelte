@@ -43,15 +43,23 @@
 		saving: false
 	});
 
-	// Synchronize values when settings change
+	// Synchronize values when settings change (but only if not touched by user)
 	$effect(() => {
 		// Get the latest values from the store
 		const settings = $settingsStore;
 
-		// Update form inputs with values from the store
-		stacksDirectoryInput.value = settings.stacksDirectory || 'data/stacks';
-		baseServerUrlInput.value = settings.baseServerUrl || 'localhost';
-		maturityThresholdInput.value = settings.maturityThresholdDays || 30;
+		// Only update form inputs if they haven't been touched by the user
+		if (!stacksDirectoryInput.touched) {
+			stacksDirectoryInput.value = settings.stacksDirectory || 'data/stacks';
+		}
+
+		if (!baseServerUrlInput.touched) {
+			baseServerUrlInput.value = settings.baseServerUrl || 'localhost';
+		}
+
+		if (!maturityThresholdInput.touched) {
+			maturityThresholdInput.value = settings.maturityThresholdDays || 30;
+		}
 	});
 
 	// Initialize settings from page data once
@@ -59,6 +67,20 @@
 	$effect(() => {
 		if (data.settings) {
 			updateSettingsStore(data.settings);
+		}
+	});
+
+	// Initialize form inputs from page data once
+	$effect(() => {
+		if (data.settings && !initialized) {
+			updateSettingsStore(data.settings);
+
+			// Initialize form inputs with values from data
+			stacksDirectoryInput.value = data.settings.stacksDirectory || 'data/stacks';
+			baseServerUrlInput.value = data.settings.baseServerUrl || 'localhost';
+			maturityThresholdInput.value = data.settings.maturityThresholdDays || 30;
+
+			initialized = true;
 		}
 	});
 

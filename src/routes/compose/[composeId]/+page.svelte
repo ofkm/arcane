@@ -434,7 +434,7 @@
 											<div class="mb-4 rounded-full bg-muted/50 flex items-center justify-center mx-auto size-16">
 												<Layers class="size-6 text-muted-foreground" />
 											</div>
-											<div class="text-muted-foreground">No services defined in this stack</div>
+											<div class="text-muted-foreground">No services found for this stack</div>
 										</div>
 									{/if}
 								</Card.Content>

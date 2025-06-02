@@ -1,4 +1,4 @@
-import { loadComposeStacks, discoverExternalStacks } from '$lib/services/docker/stack-service';
+import { loadComposeStacks, discoverExternalStacks } from '$lib/services/docker/stack-custom-service';
 import { listAgents } from '$lib/services/agent/agent-manager';
 import { getAllAgentStacks } from '$lib/services/agent/agent-stack-service';
 import type { PageServerLoad } from './$types';

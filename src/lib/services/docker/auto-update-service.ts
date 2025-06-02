@@ -1,5 +1,5 @@
 import { listContainers, getContainer, recreateContainer } from './container-service';
-import { listStacks, getStack } from './stack-service';
+import { listStacks, getStack } from './stack-custom-service';
 import { redeployStack } from './stack-custom-service';
 import { pullImage, getImage } from './image-service';
 import { getSettings } from '../settings-service';

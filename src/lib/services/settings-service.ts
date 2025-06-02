@@ -4,6 +4,7 @@ import proper from 'proper-lockfile';
 import type { Settings, OidcConfig } from '$lib/types/settings.type';
 import { encrypt, decrypt } from './encryption-service';
 import { SETTINGS_DIR, STACKS_DIR, ensureDirectory } from './paths-service';
+import { getSettingsFromDb, saveSettingsToDb } from './database/settings-db-service';
 let env: any;
 try {
 	env = await import('$env/static/private');
@@ -102,126 +103,60 @@ async function saveSetting(key: string, value: any): Promise<void> {
 }
 
 export async function getSettings(): Promise<Settings> {
-	let effectiveSettings: Settings;
-
 	try {
-		await ensureSettingsDir();
-		const filePath = path.join(SETTINGS_DIR, 'settings.dat');
+		// Try to get settings from database first
+		const dbSettings = await getSettingsFromDb();
 
-		try {
-			await fs.access(filePath);
-			const rawData = await fs.readFile(filePath, 'utf8');
-			const settingsFromFile = JSON.parse(rawData);
+		let effectiveSettings: Settings;
 
-			const baseSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
-
-			if (settingsFromFile._encrypted) {
-				const { _encrypted, ...nonSensitiveSettings } = settingsFromFile;
-				const decryptedData = await decrypt(_encrypted);
-
-				effectiveSettings = {
-					...baseSettings,
-					...nonSensitiveSettings,
-					auth: {
-						...baseSettings.auth,
-						...(nonSensitiveSettings.auth || {}),
-						...(decryptedData.auth || {})
-					},
-					registryCredentials: decryptedData.registryCredentials || baseSettings.registryCredentials,
-					templateRegistries: nonSensitiveSettings.templateRegistries || baseSettings.templateRegistries,
-					onboarding: nonSensitiveSettings.onboarding || baseSettings.onboarding,
-					baseServerUrl: nonSensitiveSettings.baseServerUrl || baseSettings.baseServerUrl
-				};
-			} else {
-				effectiveSettings = {
-					...baseSettings,
-					...settingsFromFile,
-					auth: {
-						...baseSettings.auth,
-						...(settingsFromFile.auth || {})
-					},
-					registryCredentials: settingsFromFile.registryCredentials || baseSettings.registryCredentials,
-					templateRegistries: settingsFromFile.templateRegistries || baseSettings.templateRegistries,
-					onboarding: settingsFromFile.onboarding || baseSettings.onboarding,
-					baseServerUrl: settingsFromFile.baseServerUrl || baseSettings.baseServerUrl
-				};
-			}
-		} catch (fileError) {
-			console.warn('Settings file not found or unreadable, using default settings.', fileError instanceof Error ? fileError.message : fileError);
+		if (dbSettings) {
+			effectiveSettings = dbSettings;
+		} else {
+			// If no settings in database, use defaults
+			console.log('No settings found in database, using default settings');
 			effectiveSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
 		}
-	} catch (dirError) {
-		console.error('Critical error ensuring settings directory or reading settings file:', dirError);
-		effectiveSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
-	}
 
-	const oidcClientId = env.OIDC_CLIENT_ID;
-	const oidcClientSecret = env.OIDC_CLIENT_SECRET;
-	const oidcRedirectUri = env.OIDC_REDIRECT_URI;
-	const oidcAuthorizationEndpoint = env.OIDC_AUTHORIZATION_ENDPOINT;
-	const oidcTokenEndpoint = env.OIDC_TOKEN_ENDPOINT;
-	const oidcUserinfoEndpoint = env.OIDC_USERINFO_ENDPOINT;
-	const oidcScopesEnv = env.OIDC_SCOPES;
+		// Override with environment variables if present (for OIDC config)
+		const oidcClientId = env.OIDC_CLIENT_ID;
+		const oidcClientSecret = env.OIDC_CLIENT_SECRET;
+		const oidcRedirectUri = env.OIDC_REDIRECT_URI;
+		const oidcAuthorizationEndpoint = env.OIDC_AUTHORIZATION_ENDPOINT;
+		const oidcTokenEndpoint = env.OIDC_TOKEN_ENDPOINT;
+		const oidcUserinfoEndpoint = env.OIDC_USERINFO_ENDPOINT;
+		const oidcScopesEnv = env.OIDC_SCOPES;
 
-	if (oidcClientId && oidcClientSecret && oidcRedirectUri && oidcAuthorizationEndpoint && oidcTokenEndpoint && oidcUserinfoEndpoint) {
-		if (!effectiveSettings.auth) {
-			effectiveSettings.auth = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.auth));
+		if (oidcClientId && oidcClientSecret && oidcRedirectUri && oidcAuthorizationEndpoint && oidcTokenEndpoint && oidcUserinfoEndpoint) {
+			if (!effectiveSettings.auth) {
+				effectiveSettings.auth = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.auth));
+			}
+
+			const oidcConfigFromEnv: OidcConfig = {
+				clientId: oidcClientId,
+				clientSecret: oidcClientSecret,
+				redirectUri: oidcRedirectUri,
+				authorizationEndpoint: oidcAuthorizationEndpoint,
+				tokenEndpoint: oidcTokenEndpoint,
+				userinfoEndpoint: oidcUserinfoEndpoint,
+				scopes: oidcScopesEnv || effectiveSettings.auth.oidc?.scopes || DEFAULT_SETTINGS.auth.oidc?.scopes || 'openid email profile'
+			};
+			effectiveSettings.auth.oidc = oidcConfigFromEnv;
 		}
 
-		const oidcConfigFromEnv: OidcConfig = {
-			clientId: oidcClientId,
-			clientSecret: oidcClientSecret,
-			redirectUri: oidcRedirectUri,
-			authorizationEndpoint: oidcAuthorizationEndpoint,
-			tokenEndpoint: oidcTokenEndpoint,
-			userinfoEndpoint: oidcUserinfoEndpoint,
-			scopes: oidcScopesEnv || effectiveSettings.auth.oidc?.scopes || DEFAULT_SETTINGS.auth.oidc?.scopes || 'openid email profile'
-		};
-		effectiveSettings.auth.oidc = oidcConfigFromEnv;
+		return effectiveSettings;
+	} catch (error) {
+		console.error('Error getting settings from database, falling back to defaults:', error);
+		return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Settings;
 	}
-
-	return effectiveSettings;
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
-	await ensureSettingsDir();
-	const filePath = path.join(SETTINGS_DIR, 'settings.dat');
-
 	try {
-		await fs.access(filePath);
-	} catch {
-		await fs.writeFile(filePath, '{}', { mode: 0o600 });
-	}
-
-	let release;
-	try {
-		release = await proper.lock(filePath, {
-			retries: 5,
-			stale: 10000,
-			onCompromised: (err) => {
-				console.error('Lock was compromised:', err);
-			}
-		});
-
-		const { auth, registryCredentials, ...nonSensitiveSettings } = settings;
-
-		const dataToSave = {
-			...nonSensitiveSettings,
-			_encrypted: await encrypt({ auth: auth || DEFAULT_SETTINGS.auth, registryCredentials: registryCredentials || [] })
-		};
-
-		await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), { mode: 0o600 });
+		await saveSettingsToDb(settings);
+		console.log('Settings saved to database successfully');
 	} catch (error) {
-		console.error('Error saving settings with lock:', error);
+		console.error('Error saving settings to database:', error);
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		throw new Error(`Failed to save settings: ${errorMessage}`);
-	} finally {
-		if (release) {
-			try {
-				await release();
-			} catch (releaseError) {
-				console.error('Error releasing lock:', releaseError);
-			}
-		}
 	}
 }

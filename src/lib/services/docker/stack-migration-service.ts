@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import slugify from 'slugify';
-import { ensureStacksDir, stopStack, startStack, isStackRunning } from './stack-service';
+import { ensureStacksDir, stopStack, startStack, isStackRunning } from './stack-custom-service';
 
 export async function migrateStacksToNameFolders() {
 	const stacksDir = await ensureStacksDir();

@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getUserByUsername, verifyPassword } from '$lib/services/user-service';
+import { getUserByUsernameFromDb } from '$lib/services/database/user-db-service';
+import { verifyPassword } from '$lib/services/user-service';
 import { getSettings } from '$lib/services/settings-service';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -37,7 +38,7 @@ export const actions: Actions = {
 		const redirectTo = formData.get('redirectTo')?.toString() || '/'; // Ensure redirectTo is retrieved from form
 
 		try {
-			const user = await getUserByUsername(username);
+			const user = await getUserByUsernameFromDb(username);
 
 			if (!user) {
 				console.log(`User not found: ${username}`);
