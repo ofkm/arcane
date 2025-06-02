@@ -11,12 +11,14 @@ import { initMaturityPollingScheduler } from '$lib/services/docker/image-service
 import { migrateSettingsToDatabase } from '$lib/services/database/settings-db-service';
 import { migrateUsersToDatabase } from '$lib/services/database/user-db-service';
 import { migrateStacksToDatabase } from '$lib/services/database/compose-db-service';
+import { runMigrations } from './db/migrate';
 
 // Get environment variable
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
 
 // Initialize needed services
 try {
+	await runMigrations();
 	await Promise.all([migrateSettingsToDatabase(), migrateUsersToDatabase(), migrateStacksToDatabase()]);
 
 	await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler(), initMaturityPollingScheduler()]);

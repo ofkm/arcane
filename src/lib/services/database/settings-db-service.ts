@@ -1,11 +1,63 @@
 import { eq } from 'drizzle-orm';
 import { settingsTable } from '../../../db/schema';
-import { getSettings as getFileSettings, saveSettings as saveFileSettings } from '../settings-service';
 import type { Settings } from '$lib/types/settings.type';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { SETTINGS_DIR } from '../paths-service';
+import { decrypt } from '../encryption-service';
 import { db } from '../../../db';
+
+/**
+ * Read settings directly from file system (for migration purposes)
+ */
+async function getSettingsFromFile(): Promise<Settings | null> {
+	try {
+		const settingsFilePath = path.join(SETTINGS_DIR, 'settings.dat');
+		console.log(`Attempting to read settings from: ${settingsFilePath}`);
+
+		// Check if file exists
+		const fileExists = await fs
+			.access(settingsFilePath)
+			.then(() => true)
+			.catch(() => false);
+		console.log(`Settings file exists: ${fileExists}`);
+
+		if (!fileExists) {
+			console.log('No settings file found for migration');
+			return null;
+		}
+
+		// Read the encrypted settings file
+		const fileContent = await fs.readFile(settingsFilePath, 'utf8');
+		console.log(`Read settings file, length: ${fileContent.length}`);
+
+		const settingsData = JSON.parse(fileContent);
+		console.log(`Parsed settings data, keys: ${Object.keys(settingsData).join(', ')}`);
+
+		// Decrypt the sensitive data if it exists
+		let decryptedData = {};
+		if (settingsData._encrypted) {
+			console.log('Decrypting sensitive settings data...');
+			decryptedData = await decrypt(settingsData._encrypted);
+			console.log(`Decrypted data keys: ${Object.keys(decryptedData).join(', ')}`);
+		}
+
+		// Combine non-sensitive and decrypted sensitive data
+		const { _encrypted, ...nonSensitiveData } = settingsData;
+		const completeSettings = {
+			...nonSensitiveData,
+			...decryptedData
+		};
+
+		console.log(`Complete settings keys: ${Object.keys(completeSettings).join(', ')}`);
+		console.log(`OIDC settings found: ${completeSettings.auth?.oidc ? 'yes' : 'no'}`);
+
+		return completeSettings as Settings;
+	} catch (error) {
+		console.error('Error reading settings from file:', error);
+		return null;
+	}
+}
 
 /**
  * Migrates settings from file-based storage to database
@@ -16,9 +68,17 @@ export async function migrateSettingsToDatabase(backupOldFile: boolean = true): 
 	try {
 		console.log('Starting settings migration from file to database...');
 
-		// Get current settings from file-based system
-		const fileSettings = await getFileSettings();
+		// Get current settings from file-based system (directly from file)
+		const fileSettings = await getSettingsFromFile();
+
+		if (!fileSettings) {
+			console.log('No settings found in file system. Migration completed.');
+			return true; // Not an error, just nothing to migrate
+		}
+
 		console.log('Retrieved settings from file system');
+		console.log(`OIDC enabled: ${fileSettings.auth?.oidcEnabled}`);
+		console.log(`OIDC client ID: ${fileSettings.auth?.oidc?.clientId ? 'present' : 'missing'}`);
 
 		// Check if settings already exist in database
 		const existingSettings = await db.select().from(settingsTable).limit(1);
@@ -46,6 +106,7 @@ export async function migrateSettingsToDatabase(backupOldFile: boolean = true): 
 		});
 
 		console.log('Settings successfully migrated to database');
+		console.log(`OIDC settings migrated: ${fileSettings.auth?.oidcEnabled ? 'enabled' : 'disabled'}`);
 
 		// Backup old settings file if requested
 		if (backupOldFile) {

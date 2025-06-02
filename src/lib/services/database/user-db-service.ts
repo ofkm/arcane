@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { usersTable } from '../../../db/schema';
-import { listUsers as getFileUsers } from '../user-service';
+import { listUsersFromFile as getFileUsers } from '../user-service';
 import type { User } from '$lib/types/user.type';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -23,7 +23,7 @@ export async function migrateUsersToDatabase(backupOldFiles: boolean = true): Pr
 	try {
 		console.log('Starting user migration from file to database...');
 
-		// Get current users from file-based system
+		// Get current users from file-based system (now correctly from files!)
 		const fileUsers = await getFileUsers();
 		console.log(`Found ${fileUsers.length} users in file system`);
 
@@ -134,9 +134,9 @@ export async function getUserByIdFromDb(id: string): Promise<User | null> {
 			roles: JSON.parse(dbUser.roles as string),
 			requirePasswordChange: dbUser.requirePasswordChange,
 			oidcSubjectId: dbUser.oidcSubjectId || undefined,
-			lastLogin: dbUser.lastLogin ? new Date(Number(dbUser.lastLogin) * 1000).toISOString() : undefined,
-			createdAt: new Date(Number(dbUser.createdAt) * 1000).toISOString(),
-			updatedAt: dbUser.updatedAt ? new Date(Number(dbUser.updatedAt) * 1000).toISOString() : undefined
+			lastLogin: dbUser.lastLogin ? dbUser.lastLogin.toISOString() : undefined,
+			createdAt: dbUser.createdAt.toISOString(),
+			updatedAt: dbUser.updatedAt ? dbUser.updatedAt.toISOString() : undefined
 		};
 	} catch (error) {
 		console.error('Failed to get user from database:', error);
@@ -166,9 +166,10 @@ export async function getUserByUsernameFromDb(username: string): Promise<User | 
 			roles: JSON.parse(dbUser.roles as string),
 			requirePasswordChange: dbUser.requirePasswordChange,
 			oidcSubjectId: dbUser.oidcSubjectId || undefined,
-			lastLogin: dbUser.lastLogin ? new Date(Number(dbUser.lastLogin) * 1000).toISOString() : undefined,
-			createdAt: new Date(Number(dbUser.createdAt) * 1000).toISOString(),
-			updatedAt: dbUser.updatedAt ? new Date(Number(dbUser.updatedAt) * 1000).toISOString() : undefined
+			// Fix: Handle Date objects from Drizzle timestamp mode properly
+			lastLogin: dbUser.lastLogin ? dbUser.lastLogin.toISOString() : undefined,
+			createdAt: dbUser.createdAt.toISOString(),
+			updatedAt: dbUser.updatedAt ? dbUser.updatedAt.toISOString() : undefined
 		};
 	} catch (error) {
 		console.error('Failed to get user by username from database:', error);
@@ -198,9 +199,10 @@ export async function getUserByOidcSubjectIdFromDb(oidcSubjectId: string): Promi
 			roles: JSON.parse(dbUser.roles as string),
 			requirePasswordChange: dbUser.requirePasswordChange,
 			oidcSubjectId: dbUser.oidcSubjectId || undefined,
-			lastLogin: dbUser.lastLogin ? new Date(Number(dbUser.lastLogin) * 1000).toISOString() : undefined,
-			createdAt: new Date(Number(dbUser.createdAt) * 1000).toISOString(),
-			updatedAt: dbUser.updatedAt ? new Date(Number(dbUser.updatedAt) * 1000).toISOString() : undefined
+			// Fix: Handle Date objects from Drizzle timestamp mode properly
+			lastLogin: dbUser.lastLogin ? dbUser.lastLogin.toISOString() : undefined,
+			createdAt: dbUser.createdAt.toISOString(),
+			updatedAt: dbUser.updatedAt ? dbUser.updatedAt.toISOString() : undefined
 		};
 	} catch (error) {
 		console.error('Failed to get user by OIDC subject ID from database:', error);
@@ -224,9 +226,10 @@ export async function listUsersFromDb(): Promise<User[]> {
 			roles: JSON.parse(dbUser.roles as string),
 			requirePasswordChange: dbUser.requirePasswordChange,
 			oidcSubjectId: dbUser.oidcSubjectId || undefined,
-			lastLogin: dbUser.lastLogin ? new Date(Number(dbUser.lastLogin) * 1000).toISOString() : undefined,
-			createdAt: new Date(Number(dbUser.createdAt) * 1000).toISOString(),
-			updatedAt: dbUser.updatedAt ? new Date(Number(dbUser.updatedAt) * 1000).toISOString() : undefined
+			// Fix: Handle Date objects from Drizzle timestamp mode properly
+			lastLogin: dbUser.lastLogin ? dbUser.lastLogin.toISOString() : undefined,
+			createdAt: dbUser.createdAt.toISOString(),
+			updatedAt: dbUser.updatedAt ? dbUser.updatedAt.toISOString() : undefined
 		}));
 	} catch (error) {
 		console.error('Failed to list users from database:', error);

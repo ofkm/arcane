@@ -45,6 +45,8 @@ RUN mkdir -p /app/data && chmod 755 /app/data
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/static ./static
 
+COPY --from=builder /app/src/db/migrations ./src/db/migrations
+
 # Copy entrypoint script
 COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
