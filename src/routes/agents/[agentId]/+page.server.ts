@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getAgent, getAgentTasks } from '$lib/services/agent/agent-manager';
-import { getDeployments } from '$lib/services/deployment-service';
+import { getDeploymentsFromDb } from '$lib/services/database/deployment-db-service';
 import { error } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	try {
 		// Load all data in parallel
-		const [agent, tasks, deployments] = await Promise.allSettled([getAgent(agentId), getAgentTasks(agentId), getDeployments(agentId)]);
+		const [agent, tasks, deployments] = await Promise.allSettled([getAgent(agentId), getAgentTasks(agentId), getDeploymentsFromDb(agentId)]);
 
 		// Handle agent not found
 		if (agent.status === 'rejected' || !agent.value) {
@@ -17,7 +17,6 @@ export const load: PageServerLoad = async ({ params }) => {
 			});
 		}
 
-		// Calculate actual status (move this logic to server)
 		const now = new Date();
 		const timeout = 5 * 60 * 1000; // 5 minutes
 		const lastSeen = new Date(agent.value.lastSeen);

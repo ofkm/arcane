@@ -3,6 +3,7 @@ import path from 'node:path';
 import { BASE_PATH } from '$lib/services/paths-service';
 import type { Deployment } from '$lib/types/deployment.type';
 import { nanoid } from 'nanoid';
+import { getDeploymentByTaskIdFromDb, updateDeploymentInDb } from './database/deployment-db-service';
 
 const DEPLOYMENTS_DIR = path.join(BASE_PATH, 'deployments');
 
@@ -135,33 +136,40 @@ export async function createImageDeployment(agentId: string, imageName: string, 
 // Update deployment status based on task completion
 export async function updateDeploymentFromTask(taskId: string, status: string, result?: any, error?: string): Promise<void> {
 	try {
-		// Find deployment by taskId
-		const deployments = await getDeployments();
-		const deployment = deployments.find((d) => d.taskId === taskId);
+		// Find deployment linked to this task
+		const deployment = await getDeploymentByTaskIdFromDb(taskId);
 
-		if (deployment) {
-			let deploymentStatus: Deployment['status'];
-
-			switch (status) {
-				case 'completed':
-					deploymentStatus = 'completed';
-					break;
-				case 'failed':
-					deploymentStatus = 'failed';
-					break;
-				case 'running':
-					deploymentStatus = 'running';
-					break;
-				default:
-					deploymentStatus = 'pending';
-			}
-
-			await updateDeployment(deployment.id, {
-				status: deploymentStatus,
-				error: status === 'failed' ? error : undefined
-			});
+		if (!deployment) {
+			// No deployment linked to this task, nothing to update
+			return;
 		}
-	} catch (err) {
-		console.error('Error updating deployment from task:', err);
+
+		// Map task status to deployment status
+		let deploymentStatus: 'pending' | 'running' | 'stopped' | 'failed' | 'completed';
+
+		switch (status) {
+			case 'running':
+				deploymentStatus = 'running';
+				break;
+			case 'completed':
+				deploymentStatus = 'completed';
+				break;
+			case 'failed':
+				deploymentStatus = 'failed';
+				break;
+			default:
+				deploymentStatus = 'pending';
+		}
+
+		// Update deployment in database
+		await updateDeploymentInDb(deployment.id, {
+			status: deploymentStatus,
+			error: error || undefined
+		});
+
+		console.log(`Deployment ${deployment.id} updated to status: ${deploymentStatus}`);
+	} catch (error) {
+		console.error('Failed to update deployment from task:', error);
+		// Don't throw as this shouldn't break the task update
 	}
 }

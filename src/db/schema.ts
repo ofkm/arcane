@@ -36,7 +36,7 @@ export const usersTable = sqliteTable('users_table', {
 	lastLogin: int('last_login', { mode: 'timestamp' }),
 	createdAt: int('created_at', { mode: 'timestamp' })
 		.notNull()
-		.default(sql`(unixepoch())`),
+		.default(sql`(unixepoch()`),
 	updatedAt: int('updated_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`)
@@ -148,6 +148,28 @@ export const agentTokensTable = sqliteTable('agent_tokens_table', {
 		.default(sql`(unixepoch())`)
 });
 
+export const deploymentsTable = sqliteTable('deployments_table', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	type: text('type', { enum: ['stack', 'container', 'image'] }).notNull(),
+	status: text('status', { enum: ['pending', 'running', 'stopped', 'failed', 'completed'] })
+		.notNull()
+		.default('pending'),
+	agentId: text('agent_id').notNull(),
+	taskId: text('task_id'), // Links to agentTasksTable
+	error: text('error'),
+
+	// Metadata as JSON to match your interface
+	metadata: text('metadata', { mode: 'json' }),
+
+	createdAt: int('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: int('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 // Add foreign key relationships if you want referential integrity
 // Note: SQLite foreign keys need to be enabled at runtime
 export const agentRelations = {
@@ -159,5 +181,9 @@ export const agentRelations = {
 	},
 	remoteStacks: {
 		// stacksTable.agentId -> agentsTable.id (existing relationship)
+	},
+	deployments: {
+		// deploymentsTable.agentId -> agentsTable.id
+		// deploymentsTable.taskId -> agentTasksTable.id
 	}
 };

@@ -3,8 +3,6 @@ import { nanoid } from 'nanoid';
 import { updateDeploymentFromTask } from '$lib/services/deployment-service';
 import { registerAgentInDb, getAgentByIdFromDb, updateAgentInDb, updateAgentHeartbeatInDb, listAgentsFromDb, deleteAgentFromDb, createTaskInDb, getTaskByIdFromDb, updateTaskStatusInDb, listTasksFromDb, getPendingTasksFromDb, getAgentTasksFromDb, updateAgentMetricsInDb, updateAgentDockerInfoInDb } from '$lib/services/database/agent-db-service';
 
-// Remove file system operations - everything goes through database now
-
 /**
  * Register a new agent or update existing one
  */
@@ -140,7 +138,6 @@ export async function updateTaskStatus(taskId: string, status: string, result?: 
 	try {
 		await updateTaskStatusInDb(taskId, status, result, error);
 
-		// Update corresponding deployment if it exists
 		await updateDeploymentFromTask(taskId, status, result, error);
 
 		console.log(`Task ${taskId} status updated to: ${status}`);
