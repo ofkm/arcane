@@ -217,6 +217,8 @@ export class ImageMaturityDbService {
 		const now = new Date();
 		const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
+		const oneHourAgoUnix = Math.floor(oneHourAgo.getTime() / 1000);
+
 		const stats = await db
 			.select({
 				total: sql<number>`COUNT(*)`,
@@ -225,7 +227,7 @@ export class ImageMaturityDbService {
 				notMatured: sql<number>`SUM(CASE WHEN ${imageMaturityTable.status} = 'Not Matured' THEN 1 ELSE 0 END)`,
 				unknown: sql<number>`SUM(CASE WHEN ${imageMaturityTable.status} = 'Unknown' THEN 1 ELSE 0 END)`,
 				avgDays: sql<number>`AVG(${imageMaturityTable.daysSinceCreation})`,
-				recentlyChecked: sql<number>`SUM(CASE WHEN ${imageMaturityTable.lastChecked} > ${oneHourAgo.getTime() / 1000} THEN 1 ELSE 0 END)`
+				recentlyChecked: sql<number>`SUM(CASE WHEN ${imageMaturityTable.lastChecked} > ${oneHourAgoUnix} THEN 1 ELSE 0 END)`
 			})
 			.from(imageMaturityTable);
 
