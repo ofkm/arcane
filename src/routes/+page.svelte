@@ -3,7 +3,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import UniversalTable from '$lib/components/universal-table.svelte';
-	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2, Monitor } from '@lucide/svelte';
+	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2, Monitor, Server } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { capitalizeFirstLetter, truncateString, shortId, parseStatusTime } from '$lib/utils/string.utils';
@@ -27,6 +27,9 @@
 	import ImageAPIService from '$lib/services/api/image-api-service';
 	import type { PruneType } from '$lib/types/actions.type';
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
+	import Meter from '$lib/components/meter.svelte';
+	import DockerIcon from '$lib/icons/docker-icon.svelte';
+	import GitHubIcon from '$lib/icons/github-icon.svelte';
 
 	let { data }: { data: PageData & { containers: ContainerInfo[] } } = $props();
 
@@ -53,6 +56,7 @@
 	const runningContainers = $derived(dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'running').length ?? 0);
 	const stoppedContainers = $derived(dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'exited').length ?? 0);
 	const totalImageSize = $derived(dashboardStates.images?.reduce((sum, image) => sum + (image.Size || 0), 0) ?? 0);
+	const containerUsagePercent = $derived(dashboardStates.containers?.length ? (runningContainers / dashboardStates.containers.length) * 100 : 0);
 
 	function getContainerDisplayName(container: ContainerInfo): string {
 		if (container.Names && container.Names.length > 0) {
@@ -68,9 +72,36 @@
 		dashboardStates.settings = data.settings;
 		dashboardStates.error = data.error;
 	});
+	// Add server stats state
+	let serverStats = $state<{
+		cpuUsage: number;
+		memoryUsage: number;
+		memoryTotal: number;
+	} | null>(null);
 
-	onMount(async () => {
-		await loadTopImagesMaturity();
+	// Add server stats fetching
+	async function fetchServerStats() {
+		try {
+			const response = await fetch('/api/system/stats');
+			if (response.ok) {
+				serverStats = await response.json();
+			}
+		} catch (error) {
+			console.error('Failed to fetch server stats:', error);
+		}
+	}
+
+	// Fetch server stats on mount and refresh
+	onMount(() => {
+		// Run async operations without blocking the mount
+		(async () => {
+			await loadTopImagesMaturity();
+			await fetchServerStats();
+		})();
+
+		// Set up periodic updates for server stats
+		const interval = setInterval(fetchServerStats, 5000); // Update every 5 seconds
+		return () => clearInterval(interval);
 	});
 
 	async function refreshData() {
@@ -78,6 +109,7 @@
 		isLoading.refreshing = true;
 		try {
 			await invalidateAll();
+			await fetchServerStats(); // Also refresh server stats
 		} catch (err) {
 			console.error('Error during dashboard refresh:', err);
 			dashboardStates.error = 'Failed to refresh dashboard data.';
@@ -203,102 +235,117 @@
 
 	<section>
 		<DropdownCard id="system-overview" title="System Overview" description="Hardware and Docker engine information" icon={Monitor} defaultExpanded={true}>
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-				<Card.Root class="overflow-hidden border-l-4 border-l-green-500">
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+				<!-- Containers & Docker Info Card -->
+				<Card.Root class="overflow-hidden">
 					<Card.Content class="p-6">
-						<div class="flex justify-between items-start">
-							<div>
-								<p class="text-sm font-medium text-muted-foreground">Running Containers</p>
-								<div class="mt-1">
+						<div class="flex items-center justify-between mb-4">
+							<div class="flex items-center gap-3">
+								<div class="bg-green-500/10 p-2.5 rounded-lg">
+									<Box class="text-green-500 size-5" />
+								</div>
+								<div>
+									<p class="text-sm font-medium text-muted-foreground">Containers</p>
 									<p class="text-2xl font-bold">
 										{runningContainers}
-										<span class="text-xs font-normal text-muted-foreground ml-1">/ {dashboardStates.containers?.length || 0}</span>
+										<span class="text-sm font-normal text-muted-foreground">/ {dashboardStates.containers?.length || 0}</span>
 									</p>
 								</div>
 							</div>
-							<div class="bg-green-500/10 p-2 rounded-full">
-								<Box class="text-green-500 size-5" />
-							</div>
 						</div>
+
 						{#if dashboardStates.containers?.length}
-							<Progress value={(runningContainers / (dashboardStates.containers.length || 1)) * 100} class="mt-4 h-2" />
-						{/if}
-					</Card.Content>
-				</Card.Root>
-
-				<Card.Root class="overflow-hidden border-l-4 border-l-blue-500">
-					<Card.Content class="p-6">
-						<div class="flex justify-between items-start">
-							<div>
-								<p class="text-sm font-medium text-muted-foreground">Images</p>
-								<p class="text-2xl font-bold mt-1">{dashboardStates.dockerInfo?.Images || 0}</p>
+							<div class="mb-6">
+								<Meter label="Active Containers" valueLabel="{runningContainers} running" value={containerUsagePercent} max={100} variant={containerUsagePercent > 80 ? 'warning' : 'default'} size="sm" />
 							</div>
-							<div class="bg-blue-500/10 p-2 rounded-full">
-								<HardDrive class="text-blue-500 size-5" />
+						{/if}
+
+						<!-- Docker Engine Info -->
+						<div class="pt-4 border-t space-y-3">
+							<div class="flex items-center gap-2">
+								<DockerIcon class="text-muted-foreground size-4" />
+								<p class="text-sm font-medium text-muted-foreground">Docker Engine</p>
+							</div>
+							<div class="grid grid-cols-2 gap-3 text-xs">
+								<div>
+									<p class="text-muted-foreground">Version</p>
+									<p class="font-medium">{dashboardStates.dockerInfo?.ServerVersion || 'Unknown'}</p>
+								</div>
+								<div>
+									<p class="text-muted-foreground">OS</p>
+									<p class="font-medium">{dashboardStates.dockerInfo?.OperatingSystem?.split(' ')[0] || 'Unknown'}</p>
+								</div>
 							</div>
 						</div>
-						{#if totalImageSize > 0}
-							<div class="mt-4 text-xs text-muted-foreground">
-								Total size: {formatBytes(totalImageSize)}
+					</Card.Content>
+				</Card.Root>
+
+				<!-- Images & Storage Card -->
+				<Card.Root class="overflow-hidden">
+					<Card.Content class="p-6">
+						<div class="flex items-center justify-between mb-4">
+							<div class="flex items-center gap-3">
+								<div class="bg-blue-500/10 p-2.5 rounded-lg">
+									<HardDrive class="text-blue-500 size-5" />
+								</div>
+								<div>
+									<p class="text-sm font-medium text-muted-foreground">Images</p>
+									<p class="text-2xl font-bold">{dashboardStates.dockerInfo?.Images || 0}</p>
+								</div>
 							</div>
+						</div>
+
+						{#if totalImageSize > 0}
+							<div class="mb-4">
+								<Meter label="Storage Usage" valueLabel={formatBytes(totalImageSize)} value={totalImageSize} max={dashboardStates.dockerInfo?.MemTotal || totalImageSize} variant={totalImageSize > (dashboardStates.dockerInfo?.MemTotal || 0) * 0.1 ? 'warning' : 'default'} size="sm" />
+							</div>
+							<p class="text-xs text-muted-foreground">
+								Total: {formatBytes(totalImageSize)}
+							</p>
 						{:else if dashboardStates.dockerInfo?.Images === 0}
-							<div class="mt-4 text-xs text-muted-foreground">No images stored</div>
+							<div class="text-center py-6">
+								<p class="text-sm text-muted-foreground">No images stored</p>
+							</div>
+						{:else}
+							<div class="text-center py-6">
+								<p class="text-sm text-muted-foreground">Loading...</p>
+							</div>
 						{/if}
 					</Card.Content>
 				</Card.Root>
 
-				<Card.Root class="overflow-hidden border-l-4 border-l-purple-500">
+				<!-- Hardware & Performance Card -->
+				<Card.Root class="overflow-hidden">
 					<Card.Content class="p-6">
-						<div class="flex justify-between items-start">
-							<div>
-								<p class="text-sm font-medium text-muted-foreground">Hardware Resources</p>
-								<div class="grid grid-cols-2 gap-x-4 mt-2">
-									<div>
-										<p class="text-xs text-muted-foreground">CPU</p>
-										<p class="text-lg font-semibold">{dashboardStates.dockerInfo?.NCPU || 'N/A'}</p>
-									</div>
-									<div>
-										<p class="text-xs text-muted-foreground">Memory</p>
-										<p class="text-lg font-semibold">{dashboardStates.dockerInfo?.MemTotal ? formatBytes(dashboardStates.dockerInfo.MemTotal, 0) : 'N/A'}</p>
+						<div class="flex items-center justify-between mb-4">
+							<div class="flex items-center gap-3">
+								<div class="bg-purple-500/10 p-2.5 rounded-lg">
+									<Cpu class="text-purple-500 size-5" />
+								</div>
+								<div>
+									<p class="text-sm font-medium text-muted-foreground">Hardware</p>
+									<div class="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+										<span>{dashboardStates.dockerInfo?.NCPU || 'N/A'} cores</span>
+										<span>{dashboardStates.dockerInfo?.MemTotal ? formatBytes(dashboardStates.dockerInfo.MemTotal, 0) : 'N/A'}</span>
 									</div>
 								</div>
 							</div>
-							<div class="bg-purple-500/10 p-2 rounded-full">
-								<Cpu class="text-purple-500 size-5" />
-							</div>
 						</div>
-						<div class="mt-4 text-xs text-muted-foreground">
-							{dashboardStates.dockerInfo?.Architecture || 'Unknown architecture'}
-						</div>
-					</Card.Content>
-				</Card.Root>
 
-				<Card.Root class="overflow-hidden border-l-4 border-l-amber-500">
-					<Card.Content class="p-6">
-						<div class="flex justify-between items-start">
-							<div>
-								<p class="text-sm font-medium text-muted-foreground">Docker Engine</p>
-								<p class="text-xl font-semibold mt-1">
-									{dashboardStates.dockerInfo?.ServerVersion || 'Unknown version'}
-								</p>
+						{#if serverStats}
+							<div class="space-y-4">
+								<Meter label="CPU Usage" valueLabel="{serverStats.cpuUsage.toFixed(1)}%" value={serverStats.cpuUsage} max={100} variant={serverStats.cpuUsage > 80 ? 'destructive' : serverStats.cpuUsage > 60 ? 'warning' : 'default'} size="sm" />
+
+								<Meter label="Memory Usage" valueLabel="{((serverStats.memoryUsage / serverStats.memoryTotal) * 100).toFixed(1)}%" value={(serverStats.memoryUsage / serverStats.memoryTotal) * 100} max={100} variant={(serverStats.memoryUsage / serverStats.memoryTotal) * 100 > 80 ? 'destructive' : (serverStats.memoryUsage / serverStats.memoryTotal) * 100 > 60 ? 'warning' : 'default'} size="sm" />
 							</div>
-							<div class="bg-amber-500/10 p-2 rounded-full">
-								<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500 size-5">
-									<path d="M8 17v2a3 3 0 0 1-3 3H3"></path><path d="M12 17h10"></path><path d="M16 7H3a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h7"></path>
-									<circle cx="20" cy="9" r="2"></circle>
-								</svg>
+							<p class="text-xs text-muted-foreground mt-3">
+								{dashboardStates.dockerInfo?.Architecture || 'Unknown arch'}
+							</p>
+						{:else}
+							<div class="text-center py-6">
+								<p class="text-sm text-muted-foreground">Loading stats...</p>
 							</div>
-						</div>
-						<div class="mt-4 grid grid-cols-2 gap-2">
-							<div>
-								<p class="text-xs font-medium text-muted-foreground">Operating System</p>
-								<p class="text-sm">{dashboardStates.dockerInfo?.OperatingSystem || 'Unknown OS'}</p>
-							</div>
-							<div>
-								<p class="text-xs font-medium text-muted-foreground">Kernel Version</p>
-								<p class="text-sm">{dashboardStates.dockerInfo?.KernelVersion || 'Unknown'}</p>
-							</div>
-						</div>
+						{/if}
 					</Card.Content>
 				</Card.Root>
 			</div>
@@ -329,7 +376,7 @@
 					{/if}
 				</div>
 				<span class="text-base font-medium text-center">Stop All Running</span>
-				<span class="text-sm text-muted-foreground mt-1">{runningContainers} containers</span>
+				<span class="text-sm text-muted-foreground mt-1">{runningContainers}</span>
 			</button>
 
 			<button
@@ -511,12 +558,7 @@
 				</a>
 				<span class="mx-2">•</span>
 				<a href="https://github.com/ofkm/arcane" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors" title="GitHub">
-					<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="fill-current size-4">
-						<title>GitHub</title>
-						<path
-							d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
-						/>
-					</svg>
+					<GitHubIcon class="fill-current size-4" />
 					<span class="sr-only">GitHub</span>
 				</a>
 			</div>

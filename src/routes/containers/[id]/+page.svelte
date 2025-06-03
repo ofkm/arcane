@@ -13,6 +13,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { onDestroy } from 'svelte';
 	import LogViewer from '$lib/components/LogViewer.svelte';
+	import Meter from '$lib/components/meter.svelte';
 
 	// Define the network config interface to match what Docker actually returns
 	interface NetworkConfig {
@@ -342,31 +343,11 @@
 									<Card.Header class="pb-4">
 										<Card.Title>Quick Stats</Card.Title>
 									</Card.Header>
-									<Card.Content class="space-y-4">
+									<Card.Content class="space-y-6">
 										{#if stats && container.State?.Running}
-											<div class="space-y-3">
-												<div class="flex justify-between items-center">
-													<span class="text-muted-foreground flex items-center gap-2">
-														<Cpu class="size-4" /> CPU
-													</span>
-													<span class="font-medium">{cpuUsagePercent.toFixed(1)}%</span>
-												</div>
-												<div class="w-full bg-secondary rounded-full h-2">
-													<div class="bg-primary rounded-full h-2 transition-all duration-300" style="width: {Math.min(cpuUsagePercent, 100)}%"></div>
-												</div>
-											</div>
+											<Meter label="CPU Usage" valueLabel="{cpuUsagePercent.toFixed(1)}%" value={cpuUsagePercent} max={100} variant={cpuUsagePercent > 80 ? 'destructive' : cpuUsagePercent > 60 ? 'warning' : 'default'} />
 
-											<div class="space-y-3">
-												<div class="flex justify-between items-center">
-													<span class="text-muted-foreground flex items-center gap-2">
-														<MemoryStick class="size-4" /> Memory
-													</span>
-													<span class="font-medium">{memoryUsageFormatted}</span>
-												</div>
-												<div class="w-full bg-secondary rounded-full h-2">
-													<div class="bg-primary rounded-full h-2 transition-all duration-300" style="width: {memoryUsagePercent.toFixed(2)}%"></div>
-												</div>
-											</div>
+											<Meter label="Memory Usage" valueLabel="{memoryUsageFormatted} / {memoryLimitFormatted}" value={memoryUsagePercent} max={100} variant={memoryUsagePercent > 80 ? 'destructive' : memoryUsagePercent > 60 ? 'warning' : 'default'} />
 										{:else}
 											<div class="text-muted-foreground text-center py-8">
 												{container.State?.Running ? 'Loading stats...' : 'Container not running'}
@@ -431,29 +412,9 @@
 										<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 											<!-- CPU and Memory -->
 											<div class="space-y-6">
-												<div>
-													<div class="flex justify-between items-center mb-3">
-														<span class="text-muted-foreground flex items-center gap-2">
-															<Cpu class="size-4" /> CPU Usage
-														</span>
-														<span class="font-medium">{cpuUsagePercent.toFixed(2)}%</span>
-													</div>
-													<div class="w-full bg-secondary rounded-full h-3">
-														<div class="bg-blue-500 rounded-full h-3 transition-all duration-300" style="width: {Math.min(cpuUsagePercent, 100)}%"></div>
-													</div>
-												</div>
+												<Meter label="CPU Usage" valueLabel="{cpuUsagePercent.toFixed(2)}%" value={cpuUsagePercent} max={100} variant={cpuUsagePercent > 80 ? 'destructive' : cpuUsagePercent > 60 ? 'warning' : 'default'} size="lg" />
 
-												<div>
-													<div class="flex justify-between items-center mb-3">
-														<span class="text-muted-foreground flex items-center gap-2">
-															<MemoryStick class="size-4" /> Memory Usage
-														</span>
-														<span class="font-medium">{memoryUsageFormatted} / {memoryLimitFormatted}</span>
-													</div>
-													<div class="w-full bg-secondary rounded-full h-3">
-														<div class="bg-green-500 rounded-full h-3 transition-all duration-300" style="width: {memoryUsagePercent.toFixed(2)}%"></div>
-													</div>
-												</div>
+												<Meter label="Memory Usage" valueLabel="{memoryUsageFormatted} / {memoryLimitFormatted} ({memoryUsagePercent.toFixed(1)}%)" value={memoryUsagePercent} max={100} variant={memoryUsagePercent > 80 ? 'destructive' : memoryUsagePercent > 60 ? 'warning' : 'default'} size="lg" />
 											</div>
 
 											<!-- Network I/O -->
