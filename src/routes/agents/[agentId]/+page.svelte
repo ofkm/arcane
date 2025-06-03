@@ -162,17 +162,37 @@
 					}
 
 					const taskId = result.task.id;
-					return pollTaskCompletion(taskId, ['containers', 'images', 'networks', 'volumes', 'composes'][index]);
+					return pollTaskCompletion(taskId, ['containers', 'images', 'networks', 'volumes', 'stacks'][index]);
 				})
 			);
 
-			// Process results
+			// Process results - replace the forEach loop
+			const newResourcesData: {
+				containers: any[];
+				images: any[];
+				networks: any[];
+				volumes: any[];
+				stacks: any[];
+			} = {
+				containers: [],
+				images: [],
+				networks: [],
+				volumes: [],
+				stacks: []
+			};
+
 			results.forEach((result, index) => {
 				if (result.status === 'fulfilled' && result.value) {
-					const resourceType = ['containers', 'images', 'networks', 'volumes', 'stacks'][index] as keyof typeof resourcesData;
-					resourcesData[resourceType] = result.value;
+					const resourceType = ['containers', 'images', 'networks', 'volumes', 'stacks'][index] as keyof typeof newResourcesData;
+					console.log(`Assigning ${result.value.length} items to ${resourceType}:`, result.value);
+					newResourcesData[resourceType] = result.value;
+				} else {
+					console.log(`Result ${index} failed:`, result);
 				}
 			});
+
+			// Update the state with the new object
+			resourcesData = newResourcesData;
 		} catch (err) {
 			console.error('Failed to load resources data:', err);
 			resourcesError = err instanceof Error ? err.message : 'Failed to load resource data';
@@ -243,21 +263,31 @@
 					console.log(`Raw output for ${resourceType}:`, outputString);
 
 					if (outputString) {
-						// Split by lines and parse each line as JSON
-						const lines = outputString.split('\n').filter((line: string) => line.trim());
-						console.log(`Task ${taskId} has ${lines.length} lines to parse`);
-
-						for (const line of lines) {
-							try {
-								const parsed = JSON.parse(line.trim());
+						try {
+							// First try to parse the entire output as JSON (for cases like compose ls that return an array)
+							const parsed = JSON.parse(outputString);
+							if (Array.isArray(parsed)) {
+								data = parsed;
+								console.log(`Parsed entire output as JSON array for ${resourceType}:`, data);
+							} else {
 								data.push(parsed);
-							} catch (parseError) {
-								console.warn(`Failed to parse line as JSON:`, line, parseError);
-								// Skip invalid JSON lines
+							}
+						} catch (parseError) {
+							// If that fails, try parsing line by line
+							const lines = outputString.split('\n').filter((line: string) => line.trim());
+							console.log(`Task ${taskId} has ${lines.length} lines to parse`);
+
+							for (const line of lines) {
+								try {
+									const parsed = JSON.parse(line.trim());
+									data.push(parsed);
+								} catch (lineParseError) {
+									console.warn(`Failed to parse line as JSON:`, line, lineParseError);
+									// Skip invalid JSON lines
+								}
 							}
 						}
 					}
-
 					console.log(`Parsed data for ${resourceType}:`, data);
 					return data;
 				} else if (task.status === 'failed') {
@@ -779,8 +809,7 @@
 											columns={[
 												{ accessorKey: 'Name', header: 'Project Name' },
 												{ accessorKey: 'Status', header: 'Status' },
-												{ accessorKey: 'ConfigFiles', header: 'Config Files' },
-												{ accessorKey: 'Services', header: 'Services' }
+												{ accessorKey: 'ConfigFiles', header: 'Config Files' }
 											]}
 											idKey="Name"
 											features={{ selection: false }}

@@ -6,6 +6,28 @@ import { db } from '../../../db';
 /**
  * Convert database agent to Agent type
  */
+// Helper function to safely convert timestamp
+const safeTimestamp = (timestamp: any, fallback: Date = new Date()): string => {
+	if (!timestamp || timestamp === null || timestamp === undefined) {
+		return fallback.toISOString();
+	}
+
+	// If it's already a string (ISO format), return it
+	if (typeof timestamp === 'string') {
+		const date = new Date(timestamp);
+		return isNaN(date.getTime()) ? fallback.toISOString() : date.toISOString();
+	}
+
+	// If it's a number, treat as Unix timestamp in seconds
+	if (typeof timestamp === 'number' && !isNaN(timestamp)) {
+		// Check if it's in milliseconds (greater than year 2000 in seconds)
+		const date = timestamp > 946684800 ? new Date(timestamp * 1000) : new Date(timestamp);
+		return isNaN(date.getTime()) ? fallback.toISOString() : date.toISOString();
+	}
+
+	return fallback.toISOString();
+};
+
 function dbAgentToAgent(dbAgent: any): Agent {
 	return {
 		id: dbAgent.id,
@@ -14,8 +36,8 @@ function dbAgentToAgent(dbAgent: any): Agent {
 		version: dbAgent.version,
 		capabilities: Array.isArray(dbAgent.capabilities) ? dbAgent.capabilities : JSON.parse(dbAgent.capabilities || '[]'),
 		status: dbAgent.status,
-		lastSeen: dbAgent.lastSeen ? new Date(dbAgent.lastSeen * 1000).toISOString() : new Date().toISOString(),
-		registeredAt: dbAgent.registeredAt ? new Date(dbAgent.registeredAt * 1000).toISOString() : new Date().toISOString(),
+		lastSeen: safeTimestamp(dbAgent.lastSeen),
+		registeredAt: safeTimestamp(dbAgent.registeredAt),
 		metrics: {
 			containerCount: dbAgent.containerCount,
 			imageCount: dbAgent.imageCount,
@@ -31,8 +53,8 @@ function dbAgentToAgent(dbAgent: any): Agent {
 				}
 			: undefined,
 		metadata: dbAgent.metadata ? (typeof dbAgent.metadata === 'string' ? JSON.parse(dbAgent.metadata) : dbAgent.metadata) : undefined,
-		createdAt: new Date(dbAgent.createdAt * 1000).toISOString(),
-		updatedAt: dbAgent.updatedAt ? new Date(dbAgent.updatedAt * 1000).toISOString() : undefined
+		createdAt: safeTimestamp(dbAgent.createdAt),
+		updatedAt: dbAgent.updatedAt ? safeTimestamp(dbAgent.updatedAt) : undefined
 	};
 }
 
@@ -40,6 +62,28 @@ function dbAgentToAgent(dbAgent: any): Agent {
  * Convert database task to AgentTask type
  */
 function dbTaskToAgentTask(dbTask: any): AgentTask {
+	// Helper function to safely convert timestamp
+	const safeTimestamp = (timestamp: any, fallback: Date = new Date()): string => {
+		if (!timestamp || timestamp === null || timestamp === undefined) {
+			return fallback.toISOString();
+		}
+
+		// If it's already a string (ISO format), return it
+		if (typeof timestamp === 'string') {
+			const date = new Date(timestamp);
+			return isNaN(date.getTime()) ? fallback.toISOString() : date.toISOString();
+		}
+
+		// If it's a number, treat as Unix timestamp in seconds
+		if (typeof timestamp === 'number' && !isNaN(timestamp)) {
+			// Check if it's in milliseconds (greater than year 2000 in seconds)
+			const date = timestamp > 946684800 ? new Date(timestamp * 1000) : new Date(timestamp);
+			return isNaN(date.getTime()) ? fallback.toISOString() : date.toISOString();
+		}
+
+		return fallback.toISOString();
+	};
+
 	return {
 		id: dbTask.id,
 		agentId: dbTask.agentId,
@@ -48,8 +92,8 @@ function dbTaskToAgentTask(dbTask: any): AgentTask {
 		status: dbTask.status,
 		result: dbTask.result ? (typeof dbTask.result === 'string' ? JSON.parse(dbTask.result) : dbTask.result) : undefined,
 		error: dbTask.error,
-		createdAt: new Date(dbTask.createdAt * 1000).toISOString(),
-		updatedAt: dbTask.updatedAt ? new Date(dbTask.updatedAt * 1000).toISOString() : undefined
+		createdAt: safeTimestamp(dbTask.createdAt),
+		updatedAt: dbTask.updatedAt ? safeTimestamp(dbTask.updatedAt) : undefined
 	};
 }
 
