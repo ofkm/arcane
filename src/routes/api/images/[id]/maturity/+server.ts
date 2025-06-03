@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { checkImageMaturity } from '$lib/services/docker/image-service';
+import { checkImageMaturity, checkImageMaturityBatch } from '$lib/services/docker/image-service';
+import { imageMaturityDb } from '$lib/services/database/image-maturity-db-service';
 import { ApiErrorCode, type ApiErrorResponse } from '$lib/types/errors.type';
 import { extractDockerErrorMessage } from '$lib/utils/errors.util';
 import { tryCatch } from '$lib/utils/try-catch';
@@ -19,74 +20,30 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	try {
-		// Server-side promise pool with concurrency limit
-		const concurrencyLimit = 5; // Process 5 images at a time
-		const results: Record<string, any> = {};
-		const pending = new Set();
+		console.log(`Server: Starting batch maturity check for ${imageIds.length} images`);
+
+		const results = await checkImageMaturityBatch(imageIds);
 		const errors: Record<string, string> = {};
+		const successResults: Record<string, any> = {};
 
-		// Create a queue from all images that need checking
-		const queue = [...imageIds];
+		let successCount = 0;
+		let failCount = 0;
 
-		// Process queue with limited concurrency
-		while (queue.length > 0 || pending.size > 0) {
-			// Fill up the pending set until we reach the concurrency limit
-			while (pending.size < concurrencyLimit && queue.length > 0) {
-				const imageId = queue.shift();
-				if (!imageId) continue;
-
-				// Create the promise for this image check
-				const promise = (async () => {
-					try {
-						console.log(`Server: Checking maturity for image ${imageId}`);
-						const checkResult = await tryCatch(checkImageMaturity(imageId));
-
-						if (checkResult.error) {
-							return {
-								imageId,
-								success: false,
-								error: extractDockerErrorMessage(checkResult.error)
-							};
-						}
-
-						return { imageId, success: true, data: checkResult.data };
-					} catch (error) {
-						console.error(`Server: Failed to check maturity for ${imageId}:`, error);
-						return {
-							imageId,
-							success: false,
-							error: error instanceof Error ? error.message : 'Unknown error'
-						};
-					}
-				})();
-
-				// Add to pending set and set up cleanup when done
-				pending.add(promise);
-				promise.then((result) => {
-					pending.delete(promise);
-
-					if (result.success) {
-						results[result.imageId] = result.data;
-					} else {
-						errors[result.imageId] = result.error ?? 'Unknown error';
-					}
-				});
-			}
-
-			// Wait for at least one promise to resolve before continuing
-			if (pending.size >= concurrencyLimit || (queue.length === 0 && pending.size > 0)) {
-				await Promise.race(Array.from(pending));
+		for (const [imageId, maturity] of results) {
+			if (maturity) {
+				successResults[imageId] = maturity;
+				successCount++;
+			} else {
+				errors[imageId] = 'No maturity data available';
+				failCount++;
 			}
 		}
 
-		const successCount = Object.keys(results).length;
-		const failCount = Object.keys(errors).length;
-
-		console.log(`Server: Maturity check completed. ${successCount} successful, ${failCount} failed`);
+		console.log(`Server: Batch maturity check completed. ${successCount} successful, ${failCount} failed`);
 
 		return json({
 			success: true,
-			results,
+			results: successResults,
 			errors,
 			stats: {
 				total: imageIds.length,
@@ -119,22 +76,51 @@ export const GET: RequestHandler = async ({ params }) => {
 		return json(response, { status: 400 });
 	}
 
-	const result = await tryCatch(checkImageMaturity(id));
+	try {
+		const result = await checkImageMaturity(id);
 
-	if (result.error) {
-		console.error('Error checking image maturity:', result.error);
+		if (!result) {
+			const response: ApiErrorResponse = {
+				success: false,
+				error: 'No maturity data available for this image',
+				code: ApiErrorCode.NOT_FOUND
+			};
+			return json(response, { status: 404 });
+		}
+
+		return json({
+			success: true,
+			result
+		});
+	} catch (error) {
+		console.error('Error checking image maturity:', error);
 
 		const response: ApiErrorResponse = {
 			success: false,
-			error: extractDockerErrorMessage(result.error),
+			error: extractDockerErrorMessage(error),
 			code: ApiErrorCode.DOCKER_API_ERROR,
-			details: result.error
+			details: error
 		};
 		return json(response, { status: 500 });
 	}
+};
 
-	return json({
-		success: true,
-		result
-	});
+// New endpoint for getting maturity statistics
+export const OPTIONS: RequestHandler = async () => {
+	try {
+		const stats = await imageMaturityDb.getMaturityStats();
+		return json({
+			success: true,
+			stats
+		});
+	} catch (error) {
+		console.error('Error getting maturity stats:', error);
+		return json(
+			{
+				success: false,
+				error: 'Failed to get maturity statistics'
+			},
+			{ status: 500 }
+		);
+	}
 };

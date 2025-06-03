@@ -5,7 +5,7 @@ import { NotFoundError, DockerApiError, RegistryRateLimitError, PublicRegistryEr
 import { parseImageNameForRegistry, areRegistriesEquivalent } from '$lib/utils/registry.utils';
 import { getSettings } from '$lib/services/settings-service';
 import { tryCatch } from '$lib/utils/try-catch';
-import { maturityCache, getImageMaturity, setImageMaturity, getImageMaturityBatch, setImageMaturityBatch } from './maturity-cache-service';
+import { imageMaturityDb } from '../database/image-maturity-db-service';
 
 let maturityPollingInterval: NodeJS.Timeout | null = null;
 
@@ -33,11 +33,11 @@ export async function initMaturityPollingScheduler(): Promise<void> {
 
 	console.log(`Starting image maturity polling with interval of ${intervalMinutes} minutes`);
 
-	// Start background cleanup for the cache
-	maturityCache.startBackgroundCleanup(15); // Every 15 minutes
-
 	// Schedule regular checks
 	maturityPollingInterval = setInterval(runMaturityChecks, intervalMs);
+
+	// Run initial check
+	runMaturityChecks();
 }
 
 /**
@@ -49,13 +49,10 @@ export async function stopMaturityPollingScheduler(): Promise<void> {
 		maturityPollingInterval = null;
 		console.log('Image maturity polling scheduler stopped');
 	}
-
-	// Stop background cleanup
-	maturityCache.stopBackgroundCleanup();
 }
 
 /**
- * Run maturity checks for all images - OPTIMIZED VERSION
+ * Run maturity checks for all images - DATABASE VERSION
  */
 async function runMaturityChecks(): Promise<void> {
 	console.log('Running scheduled image maturity checks...');
@@ -67,8 +64,6 @@ async function runMaturityChecks(): Promise<void> {
 	}
 
 	const images = imagesResult.data;
-
-	// Filter out images without proper tags
 	const validImages = images.filter((image) => image.repo !== '<none>' && image.tag !== '<none>');
 
 	console.log(`Found ${validImages.length} valid images to check maturity for`);
@@ -78,87 +73,125 @@ async function runMaturityChecks(): Promise<void> {
 		return;
 	}
 
-	// Extract image IDs for batch processing
-	const imageIds = validImages.map((image) => image.Id);
+	// Clean up orphaned records first
+	const existingImageIds = validImages.map((img) => img.Id);
+	const cleanedUp = await imageMaturityDb.cleanupOrphanedRecords(existingImageIds);
+	if (cleanedUp > 0) {
+		console.log(`Cleaned up ${cleanedUp} orphaned maturity records`);
+	}
 
-	// Get cached maturity data in batch
-	const cachedMaturity = getImageMaturityBatch(imageIds);
+	// Get images that need checking (haven't been checked recently)
+	const settings = await getSettings();
+	const checkIntervalMinutes = settings.pollingInterval || 120; // Default 2 hours
 
-	// Separate images that need checking vs those that are cached
-	const imagesToCheck: ServiceImage[] = [];
-	const cachedCount = cachedMaturity.size;
+	const imagesToCheck = await imageMaturityDb.getImagesNeedingCheck(checkIntervalMinutes, 50);
+	const imageIdsNeedingCheck = new Set(imagesToCheck.map((record) => record.id));
 
+	// Add any images not in database yet
 	for (const image of validImages) {
-		if (!cachedMaturity.has(image.Id)) {
-			imagesToCheck.push(image);
+		const existing = await imageMaturityDb.getImageMaturity(image.Id);
+		if (!existing) {
+			imageIdsNeedingCheck.add(image.Id);
 		}
 	}
 
-	console.log(`${cachedCount} images found in cache, ${imagesToCheck.length} need fresh checks`);
+	const imagesToProcess = validImages.filter((img) => imageIdsNeedingCheck.has(img.Id));
 
-	if (imagesToCheck.length === 0) {
-		console.log('All images have cached maturity data, no fresh checks needed');
+	console.log(`${imagesToProcess.length} images need fresh maturity checks`);
+
+	if (imagesToProcess.length === 0) {
+		console.log('All images have recent maturity data');
 		return;
 	}
 
-	// Process images in smaller batches to avoid overwhelming registries
+	// Process images in batches
 	const batchSize = 10;
-	const maturityUpdates = new Map<string, import('$lib/types/docker/image.type').ImageMaturity | undefined>();
 	let checkedCount = 0;
 	let updatesFound = 0;
+	const updates: Array<{
+		imageId: string;
+		repository: string;
+		tag: string;
+		maturity: import('$lib/types/docker/image.type').ImageMaturity;
+		metadata: any;
+	}> = [];
 
-	for (let i = 0; i < imagesToCheck.length; i += batchSize) {
-		const batch = imagesToCheck.slice(i, i + batchSize);
-		console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(imagesToCheck.length / batchSize)}: ${batch.length} images`);
+	for (let i = 0; i < imagesToProcess.length; i += batchSize) {
+		const batch = imagesToProcess.slice(i, i + batchSize);
+		console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(imagesToProcess.length / batchSize)}: ${batch.length} images`);
 
-		// Process batch with delay between each image
 		for (const image of batch) {
+			const startTime = Date.now();
 			const maturityResult = await tryCatch(checkImageMaturityInternal(image.Id));
+			const responseTime = Date.now() - startTime;
 
 			if (!maturityResult.error && maturityResult.data) {
-				maturityUpdates.set(image.Id, maturityResult.data);
+				updates.push({
+					imageId: image.Id,
+					repository: image.repo,
+					tag: image.tag,
+					maturity: maturityResult.data,
+					metadata: {
+						registryDomain: parseImageNameForRegistry(image.repo).registry,
+						responseTimeMs: responseTime
+					}
+				});
 				checkedCount++;
 
 				if (maturityResult.data.updatesAvailable) {
 					updatesFound++;
 				}
-			} else if (!maturityResult.error) {
-				// No error but no data - cache the undefined result
-				maturityUpdates.set(image.Id, undefined);
+			} else {
+				// Store error information
+				updates.push({
+					imageId: image.Id,
+					repository: image.repo,
+					tag: image.tag,
+					maturity: {
+						version: image.tag,
+						date: 'Unknown date',
+						status: 'Unknown',
+						updatesAvailable: false
+					},
+					metadata: {
+						registryDomain: parseImageNameForRegistry(image.repo).registry,
+						responseTimeMs: responseTime,
+						error: maturityResult.error?.message || 'Unknown error'
+					}
+				});
 				checkedCount++;
 			}
 
-			// Small delay to avoid overwhelming registries
+			// Small delay between checks
 			await new Promise((resolve) => setTimeout(resolve, 200));
 		}
 
-		// Batch update cache after each batch
-		if (maturityUpdates.size > 0) {
-			setImageMaturityBatch(maturityUpdates);
-			maturityUpdates.clear();
+		// Batch update database after each batch
+		if (updates.length > 0) {
+			await imageMaturityDb.setImageMaturityBatch(updates);
+			updates.length = 0; // Clear the array
 		}
 
 		// Larger delay between batches
-		if (i + batchSize < imagesToCheck.length) {
+		if (i + batchSize < imagesToProcess.length) {
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 		}
 	}
 
-	console.log(`Maturity check completed: Checked ${checkedCount} images, found ${updatesFound} updates, ${cachedCount} from cache`);
+	console.log(`Maturity check completed: Checked ${checkedCount} images, found ${updatesFound} with updates`);
 
-	// Get cache metrics for monitoring
-	const metrics = maturityCache.getMetrics();
-	console.log(`Cache metrics: Hit rate ${(metrics.hitRate * 100).toFixed(1)}%, Size ${metrics.size}/${metrics.maxSize}, Avg age ${Math.round(metrics.averageAge / (1000 * 60))}min`);
+	// Get and log statistics
+	const stats = await imageMaturityDb.getMaturityStats();
+	console.log(`Maturity stats: ${stats.total} total, ${stats.withUpdates} with updates, ${stats.recentlyChecked} recently checked`);
 
 	// Emit an event that the UI can listen to for updates
 	if (typeof window !== 'undefined') {
 		window.dispatchEvent(
 			new CustomEvent('maturity-check-complete', {
 				detail: {
-					checkedCount: checkedCount + cachedCount,
+					checkedCount,
 					updatesFound,
-					freshChecks: checkedCount,
-					cacheHits: cachedCount
+					stats
 				}
 			})
 		);
@@ -347,60 +380,126 @@ export async function pullImage(imageRef: string, platform?: string, authConfig?
 
 /**
  * Checks if a newer version of an image is available in the registry
- * and returns maturity information. OPTIMIZED for public API use.
+ * and returns maturity information. Now uses database storage.
  */
 export async function checkImageMaturity(imageId: string): Promise<import('$lib/types/docker/image.type').ImageMaturity | undefined> {
-	// Use the optimized cache getter
-	const cachedMaturity = getImageMaturity(imageId);
-	if (cachedMaturity !== undefined) {
-		return cachedMaturity;
+	// Check database first
+	const record = await imageMaturityDb.getImageMaturity(imageId);
+
+	// If we have recent data (within last 2 hours), return it
+	if (record) {
+		const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+		if (record.lastChecked > twoHoursAgo) {
+			return imageMaturityDb.recordToImageMaturity(record);
+		}
 	}
 
-	// If not in cache, perform the check and cache the result
+	// Otherwise, perform fresh check
+	const imageDetails = await getImage(imageId);
+	if (!imageDetails || !imageDetails.RepoTags?.[0]) {
+		return undefined;
+	}
+
+	const repoTag = imageDetails.RepoTags[0];
+	const lastColon = repoTag.lastIndexOf(':');
+	if (lastColon === -1) return undefined;
+
+	const repository = repoTag.substring(0, lastColon);
+	const tag = repoTag.substring(lastColon + 1);
+
+	const startTime = Date.now();
 	const maturity = await checkImageMaturityInternal(imageId);
-	setImageMaturity(imageId, maturity);
+	const responseTime = Date.now() - startTime;
+
+	if (maturity) {
+		// Store in database
+		await imageMaturityDb.setImageMaturity(imageId, repository, tag, maturity, {
+			registryDomain: parseImageNameForRegistry(repository).registry,
+			responseTimeMs: responseTime
+		});
+	}
 
 	return maturity;
 }
 
 /**
- * Batch check multiple images for maturity - NEW OPTIMIZED METHOD
+ * Batch check multiple images for maturity - DATABASE VERSION
  */
 export async function checkImageMaturityBatch(imageIds: string[]): Promise<Map<string, import('$lib/types/docker/image.type').ImageMaturity | undefined>> {
-	// Get cached results first
-	const cachedResults = getImageMaturityBatch(imageIds);
+	const results = new Map<string, import('$lib/types/docker/image.type').ImageMaturity | undefined>();
 
-	// Find images that need fresh checks
-	const uncachedIds = imageIds.filter((id) => !cachedResults.has(id));
+	// Get existing records from database
+	const records = await imageMaturityDb.getImageMaturityBatch(imageIds);
+	const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
 
-	if (uncachedIds.length === 0) {
-		return cachedResults;
+	const imageIdsNeedingCheck: string[] = [];
+
+	// Check which images have recent data
+	for (const imageId of imageIds) {
+		const record = records.get(imageId);
+		if (record && record.lastChecked > twoHoursAgo) {
+			results.set(imageId, imageMaturityDb.recordToImageMaturity(record));
+		} else {
+			imageIdsNeedingCheck.push(imageId);
+		}
 	}
 
-	// Process uncached images
-	const freshResults = new Map<string, import('$lib/types/docker/image.type').ImageMaturity | undefined>();
+	// Fresh check for images without recent data
+	if (imageIdsNeedingCheck.length > 0) {
+		const updates: Array<{
+			imageId: string;
+			repository: string;
+			tag: string;
+			maturity: import('$lib/types/docker/image.type').ImageMaturity;
+			metadata: any;
+		}> = [];
 
-	for (const imageId of uncachedIds) {
-		try {
-			const maturity = await checkImageMaturityInternal(imageId);
-			freshResults.set(imageId, maturity);
-		} catch (error) {
-			console.warn(`Failed to check maturity for image ${imageId}:`, error);
-			freshResults.set(imageId, undefined);
+		for (const imageId of imageIdsNeedingCheck) {
+			try {
+				const imageDetails = await getImage(imageId);
+				if (!imageDetails || !imageDetails.RepoTags?.[0]) {
+					continue;
+				}
+
+				const repoTag = imageDetails.RepoTags[0];
+				const lastColon = repoTag.lastIndexOf(':');
+				if (lastColon === -1) continue;
+
+				const repository = repoTag.substring(0, lastColon);
+				const tag = repoTag.substring(lastColon + 1);
+
+				const startTime = Date.now();
+				const maturity = await checkImageMaturityInternal(imageId);
+				const responseTime = Date.now() - startTime;
+
+				if (maturity) {
+					results.set(imageId, maturity);
+					updates.push({
+						imageId,
+						repository,
+						tag,
+						maturity,
+						metadata: {
+							registryDomain: parseImageNameForRegistry(repository).registry,
+							responseTimeMs: responseTime
+						}
+					});
+				}
+			} catch (error) {
+				console.warn(`Failed to check maturity for image ${imageId}:`, error);
+			}
+
+			// Small delay between checks
+			await new Promise((resolve) => setTimeout(resolve, 100));
 		}
 
-		// Small delay between checks
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		// Batch update database
+		if (updates.length > 0) {
+			await imageMaturityDb.setImageMaturityBatch(updates);
+		}
 	}
 
-	// Batch update cache
-	if (freshResults.size > 0) {
-		setImageMaturityBatch(freshResults);
-	}
-
-	// Combine cached and fresh results
-	const allResults = new Map([...cachedResults, ...freshResults]);
-	return allResults;
+	return results;
 }
 
 /**
@@ -454,30 +553,37 @@ async function checkImageMaturityInternal(imageId: string): Promise<import('$lib
 }
 
 /**
- * Get cache metrics for monitoring
+ * Get maturity statistics for monitoring
  */
-export function getMaturityCacheMetrics(): {
-	hitRate: number;
-	size: number;
-	maxSize: number;
-	oldestEntry: number;
-	averageAge: number;
-} {
-	return maturityCache.getMetrics();
+export async function getMaturityStats() {
+	return await imageMaturityDb.getMaturityStats();
 }
 
 /**
- * Invalidate maturity cache for a specific repository
+ * Get images with available updates
  */
-export function invalidateRepositoryMaturity(repository: string): number {
-	return maturityCache.invalidateRepository(repository);
+export async function getImagesWithUpdates() {
+	const records = await imageMaturityDb.getImagesWithUpdates();
+	return records.map((record) => ({
+		imageId: record.id,
+		repository: record.repository,
+		tag: record.tag,
+		maturity: imageMaturityDb.recordToImageMaturity(record)
+	}));
 }
 
 /**
- * Clear all maturity cache data
+ * Invalidate maturity data for a specific repository
  */
-export function clearMaturityCache(): void {
-	maturityCache.clear();
+export async function invalidateRepositoryMaturity(repository: string): Promise<number> {
+	return await imageMaturityDb.invalidateRepository(repository);
+}
+
+/**
+ * Clear all maturity data
+ */
+export async function clearMaturityCache(): Promise<void> {
+	await imageMaturityDb.cleanupOldRecords(0); // Remove all records
 }
 
 /**

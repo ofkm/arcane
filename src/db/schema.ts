@@ -1,4 +1,4 @@
-import { int, sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { int, sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 
@@ -37,7 +37,7 @@ export const usersTable = sqliteTable('users_table', {
 	lastLogin: int('last_login', { mode: 'timestamp' }),
 	createdAt: int('created_at', { mode: 'timestamp' })
 		.notNull()
-		.default(sql`(unixepoch())`),
+		.default(sql`(unixepoch()`),
 	updatedAt: int('updated_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`)
@@ -170,6 +170,62 @@ export const deploymentsTable = sqliteTable('deployments_table', {
 		.notNull()
 		.default(sql`(unixepoch())`)
 });
+
+export const imageMaturityTable = sqliteTable(
+	'image_maturity_table',
+	{
+		id: text('id').primaryKey(), // This will be the image ID
+		repository: text('repository').notNull(),
+		tag: text('tag').notNull(),
+		currentVersion: text('current_version').notNull(),
+		latestVersion: text('latest_version'),
+		status: text('status', { enum: ['Matured', 'Not Matured', 'Unknown'] })
+			.notNull()
+			.default('Unknown'),
+		updatesAvailable: integer('updates_available', { mode: 'boolean' }).notNull().default(false),
+
+		// Dates and timing
+		currentImageDate: int('current_image_date', { mode: 'timestamp' }),
+		latestImageDate: int('latest_image_date', { mode: 'timestamp' }),
+		daysSinceCreation: int('days_since_creation'),
+
+		// Registry information
+		registryDomain: text('registry_domain'),
+		isPrivateRegistry: integer('is_private_registry', { mode: 'boolean' }).notNull().default(false),
+
+		// Check metadata
+		lastChecked: int('last_checked', { mode: 'timestamp' }).notNull(),
+		checkCount: int('check_count').notNull().default(1),
+		lastError: text('last_error'),
+
+		// Performance tracking
+		responseTimeMs: int('response_time_ms'),
+
+		createdAt: int('created_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`),
+		updatedAt: int('updated_at', { mode: 'timestamp' })
+			.notNull()
+			.default(sql`(unixepoch())`)
+	},
+	(table) => [
+		// Single column indexes
+		index('idx_image_maturity_repository').on(table.repository),
+		index('idx_image_maturity_status').on(table.status),
+		index('idx_image_maturity_updates').on(table.updatesAvailable),
+		index('idx_image_maturity_last_checked').on(table.lastChecked),
+
+		// Composite indexes for common query patterns
+		index('idx_image_maturity_repo_tag').on(table.repository, table.tag),
+		index('idx_image_maturity_status_updates').on(table.status, table.updatesAvailable),
+
+		// Index for cleanup queries (registry domain filtering)
+		index('idx_image_maturity_registry').on(table.registryDomain),
+
+		// Index for performance monitoring
+		index('idx_image_maturity_check_count').on(table.checkCount)
+	]
+);
 
 // Add foreign key relationships if you want referential integrity
 // Note: SQLite foreign keys need to be enabled at runtime
