@@ -140,8 +140,8 @@ export async function getStackDir(stackId: string): Promise<string> {
 	}
 
 	// Additional validation to ensure safe directory name
-	if (!/^[a-zA-Z0-9._-]+$/.test(safeId)) {
-		throw new Error(`Invalid stack ID: "${safeId}". Use only letters, numbers, dots, hyphens, and underscores.`);
+	if (!/^[a-z0-9][a-z0-9_-]*$/.test(safeId)) {
+		throw new Error(`Invalid stack ID: "${safeId}". Stack ID must start with a lowercase letter or digit and contain only lowercase letters, digits, hyphens, and underscores.`);
 	}
 
 	return path.join(stacksDirAbs, safeId);
