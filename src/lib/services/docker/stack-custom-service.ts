@@ -1743,10 +1743,6 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 			containerName = `${stackId}_${serviceName}_1`;
 		}
 
-		// Continue with the rest of your existing container configuration...
-		// [Keep all existing containerConfig setup, networking, volume mounting, etc.]
-		// (I'm shortening this for brevity, but keep all your existing logic)
-
 		// Create the container configuration
 		const containerConfig: any = {
 			name: containerName,
@@ -1767,7 +1763,7 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 				NanoCpus: serviceConfig.cpus ? Math.floor(parseFloat(serviceConfig.cpus) * 1_000_000_000) : undefined,
 				ExtraHosts: prepareExtraHosts(serviceConfig.extra_hosts),
 				Ulimits: prepareUlimits(serviceConfig.ulimits),
-				LogConfig: prepareLogConfig(serviceConfig.logging || {}), // Add logging configuration
+				LogConfig: prepareLogConfig(serviceConfig.logging || {}),
 				Dns: serviceConfig.dns || [],
 				DnsOptions: serviceConfig.dns_opt || [],
 				DnsSearch: serviceConfig.dns_search || [],
@@ -1800,23 +1796,33 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 				const primaryNetwork = networks[0];
 				const networkDefinition = processedComposeData.networks?.[primaryNetwork];
 				const fullNetworkName = networkDefinition?.external ? networkDefinition.name || primaryNetwork : `${stackId}_${primaryNetwork}`;
+
+				// ALWAYS set NetworkMode first
 				containerConfig.HostConfig.NetworkMode = fullNetworkName;
 
 				if (!Array.isArray(serviceConfig.networks)) {
 					const networkConfig = serviceConfig.networks[primaryNetwork];
-					if (networkConfig && typeof networkConfig === 'object' && networkConfig.ipv4_address) {
-						// For external networks, we need to set up endpoint config
+					if (networkConfig && typeof networkConfig === 'object') {
 						if (!containerConfig.NetworkingConfig) {
 							containerConfig.NetworkingConfig = { EndpointsConfig: {} };
 						}
 
-						containerConfig.NetworkingConfig.EndpointsConfig[fullNetworkName] = {
-							IPAMConfig: {
-								IPv4Address: networkConfig.ipv4_address
-							}
-						};
+						const endpointConfig: any = {};
 
-						console.log(`Setting static IP ${networkConfig.ipv4_address} for service ${serviceName} on network ${fullNetworkName}`);
+						// Set static IP if specified
+						if (networkConfig.ipv4_address) {
+							endpointConfig.IPAMConfig = {
+								IPv4Address: networkConfig.ipv4_address
+							};
+							console.log(`SETTING STATIC IP: ${networkConfig.ipv4_address} for service ${serviceName} on network ${fullNetworkName}`);
+						}
+
+						// Set aliases if specified
+						if (networkConfig.aliases && Array.isArray(networkConfig.aliases)) {
+							endpointConfig.Aliases = networkConfig.aliases;
+						}
+
+						containerConfig.NetworkingConfig.EndpointsConfig[fullNetworkName] = endpointConfig;
 					}
 				}
 			}
