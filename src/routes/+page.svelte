@@ -333,10 +333,12 @@
 						</div>
 
 						{#if serverStats}
+							{@const cpuPercent = Math.min(Math.max(serverStats.cpuUsage, 0), 100)}
+							{@const memoryPercent = Math.min(Math.max((serverStats.memoryUsage / serverStats.memoryTotal) * 100, 0), 100)}
 							<div class="space-y-4">
-								<Meter label="CPU Usage" valueLabel="{serverStats.cpuUsage.toFixed(1)}%" value={serverStats.cpuUsage} max={100} variant={serverStats.cpuUsage > 80 ? 'destructive' : serverStats.cpuUsage > 60 ? 'warning' : 'default'} size="sm" />
+								<Meter label="CPU Usage" valueLabel="{cpuPercent.toFixed(1)}%" value={cpuPercent} max={100} variant={cpuPercent > 80 ? 'destructive' : cpuPercent > 60 ? 'warning' : 'success'} size="sm" />
 
-								<Meter label="Memory Usage" valueLabel="{((serverStats.memoryUsage / serverStats.memoryTotal) * 100).toFixed(1)}%" value={(serverStats.memoryUsage / serverStats.memoryTotal) * 100} max={100} variant={(serverStats.memoryUsage / serverStats.memoryTotal) * 100 > 80 ? 'destructive' : (serverStats.memoryUsage / serverStats.memoryTotal) * 100 > 60 ? 'warning' : 'default'} size="sm" />
+								<Meter label="Memory Usage" valueLabel="{memoryPercent.toFixed(1)}%" value={memoryPercent} max={100} variant={memoryPercent > 80 ? 'destructive' : memoryPercent > 60 ? 'warning' : 'success'} size="sm" />
 							</div>
 							<p class="text-xs text-muted-foreground mt-3">
 								{dashboardStates.dockerInfo?.Architecture || 'Unknown arch'}
