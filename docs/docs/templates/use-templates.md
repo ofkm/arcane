@@ -55,7 +55,7 @@ data/templates/compose/
 
 Don't want to create your own? Use our community registry with pre-built templates:
 
-**Registry URL:** `https://raw.githubusercontent.com/ofkm/arcane-templates/main/registry.json`
+**Registry URL:** `https://templates.arcane.ofkm.dev`
 
 Add this in **Settings → Templates → Add Registry** to get started instantly with popular applications.
 
@@ -106,4 +106,4 @@ WP_PORT=8080
 - Use specific image tags instead of `latest` for stability
 - Test templates before sharing with others
 
-Need help? Check out our [community registry examples](https://github.com/arcane-docker/community-templates) for inspiration!
+Need help? Check out our [community registry examples](https://github.com/ofkm/arcane-templates) for inspiration!

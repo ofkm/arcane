@@ -14,6 +14,7 @@ Create a JSON manifest file that lists your templates:
 
 ```json
 {
+	"$schema": "https://templates.arcane.ofkm.dev/schema.json",
 	"name": "My Company Templates",
 	"description": "Docker templates for internal applications",
 	"version": "1.0.0",
@@ -148,6 +149,7 @@ Here's a minimal GitHub setup:
 2. **Add registry.json**:
    ```json
    {
+	 "$schema": "https://templates.arcane.ofkm.dev/schema.json",
      "name": "My Templates",
      "description": "Custom Docker templates",
      "version": "1.0.0",
