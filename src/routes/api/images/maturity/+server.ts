@@ -44,11 +44,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			const imagesToCheck = await imageMaturityDb.getImagesNeedingCheck(120, 1000); // 2 hours, up to 1000 images
 			const imageIdsNeedingCheck = new Set(imagesToCheck.map((record) => record.id));
 
-			// Add any images not in database yet
-			for (const image of validImages) {
-				const existing = await imageMaturityDb.getImageMaturity(image.Id);
-				if (!existing) {
-					imageIdsNeedingCheck.add(image.Id);
+			// FIXED: Use single batch query instead of N+1 queries
+			const existingMaturityRecords = await imageMaturityDb.getImageMaturityBatch(imageIds);
+
+			// Add any images not in database yet to the checking set
+			for (const imageId of imageIds) {
+				if (!existingMaturityRecords.has(imageId)) {
+					imageIdsNeedingCheck.add(imageId);
 				}
 			}
 
