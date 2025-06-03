@@ -608,7 +608,7 @@
 		{#if agent.metrics}
 			<DropdownCard id="agent-metrics" title="Resource Metrics" description="View detailed Docker resource information" defaultExpanded={false} icon={Activity}>
 				<!-- Metrics Overview -->
-				<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+				<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
 					<div class="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
 						<Container class="size-6 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
 						<p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{agent.metrics.containerCount ?? 0}</p>
@@ -618,11 +618,6 @@
 						<HardDrive class="size-6 text-green-600 dark:text-green-400 mx-auto mb-1" />
 						<p class="text-2xl font-bold text-green-600 dark:text-green-400">{agent.metrics.imageCount ?? 0}</p>
 						<p class="text-sm text-green-600/80 dark:text-green-400/80">Images</p>
-					</div>
-					<div class="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-						<Layers class="size-6 text-purple-600 dark:text-purple-400 mx-auto mb-1" />
-						<p class="text-2xl font-bold text-purple-600 dark:text-purple-400">{agent.metrics.stackCount ?? 0}</p>
-						<p class="text-sm text-purple-600/80 dark:text-purple-400/80">Stacks</p>
 					</div>
 					<div class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
 						<Network class="size-6 text-orange-600 dark:text-orange-400 mx-auto mb-1" />
@@ -686,7 +681,7 @@
 									</Tabs.Trigger>
 									<Tabs.Trigger value="stacks" class="flex items-center gap-2">
 										<Layers class="size-4" />
-										Stacks ({resourcesData.stacks.length})
+										Compose Projects ({resourcesData.stacks.length})
 									</Tabs.Trigger>
 								</Tabs.List>
 

@@ -161,7 +161,7 @@
 
 						<!-- Resource Metrics -->
 						{#if agent.metrics}
-							<div class="grid grid-cols-3 gap-2 py-3 border-t border-gray-100 dark:border-gray-700">
+							<div class="grid grid-cols-2 gap-2 py-3 border-t border-gray-100 dark:border-gray-700">
 								<div class="text-center">
 									<div class="flex items-center justify-center gap-1 mb-1">
 										<Container class="h-3 w-3 text-blue-600 dark:text-blue-400" />
@@ -178,15 +178,6 @@
 									</div>
 									<p class="text-sm font-semibold text-gray-900 dark:text-white">
 										{agent.metrics.imageCount ?? 0}
-									</p>
-								</div>
-								<div class="text-center">
-									<div class="flex items-center justify-center gap-1 mb-1">
-										<Layers class="h-3 w-3 text-purple-600 dark:text-purple-400" />
-										<span class="text-xs text-gray-500 dark:text-gray-400">Stacks</span>
-									</div>
-									<p class="text-sm font-semibold text-gray-900 dark:text-white">
-										{agent.metrics.stackCount ?? 0}
 									</p>
 								</div>
 							</div>
