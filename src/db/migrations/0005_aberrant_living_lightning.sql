@@ -1,0 +1,20 @@
+CREATE TABLE `image_maturity_table` (
+	`id` text PRIMARY KEY NOT NULL,
+	`repository` text NOT NULL,
+	`tag` text NOT NULL,
+	`current_version` text NOT NULL,
+	`latest_version` text,
+	`status` text DEFAULT 'Unknown' NOT NULL,
+	`updates_available` integer DEFAULT false NOT NULL,
+	`current_image_date` integer,
+	`latest_image_date` integer,
+	`days_since_creation` integer,
+	`registry_domain` text,
+	`is_private_registry` integer DEFAULT false NOT NULL,
+	`last_checked` integer NOT NULL,
+	`check_count` integer DEFAULT 1 NOT NULL,
+	`last_error` text,
+	`response_time_ms` integer,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
+);

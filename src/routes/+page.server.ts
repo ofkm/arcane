@@ -3,7 +3,7 @@ import { listContainers } from '$lib/services/docker/container-service';
 import { getDockerInfo } from '$lib/services/docker/core';
 import { isImageInUse, listImages, checkImageMaturity } from '$lib/services/docker/image-service';
 import { getSettings } from '$lib/services/settings-service';
-import { maturityCache } from '$lib/services/docker/maturity-cache-service';
+import { imageMaturityDb } from '$lib/services/database/image-maturity-db-service';
 import type { EnhancedImageInfo, ServiceImage } from '$lib/types/docker';
 import type { ContainerInfo } from 'dockerode';
 
@@ -43,9 +43,9 @@ export const load: PageServerLoad = async (): Promise<DashboardData> => {
 			imagesData.map(async (image): Promise<EnhancedImageInfo> => {
 				const inUse = await isImageInUse(image.Id);
 
-				const cachedMaturity = maturityCache.get(image.Id);
+				const record = await imageMaturityDb.getImageMaturity(image.Id);
+				let maturity = record ? imageMaturityDb.recordToImageMaturity(record) : undefined;
 
-				let maturity = cachedMaturity;
 				if (maturity === undefined) {
 					try {
 						if (image.repo !== '<none>' && image.tag !== '<none>') {

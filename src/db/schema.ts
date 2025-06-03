@@ -171,6 +171,54 @@ export const deploymentsTable = sqliteTable('deployments_table', {
 		.default(sql`(unixepoch())`)
 });
 
+export const imageMaturityTable = sqliteTable('image_maturity_table', {
+	id: text('id').primaryKey(), // This will be the image ID
+	repository: text('repository').notNull(),
+	tag: text('tag').notNull(),
+	currentVersion: text('current_version').notNull(),
+	latestVersion: text('latest_version'),
+	status: text('status', { enum: ['Matured', 'Not Matured', 'Unknown'] })
+		.notNull()
+		.default('Unknown'),
+	updatesAvailable: integer('updates_available', { mode: 'boolean' }).notNull().default(false),
+
+	// Dates and timing
+	currentImageDate: int('current_image_date', { mode: 'timestamp' }),
+	latestImageDate: int('latest_image_date', { mode: 'timestamp' }),
+	daysSinceCreation: int('days_since_creation'),
+
+	// Registry information
+	registryDomain: text('registry_domain'),
+	isPrivateRegistry: integer('is_private_registry', { mode: 'boolean' }).notNull().default(false),
+
+	// Check metadata
+	lastChecked: int('last_checked', { mode: 'timestamp' }).notNull(),
+	checkCount: int('check_count').notNull().default(1),
+	lastError: text('last_error'),
+
+	// Performance tracking
+	responseTimeMs: int('response_time_ms'),
+
+	createdAt: int('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: int('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+// Index for faster queries
+export const imageMaturityIndexes = [
+	// Index for repository-based queries
+	sql`CREATE INDEX IF NOT EXISTS idx_image_maturity_repository ON image_maturity_table(repository)`,
+	// Index for status queries
+	sql`CREATE INDEX IF NOT EXISTS idx_image_maturity_status ON image_maturity_table(status)`,
+	// Index for updates available
+	sql`CREATE INDEX IF NOT EXISTS idx_image_maturity_updates ON image_maturity_table(updates_available)`,
+	// Index for last checked (for cleanup/maintenance)
+	sql`CREATE INDEX IF NOT EXISTS idx_image_maturity_last_checked ON image_maturity_table(last_checked)`
+];
+
 // Add foreign key relationships if you want referential integrity
 // Note: SQLite foreign keys need to be enabled at runtime
 export const agentRelations = {

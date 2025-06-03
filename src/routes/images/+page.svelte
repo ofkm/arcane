@@ -3,7 +3,7 @@
 	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch, Funnel } from '@lucide/svelte';
+	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch, Funnel, RefreshCw } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -282,64 +282,29 @@
 		});
 	}
 
-	async function checkAllMaturity() {
+	async function triggerManualMaturityCheck(force = false) {
 		isLoading.checking = true;
-
-		const imageIdsToCheck = images.filter((image) => image.Id).map((image) => image.Id);
-
-		if (imageIdsToCheck.length === 0) {
-			toast.info('No images to check for updates.');
-			isLoading.checking = false;
-			return;
-		}
-
-		console.log(`Client: Attempting to check maturity for ${imageIdsToCheck.length} images.`);
-
 		try {
-			const batchResult = await imageApi.checkMaturityBatch(imageIdsToCheck);
+			const response = await fetch('/api/images/maturity', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ force })
+			});
 
-			if (!batchResult || typeof batchResult.success !== 'boolean') {
-				toast.error('Maturity check failed: Invalid response from server.');
-				isLoading.checking = false;
-				return;
-			}
+			const result = await response.json();
 
-			const stats = batchResult.stats || { total: 0, success: 0, failed: 0 };
-			const numSuccessfullyUpdated = stats.success || 0;
-			const numFailedByBackend = stats.failed || 0;
-			const numAttemptedByBackend = stats.total || numSuccessfullyUpdated + numFailedByBackend;
-
-			console.log(`Backend Response: Attempted to process ${numAttemptedByBackend}, Succeeded (updated) ${numSuccessfullyUpdated}, Failed ${numFailedByBackend}.`);
-
-			if (batchResult.success) {
-				if (numSuccessfullyUpdated > 0) {
-					toast.success(`Successfully retrieved updates for ${numSuccessfullyUpdated} image(s).`);
+			if (result.success) {
+				toast.success(result.message);
+				if (result.stats) {
+					console.log('Maturity check stats:', result.stats);
 				}
-				if (numFailedByBackend > 0) {
-					toast.warning(`Backend failed to check updates for ${numFailedByBackend} image(s).`);
-				}
-
-				if (imageIdsToCheck.length > numAttemptedByBackend && numAttemptedByBackend >= 0) {
-					const notAttemptedCount = imageIdsToCheck.length - numAttemptedByBackend;
-					toast.info(`Server processed ${numAttemptedByBackend} of ${imageIdsToCheck.length} images. ${notAttemptedCount} were not processed by the backend.`);
-				} else if (numAttemptedByBackend > numSuccessfullyUpdated + numFailedByBackend) {
-					const processedWithoutUpdate = numAttemptedByBackend - (numSuccessfullyUpdated + numFailedByBackend);
-					if (processedWithoutUpdate > 0) {
-						toast.info(`${processedWithoutUpdate} image(s) were checked by the backend but had no new update status reported.`);
-					}
-				}
-
-				if (numSuccessfullyUpdated === 0 && numFailedByBackend === 0 && numAttemptedByBackend === 0 && imageIdsToCheck.length > 0) {
-					toast.info('Maturity check ran, but the backend reported no images were processed or updated.');
-				}
-
 				await invalidateAll();
 			} else {
-				toast.error(`Maturity check request failed: ${batchResult.error || 'Unknown server error.'}`);
+				toast.error(`Manual check failed: ${result.error}`);
 			}
 		} catch (error) {
-			console.error('Client-side error during checkAllMaturity:', error);
-			toast.error(`Client-side error checking image updates: ${(error as Error).message}`);
+			console.error('Manual maturity check error:', error);
+			toast.error('Failed to trigger manual maturity check');
 		} finally {
 			isLoading.checking = false;
 		}
@@ -467,7 +432,7 @@
 						{/if}
 						<ArcaneButton action="remove" label="Prune Unused" onClick={() => (isConfirmPruneDialogOpen = true)} loading={isLoading.pruning} loadingLabel="Pruning..." disabled={isLoading.pruning} />
 						<ArcaneButton action="pull" label="Pull Image" onClick={() => (isPullDialogOpen = true)} loading={isLoading.pulling} loadingLabel="Pulling..." disabled={isLoading.pulling} />
-						<ArcaneButton action="inspect" label="Check Updates" onClick={() => checkAllMaturity()} loading={isLoading.checking} loadingLabel="Checking..." disabled={isLoading.checking} />
+						<ArcaneButton action="inspect" label="Check Updates" onClick={() => triggerManualMaturityCheck(true)} loading={isLoading.checking} loadingLabel="Checking..." disabled={isLoading.checking} />
 					</div>
 				</div>
 			</Card.Header>
