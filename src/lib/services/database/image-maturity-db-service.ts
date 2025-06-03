@@ -64,6 +64,7 @@ export class ImageMaturityDbService {
 			isPrivateRegistry?: boolean;
 			responseTimeMs?: number;
 			error?: string;
+			latestVersion?: string;
 		} = {}
 	): Promise<void> {
 		const now = new Date();
@@ -85,16 +86,16 @@ export class ImageMaturityDbService {
 			}
 		}
 
-		const data = {
+		const baseData = {
 			id: imageId,
 			repository,
 			tag,
 			currentVersion: maturity.version,
-			latestVersion: maturity.updatesAvailable ? maturity.version : null,
+			latestVersion: maturity.updatesAvailable ? metadata.latestVersion || null : null, // Fix: use actual latest version
 			status: maturity.status,
 			updatesAvailable: maturity.updatesAvailable,
 			currentImageDate,
-			latestImageDate: maturity.updatesAvailable ? currentImageDate : null,
+			latestImageDate: null, // Simplified: don't handle latest image date
 			daysSinceCreation: daysSince,
 			registryDomain: metadata.registryDomain || null,
 			isPrivateRegistry: metadata.isPrivateRegistry || false,
@@ -104,24 +105,23 @@ export class ImageMaturityDbService {
 			updatedAt: now
 		};
 
-		// Try to update first, then insert if not exists
-		const existing = await this.getImageMaturity(imageId);
-
-		if (existing) {
-			await db
-				.update(imageMaturityTable)
-				.set({
-					...data,
-					checkCount: existing.checkCount + 1
-				})
-				.where(eq(imageMaturityTable.id, imageId));
-		} else {
-			await db.insert(imageMaturityTable).values({
-				...data,
+		// Use upsert (INSERT ... ON CONFLICT) to handle race conditions atomically
+		await db
+			.insert(imageMaturityTable)
+			.values({
+				...baseData,
 				checkCount: 1,
 				createdAt: now
+			})
+			.onConflictDoUpdate({
+				target: imageMaturityTable.id,
+				set: {
+					...baseData,
+					checkCount: sql`${imageMaturityTable.checkCount} + 1`,
+					// Don't update createdAt on conflict - keep original value
+					createdAt: sql`${imageMaturityTable.createdAt}`
+				}
 			});
-		}
 	}
 
 	/**
@@ -138,6 +138,7 @@ export class ImageMaturityDbService {
 				isPrivateRegistry?: boolean;
 				responseTimeMs?: number;
 				error?: string;
+				latestVersion?: string; // Add this field
 			};
 		}>
 	): Promise<void> {
