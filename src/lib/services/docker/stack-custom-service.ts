@@ -1801,6 +1801,24 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 				const networkDefinition = processedComposeData.networks?.[primaryNetwork];
 				const fullNetworkName = networkDefinition?.external ? networkDefinition.name || primaryNetwork : `${stackId}_${primaryNetwork}`;
 				containerConfig.HostConfig.NetworkMode = fullNetworkName;
+
+				if (!Array.isArray(serviceConfig.networks)) {
+					const networkConfig = serviceConfig.networks[primaryNetwork];
+					if (networkConfig && typeof networkConfig === 'object' && networkConfig.ipv4_address) {
+						// For external networks, we need to set up endpoint config
+						if (!containerConfig.NetworkingConfig) {
+							containerConfig.NetworkingConfig = { EndpointsConfig: {} };
+						}
+
+						containerConfig.NetworkingConfig.EndpointsConfig[fullNetworkName] = {
+							IPAMConfig: {
+								IPv4Address: networkConfig.ipv4_address
+							}
+						};
+
+						console.log(`Setting static IP ${networkConfig.ipv4_address} for service ${serviceName} on network ${fullNetworkName}`);
+					}
+				}
 			}
 		}
 
@@ -1824,12 +1842,34 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 						const networkDefinition = processedComposeData.networks?.[netName];
 						const fullNetworkName = networkDefinition?.external ? networkDefinition.name || netName : `${stackId}_${netName}`;
 
+						const endpointConfig: any = {};
+
+						if (!Array.isArray(serviceConfig.networks)) {
+							const serviceNetConfig = serviceConfig.networks[netName];
+							if (typeof serviceNetConfig === 'object') {
+								const ipamConfig: any = {};
+
+								if (serviceNetConfig.ipv4_address) {
+									ipamConfig.IPv4Address = serviceNetConfig.ipv4_address;
+									console.log(`Connecting container ${container.id} to network: ${fullNetworkName} with static IP: ${serviceNetConfig.ipv4_address}`);
+								}
+
+								if (serviceNetConfig.ipv6_address) {
+									ipamConfig.IPv6Address = serviceNetConfig.ipv6_address;
+								}
+
+								if (Object.keys(ipamConfig).length > 0) {
+									endpointConfig.IPAMConfig = ipamConfig;
+								}
+							}
+						}
+
 						const network = docker.getNetwork(fullNetworkName);
 						await network.connect({
 							Container: container.id,
-							EndpointConfig: {}
+							EndpointConfig: endpointConfig
 						});
-						console.log(`Connected container ${container.id} to network: ${fullNetworkName}`);
+						console.log(`Connected container ${container.id} to network: ${fullNetworkName} with config:`, endpointConfig);
 					} catch (netErr) {
 						console.error(`Error connecting container to network ${netName}:`, netErr);
 					}
