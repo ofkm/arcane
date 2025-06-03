@@ -3,7 +3,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import UniversalTable from '$lib/components/universal-table.svelte';
-	import { AlertCircle, Box, HardDrive, Cpu, MemoryStick, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2, Monitor, Server } from '@lucide/svelte';
+	import { AlertCircle, Box, HardDrive, Cpu, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2, Monitor } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { capitalizeFirstLetter, truncateString, shortId, parseStatusTime } from '$lib/utils/string.utils';
@@ -77,6 +77,8 @@
 		cpuUsage: number;
 		memoryUsage: number;
 		memoryTotal: number;
+		diskUsage?: number;
+		diskTotal?: number;
 	} | null>(null);
 
 	// Add server stats fetching
@@ -280,7 +282,7 @@
 					</Card.Content>
 				</Card.Root>
 
-				<!-- Images & Storage Card -->
+				<!-- Images & System Storage Card -->
 				<Card.Root class="overflow-hidden">
 					<Card.Content class="p-6">
 						<div class="flex items-center justify-between mb-4">
@@ -289,26 +291,54 @@
 									<HardDrive class="text-blue-500 size-5" />
 								</div>
 								<div>
-									<p class="text-sm font-medium text-muted-foreground">Images</p>
+									<p class="text-sm font-medium text-muted-foreground">Storage</p>
 									<p class="text-2xl font-bold">{dashboardStates.dockerInfo?.Images || 0}</p>
+									<p class="text-xs text-muted-foreground">Docker images</p>
 								</div>
 							</div>
 						</div>
 
-						{#if totalImageSize > 0}
+						{#if serverStats?.diskTotal && serverStats?.diskUsage !== undefined}
+							{@const storagePercent = Math.min(Math.max((serverStats.diskUsage / serverStats.diskTotal) * 100, 0), 100)}
 							<div class="mb-4">
-								<Meter label="Storage Usage" valueLabel={formatBytes(totalImageSize)} value={totalImageSize} max={dashboardStates.dockerInfo?.MemTotal || totalImageSize} variant={totalImageSize > (dashboardStates.dockerInfo?.MemTotal || 0) * 0.1 ? 'warning' : 'default'} size="sm" />
+								<Meter label="System Storage" valueLabel="{storagePercent.toFixed(1)}%" value={storagePercent} max={100} variant={storagePercent > 85 ? 'destructive' : storagePercent > 70 ? 'warning' : 'default'} size="sm" />
 							</div>
-							<p class="text-xs text-muted-foreground">
-								Total: {formatBytes(totalImageSize)}
-							</p>
+							<div class="space-y-1 text-xs text-muted-foreground">
+								<div class="flex justify-between">
+									<span>Used:</span>
+									<span class="font-medium">{formatBytes(serverStats.diskUsage)}</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Total:</span>
+									<span class="font-medium">{formatBytes(serverStats.diskTotal)}</span>
+								</div>
+								{#if totalImageSize > 0}
+									<div class="flex justify-between pt-1 border-t border-border/50">
+										<span>Docker Images:</span>
+										<span class="font-medium">{formatBytes(totalImageSize)}</span>
+									</div>
+								{/if}
+							</div>
+						{:else if totalImageSize > 0}
+							<!-- Fallback to Docker images only if system storage unavailable -->
+							<div class="mb-4">
+								<div class="text-center py-4">
+									<p class="text-sm text-muted-foreground">System storage data unavailable</p>
+								</div>
+							</div>
+							<div class="text-xs text-muted-foreground">
+								<div class="flex justify-between">
+									<span>Docker Images:</span>
+									<span class="font-medium">{formatBytes(totalImageSize)}</span>
+								</div>
+							</div>
 						{:else if dashboardStates.dockerInfo?.Images === 0}
 							<div class="text-center py-6">
 								<p class="text-sm text-muted-foreground">No images stored</p>
 							</div>
 						{:else}
 							<div class="text-center py-6">
-								<p class="text-sm text-muted-foreground">Loading...</p>
+								<p class="text-sm text-muted-foreground">Loading storage data...</p>
 							</div>
 						{/if}
 					</Card.Content>

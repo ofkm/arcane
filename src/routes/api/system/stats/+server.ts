@@ -9,6 +9,8 @@ interface SystemStats {
 	cpuUsage: number;
 	memoryUsage: number;
 	memoryTotal: number;
+	diskUsage?: number;
+	diskTotal?: number;
 }
 
 async function getLinuxCpuUsage(): Promise<number> {
@@ -70,6 +72,29 @@ async function getLinuxMemoryStats(): Promise<{ usage: number; total: number }> 
 	}
 }
 
+async function getLinuxDiskStats(): Promise<{ usage: number; total: number }> {
+	try {
+		const { exec } = await import('child_process');
+		const { promisify } = await import('util');
+		const execAsync = promisify(exec);
+
+		// Get disk usage for root filesystem
+		const { stdout } = await execAsync('df -k / | tail -1');
+		const parts = stdout.trim().split(/\s+/);
+
+		const total = parseInt(parts[1]) * 1024; // Convert KB to bytes
+		const used = parseInt(parts[2]) * 1024; // Convert KB to bytes
+
+		return {
+			usage: used,
+			total: total
+		};
+	} catch (error) {
+		console.error('Error reading disk stats:', error);
+		return { usage: 0, total: 0 };
+	}
+}
+
 async function getMacOSStats(): Promise<SystemStats> {
 	try {
 		const { exec } = await import('child_process');
@@ -103,10 +128,18 @@ async function getMacOSStats(): Promise<SystemStats> {
 
 		const memUsed = pagesWired + pagesActive + pagesInactive + pagesSpeculative + pagesCompressed;
 
+		// Get disk usage for macOS
+		const { stdout: diskOutput } = await execAsync('df -k / | tail -1');
+		const diskParts = diskOutput.trim().split(/\s+/);
+		const diskTotal = parseInt(diskParts[1]) * 1024; // KB to bytes
+		const diskUsed = parseInt(diskParts[2]) * 1024; // KB to bytes
+
 		return {
 			cpuUsage: Math.max(0, Math.min(100, cpuUsage)),
 			memoryUsage: memUsed,
-			memoryTotal: memTotal
+			memoryTotal: memTotal,
+			diskUsage: diskUsed,
+			diskTotal: diskTotal
 		};
 	} catch (error) {
 		console.error('Error getting macOS system stats:', error);
@@ -118,12 +151,14 @@ async function getSystemStats(): Promise<SystemStats> {
 	const os = platform();
 
 	if (os === 'linux') {
-		const [cpuUsage, memStats] = await Promise.all([getLinuxCpuUsage(), getLinuxMemoryStats()]);
+		const [cpuUsage, memStats, diskStats] = await Promise.all([getLinuxCpuUsage(), getLinuxMemoryStats(), getLinuxDiskStats()]);
 
 		return {
 			cpuUsage,
 			memoryUsage: memStats.usage,
-			memoryTotal: memStats.total
+			memoryTotal: memStats.total,
+			diskUsage: diskStats.usage,
+			diskTotal: diskStats.total
 		};
 	} else if (os === 'darwin') {
 		return getMacOSStats();
