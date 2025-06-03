@@ -204,6 +204,42 @@ export class ImageMaturityDbService {
 	}
 
 	/**
+	 * Invalidate maturity records by setting lastChecked to an old date
+	 */
+	async invalidateRecords(imageIds: string[]): Promise<number> {
+		if (imageIds.length === 0) return 0;
+
+		const oldDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+
+		const result = await db
+			.update(imageMaturityTable)
+			.set({
+				lastChecked: oldDate,
+				updatedAt: new Date()
+			})
+			.where(inArray(imageMaturityTable.id, imageIds));
+
+		return result.rowsAffected || 0;
+	}
+
+	/**
+	 * Invalidate maturity records for a specific repository
+	 */
+	async invalidateRepository(repository: string): Promise<number> {
+		const oldDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+
+		const result = await db
+			.update(imageMaturityTable)
+			.set({
+				lastChecked: oldDate,
+				updatedAt: new Date()
+			})
+			.where(eq(imageMaturityTable.repository, repository));
+
+		return result.rowsAffected || 0;
+	}
+
+	/**
 	 * Get maturity statistics
 	 */
 	async getMaturityStats(): Promise<{

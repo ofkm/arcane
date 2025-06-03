@@ -576,13 +576,7 @@ export async function getImagesWithUpdates() {
  * Invalidate maturity data for a specific repository
  */
 export async function invalidateRepositoryMaturity(repository: string): Promise<number> {
-	const records = await imageMaturityDb.getImagesByRepository(repository);
-	// Force re-check by updating lastChecked to old date
-	const oldDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-
-	// This is a simplified approach - in a real implementation you might want to
-	// add a specific "invalidate" method to the DB service
-	return records.length;
+	return await imageMaturityDb.invalidateRepository(repository);
 }
 
 /**
