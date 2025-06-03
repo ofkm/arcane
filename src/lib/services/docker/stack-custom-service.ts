@@ -962,6 +962,37 @@ export async function deployStack(stackId: string, options: { profiles?: string[
 			throw new Error(`Profile errors for stack ${stackId}: ${deploymentPlan.errors.join(', ')}`);
 		}
 
+		console.log(`Checking for existing containers for stack ${stackId}...`);
+		const docker = await getDockerClient();
+
+		try {
+			const existingContainers = await docker.listContainers({
+				all: true,
+				filters: JSON.stringify({
+					label: [`com.docker.compose.project=${stackId}`]
+				})
+			});
+
+			if (existingContainers.length > 0) {
+				console.log(`Found ${existingContainers.length} existing containers for stack ${stackId}. Stopping and removing...`);
+
+				for (const containerInfo of existingContainers) {
+					const container = docker.getContainer(containerInfo.Id);
+					try {
+						if (containerInfo.State === 'running') {
+							await container.stop({ t: 10 });
+						}
+						await container.remove({ force: true });
+						console.log(`Removed container ${containerInfo.Names?.[0]} (${containerInfo.Id})`);
+					} catch (containerErr) {
+						console.warn(`Error removing container ${containerInfo.Id}:`, containerErr);
+					}
+				}
+			}
+		} catch (cleanupErr) {
+			console.warn(`Error during container cleanup for stack ${stackId}:`, cleanupErr);
+		}
+
 		// Use filtered compose data for deployment
 		const hasExternalNetworks = filteredComposeData.networks && Object.values(filteredComposeData.networks).some((net: any) => net.external);
 
@@ -1858,7 +1889,7 @@ async function cleanupFailedDeployment(stackId: string): Promise<void> {
 		const containers = await docker.listContainers({
 			all: true,
 			filters: JSON.stringify({
-				label: [`${composeProjectLabel}=${stackId}`]
+				label: [`com.docker.compose.project=${stackId}`]
 			})
 		});
 
