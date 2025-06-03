@@ -1,5 +1,5 @@
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
-import { promises as fs } from 'node:fs';
+import { promises as fs, existsSync } from 'node:fs';
 import * as path from 'node:path';
 
 // Compose specification constants
@@ -309,6 +309,11 @@ export function validateComposeStructure(composeData: ComposeData): { valid: boo
 	// Validate networks section
 	if (composeData.networks) {
 		for (const [networkName, networkConfig] of Object.entries(composeData.networks)) {
+			// ADD NULL CHECK HERE
+			if (!networkConfig) {
+				continue; // Skip null/undefined network configs
+			}
+
 			if (networkConfig.external && typeof networkConfig.external === 'object' && !networkConfig.external.name) {
 				warnings.push(`External network '${networkName}' should have a name specified`);
 			}
@@ -322,6 +327,11 @@ export function validateComposeStructure(composeData: ComposeData): { valid: boo
 	// Validate volumes section
 	if (composeData.volumes) {
 		for (const [volumeName, volumeConfig] of Object.entries(composeData.volumes)) {
+			// ADD NULL CHECK HERE TOO
+			if (!volumeConfig) {
+				continue; // Skip null/undefined volume configs
+			}
+
 			if (volumeConfig.external && typeof volumeConfig.external === 'object' && !volumeConfig.external.name) {
 				warnings.push(`External volume '${volumeName}' should have a name specified`);
 			}
@@ -543,24 +553,35 @@ function processShortVolumeString(volumeString: string, composeData: any, stackI
 		return null;
 	}
 
-	const source = parts[0];
+	let source = parts[0];
 	const target = parts[1];
 	const options = parts.slice(2);
 
-	// Determine if source is a named volume or bind mount
-	if (source.startsWith('/') || source.startsWith('./') || source.startsWith('../')) {
+	// Convert relative paths to absolute paths
+	if (source.startsWith('./') || source.startsWith('../')) {
+		source = path.resolve(process.cwd(), source);
+	}
+
+	// Check if this is a bind mount and validate source exists
+	if (source.startsWith('/') || source.includes('/')) {
+		// This is a bind mount - check if source exists
+		if (!existsSync(source)) {
+			console.warn(`Bind mount source does not exist: ${source}`);
+			console.warn(`Skipping volume mount: ${volumeString}`);
+			console.warn(`Make sure to create the file/directory before deploying the stack`);
+			return null;
+		}
+
 		// Bind mount
 		return formatBindMount(source, target, options);
 	} else {
-		// Named volume - check if it's defined in the compose file
+		// Named volume logic...
 		const isNamedVolume = composeData.volumes && composeData.volumes[source];
 
 		if (isNamedVolume || !source.includes('/')) {
-			// Named volume - prefix with stack name
 			const volumeName = `${stackId}_${source}`;
 			return formatVolumeMount(volumeName, target, options);
 		} else {
-			// Treat as bind mount if it contains path separators
 			return formatBindMount(source, target, options);
 		}
 	}
