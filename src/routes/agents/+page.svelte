@@ -1,11 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import type { Agent } from '$lib/types/agent.type';
 	import { formatDistanceToNow } from 'date-fns';
-	import { RefreshCw, AlertCircle, Loader2, Monitor, CheckCircle, Eye, Send, Container, HardDrive, Layers } from '@lucide/svelte';
-	import type { PageData } from './$types';
+	import { RefreshCw, AlertCircle, Loader2, Monitor, CheckCircle, Eye, Send, Container, HardDrive, Trash2 } from '@lucide/svelte';
+	import { toast } from 'svelte-sonner';
 	import { getActualAgentStatus } from '$lib/utils/agent-status.utils';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog/index.js';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util.js';
+	import { tryCatch } from '$lib/utils/try-catch.js';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 
 	let { data } = $props();
 
@@ -63,6 +68,32 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function deleteAgent(agentId: string, hostname: string) {
+		openConfirmDialog({
+			title: `Confirm Removal`,
+			message: `Are you sure you want to remove this Agent? This action cannot be undone.`,
+			confirm: {
+				label: 'Remove',
+				destructive: true,
+				action: async () => {
+					handleApiResultWithCallbacks({
+						result: await tryCatch(
+							fetch(`/api/agents/${agentId}`, {
+								method: 'DELETE',
+								credentials: 'include'
+							})
+						),
+						message: 'Failed to Remove Agent',
+						onSuccess: async () => {
+							toast.success('Agent Removed Successfully');
+							await invalidateAll();
+						}
+					});
+				}
+			}
+		});
 	}
 
 	function getStatusColor(agent: Agent) {
@@ -219,16 +250,11 @@
 
 					<!-- Action Buttons -->
 					<div class="mt-4 flex gap-2">
-						<button onclick={() => viewAgentDetails(agent.id)} class="flex-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors flex items-center justify-center gap-2">
-							<Eye class="h-4 w-4" />
-							View Details
-						</button>
+						<ArcaneButton action="inspect" onClick={() => viewAgentDetails(agent.id)} label="View Details" class="flex-1" />
 						{#if getActualAgentStatus(agent) === 'online'}
-							<button onclick={() => viewAgentDetails(agent.id)} class="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center justify-center gap-2">
-								<Send class="h-4 w-4" />
-								Manage
-							</button>
+							<ArcaneButton action="edit" onClick={() => viewAgentDetails(agent.id)} label="Manage" class="flex-1" />
 						{/if}
+						<ArcaneButton action="remove" onClick={() => deleteAgent(agent.id, agent.hostname)} label="Delete" loadingLabel="Deleting..." class="flex-1" />
 					</div>
 				</div>
 			{/each}

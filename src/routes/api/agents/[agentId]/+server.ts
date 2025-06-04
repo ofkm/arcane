@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getAgent } from '$lib/services/agent/agent-manager';
+import { getAgent, deleteAgent } from '$lib/services/agent/agent-manager';
 import { updateAgentHeartbeat } from '$lib/services/agent/agent-manager';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
@@ -28,8 +28,15 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 	}
 
 	try {
-		// TODO: Implement agent deletion
-		return json({ success: true });
+		const agent = await getAgent(params.agentId);
+		if (!agent) {
+			return json({ error: 'Agent not found' }, { status: 404 });
+		}
+
+		await deleteAgent(params.agentId);
+		console.log(`Agent ${params.agentId} deleted successfully`);
+
+		return json({ success: true, message: 'Agent deleted successfully' });
 	} catch (error) {
 		console.error('Error deleting agent:', error);
 		return json({ error: 'Failed to delete agent' }, { status: 500 });

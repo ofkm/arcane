@@ -301,7 +301,7 @@
 						{#if serverStats?.diskTotal && serverStats?.diskUsage !== undefined}
 							{@const storagePercent = Math.min(Math.max((serverStats.diskUsage / serverStats.diskTotal) * 100, 0), 100)}
 							<div class="mb-4">
-								<Meter label="System Storage" valueLabel="{storagePercent.toFixed(1)}%" value={storagePercent} max={100} variant={storagePercent > 85 ? 'destructive' : storagePercent > 70 ? 'warning' : 'default'} size="sm" />
+								<Meter label="System Storage" valueLabel="{storagePercent.toFixed(1)}%" value={storagePercent} max={100} variant={storagePercent > 85 ? 'destructive' : storagePercent > 70 ? 'warning' : 'success'} size="sm" />
 							</div>
 							<div class="space-y-1 text-xs text-muted-foreground">
 								<div class="flex justify-between">

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { formatDistanceToNow } from 'date-fns';
 	import { toast } from 'svelte-sonner';
 	import type { Agent, AgentTask } from '$lib/types/agent.type';
@@ -16,12 +16,15 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2, Download } from '@lucide/svelte';
+	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2, Download, Trash2 } from '@lucide/svelte';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import ImagePullForm from '$lib/components/forms/ImagePullForm.svelte';
 	import StackDeploymentForm from '$lib/components/forms/StackDeploymentForm.svelte';
 	import QuickContainerForm from '$lib/components/forms/QuickContainerForm.svelte';
 	import { getActualAgentStatus } from '$lib/utils/agent-status.utils';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog/index.js';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util.js';
+	import { tryCatch } from '$lib/utils/try-catch.js';
 
 	let { data } = $props();
 
@@ -66,6 +69,10 @@
 	let imageDialogOpen = $state(false);
 	let containerDialogOpen = $state(false);
 	let deploying = $state(false);
+
+	// Add delete dialog state
+	let deleteDialogOpen = $state(false);
+	let deleting = $state(false);
 
 	// Predefined commands
 	const predefinedCommands = [
@@ -384,6 +391,36 @@
 		}
 	}
 
+	async function deleteAgentHandler() {
+		if (!agent || deleting) return;
+
+		openConfirmDialog({
+			title: `Confirm Removal`,
+			message: `Are you sure you want to remove this Agent? This action cannot be undone.`,
+			confirm: {
+				label: 'Remove',
+				destructive: true,
+				action: async () => {
+					handleApiResultWithCallbacks({
+						result: await tryCatch(
+							fetch(`/api/agents/${agentId}`, {
+								method: 'DELETE',
+								credentials: 'include'
+							})
+						),
+						setLoadingState: (value) => (deleting = value),
+						message: 'Failed to Remove Agent',
+						onSuccess: async () => {
+							toast.success('Agent Removed Successfully');
+							await invalidateAll();
+							goto('/agents');
+						}
+					});
+				}
+			}
+		});
+	}
+
 	function getStatusClasses(agent: Agent) {
 		const actualStatus = getActualAgentStatus(agent);
 		if (actualStatus === 'online') return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
@@ -534,11 +571,17 @@
 				<ArrowLeft class="size-4 mr-2" />
 				Back to Agents
 			</Button>
-			{#if agent && getActualAgentStatus(agent) === 'online'}
-				<Button onclick={() => (commandDialogOpen = true)} disabled={taskExecuting}>
-					<Terminal class="size-4 mr-2" />
-					Send Command
+			{#if agent}
+				<Button variant="destructive" onclick={deleteAgentHandler} disabled={deleting}>
+					<Trash2 class="size-4 mr-2" />
+					Delete Agent
 				</Button>
+				{#if getActualAgentStatus(agent) === 'online'}
+					<Button onclick={() => (commandDialogOpen = true)} disabled={taskExecuting}>
+						<Terminal class="size-4 mr-2" />
+						Send Command
+					</Button>
+				{/if}
 			{/if}
 		</div>
 	</div>
