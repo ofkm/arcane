@@ -2,15 +2,15 @@
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { CircleCheck, CircleFadingArrowUp, CircleArrowUp, Loader2, Clock, Package, Calendar, AlertTriangle } from '@lucide/svelte';
 
+	interface MaturityData {
+		updatesAvailable: boolean;
+		status: string;
+		version?: string;
+		date?: string;
+	}
+
 	interface Props {
-		maturity?:
-			| {
-					updatesAvailable: boolean;
-					status: string;
-					version?: string;
-					date?: string;
-			  }
-			| undefined;
+		maturity?: MaturityData | undefined;
 		isLoadingInBackground?: boolean;
 	}
 
@@ -27,15 +27,74 @@
 			if (isNaN(date.getTime())) return 'Unknown';
 
 			const now = new Date();
-			const diffTime = Math.abs(now.getTime() - date.getTime());
+			const diffTime = date.getTime() - now.getTime(); // Remove Math.abs()
 			const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+			const absDiffDays = Math.abs(diffDays);
 
-			if (diffDays === 0) return 'Today';
-			if (diffDays === 1) return 'Yesterday';
-			if (diffDays < 7) return `${diffDays} days ago`;
-			if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-			if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-			return `${Math.floor(diffDays / 365)} years ago`;
+			// Handle same day (within 24 hours)
+			if (absDiffDays === 0) {
+				const diffHours = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60));
+				if (diffHours === 0) return 'Now';
+				return diffTime > 0 ? `In ${diffHours} hours` : `${diffHours} hours ago`;
+			}
+
+			// Future dates
+			if (diffTime > 0) {
+				if (diffDays === 1) return 'Tomorrow';
+				if (diffDays < 7) return `In ${diffDays} days`;
+				if (diffDays < 30) {
+					const weeks = Math.floor(diffDays / 7);
+					return weeks === 1 ? 'In 1 week' : `In ${weeks} weeks`;
+				}
+
+				// More accurate month/year calculation for future dates
+				const futureDate = new Date(date);
+				const currentDate = new Date(now);
+
+				let monthsDiff = (futureDate.getFullYear() - currentDate.getFullYear()) * 12;
+				monthsDiff += futureDate.getMonth() - currentDate.getMonth();
+
+				if (monthsDiff < 12) {
+					return monthsDiff === 1 ? 'In 1 month' : `In ${monthsDiff} months`;
+				}
+
+				const yearsDiff = Math.floor(monthsDiff / 12);
+				const remainingMonths = monthsDiff % 12;
+
+				if (remainingMonths === 0) {
+					return yearsDiff === 1 ? 'In 1 year' : `In ${yearsDiff} years`;
+				} else {
+					return `In ${yearsDiff} years, ${remainingMonths} months`;
+				}
+			}
+
+			// Past dates (diffTime < 0)
+			if (absDiffDays === 1) return 'Yesterday';
+			if (absDiffDays < 7) return `${absDiffDays} days ago`;
+			if (absDiffDays < 30) {
+				const weeks = Math.floor(absDiffDays / 7);
+				return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+			}
+
+			// More accurate month/year calculation for past dates
+			const pastDate = new Date(date);
+			const currentDate = new Date(now);
+
+			let monthsDiff = (currentDate.getFullYear() - pastDate.getFullYear()) * 12;
+			monthsDiff += currentDate.getMonth() - pastDate.getMonth();
+
+			if (monthsDiff < 12) {
+				return monthsDiff === 1 ? '1 month ago' : `${monthsDiff} months ago`;
+			}
+
+			const yearsDiff = Math.floor(monthsDiff / 12);
+			const remainingMonths = monthsDiff % 12;
+
+			if (remainingMonths === 0) {
+				return yearsDiff === 1 ? '1 year ago' : `${yearsDiff} years ago`;
+			} else {
+				return `${yearsDiff} years, ${remainingMonths} months ago`;
+			}
 		} catch {
 			return 'Unknown';
 		}
@@ -56,7 +115,7 @@
 	}
 
 	// Helper function to get update priority level
-	function getUpdatePriority(maturity: any): { level: string; color: string; description: string } {
+	function getUpdatePriority(maturity: MaturityData): { level: string; color: string; description: string } {
 		if (!maturity.updatesAvailable) {
 			return { level: 'None', color: 'text-green-500', description: 'Image is up to date' };
 		}
@@ -165,8 +224,12 @@
 						<div class="text-xs text-muted-foreground leading-relaxed">
 							{priority.description}
 						</div>
-						{#if maturity.updatesAvailable && maturity.status === 'Not Matured'}
-							<div class="mt-1 text-xs text-amber-600 dark:text-amber-400 leading-relaxed">Consider waiting for the update to mature before upgrading.</div>
+						{#if maturity.updatesAvailable}
+							{#if priority.level === 'Optional'}
+								<div class="mt-1 text-xs text-amber-600 dark:text-amber-400 leading-relaxed">Consider waiting for the update to mature before upgrading.</div>
+							{:else if priority.level === 'Unknown'}
+								<div class="mt-1 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">Verify update stability before proceeding with upgrade.</div>
+							{/if}
 						{/if}
 					</div>
 				</div>

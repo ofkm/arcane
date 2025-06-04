@@ -37,7 +37,7 @@ export const usersTable = sqliteTable('users_table', {
 	lastLogin: int('last_login', { mode: 'timestamp' }),
 	createdAt: int('created_at', { mode: 'timestamp' })
 		.notNull()
-		.default(sql`(unixepoch()`),
+		.default(sql`(unixepoch())`),
 	updatedAt: int('updated_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`)

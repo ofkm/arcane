@@ -17,6 +17,24 @@
 	let imageRef = $state('');
 	let tag = $state('latest');
 
+	function buildFullImageName(imageRef: string, tag: string): string {
+		const trimmedImageRef = imageRef.trim();
+		const trimmedTag = tag.trim();
+
+		// If the image already includes a tag (contains ':'), use it as-is
+		if (trimmedImageRef.includes(':')) {
+			return trimmedImageRef;
+		}
+
+		// If no tag specified or tag is 'latest', append ':latest'
+		if (!trimmedTag || trimmedTag === 'latest') {
+			return `${trimmedImageRef}:latest`;
+		}
+
+		// Otherwise, append the specified tag
+		return `${trimmedImageRef}:${trimmedTag}`;
+	}
+
 	async function handlePull() {
 		if (!imageRef.trim()) {
 			toast.error('Please enter an image name');
@@ -25,8 +43,7 @@
 
 		pulling = true;
 		try {
-			// Combine image name and tag
-			const fullImageName = tag && tag !== 'latest' ? `${imageRef.trim()}:${tag.trim()}` : imageRef.trim().includes(':') ? imageRef.trim() : `${imageRef.trim()}:latest`;
+			const fullImageName = buildFullImageName(imageRef, tag);
 
 			await onPull(fullImageName);
 			onClose();

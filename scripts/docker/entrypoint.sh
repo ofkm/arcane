@@ -97,5 +97,4 @@ mkdir -p "$DATA_DIR"
 chown -R "${PUID}:${PGID}" "$DATA_DIR"
 
 echo "Entrypoint: Setup complete. Executing command as user ${APP_USER} (UID: ${PUID}, GID: ${PGID})..."
-# exec su-exec "$APP_USER" "npx drizzle-kit push --force" 
 exec su-exec "$APP_USER" "$@"

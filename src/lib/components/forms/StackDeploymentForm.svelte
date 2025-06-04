@@ -3,27 +3,41 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Input } from '$lib/components/ui/input';
-	import * as Select from '$lib/components/ui/select';
 	import { toast } from 'svelte-sonner';
 	import { Loader2, Upload, FileText } from '@lucide/svelte';
+
+	interface StackDeploymentData {
+		mode: 'compose' | 'template' | 'existing';
+		stackName: string;
+		composeContent: string;
+		envContent: string;
+		selectedStack?: string;
+	}
+
+	interface StackTemplate {
+		id: string;
+		name: string;
+		description: string;
+		compose: string;
+	}
 
 	interface Props {
 		agentId: string;
 		onClose: () => void;
-		onDeploy: (data: any) => Promise<void>;
+		onDeploy: (data: StackDeploymentData) => Promise<void>;
 	}
 
 	let { agentId, onClose, onDeploy }: Props = $props();
 
 	let deploying = $state(false);
-	let deploymentMode = $state('compose'); // 'compose' | 'existing' | 'template'
+	let deploymentMode = $state<StackDeploymentData['mode']>('compose');
 	let stackName = $state('');
 	let composeContent = $state('');
 	let envContent = $state('');
 	let selectedStack = $state('');
 
 	// Pre-made templates for easy deployment
-	const templates = [
+	const templates: StackTemplate[] = [
 		{
 			id: 'nginx',
 			name: 'Nginx Web Server',
@@ -79,37 +93,208 @@ volumes:
 		}
 	];
 
-	function useTemplate(template: any) {
+	function useTemplate(template: StackTemplate) {
 		stackName = template.name.toLowerCase().replace(/\s+/g, '-');
 		composeContent = template.compose;
 		deploymentMode = 'compose';
 	}
 
 	async function handleDeploy() {
+		// Comprehensive validation
 		if (!stackName.trim()) {
 			toast.error('Please enter a stack name');
 			return;
 		}
 
-		if (deploymentMode === 'compose' && !composeContent.trim()) {
-			toast.error('Please enter compose content');
+		// Validate stack name format
+		const stackNameRegex = /^[a-z][a-z0-9-]*[a-z0-9]$|^[a-z]$/;
+		const trimmedStackName = stackName.trim().toLowerCase();
+		if (!stackNameRegex.test(trimmedStackName)) {
+			toast.error('Stack name must start with a letter, contain only lowercase letters, numbers, and hyphens, and not end with a hyphen');
 			return;
+		}
+
+		if (trimmedStackName.length > 63) {
+			toast.error('Stack name must be 63 characters or less');
+			return;
+		}
+
+		// Reserved stack names
+		const reservedNames = ['system', 'docker', 'default', 'admin', 'root', 'api'];
+		if (reservedNames.includes(trimmedStackName)) {
+			toast.error(`"${trimmedStackName}" is a reserved name. Please choose a different stack name`);
+			return;
+		}
+
+		// Mode-specific validation
+		if (deploymentMode === 'compose') {
+			if (!composeContent.trim()) {
+				toast.error('Please enter Docker Compose content');
+				return;
+			}
+
+			// Basic YAML validation
+			try {
+				// Check if it looks like valid YAML (basic structure check)
+				const lines = composeContent.trim().split('\n');
+				const firstLine = lines[0].trim();
+
+				// Should have version or services
+				if (!firstLine.startsWith('version:') && !composeContent.includes('services:')) {
+					toast.error('Compose content should include a version and services section');
+					return;
+				}
+
+				// Check for common YAML issues
+				if (composeContent.includes('\t')) {
+					toast.error('Compose content contains tabs. Please use spaces for indentation');
+					return;
+				}
+
+				// Check for required services section
+				if (!composeContent.includes('services:')) {
+					toast.error('Compose content must include a "services:" section');
+					return;
+				}
+
+				// Basic service definition check
+				const servicesMatch = composeContent.match(/services:\s*\n([\s\S]*?)(?=\n\w|\n$|$)/);
+				if (servicesMatch) {
+					const servicesSection = servicesMatch[1];
+					const serviceLines = servicesSection.split('\n').filter((line) => line.trim() && !line.startsWith(' '));
+
+					if (serviceLines.length === 0) {
+						toast.error('At least one service must be defined in the services section');
+						return;
+					}
+				}
+			} catch (error) {
+				toast.error('Invalid Docker Compose format. Please check your YAML syntax');
+				return;
+			}
+
+			// Validate environment variables format if provided
+			if (envContent.trim()) {
+				const envLines = envContent.trim().split('\n');
+				for (let i = 0; i < envLines.length; i++) {
+					const line = envLines[i].trim();
+					if (!line) continue; // Skip empty lines
+
+					// Should be in KEY=VALUE format
+					if (!line.includes('=')) {
+						toast.error(`Environment variable line ${i + 1} must be in KEY=VALUE format`);
+						return;
+					}
+
+					const [key, ...valueParts] = line.split('=');
+					if (!key.trim()) {
+						toast.error(`Environment variable line ${i + 1} is missing a key`);
+						return;
+					}
+
+					// Validate environment variable key format
+					const envKeyRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+					if (!envKeyRegex.test(key.trim())) {
+						toast.error(`Environment variable "${key}" must start with letter or underscore and contain only letters, numbers, and underscores`);
+						return;
+					}
+				}
+			}
+		} else if (deploymentMode === 'template') {
+			// For template mode, ensure a template was selected (composeContent should be populated)
+			if (!composeContent.trim()) {
+				toast.error('Please select a template first');
+				return;
+			}
+		} else if (deploymentMode === 'existing') {
+			if (!selectedStack.trim()) {
+				toast.error('Please select an existing stack');
+				return;
+			}
 		}
 
 		deploying = true;
 		try {
-			await onDeploy({
+			const data: StackDeploymentData = {
 				mode: deploymentMode,
-				stackName: stackName.trim(),
+				stackName: trimmedStackName,
 				composeContent: composeContent.trim(),
 				envContent: envContent.trim(),
-				selectedStack
-			});
+				selectedStack: selectedStack.trim() || undefined
+			};
+
+			console.log(`🚀 Deploying stack "${trimmedStackName}" with mode "${deploymentMode}"`);
+			await onDeploy(data);
 			onClose();
-			toast.success(`Stack "${stackName}" deployed successfully`);
+			toast.success(`Stack "${trimmedStackName}" deployed successfully`);
 		} catch (err) {
 			console.error('Deploy error:', err);
-			toast.error(err instanceof Error ? err.message : 'Failed to deploy stack');
+
+			// Enhanced error handling with specific error types
+			if (err instanceof Error) {
+				const errorMessage = err.message.toLowerCase();
+
+				// Network/connectivity errors
+				if (errorMessage.includes('network') || errorMessage.includes('connection') || errorMessage.includes('timeout')) {
+					toast.error('Network error: Unable to connect to the deployment service. Please check your connection and try again.');
+					return;
+				}
+
+				// Permission/authentication errors
+				if (errorMessage.includes('unauthorized') || errorMessage.includes('forbidden') || errorMessage.includes('permission')) {
+					toast.error('Permission denied: You may not have sufficient permissions to deploy stacks.');
+					return;
+				}
+
+				// Stack already exists
+				if (errorMessage.includes('already exists') || errorMessage.includes('conflict')) {
+					toast.error(`Stack "${trimmedStackName}" already exists. Please choose a different name or remove the existing stack first.`);
+					return;
+				}
+
+				// Docker/compose specific errors
+				if (errorMessage.includes('yaml') || errorMessage.includes('compose') || errorMessage.includes('invalid')) {
+					toast.error('Invalid Docker Compose configuration. Please check your compose content and try again.');
+					return;
+				}
+
+				// Resource errors
+				if (errorMessage.includes('memory') || errorMessage.includes('disk') || errorMessage.includes('resource')) {
+					toast.error('Insufficient resources: The deployment requires more memory, disk space, or other resources than available.');
+					return;
+				}
+
+				// Image pull errors
+				if (errorMessage.includes('pull') || errorMessage.includes('image') || errorMessage.includes('registry')) {
+					toast.error('Image error: Unable to pull required Docker images. Please check image names and registry availability.');
+					return;
+				}
+
+				// Port binding errors
+				if (errorMessage.includes('port') || errorMessage.includes('bind') || errorMessage.includes('address already in use')) {
+					toast.error('Port conflict: One or more ports are already in use. Please check your port mappings.');
+					return;
+				}
+
+				// Volume/mount errors
+				if (errorMessage.includes('volume') || errorMessage.includes('mount') || errorMessage.includes('path')) {
+					toast.error('Volume error: There was an issue with volume mounts or paths. Please check your volume configurations.');
+					return;
+				}
+
+				// Agent-specific errors
+				if (errorMessage.includes('agent') || errorMessage.includes('offline')) {
+					toast.error('Agent error: The target agent is offline or unavailable. Please try again later.');
+					return;
+				}
+
+				// Generic error with the actual message
+				toast.error(`Deployment failed: ${err.message}`);
+			} else {
+				// Non-Error objects
+				console.error('Unknown error type:', err);
+				toast.error('An unexpected error occurred during deployment. Please try again.');
+			}
 		} finally {
 			deploying = false;
 		}

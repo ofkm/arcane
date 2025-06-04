@@ -2,28 +2,53 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import { Input } from '$lib/components/ui/input';
-	import { Textarea } from '$lib/components/ui/textarea';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { toast } from 'svelte-sonner';
 	import { Loader2, Plus, Trash2 } from '@lucide/svelte';
 
+	interface PortMapping {
+		host: string;
+		container: string;
+	}
+
+	interface VolumeMount {
+		host: string;
+		container: string;
+	}
+
+	interface EnvironmentVariable {
+		key: string;
+		value: string;
+	}
+
+	interface ContainerConfiguration {
+		imageName: string;
+		containerName?: string;
+		ports: PortMapping[];
+		volumes: VolumeMount[];
+		envVars: EnvironmentVariable[];
+		detached: boolean;
+		autoRemove: boolean;
+		restartPolicy: 'no' | 'always' | 'unless-stopped' | 'on-failure';
+	}
+
 	interface Props {
 		agentId: string;
 		onClose: () => void;
-		onRun: (data: any) => Promise<void>;
+		onRun: (data: ContainerConfiguration) => Promise<void>;
 	}
 
-	let { agentId, onClose, onRun }: Props = $props();
+	let { onClose, onRun }: Props = $props();
 
 	let running = $state(false);
 	let containerName = $state('');
 	let imageName = $state('');
-	let ports = $state<{ host: string; container: string }[]>([]);
-	let volumes = $state<{ host: string; container: string }[]>([]);
-	let envVars = $state<{ key: string; value: string }[]>([]);
+	let ports = $state<PortMapping[]>([]);
+	let volumes = $state<VolumeMount[]>([]);
+	let envVars = $state<EnvironmentVariable[]>([]);
 	let detached = $state(true);
 	let autoRemove = $state(false);
-	let restartPolicy = $state('no');
+	let restartPolicy = $state<ContainerConfiguration['restartPolicy']>('no');
 
 	function addPort() {
 		ports = [...ports, { host: '', container: '' }];
@@ -50,14 +75,145 @@
 	}
 
 	async function handleRun() {
+		// Basic validation
 		if (!imageName.trim()) {
 			toast.error('Please enter an image name');
 			return;
 		}
 
+		// Validate container name if provided
+		if (containerName.trim()) {
+			const containerNameRegex = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
+			if (!containerNameRegex.test(containerName.trim())) {
+				toast.error('Container name must start with alphanumeric character and can only contain letters, numbers, underscores, periods, and hyphens');
+				return;
+			}
+		}
+
+		// Validate ports
+		for (let i = 0; i < ports.length; i++) {
+			const port = ports[i];
+
+			// Skip empty port mappings
+			if (!port.host && !port.container) continue;
+
+			// Both host and container ports must be provided
+			if (!port.host || !port.container) {
+				toast.error(`Port mapping ${i + 1}: Both host and container ports must be specified`);
+				return;
+			}
+
+			// Validate host port
+			const hostPort = parseInt(port.host);
+			if (isNaN(hostPort) || hostPort < 1 || hostPort > 65535) {
+				toast.error(`Port mapping ${i + 1}: Host port must be a number between 1 and 65535`);
+				return;
+			}
+
+			// Validate container port
+			const containerPort = parseInt(port.container);
+			if (isNaN(containerPort) || containerPort < 1 || containerPort > 65535) {
+				toast.error(`Port mapping ${i + 1}: Container port must be a number between 1 and 65535`);
+				return;
+			}
+		}
+
+		// Check for duplicate host ports
+		const hostPorts = ports.filter((p) => p.host && p.container).map((p) => parseInt(p.host));
+		const uniqueHostPorts = new Set(hostPorts);
+		if (hostPorts.length !== uniqueHostPorts.size) {
+			toast.error('Duplicate host ports are not allowed');
+			return;
+		}
+
+		// Validate volumes
+		for (let i = 0; i < volumes.length; i++) {
+			const volume = volumes[i];
+
+			// Skip empty volume mappings
+			if (!volume.host && !volume.container) continue;
+
+			// Both host and container paths must be provided
+			if (!volume.host || !volume.container) {
+				toast.error(`Volume mapping ${i + 1}: Both host and container paths must be specified`);
+				return;
+			}
+
+			// Validate host path format
+			if (!volume.host.trim()) {
+				toast.error(`Volume mapping ${i + 1}: Host path cannot be empty`);
+				return;
+			}
+
+			// Basic path validation (should start with / on Unix systems or contain : on Windows)
+			const hostPath = volume.host.trim();
+			if (!hostPath.startsWith('/') && !hostPath.match(/^[a-zA-Z]:/)) {
+				toast.error(`Volume mapping ${i + 1}: Host path should be an absolute path (e.g., /path/to/dir or C:/path/to/dir)`);
+				return;
+			}
+
+			// Validate container path format
+			const containerPath = volume.container.trim();
+			if (!containerPath.startsWith('/')) {
+				toast.error(`Volume mapping ${i + 1}: Container path must be an absolute path starting with /`);
+				return;
+			}
+
+			// Check for reserved container paths
+			const reservedPaths = ['/proc', '/sys', '/dev'];
+			if (reservedPaths.some((reserved) => containerPath.startsWith(reserved))) {
+				toast.error(`Volume mapping ${i + 1}: Cannot mount to reserved system path ${containerPath}`);
+				return;
+			}
+		}
+
+		// Check for duplicate container mount points
+		const containerPaths = volumes.filter((v) => v.host && v.container).map((v) => v.container.trim());
+		const uniqueContainerPaths = new Set(containerPaths);
+		if (containerPaths.length !== uniqueContainerPaths.size) {
+			toast.error('Duplicate container mount points are not allowed');
+			return;
+		}
+
+		// Validate environment variables
+		for (let i = 0; i < envVars.length; i++) {
+			const envVar = envVars[i];
+
+			// Skip empty environment variables
+			if (!envVar.key && !envVar.value) continue;
+
+			// Both key and value must be provided
+			if (!envVar.key || !envVar.value) {
+				toast.error(`Environment variable ${i + 1}: Both key and value must be specified`);
+				return;
+			}
+
+			// Validate environment variable key format
+			const envKeyRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+			if (!envKeyRegex.test(envVar.key.trim())) {
+				toast.error(`Environment variable ${i + 1}: Key must start with letter or underscore and contain only letters, numbers, and underscores`);
+				return;
+			}
+
+			// Check for reserved environment variables
+			const reservedEnvVars = ['PATH', 'HOME', 'USER', 'SHELL'];
+			if (reservedEnvVars.includes(envVar.key.trim().toUpperCase())) {
+				toast.error(`Environment variable ${i + 1}: Cannot override reserved variable ${envVar.key}`);
+				return;
+			}
+		}
+
+		// Check for duplicate environment variable keys
+		const envKeys = envVars.filter((e) => e.key && e.value).map((e) => e.key.trim().toUpperCase());
+		const uniqueEnvKeys = new Set(envKeys);
+		if (envKeys.length !== uniqueEnvKeys.size) {
+			toast.error('Duplicate environment variable keys are not allowed');
+			return;
+		}
+
 		running = true;
 		try {
-			const data = {
+			const data: ContainerConfiguration = {
 				imageName: imageName.trim(),
 				containerName: containerName.trim() || undefined,
 				ports: ports.filter((p) => p.host && p.container),

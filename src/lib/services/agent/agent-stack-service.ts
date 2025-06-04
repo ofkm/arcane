@@ -58,7 +58,8 @@ export async function getStacksFromAgent(agent: Agent, context?: ServerFetchCont
 					}
 
 					// Handle if the output is nested in a result.output field
-					if (!stacksData && updatedTask.task.result.output) {
+					// Add null check for updatedTask.task.result before accessing .output
+					if (!stacksData && updatedTask.task.result && updatedTask.task.result.output) {
 						if (typeof updatedTask.task.result.output === 'object') {
 							stacksData = updatedTask.task.result.output;
 						} else if (typeof updatedTask.task.result.output === 'string') {

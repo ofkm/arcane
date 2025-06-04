@@ -29,7 +29,7 @@ export interface Agent {
 export interface AgentTask {
 	id: string;
 	agentId: string;
-	type: 'docker_command' | 'stack_deploy' | 'image_pull' | 'health_check' | 'container_start' | 'container_stop' | 'container_restart' | 'container_remove' | 'agent_upgrade';
+	type: 'docker_command' | 'stack_deploy' | 'image_pull' | 'health_check' | 'container_start' | 'stack_list' | 'container_stop' | 'container_restart' | 'container_remove' | 'agent_upgrade';
 	payload: Record<string, any>;
 	status: 'pending' | 'running' | 'completed' | 'failed';
 	result?: any;

@@ -3,6 +3,9 @@ import { nanoid } from 'nanoid';
 import { updateDeploymentFromTask } from '$lib/services/deployment-service';
 import { registerAgentInDb, getAgentByIdFromDb, updateAgentInDb, updateAgentHeartbeatInDb, listAgentsFromDb, deleteAgentFromDb, createTaskInDb, getTaskByIdFromDb, updateTaskStatusInDb, listTasksFromDb, getPendingTasksFromDb, getAgentTasksFromDb, updateAgentMetricsInDb, updateAgentDockerInfoInDb } from '$lib/services/database/agent-db-service';
 
+// Extract the task type from AgentTask to ensure type safety
+type AgentTaskType = AgentTask['type'];
+
 /**
  * Register a new agent or update existing one
  */
@@ -98,7 +101,7 @@ export async function deleteAgent(agentId: string): Promise<void> {
 /**
  * Send a task to an agent
  */
-export async function sendTaskToAgent(agentId: string, taskType: string, payload: any): Promise<AgentTask> {
+export async function sendTaskToAgent(agentId: string, taskType: AgentTaskType, payload: any): Promise<AgentTask> {
 	try {
 		const agent = await getAgent(agentId);
 		if (!agent) {
@@ -113,7 +116,7 @@ export async function sendTaskToAgent(agentId: string, taskType: string, payload
 		const task: AgentTask = {
 			id: nanoid(),
 			agentId,
-			type: taskType as any,
+			type: taskType, // No casting needed anymore!
 			payload,
 			status: 'pending',
 			createdAt: new Date().toISOString()
