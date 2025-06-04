@@ -429,12 +429,14 @@
 					{/if}
 				</div>
 				<div class="flex items-center gap-2">
-					<Button variant="outline" size="sm" onclick={loadAgentStacks} disabled={loadingAgentStacks}>
-						{#if loadingAgentStacks}
-							<Loader2 class="size-4 animate-spin mr-2" />
-						{/if}
-						Refresh Remote
-					</Button>
+					{#if agents.length > 0}
+						<Button variant="outline" size="sm" onclick={loadAgentStacks} disabled={loadingAgentStacks}>
+							{#if loadingAgentStacks}
+								<Loader2 class="size-4 animate-spin mr-2" />
+							{/if}
+							Refresh Remote
+						</Button>
+					{/if}
 					<ArcaneButton action="create" customLabel="Create Compose Project" onClick={() => goto(`/compose/new`)} />
 				</div>
 			</div>
