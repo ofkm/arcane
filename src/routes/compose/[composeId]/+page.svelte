@@ -22,6 +22,8 @@
 	import LogViewer from '$lib/components/LogViewer.svelte';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
+	import StackValidationStatus from '$lib/components/StackValidationStatus.svelte';
+	import { ValidationService } from '$lib/services/validation-service';
 
 	const stackApi = new StackAPIService();
 
@@ -59,6 +61,9 @@
 	let deployDialogOpen = $state(false);
 	let deploying = $state(false);
 	let selectedAgentId = $state('');
+
+	let showValidationDetails = $state(false);
+	let validationMode: 'default' | 'strict' | 'loose' = $state('default');
 
 	// Get online agents for deployment
 	const onlineAgents = $derived((data.agents || []).filter((agent) => agent.status === 'online'));
@@ -144,6 +149,34 @@
 			toast.error(error instanceof Error ? error.message : 'Failed to deploy stack');
 		} finally {
 			deploying = false;
+		}
+	}
+
+	async function deployStack() {
+		if (!stack?.id) {
+			toast.error('Stack ID not available');
+			return;
+		}
+
+		// Save changes first if there are any
+		if (hasChanges) {
+			toast.info('Saving changes before deployment...');
+			await handleSaveChanges();
+
+			// Wait a moment for the save to complete
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		}
+
+		isLoading.deploying = true;
+		try {
+			const result = await stackApi.deploy(stack.id);
+			toast.success(`Stack "${stack.name}" deployed successfully!`);
+			await invalidateAll();
+		} catch (error) {
+			console.error('Deploy error:', error);
+			toast.error(error instanceof Error ? error.message : 'Failed to deploy stack');
+		} finally {
+			isLoading.deploying = false;
 		}
 	}
 
@@ -503,6 +536,56 @@
 										</Card.Content>
 									</Card.Root>
 								</div>
+							</div>
+
+							<!-- Validation Section -->
+							<div class="bg-gray-50 p-4 rounded-lg">
+								<div class="flex items-center justify-between mb-3">
+									<h3 class="text-lg font-medium">Configuration Validation</h3>
+									<div class="flex items-center gap-2">
+										<select bind:value={validationMode} class="text-sm border border-gray-300 rounded px-2 py-1">
+											<option value="default">Default</option>
+											<option value="strict">Strict</option>
+											<option value="loose">Loose</option>
+										</select>
+										<button type="button" onclick={() => (showValidationDetails = !showValidationDetails)} class="text-sm text-blue-600 hover:text-blue-800">
+											{showValidationDetails ? 'Hide' : 'Show'} Details
+										</button>
+									</div>
+								</div>
+
+								<StackValidationStatus stackId={stack.id} bind:composeContent bind:envContent mode={validationMode} showDetails={showValidationDetails} />
+							</div>
+
+							<!-- Existing save/deploy buttons -->
+							<div class="flex gap-2">
+								<!-- Update the deploy button -->
+								<button
+									type="button"
+									onclick={async () => {
+										// Validate before deploying using the service
+										const validation = await ValidationService.validateComposeConfiguration(composeContent, envContent);
+										if (!validation.valid) {
+											alert(`Cannot deploy: ${validation.errors.join(', ')}`);
+											return;
+										}
+										if (validation.warnings.length > 0) {
+											const proceed = confirm(`Deploy with warnings?\n${validation.warnings.join('\n')}`);
+											if (!proceed) return;
+										}
+										await deployStack();
+									}}
+									disabled={isLoading.deploying || Object.values(isLoading).some(Boolean)}
+									class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+								>
+									{#if isLoading.deploying}
+										<Loader2 class="size-4 animate-spin" />
+										Deploying...
+									{:else}
+										<Play class="size-4" />
+										Deploy Stack
+									{/if}
+								</button>
 							</div>
 						</section>
 

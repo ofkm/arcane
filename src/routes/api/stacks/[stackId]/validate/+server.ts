@@ -1,15 +1,29 @@
 import { json } from '@sveltejs/kit';
 import { validateStackConfiguration } from '$lib/services/docker/stack-custom-service';
-import { tryCatch } from '$lib/utils/try-catch';
 
-export async function GET({ params }) {
-	const { stackId } = params;
+export async function GET({ params, url }) {
+	try {
+		const stackId = params.stackId;
+		if (!stackId) {
+			return json({ error: 'Stack ID is required' }, { status: 400 });
+		}
 
-	const result = await tryCatch(validateStackConfiguration(stackId));
+		// Get validation mode from query params (default, strict, loose)
+		const mode = url.searchParams.get('mode') || 'default';
 
-	if (result.error) {
-		return json({ error: result.error.message }, { status: 500 });
+		if (!['default', 'strict', 'loose'].includes(mode)) {
+			return json({ error: 'Invalid validation mode. Use: default, strict, or loose' }, { status: 400 });
+		}
+
+		const validation = await validateStackConfiguration(stackId, mode as any);
+
+		return json({
+			stackId,
+			mode,
+			...validation
+		});
+	} catch (error) {
+		console.error('Stack validation error:', error);
+		return json({ error: 'Failed to validate stack configuration' }, { status: 500 });
 	}
-
-	return json(result.data);
 }

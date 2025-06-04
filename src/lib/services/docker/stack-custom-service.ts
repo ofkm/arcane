@@ -38,6 +38,7 @@ import {
 	prepareLogConfig,
 	DEFAULT_COMPOSE_VERSION
 } from '$lib/utils/compose.utils';
+import { validateContainerName, validateComposeConfiguration, validateComposeStructureEnhanced, enhanceContainerConfig, validateExternalResource, loadEnvFiles, type ValidationMode } from '$lib/utils/compose-validate.utils';
 
 interface DockerProgressEvent {
 	status: string;
@@ -744,6 +745,18 @@ async function getStackFromFiles(stackId: string): Promise<Stack> {
  * Create a new stack - saves to both database and files
  */
 export async function createStack(name: string, composeContent: string, envContent?: string): Promise<Stack> {
+	// Add validation before creating
+	console.log(`Validating compose content for new stack: ${name}`);
+	const validation = await validateComposeConfiguration(composeContent, envContent || '');
+
+	if (!validation.valid) {
+		throw new Error(`Invalid compose configuration: ${validation.errors.join(', ')}`);
+	}
+
+	if (validation.warnings.length > 0) {
+		console.warn(`Compose warnings for new stack ${name}:`, validation.warnings);
+	}
+
 	const dirName = slugify(name, {
 		lower: true,
 		strict: true,
@@ -814,6 +827,20 @@ export async function createStack(name: string, composeContent: string, envConte
  * Update a stack - updates both database and files
  */
 export async function updateStack(currentStackId: string, updates: StackUpdate): Promise<Stack> {
+	// Add validation before updating if compose content is being changed
+	if (updates.composeContent !== undefined) {
+		console.log(`Validating updated compose content for stack: ${currentStackId}`);
+		const validation = await validateComposeConfiguration(updates.composeContent, updates.envContent || '');
+
+		if (!validation.valid) {
+			throw new Error(`Invalid compose configuration: ${validation.errors.join(', ')}`);
+		}
+
+		if (validation.warnings.length > 0) {
+			console.warn(`Compose warnings for updated stack ${currentStackId}:`, validation.warnings);
+		}
+	}
+
 	let effectiveStackId = currentStackId;
 	let stackAfterRename: Stack | null = null;
 
@@ -884,7 +911,7 @@ export async function updateStack(currentStackId: string, updates: StackUpdate):
 /**
  * Custom stack deployment function using dockerode directly
  */
-export async function deployStack(stackId: string, options: { profiles?: string[]; envOverrides?: Record<string, string> } = {}): Promise<boolean> {
+export async function deployStack(stackId: string, options: { profiles?: string[]; envOverrides?: Record<string, string>; validationMode?: ValidationMode } = {}): Promise<boolean> {
 	const stackDir = await getStackDir(stackId);
 	const originalCwd = process.cwd();
 	let deploymentStarted = false;
@@ -898,6 +925,18 @@ export async function deployStack(stackId: string, options: { profiles?: string[
 
 		const composeContent = await fs.readFile(composePath, 'utf8');
 		const envContent = await loadEnvFile(stackId);
+
+		// Enhanced validation before deployment
+		console.log(`Validating stack configuration before deployment: ${stackId}`);
+		const validation = await validateComposeConfiguration(composeContent, envContent, options.validationMode || 'default');
+
+		if (!validation.valid) {
+			throw new Error(`Deployment aborted - validation failed: ${validation.errors.join(', ')}`);
+		}
+
+		if (validation.warnings.length > 0) {
+			console.warn(`Deployment warnings for stack ${stackId}:`, validation.warnings);
+		}
 
 		// Parse env variables and create getter
 		const envVars = { ...parseEnvContent(envContent), ...options.envOverrides };
@@ -1547,6 +1586,13 @@ async function createStackNetworks(docker: Dockerode, stackId: string, networks:
 
 	// Process defined networks (only create non-external ones)
 	for (const [networkName, networkConfig] of Object.entries(networks)) {
+		// Validate external networks
+		try {
+			validateExternalResource(networkName, networkConfig, 'network');
+		} catch (error) {
+			throw new Error(`Network validation failed: ${error instanceof Error ? error.message : String(error)}`);
+		}
+
 		// Skip external networks
 		if (networkConfig.external) {
 			console.log(`Using external network: ${networkConfig.name || networkName}`);
@@ -1732,10 +1778,7 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 		// (Keep all the existing container configuration code from your current implementation)
 
 		// Determine container name using Docker Compose convention
-		let containerName = serviceConfig.container_name;
-		if (!containerName || typeof containerName !== 'string') {
-			containerName = `${stackId}_${serviceName}_1`;
-		}
+		let containerName = validateContainerName(serviceName, serviceConfig, stackId);
 
 		// Validate container name doesn't have unresolved variables
 		if (containerName.includes('${')) {
@@ -1744,7 +1787,7 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 		}
 
 		// Create the container configuration
-		const containerConfig: any = {
+		let containerConfig: any = {
 			name: containerName,
 			Image: serviceConfig.image,
 			Labels: {
@@ -1773,6 +1816,9 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 				ReadonlyRootfs: serviceConfig.read_only || false
 			}
 		};
+
+		// Enhance container config with new Compose spec features
+		containerConfig = enhanceContainerConfig(containerConfig, serviceConfig);
 
 		// Add command and entrypoint if specified
 		if (serviceConfig.command) {
@@ -2688,9 +2734,12 @@ export async function detectStackChanges(stackId: string): Promise<{
 }
 
 /**
- * Add function to validate stack before deployment
+ * Enhanced validation function with comprehensive Compose spec compliance
  */
-export async function validateStackConfiguration(stackId: string): Promise<{
+export async function validateStackConfiguration(
+	stackId: string,
+	mode: ValidationMode = 'default'
+): Promise<{
 	valid: boolean;
 	errors: string[];
 	warnings: string[];
@@ -2708,43 +2757,10 @@ export async function validateStackConfiguration(stackId: string): Promise<{
 		const composeContent = await fs.readFile(composePath, 'utf8');
 		const envContent = await loadEnvFile(stackId);
 
-		const envVars = parseEnvContent(envContent);
-		const getEnvVar = (key: string): string | undefined => envVars[key] || process.env[key];
+		// Use enhanced validation
+		const validation = await validateComposeConfiguration(composeContent, envContent, mode);
 
-		// Validate compose content format
-		const contentValidation = validateComposeContent(composeContent);
-		if (!contentValidation.valid) {
-			return {
-				valid: false,
-				errors: contentValidation.errors,
-				warnings: contentValidation.warnings
-			};
-		}
-
-		const composeData = parseYamlContent(composeContent, getEnvVar);
-		if (!composeData) {
-			return {
-				valid: false,
-				errors: ['Failed to parse compose file'],
-				warnings: []
-			};
-		}
-
-		// Validate compose structure
-		const structureValidation = validateComposeStructure(composeData);
-
-		// Validate dependencies
-		const dependencyValidation = composeData.services ? validateAllDependencies(composeData.services) : { valid: true, errors: [], warnings: [] };
-
-		const allErrors = [...contentValidation.errors, ...structureValidation.errors, ...dependencyValidation.errors];
-
-		const allWarnings = [...contentValidation.warnings, ...structureValidation.warnings, ...dependencyValidation.warnings];
-
-		return {
-			valid: allErrors.length === 0,
-			errors: allErrors,
-			warnings: allWarnings
-		};
+		return validation;
 	} catch (error) {
 		return {
 			valid: false,
