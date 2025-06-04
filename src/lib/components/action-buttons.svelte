@@ -119,6 +119,26 @@
 		});
 	}
 
+	async function handleDeploy() {
+		isLoading.start = true;
+		handleApiResultWithCallbacks({
+			result: await tryCatch(stackApi.validate(id)),
+			message: `Failed to Validate stack`,
+			setLoadingState: (value) => (isLoading.start = value),
+			onSuccess: async () => {
+				handleApiResultWithCallbacks({
+					result: await tryCatch(stackApi.deploy(id)),
+					message: `Failed to Start ${type}`,
+					setLoadingState: (value) => (isLoading.start = value),
+					onSuccess: async () => {
+						toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Started Successfully`);
+						await invalidateAll();
+					}
+				});
+			}
+		});
+	}
+
 	async function handleStop() {
 		isLoading.stop = true;
 		handleApiResultWithCallbacks({
@@ -161,7 +181,7 @@
 
 <div class="flex items-center gap-2">
 	{#if !isRunning}
-		<ArcaneButton action={type === 'container' ? 'start' : 'deploy'} onClick={() => handleStart()} loading={isLoading.start} />
+		<ArcaneButton action={type === 'container' ? 'start' : 'deploy'} onClick={type === 'container' ? () => handleStart() : () => handleDeploy()} loading={isLoading.start} />
 	{:else}
 		<ArcaneButton label={type === 'stack' ? 'Down' : 'Stop'} action="stop" onClick={() => handleStop()} loading={isLoading.stop} />
 		<ArcaneButton action="restart" onClick={() => handleRestart()} loading={isLoading.restart} />

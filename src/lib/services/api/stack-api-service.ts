@@ -78,6 +78,11 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
+	async validate(id: string) {
+		const res = await this.api.get(`/stacks/${id}/validate`);
+		return res.data;
+	}
+
 	async convertDockerRun(dockerRunCommand: string) {
 		const res = await this.api.post('/convert', {
 			dockerRunCommand

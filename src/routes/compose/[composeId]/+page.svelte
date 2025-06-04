@@ -3,7 +3,7 @@
 	import type { Stack, StackService, StackPort } from '$lib/types/docker/stack.type';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, RefreshCw, Terminal, Settings, Activity, FileText, Play, Square, RotateCcw, Trash2, Send, Users, Loader2 } from '@lucide/svelte';
+	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, RefreshCw, Terminal, Settings, Activity, FileText, Play, Square, RotateCcw, Trash2, Send, Users, Loader2, TicketCheck } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -22,8 +22,6 @@
 	import LogViewer from '$lib/components/LogViewer.svelte';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
-	import StackValidationStatus from '$lib/components/StackValidationStatus.svelte';
-	import { ValidationService } from '$lib/services/validation-service';
 
 	const stackApi = new StackAPIService();
 
@@ -61,9 +59,6 @@
 	let deployDialogOpen = $state(false);
 	let deploying = $state(false);
 	let selectedAgentId = $state('');
-
-	let showValidationDetails = $state(false);
-	let validationMode: 'default' | 'strict' | 'loose' = $state('default');
 
 	// Get online agents for deployment
 	const onlineAgents = $derived((data.agents || []).filter((agent) => agent.status === 'online'));
@@ -149,34 +144,6 @@
 			toast.error(error instanceof Error ? error.message : 'Failed to deploy stack');
 		} finally {
 			deploying = false;
-		}
-	}
-
-	async function deployStack() {
-		if (!stack?.id) {
-			toast.error('Stack ID not available');
-			return;
-		}
-
-		// Save changes first if there are any
-		if (hasChanges) {
-			toast.info('Saving changes before deployment...');
-			await handleSaveChanges();
-
-			// Wait a moment for the save to complete
-			await new Promise((resolve) => setTimeout(resolve, 500));
-		}
-
-		isLoading.deploying = true;
-		try {
-			const result = await stackApi.deploy(stack.id);
-			toast.success(`Stack "${stack.name}" deployed successfully!`);
-			await invalidateAll();
-		} catch (error) {
-			console.error('Deploy error:', error);
-			toast.error(error instanceof Error ? error.message : 'Failed to deploy stack');
-		} finally {
-			isLoading.deploying = false;
 		}
 	}
 
@@ -481,7 +448,6 @@
 									<Settings class="size-5" />
 									Configuration
 								</h2>
-								<!-- Save Button in its original position -->
 								{#if hasChanges}
 									<ArcaneButton action="save" loading={isLoading.saving} onClick={handleSaveChanges} disabled={!hasChanges} label="Save Changes" loadingLabel="Saving..." class="bg-green-600 hover:bg-green-700 text-white" />
 								{/if}
@@ -512,7 +478,7 @@
 											<Card.Title>Docker Compose File</Card.Title>
 										</Card.Header>
 										<Card.Content>
-											<div class="border rounded-lg overflow-hidden h-[600px]">
+											<div class="overflow-hidden h-[600px]">
 												<YamlEditor bind:value={composeContent} readOnly={isLoading.saving || isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} />
 											</div>
 											<p class="text-sm text-muted-foreground mt-2">
@@ -529,63 +495,13 @@
 											<Card.Title>Environment (.env)</Card.Title>
 										</Card.Header>
 										<Card.Content>
-											<div class="border rounded-lg overflow-hidden h-[600px]">
+											<div class="overflow-hidden h-[600px]">
 												<EnvEditor bind:value={envContent} readOnly={isLoading.saving || isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} />
 											</div>
 											<p class="text-sm text-muted-foreground mt-2">Define environment variables in KEY=value format.</p>
 										</Card.Content>
 									</Card.Root>
 								</div>
-							</div>
-
-							<!-- Validation Section -->
-							<div class="bg-gray-50 p-4 rounded-lg">
-								<div class="flex items-center justify-between mb-3">
-									<h3 class="text-lg font-medium">Configuration Validation</h3>
-									<div class="flex items-center gap-2">
-										<select bind:value={validationMode} class="text-sm border border-gray-300 rounded px-2 py-1">
-											<option value="default">Default</option>
-											<option value="strict">Strict</option>
-											<option value="loose">Loose</option>
-										</select>
-										<button type="button" onclick={() => (showValidationDetails = !showValidationDetails)} class="text-sm text-blue-600 hover:text-blue-800">
-											{showValidationDetails ? 'Hide' : 'Show'} Details
-										</button>
-									</div>
-								</div>
-
-								<StackValidationStatus stackId={stack.id} bind:composeContent bind:envContent mode={validationMode} showDetails={showValidationDetails} />
-							</div>
-
-							<!-- Existing save/deploy buttons -->
-							<div class="flex gap-2">
-								<!-- Update the deploy button -->
-								<button
-									type="button"
-									onclick={async () => {
-										// Validate before deploying using the service
-										const validation = await ValidationService.validateComposeConfiguration(composeContent, envContent);
-										if (!validation.valid) {
-											alert(`Cannot deploy: ${validation.errors.join(', ')}`);
-											return;
-										}
-										if (validation.warnings.length > 0) {
-											const proceed = confirm(`Deploy with warnings?\n${validation.warnings.join('\n')}`);
-											if (!proceed) return;
-										}
-										await deployStack();
-									}}
-									disabled={isLoading.deploying || Object.values(isLoading).some(Boolean)}
-									class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-								>
-									{#if isLoading.deploying}
-										<Loader2 class="size-4 animate-spin" />
-										Deploying...
-									{:else}
-										<Play class="size-4" />
-										Deploy Stack
-									{/if}
-								</button>
 							</div>
 						</section>
 
