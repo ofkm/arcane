@@ -38,7 +38,7 @@ services:
     ports:
       - '8080:80'
     labels:
-      - 'arcane.stack.auto-update=true' # Enables auto-update for the 'my-web-app' stack
+      arcane.stack.auto-update: 'true' # Enables auto-update for the 'my-web-app' stack
       # You can also add Watchtower-specific labels here if needed for fine-grained control
       # - "com.centurylinklabs.watchtower.enable=true" # Example if using Watchtower conventions
 
