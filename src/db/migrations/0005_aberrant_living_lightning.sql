@@ -38,7 +38,7 @@ CREATE TABLE `__new_users_table` (
 	`require_password_change` integer DEFAULT false NOT NULL,
 	`oidc_subject_id` text,
 	`last_login` integer,
-	`created_at` integer DEFAULT (unixepoch() NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
