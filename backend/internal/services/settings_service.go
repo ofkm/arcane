@@ -52,7 +52,7 @@ func (s *SettingsService) createDefaultSettings(ctx context.Context) (*models.Se
 
 	settings := &models.Settings{
 		DockerHost:            "unix:///var/run/docker.sock",
-		StacksDirectory:       "/opt/arcane/stacks",
+		StacksDirectory:       "data/stacks",
 		AutoUpdate:            false,
 		AutoUpdateInterval:    300,
 		PollingEnabled:        true,

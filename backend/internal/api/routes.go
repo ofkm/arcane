@@ -16,6 +16,8 @@ type Services struct {
 	Volume        *services.VolumeService
 	Network       *services.NetworkService
 	ImageMaturity *services.ImageMaturityService
+	Auth          *services.AuthService
+	Oidc          *services.OidcService // Add OidcService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services) {
@@ -28,17 +30,35 @@ func SetupRoutes(r *gin.Engine, services *Services) {
 	setupSettingsRoutes(api, services)
 	setupDeploymentRoutes(api, services)
 	setupImageMaturityRoutes(api, services)
+
+	// Add missing endpoints
+	setupSystemRoutes(api, services)
+	setupContainerRoutes(api, services)
+	setupImageRoutes(api, services)
+	setupVolumeRoutes(api, services)
+	setupNetworkRoutes(api, services)
 }
 
 func setupAuthRoutes(api *gin.RouterGroup, services *Services) {
 	auth := api.Group("/auth")
 
-	authHandler := NewAuthHandler(services.User)
+	authHandler := NewAuthHandler(services.User, services.Auth, services.Oidc)
 
 	auth.POST("/login", authHandler.Login)
 	auth.POST("/logout", authHandler.Logout)
-	auth.GET("/me", authHandler.GetCurrentUser)
+	auth.GET("/me", AuthMiddleware(services.Auth), authHandler.GetCurrentUser)
 	auth.POST("/refresh", authHandler.RefreshToken)
+	auth.POST("/password", AuthMiddleware(services.Auth), authHandler.ChangePassword)
+
+	// OIDC endpoints
+	oidcHandler := NewOidcHandler(services.Auth, services.Oidc)
+	oidc := auth.Group("/oidc")
+	{
+		oidc.POST("/url", oidcHandler.GetOidcAuthUrl)
+		oidc.POST("/callback", oidcHandler.HandleOidcCallback)
+		oidc.GET("/config", oidcHandler.GetOidcConfig)
+		oidc.GET("/status", oidcHandler.GetOidcStatus)
+	}
 }
 
 func setupUserRoutes(api *gin.RouterGroup, services *Services) {
@@ -108,6 +128,7 @@ func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 // setupSettingsRoutes handles settings endpoints
 func setupSettingsRoutes(api *gin.RouterGroup, services *Services) {
 	settings := api.Group("/settings")
+	settings.Use(AuthMiddleware(services.Auth))
 
 	settingsHandler := NewSettingsHandler(services.Settings)
 
@@ -118,6 +139,13 @@ func setupSettingsRoutes(api *gin.RouterGroup, services *Services) {
 	settings.PUT("/auth", settingsHandler.UpdateAuth)
 	settings.PUT("/onboarding", settingsHandler.UpdateOnboarding)
 	settings.POST("/registry-credentials", settingsHandler.AddRegistryCredential)
+
+	// Add OIDC endpoints under settings as well for frontend compatibility
+	oidcHandler := NewOidcHandler(services.Auth, services.Oidc)
+	settings.GET("/oidc/status", oidcHandler.GetOidcStatus)
+	settings.GET("/oidc/config", oidcHandler.GetOidcConfig)
+	settings.POST("/oidc/url", oidcHandler.GetOidcAuthUrl)
+	settings.POST("/oidc/callback", oidcHandler.HandleOidcCallback)
 }
 
 // setupDeploymentRoutes handles deployment endpoints
@@ -154,4 +182,70 @@ func setupImageMaturityRoutes(api *gin.RouterGroup, services *Services) {
 	imageMaturity.POST("/:imageId", imageMaturityHandler.SetImageMaturity)
 	imageMaturity.PUT("/:imageId/status", imageMaturityHandler.UpdateCheckStatus)
 	imageMaturity.POST("/:imageId/mark-matured", imageMaturityHandler.MarkAsMatured)
+}
+
+func setupSystemRoutes(api *gin.RouterGroup, services *Services) {
+	system := api.Group("/system")
+	// system.Use(AuthMiddleware(services.Auth)) // Add when ready
+
+	// Docker system info endpoint
+	system.GET("/docker/info", func(c *gin.Context) {
+		// For now, return mock data until we implement Docker integration
+		c.JSON(200, gin.H{
+			"version":    "24.0.0",
+			"containers": 0,
+			"images":     0,
+			"status":     "available",
+		})
+	})
+}
+
+func setupContainerRoutes(api *gin.RouterGroup, services *Services) {
+	containers := api.Group("/containers")
+	// containers.Use(AuthMiddleware(services.Auth)) // Add when ready
+
+	containers.GET("", func(c *gin.Context) {
+		// For now, return empty array until we implement container service
+		c.JSON(200, gin.H{
+			"success": true,
+			"data":    []interface{}{},
+		})
+	})
+}
+
+func setupImageRoutes(api *gin.RouterGroup, services *Services) {
+	images := api.Group("/images")
+	// images.Use(AuthMiddleware(services.Auth)) // Add when ready
+
+	images.GET("", func(c *gin.Context) {
+		// For now, return empty array until we implement image service
+		c.JSON(200, gin.H{
+			"success": true,
+			"data":    []interface{}{},
+		})
+	})
+}
+
+func setupVolumeRoutes(api *gin.RouterGroup, services *Services) {
+	volumes := api.Group("/volumes")
+	// volumes.Use(AuthMiddleware(services.Auth)) // Add when ready
+
+	volumes.GET("", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"success": true,
+			"data":    []interface{}{},
+		})
+	})
+}
+
+func setupNetworkRoutes(api *gin.RouterGroup, services *Services) {
+	networks := api.Group("/networks")
+	// networks.Use(AuthMiddleware(services.Auth)) // Add when ready
+
+	networks.GET("", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"success": true,
+			"data":    []interface{}{},
+		})
+	})
 }

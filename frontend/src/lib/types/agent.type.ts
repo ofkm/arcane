@@ -38,6 +38,56 @@ export interface AgentTask {
 	updatedAt?: string;
 }
 
+// Stack-related types for agents
+export interface AgentStack {
+	id: string;
+	name: string;
+	agentId: string;
+	agentHostname: string;
+	isRemote: true;
+	services?: StackService[];
+	serviceCount?: number;
+	runningCount?: number;
+	status: StackStatus;
+	isExternal?: boolean;
+	createdAt?: string;
+	updatedAt?: string;
+	composeContent?: string;
+	envContent?: string;
+	description?: string;
+	lastPolled?: string;
+	path?: string;
+}
+
+export interface StackService {
+	id: string;
+	name: string;
+	state?: {
+		Running: boolean;
+		Status: string;
+		ExitCode: number;
+	};
+	ports?: StackPort[];
+	networkSettings?: {
+		Networks?: Record<string, NetworkConfig>;
+	};
+}
+
+export interface StackPort {
+	PublicPort?: number;
+	PrivatePort?: number;
+	Type?: string;
+}
+
+export interface NetworkConfig {
+	IPAddress?: string;
+	Gateway?: string;
+	MacAddress?: string;
+	Driver?: string;
+}
+
+export type StackStatus = 'running' | 'stopped' | 'partially running' | 'unknown';
+
 // Specific payload types for different task types
 export interface DockerCommandPayload {
 	command: string;

@@ -1,7 +1,7 @@
 import type { Agent, AgentTask } from '$lib/types/agent.type';
 import { nanoid } from 'nanoid';
 import { updateDeploymentFromTask } from '$lib/services/deployment-service';
-import { registerAgentInDb, getAgentByIdFromDb, updateAgentInDb, updateAgentHeartbeatInDb, listAgentsFromDb, deleteAgentFromDb, createTaskInDb, getTaskByIdFromDb, updateTaskStatusInDb, listTasksFromDb, getPendingTasksFromDb, getAgentTasksFromDb, updateAgentMetricsInDb, updateAgentDockerInfoInDb } from '$lib/services/database/agent-db-service';
+import { agentAPI } from '../api';
 
 // Extract the task type from AgentTask to ensure type safety
 type AgentTaskType = AgentTask['type'];
@@ -29,7 +29,7 @@ export async function registerAgent(agent: Agent): Promise<Agent> {
 				updatedAt: new Date().toISOString()
 			};
 
-			return await registerAgentInDb(newAgent);
+			return await agentAPI.register(newAgent);
 		}
 	} catch (error) {
 		console.error('Failed to register agent:', error);
@@ -42,7 +42,7 @@ export async function registerAgent(agent: Agent): Promise<Agent> {
  */
 export async function getAgent(agentId: string): Promise<Agent | null> {
 	try {
-		return await getAgentByIdFromDb(agentId);
+		return await agentAPI.get(agentId);
 	} catch (error) {
 		console.error('Failed to get agent:', error);
 		return null;
@@ -54,7 +54,7 @@ export async function getAgent(agentId: string): Promise<Agent | null> {
  */
 export async function updateAgent(agentId: string, updates: Partial<Agent>): Promise<Agent> {
 	try {
-		return await updateAgentInDb(agentId, updates);
+		return await agentAPI.update(agentId, updates);
 	} catch (error) {
 		console.error('Failed to update agent:', error);
 		throw error;
@@ -66,7 +66,7 @@ export async function updateAgent(agentId: string, updates: Partial<Agent>): Pro
  */
 export async function updateAgentHeartbeat(agentId: string): Promise<void> {
 	try {
-		await updateAgentHeartbeatInDb(agentId);
+		await agentAPI.heartbeat(agentId);
 	} catch (error) {
 		console.error('Failed to update agent heartbeat:', error);
 		// Don't throw here as this is called frequently by agents
@@ -78,7 +78,7 @@ export async function updateAgentHeartbeat(agentId: string): Promise<void> {
  */
 export async function listAgents(): Promise<Agent[]> {
 	try {
-		return await listAgentsFromDb();
+		return await agentAPI.list();
 	} catch (error) {
 		console.error('Failed to list agents:', error);
 		return [];
@@ -90,7 +90,7 @@ export async function listAgents(): Promise<Agent[]> {
  */
 export async function deleteAgent(agentId: string): Promise<void> {
 	try {
-		await deleteAgentFromDb(agentId);
+		await agentAPI.delete(agentId);
 		console.log(`Agent ${agentId} deleted successfully`);
 	} catch (error) {
 		console.error('Failed to delete agent:', error);
@@ -112,18 +112,11 @@ export async function sendTaskToAgent(agentId: string, taskType: AgentTaskType, 
 			throw new Error(`Agent ${agentId} is not online (status: ${agent.status})`);
 		}
 
-		// Create task
-		const task: AgentTask = {
-			id: nanoid(),
-			agentId,
-			type: taskType, // No casting needed anymore!
-			payload,
-			status: 'pending',
-			createdAt: new Date().toISOString()
-		};
-
-		// Save task to database - agent will pick this up on next poll
-		await createTaskInDb(task);
+		// Create task using the API
+		const task = await agentAPI.createTask(agentId, {
+			type: taskType,
+			payload
+		});
 
 		console.log(`📋 Task ${task.id} created for agent ${agentId} (will be picked up on next poll)`);
 
@@ -139,7 +132,11 @@ export async function sendTaskToAgent(agentId: string, taskType: AgentTaskType, 
  */
 export async function updateTaskStatus(taskId: string, status: string, result?: any, error?: string): Promise<void> {
 	try {
-		await updateTaskStatusInDb(taskId, status, result, error);
+		await agentAPI.updateTaskStatus(taskId, {
+			status,
+			result,
+			error
+		});
 
 		await updateDeploymentFromTask(taskId, status, result, error);
 
@@ -155,7 +152,7 @@ export async function updateTaskStatus(taskId: string, status: string, result?: 
  */
 export async function getTask(taskId: string): Promise<AgentTask | null> {
 	try {
-		return await getTaskByIdFromDb(taskId);
+		return await agentAPI.getTask(taskId);
 	} catch (error) {
 		console.error('Failed to get task:', error);
 		return null;
@@ -167,7 +164,11 @@ export async function getTask(taskId: string): Promise<AgentTask | null> {
  */
 export async function listTasks(agentId?: string): Promise<AgentTask[]> {
 	try {
-		return await listTasksFromDb(agentId);
+		if (agentId) {
+			return await agentAPI.listTasks(agentId);
+		} else {
+			return await agentAPI.listAllTasks();
+		}
 	} catch (error) {
 		console.error('Failed to list tasks:', error);
 		return [];
@@ -179,7 +180,7 @@ export async function listTasks(agentId?: string): Promise<AgentTask[]> {
  */
 export async function getAgentTasks(agentId: string): Promise<AgentTask[]> {
 	try {
-		return await getAgentTasksFromDb(agentId);
+		return await agentAPI.listTasks(agentId);
 	} catch (error) {
 		console.error('Failed to get agent tasks:', error);
 		return [];
@@ -191,7 +192,7 @@ export async function getAgentTasks(agentId: string): Promise<AgentTask[]> {
  */
 export async function getPendingTasks(agentId: string): Promise<AgentTask[]> {
 	try {
-		return await getPendingTasksFromDb(agentId);
+		return await agentAPI.getPendingTasks(agentId);
 	} catch (error) {
 		console.error('Failed to get pending tasks:', error);
 		return [];
@@ -212,7 +213,7 @@ export async function updateAgentMetrics(
 	}
 ): Promise<void> {
 	try {
-		await updateAgentMetricsInDb(agentId, metrics);
+		await agentAPI.updateMetrics(agentId, metrics);
 	} catch (error) {
 		console.error('Failed to update agent metrics:', error);
 		// Don't throw as this is not critical
@@ -231,7 +232,7 @@ export async function updateAgentDockerInfo(
 	}
 ): Promise<void> {
 	try {
-		await updateAgentDockerInfoInDb(agentId, dockerInfo);
+		await agentAPI.updateDockerInfo(agentId, dockerInfo);
 	} catch (error) {
 		console.error('Failed to update agent Docker info:', error);
 		// Don't throw as this is not critical

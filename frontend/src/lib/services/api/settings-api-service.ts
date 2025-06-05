@@ -26,7 +26,7 @@ export default class SettingsAPIService extends BaseAPIService {
 
 	// OIDC specific methods
 	async getOidcConfig(): Promise<OidcConfig> {
-		return this.handleResponse(this.api.get('/settings/oidc'));
+		return this.handleResponse(this.api.get('/auth/oidc/config'));
 	}
 
 	async updateOidcConfig(config: Partial<OidcConfig>): Promise<OidcConfig> {
@@ -43,7 +43,7 @@ export default class SettingsAPIService extends BaseAPIService {
 		envConfigured: boolean;
 		settingsConfigured: boolean;
 	}> {
-		return this.handleResponse(this.api.get('/settings/oidc/status'));
+		return this.handleResponse(this.api.get('/auth/oidc/status'));
 	}
 
 	async getOidcAuthUrl(redirectUri: string): Promise<{ authUrl: string; state: string }> {
@@ -56,6 +56,9 @@ export default class SettingsAPIService extends BaseAPIService {
 	): Promise<{
 		success: boolean;
 		user?: any;
+		token?: string;
+		refreshToken?: string;
+		expiresAt?: string;
 		error?: string;
 	}> {
 		return this.handleResponse(this.api.post('/auth/oidc/callback', { code, state }));

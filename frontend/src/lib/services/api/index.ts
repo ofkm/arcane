@@ -16,6 +16,7 @@ import DeploymentAPIService from './deployment-api-service';
 import ValidationAPIService from './validation-api-service';
 import AppConfigAPIService from './appconfig-api-service';
 import AgentAPIService from './agent-api-service';
+import AgentStackAPIService from './agent-stack-api-service';
 
 // Create singleton instances
 export const containerAPI = new ContainerAPIService();
@@ -36,6 +37,7 @@ export const deploymentAPI = new DeploymentAPIService();
 export const validationAPI = new ValidationAPIService();
 export const appConfigAPI = new AppConfigAPIService();
 export const agentAPI = new AgentAPIService();
+export const agentStackAPI = new AgentStackAPIService();
 
 interface APIServices {
 	container: ContainerAPIService;

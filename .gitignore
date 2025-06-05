@@ -11,6 +11,8 @@ frontend/build
 build
 static/
 data/
+dist/
+docker/
 
 # OS
 .DS_Store

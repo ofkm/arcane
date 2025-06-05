@@ -55,6 +55,14 @@ export default class UserAPIService extends BaseAPIService {
 		);
 	}
 
+	async getByUsername(username: string): Promise<User> {
+		return this.handleResponse(this.api.get(`/users/by-username/${encodeURIComponent(username)}`));
+	}
+
+	async getByOidcSubjectId(oidcSubjectId: string): Promise<User> {
+		return this.handleResponse(this.api.get(`/users/by-oidc-subject/${encodeURIComponent(oidcSubjectId)}`));
+	}
+
 	// RBAC methods
 	async getRoles(): Promise<Role[]> {
 		return this.handleResponse(this.api.get('/roles'));

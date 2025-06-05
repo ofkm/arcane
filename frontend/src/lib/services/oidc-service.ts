@@ -6,7 +6,7 @@ import { building } from '$app/environment';
 let cachedConfig: any = null;
 
 /**
- * Get OIDC configuration from API or environment
+ * Get OIDC configuration from API
  */
 export async function getOIDCConfig() {
 	if (building) {
@@ -28,14 +28,14 @@ export async function getOIDCConfig() {
 	}
 
 	try {
-		// Get settings from API instead of directly from database
-		const settings = await settingsAPI.getSettings();
+		// Get OIDC status and config from API
+		const [status, settings] = await Promise.all([settingsAPI.getOidcStatus(), settingsAPI.getSettings()]);
 
 		// Check if OIDC is forced by environment variable
 		const oidcForcedByEnv = env.PUBLIC_OIDC_ENABLED === 'true';
 
 		// If OIDC is not enabled and not forced by env, return disabled config
-		if (!oidcForcedByEnv && !settings.auth?.oidcEnabled) {
+		if (!oidcForcedByEnv && !status.enabled) {
 			cachedConfig = {
 				enabled: false,
 				clientId: '',
@@ -49,17 +49,31 @@ export async function getOIDCConfig() {
 			return cachedConfig;
 		}
 
-		// Get OIDC configuration from API
-		const oidcConfig = await settingsAPI.getOidcConfig();
+		// Get OIDC config from API if enabled
+		let oidcConfig;
+		try {
+			oidcConfig = await settingsAPI.getOidcConfig();
+		} catch (error) {
+			console.warn('Failed to get OIDC config from API:', error);
+			oidcConfig = settings.auth?.oidc;
+		}
 
 		cachedConfig = {
-			enabled: true,
-			...oidcConfig
+			enabled: status.enabled || oidcForcedByEnv,
+			clientId: oidcConfig?.clientId || '',
+			clientSecret: oidcConfig?.clientSecret || '',
+			redirectUri: oidcConfig?.redirectUri || '',
+			authorizationEndpoint: oidcConfig?.authorizationEndpoint || '',
+			tokenEndpoint: oidcConfig?.tokenEndpoint || '',
+			userinfoEndpoint: oidcConfig?.userinfoEndpoint || '',
+			scopes: Array.isArray(oidcConfig?.scopes) ? oidcConfig.scopes : (oidcConfig?.scopes || 'openid email profile').split(' ')
 		};
 
 		return cachedConfig;
 	} catch (error) {
-		console.warn('Failed to load OIDC configuration:', error);
+		console.error('Failed to get OIDC config:', error);
+
+		// Fallback to disabled config
 		cachedConfig = {
 			enabled: false,
 			clientId: '',
@@ -70,6 +84,7 @@ export async function getOIDCConfig() {
 			userinfoEndpoint: '',
 			scopes: ['openid', 'email', 'profile']
 		};
+
 		return cachedConfig;
 	}
 }
@@ -77,37 +92,37 @@ export async function getOIDCConfig() {
 // Legacy exports for backward compatibility
 export async function getOIDCScopes(): Promise<string[]> {
 	const config = await getOIDCConfig();
-	return config.scopes || ['openid', 'email', 'profile'];
+	return config.scopes;
 }
 
 export async function getOIDCClientId(): Promise<string> {
 	const config = await getOIDCConfig();
-	return config.clientId || '';
+	return config.clientId;
 }
 
 export async function getOIDCClientSecret(): Promise<string> {
 	const config = await getOIDCConfig();
-	return config.clientSecret || '';
+	return config.clientSecret;
 }
 
 export async function getOIDCRedirectUri(): Promise<string> {
 	const config = await getOIDCConfig();
-	return config.redirectUri || '';
+	return config.redirectUri;
 }
 
 export async function getOIDCAuthorizationEndpoint(): Promise<string> {
 	const config = await getOIDCConfig();
-	return config.authorizationEndpoint || '';
+	return config.authorizationEndpoint;
 }
 
 export async function getOIDCTokenEndpoint(): Promise<string> {
 	const config = await getOIDCConfig();
-	return config.tokenEndpoint || '';
+	return config.tokenEndpoint;
 }
 
 export async function getOIDCUserinfoEndpoint(): Promise<string> {
 	const config = await getOIDCConfig();
-	return config.userinfoEndpoint || '';
+	return config.userinfoEndpoint;
 }
 
 // Clear cache function for when settings are updated

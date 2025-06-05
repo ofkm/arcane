@@ -29,6 +29,73 @@ type APISuccessResponse struct {
 	Message string      `json:"message,omitempty"`
 }
 
+// APIError is a general API error type that implements error interface
+type APIError struct {
+	Message    string       `json:"message"`
+	Code       APIErrorCode `json:"code"`
+	StatusCode int          `json:"statusCode"`
+	Details    interface{}  `json:"details,omitempty"`
+}
+
+func (e *APIError) Error() string {
+	return e.Message
+}
+
+func (e *APIError) HTTPStatus() int {
+	if e.StatusCode > 0 {
+		return e.StatusCode
+	}
+	return http.StatusInternalServerError
+}
+
+// NewAPIError creates a new APIError
+func NewAPIError(message string, code APIErrorCode, statusCode int) *APIError {
+	return &APIError{
+		Message:    message,
+		Code:       code,
+		StatusCode: statusCode,
+	}
+}
+
+// NewAPIErrorWithDetails creates a new APIError with details
+func NewAPIErrorWithDetails(message string, code APIErrorCode, statusCode int, details interface{}) *APIError {
+	return &APIError{
+		Message:    message,
+		Code:       code,
+		StatusCode: statusCode,
+		Details:    details,
+	}
+}
+
+// Predefined API errors for common cases
+func NewBadRequestError(message string) *APIError {
+	return NewAPIError(message, APIErrorCodeBadRequest, http.StatusBadRequest)
+}
+
+func NewUnauthorizedError(message string) *APIError {
+	return NewAPIError(message, APIErrorCodeUnauthorized, http.StatusUnauthorized)
+}
+
+func NewForbiddenError(message string) *APIError {
+	return NewAPIError(message, APIErrorCodeForbidden, http.StatusForbidden)
+}
+
+func NewNotFoundError(message string) *APIError {
+	return NewAPIError(message, APIErrorCodeNotFound, http.StatusNotFound)
+}
+
+func NewConflictError(message string) *APIError {
+	return NewAPIError(message, APIErrorCodeConflict, http.StatusConflict)
+}
+
+func NewInternalServerError(message string) *APIError {
+	return NewAPIError(message, APIErrorCodeInternalServerError, http.StatusInternalServerError)
+}
+
+func NewValidationError(message string, details interface{}) *APIError {
+	return NewAPIErrorWithDetails(message, APIErrorCodeValidationError, http.StatusBadRequest, details)
+}
+
 // Custom error types
 type NotFoundError struct {
 	Message string
@@ -70,4 +137,22 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string {
 	return e.Message
+}
+
+// Helper function to convert any error to APIError
+func ToAPIError(err error) *APIError {
+	switch e := err.(type) {
+	case *APIError:
+		return e
+	case *NotFoundError:
+		return NewNotFoundError(e.Message)
+	case *ConflictError:
+		return NewConflictError(e.Message)
+	case *ValidationError:
+		return NewValidationError(e.Message, map[string]string{"field": e.Field})
+	case *DockerAPIError:
+		return NewAPIErrorWithDetails(e.Message, APIErrorCodeDockerAPIError, e.HTTPStatus(), e.Details)
+	default:
+		return NewInternalServerError(err.Error())
+	}
 }

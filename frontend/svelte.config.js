@@ -6,12 +6,12 @@ const config = {
 	preprocess: vitePreprocess(),
 	kit: {
 		adapter: adapter({
-			out: 'build',
-			assets: 'build',
-			fallback: 'index.html',
-			precompress: false,
-			polyfill: true
+			pages: '../backend/frontend/dist',
+			fallback: 'index.html'
 		}),
+		paths: {
+			base: process.env.NODE_ENV === 'production' ? '' : ''
+		},
 		csrf: {
 			checkOrigin: process.env.NODE_ENV === 'production'
 		},

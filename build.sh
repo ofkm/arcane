@@ -11,12 +11,6 @@ cd frontend
 npm ci
 npm run build
 
-# Copy built files to backend static directory
-echo "📋 Copying frontend build to backend..."
-rm -rf ../backend/static
-mkdir -p ../backend/static
-cp -r build/* ../backend/static/
-
 cd ..
 
 # Build the backend

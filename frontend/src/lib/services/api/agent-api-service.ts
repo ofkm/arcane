@@ -1,172 +1,311 @@
 import BaseAPIService from './api-service';
-import type { Agent } from '$lib/types/agent.type';
+import type { Agent, AgentTask } from '$lib/types/agent.type';
 
-export interface AgentWithStatus extends Agent {
-	status: 'online' | 'offline';
-}
-
-export interface AgentStack {
-	id?: string;
-	name: string;
-	status?: string;
-	services?: any[];
-	// Add other stack properties as needed
-}
-
-export interface AgentTask {
-	id: string;
-	agentId: string;
+export interface CreateTaskRequest {
 	type: string;
-	status: 'pending' | 'running' | 'completed' | 'failed';
-	createdAt: string;
-	startedAt?: string;
-	completedAt?: string;
+	payload: any;
+}
+
+export interface UpdateTaskStatusRequest {
+	status: string;
 	result?: any;
 	error?: string;
 }
 
+export interface AgentMetrics {
+	containerCount?: number;
+	imageCount?: number;
+	stackCount?: number;
+	networkCount?: number;
+	volumeCount?: number;
+}
+
+export interface DockerInfo {
+	version?: string;
+	containers?: number;
+	images?: number;
+}
+
 export default class AgentAPIService extends BaseAPIService {
+	// ===== AGENT MANAGEMENT =====
+
+	/**
+	 * Register a new agent
+	 */
+	async register(agent: Agent): Promise<Agent> {
+		return this.handleResponse(this.api.post('/agents/register', agent));
+	}
+
+	/**
+	 * Get agent by ID
+	 */
+	async get(agentId: string): Promise<Agent> {
+		return this.handleResponse(this.api.get(`/agents/${agentId}`));
+	}
+
+	/**
+	 * Update agent information
+	 */
+	async update(agentId: string, updates: Partial<Agent>): Promise<Agent> {
+		return this.handleResponse(this.api.put(`/agents/${agentId}`, updates));
+	}
+
+	/**
+	 * List all agents
+	 */
 	async list(): Promise<Agent[]> {
 		return this.handleResponse(this.api.get('/agents'));
 	}
 
-	async get(id: string): Promise<Agent> {
-		return this.handleResponse(this.api.get(`/agents/${id}`));
+	/**
+	 * Delete an agent
+	 */
+	async delete(agentId: string): Promise<void> {
+		return this.handleResponse(this.api.delete(`/agents/${agentId}`));
 	}
 
-	async create(agent: Omit<Agent, 'id' | 'createdAt' | 'updatedAt'>): Promise<Agent> {
-		return this.handleResponse(this.api.post('/agents', agent));
+	/**
+	 * Update agent heartbeat
+	 */
+	async heartbeat(agentId: string): Promise<void> {
+		return this.handleResponse(this.api.post(`/agents/${agentId}/heartbeat`));
 	}
 
-	async update(id: string, agent: Partial<Agent>): Promise<Agent> {
-		return this.handleResponse(this.api.put(`/agents/${id}`, agent));
+	/**
+	 * Update agent metrics
+	 */
+	async updateMetrics(agentId: string, metrics: AgentMetrics): Promise<void> {
+		return this.handleResponse(this.api.put(`/agents/${agentId}/metrics`, metrics));
 	}
 
-	async delete(id: string): Promise<void> {
-		return this.handleResponse(this.api.delete(`/agents/${id}`));
+	/**
+	 * Update agent Docker information
+	 */
+	async updateDockerInfo(agentId: string, dockerInfo: DockerInfo): Promise<void> {
+		return this.handleResponse(this.api.put(`/agents/${agentId}/docker-info`, dockerInfo));
 	}
 
-	async ping(id: string): Promise<{ success: boolean; responseTime: number }> {
-		return this.handleResponse(this.api.post(`/agents/${id}/ping`));
+	// ===== TASK MANAGEMENT =====
+
+	/**
+	 * Create a new task for an agent
+	 */
+	async createTask(agentId: string, taskData: CreateTaskRequest): Promise<AgentTask> {
+		return this.handleResponse(this.api.post(`/agents/${agentId}/tasks`, taskData));
 	}
 
-	async getStatus(id: string): Promise<{ status: string; lastSeen: string }> {
-		return this.handleResponse(this.api.get(`/agents/${id}/status`));
+	/**
+	 * Get a specific task by ID
+	 */
+	async getTask(taskId: string): Promise<AgentTask> {
+		return this.handleResponse(this.api.get(`/tasks/${taskId}`));
 	}
 
-	async listWithStatus(timeout: number = 5 * 60 * 1000): Promise<AgentWithStatus[]> {
-		return this.handleResponse(
-			this.api.get('/agents/with-status', {
-				params: { timeout }
-			})
-		);
+	/**
+	 * Update task status
+	 */
+	async updateTaskStatus(taskId: string, statusData: UpdateTaskStatusRequest): Promise<void> {
+		return this.handleResponse(this.api.put(`/tasks/${taskId}/status`, statusData));
 	}
 
-	// Task management
-	async getTasks(id: string): Promise<AgentTask[]> {
-		return this.handleResponse(this.api.get(`/agents/${id}/tasks`));
+	/**
+	 * List tasks for a specific agent
+	 */
+	async listTasks(agentId: string): Promise<AgentTask[]> {
+		return this.handleResponse(this.api.get(`/agents/${agentId}/tasks`));
 	}
 
-	async getTask(agentId: string, taskId: string): Promise<AgentTask> {
-		return this.handleResponse(this.api.get(`/agents/${agentId}/tasks/${taskId}`));
+	/**
+	 * List all tasks across all agents
+	 */
+	async listAllTasks(): Promise<AgentTask[]> {
+		return this.handleResponse(this.api.get('/tasks'));
 	}
 
-	async createTask(
+	/**
+	 * Get pending tasks for an agent
+	 */
+	async getPendingTasks(agentId: string): Promise<AgentTask[]> {
+		return this.handleResponse(this.api.get(`/agents/${agentId}/tasks/pending`));
+	}
+
+	/**
+	 * Cancel a task
+	 */
+	async cancelTask(taskId: string): Promise<void> {
+		return this.handleResponse(this.api.post(`/tasks/${taskId}/cancel`));
+	}
+
+	/**
+	 * Delete a task
+	 */
+	async deleteTask(taskId: string): Promise<void> {
+		return this.handleResponse(this.api.delete(`/tasks/${taskId}`));
+	}
+
+	/**
+	 * Get task logs
+	 */
+	async getTaskLogs(taskId: string): Promise<string> {
+		return this.handleResponse(this.api.get(`/tasks/${taskId}/logs`));
+	}
+
+	// ===== AGENT STATISTICS =====
+
+	/**
+	 * Get agent statistics
+	 */
+	async getAgentStats(agentId: string): Promise<{
+		containerCount: number;
+		imageCount: number;
+		stackCount: number;
+		networkCount: number;
+		volumeCount: number;
+		cpuUsage?: number;
+		memoryUsage?: number;
+		diskUsage?: number;
+	}> {
+		return this.handleResponse(this.api.get(`/agents/${agentId}/stats`));
+	}
+
+	/**
+	 * Get overall system statistics
+	 */
+	async getSystemStats(): Promise<{
+		totalAgents: number;
+		onlineAgents: number;
+		offlineAgents: number;
+		totalTasks: number;
+		pendingTasks: number;
+		runningTasks: number;
+		completedTasks: number;
+		failedTasks: number;
+	}> {
+		return this.handleResponse(this.api.get('/agents/stats'));
+	}
+
+	// ===== DOCKER OPERATIONS =====
+
+	/**
+	 * Execute Docker command on agent
+	 */
+	async executeDockerCommand(agentId: string, command: string, args: string[] = []): Promise<AgentTask> {
+		return this.createTask(agentId, {
+			type: 'docker_command',
+			payload: { command, args }
+		});
+	}
+
+	/**
+	 * Pull Docker image on agent
+	 */
+	async pullImage(agentId: string, imageName: string): Promise<AgentTask> {
+		return this.createTask(agentId, {
+			type: 'image_pull',
+			payload: { imageName }
+		});
+	}
+
+	/**
+	 * Deploy stack on agent
+	 */
+	async deployStack(agentId: string, stackId: string, composeContent: string, envContent?: string): Promise<AgentTask> {
+		return this.createTask(agentId, {
+			type: 'stack_deploy',
+			payload: { stackId, composeContent, envContent }
+		});
+	}
+
+	/**
+	 * Health check agent
+	 */
+	async healthCheck(agentId: string): Promise<AgentTask> {
+		return this.createTask(agentId, {
+			type: 'health_check',
+			payload: {}
+		});
+	}
+
+	/**
+	 * Upgrade agent
+	 */
+	async upgradeAgent(agentId: string, version = 'latest'): Promise<AgentTask> {
+		return this.createTask(agentId, {
+			type: 'agent_upgrade',
+			payload: { version }
+		});
+	}
+
+	// ===== REAL-TIME OPERATIONS =====
+
+	/**
+	 * Process agent message (for WebSocket communication)
+	 */
+	async processMessage(agentId: string, message: any): Promise<void> {
+		return this.handleResponse(this.api.post(`/agents/${agentId}/messages`, message));
+	}
+
+	/**
+	 * Get agent logs
+	 */
+	async getAgentLogs(
 		agentId: string,
-		task: {
-			type: string;
-			data?: any;
-			priority?: 'low' | 'normal' | 'high';
-		}
-	): Promise<AgentTask> {
-		return this.handleResponse(this.api.post(`/agents/${agentId}/tasks`, task));
-	}
-
-	async cancelTask(agentId: string, taskId: string): Promise<void> {
-		return this.handleResponse(this.api.delete(`/agents/${agentId}/tasks/${taskId}`));
-	}
-
-	// Stack management on agents
-	async getStacks(id: string): Promise<AgentStack[]> {
-		return this.handleResponse(this.api.get(`/agents/${id}/stacks`));
-	}
-
-	async getStack(agentId: string, stackName: string): Promise<AgentStack> {
-		return this.handleResponse(this.api.get(`/agents/${agentId}/stacks/${encodeURIComponent(stackName)}`));
-	}
-
-	async deployStack(
-		agentId: string,
-		deployment: {
-			name: string;
-			composeContent: string;
-			envContent?: string;
-			options?: any;
-		}
-	): Promise<{ success: boolean; deploymentId: string }> {
-		return this.handleResponse(this.api.post(`/agents/${agentId}/stacks/deploy`, deployment));
-	}
-
-	async updateStack(
-		agentId: string,
-		stackName: string,
-		update: {
-			composeContent?: string;
-			envContent?: string;
-			options?: any;
-		}
-	): Promise<{ success: boolean }> {
-		return this.handleResponse(this.api.put(`/agents/${agentId}/stacks/${encodeURIComponent(stackName)}`, update));
-	}
-
-	async removeStack(
-		agentId: string,
-		stackName: string,
-		options?: {
-			removeVolumes?: boolean;
-			removeNetworks?: boolean;
-		}
-	): Promise<{ success: boolean }> {
-		return this.handleResponse(
-			this.api.delete(`/agents/${agentId}/stacks/${encodeURIComponent(stackName)}`, {
-				params: options
-			})
-		);
-	}
-
-	async startStack(agentId: string, stackName: string): Promise<{ success: boolean }> {
-		return this.handleResponse(this.api.post(`/agents/${agentId}/stacks/${encodeURIComponent(stackName)}/start`));
-	}
-
-	async stopStack(agentId: string, stackName: string): Promise<{ success: boolean }> {
-		return this.handleResponse(this.api.post(`/agents/${agentId}/stacks/${encodeURIComponent(stackName)}/stop`));
-	}
-
-	async restartStack(agentId: string, stackName: string): Promise<{ success: boolean }> {
-		return this.handleResponse(this.api.post(`/agents/${agentId}/stacks/${encodeURIComponent(stackName)}/restart`));
-	}
-
-	async getStackLogs(
-		agentId: string,
-		stackName: string,
 		options?: {
 			tail?: number;
-			timestamps?: boolean;
+			since?: string;
 			follow?: boolean;
 		}
-	): Promise<string[]> {
+	): Promise<string> {
+		const params = new URLSearchParams();
+		if (options?.tail) params.append('tail', options.tail.toString());
+		if (options?.since) params.append('since', options.since);
+		if (options?.follow) params.append('follow', options.follow.toString());
+
+		const query = params.toString() ? `?${params.toString()}` : '';
+		return this.handleResponse(this.api.get(`/agents/${agentId}/logs${query}`));
+	}
+
+	// ===== AGENT CONFIGURATION =====
+
+	/**
+	 * Get agent configuration
+	 */
+	async getAgentConfig(agentId: string): Promise<any> {
+		return this.handleResponse(this.api.get(`/agents/${agentId}/config`));
+	}
+
+	/**
+	 * Update agent configuration
+	 */
+	async updateAgentConfig(agentId: string, config: any): Promise<void> {
+		return this.handleResponse(this.api.put(`/agents/${agentId}/config`, config));
+	}
+
+	// ===== BULK OPERATIONS =====
+
+	/**
+	 * Bulk update multiple agents
+	 */
+	async bulkUpdate(updates: Array<{ agentId: string; data: Partial<Agent> }>): Promise<Agent[]> {
+		return this.handleResponse(this.api.put('/agents/bulk', { updates }));
+	}
+
+	/**
+	 * Bulk delete multiple agents
+	 */
+	async bulkDelete(agentIds: string[]): Promise<void> {
+		return this.handleResponse(this.api.delete('/agents/bulk', { data: { agentIds } }));
+	}
+
+	/**
+	 * Send task to multiple agents
+	 */
+	async bulkCreateTasks(agentIds: string[], taskData: CreateTaskRequest): Promise<AgentTask[]> {
 		return this.handleResponse(
-			this.api.get(`/agents/${agentId}/stacks/${encodeURIComponent(stackName)}/logs`, {
-				params: options
+			this.api.post('/agents/bulk/tasks', {
+				agentIds,
+				taskData
 			})
 		);
-	}
-
-	async getDeployments(id: string): Promise<any[]> {
-		return this.handleResponse(this.api.get(`/agents/${id}/deployments`));
-	}
-
-	async getDeployment(id: string, deploymentId: string): Promise<any> {
-		return this.handleResponse(this.api.get(`/agents/${id}/deployments/${deploymentId}`));
 	}
 }

@@ -4,12 +4,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
+	"github.com/ofkm/arcane-backend/frontend"
 	"github.com/ofkm/arcane-backend/internal/api"
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
@@ -55,6 +55,13 @@ func main() {
 	networkService := services.NewNetworkService(db)
 	imageMaturityService := services.NewImageMaturityService(db)
 
+	// Initialize JWT secret from environment or generate one
+	jwtSecret := os.Getenv("JWT_SECRET")
+
+	// Create AuthService
+	authService := services.NewAuthService(userService, settingsService, jwtSecret)
+	oidcService := services.NewOidcService(authService)
+
 	// Initialize Gin router
 	r := gin.Default()
 
@@ -85,10 +92,7 @@ func main() {
 		r.Use(cors.New(corsConfig))
 	}
 
-	// Setup static file serving
-	setupStaticFiles(r, cfg)
-
-	// Health check endpoint
+	// Health check endpoint FIRST
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":      "ok",
@@ -109,10 +113,20 @@ func main() {
 		Volume:        volumeService,
 		Network:       networkService,
 		ImageMaturity: imageMaturityService,
+		Auth:          authService,
+		Oidc:          oidcService,
 	}
 
-	// Setup API routes
+	// Setup API routes SECOND
 	api.SetupRoutes(r, services)
+
+	// Register embedded frontend LAST
+	if err := frontend.RegisterFrontend(r); err != nil {
+		log.Printf("⚠️ Failed to register embedded frontend: %v", err)
+		log.Printf("💡 Make sure to copy frontend build to backend/frontend/dist/")
+	} else {
+		log.Printf("📁 Serving embedded frontend")
+	}
 
 	// Start server
 	port := cfg.Port
@@ -129,77 +143,5 @@ func main() {
 
 	if err := r.Run(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)
-	}
-}
-
-func setupStaticFiles(r *gin.Engine, cfg *config.Config) {
-	staticPath := cfg.StaticPath
-	if staticPath == "" {
-		staticPath = "./static"
-	}
-
-	// Check if static directory exists
-	if _, err := os.Stat(staticPath); err == nil {
-		log.Printf("📁 Serving static files from: %s", staticPath)
-
-		// Serve static assets with cache headers for production
-		if cfg.Environment == "production" {
-			r.Static("/assets", filepath.Join(staticPath, "assets"))
-			r.StaticFile("/favicon.ico", filepath.Join(staticPath, "favicon.ico"))
-			r.StaticFile("/robots.txt", filepath.Join(staticPath, "robots.txt"))
-			r.StaticFile("/manifest.json", filepath.Join(staticPath, "manifest.json"))
-		} else {
-			// Development: serve without cache headers
-			r.Static("/assets", filepath.Join(staticPath, "assets"))
-			r.StaticFile("/favicon.ico", filepath.Join(staticPath, "favicon.ico"))
-			r.StaticFile("/robots.txt", filepath.Join(staticPath, "robots.txt"))
-		}
-
-		// Serve the main HTML file for all non-API routes (SPA support)
-		r.NoRoute(func(c *gin.Context) {
-			// Check if this is an API request
-			if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
-				c.JSON(http.StatusNotFound, gin.H{
-					"success": false,
-					"error":   "API endpoint not found",
-					"path":    c.Request.URL.Path,
-				})
-				return
-			}
-
-			// Serve the main HTML file for all other routes
-			indexPath := filepath.Join(staticPath, "index.html")
-			if _, err := os.Stat(indexPath); err == nil {
-				c.File(indexPath)
-			} else {
-				c.JSON(http.StatusNotFound, gin.H{
-					"success": false,
-					"error":   "Frontend not found",
-					"message": "Run 'npm run build' to generate static files",
-				})
-			}
-		})
-	} else {
-		log.Printf("⚠️  Static directory not found: %s", staticPath)
-		log.Printf("💡 Run 'npm run build' in the frontend directory to generate static files")
-
-		// In development, provide helpful error messages
-		r.NoRoute(func(c *gin.Context) {
-			if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
-				c.JSON(http.StatusNotFound, gin.H{
-					"success": false,
-					"error":   "API endpoint not found",
-					"path":    c.Request.URL.Path,
-				})
-				return
-			}
-
-			c.JSON(http.StatusOK, gin.H{
-				"message": "Frontend not built. Run 'npm run build' in the frontend directory to generate static files.",
-				"path":    c.Request.URL.Path,
-				"api":     "http://localhost:" + c.Request.Host + "/api",
-				"health":  "http://localhost:" + c.Request.Host + "/health",
-			})
-		})
 	}
 }
