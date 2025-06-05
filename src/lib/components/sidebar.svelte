@@ -40,11 +40,9 @@
 					{ href: '/settings/docker', label: 'Docker', icon: Database },
 					{ href: '/settings/templates', label: 'Templates', icon: LayoutTemplate },
 					{ href: '/settings/users', label: 'Users', icon: UserIcon },
-					// { href: '/settings/rbac', label: 'RBAC', icon: ShieldCheck },
 					{ href: '/settings/security', label: 'Security', icon: Shield }
 
 					// { href: '/settings/notifications', label: 'Notifications', icon: Bell },
-					// { href: '/settings/appearance', label: 'Appearance', icon: Palette }
 				]
 			}
 		] as MenuItem[],

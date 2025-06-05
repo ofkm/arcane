@@ -34,7 +34,8 @@
 		restart: false,
 		remove: false,
 		pulling: false,
-		redeploy: false
+		redeploy: false,
+		validating: false
 	});
 
 	const isRunning = $derived(itemState === 'running' || (type === 'stack' && itemState === 'partially running'));
@@ -46,6 +47,7 @@
 		isLoading.remove = loading.remove ?? false;
 		isLoading.restart = loading.restart ?? false;
 		isLoading.redeploy = loading.redeploy ?? false;
+		isLoading.validating = loading.validating ?? false;
 	});
 
 	function confirmAction(action: string) {
@@ -124,7 +126,7 @@
 		handleApiResultWithCallbacks({
 			result: await tryCatch(stackApi.validate(id)),
 			message: `Failed to Validate stack`,
-			setLoadingState: (value) => (isLoading.start = value),
+			setLoadingState: (value) => (isLoading.validating = value),
 			onSuccess: async () => {
 				handleApiResultWithCallbacks({
 					result: await tryCatch(stackApi.deploy(id)),

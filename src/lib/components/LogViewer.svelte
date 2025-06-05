@@ -6,13 +6,13 @@
 		timestamp: string;
 		level: 'stdout' | 'stderr' | 'info' | 'error';
 		message: string;
-		service?: string; // Add service field for stack logs
+		service?: string;
 		containerId?: string;
 	}
 
 	interface Props {
 		containerId?: string | null;
-		stackId?: string | null; // Add stackId prop
+		stackId?: string | null;
 		type?: 'container' | 'stack';
 		maxLines?: number;
 		autoScroll?: boolean;

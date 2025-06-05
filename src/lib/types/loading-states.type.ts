@@ -6,4 +6,5 @@ export type LoadingStates = {
 	deploy?: boolean;
 	redeploy?: boolean;
 	remove?: boolean;
+	validating?: boolean;
 };

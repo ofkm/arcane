@@ -1060,7 +1060,7 @@ export async function deployStack(stackId: string, options: { profiles?: string[
 
 				await Promise.all(imagePullPromises);
 
-				// Create networks for deployable services only
+				// Create networks for deployable services
 				await createStackNetworks(docker, stackId, filteredComposeData.networks || {});
 
 				// Deploy filtered services
@@ -1567,18 +1567,31 @@ async function createStackNetworks(docker: Dockerode, stackId: string, networks:
 	if (!networks || Object.keys(networks).length === 0) {
 		const defaultNetworkName = `${stackId}_default`;
 		try {
-			await docker.createNetwork({
-				Name: defaultNetworkName,
-				Driver: 'bridge',
-				Labels: {
-					'com.docker.compose.project': stackId,
-					'com.docker.compose.network': 'default'
-				}
-			});
+			// Check if the network exists
+			const existingNetworks = await docker.listNetworks({ filters: { name: [defaultNetworkName] } });
+			if (existingNetworks.length === 0) {
+				// Network doesn't exist, create it
+				console.log(`Creating default network: ${defaultNetworkName}`);
+				const createdNetwork = await docker.createNetwork({
+					Name: defaultNetworkName,
+					Driver: 'bridge',
+					Labels: {
+						'com.docker.compose.project': stackId,
+						'com.docker.compose.network': 'default'
+					}
+				});
+				console.log(`Successfully created default network: ${defaultNetworkName} (ID: ${createdNetwork.id})`);
+
+				// Wait for network to be ready
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			} else {
+				console.log(`Default network ${defaultNetworkName} already exists, reusing it.`);
+			}
 		} catch (err: any) {
 			if (err.statusCode === 409) {
 				console.log(`Default network ${defaultNetworkName} already exists, reusing it.`);
 			} else {
+				console.error(`Error creating default network ${defaultNetworkName}:`, err);
 				throw err;
 			}
 		}
@@ -1596,34 +1609,74 @@ async function createStackNetworks(docker: Dockerode, stackId: string, networks:
 
 		// Skip external networks
 		if (networkConfig.external) {
-			console.log(`Using external network: ${networkConfig.name || networkName}`);
+			const externalNetworkName = networkConfig.name || networkName;
+			console.log(`Using external network: ${externalNetworkName}`);
+
+			// Verify external network exists
+			try {
+				const existingNetworks = await docker.listNetworks({ filters: { name: [externalNetworkName] } });
+				if (existingNetworks.length === 0) {
+					throw new Error(`External network '${externalNetworkName}' not found`);
+				}
+				console.log(`Verified external network exists: ${externalNetworkName}`);
+			} catch (verifyError) {
+				console.error(`Failed to verify external network ${externalNetworkName}:`, verifyError);
+				throw new Error(`External network '${externalNetworkName}' is not available: ${verifyError instanceof Error ? verifyError.message : String(verifyError)}`);
+			}
 			continue;
 		}
 
 		// Network creation logic for non-external networks
+		// FIX: Use the explicit name if provided, otherwise use prefixed convention
+		const networkToCreateName = networkConfig.name || `${stackId}_${networkName}`;
+
+		console.log(`Network "${networkName}" -> Creating with name: "${networkToCreateName}" (explicit name: ${networkConfig.name ? 'yes' : 'no'})`);
+
 		const networkToCreate = {
-			Name: networkConfig.name || `${stackId}_${networkName}`,
+			Name: networkToCreateName,
 			Driver: networkConfig.driver || 'bridge',
 			Labels: {
 				'com.docker.compose.project': stackId,
 				'com.docker.compose.network': networkName
 			},
-			Options: networkConfig.driver_opts || {}
+			Options: networkConfig.driver_opts || {},
+			// Add IPAM configuration if specified
+			...(networkConfig.ipam && { IPAM: networkConfig.ipam })
 		};
 
 		try {
-			console.log(`Creating network: ${networkToCreate.Name}`);
-			await docker.createNetwork(networkToCreate);
-			console.log(`Successfully created network: ${networkToCreate.Name}`);
+			// Check if the network exists by name
+			const existingNetworks = await docker.listNetworks({ filters: { name: [networkToCreateName] } });
+			if (existingNetworks.length === 0) {
+				// Network doesn't exist, create it
+				console.log(`Creating network: ${networkToCreate.Name}`);
+				const createdNetwork = await docker.createNetwork(networkToCreate);
+				console.log(`Successfully created network: ${networkToCreate.Name} (ID: ${createdNetwork.id})`);
+
+				// Wait for network to be fully ready before proceeding
+				await new Promise((resolve) => setTimeout(resolve, 200));
+
+				// Verify the network was created successfully
+				const verifyNetworks = await docker.listNetworks({ filters: { name: [networkToCreateName] } });
+				if (verifyNetworks.length === 0) {
+					throw new Error(`Network ${networkToCreateName} was created but cannot be found`);
+				}
+				console.log(`Verified network creation: ${networkToCreateName}`);
+			} else {
+				console.log(`Network ${networkToCreate.Name} already exists, reusing it.`);
+			}
 		} catch (err: any) {
 			if (err.statusCode === 409) {
-				console.log(`Network ${networkToCreate.Name} already exists, reusing it.`);
+				console.log(`Network ${networkToCreate.Name} already exists (409), reusing it.`);
 			} else {
 				console.error(`Error creating network ${networkToCreate.Name}:`, err);
 				throw err;
 			}
 		}
 	}
+
+	// Add a final wait to ensure all networks are ready
+	console.log(`All networks for stack ${stackId} are ready`);
 }
 
 /**
@@ -1833,37 +1886,34 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 		// Add working directory, user, etc.
 		if (serviceConfig.working_dir) containerConfig.WorkingDir = serviceConfig.working_dir;
 		if (serviceConfig.user) containerConfig.User = serviceConfig.user;
-
-		// Handle networking with proper type checking
+    
 		if (serviceConfig.network_mode) {
 			containerConfig.HostConfig.NetworkMode = serviceConfig.network_mode;
 		} else if (serviceConfig.networks) {
-			// Handle Docker Compose networks - can be array or object
-			const networks: string[] = Array.isArray(serviceConfig.networks) ? serviceConfig.networks : Object.keys(serviceConfig.networks);
-
+			const networks = Array.isArray(serviceConfig.networks) ? serviceConfig.networks : Object.keys(serviceConfig.networks);
+      
 			if (networks.length > 0) {
 				const primaryNetwork = networks[0];
 				const networkDefinition = processedComposeData.networks?.[primaryNetwork];
 
-				// Handle external networks properly
+				// FIX: Respect explicit network names from compose spec
 				let fullNetworkName: string;
 				if (networkDefinition?.external) {
-					if (typeof networkDefinition.external === 'object' && networkDefinition.external.name) {
-						fullNetworkName = networkDefinition.external.name;
-					} else if (typeof networkDefinition.external === 'string') {
-						fullNetworkName = networkDefinition.external;
-					} else if (networkDefinition.name) {
-						fullNetworkName = networkDefinition.name;
-					} else {
-						fullNetworkName = primaryNetwork;
-					}
+					// External network - use the specified name or default to network key
+					fullNetworkName = networkDefinition.name || primaryNetwork;
+				} else if (networkDefinition?.name) {
+					// Network has explicit name - use it directly (no prefix)
+					fullNetworkName = networkDefinition.name;
 				} else {
+					// No explicit name - use Docker Compose convention with project prefix
 					fullNetworkName = `${stackId}_${primaryNetwork}`;
 				}
 
+				console.log(`Service "${serviceName}" primary network "${primaryNetwork}" -> Using network name: "${fullNetworkName}" (explicit: ${networkDefinition?.name ? 'yes' : 'no'})`);
+
 				containerConfig.HostConfig.NetworkMode = fullNetworkName;
 
-				// Handle network configuration if networks is an object
+				// Rest of the network configuration logic...
 				if (!Array.isArray(serviceConfig.networks)) {
 					const networkConfig = serviceConfig.networks[primaryNetwork];
 					if (networkConfig && typeof networkConfig === 'object') {
@@ -1910,20 +1960,16 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 				for (const netName of additionalNetworks) {
 					try {
 						const networkDefinition = processedComposeData.networks?.[netName];
-
-						// Handle external networks properly
+            
+						// FIX: Same logic for additional networks
 						let fullNetworkName: string;
 						if (networkDefinition?.external) {
-							if (typeof networkDefinition.external === 'object' && networkDefinition.external.name) {
-								fullNetworkName = networkDefinition.external.name;
-							} else if (typeof networkDefinition.external === 'string') {
-								fullNetworkName = networkDefinition.external;
-							} else if (networkDefinition.name) {
-								fullNetworkName = networkDefinition.name;
-							} else {
-								fullNetworkName = netName;
-							}
+							fullNetworkName = networkDefinition.name || netName;
+						} else if (networkDefinition?.name) {
+							// Network has explicit name - use it directly
+							fullNetworkName = networkDefinition.name;
 						} else {
+							// No explicit name - use Docker Compose convention
 							fullNetworkName = `${stackId}_${netName}`;
 						}
 
