@@ -1,12 +1,29 @@
 import type { PageLoad } from './$types';
-import { getSettings } from '$lib/services/settings-service';
+import { settingsAPI } from '$lib/services/api';
 
 export const load: PageLoad = async () => {
-	const settings = await getSettings();
+	try {
+		const settings = await settingsAPI.getSettings();
 
-	// const oidcEnvVarsConfigured = !!env.OIDC_CLIENT_ID && !!env.OIDC_CLIENT_SECRET && !!env.OIDC_REDIRECT_URI && !!env.OIDC_AUTHORIZATION_ENDPOINT && !!env.OIDC_TOKEN_ENDPOINT && !!env.OIDC_USERINFO_ENDPOINT;
-
-	return {
-		settings
-	};
+		return {
+			settings
+		};
+	} catch (error) {
+		console.error('Failed to load security settings:', error);
+		return {
+			settings: {
+				auth: {
+					localAuthEnabled: true,
+					oidcEnabled: false,
+					sessionTimeout: 60,
+					passwordPolicy: 'strong',
+					rbacEnabled: false
+				},
+				encryption: {
+					enabled: false,
+					algorithm: 'AES-256-GCM'
+				}
+			}
+		};
+	}
 };

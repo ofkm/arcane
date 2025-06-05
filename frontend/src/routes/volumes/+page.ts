@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { listVolumes, isVolumeInUse } from '$lib/services/docker/volume-service';
+import { volumeAPI } from '$lib/services/api';
 import type { VolumeInspectInfo } from 'dockerode';
 
 type EnhancedVolumeInfo = VolumeInspectInfo & {
@@ -13,11 +13,15 @@ type VolumePageData = {
 
 export const load: PageLoad = async (): Promise<VolumePageData> => {
 	try {
-		const volumesData = await listVolumes();
+		const volumesData = (await volumeAPI.list()) as VolumeInspectInfo[];
 
 		const enhancedVolumes = await Promise.all(
 			volumesData.map(async (volume): Promise<EnhancedVolumeInfo> => {
-				const inUse = await isVolumeInUse(volume.Name);
+				const inUse = await volumeAPI.isInUse(volume.Name).catch((err) => {
+					console.error(`Failed to check if volume ${volume.Name} is in use:`, err);
+					return true; // Default to true for safety
+				});
+
 				return {
 					...volume,
 					inUse

@@ -1,12 +1,10 @@
-import { listContainers } from '$lib/services/docker/container-service';
-import { listImages } from '$lib/services/docker/image-service';
-import { listNetworks } from '$lib/services/docker/network-service';
-import { listVolumes } from '$lib/services/docker/volume-service';
+import { containerAPI, imageAPI, networkAPI, volumeAPI } from '$lib/services/api';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async () => {
 	try {
-		const [containers, volumes, networks, images] = await Promise.all([listContainers(true), listVolumes(), listNetworks(), listImages()]);
+		const [containers, volumes, networks, images] = await Promise.all([containerAPI.list(true), volumeAPI.list(), networkAPI.list(), imageAPI.list()]);
+
 		return {
 			containers,
 			volumes,

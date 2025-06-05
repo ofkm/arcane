@@ -1,9 +1,9 @@
 import type { PageLoad } from './$types';
-import { getSettings } from '$lib/services/settings-service';
+import { settingsAPI } from '$lib/services/api';
 
 export const load: PageLoad = async () => {
 	try {
-		const settings = await getSettings();
+		const settings = await settingsAPI.getSettings();
 
 		return {
 			settings
@@ -19,8 +19,7 @@ export const load: PageLoad = async () => {
 				autoUpdate: false,
 				autoUpdateInterval: 60,
 				pruneMode: 'all'
-			},
-			csrf: crypto.randomUUID()
+			}
 		};
 	}
 };

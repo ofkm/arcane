@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { getContainer, getContainerLogs, getContainerStats } from '$lib/services/docker/container-service';
+import { containerAPI } from '$lib/services/api';
 import { error } from '@sveltejs/kit';
 
 export const load: PageLoad = async ({ params }) => {
@@ -7,12 +7,12 @@ export const load: PageLoad = async ({ params }) => {
 
 	try {
 		const [container, logs, stats] = await Promise.all([
-			getContainer(containerId),
-			getContainerLogs(containerId, { tail: 100 }).catch((err) => {
+			containerAPI.inspect(containerId),
+			containerAPI.logs(containerId, { tail: 100 }).catch((err) => {
 				console.error(`Failed to retrieve logs for ${containerId}:`, err);
 				return 'Failed to load logs. Container might not be running or logs are unavailable.';
 			}),
-			getContainerStats(containerId).catch((err) => {
+			containerAPI.stats(containerId).catch((err) => {
 				console.error(`Failed to retrieve stats for ${containerId}:`, err);
 				return null;
 			})
@@ -31,8 +31,8 @@ export const load: PageLoad = async ({ params }) => {
 		};
 	} catch (err: any) {
 		console.error(`Failed to load container ${containerId}:`, err);
-		if (err.name === 'NotFoundError') {
-			error(404, { message: err.message });
+		if (err.name === 'NotFoundError' || err.status === 404) {
+			error(404, { message: err.message || `Container with ID "${containerId}" not found.` });
 		} else {
 			error(500, {
 				message: err.message || `Failed to load container details for "${containerId}".`

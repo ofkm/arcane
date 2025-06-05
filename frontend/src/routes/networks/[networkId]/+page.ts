@@ -1,25 +1,27 @@
 import type { PageLoad } from './$types';
-import { getNetwork, removeNetwork } from '$lib/services/docker/network-service';
-import { error, fail, redirect } from '@sveltejs/kit';
-import { NotFoundError, ConflictError, DockerApiError } from '$lib/types/errors';
+import { networkAPI } from '$lib/services/api';
+import { error } from '@sveltejs/kit';
 
 export const load: PageLoad = async ({ params }) => {
 	const networkId = params.networkId;
 
 	try {
-		const network = await getNetwork(networkId);
+		const network = await networkAPI.get(networkId);
 
 		return {
 			network
 		};
-	} catch (err: unknown) {
+	} catch (err: any) {
 		console.error(`Failed to load network ${networkId}:`, err);
-		if (err instanceof NotFoundError) {
-			error(404, { message: err.message });
+
+		// Handle API errors
+		if (err.status === 404 || err.name === 'NotFoundError') {
+			error(404, {
+				message: err.message || `Network with ID "${networkId}" not found.`
+			});
 		} else {
-			const statusCode = err && typeof err === 'object' && 'status' in err ? (err as { status: number }).status : 500;
-			error(statusCode, {
-				message: err instanceof Error ? err.message : `Failed to load network details for "${networkId}".`
+			error(err.status || 500, {
+				message: err.message || `Failed to load network details for "${networkId}".`
 			});
 		}
 	}

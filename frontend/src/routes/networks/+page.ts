@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { listNetworks } from '$lib/services/docker/network-service';
+import { networkAPI } from '$lib/services/api';
 import type { NetworkInspectInfo } from 'dockerode';
 
 type NetworkPageData = {
@@ -9,9 +9,9 @@ type NetworkPageData = {
 
 export const load: PageLoad = async (): Promise<NetworkPageData> => {
 	try {
-		const networks = await listNetworks();
+		const networks = await networkAPI.list();
 		return {
-			networks
+			networks: networks as NetworkInspectInfo[]
 		};
 	} catch (err: unknown) {
 		console.error('Failed to load networks:', err);

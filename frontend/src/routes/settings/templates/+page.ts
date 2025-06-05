@@ -1,33 +1,26 @@
-import { TemplateService } from '$lib/services/template-service';
-import { getSettings } from '$lib/services/settings-service';
-import { templateRegistryService } from '$lib/services/template-registry-service';
-import { fail } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import type { TemplateRegistryConfig } from '$lib/types/settings.type';
+import { settingsAPI, templateAPI, templateRegistryAPI } from '$lib/services/api';
 
 export const load: PageLoad = async () => {
 	try {
-		const templateService = new TemplateService();
-		const settings = await getSettings();
-
-		const templates = await templateService.loadAllTemplates();
-
-		const localTemplateCount = templates.filter((t) => !t.isRemote).length;
-		const remoteTemplateCount = templates.filter((t) => t.isRemote).length;
+		const [settings, templates, registries] = await Promise.all([settingsAPI.getSettings(), templateAPI.loadAll().catch(() => []), templateRegistryAPI.list().catch(() => [])]);
 
 		return {
 			settings,
-			localTemplateCount,
-			remoteTemplateCount
+			templates,
+			registries
 		};
 	} catch (error) {
-		console.error('Error loading template settings:', error);
-		const fallbackSettings = await getSettings();
+		console.error('Failed to load template settings:', error);
 		return {
-			settings: fallbackSettings,
-			localTemplateCount: 0,
-			remoteTemplateCount: 0,
-			error: error instanceof Error ? error.message : 'Failed to load template data'
+			settings: {
+				templates: {
+					enabled: true,
+					registries: []
+				}
+			},
+			templates: [],
+			registries: []
 		};
 	}
 };

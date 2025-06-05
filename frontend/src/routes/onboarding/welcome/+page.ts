@@ -1,12 +1,25 @@
 import { redirect } from '@sveltejs/kit';
-import { getSettings } from '$lib/services/settings-service';
+import { settingsAPI } from '$lib/services/api';
+import type { PageLoad } from './$types';
 
-export async function load() {
-	const settings = await getSettings();
+export const load: PageLoad = async () => {
+	try {
+		const settings = await settingsAPI.getSettings();
 
-	if (settings.onboarding && settings.onboarding.completed) {
-		throw redirect(302, '/');
+		if (settings.onboarding?.completed) {
+			throw redirect(302, '/');
+		}
+
+		return { settings };
+	} catch (err) {
+		console.error('Failed to load settings:', err);
+		// If settings can't be loaded, continue to welcome page
+		return {
+			settings: {
+				onboarding: {
+					completed: false
+				}
+			}
+		};
 	}
-
-	return { settings };
-}
+};

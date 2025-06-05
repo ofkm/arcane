@@ -9,7 +9,7 @@ import TemplateAPIService from './template-api-service';
 import UserAPIService from './user-api-service';
 import SessionAPIService from './session-api-service';
 import SettingsAPIService from './settings-api-service';
-import TemplateRegistryAPIService from './template-api-service';
+import TemplateRegistryAPIService from './template-registry-api-service';
 import OidcAPIService from './oidc-api-service';
 import EncryptionAPIService from './encryption-api-service';
 import DeploymentAPIService from './deployment-api-service';

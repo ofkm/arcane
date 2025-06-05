@@ -1,20 +1,23 @@
 import type { PageLoad } from './$types';
-import { getSettings } from '$lib/services/settings-service';
+import { settingsAPI } from '$lib/services/api';
 
 export const load: PageLoad = async () => {
 	try {
-		const settings = await getSettings();
+		const settings = await settingsAPI.getSettings();
 
 		return {
 			settings
 		};
 	} catch (error) {
-		console.error('Failed to load settings:', error);
+		console.error('Failed to load general settings:', error);
 		return {
 			settings: {
-				stacksDirectory: 'data/stacks',
-				baseServerUrl: 'localhost',
-				maturityThresholdDays: 30
+				theme: 'dark',
+				language: 'en',
+				timezone: 'UTC',
+				enableNotifications: true,
+				autoRefresh: true,
+				refreshInterval: 30
 			}
 		};
 	}

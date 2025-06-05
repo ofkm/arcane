@@ -2,7 +2,7 @@ import BaseAPIService from './api-service';
 import type { Agent } from '$lib/types/agent.type';
 
 export interface AgentWithStatus extends Agent {
-	status: 'online' | 'offline' | 'unknown';
+	status: 'online' | 'offline';
 }
 
 export interface AgentStack {

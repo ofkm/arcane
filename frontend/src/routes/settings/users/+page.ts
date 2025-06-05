@@ -1,25 +1,26 @@
 import type { PageLoad } from './$types';
-import UserAPIService from '$lib/services/api/user-api-service';
-import { listUsers } from '$lib/services/user-service';
+import { settingsAPI, userAPI } from '$lib/services/api';
 
-export const load: PageLoad = async ({}) => {
+export const load: PageLoad = async () => {
 	try {
-		const userApi = new UserAPIService();
-
-		const users = await listUsers();
-
-		const sanitizedUsers = users.map((user) => {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { passwordHash: _passwordHash, ...rest } = user;
-			return rest;
-		});
+		const [settings, users] = await Promise.all([settingsAPI.getSettings(), userAPI.list().catch(() => [])]);
 
 		return {
-			users: users || []
+			settings,
+			users
 		};
 	} catch (error) {
-		console.error('Failed to load users:', error);
+		console.error('Failed to load user settings:', error);
 		return {
+			settings: {
+				auth: {
+					localAuthEnabled: true,
+					oidcEnabled: false,
+					sessionTimeout: 60,
+					passwordPolicy: 'strong',
+					rbacEnabled: false
+				}
+			},
 			users: []
 		};
 	}
