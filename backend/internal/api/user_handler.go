@@ -1,0 +1,210 @@
+package api
+
+import (
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/services"
+)
+
+type UserHandler struct {
+	userService *services.UserService
+}
+
+func NewUserHandler(userService *services.UserService) *UserHandler {
+	return &UserHandler{
+		userService: userService,
+	}
+}
+
+type CreateUserRequest struct {
+	Username    string   `json:"username" binding:"required"`
+	Password    string   `json:"password" binding:"required"`
+	DisplayName *string  `json:"displayName,omitempty"`
+	Email       *string  `json:"email,omitempty"`
+	Roles       []string `json:"roles,omitempty"`
+}
+
+type UpdateUserRequest struct {
+	DisplayName *string  `json:"displayName,omitempty"`
+	Email       *string  `json:"email,omitempty"`
+	Roles       []string `json:"roles,omitempty"`
+}
+
+func (h *UserHandler) ListUsers(c *gin.Context) {
+	users, err := h.userService.ListUsers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to fetch users",
+		})
+		return
+	}
+
+	// Convert to response format (excluding sensitive data)
+	var userResponses []UserResponse
+	for _, user := range users {
+		userResponses = append(userResponses, UserResponse{
+			ID:          user.ID,
+			Username:    user.Username,
+			DisplayName: user.DisplayName,
+			Email:       user.Email,
+			Roles:       user.Roles,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"users":   userResponses,
+		"count":   len(userResponses),
+	})
+}
+
+func (h *UserHandler) CreateUser(c *gin.Context) {
+	var req CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request format",
+		})
+		return
+	}
+
+	// TODO: Hash password properly
+	user := &models.User{
+		ID:           uuid.New().String(),
+		Username:     req.Username,
+		PasswordHash: req.Password, // TODO: Hash this
+		DisplayName:  req.DisplayName,
+		Email:        req.Email,
+		Roles:        req.Roles,
+		BaseModel: models.BaseModel{
+			CreatedAt: time.Now(),
+		},
+	}
+
+	if user.Roles == nil {
+		user.Roles = []string{"user"} // Default role
+	}
+
+	createdUser, err := h.userService.CreateUser(c.Request.Context(), user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to create user",
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"user": UserResponse{
+			ID:          createdUser.ID,
+			Username:    createdUser.Username,
+			DisplayName: createdUser.DisplayName,
+			Email:       createdUser.Email,
+			Roles:       createdUser.Roles,
+		},
+	})
+}
+
+func (h *UserHandler) GetUser(c *gin.Context) {
+	userID := c.Param("id")
+
+	user, err := h.userService.GetUserByID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "User not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"user": UserResponse{
+			ID:          user.ID,
+			Username:    user.Username,
+			DisplayName: user.DisplayName,
+			Email:       user.Email,
+			Roles:       user.Roles,
+		},
+	})
+}
+
+func (h *UserHandler) UpdateUser(c *gin.Context) {
+	userID := c.Param("id")
+
+	var req UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request format",
+		})
+		return
+	}
+
+	user, err := h.userService.GetUserByID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "User not found",
+		})
+		return
+	}
+
+	// Update fields
+	if req.DisplayName != nil {
+		user.DisplayName = req.DisplayName
+	}
+	if req.Email != nil {
+		user.Email = req.Email
+	}
+	if req.Roles != nil {
+		user.Roles = req.Roles
+	}
+
+	now := time.Now()
+	user.UpdatedAt = &now
+
+	updatedUser, err := h.userService.UpdateUser(c.Request.Context(), user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to update user",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"user": UserResponse{
+			ID:          updatedUser.ID,
+			Username:    updatedUser.Username,
+			DisplayName: updatedUser.DisplayName,
+			Email:       updatedUser.Email,
+			Roles:       updatedUser.Roles,
+		},
+	})
+}
+
+func (h *UserHandler) DeleteUser(c *gin.Context) {
+	userID := c.Param("id")
+
+	err := h.userService.DeleteUser(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to delete user",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User deleted successfully",
+	})
+}
