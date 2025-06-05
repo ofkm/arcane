@@ -1,0 +1,1 @@
+export { default as component } from "../../../../src/routes/agents/[agentId]/+page.svelte";

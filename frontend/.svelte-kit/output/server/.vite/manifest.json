@@ -1,0 +1,3346 @@
+{
+  ".svelte-kit/generated/server/internal.js": {
+    "file": "internal.js",
+    "name": "internal",
+    "src": ".svelte-kit/generated/server/internal.js",
+    "isEntry": true,
+    "imports": [
+      "_internal.js",
+      "_environment.js",
+      "_shared-server.js"
+    ]
+  },
+  "_Icon.js": {
+    "file": "chunks/Icon.js",
+    "name": "Icon",
+    "imports": [
+      "_index3.js"
+    ]
+  },
+  "_LogViewer.DaKR7mnA.css": {
+    "file": "_app/immutable/assets/LogViewer.DaKR7mnA.css",
+    "src": "_LogViewer.DaKR7mnA.css"
+  },
+  "_LogViewer.js": {
+    "file": "chunks/LogViewer.js",
+    "name": "LogViewer",
+    "imports": [
+      "_index3.js",
+      "_index8.js",
+      "_client.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_container-api-service.js",
+      "_stack-api-service.js",
+      "_try-catch.js",
+      "_api.util.js",
+      "_arcane-button.js",
+      "_use-id.js"
+    ],
+    "css": [
+      "_app/immutable/assets/LogViewer.DaKR7mnA.css"
+    ]
+  },
+  "_Toaster.B6Cq2G1L.css": {
+    "file": "_app/immutable/assets/Toaster.B6Cq2G1L.css",
+    "src": "_Toaster.B6Cq2G1L.css"
+  },
+  "_Toaster.svelte_svelte_type_style_lang.js": {
+    "file": "chunks/Toaster.svelte_svelte_type_style_lang.js",
+    "name": "Toaster.svelte_svelte_type_style_lang",
+    "imports": [
+      "_index3.js",
+      "_index-server.js",
+      "_utils.js"
+    ],
+    "css": [
+      "_app/immutable/assets/Toaster.B6Cq2G1L.css"
+    ]
+  },
+  "_activity.js": {
+    "file": "chunks/activity.js",
+    "name": "activity",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_agent-manager.js": {
+    "file": "chunks/agent-manager.js",
+    "name": "agent-manager",
+    "imports": [
+      "_schema.js",
+      "_index4.js"
+    ]
+  },
+  "_agent-stack-service.js": {
+    "file": "chunks/agent-stack-service.js",
+    "name": "agent-stack-service",
+    "imports": [
+      "_agent-manager.js"
+    ]
+  },
+  "_agent-status.utils.js": {
+    "file": "chunks/agent-status.utils.js",
+    "name": "agent-status.utils"
+  },
+  "_alert-title.js": {
+    "file": "chunks/alert-title.js",
+    "name": "alert-title",
+    "imports": [
+      "_index3.js",
+      "_button.js"
+    ]
+  },
+  "_alert.js": {
+    "file": "chunks/alert.js",
+    "name": "alert",
+    "imports": [
+      "_index3.js",
+      "_button.js"
+    ]
+  },
+  "_api-service.js": {
+    "file": "chunks/api-service.js",
+    "name": "api-service"
+  },
+  "_api.util.js": {
+    "file": "chunks/api.util.js",
+    "name": "api.util",
+    "imports": [
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_errors.util.js"
+    ]
+  },
+  "_app.VWcxPQDc.css": {
+    "file": "_app/immutable/assets/app.VWcxPQDc.css",
+    "src": "_app.VWcxPQDc.css"
+  },
+  "_arcane-button.js": {
+    "file": "chunks/arcane-button.js",
+    "name": "arcane-button",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_layout-template.js",
+      "_Icon.js",
+      "_save.js",
+      "_x.js",
+      "_check.js",
+      "_file-text.js",
+      "_play.js",
+      "_trash-2.js",
+      "_circle-stop.js",
+      "_loader-circle.js"
+    ]
+  },
+  "_arrow-left.js": {
+    "file": "chunks/arrow-left.js",
+    "name": "arrow-left",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_arrow-right.js": {
+    "file": "chunks/arrow-right.js",
+    "name": "arrow-right",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_auto-update-service.js": {
+    "file": "chunks/auto-update-service.js",
+    "name": "auto-update-service",
+    "imports": [
+      "_container-service.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_image-service.js",
+      "_settings-service.js"
+    ]
+  },
+  "_badge.js": {
+    "file": "chunks/badge.js",
+    "name": "badge",
+    "imports": [
+      "_index3.js",
+      "_button.js"
+    ]
+  },
+  "_box.js": {
+    "file": "chunks/box.js",
+    "name": "box",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_breadcrumb-page.js": {
+    "file": "chunks/breadcrumb-page.js",
+    "name": "breadcrumb-page",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_chevron-right.js"
+    ]
+  },
+  "_button.js": {
+    "file": "chunks/button.js",
+    "name": "button",
+    "imports": [
+      "_index3.js"
+    ]
+  },
+  "_bytes.util.js": {
+    "file": "chunks/bytes.util.js",
+    "name": "bytes.util"
+  },
+  "_card-description.js": {
+    "file": "chunks/card-description.js",
+    "name": "card-description",
+    "imports": [
+      "_index3.js",
+      "_button.js"
+    ]
+  },
+  "_card-title.js": {
+    "file": "chunks/card-title.js",
+    "name": "card-title",
+    "imports": [
+      "_index3.js",
+      "_button.js"
+    ]
+  },
+  "_card.js": {
+    "file": "chunks/card.js",
+    "name": "card",
+    "imports": [
+      "_index3.js",
+      "_button.js"
+    ]
+  },
+  "_check.js": {
+    "file": "chunks/check.js",
+    "name": "check",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_checkbox.js": {
+    "file": "chunks/checkbox.js",
+    "name": "checkbox",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_create-id.js",
+      "_noop.js",
+      "_get-directional-keys.js",
+      "_hidden-input.js",
+      "_Icon.js",
+      "_check.js"
+    ]
+  },
+  "_chevron-down.js": {
+    "file": "chunks/chevron-down.js",
+    "name": "chevron-down",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_chevron-right.js": {
+    "file": "chunks/chevron-right.js",
+    "name": "chevron-right",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_circle-alert.js": {
+    "file": "chunks/circle-alert.js",
+    "name": "circle-alert",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_circle-check-big.js": {
+    "file": "chunks/circle-check-big.js",
+    "name": "circle-check-big",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_circle-check.js": {
+    "file": "chunks/circle-check.js",
+    "name": "circle-check",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_circle-stop.js": {
+    "file": "chunks/circle-stop.js",
+    "name": "circle-stop",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_client.js": {
+    "file": "chunks/client.js",
+    "name": "client",
+    "imports": [
+      "_exports.js",
+      "_index2.js",
+      "_utils.js"
+    ]
+  },
+  "_clock.js": {
+    "file": "chunks/clock.js",
+    "name": "clock",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_compose-validate.utils.js": {
+    "file": "chunks/compose-validate.utils.js",
+    "name": "compose-validate.utils",
+    "dynamicImports": [
+      "src/lib/utils/compose.utils.ts",
+      "src/lib/utils/compose.utils.ts"
+    ]
+  },
+  "_constants.js": {
+    "file": "chunks/constants.js",
+    "name": "constants"
+  },
+  "_container-api-service.js": {
+    "file": "chunks/container-api-service.js",
+    "name": "container-api-service",
+    "imports": [
+      "_api-service.js"
+    ]
+  },
+  "_container-service.js": {
+    "file": "chunks/container-service.js",
+    "name": "container-service",
+    "imports": [
+      "_core.js",
+      "_errors.js"
+    ]
+  },
+  "_container.js": {
+    "file": "chunks/container.js",
+    "name": "container",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_core.js": {
+    "file": "chunks/core.js",
+    "name": "core",
+    "imports": [
+      "_settings-service.js"
+    ]
+  },
+  "_cpu.js": {
+    "file": "chunks/cpu.js",
+    "name": "cpu",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_create-id.js": {
+    "file": "chunks/create-id.js",
+    "name": "create-id",
+    "imports": [
+      "_index-server.js",
+      "_utils.js"
+    ]
+  },
+  "_database.js": {
+    "file": "chunks/database.js",
+    "name": "database",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_dialog-description.js": {
+    "file": "chunks/dialog-description.js",
+    "name": "dialog-description",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_index7.js"
+    ]
+  },
+  "_dropdown-card.js": {
+    "file": "chunks/dropdown-card.js",
+    "name": "dropdown-card",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_chevron-down.js"
+    ]
+  },
+  "_dropdown-menu-item.js": {
+    "file": "chunks/dropdown-menu-item.js",
+    "name": "dropdown-menu-item",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_menu-item.js"
+    ]
+  },
+  "_dropdown-menu-label.js": {
+    "file": "chunks/dropdown-menu-label.js",
+    "name": "dropdown-menu-label",
+    "imports": [
+      "_index3.js",
+      "_button.js"
+    ]
+  },
+  "_dropdown-menu-separator.js": {
+    "file": "chunks/dropdown-menu-separator.js",
+    "name": "dropdown-menu-separator",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_menu-separator.js"
+    ]
+  },
+  "_encryption-service.js": {
+    "file": "chunks/encryption-service.js",
+    "name": "encryption-service",
+    "imports": [
+      "_schema.js"
+    ]
+  },
+  "_env-editor.js": {
+    "file": "chunks/env-editor.js",
+    "name": "env-editor",
+    "imports": [
+      "_index3.js"
+    ]
+  },
+  "_environment.js": {
+    "file": "chunks/environment.js",
+    "name": "environment"
+  },
+  "_errors.js": {
+    "file": "chunks/errors.js",
+    "name": "errors"
+  },
+  "_errors.type.js": {
+    "file": "chunks/errors.type.js",
+    "name": "errors.type"
+  },
+  "_errors.util.js": {
+    "file": "chunks/errors.util.js",
+    "name": "errors.util"
+  },
+  "_events.js": {
+    "file": "chunks/events.js",
+    "name": "events",
+    "imports": [
+      "_utils.js"
+    ]
+  },
+  "_exports.js": {
+    "file": "chunks/exports.js",
+    "name": "exports"
+  },
+  "_external-link.js": {
+    "file": "chunks/external-link.js",
+    "name": "external-link",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_false.js": {
+    "file": "chunks/false.js",
+    "name": "false"
+  },
+  "_file-stack.js": {
+    "file": "chunks/file-stack.js",
+    "name": "file-stack",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_file-text.js": {
+    "file": "chunks/file-text.js",
+    "name": "file-text",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_folder-open.js": {
+    "file": "chunks/folder-open.js",
+    "name": "folder-open",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_get-directional-keys.js": {
+    "file": "chunks/get-directional-keys.js",
+    "name": "get-directional-keys",
+    "imports": [
+      "_utils.js",
+      "_noop.js"
+    ]
+  },
+  "_globe.js": {
+    "file": "chunks/globe.js",
+    "name": "globe",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_hard-drive.js": {
+    "file": "chunks/hard-drive.js",
+    "name": "hard-drive",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_hash.js": {
+    "file": "chunks/hash.js",
+    "name": "hash",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_hidden-input.js": {
+    "file": "chunks/hidden-input.js",
+    "name": "hidden-input",
+    "imports": [
+      "_index3.js",
+      "_create-id.js"
+    ]
+  },
+  "_image-api-service.js": {
+    "file": "chunks/image-api-service.js",
+    "name": "image-api-service",
+    "imports": [
+      "_api-service.js"
+    ]
+  },
+  "_image-service.js": {
+    "file": "chunks/image-service.js",
+    "name": "image-service",
+    "isDynamicEntry": true,
+    "imports": [
+      "_core.js",
+      "_errors.type.js",
+      "_registry.utils.js",
+      "_settings-service.js",
+      "_try-catch.js",
+      "_index4.js",
+      "_schema.js"
+    ]
+  },
+  "_index-server.js": {
+    "file": "chunks/index-server.js",
+    "name": "index-server"
+  },
+  "_index.CV-KWLNP.css": {
+    "file": "_app/immutable/assets/index.CV-KWLNP.css",
+    "src": "_index.CV-KWLNP.css"
+  },
+  "_index.js": {
+    "file": "chunks/index.js",
+    "name": "index"
+  },
+  "_index10.js": {
+    "file": "chunks/index10.js",
+    "name": "index",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_scroll-lock.js",
+      "_is-using-keyboard.svelte.js",
+      "_create-id.js"
+    ]
+  },
+  "_index11.js": {
+    "file": "chunks/index11.js",
+    "name": "index",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_create-id.js",
+      "_noop.js",
+      "_check.js",
+      "_Icon.js",
+      "_chevron-down.js",
+      "_scroll-lock.js",
+      "_popper-layer-force-mount.js",
+      "_events.js",
+      "_hidden-input.js"
+    ],
+    "css": [
+      "_app/immutable/assets/index.CV-KWLNP.css"
+    ]
+  },
+  "_index12.js": {
+    "file": "chunks/index12.js",
+    "name": "index",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_create-id.js",
+      "_index-server.js",
+      "_noop.js",
+      "_use-roving-focus.svelte.js"
+    ]
+  },
+  "_index13.js": {
+    "file": "chunks/index13.js",
+    "name": "index",
+    "imports": [
+      "_index3.js",
+      "_Icon.js",
+      "_button.js",
+      "_create-id.js",
+      "_is-using-keyboard.svelte.js",
+      "_noop.js",
+      "_checkbox.js",
+      "_check.js",
+      "_scroll-lock.js",
+      "_chevron-down.js",
+      "_use-roving-focus.svelte.js"
+    ]
+  },
+  "_index2.js": {
+    "file": "chunks/index2.js",
+    "name": "index",
+    "imports": [
+      "_utils.js"
+    ]
+  },
+  "_index3.js": {
+    "file": "chunks/index3.js",
+    "name": "index",
+    "imports": [
+      "_utils.js"
+    ]
+  },
+  "_index4.js": {
+    "file": "chunks/index4.js",
+    "name": "index"
+  },
+  "_index5.js": {
+    "file": "chunks/index5.js",
+    "name": "index",
+    "imports": [
+      "_false.js"
+    ]
+  },
+  "_index6.js": {
+    "file": "chunks/index6.js",
+    "name": "index",
+    "imports": [
+      "_client.js",
+      "_index3.js"
+    ]
+  },
+  "_index7.js": {
+    "file": "chunks/index7.js",
+    "name": "index",
+    "imports": [
+      "_index3.js",
+      "_create-id.js",
+      "_button.js",
+      "_scroll-lock.js",
+      "_noop.js",
+      "_x.js"
+    ]
+  },
+  "_index8.js": {
+    "file": "chunks/index8.js",
+    "name": "index",
+    "imports": [
+      "_index2.js",
+      "_button.js"
+    ]
+  },
+  "_index9.js": {
+    "file": "chunks/index9.js",
+    "name": "index",
+    "imports": [
+      "_index3.js",
+      "_create-id.js",
+      "_popper-layer-force-mount.js",
+      "_button.js",
+      "_scroll-lock.js",
+      "_noop.js",
+      "_use-id.js",
+      "_use-grace-area.svelte.js"
+    ]
+  },
+  "_info.js": {
+    "file": "chunks/info.js",
+    "name": "info",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_input.js": {
+    "file": "chunks/input.js",
+    "name": "input",
+    "imports": [
+      "_index3.js",
+      "_button.js"
+    ]
+  },
+  "_internal.js": {
+    "file": "chunks/internal.js",
+    "name": "internal",
+    "imports": [
+      "_utils.js",
+      "_events.js",
+      "_index3.js",
+      "_environment.js",
+      "_shared-server.js"
+    ],
+    "dynamicImports": [
+      "src/hooks.server.ts"
+    ]
+  },
+  "_is-using-keyboard.svelte.js": {
+    "file": "chunks/is-using-keyboard.svelte.js",
+    "name": "is-using-keyboard.svelte",
+    "imports": [
+      "_index3.js",
+      "_create-id.js",
+      "_noop.js",
+      "_popper-layer-force-mount.js",
+      "_utils.js",
+      "_scroll-lock.js",
+      "_use-roving-focus.svelte.js",
+      "_use-grace-area.svelte.js"
+    ]
+  },
+  "_key.js": {
+    "file": "chunks/key.js",
+    "name": "key",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_label.js": {
+    "file": "chunks/label.js",
+    "name": "label",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_create-id.js"
+    ]
+  },
+  "_layers.js": {
+    "file": "chunks/layers.js",
+    "name": "layers",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_layout-template.js": {
+    "file": "chunks/layout-template.js",
+    "name": "layout-template",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_loader-circle.js": {
+    "file": "chunks/loader-circle.js",
+    "name": "loader-circle",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_lock.js": {
+    "file": "chunks/lock.js",
+    "name": "lock",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_maturity-item.js": {
+    "file": "chunks/maturity-item.js",
+    "name": "maturity-item",
+    "imports": [
+      "_index3.js",
+      "_index9.js",
+      "_circle-check.js",
+      "_Icon.js",
+      "_triangle-alert.js",
+      "_clock.js",
+      "_loader-circle.js"
+    ]
+  },
+  "_menu-item.js": {
+    "file": "chunks/menu-item.js",
+    "name": "menu-item",
+    "imports": [
+      "_index3.js",
+      "_create-id.js",
+      "_is-using-keyboard.svelte.js",
+      "_noop.js"
+    ]
+  },
+  "_menu-separator.js": {
+    "file": "chunks/menu-separator.js",
+    "name": "menu-separator",
+    "imports": [
+      "_index3.js",
+      "_create-id.js",
+      "_is-using-keyboard.svelte.js"
+    ]
+  },
+  "_meter.js": {
+    "file": "chunks/meter.js",
+    "name": "meter",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_use-id.js",
+      "_create-id.js"
+    ]
+  },
+  "_monitor.js": {
+    "file": "chunks/monitor.js",
+    "name": "monitor",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_network-api-service.js": {
+    "file": "chunks/network-api-service.js",
+    "name": "network-api-service",
+    "imports": [
+      "_api-service.js"
+    ]
+  },
+  "_network-service.js": {
+    "file": "chunks/network-service.js",
+    "name": "network-service",
+    "imports": [
+      "_core.js",
+      "_errors.js",
+      "_constants.js"
+    ]
+  },
+  "_network.js": {
+    "file": "chunks/network.js",
+    "name": "network",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_noop.js": {
+    "file": "chunks/noop.js",
+    "name": "noop",
+    "imports": [
+      "_index3.js"
+    ]
+  },
+  "_oidc-service.js": {
+    "file": "chunks/oidc-service.js",
+    "name": "oidc-service",
+    "imports": [
+      "_shared-server.js",
+      "_environment.js",
+      "_settings-service.js"
+    ]
+  },
+  "_pencil.js": {
+    "file": "chunks/pencil.js",
+    "name": "pencil",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_play.js": {
+    "file": "chunks/play.js",
+    "name": "play",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_plus.js": {
+    "file": "chunks/plus.js",
+    "name": "plus",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_popper-layer-force-mount.js": {
+    "file": "chunks/popper-layer-force-mount.js",
+    "name": "popper-layer-force-mount",
+    "imports": [
+      "_index3.js",
+      "_create-id.js",
+      "_noop.js",
+      "_scroll-lock.js",
+      "_index-server.js",
+      "_use-id.js"
+    ]
+  },
+  "_refresh-cw.js": {
+    "file": "chunks/refresh-cw.js",
+    "name": "refresh-cw",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_registry.utils.js": {
+    "file": "chunks/registry.utils.js",
+    "name": "registry.utils"
+  },
+  "_save.js": {
+    "file": "chunks/save.js",
+    "name": "save",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_schema.js": {
+    "file": "chunks/schema.js",
+    "name": "schema"
+  },
+  "_scroll-lock.js": {
+    "file": "chunks/scroll-lock.js",
+    "name": "scroll-lock",
+    "imports": [
+      "_index3.js",
+      "_create-id.js",
+      "_events.js",
+      "_use-id.js",
+      "_noop.js"
+    ]
+  },
+  "_send.js": {
+    "file": "chunks/send.js",
+    "name": "send",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_separator.js": {
+    "file": "chunks/separator.js",
+    "name": "separator",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_create-id.js"
+    ]
+  },
+  "_server.js": {
+    "file": "chunks/server.js",
+    "name": "server",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_settings-service.js": {
+    "file": "chunks/settings-service.js",
+    "name": "settings-service",
+    "imports": [
+      "_encryption-service.js",
+      "_schema.js",
+      "src/lib/services/database/settings-db-service.ts"
+    ],
+    "dynamicImports": [
+      "virtual:env/static/private"
+    ]
+  },
+  "_settings-store.js": {
+    "file": "chunks/settings-store.js",
+    "name": "settings-store",
+    "imports": [
+      "_index2.js"
+    ]
+  },
+  "_settings.js": {
+    "file": "chunks/settings.js",
+    "name": "settings",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_shared-server.js": {
+    "file": "chunks/shared-server.js",
+    "name": "shared-server"
+  },
+  "_shield.js": {
+    "file": "chunks/shield.js",
+    "name": "shield",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_stack-api-service.js": {
+    "file": "chunks/stack-api-service.js",
+    "name": "stack-api-service",
+    "imports": [
+      "_api-service.js"
+    ]
+  },
+  "_status-badge.js": {
+    "file": "chunks/status-badge.js",
+    "name": "status-badge",
+    "imports": [
+      "_index3.js",
+      "_button.js"
+    ]
+  },
+  "_statuses.js": {
+    "file": "chunks/statuses.js",
+    "name": "statuses"
+  },
+  "_string.utils.js": {
+    "file": "chunks/string.utils.js",
+    "name": "string.utils"
+  },
+  "_switch.js": {
+    "file": "chunks/switch.js",
+    "name": "switch",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_create-id.js",
+      "_noop.js",
+      "_hidden-input.js"
+    ]
+  },
+  "_table-store.js": {
+    "file": "chunks/table-store.js",
+    "name": "table-store",
+    "imports": [
+      "_create-id.js",
+      "_index-server.js"
+    ]
+  },
+  "_tag.js": {
+    "file": "chunks/tag.js",
+    "name": "tag",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_template-registry-service.js": {
+    "file": "chunks/template-registry-service.js",
+    "name": "template-registry-service",
+    "imports": [
+      "_index5.js"
+    ]
+  },
+  "_template-service.js": {
+    "file": "chunks/template-service.js",
+    "name": "template-service",
+    "imports": [
+      "_template-registry-service.js",
+      "_settings-service.js"
+    ]
+  },
+  "_terminal.js": {
+    "file": "chunks/terminal.js",
+    "name": "terminal",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_textarea.js": {
+    "file": "chunks/textarea.js",
+    "name": "textarea",
+    "imports": [
+      "_index3.js",
+      "_button.js"
+    ]
+  },
+  "_trash-2.js": {
+    "file": "chunks/trash-2.js",
+    "name": "trash-2",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_triangle-alert.js": {
+    "file": "chunks/triangle-alert.js",
+    "name": "triangle-alert",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_try-catch.js": {
+    "file": "chunks/try-catch.js",
+    "name": "try-catch"
+  },
+  "_universal-table.js": {
+    "file": "chunks/universal-table.js",
+    "name": "universal-table",
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_create-id.js",
+      "_noop.js",
+      "_get-directional-keys.js",
+      "_use-id.js",
+      "_Icon.js",
+      "_chevron-right.js",
+      "_index11.js",
+      "_input.js",
+      "_checkbox.js",
+      "_chevron-down.js"
+    ]
+  },
+  "_use-grace-area.svelte.js": {
+    "file": "chunks/use-grace-area.svelte.js",
+    "name": "use-grace-area.svelte",
+    "imports": [
+      "_events.js",
+      "_create-id.js",
+      "_scroll-lock.js",
+      "_popper-layer-force-mount.js"
+    ]
+  },
+  "_use-id.js": {
+    "file": "chunks/use-id.js",
+    "name": "use-id",
+    "imports": [
+      "_index3.js"
+    ]
+  },
+  "_use-roving-focus.svelte.js": {
+    "file": "chunks/use-roving-focus.svelte.js",
+    "name": "use-roving-focus.svelte",
+    "imports": [
+      "_create-id.js",
+      "_get-directional-keys.js",
+      "_scroll-lock.js",
+      "_noop.js"
+    ]
+  },
+  "_user-api-service.js": {
+    "file": "chunks/user-api-service.js",
+    "name": "user-api-service",
+    "imports": [
+      "_api-service.js"
+    ]
+  },
+  "_user-service.js": {
+    "file": "chunks/user-service.js",
+    "name": "user-service",
+    "isDynamicEntry": true,
+    "imports": [
+      "_encryption-service.js",
+      "_schema.js",
+      "_index4.js"
+    ]
+  },
+  "_user.js": {
+    "file": "chunks/user.js",
+    "name": "user",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_users.js": {
+    "file": "chunks/users.js",
+    "name": "users",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "_utils.js": {
+    "file": "chunks/utils.js",
+    "name": "utils",
+    "imports": [
+      "_false.js"
+    ]
+  },
+  "_volume-api-service.js": {
+    "file": "chunks/volume-api-service.js",
+    "name": "volume-api-service",
+    "imports": [
+      "_api-service.js"
+    ]
+  },
+  "_volume-service.js": {
+    "file": "chunks/volume-service.js",
+    "name": "volume-service",
+    "imports": [
+      "_core.js",
+      "_errors.js"
+    ]
+  },
+  "_watch.svelte.js": {
+    "file": "chunks/watch.svelte.js",
+    "name": "watch.svelte",
+    "imports": [
+      "_index-server.js"
+    ]
+  },
+  "_x.js": {
+    "file": "chunks/x.js",
+    "name": "x",
+    "imports": [
+      "_index3.js",
+      "_Icon.js"
+    ]
+  },
+  "node_modules/@sveltejs/kit/src/runtime/components/svelte-5/error.svelte": {
+    "file": "entries/fallbacks/error.svelte.js",
+    "name": "entries/fallbacks/error.svelte",
+    "src": "node_modules/@sveltejs/kit/src/runtime/components/svelte-5/error.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_index6.js"
+    ]
+  },
+  "node_modules/@sveltejs/kit/src/runtime/server/index.js": {
+    "file": "index.js",
+    "name": "index",
+    "src": "node_modules/@sveltejs/kit/src/runtime/server/index.js",
+    "isEntry": true,
+    "imports": [
+      "_false.js",
+      "_internal.js",
+      "_index.js",
+      "_exports.js",
+      "_index2.js",
+      "_shared-server.js",
+      "_environment.js"
+    ]
+  },
+  "src/db/migrate.ts": {
+    "file": "chunks/migrate.js",
+    "name": "migrate",
+    "src": "src/db/migrate.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index4.js"
+    ]
+  },
+  "src/hooks.server.ts": {
+    "file": "chunks/hooks.server.js",
+    "name": "hooks.server",
+    "src": "src/hooks.server.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index.js",
+      "_environment.js",
+      "_user-service.js",
+      "_settings-service.js",
+      "_shared-server.js",
+      "_index5.js"
+    ],
+    "dynamicImports": [
+      "src/db/migrate.ts",
+      "src/lib/services/database/settings-db-service.ts",
+      "_user-service.js",
+      "src/lib/services/database/compose-db-service.ts",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "src/lib/services/docker/scheduler-service.ts",
+      "_image-service.js"
+    ]
+  },
+  "src/lib/services/database/compose-db-service.ts": {
+    "file": "chunks/compose-db-service.js",
+    "name": "compose-db-service",
+    "src": "src/lib/services/database/compose-db-service.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_schema.js",
+      "_index4.js"
+    ]
+  },
+  "src/lib/services/database/settings-db-service.ts": {
+    "file": "chunks/settings-db-service.js",
+    "name": "settings-db-service",
+    "src": "src/lib/services/database/settings-db-service.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_schema.js",
+      "_encryption-service.js",
+      "_index4.js"
+    ]
+  },
+  "src/lib/services/docker/scheduler-service.ts": {
+    "file": "chunks/scheduler-service.js",
+    "name": "scheduler-service",
+    "src": "src/lib/services/docker/scheduler-service.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_settings-service.js",
+      "_auto-update-service.js"
+    ]
+  },
+  "src/lib/services/docker/stack-custom-service.ts": {
+    "file": "chunks/stack-custom-service.js",
+    "name": "stack-custom-service",
+    "src": "src/lib/services/docker/stack-custom-service.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_core.js",
+      "_settings-service.js",
+      "src/lib/services/database/compose-db-service.ts",
+      "src/lib/utils/compose.utils.ts",
+      "_compose-validate.utils.js"
+    ]
+  },
+  "src/lib/utils/compose.utils.ts": {
+    "file": "chunks/compose.utils.js",
+    "name": "compose.utils",
+    "src": "src/lib/utils/compose.utils.ts",
+    "isDynamicEntry": true
+  },
+  "src/routes/+layout.server.ts": {
+    "file": "entries/pages/_layout.server.ts.js",
+    "name": "entries/pages/_layout.server.ts",
+    "src": "src/routes/+layout.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_environment.js",
+      "_shared-server.js",
+      "_agent-manager.js",
+      "_core.js"
+    ]
+  },
+  "src/routes/+layout.svelte": {
+    "file": "entries/pages/_layout.svelte.js",
+    "name": "entries/pages/_layout.svelte",
+    "src": "src/routes/+layout.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_index-server.js",
+      "_watch.svelte.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_index6.js",
+      "_index7.js",
+      "_index8.js",
+      "_button.js",
+      "_label.js",
+      "_checkbox.js",
+      "_triangle-alert.js",
+      "_index9.js",
+      "_create-id.js",
+      "_scroll-lock.js",
+      "_x.js",
+      "_noop.js",
+      "_chevron-right.js",
+      "_index10.js",
+      "_dropdown-menu-label.js",
+      "_dropdown-menu-separator.js",
+      "_Icon.js",
+      "_separator.js",
+      "_external-link.js",
+      "_container.js",
+      "_file-stack.js",
+      "_network.js",
+      "_hard-drive.js",
+      "_layout-template.js",
+      "_settings.js",
+      "_database.js",
+      "_user.js",
+      "_shield.js"
+    ],
+    "css": [
+      "_app/immutable/assets/app.VWcxPQDc.css"
+    ]
+  },
+  "src/routes/+page.server.ts": {
+    "file": "entries/pages/_page.server.ts.js",
+    "name": "entries/pages/_page.server.ts",
+    "src": "src/routes/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_container-service.js",
+      "_core.js",
+      "_image-service.js",
+      "_settings-service.js"
+    ]
+  },
+  "src/routes/+page.svelte": {
+    "file": "entries/pages/_page.svelte.js",
+    "name": "entries/pages/_page.svelte",
+    "src": "src/routes/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_button.js",
+      "_universal-table.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_string.utils.js",
+      "_bytes.util.js",
+      "_status-badge.js",
+      "_client.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_index7.js",
+      "_checkbox.js",
+      "_label.js",
+      "_dialog-description.js",
+      "_circle-alert.js",
+      "_loader-circle.js",
+      "_trash-2.js",
+      "_statuses.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_container-api-service.js",
+      "_api-service.js",
+      "_maturity-item.js",
+      "_image-api-service.js",
+      "_dropdown-card.js",
+      "_meter.js",
+      "_refresh-cw.js",
+      "_monitor.js",
+      "_box.js",
+      "_hard-drive.js",
+      "_cpu.js",
+      "_Icon.js",
+      "_circle-stop.js",
+      "_arrow-right.js",
+      "_settings.js"
+    ]
+  },
+  "src/routes/agents/+page.server.ts": {
+    "file": "entries/pages/agents/_page.server.ts.js",
+    "name": "entries/pages/agents/_page.server.ts",
+    "src": "src/routes/agents/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_agent-manager.js",
+      "_index.js"
+    ]
+  },
+  "src/routes/agents/+page.svelte": {
+    "file": "entries/pages/agents/_page.svelte.js",
+    "name": "entries/pages/agents/_page.svelte",
+    "src": "src/routes/agents/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_client.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_agent-status.utils.js",
+      "_index8.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_button.js",
+      "_arcane-button.js",
+      "_refresh-cw.js",
+      "_monitor.js",
+      "_container.js",
+      "_hard-drive.js",
+      "_circle-check-big.js"
+    ]
+  },
+  "src/routes/agents/[agentId]/+page.server.ts": {
+    "file": "entries/pages/agents/_agentId_/_page.server.ts.js",
+    "name": "entries/pages/agents/_agentId_/_page.server.ts",
+    "src": "src/routes/agents/[agentId]/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_agent-manager.js",
+      "_index.js"
+    ]
+  },
+  "src/routes/agents/[agentId]/+page.svelte": {
+    "file": "entries/pages/agents/_agentId_/_page.svelte.js",
+    "name": "entries/pages/agents/_agentId_/_page.svelte",
+    "src": "src/routes/agents/[agentId]/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_client.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_card.js",
+      "_card-title.js",
+      "_breadcrumb-page.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_index7.js",
+      "_index11.js",
+      "_index12.js",
+      "_dropdown-card.js",
+      "_universal-table.js",
+      "_button.js",
+      "_input.js",
+      "_label.js",
+      "_status-badge.js",
+      "_loader-circle.js",
+      "_textarea.js",
+      "_file-text.js",
+      "_Icon.js",
+      "_switch.js",
+      "_plus.js",
+      "_trash-2.js",
+      "_agent-status.utils.js",
+      "_index8.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_arrow-left.js",
+      "_terminal.js",
+      "_server.js",
+      "_monitor.js",
+      "_settings.js",
+      "_clock.js",
+      "_activity.js",
+      "_container.js",
+      "_hard-drive.js",
+      "_network.js",
+      "_database.js",
+      "_refresh-cw.js",
+      "_layers.js",
+      "_play.js",
+      "_circle-alert.js",
+      "_dialog-description.js"
+    ]
+  },
+  "src/routes/api/agents/+server.ts": {
+    "file": "entries/endpoints/api/agents/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_server.ts",
+    "src": "src/routes/api/agents/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/[agentId]/+server.ts": {
+    "file": "entries/endpoints/api/agents/_agentId_/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_agentId_/_server.ts",
+    "src": "src/routes/api/agents/[agentId]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/[agentId]/command/+server.ts": {
+    "file": "entries/endpoints/api/agents/_agentId_/command/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_agentId_/command/_server.ts",
+    "src": "src/routes/api/agents/[agentId]/command/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/[agentId]/deploy/container/+server.ts": {
+    "file": "entries/endpoints/api/agents/_agentId_/deploy/container/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_agentId_/deploy/container/_server.ts",
+    "src": "src/routes/api/agents/[agentId]/deploy/container/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/[agentId]/deploy/image/+server.ts": {
+    "file": "entries/endpoints/api/agents/_agentId_/deploy/image/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_agentId_/deploy/image/_server.ts",
+    "src": "src/routes/api/agents/[agentId]/deploy/image/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/[agentId]/deploy/stack/+server.ts": {
+    "file": "entries/endpoints/api/agents/_agentId_/deploy/stack/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_agentId_/deploy/stack/_server.ts",
+    "src": "src/routes/api/agents/[agentId]/deploy/stack/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/[agentId]/deployments/+server.ts": {
+    "file": "entries/endpoints/api/agents/_agentId_/deployments/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_agentId_/deployments/_server.ts",
+    "src": "src/routes/api/agents/[agentId]/deployments/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/[agentId]/stacks/+server.ts": {
+    "file": "entries/endpoints/api/agents/_agentId_/stacks/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_agentId_/stacks/_server.ts",
+    "src": "src/routes/api/agents/[agentId]/stacks/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js",
+      "_agent-stack-service.js"
+    ]
+  },
+  "src/routes/api/agents/[agentId]/tasks/+server.ts": {
+    "file": "entries/endpoints/api/agents/_agentId_/tasks/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_agentId_/tasks/_server.ts",
+    "src": "src/routes/api/agents/[agentId]/tasks/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/[agentId]/tasks/[taskId]/+server.ts": {
+    "file": "entries/endpoints/api/agents/_agentId_/tasks/_taskId_/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_agentId_/tasks/_taskId_/_server.ts",
+    "src": "src/routes/api/agents/[agentId]/tasks/[taskId]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/[agentId]/tasks/[taskId]/result/+server.ts": {
+    "file": "entries/endpoints/api/agents/_agentId_/tasks/_taskId_/result/_server.ts.js",
+    "name": "entries/endpoints/api/agents/_agentId_/tasks/_taskId_/result/_server.ts",
+    "src": "src/routes/api/agents/[agentId]/tasks/[taskId]/result/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/heartbeat/+server.ts": {
+    "file": "entries/endpoints/api/agents/heartbeat/_server.ts.js",
+    "name": "entries/endpoints/api/agents/heartbeat/_server.ts",
+    "src": "src/routes/api/agents/heartbeat/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/agents/register/+server.ts": {
+    "file": "entries/endpoints/api/agents/register/_server.ts.js",
+    "name": "entries/endpoints/api/agents/register/_server.ts",
+    "src": "src/routes/api/agents/register/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/api/containers/+server.ts": {
+    "file": "entries/endpoints/api/containers/_server.ts.js",
+    "name": "entries/endpoints/api/containers/_server.ts",
+    "src": "src/routes/api/containers/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_container-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/containers/[containerId]/+server.ts": {
+    "file": "entries/endpoints/api/containers/_containerId_/_server.ts.js",
+    "name": "entries/endpoints/api/containers/_containerId_/_server.ts",
+    "src": "src/routes/api/containers/[containerId]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_container-service.js",
+      "_try-catch.js",
+      "_errors.type.js",
+      "_errors.util.js"
+    ]
+  },
+  "src/routes/api/containers/[containerId]/logs/stream/+server.ts": {
+    "file": "entries/endpoints/api/containers/_containerId_/logs/stream/_server.ts.js",
+    "name": "entries/endpoints/api/containers/_containerId_/logs/stream/_server.ts",
+    "src": "src/routes/api/containers/[containerId]/logs/stream/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_core.js"
+    ]
+  },
+  "src/routes/api/containers/[containerId]/pull/+server.ts": {
+    "file": "entries/endpoints/api/containers/_containerId_/pull/_server.ts.js",
+    "name": "entries/endpoints/api/containers/_containerId_/pull/_server.ts",
+    "src": "src/routes/api/containers/[containerId]/pull/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_container-service.js",
+      "_image-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/containers/[containerId]/remove/+server.ts": {
+    "file": "entries/endpoints/api/containers/_containerId_/remove/_server.ts.js",
+    "name": "entries/endpoints/api/containers/_containerId_/remove/_server.ts",
+    "src": "src/routes/api/containers/[containerId]/remove/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_container-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/containers/[containerId]/restart/+server.ts": {
+    "file": "entries/endpoints/api/containers/_containerId_/restart/_server.ts.js",
+    "name": "entries/endpoints/api/containers/_containerId_/restart/_server.ts",
+    "src": "src/routes/api/containers/[containerId]/restart/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_container-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/containers/[containerId]/start/+server.ts": {
+    "file": "entries/endpoints/api/containers/_containerId_/start/_server.ts.js",
+    "name": "entries/endpoints/api/containers/_containerId_/start/_server.ts",
+    "src": "src/routes/api/containers/[containerId]/start/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_container-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/containers/[containerId]/stats/stream/+server.ts": {
+    "file": "entries/endpoints/api/containers/_containerId_/stats/stream/_server.ts.js",
+    "name": "entries/endpoints/api/containers/_containerId_/stats/stream/_server.ts",
+    "src": "src/routes/api/containers/[containerId]/stats/stream/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_core.js",
+      "_index.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/containers/[containerId]/stop/+server.ts": {
+    "file": "entries/endpoints/api/containers/_containerId_/stop/_server.ts.js",
+    "name": "entries/endpoints/api/containers/_containerId_/stop/_server.ts",
+    "src": "src/routes/api/containers/[containerId]/stop/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_container-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/containers/start-all/+server.ts": {
+    "file": "entries/endpoints/api/containers/start-all/_server.ts.js",
+    "name": "entries/endpoints/api/containers/start-all/_server.ts",
+    "src": "src/routes/api/containers/start-all/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_container-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/containers/stop-all/+server.ts": {
+    "file": "entries/endpoints/api/containers/stop-all/_server.ts.js",
+    "name": "entries/endpoints/api/containers/stop-all/_server.ts",
+    "src": "src/routes/api/containers/stop-all/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_container-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/convert/+server.ts": {
+    "file": "entries/endpoints/api/convert/_server.ts.js",
+    "name": "entries/endpoints/api/convert/_server.ts",
+    "src": "src/routes/api/convert/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/docker/+server.ts": {
+    "file": "entries/endpoints/api/docker/_server.ts.js",
+    "name": "entries/endpoints/api/docker/_server.ts",
+    "src": "src/routes/api/docker/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js"
+    ]
+  },
+  "src/routes/api/docker/test-connection/+server.ts": {
+    "file": "entries/endpoints/api/docker/test-connection/_server.ts.js",
+    "name": "entries/endpoints/api/docker/test-connection/_server.ts",
+    "src": "src/routes/api/docker/test-connection/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_core.js"
+    ]
+  },
+  "src/routes/api/images/+server.ts": {
+    "file": "entries/endpoints/api/images/_server.ts.js",
+    "name": "entries/endpoints/api/images/_server.ts",
+    "src": "src/routes/api/images/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_image-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/images/[id]/+server.ts": {
+    "file": "entries/endpoints/api/images/_id_/_server.ts.js",
+    "name": "entries/endpoints/api/images/_id_/_server.ts",
+    "src": "src/routes/api/images/[id]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_image-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/images/[id]/maturity/+server.ts": {
+    "file": "entries/endpoints/api/images/_id_/maturity/_server.ts.js",
+    "name": "entries/endpoints/api/images/_id_/maturity/_server.ts",
+    "src": "src/routes/api/images/[id]/maturity/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_image-service.js",
+      "_errors.type.js",
+      "_errors.util.js"
+    ]
+  },
+  "src/routes/api/images/maturity/+server.ts": {
+    "file": "entries/endpoints/api/images/maturity/_server.ts.js",
+    "name": "entries/endpoints/api/images/maturity/_server.ts",
+    "src": "src/routes/api/images/maturity/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_image-service.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/images/prune/+server.ts": {
+    "file": "entries/endpoints/api/images/prune/_server.ts.js",
+    "name": "entries/endpoints/api/images/prune/_server.ts",
+    "src": "src/routes/api/images/prune/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_image-service.js",
+      "_settings-service.js",
+      "_bytes.util.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/images/pull-stream/[...name]/+server.ts": {
+    "file": "entries/endpoints/api/images/pull-stream/_...name_/_server.ts.js",
+    "name": "entries/endpoints/api/images/pull-stream/_...name_/_server.ts",
+    "src": "src/routes/api/images/pull-stream/[...name]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_core.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_index.js",
+      "_settings-service.js",
+      "_registry.utils.js"
+    ]
+  },
+  "src/routes/api/images/pull/[...name]/+server.ts": {
+    "file": "entries/endpoints/api/images/pull/_...name_/_server.ts.js",
+    "name": "entries/endpoints/api/images/pull/_...name_/_server.ts",
+    "src": "src/routes/api/images/pull/[...name]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_image-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js",
+      "_settings-service.js",
+      "_registry.utils.js"
+    ]
+  },
+  "src/routes/api/networks/[id]/+server.ts": {
+    "file": "entries/endpoints/api/networks/_id_/_server.ts.js",
+    "name": "entries/endpoints/api/networks/_id_/_server.ts",
+    "src": "src/routes/api/networks/[id]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_network-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/networks/create/+server.ts": {
+    "file": "entries/endpoints/api/networks/create/_server.ts.js",
+    "name": "entries/endpoints/api/networks/create/_server.ts",
+    "src": "src/routes/api/networks/create/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_network-service.js",
+      "_errors.type.js",
+      "_errors.util.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/settings/+server.ts": {
+    "file": "entries/endpoints/api/settings/_server.ts.js",
+    "name": "entries/endpoints/api/settings/_server.ts",
+    "src": "src/routes/api/settings/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_settings-service.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "src/lib/services/docker/scheduler-service.ts",
+      "_errors.type.js",
+      "_try-catch.js",
+      "_settings-store.js",
+      "_core.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/changes/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/changes/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/changes/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/changes/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/deploy/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/deploy/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/deploy/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/deploy/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_index.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/deployment-preview/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/deployment-preview/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/deployment-preview/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/deployment-preview/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/destroy/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/destroy/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/destroy/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/destroy/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/down/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/down/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/down/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/down/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_index.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/logs/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/logs/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/logs/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/logs/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_core.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/migrate/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/migrate/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/migrate/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/migrate/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/profiles/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/profiles/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/profiles/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/profiles/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/pull/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/pull/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/pull/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/pull/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_errors.type.js",
+      "_try-catch.js",
+      "_core.js",
+      "_errors.util.js",
+      "_settings-service.js",
+      "_registry.utils.js",
+      "_index.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/redeploy/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/redeploy/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/redeploy/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/redeploy/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/restart/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/restart/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/restart/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/restart/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/[stackId]/validate/+server.ts": {
+    "file": "entries/endpoints/api/stacks/_stackId_/validate/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/_stackId_/validate/_server.ts",
+    "src": "src/routes/api/stacks/[stackId]/validate/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts"
+    ]
+  },
+  "src/routes/api/stacks/create/+server.ts": {
+    "file": "entries/endpoints/api/stacks/create/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/create/_server.ts",
+    "src": "src/routes/api/stacks/create/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/import/+server.ts": {
+    "file": "entries/endpoints/api/stacks/import/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/import/_server.ts",
+    "src": "src/routes/api/stacks/import/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/stacks/validate/+server.ts": {
+    "file": "entries/endpoints/api/stacks/validate/_server.ts.js",
+    "name": "entries/endpoints/api/stacks/validate/_server.ts",
+    "src": "src/routes/api/stacks/validate/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_compose-validate.utils.js"
+    ]
+  },
+  "src/routes/api/system/auto-update/+server.ts": {
+    "file": "entries/endpoints/api/system/auto-update/_server.ts.js",
+    "name": "entries/endpoints/api/system/auto-update/_server.ts",
+    "src": "src/routes/api/system/auto-update/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_settings-service.js",
+      "_auto-update-service.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/system/prune/+server.ts": {
+    "file": "entries/endpoints/api/system/prune/_server.ts.js",
+    "name": "entries/endpoints/api/system/prune/_server.ts",
+    "src": "src/routes/api/system/prune/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_core.js",
+      "_settings-service.js",
+      "_bytes.util.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/system/stats/+server.ts": {
+    "file": "entries/endpoints/api/system/stats/_server.ts.js",
+    "name": "entries/endpoints/api/system/stats/_server.ts",
+    "src": "src/routes/api/system/stats/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/templates/+server.ts": {
+    "file": "entries/endpoints/api/templates/_server.ts.js",
+    "name": "entries/endpoints/api/templates/_server.ts",
+    "src": "src/routes/api/templates/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_template-service.js"
+    ]
+  },
+  "src/routes/api/templates/[id]/+server.ts": {
+    "file": "entries/endpoints/api/templates/_id_/_server.ts.js",
+    "name": "entries/endpoints/api/templates/_id_/_server.ts",
+    "src": "src/routes/api/templates/[id]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_template-service.js"
+    ]
+  },
+  "src/routes/api/templates/[id]/content/+server.ts": {
+    "file": "entries/endpoints/api/templates/_id_/content/_server.ts.js",
+    "name": "entries/endpoints/api/templates/_id_/content/_server.ts",
+    "src": "src/routes/api/templates/[id]/content/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_template-service.js"
+    ]
+  },
+  "src/routes/api/templates/[id]/download/+server.ts": {
+    "file": "entries/endpoints/api/templates/_id_/download/_server.ts.js",
+    "name": "entries/endpoints/api/templates/_id_/download/_server.ts",
+    "src": "src/routes/api/templates/[id]/download/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_template-service.js"
+    ]
+  },
+  "src/routes/api/templates/registries/+server.ts": {
+    "file": "entries/endpoints/api/templates/registries/_server.ts.js",
+    "name": "entries/endpoints/api/templates/registries/_server.ts",
+    "src": "src/routes/api/templates/registries/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_template-service.js",
+      "_template-registry-service.js"
+    ]
+  },
+  "src/routes/api/templates/registries/test/+server.ts": {
+    "file": "entries/endpoints/api/templates/registries/test/_server.ts.js",
+    "name": "entries/endpoints/api/templates/registries/test/_server.ts",
+    "src": "src/routes/api/templates/registries/test/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_template-registry-service.js"
+    ]
+  },
+  "src/routes/api/templates/stats/+server.ts": {
+    "file": "entries/endpoints/api/templates/stats/_server.ts.js",
+    "name": "entries/endpoints/api/templates/stats/_server.ts",
+    "src": "src/routes/api/templates/stats/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_template-service.js"
+    ]
+  },
+  "src/routes/api/users/+server.ts": {
+    "file": "entries/endpoints/api/users/_server.ts.js",
+    "name": "entries/endpoints/api/users/_server.ts",
+    "src": "src/routes/api/users/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_user-service.js",
+      "_settings-service.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/users/[id]/+server.ts": {
+    "file": "entries/endpoints/api/users/_id_/_server.ts.js",
+    "name": "entries/endpoints/api/users/_id_/_server.ts",
+    "src": "src/routes/api/users/[id]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_user-service.js",
+      "_settings-service.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/users/password/+server.ts": {
+    "file": "entries/endpoints/api/users/password/_server.ts.js",
+    "name": "entries/endpoints/api/users/password/_server.ts",
+    "src": "src/routes/api/users/password/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_user-service.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/volumes/+server.ts": {
+    "file": "entries/endpoints/api/volumes/_server.ts.js",
+    "name": "entries/endpoints/api/volumes/_server.ts",
+    "src": "src/routes/api/volumes/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_volume-service.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/api/volumes/[name]/+server.ts": {
+    "file": "entries/endpoints/api/volumes/_name_/_server.ts.js",
+    "name": "entries/endpoints/api/volumes/_name_/_server.ts",
+    "src": "src/routes/api/volumes/[name]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_volume-service.js",
+      "_errors.type.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/auth/login/+page.server.ts": {
+    "file": "entries/pages/auth/login/_page.server.ts.js",
+    "name": "entries/pages/auth/login/_page.server.ts",
+    "src": "src/routes/auth/login/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_user-service.js",
+      "_settings-service.js"
+    ]
+  },
+  "src/routes/auth/login/+page.svelte": {
+    "file": "entries/pages/auth/login/_page.svelte.js",
+    "name": "entries/pages/auth/login/_page.svelte",
+    "src": "src/routes/auth/login/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_client.js",
+      "_button.js",
+      "_input.js",
+      "_label.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_shared-server.js",
+      "_circle-alert.js",
+      "_Icon.js",
+      "_user.js",
+      "_lock.js"
+    ]
+  },
+  "src/routes/auth/logout/+page.server.ts": {
+    "file": "entries/pages/auth/logout/_page.server.ts.js",
+    "name": "entries/pages/auth/logout/_page.server.ts",
+    "src": "src/routes/auth/logout/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js"
+    ]
+  },
+  "src/routes/auth/oidc/callback/+server.ts": {
+    "file": "entries/endpoints/auth/oidc/callback/_server.ts.js",
+    "name": "entries/endpoints/auth/oidc/callback/_server.ts",
+    "src": "src/routes/auth/oidc/callback/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_oidc-service.js",
+      "_user-service.js"
+    ]
+  },
+  "src/routes/auth/oidc/login/+server.ts": {
+    "file": "entries/endpoints/auth/oidc/login/_server.ts.js",
+    "name": "entries/endpoints/auth/oidc/login/_server.ts",
+    "src": "src/routes/auth/oidc/login/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_oidc-service.js"
+    ]
+  },
+  "src/routes/compose/+page.server.ts": {
+    "file": "entries/pages/compose/_page.server.ts.js",
+    "name": "entries/pages/compose/_page.server.ts",
+    "src": "src/routes/compose/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_agent-manager.js",
+      "_agent-stack-service.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/compose/+page.svelte": {
+    "file": "entries/pages/compose/_page.svelte.js",
+    "name": "entries/pages/compose/_page.svelte",
+    "src": "src/routes/compose/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_button.js",
+      "_universal-table.js",
+      "_index8.js",
+      "_index10.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_client.js",
+      "_status-badge.js",
+      "_string.utils.js",
+      "_statuses.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_try-catch.js",
+      "_stack-api-service.js",
+      "_api.util.js",
+      "_arcane-button.js",
+      "_table-store.js",
+      "_circle-alert.js",
+      "_file-stack.js",
+      "_layers.js",
+      "_loader-circle.js",
+      "_dropdown-menu-item.js",
+      "_Icon.js",
+      "_play.js",
+      "_circle-stop.js",
+      "_dropdown-menu-separator.js",
+      "_trash-2.js"
+    ]
+  },
+  "src/routes/compose/[composeId]/+page.server.ts": {
+    "file": "entries/pages/compose/_composeId_/_page.server.ts.js",
+    "name": "entries/pages/compose/_composeId_/_page.server.ts",
+    "src": "src/routes/compose/[composeId]/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "src/lib/services/docker/stack-custom-service.ts",
+      "_settings-service.js",
+      "_container-service.js",
+      "_agent-manager.js",
+      "_try-catch.js"
+    ]
+  },
+  "src/routes/compose/[composeId]/+page.svelte": {
+    "file": "entries/pages/compose/_composeId_/_page.svelte.js",
+    "name": "entries/pages/compose/_composeId_/_page.svelte",
+    "src": "src/routes/compose/[composeId]/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_button.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_input.js",
+      "_label.js",
+      "_LogViewer.js",
+      "_status-badge.js",
+      "_statuses.js",
+      "_string.utils.js",
+      "_client.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_env-editor.js",
+      "_try-catch.js",
+      "_stack-api-service.js",
+      "_api.util.js",
+      "_arcane-button.js",
+      "_index7.js",
+      "_index11.js",
+      "_file-stack.js",
+      "_layers.js",
+      "_settings.js",
+      "_terminal.js",
+      "_arrow-left.js",
+      "_send.js",
+      "_circle-alert.js",
+      "_activity.js",
+      "_external-link.js",
+      "_arrow-right.js",
+      "_refresh-cw.js",
+      "_dialog-description.js",
+      "_loader-circle.js"
+    ]
+  },
+  "src/routes/compose/agent/[agentId]/[composeName]/+page.server.ts": {
+    "file": "entries/pages/compose/agent/_agentId_/_composeName_/_page.server.ts.js",
+    "name": "entries/pages/compose/agent/_agentId_/_composeName_/_page.server.ts",
+    "src": "src/routes/compose/agent/[agentId]/[composeName]/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_agent-manager.js",
+      "_agent-stack-service.js"
+    ]
+  },
+  "src/routes/compose/agent/[agentId]/[composeName]/+page.svelte": {
+    "file": "entries/pages/compose/agent/_agentId_/_composeName_/_page.svelte.js",
+    "name": "entries/pages/compose/agent/_agentId_/_composeName_/_page.svelte",
+    "src": "src/routes/compose/agent/[agentId]/[composeName]/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_button.js",
+      "_input.js",
+      "_label.js",
+      "_client.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_status-badge.js",
+      "_statuses.js",
+      "_string.utils.js",
+      "_env-editor.js",
+      "_arcane-button.js",
+      "_file-stack.js",
+      "_layers.js",
+      "_settings.js",
+      "_arrow-left.js",
+      "_play.js",
+      "_Icon.js",
+      "_activity.js",
+      "_users.js",
+      "_loader-circle.js"
+    ]
+  },
+  "src/routes/compose/new/+page.server.ts": {
+    "file": "entries/pages/compose/new/_page.server.ts.js",
+    "name": "entries/pages/compose/new/_page.server.ts",
+    "src": "src/routes/compose/new/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_template-service.js",
+      "_constants.js",
+      "_agent-manager.js"
+    ]
+  },
+  "src/routes/compose/new/+page.svelte": {
+    "file": "entries/pages/compose/new/_page.svelte.js",
+    "name": "entries/pages/compose/new/_page.svelte",
+    "src": "src/routes/compose/new/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_button.js",
+      "_breadcrumb-page.js",
+      "_input.js",
+      "_label.js",
+      "_client.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_env-editor.js",
+      "_stack-api-service.js",
+      "_try-catch.js",
+      "_api.util.js",
+      "_constants.js",
+      "_arcane-button.js",
+      "_textarea.js",
+      "_dropdown-card.js",
+      "_watch.svelte.js",
+      "_index-server.js",
+      "_use-id.js",
+      "_get-directional-keys.js",
+      "_Icon.js",
+      "_index7.js",
+      "_badge.js",
+      "_alert.js",
+      "_api-service.js",
+      "_file-text.js",
+      "_dialog-description.js",
+      "_folder-open.js",
+      "_settings.js",
+      "_loader-circle.js",
+      "_globe.js",
+      "_play.js",
+      "_is-using-keyboard.svelte.js",
+      "_terminal.js",
+      "_file-stack.js",
+      "_send.js",
+      "_chevron-down.js",
+      "_scroll-lock.js",
+      "_menu-item.js",
+      "_menu-separator.js",
+      "_arrow-left.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.DXuoz1oi.css"
+    ]
+  },
+  "src/routes/containers/+page.server.ts": {
+    "file": "entries/pages/containers/_page.server.ts.js",
+    "name": "entries/pages/containers/_page.server.ts",
+    "src": "src/routes/containers/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_container-service.js",
+      "_image-service.js",
+      "_network-service.js",
+      "_volume-service.js"
+    ]
+  },
+  "src/routes/containers/+page.svelte": {
+    "file": "entries/pages/containers/_page.svelte.js",
+    "name": "entries/pages/containers/_page.svelte",
+    "src": "src/routes/containers/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_card.js",
+      "_card-title.js",
+      "_universal-table.js",
+      "_index8.js",
+      "_index10.js",
+      "_index7.js",
+      "_input.js",
+      "_label.js",
+      "_index11.js",
+      "_index12.js",
+      "_bytes.util.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_client.js",
+      "_switch.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_container-api-service.js",
+      "_arcane-button.js",
+      "_dialog-description.js",
+      "_circle-alert.js",
+      "_Icon.js",
+      "_plus.js",
+      "_status-badge.js",
+      "_statuses.js",
+      "_string.utils.js",
+      "_table-store.js",
+      "_box.js",
+      "_refresh-cw.js",
+      "_dropdown-menu-item.js",
+      "_play.js",
+      "_circle-stop.js",
+      "_dropdown-menu-separator.js",
+      "_trash-2.js",
+      "_loader-circle.js"
+    ]
+  },
+  "src/routes/containers/[id]/+page.server.ts": {
+    "file": "entries/pages/containers/_id_/_page.server.ts.js",
+    "name": "entries/pages/containers/_id_/_page.server.ts",
+    "src": "src/routes/containers/[id]/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_container-service.js",
+      "_index.js"
+    ]
+  },
+  "src/routes/containers/[id]/+page.svelte": {
+    "file": "entries/pages/containers/_id_/_page.svelte.js",
+    "name": "entries/pages/containers/_id_/_page.svelte",
+    "src": "src/routes/containers/[id]/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_button.js",
+      "_client.js",
+      "_badge.js",
+      "_LogViewer.js",
+      "_string.utils.js",
+      "_bytes.util.js",
+      "_status-badge.js",
+      "_use-id.js",
+      "_meter.js",
+      "_hard-drive.js",
+      "_activity.js",
+      "_file-text.js",
+      "_settings.js",
+      "_network.js",
+      "_database.js",
+      "_arrow-left.js",
+      "_refresh-cw.js",
+      "_clock.js",
+      "_terminal.js",
+      "_circle-alert.js"
+    ]
+  },
+  "src/routes/images/+page.server.ts": {
+    "file": "entries/pages/images/_page.server.ts.js",
+    "name": "entries/pages/images/_page.server.ts",
+    "src": "src/routes/images/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_image-service.js",
+      "_settings-service.js"
+    ]
+  },
+  "src/routes/images/+page.svelte": {
+    "file": "entries/pages/images/_page.svelte.js",
+    "name": "entries/pages/images/_page.svelte",
+    "src": "src/routes/images/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_universal-table.js",
+      "_button.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_card.js",
+      "_card-title.js",
+      "_client.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_use-id.js",
+      "_index7.js",
+      "_input.js",
+      "_label.js",
+      "_index13.js",
+      "_index11.js",
+      "_dialog-description.js",
+      "_loader-circle.js",
+      "_bytes.util.js",
+      "_index10.js",
+      "_index8.js",
+      "_status-badge.js",
+      "_image-api-service.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_settings-store.js",
+      "_maturity-item.js",
+      "_index2.js",
+      "_arcane-button.js",
+      "_table-store.js",
+      "_circle-alert.js",
+      "_hard-drive.js",
+      "_dropdown-menu-label.js",
+      "_chevron-down.js",
+      "_dropdown-menu-item.js",
+      "_play.js",
+      "_trash-2.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.BIxtkHzO.css"
+    ]
+  },
+  "src/routes/images/[imageId]/+page.server.ts": {
+    "file": "entries/pages/images/_imageId_/_page.server.ts.js",
+    "name": "entries/pages/images/_imageId_/_page.server.ts",
+    "src": "src/routes/images/[imageId]/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_image-service.js",
+      "_index.js",
+      "_errors.js"
+    ]
+  },
+  "src/routes/images/[imageId]/+page.svelte": {
+    "file": "entries/pages/images/_imageId_/_page.svelte.js",
+    "name": "entries/pages/images/_imageId_/_page.svelte",
+    "src": "src/routes/images/[imageId]/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_button.js",
+      "_breadcrumb-page.js",
+      "_client.js",
+      "_separator.js",
+      "_badge.js",
+      "_string.utils.js",
+      "_bytes.util.js",
+      "_index8.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_image-api-service.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_arcane-button.js",
+      "_hash.js",
+      "_hard-drive.js",
+      "_clock.js",
+      "_cpu.js",
+      "_layers.js",
+      "_tag.js"
+    ]
+  },
+  "src/routes/networks/+page.server.ts": {
+    "file": "entries/pages/networks/_page.server.ts.js",
+    "name": "entries/pages/networks/_page.server.ts",
+    "src": "src/routes/networks/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_network-service.js"
+    ]
+  },
+  "src/routes/networks/+page.svelte": {
+    "file": "entries/pages/networks/_page.svelte.js",
+    "name": "entries/pages/networks/_page.svelte",
+    "src": "src/routes/networks/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_button.js",
+      "_universal-table.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_client.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_index10.js",
+      "_index7.js",
+      "_input.js",
+      "_label.js",
+      "_index11.js",
+      "_checkbox.js",
+      "_arcane-button.js",
+      "_dialog-description.js",
+      "_x.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_index8.js",
+      "_network-api-service.js",
+      "_constants.js",
+      "_table-store.js",
+      "_circle-alert.js",
+      "_network.js",
+      "_dropdown-menu-item.js",
+      "_dropdown-menu-separator.js",
+      "_trash-2.js",
+      "_loader-circle.js"
+    ]
+  },
+  "src/routes/networks/[networkId]/+page.server.ts": {
+    "file": "entries/pages/networks/_networkId_/_page.server.ts.js",
+    "name": "entries/pages/networks/_networkId_/_page.server.ts",
+    "src": "src/routes/networks/[networkId]/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_network-service.js",
+      "_index.js",
+      "_errors.js"
+    ]
+  },
+  "src/routes/networks/[networkId]/+page.svelte": {
+    "file": "entries/pages/networks/_networkId_/_page.svelte.js",
+    "name": "entries/pages/networks/_networkId_/_page.svelte",
+    "src": "src/routes/networks/[networkId]/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_breadcrumb-page.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_status-badge.js",
+      "_string.utils.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_index8.js",
+      "_arcane-button.js",
+      "_client.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_network-api-service.js",
+      "_network.js",
+      "_hash.js",
+      "_hard-drive.js",
+      "_globe.js",
+      "_clock.js",
+      "_layers.js",
+      "_settings.js",
+      "_Icon.js",
+      "_container.js",
+      "_tag.js",
+      "_circle-alert.js"
+    ]
+  },
+  "src/routes/onboarding/+layout.svelte": {
+    "file": "entries/pages/onboarding/_layout.svelte.js",
+    "name": "entries/pages/onboarding/_layout.svelte",
+    "src": "src/routes/onboarding/+layout.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_index6.js",
+      "_circle-check.js",
+      "_key.js",
+      "_settings.js"
+    ],
+    "css": [
+      "_app/immutable/assets/app.VWcxPQDc.css"
+    ]
+  },
+  "src/routes/onboarding/complete/+page.svelte": {
+    "file": "entries/pages/onboarding/complete/_page.svelte.js",
+    "name": "entries/pages/onboarding/complete/_page.svelte",
+    "src": "src/routes/onboarding/complete/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_button.js",
+      "_circle-check-big.js"
+    ]
+  },
+  "src/routes/onboarding/password/+page.server.ts": {
+    "file": "entries/pages/onboarding/password/_page.server.ts.js",
+    "name": "entries/pages/onboarding/password/_page.server.ts",
+    "src": "src/routes/onboarding/password/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_settings-service.js"
+    ]
+  },
+  "src/routes/onboarding/password/+page.svelte": {
+    "file": "entries/pages/onboarding/password/_page.svelte.js",
+    "name": "entries/pages/onboarding/password/_page.svelte",
+    "src": "src/routes/onboarding/password/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_input.js",
+      "_label.js",
+      "_alert.js",
+      "_client.js",
+      "_chevron-right.js"
+    ]
+  },
+  "src/routes/onboarding/settings/+page.server.ts": {
+    "file": "entries/pages/onboarding/settings/_page.server.ts.js",
+    "name": "entries/pages/onboarding/settings/_page.server.ts",
+    "src": "src/routes/onboarding/settings/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_settings-service.js"
+    ]
+  },
+  "src/routes/onboarding/settings/+page.svelte": {
+    "file": "entries/pages/onboarding/settings/_page.svelte.js",
+    "name": "entries/pages/onboarding/settings/_page.svelte",
+    "src": "src/routes/onboarding/settings/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_input.js",
+      "_label.js",
+      "_switch.js",
+      "_alert.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_settings-store.js",
+      "_client.js",
+      "_chevron-right.js"
+    ]
+  },
+  "src/routes/onboarding/welcome/+page.server.ts": {
+    "file": "entries/pages/onboarding/welcome/_page.server.ts.js",
+    "name": "entries/pages/onboarding/welcome/_page.server.ts",
+    "src": "src/routes/onboarding/welcome/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_settings-service.js"
+    ]
+  },
+  "src/routes/onboarding/welcome/+page.svelte": {
+    "file": "entries/pages/onboarding/welcome/_page.svelte.js",
+    "name": "entries/pages/onboarding/welcome/_page.svelte",
+    "src": "src/routes/onboarding/welcome/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_settings-store.js",
+      "_client.js",
+      "_circle-check.js",
+      "_chevron-right.js"
+    ]
+  },
+  "src/routes/settings/docker/+page.server.ts": {
+    "file": "entries/pages/settings/docker/_page.server.ts.js",
+    "name": "entries/pages/settings/docker/_page.server.ts",
+    "src": "src/routes/settings/docker/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_settings-service.js"
+    ]
+  },
+  "src/routes/settings/docker/+page.svelte": {
+    "file": "entries/pages/settings/docker/_page.svelte.js",
+    "name": "entries/pages/settings/docker/_page.svelte",
+    "src": "src/routes/settings/docker/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_input.js",
+      "_switch.js",
+      "_button.js",
+      "_create-id.js",
+      "_noop.js",
+      "_use-roving-focus.svelte.js",
+      "_hidden-input.js",
+      "_Icon.js",
+      "_label.js",
+      "_settings-store.js",
+      "_universal-table.js",
+      "_index10.js",
+      "_index7.js",
+      "_dialog-description.js",
+      "_loader-circle.js",
+      "_index8.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_client.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_save.js",
+      "_server.js",
+      "_key.js",
+      "_plus.js",
+      "_dropdown-menu-item.js",
+      "_pencil.js",
+      "_trash-2.js",
+      "_refresh-cw.js"
+    ]
+  },
+  "src/routes/settings/general/+page.server.ts": {
+    "file": "entries/pages/settings/general/_page.server.ts.js",
+    "name": "entries/pages/settings/general/_page.server.ts",
+    "src": "src/routes/settings/general/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_settings-service.js"
+    ]
+  },
+  "src/routes/settings/general/+page.svelte": {
+    "file": "entries/pages/settings/general/_page.svelte.js",
+    "name": "entries/pages/settings/general/_page.svelte",
+    "src": "src/routes/settings/general/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_input.js",
+      "_label.js",
+      "_button.js",
+      "_settings-store.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_client.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_save.js",
+      "_Icon.js",
+      "_refresh-cw.js"
+    ]
+  },
+  "src/routes/settings/rbac/+page.server.ts": {
+    "file": "entries/pages/settings/rbac/_page.server.ts.js",
+    "name": "entries/pages/settings/rbac/_page.server.ts",
+    "src": "src/routes/settings/rbac/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_settings-service.js"
+    ]
+  },
+  "src/routes/settings/rbac/+page.svelte": {
+    "file": "entries/pages/settings/rbac/_page.svelte.js",
+    "name": "entries/pages/settings/rbac/_page.svelte",
+    "src": "src/routes/settings/rbac/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_button.js",
+      "_input.js",
+      "_switch.js",
+      "_settings-store.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_client.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_save.js",
+      "_users.js",
+      "_plus.js",
+      "_shield.js",
+      "_settings.js",
+      "_refresh-cw.js"
+    ]
+  },
+  "src/routes/settings/security/+page.server.ts": {
+    "file": "entries/pages/settings/security/_page.server.ts.js",
+    "name": "entries/pages/settings/security/_page.server.ts",
+    "src": "src/routes/settings/security/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_settings-service.js",
+      "_shared-server.js"
+    ]
+  },
+  "src/routes/settings/security/+page.svelte": {
+    "file": "entries/pages/settings/security/_page.svelte.js",
+    "name": "entries/pages/settings/security/_page.svelte",
+    "src": "src/routes/settings/security/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_shared-server.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_button.js",
+      "_input.js",
+      "_switch.js",
+      "_settings-store.js",
+      "_index7.js",
+      "_label.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_client.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_save.js",
+      "_lock.js",
+      "_triangle-alert.js",
+      "_info.js",
+      "_dialog-description.js",
+      "_key.js",
+      "_refresh-cw.js"
+    ]
+  },
+  "src/routes/settings/templates/+page.server.ts": {
+    "file": "entries/pages/settings/templates/_page.server.ts.js",
+    "name": "entries/pages/settings/templates/_page.server.ts",
+    "src": "src/routes/settings/templates/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_template-service.js",
+      "_settings-service.js",
+      "_index.js"
+    ]
+  },
+  "src/routes/settings/templates/+page.svelte": {
+    "file": "entries/pages/settings/templates/_page.svelte.js",
+    "name": "entries/pages/settings/templates/_page.svelte",
+    "src": "src/routes/settings/templates/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_button.js",
+      "_input.js",
+      "_label.js",
+      "_card.js",
+      "_badge.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_separator.js",
+      "_settings-store.js",
+      "_template-registry-service.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_client.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_save.js",
+      "_folder-open.js",
+      "_globe.js",
+      "_file-text.js",
+      "_users.js",
+      "_plus.js",
+      "_refresh-cw.js",
+      "_external-link.js",
+      "_trash-2.js"
+    ]
+  },
+  "src/routes/settings/users/+page.server.ts": {
+    "file": "entries/pages/settings/users/_page.server.ts.js",
+    "name": "entries/pages/settings/users/_page.server.ts",
+    "src": "src/routes/settings/users/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_user-api-service.js",
+      "_user-service.js"
+    ]
+  },
+  "src/routes/settings/users/+page.svelte": {
+    "file": "entries/pages/settings/users/_page.svelte.js",
+    "name": "entries/pages/settings/users/_page.svelte",
+    "src": "src/routes/settings/users/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_button.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_universal-table.js",
+      "_index7.js",
+      "_input.js",
+      "_label.js",
+      "_index11.js",
+      "_dialog-description.js",
+      "_loader-circle.js",
+      "_save.js",
+      "_Icon.js",
+      "_index10.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_user-api-service.js",
+      "_client.js",
+      "_index8.js",
+      "_status-badge.js",
+      "_dropdown-menu-item.js",
+      "_pencil.js"
+    ]
+  },
+  "src/routes/volumes/+page.server.ts": {
+    "file": "entries/pages/volumes/_page.server.ts.js",
+    "name": "entries/pages/volumes/_page.server.ts",
+    "src": "src/routes/volumes/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_volume-service.js"
+    ]
+  },
+  "src/routes/volumes/+page.svelte": {
+    "file": "entries/pages/volumes/_page.svelte.js",
+    "name": "entries/pages/volumes/_page.svelte",
+    "src": "src/routes/volumes/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_button.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_universal-table.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_client.js",
+      "_index7.js",
+      "_input.js",
+      "_label.js",
+      "_textarea.js",
+      "_index13.js",
+      "_index11.js",
+      "_arcane-button.js",
+      "_dialog-description.js",
+      "_index10.js",
+      "_index8.js",
+      "_api.util.js",
+      "_try-catch.js",
+      "_volume-api-service.js",
+      "_status-badge.js",
+      "_table-store.js",
+      "_circle-alert.js",
+      "_database.js",
+      "_hard-drive.js",
+      "_dropdown-menu-label.js",
+      "_chevron-down.js",
+      "_dropdown-menu-item.js",
+      "_dropdown-menu-separator.js",
+      "_trash-2.js",
+      "_loader-circle.js"
+    ]
+  },
+  "src/routes/volumes/[volumeName]/+page.server.ts": {
+    "file": "entries/pages/volumes/_volumeName_/_page.server.ts.js",
+    "name": "entries/pages/volumes/_volumeName_/_page.server.ts",
+    "src": "src/routes/volumes/[volumeName]/+page.server.ts",
+    "isEntry": true,
+    "imports": [
+      "_volume-service.js",
+      "_index.js",
+      "_errors.js"
+    ]
+  },
+  "src/routes/volumes/[volumeName]/+page.svelte": {
+    "file": "entries/pages/volumes/_volumeName_/_page.svelte.js",
+    "name": "entries/pages/volumes/_volumeName_/_page.svelte",
+    "src": "src/routes/volumes/[volumeName]/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index3.js",
+      "_card.js",
+      "_card-title.js",
+      "_card-description.js",
+      "_breadcrumb-page.js",
+      "_client.js",
+      "_alert.js",
+      "_alert-title.js",
+      "_status-badge.js",
+      "_string.utils.js",
+      "_index8.js",
+      "_Toaster.svelte_svelte_type_style_lang.js",
+      "_try-catch.js",
+      "_api.util.js",
+      "_volume-api-service.js",
+      "_arcane-button.js",
+      "_circle-alert.js",
+      "_database.js",
+      "_hard-drive.js",
+      "_clock.js",
+      "_globe.js",
+      "_info.js",
+      "_layers.js",
+      "_tag.js"
+    ]
+  },
+  "virtual:env/static/private": {
+    "file": "chunks/private.js",
+    "name": "private",
+    "src": "virtual:env/static/private",
+    "isDynamicEntry": true
+  }
+}

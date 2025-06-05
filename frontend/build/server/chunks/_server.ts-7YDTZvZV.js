@@ -1,0 +1,38 @@
+import { e as error, j as json } from './index-Ddp2AB5f.js';
+import { t as templateRegistryService } from './template-registry-service-CoCZP6pF.js';
+import './index5-HpJcNJHQ.js';
+import './false-CRHihH2U.js';
+
+const POST = async ({ request }) => {
+  try {
+    const { url } = await request.json();
+    if (!url) {
+      return error(400, { message: "URL is required" });
+    }
+    const config = {
+      url,
+      name: "Test Registry",
+      enabled: true
+    };
+    const registry = await templateRegistryService.fetchRegistry(config);
+    if (!registry) {
+      return error(400, { message: "Failed to fetch registry or invalid format" });
+    }
+    return json({
+      success: true,
+      message: "Registry is valid and accessible",
+      registry: {
+        name: registry.name,
+        description: registry.description,
+        version: registry.version,
+        templateCount: registry.templates.length
+      }
+    });
+  } catch (err) {
+    console.error("Error testing registry:", err);
+    return error(500, { message: "Failed to test registry" });
+  }
+};
+
+export { POST };
+//# sourceMappingURL=_server.ts-7YDTZvZV.js.map

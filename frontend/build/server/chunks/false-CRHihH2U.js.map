@@ -1,0 +1,1 @@
+{"version":3,"file":"false-CRHihH2U.js","sources":["../../../.svelte-kit/adapter-node/chunks/false.js"],"sourcesContent":["const BROWSER = false;\nexport {\n  BROWSER as B\n};\n"],"names":[],"mappings":"AAAK,MAAC,OAAO,GAAG;;;;"}

@@ -1,0 +1,323 @@
+{
+	"/": [
+		"src/routes/+page.server.ts",
+		"src/routes/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/agents": [
+		"src/routes/agents/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/agents/[agentId]": [
+		"src/routes/agents/[agentId]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/api/agents": [
+		"src/routes/api/agents/+server.ts"
+	],
+	"/api/agents/heartbeat": [
+		"src/routes/api/agents/heartbeat/+server.ts"
+	],
+	"/api/agents/register": [
+		"src/routes/api/agents/register/+server.ts"
+	],
+	"/api/agents/[agentId]": [
+		"src/routes/api/agents/[agentId]/+server.ts"
+	],
+	"/api/agents/[agentId]/command": [
+		"src/routes/api/agents/[agentId]/command/+server.ts"
+	],
+	"/api/agents/[agentId]/deployments": [
+		"src/routes/api/agents/[agentId]/deployments/+server.ts"
+	],
+	"/api/agents/[agentId]/deploy/container": [
+		"src/routes/api/agents/[agentId]/deploy/container/+server.ts"
+	],
+	"/api/agents/[agentId]/deploy/image": [
+		"src/routes/api/agents/[agentId]/deploy/image/+server.ts"
+	],
+	"/api/agents/[agentId]/deploy/stack": [
+		"src/routes/api/agents/[agentId]/deploy/stack/+server.ts"
+	],
+	"/api/agents/[agentId]/stacks": [
+		"src/routes/api/agents/[agentId]/stacks/+server.ts"
+	],
+	"/api/agents/[agentId]/tasks": [
+		"src/routes/api/agents/[agentId]/tasks/+server.ts"
+	],
+	"/api/agents/[agentId]/tasks/[taskId]": [
+		"src/routes/api/agents/[agentId]/tasks/[taskId]/+server.ts"
+	],
+	"/api/agents/[agentId]/tasks/[taskId]/result": [
+		"src/routes/api/agents/[agentId]/tasks/[taskId]/result/+server.ts"
+	],
+	"/api/containers": [
+		"src/routes/api/containers/+server.ts"
+	],
+	"/api/containers/start-all": [
+		"src/routes/api/containers/start-all/+server.ts"
+	],
+	"/api/containers/stop-all": [
+		"src/routes/api/containers/stop-all/+server.ts"
+	],
+	"/api/containers/[containerId]": [
+		"src/routes/api/containers/[containerId]/+server.ts"
+	],
+	"/api/containers/[containerId]/logs/stream": [
+		"src/routes/api/containers/[containerId]/logs/stream/+server.ts"
+	],
+	"/api/containers/[containerId]/pull": [
+		"src/routes/api/containers/[containerId]/pull/+server.ts"
+	],
+	"/api/containers/[containerId]/remove": [
+		"src/routes/api/containers/[containerId]/remove/+server.ts"
+	],
+	"/api/containers/[containerId]/restart": [
+		"src/routes/api/containers/[containerId]/restart/+server.ts"
+	],
+	"/api/containers/[containerId]/start": [
+		"src/routes/api/containers/[containerId]/start/+server.ts"
+	],
+	"/api/containers/[containerId]/stats/stream": [
+		"src/routes/api/containers/[containerId]/stats/stream/+server.ts"
+	],
+	"/api/containers/[containerId]/stop": [
+		"src/routes/api/containers/[containerId]/stop/+server.ts"
+	],
+	"/api/convert": [
+		"src/routes/api/convert/+server.ts"
+	],
+	"/api/docker": [
+		"src/routes/api/docker/+server.ts"
+	],
+	"/api/docker/test-connection": [
+		"src/routes/api/docker/test-connection/+server.ts"
+	],
+	"/api/images": [
+		"src/routes/api/images/+server.ts"
+	],
+	"/api/images/maturity": [
+		"src/routes/api/images/maturity/+server.ts"
+	],
+	"/api/images/prune": [
+		"src/routes/api/images/prune/+server.ts"
+	],
+	"/api/images/pull-stream/[...name]": [
+		"src/routes/api/images/pull-stream/[...name]/+server.ts"
+	],
+	"/api/images/pull/[...name]": [
+		"src/routes/api/images/pull/[...name]/+server.ts"
+	],
+	"/api/images/[id]": [
+		"src/routes/api/images/[id]/+server.ts"
+	],
+	"/api/images/[id]/maturity": [
+		"src/routes/api/images/[id]/maturity/+server.ts"
+	],
+	"/api/networks/create": [
+		"src/routes/api/networks/create/+server.ts"
+	],
+	"/api/networks/[id]": [
+		"src/routes/api/networks/[id]/+server.ts"
+	],
+	"/api/settings": [
+		"src/routes/api/settings/+server.ts"
+	],
+	"/api/stacks/create": [
+		"src/routes/api/stacks/create/+server.ts"
+	],
+	"/api/stacks/import": [
+		"src/routes/api/stacks/import/+server.ts"
+	],
+	"/api/stacks/validate": [
+		"src/routes/api/stacks/validate/+server.ts"
+	],
+	"/api/stacks/[stackId]": [
+		"src/routes/api/stacks/[stackId]/+server.ts"
+	],
+	"/api/stacks/[stackId]/changes": [
+		"src/routes/api/stacks/[stackId]/changes/+server.ts"
+	],
+	"/api/stacks/[stackId]/deployment-preview": [
+		"src/routes/api/stacks/[stackId]/deployment-preview/+server.ts"
+	],
+	"/api/stacks/[stackId]/deploy": [
+		"src/routes/api/stacks/[stackId]/deploy/+server.ts"
+	],
+	"/api/stacks/[stackId]/destroy": [
+		"src/routes/api/stacks/[stackId]/destroy/+server.ts"
+	],
+	"/api/stacks/[stackId]/down": [
+		"src/routes/api/stacks/[stackId]/down/+server.ts"
+	],
+	"/api/stacks/[stackId]/logs": [
+		"src/routes/api/stacks/[stackId]/logs/+server.ts"
+	],
+	"/api/stacks/[stackId]/migrate": [
+		"src/routes/api/stacks/[stackId]/migrate/+server.ts"
+	],
+	"/api/stacks/[stackId]/profiles": [
+		"src/routes/api/stacks/[stackId]/profiles/+server.ts"
+	],
+	"/api/stacks/[stackId]/pull": [
+		"src/routes/api/stacks/[stackId]/pull/+server.ts"
+	],
+	"/api/stacks/[stackId]/redeploy": [
+		"src/routes/api/stacks/[stackId]/redeploy/+server.ts"
+	],
+	"/api/stacks/[stackId]/restart": [
+		"src/routes/api/stacks/[stackId]/restart/+server.ts"
+	],
+	"/api/stacks/[stackId]/validate": [
+		"src/routes/api/stacks/[stackId]/validate/+server.ts"
+	],
+	"/api/system/auto-update": [
+		"src/routes/api/system/auto-update/+server.ts"
+	],
+	"/api/system/prune": [
+		"src/routes/api/system/prune/+server.ts"
+	],
+	"/api/system/stats": [
+		"src/routes/api/system/stats/+server.ts"
+	],
+	"/api/templates": [
+		"src/routes/api/templates/+server.ts"
+	],
+	"/api/templates/registries": [
+		"src/routes/api/templates/registries/+server.ts"
+	],
+	"/api/templates/registries/test": [
+		"src/routes/api/templates/registries/test/+server.ts"
+	],
+	"/api/templates/stats": [
+		"src/routes/api/templates/stats/+server.ts"
+	],
+	"/api/templates/[id]": [
+		"src/routes/api/templates/[id]/+server.ts"
+	],
+	"/api/templates/[id]/content": [
+		"src/routes/api/templates/[id]/content/+server.ts"
+	],
+	"/api/templates/[id]/download": [
+		"src/routes/api/templates/[id]/download/+server.ts"
+	],
+	"/api/users": [
+		"src/routes/api/users/+server.ts"
+	],
+	"/api/users/password": [
+		"src/routes/api/users/password/+server.ts"
+	],
+	"/api/users/[id]": [
+		"src/routes/api/users/[id]/+server.ts"
+	],
+	"/api/volumes": [
+		"src/routes/api/volumes/+server.ts"
+	],
+	"/api/volumes/[name]": [
+		"src/routes/api/volumes/[name]/+server.ts"
+	],
+	"/auth/login": [
+		"src/routes/auth/login/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/auth/logout": [
+		"src/routes/auth/logout/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/auth/oidc/callback": [
+		"src/routes/auth/oidc/callback/+server.ts"
+	],
+	"/auth/oidc/login": [
+		"src/routes/auth/oidc/login/+server.ts"
+	],
+	"/compose": [
+		"src/routes/compose/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/compose/agent/[agentId]/[composeName]": [
+		"src/routes/compose/agent/[agentId]/[composeName]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/compose/new": [
+		"src/routes/compose/new/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/compose/[composeId]": [
+		"src/routes/compose/[composeId]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/containers": [
+		"src/routes/containers/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/containers/[id]": [
+		"src/routes/containers/[id]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/images": [
+		"src/routes/images/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/images/[imageId]": [
+		"src/routes/images/[imageId]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/networks": [
+		"src/routes/networks/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/networks/[networkId]": [
+		"src/routes/networks/[networkId]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/onboarding": [
+		"src/routes/+layout.server.ts"
+	],
+	"/onboarding/complete": [
+		"src/routes/+layout.server.ts"
+	],
+	"/onboarding/password": [
+		"src/routes/onboarding/password/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/onboarding/settings": [
+		"src/routes/onboarding/settings/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/onboarding/welcome": [
+		"src/routes/onboarding/welcome/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/settings/docker": [
+		"src/routes/settings/docker/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/settings/general": [
+		"src/routes/settings/general/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/settings/rbac": [
+		"src/routes/settings/rbac/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/settings/security": [
+		"src/routes/settings/security/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/settings/templates": [
+		"src/routes/settings/templates/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/settings/users": [
+		"src/routes/settings/users/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/volumes": [
+		"src/routes/volumes/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/volumes/[volumeName]": [
+		"src/routes/volumes/[volumeName]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	]
+}

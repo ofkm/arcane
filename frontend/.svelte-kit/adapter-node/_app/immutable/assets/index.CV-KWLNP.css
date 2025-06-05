@@ -1,0 +1,1 @@
+[data-select-viewport],[data-combobox-viewport]{scrollbar-width:none!important;-ms-overflow-style:none!important;-webkit-overflow-scrolling:touch!important}[data-combobox-viewport]::-webkit-scrollbar{display:none!important}[data-select-viewport]::-webkit-scrollbar{display:none!important}
