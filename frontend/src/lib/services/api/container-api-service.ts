@@ -42,9 +42,13 @@ export default class ContainerAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async list() {
-		const res = await this.api.get('');
-		return res.data;
+	async list(all: boolean = false) {
+		return this.handleResponse(this.api.get('/containers', { params: { all } }));
+	}
+
+	async isImageInUse(imageId: string): Promise<boolean> {
+		const response = await this.api.get(`/containers/image-usage/${imageId}`);
+		return response.data.inUse;
 	}
 
 	async get(id: string) {

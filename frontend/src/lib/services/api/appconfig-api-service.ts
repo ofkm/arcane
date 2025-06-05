@@ -1,5 +1,5 @@
 import BaseAPIService from './api-service';
-import type { AppConfig } from '$lib/types/app-config.type';
+import type { AppConfig } from '$lib/types/application-configuration';
 
 export default class AppConfigAPIService extends BaseAPIService {
 	async getConfig(): Promise<AppConfig> {

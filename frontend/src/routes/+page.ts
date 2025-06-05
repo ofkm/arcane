@@ -1,64 +1,86 @@
 import type { PageLoad } from './$types';
-import { listContainers } from '$lib/services/docker/container-service';
-import { getDockerInfo } from '$lib/services/docker/core';
-import { isImageInUse, listImages, checkImageMaturity } from '$lib/services/docker/image-service';
-import { getSettings } from '$lib/services/settings-service';
-import { imageMaturityDb } from '$lib/services/database/image-maturity-db-service';
-import type { EnhancedImageInfo, ServiceImage } from '$lib/types/docker';
+import { containerAPI, imageAPI, systemAPI, settingsAPI } from '$lib/services/api';
+import type { EnhancedImageInfo } from '$lib/types/docker';
 import type { ContainerInfo } from 'dockerode';
+import type { Settings } from '$lib/types/settings.type';
 
-type DockerInfoType = Awaited<ReturnType<typeof getDockerInfo>>;
-type SettingsType = NonNullable<Awaited<ReturnType<typeof getSettings>>>;
+// Define the type for images returned from the API
+type APIImageInfo = {
+	Id: string;
+	repo: string;
+	tag: string;
+	size: number;
+	created: string;
+	// Add other properties that your API returns for images
+};
+
+type DockerInfoType = Awaited<ReturnType<typeof systemAPI.getDockerInfo>>;
 
 type DashboardData = {
 	dockerInfo: DockerInfoType | null;
 	containers: ContainerInfo[];
 	images: EnhancedImageInfo[];
-	settings: Pick<SettingsType, 'pruneMode'> | null;
+	settings: Pick<Settings, 'pruneMode'> | null;
 	error?: string;
 };
 
 export const load: PageLoad = async (): Promise<DashboardData> => {
 	try {
 		const [dockerInfo, containersData, imagesData, settings] = await Promise.all([
-			getDockerInfo().catch((e) => {
+			systemAPI.getDockerInfo().catch((e) => {
 				console.error('Dashboard: Failed to get Docker info:', e.message);
 				return null;
 			}),
-			listContainers(true).catch((e) => {
+			containerAPI.list(true).catch((e): ContainerInfo[] => {
 				console.error('Dashboard: Failed to list containers:', e.message);
 				return [] as ContainerInfo[];
-			}),
-			listImages().catch((e) => {
+			}) as Promise<ContainerInfo[]>,
+			imageAPI.list().catch((e): APIImageInfo[] => {
 				console.error('Dashboard: Failed to list images:', e.message);
-				return [] as ServiceImage[];
+				return [] as APIImageInfo[];
 			}),
-			getSettings().catch((e) => {
+			settingsAPI.getSettings().catch((e) => {
 				console.error('Dashboard: Failed to get settings:', e.message);
 				return null;
 			})
 		]);
 
 		const enhancedImages = await Promise.all(
-			imagesData.map(async (image): Promise<EnhancedImageInfo> => {
-				const inUse = await isImageInUse(image.Id);
+			imagesData.map(async (image: APIImageInfo): Promise<EnhancedImageInfo> => {
+				// Check if image is in use via API
+				const inUse = await containerAPI.isImageInUse(image.Id).catch(() => false);
 
-				const record = await imageMaturityDb.getImageMaturity(image.Id);
-				let maturity = record ? imageMaturityDb.recordToImageMaturity(record) : undefined;
+				// Get maturity data from API instead of database
+				let maturity = undefined;
+				try {
+					maturity = await imageAPI.checkMaturity(image.Id);
+				} catch (maturityError) {
+					// If maturity check fails, try to get existing data
+					console.warn(`Dashboard: Failed to check maturity for image ${image.Id}:`, maturityError);
 
-				if (maturity === undefined) {
-					try {
-						if (image.repo !== '<none>' && image.tag !== '<none>') {
-							maturity = await checkImageMaturity(image.Id);
-						}
-					} catch (maturityError) {
-						console.error(`Dashboard: Failed to check maturity for image ${image.Id}:`, maturityError);
-						maturity = undefined;
+					// If the image has a valid repo and tag, we might want to trigger a background check
+					if (image.repo && image.repo !== '<none>' && image.tag && image.tag !== '<none>') {
+						// You could add a background check here if needed
+						// This would be non-blocking and update the data for next time
+						imageAPI.checkMaturity(image.Id).catch(() => {
+							// Silent fail for background operation
+						});
 					}
+					maturity = undefined;
 				}
 
 				return {
 					...image,
+					Id: image.Id,
+					RepoTags: [`${image.repo}:${image.tag}`],
+					RepoDigests: [],
+					ParentId: '', // Provide a default or fetch if available
+					Created: Number(image.created),
+					Size: image.size,
+					SharedSize: 0,
+					VirtualSize: image.size,
+					Labels: {},
+					Containers: 0,
 					inUse,
 					maturity
 				};

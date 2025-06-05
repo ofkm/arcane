@@ -1,5 +1,6 @@
 import ContainerAPIService from './container-api-service';
 import ImageAPIService from './image-api-service';
+import ImageMaturityAPIService from './image-maturity-api-service';
 import VolumeAPIService from './volume-api-service';
 import NetworkAPIService from './network-api-service';
 import StackAPIService from './stack-api-service';
@@ -18,6 +19,7 @@ import AppConfigAPIService from './appconfig-api-service';
 // Create singleton instances
 export const containerAPI = new ContainerAPIService();
 export const imageAPI = new ImageAPIService();
+export const imageMaturityAPI = new ImageMaturityAPIService();
 export const volumeAPI = new VolumeAPIService();
 export const networkAPI = new NetworkAPIService();
 export const stackAPI = new StackAPIService();
@@ -33,9 +35,30 @@ export const deploymentAPI = new DeploymentAPIService();
 export const validationAPI = new ValidationAPIService();
 export const appConfigAPI = new AppConfigAPIService();
 
-export default {
+interface APIServices {
+	container: ContainerAPIService;
+	image: ImageAPIService;
+	imageMaturity: ImageMaturityAPIService;
+	volume: VolumeAPIService;
+	network: NetworkAPIService;
+	stack: StackAPIService;
+	system: SystemAPIService;
+	template: TemplateAPIService;
+	user: UserAPIService;
+	session: SessionAPIService;
+	settings: SettingsAPIService;
+	templateRegistry: TemplateRegistryAPIService;
+	oidc: OidcAPIService;
+	encryption: EncryptionAPIService;
+	deployment: DeploymentAPIService;
+	validation: ValidationAPIService;
+	appConfig: AppConfigAPIService;
+}
+
+const apiServices: APIServices = {
 	container: containerAPI,
 	image: imageAPI,
+	imageMaturity: imageMaturityAPI,
 	volume: volumeAPI,
 	network: networkAPI,
 	stack: stackAPI,
@@ -51,3 +74,5 @@ export default {
 	validation: validationAPI,
 	appConfig: appConfigAPI
 };
+
+export default apiServices;

@@ -56,3 +56,37 @@ export interface Settings {
 	baseServerUrl?: string;
 	maturityThresholdDays: number;
 }
+
+// Add these to your existing settings.type.ts file
+
+export interface OidcUserInfo {
+	sub: string;
+	email: string;
+	name: string;
+	preferred_username?: string;
+	given_name?: string;
+	family_name?: string;
+	picture?: string;
+	groups?: string[];
+}
+
+export interface RegistryCredential {
+	id: string;
+	name: string;
+	serverAddress: string;
+	username: string;
+	password: string; // This should be encrypted
+	email?: string;
+	isDefault?: boolean;
+}
+
+export interface TemplateRegistrySettings {
+	id: string;
+	name: string;
+	url: string;
+	username?: string;
+	password?: string; // This should be encrypted
+	enabled: boolean;
+	autoUpdate: boolean;
+	updateInterval: number; // in hours
+}

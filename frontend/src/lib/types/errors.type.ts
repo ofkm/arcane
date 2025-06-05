@@ -92,3 +92,34 @@ export class PrivateRegistryError extends BaseError {
 		Object.setPrototypeOf(this, PrivateRegistryError.prototype);
 	}
 }
+
+export interface APIError {
+	code: string;
+	message: string;
+	details?: Record<string, any>;
+	timestamp: string;
+	path?: string;
+	method?: string;
+}
+
+export interface ValidationAPIError extends APIError {
+	field?: string;
+	value?: any;
+	constraint?: string;
+}
+
+export interface AuthenticationError extends APIError {
+	authType: 'local' | 'oidc' | 'session';
+	remainingAttempts?: number;
+}
+
+export interface AuthorizationError extends APIError {
+	requiredPermission: string;
+	userPermissions: string[];
+}
+
+export interface DockerError extends APIError {
+	dockerCode?: string;
+	containerId?: string;
+	serviceName?: string;
+}

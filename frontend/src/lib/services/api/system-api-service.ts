@@ -11,4 +11,16 @@ export default class SystemAPIService extends BaseAPIService {
 		const res = await this.api.post(`/system/prune?types=${typesParam}`);
 		return res.data;
 	}
+
+	async getDockerInfo() {
+		return this.handleResponse(this.api.get('/system/docker/info'));
+	}
+
+	async getSystemInfo() {
+		return this.handleResponse(this.api.get('/system/info'));
+	}
+
+	async ping() {
+		return this.handleResponse(this.api.get('/system/ping'));
+	}
 }
