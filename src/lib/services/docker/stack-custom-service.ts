@@ -7,6 +7,7 @@ import { directoryExists } from '$lib/utils/fs.utils';
 import { getDockerClient } from './core';
 import { getSettings, ensureStacksDirectory } from '$lib/services/settings-service';
 import type { Stack, StackService, StackUpdate } from '$lib/types/docker/stack.type';
+import type { ComposeSpecification, Service } from '$lib/types/compose.spec.type';
 import { listStacksFromDb, getStackByIdFromDb, saveStackToDb, updateStackRuntimeInfoInDb, updateStackContentInDb, deleteStackFromDb, updateStackAutoUpdateInDb, getAutoUpdateStacksFromDb } from '$lib/services/database/compose-db-service';
 import {
 	parseEnvContent,
@@ -1586,6 +1587,11 @@ async function createStackNetworks(docker: Dockerode, stackId: string, networks:
 
 	// Process defined networks (only create non-external ones)
 	for (const [networkName, networkConfig] of Object.entries(networks)) {
+		// Skip null/undefined network configs (allowed in spec)
+		if (!networkConfig) {
+			continue;
+		}
+
 		// Validate external networks
 		try {
 			validateExternalResource(networkName, networkConfig, 'network');
@@ -1595,20 +1601,46 @@ async function createStackNetworks(docker: Dockerode, stackId: string, networks:
 
 		// Skip external networks
 		if (networkConfig.external) {
-			console.log(`Using external network: ${networkConfig.name || networkName}`);
+			const externalName = typeof networkConfig.external === 'object' && networkConfig.external.name ? networkConfig.external.name : typeof networkConfig.external === 'string' ? networkConfig.external : networkConfig.name || networkName;
+			console.log(`Using external network: ${externalName}`);
 			continue;
 		}
 
 		// Network creation logic for non-external networks
-		const networkToCreate = {
+		// Use the name field if defined, otherwise use stack_networkname convention
+		const networkToCreate: {
+			Name: any;
+			Driver: any;
+			Labels: any;
+			Options: any;
+			IPAM?: any;
+		} = {
 			Name: networkConfig.name || `${stackId}_${networkName}`,
 			Driver: networkConfig.driver || 'bridge',
 			Labels: {
 				'com.docker.compose.project': stackId,
-				'com.docker.compose.network': networkName
+				'com.docker.compose.network': networkName,
+				// Handle labels that can be object or array
+				...(Array.isArray(networkConfig.labels)
+					? Object.fromEntries(
+							networkConfig.labels.map((label: string) => {
+								const [key, value] = label.split('=', 2);
+								return [key, value || ''];
+							})
+						)
+					: networkConfig.labels || {})
 			},
 			Options: networkConfig.driver_opts || {}
 		};
+
+		// Add IPAM configuration if specified
+		if (networkConfig.ipam) {
+			networkToCreate.IPAM = {
+				Driver: networkConfig.ipam.driver || 'default',
+				Config: networkConfig.ipam.config || [],
+				Options: networkConfig.ipam.options || {}
+			};
+		}
 
 		try {
 			console.log(`Creating network: ${networkToCreate.Name}`);
@@ -1664,12 +1696,12 @@ async function pullImage(docker: Dockerode, imageTag: string): Promise<void> {
 /**
  * Create and start all services with proper Docker Compose spec compliance
  */
-async function createAndStartServices(docker: Dockerode, stackId: string, composeData: any, stackDir: string): Promise<void> {
+async function createAndStartServices(docker: Dockerode, stackId: string, composeData: ComposeSpecification, stackDir: string): Promise<void> {
 	if (!composeData || !composeData.services) {
 		throw new Error(`No services defined in compose file for stack ${stackId}`);
 	}
 
-	// Note: composeData should already be filtered by profiles at this point
+	// TypeScript now knows composeData.services is Record<string, Service>
 	console.log(`Creating and starting ${Object.keys(composeData.services).length} services for stack ${stackId}`);
 
 	// Load environment variables for substitution
@@ -1732,15 +1764,16 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 
 	// Create and start services in dependency order
 	for (const serviceName of serviceOrder) {
-		const serviceConfig = processedComposeData.services[serviceName];
+		const serviceConfig: Service | undefined = composeData.services[serviceName];
 		if (!serviceConfig) {
 			console.warn(`Service ${serviceName} not found in processed compose data, skipping`);
 			continue;
 		}
 
+		// TypeScript now knows serviceConfig is of type Service from the spec
 		console.log(`Creating service: ${serviceName}`);
 
-		// Validate image is present (required by spec)
+		// Type-safe property access
 		if (!serviceConfig.image && !serviceConfig.build) {
 			throw new Error(`Service ${serviceName} must specify either 'image' or 'build'`);
 		}
@@ -1800,11 +1833,11 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 			Env: await prepareEnvironmentVariables(serviceConfig.environment, stackDir),
 			HostConfig: {
 				RestartPolicy: prepareRestartPolicy(serviceConfig.restart),
-				Binds: prepareVolumes(serviceConfig.volumes, processedComposeData, stackId),
-				PortBindings: preparePorts(serviceConfig.ports),
+				Binds: prepareVolumes(serviceConfig.volumes ?? [], processedComposeData, stackId),
+				PortBindings: preparePorts(serviceConfig.ports ?? []),
 				Memory: serviceConfig.mem_limit ? parseMemory(serviceConfig.mem_limit) : undefined,
-				NanoCpus: serviceConfig.cpus ? Math.floor(parseFloat(serviceConfig.cpus) * 1_000_000_000) : undefined,
-				ExtraHosts: prepareExtraHosts(serviceConfig.extra_hosts),
+				NanoCpus: serviceConfig.cpus ? Math.floor(parseFloat(String(serviceConfig.cpus)) * 1_000_000_000) : undefined,
+				ExtraHosts: prepareExtraHosts(Array.isArray(serviceConfig.extra_hosts) ? serviceConfig.extra_hosts : []),
 				Ulimits: prepareUlimits(serviceConfig.ulimits),
 				LogConfig: prepareLogConfig(serviceConfig.logging || {}),
 				Dns: serviceConfig.dns || [],
@@ -1832,20 +1865,38 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 		if (serviceConfig.working_dir) containerConfig.WorkingDir = serviceConfig.working_dir;
 		if (serviceConfig.user) containerConfig.User = serviceConfig.user;
 
-		// Handle networking
+		// Handle networking with proper type checking
 		if (serviceConfig.network_mode) {
 			containerConfig.HostConfig.NetworkMode = serviceConfig.network_mode;
 		} else if (serviceConfig.networks) {
-			// Handle Docker Compose networks
-			const networks = Array.isArray(serviceConfig.networks) ? serviceConfig.networks : Object.keys(serviceConfig.networks);
+			// Handle Docker Compose networks - can be array or object
+			const networks: string[] = Array.isArray(serviceConfig.networks) ? serviceConfig.networks : Object.keys(serviceConfig.networks);
+
 			if (networks.length > 0) {
 				const primaryNetwork = networks[0];
 				const networkDefinition = processedComposeData.networks?.[primaryNetwork];
-				const fullNetworkName = networkDefinition?.external ? networkDefinition.name || primaryNetwork : `${stackId}_${primaryNetwork}`;
+
+				// Handle external networks properly
+				let fullNetworkName: string;
+				if (networkDefinition?.external) {
+					if (typeof networkDefinition.external === 'object' && networkDefinition.external.name) {
+						fullNetworkName = networkDefinition.external.name;
+					} else if (typeof networkDefinition.external === 'string') {
+						fullNetworkName = networkDefinition.external;
+					} else if (networkDefinition.name) {
+						fullNetworkName = networkDefinition.name;
+					} else {
+						fullNetworkName = primaryNetwork;
+					}
+				} else {
+					// For non-external networks, use the name field if defined, otherwise use stack_networkname convention
+					fullNetworkName = networkDefinition?.name || `${stackId}_${primaryNetwork}`;
+				}
 
 				// ALWAYS set NetworkMode first
 				containerConfig.HostConfig.NetworkMode = fullNetworkName;
 
+				// Handle network configuration if networks is an object
 				if (!Array.isArray(serviceConfig.networks)) {
 					const networkConfig = serviceConfig.networks[primaryNetwork];
 					if (networkConfig && typeof networkConfig === 'object') {
@@ -1886,19 +1937,35 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 
 			// Connect to additional networks if needed
 			if (serviceConfig.networks && !serviceConfig.network_mode) {
-				const networks = Array.isArray(serviceConfig.networks) ? serviceConfig.networks : Object.keys(serviceConfig.networks);
+				const networks: string[] = Array.isArray(serviceConfig.networks) ? serviceConfig.networks : Object.keys(serviceConfig.networks);
 				const additionalNetworks = networks.slice(1); // Skip first network (already set as NetworkMode)
 
 				for (const netName of additionalNetworks) {
 					try {
 						const networkDefinition = processedComposeData.networks?.[netName];
-						const fullNetworkName = networkDefinition?.external ? networkDefinition.name || netName : `${stackId}_${netName}`;
+
+						// Handle external networks properly
+						let fullNetworkName: string;
+						if (networkDefinition?.external) {
+							if (typeof networkDefinition.external === 'object' && networkDefinition.external.name) {
+								fullNetworkName = networkDefinition.external.name;
+							} else if (typeof networkDefinition.external === 'string') {
+								fullNetworkName = networkDefinition.external;
+							} else if (networkDefinition.name) {
+								fullNetworkName = networkDefinition.name;
+							} else {
+								fullNetworkName = netName;
+							}
+						} else {
+							// For non-external networks, use the name field if defined, otherwise use stack_networkname convention
+							fullNetworkName = networkDefinition?.name || `${stackId}_${netName}`;
+						}
 
 						const endpointConfig: any = {};
 
 						if (!Array.isArray(serviceConfig.networks)) {
 							const serviceNetConfig = serviceConfig.networks[netName];
-							if (typeof serviceNetConfig === 'object') {
+							if (serviceNetConfig && typeof serviceNetConfig === 'object') {
 								const ipamConfig: any = {};
 
 								if (serviceNetConfig.ipv4_address) {
@@ -1912,6 +1979,11 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 
 								if (Object.keys(ipamConfig).length > 0) {
 									endpointConfig.IPAMConfig = ipamConfig;
+								}
+
+								// Add aliases if specified
+								if (serviceNetConfig.aliases && Array.isArray(serviceNetConfig.aliases)) {
+									endpointConfig.Aliases = serviceNetConfig.aliases;
 								}
 							}
 						}
@@ -1943,7 +2015,7 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 /**
  * Deploy stack with external networks (custom approach)
  */
-async function deployStackWithExternalNetworks(stackId: string, composeData: any, stackDir: string): Promise<void> {
+async function deployStackWithExternalNetworks(stackId: string, composeData: ComposeSpecification, stackDir: string): Promise<void> {
 	const docker = await getDockerClient();
 
 	// Pull all images

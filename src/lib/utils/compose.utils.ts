@@ -1,6 +1,8 @@
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
 import { promises as fs, existsSync } from 'node:fs';
 import * as path from 'node:path';
+// Add the import for the ComposeSpecification type
+import type { ComposeSpecification, Service as ServiceConfig } from '../types/compose.spec.type.js';
 
 // Compose specification constants
 export const SUPPORTED_COMPOSE_VERSIONS = ['3.0', '3.1', '3.2', '3.3', '3.4', '3.5', '3.6', '3.7', '3.8', '3.9'];
@@ -67,105 +69,6 @@ export interface ProfileUsageStats {
 	servicesWithProfiles: ServiceProfile[];
 }
 
-export interface ComposeData {
-	version?: string;
-	services?: Record<string, ServiceConfig>;
-	volumes?: Record<string, VolumeConfig>;
-	networks?: Record<string, NetworkConfig>;
-	profiles?: Record<string, ProfileConfig> | string[];
-	[key: string]: any;
-}
-
-export interface ServiceConfig {
-	image?: string;
-	build?: string | BuildConfig;
-	profiles?: string | string[];
-	depends_on?: string[] | Record<string, DependencyConfig>;
-	volumes?: VolumeMount[];
-	networks?: string[] | Record<string, NetworkServiceConfig>;
-	ports?: PortMapping[];
-	environment?: string[] | Record<string, string>;
-	healthcheck?: HealthcheckConfig;
-	restart?: string;
-	[key: string]: any;
-}
-
-export interface VolumeConfig {
-	driver?: string;
-	driver_opts?: Record<string, string>;
-	external?: boolean | { name: string };
-	labels?: Record<string, string>;
-	[key: string]: any;
-}
-
-export interface NetworkConfig {
-	driver?: string;
-	driver_opts?: Record<string, string>;
-	external?: boolean | { name: string };
-	labels?: Record<string, string>;
-	[key: string]: any;
-}
-
-export interface BuildConfig {
-	context: string;
-	dockerfile?: string;
-	args?: Record<string, string>;
-	[key: string]: any;
-}
-
-export interface DependencyConfig {
-	condition?: 'service_started' | 'service_healthy' | 'service_completed_successfully';
-	restart?: boolean;
-}
-
-export interface NetworkServiceConfig {
-	aliases?: string[];
-	ipv4_address?: string;
-	ipv6_address?: string;
-	[key: string]: any;
-}
-
-export interface VolumeMount {
-	type?: 'bind' | 'volume' | 'tmpfs';
-	source?: string;
-	target: string;
-	read_only?: boolean;
-	consistency?: 'cached' | 'delegated' | 'consistent';
-	bind?: {
-		propagation?: 'shared' | 'slave' | 'private' | 'rshared' | 'rslave' | 'rprivate';
-		create_host_path?: boolean;
-	};
-	volume?: {
-		nocopy?: boolean;
-	};
-	tmpfs?: {
-		size?: string | number;
-		mode?: string | number;
-		uid?: number;
-		gid?: number;
-		noexec?: boolean;
-		nosuid?: boolean;
-		nodev?: boolean;
-	};
-}
-
-export interface PortMapping {
-	target: number;
-	published?: number;
-	protocol?: 'tcp' | 'udp';
-	mode?: 'host' | 'ingress';
-	host_ip?: string;
-}
-
-export interface HealthcheckConfig {
-	test?: string | string[];
-	interval?: string;
-	timeout?: string;
-	retries?: number;
-	start_period?: string;
-	disable?: boolean;
-}
-
 /**
  * Parse environment file content with proper .env spec support
  */
@@ -212,7 +115,7 @@ export function parseEnvContent(envContent: string | null): Record<string, strin
 /**
  * Validate compose file version and structure according to spec
  */
-export function validateComposeStructure(composeData: ComposeData): { valid: boolean; errors: string[]; warnings: string[] } {
+export function validateComposeStructure(composeData: ComposeSpecification): { valid: boolean; errors: string[]; warnings: string[] } {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -309,7 +212,7 @@ export function validateComposeStructure(composeData: ComposeData): { valid: boo
 	// Validate networks section
 	if (composeData.networks) {
 		for (const [networkName, networkConfig] of Object.entries(composeData.networks)) {
-			// ADD NULL CHECK HERE
+			// NULL CHECK - networks can be null in the spec
 			if (!networkConfig) {
 				continue; // Skip null/undefined network configs
 			}
@@ -327,7 +230,7 @@ export function validateComposeStructure(composeData: ComposeData): { valid: boo
 	// Validate volumes section
 	if (composeData.volumes) {
 		for (const [volumeName, volumeConfig] of Object.entries(composeData.volumes)) {
-			// ADD NULL CHECK HERE TOO
+			// NULL CHECK - volumes can be null in the spec
 			if (!volumeConfig) {
 				continue; // Skip null/undefined volume configs
 			}
@@ -421,7 +324,7 @@ export function normalizeHealthcheckTest(composeContent: string, envGetter?: (ke
 /**
  * Parse YAML content with proper Compose spec validation
  */
-export function parseYamlContent(content: string, envGetter?: (key: string) => string | undefined): ComposeData | null {
+export function parseYamlContent(content: string, envGetter?: (key: string) => string | undefined): ComposeSpecification | null {
 	try {
 		const parsedYaml = yamlLoad(content);
 
@@ -431,7 +334,7 @@ export function parseYamlContent(content: string, envGetter?: (key: string) => s
 		}
 
 		// Validate structure
-		const validation = validateComposeStructure(parsedYaml as ComposeData);
+		const validation = validateComposeStructure(parsedYaml as ComposeSpecification);
 		if (!validation.valid) {
 			console.error('Compose validation errors:', validation.errors);
 		}
@@ -439,11 +342,11 @@ export function parseYamlContent(content: string, envGetter?: (key: string) => s
 			console.warn('Compose validation warnings:', validation.warnings);
 		}
 
-		let result = parsedYaml as ComposeData;
+		let result = parsedYaml as ComposeSpecification;
 
 		// Apply environment variable substitution
 		if (envGetter) {
-			result = substituteVariablesInObject(result, envGetter) as ComposeData;
+			result = substituteVariablesInObject(result, envGetter) as ComposeSpecification;
 		}
 
 		// Ensure we have a default network if none specified
@@ -1225,7 +1128,7 @@ export function parseTimeToNanoseconds(timeStr: string | number): number {
 export function validateComposeContent(content: string): { valid: boolean; errors: string[]; warnings: string[] } {
 	try {
 		const parsed = yamlLoad(content);
-		return validateComposeStructure(parsed as ComposeData);
+		return validateComposeStructure(parsed as ComposeSpecification);
 	} catch (parseError) {
 		return {
 			valid: false,
@@ -1649,7 +1552,7 @@ export function parseActiveProfiles(args?: string[], env?: Record<string, string
 /**
  * Validate profile configuration in compose data
  */
-export function validateProfiles(composeData: ComposeData): { valid: boolean; errors: string[]; warnings: string[] } {
+export function validateProfiles(composeData: ComposeSpecification): { valid: boolean; errors: string[]; warnings: string[] } {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -1700,7 +1603,7 @@ export function validateProfiles(composeData: ComposeData): { valid: boolean; er
 /**
  * Get all profiles defined in the compose file
  */
-export function getAllDefinedProfiles(composeData: ComposeData): string[] {
+export function getAllDefinedProfiles(composeData: ComposeSpecification): string[] {
 	const allProfiles = new Set<string>();
 
 	if (!composeData || typeof composeData !== 'object') {
@@ -1810,7 +1713,7 @@ export function filterServicesByProfiles(services: Record<string, ServiceConfig>
 /**
  * Resolve profile dependencies and conflicts
  */
-export function resolveProfileDependencies(composeData: ComposeData, requestedProfiles: string[]): ProfileResolution {
+export function resolveProfileDependencies(composeData: ComposeSpecification, requestedProfiles: string[]): ProfileResolution {
 	const warnings: string[] = [];
 	const errors: string[] = [];
 	const resolvedProfiles = new Set(requestedProfiles);
@@ -1864,7 +1767,7 @@ export function resolveProfileDependencies(composeData: ComposeData, requestedPr
 /**
  * Create deployment plan based on profiles
  */
-export function createProfileDeploymentPlan(composeData: ComposeData, activeProfiles: string[]): ProfileDeploymentPlan {
+export function createProfileDeploymentPlan(composeData: ComposeSpecification, activeProfiles: string[]): ProfileDeploymentPlan {
 	const warnings: string[] = [];
 	const errors: string[] = [];
 
@@ -1952,16 +1855,16 @@ export function createProfileDeploymentPlan(composeData: ComposeData, activeProf
  * Returns a new compose data object with only the services that should be deployed
  */
 export function applyProfileFiltering(
-	composeData: ComposeData,
+	composeData: ComposeSpecification,
 	activeProfiles: string[]
 ): {
-	filteredComposeData: ComposeData;
+	filteredComposeData: ComposeSpecification;
 	deploymentPlan: ProfileDeploymentPlan;
 } {
 	const deploymentPlan = createProfileDeploymentPlan(composeData, activeProfiles);
 
 	// Create filtered compose data
-	const filteredComposeData: ComposeData = {
+	const filteredComposeData: ComposeSpecification = {
 		...composeData,
 		services: {},
 		volumes: {},
@@ -2005,7 +1908,7 @@ export function applyProfileFiltering(
 /**
  * Get profile usage statistics from a compose file
  */
-export function getProfileUsageStats(composeData: ComposeData): ProfileUsageStats {
+export function getProfileUsageStats(composeData: ComposeSpecification): ProfileUsageStats {
 	const allProfiles = getAllDefinedProfiles(composeData);
 	const profileServiceMap = new Map<string, string[]>();
 	const servicesWithoutProfiles: string[] = [];
@@ -2059,7 +1962,7 @@ export function getProfileUsageStats(composeData: ComposeData): ProfileUsageStat
 /**
  * Generate profile documentation/help text
  */
-export function generateProfileHelp(composeData: ComposeData): string {
+export function generateProfileHelp(composeData: ComposeSpecification): string {
 	const stats = getProfileUsageStats(composeData);
 	const allProfiles = getAllDefinedProfiles(composeData);
 
