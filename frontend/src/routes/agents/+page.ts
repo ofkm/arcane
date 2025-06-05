@@ -1,38 +1,39 @@
 import type { PageLoad } from './$types';
-import { listAgents } from '$lib/services/agent/agent-manager';
+import { agentAPI, sessionAPI } from '$lib/services/api';
 import { error } from '@sveltejs/kit';
 
-export const load: PageLoad = async ({ locals }) => {
-	// Check if user has admin role
-	if (!locals.user?.roles.includes('admin')) {
-		throw error(403, {
-			message: 'Unauthorized access'
-		});
-	}
-
+export const load: PageLoad = async () => {
 	try {
-		// Load agents with actual status calculation
-		const agents = await listAgents();
+		// Check authentication and authorization via API
+		const session = await sessionAPI.getCurrentSession();
 
-		// Calculate actual status on server side
-		const now = new Date();
-		const timeout = 5 * 60 * 1000; // 5 minutes
+		if (!session) {
+			throw error(401, {
+				message: 'Authentication required'
+			});
+		}
 
-		const agentsWithStatus = agents.map((agent) => {
-			const lastSeen = new Date(agent.lastSeen);
-			const timeSinceLastSeen = now.getTime() - lastSeen.getTime();
+		// Check if user has admin role
+		if (!session.user?.roles?.includes('admin')) {
+			throw error(403, {
+				message: 'Unauthorized access'
+			});
+		}
 
-			return {
-				...agent,
-				status: timeSinceLastSeen > timeout ? 'offline' : agent.status
-			};
-		});
+		// Load agents with status from API
+		const agents = await agentAPI.listWithStatus();
 
 		return {
-			agents: agentsWithStatus
+			agents
 		};
 	} catch (err) {
-		console.error('SSR: Failed to load agents:', err);
+		console.error('Failed to load agents:', err);
+
+		// Re-throw SvelteKit errors
+		if (err && typeof err === 'object' && 'status' in err) {
+			throw err;
+		}
+
 		throw error(500, {
 			message: err instanceof Error ? err.message : 'Failed to load agents'
 		});

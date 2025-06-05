@@ -2,48 +2,61 @@ import BaseAPIService from './api-service';
 import type Docker from 'dockerode';
 
 export default class ContainerAPIService extends BaseAPIService {
+	async list(all: boolean = false) {
+		return this.handleResponse(this.api.get('/containers', { params: { all } }));
+	}
+
+	async get(id: string) {
+		return this.handleResponse(this.api.get(`/containers/${id}`));
+	}
+
+	async inspect(id: string) {
+		return this.handleResponse(this.api.get(`/containers/${id}/inspect`));
+	}
+
 	async start(id: string) {
-		const res = await this.api.post(`/containers/${id}/start`);
-		return res.data;
+		return this.handleResponse(this.api.post(`/containers/${id}/start`));
 	}
 
 	async stop(id: string) {
-		const res = await this.api.post(`/containers/${id}/stop`);
-		return res.data;
+		return this.handleResponse(this.api.post(`/containers/${id}/stop`));
 	}
 
 	async restart(id: string) {
-		const res = await this.api.post(`/containers/${id}/restart`);
-		return res.data;
+		return this.handleResponse(this.api.post(`/containers/${id}/restart`));
 	}
 
-	async remove(id: string) {
-		const res = await this.api.delete(`/containers/${id}/remove`);
-		return res.data;
+	async remove(id: string, options?: { force?: boolean; volumes?: boolean }) {
+		return this.handleResponse(
+			this.api.delete(`/containers/${id}`, {
+				params: options
+			})
+		);
 	}
 
-	async pull(id: string) {
-		const res = await this.api.post(`/containers/${id}/pull`);
-		return res.data;
+	async logs(
+		id: string,
+		options?: {
+			tail?: number;
+			timestamps?: boolean;
+			follow?: boolean;
+			since?: string;
+			until?: string;
+		}
+	) {
+		return this.handleResponse(
+			this.api.get(`/containers/${id}/logs`, {
+				params: options
+			})
+		);
 	}
 
-	async startAll() {
-		const res = await this.api.post(`/containers/start-all`);
-		return res.data;
-	}
-
-	async stopAll() {
-		const res = await this.api.post(`/containers/stop-all`);
-		return res.data;
-	}
-
-	async create(config: Docker.ContainerCreateOptions) {
-		const res = await this.api.post('/containers', config);
-		return res.data;
-	}
-
-	async list(all: boolean = false) {
-		return this.handleResponse(this.api.get('/containers', { params: { all } }));
+	async stats(id: string, stream: boolean = false) {
+		return this.handleResponse(
+			this.api.get(`/containers/${id}/stats`, {
+				params: { stream }
+			})
+		);
 	}
 
 	async isImageInUse(imageId: string): Promise<boolean> {
@@ -51,8 +64,15 @@ export default class ContainerAPIService extends BaseAPIService {
 		return response.data.inUse;
 	}
 
-	async get(id: string) {
-		const res = await this.api.get(`/containers/${id}`);
-		return res.data;
+	async prune(filters?: Record<string, string>) {
+		return this.handleResponse(this.api.post('/containers/prune', { filters }));
+	}
+
+	async exec(id: string, command: string[]) {
+		return this.handleResponse(
+			this.api.post(`/containers/${id}/exec`, {
+				command
+			})
+		);
 	}
 }

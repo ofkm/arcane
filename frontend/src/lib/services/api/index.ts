@@ -15,6 +15,7 @@ import EncryptionAPIService from './encryption-api-service';
 import DeploymentAPIService from './deployment-api-service';
 import ValidationAPIService from './validation-api-service';
 import AppConfigAPIService from './appconfig-api-service';
+import AgentAPIService from './agent-api-service';
 
 // Create singleton instances
 export const containerAPI = new ContainerAPIService();
@@ -34,6 +35,7 @@ export const encryptionAPI = new EncryptionAPIService();
 export const deploymentAPI = new DeploymentAPIService();
 export const validationAPI = new ValidationAPIService();
 export const appConfigAPI = new AppConfigAPIService();
+export const agentAPI = new AgentAPIService();
 
 interface APIServices {
 	container: ContainerAPIService;
@@ -53,6 +55,7 @@ interface APIServices {
 	deployment: DeploymentAPIService;
 	validation: ValidationAPIService;
 	appConfig: AppConfigAPIService;
+	agent: AgentAPIService;
 }
 
 const apiServices: APIServices = {
@@ -72,7 +75,8 @@ const apiServices: APIServices = {
 	encryption: encryptionAPI,
 	deployment: deploymentAPI,
 	validation: validationAPI,
-	appConfig: appConfigAPI
+	appConfig: appConfigAPI,
+	agent: agentAPI
 };
 
 export default apiServices;

@@ -10,29 +10,6 @@ import { sessionHandler } from '$lib/services/session-handler';
 // Get environment variable
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
 
-// Only initialize services at runtime, not during build
-if (!building) {
-	try {
-		// Dynamic imports to avoid loading these during build
-		const { runMigrations } = await import('./db/migrate');
-		const { migrateSettingsToDatabase } = await import('$lib/services/database/settings-db-service');
-		const { migrateUsersToDatabase } = await import('$lib/services/database/user-db-service');
-		const { migrateStacksToDatabase } = await import('$lib/services/database/compose-db-service');
-		const { initComposeService, stackRuntimeUpdater } = await import('$lib/services/docker/stack-custom-service');
-		const { initAutoUpdateScheduler } = await import('$lib/services/docker/scheduler-service');
-		const { initMaturityPollingScheduler } = await import('$lib/services/docker/image-service');
-
-		await runMigrations();
-		await Promise.all([migrateSettingsToDatabase(), migrateUsersToDatabase(), migrateStacksToDatabase()]);
-		await Promise.all([checkFirstRun(), initComposeService(), initAutoUpdateScheduler(), initMaturityPollingScheduler()]);
-
-		stackRuntimeUpdater.start(2);
-	} catch (err) {
-		console.error('Critical service init failed, exiting:', err);
-		process.exit(1);
-	}
-}
-
 // Authentication and authorization handler
 const authHandler: Handle = async ({ event, resolve }) => {
 	// Skip auth processing during build

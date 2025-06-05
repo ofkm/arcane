@@ -1,51 +1,26 @@
 import BaseAPIService from './api-service';
 
 export default class StackAPIService extends BaseAPIService {
-	async deploy(id: string) {
-		const res = await this.api.post(`/stacks/${id}/deploy`);
+	async list() {
+		const res = await this.api.get('/stacks');
 		return res.data;
 	}
 
-	async down(id: string) {
-		const res = await this.api.post(`/stacks/${id}/down`);
+	async get(id: string) {
+		const res = await this.api.get(`/stacks/${id}`);
 		return res.data;
 	}
 
-	async restart(id: string) {
-		const res = await this.api.post(`/stacks/${id}/restart`);
+	async discoverExternal() {
+		const res = await this.api.get('/stacks/discover-external');
 		return res.data;
 	}
 
-	async destroy(id: string, removeVolumes = false, removeFiles = false) {
-		console.log('API service - removeVolumes:', removeVolumes, 'removeFiles:', removeFiles);
-
-		const queryParams = {
-			removeVolumes: removeVolumes ? 'true' : 'false',
-			removeFiles: removeFiles ? 'true' : 'false'
-		};
-
-		console.log('Query params:', queryParams);
-
-		const res = await this.api.delete(`/stacks/${id}/destroy`, {
-			params: queryParams
-		});
-		return res.data;
-	}
-
-	async redeploy(id: string) {
-		const res = await this.api.post(`/stacks/${id}/redeploy`);
-		return res.data;
-	}
-
-	async pull(id: string) {
-		const res = await this.api.post(`/stacks/${id}/pull`);
-		return res.data;
-	}
-
-	async import(id: string, name: string) {
-		const res = await this.api.post('/stacks/import', {
-			stackId: id,
-			stackName: name || undefined
+	async create(name: string, content: string, envContent?: string) {
+		const res = await this.api.post('/stacks', {
+			name,
+			composeContent: content,
+			envContent: envContent || ''
 		});
 		return res.data;
 	}
@@ -59,11 +34,52 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async create(name: string, content: string, envContent?: string) {
-		const res = await this.api.post('/stacks/create', {
-			name,
-			composeContent: content,
-			envContent: envContent || ''
+	async delete(id: string) {
+		const res = await this.api.delete(`/stacks/${id}`);
+		return res.data;
+	}
+
+	async deploy(id: string, options?: { profiles?: string[]; envOverrides?: Record<string, string> }) {
+		const res = await this.api.post(`/stacks/${id}/deploy`, options || {});
+		return res.data;
+	}
+
+	async down(id: string) {
+		const res = await this.api.post(`/stacks/${id}/down`);
+		return res.data;
+	}
+
+	async restart(id: string) {
+		const res = await this.api.post(`/stacks/${id}/restart`);
+		return res.data;
+	}
+
+	async redeploy(id: string) {
+		const res = await this.api.post(`/stacks/${id}/redeploy`);
+		return res.data;
+	}
+
+	async pull(id: string) {
+		const res = await this.api.post(`/stacks/${id}/pull`);
+		return res.data;
+	}
+
+	async destroy(id: string, removeVolumes = false, removeFiles = false) {
+		const queryParams = {
+			removeVolumes: removeVolumes ? 'true' : 'false',
+			removeFiles: removeFiles ? 'true' : 'false'
+		};
+
+		const res = await this.api.delete(`/stacks/${id}/destroy`, {
+			params: queryParams
+		});
+		return res.data;
+	}
+
+	async import(id: string, name: string) {
+		const res = await this.api.post('/stacks/import', {
+			stackId: id,
+			stackName: name || undefined
 		});
 		return res.data;
 	}
@@ -73,20 +89,41 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async list() {
-		const res = await this.api.get('');
-		return res.data;
-	}
-
 	async validate(id: string) {
 		const res = await this.api.get(`/stacks/${id}/validate`);
 		return res.data;
 	}
 
 	async convertDockerRun(dockerRunCommand: string) {
-		const res = await this.api.post('/convert', {
+		const res = await this.api.post('/stacks/convert', {
 			dockerRunCommand
 		});
+		return res.data;
+	}
+
+	async getLogs(id: string, options?: { tail?: number; timestamps?: boolean; follow?: boolean }) {
+		const params = new URLSearchParams();
+		if (options?.tail) params.append('tail', options.tail.toString());
+		if (options?.timestamps !== undefined) params.append('timestamps', options.timestamps.toString());
+		if (options?.follow !== undefined) params.append('follow', options.follow.toString());
+
+		const url = `/stacks/${id}/logs${params.toString() ? '?' + params.toString() : ''}`;
+		const res = await this.api.get(url);
+		return res.data;
+	}
+
+	async getProfiles(id: string) {
+		const res = await this.api.get(`/stacks/${id}/profiles`);
+		return res.data;
+	}
+
+	async getChanges(id: string) {
+		const res = await this.api.get(`/stacks/${id}/changes`);
+		return res.data;
+	}
+
+	async getStats(id: string) {
+		const res = await this.api.get(`/stacks/${id}/stats`);
 		return res.data;
 	}
 }

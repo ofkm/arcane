@@ -1,14 +1,13 @@
 import type { PageLoad } from './$types';
-import { getAgent, getAgentTasks } from '$lib/services/agent/agent-manager';
-import { getDeploymentsFromDb } from '$lib/services/database/deployment-db-service';
+import { agentAPI, deploymentAPI } from '$lib/services/api';
 import { error } from '@sveltejs/kit';
 
 export const load: PageLoad = async ({ params }) => {
 	const { agentId } = params;
 
 	try {
-		// Load all data in parallel
-		const [agent, tasks, deployments] = await Promise.allSettled([getAgent(agentId), getAgentTasks(agentId), getDeploymentsFromDb(agentId)]);
+		// Load all data in parallel using API services
+		const [agent, tasks, deployments] = await Promise.allSettled([agentAPI.get(agentId), agentAPI.getTasks(agentId), deploymentAPI.getByAgent(agentId)]);
 
 		// Handle agent not found
 		if (agent.status === 'rejected' || !agent.value) {
@@ -17,14 +16,17 @@ export const load: PageLoad = async ({ params }) => {
 			});
 		}
 
-		const now = new Date();
-		const timeout = 5 * 60 * 1000; // 5 minutes
-		const lastSeen = new Date(agent.value.lastSeen);
-		const timeSinceLastSeen = now.getTime() - lastSeen.getTime();
+		// Get agent status from API (this now includes the timeout logic)
+		let agentStatus = { status: 'unknown' };
+		try {
+			agentStatus = await agentAPI.getStatus(agentId);
+		} catch (statusError) {
+			console.warn('Failed to get agent status:', statusError);
+		}
 
 		const agentWithStatus = {
 			...agent.value,
-			status: timeSinceLastSeen > timeout ? 'offline' : agent.value.status
+			status: agentStatus.status
 		};
 
 		return {
@@ -34,7 +36,7 @@ export const load: PageLoad = async ({ params }) => {
 			agentId
 		};
 	} catch (err) {
-		console.error('SSR: Failed to load agent data:', err);
+		console.error('Failed to load agent data:', err);
 		throw error(500, {
 			message: err instanceof Error ? err.message : 'Failed to load agent data'
 		});
