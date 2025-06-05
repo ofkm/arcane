@@ -1587,11 +1587,6 @@ async function createStackNetworks(docker: Dockerode, stackId: string, networks:
 
 	// Process defined networks (only create non-external ones)
 	for (const [networkName, networkConfig] of Object.entries(networks)) {
-		// Skip null/undefined network configs (allowed in spec)
-		if (!networkConfig) {
-			continue;
-		}
-
 		// Validate external networks
 		try {
 			validateExternalResource(networkName, networkConfig, 'network');
@@ -1601,46 +1596,20 @@ async function createStackNetworks(docker: Dockerode, stackId: string, networks:
 
 		// Skip external networks
 		if (networkConfig.external) {
-			const externalName = typeof networkConfig.external === 'object' && networkConfig.external.name ? networkConfig.external.name : typeof networkConfig.external === 'string' ? networkConfig.external : networkConfig.name || networkName;
-			console.log(`Using external network: ${externalName}`);
+			console.log(`Using external network: ${networkConfig.name || networkName}`);
 			continue;
 		}
 
 		// Network creation logic for non-external networks
-		// Use the name field if defined, otherwise use stack_networkname convention
-		const networkToCreate: {
-			Name: any;
-			Driver: any;
-			Labels: any;
-			Options: any;
-			IPAM?: any;
-		} = {
+		const networkToCreate = {
 			Name: networkConfig.name || `${stackId}_${networkName}`,
 			Driver: networkConfig.driver || 'bridge',
 			Labels: {
 				'com.docker.compose.project': stackId,
-				'com.docker.compose.network': networkName,
-				// Handle labels that can be object or array
-				...(Array.isArray(networkConfig.labels)
-					? Object.fromEntries(
-							networkConfig.labels.map((label: string) => {
-								const [key, value] = label.split('=', 2);
-								return [key, value || ''];
-							})
-						)
-					: networkConfig.labels || {})
+				'com.docker.compose.network': networkName
 			},
 			Options: networkConfig.driver_opts || {}
 		};
-
-		// Add IPAM configuration if specified
-		if (networkConfig.ipam) {
-			networkToCreate.IPAM = {
-				Driver: networkConfig.ipam.driver || 'default',
-				Config: networkConfig.ipam.config || [],
-				Options: networkConfig.ipam.options || {}
-			};
-		}
 
 		try {
 			console.log(`Creating network: ${networkToCreate.Name}`);
@@ -1889,11 +1858,9 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 						fullNetworkName = primaryNetwork;
 					}
 				} else {
-					// For non-external networks, use the name field if defined, otherwise use stack_networkname convention
-					fullNetworkName = networkDefinition?.name || `${stackId}_${primaryNetwork}`;
+					fullNetworkName = `${stackId}_${primaryNetwork}`;
 				}
 
-				// ALWAYS set NetworkMode first
 				containerConfig.HostConfig.NetworkMode = fullNetworkName;
 
 				// Handle network configuration if networks is an object
@@ -1957,8 +1924,7 @@ async function createAndStartServices(docker: Dockerode, stackId: string, compos
 								fullNetworkName = netName;
 							}
 						} else {
-							// For non-external networks, use the name field if defined, otherwise use stack_networkname convention
-							fullNetworkName = networkDefinition?.name || `${stackId}_${netName}`;
+							fullNetworkName = `${stackId}_${netName}`;
 						}
 
 						const endpointConfig: any = {};
