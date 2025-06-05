@@ -1,1 +1,0 @@
-import{B as r}from"./CThrnvRT.js";class o extends r{async remove(e){return(await this.api.delete(`/networks/${e}`)).data}async create(e){return(await this.api.post("/networks/create",e)).data}}export{o as N};

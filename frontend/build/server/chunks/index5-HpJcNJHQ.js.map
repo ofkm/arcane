@@ -1,1 +1,0 @@
-{"version":3,"file":"index5-HpJcNJHQ.js","sources":["../../../.svelte-kit/adapter-node/chunks/index5.js"],"sourcesContent":["import { B as BROWSER } from \"./false.js\";\nconst browser = BROWSER;\nconst dev = BROWSER;\nexport {\n  browser as b,\n  dev as d\n};\n"],"names":[],"mappings":";;AACK,MAAC,OAAO,GAAG;AACX,MAAC,GAAG,GAAG;;;;"}

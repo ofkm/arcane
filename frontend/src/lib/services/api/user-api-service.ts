@@ -1,17 +1,33 @@
-import type { User } from '$lib/types/user.type';
 import BaseAPIService from './api-service';
+import type { User, CreateUserRequest, UpdateUserRequest } from '$lib/types/user.type';
 
 export default class UserAPIService extends BaseAPIService {
-	async update(id: string, user: User) {
-		const res = await this.api.put(`/users/${id}`, user);
-		return res.data;
+	async getUsers(): Promise<User[]> {
+		return this.handleResponse(this.api.get('/users'));
 	}
-	async create(user: User) {
-		const res = await this.api.post(`/users`, user);
-		return res.data;
+
+	async getUser(id: string): Promise<User> {
+		return this.handleResponse(this.api.get(`/users/${id}`));
 	}
-	async delete(id: string) {
-		const res = await this.api.delete(`/users/${id}`);
-		return res.data;
+
+	async createUser(user: CreateUserRequest): Promise<User> {
+		return this.handleResponse(this.api.post('/users', user));
+	}
+
+	async updateUser(id: string, user: UpdateUserRequest): Promise<User> {
+		return this.handleResponse(this.api.put(`/users/${id}`, user));
+	}
+
+	async deleteUser(id: string): Promise<void> {
+		return this.handleResponse(this.api.delete(`/users/${id}`));
+	}
+
+	async changePassword(id: string, oldPassword: string, newPassword: string): Promise<void> {
+		return this.handleResponse(
+			this.api.post(`/users/${id}/change-password`, {
+				oldPassword,
+				newPassword
+			})
+		);
 	}
 }

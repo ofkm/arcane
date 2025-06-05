@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-node';
+import adapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import packageJson from './package.json' with { type: 'json' };
 
@@ -7,6 +7,8 @@ const config = {
 	kit: {
 		adapter: adapter({
 			out: 'build',
+			assets: 'build',
+			fallback: 'index.html',
 			precompress: false,
 			polyfill: true
 		}),

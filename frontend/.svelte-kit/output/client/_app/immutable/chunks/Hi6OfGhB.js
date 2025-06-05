@@ -1,1 +1,0 @@
-import{e as i,J as s,g as a,l as c,K as f,k as u,L as o}from"./SIFgIYqZ.js";function b(r){i(r,r.v+1)}function l(r){let t=0,n=f(0),e;return()=>{s()&&(a(n),c(()=>(t===0&&(e=u(()=>r(()=>b(n)))),t+=1,()=>{o().then(()=>{t-=1,t===0&&(e==null||e(),e=void 0)})})))}}export{l as c,b as i};

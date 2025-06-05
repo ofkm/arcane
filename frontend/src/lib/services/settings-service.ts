@@ -2,16 +2,15 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import proper from 'proper-lockfile';
 import type { Settings, OidcConfig } from '$lib/types/settings.type';
-import { encrypt, decrypt } from './encryption-service';
 import { SETTINGS_DIR, STACKS_DIR, ensureDirectory } from './paths-service';
 import { getSettingsFromDb, saveSettingsToDb } from './database/settings-db-service';
-let env: any;
-try {
-	env = await import('$env/static/private');
-} catch (e) {
-	// Fallback for tests
-	env = process.env;
-}
+// let env: any;
+// try {
+// 	env = await import('$env/static/private');
+// } catch (e) {
+// 	// Fallback for tests
+// 	env = process.env;
+// }
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -34,25 +33,6 @@ export const DEFAULT_SETTINGS: Settings = {
 	},
 	maturityThresholdDays: 30
 };
-
-async function ensureSettingsDir() {
-	try {
-		await ensureDirectory(SETTINGS_DIR, 0o700);
-
-		if (process.platform !== 'win32') {
-			try {
-				await fs.chmod(SETTINGS_DIR, 0o700);
-			} catch (chmodError: unknown) {
-				if (chmodError && typeof chmodError === 'object' && 'code' in chmodError && chmodError.code !== 'EINVAL' && chmodError.code !== 'ENOTSUP') {
-					console.warn('Non-critical error setting permissions:', chmodError);
-				}
-			}
-		}
-	} catch (error) {
-		console.error('Error ensuring settings directory with proper permissions:', error);
-		throw error;
-	}
-}
 
 /**
  * Create stacks directory if it doesn't exist
@@ -118,30 +98,30 @@ export async function getSettings(): Promise<Settings> {
 		}
 
 		// Override with environment variables if present (for OIDC config)
-		const oidcClientId = env.OIDC_CLIENT_ID;
-		const oidcClientSecret = env.OIDC_CLIENT_SECRET;
-		const oidcRedirectUri = env.OIDC_REDIRECT_URI;
-		const oidcAuthorizationEndpoint = env.OIDC_AUTHORIZATION_ENDPOINT;
-		const oidcTokenEndpoint = env.OIDC_TOKEN_ENDPOINT;
-		const oidcUserinfoEndpoint = env.OIDC_USERINFO_ENDPOINT;
-		const oidcScopesEnv = env.OIDC_SCOPES;
+		// const oidcClientId = env.OIDC_CLIENT_ID;
+		// const oidcClientSecret = env.OIDC_CLIENT_SECRET;
+		// const oidcRedirectUri = env.OIDC_REDIRECT_URI;
+		// const oidcAuthorizationEndpoint = env.OIDC_AUTHORIZATION_ENDPOINT;
+		// const oidcTokenEndpoint = env.OIDC_TOKEN_ENDPOINT;
+		// const oidcUserinfoEndpoint = env.OIDC_USERINFO_ENDPOINT;
+		// const oidcScopesEnv = env.OIDC_SCOPES;
 
-		if (oidcClientId && oidcClientSecret && oidcRedirectUri && oidcAuthorizationEndpoint && oidcTokenEndpoint && oidcUserinfoEndpoint) {
-			if (!effectiveSettings.auth) {
-				effectiveSettings.auth = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.auth));
-			}
+		// if (oidcClientId && oidcClientSecret && oidcRedirectUri && oidcAuthorizationEndpoint && oidcTokenEndpoint && oidcUserinfoEndpoint) {
+		// 	if (!effectiveSettings.auth) {
+		// 		effectiveSettings.auth = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.auth));
+		// 	}
 
-			const oidcConfigFromEnv: OidcConfig = {
-				clientId: oidcClientId,
-				clientSecret: oidcClientSecret,
-				redirectUri: oidcRedirectUri,
-				authorizationEndpoint: oidcAuthorizationEndpoint,
-				tokenEndpoint: oidcTokenEndpoint,
-				userinfoEndpoint: oidcUserinfoEndpoint,
-				scopes: oidcScopesEnv || effectiveSettings.auth.oidc?.scopes || DEFAULT_SETTINGS.auth.oidc?.scopes || 'openid email profile'
-			};
-			effectiveSettings.auth.oidc = oidcConfigFromEnv;
-		}
+		// 	const oidcConfigFromEnv: OidcConfig = {
+		// 		clientId: oidcClientId,
+		// 		clientSecret: oidcClientSecret,
+		// 		redirectUri: oidcRedirectUri,
+		// 		authorizationEndpoint: oidcAuthorizationEndpoint,
+		// 		tokenEndpoint: oidcTokenEndpoint,
+		// 		userinfoEndpoint: oidcUserinfoEndpoint,
+		// 		scopes: oidcScopesEnv || effectiveSettings.auth.oidc?.scopes || DEFAULT_SETTINGS.auth.oidc?.scopes || 'openid email profile'
+		// 	};
+		// 	effectiveSettings.auth.oidc = oidcConfigFromEnv;
+		// }
 
 		return effectiveSettings;
 	} catch (error) {

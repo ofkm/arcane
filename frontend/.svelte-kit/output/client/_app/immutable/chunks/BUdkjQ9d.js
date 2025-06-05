@@ -1,1 +1,0 @@
-import{w as n}from"./SIFgIYqZ.js";import"./zguDtZw-.js";import"./DsjzulNM.js";const a=n({open:!1,title:"",message:"",confirm:{label:"Confirm",destructive:!1,action:()=>{}}});function s({title:o,message:e,confirm:i,checkboxes:r}){a.update(t=>({open:!0,title:o,message:e,confirm:{...t.confirm,...i},checkboxes:r}))}export{a as c,s as o};
