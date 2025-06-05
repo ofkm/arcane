@@ -3,10 +3,20 @@ import { settingsAPI } from '$lib/services/api';
 
 export const load: PageLoad = async () => {
 	try {
-		const settings = await settingsAPI.getSettings();
+		const [settings, oidcStatus] = await Promise.all([
+			settingsAPI.getSettings(),
+			settingsAPI.getOidcStatus().catch(() => ({
+				enabled: false,
+				configured: false,
+				envConfigured: false,
+				settingsConfigured: false
+			}))
+		]);
 
 		return {
-			settings
+			settings,
+			oidcStatus,
+			oidcEnvVarsConfigured: oidcStatus.envConfigured
 		};
 	} catch (error) {
 		console.error('Failed to load security settings:', error);
@@ -18,12 +28,15 @@ export const load: PageLoad = async () => {
 					sessionTimeout: 60,
 					passwordPolicy: 'strong',
 					rbacEnabled: false
-				},
-				encryption: {
-					enabled: false,
-					algorithm: 'AES-256-GCM'
 				}
-			}
+			},
+			oidcStatus: {
+				enabled: false,
+				configured: false,
+				envConfigured: false,
+				settingsConfigured: false
+			},
+			oidcEnvVarsConfigured: false
 		};
 	}
 };

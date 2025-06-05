@@ -1,67 +1,39 @@
 import { redirect } from '@sveltejs/kit';
-import { generateState, generateCodeVerifier, CodeChallengeMethod } from 'arctic';
-import { getOIDCClient, getOIDCAuthorizationEndpoint, getOIDCScopes } from '$lib/services/oidc-service';
+import { generateState, generateCodeVerifier } from 'arctic';
+import { settingsAPI } from '$lib/services/api';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies, url }) => {
-	// Get OIDC configuration at runtime
-	const oidcClient = await getOIDCClient();
-	const authorizationEndpoint = await getOIDCAuthorizationEndpoint();
-	const scopes = await getOIDCScopes();
+	try {
+		// Get OIDC auth URL from backend
+		const redirectParam = url.searchParams.get('redirect') || '/';
+		const authResponse = await settingsAPI.getOidcAuthUrl(redirectParam);
 
-	if (!oidcClient) {
-		console.error('OIDC client is not configured.');
-		throw redirect(302, '/auth/login?error=oidc_misconfigured');
-	}
-
-	if (!authorizationEndpoint) {
-		console.error('OIDC_AUTHORIZATION_ENDPOINT is not configured.');
-		throw redirect(302, '/auth/login?error=oidc_misconfigured');
-	}
-
-	const state = generateState();
-	const codeVerifier = generateCodeVerifier();
-
-	const authUrl = await oidcClient.createAuthorizationURLWithPKCE(authorizationEndpoint, state, CodeChallengeMethod.S256, codeVerifier, scopes);
-
-	cookies.set('oidc_state', state, {
-		path: '/',
-		secure: import.meta.env.PROD,
-		httpOnly: true,
-		maxAge: 60 * 10,
-		sameSite: 'lax'
-	});
-
-	cookies.set('oidc_code_verifier', codeVerifier, {
-		path: '/',
-		secure: import.meta.env.PROD,
-		httpOnly: true,
-		maxAge: 60 * 10,
-		sameSite: 'lax'
-	});
-
-	// Add validation for the redirect URL
-	function isSafeRedirect(redirect: string | null): boolean {
-		if (!redirect) return false;
-		try {
-			// Only allow relative paths (no protocol, no host)
-			const parsed = new URL(redirect, 'http://dummy');
-			return parsed.origin === 'http://dummy' && redirect.startsWith('/');
-		} catch {
-			return false;
+		if (!authResponse.authUrl) {
+			console.error('OIDC auth URL not available.');
+			throw redirect(302, '/auth/login?error=oidc_misconfigured');
 		}
+
+		// Store state and redirect info in cookies
+		cookies.set('oidc_state', authResponse.state, {
+			path: '/',
+			secure: import.meta.env.PROD,
+			httpOnly: true,
+			maxAge: 60 * 10,
+			sameSite: 'lax'
+		});
+
+		cookies.set('oidc_redirect', redirectParam, {
+			path: '/',
+			secure: import.meta.env.PROD,
+			httpOnly: true,
+			maxAge: 60 * 10,
+			sameSite: 'lax'
+		});
+
+		throw redirect(302, authResponse.authUrl);
+	} catch (error) {
+		console.error('OIDC login error:', error);
+		throw redirect(302, '/auth/login?error=oidc_misconfigured');
 	}
-
-	const redirectUrl = url.searchParams.get('redirect');
-	const safeRedirect = isSafeRedirect(redirectUrl) ? redirectUrl : '/';
-
-	cookies.set('oidc_redirect', safeRedirect ?? '/', {
-		path: '/',
-		secure: import.meta.env.PROD,
-		httpOnly: true,
-		maxAge: 60 * 10,
-		sameSite: 'lax'
-	});
-
-	throw redirect(302, authUrl.toString());
 };

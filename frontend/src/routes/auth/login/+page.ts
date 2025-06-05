@@ -1,48 +1,54 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import { settingsAPI, sessionAPI } from '$lib/services/api';
+import { settingsAPI } from '$lib/services/api';
 
-export const load: PageLoad = async ({ url, fetch }) => {
-	// Check if already logged in by validating session via API
+export const load: PageLoad = async ({ url }) => {
 	try {
-		const isValidSession = await sessionAPI.validateSession();
+		const [settings, oidcStatus] = await Promise.all([
+			settingsAPI.getSettings(),
+			settingsAPI.getOidcStatus().catch(() => ({
+				enabled: false,
+				configured: false,
+				envConfigured: false,
+				settingsConfigured: false
+			}))
+		]);
 
-		if (isValidSession) {
-			// Already logged in, get settings to check onboarding
-			const appSettings = await settingsAPI.getSettings().catch(() => null);
+		const redirectTo = url.searchParams.get('redirect') || '/';
+		const error = url.searchParams.get('error');
 
-			if (!appSettings?.onboarding?.completed) {
-				throw redirect(302, '/onboarding/welcome');
-			} else {
-				throw redirect(302, '/');
-			}
-		}
+		return {
+			redirectTo,
+			settings,
+			oidcStatus,
+			error
+		};
 	} catch (error) {
-		// If session validation fails, continue to login page
-		console.debug('No valid session found, proceeding to login');
+		console.error('Failed to load login page data:', error);
+
+		const redirectTo = url.searchParams.get('redirect') || '/';
+		const loginError = url.searchParams.get('error');
+
+		return {
+			redirectTo,
+			settings: {
+				auth: {
+					localAuthEnabled: true,
+					oidcEnabled: false,
+					sessionTimeout: 60,
+					passwordPolicy: 'strong',
+					rbacEnabled: false
+				},
+				onboarding: {
+					completed: false
+				}
+			},
+			oidcStatus: {
+				enabled: false,
+				configured: false,
+				envConfigured: false,
+				settingsConfigured: false
+			},
+			error: loginError
+		};
 	}
-
-	// Get settings for the login page (OIDC configuration, etc.)
-	const appSettings = await settingsAPI.getSettings().catch(() => ({
-		auth: {
-			localAuthEnabled: true,
-			oidcEnabled: false,
-			sessionTimeout: 60,
-			passwordPolicy: 'strong',
-			rbacEnabled: false
-		},
-		onboarding: {
-			completed: false
-		}
-	}));
-
-	// Pass the redirect URL from the query string to the form
-	const redirectTo = url.searchParams.get('redirect') || '/';
-	const error = url.searchParams.get('error'); // Get error from URL params for OIDC errors
-
-	return {
-		redirectTo,
-		settings: appSettings, // Pass all settings to the page
-		error // Pass error to the page
-	};
 };

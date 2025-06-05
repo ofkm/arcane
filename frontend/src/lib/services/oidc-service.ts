@@ -1,23 +1,12 @@
-import { OAuth2Client } from 'arctic';
-import { env } from '$env/dynamic/private';
+import { settingsAPI } from './api';
+import { env } from '$env/dynamic/public';
 import { building } from '$app/environment';
-import { getSettings } from './settings-service';
 
-// Lazy-loaded configuration
-let oidcConfig: {
-	clientId: string;
-	clientSecret: string;
-	redirectUri: string;
-	authorizationEndpoint?: string;
-	tokenEndpoint?: string;
-	userinfoEndpoint?: string;
-	scopes: string[];
-} | null = null;
-
-let oidcClient: OAuth2Client | null = null;
+// Cache for OIDC configuration
+let cachedConfig: any = null;
 
 /**
- * Get OIDC configuration - only loads at runtime
+ * Get OIDC configuration from API or environment
  */
 export async function getOIDCConfig() {
 	if (building) {
@@ -34,47 +23,20 @@ export async function getOIDCConfig() {
 		};
 	}
 
-	if (oidcConfig) {
-		return { enabled: true, ...oidcConfig };
+	if (cachedConfig) {
+		return cachedConfig;
 	}
 
 	try {
-		const settings = await getSettings();
+		// Get settings from API instead of directly from database
+		const settings = await settingsAPI.getSettings();
 
-		// Resolve OIDC configuration:
-		// 1. Environment variables (highest precedence)
-		// 2. Settings from getSettings() (if OIDC is enabled in settings and env var is not set)
-		// 3. Hardcoded fallback for scopes if neither of the above provides it.
+		// Check if OIDC is forced by environment variable
+		const oidcForcedByEnv = env.PUBLIC_OIDC_ENABLED === 'true';
 
-		let resolvedClientId = env.OIDC_CLIENT_ID;
-		let resolvedClientSecret = env.OIDC_CLIENT_SECRET;
-		let resolvedRedirectUri = env.OIDC_REDIRECT_URI;
-		let resolvedAuthEndpoint = env.OIDC_AUTHORIZATION_ENDPOINT;
-		let resolvedTokenEndpoint = env.OIDC_TOKEN_ENDPOINT;
-		let resolvedUserInfoEndpoint = env.OIDC_USERINFO_ENDPOINT;
-		let resolvedScopesString = env.OIDC_SCOPES;
-
-		// If OIDC is enabled in settings, use those values as fallbacks if environment variables are not set.
-		if (settings.auth.oidcEnabled && settings.auth.oidc) {
-			if (resolvedClientId === undefined) resolvedClientId = settings.auth.oidc.clientId;
-			if (resolvedClientSecret === undefined) resolvedClientSecret = settings.auth.oidc.clientSecret;
-			if (resolvedRedirectUri === undefined) resolvedRedirectUri = settings.auth.oidc.redirectUri;
-			if (resolvedAuthEndpoint === undefined) resolvedAuthEndpoint = settings.auth.oidc.authorizationEndpoint;
-			if (resolvedTokenEndpoint === undefined) resolvedTokenEndpoint = settings.auth.oidc.tokenEndpoint;
-			if (resolvedUserInfoEndpoint === undefined) resolvedUserInfoEndpoint = settings.auth.oidc.userinfoEndpoint;
-			if (resolvedScopesString === undefined) resolvedScopesString = settings.auth.oidc.scopes;
-		}
-
-		if (resolvedScopesString === undefined) {
-			resolvedScopesString = 'openid email profile';
-		}
-
-		const scopes = resolvedScopesString.split(' ').filter((s) => s.trim() !== '');
-
-		// Check if OIDC is properly configured
-		if (!resolvedClientId || !resolvedClientSecret || !resolvedRedirectUri) {
-			console.log('OIDC not configured or incomplete configuration, OIDC will be disabled');
-			return {
+		// If OIDC is not enabled and not forced by env, return disabled config
+		if (!oidcForcedByEnv && !settings.auth?.oidcEnabled) {
+			cachedConfig = {
 				enabled: false,
 				clientId: '',
 				clientSecret: '',
@@ -82,28 +44,23 @@ export async function getOIDCConfig() {
 				authorizationEndpoint: '',
 				tokenEndpoint: '',
 				userinfoEndpoint: '',
-				scopes
+				scopes: ['openid', 'email', 'profile']
 			};
+			return cachedConfig;
 		}
 
-		oidcConfig = {
-			clientId: resolvedClientId,
-			clientSecret: resolvedClientSecret,
-			redirectUri: resolvedRedirectUri,
-			authorizationEndpoint: resolvedAuthEndpoint,
-			tokenEndpoint: resolvedTokenEndpoint,
-			userinfoEndpoint: resolvedUserInfoEndpoint,
-			scopes
+		// Get OIDC configuration from API
+		const oidcConfig = await settingsAPI.getOidcConfig();
+
+		cachedConfig = {
+			enabled: true,
+			...oidcConfig
 		};
 
-		if (!resolvedAuthEndpoint || !resolvedTokenEndpoint) {
-			console.warn('OIDC Authorization or Token Endpoint is not set (from environment or application settings). OIDC flow will likely fail.');
-		}
-
-		return { enabled: true, ...oidcConfig };
+		return cachedConfig;
 	} catch (error) {
 		console.warn('Failed to load OIDC configuration:', error);
-		return {
+		cachedConfig = {
 			enabled: false,
 			clientId: '',
 			clientSecret: '',
@@ -113,49 +70,29 @@ export async function getOIDCConfig() {
 			userinfoEndpoint: '',
 			scopes: ['openid', 'email', 'profile']
 		};
+		return cachedConfig;
 	}
 }
 
-/**
- * Get OIDC client - lazy initialization
- */
-export async function getOIDCClient(): Promise<OAuth2Client | null> {
-	if (building) {
-		return null;
-	}
-
-	if (oidcClient) {
-		return oidcClient;
-	}
-
-	const config = await getOIDCConfig();
-	if (!config.enabled) {
-		return null;
-	}
-
-	oidcClient = new OAuth2Client(config.clientId, config.clientSecret, config.redirectUri);
-	return oidcClient;
-}
-
-// Legacy exports for backward compatibility - these will be lazy-loaded
+// Legacy exports for backward compatibility
 export async function getOIDCScopes(): Promise<string[]> {
 	const config = await getOIDCConfig();
-	return config.scopes;
+	return config.scopes || ['openid', 'email', 'profile'];
 }
 
 export async function getOIDCClientId(): Promise<string> {
 	const config = await getOIDCConfig();
-	return config.clientId;
+	return config.clientId || '';
 }
 
 export async function getOIDCClientSecret(): Promise<string> {
 	const config = await getOIDCConfig();
-	return config.clientSecret;
+	return config.clientSecret || '';
 }
 
 export async function getOIDCRedirectUri(): Promise<string> {
 	const config = await getOIDCConfig();
-	return config.redirectUri;
+	return config.redirectUri || '';
 }
 
 export async function getOIDCAuthorizationEndpoint(): Promise<string> {
@@ -171,4 +108,9 @@ export async function getOIDCTokenEndpoint(): Promise<string> {
 export async function getOIDCUserinfoEndpoint(): Promise<string> {
 	const config = await getOIDCConfig();
 	return config.userinfoEndpoint || '';
+}
+
+// Clear cache function for when settings are updated
+export function clearOIDCConfigCache() {
+	cachedConfig = null;
 }
