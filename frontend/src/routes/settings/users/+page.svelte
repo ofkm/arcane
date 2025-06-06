@@ -125,7 +125,7 @@
 				{#if userPageStates.users.length > 0}
 					<div class="flex-1 flex flex-col h-full">
 						<UniversalTable
-							data={userPageStates.users}
+							data={data.users}
 							columns={[
 								{ accessorKey: 'user', header: 'User' },
 								{ accessorKey: 'email', header: 'Email' },
@@ -133,6 +133,7 @@
 								{ accessorKey: 'source', header: 'Source', enableSorting: false },
 								{ accessorKey: 'actions', header: ' ' }
 							]}
+							idKey="id"
 							features={{
 								sorting: true,
 								filtering: true,

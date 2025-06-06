@@ -1,13 +1,10 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Switch } from '$lib/components/ui/switch/index.js';
+	import type { FormInput as FormInputType } from '$lib/types/form.type';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { RefreshCw, Key, Plus, Trash2, ImageMinus, Server, Ellipsis, Pencil, Save } from '@lucide/svelte';
 	import * as RadioGroup from '$lib/components/ui/radio-group/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import type { PageData } from './$types';
-	import { settingsStore, saveSettingsToServer, updateSettingsStore } from '$lib/stores/settings-store';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
@@ -15,28 +12,93 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
-	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
-	import { tryCatch } from '$lib/utils/try-catch';
 	import type { RegistryCredential } from '$lib/types/settings.type';
+	import type { Settings } from '$lib/types/settings.type';
+	import settingsStore from '$lib/stores/config-store';
+	import { settingsAPI } from '$lib/services/api';
+	import FormInput from '$lib/components/form/form-input.svelte';
 
-	let { data }: { data: PageData } = $props();
+	let { data } = $props();
+	let currentSettings = $state(data.settings);
 
 	let isRegistryDialogOpen = $state(false);
 	let registryToEdit = $state<(RegistryCredential & { originalIndex?: number }) | null>(null);
 	let isLoadingRegistryAction = $state(false);
+	let currentRegistries = $derived(currentSettings.registryCredentials);
 
-	// Loading states
 	let isLoading = $state({
 		saving: false
 	});
 
+	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
+		currentSettings = await settingsAPI.updateSettings({
+			...currentSettings,
+			...updatedSettings
+		});
+
+		settingsStore.reload();
+	}
+
+	function handleDockerSettingUpdates() {
+		updateSettingsConfig({
+			dockerHost: dockerHostInput.value,
+			pruneMode: 'all',
+			autoUpdate: autoUpdateSwitch.value,
+			pollingEnabled: pollingEnabledSwitch.value,
+			pollingInterval: pollingIntervalInput.value,
+			autoUpdateInterval: autoUpdateIntervalInput.value
+		}).then(async () => {
+			toast.success(`Settings Saved Successfully`);
+			await invalidateAll();
+		});
+	}
+
+	let pollingIntervalInput = $state<FormInputType<number>>({
+		value: 0,
+		valid: true,
+		touched: false,
+		error: null,
+		errors: []
+	});
+
+	let pollingEnabledSwitch = $state<FormInputType<boolean>>({
+		value: false,
+		valid: true,
+		touched: false,
+		error: null,
+		errors: []
+	});
+
+	let autoUpdateSwitch = $state<FormInputType<boolean>>({
+		value: false,
+		valid: true,
+		touched: false,
+		error: null,
+		errors: []
+	});
+
+	let autoUpdateIntervalInput = $state<FormInputType<number>>({
+		value: 5,
+		valid: true,
+		touched: false,
+		error: null,
+		errors: []
+	});
+
+	let dockerHostInput = $state<FormInputType<string>>({
+		value: '',
+		valid: true,
+		touched: false,
+		error: null,
+		errors: []
+	});
+
 	$effect(() => {
-		if (data.settings) {
-			updateSettingsStore({
-				...data.settings,
-				pruneMode: data.settings.pruneMode as 'all' | 'dangling'
-			});
-		}
+		pollingIntervalInput.value = currentSettings.pollingInterval;
+		pollingEnabledSwitch.value = currentSettings.pollingEnabled;
+		autoUpdateSwitch.value = currentSettings.autoUpdate;
+		autoUpdateIntervalInput.value = currentSettings.autoUpdateInterval;
+		dockerHostInput.value = currentSettings.dockerHost;
 	});
 
 	function openCreateRegistryDialog() {
@@ -53,36 +115,23 @@
 		const { credential, isEditMode, originalIndex } = eventDetail;
 		isLoadingRegistryAction = true;
 
+		const updatedCredentials = [...(currentSettings.registryCredentials || [])];
+		if (isEditMode && originalIndex !== undefined) {
+			updatedCredentials[originalIndex] = credential;
+		} else {
+			updatedCredentials.push(credential);
+		}
+
+		const updatedSettings = {
+			...currentSettings,
+			registryCredentials: updatedCredentials
+		};
+
 		try {
-			// Store original state for rollback
-			const originalCredentials = $settingsStore.registryCredentials;
+			await settingsAPI.updateSettings(updatedSettings);
+			currentSettings = updatedSettings;
 
-			// Update the store first
-			settingsStore.update((current) => {
-				const updatedCredentials = [...(current.registryCredentials || [])];
-				if (isEditMode && originalIndex !== undefined) {
-					updatedCredentials[originalIndex] = credential;
-				} else {
-					updatedCredentials.push(credential);
-				}
-				return {
-					...current,
-					registryCredentials: updatedCredentials
-				};
-			});
-
-			// Save to server using the settings API service
-			const result = await tryCatch(saveSettingsToServer());
-
-			if (result.error) {
-				// Rollback on error
-				settingsStore.update((current) => ({
-					...current,
-					registryCredentials: originalCredentials
-				}));
-				throw result.error;
-			}
-
+			await settingsStore.reload();
 			toast.success(isEditMode ? 'Registry Credential Updated Successfully' : 'Registry Credential Added Successfully');
 			await invalidateAll();
 		} catch (error) {
@@ -95,7 +144,7 @@
 	}
 
 	function confirmRemoveRegistry(index: number) {
-		const registryUrl = $settingsStore.registryCredentials?.[index]?.url || `Registry #${index + 1}`;
+		const registryUrl = currentSettings.registryCredentials?.[index]?.url || `Registry #${index + 1}`;
 		openConfirmDialog({
 			title: 'Remove Registry',
 			message: `Are you sure you want to remove the registry "${registryUrl}"? This action cannot be undone.`,
@@ -113,27 +162,16 @@
 		isLoadingRegistryAction = true;
 
 		try {
-			// Store the original credentials for potential rollback
-			const originalCredentials = $settingsStore.registryCredentials;
+			const updatedCredentials = (currentSettings.registryCredentials || []).filter((_, i) => i !== index);
+			const updatedSettings = {
+				...currentSettings,
+				registryCredentials: updatedCredentials
+			};
 
-			// Update the store
-			settingsStore.update((current) => ({
-				...current,
-				registryCredentials: (current.registryCredentials || []).filter((_, i) => i !== index)
-			}));
+			await settingsAPI.updateSettings(updatedSettings);
+			currentSettings = updatedSettings;
 
-			// Save to server using the settings API service
-			const result = await tryCatch(saveSettingsToServer());
-
-			if (result.error) {
-				// Rollback on error
-				settingsStore.update((current) => ({
-					...current,
-					registryCredentials: originalCredentials
-				}));
-				throw result.error;
-			}
-
+			await settingsStore.reload();
 			toast.success('Registry Credential Removed Successfully');
 			await invalidateAll();
 		} catch (error) {
@@ -142,21 +180,6 @@
 		} finally {
 			isLoadingRegistryAction = false;
 		}
-	}
-
-	// Save settings function using the settings API service
-	async function saveSettings() {
-		if (isLoading.saving) return;
-
-		handleApiResultWithCallbacks({
-			result: await tryCatch(saveSettingsToServer()),
-			message: 'Error Saving Settings',
-			setLoadingState: (value) => (isLoading.saving = value),
-			onSuccess: async () => {
-				toast.success('Settings Saved Successfully');
-				await invalidateAll();
-			}
-		});
 	}
 </script>
 
@@ -173,7 +196,7 @@
 			<p class="text-sm text-muted-foreground mt-1">Configure Docker connection, registries, and automation</p>
 		</div>
 
-		<Button onclick={saveSettings} disabled={isLoading.saving} class="h-10 arcane-button-save">
+		<Button onclick={() => handleDockerSettingUpdates()} disabled={isLoading.saving} class="h-10 arcane-button-save">
 			{#if isLoading.saving}
 				<RefreshCw class="animate-spin size-4" />
 				Saving...
@@ -200,9 +223,7 @@
 			<Card.Content>
 				<div class="space-y-4">
 					<div class="space-y-2">
-						<label for="dockerHost" class="text-sm font-medium block mb-1.5">Docker Host</label>
-						<Input type="text" id="dockerHost" name="dockerHost" bind:value={$settingsStore.dockerHost} placeholder="unix:///var/run/docker.sock" required />
-						<p class="text-xs text-muted-foreground">For local Docker: unix:///var/run/docker.sock (Unix)</p>
+						<FormInput bind:input={dockerHostInput} type="text" id="dockerHost" label="Docker Host" placeholder="unix:///var/run/docker.sock" description="For local Docker: unix:///var/run/docker.sock (Unix)" />
 					</div>
 
 					<div class="pt-4 border-t mt-4">
@@ -222,11 +243,11 @@
 						</div>
 
 						<div class="space-y-2">
-							{#if !$settingsStore.registryCredentials || $settingsStore.registryCredentials.length === 0}
+							{#if !currentSettings.registryCredentials || currentSettings.registryCredentials.length === 0}
 								<div class="text-center py-8 text-muted-foreground italic border rounded-md">No registry credentials configured yet.</div>
 							{:else}
 								<UniversalTable
-									data={$settingsStore.registryCredentials}
+									data={currentRegistries}
 									columns={[
 										{ accessorKey: 'url', header: 'Registry URL' },
 										{ accessorKey: 'username', header: 'Username' },
@@ -299,68 +320,21 @@
 				</Card.Header>
 				<Card.Content class="space-y-6">
 					<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
-						<div class="space-y-0.5">
-							<label for="pollingEnabledSwitch" class="text-base font-medium">Check for New Images</label>
-							<p class="text-sm text-muted-foreground">Periodically check for newer versions of container images</p>
-						</div>
-						<Switch
-							id="pollingEnabledSwitch"
-							name="pollingEnabled"
-							checked={$settingsStore.pollingEnabled}
-							onCheckedChange={(checked) => {
-								settingsStore.update((current) => ({ ...current, pollingEnabled: checked }));
-							}}
-						/>
+						<FormInput bind:input={pollingEnabledSwitch} type="switch" id="pollingEnabled" label="Check for New Images" description="Periodically check for newer versions of container images" />
 					</div>
 
-					{#if $settingsStore.pollingEnabled}
+					{#if currentSettings.pollingEnabled}
 						<div class="space-y-2 px-1">
-							<label for="pollingInterval" class="text-sm font-medium"> Polling Interval (minutes) </label>
-							<Input
-								id="pollingInterval"
-								type="number"
-								value={$settingsStore.pollingInterval}
-								oninput={(e: Event) =>
-									settingsStore.update((cur) => ({
-										...cur,
-										pollingInterval: +(e.target as HTMLInputElement).value
-									}))}
-								min="5"
-								max="60"
-							/>
-							<p class="text-xs text-muted-foreground">Set between 5-60 minutes.</p>
+							<FormInput bind:input={pollingIntervalInput} type="number" id="pollingInterval" label="Polling Interval (Minutes)" placeholder="60" description="Set between 5-60 minutes." />
 						</div>
 
 						<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
-							<div class="space-y-0.5">
-								<Label for="autoUpdateSwitch" class="text-base font-medium">Auto Update Containers</Label>
-								<p class="text-sm text-muted-foreground">Automatically update containers when newer images are available</p>
-							</div>
-							<Switch
-								id="autoUpdateSwitch"
-								checked={$settingsStore.autoUpdate}
-								onCheckedChange={(checked) => {
-									settingsStore.update((current) => ({ ...current, autoUpdate: checked }));
-								}}
-							/>
+							<FormInput bind:input={autoUpdateSwitch} type="switch" id="autoUpdateSwitch" label="Auto Update Containers" description="Automatically update containers when newer images are available" />
 						</div>
 
-						{#if $settingsStore.autoUpdate}
+						{#if currentSettings.autoUpdate}
 							<div class="space-y-2 mt-4">
-								<Label for="autoUpdateInterval" class="text-base font-medium">Auto-update check interval (minutes)</Label>
-								<Input
-									id="autoUpdateInterval"
-									type="number"
-									value={$settingsStore.autoUpdateInterval}
-									oninput={(e: Event) =>
-										settingsStore.update((cur) => ({
-											...cur,
-											autoUpdateInterval: +(e.target as HTMLInputElement).value
-										}))}
-									min="5"
-									max="1440"
-								/>
-								<p class="text-sm text-muted-foreground">How often Arcane will check for container and stack updates (minimum 5 minutes, maximum 24 hours)</p>
+								<FormInput bind:input={autoUpdateIntervalInput} type="number" id="autoUpdateInterval" label="Auto-update check interval (minutes)" placeholder="60" description="How often Arcane will check for container and stack updates (minimum 5 minutes, maximum 24 hours)" />
 							</div>
 						{/if}
 					{/if}
@@ -383,9 +357,13 @@
 					<div>
 						<Label for="pruneMode" class="text-base font-medium block mb-2">Prune Action Behavior</Label>
 						<RadioGroup.Root
-							value={$settingsStore.pruneMode}
+							value={currentSettings.pruneMode}
 							onValueChange={(val) => {
-								settingsStore.update((current) => ({ ...current, pruneMode: val as 'all' | 'dangling' }));
+								settingsAPI.updateSettings({
+									...currentSettings,
+									pruneMode: val as 'all' | 'dangling'
+								});
+								settingsStore.reload();
 							}}
 							class="flex flex-col space-y-1"
 							id="pruneMode"

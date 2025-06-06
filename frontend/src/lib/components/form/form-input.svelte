@@ -1,6 +1,7 @@
 <!-- Originally From  https://github.com/pocket-id/pocket-id/blob/main/frontend/src/lib/components/form/form-input.svelte -->
 <script lang="ts">
 	import { Input } from '$lib/components/ui/input';
+	import { Switch } from '$lib/components/ui/switch';
 	import { Label } from '$lib/components/ui/label';
 	import type { Snippet } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
@@ -25,7 +26,7 @@
 		warningText?: string;
 		placeholder?: string;
 		disabled?: boolean;
-		type?: 'text' | 'password' | 'email' | 'number' | 'checkbox' | 'date';
+		type?: 'text' | 'password' | 'email' | 'number' | 'checkbox' | 'date' | 'switch';
 		children?: Snippet;
 	} = $props();
 
@@ -43,7 +44,11 @@
 		{#if children}
 			{@render children()}
 		{:else if input}
-			<Input {id} {placeholder} {type} bind:value={input.value} {disabled} />
+			{#if type === 'switch'}
+				<Switch {id} bind:checked={input.value as boolean} {disabled} />
+			{:else}
+				<Input {id} {placeholder} {type} bind:value={input.value} {disabled} />
+			{/if}
 		{/if}
 		{#if input?.error}
 			<p class="mt-1 text-sm text-red-500">{input.error}</p>

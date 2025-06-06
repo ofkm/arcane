@@ -15,11 +15,8 @@ export default class SettingsAPIService extends BaseAPIService {
 	async getSettings(): Promise<Settings> {
 		try {
 			const response = await this.api.get('/settings');
-			console.log('Raw settings response:', response.data);
 
-			// Handle different response structures from the Go backend
 			const data = response.data?.settings || response.data?.data || response.data;
-			console.log('Extracted settings data:', data);
 
 			return data;
 		} catch (error) {
@@ -44,11 +41,8 @@ export default class SettingsAPIService extends BaseAPIService {
 	async resetSettings(): Promise<Settings> {
 		try {
 			const response = await this.api.post('/settings/reset');
-			console.log('Raw reset response:', response.data);
 
-			// Handle different response structures from the Go backend
 			const data = response.data?.settings || response.data?.data || response.data;
-			console.log('Extracted reset data:', data);
 
 			return data;
 		} catch (error) {

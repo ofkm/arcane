@@ -17,7 +17,7 @@ type Services struct {
 	Network       *services.NetworkService
 	ImageMaturity *services.ImageMaturityService
 	Auth          *services.AuthService
-	Oidc          *services.OidcService // Add OidcService
+	Oidc          *services.OidcService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services) {
@@ -30,8 +30,6 @@ func SetupRoutes(r *gin.Engine, services *Services) {
 	setupSettingsRoutes(api, services)
 	setupDeploymentRoutes(api, services)
 	setupImageMaturityRoutes(api, services)
-
-	// Add missing endpoints
 	setupSystemRoutes(api, services)
 	setupContainerRoutes(api, services)
 	setupImageRoutes(api, services)
@@ -64,7 +62,7 @@ func setupAuthRoutes(api *gin.RouterGroup, services *Services) {
 
 func setupUserRoutes(api *gin.RouterGroup, services *Services) {
 	users := api.Group("/users")
-	// users.Use(AuthMiddleware()) // Add authentication middleware
+	users.Use(AuthMiddleware(services.Auth))
 
 	userHandler := NewUserHandler(services.User)
 
@@ -77,7 +75,7 @@ func setupUserRoutes(api *gin.RouterGroup, services *Services) {
 
 func setupStackRoutes(api *gin.RouterGroup, services *Services) {
 	stacks := api.Group("/stacks")
-	// stacks.Use(AuthMiddleware()) // Add authentication middleware
+	stacks.Use(AuthMiddleware(services.Auth))
 
 	stackHandler := NewStackHandler(services.Stack)
 

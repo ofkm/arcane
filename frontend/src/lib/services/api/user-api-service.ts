@@ -10,7 +10,8 @@ export interface Role {
 
 export default class UserAPIService extends BaseAPIService {
 	async list(): Promise<User[]> {
-		return this.handleResponse(this.api.get('/users'));
+		const response = await this.handleResponse(this.api.get('/users'));
+		return response.users;
 	}
 
 	async get(id: string): Promise<User> {

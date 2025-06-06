@@ -44,7 +44,6 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	// Convert to response format (excluding sensitive data)
 	var userResponses []UserResponse
 	for _, user := range users {
 		userResponses = append(userResponses, UserResponse{
