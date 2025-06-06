@@ -37,14 +37,8 @@ export default class UserAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post('/auth/logout'));
 	}
 
-	async changePassword(
-		userId: string,
-		data: {
-			currentPassword: string;
-			newPassword: string;
-		}
-	): Promise<void> {
-		return this.handleResponse(this.api.put(`/users/${userId}/password`, data));
+	async changePassword(data: { currentPassword: string; newPassword: string }): Promise<void> {
+		return this.handleResponse(this.api.post('/auth/password', data));
 	}
 
 	async resetPassword(userId: string, newPassword: string): Promise<void> {

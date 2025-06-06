@@ -1,23 +1,34 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { CheckCircle2, ChevronRight } from '@lucide/svelte';
-	import { settingsStore, updateSettingsStore } from '$lib/stores/settings-store';
 	import { goto } from '$app/navigation';
+	import type { Settings } from '$lib/types/settings.type';
+	import settingsStore from '$lib/stores/config-store';
+	import { settingsAPI } from '$lib/services/api';
 
-	function handleContinue() {
-		updateSettingsStore({
-			onboarding: {
-				...$settingsStore.onboarding,
-				completed: $settingsStore.onboarding?.completed ?? false,
-				completedAt: $settingsStore.onboarding?.completedAt ?? '',
-				steps: {
-					...$settingsStore.onboarding?.steps,
-					welcome: true
-				}
-			}
+	let { data } = $props();
+	let currentSettings = $state(data.settings);
+
+	const updatedSettings: Partial<Settings> = {
+		onboarding: {
+			steps: {
+				welcome: true,
+				password: false,
+				settings: false
+			},
+			completed: false
+		}
+	};
+
+	async function continueToNextStep() {
+		currentSettings = await settingsAPI.updateSettings({
+			...currentSettings,
+			...updatedSettings
 		});
 
-		goto('/onboarding/password');
+		settingsStore.reload();
+
+		goto('/onboarding/password', { invalidateAll: true });
 	}
 </script>
 
@@ -58,7 +69,7 @@
 	</div>
 
 	<div class="flex justify-center pt-8">
-		<Button type="button" onclick={handleContinue} class="px-8 flex items-center gap-2 h-12 w-[80%]">
+		<Button type="button" onclick={() => continueToNextStep()} class="px-8 flex items-center gap-2 h-12 w-[80%]">
 			Continue
 			<ChevronRight class="size-4" />
 		</Button>

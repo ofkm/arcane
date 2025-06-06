@@ -21,11 +21,18 @@ abstract class BaseAPIService {
 
 			// Add response interceptor for consistent error handling
 			this.api.interceptors.response.use(
-				(response: AxiosResponse) => response,
+				(response: AxiosResponse) => {
+					console.log(`API Response [${response.config.method?.toUpperCase()} ${response.config.url}]:`, response.data);
+					return response;
+				},
 				(error) => {
 					// Only log errors if not building
 					if (!building) {
-						console.error('API Error:', error.response?.data || error.message);
+						console.error(`API Error [${error.config?.method?.toUpperCase()} ${error.config?.url}]:`, {
+							status: error.response?.status,
+							data: error.response?.data,
+							message: error.message
+						});
 					}
 					return Promise.reject(error);
 				}
@@ -40,7 +47,13 @@ abstract class BaseAPIService {
 		}
 
 		const response = await promise;
-		return response.data?.data || response.data;
+		console.log('BaseAPIService handleResponse - raw response:', response.data);
+
+		// Try different ways to extract the data based on common Go backend patterns
+		const extractedData = response.data?.data || response.data?.result || response.data;
+		console.log('BaseAPIService handleResponse - extracted data:', extractedData);
+
+		return extractedData;
 	}
 }
 

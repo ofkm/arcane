@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { CheckCircle } from '@lucide/svelte';
 </script>
@@ -17,5 +18,5 @@
 		<p>You can now start using the application to manage your Docker containers and compose stacks.</p>
 	</div>
 
-	<Button href="/" size="lg">Go to Dashboard</Button>
+	<Button onclick={() => goto('/', { invalidateAll: true })} size="lg">Go to Dashboard</Button>
 </div>

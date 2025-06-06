@@ -1,7 +1,9 @@
 import { browser } from '$app/environment';
 import { env } from '$env/dynamic/public';
+import { redirect } from '@sveltejs/kit';
 import type { AppVersionInformation } from '$lib/types/application-configuration';
 import type { LayoutLoad } from './$types';
+import { loadSettingsFromServer } from '$lib/stores/settings-store';
 
 let versionInformation: AppVersionInformation;
 let versionInformationLastUpdated: number;
@@ -25,20 +27,31 @@ export const load = (async ({ fetch, url }) => {
 	let hasLocalDocker = false;
 	let isAuthenticated = false;
 
+	const path = url.pathname;
+
+	// Define paths that don't require authentication
+	const publicPaths = ['/auth/login', '/auth/logout', '/auth/oidc/login', '/auth/oidc/callback', '/img', '/favicon.ico'];
+
+	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
+
 	// Only fetch data on the client side to avoid SSR issues
 	if (browser) {
 		try {
-			// First, try to get settings (public endpoint for initial setup)
+			// First, try to get settings (this should work even without auth for public endpoints)
 			const settingsResponse = await fetch('/api/settings', {
 				credentials: 'include'
 			});
 
 			if (settingsResponse.ok) {
 				const settingsData = await settingsResponse.json();
-				settings = settingsData.data || null;
-			} else if (settingsResponse.status === 401) {
-				// Not authenticated - this is fine for login page
-				console.log('Not authenticated, will show login page');
+				settings = settingsData.data || settingsData.settings || settingsData;
+
+				// Initialize the settings store
+				try {
+					await loadSettingsFromServer();
+				} catch (error) {
+					console.log('Could not initialize settings store:', error);
+				}
 			}
 		} catch (error) {
 			console.log('Could not fetch settings:', error);
@@ -49,9 +62,10 @@ export const load = (async ({ fetch, url }) => {
 			const userResponse = await fetch('/api/auth/me', {
 				credentials: 'include'
 			});
+
 			if (userResponse.ok) {
 				const userData = await userResponse.json();
-				user = userData.data || null;
+				user = userData.data || userData.user || userData;
 				isAuthenticated = !!user;
 			} else if (userResponse.status === 401) {
 				// Not authenticated
@@ -60,6 +74,20 @@ export const load = (async ({ fetch, url }) => {
 		} catch (error) {
 			console.log('No authenticated user:', error);
 			isAuthenticated = false;
+		}
+
+		// Check authentication for protected routes
+		if (!isPublicPath && !isAuthenticated) {
+			throw redirect(302, `/auth/login?redirect=${encodeURIComponent(path)}`);
+		}
+
+		// Check onboarding status for authenticated users
+		if (isAuthenticated && !isPublicPath) {
+			const isOnboardingPath = path.startsWith('/onboarding');
+
+			if (!isOnboardingPath && settings && !settings.onboarding?.completed) {
+				throw redirect(302, '/onboarding/welcome');
+			}
 		}
 
 		// Only fetch additional data if authenticated

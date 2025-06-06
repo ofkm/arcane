@@ -6,88 +6,50 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { AlertCircle, ChevronRight } from '@lucide/svelte';
-	import { settingsStore, saveSettingsToServer, updateSettingsStore } from '$lib/stores/settings-store';
-	import { preventDefault } from '$lib/utils/form.utils';
 	import { goto } from '$app/navigation';
-	import { isDev } from '$lib/constants';
-	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
+	import type { Settings } from '$lib/types/settings.type';
+	import settingsStore from '$lib/stores/config-store';
+	import { settingsAPI } from '$lib/services/api';
+
+	let { data } = $props();
+	let currentSettings = $state(data.settings);
 
 	let error = $state('');
 	let loading = $state(false);
+	let dockerHost = $state(data.settings.dockerHost);
+	let stacksDirectory = $state(data.settings.stacksDirectory);
+	let pollingEnabled = $state(data.settings.pollingEnabled);
+	let pollingInterval = $state(data.settings.pollingInterval);
+	let autoUpdate = $state(data.settings.autoUpdate);
 
-	onMount(() => {
-		if (browser && !$settingsStore.onboarding?.steps?.password) {
-			goto('/onboarding/welcome');
-			return;
-		}
-
-		updateSettingsStore({
+	function getUpdatedSettings(): Partial<Settings> {
+		return {
+			dockerHost,
+			stacksDirectory,
+			pollingEnabled,
+			pollingInterval,
+			autoUpdate,
 			onboarding: {
-				...$settingsStore.onboarding,
-				completed: $settingsStore.onboarding?.completed ?? false,
-				completedAt: $settingsStore.onboarding?.completedAt ?? '',
 				steps: {
-					...$settingsStore.onboarding?.steps,
-					password: true
-				}
-			}
-		});
-	});
-
-	let dockerHost = $derived($settingsStore.dockerHost || 'unix:///var/run/docker.sock');
-	let pollingEnabled = $derived($settingsStore.pollingEnabled !== undefined ? $settingsStore.pollingEnabled : true);
-	let pollingInterval = $derived($settingsStore.pollingInterval || 10);
-	let autoUpdate = $derived($settingsStore.autoUpdate !== undefined ? $settingsStore.autoUpdate : false);
-
-	const defaultStacksDirectory = isDev ? './.dev-data/stacks' : 'data/stacks';
-
-	async function handleSubmit() {
-		loading = true;
-		error = '';
-
-		try {
-			const currentSettings = { ...$settingsStore };
-
-			const settingsPayload = {
-				dockerHost,
-				stacksDirectory: currentSettings.stacksDirectory || defaultStacksDirectory,
-				pollingEnabled,
-				pollingInterval: parseInt(pollingInterval.toString()),
-				autoUpdate,
-				autoUpdateInterval: 60,
-				pruneMode: 'all' as 'all' | 'dangling',
-				registryCredentials: [],
-				auth: {
-					...(currentSettings.auth || {}),
-					localAuthEnabled: true,
-					sessionTimeout: 30,
-					passwordPolicy: 'strong' as 'basic' | 'standard' | 'strong',
-					rbacEnabled: false
+					welcome: true,
+					password: true,
+					settings: true
 				},
-				onboarding: {
-					completed: true,
-					completedAt: new Date().toISOString(),
-					steps: {
-						...(currentSettings.onboarding?.steps || {}),
-						welcome: true,
-						password: true,
-						settings: true
-					}
-				}
-			};
+				completed: true,
+				completedAt: new Date().toISOString()
+			}
+		};
+	}
 
-			updateSettingsStore(settingsPayload);
+	async function continueToNextStep() {
+		currentSettings = await settingsAPI.updateSettings({
+			...currentSettings,
+			...getUpdatedSettings()
+		});
 
-			await saveSettingsToServer();
+		settingsStore.reload();
 
-			goto('/onboarding/complete');
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'An unexpected error occurred';
-			console.error('Error saving settings:', err);
-		} finally {
-			loading = false;
-		}
+		goto('/onboarding/complete', { invalidateAll: true });
 	}
 </script>
 
@@ -104,7 +66,7 @@
 		</Alert.Root>
 	{/if}
 
-	<form class="space-y-5" onsubmit={preventDefault(handleSubmit)}>
+	<form class="space-y-5" onsubmit={() => continueToNextStep()}>
 		<Card.Root class="border shadow-sm">
 			<Card.Header class="py-4">
 				<Card.Title>Docker Connection</Card.Title>

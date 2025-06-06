@@ -1,5 +1,4 @@
 #!/bin/bash
-# filepath: /Users/kylemendell/dev/ofkm/arcane/build.sh
 
 set -e
 
@@ -8,7 +7,7 @@ echo "🚀 Building Arcane..."
 # Build the frontend
 echo "📦 Building frontend..."
 cd frontend
-npm ci
+npm i
 npm run build
 
 cd ..

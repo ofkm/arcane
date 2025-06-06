@@ -4,9 +4,36 @@ import { redirect } from '@sveltejs/kit';
 import { building, dev } from '$app/environment';
 import { sessionHandler } from '$lib/services/session-handler';
 import SessionAPIService from '$lib/services/api/session-api-service';
+import { loadSettingsFromServer } from '$lib/stores/settings-store';
 
 // Get environment variable
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
+
+// Settings initialization handler
+const settingsHandler: Handle = async ({ event, resolve }) => {
+	// Skip during build
+	if (building) {
+		return resolve(event);
+	}
+
+	const { url } = event;
+	const path = url.pathname;
+
+	// Only initialize settings for authenticated pages (not auth pages)
+	const isAuthPath = path.startsWith('/auth/') || path.startsWith('/api/');
+
+	if (!isAuthPath) {
+		try {
+			// Load settings from server to populate the store
+			await loadSettingsFromServer();
+		} catch (error) {
+			console.error('Failed to initialize settings store:', error);
+			// Don't block the request if settings fail to load
+		}
+	}
+
+	return resolve(event);
+};
 
 // Authentication and authorization handler
 const authHandler: Handle = async ({ event, resolve }) => {
@@ -105,4 +132,4 @@ const initHandler: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-export const handle = sequence(sessionHandler, initHandler, authHandler);
+export const handle = sequence(sessionHandler, settingsHandler, initHandler, authHandler);

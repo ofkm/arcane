@@ -5,45 +5,41 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { AlertCircle, ChevronRight } from '@lucide/svelte';
 	import { preventDefault } from '$lib/utils/form.utils';
-	import { settingsStore, updateSettingsStore, saveSettingsToServer } from '$lib/stores/settings-store';
+	import { userAPI } from '$lib/services/api';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
+	import type { Settings } from '$lib/types/settings.type';
+	import settingsStore from '$lib/stores/config-store';
+	import { settingsAPI } from '$lib/services/api';
+
+	let { data } = $props();
+	let currentSettings = $state(data.settings);
+
+	const updatedSettings: Partial<Settings> = {
+		onboarding: {
+			steps: {
+				welcome: true,
+				password: true,
+				settings: false
+			},
+			completed: false
+		}
+	};
+
+	async function continueToNextStep() {
+		currentSettings = await settingsAPI.updateSettings({
+			...currentSettings,
+			...updatedSettings
+		});
+
+		settingsStore.reload();
+
+		goto('/onboarding/settings');
+	}
 
 	let password = $state('');
 	let confirmPassword = $state('');
 	let error = $state('');
 	let loading = $state(false);
-
-	const defaultDockerHost = 'unix:///var/run/docker.sock';
-	const defaultStacksDirectory = 'data/stacks';
-
-	onMount(async () => {
-		if (browser && $settingsStore.onboarding?.steps?.password) {
-			goto('/onboarding/settings');
-			return;
-		}
-
-		updateSettingsStore({
-			onboarding: {
-				...$settingsStore.onboarding,
-				steps: {
-					...$settingsStore.onboarding?.steps,
-					welcome: true
-				},
-				completed: $settingsStore.onboarding?.completed ?? false,
-				completedAt: $settingsStore.onboarding?.completedAt
-			}
-		});
-
-		try {
-			if (browser) {
-				await saveSettingsToServer();
-			}
-		} catch (err) {
-			console.error('Failed to save settings:', err);
-		}
-	});
 
 	async function handleSubmit() {
 		loading = true;
@@ -62,41 +58,16 @@
 		}
 
 		try {
-			const response = await fetch('/api/users/password', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					currentPassword: 'arcane-admin',
-					newPassword: password
-				})
+			await userAPI.changePassword({
+				currentPassword: 'arcane-admin',
+				newPassword: password
 			});
 
-			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.error || 'Failed to change password');
-			}
+			await continueToNextStep();
 
-			updateSettingsStore({
-				dockerHost: $settingsStore.dockerHost || defaultDockerHost,
-				stacksDirectory: $settingsStore.stacksDirectory || defaultStacksDirectory,
-				onboarding: {
-					...$settingsStore.onboarding,
-					steps: {
-						...$settingsStore.onboarding?.steps,
-						welcome: true,
-						password: true
-					},
-					completed: $settingsStore.onboarding?.completed ?? false,
-					completedAt: $settingsStore.onboarding?.completedAt
-				}
-			});
-
-			await saveSettingsToServer();
-
-			goto('/onboarding/settings');
+			goto('/onboarding/settings', { invalidateAll: true });
 		} catch (err) {
+			console.error('Error in handleSubmit:', err);
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
 		} finally {
 			loading = false;

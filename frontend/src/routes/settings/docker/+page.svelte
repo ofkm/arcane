@@ -52,7 +52,12 @@
 	async function handleRegistryDialogSubmit(eventDetail: { credential: RegistryCredential; isEditMode: boolean; originalIndex?: number }) {
 		const { credential, isEditMode, originalIndex } = eventDetail;
 		isLoadingRegistryAction = true;
+
 		try {
+			// Store original state for rollback
+			const originalCredentials = $settingsStore.registryCredentials;
+
+			// Update the store first
 			settingsStore.update((current) => {
 				const updatedCredentials = [...(current.registryCredentials || [])];
 				if (isEditMode && originalIndex !== undefined) {
@@ -66,12 +71,20 @@
 				};
 			});
 
-			const savedToServer = await saveSettingsToServer();
-			if (savedToServer) {
-				toast.success(isEditMode ? 'Registry Credential Updated Successfully' : 'Registry Credential Added Successfully');
-			} else {
-				toast.error('Failed to save registry settings to server.');
+			// Save to server using the settings API service
+			const result = await tryCatch(saveSettingsToServer());
+
+			if (result.error) {
+				// Rollback on error
+				settingsStore.update((current) => ({
+					...current,
+					registryCredentials: originalCredentials
+				}));
+				throw result.error;
 			}
+
+			toast.success(isEditMode ? 'Registry Credential Updated Successfully' : 'Registry Credential Added Successfully');
+			await invalidateAll();
 		} catch (error) {
 			console.error('Error handling registry dialog submit:', error);
 			toast.error('An error occurred while saving registry settings.');
@@ -98,18 +111,31 @@
 
 	async function removeRegistry(index: number) {
 		isLoadingRegistryAction = true;
+
 		try {
+			// Store the original credentials for potential rollback
+			const originalCredentials = $settingsStore.registryCredentials;
+
+			// Update the store
 			settingsStore.update((current) => ({
 				...current,
 				registryCredentials: (current.registryCredentials || []).filter((_, i) => i !== index)
 			}));
 
-			const savedToServer = await saveSettingsToServer();
-			if (savedToServer) {
-				toast.success('Registry Credential Removed Successfully');
-			} else {
-				toast.error('Failed to update registry settings on server.');
+			// Save to server using the settings API service
+			const result = await tryCatch(saveSettingsToServer());
+
+			if (result.error) {
+				// Rollback on error
+				settingsStore.update((current) => ({
+					...current,
+					registryCredentials: originalCredentials
+				}));
+				throw result.error;
 			}
+
+			toast.success('Registry Credential Removed Successfully');
+			await invalidateAll();
 		} catch (error) {
 			console.error('Error removing registry:', error);
 			toast.error('An error occurred while removing the registry.');
@@ -118,17 +144,16 @@
 		}
 	}
 
-	// Save settings function
+	// Save settings function using the settings API service
 	async function saveSettings() {
 		if (isLoading.saving) return;
-		isLoading.saving = true;
 
 		handleApiResultWithCallbacks({
 			result: await tryCatch(saveSettingsToServer()),
 			message: 'Error Saving Settings',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async () => {
-				toast.success(`Settings Saved Successfully`);
+				toast.success('Settings Saved Successfully');
 				await invalidateAll();
 			}
 		});

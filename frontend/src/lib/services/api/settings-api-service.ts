@@ -13,15 +13,48 @@ export interface OidcConfig {
 
 export default class SettingsAPIService extends BaseAPIService {
 	async getSettings(): Promise<Settings> {
-		return this.handleResponse(this.api.get('/settings'));
+		try {
+			const response = await this.api.get('/settings');
+			console.log('Raw settings response:', response.data);
+
+			// Handle different response structures from the Go backend
+			const data = response.data?.settings || response.data?.data || response.data;
+			console.log('Extracted settings data:', data);
+
+			return data;
+		} catch (error) {
+			console.error('Error fetching settings:', error);
+			throw error;
+		}
 	}
 
 	async updateSettings(settings: Partial<Settings>): Promise<Settings> {
-		return this.handleResponse(this.api.put('/settings', settings));
+		try {
+			const response = await this.api.put('/settings', settings);
+
+			const data = response.data?.settings || response.data?.data || response.data;
+
+			return data;
+		} catch (error) {
+			console.error('Error updating settings:', error);
+			throw error;
+		}
 	}
 
 	async resetSettings(): Promise<Settings> {
-		return this.handleResponse(this.api.post('/settings/reset'));
+		try {
+			const response = await this.api.post('/settings/reset');
+			console.log('Raw reset response:', response.data);
+
+			// Handle different response structures from the Go backend
+			const data = response.data?.settings || response.data?.data || response.data;
+			console.log('Extracted reset data:', data);
+
+			return data;
+		} catch (error) {
+			console.error('Error resetting settings:', error);
+			throw error;
+		}
 	}
 
 	// OIDC specific methods
