@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -19,11 +18,14 @@ import (
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using environment variables")
+		log.Println("⚠️  No .env file found, using environment variables")
 	}
 
 	// Initialize configuration
 	cfg := config.Load()
+	log.Printf("📦 Configuration loaded:")
+	log.Printf("   Environment: %s", cfg.Environment)
+	log.Printf("   Database URL: %s", cfg.DatabaseURL)
 
 	// Set Gin mode based on environment
 	if cfg.Environment == "production" {
@@ -31,19 +33,21 @@ func main() {
 	}
 
 	// Initialize database
+	log.Printf("🔌 Connecting to database...")
 	db, err := database.Initialize(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatal("Failed to initialize database:", err)
+		log.Fatal("❌ Failed to initialize database:", err)
 	}
 	defer db.Close()
 
 	// Run migrations
+	log.Printf("🔄 Running database migrations...")
 	if err := db.Migrate(); err != nil {
-		log.Fatal("Failed to run migrations:", err)
+		log.Fatal("❌ Failed to run migrations:", err)
 	}
 
 	// Initialize all services
-	log.Println("Initializing services...")
+	log.Println("🚀 Initializing services...")
 	userService := services.NewUserService(db)
 	stackService := services.NewStackService(db)
 	agentService := services.NewAgentService(db)
@@ -55,8 +59,13 @@ func main() {
 	networkService := services.NewNetworkService(db)
 	imageMaturityService := services.NewImageMaturityService(db)
 
+	userService.CreateDefaultAdmin()
+
 	// Initialize JWT secret from environment or generate one
-	jwtSecret := os.Getenv("JWT_SECRET")
+	jwtSecret := cfg.JWTSecret
+	if jwtSecret == "default-jwt-secret-change-me" {
+		log.Printf("⚠️  Using default JWT secret - please set JWT_SECRET in production!")
+	}
 
 	// Create AuthService
 	authService := services.NewAuthService(userService, settingsService, jwtSecret)
@@ -142,6 +151,6 @@ func main() {
 	log.Printf("❤️  Health: http://localhost:%s/health", port)
 
 	if err := r.Run(":" + port); err != nil {
-		log.Fatal("Failed to start server:", err)
+		log.Fatal("❌ Failed to start server:", err)
 	}
 }

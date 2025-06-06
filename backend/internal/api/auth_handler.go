@@ -158,18 +158,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// Clear the token cookie
-	c.SetCookie(
-		"token",
-		"",
-		-1, // Max age of -1 will delete cookie
-		"/",
-		"",
-		c.Request.TLS != nil, // secure if HTTPS
-		true,                 // httpOnly
-	)
+	// Clear the authentication cookie
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("token", "", -1, "/", "", false, true)
 
-	// Return successful response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Logged out successfully",
@@ -188,13 +180,29 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"user": UserResponse{
+		"data": UserResponse{
 			ID:          user.ID,
 			Username:    user.Username,
 			DisplayName: user.DisplayName,
 			Email:       user.Email,
 			Roles:       user.Roles,
 		},
+	})
+}
+
+func (h *AuthHandler) ValidateSession(c *gin.Context) {
+	_, exists := GetCurrentUser(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"valid":   false,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"valid":   true,
 	})
 }
 

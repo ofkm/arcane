@@ -1,5 +1,6 @@
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
+import BaseAPIService from './api/api-service';
 
 export interface LoginCredentials {
 	username: string;
@@ -13,100 +14,62 @@ export interface User {
 	role?: string;
 }
 
-export class AuthService {
-	private baseUrl = '/api/auth';
-
+export class AuthService extends BaseAPIService {
 	async login(credentials: LoginCredentials): Promise<User> {
-		const response = await fetch(`${this.baseUrl}/login`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			credentials: 'include',
-			body: JSON.stringify(credentials)
-		});
-
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}));
-			throw new Error(errorData.error || 'Login failed');
+		try {
+			const response = await this.api.post('/auth/login', credentials);
+			return response.data.data;
+		} catch (error: any) {
+			const errorMessage = error.response?.data?.error || 'Login failed';
+			throw new Error(errorMessage);
 		}
-
-		const data = await response.json();
-		return data.data;
 	}
 
 	async logout(): Promise<void> {
 		try {
-			await fetch(`${this.baseUrl}/logout`, {
-				method: 'POST',
-				credentials: 'include'
-			});
+			await this.api.post('/auth/logout');
 		} catch (error) {
 			console.error('Logout error:', error);
 		} finally {
 			// Always redirect to login even if logout request fails
 			if (browser) {
-				goto('/login');
+				goto('/auth/login');
 			}
 		}
 	}
 
 	async getCurrentUser(): Promise<User | null> {
 		try {
-			const response = await fetch(`${this.baseUrl}/me`, {
-				credentials: 'include'
-			});
-
-			if (!response.ok) {
-				if (response.status === 401) {
-					return null; // Not authenticated
-				}
-				throw new Error('Failed to fetch user');
+			const response = await this.api.get('/auth/me');
+			return response.data.data;
+		} catch (error: any) {
+			if (error.response?.status === 401) {
+				return null; // Not authenticated
 			}
-
-			const data = await response.json();
-			return data.data;
-		} catch (error) {
 			console.error('Get current user error:', error);
 			return null;
 		}
 	}
 
-	async register(userData: LoginCredentials & { email?: string }): Promise<User> {
-		const response = await fetch(`${this.baseUrl}/register`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			credentials: 'include',
-			body: JSON.stringify(userData)
-		});
-
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}));
-			throw new Error(errorData.error || 'Registration failed');
+	async validateSession(): Promise<boolean> {
+		try {
+			const response = await this.api.get('/auth/validate');
+			return response.status === 200;
+		} catch (error) {
+			console.error('Session validation error:', error);
+			return false;
 		}
-
-		const data = await response.json();
-		return data.data;
 	}
 
 	async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-		const response = await fetch(`${this.baseUrl}/change-password`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			credentials: 'include',
-			body: JSON.stringify({
+		try {
+			await this.api.post('/auth/change-password', {
 				oldPassword,
 				newPassword
-			})
-		});
-
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}));
-			throw new Error(errorData.error || 'Password change failed');
+			});
+		} catch (error: any) {
+			const errorMessage = error.response?.data?.error || 'Password change failed';
+			throw new Error(errorMessage);
 		}
 	}
 }

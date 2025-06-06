@@ -21,8 +21,14 @@ type DB struct {
 func Initialize(databaseURL string) (*DB, error) {
 	var dialector gorm.Dialector
 
-	if strings.HasPrefix(databaseURL, "sqlite") {
-		dbPath := strings.TrimPrefix(databaseURL, "sqlite://")
+	if strings.HasPrefix(databaseURL, "sqlite://") || strings.HasPrefix(databaseURL, "sqlite3://") {
+		// Handle both sqlite:// and sqlite3:// prefixes
+		dbPath := databaseURL
+		if strings.HasPrefix(databaseURL, "sqlite://") {
+			dbPath = strings.TrimPrefix(databaseURL, "sqlite://")
+		} else if strings.HasPrefix(databaseURL, "sqlite3://") {
+			dbPath = strings.TrimPrefix(databaseURL, "sqlite3://")
+		}
 		dialector = sqlite.Open(dbPath)
 	} else if strings.HasPrefix(databaseURL, "postgres") {
 		dialector = postgres.Open(databaseURL)

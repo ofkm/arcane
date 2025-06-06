@@ -233,10 +233,10 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*mo
 		return nil, nil, ErrLocalAuthDisabled
 	}
 
-	// Get user by username
+	// Get user by username - FIXED: this should match the UserService method signature
 	user, err := s.userService.GetUserByUsername(ctx, username)
 	if err != nil {
-		if err == ErrUserNotFound {
+		if strings.Contains(err.Error(), "user not found") {
 			return nil, nil, ErrInvalidCredentials // Use generic error for security
 		}
 		return nil, nil, err
@@ -382,7 +382,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*T
 	}
 
 	// Get user
-	user, err := s.userService.GetUserById(ctx, userId)
+	user, err := s.userService.GetUserByID(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +433,7 @@ func (s *AuthService) VerifyToken(ctx context.Context, accessToken string) (*mod
 	}
 
 	// Get user
-	user, err := s.userService.GetUserById(ctx, userId)
+	user, err := s.userService.GetUserByID(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +444,7 @@ func (s *AuthService) VerifyToken(ctx context.Context, accessToken string) (*mod
 // ChangePassword changes a user's password
 func (s *AuthService) ChangePassword(ctx context.Context, userId, currentPassword, newPassword string) error {
 	// Get user
-	user, err := s.userService.GetUserById(ctx, userId)
+	user, err := s.userService.GetUserByID(ctx, userId)
 	if err != nil {
 		return err
 	}

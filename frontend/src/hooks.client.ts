@@ -3,6 +3,7 @@ import type { Handle } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
 import { building, dev } from '$app/environment';
 import { sessionHandler } from '$lib/services/session-handler';
+import SessionAPIService from '$lib/services/api/session-api-service';
 
 // Get environment variable
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
@@ -40,20 +41,15 @@ const authHandler: Handle = async ({ event, resolve }) => {
 		return await resolve(event);
 	}
 
-	// For frontend routes, check session with backend (only in dev mode for now)
+	// For frontend routes, check session with backend using session-api-service
 	if (dev && !isTestEnvironment) {
 		try {
-			const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+			const sessionApiService = new SessionAPIService();
 
-			// Check if user has a valid session by calling the backend
-			const sessionResponse = await fetch(`${backendUrl}/api/auth/validate`, {
-				credentials: 'include',
-				headers: {
-					Cookie: event.request.headers.get('Cookie') || ''
-				}
-			});
+			// Validate session using the session API service
+			const isValidSession = await sessionApiService.validateSession();
 
-			if (!sessionResponse.ok) {
+			if (!isValidSession) {
 				// No valid session - redirect to login
 				throw redirect(302, `/auth/login?redirect=${encodeURIComponent(path)}`);
 			}
@@ -63,7 +59,9 @@ const authHandler: Handle = async ({ event, resolve }) => {
 
 			if (!isOnboardingPath) {
 				try {
+					const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
 					const settingsResponse = await fetch(`${backendUrl}/api/settings`, {
+						credentials: 'include',
 						headers: {
 							Cookie: event.request.headers.get('Cookie') || ''
 						}

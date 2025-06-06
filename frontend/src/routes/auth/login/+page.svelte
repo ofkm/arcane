@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -8,15 +7,14 @@
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
+	import { authService } from '$lib/services/auth-service';
 
-	type ActionData = {
-		error?: string;
-		username?: string;
-	};
-
-	let { data, form }: { data: PageData; form: ActionData | null } = $props();
+	let { data }: { data: PageData } = $props();
 
 	let loading = $state(false);
+	let error = $state<string | null>(null);
+	let username = $state('');
+	let password = $state('');
 
 	const oidcForcedByEnv = env.PUBLIC_OIDC_ENABLED === 'true';
 	const oidcEnabledBySettings = data.settings?.auth?.oidcEnabled === true;
@@ -28,6 +26,30 @@
 	function handleOidcLogin() {
 		const currentRedirect = data.redirectTo || '/';
 		goto(`/auth/oidc/login?redirect=${encodeURIComponent(currentRedirect)}`);
+	}
+
+	async function handleLogin(event: Event) {
+		event.preventDefault();
+
+		if (!username || !password) {
+			error = 'Please enter both username and password';
+			return;
+		}
+
+		loading = true;
+		error = null;
+
+		try {
+			await authService.login({ username, password });
+
+			// Redirect to the intended page or dashboard
+			const redirectTo = data.redirectTo || '/';
+			goto(redirectTo);
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Login failed';
+		} finally {
+			loading = false;
+		}
 	}
 
 	const showDivider = $derived(showOidcLoginButton && showLocalLoginForm);
@@ -73,11 +95,11 @@
 				</Alert.Root>
 			{/if}
 
-			{#if form?.error}
+			{#if error}
 				<Alert.Root class="mb-6" variant="destructive">
 					<AlertCircle class="size-4 mr-2" />
 					<Alert.Title>Authentication Failed</Alert.Title>
-					<Alert.Description>{form.error}</Alert.Description>
+					<Alert.Description>{error}</Alert.Description>
 				</Alert.Root>
 			{/if}
 
@@ -101,25 +123,7 @@
 
 			<!-- Local Login Form -->
 			{#if showLocalLoginForm}
-				<form
-					method="POST"
-					action="?/login"
-					class="space-y-6"
-					use:enhance={() => {
-						loading = true;
-						return async ({ result, update }) => {
-							loading = false;
-							if (result.type === 'error') {
-								console.error('An unexpected error occurred during login form submission');
-							}
-							if (result.type !== 'redirect') {
-								await update();
-							}
-						};
-					}}
-				>
-					<input type="hidden" name="redirectTo" value={data.redirectTo} />
-
+				<form onsubmit={handleLogin} class="space-y-6">
 					<div class="space-y-4">
 						<!-- Username Field -->
 						<div>
@@ -128,7 +132,7 @@
 								<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
 									<User class="size-4" />
 								</div>
-								<Input id="username" name="username" type="text" autocomplete="username" required value={form?.username ?? ''} class="pl-10" placeholder="Enter your username or email" />
+								<Input id="username" name="username" type="text" autocomplete="username" required bind:value={username} class="pl-10" placeholder="Enter your username or email" disabled={loading} />
 							</div>
 						</div>
 
@@ -139,7 +143,7 @@
 								<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
 									<Lock class="size-4" />
 								</div>
-								<Input id="password" name="password" type="password" autocomplete="current-password" required class="pl-10" placeholder="Enter your password" />
+								<Input id="password" name="password" type="password" autocomplete="current-password" required bind:value={password} class="pl-10" placeholder="Enter your password" disabled={loading} />
 							</div>
 						</div>
 					</div>

@@ -1,54 +1,23 @@
 import type { PageLoad } from './$types';
-import { settingsAPI } from '$lib/services/api';
+import { redirect } from '@sveltejs/kit';
 
-export const load: PageLoad = async ({ url }) => {
-	try {
-		const [settings, oidcStatus] = await Promise.all([
-			settingsAPI.getSettings(),
-			settingsAPI.getOidcStatus().catch(() => ({
-				enabled: false,
-				configured: false,
-				envConfigured: false,
-				settingsConfigured: false
-			}))
-		]);
+export const load: PageLoad = async ({ parent, url }) => {
+	const data = await parent();
 
-		const redirectTo = url.searchParams.get('redirect') || '/';
-		const error = url.searchParams.get('error');
-
-		return {
-			redirectTo,
-			settings,
-			oidcStatus,
-			error
-		};
-	} catch (error) {
-		console.error('Failed to load login page data:', error);
-
-		const redirectTo = url.searchParams.get('redirect') || '/';
-		const loginError = url.searchParams.get('error');
-
-		return {
-			redirectTo,
-			settings: {
-				auth: {
-					localAuthEnabled: true,
-					oidcEnabled: false,
-					sessionTimeout: 60,
-					passwordPolicy: 'strong',
-					rbacEnabled: false
-				},
-				onboarding: {
-					completed: false
-				}
-			},
-			oidcStatus: {
-				enabled: false,
-				configured: false,
-				envConfigured: false,
-				settingsConfigured: false
-			},
-			error: loginError
-		};
+	// If already authenticated, redirect to dashboard
+	if (data.user && data.isAuthenticated) {
+		throw redirect(302, '/');
 	}
+
+	// Get redirect parameter from URL
+	const redirectTo = url.searchParams.get('redirect') || '/';
+
+	// Get error parameter if any
+	const error = url.searchParams.get('error');
+
+	return {
+		settings: data.settings,
+		redirectTo,
+		error
+	};
 };

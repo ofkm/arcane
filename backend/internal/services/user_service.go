@@ -2,12 +2,18 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
+	"math/big"
 
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+
+	"github.com/google/uuid"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
-	"gorm.io/gorm"
 )
 
 type UserService struct {
@@ -18,6 +24,7 @@ func NewUserService(db *database.DB) *UserService {
 	return &UserService{db: db}
 }
 
+// CreateUser creates a new user with the given User model
 func (s *UserService) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	if err := s.db.WithContext(ctx).Create(user).Error; err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
@@ -25,20 +32,27 @@ func (s *UserService) CreateUser(ctx context.Context, user *models.User) (*model
 	return user, nil
 }
 
-func (s *UserService) GetUserByID(ctx context.Context, id string) (*models.User, error) {
-	var user models.User
-	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("user not found")
-		}
-		return nil, fmt.Errorf("failed to get user: %w", err)
+// CreateUserWithPassword creates a new user with username, password, email, role (for admin setup)
+func (s *UserService) CreateUserWithPassword(username, password, email, role string) (*models.User, error) {
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
-	return &user, nil
-}
 
-// GetUserById is an alias for GetUserByID for consistency with auth service calls
-func (s *UserService) GetUserById(ctx context.Context, id string) (*models.User, error) {
-	return s.GetUserByID(ctx, id)
+	user := &models.User{
+		ID:           uuid.New().String(),
+		Username:     username,
+		Email:        &email,
+		PasswordHash: string(hashedPassword),
+		Roles:        models.StringSlice{role},
+	}
+
+	if err := s.db.Create(user).Error; err != nil {
+		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	return user, nil
 }
 
 func (s *UserService) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
@@ -52,14 +66,29 @@ func (s *UserService) GetUserByUsername(ctx context.Context, username string) (*
 	return &user, nil
 }
 
-// GetUserByOidcSubjectId finds a user by their OIDC subject ID
-func (s *UserService) GetUserByOidcSubjectId(ctx context.Context, oidcSubjectId string) (*models.User, error) {
+func (s *UserService) GetUserByID(ctx context.Context, id string) (*models.User, error) {
 	var user models.User
-	if err := s.db.WithContext(ctx).Where("oidc_subject_id = ?", oidcSubjectId).First(&user).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user not found")
 		}
-		return nil, fmt.Errorf("failed to get user by OIDC subject ID: %w", err)
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	return &user, nil
+}
+
+// Add alias method for backward compatibility
+func (s *UserService) GetUserById(ctx context.Context, id string) (*models.User, error) {
+	return s.GetUserByID(ctx, id)
+}
+
+func (s *UserService) GetUserByOidcSubjectId(ctx context.Context, subjectId string) (*models.User, error) {
+	var user models.User
+	if err := s.db.WithContext(ctx).Where("oidc_subject_id = ?", subjectId).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	return &user, nil
 }
@@ -71,56 +100,72 @@ func (s *UserService) UpdateUser(ctx context.Context, user *models.User) (*model
 	return user, nil
 }
 
-func (s *UserService) DeleteUser(ctx context.Context, id string) error {
-	if err := s.db.WithContext(ctx).Delete(&models.User{}, "id = ?", id).Error; err != nil {
-		return fmt.Errorf("failed to delete user: %w", err)
+func (s *UserService) CountUsers() (int64, error) {
+	var count int64
+	if err := s.db.Model(&models.User{}).Count(&count).Error; err != nil {
+		return 0, err
 	}
+	return count, nil
+}
+
+func (s *UserService) ValidatePassword(hashedPassword, password string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+}
+
+// CreateDefaultAdmin creates a default admin user if no users exist
+func (s *UserService) CreateDefaultAdmin() error {
+	// Check if any users exist
+	count, err := s.CountUsers()
+	if err != nil {
+		return fmt.Errorf("failed to count users: %w", err)
+	}
+
+	if count > 0 {
+		log.Printf("👤 Users already exist, skipping default admin creation")
+		return nil
+	}
+
+	// Create the default admin user using the password-based method
+	_, err = s.CreateUserWithPassword("arcane", "arcane-admin", "admin@localhost", "admin")
+	if err != nil {
+		return fmt.Errorf("failed to create default admin user: %w", err)
+	}
+
+	log.Printf("👑 Default admin user created!")
+	log.Printf("🔑 Username: admin")
+	// log.Printf("🔑 Password: %s", password)
+	log.Printf("⚠️  Please change this password after first login!")
+
 	return nil
 }
 
-func (s *UserService) ListUsers(ctx context.Context) ([]*models.User, error) {
-	var users []*models.User
+func (s *UserService) generateRandomPassword(length int) (string, error) {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+	password := make([]byte, length)
+
+	for i := range password {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", err
+		}
+		password[i] = charset[num.Int64()]
+	}
+
+	return string(password), nil
+}
+
+// Additional methods your services might need
+func (s *UserService) ListUsers(ctx context.Context) ([]models.User, error) {
+	var users []models.User
 	if err := s.db.WithContext(ctx).Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
 	return users, nil
 }
 
-// GetUserByEmail finds a user by their email address
-func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
-	var user models.User
-	if err := s.db.WithContext(ctx).Where("email = ?", email).First(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("user not found")
-		}
-		return nil, fmt.Errorf("failed to get user by email: %w", err)
+func (s *UserService) DeleteUser(ctx context.Context, id string) error {
+	if err := s.db.WithContext(ctx).Delete(&models.User{}, "id = ?", id).Error; err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
 	}
-	return &user, nil
-}
-
-// UserExists checks if a user exists by ID
-func (s *UserService) UserExists(ctx context.Context, id string) (bool, error) {
-	var count int64
-	if err := s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", id).Count(&count).Error; err != nil {
-		return false, fmt.Errorf("failed to check if user exists: %w", err)
-	}
-	return count > 0, nil
-}
-
-// UsernameExists checks if a username is already taken
-func (s *UserService) UsernameExists(ctx context.Context, username string) (bool, error) {
-	var count int64
-	if err := s.db.WithContext(ctx).Model(&models.User{}).Where("username = ?", username).Count(&count).Error; err != nil {
-		return false, fmt.Errorf("failed to check if username exists: %w", err)
-	}
-	return count > 0, nil
-}
-
-// EmailExists checks if an email is already taken
-func (s *UserService) EmailExists(ctx context.Context, email string) (bool, error) {
-	var count int64
-	if err := s.db.WithContext(ctx).Model(&models.User{}).Where("email = ?", email).Count(&count).Error; err != nil {
-		return false, fmt.Errorf("failed to check if email exists: %w", err)
-	}
-	return count > 0, nil
+	return nil
 }

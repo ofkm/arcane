@@ -25,11 +25,36 @@ func RegisterFrontend(router *gin.Engine) error {
 	fileServer := NewFileServerWithCaching(http.FS(distFS), int(cacheMaxAge.Seconds()))
 
 	router.NoRoute(func(c *gin.Context) {
-		// Try to serve the requested file
-		path := strings.TrimPrefix(c.Request.URL.Path, "/")
-		if _, err := fs.Stat(distFS, path); os.IsNotExist(err) {
-			// File doesn't exist, serve index.html instead
+		path := c.Request.URL.Path
+
+		// IMPORTANT: Don't serve frontend for API routes
+		if strings.HasPrefix(path, "/api/") {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"error":   fmt.Sprintf("API endpoint not found: %s", path),
+			})
+			return
+		}
+
+		// Don't serve frontend for health checks
+		if path == "/health" {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"error":   "Health endpoint not found",
+			})
+			return
+		}
+
+		// Try to serve the requested static file
+		requestedPath := strings.TrimPrefix(path, "/")
+		if requestedPath == "" {
+			requestedPath = "index.html"
+		}
+
+		if _, err := fs.Stat(distFS, requestedPath); os.IsNotExist(err) {
+			// File doesn't exist, serve index.html for SPA routing
 			c.Request.URL.Path = "/"
+			requestedPath = "index.html"
 		}
 
 		fileServer.ServeHTTP(c.Writer, c.Request)
