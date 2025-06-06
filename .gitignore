@@ -13,6 +13,7 @@ static/
 data/
 dist/
 docker/
+arcane
 
 # OS
 .DS_Store
