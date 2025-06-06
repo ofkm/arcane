@@ -33,7 +33,7 @@ func (s *UserService) CreateUser(ctx context.Context, user *models.User) (*model
 }
 
 // CreateUserWithPassword creates a new user with username, password, email, role (for admin setup)
-func (s *UserService) CreateUserWithPassword(username, password, email, role string) (*models.User, error) {
+func (s *UserService) CreateUserWithPassword(username, password, email, role string, displayName string) (*models.User, error) {
 	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -44,6 +44,7 @@ func (s *UserService) CreateUserWithPassword(username, password, email, role str
 		ID:           uuid.New().String(),
 		Username:     username,
 		Email:        &email,
+		DisplayName:  &displayName,
 		PasswordHash: string(hashedPassword),
 		Roles:        models.StringSlice{role},
 	}
@@ -126,7 +127,7 @@ func (s *UserService) CreateDefaultAdmin() error {
 	}
 
 	// Create the default admin user using the password-based method
-	_, err = s.CreateUserWithPassword("arcane", "arcane-admin", "admin@localhost", "admin")
+	_, err = s.CreateUserWithPassword("arcane", "arcane-admin", "admin@localhost", "admin", "Arcane Admin")
 	if err != nil {
 		return fmt.Errorf("failed to create default admin user: %w", err)
 	}

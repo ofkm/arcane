@@ -1,5 +1,6 @@
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
+import { invalidateAll } from '$app/navigation';
 import BaseAPIService from './api/api-service';
 
 export interface LoginCredentials {
@@ -18,6 +19,12 @@ export class AuthService extends BaseAPIService {
 	async login(credentials: LoginCredentials): Promise<User> {
 		try {
 			const response = await this.api.post('/auth/login', credentials);
+
+			// Invalidate all data to trigger refetch of layout data
+			if (browser) {
+				await invalidateAll();
+			}
+
 			return response.data.data;
 		} catch (error: any) {
 			const errorMessage = error.response?.data?.error || 'Login failed';
@@ -31,8 +38,9 @@ export class AuthService extends BaseAPIService {
 		} catch (error) {
 			console.error('Logout error:', error);
 		} finally {
-			// Always redirect to login even if logout request fails
+			// Invalidate all data and redirect to login
 			if (browser) {
+				await invalidateAll();
 				goto('/auth/login');
 			}
 		}

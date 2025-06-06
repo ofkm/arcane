@@ -5,7 +5,7 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { AlertCircle, LogIn, Lock, User } from '@lucide/svelte';
 	import type { PageData } from './$types';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
 	import { authService } from '$lib/services/auth-service';
 
@@ -42,8 +42,11 @@
 		try {
 			await authService.login({ username, password });
 
+			// Force invalidation of all data to ensure fresh user data
+			await invalidateAll();
+
 			// Redirect to the intended page or dashboard
-			const redirectTo = data.redirectTo || '/';
+			const redirectTo = data.redirectTo || '/dashboard';
 			goto(redirectTo);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Login failed';
