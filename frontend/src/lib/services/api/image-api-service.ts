@@ -137,11 +137,21 @@ export default class ImageAPIService extends BaseAPIService {
 	}
 
 	async checkMaturity(imageId: string) {
-		return this.handleResponse(this.api.get(`/images/${imageId}/maturity`));
+		return this.handleResponse(this.api.get(`/images/maturity/${imageId}`));
+	}
+
+	async checkMaturityBatch(imageIds: string[]) {
+		// Use the first image ID for the endpoint URL since the backend expects it
+		if (!imageIds || imageIds.length === 0) {
+			throw new Error('No image IDs provided for batch check');
+		}
+
+		const firstId = imageIds[0];
+		return this.handleResponse(this.api.post(`/images/${firstId}/maturity`, { imageIds }));
 	}
 
 	async updateMaturity(imageId: string, maturityData: any) {
-		return this.handleResponse(this.api.put(`/images/${imageId}/maturity`, maturityData));
+		return this.handleResponse(this.api.put(`/images/maturity/${imageId}`, maturityData));
 	}
 
 	async getVulnerabilities(imageId: string) {

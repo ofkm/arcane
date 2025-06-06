@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -34,7 +35,7 @@ func main() {
 
 	// Initialize database
 	log.Printf("🔌 Connecting to database...")
-	db, err := database.Initialize(cfg.DatabaseURL)
+	db, err := database.Initialize(cfg.DatabaseURL, cfg.Environment)
 	if err != nil {
 		log.Fatal("❌ Failed to initialize database:", err)
 	}
@@ -53,11 +54,24 @@ func main() {
 	agentService := services.NewAgentService(db)
 	settingsService := services.NewSettingsService(db)
 	deploymentService := services.NewDeploymentService(db)
-	containerService := services.NewContainerService(db)
-	imageService := services.NewImageService(db)
+	dockerClientService := services.NewDockerClientService(db)
+
+	// Pass DockerClientService to services that need Docker
+	containerService := services.NewContainerService(db, dockerClientService)
+	imageService := services.NewImageService(db, dockerClientService)
 	volumeService := services.NewVolumeService(db)
 	networkService := services.NewNetworkService(db)
 	imageMaturityService := services.NewImageMaturityService(db)
+
+	// Test Docker connection
+	log.Println("🐳 Testing Docker connection...")
+	dockerClient, err := dockerClientService.CreateConnection(context.Background())
+	if err != nil {
+		log.Printf("⚠️ Failed to connect to Docker: %v", err)
+	} else {
+		log.Printf("✅ Docker connection successful - Client version: %s", dockerClient.ClientVersion())
+		dockerClient.Close() // Don't forget to close the test connection
+	}
 
 	userService.CreateDefaultAdmin()
 
@@ -124,6 +138,7 @@ func main() {
 		ImageMaturity: imageMaturityService,
 		Auth:          authService,
 		Oidc:          oidcService,
+		Docker:        dockerClientService,
 	}
 
 	// Setup API routes SECOND

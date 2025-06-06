@@ -65,8 +65,25 @@
 	const enhancedImages = $derived(
 		images.map((image) => {
 			const storedMaturity = $maturityStore.maturityData[image.Id];
+
+			// Parse repo and tag from RepoTags
+			let repo = '<none>';
+			let tag = '<none>';
+			if (image.RepoTags && image.RepoTags.length > 0) {
+				const repoTag = image.RepoTags[0];
+				if (repoTag.includes(':')) {
+					[repo, tag] = repoTag.split(':');
+				} else {
+					repo = repoTag;
+					tag = 'latest';
+				}
+			}
+
 			return {
 				...image,
+				repo,
+				tag,
+				inUse: image.Containers > 0, // Determine if in use based on container count
 				maturity: storedMaturity || image.maturity
 			};
 		})
@@ -79,7 +96,7 @@
 	});
 
 	async function loadMaturityData() {
-		const visibleImageIds = images
+		const visibleImageIds = enhancedImages
 			.filter((img) => img.repo !== '<none>' && img.tag !== '<none>')
 			.slice(0, 20)
 			.map((img) => img.Id);
@@ -226,7 +243,7 @@
 	async function handlePruneImages() {
 		isLoading.pruning = true;
 		await handleApiResultWithCallbacks({
-			result: await tryCatch(imageApi.prune()),
+			result: await tryCatch(imageApi.prune() as Promise<{ message?: string }>),
 			message: 'Failed to Prune Images',
 			setLoadingState: (value) => (isLoading.pruning = value),
 			onSuccess: async (result: { message?: string }) => {

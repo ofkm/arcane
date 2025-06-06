@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -56,15 +57,30 @@ type Image struct {
 	Created     time.Time   `json:"created" gorm:"not null"`
 
 	// Additional fields for enhanced functionality
-	Repo  string `json:"repo" gorm:"column:repo"`
-	Tag   string `json:"tag" gorm:"column:tag"`
+	Repo  string `json:"repo" gorm:"column:repo;index"` // Add index for faster lookups
+	Tag   string `json:"tag" gorm:"column:tag;index"`   // Add index for faster lookups
 	InUse bool   `json:"inUse" gorm:"column:in_use;default:false"`
+
+	// Relationship with ImageMaturityRecord
+	MaturityRecord *ImageMaturityRecord `json:"maturityRecord,omitempty" gorm:"foreignKey:ID;references:ID"`
 
 	BaseModel
 }
 
 func (Image) TableName() string {
 	return "images_table"
+}
+
+// Helper methods for Image
+func (i *Image) GetFullName() string {
+	if i.Repo == "<none>" || i.Tag == "<none>" {
+		return i.ID[:12] // Return short ID for untagged images
+	}
+	return fmt.Sprintf("%s:%s", i.Repo, i.Tag)
+}
+
+func (i *Image) IsTagged() bool {
+	return i.Repo != "<none>" && i.Tag != "<none>"
 }
 
 // Volume represents a Docker volume

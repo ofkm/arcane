@@ -1,5 +1,4 @@
 import BaseAPIService from './api-service';
-import type Docker from 'dockerode';
 
 export default class ContainerAPIService extends BaseAPIService {
 	async list(all: boolean = false) {
@@ -11,7 +10,7 @@ export default class ContainerAPIService extends BaseAPIService {
 	}
 
 	async inspect(id: string) {
-		return this.handleResponse(this.api.get(`/containers/${id}/inspect`));
+		return this.handleResponse(this.api.get(`/containers/${id}`));
 	}
 
 	async start(id: string) {

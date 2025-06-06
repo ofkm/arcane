@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -18,7 +19,7 @@ type DB struct {
 	*gorm.DB
 }
 
-func Initialize(databaseURL string) (*DB, error) {
+func Initialize(databaseURL string, environment string) (*DB, error) {
 	var dialector gorm.Dialector
 
 	if strings.HasPrefix(databaseURL, "sqlite://") || strings.HasPrefix(databaseURL, "sqlite3://") {
@@ -36,8 +37,28 @@ func Initialize(databaseURL string) (*DB, error) {
 		return nil, fmt.Errorf("unsupported database type in URL: %s", databaseURL)
 	}
 
+	var logLevel logger.LogLevel
+	switch environment {
+	case "development":
+		logLevel = logger.Info // Show all SQL queries and info
+	case "production":
+		logLevel = logger.Silent // Show nothing
+	default:
+		logLevel = logger.Warn // Show warnings and errors only
+	}
+
+	gormLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold:             time.Second,                  // Slow SQL threshold
+			LogLevel:                  logLevel,                     // Log level based on environment
+			IgnoreRecordNotFoundError: true,                         // Ignore ErrRecordNotFound error for logger
+			Colorful:                  environment == "development", // Enable color in development
+		},
+	)
+
 	db, err := gorm.Open(dialector, &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: gormLogger,
 		NowFunc: func() time.Time {
 			return time.Now().UTC()
 		},

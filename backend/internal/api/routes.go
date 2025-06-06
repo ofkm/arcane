@@ -18,6 +18,7 @@ type Services struct {
 	ImageMaturity *services.ImageMaturityService
 	Auth          *services.AuthService
 	Oidc          *services.OidcService
+	Docker        *services.DockerClientService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services) {
@@ -201,28 +202,30 @@ func setupSystemRoutes(api *gin.RouterGroup, services *Services) {
 
 func setupContainerRoutes(api *gin.RouterGroup, services *Services) {
 	containers := api.Group("/containers")
-	// containers.Use(AuthMiddleware(services.Auth)) // Add when ready
+	containers.Use(AuthMiddleware(services.Auth))
 
-	containers.GET("", func(c *gin.Context) {
-		// For now, return empty array until we implement container service
-		c.JSON(200, gin.H{
-			"success": true,
-			"data":    []interface{}{},
-		})
-	})
+	containerHandler := NewContainerHandler(services.Container)
+
+	containers.GET("", containerHandler.List)
+	containers.GET("/:id", containerHandler.GetByID)
+	containers.POST("/:id/start", containerHandler.Start)
+	containers.POST("/:id/stop", containerHandler.Stop)
+	containers.POST("/:id/restart", containerHandler.Restart)
+	containers.GET("/:id/logs", containerHandler.GetLogs)
 }
 
 func setupImageRoutes(api *gin.RouterGroup, services *Services) {
 	images := api.Group("/images")
-	// images.Use(AuthMiddleware(services.Auth)) // Add when ready
+	images.Use(AuthMiddleware(services.Auth))
 
-	images.GET("", func(c *gin.Context) {
-		// For now, return empty array until we implement image service
-		c.JSON(200, gin.H{
-			"success": true,
-			"data":    []interface{}{},
-		})
-	})
+	imageHandler := NewImageHandler(services.Image)
+
+	images.GET("", imageHandler.List)
+	images.GET("/:id", imageHandler.GetByID)
+	images.DELETE("/:id", imageHandler.Remove)
+	images.POST("/pull", imageHandler.Pull)
+	images.POST("/prune", imageHandler.Prune)
+	images.GET("/:id/history", imageHandler.GetHistory)
 }
 
 func setupVolumeRoutes(api *gin.RouterGroup, services *Services) {

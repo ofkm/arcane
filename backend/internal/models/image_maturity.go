@@ -1,14 +1,17 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type ImageMaturityRecord struct {
-	ID                string     `json:"id" gorm:"primaryKey;type:text"`
-	Repository        string     `json:"repository" gorm:"not null"`
-	Tag               string     `json:"tag" gorm:"not null"`
+	ID                string     `json:"id" gorm:"primaryKey;type:text"`   // Docker Image ID
+	Repository        string     `json:"repository" gorm:"not null;index"` // e.g., "nginx"
+	Tag               string     `json:"tag" gorm:"not null;index"`        // e.g., "latest"
 	CurrentVersion    string     `json:"currentVersion" gorm:"column:current_version"`
 	LatestVersion     *string    `json:"latestVersion,omitempty" gorm:"column:latest_version"`
-	Status            string     `json:"status" gorm:"not null"` // 'Matured', 'Not Matured', 'Unknown'
+	Status            string     `json:"status" gorm:"not null;index"` // 'Matured', 'Not Matured', 'Unknown'
 	UpdatesAvailable  bool       `json:"updatesAvailable" gorm:"column:updates_available;default:false"`
 	CurrentImageDate  *time.Time `json:"currentImageDate,omitempty" gorm:"column:current_image_date"`
 	LatestImageDate   *time.Time `json:"latestImageDate,omitempty" gorm:"column:latest_image_date"`
@@ -19,6 +22,9 @@ type ImageMaturityRecord struct {
 	CheckCount        int        `json:"checkCount" gorm:"column:check_count;default:0"`
 	LastError         *string    `json:"lastError,omitempty" gorm:"column:last_error"`
 	ResponseTimeMs    *int       `json:"responseTimeMs,omitempty" gorm:"column:response_time_ms"`
+
+	// Relationship with Image
+	Image *Image `json:"image,omitempty" gorm:"foreignKey:ID;references:ID"`
 
 	BaseModel
 }
@@ -49,15 +55,12 @@ func (i *ImageMaturityRecord) IsMatured() bool {
 	return i.Status == ImageStatusMatured
 }
 
-func (i *ImageMaturityRecord) HasUpdates() bool {
+func (i *ImageMaturityRecord) NeedsUpdate() bool {
 	return i.UpdatesAvailable
 }
 
 func (i *ImageMaturityRecord) GetFullImageName() string {
-	if i.Tag != "" && i.Tag != "<none>" {
-		return i.Repository + ":" + i.Tag
-	}
-	return i.Repository
+	return fmt.Sprintf("%s:%s", i.Repository, i.Tag)
 }
 
 func (i *ImageMaturityRecord) GetDaysSinceLastCheck() int {

@@ -228,3 +228,41 @@ func (s *ImageMaturityService) SetUpdateAvailable(ctx context.Context, imageID s
 
 	return nil
 }
+
+// Add method to get maturity data with image info
+func (s *ImageMaturityService) GetImageMaturityWithImage(ctx context.Context, imageID string) (*models.ImageMaturityRecord, error) {
+	var record models.ImageMaturityRecord
+	if err := s.db.WithContext(ctx).Preload("Image").Where("id = ?", imageID).First(&record).Error; err != nil {
+		return nil, fmt.Errorf("failed to get image maturity: %w", err)
+	}
+	return &record, nil
+}
+
+// Add method to process all images for maturity checking
+func (s *ImageMaturityService) ProcessImagesForMaturityCheck(ctx context.Context, imageService *ImageService) error {
+	// Get images older than 24 hours since last check
+	images, err := imageService.GetImagesNeedingMaturityCheck(ctx, 24*time.Hour)
+	if err != nil {
+		return fmt.Errorf("failed to get images needing check: %w", err)
+	}
+
+	for _, image := range images {
+		// Process each image for maturity checking
+		maturityRecord := &models.ImageMaturityRecord{
+			ID:          image.ID,
+			Repository:  image.Repo,
+			Tag:         image.Tag,
+			Status:      models.ImageStatusChecking,
+			LastChecked: time.Now(),
+		}
+
+		// Your maturity checking logic here...
+		// This would involve checking registries, comparing versions, etc.
+
+		if err := imageService.UpdateImageMaturity(ctx, image.ID, maturityRecord); err != nil {
+			continue // Log error but continue processing other images
+		}
+	}
+
+	return nil
+}
