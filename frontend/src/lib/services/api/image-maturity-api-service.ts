@@ -53,73 +53,108 @@ export interface ManualCheckResult {
 	};
 }
 
-export default class ImageAPIService extends BaseAPIService {
-	async remove(id: string) {
-		const res = await this.api.delete(`/images/${id}`);
-		return res.data;
-	}
-
-	async pull(imageRef: string, tag: string) {
-		const encodedImageRef = encodeURIComponent(imageRef);
-		const res = await this.api.post(`/images/pull/${encodedImageRef}`, { tag });
-		return res.data;
-	}
-
-	async prune() {
-		const res = await this.api.post(`/images/prune`);
-		return res.data;
-	}
-
-	async list() {
-		const res = await this.api.get('/images');
-		return res.data;
-	}
-
-	// Maturity-related methods
+// Fixed class name - should be ImageMaturityAPIService not ImageAPIService
+export default class ImageMaturityAPIService extends BaseAPIService {
+	// Get maturity record for a specific image
 	async checkMaturity(id: string): Promise<ImageMaturity> {
-		const res = await this.api.get(`/images/${id}/maturity`);
+		const res = await this.api.get(`/images/maturity/${id}`);
 		return res.data;
 	}
 
-	async checkMaturityBatch(imageIds: string[]) {
-		if (!imageIds || imageIds.length === 0) {
-			throw new Error('No image IDs provided for batch check');
-		}
-
-		const firstId = imageIds[0];
-		const res = await this.api.post(`/images/${firstId}/maturity`, { imageIds });
+	// Get all maturity records
+	async listMaturityRecords(): Promise<ImageMaturityRecord[]> {
+		const res = await this.api.get('/images/maturity');
 		return res.data;
 	}
 
-	async getMaturityStats() {
+	// Get maturity statistics
+	async getMaturityStats(): Promise<MaturityStats> {
 		const res = await this.api.get('/images/maturity/stats');
 		return res.data;
 	}
 
-	async triggerManualMaturityCheck(force: boolean = false) {
-		const res = await this.api.post('/images/maturity/manual-check', { force });
-		return res.data;
-	}
-
-	async getImagesWithUpdates() {
+	// Get images with available updates
+	async getImagesWithUpdates(): Promise<ImageMaturityRecord[]> {
 		const res = await this.api.get('/images/maturity/updates');
 		return res.data;
 	}
 
-	async markImageAsMatured(imageId: string, daysSinceCreation: number) {
-		const res = await this.api.patch(`/images/${imageId}/maturity/mark-matured`, {
-			daysSinceCreation
+	// Get images needing check
+	async getImagesNeedingCheck(maxAge: number = 1440, limit: number = 100): Promise<ImageMaturityRecord[]> {
+		const res = await this.api.get('/images/maturity/needs-check', {
+			params: { maxAge, limit }
 		});
 		return res.data;
 	}
 
-	async invalidateImageMaturity(imageIds: string[]) {
-		const res = await this.api.post('/images/maturity/invalidate', { imageIds });
+	// Trigger maturity check for all images
+	async triggerMaturityCheck(): Promise<{ success: boolean; message: string }> {
+		const res = await this.api.post('/images/maturity/check');
 		return res.data;
 	}
 
-	async cleanupOrphanedMaturityRecords(existingImageIds: string[]) {
-		const res = await this.api.post('/images/maturity/cleanup', { existingImageIds });
+	// Get maturity records by repository
+	async getMaturityByRepository(repository: string): Promise<ImageMaturityRecord[]> {
+		const encodedRepository = encodeURIComponent(repository);
+		const res = await this.api.get(`/images/maturity/repository/${encodedRepository}`);
 		return res.data;
+	}
+
+	// Legacy methods - keeping for backward compatibility but marking as deprecated
+
+	/**
+	 * @deprecated Use triggerMaturityCheck() instead
+	 */
+	async triggerManualMaturityCheck(force: boolean = false): Promise<ManualCheckResult> {
+		console.warn('triggerManualMaturityCheck is deprecated, use triggerMaturityCheck instead');
+		const res = await this.api.post('/images/maturity/check', { force });
+		return res.data;
+	}
+
+	/**
+	 * @deprecated Use triggerMaturityCheck() instead - batch checking is now handled automatically
+	 */
+	async checkMaturityBatch(imageIds: string[]): Promise<BatchMaturityResult> {
+		console.warn('checkMaturityBatch is deprecated, use triggerMaturityCheck for all images');
+		if (!imageIds || imageIds.length === 0) {
+			throw new Error('No image IDs provided for batch check');
+		}
+
+		// Fallback: trigger general maturity check
+		const result = await this.triggerMaturityCheck();
+		return {
+			success: result.success,
+			results: {},
+			errors: {},
+			stats: {
+				total: imageIds.length,
+				success: result.success ? imageIds.length : 0,
+				failed: result.success ? 0 : imageIds.length
+			}
+		};
+	}
+
+	/**
+	 * @deprecated This endpoint doesn't exist in the backend
+	 */
+	async markImageAsMatured(imageId: string, daysSinceCreation: number) {
+		console.warn('markImageAsMatured is not implemented in the backend');
+		throw new Error('markImageAsMatured endpoint is not available');
+	}
+
+	/**
+	 * @deprecated This endpoint doesn't exist in the backend
+	 */
+	async invalidateImageMaturity(imageIds: string[]) {
+		console.warn('invalidateImageMaturity is not implemented in the backend');
+		throw new Error('invalidateImageMaturity endpoint is not available');
+	}
+
+	/**
+	 * @deprecated This endpoint doesn't exist in the backend
+	 */
+	async cleanupOrphanedMaturityRecords(existingImageIds: string[]) {
+		console.warn('cleanupOrphanedMaturityRecords is not implemented in the backend');
+		throw new Error('cleanupOrphanedMaturityRecords endpoint is not available');
 	}
 }

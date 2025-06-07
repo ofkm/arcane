@@ -3,7 +3,7 @@
 	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, CopyX, Ellipsis, ScanSearch, Funnel, RefreshCw } from '@lucide/svelte';
+	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, Ellipsis, ScanSearch, Funnel } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -19,11 +19,11 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { settingsStore } from '$lib/stores/settings-store';
-	import MaturityItem from '$lib/components/maturity-item.svelte';
-	import { onMount, onDestroy } from 'svelte';
-	import { maturityStore } from '$lib/stores/maturity-store';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
+	import MaturityItem from '$lib/components/maturity-item.svelte';
+	import { maturityStore, triggerBulkMaturityCheck, enhanceImagesWithMaturity, loadImageMaturityBatch } from '$lib/stores/maturity-store';
+	import { onMount } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 	let images = $derived(data.images || []);
@@ -56,69 +56,68 @@
 
 	let isPullDialogOpen = $state(false);
 	let pullProgress = $state(0);
-
 	let isConfirmPruneDialogOpen = $state(false);
 
 	const totalImages = $derived(images?.length || 0);
 	const totalSize = $derived(images?.reduce((acc, img) => acc + (img.Size || 0), 0) || 0);
 
-	const enhancedImages = $derived(
-		images.map((image) => {
-			const storedMaturity = $maturityStore.maturityData[image.Id];
-
-			// Parse repo and tag from RepoTags
-			let repo = '<none>';
-			let tag = '<none>';
-			if (image.RepoTags && image.RepoTags.length > 0) {
-				const repoTag = image.RepoTags[0];
-				if (repoTag.includes(':')) {
-					[repo, tag] = repoTag.split(':');
-				} else {
-					repo = repoTag;
-					tag = 'latest';
-				}
-			}
-
-			return {
-				...image,
-				repo,
-				tag,
-				inUse: image.Containers > 0, // Determine if in use based on container count
-				maturity: storedMaturity || image.maturity
-			};
-		})
-	);
+	// Use the maturity store to enhance images
+	const enhancedImages = $derived(enhanceImagesWithMaturity(images, $maturityStore.maturityData));
 
 	const filteredImages = $derived(enhancedImages.filter((img) => (imageFilters.showUsed && img.inUse) || (imageFilters.showUnused && !img.inUse)) as EnhancedImageInfo[]);
 
-	onMount(async () => {
-		await loadMaturityData();
+	// Load maturity data when images change
+	$effect(() => {
+		if (images && images.length > 0) {
+			loadImagesMaturity();
+		}
 	});
 
-	async function loadMaturityData() {
-		const visibleImageIds = enhancedImages
-			.filter((img) => img.repo !== '<none>' && img.tag !== '<none>')
-			.slice(0, 20)
+	async function loadImagesMaturity() {
+		// Get images that need maturity checking (have valid repo/tags)
+		const imageIds = images
+			.filter((img) => {
+				if (!img.RepoTags || img.RepoTags.length === 0) return false;
+				const repoTag = img.RepoTags[0];
+				return repoTag !== '<none>:<none>' && repoTag.includes(':');
+			})
 			.map((img) => img.Id);
 
-		if (visibleImageIds.length === 0) return;
+		if (imageIds.length > 0) {
+			await loadImageMaturityBatch(imageIds);
+		}
+	}
 
+	async function handleTriggerBulkMaturityCheck() {
 		isLoading.checking = true;
 		try {
-			const BATCH_SIZE = 5;
-			for (let i = 0; i < visibleImageIds.length; i += BATCH_SIZE) {
-				const batch = visibleImageIds.slice(i, i + BATCH_SIZE);
-				await imageApi.checkMaturityBatch(batch);
-				if (i + BATCH_SIZE < visibleImageIds.length) {
-					await new Promise((resolve) => setTimeout(resolve, 50));
-				}
+			const result = await triggerBulkMaturityCheck();
+
+			if (result.success) {
+				toast.success(result.message);
+				// Give the backend a moment to process and save the results
+				setTimeout(async () => {
+					await invalidateAll();
+				}, 1000);
+			} else {
+				toast.error(result.message);
 			}
 		} catch (error) {
-			console.error('Error loading maturity data:', error);
+			console.error('Bulk maturity check error:', error);
+			toast.error('Failed to trigger maturity check');
 		} finally {
 			isLoading.checking = false;
 		}
 	}
+
+	// Sync loading state with maturity store checking state
+	$effect(() => {
+		if ($maturityStore.isChecking && !isLoading.checking) {
+			isLoading.checking = true;
+		} else if (!$maturityStore.isChecking && isLoading.checking) {
+			// Don't immediately set to false, let the function handle it
+		}
+	});
 
 	async function handlePullImageSubmit(event: { imageRef: string; tag?: string; platform?: string; registryUrl?: string }) {
 		const { imageRef, tag = 'latest', platform, registryUrl } = event;
@@ -196,8 +195,7 @@
 	async function handleDeleteSelected() {
 		openConfirmDialog({
 			title: 'Delete Selected Images',
-			message: `Are you sure you want to delete ${selectedIds.length} selected image(s)? This action cannot be undone. Images currently used by containers will not be deleted.
-`,
+			message: `Are you sure you want to delete ${selectedIds.length} selected image(s)? This action cannot be undone. Images currently used by containers will not be deleted.`,
 			confirm: {
 				label: 'Delete',
 				destructive: true,
@@ -298,70 +296,6 @@
 			}
 		});
 	}
-
-	async function triggerManualMaturityCheck(force = false) {
-		isLoading.checking = true;
-		try {
-			const response = await fetch('/api/images/maturity', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ force })
-			});
-
-			const result = await response.json();
-
-			if (result.success) {
-				toast.success(result.message);
-				if (result.stats) {
-					console.log('Maturity check stats:', result.stats);
-				}
-				await invalidateAll();
-			} else {
-				toast.error(`Manual check failed: ${result.error}`);
-			}
-		} catch (error) {
-			console.error('Manual maturity check error:', error);
-			toast.error('Failed to trigger manual maturity check');
-		} finally {
-			isLoading.checking = false;
-		}
-	}
-
-	let observer: IntersectionObserver | null = null;
-
-	onMount(() => {
-		observer = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting) {
-						const imageId = entry.target.getAttribute('data-image-id');
-						if (imageId) {
-							loadImageMaturity(imageId);
-						}
-					}
-				});
-			},
-			{ rootMargin: '200px' }
-		);
-
-		setTimeout(() => {
-			document.querySelectorAll('[data-image-id]').forEach((el) => {
-				observer?.observe(el);
-			});
-		}, 100);
-	});
-
-	onDestroy(() => {
-		observer?.disconnect();
-	});
-
-	async function loadImageMaturity(imageId: string) {
-		try {
-			await imageApi.checkMaturity(imageId);
-		} catch (error) {
-			console.error(`Error loading maturity for image ${imageId}:`, error);
-		}
-	}
 </script>
 
 <div class="space-y-6">
@@ -379,6 +313,7 @@
 			<Alert.Description>{error}</Alert.Description>
 		</Alert.Root>
 	{/if}
+
 	<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 		<Card.Root>
 			<Card.Content class="p-4 flex items-center justify-between">
@@ -449,7 +384,7 @@
 						{/if}
 						<ArcaneButton action="remove" label="Prune Unused" onClick={() => (isConfirmPruneDialogOpen = true)} loading={isLoading.pruning} loadingLabel="Pruning..." disabled={isLoading.pruning} />
 						<ArcaneButton action="pull" label="Pull Image" onClick={() => (isPullDialogOpen = true)} loading={isLoading.pulling} loadingLabel="Pulling..." disabled={isLoading.pulling} />
-						<ArcaneButton action="inspect" label="Check Updates" onClick={() => triggerManualMaturityCheck(true)} loading={isLoading.checking} loadingLabel="Checking..." disabled={isLoading.checking} />
+						<ArcaneButton action="inspect" label="Check Updates" onClick={() => handleTriggerBulkMaturityCheck()} loading={isLoading.checking} loadingLabel="Checking..." disabled={isLoading.checking} />
 					</div>
 				</div>
 			</Card.Header>
@@ -482,10 +417,10 @@
 					bind:selectedIds
 				>
 					{#snippet rows({ item })}
-						<Table.Cell data-image-id={item.Id}>
+						<Table.Cell>
 							<div class="flex items-center gap-2">
 								<div class="flex items-center flex-1">
-									<MaturityItem maturity={item.maturity} />
+									<MaturityItem maturity={item.maturity} imageId={item.Id} repo={item.repo} tag={item.tag} isLoadingInBackground={$maturityStore.isChecking} />
 									<a class="font-medium hover:underline shrink truncate" href="/images/{item.Id}/">
 										{item.repo}
 									</a>

@@ -6,12 +6,12 @@ import (
 )
 
 type ImageMaturityRecord struct {
-	ID                string     `json:"id" gorm:"primaryKey;type:text"`   // Docker Image ID
-	Repository        string     `json:"repository" gorm:"not null;index"` // e.g., "nginx"
-	Tag               string     `json:"tag" gorm:"not null;index"`        // e.g., "latest"
+	ID                string     `json:"id" gorm:"primaryKey;type:text"`
+	Repository        string     `json:"repository" gorm:"not null;index"`
+	Tag               string     `json:"tag" gorm:"not null;index"`
 	CurrentVersion    string     `json:"currentVersion" gorm:"column:current_version"`
 	LatestVersion     *string    `json:"latestVersion,omitempty" gorm:"column:latest_version"`
-	Status            string     `json:"status" gorm:"not null;index"` // 'Matured', 'Not Matured', 'Unknown'
+	Status            string     `json:"status" gorm:"not null;index"`
 	UpdatesAvailable  bool       `json:"updatesAvailable" gorm:"column:updates_available;default:false"`
 	CurrentImageDate  *time.Time `json:"currentImageDate,omitempty" gorm:"column:current_image_date"`
 	LatestImageDate   *time.Time `json:"latestImageDate,omitempty" gorm:"column:latest_image_date"`
@@ -23,13 +23,11 @@ type ImageMaturityRecord struct {
 	LastError         *string    `json:"lastError,omitempty" gorm:"column:last_error"`
 	ResponseTimeMs    *int       `json:"responseTimeMs,omitempty" gorm:"column:response_time_ms"`
 
-	// Relationship with Image
 	Image *Image `json:"image,omitempty" gorm:"foreignKey:ID;references:ID"`
 
 	BaseModel
 }
 
-// TableName sets the table name for GORM
 func (ImageMaturityRecord) TableName() string {
 	return "image_maturity_table"
 }
@@ -39,9 +37,9 @@ type ImageMaturity struct {
 	Date             string `json:"date"`
 	Status           string `json:"status"`
 	UpdatesAvailable bool   `json:"updatesAvailable"`
+	LatestVersion    string `json:"latestVersion,omitempty"`
 }
 
-// Constants for image maturity status
 const (
 	ImageStatusMatured    = "Matured"
 	ImageStatusNotMatured = "Not Matured"
@@ -50,7 +48,6 @@ const (
 	ImageStatusError      = "Error"
 )
 
-// Helper methods for the model
 func (i *ImageMaturityRecord) IsMatured() bool {
 	return i.Status == ImageStatusMatured
 }

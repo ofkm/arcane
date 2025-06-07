@@ -1,20 +1,56 @@
 <script lang="ts">
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
-	import { CircleCheck, CircleFadingArrowUp, CircleArrowUp, Loader2, Clock, Package, Calendar, AlertTriangle } from '@lucide/svelte';
+	import { CircleCheck, CircleFadingArrowUp, CircleArrowUp, Loader2, Clock, Package, Calendar, AlertTriangle, RefreshCw, ArrowRight } from '@lucide/svelte';
+	import ImageMaturityAPIService from '$lib/services/api/image-maturity-api-service';
+	import { toast } from 'svelte-sonner';
+	import { invalidateAll } from '$app/navigation';
 
 	interface MaturityData {
 		updatesAvailable: boolean;
 		status: string;
 		version?: string;
 		date?: string;
+		latestVersion?: string; // Add this property
 	}
 
 	interface Props {
 		maturity?: MaturityData | undefined;
 		isLoadingInBackground?: boolean;
+		imageId: string;
+		repo?: string;
+		tag?: string;
 	}
 
-	let { maturity = undefined, isLoadingInBackground = false }: Props = $props();
+	let { maturity = undefined, isLoadingInBackground = false, imageId, repo, tag }: Props = $props();
+
+	const imageMaturityApi = new ImageMaturityAPIService();
+	let isChecking = $state(false);
+
+	// Check if image has valid repo/tag for checking
+	const canCheckMaturity = $derived(repo && tag && repo !== '<none>' && tag !== '<none>');
+
+	async function checkImageMaturity() {
+		if (!canCheckMaturity || isChecking) return;
+
+		isChecking = true;
+		try {
+			// Since the backend only has bulk check, we trigger that
+			const result = await imageMaturityApi.triggerMaturityCheck();
+
+			if (result.success) {
+				toast.success('Maturity check completed');
+				// Refresh the page to get updated data
+				await invalidateAll();
+			} else {
+				toast.error('Maturity check failed');
+			}
+		} catch (error) {
+			console.error('Error checking maturity:', error);
+			toast.error('Failed to check maturity');
+		} finally {
+			isChecking = false;
+		}
+	}
 
 	// Helper function to format the date more nicely
 	function formatDate(dateString: string | undefined): string {
@@ -27,7 +63,7 @@
 			if (isNaN(date.getTime())) return 'Unknown';
 
 			const now = new Date();
-			const diffTime = date.getTime() - now.getTime(); // Remove Math.abs()
+			const diffTime = date.getTime() - now.getTime();
 			const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 			const absDiffDays = Math.abs(diffDays);
 
@@ -46,55 +82,22 @@
 					const weeks = Math.floor(diffDays / 7);
 					return weeks === 1 ? 'In 1 week' : `In ${weeks} weeks`;
 				}
-
-				// More accurate month/year calculation for future dates
-				const futureDate = new Date(date);
-				const currentDate = new Date(now);
-
-				let monthsDiff = (futureDate.getFullYear() - currentDate.getFullYear()) * 12;
-				monthsDiff += futureDate.getMonth() - currentDate.getMonth();
-
-				if (monthsDiff < 12) {
-					return monthsDiff === 1 ? 'In 1 month' : `In ${monthsDiff} months`;
-				}
-
-				const yearsDiff = Math.floor(monthsDiff / 12);
-				const remainingMonths = monthsDiff % 12;
-
-				if (remainingMonths === 0) {
-					return yearsDiff === 1 ? 'In 1 year' : `In ${yearsDiff} years`;
-				} else {
-					return `In ${yearsDiff} years, ${remainingMonths} months`;
-				}
+				return 'Future';
 			}
 
-			// Past dates (diffTime < 0)
+			// Past dates
 			if (absDiffDays === 1) return 'Yesterday';
 			if (absDiffDays < 7) return `${absDiffDays} days ago`;
 			if (absDiffDays < 30) {
 				const weeks = Math.floor(absDiffDays / 7);
 				return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
 			}
-
-			// More accurate month/year calculation for past dates
-			const pastDate = new Date(date);
-			const currentDate = new Date(now);
-
-			let monthsDiff = (currentDate.getFullYear() - pastDate.getFullYear()) * 12;
-			monthsDiff += currentDate.getMonth() - pastDate.getMonth();
-
-			if (monthsDiff < 12) {
-				return monthsDiff === 1 ? '1 month ago' : `${monthsDiff} months ago`;
+			if (absDiffDays < 365) {
+				const months = Math.floor(absDiffDays / 30);
+				return months === 1 ? '1 month ago' : `${months} months ago`;
 			}
-
-			const yearsDiff = Math.floor(monthsDiff / 12);
-			const remainingMonths = monthsDiff % 12;
-
-			if (remainingMonths === 0) {
-				return yearsDiff === 1 ? '1 year ago' : `${yearsDiff} years ago`;
-			} else {
-				return `${yearsDiff} years, ${remainingMonths} months ago`;
-			}
+			const years = Math.floor(absDiffDays / 365);
+			return years === 1 ? '1 year ago' : `${years} years ago`;
 		} catch {
 			return 'Unknown';
 		}
@@ -120,12 +123,22 @@
 			return { level: 'None', color: 'text-green-500', description: 'Image is up to date' };
 		}
 
+		// If we have a latest version, include it in the description
+		let description = 'Stable update available';
+		if (maturity.latestVersion) {
+			description = `Update to ${maturity.latestVersion} available`;
+		}
+
 		if (maturity.status === 'Matured') {
-			return { level: 'Recommended', color: 'text-blue-500', description: 'Stable update available' };
+			return { level: 'Recommended', color: 'text-blue-500', description };
 		}
 
 		if (maturity.status === 'Not Matured') {
-			return { level: 'Optional', color: 'text-yellow-500', description: 'Recent update, may be unstable' };
+			return {
+				level: 'Optional',
+				color: 'text-yellow-500',
+				description: maturity.latestVersion ? `${maturity.latestVersion} available, but not yet matured` : 'Recent update, may be unstable'
+			};
 		}
 
 		return { level: 'Unknown', color: 'text-gray-500', description: 'Update status unclear' };
@@ -186,10 +199,21 @@
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-1.5 text-muted-foreground">
 								<Package class="size-3" />
-								<span>Version</span>
+								<span>Current</span>
 							</div>
 							<span class="font-mono font-medium">{maturity.version || 'Unknown'}</span>
 						</div>
+
+						<!-- Show latest version if updates are available -->
+						{#if maturity.updatesAvailable && maturity.latestVersion}
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-1.5 text-muted-foreground">
+									<ArrowRight class="size-3" />
+									<span>Latest</span>
+								</div>
+								<span class="font-mono font-medium text-blue-600 dark:text-blue-400">{maturity.latestVersion}</span>
+							</div>
+						{/if}
 
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-1.5 text-muted-foreground">
@@ -224,19 +248,27 @@
 						<div class="text-xs text-muted-foreground leading-relaxed">
 							{priority.description}
 						</div>
-						{#if maturity.updatesAvailable}
-							{#if priority.level === 'Optional'}
-								<div class="mt-1 text-xs text-amber-600 dark:text-amber-400 leading-relaxed">Consider waiting for the update to mature before upgrading.</div>
-							{:else if priority.level === 'Unknown'}
-								<div class="mt-1 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">Verify update stability before proceeding with upgrade.</div>
-							{/if}
-						{/if}
 					</div>
+
+					<!-- Re-check button -->
+					{#if canCheckMaturity}
+						<div class="pt-2 border-t border-border">
+							<button onclick={checkImageMaturity} disabled={isChecking} class="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed">
+								{#if isChecking}
+									<Loader2 class="size-3 animate-spin" />
+									Checking...
+								{:else}
+									<RefreshCw class="size-3" />
+									Re-check Updates
+								{/if}
+							</button>
+						</div>
+					{/if}
 				</div>
 			</Tooltip.Content>
 		</Tooltip.Root>
 	</Tooltip.Provider>
-{:else if isLoadingInBackground}
+{:else if isLoadingInBackground || isChecking}
 	<Tooltip.Provider>
 		<Tooltip.Root>
 			<Tooltip.Trigger>
@@ -259,10 +291,20 @@
 	<Tooltip.Provider>
 		<Tooltip.Root>
 			<Tooltip.Trigger>
-				<span class="inline-flex items-center justify-center mr-2 opacity-30 size-4">
-					<div class="w-4 h-4 rounded-full border-2 border-gray-400 border-dashed flex items-center justify-center">
-						<div class="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-					</div>
+				<span class="inline-flex items-center justify-center mr-2 size-4">
+					{#if canCheckMaturity}
+						<button onclick={checkImageMaturity} disabled={isChecking} class="w-4 h-4 rounded-full border-2 border-gray-400 border-dashed flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors disabled:cursor-not-allowed group">
+							{#if isChecking}
+								<Loader2 class="w-2 h-2 text-blue-400 animate-spin" />
+							{:else}
+								<div class="w-1.5 h-1.5 bg-gray-400 rounded-full group-hover:bg-blue-400 transition-colors"></div>
+							{/if}
+						</button>
+					{:else}
+						<div class="w-4 h-4 rounded-full border-2 border-gray-400 border-dashed flex items-center justify-center opacity-30">
+							<div class="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+						</div>
+					{/if}
 				</span>
 			</Tooltip.Trigger>
 			<Tooltip.Content side="right" class="bg-popover text-popover-foreground border border-border shadow-lg p-3 max-w-[240px] relative tooltip-with-arrow" align="center">
@@ -272,7 +314,13 @@
 					</div>
 					<div>
 						<div class="text-sm font-medium">Status Unknown</div>
-						<div class="text-xs text-muted-foreground leading-relaxed">Unable to determine maturity status. Registry may be unavailable or rate-limited.</div>
+						<div class="text-xs text-muted-foreground leading-relaxed">
+							{#if canCheckMaturity}
+								Click to check for updates from registry.
+							{:else}
+								Unable to check maturity for images without proper tags.
+							{/if}
+						</div>
 					</div>
 				</div>
 			</Tooltip.Content>

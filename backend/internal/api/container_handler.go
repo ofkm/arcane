@@ -141,3 +141,37 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 		"message": "Container deleted successfully",
 	})
 }
+
+func (h *ContainerHandler) IsImageInUse(c *gin.Context) {
+	imageID := c.Param("id")
+	if imageID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Image ID is required",
+		})
+		return
+	}
+
+	// Check if any containers are using this image
+	containers, err := h.containerService.ListContainers(c.Request.Context(), true) // Include all containers
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to list containers: " + err.Error(),
+		})
+		return
+	}
+
+	inUse := false
+	for _, container := range containers {
+		if container.ImageID == imageID || container.Image == imageID {
+			inUse = true
+			break
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"inUse":   inUse,
+	})
+}

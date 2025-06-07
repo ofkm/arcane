@@ -15,15 +15,15 @@ import (
 )
 
 type ImageService struct {
-	db            *database.DB
-	dockerService *DockerClientService
+	db                   *database.DB
+	dockerService        *DockerClientService
+	imageMaturityService *ImageMaturityService
 }
 
 func NewImageService(db *database.DB, dockerService *DockerClientService) *ImageService {
 	return &ImageService{db: db, dockerService: dockerService}
 }
 
-// ListImages returns live Docker images, optionally syncing to database
 func (s *ImageService) ListImages(ctx context.Context) ([]image.Summary, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -36,13 +36,11 @@ func (s *ImageService) ListImages(ctx context.Context) ([]image.Summary, error) 
 		return nil, fmt.Errorf("failed to list Docker images: %w", err)
 	}
 
-	// Optionally sync to database for metadata tracking
 	go s.syncImagesToDatabase(ctx, images)
 
 	return images, nil
 }
 
-// GetImageByID gets live image info from Docker
 func (s *ImageService) GetImageByID(ctx context.Context, id string) (*image.InspectResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -58,7 +56,6 @@ func (s *ImageService) GetImageByID(ctx context.Context, id string) (*image.Insp
 	return &image, nil
 }
 
-// RemoveImage removes a Docker image
 func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -76,13 +73,11 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool) e
 		return fmt.Errorf("failed to remove image: %w", err)
 	}
 
-	// Remove from database if exists
 	s.db.WithContext(ctx).Delete(&models.Image{}, "id = ?", id)
 
 	return nil
 }
 
-// PullImage pulls a Docker image
 func (s *ImageService) PullImage(ctx context.Context, imageName string) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -96,13 +91,10 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string) error {
 	}
 	defer reader.Close()
 
-	// might want to stream the pull progress to the client
-	// For now, we'll just wait for completion
 	_, err = dockerClient.ImageInspect(ctx, imageName)
 	return err
 }
 
-// PruneImages removes unused Docker images
 func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.PruneReport, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -123,7 +115,6 @@ func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.P
 	return &report, nil
 }
 
-// GetImageHistory gets the history of a Docker image
 func (s *ImageService) GetImageHistory(ctx context.Context, id string) ([]image.HistoryResponseItem, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -139,7 +130,6 @@ func (s *ImageService) GetImageHistory(ctx context.Context, id string) ([]image.
 	return history, nil
 }
 
-// syncImagesToDatabase syncs Docker images to database for metadata tracking (async)
 func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []image.Summary) {
 	for _, di := range dockerImages {
 		imageModel := &models.Image{
@@ -150,7 +140,6 @@ func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []
 			Created:     time.Unix(di.Created, 0),
 		}
 
-		// Handle Labels - convert map[string]string to models.JSON
 		if di.Labels != nil {
 			labelsJSON := make(map[string]interface{})
 			for k, v := range di.Labels {
@@ -159,7 +148,6 @@ func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []
 			imageModel.Labels = models.JSON(labelsJSON)
 		}
 
-		// Parse repo and tag from RepoTags
 		if len(di.RepoTags) > 0 && di.RepoTags[0] != "" {
 			repoTag := di.RepoTags[0]
 			if strings.Contains(repoTag, ":") {
@@ -175,12 +163,10 @@ func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []
 			imageModel.Tag = "<none>"
 		}
 
-		// Upsert image record
 		s.db.WithContext(ctx).Where("id = ?", di.ID).FirstOrCreate(imageModel)
 	}
 }
 
-// Keep existing database methods for metadata operations
 func (s *ImageService) GetImageByIDFromDB(ctx context.Context, id string) (*models.Image, error) {
 	var image models.Image
 	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&image).Error; err != nil {
@@ -208,13 +194,11 @@ func (s *ImageService) GetImagesByRepository(ctx context.Context, repo string) (
 }
 
 func (s *ImageService) ListImagesWithMaturity(ctx context.Context) ([]*models.Image, error) {
-	// Get Docker images first to ensure we have latest data
 	_, err := s.ListImages(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sync Docker images: %w", err)
 	}
 
-	// Get images from database with maturity records
 	var images []*models.Image
 	if err := s.db.WithContext(ctx).Preload("MaturityRecord").Find(&images).Error; err != nil {
 		return nil, fmt.Errorf("failed to get images with maturity data: %w", err)
@@ -223,15 +207,12 @@ func (s *ImageService) ListImagesWithMaturity(ctx context.Context) ([]*models.Im
 	return images, nil
 }
 
-// Add method to create/update maturity record for an image
 func (s *ImageService) UpdateImageMaturity(ctx context.Context, imageID string, maturityData *models.ImageMaturityRecord) error {
-	// First ensure the image exists in our database
 	var image models.Image
 	if err := s.db.WithContext(ctx).Where("id = ?", imageID).First(&image).Error; err != nil {
 		return fmt.Errorf("image not found in database: %w", err)
 	}
 
-	// Update or create maturity record
 	maturityData.ID = imageID
 	if err := s.db.WithContext(ctx).Where("id = ?", imageID).FirstOrCreate(maturityData).Error; err != nil {
 		return fmt.Errorf("failed to update image maturity: %w", err)
@@ -240,14 +221,13 @@ func (s *ImageService) UpdateImageMaturity(ctx context.Context, imageID string, 
 	return nil
 }
 
-// Get images that need maturity checking
 func (s *ImageService) GetImagesNeedingMaturityCheck(ctx context.Context, olderThan time.Duration) ([]*models.Image, error) {
 	cutoff := time.Now().Add(-olderThan)
 
 	var images []*models.Image
 	query := s.db.WithContext(ctx).
 		Preload("MaturityRecord").
-		Where("repo != ? AND tag != ?", "<none>", "<none>"). // Only tagged images
+		Where("repo != ? AND tag != ?", "<none>", "<none>").
 		Where("id NOT IN (SELECT id FROM image_maturity_table WHERE last_checked > ?)", cutoff)
 
 	if err := query.Find(&images).Error; err != nil {
@@ -255,4 +235,50 @@ func (s *ImageService) GetImagesNeedingMaturityCheck(ctx context.Context, olderT
 	}
 
 	return images, nil
+}
+
+func (s *ImageService) GetImagesWithMaturity(ctx context.Context) ([]map[string]interface{}, error) {
+	images, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer images.Close()
+
+	dockerImages, err := images.ImageList(ctx, image.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list images: %w", err)
+	}
+
+	var result []map[string]interface{}
+
+	for _, img := range dockerImages {
+		imageData := map[string]interface{}{
+			"Id":          img.ID,
+			"ParentId":    img.ParentID,
+			"RepoTags":    img.RepoTags,
+			"RepoDigests": img.RepoDigests,
+			"Created":     img.Created,
+			"Size":        img.Size,
+			"VirtualSize": img.VirtualSize,
+			"SharedSize":  img.SharedSize,
+			"Labels":      img.Labels,
+			"Containers":  img.Containers,
+		}
+
+		if s.imageMaturityService != nil {
+			maturityRecord, err := s.imageMaturityService.GetImageMaturity(ctx, img.ID)
+			if err == nil {
+				imageData["maturity"] = map[string]interface{}{
+					"updatesAvailable": maturityRecord.UpdatesAvailable,
+					"status":           maturityRecord.Status,
+					"version":          maturityRecord.CurrentVersion,
+					"date":             maturityRecord.CurrentImageDate,
+				}
+			}
+		}
+
+		result = append(result, imageData)
+	}
+
+	return result, nil
 }

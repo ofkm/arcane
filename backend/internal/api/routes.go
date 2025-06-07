@@ -168,23 +168,15 @@ func setupDeploymentRoutes(api *gin.RouterGroup, services *Services) {
 func setupImageMaturityRoutes(api *gin.RouterGroup, services *Services) {
 	imageMaturity := api.Group("/images/maturity")
 
-	imageMaturityHandler := NewImageMaturityHandler(services.ImageMaturity)
+	imageMaturityHandler := NewImageMaturityHandler(services.ImageMaturity, services.Image)
 
-	// List and stats endpoints
 	imageMaturity.GET("", imageMaturityHandler.ListMaturityRecords)
 	imageMaturity.GET("/stats", imageMaturityHandler.GetMaturityStats)
 	imageMaturity.GET("/updates", imageMaturityHandler.GetImagesWithUpdates)
 	imageMaturity.GET("/needs-check", imageMaturityHandler.GetImagesNeedingCheck)
-
-	// Batch operations
-	imageMaturity.POST("/check", imageMaturityHandler.CheckMaturityBatch)
-	imageMaturity.POST("/cleanup", imageMaturityHandler.CleanupOrphanedRecords)
-
-	// Individual image operations
+	imageMaturity.POST("/check", imageMaturityHandler.TriggerMaturityCheck)
+	imageMaturity.GET("/repository/:repository", imageMaturityHandler.GetMaturityByRepository)
 	imageMaturity.GET("/:imageId", imageMaturityHandler.GetImageMaturity)
-	imageMaturity.POST("/:imageId", imageMaturityHandler.SetImageMaturity)
-	imageMaturity.PUT("/:imageId/status", imageMaturityHandler.UpdateCheckStatus)
-	imageMaturity.POST("/:imageId/mark-matured", imageMaturityHandler.MarkAsMatured)
 }
 
 func setupSystemRoutes(api *gin.RouterGroup, dockerService *services.DockerClientService) {
@@ -210,13 +202,14 @@ func setupContainerRoutes(api *gin.RouterGroup, services *Services) {
 	containers.POST("/:id/restart", containerHandler.Restart)
 	containers.DELETE("/:id", containerHandler.Delete)
 	containers.GET("/:id/logs", containerHandler.GetLogs)
+	containers.GET("/image-usage/:id", containerHandler.IsImageInUse)
 }
 
 func setupImageRoutes(api *gin.RouterGroup, services *Services) {
 	images := api.Group("/images")
 	images.Use(AuthMiddleware(services.Auth))
 
-	imageHandler := NewImageHandler(services.Image)
+	imageHandler := NewImageHandler(services.Image, services.ImageMaturity)
 
 	images.GET("", imageHandler.List)
 	images.GET("/:id", imageHandler.GetByID)
@@ -224,6 +217,7 @@ func setupImageRoutes(api *gin.RouterGroup, services *Services) {
 	images.POST("/pull", imageHandler.Pull)
 	images.POST("/prune", imageHandler.Prune)
 	images.GET("/:id/history", imageHandler.GetHistory)
+	images.POST("/:id/maturity", imageHandler.CheckMaturity)
 }
 
 func setupVolumeRoutes(api *gin.RouterGroup, services *Services) {

@@ -17,20 +17,24 @@ export const load = async (): Promise<ImageData> => {
 				// Check if image is in use via API
 				const inUse = await containerAPI.isImageInUse(image.Id).catch(() => false);
 
-				// Get maturity data from API
-				let maturity = undefined;
-				try {
-					if (image.repo !== '<none>' && image.tag !== '<none>') {
-						maturity = (await imageAPI.checkMaturity(image.Id)) as import('$lib/types/docker').ImageMaturity;
+				// Parse repo and tag from RepoTags (like the dashboard does)
+				let repo = '<none>';
+				let tag = '<none>';
+				if (image.RepoTags && image.RepoTags.length > 0) {
+					const repoTag = image.RepoTags[0];
+					if (repoTag.includes(':')) {
+						[repo, tag] = repoTag.split(':');
+					} else {
+						repo = repoTag;
+						tag = 'latest';
 					}
-				} catch (maturityError) {
-					console.error(`Failed to check maturity for image ${image.Id}:`, maturityError);
 				}
 
 				return {
 					...image,
-					inUse,
-					maturity
+					repo,
+					tag,
+					inUse
 				};
 			})
 		);

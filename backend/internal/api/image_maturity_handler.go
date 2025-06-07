@@ -12,15 +12,16 @@ import (
 
 type ImageMaturityHandler struct {
 	imageMaturityService *services.ImageMaturityService
+	imageService         *services.ImageService
 }
 
-func NewImageMaturityHandler(imageMaturityService *services.ImageMaturityService) *ImageMaturityHandler {
+func NewImageMaturityHandler(imageMaturityService *services.ImageMaturityService, imageService *services.ImageService) *ImageMaturityHandler {
 	return &ImageMaturityHandler{
 		imageMaturityService: imageMaturityService,
+		imageService:         imageService,
 	}
 }
 
-// MarkAsMatured marks an image as matured.
 func (h *ImageMaturityHandler) MarkAsMatured(c *gin.Context) {
 	imageID := c.Param("imageId")
 	if imageID == "" {
@@ -44,7 +45,6 @@ func (h *ImageMaturityHandler) MarkAsMatured(c *gin.Context) {
 		return
 	}
 
-	// Validate the daysSinceCreation value
 	if req.DaysSinceCreation < 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -71,20 +71,27 @@ func (h *ImageMaturityHandler) MarkAsMatured(c *gin.Context) {
 }
 
 func (h *ImageMaturityHandler) GetImageMaturity(c *gin.Context) {
-	imageID := c.Param("imageId")
+	imageID := c.Param("id")
 
 	record, err := h.imageMaturityService.GetImageMaturity(c.Request.Context(), imageID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Image maturity record not found",
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data": map[string]interface{}{
+				"id":               imageID,
+				"status":           "Unknown",
+				"updatesAvailable": false,
+				"version":          nil,
+				"date":             nil,
+				"lastChecked":      nil,
+			},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"record":  record,
+		"data":    record,
 	})
 }
 
@@ -140,30 +147,18 @@ func (h *ImageMaturityHandler) SetImageMaturity(c *gin.Context) {
 }
 
 func (h *ImageMaturityHandler) ListMaturityRecords(c *gin.Context) {
-	// Optional repository filter
-	repository := c.Query("repository")
-
-	var records []*models.ImageMaturityRecord
-	var err error
-
-	if repository != "" {
-		records, err = h.imageMaturityService.GetMaturityByRepository(c.Request.Context(), repository)
-	} else {
-		records, err = h.imageMaturityService.ListAllMaturityRecords(c.Request.Context())
-	}
-
+	records, err := h.imageMaturityService.ListAllMaturityRecords(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to fetch maturity records",
+			"error":   "Failed to list maturity records",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"records": records,
-		"count":   len(records),
+		"data":    records,
 	})
 }
 
@@ -172,15 +167,14 @@ func (h *ImageMaturityHandler) GetImagesWithUpdates(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to fetch images with updates",
+			"error":   "Failed to get images with updates",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"records": records,
-		"count":   len(records),
+		"data":    records,
 	})
 }
 
@@ -189,50 +183,85 @@ func (h *ImageMaturityHandler) GetMaturityStats(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to fetch maturity statistics",
+			"error":   "Failed to get maturity stats",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"stats":   stats,
+		"data":    stats,
 	})
 }
 
 func (h *ImageMaturityHandler) GetImagesNeedingCheck(c *gin.Context) {
-	maxAge := 60 // Default 1 hour
-	limit := 50  // Default limit
+	maxAgeStr := c.DefaultQuery("maxAge", "1440")
+	limitStr := c.DefaultQuery("limit", "100")
 
-	if maxAgeParam := c.Query("maxAgeMinutes"); maxAgeParam != "" {
-		if m, err := strconv.Atoi(maxAgeParam); err == nil && m > 0 {
-			maxAge = m
-		}
+	maxAge, err := strconv.Atoi(maxAgeStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid maxAge parameter",
+		})
+		return
 	}
 
-	if limitParam := c.Query("limit"); limitParam != "" {
-		if l, err := strconv.Atoi(limitParam); err == nil && l > 0 && l <= 100 {
-			limit = l
-		}
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid limit parameter",
+		})
+		return
 	}
 
 	records, err := h.imageMaturityService.GetImagesNeedingCheck(c.Request.Context(), maxAge, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to fetch images needing check",
+			"error":   "Failed to get images needing check",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"records": records,
-		"count":   len(records),
-		"params": gin.H{
-			"maxAgeMinutes": maxAge,
-			"limit":         limit,
-		},
+		"data":    records,
+	})
+}
+
+func (h *ImageMaturityHandler) TriggerMaturityCheck(c *gin.Context) {
+	err := h.imageMaturityService.ProcessImagesForMaturityCheck(c.Request.Context(), h.imageService)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to trigger maturity check",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Maturity check triggered successfully",
+	})
+}
+
+func (h *ImageMaturityHandler) GetMaturityByRepository(c *gin.Context) {
+	repository := c.Param("repository")
+
+	records, err := h.imageMaturityService.GetMaturityByRepository(c.Request.Context(), repository)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get maturity by repository",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    records,
 	})
 }
 
@@ -321,12 +350,10 @@ func (h *ImageMaturityHandler) CheckMaturityBatch(c *gin.Context) {
 		return
 	}
 
-	// Process each image in the batch
 	results := make(map[string]interface{})
 	successCount := 0
 
 	for _, imageID := range req.ImageIDs {
-		// Use proper status constant instead of "Checked"
 		err := h.imageMaturityService.UpdateCheckStatus(c.Request.Context(), imageID, models.ImageStatusChecking, nil)
 		if err != nil {
 			results[imageID] = gin.H{

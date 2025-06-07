@@ -2,14 +2,17 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
 )
-
-// Remove the local ImageMaturityRecord type - use models.ImageMaturityRecord directly
 
 type ImageMaturityService struct {
 	db *database.DB
@@ -37,11 +40,11 @@ func (s *ImageMaturityService) SetImageMaturity(ctx context.Context, imageID, re
 		CurrentVersion:   maturity.Version,
 		Status:           maturity.Status,
 		UpdatesAvailable: maturity.UpdatesAvailable,
+		LatestVersion:    &maturity.LatestVersion,
 		LastChecked:      now,
 		BaseModel:        models.BaseModel{CreatedAt: now},
 	}
 
-	// Extract metadata
 	if registryDomain, ok := metadata["registryDomain"].(string); ok {
 		record.RegistryDomain = &registryDomain
 	}
@@ -67,14 +70,12 @@ func (s *ImageMaturityService) SetImageMaturity(ctx context.Context, imageID, re
 		record.DaysSinceCreation = &days
 	}
 
-	// Increment check count if this is an update
 	existing, err := s.GetImageMaturity(ctx, imageID)
 	if err == nil {
 		record.CheckCount = existing.CheckCount + 1
-		record.BaseModel.CreatedAt = existing.BaseModel.CreatedAt // Keep original creation time
+		record.BaseModel.CreatedAt = existing.BaseModel.CreatedAt
 	}
 
-	// Upsert operation
 	if err := s.db.WithContext(ctx).Save(record).Error; err != nil {
 		return fmt.Errorf("failed to set image maturity: %w", err)
 	}
@@ -116,14 +117,12 @@ func (s *ImageMaturityService) GetMaturityStats(ctx context.Context) (map[string
 	var notMatured int64
 	var unknown int64
 
-	// Count totals using the model directly
 	s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Count(&total)
 	s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("updates_available = ?", true).Count(&withUpdates)
 	s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("status = ?", models.ImageStatusMatured).Count(&matured)
 	s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("status = ?", models.ImageStatusNotMatured).Count(&notMatured)
 	s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("status = ?", models.ImageStatusUnknown).Count(&unknown)
 
-	// Count recently checked (last hour)
 	var recentlyChecked int64
 	oneHourAgo := time.Now().Add(-time.Hour)
 	s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("last_checked > ?", oneHourAgo).Count(&recentlyChecked)
@@ -140,17 +139,14 @@ func (s *ImageMaturityService) GetMaturityStats(ctx context.Context) (map[string
 
 func (s *ImageMaturityService) CleanupOrphanedRecords(ctx context.Context, existingImageIDs []string) (int, error) {
 	if len(existingImageIDs) == 0 {
-		// Delete all records if no images exist
 		result := s.db.WithContext(ctx).Delete(&models.ImageMaturityRecord{})
 		return int(result.RowsAffected), result.Error
 	}
 
-	// Delete records not in the existing IDs list
 	result := s.db.WithContext(ctx).Where("id NOT IN ?", existingImageIDs).Delete(&models.ImageMaturityRecord{})
 	return int(result.RowsAffected), result.Error
 }
 
-// Additional helper methods
 func (s *ImageMaturityService) ListAllMaturityRecords(ctx context.Context) ([]*models.ImageMaturityRecord, error) {
 	var records []*models.ImageMaturityRecord
 	if err := s.db.WithContext(ctx).Order("last_checked DESC").Find(&records).Error; err != nil {
@@ -229,7 +225,6 @@ func (s *ImageMaturityService) SetUpdateAvailable(ctx context.Context, imageID s
 	return nil
 }
 
-// Add method to get maturity data with image info
 func (s *ImageMaturityService) GetImageMaturityWithImage(ctx context.Context, imageID string) (*models.ImageMaturityRecord, error) {
 	var record models.ImageMaturityRecord
 	if err := s.db.WithContext(ctx).Preload("Image").Where("id = ?", imageID).First(&record).Error; err != nil {
@@ -238,31 +233,549 @@ func (s *ImageMaturityService) GetImageMaturityWithImage(ctx context.Context, im
 	return &record, nil
 }
 
-// Add method to process all images for maturity checking
 func (s *ImageMaturityService) ProcessImagesForMaturityCheck(ctx context.Context, imageService *ImageService) error {
-	// Get images older than 24 hours since last check
-	images, err := imageService.GetImagesNeedingMaturityCheck(ctx, 24*time.Hour)
+	dockerImages, err := imageService.ListImages(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get images needing check: %w", err)
+		return fmt.Errorf("failed to list Docker images: %w", err)
 	}
 
-	for _, image := range images {
-		// Process each image for maturity checking
-		maturityRecord := &models.ImageMaturityRecord{
-			ID:          image.ID,
-			Repository:  image.Repo,
-			Tag:         image.Tag,
-			Status:      models.ImageStatusChecking,
-			LastChecked: time.Now(),
+	for _, img := range dockerImages {
+		if len(img.RepoTags) == 0 || img.RepoTags[0] == "<none>:<none>" {
+			continue
 		}
 
-		// Your maturity checking logic here...
-		// This would involve checking registries, comparing versions, etc.
+		repoTag := img.RepoTags[0]
+		parts := strings.Split(repoTag, ":")
+		if len(parts) != 2 {
+			continue
+		}
+		repo := parts[0]
+		tag := parts[1]
 
-		if err := imageService.UpdateImageMaturity(ctx, image.ID, maturityRecord); err != nil {
-			continue // Log error but continue processing other images
+		maturityData, err := s.CheckImageInRegistry(ctx, repo, tag, img.ID)
+		if err != nil {
+			errMsg := err.Error()
+			s.UpdateCheckStatus(ctx, img.ID, models.ImageStatusError, &errMsg)
+			continue
+		}
+
+		err = s.SetImageMaturity(ctx, img.ID, repo, tag, *maturityData, map[string]interface{}{
+			"registryDomain":    s.ExtractRegistryDomain(repo),
+			"isPrivateRegistry": s.IsPrivateRegistry(repo),
+			"currentImageDate":  time.Unix(img.Created, 0),
+		})
+		if err != nil {
+			continue
 		}
 	}
 
 	return nil
+}
+
+func (s *ImageMaturityService) CheckImageInRegistry(ctx context.Context, repo, tag, imageID string) (*models.ImageMaturity, error) {
+	registryURL := "https://registry-1.docker.io/v2"
+
+	token, err := s.getRegistryToken(ctx, repo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get registry token: %w", err)
+	}
+
+	localManifest, err := s.getImageManifest(ctx, registryURL, repo, tag, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get local manifest: %w", err)
+	}
+
+	allTags, err := s.getImageTags(ctx, registryURL, repo, token)
+	if err != nil {
+		return s.checkAgainstSameTagOnly(ctx, registryURL, repo, tag, token, localManifest)
+	}
+
+	hasTagUpdates := s.hasTagUpdates(ctx, registryURL, repo, tag, token, localManifest)
+	hasNewerVersions, newerVersionTag := s.hasNewerVersions(tag, allTags)
+	hasUpdates := hasTagUpdates || hasNewerVersions
+	status := s.determineMaturityStatus(tag, localManifest.CreatedAt, allTags)
+
+	return &models.ImageMaturity{
+		Version:          tag,
+		Date:             localManifest.CreatedAt.Format(time.RFC3339),
+		Status:           status,
+		UpdatesAvailable: hasUpdates,
+		LatestVersion:    newerVersionTag,
+	}, nil
+}
+
+func (s *ImageMaturityService) checkAgainstSameTagOnly(ctx context.Context, registryURL, repo, tag, token string, localManifest *RegistryManifest) (*models.ImageMaturity, error) {
+	hasTagUpdates := s.hasTagUpdates(ctx, registryURL, repo, tag, token, localManifest)
+	status := models.ImageStatusUnknown
+	imageAge := time.Since(localManifest.CreatedAt)
+	if imageAge > 30*24*time.Hour {
+		status = models.ImageStatusMatured
+	} else {
+		status = models.ImageStatusNotMatured
+	}
+
+	return &models.ImageMaturity{
+		Version:          tag,
+		Date:             localManifest.CreatedAt.Format(time.RFC3339),
+		Status:           status,
+		UpdatesAvailable: hasTagUpdates,
+	}, nil
+}
+
+func (s *ImageMaturityService) hasTagUpdates(ctx context.Context, registryURL, repo, tag, token string, localManifest *RegistryManifest) bool {
+	registryManifest, err := s.getImageManifest(ctx, registryURL, repo, tag, token)
+	if err != nil {
+		return false
+	}
+
+	if localManifest.Digest != "" && registryManifest.Digest != "" {
+		return localManifest.Digest != registryManifest.Digest
+	}
+
+	return registryManifest.CreatedAt.After(localManifest.CreatedAt)
+}
+
+func (s *ImageMaturityService) hasNewerVersions(currentTag string, allTags []string) (bool, string) {
+	if s.isSpecialTag(currentTag) {
+		return false, ""
+	}
+
+	currentPattern := s.getTagPattern(currentTag)
+	if currentPattern.Version == "" {
+		return false, ""
+	}
+
+	var newestVersion string
+	var newestTag string
+	hasNewer := false
+
+	for _, tag := range allTags {
+		if tag == currentTag {
+			continue
+		}
+
+		tagPattern := s.getTagPattern(tag)
+		if tagPattern.Pattern != currentPattern.Pattern || tagPattern.Version == "" {
+			continue
+		}
+
+		if s.isNewerVersion(tagPattern.Version, currentPattern.Version) {
+			if !hasNewer || (newestVersion != "" && s.isNewerVersion(tagPattern.Version, newestVersion)) {
+				newestVersion = tagPattern.Version
+				newestTag = tag
+				hasNewer = true
+			}
+		}
+	}
+
+	return hasNewer, newestTag
+}
+
+func (s *ImageMaturityService) determineMaturityStatus(tag string, createdAt time.Time, allTags []string) string {
+	imageAge := time.Since(createdAt)
+
+	if s.isSpecialTag(tag) {
+		if imageAge > 7*24*time.Hour {
+			return models.ImageStatusMatured
+		}
+		return models.ImageStatusNotMatured
+	}
+
+	hasNewerVersions, _ := s.hasNewerVersions(tag, allTags)
+
+	if hasNewerVersions {
+		return models.ImageStatusMatured
+	}
+
+	if imageAge > 30*24*time.Hour {
+		return models.ImageStatusMatured
+	}
+
+	return models.ImageStatusNotMatured
+}
+
+func (s *ImageMaturityService) isSpecialTag(tag string) bool {
+	specialTags := []string{
+		"latest", "stable", "unstable", "dev", "devel", "development",
+		"test", "testing", "prod", "production", "main", "master",
+		"stage", "staging", "canary", "nightly", "edge", "next",
+	}
+
+	for _, special := range specialTags {
+		if tag == special {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *ImageMaturityService) getTagPattern(tag string) struct{ Pattern, Version string } {
+	if matches := regexp.MustCompile(`^(\d+)\.(\d+)(?:\.(\d+))?$`).FindStringSubmatch(tag); matches != nil {
+		majorVersion := matches[1]
+		return struct{ Pattern, Version string }{Pattern: majorVersion, Version: tag}
+	}
+
+	if matches := regexp.MustCompile(`^([a-z][\w-]*?)[.-]?(\d+(?:\.\d+)*)$`).FindStringSubmatch(tag); matches != nil {
+		prefix := matches[1]
+		version := matches[2]
+		versionParts := strings.Split(version, ".")
+		if len(versionParts) > 0 {
+			majorVersion := versionParts[0]
+			return struct{ Pattern, Version string }{Pattern: prefix + "-" + majorVersion, Version: version}
+		}
+		return struct{ Pattern, Version string }{Pattern: prefix, Version: version}
+	}
+
+	if matches := regexp.MustCompile(`^(\d+(?:\.\d+)*)$`).FindStringSubmatch(tag); matches != nil {
+		version := matches[1]
+		versionParts := strings.Split(version, ".")
+		if len(versionParts) > 0 {
+			majorVersion := versionParts[0]
+			return struct{ Pattern, Version string }{Pattern: "v" + majorVersion, Version: version}
+		}
+		return struct{ Pattern, Version string }{Pattern: "version", Version: version}
+	}
+
+	return struct{ Pattern, Version string }{Pattern: tag, Version: ""}
+}
+
+func (s *ImageMaturityService) isNewerVersion(newer, current string) bool {
+	newerParts := s.parseVersion(newer)
+	currentParts := s.parseVersion(current)
+
+	maxLen := len(newerParts)
+	if len(currentParts) > maxLen {
+		maxLen = len(currentParts)
+	}
+
+	for i := 0; i < maxLen; i++ {
+		newerVal := 0
+		currentVal := 0
+
+		if i < len(newerParts) {
+			newerVal = newerParts[i]
+		}
+		if i < len(currentParts) {
+			currentVal = currentParts[i]
+		}
+
+		if newerVal > currentVal {
+			return true
+		}
+		if newerVal < currentVal {
+			return false
+		}
+	}
+
+	return false
+}
+
+func (s *ImageMaturityService) parseVersion(version string) []int {
+	parts := strings.Split(version, ".")
+	result := make([]int, 0, len(parts))
+
+	for _, part := range parts {
+		if num, err := strconv.Atoi(strings.TrimSpace(part)); err == nil {
+			result = append(result, num)
+		}
+	}
+
+	return result
+}
+
+func (s *ImageMaturityService) getRegistryToken(ctx context.Context, repo string) (string, error) {
+	domain := s.ExtractRegistryDomain(repo)
+
+	switch domain {
+	case "docker.io", "registry-1.docker.io", "index.docker.io":
+		return s.getDockerHubToken(ctx, repo)
+	default:
+		return s.getGenericRegistryToken(ctx, domain, repo)
+	}
+}
+
+func (s *ImageMaturityService) getDockerHubToken(ctx context.Context, repo string) (string, error) {
+	normalizedRepo := repo
+	if !strings.Contains(repo, "/") {
+		normalizedRepo = "library/" + repo
+	} else if strings.HasPrefix(repo, "docker.io/") {
+		normalizedRepo = strings.TrimPrefix(repo, "docker.io/")
+	}
+
+	authURL := fmt.Sprintf("https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull", normalizedRepo)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, "GET", authURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create auth request: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to get auth token: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("auth request failed with status: %d", resp.StatusCode)
+	}
+
+	var tokenResp DockerHubTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return "", fmt.Errorf("failed to decode auth response: %w", err)
+	}
+
+	return tokenResp.Token, nil
+}
+
+func (s *ImageMaturityService) getGenericRegistryToken(ctx context.Context, domain, repo string) (string, error) {
+	return "", nil
+}
+
+func (s *ImageMaturityService) getImageManifest(ctx context.Context, registryURL, repo, tag, token string) (*RegistryManifest, error) {
+	domain := s.ExtractRegistryDomain(repo)
+
+	switch domain {
+	case "docker.io", "registry-1.docker.io", "index.docker.io":
+		return s.getDockerHubManifest(ctx, repo, tag, token)
+	default:
+		return s.getGenericRegistryManifest(ctx, registryURL, repo, tag, token)
+	}
+}
+
+func (s *ImageMaturityService) getDockerHubManifest(ctx context.Context, repo, tag, token string) (*RegistryManifest, error) {
+	normalizedRepo := repo
+	if !strings.Contains(repo, "/") {
+		normalizedRepo = "library/" + repo
+	} else if strings.HasPrefix(repo, "docker.io/") {
+		normalizedRepo = strings.TrimPrefix(repo, "docker.io/")
+	}
+
+	manifestURL := fmt.Sprintf("https://registry-1.docker.io/v2/%s/manifests/%s", normalizedRepo, tag)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, "GET", manifestURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create manifest request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v1+json")
+	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get manifest: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("manifest request failed with status: %d", resp.StatusCode)
+	}
+
+	digest := resp.Header.Get("Docker-Content-Digest")
+
+	var manifest map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
+		return nil, fmt.Errorf("failed to decode manifest: %w", err)
+	}
+
+	createdAt := time.Now()
+
+	if history, ok := manifest["history"].([]interface{}); ok && len(history) > 0 {
+		if firstHistory, ok := history[0].(map[string]interface{}); ok {
+			if v1Compat, ok := firstHistory["v1Compatibility"].(string); ok {
+				var compat V1Compatibility
+				if err := json.Unmarshal([]byte(v1Compat), &compat); err == nil {
+					createdAt = compat.Created
+				}
+			}
+		}
+	}
+
+	return &RegistryManifest{
+		Digest:    digest,
+		CreatedAt: createdAt,
+	}, nil
+}
+
+func (s *ImageMaturityService) getGenericRegistryManifest(ctx context.Context, registryURL, repo, tag, token string) (*RegistryManifest, error) {
+	manifestURL := fmt.Sprintf("%s/%s/manifests/%s", registryURL, repo, tag)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, "GET", manifestURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create manifest request: %w", err)
+	}
+
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get manifest: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("manifest request failed with status: %d", resp.StatusCode)
+	}
+
+	digest := resp.Header.Get("Docker-Content-Digest")
+
+	return &RegistryManifest{
+		Digest:    digest,
+		CreatedAt: time.Now(),
+	}, nil
+}
+
+func (s *ImageMaturityService) getImageTags(ctx context.Context, registryURL, repo, token string) ([]string, error) {
+	domain := s.ExtractRegistryDomain(repo)
+
+	switch domain {
+	case "docker.io", "registry-1.docker.io", "index.docker.io":
+		return s.getDockerHubTags(ctx, repo, token)
+	default:
+		return s.getGenericRegistryTags(ctx, registryURL, repo, token)
+	}
+}
+
+func (s *ImageMaturityService) getDockerHubTags(ctx context.Context, repo, token string) ([]string, error) {
+	normalizedRepo := repo
+	if !strings.Contains(repo, "/") {
+		normalizedRepo = "library/" + repo
+	} else if strings.HasPrefix(repo, "docker.io/") {
+		normalizedRepo = strings.TrimPrefix(repo, "docker.io/")
+	}
+
+	tagsURL := fmt.Sprintf("https://registry-1.docker.io/v2/%s/tags/list", normalizedRepo)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, "GET", tagsURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tags request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tags: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("tags request failed with status: %d", resp.StatusCode)
+	}
+
+	var tagsResp struct {
+		Tags []string `json:"tags"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode tags response: %w", err)
+	}
+
+	return tagsResp.Tags, nil
+}
+
+func (s *ImageMaturityService) getGenericRegistryTags(ctx context.Context, registryURL, repo, token string) ([]string, error) {
+	tagsURL := fmt.Sprintf("%s/%s/tags/list", registryURL, repo)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, "GET", tagsURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tags request: %w", err)
+	}
+
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tags: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("tags request failed with status: %d", resp.StatusCode)
+	}
+
+	var tagsResp struct {
+		Tags []string `json:"tags"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode tags response: %w", err)
+	}
+
+	return tagsResp.Tags, nil
+}
+
+func (s *ImageMaturityService) ExtractRegistryDomain(repo string) string {
+	if !strings.Contains(repo, "/") {
+		return "docker.io"
+	}
+
+	parts := strings.Split(repo, "/")
+	firstPart := parts[0]
+
+	if strings.Contains(firstPart, ".") || strings.Contains(firstPart, ":") {
+		return firstPart
+	}
+
+	return "docker.io"
+}
+
+func (s *ImageMaturityService) IsPrivateRegistry(repo string) bool {
+	domain := s.ExtractRegistryDomain(repo)
+
+	publicRegistries := []string{
+		"docker.io",
+		"registry-1.docker.io",
+		"index.docker.io",
+		"gcr.io",
+		"ghcr.io",
+		"quay.io",
+		"registry.redhat.io",
+		"mcr.microsoft.com",
+	}
+
+	for _, publicRegistry := range publicRegistries {
+		if domain == publicRegistry {
+			return false
+		}
+	}
+
+	return true
+}
+
+type DockerHubTokenResponse struct {
+	Token     string `json:"token"`
+	ExpiresIn int    `json:"expires_in"`
+	IssuedAt  string `json:"issued_at"`
+}
+
+type DockerHubTagsResponse struct {
+	Name string `json:"name"`
+	Tags []struct {
+		Name        string    `json:"name"`
+		FullSize    int       `json:"full_size"`
+		LastUpdated time.Time `json:"last_updated"`
+	} `json:"tags"`
+}
+
+type RegistryManifest struct {
+	Digest    string
+	CreatedAt time.Time
+	Size      int64
+}
+
+type ManifestV1History struct {
+	V1Compatibility string `json:"v1Compatibility"`
+}
+
+type V1Compatibility struct {
+	Created time.Time `json:"created"`
 }
