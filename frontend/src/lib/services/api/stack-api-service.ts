@@ -46,7 +46,7 @@ export default class StackAPIService extends BaseAPIService {
 	}
 
 	async down(id: string) {
-		const res = await this.api.post(`/stacks/${id}/down`);
+		const res = await this.api.post(`/stacks/${id}/stop`);
 		return res.data;
 	}
 
