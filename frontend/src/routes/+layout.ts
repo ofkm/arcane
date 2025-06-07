@@ -127,20 +127,20 @@ export const load = (async ({ fetch, url }) => {
 
 		if (!versionInformation || cacheExpired) {
 			try {
-				if (browser) {
-					const versionResponse = await fetch('/_app/version.json');
-					if (versionResponse.ok) {
-						versionInformation = await versionResponse.json();
-					} else {
-						throw new Error('Version endpoint not available');
-					}
+				const versionResponse = await fetch('/_app/version.json');
+				if (versionResponse.ok) {
+					const versionData = await versionResponse.json();
+					versionInformation = {
+						currentVersion: versionData.version
+					} as AppVersionInformation;
 				} else {
-					versionInformation = { currentVersion: '0.15.0' } as AppVersionInformation;
+					console.error('Version endpoint returned status:', versionResponse.status);
+					throw new Error('Version endpoint not available');
 				}
 				versionInformationLastUpdated = Date.now();
 			} catch (error) {
 				console.error('Error fetching version information:', error);
-				versionInformation = { currentVersion: '0.15.0' } as AppVersionInformation;
+				versionInformation = { currentVersion: 'Unknown' } as AppVersionInformation;
 			}
 		}
 	}
