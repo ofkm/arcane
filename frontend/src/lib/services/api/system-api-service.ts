@@ -16,6 +16,15 @@ export default class SystemAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.get('/system/docker/info'));
 	}
 
+	async getStats() {
+		return this.handleResponse(this.api.get('/system/stats'));
+	}
+
+	async testConnection(host?: string) {
+		const params = host ? { host } : {};
+		return this.handleResponse(this.api.get('/system/docker/test', { params }));
+	}
+
 	async getSystemInfo() {
 		return this.handleResponse(this.api.get('/system/info'));
 	}

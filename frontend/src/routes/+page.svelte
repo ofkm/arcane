@@ -17,7 +17,6 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import SystemAPIService from '$lib/services/api/system-api-service';
-	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import MaturityItem from '$lib/components/maturity-item.svelte';
 	import { onMount } from 'svelte';
@@ -47,20 +46,6 @@
 		maturity?: any;
 	};
 
-	// Add this function to parse repo/tag from RepoTags if needed
-	function parseImageName(image: EnhancedImageInfo): { repo: string; tag: string } {
-		if (image.repo && image.tag) {
-			return { repo: image.repo, tag: image.tag };
-		}
-
-		if (image.RepoTags && image.RepoTags.length > 0 && image.RepoTags[0] !== '<none>:<none>') {
-			const [repo, tag] = image.RepoTags[0].split(':');
-			return { repo: repo || '<none>', tag: tag || 'latest' };
-		}
-
-		return { repo: '<none>', tag: '<none>' };
-	}
-
 	// Define ContainerInfo type based on your Go backend API response
 	type ContainerInfo = {
 		Id: string;
@@ -78,7 +63,7 @@
 		Mounts: any[];
 	};
 
-	let { data }: { data: PageData & { containers: ContainerInfo[] } } = $props();
+	let { data }: { data: PageData } = $props();
 
 	const containerApi = new ContainerAPIService();
 	const systemApi = new SystemAPIService();
@@ -89,6 +74,7 @@
 		containers: data.containers,
 		images: data.images as EnhancedImageInfo[],
 		settings: data.settings,
+		systemStats: null, // Start with null - will be loaded lazily
 		error: data.error,
 		isPruneDialogOpen: false
 	});
@@ -97,8 +83,13 @@
 		starting: false,
 		stopping: false,
 		refreshing: false,
-		pruning: false
+		pruning: false,
+		loadingStats: true // Add loading state for stats
 	});
+
+	// Lazy load system stats
+	let liveSystemStats = $state(null);
+	let statsInterval: NodeJS.Timeout | null = null;
 
 	const runningContainers = $derived(dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'running').length ?? 0);
 	const stoppedContainers = $derived(dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'exited').length ?? 0);
@@ -118,47 +109,68 @@
 		dashboardStates.images = data.images as EnhancedImageInfo[];
 		dashboardStates.settings = data.settings;
 		dashboardStates.error = data.error;
+		// Don't update systemStats from page data anymore
 	});
-	// Add server stats state
-	let serverStats = $state<{
-		cpuUsage: number;
-		memoryUsage: number;
-		memoryTotal: number;
-		diskUsage?: number;
-		diskTotal?: number;
-	} | null>(null);
 
-	// Add server stats fetching
-	async function fetchServerStats() {
+	// Add function to fetch live system stats
+	async function fetchLiveSystemStats() {
 		try {
-			const response = await fetch('/api/system/stats');
-			if (response.ok) {
-				serverStats = await response.json();
+			const stats = await systemApi.getStats();
+			if (stats.success) {
+				const newStats = {
+					cpuUsage: stats.cpuUsage,
+					memoryUsage: stats.memoryUsage,
+					memoryTotal: stats.memoryTotal,
+					diskUsage: stats.diskUsage,
+					diskTotal: stats.diskTotal,
+					cpuCount: stats.cpuCount,
+					architecture: stats.architecture,
+					platform: stats.platform,
+					hostname: stats.hostname
+				};
+
+				liveSystemStats = newStats;
+				dashboardStates.systemStats = newStats; // Also update dashboard state
+				isLoading.loadingStats = false;
 			}
 		} catch (error) {
-			console.error('Failed to fetch server stats:', error);
+			console.error('Failed to fetch live system stats:', error);
+			isLoading.loadingStats = false;
 		}
 	}
 
-	// Fetch server stats on mount and refresh
+	// Setup lazy loading and live stats polling on mount
 	onMount(() => {
 		// Run async operations without blocking the mount
 		(async () => {
+			// Load stats immediately on mount (lazy load)
+			await fetchLiveSystemStats();
+
+			// Load image maturity data
 			await loadTopImagesMaturity();
-			await fetchServerStats();
+
+			// Start live stats polling every 3 seconds after initial load
+			if (!statsInterval) {
+				statsInterval = setInterval(fetchLiveSystemStats, 3000);
+			}
 		})();
 
-		// Set up periodic updates for server stats
-		const interval = setInterval(fetchServerStats, 5000); // Update every 5 seconds
-		return () => clearInterval(interval);
+		// Cleanup interval on unmount
+		return () => {
+			if (statsInterval) {
+				clearInterval(statsInterval);
+				statsInterval = null;
+			}
+		};
 	});
 
 	async function refreshData() {
 		if (isLoading.refreshing) return;
 		isLoading.refreshing = true;
 		try {
-			await invalidateAll();
-			await fetchServerStats(); // Also refresh server stats
+			await invalidateAll(); // This will reload core dashboard data
+			// Also refresh live stats immediately
+			await fetchLiveSystemStats();
 		} catch (err) {
 			console.error('Error during dashboard refresh:', err);
 			dashboardStates.error = 'Failed to refresh dashboard data.';
@@ -305,7 +317,7 @@
 
 						{#if dashboardStates.containers?.length}
 							<div class="mb-6">
-								<Meter label="Active Containers" valueLabel="{runningContainers} running" value={containerUsagePercent} max={100} variant={containerUsagePercent > 80 ? 'warning' : 'default'} size="sm" />
+								<Meter label="Active Containers" valueLabel="{runningContainers} running" value={runningContainers} max={dashboardStates.containers.length} variant={containerUsagePercent > 80 ? 'warning' : 'success'} size="sm" />
 							</div>
 						{/if}
 
@@ -318,11 +330,13 @@
 							<div class="grid grid-cols-2 gap-3 text-xs">
 								<div>
 									<p class="text-muted-foreground">Version</p>
-									<p class="font-medium">{dashboardStates.dockerInfo?.ServerVersion || 'Unknown'}</p>
+									<p class="font-medium">{dashboardStates.dockerInfo?.version || 'Unknown'}</p>
 								</div>
 								<div>
 									<p class="text-muted-foreground">OS</p>
-									<p class="font-medium">{dashboardStates.dockerInfo?.OperatingSystem?.split(' ')[0] || 'Unknown'}</p>
+									<p class="font-medium">
+										{dashboardStates.dockerInfo?.os || dashboardStates.systemStats?.platform || 'Unknown'}
+									</p>
 								</div>
 							</div>
 						</div>
@@ -339,25 +353,30 @@
 								</div>
 								<div>
 									<p class="text-sm font-medium text-muted-foreground">Storage</p>
-									<p class="text-2xl font-bold">{dashboardStates.dockerInfo?.Images || 0}</p>
+									<p class="text-2xl font-bold">{dashboardStates.dockerInfo?.images || 0}</p>
 									<p class="text-xs text-muted-foreground">Docker images</p>
 								</div>
 							</div>
 						</div>
 
-						{#if serverStats?.diskTotal && serverStats?.diskUsage !== undefined}
-							{@const storagePercent = Math.min(Math.max((serverStats.diskUsage / serverStats.diskTotal) * 100, 0), 100)}
+						{#if isLoading.loadingStats}
+							<div class="text-center py-6">
+								<Loader2 class="mx-auto animate-spin size-6 text-muted-foreground mb-2" />
+								<p class="text-sm text-muted-foreground">Loading storage data...</p>
+							</div>
+						{:else if liveSystemStats?.diskTotal && liveSystemStats?.diskUsage !== undefined}
+							{@const storagePercent = Math.min(Math.max((liveSystemStats.diskUsage / liveSystemStats.diskTotal) * 100, 0), 100)}
 							<div class="mb-4">
 								<Meter label="System Storage" valueLabel="{storagePercent.toFixed(1)}%" value={storagePercent} max={100} variant={storagePercent > 85 ? 'destructive' : storagePercent > 70 ? 'warning' : 'success'} size="sm" />
 							</div>
 							<div class="space-y-1 text-xs text-muted-foreground">
 								<div class="flex justify-between">
 									<span>Used:</span>
-									<span class="font-medium">{formatBytes(serverStats.diskUsage)}</span>
+									<span class="font-medium">{formatBytes(liveSystemStats.diskUsage)}</span>
 								</div>
 								<div class="flex justify-between">
 									<span>Total:</span>
-									<span class="font-medium">{formatBytes(serverStats.diskTotal)}</span>
+									<span class="font-medium">{formatBytes(liveSystemStats.diskTotal)}</span>
 								</div>
 								{#if totalImageSize > 0}
 									<div class="flex justify-between pt-1 border-t border-border/50">
@@ -367,7 +386,6 @@
 								{/if}
 							</div>
 						{:else if totalImageSize > 0}
-							<!-- Fallback to Docker images only if system storage unavailable -->
 							<div class="mb-4">
 								<div class="text-center py-4">
 									<p class="text-sm text-muted-foreground">System storage data unavailable</p>
@@ -379,13 +397,9 @@
 									<span class="font-medium">{formatBytes(totalImageSize)}</span>
 								</div>
 							</div>
-						{:else if dashboardStates.dockerInfo?.Images === 0}
-							<div class="text-center py-6">
-								<p class="text-sm text-muted-foreground">No images stored</p>
-							</div>
 						{:else}
 							<div class="text-center py-6">
-								<p class="text-sm text-muted-foreground">Loading storage data...</p>
+								<p class="text-sm text-muted-foreground">No storage data available</p>
 							</div>
 						{/if}
 					</Card.Content>
@@ -401,28 +415,51 @@
 								</div>
 								<div>
 									<p class="text-sm font-medium text-muted-foreground">Hardware</p>
-									<div class="flex items-center gap-4 text-xs text-muted-foreground mt-1">
-										<span>{dashboardStates.dockerInfo?.NCPU || 'N/A'} cores</span>
-										<span>{dashboardStates.dockerInfo?.MemTotal ? formatBytes(dashboardStates.dockerInfo.MemTotal, 0) : 'N/A'}</span>
-									</div>
+									{#if isLoading.loadingStats}
+										<div class="text-xs text-muted-foreground mt-1">Loading...</div>
+									{:else}
+										<div class="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+											<span>{liveSystemStats?.cpuCount || 'N/A'} cores</span>
+											<span>{liveSystemStats?.memoryTotal ? formatBytes(liveSystemStats.memoryTotal, 0) : 'N/A'}</span>
+										</div>
+										{#if liveSystemStats?.hostname}
+											<p class="text-xs text-muted-foreground mt-1">{liveSystemStats.hostname}</p>
+										{/if}
+									{/if}
 								</div>
 							</div>
 						</div>
 
-						{#if serverStats}
-							{@const cpuPercent = Math.min(Math.max(serverStats.cpuUsage, 0), 100)}
-							{@const memoryPercent = Math.min(Math.max((serverStats.memoryUsage / serverStats.memoryTotal) * 100, 0), 100)}
+						{#if isLoading.loadingStats}
+							<div class="text-center py-6">
+								<Loader2 class="mx-auto animate-spin size-6 text-muted-foreground mb-2" />
+								<p class="text-sm text-muted-foreground">Loading system stats...</p>
+							</div>
+						{:else if liveSystemStats}
+							{@const cpuPercent = Math.min(Math.max(liveSystemStats.cpuUsage, 0), 100)}
+							{@const memoryPercent = Math.min(Math.max((liveSystemStats.memoryUsage / liveSystemStats.memoryTotal) * 100, 0), 100)}
 							<div class="space-y-4">
 								<Meter label="CPU Usage" valueLabel="{cpuPercent.toFixed(1)}%" value={cpuPercent} max={100} variant={cpuPercent > 80 ? 'destructive' : cpuPercent > 60 ? 'warning' : 'success'} size="sm" />
 
 								<Meter label="Memory Usage" valueLabel="{memoryPercent.toFixed(1)}%" value={memoryPercent} max={100} variant={memoryPercent > 80 ? 'destructive' : memoryPercent > 60 ? 'warning' : 'success'} size="sm" />
 							</div>
-							<p class="text-xs text-muted-foreground mt-3">
-								{dashboardStates.dockerInfo?.Architecture || 'Unknown arch'}
-							</p>
+							<div class="pt-3 text-xs text-muted-foreground space-y-1">
+								{#if liveSystemStats.architecture}
+									<div class="flex justify-between">
+										<span>Architecture:</span>
+										<span class="font-medium">{liveSystemStats.architecture}</span>
+									</div>
+								{/if}
+								{#if liveSystemStats.platform}
+									<div class="flex justify-between">
+										<span>Platform:</span>
+										<span class="font-medium capitalize">{liveSystemStats.platform}</span>
+									</div>
+								{/if}
+							</div>
 						{:else}
 							<div class="text-center py-6">
-								<p class="text-sm text-muted-foreground">Loading stats...</p>
+								<p class="text-sm text-muted-foreground">System stats unavailable</p>
 							</div>
 						{/if}
 					</Card.Content>

@@ -31,7 +31,7 @@ func SetupRoutes(r *gin.Engine, services *Services) {
 	setupSettingsRoutes(api, services)
 	setupDeploymentRoutes(api, services)
 	setupImageMaturityRoutes(api, services)
-	setupSystemRoutes(api, services)
+	setupSystemRoutes(api, services.Docker)
 	setupContainerRoutes(api, services)
 	setupImageRoutes(api, services)
 	setupVolumeRoutes(api, services)
@@ -184,20 +184,14 @@ func setupImageMaturityRoutes(api *gin.RouterGroup, services *Services) {
 	imageMaturity.POST("/:imageId/mark-matured", imageMaturityHandler.MarkAsMatured)
 }
 
-func setupSystemRoutes(api *gin.RouterGroup, services *Services) {
+func setupSystemRoutes(api *gin.RouterGroup, dockerService *services.DockerClientService) {
 	system := api.Group("/system")
 	// system.Use(AuthMiddleware(services.Auth)) // Add when ready
 
-	// Docker system info endpoint
-	system.GET("/docker/info", func(c *gin.Context) {
-		// For now, return mock data until we implement Docker integration
-		c.JSON(200, gin.H{
-			"version":    "24.0.0",
-			"containers": 0,
-			"images":     0,
-			"status":     "available",
-		})
-	})
+	systemHandler := NewSystemHandler(dockerService)
+
+	system.GET("/stats", systemHandler.GetStats)
+	system.GET("/docker/info", systemHandler.GetDockerInfo)
 }
 
 func setupContainerRoutes(api *gin.RouterGroup, services *Services) {
