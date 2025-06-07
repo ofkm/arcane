@@ -18,6 +18,10 @@ export default class UserAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.get(`/users/${id}`));
 	}
 
+	async getCurrentUser(): Promise<User> {
+		return this.handleResponse(this.api.get(`/auth/me`));
+	}
+
 	async create(user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {
 		return this.handleResponse(this.api.post('/users', user));
 	}

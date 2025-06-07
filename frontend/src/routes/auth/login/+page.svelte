@@ -41,12 +41,8 @@
 
 		try {
 			await authService.login({ username, password });
-
-			// Force invalidation of all data to ensure fresh user data
 			await invalidateAll();
-
-			// Redirect to the intended page or dashboard
-			const redirectTo = data.redirectTo || '/dashboard';
+			const redirectTo = data.redirectTo || '/';
 			goto(redirectTo);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Login failed';
