@@ -59,8 +59,8 @@ func main() {
 	// Pass DockerClientService to services that need Docker
 	containerService := services.NewContainerService(db, dockerClientService)
 	imageService := services.NewImageService(db, dockerClientService)
-	volumeService := services.NewVolumeService(db)
-	networkService := services.NewNetworkService(db)
+	volumeService := services.NewVolumeService(db, dockerClientService)
+	networkService := services.NewNetworkService(db, dockerClientService)
 	imageMaturityService := services.NewImageMaturityService(db)
 
 	// Test Docker connection

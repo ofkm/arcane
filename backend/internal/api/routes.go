@@ -242,12 +242,15 @@ func setupVolumeRoutes(api *gin.RouterGroup, services *Services) {
 
 func setupNetworkRoutes(api *gin.RouterGroup, services *Services) {
 	networks := api.Group("/networks")
-	// networks.Use(AuthMiddleware(services.Auth)) // Add when ready
+	networks.Use(AuthMiddleware(services.Auth))
 
-	networks.GET("", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"success": true,
-			"data":    []interface{}{},
-		})
-	})
+	networkHandler := NewNetworkHandler(services.Network)
+
+	networks.GET("", networkHandler.List)
+	networks.GET("/:id", networkHandler.GetByID)
+	networks.POST("", networkHandler.Create)
+	networks.DELETE("/:id", networkHandler.Remove)
+	networks.POST("/:id/connect", networkHandler.ConnectContainer)
+	networks.POST("/:id/disconnect", networkHandler.DisconnectContainer)
+	networks.POST("/prune", networkHandler.Prune)
 }

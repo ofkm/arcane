@@ -2,79 +2,185 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
-	"gorm.io/gorm"
 )
 
 type VolumeService struct {
-	db *database.DB
+	db            *database.DB
+	dockerService *DockerClientService
 }
 
-func NewVolumeService(db *database.DB) *VolumeService {
-	return &VolumeService{db: db}
+func NewVolumeService(db *database.DB, dockerService *DockerClientService) *VolumeService {
+	return &VolumeService{db: db, dockerService: dockerService}
 }
 
-func (s *VolumeService) ListVolumes(ctx context.Context) ([]*models.Volume, error) {
-	var volumes []*models.Volume
-	if err := s.db.WithContext(ctx).Order("created_at DESC").Find(&volumes).Error; err != nil {
-		return nil, fmt.Errorf("failed to list volumes: %w", err)
+// ListVolumes returns live Docker volumes
+func (s *VolumeService) ListVolumes(ctx context.Context) ([]volume.Volume, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	return volumes, nil
-}
+	defer dockerClient.Close()
 
-func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*models.Volume, error) {
-	var volume models.Volume
-	if err := s.db.WithContext(ctx).Where("name = ?", name).First(&volume).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("volume not found")
+	volumes, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list Docker volumes: %w", err)
+	}
+
+	// Convert []*volume.Volume to []volume.Volume
+	vols := make([]volume.Volume, len(volumes.Volumes))
+	for i, v := range volumes.Volumes {
+		if v != nil {
+			vols[i] = *v
 		}
-		return nil, fmt.Errorf("failed to get volume: %w", err)
 	}
-	return &volume, nil
+	return vols, nil
 }
 
-func (s *VolumeService) CreateVolume(ctx context.Context, volume *models.Volume) (*models.Volume, error) {
-	volume.BaseModel = models.BaseModel{CreatedAt: time.Now()}
+// GetVolumeByName gets volume info from Docker
+func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*volume.Volume, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
 
-	if err := s.db.WithContext(ctx).Create(volume).Error; err != nil {
+	vol, err := dockerClient.VolumeInspect(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("volume not found: %w", err)
+	}
+
+	return &vol, nil
+}
+
+// CreateVolume creates a Docker volume
+func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateOptions) (*volume.Volume, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	vol, err := dockerClient.VolumeCreate(ctx, options)
+	if err != nil {
 		return nil, fmt.Errorf("failed to create volume: %w", err)
 	}
-	return volume, nil
+
+	// Optionally persist basic metadata to DB if needed
+	if s.db != nil {
+		dbVolume := &models.Volume{
+			BaseModel:  models.BaseModel{CreatedAt: time.Now()},
+			Name:       vol.Name,
+			Driver:     vol.Driver,
+			Mountpoint: vol.Mountpoint,
+			Scope:      "local", // Typically local for volumes
+		}
+		s.db.WithContext(ctx).Create(dbVolume)
+	}
+
+	return &vol, nil
 }
 
-func (s *VolumeService) UpdateVolume(ctx context.Context, volume *models.Volume) (*models.Volume, error) {
-	now := time.Now()
-	volume.UpdatedAt = &now
-
-	if err := s.db.WithContext(ctx).Save(volume).Error; err != nil {
-		return nil, fmt.Errorf("failed to update volume: %w", err)
+// DeleteVolume removes a Docker volume
+func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force bool) error {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	return volume, nil
-}
+	defer dockerClient.Close()
 
-func (s *VolumeService) DeleteVolume(ctx context.Context, name string) error {
-	if err := s.db.WithContext(ctx).Delete(&models.Volume{}, "name = ?", name).Error; err != nil {
-		return fmt.Errorf("failed to delete volume: %w", err)
+	if err := dockerClient.VolumeRemove(ctx, name, force); err != nil {
+		return fmt.Errorf("failed to remove volume: %w", err)
 	}
+
+	// Optionally clean up DB record if needed
+	if s.db != nil {
+		s.db.WithContext(ctx).Delete(&models.Volume{}, "name = ?", name)
+	}
+
 	return nil
 }
 
-func (s *VolumeService) UpdateVolumeUsage(ctx context.Context, name string, inUse bool) error {
-	if err := s.db.WithContext(ctx).Model(&models.Volume{}).Where("name = ?", name).Update("in_use", inUse).Error; err != nil {
-		return fmt.Errorf("failed to update volume usage: %w", err)
+// PruneVolumes removes unused Docker volumes
+func (s *VolumeService) PruneVolumes(ctx context.Context) (*volume.PruneReport, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	return nil
+	defer dockerClient.Close()
+
+	// You can add filters for pruning if needed
+	filterArgs := filters.NewArgs()
+
+	report, err := dockerClient.VolumesPrune(ctx, filterArgs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prune volumes: %w", err)
+	}
+
+	return &report, nil
 }
 
-func (s *VolumeService) GetVolumesByDriver(ctx context.Context, driver string) ([]*models.Volume, error) {
-	var volumes []*models.Volume
-	if err := s.db.WithContext(ctx).Where("driver = ?", driver).Find(&volumes).Error; err != nil {
-		return nil, fmt.Errorf("failed to get volumes by driver: %w", err)
+// GetVolumesByDriver filters volumes by driver type
+func (s *VolumeService) GetVolumesByDriver(ctx context.Context, driver string) ([]volume.Volume, error) {
+	volumes, err := s.ListVolumes(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return volumes, nil
+
+	var filtered []volume.Volume
+	for _, vol := range volumes {
+		if vol.Driver == driver {
+			filtered = append(filtered, vol)
+		}
+	}
+
+	return filtered, nil
+}
+
+// GetVolumeUsage checks if a volume is in use by any containers
+func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, []string, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	// First get the volume to check its UsageData
+	if _, err := dockerClient.VolumeInspect(ctx, name); err != nil {
+		return false, nil, fmt.Errorf("volume not found: %w", err)
+	}
+
+	// Get all containers to check which ones are using this volume
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to list containers: %w", err)
+	}
+
+	inUse := false
+	var usingContainers []string
+
+	for _, container := range containers {
+		// Get detailed container info to check mounts
+		containerInfo, err := dockerClient.ContainerInspect(ctx, container.ID)
+		if err != nil {
+			continue
+		}
+
+		for _, mount := range containerInfo.Mounts {
+			if mount.Type == "volume" && mount.Name == name {
+				inUse = true
+				usingContainers = append(usingContainers, container.ID)
+				break
+			}
+		}
+	}
+
+	return inUse, usingContainers, nil
 }
