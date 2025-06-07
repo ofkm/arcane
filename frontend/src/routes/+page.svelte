@@ -28,7 +28,6 @@
 	import DockerIcon from '$lib/icons/docker-icon.svelte';
 	import GitHubIcon from '$lib/icons/github-icon.svelte';
 
-	// Update this type to match your Go backend response
 	type EnhancedImageInfo = {
 		Id: string;
 		RepoTags: string[];
@@ -46,7 +45,6 @@
 		maturity?: any;
 	};
 
-	// Define ContainerInfo type based on your Go backend API response
 	type ContainerInfo = {
 		Id: string;
 		Names: string[];
@@ -74,7 +72,7 @@
 		containers: data.containers,
 		images: data.images as EnhancedImageInfo[],
 		settings: data.settings,
-		systemStats: null, // Start with null - will be loaded lazily
+		systemStats: null,
 		error: data.error,
 		isPruneDialogOpen: false
 	});
@@ -84,10 +82,9 @@
 		stopping: false,
 		refreshing: false,
 		pruning: false,
-		loadingStats: true // Add loading state for stats
+		loadingStats: true
 	});
 
-	// Lazy load system stats
 	let liveSystemStats = $state(null);
 	let statsInterval: NodeJS.Timeout | null = null;
 
