@@ -32,7 +32,7 @@
 	let selectedAgentId = $state('');
 
 	let name = $state('');
-	let composeContent = $state(defaultComposeTemplate);
+	let composeContent = $state(data.defaultTemplate || defaultComposeTemplate);
 	let envContent = $state(data.envTemplate || defaultEnvTemplate);
 	let dockerRunCommand = $state('');
 
@@ -48,12 +48,6 @@
 
 	const selectedAgent = $derived(onlineAgents.find((agent) => agent.id === selectedAgentId));
 
-	$effect(() => {
-		if (data.defaultTemplate && !composeContent) {
-			composeContent = data.defaultTemplate;
-		}
-	});
-
 	async function handleSubmit() {
 		if (selectedAgentId) {
 			await handleDeployToAgent();
@@ -64,13 +58,21 @@
 
 	async function handleCreateStack() {
 		handleApiResultWithCallbacks({
-			result: await tryCatch(stackApi.create(name, composeContent, envContent)),
+			result: await tryCatch(
+				stackApi.create({
+					name: name,
+					composeContent: composeContent,
+					envContent: envContent,
+					agentId: undefined
+				})
+			),
 			message: 'Failed to Create Stack',
 			setLoadingState: (value) => (saving = value),
-			onSuccess: async () => {
-				toast.success(`Stack "${name}" created with environment file.`);
+			onSuccess: async (data) => {
+				toast.success(`Stack "${name}" created successfully.`);
 				await invalidateAll();
-				goto(`/compose/${name}`);
+				// Use the returned stack ID instead of name for navigation
+				goto(`/compose/${data.stack?.id || name}`);
 			}
 		});
 	}

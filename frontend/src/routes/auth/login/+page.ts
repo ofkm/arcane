@@ -1,7 +1,6 @@
-import type { PageLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 
-export const load: PageLoad = async ({ parent, url }) => {
+export const load = async ({ parent, url }) => {
 	const data = await parent();
 
 	// If already authenticated, redirect to dashboard

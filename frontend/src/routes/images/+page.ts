@@ -1,4 +1,3 @@
-import type { PageLoad } from './$types';
 import { imageAPI, containerAPI, settingsAPI } from '$lib/services/api';
 import type { EnhancedImageInfo } from '$lib/types/docker';
 import type { Settings } from '$lib/types/settings.type';
@@ -9,7 +8,7 @@ type ImageData = {
 	settings: Settings;
 };
 
-export const load: PageLoad = async (): Promise<ImageData> => {
+export const load = async (): Promise<ImageData> => {
 	try {
 		const [images, settings] = await Promise.all([imageAPI.list() as Promise<EnhancedImageInfo[]>, settingsAPI.getSettings()]);
 

@@ -74,8 +74,8 @@ func setupUserRoutes(api *gin.RouterGroup, services *Services) {
 	users.DELETE("/:id", userHandler.DeleteUser)
 }
 
-func setupStackRoutes(api *gin.RouterGroup, services *Services) {
-	stacks := api.Group("/stacks")
+func setupStackRoutes(router *gin.RouterGroup, services *Services) {
+	stacks := router.Group("/stacks")
 	stacks.Use(AuthMiddleware(services.Auth))
 
 	stackHandler := NewStackHandler(services.Stack)
@@ -86,12 +86,12 @@ func setupStackRoutes(api *gin.RouterGroup, services *Services) {
 	stacks.PUT("/:id", stackHandler.UpdateStack)
 	stacks.DELETE("/:id", stackHandler.DeleteStack)
 
-	// Stack actions
-	stacks.POST("/:id/start", stackHandler.StartStack)
+	// Docker Compose operations
+	stacks.POST("/:id/deploy", stackHandler.DeployStack)
 	stacks.POST("/:id/stop", stackHandler.StopStack)
 	stacks.POST("/:id/restart", stackHandler.RestartStack)
-	stacks.POST("/:id/redeploy", stackHandler.RedeployStack)
-	stacks.POST("/:id/pull", stackHandler.PullStack)
+	stacks.GET("/:id/services", stackHandler.GetStackServices)
+	stacks.POST("/:id/pull", stackHandler.PullImages)
 }
 
 // setupAgentRoutes handles agent management endpoints

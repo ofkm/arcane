@@ -49,14 +49,12 @@ func main() {
 
 	// Initialize all services
 	log.Println("🚀 Initializing services...")
-	userService := services.NewUserService(db)
-	stackService := services.NewStackService(db)
-	agentService := services.NewAgentService(db)
 	settingsService := services.NewSettingsService(db)
-	deploymentService := services.NewDeploymentService(db)
 	dockerClientService := services.NewDockerClientService(db)
-
-	// Pass DockerClientService to services that need Docker
+	userService := services.NewUserService(db)
+	stackService := services.NewStackService(db, dockerClientService, settingsService)
+	agentService := services.NewAgentService(db)
+	deploymentService := services.NewDeploymentService(db)
 	containerService := services.NewContainerService(db, dockerClientService)
 	imageService := services.NewImageService(db, dockerClientService)
 	volumeService := services.NewVolumeService(db, dockerClientService)
@@ -70,7 +68,7 @@ func main() {
 		log.Printf("⚠️ Failed to connect to Docker: %v", err)
 	} else {
 		log.Printf("✅ Docker connection successful - Client version: %s", dockerClient.ClientVersion())
-		dockerClient.Close() // Don't forget to close the test connection
+		dockerClient.Close()
 	}
 
 	userService.CreateDefaultAdmin()
@@ -160,10 +158,10 @@ func main() {
 
 	log.Printf("🚀 Arcane server starting...")
 	log.Printf("📦 Environment: %s", cfg.Environment)
-	log.Printf("🗄️  Database: %s", cfg.DatabaseURL)
+	log.Printf("🗄️ Database: %s", cfg.DatabaseURL)
 	log.Printf("🌐 Server: http://localhost:%s", port)
 	log.Printf("🔗 API: http://localhost:%s/api", port)
-	log.Printf("❤️  Health: http://localhost:%s/health", port)
+	log.Printf("❤️ Health: http://localhost:%s/health", port)
 
 	if err := r.Run(":" + port); err != nil {
 		log.Fatal("❌ Failed to start server:", err)

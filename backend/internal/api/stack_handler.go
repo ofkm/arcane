@@ -1,11 +1,11 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 )
@@ -24,7 +24,6 @@ type CreateStackRequest struct {
 	Name           string  `json:"name" binding:"required"`
 	ComposeContent string  `json:"composeContent" binding:"required"`
 	EnvContent     *string `json:"envContent,omitempty"`
-	Path           string  `json:"path" binding:"required"`
 	AgentID        *string `json:"agentId,omitempty"`
 }
 
@@ -62,13 +61,11 @@ func (h *StackHandler) CreateStack(c *gin.Context) {
 		return
 	}
 
-	stackID := uuid.New().String()
 	createdStack, err := h.stackService.CreateStack(
 		c.Request.Context(),
-		stackID,
 		req.Name,
+		req.ComposeContent,
 		req.EnvContent,
-		req.Path,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -96,9 +93,35 @@ func (h *StackHandler) GetStack(c *gin.Context) {
 		return
 	}
 
+	// Get services for this stack
+	services, err := h.stackService.GetStackServices(c.Request.Context(), stackID)
+	if err != nil {
+		fmt.Printf("Warning: failed to get services for stack %s: %v\n", stackID, err)
+		services = nil
+	}
+
+	// Add services to stack response
+	stackResponse := map[string]interface{}{
+		"id":             stack.ID,
+		"name":           stack.Name,
+		"path":           stack.Path,
+		"composeContent": stack.ComposeContent,
+		"envContent":     stack.EnvContent,
+		"status":         stack.Status,
+		"serviceCount":   stack.ServiceCount,
+		"runningCount":   stack.RunningCount,
+		"createdAt":      stack.CreatedAt,
+		"updatedAt":      stack.UpdatedAt,
+		"autoUpdate":     stack.AutoUpdate,
+		"isExternal":     stack.IsExternal,
+		"isLegacy":       stack.IsLegacy,
+		"isRemote":       stack.IsRemote,
+		"services":       services,
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"stack":   stack,
+		"stack":   stackResponse,
 	})
 }
 
@@ -196,9 +219,7 @@ func (h *StackHandler) StartStack(c *gin.Context) {
 func (h *StackHandler) StopStack(c *gin.Context) {
 	stackID := c.Param("id")
 
-	// TODO: Implement actual stack stop logic
-	err := h.stackService.UpdateStackStatus(c.Request.Context(), stackID, models.StackStatusStopped)
-	if err != nil {
+	if err := h.stackService.StopStack(c.Request.Context(), stackID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "Failed to stop stack",
@@ -242,5 +263,77 @@ func (h *StackHandler) PullStack(c *gin.Context) {
 		"success": true,
 		"message": "Stack images pulled successfully",
 		"stackId": stackID,
+	})
+}
+
+func (h *StackHandler) DeployStack(c *gin.Context) {
+	stackID := c.Param("id")
+
+	var req struct {
+		Profiles      []string          `json:"profiles"`
+		EnvOverrides  map[string]string `json:"env_overrides"`
+		ForceRecreate bool              `json:"force_recreate"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// options := services.DeployOptions{
+	// 	Profiles:      req.Profiles,
+	// 	EnvOverrides:  req.EnvOverrides,
+	// 	ForceRecreate: req.ForceRecreate,
+	// }
+
+	if err := h.stackService.DeployStack(c.Request.Context(), stackID, req.Profiles, req.EnvOverrides); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Stack deployed successfully",
+	})
+}
+
+func (h *StackHandler) GetStackServices(c *gin.Context) {
+	stackID := c.Param("id")
+
+	services, err := h.stackService.GetStackServices(c.Request.Context(), stackID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    services,
+	})
+}
+
+func (h *StackHandler) PullImages(c *gin.Context) {
+	stackID := c.Param("id")
+
+	if err := h.stackService.PullStackImages(c.Request.Context(), stackID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Images pulled successfully",
 	})
 }
