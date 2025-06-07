@@ -1216,7 +1216,57 @@ func (s *StackService) createVolumes(ctx context.Context, client *client.Client,
 	return nil
 }
 
+func (s *StackService) validateStackDeployment(ctx context.Context, client *client.Client, project *types.Project) error {
+	fmt.Printf("DEBUG: Validating stack deployment for project %s\n", project.Name)
+
+	var conflicts []string
+
+	for serviceName, service := range project.Services {
+		// Determine container name that will be used
+		var containerName string
+		if service.ContainerName != "" {
+			containerName = service.ContainerName
+		} else {
+			containerName = fmt.Sprintf("%s_%s_1", project.Name, serviceName)
+		}
+
+		// Check if container with this name already exists
+		existingContainers, err := client.ContainerList(ctx, container.ListOptions{
+			All: true,
+			Filters: filters.NewArgs(
+				filters.Arg("name", containerName),
+			),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to check for existing container %s: %w", containerName, err)
+		}
+
+		if len(existingContainers) > 0 {
+			existingContainer := existingContainers[0]
+			existingProjectLabel := existingContainer.Labels["com.docker.compose.project"]
+
+			// If container belongs to a different project, it's a conflict
+			if existingProjectLabel != project.Name {
+				conflicts = append(conflicts, fmt.Sprintf("Service '%s' wants to use container name '%s', but it's already used by project '%s'",
+					serviceName, containerName, existingProjectLabel))
+			}
+		}
+	}
+
+	if len(conflicts) > 0 {
+		return fmt.Errorf("container name conflicts detected:\n%s", strings.Join(conflicts, "\n"))
+	}
+
+	fmt.Printf("DEBUG: No container name conflicts found\n")
+	return nil
+}
+
 func (s *StackService) createServices(ctx context.Context, client *client.Client, project *types.Project, options DeployOptions) error {
+	// First, validate that we can deploy without conflicts
+	if err := s.validateStackDeployment(ctx, client, project); err != nil {
+		return fmt.Errorf("deployment validation failed: %w", err)
+	}
+
 	// Sort services by dependencies
 	serviceOrder := s.resolveDependencyOrder(project.Services)
 
@@ -1322,32 +1372,47 @@ func (s *StackService) createSingleService(ctx context.Context, client *client.C
 		return fmt.Errorf("failed to check for existing container: %w", err)
 	}
 
-	// If container exists, remove it first
+	// If container exists, check if it belongs to this stack
 	if len(existingContainers) > 0 {
 		existingContainer := existingContainers[0]
-		fmt.Printf("DEBUG: Removing existing container %s\n", containerName)
+		existingProjectLabel := existingContainer.Labels["com.docker.compose.project"]
 
-		// Stop if running
-		if existingContainer.State == "running" {
-			timeout := 10
-			if err := client.ContainerStop(ctx, existingContainer.ID, container.StopOptions{
-				Timeout: &timeout,
-			}); err != nil {
-				fmt.Printf("Warning: failed to stop existing container %s: %v\n", existingContainer.ID, err)
+		fmt.Printf("DEBUG: Found existing container %s with project label: %s\n", containerName, existingProjectLabel)
+
+		// If the existing container belongs to THIS stack, we can safely replace it (redeploy scenario)
+		if existingProjectLabel == project.Name {
+			fmt.Printf("DEBUG: Container %s belongs to this stack (%s), replacing it\n", containerName, project.Name)
+
+			// Stop if running
+			if existingContainer.State == "running" {
+				timeout := 10
+				if err := client.ContainerStop(ctx, existingContainer.ID, container.StopOptions{
+					Timeout: &timeout,
+				}); err != nil {
+					fmt.Printf("Warning: failed to stop existing container %s: %v\n", existingContainer.ID, err)
+				}
 			}
-		}
 
-		// Remove container
-		if err := client.ContainerRemove(ctx, existingContainer.ID, container.RemoveOptions{
-			Force: true,
-		}); err != nil {
-			fmt.Printf("Warning: failed to remove existing container %s: %v\n", existingContainer.ID, err)
+			// Remove container
+			if err := client.ContainerRemove(ctx, existingContainer.ID, container.RemoveOptions{
+				Force: true,
+			}); err != nil {
+				return fmt.Errorf("failed to remove existing container %s: %w", existingContainer.ID, err)
+			}
+		} else {
+			// Container exists but belongs to a different stack - this is an error!
+			return fmt.Errorf("container name conflict: container '%s' already exists and belongs to project '%s' (current project: '%s'). Please use a different container_name or stop the conflicting container first",
+				containerName, existingProjectLabel, project.Name)
 		}
 	}
 
 	// Create container with the specified name
 	resp, err := client.ContainerCreate(ctx, config, hostConfig, networkConfig, nil, containerName)
 	if err != nil {
+		// If creation fails due to name conflict, provide a clearer error
+		if strings.Contains(err.Error(), "already in use") || strings.Contains(err.Error(), "name") {
+			return fmt.Errorf("container name conflict: '%s' is already in use by another container. Please use a different container_name in your compose file", containerName)
+		}
 		return fmt.Errorf("failed to create container %s: %w", containerName, err)
 	}
 
