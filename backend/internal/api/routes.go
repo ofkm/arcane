@@ -92,6 +92,9 @@ func setupStackRoutes(router *gin.RouterGroup, services *Services) {
 	stacks.POST("/:id/restart", stackHandler.RestartStack)
 	stacks.GET("/:id/services", stackHandler.GetStackServices)
 	stacks.POST("/:id/pull", stackHandler.PullImages)
+	stacks.POST("/:id/redeploy", stackHandler.RedeployStack)
+	stacks.POST("/:id/down", stackHandler.DownStack)
+	stacks.DELETE("/:id/destroy", stackHandler.DestroyStack)
 }
 
 // setupAgentRoutes handles agent management endpoints

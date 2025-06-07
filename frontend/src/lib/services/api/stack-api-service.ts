@@ -35,18 +35,13 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async delete(id: string) {
-		const res = await this.api.delete(`/stacks/${id}`);
-		return res.data;
-	}
-
 	async deploy(id: string, options?: { profiles?: string[]; envOverrides?: Record<string, string> }) {
 		const res = await this.api.post(`/stacks/${id}/deploy`, options || {});
 		return res.data;
 	}
 
 	async down(id: string) {
-		const res = await this.api.post(`/stacks/${id}/stop`);
+		const res = await this.api.post(`/stacks/${id}/down`);
 		return res.data;
 	}
 
@@ -66,13 +61,11 @@ export default class StackAPIService extends BaseAPIService {
 	}
 
 	async destroy(id: string, removeVolumes = false, removeFiles = false) {
-		const queryParams = {
-			removeVolumes: removeVolumes ? 'true' : 'false',
-			removeFiles: removeFiles ? 'true' : 'false'
-		};
-
 		const res = await this.api.delete(`/stacks/${id}/destroy`, {
-			params: queryParams
+			data: {
+				removeVolumes,
+				removeFiles
+			}
 		});
 		return res.data;
 	}

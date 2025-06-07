@@ -33,6 +33,16 @@ type UpdateStackRequest struct {
 	AutoUpdate     *bool   `json:"autoUpdate,omitempty"`
 }
 
+type RedeployStackRequest struct {
+	Profiles     []string          `json:"profiles,omitempty"`
+	EnvOverrides map[string]string `json:"envOverrides,omitempty"`
+}
+
+type DestroyStackRequest struct {
+	RemoveFiles   bool `json:"removeFiles,omitempty"`
+	RemoveVolumes bool `json:"removeVolumes,omitempty"`
+}
+
 func (h *StackHandler) ListStacks(c *gin.Context) {
 	stacks, err := h.stackService.ListStacks(c.Request.Context())
 	if err != nil {
@@ -330,11 +340,69 @@ func (h *StackHandler) RestartStack(c *gin.Context) {
 func (h *StackHandler) RedeployStack(c *gin.Context) {
 	stackID := c.Param("id")
 
-	// TODO: Implement actual stack redeploy logic
+	var req RedeployStackRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// If no JSON body provided, use defaults
+		req = RedeployStackRequest{
+			Profiles:     []string{},
+			EnvOverrides: map[string]string{},
+		}
+	}
+
+	if err := h.stackService.RedeployStack(c.Request.Context(), stackID, req.Profiles, req.EnvOverrides); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("Failed to redeploy stack: %v", err),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Stack redeployed successfully",
-		"stackId": stackID,
+	})
+}
+
+func (h *StackHandler) DownStack(c *gin.Context) {
+	stackID := c.Param("id")
+
+	if err := h.stackService.DownStack(c.Request.Context(), stackID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("Failed to bring down stack: %v", err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Stack brought down successfully",
+	})
+}
+
+func (h *StackHandler) DestroyStack(c *gin.Context) {
+	stackID := c.Param("id")
+
+	var req DestroyStackRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// If no JSON body provided, use defaults (don't remove files/volumes)
+		req = DestroyStackRequest{
+			RemoveFiles:   false,
+			RemoveVolumes: false,
+		}
+	}
+
+	if err := h.stackService.DestroyStack(c.Request.Context(), stackID, req.RemoveFiles, req.RemoveVolumes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("Failed to destroy stack: %v", err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Stack destroyed successfully",
 	})
 }
 
