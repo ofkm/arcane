@@ -2,7 +2,6 @@ import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
 import { building, dev } from '$app/environment';
-import { sessionHandler } from '$lib/services/session-handler';
 import SessionAPIService from '$lib/services/api/session-api-service';
 import { loadSettingsFromServer } from '$lib/stores/settings-store';
 
@@ -132,4 +131,4 @@ const initHandler: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-export const handle = sequence(sessionHandler, settingsHandler, initHandler, authHandler);
+export const handle = sequence(settingsHandler, initHandler, authHandler);

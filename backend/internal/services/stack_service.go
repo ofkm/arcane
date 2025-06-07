@@ -76,19 +76,13 @@ type StackInfo struct {
 
 // Create operations
 func (s *StackService) CreateStack(ctx context.Context, name, composeContent string, envContent *string) (*models.Stack, error) {
-	// Generate a unique ID for database/internal use
 	stackID := uuid.New().String()
-
-	// Generate folder name based on the stack name (user-friendly)
 	folderName := s.sanitizeStackName(name)
-
-	// Ensure unique folder name
 	folderName, err := s.ensureUniqueFolderName(ctx, folderName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate unique folder name: %w", err)
 	}
 
-	// Generate the full path using the folder name
 	stacksDir, err := s.getStacksDirectory(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stacks directory: %w", err)
@@ -96,47 +90,35 @@ func (s *StackService) CreateStack(ctx context.Context, name, composeContent str
 
 	path := filepath.Join(stacksDir, folderName)
 
+	// Create stack metadata (no content in DB)
 	stack := &models.Stack{
-		ID:             stackID,     // UUID for database
-		Name:           name,        // User-provided name
-		DirName:        &folderName, // Sanitized folder name
-		Path:           path,        // Full path to stack directory
-		ComposeContent: &composeContent,
-		EnvContent:     envContent,
-		Status:         models.StackStatusStopped,
-		IsExternal:     false,
-		IsLegacy:       false,
-		IsRemote:       false,
-		ServiceCount:   0,
-		RunningCount:   0,
+		ID:           stackID,
+		Name:         name,
+		DirName:      &folderName,
+		Path:         path,
+		Status:       models.StackStatusStopped,
+		IsExternal:   false,
+		IsLegacy:     false,
+		IsRemote:     false,
+		ServiceCount: 0,
+		RunningCount: 0,
 		BaseModel: models.BaseModel{
 			CreatedAt: time.Now(),
 		},
 	}
 
-	// Create the stack in database first
+	// Save to database (metadata only)
 	if err := s.db.WithContext(ctx).Create(stack).Error; err != nil {
 		return nil, fmt.Errorf("failed to create stack: %w", err)
 	}
 
-	// Save stack files using the folder name (not ID)
+	// Save files to disk
 	if err := s.SaveStackFilesToPath(path, composeContent, envContent); err != nil {
-		// Rollback database creation if file creation fails
-		s.db.WithContext(ctx).Delete(stack)
+		s.db.WithContext(ctx).Delete(stack) // Rollback
 		return nil, fmt.Errorf("failed to save stack files: %w", err)
 	}
 
 	return stack, nil
-}
-
-func (s *StackService) generateStackPath(name string) string {
-	stacksDir, err := s.getStacksDirectory(context.Background())
-	if err != nil {
-		stacksDir = "data/stacks"
-	}
-
-	sanitizedName := s.sanitizeStackName(name)
-	return filepath.Join(stacksDir, sanitizedName)
 }
 
 // sanitizeStackName replaces invalid filesystem characters with underscores and trims spaces.
@@ -199,7 +181,7 @@ func (s *StackService) ensureUniqueFolderName(ctx context.Context, baseName stri
 }
 
 func (s *StackService) SaveStackFilesToPath(stackPath, composeContent string, envContent *string) error {
-	// Create directory
+	// Ensure directory exists
 	if err := os.MkdirAll(stackPath, 0755); err != nil {
 		return fmt.Errorf("failed to create stack directory: %w", err)
 	}
@@ -210,11 +192,16 @@ func (s *StackService) SaveStackFilesToPath(stackPath, composeContent string, en
 		return fmt.Errorf("failed to save compose file: %w", err)
 	}
 
-	// Save env file if provided
+	// Save or remove env file
+	envPath := filepath.Join(stackPath, ".env")
 	if envContent != nil && *envContent != "" {
-		envPath := filepath.Join(stackPath, ".env")
 		if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
 			return fmt.Errorf("failed to save env file: %w", err)
+		}
+	} else {
+		// Remove env file if content is empty
+		if _, err := os.Stat(envPath); err == nil {
+			os.Remove(envPath)
 		}
 	}
 
@@ -242,6 +229,33 @@ func (s *StackService) GetStackByName(ctx context.Context, name string) (*models
 		return nil, fmt.Errorf("failed to get stack: %w", err)
 	}
 	return &stack, nil
+}
+
+func (s *StackService) GetStackContent(ctx context.Context, stackID string) (composeContent, envContent string, err error) {
+	var stack models.Stack
+	if err := s.db.WithContext(ctx).Where("id = ?", stackID).First(&stack).Error; err != nil {
+		return "", "", fmt.Errorf("stack not found: %w", err)
+	}
+
+	// Read compose file
+	composeFile := s.findComposeFile(stack.Path)
+	if composeFile == "" {
+		return "", "", fmt.Errorf("no compose file found")
+	}
+
+	composeData, err := os.ReadFile(composeFile)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read compose file: %w", err)
+	}
+	composeContent = string(composeData)
+
+	// Read env file if it exists
+	envFile := filepath.Join(stack.Path, ".env")
+	if envData, err := os.ReadFile(envFile); err == nil {
+		envContent = string(envData)
+	}
+
+	return composeContent, envContent, nil
 }
 
 func (s *StackService) ListStacks(ctx context.Context) ([]*models.Stack, error) {
@@ -371,22 +385,46 @@ func (s *StackService) UpdateStackStatus(ctx context.Context, id string, status 
 	return nil
 }
 
-func (s *StackService) UpdateStackContent(ctx context.Context, id, composeContent string, envContent *string) error {
-	updates := map[string]interface{}{
-		"compose_content": composeContent,
-		"updated_at":      time.Now(),
+func (s *StackService) UpdateStackContent(ctx context.Context, id string, composeContent *string, envContent *string) error {
+	var stack models.Stack
+	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
+		return fmt.Errorf("stack not found: %w", err)
+	}
+
+	// Get current content if not provided
+	var finalComposeContent, finalEnvContent string
+
+	if composeContent != nil {
+		finalComposeContent = *composeContent
+	} else {
+		// Get current compose content
+		currentCompose, _, err := s.GetStackContent(ctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to get current compose content: %w", err)
+		}
+		finalComposeContent = currentCompose
 	}
 
 	if envContent != nil {
-		updates["env_content"] = *envContent
+		finalEnvContent = *envContent
+	} else {
+		// Get current env content
+		_, currentEnv, err := s.GetStackContent(ctx, id)
+		if err != nil {
+			// Env is optional, so empty is fine
+			finalEnvContent = ""
+		} else {
+			finalEnvContent = currentEnv
+		}
 	}
 
-	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-		return fmt.Errorf("failed to update stack content: %w", err)
+	// Update timestamp in database
+	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", id).Update("updated_at", time.Now()).Error; err != nil {
+		return fmt.Errorf("failed to update stack timestamp: %w", err)
 	}
 
-	// Update files on disk
-	return s.SaveStackFiles(id, composeContent, envContent)
+	// Save files to disk
+	return s.SaveStackFilesToPath(stack.Path, finalComposeContent, &finalEnvContent)
 }
 
 func (s *StackService) UpdateStackRuntimeInfo(ctx context.Context, id string, serviceCount, runningCount int, status models.StackStatus) error {
@@ -847,39 +885,34 @@ func (s *StackService) GetServiceLogs(ctx context.Context, stackID, serviceName 
 
 // LoadProject loads and parses a Docker Compose project using v2 API
 func (s *StackService) LoadProject(ctx context.Context, stackID string) (*types.Project, error) {
-	// Get stack path and folder name from database
 	var stack models.Stack
 	if err := s.db.WithContext(ctx).Where("id = ?", stackID).First(&stack).Error; err != nil {
 		return nil, fmt.Errorf("stack not found: %w", err)
 	}
 
 	stackDir := stack.Path
-	projectName := stackID // Default fallback
 
-	// Use folder name as project name if available
+	projectName := stack.Name
 	if stack.DirName != nil && *stack.DirName != "" {
 		projectName = *stack.DirName
 	}
 
-	// Find compose file
 	composeFile := s.findComposeFile(stackDir)
 	if composeFile == "" {
 		return nil, fmt.Errorf("no compose file found in %s", stackDir)
 	}
 
-	// Create project options using the stack's folder name as project name
 	options, err := cli.NewProjectOptions(
 		[]string{composeFile},
 		cli.WithOsEnv,
 		cli.WithDotEnv,
-		cli.WithName(projectName), // Use folder name as project name for Docker Compose
+		cli.WithName(projectName),
 		cli.WithWorkingDirectory(stackDir),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create project options: %w", err)
 	}
 
-	// Load the project
 	project, err := options.LoadProject(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load compose project: %w", err)
@@ -888,7 +921,6 @@ func (s *StackService) LoadProject(ctx context.Context, stackID string) (*types.
 	return project, nil
 }
 
-// Auto-update operations
 func (s *StackService) UpdateStackAutoUpdate(ctx context.Context, id string, autoUpdate bool) error {
 	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", id).Update("auto_update", autoUpdate).Error; err != nil {
 		return fmt.Errorf("failed to update stack auto-update: %w", err)
@@ -1460,18 +1492,9 @@ func (s *StackService) importSingleFileBasedStack(ctx context.Context, stackID, 
 		return fmt.Errorf("no compose file found in %s", stackDir)
 	}
 
-	// Read compose content
-	composeContent, err := os.ReadFile(composeFile)
-	if err != nil {
+	// Verify we can read the compose file (but don't store content in DB)
+	if _, err := os.ReadFile(composeFile); err != nil {
 		return fmt.Errorf("failed to read compose file: %w", err)
-	}
-
-	// Try to read env file
-	var envContent *string
-	envFile := filepath.Join(stackDir, ".env")
-	if envData, err := os.ReadFile(envFile); err == nil {
-		envStr := string(envData)
-		envContent = &envStr
 	}
 
 	// Get directory stats for created time
@@ -1483,21 +1506,18 @@ func (s *StackService) importSingleFileBasedStack(ctx context.Context, stackID, 
 		createdAt = time.Now()
 	}
 
-	// Create stack in database
-	composeContentStr := string(composeContent)
+	// Create stack in database (metadata only, no content)
 	stack := &models.Stack{
-		ID:             uuid.New().String(), // Generate new UUID
-		Name:           stackID,             // Use directory name as stack name
-		DirName:        &stackID,            // Directory name (legacy)
-		Path:           stackDir,
-		ComposeContent: &composeContentStr,
-		EnvContent:     envContent,
-		Status:         models.StackStatusStopped,
-		IsExternal:     false,
-		IsLegacy:       true, // Mark as legacy since it was file-based
-		IsRemote:       false,
-		ServiceCount:   0,
-		RunningCount:   0,
+		ID:           uuid.New().String(), // Generate new UUID
+		Name:         stackID,             // Use directory name as stack name
+		DirName:      &stackID,            // Directory name (legacy)
+		Path:         stackDir,
+		Status:       models.StackStatusStopped,
+		IsExternal:   false,
+		IsLegacy:     true, // Mark as legacy since it was file-based
+		IsRemote:     false,
+		ServiceCount: 0,
+		RunningCount: 0,
 		BaseModel: models.BaseModel{
 			CreatedAt: createdAt,
 		},

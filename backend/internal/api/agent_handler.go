@@ -20,6 +20,12 @@ func NewAgentHandler(agentService *services.AgentService, deploymentService *ser
 	}
 }
 
+// Create a response struct that includes the computed status
+type AgentResponse struct {
+	*models.Agent
+	Status string `json:"status"`
+}
+
 // Agent management endpoints
 func (h *AgentHandler) ListAgents(c *gin.Context) {
 	agents, err := h.agentService.ListAgents(c.Request.Context())
@@ -31,19 +37,25 @@ func (h *AgentHandler) ListAgents(c *gin.Context) {
 		return
 	}
 
-	// Add online status based on last seen
+	// Convert agents to response format with computed status
 	timeoutMinutes := 5 // TODO: Get from settings
-	for _, agent := range agents {
-		agent.Status = "offline"
+	agentResponses := make([]*AgentResponse, len(agents))
+	for i, agent := range agents {
+		status := "offline"
 		if h.agentService.IsAgentOnline(agent, timeoutMinutes) {
-			agent.Status = "online"
+			status = "online"
+		}
+
+		agentResponses[i] = &AgentResponse{
+			Agent:  agent,
+			Status: status,
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"agents":  agents,
-		"count":   len(agents),
+		"agents":  agentResponses,
+		"count":   len(agentResponses),
 	})
 }
 
@@ -59,17 +71,21 @@ func (h *AgentHandler) GetAgent(c *gin.Context) {
 		return
 	}
 
-	// Check if agent is online
+	// Check if agent is online and create response with status
 	timeoutMinutes := 5 // TODO: Get from settings
+	status := "offline"
 	if h.agentService.IsAgentOnline(agent, timeoutMinutes) {
-		agent.Status = "online"
-	} else {
-		agent.Status = "offline"
+		status = "online"
+	}
+
+	agentResponse := &AgentResponse{
+		Agent:  agent,
+		Status: status,
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"agent":   agent,
+		"agent":   agentResponse,
 	})
 }
 

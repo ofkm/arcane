@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -44,6 +43,7 @@ func (h *StackHandler) ListStacks(c *gin.Context) {
 		return
 	}
 
+	// Stacks list doesn't include content - much faster!
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"stacks":  stacks,
@@ -84,6 +84,7 @@ func (h *StackHandler) CreateStack(c *gin.Context) {
 func (h *StackHandler) GetStack(c *gin.Context) {
 	stackID := c.Param("id")
 
+	// Get stack metadata
 	stack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -93,20 +94,27 @@ func (h *StackHandler) GetStack(c *gin.Context) {
 		return
 	}
 
-	// Get services for this stack
+	// Get content from files only when requested
+	composeContent, envContent, err := h.stackService.GetStackContent(c.Request.Context(), stackID)
+	if err != nil {
+		fmt.Printf("Warning: failed to read stack content: %v\n", err)
+		composeContent, envContent = "", ""
+	}
+
+	// Get services
 	services, err := h.stackService.GetStackServices(c.Request.Context(), stackID)
 	if err != nil {
-		fmt.Printf("Warning: failed to get services for stack %s: %v\n", stackID, err)
+		fmt.Printf("Warning: failed to get services: %v\n", err)
 		services = nil
 	}
 
-	// Add services to stack response
+	// Build response with content from files
 	stackResponse := map[string]interface{}{
 		"id":             stack.ID,
 		"name":           stack.Name,
 		"path":           stack.Path,
-		"composeContent": stack.ComposeContent,
-		"envContent":     stack.EnvContent,
+		"composeContent": composeContent, // From file
+		"envContent":     envContent,     // From file
 		"status":         stack.Status,
 		"serviceCount":   stack.ServiceCount,
 		"runningCount":   stack.RunningCount,
@@ -137,37 +145,50 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 		return
 	}
 
-	stack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Stack not found",
-		})
-		return
+	// Handle content updates first (if any)
+	if req.ComposeContent != nil || req.EnvContent != nil {
+		if err := h.stackService.UpdateStackContent(c.Request.Context(), stackID, req.ComposeContent, req.EnvContent); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to update stack content",
+			})
+			return
+		}
 	}
 
-	// Update fields
-	if req.Name != nil {
-		stack.Name = *req.Name
-	}
-	if req.ComposeContent != nil {
-		stack.ComposeContent = req.ComposeContent
-	}
-	if req.EnvContent != nil {
-		stack.EnvContent = req.EnvContent
-	}
-	if req.AutoUpdate != nil {
-		stack.AutoUpdate = *req.AutoUpdate
+	// Handle metadata updates
+	if req.Name != nil || req.AutoUpdate != nil {
+		stack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"error":   "Stack not found",
+			})
+			return
+		}
+
+		if req.Name != nil {
+			stack.Name = *req.Name
+		}
+		if req.AutoUpdate != nil {
+			stack.AutoUpdate = *req.AutoUpdate
+		}
+
+		if _, err := h.stackService.UpdateStack(c.Request.Context(), stack); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to update stack",
+			})
+			return
+		}
 	}
 
-	now := time.Now()
-	stack.UpdatedAt = &now
-
-	updatedStack, err := h.stackService.UpdateStack(c.Request.Context(), stack)
+	// Return updated stack
+	updatedStack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to update stack",
+			"error":   "Failed to get updated stack",
 		})
 		return
 	}

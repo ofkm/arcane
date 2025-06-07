@@ -127,13 +127,6 @@ func (s *ContainerService) UpdateContainer(ctx context.Context, container *model
 	return container, nil
 }
 
-func (s *ContainerService) DeleteContainer(ctx context.Context, id string) error {
-	if err := s.db.WithContext(ctx).Delete(&models.Container{}, "id = ?", id).Error; err != nil {
-		return fmt.Errorf("failed to delete container: %w", err)
-	}
-	return nil
-}
-
 func (s *ContainerService) GetContainersByStack(ctx context.Context, stackID string) ([]*models.Container, error) {
 	var containers []*models.Container
 	if err := s.db.WithContext(ctx).Where("stack_id = ?", stackID).Find(&containers).Error; err != nil {
@@ -152,5 +145,26 @@ func (s *ContainerService) UpdateContainerStatus(ctx context.Context, id, status
 	if err := s.db.WithContext(ctx).Model(&models.Container{}).Where("container_id = ? OR id = ?", id, id).Updates(updates).Error; err != nil {
 		return fmt.Errorf("failed to update container status: %w", err)
 	}
+	return nil
+}
+
+// Add this method to your ContainerService
+func (s *ContainerService) DeleteContainer(ctx context.Context, containerID string, force bool, removeVolumes bool) error {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	// Remove the container
+	err = dockerClient.ContainerRemove(ctx, containerID, container.RemoveOptions{
+		Force:         force,
+		RemoveVolumes: removeVolumes,
+		RemoveLinks:   false,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete container: %w", err)
+	}
+
 	return nil
 }

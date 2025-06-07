@@ -211,6 +211,7 @@ func setupContainerRoutes(api *gin.RouterGroup, services *Services) {
 	containers.POST("/:id/start", containerHandler.Start)
 	containers.POST("/:id/stop", containerHandler.Stop)
 	containers.POST("/:id/restart", containerHandler.Restart)
+	containers.DELETE("/:id", containerHandler.Delete)
 	containers.GET("/:id/logs", containerHandler.GetLogs)
 }
 

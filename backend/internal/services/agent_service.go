@@ -28,23 +28,22 @@ func (s *AgentService) RegisterAgent(ctx context.Context, agent *models.Agent) (
 		return nil, fmt.Errorf("failed to check existing agent: %w", err)
 	}
 
-	now := time.Now().Unix()
+	now := time.Now()
 	if existing != nil {
-		// Update existing agent
-		agent.Status = "online"
-		agent.LastSeen = now
+		// Update existing agent - fix field names
+		existing.IsActive = true
+		existing.LastPing = &now
 		updateTime := time.Now()
-		agent.UpdatedAt = &updateTime
+		existing.UpdatedAt = &updateTime
 
-		if err := s.db.WithContext(ctx).Save(agent).Error; err != nil {
+		if err := s.db.WithContext(ctx).Save(existing).Error; err != nil {
 			return nil, fmt.Errorf("failed to update agent: %w", err)
 		}
-		return agent, nil
+		return existing, nil
 	} else {
-		// Create new agent
-		agent.RegisteredAt = now
-		agent.LastSeen = now
-		agent.Status = "online"
+		// Create new agent - fix field names
+		agent.IsActive = true
+		agent.LastPing = &now
 		agent.BaseModel = models.BaseModel{CreatedAt: time.Now()}
 
 		if err := s.db.WithContext(ctx).Create(agent).Error; err != nil {
@@ -74,9 +73,10 @@ func (s *AgentService) ListAgents(ctx context.Context) ([]*models.Agent, error) 
 }
 
 func (s *AgentService) UpdateAgentHeartbeat(ctx context.Context, agentID string) error {
+	now := time.Now()
 	if err := s.db.WithContext(ctx).Model(&models.Agent{}).Where("id = ?", agentID).Updates(map[string]interface{}{
-		"last_seen": time.Now().Unix(),
-		"status":    "online",
+		"last_ping": &now,
+		"is_active": true,
 	}).Error; err != nil {
 		return fmt.Errorf("failed to update agent heartbeat: %w", err)
 	}
@@ -84,22 +84,13 @@ func (s *AgentService) UpdateAgentHeartbeat(ctx context.Context, agentID string)
 }
 
 func (s *AgentService) UpdateAgentMetrics(ctx context.Context, agentID string, metrics *models.AgentMetrics, dockerInfo *models.DockerInfo) error {
+	now := time.Now()
 	updates := map[string]interface{}{
-		"last_seen": time.Now().Unix(),
-	}
-
-	if metrics != nil {
-		updates["container_count"] = metrics.ContainerCount
-		updates["image_count"] = metrics.ImageCount
-		updates["stack_count"] = metrics.StackCount
-		updates["network_count"] = metrics.NetworkCount
-		updates["volume_count"] = metrics.VolumeCount
+		"last_ping": &now,
 	}
 
 	if dockerInfo != nil {
-		updates["docker_version"] = dockerInfo.Version
-		updates["docker_containers"] = dockerInfo.Containers
-		updates["docker_images"] = dockerInfo.Images
+		updates["version"] = dockerInfo.Version
 	}
 
 	if err := s.db.WithContext(ctx).Model(&models.Agent{}).Where("id = ?", agentID).Updates(updates).Error; err != nil {
@@ -119,6 +110,11 @@ func (s *AgentService) DeleteAgent(ctx context.Context, agentID string) error {
 		return fmt.Errorf("failed to delete agent tokens: %w", err)
 	}
 
+	// Update stacks to remove agent reference (don't delete the stacks)
+	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("agent_id = ?", agentID).Update("agent_id", nil).Error; err != nil {
+		return fmt.Errorf("failed to update stacks: %w", err)
+	}
+
 	// Delete the agent
 	if err := s.db.WithContext(ctx).Delete(&models.Agent{}, "id = ?", agentID).Error; err != nil {
 		return fmt.Errorf("failed to delete agent: %w", err)
@@ -135,8 +131,8 @@ func (s *AgentService) CreateTask(ctx context.Context, agentID string, taskType 
 		return nil, fmt.Errorf("agent %s not found: %w", agentID, err)
 	}
 
-	if agent.Status != "online" {
-		return nil, fmt.Errorf("agent %s is not online (status: %s)", agentID, agent.Status)
+	if !s.IsAgentOnline(agent, 5) { // 5 is a default timeout in minutes, adjust as needed
+		return nil, fmt.Errorf("agent %s is not online", agentID)
 	}
 
 	task := &models.AgentTask{
@@ -316,12 +312,16 @@ func (s *AgentService) GetAgentByToken(ctx context.Context, token string) (*mode
 
 // Online status checking
 func (s *AgentService) IsAgentOnline(agent *models.Agent, timeoutMinutes int) bool {
-	if agent.Status != "online" {
+	if !agent.IsActive {
 		return false
 	}
 
-	timeoutSeconds := int64(timeoutMinutes * 60)
-	return time.Now().Unix()-agent.LastSeen < timeoutSeconds
+	if agent.LastPing == nil {
+		return false
+	}
+
+	timeoutDuration := time.Duration(timeoutMinutes) * time.Minute
+	return time.Since(*agent.LastPing) < timeoutDuration
 }
 
 func (s *AgentService) GetOnlineAgents(ctx context.Context, timeoutMinutes int) ([]*models.Agent, error) {

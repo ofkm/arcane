@@ -122,3 +122,22 @@ func (h *ContainerHandler) GetLogs(c *gin.Context) {
 		"data":    gin.H{"logs": logs},
 	})
 }
+
+func (h *ContainerHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	force := c.Query("force") == "true"
+	removeVolumes := c.Query("volumes") == "true"
+
+	if err := h.containerService.DeleteContainer(c.Request.Context(), id, force, removeVolumes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Container deleted successfully",
+	})
+}
