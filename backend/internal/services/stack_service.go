@@ -282,6 +282,10 @@ func (s *StackService) ListStacks(ctx context.Context) ([]*models.Stack, error) 
 		services, err := s.GetStackServices(ctx, stack.ID)
 		if err != nil {
 			fmt.Printf("Warning: failed to get services for stack %s: %v\n", stack.ID, err)
+			// Don't skip the stack, just set default values
+			stacks[i].ServiceCount = 0
+			stacks[i].RunningCount = 0
+			stacks[i].Status = models.StackStatusStopped
 			continue
 		}
 
@@ -303,9 +307,15 @@ func (s *StackService) ListStacks(ctx context.Context) ([]*models.Stack, error) 
 			}
 		}
 
+		// Update the stack in the slice AND persist to database
 		stacks[i].ServiceCount = serviceCount
 		stacks[i].RunningCount = runningCount
 		stacks[i].Status = status
+
+		// Persist the updated counts to database for consistency
+		if err := s.UpdateStackRuntimeInfo(ctx, stack.ID, serviceCount, runningCount, status); err != nil {
+			fmt.Printf("Warning: failed to update runtime info for stack %s: %v\n", stack.ID, err)
+		}
 	}
 
 	return stacks, nil
@@ -538,12 +548,12 @@ func (s *StackService) StopStack(ctx context.Context, id string) error {
 		return fmt.Errorf("stack not found: %w", err)
 	}
 
-	projectName := id // Default fallback
-	if stack.DirName != nil && *stack.DirName != "" {
-		projectName = *stack.DirName
-	}
+	// Use consistent project name
+	projectName := s.getProjectName(&stack)
 
-	// Get all containers for this stack
+	fmt.Printf("DEBUG: Stopping stack %s with project name: %s\n", id, projectName)
+
+	// Get all containers for this specific stack project only
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
 		All: true,
 		Filters: filters.NewArgs(
@@ -554,6 +564,8 @@ func (s *StackService) StopStack(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to list containers: %w", err)
 	}
 
+	fmt.Printf("DEBUG: Found %d containers to stop for project %s\n", len(containers), projectName)
+
 	// Stop containers in reverse dependency order
 	project, err := s.LoadProject(ctx, id)
 	if err == nil {
@@ -562,25 +574,30 @@ func (s *StackService) StopStack(ctx context.Context, id string) error {
 		for i := len(serviceOrder) - 1; i >= 0; i-- {
 			serviceName := serviceOrder[i]
 			for _, cont := range containers {
-				if cont.Labels["com.docker.compose.service"] == serviceName && cont.State == "running" {
-					timeout := 10
-					if err := dockerClient.ContainerStop(ctx, cont.ID, container.StopOptions{
-						Timeout: &timeout,
-					}); err != nil {
-						return fmt.Errorf("failed to stop container %s: %w", cont.ID, err)
+				// Check if this container belongs to this service
+				if cont.Labels["com.docker.compose.service"] == serviceName {
+					if cont.State == "running" {
+						fmt.Printf("DEBUG: Stopping container %s for service %s\n", cont.ID[:12], serviceName)
+						timeout := 10
+						if err := dockerClient.ContainerStop(ctx, cont.ID, container.StopOptions{
+							Timeout: &timeout,
+						}); err != nil {
+							fmt.Printf("Warning: failed to stop container %s: %v\n", cont.ID, err)
+						}
 					}
 				}
 			}
 		}
 	} else {
-		// Fallback: stop all containers
+		// Fallback: stop all containers for this project
 		for _, cont := range containers {
 			if cont.State == "running" {
+				fmt.Printf("DEBUG: Stopping container %s\n", cont.ID[:12])
 				timeout := 10
 				if err := dockerClient.ContainerStop(ctx, cont.ID, container.StopOptions{
 					Timeout: &timeout,
 				}); err != nil {
-					return fmt.Errorf("failed to stop container %s: %w", cont.ID, err)
+					fmt.Printf("Warning: failed to stop container %s: %v\n", cont.ID, err)
 				}
 			}
 		}
@@ -774,21 +791,24 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 		return nil, fmt.Errorf("stack not found: %w", err)
 	}
 
-	projectName := stackID // Default fallback
-	if stack.DirName != nil && *stack.DirName != "" {
-		projectName = *stack.DirName
-	}
+	// Use consistent project name - always stack ID
+	projectName := s.getProjectName(&stack)
+
+	fmt.Printf("DEBUG: Looking for containers with project name: %s\n", projectName)
 
 	// Try to load the project to get service definitions
 	project, err := s.LoadProject(ctx, stackID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load project: %w", err)
+		fmt.Printf("Warning: failed to load project for stack %s: %v\n", stackID, err)
+		return []StackServiceInfo{}, nil
 	}
 
 	var services []StackServiceInfo
 
 	for serviceName, service := range project.Services {
-		// Get all containers for this service
+		fmt.Printf("DEBUG: Processing service: %s\n", serviceName)
+
+		// Use only the consistent project name
 		containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
 			All: true,
 			Filters: filters.NewArgs(
@@ -796,10 +816,15 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 				filters.Arg("label", fmt.Sprintf("com.docker.compose.service=%s", serviceName)),
 			),
 		})
+
 		if err != nil {
-			return nil, fmt.Errorf("failed to list containers for service %s: %w", serviceName, err)
+			fmt.Printf("DEBUG: Error listing containers for project %s: %v\n", projectName, err)
+			containers = []container.Summary{}
 		}
 
+		fmt.Printf("DEBUG: Found %d containers for project %s, service %s\n", len(containers), projectName, serviceName)
+
+		// Initialize service info
 		serviceInfo := StackServiceInfo{
 			Name:         serviceName,
 			Image:        service.Image,
@@ -807,39 +832,69 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 			ContainerID:  "",
 			Environment:  make(map[string]string),
 			RestartCount: 0,
+			Ports:        []string{},
+			Networks:     []string{},
+			Volumes:      []string{},
 		}
 
 		if len(containers) > 0 {
-			// Use the first container for basic info
 			cont := containers[0]
 			serviceInfo.ContainerID = cont.ID
 			serviceInfo.Status = cont.State
 
-			// Get container details
+			fmt.Printf("DEBUG: Found container %s with ID %s, status %s\n", cont.Names[0], cont.ID, cont.State)
+
+			// Get container details for additional info
 			inspect, err := dockerClient.ContainerInspect(ctx, cont.ID)
 			if err == nil {
-				serviceInfo.Ports = s.extractPorts(inspect.NetworkSettings.Ports)
-				serviceInfo.Networks = s.extractNetworks(inspect.NetworkSettings.Networks)
-
-				// Convert []container.MountPoint to []mount.Mount for extractVolumes
-				var mounts []mount.Mount
-				for _, m := range inspect.Mounts {
-					mounts = append(mounts, mount.Mount{
-						Type:     mount.Type(m.Type),
-						Source:   m.Source,
-						Target:   m.Destination,
-						ReadOnly: !m.RW,
-					})
+				// Extract port mappings
+				var ports []string
+				for containerPort, hostBindings := range inspect.NetworkSettings.Ports {
+					if len(hostBindings) > 0 {
+						for _, binding := range hostBindings {
+							ports = append(ports, fmt.Sprintf("%s:%s->%s", binding.HostIP, binding.HostPort, containerPort))
+						}
+					} else if containerPort != "" {
+						ports = append(ports, string(containerPort))
+					}
 				}
-				serviceInfo.Volumes = s.extractVolumes(mounts)
-				serviceInfo.Environment = s.extractEnvironment(inspect.Config.Env)
+				serviceInfo.Ports = ports
+
+				// Extract networks
+				var networks []string
+				for networkName := range inspect.NetworkSettings.Networks {
+					networks = append(networks, networkName)
+				}
+				serviceInfo.Networks = networks
+
+				// Extract volumes
+				var volumes []string
+				for _, mount := range inspect.Mounts {
+					volumes = append(volumes, fmt.Sprintf("%s:%s", mount.Source, mount.Destination))
+				}
+				serviceInfo.Volumes = volumes
+
+				// Extract environment variables
+				env := make(map[string]string)
+				for _, envVar := range inspect.Config.Env {
+					parts := strings.SplitN(envVar, "=", 2)
+					if len(parts) == 2 {
+						env[parts[0]] = parts[1]
+					}
+				}
+				serviceInfo.Environment = env
+
 				serviceInfo.RestartCount = inspect.RestartCount
 
 				// Health check
 				if inspect.State != nil && inspect.State.Health != nil {
 					serviceInfo.Health = inspect.State.Health.Status
 				}
+			} else {
+				fmt.Printf("DEBUG: Failed to inspect container %s: %v\n", cont.ID, err)
 			}
+		} else {
+			fmt.Printf("DEBUG: No containers found for service %s\n", serviceName)
 		}
 
 		services = append(services, serviceInfo)
@@ -892,10 +947,8 @@ func (s *StackService) LoadProject(ctx context.Context, stackID string) (*types.
 
 	stackDir := stack.Path
 
-	projectName := stack.Name
-	if stack.DirName != nil && *stack.DirName != "" {
-		projectName = *stack.DirName
-	}
+	// Use consistent project name - always use stack ID
+	projectName := s.getProjectName(&stack)
 
 	composeFile := s.findComposeFile(stackDir)
 	if composeFile == "" {
@@ -906,7 +959,7 @@ func (s *StackService) LoadProject(ctx context.Context, stackID string) (*types.
 		[]string{composeFile},
 		cli.WithOsEnv,
 		cli.WithDotEnv,
-		cli.WithName(projectName),
+		cli.WithName(projectName), // Use consistent project name
 		cli.WithWorkingDirectory(stackDir),
 	)
 	if err != nil {
@@ -1169,7 +1222,7 @@ func (s *StackService) createSingleService(ctx context.Context, client *client.C
 		Image: service.Image,
 		Env:   s.buildEnvironment(service.Environment),
 		Labels: map[string]string{
-			"com.docker.compose.project": project.Name,
+			"com.docker.compose.project": project.Name, // This will be the stack ID
 			"com.docker.compose.service": serviceName,
 		},
 	}
@@ -1529,4 +1582,11 @@ func (s *StackService) importSingleFileBasedStack(ctx context.Context, stackID, 
 
 	fmt.Printf("Successfully imported stack: %s\n", stackID)
 	return nil
+}
+
+// Add a consistent method to get project name
+func (s *StackService) getProjectName(stack *models.Stack) string {
+	// Always use the stack ID as the project name for consistency
+	// This ensures each stack has a unique project name
+	return stack.ID
 }

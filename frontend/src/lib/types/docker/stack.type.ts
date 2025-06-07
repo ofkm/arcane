@@ -16,26 +16,16 @@ export interface StackPort {
 }
 
 export interface StackService {
-	id: string;
+	container_id: string;
 	name: string;
-	state?: {
-		Running: boolean;
-		Status: string;
-		ExitCode: number;
-	};
-	ports?: StackPort[];
-	networkSettings?: {
-		Networks?: Record<
-			string,
-			{
-				IPAddress?: string;
-				Gateway?: string;
-				MacAddress?: string;
-				Driver?: string;
-				[key: string]: any;
-			}
-		>;
-	};
+	status: string;
+	image?: string;
+	ports?: string[];
+	networks?: string[];
+	volumes?: string[];
+	environment?: Record<string, string>;
+	restart_count?: number;
+	health?: string;
 }
 
 export interface Stack {

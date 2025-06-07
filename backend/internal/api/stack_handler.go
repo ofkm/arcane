@@ -38,16 +38,54 @@ func (h *StackHandler) ListStacks(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to fetch stacks",
+			"error":   fmt.Sprintf("Failed to fetch stacks: %v", err),
 		})
 		return
 	}
 
-	// Stacks list doesn't include content - much faster!
+	// Transform stacks to ensure all fields are properly populated
+	var stackList []map[string]interface{}
+	for _, stack := range stacks {
+		// Get fresh service count and running count
+		services, err := h.stackService.GetStackServices(c.Request.Context(), stack.ID)
+		var serviceCount, runningCount int
+		if err != nil {
+			fmt.Printf("Warning: failed to get services for stack %s: %v\n", stack.ID, err)
+			serviceCount = stack.ServiceCount
+			runningCount = stack.RunningCount
+			services = nil
+		} else {
+			serviceCount = len(services)
+			runningCount = 0
+			for _, service := range services {
+				if service.Status == "running" {
+					runningCount++
+				}
+			}
+		}
+
+		stackResponse := map[string]interface{}{
+			"id":           stack.ID,
+			"name":         stack.Name,
+			"path":         stack.Path,
+			"status":       stack.Status,
+			"serviceCount": serviceCount,
+			"runningCount": runningCount,
+			"createdAt":    stack.CreatedAt,
+			"updatedAt":    stack.UpdatedAt,
+			"autoUpdate":   stack.AutoUpdate,
+			"isExternal":   stack.IsExternal,
+			"isLegacy":     stack.IsLegacy,
+			"isRemote":     stack.IsRemote,
+			"services":     services, // Always include services array
+		}
+		stackList = append(stackList, stackResponse)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"stacks":  stacks,
-		"count":   len(stacks),
+		"stacks":  stackList,
+		"count":   len(stackList),
 	})
 }
 
@@ -183,7 +221,7 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 		}
 	}
 
-	// Return updated stack
+	// Return updated stack with services
 	updatedStack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -193,9 +231,33 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 		return
 	}
 
+	// Get services for the updated stack
+	services, err := h.stackService.GetStackServices(c.Request.Context(), stackID)
+	if err != nil {
+		fmt.Printf("Warning: failed to get services: %v\n", err)
+		services = nil
+	}
+
+	// Build response with services
+	stackResponse := map[string]interface{}{
+		"id":           updatedStack.ID,
+		"name":         updatedStack.Name,
+		"path":         updatedStack.Path,
+		"status":       updatedStack.Status,
+		"serviceCount": len(services),
+		"runningCount": updatedStack.RunningCount,
+		"createdAt":    updatedStack.CreatedAt,
+		"updatedAt":    updatedStack.UpdatedAt,
+		"autoUpdate":   updatedStack.AutoUpdate,
+		"isExternal":   updatedStack.IsExternal,
+		"isLegacy":     updatedStack.IsLegacy,
+		"isRemote":     updatedStack.IsRemote,
+		"services":     services,
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"stack":   updatedStack,
+		"stack":   stackResponse,
 	})
 }
 

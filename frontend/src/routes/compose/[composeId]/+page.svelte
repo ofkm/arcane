@@ -391,20 +391,23 @@
 								<Card.Content class="p-6">
 									{#if stack.services && stack.services.length > 0}
 										<div class="space-y-4">
-											{#each stack.services as service (service.id || service.name)}
-												{@const status = service.state?.Status || 'unknown'}
+											{#each stack.services as service (service.container_id || service.name)}
+												{@const status = service.status || 'unknown'}
 												{@const variant = statusVariantMap[status.toLowerCase()] || 'gray'}
 
-												{#if service.id}
-													<!-- Service with ID (clickable) -->
-													<a href={`/containers/${service.id}`} class="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+												{#if service.container_id}
+													<!-- Service with Container ID (clickable) -->
+													<a href={`/containers/${service.container_id}`} class="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
 														<div class="flex items-center gap-3">
 															<div class="bg-primary/10 p-2 rounded-full">
 																<Layers class="text-primary size-4" />
 															</div>
 															<div>
 																<p class="font-medium">{service.name}</p>
-																<p class="text-sm text-muted-foreground">ID: {service.id.substring(0, 12)}</p>
+																<p class="text-sm text-muted-foreground">ID: {service.container_id.substring(0, 12)}</p>
+																{#if service.image}
+																	<p class="text-xs text-muted-foreground">Image: {service.image}</p>
+																{/if}
 															</div>
 														</div>
 														<div class="flex items-center gap-3">
@@ -413,7 +416,7 @@
 														</div>
 													</a>
 												{:else}
-													<!-- Service without ID (not clickable) -->
+													<!-- Service without Container ID (not clickable) -->
 													<div class="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
 														<div class="flex items-center gap-3">
 															<div class="bg-muted/50 p-2 rounded-full">
@@ -422,6 +425,9 @@
 															<div>
 																<p class="font-medium">{service.name}</p>
 																<p class="text-sm text-muted-foreground">Not created</p>
+																{#if service.image}
+																	<p class="text-xs text-muted-foreground">Image: {service.image}</p>
+																{/if}
 															</div>
 														</div>
 														<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
