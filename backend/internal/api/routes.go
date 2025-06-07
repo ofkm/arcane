@@ -230,14 +230,16 @@ func setupImageRoutes(api *gin.RouterGroup, services *Services) {
 
 func setupVolumeRoutes(api *gin.RouterGroup, services *Services) {
 	volumes := api.Group("/volumes")
-	// volumes.Use(AuthMiddleware(services.Auth)) // Add when ready
+	volumes.Use(AuthMiddleware(services.Auth))
 
-	volumes.GET("", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"success": true,
-			"data":    []interface{}{},
-		})
-	})
+	volumeHandler := NewVolumeHandler(services.Volume)
+
+	volumes.GET("", volumeHandler.List)
+	volumes.GET("/:name", volumeHandler.GetByName)
+	volumes.POST("", volumeHandler.Create)
+	volumes.DELETE("/:name", volumeHandler.Remove)
+	volumes.POST("/prune", volumeHandler.Prune)
+	volumes.GET("/:name/usage", volumeHandler.GetUsage)
 }
 
 func setupNetworkRoutes(api *gin.RouterGroup, services *Services) {
