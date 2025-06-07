@@ -1,0 +1,305 @@
+<script lang="ts">
+	import type { PageData } from './$types';
+	import * as Card from '$lib/components/ui/card/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
+	import { AlertCircle, Layers, FileStack, Loader2, Play, RotateCcw, StopCircle, Trash2, Ellipsis, Pen } from '@lucide/svelte';
+	import UniversalTable from '$lib/components/universal-table.svelte';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import * as Table from '$lib/components/ui/table';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import * as Alert from '$lib/components/ui/alert/index.js';
+	import { goto, invalidateAll } from '$app/navigation';
+	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
+	import { statusVariantMap } from '$lib/types/statuses';
+	import { toast } from 'svelte-sonner';
+	import { tryCatch } from '$lib/utils/try-catch';
+	import StackAPIService from '$lib/services/api/stack-api-service';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
+	import type { StackActions } from '$lib/types/actions.type';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { tablePersistence } from '$lib/stores/table-store';
+	import { formatFriendlyDate } from '$lib/utils/date.utils';
+
+	let { data }: { data: PageData } = $props();
+
+	// Ensure stacks is always an array
+	let stacks = $derived(Array.isArray(data.stacks) ? data.stacks : []);
+
+	const isLoading = $state<Record<'start' | 'stop' | 'restart' | 'remove' | 'destroy' | 'pull', boolean>>({
+		start: false,
+		stop: false,
+		restart: false,
+		remove: false,
+		destroy: false,
+		pull: false
+	});
+	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
+
+	const stackApi = new StackAPIService();
+
+	// Simplified derived values - only for managed stacks
+	const totalStacks = $derived(stacks.length);
+	const runningStacks = $derived(stacks.filter((s) => s.status === 'running').length);
+	const stoppedStacks = $derived(stacks.filter((s) => s.status === 'stopped').length);
+
+	async function performStackAction(action: StackActions, id: string) {
+		isLoading[action as keyof typeof isLoading] = true;
+
+		try {
+			if (action === 'start') {
+				handleApiResultWithCallbacks({
+					result: await tryCatch(stackApi.deploy(id)),
+					message: 'Failed to Start Stack',
+					setLoadingState: (value) => (isLoading.start = value),
+					onSuccess: async () => {
+						toast.success('Stack Started Successfully.');
+						await invalidateAll();
+					}
+				});
+			} else if (action === 'stop') {
+				handleApiResultWithCallbacks({
+					result: await tryCatch(stackApi.down(id)),
+					message: 'Failed to Stop Stack',
+					setLoadingState: (value) => (isLoading.stop = value),
+					onSuccess: async () => {
+						toast.success('Stack Stopped Successfully.');
+						await invalidateAll();
+					}
+				});
+			} else if (action === 'restart') {
+				handleApiResultWithCallbacks({
+					result: await tryCatch(stackApi.restart(id)),
+					message: 'Failed to Restart Stack',
+					setLoadingState: (value) => (isLoading.restart = value),
+					onSuccess: async () => {
+						toast.success('Stack Restarted Successfully.');
+						await invalidateAll();
+					}
+				});
+			} else if (action === 'pull') {
+				handleApiResultWithCallbacks({
+					result: await tryCatch(stackApi.pull(id)),
+					message: 'Failed to pull Stack',
+					setLoadingState: (value) => (isLoading.pull = value),
+					onSuccess: async () => {
+						toast.success('Stack Pulled successfully.');
+						await invalidateAll();
+					}
+				});
+			} else if (action === 'destroy') {
+				openConfirmDialog({
+					title: `Confirm Removal`,
+					message: `Are you sure you want to remove this Stack? This action cannot be undone.`,
+					confirm: {
+						label: 'Remove',
+						destructive: true,
+						action: async () => {
+							handleApiResultWithCallbacks({
+								result: await tryCatch(stackApi.destroy(id)),
+								message: 'Failed to Remove Stack',
+								setLoadingState: (value) => (isLoading.destroy = value),
+								onSuccess: async () => {
+									toast.success('Stack Removed Successfully');
+									await invalidateAll();
+								}
+							});
+						}
+					}
+				});
+			}
+		} catch (error) {
+			console.error('Stack action failed:', error);
+			toast.error('An error occurred while performing the action');
+			isLoading[action as keyof typeof isLoading] = false;
+		}
+	}
+</script>
+
+<div class="space-y-6">
+	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+		<div>
+			<h1 class="text-3xl font-bold tracking-tight">Compose Projects</h1>
+			<p class="text-sm text-muted-foreground mt-1">View and Manage Compose Projects</p>
+		</div>
+	</div>
+
+	{#if data.error}
+		<Alert.Root variant="destructive">
+			<AlertCircle class="size-4" />
+			<Alert.Title>Error Loading Compose Projects</Alert.Title>
+			<Alert.Description>{data.error}</Alert.Description>
+		</Alert.Root>
+	{/if}
+
+	<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+		<Card.Root>
+			<Card.Content class="p-4 flex items-center justify-between">
+				<div>
+					<p class="text-sm font-medium text-muted-foreground">Total Compose Projects</p>
+					<p class="text-2xl font-bold">{totalStacks}</p>
+				</div>
+				<div class="bg-primary/10 p-2 rounded-full">
+					<FileStack class="text-primary size-5" />
+				</div>
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root>
+			<Card.Content class="p-4 flex items-center justify-between">
+				<div>
+					<p class="text-sm font-medium text-muted-foreground">Running</p>
+					<p class="text-2xl font-bold">{runningStacks}</p>
+				</div>
+				<div class="bg-green-500/10 p-2 rounded-full">
+					<Layers class="text-green-500 size-5" />
+				</div>
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root>
+			<Card.Content class="p-4 flex items-center justify-between">
+				<div>
+					<p class="text-sm font-medium text-muted-foreground">Stopped</p>
+					<p class="text-2xl font-bold">{stoppedStacks}</p>
+				</div>
+				<div class="bg-gray-500/10 p-2 rounded-full">
+					<Layers class="text-gray-500 size-5" />
+				</div>
+			</Card.Content>
+		</Card.Root>
+	</div>
+
+	<Card.Root class="border shadow-sm">
+		<Card.Header class="px-6">
+			<div class="flex items-center justify-between">
+				<div>
+					<Card.Title>Compose Projects List</Card.Title>
+				</div>
+				<div class="flex items-center gap-2">
+					<ArcaneButton action="create" customLabel="Create Compose Project" onClick={() => goto(`/compose/new`)} />
+				</div>
+			</div>
+		</Card.Header>
+		<Card.Content>
+			{#if stacks.length > 0}
+				<UniversalTable
+					data={stacks}
+					columns={[
+						{ accessorKey: 'name', header: 'Name' },
+						{ accessorKey: 'service_count', header: 'Services' },
+						{ accessorKey: 'status', header: 'Status' },
+						{ accessorKey: 'created_at', header: 'Created' },
+						{ accessorKey: 'actions', header: ' ', enableSorting: false }
+					]}
+					features={{
+						selection: false
+					}}
+					pagination={{
+						pageSize: tablePersistence.getPageSize('stacks')
+					}}
+					onPageSizeChange={(newSize) => {
+						tablePersistence.setPageSize('stacks', newSize);
+					}}
+					sort={{
+						defaultSort: { id: 'name', desc: false }
+					}}
+					display={{
+						filterPlaceholder: 'Search compose projects...',
+						noResultsMessage: 'No stacks found'
+					}}
+				>
+					{#snippet rows({ item })}
+						{@const stateVariant = item.status ? statusVariantMap[item.status.toLowerCase()] : 'gray'}
+						<Table.Cell>
+							<a class="font-medium hover:underline" href="/compose/{item.id}/">
+								{item.name}
+							</a>
+						</Table.Cell>
+						<Table.Cell>{item.service_count || 0}</Table.Cell>
+						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} /></Table.Cell>
+						<Table.Cell>{formatFriendlyDate(item.created_at || '')}</Table.Cell>
+						<Table.Cell>
+							<DropdownMenu.Root>
+								<DropdownMenu.Trigger>
+									{#snippet child({ props })}
+										<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
+											<span class="sr-only">Open menu</span>
+											<Ellipsis />
+										</Button>
+									{/snippet}
+								</DropdownMenu.Trigger>
+								<DropdownMenu.Content align="end">
+									<DropdownMenu.Group>
+										<DropdownMenu.Item onclick={() => goto(`/compose/${item.id}`)} disabled={isAnyLoading}>
+											<Pen class="size-4" />
+											Edit
+										</DropdownMenu.Item>
+
+										{#if item.status !== 'running'}
+											<DropdownMenu.Item onclick={() => performStackAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
+												{#if isLoading.start}
+													<Loader2 class="animate-spin size-4" />
+												{:else}
+													<Play class="size-4" />
+												{/if}
+												Start
+											</DropdownMenu.Item>
+										{:else}
+											<DropdownMenu.Item onclick={() => performStackAction('restart', item.id)} disabled={isLoading.restart || isAnyLoading}>
+												{#if isLoading.restart}
+													<Loader2 class="animate-spin size-4" />
+												{:else}
+													<RotateCcw class="size-4" />
+												{/if}
+												Restart
+											</DropdownMenu.Item>
+
+											<DropdownMenu.Item onclick={() => performStackAction('stop', item.id)} disabled={isLoading.stop || isAnyLoading}>
+												{#if isLoading.stop}
+													<Loader2 class="animate-spin size-4" />
+												{:else}
+													<StopCircle class="size-4" />
+												{/if}
+												Stop
+											</DropdownMenu.Item>
+										{/if}
+
+										<DropdownMenu.Item onclick={() => performStackAction('pull', item.id)} disabled={isLoading.pull || isAnyLoading}>
+											{#if isLoading.pull}
+												<Loader2 class="animate-spin size-4" />
+											{:else}
+												<RotateCcw class="size-4" />
+											{/if}
+											Pull & Redeploy
+										</DropdownMenu.Item>
+
+										<DropdownMenu.Separator />
+
+										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => performStackAction('destroy', item.id)} disabled={isLoading.remove || isAnyLoading}>
+											{#if isLoading.remove}
+												<Loader2 class="animate-spin size-4" />
+											{:else}
+												<Trash2 class="size-4" />
+											{/if}
+											Destroy
+										</DropdownMenu.Item>
+									</DropdownMenu.Group>
+								</DropdownMenu.Content>
+							</DropdownMenu.Root>
+						</Table.Cell>
+					{/snippet}
+				</UniversalTable>
+			{:else if !data.error}
+				<div class="flex flex-col items-center justify-center py-12 px-6 text-center">
+					<FileStack class="text-muted-foreground mb-4 opacity-40 size-12" />
+					<p class="text-lg font-medium">No stacks found</p>
+					<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new stack using the "Create Stack" button above</p>
+					<div class="flex gap-3 mt-4">
+						<ArcaneButton action="create" customLabel="Create Stack" onClick={() => goto(`/compose/new`)} size="sm" />
+					</div>
+				</div>
+			{/if}
+		</Card.Content>
+	</Card.Root>
+</div>
