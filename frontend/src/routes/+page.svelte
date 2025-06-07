@@ -5,7 +5,6 @@
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { AlertCircle, Box, HardDrive, Cpu, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2, Monitor } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { capitalizeFirstLetter, truncateString, shortId, parseStatusTime } from '$lib/utils/string.utils';
 	import { formatBytes } from '$lib/utils/bytes.util';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
@@ -19,7 +18,6 @@
 	import ContainerAPIService from '$lib/services/api/container-api-service';
 	import SystemAPIService from '$lib/services/api/system-api-service';
 	import type { EnhancedImageInfo } from '$lib/types/docker';
-	import type { ContainerInfo } from 'dockerode';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import MaturityItem from '$lib/components/maturity-item.svelte';
 	import { onMount } from 'svelte';
@@ -30,6 +28,55 @@
 	import Meter from '$lib/components/meter.svelte';
 	import DockerIcon from '$lib/icons/docker-icon.svelte';
 	import GitHubIcon from '$lib/icons/github-icon.svelte';
+
+	// Update this type to match your Go backend response
+	type EnhancedImageInfo = {
+		Id: string;
+		RepoTags: string[];
+		RepoDigests: string[];
+		ParentId: string;
+		Created: number;
+		Size: number;
+		SharedSize: number;
+		VirtualSize: number;
+		Labels: Record<string, string>;
+		Containers: number;
+		repo?: string;
+		tag?: string;
+		inUse?: boolean;
+		maturity?: any;
+	};
+
+	// Add this function to parse repo/tag from RepoTags if needed
+	function parseImageName(image: EnhancedImageInfo): { repo: string; tag: string } {
+		if (image.repo && image.tag) {
+			return { repo: image.repo, tag: image.tag };
+		}
+
+		if (image.RepoTags && image.RepoTags.length > 0 && image.RepoTags[0] !== '<none>:<none>') {
+			const [repo, tag] = image.RepoTags[0].split(':');
+			return { repo: repo || '<none>', tag: tag || 'latest' };
+		}
+
+		return { repo: '<none>', tag: '<none>' };
+	}
+
+	// Define ContainerInfo type based on your Go backend API response
+	type ContainerInfo = {
+		Id: string;
+		Names: string[];
+		Image: string;
+		ImageID: string;
+		Command: string;
+		Created: number;
+		Ports: any[];
+		Labels: Record<string, string>;
+		State: string;
+		Status: string;
+		HostConfig: any;
+		NetworkSettings: any;
+		Mounts: any[];
+	};
 
 	let { data }: { data: PageData & { containers: ContainerInfo[] } } = $props();
 
@@ -546,7 +593,13 @@
 												<div class="flex items-center flex-1">
 													<MaturityItem maturity={item.maturity} isLoadingInBackground={!item.maturity} />
 													<a class="font-medium hover:underline shrink truncate" href="/images/{item.Id}/">
-														{item.repo}
+														{#if item.repo && item.repo !== '<none>'}
+															{item.repo}
+														{:else if item.RepoTags && item.RepoTags.length > 0 && item.RepoTags[0] !== '<none>:<none>'}
+															{item.RepoTags[0].split(':')[0]}
+														{:else}
+															{item.Id.substring(7, 19)}
+														{/if}
 													</a>
 												</div>
 											</div>
@@ -558,7 +611,15 @@
 												<StatusBadge text="In Use" variant="green" />
 											{/if}
 										</Table.Cell>
-										<Table.Cell>{item.tag}</Table.Cell>
+										<Table.Cell>
+											{#if item.tag && item.tag !== '<none>'}
+												{item.tag}
+											{:else if item.RepoTags && item.RepoTags.length > 0 && item.RepoTags[0] !== '<none>:<none>'}
+												{item.RepoTags[0].split(':')[1] || 'latest'}
+											{:else}
+												&lt;none&gt;
+											{/if}
+										</Table.Cell>
 										<Table.Cell>{formatBytes(item.Size)}</Table.Cell>
 									{/snippet}
 								</UniversalTable>

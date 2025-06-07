@@ -2,14 +2,13 @@ import { browser } from '$app/environment';
 import { env } from '$env/dynamic/public';
 import { redirect } from '@sveltejs/kit';
 import type { AppVersionInformation } from '$lib/types/application-configuration';
-import type { LayoutLoad } from './$types';
 import settingsStore from '$lib/stores/config-store';
 import { settingsAPI, userAPI } from '$lib/services/api';
 
 let versionInformation: AppVersionInformation;
 let versionInformationLastUpdated: number;
 
-export const load = (async ({ fetch, url }) => {
+export const load = async ({ fetch, url }) => {
 	// Generate CSRF token - use crypto API if available, fallback to random string
 	let csrf: string;
 	try {
@@ -112,4 +111,4 @@ export const load = (async ({ fetch, url }) => {
 		hasLocalDocker,
 		isAuthenticated
 	};
-}) satisfies LayoutLoad;
+};

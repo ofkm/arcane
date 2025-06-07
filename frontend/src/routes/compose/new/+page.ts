@@ -1,8 +1,7 @@
 import { templateAPI, agentAPI } from '$lib/services/api';
 import { defaultComposeTemplate } from '$lib/constants';
-import type { PageLoad } from './$types';
 
-export const load: PageLoad = async () => {
+export const load = async () => {
 	try {
 		const [allTemplates, envTemplate, agents] = await Promise.all([
 			templateAPI.loadAll().catch((err) => {
