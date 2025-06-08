@@ -1,0 +1,21 @@
+services:
+  arcane:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - arcane_data:/app/data
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - DATABASE_URL=sqlite:///app/data/arcane.db
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - ENVIRONMENT=development
+    restart: unless-stopped
+
+volumes:
+  arcane_data:
