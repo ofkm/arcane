@@ -197,7 +197,7 @@
 	}
 
 	function handleLogClear() {
-		// Custom logic when logs are cleared if needed
+		invalidateAll();
 	}
 
 	function handleToggleAutoScroll() {

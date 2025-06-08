@@ -1,15 +1,18 @@
 package services
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
 )
@@ -243,4 +246,148 @@ func (s *ContainerService) StreamStats(ctx context.Context, containerID string, 
 			}
 		}
 	}
+}
+
+func (s *ContainerService) StreamLogs(ctx context.Context, containerID string, logsChan chan<- string, follow bool, tail, since string, timestamps bool) error {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	// Configure log options
+	options := container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     follow,
+		Tail:       tail,
+		Since:      since,
+		Timestamps: timestamps,
+	}
+
+	// Get log stream
+	logs, err := dockerClient.ContainerLogs(ctx, containerID, options)
+	if err != nil {
+		return fmt.Errorf("failed to get container logs: %w", err)
+	}
+	defer logs.Close()
+
+	// If following logs, we need to handle the multiplexed stream
+	if follow {
+		return s.streamMultiplexedLogs(ctx, logs, logsChan)
+	}
+
+	// For non-following logs, read all at once and send line by line
+	return s.readAllLogs(logs, logsChan)
+}
+
+// streamMultiplexedLogs handles the multiplexed Docker log stream for following logs
+func (s *ContainerService) streamMultiplexedLogs(ctx context.Context, logs io.ReadCloser, logsChan chan<- string) error {
+	// Use stdcopy to demultiplex Docker's stream format
+	// Docker multiplexes stdout and stderr in a special format
+	stdoutReader, stdoutWriter := io.Pipe()
+	stderrReader, stderrWriter := io.Pipe()
+
+	// Start demultiplexing in a goroutine
+	go func() {
+		defer stdoutWriter.Close()
+		defer stderrWriter.Close()
+		_, err := stdcopy.StdCopy(stdoutWriter, stderrWriter, logs)
+		if err != nil && err != io.EOF {
+			// Log error but don't stop the stream
+			fmt.Printf("Error demultiplexing logs: %v\n", err)
+		}
+	}()
+
+	// Read from both stdout and stderr concurrently
+	done := make(chan error, 2)
+
+	// Read stdout
+	go func() {
+		done <- s.readLogsFromReader(ctx, stdoutReader, logsChan, "stdout")
+	}()
+
+	// Read stderr
+	go func() {
+		done <- s.readLogsFromReader(ctx, stderrReader, logsChan, "stderr")
+	}()
+
+	// Wait for context cancellation or error
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-done:
+		if err != nil && err != io.EOF {
+			return err
+		}
+		// Wait for the other goroutine or context cancellation
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-done:
+			return nil
+		}
+	}
+}
+
+// readLogsFromReader reads logs line by line from a reader
+func (s *ContainerService) readLogsFromReader(ctx context.Context, reader io.Reader, logsChan chan<- string, source string) error {
+	scanner := bufio.NewScanner(reader)
+
+	for scanner.Scan() {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			line := scanner.Text()
+			if line != "" {
+				// Add source prefix for stderr logs
+				if source == "stderr" {
+					line = "[STDERR] " + line
+				}
+
+				select {
+				case logsChan <- line:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
+		}
+	}
+
+	return scanner.Err()
+}
+
+// readAllLogs reads all logs at once for non-following requests
+func (s *ContainerService) readAllLogs(logs io.ReadCloser, logsChan chan<- string) error {
+	// For non-following logs, read all and demultiplex
+	stdoutBuf := &strings.Builder{}
+	stderrBuf := &strings.Builder{}
+
+	_, err := stdcopy.StdCopy(stdoutBuf, stderrBuf, logs)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("failed to demultiplex logs: %w", err)
+	}
+
+	// Send stdout lines
+	if stdoutBuf.Len() > 0 {
+		lines := strings.Split(strings.TrimRight(stdoutBuf.String(), "\n"), "\n")
+		for _, line := range lines {
+			if line != "" {
+				logsChan <- line
+			}
+		}
+	}
+
+	// Send stderr lines with prefix
+	if stderrBuf.Len() > 0 {
+		lines := strings.Split(strings.TrimRight(stderrBuf.String(), "\n"), "\n")
+		for _, line := range lines {
+			if line != "" {
+				logsChan <- "[STDERR] " + line
+			}
+		}
+	}
+
+	return nil
 }

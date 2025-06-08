@@ -24,7 +24,19 @@
 		onStop?: () => void;
 	}
 
-	let { containerId = null, stackId = null, type = 'container', maxLines = 1000, autoScroll = $bindable(true), showTimestamps = true, height = '400px', onClear, onToggleAutoScroll, onStart, onStop }: Props = $props();
+	let {
+		containerId = null,
+		stackId = null,
+		type = 'container',
+		maxLines = 1000,
+		autoScroll = $bindable(true),
+		showTimestamps = true,
+		height = '400px',
+		onClear,
+		onToggleAutoScroll,
+		onStart,
+		onStop
+	}: Props = $props();
 
 	let logs: LogEntry[] = $state([]);
 	let logContainer: HTMLElement | undefined = $state();
@@ -32,7 +44,6 @@
 	let error: string | null = $state(null);
 	let eventSource: EventSource | null = null;
 
-	// Expose functions for parent components
 	export function startLogStream() {
 		const targetId = type === 'stack' ? stackId : containerId;
 
@@ -43,22 +54,48 @@
 			error = null;
 			onStart?.();
 
-			// Use different API endpoint based on type
-			const endpoint = type === 'stack' ? `/api/stacks/${stackId}/logs?follow=true&tail=100&timestamps=true` : `/api/containers/${containerId}/logs/stream`;
+			const endpoint =
+				type === 'stack'
+					? `/api/stacks/${stackId}/logs?follow=true&tail=100&timestamps=${showTimestamps}`
+					: `/api/containers/${containerId}/logs/stream?follow=true&tail=100&timestamps=${showTimestamps}`;
 
-			console.log(`Starting ${type} log stream for ${targetId}:`, endpoint);
-
-			// Create SSE connection for log streaming
 			eventSource = new EventSource(endpoint);
+
+			eventSource.addEventListener('log', (event) => {
+				console.log('📨 Named log event received:', event);
+				const logData = JSON.parse(event.data);
+				addLogEntry({
+					level: logData.data.includes('[STDERR]') ? 'stderr' : 'stdout',
+					message: logData.data.replace('[STDERR] ', ''),
+					timestamp: logData.timestamp || new Date().toISOString(),
+					service: logData.service,
+					containerId: logData.containerId
+				});
+			});
 
 			eventSource.onmessage = (event) => {
 				try {
-					// Both stack and container logs now come as JSON
 					const logData = JSON.parse(event.data);
-					addLogEntry(logData);
+
+					if (logData.data) {
+						addLogEntry({
+							level: logData.data.includes('[STDERR]') ? 'stderr' : 'stdout',
+							message: logData.data.replace('[STDERR] ', ''),
+							timestamp: logData.timestamp || new Date().toISOString(),
+							service: logData.service,
+							containerId: logData.containerId
+						});
+					} else {
+						addLogEntry({
+							level: logData.level || 'info',
+							message: logData.message || logData.data || event.data,
+							timestamp: logData.timestamp || new Date().toISOString(),
+							service: logData.service,
+							containerId: logData.containerId
+						});
+					}
 				} catch (parseError) {
 					console.error('Failed to parse log data:', parseError, 'Raw data:', event.data);
-					// Fallback: treat as plain text
 					addLogEntry({
 						level: 'info',
 						message: event.data,
@@ -77,7 +114,6 @@
 				error = `Connection to ${type} log stream lost`;
 				isStreaming = false;
 
-				// Try to get more specific error info
 				if (eventSource?.readyState === EventSource.CLOSED) {
 					error = `${type} log stream was closed by server`;
 				}
@@ -109,7 +145,6 @@
 		onToggleAutoScroll?.();
 	}
 
-	// Expose state getters
 	export function getIsStreaming() {
 		return isStreaming;
 	}
@@ -118,7 +153,13 @@
 		return logs.length;
 	}
 
-	function addLogEntry(logData: { level: string; message: string; timestamp?: string; service?: string; containerId?: string }) {
+	function addLogEntry(logData: {
+		level: string;
+		message: string;
+		timestamp?: string;
+		service?: string;
+		containerId?: string;
+	}) {
 		const entry: LogEntry = {
 			timestamp: logData.timestamp || new Date().toISOString(),
 			level: logData.level as LogEntry['level'],
@@ -177,15 +218,17 @@
 </script>
 
 <div class="log-viewer bg-black text-white border rounded-md">
-	<!-- Error Display -->
 	{#if error}
 		<div class="p-3 bg-red-900/20 border-b border-red-700 text-red-200 text-sm">
 			{error}
 		</div>
 	{/if}
 
-	<!-- Log Content -->
-	<div bind:this={logContainer} class="log-viewer overflow-y-auto font-mono text-sm bg-black text-white border rounded-lg" style="height: {height}">
+	<div
+		bind:this={logContainer}
+		class="log-viewer overflow-y-auto font-mono text-sm bg-black text-white border rounded-lg"
+		style="height: {height}"
+	>
 		{#if logs.length === 0}
 			<div class="p-4 text-center text-gray-500">
 				{#if !containerId}
@@ -198,7 +241,9 @@
 			</div>
 		{:else}
 			{#each logs as log (log.timestamp + log.message + (log.service || ''))}
-				<div class="flex px-3 py-1 hover:bg-gray-900/50 border-l-2 border-transparent hover:border-blue-500 transition-colors">
+				<div
+					class="flex px-3 py-1 hover:bg-gray-900/50 border-l-2 border-transparent hover:border-blue-500 transition-colors"
+				>
 					{#if showTimestamps}
 						<span class="text-gray-500 text-xs mr-3 shrink-0 w-20">
 							{formatTimestamp(log.timestamp)}
@@ -226,6 +271,7 @@
 
 <style>
 	.log-viewer {
-		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+		font-family:
+			'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 	}
 </style>

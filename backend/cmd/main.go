@@ -78,6 +78,7 @@ func main() {
 	r.Use(middleware.SetupCORS(cfg))
 	loggingMiddleware := middleware.LoggingMiddleware(
 		"/api/containers/*/stats/stream",
+		"/api/containers/*/logs/stream",
 	)
 	r.Use(loggingMiddleware)
 

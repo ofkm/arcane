@@ -3,6 +3,7 @@ package api
 import (
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -340,6 +341,60 @@ func (h *ContainerHandler) GetStatsStream(c *gin.Context) {
 				return false
 			}
 			c.SSEvent("stats", stats)
+			return true
+		case err := <-errChan:
+			c.SSEvent("error", gin.H{"error": err.Error()})
+			return false
+		case <-c.Request.Context().Done():
+			return false
+		}
+	})
+}
+
+func (h *ContainerHandler) GetLogsStream(c *gin.Context) {
+	containerID := c.Param("id")
+	if containerID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Container ID is required",
+		})
+		return
+	}
+
+	// Get query parameters for log options
+	follow := c.DefaultQuery("follow", "true") == "true"
+	tail := c.DefaultQuery("tail", "100")
+	since := c.Query("since")
+	timestamps := c.DefaultQuery("timestamps", "false") == "true"
+
+	// Set headers for SSE
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+
+	logsChan := make(chan string, 10)
+	errChan := make(chan error, 1)
+
+	// Start streaming logs in a goroutine
+	go func() {
+		defer close(logsChan)
+		defer close(errChan)
+
+		err := h.containerService.StreamLogs(c.Request.Context(), containerID, logsChan, follow, tail, since, timestamps)
+		if err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Send logs to client
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case logLine, ok := <-logsChan:
+			if !ok {
+				return false
+			}
+			c.SSEvent("log", gin.H{"data": logLine, "timestamp": time.Now()})
 			return true
 		case err := <-errChan:
 			c.SSEvent("error", gin.H{"error": err.Error()})
