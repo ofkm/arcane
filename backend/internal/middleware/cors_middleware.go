@@ -18,7 +18,6 @@ func SetupCORS(cfg *config.Config) gin.HandlerFunc {
 		if parsedURL, err := url.Parse(cfg.AppUrl); err == nil {
 			origin := parsedURL.Scheme + "://" + parsedURL.Host
 			allowedOrigins = append(allowedOrigins, origin)
-			log.Printf("🌐 CORS: Added origin from APP_URL: %s", origin)
 		}
 	}
 
@@ -28,7 +27,6 @@ func SetupCORS(cfg *config.Config) gin.HandlerFunc {
 			"http://localhost:8080",
 		}
 		allowedOrigins = append(allowedOrigins, devOrigins...)
-		log.Printf("🌐 CORS: Added development origins: %v", devOrigins)
 	}
 
 	if len(allowedOrigins) == 0 {
@@ -37,7 +35,6 @@ func SetupCORS(cfg *config.Config) gin.HandlerFunc {
 			allowedOrigins = []string{"https://localhost"}
 		} else {
 			allowedOrigins = []string{"*"}
-			log.Printf("🌐 CORS: Development mode - allowing all origins")
 		}
 	}
 
@@ -76,9 +73,6 @@ func SetupCORS(cfg *config.Config) gin.HandlerFunc {
 	}
 	corsConfig.MaxAge = 300
 
-	log.Printf("🌐 CORS: Configured with origins: %v", allowedOrigins)
-	log.Printf("🌐 CORS: Max age: %d seconds", corsConfig.MaxAge)
-
 	return cors.New(corsConfig)
 }
 
@@ -87,7 +81,6 @@ func SetupCORSWithCustomOrigins(cfg *config.Config, customOrigins []string) gin.
 
 	if len(customOrigins) > 0 {
 		corsConfig.AllowOrigins = customOrigins
-		log.Printf("🌐 CORS: Using custom origins: %v", customOrigins)
 	} else {
 		return SetupCORS(cfg)
 	}

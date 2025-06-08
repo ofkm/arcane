@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -183,4 +184,63 @@ func (s *ContainerService) CreateContainer(ctx context.Context, config *containe
 	}
 
 	return &containerJSON, nil
+}
+
+func (s *ContainerService) GetStats(ctx context.Context, containerID string, stream bool) (interface{}, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	stats, err := dockerClient.ContainerStats(ctx, containerID, stream)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container stats: %w", err)
+	}
+	defer stats.Body.Close()
+
+	var statsData interface{}
+	decoder := json.NewDecoder(stats.Body)
+	if err := decoder.Decode(&statsData); err != nil {
+		return nil, fmt.Errorf("failed to decode stats: %w", err)
+	}
+
+	return statsData, nil
+}
+
+func (s *ContainerService) StreamStats(ctx context.Context, containerID string, statsChan chan<- interface{}) error {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	stats, err := dockerClient.ContainerStats(ctx, containerID, true)
+	if err != nil {
+		return fmt.Errorf("failed to start stats stream: %w", err)
+	}
+	defer stats.Body.Close()
+
+	decoder := json.NewDecoder(stats.Body)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			var statsData interface{}
+			if err := decoder.Decode(&statsData); err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				return fmt.Errorf("failed to decode stats: %w", err)
+			}
+
+			select {
+			case statsChan <- statsData:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	}
 }

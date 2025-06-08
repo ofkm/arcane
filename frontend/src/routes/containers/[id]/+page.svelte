@@ -2,7 +2,19 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, RefreshCw, HardDrive, Clock, Network, Terminal, Cpu, MemoryStick, Settings, Activity, FileText, Database } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		AlertCircle,
+		RefreshCw,
+		HardDrive,
+		Clock,
+		Network,
+		Terminal,
+		Settings,
+		Activity,
+		FileText,
+		Database
+	} from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
@@ -15,7 +27,6 @@
 	import LogViewer from '$lib/components/LogViewer.svelte';
 	import Meter from '$lib/components/meter.svelte';
 
-	// Define the network config interface to match what Docker actually returns
 	interface NetworkConfig {
 		IPAddress?: string;
 		IPPrefixLen?: number;
@@ -26,7 +37,6 @@
 		[key: string]: any;
 	}
 
-	// Type assertion helper for network settings
 	function ensureNetworkConfig(config: any): NetworkConfig {
 		return config as NetworkConfig;
 	}
@@ -115,9 +125,13 @@
 			return 0;
 		}
 
-		const cpuDelta = statsData.cpu_stats.cpu_usage.total_usage - (statsData.precpu_stats.cpu_usage?.total_usage || 0);
-		const systemDelta = statsData.cpu_stats.system_cpu_usage - (statsData.precpu_stats.system_cpu_usage || 0);
-		const numberCPUs = statsData.cpu_stats.online_cpus || statsData.cpu_stats.cpu_usage?.percpu_usage?.length || 1;
+		const cpuDelta =
+			statsData.cpu_stats.cpu_usage.total_usage -
+			(statsData.precpu_stats.cpu_usage?.total_usage || 0);
+		const systemDelta =
+			statsData.cpu_stats.system_cpu_usage - (statsData.precpu_stats.system_cpu_usage || 0);
+		const numberCPUs =
+			statsData.cpu_stats.online_cpus || statsData.cpu_stats.cpu_usage?.percpu_usage?.length || 1;
 
 		if (systemDelta > 0 && cpuDelta > 0) {
 			const cpuPercent = (cpuDelta / systemDelta) * numberCPUs * 100.0;
@@ -131,9 +145,13 @@
 	const memoryLimitBytes = $derived(stats?.memory_stats?.limit || 0);
 	const memoryUsageFormatted = $derived(formatBytes(memoryUsageBytes));
 	const memoryLimitFormatted = $derived(formatBytes(memoryLimitBytes));
-	const memoryUsagePercent = $derived(memoryLimitBytes > 0 ? (memoryUsageBytes / memoryLimitBytes) * 100 : 0);
+	const memoryUsagePercent = $derived(
+		memoryLimitBytes > 0 ? (memoryUsageBytes / memoryLimitBytes) * 100 : 0
+	);
 
-	const getPrimaryIpAddress = (networkSettings: ContainerInspectInfo['NetworkSettings'] | undefined | null): string => {
+	const getPrimaryIpAddress = (
+		networkSettings: ContainerInspectInfo['NetworkSettings'] | undefined | null
+	): string => {
 		if (!networkSettings) return 'N/A';
 
 		if (networkSettings.IPAddress) {
@@ -224,7 +242,14 @@
 								{containerDisplayName}
 							</h1>
 							{#if container?.State}
-								<StatusBadge variant={container.State.Status === 'running' ? 'green' : container.State.Status === 'exited' ? 'red' : 'amber'} text={container.State.Status} />
+								<StatusBadge
+									variant={container.State.Status === 'running'
+										? 'green'
+										: container.State.Status === 'exited'
+											? 'red'
+											: 'amber'}
+									text={container.State.Status}
+								/>
 							{/if}
 						</div>
 					</div>
@@ -262,7 +287,9 @@
 							<button
 								onclick={() => scrollToSection(section.id)}
 								class="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors
-									{activeSection === section.id ? 'bg-primary/10 text-primary border border-primary/20' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+									{activeSection === section.id
+									? 'bg-primary/10 text-primary border border-primary/20'
+									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
 							>
 								<IconComponent class="size-4 shrink-0" />
 								<span class="truncate">{section.label}</span>
@@ -345,9 +372,29 @@
 									</Card.Header>
 									<Card.Content class="space-y-6">
 										{#if stats && container.State?.Running}
-											<Meter label="CPU Usage" valueLabel="{cpuUsagePercent.toFixed(1)}%" value={cpuUsagePercent} max={100} variant={cpuUsagePercent > 80 ? 'destructive' : cpuUsagePercent > 60 ? 'warning' : 'default'} />
+											<Meter
+												label="CPU Usage"
+												valueLabel="{cpuUsagePercent.toFixed(1)}%"
+												value={cpuUsagePercent}
+												max={100}
+												variant={cpuUsagePercent > 80
+													? 'destructive'
+													: cpuUsagePercent > 60
+														? 'warning'
+														: 'default'}
+											/>
 
-											<Meter label="Memory Usage" valueLabel="{memoryUsageFormatted} / {memoryLimitFormatted}" value={memoryUsagePercent} max={100} variant={memoryUsagePercent > 80 ? 'destructive' : memoryUsagePercent > 60 ? 'warning' : 'default'} />
+											<Meter
+												label="Memory Usage"
+												valueLabel="{memoryUsageFormatted} / {memoryLimitFormatted}"
+												value={memoryUsagePercent}
+												max={100}
+												variant={memoryUsagePercent > 80
+													? 'destructive'
+													: memoryUsagePercent > 60
+														? 'warning'
+														: 'default'}
+											/>
 										{:else}
 											<div class="text-muted-foreground text-center py-8">
 												{container.State?.Running ? 'Loading stats...' : 'Container not running'}
@@ -365,13 +412,17 @@
 								<Card.Content class="space-y-4">
 									<div>
 										<div class="text-sm text-muted-foreground mb-2">Container ID</div>
-										<div class="font-mono bg-muted/50 p-3 rounded text-sm break-all">{container.Id}</div>
+										<div class="font-mono bg-muted/50 p-3 rounded text-sm break-all">
+											{container.Id}
+										</div>
 									</div>
 
 									{#if container.Config?.WorkingDir}
 										<div>
 											<div class="text-sm text-muted-foreground mb-2">Working Directory</div>
-											<div class="font-mono bg-muted/50 p-3 rounded break-all">{container.Config.WorkingDir}</div>
+											<div class="font-mono bg-muted/50 p-3 rounded break-all">
+												{container.Config.WorkingDir}
+											</div>
 										</div>
 									{/if}
 
@@ -386,10 +437,19 @@
 										<div>
 											<div class="text-sm text-muted-foreground mb-2">Health Status</div>
 											<div class="flex items-center gap-3">
-												<StatusBadge variant={container.State.Health.Status === 'healthy' ? 'green' : container.State.Health.Status === 'unhealthy' ? 'red' : 'amber'} text={container.State.Health.Status} />
+												<StatusBadge
+													variant={container.State.Health.Status === 'healthy'
+														? 'green'
+														: container.State.Health.Status === 'unhealthy'
+															? 'red'
+															: 'amber'}
+													text={container.State.Health.Status}
+												/>
 												{#if container.State.Health.Log && container.State.Health.Log.length > 0}
 													<span class="text-sm text-muted-foreground">
-														Last check: {new Date(container.State.Health.Log[0].Start).toLocaleString()}
+														Last check: {new Date(
+															container.State.Health.Log[0].Start
+														).toLocaleString()}
 													</span>
 												{/if}
 											</div>
@@ -412,9 +472,33 @@
 										<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 											<!-- CPU and Memory -->
 											<div class="space-y-6">
-												<Meter label="CPU Usage" valueLabel="{cpuUsagePercent.toFixed(2)}%" value={cpuUsagePercent} max={100} variant={cpuUsagePercent > 80 ? 'destructive' : cpuUsagePercent > 60 ? 'warning' : 'default'} size="lg" />
+												<Meter
+													label="CPU Usage"
+													valueLabel="{cpuUsagePercent.toFixed(2)}%"
+													value={cpuUsagePercent}
+													max={100}
+													variant={cpuUsagePercent > 80
+														? 'destructive'
+														: cpuUsagePercent > 60
+															? 'warning'
+															: 'default'}
+													size="lg"
+												/>
 
-												<Meter label="Memory Usage" valueLabel="{memoryUsageFormatted} / {memoryLimitFormatted} ({memoryUsagePercent.toFixed(1)}%)" value={memoryUsagePercent} max={100} variant={memoryUsagePercent > 80 ? 'destructive' : memoryUsagePercent > 60 ? 'warning' : 'default'} size="lg" />
+												<Meter
+													label="Memory Usage"
+													valueLabel="{memoryUsageFormatted} / {memoryLimitFormatted} ({memoryUsagePercent.toFixed(
+														1
+													)}%)"
+													value={memoryUsagePercent}
+													max={100}
+													variant={memoryUsagePercent > 80
+														? 'destructive'
+														: memoryUsagePercent > 60
+															? 'warning'
+															: 'default'}
+													size="lg"
+												/>
 											</div>
 
 											<!-- Network I/O -->
@@ -426,11 +510,15 @@
 													<div class="grid grid-cols-2 gap-4">
 														<div class="bg-muted/30 p-4 rounded">
 															<div class="text-sm text-muted-foreground">Received</div>
-															<div class="font-medium mt-1">{formatBytes(stats.networks?.eth0?.rx_bytes || 0)}</div>
+															<div class="font-medium mt-1">
+																{formatBytes(stats.networks?.eth0?.rx_bytes || 0)}
+															</div>
 														</div>
 														<div class="bg-muted/30 p-4 rounded">
 															<div class="text-sm text-muted-foreground">Transmitted</div>
-															<div class="font-medium mt-1">{formatBytes(stats.networks?.eth0?.tx_bytes || 0)}</div>
+															<div class="font-medium mt-1">
+																{formatBytes(stats.networks?.eth0?.tx_bytes || 0)}
+															</div>
 														</div>
 													</div>
 												</div>
@@ -442,13 +530,21 @@
 															<div class="bg-muted/30 p-4 rounded">
 																<div class="text-sm text-muted-foreground">Read</div>
 																<div class="font-medium mt-1">
-																	{formatBytes(stats.blkio_stats.io_service_bytes_recursive.filter((item) => item.op === 'Read').reduce((acc, item) => acc + item.value, 0))}
+																	{formatBytes(
+																		stats.blkio_stats.io_service_bytes_recursive
+																			.filter((item) => item.op === 'Read')
+																			.reduce((acc, item) => acc + item.value, 0)
+																	)}
 																</div>
 															</div>
 															<div class="bg-muted/30 p-4 rounded">
 																<div class="text-sm text-muted-foreground">Write</div>
 																<div class="font-medium mt-1">
-																	{formatBytes(stats.blkio_stats.io_service_bytes_recursive.filter((item) => item.op === 'Write').reduce((acc, item) => acc + item.value, 0))}
+																	{formatBytes(
+																		stats.blkio_stats.io_service_bytes_recursive
+																			.filter((item) => item.op === 'Write')
+																			.reduce((acc, item) => acc + item.value, 0)
+																	)}
 																</div>
 															</div>
 														</div>
@@ -466,7 +562,9 @@
 											</div>
 										{/if}
 									{:else if !container.State?.Running}
-										<div class="text-center text-muted-foreground py-12">Container is not running. Stats unavailable.</div>
+										<div class="text-center text-muted-foreground py-12">
+											Container is not running. Stats unavailable.
+										</div>
 									{:else}
 										<div class="text-center text-muted-foreground py-12">Loading stats...</div>
 									{/if}
@@ -486,22 +584,43 @@
 										<input type="checkbox" bind:checked={autoScrollLogs} class="size-4" />
 										Auto-scroll
 									</label>
-									<Button variant="outline" size="sm" onclick={() => logViewer?.clearLogs()}>Clear</Button>
+									<Button variant="outline" size="sm" onclick={() => logViewer?.clearLogs()}
+										>Clear</Button
+									>
 									{#if isStreaming}
 										<div class="flex items-center gap-2">
 											<div class="size-2 bg-green-500 rounded-full animate-pulse"></div>
 											<span class="text-green-600 text-sm font-medium">Live</span>
 										</div>
-										<Button variant="outline" size="sm" onclick={() => logViewer?.stopLogStream()}>Stop</Button>
+										<Button variant="outline" size="sm" onclick={() => logViewer?.stopLogStream()}
+											>Stop</Button
+										>
 									{:else}
-										<Button variant="outline" size="sm" onclick={() => logViewer?.startLogStream()} disabled={!container?.Id}>Start</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											onclick={() => logViewer?.startLogStream()}
+											disabled={!container?.Id}>Start</Button
+										>
 									{/if}
 								</div>
 							</div>
 
 							<Card.Root class="border">
 								<Card.Content class="p-0">
-									<LogViewer bind:this={logViewer} bind:autoScroll={autoScrollLogs} type="container" containerId={container?.Id} maxLines={500} showTimestamps={true} height="400px" onStart={handleLogStart} onStop={handleLogStop} onClear={handleLogClear} onToggleAutoScroll={handleToggleAutoScroll} />
+									<LogViewer
+										bind:this={logViewer}
+										bind:autoScroll={autoScrollLogs}
+										type="container"
+										containerId={container?.Id}
+										maxLines={500}
+										showTimestamps={true}
+										height="400px"
+										onStart={handleLogStart}
+										onStop={handleLogStop}
+										onClear={handleLogClear}
+										onToggleAutoScroll={handleToggleAutoScroll}
+									/>
 								</Card.Content>
 							</Card.Root>
 						</section>
@@ -528,7 +647,9 @@
 														{@const value = valueParts.join('=')}
 														<div class="flex border-b border-muted/30 py-2">
 															<span class="font-medium w-1/3 pr-3 truncate" title={key}>{key}</span>
-															<span class="w-2/3 truncate text-muted-foreground" title={value}>{value}</span>
+															<span class="w-2/3 truncate text-muted-foreground" title={value}
+																>{value}</span
+															>
 														</div>
 													{:else}
 														<div class="border-b border-muted/30 py-2">{env}</div>
@@ -536,7 +657,9 @@
 												{/each}
 											</div>
 										{:else}
-											<div class="text-muted-foreground text-center py-8">No environment variables</div>
+											<div class="text-muted-foreground text-center py-8">
+												No environment variables
+											</div>
 										{/if}
 									</Card.Content>
 								</Card.Root>
@@ -585,7 +708,10 @@
 											{#each Object.entries(container.Config.Labels) as [key, value] (key)}
 												<div class="flex border-b border-muted/30 py-2">
 													<span class="font-medium w-1/3 pr-3 truncate" title={key}>{key}</span>
-													<span class="w-2/3 truncate text-muted-foreground" title={value?.toString()}>{value?.toString() || ''}</span>
+													<span
+														class="w-2/3 truncate text-muted-foreground"
+														title={value?.toString()}>{value?.toString() || ''}</span
+													>
 												</div>
 											{/each}
 										</div>
@@ -627,7 +753,9 @@
 														<div>
 															<div class="text-sm text-muted-foreground">Subnet</div>
 															<div class="font-mono">
-																{networkConfig.IPPrefixLen ? `${networkConfig.IPAddress}/${networkConfig.IPPrefixLen}` : 'N/A'}
+																{networkConfig.IPPrefixLen
+																	? `${networkConfig.IPAddress}/${networkConfig.IPPrefixLen}`
+																	: 'N/A'}
 															</div>
 														</div>
 														{#if networkConfig.Aliases && networkConfig.Aliases.length > 0}
@@ -662,7 +790,13 @@
 												<div class="border rounded overflow-hidden">
 													<div class="flex items-center justify-between p-4 bg-muted/20">
 														<div class="flex items-center gap-3">
-															<div class="p-2 rounded {mount.Type === 'volume' ? 'bg-purple-100 dark:bg-purple-950' : mount.Type === 'bind' ? 'bg-blue-100 dark:bg-blue-950' : 'bg-amber-100 dark:bg-amber-950'}">
+															<div
+																class="p-2 rounded {mount.Type === 'volume'
+																	? 'bg-purple-100 dark:bg-purple-950'
+																	: mount.Type === 'bind'
+																		? 'bg-blue-100 dark:bg-blue-950'
+																		: 'bg-amber-100 dark:bg-amber-950'}"
+															>
 																{#if mount.Type === 'volume'}
 																	<Database class="size-4 text-purple-600" />
 																{:else if mount.Type === 'bind'}
@@ -673,7 +807,11 @@
 															</div>
 															<div>
 																<div class="font-medium">
-																	{mount.Type === 'tmpfs' ? 'Temporary filesystem' : mount.Type === 'volume' ? mount.Name || 'Docker volume' : 'Host directory'}
+																	{mount.Type === 'tmpfs'
+																		? 'Temporary filesystem'
+																		: mount.Type === 'volume'
+																			? mount.Name || 'Docker volume'
+																			: 'Host directory'}
 																</div>
 																<div class="text-sm text-muted-foreground">
 																	{mount.Type} mount {mount.RW ? '(read-write)' : '(read-only)'}
@@ -687,13 +825,21 @@
 													<div class="p-4 space-y-3">
 														<div class="flex">
 															<span class="w-24 text-muted-foreground font-medium">Container:</span>
-															<span class="font-mono bg-muted/50 px-2 py-1 rounded flex-1">{mount.Destination}</span>
+															<span class="font-mono bg-muted/50 px-2 py-1 rounded flex-1"
+																>{mount.Destination}</span
+															>
 														</div>
 														<div class="flex">
 															<span class="w-24 text-muted-foreground font-medium">
-																{mount.Type === 'volume' ? 'Volume:' : mount.Type === 'bind' ? 'Host:' : 'Source:'}
+																{mount.Type === 'volume'
+																	? 'Volume:'
+																	: mount.Type === 'bind'
+																		? 'Host:'
+																		: 'Source:'}
 															</span>
-															<span class="font-mono bg-muted/50 px-2 py-1 rounded flex-1">{mount.Source}</span>
+															<span class="font-mono bg-muted/50 px-2 py-1 rounded flex-1"
+																>{mount.Source}</span
+															>
 														</div>
 													</div>
 												</div>
@@ -701,7 +847,9 @@
 										</div>
 									{:else}
 										<div class="text-center py-12">
-											<div class="mb-4 rounded-full bg-muted/50 flex items-center justify-center mx-auto size-16">
+											<div
+												class="mb-4 rounded-full bg-muted/50 flex items-center justify-center mx-auto size-16"
+											>
 												<Database class="size-6 text-muted-foreground" />
 											</div>
 											<div class="text-muted-foreground">No volumes or mounts configured</div>
@@ -721,7 +869,10 @@
 					<AlertCircle class="text-muted-foreground size-10" />
 				</div>
 				<h2 class="text-2xl font-medium mb-3">Container Not Found</h2>
-				<p class="text-center text-muted-foreground max-w-md mb-8">Could not load container data. It may have been removed or the Docker engine is not accessible.</p>
+				<p class="text-center text-muted-foreground max-w-md mb-8">
+					Could not load container data. It may have been removed or the Docker engine is not
+					accessible.
+				</p>
 				<div class="flex gap-4 justify-center">
 					<Button variant="outline" href="/containers">
 						<ArrowLeft class="mr-2 size-4" />

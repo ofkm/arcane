@@ -6,13 +6,13 @@ echo "🚀 Building Arcane..."
 
 # Build the frontend
 echo "📦 Building frontend..."
+rm -rf backend/frontend/dist
 cd frontend
 npm i
 npm run build
 
 cd ..
 
-# Build the backend
 echo "🔧 Building backend..."
 cd backend
 go mod tidy

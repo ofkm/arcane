@@ -185,12 +185,13 @@ func setupContainerRoutes(api *gin.RouterGroup, services *Services) {
 	containers.GET("", containerHandler.List)
 	containers.POST("", containerHandler.Create)
 	containers.GET("/:id", containerHandler.GetByID)
+	containers.GET("/:id/stats", containerHandler.GetStats)
+	containers.GET("/:id/stats/stream", containerHandler.GetStatsStream)
 	containers.POST("/:id/start", containerHandler.Start)
 	containers.POST("/:id/stop", containerHandler.Stop)
 	containers.POST("/:id/restart", containerHandler.Restart)
-	containers.DELETE("/:id", containerHandler.Delete)
 	containers.GET("/:id/logs", containerHandler.GetLogs)
-	containers.GET("/image-usage/:id", containerHandler.IsImageInUse)
+	containers.DELETE("/:id", containerHandler.Delete)
 }
 
 func setupImageRoutes(api *gin.RouterGroup, services *Services) {

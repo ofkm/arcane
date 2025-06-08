@@ -72,13 +72,13 @@ export default class ContainerAPIService extends BaseAPIService {
         );
     }
 
-    async stats(id: string, stream: boolean = false) {
-        return this.handleResponse(
-            this.api.get(`/containers/${id}/stats`, {
-                params: { stream }
-            })
-        );
-    }
+async stats(id: string, stream: boolean = false) {
+    return this.handleResponse(
+        this.api.get(`/containers/${id}/stats`, {
+            params: { stream }
+        })
+    );
+}
 
     async isImageInUse(imageId: string): Promise<boolean> {
         const response = await this.api.get(`/containers/image-usage/${imageId}`);

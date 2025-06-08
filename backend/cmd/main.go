@@ -76,6 +76,10 @@ func main() {
 	r := gin.Default()
 
 	r.Use(middleware.SetupCORS(cfg))
+	loggingMiddleware := middleware.LoggingMiddleware(
+		"/api/containers/*/stats/stream",
+	)
+	r.Use(loggingMiddleware)
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "UP"})
@@ -103,7 +107,7 @@ func main() {
 
 	frontend.RegisterFrontend(r)
 
-	log.Printf("🌐 Starting server on port %s", cfg.Port)
+	log.Printf("Starting server on port %s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
