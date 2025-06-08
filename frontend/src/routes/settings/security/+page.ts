@@ -4,16 +4,17 @@ export const load = async () => {
 	const [settings, oidcStatus] = await Promise.all([
 		settingsAPI.getSettings(),
 		settingsAPI.getOidcStatus().catch(() => ({
-			enabled: false,
-			configured: false,
+			envForced: false,
 			envConfigured: false,
-			settingsConfigured: false
-		}))
+			dbEnabled: false,
+			dbConfigured: false,
+			effectivelyEnabled: false,
+			effectivelyConfigured: false
+		})) // Ensure fallback has all new fields
 	]);
 
 	return {
 		settings,
-		oidcStatus,
-		oidcEnvVarsConfigured: oidcStatus.envConfigured
+		oidcStatus // Pass the full oidcStatus object
 	};
 };

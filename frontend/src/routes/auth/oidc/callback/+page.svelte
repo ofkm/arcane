@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import { oidcAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 
@@ -10,44 +10,41 @@
 
 	onMount(async () => {
 		try {
-			const code = $page.url.searchParams.get('code');
-			const state = $page.url.searchParams.get('state');
-
-			// Get stored state from localStorage (since we can't use httpOnly cookies in static mode)
-			const storedState = localStorage.getItem('oidc_state');
+			const code = page.url.searchParams.get('code');
+			const stateFromUrl = page.url.searchParams.get('state');
 			const finalRedirectTo = localStorage.getItem('oidc_redirect') || '/';
-
-			// Clean up stored values
-			localStorage.removeItem('oidc_state');
 			localStorage.removeItem('oidc_redirect');
 
-			if (!code || !state || !storedState || state !== storedState) {
-				console.error('OIDC callback error: state mismatch or missing params.');
-				error = 'Invalid OIDC response. Please try logging in again.';
-				setTimeout(() => goto('/auth/login?error=oidc_invalid_response'), 2000);
+			if (!code || !stateFromUrl) {
+				console.error('OIDC callback error: missing code or state in URL.');
+				error = 'Invalid OIDC response (missing parameters). Please try logging in again.';
+				setTimeout(() => goto('/auth/login?error=oidc_invalid_response'), 3000);
+				isProcessing = false;
 				return;
 			}
+			const authResult = await oidcAPI.handleCallback(code, stateFromUrl);
 
-			// Handle OIDC callback via OIDC API service
-			const authResult = await oidcAPI.handleCallback(code, state);
-
-			if (!authResult.success || !authResult.token || !authResult.user) {
-				console.error('OIDC authentication failed:', authResult.error);
+			if (!authResult.success) {
+				console.error('OIDC authentication failed via backend:', authResult.error);
 				error = authResult.error || 'Authentication failed. Please try again.';
-				setTimeout(() => goto(`/auth/login?error=${authResult.error || 'oidc_auth_failed'}`), 2000);
+				const errorCode = authResult.error?.toLowerCase().replace(/\s+/g, '_') || 'oidc_auth_failed';
+				setTimeout(() => goto(`/auth/login?error=${errorCode}`), 3000);
+				isProcessing = false;
 				return;
 			}
 
-			// Store auth data in localStorage (or sessionStorage)
-			localStorage.setItem('auth_token', authResult.token);
-			localStorage.setItem('user_data', JSON.stringify(authResult.user));
+			if (authResult.user) {
+				localStorage.setItem('user_data', JSON.stringify(authResult.user));
+			}
+
+			await invalidateAll();
 
 			toast.success('Successfully logged in!');
 			goto(finalRedirectTo);
-		} catch (err) {
-			console.error('OIDC callback processing error:', err);
-			error = 'An error occurred during authentication. Please try again.';
-			setTimeout(() => goto('/auth/login?error=oidc_generic_error'), 2000);
+		} catch (err: any) {
+			console.error('🔥 OIDC callback processing error:', err);
+			error = err.message || 'An error occurred during authentication. Please try again.';
+			setTimeout(() => goto('/auth/login?error=oidc_generic_error'), 3000);
 		} finally {
 			isProcessing = false;
 		}

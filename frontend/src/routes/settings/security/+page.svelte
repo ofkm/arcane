@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { env as publicEnv } from '$env/dynamic/public';
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -16,8 +15,6 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 
 	let { data }: { data: PageData } = $props();
-
-	const isOidcForcedByPublicEnv = publicEnv.PUBLIC_OIDC_ENABLED === 'true';
 
 	let showOidcConfigDialog = $state(false);
 	let oidcConfigForm = $state({
@@ -35,29 +32,18 @@
 		saving: false
 	});
 
-	let isOidcViewMode = $derived(data.oidcEnvVarsConfigured);
-	let oidcConfiguredViaAppSettings = $derived(!!(data.settings?.auth?.oidc?.clientId && data.settings?.auth?.oidc?.redirectUri && data.settings?.auth?.oidc?.authorizationEndpoint && data.settings?.auth?.oidc?.tokenEndpoint));
+	let isOidcViewMode = $derived(data.oidcStatus.envForced && data.oidcStatus.envConfigured);
 
 	$effect(() => {
 		if (data.settings) {
 			updateSettingsStore(data.settings);
-		}
-	});
-
-	onMount(() => {
-		if (isOidcForcedByPublicEnv) {
-			if (!$settingsStore.auth?.oidcEnabled) {
-				settingsStore.update((current) => ({
-					...current,
-					auth: {
-						...(current.auth || {}),
-						oidcEnabled: true
-					}
-				}));
-			}
-			if (!data.oidcEnvVarsConfigured) {
-				showOidcConfigDialog = true;
-			}
+			oidcConfigForm.clientId = data.settings.auth?.oidc?.clientId || '';
+			oidcConfigForm.redirectUri = data.settings.auth?.oidc?.redirectUri || 'http://localhost:3000/auth/oidc/callback';
+			oidcConfigForm.authorizationEndpoint = data.settings.auth?.oidc?.authorizationEndpoint || '';
+			oidcConfigForm.tokenEndpoint = data.settings.auth?.oidc?.tokenEndpoint || '';
+			oidcConfigForm.userinfoEndpoint = data.settings.auth?.oidc?.userinfoEndpoint || '';
+			oidcConfigForm.scopes = data.settings.auth?.oidc?.scopes || 'openid email profile';
+			oidcConfigForm.clientSecret = '';
 		}
 	});
 
@@ -70,12 +56,21 @@
 			}
 		}));
 
-		if (checked && !data.oidcEnvVarsConfigured) {
+		if (checked && !data.oidcStatus.envForced && !data.oidcStatus.effectivelyConfigured) {
 			showOidcConfigDialog = true;
 		}
 	}
 
 	function openOidcDialog() {
+		if (!isOidcViewMode) {
+			oidcConfigForm.clientId = data.settings?.auth?.oidc?.clientId || '';
+			oidcConfigForm.clientSecret = '';
+			oidcConfigForm.redirectUri = data.settings?.auth?.oidc?.redirectUri || 'http://localhost:3000/auth/oidc/callback';
+			oidcConfigForm.authorizationEndpoint = data.settings?.auth?.oidc?.authorizationEndpoint || '';
+			oidcConfigForm.tokenEndpoint = data.settings?.auth?.oidc?.tokenEndpoint || '';
+			oidcConfigForm.userinfoEndpoint = data.settings?.auth?.oidc?.userinfoEndpoint || '';
+			oidcConfigForm.scopes = data.settings?.auth?.oidc?.scopes || 'openid email profile';
+		}
 		showOidcConfigDialog = true;
 	}
 
@@ -104,6 +99,7 @@
 			});
 
 			await saveSettingsToServer();
+			await invalidateAll();
 
 			toast.success('OIDC configuration saved successfully.');
 			showOidcConfigDialog = false;
@@ -194,36 +190,40 @@
 							<label for="oidcAuthSwitch" class="text-base font-medium">OIDC Authentication</label>
 							<p class="text-sm text-muted-foreground">
 								Use an External OIDC Provider
-								{#if isOidcForcedByPublicEnv}
-									<span class="text-xs text-muted-foreground">(Forced ON by environment)</span>
+								{#if 'envForced' in data.oidcStatus && data.oidcStatus.envForced}
+									<span class="text-xs text-muted-foreground">(Forced ON by server environment)</span>
 								{/if}
 							</p>
-							{#if isOidcForcedByPublicEnv || $settingsStore.auth?.oidcEnabled}
-								{#if isOidcForcedByPublicEnv && !data.oidcEnvVarsConfigured}
+							{#if 'envForced' in data.oidcStatus && (data.oidcStatus.effectivelyEnabled || data.oidcStatus.envForced)}
+								{#if data.oidcStatus.envForced && !data.oidcStatus.envConfigured}
 									<Button variant="link" class="p-0 h-auto text-xs text-destructive hover:underline" onclick={openOidcDialog}>
 										<AlertTriangle class="mr-1 size-3" />
-										OIDC is forced ON, but critical server settings are missing. Click for details.
+										Server forces OIDC, but env vars missing. Configure app settings or fix server env.
 									</Button>
-								{:else if data.oidcEnvVarsConfigured}
+								{:else if data.oidcStatus.envForced && data.oidcStatus.envConfigured}
 									<Button variant="link" class="p-0 h-auto text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
 										<Info class="mr-1 size-3" />
-										OIDC is configured on server. View Status.
+										OIDC configured & forced by server. View Status.
 									</Button>
-								{:else if oidcConfiguredViaAppSettings}
+								{:else if !data.oidcStatus.envForced && data.oidcStatus.effectivelyEnabled && data.oidcStatus.dbConfigured}
 									<Button variant="link" class="p-0 h-auto text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
 										<Info class="mr-1 size-3" />
-										OIDC configured via application settings. Click to Manage Them.
+										OIDC configured via application settings. Manage.
 									</Button>
-								{:else if !showOidcConfigDialog}
-									<!-- This case: Not forced by public env, store has it enabled, but neither server vars nor app settings are fully configured -->
+								{:else if !data.oidcStatus.envForced && data.oidcStatus.effectivelyEnabled && !data.oidcStatus.dbConfigured}
 									<Button variant="link" class="p-0 h-auto text-xs text-destructive hover:underline" onclick={openOidcDialog}>
 										<AlertTriangle class="mr-1 size-3" />
-										OIDC application settings not configured. Click to configure.
+										OIDC enabled, but app settings incomplete. Configure.
 									</Button>
 								{/if}
+							{:else if 'enabled' in data.oidcStatus && data.oidcStatus.enabled}
+								<Button variant="link" class="p-0 h-auto text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
+									<Info class="mr-1 size-3" />
+									OIDC enabled (legacy mode). Manage.
+								</Button>
 							{/if}
 						</div>
-						<Switch id="oidcAuthSwitch" checked={isOidcForcedByPublicEnv || ($settingsStore.auth?.oidcEnabled ?? false)} disabled={isOidcForcedByPublicEnv} onCheckedChange={handleOidcSwitchChange} />
+						<Switch id="oidcAuthSwitch" checked={'effectivelyEnabled' in data.oidcStatus ? data.oidcStatus.effectivelyEnabled : data.oidcStatus.enabled} disabled={'envForced' in data.oidcStatus && data.oidcStatus.envForced} onCheckedChange={handleOidcSwitchChange} />
 					</div>
 				</div>
 			</Card.Content>
@@ -233,48 +233,42 @@
 		<Dialog.Root bind:open={showOidcConfigDialog}>
 			<Dialog.Content class="sm:max-w-[600px]">
 				<Dialog.Header>
-					<Dialog.Title
-						>{#if isOidcViewMode}OIDC Configuration Status{:else}Configure OIDC Provider{/if}</Dialog.Title
-					>
+					<Dialog.Title>
+						{#if isOidcViewMode}OIDC Server Configuration Status
+						{:else if data.oidcStatus.envForced && !data.oidcStatus.envConfigured}Configure OIDC (Server Override Warning)
+						{:else}Configure OIDC Provider{/if}
+					</Dialog.Title>
 					<Dialog.Description>
 						{#if isOidcViewMode}
-							OIDC authentication is configured using server-side environment variables.
-							{#if $settingsStore.auth?.oidcEnabled}
-								It is currently active.
-							{:else if isOidcForcedByPublicEnv}
-								It is forced ON by environment variables but may require application settings to be saved if this is the first run.
-							{:else}
-								It is configured but currently disabled in application settings. You can enable it using the switch.
-							{/if}
+							OIDC authentication is configured and forced ON by server-side environment variables. These settings are read-only.
 							<p class="mt-2">The following OIDC settings are loaded from the server environment:</p>
-							<ul class="list-disc list-inside mt-1 text-xs space-y-1">
-								{#if data.settings?.auth?.oidc}
-									<li><strong>Client ID:</strong> {data.settings.auth.oidc.clientId}</li>
-									<li><strong>Client Secret:</strong> <span class="italic text-muted-foreground">(Sensitive - Not Displayed)</span></li>
-									<li><strong>Redirect URI:</strong> {data.settings.auth.oidc.redirectUri}</li>
-									<li><strong>Authorization Endpoint:</strong> {data.settings.auth.oidc.authorizationEndpoint}</li>
-									<li><strong>Token Endpoint:</strong> {data.settings.auth.oidc.tokenEndpoint}</li>
-									<li><strong>User Info Endpoint:</strong> {data.settings.auth.oidc.userinfoEndpoint}</li>
-									<li><strong>Scopes:</strong> {data.settings.auth.oidc.scopes}</li>
-								{:else}
-									<li><span class="text-destructive">OIDC configuration details not found in settings.</span></li>
-								{/if}
-							</ul>
-							<p class="mt-2 text-xs">Changes to these settings must be made in your server's environment configuration.</p>
+						{:else if data.oidcStatus.envForced && !data.oidcStatus.envConfigured}
+							OIDC usage is forced ON by the server environment (<code>PUBLIC_OIDC_ENABLED=true</code>), but critical server-side OIDC environment variables appear to be missing or incomplete. The settings below are from your application database. While you can save them here, it's strongly recommended to configure the OIDC settings directly in your server's environment for them to take full
+							effect as intended by the server override.
 						{:else}
-							Configure the OIDC settings for your application. These settings will be saved and used for OIDC authentication.
-							{#if isOidcForcedByPublicEnv && !data.oidcEnvVarsConfigured}
-								<br />
-								<strong class="text-orange-600 text-xs mt-1 block">OIDC usage is currently forced ON by <code>PUBLIC_OIDC_ENABLED</code>, but critical server-side OIDC environment variables appear to be missing. Please configure them below and save, or ensure the corresponding server environment variables are set.</strong>
-							{:else if isOidcForcedByPublicEnv}
-								<br />
-								<strong class="text-orange-600 text-xs mt-1 block">OIDC usage is currently forced ON by <code>PUBLIC_OIDC_ENABLED</code>.</strong>
-							{/if}
+							Configure the OIDC settings for your application. These settings will be saved to the database and used for OIDC authentication.
 						{/if}
 					</Dialog.Description>
 				</Dialog.Header>
 
-				{#if !isOidcViewMode}
+				{#if isOidcViewMode}
+					<div class="py-4 max-h-[50vh] overflow-y-auto pr-2">
+						<ul class="list-disc list-inside mt-1 text-sm space-y-1">
+							{#if data.settings?.auth?.oidc}
+								<li><strong>Client ID:</strong> {data.settings.auth.oidc.clientId}</li>
+								<li><strong>Client Secret:</strong> <span class="italic text-muted-foreground">(Sensitive - Not Displayed)</span></li>
+								<li><strong>Redirect URI:</strong> {data.settings.auth.oidc.redirectUri}</li>
+								<li><strong>Authorization Endpoint:</strong> {data.settings.auth.oidc.authorizationEndpoint}</li>
+								<li><strong>Token Endpoint:</strong> {data.settings.auth.oidc.tokenEndpoint}</li>
+								<li><strong>User Info Endpoint:</strong> {data.settings.auth.oidc.userinfoEndpoint}</li>
+								<li><strong>Scopes:</strong> {data.settings.auth.oidc.scopes}</li>
+							{:else}
+								<li><span class="text-destructive">OIDC configuration details not found in effective settings.</span></li>
+							{/if}
+						</ul>
+						<p class="mt-3 text-xs text-muted-foreground">Changes to these settings must be made in your server's environment configuration.</p>
+					</div>
+				{:else}
 					<!-- Form for setup/configuration -->
 					<div class="grid gap-4 py-4 max-h-[50vh] overflow-y-auto pr-2">
 						<div class="grid grid-cols-4 items-center gap-4">
@@ -283,7 +277,7 @@
 						</div>
 						<div class="grid grid-cols-4 items-center gap-4">
 							<Label for="oidcClientSecret" class="text-right col-span-1">Client Secret</Label>
-							<Input id="oidcClientSecret" type="password" bind:value={oidcConfigForm.clientSecret} class="col-span-3" placeholder="Provided by your OIDC Provider" />
+							<Input id="oidcClientSecret" type="password" bind:value={oidcConfigForm.clientSecret} class="col-span-3" placeholder="Provided by your OIDC Provider (leave blank to keep existing if any)" />
 						</div>
 						<div class="grid grid-cols-4 items-center gap-4">
 							<Label for="oidcRedirectUri" class="text-right col-span-1">Redirect URI</Label>

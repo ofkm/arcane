@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 )
 
 type Config struct {
@@ -9,14 +10,35 @@ type Config struct {
 	Port        string
 	Environment string
 	JWTSecret   string
+
+	// OIDC Configuration from Environment Variables
+	PublicOidcEnabled         bool
+	OidcClientID              string
+	OidcClientSecret          string
+	OidcRedirectURI           string
+	OidcAuthorizationEndpoint string
+	OidcTokenEndpoint         string
+	OidcUserinfoEndpoint      string
+	OidcScopes                string
 }
 
 func Load() *Config {
+	publicOidcEnabled, _ := strconv.ParseBool(os.Getenv("PUBLIC_OIDC_ENABLED"))
+
 	return &Config{
 		DatabaseURL: getEnvOrDefault("DATABASE_URL", "sqlite3://./data/arcane.db"),
 		Port:        getEnvOrDefault("PORT", "8080"),
 		Environment: getEnvOrDefault("ENVIRONMENT", "development"),
 		JWTSecret:   getEnvOrDefault("JWT_SECRET", "default-jwt-secret-change-me"),
+
+		PublicOidcEnabled:         publicOidcEnabled,
+		OidcClientID:              os.Getenv("OIDC_CLIENT_ID"),
+		OidcClientSecret:          os.Getenv("OIDC_CLIENT_SECRET"),
+		OidcRedirectURI:           os.Getenv("OIDC_REDIRECT_URI"),
+		OidcAuthorizationEndpoint: os.Getenv("OIDC_AUTHORIZATION_ENDPOINT"),
+		OidcTokenEndpoint:         os.Getenv("OIDC_TOKEN_ENDPOINT"),
+		OidcUserinfoEndpoint:      os.Getenv("OIDC_USERINFO_ENDPOINT"),
+		OidcScopes:                getEnvOrDefault("OIDC_SCOPES", "openid email profile"),
 	}
 }
 

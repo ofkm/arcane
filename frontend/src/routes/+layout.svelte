@@ -8,7 +8,6 @@
 	import AppSidebar from '$lib/components/sidebar/sidebar.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
 	import { initializeClientStores } from '$lib/stores/client-init';
 
 	let { children, data } = $props();
@@ -23,38 +22,31 @@
 	const isLoginPage = $derived(page.url.pathname === '/login' || page.url.pathname.startsWith('/auth/login') || page.url.pathname === '/auth' || page.url.pathname.includes('/login'));
 	const showSidebar = $derived(isAuthenticated && !isOnboardingPage && !isLoginPage);
 
-	// Client-side authentication guard
+	$effect(() => {
+		const path = page.url.pathname;
+
+		const publicPaths = ['/auth/login', '/auth/logout', '/auth/oidc/login', '/auth/oidc/callback', '/img', '/favicon.ico'];
+
+		const isPublicPath = publicPaths.some((p) => path.startsWith(p));
+
+		if (!isPublicPath && !data.isAuthenticated) {
+			fetch('/api/auth/me', {
+				credentials: 'include'
+			})
+				.then((response) => {
+					if (!response.ok) {
+						goto(`/auth/login?redirect=${encodeURIComponent(path)}`);
+					}
+				})
+				.catch(() => {
+					goto(`/auth/login?redirect=${encodeURIComponent(path)}`);
+				});
+		}
+	});
+
 	onMount(() => {
 		const init = async () => {
-			if (browser) {
-				// Initialize stores
-				await initializeClientStores();
-
-				// Create an effect to watch for route changes
-				$effect(() => {
-					const path = page.url.pathname;
-
-					// Define paths that don't require authentication
-					const publicPaths = ['/auth/login', '/auth/logout', '/auth/oidc/login', '/auth/oidc/callback', '/img', '/favicon.ico'];
-
-					const isPublicPath = publicPaths.some((p) => path.startsWith(p));
-
-					if (!isPublicPath && !data.isAuthenticated) {
-						// Double-check authentication with backend
-						fetch('/api/auth/me', {
-							credentials: 'include'
-						})
-							.then((response) => {
-								if (!response.ok) {
-									goto(`/auth/login?redirect=${encodeURIComponent(path)}`);
-								}
-							})
-							.catch(() => {
-								goto(`/auth/login?redirect=${encodeURIComponent(path)}`);
-							});
-					}
-				});
-			}
+			await initializeClientStores();
 		};
 
 		init();

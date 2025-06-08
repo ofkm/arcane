@@ -106,15 +106,15 @@ func (s *OidcService) GenerateAuthURL(ctx context.Context, redirectTo string) (s
 
 // HandleCallback processes the OIDC callback and exchanges code for tokens
 func (s *OidcService) HandleCallback(ctx context.Context, code, state, storedState string) (*OidcUserInfo, error) {
-	// Verify state
-	if state != storedState {
-		return nil, errors.New("invalid state parameter")
-	}
-
-	// Decode stored state to get code verifier
+	// Decode stored state to get the original state value and code verifier
 	stateData, err := s.decodeState(storedState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode state: %w", err)
+	}
+
+	// Verify state matches what we originally sent
+	if state != stateData.State {
+		return nil, errors.New("invalid state parameter")
 	}
 
 	// Check if state is not too old (10 minutes max)

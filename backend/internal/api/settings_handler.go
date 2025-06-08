@@ -267,3 +267,26 @@ func (h *SettingsHandler) AddRegistryCredential(c *gin.Context) {
 		"message":  "Registry credential added successfully",
 	})
 }
+
+// Add a new method for public settings that can be accessed without authentication
+func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
+	// Only return auth-related settings that are needed for the login page
+	settings, err := h.settingsService.GetSettings(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to retrieve settings: " + err.Error(),
+		})
+		return
+	}
+
+	// Create a limited settings response for public access
+	publicSettings := map[string]interface{}{
+		"auth": settings.Auth, // Only expose auth settings
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    publicSettings,
+	})
+}

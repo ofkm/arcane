@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -50,18 +52,28 @@ type AuthSettings struct {
 	Oidc             *models.OidcConfig `json:"oidc,omitempty"`
 }
 
+// OidcStatusInfo provides detailed OIDC configuration status
+type OidcStatusInfo struct {
+	EnvForced             bool `json:"envForced"`
+	EnvConfigured         bool `json:"envConfigured"`
+	DbEnabled             bool `json:"dbEnabled"`
+	DbConfigured          bool `json:"dbConfigured"`
+	EffectivelyEnabled    bool `json:"effectivelyEnabled"`
+	EffectivelyConfigured bool `json:"effectivelyConfigured"`
+}
+
 // AuthService handles authentication related operations
 type AuthService struct {
 	userService     *UserService
 	settingsService *SettingsService
 	jwtSecret       []byte
-	accessExpiry    time.Duration // How long access tokens are valid
-	refreshExpiry   time.Duration // How long refresh tokens are valid
+	accessExpiry    time.Duration
+	refreshExpiry   time.Duration
+	config          *config.Config
 }
 
 // NewAuthService creates a new auth service instance
-func NewAuthService(userService *UserService, settingsService *SettingsService, jwtSecret string) *AuthService {
-	// Use provided JWT secret or generate a secure random one
+func NewAuthService(userService *UserService, settingsService *SettingsService, jwtSecret string, cfg *config.Config) *AuthService {
 	var secretBytes []byte
 	if jwtSecret != "" {
 		secretBytes = []byte(jwtSecret)
@@ -76,30 +88,149 @@ func NewAuthService(userService *UserService, settingsService *SettingsService, 
 		userService:     userService,
 		settingsService: settingsService,
 		jwtSecret:       secretBytes,
-		accessExpiry:    30 * time.Minute,   // Default: 30 minutes
-		refreshExpiry:   7 * 24 * time.Hour, // Default: 7 days
+		accessExpiry:    30 * time.Minute,
+		refreshExpiry:   7 * 24 * time.Hour,
+		config:          cfg,
 	}
 }
 
-// getAuthSettings retrieves and parses auth settings from the settings service
-func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error) {
+// SyncOidcEnvToDatabase updates the OIDC settings in the database from environment variables
+// if PUBLIC_OIDC_ENABLED is true.
+func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
+	if !s.config.PublicOidcEnabled {
+		return errors.New("OIDC sync called but PUBLIC_OIDC_ENABLED is false")
+	}
+
 	settings, err := s.settingsService.GetSettings(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get settings for OIDC sync: %w", err)
+	}
+
+	// settings.Auth is already a models.JSON (map[string]interface{})
+	var currentAuthMap map[string]interface{}
+	if settings.Auth != nil && len(settings.Auth) > 0 {
+		// settings.Auth is already a map[string]interface{}, no need to marshal/unmarshal
+		currentAuthMap = make(map[string]interface{})
+		for k, v := range settings.Auth {
+			currentAuthMap[k] = v
+		}
+	} else {
+		currentAuthMap = make(map[string]interface{})
+	}
+
+	// Prepare OIDC config from environment variables
+	envOidcConfig := models.OidcConfig{
+		ClientID:              s.config.OidcClientID,
+		ClientSecret:          s.config.OidcClientSecret,
+		RedirectURI:           s.config.OidcRedirectURI,
+		AuthorizationEndpoint: s.config.OidcAuthorizationEndpoint,
+		TokenEndpoint:         s.config.OidcTokenEndpoint,
+		UserinfoEndpoint:      s.config.OidcUserinfoEndpoint,
+		Scopes:                s.config.OidcScopes,
+	}
+
+	// Convert struct to map for consistency
+	oidcConfigBytes, err := json.Marshal(envOidcConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal OIDC config from env: %w", err)
+	}
+	var oidcConfigMap map[string]interface{}
+	if err := json.Unmarshal(oidcConfigBytes, &oidcConfigMap); err != nil {
+		return fmt.Errorf("failed to unmarshal OIDC config map from env: %w", err)
+	}
+
+	// Update the auth map
+	currentAuthMap["oidcEnabled"] = true
+	currentAuthMap["oidc"] = oidcConfigMap
+
+	// Assign directly - no need to marshal again
+	settings.Auth = models.JSON(currentAuthMap)
+
+	_, err = s.settingsService.UpdateSettings(ctx, settings)
+	if err != nil {
+		return fmt.Errorf("failed to update settings in DB with OIDC env config: %w", err)
+	}
+
+	if s.config.OidcClientID == "" || s.config.OidcRedirectURI == "" || s.config.OidcAuthorizationEndpoint == "" || s.config.OidcTokenEndpoint == "" {
+		log.Println("⚠️ Warning: Synced OIDC settings from environment, but one or more critical OIDC environment variables (ClientID, RedirectURI, AuthEndpoint, TokenEndpoint) were empty. OIDC may not function correctly.")
+	}
+
+	return nil
+}
+
+// getAuthSettings retrieves and parses auth settings from the settings service.
+// The database is now the single source of truth for OIDC config values after initial sync.
+func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error) {
+	dbSettings, err := s.settingsService.GetSettings(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert models.JSON to []byte and then unmarshal to our struct
-	authBytes, err := json.Marshal(settings.Auth)
+	var effectiveAuthSettings AuthSettings
+	if dbSettings.Auth != nil && len(dbSettings.Auth) > 0 {
+		// dbSettings.Auth is already a map[string]interface{}, just marshal and unmarshal to struct
+		authBytes, err := json.Marshal(dbSettings.Auth)
+		if err != nil {
+			log.Printf("Error marshalling auth settings from DB: %v. DB Auth: %v", err, dbSettings.Auth)
+			return nil, fmt.Errorf("failed to marshal auth settings from DB: %w. Value: %v", err, dbSettings.Auth)
+		}
+		if err := json.Unmarshal(authBytes, &effectiveAuthSettings); err != nil {
+			log.Printf("Error unmarshalling auth settings from DB: %v. DB Auth JSON: %s", err, string(authBytes))
+			return nil, fmt.Errorf("failed to unmarshal auth settings from DB: %w. JSON: %s", err, string(authBytes))
+		}
+	} else {
+		log.Println("Auth settings not found or empty in DB, returning default auth settings.")
+		// Provide comprehensive defaults if Auth settings are missing
+		return &AuthSettings{
+			LocalAuthEnabled: true,
+			OidcEnabled:      false,
+			SessionTimeout:   60, // Default session timeout
+			Oidc:             nil,
+		}, nil
+	}
+
+	if s.config.PublicOidcEnabled && !effectiveAuthSettings.OidcEnabled {
+		log.Printf("Warning: PUBLIC_OIDC_ENABLED is true, but effective OIDC settings from DB show oidcEnabled=false. This might indicate an issue with the initial sync or subsequent manual changes.")
+	}
+
+	return &effectiveAuthSettings, nil
+}
+
+// GetOidcConfigurationStatus returns detailed status about OIDC configuration sources.
+func (s *AuthService) GetOidcConfigurationStatus(ctx context.Context) (*OidcStatusInfo, error) {
+	status := &OidcStatusInfo{}
+
+	status.EnvForced = s.config.PublicOidcEnabled
+	if status.EnvForced {
+		// This reflects if the env vars themselves were complete at load time
+		status.EnvConfigured = s.config.OidcClientID != "" &&
+			// s.config.OidcClientSecret != "" && // ClientSecret might be optional for "configured" status display
+			s.config.OidcRedirectURI != "" &&
+			s.config.OidcAuthorizationEndpoint != "" &&
+			s.config.OidcTokenEndpoint != "" &&
+			s.config.OidcUserinfoEndpoint != ""
+	}
+
+	// Get effective settings which are now purely from the database
+	effectiveAuthSettings, err := s.getAuthSettings(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal auth settings: %w", err)
+		// If we can't get settings, we can't determine DB/effective status
+		return status, fmt.Errorf("failed to get effective auth settings for OIDC status: %w", err)
 	}
 
-	var authSettings AuthSettings
-	if err := json.Unmarshal(authBytes, &authSettings); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal auth settings: %w", err)
+	status.DbEnabled = effectiveAuthSettings.OidcEnabled
+	if effectiveAuthSettings.Oidc != nil {
+		status.DbConfigured = effectiveAuthSettings.Oidc.ClientID != "" &&
+			effectiveAuthSettings.Oidc.RedirectURI != "" &&
+			effectiveAuthSettings.Oidc.AuthorizationEndpoint != "" &&
+			effectiveAuthSettings.Oidc.TokenEndpoint != "" &&
+			effectiveAuthSettings.Oidc.UserinfoEndpoint != ""
 	}
 
-	return &authSettings, nil
+	status.EffectivelyEnabled = status.DbEnabled
+	status.EffectivelyConfigured = status.DbConfigured
+
+	return status, nil
 }
 
 // updateAuthSettings updates the auth settings in the database
@@ -109,13 +240,13 @@ func (s *AuthService) updateAuthSettings(ctx context.Context, authSettings *Auth
 		return err
 	}
 
-	// Convert back to models.JSON
-	authMap := make(map[string]interface{})
+	// Convert AuthSettings struct to map[string]interface{}
 	authBytes, err := json.Marshal(authSettings)
 	if err != nil {
 		return fmt.Errorf("failed to marshal auth settings: %w", err)
 	}
 
+	var authMap map[string]interface{}
 	if err := json.Unmarshal(authBytes, &authMap); err != nil {
 		return fmt.Errorf("failed to unmarshal to map: %w", err)
 	}
@@ -129,11 +260,11 @@ func (s *AuthService) updateAuthSettings(ctx context.Context, authSettings *Auth
 func (s *AuthService) GetSessionTimeout(ctx context.Context) (int, error) {
 	authSettings, err := s.getAuthSettings(ctx)
 	if err != nil {
-		return 1440, err // Default to 24 hours (1440 minutes) on error
+		return 1440, err
 	}
 
 	if authSettings.SessionTimeout <= 0 {
-		return 1440, nil // Default value
+		return 1440, nil
 	}
 
 	return authSettings.SessionTimeout, nil
@@ -223,7 +354,6 @@ func (s *AuthService) UpdateOidcConfig(ctx context.Context, oidcConfig *models.O
 
 // Login authenticates a user with username and password
 func (s *AuthService) Login(ctx context.Context, username, password string) (*models.User, *TokenPair, error) {
-	// Check if local auth is enabled
 	localEnabled, err := s.IsLocalAuthEnabled(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -233,34 +363,28 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*mo
 		return nil, nil, ErrLocalAuthDisabled
 	}
 
-	// Get user by username - FIXED: this should match the UserService method signature
 	user, err := s.userService.GetUserByUsername(ctx, username)
 	if err != nil {
 		if strings.Contains(err.Error(), "user not found") {
-			return nil, nil, ErrInvalidCredentials // Use generic error for security
+			return nil, nil, ErrInvalidCredentials
 		}
 		return nil, nil, err
 	}
 
-	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		return nil, nil, ErrInvalidCredentials
 	}
 
-	// Check if password change is required
 	if user.RequirePasswordChange {
 		return user, nil, ErrPasswordChangeRequired
 	}
 
-	// Update last login time
 	now := time.Now()
 	user.LastLogin = &now
 	if _, err := s.userService.UpdateUser(ctx, user); err != nil {
-		// Non-critical error, log but continue
 		fmt.Printf("Failed to update user's last login time: %v\n", err)
 	}
 
-	// Generate token pair
 	tokenPair, err := s.generateTokenPair(ctx, user)
 	if err != nil {
 		return nil, nil, err
@@ -271,7 +395,6 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*mo
 
 // OidcLogin authenticates or creates a user from OIDC provider info
 func (s *AuthService) OidcLogin(ctx context.Context, userInfo OidcUserInfo) (*models.User, *TokenPair, error) {
-	// Check if OIDC auth is enabled
 	oidcEnabled, err := s.IsOidcEnabled(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -285,16 +408,13 @@ func (s *AuthService) OidcLogin(ctx context.Context, userInfo OidcUserInfo) (*mo
 		return nil, nil, errors.New("missing OIDC subject identifier")
 	}
 
-	// Try to find existing user by OIDC subject ID
 	user, err := s.userService.GetUserByOidcSubjectId(ctx, userInfo.Subject)
 
 	if err != nil && err != ErrUserNotFound {
 		return nil, nil, err
 	}
 
-	// If user exists, update their information
 	if user != nil {
-		// Update fields conditionally if provided by OIDC
 		if userInfo.Name != "" && user.DisplayName == nil {
 			user.DisplayName = &userInfo.Name
 		}
@@ -302,7 +422,6 @@ func (s *AuthService) OidcLogin(ctx context.Context, userInfo OidcUserInfo) (*mo
 			user.Email = &userInfo.Email
 		}
 
-		// Update last login time
 		now := time.Now()
 		user.LastLogin = &now
 
@@ -310,10 +429,8 @@ func (s *AuthService) OidcLogin(ctx context.Context, userInfo OidcUserInfo) (*mo
 			return nil, nil, err
 		}
 	} else {
-		// Create new user with OIDC information
 		username := generateUsernameFromEmail(userInfo.Email, userInfo.Subject)
 
-		// Create display name from OIDC claims
 		var displayName string
 		if userInfo.Name != "" {
 			displayName = userInfo.Name
@@ -339,7 +456,6 @@ func (s *AuthService) OidcLogin(ctx context.Context, userInfo OidcUserInfo) (*mo
 		}
 	}
 
-	// Generate token pair
 	tokenPair, err := s.generateTokenPair(ctx, user)
 	if err != nil {
 		return nil, nil, err
@@ -350,7 +466,6 @@ func (s *AuthService) OidcLogin(ctx context.Context, userInfo OidcUserInfo) (*mo
 
 // RefreshToken generates a new token pair from a refresh token
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
-	// Parse refresh token
 	token, err := jwt.ParseWithClaims(refreshToken, &jwt.RegisteredClaims{},
 		func(t *jwt.Token) (interface{}, error) {
 			return s.jwtSecret, nil
@@ -364,30 +479,25 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*T
 		return nil, ErrInvalidToken
 	}
 
-	// Get claims
 	claims, ok := token.Claims.(*jwt.RegisteredClaims)
 	if !ok {
 		return nil, errors.New("invalid token claims")
 	}
 
-	// Check token type is "refresh"
 	if claims.Subject != "refresh" {
 		return nil, errors.New("not a refresh token")
 	}
 
-	// Get user ID from token
 	userId := claims.ID
 	if userId == "" {
 		return nil, errors.New("missing user ID in token")
 	}
 
-	// Get user
 	user, err := s.userService.GetUserByID(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
 
-	// Generate new token pair
 	tokenPair, err := s.generateTokenPair(ctx, user)
 	if err != nil {
 		return nil, err
@@ -398,7 +508,6 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*T
 
 // VerifyToken verifies and returns the user from an access token
 func (s *AuthService) VerifyToken(ctx context.Context, accessToken string) (*models.User, error) {
-	// Parse access token
 	token, err := jwt.ParseWithClaims(accessToken, &jwt.RegisteredClaims{},
 		func(t *jwt.Token) (interface{}, error) {
 			return s.jwtSecret, nil
@@ -415,24 +524,20 @@ func (s *AuthService) VerifyToken(ctx context.Context, accessToken string) (*mod
 		return nil, ErrInvalidToken
 	}
 
-	// Get claims
 	claims, ok := token.Claims.(*jwt.RegisteredClaims)
 	if !ok {
 		return nil, errors.New("invalid token claims")
 	}
 
-	// Check token type is "access"
 	if claims.Subject != "access" {
 		return nil, errors.New("not an access token")
 	}
 
-	// Get user ID from token
 	userId := claims.ID
 	if userId == "" {
 		return nil, errors.New("missing user ID in token")
 	}
 
-	// Get user
 	user, err := s.userService.GetUserByID(ctx, userId)
 	if err != nil {
 		return nil, err
@@ -443,26 +548,22 @@ func (s *AuthService) VerifyToken(ctx context.Context, accessToken string) (*mod
 
 // ChangePassword changes a user's password
 func (s *AuthService) ChangePassword(ctx context.Context, userId, currentPassword, newPassword string) error {
-	// Get user
 	user, err := s.userService.GetUserByID(ctx, userId)
 	if err != nil {
 		return err
 	}
 
-	// Verify current password if provided
 	if currentPassword != "" {
 		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
 			return ErrInvalidCredentials
 		}
 	}
 
-	// Hash new password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	// Update user
 	user.PasswordHash = string(hashedPassword)
 	user.RequirePasswordChange = false
 
@@ -472,7 +573,6 @@ func (s *AuthService) ChangePassword(ctx context.Context, userId, currentPasswor
 
 // RequestPasswordReset initiates password reset (placeholder)
 func (s *AuthService) RequestPasswordReset(ctx context.Context, username string) error {
-	// TODO: Implement password reset functionality
 	return errors.New("password reset not implemented")
 }
 
@@ -480,18 +580,15 @@ func (s *AuthService) RequestPasswordReset(ctx context.Context, username string)
 
 // generateTokenPair creates an access and refresh token pair for a user
 func (s *AuthService) generateTokenPair(ctx context.Context, user *models.User) (*TokenPair, error) {
-	// Get session timeout from settings
 	sessionTimeout, err := s.GetSessionTimeout(ctx)
 	if err != nil {
-		// Use default if there's an error
-		sessionTimeout = 1440 // 24 hours in minutes
+		sessionTimeout = 1440
 	}
 
-	// Access token with shorter expiry
 	accessTokenExpiry := time.Now().Add(time.Duration(sessionTimeout) * time.Minute)
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		ID:        user.ID, // Use user ID as token ID
+		ID:        user.ID,
 		Subject:   "access",
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		ExpiresAt: jwt.NewNumericDate(accessTokenExpiry),
@@ -502,9 +599,8 @@ func (s *AuthService) generateTokenPair(ctx context.Context, user *models.User) 
 		return nil, err
 	}
 
-	// Refresh token with longer expiry
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		ID:        user.ID, // Use user ID as token ID
+		ID:        user.ID,
 		Subject:   "refresh",
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.refreshExpiry)),
@@ -524,11 +620,10 @@ func (s *AuthService) generateTokenPair(ctx context.Context, user *models.User) 
 
 // generateUserId creates a unique user ID
 func generateUserId() string {
-	// Generate 16 random bytes
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
 	if err != nil {
-		panic(err) // This should never happen
+		panic(err)
 	}
 	return fmt.Sprintf("usr_%s", base64.RawURLEncoding.EncodeToString(b))
 }
@@ -542,7 +637,6 @@ func generateUsernameFromEmail(email, subject string) string {
 		}
 	}
 
-	// Fallback to using part of the subject
 	if len(subject) >= 8 {
 		return "user_" + subject[len(subject)-8:]
 	}

@@ -1,40 +1,29 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { oidcAPI } from '$lib/services/api';
-	import { toast } from 'svelte-sonner';
 
 	let isRedirecting = $state(true);
 	let error = $state('');
 
 	onMount(async () => {
 		try {
-			const redirectParam = $page.url.searchParams.get('redirect') || '/';
-
-			// Get OIDC auth URL from backend
+			const redirectParam = page.url.searchParams.get('redirect') || '/';
 			const authUrl = await oidcAPI.getAuthUrl(redirectParam);
-
 			if (!authUrl) {
-				console.error('OIDC auth URL not available.');
-				error = 'OIDC is not properly configured.';
-				setTimeout(() => goto('/auth/login?error=oidc_misconfigured'), 2000);
+				console.error('OIDC auth URL not available from backend.');
+				error = 'OIDC is not properly configured or the server could not provide an auth URL.';
+				setTimeout(() => goto('/auth/login?error=oidc_misconfigured'), 3000);
+				isRedirecting = false;
 				return;
 			}
-
-			// Generate state for CSRF protection
-			const state = crypto.randomUUID();
-
-			// Store state and redirect info in localStorage (since we can't use httpOnly cookies in static mode)
-			localStorage.setItem('oidc_state', state);
 			localStorage.setItem('oidc_redirect', redirectParam);
-
-			// Redirect to OIDC provider
 			window.location.href = authUrl;
-		} catch (err) {
-			console.error('OIDC login error:', err);
-			error = 'Failed to initiate OIDC login.';
-			setTimeout(() => goto('/auth/login?error=oidc_misconfigured'), 2000);
+		} catch (err: any) {
+			console.error('OIDC login initiation error:', err);
+			error = err.message || 'Failed to initiate OIDC login. Please check server logs.';
+			setTimeout(() => goto('/auth/login?error=oidc_misconfigured'), 3000);
 			isRedirecting = false;
 		}
 	});
@@ -58,7 +47,7 @@
 					</svg>
 					<h2 class="mt-6 text-2xl font-bold text-gray-900">Login Error</h2>
 					<p class="mt-2 text-sm text-gray-600">{error}</p>
-					<p class="mt-4 text-xs text-gray-500">Redirecting you back...</p>
+					<p class="mt-4 text-xs text-gray-500">Redirecting you back to the login page...</p>
 				</div>
 			{/if}
 		</div>

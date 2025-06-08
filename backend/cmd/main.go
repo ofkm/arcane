@@ -19,7 +19,7 @@ import (
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Println("⚠️  No .env file found, using environment variables")
+		log.Println("No .env file found, using environment variables")
 	}
 
 	// Initialize configuration
@@ -27,24 +27,30 @@ func main() {
 	log.Printf("📦 Configuration loaded:")
 	log.Printf("   Environment: %s", cfg.Environment)
 	log.Printf("   Database URL: %s", cfg.DatabaseURL)
+	log.Printf("   OIDC Enabled by Env: %t", cfg.PublicOidcEnabled)
+	if cfg.PublicOidcEnabled {
+		log.Printf("   OIDC Client ID (Env): %s", cfg.OidcClientID)
+	}
 
 	// Set Gin mode based on environment
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
 	}
 
 	// Initialize database
 	log.Printf("🔌 Connecting to database...")
 	db, err := database.Initialize(cfg.DatabaseURL, cfg.Environment)
 	if err != nil {
-		log.Fatal("❌ Failed to initialize database:", err)
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
 	// Run migrations
 	log.Printf("🔄 Running database migrations...")
 	if err := db.Migrate(); err != nil {
-		log.Fatal("❌ Failed to run migrations:", err)
+		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	// Initialize all services
@@ -65,23 +71,27 @@ func main() {
 	log.Println("🐳 Testing Docker connection...")
 	dockerClient, err := dockerClientService.CreateConnection(context.Background())
 	if err != nil {
-		log.Printf("⚠️ Failed to connect to Docker: %v", err)
+		log.Printf("⚠️ Warning: Docker connection failed: %v. Local Docker features will be unavailable.", err)
 	} else {
-		log.Printf("✅ Docker connection successful - Client version: %s", dockerClient.ClientVersion())
-		dockerClient.Close()
+		log.Println("✅ Docker connection successful.")
+		dockerClient.Close() // Close the test client
 	}
 
 	userService.CreateDefaultAdmin()
 
-	// Initialize JWT secret from environment or generate one
-	jwtSecret := cfg.JWTSecret
-	if jwtSecret == "default-jwt-secret-change-me" {
-		log.Printf("⚠️  Using default JWT secret - please set JWT_SECRET in production!")
-	}
-
 	// Create AuthService
-	authService := services.NewAuthService(userService, settingsService, jwtSecret)
-	oidcService := services.NewOidcService(authService)
+	authService := services.NewAuthService(userService, settingsService, cfg.JWTSecret, cfg) // Pass full config
+	oidcService := services.NewOidcService(authService)                                      // OidcService gets authService which has config
+
+	// Sync OIDC environment variables to database if PUBLIC_OIDC_ENABLED is true
+	if cfg.PublicOidcEnabled {
+		log.Println("Attempting to sync OIDC environment variables to database settings...")
+		if err := authService.SyncOidcEnvToDatabase(context.Background()); err != nil {
+			log.Printf("⚠️ Warning: Failed to sync OIDC environment variables to database: %v", err)
+		} else {
+			log.Println("✅ OIDC environment variables synced to database settings successfully.")
+		}
+	}
 
 	// Initialize Gin router
 	r := gin.Default()
@@ -89,41 +99,19 @@ func main() {
 	// CORS middleware for development
 	if cfg.Environment != "production" {
 		corsConfig := cors.DefaultConfig()
-		corsConfig.AllowOrigins = []string{
-			"http://localhost:3000",
-			"http://localhost:5173",
-			"http://localhost:4173",
-		}
+		corsConfig.AllowOrigins = []string{"http://localhost:5173", "http://127.0.0.1:5173"} // Adjust for your frontend dev server
 		corsConfig.AllowCredentials = true
-		corsConfig.AllowHeaders = []string{
-			"Origin",
-			"Content-Length",
-			"Content-Type",
-			"Authorization",
-			"X-Requested-With",
-			"Accept",
-		}
-		corsConfig.AllowMethods = []string{
-			"GET",
-			"POST",
-			"PUT",
-			"DELETE",
-			"OPTIONS",
-		}
+		corsConfig.AddAllowHeaders("Authorization", "Content-Type", "X-CSRF-Token")
 		r.Use(cors.New(corsConfig))
 	}
 
 	// Health check endpoint FIRST
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":      "ok",
-			"environment": cfg.Environment,
-			"database":    "connected",
-		})
+		c.JSON(http.StatusOK, gin.H{"status": "UP"})
 	})
 
 	// Create services struct
-	services := &api.Services{
+	appServices := &api.Services{
 		User:          userService,
 		Stack:         stackService,
 		Agent:         agentService,
@@ -140,30 +128,14 @@ func main() {
 	}
 
 	// Setup API routes SECOND
-	api.SetupRoutes(r, services)
+	api.SetupRoutes(r, appServices, cfg) // Pass cfg here
 
 	// Register embedded frontend LAST
-	if err := frontend.RegisterFrontend(r); err != nil {
-		log.Printf("⚠️ Failed to register embedded frontend: %v", err)
-		log.Printf("💡 Make sure to copy frontend build to backend/frontend/dist/")
-	} else {
-		log.Printf("📁 Serving embedded frontend")
-	}
+	frontend.RegisterFrontend(r)
 
 	// Start server
-	port := cfg.Port
-	if port == "" {
-		port = "8080"
-	}
-
-	log.Printf("🚀 Arcane server starting...")
-	log.Printf("📦 Environment: %s", cfg.Environment)
-	log.Printf("🗄️ Database: %s", cfg.DatabaseURL)
-	log.Printf("🌐 Server: http://localhost:%s", port)
-	log.Printf("🔗 API: http://localhost:%s/api", port)
-	log.Printf("❤️ Health: http://localhost:%s/health", port)
-
-	if err := r.Run(":" + port); err != nil {
-		log.Fatal("❌ Failed to start server:", err)
+	log.Printf("🌐 Starting server on port %s", cfg.Port)
+	if err := r.Run(":" + cfg.Port); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }

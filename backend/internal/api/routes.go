@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/services"
 )
 
@@ -21,14 +22,14 @@ type Services struct {
 	Docker        *services.DockerClientService
 }
 
-func SetupRoutes(r *gin.Engine, services *Services) {
+func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	api := r.Group("/api")
 
-	setupAuthRoutes(api, services)
+	setupAuthRoutes(api, services, appConfig)
 	setupUserRoutes(api, services)
 	setupStackRoutes(api, services)
 	setupAgentRoutes(api, services)
-	setupSettingsRoutes(api, services)
+	setupSettingsRoutes(api, services, appConfig)
 	setupDeploymentRoutes(api, services)
 	setupImageMaturityRoutes(api, services)
 	setupSystemRoutes(api, services.Docker)
@@ -38,7 +39,7 @@ func SetupRoutes(r *gin.Engine, services *Services) {
 	setupNetworkRoutes(api, services)
 }
 
-func setupAuthRoutes(api *gin.RouterGroup, services *Services) {
+func setupAuthRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {
 	auth := api.Group("/auth")
 
 	authHandler := NewAuthHandler(services.User, services.Auth, services.Oidc)
@@ -51,7 +52,7 @@ func setupAuthRoutes(api *gin.RouterGroup, services *Services) {
 	auth.POST("/password", AuthMiddleware(services.Auth), authHandler.ChangePassword)
 
 	// OIDC endpoints
-	oidcHandler := NewOidcHandler(services.Auth, services.Oidc)
+	oidcHandler := NewOidcHandler(services.Auth, services.Oidc, appConfig)
 	oidc := auth.Group("/oidc")
 	{
 		oidc.POST("/url", oidcHandler.GetOidcAuthUrl)
@@ -129,12 +130,16 @@ func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 }
 
 // setupSettingsRoutes handles settings endpoints
-func setupSettingsRoutes(api *gin.RouterGroup, services *Services) {
+func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {
 	settings := api.Group("/settings")
-	settings.Use(AuthMiddleware(services.Auth))
 
 	settingsHandler := NewSettingsHandler(services.Settings)
 
+	// Public endpoint for login page (no auth required)
+	settings.GET("/public", settingsHandler.GetPublicSettings)
+
+	// Protected endpoints
+	// settings.Use(AuthMiddleware(services.Auth))
 	settings.GET("", settingsHandler.GetSettings)
 	settings.PUT("", settingsHandler.UpdateSettings)
 
@@ -144,7 +149,7 @@ func setupSettingsRoutes(api *gin.RouterGroup, services *Services) {
 	settings.POST("/registry-credentials", settingsHandler.AddRegistryCredential)
 
 	// Add OIDC endpoints under settings as well for frontend compatibility
-	oidcHandler := NewOidcHandler(services.Auth, services.Oidc)
+	oidcHandler := NewOidcHandler(services.Auth, services.Oidc, appConfig)
 	settings.GET("/oidc/status", oidcHandler.GetOidcStatus)
 	settings.GET("/oidc/config", oidcHandler.GetOidcConfig)
 	settings.POST("/oidc/url", oidcHandler.GetOidcAuthUrl)
