@@ -10,12 +10,14 @@ import (
 )
 
 type StackHandler struct {
-	stackService *services.StackService
+	stackService     *services.StackService
+	converterService *services.ConverterService
 }
 
 func NewStackHandler(stackService *services.StackService) *StackHandler {
 	return &StackHandler{
-		stackService: stackService,
+		stackService:     stackService,
+		converterService: services.NewConverterService(),
 	}
 }
 
@@ -486,5 +488,45 @@ func (h *StackHandler) PullImages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Images pulled successfully",
+	})
+}
+
+func (h *StackHandler) ConvertDockerRun(c *gin.Context) {
+	var req models.ConvertDockerRunRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request format: " + err.Error(),
+		})
+		return
+	}
+
+	// Parse the docker run command
+	parsed, err := h.converterService.ParseDockerRunCommand(req.DockerRunCommand)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Failed to parse docker run command. Please check the syntax.",
+			"code":    "BAD_REQUEST",
+		})
+		return
+	}
+
+	// Convert to docker-compose
+	dockerCompose, envVars, serviceName, err := h.converterService.ConvertToDockerCompose(parsed)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to convert to Docker Compose format.",
+			"code":    "CONVERSION_ERROR",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.ConvertDockerRunResponse{
+		Success:       true,
+		DockerCompose: dockerCompose,
+		EnvVars:       envVars,
+		ServiceName:   serviceName,
 	})
 }

@@ -20,6 +20,7 @@ type Services struct {
 	Auth          *services.AuthService
 	Oidc          *services.OidcService
 	Docker        *services.DockerClientService
+	Converter     *services.ConverterService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -96,6 +97,8 @@ func setupStackRoutes(router *gin.RouterGroup, services *Services) {
 	stacks.POST("/:id/redeploy", stackHandler.RedeployStack)
 	stacks.POST("/:id/down", stackHandler.DownStack)
 	stacks.DELETE("/:id/destroy", stackHandler.DestroyStack)
+
+	stacks.POST("/convert", stackHandler.ConvertDockerRun)
 }
 
 // setupAgentRoutes handles agent management endpoints
@@ -138,7 +141,6 @@ func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *co
 	// Public endpoint for login page (no auth required)
 	settings.GET("/public", settingsHandler.GetPublicSettings)
 
-	// Protected endpoints
 	// settings.Use(AuthMiddleware(services.Auth))
 	settings.GET("", settingsHandler.GetSettings)
 	settings.PUT("", settingsHandler.UpdateSettings)

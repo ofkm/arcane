@@ -17,6 +17,7 @@ import ValidationAPIService from './validation-api-service';
 import AppConfigAPIService from './appconfig-api-service';
 import AgentAPIService from './agent-api-service';
 import AgentStackAPIService from './agent-stack-api-service';
+import ConverterAPIService from './converter-api-service';
 
 // Create singleton instances
 export const containerAPI = new ContainerAPIService();
@@ -38,6 +39,7 @@ export const validationAPI = new ValidationAPIService();
 export const appConfigAPI = new AppConfigAPIService();
 export const agentAPI = new AgentAPIService();
 export const agentStackAPI = new AgentStackAPIService();
+export const converterAPI = new ConverterAPIService();
 
 interface APIServices {
 	container: ContainerAPIService;
@@ -58,6 +60,7 @@ interface APIServices {
 	validation: ValidationAPIService;
 	appConfig: AppConfigAPIService;
 	agent: AgentAPIService;
+	converter: ConverterAPIService;
 }
 
 const apiServices: APIServices = {
@@ -78,7 +81,8 @@ const apiServices: APIServices = {
 	deployment: deploymentAPI,
 	validation: validationAPI,
 	appConfig: appConfigAPI,
-	agent: agentAPI
+	agent: agentAPI,
+	converter: converterAPI
 };
 
 export default apiServices;

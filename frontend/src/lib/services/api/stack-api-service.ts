@@ -88,13 +88,6 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async convertDockerRun(dockerRunCommand: string) {
-		const res = await this.api.post('/stacks/convert', {
-			dockerRunCommand
-		});
-		return res.data;
-	}
-
 	async getLogs(id: string, options?: { tail?: number; timestamps?: boolean; follow?: boolean }) {
 		const params = new URLSearchParams();
 		if (options?.tail) params.append('tail', options.tail.toString());

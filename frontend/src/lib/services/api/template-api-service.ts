@@ -27,8 +27,8 @@ export default class TemplateAPIService extends BaseAPIService {
 	}
 
 	async getEnvTemplate(): Promise<string> {
-		const response = await this.api.get('/templates/env-template');
-		return response.data.template || '';
+		const response = await this.api.get('/templates/env');
+		return response.data.env || '';
 	}
 
 	async create(template: Omit<Template, 'id'>): Promise<Template> {

@@ -17,12 +17,10 @@ import (
 )
 
 func main() {
-	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
 
-	// Initialize configuration
 	cfg := config.Load()
 	log.Printf("📦 Configuration loaded:")
 	log.Printf("   Environment: %s", cfg.Environment)
@@ -32,14 +30,12 @@ func main() {
 		log.Printf("   OIDC Client ID (Env): %s", cfg.OidcClientID)
 	}
 
-	// Set Gin mode based on environment
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
 		gin.SetMode(gin.DebugMode)
 	}
 
-	// Initialize database
 	log.Printf("🔌 Connecting to database...")
 	db, err := database.Initialize(cfg.DatabaseURL, cfg.Environment)
 	if err != nil {
@@ -53,8 +49,8 @@ func main() {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
-	// Initialize all services
 	log.Println("🚀 Initializing services...")
+	converterService := services.NewConverterService()
 	settingsService := services.NewSettingsService(db)
 	dockerClientService := services.NewDockerClientService(db)
 	userService := services.NewUserService(db)
@@ -67,25 +63,21 @@ func main() {
 	networkService := services.NewNetworkService(db, dockerClientService)
 	imageMaturityService := services.NewImageMaturityService(db)
 
-	// Test Docker connection
 	log.Println("🐳 Testing Docker connection...")
 	dockerClient, err := dockerClientService.CreateConnection(context.Background())
 	if err != nil {
 		log.Printf("⚠️ Warning: Docker connection failed: %v. Local Docker features will be unavailable.", err)
 	} else {
 		log.Println("✅ Docker connection successful.")
-		dockerClient.Close() // Close the test client
+		dockerClient.Close()
 	}
 
 	userService.CreateDefaultAdmin()
 
-	// Create AuthService
-	authService := services.NewAuthService(userService, settingsService, cfg.JWTSecret, cfg) // Pass full config
-	oidcService := services.NewOidcService(authService)                                      // OidcService gets authService which has config
+	authService := services.NewAuthService(userService, settingsService, cfg.JWTSecret, cfg)
+	oidcService := services.NewOidcService(authService)
 
-	// Sync OIDC environment variables to database if PUBLIC_OIDC_ENABLED is true
 	if cfg.PublicOidcEnabled {
-		log.Println("Attempting to sync OIDC environment variables to database settings...")
 		if err := authService.SyncOidcEnvToDatabase(context.Background()); err != nil {
 			log.Printf("⚠️ Warning: Failed to sync OIDC environment variables to database: %v", err)
 		} else {
@@ -93,19 +85,16 @@ func main() {
 		}
 	}
 
-	// Initialize Gin router
 	r := gin.Default()
 
-	// CORS middleware for development
 	if cfg.Environment != "production" {
 		corsConfig := cors.DefaultConfig()
-		corsConfig.AllowOrigins = []string{"http://localhost:5173", "http://127.0.0.1:5173"} // Adjust for your frontend dev server
+		corsConfig.AllowOrigins = []string{"http://localhost:5173", "http://127.0.0.1:5173"}
 		corsConfig.AllowCredentials = true
 		corsConfig.AddAllowHeaders("Authorization", "Content-Type", "X-CSRF-Token")
 		r.Use(cors.New(corsConfig))
 	}
 
-	// Health check endpoint FIRST
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "UP"})
 	})
@@ -125,15 +114,13 @@ func main() {
 		Auth:          authService,
 		Oidc:          oidcService,
 		Docker:        dockerClientService,
+		Converter:     converterService,
 	}
 
-	// Setup API routes SECOND
-	api.SetupRoutes(r, appServices, cfg) // Pass cfg here
+	api.SetupRoutes(r, appServices, cfg)
 
-	// Register embedded frontend LAST
 	frontend.RegisterFrontend(r)
 
-	// Start server
 	log.Printf("🌐 Starting server on port %s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

@@ -21,7 +21,8 @@
 	import TemplateSelectionDialog from '$lib/components/template-selection-dialog.svelte';
 	import * as DropdownButton from '$lib/components/ui/dropdown-button/index.js';
 	import type { ComposeTemplate } from '$lib/services/template-service';
-	import type { PageData } from './$types';
+	import { converterAPI } from '$lib/services/api';
+	import type { PageData } from '../$types';
 
 	let { data }: { data: PageData } = $props();
 
@@ -133,7 +134,7 @@
 		}
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(stackApi.convertDockerRun(dockerRunCommand)),
+			result: await tryCatch(converterAPI.convert(dockerRunCommand)),
 			message: 'Failed to Convert Docker Run Command',
 			setLoadingState: (value) => (converting = value),
 			onSuccess: (data) => {
@@ -297,7 +298,6 @@
 								<div class="border rounded-md overflow-hidden mt-2 h-[550px]">
 									<YamlEditor bind:value={composeContent} readOnly={saving} />
 								</div>
-								<p class="text-xs text-muted-foreground">Enter a valid compose.yaml file or choose from templates using the "Use Template" button above.</p>
 							</div>
 						</Resizable.Pane>
 						<Resizable.Handle />
@@ -305,15 +305,11 @@
 							<div class="space-y-2 ml-3">
 								<Label for="env-editor" class="mb-2">Environment Configuration (.env)</Label>
 								<div class="border rounded-md overflow-hidden mt-2 h-[550px]">
-									<EnvEditor bind:value={envContent} readOnly={saving} />
+									<!-- Add a unique key to force re-render -->
+									{#key `env-${envContent.length}`}
+										<EnvEditor bind:value={envContent} readOnly={saving} />
+									{/key}
 								</div>
-								<p class="text-xs text-muted-foreground">
-									{#if data.envTemplate}
-										Environment variables loaded from template. Modify as needed.
-									{:else}
-										Define environment variables in KEY=value format. These will be saved as a .env file in the stack directory.
-									{/if}
-								</p>
 							</div>
 						</Resizable.Pane>
 					</Resizable.PaneGroup>
