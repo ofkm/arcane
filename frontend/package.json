@@ -22,9 +22,9 @@
 		"test:e2e:ui": "playwright test --ui"
 	},
 	"dependencies": {
-		"@lucide/svelte": "^0.512.0",
 		"@codemirror/lang-yaml": "^6.1.2",
 		"@codemirror/legacy-modes": "^6.5.1",
+		"@lucide/svelte": "^0.512.0",
 		"@sveltejs/adapter-static": "^3.0.8",
 		"@swimlane/docker-reference": "^2.0.1",
 		"@tanstack/table-core": "^8.21.3",
@@ -48,6 +48,7 @@
 		"@sveltejs/kit": "^2.21.2",
 		"@sveltejs/vite-plugin-svelte": "^5.1.0",
 		"@tailwindcss/vite": "^4.1.8",
+		"@types/dockerode": "^3.3.40",
 		"@types/js-yaml": "^4.0.9",
 		"bits-ui": "^2.4.1",
 		"clsx": "^2.1.1",

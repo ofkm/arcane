@@ -24,7 +24,6 @@ func NewUserService(db *database.DB) *UserService {
 	return &UserService{db: db}
 }
 
-// CreateUser creates a new user with the given User model
 func (s *UserService) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	if err := s.db.WithContext(ctx).Create(user).Error; err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
@@ -32,9 +31,7 @@ func (s *UserService) CreateUser(ctx context.Context, user *models.User) (*model
 	return user, nil
 }
 
-// CreateUserWithPassword creates a new user with username, password, email, role (for admin setup)
 func (s *UserService) CreateUserWithPassword(username, password, email, role string, displayName string) (*models.User, error) {
-	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
@@ -78,7 +75,6 @@ func (s *UserService) GetUserByID(ctx context.Context, id string) (*models.User,
 	return &user, nil
 }
 
-// Add alias method for backward compatibility
 func (s *UserService) GetUserById(ctx context.Context, id string) (*models.User, error) {
 	return s.GetUserByID(ctx, id)
 }
@@ -113,9 +109,7 @@ func (s *UserService) ValidatePassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
-// CreateDefaultAdmin creates a default admin user if no users exist
 func (s *UserService) CreateDefaultAdmin() error {
-	// Check if any users exist
 	count, err := s.CountUsers()
 	if err != nil {
 		return fmt.Errorf("failed to count users: %w", err)
@@ -126,7 +120,6 @@ func (s *UserService) CreateDefaultAdmin() error {
 		return nil
 	}
 
-	// Create the default admin user using the password-based method
 	_, err = s.CreateUserWithPassword("arcane", "arcane-admin", "admin@localhost", "admin", "Arcane Admin")
 	if err != nil {
 		return fmt.Errorf("failed to create default admin user: %w", err)
@@ -134,7 +127,6 @@ func (s *UserService) CreateDefaultAdmin() error {
 
 	log.Printf("👑 Default admin user created!")
 	log.Printf("🔑 Username: admin")
-	// log.Printf("🔑 Password: %s", password)
 	log.Printf("⚠️  Please change this password after first login!")
 
 	return nil
@@ -155,7 +147,6 @@ func (s *UserService) generateRandomPassword(length int) (string, error) {
 	return string(password), nil
 }
 
-// Additional methods your services might need
 func (s *UserService) ListUsers(ctx context.Context) ([]models.User, error) {
 	var users []models.User
 	if err := s.db.WithContext(ctx).Find(&users).Error; err != nil {

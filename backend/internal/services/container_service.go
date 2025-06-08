@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
 )
@@ -21,7 +22,6 @@ func NewContainerService(db *database.DB, dockerService *DockerClientService) *C
 	return &ContainerService{db: db, dockerService: dockerService}
 }
 
-// ListContainers returns live Docker containers
 func (s *ContainerService) ListContainers(ctx context.Context, includeAll bool) ([]types.Container, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -37,7 +37,6 @@ func (s *ContainerService) ListContainers(ctx context.Context, includeAll bool) 
 	return containers, nil
 }
 
-// StartContainer starts a Docker container
 func (s *ContainerService) StartContainer(ctx context.Context, containerID string) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -48,7 +47,6 @@ func (s *ContainerService) StartContainer(ctx context.Context, containerID strin
 	return dockerClient.ContainerStart(ctx, containerID, container.StartOptions{})
 }
 
-// StopContainer stops a Docker container
 func (s *ContainerService) StopContainer(ctx context.Context, containerID string) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -60,7 +58,6 @@ func (s *ContainerService) StopContainer(ctx context.Context, containerID string
 	return dockerClient.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout})
 }
 
-// RestartContainer restarts a Docker container
 func (s *ContainerService) RestartContainer(ctx context.Context, containerID string) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -71,7 +68,6 @@ func (s *ContainerService) RestartContainer(ctx context.Context, containerID str
 	return dockerClient.ContainerRestart(ctx, containerID, container.StopOptions{})
 }
 
-// GetContainerLogs gets logs from a Docker container
 func (s *ContainerService) GetContainerLogs(ctx context.Context, containerID string, tail string) (string, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -91,7 +87,6 @@ func (s *ContainerService) GetContainerLogs(ctx context.Context, containerID str
 	}
 	defer logs.Close()
 
-	// Read all logs
 	logBytes, err := io.ReadAll(logs)
 	if err != nil {
 		return "", fmt.Errorf("failed to read container logs: %w", err)
@@ -100,7 +95,6 @@ func (s *ContainerService) GetContainerLogs(ctx context.Context, containerID str
 	return string(logBytes), nil
 }
 
-// GetContainerByID gets live container info from Docker
 func (s *ContainerService) GetContainerByID(ctx context.Context, id string) (*types.ContainerJSON, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -116,7 +110,6 @@ func (s *ContainerService) GetContainerByID(ctx context.Context, id string) (*ty
 	return &container, nil
 }
 
-// Keep existing methods unchanged
 func (s *ContainerService) UpdateContainer(ctx context.Context, container *models.Container) (*models.Container, error) {
 	now := time.Now()
 	container.UpdatedAt = &now
@@ -148,7 +141,6 @@ func (s *ContainerService) UpdateContainerStatus(ctx context.Context, id, status
 	return nil
 }
 
-// Add this method to your ContainerService
 func (s *ContainerService) DeleteContainer(ctx context.Context, containerID string, force bool, removeVolumes bool) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -156,7 +148,6 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, containerID stri
 	}
 	defer dockerClient.Close()
 
-	// Remove the container
 	err = dockerClient.ContainerRemove(ctx, containerID, container.RemoveOptions{
 		Force:         force,
 		RemoveVolumes: removeVolumes,
@@ -167,4 +158,29 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, containerID stri
 	}
 
 	return nil
+}
+
+func (s *ContainerService) CreateContainer(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (*types.ContainerJSON, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	resp, err := dockerClient.ContainerCreate(ctx, config, hostConfig, networkingConfig, nil, containerName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create container: %w", err)
+	}
+
+	if err := dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+		dockerClient.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+		return nil, fmt.Errorf("failed to start container: %w", err)
+	}
+
+	containerJSON, err := dockerClient.ContainerInspect(ctx, resp.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect created container: %w", err)
+	}
+
+	return &containerJSON, nil
 }

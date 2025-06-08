@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserHandler struct {
@@ -72,11 +73,19 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	// TODO: Hash password properly
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to hash password",
+		})
+		return
+	}
+
 	user := &models.User{
 		ID:           uuid.New().String(),
 		Username:     req.Username,
-		PasswordHash: req.Password, // TODO: Hash this
+		PasswordHash: string(hashedPassword),
 		DisplayName:  req.DisplayName,
 		Email:        req.Email,
 		Roles:        req.Roles,

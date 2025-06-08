@@ -21,7 +21,7 @@ export interface Template {
 	metadata?: {
 		version?: string;
 		author?: string;
-		tags?: string | string[]; // Can be JSON string or array
+		tags?: string | string[];
 		remoteUrl?: string;
 		envUrl?: string;
 		documentationUrl?: string;

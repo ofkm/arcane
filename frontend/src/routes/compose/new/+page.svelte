@@ -20,11 +20,11 @@
 	import * as Resizable from '$lib/components/ui/resizable/index.js';
 	import TemplateSelectionDialog from '$lib/components/template-selection-dialog.svelte';
 	import * as DropdownButton from '$lib/components/ui/dropdown-button/index.js';
-	import type { ComposeTemplate } from '$lib/services/template-service';
 	import { converterAPI } from '$lib/services/api';
-	import type { PageData } from '../$types';
+	import type { Template } from '$lib/types/template.type';
+	import type { PageProps } from './+page';
 
-	let { data }: { data: PageData } = $props();
+	let { data }: { data: PageProps } = $props();
 
 	const stackApi = new StackAPIService();
 	let saving = $state(false);
@@ -105,7 +105,9 @@
 
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.error || `Failed to deploy Compose Project: ${response.statusText}`);
+				throw new Error(
+					errorData.error || `Failed to deploy Compose Project: ${response.statusText}`
+				);
 			}
 
 			const result = await response.json();
@@ -154,7 +156,7 @@
 		});
 	}
 
-	function handleTemplateSelect(template: ComposeTemplate) {
+	function handleTemplateSelect(template: Template) {
 		composeContent = template.content;
 
 		if (template.envContent) {
@@ -168,7 +170,11 @@
 		toast.success(`Template "${template.name}" loaded successfully!`);
 	}
 
-	const exampleCommands = ['docker run -d --name nginx -p 8080:80 -v nginx_data:/usr/share/nginx/html nginx:alpine', 'docker run -d --name postgres -e POSTGRES_DB=mydb -e POSTGRES_USER=user -e POSTGRES_PASSWORD=pass -v postgres_data:/var/lib/postgresql/data postgres:15', 'docker run -d --name redis -p 6379:6379 --restart unless-stopped redis:alpine'];
+	const exampleCommands = [
+		'docker run -d --name nginx -p 8080:80 -v nginx_data:/usr/share/nginx/html nginx:alpine',
+		'docker run -d --name postgres -e POSTGRES_DB=mydb -e POSTGRES_USER=user -e POSTGRES_PASSWORD=pass -v postgres_data:/var/lib/postgresql/data postgres:15',
+		'docker run -d --name redis -p 6379:6379 --restart unless-stopped redis:alpine'
+	];
 
 	function useExample(command: string) {
 		dockerRunCommand = command;
@@ -199,15 +205,32 @@
 	</div>
 
 	<!-- Docker Run to Compose Converter -->
-	<DropdownCard id="docker-run-converter" title="Docker Run to Compose Converter" description="Convert existing docker run commands to Docker Compose format" icon={Terminal}>
+	<DropdownCard
+		id="docker-run-converter"
+		title="Docker Run to Compose Converter"
+		description="Convert existing docker run commands to Docker Compose format"
+		icon={Terminal}
+	>
 		<div class="space-y-4">
 			<div class="space-y-2">
 				<Label for="dockerRunCommand">Docker Run Command</Label>
-				<Textarea id="dockerRunCommand" bind:value={dockerRunCommand} placeholder="docker run -d --name my-app -p 8080:80 nginx:alpine" rows={3} disabled={converting} class="font-mono text-sm" />
+				<Textarea
+					id="dockerRunCommand"
+					bind:value={dockerRunCommand}
+					placeholder="docker run -d --name my-app -p 8080:80 nginx:alpine"
+					rows={3}
+					disabled={converting}
+					class="font-mono text-sm"
+				/>
 			</div>
 
 			<div class="flex items-center gap-2">
-				<Button type="button" disabled={!dockerRunCommand.trim() || converting} size="sm" onclick={handleConvertDockerRun}>
+				<Button
+					type="button"
+					disabled={!dockerRunCommand.trim() || converting}
+					size="sm"
+					onclick={handleConvertDockerRun}
+				>
 					{#if converting}
 						<Loader2 class="mr-2 size-4 animate-spin" />
 						Converting...
@@ -222,7 +245,13 @@
 				<Label class="text-xs text-muted-foreground">Example Commands:</Label>
 				<div class="space-y-1">
 					{#each exampleCommands as command}
-						<Button type="button" variant="ghost" size="sm" class="h-auto p-2 text-xs font-mono text-left justify-start w-full" onclick={() => useExample(command)}>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							class="h-auto p-2 text-xs font-mono text-left justify-start w-full"
+							onclick={() => useExample(command)}
+						>
 							<Copy class="mr-2 size-3" />
 							{command}
 						</Button>
@@ -242,16 +271,27 @@
 						</div>
 						<div>
 							<Card.Title>Compose Project Configuration</Card.Title>
-							<Card.Description>Create a new Docker Compose Project with environment variables</Card.Description>
+							<Card.Description
+								>Create a new Docker Compose Project with environment variables</Card.Description
+							>
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
-						<ArcaneButton action="template" onClick={() => (showTemplateDialog = true)} loading={saving} disabled={saving || converting} />
+						<ArcaneButton
+							action="template"
+							onClick={() => (showTemplateDialog = true)}
+							loading={saving}
+							disabled={saving || converting}
+						/>
 
 						{#if onlineAgents.length > 0}
 							<DropdownButton.DropdownRoot>
 								<DropdownButton.Root>
-									<DropdownButton.Main variant="default" disabled={!name || !composeContent || saving} onclick={handleDeployButtonClick}>
+									<DropdownButton.Main
+										variant="default"
+										disabled={!name || !composeContent || saving}
+										onclick={handleDeployButtonClick}
+									>
 										{#if saving}
 											<Loader2 class="size-4 mr-2 animate-spin" />
 										{:else}
@@ -261,12 +301,18 @@
 									</DropdownButton.Main>
 
 									<DropdownButton.DropdownTrigger>
-										<DropdownButton.Trigger variant="default" disabled={!name || !composeContent || saving} />
+										<DropdownButton.Trigger
+											variant="default"
+											disabled={!name || !composeContent || saving}
+										/>
 									</DropdownButton.DropdownTrigger>
 								</DropdownButton.Root>
 
 								<DropdownButton.Content align="end" class="min-w-[200px]">
-									<DropdownButton.Item onclick={() => handleAgentSelect({ id: '', label: 'Deploy Locally' })}>Deploy Locally</DropdownButton.Item>
+									<DropdownButton.Item
+										onclick={() => handleAgentSelect({ id: '', label: 'Deploy Locally' })}
+										>Deploy Locally</DropdownButton.Item
+									>
 
 									{#if agentOptions.length > 0}
 										<DropdownButton.Separator />
@@ -279,7 +325,12 @@
 								</DropdownButton.Content>
 							</DropdownButton.DropdownRoot>
 						{:else}
-							<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
+							<ArcaneButton
+								action="create"
+								onClick={handleSubmit}
+								loading={saving}
+								disabled={!name || !composeContent}
+							/>
 						{/if}
 					</div>
 				</div>
@@ -288,7 +339,15 @@
 				<div class="space-y-4">
 					<div class="grid w-full max-w-sm items-center gap-1.5">
 						<Label for="name">Compose Project Name</Label>
-						<Input type="text" id="name" name="name" bind:value={name} required placeholder="e.g., my-web-app" disabled={saving} />
+						<Input
+							type="text"
+							id="name"
+							name="name"
+							bind:value={name}
+							required
+							placeholder="e.g., my-web-app"
+							disabled={saving}
+						/>
 					</div>
 
 					<Resizable.PaneGroup direction="horizontal">
@@ -316,7 +375,12 @@
 				</div>
 			</Card.Content>
 			<Card.Footer class="flex justify-between">
-				<Button variant="outline" type="button" onclick={() => window.history.back()} disabled={saving}>
+				<Button
+					variant="outline"
+					type="button"
+					onclick={() => window.history.back()}
+					disabled={saving}
+				>
 					<ArrowLeft class="mr-2 size-4" />
 					Cancel
 				</Button>
@@ -326,4 +390,8 @@
 </div>
 
 <!-- Template Selection Dialog -->
-<TemplateSelectionDialog bind:open={showTemplateDialog} templates={data.composeTemplates || []} onSelect={handleTemplateSelect} />
+<TemplateSelectionDialog
+	bind:open={showTemplateDialog}
+	templates={data.composeTemplates || []}
+	onSelect={handleTemplateSelect}
+/>

@@ -1,5 +1,15 @@
 <script lang="ts">
-	import { ScanSearch, Play, RotateCcw, StopCircle, Trash2, Loader2, Plus, Box, RefreshCw, Ellipsis } from '@lucide/svelte';
+	import {
+		ScanSearch,
+		Play,
+		RotateCcw,
+		StopCircle,
+		Trash2,
+		Loader2,
+		Box,
+		RefreshCw,
+		Ellipsis
+	} from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import UniversalTable from '$lib/components/universal-table.svelte';
@@ -9,8 +19,7 @@
 	import CreateContainerDialog from './create-container-dialog.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import type { ContainerInfo } from 'dockerode';
-	import ContainerAPIService from '$lib/services/api/container-api-service';
+	import { containerAPI, imageAPI } from '$lib/services/api';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { statusVariantMap } from '$lib/types/statuses';
@@ -22,8 +31,7 @@
 	import { tablePersistence } from '$lib/stores/table-store';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import { parseStatusTime } from '$lib/utils/string.utils';
-
-	const containerApi = new ContainerAPIService();
+	import type { ContainerInfo } from 'dockerode';
 
 	let { data }: { data: PageData & { containers: ContainerInfo[] } } = $props();
 	let containers = $state(data.containers);
@@ -37,13 +45,19 @@
 		remove: false
 	});
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
-	const runningContainers = $derived(containers?.filter((c: ContainerInfo) => c.State === 'running').length || 0);
-	const stoppedContainers = $derived(containers?.filter((c: ContainerInfo) => c.State === 'exited').length || 0);
+	const runningContainers = $derived(
+		containers?.filter((c: ContainerInfo) => c.State === 'running').length || 0
+	);
+	const stoppedContainers = $derived(
+		containers?.filter((c: ContainerInfo) => c.State === 'exited').length || 0
+	);
 	const totalContainers = $derived(containers?.length || 0);
 
 	function getContainerDisplayName(container: ContainerInfo): string {
 		if (container.Names && container.Names.length > 0) {
-			return container.Names[0].startsWith('/') ? container.Names[0].substring(1) : container.Names[0];
+			return container.Names[0].startsWith('/')
+				? container.Names[0].substring(1)
+				: container.Names[0];
 		}
 		return shortId(container.Id);
 	}
@@ -79,7 +93,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(containerApi.remove(id)),
+						result: await tryCatch(containerAPI.remove(id)),
 						message: 'Failed to Remove Container',
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
@@ -97,7 +111,7 @@
 
 		if (action === 'start') {
 			handleApiResultWithCallbacks({
-				result: await tryCatch(containerApi.start(id)),
+				result: await tryCatch(containerAPI.start(id)),
 				message: 'Failed to Start Container',
 				setLoadingState: (value) => (isLoading.start = value),
 				async onSuccess() {
@@ -107,7 +121,7 @@
 			});
 		} else if (action === 'stop') {
 			handleApiResultWithCallbacks({
-				result: await tryCatch(containerApi.stop(id)),
+				result: await tryCatch(containerAPI.stop(id)),
 				message: 'Failed to Stop Container',
 				setLoadingState: (value) => (isLoading.stop = value),
 				async onSuccess() {
@@ -117,7 +131,7 @@
 			});
 		} else if (action === 'restart') {
 			handleApiResultWithCallbacks({
-				result: await tryCatch(containerApi.restart(id)),
+				result: await tryCatch(containerAPI.restart(id)),
 				message: 'Failed to Restart Container',
 				setLoadingState: (value) => (isLoading.restart = value),
 				async onSuccess() {
@@ -141,16 +155,38 @@
 	</div>
 
 	<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-		<StatCard title="Total" value={totalContainers} icon={Box} class="hover:shadow-lg transition-shadow border-l-4 border-l-primary" />
-		<StatCard title="Running" value={runningContainers} icon={Box} iconColor="text-green-500" bgColor="bg-green-500/10" class="border-l-4 border-l-green-500" />
-		<StatCard title="Stopped" value={stoppedContainers} icon={Box} iconColor="text-amber-500" class="border-l-4 border-l-amber-500" />
+		<StatCard
+			title="Total"
+			value={totalContainers}
+			icon={Box}
+			class="hover:shadow-lg transition-shadow border-l-4 border-l-primary"
+		/>
+		<StatCard
+			title="Running"
+			value={runningContainers}
+			icon={Box}
+			iconColor="text-green-500"
+			bgColor="bg-green-500/10"
+			class="border-l-4 border-l-green-500"
+		/>
+		<StatCard
+			title="Stopped"
+			value={stoppedContainers}
+			icon={Box}
+			iconColor="text-amber-500"
+			class="border-l-4 border-l-amber-500"
+		/>
 	</div>
 
 	{#if containers?.length === 0}
-		<div class="flex flex-col items-center justify-center py-12 px-6 text-center border rounded-lg bg-card">
+		<div
+			class="flex flex-col items-center justify-center py-12 px-6 text-center border rounded-lg bg-card"
+		>
 			<Box class="text-muted-foreground mb-4 opacity-40 size-12" />
 			<p class="text-lg font-medium">No containers found</p>
-			<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new container using the "Create Container" button above or use the Docker CLI</p>
+			<p class="text-sm text-muted-foreground mt-1 max-w-md">
+				Create a new container using the "Create Container" button above or use the Docker CLI
+			</p>
 			<div class="flex gap-3 mt-4">
 				<Button variant="secondary" onclick={refreshData}>
 					<RefreshCw class="size-4" />
@@ -204,12 +240,25 @@
 					}}
 					bind:selectedIds
 				>
-					{#snippet rows({ item }: { item: ContainerInfo & { displayName: string; statusSortValue: number } })}
+					{#snippet rows({
+						item
+					}: {
+						item: ContainerInfo & { displayName: string; statusSortValue: number };
+					})}
 						{@const stateVariant = statusVariantMap[item.State.toLowerCase()]}
-						<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.Id}/">{item.displayName}</a></Table.Cell>
+						<Table.Cell
+							><a class="font-medium hover:underline" href="/containers/{item.Id}/"
+								>{item.displayName}</a
+							></Table.Cell
+						>
 						<Table.Cell>{shortId(item.Id)}</Table.Cell>
 						<Table.Cell>{item.Image}</Table.Cell>
-						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.State)} /></Table.Cell>
+						<Table.Cell
+							><StatusBadge
+								variant={stateVariant}
+								text={capitalizeFirstLetter(item.State)}
+							/></Table.Cell
+						>
 						<Table.Cell>{item.Status}</Table.Cell>
 						<!-- Still displays the original status text -->
 						<Table.Cell>
@@ -224,13 +273,19 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item onclick={() => goto(`/containers/${item.Id}`)} disabled={isAnyLoading}>
+										<DropdownMenu.Item
+											onclick={() => goto(`/containers/${item.Id}`)}
+											disabled={isAnyLoading}
+										>
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
 
 										{#if item.State !== 'running'}
-											<DropdownMenu.Item onclick={() => performContainerAction('start', item.Id)} disabled={isLoading.start || isAnyLoading}>
+											<DropdownMenu.Item
+												onclick={() => performContainerAction('start', item.Id)}
+												disabled={isLoading.start || isAnyLoading}
+											>
 												{#if isLoading.start}
 													<Loader2 class="animate-spin size-4" />
 												{:else}
@@ -239,7 +294,10 @@
 												Start
 											</DropdownMenu.Item>
 										{:else}
-											<DropdownMenu.Item onclick={() => performContainerAction('restart', item.Id)} disabled={isLoading.restart || isAnyLoading}>
+											<DropdownMenu.Item
+												onclick={() => performContainerAction('restart', item.Id)}
+												disabled={isLoading.restart || isAnyLoading}
+											>
 												{#if isLoading.restart}
 													<Loader2 class="animate-spin size-4" />
 												{:else}
@@ -248,7 +306,10 @@
 												Restart
 											</DropdownMenu.Item>
 
-											<DropdownMenu.Item onclick={() => performContainerAction('stop', item.Id)} disabled={isLoading.stop || isAnyLoading}>
+											<DropdownMenu.Item
+												onclick={() => performContainerAction('stop', item.Id)}
+												disabled={isLoading.stop || isAnyLoading}
+											>
 												{#if isLoading.stop}
 													<Loader2 class="animate-spin size-4" />
 												{:else}
@@ -260,7 +321,11 @@
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveContainer(item.Id)} disabled={isLoading.remove || isAnyLoading}>
+										<DropdownMenu.Item
+											class="text-red-500 focus:text-red-700!"
+											onclick={() => handleRemoveContainer(item.Id)}
+											disabled={isLoading.remove || isAnyLoading}
+										>
 											{#if isLoading.remove}
 												<Loader2 class="animate-spin size-4" />
 											{:else}
@@ -278,5 +343,10 @@
 		</Card.Root>
 	{/if}
 
-	<CreateContainerDialog bind:open={isCreateDialogOpen} volumes={data.volumes || []} networks={data.networks || []} images={data.images || []} />
+	<CreateContainerDialog
+		bind:open={isCreateDialogOpen}
+		volumes={Array.isArray(data.volumes) ? data.volumes : []}
+		networks={Array.isArray(data.networks) ? data.networks : []}
+		images={Array.isArray(data.images) ? data.images : []}
+	/>
 </div>

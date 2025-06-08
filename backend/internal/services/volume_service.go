@@ -21,7 +21,6 @@ func NewVolumeService(db *database.DB, dockerService *DockerClientService) *Volu
 	return &VolumeService{db: db, dockerService: dockerService}
 }
 
-// ListVolumes returns live Docker volumes
 func (s *VolumeService) ListVolumes(ctx context.Context) ([]volume.Volume, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -34,7 +33,6 @@ func (s *VolumeService) ListVolumes(ctx context.Context) ([]volume.Volume, error
 		return nil, fmt.Errorf("failed to list Docker volumes: %w", err)
 	}
 
-	// Convert []*volume.Volume to []volume.Volume
 	vols := make([]volume.Volume, len(volumes.Volumes))
 	for i, v := range volumes.Volumes {
 		if v != nil {
@@ -44,7 +42,6 @@ func (s *VolumeService) ListVolumes(ctx context.Context) ([]volume.Volume, error
 	return vols, nil
 }
 
-// GetVolumeByName gets volume info from Docker
 func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*volume.Volume, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -60,7 +57,6 @@ func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*volu
 	return &vol, nil
 }
 
-// CreateVolume creates a Docker volume
 func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateOptions) (*volume.Volume, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -73,14 +69,13 @@ func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateO
 		return nil, fmt.Errorf("failed to create volume: %w", err)
 	}
 
-	// Optionally persist basic metadata to DB if needed
 	if s.db != nil {
 		dbVolume := &models.Volume{
 			BaseModel:  models.BaseModel{CreatedAt: time.Now()},
 			Name:       vol.Name,
 			Driver:     vol.Driver,
 			Mountpoint: vol.Mountpoint,
-			Scope:      "local", // Typically local for volumes
+			Scope:      "local",
 		}
 		s.db.WithContext(ctx).Create(dbVolume)
 	}
@@ -88,7 +83,6 @@ func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateO
 	return &vol, nil
 }
 
-// DeleteVolume removes a Docker volume
 func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force bool) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -100,7 +94,6 @@ func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force boo
 		return fmt.Errorf("failed to remove volume: %w", err)
 	}
 
-	// Optionally clean up DB record if needed
 	if s.db != nil {
 		s.db.WithContext(ctx).Delete(&models.Volume{}, "name = ?", name)
 	}
@@ -108,7 +101,6 @@ func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force boo
 	return nil
 }
 
-// PruneVolumes removes unused Docker volumes
 func (s *VolumeService) PruneVolumes(ctx context.Context) (*volume.PruneReport, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -116,7 +108,6 @@ func (s *VolumeService) PruneVolumes(ctx context.Context) (*volume.PruneReport, 
 	}
 	defer dockerClient.Close()
 
-	// You can add filters for pruning if needed
 	filterArgs := filters.NewArgs()
 
 	report, err := dockerClient.VolumesPrune(ctx, filterArgs)
@@ -127,7 +118,6 @@ func (s *VolumeService) PruneVolumes(ctx context.Context) (*volume.PruneReport, 
 	return &report, nil
 }
 
-// GetVolumesByDriver filters volumes by driver type
 func (s *VolumeService) GetVolumesByDriver(ctx context.Context, driver string) ([]volume.Volume, error) {
 	volumes, err := s.ListVolumes(ctx)
 	if err != nil {
@@ -144,7 +134,6 @@ func (s *VolumeService) GetVolumesByDriver(ctx context.Context, driver string) (
 	return filtered, nil
 }
 
-// GetVolumeUsage checks if a volume is in use by any containers
 func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, []string, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -152,12 +141,10 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 	}
 	defer dockerClient.Close()
 
-	// First get the volume to check its UsageData
 	if _, err := dockerClient.VolumeInspect(ctx, name); err != nil {
 		return false, nil, fmt.Errorf("volume not found: %w", err)
 	}
 
-	// Get all containers to check which ones are using this volume
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to list containers: %w", err)
@@ -167,7 +154,6 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 	var usingContainers []string
 
 	for _, container := range containers {
-		// Get detailed container info to check mounts
 		containerInfo, err := dockerClient.ContainerInspect(ctx, container.ID)
 		if err != nil {
 			continue

@@ -55,7 +55,6 @@ func setupAuthRoutes(api *gin.RouterGroup, services *Services, appConfig *config
 	auth.POST("/refresh", authHandler.RefreshToken)
 	auth.POST("/password", middleware.AuthMiddleware(services.Auth), authHandler.ChangePassword)
 
-	// OIDC endpoints
 	oidcHandler := NewOidcHandler(services.Auth, services.Oidc, appConfig)
 	oidc := auth.Group("/oidc")
 	{
@@ -103,32 +102,20 @@ func setupStackRoutes(router *gin.RouterGroup, services *Services) {
 
 func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 	agents := api.Group("/agents")
-	// Note: Agent routes might need different auth strategy since agents themselves need to authenticate
-	// For now, keeping them protected but you might want to use middleware.OptionalAuthMiddleware for some
 
 	agentHandler := NewAgentHandler(services.Agent, services.Deployment)
-
-	// Agent management (require auth)
 	agents.GET("", middleware.AuthMiddleware(services.Auth), agentHandler.ListAgents)
 	agents.GET("/:agentId", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgent)
 	agents.DELETE("/:agentId", middleware.AuthMiddleware(services.Auth), agentHandler.DeleteAgent)
-
-	// Agent tasks (might need special auth for agents themselves)
 	agents.GET("/:agentId/tasks", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgentTasks)
 	agents.POST("/:agentId/tasks", middleware.AuthMiddleware(services.Auth), agentHandler.CreateTask)
 	agents.GET("/:agentId/tasks/:taskId", middleware.AuthMiddleware(services.Auth), agentHandler.GetTask)
 	agents.POST("/:agentId/tasks/:taskId/result", middleware.AuthMiddleware(services.Auth), agentHandler.SubmitTaskResult)
-
-	// Agent deployments
 	agents.GET("/:agentId/deployments", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgentDeployments)
 	agents.POST("/:agentId/deploy/stack", middleware.AuthMiddleware(services.Auth), agentHandler.DeployStack)
 	agents.POST("/:agentId/deploy/container", middleware.AuthMiddleware(services.Auth), agentHandler.DeployContainer)
 	agents.POST("/:agentId/deploy/image", middleware.AuthMiddleware(services.Auth), agentHandler.DeployImage)
-
-	// Agent stacks
 	agents.GET("/:agentId/stacks", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgentStacks)
-
-	// Agent utilities
 	agents.POST("/:agentId/health-check", middleware.AuthMiddleware(services.Auth), agentHandler.SendHealthCheck)
 	agents.POST("/:agentId/stack-list", middleware.AuthMiddleware(services.Auth), agentHandler.GetStackList)
 }
@@ -137,20 +124,12 @@ func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *co
 	settings := api.Group("/settings")
 
 	settingsHandler := NewSettingsHandler(services.Settings)
-
-	// Public endpoint for login page (no auth required)
 	settings.GET("/public", settingsHandler.GetPublicSettings)
-
-	// Remove auth middleware from these endpoints
 	settings.GET("", settingsHandler.GetSettings)
 	settings.PUT("", settingsHandler.UpdateSettings)
-
-	// Remove auth middleware from specific settings endpoints
 	settings.PUT("/auth", settingsHandler.UpdateAuth)
 	settings.PUT("/onboarding", settingsHandler.UpdateOnboarding)
 	settings.POST("/registry-credentials", settingsHandler.AddRegistryCredential)
-
-	// Add OIDC endpoints under settings as well for frontend compatibility (no auth needed)
 	oidcHandler := NewOidcHandler(services.Auth, services.Oidc, appConfig)
 	settings.GET("/oidc/status", oidcHandler.GetOidcStatus)
 	settings.GET("/oidc/config", oidcHandler.GetOidcConfig)
@@ -204,6 +183,7 @@ func setupContainerRoutes(api *gin.RouterGroup, services *Services) {
 	containerHandler := NewContainerHandler(services.Container)
 
 	containers.GET("", containerHandler.List)
+	containers.POST("", containerHandler.Create)
 	containers.GET("/:id", containerHandler.GetByID)
 	containers.POST("/:id/start", containerHandler.Start)
 	containers.POST("/:id/stop", containerHandler.Stop)
@@ -264,24 +244,18 @@ func setupTemplateRoutes(router *gin.RouterGroup, services *Services) {
 
 	templates.GET("/fetch", templateHandler.FetchRegistry)
 
-	// Public template endpoints (for browsing templates)
 	templates.GET("", middleware.OptionalAuthMiddleware(services.Auth), templateHandler.GetAllTemplates)
 	templates.GET("/:id", middleware.OptionalAuthMiddleware(services.Auth), templateHandler.GetTemplate)
 	templates.GET("/:id/content", middleware.OptionalAuthMiddleware(services.Auth), templateHandler.GetTemplateContent)
 
-	// Protected template operations (require authentication)
 	templatesAuth := templates.Group("/")
 	templatesAuth.Use(middleware.AuthMiddleware(services.Auth))
 	{
 		templatesAuth.POST("", templateHandler.CreateTemplate)
 		templatesAuth.PUT("/:id", templateHandler.UpdateTemplate)
 		templatesAuth.DELETE("/:id", templateHandler.DeleteTemplate)
-
-		// Environment template
 		templatesAuth.GET("/env/default", templateHandler.GetEnvTemplate)
 		templatesAuth.POST("/env/default", templateHandler.SaveEnvTemplate)
-
-		// Registries (require authentication)
 		templatesAuth.GET("/registries", templateHandler.GetRegistries)
 		templatesAuth.POST("/registries", templateHandler.CreateRegistry)
 		templatesAuth.PUT("/registries/:id", templateHandler.UpdateRegistry)

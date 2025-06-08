@@ -54,7 +54,6 @@ func NewStackService(db *database.DB, dockerService *DockerClientService, settin
 	}
 }
 
-// Types for Docker Compose operations
 type DeployOptions struct {
 	Profiles      []string
 	EnvOverrides  map[string]string
@@ -74,7 +73,6 @@ type StackInfo struct {
 	RunningCount int                `json:"running_count"`
 }
 
-// Create operations
 func (s *StackService) CreateStack(ctx context.Context, name, composeContent string, envContent *string) (*models.Stack, error) {
 	stackID := uuid.New().String()
 	folderName := s.sanitizeStackName(name)
@@ -90,7 +88,6 @@ func (s *StackService) CreateStack(ctx context.Context, name, composeContent str
 
 	path := filepath.Join(stacksDir, folderName)
 
-	// Create stack metadata (no content in DB)
 	stack := &models.Stack{
 		ID:           stackID,
 		Name:         name,
@@ -107,24 +104,20 @@ func (s *StackService) CreateStack(ctx context.Context, name, composeContent str
 		},
 	}
 
-	// Save to database (metadata only)
 	if err := s.db.WithContext(ctx).Create(stack).Error; err != nil {
 		return nil, fmt.Errorf("failed to create stack: %w", err)
 	}
 
-	// Save files to disk
 	if err := s.SaveStackFilesToPath(path, composeContent, envContent); err != nil {
-		s.db.WithContext(ctx).Delete(stack) // Rollback
+		s.db.WithContext(ctx).Delete(stack)
 		return nil, fmt.Errorf("failed to save stack files: %w", err)
 	}
 
 	return stack, nil
 }
 
-// sanitizeStackName replaces invalid filesystem characters with underscores and trims spaces.
 func (s *StackService) sanitizeStackName(name string) string {
 	name = strings.TrimSpace(name)
-	// Replace any character that is not a letter, number, dash, or underscore with underscore
 	return strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') ||
 			(r >= 'A' && r <= 'Z') ||
@@ -142,10 +135,8 @@ func (s *StackService) ensureUniqueFolderName(ctx context.Context, baseName stri
 		return "", err
 	}
 
-	// Check if base name is available
 	targetPath := filepath.Join(stacksDir, baseName)
 	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
-		// Also check database for folder name conflicts
 		var count int64
 		if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("dir_name = ?", baseName).Count(&count).Error; err != nil {
 			return "", err
@@ -155,15 +146,11 @@ func (s *StackService) ensureUniqueFolderName(ctx context.Context, baseName stri
 		}
 	}
 
-	// Generate unique name with counter
 	counter := 1
 	for {
 		candidateName := fmt.Sprintf("%s-%d", baseName, counter)
 		candidatePath := filepath.Join(stacksDir, candidateName)
-
-		// Check filesystem
 		if _, err := os.Stat(candidatePath); os.IsNotExist(err) {
-			// Check database
 			var count int64
 			if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("dir_name = ?", candidateName).Count(&count).Error; err != nil {
 				return "", err
@@ -172,7 +159,6 @@ func (s *StackService) ensureUniqueFolderName(ctx context.Context, baseName stri
 				return candidateName, nil
 			}
 		}
-
 		counter++
 		if counter > 1000 {
 			return "", fmt.Errorf("unable to generate unique folder name for: %s", baseName)
@@ -181,25 +167,21 @@ func (s *StackService) ensureUniqueFolderName(ctx context.Context, baseName stri
 }
 
 func (s *StackService) SaveStackFilesToPath(stackPath, composeContent string, envContent *string) error {
-	// Ensure directory exists
 	if err := os.MkdirAll(stackPath, 0755); err != nil {
 		return fmt.Errorf("failed to create stack directory: %w", err)
 	}
 
-	// Save compose file
 	composePath := filepath.Join(stackPath, "compose.yaml")
 	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil {
 		return fmt.Errorf("failed to save compose file: %w", err)
 	}
 
-	// Save or remove env file
 	envPath := filepath.Join(stackPath, ".env")
 	if envContent != nil && *envContent != "" {
 		if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
 			return fmt.Errorf("failed to save env file: %w", err)
 		}
 	} else {
-		// Remove env file if content is empty
 		if _, err := os.Stat(envPath); err == nil {
 			os.Remove(envPath)
 		}
@@ -208,7 +190,6 @@ func (s *StackService) SaveStackFilesToPath(stackPath, composeContent string, en
 	return nil
 }
 
-// Read operations
 func (s *StackService) GetStackByID(ctx context.Context, id string) (*models.Stack, error) {
 	var stack models.Stack
 	if err := s.db.WithContext(ctx).Preload("Agent").Where("id = ?", id).First(&stack).Error; err != nil {
@@ -237,7 +218,6 @@ func (s *StackService) GetStackContent(ctx context.Context, stackID string) (com
 		return "", "", fmt.Errorf("stack not found: %w", err)
 	}
 
-	// Read compose file
 	composeFile := s.findComposeFile(stack.Path)
 	if composeFile == "" {
 		return "", "", fmt.Errorf("no compose file found")
@@ -249,7 +229,6 @@ func (s *StackService) GetStackContent(ctx context.Context, stackID string) (com
 	}
 	composeContent = string(composeData)
 
-	// Read env file if it exists
 	envFile := filepath.Join(stack.Path, ".env")
 	if envData, err := os.ReadFile(envFile); err == nil {
 		envContent = string(envData)
@@ -264,25 +243,21 @@ func (s *StackService) ListStacks(ctx context.Context) ([]*models.Stack, error) 
 		return nil, fmt.Errorf("failed to list stacks: %w", err)
 	}
 
-	// If no stacks in database, try to import from files
 	if len(stacks) == 0 {
 		fmt.Println("No stacks found in database, checking for file-based stacks...")
 		if err := s.ImportFileBasedStacks(ctx); err != nil {
 			fmt.Printf("Warning: failed to import file-based stacks: %v\n", err)
 		} else {
-			// Try to fetch again after import
 			if err := s.db.WithContext(ctx).Order("created_at DESC").Find(&stacks).Error; err != nil {
 				return nil, fmt.Errorf("failed to list stacks after import: %w", err)
 			}
 		}
 	}
 
-	// Update runtime info for each stack
 	for i, stack := range stacks {
 		services, err := s.GetStackServices(ctx, stack.ID)
 		if err != nil {
 			fmt.Printf("Warning: failed to get services for stack %s: %v\n", stack.ID, err)
-			// Don't skip the stack, just set default values
 			stacks[i].ServiceCount = 0
 			stacks[i].RunningCount = 0
 			stacks[i].Status = models.StackStatusStopped
@@ -297,7 +272,6 @@ func (s *StackService) ListStacks(ctx context.Context) ([]*models.Stack, error) 
 			}
 		}
 
-		// Determine status
 		var status models.StackStatus = models.StackStatusStopped
 		if serviceCount > 0 {
 			if runningCount == serviceCount {
@@ -307,12 +281,10 @@ func (s *StackService) ListStacks(ctx context.Context) ([]*models.Stack, error) 
 			}
 		}
 
-		// Update the stack in the slice AND persist to database
 		stacks[i].ServiceCount = serviceCount
 		stacks[i].RunningCount = runningCount
 		stacks[i].Status = status
 
-		// Persist the updated counts to database for consistency
 		if err := s.UpdateStackRuntimeInfo(ctx, stack.ID, serviceCount, runningCount, status); err != nil {
 			fmt.Printf("Warning: failed to update runtime info for stack %s: %v\n", stack.ID, err)
 		}
@@ -374,7 +346,6 @@ func (s *StackService) GetStackInfo(ctx context.Context, stackID string) (*Stack
 	}, nil
 }
 
-// Update operations
 func (s *StackService) UpdateStack(ctx context.Context, stack *models.Stack) (*models.Stack, error) {
 	now := time.Now()
 	stack.UpdatedAt = &now
@@ -401,13 +372,11 @@ func (s *StackService) UpdateStackContent(ctx context.Context, id string, compos
 		return fmt.Errorf("stack not found: %w", err)
 	}
 
-	// Get current content if not provided
 	var finalComposeContent, finalEnvContent string
 
 	if composeContent != nil {
 		finalComposeContent = *composeContent
 	} else {
-		// Get current compose content
 		currentCompose, _, err := s.GetStackContent(ctx, id)
 		if err != nil {
 			return fmt.Errorf("failed to get current compose content: %w", err)
@@ -418,22 +387,18 @@ func (s *StackService) UpdateStackContent(ctx context.Context, id string, compos
 	if envContent != nil {
 		finalEnvContent = *envContent
 	} else {
-		// Get current env content
 		_, currentEnv, err := s.GetStackContent(ctx, id)
 		if err != nil {
-			// Env is optional, so empty is fine
 			finalEnvContent = ""
 		} else {
 			finalEnvContent = currentEnv
 		}
 	}
 
-	// Update timestamp in database
 	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", id).Update("updated_at", time.Now()).Error; err != nil {
 		return fmt.Errorf("failed to update stack timestamp: %w", err)
 	}
 
-	// Save files to disk
 	return s.SaveStackFilesToPath(stack.Path, finalComposeContent, &finalEnvContent)
 }
 
@@ -450,7 +415,6 @@ func (s *StackService) UpdateStackRuntimeInfo(ctx context.Context, id string, se
 	return nil
 }
 
-// Delete operations
 func (s *StackService) DeleteStack(ctx context.Context, id string) error {
 	if err := s.db.WithContext(ctx).Delete(&models.Stack{}, "id = ?", id).Error; err != nil {
 		return fmt.Errorf("failed to delete stack: %w", err)
@@ -458,7 +422,6 @@ func (s *StackService) DeleteStack(ctx context.Context, id string) error {
 	return nil
 }
 
-// Docker Compose Stack operations
 func (s *StackService) DeployStack(ctx context.Context, id string, profiles []string, envOverrides map[string]string) error {
 	options := DeployOptions{
 		Profiles:     profiles,
@@ -481,57 +444,47 @@ func (s *StackService) deployStackWithOptions(ctx context.Context, stackID strin
 	}
 	defer dockerClient.Close()
 
-	// Load the compose project
 	project, err := s.LoadProject(ctx, stackID)
 	if err != nil {
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 
-	// Apply profiles if specified
 	if len(options.Profiles) > 0 {
 		project = s.applyProfiles(project, options.Profiles)
 	}
 
-	// Apply environment overrides
 	if len(options.EnvOverrides) > 0 {
 		project = s.applyEnvOverrides(project, options.EnvOverrides)
 	}
 
-	// Pull images if requested
 	if options.Pull {
 		if err := s.pullImages(ctx, dockerClient, project); err != nil {
 			return fmt.Errorf("failed to pull images: %w", err)
 		}
 	}
 
-	// Build images if requested
 	if options.Build {
 		if err := s.buildImages(ctx, dockerClient, project); err != nil {
 			return fmt.Errorf("failed to build images: %w", err)
 		}
 	}
 
-	// Create networks first
 	if err := s.createNetworks(ctx, dockerClient, project); err != nil {
 		return fmt.Errorf("failed to create networks: %w", err)
 	}
 
-	// Create volumes
 	if err := s.createVolumes(ctx, dockerClient, project); err != nil {
 		return fmt.Errorf("failed to create volumes: %w", err)
 	}
 
-	// Create secrets and configs
 	if err := s.createSecrets(ctx, dockerClient, project); err != nil {
 		return fmt.Errorf("failed to create secrets: %w", err)
 	}
 
-	// Create and start services
 	if err := s.createServices(ctx, dockerClient, project, options); err != nil {
 		return fmt.Errorf("failed to create services: %w", err)
 	}
 
-	// Update stack status in database
 	return s.UpdateStackStatus(ctx, stackID, models.StackStatusRunning)
 }
 
@@ -542,26 +495,21 @@ func (s *StackService) StopStack(ctx context.Context, id string) error {
 	}
 	defer dockerClient.Close()
 
-	// Get stack to find project name
 	var stack models.Stack
 	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
 		return fmt.Errorf("stack not found: %w", err)
 	}
 
-	// Use consistent project name
 	projectName := s.getProjectName(&stack)
 
-	// Also try alternative project names for backward compatibility
 	alternativeNames := []string{
-		projectName, // Current: stack UUID
+		projectName,
 	}
 
-	// Add directory name as fallback - safely check for nil
 	if stack.DirName != nil && *stack.DirName != "" && *stack.DirName != projectName {
 		alternativeNames = append(alternativeNames, *stack.DirName)
 	}
 
-	// Add stack name as fallback - safely check if DirName is nil
 	dirName := ""
 	if stack.DirName != nil {
 		dirName = *stack.DirName
@@ -574,7 +522,6 @@ func (s *StackService) StopStack(ctx context.Context, id string) error {
 
 	var allContainers []container.Summary
 
-	// Get containers for all possible project names
 	for _, name := range alternativeNames {
 		containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
 			All: true,
@@ -587,7 +534,6 @@ func (s *StackService) StopStack(ctx context.Context, id string) error {
 			continue
 		}
 
-		// Add containers that aren't already in our list
 		for _, cont := range containers {
 			found := false
 			for _, existing := range allContainers {
@@ -604,7 +550,6 @@ func (s *StackService) StopStack(ctx context.Context, id string) error {
 
 	fmt.Printf("DEBUG: Found %d total containers to stop\n", len(allContainers))
 
-	// Stop containers
 	for _, cont := range allContainers {
 		if cont.State == "running" {
 			fmt.Printf("DEBUG: Stopping container %s\n", cont.ID[:12])
@@ -695,17 +640,14 @@ func (s *StackService) RemoveStack(ctx context.Context, id string, removeVolumes
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 
-	// Stop and remove containers
 	if err := s.removeContainers(ctx, dockerClient, id); err != nil {
 		return fmt.Errorf("failed to remove containers: %w", err)
 	}
 
-	// Remove networks
 	if err := s.removeNetworks(ctx, dockerClient, project); err != nil {
 		return fmt.Errorf("failed to remove networks: %w", err)
 	}
 
-	// Remove volumes if requested
 	if removeVolumes {
 		if err := s.removeVolumes(ctx, dockerClient, project); err != nil {
 			return fmt.Errorf("failed to remove volumes: %w", err)
@@ -732,7 +674,6 @@ func (s *StackService) ScaleService(ctx context.Context, stackID, serviceName st
 		return fmt.Errorf("service %s not found in stack", serviceName)
 	}
 
-	// Get current containers for this service
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
 		All: true,
 		Filters: filters.NewArgs(
@@ -747,7 +688,6 @@ func (s *StackService) ScaleService(ctx context.Context, stackID, serviceName st
 	currentReplicas := len(containers)
 
 	if replicas > currentReplicas {
-		// Scale up
 		for i := currentReplicas; i < replicas; i++ {
 			containerName := fmt.Sprintf("%s_%s_%d", project.Name, serviceName, i+1)
 			if err := s.createSingleService(ctx, dockerClient, project, serviceName, service, containerName); err != nil {
@@ -755,7 +695,6 @@ func (s *StackService) ScaleService(ctx context.Context, stackID, serviceName st
 			}
 		}
 	} else if replicas < currentReplicas {
-		// Scale down
 		for i := currentReplicas - 1; i >= replicas; i-- {
 			if i < len(containers) {
 				cont := containers[i]
@@ -799,18 +738,15 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 	}
 	defer dockerClient.Close()
 
-	// Get stack to find project name
 	var stack models.Stack
 	if err := s.db.WithContext(ctx).Where("id = ?", stackID).First(&stack).Error; err != nil {
 		return nil, fmt.Errorf("stack not found: %w", err)
 	}
 
-	// Use ONLY the exact project name (stack UUID) for service discovery
 	projectName := s.getProjectName(&stack)
 
 	fmt.Printf("DEBUG: Looking for containers STRICTLY with project name: %s (no alternatives)\n", projectName)
 
-	// Try to load the project to get service definitions
 	project, err := s.LoadProject(ctx, stackID)
 	if err != nil {
 		fmt.Printf("Warning: failed to load project for stack %s: %v\n", stackID, err)
@@ -837,7 +773,6 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 
 		fmt.Printf("DEBUG: Found %d containers for project %s, service %s\n", len(containers), projectName, serviceName)
 
-		// Initialize service info
 		serviceInfo := StackServiceInfo{
 			Name:         serviceName,
 			Image:        service.Image,
@@ -855,15 +790,12 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 			serviceInfo.ContainerID = cont.ID
 			serviceInfo.Status = cont.State
 
-			// Use the actual container name from Docker
 			containerName := strings.TrimPrefix(cont.Names[0], "/")
 			fmt.Printf("DEBUG: Found container %s with ID %s, status %s for stack %s\n",
 				containerName, cont.ID, cont.State, projectName)
 
-			// Get container details for additional info
 			inspect, err := dockerClient.ContainerInspect(ctx, cont.ID)
 			if err == nil {
-				// Extract port mappings
 				var ports []string
 				for containerPort, hostBindings := range inspect.NetworkSettings.Ports {
 					if len(hostBindings) > 0 {
@@ -876,21 +808,18 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 				}
 				serviceInfo.Ports = ports
 
-				// Extract networks
 				var networks []string
 				for networkName := range inspect.NetworkSettings.Networks {
 					networks = append(networks, networkName)
 				}
 				serviceInfo.Networks = networks
 
-				// Extract volumes
 				var volumes []string
 				for _, mount := range inspect.Mounts {
 					volumes = append(volumes, fmt.Sprintf("%s:%s", mount.Source, mount.Destination))
 				}
 				serviceInfo.Volumes = volumes
 
-				// Extract environment variables
 				env := make(map[string]string)
 				for _, envVar := range inspect.Config.Env {
 					parts := strings.SplitN(envVar, "=", 2)
@@ -902,7 +831,6 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 
 				serviceInfo.RestartCount = inspect.RestartCount
 
-				// Health check
 				if inspect.State != nil && inspect.State.Health != nil {
 					serviceInfo.Health = inspect.State.Health.Status
 				}
@@ -941,7 +869,6 @@ func (s *StackService) GetServiceLogs(ctx context.Context, stackID, serviceName 
 		return nil, fmt.Errorf("no containers found for service %s", serviceName)
 	}
 
-	// Get logs from the first container
 	cont := containers[0]
 	options := container.LogsOptions{
 		ShowStdout: true,
@@ -954,7 +881,6 @@ func (s *StackService) GetServiceLogs(ctx context.Context, stackID, serviceName 
 	return dockerClient.ContainerLogs(ctx, cont.ID, options)
 }
 
-// LoadProject loads and parses a Docker Compose project using v2 API
 func (s *StackService) LoadProject(ctx context.Context, stackID string) (*types.Project, error) {
 	var stack models.Stack
 	if err := s.db.WithContext(ctx).Where("id = ?", stackID).First(&stack).Error; err != nil {
@@ -963,7 +889,6 @@ func (s *StackService) LoadProject(ctx context.Context, stackID string) (*types.
 
 	stackDir := stack.Path
 
-	// Use consistent project name - always use stack ID
 	projectName := s.getProjectName(&stack)
 
 	composeFile := s.findComposeFile(stackDir)
@@ -975,7 +900,7 @@ func (s *StackService) LoadProject(ctx context.Context, stackID string) (*types.
 		[]string{composeFile},
 		cli.WithOsEnv,
 		cli.WithDotEnv,
-		cli.WithName(projectName), // Use consistent project name
+		cli.WithName(projectName),
 		cli.WithWorkingDirectory(stackDir),
 	)
 	if err != nil {
@@ -1005,15 +930,12 @@ func (s *StackService) GetAutoUpdateStacks(ctx context.Context) ([]*models.Stack
 	return stacks, nil
 }
 
-// File operations
 func (s *StackService) EnsureStackDirectory(stackID string) (string, error) {
-	// Get stack from database to find its path
 	var stack models.Stack
 	if err := s.db.Where("id = ?", stackID).First(&stack).Error; err != nil {
 		return "", fmt.Errorf("stack not found: %w", err)
 	}
 
-	// Ensure the directory exists
 	if err := os.MkdirAll(stack.Path, 0755); err != nil {
 		return "", fmt.Errorf("failed to create stack directory: %w", err)
 	}
@@ -1022,7 +944,6 @@ func (s *StackService) EnsureStackDirectory(stackID string) (string, error) {
 }
 
 func (s *StackService) SaveStackFiles(stackID, composeContent string, envContent *string) error {
-	// Get stack path from database
 	var stack models.Stack
 	if err := s.db.Where("id = ?", stackID).First(&stack).Error; err != nil {
 		return fmt.Errorf("stack not found: %w", err)
@@ -1031,7 +952,6 @@ func (s *StackService) SaveStackFiles(stackID, composeContent string, envContent
 	return s.SaveStackFilesToPath(stack.Path, composeContent, envContent)
 }
 
-// Helper methods for Docker Compose operations
 func (s *StackService) findComposeFile(stackDir string) string {
 	possibleFiles := []string{
 		"compose.yaml",
@@ -1063,12 +983,10 @@ func (s *StackService) applyProfiles(project *types.Project, profiles []string) 
 	filteredServices := make(types.Services)
 	for name, service := range project.Services {
 		if len(service.Profiles) == 0 {
-			// No profiles means it's always included
 			filteredServices[name] = service
 			continue
 		}
 
-		// Check if any of the service's profiles match
 		for _, serviceProfile := range service.Profiles {
 			if profileSet[serviceProfile] {
 				filteredServices[name] = service
@@ -1100,7 +1018,7 @@ func (s *StackService) applyEnvOverrides(project *types.Project, envOverrides ma
 func (s *StackService) pullImages(ctx context.Context, client *client.Client, project *types.Project) error {
 	for serviceName, service := range project.Services {
 		if service.Image == "" {
-			continue // Skip services without image (build-only)
+			continue
 		}
 
 		fmt.Printf("Pulling image %s for service %s\n", service.Image, serviceName)
@@ -1111,7 +1029,6 @@ func (s *StackService) pullImages(ctx context.Context, client *client.Client, pr
 		}
 		defer reader.Close()
 
-		// Consume the pull output
 		io.Copy(io.Discard, reader)
 	}
 
@@ -1119,27 +1036,22 @@ func (s *StackService) pullImages(ctx context.Context, client *client.Client, pr
 }
 
 func (s *StackService) buildImages(ctx context.Context, client *client.Client, project *types.Project) error {
-	// TODO: Implement image building for services with build context
-	// This would require implementing the Docker Build API
 	fmt.Println("Image building not yet implemented")
 	return nil
 }
 
 func (s *StackService) createSecrets(ctx context.Context, client *client.Client, project *types.Project) error {
-	// TODO: Implement secrets creation for Docker Swarm mode
-	// For now, just return nil as secrets are mainly for swarm mode
 	return nil
 }
 
 func (s *StackService) createNetworks(ctx context.Context, client *client.Client, project *types.Project) error {
 	for networkName, networkConfig := range project.Networks {
 		if networkConfig.External {
-			continue // Skip external networks
+			continue
 		}
 
 		fullName := fmt.Sprintf("%s_%s", project.Name, networkName)
 
-		// Check if network already exists
 		networks, err := client.NetworkList(ctx, network.ListOptions{
 			Filters: filters.NewArgs(filters.Arg("name", fullName)),
 		})
@@ -1148,10 +1060,9 @@ func (s *StackService) createNetworks(ctx context.Context, client *client.Client
 		}
 
 		if len(networks) > 0 {
-			continue // Network already exists
+			continue
 		}
 
-		// Create network
 		createOptions := network.CreateOptions{
 			Driver: networkConfig.Driver,
 			Labels: map[string]string{
@@ -1176,12 +1087,11 @@ func (s *StackService) createNetworks(ctx context.Context, client *client.Client
 func (s *StackService) createVolumes(ctx context.Context, client *client.Client, project *types.Project) error {
 	for volumeName, volumeConfig := range project.Volumes {
 		if volumeConfig.External {
-			continue // Skip external volumes
+			continue
 		}
 
 		fullName := fmt.Sprintf("%s_%s", project.Name, volumeName)
 
-		// Check if volume already exists
 		volumes, err := client.VolumeList(ctx, volume.ListOptions{
 			Filters: filters.NewArgs(filters.Arg("name", fullName)),
 		})
@@ -1190,10 +1100,9 @@ func (s *StackService) createVolumes(ctx context.Context, client *client.Client,
 		}
 
 		if len(volumes.Volumes) > 0 {
-			continue // Volume already exists
+			continue
 		}
 
-		// Create volume
 		createOptions := volume.CreateOptions{
 			Name:   fullName,
 			Driver: volumeConfig.Driver,
@@ -1222,7 +1131,6 @@ func (s *StackService) validateStackDeployment(ctx context.Context, client *clie
 	var conflicts []string
 
 	for serviceName, service := range project.Services {
-		// Determine container name that will be used
 		var containerName string
 		if service.ContainerName != "" {
 			containerName = service.ContainerName
@@ -1230,7 +1138,6 @@ func (s *StackService) validateStackDeployment(ctx context.Context, client *clie
 			containerName = fmt.Sprintf("%s_%s_1", project.Name, serviceName)
 		}
 
-		// Check if container with this name already exists
 		existingContainers, err := client.ContainerList(ctx, container.ListOptions{
 			All: true,
 			Filters: filters.NewArgs(
@@ -1245,7 +1152,6 @@ func (s *StackService) validateStackDeployment(ctx context.Context, client *clie
 			existingContainer := existingContainers[0]
 			existingProjectLabel := existingContainer.Labels["com.docker.compose.project"]
 
-			// If container belongs to a different project, it's a conflict
 			if existingProjectLabel != project.Name {
 				conflicts = append(conflicts, fmt.Sprintf("Service '%s' wants to use container name '%s', but it's already used by project '%s'",
 					serviceName, containerName, existingProjectLabel))
@@ -1262,18 +1168,15 @@ func (s *StackService) validateStackDeployment(ctx context.Context, client *clie
 }
 
 func (s *StackService) createServices(ctx context.Context, client *client.Client, project *types.Project, options DeployOptions) error {
-	// First, validate that we can deploy without conflicts
 	if err := s.validateStackDeployment(ctx, client, project); err != nil {
 		return fmt.Errorf("deployment validation failed: %w", err)
 	}
 
-	// Sort services by dependencies
 	serviceOrder := s.resolveDependencyOrder(project.Services)
 
 	for _, serviceName := range serviceOrder {
 		service := project.Services[serviceName]
 
-		// Use container_name if specified, otherwise generate one
 		var containerName string
 		if service.ContainerName != "" {
 			containerName = service.ContainerName
@@ -1290,18 +1193,16 @@ func (s *StackService) createServices(ctx context.Context, client *client.Client
 }
 
 func (s *StackService) createSingleService(ctx context.Context, client *client.Client, project *types.Project, serviceName string, service types.ServiceConfig, containerName string) error {
-	// Build container configuration
 	config := &container.Config{
 		Image: service.Image,
 		Env:   s.buildEnvironment(service.Environment),
 		Labels: map[string]string{
-			"com.docker.compose.project":          project.Name, // This will be the stack ID
+			"com.docker.compose.project":          project.Name,
 			"com.docker.compose.service":          serviceName,
 			"com.docker.compose.container-number": "1",
 		},
 	}
 
-	// Add custom labels
 	for key, value := range service.Labels {
 		config.Labels[key] = value
 	}
@@ -1314,22 +1215,18 @@ func (s *StackService) createSingleService(ctx context.Context, client *client.C
 		config.Entrypoint = strslice.StrSlice(service.Entrypoint)
 	}
 
-	// Set working directory if specified
 	if service.WorkingDir != "" {
 		config.WorkingDir = service.WorkingDir
 	}
 
-	// Set user if specified
 	if service.User != "" {
 		config.User = service.User
 	}
 
-	// Set hostname if specified
 	if service.Hostname != "" {
 		config.Hostname = service.Hostname
 	}
 
-	// Build host configuration
 	hostConfig := &container.HostConfig{
 		RestartPolicy: container.RestartPolicy{
 			Name: container.RestartPolicyMode(service.Restart),
@@ -1338,14 +1235,11 @@ func (s *StackService) createSingleService(ctx context.Context, client *client.C
 		Binds:        s.buildVolumes(service.Volumes, project),
 	}
 
-	// Set privileged mode if specified
 	if service.Privileged {
 		hostConfig.Privileged = true
 	}
 
-	// Set memory and CPU limits if specified
 	if service.Deploy != nil {
-		// Resources is a struct, so we check its Limits field (which is a pointer)
 		if service.Deploy.Resources.Limits != nil {
 			if service.Deploy.Resources.Limits.MemoryBytes > 0 {
 				hostConfig.Memory = int64(service.Deploy.Resources.Limits.MemoryBytes)
@@ -1356,12 +1250,10 @@ func (s *StackService) createSingleService(ctx context.Context, client *client.C
 		}
 	}
 
-	// Network configuration
 	networkConfig := &network.NetworkingConfig{
 		EndpointsConfig: s.buildNetworkConfig(service.Networks, project),
 	}
 
-	// Check if container with this name already exists
 	existingContainers, err := client.ContainerList(ctx, container.ListOptions{
 		All: true,
 		Filters: filters.NewArgs(
@@ -1372,18 +1264,15 @@ func (s *StackService) createSingleService(ctx context.Context, client *client.C
 		return fmt.Errorf("failed to check for existing container: %w", err)
 	}
 
-	// If container exists, check if it belongs to this stack
 	if len(existingContainers) > 0 {
 		existingContainer := existingContainers[0]
 		existingProjectLabel := existingContainer.Labels["com.docker.compose.project"]
 
 		fmt.Printf("DEBUG: Found existing container %s with project label: %s\n", containerName, existingProjectLabel)
 
-		// If the existing container belongs to THIS stack, we can safely replace it (redeploy scenario)
 		if existingProjectLabel == project.Name {
 			fmt.Printf("DEBUG: Container %s belongs to this stack (%s), replacing it\n", containerName, project.Name)
 
-			// Stop if running
 			if existingContainer.State == "running" {
 				timeout := 10
 				if err := client.ContainerStop(ctx, existingContainer.ID, container.StopOptions{
@@ -1393,23 +1282,19 @@ func (s *StackService) createSingleService(ctx context.Context, client *client.C
 				}
 			}
 
-			// Remove container
 			if err := client.ContainerRemove(ctx, existingContainer.ID, container.RemoveOptions{
 				Force: true,
 			}); err != nil {
 				return fmt.Errorf("failed to remove existing container %s: %w", existingContainer.ID, err)
 			}
 		} else {
-			// Container exists but belongs to a different stack - this is an error!
 			return fmt.Errorf("container name conflict: container '%s' already exists and belongs to project '%s' (current project: '%s'). Please use a different container_name or stop the conflicting container first",
 				containerName, existingProjectLabel, project.Name)
 		}
 	}
 
-	// Create container with the specified name
 	resp, err := client.ContainerCreate(ctx, config, hostConfig, networkConfig, nil, containerName)
 	if err != nil {
-		// If creation fails due to name conflict, provide a clearer error
 		if strings.Contains(err.Error(), "already in use") || strings.Contains(err.Error(), "name") {
 			return fmt.Errorf("container name conflict: '%s' is already in use by another container. Please use a different container_name in your compose file", containerName)
 		}
@@ -1418,7 +1303,6 @@ func (s *StackService) createSingleService(ctx context.Context, client *client.C
 
 	fmt.Printf("DEBUG: Created container %s with ID %s\n", containerName, resp.ID[:12])
 
-	// Start container
 	if err := client.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return fmt.Errorf("failed to start container %s: %w", containerName, err)
 	}
@@ -1473,7 +1357,6 @@ func (s *StackService) buildVolumes(volumes []types.ServiceVolumeConfig, project
 		case types.VolumeTypeVolume:
 			volumeName := vol.Source
 			if _, exists := project.Volumes[volumeName]; exists {
-				// Named volume - prefix with project name
 				volumeName = fmt.Sprintf("%s_%s", project.Name, volumeName)
 			}
 			bind := fmt.Sprintf("%s:%s", volumeName, vol.Target)
@@ -1506,7 +1389,6 @@ func (s *StackService) buildNetworkConfig(networks map[string]*types.ServiceNetw
 		endpoints[fullNetworkName] = endpoint
 	}
 
-	// If no networks specified, connect to default network
 	if len(endpoints) == 0 {
 		defaultNetwork := fmt.Sprintf("%s_default", project.Name)
 		endpoints[defaultNetwork] = &network.EndpointSettings{
@@ -1572,7 +1454,6 @@ func (s *StackService) removeContainers(ctx context.Context, client *client.Clie
 	}
 
 	for _, cont := range containers {
-		// Stop container first if running
 		if cont.State == "running" {
 			timeout := 10
 			client.ContainerStop(ctx, cont.ID, container.StopOptions{
@@ -1580,7 +1461,6 @@ func (s *StackService) removeContainers(ctx context.Context, client *client.Clie
 			})
 		}
 
-		// Remove container
 		if err := client.ContainerRemove(ctx, cont.ID, container.RemoveOptions{
 			Force: true,
 		}); err != nil {
@@ -1596,7 +1476,6 @@ func (s *StackService) removeNetworks(ctx context.Context, client *client.Client
 		fullName := fmt.Sprintf("%s_%s", project.Name, networkName)
 
 		if err := client.NetworkRemove(ctx, fullName); err != nil {
-			// Ignore errors for networks that don't exist or are in use
 			continue
 		}
 	}
@@ -1609,7 +1488,6 @@ func (s *StackService) removeVolumes(ctx context.Context, client *client.Client,
 		fullName := fmt.Sprintf("%s_%s", project.Name, volumeName)
 
 		if err := client.VolumeRemove(ctx, fullName, true); err != nil {
-			// Ignore errors for volumes that don't exist or are in use
 			continue
 		}
 	}
@@ -1617,7 +1495,6 @@ func (s *StackService) removeVolumes(ctx context.Context, client *client.Client,
 	return nil
 }
 
-// resolveDependencyOrder returns a slice of service names in dependency order (topological sort).
 func (s *StackService) resolveDependencyOrder(services map[string]types.ServiceConfig) []string {
 	visited := make(map[string]bool)
 	var order []string
@@ -1643,7 +1520,6 @@ func (s *StackService) resolveDependencyOrder(services map[string]types.ServiceC
 	return order
 }
 
-// Helper method to get stacks directory from settings
 func (s *StackService) getStacksDirectory(ctx context.Context) (string, error) {
 	settings, err := s.settingsService.GetSettings(ctx)
 	if err != nil {
@@ -1651,24 +1527,22 @@ func (s *StackService) getStacksDirectory(ctx context.Context) (string, error) {
 	}
 
 	if settings.StacksDirectory == "" {
-		return "data/stacks", nil // Default fallback
+		return "data/stacks", nil
 	}
 
 	return settings.StacksDirectory, nil
 }
 
-// Add this method to import existing file-based stacks
 func (s *StackService) ImportFileBasedStacks(ctx context.Context) error {
 	stacksDir, err := s.getStacksDirectory(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get stacks directory: %w", err)
 	}
 
-	// Read directory entries
 	entries, err := os.ReadDir(stacksDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil // No stacks directory, nothing to import
+			return nil
 		}
 		return fmt.Errorf("failed to read stacks directory: %w", err)
 	}
@@ -1680,13 +1554,11 @@ func (s *StackService) ImportFileBasedStacks(ctx context.Context) error {
 
 		stackID := entry.Name()
 
-		// Check if stack already exists in database
 		existing, err := s.GetStackByID(ctx, stackID)
 		if err == nil && existing != nil {
-			continue // Stack already exists
+			continue
 		}
 
-		// Try to import this stack
 		if err := s.importSingleFileBasedStack(ctx, stackID, stacksDir); err != nil {
 			fmt.Printf("Warning: failed to import stack %s: %v\n", stackID, err)
 		}
@@ -1698,18 +1570,15 @@ func (s *StackService) ImportFileBasedStacks(ctx context.Context) error {
 func (s *StackService) importSingleFileBasedStack(ctx context.Context, stackID, stacksDir string) error {
 	stackDir := filepath.Join(stacksDir, stackID)
 
-	// Find compose file
 	composeFile := s.findComposeFile(stackDir)
 	if composeFile == "" {
 		return fmt.Errorf("no compose file found in %s", stackDir)
 	}
 
-	// Verify we can read the compose file (but don't store content in DB)
 	if _, err := os.ReadFile(composeFile); err != nil {
 		return fmt.Errorf("failed to read compose file: %w", err)
 	}
 
-	// Get directory stats for created time
 	info, err := os.Stat(stackDir)
 	var createdAt time.Time
 	if err == nil {
@@ -1718,15 +1587,14 @@ func (s *StackService) importSingleFileBasedStack(ctx context.Context, stackID, 
 		createdAt = time.Now()
 	}
 
-	// Create stack in database (metadata only, no content)
 	stack := &models.Stack{
-		ID:           uuid.New().String(), // Generate new UUID
-		Name:         stackID,             // Use directory name as stack name
-		DirName:      &stackID,            // Directory name (legacy)
+		ID:           uuid.New().String(),
+		Name:         stackID,
+		DirName:      &stackID,
 		Path:         stackDir,
 		Status:       models.StackStatusStopped,
 		IsExternal:   false,
-		IsLegacy:     true, // Mark as legacy since it was file-based
+		IsLegacy:     true,
 		IsRemote:     false,
 		ServiceCount: 0,
 		RunningCount: 0,
@@ -1743,20 +1611,15 @@ func (s *StackService) importSingleFileBasedStack(ctx context.Context, stackID, 
 	return nil
 }
 
-// Add a consistent method to get project name
 func (s *StackService) getProjectName(stack *models.Stack) string {
-	// Always use the stack ID as the project name for consistency
-	// This ensures each stack has a unique project name
 	return stack.ID
 }
 
 func (s *StackService) RedeployStack(ctx context.Context, id string, profiles []string, envOverrides map[string]string) error {
-	// First bring down the stack (stop and remove containers)
 	if err := s.DownStack(ctx, id); err != nil {
 		return fmt.Errorf("failed to bring down stack during redeploy: %w", err)
 	}
 
-	// Then deploy it again
 	if err := s.DeployStack(ctx, id, profiles, envOverrides); err != nil {
 		return fmt.Errorf("failed to deploy stack during redeploy: %w", err)
 	}
@@ -1771,26 +1634,21 @@ func (s *StackService) DownStack(ctx context.Context, id string) error {
 	}
 	defer dockerClient.Close()
 
-	// Get stack to find project name
 	var stack models.Stack
 	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
 		return fmt.Errorf("stack not found: %w", err)
 	}
 
-	// Use consistent project name
 	projectName := s.getProjectName(&stack)
 
-	// Also try alternative project names for backward compatibility
 	alternativeNames := []string{
-		projectName, // Current: stack UUID
+		projectName,
 	}
 
-	// Add directory name as fallback - safely check for nil
 	if stack.DirName != nil && *stack.DirName != "" && *stack.DirName != projectName {
 		alternativeNames = append(alternativeNames, *stack.DirName)
 	}
 
-	// Add stack name as fallback - safely check if DirName is nil
 	dirName := ""
 	if stack.DirName != nil {
 		dirName = *stack.DirName
@@ -1803,7 +1661,6 @@ func (s *StackService) DownStack(ctx context.Context, id string) error {
 
 	var allContainers []container.Summary
 
-	// Get containers for all possible project names
 	for _, name := range alternativeNames {
 		containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
 			All: true,
@@ -1816,7 +1673,6 @@ func (s *StackService) DownStack(ctx context.Context, id string) error {
 			continue
 		}
 
-		// Add containers that aren't already in our list
 		for _, cont := range containers {
 			found := false
 			for _, existing := range allContainers {
@@ -1833,11 +1689,9 @@ func (s *StackService) DownStack(ctx context.Context, id string) error {
 
 	fmt.Printf("DEBUG: Found %d total containers to stop and remove\n", len(allContainers))
 
-	// Stop and remove containers
 	for _, cont := range allContainers {
 		fmt.Printf("DEBUG: Stopping and removing container %s\n", cont.ID[:12])
 
-		// Stop container if running
 		if cont.State == "running" {
 			timeout := 10
 			if err := dockerClient.ContainerStop(ctx, cont.ID, container.StopOptions{
@@ -1847,7 +1701,6 @@ func (s *StackService) DownStack(ctx context.Context, id string) error {
 			}
 		}
 
-		// Remove container
 		if err := dockerClient.ContainerRemove(ctx, cont.ID, container.RemoveOptions{
 			Force: true,
 		}); err != nil {
@@ -1865,40 +1718,32 @@ func (s *StackService) DestroyStack(ctx context.Context, id string, removeFiles 
 	}
 	defer dockerClient.Close()
 
-	// Get stack first
 	var stack models.Stack
 	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
 		return fmt.Errorf("stack not found: %w", err)
 	}
 
-	// Load project before destroying containers (we need it for network/volume cleanup)
 	project, err := s.LoadProject(ctx, id)
 	if err != nil {
 		fmt.Printf("Warning: failed to load project for stack %s: %v\n", id, err)
-		// Continue with destruction even if we can't load the project
 	}
 
-	// First bring down the stack (stop and remove containers)
 	if err := s.DownStack(ctx, id); err != nil {
 		fmt.Printf("Warning: failed to bring down stack during destroy: %v\n", err)
-		// Continue with destruction even if containers couldn't be stopped
 	}
 
-	// Remove networks if project was loaded successfully
 	if project != nil {
 		if err := s.removeNetworks(ctx, dockerClient, project); err != nil {
 			fmt.Printf("Warning: failed to remove networks: %v\n", err)
 		}
 	}
 
-	// Remove volumes if requested and project was loaded successfully
 	if removeVolumes && project != nil {
 		if err := s.removeVolumes(ctx, dockerClient, project); err != nil {
 			fmt.Printf("Warning: failed to remove volumes: %v\n", err)
 		}
 	}
 
-	// Remove files if requested
 	if removeFiles {
 		if err := os.RemoveAll(stack.Path); err != nil {
 			fmt.Printf("Warning: failed to remove stack files at %s: %v\n", stack.Path, err)
@@ -1907,7 +1752,6 @@ func (s *StackService) DestroyStack(ctx context.Context, id string, removeFiles 
 		}
 	}
 
-	// Remove stack from database
 	if err := s.DeleteStack(ctx, id); err != nil {
 		return fmt.Errorf("failed to remove stack from database: %w", err)
 	}

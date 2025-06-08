@@ -3,7 +3,11 @@ package api
 import (
 	"net/http"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/api/dto"
 	"github.com/ofkm/arcane-backend/internal/services"
 )
 
@@ -172,5 +176,100 @@ func (h *ContainerHandler) IsImageInUse(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"inUse":   inUse,
+	})
+}
+
+func (h *ContainerHandler) Create(c *gin.Context) {
+	var req dto.CreateContainerDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request format: " + err.Error(),
+		})
+		return
+	}
+
+	config := &container.Config{
+		Image:        req.Image,
+		Cmd:          req.Command,
+		Entrypoint:   req.Entrypoint,
+		WorkingDir:   req.WorkingDir,
+		User:         req.User,
+		Env:          req.Environment,
+		ExposedPorts: make(nat.PortSet),
+		Labels: map[string]string{
+			"com.arcane.created": "true",
+		},
+	}
+
+	portBindings := make(nat.PortMap)
+	for containerPort, hostPort := range req.Ports {
+		port, err := nat.NewPort("tcp", containerPort)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid port format: " + err.Error(),
+			})
+			return
+		}
+		config.ExposedPorts[port] = struct{}{}
+		portBindings[port] = []nat.PortBinding{
+			{
+				HostPort: hostPort,
+			},
+		}
+	}
+
+	hostConfig := &container.HostConfig{
+		Binds:        req.Volumes,
+		PortBindings: portBindings,
+		Privileged:   req.Privileged,
+		AutoRemove:   req.AutoRemove,
+		RestartPolicy: container.RestartPolicy{
+			Name: container.RestartPolicyMode(req.RestartPolicy),
+		},
+	}
+
+	if req.Memory > 0 {
+		hostConfig.Memory = req.Memory
+	}
+	if req.CPUs > 0 {
+		hostConfig.NanoCPUs = int64(req.CPUs * 1000000000)
+	}
+
+	var networkingConfig *network.NetworkingConfig
+	if len(req.Networks) > 0 {
+		networkingConfig = &network.NetworkingConfig{
+			EndpointsConfig: make(map[string]*network.EndpointSettings),
+		}
+		for _, networkName := range req.Networks {
+			networkingConfig.EndpointsConfig[networkName] = &network.EndpointSettings{}
+		}
+	}
+
+	containerJSON, err := h.containerService.CreateContainer(
+		c.Request.Context(),
+		config,
+		hostConfig,
+		networkingConfig,
+		req.Name,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"data": gin.H{
+			"id":      containerJSON.ID,
+			"name":    containerJSON.Name,
+			"image":   containerJSON.Config.Image,
+			"status":  containerJSON.State.Status,
+			"created": containerJSON.Created,
+		},
 	})
 }

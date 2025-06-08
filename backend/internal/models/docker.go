@@ -3,9 +3,10 @@ package models
 import (
 	"fmt"
 	"time"
+
+	"github.com/docker/docker/api/types/container"
 )
 
-// Container represents a Docker container
 type Container struct {
 	ID          string      `json:"id" gorm:"primaryKey;type:text"`
 	Name        string      `json:"name" gorm:"not null"`
@@ -22,7 +23,6 @@ type Container struct {
 	CreatedAt   time.Time   `json:"createdAt" gorm:"not null"`
 	StartedAt   *time.Time  `json:"startedAt,omitempty" gorm:"column:started_at"`
 
-	// Relationships
 	Stack *Stack `json:"stack,omitempty" gorm:"foreignKey:StackID;references:ID"`
 
 	BaseModel
@@ -30,6 +30,31 @@ type Container struct {
 
 func (Container) TableName() string {
 	return "containers_table"
+}
+
+func CreateContainerFromJSON(containerJSON *container.InspectResponse) *Container {
+	container := &Container{
+		ID:     containerJSON.ID,
+		Name:   containerJSON.Name,
+		Image:  containerJSON.Config.Image,
+		Status: containerJSON.State.Status,
+		State:  containerJSON.State.Status,
+		BaseModel: BaseModel{
+			CreatedAt: time.Now(),
+		},
+	}
+
+	if createdTime, err := time.Parse(time.RFC3339Nano, containerJSON.Created); err == nil {
+		container.CreatedAt = createdTime
+	}
+
+	if containerJSON.State.StartedAt != "" {
+		if startedTime, err := time.Parse(time.RFC3339Nano, containerJSON.State.StartedAt); err == nil {
+			container.StartedAt = &startedTime
+		}
+	}
+
+	return container
 }
 
 type ContainerPort struct {
@@ -46,7 +71,6 @@ type ContainerMount struct {
 	RW          bool   `json:"rw"`
 }
 
-// Image represents a Docker image
 type Image struct {
 	ID          string      `json:"id" gorm:"primaryKey;type:text"`
 	RepoTags    StringSlice `json:"repoTags" gorm:"type:text"`
@@ -56,12 +80,10 @@ type Image struct {
 	Labels      JSON        `json:"labels,omitempty" gorm:"type:text"`
 	Created     time.Time   `json:"created" gorm:"not null"`
 
-	// Additional fields for enhanced functionality
-	Repo  string `json:"repo" gorm:"column:repo;index"` // Add index for faster lookups
-	Tag   string `json:"tag" gorm:"column:tag;index"`   // Add index for faster lookups
+	Repo  string `json:"repo" gorm:"column:repo;index"`
+	Tag   string `json:"tag" gorm:"column:tag;index"`
 	InUse bool   `json:"inUse" gorm:"column:in_use;default:false"`
 
-	// Relationship with ImageMaturityRecord
 	MaturityRecord *ImageMaturityRecord `json:"maturityRecord,omitempty" gorm:"foreignKey:ID;references:ID"`
 
 	BaseModel
@@ -71,10 +93,9 @@ func (Image) TableName() string {
 	return "images_table"
 }
 
-// Helper methods for Image
 func (i *Image) GetFullName() string {
 	if i.Repo == "<none>" || i.Tag == "<none>" {
-		return i.ID[:12] // Return short ID for untagged images
+		return i.ID[:12]
 	}
 	return fmt.Sprintf("%s:%s", i.Repo, i.Tag)
 }
@@ -83,7 +104,6 @@ func (i *Image) IsTagged() bool {
 	return i.Repo != "<none>" && i.Tag != "<none>"
 }
 
-// Volume represents a Docker volume
 type Volume struct {
 	Name       string    `json:"name" gorm:"primaryKey;type:text"`
 	Driver     string    `json:"driver" gorm:"not null"`
@@ -93,7 +113,6 @@ type Volume struct {
 	Options    JSON      `json:"options,omitempty" gorm:"type:text"`
 	CreatedAt  time.Time `json:"createdAt" gorm:"not null"`
 
-	// Additional fields
 	InUse bool `json:"inUse" gorm:"column:in_use;default:false"`
 
 	BaseModel
@@ -103,7 +122,6 @@ func (Volume) TableName() string {
 	return "volumes_table"
 }
 
-// Network represents a Docker network
 type Network struct {
 	ID         string    `json:"id" gorm:"primaryKey;type:text"`
 	Name       string    `json:"name" gorm:"uniqueIndex;not null"`
