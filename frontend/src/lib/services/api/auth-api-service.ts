@@ -1,7 +1,7 @@
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
 import { invalidateAll } from '$app/navigation';
-import BaseAPIService from './api/api-service';
+import BaseAPIService from './api-service';
 
 export interface LoginCredentials {
 	username: string;

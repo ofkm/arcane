@@ -1,4 +1,4 @@
-import { authService, type AuthSession } from '../auth-service';
+import { authService, type AuthSession } from './auth-api-service';
 import type { LoginRequest } from '$lib/types/session.type';
 
 export default class SessionAPIService {

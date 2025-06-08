@@ -7,7 +7,7 @@
 	import type { PageData } from './$types';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
-	import { authService } from '$lib/services/auth-service';
+	import { authService } from '$lib/services/api/auth-api-service';
 
 	let { data }: { data: PageData } = $props();
 
