@@ -43,15 +43,18 @@ jobs:
           docker volume create cache
 
       - name: Install dependencies
+        working-directory: frontend
         run: npm ci
 
       - name: Create .env
         run: echo PUBLIC_SESSION_SECRET=your-secure-random-string-here > .env
 
       - name: Install Playwright browsers
+        working-directory: frontend
         run: npx playwright install --with-deps
 
       - name: Run Playwright E2E tests
+        working-directory: frontend
         run: npm run test:e2e
 
       - name: List Playwright report directory
@@ -63,5 +66,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: tests/.report
+          path: frontend/tests/.report
           include-hidden-files: true
