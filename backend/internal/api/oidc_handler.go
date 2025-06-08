@@ -11,14 +11,14 @@ import (
 type OidcHandler struct {
 	authService *services.AuthService
 	oidcService *services.OidcService
-	appConfig   *config.Config // Add app config
+	appConfig   *config.Config
 }
 
-func NewOidcHandler(authService *services.AuthService, oidcService *services.OidcService, appConfig *config.Config) *OidcHandler { // Add appConfig
+func NewOidcHandler(authService *services.AuthService, oidcService *services.OidcService, appConfig *config.Config) *OidcHandler {
 	return &OidcHandler{
 		authService: authService,
 		oidcService: oidcService,
-		appConfig:   appConfig, // Store appConfig
+		appConfig:   appConfig,
 	}
 }
 
@@ -36,7 +36,6 @@ type OidcCallbackRequest struct {
 	State string `json:"state" binding:"required"`
 }
 
-// GetOidcStatus returns the OIDC configuration status
 func (h *OidcHandler) GetOidcStatus(c *gin.Context) {
 	status, err := h.authService.GetOidcConfigurationStatus(c.Request.Context())
 	if err != nil {
@@ -46,10 +45,9 @@ func (h *OidcHandler) GetOidcStatus(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, status) // Return the OidcStatusInfo directly
+	c.JSON(http.StatusOK, status)
 }
 
-// GetOidcAuthUrl generates an OIDC authorization URL
 func (h *OidcHandler) GetOidcAuthUrl(c *gin.Context) {
 	var req OidcAuthUrlRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -57,7 +55,6 @@ func (h *OidcHandler) GetOidcAuthUrl(c *gin.Context) {
 		return
 	}
 
-	// authService.IsOidcEnabled() will use getAuthSettings which respects env vars
 	enabled, err := h.authService.IsOidcEnabled(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to check OIDC status"})
@@ -68,8 +65,6 @@ func (h *OidcHandler) GetOidcAuthUrl(c *gin.Context) {
 		return
 	}
 
-	// oidcService.GenerateAuthURL internally calls authService.GetOidcConfig,
-	// which also respects env vars via getAuthSettings.
 	authUrl, stateCookieValue, err := h.oidcService.GenerateAuthURL(c.Request.Context(), req.RedirectUri)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to generate OIDC auth URL: " + err.Error()})
@@ -78,21 +73,19 @@ func (h *OidcHandler) GetOidcAuthUrl(c *gin.Context) {
 
 	c.SetCookie(
 		"oidc_state",
-		stateCookieValue, // This is the base64 encoded OidcState struct
-		600,              // 10 minutes
+		stateCookieValue,
+		600,
 		"/",
-		"",                   // Domain
-		c.Request.TLS != nil, // Secure if HTTPS
-		true,                 // HttpOnly
+		"",
+		c.Request.TLS != nil,
+		true,
 	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"authUrl": authUrl,
-		// No longer returning state in JSON response as it's complex and handled by cookie
 	})
 }
 
-// HandleOidcCallback processes the OIDC callback
 func (h *OidcHandler) HandleOidcCallback(c *gin.Context) {
 	var req struct {
 		Code  string `json:"code" binding:"required"`
@@ -104,42 +97,36 @@ func (h *OidcHandler) HandleOidcCallback(c *gin.Context) {
 		return
 	}
 
-	// Get stored state from cookie (this is the base64 encoded OidcState)
 	encodedStateFromCookie, err := c.Cookie("oidc_state")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Missing or invalid OIDC state cookie"})
 		return
 	}
 
-	// Clear the state cookie
 	c.SetCookie("oidc_state", "", -1, "/", "", c.Request.TLS != nil, true)
 
-	// Call the OIDC service to handle the callback
 	userInfo, err := h.oidcService.HandleCallback(c.Request.Context(), req.Code, req.State, encodedStateFromCookie)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Authenticate or create user via auth service
 	user, tokenPair, err := h.authService.OidcLogin(c.Request.Context(), *userInfo)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication failed"})
 		return
 	}
 
-	// Set token cookie
 	c.SetCookie(
 		"token",
 		tokenPair.AccessToken,
 		int(tokenPair.ExpiresAt.Unix()),
 		"/",
 		"",
-		c.Request.TLS != nil, // secure if HTTPS
-		true,                 // httpOnly
+		c.Request.TLS != nil,
+		true,
 	)
 
-	// Return successful response
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"user": gin.H{
@@ -152,7 +139,6 @@ func (h *OidcHandler) HandleOidcCallback(c *gin.Context) {
 	})
 }
 
-// GetOidcConfig returns the OIDC configuration (without sensitive data)
 func (h *OidcHandler) GetOidcConfig(c *gin.Context) {
 	config, err := h.authService.GetOidcConfig(c.Request.Context())
 	if err != nil {
@@ -163,7 +149,6 @@ func (h *OidcHandler) GetOidcConfig(c *gin.Context) {
 		return
 	}
 
-	// Return config without sensitive information
 	c.JSON(http.StatusOK, gin.H{
 		"clientId":              config.ClientID,
 		"redirectUri":           config.RedirectURI,
@@ -171,6 +156,5 @@ func (h *OidcHandler) GetOidcConfig(c *gin.Context) {
 		"tokenEndpoint":         config.TokenEndpoint,
 		"userinfoEndpoint":      config.UserinfoEndpoint,
 		"scopes":                config.Scopes,
-		// Don't return ClientSecret for security
 	})
 }

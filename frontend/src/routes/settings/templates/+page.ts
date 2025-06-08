@@ -1,11 +1,25 @@
-import { settingsAPI, templateAPI, templateRegistryAPI } from '$lib/services/api';
+import { templateAPI } from '$lib/services/api';
 
 export const load = async () => {
-	const [settings, templates, registries] = await Promise.all([settingsAPI.getSettings(), templateAPI.loadAll().catch(() => []), templateRegistryAPI.list().catch(() => [])]);
+	try {
+		const [templates, registries] = await Promise.all([templateAPI.loadAll().catch(() => []), templateAPI.getRegistries().catch(() => [])]);
 
-	return {
-		settings,
-		templates,
-		registries
-	};
+		const localTemplateCount = templates.filter((t) => !t.isRemote).length;
+		const remoteTemplateCount = templates.filter((t) => t.isRemote).length;
+
+		return {
+			templates,
+			registries,
+			localTemplateCount,
+			remoteTemplateCount
+		};
+	} catch (error) {
+		console.error('Error loading template settings:', error);
+		return {
+			templates: [],
+			registries: [],
+			localTemplateCount: 0,
+			remoteTemplateCount: 0
+		};
+	}
 };

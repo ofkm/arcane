@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/config"
+	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 )
 
@@ -21,6 +22,7 @@ type Services struct {
 	Oidc          *services.OidcService
 	Docker        *services.DockerClientService
 	Converter     *services.ConverterService
+	Template      *services.TemplateService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -33,11 +35,12 @@ func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	setupSettingsRoutes(api, services, appConfig)
 	setupDeploymentRoutes(api, services)
 	setupImageMaturityRoutes(api, services)
-	setupSystemRoutes(api, services.Docker)
+	setupSystemRoutes(api, services.Docker, services)
 	setupContainerRoutes(api, services)
 	setupImageRoutes(api, services)
 	setupVolumeRoutes(api, services)
 	setupNetworkRoutes(api, services)
+	setupTemplateRoutes(api, services)
 }
 
 func setupAuthRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {
@@ -47,10 +50,10 @@ func setupAuthRoutes(api *gin.RouterGroup, services *Services, appConfig *config
 
 	auth.POST("/login", authHandler.Login)
 	auth.POST("/logout", authHandler.Logout)
-	auth.GET("/me", AuthMiddleware(services.Auth), authHandler.GetCurrentUser)
-	auth.GET("/validate", AuthMiddleware(services.Auth), authHandler.ValidateSession)
+	auth.GET("/me", middleware.AuthMiddleware(services.Auth), authHandler.GetCurrentUser)
+	auth.GET("/validate", middleware.AuthMiddleware(services.Auth), authHandler.ValidateSession)
 	auth.POST("/refresh", authHandler.RefreshToken)
-	auth.POST("/password", AuthMiddleware(services.Auth), authHandler.ChangePassword)
+	auth.POST("/password", middleware.AuthMiddleware(services.Auth), authHandler.ChangePassword)
 
 	// OIDC endpoints
 	oidcHandler := NewOidcHandler(services.Auth, services.Oidc, appConfig)
@@ -65,7 +68,7 @@ func setupAuthRoutes(api *gin.RouterGroup, services *Services, appConfig *config
 
 func setupUserRoutes(api *gin.RouterGroup, services *Services) {
 	users := api.Group("/users")
-	users.Use(AuthMiddleware(services.Auth))
+	users.Use(middleware.AuthMiddleware(services.Auth))
 
 	userHandler := NewUserHandler(services.User)
 
@@ -78,7 +81,7 @@ func setupUserRoutes(api *gin.RouterGroup, services *Services) {
 
 func setupStackRoutes(router *gin.RouterGroup, services *Services) {
 	stacks := router.Group("/stacks")
-	stacks.Use(AuthMiddleware(services.Auth))
+	stacks.Use(middleware.AuthMiddleware(services.Auth))
 
 	stackHandler := NewStackHandler(services.Stack)
 
@@ -87,8 +90,6 @@ func setupStackRoutes(router *gin.RouterGroup, services *Services) {
 	stacks.GET("/:id", stackHandler.GetStack)
 	stacks.PUT("/:id", stackHandler.UpdateStack)
 	stacks.DELETE("/:id", stackHandler.DeleteStack)
-
-	// Docker Compose operations
 	stacks.POST("/:id/deploy", stackHandler.DeployStack)
 	stacks.POST("/:id/stop", stackHandler.StopStack)
 	stacks.POST("/:id/restart", stackHandler.RestartStack)
@@ -97,42 +98,41 @@ func setupStackRoutes(router *gin.RouterGroup, services *Services) {
 	stacks.POST("/:id/redeploy", stackHandler.RedeployStack)
 	stacks.POST("/:id/down", stackHandler.DownStack)
 	stacks.DELETE("/:id/destroy", stackHandler.DestroyStack)
-
 	stacks.POST("/convert", stackHandler.ConvertDockerRun)
 }
 
-// setupAgentRoutes handles agent management endpoints
 func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 	agents := api.Group("/agents")
+	// Note: Agent routes might need different auth strategy since agents themselves need to authenticate
+	// For now, keeping them protected but you might want to use middleware.OptionalAuthMiddleware for some
 
 	agentHandler := NewAgentHandler(services.Agent, services.Deployment)
 
-	// Agent management
-	agents.GET("", agentHandler.ListAgents)
-	agents.GET("/:agentId", agentHandler.GetAgent)
-	agents.DELETE("/:agentId", agentHandler.DeleteAgent)
+	// Agent management (require auth)
+	agents.GET("", middleware.AuthMiddleware(services.Auth), agentHandler.ListAgents)
+	agents.GET("/:agentId", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgent)
+	agents.DELETE("/:agentId", middleware.AuthMiddleware(services.Auth), agentHandler.DeleteAgent)
 
-	// Agent tasks
-	agents.GET("/:agentId/tasks", agentHandler.GetAgentTasks)
-	agents.POST("/:agentId/tasks", agentHandler.CreateTask)
-	agents.GET("/:agentId/tasks/:taskId", agentHandler.GetTask)
-	agents.POST("/:agentId/tasks/:taskId/result", agentHandler.SubmitTaskResult)
+	// Agent tasks (might need special auth for agents themselves)
+	agents.GET("/:agentId/tasks", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgentTasks)
+	agents.POST("/:agentId/tasks", middleware.AuthMiddleware(services.Auth), agentHandler.CreateTask)
+	agents.GET("/:agentId/tasks/:taskId", middleware.AuthMiddleware(services.Auth), agentHandler.GetTask)
+	agents.POST("/:agentId/tasks/:taskId/result", middleware.AuthMiddleware(services.Auth), agentHandler.SubmitTaskResult)
 
 	// Agent deployments
-	agents.GET("/:agentId/deployments", agentHandler.GetAgentDeployments)
-	agents.POST("/:agentId/deploy/stack", agentHandler.DeployStack)
-	agents.POST("/:agentId/deploy/container", agentHandler.DeployContainer)
-	agents.POST("/:agentId/deploy/image", agentHandler.DeployImage)
+	agents.GET("/:agentId/deployments", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgentDeployments)
+	agents.POST("/:agentId/deploy/stack", middleware.AuthMiddleware(services.Auth), agentHandler.DeployStack)
+	agents.POST("/:agentId/deploy/container", middleware.AuthMiddleware(services.Auth), agentHandler.DeployContainer)
+	agents.POST("/:agentId/deploy/image", middleware.AuthMiddleware(services.Auth), agentHandler.DeployImage)
 
 	// Agent stacks
-	agents.GET("/:agentId/stacks", agentHandler.GetAgentStacks)
+	agents.GET("/:agentId/stacks", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgentStacks)
 
 	// Agent utilities
-	agents.POST("/:agentId/health-check", agentHandler.SendHealthCheck)
-	agents.POST("/:agentId/stack-list", agentHandler.GetStackList)
+	agents.POST("/:agentId/health-check", middleware.AuthMiddleware(services.Auth), agentHandler.SendHealthCheck)
+	agents.POST("/:agentId/stack-list", middleware.AuthMiddleware(services.Auth), agentHandler.GetStackList)
 }
 
-// setupSettingsRoutes handles settings endpoints
 func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {
 	settings := api.Group("/settings")
 
@@ -141,16 +141,16 @@ func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *co
 	// Public endpoint for login page (no auth required)
 	settings.GET("/public", settingsHandler.GetPublicSettings)
 
-	// settings.Use(AuthMiddleware(services.Auth))
+	// Remove auth middleware from these endpoints
 	settings.GET("", settingsHandler.GetSettings)
 	settings.PUT("", settingsHandler.UpdateSettings)
 
-	// Specific settings endpoints
+	// Remove auth middleware from specific settings endpoints
 	settings.PUT("/auth", settingsHandler.UpdateAuth)
 	settings.PUT("/onboarding", settingsHandler.UpdateOnboarding)
 	settings.POST("/registry-credentials", settingsHandler.AddRegistryCredential)
 
-	// Add OIDC endpoints under settings as well for frontend compatibility
+	// Add OIDC endpoints under settings as well for frontend compatibility (no auth needed)
 	oidcHandler := NewOidcHandler(services.Auth, services.Oidc, appConfig)
 	settings.GET("/oidc/status", oidcHandler.GetOidcStatus)
 	settings.GET("/oidc/config", oidcHandler.GetOidcConfig)
@@ -158,9 +158,9 @@ func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *co
 	settings.POST("/oidc/callback", oidcHandler.HandleOidcCallback)
 }
 
-// setupDeploymentRoutes handles deployment endpoints
 func setupDeploymentRoutes(api *gin.RouterGroup, services *Services) {
 	deployments := api.Group("/deployments")
+	deployments.Use(middleware.AuthMiddleware(services.Auth))
 
 	deploymentHandler := NewDeploymentHandler(services.Deployment)
 
@@ -174,6 +174,7 @@ func setupDeploymentRoutes(api *gin.RouterGroup, services *Services) {
 
 func setupImageMaturityRoutes(api *gin.RouterGroup, services *Services) {
 	imageMaturity := api.Group("/images/maturity")
+	imageMaturity.Use(middleware.AuthMiddleware(services.Auth))
 
 	imageMaturityHandler := NewImageMaturityHandler(services.ImageMaturity, services.Image)
 
@@ -186,9 +187,9 @@ func setupImageMaturityRoutes(api *gin.RouterGroup, services *Services) {
 	imageMaturity.GET("/:imageId", imageMaturityHandler.GetImageMaturity)
 }
 
-func setupSystemRoutes(api *gin.RouterGroup, dockerService *services.DockerClientService) {
+func setupSystemRoutes(api *gin.RouterGroup, dockerService *services.DockerClientService, services *Services) {
 	system := api.Group("/system")
-	// system.Use(AuthMiddleware(services.Auth)) // Add when ready
+	system.Use(middleware.AuthMiddleware(services.Auth))
 
 	systemHandler := NewSystemHandler(dockerService)
 
@@ -198,7 +199,7 @@ func setupSystemRoutes(api *gin.RouterGroup, dockerService *services.DockerClien
 
 func setupContainerRoutes(api *gin.RouterGroup, services *Services) {
 	containers := api.Group("/containers")
-	containers.Use(AuthMiddleware(services.Auth))
+	containers.Use(middleware.AuthMiddleware(services.Auth))
 
 	containerHandler := NewContainerHandler(services.Container)
 
@@ -214,7 +215,7 @@ func setupContainerRoutes(api *gin.RouterGroup, services *Services) {
 
 func setupImageRoutes(api *gin.RouterGroup, services *Services) {
 	images := api.Group("/images")
-	images.Use(AuthMiddleware(services.Auth))
+	images.Use(middleware.AuthMiddleware(services.Auth))
 
 	imageHandler := NewImageHandler(services.Image, services.ImageMaturity)
 
@@ -229,7 +230,7 @@ func setupImageRoutes(api *gin.RouterGroup, services *Services) {
 
 func setupVolumeRoutes(api *gin.RouterGroup, services *Services) {
 	volumes := api.Group("/volumes")
-	volumes.Use(AuthMiddleware(services.Auth))
+	volumes.Use(middleware.AuthMiddleware(services.Auth))
 
 	volumeHandler := NewVolumeHandler(services.Volume)
 
@@ -243,7 +244,7 @@ func setupVolumeRoutes(api *gin.RouterGroup, services *Services) {
 
 func setupNetworkRoutes(api *gin.RouterGroup, services *Services) {
 	networks := api.Group("/networks")
-	networks.Use(AuthMiddleware(services.Auth))
+	networks.Use(middleware.AuthMiddleware(services.Auth))
 
 	networkHandler := NewNetworkHandler(services.Network)
 
@@ -254,4 +255,36 @@ func setupNetworkRoutes(api *gin.RouterGroup, services *Services) {
 	networks.POST("/:id/connect", networkHandler.ConnectContainer)
 	networks.POST("/:id/disconnect", networkHandler.DisconnectContainer)
 	networks.POST("/prune", networkHandler.Prune)
+}
+
+func setupTemplateRoutes(router *gin.RouterGroup, services *Services) {
+	templates := router.Group("/templates")
+
+	templateHandler := NewTemplateHandler(services.Template)
+
+	templates.GET("/fetch", templateHandler.FetchRegistry)
+
+	// Public template endpoints (for browsing templates)
+	templates.GET("", middleware.OptionalAuthMiddleware(services.Auth), templateHandler.GetAllTemplates)
+	templates.GET("/:id", middleware.OptionalAuthMiddleware(services.Auth), templateHandler.GetTemplate)
+	templates.GET("/:id/content", middleware.OptionalAuthMiddleware(services.Auth), templateHandler.GetTemplateContent)
+
+	// Protected template operations (require authentication)
+	templatesAuth := templates.Group("/")
+	templatesAuth.Use(middleware.AuthMiddleware(services.Auth))
+	{
+		templatesAuth.POST("", templateHandler.CreateTemplate)
+		templatesAuth.PUT("/:id", templateHandler.UpdateTemplate)
+		templatesAuth.DELETE("/:id", templateHandler.DeleteTemplate)
+
+		// Environment template
+		templatesAuth.GET("/env/default", templateHandler.GetEnvTemplate)
+		templatesAuth.POST("/env/default", templateHandler.SaveEnvTemplate)
+
+		// Registries (require authentication)
+		templatesAuth.GET("/registries", templateHandler.GetRegistries)
+		templatesAuth.POST("/registries", templateHandler.CreateRegistry)
+		templatesAuth.PUT("/registries/:id", templateHandler.UpdateRegistry)
+		templatesAuth.DELETE("/registries/:id", templateHandler.DeleteRegistry)
+	}
 }

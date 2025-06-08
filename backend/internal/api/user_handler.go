@@ -86,7 +86,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	}
 
 	if user.Roles == nil {
-		user.Roles = []string{"user"} // Default role
+		user.Roles = []string{"user"}
 	}
 
 	createdUser, err := h.userService.CreateUser(c.Request.Context(), user)
@@ -155,7 +155,6 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	// Update fields
 	if req.DisplayName != nil {
 		user.DisplayName = req.DisplayName
 	}

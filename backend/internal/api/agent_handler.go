@@ -20,13 +20,11 @@ func NewAgentHandler(agentService *services.AgentService, deploymentService *ser
 	}
 }
 
-// Create a response struct that includes the computed status
 type AgentResponse struct {
 	*models.Agent
 	Status string `json:"status"`
 }
 
-// Agent management endpoints
 func (h *AgentHandler) ListAgents(c *gin.Context) {
 	agents, err := h.agentService.ListAgents(c.Request.Context())
 	if err != nil {
@@ -37,8 +35,7 @@ func (h *AgentHandler) ListAgents(c *gin.Context) {
 		return
 	}
 
-	// Convert agents to response format with computed status
-	timeoutMinutes := 5 // TODO: Get from settings
+	timeoutMinutes := 5
 	agentResponses := make([]*AgentResponse, len(agents))
 	for i, agent := range agents {
 		status := "offline"
@@ -71,8 +68,7 @@ func (h *AgentHandler) GetAgent(c *gin.Context) {
 		return
 	}
 
-	// Check if agent is online and create response with status
-	timeoutMinutes := 5 // TODO: Get from settings
+	timeoutMinutes := 5
 	status := "offline"
 	if h.agentService.IsAgentOnline(agent, timeoutMinutes) {
 		status = "online"
@@ -107,7 +103,6 @@ func (h *AgentHandler) DeleteAgent(c *gin.Context) {
 	})
 }
 
-// Task management endpoints
 type CreateTaskRequest struct {
 	Type    models.AgentTaskType   `json:"type" binding:"required"`
 	Payload map[string]interface{} `json:"payload" binding:"required"`
@@ -210,7 +205,6 @@ func (h *AgentHandler) SubmitTaskResult(c *gin.Context) {
 	})
 }
 
-// Deployment endpoints
 func (h *AgentHandler) GetAgentDeployments(c *gin.Context) {
 	agentID := c.Param("agentId")
 
@@ -248,7 +242,6 @@ func (h *AgentHandler) DeployStack(c *gin.Context) {
 		return
 	}
 
-	// Create deployment task
 	task, err := h.agentService.DeployStackToAgent(c.Request.Context(), agentID, req.StackName, req.ComposeContent, req.EnvContent)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -258,7 +251,6 @@ func (h *AgentHandler) DeployStack(c *gin.Context) {
 		return
 	}
 
-	// Create deployment record
 	deployment, err := h.deploymentService.CreateStackDeployment(c.Request.Context(), agentID, req.StackName, req.ComposeContent, req.EnvContent, &task.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -295,7 +287,6 @@ func (h *AgentHandler) DeployContainer(c *gin.Context) {
 		return
 	}
 
-	// Create container deployment task
 	payload := map[string]interface{}{
 		"containerName": req.ContainerName,
 		"imageName":     req.ImageName,
@@ -313,7 +304,6 @@ func (h *AgentHandler) DeployContainer(c *gin.Context) {
 		return
 	}
 
-	// Create deployment record
 	deployment, err := h.deploymentService.CreateContainerDeployment(c.Request.Context(), agentID, req.ContainerName, req.ImageName, req.Ports, req.Volumes, &task.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -346,7 +336,6 @@ func (h *AgentHandler) DeployImage(c *gin.Context) {
 		return
 	}
 
-	// Create image pull task
 	task, err := h.agentService.PullImageOnAgent(c.Request.Context(), agentID, req.ImageName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -356,7 +345,6 @@ func (h *AgentHandler) DeployImage(c *gin.Context) {
 		return
 	}
 
-	// Create deployment record
 	deployment, err := h.deploymentService.CreateImageDeployment(c.Request.Context(), agentID, req.ImageName, &task.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -373,14 +361,10 @@ func (h *AgentHandler) DeployImage(c *gin.Context) {
 	})
 }
 
-// Stack management on agents
 func (h *AgentHandler) GetAgentStacks(c *gin.Context) {
 	agentID := c.Param("agentId")
 
-	// Get stacks from database for this agent
-	// We need a stack service here, but for now let's add it to the handler
-	// You'll need to add stackService to AgentHandler constructor
-	stacks := []interface{}{} // TODO: Use h.stackService.GetStacksByAgent(c.Request.Context(), agentID)
+	stacks := []interface{}{}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -390,7 +374,6 @@ func (h *AgentHandler) GetAgentStacks(c *gin.Context) {
 	})
 }
 
-// Helper endpoints for agent operations
 func (h *AgentHandler) SendHealthCheck(c *gin.Context) {
 	agentID := c.Param("agentId")
 

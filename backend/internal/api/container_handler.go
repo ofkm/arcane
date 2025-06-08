@@ -152,8 +152,7 @@ func (h *ContainerHandler) IsImageInUse(c *gin.Context) {
 		return
 	}
 
-	// Check if any containers are using this image
-	containers, err := h.containerService.ListContainers(c.Request.Context(), true) // Include all containers
+	containers, err := h.containerService.ListContainers(c.Request.Context(), true)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

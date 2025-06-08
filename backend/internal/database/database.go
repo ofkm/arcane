@@ -87,6 +87,8 @@ func (db *DB) Migrate() error {
 		&models.Volume{},
 		&models.Network{},
 		&models.ImageMaturityRecord{},
+		&models.TemplateRegistry{},
+		&models.ComposeTemplate{},
 	)
 
 	if err != nil {

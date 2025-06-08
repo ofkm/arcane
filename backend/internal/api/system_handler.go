@@ -39,7 +39,6 @@ type SystemStats struct {
 }
 
 func (h *SystemHandler) GetStats(c *gin.Context) {
-	// Get CPU usage
 	cpuPercent, err := cpu.Percent(time.Second, false)
 	var cpuUsage float64
 	if err != nil || len(cpuPercent) == 0 {
@@ -48,13 +47,11 @@ func (h *SystemHandler) GetStats(c *gin.Context) {
 		cpuUsage = cpuPercent[0]
 	}
 
-	// Get CPU count
-	cpuCount, err := cpu.Counts(true) // logical cores
+	cpuCount, err := cpu.Counts(true)
 	if err != nil {
-		cpuCount = runtime.NumCPU() // fallback to runtime
+		cpuCount = runtime.NumCPU()
 	}
 
-	// Get memory stats
 	memInfo, err := mem.VirtualMemory()
 	var memoryUsage, memoryTotal uint64
 	if err != nil {
@@ -65,11 +62,9 @@ func (h *SystemHandler) GetStats(c *gin.Context) {
 		memoryTotal = memInfo.Total
 	}
 
-	// Get disk stats for root partition
 	diskInfo, err := disk.Usage("/")
 	var diskUsage, diskTotal uint64
 	if err != nil {
-		// Disk stats are optional, don't fail if unavailable
 		diskUsage = 0
 		diskTotal = 0
 	} else {
@@ -77,7 +72,6 @@ func (h *SystemHandler) GetStats(c *gin.Context) {
 		diskTotal = diskInfo.Total
 	}
 
-	// Get host info
 	hostInfo, err := host.Info()
 	var hostname string
 	if err == nil {
@@ -113,7 +107,6 @@ func (h *SystemHandler) GetStats(c *gin.Context) {
 func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Create Docker client connection
 	dockerClient, err := h.dockerService.CreateConnection(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -124,7 +117,6 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	}
 	defer dockerClient.Close()
 
-	// Get Docker version info
 	version, err := dockerClient.ServerVersion(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -134,7 +126,6 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		return
 	}
 
-	// Get Docker system info
 	info, err := dockerClient.Info(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -144,7 +135,6 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		return
 	}
 
-	// Count containers and images
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -194,10 +184,8 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 func (h *SystemHandler) TestDockerConnection(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Get host from query params if provided
 	host := c.Query("host")
 
-	// Create a temporary Docker client for testing
 	var dockerClient *client.Client
 	var err error
 
@@ -219,7 +207,6 @@ func (h *SystemHandler) TestDockerConnection(c *gin.Context) {
 	}
 	defer dockerClient.Close()
 
-	// Test the connection by pinging Docker
 	_, err = dockerClient.Ping(ctx)
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{

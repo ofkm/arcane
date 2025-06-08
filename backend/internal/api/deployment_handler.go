@@ -21,13 +21,11 @@ func NewDeploymentHandler(deploymentService *services.DeploymentService) *Deploy
 }
 
 func (h *DeploymentHandler) ListDeployments(c *gin.Context) {
-	// Optional agent filter
 	var agentID *string
 	if agentParam := c.Query("agentId"); agentParam != "" {
 		agentID = &agentParam
 	}
 
-	// Optional pagination
 	page := 1
 	limit := 50
 	if pageParam := c.Query("page"); pageParam != "" {
@@ -50,7 +48,6 @@ func (h *DeploymentHandler) ListDeployments(c *gin.Context) {
 		return
 	}
 
-	// Simple pagination
 	total := len(deployments)
 	start := (page - 1) * limit
 	end := start + limit
@@ -129,7 +126,6 @@ func (h *DeploymentHandler) UpdateDeploymentStatus(c *gin.Context) {
 		return
 	}
 
-	// Validate status
 	var status models.DeploymentStatus
 	switch req.Status {
 	case "pending":
@@ -165,7 +161,6 @@ func (h *DeploymentHandler) UpdateDeploymentStatus(c *gin.Context) {
 	})
 }
 
-// Statistics and monitoring endpoints
 func (h *DeploymentHandler) GetDeploymentStats(c *gin.Context) {
 	deployments, err := h.deploymentService.ListDeployments(c.Request.Context(), nil)
 	if err != nil {
@@ -176,7 +171,6 @@ func (h *DeploymentHandler) GetDeploymentStats(c *gin.Context) {
 		return
 	}
 
-	// Calculate statistics
 	stats := map[string]int{
 		"total":     len(deployments),
 		"pending":   0,
@@ -225,7 +219,6 @@ func (h *DeploymentHandler) GetRecentDeployments(c *gin.Context) {
 		return
 	}
 
-	// Get most recent deployments
 	if len(deployments) > limit {
 		deployments = deployments[:limit]
 	}

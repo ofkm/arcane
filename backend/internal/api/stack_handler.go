@@ -55,10 +55,8 @@ func (h *StackHandler) ListStacks(c *gin.Context) {
 		return
 	}
 
-	// Transform stacks to ensure all fields are properly populated
 	var stackList []map[string]interface{}
 	for _, stack := range stacks {
-		// Get fresh service count and running count
 		services, err := h.stackService.GetStackServices(c.Request.Context(), stack.ID)
 		var serviceCount, runningCount int
 		if err != nil {
@@ -89,7 +87,7 @@ func (h *StackHandler) ListStacks(c *gin.Context) {
 			"isExternal":   stack.IsExternal,
 			"isLegacy":     stack.IsLegacy,
 			"isRemote":     stack.IsRemote,
-			"services":     services, // Always include services array
+			"services":     services,
 		}
 		stackList = append(stackList, stackResponse)
 	}
@@ -134,7 +132,6 @@ func (h *StackHandler) CreateStack(c *gin.Context) {
 func (h *StackHandler) GetStack(c *gin.Context) {
 	stackID := c.Param("id")
 
-	// Get stack metadata
 	stack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -144,27 +141,24 @@ func (h *StackHandler) GetStack(c *gin.Context) {
 		return
 	}
 
-	// Get content from files only when requested
 	composeContent, envContent, err := h.stackService.GetStackContent(c.Request.Context(), stackID)
 	if err != nil {
 		fmt.Printf("Warning: failed to read stack content: %v\n", err)
 		composeContent, envContent = "", ""
 	}
 
-	// Get services
 	services, err := h.stackService.GetStackServices(c.Request.Context(), stackID)
 	if err != nil {
 		fmt.Printf("Warning: failed to get services: %v\n", err)
 		services = nil
 	}
 
-	// Build response with content from files
 	stackResponse := map[string]interface{}{
 		"id":             stack.ID,
 		"name":           stack.Name,
 		"path":           stack.Path,
-		"composeContent": composeContent, // From file
-		"envContent":     envContent,     // From file
+		"composeContent": composeContent,
+		"envContent":     envContent,
 		"status":         stack.Status,
 		"serviceCount":   stack.ServiceCount,
 		"runningCount":   stack.RunningCount,
@@ -195,7 +189,6 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 		return
 	}
 
-	// Handle content updates first (if any)
 	if req.ComposeContent != nil || req.EnvContent != nil {
 		if err := h.stackService.UpdateStackContent(c.Request.Context(), stackID, req.ComposeContent, req.EnvContent); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -206,7 +199,6 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 		}
 	}
 
-	// Handle metadata updates
 	if req.Name != nil || req.AutoUpdate != nil {
 		stack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
 		if err != nil {
@@ -233,7 +225,6 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 		}
 	}
 
-	// Return updated stack with services
 	updatedStack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -243,14 +234,12 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 		return
 	}
 
-	// Get services for the updated stack
 	services, err := h.stackService.GetStackServices(c.Request.Context(), stackID)
 	if err != nil {
 		fmt.Printf("Warning: failed to get services: %v\n", err)
 		services = nil
 	}
 
-	// Build response with services
 	stackResponse := map[string]interface{}{
 		"id":           updatedStack.ID,
 		"name":         updatedStack.Name,
@@ -291,11 +280,9 @@ func (h *StackHandler) DeleteStack(c *gin.Context) {
 	})
 }
 
-// Stack action handlers
 func (h *StackHandler) StartStack(c *gin.Context) {
 	stackID := c.Param("id")
 
-	// TODO: Implement actual stack start logic
 	err := h.stackService.UpdateStackStatus(c.Request.Context(), stackID, models.StackStatusRunning)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -331,7 +318,6 @@ func (h *StackHandler) StopStack(c *gin.Context) {
 func (h *StackHandler) RestartStack(c *gin.Context) {
 	stackID := c.Param("id")
 
-	// TODO: Implement actual stack restart logic
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Stack restarted successfully",
@@ -344,7 +330,6 @@ func (h *StackHandler) RedeployStack(c *gin.Context) {
 
 	var req RedeployStackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		// If no JSON body provided, use defaults
 		req = RedeployStackRequest{
 			Profiles:     []string{},
 			EnvOverrides: map[string]string{},
@@ -387,7 +372,6 @@ func (h *StackHandler) DestroyStack(c *gin.Context) {
 
 	var req DestroyStackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		// If no JSON body provided, use defaults (don't remove files/volumes)
 		req = DestroyStackRequest{
 			RemoveFiles:   false,
 			RemoveVolumes: false,
@@ -411,7 +395,6 @@ func (h *StackHandler) DestroyStack(c *gin.Context) {
 func (h *StackHandler) PullStack(c *gin.Context) {
 	stackID := c.Param("id")
 
-	// TODO: Implement actual stack pull logic
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Stack images pulled successfully",
@@ -435,12 +418,6 @@ func (h *StackHandler) DeployStack(c *gin.Context) {
 		})
 		return
 	}
-
-	// options := services.DeployOptions{
-	// 	Profiles:      req.Profiles,
-	// 	EnvOverrides:  req.EnvOverrides,
-	// 	ForceRecreate: req.ForceRecreate,
-	// }
 
 	if err := h.stackService.DeployStack(c.Request.Context(), stackID, req.Profiles, req.EnvOverrides); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -501,7 +478,6 @@ func (h *StackHandler) ConvertDockerRun(c *gin.Context) {
 		return
 	}
 
-	// Parse the docker run command
 	parsed, err := h.converterService.ParseDockerRunCommand(req.DockerRunCommand)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -512,7 +488,6 @@ func (h *StackHandler) ConvertDockerRun(c *gin.Context) {
 		return
 	}
 
-	// Convert to docker-compose
 	dockerCompose, envVars, serviceName, err := h.converterService.ConvertToDockerCompose(parsed)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

@@ -60,7 +60,6 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
-	// Get current settings
 	settings, err := h.settingsService.GetSettings(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -70,7 +69,6 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
-	// Update only provided fields
 	if req.DockerHost != nil {
 		settings.DockerHost = *req.DockerHost
 	}
@@ -111,7 +109,6 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		settings.MaturityThresholdDays = *req.MaturityThresholdDays
 	}
 
-	// Save updated settings
 	updatedSettings, err := h.settingsService.UpdateSettings(c.Request.Context(), settings)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -128,7 +125,6 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 	})
 }
 
-// Specific settings endpoints
 func (h *SettingsHandler) UpdateAuth(c *gin.Context) {
 	var authSettings models.JSON
 	if err := c.ShouldBindJSON(&authSettings); err != nil {
@@ -226,13 +222,11 @@ func (h *SettingsHandler) AddRegistryCredential(c *gin.Context) {
 		return
 	}
 
-	// Add new registry credential
 	credentials := settings.RegistryCredentials
 	if credentials == nil {
 		credentials = make(models.JSON)
 	}
 
-	// Assuming credentials is stored as an array
 	if credArray, ok := credentials["credentials"].([]interface{}); ok {
 		newCred := map[string]interface{}{
 			"url":      req.URL,
@@ -268,9 +262,7 @@ func (h *SettingsHandler) AddRegistryCredential(c *gin.Context) {
 	})
 }
 
-// Add a new method for public settings that can be accessed without authentication
 func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
-	// Only return auth-related settings that are needed for the login page
 	settings, err := h.settingsService.GetSettings(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -280,9 +272,8 @@ func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
 		return
 	}
 
-	// Create a limited settings response for public access
 	publicSettings := map[string]interface{}{
-		"auth": settings.Auth, // Only expose auth settings
+		"auth": settings.Auth,
 	}
 
 	c.JSON(http.StatusOK, gin.H{

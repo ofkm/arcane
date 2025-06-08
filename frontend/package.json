@@ -19,14 +19,31 @@
 		"test:init": "APP_ENV=TEST npx tsx scripts/init-test-env.ts",
 		"test:setup": "npx tsx scripts/setup-test-images.ts",
 		"test:e2e": "APP_ENV=TEST npm run test:init && npm run test:setup && playwright test",
-		"test:e2e:ui": "playwright test --ui",
-		"test:e2e:report": "playwright show-report"
+		"test:e2e:ui": "playwright test --ui"
+	},
+	"dependencies": {
+		"@lucide/svelte": "^0.512.0",
+		"@codemirror/lang-yaml": "^6.1.2",
+		"@codemirror/legacy-modes": "^6.5.1",
+		"@sveltejs/adapter-static": "^3.0.8",
+		"@swimlane/docker-reference": "^2.0.1",
+		"@tanstack/table-core": "^8.21.3",
+		"axios": "^1.9.0",
+		"codemirror": "^6.0.1",
+		"date-fns": "^4.1.0",
+		"js-yaml": "^4.1.0",
+		"nanoid": "^5.1.5",
+		"prettier": "^3.5.3",
+		"prettier-plugin-svelte": "^3.4.0",
+		"runed": "^0.28.0",
+		"slugify": "^1.6.6",
+		"svelte-codemirror-editor": "^1.4.1",
+		"thememirror": "^2.0.1"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
 		"@eslint/js": "^9.18.0",
 		"@internationalized/date": "^3.8.1",
-		"@lucide/svelte": "^0.512.0",
 		"@playwright/test": "^1.52.0",
 		"@sveltejs/kit": "^2.21.2",
 		"@sveltejs/vite-plugin-svelte": "^5.1.0",
@@ -53,23 +70,5 @@
 		"typescript-eslint": "^8.33.1",
 		"vite": "^6.3.5",
 		"zod": "^3.25.50"
-	},
-	"dependencies": {
-		"@codemirror/lang-yaml": "^6.1.2",
-		"@codemirror/legacy-modes": "^6.5.1",
-		"@sveltejs/adapter-static": "^3.0.8",
-		"@swimlane/docker-reference": "^2.0.1",
-		"@tanstack/table-core": "^8.21.3",
-		"axios": "^1.9.0",
-		"codemirror": "^6.0.1",
-		"date-fns": "^4.1.0",
-		"js-yaml": "^4.1.0",
-		"nanoid": "^5.1.5",
-		"prettier": "^3.5.3",
-		"prettier-plugin-svelte": "^3.4.0",
-		"runed": "^0.28.0",
-		"slugify": "^1.6.6",
-		"svelte-codemirror-editor": "^1.4.1",
-		"thememirror": "^2.0.1"
 	}
 }

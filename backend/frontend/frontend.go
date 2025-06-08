@@ -27,7 +27,6 @@ func RegisterFrontend(router *gin.Engine) error {
 	router.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 
-		// IMPORTANT: Don't serve frontend for API routes
 		if strings.HasPrefix(path, "/api/") {
 			c.JSON(http.StatusNotFound, gin.H{
 				"success": false,
@@ -36,7 +35,6 @@ func RegisterFrontend(router *gin.Engine) error {
 			return
 		}
 
-		// Don't serve frontend for health checks
 		if path == "/health" {
 			c.JSON(http.StatusNotFound, gin.H{
 				"success": false,
@@ -45,14 +43,12 @@ func RegisterFrontend(router *gin.Engine) error {
 			return
 		}
 
-		// Try to serve the requested static file
 		requestedPath := strings.TrimPrefix(path, "/")
 		if requestedPath == "" {
 			requestedPath = "index.html"
 		}
 
 		if _, err := fs.Stat(distFS, requestedPath); os.IsNotExist(err) {
-			// File doesn't exist, serve index.html for SPA routing
 			c.Request.URL.Path = "/"
 			requestedPath = "index.html"
 		}
@@ -63,7 +59,6 @@ func RegisterFrontend(router *gin.Engine) error {
 	return nil
 }
 
-// FileServerWithCaching wraps http.FileServer to add caching headers
 type FileServerWithCaching struct {
 	root                    http.FileSystem
 	lastModified            time.Time
@@ -83,11 +78,9 @@ func NewFileServerWithCaching(root http.FileSystem, maxAge int) *FileServerWithC
 }
 
 func (f *FileServerWithCaching) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Check if the client has a cached version
 	if ifModifiedSince := r.Header.Get("If-Modified-Since"); ifModifiedSince != "" {
 		ifModifiedSinceTime, err := time.Parse(http.TimeFormat, ifModifiedSince)
 		if err == nil && f.lastModified.Before(ifModifiedSinceTime.Add(1*time.Second)) {
-			// Client's cached version is up to date
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}

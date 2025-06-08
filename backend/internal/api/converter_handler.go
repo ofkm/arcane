@@ -18,7 +18,6 @@ func NewConverterHandler(converterService *services.ConverterService) *Converter
 	}
 }
 
-// ConvertDockerRun converts a docker run command to docker-compose format
 func (h *ConverterHandler) ConvertDockerRun(c *gin.Context) {
 	var req models.ConvertDockerRunRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -29,7 +28,6 @@ func (h *ConverterHandler) ConvertDockerRun(c *gin.Context) {
 		return
 	}
 
-	// Parse the docker run command
 	parsed, err := h.converterService.ParseDockerRunCommand(req.DockerRunCommand)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -40,7 +38,6 @@ func (h *ConverterHandler) ConvertDockerRun(c *gin.Context) {
 		return
 	}
 
-	// Convert to docker-compose
 	dockerCompose, envVars, serviceName, err := h.converterService.ConvertToDockerCompose(parsed)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

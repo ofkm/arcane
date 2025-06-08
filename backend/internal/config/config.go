@@ -6,12 +6,12 @@ import (
 )
 
 type Config struct {
+	AppUrl      string
 	DatabaseURL string
 	Port        string
 	Environment string
 	JWTSecret   string
 
-	// OIDC Configuration from Environment Variables
 	PublicOidcEnabled         bool
 	OidcClientID              string
 	OidcClientSecret          string
@@ -26,6 +26,7 @@ func Load() *Config {
 	publicOidcEnabled, _ := strconv.ParseBool(os.Getenv("PUBLIC_OIDC_ENABLED"))
 
 	return &Config{
+		AppUrl:      getEnvOrDefault("APP_URL", "http://localhost:8080"),
 		DatabaseURL: getEnvOrDefault("DATABASE_URL", "sqlite3://./data/arcane.db"),
 		Port:        getEnvOrDefault("PORT", "8080"),
 		Environment: getEnvOrDefault("ENVIRONMENT", "development"),
