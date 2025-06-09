@@ -12,23 +12,6 @@ export type User = {
 	oidcSubjectId?: string;
 };
 
-export interface CreateUserRequest {
-	username: string;
-	email?: string;
-	password: string;
-	displayName?: string;
-	role: UserRole;
-	permissions?: string[];
-}
-
-export interface UpdateUserRequest {
-	email?: string;
-	displayName?: string;
-	role?: UserRole;
-	permissions?: string[];
-	isActive?: boolean;
-}
-
 export interface UserRole {
 	id: string;
 	name: string;

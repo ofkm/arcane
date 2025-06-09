@@ -1,9 +1,12 @@
 package services
 
 import (
+	"bufio" // Add this import
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http" // Add this import
 	"strings"
 	"time"
 
@@ -83,21 +86,71 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool) e
 	return nil
 }
 
-func (s *ImageService) PullImage(ctx context.Context, imageName string) error {
+// PullImage pulls a Docker image and streams the progress to progressWriter.
+// After a successful pull, it syncs the image list with the database.
+func (s *ImageService) PullImage(ctx context.Context, imageName string, progressWriter io.Writer) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
+	fmt.Printf("Attempting to pull image: %s\n", imageName)
 	reader, err := dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to pull image: %w", err)
+		return fmt.Errorf("failed to initiate image pull for %s: %w", imageName, err)
 	}
 	defer reader.Close()
 
-	_, err = dockerClient.ImageInspect(ctx, imageName)
-	return err
+	// Stream the pull progress line by line
+	scanner := bufio.NewScanner(reader)
+	flusher, implementsFlusher := progressWriter.(http.Flusher)
+
+	for scanner.Scan() {
+		line := scanner.Bytes() // Get the line as bytes
+		if _, writeErr := progressWriter.Write(line); writeErr != nil {
+			return fmt.Errorf("error writing pull progress for %s: %w", imageName, writeErr)
+		}
+		// Add a newline to ensure separation if the original line doesn't have one
+		// or if the client expects line-separated JSON objects.
+		if _, writeErr := progressWriter.Write([]byte("\n")); writeErr != nil {
+			return fmt.Errorf("error writing newline for %s: %w", imageName, writeErr)
+		}
+
+		if implementsFlusher {
+			flusher.Flush() // Flush the buffered data to the client
+		}
+	}
+	if scanErr := scanner.Err(); scanErr != nil {
+		// If the context was canceled (e.g. client disconnected), scanner.Err() might reflect that.
+		if errors.Is(scanErr, context.Canceled) || strings.Contains(scanErr.Error(), "context canceled") {
+			fmt.Printf("Image pull stream canceled for %s: %v\n", imageName, scanErr)
+			return fmt.Errorf("image pull stream canceled for %s: %w", imageName, scanErr)
+		}
+		return fmt.Errorf("error reading image pull stream for %s: %w", imageName, scanErr)
+	}
+
+	fmt.Printf("Image %s pull stream completed, attempting to sync database.\n", imageName)
+
+	// After a successful pull and stream, re-list images and sync to update the database
+	latestImages, listErr := dockerClient.ImageList(ctx, image.ListOptions{})
+	if listErr != nil {
+		// Log this error but don't necessarily fail the whole operation,
+		// as the image pull itself might have succeeded.
+		fmt.Printf("Warning: failed to list images after pull for sync: %v\n", listErr)
+		// Optionally, return this error if DB sync is critical for the "success" of the pull
+		// return fmt.Errorf("failed to list images post-pull: %w", listErr)
+	} else {
+		if syncErr := s.syncImagesToDatabase(ctx, latestImages, dockerClient); syncErr != nil {
+			fmt.Printf("Warning: error during image synchronization after pull: %v\n", syncErr)
+			// Optionally, return this error
+			// return fmt.Errorf("failed to sync database post-pull: %w", syncErr)
+		} else {
+			fmt.Printf("Database synchronized successfully after pulling image %s.\n", imageName)
+		}
+	}
+
+	return nil
 }
 
 func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.PruneReport, error) {

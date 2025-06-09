@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/services"
 )
 
@@ -24,8 +26,6 @@ func NewImageHandler(imageService *services.ImageService, imageMaturityService *
 }
 
 func (h *ImageHandler) List(c *gin.Context) {
-	// ListImagesWithMaturity internally calls ListImages (which triggers syncImagesToDatabase in a goroutine)
-	// and then fetches []*models.Image from the database.
 	dbImages, err := h.imageService.ListImagesWithMaturity(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -59,22 +59,17 @@ func (h *ImageHandler) List(c *gin.Context) {
 		} else {
 			if len(img.RepoTags) > 0 && img.RepoTags[0] != "<none>:<none>" && img.Repo != "<none>" && h.imageMaturityService != nil {
 				go func(imageID string, repo string, tag string, createdTime time.Time) {
-					// Use repo and tag directly from models.Image
-					// Ensure context.Background() is appropriate here or pass down the request context if feasible
 					maturityData, checkErr := h.imageMaturityService.CheckImageInRegistry(context.Background(), repo, tag, imageID)
 					if checkErr == nil {
-						// Pass img.Created (time.Time) directly for currentImageDate
 						setErr := h.imageMaturityService.SetImageMaturity(context.Background(), imageID, repo, tag, *maturityData, map[string]interface{}{
 							"registryDomain":    h.imageMaturityService.ExtractRegistryDomain(repo),
 							"isPrivateRegistry": h.imageMaturityService.IsPrivateRegistry(repo),
 							"currentImageDate":  createdTime,
 						})
 						if setErr != nil {
-							// Log error from SetImageMaturity
 							fmt.Printf("Error setting image maturity for %s: %v\n", imageID, setErr)
 						}
 					} else {
-						// Log error from CheckImageInRegistry
 						fmt.Printf("Error checking image maturity for %s (%s:%s): %v\n", imageID, repo, tag, checkErr)
 					}
 				}(img.ID, img.Repo, img.Tag, img.Created)
@@ -126,30 +121,47 @@ func (h *ImageHandler) Remove(c *gin.Context) {
 }
 
 func (h *ImageHandler) Pull(c *gin.Context) {
-	var req struct {
-		ImageName string `json:"imageName" binding:"required"`
-	}
+	var req dto.ImagePullDto
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "Invalid request body: " + err.Error(),
 		})
 		return
 	}
 
-	if err := h.imageService.PullImage(c.Request.Context(), req.ImageName); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+	c.Writer.Header().Set("Content-Type", "application/x-json-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+
+	err := h.imageService.PullImage(c.Request.Context(), req.ImageName, c.Writer)
+
+	if err != nil {
+		if !c.Writer.Written() {
+			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "manifest unknown") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"success": false,
+					"error":   fmt.Sprintf("Failed to pull image '%s': %s. Ensure the image name and tag are correct and the image exists in the registry.", req.ImageName, err.Error()),
+				})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"success": false,
+					"error":   fmt.Sprintf("Failed to pull image '%s': %s", req.ImageName, err.Error()),
+				})
+			}
+		} else {
+			slog.Error("Error during image pull stream or post-stream operation", "imageName", req.ImageName, "error", err.Error())
+			fmt.Fprintf(c.Writer, `{"error": {"code": 500, "message": "Stream interrupted or post-stream operation failed: %s"}}\n`, strings.ReplaceAll(err.Error(), "\"", "'"))
+			if flusher, ok := c.Writer.(http.Flusher); ok {
+				flusher.Flush()
+			}
+		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Image pulled successfully",
-	})
+	slog.Info("Image pull stream completed and database sync attempted", "imageName", req.ImageName)
 }
 
 func (h *ImageHandler) Prune(c *gin.Context) {

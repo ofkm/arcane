@@ -38,7 +38,6 @@
 		enhanceImagesWithMaturity,
 		loadImageMaturityBatch
 	} from '$lib/stores/maturity-store';
-	import { onMount } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 	let images = $derived(data.images || []);
@@ -58,6 +57,8 @@
 		checking: false
 	});
 
+	let isPullingInline = $state<Record<string, boolean>>({});
+
 	$effect(() => {
 		if (data.settings) {
 			settingsStore.update((current) => ({
@@ -70,13 +71,11 @@
 	const imageApi = new ImageAPIService();
 
 	let isPullDialogOpen = $state(false);
-	let pullProgress = $state(0);
 	let isConfirmPruneDialogOpen = $state(false);
 
 	const totalImages = $derived(images?.length || 0);
 	const totalSize = $derived(images?.reduce((acc, img) => acc + (img.Size || 0), 0) || 0);
 
-	// Use the maturity store to enhance images
 	const enhancedImages = $derived(enhanceImagesWithMaturity(images, $maturityStore.maturityData));
 
 	const filteredImages = $derived(
@@ -85,7 +84,6 @@
 		) as EnhancedImageInfo[]
 	);
 
-	// Load maturity data when images change
 	$effect(() => {
 		if (images && images.length > 0) {
 			loadImagesMaturity();
@@ -93,7 +91,6 @@
 	});
 
 	async function loadImagesMaturity() {
-		// Get images that need maturity checking (have valid repo/tags)
 		const imageIds = images
 			.filter((img) => {
 				if (!img.RepoTags || img.RepoTags.length === 0) return false;
@@ -114,7 +111,6 @@
 
 			if (result.success) {
 				toast.success(result.message);
-				// Give the backend a moment to process and save the results
 				setTimeout(async () => {
 					await invalidateAll();
 				}, 1000);
@@ -129,94 +125,12 @@
 		}
 	}
 
-	// Sync loading state with maturity store checking state
 	$effect(() => {
 		if ($maturityStore.isChecking && !isLoading.checking) {
 			isLoading.checking = true;
 		} else if (!$maturityStore.isChecking && isLoading.checking) {
-			// Don't immediately set to false, let the function handle it
 		}
 	});
-
-	async function handlePullImageSubmit(event: {
-		imageRef: string;
-		tag?: string;
-		platform?: string;
-		registryUrl?: string;
-	}) {
-		const { imageRef, tag = 'latest', platform, registryUrl } = event;
-
-		isLoading.pulling = true;
-		pullProgress = 0;
-
-		try {
-			const encodedImageRef = encodeURIComponent(imageRef);
-			let apiUrl = `/api/images/pull-stream/${encodedImageRef}?tag=${tag}`;
-
-			if (platform) {
-				apiUrl += `&platform=${encodeURIComponent(platform)}`;
-			}
-
-			if (registryUrl) {
-				const credentials = $settingsStore.registryCredentials || [];
-				const foundCredential = credentials.find((cred) => cred.url === registryUrl);
-
-				if (foundCredential && foundCredential.username) {
-					toast.info(
-						`Attempting pull from ${foundCredential.url} with user ${foundCredential.username}`
-					);
-				} else if (registryUrl !== 'docker.io' && registryUrl !== '') {
-					toast.error(`Credentials not found for ${registryUrl}. Attempting unauthenticated pull.`);
-				}
-			}
-
-			const eventSource = new EventSource(apiUrl);
-
-			eventSource.onmessage = (event) => {
-				const data = JSON.parse(event.data);
-
-				if (data.error) {
-					eventSource.close();
-					toast.error(`Pull failed: ${data.error}`);
-					isLoading.pulling = false;
-					return;
-				}
-
-				if (data.type === 'info' || data.type === 'warning') {
-					if (data.type === 'info') toast.info(data.message);
-					if (data.type === 'warning') toast.error(data.message);
-					return;
-				}
-
-				if (data.progress !== undefined) {
-					pullProgress = data.progress;
-				}
-
-				if (data.complete) {
-					eventSource.close();
-					const fullImageRef = `${imageRef}:${tag}`;
-					toast.success(`Image "${fullImageRef}" pulled successfully.`);
-					isPullDialogOpen = false;
-
-					setTimeout(async () => {
-						await invalidateAll();
-					}, 500);
-					isLoading.pulling = false;
-				}
-			};
-
-			eventSource.onerror = (err) => {
-				console.error('EventSource error:', err);
-				eventSource.close();
-				toast.error('Connection to server lost while pulling image');
-				isLoading.pulling = false;
-			};
-		} catch (err: unknown) {
-			console.error('Failed to pull image:', err);
-			toast.error(`Failed to pull image: ${err instanceof Error ? err.message : String(err)}`);
-			isLoading.pulling = false;
-		}
-	}
 
 	async function handleDeleteSelected() {
 		openConfirmDialog({
@@ -252,6 +166,7 @@
 						});
 					}
 
+					isLoading.removing = false;
 					console.log(`Finished deleting. Success: ${successCount}, Failed: ${failureCount}`);
 					if (successCount > 0) {
 						setTimeout(async () => {
@@ -278,24 +193,87 @@
 		});
 	}
 
-	async function pullImageByRepoTag(repoTag: string | undefined) {
-		if (!repoTag) {
-			toast.error('Cannot pull image without a repository tag');
+	async function handleInlineImagePull(imageIdentifier: string, fullImageName: string) {
+		if (!fullImageName) {
+			toast.error('Cannot pull image: name is missing.');
 			return;
 		}
 
-		let [imageRef, tag] = repoTag.split(':');
-		tag = tag || 'latest';
+		isPullingInline = { ...isPullingInline, [imageIdentifier]: true };
+		let pullError = '';
+		let lastStatusText = `Pulling ${fullImageName}...`;
+		toast.info(lastStatusText, { id: `pull-${imageIdentifier}` });
 
-		await handleApiResultWithCallbacks({
-			result: await tryCatch(imageApi.pull(imageRef, tag)),
-			message: `Failed to pull image "${repoTag}"`,
-			setLoadingState: (value) => (isLoading.pulling = value),
-			onSuccess: async () => {
-				toast.success(`Image "${repoTag}" pulled successfully.`);
-				await invalidateAll();
+		try {
+			const response = await fetch('/api/images/pull', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ imageName: fullImageName })
+			});
+
+			if (!response.ok || !response.body) {
+				const errorData = await response
+					.json()
+					.catch(() => ({ error: 'Failed to pull image. Server returned an error.' }));
+				const errorMessage =
+					typeof errorData.error === 'string'
+						? errorData.error
+						: errorData.message || `HTTP error ${response.status}`;
+				throw new Error(errorMessage);
 			}
-		});
+
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = '';
+
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+
+				buffer += decoder.decode(value, { stream: true });
+				const lines = buffer.split('\n');
+				buffer = lines.pop() || '';
+
+				for (const line of lines) {
+					if (line.trim() === '') continue;
+					try {
+						const data = JSON.parse(line);
+						if (data.error) {
+							console.error('Error in stream:', data.error);
+							pullError =
+								typeof data.error === 'string'
+									? data.error
+									: data.error.message || 'An error occurred during pull.';
+							lastStatusText = `Error: ${pullError}`;
+							toast.error(lastStatusText, { id: `pull-${imageIdentifier}` });
+							continue;
+						}
+						if (data.status) {
+							lastStatusText = data.status;
+						}
+					} catch (e: any) {
+						console.warn('Failed to parse stream line:', line, e);
+					}
+				}
+			}
+
+			if (pullError) {
+				throw new Error(pullError);
+			}
+
+			toast.success(`Image "${fullImageName}" pulled successfully.`, {
+				id: `pull-${imageIdentifier}`
+			});
+			await invalidateAll();
+		} catch (error: any) {
+			console.error(`Pull image error for ${fullImageName}:`, error);
+			const message = error.message || `Failed to pull ${fullImageName}.`;
+			toast.error(message, { id: `pull-${imageIdentifier}` });
+		} finally {
+			isPullingInline = { ...isPullingInline, [imageIdentifier]: false };
+		}
 	}
 
 	async function handleImageRemove(id: string) {
@@ -309,6 +287,7 @@
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
+					isLoading.removing = true;
 					await handleApiResultWithCallbacks({
 						result: await tryCatch(imageApi.remove(id)),
 						message: 'Failed to Remove Image',
@@ -318,6 +297,7 @@
 							await invalidateAll();
 						}
 					});
+					isLoading.removing = false;
 				}
 			}
 		});
@@ -512,10 +492,10 @@
 											Inspect
 										</DropdownMenu.Item>
 										<DropdownMenu.Item
-											onclick={() => pullImageByRepoTag(item.RepoTags?.[0])}
-											disabled={isLoading.pulling || !item.RepoTags?.[0]}
+											onclick={() => handleInlineImagePull(item.Id, item.RepoTags?.[0] || '')}
+											disabled={isPullingInline[item.Id] || !item.RepoTags?.[0]}
 										>
-											{#if isLoading.pulling}
+											{#if isPullingInline[item.Id]}
 												<Loader2 class="animate-spin size-4" />
 												Pulling...
 											{:else}
@@ -556,12 +536,7 @@
 		</div>
 	{/if}
 
-	<PullImageDialog
-		bind:open={isPullDialogOpen}
-		isPulling={isLoading.pulling}
-		{pullProgress}
-		onSubmit={handlePullImageSubmit}
-	/>
+	<PullImageDialog bind:open={isPullDialogOpen} onPullFinished={() => invalidateAll()} />
 
 	<Dialog.Root bind:open={isConfirmPruneDialogOpen}>
 		<Dialog.Content>
