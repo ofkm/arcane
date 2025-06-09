@@ -14,7 +14,6 @@ export const load = async (): Promise<ImageData> => {
 
 		const enhancedImages = await Promise.all(
 			images.map(async (image): Promise<EnhancedImageInfo> => {
-				const InUse = await containerAPI.isImageInUse(image.Id).catch(() => false);
 
 				let repo = '<none>';
 				let tag = '<none>';
@@ -31,8 +30,7 @@ export const load = async (): Promise<ImageData> => {
 				return {
 					...image,
 					repo,
-					tag,
-					InUse
+					tag
 				};
 			})
 		);

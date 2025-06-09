@@ -39,7 +39,9 @@ func (s *ImageService) ListImages(ctx context.Context) ([]image.Summary, error) 
 		return nil, fmt.Errorf("failed to list Docker images: %w", err)
 	}
 
-	go s.syncImagesToDatabase(ctx, images, dockerClient)
+	if syncErr := s.syncImagesToDatabase(ctx, images, dockerClient); syncErr != nil {
+		fmt.Printf("Warning: error during image synchronization in ListImages: %v\n", syncErr)
+	}
 
 	return images, nil
 }
@@ -133,17 +135,19 @@ func (s *ImageService) GetImageHistory(ctx context.Context, id string) ([]image.
 	return history, nil
 }
 
-func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []image.Summary, dockerClient *client.Client) {
+func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []image.Summary, dockerClient *client.Client) error {
+
 	inUseImageIDs := make(map[string]bool)
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
-		fmt.Printf("Error listing containers for InUse check: %v\n", err)
+		fmt.Printf("Error listing containers for InUse check: %v. InUse status may be inaccurate.\n", err)
 	} else {
 		for _, cont := range containers {
 			inUseImageIDs[cont.ImageID] = true
 		}
 	}
 
+	var lastErr error
 	for _, di := range dockerImages {
 		_, isInUse := inUseImageIDs[di.ID]
 
@@ -180,15 +184,17 @@ func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []
 			imageModel.Tag = "<none>"
 		}
 
-		err := s.db.WithContext(ctx).Clauses(clause.OnConflict{
+		dbErr := s.db.WithContext(ctx).Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "id"}},
 			DoUpdates: clause.AssignmentColumns([]string{"repo_tags", "repo_digests", "size", "virtual_size", "created", "labels", "repo", "tag", "in_use"}),
 		}).Create(&imageModel).Error
 
-		if err != nil {
-			fmt.Printf("Error syncing image %s to database: %v\n", di.ID, err)
+		if dbErr != nil {
+			fmt.Printf("Error syncing image %s to database: %v\n", di.ID, dbErr)
+			lastErr = dbErr
 		}
 	}
+	return lastErr
 }
 
 func (s *ImageService) GetImageByIDFromDB(ctx context.Context, id string) (*models.Image, error) {
@@ -220,12 +226,12 @@ func (s *ImageService) GetImagesByRepository(ctx context.Context, repo string) (
 func (s *ImageService) ListImagesWithMaturity(ctx context.Context) ([]*models.Image, error) {
 	_, err := s.ListImages(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sync Docker images: %w", err)
+		return nil, fmt.Errorf("failed to list and sync Docker images: %w", err)
 	}
 
 	var images []*models.Image
 	if err := s.db.WithContext(ctx).Preload("MaturityRecord").Find(&images).Error; err != nil {
-		return nil, fmt.Errorf("failed to get images with maturity data: %w", err)
+		return nil, fmt.Errorf("failed to get images with maturity data from DB: %w", err)
 	}
 
 	return images, nil
