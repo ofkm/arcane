@@ -20,17 +20,20 @@ type Config struct {
 	OidcTokenEndpoint         string
 	OidcUserinfoEndpoint      string
 	OidcScopes                string
+
+	EncryptionKey string
 }
 
 func Load() *Config {
 	publicOidcEnabled, _ := strconv.ParseBool(os.Getenv("PUBLIC_OIDC_ENABLED"))
 
 	return &Config{
-		AppUrl:      getEnvOrDefault("APP_URL", "http://localhost:8080"),
-		DatabaseURL: getEnvOrDefault("DATABASE_URL", "sqlite3://./data/arcane.db"),
-		Port:        getEnvOrDefault("PORT", "8080"),
-		Environment: getEnvOrDefault("ENVIRONMENT", "development"),
-		JWTSecret:   getEnvOrDefault("JWT_SECRET", "default-jwt-secret-change-me"),
+		AppUrl:        getEnvOrDefault("APP_URL", "http://localhost:8080"),
+		DatabaseURL:   getEnvOrDefault("DATABASE_URL", "sqlite3://./data/arcane.db"),
+		Port:          getEnvOrDefault("PORT", "8080"),
+		Environment:   getEnvOrDefault("ENVIRONMENT", "development"),
+		JWTSecret:     getEnvOrDefault("JWT_SECRET", "default-jwt-secret-change-me"),
+		EncryptionKey: getEnvOrDefault("ENCRYPTION_KEY", "arcane-dev-key-32-characters!!!"),
 
 		PublicOidcEnabled:         publicOidcEnabled,
 		OidcClientID:              os.Getenv("OIDC_CLIENT_ID"),

@@ -26,23 +26,25 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 	templateService := services.NewTemplateService(db)
 	authService := services.NewAuthService(userService, settingsService, cfg.JWTSecret, cfg)
 	oidcService := services.NewOidcService(authService)
+	containerRegistry := services.NewContainerRegistryService(db)
 
 	appServices := &api.Services{
-		User:          userService,
-		Stack:         stackService,
-		Agent:         agentService,
-		Settings:      settingsService,
-		Deployment:    deploymentService,
-		Container:     containerService,
-		Image:         imageService,
-		Volume:        volumeService,
-		Network:       networkService,
-		ImageMaturity: imageMaturityService,
-		Auth:          authService,
-		Oidc:          oidcService,
-		Docker:        dockerClientService,
-		Converter:     converterService,
-		Template:      templateService,
+		User:              userService,
+		Stack:             stackService,
+		Agent:             agentService,
+		Settings:          settingsService,
+		Deployment:        deploymentService,
+		Container:         containerService,
+		Image:             imageService,
+		Volume:            volumeService,
+		Network:           networkService,
+		ImageMaturity:     imageMaturityService,
+		Auth:              authService,
+		Oidc:              oidcService,
+		Docker:            dockerClientService,
+		Converter:         converterService,
+		Template:          templateService,
+		ContainerRegistry: containerRegistry,
 	}
 	return appServices, dockerClientService, nil
 }

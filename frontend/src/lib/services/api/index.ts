@@ -18,8 +18,8 @@ import AppConfigAPIService from './appconfig-api-service';
 import AgentAPIService from './agent-api-service';
 import AgentStackAPIService from './agent-stack-api-service';
 import ConverterAPIService from './converter-api-service';
+import ContainerRegistryAPIService from './container-registry-api-service';
 
-// Create singleton instances
 export const containerAPI = new ContainerAPIService();
 export const imageAPI = new ImageAPIService();
 export const imageMaturityAPI = new ImageMaturityAPIService();
@@ -40,6 +40,7 @@ export const appConfigAPI = new AppConfigAPIService();
 export const agentAPI = new AgentAPIService();
 export const agentStackAPI = new AgentStackAPIService();
 export const converterAPI = new ConverterAPIService();
+export const containerRegistryAPI = new ContainerRegistryAPIService();
 
 interface APIServices {
 	container: ContainerAPIService;
@@ -61,6 +62,7 @@ interface APIServices {
 	appConfig: AppConfigAPIService;
 	agent: AgentAPIService;
 	converter: ConverterAPIService;
+	containerRegistry: ContainerRegistryAPIService;
 }
 
 const apiServices: APIServices = {
@@ -82,7 +84,8 @@ const apiServices: APIServices = {
 	validation: validationAPI,
 	appConfig: appConfigAPI,
 	agent: agentAPI,
-	converter: converterAPI
+	converter: converterAPI,
+	containerRegistry: containerRegistryAPI
 };
 
 export default apiServices;

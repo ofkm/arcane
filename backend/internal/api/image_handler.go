@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type ImageHandler struct {
@@ -62,8 +63,8 @@ func (h *ImageHandler) List(c *gin.Context) {
 					maturityData, checkErr := h.imageMaturityService.CheckImageInRegistry(context.Background(), repo, tag, imageID)
 					if checkErr == nil {
 						setErr := h.imageMaturityService.SetImageMaturity(context.Background(), imageID, repo, tag, *maturityData, map[string]interface{}{
-							"registryDomain":    h.imageMaturityService.ExtractRegistryDomain(repo),
-							"isPrivateRegistry": h.imageMaturityService.IsPrivateRegistry(repo),
+							"registryDomain":    utils.ExtractRegistryDomain(repo),
+							"isPrivateRegistry": utils.IsPrivateRegistry(repo),
 							"currentImageDate":  createdTime,
 						})
 						if setErr != nil {
@@ -279,8 +280,8 @@ func (h *ImageHandler) CheckMaturity(c *gin.Context) {
 	}
 
 	err = h.imageMaturityService.SetImageMaturity(c.Request.Context(), imageID, repo, tag, *maturityData, map[string]interface{}{
-		"registryDomain":    h.imageMaturityService.ExtractRegistryDomain(repo),
-		"isPrivateRegistry": h.imageMaturityService.IsPrivateRegistry(repo),
+		"registryDomain":    utils.ExtractRegistryDomain(repo),
+		"isPrivateRegistry": utils.IsPrivateRegistry(repo),
 		"currentImageDate":  time.Unix(targetImage.Created, 0),
 	})
 	if err != nil {

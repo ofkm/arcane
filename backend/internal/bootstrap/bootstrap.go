@@ -18,6 +18,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/job"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type App struct {
@@ -37,6 +38,8 @@ func InitializeApp() (*App, error) {
 
 	cfg := config.Load()
 	appCtx, cancelApp := context.WithCancel(context.Background())
+
+	utils.InitEncryption(cfg)
 
 	db, err := initializeDBAndMigrate(cfg)
 	if err != nil {

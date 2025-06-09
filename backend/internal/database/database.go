@@ -72,7 +72,6 @@ func Initialize(databaseURL string, environment string) (*DB, error) {
 }
 
 func (db *DB) Migrate() error {
-	// Auto-migrate all models
 	err := db.AutoMigrate(
 		&models.Settings{},
 		&models.User{},
@@ -89,6 +88,7 @@ func (db *DB) Migrate() error {
 		&models.ImageMaturityRecord{},
 		&models.TemplateRegistry{},
 		&models.ComposeTemplate{},
+		&models.ContainerRegistry{},
 	)
 
 	if err != nil {

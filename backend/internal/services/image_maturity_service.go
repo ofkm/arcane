@@ -12,6 +12,7 @@ import (
 
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type ImageMaturityService struct {
@@ -260,8 +261,8 @@ func (s *ImageMaturityService) ProcessImagesForMaturityCheck(ctx context.Context
 		}
 
 		err = s.SetImageMaturity(ctx, img.ID, repo, tag, *maturityData, map[string]interface{}{
-			"registryDomain":    s.ExtractRegistryDomain(repo),
-			"isPrivateRegistry": s.IsPrivateRegistry(repo),
+			"registryDomain":    utils.ExtractRegistryDomain(repo),
+			"isPrivateRegistry": utils.IsPrivateRegistry(repo),
 			"currentImageDate":  time.Unix(img.Created, 0),
 		})
 		if err != nil {
@@ -273,7 +274,8 @@ func (s *ImageMaturityService) ProcessImagesForMaturityCheck(ctx context.Context
 }
 
 func (s *ImageMaturityService) CheckImageInRegistry(ctx context.Context, repo, tag, imageID string) (*models.ImageMaturity, error) {
-	registryURL := "https://registry-1.docker.io/v2"
+	registryDomain := utils.ExtractRegistryDomain(repo)
+	registryURL := utils.BuildRegistryURL(registryDomain)
 
 	token, err := s.getRegistryToken(ctx, repo)
 	if err != nil {
@@ -484,56 +486,18 @@ func (s *ImageMaturityService) parseVersion(version string) []int {
 }
 
 func (s *ImageMaturityService) getRegistryToken(ctx context.Context, repo string) (string, error) {
-	domain := s.ExtractRegistryDomain(repo)
+	domain := utils.ExtractRegistryDomain(repo)
 
 	switch domain {
 	case "docker.io", "registry-1.docker.io", "index.docker.io":
-		return s.getDockerHubToken(ctx, repo)
+		return utils.GetDockerHubToken(ctx, repo)
 	default:
-		return s.getGenericRegistryToken(ctx, domain, repo)
+		return utils.GetGenericRegistryToken(ctx, domain, repo)
 	}
-}
-
-func (s *ImageMaturityService) getDockerHubToken(ctx context.Context, repo string) (string, error) {
-	normalizedRepo := repo
-	if !strings.Contains(repo, "/") {
-		normalizedRepo = "library/" + repo
-	} else if strings.HasPrefix(repo, "docker.io/") {
-		normalizedRepo = strings.TrimPrefix(repo, "docker.io/")
-	}
-
-	authURL := fmt.Sprintf("https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull", normalizedRepo)
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, "GET", authURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create auth request: %w", err)
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to get auth token: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("auth request failed with status: %d", resp.StatusCode)
-	}
-
-	var tokenResp DockerHubTokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return "", fmt.Errorf("failed to decode auth response: %w", err)
-	}
-
-	return tokenResp.Token, nil
-}
-
-func (s *ImageMaturityService) getGenericRegistryToken(ctx context.Context, domain, repo string) (string, error) {
-	return "", nil
 }
 
 func (s *ImageMaturityService) getImageManifest(ctx context.Context, registryURL, repo, tag, token string) (*RegistryManifest, error) {
-	domain := s.ExtractRegistryDomain(repo)
+	domain := utils.ExtractRegistryDomain(repo)
 
 	switch domain {
 	case "docker.io", "registry-1.docker.io", "index.docker.io":
@@ -632,7 +596,7 @@ func (s *ImageMaturityService) getGenericRegistryManifest(ctx context.Context, r
 }
 
 func (s *ImageMaturityService) getImageTags(ctx context.Context, registryURL, repo, token string) ([]string, error) {
-	domain := s.ExtractRegistryDomain(repo)
+	domain := utils.ExtractRegistryDomain(repo)
 
 	switch domain {
 	case "docker.io", "registry-1.docker.io", "index.docker.io":
@@ -681,7 +645,8 @@ func (s *ImageMaturityService) getDockerHubTags(ctx context.Context, repo, token
 }
 
 func (s *ImageMaturityService) getGenericRegistryTags(ctx context.Context, registryURL, repo, token string) ([]string, error) {
-	tagsURL := fmt.Sprintf("%s/%s/tags/list", registryURL, repo)
+	normalizedRepo := s.normalizeRepoForRegistry(repo)
+	tagsURL := fmt.Sprintf("%s/%s/tags/list", registryURL, normalizedRepo)
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, "GET", tagsURL, nil)
@@ -699,6 +664,10 @@ func (s *ImageMaturityService) getGenericRegistryTags(ctx context.Context, regis
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("unauthorized access to registry - authentication required")
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("tags request failed with status: %d", resp.StatusCode)
 	}
@@ -713,57 +682,11 @@ func (s *ImageMaturityService) getGenericRegistryTags(ctx context.Context, regis
 	return tagsResp.Tags, nil
 }
 
-func (s *ImageMaturityService) ExtractRegistryDomain(repo string) string {
+func (s *ImageMaturityService) normalizeRepoForRegistry(repo string) string {
 	if !strings.Contains(repo, "/") {
-		return "docker.io"
+		return "library/" + repo
 	}
-
-	parts := strings.Split(repo, "/")
-	firstPart := parts[0]
-
-	if strings.Contains(firstPart, ".") || strings.Contains(firstPart, ":") {
-		return firstPart
-	}
-
-	return "docker.io"
-}
-
-func (s *ImageMaturityService) IsPrivateRegistry(repo string) bool {
-	domain := s.ExtractRegistryDomain(repo)
-
-	publicRegistries := []string{
-		"docker.io",
-		"registry-1.docker.io",
-		"index.docker.io",
-		"gcr.io",
-		"ghcr.io",
-		"quay.io",
-		"registry.redhat.io",
-		"mcr.microsoft.com",
-	}
-
-	for _, publicRegistry := range publicRegistries {
-		if domain == publicRegistry {
-			return false
-		}
-	}
-
-	return true
-}
-
-type DockerHubTokenResponse struct {
-	Token     string `json:"token"`
-	ExpiresIn int    `json:"expires_in"`
-	IssuedAt  string `json:"issued_at"`
-}
-
-type DockerHubTagsResponse struct {
-	Name string `json:"name"`
-	Tags []struct {
-		Name        string    `json:"name"`
-		FullSize    int       `json:"full_size"`
-		LastUpdated time.Time `json:"last_updated"`
-	} `json:"tags"`
+	return repo
 }
 
 type RegistryManifest struct {

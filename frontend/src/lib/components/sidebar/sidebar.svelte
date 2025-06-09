@@ -1,5 +1,19 @@
 <script lang="ts" module>
-	import { FileStack, HardDrive, Home, Network, Container, ImageIcon, SettingsIcon, DatabaseIcon, LayoutTemplate, UserIcon, Shield, ComputerIcon } from '@lucide/svelte';
+	import {
+		FileStack,
+		HardDrive,
+		Home,
+		Network,
+		Container,
+		ImageIcon,
+		SettingsIcon,
+		DatabaseIcon,
+		LayoutTemplate,
+		UserIcon,
+		Shield,
+		ComputerIcon,
+		LockKeyholeIcon
+	} from '@lucide/svelte';
 
 	const staticData = {
 		settingsItems: [
@@ -19,8 +33,13 @@
 		customizationItems: [
 			{
 				title: 'Templates',
-				url: '/settings/templates',
+				url: '/customize/templates',
 				icon: LayoutTemplate
+			},
+			{
+				title: 'Container Registries',
+				url: '/customize/registries',
+				icon: LockKeyholeIcon
 			}
 		],
 		managementItems: [
@@ -79,7 +98,11 @@
 		<SidebarItemGroup label="Administration" items={staticData.settingsItems} />
 	</Sidebar.Content>
 	<Sidebar.Footer>
-		<SidebarUpdatebanner {isCollapsed} {versionInformation} updateAvailable={versionInformation.updateAvailable} />
+		<SidebarUpdatebanner
+			{isCollapsed}
+			{versionInformation}
+			updateAvailable={versionInformation.updateAvailable}
+		/>
 		{#if user}
 			<SidebarUser {isCollapsed} {user} />
 		{/if}

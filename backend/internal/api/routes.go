@@ -8,21 +8,22 @@ import (
 )
 
 type Services struct {
-	User          *services.UserService
-	Stack         *services.StackService
-	Agent         *services.AgentService
-	Settings      *services.SettingsService
-	Deployment    *services.DeploymentService
-	Container     *services.ContainerService
-	Image         *services.ImageService
-	Volume        *services.VolumeService
-	Network       *services.NetworkService
-	ImageMaturity *services.ImageMaturityService
-	Auth          *services.AuthService
-	Oidc          *services.OidcService
-	Docker        *services.DockerClientService
-	Converter     *services.ConverterService
-	Template      *services.TemplateService
+	User              *services.UserService
+	Stack             *services.StackService
+	Agent             *services.AgentService
+	Settings          *services.SettingsService
+	Deployment        *services.DeploymentService
+	Container         *services.ContainerService
+	Image             *services.ImageService
+	Volume            *services.VolumeService
+	Network           *services.NetworkService
+	ImageMaturity     *services.ImageMaturityService
+	Auth              *services.AuthService
+	Oidc              *services.OidcService
+	Docker            *services.DockerClientService
+	Converter         *services.ConverterService
+	Template          *services.TemplateService
+	ContainerRegistry *services.ContainerRegistryService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -41,6 +42,22 @@ func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	setupVolumeRoutes(api, services)
 	setupNetworkRoutes(api, services)
 	setupTemplateRoutes(api, services)
+	setupContainerRegistryRoutes(api, services)
+}
+
+func setupContainerRegistryRoutes(api *gin.RouterGroup, services *Services) {
+	registries := api.Group("/container-registries")
+	registries.Use(middleware.AuthMiddleware(services.Auth))
+
+	registryHandler := NewContainerRegistryHandler(services.ContainerRegistry)
+
+	registries.GET("", registryHandler.GetRegistries)
+	registries.POST("", registryHandler.CreateRegistry)
+	registries.GET("/:id", registryHandler.GetRegistry)
+	registries.PUT("/:id", registryHandler.UpdateRegistry)
+	registries.DELETE("/:id", registryHandler.DeleteRegistry)
+
+	registries.POST("/:id/test", registryHandler.TestRegistry)
 }
 
 func setupAuthRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {
