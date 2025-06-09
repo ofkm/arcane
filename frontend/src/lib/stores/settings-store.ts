@@ -28,6 +28,7 @@ function deepClone<T>(obj: T): T {
 // Initialize with proper defaults that match the backend structure
 export const settingsStore = writable<Settings>({
 	dockerHost: 'unix:///var/run/docker.sock',
+	dockerTLSCert: '',
 	stacksDirectory: 'data/stacks',
 	autoUpdate: false,
 	autoUpdateInterval: 60,

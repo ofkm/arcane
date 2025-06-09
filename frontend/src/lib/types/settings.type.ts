@@ -43,6 +43,7 @@ export interface TemplateRegistryConfig {
 
 export interface Settings {
 	dockerHost: string;
+	dockerTLSCert: string;
 	stacksDirectory: string;
 	autoUpdate: boolean;
 	autoUpdateInterval: number;

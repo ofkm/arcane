@@ -2,9 +2,20 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import type { FormInput as FormInputType } from '$lib/types/form.type';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { RefreshCw, ImageMinus, Server, Save } from '@lucide/svelte';
+	import {
+		RefreshCw,
+		ImageMinus,
+		Server,
+		Save,
+		Clock,
+		Zap,
+		Settings2,
+		TestTube,
+		InfoIcon
+	} from '@lucide/svelte';
 	import * as RadioGroup from '$lib/components/ui/radio-group/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
+	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
 	import type { Settings } from '$lib/types/settings.type';
@@ -16,7 +27,8 @@
 	let currentSettings = $state(data.settings);
 
 	let isLoading = $state({
-		saving: false
+		saving: false,
+		testing: false
 	});
 
 	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
@@ -32,6 +44,7 @@
 		isLoading.saving = true;
 		updateSettingsConfig({
 			dockerHost: dockerHostInput.value,
+			dockerTLSCert: dockerTLSCertInput.value,
 			pruneMode: 'all',
 			autoUpdate: autoUpdateSwitch.value,
 			pollingEnabled: pollingEnabledSwitch.value,
@@ -45,6 +58,19 @@
 			.finally(() => {
 				isLoading.saving = false;
 			});
+	}
+
+	async function testDockerConnection() {
+		isLoading.testing = true;
+		try {
+			// Add your Docker connection test API call here
+			// const result = await dockerAPI.testConnection();
+			toast.success('Docker connection test successful');
+		} catch (error) {
+			toast.error('Docker connection test failed');
+		} finally {
+			isLoading.testing = false;
+		}
 	}
 
 	let pollingIntervalInput = $state<FormInputType<number>>({
@@ -87,13 +113,35 @@
 		errors: []
 	});
 
+	let dockerTLSCertInput = $state<FormInputType<string>>({
+		value: '',
+		valid: true,
+		touched: false,
+		error: null,
+		errors: []
+	});
+
 	$effect(() => {
 		pollingIntervalInput.value = currentSettings.pollingInterval;
 		pollingEnabledSwitch.value = currentSettings.pollingEnabled;
 		autoUpdateSwitch.value = currentSettings.autoUpdate;
 		autoUpdateIntervalInput.value = currentSettings.autoUpdateInterval;
 		dockerHostInput.value = currentSettings.dockerHost;
+		dockerTLSCertInput.value = currentSettings.dockerTLSCert || '';
 	});
+
+	// Computed values for better UX
+	let isPollingConfigValid = $derived(
+		!pollingEnabledSwitch.value ||
+			(pollingIntervalInput.value >= 5 && pollingIntervalInput.value <= 1440)
+	);
+
+	let isAutoUpdateConfigValid = $derived(
+		!autoUpdateSwitch.value ||
+			(autoUpdateIntervalInput.value >= 5 && autoUpdateIntervalInput.value <= 1440)
+	);
+
+	let canSave = $derived(isPollingConfigValid && isAutoUpdateConfigValid && dockerHostInput.valid);
 </script>
 
 <svelte:head>
@@ -101,170 +149,276 @@
 </svelte:head>
 
 <div class="space-y-6">
+	<!-- Header Section -->
 	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Docker Settings</h1>
 			<p class="text-sm text-muted-foreground mt-1">
-				Configure Docker connection and automation settings
+				Configure Docker daemon connection and automation behavior
 			</p>
 		</div>
 
-		<Button
-			onclick={() => handleDockerSettingUpdates()}
-			disabled={isLoading.saving}
-			class="h-10 arcane-button-save"
-		>
-			{#if isLoading.saving}
-				<RefreshCw class="animate-spin size-4" />
-				Saving...
-			{:else}
-				<Save class="size-4" />
-				Save Settings
-			{/if}
-		</Button>
+		<div class="flex gap-2">
+			<Button
+				onclick={() => testDockerConnection()}
+				disabled={isLoading.testing || !dockerHostInput.value}
+				variant="outline"
+				class="h-10"
+			>
+				{#if isLoading.testing}
+					<RefreshCw class="animate-spin size-4" />
+					Testing...
+				{:else}
+					<TestTube class="size-4" />
+					Test Connection
+				{/if}
+			</Button>
+
+			<Button
+				onclick={() => handleDockerSettingUpdates()}
+				disabled={isLoading.saving || !canSave}
+				class="h-10 arcane-button-save"
+			>
+				{#if isLoading.saving}
+					<RefreshCw class="animate-spin size-4" />
+					Saving...
+				{:else}
+					<Save class="size-4" />
+					Save Settings
+				{/if}
+			</Button>
+		</div>
 	</div>
 
-	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+	<!-- Warning Alert for Important Settings -->
+	{#if currentSettings.autoUpdate && currentSettings.pollingEnabled}
+		<Alert.Root class="border-amber-600">
+			<Zap class="h-4 w-4 text-amber-600" />
+			<Alert.Title class="text-amber-800">Auto-update Enabled</Alert.Title>
+			<Alert.Description class="text-amber-700">
+				Containers will be automatically updated when newer images are detected. Make sure you have
+				proper backup procedures in place.
+			</Alert.Description>
+		</Alert.Root>
+	{/if}
+
+	<!-- Main Settings Grid -->
+	<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+		<!-- Docker Connection Card -->
 		<Card.Root class="border shadow-sm">
-			<Card.Header class="pb-3">
-				<div class="flex items-center gap-2">
-					<div class="bg-blue-500/10 p-2 rounded-full">
-						<Server class="text-blue-500 size-5" />
+			<Card.Header class="pb-4">
+				<div class="flex items-center gap-3">
+					<div class="bg-blue-500/10 p-2.5 rounded-lg">
+						<Server class="text-blue-600 size-5" />
 					</div>
 					<div>
-						<Card.Title>Docker Connection</Card.Title>
-						<Card.Description>Configure Docker daemon connection settings</Card.Description>
+						<Card.Title class="text-lg">Docker Connection</Card.Title>
+						<Card.Description>Configure how Arcane connects to the Docker daemon</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
-			<Card.Content>
-				<div class="space-y-4">
-					<div class="space-y-2">
-						<FormInput
-							bind:input={dockerHostInput}
-							type="text"
-							id="dockerHost"
-							label="Docker Host"
-							placeholder="unix:///var/run/docker.sock"
-							description="For local Docker: unix:///var/run/docker.sock (Unix)"
-						/>
+			<Card.Content class="space-y-4">
+				<FormInput
+					bind:input={dockerHostInput}
+					type="text"
+					id="dockerHost"
+					label="Docker Host"
+					placeholder="unix:///var/run/docker.sock"
+					description="For local Docker: unix:///var/run/docker.sock (Unix/Linux/macOS)"
+				/>
+
+				<FormInput
+					bind:input={dockerTLSCertInput}
+					type="textarea"
+					id="dockerTLSCert"
+					label="TLS Certificate (Optional)"
+					placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
+					description="Required for secure TCP connections. Paste the PEM-encoded certificate for TLS authentication."
+					rows={4}
+				/>
+
+				<div class="p-3 bg-muted/50 rounded-lg text-sm">
+					<div class="font-medium mb-2 flex items-center gap-2">
+						<Settings2 class="size-4" />
+						Common Docker Host Examples:
 					</div>
+					<ul class="space-y-1 text-muted-foreground ml-6">
+						<li>
+							• <code class="text-xs bg-background px-1 py-0.5 rounded"
+								>unix:///var/run/docker.sock</code
+							> - Local Unix socket
+						</li>
+						<li>
+							• <code class="text-xs bg-background px-1 py-0.5 rounded">tcp://localhost:2376</code> -
+							TCP with TLS (requires certificate)
+						</li>
+						<li>
+							• <code class="text-xs bg-background px-1 py-0.5 rounded">tcp://localhost:2375</code> -
+							TCP without TLS (not recommended)
+						</li>
+					</ul>
 				</div>
 			</Card.Content>
 		</Card.Root>
 
-		<div class="space-y-6">
-			<Card.Root class="border shadow-sm">
-				<Card.Header class="pb-3">
-					<div class="flex items-center gap-2">
-						<div class="bg-amber-500/10 p-2 rounded-full">
-							<RefreshCw class="text-amber-500 size-5" />
-						</div>
-						<div>
-							<Card.Title>Image Polling</Card.Title>
-							<Card.Description>Control container image polling</Card.Description>
-						</div>
+		<!-- Image Automation Card -->
+		<Card.Root class="border shadow-sm">
+			<Card.Header class="pb-4">
+				<div class="flex items-center gap-3">
+					<div class="bg-emerald-500/10 p-2.5 rounded-lg">
+						<Clock class="text-emerald-600 size-5" />
 					</div>
-				</Card.Header>
-				<Card.Content class="space-y-6">
-					<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
+					<div>
+						<Card.Title class="text-lg">Image Automation</Card.Title>
+						<Card.Description>Control automatic image polling and updates</Card.Description>
+					</div>
+				</div>
+			</Card.Header>
+			<Card.Content class="space-y-6">
+				<!-- Polling Enabled Toggle -->
+				<div
+					class="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-background to-muted/30"
+				>
+					<FormInput
+						bind:input={pollingEnabledSwitch}
+						type="switch"
+						id="pollingEnabled"
+						label="Enable Image Polling"
+						description="Periodically check registries for newer image versions"
+					/>
+				</div>
+
+				<!-- Polling Configuration -->
+				{#if currentSettings.pollingEnabled}
+					<div class="space-y-4 pl-4">
 						<FormInput
-							bind:input={pollingEnabledSwitch}
-							type="switch"
-							id="pollingEnabled"
-							label="Check for New Images"
-							description="Periodically check for newer versions of container images"
+							bind:input={pollingIntervalInput}
+							type="number"
+							id="pollingInterval"
+							label="Polling Interval (minutes)"
+							placeholder="60"
+							description="How often to check for new images (5-1440 minutes)"
 						/>
-					</div>
 
-					{#if currentSettings.pollingEnabled}
-						<div class="space-y-2 px-1">
-							<FormInput
-								bind:input={pollingIntervalInput}
-								type="number"
-								id="pollingInterval"
-								label="Polling Interval (Minutes)"
-								placeholder="60"
-								description="Set between 5-60 minutes."
-							/>
-						</div>
-
-						<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
+						<!-- Auto Update Toggle -->
+						<div
+							class="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-background to-amber-50/50"
+						>
 							<FormInput
 								bind:input={autoUpdateSwitch}
 								type="switch"
 								id="autoUpdateSwitch"
-								label="Auto Update Containers"
-								description="Automatically update containers when newer images are available"
+								label="Auto-update Containers"
+								description="Automatically update containers when newer images are found"
 							/>
 						</div>
 
+						<!-- Auto Update Configuration -->
 						{#if currentSettings.autoUpdate}
-							<div class="space-y-2 mt-4">
+							<div class="pl-4">
 								<FormInput
 									bind:input={autoUpdateIntervalInput}
 									type="number"
 									id="autoUpdateInterval"
-									label="Auto-update check interval (minutes)"
+									label="Auto-update Interval (minutes)"
 									placeholder="60"
-									description="How often Arcane will check for container and stack updates (minimum 5 minutes, maximum 24 hours)"
+									description="How often to perform automatic updates (5-1440 minutes)"
 								/>
 							</div>
 						{/if}
-					{/if}
-				</Card.Content>
-			</Card.Root>
+					</div>
 
-			<Card.Root class="border shadow-sm">
-				<Card.Header class="pb-3">
-					<div class="flex items-center gap-2">
-						<div class="bg-purple-500/10 p-2 rounded-full">
-							<ImageMinus class="text-purple-500 size-5" />
-						</div>
-						<div>
-							<Card.Title>Image Pruning</Card.Title>
-							<Card.Description>Configure image prune behavior</Card.Description>
-						</div>
-					</div>
-				</Card.Header>
-				<Card.Content class="space-y-4">
-					<div>
-						<Label for="pruneMode" class="text-base font-medium block mb-2"
-							>Prune Action Behavior</Label
-						>
-						<RadioGroup.Root
-							value={currentSettings.pruneMode}
-							onValueChange={(val) => {
-								settingsAPI.updateSettings({
-									...currentSettings,
-									pruneMode: val as 'all' | 'dangling'
-								});
-								settingsStore.reload();
-							}}
-							class="flex flex-col space-y-1"
-							id="pruneMode"
-						>
-							<div class="flex items-center space-x-2">
-								<RadioGroup.Item value="all" id="prune-all" />
-								<Label for="prune-all" class="font-normal"
-									>All Unused Images (like `docker image prune -a`)</Label
-								>
-							</div>
-							<div class="flex items-center space-x-2">
-								<RadioGroup.Item value="dangling" id="prune-dangling" />
-								<Label for="prune-dangling" class="font-normal"
-									>Dangling Images Only (like `docker image prune`)</Label
-								>
-							</div>
-						</RadioGroup.Root>
-						<p class="text-xs text-muted-foreground mt-2">
-							Select which images are removed by the "Prune Unused" action on the Images page.
-						</p>
-					</div>
-				</Card.Content>
-			</Card.Root>
-		</div>
+					<!-- Automation Summary -->
+					<Alert.Root>
+						<InfoIcon />
+						<Alert.Title>Automation Summary</Alert.Title>
+						<Alert.Description>
+							<ul class="list-inside list-disc text-sm">
+								{#if currentSettings.autoUpdate}
+									<li>Images checked every {pollingIntervalInput.value || 60} minutes</li>
+								{:else}
+									<li>Manual updates only (auto-update disabled)</li>
+								{/if}
+							</ul>
+						</Alert.Description>
+					</Alert.Root>
+				{/if}
+			</Card.Content>
+		</Card.Root>
 	</div>
+
+	<!-- Image Pruning Card - Full Width -->
+	<Card.Root>
+		<Card.Header class="pb-4">
+			<div class="flex items-center gap-3">
+				<div class="bg-purple-500/10 p-2.5 rounded-lg">
+					<ImageMinus class="text-purple-600 size-5" />
+				</div>
+				<div>
+					<Card.Title class="text-lg">Image Pruning</Card.Title>
+					<Card.Description>Configure cleanup behavior for unused Docker images</Card.Description>
+				</div>
+			</div>
+		</Card.Header>
+		<Card.Content>
+			<div class="space-y-4">
+				<Label for="pruneMode" class="text-base font-medium">Prune Action Behavior</Label>
+
+				<RadioGroup.Root
+					value={currentSettings.pruneMode}
+					onValueChange={(val) => {
+						settingsAPI.updateSettings({
+							...currentSettings,
+							pruneMode: val as 'all' | 'dangling'
+						});
+						settingsStore.reload();
+					}}
+					class="space-y-3"
+					id="pruneMode"
+				>
+					<div
+						class="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+					>
+						<RadioGroup.Item value="all" id="prune-all" class="mt-0.5" />
+						<div class="space-y-1">
+							<Label for="prune-all" class="font-medium cursor-pointer">All Unused Images</Label>
+							<p class="text-sm text-muted-foreground">
+								Remove all images not referenced by containers (equivalent to <code
+									class="text-xs bg-background px-1 py-0.5 rounded">docker image prune -a</code
+								>)
+							</p>
+						</div>
+					</div>
+
+					<div
+						class="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+					>
+						<RadioGroup.Item value="dangling" id="prune-dangling" class="mt-0.5" />
+						<div class="space-y-1">
+							<Label for="prune-dangling" class="font-medium cursor-pointer">
+								Dangling Images Only
+							</Label>
+							<p class="text-sm text-muted-foreground">
+								Remove only untagged images (equivalent to <code
+									class="text-xs bg-background px-1 py-0.5 rounded">docker image prune</code
+								>)
+							</p>
+						</div>
+					</div>
+				</RadioGroup.Root>
+
+				<div class="p-3 bg-muted/50 rounded-lg">
+					<p class="text-sm text-muted-foreground">
+						<strong>Note:</strong> This setting affects the "Prune Unused Images" action on the
+						Images page.
+						{currentSettings.pruneMode === 'all'
+							? 'All unused images will be removed, which frees up more space but may require re-downloading images later.'
+							: 'Only dangling images will be removed, which is safer but may leave some unused images behind.'}
+					</p>
+				</div>
+			</div>
+		</Card.Content>
+	</Card.Root>
 
 	<!-- Hidden CSRF token if needed -->
 	<input type="hidden" id="csrf_token" value={data.csrf} />

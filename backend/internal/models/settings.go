@@ -46,6 +46,7 @@ type Onboarding struct {
 type Settings struct {
 	ID                    uint    `json:"id" gorm:"primaryKey;autoIncrement"`
 	DockerHost            string  `json:"dockerHost" gorm:"column:docker_host;not null"`
+	DockerTLSCert         string  `json:"dockerTLSCert" gorm:"column:docker_tls_cert"`
 	StacksDirectory       string  `json:"stacksDirectory" gorm:"column:stacks_directory;not null"`
 	AutoUpdate            bool    `json:"autoUpdate" gorm:"column:auto_update;default:false"`
 	AutoUpdateInterval    int     `json:"autoUpdateInterval" gorm:"column:auto_update_interval;default:300"`

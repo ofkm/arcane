@@ -1,6 +1,7 @@
 <!-- Originally From  https://github.com/pocket-id/pocket-id/blob/main/frontend/src/lib/components/form/form-input.svelte -->
 <script lang="ts">
 	import { Input } from '$lib/components/ui/input';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { Switch } from '$lib/components/ui/switch';
 	import { Label } from '$lib/components/ui/label';
 	import type { Snippet } from 'svelte';
@@ -16,6 +17,7 @@
 		placeholder,
 		disabled = false,
 		type = 'text',
+		rows = 3,
 		children,
 		...restProps
 	}: HTMLAttributes<HTMLDivElement> & {
@@ -26,7 +28,8 @@
 		warningText?: string;
 		placeholder?: string;
 		disabled?: boolean;
-		type?: 'text' | 'password' | 'email' | 'number' | 'checkbox' | 'date' | 'switch';
+		type?: 'text' | 'password' | 'email' | 'number' | 'checkbox' | 'date' | 'switch' | 'textarea';
+		rows?: number;
 		children?: Snippet;
 	} = $props();
 
@@ -46,6 +49,8 @@
 		{:else if input}
 			{#if type === 'switch'}
 				<Switch {id} bind:checked={input.value as boolean} {disabled} />
+			{:else if type === 'textarea'}
+				<Textarea {id} {placeholder} {rows} bind:value={input.value as string} {disabled} />
 			{:else}
 				<Input {id} {placeholder} {type} bind:value={input.value} {disabled} />
 			{/if}
