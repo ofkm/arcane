@@ -3,7 +3,17 @@
 	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, Ellipsis, ScanSearch, Funnel } from '@lucide/svelte';
+	import {
+		Download,
+		AlertCircle,
+		HardDrive,
+		Trash2,
+		Loader2,
+		ChevronDown,
+		Ellipsis,
+		ScanSearch,
+		Funnel
+	} from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -22,7 +32,12 @@
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
 	import MaturityItem from '$lib/components/maturity-item.svelte';
-	import { maturityStore, triggerBulkMaturityCheck, enhanceImagesWithMaturity, loadImageMaturityBatch } from '$lib/stores/maturity-store';
+	import {
+		maturityStore,
+		triggerBulkMaturityCheck,
+		enhanceImagesWithMaturity,
+		loadImageMaturityBatch
+	} from '$lib/stores/maturity-store';
 	import { onMount } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -64,7 +79,11 @@
 	// Use the maturity store to enhance images
 	const enhancedImages = $derived(enhanceImagesWithMaturity(images, $maturityStore.maturityData));
 
-	const filteredImages = $derived(enhancedImages.filter((img) => (imageFilters.showUsed && img.inUse) || (imageFilters.showUnused && !img.inUse)) as EnhancedImageInfo[]);
+	const filteredImages = $derived(
+		enhancedImages.filter(
+			(img) => (imageFilters.showUsed && img.InUse) || (imageFilters.showUnused && !img.InUse)
+		) as EnhancedImageInfo[]
+	);
 
 	// Load maturity data when images change
 	$effect(() => {
@@ -119,7 +138,12 @@
 		}
 	});
 
-	async function handlePullImageSubmit(event: { imageRef: string; tag?: string; platform?: string; registryUrl?: string }) {
+	async function handlePullImageSubmit(event: {
+		imageRef: string;
+		tag?: string;
+		platform?: string;
+		registryUrl?: string;
+	}) {
 		const { imageRef, tag = 'latest', platform, registryUrl } = event;
 
 		isLoading.pulling = true;
@@ -138,7 +162,9 @@
 				const foundCredential = credentials.find((cred) => cred.url === registryUrl);
 
 				if (foundCredential && foundCredential.username) {
-					toast.info(`Attempting pull from ${foundCredential.url} with user ${foundCredential.username}`);
+					toast.info(
+						`Attempting pull from ${foundCredential.url} with user ${foundCredential.username}`
+					);
 				} else if (registryUrl !== 'docker.io' && registryUrl !== '') {
 					toast.error(`Credentials not found for ${registryUrl}. Attempting unauthenticated pull.`);
 				}
@@ -209,7 +235,7 @@
 						const image = images.find((img) => img.Id === id);
 						const imageIdentifier = image?.RepoTags?.[0] || id.substring(0, 12);
 
-						if (image?.inUse) {
+						if (image?.InUse) {
 							toast.error(`Image "${imageIdentifier}" is in use and cannot be deleted.`);
 							failureCount++;
 							continue;
@@ -380,11 +406,37 @@
 							</DropdownMenu.Content>
 						</DropdownMenu.Root>
 						{#if selectedIds.length > 0}
-							<ArcaneButton action="remove" onClick={() => handleDeleteSelected()} loading={isLoading.removing} disabled={isLoading.removing} />
+							<ArcaneButton
+								action="remove"
+								onClick={() => handleDeleteSelected()}
+								loading={isLoading.removing}
+								disabled={isLoading.removing}
+							/>
 						{/if}
-						<ArcaneButton action="remove" label="Prune Unused" onClick={() => (isConfirmPruneDialogOpen = true)} loading={isLoading.pruning} loadingLabel="Pruning..." disabled={isLoading.pruning} />
-						<ArcaneButton action="pull" label="Pull Image" onClick={() => (isPullDialogOpen = true)} loading={isLoading.pulling} loadingLabel="Pulling..." disabled={isLoading.pulling} />
-						<ArcaneButton action="inspect" label="Check Updates" onClick={() => handleTriggerBulkMaturityCheck()} loading={isLoading.checking} loadingLabel="Checking..." disabled={isLoading.checking} />
+						<ArcaneButton
+							action="remove"
+							label="Prune Unused"
+							onClick={() => (isConfirmPruneDialogOpen = true)}
+							loading={isLoading.pruning}
+							loadingLabel="Pruning..."
+							disabled={isLoading.pruning}
+						/>
+						<ArcaneButton
+							action="pull"
+							label="Pull Image"
+							onClick={() => (isPullDialogOpen = true)}
+							loading={isLoading.pulling}
+							loadingLabel="Pulling..."
+							disabled={isLoading.pulling}
+						/>
+						<ArcaneButton
+							action="inspect"
+							label="Check Updates"
+							onClick={() => handleTriggerBulkMaturityCheck()}
+							loading={isLoading.checking}
+							loadingLabel="Checking..."
+							disabled={isLoading.checking}
+						/>
 					</div>
 				</div>
 			</Card.Header>
@@ -394,7 +446,7 @@
 					data={filteredImages}
 					columns={[
 						{ accessorKey: 'repo', header: 'Name' },
-						{ accessorKey: 'inUse', header: ' ', enableSorting: false },
+						{ accessorKey: 'InUse', header: ' ', enableSorting: false },
 						{ accessorKey: 'tag', header: 'Tag' },
 						{ accessorKey: 'Id', header: 'Image ID', enableSorting: false },
 						{ accessorKey: 'Size', header: 'Size' },
@@ -420,7 +472,13 @@
 						<Table.Cell>
 							<div class="flex items-center gap-2">
 								<div class="flex items-center flex-1">
-									<MaturityItem maturity={item.maturity} imageId={item.Id} repo={item.repo} tag={item.tag} isLoadingInBackground={$maturityStore.isChecking} />
+									<MaturityItem
+										maturity={item.maturity}
+										imageId={item.Id}
+										repo={item.repo}
+										tag={item.tag}
+										isLoadingInBackground={$maturityStore.isChecking}
+									/>
 									<a class="font-medium hover:underline shrink truncate" href="/images/{item.Id}/">
 										{item.repo}
 									</a>
@@ -428,7 +486,7 @@
 							</div>
 						</Table.Cell>
 						<Table.Cell>
-							{#if !item.inUse}
+							{#if !item.InUse}
 								<StatusBadge text="Unused" variant="amber" />
 							{:else}
 								<StatusBadge text="In Use" variant="green" />
@@ -453,7 +511,10 @@
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
-										<DropdownMenu.Item onclick={() => pullImageByRepoTag(item.RepoTags?.[0])} disabled={isLoading.pulling || !item.RepoTags?.[0]}>
+										<DropdownMenu.Item
+											onclick={() => pullImageByRepoTag(item.RepoTags?.[0])}
+											disabled={isLoading.pulling || !item.RepoTags?.[0]}
+										>
 											{#if isLoading.pulling}
 												<Loader2 class="animate-spin size-4" />
 												Pulling...
@@ -462,7 +523,10 @@
 												Pull
 											{/if}
 										</DropdownMenu.Item>
-										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleImageRemove(item.Id)}>
+										<DropdownMenu.Item
+											class="text-red-500 focus:text-red-700!"
+											onclick={() => handleImageRemove(item.Id)}
+										>
 											<Trash2 class="size-4" />
 											Remove
 										</DropdownMenu.Item>
@@ -475,10 +539,14 @@
 			</Card.Content>
 		</Card.Root>
 	{:else if !error}
-		<div class="flex flex-col items-center justify-center py-12 px-6 text-center border rounded-lg bg-card">
+		<div
+			class="flex flex-col items-center justify-center py-12 px-6 text-center border rounded-lg bg-card"
+		>
 			<HardDrive class="text-muted-foreground mb-4 opacity-40 size-12" />
 			<p class="text-lg font-medium">No images found</p>
-			<p class="text-sm text-muted-foreground mt-1 max-w-md">Pull a new image using the "Pull Image" button above or use the Docker CLI</p>
+			<p class="text-sm text-muted-foreground mt-1 max-w-md">
+				Pull a new image using the "Pull Image" button above or use the Docker CLI
+			</p>
 			<div class="flex gap-3 mt-4">
 				<Button variant="outline" size="sm" onclick={() => (isPullDialogOpen = true)}>
 					<Download class="size-4" />
@@ -488,16 +556,28 @@
 		</div>
 	{/if}
 
-	<PullImageDialog bind:open={isPullDialogOpen} isPulling={isLoading.pulling} {pullProgress} onSubmit={handlePullImageSubmit} />
+	<PullImageDialog
+		bind:open={isPullDialogOpen}
+		isPulling={isLoading.pulling}
+		{pullProgress}
+		onSubmit={handlePullImageSubmit}
+	/>
 
 	<Dialog.Root bind:open={isConfirmPruneDialogOpen}>
 		<Dialog.Content>
 			<Dialog.Header>
 				<Dialog.Title>Prune Unused Images</Dialog.Title>
-				<Dialog.Description>Are you sure you want to remove all unused (dangling) Docker images? This will free up disk space but cannot be undone. Images actively used by containers will not be affected.</Dialog.Description>
+				<Dialog.Description
+					>Are you sure you want to remove all unused (dangling) Docker images? This will free up
+					disk space but cannot be undone. Images actively used by containers will not be affected.</Dialog.Description
+				>
 			</Dialog.Header>
 			<div class="flex justify-end gap-3 pt-6">
-				<Button variant="outline" onclick={() => (isConfirmPruneDialogOpen = false)} disabled={isLoading.pruning}>Cancel</Button>
+				<Button
+					variant="outline"
+					onclick={() => (isConfirmPruneDialogOpen = false)}
+					disabled={isLoading.pruning}>Cancel</Button
+				>
 				<Button variant="destructive" onclick={handlePruneImages} disabled={isLoading.pruning}>
 					{#if isLoading.pruning}
 						<Loader2 class="mr-2 animate-spin size-4" /> Pruning...

@@ -23,6 +23,6 @@ export interface ImageMaturity {
  * Extends ServiceImage with application-specific information like usage status and maturity.
  */
 export type EnhancedImageInfo = ServiceImage & {
-	inUse: boolean;
+	InUse: boolean;
 	maturity?: ImageMaturity;
 };

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -23,7 +24,9 @@ func NewImageHandler(imageService *services.ImageService, imageMaturityService *
 }
 
 func (h *ImageHandler) List(c *gin.Context) {
-	images, err := h.imageService.ListImages(c.Request.Context())
+	// ListImagesWithMaturity internally calls ListImages (which triggers syncImagesToDatabase in a goroutine)
+	// and then fetches []*models.Image from the database.
+	dbImages, err := h.imageService.ListImagesWithMaturity(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -34,52 +37,49 @@ func (h *ImageHandler) List(c *gin.Context) {
 
 	var result []map[string]interface{}
 
-	for _, img := range images {
+	for _, img := range dbImages {
 		imageData := map[string]interface{}{
 			"Id":          img.ID,
-			"ParentId":    img.ParentID,
 			"RepoTags":    img.RepoTags,
 			"RepoDigests": img.RepoDigests,
-			"Created":     img.Created,
+			"Created":     img.Created.Unix(),
 			"Size":        img.Size,
 			"VirtualSize": img.VirtualSize,
-			"SharedSize":  img.SharedSize,
 			"Labels":      img.Labels,
-			"Containers":  img.Containers,
+			"InUse":       img.InUse,
 		}
 
-		if h.imageMaturityService != nil {
-			maturityRecord, err := h.imageMaturityService.GetImageMaturity(c.Request.Context(), img.ID)
-			if err == nil {
-				imageData["maturity"] = map[string]interface{}{
-					"updatesAvailable": maturityRecord.UpdatesAvailable,
-					"status":           maturityRecord.Status,
-					"version":          maturityRecord.CurrentVersion,
-					"date":             maturityRecord.CurrentImageDate,
-				}
-			} else {
-				if len(img.RepoTags) > 0 && img.RepoTags[0] != "<none>:<none>" {
-					go func(imageID string, repoTags []string) {
-						repoTag := repoTags[0]
-						parts := strings.Split(repoTag, ":")
-						if len(parts) == 2 {
-							repo := parts[0]
-							tag := parts[1]
-
-							maturityData, err := h.imageMaturityService.CheckImageInRegistry(context.Background(), repo, tag, imageID)
-							if err == nil {
-								h.imageMaturityService.SetImageMaturity(context.Background(), imageID, repo, tag, *maturityData, map[string]interface{}{
-									"registryDomain":    h.imageMaturityService.ExtractRegistryDomain(repo),
-									"isPrivateRegistry": h.imageMaturityService.IsPrivateRegistry(repo),
-									"currentImageDate":  time.Unix(img.Created, 0),
-								})
-							}
+		if img.MaturityRecord != nil {
+			imageData["maturity"] = map[string]interface{}{
+				"updatesAvailable": img.MaturityRecord.UpdatesAvailable,
+				"status":           img.MaturityRecord.Status,
+				"version":          img.MaturityRecord.CurrentVersion,
+				"date":             img.MaturityRecord.CurrentImageDate,
+			}
+		} else {
+			if len(img.RepoTags) > 0 && img.RepoTags[0] != "<none>:<none>" && img.Repo != "<none>" && h.imageMaturityService != nil {
+				go func(imageID string, repo string, tag string, createdTime time.Time) {
+					// Use repo and tag directly from models.Image
+					// Ensure context.Background() is appropriate here or pass down the request context if feasible
+					maturityData, checkErr := h.imageMaturityService.CheckImageInRegistry(context.Background(), repo, tag, imageID)
+					if checkErr == nil {
+						// Pass img.Created (time.Time) directly for currentImageDate
+						setErr := h.imageMaturityService.SetImageMaturity(context.Background(), imageID, repo, tag, *maturityData, map[string]interface{}{
+							"registryDomain":    h.imageMaturityService.ExtractRegistryDomain(repo),
+							"isPrivateRegistry": h.imageMaturityService.IsPrivateRegistry(repo),
+							"currentImageDate":  createdTime,
+						})
+						if setErr != nil {
+							// Log error from SetImageMaturity
+							fmt.Printf("Error setting image maturity for %s: %v\n", imageID, setErr)
 						}
-					}(img.ID, img.RepoTags)
-				}
+					} else {
+						// Log error from CheckImageInRegistry
+						fmt.Printf("Error checking image maturity for %s (%s:%s): %v\n", imageID, repo, tag, checkErr)
+					}
+				}(img.ID, img.Repo, img.Tag, img.Created)
 			}
 		}
-
 		result = append(result, imageData)
 	}
 

@@ -7,11 +7,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ImageService struct {
@@ -36,7 +39,7 @@ func (s *ImageService) ListImages(ctx context.Context) ([]image.Summary, error) 
 		return nil, fmt.Errorf("failed to list Docker images: %w", err)
 	}
 
-	go s.syncImagesToDatabase(ctx, images)
+	go s.syncImagesToDatabase(ctx, images, dockerClient)
 
 	return images, nil
 }
@@ -48,7 +51,7 @@ func (s *ImageService) GetImageByID(ctx context.Context, id string) (*image.Insp
 	}
 	defer dockerClient.Close()
 
-	image, _, err := dockerClient.ImageInspectWithRaw(ctx, id)
+	image, err := dockerClient.ImageInspect(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("image not found: %w", err)
 	}
@@ -130,14 +133,28 @@ func (s *ImageService) GetImageHistory(ctx context.Context, id string) ([]image.
 	return history, nil
 }
 
-func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []image.Summary) {
+func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []image.Summary, dockerClient *client.Client) {
+	inUseImageIDs := make(map[string]bool)
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		fmt.Printf("Error listing containers for InUse check: %v\n", err)
+	} else {
+		for _, cont := range containers {
+			inUseImageIDs[cont.ImageID] = true
+		}
+	}
+
 	for _, di := range dockerImages {
-		imageModel := &models.Image{
+		_, isInUse := inUseImageIDs[di.ID]
+
+		imageModel := models.Image{
 			ID:          di.ID,
 			RepoTags:    models.StringSlice(di.RepoTags),
 			RepoDigests: models.StringSlice(di.RepoDigests),
 			Size:        di.Size,
+			VirtualSize: di.VirtualSize,
 			Created:     time.Unix(di.Created, 0),
+			InUse:       isInUse,
 		}
 
 		if di.Labels != nil {
@@ -163,7 +180,14 @@ func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []
 			imageModel.Tag = "<none>"
 		}
 
-		s.db.WithContext(ctx).Where("id = ?", di.ID).FirstOrCreate(imageModel)
+		err := s.db.WithContext(ctx).Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"repo_tags", "repo_digests", "size", "virtual_size", "created", "labels", "repo", "tag", "in_use"}),
+		}).Create(&imageModel).Error
+
+		if err != nil {
+			fmt.Printf("Error syncing image %s to database: %v\n", di.ID, err)
+		}
 	}
 }
 

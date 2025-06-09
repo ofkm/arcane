@@ -14,10 +14,8 @@ export const load = async (): Promise<ImageData> => {
 
 		const enhancedImages = await Promise.all(
 			images.map(async (image): Promise<EnhancedImageInfo> => {
-				// Check if image is in use via API
-				const inUse = await containerAPI.isImageInUse(image.Id).catch(() => false);
+				const InUse = await containerAPI.isImageInUse(image.Id).catch(() => false);
 
-				// Parse repo and tag from RepoTags (like the dashboard does)
 				let repo = '<none>';
 				let tag = '<none>';
 				if (image.RepoTags && image.RepoTags.length > 0) {
@@ -34,7 +32,7 @@ export const load = async (): Promise<ImageData> => {
 					...image,
 					repo,
 					tag,
-					inUse
+					InUse
 				};
 			})
 		);
