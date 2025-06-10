@@ -153,6 +153,19 @@ func (h *StackHandler) GetStack(c *gin.Context) {
 		services = nil
 	}
 
+	var serviceCount, runningCount int
+	if services != nil {
+		serviceCount = len(services)
+		for _, service := range services {
+			if service.Status == "running" || service.Status == "Up" {
+				runningCount++
+			}
+		}
+	} else {
+		serviceCount = stack.ServiceCount
+		runningCount = stack.RunningCount
+	}
+
 	stackResponse := map[string]interface{}{
 		"id":             stack.ID,
 		"name":           stack.Name,
@@ -160,8 +173,8 @@ func (h *StackHandler) GetStack(c *gin.Context) {
 		"composeContent": composeContent,
 		"envContent":     envContent,
 		"status":         stack.Status,
-		"serviceCount":   stack.ServiceCount,
-		"runningCount":   stack.RunningCount,
+		"serviceCount":   serviceCount,
+		"runningCount":   runningCount,
 		"createdAt":      stack.CreatedAt,
 		"updatedAt":      stack.UpdatedAt,
 		"autoUpdate":     stack.AutoUpdate,
@@ -419,7 +432,7 @@ func (h *StackHandler) DeployStack(c *gin.Context) {
 		return
 	}
 
-	if err := h.stackService.DeployStack(c.Request.Context(), stackID, req.Profiles, req.EnvOverrides); err != nil {
+	if err := h.stackService.DeployStack(c.Request.Context(), stackID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),

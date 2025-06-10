@@ -23,7 +23,6 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Ensure stacks is always an array
 	let stacks = $derived(Array.isArray(data.stacks) ? data.stacks : []);
 
 	const isLoading = $state<Record<'start' | 'stop' | 'restart' | 'remove' | 'destroy' | 'pull', boolean>>({
@@ -216,9 +215,9 @@
 								{item.name}
 							</a>
 						</Table.Cell>
-						<Table.Cell>{item.service_count || 0}</Table.Cell>
+						<Table.Cell>{item.serviceCount || 0}</Table.Cell>
 						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} /></Table.Cell>
-						<Table.Cell>{formatFriendlyDate(item.created_at || '')}</Table.Cell>
+						<Table.Cell>{formatFriendlyDate(item.createdAt || '')}</Table.Cell>
 						<Table.Cell>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>

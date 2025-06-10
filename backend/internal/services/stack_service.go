@@ -2,25 +2,16 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/compose-spec/compose-go/v2/cli"
-	"github.com/compose-spec/compose-go/v2/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/strslice"
-	"github.com/docker/docker/api/types/volume"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -28,38 +19,23 @@ import (
 )
 
 type StackServiceInfo struct {
-	Name         string            `json:"name"`
-	Image        string            `json:"image"`
-	Status       string            `json:"status"`
-	ContainerID  string            `json:"container_id"`
-	Ports        []string          `json:"ports"`
-	Networks     []string          `json:"networks"`
-	Volumes      []string          `json:"volumes"`
-	Environment  map[string]string `json:"environment"`
-	Health       string            `json:"health,omitempty"`
-	RestartCount int               `json:"restart_count"`
+	Name        string   `json:"name"`
+	Image       string   `json:"image"`
+	Status      string   `json:"status"`
+	ContainerID string   `json:"container_id"`
+	Ports       []string `json:"ports"`
 }
 
 type StackService struct {
 	db              *database.DB
-	dockerService   *DockerClientService
 	settingsService *SettingsService
 }
 
-func NewStackService(db *database.DB, dockerService *DockerClientService, settingsService *SettingsService) *StackService {
+func NewStackService(db *database.DB, settingsService *SettingsService) *StackService {
 	return &StackService{
 		db:              db,
-		dockerService:   dockerService,
 		settingsService: settingsService,
 	}
-}
-
-type DeployOptions struct {
-	Profiles      []string
-	EnvOverrides  map[string]string
-	ForceRecreate bool
-	Build         bool
-	Pull          bool
 }
 
 type StackInfo struct {
@@ -67,53 +43,572 @@ type StackInfo struct {
 	Name         string             `json:"name"`
 	Status       string             `json:"status"`
 	Services     []StackServiceInfo `json:"services"`
-	Networks     []string           `json:"networks"`
-	Volumes      []string           `json:"volumes"`
 	ServiceCount int                `json:"service_count"`
 	RunningCount int                `json:"running_count"`
+	ComposeYAML  string             `json:"compose_yaml,omitempty"`
 }
 
 func (s *StackService) CreateStack(ctx context.Context, name, composeContent string, envContent *string) (*models.Stack, error) {
 	stackID := uuid.New().String()
 	folderName := s.sanitizeStackName(name)
-	folderName, err := s.ensureUniqueFolderName(ctx, folderName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate unique folder name: %w", err)
-	}
 
 	stacksDir, err := s.getStacksDirectory(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stacks directory: %w", err)
 	}
 
-	path := filepath.Join(stacksDir, folderName)
+	stackPath := filepath.Join(stacksDir, folderName)
+
+	counter := 1
+	originalPath := stackPath
+	for {
+		if _, err := os.Stat(stackPath); os.IsNotExist(err) {
+			break
+		}
+		stackPath = fmt.Sprintf("%s-%d", originalPath, counter)
+		folderName = fmt.Sprintf("%s-%d", s.sanitizeStackName(name), counter)
+		counter++
+	}
 
 	stack := &models.Stack{
 		ID:           stackID,
 		Name:         name,
 		DirName:      &folderName,
-		Path:         path,
+		Path:         stackPath,
 		Status:       models.StackStatusStopped,
-		IsExternal:   false,
-		IsLegacy:     false,
-		IsRemote:     false,
 		ServiceCount: 0,
 		RunningCount: 0,
-		BaseModel: models.BaseModel{
-			CreatedAt: time.Now(),
-		},
 	}
 
-	if err := s.db.WithContext(ctx).Create(stack).Error; err != nil {
+	if err := s.db.DB.WithContext(ctx).Create(stack).Error; err != nil {
 		return nil, fmt.Errorf("failed to create stack: %w", err)
 	}
 
-	if err := s.SaveStackFilesToPath(path, composeContent, envContent); err != nil {
-		s.db.WithContext(ctx).Delete(stack)
+	if err := s.saveStackFiles(stackPath, composeContent, envContent); err != nil {
+		s.db.DB.WithContext(ctx).Delete(stack)
 		return nil, fmt.Errorf("failed to save stack files: %w", err)
 	}
 
 	return stack, nil
+}
+
+func (s *StackService) DeployStack(ctx context.Context, stackID string) error {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.CommandContext(ctx, "docker-compose", "up", "-d")
+	cmd.Dir = stack.Path
+
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to deploy stack: %w\nOutput: %s", err, string(output))
+	}
+
+	// Update status and counts
+	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusRunning)
+}
+
+func (s *StackService) StopStack(ctx context.Context, stackID string) error {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.CommandContext(ctx, "docker-compose", "stop")
+	cmd.Dir = stack.Path
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to stop stack: %w\nOutput: %s", err, string(output))
+	}
+
+	// Update status and counts
+	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusStopped)
+}
+
+func (s *StackService) DownStack(ctx context.Context, stackID string) error {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.CommandContext(ctx, "docker-compose", "down")
+	cmd.Dir = stack.Path
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to bring down stack: %w\nOutput: %s", err, string(output))
+	}
+
+	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusStopped)
+}
+
+func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]StackServiceInfo, error) {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := exec.CommandContext(ctx, "docker-compose", "ps", "--format", "json")
+	cmd.Dir = stack.Path
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
+	)
+
+	var services []StackServiceInfo
+
+	output, err := cmd.Output()
+	if err == nil {
+		services, err = s.parseComposePS(string(output))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse compose ps output: %w", err)
+		}
+	}
+
+	if len(services) > 0 {
+		return services, nil
+	}
+
+	composeFile := s.findComposeFile(stack.Path)
+	if composeFile == "" {
+		return []StackServiceInfo{}, nil
+	}
+
+	servicesFromFile, err := s.parseServicesFromComposeFile(composeFile, stack.Name)
+	if err != nil {
+		return []StackServiceInfo{}, nil
+	}
+
+	return servicesFromFile, nil
+}
+
+func (s *StackService) parseServicesFromComposeFile(composeFile, stackName string) ([]StackServiceInfo, error) {
+	options, err := cli.NewProjectOptions(
+		[]string{composeFile},
+		cli.WithOsEnv,
+		cli.WithDotEnv,
+		cli.WithName(stackName),
+		cli.WithWorkingDirectory(filepath.Dir(composeFile)),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create project options: %w", err)
+	}
+
+	project, err := options.LoadProject(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load project: %w", err)
+	}
+
+	var services []StackServiceInfo
+
+	for _, service := range project.Services {
+		serviceInfo := StackServiceInfo{
+			Name:        service.Name,
+			Image:       service.Image,
+			Status:      "not created",
+			ContainerID: "",
+			Ports:       []string{},
+		}
+
+		for _, port := range service.Ports {
+			if port.Published != "" && port.Target != 0 {
+				portStr := fmt.Sprintf("%s:%d", port.Published, port.Target)
+				if port.Protocol != "" {
+					portStr += "/" + port.Protocol
+				}
+				serviceInfo.Ports = append(serviceInfo.Ports, portStr)
+			}
+		}
+
+		services = append(services, serviceInfo)
+	}
+
+	return services, nil
+}
+
+func (s *StackService) GetStackInfo(ctx context.Context, stackID string) (*StackInfo, error) {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+
+	services, err := s.GetStackServices(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+
+	composeYAML, err := s.getProcessedComposeYAML(ctx, stackID)
+	if err != nil {
+		composeYAML = ""
+	}
+
+	serviceCount, runningCount := s.getServiceCounts(services)
+
+	status := "stopped"
+	if serviceCount > 0 {
+		if runningCount == serviceCount {
+			status = "running"
+		} else if runningCount > 0 {
+			status = "partially running"
+		}
+	}
+
+	return &StackInfo{
+		ID:           stack.ID,
+		Name:         stack.Name,
+		Status:       status,
+		Services:     services,
+		ServiceCount: serviceCount,
+		RunningCount: runningCount,
+		ComposeYAML:  composeYAML,
+	}, nil
+}
+
+func (s *StackService) getProcessedComposeYAML(ctx context.Context, stackID string) (string, error) {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return "", err
+	}
+
+	composeFile := s.findComposeFile(stack.Path)
+	if composeFile == "" {
+		return "", fmt.Errorf("no compose file found")
+	}
+
+	options, err := cli.NewProjectOptions(
+		[]string{composeFile},
+		cli.WithOsEnv,
+		cli.WithDotEnv,
+		cli.WithName(stack.Name),
+		cli.WithWorkingDirectory(stack.Path),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create project options: %w", err)
+	}
+
+	project, err := options.LoadProject(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to load project: %w", err)
+	}
+
+	projectYAML, err := project.MarshalYAML()
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal YAML: %w", err)
+	}
+
+	return string(projectYAML), nil
+}
+
+func (s *StackService) RestartStack(ctx context.Context, stackID string) error {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.CommandContext(ctx, "docker-compose", "restart")
+	cmd.Dir = stack.Path
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to restart stack: %w\nOutput: %s", err, string(output))
+	}
+
+	return nil
+}
+
+func (s *StackService) PullStackImages(ctx context.Context, stackID string) error {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.CommandContext(ctx, "docker-compose", "pull")
+	cmd.Dir = stack.Path
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to pull images: %w\nOutput: %s", err, string(output))
+	}
+
+	return nil
+}
+
+func (s *StackService) ListStacks(ctx context.Context) ([]models.Stack, error) {
+	var stacks []models.Stack
+	if err := s.db.DB.WithContext(ctx).Find(&stacks).Error; err != nil {
+		return nil, fmt.Errorf("failed to get stacks: %w", err)
+	}
+	return stacks, nil
+}
+
+func (s *StackService) UpdateStack(ctx context.Context, stack *models.Stack) (*models.Stack, error) {
+	if err := s.db.DB.WithContext(ctx).Save(stack).Error; err != nil {
+		return nil, fmt.Errorf("failed to update stack: %w", err)
+	}
+	return stack, nil
+}
+
+func (s *StackService) UpdateStackContent(ctx context.Context, stackID string, composeContent, envContent *string) error {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return err
+	}
+
+	if composeContent != nil {
+		existingComposeFile := s.findComposeFile(stack.Path)
+		var composePath string
+
+		if existingComposeFile != "" {
+			composePath = existingComposeFile
+		} else {
+			composePath = filepath.Join(stack.Path, "compose.yaml")
+		}
+
+		if err := os.WriteFile(composePath, []byte(*composeContent), 0644); err != nil {
+			return fmt.Errorf("failed to update compose file: %w", err)
+		}
+	}
+
+	if envContent != nil {
+		envPath := filepath.Join(stack.Path, ".env")
+		if *envContent == "" {
+			os.Remove(envPath)
+		} else {
+			if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
+				return fmt.Errorf("failed to update env file: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *StackService) GetStackContent(ctx context.Context, stackID string) (composeContent, envContent string, err error) {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return "", "", err
+	}
+
+	composeFile := s.findComposeFile(stack.Path)
+	if composeFile != "" {
+		if content, err := os.ReadFile(composeFile); err == nil {
+			composeContent = string(content)
+		}
+	}
+
+	envPath := filepath.Join(stack.Path, ".env")
+	if content, err := os.ReadFile(envPath); err == nil {
+		envContent = string(content)
+	}
+
+	return composeContent, envContent, nil
+}
+
+func (s *StackService) DeleteStack(ctx context.Context, stackID string) error {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return err
+	}
+
+	if stack.Status == models.StackStatusRunning {
+		if err := s.DownStack(ctx, stackID); err != nil {
+			fmt.Printf("Warning: failed to stop stack before deletion: %v\n", err)
+		}
+	}
+
+	if err := s.db.DB.WithContext(ctx).Delete(stack).Error; err != nil {
+		return fmt.Errorf("failed to delete stack from database: %w", err)
+	}
+
+	if err := os.RemoveAll(stack.Path); err != nil {
+		fmt.Printf("Warning: failed to remove stack directory %s: %v\n", stack.Path, err)
+	}
+
+	return nil
+}
+
+func (s *StackService) DestroyStack(ctx context.Context, stackID string, removeFiles, removeVolumes bool) error {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return err
+	}
+
+	if err := s.DownStack(ctx, stackID); err != nil {
+		fmt.Printf("Warning: failed to bring down stack: %v\n", err)
+	}
+
+	if removeVolumes {
+		cmd := exec.CommandContext(ctx, "docker-compose", "down", "-v")
+		cmd.Dir = stack.Path
+		cmd.Env = append(os.Environ(),
+			fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
+		)
+
+		if output, err := cmd.CombinedOutput(); err != nil {
+			fmt.Printf("Warning: failed to remove volumes: %v\nOutput: %s\n", err, string(output))
+		}
+	}
+
+	if err := s.db.DB.WithContext(ctx).Delete(stack).Error; err != nil {
+		return fmt.Errorf("failed to delete stack from database: %w", err)
+	}
+
+	if removeFiles {
+		if err := os.RemoveAll(stack.Path); err != nil {
+			return fmt.Errorf("failed to remove stack files: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *StackService) RedeployStack(ctx context.Context, stackID string, profiles []string, envOverrides map[string]string) error {
+	if err := s.PullStackImages(ctx, stackID); err != nil {
+		fmt.Printf("Warning: failed to pull images: %v\n", err)
+	}
+
+	if err := s.StopStack(ctx, stackID); err != nil {
+		return fmt.Errorf("failed to stop stack for redeploy: %w", err)
+	}
+
+	return s.DeployStack(ctx, stackID)
+}
+
+func (s *StackService) DiscoverExternalStacks(ctx context.Context) ([]models.Stack, error) {
+	// This would use docker commands to find compose projects not in our database
+	// For now, return empty slice - implement based on your requirements
+	return []models.Stack{}, nil
+}
+
+func (s *StackService) ImportExternalStack(ctx context.Context, stackID, stackName string) (*models.Stack, error) {
+	// Implementation would depend on how you want to handle external stack import
+	// For now, return error indicating not implemented
+	return nil, fmt.Errorf("external stack import not implemented yet")
+}
+
+func (s *StackService) ValidateStackCompose(ctx context.Context, composeContent string) error {
+	tempDir, err := os.MkdirTemp("", "stack-validation")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	composePath := filepath.Join(tempDir, "docker-compose.yml")
+	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil {
+		return fmt.Errorf("failed to write compose file: %w", err)
+	}
+
+	options, err := cli.NewProjectOptions(
+		[]string{composePath},
+		cli.WithOsEnv,
+		cli.WithWorkingDirectory(tempDir),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create project options: %w", err)
+	}
+
+	_, err = options.LoadProject(ctx)
+	if err != nil {
+		return fmt.Errorf("invalid compose file: %w", err)
+	}
+
+	return nil
+}
+
+func (s *StackService) GetStackLogs(ctx context.Context, stackID string, tail int, follow bool) (string, error) {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return "", err
+	}
+
+	args := []string{"logs"}
+	if tail > 0 {
+		args = append(args, "--tail", fmt.Sprintf("%d", tail))
+	}
+	if follow {
+		args = append(args, "--follow")
+	}
+
+	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd.Dir = stack.Path
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get stack logs: %w", err)
+	}
+
+	return string(output), nil
+}
+
+func (s *StackService) ConvertDockerRun(ctx context.Context, dockerRunCommand string) (string, error) {
+	// This would use your converter service to convert docker run to compose
+	// For now, return error indicating not implemented
+	return "", fmt.Errorf("docker run conversion not implemented yet")
+}
+
+func (s *StackService) GetStackByID(ctx context.Context, id string) (*models.Stack, error) {
+	var stack models.Stack
+	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("stack not found")
+		}
+		return nil, fmt.Errorf("failed to get stack: %w", err)
+	}
+	return &stack, nil
+}
+
+func (s *StackService) UpdateStackStatus(ctx context.Context, id string, status models.StackStatus) error {
+	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"status":     status,
+		"updated_at": time.Now(),
+	}).Error; err != nil {
+		return fmt.Errorf("failed to update stack status: %w", err)
+	}
+	return nil
+}
+
+func (s *StackService) updateStackStatusAndCounts(ctx context.Context, stackID string, status models.StackStatus) error {
+	// Get current service counts
+	services, err := s.GetStackServices(ctx, stackID)
+	if err != nil {
+		// If we can't get services, just update status
+		return s.UpdateStackStatus(ctx, stackID, status)
+	}
+
+	serviceCount, runningCount := s.getServiceCounts(services)
+
+	// Update all fields at once
+	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", stackID).Updates(map[string]interface{}{
+		"status":        status,
+		"service_count": serviceCount,
+		"running_count": runningCount,
+		"updated_at":    time.Now(),
+	}).Error; err != nil {
+		return fmt.Errorf("failed to update stack status and counts: %w", err)
+	}
+
+	return nil
 }
 
 func (s *StackService) sanitizeStackName(name string) string {
@@ -129,1397 +624,6 @@ func (s *StackService) sanitizeStackName(name string) string {
 	}, name)
 }
 
-func (s *StackService) ensureUniqueFolderName(ctx context.Context, baseName string) (string, error) {
-	stacksDir, err := s.getStacksDirectory(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	targetPath := filepath.Join(stacksDir, baseName)
-	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
-		var count int64
-		if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("dir_name = ?", baseName).Count(&count).Error; err != nil {
-			return "", err
-		}
-		if count == 0 {
-			return baseName, nil
-		}
-	}
-
-	counter := 1
-	for {
-		candidateName := fmt.Sprintf("%s-%d", baseName, counter)
-		candidatePath := filepath.Join(stacksDir, candidateName)
-		if _, err := os.Stat(candidatePath); os.IsNotExist(err) {
-			var count int64
-			if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("dir_name = ?", candidateName).Count(&count).Error; err != nil {
-				return "", err
-			}
-			if count == 0 {
-				return candidateName, nil
-			}
-		}
-		counter++
-		if counter > 1000 {
-			return "", fmt.Errorf("unable to generate unique folder name for: %s", baseName)
-		}
-	}
-}
-
-func (s *StackService) SaveStackFilesToPath(stackPath, composeContent string, envContent *string) error {
-	if err := os.MkdirAll(stackPath, 0755); err != nil {
-		return fmt.Errorf("failed to create stack directory: %w", err)
-	}
-
-	composePath := filepath.Join(stackPath, "compose.yaml")
-	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil {
-		return fmt.Errorf("failed to save compose file: %w", err)
-	}
-
-	envPath := filepath.Join(stackPath, ".env")
-	if envContent != nil && *envContent != "" {
-		if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
-			return fmt.Errorf("failed to save env file: %w", err)
-		}
-	} else {
-		if _, err := os.Stat(envPath); err == nil {
-			os.Remove(envPath)
-		}
-	}
-
-	return nil
-}
-
-func (s *StackService) GetStackByID(ctx context.Context, id string) (*models.Stack, error) {
-	var stack models.Stack
-	if err := s.db.WithContext(ctx).Preload("Agent").Where("id = ?", id).First(&stack).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("stack not found")
-		}
-		return nil, fmt.Errorf("failed to get stack: %w", err)
-	}
-	return &stack, nil
-}
-
-func (s *StackService) GetStackByName(ctx context.Context, name string) (*models.Stack, error) {
-	var stack models.Stack
-	if err := s.db.WithContext(ctx).Preload("Agent").Where("name = ?", name).First(&stack).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("stack not found")
-		}
-		return nil, fmt.Errorf("failed to get stack: %w", err)
-	}
-	return &stack, nil
-}
-
-func (s *StackService) GetStackContent(ctx context.Context, stackID string) (composeContent, envContent string, err error) {
-	var stack models.Stack
-	if err := s.db.WithContext(ctx).Where("id = ?", stackID).First(&stack).Error; err != nil {
-		return "", "", fmt.Errorf("stack not found: %w", err)
-	}
-
-	composeFile := s.findComposeFile(stack.Path)
-	if composeFile == "" {
-		return "", "", fmt.Errorf("no compose file found")
-	}
-
-	composeData, err := os.ReadFile(composeFile)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to read compose file: %w", err)
-	}
-	composeContent = string(composeData)
-
-	envFile := filepath.Join(stack.Path, ".env")
-	if envData, err := os.ReadFile(envFile); err == nil {
-		envContent = string(envData)
-	}
-
-	return composeContent, envContent, nil
-}
-
-func (s *StackService) ListStacks(ctx context.Context) ([]*models.Stack, error) {
-	var stacks []*models.Stack
-	if err := s.db.WithContext(ctx).Order("created_at DESC").Find(&stacks).Error; err != nil {
-		return nil, fmt.Errorf("failed to list stacks: %w", err)
-	}
-
-	if len(stacks) == 0 {
-		fmt.Println("No stacks found in database, checking for file-based stacks...")
-		if err := s.ImportFileBasedStacks(ctx); err != nil {
-			fmt.Printf("Warning: failed to import file-based stacks: %v\n", err)
-		} else {
-			if err := s.db.WithContext(ctx).Order("created_at DESC").Find(&stacks).Error; err != nil {
-				return nil, fmt.Errorf("failed to list stacks after import: %w", err)
-			}
-		}
-	}
-
-	for i, stack := range stacks {
-		services, err := s.GetStackServices(ctx, stack.ID)
-		if err != nil {
-			fmt.Printf("Warning: failed to get services for stack %s: %v\n", stack.ID, err)
-			stacks[i].ServiceCount = 0
-			stacks[i].RunningCount = 0
-			stacks[i].Status = models.StackStatusStopped
-			continue
-		}
-
-		serviceCount := len(services)
-		runningCount := 0
-		for _, service := range services {
-			if service.Status == "running" {
-				runningCount++
-			}
-		}
-
-		var status models.StackStatus = models.StackStatusStopped
-		if serviceCount > 0 {
-			if runningCount == serviceCount {
-				status = models.StackStatusRunning
-			} else if runningCount > 0 {
-				status = "partially running"
-			}
-		}
-
-		stacks[i].ServiceCount = serviceCount
-		stacks[i].RunningCount = runningCount
-		stacks[i].Status = status
-
-		if err := s.UpdateStackRuntimeInfo(ctx, stack.ID, serviceCount, runningCount, status); err != nil {
-			fmt.Printf("Warning: failed to update runtime info for stack %s: %v\n", stack.ID, err)
-		}
-	}
-
-	return stacks, nil
-}
-
-func (s *StackService) GetStacksByAgent(ctx context.Context, agentID string) ([]*models.Stack, error) {
-	var stacks []*models.Stack
-	if err := s.db.WithContext(ctx).Where("agent_id = ?", agentID).Find(&stacks).Error; err != nil {
-		return nil, fmt.Errorf("failed to get stacks by agent: %w", err)
-	}
-	return stacks, nil
-}
-
-func (s *StackService) GetStackInfo(ctx context.Context, stackID string) (*StackInfo, error) {
-	stack, err := s.GetStackByID(ctx, stackID)
-	if err != nil {
-		return nil, err
-	}
-
-	services, err := s.GetStackServices(ctx, stackID)
-	if err != nil {
-		return nil, err
-	}
-
-	project, err := s.LoadProject(ctx, stackID)
-	if err != nil {
-		return nil, err
-	}
-
-	var networks []string
-	for networkName := range project.Networks {
-		networks = append(networks, networkName)
-	}
-
-	var volumes []string
-	for volumeName := range project.Volumes {
-		volumes = append(volumes, volumeName)
-	}
-
-	runningCount := 0
-	for _, service := range services {
-		if service.Status == "running" {
-			runningCount++
-		}
-	}
-
-	return &StackInfo{
-		ID:           stack.ID,
-		Name:         stack.Name,
-		Status:       string(stack.Status),
-		Services:     services,
-		Networks:     networks,
-		Volumes:      volumes,
-		ServiceCount: len(services),
-		RunningCount: runningCount,
-	}, nil
-}
-
-func (s *StackService) UpdateStack(ctx context.Context, stack *models.Stack) (*models.Stack, error) {
-	now := time.Now()
-	stack.UpdatedAt = &now
-
-	if err := s.db.WithContext(ctx).Save(stack).Error; err != nil {
-		return nil, fmt.Errorf("failed to update stack: %w", err)
-	}
-	return stack, nil
-}
-
-func (s *StackService) UpdateStackStatus(ctx context.Context, id string, status models.StackStatus) error {
-	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"status":     status,
-		"updated_at": time.Now(),
-	}).Error; err != nil {
-		return fmt.Errorf("failed to update stack status: %w", err)
-	}
-	return nil
-}
-
-func (s *StackService) UpdateStackContent(ctx context.Context, id string, composeContent *string, envContent *string) error {
-	var stack models.Stack
-	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
-		return fmt.Errorf("stack not found: %w", err)
-	}
-
-	var finalComposeContent, finalEnvContent string
-
-	if composeContent != nil {
-		finalComposeContent = *composeContent
-	} else {
-		currentCompose, _, err := s.GetStackContent(ctx, id)
-		if err != nil {
-			return fmt.Errorf("failed to get current compose content: %w", err)
-		}
-		finalComposeContent = currentCompose
-	}
-
-	if envContent != nil {
-		finalEnvContent = *envContent
-	} else {
-		_, currentEnv, err := s.GetStackContent(ctx, id)
-		if err != nil {
-			finalEnvContent = ""
-		} else {
-			finalEnvContent = currentEnv
-		}
-	}
-
-	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", id).Update("updated_at", time.Now()).Error; err != nil {
-		return fmt.Errorf("failed to update stack timestamp: %w", err)
-	}
-
-	return s.SaveStackFilesToPath(stack.Path, finalComposeContent, &finalEnvContent)
-}
-
-func (s *StackService) UpdateStackRuntimeInfo(ctx context.Context, id string, serviceCount, runningCount int, status models.StackStatus) error {
-	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"service_count": serviceCount,
-		"running_count": runningCount,
-		"status":        status,
-		"last_polled":   time.Now().Unix(),
-		"updated_at":    time.Now(),
-	}).Error; err != nil {
-		return fmt.Errorf("failed to update stack runtime info: %w", err)
-	}
-	return nil
-}
-
-func (s *StackService) DeleteStack(ctx context.Context, id string) error {
-	if err := s.db.WithContext(ctx).Delete(&models.Stack{}, "id = ?", id).Error; err != nil {
-		return fmt.Errorf("failed to delete stack: %w", err)
-	}
-	return nil
-}
-
-func (s *StackService) DeployStack(ctx context.Context, id string, profiles []string, envOverrides map[string]string) error {
-	options := DeployOptions{
-		Profiles:     profiles,
-		EnvOverrides: envOverrides,
-		Build:        false,
-		Pull:         false,
-	}
-
-	return s.deployStackWithOptions(ctx, id, options)
-}
-
-func (s *StackService) DeployStackWithBuild(ctx context.Context, id string, options DeployOptions) error {
-	return s.deployStackWithOptions(ctx, id, options)
-}
-
-func (s *StackService) deployStackWithOptions(ctx context.Context, stackID string, options DeployOptions) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
-
-	project, err := s.LoadProject(ctx, stackID)
-	if err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
-	}
-
-	if len(options.Profiles) > 0 {
-		project = s.applyProfiles(project, options.Profiles)
-	}
-
-	if len(options.EnvOverrides) > 0 {
-		project = s.applyEnvOverrides(project, options.EnvOverrides)
-	}
-
-	if options.Pull {
-		if err := s.pullImages(ctx, dockerClient, project); err != nil {
-			return fmt.Errorf("failed to pull images: %w", err)
-		}
-	}
-
-	if options.Build {
-		if err := s.buildImages(ctx, dockerClient, project); err != nil {
-			return fmt.Errorf("failed to build images: %w", err)
-		}
-	}
-
-	if err := s.createNetworks(ctx, dockerClient, project); err != nil {
-		return fmt.Errorf("failed to create networks: %w", err)
-	}
-
-	if err := s.createVolumes(ctx, dockerClient, project); err != nil {
-		return fmt.Errorf("failed to create volumes: %w", err)
-	}
-
-	if err := s.createSecrets(ctx, dockerClient, project); err != nil {
-		return fmt.Errorf("failed to create secrets: %w", err)
-	}
-
-	if err := s.createServices(ctx, dockerClient, project, options); err != nil {
-		return fmt.Errorf("failed to create services: %w", err)
-	}
-
-	return s.UpdateStackStatus(ctx, stackID, models.StackStatusRunning)
-}
-
-func (s *StackService) StopStack(ctx context.Context, id string) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
-
-	var stack models.Stack
-	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
-		return fmt.Errorf("stack not found: %w", err)
-	}
-
-	projectName := s.getProjectName(&stack)
-
-	alternativeNames := []string{
-		projectName,
-	}
-
-	if stack.DirName != nil && *stack.DirName != "" && *stack.DirName != projectName {
-		alternativeNames = append(alternativeNames, *stack.DirName)
-	}
-
-	dirName := ""
-	if stack.DirName != nil {
-		dirName = *stack.DirName
-	}
-	if stack.Name != projectName && stack.Name != dirName {
-		alternativeNames = append(alternativeNames, stack.Name)
-	}
-
-	fmt.Printf("DEBUG: Stopping stack %s with project names: %v\n", id, alternativeNames)
-
-	var allContainers []container.Summary
-
-	for _, name := range alternativeNames {
-		containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
-			All: true,
-			Filters: filters.NewArgs(
-				filters.Arg("label", fmt.Sprintf("com.docker.compose.project=%s", name)),
-			),
-		})
-		if err != nil {
-			fmt.Printf("DEBUG: Error listing containers for project %s: %v\n", name, err)
-			continue
-		}
-
-		for _, cont := range containers {
-			found := false
-			for _, existing := range allContainers {
-				if existing.ID == cont.ID {
-					found = true
-					break
-				}
-			}
-			if !found {
-				allContainers = append(allContainers, cont)
-			}
-		}
-	}
-
-	fmt.Printf("DEBUG: Found %d total containers to stop\n", len(allContainers))
-
-	for _, cont := range allContainers {
-		if cont.State == "running" {
-			fmt.Printf("DEBUG: Stopping container %s\n", cont.ID[:12])
-			timeout := 10
-			if err := dockerClient.ContainerStop(ctx, cont.ID, container.StopOptions{
-				Timeout: &timeout,
-			}); err != nil {
-				fmt.Printf("Warning: failed to stop container %s: %v\n", cont.ID, err)
-			}
-		}
-	}
-
-	return s.UpdateStackStatus(ctx, id, models.StackStatusStopped)
-}
-
-func (s *StackService) RestartStack(ctx context.Context, id string) error {
-	if err := s.StopStack(ctx, id); err != nil {
-		return err
-	}
-	return s.DeployStack(ctx, id, nil, nil)
-}
-
-func (s *StackService) PauseStack(ctx context.Context, id string) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
-
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
-		All: true,
-		Filters: filters.NewArgs(
-			filters.Arg("label", fmt.Sprintf("com.docker.compose.project=%s", id)),
-		),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to list containers: %w", err)
-	}
-
-	for _, cont := range containers {
-		if cont.State == "running" {
-			if err := dockerClient.ContainerPause(ctx, cont.ID); err != nil {
-				return fmt.Errorf("failed to pause container %s: %w", cont.ID, err)
-			}
-		}
-	}
-
-	return s.UpdateStackStatus(ctx, id, models.StackStatusStopped)
-}
-
-func (s *StackService) UnpauseStack(ctx context.Context, id string) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
-
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
-		All: true,
-		Filters: filters.NewArgs(
-			filters.Arg("label", fmt.Sprintf("com.docker.compose.project=%s", id)),
-		),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to list containers: %w", err)
-	}
-
-	for _, cont := range containers {
-		if cont.State == "paused" {
-			if err := dockerClient.ContainerUnpause(ctx, cont.ID); err != nil {
-				return fmt.Errorf("failed to unpause container %s: %w", cont.ID, err)
-			}
-		}
-	}
-
-	return s.UpdateStackStatus(ctx, id, models.StackStatusRunning)
-}
-
-func (s *StackService) RemoveStack(ctx context.Context, id string, removeVolumes bool) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
-
-	project, err := s.LoadProject(ctx, id)
-	if err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
-	}
-
-	if err := s.removeContainers(ctx, dockerClient, id); err != nil {
-		return fmt.Errorf("failed to remove containers: %w", err)
-	}
-
-	if err := s.removeNetworks(ctx, dockerClient, project); err != nil {
-		return fmt.Errorf("failed to remove networks: %w", err)
-	}
-
-	if removeVolumes {
-		if err := s.removeVolumes(ctx, dockerClient, project); err != nil {
-			return fmt.Errorf("failed to remove volumes: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (s *StackService) ScaleService(ctx context.Context, stackID, serviceName string, replicas int) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
-
-	project, err := s.LoadProject(ctx, stackID)
-	if err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
-	}
-
-	service, exists := project.Services[serviceName]
-	if !exists {
-		return fmt.Errorf("service %s not found in stack", serviceName)
-	}
-
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
-		All: true,
-		Filters: filters.NewArgs(
-			filters.Arg("label", fmt.Sprintf("com.docker.compose.project=%s", stackID)),
-			filters.Arg("label", fmt.Sprintf("com.docker.compose.service=%s", serviceName)),
-		),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to list containers: %w", err)
-	}
-
-	currentReplicas := len(containers)
-
-	if replicas > currentReplicas {
-		for i := currentReplicas; i < replicas; i++ {
-			containerName := fmt.Sprintf("%s_%s_%d", project.Name, serviceName, i+1)
-			if err := s.createSingleService(ctx, dockerClient, project, serviceName, service, containerName); err != nil {
-				return fmt.Errorf("failed to scale up service: %w", err)
-			}
-		}
-	} else if replicas < currentReplicas {
-		for i := currentReplicas - 1; i >= replicas; i-- {
-			if i < len(containers) {
-				cont := containers[i]
-				if cont.State == "running" {
-					timeout := 10
-					dockerClient.ContainerStop(ctx, cont.ID, container.StopOptions{
-						Timeout: &timeout,
-					})
-				}
-				if err := dockerClient.ContainerRemove(ctx, cont.ID, container.RemoveOptions{
-					Force: true,
-				}); err != nil {
-					return fmt.Errorf("failed to remove container: %w", err)
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func (s *StackService) PullStackImages(ctx context.Context, id string) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
-
-	project, err := s.LoadProject(ctx, id)
-	if err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
-	}
-
-	return s.pullImages(ctx, dockerClient, project)
-}
-
-func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]StackServiceInfo, error) {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
-
-	var stack models.Stack
-	if err := s.db.WithContext(ctx).Where("id = ?", stackID).First(&stack).Error; err != nil {
-		return nil, fmt.Errorf("stack not found: %w", err)
-	}
-
-	projectName := s.getProjectName(&stack)
-
-	fmt.Printf("DEBUG: Looking for containers STRICTLY with project name: %s (no alternatives)\n", projectName)
-
-	project, err := s.LoadProject(ctx, stackID)
-	if err != nil {
-		fmt.Printf("Warning: failed to load project for stack %s: %v\n", stackID, err)
-		return []StackServiceInfo{}, nil
-	}
-
-	var services []StackServiceInfo
-
-	for serviceName, service := range project.Services {
-		fmt.Printf("DEBUG: Processing service: %s for stack %s\n", serviceName, stackID)
-
-		containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
-			All: true,
-			Filters: filters.NewArgs(
-				filters.Arg("label", fmt.Sprintf("com.docker.compose.project=%s", projectName)),
-				filters.Arg("label", fmt.Sprintf("com.docker.compose.service=%s", serviceName)),
-			),
-		})
-
-		if err != nil {
-			fmt.Printf("DEBUG: Error listing containers for project %s: %v\n", projectName, err)
-			containers = []container.Summary{}
-		}
-
-		fmt.Printf("DEBUG: Found %d containers for project %s, service %s\n", len(containers), projectName, serviceName)
-
-		serviceInfo := StackServiceInfo{
-			Name:         serviceName,
-			Image:        service.Image,
-			Status:       "not created",
-			ContainerID:  "",
-			Environment:  make(map[string]string),
-			RestartCount: 0,
-			Ports:        []string{},
-			Networks:     []string{},
-			Volumes:      []string{},
-		}
-
-		if len(containers) > 0 {
-			cont := containers[0]
-			serviceInfo.ContainerID = cont.ID
-			serviceInfo.Status = cont.State
-
-			containerName := strings.TrimPrefix(cont.Names[0], "/")
-			fmt.Printf("DEBUG: Found container %s with ID %s, status %s for stack %s\n",
-				containerName, cont.ID, cont.State, projectName)
-
-			inspect, err := dockerClient.ContainerInspect(ctx, cont.ID)
-			if err == nil {
-				var ports []string
-				for containerPort, hostBindings := range inspect.NetworkSettings.Ports {
-					if len(hostBindings) > 0 {
-						for _, binding := range hostBindings {
-							ports = append(ports, fmt.Sprintf("%s:%s->%s", binding.HostIP, binding.HostPort, containerPort))
-						}
-					} else if containerPort != "" {
-						ports = append(ports, string(containerPort))
-					}
-				}
-				serviceInfo.Ports = ports
-
-				var networks []string
-				for networkName := range inspect.NetworkSettings.Networks {
-					networks = append(networks, networkName)
-				}
-				serviceInfo.Networks = networks
-
-				var volumes []string
-				for _, mount := range inspect.Mounts {
-					volumes = append(volumes, fmt.Sprintf("%s:%s", mount.Source, mount.Destination))
-				}
-				serviceInfo.Volumes = volumes
-
-				env := make(map[string]string)
-				for _, envVar := range inspect.Config.Env {
-					parts := strings.SplitN(envVar, "=", 2)
-					if len(parts) == 2 {
-						env[parts[0]] = parts[1]
-					}
-				}
-				serviceInfo.Environment = env
-
-				serviceInfo.RestartCount = inspect.RestartCount
-
-				if inspect.State != nil && inspect.State.Health != nil {
-					serviceInfo.Health = inspect.State.Health.Status
-				}
-			} else {
-				fmt.Printf("DEBUG: Failed to inspect container %s: %v\n", cont.ID, err)
-			}
-		} else {
-			fmt.Printf("DEBUG: No containers found for service %s in stack %s\n", serviceName, projectName)
-		}
-
-		services = append(services, serviceInfo)
-	}
-
-	return services, nil
-}
-
-func (s *StackService) GetServiceLogs(ctx context.Context, stackID, serviceName string, follow bool, tail string) (io.ReadCloser, error) {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
-
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
-		All: true,
-		Filters: filters.NewArgs(
-			filters.Arg("label", fmt.Sprintf("com.docker.compose.project=%s", stackID)),
-			filters.Arg("label", fmt.Sprintf("com.docker.compose.service=%s", serviceName)),
-		),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list containers: %w", err)
-	}
-
-	if len(containers) == 0 {
-		return nil, fmt.Errorf("no containers found for service %s", serviceName)
-	}
-
-	cont := containers[0]
-	options := container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     follow,
-		Tail:       tail,
-		Timestamps: true,
-	}
-
-	return dockerClient.ContainerLogs(ctx, cont.ID, options)
-}
-
-func (s *StackService) LoadProject(ctx context.Context, stackID string) (*types.Project, error) {
-	var stack models.Stack
-	if err := s.db.WithContext(ctx).Where("id = ?", stackID).First(&stack).Error; err != nil {
-		return nil, fmt.Errorf("stack not found: %w", err)
-	}
-
-	stackDir := stack.Path
-
-	projectName := s.getProjectName(&stack)
-
-	composeFile := s.findComposeFile(stackDir)
-	if composeFile == "" {
-		return nil, fmt.Errorf("no compose file found in %s", stackDir)
-	}
-
-	options, err := cli.NewProjectOptions(
-		[]string{composeFile},
-		cli.WithOsEnv,
-		cli.WithDotEnv,
-		cli.WithName(projectName),
-		cli.WithWorkingDirectory(stackDir),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create project options: %w", err)
-	}
-
-	project, err := options.LoadProject(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load compose project: %w", err)
-	}
-
-	return project, nil
-}
-
-func (s *StackService) UpdateStackAutoUpdate(ctx context.Context, id string, autoUpdate bool) error {
-	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", id).Update("auto_update", autoUpdate).Error; err != nil {
-		return fmt.Errorf("failed to update stack auto-update: %w", err)
-	}
-	return nil
-}
-
-func (s *StackService) GetAutoUpdateStacks(ctx context.Context) ([]*models.Stack, error) {
-	var stacks []*models.Stack
-	if err := s.db.WithContext(ctx).Where("auto_update = ?", true).Find(&stacks).Error; err != nil {
-		return nil, fmt.Errorf("failed to get auto-update stacks: %w", err)
-	}
-	return stacks, nil
-}
-
-func (s *StackService) EnsureStackDirectory(stackID string) (string, error) {
-	var stack models.Stack
-	if err := s.db.Where("id = ?", stackID).First(&stack).Error; err != nil {
-		return "", fmt.Errorf("stack not found: %w", err)
-	}
-
-	if err := os.MkdirAll(stack.Path, 0755); err != nil {
-		return "", fmt.Errorf("failed to create stack directory: %w", err)
-	}
-
-	return stack.Path, nil
-}
-
-func (s *StackService) SaveStackFiles(stackID, composeContent string, envContent *string) error {
-	var stack models.Stack
-	if err := s.db.Where("id = ?", stackID).First(&stack).Error; err != nil {
-		return fmt.Errorf("stack not found: %w", err)
-	}
-
-	return s.SaveStackFilesToPath(stack.Path, composeContent, envContent)
-}
-
-func (s *StackService) findComposeFile(stackDir string) string {
-	possibleFiles := []string{
-		"compose.yaml",
-		"compose.yml",
-		"docker-compose.yaml",
-		"docker-compose.yml",
-	}
-
-	for _, filename := range possibleFiles {
-		fullPath := filepath.Join(stackDir, filename)
-		if _, err := os.Stat(fullPath); err == nil {
-			return fullPath
-		}
-	}
-
-	return ""
-}
-
-func (s *StackService) applyProfiles(project *types.Project, profiles []string) *types.Project {
-	if len(profiles) == 0 {
-		return project
-	}
-
-	profileSet := make(map[string]bool)
-	for _, profile := range profiles {
-		profileSet[profile] = true
-	}
-
-	filteredServices := make(types.Services)
-	for name, service := range project.Services {
-		if len(service.Profiles) == 0 {
-			filteredServices[name] = service
-			continue
-		}
-
-		for _, serviceProfile := range service.Profiles {
-			if profileSet[serviceProfile] {
-				filteredServices[name] = service
-				break
-			}
-		}
-	}
-
-	project.Services = filteredServices
-	return project
-}
-
-func (s *StackService) applyEnvOverrides(project *types.Project, envOverrides map[string]string) *types.Project {
-	for serviceName, service := range project.Services {
-		if service.Environment == nil {
-			service.Environment = make(types.MappingWithEquals)
-		}
-
-		for key, value := range envOverrides {
-			service.Environment[key] = &value
-		}
-
-		project.Services[serviceName] = service
-	}
-
-	return project
-}
-
-func (s *StackService) pullImages(ctx context.Context, client *client.Client, project *types.Project) error {
-	for serviceName, service := range project.Services {
-		if service.Image == "" {
-			continue
-		}
-
-		fmt.Printf("Pulling image %s for service %s\n", service.Image, serviceName)
-
-		reader, err := client.ImagePull(ctx, service.Image, image.PullOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to pull image %s: %w", service.Image, err)
-		}
-		defer reader.Close()
-
-		io.Copy(io.Discard, reader)
-	}
-
-	return nil
-}
-
-func (s *StackService) buildImages(ctx context.Context, client *client.Client, project *types.Project) error {
-	fmt.Println("Image building not yet implemented")
-	return nil
-}
-
-func (s *StackService) createSecrets(ctx context.Context, client *client.Client, project *types.Project) error {
-	return nil
-}
-
-func (s *StackService) createNetworks(ctx context.Context, client *client.Client, project *types.Project) error {
-	for networkName, networkConfig := range project.Networks {
-		if networkConfig.External {
-			continue
-		}
-
-		fullName := fmt.Sprintf("%s_%s", project.Name, networkName)
-
-		networks, err := client.NetworkList(ctx, network.ListOptions{
-			Filters: filters.NewArgs(filters.Arg("name", fullName)),
-		})
-		if err != nil {
-			return err
-		}
-
-		if len(networks) > 0 {
-			continue
-		}
-
-		createOptions := network.CreateOptions{
-			Driver: networkConfig.Driver,
-			Labels: map[string]string{
-				"com.docker.compose.project": project.Name,
-				"com.docker.compose.network": networkName,
-			},
-		}
-
-		if networkConfig.DriverOpts != nil {
-			createOptions.Options = networkConfig.DriverOpts
-		}
-
-		_, err = client.NetworkCreate(ctx, fullName, createOptions)
-		if err != nil {
-			return fmt.Errorf("failed to create network %s: %w", fullName, err)
-		}
-	}
-
-	return nil
-}
-
-func (s *StackService) createVolumes(ctx context.Context, client *client.Client, project *types.Project) error {
-	for volumeName, volumeConfig := range project.Volumes {
-		if volumeConfig.External {
-			continue
-		}
-
-		fullName := fmt.Sprintf("%s_%s", project.Name, volumeName)
-
-		volumes, err := client.VolumeList(ctx, volume.ListOptions{
-			Filters: filters.NewArgs(filters.Arg("name", fullName)),
-		})
-		if err != nil {
-			return err
-		}
-
-		if len(volumes.Volumes) > 0 {
-			continue
-		}
-
-		createOptions := volume.CreateOptions{
-			Name:   fullName,
-			Driver: volumeConfig.Driver,
-			Labels: map[string]string{
-				"com.docker.compose.project": project.Name,
-				"com.docker.compose.volume":  volumeName,
-			},
-		}
-
-		if volumeConfig.DriverOpts != nil {
-			createOptions.DriverOpts = volumeConfig.DriverOpts
-		}
-
-		_, err = client.VolumeCreate(ctx, createOptions)
-		if err != nil {
-			return fmt.Errorf("failed to create volume %s: %w", fullName, err)
-		}
-	}
-
-	return nil
-}
-
-func (s *StackService) validateStackDeployment(ctx context.Context, client *client.Client, project *types.Project) error {
-	fmt.Printf("DEBUG: Validating stack deployment for project %s\n", project.Name)
-
-	var conflicts []string
-
-	for serviceName, service := range project.Services {
-		var containerName string
-		if service.ContainerName != "" {
-			containerName = service.ContainerName
-		} else {
-			containerName = fmt.Sprintf("%s_%s_1", project.Name, serviceName)
-		}
-
-		existingContainers, err := client.ContainerList(ctx, container.ListOptions{
-			All: true,
-			Filters: filters.NewArgs(
-				filters.Arg("name", containerName),
-			),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to check for existing container %s: %w", containerName, err)
-		}
-
-		if len(existingContainers) > 0 {
-			existingContainer := existingContainers[0]
-			existingProjectLabel := existingContainer.Labels["com.docker.compose.project"]
-
-			if existingProjectLabel != project.Name {
-				conflicts = append(conflicts, fmt.Sprintf("Service '%s' wants to use container name '%s', but it's already used by project '%s'",
-					serviceName, containerName, existingProjectLabel))
-			}
-		}
-	}
-
-	if len(conflicts) > 0 {
-		return fmt.Errorf("container name conflicts detected:\n%s", strings.Join(conflicts, "\n"))
-	}
-
-	fmt.Printf("DEBUG: No container name conflicts found\n")
-	return nil
-}
-
-func (s *StackService) createServices(ctx context.Context, client *client.Client, project *types.Project, options DeployOptions) error {
-	if err := s.validateStackDeployment(ctx, client, project); err != nil {
-		return fmt.Errorf("deployment validation failed: %w", err)
-	}
-
-	serviceOrder := s.resolveDependencyOrder(project.Services)
-
-	for _, serviceName := range serviceOrder {
-		service := project.Services[serviceName]
-
-		var containerName string
-		if service.ContainerName != "" {
-			containerName = service.ContainerName
-		} else {
-			containerName = fmt.Sprintf("%s_%s_1", project.Name, serviceName)
-		}
-
-		if err := s.createSingleService(ctx, client, project, serviceName, service, containerName); err != nil {
-			return fmt.Errorf("failed to create service %s: %w", serviceName, err)
-		}
-	}
-
-	return nil
-}
-
-func (s *StackService) createSingleService(ctx context.Context, client *client.Client, project *types.Project, serviceName string, service types.ServiceConfig, containerName string) error {
-	config := &container.Config{
-		Image: service.Image,
-		Env:   s.buildEnvironment(service.Environment),
-		Labels: map[string]string{
-			"com.docker.compose.project":          project.Name,
-			"com.docker.compose.service":          serviceName,
-			"com.docker.compose.container-number": "1",
-		},
-	}
-
-	for key, value := range service.Labels {
-		config.Labels[key] = value
-	}
-
-	if len(service.Command) > 0 {
-		config.Cmd = strslice.StrSlice(service.Command)
-	}
-
-	if len(service.Entrypoint) > 0 {
-		config.Entrypoint = strslice.StrSlice(service.Entrypoint)
-	}
-
-	if service.WorkingDir != "" {
-		config.WorkingDir = service.WorkingDir
-	}
-
-	if service.User != "" {
-		config.User = service.User
-	}
-
-	if service.Hostname != "" {
-		config.Hostname = service.Hostname
-	}
-
-	hostConfig := &container.HostConfig{
-		RestartPolicy: container.RestartPolicy{
-			Name: container.RestartPolicyMode(service.Restart),
-		},
-		PortBindings: s.buildPortBindings(service.Ports),
-		Binds:        s.buildVolumes(service.Volumes, project),
-	}
-
-	if service.Privileged {
-		hostConfig.Privileged = true
-	}
-
-	if service.Deploy != nil {
-		if service.Deploy.Resources.Limits != nil {
-			if service.Deploy.Resources.Limits.MemoryBytes > 0 {
-				hostConfig.Memory = int64(service.Deploy.Resources.Limits.MemoryBytes)
-			}
-			if service.Deploy.Resources.Limits.NanoCPUs > 0 {
-				hostConfig.NanoCPUs = int64(service.Deploy.Resources.Limits.NanoCPUs)
-			}
-		}
-	}
-
-	networkConfig := &network.NetworkingConfig{
-		EndpointsConfig: s.buildNetworkConfig(service.Networks, project),
-	}
-
-	existingContainers, err := client.ContainerList(ctx, container.ListOptions{
-		All: true,
-		Filters: filters.NewArgs(
-			filters.Arg("name", containerName),
-		),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to check for existing container: %w", err)
-	}
-
-	if len(existingContainers) > 0 {
-		existingContainer := existingContainers[0]
-		existingProjectLabel := existingContainer.Labels["com.docker.compose.project"]
-
-		fmt.Printf("DEBUG: Found existing container %s with project label: %s\n", containerName, existingProjectLabel)
-
-		if existingProjectLabel == project.Name {
-			fmt.Printf("DEBUG: Container %s belongs to this stack (%s), replacing it\n", containerName, project.Name)
-
-			if existingContainer.State == "running" {
-				timeout := 10
-				if err := client.ContainerStop(ctx, existingContainer.ID, container.StopOptions{
-					Timeout: &timeout,
-				}); err != nil {
-					fmt.Printf("Warning: failed to stop existing container %s: %v\n", existingContainer.ID, err)
-				}
-			}
-
-			if err := client.ContainerRemove(ctx, existingContainer.ID, container.RemoveOptions{
-				Force: true,
-			}); err != nil {
-				return fmt.Errorf("failed to remove existing container %s: %w", existingContainer.ID, err)
-			}
-		} else {
-			return fmt.Errorf("container name conflict: container '%s' already exists and belongs to project '%s' (current project: '%s'). Please use a different container_name or stop the conflicting container first",
-				containerName, existingProjectLabel, project.Name)
-		}
-	}
-
-	resp, err := client.ContainerCreate(ctx, config, hostConfig, networkConfig, nil, containerName)
-	if err != nil {
-		if strings.Contains(err.Error(), "already in use") || strings.Contains(err.Error(), "name") {
-			return fmt.Errorf("container name conflict: '%s' is already in use by another container. Please use a different container_name in your compose file", containerName)
-		}
-		return fmt.Errorf("failed to create container %s: %w", containerName, err)
-	}
-
-	fmt.Printf("DEBUG: Created container %s with ID %s\n", containerName, resp.ID[:12])
-
-	if err := client.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		return fmt.Errorf("failed to start container %s: %w", containerName, err)
-	}
-
-	fmt.Printf("DEBUG: Started container %s\n", containerName)
-	return nil
-}
-
-func (s *StackService) buildEnvironment(env types.MappingWithEquals) []string {
-	var result []string
-	for key, value := range env {
-		if value != nil {
-			result = append(result, fmt.Sprintf("%s=%s", key, *value))
-		} else {
-			result = append(result, key)
-		}
-	}
-	return result
-}
-
-func (s *StackService) buildPortBindings(ports []types.ServicePortConfig) nat.PortMap {
-	portMap := make(nat.PortMap)
-
-	for _, port := range ports {
-		containerPort := nat.Port(fmt.Sprintf("%d/%s", port.Target, port.Protocol))
-
-		var hostBinding []nat.PortBinding
-		if port.Published != "" {
-			hostBinding = append(hostBinding, nat.PortBinding{
-				HostIP:   port.HostIP,
-				HostPort: port.Published,
-			})
-		}
-
-		portMap[containerPort] = hostBinding
-	}
-
-	return portMap
-}
-
-func (s *StackService) buildVolumes(volumes []types.ServiceVolumeConfig, project *types.Project) []string {
-	var binds []string
-
-	for _, vol := range volumes {
-		switch vol.Type {
-		case types.VolumeTypeBind:
-			bind := fmt.Sprintf("%s:%s", vol.Source, vol.Target)
-			if vol.ReadOnly {
-				bind += ":ro"
-			}
-			binds = append(binds, bind)
-		case types.VolumeTypeVolume:
-			volumeName := vol.Source
-			if _, exists := project.Volumes[volumeName]; exists {
-				volumeName = fmt.Sprintf("%s_%s", project.Name, volumeName)
-			}
-			bind := fmt.Sprintf("%s:%s", volumeName, vol.Target)
-			if vol.ReadOnly {
-				bind += ":ro"
-			}
-			binds = append(binds, bind)
-		}
-	}
-
-	return binds
-}
-
-func (s *StackService) buildNetworkConfig(networks map[string]*types.ServiceNetworkConfig, project *types.Project) map[string]*network.EndpointSettings {
-	endpoints := make(map[string]*network.EndpointSettings)
-
-	for networkName, netConfig := range networks {
-		fullNetworkName := fmt.Sprintf("%s_%s", project.Name, networkName)
-
-		endpoint := &network.EndpointSettings{
-			NetworkID: fullNetworkName,
-		}
-
-		if netConfig != nil {
-			if len(netConfig.Aliases) > 0 {
-				endpoint.Aliases = netConfig.Aliases
-			}
-		}
-
-		endpoints[fullNetworkName] = endpoint
-	}
-
-	if len(endpoints) == 0 {
-		defaultNetwork := fmt.Sprintf("%s_default", project.Name)
-		endpoints[defaultNetwork] = &network.EndpointSettings{
-			NetworkID: defaultNetwork,
-		}
-	}
-
-	return endpoints
-}
-
-func (s *StackService) extractPorts(ports nat.PortMap) []string {
-	var result []string
-	for port, bindings := range ports {
-		for _, binding := range bindings {
-			if binding.HostPort != "" {
-				result = append(result, fmt.Sprintf("%s:%s", binding.HostPort, port.Port()))
-			}
-		}
-	}
-	return result
-}
-
-func (s *StackService) extractNetworks(networks map[string]*network.EndpointSettings) []string {
-	var result []string
-	for networkName := range networks {
-		result = append(result, networkName)
-	}
-	return result
-}
-
-func (s *StackService) extractVolumes(mounts []mount.Mount) []string {
-	var result []string
-	for _, m := range mounts {
-		mountStr := fmt.Sprintf("%s:%s", m.Source, m.Target)
-		if m.ReadOnly {
-			mountStr += ":ro"
-		}
-		result = append(result, mountStr)
-	}
-	return result
-}
-
-func (s *StackService) extractEnvironment(env []string) map[string]string {
-	result := make(map[string]string)
-	for _, e := range env {
-		parts := strings.SplitN(e, "=", 2)
-		if len(parts) == 2 {
-			result[parts[0]] = parts[1]
-		}
-	}
-	return result
-}
-
-func (s *StackService) removeContainers(ctx context.Context, client *client.Client, stackID string) error {
-	containers, err := client.ContainerList(ctx, container.ListOptions{
-		All: true,
-		Filters: filters.NewArgs(
-			filters.Arg("label", fmt.Sprintf("com.docker.compose.project=%s", stackID)),
-		),
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, cont := range containers {
-		if cont.State == "running" {
-			timeout := 10
-			client.ContainerStop(ctx, cont.ID, container.StopOptions{
-				Timeout: &timeout,
-			})
-		}
-
-		if err := client.ContainerRemove(ctx, cont.ID, container.RemoveOptions{
-			Force: true,
-		}); err != nil {
-			return fmt.Errorf("failed to remove container %s: %w", cont.ID, err)
-		}
-	}
-
-	return nil
-}
-
-func (s *StackService) removeNetworks(ctx context.Context, client *client.Client, project *types.Project) error {
-	for networkName := range project.Networks {
-		fullName := fmt.Sprintf("%s_%s", project.Name, networkName)
-
-		if err := client.NetworkRemove(ctx, fullName); err != nil {
-			continue
-		}
-	}
-
-	return nil
-}
-
-func (s *StackService) removeVolumes(ctx context.Context, client *client.Client, project *types.Project) error {
-	for volumeName := range project.Volumes {
-		fullName := fmt.Sprintf("%s_%s", project.Name, volumeName)
-
-		if err := client.VolumeRemove(ctx, fullName, true); err != nil {
-			continue
-		}
-	}
-
-	return nil
-}
-
-func (s *StackService) resolveDependencyOrder(services map[string]types.ServiceConfig) []string {
-	visited := make(map[string]bool)
-	var order []string
-
-	var visit func(name string)
-	visit = func(name string) {
-		if visited[name] {
-			return
-		}
-		visited[name] = true
-		for depName := range services[name].DependsOn {
-			if _, ok := services[depName]; ok {
-				visit(depName)
-			}
-		}
-		order = append(order, name)
-	}
-
-	for name := range services {
-		visit(name)
-	}
-
-	return order
-}
-
 func (s *StackService) getStacksDirectory(ctx context.Context) (string, error) {
 	settings, err := s.settingsService.GetSettings(ctx)
 	if err != nil {
@@ -1533,229 +637,153 @@ func (s *StackService) getStacksDirectory(ctx context.Context) (string, error) {
 	return settings.StacksDirectory, nil
 }
 
-func (s *StackService) ImportFileBasedStacks(ctx context.Context) error {
-	stacksDir, err := s.getStacksDirectory(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get stacks directory: %w", err)
+func (s *StackService) saveStackFiles(stackPath, composeContent string, envContent *string) error {
+	if err := os.MkdirAll(stackPath, 0755); err != nil {
+		return fmt.Errorf("failed to create stack directory: %w", err)
 	}
 
-	entries, err := os.ReadDir(stacksDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("failed to read stacks directory: %w", err)
-	}
+	existingComposeFile := s.findComposeFile(stackPath)
+	var composePath string
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		stackID := entry.Name()
-
-		existing, err := s.GetStackByID(ctx, stackID)
-		if err == nil && existing != nil {
-			continue
-		}
-
-		if err := s.importSingleFileBasedStack(ctx, stackID, stacksDir); err != nil {
-			fmt.Printf("Warning: failed to import stack %s: %v\n", stackID, err)
-		}
-	}
-
-	return nil
-}
-
-func (s *StackService) importSingleFileBasedStack(ctx context.Context, stackID, stacksDir string) error {
-	stackDir := filepath.Join(stacksDir, stackID)
-
-	composeFile := s.findComposeFile(stackDir)
-	if composeFile == "" {
-		return fmt.Errorf("no compose file found in %s", stackDir)
-	}
-
-	if _, err := os.ReadFile(composeFile); err != nil {
-		return fmt.Errorf("failed to read compose file: %w", err)
-	}
-
-	info, err := os.Stat(stackDir)
-	var createdAt time.Time
-	if err == nil {
-		createdAt = info.ModTime()
+	if existingComposeFile != "" {
+		composePath = existingComposeFile
 	} else {
-		createdAt = time.Now()
+		composePath = filepath.Join(stackPath, "compose.yaml")
 	}
 
-	stack := &models.Stack{
-		ID:           uuid.New().String(),
-		Name:         stackID,
-		DirName:      &stackID,
-		Path:         stackDir,
-		Status:       models.StackStatusStopped,
-		IsExternal:   false,
-		IsLegacy:     true,
-		IsRemote:     false,
-		ServiceCount: 0,
-		RunningCount: 0,
-		BaseModel: models.BaseModel{
-			CreatedAt: createdAt,
-		},
+	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil {
+		return fmt.Errorf("failed to save compose file: %w", err)
 	}
 
-	if err := s.db.WithContext(ctx).Create(stack).Error; err != nil {
-		return fmt.Errorf("failed to create stack in database: %w", err)
-	}
-
-	fmt.Printf("Successfully imported stack: %s\n", stackID)
-	return nil
-}
-
-func (s *StackService) getProjectName(stack *models.Stack) string {
-	return stack.ID
-}
-
-func (s *StackService) RedeployStack(ctx context.Context, id string, profiles []string, envOverrides map[string]string) error {
-	if err := s.DownStack(ctx, id); err != nil {
-		return fmt.Errorf("failed to bring down stack during redeploy: %w", err)
-	}
-
-	if err := s.DeployStack(ctx, id, profiles, envOverrides); err != nil {
-		return fmt.Errorf("failed to deploy stack during redeploy: %w", err)
-	}
-
-	return nil
-}
-
-func (s *StackService) DownStack(ctx context.Context, id string) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
-
-	var stack models.Stack
-	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
-		return fmt.Errorf("stack not found: %w", err)
-	}
-
-	projectName := s.getProjectName(&stack)
-
-	alternativeNames := []string{
-		projectName,
-	}
-
-	if stack.DirName != nil && *stack.DirName != "" && *stack.DirName != projectName {
-		alternativeNames = append(alternativeNames, *stack.DirName)
-	}
-
-	dirName := ""
-	if stack.DirName != nil {
-		dirName = *stack.DirName
-	}
-	if stack.Name != projectName && stack.Name != dirName {
-		alternativeNames = append(alternativeNames, stack.Name)
-	}
-
-	fmt.Printf("DEBUG: Bringing down stack %s with project names: %v\n", id, alternativeNames)
-
-	var allContainers []container.Summary
-
-	for _, name := range alternativeNames {
-		containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
-			All: true,
-			Filters: filters.NewArgs(
-				filters.Arg("label", fmt.Sprintf("com.docker.compose.project=%s", name)),
-			),
-		})
-		if err != nil {
-			fmt.Printf("DEBUG: Error listing containers for project %s: %v\n", name, err)
-			continue
+	if envContent != nil && *envContent != "" {
+		envPath := filepath.Join(stackPath, ".env")
+		if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
+			return fmt.Errorf("failed to save env file: %w", err)
 		}
+	}
 
-		for _, cont := range containers {
-			found := false
-			for _, existing := range allContainers {
-				if existing.ID == cont.ID {
-					found = true
-					break
+	return nil
+}
+
+func (s *StackService) findComposeFile(stackDir string) string {
+	possibleFiles := []string{
+		"compose.yaml",
+		"compose.yml",
+		"docker-compose.yml",
+		"docker-compose.yaml",
+	}
+
+	for _, filename := range possibleFiles {
+		fullPath := filepath.Join(stackDir, filename)
+		if _, err := os.Stat(fullPath); err == nil {
+			return fullPath
+		}
+	}
+
+	return ""
+}
+
+func (s *StackService) parseComposePS(output string) ([]StackServiceInfo, error) {
+	if strings.TrimSpace(output) == "" {
+		return []StackServiceInfo{}, nil
+	}
+
+	// The output from docker-compose ps --format json can be either:
+	// 1. A JSON array of objects
+	// 2. Multiple JSON objects separated by newlines (JSONL format)
+
+	var services []StackServiceInfo
+
+	if strings.HasPrefix(strings.TrimSpace(output), "[") {
+		var psOutput []map[string]interface{}
+		if err := json.Unmarshal([]byte(output), &psOutput); err == nil {
+			for _, item := range psOutput {
+				service := s.parseComposeService(item)
+				if service != nil {
+					services = append(services, *service)
 				}
 			}
-			if !found {
-				allContainers = append(allContainers, cont)
-			}
+			return services, nil
 		}
 	}
 
-	fmt.Printf("DEBUG: Found %d total containers to stop and remove\n", len(allContainers))
-
-	for _, cont := range allContainers {
-		fmt.Printf("DEBUG: Stopping and removing container %s\n", cont.ID[:12])
-
-		if cont.State == "running" {
-			timeout := 10
-			if err := dockerClient.ContainerStop(ctx, cont.ID, container.StopOptions{
-				Timeout: &timeout,
-			}); err != nil {
-				fmt.Printf("Warning: failed to stop container %s: %v\n", cont.ID, err)
-			}
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
 		}
 
-		if err := dockerClient.ContainerRemove(ctx, cont.ID, container.RemoveOptions{
-			Force: true,
-		}); err != nil {
-			fmt.Printf("Warning: failed to remove container %s: %v\n", cont.ID, err)
+		var item map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &item); err != nil {
+			// Skip invalid JSON lines
+			continue
+		}
+
+		service := s.parseComposeService(item)
+		if service != nil {
+			services = append(services, *service)
 		}
 	}
 
-	return s.UpdateStackStatus(ctx, id, models.StackStatusStopped)
+	return services, nil
 }
 
-func (s *StackService) DestroyStack(ctx context.Context, id string, removeFiles bool, removeVolumes bool) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create Docker connection: %w", err)
-	}
-	defer dockerClient.Close()
+func (s *StackService) parseComposeService(item map[string]interface{}) *StackServiceInfo {
+	service := &StackServiceInfo{}
 
-	var stack models.Stack
-	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
-		return fmt.Errorf("stack not found: %w", err)
+	if name, ok := item["Name"].(string); ok {
+		service.Name = name
+	} else if service_name, ok := item["Service"].(string); ok {
+		service.Name = service_name
 	}
 
-	project, err := s.LoadProject(ctx, id)
-	if err != nil {
-		fmt.Printf("Warning: failed to load project for stack %s: %v\n", id, err)
+	if image, ok := item["Image"].(string); ok {
+		service.Image = image
 	}
 
-	if err := s.DownStack(ctx, id); err != nil {
-		fmt.Printf("Warning: failed to bring down stack during destroy: %v\n", err)
+	if state, ok := item["State"].(string); ok {
+		service.Status = state
+	} else if status, ok := item["Status"].(string); ok {
+		service.Status = status
 	}
 
-	if project != nil {
-		if err := s.removeNetworks(ctx, dockerClient, project); err != nil {
-			fmt.Printf("Warning: failed to remove networks: %v\n", err)
+	if id, ok := item["ID"].(string); ok {
+		service.ContainerID = id
+	} else if container_id, ok := item["ContainerID"].(string); ok {
+		service.ContainerID = container_id
+	}
+
+	if portsInterface, ok := item["Ports"]; ok {
+		switch ports := portsInterface.(type) {
+		case string:
+			if ports != "" {
+				service.Ports = []string{ports}
+			}
+		case []interface{}:
+			for _, port := range ports {
+				if portStr, ok := port.(string); ok && portStr != "" {
+					service.Ports = append(service.Ports, portStr)
+				}
+			}
+		case []string:
+			service.Ports = ports
 		}
 	}
 
-	if removeVolumes && project != nil {
-		if err := s.removeVolumes(ctx, dockerClient, project); err != nil {
-			fmt.Printf("Warning: failed to remove volumes: %v\n", err)
+	if service.Name == "" {
+		return nil
+	}
+
+	return service
+}
+
+func (s *StackService) getServiceCounts(services []StackServiceInfo) (total int, running int) {
+	total = len(services)
+	for _, service := range services {
+		if service.Status == "running" || service.Status == "Up" {
+			running++
 		}
 	}
-
-	if removeFiles {
-		if err := os.RemoveAll(stack.Path); err != nil {
-			fmt.Printf("Warning: failed to remove stack files at %s: %v\n", stack.Path, err)
-		} else {
-			fmt.Printf("DEBUG: Removed stack files at %s\n", stack.Path)
-		}
-	}
-
-	if err := s.DeleteStack(ctx, id); err != nil {
-		return fmt.Errorf("failed to remove stack from database: %w", err)
-	}
-
-	fmt.Printf("DEBUG: Successfully destroyed stack %s\n", id)
-	return nil
+	return total, running
 }
