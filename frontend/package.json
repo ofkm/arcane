@@ -35,6 +35,7 @@
 		"nanoid": "^5.1.5",
 		"prettier": "^3.5.3",
 		"prettier-plugin-svelte": "^3.4.0",
+		"prettier-plugin-tailwindcss": "^0.6.12",
 		"runed": "^0.28.0",
 		"slugify": "^1.6.6",
 		"svelte-codemirror-editor": "^1.4.1",

@@ -52,7 +52,7 @@
 	<Card.Header class="cursor-pointer p-5" onclick={toggleExpanded}>
 		<div class="flex items-center justify-between">
 			<div>
-				<Card.Title class="flex items-center gap-2 text-xl font-semibold mb-2">
+				<Card.Title class="mb-2 flex items-center gap-2 text-xl font-semibold">
 					{#if icon}{@const Icon = icon}
 						<Icon class="text-primary/80 size-5" />
 					{/if}
@@ -63,7 +63,9 @@
 				{/if}
 			</div>
 			<Button class="ml-10 h-8 p-3" variant="ghost" aria-label="Expand Card">
-				<LucideChevronDown class={cn('size-5 transition-transform duration-200', expanded && 'rotate-180 transform')} />
+				<LucideChevronDown
+					class={cn('size-5 transition-transform duration-200', expanded && 'rotate-180 transform')}
+				/>
 			</Button>
 		</div>
 	</Card.Header>

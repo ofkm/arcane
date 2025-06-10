@@ -64,7 +64,7 @@
 			eventSource.addEventListener('log', (event) => {
 				try {
 					const logData = JSON.parse(event.data);
-					
+
 					if (logData.message !== undefined) {
 						// Stack log format
 						addLogEntry({
@@ -239,16 +239,16 @@
 	});
 </script>
 
-<div class="log-viewer bg-black text-white border rounded-md">
+<div class="log-viewer rounded-md border bg-black text-white">
 	{#if error}
-		<div class="p-3 bg-red-900/20 border-b border-red-700 text-red-200 text-sm">
+		<div class="border-b border-red-700 bg-red-900/20 p-3 text-sm text-red-200">
 			{error}
 		</div>
 	{/if}
 
 	<div
 		bind:this={logContainer}
-		class="log-viewer overflow-y-auto font-mono text-sm bg-black text-white border rounded-lg"
+		class="log-viewer overflow-y-auto rounded-lg border bg-black font-mono text-sm text-white"
 		style="height: {height}"
 	>
 		{#if logs.length === 0}
@@ -264,25 +264,25 @@
 		{:else}
 			{#each logs as log (log.timestamp + log.message + (log.service || ''))}
 				<div
-					class="flex px-3 py-1 hover:bg-gray-900/50 border-l-2 border-transparent hover:border-blue-500 transition-colors"
+					class="flex border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50"
 				>
 					{#if showTimestamps}
-						<span class="text-gray-500 text-xs mr-3 shrink-0 w-20">
+						<span class="mr-3 w-20 shrink-0 text-xs text-gray-500">
 							{formatTimestamp(log.timestamp)}
 						</span>
 					{/if}
 
-					<span class="text-xs mr-2 shrink-0 w-12 {getLevelClass(log.level)}">
+					<span class="mr-2 w-12 shrink-0 text-xs {getLevelClass(log.level)}">
 						{log.level.toUpperCase()}
 					</span>
 
 					{#if type === 'stack' && log.service}
-						<span class="text-blue-400 text-xs mr-2 shrink-0 w-16 truncate" title={log.service}>
+						<span class="mr-2 w-16 shrink-0 truncate text-xs text-blue-400" title={log.service}>
 							{log.service}
 						</span>
 					{/if}
 
-					<span class="text-gray-300 whitespace-pre-wrap break-all">
+					<span class="break-all whitespace-pre-wrap text-gray-300">
 						{log.message}
 					</span>
 				</div>

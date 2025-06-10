@@ -16,7 +16,12 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async create(data: { name: string; composeContent: string; envContent?: string; agentId?: string }) {
+	async create(data: {
+		name: string;
+		composeContent: string;
+		envContent?: string;
+		agentId?: string;
+	}) {
 		const response = await this.api.post('/stacks', {
 			name: data.name,
 			composeContent: data.composeContent,
@@ -35,7 +40,10 @@ export default class StackAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async deploy(id: string, options?: { profiles?: string[]; envOverrides?: Record<string, string> }) {
+	async deploy(
+		id: string,
+		options?: { profiles?: string[]; envOverrides?: Record<string, string> }
+	) {
 		const res = await this.api.post(`/stacks/${id}/deploy`, options || {});
 		return res.data;
 	}
@@ -91,7 +99,8 @@ export default class StackAPIService extends BaseAPIService {
 	async getLogs(id: string, options?: { tail?: number; timestamps?: boolean; follow?: boolean }) {
 		const params = new URLSearchParams();
 		if (options?.tail) params.append('tail', options.tail.toString());
-		if (options?.timestamps !== undefined) params.append('timestamps', options.timestamps.toString());
+		if (options?.timestamps !== undefined)
+			params.append('timestamps', options.timestamps.toString());
 		if (options?.follow !== undefined) params.append('follow', options.follow.toString());
 
 		const url = `/stacks/${id}/logs${params.toString() ? '?' + params.toString() : ''}`;

@@ -16,7 +16,13 @@
 		onCancel?: () => void;
 	}
 
-	let { open = $bindable(), isPruning = false, imagePruneMode = 'dangling', onConfirm = () => {}, onCancel = () => {} }: Props = $props();
+	let {
+		open = $bindable(),
+		isPruning = false,
+		imagePruneMode = 'dangling',
+		onConfirm = () => {},
+		onCancel = () => {}
+	}: Props = $props();
 
 	let pruneContainers = $state(true);
 	let pruneImages = $state(true);
@@ -55,31 +61,55 @@
 	<Dialog.Content class="sm:max-w-[450px]" onkeydown={handleKeydown}>
 		<Dialog.Header>
 			<Dialog.Title>Confirm System Prune</Dialog.Title>
-			<Dialog.Description>Select the resources you want to prune. This action permanently removes unused data and cannot be undone.</Dialog.Description>
+			<Dialog.Description
+				>Select the resources you want to prune. This action permanently removes unused data and
+				cannot be undone.</Dialog.Description
+			>
 		</Dialog.Header>
 
 		<div class="grid gap-4 py-4">
 			<div class="flex items-center space-x-3">
 				<Checkbox.Root id="prune-containers" bind:checked={pruneContainers} disabled={isPruning} />
-				<Label for="prune-containers" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Stopped Containers</Label>
+				<Label
+					for="prune-containers"
+					class="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+					>Stopped Containers</Label
+				>
 			</div>
 			<div class="flex items-center space-x-3">
 				<Checkbox.Root id="prune-images" bind:checked={pruneImages} disabled={isPruning} />
-				<Label for="prune-images" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+				<Label
+					for="prune-images"
+					class="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+				>
 					Unused Images ({imagePruneMode === 'dangling' ? 'Dangling Only' : 'All Unused'})
 				</Label>
 			</div>
 			<div class="flex items-center space-x-3">
 				<Checkbox.Root id="prune-networks" bind:checked={pruneNetworks} disabled={isPruning} />
-				<Label for="prune-networks" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Unused Networks</Label>
+				<Label
+					for="prune-networks"
+					class="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+					>Unused Networks</Label
+				>
 			</div>
 			<div class="flex items-start space-x-3">
-				<Checkbox.Root id="prune-volumes" bind:checked={pruneVolumes} disabled={isPruning} class="mt-1" />
+				<Checkbox.Root
+					id="prune-volumes"
+					bind:checked={pruneVolumes}
+					disabled={isPruning}
+					class="mt-1"
+				/>
 				<div class="grid gap-1.5 leading-none">
-					<Label for="prune-volumes" class="text-sm font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+					<Label
+						for="prune-volumes"
+						class="text-sm font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+					>
 						Unused Volumes <span class="text-destructive">(Potentially Destructive!)</span>
 					</Label>
-					<p class="text-xs text-muted-foreground">Only enable this if you are certain no important data resides in unused volumes.</p>
+					<p class="text-muted-foreground text-xs">
+						Only enable this if you are certain no important data resides in unused volumes.
+					</p>
 				</div>
 			</div>
 
@@ -87,16 +117,28 @@
 				<Alert.Root variant="destructive" class="mt-2">
 					<AlertCircle class="size-4" />
 					<Alert.Title>Warning: Pruning Volumes</Alert.Title>
-					<Alert.Description>Pruning volumes permanently deletes data. Ensure you have backups if necessary.</Alert.Description>
+					<Alert.Description
+						>Pruning volumes permanently deletes data. Ensure you have backups if necessary.</Alert.Description
+					>
 				</Alert.Root>
 			{/if}
 		</div>
 
 		<Dialog.Footer>
-			<Button class="arcane-button-cancel" variant="outline" onclick={handleCancel} disabled={isPruning}>Cancel</Button>
-			<Button class="arcane-button-remove" variant="destructive" onclick={handleConfirm} disabled={selectedTypes.length === 0 || isPruning}>
+			<Button
+				class="arcane-button-cancel"
+				variant="outline"
+				onclick={handleCancel}
+				disabled={isPruning}>Cancel</Button
+			>
+			<Button
+				class="arcane-button-remove"
+				variant="destructive"
+				onclick={handleConfirm}
+				disabled={selectedTypes.length === 0 || isPruning}
+			>
 				{#if isPruning}
-					<Loader2 class="mr-2 animate-spin size-4" /> Pruning...
+					<Loader2 class="mr-2 size-4 animate-spin" /> Pruning...
 				{:else}
 					<Trash2 class="mr-2 size-4" /> Prune Selected ({selectedTypes.length})
 				{/if}

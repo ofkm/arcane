@@ -45,7 +45,15 @@ export async function encrypt(data: any): Promise<string> {
 
 	const authTag = cipher.getAuthTag();
 
-	return salt.toString('hex') + ':' + iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+	return (
+		salt.toString('hex') +
+		':' +
+		iv.toString('hex') +
+		':' +
+		authTag.toString('hex') +
+		':' +
+		encrypted
+	);
 }
 
 export async function decrypt(encryptedData: string): Promise<any> {

@@ -75,11 +75,13 @@
 	}
 </script>
 
-<div class="max-w-lg mx-auto">
-	<h1 class="text-3xl font-bold mb-8 text-center">Change Admin Password</h1>
+<div class="mx-auto max-w-lg">
+	<h1 class="mb-8 text-center text-3xl font-bold">Change Admin Password</h1>
 
 	<div class="mb-8 space-y-2">
-		<p class="text-center text-md">For security reasons, please change the default admin password.</p>
+		<p class="text-md text-center">
+			For security reasons, please change the default admin password.
+		</p>
 	</div>
 
 	{#if error}
@@ -93,20 +95,36 @@
 	<form class="space-y-8" onsubmit={preventDefault(handleSubmit)}>
 		<div class="space-y-6">
 			<div class="space-y-4">
-				<Label for="password" class="text-base block mb-2">New Password</Label>
-				<Input id="password" type="password" bind:value={password} placeholder="Enter new password" class="px-4 bg-muted/10 h-12" required />
+				<Label for="password" class="mb-2 block text-base">New Password</Label>
+				<Input
+					id="password"
+					type="password"
+					bind:value={password}
+					placeholder="Enter new password"
+					class="bg-muted/10 h-12 px-4"
+					required
+				/>
 			</div>
 
 			<div class="space-y-4">
-				<Label for="confirmPassword" class="text-base block mb-2">Confirm Password</Label>
-				<Input id="confirmPassword" type="password" bind:value={confirmPassword} placeholder="Confirm new password" class="px-4 bg-muted/10 h-12" required />
+				<Label for="confirmPassword" class="mb-2 block text-base">Confirm Password</Label>
+				<Input
+					id="confirmPassword"
+					type="password"
+					bind:value={confirmPassword}
+					placeholder="Confirm new password"
+					class="bg-muted/10 h-12 px-4"
+					required
+				/>
 			</div>
 		</div>
 
-		<div class="flex pt-8 justify-center">
-			<Button type="submit" disabled={loading} class="px-8 flex items-center h-12 w-[80%]">
+		<div class="flex justify-center pt-8">
+			<Button type="submit" disabled={loading} class="flex h-12 w-[80%] items-center px-8">
 				{#if loading}
-					<span class="inline-block border-2 border-t-transparent border-white rounded-full animate-spin size-4"></span>
+					<span
+						class="inline-block size-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+					></span>
 				{/if}
 				Continue
 				<ChevronRight class="size-4" />

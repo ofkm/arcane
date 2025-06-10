@@ -81,15 +81,29 @@
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="volume-name" class="text-right">Name</Label>
-				<Input id="volume-name" bind:value={volumeCreateStates.volumeName} class="col-span-3" placeholder="e.g., my-app-data" required disabled={isCreating} />
+				<Input
+					id="volume-name"
+					bind:value={volumeCreateStates.volumeName}
+					class="col-span-3"
+					placeholder="e.g., my-app-data"
+					required
+					disabled={isCreating}
+				/>
 			</div>
 
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="volume-driver" class="text-right">Driver</Label>
 				<div class="col-span-3">
-					<Select.Root type="single" bind:value={volumeCreateStates.volumeDriver} disabled={isCreating}>
+					<Select.Root
+						type="single"
+						bind:value={volumeCreateStates.volumeDriver}
+						disabled={isCreating}
+					>
 						<Select.Trigger class="w-full">
-							<span>{drivers.find((d) => d.value === volumeCreateStates.volumeDriver)?.label || 'Select a driver'}</span>
+							<span
+								>{drivers.find((d) => d.value === volumeCreateStates.volumeDriver)?.label ||
+									'Select a driver'}</span
+							>
 						</Select.Trigger>
 						<Select.Content>
 							{#each drivers as driverOption (driverOption.value)}
@@ -109,13 +123,27 @@
 						<div class="grid gap-4 pt-2">
 							<div>
 								<Label for="driver-opts">Driver Options</Label>
-								<Textarea id="driver-opts" bind:value={volumeCreateStates.volumeOptText} placeholder="key=value&#10;key2=value2" disabled={isCreating} />
-								<p class="text-xs text-muted-foreground mt-1">Enter driver-specific options as key=value pairs, one per line</p>
+								<Textarea
+									id="driver-opts"
+									bind:value={volumeCreateStates.volumeOptText}
+									placeholder="key=value&#10;key2=value2"
+									disabled={isCreating}
+								/>
+								<p class="text-muted-foreground mt-1 text-xs">
+									Enter driver-specific options as key=value pairs, one per line
+								</p>
 							</div>
 							<div>
 								<Label for="labels">Labels</Label>
-								<Textarea id="labels" bind:value={volumeCreateStates.volumeLabels} placeholder="com.example.description=Production data&#10;com.example.department=Finance" disabled={isCreating} />
-								<p class="text-xs text-muted-foreground mt-1">Enter metadata labels as key=value pairs, one per line</p>
+								<Textarea
+									id="labels"
+									bind:value={volumeCreateStates.volumeLabels}
+									placeholder="com.example.description=Production data&#10;com.example.department=Finance"
+									disabled={isCreating}
+								/>
+								<p class="text-muted-foreground mt-1 text-xs">
+									Enter metadata labels as key=value pairs, one per line
+								</p>
 							</div>
 						</div>
 					</Accordion.Content>
@@ -126,7 +154,14 @@
 		<Dialog.Footer>
 			<ArcaneButton action="cancel" onClick={() => (open = false)} disabled={isCreating} />
 
-			<ArcaneButton action="create" customLabel="Create Volume" onClick={handleSubmit} loading={isCreating} loadingLabel="Creating..." disabled={isCreating || !volumeCreateStates.volumeName.trim()} />
+			<ArcaneButton
+				action="create"
+				customLabel="Create Volume"
+				onClick={handleSubmit}
+				loading={isCreating}
+				loadingLabel="Creating..."
+				disabled={isCreating || !volumeCreateStates.volumeName.trim()}
+			/>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

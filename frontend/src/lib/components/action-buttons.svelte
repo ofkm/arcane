@@ -38,7 +38,9 @@
 		validating: false
 	});
 
-	const isRunning = $derived(itemState === 'running' || (type === 'stack' && itemState === 'partially running'));
+	const isRunning = $derived(
+		itemState === 'running' || (type === 'stack' && itemState === 'partially running')
+	);
 
 	$effect(() => {
 		isLoading.start = loading.start ?? false;
@@ -69,11 +71,17 @@
 
 						isLoading.remove = true;
 						handleApiResultWithCallbacks({
-							result: await tryCatch(type === 'container' ? containerApi.remove(id) : stackApi.destroy(id, removeVolumes, removeFiles)),
+							result: await tryCatch(
+								type === 'container'
+									? containerApi.remove(id)
+									: stackApi.destroy(id, removeVolumes, removeFiles)
+							),
 							message: `Failed to ${type === 'stack' ? 'Destroy' : 'Remove'} ${type}`,
 							setLoadingState: (value) => (isLoading.remove = value),
 							onSuccess: async () => {
-								toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} ${type === 'stack' ? 'Destroyed' : 'Removed'} Successfully`);
+								toast.success(
+									`${type.charAt(0).toUpperCase() + type.slice(1)} ${type === 'stack' ? 'Destroyed' : 'Removed'} Successfully`
+								);
 								await invalidateAll();
 								goto(`/${type}s`);
 							}
@@ -82,7 +90,11 @@
 				},
 				checkboxes: [
 					{ id: 'removeFiles', label: 'Remove stack files', initialState: false },
-					{ id: 'removeVolumes', label: 'Remove volumes (Warning: Data will be lost)', initialState: false }
+					{
+						id: 'removeVolumes',
+						label: 'Remove volumes (Warning: Data will be lost)',
+						initialState: false
+					}
 				]
 			});
 		} else if (action === 'redeploy') {
@@ -98,7 +110,9 @@
 							message: `Failed to Redeploy ${type}`,
 							setLoadingState: (value) => (isLoading.redeploy = value),
 							onSuccess: async () => {
-								toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Redeployed Successfully`);
+								toast.success(
+									`${type.charAt(0).toUpperCase() + type.slice(1)} Redeployed Successfully`
+								);
 								await invalidateAll();
 							}
 						});
@@ -150,7 +164,9 @@
 	async function handleRestart() {
 		isLoading.restart = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? containerApi.restart(id) : stackApi.restart(id)),
+			result: await tryCatch(
+				type === 'container' ? containerApi.restart(id) : stackApi.restart(id)
+			),
 			message: `Failed to Restart ${type}`,
 			setLoadingState: (value) => (isLoading.restart = value),
 			onSuccess: async () => {
@@ -176,17 +192,39 @@
 
 <div class="flex items-center gap-2">
 	{#if !isRunning}
-		<ArcaneButton action={type === 'container' ? 'start' : 'deploy'} onClick={type === 'container' ? () => handleStart() : () => handleDeploy()} loading={isLoading.start} />
+		<ArcaneButton
+			action={type === 'container' ? 'start' : 'deploy'}
+			onClick={type === 'container' ? () => handleStart() : () => handleDeploy()}
+			loading={isLoading.start}
+		/>
 	{:else}
-		<ArcaneButton label={type === 'stack' ? 'Down' : 'Stop'} action="stop" onClick={() => handleStop()} loading={isLoading.stop} />
+		<ArcaneButton
+			label={type === 'stack' ? 'Down' : 'Stop'}
+			action="stop"
+			onClick={() => handleStop()}
+			loading={isLoading.stop}
+		/>
 		<ArcaneButton action="restart" onClick={() => handleRestart()} loading={isLoading.restart} />
 	{/if}
 
 	{#if type === 'container'}
-		<ArcaneButton action="remove" onClick={() => confirmAction('remove')} loading={isLoading.remove} />
+		<ArcaneButton
+			action="remove"
+			onClick={() => confirmAction('remove')}
+			loading={isLoading.remove}
+		/>
 	{:else}
-		<ArcaneButton action="redeploy" onClick={() => confirmAction('redeploy')} loading={isLoading.redeploy} />
+		<ArcaneButton
+			action="redeploy"
+			onClick={() => confirmAction('redeploy')}
+			loading={isLoading.redeploy}
+		/>
 		<ArcaneButton action="pull" onClick={handlePull} loading={isLoading.pulling} />
-		<ArcaneButton label={type === 'stack' ? 'Destroy' : 'Remove'} action="remove" onClick={() => confirmAction('remove')} loading={isLoading.remove} />
+		<ArcaneButton
+			label={type === 'stack' ? 'Destroy' : 'Remove'}
+			action="remove"
+			onClick={() => confirmAction('remove')}
+			loading={isLoading.remove}
+		/>
 	{/if}
 </div>

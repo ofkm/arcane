@@ -80,7 +80,10 @@ export default class ImageMaturityAPIService extends BaseAPIService {
 	}
 
 	// Get images needing check
-	async getImagesNeedingCheck(maxAge: number = 1440, limit: number = 100): Promise<ImageMaturityRecord[]> {
+	async getImagesNeedingCheck(
+		maxAge: number = 1440,
+		limit: number = 100
+	): Promise<ImageMaturityRecord[]> {
 		const res = await this.api.get('/images/maturity/needs-check', {
 			params: { maxAge, limit }
 		});

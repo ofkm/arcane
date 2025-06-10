@@ -52,11 +52,23 @@
 		userPageStates.isUserDialogOpen = true;
 	}
 
-	async function handleDialogSubmit({ user: userData, isEditMode, userId }: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) {
+	async function handleDialogSubmit({
+		user: userData,
+		isEditMode,
+		userId
+	}: {
+		user: Partial<User> & { password?: string };
+		isEditMode: boolean;
+		userId?: string;
+	}) {
 		isLoading.saving = true;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(isEditMode ? userApi.update(userId || '', userData as User) : userApi.create(userData as User)),
+			result: await tryCatch(
+				isEditMode
+					? userApi.update(userId || '', userData as User)
+					: userApi.create(userData as User)
+			),
 			message: isEditMode ? 'Error Updating User' : 'Error Creating User',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async () => {
@@ -95,21 +107,29 @@
 	<title>User Management - Arcane</title>
 </svelte:head>
 
-<UserFormDialog bind:open={userPageStates.isUserDialogOpen} bind:userToEdit={userPageStates.userToEdit} {roles} onSubmit={handleDialogSubmit} bind:this={userDialogRef} isLoading={isLoading.saving} allowUsernameEdit={true} />
+<UserFormDialog
+	bind:open={userPageStates.isUserDialogOpen}
+	bind:userToEdit={userPageStates.userToEdit}
+	{roles}
+	onSubmit={handleDialogSubmit}
+	bind:this={userDialogRef}
+	isLoading={isLoading.saving}
+	allowUsernameEdit={true}
+/>
 
 <div class="space-y-6">
 	<div>
 		<h1 class="text-3xl font-bold tracking-tight">User Management</h1>
-		<p class="text-sm text-muted-foreground mt-1">Manage user accounts and permissions</p>
+		<p class="text-muted-foreground mt-1 text-sm">Manage user accounts and permissions</p>
 	</div>
 
-	<div class="grid grid-cols-1 gap-6 h-full">
+	<div class="grid h-full grid-cols-1 gap-6">
 		<!-- User List Card -->
-		<Card.Root class="border shadow-sm flex flex-col">
-			<Card.Header class="pb-3 flex flex-row items-center justify-between space-y-0">
+		<Card.Root class="flex flex-col border shadow-sm">
+			<Card.Header class="flex flex-row items-center justify-between space-y-0 pb-3">
 				<div class="flex items-center gap-2">
-					<div class="bg-blue-500/10 p-2 rounded-full">
-						<UserCheck class="text-blue-500 size-5" />
+					<div class="rounded-full bg-blue-500/10 p-2">
+						<UserCheck class="size-5 text-blue-500" />
 					</div>
 					<div>
 						<Card.Title>User Accounts</Card.Title>
@@ -121,9 +141,9 @@
 					Create User
 				</Button>
 			</Card.Header>
-			<Card.Content class="flex-1 flex flex-col">
+			<Card.Content class="flex flex-1 flex-col">
 				{#if userPageStates.users.length > 0}
-					<div class="flex-1 flex flex-col h-full">
+					<div class="flex h-full flex-1 flex-col">
 						<UniversalTable
 							data={data.users}
 							columns={[
@@ -167,12 +187,18 @@
 									<div class="flex flex-wrap">
 										{#each item.roles as role (role)}
 											{@const isAdmin = role === 'admin'}
-											<StatusBadge text={isAdmin ? 'Admin' : 'User'} variant={isAdmin ? 'amber' : 'blue'} />
+											<StatusBadge
+												text={isAdmin ? 'Admin' : 'User'}
+												variant={isAdmin ? 'amber' : 'blue'}
+											/>
 										{/each}
 									</div>
 								</Table.Cell>
 								<Table.Cell>
-									<StatusBadge text={item.oidcSubjectId ? 'OIDC' : 'Local'} variant={item.oidcSubjectId ? 'blue' : 'purple'} />
+									<StatusBadge
+										text={item.oidcSubjectId ? 'OIDC' : 'Local'}
+										variant={item.oidcSubjectId ? 'blue' : 'purple'}
+									/>
 								</Table.Cell>
 								<Table.Cell>
 									<DropdownMenu.Root>
@@ -190,7 +216,10 @@
 														Edit
 													</DropdownMenu.Item>
 												{/if}
-												<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveUser(item.id)}>
+												<DropdownMenu.Item
+													class="text-red-500 focus:text-red-700!"
+													onclick={() => handleRemoveUser(item.id)}
+												>
 													<UserX class="size-4" />
 													Remove User
 												</DropdownMenu.Item>
@@ -202,7 +231,7 @@
 						</UniversalTable>
 					</div>
 				{:else}
-					<div class="text-center py-8 text-muted-foreground italic">No local users found</div>
+					<div class="text-muted-foreground py-8 text-center italic">No local users found</div>
 				{/if}
 			</Card.Content>
 		</Card.Root>

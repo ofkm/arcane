@@ -1,4 +1,7 @@
-export const statusVariantMap: Record<string, 'red' | 'purple' | 'green' | 'blue' | 'gray' | 'amber'> = {
+export const statusVariantMap: Record<
+	string,
+	'red' | 'purple' | 'green' | 'blue' | 'gray' | 'amber'
+> = {
 	running: 'green',
 	deployed: 'green',
 	stopped: 'red',

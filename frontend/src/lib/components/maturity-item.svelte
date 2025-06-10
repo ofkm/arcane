@@ -1,6 +1,17 @@
 <script lang="ts">
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
-	import { CircleCheck, CircleFadingArrowUp, CircleArrowUp, Loader2, Clock, Package, Calendar, AlertTriangle, RefreshCw, ArrowRight } from '@lucide/svelte';
+	import {
+		CircleCheck,
+		CircleFadingArrowUp,
+		CircleArrowUp,
+		Loader2,
+		Clock,
+		Package,
+		Calendar,
+		AlertTriangle,
+		RefreshCw,
+		ArrowRight
+	} from '@lucide/svelte';
 	import ImageMaturityAPIService from '$lib/services/api/image-maturity-api-service';
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
@@ -118,7 +129,11 @@
 	}
 
 	// Helper function to get update priority level
-	function getUpdatePriority(maturity: MaturityData): { level: string; color: string; description: string } {
+	function getUpdatePriority(maturity: MaturityData): {
+		level: string;
+		color: string;
+		description: string;
+	} {
 		if (!maturity.updatesAvailable) {
 			return { level: 'None', color: 'text-green-500', description: 'Image is up to date' };
 		}
@@ -137,7 +152,9 @@
 			return {
 				level: 'Optional',
 				color: 'text-yellow-500',
-				description: maturity.latestVersion ? `${maturity.latestVersion} available, but not yet matured` : 'Recent update, may be unstable'
+				description: maturity.latestVersion
+					? `${maturity.latestVersion} available, but not yet matured`
+					: 'Recent update, may be unstable'
 			};
 		}
 
@@ -150,45 +167,85 @@
 	<Tooltip.Provider>
 		<Tooltip.Root>
 			<Tooltip.Trigger>
-				<span class="inline-flex items-center justify-center align-middle mr-2 size-4">
+				<span class="mr-2 inline-flex size-4 items-center justify-center align-middle">
 					{#if !maturity.updatesAvailable}
-						<CircleCheck class="text-green-500 size-4" fill="none" stroke="currentColor" strokeWidth="2" />
+						<CircleCheck
+							class="size-4 text-green-500"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+						/>
 					{:else if maturity.status === 'Not Matured'}
-						<CircleFadingArrowUp class="text-yellow-500 size-4" fill="none" stroke="currentColor" stroke-width="2" />
+						<CircleFadingArrowUp
+							class="size-4 text-yellow-500"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						/>
 					{:else}
-						<CircleArrowUp class="text-blue-500 size-4" fill="none" stroke="currentColor" stroke-width="2" />
+						<CircleArrowUp
+							class="size-4 text-blue-500"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						/>
 					{/if}
 				</span>
 			</Tooltip.Trigger>
-			<Tooltip.Content side="right" class="bg-popover text-popover-foreground border border-border shadow-lg p-4 max-w-[280px] relative tooltip-with-arrow maturity-tooltip" align="center">
+			<Tooltip.Content
+				side="right"
+				class="bg-popover text-popover-foreground border-border tooltip-with-arrow maturity-tooltip relative max-w-[280px] border p-4 shadow-lg"
+				align="center"
+			>
 				<div class="space-y-3">
 					<!-- Header with icon and status -->
-					<div class="flex items-center gap-3 pb-2 border-b border-border">
+					<div class="border-border flex items-center gap-3 border-b pb-2">
 						{#if !maturity.updatesAvailable}
-							<div class="flex items-center justify-center w-8 h-8 rounded-full bg-green-500/10 border border-green-500/20">
-								<CircleCheck class="text-green-500 size-5" fill="none" stroke="currentColor" strokeWidth="2" />
+							<div
+								class="flex h-8 w-8 items-center justify-center rounded-full border border-green-500/20 bg-green-500/10"
+							>
+								<CircleCheck
+									class="size-5 text-green-500"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								/>
 							</div>
 							<div>
-								<div class="font-semibold text-sm">Up to Date</div>
-								<div class="text-xs text-muted-foreground">No updates available</div>
+								<div class="text-sm font-semibold">Up to Date</div>
+								<div class="text-muted-foreground text-xs">No updates available</div>
 							</div>
 						{:else if maturity.status === 'Not Matured'}
-							<div class="flex items-center justify-center w-8 h-8 rounded-full bg-yellow-500/10 border border-yellow-500/20">
-								<CircleFadingArrowUp class="text-yellow-500 size-5" fill="none" stroke="currentColor" stroke-width="2" />
+							<div
+								class="flex h-8 w-8 items-center justify-center rounded-full border border-yellow-500/20 bg-yellow-500/10"
+							>
+								<CircleFadingArrowUp
+									class="size-5 text-yellow-500"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								/>
 							</div>
 							<div>
-								<div class="font-semibold text-sm">Update Available</div>
-								<div class="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+								<div class="text-sm font-semibold">Update Available</div>
+								<div class="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-400">
 									<AlertTriangle class="size-3" />
 									Not yet matured
 								</div>
 							</div>
 						{:else}
-							<div class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/20">
-								<CircleArrowUp class="text-blue-500 size-5" fill="none" stroke="currentColor" stroke-width="2" />
+							<div
+								class="flex h-8 w-8 items-center justify-center rounded-full border border-blue-500/20 bg-blue-500/10"
+							>
+								<CircleArrowUp
+									class="size-5 text-blue-500"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								/>
 							</div>
 							<div>
-								<div class="font-semibold text-sm">Stable Update</div>
+								<div class="text-sm font-semibold">Stable Update</div>
 								<div class="text-xs text-blue-600 dark:text-blue-400">Recommended for update</div>
 							</div>
 						{/if}
@@ -197,7 +254,7 @@
 					<!-- Details grid -->
 					<div class="grid gap-2 text-xs">
 						<div class="flex items-center justify-between">
-							<div class="flex items-center gap-1.5 text-muted-foreground">
+							<div class="text-muted-foreground flex items-center gap-1.5">
 								<Package class="size-3" />
 								<span>Current</span>
 							</div>
@@ -207,16 +264,18 @@
 						<!-- Show latest version if updates are available -->
 						{#if maturity.updatesAvailable && maturity.latestVersion}
 							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-1.5 text-muted-foreground">
+								<div class="text-muted-foreground flex items-center gap-1.5">
 									<ArrowRight class="size-3" />
 									<span>Latest</span>
 								</div>
-								<span class="font-mono font-medium text-blue-600 dark:text-blue-400">{maturity.latestVersion}</span>
+								<span class="font-mono font-medium text-blue-600 dark:text-blue-400"
+									>{maturity.latestVersion}</span
+								>
 							</div>
 						{/if}
 
 						<div class="flex items-center justify-between">
-							<div class="flex items-center gap-1.5 text-muted-foreground">
+							<div class="text-muted-foreground flex items-center gap-1.5">
 								<Calendar class="size-3" />
 								<span>Released</span>
 							</div>
@@ -224,7 +283,7 @@
 						</div>
 
 						<div class="flex items-center justify-between">
-							<div class="flex items-center gap-1.5 text-muted-foreground">
+							<div class="text-muted-foreground flex items-center gap-1.5">
 								<Clock class="size-3" />
 								<span>Status</span>
 							</div>
@@ -234,7 +293,7 @@
 						</div>
 
 						<div class="flex items-center justify-between">
-							<div class="flex items-center gap-1.5 text-muted-foreground">
+							<div class="text-muted-foreground flex items-center gap-1.5">
 								<span>Priority</span>
 							</div>
 							<span class="font-medium {priority.color}">
@@ -244,16 +303,20 @@
 					</div>
 
 					<!-- Update recommendation -->
-					<div class="pt-2 border-t border-border">
-						<div class="text-xs text-muted-foreground leading-relaxed">
+					<div class="border-border border-t pt-2">
+						<div class="text-muted-foreground text-xs leading-relaxed">
 							{priority.description}
 						</div>
 					</div>
 
 					<!-- Re-check button -->
 					{#if canCheckMaturity}
-						<div class="pt-2 border-t border-border">
-							<button onclick={checkImageMaturity} disabled={isChecking} class="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed">
+						<div class="border-border border-t pt-2">
+							<button
+								onclick={checkImageMaturity}
+								disabled={isChecking}
+								class="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-400 dark:hover:text-blue-300"
+							>
 								{#if isChecking}
 									<Loader2 class="size-3 animate-spin" />
 									Checking...
@@ -272,16 +335,20 @@
 	<Tooltip.Provider>
 		<Tooltip.Root>
 			<Tooltip.Trigger>
-				<span class="inline-flex items-center justify-center align-middle mr-2 size-4">
-					<Loader2 class="text-blue-400 size-4 animate-spin" />
+				<span class="mr-2 inline-flex size-4 items-center justify-center align-middle">
+					<Loader2 class="size-4 animate-spin text-blue-400" />
 				</span>
 			</Tooltip.Trigger>
-			<Tooltip.Content side="right" class="bg-popover text-popover-foreground border border-border shadow-lg p-3 max-w-[220px] relative tooltip-with-arrow" align="center">
+			<Tooltip.Content
+				side="right"
+				class="bg-popover text-popover-foreground border-border tooltip-with-arrow relative max-w-[220px] border p-3 shadow-lg"
+				align="center"
+			>
 				<div class="flex items-center gap-2">
-					<Loader2 class="text-blue-400 size-4 animate-spin" />
+					<Loader2 class="size-4 animate-spin text-blue-400" />
 					<div>
 						<div class="text-sm font-medium">Checking Updates</div>
-						<div class="text-xs text-muted-foreground">Querying registry for latest version...</div>
+						<div class="text-muted-foreground text-xs">Querying registry for latest version...</div>
 					</div>
 				</div>
 			</Tooltip.Content>
@@ -291,30 +358,44 @@
 	<Tooltip.Provider>
 		<Tooltip.Root>
 			<Tooltip.Trigger>
-				<span class="inline-flex items-center justify-center mr-2 size-4">
+				<span class="mr-2 inline-flex size-4 items-center justify-center">
 					{#if canCheckMaturity}
-						<button onclick={checkImageMaturity} disabled={isChecking} class="w-4 h-4 rounded-full border-2 border-gray-400 border-dashed flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors disabled:cursor-not-allowed group">
+						<button
+							onclick={checkImageMaturity}
+							disabled={isChecking}
+							class="group flex h-4 w-4 items-center justify-center rounded-full border-2 border-dashed border-gray-400 transition-colors hover:border-blue-400 hover:bg-blue-50 disabled:cursor-not-allowed dark:hover:bg-blue-950"
+						>
 							{#if isChecking}
-								<Loader2 class="w-2 h-2 text-blue-400 animate-spin" />
+								<Loader2 class="h-2 w-2 animate-spin text-blue-400" />
 							{:else}
-								<div class="w-1.5 h-1.5 bg-gray-400 rounded-full group-hover:bg-blue-400 transition-colors"></div>
+								<div
+									class="h-1.5 w-1.5 rounded-full bg-gray-400 transition-colors group-hover:bg-blue-400"
+								></div>
 							{/if}
 						</button>
 					{:else}
-						<div class="w-4 h-4 rounded-full border-2 border-gray-400 border-dashed flex items-center justify-center opacity-30">
-							<div class="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+						<div
+							class="flex h-4 w-4 items-center justify-center rounded-full border-2 border-dashed border-gray-400 opacity-30"
+						>
+							<div class="h-1.5 w-1.5 rounded-full bg-gray-400"></div>
 						</div>
 					{/if}
 				</span>
 			</Tooltip.Trigger>
-			<Tooltip.Content side="right" class="bg-popover text-popover-foreground border border-border shadow-lg p-3 max-w-[240px] relative tooltip-with-arrow" align="center">
+			<Tooltip.Content
+				side="right"
+				class="bg-popover text-popover-foreground border-border tooltip-with-arrow relative max-w-[240px] border p-3 shadow-lg"
+				align="center"
+			>
 				<div class="flex items-center gap-2">
-					<div class="flex items-center justify-center w-6 h-6 rounded-full bg-muted border border-border">
+					<div
+						class="bg-muted border-border flex h-6 w-6 items-center justify-center rounded-full border"
+					>
 						<AlertTriangle class="text-muted-foreground size-3" />
 					</div>
 					<div>
 						<div class="text-sm font-medium">Status Unknown</div>
-						<div class="text-xs text-muted-foreground leading-relaxed">
+						<div class="text-muted-foreground text-xs leading-relaxed">
 							{#if canCheckMaturity}
 								Click to check for updates from registry.
 							{:else}

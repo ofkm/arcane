@@ -13,19 +13,27 @@
 		class?: string;
 	}
 
-	let { title, value, icon: Icon, iconColor = 'text-primary', bgColor = 'bg-primary/10', subtitle, class: className }: Props = $props();
+	let {
+		title,
+		value,
+		icon: Icon,
+		iconColor = 'text-primary',
+		bgColor = 'bg-primary/10',
+		subtitle,
+		class: className
+	}: Props = $props();
 </script>
 
 <Card.Root class={cn('', className)}>
-	<Card.Content class="p-4 flex items-center justify-between">
+	<Card.Content class="flex items-center justify-between p-4">
 		<div>
-			<p class="text-sm font-medium text-muted-foreground">{title}</p>
+			<p class="text-muted-foreground text-sm font-medium">{title}</p>
 			<p class="text-2xl font-bold">{value}</p>
 			{#if subtitle}
-				<p class="text-xs text-muted-foreground mt-1">{subtitle}</p>
+				<p class="text-muted-foreground mt-1 text-xs">{subtitle}</p>
 			{/if}
 		</div>
-		<div class="p-2 rounded-full {bgColor}">
+		<div class="rounded-full p-2 {bgColor}">
 			<Icon class="{iconColor} size-5" />
 		</div>
 	</Card.Content>

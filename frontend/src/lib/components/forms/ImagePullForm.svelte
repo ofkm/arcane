@@ -66,21 +66,33 @@
 <div class="space-y-4">
 	<div class="space-y-2">
 		<Label for="imageRef">Image Name</Label>
-		<Input id="imageRef" bind:value={imageRef} placeholder="nginx, redis, ubuntu, etc." disabled={pulling} onkeypress={handleKeyPress} />
-		<p class="text-xs text-muted-foreground">Enter the image name (e.g., nginx, redis, ubuntu)</p>
+		<Input
+			id="imageRef"
+			bind:value={imageRef}
+			placeholder="nginx, redis, ubuntu, etc."
+			disabled={pulling}
+			onkeypress={handleKeyPress}
+		/>
+		<p class="text-muted-foreground text-xs">Enter the image name (e.g., nginx, redis, ubuntu)</p>
 	</div>
 
 	<div class="space-y-2">
 		<Label for="tag">Tag (Optional)</Label>
-		<Input id="tag" bind:value={tag} placeholder="latest" disabled={pulling} onkeypress={handleKeyPress} />
-		<p class="text-xs text-muted-foreground">Specify a tag version (defaults to 'latest')</p>
+		<Input
+			id="tag"
+			bind:value={tag}
+			placeholder="latest"
+			disabled={pulling}
+			onkeypress={handleKeyPress}
+		/>
+		<p class="text-muted-foreground text-xs">Specify a tag version (defaults to 'latest')</p>
 	</div>
 
 	<div class="flex justify-end space-x-2">
 		<Button variant="outline" onclick={onClose} disabled={pulling}>Cancel</Button>
 		<Button onclick={handlePull} disabled={pulling || !imageRef.trim()}>
 			{#if pulling}
-				<Loader2 class="size-4 mr-2 animate-spin" />
+				<Loader2 class="mr-2 size-4 animate-spin" />
 			{/if}
 			Pull Image
 		</Button>

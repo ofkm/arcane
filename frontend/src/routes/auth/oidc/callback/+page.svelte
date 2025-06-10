@@ -27,7 +27,8 @@
 			if (!authResult.success) {
 				console.error('OIDC authentication failed via backend:', authResult.error);
 				error = authResult.error || 'Authentication failed. Please try again.';
-				const errorCode = authResult.error?.toLowerCase().replace(/\s+/g, '_') || 'oidc_auth_failed';
+				const errorCode =
+					authResult.error?.toLowerCase().replace(/\s+/g, '_') || 'oidc_auth_failed';
 				setTimeout(() => goto(`/auth/login?error=${errorCode}`), 3000);
 				isProcessing = false;
 				return;
@@ -55,17 +56,22 @@
 	<title>Authenticating... - Arcane</title>
 </svelte:head>
 
-<div class="min-h-screen flex items-center justify-center bg-gray-50">
-	<div class="max-w-md w-full space-y-8">
+<div class="flex min-h-screen items-center justify-center bg-gray-50">
+	<div class="w-full max-w-md space-y-8">
 		<div class="text-center">
 			{#if isProcessing}
-				<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+				<div class="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
 				<h2 class="mt-6 text-2xl font-bold text-gray-900">Authenticating...</h2>
 				<p class="mt-2 text-sm text-gray-600">Please wait while we complete your login.</p>
 			{:else if error}
 				<div class="text-red-600">
 					<svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.341 16.5c-.77.833.192 2.5 1.732 2.5z" />
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.341 16.5c-.77.833.192 2.5 1.732 2.5z"
+						/>
 					</svg>
 					<h2 class="mt-6 text-2xl font-bold text-gray-900">Authentication Error</h2>
 					<p class="mt-2 text-sm text-gray-600">{error}</p>

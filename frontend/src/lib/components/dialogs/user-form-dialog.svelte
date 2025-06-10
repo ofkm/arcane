@@ -20,7 +20,11 @@
 		userToEdit?: User | null;
 		roles: { id: string; name: string }[];
 		isLoading?: boolean;
-		onSubmit?: (data: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) => void;
+		onSubmit?: (data: {
+			user: Partial<User> & { password?: string };
+			isEditMode: boolean;
+			userId?: string;
+		}) => void;
 		allowUsernameEdit?: boolean;
 	} = $props();
 
@@ -92,11 +96,26 @@
 		<form class="grid gap-4 py-4" onsubmit={preventDefault(handleSubmit)} autocomplete="off">
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="username" class="text-right">Username</Label>
-				<Input autocomplete="off" id="username" bind:value={username} required class="col-span-3" disabled={!canEditUsername} />
+				<Input
+					autocomplete="off"
+					id="username"
+					bind:value={username}
+					required
+					class="col-span-3"
+					disabled={!canEditUsername}
+				/>
 			</div>
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="password" class="text-right">Password</Label>
-				<Input autocomplete="off" id="password" type="password" bind:value={password} required={!isEditMode} placeholder={isEditMode ? 'Leave blank to keep current' : 'Required'} class="col-span-3" />
+				<Input
+					autocomplete="off"
+					id="password"
+					type="password"
+					bind:value={password}
+					required={!isEditMode}
+					placeholder={isEditMode ? 'Leave blank to keep current' : 'Required'}
+					class="col-span-3"
+				/>
 			</div>
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="displayName" class="text-right">Display Name</Label>
@@ -123,14 +142,20 @@
 			</div>
 
 			{#if error}
-				<p class="text-sm text-destructive text-center col-span-4">{error}</p>
+				<p class="text-destructive col-span-4 text-center text-sm">{error}</p>
 			{/if}
 
 			<Dialog.Footer>
-				<Button type="button" class="arcane-button-cancel" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
+				<Button
+					type="button"
+					class="arcane-button-cancel"
+					variant="outline"
+					onclick={() => (open = false)}
+					disabled={isLoading}>Cancel</Button
+				>
 				<Button type="submit" class="arcane-button-create" disabled={isLoading}>
 					{#if isLoading}
-						<Loader2 class="animate-spin size-4" />
+						<Loader2 class="size-4 animate-spin" />
 						Creating...
 					{:else}
 						<SubmitIcon class="size-4" />

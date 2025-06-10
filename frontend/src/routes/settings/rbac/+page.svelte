@@ -5,7 +5,11 @@
 	import { Shield, Plus, Users, Settings, Save, RefreshCw } from '@lucide/svelte';
 	import type { PageData } from './$types';
 	import Switch from '$lib/components/ui/switch/switch.svelte';
-	import { settingsStore, saveSettingsToServer, updateSettingsStore } from '$lib/stores/settings-store';
+	import {
+		settingsStore,
+		saveSettingsToServer,
+		updateSettingsStore
+	} from '$lib/stores/settings-store';
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -30,13 +34,27 @@
 			id: 1,
 			name: 'Admin',
 			description: 'Full system access',
-			permissions: ['containers:manage', 'stacks:manage', 'volumes:manage', 'networks:manage', 'settings:manage', 'users:manage']
+			permissions: [
+				'containers:manage',
+				'stacks:manage',
+				'volumes:manage',
+				'networks:manage',
+				'settings:manage',
+				'users:manage'
+			]
 		},
 		{
 			id: 2,
 			name: 'User',
 			description: 'Container and stack operations',
-			permissions: ['containers:view', 'containers:manage', 'stacks:view', 'stacks:manage', 'volumes:view', 'networks:view']
+			permissions: [
+				'containers:view',
+				'containers:manage',
+				'stacks:view',
+				'stacks:manage',
+				'volumes:view',
+				'networks:view'
+			]
 		},
 		{
 			id: 3,
@@ -98,15 +116,15 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Role-Based Access Control</h1>
-			<p class="text-sm text-muted-foreground mt-1">Manage user roles and permissions</p>
+			<p class="text-muted-foreground mt-1 text-sm">Manage user roles and permissions</p>
 		</div>
 
-		<Button onclick={saveSettings} disabled={isLoading.saving} class="h-10 arcane-button-save">
+		<Button onclick={saveSettings} disabled={isLoading.saving} class="arcane-button-save h-10">
 			{#if isLoading.saving}
-				<RefreshCw class="animate-spin size-4" />
+				<RefreshCw class="size-4 animate-spin" />
 				Saving...
 			{:else}
 				<Save class="size-4" />
@@ -116,10 +134,14 @@
 	</div>
 
 	<div class="mb-6">
-		<div class="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
+		<div class="bg-muted/30 flex items-center justify-between rounded-lg border p-4">
 			<div class="space-y-0.5">
-				<label for="rbacEnabledSwitch" class="text-base font-medium">Enable Role-Based Access Control</label>
-				<p class="text-sm text-muted-foreground">Control user permissions with customizable roles</p>
+				<label for="rbacEnabledSwitch" class="text-base font-medium"
+					>Enable Role-Based Access Control</label
+				>
+				<p class="text-muted-foreground text-sm">
+					Control user permissions with customizable roles
+				</p>
 			</div>
 			<Switch
 				id="rbacEnabledSwitch"
@@ -138,14 +160,14 @@
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 		<div class="lg:col-span-1">
-			<Card.Root class="border shadow-sm h-full">
+			<Card.Root class="h-full border shadow-sm">
 				<Card.Header class="pb-3">
 					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-2">
-							<div class="bg-blue-500/10 p-2 rounded-full">
-								<Users class="text-blue-500 size-5" />
+							<div class="rounded-full bg-blue-500/10 p-2">
+								<Users class="size-5 text-blue-500" />
 							</div>
 							<Card.Title>Roles</Card.Title>
 						</div>
@@ -157,14 +179,24 @@
 				<Card.Content>
 					<div class="space-y-2">
 						{#each roles as role (role.id)}
-							<button class="w-full text-left p-3 rounded-md border transition-colors flex items-center justify-between {selectedRole.id === role.id ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted/50'}" onclick={() => (selectedRole = role)}>
+							<button
+								class="flex w-full items-center justify-between rounded-md border p-3 text-left transition-colors {selectedRole.id ===
+								role.id
+									? 'bg-primary text-primary-foreground border-primary'
+									: 'hover:bg-muted/50'}"
+								onclick={() => (selectedRole = role)}
+							>
 								<div>
 									<div class="font-medium">{role.name}</div>
-									<div class="text-xs {selectedRole.id === role.id ? 'text-primary-foreground/90' : 'text-muted-foreground'}">
+									<div
+										class="text-xs {selectedRole.id === role.id
+											? 'text-primary-foreground/90'
+											: 'text-muted-foreground'}"
+									>
 										{role.description}
 									</div>
 								</div>
-								<Shield class="opacity-70 size-4" />
+								<Shield class="size-4 opacity-70" />
 							</button>
 						{/each}
 					</div>
@@ -177,8 +209,8 @@
 				<Card.Header class="pb-3">
 					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-2">
-							<div class="bg-purple-500/10 p-2 rounded-full">
-								<Settings class="text-purple-500 size-5" />
+							<div class="rounded-full bg-purple-500/10 p-2">
+								<Settings class="size-5 text-purple-500" />
 							</div>
 							<div>
 								<Card.Title>Role: {selectedRole.name}</Card.Title>
@@ -194,28 +226,42 @@
 				<Card.Content>
 					<div class="space-y-6">
 						<!-- Role Info -->
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div class="space-y-2">
 								<label for="roleName" class="text-sm font-medium">Role Name</label>
-								<Input id="roleName" name="roleName" value={selectedRole.name} placeholder="Enter role name" />
+								<Input
+									id="roleName"
+									name="roleName"
+									value={selectedRole.name}
+									placeholder="Enter role name"
+								/>
 							</div>
 							<div class="space-y-2">
 								<label for="roleDescription" class="text-sm font-medium">Description</label>
-								<Input id="roleDescription" name="roleDescription" value={selectedRole.description} placeholder="Brief description" />
+								<Input
+									id="roleDescription"
+									name="roleDescription"
+									value={selectedRole.description}
+									placeholder="Brief description"
+								/>
 							</div>
 						</div>
 
 						<!-- Permissions -->
 						<div>
-							<h3 class="text-sm font-medium mb-3">Permissions</h3>
-							<div class="border rounded-md divide-y">
+							<h3 class="mb-3 text-sm font-medium">Permissions</h3>
+							<div class="divide-y rounded-md border">
 								{#each permissionCategories as category (category.name)}
 									<div class="p-3">
-										<h4 class="font-medium mb-2">{category.name}</h4>
-										<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+										<h4 class="mb-2 font-medium">{category.name}</h4>
+										<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 											{#each category.permissions as permission (permission)}
 												<label class="flex items-center space-x-2 text-sm">
-													<input type="checkbox" class="rounded border-gray-300 text-primary focus:ring-primary" checked={selectedRole.permissions.includes(permission)} />
+													<input
+														type="checkbox"
+														class="text-primary focus:ring-primary rounded border-gray-300"
+														checked={selectedRole.permissions.includes(permission)}
+													/>
 													<span>{permission.split(':')[1]}</span>
 												</label>
 											{/each}

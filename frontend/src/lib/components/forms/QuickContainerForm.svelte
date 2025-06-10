@@ -85,7 +85,9 @@
 		if (containerName.trim()) {
 			const containerNameRegex = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
 			if (!containerNameRegex.test(containerName.trim())) {
-				toast.error('Container name must start with alphanumeric character and can only contain letters, numbers, underscores, periods, and hyphens');
+				toast.error(
+					'Container name must start with alphanumeric character and can only contain letters, numbers, underscores, periods, and hyphens'
+				);
 				return;
 			}
 		}
@@ -148,27 +150,35 @@
 			// Basic path validation (should start with / on Unix systems or contain : on Windows)
 			const hostPath = volume.host.trim();
 			if (!hostPath.startsWith('/') && !hostPath.match(/^[a-zA-Z]:/)) {
-				toast.error(`Volume mapping ${i + 1}: Host path should be an absolute path (e.g., /path/to/dir or C:/path/to/dir)`);
+				toast.error(
+					`Volume mapping ${i + 1}: Host path should be an absolute path (e.g., /path/to/dir or C:/path/to/dir)`
+				);
 				return;
 			}
 
 			// Validate container path format
 			const containerPath = volume.container.trim();
 			if (!containerPath.startsWith('/')) {
-				toast.error(`Volume mapping ${i + 1}: Container path must be an absolute path starting with /`);
+				toast.error(
+					`Volume mapping ${i + 1}: Container path must be an absolute path starting with /`
+				);
 				return;
 			}
 
 			// Check for reserved container paths
 			const reservedPaths = ['/proc', '/sys', '/dev'];
 			if (reservedPaths.some((reserved) => containerPath.startsWith(reserved))) {
-				toast.error(`Volume mapping ${i + 1}: Cannot mount to reserved system path ${containerPath}`);
+				toast.error(
+					`Volume mapping ${i + 1}: Cannot mount to reserved system path ${containerPath}`
+				);
 				return;
 			}
 		}
 
 		// Check for duplicate container mount points
-		const containerPaths = volumes.filter((v) => v.host && v.container).map((v) => v.container.trim());
+		const containerPaths = volumes
+			.filter((v) => v.host && v.container)
+			.map((v) => v.container.trim());
 		const uniqueContainerPaths = new Set(containerPaths);
 		if (containerPaths.length !== uniqueContainerPaths.size) {
 			toast.error('Duplicate container mount points are not allowed');
@@ -191,14 +201,18 @@
 			// Validate environment variable key format
 			const envKeyRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 			if (!envKeyRegex.test(envVar.key.trim())) {
-				toast.error(`Environment variable ${i + 1}: Key must start with letter or underscore and contain only letters, numbers, and underscores`);
+				toast.error(
+					`Environment variable ${i + 1}: Key must start with letter or underscore and contain only letters, numbers, and underscores`
+				);
 				return;
 			}
 
 			// Check for reserved environment variables
 			const reservedEnvVars = ['PATH', 'HOME', 'USER', 'SHELL'];
 			if (reservedEnvVars.includes(envVar.key.trim().toUpperCase())) {
-				toast.error(`Environment variable ${i + 1}: Cannot override reserved variable ${envVar.key}`);
+				toast.error(
+					`Environment variable ${i + 1}: Cannot override reserved variable ${envVar.key}`
+				);
 				return;
 			}
 		}
@@ -246,7 +260,12 @@
 
 		<div class="space-y-2">
 			<Label for="containerName">Container Name (Optional)</Label>
-			<Input id="containerName" bind:value={containerName} placeholder="my-container" disabled={running} />
+			<Input
+				id="containerName"
+				bind:value={containerName}
+				placeholder="my-container"
+				disabled={running}
+			/>
 		</div>
 	</div>
 
@@ -255,7 +274,7 @@
 		<div class="flex items-center justify-between">
 			<Label>Port Mappings</Label>
 			<Button variant="outline" size="sm" onclick={addPort} disabled={running}>
-				<Plus class="size-4 mr-1" />
+				<Plus class="mr-1 size-4" />
 				Add Port
 			</Button>
 		</div>
@@ -276,15 +295,25 @@
 		<div class="flex items-center justify-between">
 			<Label>Volume Mounts</Label>
 			<Button variant="outline" size="sm" onclick={addVolume} disabled={running}>
-				<Plus class="size-4 mr-1" />
+				<Plus class="mr-1 size-4" />
 				Add Volume
 			</Button>
 		</div>
 		{#each volumes as volume, index}
 			<div class="flex items-center gap-2">
-				<Input bind:value={volume.host} placeholder="/host/path" disabled={running} class="flex-1" />
+				<Input
+					bind:value={volume.host}
+					placeholder="/host/path"
+					disabled={running}
+					class="flex-1"
+				/>
 				<span class="text-muted-foreground">:</span>
-				<Input bind:value={volume.container} placeholder="/container/path" disabled={running} class="flex-1" />
+				<Input
+					bind:value={volume.container}
+					placeholder="/container/path"
+					disabled={running}
+					class="flex-1"
+				/>
 				<Button variant="outline" size="sm" onclick={() => removeVolume(index)} disabled={running}>
 					<Trash2 class="size-4" />
 				</Button>
@@ -297,13 +326,18 @@
 		<div class="flex items-center justify-between">
 			<Label>Environment Variables</Label>
 			<Button variant="outline" size="sm" onclick={addEnvVar} disabled={running}>
-				<Plus class="size-4 mr-1" />
+				<Plus class="mr-1 size-4" />
 				Add Variable
 			</Button>
 		</div>
 		{#each envVars as envVar, index}
 			<div class="flex items-center gap-2">
-				<Input bind:value={envVar.key} placeholder="VARIABLE_NAME" disabled={running} class="flex-1" />
+				<Input
+					bind:value={envVar.key}
+					placeholder="VARIABLE_NAME"
+					disabled={running}
+					class="flex-1"
+				/>
 				<span class="text-muted-foreground">=</span>
 				<Input bind:value={envVar.value} placeholder="value" disabled={running} class="flex-1" />
 				<Button variant="outline" size="sm" onclick={() => removeEnvVar(index)} disabled={running}>
@@ -318,7 +352,7 @@
 		<div class="flex items-center justify-between">
 			<div>
 				<Label>Run in Background</Label>
-				<p class="text-sm text-muted-foreground">Run container in detached mode</p>
+				<p class="text-muted-foreground text-sm">Run container in detached mode</p>
 			</div>
 			<Switch bind:checked={detached} disabled={running} />
 		</div>
@@ -326,14 +360,19 @@
 		<div class="flex items-center justify-between">
 			<div>
 				<Label>Auto Remove</Label>
-				<p class="text-sm text-muted-foreground">Remove container when it stops</p>
+				<p class="text-muted-foreground text-sm">Remove container when it stops</p>
 			</div>
 			<Switch bind:checked={autoRemove} disabled={running} />
 		</div>
 
 		<div class="space-y-2">
 			<Label for="restartPolicy">Restart Policy</Label>
-			<select id="restartPolicy" bind:value={restartPolicy} disabled={running} class="w-full px-3 py-2 border border-input bg-background rounded-md">
+			<select
+				id="restartPolicy"
+				bind:value={restartPolicy}
+				disabled={running}
+				class="border-input bg-background w-full rounded-md border px-3 py-2"
+			>
 				<option value="no">No</option>
 				<option value="always">Always</option>
 				<option value="unless-stopped">Unless Stopped</option>
@@ -347,7 +386,7 @@
 		<Button variant="outline" onclick={onClose} disabled={running}>Cancel</Button>
 		<Button onclick={handleRun} disabled={running || !imageName.trim()}>
 			{#if running}
-				<Loader2 class="size-4 mr-2 animate-spin" />
+				<Loader2 class="mr-2 size-4 animate-spin" />
 			{/if}
 			Run Container
 		</Button>

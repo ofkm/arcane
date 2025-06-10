@@ -221,7 +221,7 @@
 			<Dialog.Description>
 				Enter the image reference you want to pull from a registry.
 				{#if pullError}
-					<p class="text-destructive text-sm mt-2">{pullError}</p>
+					<p class="text-destructive mt-2 text-sm">{pullError}</p>
 				{/if}
 			</Dialog.Description>
 		</Dialog.Header>
@@ -240,7 +240,7 @@
 						/>
 					</div>
 					<div class="flex items-center">
-						<span class="text-lg font-medium text-muted-foreground">:</span>
+						<span class="text-muted-foreground text-lg font-medium">:</span>
 					</div>
 					<div class="w-1/3">
 						<Input id="image-tag" bind:value={tag} placeholder="latest" disabled={isPulling} />
@@ -251,22 +251,22 @@
 			{#if isPulling || pullStatusText}
 				<div class="mt-4">
 					{#if isPulling}
-						<div class="flex justify-between text-xs mb-1">
+						<div class="mb-1 flex justify-between text-xs">
 							<span>{pullStatusText || 'Pulling image...'}</span>
 							<span>{Math.round(pullProgress)}%</span>
 						</div>
-						<div class="w-full bg-secondary rounded-full overflow-hidden h-2">
+						<div class="bg-secondary h-2 w-full overflow-hidden rounded-full">
 							<div
 								class="bg-primary h-full transition-all duration-150 ease-linear"
 								style="width: {pullProgress}%"
 							></div>
 						</div>
 					{:else if pullStatusText && !pullError}
-						<p class="text-xs text-green-600 mt-1">{pullStatusText}</p>
+						<p class="mt-1 text-xs text-green-600">{pullStatusText}</p>
 					{/if}
 					{#if !isPulling && pullError}{/if}
 					{#if isPulling}
-						<p class="text-xs text-muted-foreground mt-1">
+						<p class="text-muted-foreground mt-1 text-xs">
 							This may take a while depending on the image size and your internet connection.
 						</p>
 					{/if}
@@ -282,7 +282,7 @@
 				>
 					{#if isPulling}
 						<div class="absolute inset-0 flex items-center justify-center">
-							<Loader2 class="animate-spin size-4" />
+							<Loader2 class="size-4 animate-spin" />
 						</div>
 						<span class="opacity-0">Pull Image</span>
 					{:else}

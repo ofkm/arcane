@@ -18,7 +18,8 @@
 		} catch (e: unknown) {
 			const err = e as { mark?: { position: number }; message: string };
 			const start = err.mark?.position || 0;
-			const end = err.mark?.position !== undefined ? Math.max(start + 1, err.mark.position + 1) : start + 1;
+			const end =
+				err.mark?.position !== undefined ? Math.max(start + 1, err.mark.position + 1) : start + 1;
 			diagnostics.push({
 				from: start,
 				to: end,
@@ -33,7 +34,7 @@
 </script>
 
 {#if browser}
-	<div class="border rounded-md overflow-hidden">
+	<div class="overflow-hidden rounded-md border">
 		<CodeMirror
 			bind:value
 			on:ready={(e) => (editorView = e.detail)}

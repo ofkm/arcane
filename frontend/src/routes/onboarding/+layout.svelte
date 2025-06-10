@@ -18,8 +18,8 @@
 	let currentStep = $derived(steps.findIndex((step) => page.url.pathname === step.path));
 </script>
 
-<div class="min-h-screen flex flex-col">
-	<header class="pb-6 px-8 border-b">
+<div class="flex min-h-screen flex-col">
+	<header class="border-b px-8 pb-6">
 		<div class="flex items-center">
 			<img src="/img/arcane.png" alt="Arcane" class="size-12" />
 			<h1 class="ml-4 text-2xl font-bold">Arcane Setup</h1>
@@ -27,13 +27,18 @@
 	</header>
 
 	<div class="container mx-auto px-4 py-6">
-		<div class="flex items-center justify-between mb-8">
+		<div class="mb-8 flex items-center justify-between">
 			{#each steps as step, i (step.id)}
 				<div class="flex flex-col items-center">
-					<div class={`rounded-full size-10 flex items-center justify-center ${i <= currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+					<div
+						class={`flex size-10 items-center justify-center rounded-full ${i <= currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+					>
 						<step.icon class="size-5" />
 					</div>
-					<span class={`text-sm mt-2 ${i <= currentStep ? 'text-foreground' : 'text-muted-foreground'}`}>{step.label}</span>
+					<span
+						class={`mt-2 text-sm ${i <= currentStep ? 'text-foreground' : 'text-muted-foreground'}`}
+						>{step.label}</span
+					>
 				</div>
 
 				{#if i < steps.length - 1}
@@ -43,7 +48,7 @@
 		</div>
 	</div>
 
-	<main class="flex-1 container mx-auto px-4 py-6">
+	<main class="container mx-auto flex-1 px-4 py-6">
 		{@render children?.()}
 	</main>
 </div>

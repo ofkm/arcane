@@ -2,7 +2,17 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, HardDrive, Clock, Tag, Layers, Hash, Trash2, Loader2, Cpu } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		HardDrive,
+		Clock,
+		Tag,
+		Layers,
+		Hash,
+		Trash2,
+		Loader2,
+		Cpu
+	} from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { goto } from '$app/navigation';
 	import { Separator } from '$lib/components/ui/separator/index.js';
@@ -55,7 +65,7 @@
 
 <div class="space-y-6 pb-8">
 	<!-- Breadcrumb Navigation -->
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<Breadcrumb.Root>
 				<Breadcrumb.List>
@@ -75,8 +85,14 @@
 			</div>
 		</div>
 
-		<div class="flex gap-2 flex-wrap">
-			<ArcaneButton action="remove" onClick={() => handleImageRemove(image.Id)} loading={isLoading.removing} disabled={isLoading.removing} size="sm" />
+		<div class="flex flex-wrap gap-2">
+			<ArcaneButton
+				action="remove"
+				onClick={() => handleImageRemove(image.Id)}
+				loading={isLoading.removing}
+				disabled={isLoading.removing}
+				size="sm"
+			/>
 		</div>
 	</div>
 
@@ -87,59 +103,69 @@
 					<Card.Title>Image Details</Card.Title>
 				</Card.Header>
 				<Card.Content>
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+					<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						<!-- ID -->
 						<div class="flex items-start gap-3">
-							<div class="bg-gray-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
-								<Hash class="text-gray-500 size-5" />
+							<div
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2"
+							>
+								<Hash class="size-5 text-gray-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-sm font-medium text-muted-foreground">ID</p>
-								<p class="text-base font-semibold mt-1 truncate" title={image.Id}>{shortId}</p>
+								<p class="text-muted-foreground text-sm font-medium">ID</p>
+								<p class="mt-1 truncate text-base font-semibold" title={image.Id}>{shortId}</p>
 							</div>
 						</div>
 
 						<!-- Size -->
 						<div class="flex items-start gap-3">
-							<div class="bg-blue-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
-								<HardDrive class="text-blue-500 size-5" />
+							<div
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2"
+							>
+								<HardDrive class="size-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-sm font-medium text-muted-foreground">Size</p>
-								<p class="text-base font-semibold mt-1">{imageSize}</p>
+								<p class="text-muted-foreground text-sm font-medium">Size</p>
+								<p class="mt-1 text-base font-semibold">{imageSize}</p>
 							</div>
 						</div>
 
 						<!-- Created -->
 						<div class="flex items-start gap-3">
-							<div class="bg-green-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
-								<Clock class="text-green-500 size-5" />
+							<div
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2"
+							>
+								<Clock class="size-5 text-green-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-sm font-medium text-muted-foreground">Created</p>
-								<p class="text-base font-semibold mt-1">{createdDate}</p>
+								<p class="text-muted-foreground text-sm font-medium">Created</p>
+								<p class="mt-1 text-base font-semibold">{createdDate}</p>
 							</div>
 						</div>
 
 						<!-- Architecture -->
 						<div class="flex items-start gap-3">
-							<div class="bg-orange-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
-								<Cpu class="text-orange-500 size-5" />
+							<div
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 p-2"
+							>
+								<Cpu class="size-5 text-orange-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-sm font-medium text-muted-foreground">Architecture</p>
-								<p class="text-base font-semibold mt-1">{image.Architecture || 'N/A'}</p>
+								<p class="text-muted-foreground text-sm font-medium">Architecture</p>
+								<p class="mt-1 text-base font-semibold">{image.Architecture || 'N/A'}</p>
 							</div>
 						</div>
 
 						<!-- OS -->
 						<div class="flex items-start gap-3">
-							<div class="bg-indigo-500/10 p-2 rounded-full flex items-center justify-center shrink-0 size-10">
-								<Layers class="text-indigo-500 size-5" />
+							<div
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 p-2"
+							>
+								<Layers class="size-5 text-indigo-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-sm font-medium text-muted-foreground">OS</p>
-								<p class="text-base font-semibold mt-1">{image.Os || 'N/A'}</p>
+								<p class="text-muted-foreground text-sm font-medium">OS</p>
+								<p class="mt-1 text-base font-semibold">{image.Os || 'N/A'}</p>
 							</div>
 						</div>
 					</div>
@@ -150,7 +176,9 @@
 			{#if image.RepoTags && image.RepoTags.length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
-						<Card.Title class="flex items-center gap-2"><Tag class="text-muted-foreground size-5" /> Tags</Card.Title>
+						<Card.Title class="flex items-center gap-2"
+							><Tag class="text-muted-foreground size-5" /> Tags</Card.Title
+						>
 					</Card.Header>
 					<Card.Content>
 						<div class="flex flex-wrap gap-2">
@@ -170,9 +198,11 @@
 					</Card.Header>
 					<Card.Content class="space-y-2">
 						{#each Object.entries(image.Config.Labels) as [key, value] (key)}
-							<div class="text-sm flex flex-col sm:flex-row sm:items-center">
-								<span class="font-medium text-muted-foreground w-full sm:w-1/4 break-all">{key}:</span>
-								<span class="font-mono text-xs sm:text-sm break-all w-full sm:w-3/4">{value}</span>
+							<div class="flex flex-col text-sm sm:flex-row sm:items-center">
+								<span class="text-muted-foreground w-full font-medium break-all sm:w-1/4"
+									>{key}:</span
+								>
+								<span class="w-full font-mono text-xs break-all sm:w-3/4 sm:text-sm">{value}</span>
 							</div>
 							{#if !Object.is(Object.keys(image.Config.Labels).length - 1, Object.keys(image.Config.Labels).indexOf(key))}
 								<Separator class="my-2" />
@@ -183,9 +213,15 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="text-center py-12">
-			<p class="text-lg font-medium text-muted-foreground">Image not found.</p>
-			<ArcaneButton action="cancel" customLabel="Back to Images" onClick={() => goto('/images')} size="sm" class="mt-4" />
+		<div class="py-12 text-center">
+			<p class="text-muted-foreground text-lg font-medium">Image not found.</p>
+			<ArcaneButton
+				action="cancel"
+				customLabel="Back to Images"
+				onClick={() => goto('/images')}
+				size="sm"
+				class="mt-4"
+			/>
 		</div>
 	{/if}
 </div>

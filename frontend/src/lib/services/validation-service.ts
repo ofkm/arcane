@@ -11,7 +11,11 @@ export class ValidationService {
 	/**
 	 * Validate compose configuration via API
 	 */
-	static async validateComposeConfiguration(composeContent: string, envContent: string = '', mode: ValidationMode = 'default'): Promise<ValidationResult> {
+	static async validateComposeConfiguration(
+		composeContent: string,
+		envContent: string = '',
+		mode: ValidationMode = 'default'
+	): Promise<ValidationResult> {
 		try {
 			const response = await fetch('/api/stacks/validate', {
 				method: 'POST',
@@ -47,7 +51,10 @@ export class ValidationService {
 	/**
 	 * Validate stack by ID via API
 	 */
-	static async validateStackById(stackId: string, mode: ValidationMode = 'default'): Promise<ValidationResult> {
+	static async validateStackById(
+		stackId: string,
+		mode: ValidationMode = 'default'
+	): Promise<ValidationResult> {
 		try {
 			const response = await fetch(`/api/stacks/${stackId}/validate?mode=${mode}`);
 

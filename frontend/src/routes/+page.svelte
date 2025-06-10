@@ -3,9 +3,27 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import UniversalTable from '$lib/components/universal-table.svelte';
-	import { AlertCircle, Box, HardDrive, Cpu, ArrowRight, PlayCircle, StopCircle, Trash2, Settings, RefreshCw, Loader2, Monitor } from '@lucide/svelte';
+	import {
+		AlertCircle,
+		Box,
+		HardDrive,
+		Cpu,
+		ArrowRight,
+		PlayCircle,
+		StopCircle,
+		Trash2,
+		Settings,
+		RefreshCw,
+		Loader2,
+		Monitor
+	} from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { capitalizeFirstLetter, truncateString, shortId, parseStatusTime } from '$lib/utils/string.utils';
+	import {
+		capitalizeFirstLetter,
+		truncateString,
+		shortId,
+		parseStatusTime
+	} from '$lib/utils/string.utils';
 	import { formatBytes } from '$lib/utils/bytes.util';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -88,14 +106,26 @@
 	let liveSystemStats = $state(null);
 	let statsInterval: NodeJS.Timeout | null = null;
 
-	const runningContainers = $derived(dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'running').length ?? 0);
-	const stoppedContainers = $derived(dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'exited').length ?? 0);
-	const totalImageSize = $derived(dashboardStates.images?.reduce((sum, image) => sum + (image.Size || 0), 0) ?? 0);
-	const containerUsagePercent = $derived(dashboardStates.containers?.length ? (runningContainers / dashboardStates.containers.length) * 100 : 0);
+	const runningContainers = $derived(
+		dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'running').length ?? 0
+	);
+	const stoppedContainers = $derived(
+		dashboardStates.containers?.filter((c: ContainerInfo) => c.State === 'exited').length ?? 0
+	);
+	const totalImageSize = $derived(
+		dashboardStates.images?.reduce((sum, image) => sum + (image.Size || 0), 0) ?? 0
+	);
+	const containerUsagePercent = $derived(
+		dashboardStates.containers?.length
+			? (runningContainers / dashboardStates.containers.length) * 100
+			: 0
+	);
 
 	function getContainerDisplayName(container: ContainerInfo): string {
 		if (container.Names && container.Names.length > 0) {
-			return container.Names[0].startsWith('/') ? container.Names[0].substring(1) : container.Names[0];
+			return container.Names[0].startsWith('/')
+				? container.Names[0].substring(1)
+				: container.Names[0];
 		}
 		return shortId(container.Id);
 	}
@@ -223,7 +253,9 @@
 			onSuccess: async () => {
 				dashboardStates.isPruneDialogOpen = false;
 				const formattedTypes = selectedTypes.map((type) => capitalizeFirstLetter(type)).join(', ');
-				toast.success(`${formattedTypes} ${selectedTypes.length > 1 ? 'were' : 'was'} pruned successfully.`);
+				toast.success(
+					`${formattedTypes} ${selectedTypes.length > 1 ? 'were' : 'was'} pruned successfully.`
+				);
 				await invalidateAll();
 			}
 		});
@@ -265,14 +297,23 @@
 </script>
 
 <div class="space-y-8">
-	<div class="flex justify-between items-center">
+	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
-			<p class="text-sm text-muted-foreground mt-1">Overview of your Container Environment</p>
+			<p class="text-muted-foreground mt-1 text-sm">Overview of your Container Environment</p>
 		</div>
-		<Button variant="outline" size="sm" class="h-9 arcane-button-restart" onclick={refreshData} disabled={isLoading.refreshing || isLoading.starting || isLoading.stopping || isLoading.pruning}>
+		<Button
+			variant="outline"
+			size="sm"
+			class="arcane-button-restart h-9"
+			onclick={refreshData}
+			disabled={isLoading.refreshing ||
+				isLoading.starting ||
+				isLoading.stopping ||
+				isLoading.pruning}
+		>
 			{#if isLoading.refreshing}
-				<Loader2 class="mr-2 animate-spin size-4" />
+				<Loader2 class="mr-2 size-4 animate-spin" />
 			{:else}
 				<RefreshCw class="mr-2 size-4" />
 			{/if}
@@ -292,21 +333,29 @@
 	{/if}
 
 	<section>
-		<DropdownCard id="system-overview" title="System Overview" description="Hardware and Docker engine information" icon={Monitor} defaultExpanded={true}>
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+		<DropdownCard
+			id="system-overview"
+			title="System Overview"
+			description="Hardware and Docker engine information"
+			icon={Monitor}
+			defaultExpanded={true}
+		>
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
 				<!-- Containers & Docker Info Card -->
 				<Card.Root class="overflow-hidden">
 					<Card.Content class="p-6">
-						<div class="flex items-center justify-between mb-4">
+						<div class="mb-4 flex items-center justify-between">
 							<div class="flex items-center gap-3">
-								<div class="bg-green-500/10 p-2.5 rounded-lg">
-									<Box class="text-green-500 size-5" />
+								<div class="rounded-lg bg-green-500/10 p-2.5">
+									<Box class="size-5 text-green-500" />
 								</div>
 								<div>
-									<p class="text-sm font-medium text-muted-foreground">Containers</p>
+									<p class="text-muted-foreground text-sm font-medium">Containers</p>
 									<p class="text-2xl font-bold">
 										{runningContainers}
-										<span class="text-sm font-normal text-muted-foreground">/ {dashboardStates.containers?.length || 0}</span>
+										<span class="text-muted-foreground text-sm font-normal"
+											>/ {dashboardStates.containers?.length || 0}</span
+										>
 									</p>
 								</div>
 							</div>
@@ -314,15 +363,22 @@
 
 						{#if dashboardStates.containers?.length}
 							<div class="mb-6">
-								<Meter label="Active Containers" valueLabel="{runningContainers} running" value={runningContainers} max={dashboardStates.containers.length} variant={containerUsagePercent > 80 ? 'warning' : 'success'} size="sm" />
+								<Meter
+									label="Active Containers"
+									valueLabel="{runningContainers} running"
+									value={runningContainers}
+									max={dashboardStates.containers.length}
+									variant={containerUsagePercent > 80 ? 'warning' : 'success'}
+									size="sm"
+								/>
 							</div>
 						{/if}
 
 						<!-- Docker Engine Info -->
-						<div class="pt-4 border-t space-y-3">
+						<div class="space-y-3 border-t pt-4">
 							<div class="flex items-center gap-2">
 								<DockerIcon class="text-muted-foreground size-4" />
-								<p class="text-sm font-medium text-muted-foreground">Docker Engine</p>
+								<p class="text-muted-foreground text-sm font-medium">Docker Engine</p>
 							</div>
 							<div class="grid grid-cols-2 gap-3 text-xs">
 								<div>
@@ -332,7 +388,9 @@
 								<div>
 									<p class="text-muted-foreground">OS</p>
 									<p class="font-medium">
-										{dashboardStates.dockerInfo?.os || dashboardStates.systemStats?.platform || 'Unknown'}
+										{dashboardStates.dockerInfo?.os ||
+											dashboardStates.systemStats?.platform ||
+											'Unknown'}
 									</p>
 								</div>
 							</div>
@@ -343,30 +401,44 @@
 				<!-- Images & System Storage Card -->
 				<Card.Root class="overflow-hidden">
 					<Card.Content class="p-6">
-						<div class="flex items-center justify-between mb-4">
+						<div class="mb-4 flex items-center justify-between">
 							<div class="flex items-center gap-3">
-								<div class="bg-blue-500/10 p-2.5 rounded-lg">
-									<HardDrive class="text-blue-500 size-5" />
+								<div class="rounded-lg bg-blue-500/10 p-2.5">
+									<HardDrive class="size-5 text-blue-500" />
 								</div>
 								<div>
-									<p class="text-sm font-medium text-muted-foreground">Storage</p>
+									<p class="text-muted-foreground text-sm font-medium">Storage</p>
 									<p class="text-2xl font-bold">{dashboardStates.dockerInfo?.images || 0}</p>
-									<p class="text-xs text-muted-foreground">Docker images</p>
+									<p class="text-muted-foreground text-xs">Docker images</p>
 								</div>
 							</div>
 						</div>
 
 						{#if isLoading.loadingStats}
-							<div class="text-center py-6">
-								<Loader2 class="mx-auto animate-spin size-6 text-muted-foreground mb-2" />
-								<p class="text-sm text-muted-foreground">Loading storage data...</p>
+							<div class="py-6 text-center">
+								<Loader2 class="text-muted-foreground mx-auto mb-2 size-6 animate-spin" />
+								<p class="text-muted-foreground text-sm">Loading storage data...</p>
 							</div>
 						{:else if liveSystemStats?.diskTotal && liveSystemStats?.diskUsage !== undefined}
-							{@const storagePercent = Math.min(Math.max((liveSystemStats.diskUsage / liveSystemStats.diskTotal) * 100, 0), 100)}
+							{@const storagePercent = Math.min(
+								Math.max((liveSystemStats.diskUsage / liveSystemStats.diskTotal) * 100, 0),
+								100
+							)}
 							<div class="mb-4">
-								<Meter label="System Storage" valueLabel="{storagePercent.toFixed(1)}%" value={storagePercent} max={100} variant={storagePercent > 85 ? 'destructive' : storagePercent > 70 ? 'warning' : 'success'} size="sm" />
+								<Meter
+									label="System Storage"
+									valueLabel="{storagePercent.toFixed(1)}%"
+									value={storagePercent}
+									max={100}
+									variant={storagePercent > 85
+										? 'destructive'
+										: storagePercent > 70
+											? 'warning'
+											: 'success'}
+									size="sm"
+								/>
 							</div>
-							<div class="space-y-1 text-xs text-muted-foreground">
+							<div class="text-muted-foreground space-y-1 text-xs">
 								<div class="flex justify-between">
 									<span>Used:</span>
 									<span class="font-medium">{formatBytes(liveSystemStats.diskUsage)}</span>
@@ -376,7 +448,7 @@
 									<span class="font-medium">{formatBytes(liveSystemStats.diskTotal)}</span>
 								</div>
 								{#if totalImageSize > 0}
-									<div class="flex justify-between pt-1 border-t border-border/50">
+									<div class="border-border/50 flex justify-between border-t pt-1">
 										<span>Docker Images:</span>
 										<span class="font-medium">{formatBytes(totalImageSize)}</span>
 									</div>
@@ -384,19 +456,19 @@
 							</div>
 						{:else if totalImageSize > 0}
 							<div class="mb-4">
-								<div class="text-center py-4">
-									<p class="text-sm text-muted-foreground">System storage data unavailable</p>
+								<div class="py-4 text-center">
+									<p class="text-muted-foreground text-sm">System storage data unavailable</p>
 								</div>
 							</div>
-							<div class="text-xs text-muted-foreground">
+							<div class="text-muted-foreground text-xs">
 								<div class="flex justify-between">
 									<span>Docker Images:</span>
 									<span class="font-medium">{formatBytes(totalImageSize)}</span>
 								</div>
 							</div>
 						{:else}
-							<div class="text-center py-6">
-								<p class="text-sm text-muted-foreground">No storage data available</p>
+							<div class="py-6 text-center">
+								<p class="text-muted-foreground text-sm">No storage data available</p>
 							</div>
 						{/if}
 					</Card.Content>
@@ -405,22 +477,26 @@
 				<!-- Hardware & Performance Card -->
 				<Card.Root class="overflow-hidden">
 					<Card.Content class="p-6">
-						<div class="flex items-center justify-between mb-4">
+						<div class="mb-4 flex items-center justify-between">
 							<div class="flex items-center gap-3">
-								<div class="bg-purple-500/10 p-2.5 rounded-lg">
-									<Cpu class="text-purple-500 size-5" />
+								<div class="rounded-lg bg-purple-500/10 p-2.5">
+									<Cpu class="size-5 text-purple-500" />
 								</div>
 								<div>
-									<p class="text-sm font-medium text-muted-foreground">Hardware</p>
+									<p class="text-muted-foreground text-sm font-medium">Hardware</p>
 									{#if isLoading.loadingStats}
-										<div class="text-xs text-muted-foreground mt-1">Loading...</div>
+										<div class="text-muted-foreground mt-1 text-xs">Loading...</div>
 									{:else}
-										<div class="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+										<div class="text-muted-foreground mt-1 flex items-center gap-4 text-xs">
 											<span>{liveSystemStats?.cpuCount || 'N/A'} cores</span>
-											<span>{liveSystemStats?.memoryTotal ? formatBytes(liveSystemStats.memoryTotal, 0) : 'N/A'}</span>
+											<span
+												>{liveSystemStats?.memoryTotal
+													? formatBytes(liveSystemStats.memoryTotal, 0)
+													: 'N/A'}</span
+											>
 										</div>
 										{#if liveSystemStats?.hostname}
-											<p class="text-xs text-muted-foreground mt-1">{liveSystemStats.hostname}</p>
+											<p class="text-muted-foreground mt-1 text-xs">{liveSystemStats.hostname}</p>
 										{/if}
 									{/if}
 								</div>
@@ -428,19 +504,44 @@
 						</div>
 
 						{#if isLoading.loadingStats}
-							<div class="text-center py-6">
-								<Loader2 class="mx-auto animate-spin size-6 text-muted-foreground mb-2" />
-								<p class="text-sm text-muted-foreground">Loading system stats...</p>
+							<div class="py-6 text-center">
+								<Loader2 class="text-muted-foreground mx-auto mb-2 size-6 animate-spin" />
+								<p class="text-muted-foreground text-sm">Loading system stats...</p>
 							</div>
 						{:else if liveSystemStats}
 							{@const cpuPercent = Math.min(Math.max(liveSystemStats.cpuUsage, 0), 100)}
-							{@const memoryPercent = Math.min(Math.max((liveSystemStats.memoryUsage / liveSystemStats.memoryTotal) * 100, 0), 100)}
+							{@const memoryPercent = Math.min(
+								Math.max((liveSystemStats.memoryUsage / liveSystemStats.memoryTotal) * 100, 0),
+								100
+							)}
 							<div class="space-y-4">
-								<Meter label="CPU Usage" valueLabel="{cpuPercent.toFixed(1)}%" value={cpuPercent} max={100} variant={cpuPercent > 80 ? 'destructive' : cpuPercent > 60 ? 'warning' : 'success'} size="sm" />
+								<Meter
+									label="CPU Usage"
+									valueLabel="{cpuPercent.toFixed(1)}%"
+									value={cpuPercent}
+									max={100}
+									variant={cpuPercent > 80
+										? 'destructive'
+										: cpuPercent > 60
+											? 'warning'
+											: 'success'}
+									size="sm"
+								/>
 
-								<Meter label="Memory Usage" valueLabel="{memoryPercent.toFixed(1)}%" value={memoryPercent} max={100} variant={memoryPercent > 80 ? 'destructive' : memoryPercent > 60 ? 'warning' : 'success'} size="sm" />
+								<Meter
+									label="Memory Usage"
+									valueLabel="{memoryPercent.toFixed(1)}%"
+									value={memoryPercent}
+									max={100}
+									variant={memoryPercent > 80
+										? 'destructive'
+										: memoryPercent > 60
+											? 'warning'
+											: 'success'}
+									size="sm"
+								/>
 							</div>
-							<div class="pt-3 text-xs text-muted-foreground space-y-1">
+							<div class="text-muted-foreground space-y-1 pt-3 text-xs">
 								{#if liveSystemStats.architecture}
 									<div class="flex justify-between">
 										<span>Architecture:</span>
@@ -455,8 +556,8 @@
 								{/if}
 							</div>
 						{:else}
-							<div class="text-center py-6">
-								<p class="text-sm text-muted-foreground">System stats unavailable</p>
+							<div class="py-6 text-center">
+								<p class="text-muted-foreground text-sm">System stats unavailable</p>
 							</div>
 						{/if}
 					</Card.Content>
@@ -466,72 +567,111 @@
 	</section>
 
 	<section>
-		<h2 class="text-lg font-semibold tracking-tight mb-4">Quick Actions</h2>
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-			<button class="group relative flex flex-col items-center p-6 rounded-xl border bg-card shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-sm" disabled={!dashboardStates.dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} onclick={handleStartAll}>
-				<div class="size-12 rounded-full flex items-center justify-center mb-4 bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
+		<h2 class="mb-4 text-lg font-semibold tracking-tight">Quick Actions</h2>
+		<div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+			<button
+				class="group bg-card relative flex flex-col items-center rounded-xl border p-6 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm"
+				disabled={!dashboardStates.dockerInfo ||
+					stoppedContainers === 0 ||
+					isLoading.starting ||
+					isLoading.stopping ||
+					isLoading.pruning}
+				onclick={handleStartAll}
+			>
+				<div
+					class="mb-4 flex size-12 items-center justify-center rounded-full bg-green-500/10 transition-colors group-hover:bg-green-500/20"
+				>
 					{#if isLoading.starting}
-						<Loader2 class="text-green-500 animate-spin size-6" />
+						<Loader2 class="size-6 animate-spin text-green-500" />
 					{:else}
-						<PlayCircle class="text-green-500 size-6" />
+						<PlayCircle class="size-6 text-green-500" />
 					{/if}
 				</div>
-				<span class="text-base font-medium text-center">Start All Stopped</span>
-				<span class="text-sm text-muted-foreground mt-1">{stoppedContainers} containers</span>
-			</button>
-
-			<button class="group relative flex flex-col items-center p-6 rounded-xl border bg-card shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-sm" disabled={!dashboardStates.dockerInfo || runningContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} onclick={handleStopAll}>
-				<div class="size-12 rounded-full flex items-center justify-center mb-4 bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
-					{#if isLoading.stopping}
-						<Loader2 class="text-blue-500 animate-spin size-6" />
-					{:else}
-						<StopCircle class="text-blue-500 size-6" />
-					{/if}
-				</div>
-				<span class="text-base font-medium text-center">Stop All Running</span>
-				<span class="text-sm text-muted-foreground mt-1">{runningContainers}</span>
+				<span class="text-center text-base font-medium">Start All Stopped</span>
+				<span class="text-muted-foreground mt-1 text-sm">{stoppedContainers} containers</span>
 			</button>
 
 			<button
-				class="group relative flex flex-col items-center p-6 rounded-xl border bg-card shadow-sm hover:shadow-md hover:border-destructive/50 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-sm disabled:hover:border-border"
-				disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
-				onclick={() => (dashboardStates.isPruneDialogOpen = true)}
+				class="group bg-card relative flex flex-col items-center rounded-xl border p-6 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm"
+				disabled={!dashboardStates.dockerInfo ||
+					runningContainers === 0 ||
+					isLoading.starting ||
+					isLoading.stopping ||
+					isLoading.pruning}
+				onclick={handleStopAll}
 			>
-				<div class="size-12 rounded-full flex items-center justify-center mb-4 bg-red-500/10 group-hover:bg-red-500/20 transition-colors">
-					{#if isLoading.pruning}
-						<Loader2 class="text-red-500 animate-spin size-6" />
+				<div
+					class="mb-4 flex size-12 items-center justify-center rounded-full bg-blue-500/10 transition-colors group-hover:bg-blue-500/20"
+				>
+					{#if isLoading.stopping}
+						<Loader2 class="size-6 animate-spin text-blue-500" />
 					{:else}
-						<Trash2 class="text-red-500 size-6" />
+						<StopCircle class="size-6 text-blue-500" />
 					{/if}
 				</div>
-				<span class="text-base font-medium text-center">Prune System</span>
-				<span class="text-sm text-muted-foreground mt-1">Clean unused resources</span>
+				<span class="text-center text-base font-medium">Stop All Running</span>
+				<span class="text-muted-foreground mt-1 text-sm">{runningContainers}</span>
+			</button>
+
+			<button
+				class="group bg-card hover:border-destructive/50 disabled:hover:border-border relative flex flex-col items-center rounded-xl border p-6 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm"
+				disabled={!dashboardStates.dockerInfo ||
+					isLoading.starting ||
+					isLoading.stopping ||
+					isLoading.pruning}
+				onclick={() => (dashboardStates.isPruneDialogOpen = true)}
+			>
+				<div
+					class="mb-4 flex size-12 items-center justify-center rounded-full bg-red-500/10 transition-colors group-hover:bg-red-500/20"
+				>
+					{#if isLoading.pruning}
+						<Loader2 class="size-6 animate-spin text-red-500" />
+					{:else}
+						<Trash2 class="size-6 text-red-500" />
+					{/if}
+				</div>
+				<span class="text-center text-base font-medium">Prune System</span>
+				<span class="text-muted-foreground mt-1 text-sm">Clean unused resources</span>
 			</button>
 		</div>
 	</section>
 
 	<section>
-		<h2 class="text-lg font-semibold tracking-tight mb-4">Resources</h2>
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-			<Card.Root class="border shadow-sm relative flex flex-col">
+		<h2 class="mb-4 text-lg font-semibold tracking-tight">Resources</h2>
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+			<Card.Root class="relative flex flex-col border shadow-sm">
 				<Card.Header class="px-6">
 					<div class="flex items-center justify-between">
 						<div>
-							<Card.Title><a class="font-medium hover:underline" href="/containers">Containers</a></Card.Title>
+							<Card.Title
+								><a class="font-medium hover:underline" href="/containers">Containers</a
+								></Card.Title
+							>
 							<Card.Description class="pb-3">Recent containers</Card.Description>
 						</div>
-						<Button variant="ghost" size="sm" href="/containers" disabled={!dashboardStates.dockerInfo}>
+						<Button
+							variant="ghost"
+							size="sm"
+							href="/containers"
+							disabled={!dashboardStates.dockerInfo}
+						>
 							View All
 							<ArrowRight class="ml-2 size-4" />
 						</Button>
 					</div>
 				</Card.Header>
-				<Card.Content class="p-0 flex-1">
+				<Card.Content class="flex-1 p-0">
 					{#if dashboardStates.containers?.length > 0}
-						<div class="flex flex-col h-full">
+						<div class="flex h-full flex-col">
 							<div class="flex-1">
 								<UniversalTable
-									data={dashboardStates.containers.slice(0, 5).map((c) => ({ ...c, displayName: getContainerDisplayName(c), statusSortValue: parseStatusTime(c.Status) }))}
+									data={dashboardStates.containers
+										.slice(0, 5)
+										.map((c) => ({
+											...c,
+											displayName: getContainerDisplayName(c),
+											statusSortValue: parseStatusTime(c.Status)
+										}))}
 									columns={[
 										{ accessorKey: 'displayName', header: 'Name' },
 										{ accessorKey: 'Image', header: 'Image' },
@@ -555,34 +695,47 @@
 								>
 									{#snippet rows({ item }: { item: ContainerInfo & { displayName: string } })}
 										{@const stateVariant = statusVariantMap[item.State.toLowerCase()]}
-										<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.Id}/">{item.displayName}</a></Table.Cell>
+										<Table.Cell
+											><a class="font-medium hover:underline" href="/containers/{item.Id}/"
+												>{item.displayName}</a
+											></Table.Cell
+										>
 										<Table.Cell title={item.Image}>{truncateString(item.Image, 40)}</Table.Cell>
-										<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.State)} /></Table.Cell>
+										<Table.Cell
+											><StatusBadge
+												variant={stateVariant}
+												text={capitalizeFirstLetter(item.State)}
+											/></Table.Cell
+										>
 										<Table.Cell>{item.Status}</Table.Cell>
 									{/snippet}
 								</UniversalTable>
 							</div>
 							{#if dashboardStates.containers.length > 5}
-								<div class="bg-muted/40 py-2 px-6 text-xs text-muted-foreground border-t">
+								<div class="bg-muted/40 text-muted-foreground border-t px-6 py-2 text-xs">
 									Showing 5 of {dashboardStates.containers.length} containers
 								</div>
 							{/if}
 						</div>
 					{:else if !dashboardStates.error}
-						<div class="flex flex-col items-center justify-center py-10 px-6 text-center">
-							<Box class="text-muted-foreground mb-2 opacity-40 size-8" />
-							<p class="text-sm text-muted-foreground">No containers found</p>
-							<p class="text-xs text-muted-foreground mt-1">Use Docker CLI or another tool to create containers</p>
+						<div class="flex flex-col items-center justify-center px-6 py-10 text-center">
+							<Box class="text-muted-foreground mb-2 size-8 opacity-40" />
+							<p class="text-muted-foreground text-sm">No containers found</p>
+							<p class="text-muted-foreground mt-1 text-xs">
+								Use Docker CLI or another tool to create containers
+							</p>
 						</div>
 					{/if}
 				</Card.Content>
 			</Card.Root>
 
-			<Card.Root class="border shadow-sm relative flex flex-col">
+			<Card.Root class="relative flex flex-col border shadow-sm">
 				<Card.Header class="px-6">
 					<div class="flex items-center justify-between">
 						<div>
-							<Card.Title><a class="font-medium hover:underline" href="/images">Images</a></Card.Title>
+							<Card.Title
+								><a class="font-medium hover:underline" href="/images">Images</a></Card.Title
+							>
 							<Card.Description class="pb-3">Top 5 Largest Images</Card.Description>
 						</div>
 						<Button variant="ghost" size="sm" href="/images" disabled={!dashboardStates.dockerInfo}>
@@ -591,9 +744,9 @@
 						</Button>
 					</div>
 				</Card.Header>
-				<Card.Content class="p-0 flex-1">
+				<Card.Content class="flex-1 p-0">
 					{#if dashboardStates.images?.length > 0}
-						<div class="flex flex-col h-full">
+						<div class="flex h-full flex-col">
 							<div class="flex-1">
 								<UniversalTable
 									data={dashboardStates.images
@@ -624,9 +777,15 @@
 									{#snippet rows({ item }: { item: EnhancedImageInfo })}
 										<Table.Cell>
 											<div class="flex items-center gap-2">
-												<div class="flex items-center flex-1">
-													<MaturityItem maturity={item.maturity} isLoadingInBackground={!item.maturity} />
-													<a class="font-medium hover:underline shrink truncate" href="/images/{item.Id}/">
+												<div class="flex flex-1 items-center">
+													<MaturityItem
+														maturity={item.maturity}
+														isLoadingInBackground={!item.maturity}
+													/>
+													<a
+														class="shrink truncate font-medium hover:underline"
+														href="/images/{item.Id}/"
+													>
 														{#if item.repo && item.repo !== '<none>'}
 															{item.repo}
 														{:else if item.RepoTags && item.RepoTags.length > 0 && item.RepoTags[0] !== '<none>:<none>'}
@@ -659,16 +818,18 @@
 								</UniversalTable>
 							</div>
 							{#if dashboardStates.images.length > 5}
-								<div class="bg-muted/40 py-2 px-6 text-xs text-muted-foreground border-t">
+								<div class="bg-muted/40 text-muted-foreground border-t px-6 py-2 text-xs">
 									Showing 5 of {dashboardStates.images.length} images
 								</div>
 							{/if}
 						</div>
 					{:else if !dashboardStates.error}
-						<div class="flex flex-col items-center justify-center py-10 px-6 text-center">
-							<HardDrive class="text-muted-foreground mb-2 opacity-40 size-8" />
-							<p class="text-sm text-muted-foreground">No images found</p>
-							<p class="text-xs text-muted-foreground mt-1">Pull images using Docker CLI or another tool</p>
+						<div class="flex flex-col items-center justify-center px-6 py-10 text-center">
+							<HardDrive class="text-muted-foreground mb-2 size-8 opacity-40" />
+							<p class="text-muted-foreground text-sm">No images found</p>
+							<p class="text-muted-foreground mt-1 text-xs">
+								Pull images using Docker CLI or another tool
+							</p>
 						</div>
 					{/if}
 				</Card.Content>
@@ -676,11 +837,17 @@
 		</div>
 	</section>
 
-	<section class="border-t pt-4 mt-10">
-		<div class="flex justify-between items-center text-muted-foreground text-sm">
+	<section class="mt-10 border-t pt-4">
+		<div class="text-muted-foreground flex items-center justify-between text-sm">
 			<div class="flex items-center">
-				<a href="https://github.com/ofkm/arcane" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors" title="GitHub">
-					<GitHubIcon class="fill-current size-4" />
+				<a
+					href="https://github.com/ofkm/arcane"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="hover:text-foreground transition-colors"
+					title="GitHub"
+				>
+					<GitHubIcon class="size-4 fill-current" />
 					<span class="sr-only">GitHub</span>
 				</a>
 			</div>
@@ -688,5 +855,11 @@
 		</div>
 	</section>
 
-	<PruneConfirmationDialog bind:open={dashboardStates.isPruneDialogOpen} isPruning={isLoading.pruning} imagePruneMode={dashboardStates.settings?.pruneMode || 'dangling'} onConfirm={confirmPrune} onCancel={() => (dashboardStates.isPruneDialogOpen = false)} />
+	<PruneConfirmationDialog
+		bind:open={dashboardStates.isPruneDialogOpen}
+		isPruning={isLoading.pruning}
+		imagePruneMode={dashboardStates.settings?.pruneMode || 'dangling'}
+		onConfirm={confirmPrune}
+		onCancel={() => (dashboardStates.isPruneDialogOpen = false)}
+	/>
 </div>

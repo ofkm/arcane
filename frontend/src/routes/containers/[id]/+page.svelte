@@ -225,20 +225,20 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background">
+<div class="bg-background min-h-screen">
 	{#if container}
 		<!-- Fixed Header -->
-		<div class="sticky top-0 z-10 bg-background/95 backdrop-blur border-b">
+		<div class="bg-background/95 sticky top-0 z-10 border-b backdrop-blur">
 			<div class="max-w-full px-4 py-3">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
 						<Button variant="ghost" size="sm" href="/containers">
-							<ArrowLeft class="size-4 mr-2" />
+							<ArrowLeft class="mr-2 size-4" />
 							Back
 						</Button>
-						<div class="h-4 w-px bg-border"></div>
+						<div class="bg-border h-4 w-px"></div>
 						<div class="flex items-center gap-2">
-							<h1 class="text-lg font-semibold truncate max-w-[300px]" title={containerDisplayName}>
+							<h1 class="max-w-[300px] truncate text-lg font-semibold" title={containerDisplayName}>
 								{containerDisplayName}
 							</h1>
 							{#if container?.State}
@@ -256,7 +256,7 @@
 
 					<div class="flex items-center gap-2">
 						<Button variant="ghost" size="sm" onclick={refreshData} disabled={isRefreshing}>
-							<RefreshCw class={`size-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+							<RefreshCw class={`mr-2 size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
 							Refresh
 						</Button>
 						{#if container}
@@ -279,16 +279,16 @@
 
 		<div class="flex h-[calc(100vh-64px)]">
 			<!-- Fixed Sidebar Navigation - Narrower -->
-			<div class="w-48 shrink-0 border-r bg-background/50">
+			<div class="bg-background/50 w-48 shrink-0 border-r">
 				<div class="sticky top-16 p-3">
 					<nav class="space-y-1">
 						{#each navigationSections as section}
 							{@const IconComponent = section.icon}
 							<button
 								onclick={() => scrollToSection(section.id)}
-								class="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors
+								class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors
 									{activeSection === section.id
-									? 'bg-primary/10 text-primary border border-primary/20'
+									? 'bg-primary/10 text-primary border-primary/20 border'
 									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
 							>
 								<IconComponent class="size-4 shrink-0" />
@@ -301,16 +301,16 @@
 
 			<!-- Main Content - Full width usage -->
 			<div class="flex-1 overflow-y-auto">
-				<div class="p-6 max-w-none">
+				<div class="max-w-none p-6">
 					<div class="space-y-8">
 						<!-- Overview Section -->
 						<section id="overview" class="scroll-mt-20">
-							<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
 								<HardDrive class="size-5" />
 								Overview
 							</h2>
 
-							<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+							<div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
 								<!-- Basic Info Card -->
 								<Card.Root class="border">
 									<Card.Header class="pb-4">
@@ -318,23 +318,23 @@
 									</Card.Header>
 									<Card.Content class="space-y-4">
 										<div class="flex items-center gap-3">
-											<div class="bg-blue-50 dark:bg-blue-950/20 p-2 rounded">
+											<div class="rounded bg-blue-50 p-2 dark:bg-blue-950/20">
 												<HardDrive class="size-4 text-blue-600" />
 											</div>
 											<div class="min-w-0 flex-1">
-												<div class="text-sm text-muted-foreground">Image</div>
-												<div class="font-medium truncate" title={container.Config?.Image}>
+												<div class="text-muted-foreground text-sm">Image</div>
+												<div class="truncate font-medium" title={container.Config?.Image}>
 													{container.Config?.Image || 'N/A'}
 												</div>
 											</div>
 										</div>
 
 										<div class="flex items-center gap-3">
-											<div class="bg-green-50 dark:bg-green-950/20 p-2 rounded">
+											<div class="rounded bg-green-50 p-2 dark:bg-green-950/20">
 												<Clock class="size-4 text-green-600" />
 											</div>
 											<div class="min-w-0 flex-1">
-												<div class="text-sm text-muted-foreground">Created</div>
+												<div class="text-muted-foreground text-sm">Created</div>
 												<div class="font-medium" title={formatDate(container.Created)}>
 													{formatDate(container.Created)}
 												</div>
@@ -342,22 +342,22 @@
 										</div>
 
 										<div class="flex items-center gap-3">
-											<div class="bg-purple-50 dark:bg-purple-950/20 p-2 rounded">
+											<div class="rounded bg-purple-50 p-2 dark:bg-purple-950/20">
 												<Network class="size-4 text-purple-600" />
 											</div>
 											<div class="min-w-0 flex-1">
-												<div class="text-sm text-muted-foreground">IP Address</div>
+												<div class="text-muted-foreground text-sm">IP Address</div>
 												<div class="font-medium">{primaryIpAddress}</div>
 											</div>
 										</div>
 
 										<div class="flex items-center gap-3">
-											<div class="bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+											<div class="rounded bg-amber-50 p-2 dark:bg-amber-950/20">
 												<Terminal class="size-4 text-amber-600" />
 											</div>
 											<div class="min-w-0 flex-1">
-												<div class="text-sm text-muted-foreground">Command</div>
-												<div class="font-medium truncate" title={container.Config?.Cmd?.join(' ')}>
+												<div class="text-muted-foreground text-sm">Command</div>
+												<div class="truncate font-medium" title={container.Config?.Cmd?.join(' ')}>
 													{container.Config?.Cmd?.join(' ') || 'N/A'}
 												</div>
 											</div>
@@ -396,7 +396,7 @@
 														: 'default'}
 											/>
 										{:else}
-											<div class="text-muted-foreground text-center py-8">
+											<div class="text-muted-foreground py-8 text-center">
 												{container.State?.Running ? 'Loading stats...' : 'Container not running'}
 											</div>
 										{/if}
@@ -411,16 +411,16 @@
 								</Card.Header>
 								<Card.Content class="space-y-4">
 									<div>
-										<div class="text-sm text-muted-foreground mb-2">Container ID</div>
-										<div class="font-mono bg-muted/50 p-3 rounded text-sm break-all">
+										<div class="text-muted-foreground mb-2 text-sm">Container ID</div>
+										<div class="bg-muted/50 rounded p-3 font-mono text-sm break-all">
 											{container.Id}
 										</div>
 									</div>
 
 									{#if container.Config?.WorkingDir}
 										<div>
-											<div class="text-sm text-muted-foreground mb-2">Working Directory</div>
-											<div class="font-mono bg-muted/50 p-3 rounded break-all">
+											<div class="text-muted-foreground mb-2 text-sm">Working Directory</div>
+											<div class="bg-muted/50 rounded p-3 font-mono break-all">
 												{container.Config.WorkingDir}
 											</div>
 										</div>
@@ -428,14 +428,14 @@
 
 									{#if container.Config?.User}
 										<div>
-											<div class="text-sm text-muted-foreground mb-2">User</div>
-											<div class="font-mono bg-muted/50 p-3 rounded">{container.Config.User}</div>
+											<div class="text-muted-foreground mb-2 text-sm">User</div>
+											<div class="bg-muted/50 rounded p-3 font-mono">{container.Config.User}</div>
 										</div>
 									{/if}
 
 									{#if container.State?.Health}
 										<div>
-											<div class="text-sm text-muted-foreground mb-2">Health Status</div>
+											<div class="text-muted-foreground mb-2 text-sm">Health Status</div>
 											<div class="flex items-center gap-3">
 												<StatusBadge
 													variant={container.State.Health.Status === 'healthy'
@@ -446,7 +446,7 @@
 													text={container.State.Health.Status}
 												/>
 												{#if container.State.Health.Log && container.State.Health.Log.length > 0}
-													<span class="text-sm text-muted-foreground">
+													<span class="text-muted-foreground text-sm">
 														Last check: {new Date(
 															container.State.Health.Log[0].Start
 														).toLocaleString()}
@@ -461,7 +461,7 @@
 
 						<!-- Stats Section -->
 						<section id="stats" class="scroll-mt-20">
-							<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
 								<Activity class="size-5" />
 								Resource Metrics
 							</h2>
@@ -469,7 +469,7 @@
 							<Card.Root class="border">
 								<Card.Content class="p-6">
 									{#if stats && container.State?.Running}
-										<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+										<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 											<!-- CPU and Memory -->
 											<div class="space-y-6">
 												<Meter
@@ -504,19 +504,19 @@
 											<!-- Network I/O -->
 											<div class="space-y-6">
 												<div>
-													<h4 class="font-medium mb-4 flex items-center gap-2">
+													<h4 class="mb-4 flex items-center gap-2 font-medium">
 														<Network class="size-4" /> Network I/O
 													</h4>
 													<div class="grid grid-cols-2 gap-4">
-														<div class="bg-muted/30 p-4 rounded">
-															<div class="text-sm text-muted-foreground">Received</div>
-															<div class="font-medium mt-1">
+														<div class="bg-muted/30 rounded p-4">
+															<div class="text-muted-foreground text-sm">Received</div>
+															<div class="mt-1 font-medium">
 																{formatBytes(stats.networks?.eth0?.rx_bytes || 0)}
 															</div>
 														</div>
-														<div class="bg-muted/30 p-4 rounded">
-															<div class="text-sm text-muted-foreground">Transmitted</div>
-															<div class="font-medium mt-1">
+														<div class="bg-muted/30 rounded p-4">
+															<div class="text-muted-foreground text-sm">Transmitted</div>
+															<div class="mt-1 font-medium">
 																{formatBytes(stats.networks?.eth0?.tx_bytes || 0)}
 															</div>
 														</div>
@@ -525,11 +525,11 @@
 
 												{#if stats.blkio_stats && stats.blkio_stats.io_service_bytes_recursive && stats.blkio_stats.io_service_bytes_recursive.length > 0}
 													<div>
-														<h4 class="font-medium mb-4">Block I/O</h4>
+														<h4 class="mb-4 font-medium">Block I/O</h4>
 														<div class="grid grid-cols-2 gap-4">
-															<div class="bg-muted/30 p-4 rounded">
-																<div class="text-sm text-muted-foreground">Read</div>
-																<div class="font-medium mt-1">
+															<div class="bg-muted/30 rounded p-4">
+																<div class="text-muted-foreground text-sm">Read</div>
+																<div class="mt-1 font-medium">
 																	{formatBytes(
 																		stats.blkio_stats.io_service_bytes_recursive
 																			.filter((item) => item.op === 'Read')
@@ -537,9 +537,9 @@
 																	)}
 																</div>
 															</div>
-															<div class="bg-muted/30 p-4 rounded">
-																<div class="text-sm text-muted-foreground">Write</div>
-																<div class="font-medium mt-1">
+															<div class="bg-muted/30 rounded p-4">
+																<div class="text-muted-foreground text-sm">Write</div>
+																<div class="mt-1 font-medium">
 																	{formatBytes(
 																		stats.blkio_stats.io_service_bytes_recursive
 																			.filter((item) => item.op === 'Write')
@@ -554,7 +554,7 @@
 										</div>
 
 										{#if stats.pids_stats && stats.pids_stats.current !== undefined}
-											<div class="mt-6 pt-6 border-t">
+											<div class="mt-6 border-t pt-6">
 												<div class="text-sm">
 													<span class="text-muted-foreground">Process count:</span>
 													<span class="ml-2 font-medium">{stats.pids_stats.current}</span>
@@ -562,11 +562,11 @@
 											</div>
 										{/if}
 									{:else if !container.State?.Running}
-										<div class="text-center text-muted-foreground py-12">
+										<div class="text-muted-foreground py-12 text-center">
 											Container is not running. Stats unavailable.
 										</div>
 									{:else}
-										<div class="text-center text-muted-foreground py-12">Loading stats...</div>
+										<div class="text-muted-foreground py-12 text-center">Loading stats...</div>
 									{/if}
 								</Card.Content>
 							</Card.Root>
@@ -574,8 +574,8 @@
 
 						<!-- Logs Section -->
 						<section id="logs" class="scroll-mt-20">
-							<div class="flex items-center justify-between mb-6">
-								<h2 class="text-xl font-semibold flex items-center gap-2">
+							<div class="mb-6 flex items-center justify-between">
+								<h2 class="flex items-center gap-2 text-xl font-semibold">
 									<FileText class="size-5" />
 									Container Logs
 								</h2>
@@ -589,8 +589,8 @@
 									>
 									{#if isStreaming}
 										<div class="flex items-center gap-2">
-											<div class="size-2 bg-green-500 rounded-full animate-pulse"></div>
-											<span class="text-green-600 text-sm font-medium">Live</span>
+											<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
+											<span class="text-sm font-medium text-green-600">Live</span>
 										</div>
 										<Button variant="outline" size="sm" onclick={() => logViewer?.stopLogStream()}
 											>Stop</Button
@@ -627,12 +627,12 @@
 
 						<!-- Configuration Section -->
 						<section id="config" class="scroll-mt-20">
-							<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
 								<Settings class="size-5" />
 								Configuration
 							</h2>
 
-							<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+							<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 								<!-- Environment Variables -->
 								<Card.Root class="border">
 									<Card.Header class="pb-4">
@@ -645,19 +645,19 @@
 													{#if env.includes('=')}
 														{@const [key, ...valueParts] = env.split('=')}
 														{@const value = valueParts.join('=')}
-														<div class="flex border-b border-muted/30 py-2">
-															<span class="font-medium w-1/3 pr-3 truncate" title={key}>{key}</span>
-															<span class="w-2/3 truncate text-muted-foreground" title={value}
+														<div class="border-muted/30 flex border-b py-2">
+															<span class="w-1/3 truncate pr-3 font-medium" title={key}>{key}</span>
+															<span class="text-muted-foreground w-2/3 truncate" title={value}
 																>{value}</span
 															>
 														</div>
 													{:else}
-														<div class="border-b border-muted/30 py-2">{env}</div>
+														<div class="border-muted/30 border-b py-2">{env}</div>
 													{/if}
 												{/each}
 											</div>
 										{:else}
-											<div class="text-muted-foreground text-center py-8">
+											<div class="text-muted-foreground py-8 text-center">
 												No environment variables
 											</div>
 										{/if}
@@ -673,7 +673,7 @@
 										{#if container.NetworkSettings?.Ports && Object.keys(container.NetworkSettings.Ports).length > 0}
 											<div class="space-y-3">
 												{#each Object.entries(container.NetworkSettings.Ports) as [containerPort, hostBindings] (containerPort)}
-													<div class="flex items-center justify-between p-3 bg-muted/20 rounded">
+													<div class="bg-muted/20 flex items-center justify-between rounded p-3">
 														<span class="font-mono">{containerPort}</span>
 														<div class="flex items-center gap-2">
 															<span class="text-muted-foreground">→</span>
@@ -691,14 +691,14 @@
 												{/each}
 											</div>
 										{:else}
-											<div class="text-muted-foreground text-center py-8">No ports exposed</div>
+											<div class="text-muted-foreground py-8 text-center">No ports exposed</div>
 										{/if}
 									</Card.Content>
 								</Card.Root>
 							</div>
 
 							<!-- Labels -->
-							<Card.Root class="border mt-6">
+							<Card.Root class="mt-6 border">
 								<Card.Header class="pb-4">
 									<Card.Title>Labels</Card.Title>
 								</Card.Header>
@@ -706,17 +706,17 @@
 									{#if container.Config?.Labels && Object.keys(container.Config.Labels).length > 0}
 										<div class="space-y-2">
 											{#each Object.entries(container.Config.Labels) as [key, value] (key)}
-												<div class="flex border-b border-muted/30 py-2">
-													<span class="font-medium w-1/3 pr-3 truncate" title={key}>{key}</span>
+												<div class="border-muted/30 flex border-b py-2">
+													<span class="w-1/3 truncate pr-3 font-medium" title={key}>{key}</span>
 													<span
-														class="w-2/3 truncate text-muted-foreground"
+														class="text-muted-foreground w-2/3 truncate"
 														title={value?.toString()}>{value?.toString() || ''}</span
 													>
 												</div>
 											{/each}
 										</div>
 									{:else}
-										<div class="text-muted-foreground text-center py-8">No labels defined</div>
+										<div class="text-muted-foreground py-8 text-center">No labels defined</div>
 									{/if}
 								</Card.Content>
 							</Card.Root>
@@ -724,7 +724,7 @@
 
 						<!-- Network Section -->
 						<section id="network" class="scroll-mt-20">
-							<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
 								<Network class="size-5" />
 								Networks
 							</h2>
@@ -735,23 +735,23 @@
 										<div class="space-y-6">
 											{#each Object.entries(container.NetworkSettings.Networks) as [networkName, rawNetworkConfig] (networkName)}
 												{@const networkConfig = ensureNetworkConfig(rawNetworkConfig)}
-												<div class="border rounded p-4">
-													<div class="font-medium mb-4">{networkName}</div>
-													<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+												<div class="rounded border p-4">
+													<div class="mb-4 font-medium">{networkName}</div>
+													<div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
 														<div>
-															<div class="text-sm text-muted-foreground">IP Address</div>
+															<div class="text-muted-foreground text-sm">IP Address</div>
 															<div class="font-mono">{networkConfig.IPAddress || 'N/A'}</div>
 														</div>
 														<div>
-															<div class="text-sm text-muted-foreground">Gateway</div>
+															<div class="text-muted-foreground text-sm">Gateway</div>
 															<div class="font-mono">{networkConfig.Gateway || 'N/A'}</div>
 														</div>
 														<div>
-															<div class="text-sm text-muted-foreground">MAC Address</div>
+															<div class="text-muted-foreground text-sm">MAC Address</div>
 															<div class="font-mono">{networkConfig.MacAddress || 'N/A'}</div>
 														</div>
 														<div>
-															<div class="text-sm text-muted-foreground">Subnet</div>
+															<div class="text-muted-foreground text-sm">Subnet</div>
 															<div class="font-mono">
 																{networkConfig.IPPrefixLen
 																	? `${networkConfig.IPAddress}/${networkConfig.IPPrefixLen}`
@@ -760,7 +760,7 @@
 														</div>
 														{#if networkConfig.Aliases && networkConfig.Aliases.length > 0}
 															<div class="col-span-2">
-																<div class="text-sm text-muted-foreground">Aliases</div>
+																<div class="text-muted-foreground text-sm">Aliases</div>
 																<div class="font-mono">{networkConfig.Aliases.join(', ')}</div>
 															</div>
 														{/if}
@@ -769,7 +769,7 @@
 											{/each}
 										</div>
 									{:else}
-										<div class="text-muted-foreground text-center py-12">No networks connected</div>
+										<div class="text-muted-foreground py-12 text-center">No networks connected</div>
 									{/if}
 								</Card.Content>
 							</Card.Root>
@@ -777,7 +777,7 @@
 
 						<!-- Storage Section -->
 						<section id="storage" class="scroll-mt-20">
-							<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
 								<Database class="size-5" />
 								Storage & Mounts
 							</h2>
@@ -787,11 +787,11 @@
 									{#if container.Mounts && container.Mounts.length > 0}
 										<div class="space-y-4">
 											{#each container.Mounts as mount (mount.Destination)}
-												<div class="border rounded overflow-hidden">
-													<div class="flex items-center justify-between p-4 bg-muted/20">
+												<div class="overflow-hidden rounded border">
+													<div class="bg-muted/20 flex items-center justify-between p-4">
 														<div class="flex items-center gap-3">
 															<div
-																class="p-2 rounded {mount.Type === 'volume'
+																class="rounded p-2 {mount.Type === 'volume'
 																	? 'bg-purple-100 dark:bg-purple-950'
 																	: mount.Type === 'bind'
 																		? 'bg-blue-100 dark:bg-blue-950'
@@ -813,7 +813,7 @@
 																			? mount.Name || 'Docker volume'
 																			: 'Host directory'}
 																</div>
-																<div class="text-sm text-muted-foreground">
+																<div class="text-muted-foreground text-sm">
 																	{mount.Type} mount {mount.RW ? '(read-write)' : '(read-only)'}
 																</div>
 															</div>
@@ -822,22 +822,22 @@
 															{mount.RW ? 'RW' : 'RO'}
 														</Badge>
 													</div>
-													<div class="p-4 space-y-3">
+													<div class="space-y-3 p-4">
 														<div class="flex">
-															<span class="w-24 text-muted-foreground font-medium">Container:</span>
-															<span class="font-mono bg-muted/50 px-2 py-1 rounded flex-1"
+															<span class="text-muted-foreground w-24 font-medium">Container:</span>
+															<span class="bg-muted/50 flex-1 rounded px-2 py-1 font-mono"
 																>{mount.Destination}</span
 															>
 														</div>
 														<div class="flex">
-															<span class="w-24 text-muted-foreground font-medium">
+															<span class="text-muted-foreground w-24 font-medium">
 																{mount.Type === 'volume'
 																	? 'Volume:'
 																	: mount.Type === 'bind'
 																		? 'Host:'
 																		: 'Source:'}
 															</span>
-															<span class="font-mono bg-muted/50 px-2 py-1 rounded flex-1"
+															<span class="bg-muted/50 flex-1 rounded px-2 py-1 font-mono"
 																>{mount.Source}</span
 															>
 														</div>
@@ -846,11 +846,11 @@
 											{/each}
 										</div>
 									{:else}
-										<div class="text-center py-12">
+										<div class="py-12 text-center">
 											<div
-												class="mb-4 rounded-full bg-muted/50 flex items-center justify-center mx-auto size-16"
+												class="bg-muted/50 mx-auto mb-4 flex size-16 items-center justify-center rounded-full"
 											>
-												<Database class="size-6 text-muted-foreground" />
+												<Database class="text-muted-foreground size-6" />
 											</div>
 											<div class="text-muted-foreground">No volumes or mounts configured</div>
 										</div>
@@ -863,17 +863,17 @@
 			</div>
 		</div>
 	{:else}
-		<div class="min-h-screen flex items-center justify-center">
+		<div class="flex min-h-screen items-center justify-center">
 			<div class="text-center">
-				<div class="rounded-full bg-muted/50 p-6 mb-6 inline-flex">
+				<div class="bg-muted/50 mb-6 inline-flex rounded-full p-6">
 					<AlertCircle class="text-muted-foreground size-10" />
 				</div>
-				<h2 class="text-2xl font-medium mb-3">Container Not Found</h2>
-				<p class="text-center text-muted-foreground max-w-md mb-8">
+				<h2 class="mb-3 text-2xl font-medium">Container Not Found</h2>
+				<p class="text-muted-foreground mb-8 max-w-md text-center">
 					Could not load container data. It may have been removed or the Docker engine is not
 					accessible.
 				</p>
-				<div class="flex gap-4 justify-center">
+				<div class="flex justify-center gap-4">
 					<Button variant="outline" href="/containers">
 						<ArrowLeft class="mr-2 size-4" />
 						Back to Containers

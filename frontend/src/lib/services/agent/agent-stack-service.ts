@@ -8,7 +8,10 @@ export interface ServerFetchContext {
 	fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
-export async function getStacksFromAgent(agent: Agent, context?: ServerFetchContext): Promise<AgentStack[]> {
+export async function getStacksFromAgent(
+	agent: Agent,
+	context?: ServerFetchContext
+): Promise<AgentStack[]> {
 	try {
 		// Send a task to get compose projects from the agent
 		const task = await sendTaskToAgent(agent.id, 'stack_list', {});
@@ -101,7 +104,10 @@ export async function getStacksFromAgent(agent: Agent, context?: ServerFetchCont
 	}
 }
 
-export async function getAllAgentStacks(agents: Agent[], context?: ServerFetchContext): Promise<AgentStack[]> {
+export async function getAllAgentStacks(
+	agents: Agent[],
+	context?: ServerFetchContext
+): Promise<AgentStack[]> {
 	const agentStacks: AgentStack[] = [];
 
 	for (const agent of agents) {
@@ -297,7 +303,11 @@ export async function getAgentStackResources(stackId: string): Promise<any> {
 /**
  * Scale a service within a stack
  */
-export async function scaleAgentStackService(stackId: string, serviceName: string, replicas: number): Promise<void> {
+export async function scaleAgentStackService(
+	stackId: string,
+	serviceName: string,
+	replicas: number
+): Promise<void> {
 	try {
 		await agentStackAPI.scaleService(stackId, serviceName, replicas);
 	} catch (error) {
