@@ -1,10 +1,12 @@
 package services
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -559,6 +561,110 @@ func (s *StackService) GetStackLogs(ctx context.Context, stackID string, tail in
 	}
 
 	return string(output), nil
+}
+
+func (s *StackService) StreamStackLogs(ctx context.Context, stackID string, logsChan chan<- string, follow bool, tail, since string, timestamps bool) error {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return err
+	}
+
+	args := []string{"logs"}
+	if tail != "" {
+		args = append(args, "--tail", tail)
+	}
+	if since != "" {
+		args = append(args, "--since", since)
+	}
+	if timestamps {
+		args = append(args, "--timestamps")
+	}
+	if follow {
+		args = append(args, "--follow")
+	}
+
+	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd.Dir = stack.Path
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
+	)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start docker-compose logs: %w", err)
+	}
+
+	// Handle stdout and stderr concurrently
+	done := make(chan error, 2)
+
+	// Read stdout
+	go func() {
+		done <- s.readStackLogsFromReader(ctx, stdout, logsChan, "stdout")
+	}()
+
+	// Read stderr
+	go func() {
+		done <- s.readStackLogsFromReader(ctx, stderr, logsChan, "stderr")
+	}()
+
+	// Wait for command completion or context cancellation
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	// Wait for context cancellation or error
+	select {
+	case <-ctx.Done():
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		return ctx.Err()
+	case err := <-done:
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		if err != nil && err != io.EOF {
+			return err
+		}
+		return nil
+	}
+}
+
+func (s *StackService) readStackLogsFromReader(ctx context.Context, reader io.Reader, logsChan chan<- string, source string) error {
+	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // Increase buffer size for large log lines
+
+	for scanner.Scan() {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			line := scanner.Text()
+			if line != "" {
+				// Add source prefix for stderr logs
+				if source == "stderr" {
+					line = "[STDERR] " + line
+				}
+
+				select {
+				case logsChan <- line:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
+		}
+	}
+
+	return scanner.Err()
 }
 
 func (s *StackService) ConvertDockerRun(ctx context.Context, dockerRunCommand string) (string, error) {

@@ -56,23 +56,45 @@
 
 			const endpoint =
 				type === 'stack'
-					? `/api/stacks/${stackId}/logs?follow=true&tail=100&timestamps=${showTimestamps}`
+					? `/api/stacks/${stackId}/logs/stream?follow=true&tail=100&timestamps=${showTimestamps}`
 					: `/api/containers/${containerId}/logs/stream?follow=true&tail=100&timestamps=${showTimestamps}`;
 
 			eventSource = new EventSource(endpoint);
 
 			eventSource.addEventListener('log', (event) => {
-				console.log('📨 Named log event received:', event);
-				const logData = JSON.parse(event.data);
-				addLogEntry({
-					level: logData.data.includes('[STDERR]') ? 'stderr' : 'stdout',
-					message: logData.data.replace('[STDERR] ', ''),
-					timestamp: logData.timestamp || new Date().toISOString(),
-					service: logData.service,
-					containerId: logData.containerId
-				});
+				try {
+					const logData = JSON.parse(event.data);
+					
+					if (logData.message !== undefined) {
+						// Stack log format
+						addLogEntry({
+							level: logData.level || 'info',
+							message: logData.message,
+							timestamp: logData.timestamp || new Date().toISOString(),
+							service: logData.service,
+							containerId: logData.containerId
+						});
+					} else if (logData.data !== undefined) {
+						// Container log format
+						addLogEntry({
+							level: logData.data.includes('[STDERR]') ? 'stderr' : 'stdout',
+							message: logData.data.replace('[STDERR] ', ''),
+							timestamp: logData.timestamp || new Date().toISOString(),
+							service: logData.service,
+							containerId: logData.containerId
+						});
+					}
+				} catch (parseError) {
+					console.error('Failed to parse log event data:', parseError, 'Raw data:', event.data);
+					addLogEntry({
+						level: 'info',
+						message: event.data,
+						timestamp: new Date().toISOString()
+					});
+				}
 			});
 
+			// Handle container logs (come as default messages)
 			eventSource.onmessage = (event) => {
 				try {
 					const logData = JSON.parse(event.data);
