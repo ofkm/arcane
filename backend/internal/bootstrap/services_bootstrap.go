@@ -27,6 +27,7 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 	authService := services.NewAuthService(userService, settingsService, cfg.JWTSecret, cfg)
 	oidcService := services.NewOidcService(authService)
 	containerRegistry := services.NewContainerRegistryService(db)
+	systemService := services.NewSystemService(db, dockerClientService, containerService, imageService, volumeService, networkService)
 
 	appServices := &api.Services{
 		User:              userService,
@@ -45,6 +46,7 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 		Converter:         converterService,
 		Template:          templateService,
 		ContainerRegistry: containerRegistry,
+		System:            systemService,
 	}
 	return appServices, dockerClientService, nil
 }

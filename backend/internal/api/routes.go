@@ -24,6 +24,7 @@ type Services struct {
 	Converter         *services.ConverterService
 	Template          *services.TemplateService
 	ContainerRegistry *services.ContainerRegistryService
+	System            *services.SystemService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -188,10 +189,23 @@ func setupSystemRoutes(api *gin.RouterGroup, dockerService *services.DockerClien
 	system := api.Group("/system")
 	system.Use(middleware.AuthMiddleware(services.Auth))
 
-	systemHandler := NewSystemHandler(dockerService)
+	systemHandler := NewSystemHandler(dockerService, services.System)
 
 	system.GET("/stats", systemHandler.GetStats)
 	system.GET("/docker/info", systemHandler.GetDockerInfo)
+
+	system.POST("/prune", systemHandler.PruneAll)
+	system.POST("/containers/start-all", systemHandler.StartAllContainers)
+	system.POST("/containers/start-stopped", systemHandler.StartAllStoppedContainers)
+	system.POST("/containers/stop-all", systemHandler.StopAllContainers)
+
+	//		{
+	//	  "containers": true,
+	//	  "images": true,
+	//	  "volumes": true,
+	//	  "networks": true,
+	//	  "dangling": true
+	//	}
 }
 
 func setupContainerRoutes(api *gin.RouterGroup, services *Services) {

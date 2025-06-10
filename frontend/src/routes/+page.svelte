@@ -210,7 +210,7 @@
 		if (isLoading.starting || !dashboardStates.dockerInfo || stoppedContainers === 0) return;
 		isLoading.starting = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(containerApi.startAll()),
+			result: await tryCatch(systemApi.startAllStoppedContainers()),
 			message: 'Failed to Start All Containers',
 			setLoadingState: (value) => (isLoading.starting = value),
 			onSuccess: async () => {
@@ -230,7 +230,7 @@
 				destructive: false,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(containerApi.stopAll()),
+						result: await tryCatch(systemApi.stopAllContainers()),
 						message: 'Failed to Stop All Running Containers',
 						setLoadingState: (value) => (isLoading.stopping = value),
 						onSuccess: async () => {
@@ -246,8 +246,17 @@
 	async function confirmPrune(selectedTypes: PruneType[]) {
 		if (isLoading.pruning || selectedTypes.length === 0) return;
 		isLoading.pruning = true;
+		
+		const pruneOptions = {
+			containers: selectedTypes.includes('containers'),
+			images: selectedTypes.includes('images'),
+			volumes: selectedTypes.includes('volumes'),
+			networks: selectedTypes.includes('networks'),
+			dangling: dashboardStates.settings?.pruneMode === 'dangling'
+		};
+		
 		handleApiResultWithCallbacks({
-			result: await tryCatch(systemApi.prune(selectedTypes)),
+			result: await tryCatch(systemApi.pruneAll(pruneOptions)),
 			message: `Failed to Prune ${selectedTypes.join(', ')}`,
 			setLoadingState: (value) => (isLoading.pruning = value),
 			onSuccess: async () => {

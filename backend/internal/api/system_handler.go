@@ -18,11 +18,13 @@ import (
 
 type SystemHandler struct {
 	dockerService *services.DockerClientService
+	systemService *services.SystemService
 }
 
-func NewSystemHandler(dockerService *services.DockerClientService) *SystemHandler {
+func NewSystemHandler(dockerService *services.DockerClientService, systemService *services.SystemService) *SystemHandler {
 	return &SystemHandler{
 		dockerService: dockerService,
+		systemService: systemService,
 	}
 }
 
@@ -219,5 +221,86 @@ func (h *SystemHandler) TestDockerConnection(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Docker connection successful",
+	})
+}
+
+// PruneAll removes unused Docker resources
+func (h *SystemHandler) PruneAll(c *gin.Context) {
+	var req services.PruneAllRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	result, err := h.systemService.PruneAll(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to prune resources: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Pruning completed",
+		"data":    result,
+	})
+}
+
+// StartAllContainers starts all stopped containers
+func (h *SystemHandler) StartAllContainers(c *gin.Context) {
+	result, err := h.systemService.StartAllContainers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to start containers: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Container start operation completed",
+		"data":    result,
+	})
+}
+
+// StartAllStoppedContainers starts only containers in "exited" state
+func (h *SystemHandler) StartAllStoppedContainers(c *gin.Context) {
+	result, err := h.systemService.StartAllStoppedContainers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to start stopped containers: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Stopped containers start operation completed",
+		"data":    result,
+	})
+}
+
+// StopAllContainers stops all running containers
+func (h *SystemHandler) StopAllContainers(c *gin.Context) {
+	result, err := h.systemService.StopAllContainers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to stop containers: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Container stop operation completed",
+		"data":    result,
 	})
 }

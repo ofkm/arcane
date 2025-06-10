@@ -2,14 +2,27 @@ import type { PruneType } from '$lib/types/actions.type';
 import BaseAPIService from './api-service';
 
 export default class SystemAPIService extends BaseAPIService {
-	async prune(types: PruneType[]) {
-		if (!types || types.length === 0) {
-			throw new Error('No prune types specified');
-		}
+	async pruneAll(options: {
+		containers?: boolean;
+		images?: boolean;
+		volumes?: boolean;
+		networks?: boolean;
+		dangling?: boolean;
+		until?: string;
+	}) {
+		return this.handleResponse(this.api.post('/system/prune', options));
+	}
 
-		const typesParam = types.join(',');
-		const res = await this.api.post(`/system/prune?types=${typesParam}`);
-		return res.data;
+	async startAllContainers() {
+		return this.handleResponse(this.api.post('/system/containers/start-all'));
+	}
+
+	async startAllStoppedContainers() {
+		return this.handleResponse(this.api.post('/system/containers/start-stopped'));
+	}
+
+	async stopAllContainers() {
+		return this.handleResponse(this.api.post('/system/containers/stop-all'));
 	}
 
 	async getDockerInfo() {
@@ -27,9 +40,5 @@ export default class SystemAPIService extends BaseAPIService {
 
 	async getSystemInfo() {
 		return this.handleResponse(this.api.get('/system/info'));
-	}
-
-	async ping() {
-		return this.handleResponse(this.api.get('/system/ping'));
 	}
 }
