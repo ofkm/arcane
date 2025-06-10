@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/docker/api/types/filters"
 	"github.com/ofkm/arcane-backend/internal/database"
+	"github.com/ofkm/arcane-backend/internal/dto"
 )
 
 type SystemService struct {
@@ -35,14 +36,6 @@ func NewSystemService(
 	}
 }
 
-type PruneAllRequest struct {
-	Containers bool `json:"containers"`
-	Images     bool `json:"images"`
-	Volumes    bool `json:"volumes"`
-	Networks   bool `json:"networks"`
-	Dangling   bool `json:"dangling"` // For images - only prune dangling images
-}
-
 type PruneAllResult struct {
 	ContainersPruned []string `json:"containersPruned,omitempty"`
 	ImagesDeleted    []string `json:"imagesDeleted,omitempty"`
@@ -61,13 +54,11 @@ type ContainerActionResult struct {
 	Errors  []string `json:"errors,omitempty"`
 }
 
-// PruneAll removes unused Docker resources based on the request parameters
-func (s *SystemService) PruneAll(ctx context.Context, req PruneAllRequest) (*PruneAllResult, error) {
+func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*PruneAllResult, error) {
 	result := &PruneAllResult{
 		Success: true,
 	}
 
-	// Prune containers if requested
 	if req.Containers {
 		if err := s.pruneContainers(ctx, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Container pruning failed: %v", err))
@@ -75,7 +66,6 @@ func (s *SystemService) PruneAll(ctx context.Context, req PruneAllRequest) (*Pru
 		}
 	}
 
-	// Prune images if requested
 	if req.Images {
 		if err := s.pruneImages(ctx, req.Dangling, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Image pruning failed: %v", err))
@@ -83,7 +73,6 @@ func (s *SystemService) PruneAll(ctx context.Context, req PruneAllRequest) (*Pru
 		}
 	}
 
-	// Prune volumes if requested
 	if req.Volumes {
 		if err := s.pruneVolumes(ctx, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Volume pruning failed: %v", err))
@@ -91,7 +80,6 @@ func (s *SystemService) PruneAll(ctx context.Context, req PruneAllRequest) (*Pru
 		}
 	}
 
-	// Prune networks if requested
 	if req.Networks {
 		if err := s.pruneNetworks(ctx, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Network pruning failed: %v", err))
@@ -102,13 +90,11 @@ func (s *SystemService) PruneAll(ctx context.Context, req PruneAllRequest) (*Pru
 	return result, nil
 }
 
-// StartAllContainers starts all stopped containers
 func (s *SystemService) StartAllContainers(ctx context.Context) (*ContainerActionResult, error) {
 	result := &ContainerActionResult{
 		Success: true,
 	}
 
-	// Get all containers (including stopped ones)
 	containers, err := s.containerService.ListContainers(ctx, true)
 	if err != nil {
 		result.Success = false
@@ -116,7 +102,6 @@ func (s *SystemService) StartAllContainers(ctx context.Context) (*ContainerActio
 		return result, err
 	}
 
-	// Filter stopped containers and start them
 	for _, container := range containers {
 		if container.State != "running" {
 			if err := s.containerService.StartContainer(ctx, container.ID); err != nil {
@@ -132,13 +117,11 @@ func (s *SystemService) StartAllContainers(ctx context.Context) (*ContainerActio
 	return result, nil
 }
 
-// StartAllStoppedContainers starts only containers that are in "exited" state
 func (s *SystemService) StartAllStoppedContainers(ctx context.Context) (*ContainerActionResult, error) {
 	result := &ContainerActionResult{
 		Success: true,
 	}
 
-	// Get all containers (including stopped ones)
 	containers, err := s.containerService.ListContainers(ctx, true)
 	if err != nil {
 		result.Success = false
@@ -146,7 +129,6 @@ func (s *SystemService) StartAllStoppedContainers(ctx context.Context) (*Contain
 		return result, err
 	}
 
-	// Filter only exited containers and start them
 	for _, container := range containers {
 		if container.State == "exited" {
 			if err := s.containerService.StartContainer(ctx, container.ID); err != nil {
@@ -162,13 +144,11 @@ func (s *SystemService) StartAllStoppedContainers(ctx context.Context) (*Contain
 	return result, nil
 }
 
-// StopAllContainers stops all running containers
 func (s *SystemService) StopAllContainers(ctx context.Context) (*ContainerActionResult, error) {
 	result := &ContainerActionResult{
 		Success: true,
 	}
 
-	// Get all running containers
 	containers, err := s.containerService.ListContainers(ctx, false)
 	if err != nil {
 		result.Success = false
@@ -176,7 +156,6 @@ func (s *SystemService) StopAllContainers(ctx context.Context) (*ContainerAction
 		return result, err
 	}
 
-	// Stop all running containers using the existing container service
 	for _, cont := range containers {
 		if err := s.containerService.StopContainer(ctx, cont.ID); err != nil {
 			result.Failed = append(result.Failed, cont.ID)
@@ -189,8 +168,6 @@ func (s *SystemService) StopAllContainers(ctx context.Context) (*ContainerAction
 
 	return result, nil
 }
-
-// Helper methods for pruning individual resource types
 
 func (s *SystemService) pruneContainers(ctx context.Context, result *PruneAllResult) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
