@@ -5,7 +5,18 @@ import * as path from 'node:path';
 import type { ComposeSpecification, Service as ServiceConfig } from '../types/compose.spec.type.js';
 
 // Compose specification constants
-export const SUPPORTED_COMPOSE_VERSIONS = ['3.0', '3.1', '3.2', '3.3', '3.4', '3.5', '3.6', '3.7', '3.8', '3.9'];
+export const SUPPORTED_COMPOSE_VERSIONS = [
+	'3.0',
+	'3.1',
+	'3.2',
+	'3.3',
+	'3.4',
+	'3.5',
+	'3.6',
+	'3.7',
+	'3.8',
+	'3.9'
+];
 export const DEFAULT_COMPOSE_VERSION = '3.8';
 
 /**
@@ -90,7 +101,10 @@ export function parseEnvContent(envContent: string | null): Record<string, strin
 			let value = line.substring(equalIndex + 1);
 
 			// Handle quoted values
-			if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+			if (
+				(value.startsWith('"') && value.endsWith('"')) ||
+				(value.startsWith("'") && value.endsWith("'"))
+			) {
 				value = value.slice(1, -1);
 				// Handle escaped quotes within double quotes
 				if (value.includes('\\"')) {
@@ -115,7 +129,11 @@ export function parseEnvContent(envContent: string | null): Record<string, strin
 /**
  * Validate compose file version and structure according to spec
  */
-export function validateComposeStructure(composeData: ComposeSpecification): { valid: boolean; errors: string[]; warnings: string[] } {
+export function validateComposeStructure(composeData: ComposeSpecification): {
+	valid: boolean;
+	errors: string[];
+	warnings: string[];
+} {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -127,7 +145,9 @@ export function validateComposeStructure(composeData: ComposeSpecification): { v
 	// Check version
 	if (composeData.version) {
 		if (!SUPPORTED_COMPOSE_VERSIONS.includes(composeData.version)) {
-			warnings.push(`Compose version ${composeData.version} may not be fully supported. Supported versions: ${SUPPORTED_COMPOSE_VERSIONS.join(', ')}`);
+			warnings.push(
+				`Compose version ${composeData.version} may not be fully supported. Supported versions: ${SUPPORTED_COMPOSE_VERSIONS.join(', ')}`
+			);
 		}
 	} else {
 		warnings.push('No version specified in compose file. Consider adding a version field.');
@@ -148,7 +168,9 @@ export function validateComposeStructure(composeData: ComposeSpecification): { v
 
 		// Validate service name format
 		if (!/^[a-zA-Z0-9._-]+$/.test(serviceName)) {
-			errors.push(`Service name '${serviceName}' contains invalid characters. Use only letters, numbers, dots, hyphens, and underscores.`);
+			errors.push(
+				`Service name '${serviceName}' contains invalid characters. Use only letters, numbers, dots, hyphens, and underscores.`
+			);
 		}
 
 		// Validate depends_on
@@ -172,14 +194,22 @@ export function validateComposeStructure(composeData: ComposeSpecification): { v
 		if (serviceConfig.networks) {
 			if (Array.isArray(serviceConfig.networks)) {
 				for (const network of serviceConfig.networks) {
-					if (typeof network === 'string' && composeData.networks && !composeData.networks[network]) {
-						warnings.push(`Service '${serviceName}' references network '${network}' which is not defined`);
+					if (
+						typeof network === 'string' &&
+						composeData.networks &&
+						!composeData.networks[network]
+					) {
+						warnings.push(
+							`Service '${serviceName}' references network '${network}' which is not defined`
+						);
 					}
 				}
 			} else if (typeof serviceConfig.networks === 'object') {
 				for (const network of Object.keys(serviceConfig.networks)) {
 					if (composeData.networks && !composeData.networks[network]) {
-						warnings.push(`Service '${serviceName}' references network '${network}' which is not defined`);
+						warnings.push(
+							`Service '${serviceName}' references network '${network}' which is not defined`
+						);
 					}
 				}
 			}
@@ -190,7 +220,9 @@ export function validateComposeStructure(composeData: ComposeSpecification): { v
 			for (const volume of serviceConfig.volumes) {
 				if (typeof volume === 'object' && volume.source && volume.type === 'volume') {
 					if (composeData.volumes && !composeData.volumes[volume.source]) {
-						warnings.push(`Service '${serviceName}' references volume '${volume.source}' which is not defined`);
+						warnings.push(
+							`Service '${serviceName}' references volume '${volume.source}' which is not defined`
+						);
 					}
 				}
 			}
@@ -217,11 +249,18 @@ export function validateComposeStructure(composeData: ComposeSpecification): { v
 				continue; // Skip null/undefined network configs
 			}
 
-			if (networkConfig.external && typeof networkConfig.external === 'object' && !networkConfig.external.name) {
+			if (
+				networkConfig.external &&
+				typeof networkConfig.external === 'object' &&
+				!networkConfig.external.name
+			) {
 				warnings.push(`External network '${networkName}' should have a name specified`);
 			}
 
-			if (networkConfig.driver && !['bridge', 'host', 'overlay', 'macvlan', 'none'].includes(networkConfig.driver)) {
+			if (
+				networkConfig.driver &&
+				!['bridge', 'host', 'overlay', 'macvlan', 'none'].includes(networkConfig.driver)
+			) {
 				warnings.push(`Network '${networkName}' uses uncommon driver '${networkConfig.driver}'`);
 			}
 		}
@@ -235,7 +274,11 @@ export function validateComposeStructure(composeData: ComposeSpecification): { v
 				continue; // Skip null/undefined volume configs
 			}
 
-			if (volumeConfig.external && typeof volumeConfig.external === 'object' && !volumeConfig.external.name) {
+			if (
+				volumeConfig.external &&
+				typeof volumeConfig.external === 'object' &&
+				!volumeConfig.external.name
+			) {
 				warnings.push(`External volume '${volumeName}' should have a name specified`);
 			}
 		}
@@ -251,7 +294,10 @@ export function validateComposeStructure(composeData: ComposeSpecification): { v
 /**
  * Normalize healthcheck according to Compose spec
  */
-export function normalizeHealthcheckTest(composeContent: string, envGetter?: (key: string) => string | undefined): string {
+export function normalizeHealthcheckTest(
+	composeContent: string,
+	envGetter?: (key: string) => string | undefined
+): string {
 	let doc: any;
 	try {
 		doc = yamlLoad(composeContent);
@@ -282,7 +328,10 @@ export function normalizeHealthcheckTest(composeContent: string, envGetter?: (ke
 						}
 						modified = true;
 					} else if (Array.isArray(service.healthcheck.test)) {
-						if (service.healthcheck.test.length > 0 && !['CMD', 'CMD-SHELL', 'NONE'].includes(service.healthcheck.test[0])) {
+						if (
+							service.healthcheck.test.length > 0 &&
+							!['CMD', 'CMD-SHELL', 'NONE'].includes(service.healthcheck.test[0])
+						) {
 							service.healthcheck.test.unshift('CMD');
 							modified = true;
 						}
@@ -298,7 +347,10 @@ export function normalizeHealthcheckTest(composeContent: string, envGetter?: (ke
 					service.healthcheck.timeout = `${service.healthcheck.timeout}s`;
 					modified = true;
 				}
-				if (service.healthcheck.start_period && typeof service.healthcheck.start_period === 'number') {
+				if (
+					service.healthcheck.start_period &&
+					typeof service.healthcheck.start_period === 'number'
+				) {
 					service.healthcheck.start_period = `${service.healthcheck.start_period}s`;
 					modified = true;
 				}
@@ -324,7 +376,10 @@ export function normalizeHealthcheckTest(composeContent: string, envGetter?: (ke
 /**
  * Parse YAML content with proper Compose spec validation
  */
-export function parseYamlContent(content: string, envGetter?: (key: string) => string | undefined): ComposeSpecification | null {
+export function parseYamlContent(
+	content: string,
+	envGetter?: (key: string) => string | undefined
+): ComposeSpecification | null {
 	try {
 		const parsedYaml = yamlLoad(content);
 
@@ -368,7 +423,10 @@ export function parseYamlContent(content: string, envGetter?: (key: string) => s
 /**
  * Enhanced variable substitution with Compose spec compliance
  */
-export function substituteVariablesInObject(obj: any, envGetter: (key: string) => string | undefined): any {
+export function substituteVariablesInObject(
+	obj: any,
+	envGetter: (key: string) => string | undefined
+): any {
 	if (Array.isArray(obj)) {
 		return obj.map((item) => substituteVariablesInObject(item, envGetter));
 	} else if (typeof obj === 'object' && obj !== null) {
@@ -448,7 +506,11 @@ export function prepareVolumes(volumes: any[], composeData: any, stackId: string
  * Process short volume syntax strings
  * Examples: "/host/path:/container/path", "volume-name:/data", "/path:/data:ro"
  */
-function processShortVolumeString(volumeString: string, composeData: any, stackId: string): string | null {
+function processShortVolumeString(
+	volumeString: string,
+	composeData: any,
+	stackId: string
+): string | null {
 	const parts = volumeString.split(':');
 
 	if (parts.length < 2) {
@@ -494,7 +556,11 @@ function processShortVolumeString(volumeString: string, composeData: any, stackI
  * Process long volume syntax objects
  * Supports all Docker Compose volume options
  */
-function processLongVolumeObject(volume: any, composeData: any, stackId: string): { bind?: string; tmpfs?: string } {
+function processLongVolumeObject(
+	volume: any,
+	composeData: any,
+	stackId: string
+): { bind?: string; tmpfs?: string } {
 	const { type, source, target, read_only, consistency, bind, volume: volumeOpts, tmpfs } = volume;
 
 	if (!target) {
@@ -507,7 +573,12 @@ function processLongVolumeObject(volume: any, composeData: any, stackId: string)
 			return { bind: processBindMount(source, target, { read_only, consistency, bind }) };
 
 		case 'volume':
-			return { bind: processVolumeMount(source, target, stackId, composeData, { read_only, volume: volumeOpts }) };
+			return {
+				bind: processVolumeMount(source, target, stackId, composeData, {
+					read_only,
+					volume: volumeOpts
+				})
+			};
 
 		case 'tmpfs':
 			return { tmpfs: processTmpfsMount(target, { tmpfs }) };
@@ -563,7 +634,13 @@ function processBindMount(source: string, target: string, options: any = {}): st
 /**
  * Process named volume mount with all options
  */
-function processVolumeMount(source: string, target: string, stackId: string, composeData: any, options: any = {}): string {
+function processVolumeMount(
+	source: string,
+	target: string,
+	stackId: string,
+	composeData: any,
+	options: any = {}
+): string {
 	let volumeName = '';
 
 	if (source) {
@@ -697,7 +774,10 @@ export function extractTmpfsMounts(volumes: any[]): Array<{ target: string; opti
  * Create Docker volume definitions for named volumes
  * This should be called before creating containers to ensure named volumes exist
  */
-export function createVolumeDefinitions(composeData: any, stackId: string): Array<{ name: string; config: any }> {
+export function createVolumeDefinitions(
+	composeData: any,
+	stackId: string
+): Array<{ name: string; config: any }> {
 	if (!composeData.volumes) {
 		return [];
 	}
@@ -746,7 +826,9 @@ export function validateVolumeConfiguration(volumes: any[]): { valid: boolean; e
 		if (typeof volume === 'string') {
 			// Validate short syntax
 			if (!volume.includes(':')) {
-				errors.push(`Volume ${i}: Invalid short syntax "${volume}". Expected "source:target" format.`);
+				errors.push(
+					`Volume ${i}: Invalid short syntax "${volume}". Expected "source:target" format.`
+				);
 			}
 		} else if (typeof volume === 'object' && volume !== null) {
 			// Validate long syntax
@@ -755,7 +837,9 @@ export function validateVolumeConfiguration(volumes: any[]): { valid: boolean; e
 			}
 
 			if (volume.type && !['bind', 'volume', 'tmpfs', 'npipe'].includes(volume.type)) {
-				errors.push(`Volume ${i}: Invalid type "${volume.type}". Must be one of: bind, volume, tmpfs, npipe.`);
+				errors.push(
+					`Volume ${i}: Invalid type "${volume.type}". Must be one of: bind, volume, tmpfs, npipe.`
+				);
 			}
 
 			if (volume.type === 'bind' && !volume.source) {
@@ -851,7 +935,10 @@ export function preparePorts(ports: any[]): any {
 /**
  * Enhanced environment variable preparation
  */
-export async function prepareEnvironmentVariables(environment: any, stackDir: string): Promise<string[]> {
+export async function prepareEnvironmentVariables(
+	environment: any,
+	stackDir: string
+): Promise<string[]> {
 	const envArray: string[] = [];
 	const envMap = new Map<string, string>();
 
@@ -943,7 +1030,9 @@ export function resolveDependencyOrder(services: Record<string, any>): string[] 
 
 		const service = services[serviceName];
 		if (service.depends_on) {
-			const dependencies = Array.isArray(service.depends_on) ? service.depends_on : Object.keys(service.depends_on);
+			const dependencies = Array.isArray(service.depends_on)
+				? service.depends_on
+				: Object.keys(service.depends_on);
 
 			for (const dep of dependencies) {
 				if (services[dep]) {
@@ -1125,14 +1214,20 @@ export function parseTimeToNanoseconds(timeStr: string | number): number {
 /**
  * Validate compose content
  */
-export function validateComposeContent(content: string): { valid: boolean; errors: string[]; warnings: string[] } {
+export function validateComposeContent(content: string): {
+	valid: boolean;
+	errors: string[];
+	warnings: string[];
+} {
 	try {
 		const parsed = yamlLoad(content);
 		return validateComposeStructure(parsed as ComposeSpecification);
 	} catch (parseError) {
 		return {
 			valid: false,
-			errors: [`YAML parsing error: ${parseError instanceof Error ? parseError.message : String(parseError)}`],
+			errors: [
+				`YAML parsing error: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+			],
 			warnings: []
 		};
 	}
@@ -1142,7 +1237,9 @@ export function validateComposeContent(content: string): { valid: boolean; error
  * Parse and validate depends_on configuration
  * Supports both short and long syntax as per Docker Compose spec
  */
-export function parseDependsOn(dependsOn: any): Array<{ service: string; condition: string; restart?: boolean }> {
+export function parseDependsOn(
+	dependsOn: any
+): Array<{ service: string; condition: string; restart?: boolean }> {
 	if (!dependsOn) {
 		return [];
 	}
@@ -1179,7 +1276,9 @@ export function parseDependsOn(dependsOn: any): Array<{ service: string; conditi
 /**
  * Validate dependency conditions according to Docker Compose spec
  */
-export function validateDependencyConditions(dependencies: Array<{ service: string; condition: string }>): { valid: boolean; errors: string[] } {
+export function validateDependencyConditions(
+	dependencies: Array<{ service: string; condition: string }>
+): { valid: boolean; errors: string[] } {
 	const errors: string[] = [];
 	const validConditions = ['service_started', 'service_healthy', 'service_completed_successfully'];
 
@@ -1189,7 +1288,9 @@ export function validateDependencyConditions(dependencies: Array<{ service: stri
 		}
 
 		if (!validConditions.includes(dep.condition)) {
-			errors.push(`Invalid dependency condition '${dep.condition}' for service '${dep.service}'. Valid conditions: ${validConditions.join(', ')}`);
+			errors.push(
+				`Invalid dependency condition '${dep.condition}' for service '${dep.service}'. Valid conditions: ${validConditions.join(', ')}`
+			);
 		}
 	}
 
@@ -1203,13 +1304,21 @@ export function validateDependencyConditions(dependencies: Array<{ service: stri
  * Check if a service has a healthcheck defined
  */
 export function hasHealthcheck(serviceConfig: any): boolean {
-	return !!(serviceConfig?.healthcheck && serviceConfig.healthcheck !== false && serviceConfig.healthcheck.disable !== true);
+	return !!(
+		serviceConfig?.healthcheck &&
+		serviceConfig.healthcheck !== false &&
+		serviceConfig.healthcheck.disable !== true
+	);
 }
 
 /**
  * Get service dependency chain for debugging
  */
-export function getDependencyChain(services: Record<string, any>, startService: string, visited = new Set<string>()): string[] {
+export function getDependencyChain(
+	services: Record<string, any>,
+	startService: string,
+	visited = new Set<string>()
+): string[] {
 	if (visited.has(startService)) {
 		return []; // Circular dependency detected
 	}
@@ -1235,7 +1344,10 @@ export function getDependencyChain(services: Record<string, any>, startService: 
 /**
  * Detect circular dependencies in compose services
  */
-export function detectCircularDependencies(services: Record<string, any>): { hasCircular: boolean; cycles: string[][] } {
+export function detectCircularDependencies(services: Record<string, any>): {
+	hasCircular: boolean;
+	cycles: string[][];
+} {
 	const visited = new Set<string>();
 	const recursionStack = new Set<string>();
 	const cycles: string[][] = [];
@@ -1299,7 +1411,9 @@ export function resolveDependencyOrderWithConditions(services: Record<string, an
 	// First check for circular dependencies
 	const circularCheck = detectCircularDependencies(services);
 	if (circularCheck.hasCircular) {
-		warnings.push(`Circular dependencies detected: ${circularCheck.cycles.map((cycle) => cycle.join(' -> ')).join(', ')}`);
+		warnings.push(
+			`Circular dependencies detected: ${circularCheck.cycles.map((cycle) => cycle.join(' -> ')).join(', ')}`
+		);
 	}
 
 	// Build dependency graph
@@ -1375,7 +1489,9 @@ export function resolveDependencyOrderWithConditions(services: Record<string, an
 	// Check if all services were processed (detect remaining cycles)
 	if (result.length !== Object.keys(services).length) {
 		const remaining = Object.keys(services).filter((name) => !result.includes(name));
-		warnings.push(`Could not resolve dependencies for services: ${remaining.join(', ')} (possible circular dependencies)`);
+		warnings.push(
+			`Could not resolve dependencies for services: ${remaining.join(', ')} (possible circular dependencies)`
+		);
 		// Add remaining services to the end
 		result.push(...remaining);
 	}
@@ -1398,7 +1514,12 @@ export function createDependencyWaitConfig(
 	warnings: string[];
 } {
 	const warnings: string[] = [];
-	const dependencies: Array<{ service: string; condition: string; timeout: number; restart?: boolean }> = [];
+	const dependencies: Array<{
+		service: string;
+		condition: string;
+		timeout: number;
+		restart?: boolean;
+	}> = [];
 
 	if (!serviceConfig?.depends_on) {
 		return { dependencies, warnings };
@@ -1442,7 +1563,10 @@ export function createDependencyWaitConfig(
 /**
  * Check if a dependency condition can be satisfied
  */
-export function canSatisfyDependencyCondition(condition: string, serviceConfig: any): { canSatisfy: boolean; reason?: string } {
+export function canSatisfyDependencyCondition(
+	condition: string,
+	serviceConfig: any
+): { canSatisfy: boolean; reason?: string } {
 	switch (condition) {
 		case 'service_started':
 			return { canSatisfy: true };
@@ -1451,7 +1575,8 @@ export function canSatisfyDependencyCondition(condition: string, serviceConfig: 
 			if (!hasHealthcheck(serviceConfig)) {
 				return {
 					canSatisfy: false,
-					reason: 'Service has no healthcheck defined but dependency requires service_healthy condition'
+					reason:
+						'Service has no healthcheck defined but dependency requires service_healthy condition'
 				};
 			}
 			return { canSatisfy: true };
@@ -1482,13 +1607,18 @@ export function validateAllDependencies(services: Record<string, any>): {
 	// Check for circular dependencies
 	const circularCheck = detectCircularDependencies(services);
 	if (circularCheck.hasCircular) {
-		errors.push(`Circular dependencies detected: ${circularCheck.cycles.map((cycle) => cycle.join(' -> ')).join(', ')}`);
+		errors.push(
+			`Circular dependencies detected: ${circularCheck.cycles.map((cycle) => cycle.join(' -> ')).join(', ')}`
+		);
 	}
 
 	// Validate each service's dependencies
 	for (const [serviceName, serviceConfig] of Object.entries(services)) {
 		if (serviceConfig?.depends_on) {
-			const { dependencies, warnings: depWarnings } = createDependencyWaitConfig(serviceName, serviceConfig);
+			const { dependencies, warnings: depWarnings } = createDependencyWaitConfig(
+				serviceName,
+				serviceConfig
+			);
 			warnings.push(...depWarnings);
 
 			// Check if dependency services exist and can satisfy conditions
@@ -1502,7 +1632,9 @@ export function validateAllDependencies(services: Record<string, any>): {
 				const satisfyCheck = canSatisfyDependencyCondition(dep.condition, dependencyServiceConfig);
 
 				if (!satisfyCheck.canSatisfy) {
-					warnings.push(`Service '${serviceName}' dependency on '${dep.service}' with condition '${dep.condition}': ${satisfyCheck.reason}`);
+					warnings.push(
+						`Service '${serviceName}' dependency on '${dep.service}' with condition '${dep.condition}': ${satisfyCheck.reason}`
+					);
 				}
 			}
 		}
@@ -1552,7 +1684,11 @@ export function parseActiveProfiles(args?: string[], env?: Record<string, string
 /**
  * Validate profile configuration in compose data
  */
-export function validateProfiles(composeData: ComposeSpecification): { valid: boolean; errors: string[]; warnings: string[] } {
+export function validateProfiles(composeData: ComposeSpecification): {
+	valid: boolean;
+	errors: string[];
+	warnings: string[];
+} {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -1562,7 +1698,11 @@ export function validateProfiles(composeData: ComposeSpecification): { valid: bo
 
 	// Check if profiles are defined at top level
 	const topLevelProfiles = composeData.profiles;
-	if (topLevelProfiles && !Array.isArray(topLevelProfiles) && typeof topLevelProfiles !== 'object') {
+	if (
+		topLevelProfiles &&
+		!Array.isArray(topLevelProfiles) &&
+		typeof topLevelProfiles !== 'object'
+	) {
 		errors.push('Top-level profiles must be an array or object');
 	}
 
@@ -1579,7 +1719,9 @@ export function validateProfiles(composeData: ComposeSpecification): { valid: bo
 						// Array of profiles
 						for (const profile of serviceConfig.profiles) {
 							if (typeof profile !== 'string') {
-								errors.push(`Service '${serviceName}' has invalid profile type. Profiles must be strings.`);
+								errors.push(
+									`Service '${serviceName}' has invalid profile type. Profiles must be strings.`
+								);
 							}
 							if (!profile.trim()) {
 								errors.push(`Service '${serviceName}' has empty profile name.`);
@@ -1650,17 +1792,26 @@ export function getAllDefinedProfiles(composeData: ComposeSpecification): string
 /**
  * Check if a service should be deployed based on active profiles
  */
-export function shouldDeployService(serviceConfig: ServiceConfig, activeProfiles: string[], defaultBehavior: 'include' | 'exclude' = 'include'): ProfileDeploymentCheck {
+export function shouldDeployService(
+	serviceConfig: ServiceConfig,
+	activeProfiles: string[],
+	defaultBehavior: 'include' | 'exclude' = 'include'
+): ProfileDeploymentCheck {
 	// If no profiles are specified on the service, use default behavior
 	if (!serviceConfig.profiles) {
 		return {
 			shouldDeploy: defaultBehavior === 'include',
-			reason: defaultBehavior === 'include' ? 'No profiles specified, included by default' : 'No profiles specified, excluded by default'
+			reason:
+				defaultBehavior === 'include'
+					? 'No profiles specified, included by default'
+					: 'No profiles specified, excluded by default'
 		};
 	}
 
 	// Normalize service profiles to array
-	const serviceProfiles = Array.isArray(serviceConfig.profiles) ? serviceConfig.profiles : [serviceConfig.profiles];
+	const serviceProfiles = Array.isArray(serviceConfig.profiles)
+		? serviceConfig.profiles
+		: [serviceConfig.profiles];
 
 	// Check if any of the service's profiles are in the active profiles
 	const matchingProfiles = serviceProfiles.filter((profile) => activeProfiles.includes(profile));
@@ -1681,7 +1832,10 @@ export function shouldDeployService(serviceConfig: ServiceConfig, activeProfiles
 /**
  * Filter services based on profiles
  */
-export function filterServicesByProfiles(services: Record<string, ServiceConfig>, activeProfiles: string[]): ProfileServiceFiltering {
+export function filterServicesByProfiles(
+	services: Record<string, ServiceConfig>,
+	activeProfiles: string[]
+): ProfileServiceFiltering {
 	const deployableServices: Record<string, ServiceConfig> = {};
 	const skippedServices: Array<{ name: string; reason: string }> = [];
 
@@ -1713,7 +1867,10 @@ export function filterServicesByProfiles(services: Record<string, ServiceConfig>
 /**
  * Resolve profile dependencies and conflicts
  */
-export function resolveProfileDependencies(composeData: ComposeSpecification, requestedProfiles: string[]): ProfileResolution {
+export function resolveProfileDependencies(
+	composeData: ComposeSpecification,
+	requestedProfiles: string[]
+): ProfileResolution {
 	const warnings: string[] = [];
 	const errors: string[] = [];
 	const resolvedProfiles = new Set(requestedProfiles);
@@ -1724,7 +1881,11 @@ export function resolveProfileDependencies(composeData: ComposeSpecification, re
 	}
 
 	// Check for profile definitions and dependencies
-	if (composeData.profiles && typeof composeData.profiles === 'object' && !Array.isArray(composeData.profiles)) {
+	if (
+		composeData.profiles &&
+		typeof composeData.profiles === 'object' &&
+		!Array.isArray(composeData.profiles)
+	) {
 		for (const [profileName, profileConfig] of Object.entries(composeData.profiles)) {
 			if (resolvedProfiles.has(profileName) && profileConfig && typeof profileConfig === 'object') {
 				// Handle profile dependencies
@@ -1732,7 +1893,9 @@ export function resolveProfileDependencies(composeData: ComposeSpecification, re
 					for (const dependency of profileConfig.depends_on) {
 						if (typeof dependency === 'string') {
 							resolvedProfiles.add(dependency);
-							warnings.push(`Profile '${profileName}' requires profile '${dependency}' - added automatically`);
+							warnings.push(
+								`Profile '${profileName}' requires profile '${dependency}' - added automatically`
+							);
 						}
 					}
 				}
@@ -1767,7 +1930,10 @@ export function resolveProfileDependencies(composeData: ComposeSpecification, re
 /**
  * Create deployment plan based on profiles
  */
-export function createProfileDeploymentPlan(composeData: ComposeSpecification, activeProfiles: string[]): ProfileDeploymentPlan {
+export function createProfileDeploymentPlan(
+	composeData: ComposeSpecification,
+	activeProfiles: string[]
+): ProfileDeploymentPlan {
 	const warnings: string[] = [];
 	const errors: string[] = [];
 
@@ -1784,7 +1950,10 @@ export function createProfileDeploymentPlan(composeData: ComposeSpecification, a
 	const finalActiveProfiles = resolution.resolvedProfiles;
 
 	// Filter services by profiles
-	const serviceFiltering = filterServicesByProfiles(composeData.services || {}, finalActiveProfiles);
+	const serviceFiltering = filterServicesByProfiles(
+		composeData.services || {},
+		finalActiveProfiles
+	);
 
 	// Determine volumes and networks needed for deployable services
 	const volumesToCreate = new Set<string>();
@@ -1829,7 +1998,9 @@ export function createProfileDeploymentPlan(composeData: ComposeSpecification, a
 
 	// Only include networks that are actually defined in the compose file
 	const definedNetworks = composeData.networks ? Object.keys(composeData.networks) : [];
-	const filteredNetworks = Array.from(networksToCreate).filter((net) => definedNetworks.includes(net));
+	const filteredNetworks = Array.from(networksToCreate).filter((net) =>
+		definedNetworks.includes(net)
+	);
 
 	return {
 		plan: {
@@ -1893,7 +2064,10 @@ export function applyProfileFiltering(
 	}
 
 	// Always ensure default network exists if no networks specified
-	if (Object.keys(filteredComposeData.networks!).length === 0 && Object.keys(filteredComposeData.services!).length > 0) {
+	if (
+		Object.keys(filteredComposeData.networks!).length === 0 &&
+		Object.keys(filteredComposeData.services!).length > 0
+	) {
 		filteredComposeData.networks!.default = {
 			driver: 'bridge'
 		};
@@ -1924,7 +2098,9 @@ export function getProfileUsageStats(composeData: ComposeSpecification): Profile
 		for (const [serviceName, serviceConfig] of Object.entries(composeData.services)) {
 			if (serviceConfig && typeof serviceConfig === 'object') {
 				if (serviceConfig.profiles) {
-					const serviceProfiles = Array.isArray(serviceConfig.profiles) ? serviceConfig.profiles : [serviceConfig.profiles];
+					const serviceProfiles = Array.isArray(serviceConfig.profiles)
+						? serviceConfig.profiles
+						: [serviceConfig.profiles];
 
 					servicesWithProfiles.push({
 						service: serviceName,
@@ -1945,11 +2121,13 @@ export function getProfileUsageStats(composeData: ComposeSpecification): Profile
 		}
 	}
 
-	const profilesWithServices = Array.from(profileServiceMap.entries()).map(([profile, services]) => ({
-		profile,
-		serviceCount: services.length,
-		services: services.sort()
-	}));
+	const profilesWithServices = Array.from(profileServiceMap.entries()).map(
+		([profile, services]) => ({
+			profile,
+			serviceCount: services.length,
+			services: services.sort()
+		})
+	);
 
 	return {
 		totalProfiles: allProfiles.length,

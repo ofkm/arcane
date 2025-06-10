@@ -32,32 +32,34 @@
 	}
 </script>
 
-<div class="max-w-3xl mx-auto">
-	<h1 class="text-3xl font-bold mb-6">Welcome to Arcane</h1>
+<div class="mx-auto max-w-3xl">
+	<h1 class="mb-6 text-3xl font-bold">Welcome to Arcane</h1>
 
 	<div class="mb-8 space-y-6">
-		<p class="text-xl">Thank you for installing Arcane! Let's get you set up with a few quick steps.</p>
+		<p class="text-xl">
+			Thank you for installing Arcane! Let's get you set up with a few quick steps.
+		</p>
 
 		<div class="space-y-4">
 			<p class="text-lg font-medium">This wizard will help you:</p>
 
 			<div class="space-y-3">
 				<div class="flex items-start gap-3">
-					<div class="rounded-full bg-primary/10 p-1 mt-0.5">
+					<div class="bg-primary/10 mt-0.5 rounded-full p-1">
 						<CheckCircle2 class="text-primary size-4" />
 					</div>
 					<p>Change the default admin password for security</p>
 				</div>
 
 				<div class="flex items-start gap-3">
-					<div class="rounded-full bg-primary/10 p-1 mt-0.5">
+					<div class="bg-primary/10 mt-0.5 rounded-full p-1">
 						<CheckCircle2 class="text-primary size-4" />
 					</div>
 					<p>Configure your Docker connection</p>
 				</div>
 
 				<div class="flex items-start gap-3">
-					<div class="rounded-full bg-primary/10 p-1 mt-0.5">
+					<div class="bg-primary/10 mt-0.5 rounded-full p-1">
 						<CheckCircle2 class="text-primary size-4" />
 					</div>
 					<p>Set basic application preferences</p>
@@ -69,7 +71,11 @@
 	</div>
 
 	<div class="flex justify-center pt-8">
-		<Button type="button" onclick={() => continueToNextStep()} class="px-8 flex items-center gap-2 h-12 w-[80%]">
+		<Button
+			type="button"
+			onclick={() => continueToNextStep()}
+			class="flex h-12 w-[80%] items-center gap-2 px-8"
+		>
 			Continue
 			<ChevronRight class="size-4" />
 		</Button>

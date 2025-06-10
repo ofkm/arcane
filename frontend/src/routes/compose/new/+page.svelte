@@ -182,7 +182,7 @@
 </script>
 
 <div class="space-y-6 pb-8">
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<Breadcrumb.Root>
 				<Breadcrumb.List>
@@ -200,7 +200,7 @@
 				</Breadcrumb.List>
 			</Breadcrumb.Root>
 
-			<h1 class="text-2xl font-bold tracking-tight mt-2">Create New Compose Project</h1>
+			<h1 class="mt-2 text-2xl font-bold tracking-tight">Create New Compose Project</h1>
 		</div>
 	</div>
 
@@ -242,14 +242,14 @@
 			</div>
 
 			<div class="space-y-2">
-				<Label class="text-xs text-muted-foreground">Example Commands:</Label>
+				<Label class="text-muted-foreground text-xs">Example Commands:</Label>
 				<div class="space-y-1">
 					{#each exampleCommands as command}
 						<Button
 							type="button"
 							variant="ghost"
 							size="sm"
-							class="h-auto p-2 text-xs font-mono text-left justify-start w-full"
+							class="h-auto w-full justify-start p-2 text-left font-mono text-xs"
 							onclick={() => useExample(command)}
 						>
 							<Copy class="mr-2 size-3" />
@@ -264,9 +264,9 @@
 	<form class="space-y-6" onsubmit={preventDefault(handleSubmit)}>
 		<Card.Root class="border shadow-sm">
 			<Card.Header>
-				<div class="flex items-center justify-between w-full">
+				<div class="flex w-full items-center justify-between">
 					<div class="flex items-center gap-3">
-						<div class="bg-primary/10 p-2 rounded-full">
+						<div class="bg-primary/10 rounded-full p-2">
 							<FileStack class="text-primary size-5" />
 						</div>
 						<div>
@@ -293,9 +293,9 @@
 										onclick={handleDeployButtonClick}
 									>
 										{#if saving}
-											<Loader2 class="size-4 mr-2 animate-spin" />
+											<Loader2 class="mr-2 size-4 animate-spin" />
 										{:else}
-											<Send class="size-4 mr-2" />
+											<Send class="mr-2 size-4" />
 										{/if}
 										{selectedAgent ? `Deploy to ${selectedAgent.hostname}` : 'Deploy Locally'}
 									</DropdownButton.Main>
@@ -352,18 +352,18 @@
 
 					<Resizable.PaneGroup direction="horizontal">
 						<Resizable.Pane>
-							<div class="space-y-2 mr-3">
+							<div class="mr-3 space-y-2">
 								<Label for="compose-editor" class="mb-2">Docker Compose File</Label>
-								<div class="border rounded-md overflow-hidden mt-2 h-[550px]">
+								<div class="mt-2 h-[550px] overflow-hidden rounded-md border">
 									<YamlEditor bind:value={composeContent} readOnly={saving} />
 								</div>
 							</div>
 						</Resizable.Pane>
 						<Resizable.Handle />
 						<Resizable.Pane defaultSize={25}>
-							<div class="space-y-2 ml-3">
+							<div class="ml-3 space-y-2">
 								<Label for="env-editor" class="mb-2">Environment Configuration (.env)</Label>
-								<div class="border rounded-md overflow-hidden mt-2 h-[550px]">
+								<div class="mt-2 h-[550px] overflow-hidden rounded-md border">
 									<!-- Add a unique key to force re-render -->
 									{#key `env-${envContent.length}`}
 										<EnvEditor bind:value={envContent} readOnly={saving} />

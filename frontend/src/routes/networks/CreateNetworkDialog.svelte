@@ -98,7 +98,14 @@
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
 			<div class="grid grid-cols-4 items-center gap-4">
 				<Label for="network-name" class="text-right">Name</Label>
-				<Input id="network-name" bind:value={name} required class="col-span-3" placeholder="e.g., my-app-network" disabled={isCreating} />
+				<Input
+					id="network-name"
+					bind:value={name}
+					required
+					class="col-span-3"
+					placeholder="e.g., my-app-network"
+					disabled={isCreating}
+				/>
 			</div>
 
 			<div class="grid grid-cols-4 items-center gap-4">
@@ -132,41 +139,84 @@
 			</div>
 
 			<div class="grid grid-cols-4 items-start gap-4">
-				<Label class="text-right pt-2">Labels</Label>
+				<Label class="pt-2 text-right">Labels</Label>
 				<div class="col-span-3 space-y-2">
 					{#each labels as label, index (index)}
-						<div class="flex gap-2 items-center">
-							<Input placeholder="Key" bind:value={label.key} class="flex-1" disabled={isCreating} />
-							<Input placeholder="Value" bind:value={label.value} class="flex-1" disabled={isCreating} />
-							<Button type="button" variant="ghost" size="icon" onclick={() => removeLabel(index)} disabled={isCreating || labels.length <= 1} class="text-destructive hover:text-destructive" title="Remove Label">
+						<div class="flex items-center gap-2">
+							<Input
+								placeholder="Key"
+								bind:value={label.key}
+								class="flex-1"
+								disabled={isCreating}
+							/>
+							<Input
+								placeholder="Value"
+								bind:value={label.value}
+								class="flex-1"
+								disabled={isCreating}
+							/>
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon"
+								onclick={() => removeLabel(index)}
+								disabled={isCreating || labels.length <= 1}
+								class="text-destructive hover:text-destructive"
+								title="Remove Label"
+							>
 								<X class="size-4" />
 							</Button>
 						</div>
 					{/each}
-					<ArcaneButton action="create" customLabel="Add Label" onClick={addLabel} disabled={isCreating} size="sm" />
+					<ArcaneButton
+						action="create"
+						customLabel="Add Label"
+						onClick={addLabel}
+						disabled={isCreating}
+						size="sm"
+					/>
 				</div>
 			</div>
 
-			<div class="grid grid-cols-4 items-start gap-4 border-t pt-4 mt-2">
-				<div class="flex items-center space-x-2 col-span-4">
+			<div class="mt-2 grid grid-cols-4 items-start gap-4 border-t pt-4">
+				<div class="col-span-4 flex items-center space-x-2">
 					<Checkbox id="enable-ipam" bind:checked={enableIpam} disabled={isCreating} />
 					<Label for="enable-ipam" class="text-sm font-medium">Enable IPAM Configuration</Label>
 				</div>
 				{#if enableIpam}
-					<div class="grid grid-cols-4 items-center gap-4 col-span-4">
+					<div class="col-span-4 grid grid-cols-4 items-center gap-4">
 						<Label for="subnet" class="text-right">Subnet</Label>
-						<Input id="subnet" bind:value={subnet} placeholder="e.g., 172.20.0.0/16" class="col-span-3" disabled={isCreating} />
+						<Input
+							id="subnet"
+							bind:value={subnet}
+							placeholder="e.g., 172.20.0.0/16"
+							class="col-span-3"
+							disabled={isCreating}
+						/>
 					</div>
-					<div class="grid grid-cols-4 items-center gap-4 col-span-4">
+					<div class="col-span-4 grid grid-cols-4 items-center gap-4">
 						<Label for="gateway" class="text-right">Gateway</Label>
-						<Input id="gateway" bind:value={gateway} placeholder="e.g., 172.20.0.1" class="col-span-3" disabled={isCreating} />
+						<Input
+							id="gateway"
+							bind:value={gateway}
+							placeholder="e.g., 172.20.0.1"
+							class="col-span-3"
+							disabled={isCreating}
+						/>
 					</div>
 				{/if}
 			</div>
 
 			<Dialog.Footer>
 				<ArcaneButton action="cancel" onClick={() => (open = false)} disabled={isCreating} />
-				<ArcaneButton action="create" customLabel="Create Network" onClick={handleSubmit} loading={isCreating} loadingLabel="Creating..." disabled={isCreating || !name.trim()} />
+				<ArcaneButton
+					action="create"
+					customLabel="Create Network"
+					onClick={handleSubmit}
+					loading={isCreating}
+					loadingLabel="Creating..."
+					disabled={isCreating || !name.trim()}
+				/>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

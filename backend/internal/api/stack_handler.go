@@ -2,7 +2,10 @@ package api
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -153,6 +156,19 @@ func (h *StackHandler) GetStack(c *gin.Context) {
 		services = nil
 	}
 
+	var serviceCount, runningCount int
+	if services != nil {
+		serviceCount = len(services)
+		for _, service := range services {
+			if service.Status == "running" || service.Status == "Up" {
+				runningCount++
+			}
+		}
+	} else {
+		serviceCount = stack.ServiceCount
+		runningCount = stack.RunningCount
+	}
+
 	stackResponse := map[string]interface{}{
 		"id":             stack.ID,
 		"name":           stack.Name,
@@ -160,8 +176,8 @@ func (h *StackHandler) GetStack(c *gin.Context) {
 		"composeContent": composeContent,
 		"envContent":     envContent,
 		"status":         stack.Status,
-		"serviceCount":   stack.ServiceCount,
-		"runningCount":   stack.RunningCount,
+		"serviceCount":   serviceCount,
+		"runningCount":   runningCount,
 		"createdAt":      stack.CreatedAt,
 		"updatedAt":      stack.UpdatedAt,
 		"autoUpdate":     stack.AutoUpdate,
@@ -419,7 +435,7 @@ func (h *StackHandler) DeployStack(c *gin.Context) {
 		return
 	}
 
-	if err := h.stackService.DeployStack(c.Request.Context(), stackID, req.Profiles, req.EnvOverrides); err != nil {
+	if err := h.stackService.DeployStack(c.Request.Context(), stackID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -504,4 +520,107 @@ func (h *StackHandler) ConvertDockerRun(c *gin.Context) {
 		EnvVars:       envVars,
 		ServiceName:   serviceName,
 	})
+}
+
+func (h *StackHandler) GetStackLogsStream(c *gin.Context) {
+	stackID := c.Param("id")
+	if stackID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Stack ID is required",
+		})
+		return
+	}
+
+	// Get query parameters for log options
+	follow := c.DefaultQuery("follow", "true") == "true"
+	tail := c.DefaultQuery("tail", "100")
+	since := c.Query("since")
+	timestamps := c.DefaultQuery("timestamps", "true") == "true"
+
+	// Set headers for SSE
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+
+	logsChan := make(chan string, 100) // Larger buffer for stack logs
+	errChan := make(chan error, 1)
+
+	// Start streaming logs in a goroutine
+	go func() {
+		defer close(logsChan)
+		defer close(errChan)
+
+		err := h.stackService.StreamStackLogs(c.Request.Context(), stackID, logsChan, follow, tail, since, timestamps)
+		if err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Send logs to client
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case logLine, ok := <-logsChan:
+			if !ok {
+				return false
+			}
+
+			// Parse the log line to extract service name and format as JSON
+			logData := h.parseStackLogLine(logLine)
+			c.SSEvent("log", logData)
+			return true
+
+		case err := <-errChan:
+			c.SSEvent("error", gin.H{"error": err.Error()})
+			return false
+
+		case <-c.Request.Context().Done():
+			return false
+		}
+	})
+}
+
+// Helper method to parse stack log lines and extract service information
+func (h *StackHandler) parseStackLogLine(logLine string) gin.H {
+	// Docker compose logs format: service_name | log message
+	// or with timestamps: 2024-01-01T12:00:00.000000000Z service_name | log message
+
+	var service, message, timestamp string
+	var level = "info"
+
+	// Check if line has stderr prefix
+	if strings.HasPrefix(logLine, "[STDERR] ") {
+		level = "stderr"
+		logLine = strings.TrimPrefix(logLine, "[STDERR] ")
+	}
+
+	// Try to extract timestamp if present
+	parts := strings.SplitN(logLine, " ", 2)
+	if len(parts) == 2 && strings.Contains(parts[0], "T") && strings.Contains(parts[0], "Z") {
+		timestamp = parts[0]
+		logLine = parts[1]
+	} else {
+		timestamp = time.Now().Format(time.RFC3339Nano)
+	}
+
+	// Extract service name and message
+	if strings.Contains(logLine, " | ") {
+		serviceParts := strings.SplitN(logLine, " | ", 2)
+		if len(serviceParts) == 2 {
+			service = strings.TrimSpace(serviceParts[0])
+			message = serviceParts[1]
+		} else {
+			message = logLine
+		}
+	} else {
+		message = logLine
+	}
+
+	return gin.H{
+		"level":     level,
+		"message":   message,
+		"timestamp": timestamp,
+		"service":   service,
+	}
 }

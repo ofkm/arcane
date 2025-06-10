@@ -2,7 +2,18 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { AlertCircle, Layers, FileStack, Loader2, Play, RotateCcw, StopCircle, Trash2, Ellipsis, Pen } from '@lucide/svelte';
+	import {
+		AlertCircle,
+		Layers,
+		FileStack,
+		Loader2,
+		Play,
+		RotateCcw,
+		StopCircle,
+		Trash2,
+		Ellipsis,
+		Pen
+	} from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import * as Table from '$lib/components/ui/table';
@@ -23,10 +34,11 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Ensure stacks is always an array
 	let stacks = $derived(Array.isArray(data.stacks) ? data.stacks : []);
 
-	const isLoading = $state<Record<'start' | 'stop' | 'restart' | 'remove' | 'destroy' | 'pull', boolean>>({
+	const isLoading = $state<
+		Record<'start' | 'stop' | 'restart' | 'remove' | 'destroy' | 'pull', boolean>
+	>({
 		start: false,
 		stop: false,
 		restart: false,
@@ -117,10 +129,10 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Compose Projects</h1>
-			<p class="text-sm text-muted-foreground mt-1">View and Manage Compose Projects</p>
+			<p class="text-muted-foreground mt-1 text-sm">View and Manage Compose Projects</p>
 		</div>
 	</div>
 
@@ -132,39 +144,39 @@
 		</Alert.Root>
 	{/if}
 
-	<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 		<Card.Root>
-			<Card.Content class="p-4 flex items-center justify-between">
+			<Card.Content class="flex items-center justify-between p-4">
 				<div>
-					<p class="text-sm font-medium text-muted-foreground">Total Compose Projects</p>
+					<p class="text-muted-foreground text-sm font-medium">Total Compose Projects</p>
 					<p class="text-2xl font-bold">{totalStacks}</p>
 				</div>
-				<div class="bg-primary/10 p-2 rounded-full">
+				<div class="bg-primary/10 rounded-full p-2">
 					<FileStack class="text-primary size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
 
 		<Card.Root>
-			<Card.Content class="p-4 flex items-center justify-between">
+			<Card.Content class="flex items-center justify-between p-4">
 				<div>
-					<p class="text-sm font-medium text-muted-foreground">Running</p>
+					<p class="text-muted-foreground text-sm font-medium">Running</p>
 					<p class="text-2xl font-bold">{runningStacks}</p>
 				</div>
-				<div class="bg-green-500/10 p-2 rounded-full">
-					<Layers class="text-green-500 size-5" />
+				<div class="rounded-full bg-green-500/10 p-2">
+					<Layers class="size-5 text-green-500" />
 				</div>
 			</Card.Content>
 		</Card.Root>
 
 		<Card.Root>
-			<Card.Content class="p-4 flex items-center justify-between">
+			<Card.Content class="flex items-center justify-between p-4">
 				<div>
-					<p class="text-sm font-medium text-muted-foreground">Stopped</p>
+					<p class="text-muted-foreground text-sm font-medium">Stopped</p>
 					<p class="text-2xl font-bold">{stoppedStacks}</p>
 				</div>
-				<div class="bg-gray-500/10 p-2 rounded-full">
-					<Layers class="text-gray-500 size-5" />
+				<div class="rounded-full bg-gray-500/10 p-2">
+					<Layers class="size-5 text-gray-500" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -177,7 +189,11 @@
 					<Card.Title>Compose Projects List</Card.Title>
 				</div>
 				<div class="flex items-center gap-2">
-					<ArcaneButton action="create" customLabel="Create Compose Project" onClick={() => goto(`/compose/new`)} />
+					<ArcaneButton
+						action="create"
+						customLabel="Create Compose Project"
+						onClick={() => goto(`/compose/new`)}
+					/>
 				</div>
 			</div>
 		</Card.Header>
@@ -210,15 +226,22 @@
 					}}
 				>
 					{#snippet rows({ item })}
-						{@const stateVariant = item.status ? statusVariantMap[item.status.toLowerCase()] : 'gray'}
+						{@const stateVariant = item.status
+							? statusVariantMap[item.status.toLowerCase()]
+							: 'gray'}
 						<Table.Cell>
 							<a class="font-medium hover:underline" href="/compose/{item.id}/">
 								{item.name}
 							</a>
 						</Table.Cell>
-						<Table.Cell>{item.service_count || 0}</Table.Cell>
-						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} /></Table.Cell>
-						<Table.Cell>{formatFriendlyDate(item.created_at || '')}</Table.Cell>
+						<Table.Cell>{item.serviceCount || 0}</Table.Cell>
+						<Table.Cell
+							><StatusBadge
+								variant={stateVariant}
+								text={capitalizeFirstLetter(item.status)}
+							/></Table.Cell
+						>
+						<Table.Cell>{formatFriendlyDate(item.createdAt || '')}</Table.Cell>
 						<Table.Cell>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
@@ -231,33 +254,45 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item onclick={() => goto(`/compose/${item.id}`)} disabled={isAnyLoading}>
+										<DropdownMenu.Item
+											onclick={() => goto(`/compose/${item.id}`)}
+											disabled={isAnyLoading}
+										>
 											<Pen class="size-4" />
 											Edit
 										</DropdownMenu.Item>
 
 										{#if item.status !== 'running'}
-											<DropdownMenu.Item onclick={() => performStackAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
+											<DropdownMenu.Item
+												onclick={() => performStackAction('start', item.id)}
+												disabled={isLoading.start || isAnyLoading}
+											>
 												{#if isLoading.start}
-													<Loader2 class="animate-spin size-4" />
+													<Loader2 class="size-4 animate-spin" />
 												{:else}
 													<Play class="size-4" />
 												{/if}
 												Start
 											</DropdownMenu.Item>
 										{:else}
-											<DropdownMenu.Item onclick={() => performStackAction('restart', item.id)} disabled={isLoading.restart || isAnyLoading}>
+											<DropdownMenu.Item
+												onclick={() => performStackAction('restart', item.id)}
+												disabled={isLoading.restart || isAnyLoading}
+											>
 												{#if isLoading.restart}
-													<Loader2 class="animate-spin size-4" />
+													<Loader2 class="size-4 animate-spin" />
 												{:else}
 													<RotateCcw class="size-4" />
 												{/if}
 												Restart
 											</DropdownMenu.Item>
 
-											<DropdownMenu.Item onclick={() => performStackAction('stop', item.id)} disabled={isLoading.stop || isAnyLoading}>
+											<DropdownMenu.Item
+												onclick={() => performStackAction('stop', item.id)}
+												disabled={isLoading.stop || isAnyLoading}
+											>
 												{#if isLoading.stop}
-													<Loader2 class="animate-spin size-4" />
+													<Loader2 class="size-4 animate-spin" />
 												{:else}
 													<StopCircle class="size-4" />
 												{/if}
@@ -265,9 +300,12 @@
 											</DropdownMenu.Item>
 										{/if}
 
-										<DropdownMenu.Item onclick={() => performStackAction('pull', item.id)} disabled={isLoading.pull || isAnyLoading}>
+										<DropdownMenu.Item
+											onclick={() => performStackAction('pull', item.id)}
+											disabled={isLoading.pull || isAnyLoading}
+										>
 											{#if isLoading.pull}
-												<Loader2 class="animate-spin size-4" />
+												<Loader2 class="size-4 animate-spin" />
 											{:else}
 												<RotateCcw class="size-4" />
 											{/if}
@@ -276,9 +314,13 @@
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => performStackAction('destroy', item.id)} disabled={isLoading.remove || isAnyLoading}>
+										<DropdownMenu.Item
+											class="text-red-500 focus:text-red-700!"
+											onclick={() => performStackAction('destroy', item.id)}
+											disabled={isLoading.remove || isAnyLoading}
+										>
 											{#if isLoading.remove}
-												<Loader2 class="animate-spin size-4" />
+												<Loader2 class="size-4 animate-spin" />
 											{:else}
 												<Trash2 class="size-4" />
 											{/if}
@@ -291,12 +333,19 @@
 					{/snippet}
 				</UniversalTable>
 			{:else if !data.error}
-				<div class="flex flex-col items-center justify-center py-12 px-6 text-center">
-					<FileStack class="text-muted-foreground mb-4 opacity-40 size-12" />
+				<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
+					<FileStack class="text-muted-foreground mb-4 size-12 opacity-40" />
 					<p class="text-lg font-medium">No stacks found</p>
-					<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new stack using the "Create Stack" button above</p>
-					<div class="flex gap-3 mt-4">
-						<ArcaneButton action="create" customLabel="Create Stack" onClick={() => goto(`/compose/new`)} size="sm" />
+					<p class="text-muted-foreground mt-1 max-w-md text-sm">
+						Create a new stack using the "Create Stack" button above
+					</p>
+					<div class="mt-4 flex gap-3">
+						<ArcaneButton
+							action="create"
+							customLabel="Create Stack"
+							onClick={() => goto(`/compose/new`)}
+							size="sm"
+						/>
 					</div>
 				</div>
 			{/if}

@@ -114,6 +114,7 @@ func setupStackRoutes(router *gin.RouterGroup, services *Services) {
 	stacks.POST("/:id/redeploy", stackHandler.RedeployStack)
 	stacks.POST("/:id/down", stackHandler.DownStack)
 	stacks.DELETE("/:id/destroy", stackHandler.DestroyStack)
+	stacks.GET("/:id/logs/stream", stackHandler.GetStackLogsStream)
 	stacks.POST("/convert", stackHandler.ConvertDockerRun)
 }
 

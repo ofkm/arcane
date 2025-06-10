@@ -4,7 +4,9 @@ import type { Deployment } from '$lib/types/deployment.type';
 /**
  * Create a new deployment
  */
-export async function createDeployment(deployment: Omit<Deployment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Deployment> {
+export async function createDeployment(
+	deployment: Omit<Deployment, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Deployment> {
 	try {
 		return await deploymentAPI.create({
 			name: deployment.name,
@@ -23,7 +25,10 @@ export async function createDeployment(deployment: Omit<Deployment, 'id' | 'crea
 /**
  * Update a deployment
  */
-export async function updateDeployment(deploymentId: string, updates: Partial<Deployment>): Promise<Deployment | null> {
+export async function updateDeployment(
+	deploymentId: string,
+	updates: Partial<Deployment>
+): Promise<Deployment | null> {
 	try {
 		return await deploymentAPI.update(deploymentId, {
 			name: updates.name,
@@ -77,7 +82,13 @@ export async function deleteDeployment(deploymentId: string): Promise<boolean> {
 /**
  * Create a stack deployment
  */
-export async function createStackDeployment(agentId: string, stackName: string, composeContent: string, envContent?: string, taskId?: string): Promise<Deployment> {
+export async function createStackDeployment(
+	agentId: string,
+	stackName: string,
+	composeContent: string,
+	envContent?: string,
+	taskId?: string
+): Promise<Deployment> {
 	try {
 		return await deploymentAPI.createStackDeployment({
 			agentId,
@@ -95,7 +106,14 @@ export async function createStackDeployment(agentId: string, stackName: string, 
 /**
  * Create a container deployment
  */
-export async function createContainerDeployment(agentId: string, containerName: string, imageName: string, ports?: string[], volumes?: string[], taskId?: string): Promise<Deployment> {
+export async function createContainerDeployment(
+	agentId: string,
+	containerName: string,
+	imageName: string,
+	ports?: string[],
+	volumes?: string[],
+	taskId?: string
+): Promise<Deployment> {
 	try {
 		return await deploymentAPI.createContainerDeployment({
 			agentId,
@@ -114,7 +132,11 @@ export async function createContainerDeployment(agentId: string, containerName: 
 /**
  * Create an image deployment
  */
-export async function createImageDeployment(agentId: string, imageName: string, taskId?: string): Promise<Deployment> {
+export async function createImageDeployment(
+	agentId: string,
+	imageName: string,
+	taskId?: string
+): Promise<Deployment> {
 	try {
 		return await deploymentAPI.createImageDeployment({
 			agentId,
@@ -130,7 +152,12 @@ export async function createImageDeployment(agentId: string, imageName: string, 
 /**
  * Update deployment status based on task completion
  */
-export async function updateDeploymentFromTask(taskId: string, status: string, result?: any, error?: string): Promise<void> {
+export async function updateDeploymentFromTask(
+	taskId: string,
+	status: string,
+	result?: any,
+	error?: string
+): Promise<void> {
 	try {
 		// Find deployment linked to this task
 		const deployment = await deploymentAPI.getByTaskId(taskId);

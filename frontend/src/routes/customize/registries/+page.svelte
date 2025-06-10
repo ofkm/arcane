@@ -132,10 +132,10 @@
 />
 
 <div class="space-y-6">
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Container Registries</h1>
-			<p class="text-sm text-muted-foreground mt-1">
+			<p class="text-muted-foreground mt-1 text-sm">
 				Configure access credentials for private Docker registries and container repositories
 			</p>
 		</div>
@@ -148,10 +148,10 @@
 			<Button
 				onclick={openCreateRegistryDialog}
 				disabled={isLoadingAction}
-				class="h-10 arcane-button-save"
+				class="arcane-button-save h-10"
 			>
 				{#if isLoadingAction}
-					<RefreshCw class="animate-spin size-4" />
+					<RefreshCw class="size-4 animate-spin" />
 					Processing...
 				{:else}
 					<Plus class="size-4" />
@@ -164,8 +164,8 @@
 	<Card.Root class="border shadow-sm">
 		<Card.Header class="pb-4">
 			<div class="flex items-center gap-3">
-				<div class="bg-green-500/10 p-2 rounded-full">
-					<Key class="text-green-500 size-5" />
+				<div class="rounded-full bg-green-500/10 p-2">
+					<Key class="size-5 text-green-500" />
 				</div>
 				<div>
 					<Card.Title>Docker Registry Credentials</Card.Title>
@@ -178,14 +178,14 @@
 		</Card.Header>
 		<Card.Content>
 			{#if !registries || registries.length === 0}
-				<div class="text-center py-12">
+				<div class="py-12 text-center">
 					<div
-						class="bg-muted/30 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4"
+						class="bg-muted/30 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full"
 					>
-						<Key class="size-8 text-muted-foreground" />
+						<Key class="text-muted-foreground size-8" />
 					</div>
-					<h3 class="text-lg font-medium mb-2">No Registry Credentials</h3>
-					<p class="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+					<h3 class="mb-2 text-lg font-medium">No Registry Credentials</h3>
+					<p class="text-muted-foreground mx-auto mb-4 max-w-sm text-sm">
 						Add registry credentials to authenticate with private Docker registries when pulling
 						images.
 					</p>
@@ -229,7 +229,7 @@
 										{item.url || 'docker.io (Docker Hub)'}
 									</span>
 									{#if item.url && (item.url.includes('ghcr.io') || item.url.includes('gcr.io') || item.url.includes('quay.io'))}
-										<span class="text-xs text-muted-foreground">
+										<span class="text-muted-foreground text-xs">
 											{#if item.url.includes('ghcr.io')}
 												GitHub Container Registry
 											{:else if item.url.includes('gcr.io')}
@@ -247,13 +247,13 @@
 								</div>
 							</Table.Cell>
 							<Table.Cell>
-								<span class="text-sm text-muted-foreground">
+								<span class="text-muted-foreground text-sm">
 									{item.description || 'No description provided'}
 								</span>
 							</Table.Cell>
 							<Table.Cell>
 								<span
-									class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {item.enabled
+									class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {item.enabled
 										? 'bg-green-100 text-green-800'
 										: 'bg-gray-100 text-gray-800'}"
 								>
@@ -281,7 +281,7 @@
 										</DropdownMenu.Item>
 										<DropdownMenu.Item
 											onclick={() => confirmRemoveRegistry(item)}
-											class="text-red-500 focus:text-red-700! focus:bg-destructive/10"
+											class="focus:bg-destructive/10 text-red-500 focus:text-red-700!"
 										>
 											<Trash2 class="mr-2 size-4" />
 											Remove
@@ -303,31 +303,31 @@
 			<Card.Description>Common registry URLs and authentication requirements</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 				<div class="space-y-3">
-					<h4 class="font-medium text-sm">Popular Public Registries</h4>
+					<h4 class="text-sm font-medium">Popular Public Registries</h4>
 					<div class="space-y-2 text-sm">
 						<div class="flex justify-between">
 							<span class="text-muted-foreground">Docker Hub:</span>
-							<code class="text-xs bg-muted px-2 py-1 rounded">docker.io</code>
+							<code class="bg-muted rounded px-2 py-1 text-xs">docker.io</code>
 						</div>
 						<div class="flex justify-between">
 							<span class="text-muted-foreground">GitHub:</span>
-							<code class="text-xs bg-muted px-2 py-1 rounded">ghcr.io</code>
+							<code class="bg-muted rounded px-2 py-1 text-xs">ghcr.io</code>
 						</div>
 						<div class="flex justify-between">
 							<span class="text-muted-foreground">Google:</span>
-							<code class="text-xs bg-muted px-2 py-1 rounded">gcr.io</code>
+							<code class="bg-muted rounded px-2 py-1 text-xs">gcr.io</code>
 						</div>
 						<div class="flex justify-between">
 							<span class="text-muted-foreground">Quay.io:</span>
-							<code class="text-xs bg-muted px-2 py-1 rounded">quay.io</code>
+							<code class="bg-muted rounded px-2 py-1 text-xs">quay.io</code>
 						</div>
 					</div>
 				</div>
 				<div class="space-y-3">
-					<h4 class="font-medium text-sm">Authentication Notes</h4>
-					<div class="text-sm text-muted-foreground space-y-1">
+					<h4 class="text-sm font-medium">Authentication Notes</h4>
+					<div class="text-muted-foreground space-y-1 text-sm">
 						<p>• Docker Hub requires credentials for private repositories</p>
 						<p>• GitHub uses personal access tokens as passwords</p>
 						<p>• Some registries support anonymous access for public images</p>

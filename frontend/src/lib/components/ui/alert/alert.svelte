@@ -6,7 +6,8 @@
 		variants: {
 			variant: {
 				default: 'bg-background text-foreground',
-				destructive: 'border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive'
+				destructive:
+					'border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive'
 			}
 		},
 		defaultVariants: {

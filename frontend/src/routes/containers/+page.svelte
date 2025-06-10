@@ -147,19 +147,19 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Containers</h1>
-			<p class="text-sm text-muted-foreground mt-1">View and Manage your Containers</p>
+			<p class="text-muted-foreground mt-1 text-sm">View and Manage your Containers</p>
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 		<StatCard
 			title="Total"
 			value={totalContainers}
 			icon={Box}
-			class="hover:shadow-lg transition-shadow border-l-4 border-l-primary"
+			class="border-l-primary border-l-4 transition-shadow hover:shadow-lg"
 		/>
 		<StatCard
 			title="Running"
@@ -180,14 +180,14 @@
 
 	{#if containers?.length === 0}
 		<div
-			class="flex flex-col items-center justify-center py-12 px-6 text-center border rounded-lg bg-card"
+			class="bg-card flex flex-col items-center justify-center rounded-lg border px-6 py-12 text-center"
 		>
-			<Box class="text-muted-foreground mb-4 opacity-40 size-12" />
+			<Box class="text-muted-foreground mb-4 size-12 opacity-40" />
 			<p class="text-lg font-medium">No containers found</p>
-			<p class="text-sm text-muted-foreground mt-1 max-w-md">
+			<p class="text-muted-foreground mt-1 max-w-md text-sm">
 				Create a new container using the "Create Container" button above or use the Docker CLI
 			</p>
-			<div class="flex gap-3 mt-4">
+			<div class="mt-4 flex gap-3">
 				<Button variant="secondary" onclick={refreshData}>
 					<RefreshCw class="size-4" />
 					Refresh
@@ -287,7 +287,7 @@
 												disabled={isLoading.start || isAnyLoading}
 											>
 												{#if isLoading.start}
-													<Loader2 class="animate-spin size-4" />
+													<Loader2 class="size-4 animate-spin" />
 												{:else}
 													<Play class="size-4" />
 												{/if}
@@ -299,7 +299,7 @@
 												disabled={isLoading.restart || isAnyLoading}
 											>
 												{#if isLoading.restart}
-													<Loader2 class="animate-spin size-4" />
+													<Loader2 class="size-4 animate-spin" />
 												{:else}
 													<RotateCcw class="size-4" />
 												{/if}
@@ -311,7 +311,7 @@
 												disabled={isLoading.stop || isAnyLoading}
 											>
 												{#if isLoading.stop}
-													<Loader2 class="animate-spin size-4" />
+													<Loader2 class="size-4 animate-spin" />
 												{:else}
 													<StopCircle class="size-4" />
 												{/if}
@@ -327,7 +327,7 @@
 											disabled={isLoading.remove || isAnyLoading}
 										>
 											{#if isLoading.remove}
-												<Loader2 class="animate-spin size-4" />
+												<Loader2 class="size-4 animate-spin" />
 											{:else}
 												<Trash2 class="size-4" />
 											{/if}

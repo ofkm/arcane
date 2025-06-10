@@ -101,7 +101,11 @@ export async function deleteAgent(agentId: string): Promise<void> {
 /**
  * Send a task to an agent
  */
-export async function sendTaskToAgent(agentId: string, taskType: AgentTaskType, payload: any): Promise<AgentTask> {
+export async function sendTaskToAgent(
+	agentId: string,
+	taskType: AgentTaskType,
+	payload: any
+): Promise<AgentTask> {
 	try {
 		const agent = await getAgent(agentId);
 		if (!agent) {
@@ -130,7 +134,12 @@ export async function sendTaskToAgent(agentId: string, taskType: AgentTaskType, 
 /**
  * Update task status (called when agents complete tasks)
  */
-export async function updateTaskStatus(taskId: string, status: string, result?: any, error?: string): Promise<void> {
+export async function updateTaskStatus(
+	taskId: string,
+	status: string,
+	result?: any,
+	error?: string
+): Promise<void> {
 	try {
 		await agentAPI.updateTaskStatus(taskId, {
 			status,
@@ -244,7 +253,11 @@ export async function updateAgentDockerInfo(
 /**
  * Send Docker command to agent
  */
-export async function sendDockerCommand(agentId: string, command: string, args: string[] = []): Promise<AgentTask> {
+export async function sendDockerCommand(
+	agentId: string,
+	command: string,
+	args: string[] = []
+): Promise<AgentTask> {
 	return sendTaskToAgent(agentId, 'docker_command', {
 		command,
 		args
@@ -254,7 +267,12 @@ export async function sendDockerCommand(agentId: string, command: string, args: 
 /**
  * Deploy stack to agent
  */
-export async function deployStackToAgent(agentId: string, stackId: string, composeContent: string, envContent?: string): Promise<AgentTask> {
+export async function deployStackToAgent(
+	agentId: string,
+	stackId: string,
+	composeContent: string,
+	envContent?: string
+): Promise<AgentTask> {
 	return sendTaskToAgent(agentId, 'stack_deploy', {
 		stackId,
 		composeContent,

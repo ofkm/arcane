@@ -311,7 +311,7 @@
 		</Dialog.Header>
 
 		<Tabs.Root value={selectedTab} class="w-full">
-			<Tabs.List class="w-full grid grid-cols-7">
+			<Tabs.List class="grid w-full grid-cols-7">
 				<Tabs.Trigger value="basic" class="px-1 text-xs sm:text-sm">Basic</Tabs.Trigger>
 				<Tabs.Trigger value="ports" class="px-1 text-xs sm:text-sm">Ports</Tabs.Trigger>
 				<Tabs.Trigger value="volumes" class="px-1 text-xs sm:text-sm">Volumes</Tabs.Trigger>
@@ -321,7 +321,7 @@
 				<Tabs.Trigger value="advanced" class="px-1 text-xs sm:text-sm">Advanced</Tabs.Trigger>
 			</Tabs.List>
 
-			<div class="p-4 max-h-[60vh] overflow-y-auto">
+			<div class="max-h-[60vh] overflow-y-auto p-4">
 				<div class="space-y-6">
 					<Tabs.Content value="basic">
 						<div class="space-y-4">
@@ -378,8 +378,8 @@
 					<Tabs.Content value="ports">
 						<div class="space-y-4">
 							{#each ports as port, index (index)}
-								<div class="flex space-x-3 items-end">
-									<div class="flex-1 grid grid-cols-3 gap-4">
+								<div class="flex items-end space-x-3">
+									<div class="grid flex-1 grid-cols-3 gap-4">
 										<div>
 											<Label for={`host-port-${index}`} class="mb-2 block text-sm">Host Port</Label>
 											<Input
@@ -398,7 +398,7 @@
 											/>
 											{#if port.hostError && port.hostPort}
 												<div
-													class="flex items-center text-xs mt-1 {port.hostError ===
+													class="mt-1 flex items-center text-xs {port.hostError ===
 													'Privileged port (<1024)'
 														? 'text-amber-600'
 														: 'text-red-500'}"
@@ -429,7 +429,7 @@
 											/>
 											{#if port.containerError && port.containerPort}
 												<div
-													class="flex items-center text-xs mt-1 {port.containerError ===
+													class="mt-1 flex items-center text-xs {port.containerError ===
 													'Privileged port (<1024)'
 														? 'text-amber-600'
 														: 'text-red-500'}"
@@ -486,8 +486,8 @@
 					<Tabs.Content value="volumes">
 						<div class="space-y-4">
 							{#each volumeMounts as mount, index (index)}
-								<div class="flex space-x-3 items-end">
-									<div class="flex-1 grid grid-cols-2 gap-4 items-center">
+								<div class="flex items-end space-x-3">
+									<div class="grid flex-1 grid-cols-2 items-center gap-4">
 										<div>
 											<Label for={`volume-source-${index}`} class="mb-2 block"
 												>Host Path / Volume Name</Label
@@ -548,8 +548,8 @@
 					<Tabs.Content value="env">
 						<div class="space-y-4">
 							{#each envVars as env, index (index)}
-								<div class="flex space-x-3 items-end">
-									<div class="flex-1 grid grid-cols-2 gap-4">
+								<div class="flex items-end space-x-3">
+									<div class="grid flex-1 grid-cols-2 gap-4">
 										<div>
 											<Label for={`env-key-${index}`} class="mb-2 block">Key</Label>
 											<Input
@@ -635,11 +635,11 @@
 							</div>
 
 							{#if isUserDefinedNetworkSelected}
-								<div class="border-t pt-4 mt-4 space-y-4">
-									<p class="text-sm text-muted-foreground">
+								<div class="mt-4 space-y-4 border-t pt-4">
+									<p class="text-muted-foreground text-sm">
 										Optional: Assign static IP addresses (requires network with IPAM configured).
 									</p>
-									<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+									<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 										<div class="grid grid-cols-1 gap-2">
 											<Label for="ipv4-address">IPv4 Address</Label>
 											<Input
@@ -676,7 +676,7 @@
 							</div>
 
 							{#if enableHealthcheck}
-								<div class="space-y-6 border-t pt-6 mt-4">
+								<div class="mt-4 space-y-6 border-t pt-6">
 									<div class="space-y-2">
 										<Label for="healthcheck-test">Test Command</Label>
 										<Input
@@ -685,13 +685,13 @@
 											placeholder="e.g., CMD-SHELL curl -f http://localhost:80 || exit 1"
 											disabled={isCreating}
 										/>
-										<p class="text-xs text-muted-foreground">
+										<p class="text-muted-foreground text-xs">
 											Command to run inside the container. Use `CMD` or `CMD-SHELL`. For multiple
 											arguments, use advanced settings or configure directly in compose.
 										</p>
 									</div>
 
-									<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+									<div class="grid grid-cols-2 gap-4 md:grid-cols-4">
 										<div class="space-y-2">
 											<Label for="healthcheck-interval">Interval (s)</Label>
 											<Input
@@ -735,7 +735,7 @@
 												placeholder="e.g., 60"
 												disabled={isCreating}
 											/>
-											<p class="text-xs text-muted-foreground">Grace period for startup.</p>
+											<p class="text-muted-foreground text-xs">Grace period for startup.</p>
 										</div>
 									</div>
 								</div>
@@ -748,8 +748,8 @@
 							<div class="space-y-4 border-b pb-6">
 								<h3 class="text-lg font-medium">Labels</h3>
 								{#each labels as label, index (index)}
-									<div class="flex space-x-3 items-end">
-										<div class="flex-1 grid grid-cols-2 gap-4">
+									<div class="flex items-end space-x-3">
+										<div class="grid flex-1 grid-cols-2 gap-4">
 											<div>
 												<Label for={`label-key-${index}`} class="mb-2 block text-sm">Key</Label>
 												<Input
@@ -795,7 +795,7 @@
 
 							<div class="space-y-4 border-b pb-6">
 								<h3 class="text-lg font-medium">Execution</h3>
-								<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 									<div class="space-y-2">
 										<Label for="command-override">Command Override</Label>
 										<Input
@@ -804,7 +804,7 @@
 											placeholder="e.g., /app/run --config /etc/config.yml"
 											disabled={isCreating}
 										/>
-										<p class="text-xs text-muted-foreground">
+										<p class="text-muted-foreground text-xs">
 											Overrides the image's default command. Separate arguments with spaces.
 										</p>
 									</div>
@@ -816,14 +816,14 @@
 											placeholder="e.g., 1000:1000 or node"
 											disabled={isCreating}
 										/>
-										<p class="text-xs text-muted-foreground">Specify user/group ID or name.</p>
+										<p class="text-muted-foreground text-xs">Specify user/group ID or name.</p>
 									</div>
 								</div>
 							</div>
 
 							<div class="space-y-4">
 								<h3 class="text-lg font-medium">Resource Limits</h3>
-								<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 									<div class="space-y-2">
 										<Label for="memory-limit">Memory Limit</Label>
 										<Input
@@ -832,7 +832,7 @@
 											placeholder="e.g., 512m, 1g"
 											disabled={isCreating}
 										/>
-										<p class="text-xs text-muted-foreground">
+										<p class="text-muted-foreground text-xs">
 											Format: number + unit (b, k, m, g). Minimum 4m.
 										</p>
 									</div>
@@ -847,17 +847,17 @@
 											step="0.1"
 											min="0.01"
 										/>
-										<p class="text-xs text-muted-foreground">
+										<p class="text-muted-foreground text-xs">
 											Number of CPU cores (e.g., 1.5 = 1.5 cores).
 										</p>
 									</div>
 								</div>
 							</div>
 
-							<div class="flex items-center space-x-2 py-4 border-t">
+							<div class="flex items-center space-x-2 border-t py-4">
 								<Switch id="auto-update" name="autoUpdate" bind:checked={autoUpdate} />
 								<Label for="auto-update" class="font-medium">Enable auto-update</Label>
-								<p class="text-xs text-muted-foreground">
+								<p class="text-muted-foreground text-xs">
 									When enabled, Arcane will periodically check for newer versions of this
 									container's image and automatically update it.
 								</p>

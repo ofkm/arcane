@@ -232,32 +232,32 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Template Settings</h1>
-			<p class="text-sm text-muted-foreground mt-1">
+			<p class="text-muted-foreground mt-1 text-sm">
 				Manage Docker Compose template sources and registries
 				<a
 					href="https://arcane.ofkm.dev/docs/templates/use-templates"
-					class="text-primary hover:underline ml-1">→ Learn more</a
+					class="text-primary ml-1 hover:underline">→ Learn more</a
 				>
 			</p>
 		</div>
 
 		<Button onclick={refreshTemplates} class="h-10" variant="outline">
-			<RefreshCw class="size-4 mr-2" />
+			<RefreshCw class="mr-2 size-4" />
 			Refresh Templates
 		</Button>
 	</div>
 
 	<!-- Template Statistics -->
-	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 		<Card class="p-4">
 			<div class="flex items-center gap-3">
 				<FolderOpen class="size-8 text-blue-500" />
 				<div>
 					<p class="text-2xl font-bold">{localTemplateCount}</p>
-					<p class="text-sm text-muted-foreground">Local Templates</p>
+					<p class="text-muted-foreground text-sm">Local Templates</p>
 				</div>
 			</div>
 		</Card>
@@ -266,7 +266,7 @@
 				<Globe class="size-8 text-green-500" />
 				<div>
 					<p class="text-2xl font-bold">{remoteTemplateCount}</p>
-					<p class="text-sm text-muted-foreground">Remote Templates</p>
+					<p class="text-muted-foreground text-sm">Remote Templates</p>
 				</div>
 			</div>
 		</Card>
@@ -275,7 +275,7 @@
 				<FileText class="size-8 text-purple-500" />
 				<div>
 					<p class="text-2xl font-bold">{registries.length}</p>
-					<p class="text-sm text-muted-foreground">Registries</p>
+					<p class="text-muted-foreground text-sm">Registries</p>
 				</div>
 			</div>
 		</Card>
@@ -318,8 +318,8 @@
 			<Alert.Title>Community Registry</Alert.Title>
 			<Alert.Description class="space-y-2">
 				<p>Get started quickly with our community registry containing popular templates:</p>
-				<div class="flex items-center gap-2 mt-2">
-					<code class="bg-white dark:bg-gray-800 px-2 py-1 rounded text-xs">
+				<div class="mt-2 flex items-center gap-2">
+					<code class="rounded bg-white px-2 py-1 text-xs dark:bg-gray-800">
 						https://templates.arcane.ofkm.dev/registry.json
 					</code>
 					<Button
@@ -327,7 +327,7 @@
 						variant="outline"
 						onclick={() => copyToClipboard('https://templates.arcane.ofkm.dev/registry.json')}
 					>
-						<Copy class="size-3 mr-1" />
+						<Copy class="mr-1 size-3" />
 						Copy
 					</Button>
 				</div>
@@ -336,9 +336,9 @@
 
 		<!-- Add New Registry Form -->
 		<Card class="p-4">
-			<h3 class="font-medium mb-3">Add Registry</h3>
+			<h3 class="mb-3 font-medium">Add Registry</h3>
 			<div class="space-y-4">
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div>
 						<Label for="registry-url">Registry URL *</Label>
 						<Input
@@ -351,18 +351,18 @@
 							required
 						/>
 						{#if isLoading.validating}
-							<p class="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+							<p class="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
 								<RefreshCw class="size-3 animate-spin" />
 								Validating...
 							</p>
 						{:else if validationResult}
 							{#if validationResult.valid}
-								<p class="text-xs text-green-600 mt-1 flex items-center gap-1">
+								<p class="mt-1 flex items-center gap-1 text-xs text-green-600">
 									<CheckCircle class="size-3" />
 									Valid registry
 								</p>
 							{:else}
-								<p class="text-xs text-red-600 mt-1 flex items-center gap-1">
+								<p class="mt-1 flex items-center gap-1 text-xs text-red-600">
 									<AlertCircle class="size-3" />
 									{validationResult.errors[0]}
 								</p>
@@ -378,7 +378,7 @@
 							disabled={isLoading.addingRegistry}
 							required
 						/>
-						<p class="text-xs text-muted-foreground mt-1">Auto-filled from registry manifest</p>
+						<p class="text-muted-foreground mt-1 text-xs">Auto-filled from registry manifest</p>
 					</div>
 				</div>
 
@@ -405,7 +405,7 @@
 						<AlertCircle class="size-4" />
 						<Alert.Title>Warnings</Alert.Title>
 						<Alert.Description>
-							<ul class="list-disc list-inside">
+							<ul class="list-inside list-disc">
 								{#each validationResult.warnings as warning}
 									<li>{warning}</li>
 								{/each}
@@ -421,7 +421,7 @@
 						!newRegistry.name.trim() ||
 						(validationResult && !validationResult.valid)}
 				>
-					<Plus class="size-4 mr-2" />
+					<Plus class="mr-2 size-4" />
 					{isLoading.addingRegistry ? 'Adding Registry...' : 'Add Registry'}
 				</Button>
 			</div>
@@ -434,17 +434,17 @@
 					<Card class="p-4">
 						<div class="flex items-center justify-between">
 							<div class="flex-1">
-								<div class="flex items-center gap-2 mb-1">
+								<div class="mb-1 flex items-center gap-2">
 									<h4 class="font-medium">{registry.name}</h4>
 									<Badge variant={registry.enabled ? 'default' : 'secondary'}>
 										{registry.enabled ? 'Enabled' : 'Disabled'}
 									</Badge>
 								</div>
-								<p class="text-sm text-muted-foreground break-all">{registry.url}</p>
+								<p class="text-muted-foreground text-sm break-all">{registry.url}</p>
 								{#if registry.description}
-									<p class="text-sm text-muted-foreground mt-1">{registry.description}</p>
+									<p class="text-muted-foreground mt-1 text-sm">{registry.description}</p>
 								{/if}
-								<p class="text-xs text-muted-foreground mt-1">
+								<p class="text-muted-foreground mt-1 text-xs">
 									Updated: {new Date(registry.updatedAt).toLocaleString()}
 								</p>
 							</div>
@@ -484,8 +484,8 @@
 				{/each}
 			</div>
 		{:else}
-			<div class="text-center py-6 text-muted-foreground">
-				<Globe class="size-12 mx-auto mb-4 opacity-50" />
+			<div class="text-muted-foreground py-6 text-center">
+				<Globe class="mx-auto mb-4 size-12 opacity-50" />
 				<p class="mb-2">No registries configured</p>
 				<p class="text-sm">Add a remote template registry to access community templates</p>
 			</div>

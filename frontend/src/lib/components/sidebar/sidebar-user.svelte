@@ -46,11 +46,17 @@
 		<DropdownMenu.Root>
 			<DropdownMenu.Trigger>
 				{#snippet child({ props })}
-					<Sidebar.MenuButton size="lg" class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground" {...props}>
+					<Sidebar.MenuButton
+						size="lg"
+						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+						{...props}
+					>
 						{#if user && user.displayName}
 							<Avatar.Root class="size-8 rounded-lg">
 								<Avatar.Image src={gravatarUrl} alt={user.displayName} />
-								<Avatar.Fallback class="rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 text-primary border border-primary/20">
+								<Avatar.Fallback
+									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-gradient-to-br"
+								>
 									{user.displayName?.charAt(0).toUpperCase()}
 								</Avatar.Fallback>
 							</Avatar.Root>
@@ -65,12 +71,19 @@
 					</Sidebar.MenuButton>
 				{/snippet}
 			</DropdownMenu.Trigger>
-			<DropdownMenu.Content class="w-(--bits-dropdown-menu-anchor-width) min-w-56 rounded-lg" side={sidebar.isMobile ? 'bottom' : 'right'} align="end" sideOffset={4}>
+			<DropdownMenu.Content
+				class="w-(--bits-dropdown-menu-anchor-width) min-w-56 rounded-lg"
+				side={sidebar.isMobile ? 'bottom' : 'right'}
+				align="end"
+				sideOffset={4}
+			>
 				<DropdownMenu.Label class="p-0 font-normal">
 					<div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
 						<Avatar.Root class="size-8 rounded-lg">
 							<Avatar.Image src={gravatarUrl} alt={user.displayName} />
-							<Avatar.Fallback class="rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 text-primary border border-primary/20">
+							<Avatar.Fallback
+								class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-gradient-to-br"
+							>
 								{user.displayName?.charAt(0).toUpperCase()}
 							</Avatar.Fallback>
 						</Avatar.Root>
@@ -84,11 +97,17 @@
 				<DropdownMenu.Group>
 					<Button.Root
 						variant="ghost"
-						class={cn('w-full flex items-center text-sm font-medium transition-all duration-200 text-muted-foreground hover:bg-gradient-to-br hover:from-muted/80 hover:to-muted/60 hover:text-foreground rounded-xl mb-1', 'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]', isCollapsed ? 'justify-center px-2 py-3 h-11' : 'justify-start gap-3 px-3 py-2.5 h-11')}
+						class={cn(
+							'text-muted-foreground hover:from-muted/80 hover:to-muted/60 hover:text-foreground mb-1 flex w-full items-center rounded-xl text-sm font-medium transition-all duration-200 hover:bg-gradient-to-br',
+							'hover:scale-[1.02] hover:shadow-md active:scale-[0.98]',
+							isCollapsed ? 'h-11 justify-center px-2 py-3' : 'h-11 justify-start gap-3 px-3 py-2.5'
+						)}
 						title={isCollapsed ? 'Toggle theme' : undefined}
 						onclick={toggleMode}
 					>
-						<div class="p-1 rounded-lg transition-colors duration-200 bg-transparent group-hover:bg-muted-foreground/10">
+						<div
+							class="group-hover:bg-muted-foreground/10 rounded-lg bg-transparent p-1 transition-colors duration-200"
+						>
 							{#if mode.current === 'dark'}
 								<Sun size={16} class="transition-transform duration-200" />
 							{:else}
@@ -104,11 +123,17 @@
 				<form action="/auth/logout" method="POST">
 					<Button.Root
 						variant="ghost"
-						class={cn('w-full flex items-center text-sm font-medium transition-all duration-200 text-muted-foreground rounded-xl', 'hover:bg-gradient-to-br hover:from-destructive/10 hover:to-destructive/5 hover:text-destructive hover:shadow-md hover:scale-[1.02] active:scale-[0.98]', isCollapsed ? 'justify-center px-2 py-3 h-11' : 'justify-start gap-3 px-3 py-2.5 h-11')}
+						class={cn(
+							'text-muted-foreground flex w-full items-center rounded-xl text-sm font-medium transition-all duration-200',
+							'hover:from-destructive/10 hover:to-destructive/5 hover:text-destructive hover:scale-[1.02] hover:bg-gradient-to-br hover:shadow-md active:scale-[0.98]',
+							isCollapsed ? 'h-11 justify-center px-2 py-3' : 'h-11 justify-start gap-3 px-3 py-2.5'
+						)}
 						title={isCollapsed ? 'Logout' : undefined}
 						type="submit"
 					>
-						<div class="p-1 rounded-lg transition-colors duration-200 bg-transparent group-hover:bg-destructive/10">
+						<div
+							class="group-hover:bg-destructive/10 rounded-lg bg-transparent p-1 transition-colors duration-200"
+						>
 							<LogOutIcon size={16} class="transition-transform duration-200" />
 						</div>
 						{#if !isCollapsed}

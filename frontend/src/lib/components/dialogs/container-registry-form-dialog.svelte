@@ -110,7 +110,7 @@
 					placeholder="e.g., docker.io, ghcr.io, gcr.io, quay.io"
 					required
 				/>
-				<p class="text-xs text-muted-foreground">Leave empty or use 'docker.io' for Docker Hub</p>
+				<p class="text-muted-foreground text-xs">Leave empty or use 'docker.io' for Docker Hub</p>
 			</div>
 
 			<div class="grid gap-2">
@@ -134,7 +134,7 @@
 						: 'Your registry password or token'}
 					required={!isEditMode}
 				/>
-				<p class="text-xs text-muted-foreground">
+				<p class="text-muted-foreground text-xs">
 					For GitHub, use a Personal Access Token. For Docker Hub, use your password.
 				</p>
 			</div>
@@ -149,18 +149,18 @@
 				/>
 			</div>
 
-			<div class="flex items-center justify-between p-4 border rounded-lg">
+			<div class="flex items-center justify-between rounded-lg border p-4">
 				<div class="space-y-0.5">
 					<Label for="registry-enabled" class="text-base">Enabled</Label>
-					<p class="text-sm text-muted-foreground">Enable this registry for authentication</p>
+					<p class="text-muted-foreground text-sm">Enable this registry for authentication</p>
 				</div>
 				<Switch id="registry-enabled" bind:checked={internalRegistry.enabled} />
 			</div>
 
-			<div class="flex items-center justify-between p-4 border rounded-lg">
+			<div class="flex items-center justify-between rounded-lg border p-4">
 				<div class="space-y-0.5">
 					<Label for="registry-insecure" class="text-base">Allow Insecure Connection</Label>
-					<p class="text-sm text-muted-foreground">
+					<p class="text-muted-foreground text-sm">
 						Allow HTTP connections (not recommended for production)
 					</p>
 				</div>
@@ -179,7 +179,7 @@
 				</Button>
 				<Button type="submit" class="arcane-button-create" disabled={isLoading || !isFormValid}>
 					{#if isLoading}
-						<Loader2 class="mr-2 animate-spin size-4" />
+						<Loader2 class="mr-2 size-4 animate-spin" />
 					{/if}
 					{isEditMode ? 'Save Changes' : 'Add Registry'}
 				</Button>

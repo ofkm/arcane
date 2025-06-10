@@ -3,7 +3,9 @@ import type { OidcConfig, OidcUserInfo } from '$lib/types/settings.type';
 
 export default class OidcAPIService extends BaseAPIService {
 	async getAuthUrl(redirectUri: string): Promise<string> {
-		const response = (await this.handleResponse(this.api.post('/auth/oidc/url', { redirectUri }))) as { authUrl: string };
+		const response = (await this.handleResponse(
+			this.api.post('/auth/oidc/url', { redirectUri })
+		)) as { authUrl: string };
 		return response.authUrl;
 	}
 

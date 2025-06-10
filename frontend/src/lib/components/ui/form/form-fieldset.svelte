@@ -9,7 +9,13 @@
 	import type { WithoutChild } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
 
-	let { ref = $bindable(null), class: className, form, name, ...restProps }: WithoutChild<FormPrimitive.FieldsetProps<T, U>> = $props();
+	let {
+		ref = $bindable(null),
+		class: className,
+		form,
+		name,
+		...restProps
+	}: WithoutChild<FormPrimitive.FieldsetProps<T, U>> = $props();
 </script>
 
 <FormPrimitive.Fieldset bind:ref {form} {name} class={cn('space-y-2', className)} {...restProps} />

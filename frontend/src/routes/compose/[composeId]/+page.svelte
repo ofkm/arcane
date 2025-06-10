@@ -3,7 +3,27 @@
 	import type { Stack, StackService, StackPort } from '$lib/types/docker/stack.type';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, RefreshCw, Terminal, Settings, Activity, FileText, Play, Square, RotateCcw, Trash2, Send, Users, Loader2, TicketCheck } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		AlertCircle,
+		FileStack,
+		Layers,
+		ArrowRight,
+		ExternalLink,
+		RefreshCw,
+		Terminal,
+		Settings,
+		Activity,
+		FileText,
+		Play,
+		Square,
+		RotateCcw,
+		Trash2,
+		Send,
+		Users,
+		Loader2,
+		TicketCheck
+	} from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -47,7 +67,11 @@
 	let originalComposeContent = $derived(editorState.originalComposeContent);
 	let originalEnvContent = $derived(editorState.originalEnvContent || '');
 
-	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || envContent !== originalEnvContent);
+	let hasChanges = $derived(
+		name !== originalName ||
+			composeContent !== originalComposeContent ||
+			envContent !== originalEnvContent
+	);
 
 	const baseServerUrl = $derived(settings?.baseServerUrl || 'localhost');
 
@@ -91,7 +115,9 @@
 				await new Promise((resolve) => setTimeout(resolve, 200));
 
 				if (updatedStack && updatedStack.id !== currentStackId) {
-					console.log(`Stack ID changed from ${currentStackId} to ${updatedStack.id}. Navigating...`);
+					console.log(
+						`Stack ID changed from ${currentStackId} to ${updatedStack.id}. Navigating...`
+					);
 					await goto(`/compose/${name}`, { invalidateAll: true });
 				} else {
 					await invalidateAll();
@@ -136,7 +162,9 @@
 			}
 
 			const result = await response.json();
-			toast.success(`Stack "${data.stack?.name || 'Unknown'}" deployed to agent ${selectedAgent.hostname}!`);
+			toast.success(
+				`Stack "${data.stack?.name || 'Unknown'}" deployed to agent ${selectedAgent.hostname}!`
+			);
 			deployDialogOpen = false;
 			selectedAgentId = '';
 		} catch (error) {
@@ -161,7 +189,11 @@
 		return baseServerUrl;
 	}
 
-	function getServicePortUrl(service: StackService, port: string | number | StackPort, protocol = 'http'): string {
+	function getServicePortUrl(
+		service: StackService,
+		port: string | number | StackPort,
+		protocol = 'http'
+	): string {
 		const host = getHostForService(service);
 
 		if (typeof port === 'string') {
@@ -225,24 +257,27 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background">
+<div class="bg-background min-h-screen">
 	{#if stack}
 		<!-- Fixed Header -->
-		<div class="sticky top-0 z-10 bg-background/95 backdrop-blur border-b">
+		<div class="bg-background/95 sticky top-0 z-10 border-b backdrop-blur">
 			<div class="max-w-full px-4 py-3">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
 						<Button variant="ghost" size="sm" href="/compose">
-							<ArrowLeft class="size-4 mr-2" />
+							<ArrowLeft class="mr-2 size-4" />
 							Back
 						</Button>
-						<div class="h-4 w-px bg-border"></div>
+						<div class="bg-border h-4 w-px"></div>
 						<div class="flex items-center gap-2">
-							<h1 class="text-lg font-semibold truncate max-w-[300px]" title={stack.name}>
+							<h1 class="max-w-[300px] truncate text-lg font-semibold" title={stack.name}>
 								{stack.name}
 							</h1>
 							{#if stack.status}
-								<StatusBadge variant={statusVariantMap[stack.status.toLowerCase()] || 'gray'} text={capitalizeFirstLetter(stack.status)} />
+								<StatusBadge
+									variant={statusVariantMap[stack.status.toLowerCase()] || 'gray'}
+									text={capitalizeFirstLetter(stack.status)}
+								/>
 							{/if}
 						</div>
 					</div>
@@ -261,8 +296,13 @@
 							onActionComplete={() => invalidateAll()}
 						/>
 						{#if onlineAgents.length > 0}
-							<Button variant="outline" size="sm" onclick={() => (deployDialogOpen = true)} disabled={Object.values(isLoading).some(Boolean)}>
-								<Send class="size-4 mr-2" />
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={() => (deployDialogOpen = true)}
+								disabled={Object.values(isLoading).some(Boolean)}
+							>
+								<Send class="mr-2 size-4" />
 								Deploy to Agent
 							</Button>
 						{/if}
@@ -284,20 +324,22 @@
 
 		<div class="flex h-[calc(100vh-64px)]">
 			<!-- Fixed Sidebar Navigation - Narrower -->
-			<div class="w-48 shrink-0 border-r bg-background/50">
+			<div class="bg-background/50 w-48 shrink-0 border-r">
 				<div class="sticky top-16 p-3">
 					<nav class="space-y-1">
 						{#each navigationSections as section}
 							{@const IconComponent = section.icon}
 							<button
 								onclick={() => scrollToSection(section.id)}
-								class="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors
-									{activeSection === section.id ? 'bg-primary/10 text-primary border border-primary/20' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+								class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors
+									{activeSection === section.id
+									? 'bg-primary/10 text-primary border-primary/20 border'
+									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
 							>
 								<IconComponent class="size-4 shrink-0" />
 								<span class="truncate">{section.label}</span>
 								{#if section.id === 'services' && stack.serviceCount}
-									<span class="ml-auto text-xs bg-muted px-1.5 py-0.5 rounded shrink-0">
+									<span class="bg-muted ml-auto shrink-0 rounded px-1.5 py-0.5 text-xs">
 										{stack.serviceCount}
 									</span>
 								{/if}
@@ -309,51 +351,51 @@
 
 			<!-- Main Content - Full width usage -->
 			<div class="flex-1 overflow-y-auto">
-				<div class="p-6 max-w-none">
+				<div class="max-w-none p-6">
 					<div class="space-y-8">
 						<!-- Overview Section -->
 						<section id="overview" class="scroll-mt-20">
-							<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
 								<FileStack class="size-5" />
 								Overview
 							</h2>
 
 							<!-- Summary Cards -->
-							<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+							<div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
 								<Card.Root class="border">
-									<Card.Content class="p-6 flex items-center justify-between">
+									<Card.Content class="flex items-center justify-between p-6">
 										<div>
-											<p class="text-sm font-medium text-muted-foreground">Services</p>
+											<p class="text-muted-foreground text-sm font-medium">Services</p>
 											<p class="text-2xl font-bold">{stack.serviceCount}</p>
 										</div>
-										<div class="bg-primary/10 p-3 rounded-full">
+										<div class="bg-primary/10 rounded-full p-3">
 											<Layers class="text-primary size-5" />
 										</div>
 									</Card.Content>
 								</Card.Root>
 
 								<Card.Root class="border">
-									<Card.Content class="p-6 flex items-center justify-between">
+									<Card.Content class="flex items-center justify-between p-6">
 										<div>
-											<p class="text-sm font-medium text-muted-foreground">Running</p>
+											<p class="text-muted-foreground text-sm font-medium">Running</p>
 											<p class="text-2xl font-bold">{stack.runningCount}</p>
 										</div>
-										<div class="bg-green-500/10 p-3 rounded-full">
-											<Activity class="text-green-500 size-5" />
+										<div class="rounded-full bg-green-500/10 p-3">
+											<Activity class="size-5 text-green-500" />
 										</div>
 									</Card.Content>
 								</Card.Root>
 
 								<Card.Root class="border">
-									<Card.Content class="p-6 flex items-center justify-between">
+									<Card.Content class="flex items-center justify-between p-6">
 										<div>
-											<p class="text-sm font-medium text-muted-foreground">Created</p>
+											<p class="text-muted-foreground text-sm font-medium">Created</p>
 											<p class="text-lg font-medium">
 												{new Date(stack.createdAt ?? '').toLocaleDateString()}
 											</p>
 										</div>
-										<div class="bg-blue-500/10 p-3 rounded-full">
-											<FileStack class="text-blue-500 size-5" />
+										<div class="rounded-full bg-blue-500/10 p-3">
+											<FileStack class="size-5 text-blue-500" />
 										</div>
 									</Card.Content>
 								</Card.Root>
@@ -369,9 +411,14 @@
 									<Card.Content>
 										<div class="flex flex-wrap gap-2">
 											{#each allUniquePorts as port (port)}
-												<a href={getServicePortUrl(stack, port)} target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-3 py-2 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-500/20 transition-colors">
+												<a
+													href={getServicePortUrl(stack, port)}
+													target="_blank"
+													rel="noopener noreferrer"
+													class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
+												>
 													Port {port}
-													<ExternalLink class="size-4 ml-2" />
+													<ExternalLink class="ml-2 size-4" />
 												</a>
 											{/each}
 										</div>
@@ -382,7 +429,7 @@
 
 						<!-- Services Section -->
 						<section id="services" class="scroll-mt-20">
-							<h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
 								<Layers class="size-5" />
 								Services ({stack.serviceCount})
 							</h2>
@@ -397,36 +444,47 @@
 
 												{#if service.container_id}
 													<!-- Service with Container ID (clickable) -->
-													<a href={`/containers/${service.container_id}`} class="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+													<a
+														href={`/containers/${service.container_id}`}
+														class="hover:bg-muted/50 flex items-center justify-between rounded-lg border p-4 transition-colors"
+													>
 														<div class="flex items-center gap-3">
-															<div class="bg-primary/10 p-2 rounded-full">
+															<div class="bg-primary/10 rounded-full p-2">
 																<Layers class="text-primary size-4" />
 															</div>
 															<div>
 																<p class="font-medium">{service.name}</p>
-																<p class="text-sm text-muted-foreground">ID: {service.container_id.substring(0, 12)}</p>
+																<p class="text-muted-foreground text-sm">
+																	ID: {service.container_id.substring(0, 12)}
+																</p>
 																{#if service.image}
-																	<p class="text-xs text-muted-foreground">Image: {service.image}</p>
+																	<p class="text-muted-foreground text-xs">
+																		Image: {service.image}
+																	</p>
 																{/if}
 															</div>
 														</div>
 														<div class="flex items-center gap-3">
 															<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
-															<ArrowRight class="size-4 text-primary" />
+															<ArrowRight class="text-primary size-4" />
 														</div>
 													</a>
 												{:else}
 													<!-- Service without Container ID (not clickable) -->
-													<div class="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
+													<div
+														class="bg-muted/20 flex items-center justify-between rounded-lg border p-4"
+													>
 														<div class="flex items-center gap-3">
-															<div class="bg-muted/50 p-2 rounded-full">
+															<div class="bg-muted/50 rounded-full p-2">
 																<Layers class="text-muted-foreground size-4" />
 															</div>
 															<div>
 																<p class="font-medium">{service.name}</p>
-																<p class="text-sm text-muted-foreground">Not created</p>
+																<p class="text-muted-foreground text-sm">Not created</p>
 																{#if service.image}
-																	<p class="text-xs text-muted-foreground">Image: {service.image}</p>
+																	<p class="text-muted-foreground text-xs">
+																		Image: {service.image}
+																	</p>
 																{/if}
 															</div>
 														</div>
@@ -436,9 +494,11 @@
 											{/each}
 										</div>
 									{:else}
-										<div class="text-center py-12">
-											<div class="mb-4 rounded-full bg-muted/50 flex items-center justify-center mx-auto size-16">
-												<Layers class="size-6 text-muted-foreground" />
+										<div class="py-12 text-center">
+											<div
+												class="bg-muted/50 mx-auto mb-4 flex size-16 items-center justify-center rounded-full"
+											>
+												<Layers class="text-muted-foreground size-6" />
 											</div>
 											<div class="text-muted-foreground">No services found for this stack</div>
 										</div>
@@ -449,46 +509,73 @@
 
 						<!-- Configuration Section -->
 						<section id="config" class="scroll-mt-20">
-							<div class="flex items-center justify-between mb-6">
-								<h2 class="text-xl font-semibold flex items-center gap-2">
+							<div class="mb-6 flex items-center justify-between">
+								<h2 class="flex items-center gap-2 text-xl font-semibold">
 									<Settings class="size-5" />
 									Configuration
 								</h2>
 								{#if hasChanges}
-									<ArcaneButton action="save" loading={isLoading.saving} onClick={handleSaveChanges} disabled={!hasChanges} label="Save Changes" loadingLabel="Saving..." class="bg-green-600 hover:bg-green-700 text-white" />
+									<ArcaneButton
+										action="save"
+										loading={isLoading.saving}
+										onClick={handleSaveChanges}
+										disabled={!hasChanges}
+										label="Save Changes"
+										loadingLabel="Saving..."
+										class="bg-green-600 text-white hover:bg-green-700"
+									/>
 								{/if}
 							</div>
 
 							<!-- Stack Name Field -->
-							<Card.Root class="border mb-6">
+							<Card.Root class="mb-6 border">
 								<Card.Header class="pb-4">
 									<Card.Title>Stack Settings</Card.Title>
 								</Card.Header>
 								<Card.Content>
 									<div class="max-w-md">
 										<Label for="name" class="mb-2 block">Stack Name</Label>
-										<Input type="text" id="name" name="name" bind:value={name} required disabled={isLoading.saving || stack?.status === 'running' || stack?.status === 'partially running'} />
+										<Input
+											type="text"
+											id="name"
+											name="name"
+											bind:value={name}
+											required
+											disabled={isLoading.saving ||
+												stack?.status === 'running' ||
+												stack?.status === 'partially running'}
+										/>
 										{#if stack?.status === 'running' || stack?.status === 'partially running'}
-											<p class="text-sm text-muted-foreground mt-2">Stack name cannot be changed while running. Please stop the stack first.</p>
+											<p class="text-muted-foreground mt-2 text-sm">
+												Stack name cannot be changed while running. Please stop the stack first.
+											</p>
 										{/if}
 									</div>
 								</Card.Content>
 							</Card.Root>
 
 							<!-- Editors - Fixed Layout -->
-							<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+							<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 								<!-- Compose Editor - Spans 2 columns -->
 								<div class="lg:col-span-2">
-									<Card.Root class="border h-full">
-										<Card.Header class="pb-4 flex-shrink-0">
+									<Card.Root class="h-full border">
+										<Card.Header class="flex-shrink-0 pb-4">
 											<Card.Title>Docker Compose File</Card.Title>
 										</Card.Header>
-										<Card.Content class="p-4 flex flex-col h-full">
-											<div class="w-full h-[590px] rounded-md overflow-hidden flex-shrink-0">
-												<YamlEditor bind:value={composeContent} readOnly={isLoading.saving || isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} />
+										<Card.Content class="flex h-full flex-col p-4">
+											<div class="h-[590px] w-full flex-shrink-0 overflow-hidden rounded-md">
+												<YamlEditor
+													bind:value={composeContent}
+													readOnly={isLoading.saving ||
+														isLoading.deploying ||
+														isLoading.stopping ||
+														isLoading.restarting ||
+														isLoading.removing}
+												/>
 											</div>
-											<p class="text-sm text-muted-foreground flex-shrink-0">
-												Edit your <span class="font-medium">compose.yaml</span> file directly. Syntax errors will be highlighted.
+											<p class="text-muted-foreground flex-shrink-0 text-sm">
+												Edit your <span class="font-medium">compose.yaml</span> file directly. Syntax
+												errors will be highlighted.
 											</p>
 										</Card.Content>
 									</Card.Root>
@@ -496,15 +583,24 @@
 
 								<!-- Environment Editor - Spans 1 column -->
 								<div class="lg:col-span-1">
-									<Card.Root class="border h-full">
-										<Card.Header class="pb-4 flex-shrink-0">
+									<Card.Root class="h-full border">
+										<Card.Header class="flex-shrink-0 pb-4">
 											<Card.Title>Environment (.env)</Card.Title>
 										</Card.Header>
-										<Card.Content class="p-4 flex flex-col h-full">
-											<div class="w-full h-[590px] rounded-md overflow-hidden flex-shrink-0">
-												<EnvEditor bind:value={envContent} readOnly={isLoading.saving || isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} />
+										<Card.Content class="flex h-full flex-col p-4">
+											<div class="h-[590px] w-full flex-shrink-0 overflow-hidden rounded-md">
+												<EnvEditor
+													bind:value={envContent}
+													readOnly={isLoading.saving ||
+														isLoading.deploying ||
+														isLoading.stopping ||
+														isLoading.restarting ||
+														isLoading.removing}
+												/>
 											</div>
-											<p class="text-sm text-muted-foreground flex-shrink-0">Define environment variables in KEY=value format.</p>
+											<p class="text-muted-foreground flex-shrink-0 text-sm">
+												Define environment variables in KEY=value format.
+											</p>
 										</Card.Content>
 									</Card.Root>
 								</div>
@@ -513,8 +609,8 @@
 
 						<!-- Logs Section -->
 						<section id="logs" class="scroll-mt-20">
-							<div class="flex items-center justify-between mb-6">
-								<h2 class="text-xl font-semibold flex items-center gap-2">
+							<div class="mb-6 flex items-center justify-between">
+								<h2 class="flex items-center gap-2 text-xl font-semibold">
 									<Terminal class="size-5" />
 									Stack Logs
 								</h2>
@@ -523,15 +619,26 @@
 										<input type="checkbox" bind:checked={autoScrollStackLogs} class="size-4" />
 										Auto-scroll
 									</label>
-									<Button variant="outline" size="sm" onclick={() => stackLogViewer?.clearLogs()}>Clear</Button>
+									<Button variant="outline" size="sm" onclick={() => stackLogViewer?.clearLogs()}
+										>Clear</Button
+									>
 									{#if isStackLogsStreaming}
 										<div class="flex items-center gap-2">
-											<div class="size-2 bg-green-500 rounded-full animate-pulse"></div>
-											<span class="text-green-600 text-sm font-medium">Live</span>
+											<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
+											<span class="text-sm font-medium text-green-600">Live</span>
 										</div>
-										<Button variant="outline" size="sm" onclick={() => stackLogViewer?.stopLogStream()}>Stop</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											onclick={() => stackLogViewer?.stopLogStream()}>Stop</Button
+										>
 									{:else}
-										<Button variant="outline" size="sm" onclick={() => stackLogViewer?.startLogStream()} disabled={!stack?.id}>Start</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											onclick={() => stackLogViewer?.startLogStream()}
+											disabled={!stack?.id}>Start</Button
+										>
 									{/if}
 									<Button
 										variant="outline"
@@ -548,7 +655,19 @@
 
 							<Card.Root class="border">
 								<Card.Content class="p-0">
-									<LogViewer bind:this={stackLogViewer} bind:autoScroll={autoScrollStackLogs} stackId={stack?.id} type="stack" maxLines={500} showTimestamps={true} height="600px" onStart={handleStackLogStart} onStop={handleStackLogStop} onClear={handleStackLogClear} onToggleAutoScroll={handleToggleStackAutoScroll} />
+									<LogViewer
+										bind:this={stackLogViewer}
+										bind:autoScroll={autoScrollStackLogs}
+										stackId={stack?.id}
+										type="stack"
+										maxLines={500}
+										showTimestamps={true}
+										height="600px"
+										onStart={handleStackLogStart}
+										onStop={handleStackLogStop}
+										onClear={handleStackLogClear}
+										onToggleAutoScroll={handleToggleStackAutoScroll}
+									/>
 								</Card.Content>
 							</Card.Root>
 						</section>
@@ -558,13 +677,16 @@
 		</div>
 	{:else if !data.error}
 		<!-- Not Found State -->
-		<div class="min-h-screen flex items-center justify-center">
+		<div class="flex min-h-screen items-center justify-center">
 			<div class="text-center">
-				<div class="rounded-full bg-muted/50 p-6 mb-6 inline-flex">
+				<div class="bg-muted/50 mb-6 inline-flex rounded-full p-6">
 					<FileStack class="text-muted-foreground size-10" />
 				</div>
-				<h2 class="text-2xl font-medium mb-3">Stack Not Found</h2>
-				<p class="text-center text-muted-foreground max-w-md mb-8">Could not load stack data. It may have been removed or the Docker engine is not accessible.</p>
+				<h2 class="mb-3 text-2xl font-medium">Stack Not Found</h2>
+				<p class="text-muted-foreground mb-8 max-w-md text-center">
+					Could not load stack data. It may have been removed or the Docker engine is not
+					accessible.
+				</p>
 				<Button variant="outline" href="/compose">
 					<ArrowLeft class="mr-2 size-4" />
 					Back to Stacks
@@ -595,22 +717,26 @@
 								<div class="flex items-center gap-2">
 									<div class="size-2 rounded-full bg-green-500"></div>
 									<span>{agent.hostname}</span>
-									<span class="text-xs text-muted-foreground">({agent.platform})</span>
+									<span class="text-muted-foreground text-xs">({agent.platform})</span>
 								</div>
 							</Select.Item>
 						{/each}
 					</Select.Content>
 				</Select.Root>
-				<p class="text-xs text-muted-foreground">This will deploy the current stack configuration to the selected agent.</p>
+				<p class="text-muted-foreground text-xs">
+					This will deploy the current stack configuration to the selected agent.
+				</p>
 			</div>
 		</div>
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (deployDialogOpen = false)} disabled={deploying}>Cancel</Button>
+			<Button variant="outline" onclick={() => (deployDialogOpen = false)} disabled={deploying}
+				>Cancel</Button
+			>
 			<Button onclick={handleDeployToAgent} disabled={!selectedAgentId || deploying}>
 				{#if deploying}
-					<Loader2 class="size-4 mr-2 animate-spin" />
+					<Loader2 class="mr-2 size-4 animate-spin" />
 				{:else}
-					<Send class="size-4 mr-2" />
+					<Send class="mr-2 size-4" />
 				{/if}
 				Deploy
 			</Button>

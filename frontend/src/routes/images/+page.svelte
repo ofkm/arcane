@@ -305,10 +305,10 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Container Images</h1>
-			<p class="text-sm text-muted-foreground mt-1">View and Manage your Container Images</p>
+			<p class="text-muted-foreground mt-1 text-sm">View and Manage your Container Images</p>
 		</div>
 	</div>
 
@@ -320,27 +320,27 @@
 		</Alert.Root>
 	{/if}
 
-	<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<Card.Root>
-			<Card.Content class="p-4 flex items-center justify-between">
+			<Card.Content class="flex items-center justify-between p-4">
 				<div>
-					<p class="text-sm font-medium text-muted-foreground">Total Images</p>
+					<p class="text-muted-foreground text-sm font-medium">Total Images</p>
 					<p class="text-2xl font-bold">{totalImages}</p>
 				</div>
-				<div class="bg-blue-500/10 p-2 rounded-full">
-					<HardDrive class="text-blue-500 size-5" />
+				<div class="rounded-full bg-blue-500/10 p-2">
+					<HardDrive class="size-5 text-blue-500" />
 				</div>
 			</Card.Content>
 		</Card.Root>
 
 		<Card.Root>
-			<Card.Content class="p-4 flex items-center justify-between">
+			<Card.Content class="flex items-center justify-between p-4">
 				<div>
-					<p class="text-sm font-medium text-muted-foreground">Total Size</p>
+					<p class="text-muted-foreground text-sm font-medium">Total Size</p>
 					<p class="text-2xl font-bold">{formatBytes(totalSize)}</p>
 				</div>
-				<div class="bg-purple-500/10 p-2 rounded-full">
-					<HardDrive class="text-purple-500 size-5" />
+				<div class="rounded-full bg-purple-500/10 p-2">
+					<HardDrive class="size-5 text-purple-500" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -451,7 +451,7 @@
 					{#snippet rows({ item })}
 						<Table.Cell>
 							<div class="flex items-center gap-2">
-								<div class="flex items-center flex-1">
+								<div class="flex flex-1 items-center">
 									<MaturityItem
 										maturity={item.maturity}
 										imageId={item.Id}
@@ -459,7 +459,7 @@
 										tag={item.tag}
 										isLoadingInBackground={$maturityStore.isChecking}
 									/>
-									<a class="font-medium hover:underline shrink truncate" href="/images/{item.Id}/">
+									<a class="shrink truncate font-medium hover:underline" href="/images/{item.Id}/">
 										{item.repo}
 									</a>
 								</div>
@@ -496,7 +496,7 @@
 											disabled={isPullingInline[item.Id] || !item.RepoTags?.[0]}
 										>
 											{#if isPullingInline[item.Id]}
-												<Loader2 class="animate-spin size-4" />
+												<Loader2 class="size-4 animate-spin" />
 												Pulling...
 											{:else}
 												<Download class="size-4" />
@@ -520,14 +520,14 @@
 		</Card.Root>
 	{:else if !error}
 		<div
-			class="flex flex-col items-center justify-center py-12 px-6 text-center border rounded-lg bg-card"
+			class="bg-card flex flex-col items-center justify-center rounded-lg border px-6 py-12 text-center"
 		>
-			<HardDrive class="text-muted-foreground mb-4 opacity-40 size-12" />
+			<HardDrive class="text-muted-foreground mb-4 size-12 opacity-40" />
 			<p class="text-lg font-medium">No images found</p>
-			<p class="text-sm text-muted-foreground mt-1 max-w-md">
+			<p class="text-muted-foreground mt-1 max-w-md text-sm">
 				Pull a new image using the "Pull Image" button above or use the Docker CLI
 			</p>
-			<div class="flex gap-3 mt-4">
+			<div class="mt-4 flex gap-3">
 				<Button variant="outline" size="sm" onclick={() => (isPullDialogOpen = true)}>
 					<Download class="size-4" />
 					Pull Image
@@ -555,7 +555,7 @@
 				>
 				<Button variant="destructive" onclick={handlePruneImages} disabled={isLoading.pruning}>
 					{#if isLoading.pruning}
-						<Loader2 class="mr-2 animate-spin size-4" /> Pruning...
+						<Loader2 class="mr-2 size-4 animate-spin" /> Pruning...
 					{:else}
 						Prune Images
 					{/if}

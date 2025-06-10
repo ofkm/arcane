@@ -45,7 +45,19 @@ const authHandler: Handle = async ({ event, resolve }) => {
 	const path = url.pathname;
 
 	// Define paths that don't require authentication
-	const publicPaths = ['/auth/login', '/auth/logout', '/img', '/auth/oidc/login', '/auth/oidc/callback', '/api/agents/register', '/api/agents/heartbeat', '/api/health', '/api/version', '/favicon.ico', '/_app'];
+	const publicPaths = [
+		'/auth/login',
+		'/auth/logout',
+		'/img',
+		'/auth/oidc/login',
+		'/auth/oidc/callback',
+		'/api/agents/register',
+		'/api/agents/heartbeat',
+		'/api/health',
+		'/api/version',
+		'/favicon.ico',
+		'/_app'
+	];
 
 	// Check for specific agent polling patterns that should be public
 	const agentPollingPattern = /^\/api\/agents\/[^\/]+\/tasks$/;

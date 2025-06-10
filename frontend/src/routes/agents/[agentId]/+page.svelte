@@ -16,7 +16,26 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2, Download, Trash2 } from '@lucide/svelte';
+	import {
+		Monitor,
+		Terminal,
+		Clock,
+		Settings,
+		Activity,
+		AlertCircle,
+		Server,
+		RefreshCw,
+		Play,
+		ArrowLeft,
+		Container,
+		HardDrive,
+		Layers,
+		Network,
+		Database,
+		Loader2,
+		Download,
+		Trash2
+	} from '@lucide/svelte';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import ImagePullForm from '$lib/components/forms/ImagePullForm.svelte';
 	import StackDeploymentForm from '$lib/components/forms/StackDeploymentForm.svelte';
@@ -103,7 +122,11 @@
 			loading = true;
 
 			// Use parallel requests for updates
-			const [agentResponse, tasksResponse, deploymentsResponse] = await Promise.allSettled([fetch(`/api/agents/${agentId}`), fetch(`/api/agents/${agentId}/tasks?admin=true`), fetch(`/api/agents/${agentId}/deployments`)]);
+			const [agentResponse, tasksResponse, deploymentsResponse] = await Promise.allSettled([
+				fetch(`/api/agents/${agentId}`),
+				fetch(`/api/agents/${agentId}/tasks?admin=true`),
+				fetch(`/api/agents/${agentId}/deployments`)
+			]);
 
 			// Update agent data
 			if (agentResponse.status === 'fulfilled' && agentResponse.value.ok) {
@@ -145,9 +168,18 @@
 			const commands = [
 				{ type: 'docker_command', payload: { command: 'ps', args: ['-a', '--format', 'json'] } },
 				{ type: 'docker_command', payload: { command: 'images', args: ['--format', 'json'] } },
-				{ type: 'docker_command', payload: { command: 'network', args: ['ls', '--format', 'json'] } },
-				{ type: 'docker_command', payload: { command: 'volume', args: ['ls', '--format', 'json'] } },
-				{ type: 'docker_command', payload: { command: 'compose', args: ['ls', '--format', 'json'] } }
+				{
+					type: 'docker_command',
+					payload: { command: 'network', args: ['ls', '--format', 'json'] }
+				},
+				{
+					type: 'docker_command',
+					payload: { command: 'volume', args: ['ls', '--format', 'json'] }
+				},
+				{
+					type: 'docker_command',
+					payload: { command: 'compose', args: ['ls', '--format', 'json'] }
+				}
 			];
 
 			const results = await Promise.allSettled(
@@ -169,7 +201,10 @@
 					}
 
 					const taskId = result.task.id;
-					return pollTaskCompletion(taskId, ['containers', 'images', 'networks', 'volumes', 'stacks'][index]);
+					return pollTaskCompletion(
+						taskId,
+						['containers', 'images', 'networks', 'volumes', 'stacks'][index]
+					);
 				})
 			);
 
@@ -190,7 +225,9 @@
 
 			results.forEach((result, index) => {
 				if (result.status === 'fulfilled' && result.value) {
-					const resourceType = ['containers', 'images', 'networks', 'volumes', 'stacks'][index] as keyof typeof newResourcesData;
+					const resourceType = ['containers', 'images', 'networks', 'volumes', 'stacks'][
+						index
+					] as keyof typeof newResourcesData;
 					console.log(`Assigning ${result.value.length} items to ${resourceType}:`, result.value);
 					newResourcesData[resourceType] = result.value;
 				} else {
@@ -229,7 +266,9 @@
 					if (response.status === 403) {
 						console.error(`Authentication failed for task ${taskId}`);
 					}
-					console.error(`Failed to fetch task ${taskId}: ${response.status} ${response.statusText}`);
+					console.error(
+						`Failed to fetch task ${taskId}: ${response.status} ${response.statusText}`
+					);
 					continue;
 				}
 
@@ -357,7 +396,8 @@
 					break;
 			}
 
-			const taskType = selectedCommand.value === 'agent_upgrade' ? 'agent_upgrade' : 'docker_command';
+			const taskType =
+				selectedCommand.value === 'agent_upgrade' ? 'agent_upgrade' : 'docker_command';
 
 			const response = await fetch(`/api/agents/${agentId}/tasks`, {
 				method: 'POST',
@@ -423,7 +463,8 @@
 
 	function getStatusClasses(agent: Agent) {
 		const actualStatus = getActualAgentStatus(agent);
-		if (actualStatus === 'online') return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+		if (actualStatus === 'online')
+			return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
 		return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
 	}
 
@@ -557,28 +598,28 @@
 	</Breadcrumb.Root>
 
 	<!-- Header -->
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">
 				{agent?.hostname || 'Agent Details'}
 			</h1>
-			<p class="text-sm text-muted-foreground mt-1">
+			<p class="text-muted-foreground mt-1 text-sm">
 				{agent ? `Agent ID: ${agent.id}` : 'Loading agent information...'}
 			</p>
 		</div>
 		<div class="flex items-center gap-2">
 			<Button variant="outline" onclick={() => goto('/agents')}>
-				<ArrowLeft class="size-4 mr-2" />
+				<ArrowLeft class="mr-2 size-4" />
 				Back to Agents
 			</Button>
 			{#if agent}
 				<Button variant="destructive" onclick={deleteAgentHandler} disabled={deleting}>
-					<Trash2 class="size-4 mr-2" />
+					<Trash2 class="mr-2 size-4" />
 					Delete Agent
 				</Button>
 				{#if getActualAgentStatus(agent) === 'online'}
 					<Button onclick={() => (commandDialogOpen = true)} disabled={taskExecuting}>
-						<Terminal class="size-4 mr-2" />
+						<Terminal class="mr-2 size-4" />
 						Send Command
 					</Button>
 				{/if}
@@ -595,15 +636,19 @@
 		</Alert.Root>
 	{:else if agent}
 		<!-- Agent Overview -->
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
 			<Card.Root>
-				<Card.Content class="p-4 flex items-center space-x-3">
-					<div class="bg-blue-500/10 p-2 rounded-full">
+				<Card.Content class="flex items-center space-x-3 p-4">
+					<div class="rounded-full bg-blue-500/10 p-2">
 						<Server class="size-5 text-blue-500" />
 					</div>
 					<div>
-						<p class="text-sm font-medium text-muted-foreground">Status</p>
-						<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getStatusClasses(agent)}">
+						<p class="text-muted-foreground text-sm font-medium">Status</p>
+						<span
+							class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {getStatusClasses(
+								agent
+							)}"
+						>
 							{getStatusText(agent)}
 						</span>
 					</div>
@@ -611,37 +656,37 @@
 			</Card.Root>
 
 			<Card.Root>
-				<Card.Content class="p-4 flex items-center space-x-3">
-					<div class="bg-green-500/10 p-2 rounded-full">
+				<Card.Content class="flex items-center space-x-3 p-4">
+					<div class="rounded-full bg-green-500/10 p-2">
 						<Monitor class="size-5 text-green-500" />
 					</div>
 					<div>
-						<p class="text-sm font-medium text-muted-foreground">Platform</p>
+						<p class="text-muted-foreground text-sm font-medium">Platform</p>
 						<p class="font-semibold capitalize">{agent.platform}</p>
 					</div>
 				</Card.Content>
 			</Card.Root>
 
 			<Card.Root>
-				<Card.Content class="p-4 flex items-center space-x-3">
-					<div class="bg-purple-500/10 p-2 rounded-full">
+				<Card.Content class="flex items-center space-x-3 p-4">
+					<div class="rounded-full bg-purple-500/10 p-2">
 						<Settings class="size-5 text-purple-500" />
 					</div>
 					<div>
-						<p class="text-sm font-medium text-muted-foreground">Version</p>
+						<p class="text-muted-foreground text-sm font-medium">Version</p>
 						<p class="font-semibold">{agent.version}</p>
 					</div>
 				</Card.Content>
 			</Card.Root>
 
 			<Card.Root>
-				<Card.Content class="p-4 flex items-center space-x-3">
-					<div class="bg-amber-500/10 p-2 rounded-full">
+				<Card.Content class="flex items-center space-x-3 p-4">
+					<div class="rounded-full bg-amber-500/10 p-2">
 						<Clock class="size-5 text-amber-500" />
 					</div>
 					<div>
-						<p class="text-sm font-medium text-muted-foreground">Last Seen</p>
-						<p class="font-semibold text-sm">{formatDistanceToNow(new Date(agent.lastSeen))} ago</p>
+						<p class="text-muted-foreground text-sm font-medium">Last Seen</p>
+						<p class="text-sm font-semibold">{formatDistanceToNow(new Date(agent.lastSeen))} ago</p>
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -649,45 +694,66 @@
 
 		<!-- Resource Metrics -->
 		{#if agent.metrics}
-			<DropdownCard id="agent-metrics" title="Resource Metrics" description="View detailed Docker resource information" defaultExpanded={false} icon={Activity}>
+			<DropdownCard
+				id="agent-metrics"
+				title="Resource Metrics"
+				description="View detailed Docker resource information"
+				defaultExpanded={false}
+				icon={Activity}
+			>
 				<!-- Metrics Overview -->
-				<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-					<div class="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-						<Container class="size-6 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
-						<p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{agent.metrics.containerCount ?? 0}</p>
+				<div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+					<div class="rounded-lg bg-blue-50 p-3 text-center dark:bg-blue-900/20">
+						<Container class="mx-auto mb-1 size-6 text-blue-600 dark:text-blue-400" />
+						<p class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+							{agent.metrics.containerCount ?? 0}
+						</p>
 						<p class="text-sm text-blue-600/80 dark:text-blue-400/80">Containers</p>
 					</div>
-					<div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-						<HardDrive class="size-6 text-green-600 dark:text-green-400 mx-auto mb-1" />
-						<p class="text-2xl font-bold text-green-600 dark:text-green-400">{agent.metrics.imageCount ?? 0}</p>
+					<div class="rounded-lg bg-green-50 p-3 text-center dark:bg-green-900/20">
+						<HardDrive class="mx-auto mb-1 size-6 text-green-600 dark:text-green-400" />
+						<p class="text-2xl font-bold text-green-600 dark:text-green-400">
+							{agent.metrics.imageCount ?? 0}
+						</p>
 						<p class="text-sm text-green-600/80 dark:text-green-400/80">Images</p>
 					</div>
-					<div class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-						<Network class="size-6 text-orange-600 dark:text-orange-400 mx-auto mb-1" />
-						<p class="text-2xl font-bold text-orange-600 dark:text-orange-400">{agent.metrics.networkCount ?? 0}</p>
+					<div class="rounded-lg bg-orange-50 p-3 text-center dark:bg-orange-900/20">
+						<Network class="mx-auto mb-1 size-6 text-orange-600 dark:text-orange-400" />
+						<p class="text-2xl font-bold text-orange-600 dark:text-orange-400">
+							{agent.metrics.networkCount ?? 0}
+						</p>
 						<p class="text-sm text-orange-600/80 dark:text-orange-400/80">Networks</p>
 					</div>
-					<div class="text-center p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
-						<Database class="size-6 text-cyan-600 dark:text-cyan-400 mx-auto mb-1" />
-						<p class="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{agent.metrics.volumeCount ?? 0}</p>
+					<div class="rounded-lg bg-cyan-50 p-3 text-center dark:bg-cyan-900/20">
+						<Database class="mx-auto mb-1 size-6 text-cyan-600 dark:text-cyan-400" />
+						<p class="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+							{agent.metrics.volumeCount ?? 0}
+						</p>
 						<p class="text-sm text-cyan-600/80 dark:text-cyan-400/80">Volumes</p>
 					</div>
 				</div>
 
 				<!-- Resources Data Section -->
 				{#if agent.status === 'online'}
-					<div class="space-y-4 pt-4 border-t border-border">
+					<div class="border-border space-y-4 border-t pt-4">
 						<div class="flex items-center justify-between">
 							<div>
-								<h4 class="font-medium mb-1">Resource Details</h4>
-								<p class="text-sm text-muted-foreground">View detailed information about Docker resources</p>
+								<h4 class="mb-1 font-medium">Resource Details</h4>
+								<p class="text-muted-foreground text-sm">
+									View detailed information about Docker resources
+								</p>
 							</div>
-							<Button variant="outline" size="sm" onclick={loadResourcesData} disabled={resourcesLoading}>
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={loadResourcesData}
+								disabled={resourcesLoading}
+							>
 								{#if resourcesLoading}
-									<Loader2 class="size-4 mr-2 animate-spin" />
+									<Loader2 class="mr-2 size-4 animate-spin" />
 									Loading...
 								{:else}
-									<RefreshCw class="size-4 mr-2" />
+									<RefreshCw class="mr-2 size-4" />
 									Load Resources
 								{/if}
 							</Button>
@@ -749,8 +815,8 @@
 											pagination={{ pageSize: 10 }}
 										/>
 									{:else}
-										<div class="text-center py-8 text-muted-foreground">
-											<Container class="size-12 mx-auto mb-4 opacity-50" />
+										<div class="text-muted-foreground py-8 text-center">
+											<Container class="mx-auto mb-4 size-12 opacity-50" />
 											<p>No containers found</p>
 										</div>
 									{/if}
@@ -777,8 +843,8 @@
 											pagination={{ pageSize: 10 }}
 										/>
 									{:else}
-										<div class="text-center py-8 text-muted-foreground">
-											<HardDrive class="size-12 mx-auto mb-4 opacity-50" />
+										<div class="text-muted-foreground py-8 text-center">
+											<HardDrive class="mx-auto mb-4 size-12 opacity-50" />
 											<p>No images found</p>
 										</div>
 									{/if}
@@ -805,8 +871,8 @@
 											pagination={{ pageSize: 10 }}
 										/>
 									{:else}
-										<div class="text-center py-8 text-muted-foreground">
-											<Network class="size-12 mx-auto mb-4 opacity-50" />
+										<div class="text-muted-foreground py-8 text-center">
+											<Network class="mx-auto mb-4 size-12 opacity-50" />
 											<p>No networks found</p>
 										</div>
 									{/if}
@@ -832,8 +898,8 @@
 											pagination={{ pageSize: 10 }}
 										/>
 									{:else}
-										<div class="text-center py-8 text-muted-foreground">
-											<Database class="size-12 mx-auto mb-4 opacity-50" />
+										<div class="text-muted-foreground py-8 text-center">
+											<Database class="mx-auto mb-4 size-12 opacity-50" />
 											<p>No volumes found</p>
 										</div>
 									{/if}
@@ -858,8 +924,8 @@
 											pagination={{ pageSize: 10 }}
 										/>
 									{:else}
-										<div class="text-center py-8 text-muted-foreground">
-											<Layers class="size-12 mx-auto mb-4 opacity-50" />
+										<div class="text-muted-foreground py-8 text-center">
+											<Layers class="mx-auto mb-4 size-12 opacity-50" />
 											<p>No compose projects found</p>
 										</div>
 									{/if}
@@ -867,8 +933,8 @@
 							</Tabs.Root>
 						{:else}
 							<!-- Show this only when no data has been loaded yet -->
-							<div class="text-center py-8 text-muted-foreground">
-								<Database class="size-12 mx-auto mb-4 opacity-50" />
+							<div class="text-muted-foreground py-8 text-center">
+								<Database class="mx-auto mb-4 size-12 opacity-50" />
 								<p class="font-medium">No Resource Data Loaded</p>
 								<p class="text-sm">Click "Load Resources" to fetch Docker resource information</p>
 							</div>
@@ -877,56 +943,69 @@
 				{/if}
 
 				{#if getActualAgentStatus(agent) === 'online'}
-					<div class="space-y-4 pt-4 border-t border-border">
+					<div class="border-border space-y-4 border-t pt-4">
 						<div class="flex items-center justify-between">
 							<div>
-								<h4 class="font-medium mb-1">Deploy Resources</h4>
-								<p class="text-sm text-muted-foreground">Deploy stacks, containers, or images to this agent</p>
+								<h4 class="mb-1 font-medium">Deploy Resources</h4>
+								<p class="text-muted-foreground text-sm">
+									Deploy stacks, containers, or images to this agent
+								</p>
 							</div>
 						</div>
 
 						<!-- Quick Deploy Cards -->
-						<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+						<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 							<!-- Deploy Stack Card -->
-							<Card.Root class="cursor-pointer hover:border-primary/50 transition-colors" onclick={() => (deployDialogOpen = true)}>
+							<Card.Root
+								class="hover:border-primary/50 cursor-pointer transition-colors"
+								onclick={() => (deployDialogOpen = true)}
+							>
 								<Card.Content class="p-4">
 									<div class="flex items-center space-x-3">
-										<div class="bg-blue-500/10 p-2 rounded-lg">
+										<div class="rounded-lg bg-blue-500/10 p-2">
 											<Layers class="size-5 text-blue-500" />
 										</div>
 										<div>
 											<h5 class="font-medium">Deploy Stack</h5>
-											<p class="text-sm text-muted-foreground">Deploy a complete application stack</p>
+											<p class="text-muted-foreground text-sm">
+												Deploy a complete application stack
+											</p>
 										</div>
 									</div>
 								</Card.Content>
 							</Card.Root>
 
 							<!-- Pull Image Card -->
-							<Card.Root class="cursor-pointer hover:border-primary/50 transition-colors" onclick={() => (imageDialogOpen = true)}>
+							<Card.Root
+								class="hover:border-primary/50 cursor-pointer transition-colors"
+								onclick={() => (imageDialogOpen = true)}
+							>
 								<Card.Content class="p-4">
 									<div class="flex items-center space-x-3">
-										<div class="bg-green-500/10 p-2 rounded-lg">
+										<div class="rounded-lg bg-green-500/10 p-2">
 											<Download class="size-5 text-green-500" />
 										</div>
 										<div>
 											<h5 class="font-medium">Pull Image</h5>
-											<p class="text-sm text-muted-foreground">Download a Docker image</p>
+											<p class="text-muted-foreground text-sm">Download a Docker image</p>
 										</div>
 									</div>
 								</Card.Content>
 							</Card.Root>
 
 							<!-- Quick Container Card -->
-							<Card.Root class="cursor-pointer hover:border-primary/50 transition-colors" onclick={() => (containerDialogOpen = true)}>
+							<Card.Root
+								class="hover:border-primary/50 cursor-pointer transition-colors"
+								onclick={() => (containerDialogOpen = true)}
+							>
 								<Card.Content class="p-4">
 									<div class="flex items-center space-x-3">
-										<div class="bg-purple-500/10 p-2 rounded-lg">
+										<div class="rounded-lg bg-purple-500/10 p-2">
 											<Container class="size-5 text-purple-500" />
 										</div>
 										<div>
 											<h5 class="font-medium">Run Container</h5>
-											<p class="text-sm text-muted-foreground">Start a single container</p>
+											<p class="text-muted-foreground text-sm">Start a single container</p>
 										</div>
 									</div>
 								</Card.Content>
@@ -939,9 +1018,9 @@
 								<h5 class="font-medium">Recent Deployments</h5>
 								<div class="space-y-2">
 									{#each deployments.slice(0, 3) as deployment}
-										<div class="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+										<div class="bg-muted/30 flex items-center justify-between rounded-lg p-3">
 											<div class="flex items-center space-x-3">
-												<div class="bg-blue-500/10 p-1.5 rounded">
+												<div class="rounded bg-blue-500/10 p-1.5">
 													{#if deployment.type === 'stack'}
 														<Layers class="size-4 text-blue-500" />
 													{:else if deployment.type === 'image'}
@@ -951,13 +1030,22 @@
 													{/if}
 												</div>
 												<div>
-													<p class="font-medium text-sm">{deployment.name}</p>
-													<p class="text-xs text-muted-foreground">
-														{deployment.type} • {formatDistanceToNow(new Date(deployment.createdAt))} ago
+													<p class="text-sm font-medium">{deployment.name}</p>
+													<p class="text-muted-foreground text-xs">
+														{deployment.type} • {formatDistanceToNow(
+															new Date(deployment.createdAt)
+														)} ago
 													</p>
 												</div>
 											</div>
-											<StatusBadge variant={deployment.status === 'running' ? 'green' : deployment.status === 'failed' ? 'red' : 'amber'} text={deployment.status} />
+											<StatusBadge
+												variant={deployment.status === 'running'
+													? 'green'
+													: deployment.status === 'failed'
+														? 'red'
+														: 'amber'}
+												text={deployment.status}
+											/>
 										</div>
 									{/each}
 								</div>
@@ -968,7 +1056,7 @@
 			</DropdownCard>
 		{/if}
 
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 			<!-- Agent Information -->
 			<Card.Root>
 				<Card.Header>
@@ -990,15 +1078,19 @@
 						</div>
 						<div>
 							<span class="text-muted-foreground">Updated</span>
-							<p class="font-medium">{agent.updatedAt ? new Date(agent.updatedAt).toLocaleDateString() : 'Never'}</p>
+							<p class="font-medium">
+								{agent.updatedAt ? new Date(agent.updatedAt).toLocaleDateString() : 'Never'}
+							</p>
 						</div>
 					</div>
 
 					<div>
 						<span class="text-muted-foreground text-sm">Capabilities</span>
-						<div class="flex flex-wrap gap-1 mt-1">
+						<div class="mt-1 flex flex-wrap gap-1">
 							{#each agent.capabilities as capability}
-								<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+								<span
+									class="inline-flex items-center rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+								>
 									{capability}
 								</span>
 							{:else}
@@ -1008,8 +1100,8 @@
 					</div>
 
 					{#if agent.dockerInfo}
-						<div class="pt-4 border-t">
-							<h4 class="font-medium mb-3">Docker Information</h4>
+						<div class="border-t pt-4">
+							<h4 class="mb-3 font-medium">Docker Information</h4>
 							<div class="grid grid-cols-2 gap-4 text-sm">
 								<div>
 									<span class="text-muted-foreground">Docker Version</span>
@@ -1041,25 +1133,31 @@
 				</Card.Header>
 				<Card.Content>
 					{#if tasks.length > 0}
-						<div class="space-y-3 max-h-96 overflow-y-auto">
+						<div class="max-h-96 space-y-3 overflow-y-auto">
 							{#each tasks.slice(0, 10) as task}
-								<div class="border rounded-lg p-3">
-									<div class="flex items-center justify-between mb-2">
+								<div class="rounded-lg border p-3">
+									<div class="mb-2 flex items-center justify-between">
 										<div class="flex items-center gap-2">
-											<p class="font-medium text-sm">{task.type.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}</p>
-											<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getTaskStatusClasses(task.status)}">
+											<p class="text-sm font-medium">
+												{task.type.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+											</p>
+											<span
+												class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {getTaskStatusClasses(
+													task.status
+												)}"
+											>
 												{task.status}
 											</span>
 										</div>
-										<p class="text-xs text-muted-foreground">
+										<p class="text-muted-foreground text-xs">
 											{formatDistanceToNow(new Date(task.createdAt))} ago
 										</p>
 									</div>
 
 									<!-- Show command details -->
 									{#if task.payload?.command}
-										<div class="text-xs text-muted-foreground mb-2">
-											<code class="bg-muted px-1 rounded">
+										<div class="text-muted-foreground mb-2 text-xs">
+											<code class="bg-muted rounded px-1">
 												{task.payload.command}
 												{#if task.payload.args?.length > 0}
 													{task.payload.args.join(' ')}
@@ -1071,9 +1169,15 @@
 									<!-- Show results for completed tasks -->
 									{#if task.status === 'completed' && task.result}
 										<details class="mt-2">
-											<summary class="cursor-pointer text-xs text-green-600 hover:text-green-500"> View Output </summary>
-											<div class="mt-2 p-2 bg-muted rounded text-xs font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
-												{typeof task.result === 'string' ? task.result : JSON.stringify(task.result, null, 2)}
+											<summary class="cursor-pointer text-xs text-green-600 hover:text-green-500">
+												View Output
+											</summary>
+											<div
+												class="bg-muted mt-2 max-h-32 overflow-y-auto rounded p-2 font-mono text-xs whitespace-pre-wrap"
+											>
+												{typeof task.result === 'string'
+													? task.result
+													: JSON.stringify(task.result, null, 2)}
 											</div>
 										</details>
 									{/if}
@@ -1081,8 +1185,12 @@
 									<!-- Show errors for failed tasks -->
 									{#if task.error}
 										<details class="mt-2">
-											<summary class="cursor-pointer text-xs text-red-600 hover:text-red-500"> View Error </summary>
-											<div class="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs text-red-600 dark:text-red-400 max-h-32 overflow-y-auto">
+											<summary class="cursor-pointer text-xs text-red-600 hover:text-red-500">
+												View Error
+											</summary>
+											<div
+												class="mt-2 max-h-32 overflow-y-auto rounded bg-red-50 p-2 text-xs text-red-600 dark:bg-red-900/20 dark:text-red-400"
+											>
 												{task.error}
 											</div>
 										</details>
@@ -1091,8 +1199,8 @@
 							{/each}
 						</div>
 					{:else}
-						<div class="text-center py-8 text-muted-foreground">
-							<Activity class="size-12 mx-auto mb-4 opacity-50" />
+						<div class="text-muted-foreground py-8 text-center">
+							<Activity class="mx-auto mb-4 size-12 opacity-50" />
 							<p>No tasks executed yet</p>
 						</div>
 					{/if}
@@ -1105,7 +1213,10 @@
 			<Alert.Root variant="destructive">
 				<AlertCircle class="size-4" />
 				<Alert.Title>Agent Offline</Alert.Title>
-				<Alert.Description>This agent is not currently connected. Commands cannot be sent until the agent reconnects.</Alert.Description>
+				<Alert.Description
+					>This agent is not currently connected. Commands cannot be sent until the agent
+					reconnects.</Alert.Description
+				>
 			</Alert.Root>
 		{/if}
 	{/if}
@@ -1123,7 +1234,12 @@
 		<div class="space-y-4">
 			<div>
 				<Label for="command-select">Command</Label>
-				<Select.Root type="single" value={selectedCommand?.value} onValueChange={(v) => (selectedCommand = predefinedCommands.find((cmd) => cmd.value === v))}>
+				<Select.Root
+					type="single"
+					value={selectedCommand?.value}
+					onValueChange={(v) =>
+						(selectedCommand = predefinedCommands.find((cmd) => cmd.value === v))}
+				>
 					<Select.Trigger>
 						<span>{selectedCommand?.label || 'Select a command'}</span>
 					</Select.Trigger>
@@ -1138,25 +1254,37 @@
 			{#if selectedCommand?.value === 'custom'}
 				<div>
 					<Label for="custom-command">Custom Command</Label>
-					<Input id="custom-command" bind:value={customCommand} placeholder="docker ps -a" disabled={taskExecuting} />
+					<Input
+						id="custom-command"
+						bind:value={customCommand}
+						placeholder="docker ps -a"
+						disabled={taskExecuting}
+					/>
 				</div>
 			{/if}
 
 			{#if selectedCommand && selectedCommand.value !== 'agent_upgrade'}
 				<div>
 					<Label for="command-args">Additional Arguments (optional)</Label>
-					<Input id="command-args" bind:value={commandArgs} placeholder="--format table" disabled={taskExecuting} />
+					<Input
+						id="command-args"
+						bind:value={commandArgs}
+						placeholder="--format table"
+						disabled={taskExecuting}
+					/>
 				</div>
 			{/if}
 		</div>
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (commandDialogOpen = false)} disabled={taskExecuting}>Cancel</Button>
+			<Button variant="outline" onclick={() => (commandDialogOpen = false)} disabled={taskExecuting}
+				>Cancel</Button
+			>
 			<Button onclick={sendCommand} disabled={!selectedCommand || taskExecuting}>
 				{#if taskExecuting}
-					<RefreshCw class="size-4 mr-2 animate-spin" />
+					<RefreshCw class="mr-2 size-4 animate-spin" />
 					Sending...
 				{:else}
-					<Play class="size-4 mr-2" />
+					<Play class="mr-2 size-4" />
 					Send Command
 				{/if}
 			</Button>
@@ -1172,7 +1300,11 @@
 			<Dialog.Description>Choose a stack to deploy or create a new one</Dialog.Description>
 		</Dialog.Header>
 
-		<StackDeploymentForm {agentId} onClose={() => (deployDialogOpen = false)} onDeploy={handleStackDeploy} />
+		<StackDeploymentForm
+			{agentId}
+			onClose={() => (deployDialogOpen = false)}
+			onDeploy={handleStackDeploy}
+		/>
 	</Dialog.Content>
 </Dialog.Root>
 
@@ -1196,6 +1328,10 @@
 			<Dialog.Description>Quickly start a container from an image</Dialog.Description>
 		</Dialog.Header>
 
-		<QuickContainerForm {agentId} onClose={() => (containerDialogOpen = false)} onRun={handleContainerRun} />
+		<QuickContainerForm
+			{agentId}
+			onClose={() => (containerDialogOpen = false)}
+			onRun={handleContainerRun}
+		/>
 	</Dialog.Content>
 </Dialog.Root>

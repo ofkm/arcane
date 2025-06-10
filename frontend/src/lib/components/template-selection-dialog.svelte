@@ -98,59 +98,73 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="sm:max-w-[900px] max-h-screen overflow-y-auto">
+	<Dialog.Content class="max-h-screen overflow-y-auto sm:max-w-[900px]">
 		<Dialog.Header>
 			<Dialog.Title class="flex items-center gap-2">
 				<FileText class="size-5" />
 				Choose a Template
 			</Dialog.Title>
-			<Dialog.Description>Select a Docker Compose template to get started quickly, or download remote templates for local use.</Dialog.Description>
+			<Dialog.Description
+				>Select a Docker Compose template to get started quickly, or download remote templates for
+				local use.</Dialog.Description
+			>
 		</Dialog.Header>
 
 		<div class="space-y-6 py-4">
 			{#if templates.length === 0}
-				<div class="text-center py-8 text-muted-foreground">
-					<FileText class="size-12 mx-auto mb-4 opacity-50" />
+				<div class="text-muted-foreground py-8 text-center">
+					<FileText class="mx-auto mb-4 size-12 opacity-50" />
 					<p class="mb-2">No templates available</p>
-					<p class="text-sm">Configure remote registries in <a href="/settings/templates" class="text-primary hover:underline">Template Settings</a> to access community templates</p>
+					<p class="text-sm">
+						Configure remote registries in <a
+							href="/settings/templates"
+							class="text-primary hover:underline">Template Settings</a
+						> to access community templates
+					</p>
 				</div>
 			{:else}
 				<!-- Local Templates -->
 				{#if localTemplates.length > 0}
 					<div>
-						<h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
+						<h3 class="mb-3 flex items-center gap-2 text-lg font-semibold">
 							<FolderOpen class="size-5 text-blue-500" />
 							Local Templates ({localTemplates.length})
 						</h3>
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 							{#each localTemplates as template}
-								<Card class="cursor-pointer hover:bg-muted/50 transition-colors border-2 hover:border-primary/20">
+								<Card
+									class="hover:bg-muted/50 hover:border-primary/20 cursor-pointer border-2 transition-colors"
+								>
 									<div class="p-4">
-										<div class="flex items-start justify-between mb-2">
-											<h4 class="font-semibold truncate pr-2">{template.name}</h4>
-											<div class="flex gap-1 ml-2 flex-shrink-0">
+										<div class="mb-2 flex items-start justify-between">
+											<h4 class="truncate pr-2 font-semibold">{template.name}</h4>
+											<div class="ml-2 flex flex-shrink-0 gap-1">
 												<Badge variant="outline" class="text-xs">
-													<FolderOpen class="size-3 mr-1" />
+													<FolderOpen class="mr-1 size-3" />
 													Local
 												</Badge>
 												{#if template.envContent}
 													<Badge variant="secondary" class="text-xs">
-														<Settings class="size-3 mr-1" />
+														<Settings class="mr-1 size-3" />
 														ENV
 													</Badge>
 												{/if}
 											</div>
 										</div>
-										<p class="text-sm text-muted-foreground mb-3 line-clamp-2">
+										<p class="text-muted-foreground mb-3 line-clamp-2 text-sm">
 											{template.description}
 										</p>
-										<div class="flex justify-between items-center">
-											<div class="text-xs text-muted-foreground">
+										<div class="flex items-center justify-between">
+											<div class="text-muted-foreground text-xs">
 												{template.envContent ? 'Includes environment variables' : 'Ready to use'}
 											</div>
-											<Button size="sm" onclick={() => handleSelect(template)} disabled={loadingStates.get(template.id)}>
+											<Button
+												size="sm"
+												onclick={() => handleSelect(template)}
+												disabled={loadingStates.get(template.id)}
+											>
 												{#if loadingStates.get(template.id)}
-													<Loader2 class="size-3 animate-spin mr-1" />
+													<Loader2 class="mr-1 size-3 animate-spin" />
 													Loading...
 												{:else}
 													Use Template
@@ -167,39 +181,39 @@
 				<!-- Remote Templates -->
 				{#if remoteTemplates.length > 0}
 					<div>
-						<h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
+						<h3 class="mb-3 flex items-center gap-2 text-lg font-semibold">
 							<Globe class="size-5 text-green-500" />
 							Remote Templates ({remoteTemplates.length})
 						</h3>
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 							{#each remoteTemplates as template}
-								<Card class="hover:bg-muted/50 transition-colors border-2 hover:border-primary/20">
+								<Card class="hover:bg-muted/50 hover:border-primary/20 border-2 transition-colors">
 									<div class="p-4">
-										<div class="flex items-start justify-between mb-2">
-											<h4 class="font-semibold truncate pr-2">{template.name}</h4>
-											<div class="flex gap-1 ml-2 flex-shrink-0">
+										<div class="mb-2 flex items-start justify-between">
+											<h4 class="truncate pr-2 font-semibold">{template.name}</h4>
+											<div class="ml-2 flex flex-shrink-0 gap-1">
 												<Badge variant="secondary" class="text-xs">
-													<Globe class="size-3 mr-1" />
+													<Globe class="mr-1 size-3" />
 													{template.metadata?.registry || 'Remote'}
 												</Badge>
 												{#if template.metadata?.envUrl}
 													<Badge variant="secondary" class="text-xs">
-														<Settings class="size-3 mr-1" />
+														<Settings class="mr-1 size-3" />
 														ENV
 													</Badge>
 												{/if}
 											</div>
 										</div>
-										<p class="text-sm text-muted-foreground mb-2 line-clamp-2">
+										<p class="text-muted-foreground mb-2 line-clamp-2 text-sm">
 											{template.description}
 										</p>
 										{#if template.metadata?.author}
-											<p class="text-xs text-muted-foreground mb-3">
+											<p class="text-muted-foreground mb-3 text-xs">
 												by {template.metadata.author}
 											</p>
 										{/if}
-										<div class="flex justify-between items-center gap-2">
-											<div class="text-xs text-muted-foreground flex-1">
+										<div class="flex items-center justify-between gap-2">
+											<div class="text-muted-foreground flex-1 text-xs">
 												{#if template.metadata?.version}
 													<Badge variant="outline" class="text-xs">
 														v{template.metadata.version}
@@ -207,18 +221,27 @@
 												{/if}
 											</div>
 											<div class="flex gap-2">
-												<Button variant="outline" size="sm" onclick={() => handleDownload(template)} disabled={loadingStates.get(`download-${template.id}`)}>
+												<Button
+													variant="outline"
+													size="sm"
+													onclick={() => handleDownload(template)}
+													disabled={loadingStates.get(`download-${template.id}`)}
+												>
 													{#if loadingStates.get(`download-${template.id}`)}
-														<Loader2 class="size-3 animate-spin mr-1" />
+														<Loader2 class="mr-1 size-3 animate-spin" />
 														Downloading...
 													{:else}
-														<Download class="size-3 mr-1" />
+														<Download class="mr-1 size-3" />
 														Download
 													{/if}
 												</Button>
-												<Button size="sm" onclick={() => handleSelect(template)} disabled={loadingStates.get(template.id)}>
+												<Button
+													size="sm"
+													onclick={() => handleSelect(template)}
+													disabled={loadingStates.get(template.id)}
+												>
 													{#if loadingStates.get(template.id)}
-														<Loader2 class="size-3 animate-spin mr-1" />
+														<Loader2 class="mr-1 size-3 animate-spin" />
 														Loading...
 													{:else}
 														Use Now

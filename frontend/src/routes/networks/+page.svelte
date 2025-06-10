@@ -1,7 +1,15 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Plus, AlertCircle, Network, Trash2, Loader2, ScanSearch, Ellipsis } from '@lucide/svelte';
+	import {
+		Plus,
+		AlertCircle,
+		Network,
+		Trash2,
+		Loader2,
+		ScanSearch,
+		Ellipsis
+	} from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import type { PageData } from './$types';
 	import * as Alert from '$lib/components/ui/alert/index.js';
@@ -43,8 +51,12 @@
 
 	const totalNetworks = $derived(networkPageStates.networks.length);
 	// NetworkInfo uses 'Driver' (capital D)
-	const bridgeNetworks = $derived(networkPageStates.networks.filter((n) => n.Driver === 'bridge').length);
-	const overlayNetworks = $derived(networkPageStates.networks.filter((n) => n.Driver === 'overlay').length);
+	const bridgeNetworks = $derived(
+		networkPageStates.networks.filter((n) => n.Driver === 'bridge').length
+	);
+	const overlayNetworks = $derived(
+		networkPageStates.networks.filter((n) => n.Driver === 'overlay').length
+	);
 
 	const networkApi = new NetworkAPIService();
 
@@ -126,7 +138,9 @@
 							successCount++;
 						} else if (result.error) {
 							const error = result.error as any;
-							toast.error(`Failed to delete network "${network.name}": ${error.message || 'Unknown error'}`);
+							toast.error(
+								`Failed to delete network "${network.name}": ${error.message || 'Unknown error'}`
+							);
 							failureCount++;
 						}
 					}
@@ -145,7 +159,12 @@
 	}
 
 	function getNetworkSubnet(network: NetworkInspectInfo): string {
-		if (network.IPAM && network.IPAM.Config && network.IPAM.Config.length > 0 && network.IPAM.Config[0].Subnet) {
+		if (
+			network.IPAM &&
+			network.IPAM.Config &&
+			network.IPAM.Config.length > 0 &&
+			network.IPAM.Config[0].Subnet
+		) {
 			return network.IPAM.Config[0].Subnet;
 		}
 		return 'N/A';
@@ -153,10 +172,10 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Networks</h1>
-			<p class="text-sm text-muted-foreground mt-1">View and Manage Container Networking</p>
+			<p class="text-muted-foreground mt-1 text-sm">View and Manage Container Networking</p>
 		</div>
 	</div>
 
@@ -168,39 +187,39 @@
 		</Alert.Root>
 	{/if}
 
-	<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 		<Card.Root>
-			<Card.Content class="p-4 flex items-center justify-between">
+			<Card.Content class="flex items-center justify-between p-4">
 				<div>
-					<p class="text-sm font-medium text-muted-foreground">Total Networks</p>
+					<p class="text-muted-foreground text-sm font-medium">Total Networks</p>
 					<p class="text-2xl font-bold">{totalNetworks}</p>
 				</div>
-				<div class="bg-primary/10 p-2 rounded-full">
+				<div class="bg-primary/10 rounded-full p-2">
 					<Network class="text-primary size-5" />
 				</div>
 			</Card.Content>
 		</Card.Root>
 
 		<Card.Root>
-			<Card.Content class="p-4 flex items-center justify-between">
+			<Card.Content class="flex items-center justify-between p-4">
 				<div>
-					<p class="text-sm font-medium text-muted-foreground">Bridge Networks</p>
+					<p class="text-muted-foreground text-sm font-medium">Bridge Networks</p>
 					<p class="text-2xl font-bold">{bridgeNetworks}</p>
 				</div>
-				<div class="bg-blue-500/10 p-2 rounded-full">
-					<Network class="text-blue-500 size-5" />
+				<div class="rounded-full bg-blue-500/10 p-2">
+					<Network class="size-5 text-blue-500" />
 				</div>
 			</Card.Content>
 		</Card.Root>
 
 		<Card.Root>
-			<Card.Content class="p-4 flex items-center justify-between">
+			<Card.Content class="flex items-center justify-between p-4">
 				<div>
-					<p class="text-sm font-medium text-muted-foreground">Overlay Networks</p>
+					<p class="text-muted-foreground text-sm font-medium">Overlay Networks</p>
 					<p class="text-2xl font-bold">{overlayNetworks}</p>
 				</div>
-				<div class="bg-purple-500/10 p-2 rounded-full">
-					<Network class="text-purple-500 size-5" />
+				<div class="rounded-full bg-purple-500/10 p-2">
+					<Network class="size-5 text-purple-500" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -214,9 +233,21 @@
 				</div>
 				<div class="flex items-center gap-2">
 					{#if networkPageStates.selectedNetworks.length > 0}
-						<ArcaneButton action="remove" customLabel="Delete Selected ({networkPageStates.selectedNetworks.length})" onClick={() => handleDeleteSelected()} loading={isLoading.remove} loadingLabel="Processing..." disabled={isLoading.remove} />
+						<ArcaneButton
+							action="remove"
+							customLabel="Delete Selected ({networkPageStates.selectedNetworks.length})"
+							onClick={() => handleDeleteSelected()}
+							loading={isLoading.remove}
+							loadingLabel="Processing..."
+							disabled={isLoading.remove}
+						/>
 					{/if}
-					<ArcaneButton action="create" customLabel="Create Network" onClick={() => (networkPageStates.isCreateDialogOpen = true)} disabled={isLoading.create} />
+					<ArcaneButton
+						action="create"
+						customLabel="Create Network"
+						onClick={() => (networkPageStates.isCreateDialogOpen = true)}
+						disabled={isLoading.create}
+					/>
 				</div>
 			</div>
 		</Card.Header>
@@ -249,7 +280,12 @@
 				>
 					{#snippet rows({ item }: { item: NetworkInspectInfo })}
 						{@const isDefaultNetwork = DEFAULT_NETWORK_NAMES.has(item.Name)}
-						<Table.Cell><a class="font-medium hover:underline" href="/networks/{encodeURIComponent(item.Id)}/">{item.Name}</a></Table.Cell>
+						<Table.Cell
+							><a
+								class="font-medium hover:underline"
+								href="/networks/{encodeURIComponent(item.Id)}/">{item.Name}</a
+							></Table.Cell
+						>
 						<Table.Cell>{item.Driver}</Table.Cell>
 						<Table.Cell>{item.Scope}</Table.Cell>
 						<Table.Cell>{getNetworkSubnet(item)}</Table.Cell>
@@ -265,15 +301,22 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item onclick={() => goto(`/networks/${encodeURIComponent(item.Id)}`)} disabled={isAnyLoading}>
+										<DropdownMenu.Item
+											onclick={() => goto(`/networks/${encodeURIComponent(item.Id)}`)}
+											disabled={isAnyLoading}
+										>
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
 										{#if !isDefaultNetwork}
 											<DropdownMenu.Separator />
-											<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleDeleteNetwork(item.Id, item.Name)} disabled={isLoading.remove || isAnyLoading}>
+											<DropdownMenu.Item
+												class="text-red-500 focus:text-red-700!"
+												onclick={() => handleDeleteNetwork(item.Id, item.Name)}
+												disabled={isLoading.remove || isAnyLoading}
+											>
 												{#if isLoading.remove && networkPageStates.selectedNetworks.includes(item.Id)}
-													<Loader2 class="animate-spin size-4" />
+													<Loader2 class="size-4 animate-spin" />
 												{:else}
 													<Trash2 class="size-4" />
 												{/if}
@@ -287,17 +330,28 @@
 					{/snippet}
 				</UniversalTable>
 			{:else if !networkPageStates.error}
-				<div class="flex flex-col items-center justify-center py-12 px-6 text-center">
-					<Network class="text-muted-foreground mb-4 opacity-40 size-12" />
+				<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
+					<Network class="text-muted-foreground mb-4 size-12 opacity-40" />
 					<p class="text-lg font-medium">No networks found</p>
-					<p class="text-sm text-muted-foreground mt-1 max-w-md">Create a new network using the "Create Network" button above or use the Docker CLI</p>
-					<div class="flex gap-3 mt-4">
-						<ArcaneButton action="create" customLabel="Create Network" onClick={() => (networkPageStates.isCreateDialogOpen = true)} size="sm" />
+					<p class="text-muted-foreground mt-1 max-w-md text-sm">
+						Create a new network using the "Create Network" button above or use the Docker CLI
+					</p>
+					<div class="mt-4 flex gap-3">
+						<ArcaneButton
+							action="create"
+							customLabel="Create Network"
+							onClick={() => (networkPageStates.isCreateDialogOpen = true)}
+							size="sm"
+						/>
 					</div>
 				</div>
 			{/if}
 		</Card.Content>
 	</Card.Root>
 
-	<CreateNetworkDialog bind:open={networkPageStates.isCreateDialogOpen} isCreating={isLoading.create} onSubmit={handleCreateNetworkSubmit} />
+	<CreateNetworkDialog
+		bind:open={networkPageStates.isCreateDialogOpen}
+		isCreating={isLoading.create}
+		onSubmit={handleCreateNetworkSubmit}
+	/>
 </div>

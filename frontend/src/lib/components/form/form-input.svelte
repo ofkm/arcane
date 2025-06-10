@@ -59,10 +59,10 @@
 			<p class="mt-1 text-sm text-red-500">{input.error}</p>
 		{/if}
 		{#if helpText}
-			<p class="mt-1 text-xs text-muted-foreground">{helpText}</p>
+			<p class="text-muted-foreground mt-1 text-xs">{helpText}</p>
 		{/if}
 		{#if warningText}
-			<p class="mt-1 text-xs font-bold text-destructive">{warningText}</p>
+			<p class="text-destructive mt-1 text-xs font-bold">{warningText}</p>
 		{/if}
 	</div>
 </div>
