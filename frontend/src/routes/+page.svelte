@@ -679,11 +679,6 @@
 	<section class="border-t pt-4 mt-10">
 		<div class="flex justify-between items-center text-muted-foreground text-sm">
 			<div class="flex items-center">
-				<a href="/settings" class="hover:text-foreground transition-colors" title="Settings">
-					<Settings class="size-4" />
-					<span class="sr-only">Settings</span>
-				</a>
-				<span class="mx-2">•</span>
 				<a href="https://github.com/ofkm/arcane" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors" title="GitHub">
 					<GitHubIcon class="fill-current size-4" />
 					<span class="sr-only">GitHub</span>
