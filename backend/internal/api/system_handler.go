@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"runtime"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -224,10 +226,12 @@ func (h *SystemHandler) TestDockerConnection(c *gin.Context) {
 	})
 }
 
-// PruneAll removes unused Docker resources
 func (h *SystemHandler) PruneAll(c *gin.Context) {
-	var req services.PruneAllRequest
+	fmt.Println("=== PruneAll handler called ===")
+
+	var req dto.PruneSystemDto
 	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("Error binding JSON: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "Invalid request body: " + err.Error(),
@@ -235,8 +239,11 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("Parsed request: %+v\n", req)
+
 	result, err := h.systemService.PruneAll(c.Request.Context(), req)
 	if err != nil {
+		fmt.Printf("SystemService.PruneAll returned error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "Failed to prune resources: " + err.Error(),
@@ -244,6 +251,7 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("Prune completed successfully: %+v\n", result)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Pruning completed",
@@ -251,7 +259,6 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 	})
 }
 
-// StartAllContainers starts all stopped containers
 func (h *SystemHandler) StartAllContainers(c *gin.Context) {
 	result, err := h.systemService.StartAllContainers(c.Request.Context())
 	if err != nil {
@@ -269,7 +276,6 @@ func (h *SystemHandler) StartAllContainers(c *gin.Context) {
 	})
 }
 
-// StartAllStoppedContainers starts only containers in "exited" state
 func (h *SystemHandler) StartAllStoppedContainers(c *gin.Context) {
 	result, err := h.systemService.StartAllStoppedContainers(c.Request.Context())
 	if err != nil {
@@ -287,7 +293,6 @@ func (h *SystemHandler) StartAllStoppedContainers(c *gin.Context) {
 	})
 }
 
-// StopAllContainers stops all running containers
 func (h *SystemHandler) StopAllContainers(c *gin.Context) {
 	result, err := h.systemService.StopAllContainers(c.Request.Context())
 	if err != nil {

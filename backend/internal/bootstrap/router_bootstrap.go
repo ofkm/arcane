@@ -22,6 +22,7 @@ func setupRouter(cfg *config.Config, appServices *api.Services) *gin.Engine {
 	loggingMiddleware := middleware.LoggingMiddleware(
 		"/api/containers/*/stats/stream",
 		"/api/containers/*/logs/stream",
+		"/api/system/stats",
 	)
 	router.Use(loggingMiddleware)
 

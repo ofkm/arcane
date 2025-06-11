@@ -69,6 +69,13 @@ func InitializeApp() (*App, error) {
 		dockerClient.Close()
 	}
 
+	log.Println("Performing initial Docker image synchronization with the database...")
+	if _, err := appServices.Image.ListImages(appCtx); err != nil {
+		log.Printf("⚠️ Warning: Initial Docker image synchronization failed: %v. Image data may be stale.", err)
+	} else {
+		log.Println("Initial Docker image synchronization complete.")
+	}
+
 	appServices.User.CreateDefaultAdmin()
 
 	if cfg.PublicOidcEnabled {
@@ -97,7 +104,7 @@ func (app *App) Start() {
 	go func() {
 		slog.Info("Starting scheduler goroutine")
 		if err := app.Scheduler.Run(app.AppCtx); err != nil {
-			if err != context.Canceled && err.Error() != "context canceled" && err.Error() != "scheduler shutdown" { // gocron might return specific shutdown errors
+			if err != context.Canceled && err.Error() != "context canceled" && err.Error() != "scheduler shutdown" {
 				slog.Error("Job scheduler exited with error", slog.Any("error", err))
 			}
 		}

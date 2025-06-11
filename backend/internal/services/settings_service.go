@@ -23,7 +23,6 @@ func (s *SettingsService) GetSettings(ctx context.Context) (*models.Settings, er
 	var settings models.Settings
 	if err := s.db.WithContext(ctx).First(&settings).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// Create default settings
 			return s.createDefaultSettings(ctx)
 		}
 		return nil, fmt.Errorf("failed to get settings: %w", err)
@@ -50,6 +49,8 @@ func (s *SettingsService) createDefaultSettings(ctx context.Context) (*models.Se
 		"rbacEnabled":      false,
 	}
 
+	defaultPruneMode := "dangling"
+
 	settings := &models.Settings{
 		DockerHost:            "unix:///var/run/docker.sock",
 		StacksDirectory:       "data/stacks",
@@ -57,6 +58,7 @@ func (s *SettingsService) createDefaultSettings(ctx context.Context) (*models.Se
 		AutoUpdateInterval:    300,
 		PollingEnabled:        true,
 		PollingInterval:       5,
+		PruneMode:             &defaultPruneMode,
 		RegistryCredentials:   models.JSON{},
 		TemplateRegistries:    models.JSON{},
 		Auth:                  defaultAuth,
