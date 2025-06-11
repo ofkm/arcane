@@ -1,12 +1,12 @@
 package services
 
 import (
-	"bufio" // Add this import
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
-	"net/http" // Add this import
+	"net/http"
 	"strings"
 	"time"
 
@@ -27,7 +27,10 @@ type ImageService struct {
 }
 
 func NewImageService(db *database.DB, dockerService *DockerClientService) *ImageService {
-	return &ImageService{db: db, dockerService: dockerService}
+	return &ImageService{
+		db:            db,
+		dockerService: dockerService,
+	}
 }
 
 func (s *ImageService) ListImages(ctx context.Context) ([]image.Summary, error) {
@@ -86,8 +89,6 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool) e
 	return nil
 }
 
-// PullImage pulls a Docker image and streams the progress to progressWriter.
-// After a successful pull, it syncs the image list with the database.
 func (s *ImageService) PullImage(ctx context.Context, imageName string, progressWriter io.Writer) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -102,27 +103,23 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	}
 	defer reader.Close()
 
-	// Stream the pull progress line by line
 	scanner := bufio.NewScanner(reader)
 	flusher, implementsFlusher := progressWriter.(http.Flusher)
 
 	for scanner.Scan() {
-		line := scanner.Bytes() // Get the line as bytes
+		line := scanner.Bytes()
 		if _, writeErr := progressWriter.Write(line); writeErr != nil {
 			return fmt.Errorf("error writing pull progress for %s: %w", imageName, writeErr)
 		}
-		// Add a newline to ensure separation if the original line doesn't have one
-		// or if the client expects line-separated JSON objects.
 		if _, writeErr := progressWriter.Write([]byte("\n")); writeErr != nil {
 			return fmt.Errorf("error writing newline for %s: %w", imageName, writeErr)
 		}
 
 		if implementsFlusher {
-			flusher.Flush() // Flush the buffered data to the client
+			flusher.Flush()
 		}
 	}
 	if scanErr := scanner.Err(); scanErr != nil {
-		// If the context was canceled (e.g. client disconnected), scanner.Err() might reflect that.
 		if errors.Is(scanErr, context.Canceled) || strings.Contains(scanErr.Error(), "context canceled") {
 			fmt.Printf("Image pull stream canceled for %s: %v\n", imageName, scanErr)
 			return fmt.Errorf("image pull stream canceled for %s: %w", imageName, scanErr)
@@ -132,19 +129,12 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 
 	fmt.Printf("Image %s pull stream completed, attempting to sync database.\n", imageName)
 
-	// After a successful pull and stream, re-list images and sync to update the database
 	latestImages, listErr := dockerClient.ImageList(ctx, image.ListOptions{})
 	if listErr != nil {
-		// Log this error but don't necessarily fail the whole operation,
-		// as the image pull itself might have succeeded.
 		fmt.Printf("Warning: failed to list images after pull for sync: %v\n", listErr)
-		// Optionally, return this error if DB sync is critical for the "success" of the pull
-		// return fmt.Errorf("failed to list images post-pull: %w", listErr)
 	} else {
 		if syncErr := s.syncImagesToDatabase(ctx, latestImages, dockerClient); syncErr != nil {
 			fmt.Printf("Warning: error during image synchronization after pull: %v\n", syncErr)
-			// Optionally, return this error
-			// return fmt.Errorf("failed to sync database post-pull: %w", syncErr)
 		} else {
 			fmt.Printf("Database synchronized successfully after pulling image %s.\n", imageName)
 		}
@@ -189,7 +179,6 @@ func (s *ImageService) GetImageHistory(ctx context.Context, id string) ([]image.
 }
 
 func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []image.Summary, dockerClient *client.Client) error {
-
 	inUseImageIDs := make(map[string]bool)
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
@@ -201,7 +190,10 @@ func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []
 	}
 
 	var lastErr error
+	currentDockerImageIDs := make([]string, 0, len(dockerImages))
+
 	for _, di := range dockerImages {
+		currentDockerImageIDs = append(currentDockerImageIDs, di.ID)
 		_, isInUse := inUseImageIDs[di.ID]
 
 		imageModel := models.Image{
@@ -247,6 +239,32 @@ func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []
 			lastErr = dbErr
 		}
 	}
+
+	if len(currentDockerImageIDs) > 0 {
+		deleteResult := s.db.WithContext(ctx).Where("id NOT IN ?", currentDockerImageIDs).Delete(&models.Image{})
+		if deleteResult.Error != nil {
+			errMsg := fmt.Sprintf("Error deleting stale images from database: %v", deleteResult.Error)
+			fmt.Println(errMsg)
+			if lastErr == nil {
+				lastErr = deleteResult.Error
+			}
+		} else {
+			fmt.Printf("%d stale image records deleted from database.\n", deleteResult.RowsAffected)
+		}
+	} else {
+		fmt.Println("No images found in Docker daemon, attempting to delete all image records from database.")
+		deleteAllResult := s.db.WithContext(ctx).Delete(&models.Image{}, "1 = 1")
+		if deleteAllResult.Error != nil {
+			errMsg := fmt.Sprintf("Error deleting all image records from database when Docker is empty: %v", deleteAllResult.Error)
+			fmt.Println(errMsg)
+			if lastErr == nil {
+				lastErr = deleteAllResult.Error
+			}
+		} else {
+			fmt.Printf("All (%d) image records deleted from database as Docker reported no images.\n", deleteAllResult.RowsAffected)
+		}
+	}
+
 	return lastErr
 }
 
@@ -364,4 +382,21 @@ func (s *ImageService) GetImagesWithMaturity(ctx context.Context) ([]map[string]
 	}
 
 	return result, nil
+}
+
+func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID string) error {
+	if dockerImageID == "" {
+		return fmt.Errorf("docker image ID cannot be empty")
+	}
+
+	result := s.db.WithContext(ctx).Where("id = ?", dockerImageID).Delete(&models.Image{})
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete image %s from database: %w", dockerImageID, result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+	} else {
+		fmt.Printf("Successfully deleted image %s from database.\n", dockerImageID)
+	}
+	return nil
 }

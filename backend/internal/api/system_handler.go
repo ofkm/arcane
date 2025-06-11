@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"runtime"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -18,11 +20,13 @@ import (
 
 type SystemHandler struct {
 	dockerService *services.DockerClientService
+	systemService *services.SystemService
 }
 
-func NewSystemHandler(dockerService *services.DockerClientService) *SystemHandler {
+func NewSystemHandler(dockerService *services.DockerClientService, systemService *services.SystemService) *SystemHandler {
 	return &SystemHandler{
 		dockerService: dockerService,
+		systemService: systemService,
 	}
 }
 
@@ -219,5 +223,106 @@ func (h *SystemHandler) TestDockerConnection(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Docker connection successful",
+	})
+}
+
+func (h *SystemHandler) PruneAll(c *gin.Context) {
+	slog.Info("System prune operation initiated")
+
+	var req dto.PruneSystemDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("Failed to bind prune request JSON",
+			slog.String("error", err.Error()),
+			slog.String("client_ip", c.ClientIP()))
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	slog.Info("Prune request parsed successfully",
+		slog.Bool("containers", req.Containers),
+		slog.Bool("images", req.Images),
+		slog.Bool("volumes", req.Volumes),
+		slog.Bool("networks", req.Networks),
+		slog.Bool("dangling", req.Dangling))
+
+	result, err := h.systemService.PruneAll(c.Request.Context(), req)
+	if err != nil {
+		slog.Error("System prune operation failed",
+			slog.String("error", err.Error()),
+			slog.String("client_ip", c.ClientIP()))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to prune resources: " + err.Error(),
+		})
+		return
+	}
+
+	slog.Info("System prune operation completed successfully",
+		slog.Int("containers_pruned", len(result.ContainersPruned)),
+		slog.Int("images_deleted", len(result.ImagesDeleted)),
+		slog.Int("volumes_deleted", len(result.VolumesDeleted)),
+		slog.Int("networks_deleted", len(result.NetworksDeleted)),
+		slog.Int64("space_reclaimed", result.SpaceReclaimed),
+		slog.Bool("success", result.Success),
+		slog.Int("error_count", len(result.Errors)))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Pruning completed",
+		"data":    result,
+	})
+}
+
+func (h *SystemHandler) StartAllContainers(c *gin.Context) {
+	result, err := h.systemService.StartAllContainers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to start containers: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Container start operation completed",
+		"data":    result,
+	})
+}
+
+func (h *SystemHandler) StartAllStoppedContainers(c *gin.Context) {
+	result, err := h.systemService.StartAllStoppedContainers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to start stopped containers: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Stopped containers start operation completed",
+		"data":    result,
+	})
+}
+
+func (h *SystemHandler) StopAllContainers(c *gin.Context) {
+	result, err := h.systemService.StopAllContainers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to stop containers: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Container stop operation completed",
+		"data":    result,
 	})
 }
