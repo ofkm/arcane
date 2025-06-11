@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -104,7 +105,7 @@ func (app *App) Start() {
 	go func() {
 		slog.Info("Starting scheduler goroutine")
 		if err := app.Scheduler.Run(app.AppCtx); err != nil {
-			if err != context.Canceled && err.Error() != "context canceled" && err.Error() != "scheduler shutdown" {
+			if !errors.Is(err, context.Canceled) {
 				slog.Error("Job scheduler exited with error", slog.Any("error", err))
 			}
 		}

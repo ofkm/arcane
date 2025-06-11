@@ -1,7 +1,7 @@
 package api
 
 import (
-	"fmt"
+	"log/slog"
 	"net/http"
 	"runtime"
 	"time"
@@ -227,11 +227,13 @@ func (h *SystemHandler) TestDockerConnection(c *gin.Context) {
 }
 
 func (h *SystemHandler) PruneAll(c *gin.Context) {
-	fmt.Println("=== PruneAll handler called ===")
+	slog.Info("System prune operation initiated")
 
 	var req dto.PruneSystemDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Printf("Error binding JSON: %v\n", err)
+		slog.Error("Failed to bind prune request JSON",
+			slog.String("error", err.Error()),
+			slog.String("client_ip", c.ClientIP()))
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "Invalid request body: " + err.Error(),
@@ -239,11 +241,18 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("Parsed request: %+v\n", req)
+	slog.Info("Prune request parsed successfully",
+		slog.Bool("containers", req.Containers),
+		slog.Bool("images", req.Images),
+		slog.Bool("volumes", req.Volumes),
+		slog.Bool("networks", req.Networks),
+		slog.Bool("dangling", req.Dangling))
 
 	result, err := h.systemService.PruneAll(c.Request.Context(), req)
 	if err != nil {
-		fmt.Printf("SystemService.PruneAll returned error: %v\n", err)
+		slog.Error("System prune operation failed",
+			slog.String("error", err.Error()),
+			slog.String("client_ip", c.ClientIP()))
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "Failed to prune resources: " + err.Error(),
@@ -251,7 +260,15 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("Prune completed successfully: %+v\n", result)
+	slog.Info("System prune operation completed successfully",
+		slog.Int("containers_pruned", len(result.ContainersPruned)),
+		slog.Int("images_deleted", len(result.ImagesDeleted)),
+		slog.Int("volumes_deleted", len(result.VolumesDeleted)),
+		slog.Int("networks_deleted", len(result.NetworksDeleted)),
+		slog.Int64("space_reclaimed", result.SpaceReclaimed),
+		slog.Bool("success", result.Success),
+		slog.Int("error_count", len(result.Errors)))
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Pruning completed",
