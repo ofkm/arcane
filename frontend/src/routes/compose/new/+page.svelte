@@ -73,7 +73,7 @@
 				toast.success(`Stack "${name}" created successfully.`);
 				await invalidateAll();
 				// Use the returned stack ID instead of name for navigation
-				goto(`/compose/${data.stack?.id || name}`);
+				goto(`/compose/${data.stack?.name}`);
 			}
 		});
 	}

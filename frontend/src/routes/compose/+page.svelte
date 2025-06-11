@@ -31,26 +31,27 @@
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
 	import { formatFriendlyDate } from '$lib/utils/date.utils';
+	import { autoUpdateAPI } from '$lib/services/api';
 
 	let { data }: { data: PageData } = $props();
 
 	let stacks = $derived(Array.isArray(data.stacks) ? data.stacks : []);
 
 	const isLoading = $state<
-		Record<'start' | 'stop' | 'restart' | 'remove' | 'destroy' | 'pull', boolean>
+		Record<'start' | 'stop' | 'restart' | 'remove' | 'destroy' | 'pull' | 'update', boolean>
 	>({
 		start: false,
 		stop: false,
 		restart: false,
 		remove: false,
 		destroy: false,
-		pull: false
+		pull: false,
+		update: false
 	});
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 
 	const stackApi = new StackAPIService();
 
-	// Simplified derived values - only for managed stacks
 	const totalStacks = $derived(stacks.length);
 	const runningStacks = $derived(stacks.filter((s) => s.status === 'running').length);
 	const stoppedStacks = $derived(stacks.filter((s) => s.status === 'stopped').length);
@@ -126,6 +127,19 @@
 			isLoading[action as keyof typeof isLoading] = false;
 		}
 	}
+
+	async function handleCheckForUpdates() {
+		isLoading.update = true;
+		handleApiResultWithCallbacks({
+			result: await tryCatch(autoUpdateAPI.checkStack()),
+			message: 'Failed to Check Compose Projects for Updates',
+			setLoadingState: (value) => (isLoading.update = value),
+			async onSuccess() {
+				toast.success('Compose Projects Updated Successfully.');
+				await invalidateAll();
+			}
+		});
+	}
 </script>
 
 <div class="space-y-6">
@@ -189,11 +203,21 @@
 					<Card.Title>Compose Projects List</Card.Title>
 				</div>
 				<div class="flex items-center gap-2">
-					<ArcaneButton
-						action="create"
-						customLabel="Create Compose Project"
-						onClick={() => goto(`/compose/new`)}
-					/>
+					{#if stacks.length > 0}
+						<ArcaneButton
+							action="inspect"
+							label="Update Compose Projects"
+							onClick={() => handleCheckForUpdates()}
+							loading={isLoading.update}
+							loadingLabel="Updating..."
+							disabled={isLoading.update}
+						/>
+						<ArcaneButton
+							action="create"
+							customLabel="Create Compose Project"
+							onClick={() => goto(`/compose/new`)}
+						/>
+					{/if}
 				</div>
 			</div>
 		</Card.Header>
@@ -315,7 +339,7 @@
 										<DropdownMenu.Separator />
 
 										<DropdownMenu.Item
-											class="text-red-500 focus:text-red-700!"
+											class="focus:text-red-700! text-red-500"
 											onclick={() => performStackAction('destroy', item.id)}
 											disabled={isLoading.remove || isAnyLoading}
 										>
@@ -335,14 +359,14 @@
 			{:else if !data.error}
 				<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
 					<FileStack class="text-muted-foreground mb-4 size-12 opacity-40" />
-					<p class="text-lg font-medium">No stacks found</p>
+					<p class="text-lg font-medium">No Projects found</p>
 					<p class="text-muted-foreground mt-1 max-w-md text-sm">
-						Create a new stack using the "Create Stack" button above
+						Create a new stack using the "Create Project" button above
 					</p>
 					<div class="mt-4 flex gap-3">
 						<ArcaneButton
 							action="create"
-							customLabel="Create Stack"
+							customLabel="Create Project"
 							onClick={() => goto(`/compose/new`)}
 							size="sm"
 						/>

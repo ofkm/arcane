@@ -39,6 +39,7 @@
 		loadImageMaturityBatch
 	} from '$lib/stores/maturity-store';
 
+
 	let { data }: { data: PageData } = $props();
 	let images = $derived(data.images || []);
 	let error = $state(data.error);
@@ -411,7 +412,7 @@
 						/>
 						<ArcaneButton
 							action="inspect"
-							label="Check Updates"
+							label="Recheck Maturitys"
 							onClick={() => handleTriggerBulkMaturityCheck()}
 							loading={isLoading.checking}
 							loadingLabel="Checking..."

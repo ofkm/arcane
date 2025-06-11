@@ -6,6 +6,7 @@ export type StackActions =
 	| 'import'
 	| 'destroy'
 	| 'pull'
-	| 'migrate';
+	| 'migrate'
+	| 'update';
 export type ContainerActions = 'start' | 'stop' | 'restart' | 'pull' | 'remove';
 export type PruneType = 'containers' | 'images' | 'networks' | 'volumes';

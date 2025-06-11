@@ -17,6 +17,7 @@ import ValidationAPIService from './validation-api-service';
 import AppConfigAPIService from './appconfig-api-service';
 import AgentAPIService from './agent-api-service';
 import AgentStackAPIService from './agent-stack-api-service';
+import AutoUpdateAPIService from './autoupdate-api-service';
 import ConverterAPIService from './converter-api-service';
 import ContainerRegistryAPIService from './container-registry-api-service';
 
@@ -41,6 +42,7 @@ export const agentAPI = new AgentAPIService();
 export const agentStackAPI = new AgentStackAPIService();
 export const converterAPI = new ConverterAPIService();
 export const containerRegistryAPI = new ContainerRegistryAPIService();
+export const autoUpdateAPI = new AutoUpdateAPIService();
 
 interface APIServices {
 	container: ContainerAPIService;
@@ -63,6 +65,7 @@ interface APIServices {
 	agent: AgentAPIService;
 	converter: ConverterAPIService;
 	containerRegistry: ContainerRegistryAPIService;
+	autoUpdate: AutoUpdateAPIService;
 }
 
 const apiServices: APIServices = {
@@ -85,7 +88,8 @@ const apiServices: APIServices = {
 	appConfig: appConfigAPI,
 	agent: agentAPI,
 	converter: converterAPI,
-	containerRegistry: containerRegistryAPI
+	containerRegistry: containerRegistryAPI,
+	autoUpdate: autoUpdateAPI
 };
 
 export default apiServices;

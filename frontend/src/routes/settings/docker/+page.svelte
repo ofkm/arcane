@@ -300,6 +300,19 @@
 							description="How often to check for new images (5-1440 minutes)"
 						/>
 
+						 <!-- Rate Limiting Warning -->
+						{#if pollingIntervalInput.value < 30}
+							<Alert.Root variant="warning">
+								<Zap class="size-4" />
+								<Alert.Title>Rate Limiting Warning</Alert.Title>
+								<Alert.Description>
+									Polling intervals below 30 minutes may trigger rate limits on Docker registries,
+									potentially blocking your account temporarily. Consider using longer intervals for
+									production environments.
+								</Alert.Description>
+							</Alert.Root>
+						{/if}
+
 						<!-- Auto Update Toggle -->
 						<div
 							class="from-background flex items-center justify-between rounded-lg border bg-gradient-to-r to-amber-50/50 p-4"

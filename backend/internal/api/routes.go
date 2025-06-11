@@ -25,6 +25,7 @@ type Services struct {
 	Template          *services.TemplateService
 	ContainerRegistry *services.ContainerRegistryService
 	System            *services.SystemService
+	AutoUpdate        *services.AutoUpdateService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -44,6 +45,7 @@ func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	setupNetworkRoutes(api, services)
 	setupTemplateRoutes(api, services)
 	setupContainerRegistryRoutes(api, services)
+	setupAutoUpdateRoutes(api, services.AutoUpdate)
 }
 
 func setupContainerRegistryRoutes(api *gin.RouterGroup, services *Services) {
@@ -198,6 +200,16 @@ func setupSystemRoutes(api *gin.RouterGroup, dockerService *services.DockerClien
 	system.POST("/containers/start-all", systemHandler.StartAllContainers)
 	system.POST("/containers/start-stopped", systemHandler.StartAllStoppedContainers)
 	system.POST("/containers/stop-all", systemHandler.StopAllContainers)
+}
+
+func setupAutoUpdateRoutes(api *gin.RouterGroup, autoUpdateService *services.AutoUpdateService) {
+	autoUpdate := api.Group("/updates")
+
+	autoUpdateHandler := NewAutoUpdateHandler(autoUpdateService)
+
+	autoUpdate.POST("/check/containers", autoUpdateHandler.CheckContainersForUpdates)
+	autoUpdate.POST("/check/compose", autoUpdateHandler.CheckStacksForUpdates)
+	autoUpdate.GET("/status", autoUpdateHandler.GetUpdateStatus)
 }
 
 func setupContainerRoutes(api *gin.RouterGroup, services *Services) {

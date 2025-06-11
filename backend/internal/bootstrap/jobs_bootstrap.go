@@ -21,5 +21,8 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 	if err := job.RegisterImageMaturityJob(appCtx, scheduler, appServices.Settings, appServices.ImageMaturity, appServices.Image); err != nil {
 		slog.Error("Failed to register image maturity job", slog.Any("error", err))
 	}
-	// Register other jobs here
+
+	if err := job.RegisterAutoUpdateJob(appCtx, scheduler, appServices.AutoUpdate, appServices.Settings); err != nil {
+		slog.Error("Failed to register auto-update job", slog.Any("error", err))
+	}
 }

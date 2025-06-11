@@ -32,6 +32,7 @@
 	import StatCard from '$lib/components/stat-card.svelte';
 	import { parseStatusTime } from '$lib/utils/string.utils';
 	import type { ContainerInfo } from 'dockerode';
+	import { autoUpdateAPI } from '$lib/services/api';
 
 	let { data }: { data: PageData & { containers: ContainerInfo[] } } = $props();
 	let containers = $state(data.containers);
@@ -42,7 +43,8 @@
 		start: false,
 		stop: false,
 		restart: false,
-		remove: false
+		remove: false,
+		checking: false
 	});
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 	const runningContainers = $derived(
@@ -144,6 +146,19 @@
 			toast.error('An Unknown Error Occurred');
 		}
 	}
+
+	async function handleCheckForUpdates() {
+		isLoading.checking = true;
+		handleApiResultWithCallbacks({
+			result: await tryCatch(autoUpdateAPI.checkContainers()),
+			message: 'Failed to Check Containers for Updates',
+			setLoadingState: (value) => (isLoading.checking = value),
+			async onSuccess() {
+				toast.success('Containers Updated Successfully.');
+				await invalidateAll();
+			}
+		});
+	}
 </script>
 
 <div class="space-y-6">
@@ -203,6 +218,14 @@
 						<Card.Title>Container List</Card.Title>
 					</div>
 					<div class="flex items-center gap-2">
+						<ArcaneButton
+							action="inspect"
+							label="Update Containers"
+							onClick={() => handleCheckForUpdates()}
+							loading={isLoading.checking}
+							loadingLabel="Updating..."
+							disabled={isLoading.checking}
+						/>
 						<ArcaneButton action="create" label="Create Container" onClick={openCreateDialog} />
 					</div>
 				</div>
@@ -253,14 +276,10 @@
 						>
 						<Table.Cell>{shortId(item.Id)}</Table.Cell>
 						<Table.Cell>{item.Image}</Table.Cell>
-						<Table.Cell
-							><StatusBadge
-								variant={stateVariant}
-								text={capitalizeFirstLetter(item.State)}
-							/></Table.Cell
-						>
+						<Table.Cell>
+							<StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.State)} />
+						</Table.Cell>
 						<Table.Cell>{item.Status}</Table.Cell>
-						<!-- Still displays the original status text -->
 						<Table.Cell>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
@@ -322,7 +341,7 @@
 										<DropdownMenu.Separator />
 
 										<DropdownMenu.Item
-											class="text-red-500 focus:text-red-700!"
+											class="focus:text-red-700! text-red-500"
 											onclick={() => handleRemoveContainer(item.Id)}
 											disabled={isLoading.remove || isAnyLoading}
 										>
