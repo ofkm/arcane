@@ -29,12 +29,8 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-.arcane/*
-.arcane/stacks/*
-.dev-data/*
-.dev-data/settings/*
 
+#tests data
 tests/test-results/*
 tests/.report/*
-.test-data/*
-data/*
+tests/.auth/*

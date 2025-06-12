@@ -3,14 +3,14 @@ import { defineConfig, devices } from "@playwright/test";
 const authFile = ".auth/login.json"; // Adjusted path
 
 export default defineConfig({
-  testDir: ".", // Adjusted path: current directory
+  testDir: ".",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI
-    ? [["html", { outputFolder: ".report" }], ["github"]] // Adjusted path
-    : [["line"], ["html", { open: "never", outputFolder: ".report" }]], // Adjusted path
+    ? [["html", { outputFolder: ".report" }], ["github"]]
+    : [["line"], ["html", { open: "never", outputFolder: ".report" }]],
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
@@ -26,7 +26,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      "docker-compose -f ../docker-compose.test.yml up --build --abort-on-container-exit", // Path is relative to tests dir, so ../ is correct
+      "docker-compose -f ../docker-compose.test.yml up --build --abort-on-container-exit",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

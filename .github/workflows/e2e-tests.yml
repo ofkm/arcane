@@ -28,43 +28,47 @@ jobs:
       - name: Cache npm dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.npm
-          key: npm-cache-universal
+          path: |
+            ~/.npm
+            tests/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-browsers-universal
+          restore-keys: |
+            playwright-browsers-universal
 
       - name: Create Docker volumes for tests
         run: |
-          docker volume create my-app-data
-          docker volume create cache
+          docker volume create my-app-data || true
+          docker volume create cache || true
 
-      - name: Install dependencies
-        working-directory: frontend
+      - name: Install test dependencies
+        working-directory: tests
         run: npm ci
 
-      - name: Create .env
-        run: echo PUBLIC_SESSION_SECRET=your-secure-random-string-here > .env
-
       - name: Install Playwright browsers
-        working-directory: frontend
+        working-directory: tests
         run: npx playwright install --with-deps
 
       - name: Run Playwright E2E tests
-        working-directory: frontend
-        run: npm run test:e2e
+        working-directory: tests
+        run: npx playright test
 
       - name: List Playwright report directory
         if: always()
-        run: ls -lR tests/.report || echo "No report directory"
+        working-directory: tests
+        run: ls -lR .report || echo "No report directory found in tests/.report"
 
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: frontend/tests/.report
+          path: tests/.report
           include-hidden-files: true
