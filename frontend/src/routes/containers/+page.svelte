@@ -1,15 +1,5 @@
 <script lang="ts">
-	import {
-		ScanSearch,
-		Play,
-		RotateCcw,
-		StopCircle,
-		Trash2,
-		Loader2,
-		Box,
-		RefreshCw,
-		Ellipsis
-	} from '@lucide/svelte';
+	import { ScanSearch, Play, RotateCcw, StopCircle, Trash2, Loader2, Box, RefreshCw, Ellipsis } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import UniversalTable from '$lib/components/universal-table.svelte';
@@ -47,19 +37,13 @@
 		checking: false
 	});
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
-	const runningContainers = $derived(
-		containers?.filter((c: ContainerInfo) => c.State === 'running').length || 0
-	);
-	const stoppedContainers = $derived(
-		containers?.filter((c: ContainerInfo) => c.State === 'exited').length || 0
-	);
+	const runningContainers = $derived(containers?.filter((c: ContainerInfo) => c.State === 'running').length || 0);
+	const stoppedContainers = $derived(containers?.filter((c: ContainerInfo) => c.State === 'exited').length || 0);
 	const totalContainers = $derived(containers?.length || 0);
 
 	function getContainerDisplayName(container: ContainerInfo): string {
 		if (container.Names && container.Names.length > 0) {
-			return container.Names[0].startsWith('/')
-				? container.Names[0].substring(1)
-				: container.Names[0];
+			return container.Names[0].startsWith('/') ? container.Names[0].substring(1) : container.Names[0];
 		}
 		return shortId(container.Id);
 	}
@@ -170,38 +154,16 @@
 	</div>
 
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-		<StatCard
-			title="Total"
-			value={totalContainers}
-			icon={Box}
-			class="border-l-primary border-l-4 transition-shadow hover:shadow-lg"
-		/>
-		<StatCard
-			title="Running"
-			value={runningContainers}
-			icon={Box}
-			iconColor="text-green-500"
-			bgColor="bg-green-500/10"
-			class="border-l-4 border-l-green-500"
-		/>
-		<StatCard
-			title="Stopped"
-			value={stoppedContainers}
-			icon={Box}
-			iconColor="text-amber-500"
-			class="border-l-4 border-l-amber-500"
-		/>
+		<StatCard title="Total" value={totalContainers} icon={Box} class="border-l-primary border-l-4 transition-shadow hover:shadow-lg" />
+		<StatCard title="Running" value={runningContainers} icon={Box} iconColor="text-green-500" bgColor="bg-green-500/10" class="border-l-4 border-l-green-500" />
+		<StatCard title="Stopped" value={stoppedContainers} icon={Box} iconColor="text-amber-500" class="border-l-4 border-l-amber-500" />
 	</div>
 
 	{#if containers?.length === 0}
-		<div
-			class="bg-card flex flex-col items-center justify-center rounded-lg border px-6 py-12 text-center"
-		>
+		<div class="bg-card flex flex-col items-center justify-center rounded-lg border px-6 py-12 text-center">
 			<Box class="text-muted-foreground mb-4 size-12 opacity-40" />
 			<p class="text-lg font-medium">No containers found</p>
-			<p class="text-muted-foreground mt-1 max-w-md text-sm">
-				Create a new container using the "Create Container" button above or use the Docker CLI
-			</p>
+			<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new container using the "Create Container" button above or use the Docker CLI</p>
 			<div class="mt-4 flex gap-3">
 				<Button variant="secondary" onclick={refreshData}>
 					<RefreshCw class="size-4" />
@@ -218,14 +180,7 @@
 						<Card.Title>Container List</Card.Title>
 					</div>
 					<div class="flex items-center gap-2">
-						<ArcaneButton
-							action="inspect"
-							label="Update Containers"
-							onClick={() => handleCheckForUpdates()}
-							loading={isLoading.checking}
-							loadingLabel="Updating..."
-							disabled={isLoading.checking}
-						/>
+						<ArcaneButton action="inspect" label="Update Containers" onClick={() => handleCheckForUpdates()} loading={isLoading.checking} loadingLabel="Updating..." disabled={isLoading.checking} />
 						<ArcaneButton action="create" label="Create Container" onClick={openCreateDialog} />
 					</div>
 				</div>
@@ -263,17 +218,9 @@
 					}}
 					bind:selectedIds
 				>
-					{#snippet rows({
-						item
-					}: {
-						item: ContainerInfo & { displayName: string; statusSortValue: number };
-					})}
+					{#snippet rows({ item }: { item: ContainerInfo & { displayName: string; statusSortValue: number } })}
 						{@const stateVariant = statusVariantMap[item.State.toLowerCase()]}
-						<Table.Cell
-							><a class="font-medium hover:underline" href="/containers/{item.Id}/"
-								>{item.displayName}</a
-							></Table.Cell
-						>
+						<Table.Cell><a class="font-medium hover:underline" href="/containers/{item.Id}/">{item.displayName}</a></Table.Cell>
 						<Table.Cell>{shortId(item.Id)}</Table.Cell>
 						<Table.Cell>{item.Image}</Table.Cell>
 						<Table.Cell>
@@ -292,19 +239,13 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item
-											onclick={() => goto(`/containers/${item.Id}`)}
-											disabled={isAnyLoading}
-										>
+										<DropdownMenu.Item onclick={() => goto(`/containers/${item.Id}`)} disabled={isAnyLoading}>
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
 
 										{#if item.State !== 'running'}
-											<DropdownMenu.Item
-												onclick={() => performContainerAction('start', item.Id)}
-												disabled={isLoading.start || isAnyLoading}
-											>
+											<DropdownMenu.Item onclick={() => performContainerAction('start', item.Id)} disabled={isLoading.start || isAnyLoading}>
 												{#if isLoading.start}
 													<Loader2 class="size-4 animate-spin" />
 												{:else}
@@ -313,10 +254,7 @@
 												Start
 											</DropdownMenu.Item>
 										{:else}
-											<DropdownMenu.Item
-												onclick={() => performContainerAction('restart', item.Id)}
-												disabled={isLoading.restart || isAnyLoading}
-											>
+											<DropdownMenu.Item onclick={() => performContainerAction('restart', item.Id)} disabled={isLoading.restart || isAnyLoading}>
 												{#if isLoading.restart}
 													<Loader2 class="size-4 animate-spin" />
 												{:else}
@@ -325,10 +263,7 @@
 												Restart
 											</DropdownMenu.Item>
 
-											<DropdownMenu.Item
-												onclick={() => performContainerAction('stop', item.Id)}
-												disabled={isLoading.stop || isAnyLoading}
-											>
+											<DropdownMenu.Item onclick={() => performContainerAction('stop', item.Id)} disabled={isLoading.stop || isAnyLoading}>
 												{#if isLoading.stop}
 													<Loader2 class="size-4 animate-spin" />
 												{:else}
@@ -340,11 +275,7 @@
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item
-											class="focus:text-red-700! text-red-500"
-											onclick={() => handleRemoveContainer(item.Id)}
-											disabled={isLoading.remove || isAnyLoading}
-										>
+										<DropdownMenu.Item class="focus:text-red-700! text-red-500" onclick={() => handleRemoveContainer(item.Id)} disabled={isLoading.remove || isAnyLoading}>
 											{#if isLoading.remove}
 												<Loader2 class="size-4 animate-spin" />
 											{:else}
@@ -362,10 +293,5 @@
 		</Card.Root>
 	{/if}
 
-	<CreateContainerDialog
-		bind:open={isCreateDialogOpen}
-		volumes={Array.isArray(data.volumes) ? data.volumes : []}
-		networks={Array.isArray(data.networks) ? data.networks : []}
-		images={Array.isArray(data.images) ? data.images : []}
-	/>
+	<CreateContainerDialog bind:open={isCreateDialogOpen} volumes={Array.isArray(data.volumes) ? data.volumes : []} networks={Array.isArray(data.networks) ? data.networks : []} images={Array.isArray(data.images) ? data.images : []} />
 </div>

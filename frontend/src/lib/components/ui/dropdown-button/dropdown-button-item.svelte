@@ -2,11 +2,7 @@
 	import { cn } from '$lib/utils.js';
 	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 
-	let {
-		ref = $bindable(null),
-		class: className,
-		...restProps
-	}: DropdownMenuPrimitive.ItemProps = $props();
+	let { ref = $bindable(null), class: className, ...restProps }: DropdownMenuPrimitive.ItemProps = $props();
 </script>
 
 <DropdownMenuPrimitive.Item

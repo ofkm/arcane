@@ -66,25 +66,13 @@
 <div class="space-y-4">
 	<div class="space-y-2">
 		<Label for="imageRef">Image Name</Label>
-		<Input
-			id="imageRef"
-			bind:value={imageRef}
-			placeholder="nginx, redis, ubuntu, etc."
-			disabled={pulling}
-			onkeypress={handleKeyPress}
-		/>
+		<Input id="imageRef" bind:value={imageRef} placeholder="nginx, redis, ubuntu, etc." disabled={pulling} onkeypress={handleKeyPress} />
 		<p class="text-muted-foreground text-xs">Enter the image name (e.g., nginx, redis, ubuntu)</p>
 	</div>
 
 	<div class="space-y-2">
 		<Label for="tag">Tag (Optional)</Label>
-		<Input
-			id="tag"
-			bind:value={tag}
-			placeholder="latest"
-			disabled={pulling}
-			onkeypress={handleKeyPress}
-		/>
+		<Input id="tag" bind:value={tag} placeholder="latest" disabled={pulling} onkeypress={handleKeyPress} />
 		<p class="text-muted-foreground text-xs">Specify a tag version (defaults to 'latest')</p>
 	</div>
 

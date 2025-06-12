@@ -23,14 +23,11 @@ abstract class BaseAPIService {
 				(error) => {
 					// Only log errors if not building
 					if (!building) {
-						console.error(
-							`API Error [${error.config?.method?.toUpperCase()} ${error.config?.url}]:`,
-							{
-								status: error.response?.status,
-								data: error.response?.data,
-								message: error.message
-							}
-						);
+						console.error(`API Error [${error.config?.method?.toUpperCase()} ${error.config?.url}]:`, {
+							status: error.response?.status,
+							data: error.response?.data,
+							message: error.message
+						});
 					}
 					return Promise.reject(error);
 				}

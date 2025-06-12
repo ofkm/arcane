@@ -1,40 +1,8 @@
 <script lang="ts">
 	import { Button, type Props as ButtonProps } from '$lib/components/ui/button/index.js';
-	import {
-		Play,
-		StopCircle,
-		RotateCcw,
-		Download,
-		Trash2,
-		Loader2,
-		RefreshCcwDot,
-		ScanSearch,
-		FileText,
-		EditIcon as Edit,
-		Check,
-		X,
-		Save,
-		PlusCircle,
-		type Icon as IconType,
-		LayoutTemplate
-	} from '@lucide/svelte';
+	import { Play, StopCircle, RotateCcw, Download, Trash2, Loader2, RefreshCcwDot, ScanSearch, FileText, EditIcon as Edit, Check, X, Save, PlusCircle, type Icon as IconType, LayoutTemplate } from '@lucide/svelte';
 
-	type Action =
-		| 'start'
-		| 'deploy'
-		| 'stop'
-		| 'restart'
-		| 'remove'
-		| 'pull'
-		| 'redeploy'
-		| 'inspect'
-		| 'logs'
-		| 'edit'
-		| 'confirm'
-		| 'cancel'
-		| 'save'
-		| 'create'
-		| 'template';
+	type Action = 'start' | 'deploy' | 'stop' | 'restart' | 'remove' | 'pull' | 'redeploy' | 'inspect' | 'logs' | 'edit' | 'confirm' | 'cancel' | 'save' | 'create' | 'template';
 
 	interface Props {
 		/** The type of action this button represents. Determines icon, default label, and variant. */
@@ -203,14 +171,7 @@
 	let iconMarginClass = $derived(!isIconOnlyButton ? 'mr-2' : '');
 </script>
 
-<Button
-	variant={config.variant}
-	size={customSize}
-	class={`${extraClass} ${config.customClass || ''}`}
-	disabled={disabled || loading}
-	onclick={onClick}
-	aria-label={isIconOnlyButton ? displayLabel : undefined}
->
+<Button variant={config.variant} size={customSize} class={`${extraClass} ${config.customClass || ''}`} disabled={disabled || loading} onclick={onClick} aria-label={isIconOnlyButton ? displayLabel : undefined}>
 	{#if loading}
 		<Loader2 class="animate-spin {iconMarginClass} size-4" />
 		{#if !isIconOnlyButton}

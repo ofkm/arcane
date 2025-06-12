@@ -38,19 +38,7 @@ const authHandler: Handle = async ({ event, resolve }) => {
 	const { url } = event;
 	const path = url.pathname;
 
-	const publicPaths = [
-		'/auth/login',
-		'/auth/logout',
-		'/img',
-		'/auth/oidc/login',
-		'/auth/oidc/callback',
-		'/api/agents/register',
-		'/api/agents/heartbeat',
-		'/api/health',
-		'/api/version',
-		'/favicon.ico',
-		'/_app'
-	];
+	const publicPaths = ['/auth/login', '/auth/logout', '/img', '/auth/oidc/login', '/auth/oidc/callback', '/api/agents/register', '/api/agents/heartbeat', '/api/health', '/api/version', '/favicon.ico', '/_app'];
 
 	const agentPollingPattern = /^\/api\/agents\/[^\/]+\/tasks$/;
 	const agentResultPattern = /^\/api\/agents\/[^\/]+\/tasks\/[^\/]+\/result$/;

@@ -4,18 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import {
-		ArrowLeft,
-		FileStack,
-		Layers,
-		Settings,
-		Activity,
-		Users,
-		Play,
-		Square,
-		RotateCcw,
-		Loader2
-	} from '@lucide/svelte';
+	import { ArrowLeft, FileStack, Layers, Settings, Activity, Users, Play, Square, RotateCcw, Loader2 } from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
@@ -42,11 +31,7 @@
 		saving: false
 	});
 
-	let hasChanges = $derived(
-		name !== originalName ||
-			composeContent !== originalComposeContent ||
-			envContent !== originalEnvContent
-	);
+	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || envContent !== originalEnvContent);
 
 	let activeSection = $state<string>('overview');
 
@@ -82,9 +67,7 @@
 			await invalidateAll();
 		} catch (error) {
 			console.error('Failed to save stack:', error);
-			toast.error(
-				`Failed to save stack: ${error instanceof Error ? error.message : 'Unknown error'}`
-			);
+			toast.error(`Failed to save stack: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		} finally {
 			isLoading.saving = false;
 		}
@@ -122,15 +105,11 @@
 				throw new Error(errorData.error || `Failed to ${action} stack`);
 			}
 
-			toast.success(
-				`Stack ${action === 'up' ? 'started' : action === 'down' ? 'stopped' : 'restarted'} successfully`
-			);
+			toast.success(`Stack ${action === 'up' ? 'started' : action === 'down' ? 'stopped' : 'restarted'} successfully`);
 			await invalidateAll();
 		} catch (error) {
 			console.error(`Failed to ${action} stack:`, error);
-			toast.error(
-				`Failed to ${action} stack: ${error instanceof Error ? error.message : 'Unknown error'}`
-			);
+			toast.error(`Failed to ${action} stack: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		} finally {
 			isLoading[actionKey] = false;
 		}
@@ -174,22 +153,14 @@
 								{agent.hostname}
 							</span>
 							{#if stack.status}
-								<StatusBadge
-									variant={statusVariantMap[stack.status.toLowerCase()] || 'gray'}
-									text={capitalizeFirstLetter(stack.status)}
-								/>
+								<StatusBadge variant={statusVariantMap[stack.status.toLowerCase()] || 'gray'} text={capitalizeFirstLetter(stack.status)} />
 							{/if}
 						</div>
 					</div>
 
 					<div class="flex items-center gap-2">
 						<!-- Agent Stack Actions -->
-						<Button
-							variant="outline"
-							size="sm"
-							onclick={() => handleStackAction('up')}
-							disabled={Object.values(isLoading).some(Boolean) || stack.status === 'running'}
-						>
+						<Button variant="outline" size="sm" onclick={() => handleStackAction('up')} disabled={Object.values(isLoading).some(Boolean) || stack.status === 'running'}>
 							{#if isLoading.deploying}
 								<Loader2 class="mr-2 size-4 animate-spin" />
 							{:else}
@@ -198,12 +169,7 @@
 							Start
 						</Button>
 
-						<Button
-							variant="outline"
-							size="sm"
-							onclick={() => handleStackAction('restart')}
-							disabled={Object.values(isLoading).some(Boolean)}
-						>
+						<Button variant="outline" size="sm" onclick={() => handleStackAction('restart')} disabled={Object.values(isLoading).some(Boolean)}>
 							{#if isLoading.restarting}
 								<Loader2 class="mr-2 size-4 animate-spin" />
 							{:else}
@@ -212,12 +178,7 @@
 							Restart
 						</Button>
 
-						<Button
-							variant="outline"
-							size="sm"
-							onclick={() => handleStackAction('down')}
-							disabled={Object.values(isLoading).some(Boolean) || stack.status !== 'running'}
-						>
+						<Button variant="outline" size="sm" onclick={() => handleStackAction('down')} disabled={Object.values(isLoading).some(Boolean) || stack.status !== 'running'}>
 							{#if isLoading.stopping}
 								<Loader2 class="mr-2 size-4 animate-spin" />
 							{:else}
@@ -240,9 +201,7 @@
 							<button
 								onclick={() => scrollToSection(section.id)}
 								class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors
-                                    {activeSection === section.id
-									? 'bg-primary/10 text-primary border-primary/20 border'
-									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+                                    {activeSection === section.id ? 'bg-primary/10 text-primary border-primary/20 border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
 							>
 								<IconComponent class="size-4 shrink-0" />
 								<span class="truncate">{section.label}</span>
@@ -325,9 +284,7 @@
 												{@const variant = statusVariantMap[status.toLowerCase()] || 'gray'}
 
 												<!-- Agent Service (not clickable) -->
-												<div
-													class="bg-muted/20 flex items-center justify-between rounded-lg border p-4"
-												>
+												<div class="bg-muted/20 flex items-center justify-between rounded-lg border p-4">
 													<div class="flex items-center gap-3">
 														<div class="bg-muted/50 rounded-full p-2">
 															<Layers class="text-muted-foreground size-4" />
@@ -343,9 +300,7 @@
 										</div>
 									{:else}
 										<div class="py-12 text-center">
-											<div
-												class="bg-muted/50 mx-auto mb-4 flex size-16 items-center justify-center rounded-full"
-											>
+											<div class="bg-muted/50 mx-auto mb-4 flex size-16 items-center justify-center rounded-full">
 												<Layers class="text-muted-foreground size-6" />
 											</div>
 											<div class="text-muted-foreground">No services defined in this stack</div>
@@ -365,15 +320,7 @@
 								</h2>
 								<!-- Save Button -->
 								{#if hasChanges}
-									<ArcaneButton
-										action="save"
-										loading={isLoading.saving}
-										onClick={handleSaveChanges}
-										disabled={!hasChanges}
-										label="Save Changes"
-										loadingLabel="Saving..."
-										class="bg-green-600 text-white hover:bg-green-700"
-									/>
+									<ArcaneButton action="save" loading={isLoading.saving} onClick={handleSaveChanges} disabled={!hasChanges} label="Save Changes" loadingLabel="Saving..." class="bg-green-600 text-white hover:bg-green-700" />
 								{/if}
 							</div>
 
@@ -385,17 +332,8 @@
 								<Card.Content>
 									<div class="max-w-md">
 										<Label for="name" class="mb-2 block">Stack Name</Label>
-										<Input
-											type="text"
-											id="name"
-											name="name"
-											bind:value={name}
-											required
-											disabled={true}
-										/>
-										<p class="text-muted-foreground mt-2 text-sm">
-											Agent stack names cannot be changed from the web interface.
-										</p>
+										<Input type="text" id="name" name="name" bind:value={name} required disabled={true} />
+										<p class="text-muted-foreground mt-2 text-sm">Agent stack names cannot be changed from the web interface.</p>
 									</div>
 								</Card.Content>
 							</Card.Root>
@@ -410,14 +348,10 @@
 										</Card.Header>
 										<Card.Content>
 											<div class="h-[600px] overflow-hidden rounded-lg border">
-												<YamlEditor
-													bind:value={composeContent}
-													readOnly={Object.values(isLoading).some(Boolean)}
-												/>
+												<YamlEditor bind:value={composeContent} readOnly={Object.values(isLoading).some(Boolean)} />
 											</div>
 											<p class="text-muted-foreground mt-2 text-sm">
-												Edit your <span class="font-medium">compose.yaml</span> file directly. Changes
-												will be applied to the remote agent.
+												Edit your <span class="font-medium">compose.yaml</span> file directly. Changes will be applied to the remote agent.
 											</p>
 										</Card.Content>
 									</Card.Root>
@@ -431,15 +365,9 @@
 										</Card.Header>
 										<Card.Content>
 											<div class="h-[600px] overflow-hidden rounded-lg border">
-												<EnvEditor
-													bind:value={envContent}
-													readOnly={Object.values(isLoading).some(Boolean)}
-												/>
+												<EnvEditor bind:value={envContent} readOnly={Object.values(isLoading).some(Boolean)} />
 											</div>
-											<p class="text-muted-foreground mt-2 text-sm">
-												Define environment variables in KEY=value format. Variables will be applied
-												on the remote agent.
-											</p>
+											<p class="text-muted-foreground mt-2 text-sm">Define environment variables in KEY=value format. Variables will be applied on the remote agent.</p>
 										</Card.Content>
 									</Card.Root>
 								</div>
@@ -457,10 +385,7 @@
 					<FileStack class="text-muted-foreground size-10" />
 				</div>
 				<h2 class="mb-3 text-2xl font-medium">Stack Not Found</h2>
-				<p class="text-muted-foreground mb-8 max-w-md text-center">
-					Could not load agent stack data. The stack may not exist on the agent or the agent may be
-					offline.
-				</p>
+				<p class="text-muted-foreground mb-8 max-w-md text-center">Could not load agent stack data. The stack may not exist on the agent or the agent may be offline.</p>
 				<Button variant="outline" href="/compose">
 					<ArrowLeft class="mr-2 size-4" />
 					Back to Stacks

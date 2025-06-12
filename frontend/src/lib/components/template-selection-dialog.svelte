@@ -104,10 +104,7 @@
 				<FileText class="size-5" />
 				Choose a Template
 			</Dialog.Title>
-			<Dialog.Description
-				>Select a Docker Compose template to get started quickly, or download remote templates for
-				local use.</Dialog.Description
-			>
+			<Dialog.Description>Select a Docker Compose template to get started quickly, or download remote templates for local use.</Dialog.Description>
 		</Dialog.Header>
 
 		<div class="space-y-6 py-4">
@@ -116,10 +113,7 @@
 					<FileText class="mx-auto mb-4 size-12 opacity-50" />
 					<p class="mb-2">No templates available</p>
 					<p class="text-sm">
-						Configure remote registries in <a
-							href="/settings/templates"
-							class="text-primary hover:underline">Template Settings</a
-						> to access community templates
+						Configure remote registries in <a href="/settings/templates" class="text-primary hover:underline">Template Settings</a> to access community templates
 					</p>
 				</div>
 			{:else}
@@ -132,9 +126,7 @@
 						</h3>
 						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 							{#each localTemplates as template}
-								<Card
-									class="hover:bg-muted/50 hover:border-primary/20 cursor-pointer border-2 transition-colors"
-								>
+								<Card class="hover:bg-muted/50 hover:border-primary/20 cursor-pointer border-2 transition-colors">
 									<div class="p-4">
 										<div class="mb-2 flex items-start justify-between">
 											<h4 class="truncate pr-2 font-semibold">{template.name}</h4>
@@ -158,11 +150,7 @@
 											<div class="text-muted-foreground text-xs">
 												{template.envContent ? 'Includes environment variables' : 'Ready to use'}
 											</div>
-											<Button
-												size="sm"
-												onclick={() => handleSelect(template)}
-												disabled={loadingStates.get(template.id)}
-											>
+											<Button size="sm" onclick={() => handleSelect(template)} disabled={loadingStates.get(template.id)}>
 												{#if loadingStates.get(template.id)}
 													<Loader2 class="mr-1 size-3 animate-spin" />
 													Loading...
@@ -221,12 +209,7 @@
 												{/if}
 											</div>
 											<div class="flex gap-2">
-												<Button
-													variant="outline"
-													size="sm"
-													onclick={() => handleDownload(template)}
-													disabled={loadingStates.get(`download-${template.id}`)}
-												>
+												<Button variant="outline" size="sm" onclick={() => handleDownload(template)} disabled={loadingStates.get(`download-${template.id}`)}>
 													{#if loadingStates.get(`download-${template.id}`)}
 														<Loader2 class="mr-1 size-3 animate-spin" />
 														Downloading...
@@ -235,11 +218,7 @@
 														Download
 													{/if}
 												</Button>
-												<Button
-													size="sm"
-													onclick={() => handleSelect(template)}
-													disabled={loadingStates.get(template.id)}
-												>
+												<Button size="sm" onclick={() => handleSelect(template)} disabled={loadingStates.get(template.id)}>
 													{#if loadingStates.get(template.id)}
 														<Loader2 class="mr-1 size-3 animate-spin" />
 														Loading...

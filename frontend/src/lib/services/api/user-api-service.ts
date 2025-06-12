@@ -59,9 +59,7 @@ export default class UserAPIService extends BaseAPIService {
 	}
 
 	async getByOidcSubjectId(oidcSubjectId: string): Promise<User> {
-		return this.handleResponse(
-			this.api.get(`/users/by-oidc-subject/${encodeURIComponent(oidcSubjectId)}`)
-		);
+		return this.handleResponse(this.api.get(`/users/by-oidc-subject/${encodeURIComponent(oidcSubjectId)}`));
 	}
 
 	// RBAC methods

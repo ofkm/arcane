@@ -3,23 +3,13 @@
 	import { Select as SelectPrimitive, type WithoutChild } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
 
-	let {
-		ref = $bindable(null),
-		class: className,
-		value,
-		label,
-		children: childrenProp,
-		...restProps
-	}: WithoutChild<SelectPrimitive.ItemProps> = $props();
+	let { ref = $bindable(null), class: className, value, label, children: childrenProp, ...restProps }: WithoutChild<SelectPrimitive.ItemProps> = $props();
 </script>
 
 <SelectPrimitive.Item
 	bind:ref
 	{value}
-	class={cn(
-		'data-highlighted:bg-accent data-highlighted:text-accent-foreground relative flex w-full cursor-default items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50',
-		className
-	)}
+	class={cn('data-highlighted:bg-accent data-highlighted:text-accent-foreground relative flex w-full cursor-default items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50', className)}
 	{...restProps}
 >
 	{#snippet children({ selected, highlighted })}

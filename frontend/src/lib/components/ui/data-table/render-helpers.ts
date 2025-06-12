@@ -19,10 +19,7 @@ import type { Component, ComponentProps, Snippet } from 'svelte';
 export class RenderComponentConfig<TComponent extends Component> {
 	component: TComponent;
 	props: ComponentProps<TComponent> | Record<string, never>;
-	constructor(
-		component: TComponent,
-		props: ComponentProps<TComponent> | Record<string, never> = {}
-	) {
+	constructor(component: TComponent, props: ComponentProps<TComponent> | Record<string, never> = {}) {
 		this.component = component;
 		this.props = props;
 	}

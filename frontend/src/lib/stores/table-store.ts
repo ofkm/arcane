@@ -21,14 +21,10 @@ const DEFAULT_PAGE_SIZES: PageSizes = {
 };
 
 // Single persisted state for all page sizes
-export const tablePageSizes = new PersistedState<PageSizes>(
-	'arcane-table-page-sizes',
-	DEFAULT_PAGE_SIZES,
-	{
-		storage: 'local',
-		syncTabs: true
-	}
-);
+export const tablePageSizes = new PersistedState<PageSizes>('arcane-table-page-sizes', DEFAULT_PAGE_SIZES, {
+	storage: 'local',
+	syncTabs: true
+});
 
 // Backward compatibility helpers
 export const tablePersistence = {

@@ -18,27 +18,13 @@
 			id: 1,
 			name: 'Admin',
 			description: 'Full system access',
-			permissions: [
-				'containers:manage',
-				'stacks:manage',
-				'volumes:manage',
-				'networks:manage',
-				'settings:manage',
-				'users:manage'
-			]
+			permissions: ['containers:manage', 'stacks:manage', 'volumes:manage', 'networks:manage', 'settings:manage', 'users:manage']
 		},
 		{
 			id: 2,
 			name: 'User',
 			description: 'Container and stack operations',
-			permissions: [
-				'containers:view',
-				'containers:manage',
-				'stacks:view',
-				'stacks:manage',
-				'volumes:view',
-				'networks:view'
-			]
+			permissions: ['containers:view', 'containers:manage', 'stacks:view', 'stacks:manage', 'volumes:view', 'networks:view']
 		},
 		{
 			id: 3,
@@ -104,19 +90,10 @@
 	<div class="mb-6">
 		<div class="bg-muted/30 flex items-center justify-between rounded-lg border p-4">
 			<div class="space-y-0.5">
-				<label for="rbacEnabledSwitch" class="text-base font-medium"
-					>Enable Role-Based Access Control</label
-				>
-				<p class="text-muted-foreground text-sm">
-					Control user permissions with customizable roles
-				</p>
+				<label for="rbacEnabledSwitch" class="text-base font-medium">Enable Role-Based Access Control</label>
+				<p class="text-muted-foreground text-sm">Control user permissions with customizable roles</p>
 			</div>
-			<Switch
-				id="rbacEnabledSwitch"
-				name="rbacEnabled"
-				checked={$settingsStore.auth?.rbacEnabled}
-				onCheckedChange={() => {}}
-			/>
+			<Switch id="rbacEnabledSwitch" name="rbacEnabled" checked={$settingsStore.auth?.rbacEnabled} onCheckedChange={() => {}} />
 		</div>
 	</div>
 
@@ -139,20 +116,10 @@
 				<Card.Content>
 					<div class="space-y-2">
 						{#each roles as role (role.id)}
-							<button
-								class="flex w-full items-center justify-between rounded-md border p-3 text-left transition-colors {selectedRole.id ===
-								role.id
-									? 'bg-primary text-primary-foreground border-primary'
-									: 'hover:bg-muted/50'}"
-								onclick={() => (selectedRole = role)}
-							>
+							<button class="flex w-full items-center justify-between rounded-md border p-3 text-left transition-colors {selectedRole.id === role.id ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted/50'}" onclick={() => (selectedRole = role)}>
 								<div>
 									<div class="font-medium">{role.name}</div>
-									<div
-										class="text-xs {selectedRole.id === role.id
-											? 'text-primary-foreground/90'
-											: 'text-muted-foreground'}"
-									>
+									<div class="text-xs {selectedRole.id === role.id ? 'text-primary-foreground/90' : 'text-muted-foreground'}">
 										{role.description}
 									</div>
 								</div>
@@ -189,21 +156,11 @@
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div class="space-y-2">
 								<label for="roleName" class="text-sm font-medium">Role Name</label>
-								<Input
-									id="roleName"
-									name="roleName"
-									value={selectedRole.name}
-									placeholder="Enter role name"
-								/>
+								<Input id="roleName" name="roleName" value={selectedRole.name} placeholder="Enter role name" />
 							</div>
 							<div class="space-y-2">
 								<label for="roleDescription" class="text-sm font-medium">Description</label>
-								<Input
-									id="roleDescription"
-									name="roleDescription"
-									value={selectedRole.description}
-									placeholder="Brief description"
-								/>
+								<Input id="roleDescription" name="roleDescription" value={selectedRole.description} placeholder="Brief description" />
 							</div>
 						</div>
 
@@ -217,11 +174,7 @@
 										<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 											{#each category.permissions as permission (permission)}
 												<label class="flex items-center space-x-2 text-sm">
-													<input
-														type="checkbox"
-														class="text-primary focus:ring-primary rounded border-gray-300"
-														checked={selectedRole.permissions.includes(permission)}
-													/>
+													<input type="checkbox" class="text-primary focus:ring-primary rounded border-gray-300" checked={selectedRole.permissions.includes(permission)} />
 													<span>{permission.split(':')[1]}</span>
 												</label>
 											{/each}

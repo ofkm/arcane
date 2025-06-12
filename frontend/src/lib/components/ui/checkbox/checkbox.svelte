@@ -4,13 +4,7 @@
 	import Minus from '@lucide/svelte/icons/minus';
 	import { cn } from '$lib/utils.js';
 
-	let {
-		ref = $bindable(null),
-		checked = $bindable(false),
-		indeterminate = $bindable(false),
-		class: className,
-		...restProps
-	}: WithoutChildrenOrChild<CheckboxPrimitive.RootProps> = $props();
+	let { ref = $bindable(null), checked = $bindable(false), indeterminate = $bindable(false), class: className, ...restProps }: WithoutChildrenOrChild<CheckboxPrimitive.RootProps> = $props();
 </script>
 
 <CheckboxPrimitive.Root

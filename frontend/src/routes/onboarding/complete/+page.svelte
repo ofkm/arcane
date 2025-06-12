@@ -15,9 +15,7 @@
 
 	<div class="prose dark:prose-invert mx-auto mb-8 max-w-xl">
 		<p>Congratulations! You've successfully completed the initial setup for Arcane.</p>
-		<p>
-			You can now start using the application to manage your Docker containers and compose stacks.
-		</p>
+		<p>You can now start using the application to manage your Docker containers and compose stacks.</p>
 	</div>
 
 	<Button onclick={() => goto('/', { invalidateAll: true })} size="lg">Go to Dashboard</Button>

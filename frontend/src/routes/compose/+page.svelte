@@ -2,18 +2,7 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import {
-		AlertCircle,
-		Layers,
-		FileStack,
-		Loader2,
-		Play,
-		RotateCcw,
-		StopCircle,
-		Trash2,
-		Ellipsis,
-		Pen
-	} from '@lucide/svelte';
+	import { AlertCircle, Layers, FileStack, Loader2, Play, RotateCcw, StopCircle, Trash2, Ellipsis, Pen } from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import * as Table from '$lib/components/ui/table';
@@ -37,9 +26,7 @@
 
 	let stacks = $derived(Array.isArray(data.stacks) ? data.stacks : []);
 
-	const isLoading = $state<
-		Record<'start' | 'stop' | 'restart' | 'remove' | 'destroy' | 'pull' | 'update', boolean>
-	>({
+	const isLoading = $state<Record<'start' | 'stop' | 'restart' | 'remove' | 'destroy' | 'pull' | 'update', boolean>>({
 		start: false,
 		stop: false,
 		restart: false,
@@ -204,19 +191,8 @@
 				</div>
 				<div class="flex items-center gap-2">
 					{#if stacks.length > 0}
-						<ArcaneButton
-							action="inspect"
-							label="Update Compose Projects"
-							onClick={() => handleCheckForUpdates()}
-							loading={isLoading.update}
-							loadingLabel="Updating..."
-							disabled={isLoading.update}
-						/>
-						<ArcaneButton
-							action="create"
-							customLabel="Create Compose Project"
-							onClick={() => goto(`/compose/new`)}
-						/>
+						<ArcaneButton action="inspect" label="Update Compose Projects" onClick={() => handleCheckForUpdates()} loading={isLoading.update} loadingLabel="Updating..." disabled={isLoading.update} />
+						<ArcaneButton action="create" customLabel="Create Compose Project" onClick={() => goto(`/compose/new`)} />
 					{/if}
 				</div>
 			</div>
@@ -250,21 +226,14 @@
 					}}
 				>
 					{#snippet rows({ item })}
-						{@const stateVariant = item.status
-							? statusVariantMap[item.status.toLowerCase()]
-							: 'gray'}
+						{@const stateVariant = item.status ? statusVariantMap[item.status.toLowerCase()] : 'gray'}
 						<Table.Cell>
 							<a class="font-medium hover:underline" href="/compose/{item.id}/">
 								{item.name}
 							</a>
 						</Table.Cell>
 						<Table.Cell>{item.serviceCount || 0}</Table.Cell>
-						<Table.Cell
-							><StatusBadge
-								variant={stateVariant}
-								text={capitalizeFirstLetter(item.status)}
-							/></Table.Cell
-						>
+						<Table.Cell><StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} /></Table.Cell>
 						<Table.Cell>{formatFriendlyDate(item.createdAt || '')}</Table.Cell>
 						<Table.Cell>
 							<DropdownMenu.Root>
@@ -278,19 +247,13 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item
-											onclick={() => goto(`/compose/${item.id}`)}
-											disabled={isAnyLoading}
-										>
+										<DropdownMenu.Item onclick={() => goto(`/compose/${item.id}`)} disabled={isAnyLoading}>
 											<Pen class="size-4" />
 											Edit
 										</DropdownMenu.Item>
 
 										{#if item.status !== 'running'}
-											<DropdownMenu.Item
-												onclick={() => performStackAction('start', item.id)}
-												disabled={isLoading.start || isAnyLoading}
-											>
+											<DropdownMenu.Item onclick={() => performStackAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
 												{#if isLoading.start}
 													<Loader2 class="size-4 animate-spin" />
 												{:else}
@@ -299,10 +262,7 @@
 												Start
 											</DropdownMenu.Item>
 										{:else}
-											<DropdownMenu.Item
-												onclick={() => performStackAction('restart', item.id)}
-												disabled={isLoading.restart || isAnyLoading}
-											>
+											<DropdownMenu.Item onclick={() => performStackAction('restart', item.id)} disabled={isLoading.restart || isAnyLoading}>
 												{#if isLoading.restart}
 													<Loader2 class="size-4 animate-spin" />
 												{:else}
@@ -311,10 +271,7 @@
 												Restart
 											</DropdownMenu.Item>
 
-											<DropdownMenu.Item
-												onclick={() => performStackAction('stop', item.id)}
-												disabled={isLoading.stop || isAnyLoading}
-											>
+											<DropdownMenu.Item onclick={() => performStackAction('stop', item.id)} disabled={isLoading.stop || isAnyLoading}>
 												{#if isLoading.stop}
 													<Loader2 class="size-4 animate-spin" />
 												{:else}
@@ -324,10 +281,7 @@
 											</DropdownMenu.Item>
 										{/if}
 
-										<DropdownMenu.Item
-											onclick={() => performStackAction('pull', item.id)}
-											disabled={isLoading.pull || isAnyLoading}
-										>
+										<DropdownMenu.Item onclick={() => performStackAction('pull', item.id)} disabled={isLoading.pull || isAnyLoading}>
 											{#if isLoading.pull}
 												<Loader2 class="size-4 animate-spin" />
 											{:else}
@@ -338,11 +292,7 @@
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item
-											class="focus:text-red-700! text-red-500"
-											onclick={() => performStackAction('destroy', item.id)}
-											disabled={isLoading.remove || isAnyLoading}
-										>
+										<DropdownMenu.Item class="focus:text-red-700! text-red-500" onclick={() => performStackAction('destroy', item.id)} disabled={isLoading.remove || isAnyLoading}>
 											{#if isLoading.remove}
 												<Loader2 class="size-4 animate-spin" />
 											{:else}
@@ -360,16 +310,9 @@
 				<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
 					<FileStack class="text-muted-foreground mb-4 size-12 opacity-40" />
 					<p class="text-lg font-medium">No Projects found</p>
-					<p class="text-muted-foreground mt-1 max-w-md text-sm">
-						Create a new stack using the "Create Project" button above
-					</p>
+					<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new stack using the "Create Project" button above</p>
 					<div class="mt-4 flex gap-3">
-						<ArcaneButton
-							action="create"
-							customLabel="Create Project"
-							onClick={() => goto(`/compose/new`)}
-							size="sm"
-						/>
+						<ArcaneButton action="create" customLabel="Create Project" onClick={() => goto(`/compose/new`)} size="sm" />
 					</div>
 				</div>
 			{/if}

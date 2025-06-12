@@ -3,17 +3,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { toast } from 'svelte-sonner';
-	import {
-		AlertCircle,
-		HardDrive,
-		Database,
-		Trash2,
-		Loader2,
-		ChevronDown,
-		Ellipsis,
-		ScanSearch,
-		Funnel
-	} from '@lucide/svelte';
+	import { AlertCircle, HardDrive, Database, Trash2, Loader2, ChevronDown, Ellipsis, ScanSearch, Funnel } from '@lucide/svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -39,12 +29,7 @@
 		showUnused: true
 	});
 
-	const filteredVolumes = $derived(
-		volumePageStates.volumes.filter(
-			(vol) =>
-				(volumePageStates.showUsed && vol.inUse) || (volumePageStates.showUnused && !vol.inUse)
-		)
-	);
+	const filteredVolumes = $derived(volumePageStates.volumes.filter((vol) => (volumePageStates.showUsed && vol.inUse) || (volumePageStates.showUnused && !vol.inUse)));
 
 	let isDialogOpen = $state({
 		create: false,
@@ -156,9 +141,7 @@
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Volumes</h1>
-			<p class="text-muted-foreground mt-1 text-sm">
-				Manage persistent data storage for containers
-			</p>
+			<p class="text-muted-foreground mt-1 text-sm">Manage persistent data storage for containers</p>
 		</div>
 		<div class="flex gap-2"></div>
 	</div>
@@ -235,20 +218,9 @@
 						</DropdownMenu.Content>
 					</DropdownMenu.Root>
 					{#if volumePageStates.selectedIds.length > 0}
-						<ArcaneButton
-							action="remove"
-							customLabel="Delete Selected ({volumePageStates.selectedIds.length})"
-							onClick={handleDeleteSelected}
-							loading={isLoading.remove}
-							loadingLabel="Processing..."
-							disabled={isLoading.remove}
-						/>
+						<ArcaneButton action="remove" customLabel="Delete Selected ({volumePageStates.selectedIds.length})" onClick={handleDeleteSelected} loading={isLoading.remove} loadingLabel="Processing..." disabled={isLoading.remove} />
 					{/if}
-					<ArcaneButton
-						action="create"
-						customLabel="Create Volume"
-						onClick={() => (isDialogOpen.create = true)}
-					/>
+					<ArcaneButton action="create" customLabel="Create Volume" onClick={() => (isDialogOpen.create = true)} />
 				</div>
 			</div>
 		</Card.Header>
@@ -283,18 +255,12 @@
 						<Table.Cell>
 							<div class="flex items-center gap-2">
 								<span class="truncate">
-									<a
-										class="font-medium hover:underline"
-										href="/volumes/{encodeURIComponent(item.Name)}/">{item.Name}</a
-									>
+									<a class="font-medium hover:underline" href="/volumes/{encodeURIComponent(item.Name)}/">{item.Name}</a>
 								</span>
 							</div>
 						</Table.Cell>
 						<Table.Cell>
-							<StatusBadge
-								text={item.inUse ? 'In Use' : 'Unused'}
-								variant={item.inUse ? 'green' : 'amber'}
-							/>
+							<StatusBadge text={item.inUse ? 'In Use' : 'Unused'} variant={item.inUse ? 'green' : 'amber'} />
 						</Table.Cell>
 						<Table.Cell>{item.Mountpoint}</Table.Cell>
 						<Table.Cell>{item.Driver}</Table.Cell>
@@ -310,21 +276,14 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item
-											onclick={() => goto(`/volumes/${encodeURIComponent(item.Name)}`)}
-											disabled={isLoading.remove}
-										>
+										<DropdownMenu.Item onclick={() => goto(`/volumes/${encodeURIComponent(item.Name)}`)} disabled={isLoading.remove}>
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
 
 										<DropdownMenu.Separator />
 
-										<DropdownMenu.Item
-											class="text-red-500 focus:text-red-700!"
-											onclick={() => handleRemoveVolumeConfirm(item.Name)}
-											disabled={isLoading.remove || item.inUse}
-										>
+										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveVolumeConfirm(item.Name)} disabled={isLoading.remove || item.inUse}>
 											{#if isLoading.remove && volumePageStates.selectedIds.includes(item.Name)}
 												<Loader2 class="size-4 animate-spin" />
 											{:else}
@@ -342,25 +301,14 @@
 				<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
 					<Database class="text-muted-foreground mb-4 size-12 opacity-40" />
 					<p class="text-lg font-medium">No volumes found</p>
-					<p class="text-muted-foreground mt-1 max-w-md text-sm">
-						Create a new volume using the "Create Volume" button above or use the Docker CLI
-					</p>
+					<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new volume using the "Create Volume" button above or use the Docker CLI</p>
 					<div class="mt-4 flex gap-3">
-						<ArcaneButton
-							action="create"
-							customLabel="Create Volume"
-							onClick={() => (isDialogOpen.create = true)}
-							size="sm"
-						/>
+						<ArcaneButton action="create" customLabel="Create Volume" onClick={() => (isDialogOpen.create = true)} size="sm" />
 					</div>
 				</div>
 			{/if}
 		</Card.Content>
 	</Card.Root>
 
-	<CreateVolumeDialog
-		bind:open={isDialogOpen.create}
-		isCreating={isLoading.creating}
-		onSubmit={(volumeCreateData) => handleCreateVolume(volumeCreateData)}
-	/>
+	<CreateVolumeDialog bind:open={isDialogOpen.create} isCreating={isLoading.creating} onSubmit={(volumeCreateData) => handleCreateVolume(volumeCreateData)} />
 </div>

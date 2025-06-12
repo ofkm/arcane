@@ -10,15 +10,7 @@
 	import type { WithElementRef, WithoutChildren } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
 
-	let {
-		ref = $bindable(null),
-		class: className,
-		form,
-		name,
-		children: childrenProp,
-		...restProps
-	}: WithoutChildren<WithElementRef<HTMLAttributes<HTMLDivElement>>> &
-		FormPrimitive.ElementFieldProps<T, U> = $props();
+	let { ref = $bindable(null), class: className, form, name, children: childrenProp, ...restProps }: WithoutChildren<WithElementRef<HTMLAttributes<HTMLDivElement>>> & FormPrimitive.ElementFieldProps<T, U> = $props();
 </script>
 
 <FormPrimitive.ElementField {form} {name}>

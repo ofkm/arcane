@@ -1,24 +1,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
 
-	type Variant =
-		| 'red'
-		| 'purple'
-		| 'green'
-		| 'blue'
-		| 'gray'
-		| 'amber'
-		| 'pink'
-		| 'indigo'
-		| 'cyan'
-		| 'lime'
-		| 'emerald'
-		| 'teal'
-		| 'sky'
-		| 'violet'
-		| 'fuchsia'
-		| 'rose'
-		| 'orange';
+	type Variant = 'red' | 'purple' | 'green' | 'blue' | 'gray' | 'amber' | 'pink' | 'indigo' | 'cyan' | 'lime' | 'emerald' | 'teal' | 'sky' | 'violet' | 'fuchsia' | 'rose' | 'orange';
 
 	let {
 		text,
@@ -54,13 +37,6 @@
 	};
 </script>
 
-<span
-	class={cn(
-		'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-		variantStyles[typedVariant],
-		className
-	)}
-	{...restProps}
->
+<span class={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', variantStyles[typedVariant], className)} {...restProps}>
 	{text}
 </span>

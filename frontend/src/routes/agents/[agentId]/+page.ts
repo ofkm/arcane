@@ -7,11 +7,7 @@ export const load: PageLoad = async ({ params }) => {
 
 	try {
 		// Load all data in parallel using API services
-		const [agent, tasks, deployments] = await Promise.allSettled([
-			agentAPI.get(agentId),
-			agentAPI.getTasks(agentId),
-			deploymentAPI.getByAgent(agentId)
-		]);
+		const [agent, tasks, deployments] = await Promise.allSettled([agentAPI.get(agentId), agentAPI.getTasks(agentId), deploymentAPI.getByAgent(agentId)]);
 
 		// Handle agent not found
 		if (agent.status === 'rejected' || !agent.value) {

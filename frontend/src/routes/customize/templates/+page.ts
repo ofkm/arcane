@@ -2,10 +2,7 @@ import { templateAPI } from '$lib/services/api';
 
 export const load = async () => {
 	try {
-		const [templates, registries] = await Promise.all([
-			templateAPI.loadAll().catch(() => []),
-			templateAPI.getRegistries().catch(() => [])
-		]);
+		const [templates, registries] = await Promise.all([templateAPI.loadAll().catch(() => []), templateAPI.getRegistries().catch(() => [])]);
 
 		const localTemplateCount = templates.filter((t) => !t.isRemote).length;
 		const remoteTemplateCount = templates.filter((t) => t.isRemote).length;

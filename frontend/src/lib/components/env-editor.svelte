@@ -5,11 +5,7 @@
 	import { StreamLanguage } from '@codemirror/language';
 	import { properties } from '@codemirror/legacy-modes/mode/properties';
 
-	let {
-		value = $bindable(''),
-		placeholder = '# Add environment variables here',
-		readOnly = false
-	} = $props();
+	let { value = $bindable(''), placeholder = '# Add environment variables here', readOnly = false } = $props();
 </script>
 
 {#if browser}

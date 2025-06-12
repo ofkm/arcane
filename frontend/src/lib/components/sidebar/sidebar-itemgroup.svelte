@@ -62,18 +62,12 @@
 							<Collapsible.Trigger>
 								{#snippet child({ props })}
 									{@const Icon = item.icon}
-									<Sidebar.MenuButton
-										{...props}
-										tooltipContent={item.title}
-										isActive={item.isActive}
-									>
+									<Sidebar.MenuButton {...props} tooltipContent={item.title} isActive={item.isActive}>
 										{#if item.icon}
 											<Icon />
 										{/if}
 										<span>{item.title}</span>
-										<ChevronRightIcon
-											class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
-										/>
+										<ChevronRightIcon class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
 									</Sidebar.MenuButton>
 								{/snippet}
 							</Collapsible.Trigger>

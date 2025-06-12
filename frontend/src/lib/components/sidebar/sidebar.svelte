@@ -1,19 +1,5 @@
 <script lang="ts" module>
-	import {
-		FileStack,
-		HardDrive,
-		Home,
-		Network,
-		Container,
-		ImageIcon,
-		SettingsIcon,
-		DatabaseIcon,
-		LayoutTemplate,
-		UserIcon,
-		Shield,
-		ComputerIcon,
-		LockKeyholeIcon
-	} from '@lucide/svelte';
+	import { FileStack, HardDrive, Home, Network, Container, ImageIcon, SettingsIcon, DatabaseIcon, LayoutTemplate, UserIcon, Shield, ComputerIcon, LockKeyholeIcon } from '@lucide/svelte';
 
 	const staticData = {
 		settingsItems: [
@@ -98,11 +84,7 @@
 		<SidebarItemGroup label="Administration" items={staticData.settingsItems} />
 	</Sidebar.Content>
 	<Sidebar.Footer>
-		<SidebarUpdatebanner
-			{isCollapsed}
-			{versionInformation}
-			updateAvailable={versionInformation.updateAvailable}
-		/>
+		<SidebarUpdatebanner {isCollapsed} {versionInformation} updateAvailable={versionInformation.updateAvailable} />
 		{#if user}
 			<SidebarUser {isCollapsed} {user} />
 		{/if}

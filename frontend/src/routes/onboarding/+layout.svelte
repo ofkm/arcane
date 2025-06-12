@@ -30,15 +30,10 @@
 		<div class="mb-8 flex items-center justify-between">
 			{#each steps as step, i (step.id)}
 				<div class="flex flex-col items-center">
-					<div
-						class={`flex size-10 items-center justify-center rounded-full ${i <= currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-					>
+					<div class={`flex size-10 items-center justify-center rounded-full ${i <= currentStep ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
 						<step.icon class="size-5" />
 					</div>
-					<span
-						class={`mt-2 text-sm ${i <= currentStep ? 'text-foreground' : 'text-muted-foreground'}`}
-						>{step.label}</span
-					>
+					<span class={`mt-2 text-sm ${i <= currentStep ? 'text-foreground' : 'text-muted-foreground'}`}>{step.label}</span>
 				</div>
 
 				{#if i < steps.length - 1}

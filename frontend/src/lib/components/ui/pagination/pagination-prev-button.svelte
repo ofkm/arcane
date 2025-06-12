@@ -4,12 +4,7 @@
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { cn } from '$lib/utils.js';
 
-	let {
-		ref = $bindable(null),
-		class: className,
-		children,
-		...restProps
-	}: PaginationPrimitive.PrevButtonProps = $props();
+	let { ref = $bindable(null), class: className, children, ...restProps }: PaginationPrimitive.PrevButtonProps = $props();
 </script>
 
 {#snippet Fallback()}

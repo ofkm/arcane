@@ -25,12 +25,7 @@ export default class TemplateAPIService extends BaseAPIService {
 		};
 	}
 
-	async create(template: {
-		name: string;
-		description: string;
-		content: string;
-		envContent?: string;
-	}): Promise<Template> {
+	async create(template: { name: string; description: string; content: string; envContent?: string }): Promise<Template> {
 		const response = await this.api.post('/templates', template);
 		return response.data.template;
 	}
@@ -67,12 +62,7 @@ export default class TemplateAPIService extends BaseAPIService {
 		return response.data.registries;
 	}
 
-	async addRegistry(registry: {
-		name: string;
-		url: string;
-		description?: string;
-		enabled: boolean;
-	}): Promise<TemplateRegistry> {
+	async addRegistry(registry: { name: string; url: string; description?: string; enabled: boolean }): Promise<TemplateRegistry> {
 		const response = await this.api.post('/templates/registries', registry);
 		return response.data.registry;
 	}
@@ -114,11 +104,7 @@ export default class TemplateAPIService extends BaseAPIService {
 		// This would need to be implemented on backend if needed
 		// For now, get all templates and filter client-side
 		const templates = await this.loadAll();
-		return templates.filter(
-			(template) =>
-				template.name.toLowerCase().includes(query.toLowerCase()) ||
-				template.description.toLowerCase().includes(query.toLowerCase())
-		);
+		return templates.filter((template) => template.name.toLowerCase().includes(query.toLowerCase()) || template.description.toLowerCase().includes(query.toLowerCase()));
 	}
 
 	async getCategories(): Promise<string[]> {
@@ -128,9 +114,7 @@ export default class TemplateAPIService extends BaseAPIService {
 		const categories = new Set<string>();
 		templates.forEach((template) => {
 			if (template.metadata?.tags) {
-				const tags = Array.isArray(template.metadata.tags)
-					? template.metadata.tags
-					: JSON.parse(template.metadata.tags || '[]');
+				const tags = Array.isArray(template.metadata.tags) ? template.metadata.tags : JSON.parse(template.metadata.tags || '[]');
 				tags.forEach((tag: string) => categories.add(tag));
 			}
 		});

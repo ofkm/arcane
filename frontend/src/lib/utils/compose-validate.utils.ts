@@ -10,12 +10,7 @@ export type ValidationMode = 'default' | 'strict' | 'loose';
 /**
  * Validate unknown fields according to Compose spec
  */
-export function validateUnknownFields(
-	data: any,
-	knownFields: string[],
-	context: string,
-	mode: ValidationMode = 'default'
-): string[] {
+export function validateUnknownFields(data: any, knownFields: string[], context: string, mode: ValidationMode = 'default'): string[] {
 	const warnings: string[] = [];
 
 	if (mode === 'loose') return warnings;
@@ -37,16 +32,7 @@ export function validateUnknownFields(
 /**
  * Known top-level fields per Compose spec
  */
-export const KNOWN_TOP_LEVEL_FIELDS = [
-	'version',
-	'name',
-	'services',
-	'networks',
-	'volumes',
-	'configs',
-	'secrets',
-	'include'
-];
+export const KNOWN_TOP_LEVEL_FIELDS = ['version', 'name', 'services', 'networks', 'volumes', 'configs', 'secrets', 'include'];
 
 /**
  * Known service-level fields per Compose spec
@@ -145,18 +131,7 @@ export const KNOWN_SERVICE_FIELDS = [
 /**
  * Known network-level fields per Compose spec
  */
-export const KNOWN_NETWORK_FIELDS = [
-	'driver',
-	'driver_opts',
-	'external',
-	'name',
-	'ipam',
-	'enable_ipv6',
-	'labels',
-	'attachable',
-	'scope',
-	'internal'
-];
+export const KNOWN_NETWORK_FIELDS = ['driver', 'driver_opts', 'external', 'name', 'ipam', 'enable_ipv6', 'labels', 'attachable', 'scope', 'internal'];
 
 /**
  * Known volume-level fields per Compose spec
@@ -166,21 +141,14 @@ export const KNOWN_VOLUME_FIELDS = ['driver', 'driver_opts', 'external', 'name',
 /**
  * Validate container name format and conflicts per Compose spec
  */
-export function validateContainerName(
-	serviceName: string,
-	serviceConfig: any,
-	stackId: string
-): string {
+export function validateContainerName(serviceName: string, serviceConfig: any, stackId: string): string {
 	let containerName = serviceConfig.container_name;
 
 	if (containerName) {
 		// Validate container_name format per spec
 		const containerNameRegex = /^[a-zA-Z0-9][a-zA-Z0-9_.-]+$/;
 		if (!containerNameRegex.test(containerName)) {
-			throw new Error(
-				`Invalid container_name "${containerName}" for service "${serviceName}". ` +
-					`Must match pattern [a-zA-Z0-9][a-zA-Z0-9_.-]+`
-			);
+			throw new Error(`Invalid container_name "${containerName}" for service "${serviceName}". ` + `Must match pattern [a-zA-Z0-9][a-zA-Z0-9_.-]+`);
 		}
 
 		// Check for scaling conflicts - service with container_name cannot be scaled
@@ -198,20 +166,14 @@ export function validateContainerName(
 /**
  * Validate external resource configuration per Compose spec
  */
-export function validateExternalResource(
-	name: string,
-	config: any,
-	type: 'network' | 'volume'
-): void {
+export function validateExternalResource(name: string, config: any, type: 'network' | 'volume'): void {
 	if (config.external === true) {
 		// External resources should not have other configuration attributes
 		const allowedFields = ['name', 'external'];
 		const otherFields = Object.keys(config).filter((key) => !allowedFields.includes(key));
 
 		if (otherFields.length > 0) {
-			throw new Error(
-				`External ${type} "${name}" cannot have additional attributes: ${otherFields.join(', ')}`
-			);
+			throw new Error(`External ${type} "${name}" cannot have additional attributes: ${otherFields.join(', ')}`);
 		}
 	}
 }
@@ -219,10 +181,7 @@ export function validateExternalResource(
 /**
  * Enhanced environment file loading with new format support
  */
-export async function loadEnvFiles(
-	envFiles: string | string[] | Array<{ path: string; required?: boolean; format?: string }>,
-	stackDir: string
-): Promise<Record<string, string>> {
+export async function loadEnvFiles(envFiles: string | string[] | Array<{ path: string; required?: boolean; format?: string }>, stackDir: string): Promise<Record<string, string>> {
 	const envVars: Record<string, string> = {};
 	const files = Array.isArray(envFiles) ? envFiles : [envFiles];
 
@@ -307,10 +266,7 @@ function parseEnvContent(content: string): Record<string, string> {
 		let value = trimmed.substring(equalIndex + 1);
 
 		// Remove quotes if present
-		if (
-			(value.startsWith('"') && value.endsWith('"')) ||
-			(value.startsWith("'") && value.endsWith("'"))
-		) {
+		if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
 			value = value.slice(1, -1);
 		}
 
@@ -330,10 +286,7 @@ export function validateServiceAttributes(serviceName: string, serviceConfig: an
 	if (serviceConfig.pull_policy) {
 		const validPullPolicies = ['always', 'never', 'missing', 'build'];
 		if (!validPullPolicies.includes(serviceConfig.pull_policy)) {
-			warnings.push(
-				`Service "${serviceName}" has invalid pull_policy "${serviceConfig.pull_policy}". ` +
-					`Valid values: ${validPullPolicies.join(', ')}`
-			);
+			warnings.push(`Service "${serviceName}" has invalid pull_policy "${serviceConfig.pull_policy}". ` + `Valid values: ${validPullPolicies.join(', ')}`);
 		}
 	}
 
@@ -341,18 +294,13 @@ export function validateServiceAttributes(serviceName: string, serviceConfig: an
 	if (serviceConfig.platform) {
 		const platformRegex = /^[a-z0-9]+\/[a-z0-9]+$/;
 		if (!platformRegex.test(serviceConfig.platform)) {
-			warnings.push(
-				`Service "${serviceName}" has invalid platform format "${serviceConfig.platform}". ` +
-					`Expected format: os/arch (e.g., linux/amd64)`
-			);
+			warnings.push(`Service "${serviceName}" has invalid platform format "${serviceConfig.platform}". ` + `Expected format: os/arch (e.g., linux/amd64)`);
 		}
 	}
 
 	// Validate init attribute
 	if (serviceConfig.init !== undefined && typeof serviceConfig.init !== 'boolean') {
-		warnings.push(
-			`Service "${serviceName}" init attribute must be a boolean, got: ${typeof serviceConfig.init}`
-		);
+		warnings.push(`Service "${serviceName}" init attribute must be a boolean, got: ${typeof serviceConfig.init}`);
 	}
 
 	return warnings;
@@ -361,10 +309,7 @@ export function validateServiceAttributes(serviceName: string, serviceConfig: an
 /**
  * Enhanced validation for compose structure with unknown field checking
  */
-export function validateComposeStructureEnhanced(
-	composeData: any,
-	mode: ValidationMode = 'default'
-): { valid: boolean; errors: string[]; warnings: string[] } {
+export function validateComposeStructureEnhanced(composeData: any, mode: ValidationMode = 'default'): { valid: boolean; errors: string[]; warnings: string[] } {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -386,14 +331,7 @@ export function validateComposeStructureEnhanced(
 		for (const [serviceName, serviceConfig] of Object.entries(composeData.services)) {
 			// Validate unknown fields in service
 			try {
-				warnings.push(
-					...validateUnknownFields(
-						serviceConfig,
-						KNOWN_SERVICE_FIELDS,
-						`service "${serviceName}"`,
-						mode
-					)
-				);
+				warnings.push(...validateUnknownFields(serviceConfig, KNOWN_SERVICE_FIELDS, `service "${serviceName}"`, mode));
 			} catch (error) {
 				errors.push(error instanceof Error ? error.message : String(error));
 				continue;
@@ -410,14 +348,7 @@ export function validateComposeStructureEnhanced(
 			if (!networkConfig) continue;
 
 			try {
-				warnings.push(
-					...validateUnknownFields(
-						networkConfig,
-						KNOWN_NETWORK_FIELDS,
-						`network "${networkName}"`,
-						mode
-					)
-				);
+				warnings.push(...validateUnknownFields(networkConfig, KNOWN_NETWORK_FIELDS, `network "${networkName}"`, mode));
 
 				// Validate external networks
 				validateExternalResource(networkName, networkConfig, 'network');
@@ -433,14 +364,7 @@ export function validateComposeStructureEnhanced(
 			if (!volumeConfig) continue;
 
 			try {
-				warnings.push(
-					...validateUnknownFields(
-						volumeConfig,
-						KNOWN_VOLUME_FIELDS,
-						`volume "${volumeName}"`,
-						mode
-					)
-				);
+				warnings.push(...validateUnknownFields(volumeConfig, KNOWN_VOLUME_FIELDS, `volume "${volumeName}"`, mode));
 
 				// Validate external volumes
 				validateExternalResource(volumeName, volumeConfig, 'volume');
@@ -460,10 +384,7 @@ export function validateComposeStructureEnhanced(
 /**
  * Validate compose content with enhanced field checking
  */
-function validateComposeContentEnhanced(
-	content: string,
-	mode: ValidationMode = 'default'
-): { valid: boolean; errors: string[]; warnings: string[] } {
+function validateComposeContentEnhanced(content: string, mode: ValidationMode = 'default'): { valid: boolean; errors: string[]; warnings: string[] } {
 	try {
 		// Remove the require and use the imported yamlLoad directly
 		const parsed = yamlLoad(content);
@@ -471,9 +392,7 @@ function validateComposeContentEnhanced(
 	} catch (parseError) {
 		return {
 			valid: false,
-			errors: [
-				`YAML parsing error: ${parseError instanceof Error ? parseError.message : String(parseError)}`
-			],
+			errors: [`YAML parsing error: ${parseError instanceof Error ? parseError.message : String(parseError)}`],
 			warnings: []
 		};
 	}
@@ -519,11 +438,7 @@ export function enhanceContainerConfig(containerConfig: any, serviceConfig: any)
 /**
  * Validate all compose configuration with comprehensive checks
  */
-export async function validateComposeConfiguration(
-	composeContent: string,
-	envContent: string = '',
-	mode: ValidationMode = 'default'
-): Promise<{ valid: boolean; errors: string[]; warnings: string[] }> {
+export async function validateComposeConfiguration(composeContent: string, envContent: string = '', mode: ValidationMode = 'default'): Promise<{ valid: boolean; errors: string[]; warnings: string[] }> {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 

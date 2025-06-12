@@ -27,9 +27,7 @@
 	let pullProgress = $state(0);
 	let pullStatusText = $state('');
 	let pullError = $state('');
-	let layerProgress = $state<Record<string, { current: number; total: number; status: string }>>(
-		{}
-	);
+	let layerProgress = $state<Record<string, { current: number; total: number; status: string }>>({});
 
 	export function onClose() {
 		if (isPulling) {
@@ -59,11 +57,7 @@
 				totalCurrentBytes += layer.current;
 				totalExpectedBytes += layer.total;
 				activeLayers++;
-			} else if (
-				layer.status &&
-				(layer.status.toLowerCase().includes('pull complete') ||
-					layer.status.toLowerCase().includes('already exists'))
-			) {
+			} else if (layer.status && (layer.status.toLowerCase().includes('pull complete') || layer.status.toLowerCase().includes('already exists'))) {
 			}
 		}
 
@@ -72,12 +66,7 @@
 		} else if (activeLayers > 0 && totalCurrentBytes > 0) {
 			pullProgress = 5;
 		} else if (Object.keys(layerProgress).length > 0 && activeLayers === 0) {
-			const allDone = Object.values(layerProgress).every(
-				(l) =>
-					l.status &&
-					(l.status.toLowerCase().includes('pull complete') ||
-						l.status.toLowerCase().includes('already exists'))
-			);
+			const allDone = Object.values(layerProgress).every((l) => l.status && (l.status.toLowerCase().includes('pull complete') || l.status.toLowerCase().includes('already exists')));
 			if (allDone) pullProgress = 100;
 		}
 	}
@@ -115,13 +104,8 @@
 			});
 
 			if (!response.ok || !response.body) {
-				const errorData = await response
-					.json()
-					.catch(() => ({ error: 'Failed to pull image. Server returned an error.' }));
-				const errorMessage =
-					typeof errorData.error === 'string'
-						? errorData.error
-						: errorData.message || `HTTP error ${response.status}`;
+				const errorData = await response.json().catch(() => ({ error: 'Failed to pull image. Server returned an error.' }));
+				const errorMessage = typeof errorData.error === 'string' ? errorData.error : errorData.message || `HTTP error ${response.status}`;
 				throw new Error(errorMessage);
 			}
 
@@ -147,10 +131,7 @@
 
 						if (data.error) {
 							console.error('Error in stream:', data.error);
-							pullError =
-								typeof data.error === 'string'
-									? data.error
-									: data.error.message || 'An error occurred during pull.';
+							pullError = typeof data.error === 'string' ? data.error : data.error.message || 'An error occurred during pull.';
 							pullStatusText = `Error: ${pullError}`;
 							continue;
 						}
@@ -175,13 +156,7 @@
 
 			calculateOverallProgress();
 			if (!pullError && pullProgress < 100) {
-				const allLayersCompleteOrExisting = Object.values(layerProgress).every(
-					(l) =>
-						l.status &&
-						(l.status.toLowerCase().includes('complete') ||
-							l.status.toLowerCase().includes('already exists') ||
-							l.status.toLowerCase().includes('downloaded newer image'))
-				);
+				const allLayersCompleteOrExisting = Object.values(layerProgress).every((l) => l.status && (l.status.toLowerCase().includes('complete') || l.status.toLowerCase().includes('already exists') || l.status.toLowerCase().includes('downloaded newer image')));
 				if (allLayersCompleteOrExisting && Object.keys(layerProgress).length > 0) {
 					pullProgress = 100;
 				}
@@ -231,13 +206,7 @@
 				<Label for="image-ref">Image</Label>
 				<div class="flex items-center gap-2">
 					<div class="flex-1">
-						<Input
-							id="image-ref"
-							bind:value={imageRef}
-							placeholder="e.g., nginx or myregistry.com/ubuntu"
-							required
-							disabled={isPulling}
-						/>
+						<Input id="image-ref" bind:value={imageRef} placeholder="e.g., nginx or myregistry.com/ubuntu" required disabled={isPulling} />
 					</div>
 					<div class="flex items-center">
 						<span class="text-muted-foreground text-lg font-medium">:</span>
@@ -256,30 +225,21 @@
 							<span>{Math.round(pullProgress)}%</span>
 						</div>
 						<div class="bg-secondary h-2 w-full overflow-hidden rounded-full">
-							<div
-								class="bg-primary h-full transition-all duration-150 ease-linear"
-								style="width: {pullProgress}%"
-							></div>
+							<div class="bg-primary h-full transition-all duration-150 ease-linear" style="width: {pullProgress}%"></div>
 						</div>
 					{:else if pullStatusText && !pullError}
 						<p class="mt-1 text-xs text-green-600">{pullStatusText}</p>
 					{/if}
 					{#if !isPulling && pullError}{/if}
 					{#if isPulling}
-						<p class="text-muted-foreground mt-1 text-xs">
-							This may take a while depending on the image size and your internet connection.
-						</p>
+						<p class="text-muted-foreground mt-1 text-xs">This may take a while depending on the image size and your internet connection.</p>
 					{/if}
 				</div>
 			{/if}
 
 			<Dialog.Footer>
 				<Button variant="outline" onclick={onClose} disabled={isPulling}>Cancel</Button>
-				<Button
-					type="submit"
-					disabled={isPulling || !imageRef.trim()}
-					class="relative min-w-[100px]"
-				>
+				<Button type="submit" disabled={isPulling || !imageRef.trim()} class="relative min-w-[100px]">
 					{#if isPulling}
 						<div class="absolute inset-0 flex items-center justify-center">
 							<Loader2 class="size-4 animate-spin" />

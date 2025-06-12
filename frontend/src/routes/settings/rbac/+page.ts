@@ -3,11 +3,7 @@ import { settingsAPI, userAPI } from '$lib/services/api';
 
 export const load: PageLoad = async () => {
 	try {
-		const [settings, users, roles] = await Promise.all([
-			settingsAPI.getSettings(),
-			userAPI.list().catch(() => []),
-			userAPI.getRoles().catch(() => [])
-		]);
+		const [settings, users, roles] = await Promise.all([settingsAPI.getSettings(), userAPI.list().catch(() => []), userAPI.getRoles().catch(() => [])]);
 
 		return {
 			settings,

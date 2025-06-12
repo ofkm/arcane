@@ -97,13 +97,7 @@ export default class DeploymentAPIService extends BaseAPIService {
 			return this.handleResponse(this.api.get(`/deployments/by-task/${taskId}`));
 		} catch (error: unknown) {
 			// Return null if not found instead of throwing
-			if (
-				typeof error === 'object' &&
-				error !== null &&
-				'response' in error &&
-				typeof (error as any).response === 'object' &&
-				(error as any).response?.status === 404
-			) {
+			if (typeof error === 'object' && error !== null && 'response' in error && typeof (error as any).response === 'object' && (error as any).response?.status === 404) {
 				return null;
 			}
 			throw error;

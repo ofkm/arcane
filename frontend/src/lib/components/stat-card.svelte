@@ -13,15 +13,7 @@
 		class?: string;
 	}
 
-	let {
-		title,
-		value,
-		icon: Icon,
-		iconColor = 'text-primary',
-		bgColor = 'bg-primary/10',
-		subtitle,
-		class: className
-	}: Props = $props();
+	let { title, value, icon: Icon, iconColor = 'text-primary', bgColor = 'bg-primary/10', subtitle, class: className }: Props = $props();
 </script>
 
 <Card.Root class={cn('', className)}>

@@ -43,10 +43,7 @@ export class NotFoundError extends ServiceError {
 export class ValidationError extends ServiceError {
 	public readonly details?: Record<string, string> | string;
 
-	constructor(
-		message: string = 'Input validation failed',
-		details?: Record<string, string> | string
-	) {
+	constructor(message: string = 'Input validation failed', details?: Record<string, string> | string) {
 		super(message, ApiErrorCode.VALIDATION_ERROR, 400);
 		this.name = 'ValidationError';
 		this.details = details;
@@ -59,10 +56,7 @@ export class DockerApiError extends ServiceError {
 	public readonly dockerStatusCode?: number;
 
 	constructor(message: string, dockerStatusCode?: number) {
-		const status =
-			dockerStatusCode && dockerStatusCode >= 400 && dockerStatusCode < 500
-				? dockerStatusCode
-				: 503;
+		const status = dockerStatusCode && dockerStatusCode >= 400 && dockerStatusCode < 500 ? dockerStatusCode : 503;
 		super(message, ApiErrorCode.DOCKER_API_ERROR, status);
 		this.name = 'DockerApiError';
 		this.dockerStatusCode = dockerStatusCode;

@@ -46,24 +46,11 @@
 				{#each $confirmDialogStore.checkboxes as checkbox (checkbox.id)}
 					<div class="flex items-center space-x-2">
 						{#if checkboxStates[checkbox.id] !== undefined}
-							<Checkbox
-								id={checkbox.id}
-								bind:checked={checkboxStates[checkbox.id]}
-								aria-labelledby={`${checkbox.id}-label`}
-							/>
+							<Checkbox id={checkbox.id} bind:checked={checkboxStates[checkbox.id]} aria-labelledby={`${checkbox.id}-label`} />
 						{:else}
-							<Checkbox
-								id={checkbox.id}
-								checked={false}
-								onchange={(e) => (checkboxStates[checkbox.id] = true)}
-								aria-labelledby={`${checkbox.id}-label`}
-							/>
+							<Checkbox id={checkbox.id} checked={false} onchange={(e) => (checkboxStates[checkbox.id] = true)} aria-labelledby={`${checkbox.id}-label`} />
 						{/if}
-						<Label
-							id={`${checkbox.id}-label`}
-							for={checkbox.id}
-							class="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-						>
+						<Label id={`${checkbox.id}-label`} for={checkbox.id} class="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
 							{checkbox.label}
 						</Label>
 					</div>
@@ -73,16 +60,8 @@
 
 		<Dialog.Footer class="mt-6">
 			<div class="flex justify-end gap-2">
-				<Button
-					class="arcane-button-cancel"
-					variant="outline"
-					onclick={() => ($confirmDialogStore.open = false)}>Cancel</Button
-				>
-				<Button
-					class="arcane-button-create"
-					variant={$confirmDialogStore.confirm.destructive ? 'destructive' : 'default'}
-					onclick={handleConfirm}
-				>
+				<Button class="arcane-button-cancel" variant="outline" onclick={() => ($confirmDialogStore.open = false)}>Cancel</Button>
+				<Button class="arcane-button-create" variant={$confirmDialogStore.confirm.destructive ? 'destructive' : 'default'} onclick={handleConfirm}>
 					{$confirmDialogStore.confirm.label}
 				</Button>
 			</div>

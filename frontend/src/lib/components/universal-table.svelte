@@ -1,12 +1,5 @@
 <script lang="ts" generics="TData extends Record<string, any>">
-	import {
-		getCoreRowModel,
-		getPaginationRowModel,
-		getSortedRowModel,
-		getFilteredRowModel,
-		type SortingState,
-		type ColumnFiltersState
-	} from '@tanstack/table-core';
+	import { getCoreRowModel, getPaginationRowModel, getSortedRowModel, getFilteredRowModel, type SortingState, type ColumnFiltersState } from '@tanstack/table-core';
 	import { createSvelteTable, FlexRender } from '$lib/components/ui/data-table/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import * as Pagination from '$lib/components/ui/pagination/index.js';
@@ -70,24 +63,11 @@
 	} = $props();
 
 	// Destructure with proper defaults
-	const {
-		sorting: enableSorting = true,
-		filtering: enableFiltering = true,
-		selection: enableSelection = true
-	}: TableFeatures = features;
+	const { sorting: enableSorting = true, filtering: enableFiltering = true, selection: enableSelection = true }: TableFeatures = features;
 
-	const {
-		pageSize: initialPageSize = 10,
-		pageSizeOptions = [10, 20, 50, 100],
-		itemsPerPageLabel = 'Items per page'
-	}: TablePagination = pagination;
+	const { pageSize: initialPageSize = 10, pageSizeOptions = [10, 20, 50, 100], itemsPerPageLabel = 'Items per page' }: TablePagination = pagination;
 
-	const {
-		filterPlaceholder = 'Search...',
-		noResultsMessage = 'No results found',
-		isDashboardTable = false,
-		class: className = ''
-	}: TableDisplay = display;
+	const { filterPlaceholder = 'Search...', noResultsMessage = 'No results found', isDashboardTable = false, class: className = '' }: TableDisplay = display;
 
 	const { defaultSort }: TableSort = sort;
 
@@ -202,19 +182,13 @@
 	});
 
 	// Memoized computations
-	const validPageSizeOptions = $derived(
-		pageSizeOptions.filter((size) => size > 0).sort((a, b) => a - b)
-	);
+	const validPageSizeOptions = $derived(pageSizeOptions.filter((size) => size > 0).sort((a, b) => a - b));
 
-	const shouldShowPagination = $derived(
-		!isDashboardTable && (table.getPageCount() > 1 || validPageSizeOptions.length > 1)
-	);
+	const shouldShowPagination = $derived(!isDashboardTable && (table.getPageCount() > 1 || validPageSizeOptions.length > 1));
 
 	const shouldShowFiltering = $derived(enableFiltering && !isDashboardTable);
 
-	const allRowsSelected = $derived(
-		table.getIsAllPageRowsSelected() && table.getRowModel().rows.length > 0
-	);
+	const allRowsSelected = $derived(table.getIsAllPageRowsSelected() && table.getRowModel().rows.length > 0);
 
 	const filteredRowCount = $derived(table.getFilteredRowModel().rows.length);
 
@@ -256,12 +230,7 @@
 	<!-- Search Filter -->
 	{#if shouldShowFiltering}
 		<div class="flex items-center">
-			<Input
-				placeholder={filterPlaceholder}
-				value={globalFilter}
-				oninput={(e) => handleFilterChange(e.currentTarget.value)}
-				class="max-w-sm"
-			/>
+			<Input placeholder={filterPlaceholder} value={globalFilter} oninput={(e) => handleFilterChange(e.currentTarget.value)} class="max-w-sm" />
 		</div>
 	{/if}
 
@@ -273,41 +242,21 @@
 					<Table.Row>
 						{#if enableSelection}
 							<Table.Head class="size-12">
-								<Checkbox
-									checked={allRowsSelected}
-									onCheckedChange={handleSelectAllChange}
-									aria-label="Select all rows"
-								/>
+								<Checkbox checked={allRowsSelected} onCheckedChange={handleSelectAllChange} aria-label="Select all rows" />
 							</Table.Head>
 						{/if}
 						{#each headerGroup.headers as header (header.id)}
 							<Table.Head>
 								{#if !header.isPlaceholder}
 									{#if header.column.getCanSort()}
-										<Button
-											variant="ghost"
-											class="flex items-center p-0 hover:bg-transparent"
-											onclick={() => handleSortChange(header)}
-											aria-label="Sort by {header.column.columnDef.header}"
-										>
-											<FlexRender
-												content={header.column.columnDef.header}
-												context={header.getContext()}
-											/>
+										<Button variant="ghost" class="flex items-center p-0 hover:bg-transparent" onclick={() => handleSortChange(header)} aria-label="Sort by {header.column.columnDef.header}">
+											<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
 											{#if header.column.getIsSorted()}
-												<ChevronDown
-													class={cn(
-														'ml-2 size-4 transition-transform',
-														header.column.getIsSorted() === 'asc' && 'rotate-180'
-													)}
-												/>
+												<ChevronDown class={cn('ml-2 size-4 transition-transform', header.column.getIsSorted() === 'asc' && 'rotate-180')} />
 											{/if}
 										</Button>
 									{:else}
-										<FlexRender
-											content={header.column.columnDef.header}
-											context={header.getContext()}
-										/>
+										<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
 									{/if}
 								{/if}
 							</Table.Head>
@@ -322,12 +271,7 @@
 						<Table.Row data-state={row.getIsSelected() ? 'selected' : undefined}>
 							{#if enableSelection}
 								<Table.Cell class="size-12">
-									<Checkbox
-										checked={row.getIsSelected()}
-										disabled={isDisabled}
-										onCheckedChange={(checked) => handleRowSelectionChange(row, !!checked)}
-										aria-label="Select row"
-									/>
+									<Checkbox checked={row.getIsSelected()} disabled={isDisabled} onCheckedChange={(checked) => handleRowSelectionChange(row, !!checked)} aria-label="Select row" />
 								</Table.Cell>
 							{/if}
 
@@ -344,10 +288,7 @@
 					{/each}
 				{:else}
 					<Table.Row>
-						<Table.Cell
-							colspan={enableSelection ? columns.length + 1 : columns.length}
-							class="size-24 text-center"
-						>
+						<Table.Cell colspan={enableSelection ? columns.length + 1 : columns.length} class="size-24 text-center">
 							{noResultsMessage}
 						</Table.Cell>
 					</Table.Row>
@@ -362,11 +303,7 @@
 			{#if validPageSizeOptions.length > 1}
 				<div class="flex items-center gap-4">
 					<span class="text-sm whitespace-nowrap">{itemsPerPageLabel}</span>
-					<Select.Root
-						type="single"
-						value={pageSize.toString()}
-						onValueChange={handlePageSizeChange}
-					>
+					<Select.Root type="single" value={pageSize.toString()} onValueChange={handlePageSizeChange}>
 						<Select.Trigger class="h-8 w-[70px]" aria-label="Items per page">
 							<span>{pageSize}</span>
 						</Select.Trigger>

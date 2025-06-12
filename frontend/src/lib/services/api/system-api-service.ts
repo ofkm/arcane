@@ -2,14 +2,7 @@ import type { PruneType } from '$lib/types/actions.type';
 import BaseAPIService from './api-service';
 
 export default class SystemAPIService extends BaseAPIService {
-	async pruneAll(options: {
-		containers?: boolean;
-		images?: boolean;
-		volumes?: boolean;
-		networks?: boolean;
-		dangling?: boolean;
-		until?: string;
-	}) {
+	async pruneAll(options: { containers?: boolean; images?: boolean; volumes?: boolean; networks?: boolean; dangling?: boolean; until?: string }) {
 		return this.handleResponse(this.api.post('/system/prune', options));
 	}
 

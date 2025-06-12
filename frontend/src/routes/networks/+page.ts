@@ -15,8 +15,7 @@ export const load: PageLoad = async (): Promise<NetworkPageData> => {
 		};
 	} catch (err: unknown) {
 		console.error('Failed to load networks:', err);
-		const message =
-			err instanceof Error ? err.message : 'Failed to connect to Docker or list networks.';
+		const message = err instanceof Error ? err.message : 'Failed to connect to Docker or list networks.';
 		return {
 			networks: [],
 			error: message

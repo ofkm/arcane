@@ -81,9 +81,7 @@ export default class AgentStackAPIService extends BaseAPIService {
 	 * Remove/delete a stack
 	 */
 	async remove(stackId: string, removeVolumes = false): Promise<void> {
-		return this.handleResponse(
-			this.api.delete(`/agent-stacks/${stackId}?removeVolumes=${removeVolumes}`)
-		);
+		return this.handleResponse(this.api.delete(`/agent-stacks/${stackId}?removeVolumes=${removeVolumes}`));
 	}
 
 	/**
@@ -160,20 +158,14 @@ export default class AgentStackAPIService extends BaseAPIService {
 	/**
 	 * Get service logs
 	 */
-	async getServiceLogs(
-		stackId: string,
-		serviceName: string,
-		options?: StackLogsOptions
-	): Promise<string> {
+	async getServiceLogs(stackId: string, serviceName: string, options?: StackLogsOptions): Promise<string> {
 		const params = new URLSearchParams();
 		if (options?.tail) params.append('tail', options.tail.toString());
 		if (options?.since) params.append('since', options.since);
 		if (options?.follow) params.append('follow', options.follow.toString());
 
 		const query = params.toString() ? `?${params.toString()}` : '';
-		return this.handleResponse(
-			this.api.get(`/agent-stacks/${stackId}/services/${serviceName}/logs${query}`)
-		);
+		return this.handleResponse(this.api.get(`/agent-stacks/${stackId}/services/${serviceName}/logs${query}`));
 	}
 
 	/**

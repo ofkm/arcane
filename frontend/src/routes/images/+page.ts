@@ -10,10 +10,7 @@ type ImageData = {
 
 export const load = async (): Promise<ImageData> => {
 	try {
-		const [images, settings] = await Promise.all([
-			imageAPI.list() as Promise<EnhancedImageInfo[]>,
-			settingsAPI.getSettings()
-		]);
+		const [images, settings] = await Promise.all([imageAPI.list() as Promise<EnhancedImageInfo[]>, settingsAPI.getSettings()]);
 
 		const enhancedImages = await Promise.all(
 			images.map(async (image): Promise<EnhancedImageInfo> => {

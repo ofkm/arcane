@@ -47,15 +47,8 @@ export function parseComposeFile(content: string): {
 							errors.push(`Service "${serviceName}" depends on non-existent service "${dep}"`);
 						}
 						// Validate condition values per spec
-						if (
-							config.condition &&
-							!['service_started', 'service_healthy', 'service_completed_successfully'].includes(
-								config.condition
-							)
-						) {
-							errors.push(
-								`Service "${serviceName}" has invalid dependency condition "${config.condition}"`
-							);
+						if (config.condition && !['service_started', 'service_healthy', 'service_completed_successfully'].includes(config.condition)) {
+							errors.push(`Service "${serviceName}" has invalid dependency condition "${config.condition}"`);
 						}
 					}
 				}
@@ -65,11 +58,7 @@ export function parseComposeFile(content: string): {
 		// Validate networks
 		if (parsed.networks) {
 			for (const [networkName, network] of Object.entries(parsed.networks)) {
-				if (
-					network &&
-					network.driver &&
-					!['bridge', 'host', 'overlay', 'macvlan', 'none', 'null'].includes(network.driver)
-				) {
+				if (network && network.driver && !['bridge', 'host', 'overlay', 'macvlan', 'none', 'null'].includes(network.driver)) {
 					warnings.push(`Network "${networkName}" uses uncommon driver "${network.driver}"`);
 				}
 			}
@@ -81,9 +70,7 @@ export function parseComposeFile(content: string): {
 			warnings
 		};
 	} catch (parseError) {
-		errors.push(
-			`YAML parsing error: ${parseError instanceof Error ? parseError.message : String(parseError)}`
-		);
+		errors.push(`YAML parsing error: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
 		return { data: null, errors, warnings };
 	}
 }

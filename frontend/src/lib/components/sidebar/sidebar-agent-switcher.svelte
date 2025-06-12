@@ -27,9 +27,7 @@
 		isLocal: true
 	};
 
-	const allAgents: ExtendedAgent[] = $derived(
-		hasLocalDocker ? [localDockerAgent, ...agents] : agents
-	);
+	const allAgents: ExtendedAgent[] = $derived(hasLocalDocker ? [localDockerAgent, ...agents] : agents);
 	let activeAgent = $derived(allAgents[0]);
 </script>
 
@@ -38,14 +36,8 @@
 		<DropdownMenu.Root>
 			<DropdownMenu.Trigger>
 				{#snippet child({ props })}
-					<Sidebar.MenuButton
-						{...props}
-						size="lg"
-						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-					>
-						<div
-							class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg"
-						>
+					<Sidebar.MenuButton {...props} size="lg" class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+						<div class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
 							{#if activeAgent?.isLocal}
 								<ServerIcon class="size-4" />
 							{:else}
@@ -64,15 +56,8 @@
 					</Sidebar.MenuButton>
 				{/snippet}
 			</DropdownMenu.Trigger>
-			<DropdownMenu.Content
-				class="w-(--bits-dropdown-menu-anchor-width) min-w-56 rounded-lg"
-				align="start"
-				side={sidebar.isMobile ? 'bottom' : 'right'}
-				sideOffset={4}
-			>
-				<DropdownMenu.Label class="text-muted-foreground text-xs"
-					>Docker Instances</DropdownMenu.Label
-				>
+			<DropdownMenu.Content class="w-(--bits-dropdown-menu-anchor-width) min-w-56 rounded-lg" align="start" side={sidebar.isMobile ? 'bottom' : 'right'} sideOffset={4}>
+				<DropdownMenu.Label class="text-muted-foreground text-xs">Docker Instances</DropdownMenu.Label>
 				{#each allAgents as agent, index (agent.id)}
 					<DropdownMenu.Item onSelect={() => (activeAgent = agent)} class="gap-2 p-2">
 						<div class="flex size-6 items-center justify-center rounded-md border">

@@ -1,11 +1,7 @@
 <script lang="ts" module>
 	import { cn, type WithElementRef } from '$lib/utils.js';
 	import type { HTMLButtonAttributes } from 'svelte/elements';
-	import {
-		buttonVariants,
-		type ButtonVariant,
-		type ButtonSize
-	} from '$lib/components/ui/button/button.svelte';
+	import { buttonVariants, type ButtonVariant, type ButtonSize } from '$lib/components/ui/button/button.svelte';
 
 	export type DropdownButtonTriggerProps = WithElementRef<HTMLButtonAttributes> & {
 		variant?: ButtonVariant;
@@ -17,32 +13,10 @@
 <script lang="ts">
 	import { ChevronDown } from '@lucide/svelte';
 
-	let {
-		class: className,
-		variant = 'default',
-		size = 'default',
-		ref = $bindable(null),
-		type = 'button',
-		disabled,
-		builders = [],
-		children,
-		...restProps
-	}: DropdownButtonTriggerProps = $props();
+	let { class: className, variant = 'default', size = 'default', ref = $bindable(null), type = 'button', disabled, builders = [], children, ...restProps }: DropdownButtonTriggerProps = $props();
 </script>
 
-<button
-	bind:this={ref}
-	use:builders[0]
-	data-slot="dropdown-button-trigger"
-	class={cn(
-		buttonVariants({ variant, size }),
-		'border-l-background/20 rounded-l-none border-l px-2',
-		className
-	)}
-	{type}
-	{disabled}
-	{...restProps}
->
+<button bind:this={ref} use:builders[0] data-slot="dropdown-button-trigger" class={cn(buttonVariants({ variant, size }), 'border-l-background/20 rounded-l-none border-l px-2', className)} {type} {disabled} {...restProps}>
 	{#if children}
 		{@render children()}
 	{:else}

@@ -6,12 +6,7 @@
 </script>
 
 <script lang="ts">
-	let {
-		class: className,
-		ref = $bindable(null),
-		children,
-		...restProps
-	}: DropdownButtonProps = $props();
+	let { class: className, ref = $bindable(null), children, ...restProps }: DropdownButtonProps = $props();
 </script>
 
 <div bind:this={ref} data-slot="dropdown-button" class={cn('flex', className)} {...restProps}>

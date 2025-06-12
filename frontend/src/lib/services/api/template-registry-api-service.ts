@@ -22,9 +22,7 @@ export default class TemplateRegistryAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.get(`/template-registries/${id}`));
 	}
 
-	async create(
-		registry: Omit<TemplateRegistry, 'id' | 'createdAt' | 'updatedAt'>
-	): Promise<TemplateRegistry> {
+	async create(registry: Omit<TemplateRegistry, 'id' | 'createdAt' | 'updatedAt'>): Promise<TemplateRegistry> {
 		return this.handleResponse(this.api.post('/template-registries', registry));
 	}
 

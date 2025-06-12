@@ -18,8 +18,7 @@
 		} catch (e: unknown) {
 			const err = e as { mark?: { position: number }; message: string };
 			const start = err.mark?.position || 0;
-			const end =
-				err.mark?.position !== undefined ? Math.max(start + 1, err.mark.position + 1) : start + 1;
+			const end = err.mark?.position !== undefined ? Math.max(start + 1, err.mark.position + 1) : start + 1;
 			diagnostics.push({
 				from: start,
 				to: end,

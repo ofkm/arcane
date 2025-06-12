@@ -14,12 +14,6 @@
 	} = $props();
 </script>
 
-<div
-	role="heading"
-	aria-level={level}
-	bind:this={ref}
-	class={cn('mb-1 leading-none font-medium tracking-tight', className)}
-	{...restProps}
->
+<div role="heading" aria-level={level} bind:this={ref} class={cn('mb-1 leading-none font-medium tracking-tight', className)} {...restProps}>
 	{@render children?.()}
 </div>

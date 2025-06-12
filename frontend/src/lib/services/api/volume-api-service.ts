@@ -18,12 +18,7 @@ export default class VolumeAPIService extends BaseAPIService {
 		return response.data.inUse;
 	}
 
-	async create(volumeConfig: {
-		name?: string;
-		driver?: string;
-		driverOpts?: Record<string, string>;
-		labels?: Record<string, string>;
-	}) {
+	async create(volumeConfig: { name?: string; driver?: string; driverOpts?: Record<string, string>; labels?: Record<string, string> }) {
 		return this.handleResponse(this.api.post('/volumes', volumeConfig));
 	}
 

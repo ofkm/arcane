@@ -24,15 +24,8 @@
 		<Separator.Root class="mb-3 opacity-30" />
 
 		{#if !isCollapsed}
-			<div
-				class="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-3 transition-all hover:scale-[1.02] hover:from-blue-500/15 hover:to-blue-600/10 hover:shadow-md"
-			>
-				<a
-					href={versionInformation?.releaseUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					class="group flex items-center justify-between text-blue-600 transition-colors duration-200 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-				>
+			<div class="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-3 transition-all hover:scale-[1.02] hover:from-blue-500/15 hover:to-blue-600/10 hover:shadow-md">
+				<a href={versionInformation?.releaseUrl} target="_blank" rel="noopener noreferrer" class="group flex items-center justify-between text-blue-600 transition-colors duration-200 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
 					<div class="flex flex-col gap-1">
 						<span class="text-sm font-semibold">Update available</span>
 						<span class="text-xs text-blue-500/80">v{versionInformation?.newestVersion}</span>
@@ -45,26 +38,14 @@
 				<Tooltip.Root>
 					<Tooltip.Trigger>
 						{#snippet child({ props })}
-							<div
-								class="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 transition-all hover:scale-[1.02] hover:from-blue-500/15 hover:to-blue-600/10 hover:shadow-md"
-								{...props}
-							>
-								<a
-									href={versionInformation?.releaseUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="flex h-full w-full items-center justify-center text-blue-600 transition-all duration-200 hover:scale-110 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-								>
+							<div class="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 transition-all hover:scale-[1.02] hover:from-blue-500/15 hover:to-blue-600/10 hover:shadow-md" {...props}>
+								<a href={versionInformation?.releaseUrl} target="_blank" rel="noopener noreferrer" class="flex h-full w-full items-center justify-center text-blue-600 transition-all duration-200 hover:scale-110 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
 									<ExternalLink size={14} />
 								</a>
 							</div>
 						{/snippet}
 					</Tooltip.Trigger>
-					<Tooltip.Content
-						side="right"
-						align="center"
-						hidden={sidebar.state !== 'collapsed' || sidebar.isMobile}
-					>
+					<Tooltip.Content side="right" align="center" hidden={sidebar.state !== 'collapsed' || sidebar.isMobile}>
 						Update available: v{versionInformation?.newestVersion}
 					</Tooltip.Content>
 				</Tooltip.Root>

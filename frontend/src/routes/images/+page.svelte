@@ -3,17 +3,7 @@
 	import type { EnhancedImageInfo } from '$lib/types/docker';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import {
-		Download,
-		AlertCircle,
-		HardDrive,
-		Trash2,
-		Loader2,
-		ChevronDown,
-		Ellipsis,
-		ScanSearch,
-		Funnel
-	} from '@lucide/svelte';
+	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, Ellipsis, ScanSearch, Funnel } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -31,12 +21,7 @@
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
 	import MaturityItem from '$lib/components/maturity-item.svelte';
-	import {
-		maturityStore,
-		triggerBulkMaturityCheck,
-		enhanceImagesWithMaturity,
-		loadImageMaturityBatch
-	} from '$lib/stores/maturity-store';
+	import { maturityStore, triggerBulkMaturityCheck, enhanceImagesWithMaturity, loadImageMaturityBatch } from '$lib/stores/maturity-store';
 
 	let { data }: { data: PageData } = $props();
 	let images = $derived(data.images || []);
@@ -68,11 +53,7 @@
 
 	const enhancedImages = $derived(enhanceImagesWithMaturity(images, $maturityStore.maturityData));
 
-	const filteredImages = $derived(
-		enhancedImages.filter(
-			(img) => (imageFilters.showUsed && img.InUse) || (imageFilters.showUnused && !img.InUse)
-		) as EnhancedImageInfo[]
-	);
+	const filteredImages = $derived(enhancedImages.filter((img) => (imageFilters.showUsed && img.InUse) || (imageFilters.showUnused && !img.InUse)) as EnhancedImageInfo[]);
 
 	$effect(() => {
 		if (images && images.length > 0) {
@@ -204,13 +185,8 @@
 			});
 
 			if (!response.ok || !response.body) {
-				const errorData = await response
-					.json()
-					.catch(() => ({ error: 'Failed to pull image. Server returned an error.' }));
-				const errorMessage =
-					typeof errorData.error === 'string'
-						? errorData.error
-						: errorData.message || `HTTP error ${response.status}`;
+				const errorData = await response.json().catch(() => ({ error: 'Failed to pull image. Server returned an error.' }));
+				const errorMessage = typeof errorData.error === 'string' ? errorData.error : errorData.message || `HTTP error ${response.status}`;
 				throw new Error(errorMessage);
 			}
 
@@ -232,10 +208,7 @@
 						const data = JSON.parse(line);
 						if (data.error) {
 							console.error('Error in stream:', data.error);
-							pullError =
-								typeof data.error === 'string'
-									? data.error
-									: data.error.message || 'An error occurred during pull.';
+							pullError = typeof data.error === 'string' ? data.error : data.error.message || 'An error occurred during pull.';
 							lastStatusText = `Error: ${pullError}`;
 							toast.error(lastStatusText, { id: `pull-${imageIdentifier}` });
 							continue;
@@ -376,37 +349,11 @@
 							</DropdownMenu.Content>
 						</DropdownMenu.Root>
 						{#if selectedIds.length > 0}
-							<ArcaneButton
-								action="remove"
-								onClick={() => handleDeleteSelected()}
-								loading={isLoading.removing}
-								disabled={isLoading.removing}
-							/>
+							<ArcaneButton action="remove" onClick={() => handleDeleteSelected()} loading={isLoading.removing} disabled={isLoading.removing} />
 						{/if}
-						<ArcaneButton
-							action="remove"
-							label="Prune Unused"
-							onClick={() => (isConfirmPruneDialogOpen = true)}
-							loading={isLoading.pruning}
-							loadingLabel="Pruning..."
-							disabled={isLoading.pruning}
-						/>
-						<ArcaneButton
-							action="pull"
-							label="Pull Image"
-							onClick={() => (isPullDialogOpen = true)}
-							loading={isLoading.pulling}
-							loadingLabel="Pulling..."
-							disabled={isLoading.pulling}
-						/>
-						<ArcaneButton
-							action="inspect"
-							label="Recheck Maturities"
-							onClick={() => handleTriggerBulkMaturityCheck()}
-							loading={isLoading.checking}
-							loadingLabel="Checking..."
-							disabled={isLoading.checking}
-						/>
+						<ArcaneButton action="remove" label="Prune Unused" onClick={() => (isConfirmPruneDialogOpen = true)} loading={isLoading.pruning} loadingLabel="Pruning..." disabled={isLoading.pruning} />
+						<ArcaneButton action="pull" label="Pull Image" onClick={() => (isPullDialogOpen = true)} loading={isLoading.pulling} loadingLabel="Pulling..." disabled={isLoading.pulling} />
+						<ArcaneButton action="inspect" label="Recheck Maturities" onClick={() => handleTriggerBulkMaturityCheck()} loading={isLoading.checking} loadingLabel="Checking..." disabled={isLoading.checking} />
 					</div>
 				</div>
 			</Card.Header>
@@ -442,13 +389,7 @@
 						<Table.Cell>
 							<div class="flex items-center gap-2">
 								<div class="flex flex-1 items-center">
-									<MaturityItem
-										maturity={item.maturity}
-										imageId={item.Id}
-										repo={item.repo}
-										tag={item.tag}
-										isLoadingInBackground={$maturityStore.isChecking}
-									/>
+									<MaturityItem maturity={item.maturity} imageId={item.Id} repo={item.repo} tag={item.tag} isLoadingInBackground={$maturityStore.isChecking} />
 									<a class="shrink truncate font-medium hover:underline" href="/images/{item.Id}/">
 										{item.repo}
 									</a>
@@ -481,10 +422,7 @@
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
-										<DropdownMenu.Item
-											onclick={() => handleInlineImagePull(item.Id, item.RepoTags?.[0] || '')}
-											disabled={isPullingInline[item.Id] || !item.RepoTags?.[0]}
-										>
+										<DropdownMenu.Item onclick={() => handleInlineImagePull(item.Id, item.RepoTags?.[0] || '')} disabled={isPullingInline[item.Id] || !item.RepoTags?.[0]}>
 											{#if isPullingInline[item.Id]}
 												<Loader2 class="size-4 animate-spin" />
 												Pulling...
@@ -493,10 +431,7 @@
 												Pull
 											{/if}
 										</DropdownMenu.Item>
-										<DropdownMenu.Item
-											class="focus:text-red-700! text-red-500"
-											onclick={() => handleImageRemove(item.Id)}
-										>
+										<DropdownMenu.Item class="focus:text-red-700! text-red-500" onclick={() => handleImageRemove(item.Id)}>
 											<Trash2 class="size-4" />
 											Remove
 										</DropdownMenu.Item>
@@ -509,14 +444,10 @@
 			</Card.Content>
 		</Card.Root>
 	{:else if !error}
-		<div
-			class="bg-card flex flex-col items-center justify-center rounded-lg border px-6 py-12 text-center"
-		>
+		<div class="bg-card flex flex-col items-center justify-center rounded-lg border px-6 py-12 text-center">
 			<HardDrive class="text-muted-foreground mb-4 size-12 opacity-40" />
 			<p class="text-lg font-medium">No images found</p>
-			<p class="text-muted-foreground mt-1 max-w-md text-sm">
-				Pull a new image using the "Pull Image" button above or use the Docker CLI
-			</p>
+			<p class="text-muted-foreground mt-1 max-w-md text-sm">Pull a new image using the "Pull Image" button above or use the Docker CLI</p>
 			<div class="mt-4 flex gap-3">
 				<Button variant="outline" size="sm" onclick={() => (isPullDialogOpen = true)}>
 					<Download class="size-4" />
@@ -532,17 +463,10 @@
 		<Dialog.Content>
 			<Dialog.Header>
 				<Dialog.Title>Prune Unused Images</Dialog.Title>
-				<Dialog.Description
-					>Are you sure you want to remove all unused (dangling) Docker images? This will free up
-					disk space but cannot be undone. Images actively used by containers will not be affected.</Dialog.Description
-				>
+				<Dialog.Description>Are you sure you want to remove all unused (dangling) Docker images? This will free up disk space but cannot be undone. Images actively used by containers will not be affected.</Dialog.Description>
 			</Dialog.Header>
 			<div class="flex justify-end gap-3 pt-6">
-				<Button
-					variant="outline"
-					onclick={() => (isConfirmPruneDialogOpen = false)}
-					disabled={isLoading.pruning}>Cancel</Button
-				>
+				<Button variant="outline" onclick={() => (isConfirmPruneDialogOpen = false)} disabled={isLoading.pruning}>Cancel</Button>
 				<Button variant="destructive" onclick={handlePruneImages} disabled={isLoading.pruning}>
 					{#if isLoading.pruning}
 						<Loader2 class="mr-2 size-4 animate-spin" /> Pruning...

@@ -26,13 +26,7 @@
 		onClose?: () => void;
 	}
 
-	let {
-		open = $bindable(false),
-		volumes = [],
-		networks = [],
-		images = [],
-		onClose: onCloseProp = () => {}
-	}: Props = $props();
+	let { open = $bindable(false), volumes = [], networks = [], images = [], onClose: onCloseProp = () => {} }: Props = $props();
 
 	const containerApi = new ContainerAPIService();
 
@@ -51,13 +45,9 @@
 		}[]
 	>([{ hostPort: '', containerPort: '', protocol: 'tcp' }]);
 
-	let volumeMounts = $state<{ source: string; target: string; readOnly?: boolean }[]>([
-		{ source: '', target: '', readOnly: false }
-	]);
+	let volumeMounts = $state<{ source: string; target: string; readOnly?: boolean }[]>([{ source: '', target: '', readOnly: false }]);
 
-	let envVars = $state<{ key: string; value: string; sensitive?: boolean }[]>([
-		{ key: '', value: '', sensitive: true }
-	]);
+	let envVars = $state<{ key: string; value: string; sensitive?: boolean }[]>([{ key: '', value: '', sensitive: true }]);
 
 	const restartPolicyOptions = [
 		{ value: 'no', label: 'No' },
@@ -69,9 +59,7 @@
 	let networkMode = $state('');
 	let restartPolicy = $state('unless-stopped');
 
-	const selectedRestartPolicyLabel = $derived(
-		restartPolicyOptions.find((opt) => opt.value === restartPolicy)?.label || restartPolicy
-	);
+	const selectedRestartPolicyLabel = $derived(restartPolicyOptions.find((opt) => opt.value === restartPolicy)?.label || restartPolicy);
 
 	let ipv4Address = $state('');
 	let ipv6Address = $state('');
@@ -169,13 +157,7 @@
 		if (labels.length === 0) addLabel();
 	}
 
-	const isUserDefinedNetworkSelected = $derived(
-		networkMode &&
-			networkMode !== '' &&
-			networkMode !== 'host' &&
-			networkMode !== 'none' &&
-			networkMode !== 'bridge'
-	);
+	const isUserDefinedNetworkSelected = $derived(networkMode && networkMode !== '' && networkMode !== 'host' && networkMode !== 'none' && networkMode !== 'bridge');
 
 	async function handleSubmit() {
 		if (!selectedImage) {
@@ -194,14 +176,7 @@
 
 		let hasInvalidPort = false;
 		ports.forEach((port) => {
-			if (
-				(port.hostPort &&
-					validatePortNumber(port.hostPort).error &&
-					validatePortNumber(port.hostPort).error !== 'Privileged port (<1024)') ||
-				(port.containerPort &&
-					validatePortNumber(port.containerPort).error &&
-					validatePortNumber(port.containerPort).error !== 'Privileged port (<1024)')
-			) {
+			if ((port.hostPort && validatePortNumber(port.hostPort).error && validatePortNumber(port.hostPort).error !== 'Privileged port (<1024)') || (port.containerPort && validatePortNumber(port.containerPort).error && validatePortNumber(port.containerPort).error !== 'Privileged port (<1024)')) {
 				hasInvalidPort = true;
 			}
 		});
@@ -217,20 +192,13 @@
 		ports
 			.filter((p) => p.hostPort.trim() && p.containerPort.trim())
 			.forEach((p) => {
-				const containerPortKey =
-					p.protocol && p.protocol !== 'tcp'
-						? `${p.containerPort.trim()}/${p.protocol}`
-						: p.containerPort.trim();
+				const containerPortKey = p.protocol && p.protocol !== 'tcp' ? `${p.containerPort.trim()}/${p.protocol}` : p.containerPort.trim();
 				portsObj[containerPortKey] = p.hostPort.trim();
 			});
 
-		const volumesArray: string[] = volumeMounts
-			.filter((v) => v.source.trim() && v.target.trim())
-			.map((v) => `${v.source.trim()}:${v.target.trim()}${v.readOnly ? ':ro' : ''}`);
+		const volumesArray: string[] = volumeMounts.filter((v) => v.source.trim() && v.target.trim()).map((v) => `${v.source.trim()}:${v.target.trim()}${v.readOnly ? ':ro' : ''}`);
 
-		const environmentArray: string[] = envVars
-			.filter((e) => e.key.trim())
-			.map((e) => `${e.key.trim()}=${e.value}`);
+		const environmentArray: string[] = envVars.filter((e) => e.key.trim()).map((e) => `${e.key.trim()}=${e.value}`);
 
 		const networksArray: string[] = [];
 		if (networkMode && networkMode !== '' && networkMode !== 'bridge') {
@@ -327,12 +295,7 @@
 						<div class="space-y-4">
 							<div class="grid grid-cols-1 gap-2">
 								<Label for="container-name">Name</Label>
-								<Input
-									id="container-name"
-									bind:value={containerName}
-									placeholder="e.g., my-container"
-									disabled={isCreating}
-								/>
+								<Input id="container-name" bind:value={containerName} placeholder="e.g., my-container" disabled={isCreating} />
 							</div>
 
 							<div class="grid grid-cols-1 gap-2">
@@ -365,9 +328,7 @@
 									</Select.Trigger>
 									<Select.Content>
 										{#each restartPolicyOptions as option (option.value)}
-											<Select.Item label={option.label} value={option.value}
-												>{option.label}</Select.Item
-											>
+											<Select.Item label={option.label} value={option.value}>{option.label}</Select.Item>
 										{/each}
 									</Select.Content>
 								</Select.Root>
@@ -382,27 +343,9 @@
 									<div class="grid flex-1 grid-cols-3 gap-4">
 										<div>
 											<Label for={`host-port-${index}`} class="mb-2 block text-sm">Host Port</Label>
-											<Input
-												id={`host-port-${index}`}
-												bind:value={port.hostPort}
-												placeholder="e.g., 8080"
-												disabled={isCreating}
-												type="text"
-												pattern="[0-9]*"
-												inputmode="numeric"
-												class={port.hostError &&
-												port.hostPort &&
-												port.hostError !== 'Privileged port (<1024)'
-													? 'border-red-500'
-													: ''}
-											/>
+											<Input id={`host-port-${index}`} bind:value={port.hostPort} placeholder="e.g., 8080" disabled={isCreating} type="text" pattern="[0-9]*" inputmode="numeric" class={port.hostError && port.hostPort && port.hostError !== 'Privileged port (<1024)' ? 'border-red-500' : ''} />
 											{#if port.hostError && port.hostPort}
-												<div
-													class="mt-1 flex items-center text-xs {port.hostError ===
-													'Privileged port (<1024)'
-														? 'text-amber-600'
-														: 'text-red-500'}"
-												>
+												<div class="mt-1 flex items-center text-xs {port.hostError === 'Privileged port (<1024)' ? 'text-amber-600' : 'text-red-500'}">
 													<AlertCircle class="mr-1 size-3" />
 													{port.hostError}
 												</div>
@@ -410,9 +353,7 @@
 										</div>
 
 										<div>
-											<Label for={`container-port-${index}`} class="mb-2 block text-sm"
-												>Container Port</Label
-											>
+											<Label for={`container-port-${index}`} class="mb-2 block text-sm">Container Port</Label>
 											<Input
 												id={`container-port-${index}`}
 												bind:value={port.containerPort}
@@ -421,28 +362,17 @@
 												type="text"
 												pattern="[0-9]*"
 												inputmode="numeric"
-												class={port.containerError &&
-												port.containerPort &&
-												port.containerError !== 'Privileged port (<1024)'
-													? 'border-red-500'
-													: ''}
+												class={port.containerError && port.containerPort && port.containerError !== 'Privileged port (<1024)' ? 'border-red-500' : ''}
 											/>
 											{#if port.containerError && port.containerPort}
-												<div
-													class="mt-1 flex items-center text-xs {port.containerError ===
-													'Privileged port (<1024)'
-														? 'text-amber-600'
-														: 'text-red-500'}"
-												>
+												<div class="mt-1 flex items-center text-xs {port.containerError === 'Privileged port (<1024)' ? 'text-amber-600' : 'text-red-500'}">
 													<AlertCircle class="mr-1 size-3" />
 													{port.containerError}
 												</div>
 											{/if}
 										</div>
 										<div>
-											<Label for={`port-protocol-${index}`} class="mb-2 block text-sm"
-												>Protocol</Label
-											>
+											<Label for={`port-protocol-${index}`} class="mb-2 block text-sm">Protocol</Label>
 											<Select.Root type="single" bind:value={port.protocol} disabled={isCreating}>
 												<Select.Trigger class="w-full">
 													<span>{port.protocol?.toUpperCase() || 'TCP'}</span>
@@ -456,28 +386,12 @@
 										</div>
 									</div>
 
-									<Button
-										variant="destructive"
-										size="icon"
-										type="button"
-										onclick={() => removePort(index)}
-										disabled={(ports.length <= 1 &&
-											!ports[0].hostPort &&
-											!ports[0].containerPort) ||
-											isCreating}
-										class="shrink-0"
-									>
+									<Button variant="destructive" size="icon" type="button" onclick={() => removePort(index)} disabled={(ports.length <= 1 && !ports[0].hostPort && !ports[0].containerPort) || isCreating} class="shrink-0">
 										<Trash class="size-4" />
 									</Button>
 								</div>
 							{/each}
-							<Button
-								variant="outline"
-								type="button"
-								onclick={addPort}
-								class="w-full"
-								disabled={isCreating}
-							>
+							<Button variant="outline" type="button" onclick={addPort} class="w-full" disabled={isCreating}>
 								<Plus class="mr-2 size-4" /> Add Port Mapping
 							</Button>
 						</div>
@@ -489,57 +403,24 @@
 								<div class="flex items-end space-x-3">
 									<div class="grid flex-1 grid-cols-2 items-center gap-4">
 										<div>
-											<Label for={`volume-source-${index}`} class="mb-2 block"
-												>Host Path / Volume Name</Label
-											>
-											<Input
-												id={`volume-source-${index}`}
-												bind:value={mount.source}
-												placeholder="e.g., /path/on/host or my_volume"
-												disabled={isCreating}
-											/>
+											<Label for={`volume-source-${index}`} class="mb-2 block">Host Path / Volume Name</Label>
+											<Input id={`volume-source-${index}`} bind:value={mount.source} placeholder="e.g., /path/on/host or my_volume" disabled={isCreating} />
 										</div>
 										<div>
-											<Label for={`volume-target-${index}`} class="mb-2 block">Container Path</Label
-											>
-											<Input
-												id={`volume-target-${index}`}
-												bind:value={mount.target}
-												placeholder="/data_in_container"
-												disabled={isCreating}
-											/>
+											<Label for={`volume-target-${index}`} class="mb-2 block">Container Path</Label>
+											<Input id={`volume-target-${index}`} bind:value={mount.target} placeholder="/data_in_container" disabled={isCreating} />
 										</div>
 									</div>
 									<div class="flex items-center pt-6">
-										<Switch
-											id={`volume-readonly-${index}`}
-											bind:checked={mount.readOnly}
-											disabled={isCreating}
-										/>
+										<Switch id={`volume-readonly-${index}`} bind:checked={mount.readOnly} disabled={isCreating} />
 										<Label for={`volume-readonly-${index}`} class="ml-2 text-sm">Read-only</Label>
 									</div>
-									<Button
-										variant="destructive"
-										size="icon"
-										type="button"
-										onclick={() => removeVolumeMount(index)}
-										disabled={(volumeMounts.length <= 1 &&
-											!volumeMounts[0].source &&
-											!volumeMounts[0].target) ||
-											isCreating}
-										class="shrink-0"
-									>
+									<Button variant="destructive" size="icon" type="button" onclick={() => removeVolumeMount(index)} disabled={(volumeMounts.length <= 1 && !volumeMounts[0].source && !volumeMounts[0].target) || isCreating} class="shrink-0">
 										<Trash class="size-4" />
 									</Button>
 								</div>
 							{/each}
-							<Button
-								variant="outline"
-								type="button"
-								onclick={addVolumeMount}
-								class="w-full"
-								disabled={isCreating}
-							>
+							<Button variant="outline" type="button" onclick={addVolumeMount} class="w-full" disabled={isCreating}>
 								<Plus class="mr-2 size-4" /> Add Volume Mount
 							</Button>
 						</div>
@@ -552,23 +433,12 @@
 									<div class="grid flex-1 grid-cols-2 gap-4">
 										<div>
 											<Label for={`env-key-${index}`} class="mb-2 block">Key</Label>
-											<Input
-												id={`env-key-${index}`}
-												bind:value={env.key}
-												placeholder="MYSQL_ROOT_PASSWORD"
-												disabled={isCreating}
-											/>
+											<Input id={`env-key-${index}`} bind:value={env.key} placeholder="MYSQL_ROOT_PASSWORD" disabled={isCreating} />
 										</div>
 										<div>
 											<Label for={`env-value-${index}`} class="mb-2 block">Value</Label>
 											<div class="flex items-center gap-2">
-												<Input
-													id={`env-value-${index}`}
-													bind:value={env.value}
-													type={env.sensitive ? 'password' : 'text'}
-													placeholder="secret"
-													disabled={isCreating}
-												/>
+												<Input id={`env-value-${index}`} bind:value={env.value} type={env.sensitive ? 'password' : 'text'} placeholder="secret" disabled={isCreating} />
 												<Button
 													variant="outline"
 													size="icon"
@@ -588,26 +458,12 @@
 											</div>
 										</div>
 									</div>
-									<Button
-										variant="destructive"
-										size="icon"
-										type="button"
-										onclick={() => removeEnvVar(index)}
-										disabled={(envVars.length <= 1 && !envVars[0].key && !envVars[0].value) ||
-											isCreating}
-										class="shrink-0"
-									>
+									<Button variant="destructive" size="icon" type="button" onclick={() => removeEnvVar(index)} disabled={(envVars.length <= 1 && !envVars[0].key && !envVars[0].value) || isCreating} class="shrink-0">
 										<Trash class="size-4" />
 									</Button>
 								</div>
 							{/each}
-							<Button
-								variant="outline"
-								type="button"
-								onclick={addEnvVar}
-								class="w-full"
-								disabled={isCreating}
-							>
+							<Button variant="outline" type="button" onclick={addEnvVar} class="w-full" disabled={isCreating}>
 								<Plus class="mr-2 size-4" /> Add Environment Variable
 							</Button>
 						</div>
@@ -636,27 +492,15 @@
 
 							{#if isUserDefinedNetworkSelected}
 								<div class="mt-4 space-y-4 border-t pt-4">
-									<p class="text-muted-foreground text-sm">
-										Optional: Assign static IP addresses (requires network with IPAM configured).
-									</p>
+									<p class="text-muted-foreground text-sm">Optional: Assign static IP addresses (requires network with IPAM configured).</p>
 									<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 										<div class="grid grid-cols-1 gap-2">
 											<Label for="ipv4-address">IPv4 Address</Label>
-											<Input
-												id="ipv4-address"
-												bind:value={ipv4Address}
-												placeholder="e.g., 172.20.0.10"
-												disabled={isCreating}
-											/>
+											<Input id="ipv4-address" bind:value={ipv4Address} placeholder="e.g., 172.20.0.10" disabled={isCreating} />
 										</div>
 										<div class="grid grid-cols-1 gap-2">
 											<Label for="ipv6-address">IPv6 Address</Label>
-											<Input
-												id="ipv6-address"
-												bind:value={ipv6Address}
-												placeholder="e.g., 2001:db8::10"
-												disabled={isCreating}
-											/>
+											<Input id="ipv6-address" bind:value={ipv6Address} placeholder="e.g., 2001:db8::10" disabled={isCreating} />
 										</div>
 									</div>
 								</div>
@@ -667,11 +511,7 @@
 					<Tabs.Content value="healthcheck">
 						<div class="space-y-4">
 							<div class="flex items-center space-x-2">
-								<Switch
-									id="enable-healthcheck"
-									bind:checked={enableHealthcheck}
-									disabled={isCreating}
-								/>
+								<Switch id="enable-healthcheck" bind:checked={enableHealthcheck} disabled={isCreating} />
 								<Label for="enable-healthcheck" class="cursor-pointer">Enable Healthcheck</Label>
 							</div>
 
@@ -679,62 +519,26 @@
 								<div class="mt-4 space-y-6 border-t pt-6">
 									<div class="space-y-2">
 										<Label for="healthcheck-test">Test Command</Label>
-										<Input
-											id="healthcheck-test"
-											bind:value={healthcheckTest[0]}
-											placeholder="e.g., CMD-SHELL curl -f http://localhost:80 || exit 1"
-											disabled={isCreating}
-										/>
-										<p class="text-muted-foreground text-xs">
-											Command to run inside the container. Use `CMD` or `CMD-SHELL`. For multiple
-											arguments, use advanced settings or configure directly in compose.
-										</p>
+										<Input id="healthcheck-test" bind:value={healthcheckTest[0]} placeholder="e.g., CMD-SHELL curl -f http://localhost:80 || exit 1" disabled={isCreating} />
+										<p class="text-muted-foreground text-xs">Command to run inside the container. Use `CMD` or `CMD-SHELL`. For multiple arguments, use advanced settings or configure directly in compose.</p>
 									</div>
 
 									<div class="grid grid-cols-2 gap-4 md:grid-cols-4">
 										<div class="space-y-2">
 											<Label for="healthcheck-interval">Interval (s)</Label>
-											<Input
-												id="healthcheck-interval"
-												type="number"
-												min="1"
-												bind:value={healthcheckInterval}
-												placeholder="e.g., 30"
-												disabled={isCreating}
-											/>
+											<Input id="healthcheck-interval" type="number" min="1" bind:value={healthcheckInterval} placeholder="e.g., 30" disabled={isCreating} />
 										</div>
 										<div class="space-y-2">
 											<Label for="healthcheck-timeout">Timeout (s)</Label>
-											<Input
-												id="healthcheck-timeout"
-												type="number"
-												min="1"
-												bind:value={healthcheckTimeout}
-												placeholder="e.g., 10"
-												disabled={isCreating}
-											/>
+											<Input id="healthcheck-timeout" type="number" min="1" bind:value={healthcheckTimeout} placeholder="e.g., 10" disabled={isCreating} />
 										</div>
 										<div class="space-y-2">
 											<Label for="healthcheck-retries">Retries</Label>
-											<Input
-												id="healthcheck-retries"
-												type="number"
-												min="1"
-												bind:value={healthcheckRetries}
-												placeholder="e.g., 3"
-												disabled={isCreating}
-											/>
+											<Input id="healthcheck-retries" type="number" min="1" bind:value={healthcheckRetries} placeholder="e.g., 3" disabled={isCreating} />
 										</div>
 										<div class="space-y-2">
 											<Label for="healthcheck-start-period">Start Period (s)</Label>
-											<Input
-												id="healthcheck-start-period"
-												type="number"
-												min="0"
-												bind:value={healthcheckStartPeriod}
-												placeholder="e.g., 60"
-												disabled={isCreating}
-											/>
+											<Input id="healthcheck-start-period" type="number" min="0" bind:value={healthcheckStartPeriod} placeholder="e.g., 60" disabled={isCreating} />
 											<p class="text-muted-foreground text-xs">Grace period for startup.</p>
 										</div>
 									</div>
@@ -752,43 +556,19 @@
 										<div class="grid flex-1 grid-cols-2 gap-4">
 											<div>
 												<Label for={`label-key-${index}`} class="mb-2 block text-sm">Key</Label>
-												<Input
-													id={`label-key-${index}`}
-													bind:value={label.key}
-													placeholder="e.g., com.example.project"
-													disabled={isCreating}
-												/>
+												<Input id={`label-key-${index}`} bind:value={label.key} placeholder="e.g., com.example.project" disabled={isCreating} />
 											</div>
 											<div>
 												<Label for={`label-value-${index}`} class="mb-2 block text-sm">Value</Label>
-												<Input
-													id={`label-value-${index}`}
-													bind:value={label.value}
-													placeholder="e.g., my-app"
-													disabled={isCreating}
-												/>
+												<Input id={`label-value-${index}`} bind:value={label.value} placeholder="e.g., my-app" disabled={isCreating} />
 											</div>
 										</div>
-										<Button
-											variant="destructive"
-											size="icon"
-											type="button"
-											onclick={() => removeLabel(index)}
-											disabled={(labels.length <= 1 && !labels[0].key && !labels[0].value) ||
-												isCreating}
-											class="shrink-0"
-										>
+										<Button variant="destructive" size="icon" type="button" onclick={() => removeLabel(index)} disabled={(labels.length <= 1 && !labels[0].key && !labels[0].value) || isCreating} class="shrink-0">
 											<Trash class="size-4" />
 										</Button>
 									</div>
 								{/each}
-								<Button
-									variant="outline"
-									type="button"
-									onclick={addLabel}
-									class="w-full"
-									disabled={isCreating}
-								>
+								<Button variant="outline" type="button" onclick={addLabel} class="w-full" disabled={isCreating}>
 									<Plus class="mr-2 size-4" /> Add Label
 								</Button>
 							</div>
@@ -798,24 +578,12 @@
 								<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 									<div class="space-y-2">
 										<Label for="command-override">Command Override</Label>
-										<Input
-											id="command-override"
-											bind:value={commandOverride}
-											placeholder="e.g., /app/run --config /etc/config.yml"
-											disabled={isCreating}
-										/>
-										<p class="text-muted-foreground text-xs">
-											Overrides the image's default command. Separate arguments with spaces.
-										</p>
+										<Input id="command-override" bind:value={commandOverride} placeholder="e.g., /app/run --config /etc/config.yml" disabled={isCreating} />
+										<p class="text-muted-foreground text-xs">Overrides the image's default command. Separate arguments with spaces.</p>
 									</div>
 									<div class="space-y-2">
 										<Label for="run-as-user">Run as User</Label>
-										<Input
-											id="run-as-user"
-											bind:value={runAsUser}
-											placeholder="e.g., 1000:1000 or node"
-											disabled={isCreating}
-										/>
+										<Input id="run-as-user" bind:value={runAsUser} placeholder="e.g., 1000:1000 or node" disabled={isCreating} />
 										<p class="text-muted-foreground text-xs">Specify user/group ID or name.</p>
 									</div>
 								</div>
@@ -826,30 +594,13 @@
 								<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 									<div class="space-y-2">
 										<Label for="memory-limit">Memory Limit</Label>
-										<Input
-											id="memory-limit"
-											bind:value={memoryLimitStr}
-											placeholder="e.g., 512m, 1g"
-											disabled={isCreating}
-										/>
-										<p class="text-muted-foreground text-xs">
-											Format: number + unit (b, k, m, g). Minimum 4m.
-										</p>
+										<Input id="memory-limit" bind:value={memoryLimitStr} placeholder="e.g., 512m, 1g" disabled={isCreating} />
+										<p class="text-muted-foreground text-xs">Format: number + unit (b, k, m, g). Minimum 4m.</p>
 									</div>
 									<div class="space-y-2">
 										<Label for="cpu-limit">CPU Limit (cores)</Label>
-										<Input
-											id="cpu-limit"
-											bind:value={cpuLimitStr}
-											placeholder="e.g., 0.5, 1, 2"
-											disabled={isCreating}
-											type="number"
-											step="0.1"
-											min="0.01"
-										/>
-										<p class="text-muted-foreground text-xs">
-											Number of CPU cores (e.g., 1.5 = 1.5 cores).
-										</p>
+										<Input id="cpu-limit" bind:value={cpuLimitStr} placeholder="e.g., 0.5, 1, 2" disabled={isCreating} type="number" step="0.1" min="0.01" />
+										<p class="text-muted-foreground text-xs">Number of CPU cores (e.g., 1.5 = 1.5 cores).</p>
 									</div>
 								</div>
 							</div>
@@ -857,10 +608,7 @@
 							<div class="flex items-center space-x-2 border-t py-4">
 								<Switch id="auto-update" name="autoUpdate" bind:checked={autoUpdate} />
 								<Label for="auto-update" class="font-medium">Enable auto-update</Label>
-								<p class="text-muted-foreground text-xs">
-									When enabled, Arcane will periodically check for newer versions of this
-									container's image and automatically update it.
-								</p>
+								<p class="text-muted-foreground text-xs">When enabled, Arcane will periodically check for newer versions of this container's image and automatically update it.</p>
 							</div>
 						</div>
 					</Tabs.Content>
@@ -870,12 +618,7 @@
 
 		<Dialog.Footer class="pt-4">
 			<ArcaneButton action="cancel" onClick={handleClose} disabled={isCreating} class="mr-2" />
-			<ArcaneButton
-				action="create"
-				loading={isCreating}
-				onClick={handleSubmit}
-				disabled={isCreating || !containerName.trim() || !selectedImage}
-			/>
+			<ArcaneButton action="create" loading={isCreating} onClick={handleSubmit} disabled={isCreating || !containerName.trim() || !selectedImage} />
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

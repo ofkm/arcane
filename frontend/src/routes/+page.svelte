@@ -471,7 +471,11 @@
 	<section>
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">Quick Actions</h2>
 		<div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
-			<button class="group bg-card relative flex flex-col items-center rounded-xl border p-6 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm" disabled={!dashboardStates.dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} onclick={handleStartAll}>
+			<button
+				class="group bg-card relative flex flex-col items-center rounded-xl border p-6 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm"
+				disabled={!dashboardStates.dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}
+				onclick={handleStartAll}
+			>
 				<div class="mb-4 flex size-12 items-center justify-center rounded-full bg-green-500/10 transition-colors group-hover:bg-green-500/20">
 					{#if isLoading.starting}
 						<Loader2 class="size-6 animate-spin text-green-500" />
@@ -483,7 +487,11 @@
 				<span class="text-muted-foreground mt-1 text-sm">{stoppedContainers} containers</span>
 			</button>
 
-			<button class="group bg-card relative flex flex-col items-center rounded-xl border p-6 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm" disabled={!dashboardStates.dockerInfo || runningContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning} onclick={handleStopAll}>
+			<button
+				class="group bg-card relative flex flex-col items-center rounded-xl border p-6 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm"
+				disabled={!dashboardStates.dockerInfo || runningContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}
+				onclick={handleStopAll}
+			>
 				<div class="mb-4 flex size-12 items-center justify-center rounded-full bg-blue-500/10 transition-colors group-hover:bg-blue-500/20">
 					{#if isLoading.stopping}
 						<Loader2 class="size-6 animate-spin text-blue-500" />
@@ -495,7 +503,11 @@
 				<span class="text-muted-foreground mt-1 text-sm">{runningContainers}</span>
 			</button>
 
-			<button class="group bg-card hover:border-destructive/50 disabled:hover:border-border relative flex flex-col items-center rounded-xl border p-6 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm" disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning} onclick={() => (dashboardStates.isPruneDialogOpen = true)}>
+			<button
+				class="group bg-card hover:border-destructive/50 disabled:hover:border-border relative flex flex-col items-center rounded-xl border p-6 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-sm"
+				disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
+				onclick={() => (dashboardStates.isPruneDialogOpen = true)}
+			>
 				<div class="mb-4 flex size-12 items-center justify-center rounded-full bg-red-500/10 transition-colors group-hover:bg-red-500/20">
 					{#if isLoading.pruning}
 						<Loader2 class="size-6 animate-spin text-red-500" />

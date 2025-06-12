@@ -1,16 +1,7 @@
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import {
-		AlertCircle,
-		HardDrive,
-		Clock,
-		Tag,
-		Layers,
-		Database,
-		Globe,
-		Info
-	} from '@lucide/svelte';
+	import { AlertCircle, HardDrive, Clock, Tag, Layers, Database, Globe, Info } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { goto } from '$app/navigation';
 	import * as Alert from '$lib/components/ui/alert/index.js';
@@ -35,8 +26,7 @@
 		let message = 'Are you sure you want to delete this volume? This action cannot be undone.';
 
 		if (inUse) {
-			message +=
-				'\n\n⚠️ Warning: This volume is currently in use by containers. Forcing removal may cause data loss or container issues.';
+			message += '\n\n⚠️ Warning: This volume is currently in use by containers. Forcing removal may cause data loss or container issues.';
 		}
 
 		openConfirmDialog({
@@ -104,13 +94,7 @@
 
 			<!-- Action Buttons - Replace with ArcaneButton -->
 			<div class="flex gap-2 self-start">
-				<ArcaneButton
-					action="remove"
-					customLabel="Remove Volume"
-					onClick={() => handleRemoveVolumeConfirm(volume?.Name)}
-					loading={isLoading.remove}
-					disabled={isLoading.remove}
-				/>
+				<ArcaneButton action="remove" customLabel="Remove Volume" onClick={() => handleRemoveVolumeConfirm(volume?.Name)} loading={isLoading.remove} disabled={isLoading.remove} />
 			</div>
 		</div>
 	</div>
@@ -139,9 +123,7 @@
 					<div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
 						<!-- Name -->
 						<div class="flex items-start gap-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
 								<Database class="size-5 text-gray-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -152,9 +134,7 @@
 
 						<!-- Driver -->
 						<div class="flex items-start gap-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2">
 								<HardDrive class="size-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -165,9 +145,7 @@
 
 						<!-- Created -->
 						<div class="flex items-start gap-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2">
 								<Clock class="size-5 text-green-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -178,9 +156,7 @@
 
 						<!-- Scope -->
 						<div class="flex items-start gap-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-purple-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-purple-500/10 p-2">
 								<Globe class="size-5 text-purple-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -191,9 +167,7 @@
 
 						<!-- In Use -->
 						<div class="flex items-start gap-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 p-2">
 								<Info class="size-5 text-amber-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -210,9 +184,7 @@
 
 						<!-- Mountpoint - Full width -->
 						<div class="col-span-1 flex items-start gap-3 sm:col-span-2 lg:col-span-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-teal-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-teal-500/10 p-2">
 								<Layers class="size-5 text-teal-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -240,14 +212,10 @@
 						<div class="bg-card divide-y rounded-lg border">
 							{#each Object.entries(volume.Labels) as [key, value] (key)}
 								<div class="flex flex-col p-3 sm:flex-row">
-									<div
-										class="text-muted-foreground mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3"
-									>
+									<div class="text-muted-foreground mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
 										{key}
 									</div>
-									<div
-										class="bg-muted/50 w-full rounded p-2 font-mono text-xs break-all sm:w-2/3 sm:text-sm"
-									>
+									<div class="bg-muted/50 w-full rounded p-2 font-mono text-xs break-all sm:w-2/3 sm:text-sm">
 										{value}
 									</div>
 								</div>
@@ -271,14 +239,10 @@
 						<div class="bg-card divide-y rounded-lg border">
 							{#each Object.entries(volume.Options) as [key, value] (key)}
 								<div class="flex flex-col p-3 sm:flex-row">
-									<div
-										class="text-muted-foreground mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3"
-									>
+									<div class="text-muted-foreground mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
 										{key}
 									</div>
-									<div
-										class="bg-muted/50 w-full rounded p-2 font-mono text-xs break-all sm:w-2/3 sm:text-sm"
-									>
+									<div class="bg-muted/50 w-full rounded p-2 font-mono text-xs break-all sm:w-2/3 sm:text-sm">
 										{value}
 									</div>
 								</div>
@@ -296,9 +260,7 @@
 							<div class="bg-muted/30 mb-4 rounded-full p-3">
 								<Tag class="text-muted-foreground size-5 opacity-50" />
 							</div>
-							<p class="text-muted-foreground">
-								This volume has no additional labels or driver options.
-							</p>
+							<p class="text-muted-foreground">This volume has no additional labels or driver options.</p>
 						</div>
 					</Card.Content>
 				</Card.Root>
@@ -311,16 +273,9 @@
 				<Database class="text-muted-foreground size-10 opacity-70" />
 			</div>
 			<h2 class="mb-2 text-xl font-medium">Volume Not Found</h2>
-			<p class="text-muted-foreground mb-6">
-				The requested volume could not be found or is no longer available.
-			</p>
+			<p class="text-muted-foreground mb-6">The requested volume could not be found or is no longer available.</p>
 
-			<ArcaneButton
-				action="cancel"
-				customLabel="Back to Volumes"
-				onClick={() => goto('/volumes')}
-				size="sm"
-			/>
+			<ArcaneButton action="cancel" customLabel="Back to Volumes" onClick={() => goto('/volumes')} size="sm" />
 		</div>
 	{/if}
 </div>

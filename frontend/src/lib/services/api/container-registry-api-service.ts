@@ -1,8 +1,5 @@
 import BaseAPIService from './api-service';
-import type {
-	ContainerRegistryCreateDto,
-	ContainerRegistryUpdateDto
-} from '$lib/dto/container-registry-dto';
+import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/dto/container-registry-dto';
 import type { ContainerRegistry } from '$lib/models/container-registry';
 
 export default class ContainerRegistryAPIService extends BaseAPIService {
@@ -18,10 +15,7 @@ export default class ContainerRegistryAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/container-registries`, registry));
 	}
 
-	async updateRegistry(
-		id: string,
-		registry: ContainerRegistryUpdateDto
-	): Promise<ContainerRegistry> {
+	async updateRegistry(id: string, registry: ContainerRegistryUpdateDto): Promise<ContainerRegistry> {
 		return this.handleResponse(this.api.put(`/container-registries/${id}`, registry));
 	}
 

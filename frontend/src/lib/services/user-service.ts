@@ -60,9 +60,7 @@ export async function saveUser(user: User): Promise<User | null> {
 	}
 }
 
-export async function createUser(
-	user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>
-): Promise<User | null> {
+export async function createUser(user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User | null> {
 	try {
 		return await userAPI.create(user);
 	} catch (error) {
@@ -91,11 +89,7 @@ export async function deleteUser(id: string): Promise<boolean> {
 }
 
 // Authentication functions
-export async function login(credentials: {
-	username: string;
-	password: string;
-	rememberMe?: boolean;
-}) {
+export async function login(credentials: { username: string; password: string; rememberMe?: boolean }) {
 	try {
 		return await userAPI.login(credentials);
 	} catch (error) {
@@ -113,11 +107,7 @@ export async function logout(): Promise<void> {
 	}
 }
 
-export async function changePassword(
-	userId: string,
-	currentPassword: string,
-	newPassword: string
-): Promise<boolean> {
+export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<boolean> {
 	try {
 		await userAPI.changePassword(userId, { currentPassword, newPassword });
 		return true;

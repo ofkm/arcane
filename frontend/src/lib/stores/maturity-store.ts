@@ -100,10 +100,7 @@ export async function triggerBulkMaturityCheck(): Promise<{ success: boolean; me
 }
 
 // Enhanced image processing that includes maturity data from store
-export function enhanceImagesWithMaturity(
-	images: any[],
-	maturityData: Record<string, ImageMaturity>
-): any[] {
+export function enhanceImagesWithMaturity(images: any[], maturityData: Record<string, ImageMaturity>): any[] {
 	return images.map((image) => {
 		// Parse repo and tag from RepoTags
 		let repo = '<none>';

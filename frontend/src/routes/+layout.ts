@@ -25,14 +25,7 @@ export const load = async ({ fetch, url }) => {
 
 	const path = url.pathname;
 
-	const publicPaths = [
-		'/auth/login',
-		'/auth/logout',
-		'/auth/oidc/login',
-		'/auth/oidc/callback',
-		'/img',
-		'/favicon.ico'
-	];
+	const publicPaths = ['/auth/login', '/auth/logout', '/auth/oidc/login', '/auth/oidc/callback', '/img', '/favicon.ico'];
 	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
 
 	let settings: any = null;
@@ -106,9 +99,7 @@ export const load = async ({ fetch, url }) => {
 			currentVersion: '0.15.0'
 		} as AppVersionInformation;
 	} else {
-		const cacheExpired =
-			versionInformationLastUpdated &&
-			Date.now() - versionInformationLastUpdated > 1000 * 60 * 60 * 3;
+		const cacheExpired = versionInformationLastUpdated && Date.now() - versionInformationLastUpdated > 1000 * 60 * 60 * 3;
 
 		if (!versionInformation || cacheExpired) {
 			try {

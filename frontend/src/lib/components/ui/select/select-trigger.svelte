@@ -3,12 +3,7 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { cn } from '$lib/utils.js';
 
-	let {
-		ref = $bindable(null),
-		class: className,
-		children,
-		...restProps
-	}: WithoutChild<SelectPrimitive.TriggerProps> = $props();
+	let { ref = $bindable(null), class: className, children, ...restProps }: WithoutChild<SelectPrimitive.TriggerProps> = $props();
 </script>
 
 <SelectPrimitive.Trigger

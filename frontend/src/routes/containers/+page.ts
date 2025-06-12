@@ -3,12 +3,7 @@ import type { PageLoad } from './$types';
 
 export const load: PageLoad = async () => {
 	try {
-		const [containers, volumes, networks, images] = await Promise.all([
-			containerAPI.list(true),
-			volumeAPI.list(),
-			networkAPI.list(),
-			imageAPI.list()
-		]);
+		const [containers, volumes, networks, images] = await Promise.all([containerAPI.list(true), volumeAPI.list(), networkAPI.list(), imageAPI.list()]);
 
 		return {
 			containers,

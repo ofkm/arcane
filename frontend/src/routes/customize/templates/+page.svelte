@@ -8,19 +8,7 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import {
-		Trash2,
-		Plus,
-		ExternalLink,
-		RefreshCw,
-		FileText,
-		Globe,
-		FolderOpen,
-		Users,
-		Copy,
-		AlertCircle,
-		CheckCircle
-	} from '@lucide/svelte';
+	import { Trash2, Plus, ExternalLink, RefreshCw, FileText, Globe, FolderOpen, Users, Copy, AlertCircle, CheckCircle } from '@lucide/svelte';
 	import type { PageData } from '../../settings/templates/$types';
 	import { templateAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
@@ -237,10 +225,7 @@
 			<h1 class="text-3xl font-bold tracking-tight">Template Settings</h1>
 			<p class="text-muted-foreground mt-1 text-sm">
 				Manage Docker Compose template sources and registries
-				<a
-					href="https://arcane.ofkm.dev/docs/templates/use-templates"
-					class="text-primary ml-1 hover:underline">→ Learn more</a
-				>
+				<a href="https://arcane.ofkm.dev/docs/templates/use-templates" class="text-primary ml-1 hover:underline">→ Learn more</a>
 			</p>
 		</div>
 
@@ -289,10 +274,7 @@
 		<Alert.Root>
 			<FolderOpen class="size-4" />
 			<Alert.Title>Local Template Directory</Alert.Title>
-			<Alert.Description
-				>Local templates are stored in the database and can be managed through the templates page.
-				You can create, edit, and delete custom templates that are stored locally on your server.</Alert.Description
-			>
+			<Alert.Description>Local templates are stored in the database and can be managed through the templates page. You can create, edit, and delete custom templates that are stored locally on your server.</Alert.Description>
 		</Alert.Root>
 	</div>
 
@@ -307,10 +289,7 @@
 		<Alert.Root>
 			<Globe class="size-4" />
 			<Alert.Title>Remote Registries</Alert.Title>
-			<Alert.Description
-				>Add remote template registries to access community templates. Registries should provide a
-				JSON manifest with template definitions and download URLs.</Alert.Description
-			>
+			<Alert.Description>Add remote template registries to access community templates. Registries should provide a JSON manifest with template definitions and download URLs.</Alert.Description>
 		</Alert.Root>
 
 		<Alert.Root class="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
@@ -319,14 +298,8 @@
 			<Alert.Description class="space-y-2">
 				<p>Get started quickly with our community registry containing popular templates:</p>
 				<div class="mt-2 flex items-center gap-2">
-					<code class="rounded bg-white px-2 py-1 text-xs dark:bg-gray-800">
-						https://templates.arcane.ofkm.dev/registry.json
-					</code>
-					<Button
-						size="sm"
-						variant="outline"
-						onclick={() => copyToClipboard('https://templates.arcane.ofkm.dev/registry.json')}
-					>
+					<code class="rounded bg-white px-2 py-1 text-xs dark:bg-gray-800"> https://templates.arcane.ofkm.dev/registry.json </code>
+					<Button size="sm" variant="outline" onclick={() => copyToClipboard('https://templates.arcane.ofkm.dev/registry.json')}>
 						<Copy class="mr-1 size-3" />
 						Copy
 					</Button>
@@ -341,15 +314,7 @@
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div>
 						<Label for="registry-url">Registry URL *</Label>
-						<Input
-							id="registry-url"
-							bind:value={newRegistry.url}
-							type="url"
-							placeholder="https://raw.githubusercontent.com/username/repo/main/registry.json"
-							disabled={isLoading.addingRegistry}
-							class={validationResult && !validationResult.valid ? 'border-red-500' : ''}
-							required
-						/>
+						<Input id="registry-url" bind:value={newRegistry.url} type="url" placeholder="https://raw.githubusercontent.com/username/repo/main/registry.json" disabled={isLoading.addingRegistry} class={validationResult && !validationResult.valid ? 'border-red-500' : ''} required />
 						{#if isLoading.validating}
 							<p class="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
 								<RefreshCw class="size-3 animate-spin" />
@@ -371,26 +336,14 @@
 					</div>
 					<div>
 						<Label for="registry-name">Registry Name *</Label>
-						<Input
-							id="registry-name"
-							bind:value={newRegistry.name}
-							placeholder="My Template Registry"
-							disabled={isLoading.addingRegistry}
-							required
-						/>
+						<Input id="registry-name" bind:value={newRegistry.name} placeholder="My Template Registry" disabled={isLoading.addingRegistry} required />
 						<p class="text-muted-foreground mt-1 text-xs">Auto-filled from registry manifest</p>
 					</div>
 				</div>
 
 				<div>
 					<Label for="registry-description">Description (Optional)</Label>
-					<Textarea
-						id="registry-description"
-						bind:value={newRegistry.description}
-						placeholder="A collection of useful Docker Compose templates"
-						disabled={isLoading.addingRegistry}
-						rows={2}
-					/>
+					<Textarea id="registry-description" bind:value={newRegistry.description} placeholder="A collection of useful Docker Compose templates" disabled={isLoading.addingRegistry} rows={2} />
 				</div>
 
 				<div class="flex items-center gap-2">
@@ -399,9 +352,7 @@
 				</div>
 
 				{#if validationResult && validationResult.warnings.length > 0}
-					<Alert.Root
-						class="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950"
-					>
+					<Alert.Root class="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
 						<AlertCircle class="size-4" />
 						<Alert.Title>Warnings</Alert.Title>
 						<Alert.Description>
@@ -414,13 +365,7 @@
 					</Alert.Root>
 				{/if}
 
-				<Button
-					onclick={addRegistry}
-					disabled={isLoading.addingRegistry ||
-						!newRegistry.url.trim() ||
-						!newRegistry.name.trim() ||
-						(validationResult && !validationResult.valid)}
-				>
+				<Button onclick={addRegistry} disabled={isLoading.addingRegistry || !newRegistry.url.trim() || !newRegistry.name.trim() || (validationResult && !validationResult.valid)}>
 					<Plus class="mr-2 size-4" />
 					{isLoading.addingRegistry ? 'Adding Registry...' : 'Add Registry'}
 				</Button>
@@ -450,28 +395,15 @@
 							</div>
 							<div class="flex items-center gap-2">
 								<!-- Toggle enabled/disabled -->
-								<Switch
-									checked={registry.enabled}
-									onCheckedChange={(checked) => updateRegistry(registry.id, { enabled: checked })}
-									disabled={isLoading.updating.has(registry.id)}
-								/>
+								<Switch checked={registry.enabled} onCheckedChange={(checked) => updateRegistry(registry.id, { enabled: checked })} disabled={isLoading.updating.has(registry.id)} />
 
 								<!-- Open registry URL -->
-								<Button
-									variant="outline"
-									size="sm"
-									onclick={() => window.open(registry.url, '_blank')}
-								>
+								<Button variant="outline" size="sm" onclick={() => window.open(registry.url, '_blank')}>
 									<ExternalLink class="size-4" />
 								</Button>
 
 								<!-- Remove registry -->
-								<Button
-									variant="destructive"
-									size="sm"
-									onclick={() => removeRegistry(registry.id)}
-									disabled={isLoading.removing.has(registry.id)}
-								>
+								<Button variant="destructive" size="sm" onclick={() => removeRegistry(registry.id)} disabled={isLoading.removing.has(registry.id)}>
 									{#if isLoading.removing.has(registry.id)}
 										<RefreshCw class="size-4 animate-spin" />
 									{:else}

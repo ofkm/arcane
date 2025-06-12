@@ -34,8 +34,7 @@ export const load: PageLoad = async (): Promise<VolumePageData> => {
 		};
 	} catch (err: unknown) {
 		console.error('Failed to load volumes:', err);
-		const message =
-			err instanceof Error ? err.message : 'Failed to connect to Docker or list volumes.';
+		const message = err instanceof Error ? err.message : 'Failed to connect to Docker or list volumes.';
 		return {
 			volumes: [],
 			error: message

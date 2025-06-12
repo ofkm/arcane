@@ -63,9 +63,7 @@
 				{/if}
 			</div>
 			<Button class="ml-10 h-8 p-3" variant="ghost" aria-label="Expand Card">
-				<LucideChevronDown
-					class={cn('size-5 transition-transform duration-200', expanded && 'rotate-180 transform')}
-				/>
+				<LucideChevronDown class={cn('size-5 transition-transform duration-200', expanded && 'rotate-180 transform')} />
 			</Button>
 		</div>
 	</Card.Header>

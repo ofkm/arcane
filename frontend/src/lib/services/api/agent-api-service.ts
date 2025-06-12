@@ -189,11 +189,7 @@ export default class AgentAPIService extends BaseAPIService {
 	/**
 	 * Execute Docker command on agent
 	 */
-	async executeDockerCommand(
-		agentId: string,
-		command: string,
-		args: string[] = []
-	): Promise<AgentTask> {
+	async executeDockerCommand(agentId: string, command: string, args: string[] = []): Promise<AgentTask> {
 		return this.createTask(agentId, {
 			type: 'docker_command',
 			payload: { command, args }
@@ -213,12 +209,7 @@ export default class AgentAPIService extends BaseAPIService {
 	/**
 	 * Deploy stack on agent
 	 */
-	async deployStack(
-		agentId: string,
-		stackId: string,
-		composeContent: string,
-		envContent?: string
-	): Promise<AgentTask> {
+	async deployStack(agentId: string, stackId: string, composeContent: string, envContent?: string): Promise<AgentTask> {
 		return this.createTask(agentId, {
 			type: 'stack_deploy',
 			payload: { stackId, composeContent, envContent }

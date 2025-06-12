@@ -24,19 +24,7 @@
 		onStop?: () => void;
 	}
 
-	let {
-		containerId = null,
-		stackId = null,
-		type = 'container',
-		maxLines = 1000,
-		autoScroll = $bindable(true),
-		showTimestamps = true,
-		height = '400px',
-		onClear,
-		onToggleAutoScroll,
-		onStart,
-		onStop
-	}: Props = $props();
+	let { containerId = null, stackId = null, type = 'container', maxLines = 1000, autoScroll = $bindable(true), showTimestamps = true, height = '400px', onClear, onToggleAutoScroll, onStart, onStop }: Props = $props();
 
 	let logs: LogEntry[] = $state([]);
 	let logContainer: HTMLElement | undefined = $state();
@@ -54,10 +42,7 @@
 			error = null;
 			onStart?.();
 
-			const endpoint =
-				type === 'stack'
-					? `/api/stacks/${stackId}/logs/stream?follow=true&tail=100&timestamps=${showTimestamps}`
-					: `/api/containers/${containerId}/logs/stream?follow=true&tail=100&timestamps=${showTimestamps}`;
+			const endpoint = type === 'stack' ? `/api/stacks/${stackId}/logs/stream?follow=true&tail=100&timestamps=${showTimestamps}` : `/api/containers/${containerId}/logs/stream?follow=true&tail=100&timestamps=${showTimestamps}`;
 
 			eventSource = new EventSource(endpoint);
 
@@ -175,13 +160,7 @@
 		return logs.length;
 	}
 
-	function addLogEntry(logData: {
-		level: string;
-		message: string;
-		timestamp?: string;
-		service?: string;
-		containerId?: string;
-	}) {
+	function addLogEntry(logData: { level: string; message: string; timestamp?: string; service?: string; containerId?: string }) {
 		const entry: LogEntry = {
 			timestamp: logData.timestamp || new Date().toISOString(),
 			level: logData.level as LogEntry['level'],
@@ -246,11 +225,7 @@
 		</div>
 	{/if}
 
-	<div
-		bind:this={logContainer}
-		class="log-viewer overflow-y-auto rounded-lg border bg-black font-mono text-sm text-white"
-		style="height: {height}"
-	>
+	<div bind:this={logContainer} class="log-viewer overflow-y-auto rounded-lg border bg-black font-mono text-sm text-white" style="height: {height}">
 		{#if logs.length === 0}
 			<div class="p-4 text-center text-gray-500">
 				{#if !containerId}
@@ -263,9 +238,7 @@
 			</div>
 		{:else}
 			{#each logs as log (log.timestamp + log.message + (log.service || ''))}
-				<div
-					class="flex border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50"
-				>
+				<div class="flex border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50">
 					{#if showTimestamps}
 						<span class="mr-3 w-20 shrink-0 text-xs text-gray-500">
 							{formatTimestamp(log.timestamp)}
@@ -293,7 +266,6 @@
 
 <style>
 	.log-viewer {
-		font-family:
-			'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 	}
 </style>

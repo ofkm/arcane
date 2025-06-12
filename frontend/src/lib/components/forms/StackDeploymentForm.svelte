@@ -110,9 +110,7 @@ volumes:
 		const stackNameRegex = /^[a-z][a-z0-9-]*[a-z0-9]$|^[a-z]$/;
 		const trimmedStackName = stackName.trim().toLowerCase();
 		if (!stackNameRegex.test(trimmedStackName)) {
-			toast.error(
-				'Stack name must start with a letter, contain only lowercase letters, numbers, and hyphens, and not end with a hyphen'
-			);
+			toast.error('Stack name must start with a letter, contain only lowercase letters, numbers, and hyphens, and not end with a hyphen');
 			return;
 		}
 
@@ -163,9 +161,7 @@ volumes:
 				const servicesMatch = composeContent.match(/services:\s*\n([\s\S]*?)(?=\n\w|\n$|$)/);
 				if (servicesMatch) {
 					const servicesSection = servicesMatch[1];
-					const serviceLines = servicesSection
-						.split('\n')
-						.filter((line) => line.trim() && !line.startsWith(' '));
+					const serviceLines = servicesSection.split('\n').filter((line) => line.trim() && !line.startsWith(' '));
 
 					if (serviceLines.length === 0) {
 						toast.error('At least one service must be defined in the services section');
@@ -199,9 +195,7 @@ volumes:
 					// Validate environment variable key format
 					const envKeyRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 					if (!envKeyRegex.test(key.trim())) {
-						toast.error(
-							`Environment variable "${key}" must start with letter or underscore and contain only letters, numbers, and underscores`
-						);
+						toast.error(`Environment variable "${key}" must start with letter or underscore and contain only letters, numbers, and underscores`);
 						return;
 					}
 				}
@@ -241,102 +235,56 @@ volumes:
 				const errorMessage = err.message.toLowerCase();
 
 				// Network/connectivity errors
-				if (
-					errorMessage.includes('network') ||
-					errorMessage.includes('connection') ||
-					errorMessage.includes('timeout')
-				) {
-					toast.error(
-						'Network error: Unable to connect to the deployment service. Please check your connection and try again.'
-					);
+				if (errorMessage.includes('network') || errorMessage.includes('connection') || errorMessage.includes('timeout')) {
+					toast.error('Network error: Unable to connect to the deployment service. Please check your connection and try again.');
 					return;
 				}
 
 				// Permission/authentication errors
-				if (
-					errorMessage.includes('unauthorized') ||
-					errorMessage.includes('forbidden') ||
-					errorMessage.includes('permission')
-				) {
-					toast.error(
-						'Permission denied: You may not have sufficient permissions to deploy stacks.'
-					);
+				if (errorMessage.includes('unauthorized') || errorMessage.includes('forbidden') || errorMessage.includes('permission')) {
+					toast.error('Permission denied: You may not have sufficient permissions to deploy stacks.');
 					return;
 				}
 
 				// Stack already exists
 				if (errorMessage.includes('already exists') || errorMessage.includes('conflict')) {
-					toast.error(
-						`Stack "${trimmedStackName}" already exists. Please choose a different name or remove the existing stack first.`
-					);
+					toast.error(`Stack "${trimmedStackName}" already exists. Please choose a different name or remove the existing stack first.`);
 					return;
 				}
 
 				// Docker/compose specific errors
-				if (
-					errorMessage.includes('yaml') ||
-					errorMessage.includes('compose') ||
-					errorMessage.includes('invalid')
-				) {
-					toast.error(
-						'Invalid Docker Compose configuration. Please check your compose content and try again.'
-					);
+				if (errorMessage.includes('yaml') || errorMessage.includes('compose') || errorMessage.includes('invalid')) {
+					toast.error('Invalid Docker Compose configuration. Please check your compose content and try again.');
 					return;
 				}
 
 				// Resource errors
-				if (
-					errorMessage.includes('memory') ||
-					errorMessage.includes('disk') ||
-					errorMessage.includes('resource')
-				) {
-					toast.error(
-						'Insufficient resources: The deployment requires more memory, disk space, or other resources than available.'
-					);
+				if (errorMessage.includes('memory') || errorMessage.includes('disk') || errorMessage.includes('resource')) {
+					toast.error('Insufficient resources: The deployment requires more memory, disk space, or other resources than available.');
 					return;
 				}
 
 				// Image pull errors
-				if (
-					errorMessage.includes('pull') ||
-					errorMessage.includes('image') ||
-					errorMessage.includes('registry')
-				) {
-					toast.error(
-						'Image error: Unable to pull required Docker images. Please check image names and registry availability.'
-					);
+				if (errorMessage.includes('pull') || errorMessage.includes('image') || errorMessage.includes('registry')) {
+					toast.error('Image error: Unable to pull required Docker images. Please check image names and registry availability.');
 					return;
 				}
 
 				// Port binding errors
-				if (
-					errorMessage.includes('port') ||
-					errorMessage.includes('bind') ||
-					errorMessage.includes('address already in use')
-				) {
-					toast.error(
-						'Port conflict: One or more ports are already in use. Please check your port mappings.'
-					);
+				if (errorMessage.includes('port') || errorMessage.includes('bind') || errorMessage.includes('address already in use')) {
+					toast.error('Port conflict: One or more ports are already in use. Please check your port mappings.');
 					return;
 				}
 
 				// Volume/mount errors
-				if (
-					errorMessage.includes('volume') ||
-					errorMessage.includes('mount') ||
-					errorMessage.includes('path')
-				) {
-					toast.error(
-						'Volume error: There was an issue with volume mounts or paths. Please check your volume configurations.'
-					);
+				if (errorMessage.includes('volume') || errorMessage.includes('mount') || errorMessage.includes('path')) {
+					toast.error('Volume error: There was an issue with volume mounts or paths. Please check your volume configurations.');
 					return;
 				}
 
 				// Agent-specific errors
 				if (errorMessage.includes('agent') || errorMessage.includes('offline')) {
-					toast.error(
-						'Agent error: The target agent is offline or unavailable. Please try again later.'
-					);
+					toast.error('Agent error: The target agent is offline or unavailable. Please try again later.');
 					return;
 				}
 
@@ -358,31 +306,15 @@ volumes:
 	<div class="space-y-3">
 		<Label>How would you like to deploy?</Label>
 		<div class="grid grid-cols-3 gap-2">
-			<Button
-				variant={deploymentMode === 'compose' ? 'default' : 'outline'}
-				size="sm"
-				onclick={() => (deploymentMode = 'compose')}
-				class="flex h-auto flex-col p-3"
-			>
+			<Button variant={deploymentMode === 'compose' ? 'default' : 'outline'} size="sm" onclick={() => (deploymentMode = 'compose')} class="flex h-auto flex-col p-3">
 				<FileText class="mb-1 size-4" />
 				<span class="text-xs">Write Compose</span>
 			</Button>
-			<Button
-				variant={deploymentMode === 'template' ? 'default' : 'outline'}
-				size="sm"
-				onclick={() => (deploymentMode = 'template')}
-				class="flex h-auto flex-col p-3"
-			>
+			<Button variant={deploymentMode === 'template' ? 'default' : 'outline'} size="sm" onclick={() => (deploymentMode = 'template')} class="flex h-auto flex-col p-3">
 				<Upload class="mb-1 size-4" />
 				<span class="text-xs">Use Template</span>
 			</Button>
-			<Button
-				variant={deploymentMode === 'existing' ? 'default' : 'outline'}
-				size="sm"
-				onclick={() => (deploymentMode = 'existing')}
-				class="flex h-auto flex-col p-3"
-				disabled
-			>
+			<Button variant={deploymentMode === 'existing' ? 'default' : 'outline'} size="sm" onclick={() => (deploymentMode = 'existing')} class="flex h-auto flex-col p-3" disabled>
 				<FileText class="mb-1 size-4" />
 				<span class="text-xs">Existing Stack</span>
 			</Button>
@@ -395,10 +327,7 @@ volumes:
 			<Label>Choose a template</Label>
 			<div class="grid gap-2">
 				{#each templates as template}
-					<button
-						class="hover:border-primary/50 rounded-lg border p-3 text-left transition-colors"
-						onclick={() => useTemplate(template)}
-					>
+					<button class="hover:border-primary/50 rounded-lg border p-3 text-left transition-colors" onclick={() => useTemplate(template)}>
 						<div class="text-sm font-medium">{template.name}</div>
 						<div class="text-muted-foreground text-xs">{template.description}</div>
 					</button>
@@ -410,37 +339,20 @@ volumes:
 	<!-- Stack Name -->
 	<div class="space-y-2">
 		<Label for="stackName">Stack Name</Label>
-		<Input
-			id="stackName"
-			bind:value={stackName}
-			placeholder="my-awesome-app"
-			disabled={deploying}
-		/>
+		<Input id="stackName" bind:value={stackName} placeholder="my-awesome-app" disabled={deploying} />
 	</div>
 
 	{#if deploymentMode === 'compose'}
 		<!-- Compose Content -->
 		<div class="space-y-2">
 			<Label for="compose">Docker Compose Content</Label>
-			<Textarea
-				id="compose"
-				bind:value={composeContent}
-				placeholder="version: '3.8'&#10;services:&#10;  web:&#10;    image: nginx:alpine&#10;    ports:&#10;      - '80:80'"
-				class="min-h-[200px] font-mono text-sm"
-				disabled={deploying}
-			/>
+			<Textarea id="compose" bind:value={composeContent} placeholder="version: '3.8'&#10;services:&#10;  web:&#10;    image: nginx:alpine&#10;    ports:&#10;      - '80:80'" class="min-h-[200px] font-mono text-sm" disabled={deploying} />
 		</div>
 
 		<!-- Environment Variables (Optional) -->
 		<div class="space-y-2">
 			<Label for="env">Environment Variables (Optional)</Label>
-			<Textarea
-				id="env"
-				bind:value={envContent}
-				placeholder="DATABASE_URL=postgres://user:pass@db:5432/myapp&#10;REDIS_URL=redis://redis:6379"
-				class="min-h-[80px] font-mono text-sm"
-				disabled={deploying}
-			/>
+			<Textarea id="env" bind:value={envContent} placeholder="DATABASE_URL=postgres://user:pass@db:5432/myapp&#10;REDIS_URL=redis://redis:6379" class="min-h-[80px] font-mono text-sm" disabled={deploying} />
 		</div>
 	{/if}
 
