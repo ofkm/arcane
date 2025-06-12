@@ -1,0 +1,33 @@
+{
+  "cookies": [
+    {
+      "name": "token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhY2Nlc3MiLCJleHAiOjE3NDk5NTI4MTQsImlhdCI6MTc0OTczNjgxNCwianRpIjoiNTdhNzcxNTAtNjJiMC00ZTQ3LTkwYWMtODkzZGZmYjcwMDk4In0.U6rOXStYw5sZTu8q9H8Tfg6kjPI12VWVs_kzwemcgrI",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1749952813.843659,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "mode-watcher-theme",
+          "value": ""
+        },
+        {
+          "name": "mode-watcher-mode",
+          "value": "system"
+        },
+        {
+          "name": "collapsible-cards-expanded",
+          "value": "{\"system-overview\":true}"
+        }
+      ]
+    }
+  ]
+}
