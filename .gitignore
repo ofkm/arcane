@@ -34,7 +34,7 @@ vite.config.ts.timestamp-*
 .dev-data/*
 .dev-data/settings/*
 
-test-results/*
+tests/test-results/*
 tests/.report/*
 .test-data/*
 data/*
