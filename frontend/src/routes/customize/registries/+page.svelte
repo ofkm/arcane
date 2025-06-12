@@ -5,18 +5,12 @@
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import ContainerRegistryFormDialog from '$lib/components/dialogs/container-registry-form-dialog.svelte';
+	import ContainerRegistryFormSheet from '$lib/components/sheets/container-registry-sheet.svelte';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { toast } from 'svelte-sonner';
-	import { invalidateAll } from '$app/navigation';
 	import type { ContainerRegistry } from '$lib/models/container-registry';
-	import type {
-		ContainerRegistryCreateDto,
-		ContainerRegistryUpdateDto
-	} from '$lib/dto/container-registry-dto';
-	import ContainerRegistryAPIService from '$lib/services/api/container-registry-api-service';
-
-	const containerRegistryAPI = new ContainerRegistryAPIService();
+	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/dto/container-registry-dto';
+	import { containerRegistryAPI } from '$lib/services/api';
 
 	let { data } = $props();
 	let registries = $state<ContainerRegistry[]>(data.registries || []);
@@ -45,19 +39,13 @@
 	}
 
 	// Updated function signature - now receives detail directly
-	async function handleRegistryDialogSubmit(detail: {
-		registry: ContainerRegistryCreateDto | ContainerRegistryUpdateDto;
-		isEditMode: boolean;
-	}) {
+	async function handleRegistryDialogSubmit(detail: { registry: ContainerRegistryCreateDto | ContainerRegistryUpdateDto; isEditMode: boolean }) {
 		const { registry, isEditMode } = detail;
 		isLoadingAction = true;
 
 		try {
 			if (isEditMode && registryToEdit?.id) {
-				await containerRegistryAPI.updateRegistry(
-					registryToEdit.id,
-					registry as ContainerRegistryUpdateDto
-				);
+				await containerRegistryAPI.updateRegistry(registryToEdit.id, registry as ContainerRegistryUpdateDto);
 				toast.success('Registry updated successfully');
 			} else {
 				await containerRegistryAPI.createRegistry(registry as ContainerRegistryCreateDto);
@@ -124,20 +112,13 @@
 	<title>Container Registries - Arcane</title>
 </svelte:head>
 
-<ContainerRegistryFormDialog
-	bind:open={isRegistryDialogOpen}
-	bind:registryToEdit
-	onSubmit={handleRegistryDialogSubmit}
-	isLoading={isLoadingAction}
-/>
+<ContainerRegistryFormSheet bind:open={isRegistryDialogOpen} bind:registryToEdit onSubmit={handleRegistryDialogSubmit} isLoading={isLoadingAction} />
 
 <div class="space-y-6">
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Container Registries</h1>
-			<p class="text-muted-foreground mt-1 text-sm">
-				Configure access credentials for private Docker registries and container repositories
-			</p>
+			<p class="text-muted-foreground mt-1 text-sm">Configure access credentials for private Docker registries and container repositories</p>
 		</div>
 
 		<div class="flex gap-2">
@@ -145,11 +126,7 @@
 				<RefreshCw class="size-4" />
 				Refresh
 			</Button>
-			<Button
-				onclick={openCreateRegistryDialog}
-				disabled={isLoadingAction}
-				class="arcane-button-save h-10"
-			>
+			<Button onclick={openCreateRegistryDialog} disabled={isLoadingAction} class="arcane-button-save h-10">
 				{#if isLoadingAction}
 					<RefreshCw class="size-4 animate-spin" />
 					Processing...
@@ -169,26 +146,18 @@
 				</div>
 				<div>
 					<Card.Title>Docker Registry Credentials</Card.Title>
-					<Card.Description>
-						Manage authentication credentials for private Docker registries like Docker Hub, GitHub
-						Container Registry, Google Container Registry, and custom registries
-					</Card.Description>
+					<Card.Description>Manage authentication credentials for private Docker registries like Docker Hub, GitHub Container Registry, Google Container Registry, and custom registries</Card.Description>
 				</div>
 			</div>
 		</Card.Header>
 		<Card.Content>
 			{#if !registries || registries.length === 0}
 				<div class="py-12 text-center">
-					<div
-						class="bg-muted/30 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full"
-					>
+					<div class="bg-muted/30 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
 						<Key class="text-muted-foreground size-8" />
 					</div>
 					<h3 class="mb-2 text-lg font-medium">No Registry Credentials</h3>
-					<p class="text-muted-foreground mx-auto mb-4 max-w-sm text-sm">
-						Add registry credentials to authenticate with private Docker registries when pulling
-						images.
-					</p>
+					<p class="text-muted-foreground mx-auto mb-4 max-w-sm text-sm">Add registry credentials to authenticate with private Docker registries when pulling images.</p>
 					<Button onclick={openCreateRegistryDialog} class="arcane-button-save">
 						<Plus class="size-4" />
 						Add Your First Registry
@@ -252,11 +221,7 @@
 								</span>
 							</Table.Cell>
 							<Table.Cell>
-								<span
-									class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {item.enabled
-										? 'bg-green-100 text-green-800'
-										: 'bg-gray-100 text-gray-800'}"
-								>
+								<span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {item.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
 									{item.enabled ? 'Enabled' : 'Disabled'}
 								</span>
 							</Table.Cell>
@@ -279,10 +244,7 @@
 											<Pencil class="mr-2 size-4" />
 											Edit
 										</DropdownMenu.Item>
-										<DropdownMenu.Item
-											onclick={() => confirmRemoveRegistry(item)}
-											class="focus:bg-destructive/10 text-red-500 focus:text-red-700!"
-										>
+										<DropdownMenu.Item onclick={() => confirmRemoveRegistry(item)} class="focus:bg-destructive/10 text-red-500 focus:text-red-700!">
 											<Trash2 class="mr-2 size-4" />
 											Remove
 										</DropdownMenu.Item>

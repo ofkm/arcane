@@ -6,7 +6,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import type { Snippet } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
-	import type { FormInput } from '$lib/types/form.type';
+	import type { FormInput } from '$lib/utils/form.utils';
 
 	let {
 		input = $bindable(),
