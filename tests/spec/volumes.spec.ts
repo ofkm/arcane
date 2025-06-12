@@ -6,7 +6,6 @@ async function fetchVolumesWithRetry(page: Page, maxRetries = 3): Promise<any[]>
     try {
       const response = await page.request.get('/api/volumes');
       const volumes = await response.json();
-      console.log(`Successfully fetched ${volumes.length} volumes on attempt ${retries + 1}`);
       return volumes.data;
     } catch (error) {
       retries++;
@@ -31,8 +30,6 @@ test.beforeEach(async ({ page }) => {
     console.warn('Could not fetch volumes after multiple retries:', error);
     realVolumes = [];
   }
-
-  console.log(`Found ${realVolumes.length} real volumes for testing`);
 });
 
 test.describe('Volumes Page', () => {
@@ -100,16 +97,17 @@ test.describe('Volumes Page', () => {
     await page.goto('/volumes');
     await page.waitForLoadState('networkidle');
 
-    const unusedVolume = realVolumes.find((vol) => !vol.inUse);
+    const unusedVolume = 'my-app-data';
     test.skip(!unusedVolume, 'No unused volumes available for deletion test');
 
-    const volumeRow = page.locator(`tr:has-text("${unusedVolume.Name}")`);
-    await volumeRow.getByRole('button', { name: 'Open menu' }).click();
+    const firstRow = await page.getByRole('row', { name: 'my-app-data' });
+    await firstRow.getByRole('button', { name: 'Open menu' }).click();
+
     await page.getByRole('menuitem', { name: 'Delete' }).click();
 
     await expect(page.getByRole('heading', { name: 'Delete Volume' })).toBeVisible();
 
-    const removePromise = page.waitForRequest((req) => req.url().includes(`/api/volumes/${unusedVolume.Name}`) && req.method() === 'DELETE');
+    const removePromise = page.waitForRequest((req) => req.url().includes(`/api/volumes/my-app-data`) && req.method() === 'DELETE');
 
     await page.locator('button:has-text("Delete")').click();
     const removeRequest = await removePromise;

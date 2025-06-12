@@ -87,10 +87,6 @@ jobs:
           docker volume create my-app-data || true
           docker volume create cache || true
 
-      - name: Pull Test Images
-        run: |
-          docker pull ghcr.io/linuxserver/nginx:latest
-
       - name: Download Arcane Docker image artifact
         uses: actions/download-artifact@v4
         with:
@@ -111,7 +107,8 @@ jobs:
         if: steps.test-images-cache.outputs.cache-hit != 'true'
         run: |
           docker pull ghcr.io/linuxserver/nginx:latest
-          docker save ghcr.io/linuxserver/nginx:latest > /tmp/test-images.tar
+          docker pull ghcr.io/linuxserver/radarr:nightly
+          docker save ghcr.io/linuxserver/nginx:latest ghcr.io/linuxserver/radarr:nightly > /tmp/test-images.tar
 
       - name: Load test images from cache
         if: steps.test-images-cache.outputs.cache-hit == 'true'

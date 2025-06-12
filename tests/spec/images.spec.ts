@@ -108,12 +108,13 @@ test.describe('Images Page', () => {
 
     await page.waitForLoadState('networkidle');
 
-    const deleteableImage = realImages.find((img) => !img.inUse);
-    test.skip(deleteableImage, 'No deletable images available');
+    const deleteableImage = realImages.find((img) => img.repoTags?.[0]?.includes('ghcr.io/linuxserver/radarr'));
+    test.skip(!deleteableImage, 'No deletable images available');
 
-    const imageRow = page.locator(`tr:has-text("${deleteableImage.repoTags?.[0] || deleteableImage.id.substring(7, 19)}")`);
-    await imageRow.getByRole('button', { name: 'Open menu' }).click();
+    const firstRow = await page.getByRole('row', { name: 'ghcr.io/linuxserver/radarr' });
+    await firstRow.getByRole('button', { name: 'Open menu' }).click();
     await page.getByRole('menuitem', { name: 'Remove' }).click();
+    console.log(firstRow);
 
     await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Delete Image")')).toBeVisible();
 
@@ -126,6 +127,7 @@ test.describe('Images Page', () => {
 
     await expect(page.locator('li[data-sonner-toast][data-type="success"] div[data-title]')).toBeVisible();
   });
+
   test('should call prune API on prune click and confirmation', async ({ page }) => {
     await page.goto('/images');
 
