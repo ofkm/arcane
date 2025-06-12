@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const authFile = ".auth/login.json"; // Adjusted path
+const authFile = ".auth/login.json";
 
 export default defineConfig({
   testDir: ".",
@@ -17,11 +17,15 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   projects: [
-    { name: "setup", testMatch: /.*\.setup\.ts/ },
+    {
+      name: "setup",
+      testMatch: /setup\/.*\.setup\.ts/,
+    },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: authFile },
       dependencies: ["setup"],
+      testMatch: /spec\/.*\.spec\.ts/,
     },
   ],
   webServer: {

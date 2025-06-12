@@ -48,6 +48,10 @@ jobs:
           docker volume create my-app-data || true
           docker volume create cache || true
 
+      - name: Pull Test Images
+        run: |
+          docker pull ghcr.io/linuxserver/nginx:latest
+
       - name: Install test dependencies
         working-directory: tests
         run: npm ci
