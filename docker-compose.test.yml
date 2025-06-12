@@ -1,11 +1,8 @@
 services:
   arcane:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runner
+    image: arcane:test
     ports:
-      - "3000:8080"
+      - '3000:8080'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - arcane_data:/app/data

@@ -58,7 +58,6 @@ test.describe('Volumes Page', () => {
       await expect(page.getByText('Volume List')).toBeVisible();
       await expect(page.locator('table')).toBeVisible();
     } else {
-      // Should show empty state instead
       await expect(page.getByText('No volumes found')).toBeVisible();
     }
   });
@@ -68,7 +67,6 @@ test.describe('Volumes Page', () => {
     await page.waitForLoadState('networkidle');
 
     await page.locator('button:has-text("Create Volume")').first().click();
-    // Fix the dialog title selector - looking at the create-volume-dialog.svelte
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByText('Create New Volume')).toBeVisible();
   });
@@ -77,7 +75,6 @@ test.describe('Volumes Page', () => {
     await page.goto('/volumes');
     await page.waitForLoadState('networkidle');
 
-    // Open filter dropdown
     await page.locator('button:has-text("Filter")').click();
     await expect(page.getByText('Volume Usage')).toBeVisible();
     await expect(page.getByText('Show Used Volumes')).toBeVisible();
@@ -94,7 +91,6 @@ test.describe('Volumes Page', () => {
     await firstRow.getByRole('button', { name: 'Open menu' }).click();
     await page.getByRole('menuitem', { name: 'Inspect' }).click();
 
-    // Check that we navigated to the volume details page
     await expect(page).toHaveURL(new RegExp(`/volumes/.+`));
   });
 
@@ -104,7 +100,6 @@ test.describe('Volumes Page', () => {
     await page.goto('/volumes');
     await page.waitForLoadState('networkidle');
 
-    // Find a volume that's not in use (if any)
     const unusedVolume = realVolumes.find((vol) => !vol.inUse);
     test.skip(!unusedVolume, 'No unused volumes available for deletion test');
 
@@ -112,7 +107,6 @@ test.describe('Volumes Page', () => {
     await volumeRow.getByRole('button', { name: 'Open menu' }).click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
 
-    // Wait for confirmation dialog
     await expect(page.getByRole('heading', { name: 'Delete Volume' })).toBeVisible();
 
     const removePromise = page.waitForRequest((req) => req.url().includes(`/api/volumes/${unusedVolume.Name}`) && req.method() === 'DELETE');
@@ -159,7 +153,6 @@ test.describe('Volumes Page', () => {
     const volumeRow = page.locator(`tr:has-text("${volumeInUse.Name}")`);
     await volumeRow.getByRole('button', { name: 'Open menu' }).click();
 
-    // Check that delete button is disabled
     const deleteButton = page.getByRole('menuitem', { name: 'Delete' });
     await expect(deleteButton).toBeDisabled();
   });
