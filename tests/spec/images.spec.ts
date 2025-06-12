@@ -6,14 +6,10 @@ async function fetchImagesWithRetry(page: Page, maxRetries = 3): Promise<any[]> 
     try {
       const response = await page.request.get('/api/images');
       const images = await response.json();
-      console.log(images);
-      console.log(`Successfully fetched ${images.length} images on attempt ${retries + 1}`);
       return images.data;
     } catch (error) {
       retries++;
-      console.log(`Attempt ${retries} failed, ${maxRetries - retries} retries left`);
       if (retries >= maxRetries) throw error;
-      // Wait before retrying
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
