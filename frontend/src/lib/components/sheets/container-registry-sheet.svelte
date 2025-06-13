@@ -2,7 +2,8 @@
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
-	import { Loader2 } from '@lucide/svelte';
+	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
+	import { Loader2, PackagePlusIcon } from '@lucide/svelte';
 	import type { ContainerRegistry } from '$lib/models/container-registry';
 	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/dto/container-registry-dto';
 	import { z } from 'zod/v4';
@@ -55,24 +56,33 @@
 </script>
 
 <Sheet.Root bind:open onOpenChange={handleOpenChange}>
-	<Sheet.Content class="p-4">
-		<Sheet.Header>
-			<Sheet.Title>{isEditMode ? 'Edit' : 'Add'} Container Registry</Sheet.Title>
-			<Sheet.Description>
-				{isEditMode ? 'Update the details for this container registry.' : 'Enter the details for the new container registry.'}
-			</Sheet.Description>
+	<Sheet.Content class="p-6">
+		<Sheet.Header class="space-y-3 pb-6 border-b">
+			<div class="flex items-center gap-3">
+				<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+					<PackagePlusIcon class="size-5 text-primary" />
+				</div>
+				<div>
+					<Sheet.Title class="text-xl font-semibold">
+						{isEditMode ? 'Edit' : 'Add'} Container Registry
+					</Sheet.Title>
+					<Sheet.Description class="text-sm text-muted-foreground mt-1">
+						{isEditMode ? 'Update the details for this container registry.' : 'Enter the details for the new container registry.'}
+					</Sheet.Description>
+				</div>
+			</div>
 		</Sheet.Header>
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
 			<FormInput label="Registry URL *" type="text" placeholder="e.g., docker.io, ghcr.io, gcr.io, quay.io" description="Leave empty or use 'docker.io' for Docker Hub" bind:input={$inputs.url} />
 			<FormInput label="Username *" type="text" description="Your registry username" bind:input={$inputs.username} />
 			<FormInput label="Token *" type="password" placeholder={isEditMode ? 'Leave empty to keep current token' : 'Your registry password or token'} description="Use a Personal Access Token or your password if the registry supports it. " bind:input={$inputs.token} />
 			<FormInput label="Description" type="text" placeholder="Optional description for this registry" bind:input={$inputs.description} />
-			<FormInput label="Enabled" type="switch" description="Enable this registry for authentication" bind:input={$inputs.enabled} />
-			<FormInput label="Allow Insecure Connection" type="switch" description="Allow HTTP connections" bind:input={$inputs.insecure} />
+			<SwitchWithLabel id="isEnabledSwitch" label="Enabled" description="Enable this registry for authentication" bind:checked={$inputs.enabled.value} />
+			<SwitchWithLabel id="insecureSwitch" label="Allow Insecure Connection" description="Allow HTTP connections" bind:checked={$inputs.insecure.value} />
 
-			<Sheet.Footer>
-				<Button type="button" class="arcane-button-cancel" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
-				<Button type="submit" class="arcane-button-create" disabled={isLoading}>
+			<Sheet.Footer class="flex flex-row gap-2">
+				<Button type="button" class="arcane-button-cancel flex-1" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
+				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
 						<Loader2 class="mr-2 size-4 animate-spin" />
 					{/if}
