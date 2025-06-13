@@ -13,7 +13,6 @@
 	import type { UniversalTableProps } from '$lib/types/table-types';
 	import type { Snippet } from 'svelte';
 
-	// Better type constraints
 	interface TableData extends Record<string, any> {
 		isExternal?: boolean;
 	}

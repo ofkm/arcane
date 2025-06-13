@@ -5,24 +5,22 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { FileText, Globe, FolderOpen, Settings, Download, Loader2 } from '@lucide/svelte';
-	import type { ComposeTemplate } from '$lib/services/template-service';
-	import TemplateAPIService from '$lib/services/api/template-api-service';
+	import { templateAPI } from '$lib/services/api';
+	import type { TemplateRegistry, Template } from '$lib/types/template.type';
 	import { toast } from 'svelte-sonner';
 
 	interface Props {
 		open: boolean;
-		templates: ComposeTemplate[];
-		onSelect: (template: ComposeTemplate) => void;
+		templates: Template[];
+		onSelect: (template: Template) => void;
 	}
 
 	let { open = $bindable(), templates, onSelect }: Props = $props();
 
-	const templateAPI = new TemplateAPIService();
-
 	// Loading states for individual templates
 	let loadingStates = $state(new Map<string, boolean>());
 
-	async function handleSelect(template: ComposeTemplate) {
+	async function handleSelect(template: Template) {
 		// Set loading state
 		loadingStates.set(template.id, true);
 		loadingStates = new Map(loadingStates);
@@ -30,9 +28,8 @@
 		try {
 			let finalTemplate = template;
 
-			// If it's a remote template, fetch the actual content via API
 			if (template.isRemote) {
-				const templateContent = await templateAPI.getContent(template.id);
+				const templateContent = await templateAPI.getById(template.id);
 
 				if (!templateContent.content) {
 					toast.error('Failed to load template content');
@@ -60,7 +57,7 @@
 		}
 	}
 
-	async function handleDownload(template: ComposeTemplate) {
+	async function handleDownload(template: Template) {
 		if (!template.isRemote) return;
 
 		const templateId = template.id;
@@ -182,7 +179,7 @@
 											<div class="ml-2 flex flex-shrink-0 gap-1">
 												<Badge variant="secondary" class="text-xs">
 													<Globe class="mr-1 size-3" />
-													{template.metadata?.registry || 'Remote'}
+													{template.metadata?.author || 'Remote'}
 												</Badge>
 												{#if template.metadata?.envUrl}
 													<Badge variant="secondary" class="text-xs">

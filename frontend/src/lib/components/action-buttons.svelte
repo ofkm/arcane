@@ -3,14 +3,10 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import type { LoadingStates } from '$lib/types/loading-states.type';
-	import ContainerAPIService from '$lib/services/api/container-api-service';
-	import StackAPIService from '$lib/services/api/stack-api-service';
+	import { stackAPI, containerAPI } from '$lib/services/api';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import ArcaneButton from './arcane-button.svelte';
-
-	const containerApi = new ContainerAPIService();
-	const stackApi = new StackAPIService();
 
 	type TargetType = 'container' | 'stack';
 
@@ -69,7 +65,7 @@
 
 						isLoading.remove = true;
 						handleApiResultWithCallbacks({
-							result: await tryCatch(type === 'container' ? containerApi.remove(id) : stackApi.destroy(id, removeVolumes, removeFiles)),
+							result: await tryCatch(type === 'container' ? containerAPI.remove(id) : stackAPI.destroy(id, removeVolumes, removeFiles)),
 							message: `Failed to ${type === 'stack' ? 'Destroy' : 'Remove'} ${type}`,
 							setLoadingState: (value) => (isLoading.remove = value),
 							onSuccess: async () => {
@@ -98,7 +94,7 @@
 					action: async () => {
 						isLoading.redeploy = true;
 						handleApiResultWithCallbacks({
-							result: await tryCatch(stackApi.redeploy(id)),
+							result: await tryCatch(stackAPI.redeploy(id)),
 							message: `Failed to Redeploy ${type}`,
 							setLoadingState: (value) => (isLoading.redeploy = value),
 							onSuccess: async () => {
@@ -115,7 +111,7 @@
 	async function handleStart() {
 		isLoading.start = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? containerApi.start(id) : stackApi.deploy(id)),
+			result: await tryCatch(type === 'container' ? containerAPI.start(id) : stackAPI.deploy(id)),
 			message: `Failed to Start ${type}`,
 			setLoadingState: (value) => (isLoading.start = value),
 			onSuccess: async () => {
@@ -128,7 +124,7 @@
 	async function handleDeploy() {
 		isLoading.start = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(stackApi.deploy(id)),
+			result: await tryCatch(stackAPI.deploy(id)),
 			message: `Failed to Start ${type}`,
 			setLoadingState: (value) => (isLoading.start = value),
 			onSuccess: async () => {
@@ -141,7 +137,7 @@
 	async function handleStop() {
 		isLoading.stop = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? containerApi.stop(id) : stackApi.down(id)),
+			result: await tryCatch(type === 'container' ? containerAPI.stop(id) : stackAPI.down(id)),
 			message: `Failed to Stop ${type}`,
 			setLoadingState: (value) => (isLoading.stop = value),
 			onSuccess: async () => {
@@ -154,7 +150,7 @@
 	async function handleRestart() {
 		isLoading.restart = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? containerApi.restart(id) : stackApi.restart(id)),
+			result: await tryCatch(type === 'container' ? containerAPI.restart(id) : stackAPI.restart(id)),
 			message: `Failed to Restart ${type}`,
 			setLoadingState: (value) => (isLoading.restart = value),
 			onSuccess: async () => {
@@ -167,7 +163,7 @@
 	async function handlePull() {
 		isLoading.pulling = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? containerApi.pull(id) : stackApi.pull(id)),
+			result: await tryCatch(type === 'container' ? containerAPI.pull(id) : stackAPI.pull(id)),
 			message: 'Failed to Pull Image(s)',
 			setLoadingState: (value) => (isLoading.pulling = value),
 			onSuccess: async () => {

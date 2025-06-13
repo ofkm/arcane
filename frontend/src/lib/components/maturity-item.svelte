@@ -10,7 +10,7 @@
 		status: string;
 		version?: string;
 		date?: string;
-		latestVersion?: string; // Add this property
+		latestVersion?: string;
 	}
 
 	interface Props {
