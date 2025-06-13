@@ -11,19 +11,19 @@
 
 	type TemplateRegistryFormProps = {
 		open: boolean;
-		onSubmit: (registry: { url: string; description?: string; enabled: boolean }) => void;
+		onSubmit: (registry: { name: string; url: string; description?: string; enabled: boolean }) => void;
 		isLoading: boolean;
 	};
 
 	let { open = $bindable(false), onSubmit, isLoading }: TemplateRegistryFormProps = $props();
 
 	const formSchema = z.object({
-		url: z.string().url('Please enter a valid URL').min(1, 'Registry URL is required'),
-		description: z.string().optional().default(''),
+		url: z.url().min(1, 'Registry URL is required'),
+		description: z.string().default(''),
 		enabled: z.boolean().default(true)
 	});
 
-	let formData = $state({
+	let formData = $derived({
 		url: '',
 		description: '',
 		enabled: true
@@ -83,14 +83,16 @@
 		const data = form.validate();
 		if (!data) return;
 
-		if (validationState.result && !validationState.result.valid) {
+		console.log(validationState);
+		if (!validationState.result || !validationState.result.valid || !validationState.result.name) {
 			return;
 		}
 
-		// Ensure we handle the optional description field properly
+		// Include the name from the JSON validation
 		const registryData = {
+			name: validationState.result.name,
 			url: data.url,
-			description: data.description || undefined,
+			description: data.description ? data.description : undefined,
 			enabled: data.enabled
 		};
 
@@ -99,15 +101,6 @@
 
 	function handleOpenChange(newOpenState: boolean) {
 		open = newOpenState;
-		if (!newOpenState) {
-			// Reset form when closing
-			formData = {
-				url: '',
-				description: '',
-				enabled: true
-			};
-			validationState.result = null;
-		}
 	}
 
 	// Watch URL changes for validation with debounce
@@ -137,10 +130,9 @@
 				</div>
 			</div>
 		</Sheet.Header>
-
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
 			<div class="space-y-1">
-				<FormInput label="Registry URL *" type="text" placeholder="https://raw.githubusercontent.com/username/repo/main/registry.json" description="URL to the registry JSON manifest" bind:input={$inputs.url} />
+				<FormInput label="Registry URL *" type="text" placeholder="https://templates.arcane.ofkm.dev/registry.json" description="URL to the registry JSON manifest" bind:input={$inputs.url} />
 
 				{#if validationState.isValidating}
 					<div class="flex items-center gap-2 text-sm text-muted-foreground">
@@ -182,7 +174,7 @@
 
 			<Sheet.Footer class="flex flex-row gap-2">
 				<Button type="button" class="arcane-button-cancel flex-1" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
-				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading || validationState.isValidating || (validationState.result && !validationState.result.valid)}>
+				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
 						<Loader2 class="mr-2 size-4 animate-spin" />
 					{/if}
