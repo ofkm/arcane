@@ -8,7 +8,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import PullImageDialog from './pull-image-dialog.svelte';
+	import ImagePullSheet from '$lib/components/sheets/image-pull-sheet.svelte';
 	import { formatBytes } from '$lib/utils/bytes.util';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
@@ -457,7 +457,7 @@
 		</div>
 	{/if}
 
-	<PullImageDialog bind:open={isPullDialogOpen} onPullFinished={() => invalidateAll()} />
+	<ImagePullSheet bind:open={isPullDialogOpen} onPullFinished={() => invalidateAll()} />
 
 	<Dialog.Root bind:open={isConfirmPruneDialogOpen}>
 		<Dialog.Content>

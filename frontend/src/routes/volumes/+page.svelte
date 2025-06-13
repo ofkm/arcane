@@ -7,7 +7,7 @@
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
-	import CreateVolumeDialog from './create-volume-dialog.svelte';
+	import CreateVolumeSheet from '$lib/components/sheets/create-volume-sheet.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Table from '$lib/components/ui/table';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
@@ -310,5 +310,5 @@
 		</Card.Content>
 	</Card.Root>
 
-	<CreateVolumeDialog bind:open={isDialogOpen.create} isCreating={isLoading.creating} onSubmit={(volumeCreateData) => handleCreateVolume(volumeCreateData)} />
+	<CreateVolumeSheet bind:open={isDialogOpen.create} isLoading={isLoading.creating} onSubmit={(volumeCreateData) => handleCreateVolume(volumeCreateData)} />
 </div>

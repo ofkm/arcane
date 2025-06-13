@@ -25,7 +25,6 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util.js';
 	import { tryCatch } from '$lib/utils/try-catch.js';
-
 	let { data } = $props();
 
 	// Initialize from SSR data
