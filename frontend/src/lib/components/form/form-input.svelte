@@ -19,6 +19,7 @@
 		type = 'text',
 		rows = 3,
 		children,
+		autocomplete = 'off',
 		...restProps
 	}: HTMLAttributes<HTMLDivElement> & {
 		input?: FormInput<string | boolean | number | Date | undefined>;
@@ -31,6 +32,7 @@
 		type?: 'text' | 'password' | 'email' | 'number' | 'checkbox' | 'date' | 'switch' | 'textarea';
 		rows?: number;
 		children?: Snippet;
+		autocomplete?: HTMLInputElement['autocomplete'];
 	} = $props();
 
 	const id = label?.toLowerCase().replace(/ /g, '-');
@@ -52,7 +54,7 @@
 			{:else if type === 'textarea'}
 				<Textarea {id} {placeholder} {rows} bind:value={input.value as string} {disabled} />
 			{:else}
-				<Input {id} {placeholder} {type} bind:value={input.value} {disabled} />
+				<Input {id} {placeholder} {type} bind:value={input.value} {disabled} {autocomplete} />
 			{/if}
 		{/if}
 		{#if input?.error}

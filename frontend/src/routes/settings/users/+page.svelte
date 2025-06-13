@@ -6,19 +6,17 @@
 	import type { PageData } from './$types';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import type { User } from '$lib/types/user.type';
-	import UserFormDialog from '$lib/components/dialogs/user-form-dialog.svelte';
+	import UserFormSheet from '$lib/components/sheets/user-form-sheet.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import UserAPIService from '$lib/services/api/user-api-service';
+	import { userAPI } from '$lib/services/api';
 	import { invalidateAll } from '$app/navigation';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 
 	let { data }: { data: PageData } = $props();
-
-	const userApi = new UserAPIService();
 
 	let userPageStates = $state({
 		users: <User[]>data.users,
@@ -30,7 +28,7 @@
 		saving: false
 	});
 
-	let userDialogRef: UserFormDialog | null = $state(null);
+	let userDialogRef: UserFormSheet | null = $state(null);
 
 	$effect(() => {
 		userPageStates.users = data.users;
@@ -56,7 +54,7 @@
 		isLoading.saving = true;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(isEditMode ? userApi.update(userId || '', userData as User) : userApi.create(userData as User)),
+			result: await tryCatch(isEditMode ? userAPI.update(userId || '', userData as User) : userAPI.create(userData as User)),
 			message: isEditMode ? 'Error Updating User' : 'Error Creating User',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async () => {
@@ -77,7 +75,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(userApi.delete(userId)),
+						result: await tryCatch(userAPI.delete(userId)),
 						message: 'Failed to Delete User',
 						setLoadingState: (value) => (isLoading.saving = value),
 						onSuccess: async () => {
@@ -95,7 +93,7 @@
 	<title>User Management - Arcane</title>
 </svelte:head>
 
-<UserFormDialog bind:open={userPageStates.isUserDialogOpen} bind:userToEdit={userPageStates.userToEdit} {roles} onSubmit={handleDialogSubmit} bind:this={userDialogRef} isLoading={isLoading.saving} allowUsernameEdit={true} />
+<UserFormSheet bind:open={userPageStates.isUserDialogOpen} bind:userToEdit={userPageStates.userToEdit} {roles} onSubmit={handleDialogSubmit} bind:this={userDialogRef} isLoading={isLoading.saving} allowUsernameEdit={true} />
 
 <div class="space-y-6">
 	<div>
