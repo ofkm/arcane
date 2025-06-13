@@ -10,91 +10,97 @@ fi
 
 echo "Entrypoint: Setting up user and permissions..."
 
-# Default PUID/PGID if not provided
+# Default values
 PUID=${PUID:-2000}
 PGID=${PGID:-2000}
 DOCKER_GID=${DOCKER_GID:-998}
 APP_USER="arcane"
-APP_GROUP_FALLBACK="arcane" # Fallback group name if PGID group exists with different name
-APP_DIR="/app"
-DATA_DIR="${APP_DIR}/data"
+APP_GROUP="arcane"
+DATA_DIR="/app/data"
 
 echo "Entrypoint: Using PUID=${PUID}, PGID=${PGID}, DOCKER_GID=${DOCKER_GID}"
 
-# Determine the group name for PGID
-if getent group "$PGID" > /dev/null 2>&1; then
-    APP_GROUP=$(getent group "$PGID" | cut -d: -f1)
-    echo "Entrypoint: Group with GID ${PGID} already exists: ${APP_GROUP}"
+# Create or update the arcane group
+if getent group "$PGID" >/dev/null 2>&1; then
+    EXISTING_GROUP=$(getent group "$PGID" | cut -d: -f1)
+    if [ "$EXISTING_GROUP" != "$APP_GROUP" ]; then
+        echo "Entrypoint: Group with GID ${PGID} exists as '${EXISTING_GROUP}', using it..."
+        APP_GROUP="$EXISTING_GROUP"
+    fi
 else
-    APP_GROUP="$APP_GROUP_FALLBACK"
     echo "Entrypoint: Creating group ${APP_GROUP} with GID ${PGID}..."
     addgroup -g "$PGID" "$APP_GROUP"
 fi
 
-# Ensure the docker group exists with correct GID
-if ! getent group docker > /dev/null 2>&1; then
-    echo "Entrypoint: Creating docker group with GID ${DOCKER_GID}..."
-    addgroup -g "$DOCKER_GID" docker
-else
-    CURRENT_DOCKER_GID=$(getent group docker | cut -d: -f3)
-    if [ "$CURRENT_DOCKER_GID" != "$DOCKER_GID" ]; then
-        echo "Entrypoint: Updating docker group from GID ${CURRENT_DOCKER_GID} to ${DOCKER_GID}..."
-        groupmod -g "$DOCKER_GID" docker
-    fi
-fi
-
-# Create the arcane user if it doesn't exist or ensure it uses the correct PUID/PGID
-if getent passwd "$PUID" > /dev/null 2>&1; then
-    USERNAME=$(getent passwd "$PUID" | cut -d: -f1)
-    echo "Entrypoint: User with UID ${PUID} already exists: ${USERNAME}"
-    
-    # Ensure existing user is part of the target APP_GROUP
-    if ! id -nG "$USERNAME" | grep -qw "$APP_GROUP"; then
-        echo "Entrypoint: Adding user ${USERNAME} (UID ${PUID}) to group ${APP_GROUP} (GID ${PGID})..."
-        usermod -a -G "$APP_GROUP" "$USERNAME"
-    fi
-    # Ensure primary group is correct
-    if [ "$(id -g "$USERNAME")" != "$PGID" ]; then
-        echo "Entrypoint: Setting primary group for ${USERNAME} (UID ${PUID}) to ${APP_GROUP} (GID ${PGID})..."
-        usermod -g "$PGID" "$USERNAME"
-    fi
-
-    # If username is not 'arcane', and not 'root', consider renaming
-    if [ "$USERNAME" != "$APP_USER" ] && [ "$USERNAME" != "root" ]; then
-        echo "Entrypoint: Renaming user from ${USERNAME} to ${APP_USER} (UID ${PUID})..."
-        usermod -l "$APP_USER" "$USERNAME"
+# Create or update the arcane user
+if getent passwd "$PUID" >/dev/null 2>&1; then
+    EXISTING_USER=$(getent passwd "$PUID" | cut -d: -f1)
+    if [ "$EXISTING_USER" != "$APP_USER" ] && [ "$EXISTING_USER" != "root" ]; then
+        echo "Entrypoint: Renaming user ${EXISTING_USER} to ${APP_USER}..."
+        usermod -l "$APP_USER" -g "$PGID" "$EXISTING_USER" 2>/dev/null || true
+    elif [ "$EXISTING_USER" = "$APP_USER" ]; then
+        echo "Entrypoint: User ${APP_USER} already exists with UID ${PUID}"
+        usermod -g "$PGID" "$APP_USER" 2>/dev/null || true
     fi
 else
-    echo "Entrypoint: Creating user ${APP_USER} with UID ${PUID} and GID ${PGID}..."
+    echo "Entrypoint: Creating user ${APP_USER} with UID ${PUID}..."
     adduser -D -u "$PUID" -G "$APP_GROUP" "$APP_USER"
 fi
 
-# Ensure arcane user is in the docker group
-if ! id -nG "$APP_USER" | grep -qw "docker"; then
-    echo "Entrypoint: Adding ${APP_USER} to the docker group..."
-    addgroup "$APP_USER" docker
-fi
-
-# Fix permissions for the Docker socket if it exists
+# Handle Docker socket and group
 if [ -S /var/run/docker.sock ]; then
     SOCKET_GID=$(stat -c '%g' /var/run/docker.sock)
-    if [ "${SOCKET_GID}" != "$(getent group docker | cut -d: -f3)" ]; then
-        echo "Docker socket GID (${SOCKET_GID}) doesn't match configured docker group GID."
-        echo "Updating docker group to match socket GID: ${SOCKET_GID}"
-        delgroup docker >/dev/null 2>&1 || true
-        addgroup -g "${SOCKET_GID}" docker
-        adduser "$APP_USER" docker
+    echo "Entrypoint: Docker socket found with GID ${SOCKET_GID}"
+    
+    # Special handling for GID 0 (root group)
+    if [ "$SOCKET_GID" = "0" ]; then
+        echo "Entrypoint: Docker socket owned by root group (GID 0), adding ${APP_USER} to root group..."
+        addgroup "$APP_USER" root
+        echo "Entrypoint: Docker socket configured (using root group)"
+    else
+        # Create or update docker group to match socket GID
+        if getent group docker >/dev/null 2>&1; then
+            CURRENT_DOCKER_GID=$(getent group docker | cut -d: -f3)
+            if [ "$CURRENT_DOCKER_GID" != "$SOCKET_GID" ]; then
+                echo "Entrypoint: Updating docker group GID from ${CURRENT_DOCKER_GID} to ${SOCKET_GID}..."
+                groupmod -g "$SOCKET_GID" docker 2>/dev/null || {
+                    # If groupmod fails, recreate the group
+                    delgroup docker 2>/dev/null || true
+                    addgroup -g "$SOCKET_GID" docker
+                }
+            fi
+        else
+            echo "Entrypoint: Creating docker group with GID ${SOCKET_GID}..."
+            addgroup -g "$SOCKET_GID" docker
+        fi
+        
+        # Add arcane user to docker group
+        if ! id -nG "$APP_USER" | grep -qw "docker"; then
+            echo "Entrypoint: Adding ${APP_USER} to docker group..."
+            addgroup "$APP_USER" docker
+        fi
+        
+        echo "Entrypoint: Docker socket configured (GID: ${SOCKET_GID})"
     fi
-    echo "Docker socket accessible at /var/run/docker.sock (GID: $(getent group docker | cut -d: -f3))"
 else
     echo "WARNING: Docker socket not found at /var/run/docker.sock"
-    echo "Make sure to mount the Docker socket when running this container"
+    echo "Make sure to mount the Docker socket: -v /var/run/docker.sock:/var/run/docker.sock"
+    
+    # Still create docker group with default GID for consistency
+    if ! getent group docker >/dev/null 2>&1; then
+        echo "Entrypoint: Creating docker group with default GID ${DOCKER_GID}..."
+        addgroup -g "$DOCKER_GID" docker
+        addgroup "$APP_USER" docker
+    fi
 fi
 
-# Ensure data directory exists and set ownership
-echo "Entrypoint: Ensuring data directory exists and setting ownership..."
+# Set up data directory
+echo "Entrypoint: Setting up data directory..."
 mkdir -p "$DATA_DIR"
 chown -R "${PUID}:${PGID}" "$DATA_DIR"
 
-echo "Entrypoint: Setup complete. Executing command as user ${APP_USER} (UID: ${PUID}, GID: ${PGID})..."
+# Ensure app directory ownership
+chown "${PUID}:${PGID}" /app
+
+echo "Entrypoint: Setup complete. Starting as ${APP_USER} (UID: ${PUID}, GID: ${PGID})"
 exec su-exec "$APP_USER" "$@"

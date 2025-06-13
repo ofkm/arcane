@@ -1,10 +1,10 @@
 {
-	"github.copilot.enable": {
-		"*": false,
-		"plaintext": false,
-		"markdown": false,
-		"scminput": false,
-		"typescript": true
-	},
-	"typescript.tsdk": "node_modules/typescript/lib"
+  "github.copilot.enable": {
+    "*": false,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false,
+    "typescript": true
+  },
+  "typescript.tsdk": "frontend/node_modules/typescript/lib"
 }
