@@ -1,18 +1,16 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
 	import { Card } from '$lib/components/ui/card/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
-	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import { Trash2, Plus, ExternalLink, RefreshCw, FileText, Globe, FolderOpen, Users, Copy, AlertCircle, CheckCircle } from '@lucide/svelte';
-	import type { PageData } from '../../settings/templates/$types';
+	import { Trash2, Plus, ExternalLink, RefreshCw, FileText, Globe, FolderOpen, Users, Copy } from '@lucide/svelte';
+	import type { PageData } from './$types';
 	import { templateAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
+	import AddTemplateRegistrySheet from '$lib/components/sheets/add-template-registry-sheet.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -43,6 +41,8 @@
 		errors: string[];
 		warnings: string[];
 	} | null>(null);
+
+	let showAddRegistrySheet = $state(false);
 
 	// Computed values
 	const localTemplateCount = $derived(templates.filter((t) => !t.isRemote).length);
@@ -201,6 +201,31 @@
 			});
 	}
 
+	// Handle registry form submission
+	async function handleRegistrySubmit(registry: { name: string; url: string; description?: string; enabled: boolean }) {
+		isLoading.addingRegistry = true;
+
+		try {
+			const created = await templateAPI.addRegistry({
+				name: registry.name.trim(),
+				url: registry.url.trim(),
+				description: registry.description?.trim() || undefined,
+				enabled: registry.enabled
+			});
+
+			registries = [...registries, created];
+			showAddRegistrySheet = false;
+
+			toast.success('Registry added successfully');
+			await invalidateAll();
+		} catch (error) {
+			console.error('Error adding registry:', error);
+			toast.error(error instanceof Error ? error.message : 'Failed to add registry');
+		} finally {
+			isLoading.addingRegistry = false;
+		}
+	}
+
 	// Watch URL changes for validation
 	$effect(() => {
 		if (newRegistry.url.trim()) {
@@ -284,6 +309,10 @@
 	<div class="space-y-4">
 		<div class="flex items-center justify-between">
 			<h2 class="text-xl font-semibold">Remote Template Registries</h2>
+			<Button onclick={() => (showAddRegistrySheet = true)}>
+				<Plus class="mr-2 size-4" />
+				Add Registry
+			</Button>
 		</div>
 
 		<Alert.Root>
@@ -306,71 +335,6 @@
 				</div>
 			</Alert.Description>
 		</Alert.Root>
-
-		<!-- Add New Registry Form -->
-		<Card class="p-4">
-			<h3 class="mb-3 font-medium">Add Registry</h3>
-			<div class="space-y-4">
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-					<div>
-						<Label for="registry-url">Registry URL *</Label>
-						<Input id="registry-url" bind:value={newRegistry.url} type="url" placeholder="https://raw.githubusercontent.com/username/repo/main/registry.json" disabled={isLoading.addingRegistry} class={validationResult && !validationResult.valid ? 'border-red-500' : ''} required />
-						{#if isLoading.validating}
-							<p class="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
-								<RefreshCw class="size-3 animate-spin" />
-								Validating...
-							</p>
-						{:else if validationResult}
-							{#if validationResult.valid}
-								<p class="mt-1 flex items-center gap-1 text-xs text-green-600">
-									<CheckCircle class="size-3" />
-									Valid registry
-								</p>
-							{:else}
-								<p class="mt-1 flex items-center gap-1 text-xs text-red-600">
-									<AlertCircle class="size-3" />
-									{validationResult.errors[0]}
-								</p>
-							{/if}
-						{/if}
-					</div>
-					<div>
-						<Label for="registry-name">Registry Name *</Label>
-						<Input id="registry-name" bind:value={newRegistry.name} placeholder="My Template Registry" disabled={isLoading.addingRegistry} required />
-						<p class="text-muted-foreground mt-1 text-xs">Auto-filled from registry manifest</p>
-					</div>
-				</div>
-
-				<div>
-					<Label for="registry-description">Description (Optional)</Label>
-					<Textarea id="registry-description" bind:value={newRegistry.description} placeholder="A collection of useful Docker Compose templates" disabled={isLoading.addingRegistry} rows={2} />
-				</div>
-
-				<div class="flex items-center gap-2">
-					<Switch bind:checked={newRegistry.enabled} disabled={isLoading.addingRegistry} />
-					<Label>Enable registry</Label>
-				</div>
-
-				{#if validationResult && validationResult.warnings.length > 0}
-					<Alert.Root class="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
-						<AlertCircle class="size-4" />
-						<Alert.Title>Warnings</Alert.Title>
-						<Alert.Description>
-							<ul class="list-inside list-disc">
-								{#each validationResult.warnings as warning}
-									<li>{warning}</li>
-								{/each}
-							</ul>
-						</Alert.Description>
-					</Alert.Root>
-				{/if}
-
-				<Button onclick={addRegistry} disabled={isLoading.addingRegistry || !newRegistry.url.trim() || !newRegistry.name.trim() || (validationResult && !validationResult.valid)}>
-					<Plus class="mr-2 size-4" />
-					{isLoading.addingRegistry ? 'Adding Registry...' : 'Add Registry'}
-				</Button>
-			</div>
-		</Card>
 
 		<!-- Registry List -->
 		{#if registries.length > 0}
@@ -423,4 +387,7 @@
 			</div>
 		{/if}
 	</div>
+
+	<!-- Add Template Registry Sheet -->
+	<AddTemplateRegistrySheet bind:open={showAddRegistrySheet} onSubmit={handleRegistrySubmit} isLoading={isLoading.addingRegistry} />
 </div>
