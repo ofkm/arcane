@@ -6,7 +6,7 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import * as Table from '$lib/components/ui/table';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import CreateContainerDialog from './create-container-dialog.svelte';
+	import CreateContainerSheet from '$lib/components/sheets/create-container-sheet.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { containerAPI, imageAPI } from '$lib/services/api';
@@ -293,5 +293,15 @@
 		</Card.Root>
 	{/if}
 
-	<CreateContainerDialog bind:open={isCreateDialogOpen} volumes={Array.isArray(data.volumes) ? data.volumes : []} networks={Array.isArray(data.networks) ? data.networks : []} images={Array.isArray(data.images) ? data.images : []} />
+	<CreateContainerSheet
+		bind:open={isCreateDialogOpen}
+		availableVolumes={Array.isArray(data.volumes) ? data.volumes : []}
+		availableNetworks={Array.isArray(data.networks) ? data.networks : []}
+		availableImages={Array.isArray(data.images) ? data.images : []}
+		onSubmit={async () => {
+			await invalidateAll();
+			isCreateDialogOpen = false;
+		}}
+		isLoading={false}
+	/>
 </div>

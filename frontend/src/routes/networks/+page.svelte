@@ -8,13 +8,13 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import CreateNetworkDialog from './CreateNetworkDialog.svelte';
+	import CreateNetworkSheet from '$lib/components/sheets/create-network-sheet.svelte';
 	import * as Table from '$lib/components/ui/table';
 	import type { NetworkCreateOptions, NetworkInspectInfo } from 'dockerode';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
-	import NetworkAPIService from '$lib/services/api/network-api-service';
+	import { networkAPI } from '$lib/services/api';
 	import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
@@ -46,11 +46,9 @@
 	const bridgeNetworks = $derived(networkPageStates.networks.filter((n) => n.Driver === 'bridge').length);
 	const overlayNetworks = $derived(networkPageStates.networks.filter((n) => n.Driver === 'overlay').length);
 
-	const networkApi = new NetworkAPIService();
-
 	async function handleCreateNetworkSubmit(options: NetworkCreateOptions) {
 		handleApiResultWithCallbacks({
-			result: await tryCatch(networkApi.create(options)),
+			result: await tryCatch(networkAPI.create(options)),
 			message: `Failed to Create Network "${options.Name}"`,
 			setLoadingState: (value) => (isLoading.create = value),
 			onSuccess: async () => {
@@ -74,7 +72,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(networkApi.remove(encodeURIComponent(id))),
+						result: await tryCatch(networkAPI.remove(encodeURIComponent(id))),
 						message: `Failed to Remove Network "${name}"`,
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
@@ -118,7 +116,7 @@
 
 					for (const network of selectedNetworkDetails) {
 						// Iterate over details which includes name
-						const result = await tryCatch(networkApi.remove(encodeURIComponent(network.id)));
+						const result = await tryCatch(networkAPI.remove(encodeURIComponent(network.id)));
 						// The setLoadingState in a loop like this will just toggle the global remove state
 						// For individual item loading, a more complex state management would be needed.
 						if (result.data) {
@@ -299,5 +297,5 @@
 		</Card.Content>
 	</Card.Root>
 
-	<CreateNetworkDialog bind:open={networkPageStates.isCreateDialogOpen} isCreating={isLoading.create} onSubmit={handleCreateNetworkSubmit} />
+	<CreateNetworkSheet bind:open={networkPageStates.isCreateDialogOpen} isLoading={isLoading.create} onSubmit={handleCreateNetworkSubmit} />
 </div>
