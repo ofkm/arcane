@@ -18,29 +18,12 @@
 	let templates = $state(data.templates || []);
 	let registries = $state(data.registries || []);
 
-	// Form state for new registry
-	let newRegistry = $state({
-		name: '',
-		url: '',
-		description: '',
-		enabled: true
-	});
-
 	// Loading states
 	let isLoading = $state({
 		addingRegistry: false,
-		refreshing: new Set<number>(),
 		removing: new Set<number>(),
-		updating: new Set<number>(),
-		validating: false
+		updating: new Set<number>()
 	});
-
-	// Validation state
-	let validationResult = $state<{
-		valid: boolean;
-		errors: string[];
-		warnings: string[];
-	} | null>(null);
 
 	let showAddRegistrySheet = $state(false);
 
@@ -48,89 +31,8 @@
 	const localTemplateCount = $derived(templates.filter((t) => !t.isRemote).length);
 	const remoteTemplateCount = $derived(templates.filter((t) => t.isRemote).length);
 
-	// Validate registry URL
-	async function validateRegistryUrl(url: string) {
-		if (!url.trim()) {
-			validationResult = null;
-			return;
-		}
-
-		isLoading.validating = true;
-		try {
-			new URL(url);
-
-			const data = await templateAPI.fetchRegistry(url);
-
-			if (!data.name || !data.templates || !Array.isArray(data.templates)) {
-				throw new Error('Invalid registry format: missing required fields (name, templates)');
-			}
-
-			validationResult = {
-				valid: true,
-				errors: [],
-				warnings: data.templates.length === 0 ? ['Registry contains no templates'] : []
-			};
-
-			if (!newRegistry.name.trim()) {
-				newRegistry.name = data.name;
-			}
-		} catch (error) {
-			validationResult = {
-				valid: false,
-				errors: [error instanceof Error ? error.message : 'Invalid registry URL'],
-				warnings: []
-			};
-		} finally {
-			isLoading.validating = false;
-		}
-	}
-
-	// Add new registry
-	async function addRegistry() {
-		if (!newRegistry.url.trim() || !newRegistry.name.trim()) {
-			toast.error('Registry URL and name are required');
-			return;
-		}
-
-		if (validationResult && !validationResult.valid) {
-			toast.error('Please fix validation errors before adding the registry');
-			return;
-		}
-
-		if (isLoading.addingRegistry) return;
-		isLoading.addingRegistry = true;
-
-		try {
-			const created = await templateAPI.addRegistry({
-				name: newRegistry.name.trim(),
-				url: newRegistry.url.trim(),
-				description: newRegistry.description.trim() || undefined,
-				enabled: newRegistry.enabled
-			});
-
-			registries = [...registries, created];
-
-			// Clear form
-			newRegistry = {
-				name: '',
-				url: '',
-				description: '',
-				enabled: true
-			};
-			validationResult = null;
-
-			toast.success('Registry added successfully');
-			await invalidateAll();
-		} catch (error) {
-			console.error('Error adding registry:', error);
-			toast.error(error instanceof Error ? error.message : 'Failed to add registry');
-		} finally {
-			isLoading.addingRegistry = false;
-		}
-	}
-
 	// Update registry
-	async function updateRegistry(id: number, updates: Partial<typeof newRegistry>) {
+	async function updateRegistry(id: number, updates: { enabled?: boolean }) {
 		if (isLoading.updating.has(id)) return;
 		isLoading.updating.add(id);
 
@@ -142,9 +44,9 @@
 			}
 
 			await templateAPI.updateRegistry(id, {
-				name: updates.name ?? registry.name,
-				url: updates.url ?? registry.url,
-				description: updates.description ?? registry.description,
+				name: registry.name,
+				url: registry.url,
+				description: registry.description,
 				enabled: updates.enabled ?? registry.enabled
 			});
 
@@ -225,19 +127,6 @@
 			isLoading.addingRegistry = false;
 		}
 	}
-
-	// Watch URL changes for validation
-	$effect(() => {
-		if (newRegistry.url.trim()) {
-			const timeoutId = setTimeout(() => {
-				validateRegistryUrl(newRegistry.url);
-			}, 500); // Debounce validation
-
-			return () => clearTimeout(timeoutId);
-		} else {
-			validationResult = null;
-		}
-	});
 </script>
 
 <svelte:head>
