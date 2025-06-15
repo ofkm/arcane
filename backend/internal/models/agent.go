@@ -84,6 +84,7 @@ const (
 	TaskStatusRunning   AgentTaskStatus = "running"
 	TaskStatusCompleted AgentTaskStatus = "completed"
 	TaskStatusFailed    AgentTaskStatus = "failed"
+	TaskStatusCancelled AgentTaskStatus = "cancelled"
 )
 
 type AgentTask struct {

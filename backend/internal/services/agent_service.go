@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -239,25 +240,20 @@ func (s *AgentService) GetPendingTasks(ctx context.Context, agentID string) ([]*
 
 func (s *AgentService) UpdateTaskStatus(ctx context.Context, taskID string, status models.AgentTaskStatus, result map[string]interface{}, taskError *string) error {
 	updates := map[string]interface{}{
-		"status":     status,
+		"status":     string(status),
 		"updated_at": time.Now(),
 	}
 
 	if result != nil {
-		updates["result"] = result
+		resultJSON, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Errorf("failed to marshal result: %w", err)
+		}
+		updates["result"] = string(resultJSON)
 	}
 
 	if taskError != nil {
 		updates["error"] = *taskError
-	}
-
-	now := time.Now().Unix()
-	if status == models.TaskStatusRunning && updates["started_at"] == nil {
-		updates["started_at"] = now
-	}
-
-	if status == models.TaskStatusCompleted || status == models.TaskStatusFailed {
-		updates["completed_at"] = now
 	}
 
 	if err := s.db.WithContext(ctx).Model(&models.AgentTask{}).Where("id = ?", taskID).Updates(updates).Error; err != nil {
@@ -356,6 +352,25 @@ func (s *AgentService) GetAgentByToken(ctx context.Context, token string) (*mode
 	s.db.WithContext(ctx).Model(&agentToken).Update("last_used", now)
 
 	return &agentToken.Agent, nil
+}
+
+func (s *AgentService) ListAgentTokens(ctx context.Context, agentID string) ([]*models.AgentToken, error) {
+	var tokens []*models.AgentToken
+	if err := s.db.WithContext(ctx).Where("agent_id = ? AND is_active = ?", agentID, true).Find(&tokens).Error; err != nil {
+		return nil, fmt.Errorf("failed to list agent tokens: %w", err)
+	}
+	return tokens, nil
+}
+
+func (s *AgentService) DeleteAgentToken(ctx context.Context, tokenID string) error {
+	if err := s.db.WithContext(ctx).Model(&models.AgentToken{}).Where("id = ?", tokenID).Update("is_active", false).Error; err != nil {
+		return fmt.Errorf("failed to delete agent token: %w", err)
+	}
+	return nil
+}
+
+func (s *AgentService) ValidateAgentToken(ctx context.Context, token string) (*models.Agent, error) {
+	return s.GetAgentByToken(ctx, token)
 }
 
 // Online status checking

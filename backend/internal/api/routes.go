@@ -125,25 +125,38 @@ func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 	agents := api.Group("/agents")
 
 	agentHandler := NewAgentHandler(services.Agent, services.Deployment)
-	
-	agents.POST("/register", agentHandler.RegisterAgent)
-	agents.POST("/:agentId/heartbeat", agentHandler.Heartbeat)
-	agents.GET("/:agentId/tasks/pending", agentHandler.GetPendingTasks)
-	agents.POST("/:agentId/tasks/:taskId/result", agentHandler.SubmitTaskResult)
 
-	agents.GET("", middleware.AuthMiddleware(services.Auth), agentHandler.ListAgents)
-	agents.GET("/:agentId", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgent)
-	agents.DELETE("/:agentId", middleware.AuthMiddleware(services.Auth), agentHandler.DeleteAgent)
-	agents.GET("/:agentId/tasks", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgentTasks)
-	agents.POST("/:agentId/tasks", middleware.AuthMiddleware(services.Auth), agentHandler.CreateTask)
-	agents.GET("/:agentId/tasks/:taskId", middleware.AuthMiddleware(services.Auth), agentHandler.GetTask)
-	agents.GET("/:agentId/deployments", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgentDeployments)
-	agents.POST("/:agentId/deploy/stack", middleware.AuthMiddleware(services.Auth), agentHandler.DeployStack)
-	agents.POST("/:agentId/deploy/container", middleware.AuthMiddleware(services.Auth), agentHandler.DeployContainer)
-	agents.POST("/:agentId/deploy/image", middleware.AuthMiddleware(services.Auth), agentHandler.DeployImage)
-	agents.GET("/:agentId/stacks", middleware.AuthMiddleware(services.Auth), agentHandler.GetAgentStacks)
-	agents.POST("/:agentId/health-check", middleware.AuthMiddleware(services.Auth), agentHandler.SendHealthCheck)
-	agents.POST("/:agentId/stack-list", middleware.AuthMiddleware(services.Auth), agentHandler.GetStackList)
+	agents.POST("/register", agentHandler.RegisterAgent)
+
+	agentAuth := agents.Group("/")
+	agentAuth.Use(middleware.AgentAuthMiddleware(services.Agent))
+	{
+		agentAuth.POST("/:agentId/heartbeat", agentHandler.Heartbeat)
+		agentAuth.GET("/:agentId/tasks/pending", agentHandler.GetPendingTasks)
+		agentAuth.POST("/:agentId/tasks/:taskId/result", agentHandler.SubmitTaskResult)
+	}
+
+	webAuth := agents.Group("/")
+	webAuth.Use(middleware.AuthMiddleware(services.Auth))
+	{
+		webAuth.GET("", agentHandler.ListAgents)
+		webAuth.GET("/:agentId", agentHandler.GetAgent)
+		webAuth.DELETE("/:agentId", agentHandler.DeleteAgent)
+		webAuth.GET("/:agentId/tasks", agentHandler.GetAgentTasks)
+		webAuth.POST("/:agentId/tasks", agentHandler.CreateTask)
+		webAuth.GET("/:agentId/tasks/:taskId", agentHandler.GetTask)
+		webAuth.GET("/:agentId/deployments", agentHandler.GetAgentDeployments)
+		webAuth.POST("/:agentId/deploy/stack", agentHandler.DeployStack)
+		webAuth.POST("/:agentId/deploy/container", agentHandler.DeployContainer)
+		webAuth.POST("/:agentId/deploy/image", agentHandler.DeployImage)
+		webAuth.GET("/:agentId/stacks", agentHandler.GetAgentStacks)
+		webAuth.POST("/:agentId/health-check", agentHandler.SendHealthCheck)
+		webAuth.POST("/:agentId/stack-list", agentHandler.GetStackList)
+
+		webAuth.POST("/:agentId/tokens", agentHandler.CreateAgentToken)
+		webAuth.GET("/:agentId/tokens", agentHandler.ListAgentTokens)
+		webAuth.DELETE("/:agentId/tokens/:tokenId", agentHandler.DeleteAgentToken)
+	}
 }
 
 func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {

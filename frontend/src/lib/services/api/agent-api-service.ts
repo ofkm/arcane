@@ -1,7 +1,7 @@
 import BaseAPIService from './api-service';
-import type { Agent, AgentTask, AgentStats } from '$lib/types/agent.type';
+import type { Agent, AgentTask, AgentStats, AgentToken } from '$lib/types/agent.type';
 import type { CreateAgentDTO, UpdateAgentDTO, CreateTaskDTO, UpdateTaskStatusDTO, UpdateMetricsDTO, UpdateDockerInfoDTO, HeartbeatDTO } from '$lib/dto/agent-dto';
-import type { AgentResponse, AgentsListResponse, TaskResponse, TasksListResponse, AgentStatsResponse, HeartbeatResponse } from '$lib/types/api-response.type';
+import type { AgentResponse, AgentsListResponse, TaskResponse, TasksListResponse, AgentStatsResponse, HeartbeatResponse, AgentTokensListResponse, AgentTokenResponse } from '$lib/types/api-response.type';
 
 export default class AgentAPIService extends BaseAPIService {
 	async register(dto: CreateAgentDTO): Promise<Agent> {
@@ -80,5 +80,19 @@ export default class AgentAPIService extends BaseAPIService {
 
 	async updateDockerInfo(agentId: string, dto: UpdateDockerInfoDTO): Promise<void> {
 		await this.handleResponse(this.api.post(`/agents/${agentId}/docker-info`, dto));
+	}
+
+	async getAgentTokens(agentId: string): Promise<AgentToken[]> {
+		const response = await this.handleResponse<AgentTokensListResponse>(this.api.get(`/agents/${agentId}/tokens`));
+		return response.tokens;
+	}
+
+	async createAgentToken(agentId: string, tokenData: { name: string; permissions: string[] }): Promise<{ token: AgentToken; value: string }> {
+		const response = await this.handleResponse<AgentTokenResponse>(this.api.post(`/agents/${agentId}/tokens`, tokenData));
+		return { token: response.token!, value: response.value! };
+	}
+
+	async deleteAgentToken(agentId: string, tokenId: string): Promise<void> {
+		await this.handleResponse(this.api.delete(`/agents/${agentId}/tokens/${tokenId}`));
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
@@ -243,7 +244,7 @@ func (h *AgentHandler) SubmitTaskResult(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request format",
+			"error":   "Invalid request format: " + err.Error(),
 		})
 		return
 	}
@@ -252,7 +253,7 @@ func (h *AgentHandler) SubmitTaskResult(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to update task status",
+			"error":   "Failed to update task status: " + err.Error(),
 		})
 		return
 	}
@@ -448,4 +449,91 @@ func (h *AgentHandler) GetStackList(c *gin.Context) {
 		"success": true,
 		"task":    task,
 	})
+}
+
+func (h *AgentHandler) CreateAgentToken(c *gin.Context) {
+	agentID := c.Param("agentId")
+
+	type CreateTokenRequest struct {
+		Name        string   `json:"name" binding:"required"`
+		Permissions []string `json:"permissions"`
+		ExpiresAt   *int64   `json:"expiresAt,omitempty"`
+	}
+
+	var req CreateTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request format",
+		})
+		return
+	}
+
+	tokenValue := generateSecureToken()
+
+	token, err := h.agentService.CreateAgentToken(
+		c.Request.Context(),
+		agentID,
+		tokenValue,
+		req.Name,
+		req.Permissions,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to create token",
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"token":   token,
+		"value":   tokenValue,
+	})
+}
+
+func (h *AgentHandler) ListAgentTokens(c *gin.Context) {
+	agentID := c.Param("agentId")
+
+	tokens, err := h.agentService.ListAgentTokens(c.Request.Context(), agentID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to list tokens",
+		})
+		return
+	}
+
+	for _, token := range tokens {
+		token.Token = "***"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"tokens":  tokens,
+		"count":   len(tokens),
+	})
+}
+
+func (h *AgentHandler) DeleteAgentToken(c *gin.Context) {
+	tokenID := c.Param("tokenId")
+
+	err := h.agentService.DeleteAgentToken(c.Request.Context(), tokenID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to delete token",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Token deleted successfully",
+	})
+}
+
+func generateSecureToken() string {
+	return "agent_" + uuid.New().String() + "_" + uuid.New().String()[:8]
 }

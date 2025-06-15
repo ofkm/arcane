@@ -13,10 +13,11 @@
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
 	import UniversalTable from '$lib/components/universal-table.svelte';
+	import AgentTokensDialog from '$lib/components/dialogs/agent-tokens-dialog.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2, Download, Trash2 } from '@lucide/svelte';
+	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2, Download, Trash2, Key } from '@lucide/svelte';
 	import ImagePullForm from '$lib/components/forms/ImagePullForm.svelte';
 	import StackDeploymentForm from '$lib/components/forms/StackDeploymentForm.svelte';
 	import QuickContainerForm from '$lib/components/forms/QuickContainerForm.svelte';
@@ -60,6 +61,7 @@
 	let deployDialogOpen = $state(false);
 	let imageDialogOpen = $state(false);
 	let containerDialogOpen = $state(false);
+	let tokensDialogOpen = $state(false);
 
 	let deleting = $state(false);
 
@@ -429,6 +431,10 @@
 				Back to Agents
 			</Button>
 			{#if agent}
+				<Button variant="outline" onclick={() => (tokensDialogOpen = true)}>
+					<Key class="mr-2 size-4" />
+					Manage Tokens
+				</Button>
 				<Button variant="destructive" onclick={deleteAgentHandler} disabled={deleting}>
 					<Trash2 class="mr-2 size-4" />
 					Delete Agent
@@ -1008,5 +1014,20 @@
 		</Dialog.Header>
 
 		<QuickContainerForm {agentId} onClose={() => (containerDialogOpen = false)} onRun={handleContainerRun} />
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={tokensDialogOpen}>
+	<Dialog.Content class="sm:max-w-2xl">
+		<Dialog.Header>
+			<Dialog.Title>Manage Agent Tokens</Dialog.Title>
+			<Dialog.Description>Create and manage authentication tokens for {agent?.hostname}</Dialog.Description>
+		</Dialog.Header>
+
+		<AgentTokensDialog {agentId} />
+
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => (tokensDialogOpen = false)}>Close</Button>
+		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
