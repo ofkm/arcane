@@ -16,26 +16,59 @@ type Agent struct {
 	LastSeen     *time.Time  `json:"lastSeen" gorm:"column:last_seen"`
 	RegisteredAt *time.Time  `json:"registeredAt" gorm:"column:registered_at"`
 
-	// Metrics
-	ContainerCount *int `json:"containerCount,omitempty" gorm:"column:container_count"`
-	ImageCount     *int `json:"imageCount,omitempty" gorm:"column:image_count"`
-	StackCount     *int `json:"stackCount,omitempty" gorm:"column:stack_count"`
-	NetworkCount   *int `json:"networkCount,omitempty" gorm:"column:network_count"`
-	VolumeCount    *int `json:"volumeCount,omitempty" gorm:"column:volume_count"`
+	ContainerCount *int `json:"-" gorm:"column:container_count"`
+	ImageCount     *int `json:"-" gorm:"column:image_count"`
+	StackCount     *int `json:"-" gorm:"column:stack_count"`
+	NetworkCount   *int `json:"-" gorm:"column:network_count"`
+	VolumeCount    *int `json:"-" gorm:"column:volume_count"`
 
-	// Docker Info
-	DockerVersion    *string `json:"dockerVersion,omitempty" gorm:"column:docker_version"`
-	DockerContainers *int    `json:"dockerContainers,omitempty" gorm:"column:docker_containers"`
-	DockerImages     *int    `json:"dockerImages,omitempty" gorm:"column:docker_images"`
+	DockerVersion    *string `json:"-" gorm:"column:docker_version"`
+	DockerContainers *int    `json:"-" gorm:"column:docker_containers"`
+	DockerImages     *int    `json:"-" gorm:"column:docker_images"`
 
-	// Metadata
+	Metrics    *AgentMetrics `json:"metrics,omitempty" gorm:"-"`
+	DockerInfo *DockerInfo   `json:"dockerInfo,omitempty" gorm:"-"`
+
 	Metadata JSON `json:"metadata,omitempty" gorm:"type:text"`
 
-	// Relations
 	Tasks  []AgentTask  `json:"tasks,omitempty" gorm:"foreignKey:AgentID"`
 	Tokens []AgentToken `json:"tokens,omitempty" gorm:"foreignKey:AgentID"`
 
 	BaseModel
+}
+
+func (a *Agent) PopulateMetrics() {
+	if a.ContainerCount != nil || a.ImageCount != nil || a.StackCount != nil || a.NetworkCount != nil || a.VolumeCount != nil {
+		a.Metrics = &AgentMetrics{
+			ContainerCount: getIntValue(a.ContainerCount),
+			ImageCount:     getIntValue(a.ImageCount),
+			StackCount:     getIntValue(a.StackCount),
+			NetworkCount:   getIntValue(a.NetworkCount),
+			VolumeCount:    getIntValue(a.VolumeCount),
+		}
+	}
+
+	if a.DockerVersion != nil || a.DockerContainers != nil || a.DockerImages != nil {
+		a.DockerInfo = &DockerInfo{
+			Version:    getStringValue(a.DockerVersion),
+			Containers: getIntValue(a.DockerContainers),
+			Images:     getIntValue(a.DockerImages),
+		}
+	}
+}
+
+func getIntValue(ptr *int) int {
+	if ptr == nil {
+		return 0
+	}
+	return *ptr
+}
+
+func getStringValue(ptr *string) string {
+	if ptr == nil {
+		return ""
+	}
+	return *ptr
 }
 
 type AgentMetrics struct {

@@ -70,6 +70,7 @@ func (s *AgentService) GetAgentByID(ctx context.Context, id string) (*models.Age
 		}
 		return nil, fmt.Errorf("failed to get agent: %w", err)
 	}
+	agent.PopulateMetrics()
 	return &agent, nil
 }
 
@@ -78,7 +79,19 @@ func (s *AgentService) ListAgents(ctx context.Context) ([]*models.Agent, error) 
 	if err := s.db.WithContext(ctx).Order("created_at DESC").Find(&agents).Error; err != nil {
 		return nil, fmt.Errorf("failed to list agents: %w", err)
 	}
+	for _, agent := range agents {
+		agent.PopulateMetrics()
+	}
 	return agents, nil
+}
+
+func (s *AgentService) GetAgentByIDWithStatus(ctx context.Context, id string) (*models.Agent, error) {
+	agent, err := s.GetAgentByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	agent.Status = s.computeAgentStatus(agent)
+	return agent, nil
 }
 
 func (s *AgentService) ListAgentsWithStatus(ctx context.Context) ([]*models.Agent, error) {
@@ -92,16 +105,6 @@ func (s *AgentService) ListAgentsWithStatus(ctx context.Context) ([]*models.Agen
 	}
 
 	return agents, nil
-}
-
-func (s *AgentService) GetAgentByIDWithStatus(ctx context.Context, id string) (*models.Agent, error) {
-	agent, err := s.GetAgentByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	agent.Status = s.computeAgentStatus(agent)
-	return agent, nil
 }
 
 func (s *AgentService) computeAgentStatus(agent *models.Agent) string {

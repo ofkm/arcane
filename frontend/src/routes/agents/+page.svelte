@@ -117,7 +117,6 @@
 		</div>
 	{/if}
 
-	<!-- Agents content - data is immediately available from SSR -->
 	{#if agents.length === 0}
 		<!-- Empty State -->
 		<div class="py-16 text-center">
