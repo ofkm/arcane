@@ -26,6 +26,7 @@ type Services struct {
 	ContainerRegistry *services.ContainerRegistryService
 	System            *services.SystemService
 	AutoUpdate        *services.AutoUpdateService
+	Websocket         *services.WebSocketService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -46,6 +47,10 @@ func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	setupTemplateRoutes(api, services)
 	setupContainerRegistryRoutes(api, services)
 	setupAutoUpdateRoutes(api, services)
+
+	r.GET("/ws/agents", func(c *gin.Context) {
+		services.Websocket.HandleAgentConnection(c.Writer, c.Request)
+	})
 }
 
 func setupContainerRegistryRoutes(api *gin.RouterGroup, services *Services) {
@@ -124,7 +129,7 @@ func setupStackRoutes(router *gin.RouterGroup, services *Services) {
 func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 	agents := api.Group("/agents")
 
-	agentHandler := NewAgentHandler(services.Agent, services.Deployment)
+	agentHandler := NewAgentHandler(services.Agent, services.Deployment, services.Websocket)
 
 	agents.POST("/register", agentHandler.RegisterAgent)
 

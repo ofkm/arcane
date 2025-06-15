@@ -102,6 +102,8 @@ func (app *App) Start() {
 
 	registerJobs(app.AppCtx, app.Scheduler, app.Services)
 
+	app.Services.Websocket.Start()
+
 	go func() {
 		slog.Info("Starting scheduler goroutine")
 		if err := app.Scheduler.Run(app.AppCtx); err != nil {
