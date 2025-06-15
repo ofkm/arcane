@@ -1,4 +1,3 @@
-// filepath: /Users/kylemendell/dev/ofkm/arcane/src/lib/utils/bytes.ts
 const units: { [key: string]: number } = {
 	b: 1,
 	k: 1024,

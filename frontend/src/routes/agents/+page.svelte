@@ -3,65 +3,44 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { Agent } from '$lib/types/agent.type';
 	import { formatDistanceToNow } from 'date-fns';
-	import { RefreshCw, AlertCircle, Loader2, Monitor, CheckCircle, Eye, Send, Container, HardDrive, Trash2 } from '@lucide/svelte';
+	import { RefreshCw, AlertCircle, Loader2, Monitor, CheckCircle, Container, HardDrive, Trash2 } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
-	import { getActualAgentStatus } from '$lib/utils/agent-status.utils';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util.js';
 	import { tryCatch } from '$lib/utils/try-catch.js';
-	import Button from '$lib/components/ui/button/button.svelte';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { agentAPI } from '$lib/services/api';
 
 	let { data } = $props();
 
-	// Initialize from SSR data
 	let agents: Agent[] = $state(data.agents || []);
 	let loading = $state(false);
 	let error = $state('');
 
 	onMount(() => {
-		// Refresh every 30 seconds for real-time updates (less frequent since we have SSR)
 		const interval = setInterval(refreshAgents, 30000);
 		return () => clearInterval(interval);
 	});
 
-	// Simplified refresh function - only for periodic updates
 	async function refreshAgents() {
 		if (loading) return;
 
 		try {
 			loading = true;
-			const response = await fetch('/api/agents');
-
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-			}
-
-			const responseData = await response.json();
-			agents = responseData.agents || [];
+			agents = await agentAPI.list();
 			error = '';
 		} catch (err) {
 			console.error('Failed to refresh agents:', err);
-			// Don't show error for background refresh failures
 		} finally {
 			loading = false;
 		}
 	}
 
-	// Manual refresh triggered by user
 	async function loadAgents() {
 		try {
 			loading = true;
 			error = '';
-
-			const response = await fetch('/api/agents');
-
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-			}
-
-			const responseData = await response.json();
-			agents = responseData.agents || [];
+			agents = await agentAPI.list();
 		} catch (err) {
 			console.error('Failed to load agents:', err);
 			error = err instanceof Error ? err.message : 'Unknown error';
@@ -79,12 +58,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(
-							fetch(`/api/agents/${agentId}`, {
-								method: 'DELETE',
-								credentials: 'include'
-							})
-						),
+						result: await tryCatch(agentAPI.delete(agentId)),
 						message: 'Failed to Remove Agent',
 						onSuccess: async () => {
 							toast.success('Agent Removed Successfully');
@@ -97,15 +71,17 @@
 	}
 
 	function getStatusColor(agent: Agent) {
-		const actualStatus = getActualAgentStatus(agent);
-		if (actualStatus === 'online') return 'bg-green-500';
+		if (agent.status === 'online') return 'bg-green-500';
 		return 'bg-red-500';
 	}
 
 	function getStatusText(agent: Agent) {
-		const actualStatus = getActualAgentStatus(agent);
-		if (actualStatus === 'online') return 'Online';
+		if (agent.status === 'online') return 'Online';
 		return 'Offline';
+	}
+
+	function isAgentOnline(agent: Agent) {
+		return agent.status === 'online';
 	}
 
 	function viewAgentDetails(agentId: string) {
@@ -172,7 +148,7 @@
 								<p class="font-mono text-xs text-gray-500 dark:text-gray-400">{agent.id}</p>
 							</div>
 						</div>
-						<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {getActualAgentStatus(agent) === 'online' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'}">
+						<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {agent.status === 'online' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'}">
 							{getStatusText(agent)}
 						</span>
 					</div>
@@ -239,7 +215,7 @@
 					</div>
 
 					<!-- Connected Status -->
-					{#if getActualAgentStatus(agent) === 'online'}
+					{#if isAgentOnline(agent)}
 						<div class="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
 							<div class="flex items-center gap-2">
 								<CheckCircle class="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -251,7 +227,7 @@
 					<!-- Action Buttons -->
 					<div class="mt-4 flex gap-2">
 						<ArcaneButton action="inspect" onClick={() => viewAgentDetails(agent.id)} label="View Details" class="flex-1" />
-						{#if getActualAgentStatus(agent) === 'online'}
+						{#if isAgentOnline(agent)}
 							<ArcaneButton action="edit" onClick={() => viewAgentDetails(agent.id)} label="Manage" class="flex-1" />
 						{/if}
 						<ArcaneButton action="remove" onClick={() => deleteAgent(agent.id, agent.hostname)} label="Delete" loadingLabel="Deleting..." class="flex-1" />

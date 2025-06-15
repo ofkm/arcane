@@ -4,32 +4,50 @@ import (
 	"time"
 )
 
-type AgentMetrics struct {
+type Agent struct {
+	ID           string     `json:"id" gorm:"primaryKey"`
+	Hostname     string     `json:"hostname" gorm:"not null"`
+	Platform     string     `json:"platform"`
+	Version      string     `json:"version"`
+	Capabilities StringSlice `json:"capabilities" gorm:"type:text;default:'[]'"`
+	Status       string     `json:"status" gorm:"default:'offline'"`
+	LastSeen     *time.Time `json:"lastSeen" gorm:"column:last_seen"`
+	RegisteredAt *time.Time `json:"registeredAt" gorm:"column:registered_at"`
+
+	// Metrics
 	ContainerCount *int `json:"containerCount,omitempty" gorm:"column:container_count"`
 	ImageCount     *int `json:"imageCount,omitempty" gorm:"column:image_count"`
 	StackCount     *int `json:"stackCount,omitempty" gorm:"column:stack_count"`
 	NetworkCount   *int `json:"networkCount,omitempty" gorm:"column:network_count"`
 	VolumeCount    *int `json:"volumeCount,omitempty" gorm:"column:volume_count"`
+
+	// Docker Info
+	DockerVersion    *string `json:"dockerVersion,omitempty" gorm:"column:docker_version"`
+	DockerContainers *int    `json:"dockerContainers,omitempty" gorm:"column:docker_containers"`
+	DockerImages     *int    `json:"dockerImages,omitempty" gorm:"column:docker_images"`
+
+	// Metadata
+	Metadata JSON `json:"metadata,omitempty" gorm:"type:text"`
+
+	// Relations
+	Tasks  []AgentTask `json:"tasks,omitempty" gorm:"foreignKey:AgentID"`
+	Tokens []AgentToken `json:"tokens,omitempty" gorm:"foreignKey:AgentID"`
+
+	BaseModel
+}
+
+type AgentMetrics struct {
+	ContainerCount int `json:"containerCount"`
+	ImageCount     int `json:"imageCount"`
+	StackCount     int `json:"stackCount"`
+	NetworkCount   int `json:"networkCount"`
+	VolumeCount    int `json:"volumeCount"`
 }
 
 type DockerInfo struct {
 	Version    string `json:"version"`
 	Containers int    `json:"containers"`
 	Images     int    `json:"images"`
-}
-
-type Agent struct {
-	ID       string     `json:"id" gorm:"primaryKey"`
-	Name     string     `json:"name" gorm:"not null"`
-	URL      string     `json:"url" gorm:"not null"`
-	Token    string     `json:"token"`
-	IsActive bool       `json:"is_active" gorm:"default:true"`
-	LastPing *time.Time `json:"last_ping,omitempty"`
-	Version  string     `json:"version,omitempty"`
-
-	Stacks []Stack `json:"stacks,omitempty" gorm:"foreignKey:AgentID"`
-
-	BaseModel
 }
 
 type AgentStatus string
@@ -77,7 +95,7 @@ type AgentTask struct {
 	StartedAt   *int64          `json:"startedAt,omitempty" gorm:"column:started_at"`
 	CompletedAt *int64          `json:"completedAt,omitempty" gorm:"column:completed_at"`
 
-	Agent Agent `json:"agent" gorm:"foreignKey:AgentID;references:ID"`
+	Agent Agent `json:"agent,omitempty" gorm:"foreignKey:AgentID;references:ID"`
 
 	BaseModel
 }
@@ -96,7 +114,7 @@ type AgentToken struct {
 	ExpiresAt   *int64      `json:"expiresAt,omitempty" gorm:"column:expires_at"`
 	IsActive    bool        `json:"isActive" gorm:"column:is_active;default:true"`
 
-	Agent Agent `json:"agent" gorm:"foreignKey:AgentID;references:ID"`
+	Agent Agent `json:"agent,omitempty" gorm:"foreignKey:AgentID;references:ID"`
 
 	BaseModel
 }

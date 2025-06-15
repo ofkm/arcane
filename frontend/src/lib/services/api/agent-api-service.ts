@@ -1,311 +1,84 @@
 import BaseAPIService from './api-service';
-import type { Agent, AgentTask } from '$lib/types/agent.type';
-
-export interface CreateTaskRequest {
-	type: string;
-	payload: any;
-}
-
-export interface UpdateTaskStatusRequest {
-	status: string;
-	result?: any;
-	error?: string;
-}
-
-export interface AgentMetrics {
-	containerCount?: number;
-	imageCount?: number;
-	stackCount?: number;
-	networkCount?: number;
-	volumeCount?: number;
-}
-
-export interface DockerInfo {
-	version?: string;
-	containers?: number;
-	images?: number;
-}
+import type { Agent, AgentTask, AgentStats } from '$lib/types/agent.type';
+import type { CreateAgentDTO, UpdateAgentDTO, CreateTaskDTO, UpdateTaskStatusDTO, UpdateMetricsDTO, UpdateDockerInfoDTO, HeartbeatDTO } from '$lib/dto/agent-dto';
+import type { AgentResponse, AgentsListResponse, TaskResponse, TasksListResponse, AgentStatsResponse, HeartbeatResponse } from '$lib/types/api-response.type';
 
 export default class AgentAPIService extends BaseAPIService {
-	// ===== AGENT MANAGEMENT =====
-
-	/**
-	 * Register a new agent
-	 */
-	async register(agent: Agent): Promise<Agent> {
-		return this.handleResponse(this.api.post('/agents/register', agent));
+	async register(dto: CreateAgentDTO): Promise<Agent> {
+		const response = await this.handleResponse<AgentResponse>(this.api.post('/agents/register', dto));
+		return response.agent!;
 	}
 
-	/**
-	 * Get agent by ID
-	 */
 	async get(agentId: string): Promise<Agent> {
-		return this.handleResponse(this.api.get(`/agents/${agentId}`));
+		const response = await this.handleResponse<AgentResponse>(this.api.get(`/agents/${agentId}`));
+		return response.agent!;
 	}
 
-	/**
-	 * Update agent information
-	 */
-	async update(agentId: string, updates: Partial<Agent>): Promise<Agent> {
-		return this.handleResponse(this.api.put(`/agents/${agentId}`, updates));
-	}
-
-	/**
-	 * List all agents
-	 */
 	async list(): Promise<Agent[]> {
-		return this.handleResponse(this.api.get('/agents'));
+		const response = await this.handleResponse<AgentsListResponse>(this.api.get('/agents'));
+		return response.agents;
 	}
 
-	/**
-	 * Delete an agent
-	 */
+	async update(agentId: string, dto: UpdateAgentDTO): Promise<Agent> {
+		const response = await this.handleResponse<AgentResponse>(this.api.put(`/agents/${agentId}`, dto));
+		return response.agent!;
+	}
+
 	async delete(agentId: string): Promise<void> {
-		return this.handleResponse(this.api.delete(`/agents/${agentId}`));
+		await this.handleResponse(this.api.delete(`/agents/${agentId}`));
 	}
 
-	/**
-	 * Update agent heartbeat
-	 */
-	async heartbeat(agentId: string): Promise<void> {
-		return this.handleResponse(this.api.post(`/agents/${agentId}/heartbeat`));
+	async heartbeat(dto: HeartbeatDTO): Promise<void> {
+		await this.handleResponse<HeartbeatResponse>(this.api.post(`/agents/${dto.agent_id}/heartbeat`, dto));
 	}
 
-	/**
-	 * Update agent metrics
-	 */
-	async updateMetrics(agentId: string, metrics: AgentMetrics): Promise<void> {
-		return this.handleResponse(this.api.put(`/agents/${agentId}/metrics`, metrics));
+	async createTask(agentId: string, dto: CreateTaskDTO): Promise<AgentTask> {
+		const response = await this.handleResponse<TaskResponse>(this.api.post(`/agents/${agentId}/tasks`, dto));
+		return response.task!;
 	}
 
-	/**
-	 * Update agent Docker information
-	 */
-	async updateDockerInfo(agentId: string, dockerInfo: DockerInfo): Promise<void> {
-		return this.handleResponse(this.api.put(`/agents/${agentId}/docker-info`, dockerInfo));
-	}
-
-	// ===== TASK MANAGEMENT =====
-
-	/**
-	 * Create a new task for an agent
-	 */
-	async createTask(agentId: string, taskData: CreateTaskRequest): Promise<AgentTask> {
-		return this.handleResponse(this.api.post(`/agents/${agentId}/tasks`, taskData));
-	}
-
-	/**
-	 * Get a specific task by ID
-	 */
 	async getTask(taskId: string): Promise<AgentTask> {
-		return this.handleResponse(this.api.get(`/tasks/${taskId}`));
+		const response = await this.handleResponse<TaskResponse>(this.api.get(`/tasks/${taskId}`));
+		return response.task!;
 	}
 
-	/**
-	 * Update task status
-	 */
-	async updateTaskStatus(taskId: string, statusData: UpdateTaskStatusRequest): Promise<void> {
-		return this.handleResponse(this.api.put(`/tasks/${taskId}/status`, statusData));
+	async getTasks(agentId: string): Promise<AgentTask[]> {
+		const response = await this.handleResponse<TasksListResponse>(this.api.get(`/agents/${agentId}/tasks`));
+		return response.tasks;
 	}
 
-	/**
-	 * List tasks for a specific agent
-	 */
-	async listTasks(agentId: string): Promise<AgentTask[]> {
-		return this.handleResponse(this.api.get(`/agents/${agentId}/tasks`));
-	}
-
-	/**
-	 * List all tasks across all agents
-	 */
 	async listAllTasks(): Promise<AgentTask[]> {
-		return this.handleResponse(this.api.get('/tasks'));
+		const response = await this.handleResponse<TasksListResponse>(this.api.get('/tasks'));
+		return response.tasks;
 	}
 
-	/**
-	 * Get pending tasks for an agent
-	 */
 	async getPendingTasks(agentId: string): Promise<AgentTask[]> {
-		return this.handleResponse(this.api.get(`/agents/${agentId}/tasks/pending`));
+		const response = await this.handleResponse<TasksListResponse>(this.api.get(`/agents/${agentId}/tasks/pending`));
+		return response.tasks;
 	}
 
-	/**
-	 * Cancel a task
-	 */
+	async updateTaskStatus(taskId: string, dto: UpdateTaskStatusDTO): Promise<void> {
+		await this.handleResponse(this.api.put(`/tasks/${taskId}/status`, dto));
+	}
+
 	async cancelTask(taskId: string): Promise<void> {
-		return this.handleResponse(this.api.post(`/tasks/${taskId}/cancel`));
+		await this.handleResponse(this.api.post(`/tasks/${taskId}/cancel`));
 	}
 
-	/**
-	 * Delete a task
-	 */
 	async deleteTask(taskId: string): Promise<void> {
-		return this.handleResponse(this.api.delete(`/tasks/${taskId}`));
+		await this.handleResponse(this.api.delete(`/tasks/${taskId}`));
 	}
 
-	/**
-	 * Get task logs
-	 */
-	async getTaskLogs(taskId: string): Promise<string> {
-		return this.handleResponse(this.api.get(`/tasks/${taskId}/logs`));
+	async getStats(): Promise<AgentStats> {
+		const response = await this.handleResponse<AgentStatsResponse>(this.api.get('/agents/stats'));
+		return response.stats!;
 	}
 
-	// ===== AGENT STATISTICS =====
-
-	/**
-	 * Get agent statistics
-	 */
-	async getAgentStats(agentId: string): Promise<{
-		containerCount: number;
-		imageCount: number;
-		stackCount: number;
-		networkCount: number;
-		volumeCount: number;
-		cpuUsage?: number;
-		memoryUsage?: number;
-		diskUsage?: number;
-	}> {
-		return this.handleResponse(this.api.get(`/agents/${agentId}/stats`));
+	async updateMetrics(agentId: string, dto: UpdateMetricsDTO): Promise<void> {
+		await this.handleResponse(this.api.post(`/agents/${agentId}/metrics`, dto));
 	}
 
-	/**
-	 * Get overall system statistics
-	 */
-	async getSystemStats(): Promise<{
-		totalAgents: number;
-		onlineAgents: number;
-		offlineAgents: number;
-		totalTasks: number;
-		pendingTasks: number;
-		runningTasks: number;
-		completedTasks: number;
-		failedTasks: number;
-	}> {
-		return this.handleResponse(this.api.get('/agents/stats'));
-	}
-
-	// ===== DOCKER OPERATIONS =====
-
-	/**
-	 * Execute Docker command on agent
-	 */
-	async executeDockerCommand(agentId: string, command: string, args: string[] = []): Promise<AgentTask> {
-		return this.createTask(agentId, {
-			type: 'docker_command',
-			payload: { command, args }
-		});
-	}
-
-	/**
-	 * Pull Docker image on agent
-	 */
-	async pullImage(agentId: string, imageName: string): Promise<AgentTask> {
-		return this.createTask(agentId, {
-			type: 'image_pull',
-			payload: { imageName }
-		});
-	}
-
-	/**
-	 * Deploy stack on agent
-	 */
-	async deployStack(agentId: string, stackId: string, composeContent: string, envContent?: string): Promise<AgentTask> {
-		return this.createTask(agentId, {
-			type: 'stack_deploy',
-			payload: { stackId, composeContent, envContent }
-		});
-	}
-
-	/**
-	 * Health check agent
-	 */
-	async healthCheck(agentId: string): Promise<AgentTask> {
-		return this.createTask(agentId, {
-			type: 'health_check',
-			payload: {}
-		});
-	}
-
-	/**
-	 * Upgrade agent
-	 */
-	async upgradeAgent(agentId: string, version = 'latest'): Promise<AgentTask> {
-		return this.createTask(agentId, {
-			type: 'agent_upgrade',
-			payload: { version }
-		});
-	}
-
-	// ===== REAL-TIME OPERATIONS =====
-
-	/**
-	 * Process agent message (for WebSocket communication)
-	 */
-	async processMessage(agentId: string, message: any): Promise<void> {
-		return this.handleResponse(this.api.post(`/agents/${agentId}/messages`, message));
-	}
-
-	/**
-	 * Get agent logs
-	 */
-	async getAgentLogs(
-		agentId: string,
-		options?: {
-			tail?: number;
-			since?: string;
-			follow?: boolean;
-		}
-	): Promise<string> {
-		const params = new URLSearchParams();
-		if (options?.tail) params.append('tail', options.tail.toString());
-		if (options?.since) params.append('since', options.since);
-		if (options?.follow) params.append('follow', options.follow.toString());
-
-		const query = params.toString() ? `?${params.toString()}` : '';
-		return this.handleResponse(this.api.get(`/agents/${agentId}/logs${query}`));
-	}
-
-	// ===== AGENT CONFIGURATION =====
-
-	/**
-	 * Get agent configuration
-	 */
-	async getAgentConfig(agentId: string): Promise<any> {
-		return this.handleResponse(this.api.get(`/agents/${agentId}/config`));
-	}
-
-	/**
-	 * Update agent configuration
-	 */
-	async updateAgentConfig(agentId: string, config: any): Promise<void> {
-		return this.handleResponse(this.api.put(`/agents/${agentId}/config`, config));
-	}
-
-	// ===== BULK OPERATIONS =====
-
-	/**
-	 * Bulk update multiple agents
-	 */
-	async bulkUpdate(updates: Array<{ agentId: string; data: Partial<Agent> }>): Promise<Agent[]> {
-		return this.handleResponse(this.api.put('/agents/bulk', { updates }));
-	}
-
-	/**
-	 * Bulk delete multiple agents
-	 */
-	async bulkDelete(agentIds: string[]): Promise<void> {
-		return this.handleResponse(this.api.delete('/agents/bulk', { data: { agentIds } }));
-	}
-
-	/**
-	 * Send task to multiple agents
-	 */
-	async bulkCreateTasks(agentIds: string[], taskData: CreateTaskRequest): Promise<AgentTask[]> {
-		return this.handleResponse(
-			this.api.post('/agents/bulk/tasks', {
-				agentIds,
-				taskData
-			})
-		);
+	async updateDockerInfo(agentId: string, dto: UpdateDockerInfoDTO): Promise<void> {
+		await this.handleResponse(this.api.post(`/agents/${agentId}/docker-info`, dto));
 	}
 }

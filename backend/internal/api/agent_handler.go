@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 )
@@ -20,13 +21,101 @@ func NewAgentHandler(agentService *services.AgentService, deploymentService *ser
 	}
 }
 
-type AgentResponse struct {
-	*models.Agent
-	Status string `json:"status"`
+func (h *AgentHandler) RegisterAgent(c *gin.Context) {
+	var req dto.RegisterAgentDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request format",
+		})
+		return
+	}
+
+	agent := &models.Agent{
+		ID:           req.ID,
+		Hostname:     req.Hostname,
+		Platform:     req.Platform,
+		Version:      req.Version,
+		Capabilities: models.StringSlice(req.Capabilities),
+	}
+
+	registeredAgent, err := h.agentService.RegisterAgent(c.Request.Context(), agent)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to register agent",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"agent":   registeredAgent,
+		"message": "Agent registered successfully",
+	})
+}
+
+
+
+func (h *AgentHandler) Heartbeat(c *gin.Context) {
+	agentID := c.Param("agentId")
+
+	var req dto.HeartbeatDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		if err := h.agentService.UpdateAgentHeartbeat(c.Request.Context(), agentID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to update heartbeat",
+			})
+			return
+		}
+	} else {
+		if err := h.agentService.UpdateAgentMetrics(c.Request.Context(), agentID, req.Metrics, req.Docker); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to update agent metrics",
+			})
+			return
+		}
+	}
+
+	pendingTasks, err := h.agentService.GetPendingTasks(c.Request.Context(), agentID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get pending tasks",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":      true,
+		"message":      "Heartbeat received",
+		"pendingTasks": pendingTasks,
+	})
+}
+
+func (h *AgentHandler) GetPendingTasks(c *gin.Context) {
+	agentID := c.Param("agentId")
+
+	tasks, err := h.agentService.GetPendingTasks(c.Request.Context(), agentID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get pending tasks",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"tasks":   tasks,
+		"count":   len(tasks),
+	})
 }
 
 func (h *AgentHandler) ListAgents(c *gin.Context) {
-	agents, err := h.agentService.ListAgents(c.Request.Context())
+	agents, err := h.agentService.ListAgentsWithStatus(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -35,31 +124,17 @@ func (h *AgentHandler) ListAgents(c *gin.Context) {
 		return
 	}
 
-	timeoutMinutes := 5
-	agentResponses := make([]*AgentResponse, len(agents))
-	for i, agent := range agents {
-		status := "offline"
-		if h.agentService.IsAgentOnline(agent, timeoutMinutes) {
-			status = "online"
-		}
-
-		agentResponses[i] = &AgentResponse{
-			Agent:  agent,
-			Status: status,
-		}
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"agents":  agentResponses,
-		"count":   len(agentResponses),
+		"agents":  agents,
+		"count":   len(agents),
 	})
 }
 
 func (h *AgentHandler) GetAgent(c *gin.Context) {
 	agentID := c.Param("agentId")
 
-	agent, err := h.agentService.GetAgentByID(c.Request.Context(), agentID)
+	agent, err := h.agentService.GetAgentByIDWithStatus(c.Request.Context(), agentID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
@@ -68,20 +143,9 @@ func (h *AgentHandler) GetAgent(c *gin.Context) {
 		return
 	}
 
-	timeoutMinutes := 5
-	status := "offline"
-	if h.agentService.IsAgentOnline(agent, timeoutMinutes) {
-		status = "online"
-	}
-
-	agentResponse := &AgentResponse{
-		Agent:  agent,
-		Status: status,
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"agent":   agentResponse,
+		"agent":   agent,
 	})
 }
 
@@ -172,16 +236,12 @@ func (h *AgentHandler) GetTask(c *gin.Context) {
 	})
 }
 
-type SubmitTaskResultRequest struct {
-	Status models.AgentTaskStatus `json:"status" binding:"required"`
-	Result map[string]interface{} `json:"result,omitempty"`
-	Error  *string                `json:"error,omitempty"`
-}
+
 
 func (h *AgentHandler) SubmitTaskResult(c *gin.Context) {
 	taskID := c.Param("taskId")
 
-	var req SubmitTaskResultRequest
+	var req dto.SubmitTaskResultDto
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -224,16 +284,12 @@ func (h *AgentHandler) GetAgentDeployments(c *gin.Context) {
 	})
 }
 
-type DeployStackRequest struct {
-	StackName      string  `json:"stackName" binding:"required"`
-	ComposeContent string  `json:"composeContent" binding:"required"`
-	EnvContent     *string `json:"envContent,omitempty"`
-}
+
 
 func (h *AgentHandler) DeployStack(c *gin.Context) {
 	agentID := c.Param("agentId")
 
-	var req DeployStackRequest
+	var req dto.DeployAgentStackDto
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -267,18 +323,12 @@ func (h *AgentHandler) DeployStack(c *gin.Context) {
 	})
 }
 
-type DeployContainerRequest struct {
-	ContainerName string   `json:"containerName" binding:"required"`
-	ImageName     string   `json:"imageName" binding:"required"`
-	Ports         []string `json:"ports,omitempty"`
-	Volumes       []string `json:"volumes,omitempty"`
-	Environment   []string `json:"environment,omitempty"`
-}
+
 
 func (h *AgentHandler) DeployContainer(c *gin.Context) {
 	agentID := c.Param("agentId")
 
-	var req DeployContainerRequest
+	var req dto.DeployAgentContainerDto
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -320,14 +370,12 @@ func (h *AgentHandler) DeployContainer(c *gin.Context) {
 	})
 }
 
-type DeployImageRequest struct {
-	ImageName string `json:"imageName" binding:"required"`
-}
+
 
 func (h *AgentHandler) DeployImage(c *gin.Context) {
 	agentID := c.Param("agentId")
 
-	var req DeployImageRequest
+	var req dto.DeployAgentImageDto
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

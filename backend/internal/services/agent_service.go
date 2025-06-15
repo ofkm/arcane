@@ -21,7 +21,6 @@ func NewAgentService(db *database.DB) *AgentService {
 	return &AgentService{db: db}
 }
 
-// Agent management
 func (s *AgentService) RegisterAgent(ctx context.Context, agent *models.Agent) (*models.Agent, error) {
 	existing, err := s.GetAgentByID(ctx, agent.ID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -30,9 +29,8 @@ func (s *AgentService) RegisterAgent(ctx context.Context, agent *models.Agent) (
 
 	now := time.Now()
 	if existing != nil {
-		// Update existing agent - fix field names
-		existing.IsActive = true
-		existing.LastPing = &now
+		existing.Status = string(models.AgentStatusOnline)
+		existing.LastSeen = &now
 		updateTime := time.Now()
 		existing.UpdatedAt = &updateTime
 
@@ -41,9 +39,8 @@ func (s *AgentService) RegisterAgent(ctx context.Context, agent *models.Agent) (
 		}
 		return existing, nil
 	} else {
-		// Create new agent - fix field names
-		agent.IsActive = true
-		agent.LastPing = &now
+		agent.Status = string(models.AgentStatusOnline)
+		agent.LastSeen = &now
 		agent.BaseModel = models.BaseModel{CreatedAt: time.Now()}
 
 		if err := s.db.WithContext(ctx).Create(agent).Error; err != nil {
@@ -72,11 +69,41 @@ func (s *AgentService) ListAgents(ctx context.Context) ([]*models.Agent, error) 
 	return agents, nil
 }
 
+func (s *AgentService) ListAgentsWithStatus(ctx context.Context) ([]*models.Agent, error) {
+	agents, err := s.ListAgents(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, agent := range agents {
+		agent.Status = s.computeAgentStatus(agent)
+	}
+
+	return agents, nil
+}
+
+func (s *AgentService) GetAgentByIDWithStatus(ctx context.Context, id string) (*models.Agent, error) {
+	agent, err := s.GetAgentByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	agent.Status = s.computeAgentStatus(agent)
+	return agent, nil
+}
+
+func (s *AgentService) computeAgentStatus(agent *models.Agent) string {
+	if s.IsAgentOnline(agent, 5) {
+		return "online"
+	}
+	return "offline"
+}
+
 func (s *AgentService) UpdateAgentHeartbeat(ctx context.Context, agentID string) error {
 	now := time.Now()
 	if err := s.db.WithContext(ctx).Model(&models.Agent{}).Where("id = ?", agentID).Updates(map[string]interface{}{
-		"last_ping": &now,
-		"is_active": true,
+		"last_seen": &now,
+		"status":    string(models.AgentStatusOnline),
 	}).Error; err != nil {
 		return fmt.Errorf("failed to update agent heartbeat: %w", err)
 	}
@@ -86,11 +113,21 @@ func (s *AgentService) UpdateAgentHeartbeat(ctx context.Context, agentID string)
 func (s *AgentService) UpdateAgentMetrics(ctx context.Context, agentID string, metrics *models.AgentMetrics, dockerInfo *models.DockerInfo) error {
 	now := time.Now()
 	updates := map[string]interface{}{
-		"last_ping": &now,
+		"last_seen": &now,
+	}
+
+	if metrics != nil {
+		updates["container_count"] = metrics.ContainerCount
+		updates["image_count"] = metrics.ImageCount
+		updates["stack_count"] = metrics.StackCount
+		updates["network_count"] = metrics.NetworkCount
+		updates["volume_count"] = metrics.VolumeCount
 	}
 
 	if dockerInfo != nil {
-		updates["version"] = dockerInfo.Version
+		updates["docker_version"] = dockerInfo.Version
+		updates["docker_containers"] = dockerInfo.Containers
+		updates["docker_images"] = dockerInfo.Images
 	}
 
 	if err := s.db.WithContext(ctx).Model(&models.Agent{}).Where("id = ?", agentID).Updates(updates).Error; err != nil {
@@ -312,16 +349,16 @@ func (s *AgentService) GetAgentByToken(ctx context.Context, token string) (*mode
 
 // Online status checking
 func (s *AgentService) IsAgentOnline(agent *models.Agent, timeoutMinutes int) bool {
-	if !agent.IsActive {
+	if agent.Status != string(models.AgentStatusOnline) {
 		return false
 	}
 
-	if agent.LastPing == nil {
+	if agent.LastSeen == nil {
 		return false
 	}
 
 	timeoutDuration := time.Duration(timeoutMinutes) * time.Minute
-	return time.Since(*agent.LastPing) < timeoutDuration
+	return time.Since(*agent.LastSeen) < timeoutDuration
 }
 
 func (s *AgentService) GetOnlineAgents(ctx context.Context, timeoutMinutes int) ([]*models.Agent, error) {

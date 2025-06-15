@@ -1,0 +1,32 @@
+import type { Agent, AgentStats, AgentTask } from './agent.type';
+
+export interface BaseResponse {
+	success: boolean;
+	error?: string;
+}
+
+export interface AgentResponse extends BaseResponse {
+	agent?: Agent;
+}
+
+export interface AgentsListResponse extends BaseResponse {
+	agents: Agent[];
+	count: number;
+}
+
+export interface TaskResponse extends BaseResponse {
+	task?: AgentTask;
+}
+
+export interface TasksListResponse extends BaseResponse {
+	tasks: AgentTask[];
+	count: number;
+}
+
+export interface AgentStatsResponse extends BaseResponse {
+	stats?: AgentStats;
+}
+
+export interface HeartbeatResponse extends BaseResponse {
+	message?: string;
+}

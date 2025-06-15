@@ -1,9 +1,15 @@
 export interface AgentMetrics {
-	containerCount?: number;
-	imageCount?: number;
-	stackCount?: number;
-	networkCount?: number;
-	volumeCount?: number;
+	containerCount: number;
+	imageCount: number;
+	stackCount: number;
+	networkCount: number;
+	volumeCount: number;
+}
+
+export interface DockerInfo {
+	version: string;
+	containers: number;
+	images: number;
 }
 
 export interface Agent {
@@ -12,104 +18,72 @@ export interface Agent {
 	platform: string;
 	version: string;
 	capabilities: string[];
-	status: 'online' | 'offline';
+	status: 'online' | 'offline' | 'error';
 	lastSeen: string;
 	registeredAt: string;
-	metrics?: AgentMetrics;
-	dockerInfo?: {
-		version: string;
-		containers: number;
-		images: number;
-	};
-	metadata?: Record<string, any>;
 	createdAt: string;
 	updatedAt?: string;
+	metrics?: AgentMetrics;
+	dockerInfo?: DockerInfo;
+	metadata?: Record<string, any>;
 }
+
+export type AgentTaskType = 'docker_command' | 'stack_deploy' | 'compose_create_project' | 'compose_up' | 'image_pull' | 'health_check' | 'container_start' | 'stack_list' | 'container_stop' | 'container_restart' | 'container_remove' | 'agent_upgrade';
+
+export type AgentTaskStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export interface AgentTask {
 	id: string;
 	agentId: string;
-	type: 'docker_command' | 'stack_deploy' | 'compose_create_project' | 'compose_up' | 'image_pull' | 'health_check' | 'container_start' | 'stack_list' | 'container_stop' | 'container_restart' | 'container_remove' | 'agent_upgrade';
+	type: AgentTaskType;
 	payload: Record<string, any>;
-	status: 'pending' | 'running' | 'completed' | 'failed';
+	status: AgentTaskStatus;
 	result?: any;
 	error?: string;
 	createdAt: string;
 	updatedAt?: string;
+	startedAt?: string;
+	completedAt?: string;
 }
 
-// Stack-related types for agents
+export interface AgentToken {
+	id: string;
+	agentId: string;
+	token: string;
+	name?: string;
+	permissions: string[];
+	lastUsed?: string;
+	expiresAt?: string;
+	isActive: boolean;
+	createdAt: string;
+	updatedAt?: string;
+}
+
+export interface AgentStats {
+	total: number;
+	online: number;
+	offline: number;
+	totalTasks: number;
+	pendingTasks: number;
+	runningTasks: number;
+	completedTasks: number;
+	failedTasks: number;
+}
+
 export interface AgentStack {
 	id: string;
 	name: string;
+	status: string;
+	serviceCount: number;
 	agentId: string;
 	agentHostname: string;
 	isRemote: true;
-	services?: StackService[];
-	serviceCount?: number;
-	runningCount?: number;
-	status: StackStatus;
-	isExternal?: boolean;
+	services?: any[];
+	networks?: any[];
+	volumes?: any[];
 	createdAt?: string;
 	updatedAt?: string;
-	composeContent?: string;
-	envContent?: string;
-	description?: string;
-	lastPolled?: string;
-	path?: string;
 }
 
-export interface StackService {
-	id: string;
-	name: string;
-	state?: {
-		Running: boolean;
-		Status: string;
-		ExitCode: number;
-	};
-	ports?: StackPort[];
-	networkSettings?: {
-		Networks?: Record<string, NetworkConfig>;
-	};
-}
-
-export interface StackPort {
-	PublicPort?: number;
-	PrivatePort?: number;
-	Type?: string;
-}
-
-export interface NetworkConfig {
-	IPAddress?: string;
-	Gateway?: string;
-	MacAddress?: string;
-	Driver?: string;
-}
-
-export type StackStatus = 'running' | 'stopped' | 'partially running' | 'unknown';
-
-// Specific payload types for different task types
-export interface DockerCommandPayload {
-	command: string;
-	args: string[];
-}
-
-export interface StackDeployPayload {
-	stackId: string;
-	composeContent: string;
-	envContent?: string;
-}
-
-export interface ImagePullPayload {
-	imageName: string;
-}
-
-export interface ContainerActionPayload {
-	containerId: string;
-	force?: boolean;
-}
-
-export interface AgentUpgradePayload {
-	action: 'upgrade';
-	version?: string;
-}
+export type AgentStatus = Agent['status'];
+export type OnlineAgent = Agent & { status: 'online' };

@@ -4,7 +4,7 @@
 	import { formatDistanceToNow } from 'date-fns';
 	import { toast } from 'svelte-sonner';
 	import type { Agent, AgentTask } from '$lib/types/agent.type';
-	import type { Deployment } from '$lib/types/deployment.type';
+	import type { CreateTaskDTO, DockerCommandDTO, StackDeployDTO, ImagePullDTO, AgentUpgradeDTO } from '$lib/dto/agent-dto';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
@@ -17,27 +17,23 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2, Download, Trash2 } from '@lucide/svelte';
-	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import ImagePullForm from '$lib/components/forms/ImagePullForm.svelte';
 	import StackDeploymentForm from '$lib/components/forms/StackDeploymentForm.svelte';
 	import QuickContainerForm from '$lib/components/forms/QuickContainerForm.svelte';
-	import { getActualAgentStatus } from '$lib/utils/agent-status.utils';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util.js';
 	import { tryCatch } from '$lib/utils/try-catch.js';
+	import { agentAPI } from '$lib/services/api';
+
 	let { data } = $props();
 
-	// Initialize from SSR data
-	let agent: Agent | null = $state(data.agent);
+	let agent: Agent | null = $state(data.agent as Agent);
 	let tasks: AgentTask[] = $state(data.tasks);
-	let deployments: Deployment[] = $state(data.deployments);
 	let agentId = data.agentId;
 
-	// Remove most of the initial loading states since data comes from SSR
 	let loading = $state(false);
 	let error = $state('');
 
-	// Resource data states
 	let resourcesLoading = $state(false);
 	let resourcesError = $state('');
 	let resourcesData = $state<{
@@ -54,26 +50,19 @@
 		stacks: []
 	});
 
-	// Command form state
 	let selectedCommand = $state<{ value: string; label: string } | undefined>(undefined);
 	let commandArgs = $state('');
 	let customCommand = $state('');
 
-	// Add missing state variables
 	let commandDialogOpen = $state(false);
 	let taskExecuting = $state(false);
 
-	// Deployment states with proper typing
 	let deployDialogOpen = $state(false);
 	let imageDialogOpen = $state(false);
 	let containerDialogOpen = $state(false);
-	let deploying = $state(false);
 
-	// Add delete dialog state
-	let deleteDialogOpen = $state(false);
 	let deleting = $state(false);
 
-	// Predefined commands
 	const predefinedCommands = [
 		{ value: 'docker_version', label: 'Docker Version' },
 		{ value: 'docker_info', label: 'Docker System Info' },
@@ -85,54 +74,39 @@
 		{ value: 'custom', label: 'Custom Command' }
 	];
 
-	// Keep only periodic refresh logic
 	onMount(() => {
-		// Refresh every 10 seconds for real-time updates
 		const interval = setInterval(() => {
 			refreshAgentData();
 		}, 10000);
 		return () => clearInterval(interval);
 	});
 
-	// Simplified refresh function - only for periodic updates
 	async function refreshAgentData() {
 		if (loading) return;
 
 		try {
 			loading = true;
 
-			// Use parallel requests for updates
-			const [agentResponse, tasksResponse, deploymentsResponse] = await Promise.allSettled([fetch(`/api/agents/${agentId}`), fetch(`/api/agents/${agentId}/tasks?admin=true`), fetch(`/api/agents/${agentId}/deployments`)]);
+			const [agentResponse, tasksResponse] = await Promise.allSettled([agentAPI.get(agentId), agentAPI.getTasks(agentId)]);
 
-			// Update agent data
-			if (agentResponse.status === 'fulfilled' && agentResponse.value.ok) {
-				const agentData = await agentResponse.value.json();
-				agent = agentData.agent;
+			if (agentResponse.status === 'fulfilled') {
+				agent = agentResponse.value;
 			}
 
-			// Update tasks
-			if (tasksResponse.status === 'fulfilled' && tasksResponse.value.ok) {
-				const tasksData = await tasksResponse.value.json();
-				tasks = tasksData.tasks || [];
-			}
-
-			// Update deployments
-			if (deploymentsResponse.status === 'fulfilled' && deploymentsResponse.value.ok) {
-				const deploymentsData = await deploymentsResponse.value.json();
-				deployments = deploymentsData.deployments || [];
+			if (tasksResponse.status === 'fulfilled') {
+				tasks = tasksResponse.value;
 			}
 
 			error = '';
 		} catch (err) {
 			console.error('Failed to refresh agent data:', err);
-			// Don't set error for refresh failures - keep showing existing data
 		} finally {
 			loading = false;
 		}
 	}
 
 	async function loadResourcesData() {
-		if (!agent || getActualAgentStatus(agent) !== 'online') {
+		if (!agent || agent.status !== 'online') {
 			resourcesError = 'Agent must be online to load resource data';
 			return;
 		}
@@ -141,72 +115,36 @@
 		resourcesError = '';
 
 		try {
-			const commands = [
-				{ type: 'docker_command', payload: { command: 'ps', args: ['-a', '--format', 'json'] } },
-				{ type: 'docker_command', payload: { command: 'images', args: ['--format', 'json'] } },
-				{
-					type: 'docker_command',
-					payload: { command: 'network', args: ['ls', '--format', 'json'] }
-				},
-				{
-					type: 'docker_command',
-					payload: { command: 'volume', args: ['ls', '--format', 'json'] }
-				},
-				{
-					type: 'docker_command',
-					payload: { command: 'compose', args: ['ls', '--format', 'json'] }
-				}
+			const commands: CreateTaskDTO[] = [
+				{ type: 'docker_command', payload: { command: 'ps', args: ['-a', '--format', 'json'] } as DockerCommandDTO },
+				{ type: 'docker_command', payload: { command: 'images', args: ['--format', 'json'] } as DockerCommandDTO },
+				{ type: 'docker_command', payload: { command: 'network', args: ['ls', '--format', 'json'] } as DockerCommandDTO },
+				{ type: 'docker_command', payload: { command: 'volume', args: ['ls', '--format', 'json'] } as DockerCommandDTO },
+				{ type: 'docker_command', payload: { command: 'compose', args: ['ls', '--format', 'json'] } as DockerCommandDTO }
 			];
 
 			const results = await Promise.allSettled(
 				commands.map(async (cmd, index) => {
-					const response = await fetch(`/api/agents/${agentId}/tasks`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(cmd)
-					});
-
-					if (!response.ok) throw new Error(`Failed to execute ${cmd.payload.command}`);
-					const result = await response.json();
-
-					console.log('Task creation response:', result);
-
-					// The task ID should be in result.task.id based on the API endpoint
-					if (!result.task?.id) {
-						throw new Error(`No task ID returned for ${cmd.payload.command}`);
-					}
-
-					const taskId = result.task.id;
-					return pollTaskCompletion(taskId, ['containers', 'images', 'networks', 'volumes', 'stacks'][index]);
+					const task = await agentAPI.createTask(agentId, cmd);
+					return pollTaskCompletion(task.id, ['containers', 'images', 'networks', 'volumes', 'stacks'][index]);
 				})
 			);
 
-			// Process results - replace the forEach loop
-			const newResourcesData: {
-				containers: any[];
-				images: any[];
-				networks: any[];
-				volumes: any[];
-				stacks: any[];
-			} = {
-				containers: [],
-				images: [],
-				networks: [],
-				volumes: [],
-				stacks: []
+			const newResourcesData = {
+				containers: [] as any[],
+				images: [] as any[],
+				networks: [] as any[],
+				volumes: [] as any[],
+				stacks: [] as any[]
 			};
 
 			results.forEach((result, index) => {
 				if (result.status === 'fulfilled' && result.value) {
 					const resourceType = ['containers', 'images', 'networks', 'volumes', 'stacks'][index] as keyof typeof newResourcesData;
-					console.log(`Assigning ${result.value.length} items to ${resourceType}:`, result.value);
 					newResourcesData[resourceType] = result.value;
-				} else {
-					console.log(`Result ${index} failed:`, result);
 				}
 			});
 
-			// Update the state with the new object
 			resourcesData = newResourcesData;
 		} catch (err) {
 			console.error('Failed to load resources data:', err);
@@ -218,108 +156,58 @@
 	}
 
 	async function pollTaskCompletion(taskId: string, resourceType: string): Promise<any[]> {
-		const maxAttempts = 30; // 30 seconds max
-		const delay = 1000; // 1 second
-
-		console.log(`Polling task ${taskId} for ${resourceType}`);
+		const maxAttempts = 30;
+		const delay = 1000;
 
 		for (let i = 0; i < maxAttempts; i++) {
 			await new Promise((resolve) => setTimeout(resolve, delay));
 
 			try {
-				const response = await fetch(`/api/agents/${agentId}/tasks/${taskId}`, {
-					credentials: 'include'
-				});
-
-				console.log(`Task ${taskId} polling attempt ${i + 1}: ${response.status}`);
-
-				if (!response.ok) {
-					if (response.status === 403) {
-						console.error(`Authentication failed for task ${taskId}`);
-					}
-					console.error(`Failed to fetch task ${taskId}: ${response.status} ${response.statusText}`);
-					continue;
-				}
-
-				const responseData = await response.json();
-				console.log(`Task ${taskId} response:`, responseData);
-
-				const task = responseData.task;
-
-				if (!task) {
-					console.error(`No task data in response for ${taskId}`);
-					continue;
-				}
-
-				console.log(`Task ${taskId} status: ${task.status}`);
+				const task = await agentAPI.getTask(taskId);
 
 				if (task.status === 'completed') {
-					console.log(`Task ${taskId} completed with result:`, task.result);
-
 					if (!task.result) {
-						console.warn(`Task ${taskId} completed but has no result`);
 						return [];
 					}
 
-					// Parse the result - the actual Docker output is in task.result.output
 					let data: any[] = [];
 					let outputString = '';
 
-					// Extract the output string from the nested result structure
 					if (task.result && typeof task.result === 'object' && task.result.output) {
 						outputString = task.result.output;
 					} else if (typeof task.result === 'string') {
 						outputString = task.result;
 					} else {
-						console.warn(`Unexpected result format for task ${taskId}:`, task.result);
 						return [];
 					}
 
-					console.log(`Raw output for ${resourceType}:`, outputString);
-
 					if (outputString) {
 						try {
-							// First try to parse the entire output as JSON (for cases like compose ls that return an array)
 							const parsed = JSON.parse(outputString);
 							if (Array.isArray(parsed)) {
 								data = parsed;
-								console.log(`Parsed entire output as JSON array for ${resourceType}:`, data);
 							} else {
 								data.push(parsed);
 							}
 						} catch (parseError) {
-							// If that fails, try parsing line by line
 							const lines = outputString.split('\n').filter((line: string) => line.trim());
-							console.log(`Task ${taskId} has ${lines.length} lines to parse`);
-
 							for (const line of lines) {
 								try {
 									const parsed = JSON.parse(line.trim());
 									data.push(parsed);
-								} catch (lineParseError) {
-									console.warn(`Failed to parse line as JSON:`, line, lineParseError);
-									// Skip invalid JSON lines
-								}
+								} catch (lineParseError) {}
 							}
 						}
 					}
-					console.log(`Parsed data for ${resourceType}:`, data);
 					return data;
 				} else if (task.status === 'failed') {
-					console.error(`Task ${taskId} failed:`, task.error);
 					throw new Error(task.error || 'Task failed');
-				} else if (task.status === 'running') {
-					console.log(`Task ${taskId} is still running...`);
-				} else {
-					console.log(`Task ${taskId} is ${task.status}, continuing to poll...`);
 				}
 			} catch (err) {
 				console.error(`Error polling task ${taskId}:`, err);
-				// Don't break the loop on network errors, continue polling
 			}
 		}
 
-		console.error(`Task ${taskId} timed out after ${maxAttempts} seconds`);
 		throw new Error(`Task ${taskId} timed out after ${maxAttempts} seconds`);
 	}
 
@@ -328,29 +216,50 @@
 
 		taskExecuting = true;
 		try {
-			let payload: any = {};
+			let taskDto: CreateTaskDTO;
 
 			switch (selectedCommand.value) {
 				case 'docker_version':
-					payload = { command: 'version' };
+					taskDto = {
+						type: 'docker_command',
+						payload: { command: 'version', args: [] } as DockerCommandDTO
+					};
 					break;
 				case 'docker_info':
-					payload = { command: 'info' };
+					taskDto = {
+						type: 'docker_command',
+						payload: { command: 'info', args: [] } as DockerCommandDTO
+					};
 					break;
 				case 'docker_ps':
-					payload = { command: 'ps', args: ['-a'] };
+					taskDto = {
+						type: 'docker_command',
+						payload: { command: 'ps', args: ['-a'] } as DockerCommandDTO
+					};
 					break;
 				case 'docker_images':
-					payload = { command: 'images' };
+					taskDto = {
+						type: 'docker_command',
+						payload: { command: 'images', args: [] } as DockerCommandDTO
+					};
 					break;
 				case 'system_info':
-					payload = { command: 'system', args: ['info'] };
+					taskDto = {
+						type: 'docker_command',
+						payload: { command: 'system', args: ['info'] } as DockerCommandDTO
+					};
 					break;
 				case 'agent_upgrade':
-					payload = { action: 'upgrade' };
+					taskDto = {
+						type: 'agent_upgrade',
+						payload: { action: 'upgrade', version: 'latest' } as AgentUpgradeDTO
+					};
 					break;
 				case 'docker_prune':
-					payload = { command: 'system', args: ['prune', '-f'] };
+					taskDto = {
+						type: 'docker_command',
+						payload: { command: 'system', args: ['prune', '-f'] } as DockerCommandDTO
+					};
 					break;
 				case 'custom':
 					if (!customCommand.trim()) {
@@ -358,38 +267,28 @@
 						return;
 					}
 					const parts = customCommand.trim().split(' ');
-					payload = {
-						command: parts[0],
-						args: parts.slice(1).concat(commandArgs ? commandArgs.split(' ') : [])
+					const args = parts.slice(1);
+					if (commandArgs.trim()) {
+						args.push(...commandArgs.split(' '));
+					}
+					taskDto = {
+						type: 'docker_command',
+						payload: { command: parts[0], args } as DockerCommandDTO
 					};
 					break;
+				default:
+					throw new Error('Invalid command selected');
 			}
 
-			const taskType = selectedCommand.value === 'agent_upgrade' ? 'agent_upgrade' : 'docker_command';
+			await agentAPI.createTask(agentId, taskDto);
 
-			const response = await fetch(`/api/agents/${agentId}/tasks`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					type: taskType,
-					payload
-				})
-			});
-
-			if (!response.ok) {
-				throw new Error(`Failed to send command: ${response.statusText}`);
-			}
-
-			const result = await response.json();
 			toast.success('Command sent successfully');
 			commandDialogOpen = false;
 
-			// Reset form
 			selectedCommand = undefined;
 			commandArgs = '';
 			customCommand = '';
 
-			// Refresh tasks
 			setTimeout(refreshAgentData, 1000);
 		} catch (err) {
 			console.error('Failed to send command:', err);
@@ -410,12 +309,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(
-							fetch(`/api/agents/${agentId}`, {
-								method: 'DELETE',
-								credentials: 'include'
-							})
-						),
+						result: await tryCatch(agentAPI.delete(agentId)),
 						setLoadingState: (value) => (deleting = value),
 						message: 'Failed to Remove Agent',
 						onSuccess: async () => {
@@ -430,19 +324,17 @@
 	}
 
 	function getStatusClasses(agent: Agent) {
-		const actualStatus = getActualAgentStatus(agent);
-		if (actualStatus === 'online') return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+		if (agent.status === 'online') return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
 		return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
 	}
 
 	function getStatusText(agent: Agent) {
-		const actualStatus = getActualAgentStatus(agent);
-		if (actualStatus === 'online') return 'Online';
+		if (agent.status === 'online') return 'Online';
 		return 'Offline';
 	}
 
 	function canSendCommands(agent: Agent) {
-		return getActualAgentStatus(agent) === 'online';
+		return agent.status === 'online';
 	}
 
 	function getTaskStatusClasses(status: string) {
@@ -460,40 +352,14 @@
 		}
 	}
 
-	function formatBytes(bytes: number): string {
-		if (bytes === 0) return '0 Bytes';
-		const k = 1024;
-		const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-	}
-
-	function getContainerStatus(status: string): string {
-		if (!status) return 'unknown';
-		const statusLower = status.toLowerCase();
-		if (statusLower.includes('up')) return 'running';
-		if (statusLower.includes('exit')) return 'stopped';
-		return statusLower;
-	}
-
-	async function handleStackDeploy(data: any) {
+	async function handleStackDeploy(data: StackDeployDTO) {
 		try {
-			const response = await fetch(`/api/agents/${agentId}/deploy/stack`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(data),
-				credentials: 'include'
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.error || `Failed to deploy stack: ${response.statusText}`);
-			}
-
-			const result = await response.json();
-			toast.success(`Stack deployment started: ${result.task?.id || 'Unknown task'}`);
-
-			// Refresh deployments list
+			const taskDto: CreateTaskDTO = {
+				type: 'stack_deploy',
+				payload: data
+			};
+			await agentAPI.createTask(agentId, taskDto);
+			toast.success('Stack deployment started');
 			setTimeout(() => refreshAgentData(), 1000);
 		} catch (err) {
 			console.error('Stack deploy error:', err);
@@ -503,20 +369,13 @@
 
 	async function handleImagePull(imageName: string) {
 		try {
-			const response = await fetch(`/api/agents/${agentId}/deploy/image`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ imageName }),
-				credentials: 'include'
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.error || `Failed to pull image: ${response.statusText}`);
-			}
-
-			const result = await response.json();
-			toast.success(`Image pull started: ${result.task?.id || 'Unknown task'}`);
+			const imageDto: ImagePullDTO = { imageName };
+			const taskDto: CreateTaskDTO = {
+				type: 'image_pull',
+				payload: imageDto
+			};
+			await agentAPI.createTask(agentId, taskDto);
+			toast.success('Image pull started');
 		} catch (err) {
 			console.error('Image pull error:', err);
 			throw err;
@@ -525,20 +384,12 @@
 
 	async function handleContainerRun(data: any) {
 		try {
-			const response = await fetch(`/api/agents/${agentId}/deploy/container`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(data),
-				credentials: 'include'
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.error || `Failed to run container: ${response.statusText}`);
-			}
-
-			const result = await response.json();
-			toast.success(`Container started: ${result.task?.id || 'Unknown task'}`);
+			const taskDto: CreateTaskDTO = {
+				type: 'container_start',
+				payload: data
+			};
+			await agentAPI.createTask(agentId, taskDto);
+			toast.success('Container started');
 		} catch (err) {
 			console.error('Container run error:', err);
 			throw err;
@@ -551,7 +402,6 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<!-- Breadcrumb -->
 	<Breadcrumb.Root>
 		<Breadcrumb.List>
 			<Breadcrumb.Item>
@@ -564,7 +414,6 @@
 		</Breadcrumb.List>
 	</Breadcrumb.Root>
 
-	<!-- Header -->
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">
@@ -584,7 +433,7 @@
 					<Trash2 class="mr-2 size-4" />
 					Delete Agent
 				</Button>
-				{#if getActualAgentStatus(agent) === 'online'}
+				{#if agent.status === 'online'}
 					<Button onclick={() => (commandDialogOpen = true)} disabled={taskExecuting}>
 						<Terminal class="mr-2 size-4" />
 						Send Command
@@ -594,7 +443,6 @@
 		</div>
 	</div>
 
-	<!-- Error State -->
 	{#if error}
 		<Alert.Root variant="destructive">
 			<AlertCircle class="size-4" />
@@ -602,7 +450,6 @@
 			<Alert.Description>{error}</Alert.Description>
 		</Alert.Root>
 	{:else if agent}
-		<!-- Agent Overview -->
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
 			<Card.Root>
 				<Card.Content class="flex items-center space-x-3 p-4">
@@ -655,10 +502,8 @@
 			</Card.Root>
 		</div>
 
-		<!-- Resource Metrics -->
 		{#if agent.metrics}
 			<DropdownCard id="agent-metrics" title="Resource Metrics" description="View detailed Docker resource information" defaultExpanded={false} icon={Activity}>
-				<!-- Metrics Overview -->
 				<div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
 					<div class="rounded-lg bg-blue-50 p-3 text-center dark:bg-blue-900/20">
 						<Container class="mx-auto mb-1 size-6 text-blue-600 dark:text-blue-400" />
@@ -690,7 +535,6 @@
 					</div>
 				</div>
 
-				<!-- Resources Data Section -->
 				{#if agent.status === 'online'}
 					<div class="border-border space-y-4 border-t pt-4">
 						<div class="flex items-center justify-between">
@@ -717,8 +561,6 @@
 							</Alert.Root>
 						{/if}
 
-						<!-- Resource Tables -->
-						<!-- Always show tabs if any resource loading has been attempted -->
 						{#if resourcesData.containers.length > 0 || resourcesData.images.length > 0 || resourcesData.networks.length > 0 || resourcesData.volumes.length > 0 || resourcesData.stacks.length > 0}
 							<Tabs.Root value="containers" class="w-full">
 								<Tabs.List class="grid w-full grid-cols-5">
@@ -744,7 +586,6 @@
 									</Tabs.Trigger>
 								</Tabs.List>
 
-								<!-- Containers Tab -->
 								<Tabs.Content value="containers" class="mt-4">
 									{#if resourcesData.containers.length > 0}
 										<UniversalTable
@@ -772,7 +613,6 @@
 									{/if}
 								</Tabs.Content>
 
-								<!-- Images Tab -->
 								<Tabs.Content value="images" class="mt-4">
 									{#if resourcesData.images.length > 0}
 										<UniversalTable
@@ -800,7 +640,6 @@
 									{/if}
 								</Tabs.Content>
 
-								<!-- Networks Tab -->
 								<Tabs.Content value="networks" class="mt-4">
 									{#if resourcesData.networks.length > 0}
 										<UniversalTable
@@ -828,7 +667,6 @@
 									{/if}
 								</Tabs.Content>
 
-								<!-- Volumes Tab -->
 								<Tabs.Content value="volumes" class="mt-4">
 									{#if resourcesData.volumes.length > 0}
 										<UniversalTable
@@ -855,7 +693,6 @@
 									{/if}
 								</Tabs.Content>
 
-								<!-- Stacks Tab -->
 								<Tabs.Content value="stacks" class="mt-4">
 									{#if resourcesData.stacks.length > 0}
 										<UniversalTable
@@ -882,7 +719,6 @@
 								</Tabs.Content>
 							</Tabs.Root>
 						{:else}
-							<!-- Show this only when no data has been loaded yet -->
 							<div class="text-muted-foreground py-8 text-center">
 								<Database class="mx-auto mb-4 size-12 opacity-50" />
 								<p class="font-medium">No Resource Data Loaded</p>
@@ -892,7 +728,7 @@
 					</div>
 				{/if}
 
-				{#if getActualAgentStatus(agent) === 'online'}
+				{#if agent.status === 'online'}
 					<div class="border-border space-y-4 border-t pt-4">
 						<div class="flex items-center justify-between">
 							<div>
@@ -901,9 +737,7 @@
 							</div>
 						</div>
 
-						<!-- Quick Deploy Cards -->
 						<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-							<!-- Deploy Stack Card -->
 							<Card.Root class="hover:border-primary/50 cursor-pointer transition-colors" onclick={() => (deployDialogOpen = true)}>
 								<Card.Content class="p-4">
 									<div class="flex items-center space-x-3">
@@ -918,7 +752,6 @@
 								</Card.Content>
 							</Card.Root>
 
-							<!-- Pull Image Card -->
 							<Card.Root class="hover:border-primary/50 cursor-pointer transition-colors" onclick={() => (imageDialogOpen = true)}>
 								<Card.Content class="p-4">
 									<div class="flex items-center space-x-3">
@@ -933,7 +766,6 @@
 								</Card.Content>
 							</Card.Root>
 
-							<!-- Quick Container Card -->
 							<Card.Root class="hover:border-primary/50 cursor-pointer transition-colors" onclick={() => (containerDialogOpen = true)}>
 								<Card.Content class="p-4">
 									<div class="flex items-center space-x-3">
@@ -948,44 +780,12 @@
 								</Card.Content>
 							</Card.Root>
 						</div>
-
-						<!-- Recent Deployments -->
-						{#if deployments.length > 0}
-							<div class="space-y-2">
-								<h5 class="font-medium">Recent Deployments</h5>
-								<div class="space-y-2">
-									{#each deployments.slice(0, 3) as deployment}
-										<div class="bg-muted/30 flex items-center justify-between rounded-lg p-3">
-											<div class="flex items-center space-x-3">
-												<div class="rounded bg-blue-500/10 p-1.5">
-													{#if deployment.type === 'stack'}
-														<Layers class="size-4 text-blue-500" />
-													{:else if deployment.type === 'image'}
-														<Download class="size-4 text-green-500" />
-													{:else}
-														<Container class="size-4 text-purple-500" />
-													{/if}
-												</div>
-												<div>
-													<p class="text-sm font-medium">{deployment.name}</p>
-													<p class="text-muted-foreground text-xs">
-														{deployment.type} • {formatDistanceToNow(new Date(deployment.createdAt))} ago
-													</p>
-												</div>
-											</div>
-											<StatusBadge variant={deployment.status === 'running' ? 'green' : deployment.status === 'failed' ? 'red' : 'amber'} text={deployment.status} />
-										</div>
-									{/each}
-								</div>
-							</div>
-						{/if}
 					</div>
 				{/if}
 			</DropdownCard>
 		{/if}
 
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-			<!-- Agent Information -->
 			<Card.Root>
 				<Card.Header>
 					<Card.Title>Agent Information</Card.Title>
@@ -1047,7 +847,6 @@
 				</Card.Content>
 			</Card.Root>
 
-			<!-- Recent Tasks -->
 			<Card.Root>
 				<Card.Header>
 					<div class="flex items-center justify-between">
@@ -1076,7 +875,6 @@
 										</p>
 									</div>
 
-									<!-- Show command details -->
 									{#if task.payload?.command}
 										<div class="text-muted-foreground mb-2 text-xs">
 											<code class="bg-muted rounded px-1">
@@ -1088,7 +886,6 @@
 										</div>
 									{/if}
 
-									<!-- Show results for completed tasks -->
 									{#if task.status === 'completed' && task.result}
 										<details class="mt-2">
 											<summary class="cursor-pointer text-xs text-green-600 hover:text-green-500"> View Output </summary>
@@ -1098,7 +895,6 @@
 										</details>
 									{/if}
 
-									<!-- Show errors for failed tasks -->
 									{#if task.error}
 										<details class="mt-2">
 											<summary class="cursor-pointer text-xs text-red-600 hover:text-red-500"> View Error </summary>
@@ -1120,7 +916,6 @@
 			</Card.Root>
 		</div>
 
-		<!-- Connection Status Banner -->
 		{#if agent && !canSendCommands(agent)}
 			<Alert.Root variant="destructive">
 				<AlertCircle class="size-4" />
@@ -1131,7 +926,6 @@
 	{/if}
 </div>
 
-<!-- Send Command Dialog -->
 <Dialog.Root bind:open={commandDialogOpen}>
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
@@ -1184,7 +978,6 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<!-- Stack Deployment Dialog -->
 <Dialog.Root bind:open={deployDialogOpen}>
 	<Dialog.Content class="sm:max-w-2xl">
 		<Dialog.Header>
@@ -1196,7 +989,6 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<!-- Image Pull Dialog -->
 <Dialog.Root bind:open={imageDialogOpen}>
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
@@ -1208,7 +1000,6 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<!-- Quick Container Dialog -->
 <Dialog.Root bind:open={containerDialogOpen}>
 	<Dialog.Content class="sm:max-w-xl">
 		<Dialog.Header>
