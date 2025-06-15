@@ -22,32 +22,43 @@ func NewAgentService(db *database.DB) *AgentService {
 }
 
 func (s *AgentService) RegisterAgent(ctx context.Context, agent *models.Agent) (*models.Agent, error) {
-	existing, err := s.GetAgentByID(ctx, agent.ID)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("failed to check existing agent: %w", err)
-	}
+	var existing models.Agent
+	err := s.db.WithContext(ctx).Where("id = ?", agent.ID).First(&existing).Error
 
 	now := time.Now()
-	if existing != nil {
+
+	if err == nil {
+		existing.Name = agent.Name
+		existing.Hostname = agent.Hostname
+		existing.URL = agent.URL
+		existing.Platform = agent.Platform
+		existing.Version = agent.Version
+		existing.Capabilities = agent.Capabilities
 		existing.Status = string(models.AgentStatusOnline)
 		existing.LastSeen = &now
-		updateTime := time.Now()
-		existing.UpdatedAt = &updateTime
+		existing.UpdatedAt = &now
 
-		if err := s.db.WithContext(ctx).Save(existing).Error; err != nil {
+		if err := s.db.WithContext(ctx).Save(&existing).Error; err != nil {
 			return nil, fmt.Errorf("failed to update agent: %w", err)
 		}
-		return existing, nil
-	} else {
-		agent.Status = string(models.AgentStatusOnline)
-		agent.LastSeen = &now
-		agent.BaseModel = models.BaseModel{CreatedAt: time.Now()}
-
-		if err := s.db.WithContext(ctx).Create(agent).Error; err != nil {
-			return nil, fmt.Errorf("failed to create agent: %w", err)
-		}
-		return agent, nil
+		return &existing, nil
 	}
+
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("failed to query agent: %w", err)
+	}
+
+	agent.Status = string(models.AgentStatusOnline)
+	agent.LastSeen = &now
+	agent.RegisteredAt = &now
+	agent.CreatedAt = now
+	agent.UpdatedAt = &now
+
+	if err := s.db.WithContext(ctx).Create(agent).Error; err != nil {
+		return nil, fmt.Errorf("failed to create agent: %w", err)
+	}
+
+	return agent, nil
 }
 
 func (s *AgentService) GetAgentByID(ctx context.Context, id string) (*models.Agent, error) {

@@ -26,14 +26,16 @@ func (h *AgentHandler) RegisterAgent(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request format",
+			"error":   "Invalid request format: " + err.Error(),
 		})
 		return
 	}
 
 	agent := &models.Agent{
 		ID:           req.ID,
+		Name:         req.Hostname,
 		Hostname:     req.Hostname,
+		URL:          "http://" + req.Hostname,
 		Platform:     req.Platform,
 		Version:      req.Version,
 		Capabilities: models.StringSlice(req.Capabilities),
@@ -43,7 +45,7 @@ func (h *AgentHandler) RegisterAgent(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to register agent",
+			"error":   "Failed to register agent: " + err.Error(),
 		})
 		return
 	}
@@ -54,8 +56,6 @@ func (h *AgentHandler) RegisterAgent(c *gin.Context) {
 		"message": "Agent registered successfully",
 	})
 }
-
-
 
 func (h *AgentHandler) Heartbeat(c *gin.Context) {
 	agentID := c.Param("agentId")
@@ -236,8 +236,6 @@ func (h *AgentHandler) GetTask(c *gin.Context) {
 	})
 }
 
-
-
 func (h *AgentHandler) SubmitTaskResult(c *gin.Context) {
 	taskID := c.Param("taskId")
 
@@ -284,8 +282,6 @@ func (h *AgentHandler) GetAgentDeployments(c *gin.Context) {
 	})
 }
 
-
-
 func (h *AgentHandler) DeployStack(c *gin.Context) {
 	agentID := c.Param("agentId")
 
@@ -322,8 +318,6 @@ func (h *AgentHandler) DeployStack(c *gin.Context) {
 		"task":       task,
 	})
 }
-
-
 
 func (h *AgentHandler) DeployContainer(c *gin.Context) {
 	agentID := c.Param("agentId")
@@ -369,8 +363,6 @@ func (h *AgentHandler) DeployContainer(c *gin.Context) {
 		"task":       task,
 	})
 }
-
-
 
 func (h *AgentHandler) DeployImage(c *gin.Context) {
 	agentID := c.Param("agentId")

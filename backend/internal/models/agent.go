@@ -5,14 +5,16 @@ import (
 )
 
 type Agent struct {
-	ID           string     `json:"id" gorm:"primaryKey"`
-	Hostname     string     `json:"hostname" gorm:"not null"`
-	Platform     string     `json:"platform"`
-	Version      string     `json:"version"`
+	ID           string      `json:"id" gorm:"primaryKey"`
+	Name         string      `json:"name" gorm:"not null"`
+	Hostname     string      `json:"hostname" gorm:"not null"`
+	URL          string      `json:"url" gorm:"not null"`
+	Platform     string      `json:"platform"`
+	Version      string      `json:"version"`
 	Capabilities StringSlice `json:"capabilities" gorm:"type:text;default:'[]'"`
-	Status       string     `json:"status" gorm:"default:'offline'"`
-	LastSeen     *time.Time `json:"lastSeen" gorm:"column:last_seen"`
-	RegisteredAt *time.Time `json:"registeredAt" gorm:"column:registered_at"`
+	Status       string      `json:"status" gorm:"default:'offline'"`
+	LastSeen     *time.Time  `json:"lastSeen" gorm:"column:last_seen"`
+	RegisteredAt *time.Time  `json:"registeredAt" gorm:"column:registered_at"`
 
 	// Metrics
 	ContainerCount *int `json:"containerCount,omitempty" gorm:"column:container_count"`
@@ -30,7 +32,7 @@ type Agent struct {
 	Metadata JSON `json:"metadata,omitempty" gorm:"type:text"`
 
 	// Relations
-	Tasks  []AgentTask `json:"tasks,omitempty" gorm:"foreignKey:AgentID"`
+	Tasks  []AgentTask  `json:"tasks,omitempty" gorm:"foreignKey:AgentID"`
 	Tokens []AgentToken `json:"tokens,omitempty" gorm:"foreignKey:AgentID"`
 
 	BaseModel
