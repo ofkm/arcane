@@ -4,23 +4,18 @@
 	import { formatDistanceToNow } from 'date-fns';
 	import { toast } from 'svelte-sonner';
 	import type { Agent, AgentTask } from '$lib/types/agent.type';
-	import type { CreateTaskDTO, DockerCommandDTO, StackDeployDTO, ImagePullDTO, AgentUpgradeDTO } from '$lib/dto/agent-dto';
+	import type { CreateTaskDTO, DockerCommandDTO, AgentUpgradeDTO } from '$lib/dto/agent-dto';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
-	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
-	import UniversalTable from '$lib/components/universal-table.svelte';
 	import AgentTokensDialog from '$lib/components/dialogs/agent-tokens-dialog.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Layers, Network, Database, Loader2, Download, Trash2, Key } from '@lucide/svelte';
-	import ImagePullForm from '$lib/components/forms/ImagePullForm.svelte';
-	import StackDeploymentForm from '$lib/components/forms/StackDeploymentForm.svelte';
-	import QuickContainerForm from '$lib/components/forms/QuickContainerForm.svelte';
+	import { Monitor, Terminal, Clock, Settings, Activity, AlertCircle, Server, RefreshCw, Play, ArrowLeft, Container, HardDrive, Network, Database, Trash2, Key } from '@lucide/svelte';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util.js';
 	import { tryCatch } from '$lib/utils/try-catch.js';
@@ -35,32 +30,12 @@
 	let loading = $state(false);
 	let error = $state('');
 
-	let resourcesLoading = $state(false);
-	let resourcesError = $state('');
-	let resourcesData = $state<{
-		containers: any[];
-		images: any[];
-		networks: any[];
-		volumes: any[];
-		stacks: any[];
-	}>({
-		containers: [],
-		images: [],
-		networks: [],
-		volumes: [],
-		stacks: []
-	});
-
 	let selectedCommand = $state<{ value: string; label: string } | undefined>(undefined);
 	let commandArgs = $state('');
 	let customCommand = $state('');
 
 	let commandDialogOpen = $state(false);
 	let taskExecuting = $state(false);
-
-	let deployDialogOpen = $state(false);
-	let imageDialogOpen = $state(false);
-	let containerDialogOpen = $state(false);
 	let tokensDialogOpen = $state(false);
 
 	let deleting = $state(false);
@@ -105,112 +80,6 @@
 		} finally {
 			loading = false;
 		}
-	}
-
-	async function loadResourcesData() {
-		if (!agent || agent.status !== 'online') {
-			resourcesError = 'Agent must be online to load resource data';
-			return;
-		}
-
-		resourcesLoading = true;
-		resourcesError = '';
-
-		try {
-			const commands: CreateTaskDTO[] = [
-				{ type: 'docker_command', payload: { command: 'ps', args: ['-a', '--format', 'json'] } as DockerCommandDTO },
-				{ type: 'docker_command', payload: { command: 'images', args: ['--format', 'json'] } as DockerCommandDTO },
-				{ type: 'docker_command', payload: { command: 'network', args: ['ls', '--format', 'json'] } as DockerCommandDTO },
-				{ type: 'docker_command', payload: { command: 'volume', args: ['ls', '--format', 'json'] } as DockerCommandDTO },
-				{ type: 'docker_command', payload: { command: 'compose', args: ['ls', '--format', 'json'] } as DockerCommandDTO }
-			];
-
-			const results = await Promise.allSettled(
-				commands.map(async (cmd, index) => {
-					const task = await agentAPI.createTask(agentId, cmd);
-					return pollTaskCompletion(task.id, ['containers', 'images', 'networks', 'volumes', 'stacks'][index]);
-				})
-			);
-
-			const newResourcesData = {
-				containers: [] as any[],
-				images: [] as any[],
-				networks: [] as any[],
-				volumes: [] as any[],
-				stacks: [] as any[]
-			};
-
-			results.forEach((result, index) => {
-				if (result.status === 'fulfilled' && result.value) {
-					const resourceType = ['containers', 'images', 'networks', 'volumes', 'stacks'][index] as keyof typeof newResourcesData;
-					newResourcesData[resourceType] = result.value;
-				}
-			});
-
-			resourcesData = newResourcesData;
-		} catch (err) {
-			console.error('Failed to load resources data:', err);
-			resourcesError = err instanceof Error ? err.message : 'Failed to load resource data';
-			toast.error('Failed to load resource data');
-		} finally {
-			resourcesLoading = false;
-		}
-	}
-
-	async function pollTaskCompletion(taskId: string, resourceType: string): Promise<any[]> {
-		const maxAttempts = 30;
-		const delay = 1000;
-
-		for (let i = 0; i < maxAttempts; i++) {
-			await new Promise((resolve) => setTimeout(resolve, delay));
-
-			try {
-				const task = await agentAPI.getTask(taskId);
-
-				if (task.status === 'completed') {
-					if (!task.result) {
-						return [];
-					}
-
-					let data: any[] = [];
-					let outputString = '';
-
-					if (task.result && typeof task.result === 'object' && task.result.output) {
-						outputString = task.result.output;
-					} else if (typeof task.result === 'string') {
-						outputString = task.result;
-					} else {
-						return [];
-					}
-
-					if (outputString) {
-						try {
-							const parsed = JSON.parse(outputString);
-							if (Array.isArray(parsed)) {
-								data = parsed;
-							} else {
-								data.push(parsed);
-							}
-						} catch (parseError) {
-							const lines = outputString.split('\n').filter((line: string) => line.trim());
-							for (const line of lines) {
-								try {
-									const parsed = JSON.parse(line.trim());
-									data.push(parsed);
-								} catch (lineParseError) {}
-							}
-						}
-					}
-					return data;
-				} else if (task.status === 'failed') {
-					throw new Error(task.error || 'Task failed');
-				}
-			} catch (err) {
-				console.error(`Error polling task ${taskId}:`, err);
-			}
-		}
-
-		throw new Error(`Task ${taskId} timed out after ${maxAttempts} seconds`);
 	}
 
 	async function sendCommand() {
@@ -353,50 +222,6 @@
 				return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
 		}
 	}
-
-	async function handleStackDeploy(data: StackDeployDTO) {
-		try {
-			const taskDto: CreateTaskDTO = {
-				type: 'stack_deploy',
-				payload: data
-			};
-			await agentAPI.createTask(agentId, taskDto);
-			toast.success('Stack deployment started');
-			setTimeout(() => refreshAgentData(), 1000);
-		} catch (err) {
-			console.error('Stack deploy error:', err);
-			throw err;
-		}
-	}
-
-	async function handleImagePull(imageName: string) {
-		try {
-			const imageDto: ImagePullDTO = { imageName };
-			const taskDto: CreateTaskDTO = {
-				type: 'image_pull',
-				payload: imageDto
-			};
-			await agentAPI.createTask(agentId, taskDto);
-			toast.success('Image pull started');
-		} catch (err) {
-			console.error('Image pull error:', err);
-			throw err;
-		}
-	}
-
-	async function handleContainerRun(data: any) {
-		try {
-			const taskDto: CreateTaskDTO = {
-				type: 'container_start',
-				payload: data
-			};
-			await agentAPI.createTask(agentId, taskDto);
-			toast.success('Container started');
-		} catch (err) {
-			console.error('Container run error:', err);
-			throw err;
-		}
-	}
 </script>
 
 <svelte:head>
@@ -509,285 +334,50 @@
 		</div>
 
 		{#if agent.metrics}
-			<DropdownCard id="agent-metrics" title="Resource Metrics" description="View detailed Docker resource information" defaultExpanded={false} icon={Activity}>
-				<div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-					<div class="rounded-lg bg-blue-50 p-3 text-center dark:bg-blue-900/20">
-						<Container class="mx-auto mb-1 size-6 text-blue-600 dark:text-blue-400" />
-						<p class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+			<DropdownCard id="agent-metrics" title="Resource Metrics" description="View Docker resource metrics from the agent" defaultExpanded={true} icon={Activity}>
+				<div class="grid grid-cols-2 gap-4 md:grid-cols-5">
+					<div class="rounded-lg bg-blue-50 p-4 text-center dark:bg-blue-900/20">
+						<Container class="mx-auto mb-2 size-8 text-blue-600 dark:text-blue-400" />
+						<p class="text-3xl font-bold text-blue-600 dark:text-blue-400">
 							{agent.metrics.containerCount ?? 0}
 						</p>
 						<p class="text-sm text-blue-600/80 dark:text-blue-400/80">Containers</p>
 					</div>
-					<div class="rounded-lg bg-green-50 p-3 text-center dark:bg-green-900/20">
-						<HardDrive class="mx-auto mb-1 size-6 text-green-600 dark:text-green-400" />
-						<p class="text-2xl font-bold text-green-600 dark:text-green-400">
+					<div class="rounded-lg bg-green-50 p-4 text-center dark:bg-green-900/20">
+						<HardDrive class="mx-auto mb-2 size-8 text-green-600 dark:text-green-400" />
+						<p class="text-3xl font-bold text-green-600 dark:text-green-400">
 							{agent.metrics.imageCount ?? 0}
 						</p>
 						<p class="text-sm text-green-600/80 dark:text-green-400/80">Images</p>
 					</div>
-					<div class="rounded-lg bg-orange-50 p-3 text-center dark:bg-orange-900/20">
-						<Network class="mx-auto mb-1 size-6 text-orange-600 dark:text-orange-400" />
-						<p class="text-2xl font-bold text-orange-600 dark:text-orange-400">
+					<div class="rounded-lg bg-orange-50 p-4 text-center dark:bg-orange-900/20">
+						<Network class="mx-auto mb-2 size-8 text-orange-600 dark:text-orange-400" />
+						<p class="text-3xl font-bold text-orange-600 dark:text-orange-400">
 							{agent.metrics.networkCount ?? 0}
 						</p>
 						<p class="text-sm text-orange-600/80 dark:text-orange-400/80">Networks</p>
 					</div>
-					<div class="rounded-lg bg-cyan-50 p-3 text-center dark:bg-cyan-900/20">
-						<Database class="mx-auto mb-1 size-6 text-cyan-600 dark:text-cyan-400" />
-						<p class="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+					<div class="rounded-lg bg-cyan-50 p-4 text-center dark:bg-cyan-900/20">
+						<Database class="mx-auto mb-2 size-8 text-cyan-600 dark:text-cyan-400" />
+						<p class="text-3xl font-bold text-cyan-600 dark:text-cyan-400">
 							{agent.metrics.volumeCount ?? 0}
 						</p>
 						<p class="text-sm text-cyan-600/80 dark:text-cyan-400/80">Volumes</p>
 					</div>
+					<div class="rounded-lg bg-purple-50 p-4 text-center dark:bg-purple-900/20">
+						<div class="mx-auto mb-2 size-8 text-purple-600 dark:text-purple-400">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-8">
+								<rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+								<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+								<path d="m9 14 2 2 4-4" />
+							</svg>
+						</div>
+						<p class="text-3xl font-bold text-purple-600 dark:text-purple-400">
+							{agent.metrics.stackCount ?? 0}
+						</p>
+						<p class="text-sm text-purple-600/80 dark:text-purple-400/80">Stacks</p>
+					</div>
 				</div>
-
-				{#if agent.status === 'online'}
-					<div class="border-border space-y-4 border-t pt-4">
-						<div class="flex items-center justify-between">
-							<div>
-								<h4 class="mb-1 font-medium">Resource Details</h4>
-								<p class="text-muted-foreground text-sm">View detailed information about Docker resources</p>
-							</div>
-							<Button variant="outline" size="sm" onclick={loadResourcesData} disabled={resourcesLoading}>
-								{#if resourcesLoading}
-									<Loader2 class="mr-2 size-4 animate-spin" />
-									Loading...
-								{:else}
-									<RefreshCw class="mr-2 size-4" />
-									Load Resources
-								{/if}
-							</Button>
-						</div>
-
-						{#if resourcesError}
-							<Alert.Root variant="destructive">
-								<AlertCircle class="size-4" />
-								<Alert.Title>Error Loading Resources</Alert.Title>
-								<Alert.Description>{resourcesError}</Alert.Description>
-							</Alert.Root>
-						{/if}
-
-						{#if resourcesData.containers.length > 0 || resourcesData.images.length > 0 || resourcesData.networks.length > 0 || resourcesData.volumes.length > 0 || resourcesData.stacks.length > 0}
-							<Tabs.Root value="containers" class="w-full">
-								<Tabs.List class="grid w-full grid-cols-5">
-									<Tabs.Trigger value="containers" class="flex items-center gap-2">
-										<Container class="size-4" />
-										Containers ({resourcesData.containers.length})
-									</Tabs.Trigger>
-									<Tabs.Trigger value="images" class="flex items-center gap-2">
-										<HardDrive class="size-4" />
-										Images ({resourcesData.images.length})
-									</Tabs.Trigger>
-									<Tabs.Trigger value="networks" class="flex items-center gap-2">
-										<Network class="size-4" />
-										Networks ({resourcesData.networks.length})
-									</Tabs.Trigger>
-									<Tabs.Trigger value="volumes" class="flex items-center gap-2">
-										<Database class="size-4" />
-										Volumes ({resourcesData.volumes.length})
-									</Tabs.Trigger>
-									<Tabs.Trigger value="stacks" class="flex items-center gap-2">
-										<Layers class="size-4" />
-										Compose Projects ({resourcesData.stacks.length})
-									</Tabs.Trigger>
-								</Tabs.List>
-
-								<Tabs.Content value="containers" class="mt-4">
-									{#if resourcesData.containers.length > 0}
-										<UniversalTable
-											data={resourcesData.containers}
-											columns={[
-												{ accessorKey: 'Names', header: 'Name' },
-												{ accessorKey: 'Image', header: 'Image' },
-												{ accessorKey: 'Status', header: 'Status' },
-												{ accessorKey: 'Ports', header: 'Ports' },
-												{ accessorKey: 'CreatedAt', header: 'Created' }
-											]}
-											idKey="ID"
-											features={{ selection: false }}
-											display={{
-												filterPlaceholder: 'Search containers...',
-												noResultsMessage: 'No containers found'
-											}}
-											pagination={{ pageSize: 10 }}
-										/>
-									{:else}
-										<div class="text-muted-foreground py-8 text-center">
-											<Container class="mx-auto mb-4 size-12 opacity-50" />
-											<p>No containers found</p>
-										</div>
-									{/if}
-								</Tabs.Content>
-
-								<Tabs.Content value="images" class="mt-4">
-									{#if resourcesData.images.length > 0}
-										<UniversalTable
-											data={resourcesData.images}
-											columns={[
-												{ accessorKey: 'Repository', header: 'Repository' },
-												{ accessorKey: 'Tag', header: 'Tag' },
-												{ accessorKey: 'ID', header: 'Image ID' },
-												{ accessorKey: 'CreatedAt', header: 'Created' },
-												{ accessorKey: 'Size', header: 'Size' }
-											]}
-											idKey="ID"
-											features={{ selection: false }}
-											display={{
-												filterPlaceholder: 'Search images...',
-												noResultsMessage: 'No images found'
-											}}
-											pagination={{ pageSize: 10 }}
-										/>
-									{:else}
-										<div class="text-muted-foreground py-8 text-center">
-											<HardDrive class="mx-auto mb-4 size-12 opacity-50" />
-											<p>No images found</p>
-										</div>
-									{/if}
-								</Tabs.Content>
-
-								<Tabs.Content value="networks" class="mt-4">
-									{#if resourcesData.networks.length > 0}
-										<UniversalTable
-											data={resourcesData.networks}
-											columns={[
-												{ accessorKey: 'Name', header: 'Name' },
-												{ accessorKey: 'Driver', header: 'Driver' },
-												{ accessorKey: 'Scope', header: 'Scope' },
-												{ accessorKey: 'ID', header: 'Network ID' },
-												{ accessorKey: 'CreatedAt', header: 'Created' }
-											]}
-											idKey="ID"
-											features={{ selection: false }}
-											display={{
-												filterPlaceholder: 'Search networks...',
-												noResultsMessage: 'No networks found'
-											}}
-											pagination={{ pageSize: 10 }}
-										/>
-									{:else}
-										<div class="text-muted-foreground py-8 text-center">
-											<Network class="mx-auto mb-4 size-12 opacity-50" />
-											<p>No networks found</p>
-										</div>
-									{/if}
-								</Tabs.Content>
-
-								<Tabs.Content value="volumes" class="mt-4">
-									{#if resourcesData.volumes.length > 0}
-										<UniversalTable
-											data={resourcesData.volumes}
-											columns={[
-												{ accessorKey: 'Name', header: 'Name' },
-												{ accessorKey: 'Driver', header: 'Driver' },
-												{ accessorKey: 'Mountpoint', header: 'Mountpoint' },
-												{ accessorKey: 'CreatedAt', header: 'Created' }
-											]}
-											idKey="Name"
-											features={{ selection: false }}
-											display={{
-												filterPlaceholder: 'Search volumes...',
-												noResultsMessage: 'No volumes found'
-											}}
-											pagination={{ pageSize: 10 }}
-										/>
-									{:else}
-										<div class="text-muted-foreground py-8 text-center">
-											<Database class="mx-auto mb-4 size-12 opacity-50" />
-											<p>No volumes found</p>
-										</div>
-									{/if}
-								</Tabs.Content>
-
-								<Tabs.Content value="stacks" class="mt-4">
-									{#if resourcesData.stacks.length > 0}
-										<UniversalTable
-											data={resourcesData.stacks}
-											columns={[
-												{ accessorKey: 'Name', header: 'Project Name' },
-												{ accessorKey: 'Status', header: 'Status' },
-												{ accessorKey: 'ConfigFiles', header: 'Config Files' }
-											]}
-											idKey="Name"
-											features={{ selection: false }}
-											display={{
-												filterPlaceholder: 'Search compose projects...',
-												noResultsMessage: 'No compose projects found'
-											}}
-											pagination={{ pageSize: 10 }}
-										/>
-									{:else}
-										<div class="text-muted-foreground py-8 text-center">
-											<Layers class="mx-auto mb-4 size-12 opacity-50" />
-											<p>No compose projects found</p>
-										</div>
-									{/if}
-								</Tabs.Content>
-							</Tabs.Root>
-						{:else}
-							<div class="text-muted-foreground py-8 text-center">
-								<Database class="mx-auto mb-4 size-12 opacity-50" />
-								<p class="font-medium">No Resource Data Loaded</p>
-								<p class="text-sm">Click "Load Resources" to fetch Docker resource information</p>
-							</div>
-						{/if}
-					</div>
-				{/if}
-
-				{#if agent.status === 'online'}
-					<div class="border-border space-y-4 border-t pt-4">
-						<div class="flex items-center justify-between">
-							<div>
-								<h4 class="mb-1 font-medium">Deploy Resources</h4>
-								<p class="text-muted-foreground text-sm">Deploy stacks, containers, or images to this agent</p>
-							</div>
-						</div>
-
-						<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-							<Card.Root class="hover:border-primary/50 cursor-pointer transition-colors" onclick={() => (deployDialogOpen = true)}>
-								<Card.Content class="p-4">
-									<div class="flex items-center space-x-3">
-										<div class="rounded-lg bg-blue-500/10 p-2">
-											<Layers class="size-5 text-blue-500" />
-										</div>
-										<div>
-											<h5 class="font-medium">Deploy Stack</h5>
-											<p class="text-muted-foreground text-sm">Deploy a complete application stack</p>
-										</div>
-									</div>
-								</Card.Content>
-							</Card.Root>
-
-							<Card.Root class="hover:border-primary/50 cursor-pointer transition-colors" onclick={() => (imageDialogOpen = true)}>
-								<Card.Content class="p-4">
-									<div class="flex items-center space-x-3">
-										<div class="rounded-lg bg-green-500/10 p-2">
-											<Download class="size-5 text-green-500" />
-										</div>
-										<div>
-											<h5 class="font-medium">Pull Image</h5>
-											<p class="text-muted-foreground text-sm">Download a Docker image</p>
-										</div>
-									</div>
-								</Card.Content>
-							</Card.Root>
-
-							<Card.Root class="hover:border-primary/50 cursor-pointer transition-colors" onclick={() => (containerDialogOpen = true)}>
-								<Card.Content class="p-4">
-									<div class="flex items-center space-x-3">
-										<div class="rounded-lg bg-purple-500/10 p-2">
-											<Container class="size-5 text-purple-500" />
-										</div>
-										<div>
-											<h5 class="font-medium">Run Container</h5>
-											<p class="text-muted-foreground text-sm">Start a single container</p>
-										</div>
-									</div>
-								</Card.Content>
-							</Card.Root>
-						</div>
-					</div>
-				{/if}
 			</DropdownCard>
 		{/if}
 
@@ -981,39 +571,6 @@
 				{/if}
 			</Button>
 		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
-
-<Dialog.Root bind:open={deployDialogOpen}>
-	<Dialog.Content class="sm:max-w-2xl">
-		<Dialog.Header>
-			<Dialog.Title>Deploy Stack to {agent?.hostname}</Dialog.Title>
-			<Dialog.Description>Choose a stack to deploy or create a new one</Dialog.Description>
-		</Dialog.Header>
-
-		<StackDeploymentForm {agentId} onClose={() => (deployDialogOpen = false)} onDeploy={handleStackDeploy} />
-	</Dialog.Content>
-</Dialog.Root>
-
-<Dialog.Root bind:open={imageDialogOpen}>
-	<Dialog.Content class="sm:max-w-md">
-		<Dialog.Header>
-			<Dialog.Title>Pull Image to {agent?.hostname}</Dialog.Title>
-			<Dialog.Description>Enter the image name to download</Dialog.Description>
-		</Dialog.Header>
-
-		<ImagePullForm {agentId} onClose={() => (imageDialogOpen = false)} onPull={handleImagePull} />
-	</Dialog.Content>
-</Dialog.Root>
-
-<Dialog.Root bind:open={containerDialogOpen}>
-	<Dialog.Content class="sm:max-w-xl">
-		<Dialog.Header>
-			<Dialog.Title>Run Container on {agent?.hostname}</Dialog.Title>
-			<Dialog.Description>Quickly start a container from an image</Dialog.Description>
-		</Dialog.Header>
-
-		<QuickContainerForm {agentId} onClose={() => (containerDialogOpen = false)} onRun={handleContainerRun} />
 	</Dialog.Content>
 </Dialog.Root>
 
