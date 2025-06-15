@@ -3,7 +3,8 @@ import { env } from '$env/dynamic/public';
 import { redirect } from '@sveltejs/kit';
 import type { AppVersionInformation } from '$lib/types/application-configuration';
 import settingsStore from '$lib/stores/config-store';
-import { settingsAPI, userAPI } from '$lib/services/api';
+import { settingsAPI, userAPI, agentAPI } from '$lib/services/api';
+import type { Agent } from '$lib/types/agent.type.js';
 
 let versionInformation: AppVersionInformation;
 let versionInformationLastUpdated: number;
@@ -18,7 +19,7 @@ export const load = async ({ fetch, url }) => {
 
 	const updateCheckDisabled = env.PUBLIC_UPDATE_CHECK_DISABLED === 'true';
 
-	let agents: any[] = [];
+	let agents: Agent[] = [];
 	let hasLocalDocker = false;
 	let isAuthenticated = false;
 	let user = null;
@@ -71,12 +72,9 @@ export const load = async ({ fetch, url }) => {
 	if (isAuthenticated && user) {
 		try {
 			// Fetch agents
-			const agentsResponse = await fetch('/api/agents', {
-				credentials: 'include'
-			});
-			if (agentsResponse.ok) {
-				const agentsData = await agentsResponse.json();
-				agents = agentsData.data || [];
+			const agentsResponse = await agentAPI.list();
+			if (agentsResponse.length > 0) {
+				agents = agentsResponse;
 			}
 		} catch (error) {
 			console.log('Could not fetch agents:', error);

@@ -75,8 +75,7 @@
 <Sidebar.Root {collapsible} {...restProps}>
 	<Sidebar.Header>
 		<SidebarLogo {isCollapsed} {versionInformation} />
-		<!-- Add back once we add in better agent switching -->
-		<!-- <SidebarAgentSwitcher {hasLocalDocker} {agents} /> -->
+		<SidebarAgentSwitcher {hasLocalDocker} {agents} />
 	</Sidebar.Header>
 	<Sidebar.Content>
 		<SidebarItemGroup label="Management" items={staticData.managementItems} />
