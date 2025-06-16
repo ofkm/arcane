@@ -17,6 +17,7 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 	userService := services.NewUserService(db)
 	stackService := services.NewStackService(db, settingsService)
 	agentService := services.NewAgentService(db)
+	environmentService := services.NewEnvironmentService(db)
 	deploymentService := services.NewDeploymentService(db)
 	containerService := services.NewContainerService(db, dockerClientService)
 	containerRegistry := services.NewContainerRegistryService(db)
@@ -34,6 +35,7 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 		User:              userService,
 		Stack:             stackService,
 		Agent:             agentService,
+		Environment:       environmentService,
 		Settings:          settingsService,
 		Deployment:        deploymentService,
 		Container:         containerService,
@@ -50,5 +52,6 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 		System:            systemService,
 		AutoUpdate:        autoUpdate,
 	}
+
 	return appServices, dockerClientService, nil
 }

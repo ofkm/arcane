@@ -6,21 +6,13 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { GalleryVerticalEndIcon } from '@lucide/svelte';
 	import ServerIcon from '@lucide/svelte/icons/server';
-	import type { Agent } from '$lib/types/agent.type';
 	import { environmentStore, type Environment } from '$lib/stores/environment.store';
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
-	let { agents = [], hasLocalDocker = false }: { agents?: Agent[]; hasLocalDocker?: boolean } = $props();
 	const sidebar = useSidebar();
 
 	let currentSelectedEnvironment = $state<Environment | null>(null);
 	let availableEnvironments = $state<Environment[]>([]);
-
-	$effect(() => {
-		// Initialize or update store when props change
-		environmentStore.initialize(agents, hasLocalDocker);
-	});
 
 	$effect(() => {
 		const unsubscribeSelected = environmentStore.selected.subscribe((value) => {
@@ -59,7 +51,7 @@
 									{currentSelectedEnvironment.hostname}
 								</span>
 								<span class="truncate text-xs">
-									{currentSelectedEnvironment.isLocal ? 'Local Socket' : currentSelectedEnvironment.id}
+									{currentSelectedEnvironment.isLocal ? 'Local Docker' : currentSelectedEnvironment.apiUrl}
 								</span>
 							</div>
 						{:else}
@@ -77,28 +69,36 @@
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Content class="w-[var(--bits-dropdown-menu-anchor-width)] min-w-56 rounded-lg" align="start" side={sidebar.isMobile ? 'bottom' : 'right'} sideOffset={4}>
 				<DropdownMenu.Label class="text-muted-foreground text-xs">Select Environment</DropdownMenu.Label>
-				{#each availableEnvironments as env (env.id)}
-					<DropdownMenu.Item onSelect={() => handleSelect(env)} class="gap-2 p-2">
+				{#if availableEnvironments.length === 0}
+					<DropdownMenu.Item disabled class="gap-2 p-2">
 						<div class="flex size-6 items-center justify-center rounded-md border">
-							{#if env.isLocal}
-								<ServerIcon class="size-3.5 shrink-0" />
-							{:else}
-								<GalleryVerticalEndIcon class="size-3.5 shrink-0" />
-							{/if}
+							<ServerIcon class="size-3.5 shrink-0" />
 						</div>
-						<div class="flex flex-col">
-							<span>{env.hostname}</span>
-							{#if env.isLocal}
-								<span class="text-muted-foreground text-xs">Local Socket</span>
-							{:else}
-								<span class="text-muted-foreground text-xs truncate max-w-32">{env.id}</span>
-							{/if}
-						</div>
-						<!-- Shortcut might need re-evaluation based on dynamic list -->
+						<span>No environments available</span>
 					</DropdownMenu.Item>
-				{/each}
+				{:else}
+					{#each availableEnvironments as env (env.id)}
+						<DropdownMenu.Item onSelect={() => handleSelect(env)} class="gap-2 p-2">
+							<div class="flex size-6 items-center justify-center rounded-md border">
+								{#if env.isLocal}
+									<ServerIcon class="size-3.5 shrink-0" />
+								{:else}
+									<GalleryVerticalEndIcon class="size-3.5 shrink-0" />
+								{/if}
+							</div>
+							<div class="flex flex-col">
+								<span>{env.hostname}</span>
+								{#if env.isLocal}
+									<span class="text-muted-foreground text-xs">Local Docker</span>
+								{:else}
+									<span class="text-muted-foreground text-xs truncate max-w-32">{env.apiUrl}</span>
+								{/if}
+							</div>
+						</DropdownMenu.Item>
+					{/each}
+				{/if}
 				<DropdownMenu.Separator />
-				<DropdownMenu.Item class="gap-2 p-2" onSelect={() => goto('/agents')}>
+				<DropdownMenu.Item class="gap-2 p-2" onSelect={() => goto('/environments')}>
 					<div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
 						<PlusIcon class="size-4" />
 					</div>

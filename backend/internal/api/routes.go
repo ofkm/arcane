@@ -11,6 +11,7 @@ type Services struct {
 	User              *services.UserService
 	Stack             *services.StackService
 	Agent             *services.AgentService
+	Environment       *services.EnvironmentService
 	Settings          *services.SettingsService
 	Deployment        *services.DeploymentService
 	Container         *services.ContainerService
@@ -35,6 +36,7 @@ func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	setupUserRoutes(api, services)
 	setupStackRoutes(api, services)
 	setupAgentRoutes(api, services)
+	setupEnvironmentRoutes(api, services)
 	setupSettingsRoutes(api, services, appConfig)
 	setupDeploymentRoutes(api, services)
 	setupImageMaturityRoutes(api, services)
@@ -157,6 +159,34 @@ func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 		webAuth.GET("/:agentId/tokens", agentHandler.ListAgentTokens)
 		webAuth.DELETE("/:agentId/tokens/:tokenId", agentHandler.DeleteAgentToken)
 	}
+}
+
+func setupEnvironmentRoutes(api *gin.RouterGroup, services *Services) {
+	environments := api.Group("/environments")
+	environments.Use(middleware.AuthMiddleware(services.Auth))
+
+	environmentHandler := NewEnvironmentHandler(
+		services.Environment,
+		services.Container,
+		services.Image,
+		services.Network,
+		services.Volume,
+		services.Stack,
+	)
+
+	environments.GET("", environmentHandler.ListEnvironments)
+	environments.POST("", environmentHandler.CreateEnvironment)
+	environments.GET("/:id", environmentHandler.GetEnvironment)
+	environments.PUT("/:id", environmentHandler.UpdateEnvironment)
+	environments.DELETE("/:id", environmentHandler.DeleteEnvironment)
+	environments.POST("/:id/test", environmentHandler.TestConnection)
+	environments.POST("/:id/heartbeat", environmentHandler.UpdateHeartbeat)
+
+	environments.GET("/:id/containers", environmentHandler.GetContainers)
+	environments.GET("/:id/images", environmentHandler.GetImages)
+	environments.GET("/:id/networks", environmentHandler.GetNetworks)
+	environments.GET("/:id/volumes", environmentHandler.GetVolumes)
+	environments.GET("/:id/stacks", environmentHandler.GetStacks)
 }
 
 func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {

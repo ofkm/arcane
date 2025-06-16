@@ -20,6 +20,8 @@ import AgentStackAPIService from './agent-stack-api-service';
 import AutoUpdateAPIService from './autoupdate-api-service';
 import ConverterAPIService from './converter-api-service';
 import ContainerRegistryAPIService from './container-registry-api-service';
+import { EnvironmentAPIService } from './environment-api-service';
+import EnvironmentManagementAPIService from './environment-management-api-service';
 
 export const containerAPI = new ContainerAPIService();
 export const imageAPI = new ImageAPIService();
@@ -43,6 +45,8 @@ export const agentStackAPI = new AgentStackAPIService();
 export const converterAPI = new ConverterAPIService();
 export const containerRegistryAPI = new ContainerRegistryAPIService();
 export const autoUpdateAPI = new AutoUpdateAPIService();
+export const environmentAPI = new EnvironmentAPIService();
+export const environmentManagementAPI = new EnvironmentManagementAPIService();
 
 interface APIServices {
 	container: ContainerAPIService;
@@ -66,6 +70,8 @@ interface APIServices {
 	converter: ConverterAPIService;
 	containerRegistry: ContainerRegistryAPIService;
 	autoUpdate: AutoUpdateAPIService;
+	environment: EnvironmentAPIService;
+	environmentManagement: EnvironmentManagementAPIService;
 }
 
 const apiServices: APIServices = {
@@ -89,7 +95,9 @@ const apiServices: APIServices = {
 	agent: agentAPI,
 	converter: converterAPI,
 	containerRegistry: containerRegistryAPI,
-	autoUpdate: autoUpdateAPI
+	autoUpdate: autoUpdateAPI,
+	environment: environmentAPI,
+	environmentManagement: environmentManagementAPI
 };
 
 export default apiServices;

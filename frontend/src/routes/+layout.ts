@@ -1,10 +1,8 @@
-import { browser } from '$app/environment';
 import { env } from '$env/dynamic/public';
 import { redirect } from '@sveltejs/kit';
 import type { AppVersionInformation } from '$lib/types/application-configuration';
-import settingsStore from '$lib/stores/config-store';
-import { settingsAPI, userAPI, agentAPI } from '$lib/services/api';
-import type { Agent } from '$lib/types/agent.type.js';
+import { settingsAPI, userAPI, environmentManagementAPI } from '$lib/services/api';
+import { environmentStore } from '$lib/stores/environment.store';
 
 let versionInformation: AppVersionInformation;
 let versionInformationLastUpdated: number;
@@ -19,8 +17,6 @@ export const load = async ({ fetch, url }) => {
 
 	const updateCheckDisabled = env.PUBLIC_UPDATE_CHECK_DISABLED === 'true';
 
-	let agents: Agent[] = [];
-	let hasLocalDocker = false;
 	let isAuthenticated = false;
 	let user = null;
 
@@ -67,31 +63,27 @@ export const load = async ({ fetch, url }) => {
 		if (!isOnboardingPath && settings && settings.onboarding && !settings.onboarding.completed) {
 			throw redirect(302, '/onboarding/welcome');
 		}
-	}
 
-	if (isAuthenticated && user) {
-		try {
-			// Fetch agents
-			const agentsResponse = await agentAPI.list();
-			if (agentsResponse.length > 0) {
-				agents = agentsResponse;
+		if (!environmentStore.isInitialized()) {
+			try {
+				const environments = await environmentManagementAPI.list();
+
+				let hasLocalDocker = false;
+				try {
+					const dockerResponse = await fetch('/api/environments/0/containers?limit=1');
+					hasLocalDocker = dockerResponse.ok;
+				} catch (e) {
+					hasLocalDocker = false;
+				}
+
+				environmentStore.initialize(environments, hasLocalDocker);
+			} catch (error) {
+				console.error('Failed to load environments:', error);
+				environmentStore.initialize([], false);
 			}
-		} catch (error) {
-			console.log('Could not fetch agents:', error);
-		}
-
-		try {
-			// Check if local Docker is available
-			const dockerResponse = await fetch('/api/containers?limit=1', {
-				credentials: 'include'
-			});
-			hasLocalDocker = dockerResponse.ok;
-		} catch (error) {
-			console.log('Docker not available:', error);
 		}
 	}
 
-	// Handle version information
 	if (updateCheckDisabled) {
 		versionInformation = {
 			currentVersion: '0.15.0'
@@ -124,8 +116,6 @@ export const load = async ({ fetch, url }) => {
 		user,
 		isAuthenticated,
 		settings,
-		agents,
-		hasLocalDocker,
 		versionInformation,
 		updateCheckDisabled
 	};

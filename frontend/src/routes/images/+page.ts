@@ -1,4 +1,4 @@
-import { imageAPI, containerAPI, settingsAPI } from '$lib/services/api';
+import { environmentAPI, settingsAPI } from '$lib/services/api';
 import type { EnhancedImageInfo } from '$lib/types/docker';
 import type { Settings } from '$lib/types/settings.type';
 
@@ -10,7 +10,7 @@ type ImageData = {
 
 export const load = async (): Promise<ImageData> => {
 	try {
-		const [images, settings] = await Promise.all([imageAPI.list() as Promise<EnhancedImageInfo[]>, settingsAPI.getSettings()]);
+		const [images, settings] = await Promise.all([environmentAPI.getImages(), settingsAPI.getSettings()]);
 
 		const enhancedImages = await Promise.all(
 			images.map(async (image): Promise<EnhancedImageInfo> => {

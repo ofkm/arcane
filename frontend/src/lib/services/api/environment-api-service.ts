@@ -1,105 +1,117 @@
+import BaseAPIService from './api-service';
 import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
-import { agentAPI } from './index';
-import type { CreateTaskDTO } from '$lib/dto/agent-dto';
 
-export class EnvironmentAPIService {
-	async getContainers(): Promise<any[]> {
+export class EnvironmentAPIService extends BaseAPIService {
+	private getCurrentEnvironmentId(): string {
 		const currentEnvironment = get(environmentStore.selected);
-
-		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
-			throw new Error('Local Docker containers should use direct API calls');
+		if (!currentEnvironment) {
+			return LOCAL_DOCKER_ENVIRONMENT_ID;
 		}
+		return currentEnvironment.id;
+	}
 
-		return await agentAPI.getAgentContainers(currentEnvironment.id);
+	async getContainers(): Promise<any[]> {
+		const envId = this.getCurrentEnvironmentId();
+		const response = await this.handleResponse<{ containers?: any[] }>(this.api.get(`/environments/${envId}/containers`));
+		return Array.isArray(response.containers) ? response.containers : Array.isArray(response) ? response : [];
 	}
 
 	async getImages(): Promise<any[]> {
-		const currentEnvironment = get(environmentStore.selected);
-
-		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
-			throw new Error('Local Docker images should use direct API calls');
-		}
-
-		return await agentAPI.getAgentImages(currentEnvironment.id);
+		const envId = this.getCurrentEnvironmentId();
+		const response = await this.handleResponse<{ images?: any[] }>(this.api.get(`/environments/${envId}/images`));
+		return Array.isArray(response.images) ? response.images : Array.isArray(response) ? response : [];
 	}
 
 	async getNetworks(): Promise<any[]> {
-		const currentEnvironment = get(environmentStore.selected);
-
-		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
-			throw new Error('Local Docker networks should use direct API calls');
-		}
-
-		return await agentAPI.getAgentNetworks(currentEnvironment.id);
+		const envId = this.getCurrentEnvironmentId();
+		const response = await this.handleResponse<{ networks?: any[] }>(this.api.get(`/environments/${envId}/networks`));
+		return Array.isArray(response.networks) ? response.networks : Array.isArray(response) ? response : [];
 	}
 
 	async getVolumes(): Promise<any[]> {
-		const currentEnvironment = get(environmentStore.selected);
-
-		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
-			throw new Error('Local Docker volumes should use direct API calls');
-		}
-
-		return await agentAPI.getAgentVolumes(currentEnvironment.id);
+		const envId = this.getCurrentEnvironmentId();
+		const response = await this.handleResponse<{ volumes?: any[] }>(this.api.get(`/environments/${envId}/volumes`));
+		return Array.isArray(response.volumes) ? response.volumes : Array.isArray(response) ? response : [];
 	}
 
 	async getAllResources(): Promise<Record<string, any>> {
-		const currentEnvironment = get(environmentStore.selected);
+		const [containers, images, networks, volumes] = await Promise.all([this.getContainers(), this.getImages(), this.getNetworks(), this.getVolumes()]);
 
-		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
-			throw new Error('Local Docker resources should use direct API calls');
-		}
-
-		return await agentAPI.getAgentResources(currentEnvironment.id);
+		return {
+			containers,
+			images,
+			networks,
+			volumes
+		};
 	}
 
 	async syncResources(): Promise<void> {
-		const currentEnvironment = get(environmentStore.selected);
-
-		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
-			return;
-		}
-
-		await agentAPI.syncAgentResources(currentEnvironment.id);
+		const envId = this.getCurrentEnvironmentId();
+		await this.handleResponse(this.api.post(`/environments/${envId}/sync`));
 	}
 
 	async executeDockerCommand(command: string, args: string[] = []): Promise<any> {
-		const currentEnvironment = get(environmentStore.selected);
-
-		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
-			throw new Error('Local Docker commands should use direct API calls');
-		}
-
-		const taskData: CreateTaskDTO = {
-			type: 'docker_command',
-			payload: {
-				command,
-				args
-			}
-		};
-
-		const task = await agentAPI.createTask(currentEnvironment.id, taskData);
-
-		return this.pollForTaskResult(task.id);
+		const envId = this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/execute`, { command, args }));
 	}
 
-	private async pollForTaskResult(taskId: string, maxAttempts = 30, interval = 1000): Promise<any> {
-		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			const task = await agentAPI.getTask(taskId);
+	async getStacks(): Promise<any[]> {
+		const envId = this.getCurrentEnvironmentId();
+		const response = await this.handleResponse<{ stacks?: any[] }>(this.api.get(`/environments/${envId}/stacks`));
+		return Array.isArray(response.stacks) ? response.stacks : Array.isArray(response) ? response : [];
+	}
 
-			if (task.status === 'completed') {
-				return task.result;
-			}
+	async getStack(stackName: string): Promise<any> {
+		const envId = this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}`));
+	}
 
-			if (task.status === 'failed') {
-				throw new Error(task.error || 'Task failed');
-			}
+	async deployStack(stackName: string, composeContent: string, envContent?: string): Promise<any> {
+		const envId = this.getCurrentEnvironmentId();
+		const payload = {
+			name: stackName,
+			composeContent,
+			envContent
+		};
 
-			await new Promise((resolve) => setTimeout(resolve, interval));
-		}
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks`, payload));
+	}
 
-		throw new Error('Task timeout');
+	async updateStack(stackName: string, composeContent: string, envContent?: string): Promise<any> {
+		const envId = this.getCurrentEnvironmentId();
+		const payload = {
+			composeContent,
+			envContent
+		};
+
+		return this.handleResponse(this.api.put(`/environments/${envId}/stacks/${stackName}`, payload));
+	}
+
+	async deleteStack(stackName: string): Promise<void> {
+		const envId = this.getCurrentEnvironmentId();
+		await this.handleResponse(this.api.delete(`/environments/${envId}/stacks/${stackName}`));
+	}
+
+	async startStack(stackName: string): Promise<any> {
+		const envId = this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackName}/start`));
+	}
+
+	async stopStack(stackName: string): Promise<any> {
+		const envId = this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackName}/stop`));
+	}
+
+	async restartStack(stackName: string): Promise<any> {
+		const envId = this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackName}/restart`));
+	}
+
+	async getStackLogs(stackName: string): Promise<string> {
+		const envId = this.getCurrentEnvironmentId();
+		const response = await this.handleResponse<{ logs?: string }>(this.api.get(`/environments/${envId}/stacks/${stackName}/logs`));
+		return response.logs || '';
 	}
 }
 

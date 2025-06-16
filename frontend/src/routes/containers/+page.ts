@@ -1,15 +1,15 @@
-import { containerAPI, imageAPI, networkAPI, volumeAPI } from '$lib/services/api';
+import { environmentAPI } from '$lib/services/api';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async () => {
 	try {
-		const [containers, volumes, networks, images] = await Promise.all([containerAPI.list(true), volumeAPI.list(), networkAPI.list(), imageAPI.list()]);
+		const resources = await environmentAPI.getAllResources();
 
 		return {
-			containers,
-			volumes,
-			networks,
-			images
+			containers: resources.containers || [],
+			volumes: resources.volumes || [],
+			networks: resources.networks || [],
+			images: resources.images || []
 		};
 	} catch (error) {
 		console.error('Error loading container data:', error);

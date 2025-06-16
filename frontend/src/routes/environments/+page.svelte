@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
-	import type { Agent } from '$lib/types/agent.type';
+	import type { Environment } from '$lib/stores/environment.store';
 	import type { ColumnDef } from '@tanstack/table-core';
 	import { formatDistanceToNow } from 'date-fns';
-	import { RefreshCw, AlertCircle, Loader2, Monitor, Eye, Trash2, Terminal, Key, Server, Ellipsis } from '@lucide/svelte';
+	import { RefreshCw, AlertCircle, Loader2, Monitor, Eye, Trash2, Terminal, Key, Server, Ellipsis, Plus } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util.js';
@@ -15,70 +15,72 @@
 	import * as Table from '$lib/components/ui/table';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { agentAPI } from '$lib/services/api';
+	import NewEnvironmentSheet from '$lib/components/sheets/new-environment-sheet.svelte';
+	import { environmentManagementAPI } from '$lib/services/api';
 
 	let { data } = $props();
 
-	let agents: Agent[] = $state(data.agents || []);
+	let environments: Environment[] = $state(data.environments || []);
 	let loading = $state(false);
 	let error = $state('');
-	let selectedAgentIds = $state<string[]>([]);
+	let selectedEnvironmentIds = $state<string[]>([]);
+	let showEnvironmentSheet = $state(false);
 
-	const columns: ColumnDef<Agent>[] = [
-		{ accessorKey: 'hostname', header: 'Agent' },
+	const columns: ColumnDef<Environment>[] = [
+		{ accessorKey: 'hostname', header: 'Environment' },
 		{ accessorKey: 'status', header: 'Status' },
-		{ accessorKey: 'platform', header: 'Platform' },
-		{ accessorKey: 'version', header: 'Version' },
+		{ accessorKey: 'apiUrl', header: 'API URL' },
+		{ accessorKey: 'enabled', header: 'Enabled' },
 		{ accessorKey: 'lastSeen', header: 'Last Seen' },
 		{ accessorKey: 'actions', header: ' ' }
 	];
 
 	onMount(() => {
-		const interval = setInterval(refreshAgents, 30000);
+		const interval = setInterval(refreshEnvironments, 30000);
 		return () => clearInterval(interval);
 	});
 
-	async function refreshAgents() {
+	async function refreshEnvironments() {
 		if (loading) return;
 
 		try {
 			loading = true;
-			agents = await agentAPI.list();
+			environments = await environmentManagementAPI.list();
 			error = '';
 		} catch (err) {
-			console.error('Failed to refresh agents:', err);
+			console.error('Failed to refresh environments:', err);
 		} finally {
 			loading = false;
 		}
 	}
 
-	async function loadAgents() {
+	async function loadEnvironments() {
 		try {
 			loading = true;
 			error = '';
-			agents = await agentAPI.list();
+			environments = await environmentManagementAPI.list();
 		} catch (err) {
-			console.error('Failed to load agents:', err);
+			console.error('Failed to load environments:', err);
 			error = err instanceof Error ? err.message : 'Unknown error';
 		} finally {
 			loading = false;
 		}
 	}
 
-	async function deleteAgent(agentId: string, hostname: string) {
+	async function deleteEnvironment(environmentId: string, hostname: string) {
 		openConfirmDialog({
 			title: `Confirm Removal`,
-			message: `Are you sure you want to remove agent "${hostname}"? This action cannot be undone.`,
+			message: `Are you sure you want to remove environment "${hostname}"? This action cannot be undone.`,
 			confirm: {
 				label: 'Remove',
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(agentAPI.delete(agentId)),
-						message: 'Failed to Remove Agent',
+						result: await tryCatch(environmentManagementAPI.delete(environmentId)),
+						message: 'Failed to Remove Environment',
 						onSuccess: async () => {
-							toast.success('Agent Removed Successfully');
-							await invalidateAll();
+							toast.success('Environment Removed Successfully');
+							await loadEnvironments();
 						}
 					});
 				}
@@ -86,39 +88,60 @@
 		});
 	}
 
+	async function testConnection(environmentId: string) {
+		try {
+			const result = await environmentManagementAPI.testConnection(environmentId);
+			if (result.status === 'online') {
+				toast.success('Connection successful');
+			} else {
+				toast.error(`Connection failed: ${result.message || 'Unknown error'}`);
+			}
+			await loadEnvironments();
+		} catch (error) {
+			toast.error('Failed to test connection');
+			console.error(error);
+		}
+	}
+
 	async function handleBulkDelete() {
-		if (selectedAgentIds.length === 0) return;
+		if (selectedEnvironmentIds.length === 0) return;
 
 		openConfirmDialog({
 			title: 'Confirm Bulk Removal',
-			message: `Are you sure you want to remove ${selectedAgentIds.length} agent(s)? This action cannot be undone.`,
+			message: `Are you sure you want to remove ${selectedEnvironmentIds.length} environment(s)? This action cannot be undone.`,
 			confirm: {
 				label: 'Remove All',
 				destructive: true,
 				action: async () => {
 					try {
-						await Promise.all(selectedAgentIds.map((id) => agentAPI.delete(id)));
-						toast.success(`${selectedAgentIds.length} agent(s) removed successfully`);
-						selectedAgentIds = [];
-						await invalidateAll();
+						await Promise.all(selectedEnvironmentIds.map((id) => environmentManagementAPI.delete(id)));
+						toast.success(`${selectedEnvironmentIds.length} environment(s) removed successfully`);
+						selectedEnvironmentIds = [];
+						await loadEnvironments();
 					} catch (err) {
-						console.error('Failed to remove agents:', err);
-						toast.error('Failed to remove some agents');
+						console.error('Failed to remove environments:', err);
+						toast.error('Failed to remove some environments');
 					}
 				}
 			}
 		});
 	}
+
+	function handleEnvironmentCreated() {
+		showEnvironmentSheet = false;
+		toast.success('Environment added successfully! You can now select it from the environment switcher.');
+		loadEnvironments();
+	}
 </script>
 
 <svelte:head>
-	<title>Agent Management - Arcane</title>
+	<title>Environment Management - Arcane</title>
 </svelte:head>
 
 <div class="space-y-6">
 	<div>
-		<h1 class="text-3xl font-bold tracking-tight">Agent Management</h1>
-		<p class="text-muted-foreground mt-1 text-sm">Manage and monitor your remote agents</p>
+		<h1 class="text-3xl font-bold tracking-tight">Environment Management</h1>
+		<p class="text-muted-foreground mt-1 text-sm">Manage and monitor your arcane environments</p>
 	</div>
 
 	{#if error}
@@ -139,18 +162,22 @@
 						<Server class="size-5 text-blue-500" />
 					</div>
 					<div>
-						<Card.Title>Remote Agents</Card.Title>
-						<Card.Description>Connected Docker agents</Card.Description>
+						<Card.Title>Environments</Card.Title>
+						<Card.Description>Created Environments</Card.Description>
 					</div>
 				</div>
 				<div class="flex items-center gap-2">
-					{#if selectedAgentIds.length > 0}
+					{#if selectedEnvironmentIds.length > 0}
 						<Button variant="destructive" onclick={handleBulkDelete}>
 							<Trash2 class="mr-2 h-4 w-4" />
-							Delete Selected ({selectedAgentIds.length})
+							Delete Selected ({selectedEnvironmentIds.length})
 						</Button>
 					{/if}
-					<Button onclick={loadAgents} disabled={loading}>
+					<Button onclick={() => (showEnvironmentSheet = true)}>
+						<Plus class="mr-2 h-4 w-4" />
+						Add Environment
+					</Button>
+					<Button onclick={loadEnvironments} disabled={loading}>
 						{#if loading}
 							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 						{:else}
@@ -161,31 +188,34 @@
 				</div>
 			</Card.Header>
 			<Card.Content class="flex flex-1 flex-col">
-				{#if agents.length === 0 && !loading}
+				{#if environments.length === 0 && !loading}
 					<div class="py-16 text-center">
 						<Monitor class="mx-auto mb-4 h-16 w-16 text-gray-400" />
-						<h3 class="mb-2 text-lg font-medium text-gray-900 dark:text-white">No agents registered</h3>
-						<p class="mb-4 text-gray-600 dark:text-gray-400">Get started by connecting your first agent</p>
+						<h3 class="mb-2 text-lg font-medium text-gray-900 dark:text-white">No environments registered</h3>
+						<p class="mb-4 text-gray-600 dark:text-gray-400">Get started by adding your first environment</p>
 						<div class="mx-auto max-w-md rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-							<p class="text-sm text-gray-600 dark:text-gray-400">Make sure your Go agent is running and connecting to:</p>
-							<code class="mt-2 inline-block rounded bg-gray-100 px-2 py-1 font-mono text-sm text-gray-800 dark:bg-gray-700 dark:text-gray-200"> http://localhost:3000/api/agents/register </code>
+							<p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Add a new environment to connect to an Arcane agent running as an API server.</p>
+							<Button onclick={() => (showEnvironmentSheet = true)} class="w-full">
+								<Plus class="mr-2 h-4 w-4" />
+								Add Environment
+							</Button>
 						</div>
 					</div>
-				{:else if agents.length > 0}
+				{:else if environments.length > 0}
 					<div class="flex h-full flex-1 flex-col">
 						<UniversalTable
-							data={agents}
+							data={environments}
 							{columns}
 							idKey="id"
-							bind:selectedIds={selectedAgentIds}
+							bind:selectedIds={selectedEnvironmentIds}
 							features={{
 								sorting: true,
 								filtering: true,
-								selection: false
+								selection: true
 							}}
 							display={{
-								filterPlaceholder: 'Search agents...',
-								noResultsMessage: 'No agents found'
+								filterPlaceholder: 'Search environments...',
+								noResultsMessage: 'No environments found'
 							}}
 							pagination={{
 								pageSize: 10,
@@ -214,13 +244,17 @@
 									<StatusBadge text={item.status === 'online' ? 'Online' : 'Offline'} variant={item.status === 'online' ? 'green' : 'red'} />
 								</Table.Cell>
 								<Table.Cell>
-									<span class="capitalize font-medium">{item.platform}</span>
+									<span class="text-sm font-mono text-muted-foreground">{item.apiUrl}</span>
 								</Table.Cell>
 								<Table.Cell>
-									<span class="font-mono text-sm">{item.version}</span>
+									<StatusBadge text={item.enabled ? 'Enabled' : 'Disabled'} variant={item.enabled ? 'green' : 'gray'} />
 								</Table.Cell>
 								<Table.Cell>
-									<span class="text-sm text-gray-600 dark:text-gray-400">{formatDistanceToNow(new Date(item.lastSeen))} ago</span>
+									{#if item.lastSeen}
+										<span class="text-sm text-gray-600 dark:text-gray-400">{formatDistanceToNow(new Date(item.lastSeen))} ago</span>
+									{:else}
+										<span class="text-sm text-gray-400">Never</span>
+									{/if}
 								</Table.Cell>
 								<Table.Cell>
 									<DropdownMenu.Root>
@@ -232,23 +266,17 @@
 										</DropdownMenu.Trigger>
 										<DropdownMenu.Content align="end">
 											<DropdownMenu.Group>
-												<DropdownMenu.Item onclick={() => goto(`/agents/${item.id}`)}>
+												<DropdownMenu.Item onclick={() => testConnection(item.id)}>
+													<Terminal class="size-4" />
+													Test Connection
+												</DropdownMenu.Item>
+												<DropdownMenu.Item onclick={() => goto(`/environments/${item.id}`)}>
 													<Eye class="size-4" />
 													View Details
 												</DropdownMenu.Item>
-												{#if item.status === 'online'}
-													<DropdownMenu.Item onclick={() => goto(`/agents/${item.id}`)}>
-														<Terminal class="size-4" />
-														Send Command
-													</DropdownMenu.Item>
-													<DropdownMenu.Item onclick={() => goto(`/agents/${item.id}`)}>
-														<Key class="size-4" />
-														Manage Tokens
-													</DropdownMenu.Item>
-												{/if}
-												<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => deleteAgent(item.id, item.hostname)}>
+												<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => deleteEnvironment(item.id, item.hostname)}>
 													<Trash2 class="size-4" />
-													Delete Agent
+													Delete Environment
 												</DropdownMenu.Item>
 											</DropdownMenu.Group>
 										</DropdownMenu.Content>
@@ -258,16 +286,18 @@
 						</UniversalTable>
 					</div>
 				{:else}
-					<div class="text-muted-foreground py-8 text-center italic">Loading agents...</div>
+					<div class="text-muted-foreground py-8 text-center italic">Loading environments...</div>
 				{/if}
 			</Card.Content>
 		</Card.Root>
 	</div>
 
-	{#if loading && agents.length > 0}
+	{#if loading && environments.length > 0}
 		<div class="fixed right-4 bottom-4 flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-white shadow-lg">
 			<Loader2 class="h-4 w-4 animate-spin" />
 			<span class="text-sm">Refreshing...</span>
 		</div>
 	{/if}
 </div>
+
+<NewEnvironmentSheet bind:open={showEnvironmentSheet} onEnvironmentCreated={handleEnvironmentCreated} />

@@ -1,14 +1,13 @@
-import { containerAPI, imageAPI, systemAPI, settingsAPI } from '$lib/services/api';
+import { systemAPI, settingsAPI, environmentAPI } from '$lib/services/api';
 
 export const load = async () => {
 	try {
-		// Remove systemStats from initial load for faster dashboard loading
-		const [dockerInfo, containers, images, settings] = await Promise.all([systemAPI.getDockerInfo(), containerAPI.list(true), imageAPI.list(), settingsAPI.getSettings()]);
+		const [dockerInfo, resources, settings] = await Promise.all([systemAPI.getDockerInfo(), environmentAPI.getAllResources(), settingsAPI.getSettings()]);
 
 		return {
 			dockerInfo,
-			containers,
-			images,
+			containers: resources.containers || [],
+			images: resources.images || [],
 			settings
 		};
 	} catch (error) {

@@ -78,6 +78,7 @@ func (db *DB) Migrate() error {
 		&models.UserSession{},
 		&models.Stack{},
 		&models.Agent{},
+		&models.Environment{},
 		&models.AgentTask{},
 		&models.AgentToken{},
 		&models.Deployment{},

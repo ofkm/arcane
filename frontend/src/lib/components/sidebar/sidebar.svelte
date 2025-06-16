@@ -12,7 +12,7 @@
 					{ title: 'Docker', url: '/settings/docker', icon: DatabaseIcon },
 					{ title: 'Users', url: '/settings/users', icon: UserIcon },
 					{ title: 'Security', url: '/settings/security', icon: Shield },
-					{ title: 'Agents (Preview)', url: '/agents', icon: ComputerIcon }
+					{ title: 'Environments', url: '/environments', icon: ComputerIcon }
 				]
 			}
 		],
@@ -57,14 +57,10 @@
 		collapsible = 'icon',
 		user,
 		versionInformation,
-		hasLocalDocker,
-		agents,
 		...restProps
 	}: ComponentProps<typeof Sidebar.Root> & {
 		versionInformation: AppVersionInformation;
-		hasLocalDocker: boolean;
 		user?: User | null;
-		agents: Agent[];
 	} = $props();
 
 	const sidebar = useSidebar();
@@ -75,7 +71,7 @@
 <Sidebar.Root {collapsible} {...restProps}>
 	<Sidebar.Header>
 		<SidebarLogo {isCollapsed} {versionInformation} />
-		<SidebarAgentSwitcher {hasLocalDocker} {agents} />
+		<SidebarAgentSwitcher />
 	</Sidebar.Header>
 	<Sidebar.Content>
 		<SidebarItemGroup label="Management" items={staticData.managementItems} />

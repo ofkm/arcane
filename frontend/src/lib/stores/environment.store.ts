@@ -1,23 +1,27 @@
 import { writable, get } from 'svelte/store';
-import type { Agent } from '$lib/types/agent.type';
 
-export type Environment = Agent & {
-	isLocal?: boolean;
-	id: string; // Can be 'local' or agent.id
+export type Environment = {
+	id: string;
 	hostname: string;
+	apiUrl: string;
+	description?: string;
+	status: 'online' | 'offline' | 'error';
+	enabled: boolean;
+	lastSeen?: string;
+	createdAt: string;
+	updatedAt?: string;
+	isLocal?: boolean;
 };
 
-export const LOCAL_DOCKER_ENVIRONMENT_ID = 'local';
+export const LOCAL_DOCKER_ENVIRONMENT_ID = '0';
 
 export const localDockerEnvironment: Environment = {
 	id: LOCAL_DOCKER_ENVIRONMENT_ID,
 	hostname: 'Local Docker',
-	platform: 'local',
-	version: 'N/A',
-	capabilities: [],
+	apiUrl: 'http://localhost',
 	status: 'online',
+	enabled: true,
 	lastSeen: new Date().toISOString(),
-	registeredAt: new Date().toISOString(),
 	createdAt: new Date().toISOString(),
 	isLocal: true
 };
@@ -27,12 +31,14 @@ function createEnvironmentManagementStore() {
 	const _availableEnvironments = writable<Environment[]>([]);
 	let _initialized = false;
 
-	function _updateAvailable(agents: Agent[], hasLocalDocker: boolean) {
+	function _updateAvailable(environments: Environment[], hasLocalDocker: boolean) {
 		const newAvailable: Environment[] = [];
+
 		if (hasLocalDocker) {
 			newAvailable.push(localDockerEnvironment);
 		}
-		newAvailable.push(...agents.map((agent) => ({ ...agent, isLocal: false })));
+
+		newAvailable.push(...environments.map((env) => ({ ...env, isLocal: false })));
 		_availableEnvironments.set(newAvailable);
 		return newAvailable;
 	}
@@ -46,14 +52,17 @@ function createEnvironmentManagementStore() {
 				return found;
 			}
 		}
+
 		if (available.includes(localDockerEnvironment)) {
 			_selectedEnvironment.set(localDockerEnvironment);
 			return localDockerEnvironment;
 		}
+
 		if (available.length > 0) {
 			_selectedEnvironment.set(available[0]);
 			return available[0];
 		}
+
 		_selectedEnvironment.set(null);
 		return null;
 	}
@@ -65,12 +74,10 @@ function createEnvironmentManagementStore() {
 		available: {
 			subscribe: _availableEnvironments.subscribe
 		},
-		initialize: (agents: Agent[], hasLocalDocker: boolean) => {
+		initialize: (environments: Environment[], hasLocalDocker: boolean) => {
 			if (_initialized) {
-				// If already initialized, this might be an update
 				const currentSelected = get(_selectedEnvironment);
-				const newAvailable = _updateAvailable(agents, hasLocalDocker);
-				// Check if current selected is still valid
+				const newAvailable = _updateAvailable(environments, hasLocalDocker);
 				if (currentSelected && !newAvailable.find((env) => env.id === currentSelected.id)) {
 					_selectInitialEnvironment(newAvailable);
 				} else if (!currentSelected && newAvailable.length > 0) {
@@ -78,7 +85,8 @@ function createEnvironmentManagementStore() {
 				}
 				return;
 			}
-			const available = _updateAvailable(agents, hasLocalDocker);
+
+			const available = _updateAvailable(environments, hasLocalDocker);
 			_selectInitialEnvironment(available);
 			_initialized = true;
 		},

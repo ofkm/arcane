@@ -15,7 +15,6 @@
 
 	const versionInformation = data.versionInformation;
 	const user = $derived(data.user);
-	const agents = $derived(data.agents);
 	const isNavigating = $derived(navigating.type !== null);
 	const isAuthenticated = $derived(!!user);
 	const isOnboardingPage = $derived(page.url.pathname.startsWith('/onboarding'));
@@ -44,7 +43,6 @@
 		}
 	});
 
-	// Update user store when user data changes
 	$effect(() => {
 		if (user) {
 			userStore.setUser(user);
@@ -74,7 +72,7 @@
 <div class="bg-background flex min-h-screen">
 	{#if showSidebar}
 		<Sidebar.Provider>
-			<AppSidebar hasLocalDocker={data.hasLocalDocker || false} agents={agents || []} {versionInformation} {user} />
+			<AppSidebar {versionInformation} {user} />
 			<main class="flex-1">
 				<section class="p-6">
 					{@render children()}

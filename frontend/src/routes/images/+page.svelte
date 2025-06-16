@@ -22,9 +22,10 @@
 	import { tablePersistence } from '$lib/stores/table-store';
 	import MaturityItem from '$lib/components/maturity-item.svelte';
 	import { maturityStore, triggerBulkMaturityCheck, enhanceImagesWithMaturity, loadImageMaturityBatch } from '$lib/stores/maturity-store';
+	import { environmentAPI } from '$lib/services/api';
 
 	let { data }: { data: PageData } = $props();
-	let images = $derived(data.images || []);
+	let images = $state(Array.isArray(data.images) ? data.images : []);
 	let error = $state(data.error);
 	let selectedIds = $state<string[]>([]);
 
@@ -60,6 +61,19 @@
 			loadImagesMaturity();
 		}
 	});
+
+	async function refreshImages() {
+		isLoading.refreshing = true;
+		try {
+			const refreshedImages = await environmentAPI.getImages();
+			images = Array.isArray(refreshedImages) ? refreshedImages : [];
+		} catch (error) {
+			console.error('Failed to refresh images:', error);
+			toast.error('Failed to refresh images');
+		} finally {
+			isLoading.refreshing = false;
+		}
+	}
 
 	async function loadImagesMaturity() {
 		const imageIds = images
@@ -273,6 +287,9 @@
 			<h1 class="text-3xl font-bold tracking-tight">Container Images</h1>
 			<p class="text-muted-foreground mt-1 text-sm">View and Manage your Container Images</p>
 		</div>
+		<div class="flex items-center gap-2">
+			<ArcaneButton action="restart" onClick={refreshImages} loading={isLoading.refreshing} disabled={isLoading.refreshing} />
+		</div>
 	</div>
 
 	{#if error}
@@ -469,7 +486,7 @@
 				<Button variant="outline" onclick={() => (isConfirmPruneDialogOpen = false)} disabled={isLoading.pruning}>Cancel</Button>
 				<Button variant="destructive" onclick={handlePruneImages} disabled={isLoading.pruning}>
 					{#if isLoading.pruning}
-						<Loader2 class="mr-2 size-4 animate-spin" /> Pruning...
+						<Loader2 class="mr-2 size-4 animate-spin" /> Prune Images
 					{:else}
 						Prune Images
 					{/if}
