@@ -1,4 +1,4 @@
-import type { Agent, AgentStats, AgentTask, AgentToken } from './agent.type';
+import type { Agent, AgentStats, AgentTask, AgentToken, AgentResource } from './agent.type';
 
 export interface BaseResponse {
 	success: boolean;
@@ -39,4 +39,17 @@ export interface AgentTokenResponse extends BaseResponse {
 export interface AgentTokensListResponse extends BaseResponse {
 	tokens: AgentToken[];
 	count: number;
+}
+
+export interface AgentResourceResponse {
+	success: boolean;
+	resource?: AgentResource;
+	resources?: Record<string, AgentResource>;
+	containers?: any[];
+	images?: any[];
+	networks?: any[];
+	volumes?: any[];
+	lastSync?: string;
+	agentId?: string;
+	message?: string;
 }

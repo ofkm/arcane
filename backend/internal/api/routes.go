@@ -27,6 +27,7 @@ type Services struct {
 	System            *services.SystemService
 	AutoUpdate        *services.AutoUpdateService
 	Websocket         *services.WebSocketService
+	AgentResource     *services.AgentResourceService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -130,6 +131,7 @@ func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 	agents := api.Group("/agents")
 
 	agentHandler := NewAgentHandler(services.Agent, services.Deployment, services.Websocket)
+	agentResourceHandler := NewAgentResourceHandler(services.AgentResource)
 
 	agents.POST("/register", agentHandler.RegisterAgent)
 
@@ -161,6 +163,14 @@ func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 		webAuth.POST("/:agentId/tokens", agentHandler.CreateAgentToken)
 		webAuth.GET("/:agentId/tokens", agentHandler.ListAgentTokens)
 		webAuth.DELETE("/:agentId/tokens/:tokenId", agentHandler.DeleteAgentToken)
+
+		webAuth.GET("/:agentId/resources", agentResourceHandler.GetAllAgentResources)
+		webAuth.GET("/:agentId/resources/:resourceType", agentResourceHandler.GetAgentResource)
+		webAuth.POST("/:agentId/resources/sync", agentResourceHandler.SyncAgentResources)
+		webAuth.GET("/:agentId/containers", agentResourceHandler.GetAgentContainers)
+		webAuth.GET("/:agentId/images", agentResourceHandler.GetAgentImages)
+		webAuth.GET("/:agentId/networks", agentResourceHandler.GetAgentNetworks)
+		webAuth.GET("/:agentId/volumes", agentResourceHandler.GetAgentVolumes)
 	}
 }
 

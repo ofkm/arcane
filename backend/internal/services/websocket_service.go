@@ -15,13 +15,14 @@ import (
 )
 
 type WebSocketService struct {
-	agentService *AgentService
-	upgrader     websocket.Upgrader
-	clients      map[string]*AgentConnection
-	clientsMutex sync.RWMutex
-	broadcast    chan []byte
-	register     chan *AgentConnection
-	unregister   chan *AgentConnection
+	agentService         *AgentService
+	agentResourceService *AgentResourceService
+	upgrader             websocket.Upgrader
+	clients              map[string]*AgentConnection
+	clientsMutex         sync.RWMutex
+	broadcast            chan []byte
+	register             chan *AgentConnection
+	unregister           chan *AgentConnection
 }
 
 type AgentConnection struct {
@@ -68,16 +69,20 @@ func NewWebSocketService(agentService *AgentService) *WebSocketService {
 		agentService: agentService,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
-				return true // Configure this properly for production
+				return true
 			},
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
+			ReadBufferSize:  4096,
+			WriteBufferSize: 4096,
 		},
 		clients:    make(map[string]*AgentConnection),
 		broadcast:  make(chan []byte),
 		register:   make(chan *AgentConnection),
 		unregister: make(chan *AgentConnection),
 	}
+}
+
+func (ws *WebSocketService) SetAgentResourceService(ars *AgentResourceService) {
+	ws.agentResourceService = ars
 }
 
 func (ws *WebSocketService) Start() {
@@ -144,7 +149,6 @@ func (ws *WebSocketService) HandleAgentConnection(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Verify agent exists
 	ctx := context.Background()
 	_, err := ws.agentService.GetAgentByID(ctx, agentID)
 	if err != nil {
@@ -161,19 +165,15 @@ func (ws *WebSocketService) HandleAgentConnection(w http.ResponseWriter, r *http
 	client := &AgentConnection{
 		AgentID:    agentID,
 		Connection: conn,
-		Send:       make(chan []byte, 256),
+		Send:       make(chan []byte, 1024),
 		LastSeen:   time.Now(),
 	}
 
 	ws.register <- client
-
-	// Update agent status to online
 	ws.agentService.UpdateAgentHeartbeat(ctx, agentID)
 
 	go ws.handleAgentMessages(client)
 	go ws.handleAgentWrites(client)
-
-	// Send pending tasks immediately upon connection
 	ws.sendPendingTasks(ctx, client)
 }
 
@@ -183,7 +183,7 @@ func (ws *WebSocketService) handleAgentMessages(client *AgentConnection) {
 		client.Connection.Close()
 	}()
 
-	client.Connection.SetReadLimit(512)
+	client.Connection.SetReadLimit(64 * 1024)
 	client.Connection.SetReadDeadline(time.Now().Add(60 * time.Second))
 	client.Connection.SetPongHandler(func(string) error {
 		client.Connection.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -195,7 +195,7 @@ func (ws *WebSocketService) handleAgentMessages(client *AgentConnection) {
 		_, message, err := client.Connection.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket error for agent %s: %v", client.AgentID, err)
+				log.Printf("[DEBUG] WebSocket read error: %v", err)
 			}
 			break
 		}

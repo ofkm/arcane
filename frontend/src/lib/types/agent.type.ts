@@ -28,6 +28,14 @@ export interface Agent {
 	metadata?: Record<string, any>;
 }
 
+export interface AgentResource {
+	id: string;
+	agentId: string;
+	type: string;
+	data: Record<string, any>;
+	lastSync: string;
+}
+
 export type AgentTaskType = 'docker_command' | 'stack_deploy' | 'compose_create_project' | 'compose_up' | 'image_pull' | 'health_check' | 'container_start' | 'stack_list' | 'container_stop' | 'container_restart' | 'container_remove' | 'agent_upgrade';
 
 export type AgentTaskStatus = 'pending' | 'running' | 'completed' | 'failed';

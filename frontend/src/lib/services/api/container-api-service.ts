@@ -72,7 +72,8 @@ export default class ContainerAPIService extends BaseAPIService {
 			return this.handleResponse(this.api.get(getApiPath('/containers'), { params: { all } }));
 		}
 
-		return this.executeAgentTask('ps', all ? ['-a', '--format', 'json'] : ['--format', 'json']);
+		const env = get(environmentStore.selected);
+		return this.agentAPI.getAgentContainers(env!.id);
 	}
 
 	async get(id: string) {
@@ -80,7 +81,19 @@ export default class ContainerAPIService extends BaseAPIService {
 			return this.handleResponse(this.api.get(getApiPath(`/containers/${id}`)));
 		}
 
-		return this.executeAgentTask('inspect', [id]);
+		const containers = await this.list(true);
+
+		if (!Array.isArray(containers)) {
+			throw new Error('Failed to retrieve containers');
+		}
+
+		const container = containers.find((c: any) => c.id === id || c.names?.includes(id));
+
+		if (!container) {
+			throw new Error('Container not found');
+		}
+
+		return container;
 	}
 
 	async create(options: CreateContainerRequest) {
@@ -214,7 +227,8 @@ export default class ContainerAPIService extends BaseAPIService {
 			return response.data.inUse;
 		}
 
-		const containers = await this.executeAgentTask('ps', ['-a', '--format', 'json']);
+		const env = get(environmentStore.selected);
+		const containers = await this.agentAPI.getAgentContainers(env!.id);
 		return Array.isArray(containers) && containers.some((container: any) => container.Image === imageId || container.ImageID === imageId);
 	}
 

@@ -102,6 +102,7 @@ func (app *App) Start() {
 
 	registerJobs(app.AppCtx, app.Scheduler, app.Services)
 
+	app.Services.Websocket.SetAgentResourceService(app.Services.AgentResource)
 	app.Services.Websocket.Start()
 
 	go func() {

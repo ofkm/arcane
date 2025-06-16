@@ -4,6 +4,66 @@ import { agentAPI } from './index';
 import type { CreateTaskDTO } from '$lib/dto/agent-dto';
 
 export class EnvironmentAPIService {
+	async getContainers(): Promise<any[]> {
+		const currentEnvironment = get(environmentStore.selected);
+
+		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
+			throw new Error('Local Docker containers should use direct API calls');
+		}
+
+		return await agentAPI.getAgentContainers(currentEnvironment.id);
+	}
+
+	async getImages(): Promise<any[]> {
+		const currentEnvironment = get(environmentStore.selected);
+
+		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
+			throw new Error('Local Docker images should use direct API calls');
+		}
+
+		return await agentAPI.getAgentImages(currentEnvironment.id);
+	}
+
+	async getNetworks(): Promise<any[]> {
+		const currentEnvironment = get(environmentStore.selected);
+
+		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
+			throw new Error('Local Docker networks should use direct API calls');
+		}
+
+		return await agentAPI.getAgentNetworks(currentEnvironment.id);
+	}
+
+	async getVolumes(): Promise<any[]> {
+		const currentEnvironment = get(environmentStore.selected);
+
+		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
+			throw new Error('Local Docker volumes should use direct API calls');
+		}
+
+		return await agentAPI.getAgentVolumes(currentEnvironment.id);
+	}
+
+	async getAllResources(): Promise<Record<string, any>> {
+		const currentEnvironment = get(environmentStore.selected);
+
+		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
+			throw new Error('Local Docker resources should use direct API calls');
+		}
+
+		return await agentAPI.getAgentResources(currentEnvironment.id);
+	}
+
+	async syncResources(): Promise<void> {
+		const currentEnvironment = get(environmentStore.selected);
+
+		if (!currentEnvironment || currentEnvironment.id === LOCAL_DOCKER_ENVIRONMENT_ID) {
+			return;
+		}
+
+		await agentAPI.syncAgentResources(currentEnvironment.id);
+	}
+
 	async executeDockerCommand(command: string, args: string[] = []): Promise<any> {
 		const currentEnvironment = get(environmentStore.selected);
 

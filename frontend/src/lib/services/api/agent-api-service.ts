@@ -1,7 +1,7 @@
 import BaseAPIService from './api-service';
-import type { Agent, AgentTask, AgentStats, AgentToken } from '$lib/types/agent.type';
+import type { Agent, AgentTask, AgentStats, AgentToken, AgentResource } from '$lib/types/agent.type';
 import type { CreateAgentDTO, UpdateAgentDTO, CreateTaskDTO, UpdateTaskStatusDTO, UpdateMetricsDTO, UpdateDockerInfoDTO, HeartbeatDTO } from '$lib/dto/agent-dto';
-import type { AgentResponse, AgentsListResponse, TaskResponse, TasksListResponse, AgentStatsResponse, HeartbeatResponse, AgentTokensListResponse, AgentTokenResponse } from '$lib/types/api-response.type';
+import type { AgentResponse, AgentsListResponse, TaskResponse, TasksListResponse, AgentStatsResponse, HeartbeatResponse, AgentTokensListResponse, AgentTokenResponse, AgentResourceResponse } from '$lib/types/api-response.type';
 
 export default class AgentAPIService extends BaseAPIService {
 	async register(dto: CreateAgentDTO): Promise<Agent> {
@@ -94,5 +94,39 @@ export default class AgentAPIService extends BaseAPIService {
 
 	async deleteAgentToken(agentId: string, tokenId: string): Promise<void> {
 		await this.handleResponse(this.api.delete(`/agents/${agentId}/tokens/${tokenId}`));
+	}
+
+	async getAgentResources(agentId: string): Promise<Record<string, AgentResource>> {
+		const response = await this.handleResponse<AgentResourceResponse>(this.api.get(`/agents/${agentId}/resources`));
+		return response.resources || {};
+	}
+
+	async getAgentResource(agentId: string, resourceType: string): Promise<AgentResource> {
+		const response = await this.handleResponse<AgentResourceResponse>(this.api.get(`/agents/${agentId}/resources/${resourceType}`));
+		return response.resource!;
+	}
+
+	async syncAgentResources(agentId: string): Promise<void> {
+		await this.handleResponse<AgentResourceResponse>(this.api.post(`/agents/${agentId}/resources/sync`));
+	}
+
+	async getAgentContainers(agentId: string): Promise<any[]> {
+		const response = await this.handleResponse<AgentResourceResponse>(this.api.get(`/agents/${agentId}/containers`));
+		return response.containers || [];
+	}
+
+	async getAgentImages(agentId: string): Promise<any[]> {
+		const response = await this.handleResponse<AgentResourceResponse>(this.api.get(`/agents/${agentId}/images`));
+		return response.images || [];
+	}
+
+	async getAgentNetworks(agentId: string): Promise<any[]> {
+		const response = await this.handleResponse<AgentResourceResponse>(this.api.get(`/agents/${agentId}/networks`));
+		return response.networks || [];
+	}
+
+	async getAgentVolumes(agentId: string): Promise<any[]> {
+		const response = await this.handleResponse<AgentResourceResponse>(this.api.get(`/agents/${agentId}/volumes`));
+		return response.volumes || [];
 	}
 }
