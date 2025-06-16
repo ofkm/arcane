@@ -26,8 +26,6 @@ type Services struct {
 	ContainerRegistry *services.ContainerRegistryService
 	System            *services.SystemService
 	AutoUpdate        *services.AutoUpdateService
-	Websocket         *services.WebSocketService
-	AgentResource     *services.AgentResourceService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -48,10 +46,6 @@ func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	setupTemplateRoutes(api, services)
 	setupContainerRegistryRoutes(api, services)
 	setupAutoUpdateRoutes(api, services)
-
-	r.GET("/ws/agents", func(c *gin.Context) {
-		services.Websocket.HandleAgentConnection(c.Writer, c.Request)
-	})
 }
 
 func setupContainerRegistryRoutes(api *gin.RouterGroup, services *Services) {
@@ -130,8 +124,7 @@ func setupStackRoutes(router *gin.RouterGroup, services *Services) {
 func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 	agents := api.Group("/agents")
 
-	agentHandler := NewAgentHandler(services.Agent, services.Deployment, services.Websocket)
-	agentResourceHandler := NewAgentResourceHandler(services.AgentResource)
+	agentHandler := NewAgentHandler(services.Agent, services.Deployment)
 
 	agents.POST("/register", agentHandler.RegisterAgent)
 
@@ -163,14 +156,6 @@ func setupAgentRoutes(api *gin.RouterGroup, services *Services) {
 		webAuth.POST("/:agentId/tokens", agentHandler.CreateAgentToken)
 		webAuth.GET("/:agentId/tokens", agentHandler.ListAgentTokens)
 		webAuth.DELETE("/:agentId/tokens/:tokenId", agentHandler.DeleteAgentToken)
-
-		webAuth.GET("/:agentId/resources", agentResourceHandler.GetAllAgentResources)
-		webAuth.GET("/:agentId/resources/:resourceType", agentResourceHandler.GetAgentResource)
-		webAuth.POST("/:agentId/resources/sync", agentResourceHandler.SyncAgentResources)
-		webAuth.GET("/:agentId/containers", agentResourceHandler.GetAgentContainers)
-		webAuth.GET("/:agentId/images", agentResourceHandler.GetAgentImages)
-		webAuth.GET("/:agentId/networks", agentResourceHandler.GetAgentNetworks)
-		webAuth.GET("/:agentId/volumes", agentResourceHandler.GetAgentVolumes)
 	}
 }
 

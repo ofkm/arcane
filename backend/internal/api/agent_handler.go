@@ -1,7 +1,6 @@
 package api
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,14 +13,12 @@ import (
 type AgentHandler struct {
 	agentService      *services.AgentService
 	deploymentService *services.DeploymentService
-	webSocketService  *services.WebSocketService // Add this
 }
 
-func NewAgentHandler(agentService *services.AgentService, deploymentService *services.DeploymentService, webSocketService *services.WebSocketService) *AgentHandler {
+func NewAgentHandler(agentService *services.AgentService, deploymentService *services.DeploymentService) *AgentHandler {
 	return &AgentHandler{
 		agentService:      agentService,
 		deploymentService: deploymentService,
-		webSocketService:  webSocketService,
 	}
 }
 
@@ -214,13 +211,6 @@ func (h *AgentHandler) CreateTask(c *gin.Context) {
 			"error":   "Failed to create task",
 		})
 		return
-	}
-
-	// Try to send via WebSocket first, fallback to polling
-	if h.webSocketService.IsAgentConnected(agentID) {
-		if err := h.webSocketService.SendTaskToAgent(agentID, task); err != nil {
-			log.Printf("Failed to send task via WebSocket: %v", err)
-		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{

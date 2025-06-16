@@ -80,7 +80,6 @@ func (db *DB) Migrate() error {
 		&models.Agent{},
 		&models.AgentTask{},
 		&models.AgentToken{},
-		&models.AgentResource{},
 		&models.Deployment{},
 		&models.Container{},
 		&models.Image{},
