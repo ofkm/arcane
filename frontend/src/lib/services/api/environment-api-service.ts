@@ -138,6 +138,16 @@ export class EnvironmentAPIService extends BaseAPIService {
 		const response = await this.handleResponse<{ logs?: string }>(this.api.get(`/environments/${envId}/stacks/${stackName}/logs`));
 		return response.logs || '';
 	}
+
+	async pullImage(imageName: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/images/pull`, { imageName }));
+	}
+
+	async pruneImages(): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/images/prune`));
+	}
 }
 
 export const environmentAPI = new EnvironmentAPIService();

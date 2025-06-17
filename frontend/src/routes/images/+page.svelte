@@ -190,54 +190,10 @@
 		toast.info(lastStatusText, { id: `pull-${imageIdentifier}` });
 
 		try {
-			const response = await fetch('/api/images/pull', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ imageName: fullImageName })
-			});
+			const result = await environmentAPI.pullImage(fullImageName);
 
-			if (!response.ok || !response.body) {
-				const errorData = await response.json().catch(() => ({ error: 'Failed to pull image. Server returned an error.' }));
-				const errorMessage = typeof errorData.error === 'string' ? errorData.error : errorData.message || `HTTP error ${response.status}`;
-				throw new Error(errorMessage);
-			}
-
-			const reader = response.body.getReader();
-			const decoder = new TextDecoder();
-			let buffer = '';
-
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-
-				buffer += decoder.decode(value, { stream: true });
-				const lines = buffer.split('\n');
-				buffer = lines.pop() || '';
-
-				for (const line of lines) {
-					if (line.trim() === '') continue;
-					try {
-						const data = JSON.parse(line);
-						if (data.error) {
-							console.error('Error in stream:', data.error);
-							pullError = typeof data.error === 'string' ? data.error : data.error.message || 'An error occurred during pull.';
-							lastStatusText = `Error: ${pullError}`;
-							toast.error(lastStatusText, { id: `pull-${imageIdentifier}` });
-							continue;
-						}
-						if (data.status) {
-							lastStatusText = data.status;
-						}
-					} catch (e: any) {
-						console.warn('Failed to parse stream line:', line, e);
-					}
-				}
-			}
-
-			if (pullError) {
-				throw new Error(pullError);
+			if (result.error) {
+				throw new Error(result.error);
 			}
 
 			toast.success(`Image "${fullImageName}" pulled successfully.`, {
@@ -278,6 +234,26 @@
 				}
 			}
 		});
+	}
+
+	async function handlePullImage(imageName: string) {
+		isLoading.pulling = true;
+		try {
+			const result = await environmentAPI.pullImage(imageName);
+
+			if (result.error) {
+				throw new Error(result.error);
+			}
+
+			toast.success(`Image "${imageName}" pulled successfully.`);
+			await invalidateAll();
+			isPullDialogOpen = false;
+		} catch (error: any) {
+			console.error('Pull image error:', error);
+			toast.error(error.message || `Failed to pull ${imageName}.`);
+		} finally {
+			isLoading.pulling = false;
+		}
 	}
 </script>
 
@@ -474,7 +450,7 @@
 		</div>
 	{/if}
 
-	<ImagePullSheet bind:open={isPullDialogOpen} onPullFinished={() => invalidateAll()} />
+	<ImagePullSheet bind:open={isPullDialogOpen} onPullFinished={handlePullImage} />
 
 	<Dialog.Root bind:open={isConfirmPruneDialogOpen}>
 		<Dialog.Content>

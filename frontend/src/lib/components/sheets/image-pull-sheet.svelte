@@ -6,6 +6,8 @@
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 	import { toast } from 'svelte-sonner';
+	import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
+	import { get } from 'svelte/store';
 
 	type ImagePullFormProps = {
 		open: boolean;
@@ -64,6 +66,14 @@
 		}
 	}
 
+	function buildApiUrl(fullImageName: string): string {
+		const envId = getCurrentEnvironmentId();
+		if (envId === LOCAL_DOCKER_ENVIRONMENT_ID) {
+			return '/api/images/pull';
+		}
+		return `/api/environments/${envId}/images/pull`;
+	}
+
 	async function handleSubmit() {
 		const data = form.validate();
 		if (!data) return;
@@ -87,7 +97,7 @@
 		pullStatusText = `Pulling ${fullImageName}...`;
 
 		try {
-			const response = await fetch('/api/images/pull', {
+			const response = await fetch(buildApiUrl(fullImageName), {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -193,6 +203,11 @@
 			$inputs.imageRef.value = '';
 			$inputs.tag.value = 'latest';
 		}
+	}
+
+	function getCurrentEnvironmentId(): string {
+		const env = get(environmentStore.selected);
+		return env?.id || LOCAL_DOCKER_ENVIRONMENT_ID;
 	}
 </script>
 
