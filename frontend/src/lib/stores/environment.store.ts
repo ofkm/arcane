@@ -1,4 +1,5 @@
 import { writable, get } from 'svelte/store';
+import { browser } from '$app/environment';
 
 export type Environment = {
 	id: string;
@@ -31,6 +32,11 @@ function createEnvironmentManagementStore() {
 	const _availableEnvironments = writable<Environment[]>([]);
 	let _initialized = false;
 
+	let _resolveReadyPromiseFunction: () => void;
+	const _readyPromise = new Promise<void>((resolve) => {
+		_resolveReadyPromiseFunction = resolve;
+	});
+
 	function _updateAvailable(environments: Environment[], hasLocalDocker: boolean) {
 		const newAvailable: Environment[] = [];
 
@@ -43,9 +49,17 @@ function createEnvironmentManagementStore() {
 		return newAvailable;
 	}
 
+	function _getSavedEnvironmentId(): string | null {
+		if (browser && localStorage) {
+			return localStorage.getItem('selectedEnvironmentId');
+		}
+		return null;
+	}
+
 	function _selectInitialEnvironment(available: Environment[]): Environment | null {
-		if (typeof localStorage !== 'undefined') {
-			const savedId = localStorage.getItem('selectedEnvironmentId');
+		const savedId = _getSavedEnvironmentId();
+
+		if (savedId) {
 			const found = available.find((env) => env.id === savedId);
 			if (found) {
 				_selectedEnvironment.set(found);
@@ -74,30 +88,32 @@ function createEnvironmentManagementStore() {
 		available: {
 			subscribe: _availableEnvironments.subscribe
 		},
-		initialize: (environments: Environment[], hasLocalDocker: boolean) => {
-			if (_initialized) {
-				const currentSelected = get(_selectedEnvironment);
-				const newAvailable = _updateAvailable(environments, hasLocalDocker);
-				if (currentSelected && !newAvailable.find((env) => env.id === currentSelected.id)) {
-					_selectInitialEnvironment(newAvailable);
-				} else if (!currentSelected && newAvailable.length > 0) {
-					_selectInitialEnvironment(newAvailable);
-				}
-				return;
-			}
+		initialize: async (environmentsData: Environment[], hasLocalDocker: boolean) => {
+			const available = _updateAvailable(environmentsData, hasLocalDocker);
 
-			const available = _updateAvailable(environments, hasLocalDocker);
-			_selectInitialEnvironment(available);
-			_initialized = true;
+			if (!_initialized) {
+				_selectInitialEnvironment(available);
+				_initialized = true;
+				_resolveReadyPromiseFunction(); // Resolve ready promise on first successful initialization
+			} else {
+				// If already initialized, ensure the selected environment is still valid
+				const currentSelected = get(_selectedEnvironment);
+				if (currentSelected && !available.find((env) => env.id === currentSelected.id)) {
+					_selectInitialEnvironment(available);
+				} else if (!currentSelected && available.length > 0) {
+					_selectInitialEnvironment(available);
+				}
+			}
 		},
 		setEnvironment: (environment: Environment) => {
 			_selectedEnvironment.set(environment);
-			if (typeof localStorage !== 'undefined') {
+			if (browser && localStorage) {
 				localStorage.setItem('selectedEnvironmentId', environment.id);
 			}
 		},
 		isInitialized: () => _initialized,
-		getLocalEnvironment: () => localDockerEnvironment
+		getLocalEnvironment: () => localDockerEnvironment,
+		ready: _readyPromise
 	};
 }
 

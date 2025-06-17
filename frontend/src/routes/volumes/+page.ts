@@ -1,5 +1,6 @@
-import type { PageLoad } from './$types';
+import { environmentAPI } from '$lib/services/api';
 import { volumeAPI } from '$lib/services/api';
+import type { PageLoad } from './$types';
 import type { VolumeInspectInfo } from 'dockerode';
 
 type EnhancedVolumeInfo = VolumeInspectInfo & {
@@ -13,10 +14,11 @@ type VolumePageData = {
 
 export const load: PageLoad = async (): Promise<VolumePageData> => {
 	try {
-		const volumesData = (await volumeAPI.list()) as VolumeInspectInfo[];
+		const volumesData = await environmentAPI.getVolumes();
+		const volumes = Array.isArray(volumesData) ? volumesData : [];
 
 		const enhancedVolumes = await Promise.all(
-			volumesData.map(async (volume): Promise<EnhancedVolumeInfo> => {
+			volumes.map(async (volume): Promise<EnhancedVolumeInfo> => {
 				const inUse = await volumeAPI.isInUse(volume.Name).catch((err) => {
 					console.error(`Failed to check if volume ${volume.Name} is in use:`, err);
 					return true; // Default to true for safety

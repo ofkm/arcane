@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { networkAPI } from '$lib/services/api';
+import { environmentAPI } from '$lib/services/api';
 import type { NetworkInspectInfo } from 'dockerode';
 
 type NetworkPageData = {
@@ -9,9 +9,9 @@ type NetworkPageData = {
 
 export const load: PageLoad = async (): Promise<NetworkPageData> => {
 	try {
-		const networks = await networkAPI.list();
+		const networks = await environmentAPI.getNetworks();
 		return {
-			networks: networks as NetworkInspectInfo[]
+			networks: Array.isArray(networks) ? networks : []
 		};
 	} catch (err: unknown) {
 		console.error('Failed to load networks:', err);

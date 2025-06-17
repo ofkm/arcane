@@ -183,10 +183,39 @@ func setupEnvironmentRoutes(api *gin.RouterGroup, services *Services) {
 	environments.POST("/:id/heartbeat", environmentHandler.UpdateHeartbeat)
 
 	environments.GET("/:id/containers", environmentHandler.GetContainers)
+	environments.GET("/:id/containers/:containerId", environmentHandler.GetContainer)
+	environments.POST("/:id/containers/:containerId/start", environmentHandler.StartContainer)
+	environments.POST("/:id/containers/:containerId/stop", environmentHandler.StopContainer)
+	environments.POST("/:id/containers/:containerId/restart", environmentHandler.RestartContainer)
+	environments.DELETE("/:id/containers/:containerId", environmentHandler.RemoveContainer)
+	environments.GET("/:id/containers/:containerId/logs", environmentHandler.GetContainerLogs)
+
 	environments.GET("/:id/images", environmentHandler.GetImages)
+	environments.GET("/:id/images/:imageId", environmentHandler.GetImage)
+	environments.DELETE("/:id/images/:imageId", environmentHandler.RemoveImage)
+	environments.POST("/:id/images/pull", environmentHandler.PullImage)
+	environments.POST("/:id/images/prune", environmentHandler.PruneImages)
+
 	environments.GET("/:id/networks", environmentHandler.GetNetworks)
+	environments.POST("/:id/networks", environmentHandler.CreateNetwork)
+	environments.GET("/:id/networks/:networkId", environmentHandler.GetNetwork)
+	environments.DELETE("/:id/networks/:networkId", environmentHandler.RemoveNetwork)
+
 	environments.GET("/:id/volumes", environmentHandler.GetVolumes)
+	environments.POST("/:id/volumes", environmentHandler.CreateVolume)
+	environments.GET("/:id/volumes/:volumeName", environmentHandler.GetVolume)
+	environments.DELETE("/:id/volumes/:volumeName", environmentHandler.RemoveVolume)
+	environments.POST("/:id/volumes/prune", environmentHandler.PruneVolumes)
+
 	environments.GET("/:id/stacks", environmentHandler.GetStacks)
+	environments.POST("/:id/stacks", environmentHandler.CreateStack)
+	environments.GET("/:id/stacks/:stackName", environmentHandler.GetStack)
+	environments.PUT("/:id/stacks/:stackName", environmentHandler.UpdateStack)
+	environments.DELETE("/:id/stacks/:stackName", environmentHandler.DeleteStack)
+	environments.POST("/:id/stacks/:stackName/start", environmentHandler.StartStack)
+	environments.POST("/:id/stacks/:stackName/stop", environmentHandler.StopStack)
+	environments.POST("/:id/stacks/:stackName/restart", environmentHandler.RestartStack)
+	environments.GET("/:id/stacks/:stackName/logs", environmentHandler.GetStackLogs)
 }
 
 func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {

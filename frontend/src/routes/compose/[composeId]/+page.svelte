@@ -3,7 +3,7 @@
 	import type { Stack, StackService, StackPort } from '$lib/types/docker/stack.type';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, RefreshCw, Terminal, Settings, Activity, FileText, Play, Square, RotateCcw, Trash2, Send, Users, Loader2, TicketCheck } from '@lucide/svelte';
+	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, RefreshCw, Terminal, Settings, Activity, FileText, Play, Square, RotateCcw, Trash2 } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -20,8 +20,6 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import LogViewer from '$lib/components/LogViewer.svelte';
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import * as Select from '$lib/components/ui/select/index.js';
 
 	const stackApi = new StackAPIService();
 
@@ -55,13 +53,6 @@
 	let autoScrollStackLogs = $state(true);
 	let isStackLogsStreaming = $state(false);
 	let stackLogViewer = $state<LogViewer>();
-
-	let deployDialogOpen = $state(false);
-	let deploying = $state(false);
-	let selectedAgentId = $state('');
-
-	// Get online agents for deployment
-	const onlineAgents = $derived((data.agents || []).filter((agent) => agent.status === 'online'));
 
 	$effect(() => {
 		isLoading.deploying = false;
@@ -98,53 +89,6 @@
 				}
 			}
 		});
-	}
-
-	async function handleDeployToAgent() {
-		if (!selectedAgentId) {
-			toast.error('Please select an agent for deployment');
-			return;
-		}
-
-		const selectedAgent = onlineAgents.find((agent) => agent.id === selectedAgentId);
-		if (!selectedAgent) {
-			toast.error('Selected agent not found or offline');
-			return;
-		}
-
-		if (!data.stack) {
-			toast.error('Stack data not available');
-			return;
-		}
-
-		deploying = true;
-		try {
-			const response = await fetch(`/api/agents/${selectedAgentId}/deploy/stack`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					stackName: data.stack.name,
-					composeContent: data.stack.composeContent,
-					envContent: data.stack.envContent,
-					mode: 'compose'
-				})
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.error || `Failed to deploy stack: ${response.statusText}`);
-			}
-
-			const result = await response.json();
-			toast.success(`Stack "${data.stack?.name || 'Unknown'}" deployed to agent ${selectedAgent.hostname}!`);
-			deployDialogOpen = false;
-			selectedAgentId = '';
-		} catch (error) {
-			console.error('Deploy error:', error);
-			toast.error(error instanceof Error ? error.message : 'Failed to deploy stack');
-		} finally {
-			deploying = false;
-		}
 	}
 
 	function getHostForService(service: StackService): string {
@@ -198,15 +142,10 @@
 		isStackLogsStreaming = false;
 	}
 
-	function handleStackLogClear() {
-		// Custom logic when logs are cleared if needed
-	}
+	function handleStackLogClear() {}
 
-	function handleToggleStackAutoScroll() {
-		// Custom logic when auto-scroll is toggled if needed
-	}
+	function handleToggleStackAutoScroll() {}
 
-	// Navigation sections for single-page layout
 	const navigationSections = [
 		{ id: 'overview', label: 'Overview', icon: FileStack },
 		{ id: 'services', label: 'Services', icon: Layers },
@@ -227,7 +166,6 @@
 
 <div class="bg-background min-h-screen">
 	{#if stack}
-		<!-- Fixed Header -->
 		<div class="bg-background/95 sticky top-0 z-10 border-b backdrop-blur">
 			<div class="max-w-full px-4 py-3">
 				<div class="flex items-center justify-between">
@@ -260,18 +198,11 @@
 							}}
 							onActionComplete={() => invalidateAll()}
 						/>
-						{#if onlineAgents.length > 0}
-							<Button variant="outline" size="sm" onclick={() => (deployDialogOpen = true)} disabled={Object.values(isLoading).some(Boolean)}>
-								<Send class="mr-2 size-4" />
-								Deploy to Agent
-							</Button>
-						{/if}
 					</div>
 				</div>
 			</div>
 		</div>
 
-		<!-- Error Alert -->
 		{#if data.error}
 			<div class="max-w-full px-4 py-4">
 				<Alert.Root variant="destructive">
@@ -283,7 +214,6 @@
 		{/if}
 
 		<div class="flex h-[calc(100vh-64px)]">
-			<!-- Fixed Sidebar Navigation - Narrower -->
 			<div class="bg-background/50 w-48 shrink-0 border-r">
 				<div class="sticky top-16 p-3">
 					<nav class="space-y-1">
@@ -292,7 +222,7 @@
 							<button
 								onclick={() => scrollToSection(section.id)}
 								class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors
-									{activeSection === section.id ? 'bg-primary/10 text-primary border-primary/20 border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+                                    {activeSection === section.id ? 'bg-primary/10 text-primary border-primary/20 border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
 							>
 								<IconComponent class="size-4 shrink-0" />
 								<span class="truncate">{section.label}</span>
@@ -307,18 +237,15 @@
 				</div>
 			</div>
 
-			<!-- Main Content - Full width usage -->
 			<div class="flex-1 overflow-y-auto">
 				<div class="max-w-none p-6">
 					<div class="space-y-8">
-						<!-- Overview Section -->
 						<section id="overview" class="scroll-mt-20">
 							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
 								<FileStack class="size-5" />
 								Overview
 							</h2>
 
-							<!-- Summary Cards -->
 							<div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
 								<Card.Root class="border">
 									<Card.Content class="flex items-center justify-between p-6">
@@ -359,7 +286,6 @@
 								</Card.Root>
 							</div>
 
-							<!-- Port Information -->
 							{#if servicePorts && Object.keys(servicePorts).length > 0}
 								{@const allUniquePorts = [...new Set(Object.values(servicePorts).flat())]}
 								<Card.Root class="border">
@@ -369,7 +295,8 @@
 									<Card.Content>
 										<div class="flex flex-wrap gap-2">
 											{#each allUniquePorts as port (port)}
-												<a href={getServicePortUrl(stack, port)} target="_blank" rel="noopener noreferrer" class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400">
+												{@const portValue = typeof port === 'string' || typeof port === 'number' || (typeof port === 'object' && port !== null) ? port : String(port)}
+												<a href={getServicePortUrl(stack, portValue)} target="_blank" rel="noopener noreferrer" class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400">
 													Port {port}
 													<ExternalLink class="ml-2 size-4" />
 												</a>
@@ -380,7 +307,6 @@
 							{/if}
 						</section>
 
-						<!-- Services Section -->
 						<section id="services" class="scroll-mt-20">
 							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
 								<Layers class="size-5" />
@@ -396,7 +322,6 @@
 												{@const variant = statusVariantMap[status.toLowerCase()] || 'gray'}
 
 												{#if service.container_id}
-													<!-- Service with Container ID (clickable) -->
 													<a href={`/containers/${service.container_id}`} class="hover:bg-muted/50 flex items-center justify-between rounded-lg border p-4 transition-colors">
 														<div class="flex items-center gap-3">
 															<div class="bg-primary/10 rounded-full p-2">
@@ -420,7 +345,6 @@
 														</div>
 													</a>
 												{:else}
-													<!-- Service without Container ID (not clickable) -->
 													<div class="bg-muted/20 flex items-center justify-between rounded-lg border p-4">
 														<div class="flex items-center gap-3">
 															<div class="bg-muted/50 rounded-full p-2">
@@ -453,7 +377,6 @@
 							</Card.Root>
 						</section>
 
-						<!-- Configuration Section -->
 						<section id="config" class="scroll-mt-20">
 							<div class="mb-6 flex items-center justify-between">
 								<h2 class="flex items-center gap-2 text-xl font-semibold">
@@ -465,7 +388,6 @@
 								{/if}
 							</div>
 
-							<!-- Stack Name Field -->
 							<Card.Root class="mb-6 border">
 								<Card.Header class="pb-4">
 									<Card.Title>Stack Settings</Card.Title>
@@ -481,9 +403,7 @@
 								</Card.Content>
 							</Card.Root>
 
-							<!-- Editors - Fixed Layout -->
 							<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-								<!-- Compose Editor - Spans 2 columns -->
 								<div class="lg:col-span-2">
 									<Card.Root class="h-full border">
 										<Card.Header class="flex-shrink-0 pb-4">
@@ -500,7 +420,6 @@
 									</Card.Root>
 								</div>
 
-								<!-- Environment Editor - Spans 1 column -->
 								<div class="lg:col-span-1">
 									<Card.Root class="h-full border">
 										<Card.Header class="flex-shrink-0 pb-4">
@@ -517,7 +436,6 @@
 							</div>
 						</section>
 
-						<!-- Logs Section -->
 						<section id="logs" class="scroll-mt-20">
 							<div class="mb-6 flex items-center justify-between">
 								<h2 class="flex items-center gap-2 text-xl font-semibold">
@@ -575,7 +493,6 @@
 			</div>
 		</div>
 	{:else if !data.error}
-		<!-- Not Found State -->
 		<div class="flex min-h-screen items-center justify-center">
 			<div class="text-center">
 				<div class="bg-muted/50 mb-6 inline-flex rounded-full p-6">
@@ -591,47 +508,3 @@
 		</div>
 	{/if}
 </div>
-
-<Dialog.Root bind:open={deployDialogOpen}>
-	<Dialog.Content>
-		<Dialog.Header>
-			<Dialog.Title>Deploy Stack to Agent</Dialog.Title>
-			<Dialog.Description>
-				Deploy "{data.stack?.name || 'Unknown Stack'}" to a remote agent
-			</Dialog.Description>
-		</Dialog.Header>
-		<div class="space-y-4 py-4">
-			<div class="space-y-2">
-				<Label for="agent-select">Select Agent</Label>
-				<Select.Root type="single" bind:value={selectedAgentId} disabled={deploying}>
-					<Select.Trigger>
-						{selectedAgentId}
-					</Select.Trigger>
-					<Select.Content>
-						{#each onlineAgents as agent}
-							<Select.Item value={agent.id}>
-								<div class="flex items-center gap-2">
-									<div class="size-2 rounded-full bg-green-500"></div>
-									<span>{agent.hostname}</span>
-									<span class="text-muted-foreground text-xs">({agent.platform})</span>
-								</div>
-							</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-				<p class="text-muted-foreground text-xs">This will deploy the current stack configuration to the selected agent.</p>
-			</div>
-		</div>
-		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (deployDialogOpen = false)} disabled={deploying}>Cancel</Button>
-			<Button onclick={handleDeployToAgent} disabled={!selectedAgentId || deploying}>
-				{#if deploying}
-					<Loader2 class="mr-2 size-4 animate-spin" />
-				{:else}
-					<Send class="mr-2 size-4" />
-				{/if}
-				Deploy
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>

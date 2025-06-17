@@ -50,7 +50,6 @@
 	import type { AppVersionInformation } from '$lib/types/application-configuration';
 	import SidebarLogo from './sidebar-logo.svelte';
 	import SidebarUpdatebanner from './sidebar-updatebanner.svelte';
-	import type { Agent } from '$lib/types/agent.type';
 
 	let {
 		ref = $bindable(null),

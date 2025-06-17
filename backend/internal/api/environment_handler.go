@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -54,44 +55,101 @@ func (h *EnvironmentHandler) routeRequest(c *gin.Context, endpoint string) {
 }
 
 func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string) {
-	switch endpoint {
-	case "/containers":
-		if c.Request.Method == "GET" {
-			containerHandler := NewContainerHandler(h.containerService)
-			containerHandler.List(c)
-		} else if c.Request.Method == "POST" {
-			containerHandler := NewContainerHandler(h.containerService)
-			containerHandler.Create(c)
-		}
-	case "/images":
-		if c.Request.Method == "GET" {
-			imageHandler := NewImageHandler(h.imageService, nil)
-			imageHandler.List(c)
-		}
-	case "/networks":
-		if c.Request.Method == "GET" {
-			networkHandler := NewNetworkHandler(h.networkService)
-			networkHandler.List(c)
-		} else if c.Request.Method == "POST" {
-			networkHandler := NewNetworkHandler(h.networkService)
-			networkHandler.Create(c)
-		}
-	case "/volumes":
-		if c.Request.Method == "GET" {
-			volumeHandler := NewVolumeHandler(h.volumeService)
-			volumeHandler.List(c)
-		} else if c.Request.Method == "POST" {
-			volumeHandler := NewVolumeHandler(h.volumeService)
-			volumeHandler.Create(c)
-		}
-	case "/stacks":
-		if c.Request.Method == "GET" {
-			stackHandler := NewStackHandler(h.stackService)
-			stackHandler.ListStacks(c)
-		} else if c.Request.Method == "POST" {
-			stackHandler := NewStackHandler(h.stackService)
-			stackHandler.CreateStack(c)
-		}
+	switch {
+	case endpoint == "/containers" && c.Request.Method == "GET":
+		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler.List(c)
+	case endpoint == "/containers" && c.Request.Method == "POST":
+		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler.Create(c)
+	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/start"):
+		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler.Start(c)
+	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stop"):
+		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler.Stop(c)
+	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/restart"):
+		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler.Restart(c)
+	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs"):
+		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler.GetLogs(c)
+	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == "GET":
+		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler.GetByID(c)
+	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == "DELETE":
+		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler.Delete(c)
+
+	case endpoint == "/images" && c.Request.Method == "GET":
+		imageHandler := NewImageHandler(h.imageService, nil)
+		imageHandler.List(c)
+	case endpoint == "/images/pull" && c.Request.Method == "POST":
+		imageHandler := NewImageHandler(h.imageService, nil)
+		imageHandler.Pull(c)
+	case endpoint == "/images/prune" && c.Request.Method == "POST":
+		imageHandler := NewImageHandler(h.imageService, nil)
+		imageHandler.Prune(c)
+	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == "GET":
+		imageHandler := NewImageHandler(h.imageService, nil)
+		imageHandler.GetByID(c)
+	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == "DELETE":
+		imageHandler := NewImageHandler(h.imageService, nil)
+		imageHandler.Remove(c)
+
+	case endpoint == "/networks" && c.Request.Method == "GET":
+		networkHandler := NewNetworkHandler(h.networkService)
+		networkHandler.List(c)
+	case endpoint == "/networks" && c.Request.Method == "POST":
+		networkHandler := NewNetworkHandler(h.networkService)
+		networkHandler.Create(c)
+	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == "GET":
+		networkHandler := NewNetworkHandler(h.networkService)
+		networkHandler.GetByID(c)
+	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == "DELETE":
+		networkHandler := NewNetworkHandler(h.networkService)
+		networkHandler.Remove(c)
+
+	case endpoint == "/volumes" && c.Request.Method == "GET":
+		volumeHandler := NewVolumeHandler(h.volumeService)
+		volumeHandler.List(c)
+	case endpoint == "/volumes" && c.Request.Method == "POST":
+		volumeHandler := NewVolumeHandler(h.volumeService)
+		volumeHandler.Create(c)
+	case endpoint == "/volumes/prune" && c.Request.Method == "POST":
+		volumeHandler := NewVolumeHandler(h.volumeService)
+		volumeHandler.Prune(c)
+	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == "GET":
+		volumeHandler := NewVolumeHandler(h.volumeService)
+		volumeHandler.GetByName(c)
+	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == "DELETE":
+		volumeHandler := NewVolumeHandler(h.volumeService)
+		volumeHandler.Remove(c)
+
+	case endpoint == "/stacks" && c.Request.Method == "GET":
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.ListStacks(c)
+	case endpoint == "/stacks" && c.Request.Method == "POST":
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.CreateStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/start"):
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.StartStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/stop"):
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.StopStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/restart"):
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.RestartStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == "GET":
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.GetStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == "PUT":
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.UpdateStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == "DELETE":
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.DeleteStack(c)
 	default:
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
@@ -401,7 +459,6 @@ func (h *EnvironmentHandler) CreateStack(c *gin.Context) {
 
 func (h *EnvironmentHandler) GetContainer(c *gin.Context) {
 	containerID := c.Param("containerId")
-	c.Params = append(c.Params, gin.Param{Key: "containerId", Value: containerID})
 	h.routeRequest(c, "/containers/"+containerID)
 }
 
@@ -428,6 +485,48 @@ func (h *EnvironmentHandler) RemoveContainer(c *gin.Context) {
 func (h *EnvironmentHandler) GetContainerLogs(c *gin.Context) {
 	containerID := c.Param("containerId")
 	h.routeRequest(c, "/containers/"+containerID+"/logs")
+}
+
+func (h *EnvironmentHandler) GetImage(c *gin.Context) {
+	imageID := c.Param("imageId")
+	h.routeRequest(c, "/images/"+imageID)
+}
+
+func (h *EnvironmentHandler) RemoveImage(c *gin.Context) {
+	imageID := c.Param("imageId")
+	h.routeRequest(c, "/images/"+imageID)
+}
+
+func (h *EnvironmentHandler) PullImage(c *gin.Context) {
+	h.routeRequest(c, "/images/pull")
+}
+
+func (h *EnvironmentHandler) PruneImages(c *gin.Context) {
+	h.routeRequest(c, "/images/prune")
+}
+
+func (h *EnvironmentHandler) GetNetwork(c *gin.Context) {
+	networkID := c.Param("networkId")
+	h.routeRequest(c, "/networks/"+networkID)
+}
+
+func (h *EnvironmentHandler) RemoveNetwork(c *gin.Context) {
+	networkID := c.Param("networkId")
+	h.routeRequest(c, "/networks/"+networkID)
+}
+
+func (h *EnvironmentHandler) GetVolume(c *gin.Context) {
+	volumeName := c.Param("volumeName")
+	h.routeRequest(c, "/volumes/"+volumeName)
+}
+
+func (h *EnvironmentHandler) RemoveVolume(c *gin.Context) {
+	volumeName := c.Param("volumeName")
+	h.routeRequest(c, "/volumes/"+volumeName)
+}
+
+func (h *EnvironmentHandler) PruneVolumes(c *gin.Context) {
+	h.routeRequest(c, "/volumes/prune")
 }
 
 func (h *EnvironmentHandler) GetStack(c *gin.Context) {

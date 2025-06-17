@@ -1,20 +1,20 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
+	import { Trash2, Plus, Network, Ellipsis, ScanSearch } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Plus, AlertCircle, Network, Trash2, Loader2, ScanSearch, Ellipsis } from '@lucide/svelte';
-	import UniversalTable from '$lib/components/universal-table.svelte';
-	import type { PageData } from './$types';
+	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { toast } from 'svelte-sonner';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import CreateNetworkSheet from '$lib/components/sheets/create-network-sheet.svelte';
 	import * as Table from '$lib/components/ui/table';
-	import type { NetworkCreateOptions, NetworkInspectInfo } from 'dockerode';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import { toast } from 'svelte-sonner';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import type { PageData } from './$types';
+	import type { NetworkCreateOptions } from 'dockerode';
+	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { openConfirmDialog } from '$lib/components/confirm-dialog';
-	import { networkAPI } from '$lib/services/api';
+	import CreateNetworkSheet from '$lib/components/sheets/create-network-sheet.svelte';
+	import { networkAPI, environmentAPI } from '$lib/services/api';
 	import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
@@ -22,7 +22,7 @@
 	let { data }: { data: PageData } = $props();
 
 	let networkPageStates = $state({
-		networks: data.networks as NetworkInspectInfo[],
+		networks: Array.isArray(data.networks) ? data.networks : [],
 		selectedNetworks: <string[]>[],
 		error: data.error,
 		isCreateDialogOpen: false
@@ -34,17 +34,27 @@
 		refresh: false
 	});
 
-	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
-
 	$effect(() => {
-		networkPageStates.networks = data.networks as NetworkInspectInfo[];
+		networkPageStates.networks = Array.isArray(data.networks) ? data.networks : [];
 		networkPageStates.error = data.error;
 	});
 
 	const totalNetworks = $derived(networkPageStates.networks.length);
-	// NetworkInfo uses 'Driver' (capital D)
 	const bridgeNetworks = $derived(networkPageStates.networks.filter((n) => n.Driver === 'bridge').length);
 	const overlayNetworks = $derived(networkPageStates.networks.filter((n) => n.Driver === 'overlay').length);
+
+	async function refreshNetworks() {
+		isLoading.refresh = true;
+		try {
+			const refreshedNetworks = await environmentAPI.getNetworks();
+			networkPageStates.networks = Array.isArray(refreshedNetworks) ? refreshedNetworks : [];
+		} catch (error) {
+			console.error('Failed to refresh networks:', error);
+			toast.error('Failed to refresh networks');
+		} finally {
+			isLoading.refresh = false;
+		}
+	}
 
 	async function handleCreateNetworkSubmit(options: NetworkCreateOptions) {
 		handleApiResultWithCallbacks({
@@ -66,13 +76,13 @@
 		}
 		openConfirmDialog({
 			title: 'Delete Network',
-			message: `Are you sure you want to delete network "${name}" (ID: ${id.substring(0, 12)})? This action cannot be undone.`,
+			message: `Are you sure you want to delete network "${name}"? This action cannot be undone.`,
 			confirm: {
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(networkAPI.remove(encodeURIComponent(id))),
+						result: await tryCatch(networkAPI.remove(id)),
 						message: `Failed to Remove Network "${name}"`,
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
@@ -85,68 +95,51 @@
 		});
 	}
 
-	async function handleDeleteSelected() {
-		const selectedNetworkDetails = networkPageStates.selectedNetworks.map((id) => {
-			const network = networkPageStates.networks.find((n) => n.Id === id);
-			return {
-				id,
-				name: network?.Name || id.substring(0, 12),
-				isDefault: DEFAULT_NETWORK_NAMES.has(network?.Name || '')
-			};
-		});
+	async function handleDeleteSelectedNetworks() {
+		const selectedNetworks = networkPageStates.networks.filter((network) => networkPageStates.selectedNetworks.includes(network.Id));
+		const defaultNetworks = selectedNetworks.filter((network) => DEFAULT_NETWORK_NAMES.has(network.Name));
 
-		const defaultNetworksSelected = selectedNetworkDetails.filter((n) => n.isDefault);
-
-		if (defaultNetworksSelected.length > 0) {
-			const names = defaultNetworksSelected.map((n) => n.name).join(', ');
-			toast.error(`Cannot delete default networks: ${names}. Please deselect them.`);
+		if (defaultNetworks.length > 0) {
+			toast.error(`Cannot delete default networks: ${defaultNetworks.map((n) => n.Name).join(', ')}`);
 			return;
 		}
 
 		openConfirmDialog({
 			title: 'Delete Selected Networks',
-			message: `Are you sure you want to delete ${networkPageStates.selectedNetworks.length} selected network(s)? This action cannot be undone. Networks currently in use by containers cannot be deleted.`,
+			message: `Are you sure you want to delete ${networkPageStates.selectedNetworks.length} selected network(s)? This action cannot be undone.`,
 			confirm: {
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
 					isLoading.remove = true;
+
 					let successCount = 0;
 					let failureCount = 0;
 
-					for (const network of selectedNetworkDetails) {
-						// Iterate over details which includes name
-						const result = await tryCatch(networkAPI.remove(encodeURIComponent(network.id)));
-						// The setLoadingState in a loop like this will just toggle the global remove state
-						// For individual item loading, a more complex state management would be needed.
-						if (result.data) {
-							toast.success(`Network "${network.name}" deleted successfully.`);
-							successCount++;
-						} else if (result.error) {
-							const error = result.error as any;
-							toast.error(`Failed to delete network "${network.name}": ${error.message || 'Unknown error'}`);
+					for (const networkId of networkPageStates.selectedNetworks) {
+						const network = networkPageStates.networks.find((n) => n.Id === networkId);
+						if (!network) continue;
+
+						const result = await tryCatch(networkAPI.remove(networkId));
+						if (result.error) {
 							failureCount++;
+							toast.error(`Failed to delete network "${network.Name}": ${result.error.message}`);
+						} else {
+							successCount++;
+							toast.success(`Network "${network.Name}" deleted successfully.`);
 						}
 					}
-					isLoading.remove = false; // Reset after all operations
 
-					console.log(`Finished deleting. Success: ${successCount}, Failed: ${failureCount}`);
+					isLoading.remove = false;
 					if (successCount > 0) {
 						setTimeout(async () => {
 							await invalidateAll();
-						}, 500); // Delay to allow toasts to show before list updates
+						}, 500);
 					}
-					networkPageStates.selectedNetworks = []; // Clear selection
+					networkPageStates.selectedNetworks = [];
 				}
 			}
 		});
-	}
-
-	function getNetworkSubnet(network: NetworkInspectInfo): string {
-		if (network.IPAM && network.IPAM.Config && network.IPAM.Config.length > 0 && network.IPAM.Config[0].Subnet) {
-			return network.IPAM.Config[0].Subnet;
-		}
-		return 'N/A';
 	}
 </script>
 
@@ -154,13 +147,15 @@
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Networks</h1>
-			<p class="text-muted-foreground mt-1 text-sm">View and Manage Container Networking</p>
+			<p class="text-muted-foreground mt-1 text-sm">Manage your Docker networks</p>
+		</div>
+		<div class="flex items-center gap-2">
+			<ArcaneButton action="restart" onClick={refreshNetworks} loading={isLoading.refresh} disabled={isLoading.refresh} />
 		</div>
 	</div>
 
 	{#if networkPageStates.error}
 		<Alert.Root variant="destructive">
-			<AlertCircle class="mr-2 size-4" />
 			<Alert.Title>Error Loading Networks</Alert.Title>
 			<Alert.Description>{networkPageStates.error}</Alert.Description>
 		</Alert.Root>
@@ -173,8 +168,8 @@
 					<p class="text-muted-foreground text-sm font-medium">Total Networks</p>
 					<p class="text-2xl font-bold">{totalNetworks}</p>
 				</div>
-				<div class="bg-primary/10 rounded-full p-2">
-					<Network class="text-primary size-5" />
+				<div class="rounded-full bg-blue-500/10 p-2">
+					<Network class="size-5 text-blue-500" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -185,8 +180,8 @@
 					<p class="text-muted-foreground text-sm font-medium">Bridge Networks</p>
 					<p class="text-2xl font-bold">{bridgeNetworks}</p>
 				</div>
-				<div class="rounded-full bg-blue-500/10 p-2">
-					<Network class="size-5 text-blue-500" />
+				<div class="rounded-full bg-green-500/10 p-2">
+					<Network class="size-5 text-green-500" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -204,29 +199,28 @@
 		</Card.Root>
 	</div>
 
-	<Card.Root class="border shadow-sm">
-		<Card.Header class="px-6">
-			<div class="flex items-center justify-between">
-				<div>
+	{#if networkPageStates.networks && networkPageStates.networks.length > 0}
+		<Card.Root class="border shadow-sm">
+			<Card.Header class="px-6">
+				<div class="flex items-center justify-between">
 					<Card.Title>Network List</Card.Title>
+					<div class="flex items-center gap-2">
+						{#if networkPageStates.selectedNetworks.length > 0}
+							<ArcaneButton action="remove" onClick={handleDeleteSelectedNetworks} loading={isLoading.remove} disabled={isLoading.remove} />
+						{/if}
+						<ArcaneButton action="create" label="Create Network" onClick={() => (networkPageStates.isCreateDialogOpen = true)} loading={isLoading.create} disabled={isLoading.create} />
+					</div>
 				</div>
-				<div class="flex items-center gap-2">
-					{#if networkPageStates.selectedNetworks.length > 0}
-						<ArcaneButton action="remove" customLabel="Delete Selected ({networkPageStates.selectedNetworks.length})" onClick={() => handleDeleteSelected()} loading={isLoading.remove} loadingLabel="Processing..." disabled={isLoading.remove} />
-					{/if}
-					<ArcaneButton action="create" customLabel="Create Network" onClick={() => (networkPageStates.isCreateDialogOpen = true)} disabled={isLoading.create} />
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content>
-			{#if networkPageStates.networks && networkPageStates.networks.length > 0}
+			</Card.Header>
+
+			<Card.Content>
 				<UniversalTable
 					data={networkPageStates.networks}
 					columns={[
 						{ accessorKey: 'Name', header: 'Name' },
+						{ accessorKey: 'Id', header: 'Network ID', enableSorting: false },
 						{ accessorKey: 'Driver', header: 'Driver' },
 						{ accessorKey: 'Scope', header: 'Scope' },
-						{ accessorFn: (row) => getNetworkSubnet(row), header: 'Subnet', id: 'subnet' },
 						{ accessorKey: 'actions', header: ' ', enableSorting: false }
 					]}
 					idKey="Id"
@@ -245,12 +239,13 @@
 					}}
 					bind:selectedIds={networkPageStates.selectedNetworks}
 				>
-					{#snippet rows({ item }: { item: NetworkInspectInfo })}
-						{@const isDefaultNetwork = DEFAULT_NETWORK_NAMES.has(item.Name)}
-						<Table.Cell><a class="font-medium hover:underline" href="/networks/{encodeURIComponent(item.Id)}/">{item.Name}</a></Table.Cell>
+					{#snippet rows({ item })}
+						<Table.Cell>
+							<a class="font-medium hover:underline" href="/networks/{item.Id}/">{item.Name}</a>
+						</Table.Cell>
+						<Table.Cell class="truncate font-mono text-sm">{item.Id}</Table.Cell>
 						<Table.Cell>{item.Driver}</Table.Cell>
 						<Table.Cell>{item.Scope}</Table.Cell>
-						<Table.Cell>{getNetworkSubnet(item)}</Table.Cell>
 						<Table.Cell>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
@@ -263,39 +258,35 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item onclick={() => goto(`/networks/${encodeURIComponent(item.Id)}`)} disabled={isAnyLoading}>
+										<DropdownMenu.Item onclick={() => goto(`/networks/${item.Id}`)}>
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
-										{#if !isDefaultNetwork}
-											<DropdownMenu.Separator />
-											<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleDeleteNetwork(item.Id, item.Name)} disabled={isLoading.remove || isAnyLoading}>
-												{#if isLoading.remove && networkPageStates.selectedNetworks.includes(item.Id)}
-													<Loader2 class="size-4 animate-spin" />
-												{:else}
-													<Trash2 class="size-4" />
-												{/if}
-												Remove
-											</DropdownMenu.Item>
-										{/if}
+										<DropdownMenu.Item class="focus:text-red-700! text-red-500" onclick={() => handleDeleteNetwork(item.Id, item.Name)} disabled={DEFAULT_NETWORK_NAMES.has(item.Name)}>
+											<Trash2 class="size-4" />
+											Remove
+										</DropdownMenu.Item>
 									</DropdownMenu.Group>
 								</DropdownMenu.Content>
 							</DropdownMenu.Root>
 						</Table.Cell>
 					{/snippet}
 				</UniversalTable>
-			{:else if !networkPageStates.error}
-				<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
-					<Network class="text-muted-foreground mb-4 size-12 opacity-40" />
-					<p class="text-lg font-medium">No networks found</p>
-					<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new network using the "Create Network" button above or use the Docker CLI</p>
-					<div class="mt-4 flex gap-3">
-						<ArcaneButton action="create" customLabel="Create Network" onClick={() => (networkPageStates.isCreateDialogOpen = true)} size="sm" />
-					</div>
-				</div>
-			{/if}
-		</Card.Content>
-	</Card.Root>
+			</Card.Content>
+		</Card.Root>
+	{:else if !networkPageStates.error}
+		<div class="bg-card flex flex-col items-center justify-center rounded-lg border px-6 py-12 text-center">
+			<Network class="text-muted-foreground mb-4 size-12 opacity-40" />
+			<p class="text-lg font-medium">No networks found</p>
+			<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new network using the "Create Network" button above or use the Docker CLI</p>
+			<div class="mt-4 flex gap-3">
+				<Button variant="outline" size="sm" onclick={() => (networkPageStates.isCreateDialogOpen = true)}>
+					<Plus class="size-4" />
+					Create Network
+				</Button>
+			</div>
+		</div>
+	{/if}
 
 	<CreateNetworkSheet bind:open={networkPageStates.isCreateDialogOpen} isLoading={isLoading.create} onSubmit={handleCreateNetworkSubmit} />
 </div>

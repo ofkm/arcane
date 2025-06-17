@@ -2,7 +2,6 @@ import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
 import { building, dev } from '$app/environment';
-import SessionAPIService from '$lib/services/api/session-api-service';
 import { settingsAPI, sessionAPI } from '$lib/services/api';
 import settingsStore from '$lib/stores/config-store';
 

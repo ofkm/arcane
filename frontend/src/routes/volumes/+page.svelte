@@ -1,28 +1,30 @@
 <script lang="ts">
-	import type { PageData } from './$types';
-	import * as Card from '$lib/components/ui/card/index.js';
+	import { HardDrive, Trash2, Plus, Funnel, ChevronDown, Ellipsis, ScanSearch } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { toast } from 'svelte-sonner';
-	import { AlertCircle, HardDrive, Database, Trash2, Loader2, ChevronDown, Ellipsis, ScanSearch, Funnel } from '@lucide/svelte';
-	import UniversalTable from '$lib/components/universal-table.svelte';
+	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { goto, invalidateAll } from '$app/navigation';
-	import CreateVolumeSheet from '$lib/components/sheets/create-volume-sheet.svelte';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Table from '$lib/components/ui/table';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import { toast } from 'svelte-sonner';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import type { PageData } from './$types';
+	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
+	import CreateVolumeSheet from '$lib/components/sheets/create-volume-sheet.svelte';
 	import VolumeAPIService from '$lib/services/api/volume-api-service';
+	import { formatFriendlyDate } from '$lib/utils/date.utils';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import type { VolumeCreateOptions, VolumeInspectInfo } from 'dockerode';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
+	import { environmentAPI } from '$lib/services/api';
 
 	let { data }: { data: PageData } = $props();
 
 	let volumePageStates = $state({
-		volumes: data.volumes,
+		volumes: Array.isArray(data.volumes) ? data.volumes : [],
 		selectedIds: <string[]>[],
 		error: data.error,
 		showUsed: true,
@@ -38,12 +40,35 @@
 
 	let isLoading = $state({
 		remove: false,
-		creating: false
+		creating: false,
+		refresh: false
 	});
 
 	const totalVolumes = $derived(volumePageStates.volumes.length);
 
 	const volumeApi = new VolumeAPIService();
+
+	async function refreshVolumes() {
+		isLoading.refresh = true;
+		try {
+			const refreshedVolumes = await environmentAPI.getVolumes();
+			const volumes = Array.isArray(refreshedVolumes) ? refreshedVolumes : [];
+
+			const enhancedVolumes = await Promise.all(
+				volumes.map(async (volume) => {
+					const inUse = await volumeApi.isInUse(volume.Name).catch(() => true);
+					return { ...volume, inUse };
+				})
+			);
+
+			volumePageStates.volumes = enhancedVolumes;
+		} catch (error) {
+			console.error('Failed to refresh volumes:', error);
+			toast.error('Failed to refresh volumes');
+		} finally {
+			isLoading.refresh = false;
+		}
+	}
 
 	async function handleRemoveVolumeConfirm(volumeName: string) {
 		openConfirmDialog({
@@ -120,7 +145,6 @@
 					}
 					isLoading.remove = false;
 
-					console.log(`Finished deleting. Success: ${successCount}, Failed: ${failureCount}`);
 					if (successCount > 0) {
 						setTimeout(async () => {
 							await invalidateAll();
@@ -133,7 +157,7 @@
 	}
 
 	$effect(() => {
-		volumePageStates.volumes = data.volumes;
+		volumePageStates.volumes = Array.isArray(data.volumes) ? data.volumes : [];
 	});
 </script>
 
@@ -141,14 +165,15 @@
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Volumes</h1>
-			<p class="text-muted-foreground mt-1 text-sm">Manage persistent data storage for containers</p>
+			<p class="text-muted-foreground mt-1 text-sm">Manage your Docker volumes</p>
 		</div>
-		<div class="flex gap-2"></div>
+		<div class="flex items-center gap-2">
+			<ArcaneButton action="restart" onClick={refreshVolumes} loading={isLoading.refresh} disabled={isLoading.refresh} />
+		</div>
 	</div>
 
 	{#if volumePageStates.error}
 		<Alert.Root variant="destructive">
-			<AlertCircle class="mr-2 size-4" />
 			<Alert.Title>Error Loading Volumes</Alert.Title>
 			<Alert.Description>{volumePageStates.error}</Alert.Description>
 		</Alert.Root>
@@ -161,8 +186,8 @@
 					<p class="text-muted-foreground text-sm font-medium">Total Volumes</p>
 					<p class="text-2xl font-bold">{totalVolumes}</p>
 				</div>
-				<div class="rounded-full bg-amber-500/10 p-2">
-					<Database class="size-5 text-amber-500" />
+				<div class="rounded-full bg-blue-500/10 p-2">
+					<HardDrive class="size-5 text-blue-500" />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -170,72 +195,75 @@
 		<Card.Root>
 			<Card.Content class="flex items-center justify-between p-4">
 				<div>
-					<p class="text-muted-foreground text-sm font-medium">Default Driver</p>
-					<p class="text-2xl font-bold">local</p>
+					<p class="text-muted-foreground text-sm font-medium">In Use</p>
+					<p class="text-2xl font-bold">{volumePageStates.volumes.filter((v) => v.inUse).length}</p>
 				</div>
-				<div class="rounded-full bg-blue-500/10 p-2">
-					<HardDrive class="size-5 text-blue-500" />
+				<div class="rounded-full bg-green-500/10 p-2">
+					<HardDrive class="size-5 text-green-500" />
 				</div>
 			</Card.Content>
 		</Card.Root>
 	</div>
 
-	<Card.Root class="border shadow-sm">
-		<Card.Header class="px-6">
-			<div class="flex items-center justify-between">
-				<div>
+	{#if volumePageStates.volumes && volumePageStates.volumes.length > 0}
+		<Card.Root class="border shadow-sm">
+			<Card.Header class="px-6">
+				<div class="flex items-center justify-between">
 					<Card.Title>Volume List</Card.Title>
+					<div class="flex items-center gap-2">
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger>
+								{#snippet child({ props })}
+									<Button {...props} variant="outline">
+										<Funnel class="size-4" />
+										Filter
+										<ChevronDown class="size-4" />
+									</Button>
+								{/snippet}
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content>
+								<DropdownMenu.Label>Volume Usage</DropdownMenu.Label>
+								<DropdownMenu.CheckboxItem
+									checked={volumePageStates.showUsed}
+									onCheckedChange={(checked) => {
+										volumePageStates.showUsed = checked;
+									}}
+								>
+									Show Used Volumes
+								</DropdownMenu.CheckboxItem>
+								<DropdownMenu.CheckboxItem
+									checked={volumePageStates.showUnused}
+									onCheckedChange={(checked) => {
+										volumePageStates.showUnused = checked;
+									}}
+								>
+									Show Unused Volumes
+								</DropdownMenu.CheckboxItem>
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
+						{#if volumePageStates.selectedIds.length > 0}
+							<ArcaneButton action="remove" onClick={handleDeleteSelected} loading={isLoading.remove} disabled={isLoading.remove} />
+						{/if}
+						<ArcaneButton action="create" label="Create Volume" onClick={() => (isDialogOpen.create = true)} loading={isLoading.creating} disabled={isLoading.creating} />
+					</div>
 				</div>
-				<div class="flex items-center gap-2">
-					<DropdownMenu.Root>
-						<DropdownMenu.Trigger>
-							{#snippet child({ props })}
-								<Button {...props} variant="outline">
-									<Funnel class="size-4" />
-									Filter
-									<ChevronDown class="size-4" />
-								</Button>
-							{/snippet}
-						</DropdownMenu.Trigger>
-						<DropdownMenu.Content>
-							<DropdownMenu.Label>Volume Usage</DropdownMenu.Label>
-							<DropdownMenu.CheckboxItem
-								checked={volumePageStates.showUsed}
-								onCheckedChange={(checked) => {
-									volumePageStates.showUsed = !!checked;
-								}}
-							>
-								Show Used Volumes
-							</DropdownMenu.CheckboxItem>
-							<DropdownMenu.CheckboxItem
-								checked={volumePageStates.showUnused}
-								onCheckedChange={(checked) => {
-									volumePageStates.showUnused = !!checked;
-								}}
-							>
-								Show Unused Volumes
-							</DropdownMenu.CheckboxItem>
-						</DropdownMenu.Content>
-					</DropdownMenu.Root>
-					{#if volumePageStates.selectedIds.length > 0}
-						<ArcaneButton action="remove" customLabel="Delete Selected ({volumePageStates.selectedIds.length})" onClick={handleDeleteSelected} loading={isLoading.remove} loadingLabel="Processing..." disabled={isLoading.remove} />
-					{/if}
-					<ArcaneButton action="create" customLabel="Create Volume" onClick={() => (isDialogOpen.create = true)} />
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content>
-			{#if volumePageStates.volumes && volumePageStates.volumes.length > 0}
+			</Card.Header>
+
+			<Card.Content>
 				<UniversalTable
 					data={filteredVolumes}
-					idKey="Name"
 					columns={[
 						{ accessorKey: 'Name', header: 'Name' },
-						{ accessorKey: 'inUse', header: ' ', enableSorting: false },
-						{ accessorKey: 'Mountpoint', header: 'Mountpoint' },
+						{ accessorKey: 'inUse', header: 'Status', enableSorting: false },
 						{ accessorKey: 'Driver', header: 'Driver' },
+						{ accessorKey: 'CreatedAt', header: 'Created' },
 						{ accessorKey: 'actions', header: ' ', enableSorting: false }
 					]}
+					idKey="Name"
+					display={{
+						filterPlaceholder: 'Search volumes...',
+						noResultsMessage: 'No volumes found'
+					}}
 					pagination={{
 						pageSize: tablePersistence.getPageSize('volumes')
 					}}
@@ -245,25 +273,21 @@
 					sort={{
 						defaultSort: { id: 'Name', desc: false }
 					}}
-					display={{
-						filterPlaceholder: 'Search volumes...',
-						noResultsMessage: 'No volumes found matching your filters.'
-					}}
 					bind:selectedIds={volumePageStates.selectedIds}
 				>
-					{#snippet rows({ item }: { item: PageData['volumes'][0] })}
+					{#snippet rows({ item })}
 						<Table.Cell>
-							<div class="flex items-center gap-2">
-								<span class="truncate">
-									<a class="font-medium hover:underline" href="/volumes/{encodeURIComponent(item.Name)}/">{item.Name}</a>
-								</span>
-							</div>
+							<a class="font-medium hover:underline" href="/volumes/{item.Name}/">{item.Name}</a>
 						</Table.Cell>
 						<Table.Cell>
-							<StatusBadge text={item.inUse ? 'In Use' : 'Unused'} variant={item.inUse ? 'green' : 'amber'} />
+							{#if item.inUse}
+								<StatusBadge text="In Use" variant="green" />
+							{:else}
+								<StatusBadge text="Unused" variant="amber" />
+							{/if}
 						</Table.Cell>
-						<Table.Cell>{item.Mountpoint}</Table.Cell>
 						<Table.Cell>{item.Driver}</Table.Cell>
+						<Table.Cell>{formatFriendlyDate(item.CreatedAt)}</Table.Cell>
 						<Table.Cell>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
@@ -276,20 +300,13 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end">
 									<DropdownMenu.Group>
-										<DropdownMenu.Item onclick={() => goto(`/volumes/${encodeURIComponent(item.Name)}`)} disabled={isLoading.remove}>
+										<DropdownMenu.Item onclick={() => goto(`/volumes/${item.Name}`)}>
 											<ScanSearch class="size-4" />
 											Inspect
 										</DropdownMenu.Item>
-
-										<DropdownMenu.Separator />
-
-										<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveVolumeConfirm(item.Name)} disabled={isLoading.remove || item.inUse}>
-											{#if isLoading.remove && volumePageStates.selectedIds.includes(item.Name)}
-												<Loader2 class="size-4 animate-spin" />
-											{:else}
-												<Trash2 class="size-4" />
-											{/if}
-											Delete
+										<DropdownMenu.Item class="focus:text-red-700! text-red-500" onclick={() => handleRemoveVolumeConfirm(item.Name)}>
+											<Trash2 class="size-4" />
+											Remove
 										</DropdownMenu.Item>
 									</DropdownMenu.Group>
 								</DropdownMenu.Content>
@@ -297,18 +314,21 @@
 						</Table.Cell>
 					{/snippet}
 				</UniversalTable>
-			{:else if !volumePageStates.error}
-				<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
-					<Database class="text-muted-foreground mb-4 size-12 opacity-40" />
-					<p class="text-lg font-medium">No volumes found</p>
-					<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new volume using the "Create Volume" button above or use the Docker CLI</p>
-					<div class="mt-4 flex gap-3">
-						<ArcaneButton action="create" customLabel="Create Volume" onClick={() => (isDialogOpen.create = true)} size="sm" />
-					</div>
-				</div>
-			{/if}
-		</Card.Content>
-	</Card.Root>
+			</Card.Content>
+		</Card.Root>
+	{:else if !volumePageStates.error}
+		<div class="bg-card flex flex-col items-center justify-center rounded-lg border px-6 py-12 text-center">
+			<HardDrive class="text-muted-foreground mb-4 size-12 opacity-40" />
+			<p class="text-lg font-medium">No volumes found</p>
+			<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new volume using the "Create Volume" button above or use the Docker CLI</p>
+			<div class="mt-4 flex gap-3">
+				<Button variant="outline" size="sm" onclick={() => (isDialogOpen.create = true)}>
+					<Plus class="size-4" />
+					Create Volume
+				</Button>
+			</div>
+		</div>
+	{/if}
 
 	<CreateVolumeSheet bind:open={isDialogOpen.create} isLoading={isLoading.creating} onSubmit={(volumeCreateData) => handleCreateVolume(volumeCreateData)} />
 </div>

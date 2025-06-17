@@ -1,28 +1,25 @@
 import type { PageLoad } from './$types';
-import { networkAPI } from '$lib/services/api';
+import { environmentAPI } from '$lib/services/api';
 import { error } from '@sveltejs/kit';
 
 export const load: PageLoad = async ({ params }) => {
-	const networkId = params.networkId;
+	const { networkId } = params;
 
 	try {
-		const network = await networkAPI.get(networkId);
+		const network = await environmentAPI.getNetwork(networkId);
+
+		if (!network) {
+			throw error(404, 'Network not found');
+		}
 
 		return {
 			network
 		};
 	} catch (err: any) {
-		console.error(`Failed to load network ${networkId}:`, err);
-
-		// Handle API errors
-		if (err.status === 404 || err.name === 'NotFoundError') {
-			error(404, {
-				message: err.message || `Network with ID "${networkId}" not found.`
-			});
-		} else {
-			error(err.status || 500, {
-				message: err.message || `Failed to load network details for "${networkId}".`
-			});
+		console.error('Failed to load network:', err);
+		if (err.status === 404) {
+			throw err;
 		}
+		throw error(500, err.message || 'Failed to load network details');
 	}
 };
