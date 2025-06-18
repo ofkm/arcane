@@ -14,7 +14,7 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import CreateNetworkSheet from '$lib/components/sheets/create-network-sheet.svelte';
-	import { networkAPI, environmentAPI } from '$lib/services/api';
+	import { environmentAPI } from '$lib/services/api';
 	import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
@@ -57,8 +57,9 @@
 	}
 
 	async function handleCreateNetworkSubmit(options: NetworkCreateOptions) {
+		isLoading.create = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(networkAPI.create(options)),
+			result: await tryCatch(environmentAPI.createNetwork(options)),
 			message: `Failed to Create Network "${options.Name}"`,
 			setLoadingState: (value) => (isLoading.create = value),
 			onSuccess: async () => {
@@ -82,7 +83,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(networkAPI.remove(id)),
+						result: await tryCatch(environmentAPI.deleteNetwork(id)),
 						message: `Failed to Remove Network "${name}"`,
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
@@ -120,7 +121,7 @@
 						const network = networkPageStates.networks.find((n) => n.Id === networkId);
 						if (!network) continue;
 
-						const result = await tryCatch(networkAPI.remove(networkId));
+						const result = await tryCatch(environmentAPI.deleteNetwork(networkId));
 						if (result.error) {
 							failureCount++;
 							toast.error(`Failed to delete network "${network.Name}": ${result.error.message}`);

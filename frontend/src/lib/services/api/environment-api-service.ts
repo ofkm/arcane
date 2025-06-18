@@ -1,6 +1,7 @@
 import BaseAPIService from './api-service';
 import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
+import type { NetworkCreateOptions } from 'dockerode';
 import { browser } from '$app/environment';
 
 export class EnvironmentAPIService extends BaseAPIService {
@@ -46,6 +47,16 @@ export class EnvironmentAPIService extends BaseAPIService {
 	async getNetwork(networkId: string): Promise<any> {
 		const envId = await this.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.get(`/environments/${envId}/networks/${networkId}`));
+	}
+
+	async createNetwork(options: NetworkCreateOptions): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/networks`, options));
+	}
+
+	async deleteNetwork(networkId: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.delete(`/environments/${envId}/networks/${networkId}`));
 	}
 
 	async getVolumes(): Promise<any[]> {

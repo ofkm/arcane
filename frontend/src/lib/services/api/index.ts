@@ -2,7 +2,6 @@ import ContainerAPIService from './container-api-service';
 import ImageAPIService from './image-api-service';
 import ImageMaturityAPIService from './image-maturity-api-service';
 import VolumeAPIService from './volume-api-service';
-import NetworkAPIService from './network-api-service';
 import StackAPIService from './stack-api-service';
 import SystemAPIService from './system-api-service';
 import TemplateAPIService from './template-api-service';
@@ -27,7 +26,6 @@ export const containerAPI = new ContainerAPIService();
 export const imageAPI = new ImageAPIService();
 export const imageMaturityAPI = new ImageMaturityAPIService();
 export const volumeAPI = new VolumeAPIService();
-export const networkAPI = new NetworkAPIService();
 export const stackAPI = new StackAPIService();
 export const systemAPI = new SystemAPIService();
 export const templateAPI = new TemplateAPIService();
@@ -53,7 +51,6 @@ interface APIServices {
 	image: ImageAPIService;
 	imageMaturity: ImageMaturityAPIService;
 	volume: VolumeAPIService;
-	network: NetworkAPIService;
 	stack: StackAPIService;
 	system: SystemAPIService;
 	template: TemplateAPIService;
@@ -79,7 +76,6 @@ const apiServices: APIServices = {
 	image: imageAPI,
 	imageMaturity: imageMaturityAPI,
 	volume: volumeAPI,
-	network: networkAPI,
 	stack: stackAPI,
 	system: systemAPI,
 	template: templateAPI,

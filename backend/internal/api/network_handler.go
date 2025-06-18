@@ -102,7 +102,7 @@ func (h *NetworkHandler) Create(c *gin.Context) {
 }
 
 func (h *NetworkHandler) Remove(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("networkId")
 
 	if err := h.networkService.RemoveNetwork(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -119,7 +119,7 @@ func (h *NetworkHandler) Remove(c *gin.Context) {
 }
 
 func (h *NetworkHandler) ConnectContainer(c *gin.Context) {
-	networkID := c.Param("id")
+	networkID := c.Param("networkId")
 
 	var req struct {
 		ContainerID string                    `json:"containerId" binding:"required"`

@@ -13,14 +13,13 @@
 	import { goto } from '$app/navigation';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import NetworkAPIService from '$lib/services/api/network-api-service';
+	import { environmentAPI } from '$lib/services/api';
 
 	let { data }: { data: PageData } = $props();
 	let { network }: { network: NetworkInspectInfo | null | undefined } = $derived(data);
 	let errorMessage = $state('');
 
 	let isRemoving = $state(false);
-	const networkApi = new NetworkAPIService();
 
 	const shortId = $derived(network?.Id?.substring(0, 12) || 'N/A');
 	const createdDate = $derived(network?.Created ? formatDate(network.Created) : 'N/A');
@@ -48,7 +47,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(networkApi.remove(network.Id)),
+						result: await tryCatch(environmentAPI.deleteNetwork(network.Id)),
 						message: 'Failed to remove network',
 						setLoadingState: (value) => (isRemoving = value),
 						onSuccess: async () => {
