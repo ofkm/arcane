@@ -86,7 +86,7 @@ func (h *ImageHandler) List(c *gin.Context) {
 }
 
 func (h *ImageHandler) GetByID(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("imageId")
 
 	image, err := h.imageService.GetImageByID(c.Request.Context(), id)
 	if err != nil {
