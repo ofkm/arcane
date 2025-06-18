@@ -125,6 +125,9 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == "DELETE":
 		volumeHandler := NewVolumeHandler(h.volumeService)
 		volumeHandler.Remove(c)
+	case strings.HasPrefix(endpoint, "/volumes/") && strings.HasSuffix(endpoint, "/usage"):
+		volumeHandler := NewVolumeHandler(h.volumeService)
+		volumeHandler.GetUsage(c)
 
 	case endpoint == "/stacks" && c.Request.Method == "GET":
 		stackHandler := NewStackHandler(h.stackService)
@@ -562,4 +565,8 @@ func (h *EnvironmentHandler) RestartStack(c *gin.Context) {
 func (h *EnvironmentHandler) GetStackLogs(c *gin.Context) {
 	stackName := c.Param("stackName")
 	h.routeRequest(c, "/stacks/"+stackName+"/logs")
+}
+
+func (h *EnvironmentHandler) GetVolumeUsage(c *gin.Context) {
+	h.routeRequest(c, "/volumes/"+c.Param("volumeName")+"/usage")
 }

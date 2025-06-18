@@ -1,7 +1,7 @@
 import BaseAPIService from './api-service';
 import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
-import type { NetworkCreateOptions } from 'dockerode';
+import type { NetworkCreateOptions, VolumeCreateOptions } from 'dockerode';
 import { browser } from '$app/environment';
 
 export class EnvironmentAPIService extends BaseAPIService {
@@ -68,6 +68,26 @@ export class EnvironmentAPIService extends BaseAPIService {
 	async getVolume(volumeName: string): Promise<any> {
 		const envId = await this.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.get(`/environments/${envId}/volumes/${volumeName}`));
+	}
+
+	async getVolumeUsage(volumeName: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/volumes/${volumeName}/usage`));
+	}
+
+	async createVolume(options: VolumeCreateOptions): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/volumes`, options));
+	}
+
+	async deleteVolume(volumeName: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.delete(`/environments/${envId}/volumes/${volumeName}`));
+	}
+
+	async pruneVolumes(): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/volumes/prune`));
 	}
 
 	async getAllResources(): Promise<Record<string, any>> {

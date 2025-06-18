@@ -13,7 +13,6 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import CreateVolumeSheet from '$lib/components/sheets/create-volume-sheet.svelte';
-	import VolumeAPIService from '$lib/services/api/volume-api-service';
 	import { formatFriendlyDate } from '$lib/utils/date.utils';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import type { VolumeCreateOptions, VolumeInspectInfo } from 'dockerode';
@@ -46,8 +45,6 @@
 
 	const totalVolumes = $derived(volumePageStates.volumes.length);
 
-	const volumeApi = new VolumeAPIService();
-
 	async function refreshVolumes() {
 		isLoading.refresh = true;
 		try {
@@ -56,7 +53,7 @@
 
 			const enhancedVolumes = await Promise.all(
 				volumes.map(async (volume) => {
-					const inUse = await volumeApi.isInUse(volume.Name).catch(() => true);
+					const inUse = await environmentAPI.getVolumeUsage(volume.Name).catch(() => true);
 					return { ...volume, inUse };
 				})
 			);
@@ -79,7 +76,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(volumeApi.remove(volumeName)),
+						result: await tryCatch(environmentAPI.deleteVolume(volumeName)),
 						message: `Failed to Remove Volume "${volumeName}"`,
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
@@ -94,7 +91,7 @@
 
 	async function handleCreateVolume(volumeCreate: VolumeCreateOptions) {
 		handleApiResultWithCallbacks({
-			result: await tryCatch(volumeApi.create(volumeCreate)),
+			result: await tryCatch(environmentAPI.createVolume(volumeCreate)),
 			message: `Failed to Create Volume "${volumeCreate.Name}"`,
 			setLoadingState: (value) => (isLoading.creating = value),
 			onSuccess: async () => {
@@ -128,7 +125,7 @@
 						}
 
 						if (!volume?.Name) continue;
-						const result = await tryCatch(volumeApi.remove(volume.Name));
+						const result = await tryCatch(environmentAPI.deleteVolume(volume.Name));
 						handleApiResultWithCallbacks({
 							result,
 							message: `Failed to delete volume "${volume.Name}"`,

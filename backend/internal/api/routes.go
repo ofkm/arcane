@@ -205,6 +205,8 @@ func setupEnvironmentRoutes(api *gin.RouterGroup, services *Services) {
 	environments.POST("/:id/volumes", environmentHandler.CreateVolume)
 	environments.GET("/:id/volumes/:volumeName", environmentHandler.GetVolume)
 	environments.DELETE("/:id/volumes/:volumeName", environmentHandler.RemoveVolume)
+	environments.GET("/:name/usage", environmentHandler.GetVolumeUsage)
+
 	environments.POST("/:id/volumes/prune", environmentHandler.PruneVolumes)
 
 	environments.GET("/:id/stacks", environmentHandler.GetStacks)
