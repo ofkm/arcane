@@ -104,7 +104,7 @@ func (h *ImageHandler) GetByID(c *gin.Context) {
 }
 
 func (h *ImageHandler) Remove(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("imageId")
 	force := c.Query("force") == "true"
 
 	if err := h.imageService.RemoveImage(c.Request.Context(), id, force); err != nil {

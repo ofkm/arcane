@@ -1,8 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, HardDrive, Clock, Tag, Layers, Hash, Trash2, Loader2, Cpu } from '@lucide/svelte';
+	import { HardDrive, Clock, Tag, Layers, Hash, Cpu } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { goto } from '$app/navigation';
 	import { Separator } from '$lib/components/ui/separator/index.js';
@@ -12,13 +11,12 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ImageAPIService from '$lib/services/api/image-api-service';
 	import { toast } from 'svelte-sonner';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { environmentAPI } from '$lib/services/api';
 
 	let { data }: { data: PageData } = $props();
 	let { image } = $derived(data);
-	const imageApi = new ImageAPIService();
 
 	let isLoading = $state({
 		pulling: false,
@@ -39,7 +37,7 @@
 				destructive: true,
 				action: async () => {
 					await handleApiResultWithCallbacks({
-						result: await tryCatch(imageApi.remove(id)),
+						result: await tryCatch(environmentAPI.deleteImage(id)),
 						message: 'Failed to Remove Image',
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {

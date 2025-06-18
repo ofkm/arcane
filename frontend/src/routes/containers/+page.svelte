@@ -9,7 +9,7 @@
 	import CreateContainerSheet from '$lib/components/sheets/create-container-sheet.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { containerAPI, imageAPI } from '$lib/services/api';
+	import { containerAPI } from '$lib/services/api';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { statusVariantMap } from '$lib/types/statuses';

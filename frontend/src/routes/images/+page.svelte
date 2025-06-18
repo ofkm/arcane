@@ -15,7 +15,6 @@
 	import * as Table from '$lib/components/ui/table';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import ImageAPIService from '$lib/services/api/image-api-service';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
@@ -25,7 +24,9 @@
 	import { environmentAPI } from '$lib/services/api';
 
 	let { data }: { data: PageData } = $props();
-	let images = $state(Array.isArray(data.images) ? data.images : []);
+
+	// Make images reactive to data changes
+	let images = $derived(Array.isArray(data.images) ? data.images : []);
 	let error = $state(data.error);
 	let selectedIds = $state<string[]>([]);
 
@@ -43,8 +44,6 @@
 	});
 
 	let isPullingInline = $state<Record<string, boolean>>({});
-
-	const imageApi = new ImageAPIService();
 
 	let isPullDialogOpen = $state(false);
 	let isConfirmPruneDialogOpen = $state(false);
@@ -65,8 +64,7 @@
 	async function refreshImages() {
 		isLoading.refreshing = true;
 		try {
-			const refreshedImages = await environmentAPI.getImages();
-			images = Array.isArray(refreshedImages) ? refreshedImages : [];
+			await invalidateAll();
 		} catch (error) {
 			console.error('Failed to refresh images:', error);
 			toast.error('Failed to refresh images');
@@ -117,6 +115,33 @@
 		}
 	});
 
+	async function handleImageRemove(id: string) {
+		const image = images.find((img) => img.Id === id);
+		const imageIdentifier = image?.RepoTags?.[0] || id.substring(0, 12);
+
+		openConfirmDialog({
+			title: 'Delete Image',
+			message: `Are you sure you want to delete ${imageIdentifier}? This action cannot be undone.`,
+			confirm: {
+				label: 'Delete',
+				destructive: true,
+				action: async () => {
+					isLoading.removing = true;
+					await handleApiResultWithCallbacks({
+						result: await tryCatch(environmentAPI.deleteImage(id)),
+						message: 'Failed to Remove Image',
+						setLoadingState: (value) => (isLoading.removing = value),
+						onSuccess: async () => {
+							toast.success(`Image "${imageIdentifier}" deleted successfully.`);
+							await invalidateAll();
+						}
+					});
+					isLoading.removing = false;
+				}
+			}
+		});
+	}
+
 	async function handleDeleteSelected() {
 		openConfirmDialog({
 			title: 'Delete Selected Images',
@@ -141,7 +166,7 @@
 						}
 
 						await handleApiResultWithCallbacks({
-							result: await tryCatch(imageApi.remove(id)),
+							result: await tryCatch(environmentAPI.deleteImage(id)),
 							message: `Failed to delete image "${imageIdentifier}"`,
 							setLoadingState: (value) => (isLoading.removing = value),
 							onSuccess: async () => {
@@ -152,11 +177,8 @@
 					}
 
 					isLoading.removing = false;
-					console.log(`Finished deleting. Success: ${successCount}, Failed: ${failureCount}`);
 					if (successCount > 0) {
-						setTimeout(async () => {
-							await invalidateAll();
-						}, 500);
+						await invalidateAll();
 					}
 					selectedIds = [];
 				}
@@ -167,7 +189,7 @@
 	async function handlePruneImages() {
 		isLoading.pruning = true;
 		await handleApiResultWithCallbacks({
-			result: await tryCatch(imageApi.prune() as Promise<{ message?: string }>),
+			result: await tryCatch(environmentAPI.pruneImages() as Promise<{ message?: string }>),
 			message: 'Failed to Prune Images',
 			setLoadingState: (value) => (isLoading.pruning = value),
 			onSuccess: async (result: { message?: string }) => {
@@ -209,52 +231,11 @@
 		}
 	}
 
-	async function handleImageRemove(id: string) {
-		const image = images.find((img) => img.Id === id);
-		const imageIdentifier = image?.RepoTags?.[0] || id.substring(0, 12);
-
-		openConfirmDialog({
-			title: 'Delete Image',
-			message: `Are you sure you want to delete ${imageIdentifier}? This action cannot be undone.`,
-			confirm: {
-				label: 'Delete',
-				destructive: true,
-				action: async () => {
-					isLoading.removing = true;
-					await handleApiResultWithCallbacks({
-						result: await tryCatch(imageApi.remove(id)),
-						message: 'Failed to Remove Image',
-						setLoadingState: (value) => (isLoading.removing = value),
-						onSuccess: async () => {
-							toast.success(`Image "${imageIdentifier}" deleted successfully.`);
-							await invalidateAll();
-						}
-					});
-					isLoading.removing = false;
-				}
-			}
-		});
-	}
-
-	async function handlePullImage(imageName: string) {
-		isLoading.pulling = true;
-		try {
-			const result = await environmentAPI.pullImage(imageName);
-
-			if (result.error) {
-				throw new Error(result.error);
-			}
-
-			toast.success(`Image "${imageName}" pulled successfully.`);
-			await invalidateAll();
-			isPullDialogOpen = false;
-		} catch (error: any) {
-			console.error('Pull image error:', error);
-			toast.error(error.message || `Failed to pull ${imageName}.`);
-		} finally {
-			isLoading.pulling = false;
+	$effect(() => {
+		if (images && images.length > 0) {
+			loadImagesMaturity();
 		}
-	}
+	});
 </script>
 
 <div class="space-y-6">
@@ -450,7 +431,7 @@
 		</div>
 	{/if}
 
-	<ImagePullSheet bind:open={isPullDialogOpen} onPullFinished={handlePullImage} />
+	<ImagePullSheet bind:open={isPullDialogOpen} onPullFinished={() => invalidateAll()} />
 
 	<Dialog.Root bind:open={isConfirmPruneDialogOpen}>
 		<Dialog.Content>
