@@ -187,7 +187,7 @@
 			</Card.Header>
 			<Card.Content>
 				<UniversalTable
-					data={containers.map((c) => ({
+					data={containers.map((c: any) => ({
 						...c,
 						displayName: getContainerDisplayName(c),
 						statusSortValue: parseStatusTime(c.Status)

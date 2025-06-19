@@ -1,26 +1,23 @@
 <script lang="ts">
-	import type { PageData, ActionData } from './$types';
+	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { AlertCircle, HardDrive, Clock, Tag, Layers, Database, Globe, Info } from '@lucide/svelte';
+	import { HardDrive, Clock, Tag, Layers, Database, Globe, Info } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { goto } from '$app/navigation';
-	import * as Alert from '$lib/components/ui/alert/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { formatDate } from '$lib/utils/string.utils';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog/';
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
-	import VolumeAPIService from '$lib/services/api/volume-api-service';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { environmentAPI } from '$lib/services/api';
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+	let { data }: { data: PageData } = $props();
 	let { volume, inUse } = $derived(data);
 
 	let isLoading = $state({ remove: false });
 	const createdDate = $derived(volume?.CreatedAt ? formatDate(volume.CreatedAt) : 'N/A');
-
-	const volumeApi = new VolumeAPIService();
 
 	async function handleRemoveVolumeConfirm(volumeName: string) {
 		let message = 'Are you sure you want to delete this volume? This action cannot be undone.';
@@ -37,7 +34,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(volumeApi.remove(volumeName)),
+						result: await tryCatch(environmentAPI.deleteVolume(volumeName)),
 						message: 'Failed to Remove Volume',
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
@@ -52,7 +49,6 @@
 </script>
 
 <div class="space-y-6 pb-8">
-	<!-- Improved Header with Better Visual Hierarchy -->
 	<div class="flex flex-col space-y-4">
 		<Breadcrumb.Root>
 			<Breadcrumb.List>
@@ -74,7 +70,6 @@
 					</h1>
 				</div>
 
-				<!-- Status badges in a row -->
 				<div class="mt-2 flex gap-2">
 					{#if inUse}
 						<StatusBadge variant="green" text="In Use" />
@@ -92,25 +87,14 @@
 				</div>
 			</div>
 
-			<!-- Action Buttons - Replace with ArcaneButton -->
 			<div class="flex gap-2 self-start">
 				<ArcaneButton action="remove" customLabel="Remove Volume" onClick={() => handleRemoveVolumeConfirm(volume?.Name)} loading={isLoading.remove} disabled={isLoading.remove} />
 			</div>
 		</div>
 	</div>
 
-	<!-- Error Alert -->
-	{#if form?.error}
-		<Alert.Root variant="destructive">
-			<AlertCircle class="mr-2 size-4" />
-			<Alert.Title>Action Failed</Alert.Title>
-			<Alert.Description>{form.error}</Alert.Description>
-		</Alert.Root>
-	{/if}
-
 	{#if volume}
 		<div class="space-y-6">
-			<!-- Volume Details Card: Improved Layout -->
 			<Card.Root class="border shadow-sm">
 				<Card.Header class="pb-0">
 					<Card.Title class="flex items-center gap-2 text-lg">
@@ -121,7 +105,6 @@
 				</Card.Header>
 				<Card.Content class="pt-6">
 					<div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-						<!-- Name -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
 								<Database class="size-5 text-gray-500" />
@@ -132,7 +115,6 @@
 							</div>
 						</div>
 
-						<!-- Driver -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2">
 								<HardDrive class="size-5 text-blue-500" />
@@ -143,7 +125,6 @@
 							</div>
 						</div>
 
-						<!-- Created -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2">
 								<Clock class="size-5 text-green-500" />
@@ -154,7 +135,6 @@
 							</div>
 						</div>
 
-						<!-- Scope -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-purple-500/10 p-2">
 								<Globe class="size-5 text-purple-500" />
@@ -165,7 +145,6 @@
 							</div>
 						</div>
 
-						<!-- In Use -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 p-2">
 								<Info class="size-5 text-amber-500" />
@@ -182,7 +161,6 @@
 							</div>
 						</div>
 
-						<!-- Mountpoint - Full width -->
 						<div class="col-span-1 flex items-start gap-3 sm:col-span-2 lg:col-span-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-teal-500/10 p-2">
 								<Layers class="size-5 text-teal-500" />
@@ -198,7 +176,6 @@
 				</Card.Content>
 			</Card.Root>
 
-			<!-- Labels Card - Enhanced -->
 			{#if volume.Labels && Object.keys(volume.Labels).length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header class="pb-0">
@@ -225,7 +202,6 @@
 				</Card.Root>
 			{/if}
 
-			<!-- Driver Options Card - Enhanced -->
 			{#if volume.Options && Object.keys(volume.Options).length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header class="pb-0">
@@ -252,7 +228,6 @@
 				</Card.Root>
 			{/if}
 
-			<!-- If no labels or options, we can show this note -->
 			{#if (!volume.Labels || Object.keys(volume.Labels).length === 0) && (!volume.Options || Object.keys(volume.Options).length === 0)}
 				<Card.Root class="bg-muted/10 border shadow-sm">
 					<Card.Content class="pt-6 pb-6 text-center">
@@ -267,7 +242,6 @@
 			{/if}
 		</div>
 	{:else}
-		<!-- Volume Not Found with improved styling -->
 		<div class="flex flex-col items-center justify-center px-4 py-16 text-center">
 			<div class="bg-muted/30 mb-4 rounded-full p-4">
 				<Database class="text-muted-foreground size-10 opacity-70" />

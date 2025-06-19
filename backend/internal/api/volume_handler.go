@@ -42,7 +42,7 @@ func (h *VolumeHandler) List(c *gin.Context) {
 }
 
 func (h *VolumeHandler) GetByName(c *gin.Context) {
-	name := c.Param("name")
+	name := c.Param("volumeName")
 
 	volume, err := h.volumeService.GetVolumeByName(c.Request.Context(), name)
 	if err != nil {
@@ -96,7 +96,7 @@ func (h *VolumeHandler) Create(c *gin.Context) {
 }
 
 func (h *VolumeHandler) Remove(c *gin.Context) {
-	name := c.Param("name")
+	name := c.Param("volumeName")
 	force := c.Query("force") == "true"
 
 	if err := h.volumeService.DeleteVolume(c.Request.Context(), name, force); err != nil {
@@ -129,7 +129,7 @@ func (h *VolumeHandler) Prune(c *gin.Context) {
 }
 
 func (h *VolumeHandler) GetUsage(c *gin.Context) {
-	name := c.Param("name")
+	name := c.Param("volumeName")
 
 	inUse, containers, err := h.volumeService.GetVolumeUsage(c.Request.Context(), name)
 	if err != nil {

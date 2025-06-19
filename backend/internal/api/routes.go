@@ -205,7 +205,7 @@ func setupEnvironmentRoutes(api *gin.RouterGroup, services *Services) {
 	environments.POST("/:id/volumes", environmentHandler.CreateVolume)
 	environments.GET("/:id/volumes/:volumeName", environmentHandler.GetVolume)
 	environments.DELETE("/:id/volumes/:volumeName", environmentHandler.RemoveVolume)
-	environments.GET("/:name/usage", environmentHandler.GetVolumeUsage)
+	environments.GET("/:id/volumes/:volumeName/usage", environmentHandler.GetVolumeUsage)
 
 	environments.POST("/:id/volumes/prune", environmentHandler.PruneVolumes)
 
@@ -333,11 +333,11 @@ func setupVolumeRoutes(api *gin.RouterGroup, services *Services) {
 	volumeHandler := NewVolumeHandler(services.Volume)
 
 	volumes.GET("", volumeHandler.List)
-	volumes.GET("/:name", volumeHandler.GetByName)
+	volumes.GET("/:volumeName", volumeHandler.GetByName)
 	volumes.POST("", volumeHandler.Create)
-	volumes.DELETE("/:name", volumeHandler.Remove)
+	volumes.DELETE("/:volumeName", volumeHandler.Remove)
 	volumes.POST("/prune", volumeHandler.Prune)
-	volumes.GET("/:name/usage", volumeHandler.GetUsage)
+	volumes.GET("/:volumeName/usage", volumeHandler.GetUsage)
 }
 
 func setupNetworkRoutes(api *gin.RouterGroup, services *Services) {

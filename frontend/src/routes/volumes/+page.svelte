@@ -165,7 +165,7 @@
 			<p class="text-muted-foreground mt-1 text-sm">Manage your Docker volumes</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<ArcaneButton action="restart" onClick={refreshVolumes} loading={isLoading.refresh} disabled={isLoading.refresh} />
+			<ArcaneButton action="restart" onClick={refreshVolumes} label="Refresh" loading={isLoading.refresh} disabled={isLoading.refresh} />
 		</div>
 	</div>
 

@@ -1,5 +1,4 @@
 import { environmentAPI } from '$lib/services/api';
-import { volumeAPI } from '$lib/services/api';
 import type { PageLoad } from './$types';
 import type { VolumeInspectInfo } from 'dockerode';
 
@@ -19,14 +18,11 @@ export const load: PageLoad = async (): Promise<VolumePageData> => {
 
 		const enhancedVolumes = await Promise.all(
 			volumes.map(async (volume): Promise<EnhancedVolumeInfo> => {
-				const inUse = await volumeAPI.isInUse(volume.Name).catch((err) => {
-					console.error(`Failed to check if volume ${volume.Name} is in use:`, err);
-					return true; // Default to true for safety
-				});
+				const inUse = await environmentAPI.getVolumeUsage(volume.Name);
 
 				return {
 					...volume,
-					inUse
+					inUse: inUse.data ? inUse.data.inUse : false
 				};
 			})
 		);

@@ -245,7 +245,7 @@
 			<p class="text-muted-foreground mt-1 text-sm">View and Manage your Container Images</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<ArcaneButton action="restart" onClick={refreshImages} loading={isLoading.refreshing} disabled={isLoading.refreshing} />
+			<ArcaneButton action="restart" onClick={refreshImages} label="Refresh" loading={isLoading.refreshing} disabled={isLoading.refreshing} />
 		</div>
 	</div>
 
