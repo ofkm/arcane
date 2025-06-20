@@ -57,28 +57,31 @@ func (h *EnvironmentHandler) routeRequest(c *gin.Context, endpoint string) {
 func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string) {
 	switch {
 	case endpoint == "/containers" && c.Request.Method == "GET":
-		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.List(c)
 	case endpoint == "/containers" && c.Request.Method == "POST":
-		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Create(c)
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/start"):
-		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Start(c)
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stop"):
-		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Stop(c)
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/restart"):
-		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Restart(c)
+	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/pull"):
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
+		containerHandler.PullImage(c)
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs"):
-		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.GetLogs(c)
 	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == "GET":
-		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.GetByID(c)
 	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == "DELETE":
-		containerHandler := NewContainerHandler(h.containerService)
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Delete(c)
 
 	case endpoint == "/images" && c.Request.Method == "GET":
@@ -468,10 +471,6 @@ func (h *EnvironmentHandler) GetStacks(c *gin.Context) {
 	h.routeRequest(c, "/stacks")
 }
 
-func (h *EnvironmentHandler) CreateContainer(c *gin.Context) {
-	h.routeRequest(c, "/containers")
-}
-
 func (h *EnvironmentHandler) CreateNetwork(c *gin.Context) {
 	h.routeRequest(c, "/networks")
 }
@@ -483,6 +482,8 @@ func (h *EnvironmentHandler) CreateVolume(c *gin.Context) {
 func (h *EnvironmentHandler) CreateStack(c *gin.Context) {
 	h.routeRequest(c, "/stacks")
 }
+
+//Containers
 
 func (h *EnvironmentHandler) GetContainer(c *gin.Context) {
 	containerID := c.Param("containerId")
@@ -499,6 +500,15 @@ func (h *EnvironmentHandler) StopContainer(c *gin.Context) {
 	h.routeRequest(c, "/containers/"+containerID+"/stop")
 }
 
+func (h *EnvironmentHandler) CreateContainer(c *gin.Context) {
+	h.routeRequest(c, "/containers")
+}
+
+func (h *EnvironmentHandler) PullContainerImage(c *gin.Context) {
+	containerID := c.Param("containerId")
+	h.routeRequest(c, "/containers/"+containerID+"/pull")
+}
+
 func (h *EnvironmentHandler) RestartContainer(c *gin.Context) {
 	containerID := c.Param("containerId")
 	h.routeRequest(c, "/containers/"+containerID+"/restart")
@@ -513,6 +523,10 @@ func (h *EnvironmentHandler) GetContainerLogs(c *gin.Context) {
 	containerID := c.Param("containerId")
 	h.routeRequest(c, "/containers/"+containerID+"/logs")
 }
+
+// End Containers
+
+//Images
 
 func (h *EnvironmentHandler) GetImage(c *gin.Context) {
 	imageID := c.Param("imageId")
@@ -531,6 +545,8 @@ func (h *EnvironmentHandler) PullImage(c *gin.Context) {
 func (h *EnvironmentHandler) PruneImages(c *gin.Context) {
 	h.routeRequest(c, "/images/prune")
 }
+
+//End Images
 
 func (h *EnvironmentHandler) GetNetwork(c *gin.Context) {
 	networkID := c.Param("networkId")

@@ -96,7 +96,6 @@
 	async function fetchLiveSystemStats() {
 		try {
 			const response = await systemAPI.getStats();
-			console.log('System stats response:', response); // Debug log
 
 			let stats: SystemStats | null = null;
 
@@ -113,7 +112,6 @@
 			if (stats) {
 				liveSystemStats = stats;
 				dashboardStates.systemStats = stats;
-				console.log('System stats updated:', stats); // Debug log
 			} else {
 				console.warn('Invalid system stats response format:', response);
 			}

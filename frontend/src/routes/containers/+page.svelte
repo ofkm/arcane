@@ -9,7 +9,6 @@
 	import CreateContainerSheet from '$lib/components/sheets/create-container-sheet.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { containerAPI } from '$lib/services/api';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { statusVariantMap } from '$lib/types/statuses';
@@ -22,7 +21,7 @@
 	import StatCard from '$lib/components/stat-card.svelte';
 	import { parseStatusTime } from '$lib/utils/string.utils';
 	import type { ContainerInfo } from 'dockerode';
-	import { autoUpdateAPI } from '$lib/services/api';
+	import { autoUpdateAPI, environmentAPI } from '$lib/services/api';
 
 	let { data }: { data: PageData & { containers: ContainerInfo[] } } = $props();
 	let containers = $state(data.containers);
@@ -34,7 +33,8 @@
 		stop: false,
 		restart: false,
 		remove: false,
-		checking: false
+		checking: false,
+		create: false
 	});
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 	const runningContainers = $derived(containers?.filter((c: ContainerInfo) => c.State === 'running').length || 0);
@@ -79,7 +79,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(containerAPI.remove(id)),
+						result: await tryCatch(environmentAPI.deleteContainer(id)),
 						message: 'Failed to Remove Container',
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
@@ -97,7 +97,7 @@
 
 		if (action === 'start') {
 			handleApiResultWithCallbacks({
-				result: await tryCatch(containerAPI.start(id)),
+				result: await tryCatch(environmentAPI.startContainer(id)),
 				message: 'Failed to Start Container',
 				setLoadingState: (value) => (isLoading.start = value),
 				async onSuccess() {
@@ -107,7 +107,7 @@
 			});
 		} else if (action === 'stop') {
 			handleApiResultWithCallbacks({
-				result: await tryCatch(containerAPI.stop(id)),
+				result: await tryCatch(environmentAPI.stopContainer(id)),
 				message: 'Failed to Stop Container',
 				setLoadingState: (value) => (isLoading.stop = value),
 				async onSuccess() {
@@ -117,7 +117,7 @@
 			});
 		} else if (action === 'restart') {
 			handleApiResultWithCallbacks({
-				result: await tryCatch(containerAPI.restart(id)),
+				result: await tryCatch(environmentAPI.restartContainer(id)),
 				message: 'Failed to Restart Container',
 				setLoadingState: (value) => (isLoading.restart = value),
 				async onSuccess() {
@@ -298,10 +298,19 @@
 		availableVolumes={Array.isArray(data.volumes) ? data.volumes : []}
 		availableNetworks={Array.isArray(data.networks) ? data.networks : []}
 		availableImages={Array.isArray(data.images) ? data.images : []}
-		onSubmit={async () => {
-			await invalidateAll();
-			isCreateDialogOpen = false;
+		isLoading={isLoading.create}
+		onSubmit={async (options) => {
+			isLoading.create = true;
+			handleApiResultWithCallbacks({
+				result: await tryCatch(environmentAPI.createContainer(options)),
+				message: 'Failed to Create Container',
+				setLoadingState: (value) => (isLoading.create = value),
+				onSuccess: async () => {
+					toast.success('Container Created Successfully.');
+					await invalidateAll();
+					isCreateDialogOpen = false;
+				}
+			});
 		}}
-		isLoading={false}
 	/>
 </div>

@@ -182,8 +182,10 @@ func setupEnvironmentRoutes(api *gin.RouterGroup, services *Services) {
 	environments.POST("/:id/test", environmentHandler.TestConnection)
 	environments.POST("/:id/heartbeat", environmentHandler.UpdateHeartbeat)
 
+	environments.POST("/:id/containers", environmentHandler.CreateContainer)
 	environments.GET("/:id/containers", environmentHandler.GetContainers)
 	environments.GET("/:id/containers/:containerId", environmentHandler.GetContainer)
+	environments.POST("/:id/containers/:containerId/pull", environmentHandler.PullContainerImage)
 	environments.POST("/:id/containers/:containerId/start", environmentHandler.StartContainer)
 	environments.POST("/:id/containers/:containerId/stop", environmentHandler.StopContainer)
 	environments.POST("/:id/containers/:containerId/restart", environmentHandler.RestartContainer)
@@ -304,7 +306,7 @@ func setupContainerRoutes(api *gin.RouterGroup, services *Services) {
 	containers := api.Group("/containers")
 	containers.Use(middleware.AuthMiddleware(services.Auth))
 
-	containerHandler := NewContainerHandler(services.Container)
+	containerHandler := NewContainerHandler(services.Container, services.Image)
 
 	containers.GET("", containerHandler.List)
 	containers.POST("", containerHandler.Create)

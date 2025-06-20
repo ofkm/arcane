@@ -1,7 +1,7 @@
 import BaseAPIService from './api-service';
 import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
-import type { NetworkCreateOptions, VolumeCreateOptions } from 'dockerode';
+import type { ContainerCreateOptions, NetworkCreateOptions, VolumeCreateOptions } from 'dockerode';
 import type { Stack, StackService, StackUpdate } from '$lib/types/docker/stack.type';
 
 import { browser } from '$app/environment';
@@ -27,6 +27,36 @@ export class EnvironmentAPIService extends BaseAPIService {
 	async getContainer(containerId: string): Promise<any> {
 		const envId = await this.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.get(`/environments/${envId}/containers/${containerId}`));
+	}
+
+	async startContainer(containerId: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/start`));
+	}
+
+	async createContainer(options: ContainerCreateOptions): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/containers`, options));
+	}
+
+	async stopContainer(containerId: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/stop`));
+	}
+
+	async restartContainer(containerId: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/restart`));
+	}
+
+	async deleteContainer(containerId: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.delete(`/environments/${envId}/containers/${containerId}`));
+	}
+
+	async pullContainerImage(containerId: string): Promise<Stack> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/pull`));
 	}
 
 	async getImages(): Promise<any[]> {

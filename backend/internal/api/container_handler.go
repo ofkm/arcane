@@ -15,12 +15,51 @@ import (
 
 type ContainerHandler struct {
 	containerService *services.ContainerService
+	imageService     *services.ImageService
 }
 
-func NewContainerHandler(containerService *services.ContainerService) *ContainerHandler {
+func NewContainerHandler(containerService *services.ContainerService, imageService *services.ImageService) *ContainerHandler {
 	return &ContainerHandler{
 		containerService: containerService,
+		imageService:     imageService,
 	}
+}
+
+func (h *ContainerHandler) PullImage(c *gin.Context) {
+	id := c.Param("id")
+
+	container, err := h.containerService.GetContainerByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "Container not found: " + err.Error(),
+		})
+		return
+	}
+
+	imageName := container.Image
+	if imageName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Container has no image to pull",
+		})
+		return
+	}
+
+	err = h.imageService.PullImage(c.Request.Context(), imageName, c.Writer)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to pull image: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Image pulled successfully",
+		"image":   imageName,
+	})
 }
 
 func (h *ContainerHandler) List(c *gin.Context) {
