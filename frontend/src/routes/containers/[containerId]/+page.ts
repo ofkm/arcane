@@ -7,13 +7,15 @@ export const load: PageLoad = async ({ params }) => {
 
 	try {
 		const container = await environmentAPI.getContainer(containerId);
+		const containerStats = await environmentAPI.getContainerStats(containerId);
 
 		if (!container) {
 			throw error(404, 'Container not found');
 		}
 
 		return {
-			container
+			container,
+			stats: containerStats
 		};
 	} catch (err: any) {
 		console.error('Failed to load container:', err);

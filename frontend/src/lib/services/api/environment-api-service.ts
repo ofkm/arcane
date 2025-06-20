@@ -39,6 +39,15 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/environments/${envId}/containers`, options));
 	}
 
+	async getContainerStats(containerId: string, stream: boolean = false) {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(
+			this.api.get(`/environments/${envId}/containers/${containerId}/stats`, {
+				params: { stream }
+			})
+		);
+	}
+
 	async stopContainer(containerId: string): Promise<any> {
 		const envId = await this.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/stop`));

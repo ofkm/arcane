@@ -317,7 +317,7 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 
 // GetStats returns container resource usage statistics
 func (h *ContainerHandler) GetStats(c *gin.Context) {
-	containerID := c.Param("id")
+	containerID := c.Param("containerId")
 	if containerID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

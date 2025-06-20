@@ -524,6 +524,16 @@ func (h *EnvironmentHandler) GetContainerLogs(c *gin.Context) {
 	h.routeRequest(c, "/containers/"+containerID+"/logs")
 }
 
+func (h *EnvironmentHandler) GetContainerStats(c *gin.Context) {
+	containerID := c.Param("containerId")
+	h.routeRequest(c, "/containers/"+containerID+"/stats")
+}
+
+func (h *EnvironmentHandler) GetContainerStatsStream(c *gin.Context) {
+	containerID := c.Param("containerId")
+	h.routeRequest(c, "/containers/"+containerID+"/stats/stream")
+}
+
 // End Containers
 
 //Images
