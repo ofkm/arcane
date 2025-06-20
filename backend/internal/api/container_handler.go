@@ -81,7 +81,7 @@ func (h *ContainerHandler) List(c *gin.Context) {
 }
 
 func (h *ContainerHandler) GetByID(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("containerId")
 
 	container, err := h.containerService.GetContainerByID(c.Request.Context(), id)
 	if err != nil {
