@@ -110,7 +110,7 @@ func (h *StackHandler) CreateStack(c *gin.Context) {
 }
 
 func (h *StackHandler) GetStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
 
 	stack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
 	if err != nil {

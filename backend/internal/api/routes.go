@@ -211,13 +211,21 @@ func setupEnvironmentRoutes(api *gin.RouterGroup, services *Services) {
 
 	environments.GET("/:id/stacks", environmentHandler.GetStacks)
 	environments.POST("/:id/stacks", environmentHandler.CreateStack)
-	environments.GET("/:id/stacks/:stackName", environmentHandler.GetStack)
-	environments.PUT("/:id/stacks/:stackName", environmentHandler.UpdateStack)
-	environments.DELETE("/:id/stacks/:stackName", environmentHandler.DeleteStack)
-	environments.POST("/:id/stacks/:stackName/start", environmentHandler.StartStack)
-	environments.POST("/:id/stacks/:stackName/stop", environmentHandler.StopStack)
-	environments.POST("/:id/stacks/:stackName/restart", environmentHandler.RestartStack)
-	environments.GET("/:id/stacks/:stackName/logs", environmentHandler.GetStackLogs)
+	environments.GET("/:id/stacks/:stackId", environmentHandler.GetStack)
+	environments.PUT("/:id/stacks/:stackId", environmentHandler.UpdateStack)
+	environments.DELETE("/:id/stacks/:stackId", environmentHandler.DeleteStack)
+	environments.POST("/:id/stacks/:stackId/start", environmentHandler.StartStack)
+	environments.POST("/:id/stacks/:stackId/deploy", environmentHandler.DeployStack)
+	environments.POST("/:id/stacks/:stackId/stop", environmentHandler.StopStack)
+	environments.POST("/:id/stacks/:stackId/restart", environmentHandler.RestartStack)
+	environments.GET("/:id/stacks/:stackId/services", environmentHandler.GetStackServices)
+	environments.POST("/:id/stacks/:stackId/pull", environmentHandler.PullStackImages)
+	environments.POST("/:id/stacks/:stackId/redeploy", environmentHandler.RedeployStack)
+	environments.POST("/:id/stacks/:stackId/down", environmentHandler.DownStack)
+	environments.DELETE("/:id/stacks/:stackId/destroy", environmentHandler.DestroyStack)
+	environments.GET("/:id/stacks/:stackId/logs/stream", environmentHandler.GetStackLogsStream)
+	environments.POST("/:id/stacks/convert", environmentHandler.ConvertDockerRun)
+
 }
 
 func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {

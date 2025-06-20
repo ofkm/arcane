@@ -1,13 +1,12 @@
-import { stackAPI } from '$lib/services/api';
+import { stackAPI, environmentAPI } from '$lib/services/api';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ params }) => {
 	try {
-		// Get the stack by ID
-		const response = await stackAPI.get(params.composeId);
+		const stackReponse = await environmentAPI.getStack(params.composeId);
 
 		// Extract stack from the API response
-		const stack = response.stack || response;
+		const stack = stackReponse;
 
 		if (!stack) {
 			return {

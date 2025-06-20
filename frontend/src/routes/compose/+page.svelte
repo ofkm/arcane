@@ -14,13 +14,12 @@
 	import { statusVariantMap } from '$lib/types/statuses';
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import type { StackActions } from '$lib/types/actions.type';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { tablePersistence } from '$lib/stores/table-store';
 	import { formatFriendlyDate } from '$lib/utils/date.utils';
-	import { autoUpdateAPI } from '$lib/services/api';
+	import { autoUpdateAPI, environmentAPI } from '$lib/services/api';
 
 	let { data }: { data: PageData } = $props();
 
@@ -37,8 +36,6 @@
 	});
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 
-	const stackApi = new StackAPIService();
-
 	const totalStacks = $derived(stacks.length);
 	const runningStacks = $derived(stacks.filter((s) => s.status === 'running').length);
 	const stoppedStacks = $derived(stacks.filter((s) => s.status === 'stopped').length);
@@ -49,7 +46,7 @@
 		try {
 			if (action === 'start') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(stackApi.deploy(id)),
+					result: await tryCatch(environmentAPI.startStack(id)),
 					message: 'Failed to Start Stack',
 					setLoadingState: (value) => (isLoading.start = value),
 					onSuccess: async () => {
@@ -59,7 +56,7 @@
 				});
 			} else if (action === 'stop') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(stackApi.down(id)),
+					result: await tryCatch(environmentAPI.downStack(id)),
 					message: 'Failed to Stop Stack',
 					setLoadingState: (value) => (isLoading.stop = value),
 					onSuccess: async () => {
@@ -69,7 +66,7 @@
 				});
 			} else if (action === 'restart') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(stackApi.restart(id)),
+					result: await tryCatch(environmentAPI.restartStack(id)),
 					message: 'Failed to Restart Stack',
 					setLoadingState: (value) => (isLoading.restart = value),
 					onSuccess: async () => {
@@ -79,7 +76,7 @@
 				});
 			} else if (action === 'pull') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(stackApi.pull(id)),
+					result: await tryCatch(environmentAPI.pullStackImages(id)),
 					message: 'Failed to pull Stack',
 					setLoadingState: (value) => (isLoading.pull = value),
 					onSuccess: async () => {
@@ -96,7 +93,7 @@
 						destructive: true,
 						action: async () => {
 							handleApiResultWithCallbacks({
-								result: await tryCatch(stackApi.destroy(id)),
+								result: await tryCatch(environmentAPI.destroyStack(id)),
 								message: 'Failed to Remove Stack',
 								setLoadingState: (value) => (isLoading.destroy = value),
 								onSuccess: async () => {

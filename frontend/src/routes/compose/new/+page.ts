@@ -1,17 +1,17 @@
-import { templateAPI, agentAPI } from '$lib/services/api';
+import { templateAPI, environmentManagementAPI } from '$lib/services/api';
 import { defaultComposeTemplate, defaultEnvTemplate } from '$lib/constants';
 import type { Template } from '$lib/types/template.type';
-import type { Agent } from '$lib/types/agent.type';
+import type { Environment } from '$lib/stores/environment.store';
 
 export interface PageProps {
 	composeTemplates: Template[];
 	envTemplate: string;
 	defaultTemplate: string;
-	agents: Agent[];
+	environments: Environment[];
 }
 
 export const load = async (): Promise<PageProps> => {
-	const [allTemplates, envTemplate] = await Promise.all([
+	const [allTemplates, envTemplate, environments] = await Promise.all([
 		templateAPI.loadAll().catch((err) => {
 			console.warn('Failed to load templates:', err);
 			return [];
@@ -19,6 +19,10 @@ export const load = async (): Promise<PageProps> => {
 		templateAPI.getEnvTemplate().catch((err) => {
 			console.warn('Failed to load env template:', err);
 			return defaultEnvTemplate;
+		}),
+		environmentManagementAPI.list().catch((err) => {
+			console.warn('Failed to load environments:', err);
+			return [];
 		})
 	]);
 
@@ -26,6 +30,6 @@ export const load = async (): Promise<PageProps> => {
 		composeTemplates: allTemplates,
 		envTemplate,
 		defaultTemplate: defaultComposeTemplate,
-		agents: []
+		environments
 	};
 };

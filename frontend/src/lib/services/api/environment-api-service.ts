@@ -2,6 +2,8 @@ import BaseAPIService from './api-service';
 import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
 import type { NetworkCreateOptions, VolumeCreateOptions } from 'dockerode';
+import type { Stack, StackService, StackUpdate } from '$lib/types/docker/stack.type';
+
 import { browser } from '$app/environment';
 
 export class EnvironmentAPIService extends BaseAPIService {
@@ -112,35 +114,39 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/environments/${envId}/execute`, { command, args }));
 	}
 
-	async getStacks(): Promise<any[]> {
+	async getStacks(): Promise<Stack[]> {
 		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ stacks?: any[] }>(this.api.get(`/environments/${envId}/stacks`));
+		const response = await this.handleResponse<{ stacks?: Stack[] }>(this.api.get(`/environments/${envId}/stacks`));
 		return Array.isArray(response.stacks) ? response.stacks : Array.isArray(response) ? response : [];
 	}
 
-	async getStack(stackName: string): Promise<any> {
+	async getStack(stackName: string): Promise<Stack> {
 		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}`));
+		const response = await this.handleResponse<{ stack?: Stack; success?: boolean }>(this.api.get(`/environments/${envId}/stacks/${stackName}`));
+
+		if (response.stack) {
+			return response.stack;
+		}
+
+		return response as Stack;
 	}
 
-	async deployStack(stackName: string, composeContent: string, envContent?: string): Promise<any> {
+	async deployStack(stackName: string, composeContent: string, envContent?: string): Promise<Stack> {
 		const envId = await this.getCurrentEnvironmentId();
 		const payload = {
 			name: stackName,
 			composeContent,
 			envContent
 		};
-
 		return this.handleResponse(this.api.post(`/environments/${envId}/stacks`, payload));
 	}
 
-	async updateStack(stackName: string, composeContent: string, envContent?: string): Promise<any> {
+	async updateStack(stackName: string, composeContent: string, envContent?: string): Promise<Stack> {
 		const envId = await this.getCurrentEnvironmentId();
 		const payload = {
 			composeContent,
 			envContent
 		};
-
 		return this.handleResponse(this.api.put(`/environments/${envId}/stacks/${stackName}`, payload));
 	}
 
@@ -149,25 +155,112 @@ export class EnvironmentAPIService extends BaseAPIService {
 		await this.handleResponse(this.api.delete(`/environments/${envId}/stacks/${stackName}`));
 	}
 
-	async startStack(stackName: string): Promise<any> {
+	async startStack(stackId: string): Promise<Stack> {
 		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackName}/start`));
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/start`));
 	}
 
-	async stopStack(stackName: string): Promise<any> {
+	async stopStack(stackId: string): Promise<Stack> {
 		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackName}/stop`));
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/stop`));
 	}
 
-	async restartStack(stackName: string): Promise<any> {
+	async restartStack(stackId: string): Promise<Stack> {
 		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackName}/restart`));
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/restart`));
 	}
 
-	async getStackLogs(stackName: string): Promise<string> {
+	async getStackLogs(stackId: string): Promise<string> {
 		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ logs?: string }>(this.api.get(`/environments/${envId}/stacks/${stackName}/logs`));
+		const response = await this.handleResponse<{ logs?: string }>(this.api.get(`/environments/${envId}/stacks/${stackId}/logs`));
 		return response.logs || '';
+	}
+
+	async deployStackWithOptions(stackId: string, options?: { profiles?: string[]; envOverrides?: Record<string, string> }): Promise<Stack> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/deploy`, options || {}));
+	}
+
+	async downStack(stackId: string): Promise<Stack> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/down`));
+	}
+
+	async redeployStack(stackId: string): Promise<Stack> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/redeploy`));
+	}
+
+	async pullStackImages(stackId: string): Promise<Stack> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/pull`));
+	}
+
+	async destroyStack(stackId: string, removeVolumes = false, removeFiles = false): Promise<void> {
+		const envId = await this.getCurrentEnvironmentId();
+		await this.handleResponse(
+			this.api.delete(`/environments/${envId}/stacks/${stackId}/destroy`, {
+				data: {
+					removeVolumes,
+					removeFiles
+				}
+			})
+		);
+	}
+
+	async getStackServices(stackName: string): Promise<StackService[]> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/services`));
+	}
+
+	async getStackProfiles(stackName: string): Promise<string[]> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/profiles`));
+	}
+
+	async getStackChanges(stackName: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/changes`));
+	}
+
+	async getStackStats(stackName: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/stats`));
+	}
+
+	async validateStack(stackName: string): Promise<{ valid: boolean; errors?: string[] }> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/validate`));
+	}
+
+	async convertDockerRun(command: string): Promise<{ composeContent: string }> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/convert`, { command }));
+	}
+
+	async discoverExternalStacks(): Promise<Stack[]> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/discover-external`));
+	}
+
+	async importStack(stackId: string, stackName?: string): Promise<Stack> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(
+			this.api.post(`/environments/${envId}/stacks/import`, {
+				stackId,
+				stackName
+			})
+		);
+	}
+
+	async migrateStack(stackName: string): Promise<Stack> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackName}/migrate`));
+	}
+
+	async getStackLogsStream(stackName: string): Promise<any> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/logs/stream`));
 	}
 
 	async pullImage(imageName: string): Promise<any> {

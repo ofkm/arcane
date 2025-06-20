@@ -1,12 +1,12 @@
-import { stackAPI } from '$lib/services/api';
+import { environmentAPI } from '$lib/services/api';
 
 export const load = async () => {
 	try {
 		// Load managed stacks
-		const response = await stackAPI.list();
+		const response = await environmentAPI.getStacks();
 
 		// Extract stacks from the API response structure
-		const stacks = response.stacks || [];
+		const stacks = response || [];
 
 		return {
 			stacks,

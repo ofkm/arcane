@@ -135,6 +135,9 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	case endpoint == "/stacks" && c.Request.Method == "POST":
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.CreateStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/deploy"):
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.DeployStack(c)
 	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/start"):
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.StartStack(c)
@@ -144,6 +147,27 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/restart"):
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.RestartStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/services"):
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.GetStackServices(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/pull"):
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.PullImages(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/redeploy"):
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.RedeployStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/down"):
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.DownStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/destroy"):
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.DestroyStack(c)
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/logs/stream"):
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.GetStackLogsStream(c)
+	case endpoint == "/stacks/convert" && c.Request.Method == "POST":
+		stackHandler := NewStackHandler(h.stackService)
+		stackHandler.ConvertDockerRun(c)
 	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == "GET":
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.GetStack(c)
@@ -533,40 +557,79 @@ func (h *EnvironmentHandler) PruneVolumes(c *gin.Context) {
 }
 
 func (h *EnvironmentHandler) GetStack(c *gin.Context) {
-	stackName := c.Param("stackName")
-	h.routeRequest(c, "/stacks/"+stackName)
-}
-
-func (h *EnvironmentHandler) UpdateStack(c *gin.Context) {
-	stackName := c.Param("stackName")
-	h.routeRequest(c, "/stacks/"+stackName)
-}
-
-func (h *EnvironmentHandler) DeleteStack(c *gin.Context) {
-	stackName := c.Param("stackName")
-	h.routeRequest(c, "/stacks/"+stackName)
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId)
 }
 
 func (h *EnvironmentHandler) StartStack(c *gin.Context) {
-	stackName := c.Param("stackName")
-	h.routeRequest(c, "/stacks/"+stackName+"/start")
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/start")
+}
+
+func (h *EnvironmentHandler) UpdateStack(c *gin.Context) {
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId)
+}
+
+func (h *EnvironmentHandler) DeleteStack(c *gin.Context) {
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId)
 }
 
 func (h *EnvironmentHandler) StopStack(c *gin.Context) {
-	stackName := c.Param("stackName")
-	h.routeRequest(c, "/stacks/"+stackName+"/stop")
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/stop")
 }
 
 func (h *EnvironmentHandler) RestartStack(c *gin.Context) {
-	stackName := c.Param("stackName")
-	h.routeRequest(c, "/stacks/"+stackName+"/restart")
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/restart")
 }
 
 func (h *EnvironmentHandler) GetStackLogs(c *gin.Context) {
-	stackName := c.Param("stackName")
-	h.routeRequest(c, "/stacks/"+stackName+"/logs")
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/logs")
 }
 
 func (h *EnvironmentHandler) GetVolumeUsage(c *gin.Context) {
 	h.routeRequest(c, "/volumes/"+c.Param("volumeName")+"/usage")
+}
+
+func (h *EnvironmentHandler) DeployStack(c *gin.Context) {
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/deploy")
+}
+
+func (h *EnvironmentHandler) GetStackServices(c *gin.Context) {
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/services")
+}
+
+func (h *EnvironmentHandler) PullStackImages(c *gin.Context) {
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/pull")
+}
+
+func (h *EnvironmentHandler) RedeployStack(c *gin.Context) {
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/redeploy")
+}
+
+func (h *EnvironmentHandler) DownStack(c *gin.Context) {
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/down")
+}
+
+func (h *EnvironmentHandler) DestroyStack(c *gin.Context) {
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/destroy")
+}
+
+func (h *EnvironmentHandler) GetStackLogsStream(c *gin.Context) {
+	stackId := c.Param("stackId")
+	h.routeRequest(c, "/stacks/"+stackId+"/logs/stream")
+}
+
+func (h *EnvironmentHandler) ConvertDockerRun(c *gin.Context) {
+	h.routeRequest(c, "/stacks/convert")
 }

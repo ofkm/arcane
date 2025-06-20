@@ -3,7 +3,7 @@
 	import type { Stack, StackService, StackPort } from '$lib/types/docker/stack.type';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, RefreshCw, Terminal, Settings, Activity, FileText, Play, Square, RotateCcw, Trash2 } from '@lucide/svelte';
+	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, RefreshCw, Terminal, Settings, Activity } from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -16,12 +16,10 @@
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
 	import EnvEditor from '$lib/components/env-editor.svelte';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import StackAPIService from '$lib/services/api/stack-api-service';
+	import { environmentAPI } from '$lib/services/api';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import LogViewer from '$lib/components/LogViewer.svelte';
-
-	const stackApi = new StackAPIService();
 
 	let { data }: { data: PageData } = $props();
 	let { stack, editorState, servicePorts, settings } = $derived(data);
@@ -68,7 +66,7 @@
 		const currentStackId = stack.id;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(stackApi.save(currentStackId, name, composeContent, envContent)),
+			result: await tryCatch(environmentAPI.updateStack(currentStackId, composeContent, envContent)),
 			message: 'Failed to Save Compose Project',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Stack) => {

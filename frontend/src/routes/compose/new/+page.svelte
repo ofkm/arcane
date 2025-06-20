@@ -1,14 +1,13 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, FileStack, Terminal, Copy, Loader2, Wand, Send } from '@lucide/svelte';
+	import { ArrowLeft, FileStack, Terminal, Copy, Loader2, Wand } from '@lucide/svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import YamlEditor from '$lib/components/yaml-editor.svelte';
-	import StackAPIService from '$lib/services/api/stack-api-service';
 	import { preventDefault } from '$lib/utils/form.utils';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -19,112 +18,36 @@
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
 	import * as Resizable from '$lib/components/ui/resizable/index.js';
 	import TemplateSelectionDialog from '$lib/components/template-selection-dialog.svelte';
-	import * as DropdownButton from '$lib/components/ui/dropdown-button/index.js';
-	import { converterAPI } from '$lib/services/api';
+	import { environmentAPI } from '$lib/services/api';
 	import type { Template } from '$lib/types/template.type';
 	import type { PageProps } from './+page';
 
 	let { data }: { data: PageProps } = $props();
 
-	const stackApi = new StackAPIService();
 	let saving = $state(false);
 	let converting = $state(false);
 	let showTemplateDialog = $state(false);
-	let selectedAgentId = $state('');
 
 	let name = $state('');
 	let composeContent = $state(data.defaultTemplate || defaultComposeTemplate);
 	let envContent = $state(data.envTemplate || defaultEnvTemplate);
 	let dockerRunCommand = $state('');
 
-	const onlineAgents = $derived(data.agents || []);
-
-	const agentOptions = $derived(
-		onlineAgents.map((agent) => ({
-			id: agent.id,
-			label: `${agent.hostname} (${agent.platform})`,
-			disabled: false
-		}))
-	);
-
-	const selectedAgent = $derived(onlineAgents.find((agent) => agent.id === selectedAgentId));
-
 	async function handleSubmit() {
-		if (selectedAgentId) {
-			await handleDeployToAgent();
-		} else {
-			await handleCreateStack();
-		}
+		await handleCreateStack();
 	}
 
 	async function handleCreateStack() {
 		handleApiResultWithCallbacks({
-			result: await tryCatch(
-				stackApi.create({
-					name: name,
-					composeContent: composeContent,
-					envContent: envContent,
-					agentId: undefined
-				})
-			),
+			result: await tryCatch(environmentAPI.deployStack(name, composeContent, envContent)),
 			message: 'Failed to Create Stack',
 			setLoadingState: (value) => (saving = value),
-			onSuccess: async (data) => {
+			onSuccess: async (stack) => {
 				toast.success(`Stack "${name}" created successfully.`);
 				await invalidateAll();
-				// Use the returned stack ID instead of name for navigation
-				goto(`/compose/${data.stack?.name}`);
+				goto(`/compose/${stack.name}`);
 			}
 		});
-	}
-
-	async function handleDeployToAgent() {
-		if (!selectedAgentId) {
-			toast.error('Please select an agent for deployment');
-			return;
-		}
-
-		const agent = onlineAgents.find((agent) => agent.id === selectedAgentId);
-		if (!agent) {
-			toast.error('Selected agent not found or offline');
-			return;
-		}
-
-		saving = true;
-		try {
-			const response = await fetch(`/api/agents/${selectedAgentId}/deploy/stack`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					stackName: name,
-					composeContent,
-					envContent,
-					mode: 'compose'
-				})
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.error || `Failed to deploy Compose Project: ${response.statusText}`);
-			}
-
-			const result = await response.json();
-			toast.success(`Compose Project "${name}" deployed to agent ${agent.hostname}!`);
-			goto(`/agents/${selectedAgentId}`);
-		} catch (error) {
-			console.error('Deploy error:', error);
-			toast.error(error instanceof Error ? error.message : 'Failed to deploy Compose Project');
-		} finally {
-			saving = false;
-		}
-	}
-
-	function handleDeployButtonClick() {
-		handleSubmit();
-	}
-
-	function handleAgentSelect(option: { id: string; label: string }) {
-		selectedAgentId = option.id;
 	}
 
 	async function handleConvertDockerRun() {
@@ -134,18 +57,17 @@
 		}
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(converterAPI.convert(dockerRunCommand)),
+			result: await tryCatch(environmentAPI.convertDockerRun(dockerRunCommand)),
 			message: 'Failed to Convert Docker Run Command',
 			setLoadingState: (value) => (converting = value),
 			onSuccess: (data) => {
-				const { dockerCompose, envVars, serviceName } = data;
+				composeContent = data.composeContent;
 
-				composeContent = dockerCompose;
-				if (envVars) {
-					envContent = envVars;
-				}
-				if (serviceName && !name) {
-					name = serviceName;
+				if (!name.trim() && dockerRunCommand.includes('--name ')) {
+					const nameMatch = dockerRunCommand.match(/--name\s+(\S+)/);
+					if (nameMatch) {
+						name = nameMatch[1];
+					}
 				}
 
 				toast.success('Docker run command converted successfully!');
@@ -251,40 +173,7 @@
 					</div>
 					<div class="flex items-center gap-2">
 						<ArcaneButton action="template" onClick={() => (showTemplateDialog = true)} loading={saving} disabled={saving || converting} />
-
-						{#if onlineAgents.length > 0}
-							<DropdownButton.DropdownRoot>
-								<DropdownButton.Root>
-									<DropdownButton.Main variant="default" disabled={!name || !composeContent || saving} onclick={handleDeployButtonClick}>
-										{#if saving}
-											<Loader2 class="mr-2 size-4 animate-spin" />
-										{:else}
-											<Send class="mr-2 size-4" />
-										{/if}
-										{selectedAgent ? `Deploy to ${selectedAgent.hostname}` : 'Deploy Locally'}
-									</DropdownButton.Main>
-
-									<DropdownButton.DropdownTrigger>
-										<DropdownButton.Trigger variant="default" disabled={!name || !composeContent || saving} />
-									</DropdownButton.DropdownTrigger>
-								</DropdownButton.Root>
-
-								<DropdownButton.Content align="end" class="min-w-[200px]">
-									<DropdownButton.Item onclick={() => handleAgentSelect({ id: '', label: 'Deploy Locally' })}>Deploy Locally</DropdownButton.Item>
-
-									{#if agentOptions.length > 0}
-										<DropdownButton.Separator />
-										{#each agentOptions as option}
-											<DropdownButton.Item onclick={() => handleAgentSelect(option)}>
-												{option.label}
-											</DropdownButton.Item>
-										{/each}
-									{/if}
-								</DropdownButton.Content>
-							</DropdownButton.DropdownRoot>
-						{:else}
-							<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
-						{/if}
+						<ArcaneButton action="create" onClick={handleSubmit} loading={saving} disabled={!name || !composeContent} />
 					</div>
 				</div>
 			</Card.Header>
