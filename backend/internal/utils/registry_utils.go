@@ -80,7 +80,7 @@ func getDockerHubToken(ctx context.Context, repo string, creds *RegistryCredenti
 	authURL := fmt.Sprintf("https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull", normalizedRepo)
 
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, "GET", authURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, authURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create auth request: %w", err)
 	}
@@ -201,7 +201,7 @@ type RegistryTestResult struct {
 }
 
 func testPing(ctx context.Context, client *http.Client, registryURL string, creds *RegistryCredentials) error {
-	req, err := http.NewRequestWithContext(ctx, "GET", registryURL+"/", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, registryURL+"/", nil)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func testAuth(ctx context.Context, client *http.Client, registryURL string, cred
 		return nil // Skip auth test if no credentials
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", registryURL+"/_catalog?n=1", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, registryURL+"/_catalog?n=1", nil)
 	if err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func testAuth(ctx context.Context, client *http.Client, registryURL string, cred
 }
 
 func testCatalog(ctx context.Context, client *http.Client, registryURL string, creds *RegistryCredentials) error {
-	req, err := http.NewRequestWithContext(ctx, "GET", registryURL+"/_catalog?n=5", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, registryURL+"/_catalog?n=5", nil)
 	if err != nil {
 		return err
 	}

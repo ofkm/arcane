@@ -518,7 +518,7 @@ func (s *ImageMaturityService) getDockerHubManifest(ctx context.Context, repo, t
 	manifestURL := fmt.Sprintf("https://registry-1.docker.io/v2/%s/manifests/%s", normalizedRepo, tag)
 
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, "GET", manifestURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, manifestURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manifest request: %w", err)
 	}
@@ -567,7 +567,7 @@ func (s *ImageMaturityService) getGenericRegistryManifest(ctx context.Context, r
 	manifestURL := fmt.Sprintf("%s/%s/manifests/%s", registryURL, repo, tag)
 
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, "GET", manifestURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, manifestURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manifest request: %w", err)
 	}
@@ -617,7 +617,7 @@ func (s *ImageMaturityService) getDockerHubTags(ctx context.Context, repo, token
 	tagsURL := fmt.Sprintf("https://registry-1.docker.io/v2/%s/tags/list", normalizedRepo)
 
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, "GET", tagsURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, tagsURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tags request: %w", err)
 	}
@@ -649,7 +649,7 @@ func (s *ImageMaturityService) getGenericRegistryTags(ctx context.Context, regis
 	tagsURL := fmt.Sprintf("%s/%s/tags/list", registryURL, normalizedRepo)
 
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, "GET", tagsURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, tagsURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tags request: %w", err)
 	}
