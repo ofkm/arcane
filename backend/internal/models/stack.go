@@ -53,9 +53,6 @@ type Stack struct {
 	IsLegacy     bool        `json:"is_legacy"`
 	IsRemote     bool        `json:"is_remote"`
 
-	AgentID *string `json:"agent_id,omitempty" gorm:"index"`
-	Agent   *Agent  `json:"agent,omitempty" gorm:"foreignKey:AgentID"`
-
 	BaseModel
 }
 

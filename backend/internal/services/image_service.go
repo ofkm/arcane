@@ -317,7 +317,6 @@ func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []
 			RepoTags:    models.StringSlice(di.RepoTags),
 			RepoDigests: models.StringSlice(di.RepoDigests),
 			Size:        di.Size,
-			VirtualSize: di.VirtualSize,
 			Created:     time.Unix(di.Created, 0),
 			InUse:       isInUse,
 		}
@@ -476,7 +475,6 @@ func (s *ImageService) GetImagesWithMaturity(ctx context.Context) ([]map[string]
 			"RepoDigests": img.RepoDigests,
 			"Created":     img.Created,
 			"Size":        img.Size,
-			"VirtualSize": img.VirtualSize,
 			"SharedSize":  img.SharedSize,
 			"Labels":      img.Labels,
 			"Containers":  img.Containers,

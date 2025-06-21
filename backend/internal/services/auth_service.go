@@ -94,8 +94,6 @@ func NewAuthService(userService *UserService, settingsService *SettingsService, 
 	}
 }
 
-// SyncOidcEnvToDatabase updates the OIDC settings in the database from environment variables
-// if PUBLIC_OIDC_ENABLED is true.
 func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
 	if !s.config.PublicOidcEnabled {
 		return errors.New("OIDC sync called but PUBLIC_OIDC_ENABLED is false")
@@ -106,10 +104,8 @@ func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
 		return fmt.Errorf("failed to get settings for OIDC sync: %w", err)
 	}
 
-	// settings.Auth is already a models.JSON (map[string]interface{})
 	var currentAuthMap map[string]interface{}
-	if settings.Auth != nil && len(settings.Auth) > 0 {
-		// settings.Auth is already a map[string]interface{}, no need to marshal/unmarshal
+	if len(settings.Auth) > 0 {
 		currentAuthMap = make(map[string]interface{})
 		for k, v := range settings.Auth {
 			currentAuthMap[k] = v
@@ -118,7 +114,6 @@ func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
 		currentAuthMap = make(map[string]interface{})
 	}
 
-	// Prepare OIDC config from environment variables
 	envOidcConfig := models.OidcConfig{
 		ClientID:              s.config.OidcClientID,
 		ClientSecret:          s.config.OidcClientSecret,
@@ -129,7 +124,6 @@ func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
 		Scopes:                s.config.OidcScopes,
 	}
 
-	// Convert struct to map for consistency
 	oidcConfigBytes, err := json.Marshal(envOidcConfig)
 	if err != nil {
 		return fmt.Errorf("failed to marshal OIDC config from env: %w", err)
@@ -158,8 +152,6 @@ func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
 	return nil
 }
 
-// getAuthSettings retrieves and parses auth settings from the settings service.
-// The database is now the single source of truth for OIDC config values after initial sync.
 func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error) {
 	dbSettings, err := s.settingsService.GetSettings(ctx)
 	if err != nil {
@@ -167,8 +159,7 @@ func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error
 	}
 
 	var effectiveAuthSettings AuthSettings
-	if dbSettings.Auth != nil && len(dbSettings.Auth) > 0 {
-		// dbSettings.Auth is already a map[string]interface{}, just marshal and unmarshal to struct
+	if len(dbSettings.Auth) > 0 {
 		authBytes, err := json.Marshal(dbSettings.Auth)
 		if err != nil {
 			log.Printf("Error marshalling auth settings from DB: %v. DB Auth: %v", err, dbSettings.Auth)
@@ -180,11 +171,10 @@ func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error
 		}
 	} else {
 		log.Println("Auth settings not found or empty in DB, returning default auth settings.")
-		// Provide comprehensive defaults if Auth settings are missing
 		return &AuthSettings{
 			LocalAuthEnabled: true,
 			OidcEnabled:      false,
-			SessionTimeout:   60, // Default session timeout
+			SessionTimeout:   60,
 			Oidc:             nil,
 		}, nil
 	}
@@ -196,7 +186,6 @@ func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error
 	return &effectiveAuthSettings, nil
 }
 
-// GetOidcConfigurationStatus returns detailed status about OIDC configuration sources.
 func (s *AuthService) GetOidcConfigurationStatus(ctx context.Context) (*OidcStatusInfo, error) {
 	status := &OidcStatusInfo{}
 

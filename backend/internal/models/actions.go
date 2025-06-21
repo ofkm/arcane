@@ -43,7 +43,6 @@ type LoadingStates struct {
 	Validating *bool `json:"validating,omitempty"`
 }
 
-// PruneResult represents the result of a Docker prune operation
 type PruneResult struct {
 	ContainersDeleted []string `json:"containersDeleted,omitempty"`
 	ImagesDeleted     []any    `json:"imagesDeleted,omitempty"`

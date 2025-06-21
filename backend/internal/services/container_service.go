@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
@@ -54,7 +53,7 @@ func (s *ContainerService) PullContainerImage(ctx context.Context, containerID s
 	return err
 }
 
-func (s *ContainerService) ListContainers(ctx context.Context, includeAll bool) ([]types.Container, error) {
+func (s *ContainerService) ListContainers(ctx context.Context, includeAll bool) ([]container.Summary, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
@@ -127,7 +126,7 @@ func (s *ContainerService) GetContainerLogs(ctx context.Context, containerID str
 	return string(logBytes), nil
 }
 
-func (s *ContainerService) GetContainerByID(ctx context.Context, id string) (*types.ContainerJSON, error) {
+func (s *ContainerService) GetContainerByID(ctx context.Context, id string) (*container.InspectResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
@@ -192,7 +191,7 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, containerID stri
 	return nil
 }
 
-func (s *ContainerService) CreateContainer(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (*types.ContainerJSON, error) {
+func (s *ContainerService) CreateContainer(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (*container.InspectResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)

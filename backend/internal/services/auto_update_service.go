@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
@@ -199,8 +198,7 @@ func (s *AutoUpdateService) CheckAndUpdateContainers(ctx context.Context) (*Upda
 	return result, nil
 }
 
-// recreateStandaloneContainer recreates a standalone container preserving its configuration
-func (s *AutoUpdateService) recreateStandaloneContainer(ctx context.Context, container types.Container) error {
+func (s *AutoUpdateService) recreateStandaloneContainer(ctx context.Context, container container.Summary) error {
 	containerName := s.getContainerName(container)
 
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
@@ -513,7 +511,7 @@ func (s *AutoUpdateService) consumeDockerResponse(reader io.ReadCloser) error {
 }
 
 // checkContainerForUpdate checks if a container has an image update available
-func (s *AutoUpdateService) checkContainerForUpdate(ctx context.Context, container types.Container, settings *models.Settings) (bool, error) {
+func (s *AutoUpdateService) checkContainerForUpdate(ctx context.Context, container container.Summary, settings *models.Settings) (bool, error) {
 	containerName := s.getContainerName(container)
 
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
@@ -830,7 +828,7 @@ func (s *AutoUpdateService) getImageID(ctx context.Context, imageRef string) (st
 }
 
 // getContainerName gets a friendly name for a container
-func (s *AutoUpdateService) getContainerName(container types.Container) string {
+func (s *AutoUpdateService) getContainerName(container container.Summary) string {
 	if len(container.Names) > 0 {
 		name := container.Names[0]
 		if strings.HasPrefix(name, "/") {
