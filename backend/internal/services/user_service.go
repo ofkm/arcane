@@ -2,11 +2,9 @@ package services
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -130,21 +128,6 @@ func (s *UserService) CreateDefaultAdmin() error {
 	log.Printf("⚠️  Please change this password after first login!")
 
 	return nil
-}
-
-func (s *UserService) generateRandomPassword(length int) (string, error) {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
-	password := make([]byte, length)
-
-	for i := range password {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
-		if err != nil {
-			return "", err
-		}
-		password[i] = charset[num.Int64()]
-	}
-
-	return string(password), nil
 }
 
 func (s *UserService) ListUsers(ctx context.Context) ([]models.User, error) {

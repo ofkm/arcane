@@ -32,7 +32,7 @@ func setupRouter(cfg *config.Config, appServices *api.Services) *gin.Engine {
 
 	api.SetupRoutes(router, appServices, cfg)
 	if err := frontend.RegisterFrontend(router); err != nil {
-		gin.DefaultErrorWriter.Write([]byte("Failed to register frontend: " + err.Error() + "\n"))
+		_, _ = gin.DefaultErrorWriter.Write([]byte("Failed to register frontend: " + err.Error() + "\n"))
 	}
 
 	return router

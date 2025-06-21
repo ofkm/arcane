@@ -55,143 +55,192 @@ func (h *EnvironmentHandler) routeRequest(c *gin.Context, endpoint string) {
 }
 
 func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string) {
+	if h.handleContainerEndpoints(c, endpoint) {
+		return
+	}
+	if h.handleImageEndpoints(c, endpoint) {
+		return
+	}
+	if h.handleNetworkEndpoints(c, endpoint) {
+		return
+	}
+	if h.handleVolumeEndpoints(c, endpoint) {
+		return
+	}
+	if h.handleStackEndpoints(c, endpoint) {
+		return
+	}
+
+	c.JSON(http.StatusNotFound, gin.H{
+		"success": false,
+		"error":   "Endpoint not found",
+	})
+}
+
+func (h *EnvironmentHandler) handleContainerEndpoints(c *gin.Context, endpoint string) bool {
+	containerHandler := NewContainerHandler(h.containerService, h.imageService)
+
 	switch {
 	case endpoint == "/containers" && c.Request.Method == http.MethodGet:
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.List(c)
+		return true
 	case endpoint == "/containers" && c.Request.Method == http.MethodPost:
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Create(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/start"):
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Start(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stop"):
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Stop(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/restart"):
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Restart(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/pull"):
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.PullImage(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs"):
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.GetLogs(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stats/stream"):
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.GetStatsStream(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stats"):
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.GetStats(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == http.MethodGet:
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.GetByID(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == http.MethodDelete:
-		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Delete(c)
-
-	case endpoint == "/images" && c.Request.Method == http.MethodGet:
-		imageHandler := NewImageHandler(h.imageService, nil)
-		imageHandler.List(c)
-	case endpoint == "/images/pull" && c.Request.Method == http.MethodPost:
-		imageHandler := NewImageHandler(h.imageService, nil)
-		imageHandler.Pull(c)
-	case endpoint == "/images/prune" && c.Request.Method == http.MethodPost:
-		imageHandler := NewImageHandler(h.imageService, nil)
-		imageHandler.Prune(c)
-	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == http.MethodGet:
-		imageHandler := NewImageHandler(h.imageService, nil)
-		imageHandler.GetByID(c)
-	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == http.MethodDelete:
-		imageHandler := NewImageHandler(h.imageService, nil)
-		imageHandler.Remove(c)
-
-	case endpoint == "/networks" && c.Request.Method == http.MethodGet:
-		networkHandler := NewNetworkHandler(h.networkService)
-		networkHandler.List(c)
-	case endpoint == "/networks" && c.Request.Method == http.MethodPost:
-		networkHandler := NewNetworkHandler(h.networkService)
-		networkHandler.Create(c)
-	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == http.MethodGet:
-		networkHandler := NewNetworkHandler(h.networkService)
-		networkHandler.GetByID(c)
-	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == http.MethodDelete:
-		networkHandler := NewNetworkHandler(h.networkService)
-		networkHandler.Remove(c)
-
-	case endpoint == "/volumes" && c.Request.Method == http.MethodGet:
-		volumeHandler := NewVolumeHandler(h.volumeService)
-		volumeHandler.List(c)
-	case endpoint == "/volumes" && c.Request.Method == http.MethodPost:
-		volumeHandler := NewVolumeHandler(h.volumeService)
-		volumeHandler.Create(c)
-	case endpoint == "/volumes/prune" && c.Request.Method == http.MethodPost:
-		volumeHandler := NewVolumeHandler(h.volumeService)
-		volumeHandler.Prune(c)
-	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == http.MethodGet:
-		volumeHandler := NewVolumeHandler(h.volumeService)
-		volumeHandler.GetByName(c)
-	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == http.MethodDelete:
-		volumeHandler := NewVolumeHandler(h.volumeService)
-		volumeHandler.Remove(c)
-	case strings.HasPrefix(endpoint, "/volumes/") && strings.HasSuffix(endpoint, "/usage"):
-		volumeHandler := NewVolumeHandler(h.volumeService)
-		volumeHandler.GetUsage(c)
-
-	case endpoint == "/stacks" && c.Request.Method == http.MethodGet:
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.ListStacks(c)
-	case endpoint == "/stacks" && c.Request.Method == http.MethodPost:
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.CreateStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/deploy"):
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.DeployStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/start"):
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.StartStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/stop"):
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.StopStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/restart"):
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.RestartStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/services"):
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.GetStackServices(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/pull"):
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.PullImages(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/redeploy"):
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.RedeployStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/down"):
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.DownStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/destroy"):
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.DestroyStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/logs/stream"):
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.GetStackLogsStream(c)
-	case endpoint == "/stacks/convert" && c.Request.Method == http.MethodPost:
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.ConvertDockerRun(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodGet:
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.GetStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodPut:
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.UpdateStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodDelete:
-		stackHandler := NewStackHandler(h.stackService)
-		stackHandler.DeleteStack(c)
-	default:
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Endpoint not found",
-		})
+		return true
 	}
+	return false
+}
+
+func (h *EnvironmentHandler) handleImageEndpoints(c *gin.Context, endpoint string) bool {
+	imageHandler := NewImageHandler(h.imageService, nil)
+
+	switch {
+	case endpoint == "/images" && c.Request.Method == http.MethodGet:
+		imageHandler.List(c)
+		return true
+	case endpoint == "/images/pull" && c.Request.Method == http.MethodPost:
+		imageHandler.Pull(c)
+		return true
+	case endpoint == "/images/prune" && c.Request.Method == http.MethodPost:
+		imageHandler.Prune(c)
+		return true
+	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == http.MethodGet:
+		imageHandler.GetByID(c)
+		return true
+	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == http.MethodDelete:
+		imageHandler.Remove(c)
+		return true
+	}
+	return false
+}
+
+func (h *EnvironmentHandler) handleNetworkEndpoints(c *gin.Context, endpoint string) bool {
+	networkHandler := NewNetworkHandler(h.networkService)
+
+	switch {
+	case endpoint == "/networks" && c.Request.Method == http.MethodGet:
+		networkHandler.List(c)
+		return true
+	case endpoint == "/networks" && c.Request.Method == http.MethodPost:
+		networkHandler.Create(c)
+		return true
+	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == http.MethodGet:
+		networkHandler.GetByID(c)
+		return true
+	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == http.MethodDelete:
+		networkHandler.Remove(c)
+		return true
+	}
+	return false
+}
+
+func (h *EnvironmentHandler) handleVolumeEndpoints(c *gin.Context, endpoint string) bool {
+	volumeHandler := NewVolumeHandler(h.volumeService)
+
+	switch {
+	case endpoint == "/volumes" && c.Request.Method == http.MethodGet:
+		volumeHandler.List(c)
+		return true
+	case endpoint == "/volumes" && c.Request.Method == http.MethodPost:
+		volumeHandler.Create(c)
+		return true
+	case endpoint == "/volumes/prune" && c.Request.Method == http.MethodPost:
+		volumeHandler.Prune(c)
+		return true
+	case strings.HasPrefix(endpoint, "/volumes/") && strings.HasSuffix(endpoint, "/usage"):
+		volumeHandler.GetUsage(c)
+		return true
+	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == http.MethodGet:
+		volumeHandler.GetByName(c)
+		return true
+	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == http.MethodDelete:
+		volumeHandler.Remove(c)
+		return true
+	}
+	return false
+}
+
+func (h *EnvironmentHandler) handleStackEndpoints(c *gin.Context, endpoint string) bool {
+	stackHandler := NewStackHandler(h.stackService)
+
+	switch {
+	case endpoint == "/stacks" && c.Request.Method == http.MethodGet:
+		stackHandler.ListStacks(c)
+		return true
+	case endpoint == "/stacks" && c.Request.Method == http.MethodPost:
+		stackHandler.CreateStack(c)
+		return true
+	case endpoint == "/stacks/convert" && c.Request.Method == http.MethodPost:
+		stackHandler.ConvertDockerRun(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/deploy"):
+		stackHandler.DeployStack(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/start"):
+		stackHandler.StartStack(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/stop"):
+		stackHandler.StopStack(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/restart"):
+		stackHandler.RestartStack(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/services"):
+		stackHandler.GetStackServices(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/pull"):
+		stackHandler.PullImages(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/redeploy"):
+		stackHandler.RedeployStack(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/down"):
+		stackHandler.DownStack(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/destroy"):
+		stackHandler.DestroyStack(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/logs/stream"):
+		stackHandler.GetStackLogsStream(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodGet:
+		stackHandler.GetStack(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodPut:
+		stackHandler.UpdateStack(c)
+		return true
+	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodDelete:
+		stackHandler.DeleteStack(c)
+		return true
+	}
+	return false
 }
 
 func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID string, endpoint string) {
@@ -223,7 +272,7 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 		}
 	}
 
-	req, err := http.NewRequest(c.Request.Method, url, reqBody)
+	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, url, reqBody)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -271,7 +320,7 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 
 	resp, err := client.Do(req)
 	if err != nil {
-		h.environmentService.UpdateEnvironmentStatus(c.Request.Context(), environmentID, "offline")
+		_ = h.environmentService.UpdateEnvironmentStatus(c.Request.Context(), environmentID, "offline")
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"success": false,
 			"error":   fmt.Sprintf("Failed to connect to environment: %v", err),
@@ -280,7 +329,7 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 	}
 	defer resp.Body.Close()
 
-	h.environmentService.UpdateEnvironmentHeartbeat(c.Request.Context(), environmentID)
+	_ = h.environmentService.UpdateEnvironmentHeartbeat(c.Request.Context(), environmentID)
 
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -298,7 +347,7 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 	}
 
 	c.Status(resp.StatusCode)
-	c.Writer.Write(responseBody)
+	_, _ = c.Writer.Write(responseBody)
 }
 
 func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
@@ -512,7 +561,7 @@ func (h *EnvironmentHandler) CreateStack(c *gin.Context) {
 	h.routeRequest(c, "/stacks")
 }
 
-//Containers
+// Containers
 
 func (h *EnvironmentHandler) GetContainer(c *gin.Context) {
 	containerID := c.Param("containerId")
@@ -565,7 +614,7 @@ func (h *EnvironmentHandler) GetContainerStatsStream(c *gin.Context) {
 
 // End Containers
 
-//Images
+// Images
 
 func (h *EnvironmentHandler) GetImage(c *gin.Context) {
 	imageID := c.Param("imageId")
@@ -585,7 +634,7 @@ func (h *EnvironmentHandler) PruneImages(c *gin.Context) {
 	h.routeRequest(c, "/images/prune")
 }
 
-//End Images
+// End Images
 
 func (h *EnvironmentHandler) GetNetwork(c *gin.Context) {
 	networkID := c.Param("networkId")

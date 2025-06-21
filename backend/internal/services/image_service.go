@@ -295,92 +295,115 @@ func (s *ImageService) GetImageHistory(ctx context.Context, id string) ([]image.
 }
 
 func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []image.Summary, dockerClient *client.Client) error {
+	inUseImageIDs := s.getInUseImageIDs(ctx, dockerClient)
+	currentDockerImageIDs := make([]string, 0, len(dockerImages))
+	var lastErr error
+
+	for _, di := range dockerImages {
+		currentDockerImageIDs = append(currentDockerImageIDs, di.ID)
+		if err := s.syncSingleImage(ctx, di, inUseImageIDs); err != nil {
+			fmt.Printf("Error syncing image %s to database: %v\n", di.ID, err)
+			lastErr = err
+		}
+	}
+
+	if err := s.cleanupStaleImages(ctx, currentDockerImageIDs); err != nil {
+		lastErr = err
+	}
+
+	return lastErr
+}
+
+func (s *ImageService) getInUseImageIDs(ctx context.Context, dockerClient *client.Client) map[string]bool {
 	inUseImageIDs := make(map[string]bool)
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		fmt.Printf("Error listing containers for InUse check: %v. InUse status may be inaccurate.\n", err)
-	} else {
-		for _, cont := range containers {
-			inUseImageIDs[cont.ImageID] = true
-		}
+		return inUseImageIDs
 	}
 
-	var lastErr error
-	currentDockerImageIDs := make([]string, 0, len(dockerImages))
+	for _, cont := range containers {
+		inUseImageIDs[cont.ImageID] = true
+	}
+	return inUseImageIDs
+}
 
-	for _, di := range dockerImages {
-		currentDockerImageIDs = append(currentDockerImageIDs, di.ID)
-		_, isInUse := inUseImageIDs[di.ID]
+func (s *ImageService) syncSingleImage(ctx context.Context, di image.Summary, inUseImageIDs map[string]bool) error {
+	_, isInUse := inUseImageIDs[di.ID]
 
-		imageModel := models.Image{
-			ID:          di.ID,
-			RepoTags:    models.StringSlice(di.RepoTags),
-			RepoDigests: models.StringSlice(di.RepoDigests),
-			Size:        di.Size,
-			Created:     time.Unix(di.Created, 0),
-			InUse:       isInUse,
+	imageModel := s.buildImageModel(di, isInUse)
+
+	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"repo_tags", "repo_digests", "size", "virtual_size", "created", "labels", "repo", "tag", "in_use"}),
+	}).Create(&imageModel).Error
+}
+
+func (s *ImageService) buildImageModel(di image.Summary, isInUse bool) models.Image {
+	imageModel := models.Image{
+		ID:          di.ID,
+		RepoTags:    models.StringSlice(di.RepoTags),
+		RepoDigests: models.StringSlice(di.RepoDigests),
+		Size:        di.Size,
+		Created:     time.Unix(di.Created, 0),
+		InUse:       isInUse,
+	}
+
+	if di.Labels != nil {
+		labelsJSON := make(map[string]interface{})
+		for k, v := range di.Labels {
+			labelsJSON[k] = v
 		}
+		imageModel.Labels = models.JSON(labelsJSON)
+	}
 
-		if di.Labels != nil {
-			labelsJSON := make(map[string]interface{})
-			for k, v := range di.Labels {
-				labelsJSON[k] = v
-			}
-			imageModel.Labels = models.JSON(labelsJSON)
-		}
+	s.setRepoAndTag(&imageModel, di.RepoTags)
+	return imageModel
+}
 
-		if len(di.RepoTags) > 0 && di.RepoTags[0] != "" {
-			repoTag := di.RepoTags[0]
-			if strings.Contains(repoTag, ":") {
-				parts := strings.SplitN(repoTag, ":", 2)
-				imageModel.Repo = parts[0]
-				imageModel.Tag = parts[1]
-			} else {
-				imageModel.Repo = repoTag
-				imageModel.Tag = "latest"
-			}
+func (s *ImageService) setRepoAndTag(imageModel *models.Image, repoTags []string) {
+	if len(repoTags) > 0 && repoTags[0] != "" {
+		repoTag := repoTags[0]
+		if strings.Contains(repoTag, ":") {
+			parts := strings.SplitN(repoTag, ":", 2)
+			imageModel.Repo = parts[0]
+			imageModel.Tag = parts[1]
 		} else {
-			imageModel.Repo = "<none>"
-			imageModel.Tag = "<none>"
+			imageModel.Repo = repoTag
+			imageModel.Tag = "latest"
 		}
-
-		dbErr := s.db.WithContext(ctx).Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "id"}},
-			DoUpdates: clause.AssignmentColumns([]string{"repo_tags", "repo_digests", "size", "virtual_size", "created", "labels", "repo", "tag", "in_use"}),
-		}).Create(&imageModel).Error
-
-		if dbErr != nil {
-			fmt.Printf("Error syncing image %s to database: %v\n", di.ID, dbErr)
-			lastErr = dbErr
-		}
+	} else {
+		imageModel.Repo = "<none>"
+		imageModel.Tag = "<none>"
 	}
+}
 
+func (s *ImageService) cleanupStaleImages(ctx context.Context, currentDockerImageIDs []string) error {
 	if len(currentDockerImageIDs) > 0 {
-		deleteResult := s.db.WithContext(ctx).Where("id NOT IN ?", currentDockerImageIDs).Delete(&models.Image{})
-		if deleteResult.Error != nil {
-			errMsg := fmt.Sprintf("Error deleting stale images from database: %v", deleteResult.Error)
-			fmt.Println(errMsg)
-			if lastErr == nil {
-				lastErr = deleteResult.Error
-			}
-		} else {
-			fmt.Printf("%d stale image records deleted from database.\n", deleteResult.RowsAffected)
-		}
-	} else {
-		fmt.Println("No images found in Docker daemon, attempting to delete all image records from database.")
-		deleteAllResult := s.db.WithContext(ctx).Delete(&models.Image{}, "1 = 1")
-		if deleteAllResult.Error != nil {
-			errMsg := fmt.Sprintf("Error deleting all image records from database when Docker is empty: %v", deleteAllResult.Error)
-			fmt.Println(errMsg)
-			if lastErr == nil {
-				lastErr = deleteAllResult.Error
-			}
-		} else {
-			fmt.Printf("All (%d) image records deleted from database as Docker reported no images.\n", deleteAllResult.RowsAffected)
-		}
+		return s.deleteStaleImages(ctx, currentDockerImageIDs)
 	}
+	return s.deleteAllImages(ctx)
+}
 
-	return lastErr
+func (s *ImageService) deleteStaleImages(ctx context.Context, currentDockerImageIDs []string) error {
+	deleteResult := s.db.WithContext(ctx).Where("id NOT IN ?", currentDockerImageIDs).Delete(&models.Image{})
+	if deleteResult.Error != nil {
+		fmt.Printf("Error deleting stale images from database: %v\n", deleteResult.Error)
+		return deleteResult.Error
+	}
+	fmt.Printf("%d stale image records deleted from database.\n", deleteResult.RowsAffected)
+	return nil
+}
+
+func (s *ImageService) deleteAllImages(ctx context.Context) error {
+	fmt.Println("No images found in Docker daemon, attempting to delete all image records from database.")
+	deleteAllResult := s.db.WithContext(ctx).Delete(&models.Image{}, "1 = 1")
+	if deleteAllResult.Error != nil {
+		fmt.Printf("Error deleting all image records from database when Docker is empty: %v\n", deleteAllResult.Error)
+		return deleteAllResult.Error
+	}
+	fmt.Printf("All (%d) image records deleted from database as Docker reported no images.\n", deleteAllResult.RowsAffected)
+	return nil
 }
 
 func (s *ImageService) GetImageByIDFromDB(ctx context.Context, id string) (*models.Image, error) {

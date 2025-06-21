@@ -185,12 +185,12 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 
 	composeFile := s.findComposeFile(stack.Path)
 	if composeFile == "" {
-		return []StackServiceInfo{}, nil
+		return nil, fmt.Errorf("no compose file found for stack")
 	}
 
 	servicesFromFile, err := s.parseServicesFromComposeFile(ctx, composeFile, stack.Name)
 	if err != nil {
-		return []StackServiceInfo{}, nil
+		return nil, fmt.Errorf("failed to parse services from compose file: %w", err)
 	}
 
 	return servicesFromFile, nil
@@ -384,7 +384,7 @@ func (s *StackService) UpdateStackContent(ctx context.Context, stackID string, c
 			composePath = filepath.Join(stack.Path, "compose.yaml")
 		}
 
-		if err := os.WriteFile(composePath, []byte(*composeContent), 0644); err != nil {
+		if err := os.WriteFile(composePath, []byte(*composeContent), 0600); err != nil {
 			return fmt.Errorf("failed to update compose file: %w", err)
 		}
 	}
@@ -394,7 +394,7 @@ func (s *StackService) UpdateStackContent(ctx context.Context, stackID string, c
 		if *envContent == "" {
 			os.Remove(envPath)
 		} else {
-			if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
+			if err := os.WriteFile(envPath, []byte(*envContent), 0600); err != nil {
 				return fmt.Errorf("failed to update env file: %w", err)
 			}
 		}
@@ -495,14 +495,12 @@ func (s *StackService) RedeployStack(ctx context.Context, stackID string, profil
 }
 
 func (s *StackService) DiscoverExternalStacks(ctx context.Context) ([]models.Stack, error) {
-	// This would use docker commands to find compose projects not in our database
-	// For now, return empty slice - implement based on your requirements
+	// TODO
 	return []models.Stack{}, nil
 }
 
 func (s *StackService) ImportExternalStack(ctx context.Context, stackID, stackName string) (*models.Stack, error) {
-	// Implementation would depend on how you want to handle external stack import
-	// For now, return error indicating not implemented
+	// TODO
 	return nil, fmt.Errorf("external stack import not implemented yet")
 }
 
@@ -513,8 +511,8 @@ func (s *StackService) ValidateStackCompose(ctx context.Context, composeContent 
 	}
 	defer os.RemoveAll(tempDir)
 
-	composePath := filepath.Join(tempDir, "docker-compose.yml")
-	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil {
+	composePath := filepath.Join(tempDir, "compose.yaml")
+	if err := os.WriteFile(composePath, []byte(composeContent), 0600); err != nil {
 		return fmt.Errorf("failed to write compose file: %w", err)
 	}
 
@@ -625,14 +623,14 @@ func (s *StackService) StreamStackLogs(ctx context.Context, stackID string, logs
 	select {
 	case <-ctx.Done():
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 		}
 		return ctx.Err()
 	case err := <-done:
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 		}
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return err
 		}
 		return nil
@@ -757,13 +755,13 @@ func (s *StackService) saveStackFiles(stackPath, composeContent string, envConte
 		composePath = filepath.Join(stackPath, "compose.yaml")
 	}
 
-	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil {
+	if err := os.WriteFile(composePath, []byte(composeContent), 0600); err != nil {
 		return fmt.Errorf("failed to save compose file: %w", err)
 	}
 
 	if envContent != nil && *envContent != "" {
 		envPath := filepath.Join(stackPath, ".env")
-		if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
+		if err := os.WriteFile(envPath, []byte(*envContent), 0600); err != nil {
 			return fmt.Errorf("failed to save env file: %w", err)
 		}
 	}

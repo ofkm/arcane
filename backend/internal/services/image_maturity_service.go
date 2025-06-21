@@ -74,7 +74,7 @@ func (s *ImageMaturityService) SetImageMaturity(ctx context.Context, imageID, re
 	existing, err := s.GetImageMaturity(ctx, imageID)
 	if err == nil {
 		record.CheckCount = existing.CheckCount + 1
-		record.BaseModel.CreatedAt = existing.BaseModel.CreatedAt
+		record.CreatedAt = existing.CreatedAt
 	}
 
 	if err := s.db.WithContext(ctx).Save(record).Error; err != nil {
@@ -256,7 +256,7 @@ func (s *ImageMaturityService) ProcessImagesForMaturityCheck(ctx context.Context
 		maturityData, err := s.CheckImageInRegistry(ctx, repo, tag, img.ID)
 		if err != nil {
 			errMsg := err.Error()
-			s.UpdateCheckStatus(ctx, img.ID, models.ImageStatusError, &errMsg)
+			_ = s.UpdateCheckStatus(ctx, img.ID, models.ImageStatusError, &errMsg)
 			continue
 		}
 
@@ -308,8 +308,8 @@ func (s *ImageMaturityService) CheckImageInRegistry(ctx context.Context, repo, t
 
 func (s *ImageMaturityService) checkAgainstSameTagOnly(ctx context.Context, registryURL, repo, tag, token string, localManifest *RegistryManifest) (*models.ImageMaturity, error) {
 	hasTagUpdates := s.hasTagUpdates(ctx, registryURL, repo, tag, token, localManifest)
-	status := models.ImageStatusUnknown
 	imageAge := time.Since(localManifest.CreatedAt)
+	var status string
 	if imageAge > 30*24*time.Hour {
 		status = models.ImageStatusMatured
 	} else {

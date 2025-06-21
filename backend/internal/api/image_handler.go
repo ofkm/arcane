@@ -57,24 +57,22 @@ func (h *ImageHandler) List(c *gin.Context) {
 				"version":          img.MaturityRecord.CurrentVersion,
 				"date":             img.MaturityRecord.CurrentImageDate,
 			}
-		} else {
-			if len(img.RepoTags) > 0 && img.RepoTags[0] != "<none>:<none>" && img.Repo != "<none>" && h.imageMaturityService != nil {
-				go func(imageID string, repo string, tag string, createdTime time.Time) {
-					maturityData, checkErr := h.imageMaturityService.CheckImageInRegistry(context.Background(), repo, tag, imageID)
-					if checkErr == nil {
-						setErr := h.imageMaturityService.SetImageMaturity(context.Background(), imageID, repo, tag, *maturityData, map[string]interface{}{
-							"registryDomain":    utils.ExtractRegistryDomain(repo),
-							"isPrivateRegistry": utils.IsPrivateRegistry(repo),
-							"currentImageDate":  createdTime,
-						})
-						if setErr != nil {
-							fmt.Printf("Error setting image maturity for %s: %v\n", imageID, setErr)
-						}
-					} else {
-						fmt.Printf("Error checking image maturity for %s (%s:%s): %v\n", imageID, repo, tag, checkErr)
+		} else if len(img.RepoTags) > 0 && img.RepoTags[0] != "<none>:<none>" && img.Repo != "<none>" && h.imageMaturityService != nil {
+			go func(imageID string, repo string, tag string, createdTime time.Time) {
+				maturityData, checkErr := h.imageMaturityService.CheckImageInRegistry(context.Background(), repo, tag, imageID)
+				if checkErr == nil {
+					setErr := h.imageMaturityService.SetImageMaturity(context.Background(), imageID, repo, tag, *maturityData, map[string]interface{}{
+						"registryDomain":    utils.ExtractRegistryDomain(repo),
+						"isPrivateRegistry": utils.IsPrivateRegistry(repo),
+						"currentImageDate":  createdTime,
+					})
+					if setErr != nil {
+						fmt.Printf("Error setting image maturity for %s: %v\n", imageID, setErr)
 					}
-				}(img.ID, img.Repo, img.Tag, img.Created)
-			}
+				} else {
+					fmt.Printf("Error checking image maturity for %s (%s:%s): %v\n", imageID, repo, tag, checkErr)
+				}
+			}(img.ID, img.Repo, img.Tag, img.Created)
 		}
 		result = append(result, imageData)
 	}
@@ -279,12 +277,17 @@ func (h *ImageHandler) CheckMaturity(c *gin.Context) {
 		return
 	}
 
-	err = h.imageMaturityService.SetImageMaturity(c.Request.Context(), imageID, repo, tag, *maturityData, map[string]interface{}{
+	errSet := h.imageMaturityService.SetImageMaturity(c.Request.Context(), imageID, repo, tag, *maturityData, map[string]interface{}{
 		"registryDomain":    utils.ExtractRegistryDomain(repo),
 		"isPrivateRegistry": utils.IsPrivateRegistry(repo),
 		"currentImageDate":  time.Unix(targetImage.Created, 0),
 	})
-	if err != nil {
+	if errSet != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to set image maturity: " + errSet.Error(),
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{

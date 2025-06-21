@@ -79,19 +79,24 @@ func (s *EnvironmentService) TestConnection(ctx context.Context, id string) (str
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(environment.ApiUrl + "/health")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, environment.ApiUrl+"/health", nil)
 	if err != nil {
-		s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusOffline))
+		_ = s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusOffline))
+		return "offline", fmt.Errorf("failed to create request: %w", err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		_ = s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusOffline))
 		return "offline", fmt.Errorf("connection failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusOnline))
+		_ = s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusOnline))
 		return "online", nil
 	}
 
-	s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusError))
+	_ = s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusError))
 	return "error", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 }
 

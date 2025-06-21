@@ -89,7 +89,7 @@ type Image struct {
 	BaseModel
 }
 
-func (Image) TableName() string {
+func (i *Image) TableName() string {
 	return "images_table"
 }
 

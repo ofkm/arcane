@@ -153,7 +153,7 @@ func (s *OidcService) exchangeCodeForTokens(ctx context.Context, config *models.
 	data.Set("client_secret", config.ClientSecret)
 	data.Set("code_verifier", codeVerifier)
 
-	req, err := http.NewRequestWithContext(ctx, "POST", config.TokenEndpoint, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, config.TokenEndpoint, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func (s *OidcService) exchangeCodeForTokens(ctx context.Context, config *models.
 
 // getUserInfo retrieves user information from the userinfo endpoint
 func (s *OidcService) getUserInfo(ctx context.Context, config *models.OidcConfig, accessToken string) (*OidcUserInfo, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", config.UserinfoEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, config.UserinfoEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}

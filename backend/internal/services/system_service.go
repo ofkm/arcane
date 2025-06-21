@@ -46,7 +46,7 @@ type PruneAllResult struct {
 	ImagesDeleted    []string `json:"imagesDeleted,omitempty"`
 	VolumesDeleted   []string `json:"volumesDeleted,omitempty"`
 	NetworksDeleted  []string `json:"networksDeleted,omitempty"`
-	SpaceReclaimed   int64    `json:"spaceReclaimed"`
+	SpaceReclaimed   uint64   `json:"spaceReclaimed"`
 	Success          bool     `json:"success"`
 	Errors           []string `json:"errors,omitempty"`
 }
@@ -126,7 +126,7 @@ func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*
 		slog.Int("images_deleted", len(result.ImagesDeleted)),
 		slog.Int("volumes_deleted", len(result.VolumesDeleted)),
 		slog.Int("networks_deleted", len(result.NetworksDeleted)),
-		slog.Int64("space_reclaimed", result.SpaceReclaimed),
+		slog.Uint64("space_reclaimed", result.SpaceReclaimed),
 		slog.Int("error_count", len(result.Errors)))
 
 	return result, nil
@@ -246,7 +246,7 @@ func (s *SystemService) pruneContainers(ctx context.Context, result *PruneAllRes
 	}
 
 	result.ContainersPruned = report.ContainersDeleted
-	result.SpaceReclaimed += int64(report.SpaceReclaimed)
+	result.SpaceReclaimed += report.SpaceReclaimed
 	return nil
 }
 
@@ -296,7 +296,7 @@ func (s *SystemService) pruneImages(ctx context.Context, danglingOnly bool, resu
 			}
 		}
 	}
-	result.SpaceReclaimed += int64(report.SpaceReclaimed)
+	result.SpaceReclaimed += report.SpaceReclaimed
 	return nil
 }
 
@@ -325,7 +325,7 @@ func (s *SystemService) pruneBuildCache(ctx context.Context, result *PruneAllRes
 		slog.Int("cache_entries_deleted", len(report.CachesDeleted)),
 		slog.Uint64("bytes_reclaimed", report.SpaceReclaimed))
 
-	result.SpaceReclaimed += int64(report.SpaceReclaimed)
+	result.SpaceReclaimed += report.SpaceReclaimed
 	return nil
 }
 
@@ -336,7 +336,7 @@ func (s *SystemService) pruneVolumes(ctx context.Context, result *PruneAllResult
 	}
 
 	result.VolumesDeleted = report.VolumesDeleted
-	result.SpaceReclaimed += int64(report.SpaceReclaimed)
+	result.SpaceReclaimed += report.SpaceReclaimed
 	return nil
 }
 
@@ -413,7 +413,7 @@ func (s *SystemService) PruneSystem(ctx context.Context, all bool) (*PruneAllRes
 		slog.Int("images_deleted", len(result.ImagesDeleted)),
 		slog.Int("volumes_deleted", len(result.VolumesDeleted)),
 		slog.Int("networks_deleted", len(result.NetworksDeleted)),
-		slog.Int64("space_reclaimed", result.SpaceReclaimed),
+		slog.Uint64("space_reclaimed", result.SpaceReclaimed),
 		slog.Int("error_count", len(result.Errors)))
 
 	return result, nil

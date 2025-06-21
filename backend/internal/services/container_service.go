@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -218,7 +219,7 @@ func (s *ContainerService) CreateContainer(ctx context.Context, config *containe
 	}
 
 	if err := dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		dockerClient.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+		_ = dockerClient.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
 
@@ -334,8 +335,7 @@ func (s *ContainerService) streamMultiplexedLogs(ctx context.Context, logs io.Re
 		defer stdoutWriter.Close()
 		defer stderrWriter.Close()
 		_, err := stdcopy.StdCopy(stdoutWriter, stderrWriter, logs)
-		if err != nil && err != io.EOF {
-			// Log error but don't stop the stream
+		if err != nil && !errors.Is(err, io.EOF) {
 			fmt.Printf("Error demultiplexing logs: %v\n", err)
 		}
 	}()
@@ -358,7 +358,7 @@ func (s *ContainerService) streamMultiplexedLogs(ctx context.Context, logs io.Re
 	case <-ctx.Done():
 		return ctx.Err()
 	case err := <-done:
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return err
 		}
 		// Wait for the other goroutine or context cancellation
@@ -406,7 +406,7 @@ func (s *ContainerService) readAllLogs(logs io.ReadCloser, logsChan chan<- strin
 	stderrBuf := &strings.Builder{}
 
 	_, err := stdcopy.StdCopy(stdoutBuf, stderrBuf, logs)
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("failed to demultiplex logs: %w", err)
 	}
 

@@ -16,11 +16,11 @@ type BaseModel struct {
 // JSON type for handling JSON columns
 type JSON map[string]interface{}
 
-func (j JSON) Value() (driver.Value, error) {
-	if j == nil {
+func (j *JSON) Value() (driver.Value, error) {
+	if *j == nil {
 		return nil, nil
 	}
-	return json.Marshal(j)
+	return json.Marshal(*j)
 }
 
 func (j *JSON) Scan(value interface{}) error {
@@ -45,11 +45,11 @@ func (j *JSON) Scan(value interface{}) error {
 // StringSlice for handling []string columns
 type StringSlice []string
 
-func (s StringSlice) Value() (driver.Value, error) {
-	if s == nil {
+func (s *StringSlice) Value() (driver.Value, error) {
+	if *s == nil {
 		return nil, nil
 	}
-	return json.Marshal(s)
+	return json.Marshal(*s)
 }
 
 func (s *StringSlice) Scan(value interface{}) error {

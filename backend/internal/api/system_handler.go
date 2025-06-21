@@ -251,7 +251,7 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 		slog.Int("images_deleted", len(result.ImagesDeleted)),
 		slog.Int("volumes_deleted", len(result.VolumesDeleted)),
 		slog.Int("networks_deleted", len(result.NetworksDeleted)),
-		slog.Int64("space_reclaimed", result.SpaceReclaimed),
+		slog.Uint64("space_reclaimed", result.SpaceReclaimed),
 		slog.Bool("success", result.Success),
 		slog.Int("error_count", len(result.Errors)))
 

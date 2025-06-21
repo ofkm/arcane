@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -70,7 +71,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Check if local auth is enabled
 	localAuthEnabled, err := h.authService.IsLocalAuthEnabled(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, LoginResponse{
@@ -88,11 +88,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Authenticate user
 	user, tokenPair, err := h.authService.Login(c.Request.Context(), req.Username, req.Password)
 
 	// Handle password change required
-	if err == services.ErrPasswordChangeRequired && user != nil {
+	if errors.Is(err, services.ErrPasswordChangeRequired) && user != nil {
 		c.JSON(http.StatusOK, LoginResponse{
 			Success:               true,
 			RequirePasswordChange: true,
@@ -112,11 +111,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		var statusCode int
 		var errorMsg string
 
-		switch err {
-		case services.ErrInvalidCredentials:
+		switch {
+		case errors.Is(err, services.ErrInvalidCredentials):
 			statusCode = http.StatusUnauthorized
 			errorMsg = "Invalid username or password"
-		case services.ErrLocalAuthDisabled:
+		case errors.Is(err, services.ErrLocalAuthDisabled):
 			statusCode = http.StatusBadRequest
 			errorMsg = "Local authentication is disabled"
 		default:
@@ -222,8 +221,8 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		var statusCode int
 		var errorMsg string
 
-		switch err {
-		case services.ErrInvalidToken, services.ErrExpiredToken:
+		switch {
+		case errors.Is(err, services.ErrInvalidToken), errors.Is(err, services.ErrExpiredToken):
 			statusCode = http.StatusUnauthorized
 			errorMsg = "Invalid or expired refresh token"
 		default:
@@ -296,8 +295,8 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		var statusCode int
 		var errorMsg string
 
-		switch err {
-		case services.ErrInvalidCredentials:
+		switch {
+		case errors.Is(err, services.ErrInvalidCredentials):
 			statusCode = http.StatusUnauthorized
 			errorMsg = "Current password is incorrect"
 		default:

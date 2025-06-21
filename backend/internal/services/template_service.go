@@ -76,7 +76,7 @@ func (s *TemplateService) UpdateTemplate(ctx context.Context, id string, updates
 	var existing models.ComposeTemplate
 	err := s.db.WithContext(ctx).Where("id = ?", id).First(&existing).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("template not found")
 		}
 		return fmt.Errorf("failed to find template: %w", err)
@@ -122,7 +122,7 @@ func (s *TemplateService) SaveEnvTemplate(content string) error {
 	}
 
 	envPath := filepath.Join(templateDir, ".env.template")
-	if err := os.WriteFile(envPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(envPath, []byte(content), 0600); err != nil {
 		return fmt.Errorf("failed to save env template: %w", err)
 	}
 

@@ -440,7 +440,7 @@ func (h *TemplateHandler) FetchRegistry(c *gin.Context) {
 		Timeout: 30 * time.Second,
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, url, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

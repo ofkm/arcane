@@ -77,7 +77,9 @@ func InitializeApp() (*App, error) {
 		log.Println("Initial Docker image synchronization complete.")
 	}
 
-	appServices.User.CreateDefaultAdmin()
+	if err := appServices.User.CreateDefaultAdmin(); err != nil {
+		log.Printf("Warning: failed to create default admin user: %v", err)
+	}
 
 	if cfg.PublicOidcEnabled {
 		if err := appServices.Auth.SyncOidcEnvToDatabase(context.Background()); err != nil {
@@ -136,7 +138,7 @@ func (app *App) Start() {
 	defer cancelShutdown()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		log.Printf("Server forced to shutdown: %v", err)
 	}
 
 	log.Println("Server exiting")

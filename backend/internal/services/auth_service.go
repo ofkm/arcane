@@ -399,7 +399,7 @@ func (s *AuthService) OidcLogin(ctx context.Context, userInfo OidcUserInfo) (*mo
 
 	user, err := s.userService.GetUserByOidcSubjectId(ctx, userInfo.Subject)
 
-	if err != nil && err != ErrUserNotFound {
+	if err != nil && !errors.Is(err, ErrUserNotFound) {
 		return nil, nil, err
 	}
 

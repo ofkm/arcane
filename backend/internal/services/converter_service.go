@@ -21,7 +21,6 @@ func (s *ConverterService) ParseDockerRunCommand(command string) (*models.Docker
 		return nil, fmt.Errorf("docker run command must be a non-empty string")
 	}
 
-	// Remove 'docker run' from the beginning
 	cmd := strings.TrimSpace(command)
 	cmd = regexp.MustCompile(`^docker\s+run\s+`).ReplaceAllString(cmd, "")
 
@@ -39,171 +38,8 @@ func (s *ConverterService) ParseDockerRunCommand(command string) (*models.Docker
 		return nil, fmt.Errorf("no valid tokens found in docker run command")
 	}
 
-	for i := 0; i < len(tokens); i++ {
-		token := tokens[i]
-
-		switch token {
-		case "-d", "--detach":
-			result.Detached = true
-		case "-i", "--interactive":
-			result.Interactive = true
-		case "-t", "--tty":
-			result.TTY = true
-		case "--rm":
-			result.Remove = true
-		case "--privileged":
-			result.Privileged = true
-		case "--name":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for --name flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for --name flag")
-			}
-			result.Name = tokens[i]
-		case "-p", "--port", "--publish":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for port flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for port flag")
-			}
-			result.Ports = append(result.Ports, tokens[i])
-		case "-v", "--volume":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for volume flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for volume flag")
-			}
-			result.Volumes = append(result.Volumes, tokens[i])
-		case "-e", "--env":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for environment flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for environment flag")
-			}
-			result.Environment = append(result.Environment, tokens[i])
-		case "--network":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for --network flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for --network flag")
-			}
-			result.Networks = append(result.Networks, tokens[i])
-		case "--restart":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for --restart flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for --restart flag")
-			}
-			result.Restart = tokens[i]
-		case "-w", "--workdir":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for workdir flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for workdir flag")
-			}
-			result.Workdir = tokens[i]
-		case "-u", "--user":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for user flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for user flag")
-			}
-			result.User = tokens[i]
-		case "--entrypoint":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for --entrypoint flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for --entrypoint flag")
-			}
-			result.Entrypoint = tokens[i]
-		case "--health-cmd":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for --health-cmd flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for --health-cmd flag")
-			}
-			result.HealthCheck = tokens[i]
-		case "-m", "--memory":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for memory flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for memory flag")
-			}
-			result.MemoryLimit = tokens[i]
-		case "--cpus":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for --cpus flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for --cpus flag")
-			}
-			result.CPULimit = tokens[i]
-		case "--label":
-			if i+1 >= len(tokens) {
-				return nil, fmt.Errorf("missing value for --label flag")
-			}
-			i++
-			if tokens[i] == "" || strings.HasPrefix(tokens[i], "-") {
-				return nil, fmt.Errorf("invalid value for --label flag")
-			}
-			result.Labels = append(result.Labels, tokens[i])
-		default:
-			if strings.HasPrefix(token, "-") {
-				// Handle combined short flags like -dit
-				if strings.HasPrefix(token, "-") && !strings.HasPrefix(token, "--") && len(token) > 2 {
-					flags := strings.Split(token[1:], "")
-					for _, flag := range flags {
-						switch flag {
-						case "d":
-							result.Detached = true
-						case "i":
-							result.Interactive = true
-						case "t":
-							result.TTY = true
-						}
-					}
-				} else if i+1 < len(tokens) && !strings.HasPrefix(tokens[i+1], "-") && result.Image == "" {
-					// Unknown flag - skip it and potential value
-					i++
-				}
-			} else {
-				// Token doesn't start with '-', it's either image or command
-				if result.Image == "" {
-					if token == "" {
-						return nil, fmt.Errorf("image name cannot be empty")
-					}
-					result.Image = token
-				} else {
-					// Everything from this point forward is part of the command
-					remainingTokens := tokens[i:]
-					result.Command = strings.Join(remainingTokens, " ")
-					break
-				}
-			}
-		}
+	if err := s.parseTokens(tokens, result); err != nil {
+		return nil, err
 	}
 
 	if result.Image == "" {
@@ -211,6 +47,142 @@ func (s *ConverterService) ParseDockerRunCommand(command string) (*models.Docker
 	}
 
 	return result, nil
+}
+
+func (s *ConverterService) parseTokens(tokens []string, result *models.DockerRunCommand) error {
+	for i := 0; i < len(tokens); i++ {
+		token := tokens[i]
+
+		if strings.HasPrefix(token, "-") {
+			advance, err := s.parseFlag(token, tokens, i, result)
+			if err != nil {
+				return err
+			}
+			i += advance
+		} else {
+			if result.Image == "" {
+				if token == "" {
+					return fmt.Errorf("image name cannot be empty")
+				}
+				result.Image = token
+			} else {
+				remainingTokens := tokens[i:]
+				result.Command = strings.Join(remainingTokens, " ")
+				break
+			}
+		}
+	}
+	return nil
+}
+
+func (s *ConverterService) parseFlag(token string, tokens []string, index int, result *models.DockerRunCommand) (int, error) {
+	switch token {
+	case "-d", "--detach":
+		result.Detached = true
+		return 0, nil
+	case "-i", "--interactive":
+		result.Interactive = true
+		return 0, nil
+	case "-t", "--tty":
+		result.TTY = true
+		return 0, nil
+	case "--rm":
+		result.Remove = true
+		return 0, nil
+	case "--privileged":
+		result.Privileged = true
+		return 0, nil
+	default:
+		return s.parseFlagWithValue(token, tokens, index, result)
+	}
+}
+
+func (s *ConverterService) parseFlagWithValue(token string, tokens []string, index int, result *models.DockerRunCommand) (int, error) {
+	switch token {
+	case "--name":
+		return s.parseStringFlag(token, tokens, index, &result.Name)
+	case "-p", "--port", "--publish":
+		return s.parseSliceFlag(token, tokens, index, &result.Ports)
+	case "-v", "--volume":
+		return s.parseSliceFlag(token, tokens, index, &result.Volumes)
+	case "-e", "--env":
+		return s.parseSliceFlag(token, tokens, index, &result.Environment)
+	case "--network":
+		return s.parseSliceFlag(token, tokens, index, &result.Networks)
+	case "--restart":
+		return s.parseStringFlag(token, tokens, index, &result.Restart)
+	case "-w", "--workdir":
+		return s.parseStringFlag(token, tokens, index, &result.Workdir)
+	case "-u", "--user":
+		return s.parseStringFlag(token, tokens, index, &result.User)
+	case "--entrypoint":
+		return s.parseStringFlag(token, tokens, index, &result.Entrypoint)
+	case "--health-cmd":
+		return s.parseStringFlag(token, tokens, index, &result.HealthCheck)
+	case "-m", "--memory":
+		return s.parseStringFlag(token, tokens, index, &result.MemoryLimit)
+	case "--cpus":
+		return s.parseStringFlag(token, tokens, index, &result.CPULimit)
+	case "--label":
+		return s.parseSliceFlag(token, tokens, index, &result.Labels)
+	default:
+		return s.parseUnknownFlag(token, tokens, index, result)
+	}
+}
+
+func (s *ConverterService) parseStringFlag(flagName string, tokens []string, index int, target *string) (int, error) {
+	if index+1 >= len(tokens) {
+		return 0, fmt.Errorf("missing value for %s flag", flagName)
+	}
+
+	value := tokens[index+1]
+	if value == "" || strings.HasPrefix(value, "-") {
+		return 0, fmt.Errorf("invalid value for %s flag", flagName)
+	}
+
+	*target = value
+	return 1, nil
+}
+
+func (s *ConverterService) parseSliceFlag(flagName string, tokens []string, index int, target *[]string) (int, error) {
+	if index+1 >= len(tokens) {
+		return 0, fmt.Errorf("missing value for %s flag", flagName)
+	}
+
+	value := tokens[index+1]
+	if value == "" || strings.HasPrefix(value, "-") {
+		return 0, fmt.Errorf("invalid value for %s flag", flagName)
+	}
+
+	*target = append(*target, value)
+	return 1, nil
+}
+
+func (s *ConverterService) parseUnknownFlag(token string, tokens []string, index int, result *models.DockerRunCommand) (int, error) {
+	if !strings.HasPrefix(token, "--") && len(token) > 2 {
+		s.parseCombinedFlags(token, result)
+		return 0, nil
+	}
+
+	if index+1 < len(tokens) && !strings.HasPrefix(tokens[index+1], "-") && result.Image == "" {
+		return 1, nil
+	}
+
+	return 0, nil
+}
+
+func (s *ConverterService) parseCombinedFlags(token string, result *models.DockerRunCommand) {
+	flags := strings.Split(token[1:], "")
+	for _, flag := range flags {
+		switch flag {
+		case "d":
+			result.Detached = true
+		case "i":
+			result.Interactive = true
+		case "t":
+			result.TTY = true
+		}
+	}
 }
 
 // ConvertToDockerCompose converts a parsed docker run command to docker-compose YAML

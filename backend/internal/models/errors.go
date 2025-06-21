@@ -1,6 +1,9 @@
 package models
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+)
 
 type APIErrorCode string
 
@@ -141,18 +144,25 @@ func (e *ValidationError) Error() string {
 
 // Helper function to convert any error to APIError
 func ToAPIError(err error) *APIError {
-	switch e := err.(type) {
-	case *APIError:
-		return e
-	case *NotFoundError:
-		return NewNotFoundError(e.Message)
-	case *ConflictError:
-		return NewConflictError(e.Message)
-	case *ValidationError:
-		return NewValidationError(e.Message, map[string]string{"field": e.Field})
-	case *DockerAPIError:
-		return NewAPIErrorWithDetails(e.Message, APIErrorCodeDockerAPIError, e.HTTPStatus(), e.Details)
-	default:
-		return NewInternalServerError(err.Error())
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
 	}
+	var notFoundErr *NotFoundError
+	if errors.As(err, &notFoundErr) {
+		return NewNotFoundError(notFoundErr.Message)
+	}
+	var conflictErr *ConflictError
+	if errors.As(err, &conflictErr) {
+		return NewConflictError(conflictErr.Message)
+	}
+	var validationErr *ValidationError
+	if errors.As(err, &validationErr) {
+		return NewValidationError(validationErr.Message, map[string]string{"field": validationErr.Field})
+	}
+	var dockerAPIErr *DockerAPIError
+	if errors.As(err, &dockerAPIErr) {
+		return NewAPIErrorWithDetails(dockerAPIErr.Message, APIErrorCodeDockerAPIError, dockerAPIErr.HTTPStatus(), dockerAPIErr.Details)
+	}
+	return NewInternalServerError(err.Error())
 }

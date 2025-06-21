@@ -28,7 +28,7 @@ type ImageMaturityRecord struct {
 	BaseModel
 }
 
-func (ImageMaturityRecord) TableName() string {
+func (i *ImageMaturityRecord) TableName() string {
 	return "image_maturity_table"
 }
 

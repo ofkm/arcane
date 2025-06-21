@@ -270,6 +270,26 @@ func (s *AutoUpdateService) CheckAndUpdateStacks(ctx context.Context) (*UpdateRe
 
 	log.Println("Starting stack auto-update check...")
 
+	eligibleStacks, err := s.getEligibleStacks(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result.Checked = len(eligibleStacks)
+	log.Printf("Found %d stacks eligible for auto-update", len(eligibleStacks))
+
+	s.processStackUpdates(ctx, eligibleStacks, settings, result)
+
+	result.EndTime = time.Now()
+	result.Duration = result.EndTime.Sub(result.StartTime).String()
+
+	log.Printf("Stack auto-update completed: %d checked, %d updated, %d skipped, %d errors",
+		result.Checked, result.Updated, result.Skipped, len(result.Errors))
+
+	return result, nil
+}
+
+func (s *AutoUpdateService) getEligibleStacks(ctx context.Context) ([]models.Stack, error) {
 	stacks, err := s.stackService.ListStacks(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list stacks: %w", err)
@@ -292,102 +312,133 @@ func (s *AutoUpdateService) CheckAndUpdateStacks(ctx context.Context) (*UpdateRe
 		}
 	}
 
-	result.Checked = len(eligibleStacks)
-	log.Printf("Found %d stacks eligible for auto-update", len(eligibleStacks))
+	return eligibleStacks, nil
+}
 
+func (s *AutoUpdateService) processStackUpdates(ctx context.Context, eligibleStacks []models.Stack, settings *models.Settings, result *UpdateResult) {
 	for _, stack := range eligibleStacks {
-		stackID := stack.ID
-		stackName := stack.Name
-
-		s.mutex.RLock()
-		isUpdating := s.updatingStacks[stackID]
-		s.mutex.RUnlock()
-
-		if isUpdating {
-			log.Printf("Stack %s is already being updated, skipping", stackName)
-			result.Skipped++
+		if s.shouldSkipStack(stack.ID, stack.Name, result) {
 			continue
 		}
 
-		s.mutex.Lock()
-		s.updatingStacks[stackID] = true
-		s.mutex.Unlock()
+		s.updateSingleStack(ctx, stack, settings, result)
+	}
+}
 
-		func() {
-			defer func() {
-				s.mutex.Lock()
-				delete(s.updatingStacks, stackID)
-				s.mutex.Unlock()
-			}()
+func (s *AutoUpdateService) shouldSkipStack(stackID, stackName string, result *UpdateResult) bool {
+	s.mutex.RLock()
+	isUpdating := s.updatingStacks[stackID]
+	s.mutex.RUnlock()
 
-			log.Printf("Checking stack for updates: %s", stackName)
-
-			updateAvailable, err := s.checkStackForUpdate(ctx, stack, settings)
-			if err != nil {
-				log.Printf("Error checking stack %s: %v", stackName, err)
-				result.Errors = append(result.Errors, UpdateError{
-					ID:    stackID,
-					Name:  stackName,
-					Type:  "stack",
-					Error: err.Error(),
-				})
-				return
-			}
-
-			if updateAvailable {
-				log.Printf("Updates available for stack %s, stopping, pulling images and redeploying...", stackName)
-
-				log.Printf("Stopping stack %s...", stackName)
-				if err := s.stackService.StopStack(ctx, stackID); err != nil {
-					log.Printf("Error stopping stack %s: %v", stackName, err)
-					result.Errors = append(result.Errors, UpdateError{
-						ID:    stackID,
-						Name:  stackName,
-						Type:  "stack",
-						Error: fmt.Sprintf("Failed to stop stack: %v", err),
-					})
-					return
-				}
-
-				log.Printf("Pulling updated images for stack %s...", stackName)
-				if err := s.pullStackImages(ctx, stack, settings); err != nil {
-					log.Printf("Error pulling images for stack %s: %v", stackName, err)
-					result.Errors = append(result.Errors, UpdateError{
-						ID:    stackID,
-						Name:  stackName,
-						Type:  "stack",
-						Error: fmt.Sprintf("Failed to pull images: %v", err),
-					})
-					return
-				}
-
-				log.Printf("Deploying stack %s with updated images...", stackName)
-				if err := s.stackService.DeployStack(ctx, stackID); err != nil {
-					log.Printf("Error redeploying stack %s: %v", stackName, err)
-					result.Errors = append(result.Errors, UpdateError{
-						ID:    stackID,
-						Name:  stackName,
-						Type:  "stack",
-						Error: fmt.Sprintf("Failed to redeploy: %v", err),
-					})
-					return
-				}
-
-				log.Printf("Successfully updated stack %s", stackName)
-				result.Updated++
-			} else {
-				log.Printf("Stack %s is up-to-date", stackName)
-			}
-		}()
+	if isUpdating {
+		log.Printf("Stack %s is already being updated, skipping", stackName)
+		result.Skipped++
+		return true
 	}
 
-	result.EndTime = time.Now()
-	result.Duration = result.EndTime.Sub(result.StartTime).String()
+	return false
+}
 
-	log.Printf("Stack auto-update completed: %d checked, %d updated, %d skipped, %d errors",
-		result.Checked, result.Updated, result.Skipped, len(result.Errors))
+func (s *AutoUpdateService) updateSingleStack(ctx context.Context, stack models.Stack, settings *models.Settings, result *UpdateResult) {
+	stackID := stack.ID
+	stackName := stack.Name
 
-	return result, nil
+	s.mutex.Lock()
+	s.updatingStacks[stackID] = true
+	s.mutex.Unlock()
+
+	defer func() {
+		s.mutex.Lock()
+		delete(s.updatingStacks, stackID)
+		s.mutex.Unlock()
+	}()
+
+	log.Printf("Checking stack for updates: %s", stackName)
+
+	updateAvailable, err := s.checkStackForUpdate(ctx, stack, settings)
+	if err != nil {
+		log.Printf("Error checking stack %s: %v", stackName, err)
+		result.Errors = append(result.Errors, UpdateError{
+			ID:    stackID,
+			Name:  stackName,
+			Type:  "stack",
+			Error: err.Error(),
+		})
+		return
+	}
+
+	if updateAvailable {
+		s.performStackUpdate(ctx, stack, settings, result)
+	} else {
+		log.Printf("Stack %s is up-to-date", stackName)
+	}
+}
+
+func (s *AutoUpdateService) performStackUpdate(ctx context.Context, stack models.Stack, settings *models.Settings, result *UpdateResult) {
+	stackID := stack.ID
+	stackName := stack.Name
+
+	log.Printf("Updates available for stack %s, stopping, pulling images and redeploying...", stackName)
+
+	if err := s.stopStackForUpdate(ctx, stackID, stackName, result); err != nil {
+		return
+	}
+
+	if err := s.pullStackImagesForUpdate(ctx, stack, settings, result); err != nil {
+		return
+	}
+
+	if err := s.redeployStackAfterUpdate(ctx, stackID, stackName, result); err != nil {
+		return
+	}
+
+	log.Printf("Successfully updated stack %s", stackName)
+	result.Updated++
+}
+
+func (s *AutoUpdateService) stopStackForUpdate(ctx context.Context, stackID, stackName string, result *UpdateResult) error {
+	log.Printf("Stopping stack %s...", stackName)
+	if err := s.stackService.StopStack(ctx, stackID); err != nil {
+		log.Printf("Error stopping stack %s: %v", stackName, err)
+		result.Errors = append(result.Errors, UpdateError{
+			ID:    stackID,
+			Name:  stackName,
+			Type:  "stack",
+			Error: fmt.Sprintf("Failed to stop stack: %v", err),
+		})
+		return err
+	}
+	return nil
+}
+
+func (s *AutoUpdateService) pullStackImagesForUpdate(ctx context.Context, stack models.Stack, settings *models.Settings, result *UpdateResult) error {
+	log.Printf("Pulling updated images for stack %s...", stack.Name)
+	if err := s.pullStackImages(ctx, stack, settings); err != nil {
+		log.Printf("Error pulling images for stack %s: %v", stack.Name, err)
+		result.Errors = append(result.Errors, UpdateError{
+			ID:    stack.ID,
+			Name:  stack.Name,
+			Type:  "stack",
+			Error: fmt.Sprintf("Failed to pull images: %v", err),
+		})
+		return err
+	}
+	return nil
+}
+
+func (s *AutoUpdateService) redeployStackAfterUpdate(ctx context.Context, stackID, stackName string, result *UpdateResult) error {
+	log.Printf("Deploying stack %s with updated images...", stackName)
+	if err := s.stackService.DeployStack(ctx, stackID); err != nil {
+		log.Printf("Error redeploying stack %s: %v", stackName, err)
+		result.Errors = append(result.Errors, UpdateError{
+			ID:    stackID,
+			Name:  stackName,
+			Type:  "stack",
+			Error: fmt.Sprintf("Failed to redeploy: %v", err),
+		})
+		return err
+	}
+	return nil
 }
 
 // pullStackImages pulls all images for a stack before redeployment
@@ -463,15 +514,16 @@ func (s *AutoUpdateService) pullImageWithAuth(ctx context.Context, imageRef stri
 
 	reader, err := dockerClient.ImagePull(ctx, imageRef, pullOptions)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		switch {
+		case strings.Contains(err.Error(), "not found"):
 			return fmt.Errorf("image not found: %s - please verify the image exists and you have access", imageRef)
-		} else if strings.Contains(err.Error(), "unauthorized") {
+		case strings.Contains(err.Error(), "unauthorized"):
 			return fmt.Errorf("authentication failed for %s - please verify your credentials", imageRef)
-		} else if strings.Contains(err.Error(), "denied") {
+		case strings.Contains(err.Error(), "denied"):
 			return fmt.Errorf("access denied for %s - please verify your permissions", imageRef)
+		default:
+			return fmt.Errorf("failed to pull image %s: %w", imageRef, err)
 		}
-
-		return fmt.Errorf("failed to pull image %s: %w", imageRef, err)
 	}
 	defer reader.Close()
 

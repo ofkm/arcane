@@ -52,7 +52,6 @@ func RegisterFrontend(router *gin.Engine) error {
 
 		if _, err := fs.Stat(distFS, requestedPath); os.IsNotExist(err) {
 			c.Request.URL.Path = "/"
-			requestedPath = "index.html"
 		}
 
 		fileServer.ServeHTTP(c.Writer, c.Request)
