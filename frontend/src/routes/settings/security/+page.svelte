@@ -16,12 +16,48 @@
 	let { data }: { data: PageData } = $props();
 	let currentSettings = $state(data.settings);
 
+	let showOidcConfigDialog = $state(false);
+	let oidcConfigForm = $state({
+		clientId: '',
+		clientSecret: '',
+		redirectUri: 'http://localhost:3000/auth/oidc/callback',
+		authorizationEndpoint: '',
+		tokenEndpoint: '',
+		userinfoEndpoint: '',
+		scopes: 'openid email profile'
+	});
+
+	let localAuthEnabled = $state(true);
+	let oidcEnabled = $state(false);
+	let sessionTimeout = $state(60);
+	let passwordPolicy = $state('strong');
+
+	let isLoading = $state({
+		saving: false
+	});
+
+	let isOidcViewMode = $derived(data.oidcStatus.envForced && data.oidcStatus.envConfigured);
+
+	$effect(() => {
+		localAuthEnabled = currentSettings.auth?.localAuthEnabled ?? true;
+		oidcEnabled = currentSettings.auth?.oidcEnabled ?? false;
+		sessionTimeout = currentSettings.auth?.sessionTimeout ?? 60;
+		passwordPolicy = currentSettings.auth?.passwordPolicy ?? 'strong';
+
+		oidcConfigForm.clientId = currentSettings.auth?.oidc?.clientId || '';
+		oidcConfigForm.redirectUri = currentSettings.auth?.oidc?.redirectUri || 'http://localhost:3000/auth/oidc/callback';
+		oidcConfigForm.authorizationEndpoint = currentSettings.auth?.oidc?.authorizationEndpoint || '';
+		oidcConfigForm.tokenEndpoint = currentSettings.auth?.oidc?.tokenEndpoint || '';
+		oidcConfigForm.userinfoEndpoint = currentSettings.auth?.oidc?.userinfoEndpoint || '';
+		oidcConfigForm.scopes = currentSettings.auth?.oidc?.scopes || 'openid email profile';
+		oidcConfigForm.clientSecret = '';
+	});
+
 	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
 		currentSettings = await settingsAPI.updateSettings({
 			...currentSettings,
 			...updatedSettings
 		});
-
 		settingsStore.reload();
 	}
 
@@ -38,7 +74,7 @@
 					? {
 							oidc: {
 								clientId: oidcConfigForm.clientId,
-								clientSecret: oidcConfigForm.clientSecret || undefined,
+								clientSecret: oidcConfigForm.clientSecret || '',
 								redirectUri: oidcConfigForm.redirectUri,
 								authorizationEndpoint: oidcConfigForm.authorizationEndpoint,
 								tokenEndpoint: oidcConfigForm.tokenEndpoint,
@@ -57,47 +93,6 @@
 				isLoading.saving = false;
 			});
 	}
-
-	let showOidcConfigDialog = $state(false);
-	let oidcConfigForm = $state({
-		clientId: '',
-		clientSecret: '',
-		redirectUri: 'http://localhost:3000/auth/oidc/callback',
-		authorizationEndpoint: '',
-		tokenEndpoint: '',
-		userinfoEndpoint: '',
-		scopes: 'openid email profile'
-	});
-
-	// State variables for form inputs
-	let localAuthEnabled = $state(true);
-	let oidcEnabled = $state(false);
-	let sessionTimeout = $state(60);
-	let passwordPolicy = $state<'basic' | 'standard' | 'strong'>('strong');
-
-	// Loading states
-	let isLoading = $state({
-		saving: false
-	});
-
-	let isOidcViewMode = $derived(data.oidcStatus.envForced && data.oidcStatus.envConfigured);
-
-	// Update state when currentSettings changes
-	$effect(() => {
-		localAuthEnabled = currentSettings.auth?.localAuthEnabled ?? true;
-		oidcEnabled = currentSettings.auth?.oidcEnabled ?? false;
-		sessionTimeout = currentSettings.auth?.sessionTimeout ?? 60;
-		passwordPolicy = currentSettings.auth?.passwordPolicy ?? 'strong';
-
-		// Update OIDC form
-		oidcConfigForm.clientId = currentSettings.auth?.oidc?.clientId || '';
-		oidcConfigForm.redirectUri = currentSettings.auth?.oidc?.redirectUri || 'http://localhost:3000/auth/oidc/callback';
-		oidcConfigForm.authorizationEndpoint = currentSettings.auth?.oidc?.authorizationEndpoint || '';
-		oidcConfigForm.tokenEndpoint = currentSettings.auth?.oidc?.tokenEndpoint || '';
-		oidcConfigForm.userinfoEndpoint = currentSettings.auth?.oidc?.userinfoEndpoint || '';
-		oidcConfigForm.scopes = currentSettings.auth?.oidc?.scopes || 'openid email profile';
-		oidcConfigForm.clientSecret = '';
-	});
 
 	function handleOidcSwitchChange(checked: boolean) {
 		oidcEnabled = checked;
@@ -139,7 +134,6 @@
 </svelte:head>
 
 <div class="settings-page">
-	<!-- Header Section -->
 	<div class="settings-header">
 		<div class="settings-header-content">
 			<h1 class="settings-title">Security Settings</h1>
@@ -159,9 +153,7 @@
 		</div>
 	</div>
 
-	<!-- Settings Grid -->
 	<div class="settings-grid settings-grid-double">
-		<!-- Authentication Methods Card -->
 		<Card.Root class="settings-card">
 			<Card.Header class="settings-card-header">
 				<div class="settings-card-title-wrapper">
@@ -195,11 +187,11 @@
 							<label for="oidcAuthSwitch" class="text-base font-medium">OIDC Authentication</label>
 							<p class="text-muted-foreground text-sm">
 								Use an External OIDC Provider
-								{#if 'envForced' in data.oidcStatus && data.oidcStatus.envForced}
+								{#if data.oidcStatus.envForced}
 									<span class="text-muted-foreground text-xs">(Forced ON by server environment)</span>
 								{/if}
 							</p>
-							{#if 'envForced' in data.oidcStatus && (data.oidcStatus.effectivelyEnabled || data.oidcStatus.envForced)}
+							{#if data.oidcStatus.effectivelyEnabled || data.oidcStatus.envForced}
 								{#if data.oidcStatus.envForced && !data.oidcStatus.envConfigured}
 									<Button variant="link" class="text-destructive h-auto p-0 text-xs hover:underline" onclick={openOidcDialog}>
 										<AlertTriangle class="mr-1 size-3" />
@@ -221,20 +213,14 @@
 										OIDC enabled, but app settings incomplete. Configure.
 									</Button>
 								{/if}
-							{:else if 'enabled' in data.oidcStatus && data.oidcStatus.enabled}
-								<Button variant="link" class="h-auto p-0 text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
-									<Info class="mr-1 size-3" />
-									OIDC enabled (legacy mode). Manage.
-								</Button>
 							{/if}
 						</div>
-						<Switch id="oidcAuthSwitch" checked={oidcEnabled} disabled={'envForced' in data.oidcStatus && data.oidcStatus.envForced} onCheckedChange={handleOidcSwitchChange} />
+						<Switch id="oidcAuthSwitch" checked={oidcEnabled} disabled={data.oidcStatus.envForced} onCheckedChange={handleOidcSwitchChange} />
 					</div>
 				</div>
 			</Card.Content>
 		</Card.Root>
 
-		<!-- OIDC Configuration/Status Dialog -->
 		<Dialog.Root bind:open={showOidcConfigDialog}>
 			<Dialog.Content class="sm:max-w-[600px]">
 				<Dialog.Header>
@@ -285,7 +271,6 @@
 						<p class="text-muted-foreground mt-3 text-xs">Changes to these settings must be made in your server's environment configuration.</p>
 					</div>
 				{:else}
-					<!-- Form for setup/configuration -->
 					<div class="grid max-h-[50vh] gap-4 overflow-y-auto py-4 pr-2">
 						<div class="grid grid-cols-4 items-center gap-4">
 							<Label for="oidcClientId" class="col-span-1 text-right">Client ID</Label>
@@ -327,7 +312,6 @@
 			</Dialog.Content>
 		</Dialog.Root>
 
-		<!-- Session Settings Card -->
 		<Card.Root class="settings-card">
 			<Card.Header class="settings-card-header">
 				<div class="settings-card-title-wrapper">

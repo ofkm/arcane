@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import type { FormInput as FormInputType } from '$lib/types/form.type';
+	import type { FormInput as FormInputType } from '$lib/utils/form.utils';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { RefreshCw, ImageMinus, Save, Clock, Zap, InfoIcon } from '@lucide/svelte';
 	import * as RadioGroup from '$lib/components/ui/radio-group/index.js';
@@ -50,34 +50,22 @@
 
 	let pollingIntervalInput = $state<FormInputType<number>>({
 		value: 0,
-		valid: true,
-		touched: false,
-		error: null,
-		errors: []
+		error: null
 	});
 
 	let pollingEnabledSwitch = $state<FormInputType<boolean>>({
 		value: false,
-		valid: true,
-		touched: false,
-		error: null,
-		errors: []
+		error: null
 	});
 
 	let autoUpdateSwitch = $state<FormInputType<boolean>>({
 		value: false,
-		valid: true,
-		touched: false,
-		error: null,
-		errors: []
+		error: null
 	});
 
 	let autoUpdateIntervalInput = $state<FormInputType<number>>({
 		value: 5,
-		valid: true,
-		touched: false,
-		error: null,
-		errors: []
+		error: null
 	});
 
 	$effect(() => {

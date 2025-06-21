@@ -2,15 +2,9 @@ export interface AuthSettings {
 	localAuthEnabled: boolean;
 	oidcEnabled: boolean;
 	sessionTimeout: number;
-	passwordPolicy: 'basic' | 'standard' | 'strong';
+	passwordPolicy: string;
 	rbacEnabled: boolean;
 	oidc?: OidcConfig;
-}
-
-export interface RegistryCredential {
-	url: string;
-	username: string;
-	password: string;
 }
 
 export interface OidcConfig {
@@ -23,9 +17,32 @@ export interface OidcConfig {
 	scopes: string;
 }
 
+export interface OidcStatusInfo {
+	envForced: boolean;
+	envConfigured: boolean;
+	dbEnabled: boolean;
+	dbConfigured: boolean;
+	effectivelyEnabled: boolean;
+	effectivelyConfigured: boolean;
+}
+
+export interface RegistryCredential {
+	url: string;
+	username: string;
+	password: string;
+}
+
+export interface TemplateRegistryConfig {
+	url: string;
+	name: string;
+	enabled: boolean;
+	lastUpdated?: number;
+	cacheTtl?: number;
+}
+
 export interface Onboarding {
 	completed: boolean;
-	completedAt?: string;
+	completedAt?: number;
 	steps?: {
 		welcome?: boolean;
 		password?: boolean;
@@ -33,57 +50,21 @@ export interface Onboarding {
 	};
 }
 
-export interface TemplateRegistryConfig {
-	url: string;
-	name: string;
-	enabled: boolean;
-	last_updated?: string;
-	cache_ttl?: number;
-}
-
 export interface Settings {
+	id: number;
+	dockerTLSCert: string;
 	stacksDirectory: string;
 	autoUpdate: boolean;
 	autoUpdateInterval: number;
 	pollingEnabled: boolean;
 	pollingInterval: number;
-	pruneMode: 'all' | 'dangling' | undefined;
+	pruneMode?: string;
 	registryCredentials: RegistryCredential[];
 	templateRegistries: TemplateRegistryConfig[];
 	auth: AuthSettings;
 	onboarding?: Onboarding;
 	baseServerUrl?: string;
 	maturityThresholdDays: number;
-}
-
-export interface OidcUserInfo {
-	sub: string;
-	email: string;
-	name: string;
-	preferred_username?: string;
-	given_name?: string;
-	family_name?: string;
-	picture?: string;
-	groups?: string[];
-}
-
-export interface RegistryCredential {
-	id: string;
-	name: string;
-	serverAddress: string;
-	username: string;
-	password: string; // This should be encrypted
-	email?: string;
-	isDefault?: boolean;
-}
-
-export interface TemplateRegistrySettings {
-	id: string;
-	name: string;
-	url: string;
-	username?: string;
-	password?: string; // This should be encrypted
-	enabled: boolean;
-	autoUpdate: boolean;
-	updateInterval: number; // in hours
+	createdAt: string;
+	updatedAt: string;
 }
