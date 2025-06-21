@@ -56,10 +56,10 @@ func (h *EnvironmentHandler) routeRequest(c *gin.Context, endpoint string) {
 
 func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string) {
 	switch {
-	case endpoint == "/containers" && c.Request.Method == "GET":
+	case endpoint == "/containers" && c.Request.Method == http.MethodGet:
 		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.List(c)
-	case endpoint == "/containers" && c.Request.Method == "POST":
+	case endpoint == "/containers" && c.Request.Method == http.MethodPost:
 		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Create(c)
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/start"):
@@ -83,65 +83,65 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stats"):
 		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.GetStats(c)
-	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == "GET":
+	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == http.MethodGet:
 		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.GetByID(c)
-	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == "DELETE":
+	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == http.MethodDelete:
 		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.Delete(c)
 
-	case endpoint == "/images" && c.Request.Method == "GET":
+	case endpoint == "/images" && c.Request.Method == http.MethodGet:
 		imageHandler := NewImageHandler(h.imageService, nil)
 		imageHandler.List(c)
-	case endpoint == "/images/pull" && c.Request.Method == "POST":
+	case endpoint == "/images/pull" && c.Request.Method == http.MethodPost:
 		imageHandler := NewImageHandler(h.imageService, nil)
 		imageHandler.Pull(c)
-	case endpoint == "/images/prune" && c.Request.Method == "POST":
+	case endpoint == "/images/prune" && c.Request.Method == http.MethodPost:
 		imageHandler := NewImageHandler(h.imageService, nil)
 		imageHandler.Prune(c)
-	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == "GET":
+	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == http.MethodGet:
 		imageHandler := NewImageHandler(h.imageService, nil)
 		imageHandler.GetByID(c)
-	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == "DELETE":
+	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == http.MethodDelete:
 		imageHandler := NewImageHandler(h.imageService, nil)
 		imageHandler.Remove(c)
 
-	case endpoint == "/networks" && c.Request.Method == "GET":
+	case endpoint == "/networks" && c.Request.Method == http.MethodGet:
 		networkHandler := NewNetworkHandler(h.networkService)
 		networkHandler.List(c)
-	case endpoint == "/networks" && c.Request.Method == "POST":
+	case endpoint == "/networks" && c.Request.Method == http.MethodPost:
 		networkHandler := NewNetworkHandler(h.networkService)
 		networkHandler.Create(c)
-	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == "GET":
+	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == http.MethodGet:
 		networkHandler := NewNetworkHandler(h.networkService)
 		networkHandler.GetByID(c)
-	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == "DELETE":
+	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == http.MethodDelete:
 		networkHandler := NewNetworkHandler(h.networkService)
 		networkHandler.Remove(c)
 
-	case endpoint == "/volumes" && c.Request.Method == "GET":
+	case endpoint == "/volumes" && c.Request.Method == http.MethodGet:
 		volumeHandler := NewVolumeHandler(h.volumeService)
 		volumeHandler.List(c)
-	case endpoint == "/volumes" && c.Request.Method == "POST":
+	case endpoint == "/volumes" && c.Request.Method == http.MethodPost:
 		volumeHandler := NewVolumeHandler(h.volumeService)
 		volumeHandler.Create(c)
-	case endpoint == "/volumes/prune" && c.Request.Method == "POST":
+	case endpoint == "/volumes/prune" && c.Request.Method == http.MethodPost:
 		volumeHandler := NewVolumeHandler(h.volumeService)
 		volumeHandler.Prune(c)
-	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == "GET":
+	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == http.MethodGet:
 		volumeHandler := NewVolumeHandler(h.volumeService)
 		volumeHandler.GetByName(c)
-	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == "DELETE":
+	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == http.MethodDelete:
 		volumeHandler := NewVolumeHandler(h.volumeService)
 		volumeHandler.Remove(c)
 	case strings.HasPrefix(endpoint, "/volumes/") && strings.HasSuffix(endpoint, "/usage"):
 		volumeHandler := NewVolumeHandler(h.volumeService)
 		volumeHandler.GetUsage(c)
 
-	case endpoint == "/stacks" && c.Request.Method == "GET":
+	case endpoint == "/stacks" && c.Request.Method == http.MethodGet:
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.ListStacks(c)
-	case endpoint == "/stacks" && c.Request.Method == "POST":
+	case endpoint == "/stacks" && c.Request.Method == http.MethodPost:
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.CreateStack(c)
 	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/deploy"):
@@ -174,16 +174,16 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/logs/stream"):
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.GetStackLogsStream(c)
-	case endpoint == "/stacks/convert" && c.Request.Method == "POST":
+	case endpoint == "/stacks/convert" && c.Request.Method == http.MethodPost:
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.ConvertDockerRun(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == "GET":
+	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodGet:
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.GetStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == "PUT":
+	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodPut:
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.UpdateStack(c)
-	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == "DELETE":
+	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodDelete:
 		stackHandler := NewStackHandler(h.stackService)
 		stackHandler.DeleteStack(c)
 	default:

@@ -9,12 +9,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// Scheduler manages jobs using gocron.
 type Scheduler struct {
 	scheduler gocron.Scheduler
 }
 
-// NewScheduler creates and returns a new Scheduler.
 func NewScheduler() (*Scheduler, error) {
 	s, err := gocron.NewScheduler()
 	if err != nil {
@@ -23,8 +21,6 @@ func NewScheduler() (*Scheduler, error) {
 	return &Scheduler{scheduler: s}, nil
 }
 
-// Run starts the scheduler and blocks until the context is canceled.
-// It handles the graceful shutdown of the scheduler.
 func (s *Scheduler) Run(ctx context.Context) error {
 	slog.Info("Starting job scheduler")
 	s.scheduler.Start() // Start the scheduler, non-blocking
@@ -43,8 +39,6 @@ func (s *Scheduler) Run(ctx context.Context) error {
 	return nil
 }
 
-// RegisterJob adds a new job to the scheduler with specified definition, task, and options.
-// It includes logging for job lifecycle events.
 func (s *Scheduler) RegisterJob(
 	ctx context.Context,
 	name string,
@@ -53,11 +47,11 @@ func (s *Scheduler) RegisterJob(
 	runImmediately bool,
 ) error {
 	jobOptions := []gocron.JobOption{
-		gocron.WithContext(ctx), // Associates the job with a context
+		gocron.WithContext(ctx),
 		gocron.WithEventListeners(
 			gocron.BeforeJobRuns(func(jobID uuid.UUID, jobName string) {
 				slog.Info("Job starting",
-					slog.String("name", name), // Use the provided name for clarity
+					slog.String("name", name),
 					slog.String("id", jobID.String()),
 				)
 			}),
@@ -77,17 +71,8 @@ func (s *Scheduler) RegisterJob(
 		),
 	}
 
-	// Create the gocron task
 	task := gocron.NewTask(func() {
-		// The task function passed to gocron.NewTask should not return an error directly.
-		// Errors should be handled within the taskFunc or will be caught by AfterJobRunsWithError.
-		// We pass a new context to the taskFunc to ensure it has its own lifecycle if needed,
-		// though gocron.WithContext already associates one.
-		jobCtx := context.Background() // Or derive from the initial ctx if appropriate
-		if err := taskFunc(jobCtx); err != nil {
-			// This error won't be directly caught by gocron's error handling for the task itself,
-			// but AfterJobRunsWithError will catch panics or errors returned by the job's execution logic.
-			// It's good practice to log it here if taskFunc can return errors.
+		if err := taskFunc(ctx); err != nil {
 			slog.Error("Error executing task function",
 				slog.String("name", name),
 				slog.Any("error", err),
