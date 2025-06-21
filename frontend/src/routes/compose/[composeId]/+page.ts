@@ -1,4 +1,4 @@
-import { stackAPI, environmentAPI } from '$lib/services/api';
+import { environmentAPI } from '$lib/services/api';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ params }) => {

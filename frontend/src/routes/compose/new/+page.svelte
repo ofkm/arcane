@@ -17,7 +17,7 @@
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
 	import * as Resizable from '$lib/components/ui/resizable/index.js';
-	import TemplateSelectionDialog from '$lib/components/template-selection-dialog.svelte';
+	import TemplateSelectionDialog from '$lib/components/dialogs/template-selection-dialog.svelte';
 	import { environmentAPI } from '$lib/services/api';
 	import type { Template } from '$lib/types/template.type';
 	import type { PageProps } from './+page';
