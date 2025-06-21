@@ -188,7 +188,7 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 }
 
 func (h *ContainerHandler) IsImageInUse(c *gin.Context) {
-	imageID := c.Param("containerId")
+	imageID := c.Param("imageId")
 	if imageID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
