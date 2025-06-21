@@ -507,3 +507,46 @@ func (h *TemplateHandler) FetchRegistry(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	c.Data(http.StatusOK, "application/json", body)
 }
+
+func (h *TemplateHandler) DownloadTemplate(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Template ID is required",
+		})
+		return
+	}
+
+	template, err := h.templateService.GetTemplate(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "Template not found",
+		})
+		return
+	}
+
+	if !template.IsRemote {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Template is already local",
+		})
+		return
+	}
+
+	localTemplate, err := h.templateService.DownloadTemplate(c.Request.Context(), template)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to download template: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":  true,
+		"template": localTemplate,
+		"message":  "Template downloaded successfully",
+	})
+}

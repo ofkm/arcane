@@ -328,6 +328,7 @@ func setupTemplateRoutes(router *gin.RouterGroup, services *Services) {
 		templatesAuth.POST("", templateHandler.CreateTemplate)
 		templatesAuth.PUT("/:id", templateHandler.UpdateTemplate)
 		templatesAuth.DELETE("/:id", templateHandler.DeleteTemplate)
+		templatesAuth.POST("/:id/download", templateHandler.DownloadTemplate)
 		templatesAuth.GET("/env/default", templateHandler.GetEnvTemplate)
 		templatesAuth.POST("/env/default", templateHandler.SaveEnvTemplate)
 		templatesAuth.GET("/registries", templateHandler.GetRegistries)

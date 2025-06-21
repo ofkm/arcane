@@ -90,7 +90,7 @@
 	}
 
 	function getHostForService(service: StackService): string {
-		if (!service || !service.networkSettings?.Networks) return baseServerUrl;
+		if (!service?.networkSettings?.Networks) return baseServerUrl;
 
 		const networks = service.networkSettings.Networks;
 		for (const networkName in networks) {
@@ -294,7 +294,8 @@
 										<div class="flex flex-wrap gap-2">
 											{#each allUniquePorts as port (port)}
 												{@const portValue = typeof port === 'string' || typeof port === 'number' || (typeof port === 'object' && port !== null) ? port : String(port)}
-												<a href={getServicePortUrl(stack, portValue)} target="_blank" rel="noopener noreferrer" class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400">
+												{@const serviceWithPort = stack.services?.find((s) => s.ports?.includes(String(port))) || { container_id: '', name: '', status: '' }}
+												<a href={getServicePortUrl(serviceWithPort, portValue)} target="_blank" rel="noopener noreferrer" class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400">
 													Port {port}
 													<ExternalLink class="ml-2 size-4" />
 												</a>

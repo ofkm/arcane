@@ -333,3 +333,49 @@ func (s *TemplateService) fetchURL(url string) (string, error) {
 
 	return string(body), nil
 }
+
+func (s *TemplateService) DownloadTemplate(ctx context.Context, remoteTemplate *models.ComposeTemplate) (*models.ComposeTemplate, error) {
+	if !remoteTemplate.IsRemote {
+		return nil, fmt.Errorf("template is not remote")
+	}
+
+	composeContent, envContent, err := s.FetchTemplateContent(ctx, remoteTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch template content: %w", err)
+	}
+
+	localTemplate := &models.ComposeTemplate{
+		ID:          s.generateTemplateID(remoteTemplate.Name + "-local"),
+		Name:        remoteTemplate.Name,
+		Description: fmt.Sprintf("%s (Downloaded from %s)", remoteTemplate.Description, remoteTemplate.Registry.Name),
+		Content:     composeContent,
+		IsCustom:    true,
+		IsRemote:    false,
+		RegistryID:  nil,
+		Registry:    nil,
+	}
+
+	if envContent != "" {
+		localTemplate.EnvContent = &envContent
+	}
+
+	if remoteTemplate.Metadata != nil {
+		localTemplate.Metadata = &models.ComposeTemplateMetadata{
+			Version:          remoteTemplate.Metadata.Version,
+			Author:           remoteTemplate.Metadata.Author,
+			Tags:             remoteTemplate.Metadata.Tags,
+			RemoteURL:        remoteTemplate.Metadata.RemoteURL,
+			EnvURL:           remoteTemplate.Metadata.EnvURL,
+			DocumentationURL: remoteTemplate.Metadata.DocumentationURL,
+			IconURL:          remoteTemplate.Metadata.IconURL,
+			UpdatedAt:        remoteTemplate.Metadata.UpdatedAt,
+		}
+	}
+
+	err = s.db.WithContext(ctx).Create(localTemplate).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to save local template: %w", err)
+	}
+
+	return localTemplate, nil
+}

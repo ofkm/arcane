@@ -24,9 +24,11 @@
 		refreshing: false
 	});
 
-	const shortId = $derived(image?.Id.split(':')[1].substring(0, 12) || 'N/A');
-	const createdDate = $derived(image?.Created ? formatDate(image.Created) : 'N/A');
+	const shortId = $derived(image?.Id.split(':')[1]?.substring(0, 12) || 'N/A');
+	const createdDate = $derived(image?.Created ? formatDate(new Date(image.Created * 1000).toISOString()) : 'N/A');
 	const imageSize = $derived(formatBytes(image?.Size || 0));
+	const architecture = $derived(image?.Manifests?.[0]?.ImageData?.Platform?.architecture || 'N/A');
+	const osName = $derived(image?.Manifests?.[0]?.ImageData?.Platform?.os || 'N/A');
 
 	async function handleImageRemove(id: string) {
 		openConfirmDialog({
@@ -126,7 +128,7 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Architecture</p>
-								<p class="mt-1 text-base font-semibold">{image.Architecture || 'N/A'}</p>
+								<p class="mt-1 text-base font-semibold">{architecture}</p>
 							</div>
 						</div>
 
@@ -137,7 +139,7 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">OS</p>
-								<p class="mt-1 text-base font-semibold">{image.Os || 'N/A'}</p>
+								<p class="mt-1 text-base font-semibold">{osName}</p>
 							</div>
 						</div>
 					</div>
@@ -161,18 +163,18 @@
 			{/if}
 
 			<!-- Labels Card -->
-			{#if image.Config?.Labels && Object.keys(image.Config.Labels).length > 0}
+			{#if image.Labels && Object.keys(image.Labels).length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<Card.Title>Labels</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
-						{#each Object.entries(image.Config.Labels) as [key, value] (key)}
+						{#each Object.entries(image.Labels) as [key, value] (key)}
 							<div class="flex flex-col text-sm sm:flex-row sm:items-center">
 								<span class="text-muted-foreground w-full font-medium break-all sm:w-1/4">{key}:</span>
 								<span class="w-full font-mono text-xs break-all sm:w-3/4 sm:text-sm">{value}</span>
 							</div>
-							{#if !Object.is(Object.keys(image.Config.Labels).length - 1, Object.keys(image.Config.Labels).indexOf(key))}
+							{#if !Object.is(Object.keys(image.Labels).length - 1, Object.keys(image.Labels).indexOf(key))}
 								<Separator class="my-2" />
 							{/if}
 						{/each}

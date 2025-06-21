@@ -46,7 +46,11 @@ export default class TemplateAPIService extends BaseAPIService {
 		await this.api.delete(`/templates/${id}`);
 	}
 
-	// Environment template operations
+	async download(id: string): Promise<Template> {
+		const response = await this.api.post(`/templates/${id}/download`);
+		return response.data.template;
+	}
+
 	async getEnvTemplate(): Promise<string> {
 		const response = await this.api.get('/templates/env/default');
 		return response.data.content;
@@ -56,7 +60,6 @@ export default class TemplateAPIService extends BaseAPIService {
 		await this.api.post('/templates/env/default', { content });
 	}
 
-	// Registry operations
 	async getRegistries(): Promise<TemplateRegistry[]> {
 		const response = await this.api.get('/templates/registries');
 		return response.data.registries;
@@ -88,10 +91,7 @@ export default class TemplateAPIService extends BaseAPIService {
 		await this.api.delete(`/templates/registries/${id}`);
 	}
 
-	// Legacy methods for backward compatibility (can be removed if not needed)
 	async getByName(name: string): Promise<Template> {
-		// This would need to be implemented on backend if needed
-		// For now, get all templates and filter by name
 		const templates = await this.loadAll();
 		const template = templates.find((t) => t.name === name);
 		if (!template) {
@@ -101,15 +101,11 @@ export default class TemplateAPIService extends BaseAPIService {
 	}
 
 	async search(query: string, category?: string): Promise<Template[]> {
-		// This would need to be implemented on backend if needed
-		// For now, get all templates and filter client-side
 		const templates = await this.loadAll();
 		return templates.filter((template) => template.name.toLowerCase().includes(query.toLowerCase()) || template.description.toLowerCase().includes(query.toLowerCase()));
 	}
 
 	async getCategories(): Promise<string[]> {
-		// This would need to be implemented on backend if needed
-		// For now, extract categories from template metadata
 		const templates = await this.loadAll();
 		const categories = new Set<string>();
 		templates.forEach((template) => {
@@ -122,8 +118,6 @@ export default class TemplateAPIService extends BaseAPIService {
 	}
 
 	async refresh(): Promise<{ updated: number; added: number; removed: number }> {
-		// This would need to be implemented on backend if needed
-		// For now, just reload templates
 		await this.loadAll();
 		return { updated: 0, added: 0, removed: 0 };
 	}
@@ -133,8 +127,6 @@ export default class TemplateAPIService extends BaseAPIService {
 		errors: string[];
 		warnings: string[];
 	}> {
-		// This would need to be implemented on backend if needed
-		// For now, basic client-side validation
 		const errors: string[] = [];
 		const warnings: string[] = [];
 
@@ -149,31 +141,24 @@ export default class TemplateAPIService extends BaseAPIService {
 	}
 
 	async getTemplateByRegistry(registryId: string): Promise<Template[]> {
-		// This would need to be implemented on backend if needed
-		// For now, get all templates and filter by registry
 		const templates = await this.loadAll();
 		return templates.filter((template) => template.registryId?.toString() === registryId);
 	}
 
 	async importFromUrl(url: string): Promise<Template> {
-		// This would need to be implemented on backend if needed
 		throw new Error('Import from URL not yet implemented');
 	}
 
 	async exportTemplate(id: string): Promise<Blob> {
-		// This would need to be implemented on backend if needed
 		const template = await this.getById(id);
 		const content = JSON.stringify(template, null, 2);
 		return new Blob([content], { type: 'application/json' });
 	}
 
 	async refreshRegistry(id: string): Promise<void> {
-		// This would need to be implemented on backend if needed
-		// For now, just reload templates
 		await this.loadAll();
 	}
 
-	// Alias methods for backward compatibility
 	async getTemplates(registryId?: string): Promise<Template[]> {
 		if (registryId) {
 			return this.getTemplateByRegistry(registryId);

@@ -67,10 +67,10 @@
 		try {
 			const result = await templateAPI.download(templateId);
 
-			if (result.success) {
+			if (result) {
 				toast.success(`Template "${template.name}" downloaded successfully!`);
 			} else {
-				toast.error(result.message || 'Failed to download template');
+				toast.error('Failed to download template');
 			}
 		} catch (error) {
 			console.error('Error downloading template:', error);

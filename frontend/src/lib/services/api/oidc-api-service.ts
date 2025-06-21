@@ -1,5 +1,16 @@
 import BaseAPIService from './api-service';
-import type { OidcConfig, OidcUserInfo } from '$lib/types/settings.type';
+import type { OidcConfig } from '$lib/types/settings.type';
+
+export interface OidcUserInfo {
+	sub: string;
+	email: string;
+	name: string;
+	preferred_username?: string;
+	given_name?: string;
+	family_name?: string;
+	picture?: string;
+	groups?: string[];
+}
 
 export default class OidcAPIService extends BaseAPIService {
 	async getAuthUrl(redirectUri: string): Promise<string> {
