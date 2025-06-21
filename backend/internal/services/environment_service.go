@@ -95,14 +95,17 @@ func (s *EnvironmentService) TestConnection(ctx context.Context, id string) (str
 	return "error", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 }
 
-func (s *EnvironmentService) updateEnvironmentStatus(ctx context.Context, id, status string) {
+func (s *EnvironmentService) updateEnvironmentStatus(ctx context.Context, id, status string) error {
 	now := time.Now()
 	updates := map[string]interface{}{
 		"status":     status,
 		"last_seen":  &now,
 		"updated_at": &now,
 	}
-	s.db.WithContext(ctx).Model(&models.Environment{}).Where("id = ?", id).Updates(updates)
+	if err := s.db.WithContext(ctx).Model(&models.Environment{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return fmt.Errorf("failed to update environment status: %w", err)
+	}
+	return nil
 }
 
 func (s *EnvironmentService) UpdateEnvironmentStatus(ctx context.Context, id, status string) error {
