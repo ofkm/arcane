@@ -25,6 +25,7 @@
 	let error = $state('');
 	let selectedEnvironmentIds = $state<string[]>([]);
 	let showEnvironmentSheet = $state(false);
+	let refreshInProgress = false;
 
 	const columns: ColumnDef<Environment>[] = [
 		{ accessorKey: 'hostname', header: 'Environment' },
@@ -41,7 +42,8 @@
 	});
 
 	async function refreshEnvironments() {
-		if (loading) return;
+		if (refreshInProgress) return;
+		refreshInProgress = true;
 
 		try {
 			loading = true;
@@ -51,6 +53,7 @@
 			console.error('Failed to refresh environments:', err);
 		} finally {
 			loading = false;
+			refreshInProgress = false;
 		}
 	}
 
