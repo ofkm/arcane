@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { ImageMaturity } from '$lib/types/docker/image.type';
+import type { ImageMaturity } from '$lib/models/image.type';
 import ImageAPIService from '$lib/services/api/image-api-service';
 import ImageMaturityAPIService from '$lib/services/api/image-maturity-api-service';
 

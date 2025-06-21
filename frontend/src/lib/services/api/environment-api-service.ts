@@ -2,7 +2,7 @@ import BaseAPIService from './api-service';
 import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
 import type { ContainerCreateOptions, NetworkCreateOptions, VolumeCreateOptions } from 'dockerode';
-import type { Stack, StackService, StackUpdate } from '$lib/types/docker/stack.type';
+import type { Stack, StackService } from '$lib/models/stack.type';
 
 import { browser } from '$app/environment';
 

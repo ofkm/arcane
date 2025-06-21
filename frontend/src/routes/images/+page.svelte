@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type { EnhancedImageInfo } from '$lib/types/docker';
+	import type { EnhancedImageInfo } from '$lib/models/image.type';
 	import UniversalTable from '$lib/components/universal-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Download, AlertCircle, HardDrive, Trash2, Loader2, ChevronDown, Ellipsis, ScanSearch, Funnel } from '@lucide/svelte';

@@ -1,5 +1,5 @@
 import BaseAPIService from './api-service';
-import type { ImageMaturity } from '$lib/types/docker/image.type';
+import type { ImageMaturity } from '$lib/models/image.type';
 
 export interface ImageMaturityRecord {
 	id: string;

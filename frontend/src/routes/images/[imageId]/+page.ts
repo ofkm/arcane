@@ -1,5 +1,5 @@
 import { environmentAPI } from '$lib/services/api';
-import type { EnhancedImageInfo } from '$lib/types/docker';
+import type { EnhancedImageInfo } from '$lib/models/image.type';
 import { error } from '@sveltejs/kit';
 
 type ImageDetailData = {

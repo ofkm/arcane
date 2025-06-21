@@ -5,16 +5,7 @@ export const isDev = dev;
 export const isTest = false;
 
 export const defaultEnvTemplate = `# Environment Variables
-# These variables will be available to your stack services
 # Format: VARIABLE_NAME=value
-
-NGINX_HOST=localhost
-NGINX_PORT=80
-
-# Example Database Configuration
-# DB_USER=myuser
-# DB_PASSWORD=mypassword
-# DB_NAME=mydatabase
 `;
 
 export const defaultComposeTemplate = `services:

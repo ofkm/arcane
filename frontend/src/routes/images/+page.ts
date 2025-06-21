@@ -1,5 +1,5 @@
 import { environmentAPI, settingsAPI } from '$lib/services/api';
-import type { EnhancedImageInfo } from '$lib/types/docker';
+import type { EnhancedImageInfo } from '$lib/models/image.type';
 import type { Settings } from '$lib/types/settings.type';
 
 type ImageData = {
