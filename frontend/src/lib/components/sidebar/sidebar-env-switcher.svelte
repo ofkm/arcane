@@ -1,10 +1,11 @@
 <script lang="ts">
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import { Label } from '$lib/components/ui/label/index.js';
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import PlusIcon from '@lucide/svelte/icons/plus';
-	import { GalleryVerticalEndIcon } from '@lucide/svelte';
+	import { GlobeIcon } from '@lucide/svelte';
 	import ServerIcon from '@lucide/svelte/icons/server';
 	import { environmentStore, type Environment } from '$lib/stores/environment.store';
 	import { goto } from '$app/navigation';
@@ -39,6 +40,9 @@
 </script>
 
 <Sidebar.Menu>
+	{#if sidebar.open}
+		<Label class="px-2 mb-2 text-xs font-medium text-sidebar-foreground/60">Environment</Label>
+	{/if}
 	<Sidebar.MenuItem>
 		<DropdownMenu.Root>
 			<DropdownMenu.Trigger>
@@ -49,7 +53,7 @@
 								{#if currentSelectedEnvironment.isLocal}
 									<ServerIcon class="size-4" />
 								{:else}
-									<GalleryVerticalEndIcon class="size-4" />
+									<GlobeIcon class="size-4" />
 								{/if}
 							</div>
 							<div class="grid flex-1 text-left text-sm leading-tight">
@@ -57,7 +61,7 @@
 									{currentSelectedEnvironment.hostname}
 								</span>
 								<span class="truncate text-xs">
-									{currentSelectedEnvironment.isLocal ? 'Local Docker' : currentSelectedEnvironment.apiUrl}
+									{currentSelectedEnvironment.isLocal ? 'unix:///var/run/docker.sock' : currentSelectedEnvironment.apiUrl}
 								</span>
 							</div>
 						{:else}
@@ -89,13 +93,13 @@
 								{#if env.isLocal}
 									<ServerIcon class="size-3.5 shrink-0" />
 								{:else}
-									<GalleryVerticalEndIcon class="size-3.5 shrink-0" />
+									<GlobeIcon class="size-3.5 shrink-0" />
 								{/if}
 							</div>
 							<div class="flex flex-col">
 								<span>{env.hostname}</span>
 								{#if env.isLocal}
-									<span class="text-muted-foreground text-xs">Local Docker</span>
+									<span class="text-muted-foreground text-xs">unix:///var/run/docker.sock</span>
 								{:else}
 									<span class="text-muted-foreground text-xs truncate max-w-32">{env.apiUrl}</span>
 								{/if}

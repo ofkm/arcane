@@ -89,10 +89,6 @@
 	}
 </script>
 
-<svelte:head>
-	<title>User Management - Arcane</title>
-</svelte:head>
-
 <UserFormSheet bind:open={userPageStates.isUserDialogOpen} bind:userToEdit={userPageStates.userToEdit} {roles} onSubmit={handleDialogSubmit} bind:this={userDialogRef} isLoading={isLoading.saving} allowUsernameEdit={true} />
 
 <div class="space-y-6">

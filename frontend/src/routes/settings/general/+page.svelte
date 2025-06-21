@@ -63,10 +63,6 @@
 	});
 </script>
 
-<svelte:head>
-	<title>General Settings - Arcane</title>
-</svelte:head>
-
 <div class="space-y-6">
 	<!-- Header -->
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">

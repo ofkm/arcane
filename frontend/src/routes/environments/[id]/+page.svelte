@@ -68,10 +68,6 @@
 	const environmentDisplayName = $derived(environment?.hostname || 'Environment Details');
 </script>
 
-<svelte:head>
-	<title>{environmentDisplayName} - Arcane</title>
-</svelte:head>
-
 <div class="space-y-6 pb-16">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">

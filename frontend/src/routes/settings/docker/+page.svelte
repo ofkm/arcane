@@ -82,10 +82,6 @@
 	let canSave = $derived(isPollingConfigValid && isAutoUpdateConfigValid);
 </script>
 
-<svelte:head>
-	<title>Docker Settings - Arcane</title>
-</svelte:head>
-
 <div class="settings-page">
 	<!-- Header Section -->
 	<div class="settings-header">

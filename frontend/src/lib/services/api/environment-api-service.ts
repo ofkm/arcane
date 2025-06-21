@@ -1,7 +1,7 @@
 import BaseAPIService from './api-service';
 import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
-import type { ContainerCreateOptions, NetworkCreateOptions, VolumeCreateOptions } from 'dockerode';
+import type { ContainerCreateOptions, NetworkCreateOptions, VolumeCreateOptions, ContainerStats } from 'dockerode';
 import type { Stack, StackService } from '$lib/models/stack.type';
 
 import { browser } from '$app/environment';
@@ -39,10 +39,10 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/environments/${envId}/containers`, options));
 	}
 
-	async getContainerStats(containerId: string, stream: boolean = false) {
+	async getContainerStats(containerId: string, stream: boolean = false): Promise<ContainerStats> {
 		const envId = await this.getCurrentEnvironmentId();
 		const url = `/environments/${envId}/containers/${containerId}/stats${stream ? '?stream=true' : ''}`;
-		return this.handleResponse(this.api.get(url));
+		return this.handleResponse(this.api.get(url)) as Promise<ContainerStats>;
 	}
 
 	async stopContainer(containerId: string): Promise<any> {
@@ -129,7 +129,6 @@ export class EnvironmentAPIService extends BaseAPIService {
 	}
 
 	async getAllResources(): Promise<Record<string, any>> {
-		const envId = await this.getCurrentEnvironmentId();
 		const [containers, images, networks, volumes] = await Promise.all([this.getContainers(), this.getImages(), this.getNetworks(), this.getVolumes()]);
 
 		return {
@@ -259,9 +258,9 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/changes`));
 	}
 
-	async getStackStats(stackName: string): Promise<any> {
+	async getStackStats(stackName: string): Promise<ContainerStats[]> {
 		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/stats`));
+		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/stats`)) as Promise<ContainerStats[]>;
 	}
 
 	async validateStack(stackName: string): Promise<{ valid: boolean; errors?: string[] }> {

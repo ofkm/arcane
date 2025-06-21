@@ -4,6 +4,7 @@ import type { VolumeInspectInfo } from 'dockerode';
 
 type EnhancedVolumeInfo = VolumeInspectInfo & {
 	inUse: boolean;
+	CreatedAt: string;
 };
 
 type VolumePageData = {

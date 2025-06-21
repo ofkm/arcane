@@ -11,8 +11,7 @@
 					{ title: 'General', url: '/settings/general', icon: SettingsIcon },
 					{ title: 'Docker', url: '/settings/docker', icon: DatabaseIcon },
 					{ title: 'Users', url: '/settings/users', icon: UserIcon },
-					{ title: 'Security', url: '/settings/security', icon: Shield },
-					{ title: 'Environments', url: '/environments', icon: ComputerIcon }
+					{ title: 'Security', url: '/settings/security', icon: Shield }
 				]
 			}
 		],
@@ -26,6 +25,13 @@
 				title: 'Container Registries',
 				url: '/customize/registries',
 				icon: LockKeyholeIcon
+			}
+		],
+		environmentItems: [
+			{
+				title: 'Environments',
+				url: '/environments',
+				icon: ComputerIcon
 			}
 		],
 		managementItems: [
@@ -42,7 +48,7 @@
 <script lang="ts">
 	import SidebarItemGroup from './sidebar-itemgroup.svelte';
 	import SidebarUser from './sidebar-user.svelte';
-	import SidebarAgentSwitcher from './sidebar-agent-switcher.svelte';
+	import SidebarEnvSwitcher from './sidebar-env-switcher.svelte';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js';
 	import type { ComponentProps } from 'svelte';
@@ -70,11 +76,12 @@
 <Sidebar.Root {collapsible} {...restProps}>
 	<Sidebar.Header>
 		<SidebarLogo {isCollapsed} {versionInformation} />
-		<SidebarAgentSwitcher />
+		<SidebarEnvSwitcher />
 	</Sidebar.Header>
 	<Sidebar.Content>
 		<SidebarItemGroup label="Management" items={staticData.managementItems} />
 		<SidebarItemGroup label="Customization" items={staticData.customizationItems} />
+		<SidebarItemGroup label="Environments" items={staticData.environmentItems} />
 		<SidebarItemGroup label="Administration" items={staticData.settingsItems} />
 	</Sidebar.Content>
 	<Sidebar.Footer>

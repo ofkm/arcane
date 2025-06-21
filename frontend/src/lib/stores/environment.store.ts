@@ -1,5 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
+import { invalidateAll } from '$app/navigation';
 
 export type Environment = {
 	id: string;
@@ -94,9 +95,8 @@ function createEnvironmentManagementStore() {
 			if (!_initialized) {
 				_selectInitialEnvironment(available);
 				_initialized = true;
-				_resolveReadyPromiseFunction(); // Resolve ready promise on first successful initialization
+				_resolveReadyPromiseFunction();
 			} else {
-				// If already initialized, ensure the selected environment is still valid
 				const currentSelected = get(_selectedEnvironment);
 				if (currentSelected && !available.find((env) => env.id === currentSelected.id)) {
 					_selectInitialEnvironment(available);
@@ -105,10 +105,19 @@ function createEnvironmentManagementStore() {
 				}
 			}
 		},
-		setEnvironment: (environment: Environment) => {
-			_selectedEnvironment.set(environment);
-			if (browser && localStorage) {
-				localStorage.setItem('selectedEnvironmentId', environment.id);
+		setEnvironment: async (environment: Environment) => {
+			const currentSelected = get(_selectedEnvironment);
+
+			if (currentSelected?.id !== environment.id) {
+				_selectedEnvironment.set(environment);
+
+				if (browser && localStorage) {
+					localStorage.setItem('selectedEnvironmentId', environment.id);
+				}
+
+				if (browser) {
+					await invalidateAll();
+				}
 			}
 		},
 		isInitialized: () => _initialized,

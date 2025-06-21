@@ -129,10 +129,6 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Security Settings - Arcane</title>
-</svelte:head>
-
 <div class="settings-page">
 	<div class="settings-header">
 		<div class="settings-header-content">
