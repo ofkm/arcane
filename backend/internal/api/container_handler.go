@@ -26,7 +26,7 @@ func NewContainerHandler(containerService *services.ContainerService, imageServi
 }
 
 func (h *ContainerHandler) PullImage(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("containerId")
 
 	container, err := h.containerService.GetContainerByID(c.Request.Context(), id)
 	if err != nil {
@@ -99,7 +99,7 @@ func (h *ContainerHandler) GetByID(c *gin.Context) {
 }
 
 func (h *ContainerHandler) Start(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("containerId")
 
 	if err := h.containerService.StartContainer(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -116,7 +116,7 @@ func (h *ContainerHandler) Start(c *gin.Context) {
 }
 
 func (h *ContainerHandler) Stop(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("containerId")
 
 	if err := h.containerService.StopContainer(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -133,7 +133,7 @@ func (h *ContainerHandler) Stop(c *gin.Context) {
 }
 
 func (h *ContainerHandler) Restart(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("containerId")
 
 	if err := h.containerService.RestartContainer(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -188,7 +188,7 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 }
 
 func (h *ContainerHandler) IsImageInUse(c *gin.Context) {
-	imageID := c.Param("id")
+	imageID := c.Param("containerId")
 	if imageID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -345,7 +345,7 @@ func (h *ContainerHandler) GetStats(c *gin.Context) {
 }
 
 func (h *ContainerHandler) GetStatsStream(c *gin.Context) {
-	containerID := c.Param("id")
+	containerID := c.Param("containerId")
 	if containerID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -391,7 +391,7 @@ func (h *ContainerHandler) GetStatsStream(c *gin.Context) {
 }
 
 func (h *ContainerHandler) GetLogsStream(c *gin.Context) {
-	containerID := c.Param("id")
+	containerID := c.Param("containerId")
 	if containerID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

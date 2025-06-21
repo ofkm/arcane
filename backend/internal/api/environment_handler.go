@@ -77,6 +77,12 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs"):
 		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.GetLogs(c)
+	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stats/stream"):
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
+		containerHandler.GetStatsStream(c)
+	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stats"):
+		containerHandler := NewContainerHandler(h.containerService, h.imageService)
+		containerHandler.GetStats(c)
 	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == "GET":
 		containerHandler := NewContainerHandler(h.containerService, h.imageService)
 		containerHandler.GetByID(c)
