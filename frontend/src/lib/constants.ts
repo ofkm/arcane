@@ -1,9 +1,3 @@
-import { dev } from '$app/environment';
-
-export const isDev = dev;
-
-export const isTest = false;
-
 export const defaultEnvTemplate = `# Environment Variables
 # Format: VARIABLE_NAME=value
 `;
