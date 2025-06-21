@@ -38,20 +38,9 @@ const authHandler: Handle = async ({ event, resolve }) => {
 	const { url } = event;
 	const path = url.pathname;
 
-	const publicPaths = ['/auth/login', '/auth/logout', '/img', '/auth/oidc/login', '/auth/oidc/callback', '/api/agents/register', '/api/agents/heartbeat', '/api/health', '/api/version', '/favicon.ico', '/_app'];
-
-	const agentPollingPattern = /^\/api\/agents\/[^\/]+\/tasks$/;
-	const agentResultPattern = /^\/api\/agents\/[^\/]+\/tasks\/[^\/]+\/result$/;
-	const agentTaskStatusPattern = /^\/api\/agents\/[^\/]+\/tasks\/[^\/]+\/status$/;
+	const publicPaths = ['/auth/login', '/auth/logout', '/img', '/auth/oidc/login', '/auth/oidc/callback', '/api/health', '/api/version', '/favicon.ico', '/_app'];
 
 	const isPublicPath = publicPaths.some((p) => path.startsWith(p));
-	const isAgentPolling = agentPollingPattern.test(path) && event.request.method === 'GET';
-	const isAgentResult = agentResultPattern.test(path) && event.request.method === 'POST';
-	const isAgentTaskStatus = agentTaskStatusPattern.test(path) && event.request.method === 'PUT';
-
-	if (isPublicPath || isAgentPolling || isAgentResult || isAgentTaskStatus) {
-		return await resolve(event);
-	}
 
 	if (path.startsWith('/api/')) {
 		return await resolve(event);
