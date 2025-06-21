@@ -230,12 +230,6 @@
 			isPullingInline = { ...isPullingInline, [imageIdentifier]: false };
 		}
 	}
-
-	$effect(() => {
-		if (images && images.length > 0) {
-			loadImagesMaturity();
-		}
-	});
 </script>
 
 <div class="space-y-6">
