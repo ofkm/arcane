@@ -188,7 +188,7 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 		return []StackServiceInfo{}, nil
 	}
 
-	servicesFromFile, err := s.parseServicesFromComposeFile(composeFile, stack.Name)
+	servicesFromFile, err := s.parseServicesFromComposeFile(ctx, composeFile, stack.Name)
 	if err != nil {
 		return []StackServiceInfo{}, nil
 	}
@@ -196,7 +196,7 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 	return servicesFromFile, nil
 }
 
-func (s *StackService) parseServicesFromComposeFile(composeFile, stackName string) ([]StackServiceInfo, error) {
+func (s *StackService) parseServicesFromComposeFile(ctx context.Context, composeFile, stackName string) ([]StackServiceInfo, error) {
 	options, err := cli.NewProjectOptions(
 		[]string{composeFile},
 		cli.WithOsEnv,
@@ -208,7 +208,7 @@ func (s *StackService) parseServicesFromComposeFile(composeFile, stackName strin
 		return nil, fmt.Errorf("failed to create project options: %w", err)
 	}
 
-	project, err := options.LoadProject(context.Background())
+	project, err := options.LoadProject(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load project: %w", err)
 	}

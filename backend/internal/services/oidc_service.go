@@ -129,13 +129,13 @@ func (s *OidcService) HandleCallback(ctx context.Context, code, state, storedSta
 	}
 
 	// Exchange code for tokens
-	tokenResponse, err := s.exchangeCodeForTokens(config, code, stateData.CodeVerifier)
+	tokenResponse, err := s.exchangeCodeForTokens(ctx, config, code, stateData.CodeVerifier)
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange code for tokens: %w", err)
 	}
 
 	// Get user info from the userinfo endpoint
-	userInfo, err := s.getUserInfo(config, tokenResponse.AccessToken)
+	userInfo, err := s.getUserInfo(ctx, config, tokenResponse.AccessToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user info: %w", err)
 	}
@@ -144,8 +144,7 @@ func (s *OidcService) HandleCallback(ctx context.Context, code, state, storedSta
 }
 
 // exchangeCodeForTokens exchanges the authorization code for access tokens
-func (s *OidcService) exchangeCodeForTokens(config *models.OidcConfig, code, codeVerifier string) (*TokenResponse, error) {
-	// Prepare token request
+func (s *OidcService) exchangeCodeForTokens(ctx context.Context, config *models.OidcConfig, code, codeVerifier string) (*TokenResponse, error) {
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
@@ -154,8 +153,7 @@ func (s *OidcService) exchangeCodeForTokens(config *models.OidcConfig, code, cod
 	data.Set("client_secret", config.ClientSecret)
 	data.Set("code_verifier", codeVerifier)
 
-	// Make token request
-	req, err := http.NewRequest("POST", config.TokenEndpoint, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", config.TokenEndpoint, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +172,6 @@ func (s *OidcService) exchangeCodeForTokens(config *models.OidcConfig, code, cod
 		return nil, fmt.Errorf("token endpoint returned %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	// Parse token response
 	var tokenResponse TokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
 		return nil, err
@@ -184,9 +181,8 @@ func (s *OidcService) exchangeCodeForTokens(config *models.OidcConfig, code, cod
 }
 
 // getUserInfo retrieves user information from the userinfo endpoint
-func (s *OidcService) getUserInfo(config *models.OidcConfig, accessToken string) (*OidcUserInfo, error) {
-	// Make userinfo request
-	req, err := http.NewRequest("GET", config.UserinfoEndpoint, nil)
+func (s *OidcService) getUserInfo(ctx context.Context, config *models.OidcConfig, accessToken string) (*OidcUserInfo, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", config.UserinfoEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -205,13 +201,11 @@ func (s *OidcService) getUserInfo(config *models.OidcConfig, accessToken string)
 		return nil, fmt.Errorf("userinfo endpoint returned %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	// Parse userinfo response
 	var userInfo OidcUserInfo
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
 		return nil, err
 	}
 
-	// Validate required fields
 	if userInfo.Subject == "" {
 		return nil, errors.New("missing required 'sub' field in userinfo response")
 	}

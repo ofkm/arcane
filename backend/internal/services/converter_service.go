@@ -185,11 +185,9 @@ func (s *ConverterService) ParseDockerRunCommand(command string) (*models.Docker
 							result.TTY = true
 						}
 					}
-				} else {
+				} else if i+1 < len(tokens) && !strings.HasPrefix(tokens[i+1], "-") && result.Image == "" {
 					// Unknown flag - skip it and potential value
-					if i+1 < len(tokens) && !strings.HasPrefix(tokens[i+1], "-") && result.Image == "" {
-						i++ // Skip potential value
-					}
+					i++
 				}
 			} else {
 				// Token doesn't start with '-', it's either image or command

@@ -22,18 +22,16 @@ type DB struct {
 func Initialize(databaseURL string, environment string) (*DB, error) {
 	var dialector gorm.Dialector
 
-	if strings.HasPrefix(databaseURL, "sqlite://") || strings.HasPrefix(databaseURL, "sqlite3://") {
-		// Handle both sqlite:// and sqlite3:// prefixes
-		dbPath := databaseURL
-		if strings.HasPrefix(databaseURL, "sqlite://") {
-			dbPath = strings.TrimPrefix(databaseURL, "sqlite://")
-		} else if strings.HasPrefix(databaseURL, "sqlite3://") {
-			dbPath = strings.TrimPrefix(databaseURL, "sqlite3://")
-		}
+	switch {
+	case strings.HasPrefix(databaseURL, "sqlite://"):
+		dbPath := strings.TrimPrefix(databaseURL, "sqlite://")
 		dialector = sqlite.Open(dbPath)
-	} else if strings.HasPrefix(databaseURL, "postgres") {
+	case strings.HasPrefix(databaseURL, "sqlite3://"):
+		dbPath := strings.TrimPrefix(databaseURL, "sqlite3://")
+		dialector = sqlite.Open(dbPath)
+	case strings.HasPrefix(databaseURL, "postgres"):
 		dialector = postgres.Open(databaseURL)
-	} else {
+	default:
 		return nil, fmt.Errorf("unsupported database type in URL: %s", databaseURL)
 	}
 

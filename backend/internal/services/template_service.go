@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -47,7 +48,7 @@ func (s *TemplateService) GetTemplate(ctx context.Context, id string) (*models.C
 	var template models.ComposeTemplate
 	err := s.db.WithContext(ctx).Preload("Registry").Where("id = ?", id).First(&template).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("template not found")
 		}
 		return nil, fmt.Errorf("failed to get template: %w", err)
@@ -149,7 +150,7 @@ func (s *TemplateService) UpdateRegistry(ctx context.Context, id uint, updates *
 	var existing models.TemplateRegistry
 	err := s.db.WithContext(ctx).Where("id = ?", id).First(&existing).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("registry not found")
 		}
 		return fmt.Errorf("failed to find registry: %w", err)
@@ -192,7 +193,7 @@ func (s *TemplateService) loadRemoteTemplates(ctx context.Context) ([]models.Com
 			continue
 		}
 
-		remoteTemplates, err := s.fetchRegistryTemplates(registry.URL)
+		remoteTemplates, err := s.fetchRegistryTemplates(ctx, registry.URL)
 		if err != nil {
 			fmt.Printf("Warning: failed to fetch templates from registry %s: %v\n", registry.Name, err)
 			continue
@@ -207,9 +208,13 @@ func (s *TemplateService) loadRemoteTemplates(ctx context.Context) ([]models.Com
 	return templates, nil
 }
 
-func (s *TemplateService) fetchRegistryTemplates(url string) ([]models.RemoteTemplate, error) {
+func (s *TemplateService) fetchRegistryTemplates(ctx context.Context, url string) ([]models.RemoteTemplate, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Get(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch registry: %w", err)
 	}
@@ -301,22 +306,26 @@ func (s *TemplateService) FetchTemplateContent(ctx context.Context, template *mo
 		return template.Content, "", fmt.Errorf("not a remote template")
 	}
 
-	composeContent, err := s.fetchURL(*template.Metadata.RemoteURL)
+	composeContent, err := s.fetchURL(ctx, *template.Metadata.RemoteURL)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to fetch compose content: %w", err)
 	}
 
 	var envContent string
 	if template.Metadata.EnvURL != nil && *template.Metadata.EnvURL != "" {
-		envContent, _ = s.fetchURL(*template.Metadata.EnvURL)
+		envContent, _ = s.fetchURL(ctx, *template.Metadata.EnvURL)
 	}
 
 	return composeContent, envContent, nil
 }
 
-func (s *TemplateService) fetchURL(url string) (string, error) {
+func (s *TemplateService) fetchURL(ctx context.Context, url string) (string, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Get(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
