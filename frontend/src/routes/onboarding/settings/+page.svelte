@@ -16,7 +16,6 @@
 
 	let error = $state('');
 	let loading = $state(false);
-	let dockerHost = $state(data.settings.dockerHost);
 	let stacksDirectory = $state(data.settings.stacksDirectory);
 	let pollingEnabled = $state(data.settings.pollingEnabled);
 	let pollingInterval = $state(data.settings.pollingInterval);
@@ -24,7 +23,6 @@
 
 	function getUpdatedSettings(): Partial<Settings> {
 		return {
-			dockerHost,
 			stacksDirectory,
 			pollingEnabled,
 			pollingInterval,
@@ -36,7 +34,7 @@
 					settings: true
 				},
 				completed: true,
-				completedAt: new Date().toISOString()
+				completedAt: Date.now()
 			}
 		};
 	}
@@ -67,22 +65,6 @@
 	{/if}
 
 	<form class="space-y-5" onsubmit={() => continueToNextStep()}>
-		<Card.Root class="border shadow-sm">
-			<Card.Header class="py-4">
-				<Card.Title>Docker Connection</Card.Title>
-				<Card.Description>Configure how Arcane connects to Docker</Card.Description>
-			</Card.Header>
-			<Card.Content class="pt-0 pb-4">
-				<div class="space-y-3">
-					<Label for="dockerHost" class="mb-2 block text-base">Docker Host</Label>
-					<Input id="dockerHost" bind:value={dockerHost} placeholder="unix:///var/run/docker.sock" class="bg-muted/10 h-12 px-4" />
-					<p class="text-muted-foreground text-xs">
-						Examples: Unix: <code class="bg-muted/30 rounded px-1 py-0.5">unix:///var/run/docker.sock</code>
-					</p>
-				</div>
-			</Card.Content>
-		</Card.Root>
-
 		<Card.Root class="border shadow-sm">
 			<Card.Header class="py-4">
 				<Card.Title>Monitoring & Updates</Card.Title>
