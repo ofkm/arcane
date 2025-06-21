@@ -8,6 +8,7 @@
 	import ServerIcon from '@lucide/svelte/icons/server';
 	import { environmentStore, type Environment } from '$lib/stores/environment.store';
 	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 
 	const sidebar = useSidebar();
 
@@ -28,7 +29,12 @@
 	});
 
 	function handleSelect(env: Environment) {
-		environmentStore.setEnvironment(env);
+		try {
+			environmentStore.setEnvironment(env);
+		} catch (error) {
+			console.error('Failed to set environment:', error);
+			toast.error('Failed to Connect to Environment');
+		}
 	}
 </script>
 
