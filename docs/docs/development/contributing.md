@@ -17,52 +17,77 @@ Thank you for your interest in contributing to Arcane! We welcome contributions 
 ## Code Contribution Process
 
 1.  **Fork the Repository:** Start by forking the main Arcane repository on GitHub.
+
 2.  **Clone Your Fork:** Clone your forked repository to your local machine:
+
     ```bash
     git clone https://github.com/<your-username>/arcane.git
     cd arcane
     ```
+
 3.  **Create a Branch:** Create a new branch for your feature or bug fix. Use a descriptive name:
+
     ```bash
-    git branch -m feature/my-new-feature
+    git checkout -b feature/my-new-feature
     # or
-    git branch -m fix/issue-123
+    git checkout -b fix/issue-123
     ```
-4.  **Set Up Development Environment:** Follow the instructions in the [**Building from Source**](./building.md) guide to install dependencies and ensure you can run the development server.
+
+4.  **Set Up Development Environment:** Follow the instructions in the [**Building from Source**](./building.md) guide to set up your development environment:
+
     ```bash
-    npm install
-    npm run dev
+    ./build.sh
     ```
+
 5.  **Make Changes:** Implement your feature or bug fix. Write clear, concise code.
+
 6.  **Lint and Format:** Ensure your code adheres to the project's style guidelines by running the linters and formatters:
+
     ```bash
+    cd frontend
     npm run lint
     npm run format
     ```
-    Fix any issues reported.
-7.  **Commit Changes:** Commit your changes with a clear and descriptive commit message. Consider using [Conventional Commits](https://www.conventionalcommits.org/) if applicable.
+
+7.  **Test Your Changes:** Test your changes thoroughly to ensure they work as expected and don't break existing functionality.
+
+8.  **Commit Changes:** Commit your changes with a clear and descriptive commit message. We use [Conventional Commits](https://www.conventionalcommits.org/):
+
     ```bash
     git add .
-    git commit -m "feat: Add feature X"
+    git commit -m "feat: add feature X"
     # or
-    git commit -m "fix: Resolve issue Y"
+    git commit -m "fix: resolve issue Y"
     ```
-8.  **Keep Your Branch Updated:** Periodically update your branch with the latest changes from the upstream repository:
+
+9.  **Keep Your Branch Updated:** Periodically update your branch with the latest changes from the upstream repository:
+
     ```bash
     git fetch upstream
     git rebase upstream/main
     ```
-9.  **Push Your Branch:** Push your changes to your forked repository:
+
+10. **Push Your Branch:** Push your changes to your forked repository:
+
     ```bash
     git push origin feature/my-new-feature
     ```
-10. **Open a Pull Request:** Go to the original Arcane repository on GitHub and open a Pull Request (PR) from your branch to the main branch of the upstream repository.
+
+11. **Open a Pull Request:** Go to the original Arcane repository on GitHub and open a Pull Request (PR) from your branch to the main branch of the upstream repository.
     - Provide a clear title and description for your PR.
     - Reference any related issues (e.g., "Closes #123").
     - Be prepared to discuss your changes and make adjustments based on feedback.
 
 ## Code Style
 
-Arcane uses [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) to enforce code style and consistency. Please run `npm run lint` and `npm run format` before committing your changes. Configuration files (`.eslint.config.js`, `.prettierrc`) are included in the repository.
+Arcane uses [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) to enforce code style and consistency. Please run `npm run lint` and `npm run format` in the frontend directory before committing your changes. Configuration files are included in the repository.
 
-Thank you again for contributing to Arcane!
+## Development Tips
+
+- Use Svelte 5 syntax for all frontend files
+- Follow the existing code patterns and conventions
+- Keep commits focused and atomic
+- Write meaningful commit messages
+- Test your changes in both development and production builds
+
+Thank you for contributing to Arcane!
