@@ -232,11 +232,34 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 		return
 	}
 
+	skipHeaders := map[string]struct{}{
+		"Host":           {},
+		"Content-Length": {},
+		"Connection":     {},
+	}
+
 	for key, values := range c.Request.Header {
+		upperKey := http.CanonicalHeaderKey(key)
+		if _, skip := skipHeaders[upperKey]; skip {
+			continue
+		}
+		if strings.HasPrefix(upperKey, "X-Forwarded-") {
+			continue
+		}
+		if upperKey == "Authorization" {
+			if auth := c.GetHeader("Authorization"); auth != "" {
+				req.Header.Set("Authorization", auth)
+			}
+			continue
+		}
 		for _, value := range values {
 			req.Header.Add(key, value)
 		}
 	}
+
+	req.Header.Set("X-Forwarded-For", c.ClientIP())
+	req.Header.Set("X-Forwarded-Host", c.Request.Host)
+	req.Header.Set("X-Forwarded-Proto", c.Request.URL.Scheme)
 
 	for key, values := range c.Request.URL.Query() {
 		for _, value := range values {
