@@ -3,7 +3,7 @@
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Cog, Save, RefreshCw, Folder, Globe, Calendar } from '@lucide/svelte';
-	import type { FormInput as FormInputType } from '$lib/types/form.type';
+	import type { FormInput as FormInputType } from '$lib/utils/form.utils';
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
 	import type { Settings } from '$lib/types/settings.type';
@@ -39,26 +39,17 @@
 
 	let stacksDirectoryInput = $state<FormInputType<string>>({
 		value: '',
-		valid: true,
-		touched: false,
-		error: null,
-		errors: []
+		error: null
 	});
 
 	let baseServerUrlInput = $state<FormInputType<string>>({
 		value: '',
-		valid: true,
-		touched: false,
-		error: null,
-		errors: []
+		error: null
 	});
 
 	let maturityThresholdInput = $state<FormInputType<number>>({
 		value: 30,
-		valid: true,
-		touched: false,
-		error: null,
-		errors: []
+		error: null
 	});
 
 	let isLoading = $state({

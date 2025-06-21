@@ -3,7 +3,6 @@ import ImageMaturityAPIService from './image-maturity-api-service';
 import SystemAPIService from './system-api-service';
 import TemplateAPIService from './template-api-service';
 import UserAPIService from './user-api-service';
-import SessionAPIService from './session-api-service';
 import SettingsAPIService from './settings-api-service';
 import TemplateRegistryAPIService from './template-registry-api-service';
 import OidcAPIService from './oidc-api-service';
@@ -19,7 +18,6 @@ export const imageMaturityAPI = new ImageMaturityAPIService();
 export const systemAPI = new SystemAPIService();
 export const templateAPI = new TemplateAPIService();
 export const userAPI = new UserAPIService();
-export const sessionAPI = new SessionAPIService();
 export const settingsAPI = new SettingsAPIService();
 export const templateRegistryAPI = new TemplateRegistryAPIService();
 export const oidcAPI = new OidcAPIService();
@@ -36,7 +34,6 @@ interface APIServices {
 	system: SystemAPIService;
 	template: TemplateAPIService;
 	user: UserAPIService;
-	session: SessionAPIService;
 	settings: SettingsAPIService;
 	templateRegistry: TemplateRegistryAPIService;
 	oidc: OidcAPIService;
@@ -54,7 +51,6 @@ const apiServices: APIServices = {
 	system: systemAPI,
 	template: templateAPI,
 	user: userAPI,
-	session: sessionAPI,
 	settings: settingsAPI,
 	templateRegistry: templateRegistryAPI,
 	oidc: oidcAPI,

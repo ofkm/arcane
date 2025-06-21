@@ -17,8 +17,7 @@
 			styles={{
 				'&': {
 					height: '550px',
-					fontSize: '12px',
-					fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, monospace'
+					fontSize: '11px'
 				},
 				'&.cm-editor[contenteditable=false]': {
 					cursor: 'not-allowed'

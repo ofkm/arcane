@@ -2,8 +2,9 @@ import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
 import { building, dev } from '$app/environment';
-import { settingsAPI, sessionAPI } from '$lib/services/api';
+import { settingsAPI } from '$lib/services/api';
 import settingsStore from '$lib/stores/config-store';
+import { authService } from '$lib/services/api/auth-api-service';
 
 const isTestEnvironment = process.env.APP_ENV === 'TEST';
 
@@ -58,7 +59,7 @@ const authHandler: Handle = async ({ event, resolve }) => {
 
 	if (dev && !isTestEnvironment) {
 		try {
-			const isValidSession = await sessionAPI.validateSession();
+			const isValidSession = await authService.validateSession();
 
 			if (!isValidSession) {
 				throw redirect(302, `/auth/login?redirect=${encodeURIComponent(path)}`);
