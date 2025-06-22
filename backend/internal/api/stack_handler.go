@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -111,6 +112,9 @@ func (h *StackHandler) CreateStack(c *gin.Context) {
 
 func (h *StackHandler) GetStack(c *gin.Context) {
 	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
 	stack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
 	if err != nil {
@@ -171,7 +175,10 @@ func (h *StackHandler) GetStack(c *gin.Context) {
 }
 
 func (h *StackHandler) UpdateStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
 	var req dto.UpdateStackDto
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -256,7 +263,10 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 }
 
 func (h *StackHandler) DeleteStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
 	err := h.stackService.DeleteStack(c.Request.Context(), stackID)
 	if err != nil {
@@ -274,17 +284,35 @@ func (h *StackHandler) DeleteStack(c *gin.Context) {
 }
 
 func (h *StackHandler) StartStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
-	err := h.stackService.UpdateStackStatus(c.Request.Context(), stackID, models.StackStatusRunning)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+	fmt.Printf("DEBUG: StartStack handler called with stackID: %s\n", stackID)
+	fmt.Printf("DEBUG: Request method: %s, URL: %s\n", c.Request.Method, c.Request.URL.String())
+	fmt.Printf("DEBUG: All params: %+v\n", c.Params)
+
+	if stackID == "" {
+		fmt.Printf("DEBUG: Stack ID is empty\n")
+		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Failed to start stack",
+			"error":   "Stack ID is required",
 		})
 		return
 	}
 
+	fmt.Printf("DEBUG: About to call DeployStack service method\n")
+	if err := h.stackService.DeployStack(c.Request.Context(), stackID); err != nil {
+		fmt.Printf("DEBUG: DeployStack failed with error: %v\n", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	fmt.Printf("DEBUG: DeployStack completed successfully\n")
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Stack started successfully",
@@ -292,7 +320,10 @@ func (h *StackHandler) StartStack(c *gin.Context) {
 }
 
 func (h *StackHandler) StopStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
 	if err := h.stackService.StopStack(c.Request.Context(), stackID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -309,17 +340,30 @@ func (h *StackHandler) StopStack(c *gin.Context) {
 }
 
 func (h *StackHandler) RestartStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
+
+	if err := h.stackService.RestartStack(c.Request.Context(), stackID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Stack restarted successfully",
-		"stackId": stackID,
 	})
 }
 
 func (h *StackHandler) RedeployStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
 	var req dto.RedeployStackDto
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -344,7 +388,10 @@ func (h *StackHandler) RedeployStack(c *gin.Context) {
 }
 
 func (h *StackHandler) DownStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
 	if err := h.stackService.DownStack(c.Request.Context(), stackID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -361,7 +408,10 @@ func (h *StackHandler) DownStack(c *gin.Context) {
 }
 
 func (h *StackHandler) DestroyStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
 	var req dto.DestroyStackDto
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -386,7 +436,7 @@ func (h *StackHandler) DestroyStack(c *gin.Context) {
 }
 
 func (h *StackHandler) PullStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -396,7 +446,10 @@ func (h *StackHandler) PullStack(c *gin.Context) {
 }
 
 func (h *StackHandler) DeployStack(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
 	var req struct {
 		Profiles      []string          `json:"profiles"`
@@ -411,6 +464,8 @@ func (h *StackHandler) DeployStack(c *gin.Context) {
 		})
 		return
 	}
+
+	fmt.Println(stackID)
 
 	if err := h.stackService.DeployStack(c.Request.Context(), stackID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -427,7 +482,10 @@ func (h *StackHandler) DeployStack(c *gin.Context) {
 }
 
 func (h *StackHandler) GetStackServices(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
 	services, err := h.stackService.GetStackServices(c.Request.Context(), stackID)
 	if err != nil {
@@ -445,7 +503,10 @@ func (h *StackHandler) GetStackServices(c *gin.Context) {
 }
 
 func (h *StackHandler) PullImages(c *gin.Context) {
-	stackID := c.Param("id")
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
 
 	if err := h.stackService.PullStackImages(c.Request.Context(), stackID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -502,58 +563,49 @@ func (h *StackHandler) ConvertDockerRun(c *gin.Context) {
 func (h *StackHandler) GetStackLogsStream(c *gin.Context) {
 	stackID := c.Param("id")
 	if stackID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Stack ID is required",
-		})
-		return
+		stackID = c.Param("stackId")
 	}
 
-	// Get query parameters for log options
-	follow := c.DefaultQuery("follow", "true") == "true"
+	fmt.Printf("DEBUG: GetStackLogsStream called with stackID: %s\n", stackID)
+	fmt.Printf("DEBUG: All params: %+v\n", c.Params)
+
+	follow := c.Query("follow") == "true"
 	tail := c.DefaultQuery("tail", "100")
 	since := c.Query("since")
-	timestamps := c.DefaultQuery("timestamps", "true") == "true"
+	timestamps := c.Query("timestamps") == "true"
 
-	// Set headers for SSE
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
 
-	logsChan := make(chan string, 100) // Larger buffer for stack logs
-	errChan := make(chan error, 1)
+	logsChan := make(chan string, 100)
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
 
-	// Start streaming logs in a goroutine
 	go func() {
 		defer close(logsChan)
-		defer close(errChan)
-
-		err := h.stackService.StreamStackLogs(c.Request.Context(), stackID, logsChan, follow, tail, since, timestamps)
-		if err != nil {
-			errChan <- err
+		if err := h.stackService.StreamStackLogs(ctx, stackID, logsChan, follow, tail, since, timestamps); err != nil {
+			select {
+			case logsChan <- fmt.Sprintf("Error streaming logs: %v", err):
+			case <-ctx.Done():
+			}
 		}
 	}()
 
-	// Send logs to client
 	c.Stream(func(w io.Writer) bool {
 		select {
-		case logLine, ok := <-logsChan:
+		case log, ok := <-logsChan:
 			if !ok {
 				return false
 			}
-
-			// Parse the log line to extract service name and format as JSON
-			logData := h.parseStackLogLine(logLine)
-			c.SSEvent("log", logData)
+			c.SSEvent("log", gin.H{"message": log})
 			return true
-
-		case err := <-errChan:
-			c.SSEvent("error", gin.H{"error": err.Error()})
+		case <-ctx.Done():
 			return false
-
-		case <-c.Request.Context().Done():
-			return false
+		case <-time.After(30 * time.Second):
+			c.SSEvent("ping", gin.H{"message": "keepalive"})
+			return true
 		}
 	})
 }

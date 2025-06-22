@@ -38,6 +38,9 @@ const (
 	StackStatusStopped          StackStatus = "stopped"
 	StackStatusPartiallyRunning StackStatus = "partially running"
 	StackStatusUnknown          StackStatus = "unknown"
+	StackStatusDeploying        StackStatus = "deploying"
+	StackStatusStopping         StackStatus = "stopping"
+	StackStatusRestarting       StackStatus = "restarting"
 )
 
 type Stack struct {
