@@ -95,31 +95,21 @@ func (s *StackService) CreateStack(ctx context.Context, name, composeContent str
 }
 
 func (s *StackService) DeployStack(ctx context.Context, stackID string) error {
-	fmt.Printf("DEBUG: DeployStack called with stackID: %s\n", stackID)
-
 	stack, err := s.GetStackByID(ctx, stackID)
 	if err != nil {
-		fmt.Printf("DEBUG: Failed to get stack: %v\n", err)
 		return fmt.Errorf("failed to get stack: %w", err)
 	}
 
-	fmt.Printf("DEBUG: Stack retrieved: %+v\n", stack)
-
 	if _, err := os.Stat(stack.Path); os.IsNotExist(err) {
-		fmt.Printf("DEBUG: Stack directory does not exist: %s\n", stack.Path)
 		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
 	}
 
 	composeFileName := s.findComposeFileName(stack.Path)
 	if composeFileName == "" {
-		fmt.Printf("DEBUG: No compose file found in directory: %s\n", stack.Path)
 		return fmt.Errorf("no compose file found in stack directory: %s", stack.Path)
 	}
 
-	fmt.Printf("DEBUG: Found compose file: %s in directory: %s\n", composeFileName, stack.Path)
-
 	if err := s.UpdateStackStatus(ctx, stackID, models.StackStatusDeploying); err != nil {
-		fmt.Printf("DEBUG: Failed to update status to deploying: %v\n", err)
 		return fmt.Errorf("failed to update stack status to deploying: %w", err)
 	}
 
@@ -129,19 +119,12 @@ func (s *StackService) DeployStack(ctx context.Context, stackID string) error {
 		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
 	)
 
-	fmt.Printf("DEBUG: Executing: docker-compose -f %s up -d in directory %s\n", composeFileName, stack.Path)
-	fmt.Printf("DEBUG: Environment: COMPOSE_PROJECT_NAME=%s\n", stack.Name)
-
 	output, err := cmd.CombinedOutput()
-	fmt.Printf("DEBUG: Command output: %s\n", string(output))
-
 	if err != nil {
-		fmt.Printf("DEBUG: Command failed with error: %v\n", err)
 		s.UpdateStackStatus(ctx, stackID, models.StackStatusStopped)
 		return fmt.Errorf("failed to deploy stack: %w\nCommand output: %s", err, string(output))
 	}
 
-	fmt.Printf("DEBUG: Deploy successful, updating status to running\n")
 	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusRunning)
 }
 
@@ -554,14 +537,74 @@ func (s *StackService) RedeployStack(ctx context.Context, stackID string, profil
 	return s.DeployStack(ctx, stackID)
 }
 
+// DiscoverExternalStacks scans the configured stacks directory and returns any
+// folders with a compose file not already tracked in the database.
 func (s *StackService) DiscoverExternalStacks(ctx context.Context) ([]models.Stack, error) {
-	// TODO
-	return []models.Stack{}, nil
+	dir, err := s.getStacksDirectory(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stacks directory: %w", err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read stacks directory: %w", err)
+	}
+	var externals []models.Stack
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		path := filepath.Join(dir, name)
+		if s.findComposeFile(path) == "" {
+			continue
+		}
+		var count int64
+		s.db.DB.WithContext(ctx).
+			Model(&models.Stack{}).
+			Where("path = ?", path).
+			Or("dir_name = ?", name).
+			Count(&count)
+		if count > 0 {
+			continue
+		}
+		externals = append(externals, models.Stack{
+			ID:      "", // not yet persisted
+			Name:    name,
+			DirName: &name,
+			Path:    path,
+			Status:  models.StackStatusUnknown,
+		})
+	}
+	return externals, nil
 }
 
-func (s *StackService) ImportExternalStack(ctx context.Context, stackID, stackName string) (*models.Stack, error) {
-	// TODO
-	return nil, fmt.Errorf("external stack import not implemented yet")
+// ImportExternalStack takes a directory name under the stacks dir and a desired
+// stack name, then registers it in the database.
+func (s *StackService) ImportExternalStack(ctx context.Context, dirName, stackName string) (*models.Stack, error) {
+	baseDir, err := s.getStacksDirectory(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stacks directory: %w", err)
+	}
+	path := filepath.Join(baseDir, dirName)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil, fmt.Errorf("stack directory does not exist: %s", path)
+	}
+	if s.findComposeFile(path) == "" {
+		return nil, fmt.Errorf("no compose file found in %s", path)
+	}
+	stack := &models.Stack{
+		ID:           uuid.New().String(),
+		Name:         stackName,
+		DirName:      &dirName,
+		Path:         path,
+		Status:       models.StackStatusUnknown,
+		ServiceCount: 0,
+		RunningCount: 0,
+	}
+	if err := s.db.DB.WithContext(ctx).Create(stack).Error; err != nil {
+		return nil, fmt.Errorf("failed to import stack: %w", err)
+	}
+	return stack, nil
 }
 
 func (s *StackService) ValidateStackCompose(ctx context.Context, composeContent string) error {
@@ -732,19 +775,13 @@ func (s *StackService) ConvertDockerRun(ctx context.Context, dockerRunCommand st
 }
 
 func (s *StackService) GetStackByID(ctx context.Context, id string) (*models.Stack, error) {
-	fmt.Printf("DEBUG: Looking for stack with ID: %s\n", id)
-
 	var stack models.Stack
 	if err := s.db.DB.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			fmt.Printf("DEBUG: Stack not found with ID: %s\n", id)
 			return nil, fmt.Errorf("stack not found")
 		}
-		fmt.Printf("DEBUG: Database error for stack ID %s: %v\n", id, err)
 		return nil, fmt.Errorf("failed to get stack: %w", err)
 	}
-
-	fmt.Printf("DEBUG: Found stack: ID=%s, Name=%s, Path=%s\n", stack.ID, stack.Name, stack.Path)
 	return &stack, nil
 }
 
