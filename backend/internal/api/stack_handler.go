@@ -289,12 +289,7 @@ func (h *StackHandler) StartStack(c *gin.Context) {
 		stackID = c.Param("id")
 	}
 
-	fmt.Printf("DEBUG: StartStack handler called with stackID: %s\n", stackID)
-	fmt.Printf("DEBUG: Request method: %s, URL: %s\n", c.Request.Method, c.Request.URL.String())
-	fmt.Printf("DEBUG: All params: %+v\n", c.Params)
-
 	if stackID == "" {
-		fmt.Printf("DEBUG: Stack ID is empty\n")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "Stack ID is required",
@@ -302,9 +297,7 @@ func (h *StackHandler) StartStack(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("DEBUG: About to call DeployStack service method\n")
 	if err := h.stackService.DeployStack(c.Request.Context(), stackID); err != nil {
-		fmt.Printf("DEBUG: DeployStack failed with error: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -312,7 +305,6 @@ func (h *StackHandler) StartStack(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("DEBUG: DeployStack completed successfully\n")
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Stack started successfully",
@@ -465,8 +457,6 @@ func (h *StackHandler) DeployStack(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(stackID)
-
 	if err := h.stackService.DeployStack(c.Request.Context(), stackID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -565,9 +555,6 @@ func (h *StackHandler) GetStackLogsStream(c *gin.Context) {
 	if stackID == "" {
 		stackID = c.Param("stackId")
 	}
-
-	fmt.Printf("DEBUG: GetStackLogsStream called with stackID: %s\n", stackID)
-	fmt.Printf("DEBUG: All params: %+v\n", c.Params)
 
 	follow := c.Query("follow") == "true"
 	tail := c.DefaultQuery("tail", "100")
