@@ -1,110 +1,182 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
-	import { Switch } from '$lib/components/ui/switch/index.js';
-	import * as Alert from '$lib/components/ui/alert/index.js';
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { AlertCircle, ChevronRight } from '@lucide/svelte';
-	import { goto } from '$app/navigation';
-	import type { Settings } from '$lib/types/settings.type';
-	import settingsStore from '$lib/stores/config-store';
+	import { Button } from '$lib/components/ui/button';
+	import * as Card from '$lib/components/ui/card';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import * as Select from '$lib/components/ui/select';
+	import { Switch } from '$lib/components/ui/switch';
 	import { settingsAPI } from '$lib/services/api';
+	import { toast } from 'svelte-sonner';
+	import { goto } from '$app/navigation';
+	import { Loader2 } from '@lucide/svelte';
 
-	let { data } = $props();
-	let currentSettings = $state(data.settings);
+	let isLoading = $state(false);
 
-	let error = $state('');
-	let loading = $state(false);
-	let stacksDirectory = $state(data.settings.stacksDirectory);
-	let pollingEnabled = $state(data.settings.pollingEnabled);
-	let pollingInterval = $state(data.settings.pollingInterval);
-	let autoUpdate = $state(data.settings.autoUpdate);
+	let appSettings = $state({
+		autoUpdate: true,
+		autoUpdateInterval: 300,
+		pruneMode: 'dangling',
+		maturityThresholdDays: 30,
+		baseServerUrl: ''
+	});
 
-	function getUpdatedSettings(): Partial<Settings> {
-		return {
-			stacksDirectory,
-			pollingEnabled,
-			pollingInterval,
-			autoUpdate,
-			onboarding: {
-				steps: {
-					welcome: true,
-					password: true,
-					settings: true
-				},
-				completed: true,
-				completedAt: Date.now()
-			}
-		};
+	async function handleNext() {
+		isLoading = true;
+
+		try {
+			await settingsAPI.updateSettings({
+				autoUpdate: appSettings.autoUpdate,
+				autoUpdateInterval: appSettings.autoUpdateInterval,
+				pruneMode: appSettings.pruneMode,
+				maturityThresholdDays: appSettings.maturityThresholdDays,
+				baseServerUrl: appSettings.baseServerUrl,
+				onboarding: {
+					completed: false,
+					steps: {
+						welcome: true,
+						password: true,
+						docker: true,
+						security: true,
+						settings: true
+					}
+				}
+			});
+
+			goto('/onboarding/complete');
+		} catch (error) {
+			toast.error('Failed to save application settings');
+		} finally {
+			isLoading = false;
+		}
 	}
 
-	async function continueToNextStep() {
-		currentSettings = await settingsAPI.updateSettings({
-			...currentSettings,
-			...getUpdatedSettings()
-		});
-
-		settingsStore.reload();
-
-		goto('/onboarding/complete', { invalidateAll: true });
+	function handleSkip() {
+		goto('/onboarding/complete');
 	}
 </script>
 
-<div class="mx-auto max-w-2xl">
-	<h1 class="mb-4 text-3xl font-bold">Initial Setup</h1>
+<div class="space-y-6">
+	<div class="text-center">
+		<h2 class="text-2xl font-bold">Application Settings</h2>
+		<p class="text-muted-foreground mt-2">Configure general application behavior and features</p>
+	</div>
 
-	<p class="text-muted-foreground mb-6">Configure basic settings for Arcane. You can change these later from the Settings page.</p>
-
-	{#if error}
-		<Alert.Root class="mb-6" variant="destructive">
-			<AlertCircle class="mr-2 size-4" />
-			<Alert.Title>Error</Alert.Title>
-			<Alert.Description>{error}</Alert.Description>
-		</Alert.Root>
-	{/if}
-
-	<form class="space-y-5" onsubmit={() => continueToNextStep()}>
-		<Card.Root class="border shadow-sm">
-			<Card.Header class="py-4">
-				<Card.Title>Monitoring & Updates</Card.Title>
-				<Card.Description>Configure how Arcane monitors containers</Card.Description>
+	<div class="grid gap-6 md:grid-cols-2">
+		<Card.Root>
+			<Card.Header>
+				<Card.Title>Auto Update</Card.Title>
+				<Card.Description>Configure automatic updating of containers and stacks</Card.Description>
 			</Card.Header>
-			<Card.Content class="space-y-4 pt-0 pb-4">
-				<div class="flex items-center justify-between rounded-lg border p-4">
-					<div>
-						<Label for="pollingSwitch" class="font-medium">Container Status Polling</Label>
-						<p class="text-muted-foreground text-sm">Periodically check container status</p>
+			<Card.Content class="space-y-4">
+				<div class="flex items-center justify-between">
+					<div class="space-y-0.5">
+						<Label>Enable Auto Update</Label>
+						<p class="text-xs text-muted-foreground">Automatically check for and apply updates</p>
 					</div>
-					<Switch id="pollingSwitch" checked={pollingEnabled} onCheckedChange={(checked) => (pollingEnabled = checked)} />
+					<Switch bind:checked={appSettings.autoUpdate} />
 				</div>
 
-				{#if pollingEnabled}
-					<div class="px-4">
-						<Label for="pollingInterval" class="mb-2 block text-base">Polling Interval (minutes)</Label>
-						<Input id="pollingInterval" type="number" bind:value={pollingInterval} min="5" max="60" class="bg-muted/10 h-12 px-4" />
-						<p class="text-muted-foreground mt-1 text-xs">Set between 5-60 minutes.</p>
+				{#if appSettings.autoUpdate}
+					<div class="space-y-2">
+						<Label>Update Interval</Label>
+						<Select.Root
+							selected={{
+								value: appSettings.autoUpdateInterval,
+								label: `${appSettings.autoUpdateInterval / 60} minutes`
+							}}
+							onSelectedChange={(v) => v && (appSettings.autoUpdateInterval = v.value)}
+						>
+							<Select.Trigger>
+								<Select.Value placeholder="Select interval" />
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item value={300}>5 minutes</Select.Item>
+								<Select.Item value={900}>15 minutes</Select.Item>
+								<Select.Item value={1800}>30 minutes</Select.Item>
+								<Select.Item value={3600}>1 hour</Select.Item>
+								<Select.Item value={21600}>6 hours</Select.Item>
+							</Select.Content>
+						</Select.Root>
 					</div>
 				{/if}
+			</Card.Content>
+		</Card.Root>
 
-				<div class="flex items-center justify-between rounded-lg border p-4">
-					<div>
-						<Label for="autoUpdateSwitch" class="font-medium">Auto Update Containers</Label>
-						<p class="text-muted-foreground text-sm">Update containers when newer images are available</p>
-					</div>
-					<Switch id="autoUpdateSwitch" checked={autoUpdate} onCheckedChange={(checked) => (autoUpdate = checked)} />
+		<Card.Root>
+			<Card.Header>
+				<Card.Title>System Maintenance</Card.Title>
+				<Card.Description>Configure system cleanup and maintenance settings</Card.Description>
+			</Card.Header>
+			<Card.Content class="space-y-4">
+				<div class="space-y-2">
+					<Label>Prune Mode</Label>
+					<Select.Root
+						selected={{
+							value: appSettings.pruneMode,
+							label: appSettings.pruneMode === 'dangling' ? 'Dangling Only' : 'All Unused'
+						}}
+						onSelectedChange={(v) => v && (appSettings.pruneMode = v.value)}
+					>
+						<Select.Trigger>
+							<Select.Value placeholder="Select prune mode" />
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Item value="dangling">Dangling Only</Select.Item>
+							<Select.Item value="all">All Unused</Select.Item>
+						</Select.Content>
+					</Select.Root>
+					<p class="text-xs text-muted-foreground">
+						How aggressive to be when pruning unused resources
+					</p>
+				</div>
+
+				<div class="space-y-2">
+					<Label for="maturity-threshold">Image Maturity Threshold (days)</Label>
+					<Input
+						id="maturity-threshold"
+						type="number"
+						bind:value={appSettings.maturityThresholdDays}
+						min="1"
+						max="365"
+					/>
+					<p class="text-xs text-muted-foreground">
+						Consider images older than this as potentially outdated
+					</p>
 				</div>
 			</Card.Content>
 		</Card.Root>
 
-		<div class="flex justify-center pt-4">
-			<Button type="submit" disabled={loading} class="flex h-12 w-[80%] items-center gap-2 px-8">
-				{#if loading}
-					<span class="inline-block size-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+		<Card.Root class="md:col-span-2">
+			<Card.Header>
+				<Card.Title>Network Settings</Card.Title>
+				<Card.Description>Configure network and URL settings</Card.Description>
+			</Card.Header>
+			<Card.Content class="space-y-4">
+				<div class="space-y-2">
+					<Label for="base-server-url">Base Server URL (Optional)</Label>
+					<Input
+						id="base-server-url"
+						bind:value={appSettings.baseServerUrl}
+						placeholder="https://arcane.yourdomain.com"
+					/>
+					<p class="text-xs text-muted-foreground">
+						Used for generating external links and webhooks. Leave empty for auto-detection.
+					</p>
+				</div>
+			</Card.Content>
+		</Card.Root>
+	</div>
+
+	<div class="flex justify-between">
+		<Button variant="outline" onclick={() => goto('/onboarding/security')}>Back</Button>
+		<div class="flex gap-2">
+			<Button variant="ghost" onclick={handleSkip}>Skip</Button>
+			<Button onclick={handleNext} disabled={isLoading}>
+				{#if isLoading}
+					<Loader2 class="mr-2 size-4 animate-spin" />
 				{/if}
-				Continue
-				<ChevronRight class="size-4" />
+				Complete Setup
 			</Button>
 		</div>
-	</form>
+	</div>
 </div>

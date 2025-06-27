@@ -1,22 +1,73 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { CheckCircle } from '@lucide/svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { settingsAPI } from '$lib/services/api';
+	import { toast } from 'svelte-sonner';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { Loader2, CheckCircle, ArrowRight } from '@lucide/svelte';
+
+	let isLoading = $state(false);
+
+	async function completeOnboarding() {
+		isLoading = true;
+
+		try {
+			await settingsAPI.updateSettings({
+				onboarding: {
+					completed: true,
+					completedAt: Date.now(),
+					steps: {
+						welcome: true,
+						password: true,
+						docker: true,
+						security: true,
+						settings: true
+					}
+				}
+			});
+
+			toast.success('Onboarding completed successfully!');
+			await invalidateAll();
+			goto('/', { replaceState: true });
+		} catch (error) {
+			toast.error('Failed to complete onboarding');
+		} finally {
+			isLoading = false;
+		}
+	}
 </script>
 
-<div class="mx-auto max-w-2xl text-center">
-	<div class="mb-6 flex justify-center">
-		<div class="rounded-full bg-green-100 p-4 dark:bg-green-900/20">
-			<CheckCircle class="size-12 text-green-600 dark:text-green-400" />
+<div class="space-y-6 text-center">
+	<div class="mx-auto flex size-20 items-center justify-center rounded-full bg-green-100">
+		<CheckCircle class="size-10 text-green-600" />
+	</div>
+
+	<div>
+		<h2 class="text-2xl font-bold">Setup Complete!</h2>
+		<p class="text-muted-foreground mt-2">
+			Congratulations! You've successfully configured Arcane. You're ready to start managing your
+			containers.
+		</p>
+	</div>
+
+	<div class="space-y-4">
+		<div class="rounded-lg border bg-muted/50 p-4">
+			<h3 class="font-semibold">What's Next?</h3>
+			<ul class="mt-2 space-y-1 text-sm text-muted-foreground">
+				<li>• Start managing your Docker containers and images</li>
+				<li>• Create and deploy Docker Compose stacks</li>
+				<li>• Monitor system resources and performance</li>
+				<li>• Configure additional settings as needed</li>
+			</ul>
 		</div>
+
+		<Button onclick={completeOnboarding} disabled={isLoading} size="lg" class="w-full">
+			{#if isLoading}
+				<Loader2 class="mr-2 size-4 animate-spin" />
+				Completing Setup...
+			{:else}
+				Go to Dashboard
+				<ArrowRight class="ml-2 size-4" />
+			{/if}
+		</Button>
 	</div>
-
-	<h1 class="mb-6 text-3xl font-bold">Setup Complete!</h1>
-
-	<div class="prose dark:prose-invert mx-auto mb-8 max-w-xl">
-		<p>Congratulations! You've successfully completed the initial setup for Arcane.</p>
-		<p>You can now start using the application to manage your Docker containers and compose stacks.</p>
-	</div>
-
-	<Button onclick={() => goto('/', { invalidateAll: true })} size="lg">Go to Dashboard</Button>
 </div>

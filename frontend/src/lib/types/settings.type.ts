@@ -46,6 +46,8 @@ export interface Onboarding {
 	steps?: {
 		welcome?: boolean;
 		password?: boolean;
+		docker?: boolean;
+		security?: boolean;
 		settings?: boolean;
 	};
 }

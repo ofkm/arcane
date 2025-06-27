@@ -19,15 +19,19 @@ export function getAuthRedirectPath(path: string, user: User | null, settings: S
 	const isPublicPath = ['/authorize', '/device', '/health', '/healthz'].includes(path);
 	const isOnboardingPath = path == '/onboarding' || path.startsWith('/onboarding');
 
-	if (!isOnboardingPath && settings && settings.onboarding && !settings.onboarding.completed) {
-		return '/onboarding/welcome';
+	if (settings && (!settings.onboarding || !settings.onboarding.completed)) {
+		if (!isOnboardingPath) {
+			return '/onboarding/welcome';
+		}
 	}
 
 	if (!isUnauthenticatedOnlyPath && !isPublicPath && !isSignedIn) {
 		return '/auth/login';
 	}
 
-	if (isUnauthenticatedOnlyPath && isSignedIn) {
+	if (isUnauthenticatedOnlyPath && isSignedIn && settings?.onboarding?.completed) {
 		return '/';
 	}
+
+	return null;
 }
