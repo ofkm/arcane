@@ -26,7 +26,7 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 	templateService := services.NewTemplateService(db)
 	authService := services.NewAuthService(userService, settingsService, cfg.JWTSecret, cfg)
 	oidcService := services.NewOidcService(authService)
-	autoUpdate := services.NewAutoUpdateService(dockerClientService, settingsService, containerService, stackService, imageService, containerRegistry)
+	autoUpdate := services.NewAutoUpdateService(db, dockerClientService, settingsService, containerService, stackService, imageService, containerRegistry)
 	systemService := services.NewSystemService(db, dockerClientService, containerService, imageService, volumeService, networkService, settingsService)
 
 	appServices := &api.Services{
