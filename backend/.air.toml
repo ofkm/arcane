@@ -1,0 +1,11 @@
+root = "."
+tmp_dir = ".bin"
+
+[build]
+  bin = "./.bin/arcane"
+  cmd = "CGO_ENABLED=1 go build -o ./.bin/arcane ./cmd"
+  exclude_dir = [".bin", "data"]
+  stop_on_error = true
+
+[misc]
+  clean_on_exit = true

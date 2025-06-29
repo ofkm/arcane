@@ -10,6 +10,7 @@ This guide explains how to build the Arcane application from its source code. Th
 ## Prerequisites
 
 - Node.js: Version 22 or higher.
+- Go: v1.24 or higher.
 - npm, yarn, pnpm, or bun: A Node.js package manager. Examples will use `npm`.
 - Git: Required to clone the repository.
 - Docker Engine: Required if you intend to build the Docker image, and test functionality locally.
@@ -25,46 +26,20 @@ This guide explains how to build the Arcane application from its source code. Th
     ```
 
 2.  **Install Dependencies:**
-    Install the necessary project dependencies using your preferred package manager:
+    Run the build script located in the root of the repo. This will build the frontend and embded it in the backend.
 
     ```bash
-    npm install
+    ./build.sh
     ```
 
-3.  **Run the Development Server (Optional):**
-    To run Arcane in development mode with hot-reloading:
-
-    ```bash
-    npm run dev
-    ```
-
-    This will start a local development server, typically accessible at `http://localhost:3000` .
-
-4.  **Linting and Formatting:**
+3.  **Linting and Formatting:**
     Before building, you might want to check for code style issues:
 
     ```bash
+    cd frontend
     npm run lint
     npm run format
     ```
-
-5.  **Create a Production Build:**
-    To build the optimized production version of Arcane:
-
-    ```bash
-    npm run build
-    ```
-
-    This command uses SvelteKit's build process (powered by Vite) and the `@sveltejs/adapter-node` adapter. The output will be placed in the `build/` directory by default. This directory contains the standalone Node.js server and static assets needed to run Arcane.
-
-6.  **Run the Production Build:**
-    After a successful build, you can run the production server:
-
-    ```bash
-    node build/index.js
-    ```
-
-    Arcane should now be running using the built artifacts, typically accessible at `http://localhost:3000` (or the port configured for the production environment).
 
 ## Building the Docker Image
 
@@ -74,15 +49,11 @@ The repository includes a `Dockerfile` to containerize the application.
 2.  **Build the Image:** From the root of the project directory, run:
 
     ```bash
-    docker build -t arcane-local .
+    docker buildx build -tag arcane --platform linux/amd64,linux/arm64 .
     ```
 
-    You can replace `arcane-local` with your preferred image tag.
+    You can replace `arcane` with your preferred image tag.
 
 3.  **Run the Docker Container:**
 
     See the [Quickstart](/docs/getting-started/quickstart) guide on how to run the docker container.
-
-## Summary
-
-This covers the essential steps for building and running Arcane from its source code, both as a standalone Node.js application and as a Docker image.

@@ -1,0 +1,37 @@
+name: Run Backend Linter
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
+
+jobs:
+  golangci-lint:
+    name: Run Golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Run Golangci-lint
+        uses: golangci/golangci-lint-action@dec74fa03096ff515422f71d18d41307cacde373
+        with:
+          version: v2.0.2
+          args: --build-tags=exclude_frontend
+          working-directory: backend
+          only-new-issues: ${{ github.event_name == 'pull_request' }}
