@@ -15,10 +15,16 @@
 
 	const { versionInformation, user, settings } = data;
 
-	const redirectPath = getAuthRedirectPath(page.url.pathname, user, settings);
-	if (redirectPath) {
-		goto(redirectPath);
-	}
+	$effect(() => {
+		const currentUser = $userStore || user;
+		const currentSettings = $settingsStore || settings;
+
+		const redirectPath = getAuthRedirectPath(page.url.pathname, currentUser, currentSettings);
+		if (redirectPath) {
+			goto(redirectPath);
+		}
+	});
+
 	const isNavigating = $derived(navigating.type !== null);
 
 	const isOnboardingPage = $derived(page.url.pathname.startsWith('/onboarding'));

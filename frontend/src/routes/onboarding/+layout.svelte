@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../../app.css';
 	import { CheckCircle2, Key, Settings, Database, Shield, CheckCircle } from '@lucide/svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	let { children } = $props();
 
@@ -14,11 +14,11 @@
 		{ id: 'complete', label: 'Complete', path: '/onboarding/complete', icon: CheckCircle }
 	];
 
-	const currentStepIndex = $derived(steps.findIndex((step) => $page.url.pathname === step.path));
+	const currentStepIndex = $derived(steps.findIndex((step) => page.url.pathname === step.path));
 </script>
 
 <div class="flex min-h-screen flex-col">
-	<header class="border-b px-8 pb-6">
+	<header class="border-b px-8 py-8">
 		<div class="flex items-center">
 			<img src="/img/arcane.png" alt="Arcane" class="size-12" />
 			<h1 class="ml-4 text-2xl font-bold">Arcane Setup</h1>

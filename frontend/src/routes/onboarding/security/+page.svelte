@@ -18,7 +18,7 @@
 		oidcClientId: '',
 		oidcClientSecret: '',
 		oidcScope: 'openid profile email',
-		sessionTimeout: 24,
+		sessionTimeout: '24',
 		requireTLS: false
 	});
 
@@ -27,14 +27,20 @@
 
 		try {
 			const authSettings = {
-				type: securitySettings.authType as 'local' | 'oidc',
-				sessionTimeout: securitySettings.sessionTimeout,
+				localAuthEnabled: securitySettings.authType === 'local',
+				oidcEnabled: securitySettings.authType === 'oidc',
+				sessionTimeout: parseInt(securitySettings.sessionTimeout),
+				passwordPolicy: 'strong',
+				rbacEnabled: false,
 				...(securitySettings.authType === 'oidc' && {
 					oidc: {
-						issuer: securitySettings.oidcIssuer,
 						clientId: securitySettings.oidcClientId,
 						clientSecret: securitySettings.oidcClientSecret,
-						scope: securitySettings.oidcScope
+						redirectUri: `${window.location.origin}/auth/oidc/callback`,
+						authorizationEndpoint: `${securitySettings.oidcIssuer}/auth`,
+						tokenEndpoint: `${securitySettings.oidcIssuer}/token`,
+						userinfoEndpoint: `${securitySettings.oidcIssuer}/userinfo`,
+						scopes: securitySettings.oidcScope
 					}
 				})
 			};
@@ -80,15 +86,9 @@
 			<Card.Content class="space-y-4">
 				<div class="space-y-2">
 					<Label>Authentication Type</Label>
-					<Select.Root
-						selected={{
-							value: securitySettings.authType,
-							label: securitySettings.authType === 'local' ? 'Local Authentication' : 'OIDC/OAuth2'
-						}}
-						onSelectedChange={(v) => v && (securitySettings.authType = v.value)}
-					>
+					<Select.Root type="single" bind:value={securitySettings.authType}>
 						<Select.Trigger>
-							<Select.Value placeholder="Select authentication type" />
+							{securitySettings.authType}
 						</Select.Trigger>
 						<Select.Content>
 							<Select.Item value="local">Local Authentication</Select.Item>
@@ -99,21 +99,15 @@
 
 				<div class="space-y-2">
 					<Label for="session-timeout">Session Timeout (hours)</Label>
-					<Select.Root
-						selected={{
-							value: securitySettings.sessionTimeout,
-							label: `${securitySettings.sessionTimeout} hours`
-						}}
-						onSelectedChange={(v) => v && (securitySettings.sessionTimeout = v.value)}
-					>
+					<Select.Root type="single" bind:value={securitySettings.sessionTimeout}>
 						<Select.Trigger>
-							<Select.Value placeholder="Select timeout" />
+							{securitySettings.sessionTimeout}
 						</Select.Trigger>
 						<Select.Content>
-							<Select.Item value={1}>1 hour</Select.Item>
-							<Select.Item value={8}>8 hours</Select.Item>
-							<Select.Item value={24}>24 hours</Select.Item>
-							<Select.Item value={168}>1 week</Select.Item>
+							<Select.Item value="1">1 hour</Select.Item>
+							<Select.Item value="8">8 hours</Select.Item>
+							<Select.Item value="24">24 hours</Select.Item>
+							<Select.Item value="168">1 week</Select.Item>
 						</Select.Content>
 					</Select.Root>
 				</div>
@@ -134,6 +128,9 @@
 							bind:value={securitySettings.oidcIssuer}
 							placeholder="https://your-provider.com"
 						/>
+						<p class="text-xs text-muted-foreground">
+							The base URL of your OIDC provider (e.g., Keycloak, Auth0)
+						</p>
 					</div>
 
 					<div class="space-y-2">
@@ -156,12 +153,22 @@
 					</div>
 
 					<div class="space-y-2">
-						<Label for="oidc-scope">Scope</Label>
+						<Label for="oidc-scope">Scopes</Label>
 						<Input
 							id="oidc-scope"
 							bind:value={securitySettings.oidcScope}
 							placeholder="openid profile email"
 						/>
+						<p class="text-xs text-muted-foreground">Space-separated list of OAuth scopes</p>
+					</div>
+
+					<div class="rounded-lg bg-muted/50 p-3">
+						<p class="text-xs text-muted-foreground">
+							<strong>Note:</strong> The redirect URI will be automatically set to:
+							<code class="rounded bg-background px-1"
+								>{window.location.origin}/auth/oidc/callback</code
+							>
+						</p>
 					</div>
 				</Card.Content>
 			</Card.Root>

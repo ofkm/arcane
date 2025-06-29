@@ -14,7 +14,7 @@
 
 	let appSettings = $state({
 		autoUpdate: true,
-		autoUpdateInterval: 300,
+		autoUpdateInterval: '300',
 		pruneMode: 'dangling',
 		maturityThresholdDays: 30,
 		baseServerUrl: ''
@@ -26,7 +26,7 @@
 		try {
 			await settingsAPI.updateSettings({
 				autoUpdate: appSettings.autoUpdate,
-				autoUpdateInterval: appSettings.autoUpdateInterval,
+				autoUpdateInterval: parseInt(appSettings.autoUpdateInterval),
 				pruneMode: appSettings.pruneMode,
 				maturityThresholdDays: appSettings.maturityThresholdDays,
 				baseServerUrl: appSettings.baseServerUrl,
@@ -79,22 +79,16 @@
 				{#if appSettings.autoUpdate}
 					<div class="space-y-2">
 						<Label>Update Interval</Label>
-						<Select.Root
-							selected={{
-								value: appSettings.autoUpdateInterval,
-								label: `${appSettings.autoUpdateInterval / 60} minutes`
-							}}
-							onSelectedChange={(v) => v && (appSettings.autoUpdateInterval = v.value)}
-						>
+						<Select.Root type="single" bind:value={appSettings.autoUpdateInterval}>
 							<Select.Trigger>
-								<Select.Value placeholder="Select interval" />
+								{appSettings.autoUpdateInterval}
 							</Select.Trigger>
 							<Select.Content>
-								<Select.Item value={300}>5 minutes</Select.Item>
-								<Select.Item value={900}>15 minutes</Select.Item>
-								<Select.Item value={1800}>30 minutes</Select.Item>
-								<Select.Item value={3600}>1 hour</Select.Item>
-								<Select.Item value={21600}>6 hours</Select.Item>
+								<Select.Item value="300">5 minutes</Select.Item>
+								<Select.Item value="900">15 minutes</Select.Item>
+								<Select.Item value="1800">30 minutes</Select.Item>
+								<Select.Item value="3600">1 hour</Select.Item>
+								<Select.Item value="21600">6 hours</Select.Item>
 							</Select.Content>
 						</Select.Root>
 					</div>
@@ -110,15 +104,9 @@
 			<Card.Content class="space-y-4">
 				<div class="space-y-2">
 					<Label>Prune Mode</Label>
-					<Select.Root
-						selected={{
-							value: appSettings.pruneMode,
-							label: appSettings.pruneMode === 'dangling' ? 'Dangling Only' : 'All Unused'
-						}}
-						onSelectedChange={(v) => v && (appSettings.pruneMode = v.value)}
-					>
+					<Select.Root type="single" bind:value={appSettings.pruneMode}>
 						<Select.Trigger>
-							<Select.Value placeholder="Select prune mode" />
+							{appSettings.pruneMode}
 						</Select.Trigger>
 						<Select.Content>
 							<Select.Item value="dangling">Dangling Only</Select.Item>
