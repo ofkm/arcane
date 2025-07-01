@@ -24,11 +24,26 @@
 		refreshing: false
 	});
 
-	const shortId = $derived(image?.Id.split(':')[1]?.substring(0, 12) || 'N/A');
-	const createdDate = $derived(image?.Created ? formatDate(new Date(image.Created * 1000).toISOString()) : 'N/A');
+	const shortId = $derived(image?.Id?.split(':')[1]?.substring(0, 12) || 'N/A');
+
+	const createdDate = $derived(() => {
+		if (!image?.Created) {
+			return 'N/A';
+		}
+		try {
+			const date = new Date(image.Created);
+			if (isNaN(date.getTime())) {
+				return 'N/A';
+			}
+			return formatDate(date.toISOString());
+		} catch {
+			return 'N/A';
+		}
+	});
+
 	const imageSize = $derived(formatBytes(image?.Size || 0));
-	const architecture = $derived(image?.Manifests?.[0]?.ImageData?.Platform?.architecture || 'N/A');
-	const osName = $derived(image?.Manifests?.[0]?.ImageData?.Platform?.os || 'N/A');
+	const architecture = $derived(image?.Architecture || 'N/A');
+	const osName = $derived(image?.Os || 'N/A');
 
 	async function handleImageRemove(id: string) {
 		openConfirmDialog({
@@ -76,7 +91,13 @@
 		</div>
 
 		<div class="flex flex-wrap gap-2">
-			<ArcaneButton action="remove" onClick={() => handleImageRemove(image.Id)} loading={isLoading.removing} disabled={isLoading.removing} size="sm" />
+			<ArcaneButton
+				action="remove"
+				onClick={() => handleImageRemove(image.Id)}
+				loading={isLoading.removing}
+				disabled={isLoading.removing}
+				size="sm"
+			/>
 		</div>
 	</div>
 
@@ -90,7 +111,9 @@
 					<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						<!-- ID -->
 						<div class="flex items-start gap-3">
-							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
+							<div
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2"
+							>
 								<Hash class="size-5 text-gray-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -101,7 +124,9 @@
 
 						<!-- Size -->
 						<div class="flex items-start gap-3">
-							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2">
+							<div
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2"
+							>
 								<HardDrive class="size-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -112,18 +137,22 @@
 
 						<!-- Created -->
 						<div class="flex items-start gap-3">
-							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2">
+							<div
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2"
+							>
 								<Clock class="size-5 text-green-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Created</p>
-								<p class="mt-1 text-base font-semibold">{createdDate}</p>
+								<p class="mt-1 text-base font-semibold">{createdDate()}</p>
 							</div>
 						</div>
 
 						<!-- Architecture -->
 						<div class="flex items-start gap-3">
-							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 p-2">
+							<div
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 p-2"
+							>
 								<Cpu class="size-5 text-orange-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -134,7 +163,9 @@
 
 						<!-- OS -->
 						<div class="flex items-start gap-3">
-							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 p-2">
+							<div
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 p-2"
+							>
 								<Layers class="size-5 text-indigo-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -150,7 +181,9 @@
 			{#if image.RepoTags && image.RepoTags.length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
-						<Card.Title class="flex items-center gap-2"><Tag class="text-muted-foreground size-5" /> Tags</Card.Title>
+						<Card.Title class="flex items-center gap-2"
+							><Tag class="text-muted-foreground size-5" /> Tags</Card.Title
+						>
 					</Card.Header>
 					<Card.Content>
 						<div class="flex flex-wrap gap-2">
@@ -163,18 +196,44 @@
 			{/if}
 
 			<!-- Labels Card -->
-			{#if image.Labels && Object.keys(image.Labels).length > 0}
+			{#if image.Config?.Labels && Object.keys(image.Config.Labels).length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
 						<Card.Title>Labels</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-2">
-						{#each Object.entries(image.Labels) as [key, value] (key)}
+						{#each Object.entries(image.Config.Labels) as [key, value] (key)}
 							<div class="flex flex-col text-sm sm:flex-row sm:items-center">
-								<span class="text-muted-foreground w-full font-medium break-all sm:w-1/4">{key}:</span>
+								<span class="text-muted-foreground w-full font-medium break-all sm:w-1/4"
+									>{key}:</span
+								>
 								<span class="w-full font-mono text-xs break-all sm:w-3/4 sm:text-sm">{value}</span>
 							</div>
-							{#if !Object.is(Object.keys(image.Labels).length - 1, Object.keys(image.Labels).indexOf(key))}
+							{#if !Object.is(Object.keys(image.Config.Labels).length - 1, Object.keys(image.Config.Labels).indexOf(key))}
+								<Separator class="my-2" />
+							{/if}
+						{/each}
+					</Card.Content>
+				</Card.Root>
+			{/if}
+
+			<!-- Environment Variables Card -->
+			{#if image.Config?.Env && image.Config.Env.length > 0}
+				<Card.Root class="border shadow-sm">
+					<Card.Header>
+						<Card.Title>Environment Variables</Card.Title>
+					</Card.Header>
+					<Card.Content class="space-y-2">
+						{#each image.Config.Env as env (env)}
+							{@const [key, ...valueParts] = env.split('=')}
+							{@const value = valueParts.join('=')}
+							<div class="flex flex-col text-sm sm:flex-row sm:items-center">
+								<span class="text-muted-foreground w-full font-medium break-all sm:w-1/4"
+									>{key}:</span
+								>
+								<span class="w-full font-mono text-xs break-all sm:w-3/4 sm:text-sm">{value}</span>
+							</div>
+							{#if env !== image.Config.Env[image.Config.Env.length - 1]}
 								<Separator class="my-2" />
 							{/if}
 						{/each}
@@ -185,7 +244,13 @@
 	{:else}
 		<div class="py-12 text-center">
 			<p class="text-muted-foreground text-lg font-medium">Image not found.</p>
-			<ArcaneButton action="cancel" customLabel="Back to Images" onClick={() => goto('/images')} size="sm" class="mt-4" />
+			<ArcaneButton
+				action="cancel"
+				customLabel="Back to Images"
+				onClick={() => goto('/images')}
+				size="sm"
+				class="mt-4"
+			/>
 		</div>
 	{/if}
 </div>

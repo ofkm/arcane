@@ -55,7 +55,7 @@ func (h *NetworkHandler) List(c *gin.Context) {
 }
 
 func (h *NetworkHandler) GetByID(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("networkId")
 
 	network, err := h.networkService.GetNetworkByID(c.Request.Context(), id)
 	if err != nil {
@@ -149,7 +149,7 @@ func (h *NetworkHandler) ConnectContainer(c *gin.Context) {
 }
 
 func (h *NetworkHandler) DisconnectContainer(c *gin.Context) {
-	networkID := c.Param("id")
+	networkID := c.Param("networkId")
 
 	var req struct {
 		ContainerID string `json:"containerId" binding:"required"`
