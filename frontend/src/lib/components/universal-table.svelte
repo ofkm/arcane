@@ -266,7 +266,7 @@
 
 	<!-- Table -->
 	<div class={cn('rounded-md border', isDashboardTable && 'rounded-none border-none')}>
-		<Table.Root class="table-fixed w-full">
+		<Table.Root class="w-full table-auto">
 			<Table.Header>
 				{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
 					<Table.Row>
@@ -280,7 +280,7 @@
 							</Table.Head>
 						{/if}
 						{#each headerGroup.headers as header, index (header.id)}
-							<Table.Head class={cn(index === 0 ? 'w-auto' : 'w-32', 'px-4')}>
+							<Table.Head class={cn(index === 0 ? '' : 'w-0 whitespace-nowrap', 'px-4')}>
 								{#if !header.isPlaceholder}
 									{#if header.column.getCanSort()}
 										<Button
@@ -334,12 +334,7 @@
 								{@render rows({ item: row.original, index: row.index })}
 							{:else}
 								{#each row.getVisibleCells() as cell, index (cell.id)}
-									<Table.Cell
-										class={cn(
-											index === 0 ? 'w-auto min-w-0' : 'w-32 whitespace-nowrap',
-											'px-4 truncate'
-										)}
-									>
+									<Table.Cell class={cn(index === 0 ? '' : 'w-0 whitespace-nowrap', 'px-4')}>
 										<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
 									</Table.Cell>
 								{/each}
