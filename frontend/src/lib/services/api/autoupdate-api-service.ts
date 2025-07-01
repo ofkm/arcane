@@ -18,7 +18,7 @@ export default class AutoUpdateAPIService extends BaseAPIService {
     }
 
     async checkStacks(): Promise<AutoUpdateResult> {
-        const response = await this.api.post('/updates/check/stacks');
+        const response = await this.api.post('/updates/check/compose');
         return response.data;
     }
 

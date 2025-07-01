@@ -59,7 +59,7 @@ func (h *ImageHandler) List(c *gin.Context) {
 			}
 		} else if len(img.RepoTags) > 0 && img.RepoTags[0] != "<none>:<none>" && img.Repo != "<none>" && h.imageMaturityService != nil {
 			go func(imageID string, repo string, tag string, createdTime time.Time) {
-				maturityData, checkErr := h.imageMaturityService.CheckImageMaturity(context.Background(), imageID, repo, tag, createdTime, nil)
+				maturityData, checkErr := h.imageMaturityService.CheckImageMaturity(context.Background(), imageID, repo, tag, createdTime)
 				if checkErr == nil {
 					setErr := h.imageMaturityService.SetImageMaturity(context.Background(), imageID, repo, tag, *maturityData, map[string]interface{}{
 						"registryDomain":    utils.ExtractRegistryDomain(repo),
@@ -268,7 +268,7 @@ func (h *ImageHandler) CheckMaturity(c *gin.Context) {
 	repo := parts[0]
 	tag := parts[1]
 
-	maturityData, err := h.imageMaturityService.CheckImageMaturity(c.Request.Context(), imageID, repo, tag, time.Unix(targetImage.Created, 0), nil)
+	maturityData, err := h.imageMaturityService.CheckImageMaturity(c.Request.Context(), imageID, repo, tag, time.Unix(targetImage.Created, 0))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

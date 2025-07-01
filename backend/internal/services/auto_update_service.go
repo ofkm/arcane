@@ -512,7 +512,7 @@ func (s *AutoUpdateService) pullImageWithAuth(ctx context.Context, imageRef stri
 func (s *AutoUpdateService) getAuthConfigForImage(ctx context.Context, imageRef string) (*registry.AuthConfig, error) {
 	registryDomain := s.extractRegistryDomain(imageRef)
 
-	registries, err := s.registryService.ListRegistries(ctx)
+	registries, err := s.registryService.GetAllRegistries(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list registries: %w", err)
 	}
@@ -521,7 +521,7 @@ func (s *AutoUpdateService) getAuthConfigForImage(ctx context.Context, imageRef 
 		if reg.URL == registryDomain || reg.URL == "https://"+registryDomain || strings.Contains(reg.URL, registryDomain) {
 			return &registry.AuthConfig{
 				Username: reg.Username,
-				Password: reg.Password,
+				Password: reg.Token,
 			}, nil
 		}
 	}
@@ -641,18 +641,27 @@ func (s *AutoUpdateService) recordAutoUpdate(ctx context.Context, result dto.Aut
 	}
 
 	if len(result.OldImages) > 0 {
-		oldImagesJSON, _ := json.Marshal(result.OldImages)
-		record.OldImageVersions = models.JSON(oldImagesJSON)
+		oldImagesJSON := make(models.JSON)
+		for k, v := range result.OldImages {
+			oldImagesJSON[k] = v
+		}
+		record.OldImageVersions = oldImagesJSON
 	}
 
 	if len(result.NewImages) > 0 {
-		newImagesJSON, _ := json.Marshal(result.NewImages)
-		record.NewImageVersions = models.JSON(newImagesJSON)
+		newImagesJSON := make(models.JSON)
+		for k, v := range result.NewImages {
+			newImagesJSON[k] = v
+		}
+		record.NewImageVersions = newImagesJSON
 	}
 
 	if len(result.Details) > 0 {
-		detailsJSON, _ := json.Marshal(result.Details)
-		record.Details = models.JSON(detailsJSON)
+		detailsJSON := make(models.JSON)
+		for k, v := range result.Details {
+			detailsJSON[k] = v
+		}
+		record.Details = detailsJSON
 	}
 
 	endTime := time.Now()

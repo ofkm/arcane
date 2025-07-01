@@ -254,7 +254,7 @@ func setupAutoUpdateRoutes(api *gin.RouterGroup, services *Services) {
 
 	autoUpdate.POST("/check", autoUpdateHandler.CheckForUpdates)
 	autoUpdate.POST("/check/containers", autoUpdateHandler.CheckContainers)
-	autoUpdate.POST("/check/stacks", autoUpdateHandler.CheckStacks)
+	autoUpdate.POST("/check/compose", autoUpdateHandler.CheckStacks)
 	autoUpdate.GET("/history", autoUpdateHandler.GetUpdateHistory)
 	autoUpdate.GET("/status", autoUpdateHandler.GetUpdateStatus)
 }
