@@ -78,8 +78,8 @@ func (s *AutoUpdateService) CheckForUpdates(ctx context.Context, req dto.AutoUpd
 	}
 
 	var wg sync.WaitGroup
-	resultsChan := make(chan dto.AutoUpdateResourceResult, 100)
-	errorsChan := make(chan error, 10)
+	resultsChan := make(chan dto.AutoUpdateResourceResult, 1000)
+	errorsChan := make(chan error, 100)
 
 	checkType := strings.ToLower(req.Type)
 	if checkType == "" || checkType == "all" {
@@ -89,7 +89,13 @@ func (s *AutoUpdateService) CheckForUpdates(ctx context.Context, req dto.AutoUpd
 	if checkType == "all" || checkType == "containers" {
 		wg.Add(1)
 		go func() {
-			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Panic in container check goroutine: %v", r)
+					errorsChan <- fmt.Errorf("container check panic: %v", r)
+				}
+				wg.Done()
+			}()
 			s.checkContainers(ctx, req, settings, resultsChan, errorsChan)
 		}()
 	}
@@ -97,7 +103,13 @@ func (s *AutoUpdateService) CheckForUpdates(ctx context.Context, req dto.AutoUpd
 	if checkType == "all" || checkType == "stacks" {
 		wg.Add(1)
 		go func() {
-			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Panic in stack check goroutine: %v", r)
+					errorsChan <- fmt.Errorf("stack check panic: %v", r)
+				}
+				wg.Done()
+			}()
 			s.checkStacks(ctx, req, settings, resultsChan, errorsChan)
 		}()
 	}
