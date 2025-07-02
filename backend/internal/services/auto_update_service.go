@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type AutoUpdateService struct {
@@ -170,7 +172,7 @@ func (s *AutoUpdateService) checkContainers(
 	}
 
 	for _, cnt := range containers {
-		if len(req.ResourceIds) > 0 && !contains(req.ResourceIds, cnt.ID) {
+		if len(req.ResourceIds) > 0 && !slices.Contains(req.ResourceIds, cnt.ID) {
 			continue
 		}
 
@@ -277,7 +279,7 @@ func (s *AutoUpdateService) checkStacks(
 	}
 
 	for _, stack := range stacks {
-		if len(req.ResourceIds) > 0 && !contains(req.ResourceIds, stack.ID) {
+		if len(req.ResourceIds) > 0 && !slices.Contains(req.ResourceIds, stack.ID) {
 			continue
 		}
 
@@ -519,7 +521,7 @@ func (s *AutoUpdateService) pullImageWithAuth(ctx context.Context, imageRef stri
 }
 
 func (s *AutoUpdateService) getAuthConfigForImage(ctx context.Context, imageRef string) (*registry.AuthConfig, error) {
-	registryDomain := s.extractRegistryDomain(imageRef)
+	registryDomain := utils.ExtractRegistryDomain(imageRef)
 	normalizedImageDomain := s.normalizeRegistryURL(registryDomain)
 
 	registries, err := s.registryService.GetAllRegistries(ctx)

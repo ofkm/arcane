@@ -87,7 +87,7 @@ func (s *ImageMaturityService) CheckImageMaturity(ctx context.Context, imageID, 
 	}
 
 	metadata := map[string]interface{}{
-		"registryDomain":    s.extractRegistryDomain(repository),
+		"registryDomain":    utils.ExtractRegistryDomain(repository),
 		"isPrivateRegistry": s.isPrivateRegistry(repository),
 		"currentImageDate":  imageCreatedAt,
 		"daysSinceCreation": int(imageAge.Hours() / 24),
@@ -163,7 +163,7 @@ func (s *ImageMaturityService) SetImageMaturity(ctx context.Context, imageID, re
 }
 
 func (s *ImageMaturityService) getRegistryForImage(ctx context.Context, repository string) *models.ContainerRegistry {
-	registryDomain := s.extractRegistryDomain(repository)
+	registryDomain := utils.ExtractRegistryDomain(repository)
 	normalizedImageDomain := s.normalizeRegistryURL(registryDomain)
 
 	registries, err := s.registryService.GetAllRegistries(ctx)
@@ -316,35 +316,36 @@ func (s *ImageMaturityService) getRegistryToken(ctx context.Context, repository 
 }
 
 func (s *ImageMaturityService) buildRegistryURL(repository string) string {
-	domain := s.extractRegistryDomain(repository)
+	domain := utils.ExtractRegistryDomain(repository)
 
-	switch domain {
-	case "docker.io", "index.docker.io":
+	if domain == "docker.io" {
 		return "https://registry-1.docker.io"
-	case "registry-1.docker.io":
-		return "https://registry-1.docker.io"
-	default:
-		if strings.HasPrefix(domain, "http://") || strings.HasPrefix(domain, "https://") {
-			return domain
-		}
+	}
+
+	if !strings.HasPrefix(domain, "http") {
 		return "https://" + domain
 	}
+
+	return domain
 }
 
 func (s *ImageMaturityService) normalizeRepository(repository string) string {
-	parts := strings.Split(repository, "/")
+	domain := utils.ExtractRegistryDomain(repository)
 
-	if s.extractRegistryDomain(repository) == "docker.io" || s.extractRegistryDomain(repository) == "registry-1.docker.io" {
-		repoWithoutRegistry := strings.TrimPrefix(repository, s.extractRegistryDomain(repository)+"/")
-		if !strings.Contains(repoWithoutRegistry, "/") {
-			return "library/" + repoWithoutRegistry
+	if domain == "docker.io" {
+		if !strings.Contains(repository, "/") {
+			return "library/" + repository
 		}
-		return repoWithoutRegistry
+
+		if utils.ExtractRegistryDomain(repository) == "docker.io" || utils.ExtractRegistryDomain(repository) == "registry-1.docker.io" {
+			repoWithoutRegistry := strings.TrimPrefix(repository, utils.ExtractRegistryDomain(repository)+"/")
+			if !strings.Contains(repoWithoutRegistry, "/") {
+				return "library/" + repoWithoutRegistry
+			}
+			return repoWithoutRegistry
+		}
 	}
 
-	if len(parts) > 1 {
-		return strings.Join(parts[1:], "/")
-	}
 	return repository
 }
 
@@ -364,7 +365,7 @@ func (s *ImageMaturityService) extractRegistryDomain(repository string) string {
 }
 
 func (s *ImageMaturityService) isPrivateRegistry(repository string) bool {
-	domain := s.extractRegistryDomain(repository)
+	domain := utils.ExtractRegistryDomain(repository)
 	publicRegistries := []string{"docker.io", "registry-1.docker.io", "index.docker.io", "ghcr.io", "quay.io", "gcr.io"}
 
 	for _, public := range publicRegistries {
