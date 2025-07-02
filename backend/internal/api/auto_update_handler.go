@@ -85,6 +85,9 @@ func (h *AutoUpdateHandler) GetUpdateHistory(c *gin.Context) {
 	if limitStr := c.Query("limit"); limitStr != "" {
 		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
 			limit = parsedLimit
+			if limit > 100 {
+				limit = 100
+			}
 		}
 	}
 
