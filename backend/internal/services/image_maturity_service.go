@@ -164,6 +164,7 @@ func (s *ImageMaturityService) SetImageMaturity(ctx context.Context, imageID, re
 
 func (s *ImageMaturityService) getRegistryForImage(ctx context.Context, repository string) *models.ContainerRegistry {
 	registryDomain := s.extractRegistryDomain(repository)
+	normalizedImageDomain := s.normalizeRegistryURL(registryDomain)
 
 	registries, err := s.registryService.GetAllRegistries(ctx)
 	if err != nil {
@@ -171,12 +172,33 @@ func (s *ImageMaturityService) getRegistryForImage(ctx context.Context, reposito
 	}
 
 	for _, reg := range registries {
-		if reg.Enabled && (reg.URL == registryDomain || reg.URL == "https://"+registryDomain || strings.Contains(reg.URL, registryDomain)) {
+		if !reg.Enabled {
+			continue
+		}
+
+		normalizedRegURL := s.normalizeRegistryURL(reg.URL)
+		if normalizedRegURL == normalizedImageDomain {
 			return &reg
 		}
 	}
 
 	return nil
+}
+
+func (s *ImageMaturityService) normalizeRegistryURL(url string) string {
+	url = strings.TrimSpace(url)
+	url = strings.ToLower(url)
+
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "http://")
+
+	url = strings.TrimSuffix(url, "/")
+
+	if url == "docker.io" || url == "registry-1.docker.io" || url == "index.docker.io" {
+		return "docker.io"
+	}
+
+	return url
 }
 
 func (s *ImageMaturityService) getImageManifest(ctx context.Context, repository, tag string, registry *models.ContainerRegistry) (*RegistryManifest, error) {
