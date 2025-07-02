@@ -651,7 +651,7 @@ func (s *AutoUpdateService) serviceHasAutoUpdateLabel(service interface{}) bool 
 	return false
 }
 
-func (s *AutoUpdateService) recordAutoUpdate(ctx context.Context, result dto.AutoUpdateResourceResult) {
+func (s *AutoUpdateService) recordAutoUpdate(ctx context.Context, result dto.AutoUpdateResourceResult) error {
 	record := &models.AutoUpdateRecord{
 		ID:              uuid.New().String(),
 		ResourceID:      result.ResourceID,
@@ -695,8 +695,10 @@ func (s *AutoUpdateService) recordAutoUpdate(ctx context.Context, result dto.Aut
 	record.EndTime = &endTime
 
 	if err := s.db.WithContext(ctx).Create(record).Error; err != nil {
-		log.Printf("Failed to record auto-update: %v", err)
+		return fmt.Errorf("failed to record auto-update: %w", err)
 	}
+
+	return nil
 }
 
 func (s *AutoUpdateService) GetAutoUpdateHistory(ctx context.Context, limit int) ([]models.AutoUpdateRecord, error) {
