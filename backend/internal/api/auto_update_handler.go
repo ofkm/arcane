@@ -34,7 +34,10 @@ func (h *AutoUpdateHandler) CheckForUpdates(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
+	})
 }
 
 func (h *AutoUpdateHandler) CheckContainers(c *gin.Context) {
@@ -51,7 +54,10 @@ func (h *AutoUpdateHandler) CheckContainers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
+	})
 }
 
 func (h *AutoUpdateHandler) CheckStacks(c *gin.Context) {
@@ -68,7 +74,10 @@ func (h *AutoUpdateHandler) CheckStacks(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
+	})
 }
 
 func (h *AutoUpdateHandler) GetUpdateHistory(c *gin.Context) {
