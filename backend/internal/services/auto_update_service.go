@@ -682,7 +682,7 @@ func (s *AutoUpdateService) recordAutoUpdate(ctx context.Context, result dto.Aut
 	endTime := time.Now()
 	record.EndTime = &endTime
 
-	if err := s.db.DB.WithContext(ctx).Create(record).Error; err != nil {
+	if err := s.db.WithContext(ctx).Create(record).Error; err != nil {
 		log.Printf("Failed to record auto-update: %v", err)
 	}
 }
@@ -690,7 +690,7 @@ func (s *AutoUpdateService) recordAutoUpdate(ctx context.Context, result dto.Aut
 func (s *AutoUpdateService) GetAutoUpdateHistory(ctx context.Context, limit int) ([]models.AutoUpdateRecord, error) {
 	var records []models.AutoUpdateRecord
 
-	query := s.db.DB.WithContext(ctx).Order("start_time DESC")
+	query := s.db.WithContext(ctx).Order("start_time DESC")
 	if limit > 0 {
 		query = query.Limit(limit)
 	}

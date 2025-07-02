@@ -82,12 +82,12 @@ func (s *StackService) CreateStack(ctx context.Context, name, composeContent str
 		RunningCount: 0,
 	}
 
-	if err := s.db.DB.WithContext(ctx).Create(stack).Error; err != nil {
+	if err := s.db.WithContext(ctx).Create(stack).Error; err != nil {
 		return nil, fmt.Errorf("failed to create stack: %w", err)
 	}
 
 	if err := s.saveStackFiles(stackPath, composeContent, envContent); err != nil {
-		s.db.DB.WithContext(ctx).Delete(stack)
+		s.db.WithContext(ctx).Delete(stack)
 		return nil, fmt.Errorf("failed to save stack files: %w", err)
 	}
 
@@ -400,14 +400,14 @@ func (s *StackService) PullStackImages(ctx context.Context, stackID string) erro
 
 func (s *StackService) ListStacks(ctx context.Context) ([]models.Stack, error) {
 	var stacks []models.Stack
-	if err := s.db.DB.WithContext(ctx).Find(&stacks).Error; err != nil {
+	if err := s.db.WithContext(ctx).Find(&stacks).Error; err != nil {
 		return nil, fmt.Errorf("failed to get stacks: %w", err)
 	}
 	return stacks, nil
 }
 
 func (s *StackService) UpdateStack(ctx context.Context, stack *models.Stack) (*models.Stack, error) {
-	if err := s.db.DB.WithContext(ctx).Save(stack).Error; err != nil {
+	if err := s.db.WithContext(ctx).Save(stack).Error; err != nil {
 		return nil, fmt.Errorf("failed to update stack: %w", err)
 	}
 	return stack, nil
@@ -481,7 +481,7 @@ func (s *StackService) DeleteStack(ctx context.Context, stackID string) error {
 		}
 	}
 
-	if err := s.db.DB.WithContext(ctx).Delete(stack).Error; err != nil {
+	if err := s.db.WithContext(ctx).Delete(stack).Error; err != nil {
 		return fmt.Errorf("failed to delete stack from database: %w", err)
 	}
 
@@ -514,7 +514,7 @@ func (s *StackService) DestroyStack(ctx context.Context, stackID string, removeF
 		}
 	}
 
-	if err := s.db.DB.WithContext(ctx).Delete(stack).Error; err != nil {
+	if err := s.db.WithContext(ctx).Delete(stack).Error; err != nil {
 		return fmt.Errorf("failed to delete stack from database: %w", err)
 	}
 
@@ -561,7 +561,7 @@ func (s *StackService) DiscoverExternalStacks(ctx context.Context) ([]models.Sta
 			continue
 		}
 		var count int64
-		s.db.DB.WithContext(ctx).
+		s.db.WithContext(ctx).
 			Model(&models.Stack{}).
 			Where("path = ?", path).
 			Or("dir_name = ?", name).
@@ -603,7 +603,7 @@ func (s *StackService) ImportExternalStack(ctx context.Context, dirName, stackNa
 		ServiceCount: 0,
 		RunningCount: 0,
 	}
-	if err := s.db.DB.WithContext(ctx).Create(stack).Error; err != nil {
+	if err := s.db.WithContext(ctx).Create(stack).Error; err != nil {
 		return nil, fmt.Errorf("failed to import stack: %w", err)
 	}
 	return stack, nil
@@ -778,7 +778,7 @@ func (s *StackService) ConvertDockerRun(ctx context.Context, dockerRunCommand st
 
 func (s *StackService) GetStackByID(ctx context.Context, id string) (*models.Stack, error) {
 	var stack models.Stack
-	if err := s.db.DB.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("stack not found")
 		}

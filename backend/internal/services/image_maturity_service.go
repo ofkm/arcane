@@ -33,7 +33,7 @@ func NewImageMaturityService(db *database.DB, settingsService *SettingsService, 
 
 func (s *ImageMaturityService) GetImageMaturity(ctx context.Context, imageID string) (*models.ImageMaturityRecord, error) {
 	var record models.ImageMaturityRecord
-	if err := s.db.DB.WithContext(ctx).Where("id = ?", imageID).First(&record).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("id = ?", imageID).First(&record).Error; err != nil {
 		return nil, fmt.Errorf("failed to get image maturity: %w", err)
 	}
 	return &record, nil
@@ -155,7 +155,7 @@ func (s *ImageMaturityService) SetImageMaturity(ctx context.Context, imageID, re
 		record.CreatedAt = existing.CreatedAt
 	}
 
-	if err := s.db.DB.WithContext(ctx).Save(record).Error; err != nil {
+	if err := s.db.WithContext(ctx).Save(record).Error; err != nil {
 		return fmt.Errorf("failed to set image maturity: %w", err)
 	}
 
@@ -538,7 +538,7 @@ func (s *ImageMaturityService) MarkAsMatured(ctx context.Context, imageID string
 		"updated_at":          time.Now(),
 	}
 
-	if err := s.db.DB.WithContext(ctx).Model(&models.ImageMaturityRecord{}).
+	if err := s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).
 		Where("id = ?", imageID).
 		Updates(updates).Error; err != nil {
 		return fmt.Errorf("failed to mark image as matured: %w", err)
@@ -549,7 +549,7 @@ func (s *ImageMaturityService) MarkAsMatured(ctx context.Context, imageID string
 
 func (s *ImageMaturityService) ListMaturityRecords(ctx context.Context) ([]*models.ImageMaturityRecord, error) {
 	var records []*models.ImageMaturityRecord
-	if err := s.db.DB.WithContext(ctx).Find(&records).Error; err != nil {
+	if err := s.db.WithContext(ctx).Find(&records).Error; err != nil {
 		return nil, fmt.Errorf("failed to list maturity records: %w", err)
 	}
 	return records, nil
@@ -557,7 +557,7 @@ func (s *ImageMaturityService) ListMaturityRecords(ctx context.Context) ([]*mode
 
 func (s *ImageMaturityService) GetImagesWithUpdates(ctx context.Context) ([]*models.ImageMaturityRecord, error) {
 	var records []*models.ImageMaturityRecord
-	if err := s.db.DB.WithContext(ctx).
+	if err := s.db.WithContext(ctx).
 		Where("updates_available = ?", true).
 		Order("last_checked DESC").
 		Find(&records).Error; err != nil {
@@ -572,10 +572,10 @@ func (s *ImageMaturityService) GetMaturityStats(ctx context.Context) (map[string
 	var matured int64
 	var notMatured int64
 
-	s.db.DB.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Count(&total)
-	s.db.DB.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("updates_available = ?", true).Count(&withUpdates)
-	s.db.DB.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("status = ?", models.ImageStatusMatured).Count(&matured)
-	s.db.DB.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("status = ?", models.ImageStatusNotMatured).Count(&notMatured)
+	s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Count(&total)
+	s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("updates_available = ?", true).Count(&withUpdates)
+	s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("status = ?", models.ImageStatusMatured).Count(&matured)
+	s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).Where("status = ?", models.ImageStatusNotMatured).Count(&notMatured)
 
 	return map[string]interface{}{
 		"total":       total,
@@ -589,7 +589,7 @@ func (s *ImageMaturityService) GetImagesNeedingCheck(ctx context.Context, maxAge
 	cutoff := time.Now().Add(-time.Duration(maxAge) * time.Minute)
 	var records []*models.ImageMaturityRecord
 
-	if err := s.db.DB.WithContext(ctx).
+	if err := s.db.WithContext(ctx).
 		Where("last_checked < ?", cutoff).
 		Order("last_checked ASC").
 		Limit(limit).
@@ -602,7 +602,7 @@ func (s *ImageMaturityService) GetImagesNeedingCheck(ctx context.Context, maxAge
 
 func (s *ImageMaturityService) GetMaturityByRepository(ctx context.Context, repository string) ([]*models.ImageMaturityRecord, error) {
 	var records []*models.ImageMaturityRecord
-	if err := s.db.DB.WithContext(ctx).
+	if err := s.db.WithContext(ctx).
 		Where("repository = ?", repository).
 		Order("tag ASC").
 		Find(&records).Error; err != nil {
@@ -624,7 +624,7 @@ func (s *ImageMaturityService) UpdateCheckStatus(ctx context.Context, imageID st
 		updates["last_error"] = nil
 	}
 
-	if err := s.db.DB.WithContext(ctx).Model(&models.ImageMaturityRecord{}).
+	if err := s.db.WithContext(ctx).Model(&models.ImageMaturityRecord{}).
 		Where("id = ?", imageID).
 		Updates(updates).Error; err != nil {
 		return fmt.Errorf("failed to update check status: %w", err)
@@ -636,9 +636,9 @@ func (s *ImageMaturityService) UpdateCheckStatus(ctx context.Context, imageID st
 func (s *ImageMaturityService) CleanupOrphanedRecords(ctx context.Context, existingImageIDs []string) (int64, error) {
 	var result *gorm.DB
 	if len(existingImageIDs) == 0 {
-		result = s.db.DB.WithContext(ctx).Delete(&models.ImageMaturityRecord{})
+		result = s.db.WithContext(ctx).Delete(&models.ImageMaturityRecord{})
 	} else {
-		result = s.db.DB.WithContext(ctx).Where("id NOT IN ?", existingImageIDs).Delete(&models.ImageMaturityRecord{})
+		result = s.db.WithContext(ctx).Where("id NOT IN ?", existingImageIDs).Delete(&models.ImageMaturityRecord{})
 	}
 
 	if result.Error != nil {
@@ -659,7 +659,7 @@ func (s *ImageMaturityService) CheckMaturityBatch(ctx context.Context, imageIDs 
 			"updated_at":   time.Now(),
 		}
 
-		err := s.db.DB.WithContext(ctx).
+		err := s.db.WithContext(ctx).
 			Model(&models.ImageMaturityRecord{}).
 			Where("id = ?", imageID).
 			Updates(updates).Error

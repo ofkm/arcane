@@ -26,7 +26,7 @@ func generateID() string {
 
 func (s *ContainerRegistryService) GetAllRegistries(ctx context.Context) ([]models.ContainerRegistry, error) {
 	var registries []models.ContainerRegistry
-	if err := s.db.DB.WithContext(ctx).Find(&registries).Error; err != nil {
+	if err := s.db.WithContext(ctx).Find(&registries).Error; err != nil {
 		return nil, fmt.Errorf("failed to get container registries: %w", err)
 	}
 	return registries, nil
@@ -34,7 +34,7 @@ func (s *ContainerRegistryService) GetAllRegistries(ctx context.Context) ([]mode
 
 func (s *ContainerRegistryService) GetRegistryByID(ctx context.Context, id string) (*models.ContainerRegistry, error) {
 	var registry models.ContainerRegistry
-	if err := s.db.DB.WithContext(ctx).Where("id = ?", id).First(&registry).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&registry).Error; err != nil {
 		return nil, fmt.Errorf("failed to get container registry: %w", err)
 	}
 	return &registry, nil
@@ -67,7 +67,7 @@ func (s *ContainerRegistryService) CreateRegistry(ctx context.Context, req model
 		UpdatedAt:   time.Now(),
 	}
 
-	if err := s.db.DB.WithContext(ctx).Create(registry).Error; err != nil {
+	if err := s.db.WithContext(ctx).Create(registry).Error; err != nil {
 		return nil, fmt.Errorf("failed to create registry: %w", err)
 	}
 
@@ -107,7 +107,7 @@ func (s *ContainerRegistryService) UpdateRegistry(ctx context.Context, id string
 
 	registry.UpdatedAt = time.Now()
 
-	if err := s.db.DB.WithContext(ctx).Save(registry).Error; err != nil {
+	if err := s.db.WithContext(ctx).Save(registry).Error; err != nil {
 		return nil, fmt.Errorf("failed to update registry: %w", err)
 	}
 
@@ -115,7 +115,7 @@ func (s *ContainerRegistryService) UpdateRegistry(ctx context.Context, id string
 }
 
 func (s *ContainerRegistryService) DeleteRegistry(ctx context.Context, id string) error {
-	if err := s.db.DB.WithContext(ctx).Where("id = ?", id).Delete(&models.ContainerRegistry{}).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&models.ContainerRegistry{}).Error; err != nil {
 		return fmt.Errorf("failed to delete container registry: %w", err)
 	}
 	return nil
