@@ -376,10 +376,7 @@ func (s *AutoUpdateService) updateContainer(
 		EndpointsConfig: containerJSON.NetworkSettings.Networks,
 	}
 
-	containerName := containerJSON.Name
-	if strings.HasPrefix(containerName, "/") {
-		containerName = containerName[1:]
-	}
+	containerName := strings.TrimPrefix(containerJSON.Name, "/")
 
 	newContainer, err := s.containerService.CreateContainer(ctx, config, hostConfig, networkingConfig, containerName)
 	if err != nil {
@@ -511,6 +508,7 @@ func (s *AutoUpdateService) pullImageWithAuth(ctx context.Context, imageRef stri
 
 func (s *AutoUpdateService) getAuthConfigForImage(ctx context.Context, imageRef string) (*registry.AuthConfig, error) {
 	registryDomain := s.extractRegistryDomain(imageRef)
+	normalizedImageDomain := s.normalizeRegistryURL(registryDomain)
 
 	registries, err := s.registryService.GetAllRegistries(ctx)
 	if err != nil {
@@ -518,7 +516,8 @@ func (s *AutoUpdateService) getAuthConfigForImage(ctx context.Context, imageRef 
 	}
 
 	for _, reg := range registries {
-		if reg.URL == registryDomain || reg.URL == "https://"+registryDomain || strings.Contains(reg.URL, registryDomain) {
+		normalizedRegURL := s.normalizeRegistryURL(reg.URL)
+		if normalizedRegURL == normalizedImageDomain {
 			return &registry.AuthConfig{
 				Username: reg.Username,
 				Password: reg.Token,
@@ -527,6 +526,22 @@ func (s *AutoUpdateService) getAuthConfigForImage(ctx context.Context, imageRef 
 	}
 
 	return nil, nil
+}
+
+func (s *AutoUpdateService) normalizeRegistryURL(url string) string {
+	url = strings.TrimSpace(url)
+	url = strings.ToLower(url)
+
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "http://")
+
+	url = strings.TrimSuffix(url, "/")
+
+	if url == "docker.io" || url == "registry-1.docker.io" {
+		return "docker.io"
+	}
+
+	return url
 }
 
 func (s *AutoUpdateService) getImageID(ctx context.Context, imageRef string) (string, error) {
