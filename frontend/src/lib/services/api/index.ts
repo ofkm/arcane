@@ -1,0 +1,65 @@
+import ImageAPIService from './image-api-service';
+import ImageMaturityAPIService from './image-maturity-api-service';
+import SystemAPIService from './system-api-service';
+import TemplateAPIService from './template-api-service';
+import UserAPIService from './user-api-service';
+import SettingsAPIService from './settings-api-service';
+import TemplateRegistryAPIService from './template-registry-api-service';
+import OidcAPIService from './oidc-api-service';
+import AppConfigAPIService from './appconfig-api-service';
+import AutoUpdateAPIService from './autoupdate-api-service';
+import ConverterAPIService from './converter-api-service';
+import ContainerRegistryAPIService from './container-registry-api-service';
+import { EnvironmentAPIService } from './environment-api-service';
+import EnvironmentManagementAPIService from './environment-management-api-service';
+
+export const imageAPI = new ImageAPIService();
+export const imageMaturityAPI = new ImageMaturityAPIService();
+export const systemAPI = new SystemAPIService();
+export const templateAPI = new TemplateAPIService();
+export const userAPI = new UserAPIService();
+export const settingsAPI = new SettingsAPIService();
+export const templateRegistryAPI = new TemplateRegistryAPIService();
+export const oidcAPI = new OidcAPIService();
+export const appConfigAPI = new AppConfigAPIService();
+export const converterAPI = new ConverterAPIService();
+export const containerRegistryAPI = new ContainerRegistryAPIService();
+export const autoUpdateAPI = new AutoUpdateAPIService();
+export const environmentAPI = new EnvironmentAPIService();
+export const environmentManagementAPI = new EnvironmentManagementAPIService();
+
+interface APIServices {
+	image: ImageAPIService;
+	imageMaturity: ImageMaturityAPIService;
+	system: SystemAPIService;
+	template: TemplateAPIService;
+	user: UserAPIService;
+	settings: SettingsAPIService;
+	templateRegistry: TemplateRegistryAPIService;
+	oidc: OidcAPIService;
+	appConfig: AppConfigAPIService;
+	converter: ConverterAPIService;
+	containerRegistry: ContainerRegistryAPIService;
+	autoUpdate: AutoUpdateAPIService;
+	environment: EnvironmentAPIService;
+	environmentManagement: EnvironmentManagementAPIService;
+}
+
+const apiServices: APIServices = {
+	image: imageAPI,
+	imageMaturity: imageMaturityAPI,
+	system: systemAPI,
+	template: templateAPI,
+	user: userAPI,
+	settings: settingsAPI,
+	templateRegistry: templateRegistryAPI,
+	oidc: oidcAPI,
+	appConfig: appConfigAPI,
+	converter: converterAPI,
+	containerRegistry: containerRegistryAPI,
+	autoUpdate: autoUpdateAPI,
+	environment: environmentAPI,
+	environmentManagement: environmentManagementAPI
+};
+
+export default apiServices;

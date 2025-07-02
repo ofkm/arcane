@@ -38,9 +38,9 @@ OIDC users are auto-provisioned on first login. You can disable local login for 
 
 You can also configure OIDC using environment variables:
 
-| Variable                      | Description                        | Example/Default                                 |
+| Variable                      | Description                        | Default/Example                                 |
 | ----------------------------- | ---------------------------------- | ----------------------------------------------- |
-| `PUBLIC_OIDC_ENABLED`         | Enable OIDC login                  | `true`                                          |
+| `OIDC_ENABLED`                | Enable OIDC login                  | `false`                                         |
 | `OIDC_CLIENT_ID`              | Client ID from your OIDC provider  | `your_arcane_client_id_from_provider`           |
 | `OIDC_CLIENT_SECRET`          | Client Secret from provider        | `your_super_secret_client_secret_from_provider` |
 | `OIDC_REDIRECT_URI`           | Redirect URI (must match provider) | `http://localhost:3000/auth/oidc/callback`      |
@@ -56,11 +56,8 @@ services:
   arcane:
     # ... image, ports, volumes ...
     environment:
-      - APP_ENV=production
-      - PUID=1000
-      - PGID=1000
-      - PUBLIC_SESSION_SECRET=your_super_long_random_secret_here
-      - PUBLIC_OIDC_ENABLED=true
+      # ....
+      - OIDC_ENABLED=true
       - OIDC_CLIENT_ID=your_arcane_client_id_from_provider
       - OIDC_CLIENT_SECRET=your_super_secret_client_secret_from_provider
       - OIDC_REDIRECT_URI=http://your-arcane-address/auth/oidc/callback

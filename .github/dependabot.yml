@@ -7,43 +7,61 @@ updates:
     groups:
       prod-dependencies:
         patterns:
-          - "*"
+          - '*'
         exclude-patterns:
-          - "@types/*"
-          - "typescript"
-          - "eslint*"
-          - "prettier*"
-          - "vite"
-          - "*-plugin"
-          - "*-loader"
-          - "jest*"
-          - "vitest*"
-          - "@testing-library/*"
-          - "@playwright/*"
+          - '@types/*'
+          - 'typescript'
+          - 'eslint*'
+          - 'prettier*'
+          - 'vite'
+          - '*-plugin'
+          - '*-loader'
+          - 'jest*'
+          - 'vitest*'
+          - '@testing-library/*'
+          - '@playwright/*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       dev-dependencies:
         patterns:
-          - "@types/*"
-          - "typescript"
-          - "eslint*"
-          - "prettier*"
-          - "vite"
-          - "*-plugin"
-          - "*-loader"
-          - "jest*"
-          - "vitest*"
-          - "@testing-library/*"
-          - "@playwright/*"
+          - '@types/*'
+          - 'typescript'
+          - 'eslint*'
+          - 'prettier*'
+          - 'vite'
+          - '*-plugin'
+          - '*-loader'
+          - 'jest*'
+          - 'vitest*'
+          - '@testing-library/*'
+          - '@playwright/*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       frontend-major-updates:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "major"
+          - 'major'
+
+  # Backend dependencies
+  - package-ecosystem: 'gomod'
+    directory: '/backend'
+    schedule:
+      interval: 'daily'
+    groups:
+      backend-dependencies:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
+      backend-major-updates:
+        patterns:
+          - '*'
+        update-types:
+          - 'major'
 
   - package-ecosystem: 'github-actions'
     directory: '/'
