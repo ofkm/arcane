@@ -76,7 +76,7 @@ func (s *ImageMaturityService) CheckImageMaturity(ctx context.Context, imageID, 
 		}
 	}
 
-	status := s.determineMaturityStatus(tag, isMaturedByAge, hasUpdates, checkError)
+	status := s.determineMaturityStatus(isMaturedByAge, hasUpdates, checkError)
 
 	maturity := &models.ImageMaturity{
 		Version:          tag,
@@ -393,7 +393,7 @@ func (s *ImageMaturityService) hasNewerVersions(currentTag string, allTags []str
 	return hasNewer, newestTag
 }
 
-func (s *ImageMaturityService) determineMaturityStatus(tag string, isMaturedByAge, hasUpdates bool, checkError error) string {
+func (s *ImageMaturityService) determineMaturityStatus(isMaturedByAge, hasUpdates bool, checkError error) string {
 	if checkError != nil {
 		if isMaturedByAge {
 			return models.ImageStatusMatured
