@@ -3,7 +3,18 @@
 	import type { Stack, StackService, StackPort } from '$lib/models/stack.type';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, AlertCircle, FileStack, Layers, ArrowRight, ExternalLink, RefreshCw, Terminal, Settings, Activity } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		AlertCircle,
+		FileStack,
+		Layers,
+		ArrowRight,
+		ExternalLink,
+		RefreshCw,
+		Terminal,
+		Settings,
+		Activity
+	} from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -13,13 +24,13 @@
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { invalidateAll, goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import YamlEditor from '$lib/components/yaml-editor.svelte';
-	import EnvEditor from '$lib/components/env-editor.svelte';
+	import CodeEditor from '$lib/components/editor.svelte';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { environmentAPI } from '$lib/services/api';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import LogViewer from '$lib/components/LogViewer.svelte';
+	import { browser } from '$app/environment';
 
 	let { data }: { data: PageData } = $props();
 	let { stack, editorState, servicePorts, settings } = $derived(data);
@@ -43,7 +54,11 @@
 	let originalComposeContent = $derived(editorState.originalComposeContent);
 	let originalEnvContent = $derived(editorState.originalEnvContent || '');
 
-	let hasChanges = $derived(name !== originalName || composeContent !== originalComposeContent || envContent !== originalEnvContent);
+	let hasChanges = $derived(
+		name !== originalName ||
+			composeContent !== originalComposeContent ||
+			envContent !== originalEnvContent
+	);
 
 	const baseServerUrl = $derived(settings?.baseServerUrl || 'localhost');
 
@@ -51,6 +66,19 @@
 	let autoScrollStackLogs = $state(true);
 	let isStackLogsStreaming = $state(false);
 	let stackLogViewer = $state<LogViewer>();
+	let showFloatingHeader = $state(false);
+	let mainContainer = $state<HTMLElement>();
+
+	$effect(() => {
+		if (browser) {
+			const handleScroll = () => {
+				showFloatingHeader = window.scrollY > 100;
+			};
+
+			window.addEventListener('scroll', handleScroll);
+			return () => window.removeEventListener('scroll', handleScroll);
+		}
+	});
 
 	$effect(() => {
 		isLoading.deploying = false;
@@ -66,7 +94,9 @@
 		const currentStackId = stack.id;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.updateStack(currentStackId, composeContent, envContent)),
+			result: await tryCatch(
+				environmentAPI.updateStack(currentStackId, composeContent, envContent)
+			),
 			message: 'Failed to Save Compose Project',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Stack) => {
@@ -80,7 +110,9 @@
 				await new Promise((resolve) => setTimeout(resolve, 200));
 
 				if (updatedStack && updatedStack.id !== currentStackId) {
-					console.log(`Stack ID changed from ${currentStackId} to ${updatedStack.id}. Navigating...`);
+					console.log(
+						`Stack ID changed from ${currentStackId} to ${updatedStack.id}. Navigating...`
+					);
 					await goto(`/compose/${name}`, { invalidateAll: true });
 				} else {
 					await invalidateAll();
@@ -103,7 +135,11 @@
 		return baseServerUrl;
 	}
 
-	function getServicePortUrl(service: StackService, port: string | number | StackPort, protocol = 'http'): string {
+	function getServicePortUrl(
+		service: StackService,
+		port: string | number | StackPort,
+		protocol = 'http'
+	): string {
 		const host = getHostForService(service);
 
 		if (typeof port === 'string') {
@@ -164,7 +200,12 @@
 
 <div class="bg-background min-h-screen">
 	{#if stack}
-		<div class="bg-background/95 sticky top-0 z-10 border-b backdrop-blur">
+		<div
+			class="bg-background/95 sticky top-0 z-20 border-b backdrop-blur transition-all duration-300"
+			style="opacity: {showFloatingHeader ? 0 : 1}; pointer-events: {showFloatingHeader
+				? 'none'
+				: 'auto'};"
+		>
 			<div class="max-w-full px-4 py-3">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
@@ -178,12 +219,38 @@
 								{stack.name}
 							</h1>
 							{#if stack.status}
-								<StatusBadge variant={statusVariantMap[stack.status.toLowerCase()] || 'gray'} text={capitalizeFirstLetter(stack.status)} />
+								<StatusBadge
+									variant={statusVariantMap[stack.status.toLowerCase()] || 'gray'}
+									text={capitalizeFirstLetter(stack.status)}
+								/>
 							{/if}
 						</div>
 					</div>
+				</div>
+			</div>
+		</div>
 
-					<div class="flex items-center gap-2">
+		{#if showFloatingHeader}
+			<div
+				class="fixed top-4 left-1/2 -translate-x-1/2 z-30 transition-all duration-300 ease-in-out"
+			>
+				<div
+					class="bg-background/90 backdrop-blur-xl border border-border/50 rounded-lg shadow-xl px-4 py-3"
+				>
+					<div class="flex items-center gap-4">
+						<div class="flex items-center gap-2">
+							<h2 class="text-sm font-medium truncate max-w-[150px]" title={stack.name}>
+								{stack.name}
+							</h2>
+							{#if stack.status}
+								<StatusBadge
+									variant={statusVariantMap[stack.status.toLowerCase()] || 'gray'}
+									text={capitalizeFirstLetter(stack.status)}
+									class="text-xs"
+								/>
+							{/if}
+						</div>
+						<div class="bg-border h-4 w-px"></div>
 						<ActionButtons
 							id={stack.id}
 							type="stack"
@@ -199,7 +266,7 @@
 					</div>
 				</div>
 			</div>
-		</div>
+		{/if}
 
 		{#if data.error}
 			<div class="max-w-full px-4 py-4">
@@ -211,21 +278,25 @@
 			</div>
 		{/if}
 
-		<div class="flex h-[calc(100vh-64px)]">
-			<div class="bg-background/50 w-48 shrink-0 border-r">
-				<div class="sticky top-16 p-3">
+		<div class="flex">
+			<div class="bg-background/50 w-16 shrink-0 border-r">
+				<div class="sticky top-16 p-2">
 					<nav class="space-y-1">
 						{#each navigationSections as section}
 							{@const IconComponent = section.icon}
 							<button
 								onclick={() => scrollToSection(section.id)}
-								class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors
-                                    {activeSection === section.id ? 'bg-primary/10 text-primary border-primary/20 border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+								class="relative flex w-full items-center justify-center rounded-md p-3 text-sm font-medium transition-colors
+                                    {activeSection === section.id
+									? 'bg-primary/10 text-primary border-primary/20 border'
+									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+								title={section.label}
 							>
-								<IconComponent class="size-4 shrink-0" />
-								<span class="truncate">{section.label}</span>
+								<IconComponent class="size-4" />
 								{#if section.id === 'services' && stack.serviceCount}
-									<span class="bg-muted ml-auto shrink-0 rounded px-1.5 py-0.5 text-xs">
+									<span
+										class="bg-primary text-primary-foreground absolute -top-1 -right-1 rounded-full text-xs min-w-[18px] h-[18px] flex items-center justify-center px-1"
+									>
 										{stack.serviceCount}
 									</span>
 								{/if}
@@ -235,7 +306,7 @@
 				</div>
 			</div>
 
-			<div class="flex-1 overflow-y-auto">
+			<div class="flex-1" bind:this={mainContainer}>
 				<div class="max-w-none p-6">
 					<div class="space-y-8">
 						<section id="overview" class="scroll-mt-20">
@@ -282,6 +353,39 @@
 										</div>
 									</Card.Content>
 								</Card.Root>
+
+								{#if servicePorts && Object.keys(servicePorts).length > 0}
+									{@const allUniquePorts = [...new Set(Object.values(servicePorts).flat())]}
+									<Card.Root class="border">
+										<Card.Header class="pb-4">
+											<Card.Title>Exposed Ports</Card.Title>
+										</Card.Header>
+										<Card.Content>
+											<div class="flex flex-wrap gap-2">
+												{#each allUniquePorts as port (port)}
+													{@const portValue =
+														typeof port === 'string' ||
+														typeof port === 'number' ||
+														(typeof port === 'object' && port !== null)
+															? port
+															: String(port)}
+													{@const serviceWithPort = stack.services?.find((s) =>
+														s.ports?.includes(String(port))
+													) || { container_id: '', name: '', status: '' }}
+													<a
+														href={getServicePortUrl(serviceWithPort, portValue)}
+														target="_blank"
+														rel="noopener noreferrer"
+														class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
+													>
+														Port {port}
+														<ExternalLink class="ml-2 size-4" />
+													</a>
+												{/each}
+											</div>
+										</Card.Content>
+									</Card.Root>
+								{/if}
 							</div>
 
 							{#if servicePorts && Object.keys(servicePorts).length > 0}
@@ -293,9 +397,21 @@
 									<Card.Content>
 										<div class="flex flex-wrap gap-2">
 											{#each allUniquePorts as port (port)}
-												{@const portValue = typeof port === 'string' || typeof port === 'number' || (typeof port === 'object' && port !== null) ? port : String(port)}
-												{@const serviceWithPort = stack.services?.find((s) => s.ports?.includes(String(port))) || { container_id: '', name: '', status: '' }}
-												<a href={getServicePortUrl(serviceWithPort, portValue)} target="_blank" rel="noopener noreferrer" class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400">
+												{@const portValue =
+													typeof port === 'string' ||
+													typeof port === 'number' ||
+													(typeof port === 'object' && port !== null)
+														? port
+														: String(port)}
+												{@const serviceWithPort = stack.services?.find((s) =>
+													s.ports?.includes(String(port))
+												) || { container_id: '', name: '', status: '' }}
+												<a
+													href={getServicePortUrl(serviceWithPort, portValue)}
+													target="_blank"
+													rel="noopener noreferrer"
+													class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
+												>
 													Port {port}
 													<ExternalLink class="ml-2 size-4" />
 												</a>
@@ -312,68 +428,79 @@
 								Services ({stack.serviceCount})
 							</h2>
 
-							<Card.Root class="border">
-								<Card.Content class="p-6">
-									{#if stack.services && stack.services.length > 0}
-										<div class="space-y-4">
-											{#each stack.services as service (service.container_id || service.name)}
-												{@const status = service.status || 'unknown'}
-												{@const variant = statusVariantMap[status.toLowerCase()] || 'gray'}
+							{#if stack.services && stack.services.length > 0}
+								<div class="rounded-lg border bg-card">
+									<div class="grid grid-cols-1 gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
+										{#each stack.services as service (service.container_id || service.name)}
+											{@const status = service.status || 'unknown'}
+											{@const variant = statusVariantMap[status.toLowerCase()] || 'gray'}
 
-												{#if service.container_id}
-													<a href={`/containers/${service.container_id}`} class="hover:bg-muted/50 flex items-center justify-between rounded-lg border p-4 transition-colors">
-														<div class="flex items-center gap-3">
-															<div class="bg-primary/10 rounded-full p-2">
-																<Layers class="text-primary size-4" />
-															</div>
-															<div>
-																<p class="font-medium">{service.name}</p>
-																<p class="text-muted-foreground text-sm">
-																	ID: {service.container_id.substring(0, 12)}
-																</p>
-																{#if service.image}
-																	<p class="text-muted-foreground text-xs">
-																		Image: {service.image}
-																	</p>
-																{/if}
-															</div>
-														</div>
-														<div class="flex items-center gap-3">
-															<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
-															<ArrowRight class="text-primary size-4" />
-														</div>
-													</a>
-												{:else}
-													<div class="bg-muted/20 flex items-center justify-between rounded-lg border p-4">
-														<div class="flex items-center gap-3">
-															<div class="bg-muted/50 rounded-full p-2">
-																<Layers class="text-muted-foreground size-4" />
-															</div>
-															<div>
-																<p class="font-medium">{service.name}</p>
-																<p class="text-muted-foreground text-sm">Not created</p>
-																{#if service.image}
-																	<p class="text-muted-foreground text-xs">
-																		Image: {service.image}
-																	</p>
-																{/if}
-															</div>
-														</div>
-														<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
+											{#if service.container_id}
+												<a
+													href={`/containers/${service.container_id}`}
+													class="group flex items-center gap-3 rounded-lg border bg-background p-3 transition-all hover:bg-muted/50"
+												>
+													<div class="bg-primary/10 rounded-full p-2 shrink-0">
+														<Layers class="text-primary size-3" />
 													</div>
-												{/if}
-											{/each}
-										</div>
-									{:else}
-										<div class="py-12 text-center">
-											<div class="bg-muted/50 mx-auto mb-4 flex size-16 items-center justify-center rounded-full">
-												<Layers class="text-muted-foreground size-6" />
-											</div>
-											<div class="text-muted-foreground">No services found for this stack</div>
-										</div>
-									{/if}
-								</Card.Content>
-							</Card.Root>
+													<div class="min-w-0 flex-1">
+														<div class="flex items-center justify-between">
+															<p class="text-sm font-medium truncate" title={service.name}>
+																{service.name}
+															</p>
+															<ArrowRight
+																class="text-primary size-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+															/>
+														</div>
+														<div class="flex items-center gap-2 mt-1">
+															<StatusBadge
+																{variant}
+																text={capitalizeFirstLetter(status)}
+																class="text-xs"
+															/>
+															{#if service.ports && service.ports.length > 0}
+																<span
+																	class="bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs"
+																>
+																	{service.ports.length} port{service.ports.length > 1 ? 's' : ''}
+																</span>
+															{/if}
+														</div>
+													</div>
+												</a>
+											{:else}
+												<div class="flex items-center gap-3 rounded-lg border bg-muted/10 p-3">
+													<div class="bg-muted/50 rounded-full p-2 shrink-0">
+														<Layers class="text-muted-foreground size-3" />
+													</div>
+													<div class="min-w-0 flex-1">
+														<p class="text-sm font-medium truncate" title={service.name}>
+															{service.name}
+														</p>
+														<div class="flex items-center gap-2 mt-1">
+															<StatusBadge
+																{variant}
+																text={capitalizeFirstLetter(status)}
+																class="text-xs"
+															/>
+															<span class="text-muted-foreground text-xs">Not created</span>
+														</div>
+													</div>
+												</div>
+											{/if}
+										{/each}
+									</div>
+								</div>
+							{:else}
+								<div class="py-12 text-center">
+									<div
+										class="bg-muted/50 mx-auto mb-4 flex size-16 items-center justify-center rounded-full"
+									>
+										<Layers class="text-muted-foreground size-6" />
+									</div>
+									<div class="text-muted-foreground">No services found for this stack</div>
+								</div>
+							{/if}
 						</section>
 
 						<section id="config" class="scroll-mt-20">
@@ -383,54 +510,64 @@
 									Configuration
 								</h2>
 								{#if hasChanges}
-									<ArcaneButton action="save" loading={isLoading.saving} onClick={handleSaveChanges} disabled={!hasChanges} label="Save Changes" loadingLabel="Saving..." class="bg-green-600 text-white hover:bg-green-700" />
+									<ArcaneButton
+										action="save"
+										loading={isLoading.saving}
+										onClick={handleSaveChanges}
+										disabled={!hasChanges}
+										label="Save Changes"
+										loadingLabel="Saving..."
+										class="bg-green-600 text-white hover:bg-green-700"
+									/>
 								{/if}
 							</div>
 
-							<Card.Root class="mb-6 border">
-								<Card.Header class="pb-4">
-									<Card.Title>Stack Settings</Card.Title>
-								</Card.Header>
-								<Card.Content>
-									<div class="max-w-md">
-										<Label for="name" class="mb-2 block">Stack Name</Label>
-										<Input type="text" id="name" name="name" bind:value={name} required disabled={isLoading.saving || stack?.status === 'running' || stack?.status === 'partially running'} />
-										{#if stack?.status === 'running' || stack?.status === 'partially running'}
-											<p class="text-muted-foreground mt-2 text-sm">Stack name cannot be changed while running. Please stop the stack first.</p>
-										{/if}
-									</div>
-								</Card.Content>
-							</Card.Root>
+							<div class="mb-6 space-y-2">
+								<Label for="name" class="text-sm font-medium">Stack Name</Label>
+								<div class="max-w-md">
+									<Input
+										type="text"
+										id="name"
+										name="name"
+										bind:value={name}
+										required
+										disabled={isLoading.saving ||
+											stack?.status === 'running' ||
+											stack?.status === 'partially running'}
+									/>
+									{#if stack?.status === 'running' || stack?.status === 'partially running'}
+										<p class="text-muted-foreground mt-2 text-sm">
+											Stack name cannot be changed while running. Please stop the stack first.
+										</p>
+									{/if}
+								</div>
+							</div>
 
 							<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 								<div class="lg:col-span-2">
-									<Card.Root class="h-full border">
-										<Card.Header class="flex-shrink-0 pb-4">
-											<Card.Title>Docker Compose File</Card.Title>
-										</Card.Header>
-										<Card.Content class="flex h-full flex-col p-4">
-											<div class="h-[590px] w-full flex-shrink-0 overflow-hidden rounded-md">
-												<YamlEditor bind:value={composeContent} readOnly={isLoading.saving || isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} />
-											</div>
-											<p class="text-muted-foreground flex-shrink-0 text-sm">
-												Edit your <span class="font-medium">compose.yaml</span> file directly. Syntax errors will be highlighted.
-											</p>
-										</Card.Content>
-									</Card.Root>
+									<div class="space-y-4">
+										<h3 class="text-lg font-semibold">Docker Compose File</h3>
+										<div class="h-[590px] w-full overflow-hidden rounded-md">
+											<CodeEditor
+												bind:value={composeContent}
+												language="yaml"
+												placeholder="Enter YAML..."
+											/>
+										</div>
+									</div>
 								</div>
 
 								<div class="lg:col-span-1">
-									<Card.Root class="h-full border">
-										<Card.Header class="flex-shrink-0 pb-4">
-											<Card.Title>Environment (.env)</Card.Title>
-										</Card.Header>
-										<Card.Content class="flex h-full flex-col p-4">
-											<div class="h-[590px] w-full flex-shrink-0 overflow-hidden rounded-md">
-												<EnvEditor bind:value={envContent} readOnly={isLoading.saving || isLoading.deploying || isLoading.stopping || isLoading.restarting || isLoading.removing} />
-											</div>
-											<p class="text-muted-foreground flex-shrink-0 text-sm">Define environment variables in KEY=value format.</p>
-										</Card.Content>
-									</Card.Root>
+									<div class="space-y-4">
+										<h3 class="text-lg font-semibold">Environment (.env)</h3>
+										<div class="h-[590px] w-full overflow-hidden rounded-md">
+											<CodeEditor
+												bind:value={envContent}
+												language="env"
+												placeholder="Enter environment variables..."
+											/>
+										</div>
+									</div>
 								</div>
 							</div>
 						</section>
@@ -446,15 +583,26 @@
 										<input type="checkbox" bind:checked={autoScrollStackLogs} class="size-4" />
 										Auto-scroll
 									</label>
-									<Button variant="outline" size="sm" onclick={() => stackLogViewer?.clearLogs()}>Clear</Button>
+									<Button variant="outline" size="sm" onclick={() => stackLogViewer?.clearLogs()}
+										>Clear</Button
+									>
 									{#if isStackLogsStreaming}
 										<div class="flex items-center gap-2">
 											<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
 											<span class="text-sm font-medium text-green-600">Live</span>
 										</div>
-										<Button variant="outline" size="sm" onclick={() => stackLogViewer?.stopLogStream()}>Stop</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											onclick={() => stackLogViewer?.stopLogStream()}>Stop</Button
+										>
 									{:else}
-										<Button variant="outline" size="sm" onclick={() => stackLogViewer?.startLogStream()} disabled={!stack?.id}>Start</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											onclick={() => stackLogViewer?.startLogStream()}
+											disabled={!stack?.id}>Start</Button
+										>
 									{/if}
 									<Button
 										variant="outline"
@@ -498,7 +646,10 @@
 					<FileStack class="text-muted-foreground size-10" />
 				</div>
 				<h2 class="mb-3 text-2xl font-medium">Stack Not Found</h2>
-				<p class="text-muted-foreground mb-8 max-w-md text-center">Could not load stack data. It may have been removed or the Docker engine is not accessible.</p>
+				<p class="text-muted-foreground mb-8 max-w-md text-center">
+					Could not load stack data. It may have been removed or the Docker engine is not
+					accessible.
+				</p>
 				<Button variant="outline" href="/compose">
 					<ArrowLeft class="mr-2 size-4" />
 					Back to Stacks

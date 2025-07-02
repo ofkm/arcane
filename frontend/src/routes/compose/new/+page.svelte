@@ -1,24 +1,20 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, FileStack, Terminal, Copy, Loader2, Wand } from '@lucide/svelte';
-	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
+	import { ArrowLeft, Terminal, Copy, Loader2, Wand } from '@lucide/svelte';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { goto, invalidateAll } from '$app/navigation'; // Import invalidateAll
+	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import YamlEditor from '$lib/components/yaml-editor.svelte';
+	import CodeEditor from '$lib/components/editor.svelte';
 	import { preventDefault } from '$lib/utils/form.utils';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
-	import EnvEditor from '$lib/components/env-editor.svelte';
 	import { defaultEnvTemplate, defaultComposeTemplate } from '$lib/constants';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import DropdownCard from '$lib/components/dropdown-card.svelte';
-	import * as Resizable from '$lib/components/ui/resizable/index.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import TemplateSelectionDialog from '$lib/components/dialogs/template-selection-dialog.svelte';
-	import { environmentAPI, converterAPI, templateAPI } from '$lib/services/api';
+	import { environmentAPI, converterAPI } from '$lib/services/api';
 	import type { Template } from '$lib/types/template.type';
 	import type { PageProps } from './+page';
 
@@ -27,6 +23,7 @@
 	let saving = $state(false);
 	let converting = $state(false);
 	let showTemplateDialog = $state(false);
+	let showConverterDialog = $state(false);
 	let isLoadingTemplateContent = $state(false);
 
 	let name = $state('');
@@ -68,16 +65,14 @@
 
 				toast.success('Docker run command converted successfully!');
 				dockerRunCommand = '';
+				showConverterDialog = false;
 			}
 		});
 	}
 
 	async function handleTemplateSelect(template: Template) {
-		showTemplateDialog = false; // Close the dialog immediately
+		showTemplateDialog = false;
 
-		// The template object passed here already has content and envContent
-		// because the TemplateSelectionDialog now calls getTemplateContent
-		// before calling onSelect.
 		composeContent = template.content;
 		if (template.envContent) {
 			envContent = template.envContent;
@@ -89,11 +84,6 @@
 			name = template.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 		}
 		toast.success(`Template "${template.name}" loaded successfully!`);
-
-		// No need for isLoadingTemplateContent state or API call here anymore
-		// as the dialog handles fetching content before calling onSelect.
-		// The state was primarily for the API call within this function.
-		// Keep it if other parts of the page depend on it.
 	}
 
 	const exampleCommands = [
@@ -107,125 +97,110 @@
 	}
 </script>
 
-<div class="space-y-6 pb-8">
-	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-		<div>
-			<Breadcrumb.Root>
-				<Breadcrumb.List>
-					<Breadcrumb.Item>
-						<Breadcrumb.Link href="/">Dashboard</Breadcrumb.Link>
-					</Breadcrumb.Item>
-					<Breadcrumb.Separator />
-					<Breadcrumb.Item>
-						<Breadcrumb.Link href="/compose">Compose</Breadcrumb.Link>
-					</Breadcrumb.Item>
-					<Breadcrumb.Separator />
-					<Breadcrumb.Item>
-						<Breadcrumb.Page>New Project</Breadcrumb.Page>
-					</Breadcrumb.Item>
-				</Breadcrumb.List>
-			</Breadcrumb.Root>
+<div class="bg-background min-h-screen">
+	<div class="bg-background/95 sticky top-0 z-20 border-b backdrop-blur">
+		<div class="max-w-full px-4 py-3">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-3">
+					<Button variant="ghost" size="sm" href="/compose">
+						<ArrowLeft class="mr-2 size-4" />
+						Back
+					</Button>
+					<div class="bg-border h-4 w-px"></div>
+					<div class="flex items-center gap-2">
+						<h1 class="text-lg font-semibold">Create New Compose Project</h1>
+					</div>
+				</div>
+				<div class="flex items-center gap-2">
+					<Dialog.Root bind:open={showConverterDialog}>
+						<Dialog.Trigger>
+							<Button
+								variant="outline"
+								class="arcane-button-restart"
+								disabled={saving || converting || isLoadingTemplateContent}
+							>
+								<Terminal class="mr-2 size-4" />
+								Convert Docker Run
+							</Button>
+						</Dialog.Trigger>
+						<Dialog.Content class="sm:max-w-[800px] max-h-[80vh]">
+							<Dialog.Header>
+								<Dialog.Title>Docker Run to Compose Converter</Dialog.Title>
+								<Dialog.Description>
+									Convert existing docker run commands to Docker Compose format
+								</Dialog.Description>
+							</Dialog.Header>
+							<div class="space-y-4 max-h-[60vh] overflow-y-auto">
+								<div class="space-y-2">
+									<Label for="dockerRunCommand">Docker Run Command</Label>
+									<Textarea
+										id="dockerRunCommand"
+										bind:value={dockerRunCommand}
+										placeholder="docker run -d --name my-app -p 8080:80 nginx:alpine"
+										rows={3}
+										disabled={converting}
+										class="font-mono text-sm"
+									/>
+								</div>
 
-			<h1 class="mt-2 text-2xl font-bold tracking-tight">Create New Compose Project</h1>
+								<div class="space-y-2">
+									<Label class="text-muted-foreground text-xs">Example Commands:</Label>
+									<div class="space-y-1">
+										{#each exampleCommands as command}
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												class="h-auto w-full justify-start p-2 text-left font-mono text-xs break-all whitespace-normal"
+												onclick={() => useExample(command)}
+											>
+												<Copy class="mr-2 size-3 shrink-0" />
+												<span class="truncate">{command}</span>
+											</Button>
+										{/each}
+									</div>
+								</div>
+							</div>
+							<div class="flex w-full justify-end pt-4">
+								<Button
+									type="button"
+									disabled={!dockerRunCommand.trim() || converting}
+									onclick={handleConvertDockerRun}
+								>
+									{#if converting}
+										<Loader2 class="mr-2 size-4 animate-spin" />
+										Converting...
+									{:else}
+										<Wand class="mr-2 size-4" />
+										Convert to Compose
+									{/if}
+								</Button>
+							</div>
+						</Dialog.Content>
+					</Dialog.Root>
+					<ArcaneButton
+						action="template"
+						onClick={() => (showTemplateDialog = true)}
+						loading={saving || isLoadingTemplateContent}
+						disabled={saving || converting || isLoadingTemplateContent}
+					/>
+					<ArcaneButton
+						action="create"
+						onClick={handleSubmit}
+						loading={saving}
+						disabled={!name || !composeContent || saving || converting || isLoadingTemplateContent}
+					/>
+				</div>
+			</div>
 		</div>
 	</div>
 
-	<!-- Docker Run to Compose Converter -->
-	<DropdownCard
-		id="docker-run-converter"
-		title="Docker Run to Compose Converter"
-		description="Convert existing docker run commands to Docker Compose format"
-		icon={Terminal}
-	>
-		<div class="space-y-4">
-			<div class="space-y-2">
-				<Label for="dockerRunCommand">Docker Run Command</Label>
-				<Textarea
-					id="dockerRunCommand"
-					bind:value={dockerRunCommand}
-					placeholder="docker run -d --name my-app -p 8080:80 nginx:alpine"
-					rows={3}
-					disabled={converting}
-					class="font-mono text-sm"
-				/>
-			</div>
-
-			<div class="flex items-center gap-2">
-				<Button
-					type="button"
-					disabled={!dockerRunCommand.trim() || converting}
-					size="sm"
-					onclick={handleConvertDockerRun}
-				>
-					{#if converting}
-						<Loader2 class="mr-2 size-4 animate-spin" />
-						Converting...
-					{:else}
-						<Wand class="mr-2 size-4" />
-						Convert to Compose
-					{/if}
-				</Button>
-			</div>
-
-			<div class="space-y-2">
-				<Label class="text-muted-foreground text-xs">Example Commands:</Label>
-				<div class="space-y-1">
-					{#each exampleCommands as command}
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							class="h-auto w-full justify-start p-2 text-left font-mono text-xs"
-							onclick={() => useExample(command)}
-						>
-							<Copy class="mr-2 size-3" />
-							{command}
-						</Button>
-					{/each}
-				</div>
-			</div>
-		</div>
-	</DropdownCard>
-
-	<form class="space-y-6" onsubmit={preventDefault(handleSubmit)}>
-		<Card.Root class="border shadow-sm">
-			<Card.Header>
-				<div class="flex w-full items-center justify-between">
-					<div class="flex items-center gap-3">
-						<div class="bg-primary/10 rounded-full p-2">
-							<FileStack class="text-primary size-5" />
-						</div>
-						<div>
-							<Card.Title>Compose Project Configuration</Card.Title>
-							<Card.Description
-								>Create a new Docker Compose Project with environment variables</Card.Description
-							>
-						</div>
-					</div>
-					<div class="flex items-center gap-2">
-						<ArcaneButton
-							action="template"
-							onClick={() => (showTemplateDialog = true)}
-							loading={saving || isLoadingTemplateContent}
-							disabled={saving || converting || isLoadingTemplateContent}
-						/>
-						<ArcaneButton
-							action="create"
-							onClick={handleSubmit}
-							loading={saving}
-							disabled={!name ||
-								!composeContent ||
-								saving ||
-								converting ||
-								isLoadingTemplateContent}
-						/>
-					</div>
-				</div>
-			</Card.Header>
-			<Card.Content>
-				<div class="space-y-4">
-					<div class="grid w-full max-w-sm items-center gap-1.5">
-						<Label for="name">Compose Project Name</Label>
+	<div class="max-w-none p-6">
+		<div class="space-y-8">
+			<form class="space-y-6" onsubmit={preventDefault(handleSubmit)}>
+				<div class="mb-6 space-y-2">
+					<Label for="name" class="text-sm font-medium">Stack Name</Label>
+					<div class="max-w-md">
 						<Input
 							type="text"
 							id="name"
@@ -236,50 +211,40 @@
 							disabled={saving || isLoadingTemplateContent}
 						/>
 					</div>
-
-					<Resizable.PaneGroup direction="horizontal">
-						<Resizable.Pane>
-							<div class="mr-3 space-y-2">
-								<Label for="compose-editor" class="mb-2">Docker Compose File</Label>
-								<div class="mt-2 h-[550px] overflow-hidden rounded-md border">
-									<YamlEditor
-										bind:value={composeContent}
-										readOnly={saving || isLoadingTemplateContent}
-									/>
-								</div>
-							</div>
-						</Resizable.Pane>
-						<Resizable.Handle />
-						<Resizable.Pane defaultSize={25}>
-							<div class="ml-3 space-y-2">
-								<Label for="env-editor" class="mb-2">Environment Configuration (.env)</Label>
-								<div class="mt-2 h-[550px] overflow-hidden rounded-md border">
-									<!-- Add a unique key to force re-render -->
-									{#key `env-${envContent.length}`}
-										<EnvEditor
-											bind:value={envContent}
-											readOnly={saving || isLoadingTemplateContent}
-										/>
-									{/key}
-								</div>
-							</div>
-						</Resizable.Pane>
-					</Resizable.PaneGroup>
 				</div>
-			</Card.Content>
-			<Card.Footer class="flex justify-between">
-				<Button
-					variant="outline"
-					type="button"
-					onclick={() => window.history.back()}
-					disabled={saving || isLoadingTemplateContent}
-				>
-					<ArrowLeft class="mr-2 size-4" />
-					Cancel
-				</Button>
-			</Card.Footer>
-		</Card.Root>
-	</form>
+
+				<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+					<div class="lg:col-span-2">
+						<div class="space-y-4">
+							<h3 class="text-lg font-semibold">Docker Compose File</h3>
+							<div class="h-[590px] w-full overflow-hidden rounded-md">
+								<CodeEditor
+									bind:value={composeContent}
+									language="yaml"
+									placeholder="Enter YAML..."
+									readOnly={saving || isLoadingTemplateContent}
+								/>
+							</div>
+						</div>
+					</div>
+
+					<div class="lg:col-span-1">
+						<div class="space-y-4">
+							<h3 class="text-lg font-semibold">Environment (.env)</h3>
+							<div class="h-[590px] w-full overflow-hidden rounded-md">
+								<CodeEditor
+									bind:value={envContent}
+									language="env"
+									placeholder="Enter environment variables..."
+									readOnly={saving || isLoadingTemplateContent}
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
 </div>
 
 <TemplateSelectionDialog
