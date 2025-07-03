@@ -28,32 +28,23 @@ func NewStackHandler(stackService *services.StackService) *StackHandler {
 }
 
 func (h *StackHandler) ListStacks(c *gin.Context) {
-	var paginationReq utils.SimplePaginationRequest
-	if err := c.ShouldBindQuery(&paginationReq); err != nil {
+	var req utils.SortedPaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid pagination parameters: " + err.Error(),
+			"error":   "Invalid pagination or sort parameters: " + err.Error(),
 		})
 		return
 	}
 
-	var sortReq utils.SimpleSortRequest
-	if err := c.ShouldBindQuery(&sortReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid sort parameters: " + err.Error(),
-		})
-		return
+	if req.Pagination.Page == 0 {
+		req.Pagination.Page = 1
+	}
+	if req.Pagination.Limit == 0 {
+		req.Pagination.Limit = 20
 	}
 
-	if paginationReq.Page == 0 {
-		paginationReq.Page = 1
-	}
-	if paginationReq.Limit == 0 {
-		paginationReq.Limit = 20
-	}
-
-	stacks, pagination, err := h.stackService.ListStacksPaginated(c.Request.Context(), paginationReq, sortReq)
+	stacks, pagination, err := h.stackService.ListStacksPaginated(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

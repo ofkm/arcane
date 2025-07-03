@@ -43,7 +43,7 @@
 			onSuccess: async (stack) => {
 				toast.success(`Stack "${name}" created successfully.`);
 				await invalidateAll();
-				goto(`/compose/${stack.name}`);
+				goto(`/compose/${stack.id}`);
 			}
 		});
 	}

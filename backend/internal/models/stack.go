@@ -45,13 +45,13 @@ const (
 
 type Stack struct {
 	ID           string      `json:"id" gorm:"primaryKey"`
-	Name         string      `json:"name" gorm:"not null"`
+	Name         string      `json:"name" gorm:"not null" sortable:"true"`
 	DirName      *string     `json:"dir_name" gorm:"unique"`
 	Path         string      `json:"path" gorm:"not null"`
-	Status       StackStatus `json:"status"`
-	ServiceCount int         `json:"service_count"`
-	RunningCount int         `json:"running_count"`
-	AutoUpdate   bool        `json:"auto_update"`
+	Status       StackStatus `json:"status" sortable:"true"`
+	ServiceCount int         `json:"service_count" sortable:"true"`
+	RunningCount int         `json:"running_count" sortable:"true"`
+	AutoUpdate   bool        `json:"auto_update" sortable:"true"`
 	IsExternal   bool        `json:"is_external"`
 	IsLegacy     bool        `json:"is_legacy"`
 	IsRemote     bool        `json:"is_remote"`

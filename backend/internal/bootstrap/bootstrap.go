@@ -81,7 +81,7 @@ func InitializeApp() (*App, error) {
 		log.Printf("Warning: failed to create default admin user: %v", err)
 	}
 
-	if cfg.PublicOidcEnabled {
+	if cfg.OidcEnabled {
 		if err := appServices.Auth.SyncOidcEnvToDatabase(context.Background()); err != nil {
 			log.Printf("⚠️ Warning: Failed to sync OIDC environment variables to database: %v", err)
 		}

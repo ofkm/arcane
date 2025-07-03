@@ -94,7 +94,7 @@ func NewAuthService(userService *UserService, settingsService *SettingsService, 
 }
 
 func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
-	if !s.config.PublicOidcEnabled {
+	if !s.config.OidcEnabled {
 		return errors.New("OIDC sync called but PUBLIC_OIDC_ENABLED is false")
 	}
 
@@ -178,7 +178,7 @@ func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error
 		}, nil
 	}
 
-	if s.config.PublicOidcEnabled && !effectiveAuthSettings.OidcEnabled {
+	if s.config.OidcEnabled && !effectiveAuthSettings.OidcEnabled {
 		log.Printf("Warning: PUBLIC_OIDC_ENABLED is true, but effective OIDC settings from DB show oidcEnabled=false. This might indicate an issue with the initial sync or subsequent manual changes.")
 	}
 
@@ -188,7 +188,7 @@ func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error
 func (s *AuthService) GetOidcConfigurationStatus(ctx context.Context) (*OidcStatusInfo, error) {
 	status := &OidcStatusInfo{}
 
-	status.EnvForced = s.config.PublicOidcEnabled
+	status.EnvForced = s.config.OidcEnabled
 	if status.EnvForced {
 		// This reflects if the env vars themselves were complete at load time
 		status.EnvConfigured = s.config.OidcClientID != "" &&

@@ -1016,14 +1016,11 @@ func (s *StackService) getServiceCounts(services []StackServiceInfo) (total int,
 	return total, running
 }
 
-func (s *StackService) ListStacksPaginated(ctx context.Context, req utils.SimplePaginationRequest, sort utils.SimpleSortRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
+func (s *StackService) ListStacksPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
 	var stacks []models.Stack
 	query := s.db.WithContext(ctx).Model(&models.Stack{})
 
-	allowedSorts := []string{"created_at", "updated_at", "name", "status", "service_count", "running_count"}
-	query = utils.ApplySort(sort, query, allowedSorts)
-
-	pagination, err := utils.PaginateSimple(req, query, &stacks)
+	pagination, err := utils.PaginateAndSort(req, query, &stacks)
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate stacks: %w", err)
 	}

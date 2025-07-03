@@ -229,12 +229,12 @@
 				bind:selectedIds
 				{onRefresh}
 				columns={[
-					{ label: 'Repository:Tag', sortColumn: 'RepoTags' },
-					{ label: 'Image ID', sortColumn: 'Id' },
+					{ label: 'Repository', sortColumn: 'RepoTags' },
+					{ label: 'Image ID' },
 					{ label: 'Size', sortColumn: 'Size' },
 					{ label: 'Created', sortColumn: 'Created' },
 					{ label: 'Status', sortColumn: 'InUse' },
-					{ label: 'Maturity', sortColumn: 'maturity' },
+					{ label: 'Maturity' },
 					{ label: ' ' }
 				]}
 				filterPlaceholder="Search images..."

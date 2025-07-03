@@ -539,7 +539,7 @@ func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID 
 	return nil
 }
 
-func (s *ImageService) ListImagesWithMaturityPaginated(ctx context.Context, req utils.SimplePaginationRequest, sort utils.SimpleSortRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
+func (s *ImageService) ListImagesWithMaturityPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
 	_, err := s.ListImages(ctx)
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list and sync Docker images: %w", err)
@@ -548,10 +548,7 @@ func (s *ImageService) ListImagesWithMaturityPaginated(ctx context.Context, req 
 	var images []*models.Image
 	query := s.db.WithContext(ctx).Model(&models.Image{}).Preload("MaturityRecord")
 
-	allowedSorts := []string{"created", "size", "repo", "tag", "in_use"}
-	query = utils.ApplySort(sort, query, allowedSorts)
-
-	pagination, err := utils.PaginateSimple(req, query, &images)
+	pagination, err := utils.PaginateAndSort(req, query, &images)
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate images: %w", err)
 	}

@@ -47,9 +47,25 @@ func PaginateAndSort(sortedPaginationRequest SortedPaginationRequest, query *gor
 	pagination := sortedPaginationRequest.Pagination
 	sort := sortedPaginationRequest.Sort
 
+	if sort.Column == "" {
+		return Paginate(pagination.Page, pagination.Limit, query, result)
+	}
+
 	capitalizedSortColumn := CapitalizeFirstLetter(sort.Column)
 
-	sortField, sortFieldFound := reflect.TypeOf(result).Elem().Elem().FieldByName(capitalizedSortColumn)
+	// Get the element type correctly
+	resultType := reflect.TypeOf(result)
+	if resultType.Kind() == reflect.Ptr {
+		resultType = resultType.Elem()
+	}
+	if resultType.Kind() == reflect.Slice {
+		resultType = resultType.Elem()
+	}
+	if resultType.Kind() == reflect.Ptr {
+		resultType = resultType.Elem()
+	}
+
+	sortField, sortFieldFound := resultType.FieldByName(capitalizedSortColumn)
 	isSortable := false
 	if sortFieldFound {
 		if sortableTag := sortField.Tag.Get("sortable"); sortableTag != "" {

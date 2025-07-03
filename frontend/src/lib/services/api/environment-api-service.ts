@@ -81,13 +81,13 @@ export class EnvironmentAPIService extends BaseAPIService {
         }
 
         const params: any = {
-            page: pagination.page,
-            limit: pagination.limit
+            'pagination[page]': pagination.page,
+            'pagination[limit]': pagination.limit
         };
 
         if (sort) {
-            params.column = sort.column;
-            params.direction = sort.direction;
+            params['sort[column]'] = sort.column;
+            params['sort[direction]'] = sort.direction;
         }
 
         if (search) {
@@ -228,13 +228,13 @@ export class EnvironmentAPIService extends BaseAPIService {
         }
 
         const params: any = {
-            page: pagination.page,
-            limit: pagination.limit
+            'pagination[page]': pagination.page,
+            'pagination[limit]': pagination.limit
         };
 
         if (sort) {
-            params.column = sort.column;
-            params.direction = sort.direction;
+            params['sort[column]'] = sort.column;
+            params['sort[direction]'] = sort.direction;
         }
 
         if (search) {

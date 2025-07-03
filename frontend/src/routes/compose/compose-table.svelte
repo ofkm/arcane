@@ -187,8 +187,8 @@
 					{ label: 'Created', sortColumn: 'created_at' },
 					{ label: ' ' }
 				]}
-				filterPlaceholder="Search compose projects..."
-				noResultsMessage="No stacks found"
+				filterPlaceholder="Search projects..."
+				noResultsMessage="No projects found"
 			>
 				{#snippet rows({ item })}
 					{@const stateVariant = item.status ? statusVariantMap[item.status.toLowerCase()] : 'gray'}

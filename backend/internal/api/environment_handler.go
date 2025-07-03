@@ -310,13 +310,13 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 	req.Header.Set("X-Forwarded-Host", c.Request.Host)
 	req.Header.Set("X-Forwarded-Proto", c.Request.URL.Scheme)
 
+	q := req.URL.Query()
 	for key, values := range c.Request.URL.Query() {
 		for _, value := range values {
-			q := req.URL.Query()
 			q.Add(key, value)
-			req.URL.RawQuery = q.Encode()
 		}
 	}
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := client.Do(req)
 	if err != nil {

@@ -12,7 +12,7 @@ type Config struct {
 	Environment string
 	JWTSecret   string
 
-	PublicOidcEnabled         bool
+	OidcEnabled               bool
 	OidcClientID              string
 	OidcClientSecret          string
 	OidcRedirectURI           string
@@ -25,7 +25,7 @@ type Config struct {
 }
 
 func Load() *Config {
-	publicOidcEnabled, _ := strconv.ParseBool(os.Getenv("PUBLIC_OIDC_ENABLED"))
+	publicOidcEnabled, _ := strconv.ParseBool(os.Getenv("OIDC_ENABLED"))
 
 	return &Config{
 		AppUrl:        getEnvOrDefault("APP_URL", "http://localhost:8080"),
@@ -35,7 +35,7 @@ func Load() *Config {
 		JWTSecret:     getEnvOrDefault("JWT_SECRET", "default-jwt-secret-change-me"),
 		EncryptionKey: getEnvOrDefault("ENCRYPTION_KEY", "arcane-dev-key-32-characters!!!"),
 
-		PublicOidcEnabled:         publicOidcEnabled,
+		OidcEnabled:               publicOidcEnabled,
 		OidcClientID:              os.Getenv("OIDC_CLIENT_ID"),
 		OidcClientSecret:          os.Getenv("OIDC_CLIENT_SECRET"),
 		OidcRedirectURI:           os.Getenv("OIDC_REDIRECT_URI"),
