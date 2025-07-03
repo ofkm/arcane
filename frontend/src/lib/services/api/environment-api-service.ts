@@ -214,10 +214,38 @@ export class EnvironmentAPIService extends BaseAPIService {
         return this.handleResponse(this.api.post(`/environments/${envId}/execute`, { command, args }));
     }
 
-    async getStacks(): Promise<Stack[]> {
+    async getStacks(
+        pagination?: PaginationRequest,
+        sort?: SortRequest,
+        search?: string,
+        filters?: Record<string, string>
+    ): Promise<any[] | PaginatedApiResponse<any>> {
         const envId = await this.getCurrentEnvironmentId();
-        const response = await this.handleResponse<{ stacks?: Stack[] }>(this.api.get(`/environments/${envId}/stacks`));
-        return Array.isArray(response.stacks) ? response.stacks : Array.isArray(response) ? response : [];
+        
+        if (!pagination) {
+            const response = await this.handleResponse<{ stacks?: Stack[] }>(this.api.get(`/environments/${envId}/stacks`));
+            return Array.isArray(response.stacks) ? response.stacks : Array.isArray(response) ? response : [];
+        }
+
+        const params: any = {
+            page: pagination.page,
+            limit: pagination.limit
+        };
+
+        if (sort) {
+            params.column = sort.column;
+            params.direction = sort.direction;
+        }
+
+        if (search) {
+            params.search = search;
+        }
+
+        if (filters) {
+            params.filters = filters;
+        }
+
+        return this.handleResponse(this.api.get(`/environments/${envId}/stacks`, { params }));
     }
 
     async getStack(stackName: string): Promise<Stack> {

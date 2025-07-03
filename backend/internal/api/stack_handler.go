@@ -12,6 +12,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type StackHandler struct {
@@ -27,39 +28,44 @@ func NewStackHandler(stackService *services.StackService) *StackHandler {
 }
 
 func (h *StackHandler) ListStacks(c *gin.Context) {
-	stacks, err := h.stackService.ListStacks(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+	var paginationReq utils.SimplePaginationRequest
+	if err := c.ShouldBindQuery(&paginationReq); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   fmt.Sprintf("Failed to fetch stacks: %v", err),
+			"error":   "Invalid pagination parameters: " + err.Error(),
 		})
 		return
 	}
 
-	var stackList []map[string]interface{}
-	for _, stack := range stacks {
-		stackResponse := map[string]interface{}{
-			"id":           stack.ID,
-			"name":         stack.Name,
-			"path":         stack.Path,
-			"status":       stack.Status,
-			"serviceCount": stack.ServiceCount,
-			"runningCount": stack.RunningCount,
-			"createdAt":    stack.CreatedAt,
-			"updatedAt":    stack.UpdatedAt,
-			"autoUpdate":   stack.AutoUpdate,
-			"isExternal":   stack.IsExternal,
-			"isLegacy":     stack.IsLegacy,
-			"isRemote":     stack.IsRemote,
-			"services":     nil, // Services are not fetched in the list view for performance.
-		}
-		stackList = append(stackList, stackResponse)
+	var sortReq utils.SimpleSortRequest
+	if err := c.ShouldBindQuery(&sortReq); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid sort parameters: " + err.Error(),
+		})
+		return
+	}
+
+	if paginationReq.Page == 0 {
+		paginationReq.Page = 1
+	}
+	if paginationReq.Limit == 0 {
+		paginationReq.Limit = 20
+	}
+
+	stacks, pagination, err := h.stackService.ListStacksPaginated(c.Request.Context(), paginationReq, sortReq)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to list stacks: " + err.Error(),
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"stacks":  stackList,
-		"count":   len(stackList),
+		"success":    true,
+		"data":       stacks,
+		"pagination": pagination,
 	})
 }
 
