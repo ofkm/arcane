@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
+	import { get } from 'svelte/store';
+	import { environmentStore } from '$lib/stores/environment.store';
 
 	interface LogEntry {
 		timestamp: string;
@@ -24,7 +26,19 @@
 		onStop?: () => void;
 	}
 
-	let { containerId = null, stackId = null, type = 'container', maxLines = 1000, autoScroll = $bindable(true), showTimestamps = true, height = '400px', onClear, onToggleAutoScroll, onStart, onStop }: Props = $props();
+	let {
+		containerId = null,
+		stackId = null,
+		type = 'container',
+		maxLines = 1000,
+		autoScroll = $bindable(true),
+		showTimestamps = true,
+		height = '400px',
+		onClear,
+		onToggleAutoScroll,
+		onStart,
+		onStop
+	}: Props = $props();
 
 	let logs: LogEntry[] = $state([]);
 	let logContainer: HTMLElement | undefined = $state();
@@ -32,7 +46,22 @@
 	let error: string | null = $state(null);
 	let eventSource: EventSource | null = null;
 
-	export function startLogStream() {
+	async function buildLogStreamEndpoint(): Promise<string> {
+		if (browser) {
+			await environmentStore.ready;
+		}
+		const currentEnvironment = get(environmentStore.selected);
+		const envId = currentEnvironment?.id || 'local';
+
+		const baseEndpoint =
+			type === 'stack'
+				? `/api/environments/${envId}/stacks/${stackId}/logs/stream`
+				: `/api/environments/${envId}/containers/${containerId}/logs/stream`;
+
+		return `${baseEndpoint}?follow=true&tail=100&timestamps=${showTimestamps}`;
+	}
+
+	export async function startLogStream() {
 		const targetId = type === 'stack' ? stackId : containerId;
 
 		if (!targetId || !browser) return;
@@ -42,7 +71,7 @@
 			error = null;
 			onStart?.();
 
-			const endpoint = type === 'stack' ? `/api/stacks/${stackId}/logs/stream?follow=true&tail=100&timestamps=${showTimestamps}` : `/api/containers/${containerId}/logs/stream?follow=true&tail=100&timestamps=${showTimestamps}`;
+			const endpoint = await buildLogStreamEndpoint();
 
 			eventSource = new EventSource(endpoint);
 
@@ -51,7 +80,6 @@
 					const logData = JSON.parse(event.data);
 
 					if (logData.message !== undefined) {
-						// Stack log format
 						addLogEntry({
 							level: logData.level || 'info',
 							message: logData.message,
@@ -60,7 +88,6 @@
 							containerId: logData.containerId
 						});
 					} else if (logData.data !== undefined) {
-						// Container log format
 						addLogEntry({
 							level: logData.data.includes('[STDERR]') ? 'stderr' : 'stdout',
 							message: logData.data.replace('[STDERR] ', ''),
@@ -79,7 +106,6 @@
 				}
 			});
 
-			// Handle container logs (come as default messages)
 			eventSource.onmessage = (event) => {
 				try {
 					const logData = JSON.parse(event.data);
@@ -160,11 +186,30 @@
 		return logs.length;
 	}
 
-	function addLogEntry(logData: { level: string; message: string; timestamp?: string; service?: string; containerId?: string }) {
+	function addLogEntry(logData: {
+		level: string;
+		message: string;
+		timestamp?: string;
+		service?: string;
+		containerId?: string;
+	}) {
+		let cleanMessage = logData.message;
+		let timestamp = logData.timestamp || new Date().toISOString();
+
+		const dockerTimestampRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z?\s*/;
+		if (dockerTimestampRegex.test(cleanMessage)) {
+			cleanMessage = cleanMessage.replace(dockerTimestampRegex, '').trim();
+		}
+
+		const dockerTimestampRegex2 = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s*/;
+		if (dockerTimestampRegex2.test(cleanMessage)) {
+			cleanMessage = cleanMessage.replace(dockerTimestampRegex2, '').trim();
+		}
+
 		const entry: LogEntry = {
-			timestamp: logData.timestamp || new Date().toISOString(),
+			timestamp,
 			level: logData.level as LogEntry['level'],
-			message: logData.message,
+			message: cleanMessage,
 			service: logData.service,
 			containerId: logData.containerId
 		};
@@ -181,7 +226,8 @@
 	}
 
 	function formatTimestamp(timestamp: string): string {
-		return new Date(timestamp).toLocaleTimeString();
+		const date = new Date(timestamp);
+		return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
 	}
 
 	function getLevelClass(level: LogEntry['level']): string {
@@ -225,7 +271,11 @@
 		</div>
 	{/if}
 
-	<div bind:this={logContainer} class="log-viewer overflow-y-auto rounded-lg border bg-black font-mono text-sm text-white" style="height: {height}">
+	<div
+		bind:this={logContainer}
+		class="log-viewer overflow-y-auto rounded-lg border bg-black font-mono text-sm text-white"
+		style="height: {height}"
+	>
 		{#if logs.length === 0}
 			<div class="p-4 text-center text-gray-500">
 				{#if !containerId}
@@ -238,24 +288,29 @@
 			</div>
 		{:else}
 			{#each logs as log (log.timestamp + log.message + (log.service || ''))}
-				<div class="flex border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50">
+				<div
+					class="flex border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50"
+				>
 					{#if showTimestamps}
-						<span class="mr-3 w-20 shrink-0 text-xs text-gray-500">
+						<span class="mr-3 shrink-0 text-xs text-gray-500 min-w-fit">
 							{formatTimestamp(log.timestamp)}
 						</span>
 					{/if}
 
-					<span class="mr-2 w-12 shrink-0 text-xs {getLevelClass(log.level)}">
+					<span class="mr-2 shrink-0 text-xs {getLevelClass(log.level)} min-w-fit">
 						{log.level.toUpperCase()}
 					</span>
 
 					{#if type === 'stack' && log.service}
-						<span class="mr-2 w-16 shrink-0 truncate text-xs text-blue-400" title={log.service}>
+						<span
+							class="mr-2 shrink-0 truncate text-xs text-blue-400 min-w-fit"
+							title={log.service}
+						>
 							{log.service}
 						</span>
 					{/if}
 
-					<span class="break-all whitespace-pre-wrap text-gray-300">
+					<span class="break-words whitespace-pre-wrap text-gray-300 flex-1">
 						{log.message}
 					</span>
 				</div>
@@ -266,6 +321,7 @@
 
 <style>
 	.log-viewer {
-		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+		font-family:
+			'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 	}
 </style>

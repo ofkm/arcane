@@ -158,6 +158,7 @@ func setupEnvironmentRoutes(api *gin.RouterGroup, services *Services) {
 	environments.POST("/:id/containers/:containerId/restart", environmentHandler.RestartContainer)
 	environments.DELETE("/:id/containers/:containerId", environmentHandler.RemoveContainer)
 	environments.GET("/:id/containers/:containerId/logs", environmentHandler.GetContainerLogs)
+	environments.GET("/:id/containers/:containerId/logs/stream", environmentHandler.GetContainerLogsStream)
 	environments.GET("/:id/containers/:containerId/stats", environmentHandler.GetContainerStats)
 	environments.GET("/:id/containers/:containerId/stats/stream", environmentHandler.GetContainerStatsStream)
 

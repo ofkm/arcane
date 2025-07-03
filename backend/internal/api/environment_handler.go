@@ -99,6 +99,9 @@ func (h *EnvironmentHandler) handleContainerEndpoints(c *gin.Context, endpoint s
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/pull"):
 		containerHandler.PullImage(c)
 		return true
+	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs/stream"):
+		containerHandler.GetLogsStream(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs"):
 		containerHandler.GetLogs(c)
 		return true
@@ -610,6 +613,11 @@ func (h *EnvironmentHandler) GetContainerStats(c *gin.Context) {
 func (h *EnvironmentHandler) GetContainerStatsStream(c *gin.Context) {
 	containerID := c.Param("containerId")
 	h.routeRequest(c, "/containers/"+containerID+"/stats/stream")
+}
+
+func (h *EnvironmentHandler) GetContainerLogsStream(c *gin.Context) {
+	containerID := c.Param("containerId")
+	h.routeRequest(c, "/containers/"+containerID+"/logs/stream")
 }
 
 // End Containers

@@ -3,7 +3,6 @@ package dto
 import "github.com/ofkm/arcane-backend/internal/models"
 
 type UpdateSettingsDto struct {
-	DockerHost            *string      `json:"dockerHost,omitempty"`
 	StacksDirectory       *string      `json:"stacksDirectory,omitempty"`
 	AutoUpdate            *bool        `json:"autoUpdate,omitempty"`
 	AutoUpdateInterval    *int         `json:"autoUpdateInterval,omitempty"`

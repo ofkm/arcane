@@ -14,7 +14,7 @@ export const load: PageLoad = async ({ params }) => {
 		}
 
 		return {
-			container,
+			container: container.data,
 			stats: containerStats
 		};
 	} catch (err: any) {

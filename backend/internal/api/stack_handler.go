@@ -531,10 +531,8 @@ func (h *StackHandler) ConvertDockerRun(c *gin.Context) {
 }
 
 func (h *StackHandler) GetStackLogsStream(c *gin.Context) {
-	stackID := c.Param("id")
-	if stackID == "" {
-		stackID = c.Param("stackId")
-	}
+
+	stackID := c.Param("stackId")
 
 	follow := c.Query("follow") == "true"
 	tail := c.DefaultQuery("tail", "100")
