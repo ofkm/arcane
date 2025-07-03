@@ -113,7 +113,6 @@
 					console.log(
 						`Stack ID changed from ${currentStackId} to ${updatedStack.id}. Navigating...`
 					);
-					// await goto(`/compose/${name}`, { invalidateAll: true });
 					await invalidateAll();
 				} else {
 					await invalidateAll();

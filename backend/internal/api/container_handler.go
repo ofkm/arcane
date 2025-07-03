@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type ContainerHandler struct {
@@ -63,20 +64,54 @@ func (h *ContainerHandler) PullImage(c *gin.Context) {
 }
 
 func (h *ContainerHandler) List(c *gin.Context) {
-	includeAll := c.Query("all") == "true"
+	var req utils.SortedPaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid pagination or sort parameters: " + err.Error(),
+		})
+		return
+	}
 
-	containers, err := h.containerService.ListContainers(c.Request.Context(), includeAll)
+	if req.Pagination.Page == 0 {
+		req.Pagination.Page = 1
+	}
+	if req.Pagination.Limit == 0 {
+		req.Pagination.Limit = 20
+	}
+
+	includeAll := true
+
+	if req.Pagination.Page == 0 && req.Pagination.Limit == 0 {
+		containers, err := h.containerService.ListContainers(c.Request.Context(), includeAll)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    containers,
+		})
+		return
+	}
+
+	containers, pagination, err := h.containerService.ListContainersPaginated(c.Request.Context(), req, includeAll)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "Failed to list containers: " + err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    containers,
+		"success":    true,
+		"data":       containers,
+		"pagination": pagination,
 	})
 }
 

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -25,6 +26,8 @@ type SortedPaginationRequest struct {
 		Column    string `form:"sort[column]"`
 		Direction string `form:"sort[direction]"`
 	} `form:"sort"`
+	Search  string                 `form:"search"`
+	Filters map[string]interface{} `form:"filters"`
 }
 
 type SimplePaginationRequest struct {
@@ -222,4 +225,66 @@ func CalculateTotalPages(totalItems int64, pageSize int) int64 {
 		return 1
 	}
 	return (totalItems + int64(pageSize) - 1) / int64(pageSize)
+}
+
+func SortSliceByField(data []map[string]interface{}, field, direction string) {
+	if field == "" {
+		return
+	}
+
+	sort.Slice(data, func(i, j int) bool {
+		val1, exists1 := data[i][field]
+		val2, exists2 := data[j][field]
+
+		if !exists1 && !exists2 {
+			return false
+		}
+		if !exists1 {
+			return direction == "desc"
+		}
+		if !exists2 {
+			return direction == "asc"
+		}
+
+		switch v1 := val1.(type) {
+		case string:
+			v2, ok := val2.(string)
+			if !ok {
+				return false
+			}
+			if direction == "desc" {
+				return v1 > v2
+			}
+			return v1 < v2
+		case int:
+			v2, ok := val2.(int)
+			if !ok {
+				return false
+			}
+			if direction == "desc" {
+				return v1 > v2
+			}
+			return v1 < v2
+		case int64:
+			v2, ok := val2.(int64)
+			if !ok {
+				return false
+			}
+			if direction == "desc" {
+				return v1 > v2
+			}
+			return v1 < v2
+		case float64:
+			v2, ok := val2.(float64)
+			if !ok {
+				return false
+			}
+			if direction == "desc" {
+				return v1 > v2
+			}
+			return v1 < v2
+		default:
+			return false
+		}
+	})
 }

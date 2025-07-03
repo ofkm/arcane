@@ -4,9 +4,9 @@ import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/envir
 import type { ContainerCreateOptions, NetworkCreateOptions, VolumeCreateOptions, ContainerStats } from 'dockerode';
 import type { Stack, StackService } from '$lib/models/stack.type';
 import type { PaginationRequest, SortRequest, PaginatedApiResponse } from '$lib/types/pagination.type';
-
 import { browser } from '$app/environment';
 import type { EnhancedImageInfo } from '$lib/models/image.type';
+import type { EnhancedContainerInfo } from '$lib/models/container-info';
 
 export class EnvironmentAPIService extends BaseAPIService {
     private async getCurrentEnvironmentId(): Promise<string> {
@@ -20,10 +20,40 @@ export class EnvironmentAPIService extends BaseAPIService {
         return currentEnvironment.id;
     }
 
-    async getContainers(): Promise<any[]> {
+    async getContainers(
+        pagination?: PaginationRequest,
+        sort?: SortRequest,
+        search?: string,
+        filters?: Record<string, string>
+    ): Promise<any[] | PaginatedApiResponse<any>> {
         const envId = await this.getCurrentEnvironmentId();
-        const response = await this.handleResponse<{ containers?: any[] }>(this.api.get(`/environments/${envId}/containers`));
-        return Array.isArray(response.containers) ? response.containers : Array.isArray(response) ? response : [];
+        
+        if (!pagination) {
+            const response = await this.handleResponse<{ containers?: EnhancedContainerInfo[] }>(this.api.get(`/environments/${envId}/containers`));
+            return Array.isArray(response.containers) ? response.containers : Array.isArray(response) ? response : [];
+        }
+
+        const params: any = {
+            'pagination[page]': pagination.page,
+            'pagination[limit]': pagination.limit
+        };
+
+        if (sort) {
+            params['sort[column]'] = sort.column;
+            params['sort[direction]'] = sort.direction;
+        }
+
+        if (search) {
+            params.search = search;
+        }
+
+        if (filters) {
+            Object.entries(filters).forEach(([key, value]) => {
+                params[key] = value;
+            });
+        }
+
+        return this.handleResponse(this.api.get(`/environments/${envId}/containers`, { params }));
     }
 
     async getContainer(containerId: string): Promise<any> {
