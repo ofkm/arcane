@@ -88,8 +88,9 @@ export default class ImageMaturityAPIService extends BaseAPIService {
 	}
 
 	// Trigger maturity check for all images
-	async triggerMaturityCheck(): Promise<{ success: boolean; message: string }> {
-		const res = await this.api.post('/images/maturity/check');
+	async triggerMaturityCheck(imageIds?: string[]): Promise<{ success: boolean; message: string }> {
+		const payload = imageIds && imageIds.length > 0 ? { imageIds } : {};
+		const res = await this.api.post('/images/maturity/check', payload);
 		return res.data;
 	}
 

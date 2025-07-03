@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/table-core';
+import type { ExternalPagination } from './pagination.type';
 
 export type FeatureFlags = {
 	sorting?: boolean;
@@ -31,4 +32,8 @@ export type UniversalTableProps<TData> = {
 	pagination?: PaginationOptions;
 	sort?: SortOptions;
 	selectedIds?: string[];
+	externalPagination?: ExternalPagination;
+	onPageChange?: (page: number) => void;
+	onPageSizeChange?: (size: number) => void;
+	onSort?: (column: string, direction: 'asc' | 'desc') => void;
 };

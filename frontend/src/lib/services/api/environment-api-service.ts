@@ -3,315 +3,376 @@ import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
 import type { ContainerCreateOptions, NetworkCreateOptions, VolumeCreateOptions, ContainerStats } from 'dockerode';
 import type { Stack, StackService } from '$lib/models/stack.type';
+import type { PaginationRequest, SortRequest, PaginatedApiResponse } from '$lib/types/pagination.type';
 
 import { browser } from '$app/environment';
+import type { EnhancedImageInfo } from '$lib/models/image.type';
 
 export class EnvironmentAPIService extends BaseAPIService {
-	private async getCurrentEnvironmentId(): Promise<string> {
-		if (browser) {
-			await environmentStore.ready;
-		}
-		const currentEnvironment = get(environmentStore.selected);
-		if (!currentEnvironment) {
-			return LOCAL_DOCKER_ENVIRONMENT_ID;
-		}
-		return currentEnvironment.id;
-	}
+    private async getCurrentEnvironmentId(): Promise<string> {
+        if (browser) {
+            await environmentStore.ready;
+        }
+        const currentEnvironment = get(environmentStore.selected);
+        if (!currentEnvironment) {
+            return LOCAL_DOCKER_ENVIRONMENT_ID;
+        }
+        return currentEnvironment.id;
+    }
 
-	async getContainers(): Promise<any[]> {
-		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ containers?: any[] }>(this.api.get(`/environments/${envId}/containers`));
-		return Array.isArray(response.containers) ? response.containers : Array.isArray(response) ? response : [];
-	}
+    async getContainers(): Promise<any[]> {
+        const envId = await this.getCurrentEnvironmentId();
+        const response = await this.handleResponse<{ containers?: any[] }>(this.api.get(`/environments/${envId}/containers`));
+        return Array.isArray(response.containers) ? response.containers : Array.isArray(response) ? response : [];
+    }
 
-	async getContainer(containerId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/containers/${containerId}`));
-	}
+    async getContainer(containerId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/containers/${containerId}`));
+    }
 
-	async startContainer(containerId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/start`));
-	}
+    async startContainer(containerId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/start`));
+    }
 
-	async createContainer(options: ContainerCreateOptions): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/containers`, options));
-	}
+    async createContainer(options: ContainerCreateOptions): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/containers`, options));
+    }
 
-	async getContainerStats(containerId: string, stream: boolean = false): Promise<ContainerStats> {
-		const envId = await this.getCurrentEnvironmentId();
-		const url = `/environments/${envId}/containers/${containerId}/stats${stream ? '?stream=true' : ''}`;
-		return this.handleResponse(this.api.get(url)) as Promise<ContainerStats>;
-	}
+    async getContainerStats(containerId: string, stream: boolean = false): Promise<ContainerStats> {
+        const envId = await this.getCurrentEnvironmentId();
+        const url = `/environments/${envId}/containers/${containerId}/stats${stream ? '?stream=true' : ''}`;
+        return this.handleResponse(this.api.get(url)) as Promise<ContainerStats>;
+    }
 
-	async stopContainer(containerId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/stop`));
-	}
+    async stopContainer(containerId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/stop`));
+    }
 
-	async restartContainer(containerId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/restart`));
-	}
+    async restartContainer(containerId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/restart`));
+    }
 
-	async deleteContainer(containerId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.delete(`/environments/${envId}/containers/${containerId}`));
-	}
+    async deleteContainer(containerId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.delete(`/environments/${envId}/containers/${containerId}`));
+    }
 
-	async pullContainerImage(containerId: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/pull`));
-	}
+    async pullContainerImage(containerId: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/pull`));
+    }
 
-	async getImages(): Promise<any[]> {
-		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ images?: any[] }>(this.api.get(`/environments/${envId}/images`));
-		return Array.isArray(response.images) ? response.images : Array.isArray(response) ? response : [];
-	}
+    async getImages(
+        pagination?: PaginationRequest,
+        sort?: SortRequest,
+        search?: string,
+        filters?: Record<string, string>
+    ): Promise<any[] | PaginatedApiResponse<any>> {
+        const envId = await this.getCurrentEnvironmentId();
+        
+        if (!pagination) {
+            const response = await this.handleResponse<{ images?: EnhancedImageInfo[] }>(this.api.get(`/environments/${envId}/images`));
+            return Array.isArray(response.images) ? response.images : Array.isArray(response) ? response : [];
+        }
 
-	async getImage(imageId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/images/${imageId}`));
-	}
+        const params: any = {
+            page: pagination.page,
+            limit: pagination.limit
+        };
 
-	async getNetworks(): Promise<any[]> {
-		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ networks?: any[] }>(this.api.get(`/environments/${envId}/networks`));
-		return Array.isArray(response.networks) ? response.networks : Array.isArray(response) ? response : [];
-	}
+        if (sort) {
+            params.column = sort.column;
+            params.direction = sort.direction;
+        }
 
-	async getNetwork(networkId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/networks/${networkId}`));
-	}
+        if (search) {
+            params.search = search;
+        }
 
-	async createNetwork(options: NetworkCreateOptions): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/networks`, options));
-	}
+        if (filters) {
+            params.filters = filters;
+        }
 
-	async deleteNetwork(networkId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.delete(`/environments/${envId}/networks/${networkId}`));
-	}
+        return this.handleResponse(this.api.get(`/environments/${envId}/images`, { params }));
+    }
 
-	async getVolumes(): Promise<any[]> {
-		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ volumes?: any[] }>(this.api.get(`/environments/${envId}/volumes`));
-		return Array.isArray(response.volumes) ? response.volumes : Array.isArray(response) ? response : [];
-	}
+    async getImage(imageId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/images/${imageId}`));
+    }
 
-	async getVolume(volumeName: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/volumes/${volumeName}`));
-	}
+    async pullImage(imageName: string, tag: string = 'latest', auth?: any): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/images/pull`, { imageName, tag, auth }));
+    }
 
-	async getVolumeUsage(volumeName: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/volumes/${volumeName}/usage`));
-	}
+    async deleteImage(imageId: string, options?: { force?: boolean; noprune?: boolean }): Promise<void> {
+        const envId = await this.getCurrentEnvironmentId();
+        await this.handleResponse(this.api.delete(`/environments/${envId}/images/${imageId}`, { params: options }));
+    }
 
-	async createVolume(options: VolumeCreateOptions): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/volumes`, options));
-	}
+    async pruneImages(filters?: Record<string, string>): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/images/prune`, { filters }));
+    }
 
-	async deleteVolume(volumeName: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.delete(`/environments/${envId}/volumes/${volumeName}`));
-	}
+    async inspectImage(imageId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/images/${imageId}/inspect`));
+    }
 
-	async pruneVolumes(): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/volumes/prune`));
-	}
+    async searchImages(term: string, limit?: number): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/images/search`, { params: { term, limit } }));
+    }
 
-	async getAllResources(): Promise<Record<string, any>> {
-		const [containers, images, networks, volumes] = await Promise.all([this.getContainers(), this.getImages(), this.getNetworks(), this.getVolumes()]);
+    async tagImage(imageId: string, repo: string, tag: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/images/${imageId}/tag`, { repo, tag }));
+    }
 
-		return {
-			containers,
-			images,
-			networks,
-			volumes
-		};
-	}
+    async getImageHistory(imageId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/images/${imageId}/history`));
+    }
 
-	async syncResources(): Promise<void> {
-		const envId = await this.getCurrentEnvironmentId();
-		await this.handleResponse(this.api.post(`/environments/${envId}/sync`));
-	}
+    async getNetworks(): Promise<any[]> {
+        const envId = await this.getCurrentEnvironmentId();
+        const response = await this.handleResponse<{ networks?: any[] }>(this.api.get(`/environments/${envId}/networks`));
+        return Array.isArray(response.networks) ? response.networks : Array.isArray(response) ? response : [];
+    }
 
-	async executeDockerCommand(command: string, args: string[] = []): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/execute`, { command, args }));
-	}
+    async getNetwork(networkId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/networks/${networkId}`));
+    }
 
-	async getStacks(): Promise<Stack[]> {
-		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ stacks?: Stack[] }>(this.api.get(`/environments/${envId}/stacks`));
-		return Array.isArray(response.stacks) ? response.stacks : Array.isArray(response) ? response : [];
-	}
+    async createNetwork(options: NetworkCreateOptions): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/networks`, options));
+    }
 
-	async getStack(stackName: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ stack?: Stack; success?: boolean }>(this.api.get(`/environments/${envId}/stacks/${stackName}`));
+    async deleteNetwork(networkId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.delete(`/environments/${envId}/networks/${networkId}`));
+    }
 
-		if (response.stack) {
-			return response.stack;
-		}
+    async getVolumes(): Promise<any[]> {
+        const envId = await this.getCurrentEnvironmentId();
+        const response = await this.handleResponse<{ volumes?: any[] }>(this.api.get(`/environments/${envId}/volumes`));
+        return Array.isArray(response.volumes) ? response.volumes : Array.isArray(response) ? response : [];
+    }
 
-		return response as Stack;
-	}
+    async getVolume(volumeName: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/volumes/${volumeName}`));
+    }
 
-	async deployStack(stackName: string, composeContent: string, envContent?: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		const payload = {
-			name: stackName,
-			composeContent,
-			envContent
-		};
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks`, payload));
-	}
+    async getVolumeUsage(volumeName: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/volumes/${volumeName}/usage`));
+    }
 
-	async updateStack(stackName: string, composeContent: string, envContent?: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		const payload = {
-			composeContent,
-			envContent
-		};
-		return this.handleResponse(this.api.put(`/environments/${envId}/stacks/${stackName}`, payload));
-	}
+    async createVolume(options: VolumeCreateOptions): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/volumes`, options));
+    }
 
-	async deleteStack(stackName: string): Promise<void> {
-		const envId = await this.getCurrentEnvironmentId();
-		await this.handleResponse(this.api.delete(`/environments/${envId}/stacks/${stackName}`));
-	}
+    async deleteVolume(volumeName: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.delete(`/environments/${envId}/volumes/${volumeName}`));
+    }
 
-	async startStack(stackId: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/start`));
-	}
+    async pruneVolumes(): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/volumes/prune`));
+    }
 
-	async stopStack(stackId: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/stop`));
-	}
+    async getAllResources(): Promise<Record<string, any>> {
+        const [containers, images, networks, volumes] = await Promise.all([this.getContainers(), this.getImages(), this.getNetworks(), this.getVolumes()]);
 
-	async restartStack(stackId: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/restart`));
-	}
+        return {
+            containers,
+            images,
+            networks,
+            volumes
+        };
+    }
 
-	async getStackLogs(stackId: string): Promise<string> {
-		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ logs?: string }>(this.api.get(`/environments/${envId}/stacks/${stackId}/logs`));
-		return response.logs || '';
-	}
+    async syncResources(): Promise<void> {
+        const envId = await this.getCurrentEnvironmentId();
+        await this.handleResponse(this.api.post(`/environments/${envId}/sync`));
+    }
 
-	async deployStackWithOptions(stackId: string, options?: { profiles?: string[]; envOverrides?: Record<string, string> }): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/deploy`, options || {}));
-	}
+    async executeDockerCommand(command: string, args: string[] = []): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/execute`, { command, args }));
+    }
 
-	async downStack(stackId: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/down`));
-	}
+    async getStacks(): Promise<Stack[]> {
+        const envId = await this.getCurrentEnvironmentId();
+        const response = await this.handleResponse<{ stacks?: Stack[] }>(this.api.get(`/environments/${envId}/stacks`));
+        return Array.isArray(response.stacks) ? response.stacks : Array.isArray(response) ? response : [];
+    }
 
-	async redeployStack(stackId: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/redeploy`));
-	}
+    async getStack(stackName: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        const response = await this.handleResponse<{ stack?: Stack; success?: boolean }>(this.api.get(`/environments/${envId}/stacks/${stackName}`));
 
-	async pullStackImages(stackId: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/pull`));
-	}
+        if (response.stack) {
+            return response.stack;
+        }
 
-	async destroyStack(stackId: string, removeVolumes = false, removeFiles = false): Promise<void> {
-		const envId = await this.getCurrentEnvironmentId();
-		await this.handleResponse(
-			this.api.delete(`/environments/${envId}/stacks/${stackId}/destroy`, {
-				data: {
-					removeVolumes,
-					removeFiles
-				}
-			})
-		);
-	}
+        return response as Stack;
+    }
 
-	async getStackServices(stackName: string): Promise<StackService[]> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/services`));
-	}
+    async deployStack(stackName: string, composeContent: string, envContent?: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        const payload = {
+            name: stackName,
+            composeContent,
+            envContent
+        };
+        return this.handleResponse(this.api.post(`/environments/${envId}/stacks`, payload));
+    }
 
-	async getStackProfiles(stackName: string): Promise<string[]> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/profiles`));
-	}
+    async updateStack(stackName: string, composeContent: string, envContent?: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        const payload = {
+            composeContent,
+            envContent
+        };
+        return this.handleResponse(this.api.put(`/environments/${envId}/stacks/${stackName}`, payload));
+    }
 
-	async getStackChanges(stackName: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/changes`));
-	}
+    async deleteStack(stackName: string): Promise<void> {
+        const envId = await this.getCurrentEnvironmentId();
+        await this.handleResponse(this.api.delete(`/environments/${envId}/stacks/${stackName}`));
+    }
 
-	async getStackStats(stackName: string): Promise<ContainerStats[]> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/stats`)) as Promise<ContainerStats[]>;
-	}
+    async startStack(stackId: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/start`));
+    }
 
-	async validateStack(stackName: string): Promise<{ valid: boolean; errors?: string[] }> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/validate`));
-	}
+    async stopStack(stackId: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/stop`));
+    }
 
-	async convertDockerRun(command: string): Promise<{ composeContent: string }> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/convert`, { command }));
-	}
+    async restartStack(stackId: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/restart`));
+    }
 
-	async discoverExternalStacks(): Promise<Stack[]> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/discover-external`));
-	}
+    async getStackLogs(stackId: string): Promise<string> {
+        const envId = await this.getCurrentEnvironmentId();
+        const response = await this.handleResponse<{ logs?: string }>(this.api.get(`/environments/${envId}/stacks/${stackId}/logs`));
+        return response.logs || '';
+    }
 
-	async importStack(stackId: string, stackName?: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(
-			this.api.post(`/environments/${envId}/stacks/import`, {
-				stackId,
-				stackName
-			})
-		);
-	}
+    async deployStackWithOptions(stackId: string, options?: { profiles?: string[]; envOverrides?: Record<string, string> }): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/deploy`, options || {}));
+    }
 
-	async migrateStack(stackName: string): Promise<Stack> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackName}/migrate`));
-	}
+    async downStack(stackId: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/down`));
+    }
 
-	async getStackLogsStream(stackName: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/logs/stream`));
-	}
+    async redeployStack(stackId: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/redeploy`));
+    }
 
-	async pullImage(imageName: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/images/pull`, { imageName }));
-	}
+    async pullStackImages(stackId: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackId}/pull`));
+    }
 
-	async deleteImage(imageId: string, options?: { force?: boolean; noprune?: boolean }): Promise<void> {
-		const envId = await this.getCurrentEnvironmentId();
-		await this.handleResponse(this.api.delete(`/environments/${envId}/images/${imageId}`, { params: options }));
-	}
+    async destroyStack(stackId: string, removeVolumes = false, removeFiles = false): Promise<void> {
+        const envId = await this.getCurrentEnvironmentId();
+        await this.handleResponse(
+            this.api.delete(`/environments/${envId}/stacks/${stackId}/destroy`, {
+                data: {
+                    removeVolumes,
+                    removeFiles
+                }
+            })
+        );
+    }
 
-	async pruneImages(): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/images/prune`));
-	}
+    async getStackServices(stackName: string): Promise<StackService[]> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/services`));
+    }
+
+    async getStackProfiles(stackName: string): Promise<string[]> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/profiles`));
+    }
+
+    async getStackChanges(stackName: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/changes`));
+    }
+
+    async getStackStats(stackName: string): Promise<ContainerStats[]> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/stats`)) as Promise<ContainerStats[]>;
+    }
+
+    async validateStack(stackName: string): Promise<{ valid: boolean; errors?: string[] }> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/validate`));
+    }
+
+    async convertDockerRun(command: string): Promise<{ composeContent: string }> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/stacks/convert`, { command }));
+    }
+
+    async discoverExternalStacks(): Promise<Stack[]> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/stacks/discover-external`));
+    }
+
+    async importStack(stackId: string, stackName?: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(
+            this.api.post(`/environments/${envId}/stacks/import`, {
+                stackId,
+                stackName
+            })
+        );
+    }
+
+    async migrateStack(stackName: string): Promise<Stack> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${stackName}/migrate`));
+    }
+
+    async getStackLogsStream(stackName: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/stacks/${stackName}/logs/stream`));
+    }
+
+    async getImageMaturity(imageId: string): Promise<any> {
+        const envId = await this.getCurrentEnvironmentId();
+        return this.handleResponse(this.api.get(`/environments/${envId}/images/${imageId}/maturity`));
+    }
+
+    async triggerMaturityCheck(imageIds?: string[]): Promise<{ success: boolean; message: string }> {
+        const envId = await this.getCurrentEnvironmentId();
+        const payload = imageIds && imageIds.length > 0 ? { imageIds } : {};
+        return this.handleResponse(this.api.post(`/environments/${envId}/images/maturity/check`, payload));
+    }
 }
 
 export const environmentAPI = new EnvironmentAPIService();
