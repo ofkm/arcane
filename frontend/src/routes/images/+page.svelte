@@ -15,11 +15,9 @@
 	import {
 		maturityStore,
 		triggerBulkMaturityCheck,
-		enhanceImagesWithMaturity,
-		loadImageMaturityBatch
+		enhanceImagesWithMaturity
 	} from '$lib/stores/maturity-store';
 	import { environmentAPI } from '$lib/services/api';
-	import { onMount } from 'svelte';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import ImageTable from './image-table.svelte';
 	import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
@@ -66,25 +64,6 @@
 		}
 	}
 
-	onMount(() => {
-		if (images && images.length > 0) {
-			loadImagesMaturity();
-		}
-	});
-
-	$effect(() => {
-		if (images && images.length > 0) {
-			loadImagesMaturity();
-		}
-	});
-
-	async function loadImagesMaturity() {
-		if (!images || images.length === 0) return;
-
-		const imageIds = images.map((img) => img.Id);
-		await loadImageMaturityBatch(imageIds);
-	}
-
 	async function refreshImages() {
 		isLoading.refreshing = true;
 		try {
@@ -115,7 +94,6 @@
 		const result = await triggerBulkMaturityCheck(images.map((img) => img.Id));
 		if (result.success) {
 			toast.success(result.message);
-			await loadImagesMaturity();
 		} else {
 			toast.error(result.message);
 		}
