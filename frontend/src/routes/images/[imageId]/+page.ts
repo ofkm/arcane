@@ -31,7 +31,7 @@ export const load = async ({ params }): Promise<ImageDetailData> => {
 
 		return {
 			image: {
-				...image,
+				...image.data,
 				repo,
 				tag
 			}

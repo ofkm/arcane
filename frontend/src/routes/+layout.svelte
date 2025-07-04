@@ -13,7 +13,17 @@
 
 	let { children, data } = $props();
 
-	const { versionInformation, user, settings } = data;
+	const { versionInformation, user, settings } = $state(data);
+
+	$effect(() => {
+		if (user) {
+			userStore.setUser(user);
+		}
+
+		if (settings) {
+			settingsStore.set(settings);
+		}
+	});
 
 	$effect(() => {
 		const currentUser = $userStore || user;
@@ -26,22 +36,15 @@
 	});
 
 	const isNavigating = $derived(navigating.type !== null);
-
 	const isOnboardingPage = $derived(page.url.pathname.startsWith('/onboarding'));
 	const isLoginPage = $derived(
 		page.url.pathname === '/login' ||
 			page.url.pathname.startsWith('/auth/login') ||
 			page.url.pathname === '/auth' ||
-			page.url.pathname.includes('/login')
+			page.url.pathname.includes('/login') ||
+			page.url.pathname.includes('/callback')
 	);
-
-	if (user) {
-		userStore.setUser(user);
-	}
-
-	if (settings) {
-		settingsStore.set(settings);
-	}
+	const currentUser = $derived($userStore || user);
 </script>
 
 <svelte:head><title>Arcane</title></svelte:head>
@@ -58,9 +61,9 @@
 {/if}
 
 <div class="bg-background flex min-h-screen">
-	{#if !!$userStore && !isOnboardingPage && !isLoginPage}
+	{#if currentUser && !isOnboardingPage && !isLoginPage}
 		<Sidebar.Provider>
-			<AppSidebar {versionInformation} {user} />
+			<AppSidebar {versionInformation} user={currentUser} />
 			<main class="flex-1">
 				<section class="p-6">
 					{@render children()}

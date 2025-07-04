@@ -42,7 +42,7 @@ abstract class BaseAPIService {
 
 		const response = await promise;
 
-		const extractedData = response.data?.data || response.data?.result || response.data;
+		const extractedData = response.data || response.data.data;
 
 		return extractedData;
 	}

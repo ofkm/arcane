@@ -1,412 +1,247 @@
 <script lang="ts" generics="TData extends Record<string, any>">
-	import {
-		getCoreRowModel,
-		getPaginationRowModel,
-		getSortedRowModel,
-		getFilteredRowModel,
-		type SortingState,
-		type ColumnFiltersState
-	} from '@tanstack/table-core';
-	import { createSvelteTable, FlexRender } from '$lib/components/ui/data-table/index.js';
-	import * as Table from '$lib/components/ui/table/index.js';
+	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
+	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Pagination from '$lib/components/ui/pagination/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
+	import * as Table from '$lib/components/ui/table/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { ChevronDown } from '@lucide/svelte';
 	import { cn } from '$lib/utils';
 	import { debounced } from '$lib/utils';
-	import type { UniversalTableProps } from '$lib/types/table-types';
 	import type { Snippet } from 'svelte';
+	import type { ExternalPagination } from '$lib/types/pagination.type';
 
-	interface TableData extends Record<string, any> {
-		isExternal?: boolean;
-	}
-
-	interface TableFeatures {
-		sorting?: boolean;
-		filtering?: boolean;
-		selection?: boolean;
-	}
-
-	interface TableDisplay {
-		pageSize?: number;
-		pageSizeOptions?: number[];
-		itemsPerPageLabel?: string;
-		filterPlaceholder?: string;
-		noResultsMessage?: string;
-		isDashboardTable?: boolean;
-		class?: string;
-	}
-
-	interface TablePagination {
-		pageSize?: number;
-		pageSizeOptions?: number[];
-		itemsPerPageLabel?: string;
-	}
-
-	interface TableSort {
-		defaultSort?: { id: string; desc: boolean };
-	}
-
-	// Props with better defaults and validation
 	let {
 		data,
+		externalPagination,
+		selectedIds = $bindable(),
+		withoutSearch = false,
+		selectionDisabled = false,
+		onRefresh,
+		onPageChange,
+		onPageSizeChange,
+		onSort,
 		columns,
-		idKey,
-		features = {},
-		display = {},
-		pagination = {},
-		sort = {},
-		selectedIds = $bindable<string[]>([]),
 		rows,
-		onPageSizeChange = $bindable<((size: number) => void) | undefined>(undefined)
-	}: UniversalTableProps<TData> & {
-		idKey?: keyof TData;
-		rows?: Snippet<[{ item: TData; index?: number }]>;
-		onPageSizeChange?: ((size: number) => void) | undefined;
-	} = $props();
-
-	// Destructure with proper defaults
-	const {
-		sorting: enableSorting = true,
-		filtering: enableFiltering = true,
-		selection: enableSelection = true
-	}: TableFeatures = features;
-
-	const {
-		pageSize: initialPageSize = 10,
-		pageSizeOptions = [10, 20, 50, 100],
-		itemsPerPageLabel = 'Items per page'
-	}: TablePagination = pagination;
-
-	const {
+		idKey = 'id',
 		filterPlaceholder = 'Search...',
 		noResultsMessage = 'No results found',
-		isDashboardTable = false,
+		itemsPerPageLabel = 'Items per page',
 		class: className = ''
-	}: TableDisplay = display;
+	}: {
+		data: TData[];
+		externalPagination?: ExternalPagination;
+		selectedIds?: string[];
+		withoutSearch?: boolean;
+		selectionDisabled?: boolean;
+		onRefresh?: () => Promise<void>;
+		onPageChange?: (page: number) => void;
+		onPageSizeChange?: (size: number) => void;
+		onSort?: (column: string, direction: 'asc' | 'desc') => void;
+		columns: { label: string; hidden?: boolean; sortColumn?: string }[];
+		rows: Snippet<[{ item: TData; index?: number }]>;
+		idKey?: string;
+		filterPlaceholder?: string;
+		noResultsMessage?: string;
+		itemsPerPageLabel?: string;
+		class?: string;
+	} = $props();
 
-	const { defaultSort }: TableSort = sort;
+	let searchValue = $state('');
+	let availablePageSizes: number[] = [10, 20, 50, 100];
+	let sortColumn = $state<string>('');
+	let sortDirection = $state<'asc' | 'desc'>('asc');
 
-	// State management with better initialization
-	let pageSize = $state(Math.max(1, initialPageSize));
-	let pageIndex = $state(0);
-	let currentPage = $state(1);
-	let sorting = $state<SortingState>(defaultSort ? [defaultSort] : []);
-	let columnFilters = $state<ColumnFiltersState>([]);
-	let globalFilter = $state<string>('');
-	let rowSelection = $state<Record<string, boolean>>({});
+	const isExternalPagination = $derived(!!externalPagination);
 
-	// Optimized debounced filter function
-	const debouncedFilter = debounced((value: string) => {
-		table.setGlobalFilter(value);
+	let allChecked = $derived.by(() => {
+		if (!selectedIds || data.length === 0) return false;
+		for (const item of data) {
+			const itemId = String(item[idKey]);
+			if (!selectedIds.includes(itemId)) {
+				return false;
+			}
+		}
+		return true;
+	});
+
+	const onSearch = debounced(async (search: string) => {
+		searchValue = search;
+		if (onRefresh) {
+			await onRefresh();
+		}
 	}, 300);
 
-	// Effect for syncing external selectedIds with internal state
-	$effect(() => {
-		if (!enableSelection) return;
+	const filteredData = $derived(() => {
+		if (!searchValue || isExternalPagination) return data;
 
-		const newSelection: Record<string, boolean> = {};
-		selectedIds.forEach((id) => {
-			if (id) newSelection[id] = true;
+		return data.filter((item) => {
+			return Object.values(item).some((value) =>
+				String(value).toLowerCase().includes(searchValue.toLowerCase())
+			);
 		});
-
-		const currentKeys = Object.keys(rowSelection)
-			.filter((k) => rowSelection[k])
-			.sort();
-		const newKeys = Object.keys(newSelection).sort();
-
-		if (JSON.stringify(currentKeys) !== JSON.stringify(newKeys)) {
-			rowSelection = newSelection;
-		}
 	});
 
-	// Effect for syncing page changes
-	$effect(() => {
-		const newPageIndex = Math.max(0, currentPage - 1);
-		if (pageIndex !== newPageIndex) {
-			pageIndex = newPageIndex;
-		}
-	});
-
-	// Effect for syncing table page state
-	$effect(() => {
-		const tablePageIndex = table.getState().pagination.pageIndex;
-		const expectedCurrentPage = tablePageIndex + 1;
-		if (currentPage !== expectedCurrentPage) {
-			currentPage = expectedCurrentPage;
-		}
-	});
-
-	// Create table instance
-	const table = createSvelteTable({
-		get data() {
-			return data;
-		},
-		columns,
-		getRowId: idKey ? (originalRow: TData) => String(originalRow[idKey]) : undefined,
-		getCoreRowModel: getCoreRowModel(),
-		...(enableSorting && { getSortedRowModel: getSortedRowModel() }),
-		...(enableFiltering && { getFilteredRowModel: getFilteredRowModel() }),
-		getPaginationRowModel: getPaginationRowModel(),
-		enableRowSelection: enableSelection,
-		state: {
-			get pagination() {
-				return { pageIndex, pageSize };
-			},
-			get sorting() {
-				return sorting;
-			},
-			get columnFilters() {
-				return columnFilters;
-			},
-			get globalFilter() {
-				return globalFilter;
-			},
-			get rowSelection() {
-				return rowSelection;
-			}
-		},
-		onSortingChange: (updater) => {
-			sorting = typeof updater === 'function' ? updater(sorting) : updater;
-		},
-		onColumnFiltersChange: (updater) => {
-			columnFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
-		},
-		onGlobalFilterChange: (value) => {
-			globalFilter = value ?? '';
-			pageIndex = 0;
-			currentPage = 1;
-		},
-		onRowSelectionChange: (updater) => {
-			if (!enableSelection) return;
-
-			const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
-
-			if (JSON.stringify(newSelection) !== JSON.stringify(rowSelection)) {
-				rowSelection = newSelection;
-
-				// Update external selectedIds
-				const newSelectedIds = Object.entries(newSelection)
-					.filter(([_, selected]) => selected)
-					.map(([id]) => id);
-
-				if (JSON.stringify(selectedIds.sort()) !== JSON.stringify(newSelectedIds.sort())) {
-					selectedIds = newSelectedIds;
-				}
-			}
-		}
-	});
-
-	// Memoized computations
-	const validPageSizeOptions = $derived(
-		pageSizeOptions.filter((size) => size > 0).sort((a, b) => a - b)
-	);
-
-	const shouldShowPagination = $derived(
-		!isDashboardTable && (table.getPageCount() > 1 || validPageSizeOptions.length > 1)
-	);
-
-	const shouldShowFiltering = $derived(enableFiltering && !isDashboardTable);
-
-	const allRowsSelected = $derived(
-		table.getIsAllPageRowsSelected() && table.getRowModel().rows.length > 0
-	);
-
-	const filteredRowCount = $derived(table.getFilteredRowModel().rows.length);
-
-	// Event handlers
-	function handleFilterChange(value: string) {
-		debouncedFilter(value);
-	}
-
-	function handlePageSizeChange(size: string | number) {
-		const sizeNumber = typeof size === 'string' ? parseInt(size, 10) : size;
-
-		if (!isNaN(sizeNumber) && sizeNumber > 0) {
-			pageSize = sizeNumber;
-			table.setPageSize(sizeNumber);
-			pageIndex = 0;
-			currentPage = 1;
-
-			onPageSizeChange?.(sizeNumber);
+	async function onAllCheck(checked: boolean) {
+		if (checked) {
+			selectedIds = data.map((item) => String(item[idKey]));
+		} else {
+			selectedIds = [];
 		}
 	}
 
-	function handleSelectAllChange(checked: boolean) {
-		table.toggleAllPageRowsSelected(checked);
-	}
-
-	function handleRowSelectionChange(row: any, checked: boolean) {
-		const isDisabled = row.original?.isExternal ?? false;
-		if (!isDisabled) {
-			row.toggleSelected(checked);
+	async function onCheck(checked: boolean, id: string) {
+		if (!selectedIds) return;
+		if (checked) {
+			selectedIds = [...selectedIds, id];
+		} else {
+			selectedIds = selectedIds.filter((selectedId) => selectedId !== id);
 		}
 	}
 
-	function handleSortChange(header: any) {
-		header.column.toggleSorting(header.column.getIsSorted() === 'asc');
+	async function handlePageChange(page: number) {
+		onPageChange?.(page);
 	}
+
+	async function handlePageSizeChange(size: number) {
+		onPageSizeChange?.(size);
+	}
+
+	async function handleSort(column?: string, direction: 'asc' | 'desc' = 'asc') {
+		if (!column) return;
+
+		sortColumn = column;
+		sortDirection = direction;
+		onSort?.(column, direction);
+	}
+
+	const currentPageSize = $derived(externalPagination?.pageSize || 10);
+
+	const currentPage = $derived(externalPagination?.currentPage || 1);
+
+	const totalItems = $derived(externalPagination?.totalItems || filteredData.length);
 </script>
 
-<div class={cn('space-y-4', className, isDashboardTable && 'dashboard-table')}>
-	<!-- Search Filter -->
-	{#if shouldShowFiltering}
-		<div class="flex items-center">
-			<Input
-				placeholder={filterPlaceholder}
-				value={globalFilter}
-				oninput={(e) => handleFilterChange(e.currentTarget.value)}
-				class="max-w-sm"
-			/>
-		</div>
+<div class={cn('space-y-4', className)}>
+	{#if !withoutSearch}
+		<Input
+			value={searchValue}
+			class={cn('relative z-50 max-w-sm', data.length == 0 && searchValue == '' && 'hidden')}
+			placeholder={filterPlaceholder}
+			type="text"
+			oninput={(e) => onSearch(e.currentTarget.value)}
+		/>
 	{/if}
 
-	<!-- Table -->
-	<div class={cn('rounded-md border', isDashboardTable && 'rounded-none border-none')}>
-		<Table.Root class="w-full table-auto">
-			<Table.Header>
-				{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+	{#if data.length === 0 && searchValue === ''}
+		<div class="my-5 flex flex-col items-center">
+			<p class="text-muted-foreground mt-3 text-sm">{noResultsMessage}</p>
+		</div>
+	{:else}
+		<div class="rounded-md border">
+			<Table.Root class="min-w-full table-auto overflow-x-auto">
+				<Table.Header>
 					<Table.Row>
-						{#if enableSelection}
+						{#if selectedIds !== undefined}
 							<Table.Head class="w-12">
 								<Checkbox
-									checked={allRowsSelected}
-									onCheckedChange={handleSelectAllChange}
-									aria-label="Select all rows"
+									disabled={selectionDisabled}
+									checked={allChecked}
+									onCheckedChange={(c) => onAllCheck(c as boolean)}
 								/>
 							</Table.Head>
 						{/if}
-						{#each headerGroup.headers as header, index (header.id)}
-							<Table.Head class={cn(index === 0 ? '' : 'w-0 whitespace-nowrap', 'px-4')}>
-								{#if !header.isPlaceholder}
-									{#if header.column.getCanSort()}
-										<Button
-											variant="ghost"
-											class="flex items-center p-0 hover:bg-transparent"
-											onclick={() => handleSortChange(header)}
-											aria-label="Sort by {header.column.columnDef.header}"
-										>
-											<FlexRender
-												content={header.column.columnDef.header}
-												context={header.getContext()}
+						{#each columns as column}
+							<Table.Head class={cn(column.hidden && 'sr-only', column.sortColumn && 'px-0')}>
+								{#if column.sortColumn}
+									<Button
+										variant="ghost"
+										class="flex items-center"
+										onclick={() =>
+											handleSort(
+												column.sortColumn,
+												sortColumn === column.sortColumn && sortDirection === 'asc' ? 'desc' : 'asc'
+											)}
+									>
+										{column.label}
+										{#if sortColumn === column.sortColumn}
+											<ChevronDown
+												class={cn('ml-2 size-4', sortDirection === 'asc' ? 'rotate-180' : '')}
 											/>
-											{#if header.column.getIsSorted()}
-												<ChevronDown
-													class={cn(
-														'ml-2 size-4 transition-transform',
-														header.column.getIsSorted() === 'asc' && 'rotate-180'
-													)}
-												/>
-											{/if}
-										</Button>
-									{:else}
-										<FlexRender
-											content={header.column.columnDef.header}
-											context={header.getContext()}
-										/>
-									{/if}
+										{/if}
+									</Button>
+								{:else}
+									{column.label}
 								{/if}
 							</Table.Head>
 						{/each}
 					</Table.Row>
-				{/each}
-			</Table.Header>
-			<Table.Body>
-				{#if table.getRowModel().rows.length > 0}
-					{#each table.getRowModel().rows as row (row.id)}
-						{@const isDisabled = row.original?.isExternal ?? false}
-						<Table.Row data-state={row.getIsSelected() ? 'selected' : undefined}>
-							{#if enableSelection}
+				</Table.Header>
+				<Table.Body>
+					{#each filteredData as item, index}
+						{@const itemId = String(item[idKey])}
+						<Table.Row class={selectedIds?.includes(itemId) ? 'bg-muted/20' : ''}>
+							{#if selectedIds !== undefined}
 								<Table.Cell class="w-12">
 									<Checkbox
-										checked={row.getIsSelected()}
-										disabled={isDisabled}
-										onCheckedChange={(checked) => handleRowSelectionChange(row, !!checked)}
-										aria-label="Select row"
+										disabled={selectionDisabled}
+										checked={selectedIds.includes(itemId)}
+										onCheckedChange={(c) => onCheck(c as boolean, itemId)}
 									/>
 								</Table.Cell>
 							{/if}
-
-							{#if rows}
-								{@render rows({ item: row.original, index: row.index })}
-							{:else}
-								{#each row.getVisibleCells() as cell, index (cell.id)}
-									<Table.Cell class={cn(index === 0 ? '' : 'w-0 whitespace-nowrap', 'px-4')}>
-										<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
-									</Table.Cell>
-								{/each}
-							{/if}
+							{@render rows({ item, index })}
 						</Table.Row>
 					{/each}
-				{:else}
-					<Table.Row>
-						<Table.Cell
-							colspan={enableSelection ? columns.length + 1 : columns.length}
-							class="size-24 text-center"
-						>
-							{noResultsMessage}
-						</Table.Cell>
-					</Table.Row>
-				{/if}
-			</Table.Body>
-		</Table.Root>
-	</div>
+				</Table.Body>
+			</Table.Root>
+		</div>
 
-	<!-- Pagination Controls -->
-	{#if shouldShowPagination}
-		<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
-			{#if validPageSizeOptions.length > 1}
-				<div class="flex items-center gap-4">
-					<span class="text-sm whitespace-nowrap">{itemsPerPageLabel}</span>
-					<Select.Root
-						type="single"
-						value={pageSize.toString()}
-						onValueChange={handlePageSizeChange}
-					>
-						<Select.Trigger class="h-8 w-[70px]" aria-label="Items per page">
-							<span>{pageSize}</span>
-						</Select.Trigger>
-						<Select.Content>
-							{#each validPageSizeOptions as size (size)}
-								<Select.Item value={size.toString()}>
-									{size}
-								</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-			{/if}
-
-			<div class="ml-auto">
-				<Pagination.Root count={filteredRowCount} perPage={pageSize} bind:page={currentPage}>
-					{#snippet children({ pages, currentPage: paginationCurrentPage })}
-						<Pagination.Content>
-							<Pagination.Item>
-								<Pagination.PrevButton />
-							</Pagination.Item>
-							{#each pages as page (page.key)}
-								{#if page.type === 'ellipsis'}
-									<Pagination.Item>
-										<Pagination.Ellipsis />
-									</Pagination.Item>
-								{:else}
-									<Pagination.Item>
-										<Pagination.Link {page} isActive={paginationCurrentPage === page.value}>
-											{page.value}
-										</Pagination.Link>
-									</Pagination.Item>
-								{/if}
-							{/each}
-							<Pagination.Item>
-								<Pagination.NextButton />
-							</Pagination.Item>
-						</Pagination.Content>
-					{/snippet}
-				</Pagination.Root>
+		<div class="mt-5 flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
+			<div class="flex items-center space-x-2">
+				<p class="text-sm font-medium">{itemsPerPageLabel}</p>
+				<Select.Root
+					type="single"
+					value={currentPageSize.toString()}
+					onValueChange={(v) => handlePageSizeChange(Number(v))}
+				>
+					<Select.Trigger class="h-9 w-[80px]">
+						{currentPageSize}
+					</Select.Trigger>
+					<Select.Content>
+						{#each availablePageSizes as size}
+							<Select.Item value={size.toString()}>{size}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
 			</div>
+			<Pagination.Root
+				class="mx-0 w-auto"
+				count={totalItems}
+				perPage={currentPageSize}
+				onPageChange={handlePageChange}
+				page={currentPage}
+			>
+				{#snippet children({ pages })}
+					<Pagination.Content class="flex justify-end">
+						<Pagination.Item>
+							<Pagination.PrevButton />
+						</Pagination.Item>
+						{#each pages as page (page.key)}
+							{#if page.type !== 'ellipsis' && page.value != 0}
+								<Pagination.Item>
+									<Pagination.Link {page} isActive={currentPage === page.value}>
+										{page.value}
+									</Pagination.Link>
+								</Pagination.Item>
+							{/if}
+						{/each}
+						<Pagination.Item>
+							<Pagination.NextButton />
+						</Pagination.Item>
+					</Pagination.Content>
+				{/snippet}
+			</Pagination.Root>
 		</div>
 	{/if}
 </div>

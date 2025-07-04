@@ -12,6 +12,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type StackHandler struct {
@@ -27,39 +28,35 @@ func NewStackHandler(stackService *services.StackService) *StackHandler {
 }
 
 func (h *StackHandler) ListStacks(c *gin.Context) {
-	stacks, err := h.stackService.ListStacks(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+	var req utils.SortedPaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   fmt.Sprintf("Failed to fetch stacks: %v", err),
+			"error":   "Invalid pagination or sort parameters: " + err.Error(),
 		})
 		return
 	}
 
-	var stackList []map[string]interface{}
-	for _, stack := range stacks {
-		stackResponse := map[string]interface{}{
-			"id":           stack.ID,
-			"name":         stack.Name,
-			"path":         stack.Path,
-			"status":       stack.Status,
-			"serviceCount": stack.ServiceCount,
-			"runningCount": stack.RunningCount,
-			"createdAt":    stack.CreatedAt,
-			"updatedAt":    stack.UpdatedAt,
-			"autoUpdate":   stack.AutoUpdate,
-			"isExternal":   stack.IsExternal,
-			"isLegacy":     stack.IsLegacy,
-			"isRemote":     stack.IsRemote,
-			"services":     nil, // Services are not fetched in the list view for performance.
-		}
-		stackList = append(stackList, stackResponse)
+	if req.Pagination.Page == 0 {
+		req.Pagination.Page = 1
+	}
+	if req.Pagination.Limit == 0 {
+		req.Pagination.Limit = 20
+	}
+
+	stacks, pagination, err := h.stackService.ListStacksPaginated(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to list stacks: " + err.Error(),
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"stacks":  stackList,
-		"count":   len(stackList),
+		"success":    true,
+		"data":       stacks,
+		"pagination": pagination,
 	})
 }
 
@@ -534,10 +531,8 @@ func (h *StackHandler) ConvertDockerRun(c *gin.Context) {
 }
 
 func (h *StackHandler) GetStackLogsStream(c *gin.Context) {
-	stackID := c.Param("id")
-	if stackID == "" {
-		stackID = c.Param("stackId")
-	}
+
+	stackID := c.Param("stackId")
 
 	follow := c.Query("follow") == "true"
 	tail := c.DefaultQuery("tail", "100")

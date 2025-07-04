@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -536,4 +537,48 @@ func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID 
 		fmt.Printf("Successfully deleted image %s from database.\n", dockerImageID)
 	}
 	return nil
+}
+
+func (s *ImageService) ListImagesWithMaturityPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
+	_, err := s.ListImages(ctx)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list and sync Docker images: %w", err)
+	}
+
+	var images []*models.Image
+	query := s.db.WithContext(ctx).Model(&models.Image{}).Preload("MaturityRecord")
+
+	pagination, err := utils.PaginateAndSort(req, query, &images)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate images: %w", err)
+	}
+
+	var result []map[string]interface{}
+	for _, img := range images {
+		imageData := map[string]interface{}{
+			"Id":          img.ID,
+			"RepoTags":    img.RepoTags,
+			"RepoDigests": img.RepoDigests,
+			"Created":     img.Created.Unix(),
+			"Size":        img.Size,
+			"VirtualSize": img.VirtualSize,
+			"Labels":      img.Labels,
+			"InUse":       img.InUse,
+			"Repo":        img.Repo,
+			"Tag":         img.Tag,
+		}
+
+		if img.MaturityRecord != nil {
+			imageData["maturity"] = map[string]interface{}{
+				"updatesAvailable": img.MaturityRecord.UpdatesAvailable,
+				"status":           img.MaturityRecord.Status,
+				"version":          img.MaturityRecord.CurrentVersion,
+				"date":             img.MaturityRecord.CurrentImageDate,
+			}
+		}
+
+		result = append(result, imageData)
+	}
+
+	return result, pagination, nil
 }

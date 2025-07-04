@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -27,7 +26,23 @@ func NewImageHandler(imageService *services.ImageService, imageMaturityService *
 }
 
 func (h *ImageHandler) List(c *gin.Context) {
-	dbImages, err := h.imageService.ListImagesWithMaturity(c.Request.Context())
+	var req utils.SortedPaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid pagination or sort parameters: " + err.Error(),
+		})
+		return
+	}
+
+	if req.Pagination.Page == 0 {
+		req.Pagination.Page = 1
+	}
+	if req.Pagination.Limit == 0 {
+		req.Pagination.Limit = 20
+	}
+
+	images, pagination, err := h.imageService.ListImagesWithMaturityPaginated(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -36,50 +51,10 @@ func (h *ImageHandler) List(c *gin.Context) {
 		return
 	}
 
-	var result []map[string]interface{}
-
-	for _, img := range dbImages {
-		imageData := map[string]interface{}{
-			"Id":          img.ID,
-			"RepoTags":    img.RepoTags,
-			"RepoDigests": img.RepoDigests,
-			"Created":     img.Created.Unix(),
-			"Size":        img.Size,
-			"VirtualSize": img.VirtualSize,
-			"Labels":      img.Labels,
-			"InUse":       img.InUse,
-		}
-
-		if img.MaturityRecord != nil {
-			imageData["maturity"] = map[string]interface{}{
-				"updatesAvailable": img.MaturityRecord.UpdatesAvailable,
-				"status":           img.MaturityRecord.Status,
-				"version":          img.MaturityRecord.CurrentVersion,
-				"date":             img.MaturityRecord.CurrentImageDate,
-			}
-		} else if len(img.RepoTags) > 0 && img.RepoTags[0] != "<none>:<none>" && img.Repo != "<none>" && h.imageMaturityService != nil {
-			go func(imageID string, repo string, tag string, createdTime time.Time) {
-				maturityData, checkErr := h.imageMaturityService.CheckImageMaturity(context.Background(), imageID, repo, tag, createdTime)
-				if checkErr == nil {
-					setErr := h.imageMaturityService.SetImageMaturity(context.Background(), imageID, repo, tag, *maturityData, map[string]interface{}{
-						"registryDomain":    utils.ExtractRegistryDomain(repo),
-						"isPrivateRegistry": utils.IsPrivateRegistry(repo),
-						"currentImageDate":  createdTime,
-					})
-					if setErr != nil {
-						fmt.Printf("Error setting image maturity for %s: %v\n", imageID, setErr)
-					}
-				} else {
-					fmt.Printf("Error checking image maturity for %s (%s:%s): %v\n", imageID, repo, tag, checkErr)
-				}
-			}(img.ID, img.Repo, img.Tag, img.Created)
-		}
-		result = append(result, imageData)
-	}
-
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    result,
+		"success":    true,
+		"data":       images,
+		"pagination": pagination,
 	})
 }
 

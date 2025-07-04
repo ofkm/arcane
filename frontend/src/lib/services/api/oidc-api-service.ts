@@ -6,6 +6,7 @@ export interface OidcUserInfo {
 	email: string;
 	name: string;
 	preferred_username?: string;
+	displayName?: string;
 	given_name?: string;
 	family_name?: string;
 	picture?: string;

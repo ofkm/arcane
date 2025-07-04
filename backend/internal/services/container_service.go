@@ -10,12 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type ContainerService struct {
@@ -54,7 +56,7 @@ func (s *ContainerService) PullContainerImage(ctx context.Context, containerID s
 	return err
 }
 
-func (s *ContainerService) ListContainers(ctx context.Context, includeAll bool) ([]container.Summary, error) {
+func (s *ContainerService) ListContainers(ctx context.Context, includeAll bool) ([]types.Container, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
@@ -431,4 +433,96 @@ func (s *ContainerService) readAllLogs(logs io.ReadCloser, logsChan chan<- strin
 	}
 
 	return nil
+}
+
+func (s *ContainerService) ListContainersPaginated(ctx context.Context, req utils.SortedPaginationRequest, includeAll bool) ([]map[string]interface{}, utils.PaginationResponse, error) {
+	dockerContainers, err := s.ListContainers(ctx, includeAll)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker containers: %w", err)
+	}
+
+	var result []map[string]interface{}
+	for _, dockerContainer := range dockerContainers {
+		containerData := map[string]interface{}{
+			"Id":      dockerContainer.ID,
+			"Names":   dockerContainer.Names,
+			"Image":   dockerContainer.Image,
+			"ImageID": dockerContainer.ImageID,
+			"Command": dockerContainer.Command,
+			"Created": dockerContainer.Created,
+			"Ports":   dockerContainer.Ports,
+			"Labels":  dockerContainer.Labels,
+			"State":   dockerContainer.State,
+			"Status":  dockerContainer.Status,
+			"HostConfig": map[string]interface{}{
+				"NetworkMode": dockerContainer.HostConfig.NetworkMode,
+			},
+			"NetworkSettings": map[string]interface{}{
+				"Networks": dockerContainer.NetworkSettings.Networks,
+			},
+			"Mounts": dockerContainer.Mounts,
+		}
+
+		result = append(result, containerData)
+	}
+
+	if req.Search != "" {
+		filtered := make([]map[string]interface{}, 0)
+		searchLower := strings.ToLower(req.Search)
+		for _, container := range result {
+			if names, ok := container["Names"].([]string); ok {
+				for _, name := range names {
+					if strings.Contains(strings.ToLower(name), searchLower) {
+						filtered = append(filtered, container)
+						break
+					}
+				}
+			}
+			if image, ok := container["Image"].(string); ok {
+				if strings.Contains(strings.ToLower(image), searchLower) {
+					filtered = append(filtered, container)
+					continue
+				}
+			}
+			if state, ok := container["State"].(string); ok {
+				if strings.Contains(strings.ToLower(state), searchLower) {
+					filtered = append(filtered, container)
+					continue
+				}
+			}
+		}
+		result = filtered
+	}
+
+	totalItems := len(result)
+
+	if req.Sort.Column != "" {
+		utils.SortSliceByField(result, req.Sort.Column, req.Sort.Direction)
+	}
+
+	startIdx := (req.Pagination.Page - 1) * req.Pagination.Limit
+	endIdx := startIdx + req.Pagination.Limit
+
+	if startIdx > len(result) {
+		startIdx = len(result)
+	}
+	if endIdx > len(result) {
+		endIdx = len(result)
+	}
+
+	if startIdx < endIdx {
+		result = result[startIdx:endIdx]
+	} else {
+		result = []map[string]interface{}{}
+	}
+
+	totalPages := (totalItems + req.Pagination.Limit - 1) / req.Pagination.Limit
+	pagination := utils.PaginationResponse{
+		TotalPages:   int64(totalPages),
+		TotalItems:   int64(totalItems),
+		CurrentPage:  req.Pagination.Page,
+		ItemsPerPage: req.Pagination.Limit,
+	}
+
+	return result, pagination, nil
 }

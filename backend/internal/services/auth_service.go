@@ -61,6 +61,15 @@ type OidcStatusInfo struct {
 	EffectivelyConfigured bool `json:"effectivelyConfigured"`
 }
 
+type UserClaims struct {
+	jwt.RegisteredClaims
+	UserID      string   `json:"user_id"`
+	Username    string   `json:"username"`
+	Email       string   `json:"email,omitempty"`
+	DisplayName string   `json:"display_name,omitempty"`
+	Roles       []string `json:"roles"`
+}
+
 // AuthService handles authentication related operations
 type AuthService struct {
 	userService     *UserService
@@ -94,8 +103,8 @@ func NewAuthService(userService *UserService, settingsService *SettingsService, 
 }
 
 func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
-	if !s.config.PublicOidcEnabled {
-		return errors.New("OIDC sync called but PUBLIC_OIDC_ENABLED is false")
+	if !s.config.OidcEnabled {
+		return errors.New("OIDC sync called but OIDC_ENABLED is false")
 	}
 
 	settings, err := s.settingsService.GetSettings(ctx)
@@ -136,7 +145,6 @@ func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
 	currentAuthMap["oidcEnabled"] = true
 	currentAuthMap["oidc"] = oidcConfigMap
 
-	// Assign directly - no need to marshal again
 	settings.Auth = models.JSON(currentAuthMap)
 
 	_, err = s.settingsService.UpdateSettings(ctx, settings)
@@ -178,7 +186,7 @@ func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error
 		}, nil
 	}
 
-	if s.config.PublicOidcEnabled && !effectiveAuthSettings.OidcEnabled {
+	if s.config.OidcEnabled && !effectiveAuthSettings.OidcEnabled {
 		log.Printf("Warning: PUBLIC_OIDC_ENABLED is true, but effective OIDC settings from DB show oidcEnabled=false. This might indicate an issue with the initial sync or subsequent manual changes.")
 	}
 
@@ -188,7 +196,7 @@ func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error
 func (s *AuthService) GetOidcConfigurationStatus(ctx context.Context) (*OidcStatusInfo, error) {
 	status := &OidcStatusInfo{}
 
-	status.EnvForced = s.config.PublicOidcEnabled
+	status.EnvForced = s.config.OidcEnabled
 	if status.EnvForced {
 		// This reflects if the env vars themselves were complete at load time
 		status.EnvConfigured = s.config.OidcClientID != "" &&
@@ -507,7 +515,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*T
 
 // VerifyToken verifies and returns the user from an access token
 func (s *AuthService) VerifyToken(ctx context.Context, accessToken string) (*models.User, error) {
-	token, err := jwt.ParseWithClaims(accessToken, &jwt.RegisteredClaims{},
+	token, err := jwt.ParseWithClaims(accessToken, &UserClaims{},
 		func(t *jwt.Token) (interface{}, error) {
 			return s.jwtSecret, nil
 		})
@@ -523,7 +531,7 @@ func (s *AuthService) VerifyToken(ctx context.Context, accessToken string) (*mod
 		return nil, ErrInvalidToken
 	}
 
-	claims, ok := token.Claims.(*jwt.RegisteredClaims)
+	claims, ok := token.Claims.(*UserClaims)
 	if !ok {
 		return nil, errors.New("invalid token claims")
 	}
@@ -532,14 +540,18 @@ func (s *AuthService) VerifyToken(ctx context.Context, accessToken string) (*mod
 		return nil, errors.New("not an access token")
 	}
 
-	userId := claims.ID
-	if userId == "" {
-		return nil, errors.New("missing user ID in token")
+	user := &models.User{
+		ID:       claims.UserID,
+		Username: claims.Username,
+		Roles:    models.StringSlice(claims.Roles),
 	}
 
-	user, err := s.userService.GetUserByID(ctx, userId)
-	if err != nil {
-		return nil, err
+	if claims.Email != "" {
+		user.Email = &claims.Email
+	}
+
+	if claims.DisplayName != "" {
+		user.DisplayName = &claims.DisplayName
 	}
 
 	return user, nil
@@ -585,12 +597,27 @@ func (s *AuthService) generateTokenPair(ctx context.Context, user *models.User) 
 
 	accessTokenExpiry := time.Now().Add(time.Duration(sessionTimeout) * time.Minute)
 
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		ID:        user.ID,
-		Subject:   "access",
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(accessTokenExpiry),
-	})
+	userClaims := UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        user.ID,
+			Subject:   "access",
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(accessTokenExpiry),
+		},
+		UserID:   user.ID,
+		Username: user.Username,
+		Roles:    []string(user.Roles),
+	}
+
+	if user.Email != nil {
+		userClaims.Email = *user.Email
+	}
+
+	if user.DisplayName != nil {
+		userClaims.DisplayName = *user.DisplayName
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, userClaims)
 
 	accessTokenString, err := accessToken.SignedString(s.jwtSecret)
 	if err != nil {

@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 	"gorm.io/gorm"
 )
 
@@ -1013,4 +1014,35 @@ func (s *StackService) getServiceCounts(services []StackServiceInfo) (total int,
 		}
 	}
 	return total, running
+}
+
+func (s *StackService) ListStacksPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
+	var stacks []models.Stack
+	query := s.db.WithContext(ctx).Model(&models.Stack{})
+
+	pagination, err := utils.PaginateAndSort(req, query, &stacks)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate stacks: %w", err)
+	}
+
+	var result []map[string]interface{}
+	for _, stack := range stacks {
+		stackData := map[string]interface{}{
+			"id":           stack.ID,
+			"name":         stack.Name,
+			"path":         stack.Path,
+			"status":       stack.Status,
+			"serviceCount": stack.ServiceCount,
+			"runningCount": stack.RunningCount,
+			"createdAt":    stack.CreatedAt,
+			"updatedAt":    stack.UpdatedAt,
+			"autoUpdate":   stack.AutoUpdate,
+			"isExternal":   stack.IsExternal,
+			"isLegacy":     stack.IsLegacy,
+			"isRemote":     stack.IsRemote,
+		}
+		result = append(result, stackData)
+	}
+
+	return result, pagination, nil
 }

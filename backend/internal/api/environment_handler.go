@@ -99,6 +99,9 @@ func (h *EnvironmentHandler) handleContainerEndpoints(c *gin.Context, endpoint s
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/pull"):
 		containerHandler.PullImage(c)
 		return true
+	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs/stream"):
+		containerHandler.GetLogsStream(c)
+		return true
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs"):
 		containerHandler.GetLogs(c)
 		return true
@@ -310,13 +313,13 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 	req.Header.Set("X-Forwarded-Host", c.Request.Host)
 	req.Header.Set("X-Forwarded-Proto", c.Request.URL.Scheme)
 
+	q := req.URL.Query()
 	for key, values := range c.Request.URL.Query() {
 		for _, value := range values {
-			q := req.URL.Query()
 			q.Add(key, value)
-			req.URL.RawQuery = q.Encode()
 		}
 	}
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -610,6 +613,11 @@ func (h *EnvironmentHandler) GetContainerStats(c *gin.Context) {
 func (h *EnvironmentHandler) GetContainerStatsStream(c *gin.Context) {
 	containerID := c.Param("containerId")
 	h.routeRequest(c, "/containers/"+containerID+"/stats/stream")
+}
+
+func (h *EnvironmentHandler) GetContainerLogsStream(c *gin.Context) {
+	containerID := c.Param("containerId")
+	h.routeRequest(c, "/containers/"+containerID+"/logs/stream")
 }
 
 // End Containers

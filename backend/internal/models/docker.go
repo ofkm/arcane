@@ -9,10 +9,10 @@ import (
 
 type Container struct {
 	ID          string      `json:"id" gorm:"primaryKey;type:text"`
-	Name        string      `json:"name" gorm:"not null"`
-	Image       string      `json:"image" gorm:"not null"`
-	Status      string      `json:"status" gorm:"not null"`
-	State       string      `json:"state" gorm:"not null"`
+	Name        string      `json:"name" gorm:"not null" sortable:"true"`
+	Image       string      `json:"image" gorm:"not null" sortable:"true"`
+	Status      string      `json:"status" gorm:"not null" sortable:"true"`
+	State       string      `json:"state" gorm:"not null" sortable:"true"`
 	Ports       JSON        `json:"ports,omitempty" gorm:"type:text"`
 	Mounts      JSON        `json:"mounts,omitempty" gorm:"type:text"`
 	Networks    StringSlice `json:"networks,omitempty" gorm:"type:text"`
@@ -20,8 +20,8 @@ type Container struct {
 	Environment StringSlice `json:"environment,omitempty" gorm:"type:text"`
 	Command     StringSlice `json:"command,omitempty" gorm:"type:text"`
 	StackID     *string     `json:"stackId,omitempty" gorm:"column:stack_id;index"`
-	CreatedAt   time.Time   `json:"createdAt" gorm:"not null"`
-	StartedAt   *time.Time  `json:"startedAt,omitempty" gorm:"column:started_at"`
+	CreatedAt   time.Time   `json:"createdAt" gorm:"not null" sortable:"true"`
+	StartedAt   *time.Time  `json:"startedAt,omitempty" gorm:"column:started_at" sortable:"true"`
 
 	Stack *Stack `json:"stack,omitempty" gorm:"foreignKey:StackID;references:ID"`
 
@@ -75,14 +75,14 @@ type Image struct {
 	ID          string      `json:"id" gorm:"primaryKey;type:text"`
 	RepoTags    StringSlice `json:"repoTags" gorm:"type:text"`
 	RepoDigests StringSlice `json:"repoDigests,omitempty" gorm:"type:text"`
-	Size        int64       `json:"size" gorm:"not null"`
+	Size        int64       `json:"size" gorm:"not null" sortable:"true"`
 	VirtualSize int64       `json:"virtualSize" gorm:"column:virtual_size"`
 	Labels      JSON        `json:"labels,omitempty" gorm:"type:text"`
-	Created     time.Time   `json:"created" gorm:"not null"`
+	Created     time.Time   `json:"created" gorm:"not null" sortable:"true"`
 
-	Repo  string `json:"repo" gorm:"column:repo;index"`
-	Tag   string `json:"tag" gorm:"column:tag;index"`
-	InUse bool   `json:"inUse" gorm:"column:in_use;default:false"`
+	Repo  string `json:"repo" gorm:"column:repo;index" sortable:"true"`
+	Tag   string `json:"tag" gorm:"column:tag;index" sortable:"true"`
+	InUse bool   `json:"inUse" gorm:"column:in_use;default:false" sortable:"true"`
 
 	MaturityRecord *ImageMaturityRecord `json:"maturityRecord,omitempty" gorm:"foreignKey:ID;references:ID"`
 

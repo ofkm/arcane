@@ -69,7 +69,6 @@
 </script>
 
 <div class="space-y-6 pb-8">
-	<!-- Breadcrumb Navigation -->
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<Breadcrumb.Root>

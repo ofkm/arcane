@@ -53,9 +53,7 @@ export interface ManualCheckResult {
 	};
 }
 
-// Fixed class name - should be ImageMaturityAPIService not ImageAPIService
 export default class ImageMaturityAPIService extends BaseAPIService {
-	// Get maturity record for a specific image
 	async checkMaturity(id: string): Promise<ImageMaturity> {
 		const res = await this.api.get(`/images/maturity/${id}`);
 		return res.data;
@@ -88,8 +86,9 @@ export default class ImageMaturityAPIService extends BaseAPIService {
 	}
 
 	// Trigger maturity check for all images
-	async triggerMaturityCheck(): Promise<{ success: boolean; message: string }> {
-		const res = await this.api.post('/images/maturity/check');
+	async triggerMaturityCheck(imageIds?: string[]): Promise<{ success: boolean; message: string }> {
+		const payload = imageIds && imageIds.length > 0 ? { imageIds } : {};
+		const res = await this.api.post('/images/maturity/check', payload);
 		return res.data;
 	}
 
@@ -132,29 +131,5 @@ export default class ImageMaturityAPIService extends BaseAPIService {
 				failed: result.success ? 0 : imageIds.length
 			}
 		};
-	}
-
-	/**
-	 * @deprecated This endpoint doesn't exist in the backend
-	 */
-	async markImageAsMatured(imageId: string, daysSinceCreation: number) {
-		console.warn('markImageAsMatured is not implemented in the backend');
-		throw new Error('markImageAsMatured endpoint is not available');
-	}
-
-	/**
-	 * @deprecated This endpoint doesn't exist in the backend
-	 */
-	async invalidateImageMaturity(imageIds: string[]) {
-		console.warn('invalidateImageMaturity is not implemented in the backend');
-		throw new Error('invalidateImageMaturity endpoint is not available');
-	}
-
-	/**
-	 * @deprecated This endpoint doesn't exist in the backend
-	 */
-	async cleanupOrphanedMaturityRecords(existingImageIds: string[]) {
-		console.warn('cleanupOrphanedMaturityRecords is not implemented in the backend');
-		throw new Error('cleanupOrphanedMaturityRecords endpoint is not available');
 	}
 }
