@@ -5,6 +5,7 @@
 	import { oidcAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import userStore from '$lib/stores/user-store';
+	import type { User } from '$lib/types/user.type';
 
 	let isProcessing = $state(true);
 	let error = $state('');
@@ -17,16 +18,15 @@
 			localStorage.removeItem('oidc_redirect');
 
 			if (!code || !stateFromUrl) {
-				console.error('OIDC callback error: missing code or state in URL.');
 				error = 'Invalid OIDC response (missing parameters). Please try logging in again.';
 				setTimeout(() => goto('/auth/login?error=oidc_invalid_response'), 3000);
 				isProcessing = false;
 				return;
 			}
+
 			const authResult = await oidcAPI.handleCallback(code, stateFromUrl);
 
 			if (!authResult.success) {
-				console.error('OIDC authentication failed via backend:', authResult.error);
 				error = authResult.error || 'Authentication failed. Please try again.';
 				const errorCode =
 					authResult.error?.toLowerCase().replace(/\s+/g, '_') || 'oidc_auth_failed';
@@ -36,14 +36,20 @@
 			}
 
 			if (authResult.user) {
-				const user = {
-					id: authResult.user.sub || authResult.user.email,
-					username: authResult.user.preferred_username || authResult.user.email,
+				const user: User = {
+					id: authResult.user.sub || authResult.user.email || '',
+					username: authResult.user.preferred_username || authResult.user.email || '',
 					email: authResult.user.email,
-					roles: (authResult.user as any).roles || [],
+					displayName:
+						authResult.user.name ||
+						authResult.user.given_name ||
+						authResult.user.preferred_username ||
+						authResult.user.email ||
+						'User',
+					roles: ['user'],
 					createdAt: new Date().toISOString()
 				};
-				localStorage.setItem('user_data', JSON.stringify(user));
+
 				userStore.setUser(user);
 			}
 
@@ -51,7 +57,6 @@
 			toast.success('Successfully logged in!');
 			goto(finalRedirectTo);
 		} catch (err: any) {
-			console.error('🔥 OIDC callback processing error:', err);
 			error = err.message || 'An error occurred during authentication. Please try again.';
 			setTimeout(() => goto('/auth/login?error=oidc_generic_error'), 3000);
 		} finally {

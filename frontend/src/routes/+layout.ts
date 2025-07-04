@@ -7,38 +7,36 @@ import { tryCatch } from '$lib/utils/try-catch';
 
 export const ssr = false;
 
-export const load = async ({}) => {
-	const updateCheckDisabled = env.PUBLIC_UPDATE_CHECK_DISABLED === 'true';
+export const load = async () => {
+    const updateCheckDisabled = env.PUBLIC_UPDATE_CHECK_DISABLED === 'true';
 
-	let arcaneSettings = await tryCatch(settingsAPI.getSettings());
-	if (arcaneSettings.error) {
-		console.error('Failed to load all setting settings');
-		arcaneSettings = await tryCatch(settingsAPI.getPublicSettings());
-	}
+    let arcaneSettings = await tryCatch(settingsAPI.getSettings());
+    if (arcaneSettings.error) {
+        arcaneSettings = await tryCatch(settingsAPI.getPublicSettings());
+    }
 
-	const arcaneUser = await tryCatch(userAPI.getCurrentUser());
-	if (arcaneUser.error) {
-		console.error('Failed to load user information');
-	}
+    const arcaneUser = await tryCatch(userAPI.getCurrentUser());
+    const user = arcaneUser.error ? null : arcaneUser.data?.data;
 
-	if (!environmentStore.isInitialized()) {
-		const environments = await tryCatch(environmentManagementAPI.list());
+    if (!environmentStore.isInitialized() && user) {
+        const environments = await tryCatch(environmentManagementAPI.list());
+        if (!environments.error) {
+            await environmentStore.initialize(environments.data || [], true);
+        }
+    }
 
-		await environmentStore.initialize(environments.data || [], true);
-	}
+    let versionInformation: AppVersionInformation;
+    if (updateCheckDisabled) {
+        versionInformation = { currentVersion: versionService.getCurrentVersion() };
+    } else {
+        versionInformation = await versionService.getVersionInformation();
+    }
 
-	let versionInformation: AppVersionInformation;
-	if (updateCheckDisabled) {
-		versionInformation = { currentVersion: versionService.getCurrentVersion() };
-	} else {
-		versionInformation = await versionService.getVersionInformation();
-	}
-
-	return {
-		user: arcaneUser.data,
-		isAuthenticated: !!arcaneUser.data,
-		settings: arcaneSettings.data,
-		versionInformation,
-		updateCheckDisabled
-	};
+    return {
+        user,
+        isAuthenticated: !!user,
+        settings: arcaneSettings.data,
+        versionInformation,
+        updateCheckDisabled
+    };
 };
