@@ -6,7 +6,6 @@
 		AlertCircle,
 		Box,
 		HardDrive,
-		Cpu,
 		RefreshCw,
 		Loader2,
 		Monitor,
@@ -27,7 +26,7 @@
 	import { maturityStore } from '$lib/stores/maturity-store';
 	import type { PruneType } from '$lib/types/actions.type';
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
-	import MetricChart from '$lib/components/metric-chart.svelte';
+	import MeterMetric from '$lib/components/meter-metric.svelte';
 	import DockerIcon from '$lib/icons/docker-icon.svelte';
 	import GitHubIcon from '$lib/icons/github-icon.svelte';
 	import type { SystemStats } from '$lib/models/system-stats';
@@ -461,7 +460,7 @@
 			defaultExpanded={true}
 		>
 			<div class="grid grid-cols-2 gap-4 md:grid-cols-4">
-				<MetricChart
+				<MeterMetric
 					title="Running Containers"
 					description="Active containers"
 					currentValue={runningContainers}
@@ -473,7 +472,7 @@
 				/>
 
 				{#if currentStats?.cpuUsage !== undefined}
-					<MetricChart
+					<MeterMetric
 						title="CPU Usage"
 						description="Processor utilization"
 						currentValue={currentStats.cpuUsage}
@@ -485,7 +484,7 @@
 				{/if}
 
 				{#if currentStats?.memoryUsage !== undefined && currentStats?.memoryTotal !== undefined}
-					<MetricChart
+					<MeterMetric
 						title="Memory Usage"
 						description="RAM utilization"
 						currentValue={(currentStats.memoryUsage / currentStats.memoryTotal) * 100}
@@ -498,7 +497,7 @@
 				{/if}
 
 				{#if currentStats?.diskUsage !== undefined && currentStats?.diskTotal !== undefined}
-					<MetricChart
+					<MeterMetric
 						title="Disk Usage"
 						description="Storage utilization"
 						currentValue={(currentStats.diskUsage / currentStats.diskTotal) * 100}

@@ -28,7 +28,7 @@
 	const labelId = useId();
 
 	const variantStyles = {
-		default: 'bg-accent',
+		default: 'bg-primary',
 		success: 'bg-green-500',
 		warning: 'bg-amber-500',
 		destructive: 'bg-destructive'
@@ -54,8 +54,28 @@
 	</div>
 {/if}
 
-<div class={cn('bg-secondary relative w-full overflow-hidden rounded-full', sizeStyles[size], className)}>
-	<Meter.Root aria-labelledby={label ? labelId : undefined} aria-valuetext={valueLabel} {value} {min} {max} class="h-full w-full" {...restProps}>
-		<div class={cn('h-full rounded-full transition-all duration-300 ease-in-out', variantStyles[variant])} style="width: {percentage}%"></div>
+<div
+	class={cn(
+		'bg-secondary relative w-full overflow-hidden rounded-full',
+		sizeStyles[size],
+		className
+	)}
+>
+	<Meter.Root
+		aria-labelledby={label ? labelId : undefined}
+		aria-valuetext={valueLabel}
+		{value}
+		{min}
+		{max}
+		class="h-full w-full"
+		{...restProps}
+	>
+		<div
+			class={cn(
+				'h-full rounded-full transition-all duration-300 ease-in-out',
+				variantStyles[variant]
+			)}
+			style="width: {percentage}%"
+		></div>
 	</Meter.Root>
 </div>
