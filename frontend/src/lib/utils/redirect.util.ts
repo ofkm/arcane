@@ -19,7 +19,7 @@ export function getAuthRedirectPath(path: string, user: User | null, settings: S
 	const isPublicPath = ['/authorize', '/device', '/health', '/healthz'].includes(path);
 	const isOnboardingPath = path == '/onboarding' || path.startsWith('/onboarding');
 
-	if (!isUnauthenticatedOnlyPath && !isPublicPath && !isSignedIn) {
+	if (!isSignedIn && !isUnauthenticatedOnlyPath && !isPublicPath) {
 		return '/auth/login';
 	}
 
