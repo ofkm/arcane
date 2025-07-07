@@ -2,38 +2,27 @@
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import UniversalTable from '$lib/components/universal-table.svelte';
 	import {
 		AlertCircle,
 		Box,
 		HardDrive,
 		Cpu,
-		ArrowRight,
-		PlayCircle,
-		StopCircle,
-		Trash2,
 		RefreshCw,
 		Loader2,
-		Monitor
+		Monitor,
+		PlayCircle,
+		StopCircle,
+		Trash2
 	} from '@lucide/svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import {
-		capitalizeFirstLetter,
-		truncateString,
-		shortId,
-		parseStatusTime
-	} from '$lib/utils/string.utils';
+	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { formatBytes } from '$lib/utils/bytes.util';
-	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { toast } from 'svelte-sonner';
 	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
-	import * as Table from '$lib/components/ui/table';
-	import { statusVariantMap } from '$lib/types/statuses';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { systemAPI, imageAPI, environmentAPI, settingsAPI } from '$lib/services/api';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
-	import MaturityItem from '$lib/components/maturity-item.svelte';
 	import { onMount } from 'svelte';
 	import { maturityStore } from '$lib/stores/maturity-store';
 	import type { PruneType } from '$lib/types/actions.type';
@@ -42,35 +31,20 @@
 	import DockerIcon from '$lib/icons/docker-icon.svelte';
 	import GitHubIcon from '$lib/icons/github-icon.svelte';
 	import type { SystemStats } from '$lib/models/system-stats';
-	import type { ContainerInfo, EnhancedContainerInfo } from '$lib/models/container-info';
-	import type { Settings } from '$lib/types/settings.type';
-
-	type EnhancedImageInfo = {
-		Id: string;
-		RepoTags: string[];
-		RepoDigests: string[];
-		ParentId: string;
-		Created: number;
-		Size: number;
-		SharedSize: number;
-		VirtualSize: number;
-		Labels: Record<string, string>;
-		Containers: number;
-		repo?: string;
-		tag?: string;
-		inUse?: boolean;
-		maturity?: any;
-	};
+	import type { ContainerInfo } from '$lib/models/container-info';
+	import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
+	import DashboardContainerTable from './dash-container-table.svelte';
+	import DashboardImageTable from './dash-image-table.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	let dashboardStates = $state({
-		dockerInfo: null as any,
-		containers: null as ContainerInfo[] | null,
-		images: [] as EnhancedImageInfo[],
-		settings: null as Settings | null,
+		dockerInfo: data.dockerInfo,
+		containers: Array.isArray(data.containers) ? data.containers : data.containers?.data || [],
+		images: Array.isArray(data.images) ? data.images : data.images?.data || [],
+		settings: data.settings,
 		systemStats: null as SystemStats | null,
-		error: null as string | null,
+		error: data.error || null,
 		isPruneDialogOpen: false
 	});
 
@@ -81,10 +55,9 @@
 		pruning: false,
 		loadingStats: true,
 		loadingMaturity: true,
-		loadingDockerInfo: true,
-		loadingContainers: true,
-		loadingImages: true,
-		loadingSettings: true
+		loadingContainers: false,
+		loadingDockerInfo: false,
+		loadingImages: false
 	});
 
 	let liveSystemStats = $state(null as SystemStats | null);
@@ -117,78 +90,62 @@
 				? container.Names[0].substring(1)
 				: container.Names[0];
 		}
-		return shortId(container.Id);
+		return container.Id?.substring(0, 12) || 'Unknown';
 	}
 
-	async function loadInitialData() {
-		isLoading.loadingDockerInfo = true;
-		isLoading.loadingContainers = true;
-		isLoading.loadingImages = true;
-		isLoading.loadingSettings = true;
-		dashboardStates.error = null;
+	async function onContainerRefresh(options: SearchPaginationSortRequest) {
+		const response = await environmentAPI.getContainers(
+			options.pagination,
+			options.sort,
+			options.search,
+			options.filters
+		);
 
-		const [dockerInfoResult, containersResult, imagesResult, settingsResult] =
-			await Promise.allSettled([
-				tryCatch(systemAPI.getDockerInfo()),
-				tryCatch(environmentAPI.getContainers()),
-				tryCatch(environmentAPI.getImages()),
-				tryCatch(settingsAPI.getSettings())
-			]);
-
-		if (dockerInfoResult.status === 'fulfilled' && !dockerInfoResult.value.error) {
-			dashboardStates.dockerInfo = dockerInfoResult.value.data;
+		if (Array.isArray(response)) {
+			dashboardStates.containers = response;
+			return {
+				data: response,
+				pagination: {
+					totalPages: 1,
+					totalItems: response.length,
+					currentPage: options.pagination?.page || 1,
+					itemsPerPage: response.length
+				}
+			};
 		} else {
-			console.error(
-				'Failed to load Docker Info:',
-				dockerInfoResult.status === 'rejected'
-					? dockerInfoResult.reason
-					: dockerInfoResult.value.error
-			);
-			dashboardStates.error = dashboardStates.error || 'Failed to load Docker Info.';
+			dashboardStates.containers = response.data || [];
+			return {
+				data: response.data || [],
+				pagination: response.pagination
+			};
 		}
-		isLoading.loadingDockerInfo = false;
+	}
 
-		if (containersResult.status === 'fulfilled' && !containersResult.value.error) {
-			dashboardStates.containers = containersResult.value.data;
-		} else {
-			console.error(
-				'Failed to load Containers:',
-				containersResult.status === 'rejected'
-					? containersResult.reason
-					: containersResult.value.error
-			);
-			dashboardStates.containers = [];
-			dashboardStates.error = dashboardStates.error || 'Failed to load Containers.';
-		}
-		isLoading.loadingContainers = false;
+	async function onImageRefresh(options: SearchPaginationSortRequest) {
+		const response = await environmentAPI.getImages(
+			options.pagination,
+			options.sort,
+			options.search,
+			options.filters
+		);
 
-		if (imagesResult.status === 'fulfilled' && !imagesResult.value.error) {
-			dashboardStates.images = imagesResult.value.data;
+		if (Array.isArray(response)) {
+			dashboardStates.images = response;
+			return {
+				data: response,
+				pagination: {
+					totalPages: 1,
+					totalItems: response.length,
+					currentPage: options.pagination?.page || 1,
+					itemsPerPage: response.length
+				}
+			};
 		} else {
-			console.error(
-				'Failed to load Images:',
-				imagesResult.status === 'rejected' ? imagesResult.reason : imagesResult.value.error
-			);
-			dashboardStates.images = [];
-			dashboardStates.error = dashboardStates.error || 'Failed to load Images.';
-		}
-		isLoading.loadingImages = false;
-
-		if (settingsResult.status === 'fulfilled' && !settingsResult.value.error) {
-			dashboardStates.settings = settingsResult.value.data;
-		} else {
-			console.error(
-				'Failed to load Settings:',
-				settingsResult.status === 'rejected' ? settingsResult.reason : settingsResult.value.error
-			);
-			dashboardStates.error = dashboardStates.error || 'Failed to load Settings.';
-		}
-		isLoading.loadingSettings = false;
-
-		if (dashboardStates.images && dashboardStates.images.length > 0) {
-			loadTopImagesMaturity();
-		} else {
-			isLoading.loadingMaturity = false;
+			dashboardStates.images = response.data || [];
+			return {
+				data: response.data || [],
+				pagination: response.pagination
+			};
 		}
 	}
 
@@ -237,7 +194,7 @@
 		const topImageIds = [...dashboardStates.images]
 			.sort((a, b) => (b.Size || 0) - (a.Size || 0))
 			.slice(0, 5)
-			.filter((img) => img.repo !== '<none>' && img.tag !== '<none>')
+			.filter((img) => img.RepoTags && img.RepoTags[0] !== '<none>:<none>')
 			.map((img) => img.Id);
 
 		if (topImageIds.length === 0) {
@@ -270,11 +227,71 @@
 		}
 	}
 
+	async function refreshData() {
+		if (isLoading.refreshing) return;
+		isLoading.refreshing = true;
+
+		const [dockerInfoResult, containersResult, imagesResult, settingsResult] =
+			await Promise.allSettled([
+				tryCatch(systemAPI.getDockerInfo()),
+				tryCatch(
+					environmentAPI.getContainers(
+						data.containerRequestOptions.pagination,
+						data.containerRequestOptions.sort,
+						data.containerRequestOptions.search,
+						data.containerRequestOptions.filters
+					)
+				),
+				tryCatch(
+					environmentAPI.getImages(
+						data.imageRequestOptions.pagination,
+						data.imageRequestOptions.sort,
+						data.imageRequestOptions.search,
+						data.imageRequestOptions.filters
+					)
+				),
+				tryCatch(settingsAPI.getSettings())
+			]);
+
+		if (dockerInfoResult.status === 'fulfilled' && !dockerInfoResult.value.error) {
+			dashboardStates.dockerInfo = dockerInfoResult.value.data;
+		}
+
+		if (containersResult.status === 'fulfilled' && !containersResult.value.error) {
+			const containerData = containersResult.value.data;
+			dashboardStates.containers = Array.isArray(containerData)
+				? containerData
+				: containerData?.data || [];
+		}
+
+		if (imagesResult.status === 'fulfilled' && !imagesResult.value.error) {
+			const imageData = imagesResult.value.data;
+			dashboardStates.images = Array.isArray(imageData) ? imageData : imageData?.data || [];
+		}
+
+		if (settingsResult.status === 'fulfilled' && !settingsResult.value.error) {
+			dashboardStates.settings = settingsResult.value.data;
+		}
+
+		await fetchLiveSystemStats();
+
+		if (dashboardStates.images && dashboardStates.images.length > 0) {
+			loadTopImagesMaturity();
+		}
+
+		isLoading.refreshing = false;
+	}
+
 	onMount(() => {
 		let mounted = true;
 
-		loadInitialData();
 		fetchLiveSystemStats();
+
+		if (dashboardStates.images && dashboardStates.images.length > 0) {
+			loadTopImagesMaturity();
+		} else {
+			isLoading.loadingMaturity = false;
+		}
 
 		if (!statsInterval) {
 			statsInterval = setInterval(() => {
@@ -293,13 +310,6 @@
 		};
 	});
 
-	async function refreshData() {
-		if (isLoading.refreshing) return;
-		isLoading.refreshing = true;
-		await Promise.all([loadInitialData(), fetchLiveSystemStats()]);
-		isLoading.refreshing = false;
-	}
-
 	async function handleStartAll() {
 		if (isLoading.starting || !dashboardStates.dockerInfo || stoppedContainers === 0) return;
 		isLoading.starting = true;
@@ -309,7 +319,7 @@
 			setLoadingState: (value) => (isLoading.starting = value),
 			onSuccess: async () => {
 				toast.success('All Containers Started Successfully.');
-				await loadInitialData();
+				await refreshData();
 			}
 		});
 	}
@@ -329,7 +339,7 @@
 						setLoadingState: (value) => (isLoading.stopping = value),
 						onSuccess: async () => {
 							toast.success('All Containers Stopped Successfully.');
-							await loadInitialData();
+							await refreshData();
 						}
 					});
 				}
@@ -359,7 +369,7 @@
 				toast.success(
 					`${formattedTypes} ${selectedTypes.length > 1 ? 'were' : 'was'} pruned successfully.`
 				);
-				await loadInitialData();
+				await refreshData();
 			}
 		});
 	}
@@ -744,229 +754,19 @@
 	<section>
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">Resources</h2>
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-			<!-- Containers Table Card -->
-			<Card.Root class="relative flex flex-col border shadow-sm">
-				<Card.Header class="px-6">
-					<div class="flex items-center justify-between">
-						<div>
-							<Card.Title
-								><a class="font-medium hover:underline" href="/containers">Containers</a
-								></Card.Title
-							>
-							<Card.Description class="pb-3">Recent containers</Card.Description>
-						</div>
-						<Button
-							variant="ghost"
-							size="sm"
-							href="/containers"
-							disabled={isLoading.loadingContainers || !dashboardStates.dockerInfo}
-						>
-							View All
-							<ArrowRight class="ml-2 size-4" />
-						</Button>
-					</div>
-				</Card.Header>
-				<Card.Content class="flex-1 p-0">
-					{#if isLoading.loadingContainers}
-						<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
-							<Loader2 class="text-muted-foreground mb-4 size-8 animate-spin" />
-							<p class="text-lg font-medium">Loading Containers...</p>
-							<p class="text-muted-foreground mt-1 text-sm">
-								Please wait while we fetch containers
-							</p>
-						</div>
-					{:else if dashboardStates.containers && dashboardStates.containers.length > 0}
-						<div class="flex h-full flex-col">
-							<div class="flex-1">
-								<UniversalTable
-									data={dashboardStates.containers.slice(0, 5).map(
-										(c): EnhancedContainerInfo => ({
-											...c,
-											displayName: getContainerDisplayName(c),
-											statusSortValue: parseStatusTime(c.Status)
-										})
-									)}
-									columns={[
-										{ accessorKey: 'displayName', header: 'Name' },
-										{ accessorKey: 'Image', header: 'Image' },
-										{ accessorKey: 'State', header: 'State' },
-										{ accessorKey: 'statusSortValue', header: 'Status' }
-									]}
-									features={{
-										filtering: false,
-										selection: false
-									}}
-									sort={{
-										defaultSort: { id: 'statusSortValue', desc: false }
-									}}
-									pagination={{
-										pageSize: 5,
-										pageSizeOptions: [5]
-									}}
-									display={{
-										isDashboardTable: true
-									}}
-								>
-									{#snippet rows({ item }: { item: EnhancedContainerInfo })}
-										{@const stateVariant = statusVariantMap[item.State.toLowerCase()]}
-										<Table.Cell>
-											<a class="font-medium hover:underline" href="/containers/{item.Id}/">
-												{item.displayName}
-											</a>
-										</Table.Cell>
-										<Table.Cell title={item.Image}>
-											{truncateString(item.Image, 40)}
-										</Table.Cell>
-										<Table.Cell>
-											<StatusBadge
-												variant={stateVariant}
-												text={capitalizeFirstLetter(item.State)}
-											/>
-										</Table.Cell>
-										<Table.Cell>{item.Status}</Table.Cell>
-									{/snippet}
-								</UniversalTable>
-							</div>
-							{#if dashboardStates.containers.length > 5}
-								<div class="bg-muted/40 text-muted-foreground border-t px-6 py-2 text-xs">
-									Showing 5 of {dashboardStates.containers.length} containers
-								</div>
-							{/if}
-						</div>
-					{:else if !dashboardStates.error}
-						<div class="flex flex-col items-center justify-center px-6 py-10 text-center">
-							<Box class="text-muted-foreground mb-2 size-8 opacity-40" />
-							<p class="text-muted-foreground text-sm">No containers found</p>
-							<p class="text-muted-foreground mt-1 text-xs">
-								Use Docker CLI or another tool to create containers
-							</p>
-						</div>
-					{/if}
-				</Card.Content>
-			</Card.Root>
+			<DashboardContainerTable
+				containers={dashboardStates.containers || []}
+				isLoading={isLoading.loadingContainers}
+				onRefresh={onContainerRefresh}
+				{getContainerDisplayName}
+			/>
 
-			<!-- Images Table Card -->
-			<Card.Root class="relative flex flex-col border shadow-sm">
-				<Card.Header class="px-6">
-					<div class="flex items-center justify-between">
-						<div>
-							<Card.Title
-								><a class="font-medium hover:underline" href="/images">Images</a></Card.Title
-							>
-							<Card.Description class="pb-3">Top 5 Largest Images</Card.Description>
-						</div>
-						<Button
-							variant="ghost"
-							size="sm"
-							href="/images"
-							disabled={isLoading.loadingImages || !dashboardStates.dockerInfo}
-						>
-							View All
-							<ArrowRight class="ml-2 size-4" />
-						</Button>
-					</div>
-				</Card.Header>
-				<Card.Content class="flex-1 p-0">
-					{#if isLoading.loadingImages}
-						<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
-							<Loader2 class="text-muted-foreground mb-4 size-8 animate-spin" />
-							<p class="text-lg font-medium">Loading Images...</p>
-							<p class="text-muted-foreground mt-1 text-sm">Please wait while we fetch images</p>
-						</div>
-					{:else if dashboardStates.images?.length > 0}
-						<div class="flex h-full flex-col">
-							<div class="flex-1">
-								<UniversalTable
-									data={dashboardStates.images
-										.slice()
-										.sort((a, b) => (b.Size || 0) - (a.Size || 0))
-										.slice(0, 5)}
-									columns={[
-										{ accessorKey: 'repo', header: 'Name' },
-										{ accessorKey: 'inUse', header: ' ', enableSorting: false },
-										{ accessorKey: 'tag', header: 'Tag' },
-										{ accessorKey: 'Size', header: 'Size' }
-									]}
-									features={{
-										filtering: false,
-										selection: false
-									}}
-									pagination={{
-										pageSize: 5,
-										pageSizeOptions: [5]
-									}}
-									display={{
-										isDashboardTable: true
-									}}
-									sort={{
-										defaultSort: { id: 'Size', desc: true }
-									}}
-								>
-									{#snippet rows({ item }: { item: EnhancedImageInfo })}
-										<Table.Cell>
-											<div class="flex items-center gap-2">
-												<div class="flex flex-1 items-center">
-													{#if isLoading.loadingMaturity}
-														<div class="bg-muted size-4 animate-pulse rounded-full mr-2"></div>
-													{:else}
-														<MaturityItem
-															maturity={item.maturity}
-															isLoadingInBackground={!item.maturity}
-															imageId={item.Id}
-														/>
-													{/if}
-													<a
-														class="shrink truncate font-medium hover:underline"
-														href="/images/{item.Id}/"
-													>
-														{#if item.repo && item.repo !== '<none>'}
-															{item.repo}
-														{:else if item.RepoTags && item.RepoTags.length > 0 && item.RepoTags[0] !== '<none>:<none>'}
-															{item.RepoTags[0].split(':')[0]}
-														{:else}
-															{item.Id.substring(7, 19)}
-														{/if}
-													</a>
-												</div>
-											</div>
-										</Table.Cell>
-										<Table.Cell>
-											{#if !item.inUse}
-												<StatusBadge text="Unused" variant="amber" />
-											{:else}
-												<StatusBadge text="In Use" variant="green" />
-											{/if}
-										</Table.Cell>
-										<Table.Cell>
-											{#if item.tag && item.tag !== '<none>'}
-												{item.tag}
-											{:else if item.RepoTags && item.RepoTags.length > 0 && item.RepoTags[0] !== '<none>:<none>'}
-												{item.RepoTags[0].split(':')[1] || 'latest'}
-											{:else}
-												&lt;none&gt;
-											{/if}
-										</Table.Cell>
-										<Table.Cell>{formatBytes(item.Size)}</Table.Cell>
-									{/snippet}
-								</UniversalTable>
-							</div>
-							{#if dashboardStates.images.length > 5}
-								<div class="bg-muted/40 text-muted-foreground border-t px-6 py-2 text-xs">
-									Showing 5 of {dashboardStates.images.length} images
-								</div>
-							{/if}
-						</div>
-					{:else if !dashboardStates.error}
-						<div class="flex flex-col items-center justify-center px-6 py-10 text-center">
-							<HardDrive class="text-muted-foreground mb-2 size-8 opacity-40" />
-							<p class="text-muted-foreground text-sm">No images found</p>
-							<p class="text-muted-foreground mt-1 text-xs">
-								Pull images using Docker CLI or another tool
-							</p>
-						</div>
-					{/if}
-				</Card.Content>
-			</Card.Root>
+			<DashboardImageTable
+				images={dashboardStates.images}
+				isLoading={isLoading.loadingImages}
+				isLoadingMaturity={isLoading.loadingMaturity}
+				onRefresh={onImageRefresh}
+			/>
 		</div>
 	</section>
 

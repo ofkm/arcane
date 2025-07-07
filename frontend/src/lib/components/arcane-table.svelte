@@ -16,6 +16,7 @@
 		requestOptions = $bindable(),
 		selectedIds = $bindable(),
 		withoutSearch = false,
+		withoutPagination = false,
 		selectionDisabled = false,
 		onRefresh,
 		columns,
@@ -29,6 +30,7 @@
 		requestOptions: SearchPaginationSortRequest;
 		selectedIds?: string[];
 		withoutSearch?: boolean;
+		withoutPagination?: boolean;
 		selectionDisabled?: boolean;
 		onRefresh: (requestOptions: SearchPaginationSortRequest) => Promise<Paginated<TData>>;
 		columns: { label: string; hidden?: boolean; sortColumn?: string }[];
@@ -115,13 +117,9 @@
 		<Table.Root class="min-w-full table-auto overflow-x-auto">
 			<Table.Header>
 				<Table.Row>
-					{#if selectedIds}
+					{#if selectedIds && !selectionDisabled}
 						<Table.Head class="w-12">
-							<Checkbox
-								disabled={selectionDisabled}
-								checked={allChecked}
-								onCheckedChange={(c) => onAllCheck(c as boolean)}
-							/>
+							<Checkbox checked={allChecked} onCheckedChange={(c) => onAllCheck(c as boolean)} />
 						</Table.Head>
 					{/if}
 					{#each columns as column}
@@ -156,10 +154,9 @@
 			<Table.Body>
 				{#each items.data as item}
 					<Table.Row class={selectedIds?.includes(item.id) ? 'bg-muted/20' : ''}>
-						{#if selectedIds}
+						{#if selectedIds && !selectionDisabled}
 							<Table.Cell class="w-12">
 								<Checkbox
-									disabled={selectionDisabled}
 									checked={selectedIds.includes(item.id)}
 									onCheckedChange={(c) => onCheck(c as boolean, item.id)}
 								/>
@@ -171,51 +168,53 @@
 			</Table.Body>
 		</Table.Root>
 
-		<div class="mt-5 flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
-			<div class="flex items-center space-x-2">
-				<p class="text-sm font-medium">{itemsPerPageLabel}</p>
-				<Select.Root
-					type="single"
-					value={items.pagination.itemsPerPage.toString()}
-					onValueChange={(v) => onPageSizeChange(Number(v))}
+		{#if !withoutPagination}
+			<div class="mt-5 flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
+				<div class="flex items-center space-x-2">
+					<p class="text-sm font-medium">{itemsPerPageLabel}</p>
+					<Select.Root
+						type="single"
+						value={items.pagination.itemsPerPage.toString()}
+						onValueChange={(v) => onPageSizeChange(Number(v))}
+					>
+						<Select.Trigger class="h-9 w-[80px]">
+							{items.pagination.itemsPerPage}
+						</Select.Trigger>
+						<Select.Content>
+							{#each availablePageSizes as size}
+								<Select.Item value={size.toString()}>{size}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>
+				<Pagination.Root
+					class="mx-0 w-auto"
+					count={items.pagination.totalItems}
+					perPage={items.pagination.itemsPerPage}
+					{onPageChange}
+					page={items.pagination.currentPage}
 				>
-					<Select.Trigger class="h-9 w-[80px]">
-						{items.pagination.itemsPerPage}
-					</Select.Trigger>
-					<Select.Content>
-						{#each availablePageSizes as size}
-							<Select.Item value={size.toString()}>{size}</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
+					{#snippet children({ pages })}
+						<Pagination.Content class="flex justify-end">
+							<Pagination.Item>
+								<Pagination.PrevButton />
+							</Pagination.Item>
+							{#each pages as page (page.key)}
+								{#if page.type !== 'ellipsis' && page.value != 0}
+									<Pagination.Item>
+										<Pagination.Link {page} isActive={items.pagination.currentPage === page.value}>
+											{page.value}
+										</Pagination.Link>
+									</Pagination.Item>
+								{/if}
+							{/each}
+							<Pagination.Item>
+								<Pagination.NextButton />
+							</Pagination.Item>
+						</Pagination.Content>
+					{/snippet}
+				</Pagination.Root>
 			</div>
-			<Pagination.Root
-				class="mx-0 w-auto"
-				count={items.pagination.totalItems}
-				perPage={items.pagination.itemsPerPage}
-				{onPageChange}
-				page={items.pagination.currentPage}
-			>
-				{#snippet children({ pages })}
-					<Pagination.Content class="flex justify-end">
-						<Pagination.Item>
-							<Pagination.PrevButton />
-						</Pagination.Item>
-						{#each pages as page (page.key)}
-							{#if page.type !== 'ellipsis' && page.value != 0}
-								<Pagination.Item>
-									<Pagination.Link {page} isActive={items.pagination.currentPage === page.value}>
-										{page.value}
-									</Pagination.Link>
-								</Pagination.Item>
-							{/if}
-						{/each}
-						<Pagination.Item>
-							<Pagination.NextButton />
-						</Pagination.Item>
-					</Pagination.Content>
-				{/snippet}
-			</Pagination.Root>
-		</div>
+		{/if}
 	{/if}
 </div>

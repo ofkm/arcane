@@ -156,32 +156,34 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":           true,
-		"version":           version.Version,
-		"apiVersion":        version.APIVersion,
-		"gitCommit":         version.GitCommit,
-		"goVersion":         version.GoVersion,
-		"os":                version.Os,
-		"arch":              version.Arch,
-		"buildTime":         version.BuildTime,
-		"containers":        len(containers),
-		"containersRunning": info.ContainersRunning,
-		"containersPaused":  info.ContainersPaused,
-		"containersStopped": info.ContainersStopped,
-		"images":            len(images),
-		"storageDriver":     info.Driver,
-		"loggingDriver":     info.LoggingDriver,
-		"cgroupDriver":      info.CgroupDriver,
-		"cgroupVersion":     info.CgroupVersion,
-		"kernelVersion":     info.KernelVersion,
-		"operatingSystem":   info.OperatingSystem,
-		"osVersion":         info.OSVersion,
-		"serverVersion":     info.ServerVersion,
-		"architecture":      info.Architecture,
-		"cpus":              info.NCPU,
-		"memTotal":          info.MemTotal,
-	})
+	dockerInfo := dto.DockerInfoDto{
+		Success:           true,
+		Version:           version.Version,
+		APIVersion:        version.APIVersion,
+		GitCommit:         version.GitCommit,
+		GoVersion:         version.GoVersion,
+		OS:                version.Os,
+		Arch:              version.Arch,
+		BuildTime:         version.BuildTime,
+		Containers:        len(containers),
+		ContainersRunning: info.ContainersRunning,
+		ContainersPaused:  info.ContainersPaused,
+		ContainersStopped: info.ContainersStopped,
+		Images:            len(images),
+		StorageDriver:     info.Driver,
+		LoggingDriver:     info.LoggingDriver,
+		CgroupDriver:      info.CgroupDriver,
+		CgroupVersion:     info.CgroupVersion,
+		KernelVersion:     info.KernelVersion,
+		OperatingSystem:   info.OperatingSystem,
+		OSVersion:         info.OSVersion,
+		ServerVersion:     info.ServerVersion,
+		Architecture:      info.Architecture,
+		CPUs:              info.NCPU,
+		MemTotal:          info.MemTotal,
+	}
+
+	c.JSON(http.StatusOK, dockerInfo)
 }
 
 func (h *SystemHandler) TestDockerConnection(c *gin.Context) {

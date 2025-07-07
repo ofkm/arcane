@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -77,21 +78,30 @@ func (h *ImageMaturityHandler) GetImageMaturity(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
-			"data": map[string]interface{}{
-				"id":               imageID,
-				"status":           "Unknown",
-				"updatesAvailable": false,
-				"version":          nil,
-				"date":             nil,
-				"lastChecked":      nil,
+			"data": models.ImageMaturity{
+				Version:          "unknown",
+				Date:             time.Now().Format(time.RFC3339),
+				Status:           models.ImageStatusUnknown,
+				UpdatesAvailable: false,
 			},
 		})
 		return
 	}
 
+	maturity := models.ImageMaturity{
+		Version:          record.CurrentVersion,
+		Date:             record.LastChecked.Format(time.RFC3339),
+		Status:           record.Status,
+		UpdatesAvailable: record.UpdatesAvailable,
+	}
+
+	if record.LatestVersion != nil {
+		maturity.LatestVersion = *record.LatestVersion
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    record,
+		"data":    maturity,
 	})
 }
 

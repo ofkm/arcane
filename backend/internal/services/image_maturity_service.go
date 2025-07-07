@@ -45,14 +45,6 @@ func (s *ImageMaturityService) CheckImageMaturity(ctx context.Context, imageID, 
 		return nil, fmt.Errorf("failed to get settings: %w", err)
 	}
 
-	maturityThresholdDays := settings.MaturityThresholdDays
-	if maturityThresholdDays == 0 {
-		maturityThresholdDays = 30
-	}
-
-	imageAge := time.Since(imageCreatedAt)
-	isMaturedByAge := imageAge > time.Duration(maturityThresholdDays)*24*time.Hour
-
 	hasUpdates := false
 	latestVersion := ""
 	var checkError error
@@ -76,7 +68,8 @@ func (s *ImageMaturityService) CheckImageMaturity(ctx context.Context, imageID, 
 		}
 	}
 
-	status := s.determineMaturityStatus(isMaturedByAge, hasUpdates, checkError)
+	// Pass settings to determine status
+	status := s.determineMaturityStatus(imageCreatedAt, hasUpdates, checkError, settings)
 
 	maturity := &models.ImageMaturity{
 		Version:          tag,
@@ -86,13 +79,18 @@ func (s *ImageMaturityService) CheckImageMaturity(ctx context.Context, imageID, 
 		LatestVersion:    latestVersion,
 	}
 
+	// Calculate age for metadata
+	imageAge := time.Since(imageCreatedAt)
+	daysSinceCreation := int(imageAge.Hours() / 24)
+	isMaturedByAge := imageAge > time.Duration(settings.MaturityThresholdDays)*24*time.Hour
+
 	metadata := map[string]interface{}{
 		"registryDomain":    utils.ExtractRegistryDomain(repository),
 		"isPrivateRegistry": s.isPrivateRegistry(repository),
 		"currentImageDate":  imageCreatedAt,
-		"daysSinceCreation": int(imageAge.Hours() / 24),
+		"daysSinceCreation": daysSinceCreation,
 		"isMaturedByAge":    isMaturedByAge,
-		"maturityThreshold": maturityThresholdDays,
+		"maturityThreshold": settings.MaturityThresholdDays,
 	}
 
 	if registryManifest != nil {
@@ -416,22 +414,31 @@ func (s *ImageMaturityService) hasNewerVersions(currentTag string, allTags []str
 	return hasNewer, newestTag
 }
 
-func (s *ImageMaturityService) determineMaturityStatus(isMaturedByAge, hasUpdates bool, checkError error) string {
-	if checkError != nil {
-		if isMaturedByAge {
-			return models.ImageStatusMatured
-		}
-		return models.ImageStatusError
+func (s *ImageMaturityService) determineMaturityStatus(imageCreatedAt time.Time, hasUpdates bool, checkError error, settings *models.Settings) string {
+	maturityThresholdDays := settings.MaturityThresholdDays
+	if maturityThresholdDays == 0 {
+		maturityThresholdDays = 30 // Default fallback
 	}
 
+	imageAge := time.Since(imageCreatedAt)
+	isMaturedByAge := imageAge > time.Duration(maturityThresholdDays)*24*time.Hour
+
+	// If there's a check error, return Unknown
+	if checkError != nil {
+		return models.ImageStatusUnknown
+	}
+
+	// If image is matured by age threshold, it's matured regardless of updates
 	if isMaturedByAge {
 		return models.ImageStatusMatured
 	}
 
+	// If image hasn't reached maturity threshold but has updates, it's still not matured
 	if hasUpdates {
-		return models.ImageStatusMatured
+		return models.ImageStatusNotMatured
 	}
 
+	// Image is within threshold and no updates available
 	return models.ImageStatusNotMatured
 }
 
