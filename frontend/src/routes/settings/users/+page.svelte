@@ -1,204 +1,234 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
+	import { Users, Shield, UserCheck } from '@lucide/svelte';
+	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { toast } from 'svelte-sonner';
-	import { UserPlus, UserCheck, Ellipsis, Pencil, UserX } from '@lucide/svelte';
-	import type { PageData } from './$types';
-	import UniversalTable from '$lib/components/universal-table.svelte';
-	import type { User } from '$lib/types/user.type';
-	import UserFormSheet from '$lib/components/sheets/user-form-sheet.svelte';
-	import * as Table from '$lib/components/ui/table';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import { userAPI } from '$lib/services/api';
-	import { invalidateAll } from '$app/navigation';
-	import { openConfirmDialog } from '$lib/components/confirm-dialog';
-	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import StatCard from '$lib/components/stat-card.svelte';
+	import UserTable from './user-table.svelte';
+	import UserFormSheet from '$lib/components/sheets/user-form-sheet.svelte';
+	import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
+	import type { User } from '$lib/types/user.type';
 
-	let { data }: { data: PageData } = $props();
+	let { data } = $props();
 
-	let userPageStates = $state({
-		users: <User[]>data.users,
-		isUserDialogOpen: false,
-		userToEdit: <User | null>null
+	let users = $state<User[]>(Array.isArray(data.users) ? data.users : data.users?.data || []);
+	let error = $state<string | null>(null);
+	let selectedIds = $state<string[]>([]);
+	let requestOptions = $state<SearchPaginationSortRequest>(data.userRequestOptions);
+
+	let isDialogOpen = $state({
+		create: false,
+		edit: false
 	});
+
+	let userToEdit = $state<User | null>(null);
 
 	let isLoading = $state({
-		saving: false
+		creating: false,
+		editing: false,
+		refresh: false
 	});
 
-	let userDialogRef: UserFormSheet | null = $state(null);
+	const totalUsers = $derived(users.length);
+	const adminUsers = $derived(users.filter((u) => u.Roles?.includes('admin')).length);
+	const regularUsers = $derived(users.filter((u) => !u.Roles?.includes('admin')).length);
 
-	$effect(() => {
-		userPageStates.users = data.users;
-	});
-
-	const roles = [
-		{ id: 'admin', name: 'Administrator' },
-		{ id: 'user', name: 'Standard User' },
-		{ id: 'viewer', name: 'Viewer (read-only)' }
-	];
-
-	function openCreateUserDialog() {
-		userPageStates.userToEdit = null;
-		userPageStates.isUserDialogOpen = true;
+	async function loadUsers() {
+		try {
+			isLoading.refresh = true;
+			const response = await userAPI.getUsers(
+				requestOptions.pagination,
+				requestOptions.sort,
+				requestOptions.search,
+				requestOptions.filters
+			);
+			users = Array.isArray(response) ? response : response.data || [];
+			error = null;
+		} catch (err) {
+			console.error('Failed to load users:', err);
+			error = err instanceof Error ? err.message : 'Failed to load users';
+			users = [];
+		} finally {
+			isLoading.refresh = false;
+		}
 	}
 
-	function openEditUserDialog(user: User) {
-		userPageStates.userToEdit = user;
-		userPageStates.isUserDialogOpen = true;
-	}
-
-	async function handleDialogSubmit({ user: userData, isEditMode, userId }: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) {
-		isLoading.saving = true;
-
-		handleApiResultWithCallbacks({
-			result: await tryCatch(isEditMode ? userAPI.update(userId || '', userData as User) : userAPI.create(userData as User)),
-			message: isEditMode ? 'Error Updating User' : 'Error Creating User',
-			setLoadingState: (value) => (isLoading.saving = value),
-			onSuccess: async () => {
-				userPageStates.isUserDialogOpen = false;
-				toast.success(isEditMode ? 'User Updated Successfully' : 'User Created Successfully');
-				await invalidateAll();
-				isLoading.saving = false;
+	async function onRefresh(options: SearchPaginationSortRequest) {
+		requestOptions = options;
+		await loadUsers();
+		return {
+			data: users,
+			pagination: {
+				totalPages: Math.ceil(users.length / (requestOptions.pagination?.limit || 20)),
+				totalItems: users.length,
+				currentPage: requestOptions.pagination?.page || 1,
+				itemsPerPage: requestOptions.pagination?.limit || 20
 			}
-		});
+		};
 	}
 
-	async function handleRemoveUser(userId: string) {
-		openConfirmDialog({
-			title: 'Delete User',
-			message: 'Are you sure you want to delete this user? This action cannot be undone.',
-			confirm: {
-				label: 'Delete',
-				destructive: true,
-				action: async () => {
-					handleApiResultWithCallbacks({
-						result: await tryCatch(userAPI.delete(userId)),
-						message: 'Failed to Delete User',
-						setLoadingState: (value) => (isLoading.saving = value),
-						onSuccess: async () => {
-							toast.success('User Deleted Successfully.');
-							await invalidateAll();
-						}
-					});
+	async function refreshUsers() {
+		isLoading.refresh = true;
+		try {
+			await loadUsers();
+		} catch (error) {
+			console.error('Failed to refresh users:', error);
+			toast.error('Failed to refresh users');
+		} finally {
+			isLoading.refresh = false;
+		}
+	}
+
+	function openCreateDialog() {
+		userToEdit = null;
+		isDialogOpen.create = true;
+	}
+
+	function openEditDialog(user: User) {
+		userToEdit = user;
+		isDialogOpen.edit = true;
+	}
+
+	async function handleUserSubmit({
+		user,
+		isEditMode,
+		userId
+	}: {
+		user: Partial<User> & { password?: string };
+		isEditMode: boolean;
+		userId?: string;
+	}) {
+		const loading = isEditMode ? 'editing' : 'creating';
+		isLoading[loading] = true;
+
+		try {
+			if (isEditMode && userId) {
+				const result = await tryCatch(userAPI.update(userId, user));
+				handleApiResultWithCallbacks({
+					result,
+					message: `Failed to update user "${user.Username}"`,
+					setLoadingState: (value) => (isLoading[loading] = value),
+					onSuccess: async () => {
+						toast.success(`User "${user.Username}" updated successfully.`);
+						await loadUsers();
+						isDialogOpen.edit = false;
+						userToEdit = null;
+					}
+				});
+			} else {
+				if (!user.Username) {
+					toast.error('Username is required');
+					isLoading[loading] = false;
+					return;
 				}
+
+				const createUser: Omit<User, 'ID' | 'CreatedAt' | 'UpdatedAt'> = {
+					Username: user.Username,
+					DisplayName: user.DisplayName,
+					Email: user.Email,
+					Roles: user.Roles || ['user'],
+					PasswordHash: user.password,
+					RequirePasswordChange: false
+				};
+
+				const result = await tryCatch(userAPI.create(createUser));
+				handleApiResultWithCallbacks({
+					result,
+					message: `Failed to create user "${user.Username}"`,
+					setLoadingState: (value) => (isLoading[loading] = value),
+					onSuccess: async () => {
+						toast.success(`User "${user.Username}" created successfully.`);
+						await loadUsers();
+						isDialogOpen.create = false;
+					}
+				});
 			}
-		});
+		} catch (error) {
+			console.error('Failed to submit user:', error);
+		}
 	}
 </script>
 
-<UserFormSheet bind:open={userPageStates.isUserDialogOpen} bind:userToEdit={userPageStates.userToEdit} {roles} onSubmit={handleDialogSubmit} bind:this={userDialogRef} isLoading={isLoading.saving} allowUsernameEdit={true} />
-
-<div class="space-y-6">
-	<div>
-		<h1 class="text-3xl font-bold tracking-tight">User Management</h1>
-		<p class="text-muted-foreground mt-1 text-sm">Manage user accounts and permissions</p>
+<div class="space-y-6 pb-8">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+		<div>
+			<h1 class="text-3xl font-bold tracking-tight">Users</h1>
+			<p class="text-muted-foreground mt-1 text-sm">Manage system users and permissions</p>
+		</div>
+		<div class="flex items-center gap-2">
+			<ArcaneButton
+				action="create"
+				label="Create User"
+				onClick={openCreateDialog}
+				loading={isLoading.creating}
+				disabled={isLoading.creating}
+			/>
+			<ArcaneButton
+				action="restart"
+				onClick={refreshUsers}
+				label="Refresh"
+				loading={isLoading.refresh}
+				disabled={isLoading.refresh}
+			/>
+		</div>
 	</div>
 
-	<div class="grid h-full grid-cols-1 gap-6">
-		<!-- User List Card -->
-		<Card.Root class="flex flex-col border shadow-sm">
-			<Card.Header class="flex flex-row items-center justify-between space-y-0 pb-3">
-				<div class="flex items-center gap-2">
-					<div class="rounded-full bg-blue-500/10 p-2">
-						<UserCheck class="size-5 text-blue-500" />
-					</div>
-					<div>
-						<Card.Title>User Accounts</Card.Title>
-						<Card.Description>Manage local user accounts</Card.Description>
-					</div>
-				</div>
-				<Button class="arcane-button-save" onclick={openCreateUserDialog}>
-					<UserPlus class="size-4" />
-					Create User
-				</Button>
-			</Card.Header>
-			<Card.Content class="flex flex-1 flex-col">
-				{#if userPageStates.users.length > 0}
-					<div class="flex h-full flex-1 flex-col">
-						<UniversalTable
-							data={data.users}
-							columns={[
-								{ accessorKey: 'user', header: 'User' },
-								{ accessorKey: 'email', header: 'Email' },
-								{ accessorKey: 'roles', header: 'Roles' },
-								{ accessorKey: 'source', header: 'Source', enableSorting: false },
-								{ accessorKey: 'actions', header: ' ' }
-							]}
-							idKey="id"
-							features={{
-								sorting: true,
-								filtering: true,
-								selection: false
-							}}
-							pagination={{
-								pageSize: 10,
-								pageSizeOptions: [5, 10, 15, 20]
-							}}
-							display={{
-								filterPlaceholder: 'Filter users...',
-								noResultsMessage: 'No users found'
-							}}
-							sort={{
-								defaultSort: {
-									id: 'user',
-									desc: false
-								}
-							}}
-						>
-							{#snippet rows({ item })}
-								<Table.Cell>
-									{item.displayName}
-								</Table.Cell>
-								<Table.Cell>
-									<div class="flex items-center gap-1.5">
-										{item.email}
-									</div>
-								</Table.Cell>
-								<Table.Cell>
-									<div class="flex flex-wrap">
-										{#each item.roles as role (role)}
-											{@const isAdmin = role === 'admin'}
-											<StatusBadge text={isAdmin ? 'Admin' : 'User'} variant={isAdmin ? 'amber' : 'blue'} />
-										{/each}
-									</div>
-								</Table.Cell>
-								<Table.Cell>
-									<StatusBadge text={item.oidcSubjectId ? 'OIDC' : 'Local'} variant={item.oidcSubjectId ? 'blue' : 'purple'} />
-								</Table.Cell>
-								<Table.Cell>
-									<DropdownMenu.Root>
-										<DropdownMenu.Trigger>
-											<Button variant="ghost" size="icon" class="size-8">
-												<Ellipsis class="size-4" />
-												<span class="sr-only">Open menu</span>
-											</Button>
-										</DropdownMenu.Trigger>
-										<DropdownMenu.Content align="end">
-											<DropdownMenu.Group>
-												{#if !item.oidcSubjectId}
-													<DropdownMenu.Item onclick={() => openEditUserDialog(item)}>
-														<Pencil class="size-4" />
-														Edit
-													</DropdownMenu.Item>
-												{/if}
-												<DropdownMenu.Item class="text-red-500 focus:text-red-700!" onclick={() => handleRemoveUser(item.id)}>
-													<UserX class="size-4" />
-													Remove User
-												</DropdownMenu.Item>
-											</DropdownMenu.Group>
-										</DropdownMenu.Content>
-									</DropdownMenu.Root>
-								</Table.Cell>
-							{/snippet}
-						</UniversalTable>
-					</div>
-				{:else}
-					<div class="text-muted-foreground py-8 text-center italic">No local users found</div>
-				{/if}
-			</Card.Content>
-		</Card.Root>
+	{#if error}
+		<Alert.Root variant="destructive">
+			<Alert.Title>Error Loading Users</Alert.Title>
+			<Alert.Description>{error}</Alert.Description>
+		</Alert.Root>
+	{/if}
+
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+		<StatCard
+			title="Total Users"
+			value={totalUsers}
+			icon={Users}
+			iconColor="text-blue-500"
+			class="border-l-4 border-l-blue-500"
+		/>
+		<StatCard
+			title="Administrators"
+			value={adminUsers}
+			icon={Shield}
+			iconColor="text-red-500"
+			class="border-l-4 border-l-red-500"
+		/>
+		<StatCard
+			title="Regular Users"
+			value={regularUsers}
+			icon={UserCheck}
+			iconColor="text-green-500"
+			class="border-l-4 border-l-green-500"
+		/>
 	</div>
+
+	<UserTable
+		{users}
+		bind:selectedIds
+		bind:requestOptions
+		{onRefresh}
+		onUsersChanged={loadUsers}
+		onEditUser={openEditDialog}
+	/>
+
+	<UserFormSheet
+		bind:open={isDialogOpen.create}
+		userToEdit={null}
+		roles={[]}
+		onSubmit={handleUserSubmit}
+		isLoading={isLoading.creating}
+	/>
+
+	<UserFormSheet
+		bind:open={isDialogOpen.edit}
+		{userToEdit}
+		roles={[]}
+		onSubmit={handleUserSubmit}
+		isLoading={isLoading.editing}
+	/>
 </div>

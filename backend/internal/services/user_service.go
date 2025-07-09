@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type Argon2Params struct {
@@ -267,4 +268,84 @@ func (s *UserService) UpgradePasswordHash(ctx context.Context, userID, password 
 	return s.db.WithContext(ctx).Model(&models.User{}).
 		Where("id = ?", userID).
 		Update("password_hash", newHash).Error
+}
+
+func (s *UserService) ListUsersPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
+	users, err := s.ListUsers(ctx)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list users: %w", err)
+	}
+
+	var result []map[string]interface{}
+	for _, user := range users {
+		userData := map[string]interface{}{
+			"ID":          user.ID,
+			"Username":    user.Username,
+			"DisplayName": user.DisplayName,
+			"Email":       user.Email,
+			"Roles":       user.Roles,
+			"CreatedAt":   user.CreatedAt,
+			"UpdatedAt":   user.UpdatedAt,
+		}
+
+		result = append(result, userData)
+	}
+
+	if req.Search != "" {
+		filtered := make([]map[string]interface{}, 0)
+		searchLower := strings.ToLower(req.Search)
+		for _, user := range result {
+			if username, ok := user["Username"].(string); ok {
+				if strings.Contains(strings.ToLower(username), searchLower) {
+					filtered = append(filtered, user)
+					continue
+				}
+			}
+			if displayName, ok := user["DisplayName"].(*string); ok && displayName != nil {
+				if strings.Contains(strings.ToLower(*displayName), searchLower) {
+					filtered = append(filtered, user)
+					continue
+				}
+			}
+			if email, ok := user["Email"].(*string); ok && email != nil {
+				if strings.Contains(strings.ToLower(*email), searchLower) {
+					filtered = append(filtered, user)
+					continue
+				}
+			}
+		}
+		result = filtered
+	}
+
+	totalItems := len(result)
+
+	if req.Sort.Column != "" {
+		utils.SortSliceByField(result, req.Sort.Column, req.Sort.Direction)
+	}
+
+	startIdx := (req.Pagination.Page - 1) * req.Pagination.Limit
+	endIdx := startIdx + req.Pagination.Limit
+
+	if startIdx > len(result) {
+		startIdx = len(result)
+	}
+	if endIdx > len(result) {
+		endIdx = len(result)
+	}
+
+	if startIdx < endIdx {
+		result = result[startIdx:endIdx]
+	} else {
+		result = []map[string]interface{}{}
+	}
+
+	totalPages := (totalItems + req.Pagination.Limit - 1) / req.Pagination.Limit
+	pagination := utils.PaginationResponse{
+		TotalPages:   int64(totalPages),
+		TotalItems:   int64(totalItems),
+		CurrentPage:  req.Pagination.Page,
+		ItemsPerPage: req.Pagination.Limit,
+	}
+
+	return result, pagination, nil
 }

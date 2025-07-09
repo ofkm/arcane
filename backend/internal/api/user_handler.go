@@ -9,6 +9,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type UserHandler struct {
@@ -22,30 +23,63 @@ func NewUserHandler(userService *services.UserService) *UserHandler {
 }
 
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	users, err := h.userService.ListUsers(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+	var req utils.SortedPaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Failed to fetch users",
+			"error":   "Invalid pagination or sort parameters: " + err.Error(),
 		})
 		return
 	}
 
-	var userResponses []UserResponse
-	for _, user := range users {
-		userResponses = append(userResponses, UserResponse{
-			ID:          user.ID,
-			Username:    user.Username,
-			DisplayName: user.DisplayName,
-			Email:       user.Email,
-			Roles:       user.Roles,
+	if req.Pagination.Page == 0 {
+		req.Pagination.Page = 1
+	}
+	if req.Pagination.Limit == 0 {
+		req.Pagination.Limit = 20
+	}
+
+	if req.Pagination.Page == 0 && req.Pagination.Limit == 0 {
+		users, err := h.userService.ListUsers(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to fetch users",
+			})
+			return
+		}
+
+		var userResponses []UserResponse
+		for _, user := range users {
+			userResponses = append(userResponses, UserResponse{
+				ID:          user.ID,
+				Username:    user.Username,
+				DisplayName: user.DisplayName,
+				Email:       user.Email,
+				Roles:       user.Roles,
+			})
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    userResponses,
 		})
+		return
+	}
+
+	users, pagination, err := h.userService.ListUsersPaginated(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to list users: " + err.Error(),
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"users":   userResponses,
-		"count":   len(userResponses),
+		"success":    true,
+		"data":       users,
+		"pagination": pagination,
 	})
 }
 

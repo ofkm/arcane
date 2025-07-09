@@ -12,12 +12,23 @@
 		open: boolean;
 		userToEdit: User | null;
 		roles: { id: string; name: string }[];
-		onSubmit: (data: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) => void;
+		onSubmit: (data: {
+			user: Partial<User> & { password?: string };
+			isEditMode: boolean;
+			userId?: string;
+		}) => void;
 		isLoading: boolean;
 		allowUsernameEdit?: boolean;
 	};
 
-	let { open = $bindable(false), userToEdit = $bindable(), roles, onSubmit, isLoading, allowUsernameEdit = false }: UserFormProps = $props();
+	let {
+		open = $bindable(false),
+		userToEdit = $bindable(),
+		roles,
+		onSubmit,
+		isLoading,
+		allowUsernameEdit = false
+	}: UserFormProps = $props();
 
 	let isEditMode = $derived(!!userToEdit);
 	let canEditUsername = $derived(!isEditMode || allowUsernameEdit);
@@ -32,11 +43,11 @@
 	});
 
 	let formData = $derived({
-		username: userToEdit?.username || '',
+		username: userToEdit?.Username || '',
 		password: '',
-		displayName: userToEdit?.displayName || '',
-		email: userToEdit?.email || '',
-		isAdmin: Boolean(userToEdit?.roles?.includes('admin'))
+		displayName: userToEdit?.DisplayName || '',
+		email: userToEdit?.Email || '',
+		isAdmin: Boolean(userToEdit?.Roles?.includes('admin'))
 	});
 
 	let { inputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
@@ -46,10 +57,10 @@
 		if (!data) return;
 
 		const userData: Partial<User> & { password?: string } = {
-			username: data.username,
-			displayName: data.displayName,
-			email: data.email,
-			roles: [data.isAdmin ? 'admin' : 'user']
+			Username: data.username,
+			DisplayName: data.displayName,
+			Email: data.email,
+			Roles: [data.isAdmin ? 'admin' : 'user']
 		};
 
 		// Only include password if it's provided (for create) or if editing and password is not empty
@@ -57,7 +68,7 @@
 			userData.password = data.password;
 		}
 
-		onSubmit({ user: userData, isEditMode, userId: userToEdit?.id });
+		onSubmit({ user: userData, isEditMode, userId: userToEdit?.ID });
 	}
 
 	function handleOpenChange(newOpenState: boolean) {
@@ -80,21 +91,60 @@
 						{isEditMode ? 'Edit User' : 'Create New User'}
 					</Sheet.Title>
 					<Sheet.Description class="text-sm text-muted-foreground mt-1">
-						{isEditMode ? `Update the details for ${userToEdit?.username || 'this user'}` : 'Add a new user to your system with the required permissions'}
+						{isEditMode
+							? `Update the details for ${userToEdit?.Username || 'this user'}`
+							: 'Add a new user to your system with the required permissions'}
 					</Sheet.Description>
 				</div>
 			</div>
 		</Sheet.Header>
 
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-6">
-			<FormInput label="Username *" type="text" description="Unique username for the user" disabled={!canEditUsername} bind:input={$inputs.username} />
-			<FormInput label={isEditMode ? 'Password' : 'Password *'} type="password" placeholder={isEditMode ? 'Leave empty to keep current password' : 'Enter password'} description={isEditMode ? 'Leave empty to keep current password' : 'Password for the user account'} bind:input={$inputs.password} />
-			<FormInput label="Display Name" type="text" placeholder="Full name or display name" description="Optional display name for the user" bind:input={$inputs.displayName} />
-			<FormInput label="Email" type="email" placeholder="user@example.com" description="Email address for the user" bind:input={$inputs.email} />
-			<SwitchWithLabel id="isAdminSwitch" label="Administrator" description="Grant administrator privileges to this user" bind:checked={$inputs.isAdmin.value} />
+			<FormInput
+				label="Username *"
+				type="text"
+				description="Unique username for the user"
+				disabled={!canEditUsername}
+				bind:input={$inputs.username}
+			/>
+			<FormInput
+				label={isEditMode ? 'Password' : 'Password *'}
+				type="password"
+				placeholder={isEditMode ? 'Leave empty to keep current password' : 'Enter password'}
+				description={isEditMode
+					? 'Leave empty to keep current password'
+					: 'Password for the user account'}
+				bind:input={$inputs.password}
+			/>
+			<FormInput
+				label="Display Name"
+				type="text"
+				placeholder="Full name or display name"
+				description="Optional display name for the user"
+				bind:input={$inputs.displayName}
+			/>
+			<FormInput
+				label="Email"
+				type="email"
+				placeholder="user@example.com"
+				description="Email address for the user"
+				bind:input={$inputs.email}
+			/>
+			<SwitchWithLabel
+				id="isAdminSwitch"
+				label="Administrator"
+				description="Grant administrator privileges to this user"
+				bind:checked={$inputs.isAdmin.value}
+			/>
 
 			<Sheet.Footer class="flex flex-row gap-2">
-				<Button type="button" class="arcane-button-cancel flex-1" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
+				<Button
+					type="button"
+					class="arcane-button-cancel flex-1"
+					variant="outline"
+					onclick={() => (open = false)}
+					disabled={isLoading}>Cancel</Button
+				>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
 						<Loader2 class="mr-2 size-4 animate-spin" />

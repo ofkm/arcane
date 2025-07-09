@@ -1,15 +1,15 @@
 export type User = {
-	id: string;
-	username: string;
-	passwordHash?: string;
-	displayName?: string;
-	email?: string;
-	roles: string[];
-	createdAt: string;
-	lastLogin?: string;
-	requirePasswordChange?: boolean;
-	updatedAt?: string;
-	oidcSubjectId?: string;
+	ID: string;
+	Username: string;
+	PasswordHash?: string;
+	DisplayName?: string;
+	Email?: string;
+	Roles: string[];
+	CreatedAt: string;
+	LastLogin?: string;
+	RequirePasswordChange?: boolean;
+	UpdatedAt?: string;
+	OidcSubjectId?: string;
 };
 
 export interface UserRole {
