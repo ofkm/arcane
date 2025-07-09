@@ -1,9 +1,12 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/docker/docker/api/types/volume"
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type VolumeHandler struct {
@@ -17,27 +20,64 @@ func NewVolumeHandler(volumeService *services.VolumeService) *VolumeHandler {
 }
 
 func (h *VolumeHandler) List(c *gin.Context) {
-	driver := c.Query("driver")
-
-	var volumes []volume.Volume
-	var err error
-
-	if driver != "" {
-		volumes, err = h.volumeService.GetVolumesByDriver(c.Request.Context(), driver)
-	} else {
-		volumes, err = h.volumeService.ListVolumes(c.Request.Context())
-	}
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error": err.Error(),
+	var req utils.SortedPaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid pagination or sort parameters: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(200, gin.H{
-		"success": true,
-		"data":    volumes,
+	if req.Pagination.Page == 0 {
+		req.Pagination.Page = 1
+	}
+	if req.Pagination.Limit == 0 {
+		req.Pagination.Limit = 20
+	}
+
+	driver := c.Query("driver")
+
+	if req.Pagination.Page == 0 && req.Pagination.Limit == 0 {
+		volumes, err := h.volumeService.ListVolumesWithUsage(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		if driver != "" {
+			filtered := make([]map[string]interface{}, 0)
+			for _, vol := range volumes {
+				if volDriver, ok := vol["Driver"].(string); ok && volDriver == driver {
+					filtered = append(filtered, vol)
+				}
+			}
+			volumes = filtered
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    volumes,
+		})
+		return
+	}
+
+	volumes, pagination, err := h.volumeService.ListVolumesPaginated(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to list volumes: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"data":       volumes,
+		"pagination": pagination,
 	})
 }
 

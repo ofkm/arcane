@@ -222,10 +222,40 @@ export class EnvironmentAPIService extends BaseAPIService {
         return this.handleResponse(this.api.delete(`/environments/${envId}/networks/${networkId}`));
     }
 
-    async getVolumes(): Promise<any[]> {
+    async getVolumes(
+        pagination?: PaginationRequest,
+        sort?: SortRequest,
+        search?: string,
+        filters?: Record<string, string>
+    ): Promise<any[] | PaginatedApiResponse<any>> {
         const envId = await this.getCurrentEnvironmentId();
-        const response = await this.handleResponse<{ volumes?: any[] }>(this.api.get(`/environments/${envId}/volumes`));
-        return Array.isArray(response.volumes) ? response.volumes : Array.isArray(response) ? response : [];
+        
+        if (!pagination) {
+            const response = await this.handleResponse<{ volumes?: any[] }>(this.api.get(`/environments/${envId}/volumes`));
+            return Array.isArray(response.volumes) ? response.volumes : Array.isArray(response) ? response : [];
+        }
+
+        const params: any = {
+            'pagination[page]': pagination.page,
+            'pagination[limit]': pagination.limit
+        };
+
+        if (sort) {
+            params['sort[column]'] = sort.column;
+            params['sort[direction]'] = sort.direction;
+        }
+
+        if (search) {
+            params.search = search;
+        }
+
+        if (filters) {
+            Object.entries(filters).forEach(([key, value]) => {
+                params[key] = value;
+            });
+        }
+
+        return this.handleResponse(this.api.get(`/environments/${envId}/volumes`, { params }));
     }
 
     async getVolume(volumeName: string): Promise<any> {

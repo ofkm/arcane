@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -10,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types/volume"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type VolumeService struct {
@@ -169,4 +171,158 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 	}
 
 	return inUse, usingContainers, nil
+}
+
+func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
+	volumes, err := s.ListVolumes(ctx)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker volumes: %w", err)
+	}
+
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list containers: %w", err)
+	}
+
+	volumeUsageMap := make(map[string]bool)
+	for _, container := range containers {
+		containerInfo, err := dockerClient.ContainerInspect(ctx, container.ID)
+		if err != nil {
+			continue
+		}
+
+		for _, mount := range containerInfo.Mounts {
+			if mount.Type == "volume" {
+				volumeUsageMap[mount.Name] = true
+			}
+		}
+	}
+
+	var result []map[string]interface{}
+	for _, volume := range volumes {
+		inUse := volumeUsageMap[volume.Name]
+
+		volumeData := map[string]interface{}{
+			"Name":       volume.Name,
+			"Driver":     volume.Driver,
+			"Mountpoint": volume.Mountpoint,
+			"Scope":      volume.Scope,
+			"Options":    volume.Options,
+			"Labels":     volume.Labels,
+			"CreatedAt":  volume.CreatedAt,
+			"InUse":      inUse,
+		}
+
+		result = append(result, volumeData)
+	}
+
+	if req.Search != "" {
+		filtered := make([]map[string]interface{}, 0)
+		searchLower := strings.ToLower(req.Search)
+		for _, volume := range result {
+			if name, ok := volume["Name"].(string); ok {
+				if strings.Contains(strings.ToLower(name), searchLower) {
+					filtered = append(filtered, volume)
+					continue
+				}
+			}
+			if driver, ok := volume["Driver"].(string); ok {
+				if strings.Contains(strings.ToLower(driver), searchLower) {
+					filtered = append(filtered, volume)
+					continue
+				}
+			}
+		}
+		result = filtered
+	}
+
+	totalItems := len(result)
+
+	if req.Sort.Column != "" {
+		utils.SortSliceByField(result, req.Sort.Column, req.Sort.Direction)
+	}
+
+	startIdx := (req.Pagination.Page - 1) * req.Pagination.Limit
+	endIdx := startIdx + req.Pagination.Limit
+
+	if startIdx > len(result) {
+		startIdx = len(result)
+	}
+	if endIdx > len(result) {
+		endIdx = len(result)
+	}
+
+	if startIdx < endIdx {
+		result = result[startIdx:endIdx]
+	} else {
+		result = []map[string]interface{}{}
+	}
+
+	totalPages := (totalItems + req.Pagination.Limit - 1) / req.Pagination.Limit
+	pagination := utils.PaginationResponse{
+		TotalPages:   int64(totalPages),
+		TotalItems:   int64(totalItems),
+		CurrentPage:  req.Pagination.Page,
+		ItemsPerPage: req.Pagination.Limit,
+	}
+
+	return result, pagination, nil
+}
+
+func (s *VolumeService) ListVolumesWithUsage(ctx context.Context) ([]map[string]interface{}, error) {
+	volumes, err := s.ListVolumes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list Docker volumes: %w", err)
+	}
+
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list containers: %w", err)
+	}
+
+	volumeUsageMap := make(map[string]bool)
+	for _, container := range containers {
+		containerInfo, err := dockerClient.ContainerInspect(ctx, container.ID)
+		if err != nil {
+			continue
+		}
+
+		for _, mount := range containerInfo.Mounts {
+			if mount.Type == "volume" {
+				volumeUsageMap[mount.Name] = true
+			}
+		}
+	}
+
+	var result []map[string]interface{}
+	for _, volume := range volumes {
+		inUse := volumeUsageMap[volume.Name]
+
+		volumeData := map[string]interface{}{
+			"Name":       volume.Name,
+			"Driver":     volume.Driver,
+			"Mountpoint": volume.Mountpoint,
+			"Scope":      volume.Scope,
+			"Options":    volume.Options,
+			"Labels":     volume.Labels,
+			"CreatedAt":  volume.CreatedAt,
+			"InUse":      inUse,
+		}
+
+		result = append(result, volumeData)
+	}
+
+	return result, nil
 }

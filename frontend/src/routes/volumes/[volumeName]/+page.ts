@@ -14,7 +14,7 @@ export const load: PageLoad = async ({ params }) => {
 		const inUseResponse = await environmentAPI.getVolumeUsage(volumeName);
 
 		return {
-			volume,
+			volume: volume.data,
 			inUse: inUseResponse.data ? inUseResponse.data.inUse : false
 		};
 	} catch (err: any) {
