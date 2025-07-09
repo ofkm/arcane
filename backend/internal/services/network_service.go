@@ -3,10 +3,12 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/ofkm/arcane-backend/internal/database"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type NetworkService struct {
@@ -220,4 +222,91 @@ func (s *NetworkService) GetUserDefinedNetworks(ctx context.Context) ([]network.
 	}
 
 	return userDefined, nil
+}
+
+// ListNetworksPaginated returns paginated Docker networks
+func (s *NetworkService) ListNetworksPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
+	networks, err := s.ListNetworks(ctx)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker networks: %w", err)
+	}
+
+	var result []map[string]interface{}
+	for _, network := range networks {
+		networkData := map[string]interface{}{
+			"ID":         network.ID,
+			"Name":       network.Name,
+			"Driver":     network.Driver,
+			"Scope":      network.Scope,
+			"Created":    network.Created,
+			"Internal":   network.Internal,
+			"Attachable": network.Attachable,
+			"Ingress":    network.Ingress,
+			"ConfigFrom": network.ConfigFrom,
+			"ConfigOnly": network.ConfigOnly,
+			"Containers": network.Containers,
+			"Options":    network.Options,
+			"Labels":     network.Labels,
+		}
+
+		result = append(result, networkData)
+	}
+
+	if req.Search != "" {
+		filtered := make([]map[string]interface{}, 0)
+		searchLower := strings.ToLower(req.Search)
+		for _, network := range result {
+			if name, ok := network["Name"].(string); ok {
+				if strings.Contains(strings.ToLower(name), searchLower) {
+					filtered = append(filtered, network)
+					continue
+				}
+			}
+			if driver, ok := network["Driver"].(string); ok {
+				if strings.Contains(strings.ToLower(driver), searchLower) {
+					filtered = append(filtered, network)
+					continue
+				}
+			}
+			if scope, ok := network["Scope"].(string); ok {
+				if strings.Contains(strings.ToLower(scope), searchLower) {
+					filtered = append(filtered, network)
+					continue
+				}
+			}
+		}
+		result = filtered
+	}
+
+	totalItems := len(result)
+
+	if req.Sort.Column != "" {
+		utils.SortSliceByField(result, req.Sort.Column, req.Sort.Direction)
+	}
+
+	startIdx := (req.Pagination.Page - 1) * req.Pagination.Limit
+	endIdx := startIdx + req.Pagination.Limit
+
+	if startIdx > len(result) {
+		startIdx = len(result)
+	}
+	if endIdx > len(result) {
+		endIdx = len(result)
+	}
+
+	if startIdx < endIdx {
+		result = result[startIdx:endIdx]
+	} else {
+		result = []map[string]interface{}{}
+	}
+
+	totalPages := (totalItems + req.Pagination.Limit - 1) / req.Pagination.Limit
+	pagination := utils.PaginationResponse{
+		TotalPages:   int64(totalPages),
+		TotalItems:   int64(totalItems),
+		CurrentPage:  req.Pagination.Page,
+		ItemsPerPage: req.Pagination.Limit,
+	}
+
+	return result, pagination, nil
 }

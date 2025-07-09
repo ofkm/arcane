@@ -13,7 +13,7 @@ export const load: PageLoad = async ({ params }) => {
 		}
 
 		return {
-			network
+			network: network.data
 		};
 	} catch (err: any) {
 		console.error('Failed to load network:', err);

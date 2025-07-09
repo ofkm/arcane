@@ -6,6 +6,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type NetworkHandler struct {
@@ -19,38 +20,72 @@ func NewNetworkHandler(networkService *services.NetworkService) *NetworkHandler 
 }
 
 func (h *NetworkHandler) List(c *gin.Context) {
+	var req utils.SortedPaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid pagination or sort parameters: " + err.Error(),
+		})
+		return
+	}
+
+	if req.Pagination.Page == 0 {
+		req.Pagination.Page = 1
+	}
+	if req.Pagination.Limit == 0 {
+		req.Pagination.Limit = 20
+	}
+
 	driver := c.Query("driver")
 	scope := c.Query("scope")
 	userDefined := c.Query("user_defined") == "true"
 	defaults := c.Query("defaults") == "true"
 
-	var networks []network.Summary
-	var err error
+	if req.Pagination.Page == 0 && req.Pagination.Limit == 0 {
+		var networks []network.Summary
+		var err error
 
-	switch {
-	case driver != "":
-		networks, err = h.networkService.GetNetworksByDriver(c.Request.Context(), driver)
-	case scope != "":
-		networks, err = h.networkService.GetNetworksByScope(c.Request.Context(), scope)
-	case userDefined:
-		networks, err = h.networkService.GetUserDefinedNetworks(c.Request.Context())
-	case defaults:
-		networks, err = h.networkService.GetDefaultNetworks(c.Request.Context())
-	default:
-		networks, err = h.networkService.ListNetworks(c.Request.Context())
+		switch {
+		case driver != "":
+			networks, err = h.networkService.GetNetworksByDriver(c.Request.Context(), driver)
+		case scope != "":
+			networks, err = h.networkService.GetNetworksByScope(c.Request.Context(), scope)
+		case userDefined:
+			networks, err = h.networkService.GetUserDefinedNetworks(c.Request.Context())
+		case defaults:
+			networks, err = h.networkService.GetDefaultNetworks(c.Request.Context())
+		default:
+			networks, err = h.networkService.ListNetworks(c.Request.Context())
+		}
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    networks,
+		})
+		return
 	}
 
+	networks, pagination, err := h.networkService.ListNetworksPaginated(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "Failed to list networks: " + err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    networks,
+		"success":    true,
+		"data":       networks,
+		"pagination": pagination,
 	})
 }
 
