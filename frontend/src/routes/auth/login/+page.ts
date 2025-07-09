@@ -5,11 +5,11 @@ export const load = async ({ parent, url }) => {
 
 	// If already authenticated, redirect to dashboard
 	if (data.user && data.isAuthenticated) {
-		throw redirect(302, '/');
+		throw redirect(302, '/dashboard');
 	}
 
 	// Get redirect parameter from URL
-	const redirectTo = url.searchParams.get('redirect') || '/';
+	const redirectTo = url.searchParams.get('redirect') || '/dashboard';
 
 	// Get error parameter if any
 	const error = url.searchParams.get('error');

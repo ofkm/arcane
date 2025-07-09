@@ -42,7 +42,7 @@
 		try {
 			await authService.login({ username, password });
 			await invalidateAll();
-			const redirectTo = data.redirectTo || '/';
+			const redirectTo = data.redirectTo || '/dashboard';
 			goto(redirectTo);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Login failed';
@@ -54,7 +54,9 @@
 	const showDivider = $derived(showOidcLoginButton && showLocalLoginForm);
 </script>
 
-<div class="bg-background/50 flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+<div
+	class="bg-background/50 flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8"
+>
 	<div class="w-full max-w-md space-y-8">
 		<!-- Logo and Title -->
 		<div class="text-center">
@@ -82,7 +84,8 @@
 						{:else if data.error === 'oidc_missing_sub'}
 							Your OIDC provider did not return a subject identifier.
 						{:else if data.error === 'oidc_email_collision'}
-							An account with your email already exists but is linked to a different OIDC identity. Please contact an administrator.
+							An account with your email already exists but is linked to a different OIDC identity.
+							Please contact an administrator.
 						{:else if data.error === 'oidc_token_error'}
 							There was an error obtaining tokens from the OIDC provider.
 						{:else if data.error === 'user_processing_failed'}
@@ -106,14 +109,20 @@
 				<Alert.Root variant="destructive">
 					<AlertCircle class="mr-2 size-4" />
 					<Alert.Title>No Login Methods Configured</Alert.Title>
-					<Alert.Description>There are currently no login methods enabled. Please contact an administrator.</Alert.Description>
+					<Alert.Description
+						>There are currently no login methods enabled. Please contact an administrator.</Alert.Description
+					>
 				</Alert.Root>
 			{/if}
 
 			<!-- OIDC Login Button (when only OIDC is available) -->
 			{#if showOidcLoginButton && !showLocalLoginForm}
 				<div class="pt-2">
-					<Button onclick={handleOidcLogin} variant="default" class="arcane-button-restart w-full py-6 text-base">
+					<Button
+						onclick={handleOidcLogin}
+						variant="default"
+						class="arcane-button-restart w-full py-6 text-base"
+					>
 						<LogIn class="mr-3 size-5" />
 						Sign in with OIDC Provider
 					</Button>
@@ -128,10 +137,22 @@
 						<div>
 							<Label for="username" class="mb-1.5 block text-sm font-medium">Username</Label>
 							<div class="relative">
-								<div class="text-muted-foreground pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+								<div
+									class="text-muted-foreground pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
+								>
 									<User class="size-4" />
 								</div>
-								<Input id="username" name="username" type="text" autocomplete="username" required bind:value={username} class="pl-10" placeholder="Enter your username or email" disabled={loading} />
+								<Input
+									id="username"
+									name="username"
+									type="text"
+									autocomplete="username"
+									required
+									bind:value={username}
+									class="pl-10"
+									placeholder="Enter your username or email"
+									disabled={loading}
+								/>
 							</div>
 						</div>
 
@@ -139,19 +160,38 @@
 						<div>
 							<Label for="password" class="mb-1.5 block text-sm font-medium">Password</Label>
 							<div class="relative">
-								<div class="text-muted-foreground pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+								<div
+									class="text-muted-foreground pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
+								>
 									<Lock class="size-4" />
 								</div>
-								<Input id="password" name="password" type="password" autocomplete="current-password" required bind:value={password} class="pl-10" placeholder="Enter your password" disabled={loading} />
+								<Input
+									id="password"
+									name="password"
+									type="password"
+									autocomplete="current-password"
+									required
+									bind:value={password}
+									class="pl-10"
+									placeholder="Enter your password"
+									disabled={loading}
+								/>
 							</div>
 						</div>
 					</div>
 
 					<!-- Sign In Button -->
 					<div class="pt-2">
-						<Button type="submit" class="arcane-button-create w-full py-6 text-base" disabled={loading} aria-busy={loading}>
+						<Button
+							type="submit"
+							class="arcane-button-create w-full py-6 text-base"
+							disabled={loading}
+							aria-busy={loading}
+						>
 							{#if loading}
-								<div class="mr-2 size-4 animate-spin rounded-full border-2 border-t-transparent"></div>
+								<div
+									class="mr-2 size-4 animate-spin rounded-full border-2 border-t-transparent"
+								></div>
 							{/if}
 							Sign in
 						</Button>
@@ -172,7 +212,11 @@
 
 				<!-- OIDC Login Button (when both methods are available) -->
 				{#if showOidcLoginButton && showDivider}
-					<Button onclick={handleOidcLogin} variant="outline" class="arcane-button-restart w-full py-5">
+					<Button
+						onclick={handleOidcLogin}
+						variant="outline"
+						class="arcane-button-restart w-full py-5"
+					>
 						<LogIn class="mr-2 size-4" />
 						Sign in with OIDC Provider
 					</Button>
@@ -182,7 +226,12 @@
 
 		<!-- Footer Text -->
 		<p class="text-muted-foreground text-center text-xs">
-			<a href="https://github.com/ofkm/arcane" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">View on GitHub</a>
+			<a
+				href="https://github.com/ofkm/arcane"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="text-primary hover:underline">View on GitHub</a
+			>
 		</p>
 	</div>
 </div>
