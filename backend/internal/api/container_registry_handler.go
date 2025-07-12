@@ -32,26 +32,39 @@ func NewContainerRegistryHandler(registryService *services.ContainerRegistryServ
 // @Failure 500 {object} models.APIErrorResponse
 // @Router /container-registries [get]
 func (h *ContainerRegistryHandler) GetRegistries(c *gin.Context) {
-	registries, err := h.registryService.GetAllRegistries(c.Request.Context())
-	if err != nil {
-		apiErr := models.ToAPIError(err)
-		c.JSON(apiErr.HTTPStatus(), models.APIErrorResponse{
-			Success: false,
-			Error:   apiErr.Message,
-			Code:    apiErr.Code,
-			Details: apiErr.Details,
+	var req utils.SortedPaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid pagination or sort parameters: " + err.Error(),
 		})
 		return
 	}
 
-	// Don't return the encrypted tokens in the response
+	if req.Pagination.Page == 0 {
+		req.Pagination.Page = 1
+	}
+	if req.Pagination.Limit == 0 {
+		req.Pagination.Limit = 20
+	}
+
+	registries, pagination, err := h.registryService.GetRegistriesPaginated(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to list registries: " + err.Error(),
+		})
+		return
+	}
+
 	for i := range registries {
 		registries[i].Token = ""
 	}
 
-	c.JSON(http.StatusOK, models.APISuccessResponse{
-		Success: true,
-		Data:    registries,
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"data":       registries,
+		"pagination": pagination,
 	})
 }
 
@@ -81,7 +94,6 @@ func (h *ContainerRegistryHandler) GetRegistry(c *gin.Context) {
 		return
 	}
 
-	// Don't return the encrypted token
 	registry.Token = ""
 
 	c.JSON(http.StatusOK, models.APISuccessResponse{
@@ -126,7 +138,6 @@ func (h *ContainerRegistryHandler) CreateRegistry(c *gin.Context) {
 		return
 	}
 
-	// Don't return the encrypted token
 	registry.Token = ""
 
 	c.JSON(http.StatusCreated, models.APISuccessResponse{
@@ -176,7 +187,6 @@ func (h *ContainerRegistryHandler) UpdateRegistry(c *gin.Context) {
 		return
 	}
 
-	// Don't return the encrypted token
 	registry.Token = ""
 
 	c.JSON(http.StatusOK, models.APISuccessResponse{
@@ -232,7 +242,6 @@ func (h *ContainerRegistryHandler) DeleteRegistry(c *gin.Context) {
 func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 	id := c.Param("id")
 
-	// Get the registry
 	registry, err := h.registryService.GetRegistryByID(c.Request.Context(), id)
 	if err != nil {
 		apiErr := models.ToAPIError(err)
@@ -245,7 +254,6 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 		return
 	}
 
-	// Get decrypted token
 	decryptedToken, err := utils.Decrypt(registry.Token)
 	if err != nil {
 		apiErr := models.NewInternalServerError("Failed to decrypt token")
@@ -257,7 +265,6 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 		return
 	}
 
-	// Perform actual registry connection test using the enhanced utils
 	testResult, err := h.performRegistryTest(c.Request.Context(), registry, decryptedToken)
 	if err != nil {
 		apiErr := models.NewInternalServerError(fmt.Sprintf("Registry test failed: %s", err.Error()))
@@ -278,7 +285,6 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 
 // performRegistryTest performs the actual registry connection test using registry utils
 func (h *ContainerRegistryHandler) performRegistryTest(ctx context.Context, registry *models.ContainerRegistry, decryptedToken string) (map[string]interface{}, error) {
-	// Prepare credentials
 	var creds *utils.RegistryCredentials
 	if registry.Username != "" && decryptedToken != "" {
 		creds = &utils.RegistryCredentials{
@@ -287,13 +293,11 @@ func (h *ContainerRegistryHandler) performRegistryTest(ctx context.Context, regi
 		}
 	}
 
-	// Use the enhanced registry utils to test the connection
 	testResult, err := utils.TestRegistryConnection(ctx, registry.URL, creds)
 	if err != nil {
 		return nil, fmt.Errorf("registry test failed: %w", err)
 	}
 
-	// Convert the result to a map for JSON response
 	result := map[string]interface{}{
 		"status":          getStatusString(testResult.OverallSuccess),
 		"url":             registry.URL,
@@ -314,7 +318,6 @@ func (h *ContainerRegistryHandler) performRegistryTest(ctx context.Context, regi
 		result["message"] = "All registry tests passed successfully"
 	}
 
-	// Add detailed test breakdown
 	result["tests"] = map[string]interface{}{
 		"connectivity": map[string]interface{}{
 			"success":     testResult.PingSuccess,

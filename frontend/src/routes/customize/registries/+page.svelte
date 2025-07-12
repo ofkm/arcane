@@ -1,31 +1,107 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { Key, Plus, Trash2, Ellipsis, Pencil, RefreshCw, TestTube } from '@lucide/svelte';
-	import UniversalTable from '$lib/components/universal-table.svelte';
-	import * as Table from '$lib/components/ui/table';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import ContainerRegistryFormSheet from '$lib/components/sheets/container-registry-sheet.svelte';
-	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import { Key } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import type { ContainerRegistry } from '$lib/models/container-registry';
-	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/dto/container-registry-dto';
+	import type {
+		ContainerRegistryCreateDto,
+		ContainerRegistryUpdateDto
+	} from '$lib/dto/container-registry-dto';
 	import { containerRegistryAPI } from '$lib/services/api';
+	import ContainerRegistryFormSheet from '$lib/components/sheets/container-registry-sheet.svelte';
+	import RegistryTable from './registry-table.svelte';
+	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
+	import type { PageData } from './$types';
 
-	let { data } = $props();
-	let registries = $state<ContainerRegistry[]>(data.registries || []);
+	let { data }: { data: PageData } = $props();
 
+	let registries = $state<ContainerRegistry[]>([]);
+	let paginatedRegistries = $state<Paginated<ContainerRegistry> | null>(null);
+	let selectedIds = $state<string[]>([]);
 	let isRegistryDialogOpen = $state(false);
 	let registryToEdit = $state<ContainerRegistry | null>(null);
-	let isLoadingAction = $state(false);
+	let requestOptions = $state<SearchPaginationSortRequest>(data.registryRequestOptions);
 
-	async function loadRegistries() {
-		try {
-			registries = await containerRegistryAPI.getAllRegistries();
-		} catch (error) {
-			console.error('Error loading registries:', error);
-			toast.error('Failed to load registries');
+	let isLoading = $state({
+		create: false,
+		edit: false,
+		refresh: false
+	});
+
+	$effect(() => {
+		if (data.registries) {
+			if (Array.isArray(data.registries)) {
+				registries = data.registries;
+				const paginatedData: Paginated<ContainerRegistry> = {
+					data: data.registries,
+					pagination: {
+						totalPages: 1,
+						totalItems: data.registries.length,
+						currentPage: 1,
+						itemsPerPage: data.registries.length
+					}
+				};
+				paginatedRegistries = paginatedData;
+			} else {
+				const paginatedData: Paginated<ContainerRegistry> = {
+					data: data.registries.data,
+					pagination: data.registries.pagination
+				};
+				paginatedRegistries = paginatedData;
+				registries = data.registries.data || [];
+			}
 		}
+	});
+
+	async function onRefresh(
+		options: SearchPaginationSortRequest
+	): Promise<Paginated<ContainerRegistry>> {
+		const response = await containerRegistryAPI.getRegistries(
+			options.pagination,
+			options.sort,
+			options.search,
+			options.filters
+		);
+
+		if (Array.isArray(response)) {
+			registries = response;
+			const paginatedResponse: Paginated<ContainerRegistry> = {
+				data: response,
+				pagination: {
+					totalPages: 1,
+					totalItems: response.length,
+					currentPage: options.pagination?.page || 1,
+					itemsPerPage: response.length
+				}
+			};
+			paginatedRegistries = paginatedResponse;
+			return paginatedResponse;
+		} else {
+			const paginatedResponse: Paginated<ContainerRegistry> = {
+				data: response.data,
+				pagination: response.pagination
+			};
+			paginatedRegistries = paginatedResponse;
+			registries = response.data || [];
+			return paginatedResponse;
+		}
+	}
+
+	async function refreshRegistries() {
+		isLoading.refresh = true;
+		try {
+			await onRefresh(requestOptions);
+		} catch (error) {
+			console.error('Failed to refresh registries:', error);
+			toast.error('Failed to refresh registries');
+		} finally {
+			isLoading.refresh = false;
+		}
+	}
+
+	async function onRegistriesChanged() {
+		await refreshRegistries();
 	}
 
 	function openCreateRegistryDialog() {
@@ -38,72 +114,33 @@
 		isRegistryDialogOpen = true;
 	}
 
-	// Updated function signature - now receives detail directly
-	async function handleRegistryDialogSubmit(detail: { registry: ContainerRegistryCreateDto | ContainerRegistryUpdateDto; isEditMode: boolean }) {
+	async function handleRegistryDialogSubmit(detail: {
+		registry: ContainerRegistryCreateDto | ContainerRegistryUpdateDto;
+		isEditMode: boolean;
+	}) {
 		const { registry, isEditMode } = detail;
-		isLoadingAction = true;
+		const loadingKey = isEditMode ? 'edit' : 'create';
+		isLoading[loadingKey] = true;
 
 		try {
 			if (isEditMode && registryToEdit?.id) {
-				await containerRegistryAPI.updateRegistry(registryToEdit.id, registry as ContainerRegistryUpdateDto);
+				await containerRegistryAPI.updateRegistry(
+					registryToEdit.id,
+					registry as ContainerRegistryUpdateDto
+				);
 				toast.success('Registry updated successfully');
 			} else {
 				await containerRegistryAPI.createRegistry(registry as ContainerRegistryCreateDto);
 				toast.success('Registry created successfully');
 			}
 
-			await loadRegistries();
+			await refreshRegistries();
 			isRegistryDialogOpen = false;
 		} catch (error) {
 			console.error('Error saving registry:', error);
 			toast.error(error instanceof Error ? error.message : 'Failed to save registry');
 		} finally {
-			isLoadingAction = false;
-		}
-	}
-
-	function confirmRemoveRegistry(registry: ContainerRegistry) {
-		openConfirmDialog({
-			title: 'Remove Registry',
-			message: `Are you sure you want to remove the registry "${registry.url}"? This action cannot be undone.`,
-			confirm: {
-				label: 'Remove',
-				destructive: true,
-				action: async () => {
-					if (registry.id) {
-						await removeRegistry(registry.id);
-					}
-				}
-			}
-		});
-	}
-
-	async function removeRegistry(id: string) {
-		isLoadingAction = true;
-
-		try {
-			await containerRegistryAPI.deleteRegistry(id);
-			toast.success('Registry removed successfully');
-			await loadRegistries();
-		} catch (error) {
-			console.error('Error removing registry:', error);
-			toast.error(error instanceof Error ? error.message : 'Failed to remove registry');
-		} finally {
-			isLoadingAction = false;
-		}
-	}
-
-	async function testRegistry(id: string, url: string) {
-		isLoadingAction = true;
-
-		try {
-			const result = await containerRegistryAPI.testRegistry(id);
-			toast.success(`Registry test passed: ${result.message}`);
-		} catch (error) {
-			console.error('Error testing registry:', error);
-			toast.error(error instanceof Error ? error.message : 'Failed to test registry');
-		} finally {
-			isLoadingAction = false;
+			isLoading[loadingKey] = false;
 		}
 	}
 </script>
@@ -112,29 +149,30 @@
 	<title>Container Registries - Arcane</title>
 </svelte:head>
 
-<ContainerRegistryFormSheet bind:open={isRegistryDialogOpen} bind:registryToEdit onSubmit={handleRegistryDialogSubmit} isLoading={isLoadingAction} />
+<ContainerRegistryFormSheet
+	bind:open={isRegistryDialogOpen}
+	bind:registryToEdit
+	onSubmit={handleRegistryDialogSubmit}
+	isLoading={isLoading.create || isLoading.edit}
+/>
 
 <div class="space-y-6">
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Container Registries</h1>
-			<p class="text-muted-foreground mt-1 text-sm">Configure access credentials for private Docker registries and container repositories</p>
+			<p class="text-muted-foreground mt-1 text-sm">
+				Configure access credentials for private Docker registries and container repositories
+			</p>
 		</div>
-
-		<div class="flex gap-2">
-			<Button onclick={loadRegistries} disabled={isLoadingAction} variant="outline" class="h-10">
-				<RefreshCw class="size-4" />
-				Refresh
-			</Button>
-			<Button onclick={openCreateRegistryDialog} disabled={isLoadingAction} class="arcane-button-save h-10">
-				{#if isLoadingAction}
-					<RefreshCw class="size-4 animate-spin" />
-					Processing...
-				{:else}
-					<Plus class="size-4" />
-					Add Registry
-				{/if}
-			</Button>
+		<div class="flex items-center gap-2">
+			<ArcaneButton
+				action="restart"
+				onClick={refreshRegistries}
+				label="Refresh"
+				loading={isLoading.refresh}
+				disabled={isLoading.refresh}
+			/>
+			<ArcaneButton action="create" onClick={openCreateRegistryDialog} label="Add Registry" />
 		</div>
 	</div>
 
@@ -146,119 +184,34 @@
 				</div>
 				<div>
 					<Card.Title>Docker Registry Credentials</Card.Title>
-					<Card.Description>Manage authentication credentials for private Docker registries like Docker Hub, GitHub Container Registry, Google Container Registry, and custom registries</Card.Description>
+					<Card.Description>
+						Manage authentication credentials for private Docker registries like Docker Hub, GitHub
+						Container Registry, Google Container Registry, and custom registries
+					</Card.Description>
 				</div>
 			</div>
 		</Card.Header>
 		<Card.Content>
-			{#if !registries || registries.length === 0}
-				<div class="py-12 text-center">
-					<div class="bg-muted/30 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-						<Key class="text-muted-foreground size-8" />
-					</div>
-					<h3 class="mb-2 text-lg font-medium">No Registry Credentials</h3>
-					<p class="text-muted-foreground mx-auto mb-4 max-w-sm text-sm">Add registry credentials to authenticate with private Docker registries when pulling images.</p>
-					<Button onclick={openCreateRegistryDialog} class="arcane-button-save">
-						<Plus class="size-4" />
-						Add Your First Registry
-					</Button>
-				</div>
-			{:else}
-				<UniversalTable
-					data={registries}
-					columns={[
-						{ accessorKey: 'url', header: 'Registry URL' },
-						{ accessorKey: 'username', header: 'Username' },
-						{ accessorKey: 'description', header: 'Description' },
-						{ accessorKey: 'enabled', header: 'Status' },
-						{ accessorKey: 'actions', header: 'Actions', enableSorting: false }
-					]}
-					features={{
-						sorting: true,
-						filtering: true,
-						selection: false
-					}}
-					pagination={{
-						pageSize: 10,
-						pageSizeOptions: [5, 10, 20]
-					}}
-					sort={{
-						defaultSort: { id: 'url', desc: false }
-					}}
-					display={{
-						noResultsMessage: 'No registry credentials found.',
-						filterPlaceholder: 'Search registries...'
-					}}
-				>
-					{#snippet rows({ item, index })}
-						{#if typeof index === 'number'}
-							<Table.Cell class="font-medium">
-								<div class="flex flex-col">
-									<span class="font-medium">
-										{item.url || 'docker.io (Docker Hub)'}
-									</span>
-									{#if item.url && (item.url.includes('ghcr.io') || item.url.includes('gcr.io') || item.url.includes('quay.io'))}
-										<span class="text-muted-foreground text-xs">
-											{#if item.url.includes('ghcr.io')}
-												GitHub Container Registry
-											{:else if item.url.includes('gcr.io')}
-												Google Container Registry
-											{:else if item.url.includes('quay.io')}
-												Quay.io Registry
-											{/if}
-										</span>
-									{/if}
-								</div>
-							</Table.Cell>
-							<Table.Cell>
-								<div class="flex items-center gap-2">
-									<span class="font-mono text-sm">{item.username || '-'}</span>
-								</div>
-							</Table.Cell>
-							<Table.Cell>
-								<span class="text-muted-foreground text-sm">
-									{item.description || 'No description provided'}
-								</span>
-							</Table.Cell>
-							<Table.Cell>
-								<span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {item.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
-									{item.enabled ? 'Enabled' : 'Disabled'}
-								</span>
-							</Table.Cell>
-							<Table.Cell class="text-right">
-								<DropdownMenu.Root>
-									<DropdownMenu.Trigger>
-										<Button variant="ghost" size="icon" class="size-8">
-											<Ellipsis class="size-4" />
-											<span class="sr-only">Open menu</span>
-										</Button>
-									</DropdownMenu.Trigger>
-									<DropdownMenu.Content align="end">
-										{#if item.id}
-											<DropdownMenu.Item onclick={() => testRegistry(item.id!, item.url)}>
-												<TestTube class="mr-2 size-4" />
-												Test Connection
-											</DropdownMenu.Item>
-										{/if}
-										<DropdownMenu.Item onclick={() => openEditRegistryDialog(item)}>
-											<Pencil class="mr-2 size-4" />
-											Edit
-										</DropdownMenu.Item>
-										<DropdownMenu.Item onclick={() => confirmRemoveRegistry(item)} class="focus:bg-destructive/10 text-red-500 focus:text-red-700!">
-											<Trash2 class="mr-2 size-4" />
-											Remove
-										</DropdownMenu.Item>
-									</DropdownMenu.Content>
-								</DropdownMenu.Root>
-							</Table.Cell>
-						{/if}
-					{/snippet}
-				</UniversalTable>
-			{/if}
+			<RegistryTable
+				registries={paginatedRegistries || {
+					data: registries,
+					pagination: {
+						totalPages: 1,
+						totalItems: registries.length,
+						currentPage: 1,
+						itemsPerPage: registries.length
+					}
+				}}
+				bind:selectedIds
+				bind:requestOptions
+				{onRefresh}
+				{onRegistriesChanged}
+				onCreateRegistry={openCreateRegistryDialog}
+				onEditRegistry={openEditRegistryDialog}
+			/>
 		</Card.Content>
 	</Card.Root>
 
-	<!-- Registry Information Card -->
 	<Card.Root class="border shadow-sm">
 		<Card.Header>
 			<Card.Title class="text-lg">Registry Information</Card.Title>

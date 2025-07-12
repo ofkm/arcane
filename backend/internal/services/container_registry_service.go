@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,7 +20,6 @@ func NewContainerRegistryService(db *database.DB) *ContainerRegistryService {
 	return &ContainerRegistryService{db: db}
 }
 
-// generateID generates a unique ID for container registries
 func generateID() string {
 	return uuid.New().String()
 }
@@ -30,6 +30,23 @@ func (s *ContainerRegistryService) GetAllRegistries(ctx context.Context) ([]mode
 		return nil, fmt.Errorf("failed to get container registries: %w", err)
 	}
 	return registries, nil
+}
+
+func (s *ContainerRegistryService) GetRegistriesPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]models.ContainerRegistry, utils.PaginationResponse, error) {
+	var registries []models.ContainerRegistry
+	query := s.db.WithContext(ctx).Model(&models.ContainerRegistry{})
+
+	if req.Search != "" {
+		searchTerm := "%" + strings.ToLower(req.Search) + "%"
+		query = query.Where("LOWER(url) LIKE ? OR LOWER(username) LIKE ? OR LOWER(description) LIKE ?", searchTerm, searchTerm, searchTerm)
+	}
+
+	pagination, err := utils.PaginateAndSort(req, query, &registries)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate container registries: %w", err)
+	}
+
+	return registries, pagination, nil
 }
 
 func (s *ContainerRegistryService) GetRegistryByID(ctx context.Context, id string) (*models.ContainerRegistry, error) {

@@ -5,15 +5,15 @@ import (
 )
 
 type ContainerRegistry struct {
-	ID          string    `json:"id" gorm:"primaryKey"`
-	URL         string    `json:"url" gorm:"not null"`
-	Username    string    `json:"username" gorm:"not null"`
+	ID          string    `json:"id" gorm:"primaryKey" sortable:"true"`
+	URL         string    `json:"url" gorm:"not null" sortable:"true"`
+	Username    string    `json:"username" gorm:"not null" sortable:"true"`
 	Token       string    `json:"token" gorm:"not null"`
-	Description *string   `json:"description,omitempty"`
-	Insecure    bool      `json:"insecure" gorm:"default:false"`
-	Enabled     bool      `json:"enabled" gorm:"default:true"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	Description *string   `json:"description,omitempty" sortable:"true"`
+	Insecure    bool      `json:"insecure" gorm:"default:false" sortable:"true"`
+	Enabled     bool      `json:"enabled" gorm:"default:true" sortable:"true"`
+	CreatedAt   time.Time `json:"createdAt" sortable:"true"`
+	UpdatedAt   time.Time `json:"updatedAt" sortable:"true"`
 }
 
 func (ContainerRegistry) TableName() string {
