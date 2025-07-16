@@ -1,5 +1,5 @@
 import ImageAPIService from './image-api-service';
-import ImageMaturityAPIService from './image-maturity-api-service';
+import ImageUpdateAPIService from './image-update-api-service';
 import SystemAPIService from './system-api-service';
 import TemplateAPIService from './template-api-service';
 import UserAPIService from './user-api-service';
@@ -14,7 +14,7 @@ import { EnvironmentAPIService } from './environment-api-service';
 import EnvironmentManagementAPIService from './environment-management-api-service';
 
 export const imageAPI = new ImageAPIService();
-export const imageMaturityAPI = new ImageMaturityAPIService();
+export const imageUpdateAPI = new ImageUpdateAPIService();
 export const systemAPI = new SystemAPIService();
 export const templateAPI = new TemplateAPIService();
 export const userAPI = new UserAPIService();
@@ -30,7 +30,7 @@ export const environmentManagementAPI = new EnvironmentManagementAPIService();
 
 interface APIServices {
 	image: ImageAPIService;
-	imageMaturity: ImageMaturityAPIService;
+	imageUpdate: ImageUpdateAPIService;
 	system: SystemAPIService;
 	template: TemplateAPIService;
 	user: UserAPIService;
@@ -47,7 +47,7 @@ interface APIServices {
 
 const apiServices: APIServices = {
 	image: imageAPI,
-	imageMaturity: imageMaturityAPI,
+	imageUpdate: imageUpdateAPI,
 	system: systemAPI,
 	template: templateAPI,
 	user: userAPI,

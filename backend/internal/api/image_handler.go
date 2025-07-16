@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -14,14 +13,14 @@ import (
 )
 
 type ImageHandler struct {
-	imageService         *services.ImageService
-	imageMaturityService *services.ImageMaturityService
+	imageService       *services.ImageService
+	imageUpdateService *services.ImageUpdateService
 }
 
-func NewImageHandler(imageService *services.ImageService, imageMaturityService *services.ImageMaturityService) *ImageHandler {
+func NewImageHandler(imageService *services.ImageService, imageUpdateService *services.ImageUpdateService) *ImageHandler {
 	return &ImageHandler{
-		imageService:         imageService,
-		imageMaturityService: imageMaturityService,
+		imageService:       imageService,
+		imageUpdateService: imageUpdateService,
 	}
 }
 
@@ -42,7 +41,7 @@ func (h *ImageHandler) List(c *gin.Context) {
 		req.Pagination.Limit = 20
 	}
 
-	images, pagination, err := h.imageService.ListImagesWithMaturityPaginated(c.Request.Context(), req)
+	images, pagination, err := h.imageService.ListImagesWithUpdatesPaginated(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -171,102 +170,5 @@ func (h *ImageHandler) GetHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    history,
-	})
-}
-
-func (h *ImageHandler) CheckMaturity(c *gin.Context) {
-	imageID := c.Param("id")
-	if imageID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Image ID is required",
-		})
-		return
-	}
-
-	images, err := h.imageService.ListImages(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to list images: " + err.Error(),
-		})
-		return
-	}
-
-	var targetImage *struct {
-		ID       string
-		RepoTags []string
-		Created  int64
-	}
-
-	for _, img := range images {
-		if img.ID == imageID {
-			targetImage = &struct {
-				ID       string
-				RepoTags []string
-				Created  int64
-			}{
-				ID:       img.ID,
-				RepoTags: img.RepoTags,
-				Created:  img.Created,
-			}
-			break
-		}
-	}
-
-	if targetImage == nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Image not found",
-		})
-		return
-	}
-
-	if len(targetImage.RepoTags) == 0 || targetImage.RepoTags[0] == "<none>:<none>" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Image has no valid tags for maturity checking",
-		})
-		return
-	}
-
-	repoTag := targetImage.RepoTags[0]
-	parts := strings.Split(repoTag, ":")
-	if len(parts) != 2 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid repo tag format",
-		})
-		return
-	}
-
-	repo := parts[0]
-	tag := parts[1]
-
-	maturityData, err := h.imageMaturityService.CheckImageMaturity(c.Request.Context(), imageID, repo, tag, time.Unix(targetImage.Created, 0))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to check maturity: " + err.Error(),
-		})
-		return
-	}
-
-	errSet := h.imageMaturityService.SetImageMaturity(c.Request.Context(), imageID, repo, tag, *maturityData, map[string]interface{}{
-		"registryDomain":    utils.ExtractRegistryDomain(repo),
-		"isPrivateRegistry": utils.IsPrivateRegistry(repo),
-		"currentImageDate":  time.Unix(targetImage.Created, 0),
-	})
-	if errSet != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to set image maturity: " + errSet.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    maturityData,
 	})
 }

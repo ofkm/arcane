@@ -25,17 +25,18 @@ import (
 )
 
 type ImageService struct {
-	db                   *database.DB
-	dockerService        *DockerClientService
-	imageMaturityService *ImageMaturityService
-	registryService      *ContainerRegistryService
+	db                 *database.DB
+	dockerService      *DockerClientService
+	imageUpdateService *ImageUpdateService
+	registryService    *ContainerRegistryService
 }
 
-func NewImageService(db *database.DB, dockerService *DockerClientService, registryService *ContainerRegistryService) *ImageService {
+func NewImageService(db *database.DB, dockerService *DockerClientService, registryService *ContainerRegistryService, imageUpdateService *ImageUpdateService) *ImageService {
 	return &ImageService{
-		db:              db,
-		dockerService:   dockerService,
-		registryService: registryService,
+		db:                 db,
+		dockerService:      dockerService,
+		registryService:    registryService,
+		imageUpdateService: imageUpdateService,
 	}
 }
 
@@ -461,6 +462,27 @@ func (s *ImageService) UpdateImageMaturity(ctx context.Context, imageID string, 
 	return nil
 }
 
+func (s *ImageService) UpdateImageUpdate(ctx context.Context, imageID string, updateData *models.ImageUpdateRecord) error {
+	var image models.Image
+	if err := s.db.WithContext(ctx).Where("id = ?", imageID).First(&image).Error; err != nil {
+		return fmt.Errorf("image not found in database: %w", err)
+	}
+
+	updateData.ID = imageID
+	if err := s.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"repository", "tag", "has_update", "update_type",
+			"current_version", "latest_version", "current_digest",
+			"latest_digest", "check_time", "response_time_ms", "last_error",
+		}),
+	}).Create(updateData).Error; err != nil {
+		return fmt.Errorf("failed to update image update record: %w", err)
+	}
+
+	return nil
+}
+
 func (s *ImageService) GetImagesNeedingMaturityCheck(ctx context.Context, olderThan time.Duration) ([]*models.Image, error) {
 	cutoff := time.Now().Add(-olderThan)
 
@@ -477,49 +499,34 @@ func (s *ImageService) GetImagesNeedingMaturityCheck(ctx context.Context, olderT
 	return images, nil
 }
 
-func (s *ImageService) GetImagesWithMaturity(ctx context.Context) ([]map[string]interface{}, error) {
-	images, err := s.dockerService.CreateConnection(ctx)
+func (s *ImageService) GetImagesNeedingUpdateCheck(ctx context.Context, olderThan time.Duration) ([]*models.Image, error) {
+	cutoff := time.Now().Add(-olderThan)
+
+	var images []*models.Image
+	query := s.db.WithContext(ctx).
+		Preload("UpdateRecord").
+		Where("repo != ? AND tag != ?", "<none>", "<none>").
+		Where("id NOT IN (SELECT id FROM image_update_table WHERE check_time > ?)", cutoff)
+
+	if err := query.Find(&images).Error; err != nil {
+		return nil, fmt.Errorf("failed to get images needing update check: %w", err)
+	}
+
+	return images, nil
+}
+
+func (s *ImageService) ListImagesWithUpdates(ctx context.Context) ([]*models.Image, error) {
+	_, err := s.ListImages(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer images.Close()
-
-	dockerImages, err := images.ImageList(ctx, image.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list images: %w", err)
+		return nil, fmt.Errorf("failed to list and sync Docker images: %w", err)
 	}
 
-	var result []map[string]interface{}
-
-	for _, img := range dockerImages {
-		imageData := map[string]interface{}{
-			"Id":          img.ID,
-			"ParentId":    img.ParentID,
-			"RepoTags":    img.RepoTags,
-			"RepoDigests": img.RepoDigests,
-			"Created":     img.Created,
-			"Size":        img.Size,
-			"SharedSize":  img.SharedSize,
-			"Labels":      img.Labels,
-			"Containers":  img.Containers,
-		}
-
-		if s.imageMaturityService != nil {
-			maturityRecord, err := s.imageMaturityService.GetImageMaturity(ctx, img.ID)
-			if err == nil {
-				imageData["maturity"] = map[string]interface{}{
-					"updatesAvailable": maturityRecord.UpdatesAvailable,
-					"status":           maturityRecord.Status,
-					"version":          maturityRecord.CurrentVersion,
-					"date":             maturityRecord.CurrentImageDate,
-				}
-			}
-		}
-
-		result = append(result, imageData)
+	var images []*models.Image
+	if err := s.db.WithContext(ctx).Preload("UpdateRecord").Find(&images).Error; err != nil {
+		return nil, fmt.Errorf("failed to get images with update data from DB: %w", err)
 	}
 
-	return result, nil
+	return images, nil
 }
 
 func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID string) error {
@@ -539,14 +546,14 @@ func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID 
 	return nil
 }
 
-func (s *ImageService) ListImagesWithMaturityPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
+func (s *ImageService) ListImagesWithUpdatesPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]map[string]interface{}, utils.PaginationResponse, error) {
 	_, err := s.ListImages(ctx)
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list and sync Docker images: %w", err)
 	}
 
 	var images []*models.Image
-	query := s.db.WithContext(ctx).Model(&models.Image{}).Preload("MaturityRecord")
+	query := s.db.WithContext(ctx).Model(&models.Image{}).Preload("UpdateRecord")
 
 	pagination, err := utils.PaginateAndSort(req, query, &images)
 	if err != nil {
@@ -568,12 +575,17 @@ func (s *ImageService) ListImagesWithMaturityPaginated(ctx context.Context, req 
 			"Tag":         img.Tag,
 		}
 
-		if img.MaturityRecord != nil {
-			imageData["maturity"] = map[string]interface{}{
-				"updatesAvailable": img.MaturityRecord.UpdatesAvailable,
-				"status":           img.MaturityRecord.Status,
-				"version":          img.MaturityRecord.CurrentVersion,
-				"date":             img.MaturityRecord.CurrentImageDate,
+		if img.UpdateRecord != nil {
+			imageData["updateInfo"] = map[string]interface{}{
+				"hasUpdate":      img.UpdateRecord.HasUpdate,
+				"updateType":     img.UpdateRecord.UpdateType,
+				"currentVersion": img.UpdateRecord.CurrentVersion,
+				"latestVersion":  img.UpdateRecord.LatestVersion,
+				"currentDigest":  img.UpdateRecord.CurrentDigest,
+				"latestDigest":   img.UpdateRecord.LatestDigest,
+				"checkTime":      img.UpdateRecord.CheckTime,
+				"responseTimeMs": img.UpdateRecord.ResponseTimeMs,
+				"error":          img.UpdateRecord.LastError,
 			}
 		}
 
@@ -581,4 +593,19 @@ func (s *ImageService) ListImagesWithMaturityPaginated(ctx context.Context, req 
 	}
 
 	return result, pagination, nil
+}
+
+func (s *ImageService) CleanupOrphanedUpdateRecords(ctx context.Context, existingImageIDs []string) (int64, error) {
+	var result *gorm.DB
+	if len(existingImageIDs) == 0 {
+		result = s.db.WithContext(ctx).Delete(&models.ImageUpdateRecord{})
+	} else {
+		result = s.db.WithContext(ctx).Where("id NOT IN ?", existingImageIDs).Delete(&models.ImageUpdateRecord{})
+	}
+
+	if result.Error != nil {
+		return 0, fmt.Errorf("failed to cleanup orphaned update records: %w", result.Error)
+	}
+
+	return result.RowsAffected, nil
 }

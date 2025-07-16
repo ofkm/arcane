@@ -8,23 +8,25 @@ import (
 )
 
 type Services struct {
-	User              *services.UserService
-	Stack             *services.StackService
-	Environment       *services.EnvironmentService
-	Settings          *services.SettingsService
-	Container         *services.ContainerService
-	Image             *services.ImageService
-	Volume            *services.VolumeService
-	Network           *services.NetworkService
-	ImageMaturity     *services.ImageMaturityService
-	Auth              *services.AuthService
-	Oidc              *services.OidcService
-	Docker            *services.DockerClientService
-	Converter         *services.ConverterService
-	Template          *services.TemplateService
-	ContainerRegistry *services.ContainerRegistryService
-	System            *services.SystemService
-	AutoUpdate        *services.AutoUpdateService
+	User               *services.UserService
+	Stack              *services.StackService
+	Environment        *services.EnvironmentService
+	Settings           *services.SettingsService
+	Container          *services.ContainerService
+	Image              *services.ImageService
+	Volume             *services.VolumeService
+	Network            *services.NetworkService
+	ImageMaturity      *services.ImageMaturityService
+	ImageUpdate        *services.ImageUpdateService
+	Auth               *services.AuthService
+	Oidc               *services.OidcService
+	Docker             *services.DockerClientService
+	Converter          *services.ConverterService
+	Template           *services.TemplateService
+	ContainerRegistry  *services.ContainerRegistryService
+	System             *services.SystemService
+	AutoUpdate         *services.AutoUpdateService
+	ImageUpdateService *services.ImageUpdateService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -45,6 +47,7 @@ func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	setupContainerRegistryRoutes(api, services)
 	setupAutoUpdateRoutes(api, services)
 	setupConverterRoutes(api, services)
+	setupImageUpdateRoutes(api, services)
 }
 
 func setupContainerRegistryRoutes(api *gin.RouterGroup, services *Services) {
@@ -60,6 +63,20 @@ func setupContainerRegistryRoutes(api *gin.RouterGroup, services *Services) {
 	registries.DELETE("/:id", registryHandler.DeleteRegistry)
 
 	registries.POST("/:id/test", registryHandler.TestRegistry)
+}
+
+func setupImageUpdateRoutes(api *gin.RouterGroup, services *Services) {
+	imageUpdates := api.Group("/image-updates")
+	imageUpdates.Use(middleware.AuthMiddleware(services.Auth))
+	imageUpdateHandler := NewImageUpdateHandler(services.ImageUpdateService)
+
+	imageUpdates.GET("/check", imageUpdateHandler.CheckImageUpdate)
+	imageUpdates.GET("/check/:imageId", imageUpdateHandler.CheckImageUpdateByID)
+	imageUpdates.POST("/check-batch", imageUpdateHandler.CheckMultipleImages)
+	imageUpdates.GET("/check-all", imageUpdateHandler.CheckAllImages)
+	imageUpdates.GET("/summary", imageUpdateHandler.GetUpdateSummary)
+	imageUpdates.GET("/versions", imageUpdateHandler.GetImageVersions)
+	imageUpdates.POST("/compare", imageUpdateHandler.CompareVersions)
 }
 
 func setupAuthRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {
@@ -283,7 +300,7 @@ func setupImageRoutes(api *gin.RouterGroup, services *Services) {
 	images := api.Group("/images")
 	images.Use(middleware.AuthMiddleware(services.Auth))
 
-	imageHandler := NewImageHandler(services.Image, services.ImageMaturity)
+	imageHandler := NewImageHandler(services.Image, services.ImageUpdate)
 
 	images.GET("", imageHandler.List)
 	images.GET("/:id", imageHandler.GetByID)
@@ -291,7 +308,6 @@ func setupImageRoutes(api *gin.RouterGroup, services *Services) {
 	images.POST("/pull", imageHandler.Pull)
 	images.POST("/prune", imageHandler.Prune)
 	images.GET("/:id/history", imageHandler.GetHistory)
-	images.POST("/:id/maturity", imageHandler.CheckMaturity)
 }
 
 func setupVolumeRoutes(api *gin.RouterGroup, services *Services) {

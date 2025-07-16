@@ -23,7 +23,7 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
-	import MaturityItem from '$lib/components/maturity-item.svelte';
+	import ImageUpdateItem from '$lib/components/image-update-item.svelte';
 	import { environmentAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
@@ -38,7 +38,7 @@
 		onRefresh,
 		onImagesChanged,
 		onPullDialogOpen,
-		onTriggerBulkMaturityCheck
+		onTriggerBulkUpdateCheck
 	}: {
 		images: EnhancedImageInfo[];
 		selectedIds: string[];
@@ -46,12 +46,14 @@
 		onRefresh: (options: SearchPaginationSortRequest) => Promise<any>;
 		onImagesChanged: () => Promise<void>;
 		onPullDialogOpen: () => void;
-		onTriggerBulkMaturityCheck: () => Promise<void>;
+		onTriggerBulkUpdateCheck: () => Promise<void>;
 	} = $props();
 
 	let imageFilters = $state({
 		showUsed: true,
-		showUnused: true
+		showUnused: true,
+		showWithUpdates: true,
+		showWithoutUpdates: true
 	});
 
 	let isLoading = $state({
@@ -72,7 +74,14 @@
 		imagesWithId.filter((img) => {
 			const showBecauseUsed = imageFilters.showUsed && img.InUse;
 			const showBecauseUnused = imageFilters.showUnused && !img.InUse;
-			return showBecauseUsed || showBecauseUnused;
+			const usageMatch = showBecauseUsed || showBecauseUnused;
+
+			const hasUpdates = img.updateInfo?.hasUpdate || false;
+			const showBecauseHasUpdates = imageFilters.showWithUpdates && hasUpdates;
+			const showBecauseNoUpdates = imageFilters.showWithoutUpdates && !hasUpdates;
+			const updateMatch = showBecauseHasUpdates || showBecauseNoUpdates;
+
+			return usageMatch && updateMatch;
 		})
 	);
 
@@ -157,10 +166,19 @@
 		isPullingInline[imageId] = false;
 	}
 
-	async function handleTriggerBulkMaturityCheckInternal() {
+	async function handleTriggerBulkUpdateCheckInternal() {
 		isLoading.checking = true;
-		await onTriggerBulkMaturityCheck();
+		await onTriggerBulkUpdateCheck();
 		isLoading.checking = false;
+	}
+
+	function extractRepoAndTag(repoTags: string[] | undefined) {
+		if (!repoTags || repoTags.length === 0 || repoTags[0] === '<none>:<none>') {
+			return { repo: '<none>', tag: '<none>' };
+		}
+
+		const [repo, tag] = repoTags[0].split(':');
+		return { repo: repo || '<none>', tag: tag || '<none>' };
 	}
 </script>
 
@@ -200,6 +218,24 @@
 							>
 								Show Unused Images
 							</DropdownMenu.CheckboxItem>
+							<DropdownMenu.Separator />
+							<DropdownMenu.Label>Update Status</DropdownMenu.Label>
+							<DropdownMenu.CheckboxItem
+								checked={imageFilters.showWithUpdates}
+								onCheckedChange={(checked) => {
+									imageFilters.showWithUpdates = checked;
+								}}
+							>
+								Show Images with Updates
+							</DropdownMenu.CheckboxItem>
+							<DropdownMenu.CheckboxItem
+								checked={imageFilters.showWithoutUpdates}
+								onCheckedChange={(checked) => {
+									imageFilters.showWithoutUpdates = checked;
+								}}
+							>
+								Show Images without Updates
+							</DropdownMenu.CheckboxItem>
 						</DropdownMenu.Content>
 					</DropdownMenu.Root>
 					{#if selectedIds.length > 0}
@@ -213,8 +249,8 @@
 					<ArcaneButton action="pull" label="Pull Image" onClick={onPullDialogOpen} />
 					<ArcaneButton
 						action="inspect"
-						label="Recheck Maturities"
-						onClick={handleTriggerBulkMaturityCheckInternal}
+						label="Check Updates"
+						onClick={handleTriggerBulkUpdateCheckInternal}
 						loading={isLoading.checking}
 						loadingLabel="Checking..."
 						disabled={isLoading.checking}
@@ -234,13 +270,14 @@
 					{ label: 'Size', sortColumn: 'Size' },
 					{ label: 'Created', sortColumn: 'Created' },
 					{ label: 'Status', sortColumn: 'InUse' },
-					{ label: 'Maturity' },
+					{ label: 'Updates' },
 					{ label: ' ' }
 				]}
 				filterPlaceholder="Search images..."
 				noResultsMessage="No images found"
 			>
 				{#snippet rows({ item })}
+					{@const { repo, tag } = extractRepoAndTag(item.RepoTags)}
 					<Table.Cell>
 						{#if item.RepoTags && item.RepoTags.length > 0 && item.RepoTags[0] !== '<none>:<none>'}
 							{item.RepoTags[0]}
@@ -263,11 +300,7 @@
 						{/if}
 					</Table.Cell>
 					<Table.Cell>
-						{#if item.maturity}
-							<MaturityItem maturity={item.maturity} imageId={item.Id} />
-						{:else}
-							<span class="text-muted-foreground text-sm">N/A</span>
-						{/if}
+						<ImageUpdateItem updateInfo={item.updateInfo} imageId={item.Id} {repo} {tag} />
 					</Table.Cell>
 					<Table.Cell>
 						<DropdownMenu.Root>

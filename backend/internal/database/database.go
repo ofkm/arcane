@@ -90,7 +90,7 @@ func (db *DB) Migrate() error {
 		&models.Image{},
 		&models.Volume{},
 		&models.Network{},
-		&models.ImageMaturityRecord{},
+		&models.ImageUpdateRecord{},
 		&models.TemplateRegistry{},
 		&models.ComposeTemplate{},
 		&models.ContainerRegistry{},

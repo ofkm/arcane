@@ -19,7 +19,8 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 	environmentService := services.NewEnvironmentService(db)
 	containerService := services.NewContainerService(db, dockerClientService)
 	containerRegistry := services.NewContainerRegistryService(db)
-	imageService := services.NewImageService(db, dockerClientService, containerRegistry)
+	imageUpdate := services.NewImageUpdateService(db, settingsService, containerRegistry, dockerClientService)
+	imageService := services.NewImageService(db, dockerClientService, containerRegistry, imageUpdate)
 	volumeService := services.NewVolumeService(db, dockerClientService)
 	networkService := services.NewNetworkService(db, dockerClientService)
 	imageMaturityService := services.NewImageMaturityService(db, settingsService, containerRegistry)
@@ -30,23 +31,24 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 	systemService := services.NewSystemService(db, dockerClientService, containerService, imageService, volumeService, networkService, settingsService)
 
 	appServices := &api.Services{
-		User:              userService,
-		Stack:             stackService,
-		Environment:       environmentService,
-		Settings:          settingsService,
-		Container:         containerService,
-		Image:             imageService,
-		Volume:            volumeService,
-		Network:           networkService,
-		ImageMaturity:     imageMaturityService,
-		Auth:              authService,
-		Oidc:              oidcService,
-		Docker:            dockerClientService,
-		Converter:         converterService,
-		Template:          templateService,
-		ContainerRegistry: containerRegistry,
-		System:            systemService,
-		AutoUpdate:        autoUpdate,
+		User:               userService,
+		Stack:              stackService,
+		Environment:        environmentService,
+		Settings:           settingsService,
+		Container:          containerService,
+		Image:              imageService,
+		Volume:             volumeService,
+		Network:            networkService,
+		ImageMaturity:      imageMaturityService,
+		Auth:               authService,
+		Oidc:               oidcService,
+		Docker:             dockerClientService,
+		Converter:          converterService,
+		Template:           templateService,
+		ContainerRegistry:  containerRegistry,
+		System:             systemService,
+		AutoUpdate:         autoUpdate,
+		ImageUpdateService: imageUpdate,
 	}
 
 	return appServices, dockerClientService, nil

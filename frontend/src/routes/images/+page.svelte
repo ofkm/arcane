@@ -12,12 +12,7 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ArcaneButton from '$lib/components/arcane-button.svelte';
-	import {
-		maturityStore,
-		triggerBulkMaturityCheck,
-		enhanceImagesWithMaturity
-	} from '$lib/stores/maturity-store';
-	import { environmentAPI } from '$lib/services/api';
+	import { environmentAPI, imageUpdateAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import ImageTable from './image-table.svelte';
 	import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
@@ -35,14 +30,14 @@
 	let isLoading = $state({
 		pulling: false,
 		refreshing: false,
-		pruning: false
+		pruning: false,
+		checking: false
 	});
 
 	let isPullDialogOpen = $state(false);
 	let isConfirmPruneDialogOpen = $state(false);
 
 	const totalSize = $derived(images?.reduce((acc, img) => acc + (img.Size || 0), 0) || 0);
-	const enhancedImages = $derived(enhanceImagesWithMaturity(images, $maturityStore.maturityData));
 
 	async function loadImages() {
 		try {
@@ -90,12 +85,18 @@
 		});
 	}
 
-	async function handleTriggerBulkMaturityCheck() {
-		const result = await triggerBulkMaturityCheck(images.map((img) => img.Id));
-		if (result.success) {
-			toast.success(result.message);
-		} else {
-			toast.error(result.message);
+	async function handleTriggerBulkUpdateCheck() {
+		isLoading.checking = true;
+		try {
+			const imageRefs = images.map((img) => img.RepoTags?.[0] || `image:${img.Id}`);
+			await imageUpdateAPI.checkMultipleImages(imageRefs);
+			toast.success('Update check completed');
+			await loadImages();
+		} catch (error) {
+			console.error('Failed to check for updates:', error);
+			toast.error('Failed to check for updates');
+		} finally {
+			isLoading.checking = false;
 		}
 	}
 
@@ -103,10 +104,10 @@
 		requestOptions = options;
 		await loadImages();
 		return {
-			data: enhancedImages,
+			data: images,
 			pagination: {
-				totalPages: Math.ceil(enhancedImages.length / (requestOptions.pagination?.limit || 20)),
-				totalItems: enhancedImages.length,
+				totalPages: Math.ceil(images.length / (requestOptions.pagination?.limit || 20)),
+				totalItems: images.length,
 				currentPage: requestOptions.pagination?.page || 1,
 				itemsPerPage: requestOptions.pagination?.limit || 20
 			}
@@ -187,13 +188,13 @@
 		</div>
 
 		<ImageTable
-			images={enhancedImages}
+			{images}
 			bind:selectedIds
 			{requestOptions}
 			{onRefresh}
 			onImagesChanged={loadImages}
 			onPullDialogOpen={() => (isPullDialogOpen = true)}
-			onTriggerBulkMaturityCheck={handleTriggerBulkMaturityCheck}
+			onTriggerBulkUpdateCheck={handleTriggerBulkUpdateCheck}
 		/>
 
 		<ImagePullSheet bind:open={isPullDialogOpen} onPullFinished={() => loadImages()} />

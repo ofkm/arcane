@@ -84,7 +84,7 @@ type Image struct {
 	Tag   string `json:"tag" gorm:"column:tag;index" sortable:"true"`
 	InUse bool   `json:"inUse" gorm:"column:in_use;default:false" sortable:"true"`
 
-	MaturityRecord *ImageMaturityRecord `json:"maturityRecord,omitempty" gorm:"foreignKey:ID;references:ID"`
+	UpdateRecord *ImageUpdateRecord `json:"updateInfo,omitempty" gorm:"foreignKey:ID;references:ID"`
 
 	BaseModel
 }
