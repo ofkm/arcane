@@ -23,7 +23,6 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 	imageService := services.NewImageService(db, dockerClientService, containerRegistry, imageUpdate)
 	volumeService := services.NewVolumeService(db, dockerClientService)
 	networkService := services.NewNetworkService(db, dockerClientService)
-	imageMaturityService := services.NewImageMaturityService(db, settingsService, containerRegistry)
 	templateService := services.NewTemplateService(db)
 	authService := services.NewAuthService(userService, settingsService, cfg.JWTSecret, cfg)
 	oidcService := services.NewOidcService(authService)
@@ -39,7 +38,6 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 		Image:              imageService,
 		Volume:             volumeService,
 		Network:            networkService,
-		ImageMaturity:      imageMaturityService,
 		Auth:               authService,
 		Oidc:               oidcService,
 		Docker:             dockerClientService,

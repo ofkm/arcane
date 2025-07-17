@@ -2,8 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"log"
 	"slices"
@@ -12,7 +10,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/google/uuid"
@@ -436,138 +433,68 @@ func (s *AutoUpdateService) checkImageForUpdate(
 		return false, "", nil
 	}
 
-	log.Printf("Pulling image to check for updates: %s", imageRef)
-	if err := s.pullImageWithAuth(ctx, imageRef, settings); err != nil {
-		return false, "", fmt.Errorf("failed to pull image: %w", err)
-	}
+	registryUtils := utils.NewRegistryUtils()
+	registry, repository, tag := registryUtils.SplitImageReference(imageRef)
 
-	newImageID, err := s.getImageID(ctx, imageRef)
+	authURL, err := registryUtils.CheckAuth(ctx, registry)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to get new image ID: %w", err)
+		return false, "", fmt.Errorf("failed to check registry auth: %w", err)
 	}
 
-	hasUpdate := newImageID != currentImageID
-	if hasUpdate {
-		log.Printf("Update available for %s: %s -> %s", imageRef, currentImageID[:12], newImageID[:12])
-	}
-
-	return hasUpdate, newImageID, nil
-}
-
-func (s *AutoUpdateService) checkStackImagesForUpdates(
-	ctx context.Context,
-	stack models.Stack,
-	settings *models.Settings,
-) (bool, map[string]string, error) {
-	composeContent, _, err := s.stackService.GetStackContent(ctx, stack.ID)
-	if err != nil {
-		return false, nil, fmt.Errorf("failed to get stack content: %w", err)
-	}
-
-	imageRefs := s.extractImageReferences(composeContent)
-	if len(imageRefs) == 0 {
-		return false, nil, nil
-	}
-
-	hasUpdates := false
-	imageUpdates := make(map[string]string)
-
-	for serviceName, imageRef := range imageRefs {
-		if s.isDigestBasedImage(imageRef) {
-			continue
+	var token string
+	if authURL != "" {
+		authConfig, _ := s.getAuthConfigForImage(ctx, imageRef)
+		var creds *utils.RegistryCredentials
+		if authConfig != nil {
+			creds = &utils.RegistryCredentials{
+				Username: authConfig.Username,
+				Token:    authConfig.Password,
+			}
 		}
 
-		currentID, _ := s.getImageID(ctx, imageRef)
-		hasUpdate, newID, err := s.checkImageForUpdate(ctx, imageRef, currentID, settings)
+		token, err = registryUtils.GetToken(ctx, authURL, repository, creds)
 		if err != nil {
-			log.Printf("Error checking image %s: %v", imageRef, err)
-			continue
-		}
-
-		if hasUpdate {
-			hasUpdates = true
-			imageUpdates[serviceName] = fmt.Sprintf("%s@%s", imageRef, newID)
+			return false, "", fmt.Errorf("failed to get registry token: %w", err)
 		}
 	}
 
-	return hasUpdates, imageUpdates, nil
+	remoteDigest, err := registryUtils.GetLatestDigest(ctx, registry, repository, tag, token)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to get remote digest: %w", err)
+	}
+
+	localDigest, err := s.getImageDigest(ctx, imageRef)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to get local digest: %w", err)
+	}
+
+	hasUpdate := localDigest != remoteDigest
+	if hasUpdate {
+		log.Printf("Update available for %s: %s -> %s", imageRef, localDigest[:12], remoteDigest[:12])
+	}
+
+	return hasUpdate, remoteDigest, nil
 }
 
-func (s *AutoUpdateService) pullImageWithAuth(ctx context.Context, imageRef string, settings *models.Settings) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	authConfig, err := s.getAuthConfigForImage(ctx, imageRef)
-	if err != nil {
-		log.Printf("Failed to get auth config for %s: %v", imageRef, err)
-	}
-
-	pullOptions := image.PullOptions{}
-	if authConfig != nil {
-		authJSON, _ := json.Marshal(authConfig)
-		pullOptions.RegistryAuth = base64.URLEncoding.EncodeToString(authJSON)
-	}
-
-	reader, err := dockerClient.ImagePull(ctx, imageRef, pullOptions)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-
-	return nil
-}
-
-func (s *AutoUpdateService) getAuthConfigForImage(ctx context.Context, imageRef string) (*registry.AuthConfig, error) {
-	registryDomain := utils.ExtractRegistryDomain(imageRef)
-	normalizedImageDomain := s.normalizeRegistryURL(registryDomain)
-
-	registries, err := s.registryService.GetAllRegistries(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list registries: %w", err)
-	}
-
-	for _, reg := range registries {
-		normalizedRegURL := s.normalizeRegistryURL(reg.URL)
-		if normalizedRegURL == normalizedImageDomain {
-			return &registry.AuthConfig{
-				Username: reg.Username,
-				Password: reg.Token,
-			}, nil
-		}
-	}
-
-	return nil, nil
-}
-
-func (s *AutoUpdateService) normalizeRegistryURL(url string) string {
-	url = strings.TrimSpace(url)
-	url = strings.ToLower(url)
-
-	url = strings.TrimPrefix(url, "https://")
-	url = strings.TrimPrefix(url, "http://")
-
-	url = strings.TrimSuffix(url, "/")
-
-	if url == "docker.io" || url == "registry-1.docker.io" {
-		return "docker.io"
-	}
-
-	return url
-}
-
-func (s *AutoUpdateService) getImageID(ctx context.Context, imageRef string) (string, error) {
+func (s *AutoUpdateService) getImageDigest(ctx context.Context, imageRef string) (string, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
-	imageInfo, _, err := dockerClient.ImageInspectWithRaw(ctx, imageRef)
+	imageInfo, err := dockerClient.ImageInspect(ctx, imageRef)
 	if err != nil {
 		return "", fmt.Errorf("failed to inspect image: %w", err)
+	}
+
+	for _, digest := range imageInfo.RepoDigests {
+		if strings.Contains(digest, "@sha256:") {
+			parts := strings.Split(digest, "@")
+			if len(parts) == 2 {
+				return parts[1], nil
+			}
+		}
 	}
 
 	return imageInfo.ID, nil
@@ -769,20 +696,6 @@ func (s *AutoUpdateService) extractImageReferences(composeContent string) map[st
 	return images
 }
 
-func (s *AutoUpdateService) extractRegistryDomain(imageRef string) string {
-	parts := strings.Split(imageRef, "/")
-	if len(parts) < 2 {
-		return "docker.io"
-	}
-
-	domain := parts[0]
-	if strings.Contains(domain, ".") || strings.Contains(domain, ":") {
-		return domain
-	}
-
-	return "docker.io"
-}
-
 func (s *AutoUpdateService) isDigestBasedImage(imageRef string) bool {
 	return strings.Contains(imageRef, "@sha256:")
 }
@@ -826,11 +739,74 @@ func (s *AutoUpdateService) getContainerName(cnt container.Summary) string {
 	return cnt.ID[:12]
 }
 
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
+func (s *AutoUpdateService) getAuthConfigForImage(ctx context.Context, imageRef string) (*registry.AuthConfig, error) {
+	registryDomain := utils.ExtractRegistryDomain(imageRef)
+	normalizedImageDomain := s.normalizeRegistryURL(registryDomain)
+
+	registries, err := s.registryService.GetAllRegistries(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list registries: %w", err)
+	}
+
+	for _, reg := range registries {
+		normalizedRegURL := s.normalizeRegistryURL(reg.URL)
+		if normalizedRegURL == normalizedImageDomain {
+			decryptedToken, err := utils.Decrypt(reg.Token)
+			if err != nil {
+				log.Printf("Failed to decrypt token for registry %s: %v", reg.URL, err)
+				continue
+			}
+
+			return &registry.AuthConfig{
+				Username: reg.Username,
+				Password: decryptedToken,
+			}, nil
 		}
 	}
-	return false
+
+	return nil, nil
+}
+
+func (s *AutoUpdateService) normalizeRegistryURL(url string) string {
+	url = strings.TrimSpace(url)
+	url = strings.ToLower(url)
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "http://")
+	url = strings.TrimSuffix(url, "/")
+
+	if url == "docker.io" || url == "registry-1.docker.io" || url == "index.docker.io" {
+		return "docker.io"
+	}
+
+	return url
+}
+
+func (s *AutoUpdateService) checkStackImagesForUpdates(ctx context.Context, stack models.Stack, settings *models.Settings) (bool, map[string]string, error) {
+	composeContent, _, err := s.stackService.GetStackContent(ctx, stack.ID)
+	if err != nil {
+		return false, nil, err
+	}
+
+	images := s.extractImageReferences(composeContent)
+	hasUpdates := false
+	imageUpdates := make(map[string]string)
+
+	for serviceName, imageRef := range images {
+		if s.isDigestBasedImage(imageRef) {
+			continue
+		}
+
+		hasUpdate, newDigest, err := s.checkImageForUpdate(ctx, imageRef, "", settings)
+		if err != nil {
+			log.Printf("Error checking updates for %s in stack %s: %v", imageRef, stack.Name, err)
+			continue
+		}
+
+		if hasUpdate {
+			hasUpdates = true
+			imageUpdates[serviceName] = fmt.Sprintf("%s@%s", imageRef, newDigest)
+		}
+	}
+
+	return hasUpdates, imageUpdates, nil
 }

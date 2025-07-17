@@ -16,7 +16,6 @@ type Services struct {
 	Image              *services.ImageService
 	Volume             *services.VolumeService
 	Network            *services.NetworkService
-	ImageMaturity      *services.ImageMaturityService
 	ImageUpdate        *services.ImageUpdateService
 	Auth               *services.AuthService
 	Oidc               *services.OidcService
@@ -37,7 +36,6 @@ func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	setupStackRoutes(api, services)
 	setupEnvironmentRoutes(api, services)
 	setupSettingsRoutes(api, services, appConfig)
-	setupImageMaturityRoutes(api, services)
 	setupSystemRoutes(api, services.Docker, services)
 	setupContainerRoutes(api, services)
 	setupImageRoutes(api, services)
@@ -232,21 +230,6 @@ func setupSettingsRoutes(api *gin.RouterGroup, services *Services, appConfig *co
 	settings.GET("/oidc/config", oidcHandler.GetOidcConfig)
 	settings.POST("/oidc/url", oidcHandler.GetOidcAuthUrl)
 	settings.POST("/oidc/callback", oidcHandler.HandleOidcCallback)
-}
-
-func setupImageMaturityRoutes(api *gin.RouterGroup, services *Services) {
-	imageMaturity := api.Group("/images/maturity")
-	imageMaturity.Use(middleware.AuthMiddleware(services.Auth))
-
-	imageMaturityHandler := NewImageMaturityHandler(services.ImageMaturity, services.Image)
-
-	imageMaturity.GET("", imageMaturityHandler.ListMaturityRecords)
-	imageMaturity.GET("/stats", imageMaturityHandler.GetMaturityStats)
-	imageMaturity.GET("/updates", imageMaturityHandler.GetImagesWithUpdates)
-	imageMaturity.GET("/needs-check", imageMaturityHandler.GetImagesNeedingCheck)
-	imageMaturity.POST("/check", imageMaturityHandler.TriggerMaturityCheck)
-	imageMaturity.GET("/repository/:repository", imageMaturityHandler.GetMaturityByRepository)
-	imageMaturity.GET("/:imageId", imageMaturityHandler.GetImageMaturity)
 }
 
 func setupSystemRoutes(api *gin.RouterGroup, dockerService *services.DockerClientService, services *Services) {

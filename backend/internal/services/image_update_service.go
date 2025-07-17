@@ -2,9 +2,7 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -127,47 +125,42 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 	return digestResult, nil
 }
 
-func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *ImageParts, registry *models.ContainerRegistry) (*UpdateResult, error) {
-	startTime := time.Now()
+func (s *ImageUpdateService) getRegistryToken(ctx context.Context, registry, repository string, reg *models.ContainerRegistry) (string, error) {
+	registryUtils := utils.NewRegistryUtils()
 
-	registryURL := s.buildRegistryURL(parts.Registry)
-	normalizedRepo := s.normalizeRepository(parts.Registry, parts.Repository)
-	manifestURL := fmt.Sprintf("%s/v2/%s/manifests/%s", registryURL, normalizedRepo, parts.Tag)
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, manifestURL, nil)
+	authURL, err := registryUtils.CheckAuth(ctx, registry)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create manifest request: %w", err)
+		return "", fmt.Errorf("failed to check auth: %w", err)
 	}
 
-	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get manifest: %w", err)
+	if authURL == "" {
+		return "", nil
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		token, err := s.getRegistryToken(ctx, parts.Registry, parts.Repository, registry)
-		if err == nil && token != "" {
-			req.Header.Set("Authorization", "Bearer "+token)
-
-			resp, err = client.Do(req)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get manifest with auth: %w", err)
-			}
-			defer resp.Body.Close()
+	var creds *utils.RegistryCredentials
+	if reg != nil && reg.Username != "" && reg.Token != "" {
+		creds = &utils.RegistryCredentials{
+			Username: reg.Username,
+			Token:    reg.Token,
 		}
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("manifest request failed with status: %d", resp.StatusCode)
+	return registryUtils.GetToken(ctx, authURL, repository, creds)
+}
+
+func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *ImageParts, registry *models.ContainerRegistry) (*UpdateResult, error) {
+	startTime := time.Now()
+	registryUtils := utils.NewRegistryUtils()
+
+	token, err := s.getRegistryToken(ctx, parts.Registry, parts.Repository, registry)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get registry token: %w", err)
 	}
 
-	remoteDigest := resp.Header.Get("Docker-Content-Digest")
-	if remoteDigest == "" {
-		return nil, fmt.Errorf("no docker-content-digest header found")
+	normalizedRepo := s.normalizeRepository(parts.Registry, parts.Repository)
+	remoteDigest, err := registryUtils.GetLatestDigest(ctx, parts.Registry, normalizedRepo, parts.Tag, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get remote digest: %w", err)
 	}
 
 	localDigest, err := s.getLocalImageDigest(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
@@ -230,58 +223,15 @@ func (s *ImageUpdateService) checkTagUpdate(ctx context.Context, parts *ImagePar
 }
 
 func (s *ImageUpdateService) getImageTags(ctx context.Context, parts *ImageParts, registry *models.ContainerRegistry) ([]string, error) {
-	registryURL := s.buildRegistryURL(parts.Registry)
-	normalizedRepo := s.normalizeRepository(parts.Registry, parts.Repository)
+	registryUtils := utils.NewRegistryUtils()
 
-	var allTags []string
-	nextURL := fmt.Sprintf("%s/v2/%s/tags/list", registryURL, normalizedRepo)
-
-	for nextURL != "" {
-		client := &http.Client{Timeout: 30 * time.Second}
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, nextURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create tags request: %w", err)
-		}
-
-		req.Header.Set("Accept", "application/json")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get tags: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-			token, err := s.getRegistryToken(ctx, parts.Registry, parts.Repository, registry)
-			if err == nil && token != "" {
-				req.Header.Set("Authorization", "Bearer "+token)
-
-				resp, err = client.Do(req)
-				if err != nil {
-					return nil, fmt.Errorf("failed to get tags with auth: %w", err)
-				}
-				defer resp.Body.Close()
-			}
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("tags request failed with status: %d", resp.StatusCode)
-		}
-
-		var tagsResp struct {
-			Tags []string `json:"tags"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
-			return nil, fmt.Errorf("failed to decode tags response: %w", err)
-		}
-
-		allTags = append(allTags, tagsResp.Tags...)
-
-		linkHeader := resp.Header.Get("Link")
-		nextURL = s.parseLinkHeader(linkHeader, registryURL)
+	token, err := s.getRegistryToken(ctx, parts.Registry, parts.Repository, registry)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get registry token: %w", err)
 	}
 
-	return allTags, nil
+	normalizedRepo := s.normalizeRepository(parts.Registry, parts.Repository)
+	return registryUtils.GetImageTags(ctx, parts.Registry, normalizedRepo, token)
 }
 
 func (s *ImageUpdateService) parseVersion(tag string) *VersionInfo {
@@ -580,12 +530,6 @@ func (s *ImageUpdateService) versionToString(version *VersionInfo) string {
 	return result
 }
 
-func (s *ImageUpdateService) parseLinkHeader(linkHeader, baseURL string) string {
-	// Parse RFC 5988 Link header for pagination
-	// Implementation would parse the Link header to find the "next" relation
-	return ""
-}
-
 // Helper methods that can reuse existing logic from ImageMaturityService
 func (s *ImageUpdateService) getRegistryForImage(ctx context.Context, registry string) *models.ContainerRegistry {
 	normalizedDomain := s.normalizeRegistryURL(registry)
@@ -623,18 +567,6 @@ func (s *ImageUpdateService) normalizeRegistryURL(url string) string {
 	return url
 }
 
-func (s *ImageUpdateService) buildRegistryURL(registry string) string {
-	if registry == "docker.io" {
-		return "https://registry-1.docker.io"
-	}
-
-	if !strings.HasPrefix(registry, "http") {
-		return "https://" + registry
-	}
-
-	return registry
-}
-
 func (s *ImageUpdateService) normalizeRepository(registry, repository string) string {
 	if registry == "docker.io" {
 		if !strings.Contains(repository, "/") {
@@ -642,22 +574,6 @@ func (s *ImageUpdateService) normalizeRepository(registry, repository string) st
 		}
 	}
 	return repository
-}
-
-func (s *ImageUpdateService) getRegistryToken(ctx context.Context, registry, repository string, reg *models.ContainerRegistry) (string, error) {
-	if reg != nil && reg.Username != "" && reg.Token != "" {
-		creds := &utils.RegistryCredentials{
-			Username: reg.Username,
-			Token:    reg.Token,
-		}
-		return utils.GetRegistryToken(ctx, registry, repository, creds)
-	}
-
-	if registry == "docker.io" {
-		return utils.GetDockerHubToken(ctx, repository)
-	}
-
-	return "", nil
 }
 
 func (s *ImageUpdateService) isSpecialTag(tag string) bool {
@@ -741,7 +657,7 @@ func (s *ImageUpdateService) saveUpdateResultByID(ctx context.Context, imageID s
 		Tag:            image.Tag,
 		HasUpdate:      result.HasUpdate,
 		UpdateType:     result.UpdateType,
-		CurrentVersion: currentVersion, // This was the issue
+		CurrentVersion: currentVersion,
 		LatestVersion:  latestVersion,
 		CurrentDigest:  currentDigest,
 		LatestDigest:   latestDigest,
