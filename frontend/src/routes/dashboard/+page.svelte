@@ -20,10 +20,9 @@
 	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { systemAPI, imageAPI, environmentAPI, settingsAPI } from '$lib/services/api';
+	import { systemAPI, environmentAPI, settingsAPI } from '$lib/services/api';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { onMount } from 'svelte';
-	import { maturityStore } from '$lib/stores/maturity-store';
 	import type { PruneType } from '$lib/types/actions.type';
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
 	import MeterMetric from '$lib/components/meter-metric.svelte';
@@ -53,7 +52,6 @@
 		refreshing: false,
 		pruning: false,
 		loadingStats: true,
-		loadingMaturity: true,
 		loadingContainers: false,
 		loadingDockerInfo: false,
 		loadingImages: false
@@ -80,12 +78,6 @@
 
 	const totalImageSize = $derived(
 		dashboardStates.images?.reduce((sum, image) => sum + (image.Size || 0), 0) ?? 0
-	);
-
-	const containerUsagePercent = $derived(
-		dashboardStates.containers?.length
-			? (runningContainers / dashboardStates.containers.length) * 100
-			: 0
 	);
 
 	const currentStats = $derived(dashboardStates.systemStats || liveSystemStats);
@@ -223,50 +215,6 @@
 		}
 	}
 
-	async function loadTopImagesMaturity() {
-		if (!dashboardStates.images || dashboardStates.images.length === 0) {
-			isLoading.loadingMaturity = false;
-			return;
-		}
-
-		isLoading.loadingMaturity = true;
-
-		const topImageIds = [...dashboardStates.images]
-			.sort((a, b) => (b.Size || 0) - (a.Size || 0))
-			.slice(0, 5)
-			.filter((img) => img.RepoTags && img.RepoTags[0] !== '<none>:<none>')
-			.map((img) => img.Id);
-
-		if (topImageIds.length === 0) {
-			isLoading.loadingMaturity = false;
-			return;
-		}
-
-		try {
-			const BATCH_SIZE = 1;
-			for (let i = 0; i < topImageIds.length; i += BATCH_SIZE) {
-				const batch = topImageIds.slice(i, i + BATCH_SIZE);
-				await imageAPI.checkMaturityBatch(batch);
-
-				dashboardStates.images = dashboardStates.images.map((image) => {
-					const storedMaturity = $maturityStore.maturityData[image.Id];
-					return {
-						...image,
-						maturity: storedMaturity !== undefined ? storedMaturity : image.maturity
-					};
-				});
-
-				if (i + BATCH_SIZE < topImageIds.length) {
-					await new Promise((resolve) => setTimeout(resolve, 100));
-				}
-			}
-		} catch (error) {
-			console.error('Error loading maturity data for dashboard images:', error);
-		} finally {
-			isLoading.loadingMaturity = false;
-		}
-	}
-
 	async function refreshData() {
 		if (isLoading.refreshing) return;
 		isLoading.refreshing = true;
@@ -314,11 +262,6 @@
 		}
 
 		await fetchLiveSystemStats();
-
-		if (dashboardStates.images && dashboardStates.images.length > 0) {
-			loadTopImagesMaturity();
-		}
-
 		isLoading.refreshing = false;
 	}
 
@@ -326,12 +269,6 @@
 		let mounted = true;
 
 		fetchLiveSystemStats();
-
-		if (dashboardStates.images && dashboardStates.images.length > 0) {
-			loadTopImagesMaturity();
-		} else {
-			isLoading.loadingMaturity = false;
-		}
 
 		if (!statsInterval) {
 			statsInterval = setInterval(() => {
@@ -660,7 +597,6 @@
 			<DashboardImageTable
 				images={dashboardStates.images}
 				isLoading={isLoading.loadingImages}
-				isLoadingMaturity={isLoading.loadingMaturity}
 				onRefresh={onImageRefresh}
 			/>
 		</div>

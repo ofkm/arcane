@@ -6,7 +6,6 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Table from '$lib/components/ui/table';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import MaturityItem from '$lib/components/maturity-item.svelte';
 	import { formatBytes } from '$lib/utils/bytes.util';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 
@@ -17,12 +16,10 @@
 	let {
 		images,
 		isLoading,
-		isLoadingMaturity,
 		onRefresh
 	}: {
 		images: EnhancedImageInfo[];
 		isLoading: boolean;
-		isLoadingMaturity: boolean;
 		onRefresh: (options: SearchPaginationSortRequest) => Promise<Paginated<ImageWithId>>;
 	} = $props();
 
@@ -96,15 +93,6 @@
 						<Table.Cell>
 							<div class="flex items-center gap-2">
 								<div class="flex flex-1 items-center">
-									{#if isLoadingMaturity}
-										<div class="bg-muted size-4 animate-pulse rounded-full mr-2"></div>
-									{:else}
-										<MaturityItem
-											maturity={item.maturity}
-											isLoadingInBackground={!item.maturity}
-											imageId={item.Id}
-										/>
-									{/if}
 									<a class="shrink truncate font-medium hover:underline" href="/images/{item.Id}/">
 										{#if item.RepoTags && item.RepoTags.length > 0 && item.RepoTags[0] !== '<none>:<none>'}
 											{item.RepoTags[0].split(':')[0]}
