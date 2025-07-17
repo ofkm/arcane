@@ -225,7 +225,6 @@ func (s *ImageService) extractRegistryHost(imageRef string) string {
 	return "docker.io"
 }
 
-// isRegistryMatch checks if a credential URL matches a registry host
 func (s *ImageService) isRegistryMatch(credURL, registryHost string) bool {
 	normalizedCred := s.normalizeRegistryForComparison(credURL)
 	normalizedHost := s.normalizeRegistryForComparison(registryHost)
@@ -233,7 +232,6 @@ func (s *ImageService) isRegistryMatch(credURL, registryHost string) bool {
 	return normalizedCred == normalizedHost
 }
 
-// normalizeRegistryForComparison normalizes registry URLs for comparison
 func (s *ImageService) normalizeRegistryForComparison(url string) string {
 	url = strings.TrimPrefix(url, "https://")
 	url = strings.TrimPrefix(url, "http://")
@@ -246,7 +244,6 @@ func (s *ImageService) normalizeRegistryForComparison(url string) string {
 	return url
 }
 
-// normalizeRegistryURL normalizes registry URL for Docker client
 func (s *ImageService) normalizeRegistryURL(url string) string {
 	normalized := s.normalizeRegistryForComparison(url)
 	if normalized == "docker.io" {
@@ -432,34 +429,6 @@ func (s *ImageService) GetImagesByRepository(ctx context.Context, repo string) (
 		return nil, fmt.Errorf("failed to get images by repository: %w", err)
 	}
 	return images, nil
-}
-
-func (s *ImageService) ListImagesWithMaturity(ctx context.Context) ([]*models.Image, error) {
-	_, err := s.ListImages(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list and sync Docker images: %w", err)
-	}
-
-	var images []*models.Image
-	if err := s.db.WithContext(ctx).Preload("MaturityRecord").Find(&images).Error; err != nil {
-		return nil, fmt.Errorf("failed to get images with maturity data from DB: %w", err)
-	}
-
-	return images, nil
-}
-
-func (s *ImageService) UpdateImageMaturity(ctx context.Context, imageID string, maturityData *models.ImageMaturityRecord) error {
-	var image models.Image
-	if err := s.db.WithContext(ctx).Where("id = ?", imageID).First(&image).Error; err != nil {
-		return fmt.Errorf("image not found in database: %w", err)
-	}
-
-	maturityData.ID = imageID
-	if err := s.db.WithContext(ctx).Where("id = ?", imageID).FirstOrCreate(maturityData).Error; err != nil {
-		return fmt.Errorf("failed to update image maturity: %w", err)
-	}
-
-	return nil
 }
 
 func (s *ImageService) UpdateImageUpdate(ctx context.Context, imageID string, updateData *models.ImageUpdateRecord) error {
