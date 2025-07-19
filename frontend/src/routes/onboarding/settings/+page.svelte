@@ -28,7 +28,6 @@
 				autoUpdate: appSettings.autoUpdate,
 				autoUpdateInterval: parseInt(appSettings.autoUpdateInterval),
 				pruneMode: appSettings.pruneMode,
-				maturityThresholdDays: appSettings.maturityThresholdDays,
 				baseServerUrl: appSettings.baseServerUrl,
 				onboarding: {
 					completed: false,
@@ -115,20 +114,6 @@
 					</Select.Root>
 					<p class="text-xs text-muted-foreground">
 						How aggressive to be when pruning unused resources
-					</p>
-				</div>
-
-				<div class="space-y-2">
-					<Label for="maturity-threshold">Image Maturity Threshold (days)</Label>
-					<Input
-						id="maturity-threshold"
-						type="number"
-						bind:value={appSettings.maturityThresholdDays}
-						min="1"
-						max="365"
-					/>
-					<p class="text-xs text-muted-foreground">
-						Consider images older than this as potentially outdated
 					</p>
 				</div>
 			</Card.Content>

@@ -52,16 +52,15 @@ func (s *SettingsService) createDefaultSettings(ctx context.Context) (*models.Se
 	defaultPruneMode := "dangling"
 
 	settings := &models.Settings{
-		StacksDirectory:       "data/stacks",
-		AutoUpdate:            false,
-		AutoUpdateInterval:    300,
-		PollingEnabled:        true,
-		PollingInterval:       5,
-		PruneMode:             &defaultPruneMode,
-		RegistryCredentials:   models.JSON{},
-		TemplateRegistries:    models.JSON{},
-		Auth:                  defaultAuth,
-		MaturityThresholdDays: 30,
+		StacksDirectory:     "data/stacks",
+		AutoUpdate:          false,
+		AutoUpdateInterval:  300,
+		PollingEnabled:      true,
+		PollingInterval:     5,
+		PruneMode:           &defaultPruneMode,
+		RegistryCredentials: models.JSON{},
+		TemplateRegistries:  models.JSON{},
+		Auth:                defaultAuth,
 		BaseModel: models.BaseModel{
 			CreatedAt: time.Now(),
 		},

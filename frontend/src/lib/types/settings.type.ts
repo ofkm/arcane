@@ -66,7 +66,6 @@ export interface Settings {
 	auth: AuthSettings;
 	onboarding?: Onboarding;
 	baseServerUrl?: string;
-	maturityThresholdDays: number;
 	createdAt: string;
 	updatedAt: string;
 }

@@ -2,7 +2,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Save, RefreshCw, Folder, Globe, Calendar } from '@lucide/svelte';
+	import { Save, RefreshCw, Folder, Globe } from '@lucide/svelte';
 	import type { FormInput as FormInputType } from '$lib/utils/form.utils';
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
@@ -25,8 +25,7 @@
 		isLoading.saving = true;
 		updateSettingsConfig({
 			stacksDirectory: stacksDirectoryInput.value,
-			baseServerUrl: baseServerUrlInput.value,
-			maturityThresholdDays: maturityThresholdInput.value
+			baseServerUrl: baseServerUrlInput.value
 		})
 			.then(async () => {
 				toast.success(`Settings Saved Successfully`);
@@ -47,11 +46,6 @@
 		error: null
 	});
 
-	let maturityThresholdInput = $state<FormInputType<number>>({
-		value: 30,
-		error: null
-	});
-
 	let isLoading = $state({
 		saving: false
 	});
@@ -59,7 +53,6 @@
 	$effect(() => {
 		stacksDirectoryInput.value = currentSettings.stacksDirectory;
 		baseServerUrlInput.value = currentSettings.baseServerUrl || 'localhost';
-		maturityThresholdInput.value = currentSettings.maturityThresholdDays;
 	});
 </script>
 
@@ -132,30 +125,6 @@
 					placeholder="localhost"
 					bind:input={baseServerUrlInput}
 					helpText="Base URL for accessing Arcane (used for webhooks and notifications)"
-				/>
-			</Card.Content>
-		</Card.Root>
-
-		<!-- Container Management -->
-		<Card.Root>
-			<Card.Header>
-				<div class="flex items-center gap-3">
-					<div class="rounded-lg bg-purple-500/10 p-2">
-						<Calendar class="size-5 text-purple-600" />
-					</div>
-					<div>
-						<Card.Title>Container Management</Card.Title>
-						<Card.Description>Configure container lifecycle and update policies</Card.Description>
-					</div>
-				</div>
-			</Card.Header>
-			<Card.Content>
-				<FormInput
-					type="number"
-					label="Image Maturity Threshold (Days)"
-					placeholder="30"
-					bind:input={maturityThresholdInput}
-					helpText="Number of days to wait before considering an image update stable"
 				/>
 			</Card.Content>
 		</Card.Root>

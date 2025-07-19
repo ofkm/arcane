@@ -87,9 +87,6 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 	if req.BaseServerURL != nil {
 		settings.BaseServerURL = req.BaseServerURL
 	}
-	if req.MaturityThresholdDays != nil {
-		settings.MaturityThresholdDays = *req.MaturityThresholdDays
-	}
 
 	updatedSettings, err := h.settingsService.UpdateSettings(c.Request.Context(), settings)
 	if err != nil {

@@ -44,20 +44,19 @@ type Onboarding struct {
 }
 
 type Settings struct {
-	ID                    uint    `json:"id" gorm:"primaryKey;autoIncrement"`
-	DockerTLSCert         string  `json:"dockerTLSCert" gorm:"column:docker_tls_cert"`
-	StacksDirectory       string  `json:"stacksDirectory" gorm:"column:stacks_directory;not null"`
-	AutoUpdate            bool    `json:"autoUpdate" gorm:"column:auto_update;default:false"`
-	AutoUpdateInterval    int     `json:"autoUpdateInterval" gorm:"column:auto_update_interval;default:300"`
-	PollingEnabled        bool    `json:"pollingEnabled" gorm:"column:polling_enabled;default:true"`
-	PollingInterval       int     `json:"pollingInterval" gorm:"column:polling_interval;default:5"`
-	PruneMode             *string `json:"pruneMode,omitempty" gorm:"column:prune_mode"`
-	RegistryCredentials   JSON    `json:"registryCredentials" gorm:"type:text;column:registry_credentials;default:'[]'"`
-	TemplateRegistries    JSON    `json:"templateRegistries" gorm:"type:text;column:template_registries;default:'[]'"`
-	Auth                  JSON    `json:"auth" gorm:"type:text;not null"`
-	Onboarding            JSON    `json:"onboarding,omitempty" gorm:"type:text"`
-	BaseServerURL         *string `json:"baseServerUrl,omitempty" gorm:"column:base_server_url"`
-	MaturityThresholdDays int     `json:"maturityThresholdDays" gorm:"column:maturity_threshold_days;default:30"`
+	ID                  uint    `json:"id" gorm:"primaryKey;autoIncrement"`
+	DockerTLSCert       string  `json:"dockerTLSCert" gorm:"column:docker_tls_cert"`
+	StacksDirectory     string  `json:"stacksDirectory" gorm:"column:stacks_directory;not null"`
+	AutoUpdate          bool    `json:"autoUpdate" gorm:"column:auto_update;default:false"`
+	AutoUpdateInterval  int     `json:"autoUpdateInterval" gorm:"column:auto_update_interval;default:300"`
+	PollingEnabled      bool    `json:"pollingEnabled" gorm:"column:polling_enabled;default:true"`
+	PollingInterval     int     `json:"pollingInterval" gorm:"column:polling_interval;default:5"`
+	PruneMode           *string `json:"pruneMode,omitempty" gorm:"column:prune_mode"`
+	RegistryCredentials JSON    `json:"registryCredentials" gorm:"type:text;column:registry_credentials;default:'[]'"`
+	TemplateRegistries  JSON    `json:"templateRegistries" gorm:"type:text;column:template_registries;default:'[]'"`
+	Auth                JSON    `json:"auth" gorm:"type:text;not null"`
+	Onboarding          JSON    `json:"onboarding,omitempty" gorm:"type:text"`
+	BaseServerURL       *string `json:"baseServerUrl,omitempty" gorm:"column:base_server_url"`
 	BaseModel
 }
 
