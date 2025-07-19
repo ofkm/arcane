@@ -11,7 +11,6 @@
 		Eye,
 		Trash2,
 		Terminal,
-		Key,
 		Server,
 		Ellipsis,
 		Plus
@@ -65,6 +64,71 @@
 		{ label: ' ' }
 	];
 
+	// Define valid sortable keys for Environment
+	const validSortColumns: (keyof Environment)[] = [
+		'hostname',
+		'status',
+		'enabled',
+		'lastSeen',
+		'apiUrl',
+		'id'
+	];
+
+	function isValidEnvironmentKey(key: string): key is keyof Environment {
+		return validSortColumns.includes(key as keyof Environment);
+	}
+
+	function sortEnvironments(
+		data: Environment[],
+		column: keyof Environment,
+		direction: 'asc' | 'desc'
+	): Environment[] {
+		return [...data].sort((a, b) => {
+			const aVal = a[column];
+			const bVal = b[column];
+
+			// Handle date fields
+			if (column === 'lastSeen') {
+				const aTime = aVal ? new Date(aVal as string).getTime() : 0;
+				const bTime = bVal ? new Date(bVal as string).getTime() : 0;
+				return direction === 'asc' ? aTime - bTime : bTime - aTime;
+			}
+
+			// Handle string comparison
+			if (typeof aVal === 'string' && typeof bVal === 'string') {
+				const comparison = aVal.toLowerCase().localeCompare(bVal.toLowerCase());
+				return direction === 'asc' ? comparison : -comparison;
+			}
+
+			// Handle boolean comparison
+			if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+				if (aVal === bVal) return 0;
+				const comparison = aVal ? 1 : -1;
+				return direction === 'asc' ? comparison : -comparison;
+			}
+
+			// Handle undefined values
+			const aComp = aVal ?? '';
+			const bComp = bVal ?? '';
+
+			if (aComp < bComp) return direction === 'asc' ? -1 : 1;
+			if (aComp > bComp) return direction === 'asc' ? 1 : -1;
+			return 0;
+		});
+	}
+
+	function filterEnvironments(data: Environment[], searchTerm: string): Environment[] {
+		if (!searchTerm) return data;
+
+		const term = searchTerm.toLowerCase();
+		return data.filter(
+			(env) =>
+				env.hostname.toLowerCase().includes(term) ||
+				env.apiUrl.toLowerCase().includes(term) ||
+				env.status.toLowerCase().includes(term)
+		);
+	}
+
 	onMount(() => {
 		const interval = setInterval(refreshEnvironments, 30000);
 		return () => clearInterval(interval);
@@ -99,54 +163,26 @@
 		}
 	}
 
-	// Mock refresh function for ArcaneTable - just filters and sorts locally
-	async function handleRefresh(
+	/**
+	 * Handle local filtering and sorting of environments data
+	 * Used by ArcaneTable for client-side data manipulation
+	 */
+	async function handleLocalFilter(
 		options: SearchPaginationSortRequest
 	): Promise<Paginated<Environment & { id: string }>> {
-		let filteredData = [...environments];
+		// Apply search filter
+		let filteredData = filterEnvironments(environments, options.search || '');
 
-		// Apply search filter if provided
-		if (options.search) {
-			const searchTerm = options.search.toLowerCase();
-			filteredData = filteredData.filter(
-				(env) =>
-					env.hostname.toLowerCase().includes(searchTerm) ||
-					env.apiUrl.toLowerCase().includes(searchTerm) ||
-					env.status.toLowerCase().includes(searchTerm)
-			);
-		}
-
+		// Apply sorting if provided
 		if (options.sort) {
 			const { column, direction } = options.sort;
-			filteredData.sort((a, b) => {
-				let aVal = a[column as keyof Environment];
-				let bVal = b[column as keyof Environment];
 
-				// Handle date fields
-				if (column === 'lastSeen') {
-					const aTime = aVal ? new Date(aVal as string).getTime() : 0;
-					const bTime = bVal ? new Date(bVal as string).getTime() : 0;
-					if (aTime < bTime) return direction === 'asc' ? -1 : 1;
-					if (aTime > bTime) return direction === 'asc' ? 1 : -1;
-					return 0;
-				}
-
-				// Handle string comparison
-				if (typeof aVal === 'string' && typeof bVal === 'string') {
-					const aStr = aVal.toLowerCase();
-					const bStr = bVal.toLowerCase();
-					if (aStr < bStr) return direction === 'asc' ? -1 : 1;
-					if (aStr > bStr) return direction === 'asc' ? 1 : -1;
-					return 0;
-				}
-
-				// Handle undefined values for comparison
-				const aComp = aVal !== undefined ? aVal : '';
-				const bComp = bVal !== undefined ? bVal : '';
-				if (aComp < bComp) return direction === 'asc' ? -1 : 1;
-				if (aComp > bComp) return direction === 'asc' ? 1 : -1;
-				return 0;
-			});
+			// Validate column is a valid Environment key before sorting
+			if (!isValidEnvironmentKey(column)) {
+				console.warn(`Invalid sort column: ${column}. Skipping sort.`);
+			} else {
+				filteredData = sortEnvironments(filteredData, column, direction);
+			}
 		}
 
 		return {
@@ -207,15 +243,29 @@
 				destructive: true,
 				action: async () => {
 					try {
-						await Promise.all(
+						const results = await Promise.allSettled(
 							selectedEnvironmentIds.map((id) => environmentManagementAPI.delete(id))
 						);
-						toast.success(`${selectedEnvironmentIds.length} environment(s) removed successfully`);
+
+						const successful = results.filter((result) => result.status === 'fulfilled');
+						const failed = results.filter((result) => result.status === 'rejected');
+
+						if (successful.length > 0) {
+							toast.success(`${successful.length} environment(s) removed successfully`);
+						}
+
+						if (failed.length > 0) {
+							console.error('Failed delete operations:', failed);
+							toast.error(
+								`Failed to remove ${failed.length} environment(s). Check console for details.`
+							);
+						}
+
 						selectedEnvironmentIds = [];
 						await loadEnvironments();
 					} catch (err) {
-						console.error('Failed to remove environments:', err);
-						toast.error('Failed to remove some environments');
+						console.error('Unexpected error during bulk delete:', err);
+						toast.error('An unexpected error occurred during bulk deletion');
 					}
 				}
 			}
@@ -309,7 +359,7 @@
 							bind:requestOptions
 							bind:selectedIds={selectedEnvironmentIds}
 							withoutPagination={true}
-							onRefresh={handleRefresh}
+							onRefresh={handleLocalFilter}
 							{columns}
 							filterPlaceholder="Search environments..."
 							noResultsMessage="No environments found"

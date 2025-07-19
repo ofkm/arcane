@@ -434,7 +434,10 @@ func (s *AutoUpdateService) checkImageForUpdate(
 	}
 
 	registryUtils := utils.NewRegistryUtils()
-	registry, repository, tag := registryUtils.SplitImageReference(imageRef)
+	registry, repository, tag, err := registryUtils.SplitImageReference(imageRef)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to parse image reference: %w", err)
+	}
 
 	authURL, err := registryUtils.CheckAuth(ctx, registry)
 	if err != nil {
@@ -443,7 +446,12 @@ func (s *AutoUpdateService) checkImageForUpdate(
 
 	var token string
 	if authURL != "" {
-		authConfig, _ := s.getAuthConfigForImage(ctx, imageRef)
+		authConfig, err := s.getAuthConfigForImage(ctx, imageRef)
+		if err != nil {
+			log.Printf("Warning: Failed to get auth config for image %s: %v", imageRef, err)
+			// Continue without authentication - may work for public registries
+		}
+
 		var creds *utils.RegistryCredentials
 		if authConfig != nil {
 			creds = &utils.RegistryCredentials{
@@ -740,7 +748,10 @@ func (s *AutoUpdateService) getContainerName(cnt container.Summary) string {
 }
 
 func (s *AutoUpdateService) getAuthConfigForImage(ctx context.Context, imageRef string) (*registry.AuthConfig, error) {
-	registryDomain := utils.ExtractRegistryDomain(imageRef)
+	registryDomain, err := utils.ExtractRegistryDomain(imageRef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract domain: %w", err)
+	}
 	normalizedImageDomain := s.normalizeRegistryURL(registryDomain)
 
 	registries, err := s.registryService.GetAllRegistries(ctx)
@@ -791,12 +802,35 @@ func (s *AutoUpdateService) checkStackImagesForUpdates(ctx context.Context, stac
 	hasUpdates := false
 	imageUpdates := make(map[string]string)
 
+	// Get current service information to retrieve actual image IDs
+	services, err := s.stackService.GetStackServices(ctx, stack.ID)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to get stack services: %w", err)
+	}
+
+	// Create a map of service name to current image ID for quick lookup
+	serviceImageIDs := make(map[string]string)
+	for _, svc := range services {
+		if svc.Image != "" {
+			// Extract the current image ID from the service
+			currentImageID, err := s.getImageDigest(ctx, svc.Image)
+			if err != nil {
+				log.Printf("Warning: Failed to get current image digest for service %s: %v", svc.Name, err)
+				continue
+			}
+			serviceImageIDs[svc.Name] = currentImageID
+		}
+	}
+
 	for serviceName, imageRef := range images {
 		if s.isDigestBasedImage(imageRef) {
 			continue
 		}
 
-		hasUpdate, newDigest, err := s.checkImageForUpdate(ctx, imageRef, "", settings)
+		// Get the current image ID for this service, or use empty string if not found
+		currentImageID := serviceImageIDs[serviceName]
+
+		hasUpdate, newDigest, err := s.checkImageForUpdate(ctx, imageRef, currentImageID, settings)
 		if err != nil {
 			log.Printf("Error checking updates for %s in stack %s: %v", imageRef, stack.Name, err)
 			continue

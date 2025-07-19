@@ -177,7 +177,16 @@
 			return { repo: '<none>', tag: '<none>' };
 		}
 
-		const [repo, tag] = repoTags[0].split(':');
+		const repoTag = repoTags[0];
+		const lastColonIndex = repoTag.lastIndexOf(':');
+
+		if (lastColonIndex === -1) {
+			return { repo: repoTag, tag: 'latest' };
+		}
+
+		const repo = repoTag.substring(0, lastColonIndex);
+		const tag = repoTag.substring(lastColonIndex + 1);
+
 		return { repo: repo || '<none>', tag: tag || '<none>' };
 	}
 </script>

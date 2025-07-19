@@ -33,13 +33,15 @@ func NewRegistryUtils() *RegistryUtils {
 	return &RegistryUtils{}
 }
 
-func (r *RegistryUtils) SplitImageReference(reference string) (string, string, string) {
+func (r *RegistryUtils) SplitImageReference(reference string) (string, string, string, error) {
+	if reference == "" {
+		return "", "", "", fmt.Errorf("empty reference provided")
+	}
+
 	splits := strings.Split(reference, "/")
 	var registry, repositoryAndTag string
 
 	switch len(splits) {
-	case 0:
-		panic("empty reference")
 	case 1:
 		registry = DEFAULT_REGISTRY
 		repositoryAndTag = reference
@@ -69,7 +71,7 @@ func (r *RegistryUtils) SplitImageReference(reference string) (string, string, s
 		repository = tagSplits[0]
 		tag = tagSplits[1]
 	default:
-		panic(fmt.Sprintf("Failed to parse reference! Splits: %v", tagSplits))
+		return "", "", "", fmt.Errorf("invalid reference format: too many colons in %s", repositoryAndTag)
 	}
 
 	repositoryComponents := strings.Split(repository, "/")
@@ -77,7 +79,7 @@ func (r *RegistryUtils) SplitImageReference(reference string) (string, string, s
 		repository = "library/" + repository
 	}
 
-	return registry, repository, tag
+	return registry, repository, tag, nil
 }
 
 func (r *RegistryUtils) GetRegistryURL(registry string) string {
@@ -335,13 +337,16 @@ func TestRegistryConnection(ctx context.Context, registryURL string, credentials
 	return result, nil
 }
 
-func ExtractRegistryDomain(imageRef string) string {
+func ExtractRegistryDomain(imageRef string) (string, error) {
 	registryUtils := NewRegistryUtils()
-	registry, _, _ := registryUtils.SplitImageReference(imageRef)
-
-	if registry == DEFAULT_REGISTRY {
-		return "docker.io"
+	registry, _, _, err := registryUtils.SplitImageReference(imageRef)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract registry domain: %w", err)
 	}
 
-	return registry
+	if registry == DEFAULT_REGISTRY {
+		return "docker.io", nil
+	}
+
+	return registry, nil
 }

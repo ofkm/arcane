@@ -8,24 +8,23 @@ import (
 )
 
 type Services struct {
-	User               *services.UserService
-	Stack              *services.StackService
-	Environment        *services.EnvironmentService
-	Settings           *services.SettingsService
-	Container          *services.ContainerService
-	Image              *services.ImageService
-	Volume             *services.VolumeService
-	Network            *services.NetworkService
-	ImageUpdate        *services.ImageUpdateService
-	Auth               *services.AuthService
-	Oidc               *services.OidcService
-	Docker             *services.DockerClientService
-	Converter          *services.ConverterService
-	Template           *services.TemplateService
-	ContainerRegistry  *services.ContainerRegistryService
-	System             *services.SystemService
-	AutoUpdate         *services.AutoUpdateService
-	ImageUpdateService *services.ImageUpdateService
+	User              *services.UserService
+	Stack             *services.StackService
+	Environment       *services.EnvironmentService
+	Settings          *services.SettingsService
+	Container         *services.ContainerService
+	Image             *services.ImageService
+	Volume            *services.VolumeService
+	Network           *services.NetworkService
+	ImageUpdate       *services.ImageUpdateService
+	Auth              *services.AuthService
+	Oidc              *services.OidcService
+	Docker            *services.DockerClientService
+	Converter         *services.ConverterService
+	Template          *services.TemplateService
+	ContainerRegistry *services.ContainerRegistryService
+	System            *services.SystemService
+	AutoUpdate        *services.AutoUpdateService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -66,7 +65,7 @@ func setupContainerRegistryRoutes(api *gin.RouterGroup, services *Services) {
 func setupImageUpdateRoutes(api *gin.RouterGroup, services *Services) {
 	imageUpdates := api.Group("/image-updates")
 	imageUpdates.Use(middleware.AuthMiddleware(services.Auth))
-	imageUpdateHandler := NewImageUpdateHandler(services.ImageUpdateService)
+	imageUpdateHandler := NewImageUpdateHandler(services.ImageUpdate)
 
 	imageUpdates.GET("/check", imageUpdateHandler.CheckImageUpdate)
 	imageUpdates.GET("/check/:imageId", imageUpdateHandler.CheckImageUpdateByID)
