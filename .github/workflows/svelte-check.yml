@@ -42,16 +42,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache: 'bun'
+          cache-dependency-path: frontend/bun.lock
+        
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Add svelte-check problem matcher
         run: echo "::add-matcher::.github/svelte-check-matcher.json"
 
-      - name: Run svelte-check via npm script
+      - name: Run svelte-check
         working-directory: frontend
-        run: npm run check
+        run: bun check

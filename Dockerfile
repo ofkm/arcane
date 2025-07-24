@@ -4,12 +4,12 @@
 ARG BUILD_TAGS=""
 
 # Stage 1: Build Frontend
-FROM node:22-alpine AS frontend-builder
+FROM oven/bun:latest AS frontend-builder
 WORKDIR /build
 COPY ./frontend/package*.json ./
-RUN npm ci
+RUN bun install --frozen-lockfile
 COPY ./frontend ./
-RUN BUILD_PATH=dist npm run build
+RUN BUILD_PATH=dist bun build
 
 # Stage 2: Build Backend
 FROM golang:1.24-alpine AS backend-builder

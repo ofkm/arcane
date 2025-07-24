@@ -63,24 +63,9 @@ jobs:
         with:
           node-version: 22
 
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          path: |
-            ~/.npm
-            tests/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('tests/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
+          bun-version: latest
 
       - name: Create Docker volumes for tests
         run: |
@@ -116,16 +101,15 @@ jobs:
 
       - name: Install test dependencies
         working-directory: tests
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Install Playwright browsers
         working-directory: tests
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
+        run: bunx playwright install --with-deps chromium
 
       - name: Run Playwright E2E tests
         working-directory: tests
-        run: npx playwright test
+        run: bunx playwright test
 
       - name: Upload Playwright HTML report
         if: always()
