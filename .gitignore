@@ -27,7 +27,6 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-
 #tests data
 tests/test-results/*
 tests/.report/*

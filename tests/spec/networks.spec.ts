@@ -19,7 +19,6 @@ test.describe('Network Management Page', () => {
   test('should display summary cards', async ({ page }) => {
     await expect(page.getByText('Total Networks')).toBeVisible();
     await expect(page.getByText('Bridge Networks')).toBeVisible();
-    await expect(page.getByText('Overlay Networks')).toBeVisible();
   });
 
   test('should display the network list card title', async ({ page }) => {

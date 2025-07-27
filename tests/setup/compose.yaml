@@ -1,0 +1,21 @@
+services:
+  arcane:
+    image: arcane:playwright-tests
+    user: root
+    ports:
+      - '3000:8080'
+    environment:
+      - APP_ENV=test
+      - ENCRYPTION_KEY=3JDIgolks2tJ9ymm1AdqzlYMWu0DUWyt
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - arcane_data:/app/data
+    build:
+      args:
+        - BUILD_TAGS=playwright
+      context: ../..
+      dockerfile: Dockerfile
+
+volumes:
+  arcane_data:

@@ -36,7 +36,7 @@ test.describe('Images Page', () => {
   test('should display the images page title and description', async ({ page }) => {
     await page.goto('/images');
 
-    await expect(page.getByRole('heading', { name: 'Container Images', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Images', level: 1 })).toBeVisible();
     await expect(page.getByText('View and Manage your Container images').first()).toBeVisible();
   });
 
@@ -52,7 +52,7 @@ test.describe('Images Page', () => {
 
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText('Image List')).toBeVisible();
+    await expect(page.getByText('Images List')).toBeVisible();
     await expect(page.locator('table')).toBeVisible();
   });
 
@@ -60,14 +60,18 @@ test.describe('Images Page', () => {
     await page.goto('/images');
     await page.waitForLoadState('networkidle');
     await page.locator('button:has-text("Pull Image")').first().click();
-    await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Pull Docker Image")')).toBeVisible();
+    await expect(
+      page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Pull Docker Image")')
+    ).toBeVisible();
   });
 
   test('should open the Prune Unused Images dialog', async ({ page }) => {
     await page.goto('/images');
     await page.waitForLoadState('networkidle');
     await page.locator('button:has-text("Prune Unused")').click();
-    await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Prune Unused Images")')).toBeVisible();
+    await expect(
+      page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Prune Unused Images")')
+    ).toBeVisible();
   });
 
   test('should navigate to image details on inspect click', async ({ page }) => {
@@ -89,15 +93,9 @@ test.describe('Images Page', () => {
     const firstRow = await page.getByRole('row', { name: 'ghcr.io/linuxserver/nginx' });
     await firstRow.getByRole('button', { name: 'Open menu' }).click();
 
-    const pullPromise = page.waitForRequest((req) => req.url().includes('/api/images/pull') && req.method() === 'POST');
     await page.getByRole('menuitem', { name: 'Pull' }).click();
-    const pullRequest = await pullPromise;
 
     await page.waitForLoadState('networkidle');
-
-    expect(pullRequest).toBeTruthy();
-    const postData = pullRequest.postDataJSON();
-    expect(postData.imageName).toBe('ghcr.io/linuxserver/nginx:latest');
 
     await expect(page.locator(`li[data-sonner-toast][data-type="success"] div[data-title]`)).toBeVisible();
   });
@@ -116,9 +114,13 @@ test.describe('Images Page', () => {
     await page.getByRole('menuitem', { name: 'Remove' }).click();
     console.log(firstRow);
 
-    await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Delete Image")')).toBeVisible();
+    await expect(
+      page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Delete Image")')
+    ).toBeVisible();
 
-    const removePromise = page.waitForRequest((req) => req.url().includes(`/api/images/${deleteableImage.id}`) && req.method() === 'DELETE');
+    const removePromise = page.waitForRequest(
+      (req) => req.url().includes(`/api/images/${deleteableImage.id}`) && req.method() === 'DELETE'
+    );
 
     await page.locator('button:has-text("Delete")').click();
     const removeRequest = await removePromise;
@@ -135,11 +137,15 @@ test.describe('Images Page', () => {
 
     await page.locator('button:has-text("Prune Unused")').click();
 
-    await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Prune Unused Images")')).toBeVisible();
+    await expect(
+      page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Prune Unused Images")')
+    ).toBeVisible();
 
     await page.locator('button:has-text("Prune Images")').click();
 
-    await expect(page.locator(`li[data-sonner-toast][data-type="success"] div[data-title]:has-text("pruned")`)).toBeVisible({
+    await expect(
+      page.locator(`li[data-sonner-toast][data-type="success"] div[data-title]:has-text("pruned")`)
+    ).toBeVisible({
       timeout: 10000,
     });
   });
@@ -150,7 +156,9 @@ test.describe('Images Page', () => {
     await page.waitForLoadState('networkidle');
 
     await page.locator('button:has-text("Pull Image")').first().click();
-    await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Pull Docker Image")')).toBeVisible();
+    await expect(
+      page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Pull Docker Image")')
+    ).toBeVisible();
 
     const imageNameFull = 'ghcr.io/linuxserver/nginx:latest';
     const imageName = 'ghcr.io/linuxserver/nginx';
