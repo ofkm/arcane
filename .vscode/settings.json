@@ -6,5 +6,7 @@
     "scminput": false,
     "typescript": true
   },
-  "typescript.tsdk": "frontend/node_modules/typescript/lib"
+  "typescript.tsdk": "frontend/node_modules/typescript/lib",
+  "go.buildTags": "playwright",
+  "prettier.documentSelectors": ["**/*.svelte"]
 }
