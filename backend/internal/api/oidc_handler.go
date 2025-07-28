@@ -1,7 +1,6 @@
 package api
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -69,8 +68,6 @@ func (h *OidcHandler) GetOidcAuthUrl(c *gin.Context) {
 
 	authUrl, stateCookieValue, err := h.oidcService.GenerateAuthURL(c.Request.Context(), req.RedirectUri)
 	if err != nil {
-		// Log the actual error for debugging
-		slog.ErrorContext(c.Request.Context(), "Failed to generate OIDC auth URL", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to generate OIDC auth URL: " + err.Error()})
 		return
 	}
