@@ -47,6 +47,6 @@ export default class SettingsAPIService extends BaseAPIService {
 	}
 
 	async getOidcStatus(): Promise<OidcStatusInfo> {
-		return this.handleResponse(this.api.get('/auth/oidc/status'));
+		return this.handleResponse(this.api.get('/oidc/status'));
 	}
 }

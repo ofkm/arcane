@@ -104,7 +104,6 @@ func (s *OidcService) discoverOidcEndpoints(ctx context.Context, issuerURL strin
 			wellKnownURL, resp.StatusCode, string(bodyBytes))
 	}
 
-	// Check if response is JSON
 	contentType := resp.Header.Get("Content-Type")
 	if !strings.Contains(contentType, "application/json") {
 		return nil, fmt.Errorf("OIDC discovery endpoint returned non-JSON content-type: %s, body: %s",
@@ -117,13 +116,11 @@ func (s *OidcService) discoverOidcEndpoints(ctx context.Context, issuerURL strin
 			wellKnownURL, err, string(bodyBytes[:min(500, len(bodyBytes))]))
 	}
 
-	// Validate required endpoints
 	if discovery.AuthorizationEndpoint == "" || discovery.TokenEndpoint == "" {
 		return nil, fmt.Errorf("discovery document missing required endpoints. Auth: %s, Token: %s",
 			discovery.AuthorizationEndpoint, discovery.TokenEndpoint)
 	}
 
-	// Cache the discovery document for 1 hour
 	s.cacheMutex.Lock()
 	s.discoveryCache[issuerURL] = &discovery
 	s.cacheExpiry[issuerURL] = time.Now().Add(1 * time.Hour)

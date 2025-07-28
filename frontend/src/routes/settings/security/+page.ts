@@ -10,11 +10,11 @@ export const load = async () => {
 			dbConfigured: false,
 			effectivelyEnabled: false,
 			effectivelyConfigured: false
-		})) // Ensure fallback has all new fields
+		}))
 	]);
 
 	return {
 		settings,
-		oidcStatus // Pass the full oidcStatus object
+		oidcStatus
 	};
 };

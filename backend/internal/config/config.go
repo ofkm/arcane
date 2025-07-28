@@ -17,14 +17,11 @@ type Config struct {
 	Environment string
 	JWTSecret   string
 
-	OidcEnabled               bool
-	OidcClientID              string
-	OidcClientSecret          string
-	OidcIssuerURL             string
-	OidcAuthorizationEndpoint string
-	OidcTokenEndpoint         string
-	OidcUserinfoEndpoint      string
-	OidcScopes                string
+	OidcEnabled      bool
+	OidcClientID     string
+	OidcClientSecret string
+	OidcIssuerURL    string
+	OidcScopes       string
 
 	EncryptionKey string
 }

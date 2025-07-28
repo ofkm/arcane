@@ -49,15 +49,7 @@ export default class OidcAPIService extends BaseAPIService {
 	}
 
 	async updateConfig(config: Partial<OidcConfig>): Promise<OidcConfig> {
-		// Filter out read-only fields before sending to backend
-		const {
-			redirectUri,
-			authorizationEndpoint,
-			tokenEndpoint,
-			userinfoEndpoint,
-			jwksUri,
-			...updatePayload
-		} = config;
+		const { ...updatePayload } = config;
 		return this.handleResponse(this.api.put('/oidc/config', updatePayload));
 	}
 }
