@@ -30,7 +30,8 @@ type Services struct {
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	api := r.Group("/api")
 
-	setupAuthRoutes(api, services, appConfig)
+	setupAuthRoutes(api, services)
+	setupOidcRoutes(api, services, appConfig)
 	setupUserRoutes(api, services)
 	setupStackRoutes(api, services)
 	setupEnvironmentRoutes(api, services)
@@ -76,7 +77,18 @@ func setupImageUpdateRoutes(api *gin.RouterGroup, services *Services) {
 	imageUpdates.POST("/compare", imageUpdateHandler.CompareVersions)
 }
 
-func setupAuthRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {
+func setupOidcRoutes(api *gin.RouterGroup, services *Services, appConfig *config.Config) {
+	oidcHandler := NewOidcHandler(services.Auth, services.Oidc, appConfig)
+	oidc := api.Group("/oidc")
+	{
+		oidc.POST("/url", oidcHandler.GetOidcAuthUrl)
+		oidc.POST("/callback", oidcHandler.HandleOidcCallback)
+		oidc.GET("/config", oidcHandler.GetOidcConfig)
+		oidc.GET("/status", oidcHandler.GetOidcStatus)
+	}
+}
+
+func setupAuthRoutes(api *gin.RouterGroup, services *Services) {
 	auth := api.Group("/auth")
 
 	authHandler := NewAuthHandler(services.User, services.Auth, services.Oidc)
@@ -88,14 +100,6 @@ func setupAuthRoutes(api *gin.RouterGroup, services *Services, appConfig *config
 	auth.POST("/refresh", authHandler.RefreshToken)
 	auth.POST("/password", middleware.AuthMiddleware(services.Auth), authHandler.ChangePassword)
 
-	oidcHandler := NewOidcHandler(services.Auth, services.Oidc, appConfig)
-	oidc := auth.Group("/oidc")
-	{
-		oidc.POST("/url", oidcHandler.GetOidcAuthUrl)
-		oidc.POST("/callback", oidcHandler.HandleOidcCallback)
-		oidc.GET("/config", oidcHandler.GetOidcConfig)
-		oidc.GET("/status", oidcHandler.GetOidcStatus)
-	}
 }
 
 func setupUserRoutes(api *gin.RouterGroup, services *Services) {

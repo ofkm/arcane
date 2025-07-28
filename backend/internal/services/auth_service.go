@@ -123,13 +123,15 @@ func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
 	}
 
 	envOidcConfig := models.OidcConfig{
-		ClientID:              s.config.OidcClientID,
-		ClientSecret:          s.config.OidcClientSecret,
-		RedirectURI:           s.config.OidcRedirectURI,
+		ClientID:     s.config.OidcClientID,
+		ClientSecret: s.config.OidcClientSecret,
+		IssuerURL:    s.config.OidcIssuerURL,
+		Scopes:       s.config.OidcScopes,
+
+		// Legacy support - if these are set, use them
 		AuthorizationEndpoint: s.config.OidcAuthorizationEndpoint,
 		TokenEndpoint:         s.config.OidcTokenEndpoint,
 		UserinfoEndpoint:      s.config.OidcUserinfoEndpoint,
-		Scopes:                s.config.OidcScopes,
 	}
 
 	oidcConfigBytes, err := json.Marshal(envOidcConfig)
@@ -152,8 +154,10 @@ func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) error {
 		return fmt.Errorf("failed to update settings in DB with OIDC env config: %w", err)
 	}
 
-	if s.config.OidcClientID == "" || s.config.OidcRedirectURI == "" || s.config.OidcAuthorizationEndpoint == "" || s.config.OidcTokenEndpoint == "" {
-		log.Println("⚠️ Warning: Synced OIDC settings from environment, but one or more critical OIDC environment variables (ClientID, RedirectURI, AuthEndpoint, TokenEndpoint) were empty. OIDC may not function correctly.")
+	if s.config.OidcClientID == "" ||
+		(s.config.OidcIssuerURL == "" &&
+			(s.config.OidcAuthorizationEndpoint == "" || s.config.OidcTokenEndpoint == "")) {
+		log.Println("⚠️ Warning: Synced OIDC settings from environment, but ClientID or endpoints are missing. Either provide OIDC_ISSUER_URL or explicit endpoint URLs.")
 	}
 
 	return nil
@@ -197,14 +201,12 @@ func (s *AuthService) GetOidcConfigurationStatus(ctx context.Context) (*OidcStat
 	status := &OidcStatusInfo{}
 
 	status.EnvForced = s.config.OidcEnabled
-	if status.EnvForced {
-		// This reflects if the env vars themselves were complete at load time
+
+	if s.config.OidcEnabled {
+		// Check if we have either issuer URL or explicit endpoints
 		status.EnvConfigured = s.config.OidcClientID != "" &&
-			// s.config.OidcClientSecret != "" && // ClientSecret might be optional for "configured" status display
-			s.config.OidcRedirectURI != "" &&
-			s.config.OidcAuthorizationEndpoint != "" &&
-			s.config.OidcTokenEndpoint != "" &&
-			s.config.OidcUserinfoEndpoint != ""
+			(s.config.OidcIssuerURL != "" ||
+				(s.config.OidcAuthorizationEndpoint != "" && s.config.OidcTokenEndpoint != ""))
 	}
 
 	// Get effective settings which are now purely from the database
@@ -216,11 +218,12 @@ func (s *AuthService) GetOidcConfigurationStatus(ctx context.Context) (*OidcStat
 
 	status.DbEnabled = effectiveAuthSettings.OidcEnabled
 	if effectiveAuthSettings.Oidc != nil {
+		// Updated validation: check for issuer URL OR explicit endpoints
 		status.DbConfigured = effectiveAuthSettings.Oidc.ClientID != "" &&
-			effectiveAuthSettings.Oidc.RedirectURI != "" &&
-			effectiveAuthSettings.Oidc.AuthorizationEndpoint != "" &&
-			effectiveAuthSettings.Oidc.TokenEndpoint != "" &&
-			effectiveAuthSettings.Oidc.UserinfoEndpoint != ""
+			(effectiveAuthSettings.Oidc.IssuerURL != "" ||
+				(effectiveAuthSettings.Oidc.AuthorizationEndpoint != "" &&
+					effectiveAuthSettings.Oidc.TokenEndpoint != "" &&
+					effectiveAuthSettings.Oidc.UserinfoEndpoint != ""))
 	}
 
 	status.EffectivelyEnabled = status.DbEnabled

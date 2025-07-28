@@ -20,11 +20,12 @@
 	let oidcConfigForm = $state({
 		clientId: '',
 		clientSecret: '',
-		redirectUri: 'http://localhost:3000/auth/oidc/callback',
+		issuerUrl: '',
+		scopes: 'openid email profile',
+		// Legacy fields (optional)
 		authorizationEndpoint: '',
 		tokenEndpoint: '',
-		userinfoEndpoint: '',
-		scopes: 'openid email profile'
+		userinfoEndpoint: ''
 	});
 
 	let localAuthEnabled = $state(true);
@@ -45,7 +46,6 @@
 		passwordPolicy = currentSettings.auth?.passwordPolicy ?? 'strong';
 
 		oidcConfigForm.clientId = currentSettings.auth?.oidc?.clientId || '';
-		oidcConfigForm.redirectUri = currentSettings.auth?.oidc?.redirectUri || 'http://localhost:3000/auth/oidc/callback';
 		oidcConfigForm.authorizationEndpoint = currentSettings.auth?.oidc?.authorizationEndpoint || '';
 		oidcConfigForm.tokenEndpoint = currentSettings.auth?.oidc?.tokenEndpoint || '';
 		oidcConfigForm.userinfoEndpoint = currentSettings.auth?.oidc?.userinfoEndpoint || '';
@@ -75,7 +75,7 @@
 							oidc: {
 								clientId: oidcConfigForm.clientId,
 								clientSecret: oidcConfigForm.clientSecret || '',
-								redirectUri: oidcConfigForm.redirectUri,
+								issuerUrl: oidcConfigForm.issuerUrl,
 								authorizationEndpoint: oidcConfigForm.authorizationEndpoint,
 								tokenEndpoint: oidcConfigForm.tokenEndpoint,
 								userinfoEndpoint: oidcConfigForm.userinfoEndpoint,
@@ -106,8 +106,8 @@
 		if (!isOidcViewMode) {
 			oidcConfigForm.clientId = currentSettings.auth?.oidc?.clientId || '';
 			oidcConfigForm.clientSecret = '';
-			oidcConfigForm.redirectUri = currentSettings.auth?.oidc?.redirectUri || 'http://localhost:3000/auth/oidc/callback';
-			oidcConfigForm.authorizationEndpoint = currentSettings.auth?.oidc?.authorizationEndpoint || '';
+			oidcConfigForm.authorizationEndpoint =
+				currentSettings.auth?.oidc?.authorizationEndpoint || '';
 			oidcConfigForm.tokenEndpoint = currentSettings.auth?.oidc?.tokenEndpoint || '';
 			oidcConfigForm.userinfoEndpoint = currentSettings.auth?.oidc?.userinfoEndpoint || '';
 			oidcConfigForm.scopes = currentSettings.auth?.oidc?.scopes || 'openid email profile';
@@ -133,11 +133,17 @@
 	<div class="settings-header">
 		<div class="settings-header-content">
 			<h1 class="settings-title">Security Settings</h1>
-			<p class="settings-description">Configure authentication methods, session policies, and security settings</p>
+			<p class="settings-description">
+				Configure authentication methods, session policies, and security settings
+			</p>
 		</div>
 
 		<div class="settings-actions">
-			<Button onclick={() => handleSecuritySettingUpdates()} disabled={isLoading.saving} class="arcane-button-save">
+			<Button
+				onclick={() => handleSecuritySettingUpdates()}
+				disabled={isLoading.saving}
+				class="arcane-button-save"
+			>
 				{#if isLoading.saving}
 					<RefreshCw class="size-4 animate-spin" />
 					Saving...
@@ -158,7 +164,9 @@
 					</div>
 					<div>
 						<Card.Title class="settings-card-title">Authentication Methods</Card.Title>
-						<Card.Description class="settings-card-description">Configure how users sign in to Arcane</Card.Description>
+						<Card.Description class="settings-card-description"
+							>Configure how users sign in to Arcane</Card.Description
+						>
 					</div>
 				</div>
 			</Card.Header>
@@ -166,9 +174,15 @@
 				<div class="space-y-4">
 					<div class="bg-muted/30 flex items-center justify-between rounded-lg border p-4">
 						<div class="space-y-0.5">
-							<label for="localAuthSwitch" class="text-base font-medium">Local Authentication</label>
-							<p class="text-muted-foreground text-sm">Username and password stored in the system</p>
-							<p class="text-muted-foreground mt-1 text-xs">This is recommended to be enabled as a fallback option if OIDC authentication is unavailable.</p>
+							<label for="localAuthSwitch" class="text-base font-medium">Local Authentication</label
+							>
+							<p class="text-muted-foreground text-sm">
+								Username and password stored in the system
+							</p>
+							<p class="text-muted-foreground mt-1 text-xs">
+								This is recommended to be enabled as a fallback option if OIDC authentication is
+								unavailable.
+							</p>
 						</div>
 						<Switch
 							id="localAuthSwitch"
@@ -184,34 +198,57 @@
 							<p class="text-muted-foreground text-sm">
 								Use an External OIDC Provider
 								{#if data.oidcStatus.envForced}
-									<span class="text-muted-foreground text-xs">(Forced ON by server environment)</span>
+									<span class="text-muted-foreground text-xs"
+										>(Forced ON by server environment)</span
+									>
 								{/if}
 							</p>
 							{#if data.oidcStatus.effectivelyEnabled || data.oidcStatus.envForced}
 								{#if data.oidcStatus.envForced && !data.oidcStatus.envConfigured}
-									<Button variant="link" class="text-destructive h-auto p-0 text-xs hover:underline" onclick={openOidcDialog}>
+									<Button
+										variant="link"
+										class="text-destructive h-auto p-0 text-xs hover:underline"
+										onclick={openOidcDialog}
+									>
 										<AlertTriangle class="mr-1 size-3" />
 										Server forces OIDC, but env vars missing. Configure app settings or fix server env.
 									</Button>
 								{:else if data.oidcStatus.envForced && data.oidcStatus.envConfigured}
-									<Button variant="link" class="h-auto p-0 text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
+									<Button
+										variant="link"
+										class="h-auto p-0 text-xs text-sky-600 hover:underline"
+										onclick={openOidcDialog}
+									>
 										<Info class="mr-1 size-3" />
 										OIDC configured & forced by server. View Status.
 									</Button>
 								{:else if !data.oidcStatus.envForced && data.oidcStatus.effectivelyEnabled && data.oidcStatus.dbConfigured}
-									<Button variant="link" class="h-auto p-0 text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
+									<Button
+										variant="link"
+										class="h-auto p-0 text-xs text-sky-600 hover:underline"
+										onclick={openOidcDialog}
+									>
 										<Info class="mr-1 size-3" />
 										OIDC configured via application settings. Manage.
 									</Button>
 								{:else if !data.oidcStatus.envForced && data.oidcStatus.effectivelyEnabled && !data.oidcStatus.dbConfigured}
-									<Button variant="link" class="text-destructive h-auto p-0 text-xs hover:underline" onclick={openOidcDialog}>
+									<Button
+										variant="link"
+										class="text-destructive h-auto p-0 text-xs hover:underline"
+										onclick={openOidcDialog}
+									>
 										<AlertTriangle class="mr-1 size-3" />
 										OIDC enabled, but app settings incomplete. Configure.
 									</Button>
 								{/if}
 							{/if}
 						</div>
-						<Switch id="oidcAuthSwitch" checked={oidcEnabled} disabled={data.oidcStatus.envForced} onCheckedChange={handleOidcSwitchChange} />
+						<Switch
+							id="oidcAuthSwitch"
+							checked={oidcEnabled}
+							disabled={data.oidcStatus.envForced}
+							onCheckedChange={handleOidcSwitchChange}
+						/>
 					</div>
 				</div>
 			</Card.Content>
@@ -222,18 +259,27 @@
 				<Dialog.Header>
 					<Dialog.Title>
 						{#if isOidcViewMode}OIDC Server Configuration Status
-						{:else if data.oidcStatus.envForced && !data.oidcStatus.envConfigured}Configure OIDC (Server Override Warning)
+						{:else if data.oidcStatus.envForced && !data.oidcStatus.envConfigured}Configure OIDC
+							(Server Override Warning)
 						{:else}Configure OIDC Provider{/if}
 					</Dialog.Title>
 					<Dialog.Description>
 						{#if isOidcViewMode}
-							OIDC authentication is configured and forced ON by server-side environment variables. These settings are read-only.
-							<p class="mt-2">The following OIDC settings are loaded from the server environment:</p>
+							OIDC authentication is configured and forced ON by server-side environment variables.
+							These settings are read-only.
+							<p class="mt-2">
+								The following OIDC settings are loaded from the server environment:
+							</p>
 						{:else if data.oidcStatus.envForced && !data.oidcStatus.envConfigured}
-							OIDC usage is forced ON by the server environment (<code>PUBLIC_OIDC_ENABLED=true</code>), but critical server-side OIDC environment variables appear to be missing or incomplete. The settings below are from your application database. While you can save them here, it's strongly
-							recommended to configure the OIDC settings directly in your server's environment for them to take full effect as intended by the server override.
+							OIDC usage is forced ON by the server environment (<code
+								>PUBLIC_OIDC_ENABLED=true</code
+							>), but critical server-side OIDC environment variables appear to be missing or
+							incomplete. The settings below are from your application database. While you can save
+							them here, it's strongly recommended to configure the OIDC settings directly in your
+							server's environment for them to take full effect as intended by the server override.
 						{:else}
-							Configure the OIDC settings for your application. These settings will be saved to the database and used for OIDC authentication.
+							Configure the OIDC settings for your application. These settings will be saved to the
+							database and used for OIDC authentication.
 						{/if}
 					</Dialog.Description>
 				</Dialog.Header>
@@ -260,42 +306,107 @@
 								<li><strong>Scopes:</strong> {currentSettings.auth.oidc.scopes}</li>
 							{:else}
 								<li>
-									<span class="text-destructive">OIDC configuration details not found in effective settings.</span>
+									<span class="text-destructive"
+										>OIDC configuration details not found in effective settings.</span
+									>
 								</li>
 							{/if}
 						</ul>
-						<p class="text-muted-foreground mt-3 text-xs">Changes to these settings must be made in your server's environment configuration.</p>
+						<p class="text-muted-foreground mt-3 text-xs">
+							Changes to these settings must be made in your server's environment configuration.
+						</p>
 					</div>
 				{:else}
 					<div class="grid max-h-[50vh] gap-4 overflow-y-auto py-4 pr-2">
 						<div class="grid grid-cols-4 items-center gap-4">
 							<Label for="oidcClientId" class="col-span-1 text-right">Client ID</Label>
-							<Input id="oidcClientId" bind:value={oidcConfigForm.clientId} class="col-span-3" placeholder="Provided by your OIDC Provider" />
+							<Input
+								id="oidcClientId"
+								bind:value={oidcConfigForm.clientId}
+								class="col-span-3"
+								placeholder="Provided by your OIDC Provider"
+							/>
 						</div>
 						<div class="grid grid-cols-4 items-center gap-4">
 							<Label for="oidcClientSecret" class="col-span-1 text-right">Client Secret</Label>
-							<Input id="oidcClientSecret" type="password" bind:value={oidcConfigForm.clientSecret} class="col-span-3" placeholder="Provided by your OIDC Provider (leave blank to keep existing if any)" />
+							<Input
+								id="oidcClientSecret"
+								type="password"
+								bind:value={oidcConfigForm.clientSecret}
+								class="col-span-3"
+								placeholder="Provided by your OIDC Provider (leave blank to keep existing if any)"
+							/>
 						</div>
 						<div class="grid grid-cols-4 items-center gap-4">
-							<Label for="oidcRedirectUri" class="col-span-1 text-right">Redirect URI</Label>
-							<Input id="oidcRedirectUri" bind:value={oidcConfigForm.redirectUri} placeholder="e.g., http://localhost:3000/auth/oidc/callback" class="col-span-3" />
+							<Label for="oidcIssuerUrl" class="text-right">Issuer URL</Label>
+							<Input
+								id="oidcIssuerUrl"
+								bind:value={oidcConfigForm.issuerUrl}
+								class="col-span-3"
+								placeholder="https://id.example.com"
+							/>
 						</div>
-						<div class="grid grid-cols-4 items-center gap-4">
-							<Label for="oidcAuthEndpoint" class="col-span-1 text-right">Authorization URL</Label>
-							<Input id="oidcAuthEndpoint" bind:value={oidcConfigForm.authorizationEndpoint} class="col-span-3" placeholder="OIDC Provider's Authorization Endpoint" />
+
+						<div class="text-sm text-muted-foreground col-span-4">
+							<p>
+								The issuer URL will be used to auto-discover OIDC endpoints. This is the recommended
+								approach.
+							</p>
 						</div>
-						<div class="grid grid-cols-4 items-center gap-4">
-							<Label for="oidcTokenEndpoint" class="col-span-1 text-right">Token URL</Label>
-							<Input id="oidcTokenEndpoint" bind:value={oidcConfigForm.tokenEndpoint} class="col-span-3" placeholder="OIDC Provider's Token Endpoint" />
+
+						<!-- Add collapsible advanced section for legacy configs -->
+						<details class="col-span-4">
+							<summary class="cursor-pointer text-sm font-medium"
+								>Advanced: Manual Endpoint Configuration</summary
+							>
+							<div class="mt-4 space-y-4 pl-4 border-l-2 border-muted">
+								<div class="grid grid-cols-4 items-center gap-4">
+									<Label for="oidcAuthEndpoint" class="text-right">Authorization Endpoint</Label>
+									<Input
+										id="oidcAuthEndpoint"
+										bind:value={oidcConfigForm.authorizationEndpoint}
+										class="col-span-3"
+										placeholder="Leave empty to auto-discover"
+									/>
+								</div>
+								<div class="grid grid-cols-4 items-center gap-4">
+									<Label for="oidcTokenEndpoint" class="text-right">Token Endpoint</Label>
+									<Input
+										id="oidcTokenEndpoint"
+										bind:value={oidcConfigForm.tokenEndpoint}
+										class="col-span-3"
+										placeholder="Leave empty to auto-discover"
+									/>
+								</div>
+								<div class="grid grid-cols-4 items-center gap-4">
+									<Label for="oidcUserinfoEndpoint" class="text-right">UserInfo Endpoint</Label>
+									<Input
+										id="oidcUserinfoEndpoint"
+										bind:value={oidcConfigForm.userinfoEndpoint}
+										class="col-span-3"
+										placeholder="Leave empty to auto-discover"
+									/>
+								</div>
+								<p class="text-xs text-muted-foreground">
+									These fields are optional. If provided, they will override auto-discovery.
+								</p>
+							</div>
+						</details>
+					</div>
+				{/if}
+
+				{#if currentSettings.auth?.oidc}
+					<div class="grid grid-cols-4 items-center gap-4">
+						<Label class="text-right">Redirect URI</Label>
+						<div class="col-span-3 px-3 py-2 text-sm bg-muted rounded-md font-mono">
+							{currentSettings.auth.oidc.redirectUri || 'Auto-generated based on APP_URL'}
 						</div>
-						<div class="grid grid-cols-4 items-center gap-4">
-							<Label for="oidcUserinfoEndpoint" class="col-span-1 text-right">User Info URL</Label>
-							<Input id="oidcUserinfoEndpoint" bind:value={oidcConfigForm.userinfoEndpoint} class="col-span-3" placeholder="OIDC Provider's UserInfo Endpoint" />
-						</div>
-						<div class="grid grid-cols-4 items-center gap-4">
-							<Label for="oidcScopes" class="col-span-1 text-right">Scopes</Label>
-							<Input id="oidcScopes" bind:value={oidcConfigForm.scopes} placeholder="e.g., openid email profile" class="col-span-3" />
-						</div>
+					</div>
+					<div class="text-xs text-muted-foreground col-span-4">
+						<p>
+							This redirect URI is automatically generated based on your APP_URL. Configure this URL
+							in your OIDC provider.
+						</p>
 					</div>
 				{/if}
 
@@ -316,16 +427,28 @@
 					</div>
 					<div>
 						<Card.Title class="settings-card-title">Session Settings</Card.Title>
-						<Card.Description class="settings-card-description">Configure session behavior and password policies</Card.Description>
+						<Card.Description class="settings-card-description"
+							>Configure session behavior and password policies</Card.Description
+						>
 					</div>
 				</div>
 			</Card.Header>
 			<Card.Content>
 				<div class="space-y-4">
 					<div class="space-y-2">
-						<label for="sessionTimeout" class="text-sm font-medium">Session Timeout (minutes)</label>
-						<Input type="number" id="sessionTimeout" name="sessionTimeout" bind:value={sessionTimeout} min="15" max="1440" />
-						<p class="text-muted-foreground text-xs">Time until inactive sessions are automatically logged out (15-1440 minutes)</p>
+						<label for="sessionTimeout" class="text-sm font-medium">Session Timeout (minutes)</label
+						>
+						<Input
+							type="number"
+							id="sessionTimeout"
+							name="sessionTimeout"
+							bind:value={sessionTimeout}
+							min="15"
+							max="1440"
+						/>
+						<p class="text-muted-foreground text-xs">
+							Time until inactive sessions are automatically logged out (15-1440 minutes)
+						</p>
 					</div>
 
 					<div class="space-y-2">
@@ -333,21 +456,27 @@
 						<div class="grid grid-cols-3 gap-2">
 							<Button
 								variant={passwordPolicy === 'basic' ? 'default' : 'outline'}
-								class={passwordPolicy === 'basic' ? 'arcane-button-create w-full' : 'arcane-button-restart w-full'}
+								class={passwordPolicy === 'basic'
+									? 'arcane-button-create w-full'
+									: 'arcane-button-restart w-full'}
 								onclick={() => {
 									passwordPolicy = 'basic';
 								}}>Basic</Button
 							>
 							<Button
 								variant={passwordPolicy === 'standard' ? 'default' : 'outline'}
-								class={passwordPolicy === 'standard' ? 'arcane-button-create w-full' : 'arcane-button-restart w-full'}
+								class={passwordPolicy === 'standard'
+									? 'arcane-button-create w-full'
+									: 'arcane-button-restart w-full'}
 								onclick={() => {
 									passwordPolicy = 'standard';
 								}}>Standard</Button
 							>
 							<Button
 								variant={passwordPolicy === 'strong' ? 'default' : 'outline'}
-								class={passwordPolicy === 'strong' ? 'arcane-button-create w-full' : 'arcane-button-restart w-full'}
+								class={passwordPolicy === 'strong'
+									? 'arcane-button-create w-full'
+									: 'arcane-button-restart w-full'}
 								onclick={() => {
 									passwordPolicy = 'strong';
 								}}>Strong</Button

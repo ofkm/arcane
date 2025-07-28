@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -19,7 +20,7 @@ type Config struct {
 	OidcEnabled               bool
 	OidcClientID              string
 	OidcClientSecret          string
-	OidcRedirectURI           string
+	OidcIssuerURL             string
 	OidcAuthorizationEndpoint string
 	OidcTokenEndpoint         string
 	OidcUserinfoEndpoint      string
@@ -29,7 +30,7 @@ type Config struct {
 }
 
 func Load() *Config {
-	publicOidcEnabled, _ := strconv.ParseBool(os.Getenv("OIDC_ENABLED"))
+	oidcEnabled, _ := strconv.ParseBool(os.Getenv("OIDC_ENABLED"))
 
 	return &Config{
 		AppUrl:        getEnvOrDefault("APP_URL", "http://localhost:8080"),
@@ -39,15 +40,17 @@ func Load() *Config {
 		JWTSecret:     getEnvOrDefault("JWT_SECRET", "default-jwt-secret-change-me"),
 		EncryptionKey: getEnvOrDefault("ENCRYPTION_KEY", "arcane-dev-key-32-characters!!!"),
 
-		OidcEnabled:               publicOidcEnabled,
-		OidcClientID:              os.Getenv("OIDC_CLIENT_ID"),
-		OidcClientSecret:          os.Getenv("OIDC_CLIENT_SECRET"),
-		OidcRedirectURI:           os.Getenv("OIDC_REDIRECT_URI"),
-		OidcAuthorizationEndpoint: os.Getenv("OIDC_AUTHORIZATION_ENDPOINT"),
-		OidcTokenEndpoint:         os.Getenv("OIDC_TOKEN_ENDPOINT"),
-		OidcUserinfoEndpoint:      os.Getenv("OIDC_USERINFO_ENDPOINT"),
-		OidcScopes:                getEnvOrDefault("OIDC_SCOPES", "openid email profile"),
+		OidcEnabled:      oidcEnabled,
+		OidcClientID:     os.Getenv("OIDC_CLIENT_ID"),
+		OidcClientSecret: os.Getenv("OIDC_CLIENT_SECRET"),
+		OidcIssuerURL:    os.Getenv("OIDC_ISSUER_URL"),
+		OidcScopes:       getEnvOrDefault("OIDC_SCOPES", "openid email profile"),
 	}
+}
+
+func (c *Config) GetOidcRedirectURI() string {
+	baseUrl := strings.TrimSuffix(c.AppUrl, "/")
+	return baseUrl + "/auth/oidc/callback"
 }
 
 func getEnvOrDefault(key, defaultValue string) string {

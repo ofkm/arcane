@@ -14,11 +14,29 @@
 		try {
 			const code = page.url.searchParams.get('code');
 			const stateFromUrl = page.url.searchParams.get('state');
-			const finalRedirectTo = localStorage.getItem('oidc_redirect') || '/';
+			const errorParam = page.url.searchParams.get('error');
+			const errorDescription = page.url.searchParams.get('error_description');
+
+			const finalRedirectTo = localStorage.getItem('oidc_redirect') || '/dashboard';
 			localStorage.removeItem('oidc_redirect');
 
+			// Handle OIDC provider errors
+			if (errorParam) {
+				let userMessage = 'Authentication was cancelled or failed.';
+				if (errorParam === 'access_denied') {
+					userMessage = 'Access was denied. You may have cancelled the login or lack permission.';
+				} else if (errorParam === 'invalid_request') {
+					userMessage = 'Invalid authentication request. Please try again.';
+				}
+
+				error = errorDescription || userMessage;
+				setTimeout(() => goto('/auth/login?error=oidc_provider_error'), 3000);
+				isProcessing = false;
+				return;
+			}
+
 			if (!code || !stateFromUrl) {
-				error = 'Invalid OIDC response (missing parameters). Please try logging in again.';
+				error = 'Invalid authentication response. Missing required parameters.';
 				setTimeout(() => goto('/auth/login?error=oidc_invalid_response'), 3000);
 				isProcessing = false;
 				return;
@@ -27,10 +45,15 @@
 			const authResult = await oidcAPI.handleCallback(code, stateFromUrl);
 
 			if (!authResult.success) {
-				error = authResult.error || 'Authentication failed. Please try again.';
-				const errorCode =
-					authResult.error?.toLowerCase().replace(/\s+/g, '_') || 'oidc_auth_failed';
-				setTimeout(() => goto(`/auth/login?error=${errorCode}`), 3000);
+				let userMessage = 'Authentication failed. Please try again.';
+				if (authResult.error?.includes('state')) {
+					userMessage = 'Security validation failed. Please try logging in again.';
+				} else if (authResult.error?.includes('expired')) {
+					userMessage = 'Authentication session expired. Please try again.';
+				}
+
+				error = userMessage;
+				setTimeout(() => goto('/auth/login?error=oidc_auth_failed'), 3000);
 				isProcessing = false;
 				return;
 			}
@@ -42,38 +65,55 @@
 					email: authResult.user.email,
 					displayName:
 						authResult.user.name ||
+						authResult.user.displayName ||
 						authResult.user.given_name ||
 						authResult.user.preferred_username ||
 						authResult.user.email ||
 						'User',
-					roles: ['user'],
+					roles: authResult.user.groups || ['user'],
 					createdAt: new Date().toISOString()
 				};
 
 				userStore.setUser(user);
+				await invalidateAll();
+				toast.success('Successfully logged in!');
+				goto(finalRedirectTo);
+			} else {
+				error = 'Authentication succeeded but user information is missing.';
+				setTimeout(() => goto('/auth/login?error=oidc_user_info_missing'), 3000);
+				isProcessing = false;
+			}
+		} catch (err: any) {
+			console.error('OIDC callback error:', err);
+
+			let userMessage = 'An error occurred during authentication. Please try again.';
+			if (err.message?.includes('network') || err.message?.includes('timeout')) {
+				userMessage =
+					'Network error during authentication. Please check your connection and try again.';
 			}
 
-			await invalidateAll();
-			toast.success('Successfully logged in!');
-			goto(finalRedirectTo);
-		} catch (err: any) {
-			error = err.message || 'An error occurred during authentication. Please try again.';
-			setTimeout(() => goto('/auth/login?error=oidc_generic_error'), 3000);
-		} finally {
+			error = userMessage;
+			setTimeout(() => goto('/auth/login?error=oidc_callback_error'), 3000);
 			isProcessing = false;
 		}
 	});
 </script>
 
+<svelte:head>
+	<title>Processing Login... - Arcane</title>
+</svelte:head>
+
 <div class="flex min-h-screen items-center justify-center bg-background">
 	<div class="w-full max-w-md space-y-8">
 		<div class="text-center">
 			{#if isProcessing}
-				<div class="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-white-600"></div>
-				<h2 class="mt-6 text-2xl font-bold">Authenticating...</h2>
-				<p class="mt-2 text-sm">Please wait while we complete your login.</p>
+				<div class="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
+				<h2 class="mt-6 text-2xl font-bold">Processing Login...</h2>
+				<p class="mt-2 text-sm text-muted-foreground">
+					Please wait while we complete your authentication.
+				</p>
 			{:else if error}
-				<div class="text-red-600">
+				<div class="text-destructive">
 					<svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 						<path
 							stroke-linecap="round"
@@ -84,7 +124,7 @@
 					</svg>
 					<h2 class="mt-6 text-2xl font-bold">Authentication Error</h2>
 					<p class="mt-2 text-sm">{error}</p>
-					<p class="mt-4 text-xs">Redirecting you back to login...</p>
+					<p class="mt-4 text-xs text-muted-foreground">Redirecting you back to login...</p>
 				</div>
 			{/if}
 		</div>

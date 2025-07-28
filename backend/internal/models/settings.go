@@ -10,13 +10,16 @@ type AuthSettings struct {
 }
 
 type OidcConfig struct {
-	ClientID              string `json:"clientId"`
-	ClientSecret          string `json:"clientSecret"`
-	RedirectURI           string `json:"redirectUri"`
-	AuthorizationEndpoint string `json:"authorizationEndpoint"`
-	TokenEndpoint         string `json:"tokenEndpoint"`
-	UserinfoEndpoint      string `json:"userinfoEndpoint"`
-	Scopes                string `json:"scopes"`
+	ClientID     string `json:"clientId"`
+	ClientSecret string `json:"clientSecret"`
+	IssuerURL    string `json:"issuerUrl"`
+	Scopes       string `json:"scopes"`
+
+	// These will be auto-discovered and cached
+	AuthorizationEndpoint string `json:"authorizationEndpoint,omitempty"`
+	TokenEndpoint         string `json:"tokenEndpoint,omitempty"`
+	UserinfoEndpoint      string `json:"userinfoEndpoint,omitempty"`
+	JwksURI               string `json:"jwksUri,omitempty"`
 }
 
 type RegistryCredential struct {
