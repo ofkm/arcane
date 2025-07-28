@@ -354,11 +354,3 @@ func generateCodeChallenge(verifier string) string {
 	hash := sha256.Sum256([]byte(verifier))
 	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash[:])
 }
-
-// Helper function for Go versions that don't have built-in min
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

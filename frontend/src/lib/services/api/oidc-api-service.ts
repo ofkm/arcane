@@ -58,6 +58,6 @@ export default class OidcAPIService extends BaseAPIService {
 			jwksUri,
 			...updatePayload
 		} = config;
-		return this.handleResponse(this.api.put('/auth/oidc/config', updatePayload));
+		return this.handleResponse(this.api.put('/oidc/config', updatePayload));
 	}
 }
