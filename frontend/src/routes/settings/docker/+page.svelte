@@ -22,19 +22,23 @@
 	});
 
 	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		currentSettings = await settingsAPI.updateSettings({
-			...currentSettings,
-			...updatedSettings
-		});
-
-		settingsStore.reload();
+		try {
+			currentSettings = await settingsAPI.updateSettings({
+				...currentSettings,
+				...updatedSettings
+			});
+			settingsStore.reload();
+		} catch (error) {
+			console.error('Error updating settings:', error);
+			throw error;
+		}
 	}
 
 	function handleDockerSettingUpdates() {
 		isLoading.saving = true;
 		updateSettingsConfig({
-			pruneMode: 'all',
-			autoUpdate: autoUpdateSwitch.value,
+			dockerPruneMode: 'all',
+			autoUpdateEnabled: autoUpdateSwitch.value,
 			pollingEnabled: pollingEnabledSwitch.value,
 			pollingInterval: pollingIntervalInput.value,
 			autoUpdateInterval: autoUpdateIntervalInput.value
@@ -42,6 +46,10 @@
 			.then(async () => {
 				toast.success(`Settings Saved Successfully`);
 				await invalidateAll();
+			})
+			.catch((error) => {
+				toast.error('Failed to save settings');
+				console.error('Settings save error:', error);
 			})
 			.finally(() => {
 				isLoading.saving = false;
@@ -69,10 +77,10 @@
 	});
 
 	$effect(() => {
-		pollingIntervalInput.value = currentSettings.pollingInterval;
-		pollingEnabledSwitch.value = currentSettings.pollingEnabled;
-		autoUpdateSwitch.value = currentSettings.autoUpdate;
-		autoUpdateIntervalInput.value = currentSettings.autoUpdateInterval;
+		pollingIntervalInput.value = currentSettings.pollingInterval || 60;
+		pollingEnabledSwitch.value = currentSettings.pollingEnabled || false;
+		autoUpdateSwitch.value = currentSettings.autoUpdateEnabled || false;
+		autoUpdateIntervalInput.value = currentSettings.autoUpdateInterval || 60;
 	});
 
 	let isPollingConfigValid = $derived(
@@ -116,7 +124,7 @@
 	</div>
 
 	<!-- Alert Section -->
-	{#if currentSettings.autoUpdate && currentSettings.pollingEnabled}
+	{#if currentSettings.autoUpdateEnabled && currentSettings.pollingEnabled}
 		<div class="settings-alert">
 			<Alert.Root variant="warning">
 				<Zap class="size-4" />
@@ -183,7 +191,7 @@
 								description="Automatically update containers when newer images are found"
 							/>
 
-							{#if currentSettings.autoUpdate}
+							{#if currentSettings.autoUpdateEnabled}
 								<div class="pl-4">
 									<FormInput
 										bind:input={autoUpdateIntervalInput}
@@ -202,7 +210,7 @@
 							<Alert.Title>Automation Summary</Alert.Title>
 							<Alert.Description>
 								<ul class="list-inside list-disc text-sm">
-									{#if currentSettings.autoUpdate}
+									{#if currentSettings.autoUpdateEnabled}
 										<li>Images checked every {pollingIntervalInput.value || 60} minutes</li>
 									{:else}
 										<li>Manual updates only (auto-update disabled)</li>
@@ -232,13 +240,14 @@
 					<Label for="pruneMode" class="text-base font-medium">Prune Action Behavior</Label>
 
 					<RadioGroup.Root
-						value={currentSettings.pruneMode}
+						value={currentSettings.dockerPruneMode || 'all'}
 						onValueChange={(val) => {
-							settingsAPI.updateSettings({
-								...currentSettings,
-								pruneMode: val as 'all' | 'dangling'
+							updateSettingsConfig({
+								dockerPruneMode: val as 'all' | 'dangling'
+							}).catch((error) => {
+								toast.error('Failed to update prune mode');
+								console.error('Error updating prune mode:', error);
 							});
-							settingsStore.reload();
 						}}
 						class="space-y-3"
 						id="pruneMode"
@@ -278,7 +287,7 @@
 						<p class="text-muted-foreground text-sm">
 							<strong>Note:</strong> This setting affects the "Prune Unused Images" action on the
 							Images page.
-							{currentSettings.pruneMode === 'all'
+							{(currentSettings.dockerPruneMode || 'all') === 'all'
 								? 'All unused images will be removed, which frees up more space but may require re-downloading images later.'
 								: 'Only dangling images will be removed, which is safer but may leave some unused images behind.'}
 						</p>

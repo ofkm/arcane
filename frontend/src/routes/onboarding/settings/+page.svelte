@@ -10,6 +10,9 @@
 	import { goto } from '$app/navigation';
 	import { Loader2 } from '@lucide/svelte';
 
+	let { data } = $props();
+	let currentSettings = $state(data.settings);
+
 	let isLoading = $state(false);
 
 	let appSettings = $state({
@@ -25,19 +28,15 @@
 
 		try {
 			await settingsAPI.updateSettings({
-				autoUpdate: appSettings.autoUpdate,
+				...currentSettings,
+				autoUpdateEnabled: appSettings.autoUpdate,
 				autoUpdateInterval: parseInt(appSettings.autoUpdateInterval),
-				pruneMode: appSettings.pruneMode,
+				dockerPruneMode: appSettings.pruneMode,
 				baseServerUrl: appSettings.baseServerUrl,
-				onboarding: {
-					completed: false,
-					steps: {
-						welcome: true,
-						password: true,
-						docker: true,
-						security: true,
-						settings: true
-					}
+				onboardingCompleted: false,
+				onboardingSteps: {
+					...currentSettings.onboardingSteps,
+					settings: true
 				}
 			});
 

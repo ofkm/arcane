@@ -7,7 +7,6 @@
 	import { AlertCircle, LogIn, Lock, User } from '@lucide/svelte';
 	import type { PageData } from './$types';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { env } from '$env/dynamic/public';
 	import { authService } from '$lib/services/api/auth-api-service';
 
 	let { data }: { data: PageData } = $props();
@@ -17,11 +16,10 @@
 	let username = $state('');
 	let password = $state('');
 
-	const oidcForcedByEnv = env.PUBLIC_OIDC_ENABLED === 'true';
-	const oidcEnabledBySettings = data.settings?.auth?.oidcEnabled === true;
-	const showOidcLoginButton = $derived(oidcForcedByEnv || oidcEnabledBySettings);
+	const oidcEnabledBySettings = data.settings?.authOidcEnabled === true;
+	const showOidcLoginButton = $derived(oidcEnabledBySettings);
 
-	const localAuthEnabledBySettings = data.settings?.auth?.localAuthEnabled !== false;
+	const localAuthEnabledBySettings = data.settings?.authLocalEnabled !== false;
 	const showLocalLoginForm = $derived(localAuthEnabledBySettings);
 
 	function handleOidcLogin() {

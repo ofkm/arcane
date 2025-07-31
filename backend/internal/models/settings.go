@@ -1,27 +1,183 @@
 package models
 
-type AuthSettings struct {
-	LocalAuthEnabled bool        `json:"localAuthEnabled"`
-	OidcEnabled      bool        `json:"oidcEnabled"`
-	SessionTimeout   int         `json:"sessionTimeout"`
-	PasswordPolicy   string      `json:"passwordPolicy"`
-	RbacEnabled      bool        `json:"rbacEnabled"`
-	Oidc             *OidcConfig `json:"oidc,omitempty"`
+import (
+	"errors"
+	"fmt"
+	"reflect"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+)
+
+type SettingVariable struct {
+	Key   string `gorm:"primaryKey;not null"`
+	Value string
 }
 
-type OidcConfig struct {
-	ClientID     string `json:"clientId"`
-	ClientSecret string `json:"clientSecret"`
-	IssuerURL    string `json:"issuerUrl"`
-	Scopes       string `json:"scopes"`
-
-	// These will be auto-discovered and cached
-	AuthorizationEndpoint string `json:"authorizationEndpoint,omitempty"`
-	TokenEndpoint         string `json:"tokenEndpoint,omitempty"`
-	UserinfoEndpoint      string `json:"userinfoEndpoint,omitempty"`
-	JwksURI               string `json:"jwksUri,omitempty"`
+// IsTrue returns true if the value is a truthy string
+func (s *SettingVariable) IsTrue() bool {
+	ok, _ := strconv.ParseBool(s.Value)
+	return ok
 }
 
+// AsInt returns the value as an integer
+func (s *SettingVariable) AsInt() int {
+	val, _ := strconv.Atoi(s.Value)
+	return val
+}
+
+// AsDurationSeconds returns the value as a time.Duration in seconds
+func (s *SettingVariable) AsDurationSeconds() time.Duration {
+	val, err := strconv.Atoi(s.Value)
+	if err != nil {
+		return 0
+	}
+	return time.Duration(val) * time.Second
+}
+
+type Settings struct {
+	// Docker
+	StacksDirectory    SettingVariable `key:"stacksDirectory"`
+	AutoUpdate         SettingVariable `key:"autoUpdate"`
+	AutoUpdateInterval SettingVariable `key:"autoUpdateInterval"`
+	PollingEnabled     SettingVariable `key:"pollingEnabled"`
+	PollingInterval    SettingVariable `key:"pollingInterval"`
+	PruneMode          SettingVariable `key:"dockerPruneMode"`
+	BaseServerURL      SettingVariable `key:"baseServerUrl"`
+
+	// Authentication
+	AuthLocalEnabled   SettingVariable `key:"authLocalEnabled,public"`
+	AuthOidcEnabled    SettingVariable `key:"authOidcEnabled,public"`
+	AuthSessionTimeout SettingVariable `key:"authSessionTimeout"`
+	AuthPasswordPolicy SettingVariable `key:"authPasswordPolicy"`
+	AuthRbacEnabled    SettingVariable `key:"authRbacEnabled"`
+	AuthOidcConfig     SettingVariable `key:"authOidcConfig,sensitive"`
+
+	// Onboarding
+	OnboardingCompleted SettingVariable `key:"onboardingCompleted,public"`
+	OnboardingSteps     SettingVariable `key:"onboardingSteps"`
+
+	// Registries
+	RegistryCredentials SettingVariable `key:"registryCredentials,sensitive"`
+	TemplateRegistries  SettingVariable `key:"templateRegistries"`
+}
+
+func (SettingVariable) TableName() string {
+	return "settings"
+}
+
+func (s *Settings) ToSettingVariableSlice(showAll bool, redactSensitiveValues bool) []SettingVariable {
+	cfgValue := reflect.ValueOf(s).Elem()
+	cfgType := cfgValue.Type()
+
+	var res []SettingVariable
+
+	for i := range cfgType.NumField() {
+		field := cfgType.Field(i)
+
+		key, attrs, _ := strings.Cut(field.Tag.Get("key"), ",")
+		if key == "" {
+			continue
+		}
+
+		if !showAll && attrs != "public" {
+			continue
+		}
+
+		value := cfgValue.Field(i).FieldByName("Value").String()
+
+		// Redact sensitive values if requested
+		if value != "" && redactSensitiveValues && attrs == "sensitive" {
+			value = "XXXXXXXXXX"
+		}
+
+		settingVariable := SettingVariable{
+			Key:   key,
+			Value: value,
+		}
+
+		res = append(res, settingVariable)
+	}
+
+	return res
+}
+
+func (s *Settings) FieldByKey(key string) (defaultValue string, isPublic bool, isSensitive bool, err error) {
+	rv := reflect.ValueOf(s).Elem()
+	rt := rv.Type()
+
+	for i := range rt.NumField() {
+		tagValue := strings.Split(rt.Field(i).Tag.Get("key"), ",")
+		keyFromTag := tagValue[0]
+		isPublic = slices.Contains(tagValue, "public")
+		isSensitive = slices.Contains(tagValue, "sensitive")
+
+		if keyFromTag != key {
+			continue
+		}
+
+		valueField := rv.Field(i).FieldByName("Value")
+		return valueField.String(), isPublic, isSensitive, nil
+	}
+
+	return "", false, false, SettingKeyNotFoundError{field: key}
+}
+
+func (s *Settings) UpdateField(key string, value string, noSensitive bool) error {
+	rv := reflect.ValueOf(s).Elem()
+	rt := rv.Type()
+
+	for i := range rt.NumField() {
+		tagValue, attrs, _ := strings.Cut(rt.Field(i).Tag.Get("key"), ",")
+		if tagValue != key {
+			continue
+		}
+
+		// If the field is sensitive and noSensitive is true, we skip that
+		if noSensitive && attrs == "sensitive" {
+			return SettingSensitiveForbiddenError{field: key}
+		}
+
+		valueField := rv.Field(i).FieldByName("Value")
+		if !valueField.CanSet() {
+			return fmt.Errorf("field Value in SettingVariable is not settable for config key '%s'", key)
+		}
+
+		valueField.SetString(value)
+		return nil
+	}
+
+	return SettingKeyNotFoundError{field: key}
+}
+
+type SettingKeyNotFoundError struct {
+	field string
+}
+
+func (e SettingKeyNotFoundError) Error() string {
+	return "cannot find setting key '" + e.field + "'"
+}
+
+func (e SettingKeyNotFoundError) Is(target error) bool {
+	x := SettingKeyNotFoundError{}
+	return errors.As(target, &x)
+}
+
+type SettingSensitiveForbiddenError struct {
+	field string
+}
+
+func (e SettingSensitiveForbiddenError) Error() string {
+	return "field '" + e.field + "' is sensitive and can't be updated"
+}
+
+func (e SettingSensitiveForbiddenError) Is(target error) bool {
+	x := SettingSensitiveForbiddenError{}
+	return errors.As(target, &x)
+}
+
+// Legacy types for backward compatibility
 type RegistryCredential struct {
 	URL      string `json:"url"`
 	Username string `json:"username"`
@@ -36,33 +192,14 @@ type TemplateRegistryConfig struct {
 	CacheTTL    *int   `json:"cacheTtl,omitempty"`
 }
 
-type Onboarding struct {
-	Completed   bool   `json:"completed"`
-	CompletedAt *int64 `json:"completedAt,omitempty"`
-	Steps       *struct {
-		Welcome  *bool `json:"welcome,omitempty"`
-		Password *bool `json:"password,omitempty"`
-		Settings *bool `json:"settings,omitempty"`
-	} `json:"steps,omitempty"`
-}
+type OidcConfig struct {
+	ClientID     string `json:"clientId"`
+	ClientSecret string `json:"clientSecret"`
+	IssuerURL    string `json:"issuerUrl"`
+	Scopes       string `json:"scopes"`
 
-type Settings struct {
-	ID                  uint    `json:"id" gorm:"primaryKey;autoIncrement"`
-	DockerTLSCert       string  `json:"dockerTLSCert" gorm:"column:docker_tls_cert"`
-	StacksDirectory     string  `json:"stacksDirectory" gorm:"column:stacks_directory;not null"`
-	AutoUpdate          bool    `json:"autoUpdate" gorm:"column:auto_update;default:false"`
-	AutoUpdateInterval  int     `json:"autoUpdateInterval" gorm:"column:auto_update_interval;default:300"`
-	PollingEnabled      bool    `json:"pollingEnabled" gorm:"column:polling_enabled;default:true"`
-	PollingInterval     int     `json:"pollingInterval" gorm:"column:polling_interval;default:5"`
-	PruneMode           *string `json:"pruneMode,omitempty" gorm:"column:prune_mode"`
-	RegistryCredentials JSON    `json:"registryCredentials" gorm:"type:text;column:registry_credentials;default:'[]'"`
-	TemplateRegistries  JSON    `json:"templateRegistries" gorm:"type:text;column:template_registries;default:'[]'"`
-	Auth                JSON    `json:"auth" gorm:"type:text;not null"`
-	Onboarding          JSON    `json:"onboarding,omitempty" gorm:"type:text"`
-	BaseServerURL       *string `json:"baseServerUrl,omitempty" gorm:"column:base_server_url"`
-	BaseModel
-}
-
-func (Settings) TableName() string {
-	return "settings_table"
+	AuthorizationEndpoint string `json:"authorizationEndpoint,omitempty"`
+	TokenEndpoint         string `json:"tokenEndpoint,omitempty"`
+	UserinfoEndpoint      string `json:"userinfoEndpoint,omitempty"`
+	JwksURI               string `json:"jwksUri,omitempty"`
 }

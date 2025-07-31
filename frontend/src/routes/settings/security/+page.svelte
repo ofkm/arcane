@@ -35,48 +35,66 @@
 	let isOidcViewMode = $derived(data.oidcStatus.envForced && data.oidcStatus.envConfigured);
 
 	$effect(() => {
-		localAuthEnabled = currentSettings.auth?.localAuthEnabled ?? true;
-		oidcEnabled = currentSettings.auth?.oidcEnabled ?? false;
-		sessionTimeout = currentSettings.auth?.sessionTimeout ?? 60;
-		passwordPolicy = currentSettings.auth?.passwordPolicy ?? 'strong';
+		localAuthEnabled = currentSettings.authLocalEnabled ?? true;
+		oidcEnabled = currentSettings.authOidcEnabled ?? false;
+		sessionTimeout = currentSettings.authSessionTimeout ?? 60;
+		passwordPolicy = currentSettings.authPasswordPolicy ?? 'strong';
 
-		oidcConfigForm.clientId = currentSettings.auth?.oidc?.clientId || '';
-		oidcConfigForm.scopes = currentSettings.auth?.oidc?.scopes || 'openid email profile';
+		// Parse OIDC config from string if it exists
+		if (currentSettings.authOidcConfig) {
+			try {
+				const oidcConfig = JSON.parse(currentSettings.authOidcConfig);
+				oidcConfigForm.clientId = oidcConfig.clientId || '';
+				oidcConfigForm.scopes = oidcConfig.scopes || 'openid email profile';
+				oidcConfigForm.issuerUrl = oidcConfig.issuerUrl || '';
+			} catch (e) {
+				console.warn('Failed to parse OIDC config:', e);
+			}
+		}
 		oidcConfigForm.clientSecret = '';
 	});
 
 	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		currentSettings = await settingsAPI.updateSettings({
-			...currentSettings,
-			...updatedSettings
-		});
-		settingsStore.reload();
+		try {
+			currentSettings = await settingsAPI.updateSettings({
+				...currentSettings,
+				...updatedSettings
+			});
+			settingsStore.reload();
+		} catch (error) {
+			console.error('Error updating settings:', error);
+			throw error;
+		}
 	}
 
 	function handleSecuritySettingUpdates() {
 		isLoading.saving = true;
+
+		// Prepare OIDC config if needed
+		let oidcConfigString = currentSettings.authOidcConfig;
+		if (oidcEnabled && !data.oidcStatus.envForced) {
+			oidcConfigString = JSON.stringify({
+				clientId: oidcConfigForm.clientId,
+				clientSecret: oidcConfigForm.clientSecret || '',
+				issuerUrl: oidcConfigForm.issuerUrl,
+				scopes: oidcConfigForm.scopes
+			});
+		}
+
 		updateSettingsConfig({
-			auth: {
-				...currentSettings.auth,
-				localAuthEnabled: localAuthEnabled,
-				oidcEnabled: oidcEnabled,
-				sessionTimeout: sessionTimeout,
-				passwordPolicy: passwordPolicy,
-				...(oidcEnabled && !data.oidcStatus.envForced
-					? {
-							oidc: {
-								clientId: oidcConfigForm.clientId,
-								clientSecret: oidcConfigForm.clientSecret || '',
-								issuerUrl: oidcConfigForm.issuerUrl,
-								scopes: oidcConfigForm.scopes
-							}
-						}
-					: {})
-			}
+			authLocalEnabled: localAuthEnabled,
+			authOidcEnabled: oidcEnabled,
+			authSessionTimeout: sessionTimeout,
+			authPasswordPolicy: passwordPolicy,
+			authOidcConfig: oidcConfigString
 		})
 			.then(async () => {
 				toast.success(`Settings Saved Successfully`);
 				await invalidateAll();
+			})
+			.catch((error) => {
+				toast.error('Failed to save settings');
+				console.error('Settings save error:', error);
 			})
 			.finally(() => {
 				isLoading.saving = false;
@@ -93,10 +111,18 @@
 
 	function openOidcDialog() {
 		if (!isOidcViewMode) {
-			oidcConfigForm.clientId = currentSettings.auth?.oidc?.clientId || '';
+			// Parse current config if it exists
+			if (currentSettings.authOidcConfig) {
+				try {
+					const oidcConfig = JSON.parse(currentSettings.authOidcConfig);
+					oidcConfigForm.clientId = oidcConfig.clientId || '';
+					oidcConfigForm.issuerUrl = oidcConfig.issuerUrl || '';
+					oidcConfigForm.scopes = oidcConfig.scopes || 'openid email profile';
+				} catch (e) {
+					console.warn('Failed to parse OIDC config:', e);
+				}
+			}
 			oidcConfigForm.clientSecret = '';
-			oidcConfigForm.issuerUrl = currentSettings.auth?.oidc?.issuerUrl || '';
-			oidcConfigForm.scopes = currentSettings.auth?.oidc?.scopes || 'openid email profile';
 		}
 		showOidcConfigDialog = true;
 	}
@@ -106,20 +132,19 @@
 			isLoading.saving = true;
 			oidcEnabled = true;
 
+			const oidcConfigString = JSON.stringify({
+				clientId: oidcConfigForm.clientId,
+				clientSecret: oidcConfigForm.clientSecret || '',
+				issuerUrl: oidcConfigForm.issuerUrl,
+				scopes: oidcConfigForm.scopes
+			});
+
 			await updateSettingsConfig({
-				auth: {
-					...currentSettings.auth,
-					localAuthEnabled: localAuthEnabled,
-					oidcEnabled: true,
-					sessionTimeout: sessionTimeout,
-					passwordPolicy: passwordPolicy,
-					oidc: {
-						clientId: oidcConfigForm.clientId,
-						clientSecret: oidcConfigForm.clientSecret || '',
-						issuerUrl: oidcConfigForm.issuerUrl,
-						scopes: oidcConfigForm.scopes
-					}
-				}
+				authLocalEnabled: localAuthEnabled,
+				authOidcEnabled: true,
+				authSessionTimeout: sessionTimeout,
+				authPasswordPolicy: passwordPolicy,
+				authOidcConfig: oidcConfigString
 			});
 
 			toast.success('OIDC configuration saved successfully.');

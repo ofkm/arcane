@@ -5,6 +5,9 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { Loader2, CheckCircle, ArrowRight } from '@lucide/svelte';
 
+	let { data } = $props();
+	let currentSettings = $state(data.settings);
+
 	let isLoading = $state(false);
 
 	async function completeOnboarding() {
@@ -12,16 +15,14 @@
 
 		try {
 			await settingsAPI.updateSettings({
-				onboarding: {
-					completed: true,
-					completedAt: Date.now(),
-					steps: {
-						welcome: true,
-						password: true,
-						docker: true,
-						security: true,
-						settings: true
-					}
+				...currentSettings,
+				onboardingCompleted: true,
+				onboardingSteps: {
+					welcome: true,
+					password: true,
+					docker: true,
+					security: true,
+					settings: true
 				}
 			});
 

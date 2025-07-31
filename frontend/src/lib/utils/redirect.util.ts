@@ -16,7 +16,7 @@ export function getAuthRedirectPath(path: string, user: User | null, settings: S
 		path === '/img' ||
 		path.startsWith('/img') ||
 		path === '/favicon.ico';
-	
+
 	const isPublicPath = ['/authorize', '/device', '/health', '/healthz'].includes(path);
 	const isOnboardingPath = path === '/onboarding' || path.startsWith('/onboarding');
 
@@ -24,13 +24,13 @@ export function getAuthRedirectPath(path: string, user: User | null, settings: S
 		return '/auth/login';
 	}
 
-	if (isSignedIn && settings && (!settings.onboarding || !settings.onboarding.completed)) {
+	if (isSignedIn && settings && !settings.onboardingCompleted) {
 		if (!isOnboardingPath) {
 			return '/onboarding/welcome';
 		}
 	}
 
-	if (isUnauthenticatedOnlyPath && isSignedIn && settings?.onboarding?.completed) {
+	if (isUnauthenticatedOnlyPath && isSignedIn && settings?.onboardingCompleted) {
 		return '/dashboard';
 	}
 

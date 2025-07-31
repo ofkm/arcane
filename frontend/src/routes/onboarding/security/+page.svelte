@@ -9,6 +9,10 @@
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { Loader2 } from '@lucide/svelte';
+	import settingsStore from '$lib/stores/config-store';
+
+	let { data } = $props();
+	let currentSettings = $state(data.settings);
 
 	let isLoading = $state(false);
 
@@ -18,42 +22,40 @@
 		oidcClientId: '',
 		oidcClientSecret: '',
 		oidcScopes: 'openid email profile',
-		sessionTimeout: '24',
-		requireTLS: false
+		sessionTimeout: '24'
 	});
 
 	async function handleNext() {
 		isLoading = true;
 
 		try {
-			const authSettings = {
-				localAuthEnabled: securitySettings.authType === 'local',
-				oidcEnabled: securitySettings.authType === 'oidc',
-				sessionTimeout: parseInt(securitySettings.sessionTimeout) * 60, // Convert hours to minutes
-				passwordPolicy: 'strong',
-				rbacEnabled: false,
-				...(securitySettings.authType === 'oidc' && {
-					oidc: {
-						clientId: securitySettings.oidcClientId,
-						clientSecret: securitySettings.oidcClientSecret,
-						issuerUrl: securitySettings.oidcIssuerUrl,
-						scopes: securitySettings.oidcScopes
-					}
-				})
-			};
+			let authOidcConfig = '';
+			if (securitySettings.authType === 'oidc') {
+				authOidcConfig = JSON.stringify({
+					clientId: securitySettings.oidcClientId,
+					clientSecret: securitySettings.oidcClientSecret,
+					issuerUrl: securitySettings.oidcIssuerUrl,
+					scopes: securitySettings.oidcScopes
+				});
+			}
 
-			await settingsAPI.updateSettings({
-				auth: authSettings,
-				onboarding: {
-					completed: false,
-					steps: {
-						welcome: true,
-						password: true,
-						docker: true,
-						security: true
-					}
+			const updatedSettings = await settingsAPI.updateSettings({
+				...currentSettings,
+				authLocalEnabled: securitySettings.authType === 'local',
+				authOidcEnabled: securitySettings.authType === 'oidc',
+				authSessionTimeout: parseInt(securitySettings.sessionTimeout) * 3600,
+				authPasswordPolicy: 'strong',
+				authRbacEnabled: false,
+				authOidcConfig: authOidcConfig,
+				onboardingCompleted: false,
+				onboardingSteps: {
+					...currentSettings.onboardingSteps,
+					security: true
 				}
 			});
+
+			currentSettings = updatedSettings;
+			settingsStore.set(updatedSettings);
 
 			goto('/onboarding/settings');
 		} catch (error) {

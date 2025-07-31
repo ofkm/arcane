@@ -9,57 +9,33 @@
 	import { settingsAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
-	import { Loader2, CheckCircle, AlertCircle } from '@lucide/svelte';
+	import { Loader2 } from '@lucide/svelte';
+
+	let { data } = $props();
+	let currentSettings = $state(data.settings);
 
 	let isLoading = $state(false);
-	let testingConnection = $state(false);
-	let connectionStatus = $state<'success' | 'error' | null>(null);
 
 	let dockerSettings = $state({
-		stacksDirectory: '/opt/stacks',
-		dockerTLSCert: '',
+		stacksDirectory: 'data/stacks',
 		pollingEnabled: true,
 		pollingInterval: '5'
 	});
-
-	async function testDockerConnection() {
-		testingConnection = true;
-		connectionStatus = null;
-
-		try {
-			await settingsAPI.updateSettings({
-				stacksDirectory: dockerSettings.stacksDirectory,
-				dockerTLSCert: dockerSettings.dockerTLSCert,
-				pollingEnabled: dockerSettings.pollingEnabled,
-				pollingInterval: parseInt(dockerSettings.pollingInterval)
-			});
-
-			connectionStatus = 'success';
-			toast.success('Docker connection successful!');
-		} catch (error) {
-			connectionStatus = 'error';
-			toast.error('Docker connection failed. Please check your settings.');
-		} finally {
-			testingConnection = false;
-		}
-	}
 
 	async function handleNext() {
 		isLoading = true;
 
 		try {
+			const currentSettings = await settingsAPI.getSettings();
 			await settingsAPI.updateSettings({
+				...currentSettings,
 				stacksDirectory: dockerSettings.stacksDirectory,
-				dockerTLSCert: dockerSettings.dockerTLSCert,
 				pollingEnabled: dockerSettings.pollingEnabled,
 				pollingInterval: parseInt(dockerSettings.pollingInterval),
-				onboarding: {
-					completed: false,
-					steps: {
-						welcome: true,
-						password: true,
-						docker: true
-					}
+				onboardingCompleted: false,
+				onboardingSteps: {
+					...currentSettings.onboardingSteps,
+					docker: true
 				}
 			});
 
@@ -102,17 +78,6 @@
 						Directory where Docker Compose files will be stored
 					</p>
 				</div>
-
-				<div class="space-y-2">
-					<Label for="docker-tls">Docker TLS Certificate (Optional)</Label>
-					<Textarea
-						id="docker-tls"
-						bind:value={dockerSettings.dockerTLSCert}
-						placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
-						rows={4}
-					/>
-					<p class="text-xs text-muted-foreground">Leave empty for local Docker daemon</p>
-				</div>
 			</Card.Content>
 		</Card.Root>
 
@@ -146,26 +111,6 @@
 						</Select.Root>
 					</div>
 				{/if}
-
-				<Button
-					variant="outline"
-					onclick={testDockerConnection}
-					disabled={testingConnection}
-					class="w-full"
-				>
-					{#if testingConnection}
-						<Loader2 class="mr-2 size-4 animate-spin" />
-						Testing Connection...
-					{:else if connectionStatus === 'success'}
-						<CheckCircle class="mr-2 size-4 text-green-500" />
-						Connection Successful
-					{:else if connectionStatus === 'error'}
-						<AlertCircle class="mr-2 size-4 text-red-500" />
-						Connection Failed
-					{:else}
-						Test Docker Connection
-					{/if}
-				</Button>
 			</Card.Content>
 		</Card.Root>
 	</div>

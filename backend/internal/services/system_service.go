@@ -133,16 +133,9 @@ func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*
 }
 
 func (s *SystemService) getDanglingModeFromSettings(ctx context.Context) (bool, error) {
-	settings, err := s.settingsService.GetSettings(ctx)
-	if err != nil {
-		return true, fmt.Errorf("failed to get settings: %w", err)
-	}
+	pruneMode := s.settingsService.GetStringSetting(ctx, "dockerPruneMode", "dangling")
 
-	if settings.PruneMode == nil {
-		return true, nil
-	}
-
-	switch *settings.PruneMode {
+	switch pruneMode {
 	case "dangling":
 		return true, nil
 	case "all":
@@ -359,19 +352,11 @@ func (s *SystemService) PruneSystem(ctx context.Context, all bool) (*PruneAllRes
 
 	danglingOnly := true
 	if all {
-		settings, err := s.settingsService.GetSettings(ctx)
-		if err == nil && settings.PruneMode != nil {
-			danglingOnly = *settings.PruneMode == "dangling"
-			slog.DebugContext(ctx, "Retrieved prune mode from settings",
-				slog.String("prune_mode", *settings.PruneMode),
-				slog.Bool("dangling_only", danglingOnly))
-		} else {
-			danglingOnly = false
-			if err != nil {
-				slog.WarnContext(ctx, "Failed to get prune mode from settings, defaulting to all unused",
-					slog.String("error", err.Error()))
-			}
-		}
+		pruneMode := s.settingsService.GetStringSetting(ctx, "dockerPruneMode", "dangling")
+		danglingOnly = pruneMode == "dangling"
+		slog.DebugContext(ctx, "Retrieved prune mode from settings",
+			slog.String("prune_mode", pruneMode),
+			slog.Bool("dangling_only", danglingOnly))
 	}
 
 	slog.DebugContext(ctx, "Starting container pruning")

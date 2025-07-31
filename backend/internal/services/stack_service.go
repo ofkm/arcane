@@ -1054,14 +1054,12 @@ func (s *StackService) sanitizeStackName(name string) string {
 func (s *StackService) getStacksDirectory(ctx context.Context) (string, error) {
 	settings, err := s.settingsService.GetSettings(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get settings: %w", err)
+		return "data/stacks", fmt.Errorf("failed to get settings: %w", err)
 	}
 
-	if settings.StacksDirectory == "" {
-		return "data/stacks", nil
-	}
+	stacksDirectory := settings.StacksDirectory.Value
 
-	return settings.StacksDirectory, nil
+	return stacksDirectory, nil
 }
 
 func (s *StackService) saveStackFiles(stackPath, composeContent string, envContent *string) error {

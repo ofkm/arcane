@@ -14,11 +14,16 @@
 	let currentSettings = $state(data.settings);
 
 	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		currentSettings = await settingsAPI.updateSettings({
-			...currentSettings,
-			...updatedSettings
-		});
-		settingsStore.reload();
+		try {
+			currentSettings = await settingsAPI.updateSettings({
+				...currentSettings,
+				...updatedSettings
+			});
+			settingsStore.reload();
+		} catch (error) {
+			console.error('Error updating settings:', error);
+			throw error;
+		}
 	}
 
 	function handleGeneralSettingUpdates() {
@@ -30,6 +35,10 @@
 			.then(async () => {
 				toast.success(`Settings Saved Successfully`);
 				await invalidateAll();
+			})
+			.catch((error) => {
+				toast.error('Failed to save settings');
+				console.error('Settings save error:', error);
 			})
 			.finally(() => {
 				isLoading.saving = false;
@@ -51,7 +60,7 @@
 	});
 
 	$effect(() => {
-		stacksDirectoryInput.value = currentSettings.stacksDirectory;
+		stacksDirectoryInput.value = currentSettings.stacksDirectory || '';
 		baseServerUrlInput.value = currentSettings.baseServerUrl || 'localhost';
 	});
 </script>

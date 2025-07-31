@@ -71,28 +71,24 @@ func (s *AutoUpdateService) CheckForUpdates(ctx context.Context, req dto.AutoUpd
 		Results:   []dto.AutoUpdateResourceResult{},
 	}
 
-	settings, err := s.settingsService.GetSettings(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get settings: %w", err)
-	}
+	// Get individual setting instead of full settings struct
+	autoUpdateEnabled := s.settingsService.GetBoolSetting(ctx, "autoUpdateEnabled", false)
 
-	if !settings.AutoUpdate && !req.ForceUpdate {
+	if !autoUpdateEnabled && !req.ForceUpdate {
 		result.Skipped = 1
 		result.EndTime = time.Now().Format(time.RFC3339)
 		result.Duration = time.Since(startTime).String()
 		return result, nil
 	}
 
-	// Use image-based update approach instead of checking containers individually
+	// Use image-based update approach
 	if req.Type == "" || req.Type == "all" || req.Type == "images" {
-		if err := s.processImageUpdates(ctx, req, result, settings); err != nil {
+		if err := s.processImageUpdates(ctx, req, result); err != nil {
 			log.Printf("Image update process failed, falling back to container-based approach: %v", err)
-			// Fall back to original approach
-			return s.processContainerBasedUpdates(ctx, req, result, settings, startTime)
+			return s.processContainerBasedUpdates(ctx, req, result, startTime)
 		}
 	} else {
-		// For specific container/stack requests, use original approach
-		return s.processContainerBasedUpdates(ctx, req, result, settings, startTime)
+		return s.processContainerBasedUpdates(ctx, req, result, startTime)
 	}
 
 	result.EndTime = time.Now().Format(time.RFC3339)
@@ -101,7 +97,7 @@ func (s *AutoUpdateService) CheckForUpdates(ctx context.Context, req dto.AutoUpd
 }
 
 // New method to handle image-based updates
-func (s *AutoUpdateService) processImageUpdates(ctx context.Context, req dto.AutoUpdateCheckDto, result *dto.AutoUpdateResultDto, settings *models.Settings) error {
+func (s *AutoUpdateService) processImageUpdates(ctx context.Context, req dto.AutoUpdateCheckDto, result *dto.AutoUpdateResultDto) error {
 	imageUpdates, err := s.imageUpdateService.CheckAllImages(ctx, 0)
 	if err != nil {
 		return fmt.Errorf("failed to check image updates: %w", err)
@@ -187,7 +183,7 @@ func (s *AutoUpdateService) processImageUpdates(ctx context.Context, req dto.Aut
 }
 
 // Refactored method to handle container-based updates (original approach)
-func (s *AutoUpdateService) processContainerBasedUpdates(ctx context.Context, req dto.AutoUpdateCheckDto, result *dto.AutoUpdateResultDto, settings *models.Settings, startTime time.Time) (*dto.AutoUpdateResultDto, error) {
+func (s *AutoUpdateService) processContainerBasedUpdates(ctx context.Context, req dto.AutoUpdateCheckDto, result *dto.AutoUpdateResultDto, startTime time.Time) (*dto.AutoUpdateResultDto, error) {
 	var wg sync.WaitGroup
 	resultsChan := make(chan dto.AutoUpdateResourceResult, 1000)
 	errorsChan := make(chan error, 100)
@@ -201,7 +197,7 @@ func (s *AutoUpdateService) processContainerBasedUpdates(ctx context.Context, re
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s.checkContainers(ctx, req, settings, resultsChan, errorsChan)
+			s.checkContainers(ctx, req, resultsChan, errorsChan)
 		}()
 	}
 
@@ -209,7 +205,7 @@ func (s *AutoUpdateService) processContainerBasedUpdates(ctx context.Context, re
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s.checkStacks(ctx, req, settings, resultsChan, errorsChan)
+			s.checkStacks(ctx, req, resultsChan, errorsChan)
 		}()
 	}
 
@@ -341,8 +337,7 @@ func (s *AutoUpdateService) restartContainersUsingImages(ctx context.Context, up
 		s.updatingContainers[cnt.ID] = true
 		s.mutex.Unlock()
 
-		// Use existing updateContainerWithLatestImage method
-		if err := s.updateContainerWithLatestImage(ctx, cnt, containerJSON, newImageRef, nil); err != nil {
+		if err := s.updateContainerWithLatestImage(ctx, cnt, containerJSON, newImageRef); err != nil {
 			result.Status = "failed"
 			result.Error = fmt.Sprintf("Failed to restart container: %v", err)
 		} else {
@@ -376,7 +371,6 @@ func (s *AutoUpdateService) imageMatches(containerImage, updatedImage string) bo
 func (s *AutoUpdateService) checkContainers(
 	ctx context.Context,
 	req dto.AutoUpdateCheckDto,
-	settings *models.Settings,
 	results chan<- dto.AutoUpdateResourceResult,
 	errors chan<- error,
 ) {
@@ -402,7 +396,7 @@ func (s *AutoUpdateService) checkContainers(
 			continue
 		}
 
-		result := s.checkSingleContainer(ctx, cnt, settings, req.DryRun)
+		result := s.checkSingleContainer(ctx, cnt, req.DryRun)
 		results <- result
 	}
 }
@@ -410,7 +404,6 @@ func (s *AutoUpdateService) checkContainers(
 func (s *AutoUpdateService) checkSingleContainer(
 	ctx context.Context,
 	cnt container.Summary,
-	settings *models.Settings,
 	dryRun bool,
 ) dto.AutoUpdateResourceResult {
 	containerName := s.getContainerName(cnt)
@@ -458,7 +451,6 @@ func (s *AutoUpdateService) checkSingleContainer(
 	imageRef := containerJSON.Config.Image
 	result.OldImages["main"] = fmt.Sprintf("%s@%s", imageRef, cnt.ImageID)
 
-	// Use ImageUpdateService to check for updates
 	updateResult, err := s.imageUpdateService.CheckImageUpdate(ctx, imageRef)
 	if err != nil {
 		result.Status = "failed"
@@ -474,16 +466,17 @@ func (s *AutoUpdateService) checkSingleContainer(
 
 	result.UpdateAvailable = updateResult.HasUpdate
 	if updateResult.HasUpdate {
-		// Set the new image reference based on update type
 		newImageRef := imageRef
 		if updateResult.UpdateType == "tag" && updateResult.LatestVersion != "" {
-			// For tag updates, construct new image reference with latest tag
 			newImageRef = s.constructImageRefWithTag(imageRef, updateResult.LatestVersion)
 		}
 		result.NewImages["main"] = newImageRef
 
-		if !dryRun && settings.AutoUpdate {
-			if err := s.updateContainerWithLatestImage(ctx, cnt, containerJSON, newImageRef, settings); err != nil {
+		// Get auto update setting when needed
+		autoUpdateEnabled := s.settingsService.GetBoolSetting(ctx, "autoUpdateEnabled", false)
+
+		if !dryRun && autoUpdateEnabled {
+			if err := s.updateContainerWithLatestImage(ctx, cnt, containerJSON, newImageRef); err != nil {
 				result.Status = "failed"
 				result.Error = fmt.Sprintf("Failed to update container: %v", err)
 				return result
@@ -500,13 +493,11 @@ func (s *AutoUpdateService) checkSingleContainer(
 	return result
 }
 
-// New method to update container with latest image
 func (s *AutoUpdateService) updateContainerWithLatestImage(
 	ctx context.Context,
 	cnt container.Summary,
 	containerJSON container.InspectResponse,
 	newImageRef string,
-	settings *models.Settings,
 ) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -518,13 +509,10 @@ func (s *AutoUpdateService) updateContainerWithLatestImage(
 
 	pullOptions := image.PullOptions{}
 
-	// Use existing getAuthConfigForImage method
 	authConfig, err := s.getAuthConfigForImage(ctx, newImageRef)
 	if err != nil {
 		log.Printf("Warning: Failed to get auth config for image %s: %v", newImageRef, err)
-		// Continue without authentication - may work for public registries
 	} else if authConfig != nil {
-		// Encode auth config for Docker API
 		authJSON, err := json.Marshal(authConfig)
 		if err != nil {
 			return fmt.Errorf("failed to marshal auth config: %w", err)
@@ -589,7 +577,6 @@ func (s *AutoUpdateService) constructImageRefWithTag(imageRef, newTag string) st
 func (s *AutoUpdateService) checkStacks(
 	ctx context.Context,
 	req dto.AutoUpdateCheckDto,
-	settings *models.Settings,
 	results chan<- dto.AutoUpdateResourceResult,
 	errors chan<- error,
 ) {
@@ -608,15 +595,15 @@ func (s *AutoUpdateService) checkStacks(
 			continue
 		}
 
-		result := s.checkSingleStack(ctx, stack, settings, req.DryRun)
+		result := s.checkSingleStack(ctx, stack, req.DryRun)
 		results <- result
 	}
 }
 
+// Update checkSingleStack to remove settings parameter
 func (s *AutoUpdateService) checkSingleStack(
 	ctx context.Context,
 	stack models.Stack,
-	settings *models.Settings,
 	dryRun bool,
 ) dto.AutoUpdateResourceResult {
 	result := dto.AutoUpdateResourceResult{
@@ -658,7 +645,7 @@ func (s *AutoUpdateService) checkSingleStack(
 		}
 	}
 
-	hasUpdates, imageUpdates, err := s.checkStackImagesForUpdates(ctx, stack, settings)
+	hasUpdates, imageUpdates, err := s.checkStackImagesForUpdates(ctx, stack)
 	if err != nil {
 		result.Status = "failed"
 		result.Error = fmt.Sprintf("Failed to check for updates: %v", err)
@@ -672,7 +659,7 @@ func (s *AutoUpdateService) checkSingleStack(
 		}
 
 		if !dryRun {
-			if err := s.updateStack(ctx, stack, settings); err != nil {
+			if err := s.updateStack(ctx, stack); err != nil {
 				result.Status = "failed"
 				result.Error = fmt.Sprintf("Failed to update stack: %v", err)
 				return result
@@ -692,7 +679,6 @@ func (s *AutoUpdateService) checkSingleStack(
 func (s *AutoUpdateService) updateStack(
 	ctx context.Context,
 	stack models.Stack,
-	settings *models.Settings,
 ) error {
 	log.Printf("Updating stack: %s", stack.Name)
 
@@ -714,7 +700,6 @@ func (s *AutoUpdateService) checkImageForUpdate(
 	ctx context.Context,
 	imageRef string,
 	currentImageID string,
-	settings *models.Settings,
 ) (bool, string, error) {
 	if s.isDigestBasedImage(imageRef) {
 		return false, "", nil
@@ -736,7 +721,6 @@ func (s *AutoUpdateService) checkImageForUpdate(
 		authConfig, err := s.getAuthConfigForImage(ctx, imageRef)
 		if err != nil {
 			log.Printf("Warning: Failed to get auth config for image %s: %v", imageRef, err)
-			// Continue without authentication - may work for public registries
 		}
 
 		var creds *utils.RegistryCredentials
@@ -1110,7 +1094,7 @@ func (s *AutoUpdateService) normalizeRegistryURL(url string) string {
 	return url
 }
 
-func (s *AutoUpdateService) checkStackImagesForUpdates(ctx context.Context, stack models.Stack, settings *models.Settings) (bool, map[string]string, error) {
+func (s *AutoUpdateService) checkStackImagesForUpdates(ctx context.Context, stack models.Stack) (bool, map[string]string, error) {
 	composeContent, _, err := s.stackService.GetStackContent(ctx, stack.ID)
 	if err != nil {
 		return false, nil, err
@@ -1144,7 +1128,7 @@ func (s *AutoUpdateService) checkStackImagesForUpdates(ctx context.Context, stac
 
 		currentImageID := serviceImageIDs[serviceName]
 
-		hasUpdate, newDigest, err := s.checkImageForUpdate(ctx, imageRef, currentImageID, settings)
+		hasUpdate, newDigest, err := s.checkImageForUpdate(ctx, imageRef, currentImageID)
 		if err != nil {
 			log.Printf("Error checking updates for %s in stack %s: %v", imageRef, stack.Name, err)
 			continue

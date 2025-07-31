@@ -22,70 +22,16 @@ func NewAutoUpdateJob(autoUpdateService *services.AutoUpdateService, settingsSer
 	}
 }
 
-func (j *AutoUpdateJob) Execute(ctx context.Context) error {
-	log.Println("=== Starting scheduled auto-update check ===")
-
-	settings, err := j.settingsService.GetSettings(ctx)
-	if err != nil {
-		log.Printf("Failed to get settings during scheduled update: %v", err)
-		return err
-	}
-
-	if !settings.AutoUpdate {
-		log.Println("Auto-update disabled, skipping scheduled check")
-		return nil
-	}
-
-	// Use image-based approach for scheduled updates
-	req := dto.AutoUpdateCheckDto{
-		Type:        "all", // This will trigger image-based updates
-		ForceUpdate: false,
-		DryRun:      false,
-	}
-
-	result, err := j.autoUpdateService.CheckForUpdates(ctx, req)
-	if err != nil {
-		log.Printf("Error during auto-update: %v", err)
-		return err
-	}
-
-	log.Printf("Auto-update completed: %d checked, %d updated, %d skipped, %d failed",
-		result.Checked, result.Updated, result.Skipped, result.Failed)
-
-	if result.Failed > 0 {
-		log.Printf("Auto-update had %d failures", result.Failed)
-		for _, res := range result.Results {
-			if res.Error != "" {
-				log.Printf("Failed to update %s (%s): %s", res.ResourceName, res.ResourceType, res.Error)
-			}
-		}
-	}
-
-	if result.Updated > 0 {
-		log.Printf("Successfully updated %d resources", result.Updated)
-		for _, res := range result.Results {
-			if res.UpdateApplied {
-				log.Printf("Updated %s (%s)", res.ResourceName, res.ResourceType)
-			}
-		}
-	}
-
-	log.Println("=== Scheduled auto-update check completed ===")
-	return nil
-}
-
 func RegisterAutoUpdateJob(ctx context.Context, scheduler *Scheduler, autoUpdateService *services.AutoUpdateService, settingsService *services.SettingsService) error {
-	settings, err := settingsService.GetSettings(ctx)
-	if err != nil {
-		return err
-	}
+	autoUpdateEnabled := settingsService.GetBoolSetting(ctx, "autoUpdateEnabled", false)
+	autoUpdateInterval := settingsService.GetIntSetting(ctx, "autoUpdateInterval", 300)
 
-	if !settings.AutoUpdate {
+	if !autoUpdateEnabled {
 		log.Println("Auto-update is disabled, not registering auto-update job")
 		return nil
 	}
 
-	interval := time.Duration(settings.AutoUpdateInterval) * time.Minute
+	interval := time.Duration(autoUpdateInterval) * time.Second
 	if interval < 5*time.Minute {
 		interval = 60 * time.Minute
 		log.Printf("Auto-update interval too low, using default 60 minutes")
@@ -106,18 +52,45 @@ func RegisterAutoUpdateJob(ctx context.Context, scheduler *Scheduler, autoUpdate
 	)
 }
 
-func UpdateAutoUpdateJobSchedule(ctx context.Context, scheduler *Scheduler, autoUpdateService *services.AutoUpdateService, settingsService *services.SettingsService) error {
+func (j *AutoUpdateJob) Execute(ctx context.Context) error {
+	log.Println("=== Starting scheduled auto-update check ===")
 
-	settings, err := settingsService.GetSettings(ctx)
+	// Get individual settings
+	autoUpdateEnabled := j.settingsService.GetBoolSetting(ctx, "autoUpdateEnabled", false)
+
+	if !autoUpdateEnabled {
+		log.Println("Auto-update disabled, skipping scheduled check")
+		return nil
+	}
+
+	req := dto.AutoUpdateCheckDto{
+		Type:        "all",
+		ForceUpdate: false,
+		DryRun:      false,
+	}
+
+	result, err := j.autoUpdateService.CheckForUpdates(ctx, req)
 	if err != nil {
+		log.Printf("Error during auto-update: %v", err)
 		return err
 	}
 
-	if !settings.AutoUpdate {
+	log.Printf("Auto-update completed: %d checked, %d updated, %d skipped, %d failed",
+		result.Checked, result.Updated, result.Skipped, result.Failed)
+
+	return nil
+}
+
+func UpdateAutoUpdateJobSchedule(ctx context.Context, scheduler *Scheduler, autoUpdateService *services.AutoUpdateService, settingsService *services.SettingsService) error {
+	autoUpdateEnabled := settingsService.GetBoolSetting(ctx, "autoUpdateEnabled", false)
+	autoUpdateInterval := settingsService.GetIntSetting(ctx, "autoUpdateInterval", 300)
+
+	if !autoUpdateEnabled {
 		log.Println("Auto-update disabled, job will be skipped")
 		return nil
 	}
-	interval := time.Duration(settings.AutoUpdateInterval) * time.Minute
+
+	interval := time.Duration(autoUpdateInterval) * time.Second
 	log.Printf("Auto-update settings changed - new interval: %v", interval)
 
 	return nil

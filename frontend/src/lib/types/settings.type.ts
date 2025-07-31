@@ -1,27 +1,42 @@
-export interface AuthSettings {
-	localAuthEnabled: boolean;
-	oidcEnabled: boolean;
-	sessionTimeout: number;
-	passwordPolicy: string;
-	rbacEnabled: boolean;
-	oidc?: OidcConfig;
-}
+export type SettingRawResponse = {
+	key: string;
+	type: string;
+	value: string;
+	isPublic?: boolean;
+}[];
 
-export interface OidcConfig {
-	clientId: string;
-	clientSecret?: string;
-	issuerUrl: string;
-	scopes: string;
-}
+export type Settings = {
+	// Docker settings
+	stacksDirectory: string;
+	autoUpdateEnabled: boolean;
+	autoUpdateInterval: number;
+	pollingEnabled: boolean;
+	pollingInterval: number;
+	dockerPruneMode: string;
+	baseServerUrl: string;
 
-export interface OidcStatusInfo {
-	envForced: boolean;
-	envConfigured: boolean;
-	dbEnabled: boolean;
-	dbConfigured: boolean;
-	effectivelyEnabled: boolean;
-	effectivelyConfigured: boolean;
-}
+	// Authentication settings
+	authLocalEnabled: boolean;
+	authOidcEnabled: boolean;
+	authSessionTimeout: number;
+	authPasswordPolicy: string;
+	authRbacEnabled: boolean;
+	authOidcConfig: string;
+
+	// Onboarding settings
+	onboardingCompleted: boolean;
+	onboardingSteps: {
+		welcome?: boolean;
+		password?: boolean;
+		docker?: boolean;
+		security?: boolean;
+		settings?: boolean;
+	};
+
+	// Registry settings
+	registryCredentials: RegistryCredential[];
+	templateRegistries: TemplateRegistryConfig[];
+};
 
 export interface RegistryCredential {
 	url: string;
@@ -37,32 +52,32 @@ export interface TemplateRegistryConfig {
 	cacheTtl?: number;
 }
 
-export interface Onboarding {
-	completed: boolean;
-	completedAt?: number;
-	steps?: {
-		welcome?: boolean;
-		password?: boolean;
-		docker?: boolean;
-		security?: boolean;
-		settings?: boolean;
-	};
+export interface AuthSettings {
+	localAuthEnabled: boolean;
+	oidcEnabled: boolean;
+	sessionTimeout: number;
+	passwordPolicy: string;
+	rbacEnabled: boolean;
+	oidc?: OidcConfig;
 }
 
-export interface Settings {
-	id: number;
-	dockerTLSCert: string;
-	stacksDirectory: string;
-	autoUpdate: boolean;
-	autoUpdateInterval: number;
-	pollingEnabled: boolean;
-	pollingInterval: number;
-	pruneMode?: string;
-	registryCredentials: RegistryCredential[];
-	templateRegistries: TemplateRegistryConfig[];
-	auth: AuthSettings;
-	onboarding?: Onboarding;
-	baseServerUrl?: string;
-	createdAt: string;
-	updatedAt: string;
+export interface OidcConfig {
+	clientId: string;
+	clientSecret?: string;
+	issuerUrl: string;
+	scopes: string;
+	// Optional OIDC discovery endpoints (from backend)
+	authorizationEndpoint?: string;
+	tokenEndpoint?: string;
+	userinfoEndpoint?: string;
+	jwksUri?: string;
+}
+
+export interface OidcStatusInfo {
+	envForced: boolean;
+	envConfigured: boolean;
+	dbEnabled: boolean;
+	dbConfigured: boolean;
+	effectivelyEnabled: boolean;
+	effectivelyConfigured: boolean;
 }
