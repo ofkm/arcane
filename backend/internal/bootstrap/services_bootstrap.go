@@ -12,7 +12,7 @@ import (
 func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *services.DockerClientService, error) {
 	log.Println("Initializing services...")
 	converterService := services.NewConverterService()
-	settingsService := services.NewSettingsService(db)
+	settingsService := services.NewSettingsService(db, cfg)
 	dockerClientService := services.NewDockerClientService(db)
 	userService := services.NewUserService(db)
 	stackService := services.NewStackService(db, settingsService)

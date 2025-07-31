@@ -28,17 +28,15 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		return
 	}
 
-	// Convert to slice with all settings (including sensitive ones)
 	settingsSlice := settings.ToSettingVariableSlice(true, false)
 
-	// Convert to DTO format with isPublic flag
 	settingDtos := make([]dto.SettingDto, 0, len(settingsSlice))
 	for _, setting := range settingsSlice {
 		_, isPublic, _, _ := settings.FieldByKey(setting.Key)
 		settingDtos = append(settingDtos, dto.SettingDto{
 			PublicSettingDto: dto.PublicSettingDto{
 				Key:      setting.Key,
-				Type:     "string", // All stored as strings in new structure
+				Type:     "string",
 				Value:    setting.Value,
 				IsPublic: isPublic,
 			},

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -9,17 +10,22 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 )
 
 type SettingsService struct {
-	db *database.DB
+	db     *database.DB
+	config *config.Config // Add config field
 }
 
-func NewSettingsService(db *database.DB) *SettingsService {
-	return &SettingsService{db: db}
+func NewSettingsService(db *database.DB, cfg *config.Config) *SettingsService {
+	return &SettingsService{
+		db:     db,
+		config: cfg,
+	}
 }
 
 func (s *SettingsService) GetSettings(ctx context.Context) (*models.Settings, error) {
@@ -73,6 +79,64 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 	}
 }
 
+func (s *SettingsService) SyncOidcEnvToDatabase(ctx context.Context) ([]models.SettingVariable, error) {
+	if !s.config.OidcEnabled {
+		return nil, errors.New("OIDC sync called but OIDC_ENABLED is false")
+	}
+
+	// Add validation to ensure required env vars are present
+	if s.config.OidcClientID == "" || s.config.OidcIssuerURL == "" {
+		return nil, errors.New("required OIDC environment variables are missing (OIDC_CLIENT_ID or OIDC_ISSUER_URL)")
+	}
+
+	envOidcConfig := models.OidcConfig{
+		ClientID:     s.config.OidcClientID,
+		ClientSecret: s.config.OidcClientSecret,
+		IssuerURL:    s.config.OidcIssuerURL,
+		Scopes:       s.config.OidcScopes,
+	}
+
+	oidcConfigBytes, err := json.Marshal(envOidcConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal OIDC config from env: %w", err)
+	}
+
+	fmt.Printf("DEBUG: OIDC config JSON being saved: %s\n", string(oidcConfigBytes))
+
+	// Force update the settings directly to bypass empty value checks
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Force update AuthOidcEnabled
+		if err := tx.Save(&models.SettingVariable{
+			Key:   "authOidcEnabled",
+			Value: "true",
+		}).Error; err != nil {
+			return fmt.Errorf("failed to update authOidcEnabled: %w", err)
+		}
+
+		// Force update AuthOidcConfig
+		if err := tx.Save(&models.SettingVariable{
+			Key:   "authOidcConfig",
+			Value: string(oidcConfigBytes),
+		}).Error; err != nil {
+			return fmt.Errorf("failed to update authOidcConfig: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to sync OIDC settings to database: %w", err)
+	}
+
+	// Return the updated settings
+	settings, err := s.GetSettings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve updated settings: %w", err)
+	}
+
+	return settings.ToSettingVariableSlice(false, false), nil
+}
+
 func (s *SettingsService) GetPublicSettings(ctx context.Context) ([]models.SettingVariable, error) {
 	settings, err := s.GetSettings(ctx)
 	if err != nil {
@@ -120,12 +184,18 @@ func (s *SettingsService) UpdateSettings(ctx context.Context, updates dto.Update
 			value = fieldValue.Elem().String()
 		}
 
-		// Handle empty values by using defaults
+		// Determine the actual value to use and save
+		var valueToSave string
 		var err error
+
 		if value == "" {
+			// Use default value for empty strings
 			defaultValue, _, _, _ := defaultCfg.FieldByKey(key)
+			valueToSave = defaultValue
 			err = cfg.UpdateField(key, defaultValue, true)
 		} else {
+			// Use the provided value
+			valueToSave = value
 			err = cfg.UpdateField(key, value, true)
 		}
 
@@ -136,9 +206,10 @@ func (s *SettingsService) UpdateSettings(ctx context.Context, updates dto.Update
 			return nil, fmt.Errorf("failed to update in-memory config for key '%s': %w", key, err)
 		}
 
+		// Save the correct value to database
 		valuesToUpdate = append(valuesToUpdate, models.SettingVariable{
 			Key:   key,
-			Value: value,
+			Value: valueToSave,
 		})
 	}
 
@@ -160,7 +231,7 @@ func (s *SettingsService) UpdateSettings(ctx context.Context, updates dto.Update
 		return nil, fmt.Errorf("failed to retrieve updated settings: %w", err)
 	}
 
-	return settings.ToSettingVariableSlice(true, false), nil
+	return settings.ToSettingVariableSlice(false, false), nil
 }
 
 func (s *SettingsService) EnsureDefaultSettings(ctx context.Context) error {

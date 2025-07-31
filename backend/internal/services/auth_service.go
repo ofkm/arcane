@@ -102,36 +102,6 @@ func NewAuthService(userService *UserService, settingsService *SettingsService, 
 	}
 }
 
-func (s *AuthService) SyncOidcEnvToDatabase(ctx context.Context) ([]models.SettingVariable, error) {
-	if !s.config.OidcEnabled {
-		return nil, errors.New("OIDC sync called but OIDC_ENABLED is false")
-	}
-
-	envOidcConfig := models.OidcConfig{
-		ClientID:     s.config.OidcClientID,
-		ClientSecret: s.config.OidcClientSecret,
-		IssuerURL:    s.config.OidcIssuerURL,
-		Scopes:       s.config.OidcScopes,
-	}
-
-	oidcConfigBytes, err := json.Marshal(envOidcConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal OIDC config from env: %w", err)
-	}
-
-	updates := dto.UpdateSettingsDto{
-		AuthOidcEnabled: utils.Ptr("true"),
-		AuthOidcConfig:  utils.Ptr(string(oidcConfigBytes)),
-	}
-
-	settings, err := s.settingsService.UpdateSettings(ctx, updates)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update settings in DB with OIDC env config: %w", err)
-	}
-
-	return settings, nil
-}
-
 func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error) {
 	settings, err := s.settingsService.GetSettings(ctx)
 	if err != nil {

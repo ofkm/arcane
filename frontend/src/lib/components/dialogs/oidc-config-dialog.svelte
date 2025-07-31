@@ -3,7 +3,6 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Key, AlertTriangle, Info, ChevronDown, Copy } from '@lucide/svelte';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { toast } from 'svelte-sonner';
 	import type { Settings } from '$lib/types/settings.type';
@@ -40,6 +39,30 @@
 	let isOidcViewMode = $derived(oidcStatus.envForced && oidcStatus.envConfigured);
 	let advancedSettingsOpen = $state(false);
 	let redirectUri = $derived(`${window.location.origin}/auth/oidc/callback`);
+
+	// Parse OIDC config from JSON string
+	let parsedOidcConfig = $derived(() => {
+		if (!currentSettings.authOidcConfig) {
+			return {
+				clientId: '',
+				clientSecret: '',
+				issuerUrl: '',
+				scopes: 'openid email profile'
+			};
+		}
+
+		try {
+			return JSON.parse(currentSettings.authOidcConfig);
+		} catch (error) {
+			console.warn('Failed to parse OIDC config:', error);
+			return {
+				clientId: '',
+				clientSecret: '',
+				issuerUrl: '',
+				scopes: 'openid email profile'
+			};
+		}
+	});
 
 	async function copyToClipboard(text: string) {
 		try {
@@ -90,12 +113,18 @@
 							The following OIDC settings are loaded from the server environment:
 						</p>
 
-						{#if currentSettings.auth?.oidc}
+						{#if currentSettings.authOidcEnabled}
 							<div class="space-y-3">
 								<div class="flex justify-between items-center py-2 border-b border-border/50">
 									<span class="font-medium text-sm">Client ID</span>
 									<code class="bg-muted px-2 py-1 rounded text-xs">
-										{currentSettings.auth.oidc.clientId}
+										{parsedOidcConfig().clientId || 'Not configured'}
+									</code>
+								</div>
+								<div class="flex justify-between items-center py-2 border-b border-border/50">
+									<span class="font-medium text-sm">Issuer URL</span>
+									<code class="bg-muted px-2 py-1 rounded text-xs">
+										{parsedOidcConfig().issuerUrl || 'Not configured'}
 									</code>
 								</div>
 								<div class="flex justify-between items-center py-2 border-b border-border/50">
@@ -107,7 +136,7 @@
 								<div class="flex justify-between items-center py-2">
 									<span class="font-medium text-sm">Scopes</span>
 									<code class="bg-muted px-2 py-1 rounded text-xs">
-										{currentSettings.auth.oidc.scopes}
+										{parsedOidcConfig().scopes || 'openid email profile'}
 									</code>
 								</div>
 							</div>

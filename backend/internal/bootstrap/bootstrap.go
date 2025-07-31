@@ -73,7 +73,7 @@ func InitializeApp() (*App, error) {
 
 	router := setupRouter(cfg, appServices)
 
-	if dockerClient, err := dockerClientService.CreateConnection(context.Background()); err != nil {
+	if dockerClient, err := dockerClientService.CreateConnection(appCtx); err != nil {
 		slog.WarnContext(appCtx, "Docker connection failed during init, local Docker features may be unavailable",
 			slog.String("error", err.Error()))
 	} else {
@@ -94,7 +94,7 @@ func InitializeApp() (*App, error) {
 	}
 
 	if cfg.OidcEnabled {
-		if _, err := appServices.Auth.SyncOidcEnvToDatabase(context.Background()); err != nil {
+		if _, err := appServices.Settings.SyncOidcEnvToDatabase(appCtx); err != nil {
 			slog.WarnContext(appCtx, "Failed to sync OIDC environment variables to database",
 				slog.String("error", err.Error()))
 		}
