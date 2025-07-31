@@ -28,7 +28,7 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		return
 	}
 
-	settingsSlice := settings.ToSettingVariableSlice(true, false)
+	settingsSlice := settings.ToSettingVariableSlice(true, true)
 
 	settingDtos := make([]dto.SettingDto, 0, len(settingsSlice))
 	for _, setting := range settingsSlice {

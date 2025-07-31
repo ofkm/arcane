@@ -11,7 +11,12 @@
 
 	type TemplateRegistryFormProps = {
 		open: boolean;
-		onSubmit: (registry: { name: string; url: string; description?: string; enabled: boolean }) => void;
+		onSubmit: (registry: {
+			name: string;
+			url: string;
+			description?: string;
+			enabled: boolean;
+		}) => void;
 		isLoading: boolean;
 	};
 
@@ -31,90 +36,45 @@
 
 	let { inputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
 
-	// Validation state
-	let validationState = $state<{
-		isValidating: boolean;
-		result: {
-			valid: boolean;
-			name?: string;
-			errors: string[];
-			warnings: string[];
-		} | null;
-	}>({
-		isValidating: false,
-		result: null
-	});
+	// Submission error state
+	let submitError = $state<string | null>(null);
 
-	// Validate registry URL
-	async function validateRegistryUrl(url: string) {
-		if (!url.trim()) {
-			validationState.result = null;
-			return;
-		}
+	async function handleSubmit() {
+		// Clear previous errors
+		submitError = null;
 
-		validationState.isValidating = true;
-		try {
-			new URL(url);
-
-			const data = await templateAPI.fetchRegistry(url);
-
-			if (!data.name || !data.templates || !Array.isArray(data.templates)) {
-				throw new Error('Invalid registry format: missing required fields (name, templates)');
-			}
-
-			validationState.result = {
-				valid: true,
-				name: data.name,
-				errors: [],
-				warnings: data.templates.length === 0 ? ['Registry contains no templates'] : []
-			};
-		} catch (error) {
-			validationState.result = {
-				valid: false,
-				errors: [error instanceof Error ? error.message : 'Invalid registry URL'],
-				warnings: []
-			};
-		} finally {
-			validationState.isValidating = false;
-		}
-	}
-
-	function handleSubmit() {
 		const data = form.validate();
 		if (!data) return;
 
-		console.log(validationState);
-		if (!validationState.result || !validationState.result.valid || !validationState.result.name) {
-			return;
+		try {
+			// Validate the registry URL by fetching it
+			const registryData = await templateAPI.fetchRegistry(data.url);
+
+			if (!registryData.name || !registryData.templates || !Array.isArray(registryData.templates)) {
+				throw new Error('Invalid registry format: missing required fields (name, templates)');
+			}
+
+			// Submit with the name from the registry
+			const registryPayload = {
+				name: registryData.name,
+				url: data.url,
+				description: data.description || undefined,
+				enabled: data.enabled
+			};
+
+			onSubmit(registryPayload);
+		} catch (error) {
+			submitError = error instanceof Error ? error.message : 'Failed to validate registry URL';
 		}
-
-		// Include the name from the JSON validation
-		const registryData = {
-			name: validationState.result.name,
-			url: data.url,
-			description: data.description ? data.description : undefined,
-			enabled: data.enabled
-		};
-
-		onSubmit(registryData);
 	}
 
 	function handleOpenChange(newOpenState: boolean) {
 		open = newOpenState;
-	}
-
-	// Watch URL changes for validation with debounce
-	$effect(() => {
-		if ($inputs.url.value) {
-			const timeoutId = setTimeout(() => {
-				validateRegistryUrl($inputs.url.value);
-			}, 500);
-
-			return () => clearTimeout(timeoutId);
-		} else {
-			validationState.result = null;
+		// Clear errors when closing
+		if (!newOpenState) {
+			submitError = null;
 		}
-	});
+	}
 </script>
 
 <Sheet.Root bind:open onOpenChange={handleOpenChange}>
@@ -126,54 +86,54 @@
 				</div>
 				<div>
 					<Sheet.Title class="text-xl font-semibold">Add Template Registry</Sheet.Title>
-					<Sheet.Description class="text-sm text-muted-foreground mt-1">Add a remote template registry to access community templates.</Sheet.Description>
+					<Sheet.Description class="text-sm text-muted-foreground mt-1"
+						>Add a remote template registry to access community templates.</Sheet.Description
+					>
 				</div>
 			</div>
 		</Sheet.Header>
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
-			<div class="space-y-1">
-				<FormInput label="Registry URL *" type="text" placeholder="https://templates.arcane.ofkm.dev/registry.json" description="URL to the registry JSON manifest" bind:input={$inputs.url} />
+			<FormInput
+				label="Registry URL *"
+				type="text"
+				placeholder="https://templates.arcane.ofkm.dev/registry.json"
+				description="URL to the registry JSON manifest"
+				bind:input={$inputs.url}
+			/>
 
-				{#if validationState.isValidating}
-					<div class="flex items-center gap-2 text-sm text-muted-foreground">
-						<RefreshCw class="size-3 animate-spin" />
-						Validating registry...
-					</div>
-				{:else if validationState.result}
-					{#if validationState.result.valid}
-						<div class="flex items-center gap-2 text-sm text-green-600">
-							<CheckCircle class="size-3" />
-							Valid registry found: <strong>{validationState.result.name}</strong>
-						</div>
-					{:else}
-						<div class="flex items-center gap-2 text-sm text-red-600">
-							<AlertCircle class="size-3" />
-							{validationState.result.errors[0]}
-						</div>
-					{/if}
-				{/if}
-			</div>
+			<FormInput
+				label="Description"
+				type="text"
+				placeholder="A collection of useful Docker Compose templates"
+				description="Optional description for this registry"
+				bind:input={$inputs.description}
+			/>
 
-			<FormInput label="Description" type="text" placeholder="A collection of useful Docker Compose templates" description="Optional description for this registry" bind:input={$inputs.description} />
+			<SwitchWithLabel
+				id="enabledSwitch"
+				label="Enable Registry"
+				description="Enable this registry to fetch templates"
+				bind:checked={$inputs.enabled.value}
+			/>
 
-			<SwitchWithLabel id="enabledSwitch" label="Enable Registry" description="Enable this registry to fetch templates" bind:checked={$inputs.enabled.value} />
-
-			{#if validationState.result && validationState.result.warnings.length > 0}
-				<Alert.Root class="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+			{#if submitError}
+				<Alert.Root class="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
 					<AlertCircle class="size-4" />
-					<Alert.Title>Warnings</Alert.Title>
-					<Alert.Description>
-						<ul class="list-inside list-disc space-y-1">
-							{#each validationState.result.warnings as warning}
-								<li class="text-sm">{warning}</li>
-							{/each}
-						</ul>
-					</Alert.Description>
+					<Alert.Title>Validation Error</Alert.Title>
+					<Alert.Description class="text-sm">{submitError}</Alert.Description>
 				</Alert.Root>
 			{/if}
 
 			<Sheet.Footer class="flex flex-row gap-2">
-				<Button type="button" class="arcane-button-cancel flex-1" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
+				<Button
+					type="button"
+					class="arcane-button-cancel flex-1"
+					variant="outline"
+					onclick={() => (open = false)}
+					disabled={isLoading}
+				>
+					Cancel
+				</Button>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
 						<Loader2 class="mr-2 size-4 animate-spin" />
