@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
+	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
 )
@@ -79,7 +80,8 @@ func (h *ImageHandler) Remove(c *gin.Context) {
 	id := c.Param("imageId")
 	force := c.Query("force") == "true"
 
-	if err := h.imageService.RemoveImage(c.Request.Context(), id, force); err != nil {
+	currentUser, _ := middleware.GetCurrentUser(c)
+	if err := h.imageService.RemoveImage(c.Request.Context(), id, force, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -110,7 +112,8 @@ func (h *ImageHandler) Pull(c *gin.Context) {
 	c.Writer.Header().Set("Connection", "keep-alive")
 	c.Writer.Header().Set("X-Accel-Buffering", "no")
 
-	err := h.imageService.PullImage(ctx, req.ImageName, c.Writer)
+	currentUser, _ := middleware.GetCurrentUser(c)
+	err := h.imageService.PullImage(ctx, req.ImageName, c.Writer, *currentUser)
 
 	if err != nil {
 		if !c.Writer.Written() {

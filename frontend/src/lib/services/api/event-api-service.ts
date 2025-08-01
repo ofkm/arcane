@@ -25,8 +25,8 @@ export default class EventAPIService extends BaseAPIService {
 		}
 
 		if (sort) {
-			params.column = sort.column;
-			params.direction = sort.direction;
+			params.sortColumn = sort.column;
+			params.sortDirection = sort.direction;
 		}
 
 		if (search) {
@@ -34,7 +34,11 @@ export default class EventAPIService extends BaseAPIService {
 		}
 
 		if (filters) {
-			params.filters = filters;
+			Object.entries(filters).forEach(([key, value]) => {
+				if (value !== undefined && value !== null && value !== '') {
+					params[key] = value;
+				}
+			});
 		}
 
 		return this.handleResponse(this.api.get('/events', { params }));
@@ -43,22 +47,31 @@ export default class EventAPIService extends BaseAPIService {
 	async listPaginated(
 		pagination?: PaginationRequest,
 		sort?: SortRequest,
+		search?: string,
 		filters?: Record<string, string>
 	): Promise<PaginatedApiResponse<Event>> {
 		const params: any = {};
 
 		if (pagination) {
-			params.page = pagination.page;
-			params.limit = pagination.limit;
+			params['pagination[page]'] = pagination.page;
+			params['pagination[limit]'] = pagination.limit;
 		}
 
 		if (sort) {
-			params.column = sort.column;
-			params.direction = sort.direction;
+			params['sort[column]'] = sort.column;
+			params['sort[direction]'] = sort.direction;
+		}
+
+		if (search) {
+			params.search = search;
 		}
 
 		if (filters) {
-			params.filters = filters;
+			Object.entries(filters).forEach(([key, value]) => {
+				if (value !== undefined && value !== null && value !== '') {
+					params[key] = value;
+				}
+			});
 		}
 
 		return this.handleResponse(this.api.get('/events', { params }));
@@ -68,6 +81,7 @@ export default class EventAPIService extends BaseAPIService {
 		environmentId: string,
 		pagination?: PaginationRequest,
 		sort?: SortRequest,
+		search?: string,
 		filters?: Record<string, string>
 	): Promise<PaginatedApiResponse<Event>> {
 		const params: any = {};
@@ -78,12 +92,20 @@ export default class EventAPIService extends BaseAPIService {
 		}
 
 		if (sort) {
-			params.column = sort.column;
-			params.direction = sort.direction;
+			params.sortColumn = sort.column;
+			params.sortDirection = sort.direction;
+		}
+
+		if (search) {
+			params.search = search;
 		}
 
 		if (filters) {
-			params.filters = filters;
+			Object.entries(filters).forEach(([key, value]) => {
+				if (value !== undefined && value !== null && value !== '') {
+					params[key] = value;
+				}
+			});
 		}
 
 		return this.handleResponse(this.api.get(`/environments/${environmentId}/events`, { params }));

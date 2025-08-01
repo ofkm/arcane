@@ -104,10 +104,31 @@ func (s *EventService) ListEventsPaginated(ctx context.Context, req utils.Sorted
 
 	query := s.db.WithContext(ctx).Model(&models.Event{})
 
+	// Apply search filter - fix the Where clause structure
 	if req.Search != "" {
 		searchQuery := "%" + req.Search + "%"
-		query = query.Where("title ILIKE ? OR description ILIKE ? OR resource_name ILIKE ? OR username ILIKE ?",
+		query = query.Where("title LIKE ? OR description LIKE ? OR resource_name LIKE ? OR username LIKE ?",
 			searchQuery, searchQuery, searchQuery, searchQuery)
+	}
+
+	// Apply filters if any
+	if req.Filters != nil {
+		for key, value := range req.Filters {
+			if value != nil && value != "" {
+				switch key {
+				case "severity":
+					query = query.Where("severity = ?", value)
+				case "type":
+					query = query.Where("type = ?", value)
+				case "resourceType":
+					query = query.Where("resource_type = ?", value)
+				case "username":
+					query = query.Where("username = ?", value)
+				case "environmentId":
+					query = query.Where("environment_id = ?", value)
+				}
+			}
+		}
 	}
 
 	pagination, err := utils.PaginateAndSort(req, query, &events)
@@ -128,10 +149,29 @@ func (s *EventService) GetEventsByEnvironmentPaginated(ctx context.Context, envi
 
 	query := s.db.WithContext(ctx).Model(&models.Event{}).Where("environment_id = ?", environmentID)
 
+	// Apply search filter - fix the Where clause structure
 	if req.Search != "" {
 		searchQuery := "%" + req.Search + "%"
-		query = query.Where("title ILIKE ? OR description ILIKE ? OR resource_name ILIKE ? OR username ILIKE ?",
+		query = query.Where("title LIKE ? OR description LIKE ? OR resource_name LIKE ? OR username LIKE ?",
 			searchQuery, searchQuery, searchQuery, searchQuery)
+	}
+
+	// Apply filters if any
+	if req.Filters != nil {
+		for key, value := range req.Filters {
+			if value != nil && value != "" {
+				switch key {
+				case "severity":
+					query = query.Where("severity = ?", value)
+				case "type":
+					query = query.Where("type = ?", value)
+				case "resourceType":
+					query = query.Where("resource_type = ?", value)
+				case "username":
+					query = query.Where("username = ?", value)
+				}
+			}
+		}
 	}
 
 	pagination, err := utils.PaginateAndSort(req, query, &events)

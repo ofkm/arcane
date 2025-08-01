@@ -24,7 +24,7 @@
 		onRefresh,
 		onEventsChanged
 	}: {
-		events: Event[];
+		events: Paginated<Event>;
 		selectedIds: string[];
 		requestOptions: SearchPaginationSortRequest;
 		onRefresh: (options: SearchPaginationSortRequest) => Promise<any>;
@@ -38,7 +38,7 @@
 	type EventWithId = Event & { id: string };
 
 	const eventsWithId = $derived(
-		(events || []).map((event) => ({
+		(events.data || []).map((event) => ({
 			...event,
 			id: event.id
 		}))
@@ -46,12 +46,7 @@
 
 	const paginatedEvents: Paginated<EventWithId> = $derived({
 		data: eventsWithId as EventWithId[],
-		pagination: {
-			totalPages: Math.ceil(eventsWithId.length / (requestOptions.pagination?.limit || 20)),
-			totalItems: eventsWithId.length,
-			currentPage: requestOptions.pagination?.page || 1,
-			itemsPerPage: requestOptions.pagination?.limit || 20
-		}
+		pagination: events.pagination
 	});
 
 	async function handleDeleteSelected() {

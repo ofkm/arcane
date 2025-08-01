@@ -21,7 +21,7 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 	containerService := services.NewContainerService(db, eventService, dockerClientService)
 	containerRegistry := services.NewContainerRegistryService(db)
 	imageUpdate := services.NewImageUpdateService(db, settingsService, containerRegistry, dockerClientService, eventService)
-	imageService := services.NewImageService(db, dockerClientService, containerRegistry, imageUpdate)
+	imageService := services.NewImageService(db, dockerClientService, containerRegistry, imageUpdate, eventService)
 	volumeService := services.NewVolumeService(db, dockerClientService)
 	networkService := services.NewNetworkService(db, dockerClientService)
 	templateService := services.NewTemplateService(db)

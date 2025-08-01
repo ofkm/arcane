@@ -48,7 +48,8 @@ func (h *ContainerHandler) PullImage(c *gin.Context) {
 		return
 	}
 
-	err = h.imageService.PullImage(c.Request.Context(), imageName, c.Writer)
+	currentUser, _ := middleware.GetCurrentUser(c)
+	err = h.imageService.PullImage(c.Request.Context(), imageName, c.Writer, *currentUser)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

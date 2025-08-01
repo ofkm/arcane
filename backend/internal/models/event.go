@@ -44,19 +44,19 @@ const (
 )
 
 type Event struct {
-	ID            string        `json:"id" gorm:"primaryKey;type:text"`
-	Type          EventType     `json:"type" gorm:"not null;index"`
-	Severity      EventSeverity `json:"severity" gorm:"not null;default:'info'"`
-	Title         string        `json:"title" gorm:"not null"`
+	ID            string        `json:"id" gorm:"primaryKey" sortable:"true"`
+	Type          EventType     `json:"type" gorm:"not null" sortable:"true"`
+	Severity      EventSeverity `json:"severity" gorm:"not null" sortable:"true"`
+	Title         string        `json:"title" gorm:"not null" sortable:"true"`
 	Description   string        `json:"description"`
-	ResourceType  *string       `json:"resourceType,omitempty" gorm:"index"`
-	ResourceID    *string       `json:"resourceId,omitempty" gorm:"index"`
-	ResourceName  *string       `json:"resourceName,omitempty"`
-	UserID        *string       `json:"userId,omitempty" gorm:"index"`
-	Username      *string       `json:"username,omitempty"`
+	ResourceType  *string       `json:"resourceType,omitempty" gorm:"index" sortable:"true"`
+	ResourceID    *string       `json:"resourceId,omitempty" gorm:"index" sortable:"true"`
+	ResourceName  *string       `json:"resourceName,omitempty" sortable:"true"`
+	UserID        *string       `json:"userId,omitempty" gorm:"index" sortable:"true"`
+	Username      *string       `json:"username,omitempty" sortable:"true"`
 	EnvironmentID *string       `json:"environmentId,omitempty" gorm:"index"`
 	Metadata      JSON          `json:"metadata,omitempty" gorm:"type:text"`
-	Timestamp     time.Time     `json:"timestamp" gorm:"not null;index"`
+	Timestamp     time.Time     `json:"timestamp" gorm:"not null;index" sortable:"true"`
 	BaseModel
 }
 

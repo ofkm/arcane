@@ -7,13 +7,13 @@
 	import StatCard from '$lib/components/stat-card.svelte';
 	import type { Event } from '$lib/types/event.type';
 	import { eventAPI } from '$lib/services/api';
-	import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
+	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import EventTable from './event-table.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	let events = $state<Event[]>(Array.isArray(data.events) ? data.events : data.events?.data || []);
+	let events = $state<Paginated<Event>>(data.events);
 	let selectedIds = $state<string[]>([]);
 	let requestOptions = $state<SearchPaginationSortRequest>(data.eventRequestOptions);
 
@@ -22,30 +22,42 @@
 		deleting: false
 	});
 
-	const infoEvents = $derived(events?.filter((e: Event) => e.severity === 'info').length || 0);
+	const infoEvents = $derived(
+		events?.data?.filter((e: Event) => e.severity === 'info').length || 0
+	);
 	const warningEvents = $derived(
-		events?.filter((e: Event) => e.severity === 'warning').length || 0
+		events?.data?.filter((e: Event) => e.severity === 'warning').length || 0
 	);
-	const errorEvents = $derived(events?.filter((e: Event) => e.severity === 'error').length || 0);
+	const errorEvents = $derived(
+		events?.data?.filter((e: Event) => e.severity === 'error').length || 0
+	);
 	const successEvents = $derived(
-		events?.filter((e: Event) => e.severity === 'success').length || 0
+		events?.data?.filter((e: Event) => e.severity === 'success').length || 0
 	);
-	const totalEvents = $derived(events?.length || 0);
+	const totalEvents = $derived(events?.pagination?.totalItems || 0);
 
 	async function loadEvents() {
 		try {
 			isLoading.refreshing = true;
-			const response = await eventAPI.getEvents(
+			const response = await eventAPI.listPaginated(
 				requestOptions.pagination,
 				requestOptions.sort,
 				requestOptions.search,
 				requestOptions.filters
 			);
-			events = Array.isArray(response) ? response : response.data || [];
+			events = response;
 		} catch (err) {
 			console.error('Failed to load events:', err);
 			toast.error('Failed to load events');
-			events = [];
+			events = {
+				data: [],
+				pagination: {
+					totalPages: 0,
+					totalItems: 0,
+					currentPage: 1,
+					itemsPerPage: 20
+				}
+			};
 		} finally {
 			isLoading.refreshing = false;
 		}
@@ -54,15 +66,7 @@
 	async function onRefresh(options: SearchPaginationSortRequest) {
 		requestOptions = options;
 		await loadEvents();
-		return {
-			data: events,
-			pagination: {
-				totalPages: Math.ceil(events.length / (requestOptions.pagination?.limit || 20)),
-				totalItems: events.length,
-				currentPage: requestOptions.pagination?.page || 1,
-				itemsPerPage: requestOptions.pagination?.limit || 20
-			}
-		};
+		return events;
 	}
 
 	async function onEventsChanged() {
@@ -161,7 +165,7 @@
 				variant="outline"
 				size="sm"
 				onclick={() => onDeleteOldEvents(30)}
-				loading={isLoading.deleting}
+				disabled={isLoading.deleting}
 			>
 				Delete 30+ days
 			</Button>
@@ -169,7 +173,7 @@
 				variant="outline"
 				size="sm"
 				onclick={() => onDeleteOldEvents(7)}
-				loading={isLoading.deleting}
+				disabled={isLoading.deleting}
 			>
 				Delete 7+ days
 			</Button>

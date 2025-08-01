@@ -10,13 +10,14 @@ export const load: PageLoad = async () => {
 		},
 		sort: {
 			column: 'timestamp',
-			direction: 'asc' as const
+			direction: 'desc' as const
 		}
 	};
 
 	const events = await eventAPI.listPaginated(
 		eventRequestOptions.pagination,
 		eventRequestOptions.sort,
+		eventRequestOptions.search,
 		eventRequestOptions.filters
 	);
 

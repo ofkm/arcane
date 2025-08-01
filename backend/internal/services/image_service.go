@@ -29,14 +29,16 @@ type ImageService struct {
 	dockerService      *DockerClientService
 	imageUpdateService *ImageUpdateService
 	registryService    *ContainerRegistryService
+	eventService       *EventService
 }
 
-func NewImageService(db *database.DB, dockerService *DockerClientService, registryService *ContainerRegistryService, imageUpdateService *ImageUpdateService) *ImageService {
+func NewImageService(db *database.DB, dockerService *DockerClientService, registryService *ContainerRegistryService, imageUpdateService *ImageUpdateService, eventService *EventService) *ImageService {
 	return &ImageService{
 		db:                 db,
 		dockerService:      dockerService,
 		registryService:    registryService,
 		imageUpdateService: imageUpdateService,
+		eventService:       eventService,
 	}
 }
 
@@ -74,12 +76,21 @@ func (s *ImageService) GetImageByID(ctx context.Context, id string) (*image.Insp
 	return &image, nil
 }
 
-func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool) error {
+func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
+
+	// Get image details for logging before deletion
+	imageDetails, inspectErr := dockerClient.ImageInspect(ctx, id)
+	var imageName string
+	if inspectErr == nil && len(imageDetails.RepoTags) > 0 {
+		imageName = imageDetails.RepoTags[0]
+	} else {
+		imageName = id
+	}
 
 	options := image.RemoveOptions{
 		Force:         force,
@@ -93,10 +104,20 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool) e
 
 	s.db.WithContext(ctx).Delete(&models.Image{}, "id = ?", id)
 
+	// Log image deletion event
+	metadata := models.JSON{
+		"action":  "delete",
+		"imageId": id,
+		"force":   force,
+	}
+	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageDelete, id, imageName, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log image deletion action: %s\n", logErr)
+	}
+
 	return nil
 }
 
-func (s *ImageService) PullImage(ctx context.Context, imageName string, progressWriter io.Writer) error {
+func (s *ImageService) PullImage(ctx context.Context, imageName string, progressWriter io.Writer, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
@@ -153,6 +174,15 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 		} else {
 			fmt.Printf("Database synchronized successfully after pulling image %s.\n", imageName)
 		}
+	}
+
+	// Log image pull event
+	metadata := models.JSON{
+		"action":    "pull",
+		"imageName": imageName,
+	}
+	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImagePull, "", imageName, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log image pull action: %s\n", logErr)
 	}
 
 	return nil
@@ -273,6 +303,17 @@ func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.P
 	report, err := dockerClient.ImagesPrune(ctx, filterArgs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prune images: %w", err)
+	}
+
+	// Log image prune event using system user since this is typically a system operation
+	metadata := models.JSON{
+		"action":         "prune",
+		"dangling":       dangling,
+		"imagesDeleted":  len(report.ImagesDeleted),
+		"spaceReclaimed": report.SpaceReclaimed,
+	}
+	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageDelete, "", "bulk_prune", systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log image prune action: %s\n", logErr)
 	}
 
 	return &report, nil
