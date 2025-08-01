@@ -11,6 +11,13 @@ DROP INDEX IF EXISTS idx_user_sessions_token;
 DROP INDEX IF EXISTS idx_user_sessions_user_id;
 DROP INDEX IF EXISTS idx_settings_public;
 DROP INDEX IF EXISTS idx_settings_key;
+DROP INDEX IF EXISTS idx_events_timestamp;
+DROP INDEX IF EXISTS idx_events_environment_id;
+DROP INDEX IF EXISTS idx_events_user_id;
+DROP INDEX IF EXISTS idx_events_resource_id;
+DROP INDEX IF EXISTS idx_events_resource_type;
+DROP INDEX IF EXISTS idx_events_severity;
+DROP INDEX IF EXISTS idx_events_type;
 
 DROP TABLE IF EXISTS auto_update_records;
 DROP TABLE IF EXISTS container_registries;
@@ -26,3 +33,4 @@ DROP TABLE IF EXISTS stacks_table;
 DROP TABLE IF EXISTS user_sessions_table;
 DROP TABLE IF EXISTS users_table;
 DROP TABLE IF EXISTS settings;
+DROP TABLE IF EXISTS events;

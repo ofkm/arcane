@@ -12,6 +12,7 @@ import ConverterAPIService from './converter-api-service';
 import ContainerRegistryAPIService from './container-registry-api-service';
 import { EnvironmentAPIService } from './environment-api-service';
 import EnvironmentManagementAPIService from './environment-management-api-service';
+import EventAPIService from './event-api-service';
 
 export const imageAPI = new ImageAPIService();
 export const imageUpdateAPI = new ImageUpdateAPIService();
@@ -27,6 +28,7 @@ export const containerRegistryAPI = new ContainerRegistryAPIService();
 export const autoUpdateAPI = new AutoUpdateAPIService();
 export const environmentAPI = new EnvironmentAPIService();
 export const environmentManagementAPI = new EnvironmentManagementAPIService();
+export const eventAPI = new EventAPIService();
 
 interface APIServices {
 	image: ImageAPIService;
@@ -43,6 +45,7 @@ interface APIServices {
 	autoUpdate: AutoUpdateAPIService;
 	environment: EnvironmentAPIService;
 	environmentManagement: EnvironmentManagementAPIService;
+	event: EventAPIService;
 }
 
 const apiServices: APIServices = {
@@ -59,7 +62,8 @@ const apiServices: APIServices = {
 	containerRegistry: containerRegistryAPI,
 	autoUpdate: autoUpdateAPI,
 	environment: environmentAPI,
-	environmentManagement: environmentManagementAPI
+	environmentManagement: environmentManagementAPI,
+	event: eventAPI
 };
 
 export default apiServices;
