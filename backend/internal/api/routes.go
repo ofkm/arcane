@@ -25,6 +25,7 @@ type Services struct {
 	ContainerRegistry *services.ContainerRegistryService
 	System            *services.SystemService
 	AutoUpdate        *services.AutoUpdateService
+	Event             *services.EventService
 }
 
 func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
@@ -46,6 +47,7 @@ func SetupRoutes(r *gin.Engine, services *Services, appConfig *config.Config) {
 	setupAutoUpdateRoutes(api, services)
 	setupConverterRoutes(api, services)
 	setupImageUpdateRoutes(api, services)
+	setupEventRoutes(api, services)
 }
 
 func setupContainerRegistryRoutes(api *gin.RouterGroup, services *Services) {
@@ -350,4 +352,16 @@ func setupTemplateRoutes(router *gin.RouterGroup, services *Services) {
 		templatesAuth.PUT("/registries/:id", templateHandler.UpdateRegistry)
 		templatesAuth.DELETE("/registries/:id", templateHandler.DeleteRegistry)
 	}
+}
+
+func setupEventRoutes(api *gin.RouterGroup, services *Services) {
+	events := api.Group("/events")
+	events.Use(middleware.AuthMiddleware(services.Auth))
+
+	eventHandler := NewEventHandler(services.Event)
+
+	events.GET("", eventHandler.ListEvents)
+	events.POST("", eventHandler.CreateEvent)
+	events.DELETE("/:eventId", eventHandler.DeleteEvent)
+	events.GET("/environment/:environmentId", eventHandler.GetEventsByEnvironment)
 }

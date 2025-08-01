@@ -20,6 +20,7 @@ type ImageUpdateService struct {
 	settingsService *SettingsService
 	registryService *ContainerRegistryService
 	dockerService   *DockerClientService
+	eventService    *EventService
 }
 
 type UpdateResult struct {
@@ -70,12 +71,13 @@ type AvailableVersions struct {
 	Latest   string   `json:"latest,omitempty"`
 }
 
-func NewImageUpdateService(db *database.DB, settingsService *SettingsService, registryService *ContainerRegistryService, dockerService *DockerClientService) *ImageUpdateService {
+func NewImageUpdateService(db *database.DB, settingsService *SettingsService, registryService *ContainerRegistryService, dockerService *DockerClientService, eventService *EventService) *ImageUpdateService {
 	return &ImageUpdateService{
 		db:              db,
 		settingsService: settingsService,
 		registryService: registryService,
 		dockerService:   dockerService,
+		eventService:    eventService,
 	}
 }
 
@@ -100,6 +102,20 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 			CheckTime:      time.Now(),
 			ResponseTimeMs: int(time.Since(startTime).Milliseconds()),
 		}
+
+		// Log error event
+		metadata := models.JSON{
+			"action":    "check_update",
+			"imageRef":  imageRef,
+			"error":     err.Error(),
+			"checkType": "digest",
+		}
+		if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, "", imageRef, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+			slog.WarnContext(ctx, "Failed to log image update check error event",
+				slog.String("imageRef", imageRef),
+				slog.String("error", logErr.Error()))
+		}
+
 		if saveErr := s.saveUpdateResult(ctx, imageRef, result); saveErr != nil {
 			slog.WarnContext(ctx, "Failed to save update result",
 				slog.String("imageRef", imageRef),
@@ -116,6 +132,20 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 				CheckTime:      time.Now(),
 				ResponseTimeMs: int(time.Since(startTime).Milliseconds()),
 			}
+
+			// Log error event
+			metadata := models.JSON{
+				"action":    "check_update",
+				"imageRef":  imageRef,
+				"error":     err.Error(),
+				"checkType": "tag",
+			}
+			if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, "", imageRef, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+				slog.WarnContext(ctx, "Failed to log image update check error event",
+					slog.String("imageRef", imageRef),
+					slog.String("error", logErr.Error()))
+			}
+
 			if saveErr := s.saveUpdateResult(ctx, imageRef, result); saveErr != nil {
 				slog.WarnContext(ctx, "Failed to save update result",
 					slog.String("imageRef", imageRef),
@@ -125,6 +155,23 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 		}
 		if tagResult.HasUpdate {
 			tagResult.ResponseTimeMs = int(time.Since(startTime).Milliseconds())
+
+			// Log successful tag update check
+			metadata := models.JSON{
+				"action":         "check_update",
+				"imageRef":       imageRef,
+				"hasUpdate":      true,
+				"updateType":     "tag",
+				"currentVersion": tagResult.CurrentVersion,
+				"latestVersion":  tagResult.LatestVersion,
+				"responseTimeMs": tagResult.ResponseTimeMs,
+			}
+			if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, "", imageRef, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+				slog.WarnContext(ctx, "Failed to log image update check event",
+					slog.String("imageRef", imageRef),
+					slog.String("error", logErr.Error()))
+			}
+
 			if saveErr := s.saveUpdateResult(ctx, imageRef, tagResult); saveErr != nil {
 				slog.WarnContext(ctx, "Failed to save update result",
 					slog.String("imageRef", imageRef),
@@ -135,6 +182,23 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 	}
 
 	digestResult.ResponseTimeMs = int(time.Since(startTime).Milliseconds())
+
+	// Log successful digest update check
+	metadata := models.JSON{
+		"action":         "check_update",
+		"imageRef":       imageRef,
+		"hasUpdate":      digestResult.HasUpdate,
+		"updateType":     "digest",
+		"currentDigest":  digestResult.CurrentDigest,
+		"latestDigest":   digestResult.LatestDigest,
+		"responseTimeMs": digestResult.ResponseTimeMs,
+	}
+	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, "", imageRef, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+		slog.WarnContext(ctx, "Failed to log image update check event",
+			slog.String("imageRef", imageRef),
+			slog.String("error", logErr.Error()))
+	}
+
 	if saveErr := s.saveUpdateResult(ctx, imageRef, digestResult); saveErr != nil {
 		slog.WarnContext(ctx, "Failed to save update result",
 			slog.String("imageRef", imageRef),
@@ -613,6 +677,17 @@ func (s *ImageUpdateService) isSpecialTag(tag string) bool {
 func (s *ImageUpdateService) CheckImageUpdateByID(ctx context.Context, imageID string) (*UpdateResult, error) {
 	imageRef, err := s.getImageRefByID(ctx, imageID)
 	if err != nil {
+		// Log error event
+		metadata := models.JSON{
+			"action":  "check_update_by_id",
+			"imageID": imageID,
+			"error":   err.Error(),
+		}
+		if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, imageID, "", systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+			slog.WarnContext(ctx, "Failed to log image update check by ID error event",
+				slog.String("imageID", imageID),
+				slog.String("error", logErr.Error()))
+		}
 		return nil, fmt.Errorf("failed to get image reference: %w", err)
 	}
 
@@ -735,12 +810,41 @@ func (s *ImageUpdateService) CheckAllImages(ctx context.Context, limit int) (map
 }
 
 func (s *ImageUpdateService) TriggerBulkUpdateCheck(ctx context.Context, imageIDs []string) error {
+	// Log bulk update check start
+	metadata := models.JSON{
+		"action":   "bulk_update_check",
+		"imageIDs": imageIDs,
+		"count":    len(imageIDs),
+	}
+	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, "", "bulk_check", systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+		slog.WarnContext(ctx, "Failed to log bulk update check start event",
+			slog.String("error", logErr.Error()))
+	}
+
+	successCount := 0
+	errorCount := 0
+
 	for _, imageID := range imageIDs {
 		_, err := s.CheckImageUpdateByID(ctx, imageID)
 		if err != nil {
+			errorCount++
 			continue
 		}
+		successCount++
 	}
+
+	// Log bulk update check completion
+	completionMetadata := models.JSON{
+		"action":       "bulk_update_check_complete",
+		"totalImages":  len(imageIDs),
+		"successCount": successCount,
+		"errorCount":   errorCount,
+	}
+	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, "", "bulk_check_complete", systemUser.ID, systemUser.Username, "0", completionMetadata); logErr != nil {
+		slog.WarnContext(ctx, "Failed to log bulk update check completion event",
+			slog.String("error", logErr.Error()))
+	}
+
 	return nil
 }
 

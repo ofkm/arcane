@@ -10,6 +10,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
+	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
 )
@@ -136,7 +137,8 @@ func (h *ContainerHandler) GetByID(c *gin.Context) {
 func (h *ContainerHandler) Start(c *gin.Context) {
 	id := c.Param("containerId")
 
-	if err := h.containerService.StartContainer(c.Request.Context(), id); err != nil {
+	currentUser, _ := middleware.GetCurrentUser(c)
+	if err := h.containerService.StartContainer(c.Request.Context(), id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -153,7 +155,8 @@ func (h *ContainerHandler) Start(c *gin.Context) {
 func (h *ContainerHandler) Stop(c *gin.Context) {
 	id := c.Param("containerId")
 
-	if err := h.containerService.StopContainer(c.Request.Context(), id); err != nil {
+	currentUser, _ := middleware.GetCurrentUser(c)
+	if err := h.containerService.StopContainer(c.Request.Context(), id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -170,7 +173,8 @@ func (h *ContainerHandler) Stop(c *gin.Context) {
 func (h *ContainerHandler) Restart(c *gin.Context) {
 	id := c.Param("containerId")
 
-	if err := h.containerService.RestartContainer(c.Request.Context(), id); err != nil {
+	currentUser, _ := middleware.GetCurrentUser(c)
+	if err := h.containerService.RestartContainer(c.Request.Context(), id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -208,7 +212,8 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 	force := c.Query("force") == "true"
 	removeVolumes := c.Query("volumes") == "true"
 
-	if err := h.containerService.DeleteContainer(c.Request.Context(), id, force, removeVolumes); err != nil {
+	currentUser, _ := middleware.GetCurrentUser(c)
+	if err := h.containerService.DeleteContainer(c.Request.Context(), id, force, removeVolumes, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -323,12 +328,14 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 		}
 	}
 
+	currentUser, _ := middleware.GetCurrentUser(c)
 	containerJSON, err := h.containerService.CreateContainer(
 		c.Request.Context(),
 		config,
 		hostConfig,
 		networkingConfig,
 		req.Name,
+		*currentUser,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

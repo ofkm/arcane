@@ -24,6 +24,7 @@ const (
 	EventTypeStackDelete EventType = "stack.delete"
 	EventTypeStackStart  EventType = "stack.start"
 	EventTypeStackStop   EventType = "stack.stop"
+	EventTypeStackCreate EventType = "stack.create"
 
 	EventTypeVolumeCreate EventType = "volume.create"
 	EventTypeVolumeDelete EventType = "volume.delete"

@@ -32,12 +32,14 @@ type StackServiceInfo struct {
 type StackService struct {
 	db              *database.DB
 	settingsService *SettingsService
+	eventService    *EventService
 }
 
-func NewStackService(db *database.DB, settingsService *SettingsService) *StackService {
+func NewStackService(db *database.DB, settingsService *SettingsService, eventService *EventService) *StackService {
 	return &StackService{
 		db:              db,
 		settingsService: settingsService,
+		eventService:    eventService,
 	}
 }
 
@@ -51,7 +53,7 @@ type StackInfo struct {
 	ComposeYAML  string             `json:"compose_yaml,omitempty"`
 }
 
-func (s *StackService) CreateStack(ctx context.Context, name, composeContent string, envContent *string) (*models.Stack, error) {
+func (s *StackService) CreateStack(ctx context.Context, name, composeContent string, envContent *string, user models.User) (*models.Stack, error) {
 	stackID := uuid.New().String()
 	folderName := s.sanitizeStackName(name)
 
@@ -92,10 +94,21 @@ func (s *StackService) CreateStack(ctx context.Context, name, composeContent str
 		return nil, fmt.Errorf("failed to save stack files: %w", err)
 	}
 
+	// Log stack creation event
+	metadata := models.JSON{
+		"action":    "create",
+		"stackId":   stackID,
+		"stackName": name,
+		"path":      stackPath,
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackCreate, stackID, name, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log stack creation action: %s\n", logErr)
+	}
+
 	return stack, nil
 }
 
-func (s *StackService) DeployStack(ctx context.Context, stackID string) error {
+func (s *StackService) DeployStack(ctx context.Context, stackID string, user models.User) error {
 	stack, err := s.GetStackByID(ctx, stackID)
 	if err != nil {
 		return fmt.Errorf("failed to get stack: %w", err)
@@ -128,10 +141,20 @@ func (s *StackService) DeployStack(ctx context.Context, stackID string) error {
 		return fmt.Errorf("failed to deploy stack: %w\nCommand output: %s", err, string(output))
 	}
 
+	// Log stack deployment event
+	metadata := models.JSON{
+		"action":    "deploy",
+		"stackId":   stackID,
+		"stackName": stack.Name,
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDeploy, stackID, stack.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log stack deployment action: %s\n", logErr)
+	}
+
 	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusRunning)
 }
 
-func (s *StackService) StopStack(ctx context.Context, stackID string) error {
+func (s *StackService) StopStack(ctx context.Context, stackID string, user models.User) error {
 	stack, err := s.GetStackByID(ctx, stackID)
 	if err != nil {
 		return err
@@ -158,11 +181,21 @@ func (s *StackService) StopStack(ctx context.Context, stackID string) error {
 		return fmt.Errorf("failed to stop stack: %w\nOutput: %s", err, string(output))
 	}
 
+	// Log stack stop event
+	metadata := models.JSON{
+		"action":    "stop",
+		"stackId":   stackID,
+		"stackName": stack.Name,
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackStop, stackID, stack.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log stack stop action: %s\n", logErr)
+	}
+
 	// Update status and counts after successful stop
 	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusStopped)
 }
 
-func (s *StackService) DownStack(ctx context.Context, stackID string) error {
+func (s *StackService) DownStack(ctx context.Context, stackID string, user models.User) error {
 	stack, err := s.GetStackByID(ctx, stackID)
 	if err != nil {
 		return err
@@ -187,6 +220,16 @@ func (s *StackService) DownStack(ctx context.Context, stackID string) error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to bring down stack: %w\nOutput: %s", err, string(output))
+	}
+
+	// Log stack down event
+	metadata := models.JSON{
+		"action":    "down",
+		"stackId":   stackID,
+		"stackName": stack.Name,
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackStop, stackID, stack.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log stack down action: %s\n", logErr)
 	}
 
 	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusStopped)
@@ -348,7 +391,7 @@ func (s *StackService) getProcessedComposeYAML(ctx context.Context, stackID stri
 	return string(projectYAML), nil
 }
 
-func (s *StackService) RestartStack(ctx context.Context, stackID string) error {
+func (s *StackService) RestartStack(ctx context.Context, stackID string, user models.User) error {
 	stack, err := s.GetStackByID(ctx, stackID)
 	if err != nil {
 		return err
@@ -373,6 +416,16 @@ func (s *StackService) RestartStack(ctx context.Context, stackID string) error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to restart stack: %w\nOutput: %s", err, string(output))
+	}
+
+	// Log stack restart event
+	metadata := models.JSON{
+		"action":    "restart",
+		"stackId":   stackID,
+		"stackName": stack.Name,
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackStart, stackID, stack.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log stack restart action: %s\n", logErr)
 	}
 
 	// Update status and counts after restart
@@ -514,7 +567,7 @@ func (s *StackService) SyncAllStacksFromFilesystem(ctx context.Context) error {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Auto-import external stack
-			if _, importErr := s.ImportExternalStack(ctx, dirName, dirName); importErr != nil {
+			if _, importErr := s.ImportExternalStack(ctx, dirName, dirName, systemUser); importErr != nil {
 				fmt.Printf("Warning: failed to auto-import stack %s: %v\n", dirName, importErr)
 			}
 		} else if err == nil {
@@ -649,14 +702,14 @@ func (s *StackService) GetStackContent(ctx context.Context, stackID string) (com
 	return composeContent, envContent, nil
 }
 
-func (s *StackService) DeleteStack(ctx context.Context, stackID string) error {
+func (s *StackService) DeleteStack(ctx context.Context, stackID string, user models.User) error {
 	stack, err := s.GetStackByID(ctx, stackID)
 	if err != nil {
 		return err
 	}
 
 	if stack.Status == models.StackStatusRunning {
-		if err := s.DownStack(ctx, stackID); err != nil {
+		if err := s.DownStack(ctx, stackID, systemUser); err != nil {
 			fmt.Printf("Warning: failed to stop stack before deletion: %v\n", err)
 		}
 	}
@@ -669,16 +722,27 @@ func (s *StackService) DeleteStack(ctx context.Context, stackID string) error {
 		fmt.Printf("Warning: failed to remove stack directory %s: %v\n", stack.Path, err)
 	}
 
+	// Log stack deletion event
+	metadata := models.JSON{
+		"action":    "delete",
+		"stackId":   stackID,
+		"stackName": stack.Name,
+		"path":      stack.Path,
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDelete, stackID, stack.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log stack deletion action: %s\n", logErr)
+	}
+
 	return nil
 }
 
-func (s *StackService) DestroyStack(ctx context.Context, stackID string, removeFiles, removeVolumes bool) error {
+func (s *StackService) DestroyStack(ctx context.Context, stackID string, removeFiles, removeVolumes bool, user models.User) error {
 	stack, err := s.GetStackByID(ctx, stackID)
 	if err != nil {
 		return err
 	}
 
-	if err := s.DownStack(ctx, stackID); err != nil {
+	if err := s.DownStack(ctx, stackID, systemUser); err != nil {
 		fmt.Printf("Warning: failed to bring down stack: %v\n", err)
 	}
 
@@ -704,19 +768,47 @@ func (s *StackService) DestroyStack(ctx context.Context, stackID string, removeF
 		}
 	}
 
+	// Log stack destroy event
+	metadata := models.JSON{
+		"action":        "destroy",
+		"stackId":       stackID,
+		"stackName":     stack.Name,
+		"removeFiles":   removeFiles,
+		"removeVolumes": removeVolumes,
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDelete, stackID, stack.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log stack destroy action: %s\n", logErr)
+	}
+
 	return nil
 }
 
-func (s *StackService) RedeployStack(ctx context.Context, stackID string, profiles []string, envOverrides map[string]string) error {
+func (s *StackService) RedeployStack(ctx context.Context, stackID string, profiles []string, envOverrides map[string]string, user models.User) error {
+	stack, err := s.GetStackByID(ctx, stackID)
+	if err != nil {
+		return err
+	}
+
 	if err := s.PullStackImages(ctx, stackID); err != nil {
 		fmt.Printf("Warning: failed to pull images: %v\n", err)
 	}
 
-	if err := s.StopStack(ctx, stackID); err != nil {
+	if err := s.StopStack(ctx, stackID, systemUser); err != nil {
 		return fmt.Errorf("failed to stop stack for redeploy: %w", err)
 	}
 
-	return s.DeployStack(ctx, stackID)
+	// Log stack redeploy event
+	metadata := models.JSON{
+		"action":    "redeploy",
+		"stackId":   stackID,
+		"stackName": stack.Name,
+		"profiles":  profiles,
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDeploy, stackID, stack.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log stack redeploy action: %s\n", logErr)
+	}
+
+	return s.DeployStack(ctx, stackID, systemUser)
 }
 
 // DiscoverExternalStacks scans the configured stacks directory and returns any
@@ -1232,8 +1324,8 @@ func (s *StackService) getServiceCounts(services []StackServiceInfo) (total int,
 }
 
 // ImportExternalStack creates a DB record for a compose directory
-// that isn’t yet tracked by Arcane.
-func (s *StackService) ImportExternalStack(ctx context.Context, dirName, stackName string) (*models.Stack, error) {
+// that isn't yet tracked by Arcane.
+func (s *StackService) ImportExternalStack(ctx context.Context, dirName, stackName string, user models.User) (*models.Stack, error) {
 	// base path that DiscoverExternalStacks scanned
 	stacksDir, err := s.getStacksDirectory(ctx)
 	if err != nil {
@@ -1248,7 +1340,7 @@ func (s *StackService) ImportExternalStack(ctx context.Context, dirName, stackNa
 	// probe live status & counts
 	status, svcCount, runCount, err := s.getLiveStackStatus(ctx, path, stackName)
 	if err != nil {
-		// we’ll still import it, but mark unknown
+		// we'll still import it, but mark unknown
 		status = models.StackStatusUnknown
 	}
 
@@ -1266,5 +1358,19 @@ func (s *StackService) ImportExternalStack(ctx context.Context, dirName, stackNa
 	if err := s.db.WithContext(ctx).Create(stack).Error; err != nil {
 		return nil, fmt.Errorf("failed to import external stack: %w", err)
 	}
+
+	// Log stack import event
+	metadata := models.JSON{
+		"action":     "import",
+		"stackId":    stack.ID,
+		"stackName":  stackName,
+		"dirName":    dirName,
+		"path":       path,
+		"isExternal": true,
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackCreate, stack.ID, stackName, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log stack import action: %s\n", logErr)
+	}
+
 	return stack, nil
 }

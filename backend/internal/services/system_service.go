@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
+	"github.com/ofkm/arcane-backend/internal/models"
 )
 
 type SystemService struct {
@@ -57,6 +58,11 @@ type ContainerActionResult struct {
 	Failed  []string `json:"failed,omitempty"`
 	Success bool     `json:"success"`
 	Errors  []string `json:"errors,omitempty"`
+}
+
+var systemUser = models.User{
+	Username: "System",
+	ID:       "0",
 }
 
 func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*PruneAllResult, error) {
@@ -159,7 +165,7 @@ func (s *SystemService) StartAllContainers(ctx context.Context) (*ContainerActio
 
 	for _, container := range containers {
 		if container.State != "running" {
-			if err := s.containerService.StartContainer(ctx, container.ID); err != nil {
+			if err := s.containerService.StartContainer(ctx, container.ID, systemUser); err != nil {
 				result.Failed = append(result.Failed, container.ID)
 				result.Errors = append(result.Errors, fmt.Sprintf("Failed to start container %s: %v", container.ID, err))
 				result.Success = false
@@ -186,7 +192,7 @@ func (s *SystemService) StartAllStoppedContainers(ctx context.Context) (*Contain
 
 	for _, container := range containers {
 		if container.State == "exited" {
-			if err := s.containerService.StartContainer(ctx, container.ID); err != nil {
+			if err := s.containerService.StartContainer(ctx, container.ID, systemUser); err != nil {
 				result.Failed = append(result.Failed, container.ID)
 				result.Errors = append(result.Errors, fmt.Sprintf("Failed to start container %s: %v", container.ID, err))
 				result.Success = false
@@ -212,7 +218,7 @@ func (s *SystemService) StopAllContainers(ctx context.Context) (*ContainerAction
 	}
 
 	for _, cont := range containers {
-		if err := s.containerService.StopContainer(ctx, cont.ID); err != nil {
+		if err := s.containerService.StopContainer(ctx, cont.ID, systemUser); err != nil {
 			result.Failed = append(result.Failed, cont.ID)
 			result.Errors = append(result.Errors, fmt.Sprintf("Failed to stop container %s: %v", cont.ID, err))
 			result.Success = false

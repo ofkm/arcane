@@ -686,7 +686,7 @@ func (s *AutoUpdateService) updateStack(
 	}
 
 	log.Printf("Redeploying stack: %s", stack.Name)
-	if err := s.stackService.RedeployStack(ctx, stack.ID, nil, nil); err != nil {
+	if err := s.stackService.RedeployStack(ctx, stack.ID, nil, nil, systemUser); err != nil {
 		return fmt.Errorf("failed to redeploy stack: %w", err)
 	}
 

@@ -11,15 +11,16 @@ import (
 
 func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *services.DockerClientService, error) {
 	log.Println("Initializing services...")
+	eventService := services.NewEventService(db)
 	converterService := services.NewConverterService()
 	settingsService := services.NewSettingsService(db, cfg)
 	dockerClientService := services.NewDockerClientService(db)
 	userService := services.NewUserService(db)
-	stackService := services.NewStackService(db, settingsService)
+	stackService := services.NewStackService(db, settingsService, eventService)
 	environmentService := services.NewEnvironmentService(db)
-	containerService := services.NewContainerService(db, dockerClientService)
+	containerService := services.NewContainerService(db, eventService, dockerClientService)
 	containerRegistry := services.NewContainerRegistryService(db)
-	imageUpdate := services.NewImageUpdateService(db, settingsService, containerRegistry, dockerClientService)
+	imageUpdate := services.NewImageUpdateService(db, settingsService, containerRegistry, dockerClientService, eventService)
 	imageService := services.NewImageService(db, dockerClientService, containerRegistry, imageUpdate)
 	volumeService := services.NewVolumeService(db, dockerClientService)
 	networkService := services.NewNetworkService(db, dockerClientService)
@@ -47,6 +48,7 @@ func initializeServices(db *database.DB, cfg *config.Config) (*api.Services, *se
 		System:            systemService,
 		AutoUpdate:        autoUpdate,
 		ImageUpdate:       imageUpdate,
+		Event:             eventService,
 	}
 
 	return appServices, dockerClientService, nil

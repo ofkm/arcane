@@ -171,7 +171,6 @@
 				{onRefresh}
 				columns={[
 					{ label: 'Severity', sortColumn: 'severity' },
-					{ label: 'Event', sortColumn: 'title' },
 					{ label: 'Type', sortColumn: 'type' },
 					{ label: 'Resource', sortColumn: 'resourceType' },
 					{ label: 'User', sortColumn: 'username' },
@@ -184,14 +183,6 @@
 				{#snippet rows({ item })}
 					<Table.Cell>
 						<StatusBadge text={item.severity} variant={getSeverityBadgeVariant(item.severity)} />
-					</Table.Cell>
-					<Table.Cell>
-						<div class="space-y-1">
-							<span class="font-medium">{item.title}</span>
-							{#if item.description}
-								<p class="text-xs text-muted-foreground">{item.description}</p>
-							{/if}
-						</div>
 					</Table.Cell>
 					<Table.Cell>
 						<Badge variant="outline">{item.type}</Badge>

@@ -6,17 +6,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
-	"gorm.io/gorm"
 )
 
 type EventService struct {
-	db *gorm.DB
+	db *database.DB
 }
 
-func NewEventService(db *gorm.DB) *EventService {
+func NewEventService(db *database.DB) *EventService {
 	return &EventService{db: db}
 }
 

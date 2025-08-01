@@ -10,7 +10,7 @@ export const load: PageLoad = async () => {
 		},
 		sort: {
 			column: 'timestamp',
-			direction: 'desc' as const
+			direction: 'asc' as const
 		}
 	};
 

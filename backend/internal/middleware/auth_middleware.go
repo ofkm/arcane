@@ -39,7 +39,10 @@ func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
+		// Store in Gin context for handlers
 		c.Set("currentUser", user)
+
 		c.Next()
 	}
 }

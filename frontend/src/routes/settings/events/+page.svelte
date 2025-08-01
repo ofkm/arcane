@@ -9,7 +9,6 @@
 	import { eventAPI } from '$lib/services/api';
 	import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import EventTable from './event-table.svelte';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -103,15 +102,7 @@
 	<div class="flex items-center justify-between">
 		<div class="space-y-1">
 			<h2 class="text-2xl font-semibold tracking-tight">Event Log</h2>
-			<p class="text-sm text-muted-foreground">
-				Monitor system activities and events across your Docker environment.
-			</p>
-		</div>
-		<div class="flex items-center space-x-2">
-			<Button variant="outline" size="sm" onclick={refreshEvents} loading={isLoading.refreshing}>
-				<RefreshCw class="mr-2 h-4 w-4" />
-				Refresh
-			</Button>
+			<p class="text-sm text-muted-foreground">Monitor events that have taken place in Arcane.</p>
 		</div>
 	</div>
 
