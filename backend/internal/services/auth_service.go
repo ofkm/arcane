@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -90,6 +91,13 @@ func NewAuthService(userService *UserService, settingsService *SettingsService, 
 		refreshExpiry:   7 * 24 * time.Hour,
 		config:          cfg,
 	}
+}
+
+func getClientIP(ctx context.Context) string {
+	if ginCtx, ok := ctx.(*gin.Context); ok {
+		return ginCtx.ClientIP()
+	}
+	return ""
 }
 
 func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error) {
@@ -257,11 +265,10 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*mo
 		return nil, nil, err
 	}
 
-	// Log user login event
 	metadata := models.JSON{
 		"action":    "login",
 		"method":    "local",
-		"ipAddress": "", //extracted from context when available
+		"ipAddress": getClientIP(ctx),
 	}
 	if logErr := s.eventService.LogUserEvent(ctx, models.EventTypeUserLogin, user.ID, user.Username, metadata); logErr != nil {
 		fmt.Printf("Could not log user login action: %s\n", logErr)
