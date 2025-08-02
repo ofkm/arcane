@@ -9,11 +9,6 @@
 	import { eventAPI } from '$lib/services/api';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import EventTable from './event-table.svelte';
-	import Button from '$lib/components/ui/button/button.svelte';
-	import {
-		DropdownButton,
-		type DropdownButtonOption
-	} from '$lib/components/ui/dropdown-button/index.js';
 
 	let { data }: { data: PageData } = $props();
 
@@ -77,18 +72,6 @@
 		await refreshEvents();
 	}
 
-	async function onDeleteOldEvents(days: number) {
-		handleApiResultWithCallbacks({
-			result: await tryCatch(eventAPI.deleteOldEvents(days)),
-			message: `Failed to delete events older than ${days} days`,
-			setLoadingState: (value) => (isLoading.deleting = value),
-			onSuccess: async () => {
-				toast.success(`Successfully deleted events older than ${days} days`);
-				await refreshEvents();
-			}
-		});
-	}
-
 	async function refreshEvents() {
 		isLoading.refreshing = true;
 		try {
@@ -100,24 +83,6 @@
 			isLoading.refreshing = false;
 		}
 	}
-
-	const clearButtonOptions: DropdownButtonOption[] = [
-		{
-			label: 'Today',
-			value: '1',
-			onclick: () => onDeleteOldEvents(1)
-		},
-		{
-			label: '7 Days',
-			value: '7',
-			onclick: () => onDeleteOldEvents(7)
-		},
-		{
-			label: '30 Days',
-			value: '30',
-			onclick: () => onDeleteOldEvents(30)
-		}
-	];
 </script>
 
 <div class="flex h-full flex-col space-y-6">
@@ -125,13 +90,6 @@
 		<div class="space-y-1">
 			<h2 class="text-2xl font-semibold tracking-tight">Event Log</h2>
 			<p class="text-sm text-muted-foreground">Monitor events that have taken place in Arcane.</p>
-		</div>
-		<div class="flex items-center gap-2">
-			<DropdownButton
-				mainButtonText="Clear Events"
-				options={clearButtonOptions}
-				variant="outline"
-			/>
 		</div>
 	</div>
 
