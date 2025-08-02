@@ -34,6 +34,7 @@ type AutoUpdateService struct {
 	imageService       *ImageService
 	imageUpdateService *ImageUpdateService
 	registryService    *ContainerRegistryService
+	eventService       *EventService
 	updatingContainers map[string]bool
 	updatingStacks     map[string]bool
 	mutex              sync.RWMutex
@@ -48,6 +49,7 @@ func NewAutoUpdateService(
 	imageService *ImageService,
 	imageUpdateService *ImageUpdateService,
 	registryService *ContainerRegistryService,
+	eventService *EventService,
 ) *AutoUpdateService {
 	return &AutoUpdateService{
 		db:                 db,
@@ -58,6 +60,7 @@ func NewAutoUpdateService(
 		imageService:       imageService,
 		imageUpdateService: imageUpdateService,
 		registryService:    registryService,
+		eventService:       eventService, // Add this line
 		updatingContainers: make(map[string]bool),
 		updatingStacks:     make(map[string]bool),
 	}
@@ -71,6 +74,27 @@ func (s *AutoUpdateService) CheckForUpdates(ctx context.Context, req dto.AutoUpd
 		Results:   []dto.AutoUpdateResourceResult{},
 	}
 
+	// Log auto-update check start event
+	metadata := models.JSON{
+		"action":        "check_start",
+		"type":          req.Type,
+		"dryRun":        req.DryRun,
+		"forceUpdate":   req.ForceUpdate,
+		"resourceCount": len(req.ResourceIds),
+	}
+	if _, logErr := s.eventService.CreateEvent(ctx, CreateEventRequest{
+		Type:          models.EventTypeSystemAutoUpdate,
+		Severity:      models.EventSeverityInfo,
+		Title:         "Auto-update check started",
+		Description:   fmt.Sprintf("Auto-update check initiated for type: %s", req.Type),
+		UserID:        &systemUser.ID,
+		Username:      &systemUser.Username,
+		EnvironmentID: utils.Ptr("0"),
+		Metadata:      metadata,
+	}); logErr != nil {
+		log.Printf("Failed to log auto-update start event: %v", logErr)
+	}
+
 	// Get individual setting instead of full settings struct
 	autoUpdateEnabled := s.settingsService.GetBoolSetting(ctx, "autoUpdateEnabled", false)
 
@@ -78,6 +102,25 @@ func (s *AutoUpdateService) CheckForUpdates(ctx context.Context, req dto.AutoUpd
 		result.Skipped = 1
 		result.EndTime = time.Now().Format(time.RFC3339)
 		result.Duration = time.Since(startTime).String()
+
+		// Log skipped event
+		skipMetadata := models.JSON{
+			"action": "check_skipped",
+			"reason": "auto_update_disabled",
+		}
+		if _, logErr := s.eventService.CreateEvent(ctx, CreateEventRequest{
+			Type:          models.EventTypeSystemAutoUpdate,
+			Severity:      models.EventSeverityInfo,
+			Title:         "Auto-update check skipped",
+			Description:   "Auto-update is disabled and force update was not requested",
+			UserID:        &systemUser.ID,
+			Username:      &systemUser.Username,
+			EnvironmentID: utils.Ptr("0"),
+			Metadata:      skipMetadata,
+		}); logErr != nil {
+			log.Printf("Failed to log auto-update skip event: %v", logErr)
+		}
+
 		return result, nil
 	}
 
@@ -93,6 +136,35 @@ func (s *AutoUpdateService) CheckForUpdates(ctx context.Context, req dto.AutoUpd
 
 	result.EndTime = time.Now().Format(time.RFC3339)
 	result.Duration = time.Since(startTime).String()
+
+	// Log auto-update check completion event
+	completionMetadata := models.JSON{
+		"action":   "check_completed",
+		"duration": result.Duration,
+		"checked":  result.Checked,
+		"updated":  result.Updated,
+		"failed":   result.Failed,
+		"skipped":  result.Skipped,
+		"success":  result.Success,
+	}
+	severity := models.EventSeveritySuccess
+	if result.Failed > 0 {
+		severity = models.EventSeverityWarning
+	}
+
+	if _, logErr := s.eventService.CreateEvent(ctx, CreateEventRequest{
+		Type:          models.EventTypeSystemAutoUpdate,
+		Severity:      severity,
+		Title:         "Auto-update check completed",
+		Description:   fmt.Sprintf("Auto-update completed: %d checked, %d updated, %d failed", result.Checked, result.Updated, result.Failed),
+		UserID:        &systemUser.ID,
+		Username:      &systemUser.Username,
+		EnvironmentID: utils.Ptr("0"),
+		Metadata:      completionMetadata,
+	}); logErr != nil {
+		log.Printf("Failed to log auto-update completion event: %v", logErr)
+	}
+
 	return result, nil
 }
 
@@ -266,12 +338,30 @@ func (s *AutoUpdateService) pullImageWithAuth(ctx context.Context, imageRef stri
 
 	reader, err := dockerClient.ImagePull(ctx, imageRef, pullOptions)
 	if err != nil {
+		// Log image pull failure event
+		metadata := models.JSON{
+			"action":   "auto_pull_failed",
+			"imageRef": imageRef,
+			"error":    err.Error(),
+		}
+		if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImagePull, "", imageRef, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+			log.Printf("Failed to log image pull failure event: %v", logErr)
+		}
 		return fmt.Errorf("failed to pull image %s: %w", imageRef, err)
 	}
 	defer reader.Close()
 
 	if _, err := io.Copy(io.Discard, reader); err != nil {
 		return fmt.Errorf("failed to complete image pull: %w", err)
+	}
+
+	// Log successful image pull event
+	metadata := models.JSON{
+		"action":   "auto_pull_success",
+		"imageRef": imageRef,
+	}
+	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImagePull, "", imageRef, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+		log.Printf("Failed to log image pull success event: %v", logErr)
 	}
 
 	log.Printf("Successfully pulled image: %s", imageRef)
@@ -503,7 +593,8 @@ func (s *AutoUpdateService) updateContainerWithLatestImage(
 	}
 	defer dockerClient.Close()
 
-	log.Printf("Pulling latest image %s for container %s", newImageRef, s.getContainerName(cnt))
+	containerName := s.getContainerName(cnt)
+	log.Printf("Pulling latest image %s for container %s", newImageRef, containerName)
 
 	pullOptions := image.PullOptions{}
 
@@ -520,6 +611,17 @@ func (s *AutoUpdateService) updateContainerWithLatestImage(
 
 	reader, err := dockerClient.ImagePull(ctx, newImageRef, pullOptions)
 	if err != nil {
+		// Log container update failure event
+		metadata := models.JSON{
+			"action":   "auto_update_failed",
+			"oldImage": containerJSON.Config.Image,
+			"newImage": newImageRef,
+			"error":    err.Error(),
+			"step":     "image_pull",
+		}
+		if logErr := s.eventService.LogContainerEvent(ctx, models.EventTypeContainerUpdate, cnt.ID, containerName, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+			log.Printf("Failed to log container update failure event: %v", logErr)
+		}
 		return fmt.Errorf("failed to pull image %s: %w", newImageRef, err)
 	}
 	defer reader.Close()
@@ -528,12 +630,30 @@ func (s *AutoUpdateService) updateContainerWithLatestImage(
 		return fmt.Errorf("failed to complete image pull: %w", err)
 	}
 
+	// Log container stop event
+	stopMetadata := models.JSON{
+		"action": "auto_update_stop",
+		"reason": "updating_image",
+	}
+	if logErr := s.eventService.LogContainerEvent(ctx, models.EventTypeContainerStop, cnt.ID, containerName, systemUser.ID, systemUser.Username, "0", stopMetadata); logErr != nil {
+		log.Printf("Failed to log container stop event: %v", logErr)
+	}
+
 	if err := dockerClient.ContainerStop(ctx, cnt.ID, container.StopOptions{}); err != nil {
 		return fmt.Errorf("failed to stop container: %w", err)
 	}
 
 	if err := dockerClient.ContainerRemove(ctx, cnt.ID, container.RemoveOptions{}); err != nil {
 		return fmt.Errorf("failed to remove old container: %w", err)
+	}
+
+	// Log container delete event
+	deleteMetadata := models.JSON{
+		"action": "auto_update_delete",
+		"reason": "replacing_with_updated_image",
+	}
+	if logErr := s.eventService.LogContainerEvent(ctx, models.EventTypeContainerDelete, cnt.ID, containerName, systemUser.ID, systemUser.Username, "0", deleteMetadata); logErr != nil {
+		log.Printf("Failed to log container delete event: %v", logErr)
 	}
 
 	containerJSON.Config.Image = newImageRef
@@ -552,15 +672,37 @@ func (s *AutoUpdateService) updateContainerWithLatestImage(
 		return fmt.Errorf("failed to create new container: %w", err)
 	}
 
+	// Log container create event
+	createMetadata := models.JSON{
+		"action":     "auto_update_create",
+		"oldImage":   containerJSON.Config.Image,
+		"newImage":   newImageRef,
+		"newImageId": resp.ID,
+	}
+	if logErr := s.eventService.LogContainerEvent(ctx, models.EventTypeContainerCreate, resp.ID, containerName, systemUser.ID, systemUser.Username, "0", createMetadata); logErr != nil {
+		log.Printf("Failed to log container create event: %v", logErr)
+	}
+
 	if err := dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return fmt.Errorf("failed to start new container: %w", err)
 	}
 
-	log.Printf("Successfully updated container %s with image %s", s.getContainerName(cnt), newImageRef)
+	// Log container start event
+	startMetadata := models.JSON{
+		"action":     "auto_update_start",
+		"oldImage":   containerJSON.Config.Image,
+		"newImage":   newImageRef,
+		"newImageId": resp.ID,
+	}
+	if logErr := s.eventService.LogContainerEvent(ctx, models.EventTypeContainerStart, resp.ID, containerName, systemUser.ID, systemUser.Username, "0", startMetadata); logErr != nil {
+		log.Printf("Failed to log container start event: %v", logErr)
+	}
+
+	log.Printf("Successfully updated container %s with image %s", containerName, newImageRef)
 	return nil
 }
 
-// Helper method to construct image reference with new tag
+// Helper method to construct image reference with new tag - KEEPING THIS FUNCTION
 func (s *AutoUpdateService) constructImageRefWithTag(imageRef, newTag string) string {
 	parts := strings.Split(imageRef, ":")
 	if len(parts) > 1 {
@@ -680,14 +822,47 @@ func (s *AutoUpdateService) updateStack(
 ) error {
 	log.Printf("Updating stack: %s", stack.Name)
 
+	// Log stack update start event
+	updateMetadata := models.JSON{
+		"action": "auto_update_start",
+		"reason": "image_updates_available",
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackUpdate, stack.ID, stack.Name, systemUser.ID, systemUser.Username, "0", updateMetadata); logErr != nil {
+		log.Printf("Failed to log stack update start event: %v", logErr)
+	}
+
 	log.Printf("Pulling latest images for stack: %s", stack.Name)
 	if err := s.stackService.PullStackImages(ctx, stack.ID); err != nil {
 		log.Printf("Warning: Failed to pull some images: %v", err)
+		// Log image pull warning
+		pullWarningMetadata := models.JSON{
+			"action": "auto_update_pull_warning",
+			"error":  err.Error(),
+		}
+		if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackUpdate, stack.ID, stack.Name, systemUser.ID, systemUser.Username, "0", pullWarningMetadata); logErr != nil {
+			log.Printf("Failed to log stack pull warning event: %v", logErr)
+		}
 	}
 
 	log.Printf("Redeploying stack: %s", stack.Name)
 	if err := s.stackService.RedeployStack(ctx, stack.ID, nil, nil, systemUser); err != nil {
+		// Log stack update failure event
+		failureMetadata := models.JSON{
+			"action": "auto_update_failed",
+			"error":  err.Error(),
+		}
+		if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackUpdate, stack.ID, stack.Name, systemUser.ID, systemUser.Username, "0", failureMetadata); logErr != nil {
+			log.Printf("Failed to log stack update failure event: %v", logErr)
+		}
 		return fmt.Errorf("failed to redeploy stack: %w", err)
+	}
+
+	// Log stack update success event
+	successMetadata := models.JSON{
+		"action": "auto_update_success",
+	}
+	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackUpdate, stack.ID, stack.Name, systemUser.ID, systemUser.Username, "0", successMetadata); logErr != nil {
+		log.Printf("Failed to log stack update success event: %v", logErr)
 	}
 
 	log.Printf("Successfully updated stack: %s", stack.Name)

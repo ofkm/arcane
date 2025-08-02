@@ -15,6 +15,7 @@ const (
 	EventTypeContainerDelete  EventType = "container.delete"
 	EventTypeContainerCreate  EventType = "container.create"
 	EventTypeContainerScan    EventType = "container.scan"
+	EventTypeContainerUpdate  EventType = "container.update"
 
 	EventTypeImagePull   EventType = "image.pull"
 	EventTypeImageDelete EventType = "image.delete"
@@ -25,6 +26,7 @@ const (
 	EventTypeStackStart  EventType = "project.start"
 	EventTypeStackStop   EventType = "project.stop"
 	EventTypeStackCreate EventType = "project.create"
+	EventTypeStackUpdate EventType = "project.update"
 
 	EventTypeVolumeCreate EventType = "volume.create"
 	EventTypeVolumeDelete EventType = "volume.delete"
@@ -32,9 +34,10 @@ const (
 	EventTypeNetworkCreate EventType = "network.create"
 	EventTypeNetworkDelete EventType = "network.delete"
 
-	EventTypeSystemPrune EventType = "system.prune"
-	EventTypeUserLogin   EventType = "user.login"
-	EventTypeUserLogout  EventType = "user.logout"
+	EventTypeSystemPrune      EventType = "system.prune"
+	EventTypeUserLogin        EventType = "user.login"
+	EventTypeUserLogout       EventType = "user.logout"
+	EventTypeSystemAutoUpdate EventType = "system.auto_update"
 
 	// Event severities
 	EventSeverityInfo    EventSeverity = "info"
