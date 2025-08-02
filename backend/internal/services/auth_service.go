@@ -73,16 +73,18 @@ type UserClaims struct {
 type AuthService struct {
 	userService     *UserService
 	settingsService *SettingsService
+	eventService    *EventService
 	jwtSecret       []byte
 	accessExpiry    time.Duration
 	refreshExpiry   time.Duration
 	config          *config.Config
 }
 
-func NewAuthService(userService *UserService, settingsService *SettingsService, jwtSecret string, cfg *config.Config) *AuthService {
+func NewAuthService(userService *UserService, settingsService *SettingsService, eventService *EventService, jwtSecret string, cfg *config.Config) *AuthService {
 	return &AuthService{
 		userService:     userService,
 		settingsService: settingsService,
+		eventService:    eventService,
 		jwtSecret:       utils.CheckOrGenerateJwtSecret(jwtSecret),
 		accessExpiry:    30 * time.Minute,
 		refreshExpiry:   7 * 24 * time.Hour,
@@ -255,6 +257,16 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*mo
 		return nil, nil, err
 	}
 
+	// Log user login event
+	metadata := models.JSON{
+		"action":    "login",
+		"method":    "local",
+		"ipAddress": "", //extracted from context when available
+	}
+	if logErr := s.eventService.LogUserEvent(ctx, models.EventTypeUserLogin, user.ID, user.Username, metadata); logErr != nil {
+		fmt.Printf("Could not log user login action: %s\n", logErr)
+	}
+
 	return user, tokenPair, nil
 }
 
@@ -278,6 +290,7 @@ func (s *AuthService) OidcLogin(ctx context.Context, userInfo OidcUserInfo) (*mo
 		return nil, nil, err
 	}
 
+	isNewUser := false
 	if user != nil {
 		if userInfo.Name != "" && user.DisplayName == nil {
 			user.DisplayName = &userInfo.Name
@@ -293,6 +306,7 @@ func (s *AuthService) OidcLogin(ctx context.Context, userInfo OidcUserInfo) (*mo
 			return nil, nil, err
 		}
 	} else {
+		isNewUser = true
 		username := generateUsernameFromEmail(userInfo.Email, userInfo.Subject)
 
 		var displayName string
@@ -326,7 +340,33 @@ func (s *AuthService) OidcLogin(ctx context.Context, userInfo OidcUserInfo) (*mo
 		return nil, nil, err
 	}
 
+	// Log user login event
+	metadata := models.JSON{
+		"action":    "login",
+		"method":    "oidc",
+		"newUser":   isNewUser,
+		"subject":   userInfo.Subject,
+		"ipAddress": "", // Could be extracted from context if available
+	}
+	if logErr := s.eventService.LogUserEvent(ctx, models.EventTypeUserLogin, user.ID, user.Username, metadata); logErr != nil {
+		fmt.Printf("Could not log OIDC user login action: %s\n", logErr)
+	}
+
 	return user, tokenPair, nil
+}
+
+// Add a logout method to log logout events
+func (s *AuthService) Logout(ctx context.Context, user *models.User) error {
+	// Log user logout event
+	metadata := models.JSON{
+		"action":    "logout",
+		"ipAddress": "", // Could be extracted from context if available
+	}
+	if logErr := s.eventService.LogUserEvent(ctx, models.EventTypeUserLogout, user.ID, user.Username, metadata); logErr != nil {
+		fmt.Printf("Could not log user logout action: %s\n", logErr)
+	}
+
+	return nil
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/docker/api/types/network"
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
 )
@@ -121,7 +122,8 @@ func (h *NetworkHandler) Create(c *gin.Context) {
 		return
 	}
 
-	response, err := h.networkService.CreateNetwork(c.Request.Context(), req.Name, req.Options)
+	currentUser, _ := middleware.GetCurrentUser(c)
+	response, err := h.networkService.CreateNetwork(c.Request.Context(), req.Name, req.Options, *currentUser)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -139,7 +141,8 @@ func (h *NetworkHandler) Create(c *gin.Context) {
 func (h *NetworkHandler) Remove(c *gin.Context) {
 	id := c.Param("networkId")
 
-	if err := h.networkService.RemoveNetwork(c.Request.Context(), id); err != nil {
+	currentUser, _ := middleware.GetCurrentUser(c)
+	if err := h.networkService.RemoveNetwork(c.Request.Context(), id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -169,7 +172,8 @@ func (h *NetworkHandler) ConnectContainer(c *gin.Context) {
 		return
 	}
 
-	if err := h.networkService.ConnectContainer(c.Request.Context(), networkID, req.ContainerID, req.Config); err != nil {
+	currentUser, _ := middleware.GetCurrentUser(c)
+	if err := h.networkService.ConnectContainer(c.Request.Context(), networkID, req.ContainerID, req.Config, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -199,7 +203,8 @@ func (h *NetworkHandler) DisconnectContainer(c *gin.Context) {
 		return
 	}
 
-	if err := h.networkService.DisconnectContainer(c.Request.Context(), networkID, req.ContainerID, req.Force); err != nil {
+	currentUser, _ := middleware.GetCurrentUser(c)
+	if err := h.networkService.DisconnectContainer(c.Request.Context(), networkID, req.ContainerID, req.Force, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),

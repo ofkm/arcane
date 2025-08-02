@@ -17,10 +17,15 @@ import (
 type VolumeService struct {
 	db            *database.DB
 	dockerService *DockerClientService
+	eventService  *EventService
 }
 
-func NewVolumeService(db *database.DB, dockerService *DockerClientService) *VolumeService {
-	return &VolumeService{db: db, dockerService: dockerService}
+func NewVolumeService(db *database.DB, dockerService *DockerClientService, eventService *EventService) *VolumeService {
+	return &VolumeService{
+		db:            db,
+		dockerService: dockerService,
+		eventService:  eventService,
+	}
 }
 
 func (s *VolumeService) ListVolumes(ctx context.Context) ([]volume.Volume, error) {
@@ -59,7 +64,7 @@ func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*volu
 	return &vol, nil
 }
 
-func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateOptions) (*volume.Volume, error) {
+func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateOptions, user models.User) (*volume.Volume, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
@@ -82,10 +87,20 @@ func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateO
 		s.db.WithContext(ctx).Create(dbVolume)
 	}
 
+	// Log volume creation event
+	metadata := models.JSON{
+		"action": "create",
+		"driver": vol.Driver,
+		"name":   vol.Name,
+	}
+	if logErr := s.eventService.LogVolumeEvent(ctx, models.EventTypeVolumeCreate, vol.Name, vol.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log volume creation action: %s\n", logErr)
+	}
+
 	return &vol, nil
 }
 
-func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force bool) error {
+func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force bool, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
@@ -98,6 +113,16 @@ func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force boo
 
 	if s.db != nil {
 		s.db.WithContext(ctx).Delete(&models.Volume{}, "name = ?", name)
+	}
+
+	// Log volume deletion event
+	metadata := models.JSON{
+		"action": "delete",
+		"name":   name,
+		"force":  force,
+	}
+	if logErr := s.eventService.LogVolumeEvent(ctx, models.EventTypeVolumeDelete, name, name, user.ID, user.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log volume deletion action: %s\n", logErr)
 	}
 
 	return nil
@@ -115,6 +140,16 @@ func (s *VolumeService) PruneVolumes(ctx context.Context) (*volume.PruneReport, 
 	report, err := dockerClient.VolumesPrune(ctx, filterArgs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prune volumes: %w", err)
+	}
+
+	// Log volume prune event using system user since this is typically a system operation
+	metadata := models.JSON{
+		"action":         "prune",
+		"volumesDeleted": len(report.VolumesDeleted),
+		"spaceReclaimed": report.SpaceReclaimed,
+	}
+	if logErr := s.eventService.LogVolumeEvent(ctx, models.EventTypeVolumeDelete, "", "bulk_prune", systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+		fmt.Printf("Could not log volume prune action: %s\n", logErr)
 	}
 
 	return &report, nil

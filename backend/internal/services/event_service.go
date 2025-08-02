@@ -290,6 +290,50 @@ func (s *EventService) LogUserEvent(ctx context.Context, eventType models.EventT
 	return err
 }
 
+func (s *EventService) LogVolumeEvent(ctx context.Context, eventType models.EventType, volumeID, volumeName, userID, username, environmentID string, metadata models.JSON) error {
+	title := s.generateEventTitle(eventType, volumeName)
+	description := s.generateEventDescription(eventType, "volume", volumeName)
+	severity := s.getEventSeverity(eventType)
+
+	resourceType := "volume"
+	_, err := s.CreateEvent(ctx, CreateEventRequest{
+		Type:          eventType,
+		Severity:      severity,
+		Title:         title,
+		Description:   description,
+		ResourceType:  &resourceType,
+		ResourceID:    &volumeID,
+		ResourceName:  &volumeName,
+		UserID:        &userID,
+		Username:      &username,
+		EnvironmentID: &environmentID,
+		Metadata:      metadata,
+	})
+	return err
+}
+
+func (s *EventService) LogNetworkEvent(ctx context.Context, eventType models.EventType, networkID, networkName, userID, username, environmentID string, metadata models.JSON) error {
+	title := s.generateEventTitle(eventType, networkName)
+	description := s.generateEventDescription(eventType, "network", networkName)
+	severity := s.getEventSeverity(eventType)
+
+	resourceType := "network"
+	_, err := s.CreateEvent(ctx, CreateEventRequest{
+		Type:          eventType,
+		Severity:      severity,
+		Title:         title,
+		Description:   description,
+		ResourceType:  &resourceType,
+		ResourceID:    &networkID,
+		ResourceName:  &networkName,
+		UserID:        &userID,
+		Username:      &username,
+		EnvironmentID: &environmentID,
+		Metadata:      metadata,
+	})
+	return err
+}
+
 func (s *EventService) toEventDto(event *models.Event) *dto.EventDto {
 	var metadata map[string]interface{}
 	if event.Metadata != nil {
@@ -349,6 +393,14 @@ func (s *EventService) generateEventTitle(eventType models.EventType, resourceNa
 		return fmt.Sprintf("User logged out: %s", resourceName)
 	case models.EventTypeSystemPrune:
 		return "System prune completed"
+	case models.EventTypeVolumeCreate:
+		return fmt.Sprintf("Volume created: %s", resourceName)
+	case models.EventTypeVolumeDelete:
+		return fmt.Sprintf("Volume deleted: %s", resourceName)
+	case models.EventTypeNetworkCreate:
+		return fmt.Sprintf("Network created: %s", resourceName)
+	case models.EventTypeNetworkDelete:
+		return fmt.Sprintf("Network deleted: %s", resourceName)
 	default:
 		return fmt.Sprintf("Event: %s", string(eventType))
 	}
@@ -358,6 +410,10 @@ func (s *EventService) generateEventDescription(eventType models.EventType, reso
 	switch eventType {
 	case models.EventTypeContainerScan, models.EventTypeImageScan:
 		return fmt.Sprintf("Security scan completed for %s '%s'", resourceType, resourceName)
+	case models.EventTypeVolumeCreate, models.EventTypeVolumeDelete:
+		return fmt.Sprintf("%s operation performed on %s '%s'", string(eventType), resourceType, resourceName)
+	case models.EventTypeNetworkCreate, models.EventTypeNetworkDelete:
+		return fmt.Sprintf("%s operation performed on %s '%s'", string(eventType), resourceType, resourceName)
 	default:
 		return fmt.Sprintf("%s operation performed on %s '%s'", string(eventType), resourceType, resourceName)
 	}
@@ -365,9 +421,9 @@ func (s *EventService) generateEventDescription(eventType models.EventType, reso
 
 func (s *EventService) getEventSeverity(eventType models.EventType) models.EventSeverity {
 	switch eventType {
-	case models.EventTypeContainerDelete, models.EventTypeImageDelete, models.EventTypeStackDelete:
+	case models.EventTypeContainerDelete, models.EventTypeImageDelete, models.EventTypeStackDelete, models.EventTypeVolumeDelete, models.EventTypeNetworkDelete:
 		return models.EventSeverityWarning
-	case models.EventTypeContainerStart, models.EventTypeContainerCreate, models.EventTypeImagePull, models.EventTypeStackDeploy:
+	case models.EventTypeContainerStart, models.EventTypeContainerCreate, models.EventTypeImagePull, models.EventTypeStackDeploy, models.EventTypeVolumeCreate, models.EventTypeNetworkCreate:
 		return models.EventSeveritySuccess
 	case models.EventTypeUserLogin, models.EventTypeUserLogout:
 		return models.EventSeverityInfo

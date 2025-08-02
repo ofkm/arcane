@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/docker/api/types/volume"
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
 )
@@ -120,7 +121,8 @@ func (h *VolumeHandler) Create(c *gin.Context) {
 		DriverOpts: req.Options,
 	}
 
-	response, err := h.volumeService.CreateVolume(c.Request.Context(), options)
+	currentUser, _ := middleware.GetCurrentUser(c)
+	response, err := h.volumeService.CreateVolume(c.Request.Context(), options, *currentUser)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"error": err.Error(),
@@ -139,7 +141,8 @@ func (h *VolumeHandler) Remove(c *gin.Context) {
 	name := c.Param("volumeName")
 	force := c.Query("force") == "true"
 
-	if err := h.volumeService.DeleteVolume(c.Request.Context(), name, force); err != nil {
+	currentUser, _ := middleware.GetCurrentUser(c)
+	if err := h.volumeService.DeleteVolume(c.Request.Context(), name, force, *currentUser); err != nil {
 		c.JSON(500, gin.H{
 			"error": err.Error(),
 		})

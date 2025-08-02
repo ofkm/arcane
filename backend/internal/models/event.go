@@ -20,11 +20,11 @@ const (
 	EventTypeImageDelete EventType = "image.delete"
 	EventTypeImageScan   EventType = "image.scan"
 
-	EventTypeStackDeploy EventType = "stack.deploy"
-	EventTypeStackDelete EventType = "stack.delete"
-	EventTypeStackStart  EventType = "stack.start"
-	EventTypeStackStop   EventType = "stack.stop"
-	EventTypeStackCreate EventType = "stack.create"
+	EventTypeStackDeploy EventType = "project.deploy"
+	EventTypeStackDelete EventType = "project.delete"
+	EventTypeStackStart  EventType = "project.start"
+	EventTypeStackStop   EventType = "project.stop"
+	EventTypeStackCreate EventType = "project.create"
 
 	EventTypeVolumeCreate EventType = "volume.create"
 	EventTypeVolumeDelete EventType = "volume.delete"
