@@ -10,21 +10,24 @@ const DropdownRoot = DropdownMenuPrimitive.Root;
 const DropdownTrigger = DropdownMenuPrimitive.Trigger;
 
 export {
-	Root,
-	Main,
-	Trigger,
-	Content,
-	Item,
-	Separator,
-	DropdownRoot,
-	DropdownTrigger,
-	//
-	Root as DropdownButton,
-	Main as DropdownButtonMain,
-	Trigger as DropdownButtonTrigger,
-	Content as DropdownButtonContent,
-	Item as DropdownButtonItem,
-	Separator as DropdownButtonSeparator,
-	DropdownRoot as DropdownButtonRoot,
-	DropdownTrigger as DropdownButtonPrimitiveTrigger
+  Root,
+  Main,
+  Trigger,
+  Content,
+  Item,
+  Separator,
+  DropdownRoot,
+  DropdownTrigger,
+  //
+  Root as DropdownButton,
+  Main as DropdownButtonMain,
+  Trigger as DropdownButtonTrigger,
+  Content as DropdownButtonContent,
+  Item as DropdownButtonItem,
+  Separator as DropdownButtonSeparator,
+  DropdownRoot as DropdownButtonRoot,
+  DropdownTrigger as DropdownButtonPrimitiveTrigger,
 };
+
+// Re-export types
+export type { DropdownButtonOption, DropdownButtonProps } from './dropdown-button.svelte';

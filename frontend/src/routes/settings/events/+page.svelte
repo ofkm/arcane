@@ -10,6 +10,10 @@
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import EventTable from './event-table.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import {
+		DropdownButton,
+		type DropdownButtonOption
+	} from '$lib/components/ui/dropdown-button/index.js';
 
 	let { data }: { data: PageData } = $props();
 
@@ -96,11 +100,25 @@
 			isLoading.refreshing = false;
 		}
 	}
-</script>
 
-<svelte:head>
-	<title>Event Log - Arcane</title>
-</svelte:head>
+	const clearButtonOptions: DropdownButtonOption[] = [
+		{
+			label: 'Today',
+			value: '1',
+			onclick: () => onDeleteOldEvents(1)
+		},
+		{
+			label: '7 Days',
+			value: '7',
+			onclick: () => onDeleteOldEvents(7)
+		},
+		{
+			label: '30 Days',
+			value: '30',
+			onclick: () => onDeleteOldEvents(30)
+		}
+	];
+</script>
 
 <div class="flex h-full flex-col space-y-6">
 	<div class="flex items-center justify-between">
@@ -108,9 +126,15 @@
 			<h2 class="text-2xl font-semibold tracking-tight">Event Log</h2>
 			<p class="text-sm text-muted-foreground">Monitor events that have taken place in Arcane.</p>
 		</div>
+		<div class="flex items-center gap-2">
+			<DropdownButton
+				mainButtonText="Clear Events"
+				options={clearButtonOptions}
+				variant="outline"
+			/>
+		</div>
 	</div>
 
-	<!-- Stats Cards -->
 	<div class="grid gap-4 md:grid-cols-5">
 		<StatCard
 			title="Total Events"
@@ -152,35 +176,6 @@
 		/>
 	</div>
 
-	<!-- Cleanup Actions -->
-	<div class="flex items-center justify-between rounded-lg border p-4">
-		<div class="space-y-1">
-			<h3 class="text-sm font-medium">Event Cleanup</h3>
-			<p class="text-xs text-muted-foreground">
-				Remove old events to keep your database clean and performant.
-			</p>
-		</div>
-		<div class="flex items-center space-x-2">
-			<Button
-				variant="outline"
-				size="sm"
-				onclick={() => onDeleteOldEvents(30)}
-				disabled={isLoading.deleting}
-			>
-				Delete 30+ days
-			</Button>
-			<Button
-				variant="outline"
-				size="sm"
-				onclick={() => onDeleteOldEvents(7)}
-				disabled={isLoading.deleting}
-			>
-				Delete 7+ days
-			</Button>
-		</div>
-	</div>
-
-	<!-- Events Table -->
 	<div class="flex-1 overflow-hidden">
 		<EventTable {events} bind:selectedIds bind:requestOptions {onRefresh} {onEventsChanged} />
 	</div>
