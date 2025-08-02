@@ -48,7 +48,11 @@ func (h *ContainerHandler) PullImage(c *gin.Context) {
 		return
 	}
 
-	currentUser, _ := middleware.GetCurrentUser(c)
+	currentUser, exists := middleware.GetCurrentUser(c)
+	if !exists || currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
 	err = h.imageService.PullImage(c.Request.Context(), imageName, c.Writer, *currentUser)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -138,7 +142,11 @@ func (h *ContainerHandler) GetByID(c *gin.Context) {
 func (h *ContainerHandler) Start(c *gin.Context) {
 	id := c.Param("containerId")
 
-	currentUser, _ := middleware.GetCurrentUser(c)
+	currentUser, exists := middleware.GetCurrentUser(c)
+	if !exists || currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
 	if err := h.containerService.StartContainer(c.Request.Context(), id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -156,7 +164,11 @@ func (h *ContainerHandler) Start(c *gin.Context) {
 func (h *ContainerHandler) Stop(c *gin.Context) {
 	id := c.Param("containerId")
 
-	currentUser, _ := middleware.GetCurrentUser(c)
+	currentUser, exists := middleware.GetCurrentUser(c)
+	if !exists || currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
 	if err := h.containerService.StopContainer(c.Request.Context(), id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -174,7 +186,11 @@ func (h *ContainerHandler) Stop(c *gin.Context) {
 func (h *ContainerHandler) Restart(c *gin.Context) {
 	id := c.Param("containerId")
 
-	currentUser, _ := middleware.GetCurrentUser(c)
+	currentUser, exists := middleware.GetCurrentUser(c)
+	if !exists || currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
 	if err := h.containerService.RestartContainer(c.Request.Context(), id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -213,7 +229,11 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 	force := c.Query("force") == "true"
 	removeVolumes := c.Query("volumes") == "true"
 
-	currentUser, _ := middleware.GetCurrentUser(c)
+	currentUser, exists := middleware.GetCurrentUser(c)
+	if !exists || currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
 	if err := h.containerService.DeleteContainer(c.Request.Context(), id, force, removeVolumes, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -329,7 +349,11 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 		}
 	}
 
-	currentUser, _ := middleware.GetCurrentUser(c)
+	currentUser, exists := middleware.GetCurrentUser(c)
+	if !exists || currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
 	containerJSON, err := h.containerService.CreateContainer(
 		c.Request.Context(),
 		config,

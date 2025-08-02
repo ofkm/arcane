@@ -121,7 +121,11 @@ func (h *VolumeHandler) Create(c *gin.Context) {
 		DriverOpts: req.Options,
 	}
 
-	currentUser, _ := middleware.GetCurrentUser(c)
+	currentUser, exists := middleware.GetCurrentUser(c)
+	if !exists || currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
 	response, err := h.volumeService.CreateVolume(c.Request.Context(), options, *currentUser)
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -141,7 +145,11 @@ func (h *VolumeHandler) Remove(c *gin.Context) {
 	name := c.Param("volumeName")
 	force := c.Query("force") == "true"
 
-	currentUser, _ := middleware.GetCurrentUser(c)
+	currentUser, exists := middleware.GetCurrentUser(c)
+	if !exists || currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
 	if err := h.volumeService.DeleteVolume(c.Request.Context(), name, force, *currentUser); err != nil {
 		c.JSON(500, gin.H{
 			"error": err.Error(),
