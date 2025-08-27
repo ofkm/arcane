@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ofkm/arcane-backend/internal/database"
@@ -20,69 +20,115 @@ import (
 	"gorm.io/gorm"
 )
 
-type TemplateService struct {
-	db *database.DB
-	// Add fields for caching remote templates
-	remoteTemplatesCache []models.ComposeTemplate
-	lastRemoteFetch      time.Time
-	remoteFetchMutex     sync.Mutex
-
-	httpClient *http.Client
+type remoteCache struct {
+	templates []models.ComposeTemplate
+	lastFetch time.Time
 }
 
-const remoteCacheDuration = 5 * time.Minute // Cache duration
+type cacheCmd struct {
+	kind  string
+	ctx   context.Context
+	reply chan error
+}
+
+type TemplateService struct {
+	db          *database.DB
+	cacheCmdCh  chan cacheCmd
+	remoteCache atomic.Value
+	httpClient  *http.Client
+}
+
+const remoteCacheDuration = 5 * time.Minute
+
+// Remote public ID helpers
+const remoteIDPrefix = "remote"
+
+func makeRemoteID(registryID, slug string) string {
+	return fmt.Sprintf("%s:%s:%s", remoteIDPrefix, registryID, slug)
+}
 
 func NewTemplateService(db *database.DB) *TemplateService {
-	return &TemplateService{
+	s := &TemplateService{
 		db:         db,
 		httpClient: &http.Client{Timeout: 30 * time.Second},
+		cacheCmdCh: make(chan cacheCmd, 1),
 	}
+	s.remoteCache.Store(remoteCache{})
+	s.startRemoteCacheWorker()
+	return s
 }
 
-// Helper to load remote templates into cache
-func (s *TemplateService) ensureRemoteTemplatesLoaded(ctx context.Context) error {
-	s.remoteFetchMutex.Lock()
-	defer s.remoteFetchMutex.Unlock()
-
-	// Check if cache is fresh
-	if time.Since(s.lastRemoteFetch) < remoteCacheDuration && s.remoteTemplatesCache != nil {
-		return nil // Cache is fresh
-	}
-
-	// Fetch and update cache
-	fetchedTemplates, err := s.loadRemoteTemplates(ctx) // This function already exists
-	if err != nil {
-		// Log the error but don't fail the request if local templates are available
-		fmt.Printf("Warning: failed to refresh remote templates cache: %v\n", err)
-		// Keep the old cache if fetching failed, unless it's the first fetch
-		if s.remoteTemplatesCache == nil {
-			return fmt.Errorf("failed to load remote templates: %w", err)
+func (s *TemplateService) startRemoteCacheWorker() {
+	go func() {
+		for cmd := range s.cacheCmdCh {
+			switch cmd.kind {
+			case "ensure":
+				rc := s.getRemoteCache()
+				if rc.templates != nil && time.Since(rc.lastFetch) < remoteCacheDuration {
+					cmd.reply <- nil
+					continue
+				}
+				templates, err := s.loadRemoteTemplates(cmd.ctx)
+				if err == nil {
+					s.setRemoteCache(remoteCache{templates: templates, lastFetch: time.Now()})
+				}
+				cmd.reply <- err
+			}
 		}
-		return nil // Use stale cache if fetch failed
-	}
+	}()
+}
 
-	s.remoteTemplatesCache = fetchedTemplates
-	s.lastRemoteFetch = time.Now()
-	return nil
+func (s *TemplateService) getRemoteCache() remoteCache {
+	if v := s.remoteCache.Load(); v != nil {
+		if rc, ok := v.(remoteCache); ok {
+			return rc
+		}
+	}
+	return remoteCache{}
+}
+
+func (s *TemplateService) setRemoteCache(rc remoteCache) {
+	s.remoteCache.Store(rc)
+}
+
+func (s *TemplateService) ensureRemoteTemplatesLoaded(ctx context.Context) error {
+	reply := make(chan error, 1)
+	select {
+	case s.cacheCmdCh <- cacheCmd{kind: "ensure", ctx: ctx, reply: reply}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	select {
+	case err := <-reply:
+		if err != nil {
+			fmt.Printf("Warning: failed to refresh remote templates cache: %v\n", err)
+			// If we have no cache at all, bubble the error
+			if len(s.getRemoteCache().templates) == 0 {
+				return fmt.Errorf("failed to load remote templates: %w", err)
+			}
+		}
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (s *TemplateService) GetAllTemplates(ctx context.Context) ([]models.ComposeTemplate, error) {
 	var templates []models.ComposeTemplate
 
-	// Get local templates
 	err := s.db.WithContext(ctx).Preload("Registry").Find(&templates).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to get local templates: %w", err)
 	}
 
-	// Ensure remote templates are loaded into cache
 	err = s.ensureRemoteTemplatesLoaded(ctx)
 	if err != nil {
-		// Log the error but proceed with local templates if remote loading failed
 		fmt.Printf("Warning: failed to load remote templates for GetAllTemplates: %v\n", err)
 	} else {
-		// Append remote templates from cache
-		templates = append(templates, s.remoteTemplatesCache...)
+		rc := s.getRemoteCache()
+		if len(rc.templates) > 0 {
+			templates = append(templates, rc.templates...)
+		}
 	}
 
 	return templates, nil
@@ -91,35 +137,28 @@ func (s *TemplateService) GetAllTemplates(ctx context.Context) ([]models.Compose
 func (s *TemplateService) GetTemplate(ctx context.Context, id string) (*models.ComposeTemplate, error) {
 	var template models.ComposeTemplate
 
-	// 1. Try to find in local database
+	// Local DB by ID (keeps DB concerns in models)
 	err := s.db.WithContext(ctx).Preload("Registry").Where("id = ?", id).First(&template).Error
 	if err == nil {
-		return &template, nil // Found a local template
+		return &template, nil
 	}
-
-	// If not found in DB, check if it's a record not found error
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("failed to query local template: %w", err) // Other DB error
+		return nil, fmt.Errorf("failed to query local template: %w", err)
 	}
 
-	// 2. If not found in local DB, try to find in remote templates cache
-	err = s.ensureRemoteTemplatesLoaded(ctx) // Ensure cache is loaded/fresh
-	if err != nil {
-		// If loading remote templates failed and there's no local template, return not found
+	// Remote cache by public ID
+	if err := s.ensureRemoteTemplatesLoaded(ctx); err != nil {
 		return nil, fmt.Errorf("template not found (failed to load remote templates): %w", err)
 	}
-
-	// Search in the in-memory cache
-	for _, remoteTemplate := range s.remoteTemplatesCache {
+	rc := s.getRemoteCache()
+	for _, remoteTemplate := range rc.templates {
+		// Compare against public ID (supports both new composite IDs and legacy slug IDs if present)
 		if remoteTemplate.ID == id {
-			// Found the remote template in cache
-			// Return a copy to avoid modifying the cached object directly
 			foundTemplate := remoteTemplate
 			return &foundTemplate, nil
 		}
 	}
 
-	// 3. If not found in local DB or remote cache
 	return nil, fmt.Errorf("template not found")
 }
 
@@ -264,19 +303,20 @@ func (s *TemplateService) loadRemoteTemplates(ctx context.Context) ([]models.Com
 		return nil, err
 	}
 
-	for _, registry := range registries {
-		if !registry.Enabled {
+	for i := range registries {
+		reg := registries[i]
+		if !reg.Enabled {
 			continue
 		}
 
-		remoteTemplates, err := s.fetchRegistryTemplates(ctx, registry.URL)
+		remoteTemplates, err := s.fetchRegistryTemplates(ctx, reg.URL)
 		if err != nil {
-			fmt.Printf("Warning: failed to fetch templates from registry %s: %v\n", registry.Name, err)
+			fmt.Printf("Warning: failed to fetch templates from registry %s: %v\n", reg.Name, err)
 			continue
 		}
 
 		for _, rt := range remoteTemplates {
-			template := s.convertRemoteToLocal(rt, &registry)
+			template := s.convertRemoteToLocal(rt, &reg)
 			templates = append(templates, template)
 		}
 	}
@@ -284,7 +324,6 @@ func (s *TemplateService) loadRemoteTemplates(ctx context.Context) ([]models.Com
 	return templates, nil
 }
 
-// doGET performs a GET and returns the whole body. Centralizes timeout/client use.
 func (s *TemplateService) doGET(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -329,11 +368,15 @@ func (s *TemplateService) convertRemoteToLocal(remote dto.RemoteTemplate, regist
 		}
 	}
 
+	// Use a namespaced public ID for remote templates (not persisted)
+	publicID := makeRemoteID(registry.ID, remote.ID)
+
 	return models.ComposeTemplate{
+		BaseModel:   models.BaseModel{ID: publicID},
 		Name:        remote.Name,
 		Description: remote.Description,
-		Content:     "",  // Content is not stored for remote templates initially
-		EnvContent:  nil, // EnvContent is not stored for remote templates initially
+		Content:     "",
+		EnvContent:  nil,
 		IsCustom:    false,
 		IsRemote:    true,
 		RegistryID:  &registry.ID,
@@ -344,9 +387,8 @@ func (s *TemplateService) convertRemoteToLocal(remote dto.RemoteTemplate, regist
 			Tags:             &tagsJSON,
 			RemoteURL:        &remote.ComposeURL,
 			EnvURL:           &remote.EnvURL,
-			DocumentationURL: &remote.DocsURL,
-			IconURL:          &remote.IconURL,
-			UpdatedAt:        &remote.UpdatedAt,
+			DocumentationURL: &remote.DocumentationURL,
+			IconURL:          nil,
 		},
 	}
 }
@@ -402,7 +444,6 @@ func (s *TemplateService) FetchTemplateContent(ctx context.Context, template *mo
 	if template.Metadata.EnvURL != nil && *template.Metadata.EnvURL != "" {
 		envContent, err = s.fetchURL(ctx, *template.Metadata.EnvURL)
 		if err != nil {
-			// Log error but don't fail if env file fetch fails
 			fmt.Printf("Warning: failed to fetch env content from %s: %v\n", *template.Metadata.EnvURL, err)
 			envContent = "" // Ensure envContent is empty string on failure
 		}

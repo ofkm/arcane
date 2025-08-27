@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 )
@@ -29,14 +30,25 @@ func (h *TemplateHandler) GetAllTemplates(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to get templates: " + err.Error(),
+			"data":    gin.H{"error": "Failed to get templates: " + err.Error()},
+		})
+		return
+	}
+
+	var out []dto.ComposeTemplateDto
+	if mapped, mapErr := dto.MapSlice[models.ComposeTemplate, dto.ComposeTemplateDto](templates); mapErr == nil {
+		out = mapped
+	} else {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to map templates: " + mapErr.Error()},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":   true,
-		"templates": templates,
+		"success": true,
+		"data":    out,
 	})
 }
 
@@ -45,30 +57,38 @@ func (h *TemplateHandler) GetTemplate(c *gin.Context) {
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Template ID is required",
+			"data":    gin.H{"error": "Template ID is required"},
 		})
 		return
 	}
 
 	template, err := h.templateService.GetTemplate(c.Request.Context(), id)
 	if err != nil {
+		status := http.StatusInternalServerError
+		msg := "Failed to get template: " + err.Error()
 		if err.Error() == "template not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"error":   "Template not found",
-			})
-			return
+			status = http.StatusNotFound
+			msg = "Template not found"
 		}
+		c.JSON(status, gin.H{
+			"success": false,
+			"data":    gin.H{"error": msg},
+		})
+		return
+	}
+
+	var out dto.ComposeTemplateDto
+	if mapErr := dto.MapStruct(template, &out); mapErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to get template: " + err.Error(),
+			"data":    gin.H{"error": "Failed to map template: " + mapErr.Error()},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"template": template,
+		"success": true,
+		"data":    out,
 	})
 }
 
@@ -77,7 +97,7 @@ func (h *TemplateHandler) GetTemplateContent(c *gin.Context) {
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Template ID is required",
+			"data":    gin.H{"error": "Template ID is required"},
 		})
 		return
 	}
@@ -86,19 +106,27 @@ func (h *TemplateHandler) GetTemplateContent(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
-			"error":   "Template not found",
+			"data":    gin.H{"error": "Template not found"},
+		})
+		return
+	}
+
+	var outTemplate dto.ComposeTemplateDto
+	if mapErr := dto.MapStruct(template, &outTemplate); mapErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to map template: " + mapErr.Error()},
 		})
 		return
 	}
 
 	var composeContent, envContent string
-
 	if template.IsRemote {
 		composeContent, envContent, err = h.templateService.FetchTemplateContent(c.Request.Context(), template)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
-				"error":   "Failed to fetch template content: " + err.Error(),
+				"data":    gin.H{"error": "Failed to fetch template content: " + err.Error()},
 			})
 			return
 		}
@@ -110,10 +138,12 @@ func (h *TemplateHandler) GetTemplateContent(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"content":    composeContent,
-		"envContent": envContent,
-		"template":   template,
+		"success": true,
+		"data": gin.H{
+			"content":    composeContent,
+			"envContent": envContent,
+			"template":   outTemplate,
+		},
 	})
 }
 
@@ -128,7 +158,7 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request format: " + err.Error(),
+			"data":    gin.H{"error": "Invalid request format: " + err.Error()},
 		})
 		return
 	}
@@ -140,23 +170,30 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 		IsCustom:    true,
 		IsRemote:    false,
 	}
-
 	if req.EnvContent != "" {
 		template.EnvContent = &req.EnvContent
 	}
 
-	err := h.templateService.CreateTemplate(c.Request.Context(), template)
-	if err != nil {
+	if err := h.templateService.CreateTemplate(c.Request.Context(), template); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to create template: " + err.Error(),
+			"data":    gin.H{"error": "Failed to create template: " + err.Error()},
+		})
+		return
+	}
+
+	var out dto.ComposeTemplateDto
+	if mapErr := dto.MapStruct(template, &out); mapErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to map template: " + mapErr.Error()},
 		})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"success":  true,
-		"template": template,
+		"success": true,
+		"data":    out,
 	})
 }
 
@@ -165,7 +202,7 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Template ID is required",
+			"data":    gin.H{"error": "Template ID is required"},
 		})
 		return
 	}
@@ -176,11 +213,10 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 		Content     string `json:"content" binding:"required"`
 		EnvContent  string `json:"envContent"`
 	}
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request format: " + err.Error(),
+			"data":    gin.H{"error": "Invalid request format: " + err.Error()},
 		})
 		return
 	}
@@ -190,45 +226,47 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 		Description: req.Description,
 		Content:     req.Content,
 	}
-
 	if req.EnvContent != "" {
 		updates.EnvContent = &req.EnvContent
 	} else {
-		// If envContent is empty in the request, explicitly set it to nil
 		updates.EnvContent = nil
 	}
 
-	err := h.templateService.UpdateTemplate(c.Request.Context(), id, updates)
-	if err != nil {
+	if err := h.templateService.UpdateTemplate(c.Request.Context(), id, updates); err != nil {
+		status := http.StatusInternalServerError
+		msg := "Failed to update template: " + err.Error()
 		if err.Error() == "template not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"error":   "Template not found",
-			})
-			return
+			status = http.StatusNotFound
+			msg = "Template not found"
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(status, gin.H{
 			"success": false,
-			"error":   "Failed to update template: " + err.Error(),
+			"data":    gin.H{"error": msg},
 		})
 		return
 	}
 
-	// Fetch the updated template to return in the response
-	updatedTemplate, err := h.templateService.GetTemplate(c.Request.Context(), id)
+	updated, err := h.templateService.GetTemplate(c.Request.Context(), id)
 	if err != nil {
-		// Handle error fetching the updated template, though the update succeeded
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
-			"message": "Template updated successfully, but failed to fetch updated template details.",
+			"data":    gin.H{"message": "Template updated successfully"},
+		})
+		return
+	}
+
+	var out dto.ComposeTemplateDto
+	if mapErr := dto.MapStruct(updated, &out); mapErr != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    gin.H{"message": "Template updated successfully"},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"message":  "Template updated successfully",
-		"template": updatedTemplate, // Return the updated template
+		"success": true,
+		"data":    out,
 	})
 }
 
@@ -237,30 +275,28 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Template ID is required",
+			"data":    gin.H{"error": "Template ID is required"},
 		})
 		return
 	}
 
-	err := h.templateService.DeleteTemplate(c.Request.Context(), id)
-	if err != nil {
+	if err := h.templateService.DeleteTemplate(c.Request.Context(), id); err != nil {
+		status := http.StatusInternalServerError
+		msg := "Failed to delete template: " + err.Error()
 		if err.Error() == "template not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"error":   "Template not found",
-			})
-			return
+			status = http.StatusNotFound
+			msg = "Template not found"
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(status, gin.H{
 			"success": false,
-			"error":   "Failed to delete template: " + err.Error(),
+			"data":    gin.H{"error": msg},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Template deleted successfully",
+		"data":    gin.H{"message": "Template deleted successfully"},
 	})
 }
 
@@ -268,7 +304,7 @@ func (h *TemplateHandler) GetEnvTemplate(c *gin.Context) {
 	content := h.templateService.GetEnvTemplate()
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"content": content,
+		"data":    gin.H{"content": content},
 	})
 }
 
@@ -276,27 +312,25 @@ func (h *TemplateHandler) SaveEnvTemplate(c *gin.Context) {
 	var req struct {
 		Content string `json:"content" binding:"required"`
 	}
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request format: " + err.Error(),
+			"data":    gin.H{"error": "Invalid request format: " + err.Error()},
 		})
 		return
 	}
 
-	err := h.templateService.SaveEnvTemplate(req.Content)
-	if err != nil {
+	if err := h.templateService.SaveEnvTemplate(req.Content); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to save env template: " + err.Error(),
+			"data":    gin.H{"error": "Failed to save env template: " + err.Error()},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Environment template saved successfully",
+		"data":    gin.H{"message": "Environment template saved successfully"},
 	})
 }
 
@@ -305,14 +339,23 @@ func (h *TemplateHandler) GetRegistries(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to get registries: " + err.Error(),
+			"data":    gin.H{"error": "Failed to get registries: " + err.Error()},
+		})
+		return
+	}
+
+	out, mapErr := dto.MapSlice[models.TemplateRegistry, dto.TemplateRegistryDto](registries)
+	if mapErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to map registries: " + mapErr.Error()},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"registries": registries,
+		"success": true,
+		"data":    out,
 	})
 }
 
@@ -323,11 +366,10 @@ func (h *TemplateHandler) CreateRegistry(c *gin.Context) {
 		Description string `json:"description"`
 		Enabled     bool   `json:"enabled"`
 	}
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request format: " + err.Error(),
+			"data":    gin.H{"error": "Invalid request format: " + err.Error()},
 		})
 		return
 	}
@@ -338,19 +380,26 @@ func (h *TemplateHandler) CreateRegistry(c *gin.Context) {
 		Description: req.Description,
 		Enabled:     req.Enabled,
 	}
-
-	err := h.templateService.CreateRegistry(c.Request.Context(), registry)
-	if err != nil {
+	if err := h.templateService.CreateRegistry(c.Request.Context(), registry); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to create registry: " + err.Error(),
+			"data":    gin.H{"error": "Failed to create registry: " + err.Error()},
+		})
+		return
+	}
+
+	var out dto.TemplateRegistryDto
+	if mapErr := dto.MapStruct(registry, &out); mapErr != nil {
+		c.JSON(http.StatusCreated, gin.H{
+			"success": true,
+			"data":    gin.H{"message": "Registry created"},
 		})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"success":  true,
-		"registry": registry,
+		"success": true,
+		"data":    out,
 	})
 }
 
@@ -359,7 +408,7 @@ func (h *TemplateHandler) UpdateRegistry(c *gin.Context) {
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Registry ID is required",
+			"data":    gin.H{"error": "Registry ID is required"},
 		})
 		return
 	}
@@ -370,11 +419,10 @@ func (h *TemplateHandler) UpdateRegistry(c *gin.Context) {
 		Description string `json:"description"`
 		Enabled     bool   `json:"enabled"`
 	}
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request format: " + err.Error(),
+			"data":    gin.H{"error": "Invalid request format: " + err.Error()},
 		})
 		return
 	}
@@ -385,27 +433,23 @@ func (h *TemplateHandler) UpdateRegistry(c *gin.Context) {
 		Description: req.Description,
 		Enabled:     req.Enabled,
 	}
-
-	// Pass the string ID to the service layer
-	err := h.templateService.UpdateRegistry(c.Request.Context(), id, updates)
-	if err != nil {
+	if err := h.templateService.UpdateRegistry(c.Request.Context(), id, updates); err != nil {
+		status := http.StatusInternalServerError
+		msg := "Failed to update registry: " + err.Error()
 		if err.Error() == "registry not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"error":   "Registry not found",
-			})
-			return
+			status = http.StatusNotFound
+			msg = "Registry not found"
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(status, gin.H{
 			"success": false,
-			"error":   "Failed to update registry: " + err.Error(),
+			"data":    gin.H{"error": msg},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Registry updated successfully",
+		"data":    gin.H{"message": "Registry updated successfully"},
 	})
 }
 
@@ -414,31 +458,28 @@ func (h *TemplateHandler) DeleteRegistry(c *gin.Context) {
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Registry ID is required",
+			"data":    gin.H{"error": "Registry ID is required"},
 		})
 		return
 	}
 
-	// Pass the string ID to the service layer
-	err := h.templateService.DeleteRegistry(c.Request.Context(), id)
-	if err != nil {
+	if err := h.templateService.DeleteRegistry(c.Request.Context(), id); err != nil {
+		status := http.StatusInternalServerError
+		msg := "Failed to delete registry: " + err.Error()
 		if err.Error() == "registry not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"error":   "Registry not found",
-			})
-			return
+			status = http.StatusNotFound
+			msg = "Registry not found"
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(status, gin.H{
 			"success": false,
-			"error":   "Failed to delete registry: " + err.Error(),
+			"data":    gin.H{"error": msg},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Registry deleted successfully",
+		"data":    gin.H{"message": "Registry deleted successfully"},
 	})
 }
 
@@ -447,21 +488,15 @@ func (h *TemplateHandler) FetchRegistry(c *gin.Context) {
 	if url == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "URL parameter is required",
+			"data":    gin.H{"error": "URL parameter is required"},
 		})
 		return
 	}
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
+	client := &http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, url, nil)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid URL: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid URL: " + err.Error()}})
 		return
 	}
 
@@ -472,19 +507,13 @@ func (h *TemplateHandler) FetchRegistry(c *gin.Context) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"success": false,
-			"error":   "Failed to fetch registry: " + err.Error(),
-		})
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Failed to fetch registry: " + err.Error()}})
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"success": false,
-			"error":   fmt.Sprintf("Registry returned status %d", resp.StatusCode),
-		})
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": fmt.Sprintf("Registry returned status %d", resp.StatusCode)}})
 		return
 	}
 
@@ -492,10 +521,7 @@ func (h *TemplateHandler) FetchRegistry(c *gin.Context) {
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		gzipReader, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"error":   "Failed to create gzip reader: " + err.Error(),
-			})
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to create gzip reader: " + err.Error()}})
 			return
 		}
 		defer gzipReader.Close()
@@ -504,65 +530,53 @@ func (h *TemplateHandler) FetchRegistry(c *gin.Context) {
 
 	body, err := io.ReadAll(reader)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to read response: " + err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to read response: " + err.Error()}})
 		return
 	}
 
 	var registry interface{}
 	if err := json.Unmarshal(body, &registry); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"success": false,
-			"error":   "Invalid JSON response: " + err.Error(),
-		})
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Invalid JSON response: " + err.Error()}})
 		return
 	}
 
-	c.Header("Content-Type", "application/json")
-	c.Data(http.StatusOK, "application/json", body)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    registry,
+	})
 }
 
 func (h *TemplateHandler) DownloadTemplate(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Template ID is required",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Template ID is required"}})
 		return
 	}
 
 	template, err := h.templateService.GetTemplate(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Template not found",
-		})
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Template not found"}})
 		return
 	}
-
 	if !template.IsRemote {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Template is already local",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Template is already local"}})
 		return
 	}
 
 	localTemplate, err := h.templateService.DownloadTemplate(c.Request.Context(), template)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to download template: " + err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to download template: " + err.Error()}})
+		return
+	}
+
+	var out dto.ComposeTemplateDto
+	if mapErr := dto.MapStruct(localTemplate, &out); mapErr != nil {
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"message": "Template downloaded successfully"}})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"template": localTemplate,
-		"message":  "Template downloaded successfully",
+		"success": true,
+		"data":    out,
 	})
 }
