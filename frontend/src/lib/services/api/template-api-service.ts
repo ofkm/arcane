@@ -4,7 +4,7 @@ import type { TemplateRegistry, Template } from '$lib/types/template.type';
 export default class TemplateAPIService extends BaseAPIService {
 	async loadAll(): Promise<Template[]> {
 		const response = await this.api.get('/templates');
-		return response.data.templates;
+		return response.data;
 	}
 
 	async getById(id: string): Promise<Template> {
@@ -26,12 +26,7 @@ export default class TemplateAPIService extends BaseAPIService {
 		};
 	}
 
-	async create(template: {
-		name: string;
-		description: string;
-		content: string;
-		envContent?: string;
-	}): Promise<Template> {
+	async create(template: { name: string; description: string; content: string; envContent?: string }): Promise<Template> {
 		const response = await this.api.post('/templates', template);
 		return response.data.template;
 	}
@@ -71,14 +66,9 @@ export default class TemplateAPIService extends BaseAPIService {
 		return response.data.registries;
 	}
 
-	async addRegistry(registry: {
-		name: string;
-		url: string;
-		description?: string;
-		enabled: boolean;
-	}): Promise<TemplateRegistry> {
+	async addRegistry(registry: { name: string; url: string; description?: string; enabled: boolean }): Promise<TemplateRegistry> {
 		const response = await this.api.post('/templates/registries', registry);
-		return response.data.registry;
+		return response.data;
 	}
 
 	async updateRegistry(
@@ -125,9 +115,7 @@ export default class TemplateAPIService extends BaseAPIService {
 		const categories = new Set<string>();
 		templates.forEach((template) => {
 			if (template.metadata?.tags) {
-				const tags = Array.isArray(template.metadata.tags)
-					? template.metadata.tags
-					: JSON.parse(template.metadata.tags || '[]');
+				const tags = Array.isArray(template.metadata.tags) ? template.metadata.tags : JSON.parse(template.metadata.tags || '[]');
 				tags.forEach((tag: string) => categories.add(tag));
 			}
 		});
