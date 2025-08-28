@@ -197,8 +197,7 @@
 	}
 
 	async function handleStopAll() {
-		if (isLoading.stopping || !dashboardStates.dockerInfo || dockerInfo?.containersRunning === 0)
-			return;
+		if (isLoading.stopping || !dashboardStates.dockerInfo || dockerInfo?.containersRunning === 0) return;
 		openConfirmDialog({
 			title: 'Stop All Containers',
 			message: 'Are you sure you want to stop all running containers?',
@@ -239,9 +238,7 @@
 			onSuccess: async () => {
 				dashboardStates.isPruneDialogOpen = false;
 				const formattedTypes = selectedTypes.map((type) => capitalizeFirstLetter(type)).join(', ');
-				toast.success(
-					`${formattedTypes} ${selectedTypes.length > 1 ? 'were' : 'was'} pruned successfully.`
-				);
+				toast.success(`${formattedTypes} ${selectedTypes.length > 1 ? 'were' : 'was'} pruned successfully.`);
 				await refreshData();
 			}
 		});
@@ -259,10 +256,7 @@
 			size="sm"
 			class="arcane-button-restart h-9"
 			onclick={refreshData}
-			disabled={isLoading.refreshing ||
-				isLoading.starting ||
-				isLoading.stopping ||
-				isLoading.pruning}
+			disabled={isLoading.refreshing || isLoading.starting || isLoading.stopping || isLoading.pruning}
 		>
 			{#if isLoading.refreshing}
 				<Loader2 class="mr-2 size-4 animate-spin" />
@@ -290,7 +284,7 @@
 		{:else}
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 				<button
-					class="group bg-card flex items-center rounded-lg border p-3 shadow-sm ring-offset-background transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="bg-card ring-offset-background focus-visible:ring-ring group flex items-center rounded-lg border p-3 shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={!dashboardStates.dockerInfo ||
 						stoppedContainers === 0 ||
 						isLoading.starting ||
@@ -314,7 +308,7 @@
 				</button>
 
 				<button
-					class="group bg-card flex items-center rounded-lg border p-3 shadow-sm ring-offset-background transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="bg-card ring-offset-background focus-visible:ring-ring group flex items-center rounded-lg border p-3 shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={!dashboardStates.dockerInfo ||
 						dockerInfo?.containersRunning === 0 ||
 						isLoading.starting ||
@@ -340,11 +334,8 @@
 				</button>
 
 				<button
-					class="group bg-card hover:border-destructive/50 disabled:hover:border-border flex items-center rounded-lg border p-3 shadow-sm ring-offset-background transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-					disabled={!dashboardStates.dockerInfo ||
-						isLoading.starting ||
-						isLoading.stopping ||
-						isLoading.pruning}
+					class="bg-card hover:border-destructive/50 disabled:hover:border-border ring-offset-background focus-visible:ring-ring group flex items-center rounded-lg border p-3 shadow-sm transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					disabled={!dashboardStates.dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
 					onclick={() => (dashboardStates.isPruneDialogOpen = true)}
 				>
 					<div
@@ -390,9 +381,7 @@
 					title="CPU Usage"
 					icon={Cpu}
 					description="Processor utilization"
-					currentValue={isLoading.loadingStats || !hasInitialStatsLoaded
-						? undefined
-						: currentStats?.cpuUsage}
+					currentValue={isLoading.loadingStats || !hasInitialStatsLoaded ? undefined : currentStats?.cpuUsage}
 					unit="%"
 					maxValue={100}
 					loading={isLoading.loadingStats || !hasInitialStatsLoaded}
@@ -430,25 +419,25 @@
 			</div>
 
 			<div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Card.Root class="rounded-lg border shadow-sm">
+				<Card.Root>
 					<Card.Content class="p-4">
 						<div class="flex items-center gap-3">
 							<div class="rounded-lg bg-blue-500/10 p-2">
 								{#if isLoading.loadingDockerInfo}
-									<Loader2 class="size-5 text-blue-500 animate-spin" />
+									<Loader2 class="size-5 animate-spin text-blue-500" />
 								{:else}
 									<DockerIcon class="size-5 text-blue-500" />
 								{/if}
 							</div>
-							<div class="flex-1 min-w-0">
+							<div class="min-w-0 flex-1">
 								{#if isLoading.loadingDockerInfo}
 									<div class="space-y-2">
-										<div class="h-4 w-24 bg-muted animate-pulse rounded"></div>
-										<div class="h-3 w-32 bg-muted animate-pulse rounded"></div>
+										<div class="bg-muted h-4 w-24 animate-pulse rounded"></div>
+										<div class="bg-muted h-3 w-32 animate-pulse rounded"></div>
 									</div>
 								{:else}
 									<p class="text-sm font-medium">Docker Engine</p>
-									<p class="text-xs text-muted-foreground">
+									<p class="text-muted-foreground text-xs">
 										{dashboardStates.dockerInfo?.version || 'Unknown'} •
 										{dashboardStates.dockerInfo?.os || 'Unknown'}
 									</p>
@@ -463,20 +452,20 @@
 						<div class="flex items-center gap-3">
 							<div class="rounded-lg bg-green-500/10 p-2">
 								{#if isLoading.loadingStats}
-									<Loader2 class="size-5 text-green-500 animate-spin" />
+									<Loader2 class="size-5 animate-spin text-green-500" />
 								{:else}
 									<Box class="size-5 text-green-500" />
 								{/if}
 							</div>
-							<div class="flex-1 min-w-0">
+							<div class="min-w-0 flex-1">
 								{#if isLoading.loadingStats}
 									<div class="space-y-2">
-										<div class="h-4 w-28 bg-muted animate-pulse rounded"></div>
-										<div class="h-3 w-20 bg-muted animate-pulse rounded"></div>
+										<div class="bg-muted h-4 w-28 animate-pulse rounded"></div>
+										<div class="bg-muted h-3 w-20 animate-pulse rounded"></div>
 									</div>
 								{:else}
 									<p class="text-sm font-medium">Total Containers</p>
-									<p class="text-xs text-muted-foreground">
+									<p class="text-muted-foreground text-xs">
 										{totalContainers} total • {stoppedContainers} stopped
 									</p>
 								{/if}
@@ -490,20 +479,20 @@
 						<div class="flex items-center gap-3">
 							<div class="rounded-lg bg-purple-500/10 p-2">
 								{#if isLoading.loadingImages}
-									<Loader2 class="size-5 text-purple-500 animate-spin" />
+									<Loader2 class="size-5 animate-spin text-purple-500" />
 								{:else}
 									<HardDrive class="size-5 text-purple-500" />
 								{/if}
 							</div>
-							<div class="flex-1 min-w-0">
+							<div class="min-w-0 flex-1">
 								{#if isLoading.loadingImages}
 									<div class="space-y-2">
-										<div class="h-4 w-24 bg-muted animate-pulse rounded"></div>
-										<div class="h-3 w-28 bg-muted animate-pulse rounded"></div>
+										<div class="bg-muted h-4 w-24 animate-pulse rounded"></div>
+										<div class="bg-muted h-3 w-28 animate-pulse rounded"></div>
 									</div>
 								{:else}
 									<p class="text-sm font-medium">Docker Images</p>
-									<p class="text-xs text-muted-foreground">
+									<p class="text-muted-foreground text-xs">
 										{images.pagination.totalItems} images
 									</p>
 								{/if}
