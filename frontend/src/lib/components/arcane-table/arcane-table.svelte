@@ -204,7 +204,7 @@
 					}
 				};
 			}
-			+onRefresh(requestOptions);
+			onRefresh(requestOptions);
 		},
 		onColumnFiltersChange: (updater) => {
 			columnFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
