@@ -266,14 +266,61 @@ func (s *TemplateService) GetRegistries(ctx context.Context) ([]models.TemplateR
 }
 
 func (s *TemplateService) CreateRegistry(ctx context.Context, registry *models.TemplateRegistry) error {
-	err := s.db.WithContext(ctx).Create(registry).Error
-	if err != nil {
+	if registry.Name == "" || registry.Description == "" {
+		if registry.URL == "" {
+			return fmt.Errorf("registry URL is required")
+		}
+		if manifest, err := s.fetchRegistryManifest(ctx, registry.URL); err == nil {
+			if registry.Name == "" {
+				registry.Name = manifest.Name
+			}
+			if registry.Description == "" {
+				registry.Description = manifest.Description
+			}
+		} else {
+			// If required fields are still missing, bubble error
+			if registry.Name == "" || registry.Description == "" {
+				return fmt.Errorf("failed to fetch registry manifest: %w", err)
+			}
+		}
+	}
+
+	if err := s.db.WithContext(ctx).Create(registry).Error; err != nil {
 		return fmt.Errorf("failed to create registry: %w", err)
 	}
+
+	s.invalidateRemoteCache()
 	return nil
 }
 
 func (s *TemplateService) UpdateRegistry(ctx context.Context, id string, updates *models.TemplateRegistry) error {
+	var existing models.TemplateRegistry
+	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&existing).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("registry not found")
+		}
+		return fmt.Errorf("failed to find registry: %w", err)
+	}
+
+	urlChanged := updates.URL != "" && updates.URL != existing.URL
+	needsHydration := updates.Name == "" || updates.Description == ""
+	if (urlChanged || needsHydration) && (updates.URL != "" || existing.URL != "") {
+		manifestURL := updates.URL
+		if manifestURL == "" {
+			manifestURL = existing.URL
+		}
+		if manifest, err := s.fetchRegistryManifest(ctx, manifestURL); err == nil {
+			if updates.Name == "" {
+				updates.Name = manifest.Name
+			}
+			if updates.Description == "" {
+				updates.Description = manifest.Description
+			}
+		} else if urlChanged && (updates.Name == "" || updates.Description == "") {
+			return fmt.Errorf("failed to fetch registry manifest: %w", err)
+		}
+	}
+
 	result := s.db.WithContext(ctx).Model(&models.TemplateRegistry{}).Where("id = ?", id).Updates(updates)
 	if result.Error != nil {
 		return result.Error
@@ -281,6 +328,8 @@ func (s *TemplateService) UpdateRegistry(ctx context.Context, id string, updates
 	if result.RowsAffected == 0 {
 		return errors.New("registry not found")
 	}
+
+	s.invalidateRemoteCache()
 	return nil
 }
 
@@ -292,6 +341,8 @@ func (s *TemplateService) DeleteRegistry(ctx context.Context, id string) error {
 	if result.RowsAffected == 0 {
 		return errors.New("registry not found")
 	}
+
+	s.invalidateRemoteCache()
 	return nil
 }
 
@@ -360,6 +411,21 @@ func (s *TemplateService) fetchRegistryTemplates(ctx context.Context, url string
 	return registry.Templates, nil
 }
 
+func (s *TemplateService) fetchRegistryManifest(ctx context.Context, url string) (*dto.RemoteRegistry, error) {
+	body, err := s.doGET(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	var reg dto.RemoteRegistry
+	if err := json.Unmarshal(body, &reg); err != nil {
+		return nil, fmt.Errorf("failed to parse registry JSON: %w", err)
+	}
+	if reg.Name == "" || len(reg.Templates) == 0 {
+		return nil, fmt.Errorf("invalid registry manifest: missing required fields (name, templates)")
+	}
+	return &reg, nil
+}
+
 func (s *TemplateService) convertRemoteToLocal(remote dto.RemoteTemplate, registry *models.TemplateRegistry) models.ComposeTemplate {
 	tagsJSON := ""
 	if len(remote.Tags) > 0 {
@@ -368,7 +434,6 @@ func (s *TemplateService) convertRemoteToLocal(remote dto.RemoteTemplate, regist
 		}
 	}
 
-	// Use a namespaced public ID for remote templates (not persisted)
 	publicID := makeRemoteID(registry.ID, remote.ID)
 
 	return models.ComposeTemplate{
@@ -445,7 +510,7 @@ func (s *TemplateService) FetchTemplateContent(ctx context.Context, template *mo
 		envContent, err = s.fetchURL(ctx, *template.Metadata.EnvURL)
 		if err != nil {
 			fmt.Printf("Warning: failed to fetch env content from %s: %v\n", *template.Metadata.EnvURL, err)
-			envContent = "" // Ensure envContent is empty string on failure
+			envContent = ""
 		}
 	}
 
@@ -467,7 +532,7 @@ func (s *TemplateService) DownloadTemplate(ctx context.Context, remoteTemplate *
 
 	// Check if a local version with the same remote ID already exists
 	// This prevents duplicate downloads of the same remote template
-	existingLocalTemplate, err := s.GetTemplate(ctx, s.generateTemplateID(remoteTemplate.Name)) // Assuming local ID is based on name
+	existingLocalTemplate, err := s.GetTemplate(ctx, s.generateTemplateID(remoteTemplate.Name))
 	if err == nil && !existingLocalTemplate.IsRemote {
 		return existingLocalTemplate, fmt.Errorf("template '%s' is already downloaded", remoteTemplate.Name)
 	}
@@ -511,4 +576,8 @@ func (s *TemplateService) DownloadTemplate(ctx context.Context, remoteTemplate *
 	// s.removeRemoteTemplateFromCache(remoteTemplate.ID) // Need to implement this helper if desired
 
 	return localTemplate, nil
+}
+
+func (s *TemplateService) invalidateRemoteCache() {
+	s.setRemoteCache(remoteCache{})
 }

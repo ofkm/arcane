@@ -1,11 +1,11 @@
 export interface TemplateRegistry {
-	id: number;
+	id: string;
 	name: string;
 	url: string;
 	enabled: boolean;
 	description: string;
-	createdAt: string;
-	updatedAt: string;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export interface Template {
@@ -16,7 +16,7 @@ export interface Template {
 	envContent?: string;
 	isCustom: boolean;
 	isRemote: boolean;
-	registryId?: number;
+	registryId?: string;
 	registry?: TemplateRegistry;
 	metadata?: {
 		version?: string;
@@ -37,13 +37,21 @@ export interface RemoteTemplate {
 	name: string;
 	description: string;
 	version: string;
-	author?: string;
-	tags?: string[];
+	author: string;
+	tags: string[];
 	compose_url: string;
 	env_url?: string;
 	documentation_url?: string;
-	icon_url?: string;
-	updated_at: string;
+}
+
+export interface RemoteRegistry {
+	$schema?: string;
+	name: string;
+	description: string;
+	version: string;
+	author: string;
+	url: string;
+	templates: RemoteTemplate[];
 }
 
 export interface TemplateRegistryConfig {

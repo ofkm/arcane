@@ -3,7 +3,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
-	import { Loader2, Globe, RefreshCw, CheckCircle, AlertCircle } from '@lucide/svelte';
+	import { Loader2, Globe, AlertCircle } from '@lucide/svelte';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 	import { templateAPI } from '$lib/services/api';
@@ -11,12 +11,7 @@
 
 	type TemplateRegistryFormProps = {
 		open: boolean;
-		onSubmit: (registry: {
-			name: string;
-			url: string;
-			description?: string;
-			enabled: boolean;
-		}) => void;
+		onSubmit: (registry: { name: string; url: string; description?: string; enabled: boolean }) => void;
 		isLoading: boolean;
 	};
 
@@ -24,41 +19,34 @@
 
 	const formSchema = z.object({
 		url: z.url().min(1, 'Registry URL is required'),
-		description: z.string().default(''),
 		enabled: z.boolean().default(true)
 	});
 
 	let formData = $derived({
 		url: '',
-		description: '',
 		enabled: true
 	});
 
 	let { inputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
 
-	// Submission error state
 	let submitError = $state<string | null>(null);
 
 	async function handleSubmit() {
-		// Clear previous errors
 		submitError = null;
 
 		const data = form.validate();
 		if (!data) return;
 
 		try {
-			// Validate the registry URL by fetching it
 			const registryData = await templateAPI.fetchRegistry(data.url);
 
 			if (!registryData.name || !registryData.templates || !Array.isArray(registryData.templates)) {
 				throw new Error('Invalid registry format: missing required fields (name, templates)');
 			}
 
-			// Submit with the name from the registry
 			const registryPayload = {
 				name: registryData.name,
 				url: data.url,
-				description: data.description || undefined,
 				enabled: data.enabled
 			};
 
@@ -70,7 +58,6 @@
 
 	function handleOpenChange(newOpenState: boolean) {
 		open = newOpenState;
-		// Clear errors when closing
 		if (!newOpenState) {
 			submitError = null;
 		}
@@ -79,14 +66,14 @@
 
 <Sheet.Root bind:open onOpenChange={handleOpenChange}>
 	<Sheet.Content class="p-6">
-		<Sheet.Header class="space-y-3 pb-6 border-b">
+		<Sheet.Header class="space-y-3 border-b pb-6">
 			<div class="flex items-center gap-3">
-				<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-					<Globe class="size-5 text-primary" />
+				<div class="bg-primary/10 flex size-10 shrink-0 items-center justify-center rounded-lg">
+					<Globe class="text-primary size-5" />
 				</div>
 				<div>
 					<Sheet.Title class="text-xl font-semibold">Add Template Registry</Sheet.Title>
-					<Sheet.Description class="text-sm text-muted-foreground mt-1"
+					<Sheet.Description class="text-muted-foreground mt-1 text-sm"
 						>Add a remote template registry to access community templates.</Sheet.Description
 					>
 				</div>
@@ -99,14 +86,6 @@
 				placeholder="https://templates.arcane.ofkm.dev/registry.json"
 				description="URL to the registry JSON manifest"
 				bind:input={$inputs.url}
-			/>
-
-			<FormInput
-				label="Description"
-				type="text"
-				placeholder="A collection of useful Docker Compose templates"
-				description="Optional description for this registry"
-				bind:input={$inputs.description}
 			/>
 
 			<SwitchWithLabel

@@ -6,32 +6,21 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { Snippet } from '$lib/components/ui/snippet';
-	import {
-		Trash2,
-		Plus,
-		ExternalLink,
-		RefreshCw,
-		FileText,
-		Globe,
-		FolderOpen,
-		Users
-	} from '@lucide/svelte';
-	import type { PageData } from './$types';
+	import { Trash2, Plus, ExternalLink, RefreshCw, FileText, Globe, FolderOpen, Users } from '@lucide/svelte';
 	import { templateAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
-	import { invalidateAll } from '$app/navigation';
 	import AddTemplateRegistrySheet from '$lib/components/sheets/add-template-registry-sheet.svelte';
 	import StatCard from '$lib/components/stat-card.svelte';
 
-	let { data }: { data: PageData } = $props();
+	let { data } = $props();
 
-	let templates = $state(data.templates || []);
-	let registries = $state(data.registries || []);
+	let templates = $state(data.templates);
+	let registries = $state(data.registries);
 
 	let isLoading = $state({
 		addingRegistry: false,
-		removing: new Set<number>(),
-		updating: new Set<number>()
+		removing: new Set<string>(),
+		updating: new Set<string>()
 	});
 
 	let showAddRegistrySheet = $state(false);
@@ -39,7 +28,7 @@
 	const localTemplateCount = $derived(templates.filter((t) => !t.isRemote).length);
 	const remoteTemplateCount = $derived(templates.filter((t) => t.isRemote).length);
 
-	async function updateRegistry(id: number, updates: { enabled?: boolean }) {
+	async function updateRegistry(id: string, updates: { enabled?: boolean }) {
 		if (isLoading.updating.has(id)) return;
 		isLoading.updating.add(id);
 
@@ -57,11 +46,8 @@
 				enabled: updates.enabled ?? registry.enabled
 			});
 
-			// Update local state
-			registries = registries.map((r) => (r.id === id ? { ...r, ...updates } : r));
-
+			registries = await templateAPI.getRegistries();
 			toast.success('Registry updated successfully');
-			await invalidateAll();
 		} catch (error) {
 			console.error('Error updating registry:', error);
 			toast.error(error instanceof Error ? error.message : 'Failed to update registry');
@@ -70,15 +56,15 @@
 		}
 	}
 
-	async function removeRegistry(id: number) {
+	async function removeRegistry(id: string) {
 		if (isLoading.removing.has(id)) return;
 		isLoading.removing.add(id);
 
 		try {
 			await templateAPI.deleteRegistry(id);
 			registries = registries.filter((r) => r.id !== id);
+			registries = await templateAPI.getRegistries();
 			toast.success('Registry removed successfully');
-			await invalidateAll();
 		} catch (error) {
 			console.error('Error removing registry:', error);
 			toast.error(error instanceof Error ? error.message : 'Failed to remove registry');
@@ -89,7 +75,7 @@
 
 	async function refreshTemplates() {
 		try {
-			await invalidateAll();
+			templates = await templateAPI.loadAll();
 			toast.success('Templates refreshed successfully');
 		} catch (error) {
 			console.error('Error refreshing templates:', error);
@@ -97,24 +83,7 @@
 		}
 	}
 
-	function copyToClipboard(text: string) {
-		navigator.clipboard
-			.writeText(text)
-			.then(() => {
-				toast.success('Copied to clipboard');
-			})
-			.catch(() => {
-				toast.error('Failed to copy');
-			});
-	}
-
-	// Handle registry form submission
-	async function handleRegistrySubmit(registry: {
-		name: string;
-		url: string;
-		description?: string;
-		enabled: boolean;
-	}) {
+	async function handleRegistrySubmit(registry: { name: string; url: string; description?: string; enabled: boolean }) {
 		isLoading.addingRegistry = true;
 
 		try {
@@ -125,11 +94,10 @@
 				enabled: registry.enabled
 			});
 
-			registries = [...registries, created];
+			registries = await templateAPI.getRegistries();
 			showAddRegistrySheet = false;
 
 			toast.success('Registry added successfully');
-			await invalidateAll();
 		} catch (error) {
 			console.error('Error adding registry:', error);
 			toast.error(error instanceof Error ? error.message : 'Failed to add registry');
@@ -139,18 +107,13 @@
 	}
 </script>
 
-<svelte:head><title>Arcane</title></svelte:head>
-
 <div class="space-y-6">
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Template Settings</h1>
 			<p class="text-muted-foreground mt-1 text-sm">
 				Manage Docker Compose template sources and registries
-				<a
-					href="https://arcane.ofkm.dev/docs/templates/use-templates"
-					class="text-primary ml-1 hover:underline">→ Learn more</a
-				>
+				<a href="https://arcane.ofkm.dev/docs/templates/use-templates" class="text-primary ml-1 hover:underline">→ Learn more</a>
 			</p>
 		</div>
 
@@ -160,7 +123,6 @@
 		</Button>
 	</div>
 
-	<!-- Template Statistics -->
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 		<StatCard
 			title="Local Templates"
@@ -187,7 +149,6 @@
 
 	<Separator />
 
-	<!-- Remote Template Registries -->
 	<div class="space-y-4">
 		<div class="flex items-center justify-between">
 			<h2 class="text-xl font-semibold">Template Registries</h2>
@@ -201,8 +162,8 @@
 				<Globe class="size-4" />
 				<Alert.Title>Remote Registries</Alert.Title>
 				<Alert.Description
-					>Add remote template registries to access community templates. Registries should provide a
-					JSON manifest with template definitions and download URLs.</Alert.Description
+					>Add remote template registries to access community templates. Registries should provide a JSON manifest with template
+					definitions and download URLs.</Alert.Description
 				>
 			</Alert.Root>
 
@@ -217,7 +178,6 @@
 				</Alert.Description>
 			</Alert.Root>
 		{/if}
-		<!-- Registry List -->
 		{#if registries.length > 0}
 			<div class="space-y-3">
 				{#each registries as registry}
@@ -230,32 +190,22 @@
 										{registry.enabled ? 'Enabled' : 'Disabled'}
 									</Badge>
 								</div>
-								<p class="text-muted-foreground text-sm break-all">{registry.url}</p>
+								<p class="text-muted-foreground break-all text-sm">{registry.url}</p>
 								{#if registry.description}
 									<p class="text-muted-foreground mt-1 text-sm">{registry.description}</p>
 								{/if}
-								<p class="text-muted-foreground mt-1 text-xs">
-									Updated: {new Date(registry.updatedAt).toLocaleString()}
-								</p>
 							</div>
 							<div class="flex items-center gap-2">
-								<!-- Toggle enabled/disabled -->
 								<Switch
 									checked={registry.enabled}
 									onCheckedChange={(checked) => updateRegistry(registry.id, { enabled: checked })}
 									disabled={isLoading.updating.has(registry.id)}
 								/>
 
-								<!-- Open registry URL -->
-								<Button
-									variant="outline"
-									size="sm"
-									onclick={() => window.open(registry.url, '_blank')}
-								>
+								<Button variant="outline" size="sm" onclick={() => window.open(registry.url, '_blank')}>
 									<ExternalLink class="size-4" />
 								</Button>
 
-								<!-- Remove registry -->
 								<Button
 									variant="destructive"
 									size="sm"
@@ -282,7 +232,6 @@
 		{/if}
 	</div>
 
-	<!-- Add Template Registry Sheet -->
 	<AddTemplateRegistrySheet
 		bind:open={showAddRegistrySheet}
 		onSubmit={handleRegistrySubmit}

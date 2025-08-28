@@ -1,17 +1,5 @@
 import BaseAPIService from './api-service';
-
-export interface TemplateRegistry {
-	id: string;
-	name: string;
-	url: string;
-	enabled: boolean;
-	username?: string;
-	password?: string;
-	token?: string;
-	description?: string;
-	createdAt?: string;
-	updatedAt?: string;
-}
+import type { TemplateRegistry } from '$lib/types/template.type';
 
 export default class TemplateRegistryAPIService extends BaseAPIService {
 	async list(): Promise<TemplateRegistry[]> {

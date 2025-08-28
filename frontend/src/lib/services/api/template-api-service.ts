@@ -1,15 +1,15 @@
 import BaseAPIService from './api-service';
-import type { TemplateRegistry, Template } from '$lib/types/template.type';
+import type { TemplateRegistry, Template, RemoteRegistry } from '$lib/types/template.type';
 
 export default class TemplateAPIService extends BaseAPIService {
 	async loadAll(): Promise<Template[]> {
 		const response = await this.api.get('/templates');
-		return response.data;
+		return response.data?.data ?? [];
 	}
 
 	async getById(id: string): Promise<Template> {
-		const response = await this.api.get(`/templates/${id}`);
-		return response.data.template;
+		const response = await this.api.get(`/templates/${encodeURIComponent(id)}`);
+		return response.data?.data;
 	}
 
 	async getTemplateContent(id: string): Promise<{
@@ -19,16 +19,17 @@ export default class TemplateAPIService extends BaseAPIService {
 	}> {
 		const encodedId = encodeURIComponent(id);
 		const response = await this.api.get(`/templates/${encodedId}/content`);
+		const data = response.data?.data ?? {};
 		return {
-			content: response.data.content,
-			envContent: response.data.envContent,
-			template: response.data.template
+			content: data.content,
+			envContent: data.envContent,
+			template: data.template
 		};
 	}
 
 	async create(template: { name: string; description: string; content: string; envContent?: string }): Promise<Template> {
 		const response = await this.api.post('/templates', template);
-		return response.data.template;
+		return response.data?.data;
 	}
 
 	async update(
@@ -48,13 +49,13 @@ export default class TemplateAPIService extends BaseAPIService {
 	}
 
 	async download(id: string): Promise<Template> {
-		const response = await this.api.post(`/templates/${id}/download`);
-		return response.data.template;
+		const response = await this.api.post(`/templates/${encodeURIComponent(id)}/download`);
+		return response.data?.data;
 	}
 
 	async getEnvTemplate(): Promise<string> {
 		const response = await this.api.get('/templates/env/default');
-		return response.data.content;
+		return response.data?.data?.content ?? response.data?.content;
 	}
 
 	async saveEnvTemplate(content: string): Promise<void> {
@@ -63,16 +64,17 @@ export default class TemplateAPIService extends BaseAPIService {
 
 	async getRegistries(): Promise<TemplateRegistry[]> {
 		const response = await this.api.get('/templates/registries');
-		return response.data.registries;
+		const out = response.data?.data ?? response.data?.registries ?? response.data;
+		return Array.isArray(out) ? out : [];
 	}
 
 	async addRegistry(registry: { name: string; url: string; description?: string; enabled: boolean }): Promise<TemplateRegistry> {
 		const response = await this.api.post('/templates/registries', registry);
-		return response.data;
+		return response.data?.data ?? response.data;
 	}
 
 	async updateRegistry(
-		id: number,
+		id: string,
 		registry: {
 			name: string;
 			url: string;
@@ -83,12 +85,16 @@ export default class TemplateAPIService extends BaseAPIService {
 		await this.api.put(`/templates/registries/${id}`, registry);
 	}
 
-	async fetchRegistry(url: string): Promise<any> {
+	async fetchRegistry(url: string): Promise<RemoteRegistry> {
 		const response = await this.api.get(`/templates/fetch?url=${encodeURIComponent(url)}`);
-		return response.data;
+		const manifest = response.data?.data ?? response.data;
+		if (!manifest || typeof manifest !== 'object' || !manifest.name || !Array.isArray(manifest.templates)) {
+			throw new Error('Invalid registry format: missing required fields (name, templates)');
+		}
+		return manifest;
 	}
 
-	async deleteRegistry(id: number): Promise<void> {
+	async deleteRegistry(id: string): Promise<void> {
 		await this.api.delete(`/templates/registries/${id}`);
 	}
 
@@ -147,7 +153,7 @@ export default class TemplateAPIService extends BaseAPIService {
 
 	async getTemplateByRegistry(registryId: string): Promise<Template[]> {
 		const templates = await this.loadAll();
-		return templates.filter((template) => template.registryId?.toString() === registryId);
+		return templates.filter((template) => template.registryId === registryId);
 	}
 
 	async importFromUrl(url: string): Promise<Template> {
