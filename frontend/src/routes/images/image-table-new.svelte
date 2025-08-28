@@ -231,7 +231,6 @@
 		<Card.Content class="py-5">
 			{#if filteredImages.data.length > 0}
 				<ArcaneTable
-					data={filteredImages.data}
 					items={filteredImages}
 					bind:requestOptions
 					onRefresh={async (options) => (images = await environmentAPI.getImages(options))}

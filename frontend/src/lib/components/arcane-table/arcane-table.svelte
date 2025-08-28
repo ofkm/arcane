@@ -3,7 +3,6 @@
 		type Column,
 		type ColumnDef,
 		type ColumnFiltersState,
-		type PaginationState,
 		type Row,
 		type RowSelectionState,
 		type SortingState,
@@ -12,9 +11,7 @@
 		getCoreRowModel,
 		getFacetedRowModel,
 		getFacetedUniqueValues,
-		getFilteredRowModel,
-		getPaginationRowModel,
-		getSortedRowModel
+		getFilteredRowModel
 	} from '@tanstack/table-core';
 	import DataTableToolbar from './arcane-table-toolbar.svelte';
 	import { createSvelteTable } from '$lib/components/ui/data-table/data-table.svelte.js';
@@ -40,7 +37,6 @@
 	import type { ColumnSpec } from './arcane-table.types';
 
 	let {
-		data,
 		items,
 		requestOptions = $bindable(),
 		withoutSearch = $bindable(),
@@ -51,7 +47,6 @@
 		rowActions,
 		searchColumnId
 	}: {
-		data: TData[];
 		items: Paginated<TData>;
 		requestOptions: SearchPaginationSortRequest;
 		withoutSearch?: boolean;
@@ -67,8 +62,34 @@
 	let columnVisibility = $state<VisibilityState>({});
 	let columnFilters = $state<ColumnFiltersState>([]);
 	let sorting = $state<SortingState>([]);
-	let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: 10 });
 	let globalFilter = $state<string>('');
+
+	const currentPage = $derived(items.pagination.currentPage ?? requestOptions?.pagination?.page ?? 1);
+	const totalPages = $derived(items.pagination.totalPages ?? 1);
+	const totalItems = $derived(items.pagination.totalItems ?? 0);
+	const pageSize = $derived(requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 20);
+	const canPrev = $derived(currentPage > 1);
+	const canNext = $derived(currentPage < totalPages);
+
+	function updatePagination(patch: Partial<{ page: number; limit: number }>) {
+		const prev = requestOptions?.pagination ?? {
+			page: items?.pagination?.currentPage ?? 1,
+			limit: items?.pagination?.itemsPerPage ?? 10
+		};
+		const next = { ...prev, ...patch };
+		requestOptions = { ...requestOptions, pagination: next };
+		onRefresh(requestOptions);
+	}
+
+	function setPage(page: number) {
+		if (page < 1) page = 1;
+		if (totalPages > 0 && page > totalPages) page = totalPages;
+		updatePagination({ page });
+	}
+
+	function setPageSize(limit: number) {
+		updatePagination({ limit, page: 1 });
+	}
 
 	function buildColumns(specs: ColumnSpec<TData>[]): ColumnDef<TData>[] {
 		const cols: ColumnDef<TData>[] = [];
@@ -136,7 +157,7 @@
 
 	const table = createSvelteTable({
 		get data() {
-			return data;
+			return items.data ?? [];
 		},
 		state: {
 			get sorting() {
@@ -151,9 +172,6 @@
 			get columnFilters() {
 				return columnFilters;
 			},
-			get pagination() {
-				return pagination;
-			},
 			get globalFilter() {
 				return globalFilter;
 			}
@@ -161,49 +179,65 @@
 		columns: columnsDef,
 		enableRowSelection: !selectionDisabled,
 		onRowSelectionChange: (updater) => {
-			if (typeof updater === 'function') {
-				rowSelection = updater(rowSelection);
-			} else {
-				rowSelection = updater;
-			}
+			rowSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
 		},
 		onSortingChange: (updater) => {
-			if (typeof updater === 'function') {
-				sorting = updater(sorting);
+			const next = typeof updater === 'function' ? updater(sorting) : updater;
+			sorting = next;
+			const first = next[0];
+			if (first) {
+				requestOptions = {
+					...requestOptions,
+					sort: { column: String(first.id), direction: first.desc ? 'desc' : 'asc' },
+					pagination: {
+						page: 1,
+						limit: requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 10
+					}
+				};
 			} else {
-				sorting = updater;
+				requestOptions = {
+					...requestOptions,
+					sort: undefined,
+					pagination: {
+						page: 1,
+						limit: requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 10
+					}
+				};
 			}
+			+onRefresh(requestOptions);
 		},
 		onColumnFiltersChange: (updater) => {
-			if (typeof updater === 'function') {
-				columnFilters = updater(columnFilters);
-			} else {
-				columnFilters = updater;
-			}
+			columnFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
 		},
 		onColumnVisibilityChange: (updater) => {
-			if (typeof updater === 'function') {
-				columnVisibility = updater(columnVisibility);
-			} else {
-				columnVisibility = updater;
-			}
-		},
-		onPaginationChange: (updater) => {
-			if (typeof updater === 'function') {
-				pagination = updater(pagination);
-			} else {
-				pagination = updater;
-			}
+			columnVisibility = typeof updater === 'function' ? updater(columnVisibility) : updater;
 		},
 		onGlobalFilterChange: (value) => {
 			globalFilter = (value ?? '') as string;
+			const limit = requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 10;
+			requestOptions = {
+				...requestOptions,
+				search: globalFilter,
+				pagination: { page: 1, limit }
+			};
+			onRefresh(requestOptions);
 		},
 		getCoreRowModel: getCoreRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		getSortedRowModel: getSortedRowModel(),
 		getFacetedRowModel: getFacetedRowModel(),
 		getFacetedUniqueValues: getFacetedUniqueValues()
+	});
+
+	$effect(() => {
+		const s = requestOptions?.sort;
+		if (!s) {
+			if (sorting.length) sorting = [];
+			return;
+		}
+		const desc = s.direction === 'desc';
+		if (!sorting[0] || sorting[0].id !== s.column || sorting[0].desc !== desc) {
+			sorting = [{ id: s.column, desc }];
+		}
 	});
 </script>
 
@@ -218,10 +252,7 @@
 {#snippet Pagination({ table }: { table: TableType<TData> })}
 	<div class="flex items-center justify-between px-2">
 		<div class="text-muted-foreground flex-1 text-sm">
-			Showing {table.getFilteredRowModel().rows.length} of
-			{items.pagination.totalItems} item(s).
-			<!-- {table.getFilteredSelectedRowModel().rows.length} of
-			{table.getFilteredRowModel().rows.length} row(s) selected. -->
+			Showing {table.getFilteredRowModel().rows.length} of {totalItems} item(s).
 		</div>
 		<div class="flex items-center space-x-6 lg:space-x-8">
 			<div class="flex items-center space-x-2">
@@ -229,51 +260,38 @@
 				<Select.Root
 					allowDeselect={false}
 					type="single"
-					value={`${table.getState().pagination.pageSize}`}
-					onValueChange={(value) => {
-						table.setPageSize(Number(value));
-					}}
+					value={`${pageSize}`}
+					onValueChange={(value) => setPageSize(Number(value))}
 				>
 					<Select.Trigger class="h-8 w-[70px]">
-						{String(table.getState().pagination.pageSize)}
+						{String(pageSize)}
 					</Select.Trigger>
 					<Select.Content side="top">
-						{#each [10, 20, 30, 40, 50] as pageSize (pageSize)}
-							<Select.Item value={`${pageSize}`}>
-								{pageSize}
+						{#each [10, 20, 30, 40, 50] as size (size)}
+							<Select.Item value={`${size}`}>
+								{size}
 							</Select.Item>
 						{/each}
 					</Select.Content>
 				</Select.Root>
 			</div>
 			<div class="flex w-[100px] items-center justify-center text-sm font-medium">
-				Page {table.getState().pagination.pageIndex + 1} of
-				{table.getPageCount()}
+				Page {currentPage} of {totalPages}
 			</div>
 			<div class="flex items-center space-x-2">
-				<Button
-					variant="outline"
-					class="hidden size-8 p-0 lg:flex"
-					onclick={() => table.setPageIndex(0)}
-					disabled={!table.getCanPreviousPage()}
-				>
+				<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(1)} disabled={!canPrev}>
 					<span class="sr-only">Go to first page</span>
 					<ChevronsLeftIcon />
 				</Button>
-				<Button variant="outline" class="size-8 p-0" onclick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+				<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage - 1)} disabled={!canPrev}>
 					<span class="sr-only">Go to previous page</span>
 					<ChevronLeftIcon />
 				</Button>
-				<Button variant="outline" class="size-8 p-0" onclick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+				<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage + 1)} disabled={!canNext}>
 					<span class="sr-only">Go to next page</span>
 					<ChevronRightIcon />
 				</Button>
-				<Button
-					variant="outline"
-					class="hidden size-8 p-0 lg:flex"
-					onclick={() => table.setPageIndex(table.getPageCount() - 1)}
-					disabled={!table.getCanNextPage()}
-				>
+				<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(totalPages)} disabled={!canNext}>
 					<span class="sr-only">Go to last page</span>
 					<ChevronsRightIcon />
 				</Button>
