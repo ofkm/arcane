@@ -88,7 +88,7 @@ func InitializeApp() (*App, error) {
 	}
 
 	slog.InfoContext(appCtx, "Performing initial Docker image synchronization with the database")
-	if _, err := appServices.Image.ListImages(appCtx); err != nil {
+	if err := appServices.Image.SyncDockerImages(appCtx); err != nil {
 		slog.WarnContext(appCtx, "Initial Docker image synchronization failed, image data may be stale",
 			slog.String("error", err.Error()))
 	} else {

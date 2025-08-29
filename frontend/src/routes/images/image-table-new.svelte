@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Download, HardDrive, Trash2, Loader2, Ellipsis, ScanSearch } from '@lucide/svelte';
+	import { Download, Trash2, Ellipsis, ScanSearch, LoaderCircle } from '@lucide/svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -28,35 +28,12 @@
 		requestOptions: SearchPaginationSortRequest;
 	} = $props();
 
-	let imageFilters = $state({
-		showUsed: true,
-		showUnused: true,
-		showWithUpdates: true,
-		showWithoutUpdates: true
-	});
-
 	let isLoading = $state({
 		removing: false,
 		checking: false
 	});
 
 	let isPullingInline = $state<Record<string, boolean>>({});
-
-	const filteredImages: Paginated<ImageSummaryDto> = $derived({
-		...images,
-		data: images.data.filter((img) => {
-			const showBecauseUsed = imageFilters.showUsed && img.inUse;
-			const showBecauseUnused = imageFilters.showUnused && !img.inUse;
-			const usageMatch = showBecauseUsed || showBecauseUnused;
-
-			const updateStatus = getImageUpdateStatus(img.updateInfo);
-			const showBecauseHasUpdates = imageFilters.showWithUpdates && updateStatus === 'has-updates';
-			const showBecauseNoUpdates = imageFilters.showWithoutUpdates && updateStatus === 'no-updates';
-			const updateMatch = showBecauseHasUpdates || showBecauseNoUpdates;
-
-			return usageMatch && updateMatch;
-		})
-	});
 
 	function getImageUpdateStatus(updateInfo: any): 'has-updates' | 'no-updates' {
 		if (!updateInfo) return 'no-updates';
@@ -146,8 +123,17 @@
 				return selected.includes(value);
 			}
 		},
-
-		{ id: 'updates', title: 'Updates', cell: UpdatesCell }
+		{
+			id: 'updates',
+			title: 'Updates',
+			cell: UpdatesCell,
+			filterFn: (row, _columnId, filterValue) => {
+				const selected = new Set<string>(Array.isArray(filterValue) ? (filterValue as string[]) : []);
+				if (selected.size === 0) return true;
+				const status = getImageUpdateStatus((row.original as ImageSummaryDto).updateInfo);
+				return selected.has(status);
+			}
+		}
 	] satisfies ColumnSpec<ImageSummaryDto>[];
 </script>
 
@@ -205,7 +191,7 @@
 					disabled={isPullingInline[item.id] || !item.repoTags?.[0]}
 				>
 					{#if isPullingInline[item.id]}
-						<Loader2 class="size-4 animate-spin" />
+						<LoaderCircle class="size-4 animate-spin" />
 						Pulling...
 					{:else}
 						<Download class="size-4" />
@@ -215,7 +201,7 @@
 				<DropdownMenu.Separator />
 				<DropdownMenu.Item variant="destructive" onclick={() => deleteImage(item.id)} disabled={isLoading.removing}>
 					{#if isLoading.removing}
-						<Loader2 class="size-4 animate-spin" />
+						<LoaderCircle class="size-4 animate-spin" />
 					{:else}
 						<Trash2 class="size-4" />
 					{/if}
@@ -229,23 +215,13 @@
 <div>
 	<Card.Root>
 		<Card.Content class="py-5">
-			{#if filteredImages.data.length > 0}
-				<ArcaneTable
-					items={filteredImages}
-					bind:requestOptions
-					onRefresh={async (options) => (images = await environmentAPI.getImages(options))}
-					{columns}
-					rowActions={RowActions}
-				/>
-			{:else}
-				<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
-					<HardDrive class="text-muted-foreground mb-4 size-12 opacity-40" />
-					<p class="text-lg font-medium">No images match current filters</p>
-					<p class="text-muted-foreground mt-1 max-w-md text-sm">
-						Adjust your filters to see images, or pull new images using the "Pull Image" button above
-					</p>
-				</div>
-			{/if}
+			<ArcaneTable
+				items={images}
+				bind:requestOptions
+				onRefresh={async (options) => (images = await environmentAPI.getImages(options))}
+				{columns}
+				rowActions={RowActions}
+			/>
 		</Card.Content>
 	</Card.Root>
 </div>

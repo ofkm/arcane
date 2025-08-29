@@ -5,12 +5,15 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { imageUpdateFilters, usageFilters } from './data.js';
+	import { debounced } from '$lib/utils';
 
 	let { table }: { table: Table<TData> } = $props();
 
-	const isFiltered = $derived(table.getState().columnFilters.length > 0);
+	const isFiltered = $derived(table.getState().columnFilters.length > 0 || !!table.getState().globalFilter);
 	const usageColumn = $derived(table.getColumn('inUse'));
 	const updatesColumn = $derived(table.getColumn('updates'));
+
+	const debouncedSetGlobal = debounced((v: string) => table.setGlobalFilter(v), 300);
 </script>
 
 <div class="flex items-center justify-between">
@@ -18,8 +21,11 @@
 		<Input
 			placeholder="Search..."
 			value={(table.getState().globalFilter as string) ?? ''}
-			oninput={(e) => table.setGlobalFilter(e.currentTarget.value)}
+			oninput={(e) => debouncedSetGlobal(e.currentTarget.value)}
 			onchange={(e) => table.setGlobalFilter(e.currentTarget.value)}
+			onkeydown={(e) => {
+				if (e.key === 'Enter') table.setGlobalFilter((e.currentTarget as HTMLInputElement).value);
+			}}
 			class="h-8 w-[150px] lg:w-[250px]"
 		/>
 

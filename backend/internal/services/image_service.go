@@ -42,23 +42,22 @@ func NewImageService(db *database.DB, dockerService *DockerClientService, regist
 	}
 }
 
-func (s *ImageService) ListImages(ctx context.Context) ([]image.Summary, error) {
+func (s *ImageService) SyncDockerImages(ctx context.Context) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
+		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
 	images, err := dockerClient.ImageList(ctx, image.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list Docker images: %w", err)
+		return fmt.Errorf("failed to list Docker images: %w", err)
 	}
 
-	if syncErr := s.syncImagesToDatabase(ctx, images, dockerClient); syncErr != nil {
-		fmt.Printf("Warning: error during image synchronization in ListImages: %v\n", syncErr)
+	if err := s.syncImagesToDatabase(ctx, images, dockerClient); err != nil {
+		return fmt.Errorf("error during image synchronization: %w", err)
 	}
-
-	return images, nil
+	return nil
 }
 
 func (s *ImageService) GetImageByID(ctx context.Context, id string) (*image.InspectResponse, error) {
@@ -83,7 +82,6 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, u
 	}
 	defer dockerClient.Close()
 
-	// Get image details for logging before deletion
 	imageDetails, inspectErr := dockerClient.ImageInspect(ctx, id)
 	var imageName string
 	if inspectErr == nil && len(imageDetails.RepoTags) > 0 {
@@ -104,7 +102,6 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, u
 
 	s.db.WithContext(ctx).Delete(&models.Image{}, "id = ?", id)
 
-	// Log image deletion event
 	metadata := models.JSON{
 		"action":  "delete",
 		"imageId": id,
@@ -126,11 +123,10 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 
 	fmt.Printf("Attempting to pull image: %s\n", imageName)
 
-	// Get authentication for the registry
 	pullOptions, err := s.getPullOptionsWithAuth(ctx, imageName)
 	if err != nil {
 		fmt.Printf("Warning: Failed to get registry authentication for %s: %v\n", imageName, err)
-		pullOptions = image.PullOptions{} // Fall back to no auth
+		pullOptions = image.PullOptions{}
 	}
 
 	reader, err := dockerClient.ImagePull(ctx, imageName, pullOptions)
@@ -188,7 +184,6 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	return nil
 }
 
-// getPullOptionsWithAuth gets pull options with appropriate registry authentication
 func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef string) (image.PullOptions, error) {
 	pullOptions := image.PullOptions{}
 
@@ -229,7 +224,6 @@ func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef stri
 	return pullOptions, nil
 }
 
-// extractRegistryHost extracts the registry hostname from an image reference
 func (s *ImageService) extractRegistryHost(imageRef string) string {
 	parts := strings.Split(imageRef, "@")
 	if len(parts) > 1 {
@@ -280,7 +274,6 @@ func (s *ImageService) normalizeRegistryURL(url string) string {
 		return "https://index.docker.io/v1/"
 	}
 
-	// For other registries, return raw hostname without protocol
 	result := strings.TrimPrefix(url, "https://")
 	result = strings.TrimPrefix(result, "http://")
 	result = strings.TrimSuffix(result, "/")
@@ -305,7 +298,6 @@ func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.P
 		return nil, fmt.Errorf("failed to prune images: %w", err)
 	}
 
-	// Log image prune event using system user since this is typically a system operation
 	metadata := models.JSON{
 		"action":         "prune",
 		"dangling":       dangling,
@@ -387,7 +379,6 @@ func (s *ImageService) buildImageModel(di image.Summary, isInUse bool) models.Im
 		Created:     time.Unix(di.Created, 0),
 		InUse:       isInUse,
 	}
-	// Persist the Docker image ID as our primary key so upserts and cleanup work correctly.
 	imageModel.ID = di.ID
 
 	if di.Labels != nil {
@@ -403,7 +394,6 @@ func (s *ImageService) buildImageModel(di image.Summary, isInUse bool) models.Im
 }
 
 func (s *ImageService) setRepoAndTag(imageModel *models.Image, repoTags []string) {
-	// Prefer the first meaningful tag (skip empty and <none>)
 	var repoTag string
 	for _, t := range repoTags {
 		if t != "" && !strings.Contains(t, "<none>") {
@@ -459,16 +449,14 @@ func (s *ImageService) deleteAllImages(ctx context.Context) error {
 }
 
 func (s *ImageService) ListImagesWithUpdates(ctx context.Context) ([]*models.Image, error) {
-	_, err := s.ListImages(ctx)
+	err := s.SyncDockerImages(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list and sync Docker images: %w", err)
 	}
-
 	var images []*models.Image
 	if err := s.db.WithContext(ctx).Preload("UpdateRecord").Find(&images).Error; err != nil {
 		return nil, fmt.Errorf("failed to get images with update data from DB: %w", err)
 	}
-
 	return images, nil
 }
 
@@ -490,42 +478,39 @@ func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID 
 }
 
 func (s *ImageService) ListImagesWithUpdatesPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]dto.ImageSummaryDto, utils.PaginationResponse, error) {
-	_, err := s.ListImages(ctx)
+	err := s.SyncDockerImages(ctx)
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list and sync Docker images: %w", err)
 	}
-
 	var images []models.Image
 	query := s.db.WithContext(ctx).Model(&models.Image{}).Preload("UpdateRecord")
-
-	if req.Sort.Column != "" {
-		dir := utils.NormalizeSortDirection(req.Sort.Direction)
-		col := utils.CamelCaseToSnakeCase(req.Sort.Column)
-		query = query.Order(col + " " + dir)
+	if term := strings.TrimSpace(req.Search); term != "" {
+		like := "%" + strings.ToLower(term) + "%"
+		query = query.Where(`
+			LOWER(repo) LIKE ? OR
+			LOWER(tag) LIKE ? OR
+			LOWER(id) LIKE ? OR
+			LOWER(repo || ':' || tag) LIKE ?
+		`, like, like, like, like)
 	}
-
 	pagination, err := utils.PaginateAndSort(req, query, &images)
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate images: %w", err)
 	}
-
 	result := make([]dto.ImageSummaryDto, 0, len(images))
 	for i := range images {
 		result = append(result, dto.NewImageSummaryDto(&images[i]))
 	}
-
 	return result, pagination, nil
 }
 
 func (s *ImageService) GetTotalImageSize(ctx context.Context) (int64, error) {
-	images, err := s.ListImages(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to list images: %w", err)
+	if err := s.SyncDockerImages(ctx); err != nil {
+		return 0, fmt.Errorf("failed to sync images: %w", err)
 	}
-
 	var total int64
-	for _, img := range images {
-		total += img.Size
+	if err := s.db.WithContext(ctx).Model(&models.Image{}).Select("COALESCE(SUM(size), 0)").Scan(&total).Error; err != nil {
+		return 0, fmt.Errorf("failed to sum image sizes: %w", err)
 	}
 	return total, nil
 }

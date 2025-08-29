@@ -44,8 +44,7 @@
 		selectionDisabled = false,
 		onRefresh,
 		columns,
-		rowActions,
-		searchColumnId
+		rowActions
 	}: {
 		items: Paginated<TData>;
 		requestOptions: SearchPaginationSortRequest;
@@ -55,7 +54,6 @@
 		onRefresh: (requestOptions: SearchPaginationSortRequest) => Promise<Paginated<TData>>;
 		columns: ColumnSpec<TData>[];
 		rowActions?: Snippet<[{ row: Row<TData>; item: TData }]>;
-		searchColumnId?: string;
 	} = $props();
 
 	let rowSelection = $state<RowSelectionState>({});
@@ -63,6 +61,8 @@
 	let columnFilters = $state<ColumnFiltersState>([]);
 	let sorting = $state<SortingState>([]);
 	let globalFilter = $state<string>('');
+
+	const passAllGlobal: (row: unknown, columnId: string, filterValue: unknown) => boolean = () => true;
 
 	const currentPage = $derived(items.pagination.currentPage ?? requestOptions?.pagination?.page ?? 1);
 	const totalPages = $derived(items.pagination.totalPages ?? 1);
@@ -177,6 +177,7 @@
 			}
 		},
 		columns: columnsDef,
+		globalFilterFn: passAllGlobal,
 		enableRowSelection: !selectionDisabled,
 		onRowSelectionChange: (updater) => {
 			rowSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
