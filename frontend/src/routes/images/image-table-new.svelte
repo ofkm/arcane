@@ -35,12 +35,6 @@
 
 	let isPullingInline = $state<Record<string, boolean>>({});
 
-	function getImageUpdateStatus(updateInfo: any): 'has-updates' | 'no-updates' {
-		if (!updateInfo) return 'no-updates';
-		if (updateInfo.error) return 'no-updates';
-		return updateInfo.hasUpdate === true ? 'has-updates' : 'no-updates';
-	}
-
 	async function deleteImage(id: string) {
 		openConfirmDialog({
 			title: 'Remove Image',
@@ -118,20 +112,21 @@
 			filterFn: (row, columnId, filterValue) => {
 				const selected = Array.isArray(filterValue) ? (filterValue as boolean[]) : [];
 				if (selected.length === 0) return true;
-
 				const value = Boolean(row.getValue<boolean>(columnId));
 				return selected.includes(value);
 			}
 		},
 		{
 			id: 'updates',
+			accessorFn: (row) => row.updateInfo?.hasUpdate ?? false,
 			title: 'Updates',
 			cell: UpdatesCell,
-			filterFn: (row, _columnId, filterValue) => {
-				const selected = new Set<string>(Array.isArray(filterValue) ? (filterValue as string[]) : []);
-				if (selected.size === 0) return true;
-				const status = getImageUpdateStatus((row.original as ImageSummaryDto).updateInfo);
-				return selected.has(status);
+			filterFn: (row, columnId, filterValue) => {
+				const selected = Array.isArray(filterValue) ? (filterValue as boolean[]) : [];
+				if (selected.length === 0) return true;
+
+				const hasUpdate = row.getValue(columnId) as boolean;
+				return selected.includes(hasUpdate);
 			}
 		}
 	] satisfies ColumnSpec<ImageSummaryDto>[];

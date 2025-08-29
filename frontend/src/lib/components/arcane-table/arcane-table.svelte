@@ -117,11 +117,13 @@
 
 		specs.forEach((spec, i) => {
 			const accessorKey = spec.accessorKey;
+			const accessorFn = spec.accessorFn;
 			const id = spec.id ?? (accessorKey as string) ?? `col_${i}`;
 
 			cols.push({
 				id,
 				...(accessorKey ? { accessorKey } : {}),
+				...(accessorFn ? { accessorFn } : {}),
 				header: ({ column }) => {
 					if (spec.header) return renderSnippet(spec.header, { column, title: spec.title, class: spec.class });
 					if (spec.sortable) return renderSnippet(ColumnHeader, { column, title: spec.title, class: spec.class });
