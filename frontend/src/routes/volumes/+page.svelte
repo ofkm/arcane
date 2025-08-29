@@ -5,7 +5,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import CreateVolumeSheet from '$lib/components/sheets/create-volume-sheet.svelte';
 	import type { VolumeCreateOptions } from 'dockerode';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import VolumeTable from './volume-table.svelte';
@@ -62,15 +62,15 @@
 		<div class="flex items-center gap-2">
 			<ArcaneButton
 				action="create"
-				label="Create Volume"
-				onClick={() => (isCreateDialogOpen = true)}
+				customLabel="Create Volume"
+				onclick={() => (isCreateDialogOpen = true)}
 				loading={isLoading.creating}
 				disabled={isLoading.creating}
 			/>
 			<ArcaneButton
 				action="restart"
-				onClick={refreshVolumes}
-				label="Refresh"
+				onclick={refreshVolumes}
+				customLabel="Refresh"
 				loading={isLoading.refresh}
 				disabled={isLoading.refresh}
 			/>
@@ -103,9 +103,5 @@
 
 	<VolumeTable bind:volumes bind:selectedIds bind:requestOptions />
 
-	<CreateVolumeSheet
-		bind:open={isCreateDialogOpen}
-		isLoading={isLoading.creating}
-		onSubmit={handleCreateVolumeSubmit}
-	/>
+	<CreateVolumeSheet bind:open={isCreateDialogOpen} isLoading={isLoading.creating} onSubmit={handleCreateVolumeSubmit} />
 </div>

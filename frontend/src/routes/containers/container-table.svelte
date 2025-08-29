@@ -1,16 +1,7 @@
 <script lang="ts">
 	import ArcaneTable from '$lib/components/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import {
-		ScanSearch,
-		Play,
-		RotateCcw,
-		StopCircle,
-		Trash2,
-		Loader2,
-		Ellipsis,
-		Box
-	} from '@lucide/svelte';
+	import { ScanSearch, Play, RotateCcw, StopCircle, Trash2, Loader2, Ellipsis, Box } from '@lucide/svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -18,7 +9,7 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import * as Table from '$lib/components/ui/table';
@@ -125,8 +116,8 @@
 				<div class="flex items-center gap-2">
 					<ArcaneButton
 						action="inspect"
-						label="Update Containers"
-						onClick={onCheckForUpdates}
+						customLabel="Update Containers"
+						onclick={onCheckForUpdates}
 						loading={isLoading.updating}
 						loadingLabel="Updating..."
 						disabled={isLoading.updating}
@@ -170,11 +161,7 @@
 					</Table.Cell>
 					<Table.Cell>
 						<StatusBadge
-							variant={item.state === 'running'
-								? 'green'
-								: item.state === 'exited'
-									? 'red'
-									: 'amber'}
+							variant={item.state === 'running' ? 'green' : item.state === 'exited' ? 'red' : 'amber'}
 							text={capitalizeFirstLetter(item.state)}
 						/>
 					</Table.Cell>
@@ -198,10 +185,7 @@
 							</DropdownMenu.Trigger>
 							<DropdownMenu.Content align="end">
 								<DropdownMenu.Group>
-									<DropdownMenu.Item
-										onclick={() => goto(`/containers/${item.id}`)}
-										disabled={isAnyLoading}
-									>
+									<DropdownMenu.Item onclick={() => goto(`/containers/${item.id}`)} disabled={isAnyLoading}>
 										<ScanSearch class="size-4" />
 										Inspect
 									</DropdownMenu.Item>
@@ -270,8 +254,6 @@
 	<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
 		<Box class="text-muted-foreground mb-4 size-12 opacity-40" />
 		<p class="text-lg font-medium">No containers found</p>
-		<p class="text-muted-foreground mt-1 text-sm">
-			Create a new container using the "Create Container" button above
-		</p>
+		<p class="text-muted-foreground mt-1 text-sm">Create a new container using the "Create Container" button above</p>
 	</div>
 {/if}

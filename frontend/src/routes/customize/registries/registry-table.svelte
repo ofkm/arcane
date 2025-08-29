@@ -10,7 +10,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { containerRegistryAPI } from '$lib/services/api';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 
@@ -53,9 +53,7 @@
 		};
 	});
 
-	async function handleRefresh(
-		options: SearchPaginationSortRequest
-	): Promise<Paginated<RegistryWithId>> {
+	async function handleRefresh(options: SearchPaginationSortRequest): Promise<Paginated<RegistryWithId>> {
 		const result = await onRefresh(options);
 		const transformed: RegistryWithId[] = result.data.map((registry) => ({
 			...registry,
@@ -91,9 +89,7 @@
 	}
 
 	async function handleDeleteSelectedRegistries() {
-		const selectedRegistryList = registries.data.filter((registry) =>
-			selectedIds.includes(registry.id)
-		);
+		const selectedRegistryList = registries.data.filter((registry) => selectedIds.includes(registry.id));
 
 		openConfirmDialog({
 			title: 'Remove Selected Registries',
@@ -169,12 +165,12 @@
 					{#if selectedIds.length > 0}
 						<ArcaneButton
 							action="remove"
-							onClick={handleDeleteSelectedRegistries}
+							onclick={handleDeleteSelectedRegistries}
 							loading={isLoading.remove}
 							disabled={isLoading.remove}
 						/>
 					{/if}
-					<ArcaneButton action="create" label="Add Registry" onClick={onCreateRegistry} />
+					<ArcaneButton action="create" customLabel="Add Registry" onclick={onCreateRegistry} />
 				</div>
 			</div>
 		</Card.Header>
@@ -240,10 +236,7 @@
 							</DropdownMenu.Trigger>
 							<DropdownMenu.Content align="end">
 								<DropdownMenu.Group>
-									<DropdownMenu.Item
-										onclick={() => handleTestRegistry(item.id, item.url)}
-										disabled={isAnyLoading}
-									>
+									<DropdownMenu.Item onclick={() => handleTestRegistry(item.id, item.url)} disabled={isAnyLoading}>
 										<TestTube class="size-4" />
 										Test Connection
 									</DropdownMenu.Item>

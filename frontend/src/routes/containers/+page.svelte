@@ -7,7 +7,7 @@
 	import StatCard from '$lib/components/stat-card.svelte';
 	import { autoUpdateAPI, environmentAPI } from '$lib/services/api';
 	import ContainerTable from './container-table.svelte';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 
 	let { data } = $props();
 
@@ -60,15 +60,15 @@
 		<div class="flex items-center gap-2">
 			<ArcaneButton
 				action="create"
-				label="Create Container"
-				onClick={() => (isCreateDialogOpen = true)}
+				customLabel="Create Container"
+				onclick={() => (isCreateDialogOpen = true)}
 				loading={isLoading.create}
 				disabled={isLoading.create}
 			/>
 			<ArcaneButton
 				action="restart"
-				onClick={refreshContainers}
-				label="Refresh"
+				onclick={refreshContainers}
+				customLabel="Refresh"
 				loading={isLoading.refreshing}
 				disabled={isLoading.refreshing}
 			/>
@@ -99,12 +99,7 @@
 		/>
 	</div>
 
-	<ContainerTable
-		bind:containers
-		bind:selectedIds
-		bind:requestOptions
-		onCheckForUpdates={handleCheckForUpdates}
-	/>
+	<ContainerTable bind:containers bind:selectedIds bind:requestOptions onCheckForUpdates={handleCheckForUpdates} />
 
 	<CreateContainerSheet
 		bind:open={isCreateDialogOpen}

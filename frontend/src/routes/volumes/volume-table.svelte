@@ -11,7 +11,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { formatFriendlyDate } from '$lib/utils/date.utils';
 	import { truncateString } from '$lib/utils/string.utils';
 	import { environmentAPI } from '$lib/services/api';
@@ -80,9 +80,7 @@
 					isLoading.removing = false;
 
 					if (successCount > 0) {
-						toast.success(
-							`Successfully removed ${successCount} volume${successCount > 1 ? 's' : ''}`
-						);
+						toast.success(`Successfully removed ${successCount} volume${successCount > 1 ? 's' : ''}`);
 						volumes = await environmentAPI.getVolumes(requestOptions);
 					}
 
@@ -150,10 +148,10 @@
 					{#if selectedIds.length > 0}
 						<ArcaneButton
 							action="remove"
-							onClick={handleDeleteSelected}
+							onclick={handleDeleteSelected}
 							loading={isLoading.removing}
 							disabled={isLoading.removing}
-							label="Remove Selected"
+							customLabel="Remove Selected"
 						/>
 					{/if}
 				</div>
@@ -225,9 +223,7 @@
 				<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
 					<HardDrive class="text-muted-foreground mb-4 size-12 opacity-40" />
 					<p class="text-lg font-medium">No volumes match current filters</p>
-					<p class="text-muted-foreground mt-1 max-w-md text-sm">
-						Adjust your filters to see volumes
-					</p>
+					<p class="text-muted-foreground mt-1 max-w-md text-sm">Adjust your filters to see volumes</p>
 				</div>
 			{/if}
 		</Card.Content>
@@ -236,8 +232,6 @@
 	<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
 		<HardDrive class="text-muted-foreground mb-4 size-12 opacity-40" />
 		<p class="text-lg font-medium">No volumes found</p>
-		<p class="text-muted-foreground mt-1 max-w-md text-sm">
-			Create a new volume using the "Create Volume" button above
-		</p>
+		<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new volume using the "Create Volume" button above</p>
 	</div>
 {/if}

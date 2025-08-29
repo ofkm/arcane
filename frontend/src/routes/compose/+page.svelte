@@ -5,7 +5,7 @@
 	import { toast } from 'svelte-sonner';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { autoUpdateAPI, environmentAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import ProjectsTable from './compose-table.svelte';
@@ -49,18 +49,16 @@
 			<p class="text-muted-foreground mt-1 text-sm">View and Manage Compose Projects</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<!-- <ArcaneButton
+			<!-- Updated example if you re-enable Refresh:
+			<ArcaneButton
 				action="restart"
-				onClick={refreshCompose}
-				label="Refresh"
+				customLabel="Refresh"
+				onclick={refreshCompose}
 				loading={isLoading.refreshing}
 				disabled={isLoading.refreshing}
-			/> -->
-			<ArcaneButton
-				action="create"
-				customLabel="Create Project"
-				onClick={() => goto(`/compose/new`)}
 			/>
+			-->
+			<ArcaneButton action="create" customLabel="Create Project" onclick={() => goto(`/compose/new`)} />
 		</div>
 	</div>
 

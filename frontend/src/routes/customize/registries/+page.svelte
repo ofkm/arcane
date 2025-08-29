@@ -3,14 +3,11 @@
 	import { Key } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import type { ContainerRegistry } from '$lib/models/container-registry';
-	import type {
-		ContainerRegistryCreateDto,
-		ContainerRegistryUpdateDto
-	} from '$lib/dto/container-registry-dto';
+	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/dto/container-registry-dto';
 	import { containerRegistryAPI } from '$lib/services/api';
 	import ContainerRegistryFormSheet from '$lib/components/sheets/container-registry-sheet.svelte';
 	import RegistryTable from './registry-table.svelte';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import type { PageData } from './$types';
 
@@ -54,15 +51,8 @@
 		}
 	});
 
-	async function onRefresh(
-		options: SearchPaginationSortRequest
-	): Promise<Paginated<ContainerRegistry>> {
-		const response = await containerRegistryAPI.getRegistries(
-			options.pagination,
-			options.sort,
-			options.search,
-			options.filters
-		);
+	async function onRefresh(options: SearchPaginationSortRequest): Promise<Paginated<ContainerRegistry>> {
+		const response = await containerRegistryAPI.getRegistries(options.pagination, options.sort, options.search, options.filters);
 
 		if (Array.isArray(response)) {
 			registries = response;
@@ -124,10 +114,7 @@
 
 		try {
 			if (isEditMode && registryToEdit?.id) {
-				await containerRegistryAPI.updateRegistry(
-					registryToEdit.id,
-					registry as ContainerRegistryUpdateDto
-				);
+				await containerRegistryAPI.updateRegistry(registryToEdit.id, registry as ContainerRegistryUpdateDto);
 				toast.success('Registry updated successfully');
 			} else {
 				await containerRegistryAPI.createRegistry(registry as ContainerRegistryCreateDto);
@@ -165,12 +152,12 @@
 		<div class="flex items-center gap-2">
 			<ArcaneButton
 				action="restart"
-				onClick={refreshRegistries}
-				label="Refresh"
+				onclick={refreshRegistries}
+				customLabel="Refresh"
 				loading={isLoading.refresh}
 				disabled={isLoading.refresh}
 			/>
-			<ArcaneButton action="create" onClick={openCreateRegistryDialog} label="Add Registry" />
+			<ArcaneButton action="create" onclick={openCreateRegistryDialog} customLabel="Add Registry" />
 		</div>
 	</div>
 
@@ -183,8 +170,8 @@
 				<div>
 					<Card.Title>Docker Registry Credentials</Card.Title>
 					<Card.Description>
-						Manage authentication credentials for private Docker registries like Docker Hub, GitHub
-						Container Registry, Google Container Registry, and custom registries
+						Manage authentication credentials for private Docker registries like Docker Hub, GitHub Container Registry, Google
+						Container Registry, and custom registries
 					</Card.Description>
 				</div>
 			</div>

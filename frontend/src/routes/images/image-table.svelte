@@ -12,7 +12,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import ImageUpdateItem from '$lib/components/image-update-item.svelte';
 	import { environmentAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
@@ -134,9 +134,7 @@
 					isLoading.removing = false;
 
 					if (successCount > 0) {
-						toast.success(
-							`Successfully removed ${successCount} image${successCount > 1 ? 's' : ''}`
-						);
+						toast.success(`Successfully removed ${successCount} image${successCount > 1 ? 's' : ''}`);
 						images = await environmentAPI.getImages(requestOptions);
 					}
 
@@ -247,17 +245,17 @@
 					{#if selectedIds.length > 0}
 						<ArcaneButton
 							action="remove"
-							onClick={() => handleDeleteSelected()}
+							onclick={() => handleDeleteSelected()}
 							loading={isLoading.removing}
 							disabled={isLoading.removing}
-							label="Remove Selected"
+							customLabel="Remove Selected"
 						/>
 					{/if}
-					<ArcaneButton action="pull" label="Pull Image" onClick={onPullDialogOpen} />
+					<ArcaneButton action="pull" customLabel="Pull Image" onclick={onPullDialogOpen} />
 					<ArcaneButton
 						action="inspect"
-						label="Check Updates"
-						onClick={handleTriggerBulkUpdateCheckInternal}
+						customLabel="Check Updates"
+						onclick={handleTriggerBulkUpdateCheckInternal}
 						loading={isLoading.checking}
 						loadingLabel="Checking..."
 						disabled={isLoading.checking}
@@ -288,22 +286,16 @@
 						{@const { repo, tag } = extractRepoAndTag(item.repoTags)}
 						<Table.Cell>
 							{#if item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>'}
-								<a class="font-medium hover:underline" href="/images/{item.id}/"
-									>{item.repoTags[0]}</a
-								>
+								<a class="font-medium hover:underline" href="/images/{item.id}/">{item.repoTags[0]}</a>
 							{:else}
 								<span class="text-muted-foreground italic">Untagged</span>
 							{/if}
 						</Table.Cell>
 						<Table.Cell>
-							<code class="bg-muted rounded px-2 py-1 text-xs"
-								>{item.id?.substring(7, 19) || 'N/A'}</code
-							>
+							<code class="bg-muted rounded px-2 py-1 text-xs">{item.id?.substring(7, 19) || 'N/A'}</code>
 						</Table.Cell>
 						<Table.Cell class="py-3 md:py-3.5">{formatBytes(item.size)}</Table.Cell>
-						<Table.Cell
-							>{formatFriendlyDate(new Date((item.created || 0) * 1000).toISOString())}</Table.Cell
-						>
+						<Table.Cell>{formatFriendlyDate(new Date((item.created || 0) * 1000).toISOString())}</Table.Cell>
 						<Table.Cell>
 							{#if item.inUse}
 								<StatusBadge text="In Use" variant="green" />
@@ -343,11 +335,7 @@
 											{/if}
 										</DropdownMenu.Item>
 										<DropdownMenu.Separator />
-										<DropdownMenu.Item
-											variant="destructive"
-											onclick={() => deleteImage(item.id)}
-											disabled={isLoading.removing}
-										>
+										<DropdownMenu.Item variant="destructive" onclick={() => deleteImage(item.id)} disabled={isLoading.removing}>
 											{#if isLoading.removing}
 												<Loader2 class="size-4 animate-spin" />
 											{:else}
@@ -366,8 +354,7 @@
 					<HardDrive class="text-muted-foreground mb-4 size-12 opacity-40" />
 					<p class="text-lg font-medium">No images match current filters</p>
 					<p class="text-muted-foreground mt-1 max-w-md text-sm">
-						Adjust your filters to see images, or pull new images using the "Pull Image" button
-						above
+						Adjust your filters to see images, or pull new images using the "Pull Image" button above
 					</p>
 				</div>
 			{/if}
@@ -377,9 +364,7 @@
 	<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
 		<HardDrive class="text-muted-foreground mb-4 size-12 opacity-40" />
 		<p class="text-lg font-medium">No images found</p>
-		<p class="text-muted-foreground mt-1 max-w-md text-sm">
-			Pull an image using the "Pull Image" button above
-		</p>
+		<p class="text-muted-foreground mt-1 max-w-md text-sm">Pull an image using the "Pull Image" button above</p>
 		<div class="mt-4 flex gap-3">
 			<Button variant="outline" onclick={onPullDialogOpen}>
 				<Download class="size-4" />

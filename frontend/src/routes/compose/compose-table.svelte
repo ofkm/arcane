@@ -2,16 +2,7 @@
 	import type { Project } from '$lib/types/project.type';
 	import ArcaneTable from '$lib/components/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import {
-		Trash2,
-		Loader2,
-		Ellipsis,
-		Pen,
-		Play,
-		RotateCcw,
-		StopCircle,
-		FileStack
-	} from '@lucide/svelte';
+	import { Trash2, Loader2, Ellipsis, Pen, Play, RotateCcw, StopCircle, FileStack } from '@lucide/svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -21,7 +12,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import { statusVariantMap } from '$lib/types/statuses';
@@ -135,8 +126,8 @@
 				<div class="flex items-center gap-2">
 					<ArcaneButton
 						action="inspect"
-						label="Update Projects"
-						onClick={onCheckForUpdates}
+						customLabel="Update Projects"
+						onclick={onCheckForUpdates}
 						loading={isLoading.updating}
 						loadingLabel="Updating..."
 						disabled={isLoading.updating}
@@ -184,10 +175,7 @@
 							</DropdownMenu.Trigger>
 							<DropdownMenu.Content align="end">
 								<DropdownMenu.Group>
-									<DropdownMenu.Item
-										onclick={() => goto(`/compose/${item.id}`)}
-										disabled={isAnyLoading}
-									>
+									<DropdownMenu.Item onclick={() => goto(`/compose/${item.id}`)} disabled={isAnyLoading}>
 										<Pen class="size-4" />
 										Edit
 									</DropdownMenu.Item>
@@ -268,8 +256,6 @@
 	<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
 		<FileStack class="text-muted-foreground mb-4 size-12 opacity-40" />
 		<p class="text-lg font-medium">No Projects found</p>
-		<p class="text-muted-foreground mt-1 max-w-md text-sm">
-			Create a new stack using the "Create Project" button above
-		</p>
+		<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new stack using the "Create Project" button above</p>
 	</div>
 {/if}

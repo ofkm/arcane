@@ -1,19 +1,19 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
 	import {
 		Box,
 		HardDrive,
 		RefreshCw,
-		Loader2,
 		Monitor,
-		PlayCircle,
-		StopCircle,
-		Trash2,
 		MemoryStick,
 		Cpu,
-		Container
+		Container,
+		LoaderCircleIcon,
+		CirclePlayIcon,
+		CircleStopIcon,
+		Trash2
 	} from '@lucide/svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { toast } from 'svelte-sonner';
 	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
@@ -251,20 +251,18 @@
 			<h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
 			<p class="text-muted-foreground max-w-2xl text-sm">Overview of your Container Environment</p>
 		</div>
-		<Button
-			variant="outline"
-			size="sm"
-			class="arcane-button-restart h-9"
+		<ArcaneButton
+			action="restart"
 			onclick={refreshData}
 			disabled={isLoading.refreshing || isLoading.starting || isLoading.stopping || isLoading.pruning}
 		>
 			{#if isLoading.refreshing}
-				<Loader2 class="mr-2 size-4 animate-spin" />
+				<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 			{:else}
 				<RefreshCw class="mr-2 size-4" />
 			{/if}
 			Refresh
-		</Button>
+		</ArcaneButton>
 	</div>
 
 	<section>
@@ -296,9 +294,9 @@
 						class="mr-3 flex size-6 items-center justify-center rounded-full bg-green-500/10 transition-colors group-hover:bg-green-500/20"
 					>
 						{#if isLoading.starting}
-							<Loader2 class="size-3 animate-spin text-green-500" />
+							<LoaderCircleIcon class="size-3 animate-spin text-green-500" />
 						{:else}
-							<PlayCircle class="size-3 text-green-500" />
+							<CirclePlayIcon class="size-3 text-green-500" />
 						{/if}
 					</div>
 					<div class="flex-1 text-left">
@@ -320,16 +318,14 @@
 						class="mr-3 flex size-6 items-center justify-center rounded-full bg-blue-500/10 transition-colors group-hover:bg-blue-500/20"
 					>
 						{#if isLoading.stopping}
-							<Loader2 class="size-3 animate-spin text-blue-500" />
+							<LoaderCircleIcon class="size-3 animate-spin text-blue-500" />
 						{:else}
-							<StopCircle class="size-3 text-blue-500" />
+							<CircleStopIcon class="size-3 text-blue-500" />
 						{/if}
 					</div>
 					<div class="flex-1 text-left">
 						<div class="text-sm font-medium">Stop All Running</div>
-						<div class="text-muted-foreground text-xs">
-							{containers.pagination.totalItems} containers
-						</div>
+						<div class="text-muted-foreground text-xs">{containers.pagination.totalItems} containers</div>
 					</div>
 				</button>
 
@@ -342,7 +338,7 @@
 						class="mr-3 flex size-6 items-center justify-center rounded-full bg-red-500/10 transition-colors group-hover:bg-red-500/20"
 					>
 						{#if isLoading.pruning}
-							<Loader2 class="size-3 animate-spin text-red-500" />
+							<LoaderCircleIcon class="size-3 animate-spin text-red-500" />
 						{:else}
 							<Trash2 class="size-3 text-red-500" />
 						{/if}
@@ -424,7 +420,7 @@
 						<div class="flex items-center gap-3">
 							<div class="rounded-lg bg-blue-500/10 p-2">
 								{#if isLoading.loadingDockerInfo}
-									<Loader2 class="size-5 animate-spin text-blue-500" />
+									<LoaderCircleIcon class="size-5 animate-spin text-blue-500" />
 								{:else}
 									<DockerIcon class="size-5 text-blue-500" />
 								{/if}
@@ -452,7 +448,7 @@
 						<div class="flex items-center gap-3">
 							<div class="rounded-lg bg-green-500/10 p-2">
 								{#if isLoading.loadingStats}
-									<Loader2 class="size-5 animate-spin text-green-500" />
+									<LoaderCircleIcon class="size-5 animate-spin text-green-500" />
 								{:else}
 									<Box class="size-5 text-green-500" />
 								{/if}
@@ -479,7 +475,7 @@
 						<div class="flex items-center gap-3">
 							<div class="rounded-lg bg-purple-500/10 p-2">
 								{#if isLoading.loadingImages}
-									<Loader2 class="size-5 animate-spin text-purple-500" />
+									<LoaderCircleIcon class="size-5 animate-spin text-purple-500" />
 								{:else}
 									<HardDrive class="size-5 text-purple-500" />
 								{/if}

@@ -4,7 +4,7 @@
 	import { toast } from 'svelte-sonner';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { userAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import UserTable from './user-table.svelte';
@@ -161,15 +161,15 @@
 		<div class="flex items-center gap-2">
 			<ArcaneButton
 				action="create"
-				label="Create User"
-				onClick={openCreateDialog}
+				customLabel="Create User"
+				onclick={openCreateDialog}
 				loading={isLoading.creating}
 				disabled={isLoading.creating}
 			/>
 			<ArcaneButton
 				action="restart"
-				onClick={refreshUsers}
-				label="Refresh"
+				onclick={refreshUsers}
+				customLabel="Refresh"
 				loading={isLoading.refresh}
 				disabled={isLoading.refresh}
 			/>
@@ -207,14 +207,7 @@
 		/>
 	</div>
 
-	<UserTable
-		{users}
-		bind:selectedIds
-		bind:requestOptions
-		{onRefresh}
-		onUsersChanged={loadUsers}
-		onEditUser={openEditDialog}
-	/>
+	<UserTable {users} bind:selectedIds bind:requestOptions {onRefresh} onUsersChanged={loadUsers} onEditUser={openEditDialog} />
 
 	<UserFormSheet
 		bind:open={isDialogOpen.create}

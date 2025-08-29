@@ -10,7 +10,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { defaultEnvTemplate, defaultComposeTemplate } from '$lib/constants';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import TemplateSelectionDialog from '$lib/components/dialogs/template-selection-dialog.svelte';
@@ -113,23 +113,17 @@
 				<div class="flex items-center gap-2">
 					<Dialog.Root bind:open={showConverterDialog}>
 						<Dialog.Trigger>
-							<Button
-								variant="outline"
-								class="arcane-button-restart"
-								disabled={saving || converting || isLoadingTemplateContent}
-							>
+							<Button variant="outline" class="arcane-button-restart" disabled={saving || converting || isLoadingTemplateContent}>
 								<Terminal class="mr-2 size-4" />
 								Convert Docker Run
 							</Button>
 						</Dialog.Trigger>
-						<Dialog.Content class="sm:max-w-[800px] max-h-[80vh]">
+						<Dialog.Content class="max-h-[80vh] sm:max-w-[800px]">
 							<Dialog.Header>
 								<Dialog.Title>Docker Run to Compose Converter</Dialog.Title>
-								<Dialog.Description>
-									Convert existing docker run commands to Docker Compose format
-								</Dialog.Description>
+								<Dialog.Description>Convert existing docker run commands to Docker Compose format</Dialog.Description>
 							</Dialog.Header>
-							<div class="space-y-4 max-h-[60vh] overflow-y-auto">
+							<div class="max-h-[60vh] space-y-4 overflow-y-auto">
 								<div class="space-y-2">
 									<Label for="dockerRunCommand">Docker Run Command</Label>
 									<Textarea
@@ -150,7 +144,7 @@
 												type="button"
 												variant="ghost"
 												size="sm"
-												class="h-auto w-full justify-start p-2 text-left font-mono text-xs break-all whitespace-normal"
+												class="h-auto w-full justify-start whitespace-normal break-all p-2 text-left font-mono text-xs"
 												onclick={() => useExample(command)}
 											>
 												<Copy class="mr-2 size-3 shrink-0" />
@@ -161,11 +155,7 @@
 								</div>
 							</div>
 							<div class="flex w-full justify-end pt-4">
-								<Button
-									type="button"
-									disabled={!dockerRunCommand.trim() || converting}
-									onclick={handleConvertDockerRun}
-								>
+								<Button type="button" disabled={!dockerRunCommand.trim() || converting} onclick={handleConvertDockerRun}>
 									{#if converting}
 										<Loader2 class="mr-2 size-4 animate-spin" />
 										Converting...
@@ -179,13 +169,13 @@
 					</Dialog.Root>
 					<ArcaneButton
 						action="template"
-						onClick={() => (showTemplateDialog = true)}
+						onclick={() => (showTemplateDialog = true)}
 						loading={saving || isLoadingTemplateContent}
 						disabled={saving || converting || isLoadingTemplateContent}
 					/>
 					<ArcaneButton
 						action="create"
-						onClick={() => handleSubmit()}
+						onclick={() => handleSubmit()}
 						loading={saving}
 						disabled={!name || !composeContent || saving || converting || isLoadingTemplateContent}
 					/>

@@ -9,7 +9,7 @@
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
 
 	let { data } = $props();
@@ -91,7 +91,7 @@
 				<ArcaneButton
 					action="remove"
 					customLabel="Remove Volume"
-					onClick={() => handleRemoveVolumeConfirm(volume.name)}
+					onclick={() => handleRemoveVolumeConfirm(volume.name)}
 					loading={isLoading.remove}
 					disabled={isLoading.remove}
 				/>
@@ -112,21 +112,17 @@
 				<Card.Content class="pt-6">
 					<div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
 						<div class="flex items-start gap-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
 								<Database class="size-5 text-gray-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Name</p>
-								<p class="mt-1 text-base font-semibold break-words">{volume.name}</p>
+								<p class="mt-1 break-words text-base font-semibold">{volume.name}</p>
 							</div>
 						</div>
 
 						<div class="flex items-start gap-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2">
 								<HardDrive class="size-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -136,9 +132,7 @@
 						</div>
 
 						<div class="flex items-start gap-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2">
 								<Clock class="size-5 text-green-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -148,9 +142,7 @@
 						</div>
 
 						<div class="flex items-start gap-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-purple-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-purple-500/10 p-2">
 								<Globe class="size-5 text-purple-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -160,9 +152,7 @@
 						</div>
 
 						<div class="flex items-start gap-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 p-2">
 								<Info class="size-5 text-amber-500" />
 							</div>
 							<div class="min-w-0 flex-1">
@@ -178,15 +168,13 @@
 						</div>
 
 						<div class="col-span-1 flex items-start gap-3 sm:col-span-2 lg:col-span-3">
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-teal-500/10 p-2"
-							>
+							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-teal-500/10 p-2">
 								<Layers class="size-5 text-teal-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Mountpoint</p>
 								<div class="bg-muted/50 mt-2 rounded-lg border p-3">
-									<code class="font-mono text-sm break-all">{volume.mountpoint}</code>
+									<code class="break-all font-mono text-sm">{volume.mountpoint}</code>
 								</div>
 							</div>
 						</div>
@@ -207,12 +195,8 @@
 						<div class="divide-y rounded-lg border">
 							{#each volume.containers as id (id)}
 								<div class="flex items-center justify-between gap-3 p-3">
-									<code class="font-mono text-sm break-all">{truncateString(id, 48)}</code>
-									<a
-										href={`/containers/${id}`}
-										class="text-primary hover:underline text-sm"
-										title="View container details"
-									>
+									<code class="break-all font-mono text-sm">{truncateString(id, 48)}</code>
+									<a href={`/containers/${id}`} class="text-primary text-sm hover:underline" title="View container details">
 										View
 									</a>
 								</div>
@@ -237,14 +221,10 @@
 						<div class="bg-card divide-y rounded-lg border">
 							{#each Object.entries(volume.labels) as [key, value] (key)}
 								<div class="flex flex-col p-3 sm:flex-row">
-									<div
-										class="text-muted-foreground mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3"
-									>
+									<div class="text-muted-foreground mb-2 w-full break-all font-medium sm:mb-0 sm:w-1/3">
 										{key}
 									</div>
-									<div
-										class="bg-muted/50 w-full rounded p-2 font-mono text-xs break-all sm:w-2/3 sm:text-sm"
-									>
+									<div class="bg-muted/50 w-full break-all rounded p-2 font-mono text-xs sm:w-2/3 sm:text-sm">
 										{value}
 									</div>
 								</div>
@@ -267,14 +247,10 @@
 						<div class="bg-card divide-y rounded-lg border">
 							{#each Object.entries(volume.options) as [key, value] (key)}
 								<div class="flex flex-col p-3 sm:flex-row">
-									<div
-										class="text-muted-foreground mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3"
-									>
+									<div class="text-muted-foreground mb-2 w-full break-all font-medium sm:mb-0 sm:w-1/3">
 										{key}
 									</div>
-									<div
-										class="bg-muted/50 w-full rounded p-2 font-mono text-xs break-all sm:w-2/3 sm:text-sm"
-									>
+									<div class="bg-muted/50 w-full break-all rounded p-2 font-mono text-xs sm:w-2/3 sm:text-sm">
 										{value}
 									</div>
 								</div>
@@ -286,14 +262,12 @@
 
 			{#if (!volume.labels || Object.keys(volume.labels).length === 0) && (!volume.options || Object.keys(volume.options).length === 0)}
 				<Card.Root class="bg-muted/10 border shadow-sm">
-					<Card.Content class="pt-6 pb-6 text-center">
+					<Card.Content class="pb-6 pt-6 text-center">
 						<div class="flex flex-col items-center justify-center">
 							<div class="bg-muted/30 mb-4 rounded-full p-3">
 								<Tag class="text-muted-foreground size-5 opacity-50" />
 							</div>
-							<p class="text-muted-foreground">
-								This volume has no additional labels or driver options.
-							</p>
+							<p class="text-muted-foreground">This volume has no additional labels or driver options.</p>
 						</div>
 					</Card.Content>
 				</Card.Root>
@@ -305,16 +279,9 @@
 				<Database class="text-muted-foreground size-10 opacity-70" />
 			</div>
 			<h2 class="mb-2 text-xl font-medium">Volume Not Found</h2>
-			<p class="text-muted-foreground mb-6">
-				The requested volume could not be found or is no longer available.
-			</p>
+			<p class="text-muted-foreground mb-6">The requested volume could not be found or is no longer available.</p>
 
-			<ArcaneButton
-				action="cancel"
-				customLabel="Back to Volumes"
-				onClick={() => goto('/volumes')}
-				size="sm"
-			/>
+			<ArcaneButton action="cancel" customLabel="Back to Volumes" onclick={() => goto('/volumes')} size="sm" />
 		</div>
 	{/if}
 </div>

@@ -10,8 +10,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
-	import { formatFriendlyDate } from '$lib/utils/date.utils';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { userAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { User } from '$lib/types/user.type';
@@ -88,9 +87,7 @@
 					isLoading.removing = false;
 
 					if (successCount > 0) {
-						toast.success(
-							`Successfully deleted ${successCount} user${successCount > 1 ? 's' : ''}`
-						);
+						toast.success(`Successfully deleted ${successCount} user${successCount > 1 ? 's' : ''}`);
 						await onUsersChanged();
 					}
 
@@ -149,10 +146,10 @@
 					{#if selectedIds.length > 0}
 						<ArcaneButton
 							action="remove"
-							onClick={handleDeleteSelected}
+							onclick={handleDeleteSelected}
 							loading={isLoading.removing}
 							disabled={isLoading.removing}
-							label="Remove Selected"
+							customLabel="Remove Selected"
 						/>
 					{/if}
 				</div>
@@ -199,10 +196,7 @@
 										<Edit class="size-4" />
 										Edit
 									</DropdownMenu.Item>
-									<DropdownMenu.Item
-										variant="destructive"
-										onclick={() => handleDeleteUser(item.id, item.username)}
-									>
+									<DropdownMenu.Item variant="destructive" onclick={() => handleDeleteUser(item.id, item.username)}>
 										<Trash2 class="size-4" />
 										Delete
 									</DropdownMenu.Item>
@@ -218,8 +212,6 @@
 	<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
 		<Users class="text-muted-foreground mb-4 size-12 opacity-40" />
 		<p class="text-lg font-medium">No users found</p>
-		<p class="text-muted-foreground mt-1 max-w-md text-sm">
-			Create a new user using the "Create User" button above
-		</p>
+		<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new user using the "Create User" button above</p>
 	</div>
 {/if}

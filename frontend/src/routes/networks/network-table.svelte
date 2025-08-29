@@ -10,7 +10,7 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
 	import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
@@ -62,14 +62,10 @@
 
 	async function handleDeleteSelectedNetworks() {
 		const selectedNetworkList = networks.data.filter((network) => selectedIds.includes(network.id));
-		const defaultNetworks = selectedNetworkList.filter((network) =>
-			DEFAULT_NETWORK_NAMES.has(network.name)
-		);
+		const defaultNetworks = selectedNetworkList.filter((network) => DEFAULT_NETWORK_NAMES.has(network.name));
 
 		if (defaultNetworks.length > 0) {
-			toast.error(
-				`Cannot delete default networks: ${defaultNetworks.map((n) => n.name).join(', ')}`
-			);
+			toast.error(`Cannot delete default networks: ${defaultNetworks.map((n) => n.name).join(', ')}`);
 			return;
 		}
 
@@ -130,13 +126,13 @@
 					{#if selectedIds.length > 0}
 						<ArcaneButton
 							action="remove"
-							onClick={handleDeleteSelectedNetworks}
+							onclick={handleDeleteSelectedNetworks}
 							loading={isLoading.remove}
 							disabled={isLoading.remove}
-							label="Remove Selected"
+							customLabel="Remove Selected"
 						/>
 					{/if}
-					<ArcaneButton action="create" label="Create Network" onClick={onCreateNetwork} />
+					<ArcaneButton action="create" customLabel="Create Network" onclick={onCreateNetwork} />
 				</div>
 			</div>
 		</Card.Header>
@@ -176,10 +172,7 @@
 						/>
 					</Table.Cell>
 					<Table.Cell>
-						<StatusBadge
-							variant={item.scope === 'local' ? 'green' : 'amber'}
-							text={capitalizeFirstLetter(item.scope)}
-						/>
+						<StatusBadge variant={item.scope === 'local' ? 'green' : 'amber'} text={capitalizeFirstLetter(item.scope)} />
 					</Table.Cell>
 					<Table.Cell>
 						<DropdownMenu.Root>
@@ -193,10 +186,7 @@
 							</DropdownMenu.Trigger>
 							<DropdownMenu.Content align="end">
 								<DropdownMenu.Group>
-									<DropdownMenu.Item
-										onclick={() => goto(`/networks/${item.id}`)}
-										disabled={isAnyLoading}
-									>
+									<DropdownMenu.Item onclick={() => goto(`/networks/${item.id}`)} disabled={isAnyLoading}>
 										<ScanSearch class="size-4" />
 										Inspect
 									</DropdownMenu.Item>

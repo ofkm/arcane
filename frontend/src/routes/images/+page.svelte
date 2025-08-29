@@ -9,7 +9,7 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI, imageUpdateAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	// import ImageTable from './image-table.svelte';
@@ -83,27 +83,27 @@
 			<p class="text-muted-foreground mt-1 text-sm">View and Manage your Container Images</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<ArcaneButton action="pull" label="Pull Image" onClick={() => (isPullDialogOpen = true)} />
+			<ArcaneButton action="pull" customLabel="Pull Image" onclick={() => (isPullDialogOpen = true)} />
 			<ArcaneButton
 				action="inspect"
-				label="Check Updates"
-				onClick={handleTriggerBulkUpdateCheck}
+				customLabel="Check Updates"
+				onclick={handleTriggerBulkUpdateCheck}
 				loading={isLoading.checking}
 				loadingLabel="Checking..."
 				disabled={isLoading.checking}
 			/>
 			<ArcaneButton
 				action="remove"
-				label="Prune Unused"
-				onClick={() => (isConfirmPruneDialogOpen = true)}
+				customLabel="Prune Unused"
+				onclick={() => (isConfirmPruneDialogOpen = true)}
 				loading={isLoading.pruning}
 				loadingLabel="Pruning..."
 				disabled={isLoading.pruning}
 			/>
 			<ArcaneButton
 				action="restart"
-				onClick={refreshImages}
-				label="Refresh"
+				onclick={refreshImages}
+				customLabel="Refresh"
 				loading={isLoading.refreshing}
 				disabled={isLoading.refreshing}
 			/>

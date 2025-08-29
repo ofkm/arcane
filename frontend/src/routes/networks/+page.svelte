@@ -6,7 +6,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import CreateNetworkSheet from '$lib/components/sheets/create-network-sheet.svelte';
 	import { environmentAPI } from '$lib/services/api';
-	import ArcaneButton from '$lib/components/arcane-button.svelte';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import NetworkTable from './network-table.svelte';
 
@@ -61,8 +61,8 @@
 		<div class="flex items-center gap-2">
 			<ArcaneButton
 				action="restart"
-				onClick={refreshNetworks}
-				label="Refresh"
+				onclick={refreshNetworks}
+				customLabel="Refresh"
 				loading={isLoading.refresh}
 				disabled={isLoading.refresh}
 			/>
@@ -86,16 +86,7 @@
 		/>
 	</div>
 
-	<NetworkTable
-		bind:networks
-		bind:selectedIds
-		bind:requestOptions
-		onCreateNetwork={() => (isCreateDialogOpen = true)}
-	/>
+	<NetworkTable bind:networks bind:selectedIds bind:requestOptions onCreateNetwork={() => (isCreateDialogOpen = true)} />
 
-	<CreateNetworkSheet
-		bind:open={isCreateDialogOpen}
-		isLoading={isLoading.create}
-		onSubmit={handleCreateNetworkSubmit}
-	/>
+	<CreateNetworkSheet bind:open={isCreateDialogOpen} isLoading={isLoading.create} onSubmit={handleCreateNetworkSubmit} />
 </div>
