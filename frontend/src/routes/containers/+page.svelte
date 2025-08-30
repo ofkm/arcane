@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Box } from '@lucide/svelte';
+	import BoxIcon from '@lucide/svelte/icons/box';
 	import CreateContainerSheet from '$lib/components/sheets/create-container-sheet.svelte';
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -66,6 +66,13 @@
 				disabled={isLoading.create}
 			/>
 			<ArcaneButton
+				action="inspect"
+				customLabel="Update Containers"
+				onclick={handleCheckForUpdates}
+				loading={isLoading.checking}
+				disabled={isLoading.checking}
+			/>
+			<ArcaneButton
 				action="restart"
 				onclick={refreshContainers}
 				customLabel="Refresh"
@@ -79,13 +86,13 @@
 		<StatCard
 			title="Total"
 			value={containers.pagination.totalItems}
-			icon={Box}
+			icon={BoxIcon}
 			class="border-l-primary border-l-4 transition-shadow hover:shadow-lg"
 		/>
 		<StatCard
 			title="Running"
 			value={runningContainers}
-			icon={Box}
+			icon={BoxIcon}
 			iconColor="text-green-500"
 			bgColor="bg-green-500/10"
 			class="border-l-4 border-l-green-500"
@@ -93,13 +100,13 @@
 		<StatCard
 			title="Stopped"
 			value={stoppedContainers}
-			icon={Box}
+			icon={BoxIcon}
 			iconColor="text-amber-500"
 			class="border-l-4 border-l-amber-500"
 		/>
 	</div>
 
-	<ContainerTable bind:containers bind:selectedIds bind:requestOptions onCheckForUpdates={handleCheckForUpdates} />
+	<ContainerTable bind:containers bind:selectedIds bind:requestOptions />
 
 	<CreateContainerSheet
 		bind:open={isCreateDialogOpen}
