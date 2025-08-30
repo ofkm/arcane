@@ -2,7 +2,8 @@
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
-	import { Loader2, Download } from '@lucide/svelte';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import DownloadIcon from '@lucide/svelte/icons/download';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 	import { toast } from 'svelte-sonner';
@@ -61,7 +62,9 @@
 		} else if (activeLayers > 0 && totalCurrentBytes > 0) {
 			pullProgress = 5;
 		} else if (Object.keys(layerProgress).length > 0 && activeLayers === 0) {
-			const allDone = Object.values(layerProgress).every((l) => l.status && (l.status.toLowerCase().includes('pull complete') || l.status.toLowerCase().includes('already exists')));
+			const allDone = Object.values(layerProgress).every(
+				(l) => l.status && (l.status.toLowerCase().includes('pull complete') || l.status.toLowerCase().includes('already exists'))
+			);
 			if (allDone) pullProgress = 100;
 		}
 	}
@@ -109,7 +112,8 @@
 				const errorData = await response.json().catch(() => ({
 					error: 'Failed to pull image. Server returned an error.'
 				}));
-				const errorMessage = typeof errorData.error === 'string' ? errorData.error : errorData.message || `HTTP error ${response.status}`;
+				const errorMessage =
+					typeof errorData.error === 'string' ? errorData.error : errorData.message || `HTTP error ${response.status}`;
 				throw new Error(errorMessage);
 			}
 
@@ -160,7 +164,13 @@
 
 			calculateOverallProgress();
 			if (!pullError && pullProgress < 100) {
-				const allLayersCompleteOrExisting = Object.values(layerProgress).every((l) => l.status && (l.status.toLowerCase().includes('complete') || l.status.toLowerCase().includes('already exists') || l.status.toLowerCase().includes('downloaded newer image')));
+				const allLayersCompleteOrExisting = Object.values(layerProgress).every(
+					(l) =>
+						l.status &&
+						(l.status.toLowerCase().includes('complete') ||
+							l.status.toLowerCase().includes('already exists') ||
+							l.status.toLowerCase().includes('downloaded newer image'))
+				);
 				if (allLayersCompleteOrExisting && Object.keys(layerProgress).length > 0) {
 					pullProgress = 100;
 				}
@@ -213,14 +223,14 @@
 
 <Sheet.Root bind:open onOpenChange={handleOpenChange}>
 	<Sheet.Content class="p-6">
-		<Sheet.Header class="space-y-3 pb-6 border-b">
+		<Sheet.Header class="space-y-3 border-b pb-6">
 			<div class="flex items-center gap-3">
-				<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-					<Download class="size-5 text-primary" />
+				<div class="bg-primary/10 flex size-10 shrink-0 items-center justify-center rounded-lg">
+					<DownloadIcon class="text-primary size-5" />
 				</div>
 				<div>
 					<Sheet.Title class="text-xl font-semibold">Pull Docker Image</Sheet.Title>
-					<Sheet.Description class="text-sm text-muted-foreground mt-1">
+					<Sheet.Description class="text-muted-foreground mt-1 text-sm">
 						Enter the image reference you want to pull from a registry.
 						{#if pullError}
 							<p class="text-destructive mt-2 text-sm">{pullError}</p>
@@ -231,8 +241,22 @@
 		</Sheet.Header>
 
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
-			<FormInput label="Image Name *" type="text" placeholder="nginx, redis, ubuntu, etc." description="Enter the image name from Docker Hub or other registries" disabled={isPulling} bind:input={$inputs.imageRef} />
-			<FormInput label="Tag" type="text" placeholder="latest" description="Specify a tag version (defaults to 'latest')" disabled={isPulling} bind:input={$inputs.tag} />
+			<FormInput
+				label="Image Name *"
+				type="text"
+				placeholder="nginx, redis, ubuntu, etc."
+				description="Enter the image name from Docker Hub or other registries"
+				disabled={isPulling}
+				bind:input={$inputs.imageRef}
+			/>
+			<FormInput
+				label="Tag"
+				type="text"
+				placeholder="latest"
+				description="Specify a tag version (defaults to 'latest')"
+				disabled={isPulling}
+				bind:input={$inputs.tag}
+			/>
 
 			{#if isPulling || pullStatusText}
 				<div class="mt-4">
@@ -248,19 +272,27 @@
 						<p class="mt-1 text-xs text-green-600">{pullStatusText}</p>
 					{/if}
 					{#if isPulling}
-						<p class="text-muted-foreground mt-1 text-xs">This may take a while depending on the image size and your internet connection.</p>
+						<p class="text-muted-foreground mt-1 text-xs">
+							This may take a while depending on the image size and your internet connection.
+						</p>
 					{/if}
 				</div>
 			{/if}
 
 			<Sheet.Footer class="flex flex-row gap-2">
-				<Button type="button" class="arcane-button-cancel flex-1" variant="outline" onclick={() => (open = false)} disabled={isPulling}>Cancel</Button>
+				<Button
+					type="button"
+					class="arcane-button-cancel flex-1"
+					variant="outline"
+					onclick={() => (open = false)}
+					disabled={isPulling}>Cancel</Button
+				>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isPulling}>
 					{#if isPulling}
-						<Loader2 class="mr-2 size-4 animate-spin" />
+						<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 						<span class="opacity-0">Pull Image</span>
 					{:else}
-						<Download class="mr-2 size-4" />
+						<DownloadIcon class="mr-2 size-4" />
 						Pull Image
 					{/if}
 				</Button>

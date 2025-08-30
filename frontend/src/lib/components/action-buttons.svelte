@@ -2,13 +2,23 @@
 	import { openConfirmDialog } from './confirm-dialog';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import type { LoadingStates } from '$lib/types/loading-states.type';
 	import { environmentAPI } from '$lib/services/api';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 
 	type TargetType = 'container' | 'stack';
+
+	type LoadingStates = {
+		start?: boolean;
+		stop?: boolean;
+		restart?: boolean;
+		pull?: boolean;
+		deploy?: boolean;
+		redeploy?: boolean;
+		remove?: boolean;
+		validating?: boolean;
+	};
 
 	let {
 		id,

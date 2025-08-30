@@ -4,7 +4,7 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { statusVariantMap } from '$lib/types/statuses';
+	import { getStatusVariant } from '$lib/utils/status.utils';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import type { ContainerSummaryDto } from '$lib/types/container.type';
@@ -45,7 +45,7 @@
 {/snippet}
 
 {#snippet StateCell({ item }: { item: ContainerSummaryDto })}
-	{@const stateVariant = statusVariantMap[item.state.toLowerCase()] || 'gray'}
+	{@const stateVariant = getStatusVariant(item.state)}
 	<StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.state)} />
 {/snippet}
 

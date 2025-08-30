@@ -3,7 +3,14 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Card } from '$lib/components/ui/card/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { FileText, Globe, FolderOpen, Settings, Download, Loader2, ChevronDown, ChevronRight } from '@lucide/svelte';
+	import FileTextIcon from '@lucide/svelte/icons/file-text';
+	import GlobeIcon from '@lucide/svelte/icons/globe';
+	import FolderOpenIcon from '@lucide/svelte/icons/folder-open';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import DownloadIcon from '@lucide/svelte/icons/download';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
 	import { templateAPI } from '$lib/services/api';
 	import type { Template } from '$lib/types/template.type';
@@ -26,10 +33,8 @@
 	let loadingStates = $state(new Map<string, boolean>());
 	const allTemplates = $derived(templates ?? []);
 
-	// UI state
 	let sortBy = $state<'name-asc' | 'name-desc'>('name-asc');
 	let groupByRegistry = $state(true);
-	let openGroups = $state<Set<string>>(new Set());
 
 	function normalizeTags(template: Template): string[] {
 		const raw = template.metadata?.tags;
@@ -155,7 +160,7 @@
 	<Dialog.Content class="max-h-screen overflow-y-auto sm:max-w-[900px]">
 		<Dialog.Header>
 			<Dialog.Title class="flex items-center gap-2">
-				<FileText class="size-5" />
+				<FileTextIcon class="size-5" />
 				Choose a Template
 			</Dialog.Title>
 			<Dialog.Description>
@@ -192,7 +197,7 @@
 			<ScrollArea class="max-h-[65vh]">
 				{#if (allTemplates?.length ?? 0) === 0}
 					<div class="text-muted-foreground py-10 text-center">
-						<FileText class="mx-auto mb-4 size-12 opacity-50" />
+						<FileTextIcon class="mx-auto mb-4 size-12 opacity-50" />
 						<p class="mb-2">No templates available</p>
 						<p class="text-sm">
 							Add a template registry in
@@ -207,8 +212,8 @@
 								<Card class="border-2">
 									<Collapsible.Trigger class="flex w-full items-center justify-between px-4 py-3 text-left">
 										<div class="flex items-center gap-2">
-											<ChevronDown class="hidden size-4 data-[state=open]:block" />
-											<ChevronRight class="block size-4 data-[state=open]:hidden" />
+											<ChevronDownIcon class="hidden size-4 data-[state=open]:block" />
+											<ChevronRightIcon class="block size-4 data-[state=open]:hidden" />
 											<span class="font-semibold">{group.name}</span>
 											<Badge variant="secondary" class="ml-2">{group.items.length}</Badge>
 										</div>
@@ -227,7 +232,7 @@
 																	{/if}
 																	{#if template.metadata?.envUrl || template.envContent}
 																		<Badge variant="secondary" class="text-xs">
-																			<Settings class="mr-1 size-3" />
+																			<SettingsIcon class="mr-1 size-3" />
 																			ENV
 																		</Badge>
 																	{/if}
@@ -259,10 +264,10 @@
 																			disabled={loadingStates.get(`download-${template.id}`)}
 																		>
 																			{#if loadingStates.get(`download-${template.id}`)}
-																				<Loader2 class="mr-1 size-3 animate-spin" />
+																				<LoaderCircleIcon class="mr-1 size-3 animate-spin" />
 																				Downloading...
 																			{:else}
-																				<Download class="mr-1 size-3" />
+																				<DownloadIcon class="mr-1 size-3" />
 																				Download
 																			{/if}
 																		</Button>
@@ -273,7 +278,7 @@
 																		disabled={loadingStates.get(template.id)}
 																	>
 																		{#if loadingStates.get(template.id)}
-																			<Loader2 class="mr-1 size-3 animate-spin" />
+																			<LoaderCircleIcon class="mr-1 size-3 animate-spin" />
 																			Loading...
 																		{:else}
 																			Use Now
@@ -305,7 +310,7 @@
 											{/if}
 											{#if template.metadata?.envUrl || template.envContent}
 												<Badge variant="secondary" class="text-xs">
-													<Settings class="mr-1 size-3" />
+													<SettingsIcon class="mr-1 size-3" />
 													ENV
 												</Badge>
 											{/if}
@@ -315,9 +320,9 @@
 									<div class="mb-2">
 										<Badge variant="secondary" class="text-xs">
 											{#if template.isRemote}
-												<Globe class="mr-1 size-3" />
+												<GlobeIcon class="mr-1 size-3" />
 											{:else}
-												<FolderOpen class="mr-1 size-3" />
+												<FolderOpenIcon class="mr-1 size-3" />
 											{/if}
 											{getRegistryName(template)}
 										</Badge>
@@ -348,17 +353,17 @@
 													disabled={loadingStates.get(`download-${template.id}`)}
 												>
 													{#if loadingStates.get(`download-${template.id}`)}
-														<Loader2 class="mr-1 size-3 animate-spin" />
+														<LoaderCircleIcon class="mr-1 size-3 animate-spin" />
 														Downloading...
 													{:else}
-														<Download class="mr-1 size-3" />
+														<DownloadIcon class="mr-1 size-3" />
 														Download
 													{/if}
 												</Button>
 											{/if}
 											<Button size="sm" onclick={() => handleSelect(template)} disabled={loadingStates.get(template.id)}>
 												{#if loadingStates.get(template.id)}
-													<Loader2 class="mr-1 size-3 animate-spin" />
+													<LoaderCircleIcon class="mr-1 size-3 animate-spin" />
 													Loading...
 												{:else}
 													Use Now

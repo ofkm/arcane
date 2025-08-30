@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, Terminal, Copy, Loader2, Wand } from '@lucide/svelte';
+	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import TerminalIcon from '@lucide/svelte/icons/terminal';
+	import CopyIcon from '@lucide/svelte/icons/copy';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import WandIcon from '@lucide/svelte/icons/wand';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -9,16 +13,15 @@
 	import { preventDefault } from '$lib/utils/form.utils';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
-	import { defaultEnvTemplate, defaultComposeTemplate } from '$lib/constants';
+	import { defaultComposeTemplate } from '$lib/constants';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import TemplateSelectionDialog from '$lib/components/dialogs/template-selection-dialog.svelte';
 	import { environmentAPI, converterAPI } from '$lib/services/api';
 	import type { Template } from '$lib/types/template.type';
-	import type { PageProps } from './+page';
 
-	let { data }: { data: PageProps } = $props();
+	let { data } = $props();
 
 	let saving = $state(false);
 	let converting = $state(false);
@@ -28,7 +31,7 @@
 
 	let name = $state('');
 	let composeContent = $state(data.defaultTemplate || defaultComposeTemplate);
-	let envContent = $state(data.envTemplate || defaultEnvTemplate);
+	let envContent = $state(data.envTemplate);
 	let dockerRunCommand = $state('');
 
 	async function handleSubmit() {
@@ -75,8 +78,6 @@
 		composeContent = template.content;
 		if (template.envContent) {
 			envContent = template.envContent;
-		} else {
-			envContent = defaultEnvTemplate;
 		}
 
 		if (!name.trim()) {
@@ -102,7 +103,7 @@
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-3">
 					<Button variant="ghost" size="sm" href="/compose">
-						<ArrowLeft class="mr-2 size-4" />
+						<ArrowLeftIcon class="size-4" />
 						Back
 					</Button>
 					<div class="bg-border h-4 w-px"></div>
@@ -114,7 +115,7 @@
 					<Dialog.Root bind:open={showConverterDialog}>
 						<Dialog.Trigger>
 							<Button variant="outline" class="arcane-button-restart" disabled={saving || converting || isLoadingTemplateContent}>
-								<Terminal class="mr-2 size-4" />
+								<TerminalIcon class="mr-2 size-4" />
 								Convert Docker Run
 							</Button>
 						</Dialog.Trigger>
@@ -147,7 +148,7 @@
 												class="h-auto w-full justify-start whitespace-normal break-all p-2 text-left font-mono text-xs"
 												onclick={() => useExample(command)}
 											>
-												<Copy class="mr-2 size-3 shrink-0" />
+												<CopyIcon class="mr-2 size-3 shrink-0" />
 												<span class="truncate">{command}</span>
 											</Button>
 										{/each}
@@ -157,10 +158,10 @@
 							<div class="flex w-full justify-end pt-4">
 								<Button type="button" disabled={!dockerRunCommand.trim() || converting} onclick={handleConvertDockerRun}>
 									{#if converting}
-										<Loader2 class="mr-2 size-4 animate-spin" />
+										<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 										Converting...
 									{:else}
-										<Wand class="mr-2 size-4" />
+										<WandIcon class="mr-2 size-4" />
 										Convert to Compose
 									{/if}
 								</Button>

@@ -1,13 +1,17 @@
 <script lang="ts">
-	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { HardDrive, Clock, Tag, Layers, Hash, Cpu } from '@lucide/svelte';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
+	import ClockIcon from '@lucide/svelte/icons/clock';
+	import TagIcon from '@lucide/svelte/icons/tag';
+	import LayersIcon from '@lucide/svelte/icons/layers';
+	import HashIcon from '@lucide/svelte/icons/hash';
+	import CpuIcon from '@lucide/svelte/icons/cpu';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { goto } from '$app/navigation';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { formatDate } from '$lib/utils/string.utils';
-	import { formatBytes } from '$lib/utils/bytes.util';
+	import { format } from 'date-fns';
+	import bytes from 'bytes';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -15,7 +19,7 @@
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
 
-	let { data }: { data: PageData } = $props();
+	let { data } = $props();
 	let { image } = $derived(data);
 
 	let isLoading = $state({
@@ -35,13 +39,13 @@
 			if (isNaN(date.getTime())) {
 				return 'N/A';
 			}
-			return formatDate(date.toISOString());
+			return format(date, 'PP p');
 		} catch {
 			return 'N/A';
 		}
 	});
 
-	const imageSize = $derived(formatBytes(image?.size || 0));
+	const imageSize = $derived(bytes.format(image?.size || 0));
 	const architecture = $derived(image?.architecture || 'N/A');
 	const osName = $derived(image?.os || 'N/A');
 
@@ -111,7 +115,7 @@
 						<!-- ID -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
-								<Hash class="size-5 text-gray-500" />
+								<HashIcon class="size-5 text-gray-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">ID</p>
@@ -122,7 +126,7 @@
 						<!-- Size -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2">
-								<HardDrive class="size-5 text-blue-500" />
+								<HardDriveIcon class="size-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Size</p>
@@ -133,7 +137,7 @@
 						<!-- Created -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2">
-								<Clock class="size-5 text-green-500" />
+								<ClockIcon class="size-5 text-green-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Created</p>
@@ -144,7 +148,7 @@
 						<!-- Architecture -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 p-2">
-								<Cpu class="size-5 text-orange-500" />
+								<CpuIcon class="size-5 text-orange-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Architecture</p>
@@ -155,7 +159,7 @@
 						<!-- OS -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 p-2">
-								<Layers class="size-5 text-indigo-500" />
+								<LayersIcon class="size-5 text-indigo-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">OS</p>
@@ -170,7 +174,7 @@
 			{#if image.repoTags && image.repoTags.length > 0}
 				<Card.Root class="border shadow-sm">
 					<Card.Header>
-						<Card.Title class="flex items-center gap-2"><Tag class="text-muted-foreground size-5" /> Tags</Card.Title>
+						<Card.Title class="flex items-center gap-2"><TagIcon class="text-muted-foreground size-5" /> Tags</Card.Title>
 					</Card.Header>
 					<Card.Content>
 						<div class="flex flex-wrap gap-2">

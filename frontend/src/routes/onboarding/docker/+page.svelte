@@ -3,13 +3,12 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { Textarea } from '$lib/components/ui/textarea';
 	import * as Select from '$lib/components/ui/select';
 	import { Switch } from '$lib/components/ui/switch';
 	import { settingsAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
-	import { Loader2 } from '@lucide/svelte';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
@@ -55,9 +54,7 @@
 <div class="space-y-6">
 	<div class="text-center">
 		<h2 class="text-2xl font-bold">Docker Configuration</h2>
-		<p class="text-muted-foreground mt-2">
-			Configure how Arcane connects to your Docker environment
-		</p>
+		<p class="text-muted-foreground mt-2">Configure how Arcane connects to your Docker environment</p>
 	</div>
 
 	<div class="grid gap-6 md:grid-cols-2">
@@ -69,14 +66,8 @@
 			<Card.Content class="space-y-4">
 				<div class="space-y-2">
 					<Label for="project-directory">Project Directory</Label>
-					<Input
-						id="project-directory"
-						bind:value={dockerSettings.stacksDirectory}
-						placeholder="data/projects"
-					/>
-					<p class="text-xs text-muted-foreground">
-						Directory where Docker Compose files will be stored
-					</p>
+					<Input id="project-directory" bind:value={dockerSettings.stacksDirectory} placeholder="data/projects" />
+					<p class="text-muted-foreground text-xs">Directory where Docker Compose files will be stored</p>
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -90,7 +81,7 @@
 				<div class="flex items-center justify-between">
 					<div class="space-y-0.5">
 						<Label>Enable Polling</Label>
-						<p class="text-xs text-muted-foreground">Automatically refresh container states</p>
+						<p class="text-muted-foreground text-xs">Automatically refresh container states</p>
 					</div>
 					<Switch bind:checked={dockerSettings.pollingEnabled} />
 				</div>
@@ -121,7 +112,7 @@
 			<Button variant="ghost" onclick={handleSkip}>Skip</Button>
 			<Button onclick={handleNext} disabled={isLoading}>
 				{#if isLoading}
-					<Loader2 class="mr-2 size-4 animate-spin" />
+					<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 				{/if}
 				Next
 			</Button>

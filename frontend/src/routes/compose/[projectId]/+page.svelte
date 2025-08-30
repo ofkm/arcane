@@ -3,24 +3,22 @@
 	import type { Project, ProjectService, ProjectPort } from '$lib/types/project.type';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import {
-		ArrowLeft,
-		AlertCircle,
-		FileStack,
-		Layers,
-		ArrowRight,
-		ExternalLink,
-		RefreshCw,
-		Terminal,
-		Settings,
-		Activity
-	} from '@lucide/svelte';
+	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import CircleAlertIcon from '@lucide/svelte/icons/alert-circle';
+	import FileStackIcon from '@lucide/svelte/icons/file-stack';
+	import LayersIcon from '@lucide/svelte/icons/layers';
+	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import TerminalIcon from '@lucide/svelte/icons/terminal';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { statusVariantMap } from '$lib/types/statuses';
+	import { getStatusVariant } from '$lib/utils/status.utils';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -166,10 +164,10 @@
 	function handleToggleStackAutoScroll() {}
 
 	const navigationSections = [
-		{ id: 'overview', label: 'Overview', icon: FileStack },
-		{ id: 'services', label: 'Services', icon: Layers },
-		{ id: 'config', label: 'Configuration', icon: Settings },
-		{ id: 'logs', label: 'Logs', icon: Terminal }
+		{ id: 'overview', label: 'Overview', icon: FileStackIcon },
+		{ id: 'services', label: 'Services', icon: LayersIcon },
+		{ id: 'config', label: 'Configuration', icon: SettingsIcon },
+		{ id: 'logs', label: 'Logs', icon: TerminalIcon }
 	] as const;
 
 	type SectionId = (typeof navigationSections)[number]['id'];
@@ -193,7 +191,7 @@
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
 						<Button variant="ghost" size="sm" href="/compose">
-							<ArrowLeft class="mr-2 size-4" />
+							<ArrowLeftIcon class="mr-2 size-4" />
 							Back
 						</Button>
 						<div class="bg-border h-4 w-px"></div>
@@ -202,10 +200,7 @@
 								{project.name}
 							</h1>
 							{#if project.status}
-								<StatusBadge
-									variant={statusVariantMap[project.status.toLowerCase()] || 'gray'}
-									text={capitalizeFirstLetter(project.status)}
-								/>
+								<StatusBadge variant={getStatusVariant(project.status)} text={capitalizeFirstLetter(project.status)} />
 							{/if}
 						</div>
 					</div>
@@ -237,7 +232,7 @@
 							</h2>
 							{#if project.status}
 								<StatusBadge
-									variant={statusVariantMap[project.status.toLowerCase()] || 'gray'}
+									variant={getStatusVariant(project.status)}
 									text={capitalizeFirstLetter(project.status)}
 									class="text-xs"
 								/>
@@ -264,7 +259,7 @@
 		{#if data.error}
 			<div class="max-w-full px-4 py-4">
 				<Alert.Root variant="destructive">
-					<AlertCircle class="size-4" />
+					<CircleAlertIcon class="size-4" />
 					<Alert.Title>Error Loading Stack</Alert.Title>
 					<Alert.Description>{data.error}</Alert.Description>
 				</Alert.Root>
@@ -304,7 +299,7 @@
 					<div class="space-y-8">
 						<section id="overview" class="scroll-mt-20">
 							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
-								<FileStack class="size-5" />
+								<FileStackIcon class="size-5" />
 								Overview
 							</h2>
 
@@ -316,7 +311,7 @@
 											<p class="text-2xl font-bold">{project.serviceCount}</p>
 										</div>
 										<div class="bg-primary/10 rounded-full p-3">
-											<Layers class="text-primary size-5" />
+											<LayersIcon class="text-primary size-5" />
 										</div>
 									</Card.Content>
 								</Card.Root>
@@ -328,7 +323,7 @@
 											<p class="text-2xl font-bold">{project.runningCount}</p>
 										</div>
 										<div class="rounded-full bg-green-500/10 p-3">
-											<Activity class="size-5 text-green-500" />
+											<ActivityIcon class="size-5 text-green-500" />
 										</div>
 									</Card.Content>
 								</Card.Root>
@@ -342,7 +337,7 @@
 											</p>
 										</div>
 										<div class="rounded-full bg-blue-500/10 p-3">
-											<FileStack class="size-5 text-blue-500" />
+											<FileStackIcon class="size-5 text-blue-500" />
 										</div>
 									</Card.Content>
 								</Card.Root>
@@ -372,7 +367,7 @@
 														class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
 													>
 														Port {port}
-														<ExternalLink class="ml-2 size-4" />
+														<ExternalLinkIcon class="ml-2 size-4" />
 													</a>
 												{/each}
 											</div>
@@ -406,7 +401,7 @@
 													class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
 												>
 													Port {port}
-													<ExternalLink class="ml-2 size-4" />
+													<ExternalLinkIcon class="ml-2 size-4" />
 												</a>
 											{/each}
 										</div>
@@ -417,7 +412,7 @@
 
 						<section id="services" class="scroll-mt-20">
 							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
-								<Layers class="size-5" />
+								<LayersIcon class="size-5" />
 								Services ({project.serviceCount})
 							</h2>
 
@@ -426,7 +421,7 @@
 									<div class="grid grid-cols-1 gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
 										{#each project.services as service (service.container_id || service.name)}
 											{@const status = service.status || 'unknown'}
-											{@const variant = statusVariantMap[status.toLowerCase()] || 'gray'}
+											{@const variant = getStatusVariant(status)}
 
 											{#if service.container_id}
 												<a
@@ -434,14 +429,14 @@
 													class="bg-background hover:bg-muted/50 group flex items-center gap-3 rounded-lg border p-3 transition-all"
 												>
 													<div class="bg-primary/10 shrink-0 rounded-full p-2">
-														<Layers class="text-primary size-3" />
+														<LayersIcon class="text-primary size-3" />
 													</div>
 													<div class="min-w-0 flex-1">
 														<div class="flex items-center justify-between">
 															<p class="truncate text-sm font-medium" title={service.name}>
 																{service.name}
 															</p>
-															<ArrowRight
+															<ArrowRightIcon
 																class="text-primary size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
 															/>
 														</div>
@@ -458,7 +453,7 @@
 											{:else}
 												<div class="bg-muted/10 flex items-center gap-3 rounded-lg border p-3">
 													<div class="bg-muted/50 shrink-0 rounded-full p-2">
-														<Layers class="text-muted-foreground size-3" />
+														<LayersIcon class="text-muted-foreground size-3" />
 													</div>
 													<div class="min-w-0 flex-1">
 														<p class="truncate text-sm font-medium" title={service.name}>
@@ -477,7 +472,7 @@
 							{:else}
 								<div class="py-12 text-center">
 									<div class="bg-muted/50 mx-auto mb-4 flex size-16 items-center justify-center rounded-full">
-										<Layers class="text-muted-foreground size-6" />
+										<LayersIcon class="text-muted-foreground size-6" />
 									</div>
 									<div class="text-muted-foreground">No services found for this project</div>
 								</div>
@@ -487,7 +482,7 @@
 						<section id="config" class="scroll-mt-20">
 							<div class="mb-6 flex items-center justify-between">
 								<h2 class="flex items-center gap-2 text-xl font-semibold">
-									<Settings class="size-5" />
+									<SettingsIcon class="size-5" />
 									Configuration
 								</h2>
 								{#if hasChanges}
@@ -548,7 +543,7 @@
 							<section id="logs" class="scroll-mt-20">
 								<div class="mb-6 flex items-center justify-between">
 									<h2 class="flex items-center gap-2 text-xl font-semibold">
-										<Terminal class="size-5" />
+										<TerminalIcon class="size-5" />
 										Project Logs
 									</h2>
 									<div class="flex items-center gap-3">
@@ -576,7 +571,7 @@
 												stackLogViewer?.startLogStream();
 											}}
 										>
-											<RefreshCw class="size-4" />
+											<RefreshCwIcon class="size-4" />
 										</Button>
 									</div>
 								</div>
@@ -610,14 +605,14 @@
 		<div class="flex min-h-screen items-center justify-center">
 			<div class="text-center">
 				<div class="bg-muted/50 mb-6 inline-flex rounded-full p-6">
-					<FileStack class="text-muted-foreground size-10" />
+					<FileStackIcon class="text-muted-foreground size-10" />
 				</div>
 				<h2 class="mb-3 text-2xl font-medium">Project Not Found</h2>
 				<p class="text-muted-foreground mb-8 max-w-md text-center">
 					Could not load Project data. It may have been removed or the Docker engine is not accessible.
 				</p>
 				<Button variant="outline" href="/compose">
-					<ArrowLeft class="mr-2 size-4" />
+					<ArrowLeftIcon class="mr-2 size-4" />
 					Back to Projects
 				</Button>
 			</div>

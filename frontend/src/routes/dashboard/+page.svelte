@@ -20,7 +20,6 @@
 	import { systemAPI, settingsAPI } from '$lib/services/api';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { onMount } from 'svelte';
-	import type { PruneType } from '$lib/types/actions.type';
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
 	import MeterMetric from '$lib/components/meter-metric.svelte';
 	import DockerIcon from '$lib/icons/docker-icon.svelte';
@@ -39,6 +38,8 @@
 		systemStats: null as SystemStats | null,
 		isPruneDialogOpen: false
 	});
+
+	type PruneType = 'containers' | 'images' | 'networks' | 'volumes';
 
 	let isLoading = $state({
 		starting: false,

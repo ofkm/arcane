@@ -5,7 +5,7 @@
 	import PackageIcon from '@lucide/svelte/icons/package';
 	import { toast } from 'svelte-sonner';
 	import ImagePullSheet from '$lib/components/sheets/image-pull-sheet.svelte';
-	import { formatBytes } from '$lib/utils/bytes.util';
+	import bytes from 'bytes';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -116,7 +116,7 @@
 		/>
 		<StatCard
 			title="Total Size"
-			value={formatBytes(data.totalSize)}
+			value={String(bytes.format(data.totalSize))}
 			icon={PackageIcon}
 			iconColor="text-amber-500"
 			class="border-l-4 border-l-amber-500"

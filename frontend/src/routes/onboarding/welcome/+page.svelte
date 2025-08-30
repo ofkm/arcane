@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { CheckCircle2, ChevronRight } from '@lucide/svelte';
+	import CircleCheckIcon from '@lucide/svelte/icons/check-circle';
+	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { goto } from '$app/navigation';
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsAPI } from '$lib/services/api';
@@ -28,9 +29,7 @@
 	<h1 class="mb-6 text-3xl font-bold">Welcome to Arcane</h1>
 
 	<div class="mb-8 space-y-6">
-		<p class="text-xl">
-			Thank you for installing Arcane! Let's get you set up with a few quick steps.
-		</p>
+		<p class="text-xl">Thank you for installing Arcane! Let's get you set up with a few quick steps.</p>
 
 		<div class="space-y-4">
 			<p class="text-lg font-medium">This wizard will help you:</p>
@@ -38,21 +37,21 @@
 			<div class="space-y-3">
 				<div class="flex items-start gap-3">
 					<div class="bg-primary/10 mt-0.5 rounded-full p-1">
-						<CheckCircle2 class="text-primary size-4" />
+						<CircleCheckIcon class="text-primary size-4" />
 					</div>
 					<p>Change the default admin password for security</p>
 				</div>
 
 				<div class="flex items-start gap-3">
 					<div class="bg-primary/10 mt-0.5 rounded-full p-1">
-						<CheckCircle2 class="text-primary size-4" />
+						<CircleCheckIcon class="text-primary size-4" />
 					</div>
 					<p>Configure your Docker connection</p>
 				</div>
 
 				<div class="flex items-start gap-3">
 					<div class="bg-primary/10 mt-0.5 rounded-full p-1">
-						<CheckCircle2 class="text-primary size-4" />
+						<CircleCheckIcon class="text-primary size-4" />
 					</div>
 					<p>Set basic application preferences</p>
 				</div>
@@ -63,13 +62,9 @@
 	</div>
 
 	<div class="flex justify-center pt-8">
-		<Button
-			type="button"
-			onclick={() => continueToNextStep()}
-			class="flex h-12 w-[80%] items-center gap-2 px-8"
-		>
+		<Button type="button" onclick={() => continueToNextStep()} class="flex h-12 w-[80%] items-center gap-2 px-8">
+			<ChevronRightIcon class="size-4" />
 			Continue
-			<ChevronRight class="size-4" />
 		</Button>
 	</div>
 </div>

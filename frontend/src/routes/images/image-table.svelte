@@ -9,7 +9,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { formatBytes } from '$lib/utils/bytes.util';
+	import bytes from 'bytes';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
@@ -19,7 +19,7 @@
 	import { environmentAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ImageSummaryDto } from '$lib/types/image.type';
-	import { formatFriendlyDate } from '$lib/utils/date.utils';
+	import { format } from 'date-fns';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 
 	let {
@@ -192,11 +192,11 @@
 {/snippet}
 
 {#snippet SizeCell({ value }: { value: unknown })}
-	{formatBytes(Number(value ?? 0))}
+	{bytes.format(Number(value ?? 0))}
 {/snippet}
 
 {#snippet CreatedCell({ value }: { value: unknown })}
-	{formatFriendlyDate(new Date(Number(value || 0) * 1000).toISOString())}
+	{format(new Date(Number(value || 0) * 1000), 'PP p')}
 {/snippet}
 
 {#snippet StatusCell({ item }: { item: ImageSummaryDto })}

@@ -6,7 +6,7 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import StopCircleIcon from '@lucide/svelte/icons/stop-circle';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import Loader2Icon from '@lucide/svelte/icons/loader-2';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
@@ -18,7 +18,7 @@
 	import { environmentAPI } from '$lib/services/api';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { formatFriendlyDate } from '$lib/utils/date.utils';
+	import { format } from 'date-fns';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import type { ContainerSummaryDto } from '$lib/types/container.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
@@ -140,7 +140,7 @@
 
 {#snippet CreatedCell({ item }: { item: ContainerSummaryDto })}
 	<span class="text-sm">
-		{item.created ? formatFriendlyDate(new Date(item.created * 1000).toISOString()) : ''}
+		{item.created ? format(new Date(item.created * 1000), 'PP p') : ''}
 	</span>
 {/snippet}
 
@@ -164,7 +164,7 @@
 				{#if item.state !== 'running'}
 					<DropdownMenu.Item onclick={() => performContainerAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
 						{#if isLoading.start}
-							<Loader2Icon class="size-4 animate-spin" />
+							<LoaderCircleIcon class="size-4 animate-spin" />
 						{:else}
 							<PlayIcon class="size-4" />
 						{/if}
@@ -176,7 +176,7 @@
 						disabled={isLoading.restart || isAnyLoading}
 					>
 						{#if isLoading.restart}
-							<Loader2Icon class="size-4 animate-spin" />
+							<LoaderCircleIcon class="size-4 animate-spin" />
 						{:else}
 							<RotateCcwIcon class="size-4" />
 						{/if}
@@ -185,7 +185,7 @@
 
 					<DropdownMenu.Item onclick={() => performContainerAction('stop', item.id)} disabled={isLoading.stop || isAnyLoading}>
 						{#if isLoading.stop}
-							<Loader2Icon class="size-4 animate-spin" />
+							<LoaderCircleIcon class="size-4 animate-spin" />
 						{:else}
 							<StopCircleIcon class="size-4" />
 						{/if}
@@ -201,7 +201,7 @@
 					disabled={isLoading.remove || isAnyLoading}
 				>
 					{#if isLoading.remove}
-						<Loader2Icon class="size-4 animate-spin" />
+						<LoaderCircleIcon class="size-4 animate-spin" />
 					{:else}
 						<Trash2Icon class="size-4" />
 					{/if}

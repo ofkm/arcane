@@ -3,7 +3,9 @@
 	import { settingsAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { Loader2, CheckCircle, ArrowRight } from '@lucide/svelte';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import CircleCheckIcon from '@lucide/svelte/icons/check-circle';
+	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
@@ -39,21 +41,20 @@
 
 <div class="space-y-6 text-center">
 	<div class="mx-auto flex size-20 items-center justify-center rounded-full bg-green-100">
-		<CheckCircle class="size-10 text-green-600" />
+		<CircleCheckIcon class="size-10 text-green-600" />
 	</div>
 
 	<div>
 		<h2 class="text-2xl font-bold">Setup Complete!</h2>
 		<p class="text-muted-foreground mt-2">
-			Congratulations! You've successfully configured Arcane. You're ready to start managing your
-			containers.
+			Congratulations! You've successfully configured Arcane. You're ready to start managing your containers.
 		</p>
 	</div>
 
 	<div class="space-y-4">
-		<div class="rounded-lg border bg-muted/50 p-4">
+		<div class="bg-muted/50 rounded-lg border p-4">
 			<h3 class="font-semibold">What's Next?</h3>
-			<ul class="mt-2 space-y-1 text-sm text-muted-foreground">
+			<ul class="text-muted-foreground mt-2 space-y-1 text-sm">
 				<li>• Start managing your Docker containers and images</li>
 				<li>• Create and deploy Docker Compose Projects</li>
 				<li>• Monitor system resources and performance</li>
@@ -63,11 +64,11 @@
 
 		<Button onclick={completeOnboarding} disabled={isLoading} size="lg" class="w-full">
 			{#if isLoading}
-				<Loader2 class="mr-2 size-4 animate-spin" />
+				<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 				Completing Setup...
 			{:else}
 				Go to Dashboard
-				<ArrowRight class="ml-2 size-4" />
+				<ArrowRightIcon class="ml-2 size-4" />
 			{/if}
 		</Button>
 	</div>

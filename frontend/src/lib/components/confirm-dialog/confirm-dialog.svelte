@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Dialog from '$lib/components/ui/dialog';
-	import { AlertTriangle } from '@lucide/svelte';
+	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import { confirmDialogStore } from '.';
 	import Button from '../ui/button/button.svelte';
 	import { Label } from '$lib/components/ui/label';
@@ -30,16 +30,14 @@
 	<Dialog.Content class="w-full max-w-md sm:max-w-lg">
 		<Dialog.Header class="space-y-3">
 			<Dialog.Title class="flex items-start gap-3 text-lg font-semibold leading-tight">
-				<AlertTriangle class="text-destructive mt-0.5 size-5 shrink-0" />
+				<TriangleAlert class="text-destructive mt-0.5 size-5 shrink-0" />
 				<span class="min-w-0 break-words">
 					{$confirmDialogStore.title}
 				</span>
 			</Dialog.Title>
 		</Dialog.Header>
 
-		<div
-			class="text-muted-foreground mt-4 min-w-0 text-sm leading-relaxed break-words whitespace-pre-wrap"
-		>
+		<div class="text-muted-foreground mt-4 min-w-0 whitespace-pre-wrap break-words text-sm leading-relaxed">
 			{$confirmDialogStore.message}
 		</div>
 
@@ -67,7 +65,7 @@
 						<Label
 							id={`${checkbox.id}-label`}
 							for={checkbox.id}
-							class="text-sm leading-relaxed font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70 min-w-0 break-words"
+							class="min-w-0 break-words text-sm font-medium leading-relaxed peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
 						>
 							{checkbox.label}
 						</Label>
@@ -77,14 +75,8 @@
 		{/if}
 
 		<Dialog.Footer class="mt-6">
-			<div class="flex justify-end gap-3 w-full">
-				<Button
-					class="min-w-[80px]"
-					variant="outline"
-					onclick={() => ($confirmDialogStore.open = false)}
-				>
-					Cancel
-				</Button>
+			<div class="flex w-full justify-end gap-3">
+				<Button class="min-w-[80px]" variant="outline" onclick={() => ($confirmDialogStore.open = false)}>Cancel</Button>
 				<Button
 					class="min-w-[80px]"
 					variant={$confirmDialogStore.confirm.destructive ? 'destructive' : 'default'}

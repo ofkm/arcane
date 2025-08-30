@@ -7,7 +7,7 @@
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import type { ImageSummaryDto } from '$lib/types/image.type';
 	import { environmentAPI } from '$lib/services/api';
-	import { formatBytes } from '$lib/utils/bytes.util';
+	import bytes from 'bytes';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 
 	let {
@@ -64,7 +64,7 @@
 {/snippet}
 
 {#snippet SizeCell({ item }: { item: ImageSummaryDto })}
-	{formatBytes(item.size)}
+	{bytes.format(item.size)}
 {/snippet}
 
 <Card.Root class="relative flex flex-col rounded-lg border shadow-sm">

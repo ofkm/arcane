@@ -1,7 +1,3 @@
-export const defaultEnvTemplate = `# Environment Variables
-# Format: VARIABLE_NAME=value
-`;
-
 export const defaultComposeTemplate = `services:
   nginx:
     image: nginx:alpine

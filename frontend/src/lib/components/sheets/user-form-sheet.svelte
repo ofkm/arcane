@@ -3,7 +3,9 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
-	import { Loader2, UserPlus, Save } from '@lucide/svelte';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import UserPlusIcon from '@lucide/svelte/icons/user-plus';
+	import SaveIcon from '@lucide/svelte/icons/save';
 	import type { User } from '$lib/types/user.type';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
@@ -12,11 +14,7 @@
 		open: boolean;
 		userToEdit: User | null;
 		roles: { id: string; name: string }[];
-		onSubmit: (data: {
-			user: Partial<User> & { password?: string };
-			isEditMode: boolean;
-			userId?: string;
-		}) => void;
+		onSubmit: (data: { user: Partial<User> & { password?: string }; isEditMode: boolean; userId?: string }) => void;
 		isLoading: boolean;
 		allowUsernameEdit?: boolean;
 	};
@@ -32,7 +30,7 @@
 
 	let isEditMode = $derived(!!userToEdit);
 	let canEditUsername = $derived(!isEditMode || allowUsernameEdit);
-	let SubmitIcon = $derived(isEditMode ? Save : UserPlus);
+	let SubmitIcon = $derived(isEditMode ? SaveIcon : UserPlusIcon);
 
 	// Disable most fields for OIDC users
 	let isOidcUser = $derived(!!userToEdit?.oidcSubjectId);
@@ -94,16 +92,16 @@
 
 <Sheet.Root bind:open onOpenChange={handleOpenChange}>
 	<Sheet.Content class="p-6">
-		<Sheet.Header class="space-y-3 pb-6 border-b">
+		<Sheet.Header class="space-y-3 border-b pb-6">
 			<div class="flex items-center gap-3">
-				<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-					<SubmitIcon class="size-5 text-primary" />
+				<div class="bg-primary/10 flex size-10 shrink-0 items-center justify-center rounded-lg">
+					<SubmitIcon class="text-primary size-5" />
 				</div>
 				<div>
 					<Sheet.Title class="text-xl font-semibold">
 						{isEditMode ? 'Edit User' : 'Create New User'}
 					</Sheet.Title>
-					<Sheet.Description class="text-sm text-muted-foreground mt-1">
+					<Sheet.Description class="text-muted-foreground mt-1 text-sm">
 						{isEditMode
 							? `Update the details for ${userToEdit?.username || 'this user'}`
 							: 'Add a new user to your system with the required permissions'}
@@ -169,7 +167,7 @@
 				>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
-						<Loader2 class="mr-2 size-4 animate-spin" />
+						<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 					{/if}
 					<SubmitIcon class="mr-2 size-4" />
 					{isEditMode ? 'Save Changes' : 'Create User'}

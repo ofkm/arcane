@@ -3,7 +3,8 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { AlertCircle, ChevronRight } from '@lucide/svelte';
+	import CircleAlertIcon from '@lucide/svelte/icons/alert-circle';
+	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { preventDefault } from '$lib/utils/form.utils';
 	import { userAPI } from '$lib/services/api';
 	import { goto } from '$app/navigation';
@@ -70,14 +71,12 @@
 	<h1 class="mb-8 text-center text-3xl font-bold">Change Admin Password</h1>
 
 	<div class="mb-8 space-y-2">
-		<p class="text-md text-center">
-			For security reasons, please change the default admin password.
-		</p>
+		<p class="text-md text-center">For security reasons, please change the default admin password.</p>
 	</div>
 
 	{#if error}
 		<Alert.Root class="mb-8" variant="destructive">
-			<AlertCircle class="mr-2 size-5" />
+			<CircleAlertIcon class="mr-2 size-5" />
 			<Alert.Title>Error</Alert.Title>
 			<Alert.Description>{error}</Alert.Description>
 		</Alert.Root>
@@ -113,12 +112,10 @@
 		<div class="flex justify-center pt-8">
 			<Button type="submit" disabled={loading} class="flex h-12 w-[80%] items-center px-8">
 				{#if loading}
-					<span
-						class="inline-block size-4 animate-spin rounded-full border-2 border-white border-t-transparent"
-					></span>
+					<span class="inline-block size-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
 				{/if}
 				Continue
-				<ChevronRight class="size-4" />
+				<ChevronRightIcon class="size-4" />
 			</Button>
 		</div>
 	</form>

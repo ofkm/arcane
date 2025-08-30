@@ -3,7 +3,7 @@
 -->
 
 <script lang="ts" module>
-	import { cn } from '$lib/utils/utils';
+	import { cn } from '$lib/utils';
 	import { tv, type VariantProps } from 'tailwind-variants';
 	import { CopyButton } from '$lib/components/ui/copy-button';
 	import type { UseClipboard } from '$lib/hooks/use-clipboard.svelte';
@@ -36,19 +36,19 @@
 
 <div class={cn(style({ variant, className: className }))}>
 	{#if typeof text == 'string'}
-		<pre class={cn('overflow-y-auto text-left font-mono text-sm font-light whitespace-nowrap')}>
+		<pre class={cn('overflow-y-auto whitespace-nowrap text-left font-mono text-sm font-light')}>
 			{text}
 		</pre>
 	{:else}
 		{#each text as line, i (i)}
-			<pre class={cn('overflow-y-auto text-left font-mono text-sm font-light whitespace-nowrap')}>
+			<pre class={cn('overflow-y-auto whitespace-nowrap text-left font-mono text-sm font-light')}>
 			{line}
 		</pre>
 		{/each}
 	{/if}
 
 	<CopyButton
-		class="hover:text-opacity-80 absolute top-1/2 right-2 size-7 -translate-y-1/2 transition-opacity ease-in-out hover:bg-transparent dark:hover:bg-transparent"
+		class="absolute right-2 top-1/2 size-7 -translate-y-1/2 transition-opacity ease-in-out hover:bg-transparent hover:text-opacity-80 dark:hover:bg-transparent"
 		text={typeof text === 'string' ? text : text.join('\n')}
 		{onCopy}
 	/>

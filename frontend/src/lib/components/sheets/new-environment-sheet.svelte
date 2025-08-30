@@ -5,7 +5,10 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
-	import { Loader2, Server, Trash2, TestTube } from '@lucide/svelte';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import ServerIcon from '@lucide/svelte/icons/server';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import TestTubeIcon from '@lucide/svelte/icons/test-tube';
 	import * as Card from '$lib/components/ui/card';
 	import { environmentManagementAPI } from '$lib/services/api';
 	import type { Environment } from '$lib/stores/environment.store';
@@ -120,15 +123,17 @@
 </script>
 
 <Sheet.Root bind:open onOpenChange={handleOpenChange}>
-	<Sheet.Content class="p-6 w-full sm:max-w-lg">
-		<Sheet.Header class="space-y-3 pb-6 border-b">
+	<Sheet.Content class="w-full p-6 sm:max-w-lg">
+		<Sheet.Header class="space-y-3 border-b pb-6">
 			<div class="flex items-center gap-3">
-				<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-					<Server class="size-5 text-primary" />
+				<div class="bg-primary/10 flex size-10 shrink-0 items-center justify-center rounded-lg">
+					<ServerIcon class="text-primary size-5" />
 				</div>
 				<div>
 					<Sheet.Title class="text-xl font-semibold">Manage Environments</Sheet.Title>
-					<Sheet.Description class="text-sm text-muted-foreground mt-1">Add and manage remote Docker environments. Each environment should be an Arcane agent running as an API server.</Sheet.Description>
+					<Sheet.Description class="text-muted-foreground mt-1 text-sm"
+						>Add and manage remote Docker environments. Each environment should be an Arcane agent running as an API server.</Sheet.Description
+					>
 				</div>
 			</div>
 		</Sheet.Header>
@@ -140,17 +145,40 @@
 				</Card.Header>
 				<Card.Content>
 					<form onsubmit={preventDefault(handleSubmit)} class="space-y-4">
-						<FormInput label="Hostname *" type="text" placeholder="docker-host-1" description="Display name for this environment" bind:input={$inputs.hostname} />
+						<FormInput
+							label="Hostname *"
+							type="text"
+							placeholder="docker-host-1"
+							description="Display name for this environment"
+							bind:input={$inputs.hostname}
+						/>
 
-						<FormInput label="API URL *" type="text" placeholder="http://192.168.1.100:3552" description="Full URL to the agent's API endpoint" bind:input={$inputs.apiUrl} />
+						<FormInput
+							label="API URL *"
+							type="text"
+							placeholder="http://192.168.1.100:3552"
+							description="Full URL to the agent's API endpoint"
+							bind:input={$inputs.apiUrl}
+						/>
 
-						<FormInput label="Description" type="text" placeholder="Production Docker host" description="Optional description for this environment" bind:input={$inputs.description} />
+						<FormInput
+							label="Description"
+							type="text"
+							placeholder="Production Docker host"
+							description="Optional description for this environment"
+							bind:input={$inputs.description}
+						/>
 
-						<SwitchWithLabel id="enabledSwitch" label="Enabled" description="Enable this environment for use" bind:checked={$inputs.enabled.value} />
+						<SwitchWithLabel
+							id="enabledSwitch"
+							label="Enabled"
+							description="Enable this environment for use"
+							bind:checked={$inputs.enabled.value}
+						/>
 
 						<Button type="submit" class="w-full" disabled={isSubmitting}>
 							{#if isSubmitting}
-								<Loader2 class="mr-2 size-4 animate-spin" />
+								<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 							{/if}
 							Add Environment
 						</Button>
@@ -164,30 +192,34 @@
 				</Card.Header>
 				<Card.Content>
 					{#if loading}
-						<div class="text-center py-4">
-							<Loader2 class="size-4 animate-spin mx-auto" />
+						<div class="py-4 text-center">
+							<LoaderCircleIcon class="mx-auto size-4 animate-spin" />
 						</div>
 					{:else if environments.length === 0}
-						<div class="text-center py-4 text-muted-foreground">No environments configured</div>
+						<div class="text-muted-foreground py-4 text-center">No environments configured</div>
 					{:else}
 						<div class="space-y-3">
 							{#each environments as environment}
-								<div class="flex items-center justify-between p-3 border rounded-lg">
-									<div class="flex-1 min-w-0">
-										<div class="font-medium truncate">{environment.hostname}</div>
-										<div class="text-sm text-muted-foreground truncate">{environment.apiUrl}</div>
-										<div class="flex items-center gap-2 mt-1">
-											<span class="text-xs px-2 py-1 rounded-full {environment.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+								<div class="flex items-center justify-between rounded-lg border p-3">
+									<div class="min-w-0 flex-1">
+										<div class="truncate font-medium">{environment.hostname}</div>
+										<div class="text-muted-foreground truncate text-sm">{environment.apiUrl}</div>
+										<div class="mt-1 flex items-center gap-2">
+											<span
+												class="rounded-full px-2 py-1 text-xs {environment.status === 'online'
+													? 'bg-green-100 text-green-800'
+													: 'bg-red-100 text-red-800'}"
+											>
 												{environment.status}
 											</span>
 										</div>
 									</div>
-									<div class="flex items-center gap-2 ml-2">
+									<div class="ml-2 flex items-center gap-2">
 										<Button variant="outline" size="sm" onclick={() => testConnection(environment.id)}>
-											<TestTube class="h-4 w-4" />
+											<TestTubeIcon class="h-4 w-4" />
 										</Button>
 										<Button variant="destructive" size="sm" onclick={() => deleteEnvironment(environment.id)}>
-											<Trash2 class="h-4 w-4" />
+											<Trash2Icon class="h-4 w-4" />
 										</Button>
 									</div>
 								</div>

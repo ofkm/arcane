@@ -1,17 +1,21 @@
 <script lang="ts">
 	import '../../app.css';
-	import { CheckCircle2, Key, Settings, Database, Shield, CheckCircle } from '@lucide/svelte';
+	import KeyIcon from '@lucide/svelte/icons/key';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import DatabaseIcon from '@lucide/svelte/icons/database';
+	import ShieldIcon from '@lucide/svelte/icons/shield';
+	import CircleCheckIcon from '@lucide/svelte/icons/check-circle';
 	import { page } from '$app/state';
 
 	let { children } = $props();
 
 	const steps = [
-		{ id: 'welcome', label: 'Welcome', path: '/onboarding/welcome', icon: CheckCircle2 },
-		{ id: 'password', label: 'Admin Password', path: '/onboarding/password', icon: Key },
-		{ id: 'docker', label: 'Docker Setup', path: '/onboarding/docker', icon: Database },
-		{ id: 'security', label: 'Security', path: '/onboarding/security', icon: Shield },
-		{ id: 'settings', label: 'Application Settings', path: '/onboarding/settings', icon: Settings },
-		{ id: 'complete', label: 'Complete', path: '/onboarding/complete', icon: CheckCircle }
+		{ id: 'welcome', label: 'Welcome', path: '/onboarding/welcome', icon: CircleCheckIcon },
+		{ id: 'password', label: 'Admin Password', path: '/onboarding/password', icon: KeyIcon },
+		{ id: 'docker', label: 'Docker Setup', path: '/onboarding/docker', icon: DatabaseIcon },
+		{ id: 'security', label: 'Security', path: '/onboarding/security', icon: ShieldIcon },
+		{ id: 'settings', label: 'Application Settings', path: '/onboarding/settings', icon: SettingsIcon },
+		{ id: 'complete', label: 'Complete', path: '/onboarding/complete', icon: CircleCheckIcon }
 	];
 
 	const currentStepIndex = $derived(steps.findIndex((step) => page.url.pathname === step.path));
@@ -34,10 +38,7 @@
 					>
 						<step.icon class="size-5" />
 					</div>
-					<span
-						class={`mt-2 text-sm ${i <= currentStepIndex ? 'text-foreground' : 'text-muted-foreground'}`}
-						>{step.label}</span
-					>
+					<span class={`mt-2 text-sm ${i <= currentStepIndex ? 'text-foreground' : 'text-muted-foreground'}`}>{step.label}</span>
 				</div>
 
 				{#if i < steps.length - 1}
@@ -48,7 +49,7 @@
 	</div>
 
 	<main class="container mx-auto flex-1 px-4 py-6">
-		<div class="rounded-lg border bg-card p-8 shadow-sm">
+		<div class="bg-card rounded-lg border p-8 shadow-sm">
 			{@render children()}
 		</div>
 	</main>

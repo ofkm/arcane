@@ -1,22 +1,29 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { HardDrive, Clock, Tag, Layers, Database, Globe, Info } from '@lucide/svelte';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
+	import ClockIcon from '@lucide/svelte/icons/clock';
+	import TagIcon from '@lucide/svelte/icons/tag';
+	import LayersIcon from '@lucide/svelte/icons/layers';
+	import DatabaseIcon from '@lucide/svelte/icons/database';
+	import GlobeIcon from '@lucide/svelte/icons/globe';
+	import InfoIcon from '@lucide/svelte/icons/info';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { goto } from '$app/navigation';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { formatDate, truncateString } from '$lib/utils/string.utils';
+	import { truncateString } from '$lib/utils/string.utils';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog/';
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
+	import { format } from 'date-fns';
 
 	let { data } = $props();
 	let volume = $state(data.volume);
 
 	let isLoading = $state({ remove: false });
-	const createdDate = $derived(volume.createdAt ? formatDate(volume.createdAt) : 'N/A');
+	const createdDate = $derived(volume.createdAt ? format(new Date(volume.createdAt), 'PP p') : 'N/A');
 
 	async function handleRemoveVolumeConfirm(volumeName: string) {
 		let message = 'Are you sure you want to delete this volume? This action cannot be undone.';
@@ -104,7 +111,7 @@
 			<Card.Root class="border shadow-sm">
 				<Card.Header class="pb-0">
 					<Card.Title class="flex items-center gap-2 text-lg">
-						<Database class="text-primary size-5" />
+						<DatabaseIcon class="text-primary size-5" />
 						Volume Details
 					</Card.Title>
 					<Card.Description>Basic information about this Docker volume</Card.Description>
@@ -113,7 +120,7 @@
 					<div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
-								<Database class="size-5 text-gray-500" />
+								<DatabaseIcon class="size-5 text-gray-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Name</p>
@@ -123,7 +130,7 @@
 
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2">
-								<HardDrive class="size-5 text-blue-500" />
+								<HardDriveIcon class="size-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Driver</p>
@@ -133,7 +140,7 @@
 
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2">
-								<Clock class="size-5 text-green-500" />
+								<ClockIcon class="size-5 text-green-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Created</p>
@@ -143,7 +150,7 @@
 
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-purple-500/10 p-2">
-								<Globe class="size-5 text-purple-500" />
+								<GlobeIcon class="size-5 text-purple-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Scope</p>
@@ -153,7 +160,7 @@
 
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 p-2">
-								<Info class="size-5 text-amber-500" />
+								<InfoIcon class="size-5 text-amber-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Status</p>
@@ -169,7 +176,7 @@
 
 						<div class="col-span-1 flex items-start gap-3 sm:col-span-2 lg:col-span-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-teal-500/10 p-2">
-								<Layers class="size-5 text-teal-500" />
+								<LayersIcon class="size-5 text-teal-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">Mountpoint</p>
@@ -185,7 +192,7 @@
 			<Card.Root class="border shadow-sm">
 				<Card.Header class="pb-0">
 					<Card.Title class="flex items-center gap-2 text-lg">
-						<HardDrive class="text-primary size-5" />
+						<HardDriveIcon class="text-primary size-5" />
 						Containers Using This Volume
 					</Card.Title>
 					<Card.Description>List of containers currently referencing this volume</Card.Description>
@@ -212,7 +219,7 @@
 				<Card.Root class="border shadow-sm">
 					<Card.Header class="pb-0">
 						<Card.Title class="flex items-center gap-2 text-lg">
-							<Tag class="text-primary size-5" />
+							<TagIcon class="text-primary size-5" />
 							Labels
 						</Card.Title>
 						<Card.Description>User-defined metadata attached to this volume</Card.Description>
@@ -238,7 +245,7 @@
 				<Card.Root class="border shadow-sm">
 					<Card.Header class="pb-0">
 						<Card.Title class="flex items-center gap-2 text-lg">
-							<HardDrive class="text-primary size-5" />
+							<HardDriveIcon class="text-primary size-5" />
 							Driver Options
 						</Card.Title>
 						<Card.Description>Volume driver-specific options</Card.Description>
@@ -265,7 +272,7 @@
 					<Card.Content class="pb-6 pt-6 text-center">
 						<div class="flex flex-col items-center justify-center">
 							<div class="bg-muted/30 mb-4 rounded-full p-3">
-								<Tag class="text-muted-foreground size-5 opacity-50" />
+								<TagIcon class="text-muted-foreground size-5 opacity-50" />
 							</div>
 							<p class="text-muted-foreground">This volume has no additional labels or driver options.</p>
 						</div>
@@ -276,7 +283,7 @@
 	{:else}
 		<div class="flex flex-col items-center justify-center px-4 py-16 text-center">
 			<div class="bg-muted/30 mb-4 rounded-full p-4">
-				<Database class="text-muted-foreground size-10 opacity-70" />
+				<DatabaseIcon class="text-muted-foreground size-10 opacity-70" />
 			</div>
 			<h2 class="mb-2 text-xl font-medium">Volume Not Found</h2>
 			<p class="text-muted-foreground mb-6">The requested volume could not be found or is no longer available.</p>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { XCircle } from '@lucide/svelte';
+	import CircleXIcon from '@lucide/svelte/icons/circle-x';
 
 	let {
 		message,
@@ -21,10 +21,8 @@
 
 <div class="grid h-full min-h-screen place-items-center px-6">
 	<div class="w-full max-w-md text-center">
-		<div
-			class="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-destructive/10"
-		>
-			<XCircle class="text-destructive size-7" aria-hidden="true" />
+		<div class="bg-destructive/10 mx-auto mb-4 flex size-14 items-center justify-center rounded-full">
+			<CircleXIcon class="text-destructive size-7" aria-hidden="true" />
 		</div>
 
 		<h1 class="text-2xl font-semibold">{title}</h1>

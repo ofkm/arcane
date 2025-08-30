@@ -2,7 +2,12 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import type { FormInput as FormInputType } from '$lib/utils/form.utils';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { RefreshCw, ImageMinus, Save, Clock, Zap, InfoIcon } from '@lucide/svelte';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import ImageMinusIcon from '@lucide/svelte/icons/image-minus';
+	import SaveIcon from '@lucide/svelte/icons/save';
+	import ClockIcon from '@lucide/svelte/icons/clock';
+	import ZapIcon from '@lucide/svelte/icons/zap';
+	import InfoIcon from '@lucide/svelte/icons/info';
 	import * as RadioGroup from '$lib/components/ui/radio-group/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
@@ -90,13 +95,11 @@
 	});
 
 	let isPollingConfigValid = $derived(
-		!pollingEnabledSwitch.value ||
-			(pollingIntervalInput.value >= 5 && pollingIntervalInput.value <= 1440)
+		!pollingEnabledSwitch.value || (pollingIntervalInput.value >= 5 && pollingIntervalInput.value <= 1440)
 	);
 
 	let isAutoUpdateConfigValid = $derived(
-		!autoUpdateSwitch.value ||
-			(autoUpdateIntervalInput.value >= 5 && autoUpdateIntervalInput.value <= 1440)
+		!autoUpdateSwitch.value || (autoUpdateIntervalInput.value >= 5 && autoUpdateIntervalInput.value <= 1440)
 	);
 
 	let canSave = $derived(isPollingConfigValid && isAutoUpdateConfigValid);
@@ -120,10 +123,10 @@
 					class="arcane-button-save h-10 min-w-[140px]"
 				>
 					{#if isLoading.saving}
-						<RefreshCw class="size-4 animate-spin" />
+						<RefreshCwIcon class="size-4 animate-spin" />
 						Saving...
 					{:else}
-						<Save class="size-4" />
+						<SaveIcon class="size-4" />
 						Save Settings
 					{/if}
 				</Button>
@@ -134,11 +137,9 @@
 		{#if autoUpdateSwitch.value && pollingEnabledSwitch.value}
 			<div class="settings-alert">
 				<Alert.Root variant="warning">
-					<Zap class="size-4" />
+					<ZapIcon class="size-4" />
 					<Alert.Title>Auto-update Enabled</Alert.Title>
-					<Alert.Description
-						>Automatic container updates are active with polling enabled</Alert.Description
-					>
+					<Alert.Description>Automatic container updates are active with polling enabled</Alert.Description>
 				</Alert.Root>
 			</div>
 		{/if}
@@ -146,17 +147,15 @@
 		<!-- Settings Grid -->
 		<div class="settings-grid grid gap-6 md:grid-cols-1">
 			<div class="grid grid-cols-1 gap-6">
-				<Card.Root class="border shadow-sm rounded-lg">
+				<Card.Root class="rounded-lg border shadow-sm">
 					<Card.Header class="pb-2">
 						<div class="flex items-center gap-3">
 							<div class="rounded-md bg-emerald-500/10 p-2.5">
-								<Clock class="size-5 text-emerald-600" />
+								<ClockIcon class="size-5 text-emerald-600" />
 							</div>
 							<div>
 								<Card.Title class="text-lg">Image Automation</Card.Title>
-								<Card.Description class="text-sm"
-									>Control automatic image polling and updates</Card.Description
-								>
+								<Card.Description class="text-sm">Control automatic image polling and updates</Card.Description>
 							</div>
 						</div>
 					</Card.Header>
@@ -182,12 +181,11 @@
 
 								{#if pollingIntervalInput.value < 30}
 									<Alert.Root variant="warning">
-										<Zap class="size-4" />
+										<ZapIcon class="size-4" />
 										<Alert.Title>Rate Limiting Warning</Alert.Title>
 										<Alert.Description
-											>Polling intervals below 30 minutes may trigger rate limits on Docker
-											registries, potentially blocking your account temporarily. Consider using
-											longer intervals for production environments.</Alert.Description
+											>Polling intervals below 30 minutes may trigger rate limits on Docker registries, potentially blocking your
+											account temporarily. Consider using longer intervals for production environments.</Alert.Description
 										>
 									</Alert.Root>
 								{/if}
@@ -232,17 +230,15 @@
 				</Card.Root>
 			</div>
 
-			<Card.Root class="border shadow-sm rounded-lg">
+			<Card.Root class="rounded-lg border shadow-sm">
 				<Card.Header class="pb-2">
 					<div class="flex items-center gap-3">
 						<div class="rounded-md bg-purple-500/10 p-2.5">
-							<ImageMinus class="size-5 text-purple-600" />
+							<ImageMinusIcon class="size-5 text-purple-600" />
 						</div>
 						<div>
 							<Card.Title class="text-lg">Image Pruning</Card.Title>
-							<Card.Description class="text-sm"
-								>Configure cleanup behavior for unused Docker images</Card.Description
-							>
+							<Card.Description class="text-sm">Configure cleanup behavior for unused Docker images</Card.Description>
 						</div>
 					</div>
 				</Card.Header>
@@ -262,13 +258,10 @@
 							class="space-y-3"
 							id="pruneMode"
 						>
-							<div
-								class="hover:bg-muted/50 flex items-start space-x-3 rounded-lg border p-3 transition-colors"
-							>
+							<div class="hover:bg-muted/50 flex items-start space-x-3 rounded-lg border p-3 transition-colors">
 								<RadioGroup.Item value="all" id="prune-all" class="mt-0.5" />
 								<div class="space-y-1">
-									<Label for="prune-all" class="cursor-pointer font-medium">All Unused Images</Label
-									>
+									<Label for="prune-all" class="cursor-pointer font-medium">All Unused Images</Label>
 									<p class="text-muted-foreground text-sm">
 										Remove all images not referenced by containers (equivalent to <code
 											class="bg-background rounded px-1 py-0.5 text-xs">docker image prune -a</code
@@ -277,17 +270,13 @@
 								</div>
 							</div>
 
-							<div
-								class="hover:bg-muted/50 flex items-start space-x-3 rounded-lg border p-3 transition-colors"
-							>
+							<div class="hover:bg-muted/50 flex items-start space-x-3 rounded-lg border p-3 transition-colors">
 								<RadioGroup.Item value="dangling" id="prune-dangling" class="mt-0.5" />
 								<div class="space-y-1">
-									<Label for="prune-dangling" class="cursor-pointer font-medium"
-										>Dangling Images Only</Label
-									>
+									<Label for="prune-dangling" class="cursor-pointer font-medium">Dangling Images Only</Label>
 									<p class="text-muted-foreground text-sm">
-										Remove only untagged images (equivalent to <code
-											class="bg-background rounded px-1 py-0.5 text-xs">docker image prune</code
+										Remove only untagged images (equivalent to <code class="bg-background rounded px-1 py-0.5 text-xs"
+											>docker image prune</code
 										>)
 									</p>
 								</div>
@@ -296,8 +285,7 @@
 
 						<div class="bg-muted/50 rounded-lg p-3">
 							<p class="text-muted-foreground text-sm">
-								<strong>Note:</strong> This setting affects the "Prune Unused Images" action on the
-								Images page.
+								<strong>Note:</strong> This setting affects the "Prune Unused Images" action on the Images page.
 								{pruneModeValue === 'all'
 									? 'All unused images will be removed, which frees up more space but may require re-downloading images later.'
 									: 'Only dangling images will be removed, which is safer but may leave some unused images behind.'}

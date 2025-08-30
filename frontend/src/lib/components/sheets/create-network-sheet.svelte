@@ -6,7 +6,9 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import { Loader2, Network, X } from '@lucide/svelte';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import NetworkIcon from '@lucide/svelte/icons/network';
+	import XIcon from '@lucide/svelte/icons/x';
 	import type { NetworkCreateOptions } from 'dockerode';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
@@ -149,14 +151,16 @@
 
 <Sheet.Root bind:open onOpenChange={handleOpenChange}>
 	<Sheet.Content class="p-6">
-		<Sheet.Header data-testid="create-network-dialog-header" class="space-y-3 pb-6 border-b">
+		<Sheet.Header data-testid="create-network-dialog-header" class="space-y-3 border-b pb-6">
 			<div class="flex items-center gap-3">
-				<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-					<Network class="size-5 text-primary" />
+				<div class="bg-primary/10 flex size-10 shrink-0 items-center justify-center rounded-lg">
+					<NetworkIcon class="text-primary size-5" />
 				</div>
 				<div>
 					<Sheet.Title class="text-xl font-semibold">Create New Network</Sheet.Title>
-					<Sheet.Description class="text-sm text-muted-foreground mt-1">Configure and create a new Docker network.</Sheet.Description>
+					<Sheet.Description class="text-muted-foreground mt-1 text-sm"
+						>Configure and create a new Docker network.</Sheet.Description
+					>
 				</div>
 			</div>
 		</Sheet.Header>
@@ -164,14 +168,28 @@
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
 			<div class="space-y-2">
 				<Label for="network-name" class="text-sm font-medium">Network Name *</Label>
-				<Input id="network-name" type="text" placeholder="e.g., my-app-network" disabled={isLoading} bind:value={$inputs.networkName.value} class={$inputs.networkName.error ? 'border-destructive' : ''} />
+				<Input
+					id="network-name"
+					type="text"
+					placeholder="e.g., my-app-network"
+					disabled={isLoading}
+					bind:value={$inputs.networkName.value}
+					class={$inputs.networkName.error ? 'border-destructive' : ''}
+				/>
 				{#if $inputs.networkName.error}
-					<p class="text-xs text-destructive">{$inputs.networkName.error}</p>
+					<p class="text-destructive text-xs">{$inputs.networkName.error}</p>
 				{/if}
-				<p class="text-xs text-muted-foreground">Unique name for the network</p>
+				<p class="text-muted-foreground text-xs">Unique name for the network</p>
 			</div>
 
-			<SelectWithLabel id="driver-select" bind:value={$inputs.networkDriver.value} label="Network Driver" description="Choose the network driver type" options={drivers} placeholder="Select a driver" />
+			<SelectWithLabel
+				id="driver-select"
+				bind:value={$inputs.networkDriver.value}
+				label="Network Driver"
+				description="Choose the network driver type"
+				options={drivers}
+				placeholder="Select a driver"
+			/>
 
 			<div class="space-y-4">
 				<div class="flex items-center space-x-4">
@@ -197,8 +215,16 @@
 									<div class="flex items-center gap-2">
 										<Input type="text" placeholder="Key" bind:value={label.key} disabled={isLoading} class="flex-1" />
 										<Input type="text" placeholder="Value" bind:value={label.value} disabled={isLoading} class="flex-1" />
-										<Button type="button" variant="ghost" size="icon" onclick={() => removeLabel(index)} disabled={isLoading || labels.length <= 1} class="text-destructive hover:text-destructive" title="Remove Label">
-											<X class="size-4" />
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											onclick={() => removeLabel(index)}
+											disabled={isLoading || labels.length <= 1}
+											class="text-destructive hover:text-destructive"
+											title="Remove Label"
+										>
+											<XIcon class="size-4" />
 										</Button>
 									</div>
 								{/each}
@@ -207,11 +233,18 @@
 
 							<div class="space-y-2">
 								<Label for="network-labels" class="text-sm font-medium">Additional Labels (Text Format)</Label>
-								<Textarea id="network-labels" placeholder="com.example.description=Production network&#10;com.example.department=Backend" disabled={isLoading} rows={3} bind:value={$inputs.networkLabels.value} class={$inputs.networkLabels.error ? 'border-destructive' : ''} />
+								<Textarea
+									id="network-labels"
+									placeholder="com.example.description=Production network&#10;com.example.department=Backend"
+									disabled={isLoading}
+									rows={3}
+									bind:value={$inputs.networkLabels.value}
+									class={$inputs.networkLabels.error ? 'border-destructive' : ''}
+								/>
 								{#if $inputs.networkLabels.error}
-									<p class="text-xs text-destructive">{$inputs.networkLabels.error}</p>
+									<p class="text-destructive text-xs">{$inputs.networkLabels.error}</p>
 								{/if}
-								<p class="text-xs text-muted-foreground">Enter additional labels as key=value pairs, one per line</p>
+								<p class="text-muted-foreground text-xs">Enter additional labels as key=value pairs, one per line</p>
 							</div>
 						</div>
 					</Accordion.Content>
@@ -227,23 +260,37 @@
 							</div>
 
 							{#if $inputs.enableIpam.value}
-								<div class="space-y-4 pl-6 border-l-2 border-muted">
+								<div class="border-muted space-y-4 border-l-2 pl-6">
 									<div class="space-y-2">
 										<Label for="subnet" class="text-sm font-medium">Subnet</Label>
-										<Input id="subnet" type="text" placeholder="e.g., 172.20.0.0/16" disabled={isLoading} bind:value={$inputs.subnet.value} class={$inputs.subnet.error ? 'border-destructive' : ''} />
+										<Input
+											id="subnet"
+											type="text"
+											placeholder="e.g., 172.20.0.0/16"
+											disabled={isLoading}
+											bind:value={$inputs.subnet.value}
+											class={$inputs.subnet.error ? 'border-destructive' : ''}
+										/>
 										{#if $inputs.subnet.error}
-											<p class="text-xs text-destructive">{$inputs.subnet.error}</p>
+											<p class="text-destructive text-xs">{$inputs.subnet.error}</p>
 										{/if}
-										<p class="text-xs text-muted-foreground">Network subnet in CIDR notation</p>
+										<p class="text-muted-foreground text-xs">Network subnet in CIDR notation</p>
 									</div>
 
 									<div class="space-y-2">
 										<Label for="gateway" class="text-sm font-medium">Gateway</Label>
-										<Input id="gateway" type="text" placeholder="e.g., 172.20.0.1" disabled={isLoading} bind:value={$inputs.gateway.value} class={$inputs.gateway.error ? 'border-destructive' : ''} />
+										<Input
+											id="gateway"
+											type="text"
+											placeholder="e.g., 172.20.0.1"
+											disabled={isLoading}
+											bind:value={$inputs.gateway.value}
+											class={$inputs.gateway.error ? 'border-destructive' : ''}
+										/>
 										{#if $inputs.gateway.error}
-											<p class="text-xs text-destructive">{$inputs.gateway.error}</p>
+											<p class="text-destructive text-xs">{$inputs.gateway.error}</p>
 										{/if}
-										<p class="text-xs text-muted-foreground">Gateway IP address for the network</p>
+										<p class="text-muted-foreground text-xs">Gateway IP address for the network</p>
 									</div>
 								</div>
 							{/if}
@@ -253,13 +300,19 @@
 			</Accordion.Root>
 
 			<Sheet.Footer class="flex flex-row gap-2">
-				<Button type="button" class="arcane-button-cancel flex-1" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
+				<Button
+					type="button"
+					class="arcane-button-cancel flex-1"
+					variant="outline"
+					onclick={() => (open = false)}
+					disabled={isLoading}>Cancel</Button
+				>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
-						<Loader2 class="mr-2 size-4 animate-spin" />
+						<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 						Creating...
 					{:else}
-						<Network class="mr-2 size-4" />
+						<NetworkIcon class="mr-2 size-4" />
 						Create Network
 					{/if}
 				</Button>

@@ -4,7 +4,10 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { AlertCircle, LogIn, Lock, User } from '@lucide/svelte';
+	import CircleAlertIcon from '@lucide/svelte/icons/alert-circle';
+	import LogInIcon from '@lucide/svelte/icons/log-in';
+	import LockIcon from '@lucide/svelte/icons/lock';
+	import UserIcon from '@lucide/svelte/icons/user';
 	import type { PageData } from './$types';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { authService } from '$lib/services/api/auth-api-service';
@@ -71,21 +74,20 @@
 
 							{#if data.error}
 								<Alert.Root variant="destructive">
-									<AlertCircle class="size-4" />
+									<CircleAlertIcon class="size-4" />
 									<Alert.Title>Login Problem</Alert.Title>
 									<Alert.Description>
 										{#if data.error === 'oidc_invalid_response'}
 											There was an issue with the OIDC login response. Please try again.
 										{:else if data.error === 'oidc_misconfigured'}
-											OIDC is not configured correctly on the server. Please contact an
-											administrator.
+											OIDC is not configured correctly on the server. Please contact an administrator.
 										{:else if data.error === 'oidc_userinfo_failed'}
 											Could not retrieve your user information from the OIDC provider.
 										{:else if data.error === 'oidc_missing_sub'}
 											Your OIDC provider did not return a subject identifier.
 										{:else if data.error === 'oidc_email_collision'}
-											An account with your email already exists but is linked to a different OIDC
-											identity. Please contact an administrator.
+											An account with your email already exists but is linked to a different OIDC identity. Please contact an
+											administrator.
 										{:else if data.error === 'oidc_token_error'}
 											There was an error obtaining tokens from the OIDC provider.
 										{:else if data.error === 'user_processing_failed'}
@@ -99,7 +101,7 @@
 
 							{#if error}
 								<Alert.Root variant="destructive">
-									<AlertCircle class="size-4" />
+									<CircleAlertIcon class="size-4" />
 									<Alert.Title>Authentication Failed</Alert.Title>
 									<Alert.Description>{error}</Alert.Description>
 								</Alert.Root>
@@ -107,7 +109,7 @@
 
 							{#if !showLocalLoginForm && !showOidcLoginButton}
 								<Alert.Root variant="destructive">
-									<AlertCircle class="size-4" />
+									<CircleAlertIcon class="size-4" />
 									<Alert.Title>No Login Methods Configured</Alert.Title>
 									<Alert.Description>
 										There are currently no login methods enabled. Please contact an administrator.
@@ -117,7 +119,7 @@
 
 							{#if showOidcLoginButton && !showLocalLoginForm}
 								<Button onclick={handleOidcLogin} class="w-full">
-									<LogIn class="mr-2 size-4" />
+									<LogInIcon class="mr-2 size-4" />
 									Sign in with OIDC Provider
 								</Button>
 							{/if}
@@ -127,10 +129,8 @@
 									<div class="grid gap-3">
 										<Label for="username">Username</Label>
 										<div class="relative">
-											<div
-												class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
-											>
-												<User class="size-4 text-muted-foreground" />
+											<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+												<UserIcon class="text-muted-foreground size-4" />
 											</div>
 											<Input
 												id="username"
@@ -148,10 +148,8 @@
 									<div class="grid gap-3">
 										<Label for="password">Password</Label>
 										<div class="relative">
-											<div
-												class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
-											>
-												<Lock class="size-4 text-muted-foreground" />
+											<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+												<LockIcon class="text-muted-foreground size-4" />
 											</div>
 											<Input
 												id="password"
@@ -168,12 +166,10 @@
 									</div>
 									<Button type="submit" class="w-full" disabled={loading} aria-busy={loading}>
 										{#if loading}
-											<div
-												class="mr-2 size-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
-											></div>
+											<div class="mr-2 size-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
 											Signing in...
 										{:else}
-											<LogIn class="mr-2 size-4" />
+											<LogInIcon class="mr-2 size-4" />
 											Sign in to Arcane
 										{/if}
 									</Button>
@@ -183,15 +179,13 @@
 									<div
 										class="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t"
 									>
-										<span class="bg-card text-muted-foreground relative z-10 px-2">
-											Or continue with
-										</span>
+										<span class="bg-card text-muted-foreground relative z-10 px-2"> Or continue with </span>
 									</div>
 								{/if}
 
 								{#if showOidcLoginButton && showDivider}
 									<Button onclick={handleOidcLogin} variant="outline" class="w-full">
-										<LogIn class="mr-2 size-4" />
+										<LogInIcon class="mr-2 size-4" />
 										Sign in with OIDC Provider
 									</Button>
 								{/if}
@@ -200,22 +194,18 @@
 					</div>
 
 					<div class="bg-muted relative hidden md:block">
-						<div
-							class="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10"
-						>
+						<div class="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10">
 							<div
-								class="absolute inset-0 bg-[url(&quot;data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e2e8f0' fill-opacity='0.2'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3Ccircle cx='7' cy='37' r='1'/%3E%3Ccircle cx='37' cy='7' r='1'/%3E%3Ccircle cx='37' cy='37' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E&quot;)] dark:bg-[url(&quot;data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23475569' fill-opacity='0.1'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3Ccircle cx='7' cy='37' r='1'/%3E%3Ccircle cx='37' cy='7' r='1'/%3E%3Ccircle cx='37' cy='37' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E&quot;)]"
+								class="bg-[url(&quot;data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e2e8f0' fill-opacity='0.2'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3Ccircle cx='7' cy='37' r='1'/%3E%3Ccircle cx='37' cy='7' r='1'/%3E%3Ccircle cx='37' cy='37' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E&quot;)] dark:bg-[url(&quot;data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23475569' fill-opacity='0.1'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3Ccircle cx='7' cy='37' r='1'/%3E%3Ccircle cx='37' cy='7' r='1'/%3E%3Ccircle cx='37' cy='37' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E&quot;)] absolute inset-0"
 							></div>
 						</div>
 						<div class="absolute inset-0 flex items-center justify-center">
-							<div class="text-center space-y-4 p-8">
+							<div class="space-y-4 p-8 text-center">
 								<div class="mb-8">
-									<img class="h-32 w-auto mx-auto opacity-60" src="/img/arcane.svg" alt="Arcane" />
+									<img class="mx-auto h-32 w-auto opacity-60" src="/img/arcane.svg" alt="Arcane" />
 								</div>
-								<h2 class="text-2xl font-bold text-foreground/80">Arcane</h2>
-								<p class="text-muted-foreground text-balance max-w-xs">
-									Modern Docker Management, Designed for Everyone.
-								</p>
+								<h2 class="text-foreground/80 text-2xl font-bold">Arcane</h2>
+								<p class="text-muted-foreground max-w-xs text-balance">Modern Docker Management, Designed for Everyone.</p>
 							</div>
 						</div>
 					</div>

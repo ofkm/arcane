@@ -6,7 +6,14 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { Snippet } from '$lib/components/ui/snippet';
-	import { Trash2, Plus, ExternalLink, RefreshCw, FileText, Globe, FolderOpen, Users } from '@lucide/svelte';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import PlusIcon from '@lucide/svelte/icons/plus';
+	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import FileTextIcon from '@lucide/svelte/icons/file-text';
+	import GlobeIcon from '@lucide/svelte/icons/globe';
+	import FolderOpenIcon from '@lucide/svelte/icons/folder-open';
+	import UsersIcon from '@lucide/svelte/icons/users';
 	import { templateAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import AddTemplateRegistrySheet from '$lib/components/sheets/add-template-registry-sheet.svelte';
@@ -118,7 +125,7 @@
 		</div>
 
 		<Button onclick={refreshTemplates} class="h-10" variant="outline">
-			<RefreshCw class="mr-2 size-4" />
+			<RefreshCwIcon class="mr-2 size-4" />
 			Refresh Templates
 		</Button>
 	</div>
@@ -127,21 +134,21 @@
 		<StatCard
 			title="Local Templates"
 			value={localTemplateCount}
-			icon={FolderOpen}
+			icon={FolderOpenIcon}
 			iconColor="text-blue-500"
 			class="border-l-4 border-l-blue-500"
 		/>
 		<StatCard
 			title="Remote Templates"
 			value={remoteTemplateCount}
-			icon={Globe}
+			icon={GlobeIcon}
 			iconColor="text-green-500"
 			class="border-l-4 border-l-green-500"
 		/>
 		<StatCard
 			title="Registries"
 			value={registries.length}
-			icon={FileText}
+			icon={FileTextIcon}
 			iconColor="text-purple-500"
 			class="border-l-4 border-l-purple-500"
 		/>
@@ -153,13 +160,13 @@
 		<div class="flex items-center justify-between">
 			<h2 class="text-xl font-semibold">Template Registries</h2>
 			<Button onclick={() => (showAddRegistrySheet = true)}>
-				<Plus class="mr-2 size-4" />
+				<PlusIcon class="mr-2 size-4" />
 				Add Registry
 			</Button>
 		</div>
 		{#if registries.length == 0}
 			<Alert.Root>
-				<Globe class="size-4" />
+				<GlobeIcon class="size-4" />
 				<Alert.Title>Remote Registries</Alert.Title>
 				<Alert.Description
 					>Add remote template registries to access community templates. Registries should provide a JSON manifest with template
@@ -168,7 +175,7 @@
 			</Alert.Root>
 
 			<Alert.Root class="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-				<Users class="size-4" />
+				<UsersIcon class="size-4" />
 				<Alert.Title>Community Registry</Alert.Title>
 				<Alert.Description class="space-y-2">
 					<p>Get started quickly with our community registry containing popular templates:</p>
@@ -203,7 +210,7 @@
 								/>
 
 								<Button variant="outline" size="sm" onclick={() => window.open(registry.url, '_blank')}>
-									<ExternalLink class="size-4" />
+									<ExternalLinkIcon class="size-4" />
 								</Button>
 
 								<Button
@@ -213,9 +220,9 @@
 									disabled={isLoading.removing.has(registry.id)}
 								>
 									{#if isLoading.removing.has(registry.id)}
-										<RefreshCw class="size-4 animate-spin" />
+										<RefreshCwIcon class="size-4 animate-spin" />
 									{:else}
-										<Trash2 class="size-4" />
+										<Trash2Icon class="size-4" />
 									{/if}
 								</Button>
 							</div>
@@ -225,7 +232,7 @@
 			</div>
 		{:else}
 			<div class="text-muted-foreground py-6 text-center">
-				<Globe class="mx-auto mb-4 size-12 opacity-50" />
+				<GlobeIcon class="mx-auto mb-4 size-12 opacity-50" />
 				<p class="mb-2">No registries configured</p>
 				<p class="text-sm">Add a remote template registry to access community templates</p>
 			</div>

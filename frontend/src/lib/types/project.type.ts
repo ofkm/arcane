@@ -1,13 +1,3 @@
-export interface ProjectMeta {
-	id: string;
-	name: string;
-	createdAt: string;
-	updatedAt: string;
-	autoUpdate?: boolean;
-	dirName?: string;
-	path: string;
-}
-
 export interface ProjectPort {
 	PublicPort?: number;
 	PrivatePort?: number;
@@ -54,24 +44,3 @@ export interface Project {
 	composeContent?: string;
 	envContent?: string;
 }
-
-// export interface Project {
-// 	id: string;
-// 	name: string;
-// 	services?: ProjectService[];
-// 	serviceCount?: number;
-// 	runningCount?: number;
-// 	status: 'running' | 'stopped' | 'partially running' | 'unknown';
-// 	isExternal?: boolean;
-// 	createdAt?: string;
-// 	updatedAt?: string;
-// 	composeContent?: string;
-// 	envContent?: string;
-// 	isLegacy?: boolean;
-// 	agentId?: string;
-// 	agentHostname?: string;
-// 	isRemote?: boolean;
-// 	dirName?: string;
-// 	lastPolled?: string;
-// 	path?: string;
-// }

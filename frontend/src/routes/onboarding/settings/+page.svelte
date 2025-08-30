@@ -8,7 +8,7 @@
 	import { settingsAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
-	import { Loader2 } from '@lucide/svelte';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
@@ -75,7 +75,7 @@
 				<div class="flex items-center justify-between">
 					<div class="space-y-0.5">
 						<Label>Enable Auto Update</Label>
-						<p class="text-xs text-muted-foreground">Automatically check for and apply updates</p>
+						<p class="text-muted-foreground text-xs">Automatically check for and apply updates</p>
 					</div>
 					<Switch bind:checked={appSettings.autoUpdate} />
 				</div>
@@ -117,9 +117,7 @@
 							<Select.Item value="all">All Unused</Select.Item>
 						</Select.Content>
 					</Select.Root>
-					<p class="text-xs text-muted-foreground">
-						How aggressive to be when pruning unused resources
-					</p>
+					<p class="text-muted-foreground text-xs">How aggressive to be when pruning unused resources</p>
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -132,12 +130,8 @@
 			<Card.Content class="space-y-4">
 				<div class="space-y-2">
 					<Label for="base-server-url">Base Server URL (Optional)</Label>
-					<Input
-						id="base-server-url"
-						bind:value={appSettings.baseServerUrl}
-						placeholder="https://arcane.yourdomain.com"
-					/>
-					<p class="text-xs text-muted-foreground">
+					<Input id="base-server-url" bind:value={appSettings.baseServerUrl} placeholder="https://arcane.yourdomain.com" />
+					<p class="text-muted-foreground text-xs">
 						Used for generating external links and webhooks. Leave empty for auto-detection.
 					</p>
 				</div>
@@ -151,7 +145,7 @@
 			<Button variant="ghost" onclick={handleSkip}>Skip</Button>
 			<Button onclick={handleNext} disabled={isLoading}>
 				{#if isLoading}
-					<Loader2 class="mr-2 size-4 animate-spin" />
+					<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 				{/if}
 				Complete Setup
 			</Button>

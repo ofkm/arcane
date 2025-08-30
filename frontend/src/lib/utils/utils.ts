@@ -1,17 +1,13 @@
-/*
-	Installed from @ieedan/shadcn-svelte-extras
-*/
+export function debounced<T extends (...args: any[]) => void>(func: T, delay: number) {
+	let debounceTimeout: ReturnType<typeof setTimeout>;
 
-import { type ClassValue, clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+	return (...args: Parameters<T>) => {
+		if (debounceTimeout !== undefined) {
+			clearTimeout(debounceTimeout);
+		}
 
-export function cn(...inputs: ClassValue[]) {
-	return twMerge(clsx(inputs));
+		debounceTimeout = setTimeout(() => {
+			func(...args);
+		}, delay);
+	};
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type WithoutChild<T> = T extends { child?: any } ? Omit<T, 'child'> : T;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type WithoutChildren<T> = T extends { children?: any } ? Omit<T, 'children'> : T;
-export type WithoutChildrenOrChild<T> = WithoutChildren<WithoutChild<T>>;
-export type WithElementRef<T, U extends HTMLElement = HTMLElement> = T & { ref?: U | null };

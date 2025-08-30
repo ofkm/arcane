@@ -6,7 +6,6 @@ export type SettingRawResponse = {
 }[];
 
 export type Settings = {
-	// Docker settings
 	stacksDirectory: string;
 	autoUpdateEnabled: boolean;
 	autoUpdateInterval: number;
@@ -15,7 +14,6 @@ export type Settings = {
 	dockerPruneMode: 'all' | 'dangling';
 	baseServerUrl: string;
 
-	// Authentication settings
 	authLocalEnabled: boolean;
 	authOidcEnabled: boolean;
 	authSessionTimeout: number;
@@ -23,7 +21,6 @@ export type Settings = {
 	authRbacEnabled: boolean;
 	authOidcConfig: string;
 
-	// Onboarding settings
 	onboardingCompleted: boolean;
 	onboardingSteps: {
 		welcome?: boolean;
@@ -33,7 +30,6 @@ export type Settings = {
 		settings?: boolean;
 	};
 
-	// Registry settings
 	registryCredentials: RegistryCredential[];
 	templateRegistries: TemplateRegistryConfig[];
 };

@@ -2,7 +2,10 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Save, RefreshCw, Folder, Globe } from '@lucide/svelte';
+	import SaveIcon from '@lucide/svelte/icons/save';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import FolderIcon from '@lucide/svelte/icons/folder';
+	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import type { FormInput as FormInputType } from '$lib/utils/form.utils';
 	import { toast } from 'svelte-sonner';
 	import type { Settings } from '$lib/types/settings.type';
@@ -81,16 +84,12 @@
 			</p>
 		</div>
 
-		<Button
-			onclick={() => handleGeneralSettingUpdates()}
-			disabled={isLoading.saving}
-			class="h-10 min-w-[140px]"
-		>
+		<Button onclick={() => handleGeneralSettingUpdates()} disabled={isLoading.saving} class="h-10 min-w-[140px]">
 			{#if isLoading.saving}
-				<RefreshCw class="size-4 animate-spin" />
+				<RefreshCwIcon class="size-4 animate-spin" />
 				Saving...
 			{:else}
-				<Save class="size-4" />
+				<SaveIcon class="size-4" />
 				Save Settings
 			{/if}
 		</Button>
@@ -99,17 +98,15 @@
 	<!-- Settings Cards -->
 	<div class="grid gap-6 md:grid-cols-2">
 		<!-- Storage Configuration -->
-		<Card.Root class="border shadow-sm rounded-lg">
+		<Card.Root class="rounded-lg border shadow-sm">
 			<Card.Header class="pb-2">
 				<div class="flex items-center gap-3">
 					<div class="rounded-md bg-blue-500/10 p-2">
-						<Folder class="size-5 text-blue-600" />
+						<FolderIcon class="size-5 text-blue-600" />
 					</div>
 					<div>
 						<Card.Title class="text-lg">Storage Configuration</Card.Title>
-						<Card.Description class="text-sm"
-							>Configure where Arcane stores stack files and data</Card.Description
-						>
+						<Card.Description class="text-sm">Configure where Arcane stores stack files and data</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
@@ -124,17 +121,15 @@
 		</Card.Root>
 
 		<!-- Network Configuration -->
-		<Card.Root class="border shadow-sm rounded-lg">
+		<Card.Root class="rounded-lg border shadow-sm">
 			<Card.Header class="pb-2">
 				<div class="flex items-center gap-3">
 					<div class="rounded-md bg-green-500/10 p-2">
-						<Globe class="size-5 text-green-600" />
+						<GlobeIcon class="size-5 text-green-600" />
 					</div>
 					<div>
 						<Card.Title class="text-lg">Network Configuration</Card.Title>
-						<Card.Description class="text-sm"
-							>Configure base server URL and network settings</Card.Description
-						>
+						<Card.Description class="text-sm">Configure base server URL and network settings</Card.Description>
 					</div>
 				</div>
 			</Card.Header>

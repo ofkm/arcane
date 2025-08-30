@@ -1,20 +1,18 @@
 import type { Icon as IconType } from '@lucide/svelte';
-import {
-	FileStack,
-	HardDrive,
-	Home,
-	Network,
-	Container,
-	ImageIcon,
-	SettingsIcon,
-	DatabaseIcon,
-	LayoutTemplate,
-	UserIcon,
-	Shield,
-	ComputerIcon,
-	LockKeyholeIcon,
-	LucideAlarmClock
-} from '@lucide/svelte';
+import FileStackIcon from '@lucide/svelte/icons/file-stack';
+import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
+import HouseIcon from '@lucide/svelte/icons/home';
+import NetworkIcon from '@lucide/svelte/icons/network';
+import ContainerIcon from '@lucide/svelte/icons/container';
+import ImageIcon from '@lucide/svelte/icons/image';
+import SettingsIcon from '@lucide/svelte/icons/settings';
+import DatabaseIcon from '@lucide/svelte/icons/database';
+import LayoutTemplateIcon from '@lucide/svelte/icons/layout-template';
+import UserIcon from '@lucide/svelte/icons/user';
+import ShieldIcon from '@lucide/svelte/icons/shield';
+import ComputerIcon from '@lucide/svelte/icons/computer';
+import LockKeyholeIcon from '@lucide/svelte/icons/lock-keyhole';
+import AlarmClockIcon from '@lucide/svelte/icons/alarm-clock';
 
 export type SidebarItem = {
 	title: string;
@@ -25,18 +23,18 @@ export type SidebarItem = {
 
 export const sidebarItems: Record<string, SidebarItem[]> = {
 	managementItems: [
-		{ title: 'Dashboard', url: '/dashboard', icon: Home },
-		{ title: 'Containers', url: '/containers', icon: Container },
-		{ title: 'Projects', url: '/compose', icon: FileStack },
+		{ title: 'Dashboard', url: '/dashboard', icon: HouseIcon },
+		{ title: 'Containers', url: '/containers', icon: ContainerIcon },
+		{ title: 'Projects', url: '/compose', icon: FileStackIcon },
 		{ title: 'Images', url: '/images', icon: ImageIcon },
-		{ title: 'Networks', url: '/networks', icon: Network },
-		{ title: 'Volumes', url: '/volumes', icon: HardDrive }
+		{ title: 'Networks', url: '/networks', icon: NetworkIcon },
+		{ title: 'Volumes', url: '/volumes', icon: HardDriveIcon }
 	],
 	customizationItems: [
 		{
 			title: 'Templates',
 			url: '/customize/templates',
-			icon: LayoutTemplate
+			icon: LayoutTemplateIcon
 		},
 		{
 			title: 'Container Registries',
@@ -55,7 +53,7 @@ export const sidebarItems: Record<string, SidebarItem[]> = {
 		{
 			title: 'Events',
 			url: '/events',
-			icon: LucideAlarmClock
+			icon: AlarmClockIcon
 		},
 		{
 			title: 'Settings',
@@ -65,7 +63,7 @@ export const sidebarItems: Record<string, SidebarItem[]> = {
 				{ title: 'General', url: '/settings/general', icon: SettingsIcon },
 				{ title: 'Docker', url: '/settings/docker', icon: DatabaseIcon },
 				{ title: 'Users', url: '/settings/users', icon: UserIcon },
-				{ title: 'Security', url: '/settings/security', icon: Shield }
+				{ title: 'Security', url: '/settings/security', icon: ShieldIcon }
 			]
 		}
 	]

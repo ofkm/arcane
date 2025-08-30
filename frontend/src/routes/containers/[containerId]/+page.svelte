@@ -1,25 +1,22 @@
 <script lang="ts">
-	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import {
-		ArrowLeft,
-		AlertCircle,
-		RefreshCw,
-		HardDrive,
-		Clock,
-		Network,
-		Terminal,
-		Settings,
-		Activity,
-		FileText,
-		Database
-	} from '@lucide/svelte';
+	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import CircleAlertIcon from '@lucide/svelte/icons/alert-circle';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
+	import ClockIcon from '@lucide/svelte/icons/clock';
+	import NetworkIcon from '@lucide/svelte/icons/network';
+	import TerminalIcon from '@lucide/svelte/icons/terminal';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import ActivityIcon from '@lucide/svelte/icons/activity';
+	import FileTextIcon from '@lucide/svelte/icons/file-text';
+	import DatabaseIcon from '@lucide/svelte/icons/database';
 	import { invalidateAll } from '$app/navigation';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
-	import { formatDate } from '$lib/utils/string.utils';
-	import { formatBytes } from '$lib/utils/bytes.util';
+	import { format } from 'date-fns';
+	import bytes from 'bytes';
 	import type Docker from 'dockerode';
 	import type { ContainerInspectInfo } from 'dockerode';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
@@ -43,9 +40,8 @@
 		return config as NetworkConfig;
 	}
 
-	let { data }: { data: PageData } = $props();
+	let { data } = $props();
 	let { container, stats } = $derived(data);
-	console.log(data);
 
 	let starting = $state(false);
 	let stopping = $state(false);
@@ -141,8 +137,8 @@
 	const cpuUsagePercent = $derived(calculateCPUPercent(stats));
 	const memoryUsageBytes = $derived(stats?.memory_stats?.usage || 0);
 	const memoryLimitBytes = $derived(stats?.memory_stats?.limit || 0);
-	const memoryUsageFormatted = $derived(formatBytes(memoryUsageBytes));
-	const memoryLimitFormatted = $derived(formatBytes(memoryLimitBytes));
+	const memoryUsageFormatted = $derived(bytes.format(memoryUsageBytes));
+	const memoryLimitFormatted = $derived(bytes.format(memoryLimitBytes));
 	const memoryUsagePercent = $derived(memoryLimitBytes > 0 ? (memoryUsageBytes / memoryLimitBytes) * 100 : 0);
 
 	const getPrimaryIpAddress = (networkSettings: ContainerInspectInfo['NetworkSettings'] | undefined | null): string => {
@@ -211,12 +207,12 @@
 
 	// Navigation sections for single-page layout
 	const navigationSections = [
-		{ id: 'overview', label: 'Overview', icon: HardDrive },
-		{ id: 'stats', label: 'Metrics', icon: Activity },
-		{ id: 'logs', label: 'Logs', icon: FileText },
-		{ id: 'config', label: 'Configuration', icon: Settings },
-		{ id: 'network', label: 'Networks', icon: Network },
-		{ id: 'storage', label: 'Storage', icon: Database }
+		{ id: 'overview', label: 'Overview', icon: HardDriveIcon },
+		{ id: 'stats', label: 'Metrics', icon: ActivityIcon },
+		{ id: 'logs', label: 'Logs', icon: FileTextIcon },
+		{ id: 'config', label: 'Configuration', icon: SettingsIcon },
+		{ id: 'network', label: 'Networks', icon: NetworkIcon },
+		{ id: 'storage', label: 'Storage', icon: DatabaseIcon }
 	] as const;
 
 	const visibleNavigationSections = $derived(
@@ -266,7 +262,7 @@
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
 						<Button variant="ghost" size="sm" href="/containers">
-							<ArrowLeft class="mr-2 size-4" />
+							<ArrowLeftIcon class="mr-2 size-4" />
 							Back
 						</Button>
 						<div class="bg-border h-4 w-px"></div>
@@ -339,7 +335,8 @@
 									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
 								title={section.label}
 							>
-								<IconComponent class="size-4" />
+								- <IconComponent class="size-4" />
+								+ <IconComponent class="size-4" />
 							</button>
 						{/each}
 					</nav>
@@ -351,7 +348,7 @@
 					<div class="space-y-8">
 						<section id="overview" class="scroll-mt-20">
 							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
-								<HardDrive class="size-5" />
+								<HardDriveIcon class="size-5" />
 								Overview
 							</h2>
 
@@ -368,7 +365,7 @@
 										<div class="space-y-4">
 											<div class="flex items-center gap-3">
 												<div class="rounded bg-blue-50 p-2 dark:bg-blue-950/20">
-													<HardDrive class="size-4 text-blue-600" />
+													<HardDriveIcon class="size-4 text-blue-600" />
 												</div>
 												<div class="min-w-0 flex-1">
 													<div class="text-muted-foreground text-sm">Image</div>
@@ -380,19 +377,19 @@
 
 											<div class="flex items-center gap-3">
 												<div class="rounded bg-green-50 p-2 dark:bg-green-950/20">
-													<Clock class="size-4 text-green-600" />
+													<ClockIcon class="size-4 text-green-600" />
 												</div>
 												<div class="min-w-0 flex-1">
 													<div class="text-muted-foreground text-sm">Created</div>
-													<div class="font-medium" title={formatDate(container.Created)}>
-														{formatDate(container.Created)}
+													<div class="font-medium" title={format(new Date(container.Created), 'PP p')}>
+														{format(new Date(container.Created), 'PP p')}
 													</div>
 												</div>
 											</div>
 
 											<div class="flex items-center gap-3">
 												<div class="rounded bg-purple-50 p-2 dark:bg-purple-950/20">
-													<Network class="size-4 text-purple-600" />
+													<NetworkIcon class="size-4 text-purple-600" />
 												</div>
 												<div class="min-w-0 flex-1">
 													<div class="text-muted-foreground text-sm">IP Address</div>
@@ -400,10 +397,9 @@
 												</div>
 											</div>
 
-											<!-- Command -->
 											<div class="flex items-center gap-3">
 												<div class="rounded bg-amber-50 p-2 dark:bg-amber-950/20">
-													<Terminal class="size-4 text-amber-600" />
+													<TerminalIcon class="size-4 text-amber-600" />
 												</div>
 												<div class="min-w-0 flex-1">
 													<div class="text-muted-foreground text-sm">Command</div>
@@ -475,7 +471,7 @@
 						{#if showStats}
 							<section id="stats" class="scroll-mt-20">
 								<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
-									<Activity class="size-5" />
+									<ActivityIcon class="size-5" />
 									Resource Metrics
 								</h2>
 
@@ -506,19 +502,19 @@
 												<div class="space-y-6">
 													<div>
 														<h4 class="mb-4 flex items-center gap-2 font-medium">
-															<Network class="size-4" /> Network I/O
+															<NetworkIcon class="size-4" /> Network I/O + <NetworkIcon class="size-4" /> Network I/O
 														</h4>
 														<div class="grid grid-cols-2 gap-4">
 															<div class="bg-muted/30 rounded p-4">
 																<div class="text-muted-foreground text-sm">Received</div>
 																<div class="mt-1 font-medium">
-																	{formatBytes(stats.networks?.eth0?.rx_bytes || 0)}
+																	{bytes.format(stats.networks?.eth0?.rx_bytes || 0)}
 																</div>
 															</div>
 															<div class="bg-muted/30 rounded p-4">
 																<div class="text-muted-foreground text-sm">Transmitted</div>
 																<div class="mt-1 font-medium">
-																	{formatBytes(stats.networks?.eth0?.tx_bytes || 0)}
+																	{bytes.format(stats.networks?.eth0?.tx_bytes || 0)}
 																</div>
 															</div>
 														</div>
@@ -531,7 +527,7 @@
 																<div class="bg-muted/30 rounded p-4">
 																	<div class="text-muted-foreground text-sm">Read</div>
 																	<div class="mt-1 font-medium">
-																		{formatBytes(
+																		{bytes.format(
 																			stats.blkio_stats.io_service_bytes_recursive
 																				.filter((item) => item.op === 'Read')
 																				.reduce((acc, item) => acc + item.value, 0)
@@ -541,7 +537,7 @@
 																<div class="bg-muted/30 rounded p-4">
 																	<div class="text-muted-foreground text-sm">Write</div>
 																	<div class="mt-1 font-medium">
-																		{formatBytes(
+																		{bytes.format(
 																			stats.blkio_stats.io_service_bytes_recursive
 																				.filter((item) => item.op === 'Write')
 																				.reduce((acc, item) => acc + item.value, 0)
@@ -575,7 +571,7 @@
 						<section id="logs" class="scroll-mt-20">
 							<div class="mb-6 flex items-center justify-between">
 								<h2 class="flex items-center gap-2 text-xl font-semibold">
-									<FileText class="size-5" />
+									<FileTextIcon class="size-5" />
 									Container Logs
 								</h2>
 
@@ -621,7 +617,7 @@
 						{#if showConfiguration}
 							<section id="config" class="scroll-mt-20">
 								<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
-									<Settings class="size-5" />
+									<SettingsIcon class="size-5" />
 									Configuration
 								</h2>
 
@@ -740,7 +736,7 @@
 						{#if hasNetworks}
 							<section id="network" class="scroll-mt-20">
 								<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
-									<Network class="size-5" />
+									<NetworkIcon class="size-5" />
 									Networks
 								</h2>
 
@@ -792,7 +788,7 @@
 						{#if hasMounts}
 							<section id="storage" class="scroll-mt-20">
 								<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
-									<Database class="size-5" />
+									<DatabaseIcon class="size-5" />
 									Storage & Mounts
 								</h2>
 
@@ -812,11 +808,11 @@
 																			: 'bg-amber-100 dark:bg-amber-950'}"
 																>
 																	{#if mount.Type === 'volume'}
-																		<Database class="size-4 text-purple-600" />
+																		<DatabaseIcon class="size-4 text-purple-600" />
 																	{:else if mount.Type === 'bind'}
-																		<HardDrive class="size-4 text-blue-600" />
+																		<HardDriveIcon class="size-4 text-blue-600" />
 																	{:else}
-																		<Terminal class="size-4 text-amber-600" />
+																		<TerminalIcon class="size-4 text-amber-600" />
 																	{/if}
 																</div>
 																<div>
@@ -854,7 +850,7 @@
 										{:else}
 											<div class="py-12 text-center">
 												<div class="bg-muted/50 mx-auto mb-4 flex size-16 items-center justify-center rounded-full">
-													<Database class="text-muted-foreground size-6" />
+													<DatabaseIcon class="text-muted-foreground size-6" />
 												</div>
 												<div class="text-muted-foreground">No volumes or mounts configured</div>
 											</div>
@@ -871,7 +867,7 @@
 		<div class="flex min-h-screen items-center justify-center">
 			<div class="text-center">
 				<div class="bg-muted/50 mb-6 inline-flex rounded-full p-6">
-					<AlertCircle class="text-muted-foreground size-10" />
+					<CircleAlertIcon class="text-muted-foreground size-10" />
 				</div>
 				<h2 class="mb-3 text-2xl font-medium">Container Not Found</h2>
 				<p class="text-muted-foreground mb-8 max-w-md text-center">
@@ -879,11 +875,11 @@
 				</p>
 				<div class="flex justify-center gap-4">
 					<Button variant="outline" href="/containers">
-						<ArrowLeft class="mr-2 size-4" />
+						<ArrowLeftIcon class="mr-2 size-4" />
 						Back to Containers
 					</Button>
 					<Button variant="default" onclick={refreshData}>
-						<RefreshCw class="mr-2 size-4" />
+						<RefreshCwIcon class="mr-2 size-4" />
 						Retry
 					</Button>
 				</div>

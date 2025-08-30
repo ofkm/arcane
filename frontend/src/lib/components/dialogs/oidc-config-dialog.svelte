@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import { Key, AlertTriangle, Info, ChevronDown, Copy } from '@lucide/svelte';
+	import KeyIcon from '@lucide/svelte/icons/key';
+	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
+	import InfoIcon from '@lucide/svelte/icons/info';
+	import CopyIcon from '@lucide/svelte/icons/copy';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { toast } from 'svelte-sonner';
@@ -75,10 +78,10 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="sm:max-w-[700px] max-h-[90vh] flex flex-col">
-		<Dialog.Header class="space-y-3 flex-shrink-0">
+	<Dialog.Content class="flex max-h-[90vh] flex-col sm:max-w-[700px]">
+		<Dialog.Header class="flex-shrink-0 space-y-3">
 			<Dialog.Title class="flex items-center gap-2">
-				<Key class="size-5" />
+				<KeyIcon class="size-5" />
 				{#if isOidcViewMode}
 					OIDC Server Configuration Status
 				{:else if oidcStatus.envForced && !oidcStatus.envConfigured}
@@ -89,67 +92,59 @@
 			</Dialog.Title>
 			<Dialog.Description class="text-sm leading-relaxed">
 				{#if isOidcViewMode}
-					OIDC authentication is configured and forced ON by server-side environment variables.
-					These settings are read-only.
+					OIDC authentication is configured and forced ON by server-side environment variables. These settings are read-only.
 				{:else if oidcStatus.envForced && !oidcStatus.envConfigured}
-					OIDC usage is forced ON by the server environment (<code
-						class="bg-muted px-1 py-0.5 rounded text-xs">OIDC_ENABLED=true</code
-					>), but critical server-side OIDC environment variables appear to be missing or
-					incomplete.
+					OIDC usage is forced ON by the server environment (<code class="bg-muted rounded px-1 py-0.5 text-xs"
+						>OIDC_ENABLED=true</code
+					>), but critical server-side OIDC environment variables appear to be missing or incomplete.
 				{:else}
-					Configure the OIDC settings for your application. These settings will be saved to the
-					database and used for OIDC authentication.
+					Configure the OIDC settings for your application. These settings will be saved to the database and used for OIDC
+					authentication.
 				{/if}
 			</Dialog.Description>
 		</Dialog.Header>
 
-		<div class="flex-1 overflow-y-auto min-h-0 py-4">
+		<div class="min-h-0 flex-1 overflow-y-auto py-4">
 			{#if isOidcViewMode}
 				<!-- Read-only view for server-configured OIDC -->
 				<div class="space-y-6">
 					<div class="space-y-4">
 						<h3 class="text-base font-semibold">Server Environment Configuration</h3>
-						<p class="text-sm text-muted-foreground">
-							The following OIDC settings are loaded from the server environment:
-						</p>
+						<p class="text-muted-foreground text-sm">The following OIDC settings are loaded from the server environment:</p>
 
 						{#if currentSettings.authOidcEnabled}
 							<div class="space-y-3">
-								<div class="flex justify-between items-center py-2 border-b border-border/50">
-									<span class="font-medium text-sm">Client ID</span>
-									<code class="bg-muted px-2 py-1 rounded text-xs">
+								<div class="border-border/50 flex items-center justify-between border-b py-2">
+									<span class="text-sm font-medium">Client ID</span>
+									<code class="bg-muted rounded px-2 py-1 text-xs">
 										{parsedOidcConfig().clientId || 'Not configured'}
 									</code>
 								</div>
-								<div class="flex justify-between items-center py-2 border-b border-border/50">
-									<span class="font-medium text-sm">Issuer URL</span>
-									<code class="bg-muted px-2 py-1 rounded text-xs">
+								<div class="border-border/50 flex items-center justify-between border-b py-2">
+									<span class="text-sm font-medium">Issuer URL</span>
+									<code class="bg-muted rounded px-2 py-1 text-xs">
 										{parsedOidcConfig().issuerUrl || 'Not configured'}
 									</code>
 								</div>
-								<div class="flex justify-between items-center py-2 border-b border-border/50">
-									<span class="font-medium text-sm">Client Secret</span>
-									<span class="text-muted-foreground italic text-xs">
-										(Sensitive - Not Displayed)
-									</span>
+								<div class="border-border/50 flex items-center justify-between border-b py-2">
+									<span class="text-sm font-medium">Client Secret</span>
+									<span class="text-muted-foreground text-xs italic"> (Sensitive - Not Displayed) </span>
 								</div>
-								<div class="flex justify-between items-center py-2">
-									<span class="font-medium text-sm">Scopes</span>
-									<code class="bg-muted px-2 py-1 rounded text-xs">
+								<div class="flex items-center justify-between py-2">
+									<span class="text-sm font-medium">Scopes</span>
+									<code class="bg-muted rounded px-2 py-1 text-xs">
 										{parsedOidcConfig().scopes || 'openid email profile'}
 									</code>
 								</div>
 							</div>
 						{:else}
-							<div class="text-center py-4">
-								<AlertTriangle class="size-8 text-destructive mx-auto mb-2" />
-								<p class="text-destructive text-sm font-medium">
-									OIDC configuration details not found in effective settings.
-								</p>
+							<div class="py-4 text-center">
+								<TriangleAlertIcon class="text-destructive mx-auto mb-2 size-8" />
+								<p class="text-destructive text-sm font-medium">OIDC configuration details not found in effective settings.</p>
 							</div>
 						{/if}
 
-						<div class="p-3 bg-muted/50 rounded-md">
+						<div class="bg-muted/50 rounded-md p-3">
 							<p class="text-muted-foreground text-xs">
 								Changes to these settings must be made in your server's environment configuration.
 							</p>
@@ -162,7 +157,7 @@
 					<!-- Basic Configuration -->
 					<div class="space-y-4">
 						<h3 class="text-base font-semibold">Basic Configuration</h3>
-						<p class="text-sm text-muted-foreground">Essential OIDC provider settings</p>
+						<p class="text-muted-foreground text-sm">Essential OIDC provider settings</p>
 
 						<div class="space-y-4">
 							<div class="space-y-2">
@@ -193,8 +188,7 @@
 									class="font-mono text-sm"
 								/>
 								<p class="text-muted-foreground text-xs">
-									The issuer URL will be used to auto-discover OIDC endpoints. This is the
-									recommended approach.
+									The issuer URL will be used to auto-discover OIDC endpoints. This is the recommended approach.
 								</p>
 							</div>
 							<div class="space-y-2">
@@ -211,15 +205,14 @@
 
 					<!-- Warning for server override -->
 					{#if oidcStatus.envForced && !oidcStatus.envConfigured}
-						<div class="border border-destructive/50 bg-destructive/5 p-4 rounded-md">
-							<div class="flex items-center gap-2 mb-2">
-								<AlertTriangle class="size-4 text-destructive" />
-								<h3 class="text-base font-semibold text-destructive">Server Override Warning</h3>
+						<div class="border-destructive/50 bg-destructive/5 rounded-md border p-4">
+							<div class="mb-2 flex items-center gap-2">
+								<TriangleAlertIcon class="text-destructive size-4" />
+								<h3 class="text-destructive text-base font-semibold">Server Override Warning</h3>
 							</div>
-							<p class="text-sm text-destructive/80">
-								While you can save these settings to the application database, it's strongly
-								recommended to configure the OIDC settings directly in your server's environment for
-								them to take full effect as intended by the server override.
+							<p class="text-destructive/80 text-sm">
+								While you can save these settings to the application database, it's strongly recommended to configure the OIDC
+								settings directly in your server's environment for them to take full effect as intended by the server override.
 							</p>
 						</div>
 					{/if}
@@ -227,37 +220,28 @@
 			{/if}
 
 			<!-- Redirect URI Information - Always shown -->
-			<div class="border-t pt-6 mt-6">
-				<div class="flex items-center gap-2 mb-3">
-					<Info class="size-4 text-blue-600" />
+			<div class="mt-6 border-t pt-6">
+				<div class="mb-3 flex items-center gap-2">
+					<InfoIcon class="size-4 text-blue-600" />
 					<h3 class="text-base font-semibold">Redirect URI Configuration</h3>
 				</div>
-				<p class="text-sm text-muted-foreground mb-3">
-					Configure this redirect URI in your OIDC provider:
-				</p>
+				<p class="text-muted-foreground mb-3 text-sm">Configure this redirect URI in your OIDC provider:</p>
 				<div class="flex items-center gap-2">
-					<code class="flex-1 bg-muted p-2 rounded text-xs break-all font-mono">
+					<code class="bg-muted flex-1 break-all rounded p-2 font-mono text-xs">
 						{redirectUri}
 					</code>
-					<Button
-						size="sm"
-						variant="outline"
-						onclick={() => copyToClipboard(redirectUri)}
-						class="flex-shrink-0"
-					>
-						<Copy class="size-3" />
+					<Button size="sm" variant="outline" onclick={() => copyToClipboard(redirectUri)} class="flex-shrink-0">
+						<CopyIcon class="size-3" />
 					</Button>
 				</div>
 			</div>
 		</div>
 
-		<Dialog.Footer class="flex gap-3 pt-4 border-t flex-shrink-0">
-			<Button variant="outline" onclick={() => (open = false)} class="flex-1 sm:flex-none">
-				Close
-			</Button>
+		<Dialog.Footer class="flex flex-shrink-0 gap-3 border-t pt-4">
+			<Button variant="outline" onclick={() => (open = false)} class="flex-1 sm:flex-none">Close</Button>
 			{#if !isOidcViewMode}
 				<Button onclick={onSave} class="flex-1 sm:flex-none">
-					<Key class="size-4 mr-2" />
+					<KeyIcon class="mr-2 size-4" />
 					Configure OIDC
 				</Button>
 			{/if}

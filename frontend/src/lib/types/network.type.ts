@@ -67,16 +67,6 @@ export interface IPAMSubnetInfo {
 	AuxAddress?: Record<string, string>;
 }
 
-export interface NetworkConnect {
-	containerId: string;
-	config?: NetworkEndpointSettings;
-}
-
-export interface NetworkDisconnect {
-	containerId: string;
-	force?: boolean;
-}
-
 export interface NetworkEndpointSettings {
 	ipamConfig?: EndpointIPAMConfig;
 	links?: string[];
@@ -97,11 +87,6 @@ export interface EndpointIPAMConfig {
 	ipv4Address?: string;
 	ipv6Address?: string;
 	linkLocalIPs?: string[];
-}
-
-export interface NetworkPruneResponse {
-	networksDeleted: string[];
-	spaceReclaimed: number;
 }
 
 export interface ContainerEndpointDto {

@@ -1,7 +1,8 @@
 <script lang="ts" generics="TFilters extends Record<string, any>">
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { ChevronDown, Funnel } from '@lucide/svelte';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import FunnelIcon from '@lucide/svelte/icons/funnel';
 	import type { Snippet } from 'svelte';
 	import { cn } from '$lib/utils';
 
@@ -9,7 +10,7 @@
 		filters = $bindable(),
 		children,
 		label = 'Filter',
-		icon = Funnel,
+		icon = FunnelIcon,
 		variant = 'outline',
 		align = 'end',
 		class: className = ''
@@ -31,7 +32,7 @@
 			<Button {...props} {variant} class={cn('', className)}>
 				<Icon class="size-4" />
 				{label}
-				<ChevronDown class="size-4" />
+				<ChevronDownIcon class="size-4" />
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>

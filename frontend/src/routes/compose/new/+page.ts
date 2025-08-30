@@ -1,5 +1,5 @@
 import { templateAPI, environmentManagementAPI } from '$lib/services/api';
-import { defaultComposeTemplate, defaultEnvTemplate } from '$lib/constants';
+import { defaultComposeTemplate } from '$lib/constants';
 import type { Template } from '$lib/types/template.type';
 import type { Environment } from '$lib/stores/environment.store';
 
@@ -18,7 +18,7 @@ export const load = async (): Promise<PageProps> => {
 		}),
 		templateAPI.getEnvTemplate().catch((err) => {
 			console.warn('Failed to load env template:', err);
-			return defaultEnvTemplate;
+			return '';
 		}),
 		environmentManagementAPI.list().catch((err) => {
 			console.warn('Failed to load environments:', err);

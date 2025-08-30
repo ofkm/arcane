@@ -3,7 +3,8 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
-	import { Loader2, HardDrive } from '@lucide/svelte';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import type { VolumeCreateOptions } from 'dockerode';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
@@ -92,44 +93,83 @@
 
 <Sheet.Root bind:open onOpenChange={handleOpenChange}>
 	<Sheet.Content class="p-6">
-		<Sheet.Header class="space-y-3 pb-6 border-b">
+		<Sheet.Header class="space-y-3 border-b pb-6">
 			<div class="flex items-center gap-3">
-				<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-					<HardDrive class="size-5 text-primary" />
+				<div class="bg-primary/10 flex size-10 shrink-0 items-center justify-center rounded-lg">
+					<HardDriveIcon class="text-primary size-5" />
 				</div>
 				<div>
 					<Sheet.Title data-testid="create-volume-header" class="text-xl font-semibold">Create New Volume</Sheet.Title>
-					<Sheet.Description class="text-sm text-muted-foreground mt-1">Enter the details for the new Docker volume.</Sheet.Description>
+					<Sheet.Description class="text-muted-foreground mt-1 text-sm"
+						>Enter the details for the new Docker volume.</Sheet.Description
+					>
 				</div>
 			</div>
 		</Sheet.Header>
 
 		<form onsubmit={preventDefault(handleSubmit)} class="grid gap-4 py-4">
-			<FormInput label="Volume Name *" id="volume-name" type="text" placeholder="e.g., my-app-data" description="Unique name for the volume" disabled={isLoading} bind:input={$inputs.volumeName} />
+			<FormInput
+				label="Volume Name *"
+				id="volume-name"
+				type="text"
+				placeholder="e.g., my-app-data"
+				description="Unique name for the volume"
+				disabled={isLoading}
+				bind:input={$inputs.volumeName}
+			/>
 
-			<SelectWithLabel id="driver-select" bind:value={$inputs.volumeDriver.value} label="Volume Driver" description="Choose the storage driver for your volume" options={drivers} placeholder="Select a driver" />
+			<SelectWithLabel
+				id="driver-select"
+				bind:value={$inputs.volumeDriver.value}
+				label="Volume Driver"
+				description="Choose the storage driver for your volume"
+				options={drivers}
+				placeholder="Select a driver"
+			/>
 
 			<Accordion.Root type="single" class="w-full">
 				<Accordion.Item value="advanced">
 					<Accordion.Trigger class="text-sm font-medium">Advanced Settings</Accordion.Trigger>
 					<Accordion.Content class="pt-4">
 						<div class="space-y-4">
-							<FormInput label="Driver Options" type="textarea" placeholder="key=value&#10;key2=value2" description="Enter driver-specific options as key=value pairs, one per line" disabled={isLoading} rows={3} bind:input={$inputs.volumeOptText} />
+							<FormInput
+								label="Driver Options"
+								type="textarea"
+								placeholder="key=value&#10;key2=value2"
+								description="Enter driver-specific options as key=value pairs, one per line"
+								disabled={isLoading}
+								rows={3}
+								bind:input={$inputs.volumeOptText}
+							/>
 
-							<FormInput label="Labels" type="textarea" placeholder="com.example.description=Production data&#10;com.example.department=Finance" description="Enter metadata labels as key=value pairs, one per line" disabled={isLoading} rows={3} bind:input={$inputs.volumeLabels} />
+							<FormInput
+								label="Labels"
+								type="textarea"
+								placeholder="com.example.description=Production data&#10;com.example.department=Finance"
+								description="Enter metadata labels as key=value pairs, one per line"
+								disabled={isLoading}
+								rows={3}
+								bind:input={$inputs.volumeLabels}
+							/>
 						</div>
 					</Accordion.Content>
 				</Accordion.Item>
 			</Accordion.Root>
 
 			<Sheet.Footer class="flex flex-row gap-2">
-				<Button type="button" class="arcane-button-cancel flex-1" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
+				<Button
+					type="button"
+					class="arcane-button-cancel flex-1"
+					variant="outline"
+					onclick={() => (open = false)}
+					disabled={isLoading}>Cancel</Button
+				>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
-						<Loader2 class="mr-2 size-4 animate-spin" />
+						<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 						Creating...
 					{:else}
-						<HardDrive class="mr-2 size-4" />
+						<HardDriveIcon class="mr-2 size-4" />
 						Create Volume
 					{/if}
 				</Button>

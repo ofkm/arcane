@@ -7,7 +7,10 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import { Loader2, Container, X, Plus } from '@lucide/svelte';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import ContainerIcon from '@lucide/svelte/icons/container';
+	import XIcon from '@lucide/svelte/icons/x';
+	import PlusIcon from '@lucide/svelte/icons/plus';
 	import type { ContainerCreateOptions } from 'dockerode';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
@@ -22,7 +25,14 @@
 		availableVolumes?: string[];
 	};
 
-	let { open = $bindable(false), onSubmit, isLoading, availableImages = [], availableNetworks = [], availableVolumes = [] }: CreateContainerFormProps = $props();
+	let {
+		open = $bindable(false),
+		onSubmit,
+		isLoading,
+		availableImages = [],
+		availableNetworks = [],
+		availableVolumes = []
+	}: CreateContainerFormProps = $props();
 
 	const restartPolicies = [
 		{ value: 'no', label: 'No' },
@@ -91,8 +101,12 @@
 
 	// Dynamic states for complex inputs
 	let envVars = $state<{ key: string; value: string }[]>([{ key: '', value: '' }]);
-	let portMappings = $state<{ container: string; host: string; protocol: string }[]>([{ container: '', host: '', protocol: 'tcp' }]);
-	let volumeMounts = $state<{ source: string; destination: string; readonly: boolean }[]>([{ source: '', destination: '', readonly: false }]);
+	let portMappings = $state<{ container: string; host: string; protocol: string }[]>([
+		{ container: '', host: '', protocol: 'tcp' }
+	]);
+	let volumeMounts = $state<{ source: string; destination: string; readonly: boolean }[]>([
+		{ source: '', destination: '', readonly: false }
+	]);
 
 	function parseKeyValuePairs(text: string): Record<string, string> {
 		if (!text?.trim()) return {};
@@ -190,7 +204,9 @@
 		const dynamicBinds: string[] = [];
 		volumeMounts.forEach((mount) => {
 			if (mount.source.trim() && mount.destination.trim()) {
-				const bind = mount.readonly ? `${mount.source.trim()}:${mount.destination.trim()}:ro` : `${mount.source.trim()}:${mount.destination.trim()}`;
+				const bind = mount.readonly
+					? `${mount.source.trim()}:${mount.destination.trim()}:ro`
+					: `${mount.source.trim()}:${mount.destination.trim()}`;
 				dynamicBinds.push(bind);
 			}
 		});
@@ -263,25 +279,27 @@
 </script>
 
 <Sheet.Root bind:open onOpenChange={handleOpenChange}>
-	<Sheet.Content side="top" class="p-5 max-h-[90vh]">
-		<div class="flex flex-col h-full">
+	<Sheet.Content side="top" class="max-h-[90vh] p-5">
+		<div class="flex h-full flex-col">
 			<!-- Header -->
-			<div class="px-6 py-4 border-b bg-background shrink-0">
+			<div class="bg-background shrink-0 border-b px-6 py-4">
 				<div class="flex items-center gap-3">
-					<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-						<Container class="size-5 text-primary" />
+					<div class="bg-primary/10 flex size-10 shrink-0 items-center justify-center rounded-lg">
+						<ContainerIcon class="text-primary size-5" />
 					</div>
 					<div>
 						<Sheet.Title class="text-xl font-semibold">Create New Container</Sheet.Title>
-						<Sheet.Description class="text-sm text-muted-foreground mt-1">Configure and create a new Docker container.</Sheet.Description>
+						<Sheet.Description class="text-muted-foreground mt-1 text-sm"
+							>Configure and create a new Docker container.</Sheet.Description
+						>
 					</div>
 				</div>
 			</div>
 
 			<!-- Content with Tabs -->
 			<div class="flex-1">
-				<Tabs.Root value="basic" class="flex flex-col h-full">
-					<Tabs.List class="grid w-full grid-cols-6 border-b bg-muted/30 shrink-0">
+				<Tabs.Root value="basic" class="flex h-full flex-col">
+					<Tabs.List class="bg-muted/30 grid w-full shrink-0 grid-cols-6 border-b">
 						<Tabs.Trigger value="basic" class="py-3">Basic</Tabs.Trigger>
 						<Tabs.Trigger value="environment" class="py-3">Environment</Tabs.Trigger>
 						<Tabs.Trigger value="ports" class="py-3">Ports</Tabs.Trigger>
@@ -291,55 +309,102 @@
 					</Tabs.List>
 
 					<div class="flex-1 overflow-y-auto">
-						<form onsubmit={preventDefault(handleSubmit)} class="h-full flex flex-col">
+						<form onsubmit={preventDefault(handleSubmit)} class="flex h-full flex-col">
 							<div class="flex-1">
 								<!-- Basic Tab -->
-								<Tabs.Content value="basic" class="p-6 space-y-8 mt-0">
-									<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+								<Tabs.Content value="basic" class="mt-0 space-y-8 p-6">
+									<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 										<div class="space-y-3">
 											<Label for="container-name" class="text-sm font-medium">Container Name *</Label>
-											<Input id="container-name" type="text" placeholder="e.g., my-app-container" disabled={isLoading} bind:value={$inputs.containerName.value} class={$inputs.containerName.error ? 'border-destructive' : ''} />
+											<Input
+												id="container-name"
+												type="text"
+												placeholder="e.g., my-app-container"
+												disabled={isLoading}
+												bind:value={$inputs.containerName.value}
+												class={$inputs.containerName.error ? 'border-destructive' : ''}
+											/>
 											{#if $inputs.containerName.error}
-												<p class="text-xs text-destructive mt-1">{$inputs.containerName.error}</p>
+												<p class="text-destructive mt-1 text-xs">{$inputs.containerName.error}</p>
 											{/if}
-											<p class="text-xs text-muted-foreground">Unique name for the container</p>
+											<p class="text-muted-foreground text-xs">Unique name for the container</p>
 										</div>
 
 										<div class="space-y-3">
 											<Label for="image" class="text-sm font-medium">Image *</Label>
-											<Input id="image" type="text" placeholder="e.g., nginx:latest" disabled={isLoading} bind:value={$inputs.image.value} class={$inputs.image.error ? 'border-destructive' : ''} />
+											<Input
+												id="image"
+												type="text"
+												placeholder="e.g., nginx:latest"
+												disabled={isLoading}
+												bind:value={$inputs.image.value}
+												class={$inputs.image.error ? 'border-destructive' : ''}
+											/>
 											{#if $inputs.image.error}
-												<p class="text-xs text-destructive mt-1">{$inputs.image.error}</p>
+												<p class="text-destructive mt-1 text-xs">{$inputs.image.error}</p>
 											{/if}
-											<p class="text-xs text-muted-foreground">Docker image to use for the container</p>
+											<p class="text-muted-foreground text-xs">Docker image to use for the container</p>
 										</div>
 									</div>
 
 									<div class="space-y-3">
-										<FormInput label="Command" type="text" placeholder="e.g., /bin/bash -c 'echo hello'" description="Command to run in the container" disabled={isLoading} bind:input={$inputs.command} />
+										<FormInput
+											label="Command"
+											type="text"
+											placeholder="e.g., /bin/bash -c 'echo hello'"
+											description="Command to run in the container"
+											disabled={isLoading}
+											bind:input={$inputs.command}
+										/>
 									</div>
 
-									<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+									<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 										<div class="space-y-3">
-											<FormInput label="Working Directory" type="text" placeholder="/app" description="Working directory inside the container" disabled={isLoading} bind:input={$inputs.workingDir} />
+											<FormInput
+												label="Working Directory"
+												type="text"
+												placeholder="/app"
+												description="Working directory inside the container"
+												disabled={isLoading}
+												bind:input={$inputs.workingDir}
+											/>
 										</div>
 
 										<div class="space-y-3">
-											<FormInput label="User" type="text" placeholder="1000:1000" description="User to run the container as" disabled={isLoading} bind:input={$inputs.user} />
+											<FormInput
+												label="User"
+												type="text"
+												placeholder="1000:1000"
+												description="User to run the container as"
+												disabled={isLoading}
+												bind:input={$inputs.user}
+											/>
 										</div>
 
 										<div class="space-y-3">
-											<FormInput label="Hostname" type="text" placeholder="my-container" disabled={isLoading} bind:input={$inputs.hostname} />
+											<FormInput
+												label="Hostname"
+												type="text"
+												placeholder="my-container"
+												disabled={isLoading}
+												bind:input={$inputs.hostname}
+											/>
 										</div>
 
 										<div class="space-y-3">
-											<FormInput label="Domain Name" type="text" placeholder="example.com" disabled={isLoading} bind:input={$inputs.domainname} />
+											<FormInput
+												label="Domain Name"
+												type="text"
+												placeholder="example.com"
+												disabled={isLoading}
+												bind:input={$inputs.domainname}
+											/>
 										</div>
 									</div>
 
-									<div class="border rounded-lg p-6 space-y-4">
+									<div class="space-y-4 rounded-lg border p-6">
 										<h4 class="text-sm font-semibold">I/O Settings</h4>
-										<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+										<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 											<div class="flex items-center space-x-2">
 												<Checkbox id="attach-stdout" bind:checked={$inputs.attachStdout.value} disabled={isLoading} />
 												<Label for="attach-stdout" class="text-sm font-normal">Attach Stdout</Label>
@@ -369,24 +434,38 @@
 								</Tabs.Content>
 
 								<!-- Environment Tab -->
-								<Tabs.Content value="environment" class="p-6 space-y-8 mt-0">
-									<div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+								<Tabs.Content value="environment" class="mt-0 space-y-8 p-6">
+									<div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
 										<div class="space-y-6">
 											<div>
-												<h3 class="text-lg font-semibold mb-4">Dynamic Environment Variables</h3>
+												<h3 class="mb-4 text-lg font-semibold">Dynamic Environment Variables</h3>
 												<div class="space-y-3">
 													{#each envVars as env, index (index)}
 														<div class="flex items-center gap-3">
 															<Input type="text" placeholder="KEY" bind:value={env.key} disabled={isLoading} class="flex-1" />
 															<span class="text-muted-foreground font-mono">=</span>
 															<Input type="text" placeholder="value" bind:value={env.value} disabled={isLoading} class="flex-1" />
-															<Button type="button" variant="ghost" size="icon" onclick={() => removeEnvVar(index)} disabled={isLoading || envVars.length <= 1} class="text-destructive hover:text-destructive shrink-0">
-																<X class="size-4" />
+															<Button
+																type="button"
+																variant="ghost"
+																size="icon"
+																onclick={() => removeEnvVar(index)}
+																disabled={isLoading || envVars.length <= 1}
+																class="text-destructive hover:text-destructive shrink-0"
+															>
+																<XIcon class="size-4" />
 															</Button>
 														</div>
 													{/each}
-													<Button type="button" variant="outline" size="sm" onclick={addEnvVar} disabled={isLoading} class="w-full">
-														<Plus class="size-4 mr-2" />
+													<Button
+														type="button"
+														variant="outline"
+														size="sm"
+														onclick={addEnvVar}
+														disabled={isLoading}
+														class="w-full"
+													>
+														<PlusIcon class="mr-2 size-4" />
 														Add Environment Variable
 													</Button>
 												</div>
@@ -395,13 +474,21 @@
 
 										<div class="space-y-6">
 											<div>
-												<h3 class="text-lg font-semibold mb-4">Text Format Environment Variables</h3>
+												<h3 class="mb-4 text-lg font-semibold">Text Format Environment Variables</h3>
 												<div class="space-y-3">
-													<Textarea placeholder="NODE_ENV=production&#10;PORT=3000&#10;DEBUG=true" disabled={isLoading} rows={12} bind:value={$inputs.environmentVars.value} class={$inputs.environmentVars.error ? 'border-destructive' : ''} />
+													<Textarea
+														placeholder="NODE_ENV=production&#10;PORT=3000&#10;DEBUG=true"
+														disabled={isLoading}
+														rows={12}
+														bind:value={$inputs.environmentVars.value}
+														class={$inputs.environmentVars.error ? 'border-destructive' : ''}
+													/>
 													{#if $inputs.environmentVars.error}
-														<p class="text-xs text-destructive">{$inputs.environmentVars.error}</p>
+														<p class="text-destructive text-xs">{$inputs.environmentVars.error}</p>
 													{/if}
-													<p class="text-xs text-muted-foreground">Enter environment variables as KEY=value pairs, one per line</p>
+													<p class="text-muted-foreground text-xs">
+														Enter environment variables as KEY=value pairs, one per line
+													</p>
 												</div>
 											</div>
 										</div>
@@ -409,34 +496,64 @@
 								</Tabs.Content>
 
 								<!-- Ports Tab -->
-								<Tabs.Content value="ports" class="p-6 space-y-8 mt-0">
-									<div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+								<Tabs.Content value="ports" class="mt-0 space-y-8 p-6">
+									<div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
 										<div class="space-y-6">
 											<div>
-												<h3 class="text-lg font-semibold mb-4">Port Mappings</h3>
+												<h3 class="mb-4 text-lg font-semibold">Port Mappings</h3>
 												<div class="space-y-3">
 													{#each portMappings as mapping, index (index)}
 														<div class="flex items-center gap-3">
-															<div class="flex items-center gap-2 flex-1">
-																<div class="text-sm text-muted-foreground whitespace-nowrap min-w-12">Host:</div>
-																<Input type="text" placeholder="8080" bind:value={mapping.host} disabled={isLoading} class="flex-1" />
+															<div class="flex flex-1 items-center gap-2">
+																<div class="text-muted-foreground min-w-12 whitespace-nowrap text-sm">Host:</div>
+																<Input
+																	type="text"
+																	placeholder="8080"
+																	bind:value={mapping.host}
+																	disabled={isLoading}
+																	class="flex-1"
+																/>
 															</div>
 															<span class="text-muted-foreground">→</span>
-															<div class="flex items-center gap-2 flex-1">
-																<div class="text-sm text-muted-foreground whitespace-nowrap min-w-20">Container:</div>
-																<Input type="text" placeholder="80" bind:value={mapping.container} disabled={isLoading} class="flex-1" />
+															<div class="flex flex-1 items-center gap-2">
+																<div class="text-muted-foreground min-w-20 whitespace-nowrap text-sm">Container:</div>
+																<Input
+																	type="text"
+																	placeholder="80"
+																	bind:value={mapping.container}
+																	disabled={isLoading}
+																	class="flex-1"
+																/>
 															</div>
-															<select bind:value={mapping.protocol} disabled={isLoading} class="px-3 py-2 border rounded-md text-sm min-w-16">
+															<select
+																bind:value={mapping.protocol}
+																disabled={isLoading}
+																class="min-w-16 rounded-md border px-3 py-2 text-sm"
+															>
 																<option value="tcp">TCP</option>
 																<option value="udp">UDP</option>
 															</select>
-															<Button type="button" variant="ghost" size="icon" onclick={() => removePortMapping(index)} disabled={isLoading || portMappings.length <= 1} class="text-destructive hover:text-destructive shrink-0">
-																<X class="size-4" />
+															<Button
+																type="button"
+																variant="ghost"
+																size="icon"
+																onclick={() => removePortMapping(index)}
+																disabled={isLoading || portMappings.length <= 1}
+																class="text-destructive hover:text-destructive shrink-0"
+															>
+																<XIcon class="size-4" />
 															</Button>
 														</div>
 													{/each}
-													<Button type="button" variant="outline" size="sm" onclick={addPortMapping} disabled={isLoading} class="w-full">
-														<Plus class="size-4 mr-2" />
+													<Button
+														type="button"
+														variant="outline"
+														size="sm"
+														onclick={addPortMapping}
+														disabled={isLoading}
+														class="w-full"
+													>
+														<PlusIcon class="mr-2 size-4" />
 														Add Port Mapping
 													</Button>
 												</div>
@@ -445,9 +562,16 @@
 
 										<div class="space-y-6">
 											<div>
-												<h3 class="text-lg font-semibold mb-4">Port Configuration</h3>
+												<h3 class="mb-4 text-lg font-semibold">Port Configuration</h3>
 												<div class="space-y-4">
-													<FormInput label="Exposed Ports" type="text" placeholder="80,443,8080/tcp" description="Comma-separated list of ports to expose" disabled={isLoading} bind:input={$inputs.exposedPorts} />
+													<FormInput
+														label="Exposed Ports"
+														type="text"
+														placeholder="80,443,8080/tcp"
+														description="Comma-separated list of ports to expose"
+														disabled={isLoading}
+														bind:input={$inputs.exposedPorts}
+													/>
 
 													<div class="flex items-center space-x-2 pt-2">
 														<Checkbox id="publish-all" bind:checked={$inputs.publishAllPorts.value} disabled={isLoading} />
@@ -460,20 +584,39 @@
 								</Tabs.Content>
 
 								<!-- Volumes Tab -->
-								<Tabs.Content value="volumes" class="p-6 space-y-8 mt-0">
-									<div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+								<Tabs.Content value="volumes" class="mt-0 space-y-8 p-6">
+									<div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
 										<div class="space-y-6">
 											<div>
-												<h3 class="text-lg font-semibold mb-4">Volume Mounts</h3>
+												<h3 class="mb-4 text-lg font-semibold">Volume Mounts</h3>
 												<div class="space-y-3">
 													{#each volumeMounts as mount, index (index)}
 														<div class="space-y-2">
 															<div class="flex items-center gap-3">
-																<Input type="text" placeholder="Source path or volume name" bind:value={mount.source} disabled={isLoading} class="flex-1" />
+																<Input
+																	type="text"
+																	placeholder="Source path or volume name"
+																	bind:value={mount.source}
+																	disabled={isLoading}
+																	class="flex-1"
+																/>
 																<span class="text-muted-foreground">:</span>
-																<Input type="text" placeholder="Container path" bind:value={mount.destination} disabled={isLoading} class="flex-1" />
-																<Button type="button" variant="ghost" size="icon" onclick={() => removeVolumeMount(index)} disabled={isLoading || volumeMounts.length <= 1} class="text-destructive hover:text-destructive shrink-0">
-																	<X class="size-4" />
+																<Input
+																	type="text"
+																	placeholder="Container path"
+																	bind:value={mount.destination}
+																	disabled={isLoading}
+																	class="flex-1"
+																/>
+																<Button
+																	type="button"
+																	variant="ghost"
+																	size="icon"
+																	onclick={() => removeVolumeMount(index)}
+																	disabled={isLoading || volumeMounts.length <= 1}
+																	class="text-destructive hover:text-destructive shrink-0"
+																>
+																	<XIcon class="size-4" />
 																</Button>
 															</div>
 															<div class="flex items-center space-x-2 pl-3">
@@ -482,8 +625,15 @@
 															</div>
 														</div>
 													{/each}
-													<Button type="button" variant="outline" size="sm" onclick={addVolumeMount} disabled={isLoading} class="w-full">
-														<Plus class="size-4 mr-2" />
+													<Button
+														type="button"
+														variant="outline"
+														size="sm"
+														onclick={addVolumeMount}
+														disabled={isLoading}
+														class="w-full"
+													>
+														<PlusIcon class="mr-2 size-4" />
 														Add Volume Mount
 													</Button>
 												</div>
@@ -492,13 +642,21 @@
 
 										<div class="space-y-6">
 											<div>
-												<h3 class="text-lg font-semibold mb-4">Text Format Volume Binds</h3>
+												<h3 class="mb-4 text-lg font-semibold">Text Format Volume Binds</h3>
 												<div class="space-y-3">
-													<Textarea placeholder="/host/path:/container/path&#10;/host/path2:/container/path2:ro&#10;myvolume:/app/data" disabled={isLoading} rows={12} bind:value={$inputs.volumes.value} class={$inputs.volumes.error ? 'border-destructive' : ''} />
+													<Textarea
+														placeholder="/host/path:/container/path&#10;/host/path2:/container/path2:ro&#10;myvolume:/app/data"
+														disabled={isLoading}
+														rows={12}
+														bind:value={$inputs.volumes.value}
+														class={$inputs.volumes.error ? 'border-destructive' : ''}
+													/>
 													{#if $inputs.volumes.error}
-														<p class="text-xs text-destructive">{$inputs.volumes.error}</p>
+														<p class="text-destructive text-xs">{$inputs.volumes.error}</p>
 													{/if}
-													<p class="text-xs text-muted-foreground">Enter volume binds as source:destination[:options], one per line</p>
+													<p class="text-muted-foreground text-xs">
+														Enter volume binds as source:destination[:options], one per line
+													</p>
 												</div>
 											</div>
 										</div>
@@ -506,18 +664,22 @@
 								</Tabs.Content>
 
 								<!-- Network & Security Tab -->
-								<Tabs.Content value="network" class="p-6 space-y-8 mt-0">
-									<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+								<Tabs.Content value="network" class="mt-0 space-y-8 p-6">
+									<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 										<div class="space-y-6">
-											<div class="border rounded-lg p-6">
-												<h3 class="text-lg font-semibold mb-4">Network Settings</h3>
+											<div class="rounded-lg border p-6">
+												<h3 class="mb-4 text-lg font-semibold">Network Settings</h3>
 												<div class="space-y-4">
 													<div class="flex items-center space-x-3">
 														<Checkbox id="network-disabled" bind:checked={$inputs.networkDisabled.value} disabled={isLoading} />
 														<Label for="network-disabled" class="text-sm font-normal">Disable Network</Label>
 													</div>
 													<div class="flex items-center space-x-3">
-														<Checkbox id="publish-all-ports-net" bind:checked={$inputs.publishAllPorts.value} disabled={isLoading} />
+														<Checkbox
+															id="publish-all-ports-net"
+															bind:checked={$inputs.publishAllPorts.value}
+															disabled={isLoading}
+														/>
 														<Label for="publish-all-ports-net" class="text-sm font-normal">Publish All Ports</Label>
 													</div>
 												</div>
@@ -525,8 +687,8 @@
 										</div>
 
 										<div class="space-y-6">
-											<div class="border rounded-lg p-6">
-												<h3 class="text-lg font-semibold mb-4">Security Settings</h3>
+											<div class="rounded-lg border p-6">
+												<h3 class="mb-4 text-lg font-semibold">Security Settings</h3>
 												<div class="space-y-4">
 													<div class="flex items-center space-x-3">
 														<Checkbox id="privileged" bind:checked={$inputs.privileged.value} disabled={isLoading} />
@@ -547,19 +709,33 @@
 								</Tabs.Content>
 
 								<!-- Advanced Tab -->
-								<Tabs.Content value="advanced" class="p-6 space-y-8 mt-0">
-									<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+								<Tabs.Content value="advanced" class="mt-0 space-y-8 p-6">
+									<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 										<div class="space-y-6">
-											<div class="border rounded-lg p-6">
-												<h3 class="text-lg font-semibold mb-4">Restart Policy</h3>
+											<div class="rounded-lg border p-6">
+												<h3 class="mb-4 text-lg font-semibold">Restart Policy</h3>
 												<div class="space-y-4">
-													<SelectWithLabel id="restart-policy" bind:value={$inputs.restartPolicy.value} label="Restart Policy" description="Container restart behavior" options={restartPolicies} placeholder="Select restart policy" />
+													<SelectWithLabel
+														id="restart-policy"
+														bind:value={$inputs.restartPolicy.value}
+														label="Restart Policy"
+														description="Container restart behavior"
+														options={restartPolicies}
+														placeholder="Select restart policy"
+													/>
 
 													{#if $inputs.restartPolicy.value === 'on-failure'}
 														<div class="space-y-3">
 															<Label for="max-retries" class="text-sm font-medium">Maximum Retry Count</Label>
-															<Input id="max-retries" type="number" min="0" placeholder="5" disabled={isLoading} bind:value={$inputs.restartMaxRetries.value} />
-															<p class="text-xs text-muted-foreground">Maximum number of restart attempts</p>
+															<Input
+																id="max-retries"
+																type="number"
+																min="0"
+																placeholder="5"
+																disabled={isLoading}
+																bind:value={$inputs.restartMaxRetries.value}
+															/>
+															<p class="text-muted-foreground text-xs">Maximum number of restart attempts</p>
 														</div>
 													{/if}
 												</div>
@@ -567,14 +743,20 @@
 										</div>
 
 										<div class="space-y-6">
-											<div class="border rounded-lg p-6">
-												<h3 class="text-lg font-semibold mb-4">Labels</h3>
+											<div class="rounded-lg border p-6">
+												<h3 class="mb-4 text-lg font-semibold">Labels</h3>
 												<div class="space-y-3">
-													<Textarea placeholder="com.example.description=My application&#10;com.example.version=1.0.0&#10;com.example.maintainer=admin@example.com" disabled={isLoading} rows={8} bind:value={$inputs.labels.value} class={$inputs.labels.error ? 'border-destructive' : ''} />
+													<Textarea
+														placeholder="com.example.description=My application&#10;com.example.version=1.0.0&#10;com.example.maintainer=admin@example.com"
+														disabled={isLoading}
+														rows={8}
+														bind:value={$inputs.labels.value}
+														class={$inputs.labels.error ? 'border-destructive' : ''}
+													/>
 													{#if $inputs.labels.error}
-														<p class="text-xs text-destructive">{$inputs.labels.error}</p>
+														<p class="text-destructive text-xs">{$inputs.labels.error}</p>
 													{/if}
-													<p class="text-xs text-muted-foreground">Enter metadata labels as key=value pairs, one per line</p>
+													<p class="text-muted-foreground text-xs">Enter metadata labels as key=value pairs, one per line</p>
 												</div>
 											</div>
 										</div>
@@ -583,15 +765,15 @@
 							</div>
 
 							<!-- Footer -->
-							<div class="border-t p-6 bg-background shrink-0">
-								<div class="flex flex-row gap-3 justify-end">
+							<div class="bg-background shrink-0 border-t p-6">
+								<div class="flex flex-row justify-end gap-3">
 									<Button type="button" variant="outline" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
 									<Button type="submit" disabled={isLoading}>
 										{#if isLoading}
-											<Loader2 class="mr-2 size-4 animate-spin" />
+											<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 											Creating...
 										{:else}
-											<Container class="mr-2 size-4" />
+											<ContainerIcon class="mr-2 size-4" />
 											Create Container
 										{/if}
 									</Button>

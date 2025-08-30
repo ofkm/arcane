@@ -12,7 +12,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { formatFriendlyDate } from '$lib/utils/date.utils';
+	import { format } from 'date-fns';
 	import { truncateString } from '$lib/utils/string.utils';
 	import { environmentAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
@@ -117,7 +117,7 @@
 {/snippet}
 
 {#snippet CreatedCell({ value }: { value: unknown })}
-	{formatFriendlyDate(String(value))}
+	{format(new Date(String(value)), 'PP p')}
 {/snippet}
 
 {#snippet RowActions({ item }: { item: VolumeSummaryDto })}

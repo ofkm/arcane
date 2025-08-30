@@ -8,7 +8,7 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import StopCircleIcon from '@lucide/svelte/icons/stop-circle';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import Loader2Icon from '@lucide/svelte/icons/loader-2';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -19,9 +19,9 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { environmentAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
-	import { statusVariantMap } from '$lib/types/statuses';
+	import { getStatusVariant } from '$lib/utils/status.utils';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
-	import { formatFriendlyDate } from '$lib/utils/date.utils';
+	import { format } from 'date-fns';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 
 	let {
@@ -133,12 +133,12 @@
 {/snippet}
 
 {#snippet StatusCell({ item }: { item: Project })}
-	{@const stateVariant = item.status ? statusVariantMap[item.status.toLowerCase()] : 'gray'}
+	{@const stateVariant = getStatusVariant(item.status)}
 	<StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} />
 {/snippet}
 
 {#snippet CreatedCell({ value }: { value: unknown })}
-	{formatFriendlyDate(String(value || ''))}
+	{#if value}{format(new Date(String(value)), 'PP p')}{/if}
 {/snippet}
 
 {#snippet RowActions({ item }: { item: Project })}
@@ -161,7 +161,7 @@
 				{#if item.status !== 'running'}
 					<DropdownMenu.Item onclick={() => performProjectAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
 						{#if isLoading.start}
-							<Loader2Icon class="size-4 animate-spin" />
+							<LoaderCircleIcon class="size-4 animate-spin" />
 						{:else}
 							<PlayIcon class="size-4" />
 						{/if}
@@ -173,7 +173,7 @@
 						disabled={isLoading.restart || isAnyLoading}
 					>
 						{#if isLoading.restart}
-							<Loader2Icon class="size-4 animate-spin" />
+							<LoaderCircleIcon class="size-4 animate-spin" />
 						{:else}
 							<RotateCcwIcon class="size-4" />
 						{/if}
@@ -182,7 +182,7 @@
 
 					<DropdownMenu.Item onclick={() => performProjectAction('stop', item.id)} disabled={isLoading.stop || isAnyLoading}>
 						{#if isLoading.stop}
-							<Loader2Icon class="size-4 animate-spin" />
+							<LoaderCircleIcon class="size-4 animate-spin" />
 						{:else}
 							<StopCircleIcon class="size-4" />
 						{/if}
@@ -192,7 +192,7 @@
 
 				<DropdownMenu.Item onclick={() => performProjectAction('pull', item.id)} disabled={isLoading.pull || isAnyLoading}>
 					{#if isLoading.pull}
-						<Loader2Icon class="size-4 animate-spin" />
+						<LoaderCircleIcon class="size-4 animate-spin" />
 					{:else}
 						<RotateCcwIcon class="size-4" />
 					{/if}
@@ -207,7 +207,7 @@
 					disabled={isLoading.remove || isAnyLoading}
 				>
 					{#if isLoading.remove}
-						<Loader2Icon class="size-4 animate-spin" />
+						<LoaderCircleIcon class="size-4 animate-spin" />
 					{:else}
 						<Trash2Icon class="size-4" />
 					{/if}

@@ -14,7 +14,7 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ContainerRegistry } from '$lib/models/container-registry';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
-	import { formatFriendlyDate } from '$lib/utils/date.utils';
+	import { format } from 'date-fns';
 
 	let {
 		registries = $bindable(),
@@ -183,7 +183,7 @@
 {/snippet}
 
 {#snippet CreatedCell({ value }: { value: unknown })}
-	<span class="text-sm">{value ? formatFriendlyDate(String(value)) : 'N/A'}</span>
+	<span class="text-sm">{value ? format(new Date(String(value)), 'PP p') : 'N/A'}</span>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ContainerRegistry })}

@@ -36,8 +36,8 @@
 </script>
 
 <script lang="ts">
-	import { cn } from '$lib/utils/utils.js';
-	import Loader2Icon from '@lucide/svelte/icons/loader-2';
+	import { cn } from '$lib/utils';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import { arcaneButtonVariants, actionConfigs } from './variants';
 
 	let {
@@ -98,7 +98,7 @@
 		{#if type !== undefined && loading}
 			<div class="absolute inset-0 flex place-items-center justify-center bg-inherit">
 				<div class="flex animate-spin place-items-center justify-center">
-					<Loader2Icon class="size-4" />
+					<LoaderCircleIcon class="size-4" />
 				</div>
 			</div>
 			<span class="sr-only">Loading - {displayLoadingLabel}</span>
