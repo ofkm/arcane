@@ -21,7 +21,7 @@
 	import type { ContainerInspectInfo } from 'dockerode';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { onDestroy } from 'svelte';
-	import LogViewer from '$lib/components/LogViewer.svelte';
+	import LogViewer from '$lib/components/log-viewer.svelte';
 	import Meter from '$lib/components/ui/meter/meter.svelte';
 	import { browser } from '$app/environment';
 	import Separator from '$lib/components/ui/separator/separator.svelte';

@@ -27,7 +27,7 @@
 	import { environmentAPI } from '$lib/services/api';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import LogViewer from '$lib/components/LogViewer.svelte';
+	import LogViewer from '$lib/components/log-viewer.svelte';
 	import { browser } from '$app/environment';
 
 	let { data }: { data: PageData } = $props();

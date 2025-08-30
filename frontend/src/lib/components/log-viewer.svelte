@@ -186,13 +186,7 @@
 		return logs.length;
 	}
 
-	function addLogEntry(logData: {
-		level: string;
-		message: string;
-		timestamp?: string;
-		service?: string;
-		containerId?: string;
-	}) {
+	function addLogEntry(logData: { level: string; message: string; timestamp?: string; service?: string; containerId?: string }) {
 		let cleanMessage = logData.message;
 		let timestamp = logData.timestamp || new Date().toISOString();
 
@@ -288,11 +282,9 @@
 			</div>
 		{:else}
 			{#each logs as log (log.timestamp + log.message + (log.service || ''))}
-				<div
-					class="flex border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50"
-				>
+				<div class="flex border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50">
 					{#if showTimestamps}
-						<span class="mr-3 shrink-0 text-xs text-gray-500 min-w-fit">
+						<span class="mr-3 min-w-fit shrink-0 text-xs text-gray-500">
 							{formatTimestamp(log.timestamp)}
 						</span>
 					{/if}
@@ -302,15 +294,12 @@
 					</span>
 
 					{#if type === 'stack' && log.service}
-						<span
-							class="mr-2 shrink-0 truncate text-xs text-blue-400 min-w-fit"
-							title={log.service}
-						>
+						<span class="mr-2 min-w-fit shrink-0 truncate text-xs text-blue-400" title={log.service}>
 							{log.service}
 						</span>
 					{/if}
 
-					<span class="break-words whitespace-pre-wrap text-gray-300 flex-1">
+					<span class="flex-1 whitespace-pre-wrap break-words text-gray-300">
 						{log.message}
 					</span>
 				</div>
@@ -321,7 +310,6 @@
 
 <style>
 	.log-viewer {
-		font-family:
-			'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 	}
 </style>
