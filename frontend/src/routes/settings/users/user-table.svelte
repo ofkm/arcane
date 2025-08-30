@@ -1,57 +1,37 @@
 <script lang="ts">
-	import ArcaneTable from '$lib/components/arcane-table.svelte';
+	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Trash2, Users, Ellipsis, Edit } from '@lucide/svelte';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
+	import EditIcon from '@lucide/svelte/icons/edit';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { toast } from 'svelte-sonner';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
-	import * as Table from '$lib/components/ui/table';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { userAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { User } from '$lib/types/user.type';
+	import type { ColumnSpec } from '$lib/components/arcane-table';
 
 	let {
-		users,
+		users = $bindable(),
 		selectedIds = $bindable(),
 		requestOptions = $bindable(),
-		onRefresh,
 		onUsersChanged,
 		onEditUser
 	}: {
-		users: User[];
+		users: Paginated<User>;
 		selectedIds: string[];
 		requestOptions: SearchPaginationSortRequest;
-		onRefresh: (options: SearchPaginationSortRequest) => Promise<any>;
 		onUsersChanged: () => Promise<void>;
 		onEditUser: (user: User) => void;
 	} = $props();
 
 	let isLoading = $state({
 		removing: false
-	});
-
-	type UserWithId = User & { id: string };
-
-	const usersWithId = $derived(
-		(users || []).map((user) => ({
-			...user,
-			id: user.id
-		}))
-	);
-
-	const paginatedUsers: Paginated<UserWithId> = $derived({
-		data: usersWithId as UserWithId[],
-		pagination: {
-			totalPages: Math.ceil(usersWithId.length / (requestOptions.pagination?.limit || 20)),
-			totalItems: usersWithId.length,
-			currentPage: requestOptions.pagination?.page || 1,
-			itemsPerPage: requestOptions.pagination?.limit || 20
-		}
 	});
 
 	async function handleDeleteSelected() {
@@ -126,92 +106,77 @@
 
 	function getRoleBadgeVariant(roles: string[]) {
 		if (roles?.includes('admin')) return 'red';
-		if (roles?.includes('moderator')) return 'amber';
 		return 'green';
 	}
 
 	function getRoleText(roles: string[]) {
 		if (roles?.includes('admin')) return 'Admin';
-		if (roles?.includes('moderator')) return 'Moderator';
 		return 'User';
 	}
+
+	const columns = [
+		{ accessorKey: 'username', title: 'Username', sortable: true, cell: UsernameCell },
+		{ accessorKey: 'displayName', title: 'Display Name', sortable: true, cell: DisplayNameCell },
+		{ accessorKey: 'email', title: 'Email', sortable: true, cell: EmailCell },
+		{ accessorKey: 'roles', title: 'Role', sortable: true, cell: RoleCell }
+	] satisfies ColumnSpec<User>[];
 </script>
 
-{#if usersWithId.length > 0}
-	<Card.Root class="border shadow-sm">
-		<Card.Header class="px-6">
-			<div class="flex items-center justify-between">
-				<Card.Title>Users List</Card.Title>
-				<div class="flex items-center gap-2">
-					{#if selectedIds.length > 0}
-						<ArcaneButton
-							action="remove"
-							onclick={handleDeleteSelected}
-							loading={isLoading.removing}
-							disabled={isLoading.removing}
-							customLabel="Remove Selected"
-						/>
-					{/if}
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content>
-			<ArcaneTable
-				items={paginatedUsers}
-				bind:requestOptions
-				bind:selectedIds
-				{onRefresh}
-				columns={[
-					{ label: 'Username', sortColumn: 'username' },
-					{ label: 'Display Name', sortColumn: 'displayName' },
-					{ label: 'Email', sortColumn: 'email' },
-					{ label: 'Role', sortColumn: 'roles' },
-					{ label: ' ' }
-				]}
-				filterPlaceholder="Search users..."
-				noResultsMessage="No users found"
-			>
-				{#snippet rows({ item })}
-					<Table.Cell>
-						<span class="font-medium">{item.username}</span>
-					</Table.Cell>
-					<Table.Cell>{item.displayName || '-'}</Table.Cell>
-					<Table.Cell>{item.email || '-'}</Table.Cell>
-					<Table.Cell>
-						<StatusBadge text={getRoleText(item.roles)} variant={getRoleBadgeVariant(item.roles)} />
-					</Table.Cell>
-					<Table.Cell>
-						<DropdownMenu.Root>
-							<DropdownMenu.Trigger>
-								{#snippet child({ props })}
-									<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
-										<span class="sr-only">Open menu</span>
-										<Ellipsis />
-									</Button>
-								{/snippet}
-							</DropdownMenu.Trigger>
-							<DropdownMenu.Content align="end">
-								<DropdownMenu.Group>
-									<DropdownMenu.Item onclick={() => onEditUser(item)}>
-										<Edit class="size-4" />
-										Edit
-									</DropdownMenu.Item>
-									<DropdownMenu.Item variant="destructive" onclick={() => handleDeleteUser(item.id, item.username)}>
-										<Trash2 class="size-4" />
-										Delete
-									</DropdownMenu.Item>
-								</DropdownMenu.Group>
-							</DropdownMenu.Content>
-						</DropdownMenu.Root>
-					</Table.Cell>
-				{/snippet}
-			</ArcaneTable>
-		</Card.Content>
-	</Card.Root>
-{:else}
-	<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
-		<Users class="text-muted-foreground mb-4 size-12 opacity-40" />
-		<p class="text-lg font-medium">No users found</p>
-		<p class="text-muted-foreground mt-1 max-w-md text-sm">Create a new user using the "Create User" button above</p>
-	</div>
-{/if}
+{#snippet UsernameCell({ item }: { item: User })}
+	<span class="font-medium">{item.username}</span>
+{/snippet}
+
+{#snippet DisplayNameCell({ value }: { value: unknown })}
+	{String(value || '-')}
+{/snippet}
+
+{#snippet EmailCell({ value }: { value: unknown })}
+	{String(value || '-')}
+{/snippet}
+
+{#snippet RoleCell({ item }: { item: User })}
+	<StatusBadge text={getRoleText(item.roles)} variant={getRoleBadgeVariant(item.roles)} />
+{/snippet}
+
+{#snippet RowActions({ item }: { item: User })}
+	<DropdownMenu.Root>
+		<DropdownMenu.Trigger>
+			{#snippet child({ props })}
+				<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
+					<span class="sr-only">Open menu</span>
+					<EllipsisIcon />
+				</Button>
+			{/snippet}
+		</DropdownMenu.Trigger>
+		<DropdownMenu.Content align="end">
+			<DropdownMenu.Group>
+				<DropdownMenu.Item onclick={() => onEditUser(item)}>
+					<EditIcon class="size-4" />
+					Edit
+				</DropdownMenu.Item>
+				<DropdownMenu.Item variant="destructive" onclick={() => handleDeleteUser(item.id, item.username)}>
+					<Trash2Icon class="size-4" />
+					Delete
+				</DropdownMenu.Item>
+			</DropdownMenu.Group>
+		</DropdownMenu.Content>
+	</DropdownMenu.Root>
+{/snippet}
+
+<Card.Root>
+	<Card.Content class="py-5">
+		<ArcaneTable
+			items={users}
+			bind:requestOptions
+			bind:selectedIds
+			onRemoveSelected={(ids) => handleDeleteSelected()}
+			onRefresh={async (options) => {
+				requestOptions = options;
+				await onUsersChanged();
+				return users;
+			}}
+			{columns}
+			rowActions={RowActions}
+		/>
+	</Card.Content>
+</Card.Root>

@@ -3,7 +3,9 @@ import type { User, CreateUser } from '$lib/types/user.type';
 import type {
 	PaginationRequest,
 	SortRequest,
-	PaginatedApiResponse
+	PaginatedApiResponse,
+	Paginated,
+	SearchPaginationSortRequest
 } from '$lib/types/pagination.type';
 
 export interface Role {
@@ -14,42 +16,16 @@ export interface Role {
 }
 
 export default class UserAPIService extends BaseAPIService {
-	async getUsers(
-		pagination?: PaginationRequest,
-		sort?: SortRequest,
-		search?: string,
-		filters?: Record<string, string>
-	): Promise<any[] | PaginatedApiResponse<any>> {
-		if (!pagination) {
-			const response = await this.handleResponse<{ users?: any[] }>(this.api.get('/users'));
-			return Array.isArray(response.users)
-				? response.users
-				: Array.isArray(response)
-					? response
-					: [];
-		}
+	// async getVolumes(options?: SearchPaginationSortRequest): Promise<Paginated<VolumeSummaryDto>> {
+	// 	const envId = await this.getCurrentEnvironmentId();
 
-		const params: any = {
-			'pagination[page]': pagination.page,
-			'pagination[limit]': pagination.limit
-		};
+	// 	const res = await this.api.get(`/environments/${envId}/volumes`, { params: options });
+	// 	return res.data;
+	// }
 
-		if (sort) {
-			params['sort[column]'] = sort.column;
-			params['sort[direction]'] = sort.direction;
-		}
-
-		if (search) {
-			params.search = search;
-		}
-
-		if (filters) {
-			Object.entries(filters).forEach(([key, value]) => {
-				params[key] = value;
-			});
-		}
-
-		return this.handleResponse(this.api.get('/users', { params }));
+	async getUsers(options?: SearchPaginationSortRequest): Promise<Paginated<User>> {
+		const res = await this.api.get('/users', { params: options });
+		return res.data;
 	}
 
 	async get(id: string): Promise<User> {
@@ -93,15 +69,11 @@ export default class UserAPIService extends BaseAPIService {
 	}
 
 	async getByUsername(username: string): Promise<User> {
-		return this.handleResponse(
-			this.api.get(`/users/by-username/${encodeURIComponent(username)}`)
-		) as Promise<User>;
+		return this.handleResponse(this.api.get(`/users/by-username/${encodeURIComponent(username)}`)) as Promise<User>;
 	}
 
 	async getByOidcSubjectId(oidcSubjectId: string): Promise<User> {
-		return this.handleResponse(
-			this.api.get(`/users/by-oidc-subject/${encodeURIComponent(oidcSubjectId)}`)
-		) as Promise<User>;
+		return this.handleResponse(this.api.get(`/users/by-oidc-subject/${encodeURIComponent(oidcSubjectId)}`)) as Promise<User>;
 	}
 
 	async getRoles(): Promise<Role[]> {
@@ -125,15 +97,11 @@ export default class UserAPIService extends BaseAPIService {
 	}
 
 	async assignRole(userId: string, roleId: string): Promise<void> {
-		return this.handleResponse(
-			this.api.post(`/users/${userId}/roles`, { roleId })
-		) as Promise<void>;
+		return this.handleResponse(this.api.post(`/users/${userId}/roles`, { roleId })) as Promise<void>;
 	}
 
 	async removeRole(userId: string, roleId: string): Promise<void> {
-		return this.handleResponse(
-			this.api.delete(`/users/${userId}/roles/${roleId}`)
-		) as Promise<void>;
+		return this.handleResponse(this.api.delete(`/users/${userId}/roles/${roleId}`)) as Promise<void>;
 	}
 
 	async getUserRoles(userId: string): Promise<Role[]> {

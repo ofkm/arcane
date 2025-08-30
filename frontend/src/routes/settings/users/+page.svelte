@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { Users, Shield, UserCheck } from '@lucide/svelte';
-	import * as Alert from '$lib/components/ui/alert/index.js';
+	import UsersIcon from '@lucide/svelte/icons/users';
+	import ShieldIcon from '@lucide/svelte/icons/shield';
+	import UserCheckIcon from '@lucide/svelte/icons/user-check';
 	import { toast } from 'svelte-sonner';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -15,8 +16,7 @@
 
 	let { data } = $props();
 
-	let users = $state<User[]>(Array.isArray(data.users) ? data.users : data.users?.data || []);
-	let error = $state<string | null>(null);
+	let users = $state(data.users);
 	let selectedIds = $state<string[]>([]);
 	let requestOptions = $state<SearchPaginationSortRequest>(data.userRequestOptions);
 
@@ -33,55 +33,9 @@
 		refresh: false
 	});
 
-	const totalUsers = $derived(users.length);
-	const adminUsers = $derived(users.filter((u) => u.roles?.includes('admin')).length);
-	const regularUsers = $derived(users.filter((u) => !u.roles?.includes('admin')).length);
-
-	async function loadUsers() {
-		try {
-			isLoading.refresh = true;
-			const response = await userAPI.getUsers(
-				requestOptions.pagination,
-				requestOptions.sort,
-				requestOptions.search,
-				requestOptions.filters
-			);
-			users = Array.isArray(response) ? response : response.data || [];
-			error = null;
-		} catch (err) {
-			console.error('Failed to load users:', err);
-			error = err instanceof Error ? err.message : 'Failed to load users';
-			users = [];
-		} finally {
-			isLoading.refresh = false;
-		}
-	}
-
-	async function onRefresh(options: SearchPaginationSortRequest) {
-		requestOptions = options;
-		await loadUsers();
-		return {
-			data: users,
-			pagination: {
-				totalPages: Math.ceil(users.length / (requestOptions.pagination?.limit || 20)),
-				totalItems: users.length,
-				currentPage: requestOptions.pagination?.page || 1,
-				itemsPerPage: requestOptions.pagination?.limit || 20
-			}
-		};
-	}
-
-	async function refreshUsers() {
-		isLoading.refresh = true;
-		try {
-			await loadUsers();
-		} catch (error) {
-			console.error('Failed to refresh users:', error);
-			toast.error('Failed to refresh users');
-		} finally {
-			isLoading.refresh = false;
-		}
-	}
+	const totalUsers = $derived(users.data.length);
+	const adminUsers = $derived(users.data.filter((u) => u.roles?.includes('admin')).length);
+	const regularUsers = $derived(users.data.filter((u) => !u.roles?.includes('admin')).length);
 
 	function openCreateDialog() {
 		userToEdit = null;
@@ -114,7 +68,7 @@
 					setLoadingState: (value) => (isLoading[loading] = value),
 					onSuccess: async () => {
 						toast.success(`User "${user.username}" updated successfully.`);
-						await loadUsers();
+						users = await userAPI.getUsers(requestOptions);
 						isDialogOpen.edit = false;
 						userToEdit = null;
 					}
@@ -141,7 +95,7 @@
 					setLoadingState: (value) => (isLoading[loading] = value),
 					onSuccess: async () => {
 						toast.success(`User "${user.username}" created successfully.`);
-						await loadUsers();
+						users = await userAPI.getUsers(requestOptions);
 						isDialogOpen.create = false;
 					}
 				});
@@ -166,48 +120,42 @@
 				loading={isLoading.creating}
 				disabled={isLoading.creating}
 			/>
-			<ArcaneButton
-				action="restart"
-				onclick={refreshUsers}
-				customLabel="Refresh"
-				loading={isLoading.refresh}
-				disabled={isLoading.refresh}
-			/>
 		</div>
 	</div>
-
-	{#if error}
-		<Alert.Root variant="destructive">
-			<Alert.Title>Error Loading Users</Alert.Title>
-			<Alert.Description>{error}</Alert.Description>
-		</Alert.Root>
-	{/if}
 
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 		<StatCard
 			title="Total Users"
 			value={totalUsers}
-			icon={Users}
+			icon={UsersIcon}
 			iconColor="text-blue-500"
 			class="border-l-4 border-l-blue-500"
 		/>
 		<StatCard
 			title="Administrators"
 			value={adminUsers}
-			icon={Shield}
+			icon={ShieldIcon}
 			iconColor="text-red-500"
 			class="border-l-4 border-l-red-500"
 		/>
 		<StatCard
 			title="Regular Users"
 			value={regularUsers}
-			icon={UserCheck}
+			icon={UserCheckIcon}
 			iconColor="text-green-500"
 			class="border-l-4 border-l-green-500"
 		/>
 	</div>
 
-	<UserTable {users} bind:selectedIds bind:requestOptions {onRefresh} onUsersChanged={loadUsers} onEditUser={openEditDialog} />
+	<UserTable
+		bind:users
+		bind:selectedIds
+		bind:requestOptions
+		onUsersChanged={async () => {
+			users = await userAPI.getUsers(requestOptions);
+		}}
+		onEditUser={openEditDialog}
+	/>
 
 	<UserFormSheet
 		bind:open={isDialogOpen.create}
