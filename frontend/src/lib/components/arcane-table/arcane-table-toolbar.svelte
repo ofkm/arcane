@@ -64,7 +64,7 @@
 	</div>
 
 	<div class="flex items-center gap-2">
-		{#if hasSelection}
+		{#if hasSelection && onRemoveSelected}
 			<ArcaneButton
 				action="remove"
 				size="sm"

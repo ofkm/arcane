@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { HardDrive, ArchiveRestore, ArchiveX } from '@lucide/svelte';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
+	import ArchiveRestoreIcon from '@lucide/svelte/icons/archive-restore';
+	import ArchiveXIcon from '@lucide/svelte/icons/archive-x';
 	import { toast } from 'svelte-sonner';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -19,7 +21,8 @@
 
 	let isLoading = $state({
 		creating: false,
-		refresh: false
+		refresh: false,
+		removingSelected: false
 	});
 
 	const totalVolumes = $derived(volumes.data.length);
@@ -81,21 +84,21 @@
 		<StatCard
 			title="Total Volumes"
 			value={totalVolumes}
-			icon={HardDrive}
+			icon={HardDriveIcon}
 			iconColor="text-blue-500"
 			class="border-l-4 border-l-blue-500"
 		/>
 		<StatCard
 			title="Used Volumes"
 			value={usedVolumes}
-			icon={ArchiveRestore}
+			icon={ArchiveRestoreIcon}
 			iconColor="text-green-500"
 			class="border-l-4 border-l-green-500"
 		/>
 		<StatCard
 			title="Unused Volumes"
 			value={unusedVolumes}
-			icon={ArchiveX}
+			icon={ArchiveXIcon}
 			iconColor="text-red-500"
 			class="border-l-4 border-l-red-500"
 		/>
