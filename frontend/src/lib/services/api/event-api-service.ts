@@ -2,7 +2,9 @@ import BaseAPIService from './api-service';
 import type {
 	PaginationRequest,
 	SortRequest,
-	PaginatedApiResponse
+	PaginatedApiResponse,
+	SearchPaginationSortRequest,
+	Paginated
 } from '$lib/types/pagination.type';
 import type { Event, CreateEvent } from '$lib/types/event.type';
 
@@ -11,29 +13,9 @@ export default class EventAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.get('/events', { params: { filters } }));
 	}
 
-	async getEvents(
-		pagination?: PaginationRequest,
-		sort?: SortRequest,
-		search?: string,
-		filters?: Record<string, string>
-	): Promise<PaginatedApiResponse<Event>> {
-		const params: any = {};
-		if (pagination) {
-			params.page = pagination.page;
-			params.limit = pagination.limit;
-		}
-		if (sort) {
-			params.sortColumn = sort.column;
-			params.sortDirection = sort.direction;
-		}
-		if (search) params.search = search;
-		if (filters) {
-			Object.entries(filters).forEach(([key, value]) => {
-				if (value !== undefined && value !== null && value !== '') params[key] = value;
-			});
-		}
-		const res = await this.api.get('/events', { params });
-		return res.data as PaginatedApiResponse<Event>;
+	async getEvents(options?: SearchPaginationSortRequest): Promise<Paginated<Event>> {
+		const res = await this.api.get('/events', { params: options });
+		return res.data;
 	}
 
 	async listPaginated(
@@ -58,32 +40,6 @@ export default class EventAPIService extends BaseAPIService {
 			});
 		}
 		const res = await this.api.get('/events', { params });
-		return res.data as PaginatedApiResponse<Event>;
-	}
-
-	async listByEnvironmentPaginated(
-		environmentId: string,
-		pagination?: PaginationRequest,
-		sort?: SortRequest,
-		search?: string,
-		filters?: Record<string, string>
-	): Promise<PaginatedApiResponse<Event>> {
-		const params: any = {};
-		if (pagination) {
-			params.page = pagination.page;
-			params.limit = pagination.limit;
-		}
-		if (sort) {
-			params.sortColumn = sort.column;
-			params.sortDirection = sort.direction;
-		}
-		if (search) params.search = search;
-		if (filters) {
-			Object.entries(filters).forEach(([key, value]) => {
-				if (value !== undefined && value !== null && value !== '') params[key] = value;
-			});
-		}
-		const res = await this.api.get(`/environments/${environmentId}/events`, { params });
 		return res.data as PaginatedApiResponse<Event>;
 	}
 

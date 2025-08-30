@@ -1,34 +1,41 @@
 import BaseAPIService from './api-service';
 import type { Environment } from '$lib/stores/environment.store';
-import type { CreateEnvironmentDTO, UpdateEnvironmentDTO, EnvironmentResponse, EnvironmentsListResponse } from '$lib/dto/environment-dto';
+import type { CreateEnvironmentDTO, UpdateEnvironmentDTO } from '$lib/dto/environment-dto';
+import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
 export default class EnvironmentManagementAPIService extends BaseAPIService {
 	async create(dto: CreateEnvironmentDTO): Promise<Environment> {
-		const response = await this.handleResponse<EnvironmentResponse>(this.api.post('/environments', dto));
-		return response.environment;
+		const res = await this.api.post('/environments', dto);
+		return res.data.data as Environment;
 	}
 
+	async getEnvironments(options: SearchPaginationSortRequest): Promise<Paginated<Environment>> {
+		const res = await this.api.get('/environments', { params: options });
+		return res.data;
+	}
+
+	// Back-compat helper used by layout/env switcher
 	async list(): Promise<Environment[]> {
-		const response = await this.handleResponse<EnvironmentsListResponse>(this.api.get('/environments'));
-		return response.environments;
+		const res = await this.api.get('/environments', { params: { 'pagination.page': 1, 'pagination.limit': 1000 } });
+		return (res.data?.data as Environment[]) ?? [];
 	}
 
 	async get(environmentId: string): Promise<Environment> {
-		const response = await this.handleResponse<EnvironmentResponse>(this.api.get(`/environments/${environmentId}`));
-		return response.environment;
+		const res = await this.api.get(`/environments/${environmentId}`);
+		return res.data.data as Environment;
 	}
 
 	async update(environmentId: string, dto: UpdateEnvironmentDTO): Promise<Environment> {
-		const response = await this.handleResponse<EnvironmentResponse>(this.api.put(`/environments/${environmentId}`, dto));
-		return response.environment;
+		const res = await this.api.put(`/environments/${environmentId}`, dto);
+		return res.data.data as Environment;
 	}
 
 	async delete(environmentId: string): Promise<void> {
-		await this.handleResponse(this.api.delete(`/environments/${environmentId}`));
+		await this.api.delete(`/environments/${environmentId}`);
 	}
 
 	async testConnection(environmentId: string): Promise<{ status: 'online' | 'offline'; message?: string }> {
-		const response = await this.handleResponse<{ status: 'online' | 'offline'; message?: string }>(this.api.post(`/environments/${environmentId}/test`));
-		return response;
+		const res = await this.api.post(`/environments/${environmentId}/test`);
+		return res.data.data as { status: 'online' | 'offline'; message?: string };
 	}
 }

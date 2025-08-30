@@ -12,6 +12,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 const LOCAL_DOCKER_ENVIRONMENT_ID = "0"
@@ -73,7 +74,7 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 
 	c.JSON(http.StatusNotFound, gin.H{
 		"success": false,
-		"error":   "Endpoint not found",
+		"data":    gin.H{"error": "Endpoint not found"},
 	})
 }
 
@@ -254,7 +255,7 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
-			"error":   "Environment not found",
+			"data":    gin.H{"error": "Environment not found"},
 		})
 		return
 	}
@@ -262,7 +263,7 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 	if !environment.Enabled {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Environment is disabled",
+			"data":    gin.H{"error": "Environment is disabled"},
 		})
 		return
 	}
@@ -356,13 +357,11 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 	_, _ = c.Writer.Write(responseBody)
 }
 
+// Create
 func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 	var req dto.CreateEnvironmentDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request format: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid request format: " + err.Error()}})
 		return
 	}
 
@@ -372,71 +371,84 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		Description: req.Description,
 		Enabled:     true,
 	}
-
 	if req.Enabled != nil {
 		environment.Enabled = *req.Enabled
 	}
 
 	createdEnvironment, err := h.environmentService.CreateEnvironment(c.Request.Context(), environment)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to create environment: " + err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to create environment: " + err.Error()}})
+		return
+	}
+
+	out, mapErr := dto.MapOne[*models.Environment, dto.EnvironmentDto](createdEnvironment)
+	if mapErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to map environment"}})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"success":     true,
-		"environment": createdEnvironment,
-		"message":     "Environment created successfully",
+		"success": true,
+		"data":    out,
 	})
 }
 
+// List (paginated)
 func (h *EnvironmentHandler) ListEnvironments(c *gin.Context) {
-	environments, err := h.environmentService.ListEnvironments(c.Request.Context())
+	var req utils.SortedPaginationRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid pagination or sort parameters: " + err.Error()}})
+		return
+	}
+	if req.Pagination.Page == 0 {
+		req.Pagination.Page = 1
+	}
+	if req.Pagination.Limit == 0 {
+		req.Pagination.Limit = 20
+	}
+
+	envs, pagination, err := h.environmentService.ListEnvironmentsPaginated(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to fetch environments",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to fetch environments"}})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":      true,
-		"environments": environments,
-		"count":        len(environments),
+		"success":    true,
+		"data":       envs,
+		"pagination": pagination,
 	})
 }
 
+// Get by ID
 func (h *EnvironmentHandler) GetEnvironment(c *gin.Context) {
 	environmentID := c.Param("id")
 
 	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), environmentID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Environment not found",
-		})
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found"}})
+		return
+	}
+
+	out, mapErr := dto.MapOne[*models.Environment, dto.EnvironmentDto](environment)
+	if mapErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to map environment"}})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":     true,
-		"environment": environment,
+		"success": true,
+		"data":    out,
 	})
 }
 
+// Update
 func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	environmentID := c.Param("id")
 
 	var req dto.UpdateEnvironmentDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request format: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid request format: " + err.Error()}})
 		return
 	}
 
@@ -455,66 +467,64 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	}
 
 	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "No fields to update",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "No fields to update"}})
 		return
 	}
 
 	updatedEnvironment, err := h.environmentService.UpdateEnvironment(c.Request.Context(), environmentID, updates)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to update environment: " + err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to update environment: " + err.Error()}})
+		return
+	}
+
+	out, mapErr := dto.MapOne[*models.Environment, dto.EnvironmentDto](updatedEnvironment)
+	if mapErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to map environment"}})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":     true,
-		"environment": updatedEnvironment,
-		"message":     "Environment updated successfully",
+		"success": true,
+		"data":    out,
 	})
 }
 
+// Delete
 func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 	environmentID := c.Param("id")
 
 	err := h.environmentService.DeleteEnvironment(c.Request.Context(), environmentID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to delete environment: " + err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    gin.H{"message": "Environment deleted successfully"},
+	})
+}
+
+// TestConnection
+func (h *EnvironmentHandler) TestConnection(c *gin.Context) {
+	environmentID := c.Param("id")
+
+	status, err := h.environmentService.TestConnection(c.Request.Context(), environmentID)
+	resp := dto.TestConnectionDto{Status: status}
+	if err != nil {
+		msg := err.Error()
+		resp.Message = &msg
+		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"success": false,
-			"error":   "Failed to delete environment: " + err.Error(),
+			"data":    resp,
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Environment deleted successfully",
+		"data":    resp,
 	})
-}
-
-func (h *EnvironmentHandler) TestConnection(c *gin.Context) {
-	environmentID := c.Param("id")
-
-	status, err := h.environmentService.TestConnection(c.Request.Context(), environmentID)
-
-	response := dto.TestConnectionDto{
-		Status: status,
-	}
-
-	if err != nil {
-		response.Message = func() *string { s := err.Error(); return &s }()
-	}
-
-	httpStatus := http.StatusOK
-	if status == "error" {
-		httpStatus = http.StatusServiceUnavailable
-	}
-
-	c.JSON(httpStatus, response)
 }
 
 func (h *EnvironmentHandler) UpdateHeartbeat(c *gin.Context) {

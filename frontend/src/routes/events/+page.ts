@@ -14,12 +14,7 @@ export const load: PageLoad = async () => {
 		}
 	};
 
-	const events = await eventAPI.listPaginated(
-		eventRequestOptions.pagination,
-		eventRequestOptions.sort,
-		eventRequestOptions.search,
-		eventRequestOptions.filters
-	);
+	const events = await eventAPI.getEvents(eventRequestOptions);
 
 	return { events, eventRequestOptions };
 };

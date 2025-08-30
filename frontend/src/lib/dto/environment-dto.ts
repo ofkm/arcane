@@ -13,12 +13,18 @@ export interface UpdateEnvironmentDTO {
 }
 
 export interface EnvironmentResponse {
-	environment: Environment;
+	data: Environment;
 	success: boolean;
 	message?: string;
 }
 
-export interface EnvironmentsListResponse {
-	environments: Environment[];
+export interface EnvironmentsListResponse<T = Environment> {
+	data: T[];
 	success: boolean;
+	pagination?: {
+		totalPages: number;
+		totalItems: number;
+		currentPage: number;
+		itemsPerPage: number;
+	};
 }

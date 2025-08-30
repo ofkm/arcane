@@ -18,3 +18,15 @@ type TestConnectionDto struct {
 	Status  string  `json:"status"`
 	Message *string `json:"message,omitempty"`
 }
+
+type EnvironmentDto struct {
+	ID          string  `json:"id"`
+	Hostname    string  `json:"hostname"`
+	ApiUrl      string  `json:"apiUrl"`
+	Description *string `json:"description,omitempty"`
+	Status      string  `json:"status"`
+	Enabled     bool    `json:"enabled"`
+	LastSeen    *string `json:"lastSeen,omitempty"`
+	CreatedAt   string  `json:"createdAt"`
+	UpdatedAt   *string `json:"updatedAt,omitempty"`
+}

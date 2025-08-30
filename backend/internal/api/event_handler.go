@@ -26,7 +26,7 @@ func (h *EventHandler) ListEvents(c *gin.Context) {
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid pagination or sort parameters: " + err.Error(),
+			"data":    gin.H{"error": "Invalid pagination or sort parameters: " + err.Error()},
 		})
 		return
 	}
@@ -42,7 +42,7 @@ func (h *EventHandler) ListEvents(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to list events: " + err.Error(),
+			"data":    gin.H{"error": "Failed to list events: " + err.Error()},
 		})
 		return
 	}
@@ -59,7 +59,7 @@ func (h *EventHandler) GetEventsByEnvironment(c *gin.Context) {
 	if environmentID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Environment ID is required",
+			"data":    gin.H{"error": "Environment ID is required"},
 		})
 		return
 	}
@@ -68,7 +68,7 @@ func (h *EventHandler) GetEventsByEnvironment(c *gin.Context) {
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid pagination or sort parameters: " + err.Error(),
+			"data":    gin.H{"error": "Invalid pagination or sort parameters: " + err.Error()},
 		})
 		return
 	}
@@ -84,7 +84,7 @@ func (h *EventHandler) GetEventsByEnvironment(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to list events: " + err.Error(),
+			"data":    gin.H{"error": "Failed to list events: " + err.Error()},
 		})
 		return
 	}
@@ -101,7 +101,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request body: " + err.Error(),
+			"data":    gin.H{"error": "Invalid request body: " + err.Error()},
 		})
 		return
 	}
@@ -110,7 +110,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to create event: " + err.Error(),
+			"data":    gin.H{"error": "Failed to create event: " + err.Error()},
 		})
 		return
 	}
@@ -126,7 +126,7 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	if eventID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Event ID is required",
+			"data":    gin.H{"error": "Event ID is required"},
 		})
 		return
 	}
@@ -134,14 +134,14 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	if err := h.eventService.DeleteEvent(c.Request.Context(), eventID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to delete event: " + err.Error(),
+			"data":    gin.H{"error": "Failed to delete event: " + err.Error()},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Event deleted successfully",
+		"data":    gin.H{"message": "Event deleted successfully"},
 	})
 }
 
@@ -155,7 +155,7 @@ func (h *EventHandler) DeleteOldEvents(c *gin.Context) {
 	if err != nil || days <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid or missing 'days' parameter",
+			"data":    gin.H{"error": "Invalid or missing 'days' parameter"},
 		})
 		return
 	}
@@ -164,13 +164,13 @@ func (h *EventHandler) DeleteOldEvents(c *gin.Context) {
 	if err := h.eventService.DeleteOldEvents(c.Request.Context(), duration); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to delete old events: " + err.Error(),
+			"data":    gin.H{"error": "Failed to delete old events: " + err.Error()},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Old events deleted successfully",
+		"data":    gin.H{"message": "Old events deleted successfully"},
 	})
 }

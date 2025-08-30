@@ -9,7 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ofkm/arcane-backend/internal/database"
+	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 	"gorm.io/gorm"
 )
 
@@ -52,6 +54,51 @@ func (s *EnvironmentService) ListEnvironments(ctx context.Context) ([]*models.En
 		return nil, fmt.Errorf("failed to list environments: %w", err)
 	}
 	return environments, nil
+}
+
+func (s *EnvironmentService) ListEnvironmentsPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]dto.EnvironmentDto, utils.PaginationResponse, error) {
+	var envs []models.Environment
+	q := s.db.WithContext(ctx).Model(&models.Environment{})
+
+	if req.Search != "" {
+		like := "%" + req.Search + "%"
+		q = q.Where(
+			s.db.Or("hostname ILIKE ?", like).
+				Or("api_url ILIKE ?", like).
+				Or("description ILIKE ?", like),
+		)
+	}
+
+	if req.Filters != nil {
+		if v, ok := req.Filters["status"]; ok && v != nil && v != "" {
+			q = q.Where("status = ?", v)
+		}
+		if v, ok := req.Filters["enabled"]; ok && v != nil && v != "" {
+			switch vv := v.(type) {
+			case bool:
+				q = q.Where("enabled = ?", vv)
+			case string:
+				switch vv {
+				case "true", "1":
+					q = q.Where("enabled = ?", true)
+				case "false", "0":
+					q = q.Where("enabled = ?", false)
+				}
+			}
+		}
+	}
+
+	pagination, err := utils.PaginateAndSort(req, q, &envs)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate environments: %w", err)
+	}
+
+	out, mapErr := dto.MapSlice[models.Environment, dto.EnvironmentDto](envs)
+	if mapErr != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to map environments: %w", mapErr)
+	}
+
+	return out, pagination, nil
 }
 
 func (s *EnvironmentService) UpdateEnvironment(ctx context.Context, id string, updates map[string]interface{}) (*models.Environment, error) {

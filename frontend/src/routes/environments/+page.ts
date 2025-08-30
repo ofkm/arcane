@@ -1,23 +1,20 @@
 import type { PageLoad } from './$types';
 import { environmentManagementAPI } from '$lib/services/api';
-import { error } from '@sveltejs/kit';
+import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
 export const load: PageLoad = async () => {
-	try {
-		const environments = await environmentManagementAPI.list();
-
-		return {
-			environments
-		};
-	} catch (err) {
-		console.error('Failed to load environments:', err);
-
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
+	const environmentRequestOptions: SearchPaginationSortRequest = {
+		pagination: {
+			page: 1,
+			limit: 20
+		},
+		sort: {
+			column: 'timestamp',
+			direction: 'desc' as const
 		}
+	};
 
-		throw error(500, {
-			message: err instanceof Error ? err.message : 'Failed to load environments'
-		});
-	}
+	const environments = await environmentManagementAPI.getEnvironments(environmentRequestOptions);
+
+	return { environments, environmentRequestOptions };
 };

@@ -102,14 +102,12 @@ func (s *EventService) ListEventsPaginated(ctx context.Context, req utils.Sorted
 
 	query := s.db.WithContext(ctx).Model(&models.Event{})
 
-	// Apply search filter - fix the Where clause structure
 	if req.Search != "" {
 		searchQuery := "%" + req.Search + "%"
 		query = query.Where("title LIKE ? OR description LIKE ? OR resource_name LIKE ? OR username LIKE ?",
 			searchQuery, searchQuery, searchQuery, searchQuery)
 	}
 
-	// Apply filters if any
 	if req.Filters != nil {
 		for key, value := range req.Filters {
 			if value != nil && value != "" {
@@ -134,9 +132,9 @@ func (s *EventService) ListEventsPaginated(ctx context.Context, req utils.Sorted
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate events: %w", err)
 	}
 
-	eventDtos := make([]dto.EventDto, len(events))
-	for i, event := range events {
-		eventDtos[i] = *s.toEventDto(&event)
+	eventDtos, mapErr := dto.MapSlice[models.Event, dto.EventDto](events)
+	if mapErr != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to map events: %w", mapErr)
 	}
 
 	return eventDtos, pagination, nil
@@ -147,14 +145,12 @@ func (s *EventService) GetEventsByEnvironmentPaginated(ctx context.Context, envi
 
 	query := s.db.WithContext(ctx).Model(&models.Event{}).Where("environment_id = ?", environmentID)
 
-	// Apply search filter - fix the Where clause structure
 	if req.Search != "" {
 		searchQuery := "%" + req.Search + "%"
 		query = query.Where("title LIKE ? OR description LIKE ? OR resource_name LIKE ? OR username LIKE ?",
 			searchQuery, searchQuery, searchQuery, searchQuery)
 	}
 
-	// Apply filters if any
 	if req.Filters != nil {
 		for key, value := range req.Filters {
 			if value != nil && value != "" {
@@ -177,9 +173,9 @@ func (s *EventService) GetEventsByEnvironmentPaginated(ctx context.Context, envi
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate events: %w", err)
 	}
 
-	eventDtos := make([]dto.EventDto, len(events))
-	for i, event := range events {
-		eventDtos[i] = *s.toEventDto(&event)
+	eventDtos, mapErr := dto.MapSlice[models.Event, dto.EventDto](events)
+	if mapErr != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to map events: %w", mapErr)
 	}
 
 	return eventDtos, pagination, nil
