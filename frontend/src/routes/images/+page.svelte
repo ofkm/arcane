@@ -12,7 +12,7 @@
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI, imageUpdateAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
-	import ImageTableNew from './image-table-new.svelte';
+	import ImageTableNew from './image-table.svelte';
 
 	let { data } = $props();
 

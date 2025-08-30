@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Network, EthernetPort } from '@lucide/svelte';
+	import NetworkIcon from '@lucide/svelte/icons/network';
+	import EthernetPortIcon from '@lucide/svelte/icons/ethernet-port';
 	import { toast } from 'svelte-sonner';
 	import type { NetworkCreateOptions } from 'dockerode';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -59,6 +60,7 @@
 			<p class="text-muted-foreground mt-1 text-sm">Manage your Docker networks</p>
 		</div>
 		<div class="flex items-center gap-2">
+			<ArcaneButton action="create" customLabel="Create Network" onclick={() => (isCreateDialogOpen = true)} />
 			<ArcaneButton
 				action="restart"
 				onclick={refreshNetworks}
@@ -73,20 +75,20 @@
 		<StatCard
 			title="Total Networks"
 			value={totalNetworks}
-			icon={Network}
+			icon={NetworkIcon}
 			iconColor="text-blue-500"
 			class="border-l-4 border-l-blue-500"
 		/>
 		<StatCard
 			title="Bridge Networks"
 			value={bridgeNetworks}
-			icon={EthernetPort}
+			icon={EthernetPortIcon}
 			iconColor="text-green-500"
 			class="border-l-4 border-l-green-500"
 		/>
 	</div>
 
-	<NetworkTable bind:networks bind:selectedIds bind:requestOptions onCreateNetwork={() => (isCreateDialogOpen = true)} />
+	<NetworkTable bind:networks bind:selectedIds bind:requestOptions />
 
 	<CreateNetworkSheet bind:open={isCreateDialogOpen} isLoading={isLoading.create} onSubmit={handleCreateNetworkSubmit} />
 </div>

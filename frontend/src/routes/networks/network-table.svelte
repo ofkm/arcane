@@ -1,8 +1,10 @@
 <script lang="ts">
 	import type { NetworkSummaryDto } from '$lib/types/network.type';
-	import ArcaneTable from '$lib/components/arcane-table.svelte';
+	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ScanSearch, Trash2, Ellipsis, Network } from '@lucide/svelte';
+	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
+	import ScanSearchIcon from '@lucide/svelte/icons/scan-search';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -10,24 +12,22 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
 	import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
-	import * as Table from '$lib/components/ui/table';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import NetworkIcon from '@lucide/svelte/icons/network';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
+	import type { ColumnSpec } from '$lib/components/arcane-table';
 
 	let {
 		networks = $bindable(),
 		selectedIds = $bindable(),
-		requestOptions = $bindable(),
-		onCreateNetwork
+		requestOptions = $bindable()
 	}: {
 		networks: Paginated<NetworkSummaryDto>;
 		selectedIds: string[];
 		requestOptions: SearchPaginationSortRequest;
-		onCreateNetwork: () => void;
 	} = $props();
 
 	let isLoading = $state({
@@ -60,9 +60,9 @@
 		});
 	}
 
-	async function handleDeleteSelectedNetworks() {
-		const selectedNetworkList = networks.data.filter((network) => selectedIds.includes(network.id));
-		const defaultNetworks = selectedNetworkList.filter((network) => DEFAULT_NETWORK_NAMES.has(network.name));
+	async function handleDeleteSelectedNetworks(ids: string[]) {
+		const selectedNetworkList = networks.data.filter((n) => ids.includes(n.id));
+		const defaultNetworks = selectedNetworkList.filter((n) => DEFAULT_NETWORK_NAMES.has(n.name));
 
 		if (defaultNetworks.length > 0) {
 			toast.error(`Cannot delete default networks: ${defaultNetworks.map((n) => n.name).join(', ')}`);
@@ -71,17 +71,16 @@
 
 		openConfirmDialog({
 			title: 'Delete Selected Networks',
-			message: `Are you sure you want to delete ${selectedIds.length} selected network(s)? This action cannot be undone.`,
+			message: `Are you sure you want to delete ${ids.length} selected network(s)? This action cannot be undone.`,
 			confirm: {
 				label: 'Delete',
 				destructive: true,
 				action: async () => {
 					isLoading.remove = true;
-
 					let successCount = 0;
 					let failureCount = 0;
 
-					for (const networkId of selectedIds) {
+					for (const networkId of ids) {
 						const network = networks.data.find((n) => n.id === networkId);
 						if (!network) continue;
 
@@ -96,10 +95,9 @@
 					}
 
 					isLoading.remove = false;
+
 					if (successCount > 0) {
-						setTimeout(async () => {
-							networks = await environmentAPI.getNetworks(requestOptions);
-						}, 500);
+						networks = await environmentAPI.getNetworks(requestOptions);
 					}
 					selectedIds = [];
 				}
@@ -107,110 +105,111 @@
 		});
 	}
 
-	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
+	const isAnyLoading = $derived(Object.values(isLoading).some((l) => l));
 	const hasNetworks = $derived(networks?.data?.length > 0);
 
-	// const getConnectedContainers = (network: NetworkSummaryDto) => {
-	// 	return network. ? Object.keys(network.Containers).length : 0;
-	// };
+	const columns = [
+		{
+			accessorKey: 'name',
+			title: 'Name',
+			sortable: true,
+			cell: NameCell
+		},
+		{
+			accessorKey: 'id',
+			title: 'Network ID',
+			cell: IdCell
+		},
+		{
+			accessorKey: 'driver',
+			title: 'Driver',
+			sortable: true,
+			cell: DriverCell
+		},
+		{
+			accessorKey: 'scope',
+			title: 'Scope',
+			sortable: true,
+			cell: ScopeCell
+		}
+	] satisfies ColumnSpec<NetworkSummaryDto>[];
 </script>
 
+{#snippet NameCell({ item }: { item: NetworkSummaryDto })}
+	<a class="font-medium hover:underline" href="/networks/{item.id}/">{item.name}</a>
+{/snippet}
+
+{#snippet IdCell({ value }: { value: unknown })}
+	<span class="truncate font-mono text-sm">{String(value ?? '')}</span>
+{/snippet}
+
+{#snippet DriverCell({ item }: { item: NetworkSummaryDto })}
+	<StatusBadge
+		variant={item.driver === 'bridge'
+			? 'blue'
+			: item.driver === 'overlay'
+				? 'purple'
+				: item.driver === 'ipvlan'
+					? 'red'
+					: item.driver === 'macvlan'
+						? 'orange'
+						: 'gray'}
+		text={capitalizeFirstLetter(item.driver)}
+	/>
+{/snippet}
+
+{#snippet ScopeCell({ item }: { item: NetworkSummaryDto })}
+	<StatusBadge variant={item.scope === 'local' ? 'green' : 'amber'} text={capitalizeFirstLetter(item.scope)} />
+{/snippet}
+
+{#snippet RowActions({ item }: { item: NetworkSummaryDto })}
+	<DropdownMenu.Root>
+		<DropdownMenu.Trigger>
+			{#snippet child({ props })}
+				<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
+					<span class="sr-only">Open menu</span>
+					<EllipsisIcon />
+				</Button>
+			{/snippet}
+		</DropdownMenu.Trigger>
+		<DropdownMenu.Content align="end">
+			<DropdownMenu.Group>
+				<DropdownMenu.Item onclick={() => goto(`/networks/${item.id}`)} disabled={isAnyLoading}>
+					<ScanSearchIcon class="size-4" />
+					Inspect
+				</DropdownMenu.Item>
+				{#if !DEFAULT_NETWORK_NAMES.has(item.name)}
+					<DropdownMenu.Item
+						variant="destructive"
+						onclick={() => handleDeleteNetwork(item.id, item.name)}
+						disabled={DEFAULT_NETWORK_NAMES.has(item.name) || isAnyLoading}
+					>
+						<Trash2Icon class="size-4" />
+						Remove
+					</DropdownMenu.Item>
+				{/if}
+			</DropdownMenu.Group>
+		</DropdownMenu.Content>
+	</DropdownMenu.Root>
+{/snippet}
+
 {#if hasNetworks}
-	<Card.Root class="border shadow-sm">
-		<Card.Header class="px-6">
-			<div class="flex items-center justify-between">
-				<div>
-					<Card.Title>Network List</Card.Title>
-				</div>
-				<div class="flex items-center gap-2">
-					{#if selectedIds.length > 0}
-						<ArcaneButton
-							action="remove"
-							onclick={handleDeleteSelectedNetworks}
-							loading={isLoading.remove}
-							disabled={isLoading.remove}
-							customLabel="Remove Selected"
-						/>
-					{/if}
-					<ArcaneButton action="create" customLabel="Create Network" onclick={onCreateNetwork} />
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content>
+	<Card.Root>
+		<Card.Content class="py-5">
 			<ArcaneTable
 				items={networks}
 				bind:requestOptions
 				bind:selectedIds
+				onRemoveSelected={(ids) => handleDeleteSelectedNetworks(ids)}
 				onRefresh={async (options) => (networks = await environmentAPI.getNetworks(options))}
-				columns={[
-					{ label: 'Name', sortColumn: 'name' },
-					{ label: 'Network ID' },
-					{ label: 'Driver', sortColumn: 'driver' },
-					{ label: 'Scope', sortColumn: 'scope' },
-					{ label: ' ' }
-				]}
-				filterPlaceholder="Search networks..."
-				noResultsMessage="No networks found"
-			>
-				{#snippet rows({ item })}
-					<Table.Cell>
-						<a class="font-medium hover:underline" href="/networks/{item.id}/">{item.name}</a>
-					</Table.Cell>
-					<Table.Cell class="truncate font-mono text-sm">{item.id}</Table.Cell>
-					<Table.Cell>
-						<StatusBadge
-							variant={item.driver === 'bridge'
-								? 'blue'
-								: item.driver === 'overlay'
-									? 'purple'
-									: item.driver === 'ipvlan'
-										? 'red'
-										: item.driver === 'macvlan'
-											? 'orange'
-											: 'gray'}
-							text={capitalizeFirstLetter(item.driver)}
-						/>
-					</Table.Cell>
-					<Table.Cell>
-						<StatusBadge variant={item.scope === 'local' ? 'green' : 'amber'} text={capitalizeFirstLetter(item.scope)} />
-					</Table.Cell>
-					<Table.Cell>
-						<DropdownMenu.Root>
-							<DropdownMenu.Trigger>
-								{#snippet child({ props })}
-									<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
-										<span class="sr-only">Open menu</span>
-										<Ellipsis />
-									</Button>
-								{/snippet}
-							</DropdownMenu.Trigger>
-							<DropdownMenu.Content align="end">
-								<DropdownMenu.Group>
-									<DropdownMenu.Item onclick={() => goto(`/networks/${item.id}`)} disabled={isAnyLoading}>
-										<ScanSearch class="size-4" />
-										Inspect
-									</DropdownMenu.Item>
-									{#if !DEFAULT_NETWORK_NAMES.has(item.name)}
-										<DropdownMenu.Item
-											variant="destructive"
-											onclick={() => handleDeleteNetwork(item.id, item.name)}
-											disabled={DEFAULT_NETWORK_NAMES.has(item.name) || isAnyLoading}
-										>
-											<Trash2 class="size-4" />
-											Remove
-										</DropdownMenu.Item>
-									{/if}
-								</DropdownMenu.Group>
-							</DropdownMenu.Content>
-						</DropdownMenu.Root>
-					</Table.Cell>
-				{/snippet}
-			</ArcaneTable>
+				{columns}
+				rowActions={RowActions}
+			/>
 		</Card.Content>
 	</Card.Root>
 {:else}
 	<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
-		<Network class="text-muted-foreground mb-4 size-12 opacity-40" />
+		<NetworkIcon class="text-muted-foreground mb-4 size-12 opacity-40" />
 		<p class="text-lg font-medium">No networks found</p>
 		<p class="text-muted-foreground mt-1 text-sm">
 			Create a new network using the "Create Network" button above or use the Docker CLI
