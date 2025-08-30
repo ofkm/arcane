@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ofkm/arcane-backend/internal/database"
+	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
 )
@@ -27,7 +28,7 @@ func (s *ContainerRegistryService) GetAllRegistries(ctx context.Context) ([]mode
 	return registries, nil
 }
 
-func (s *ContainerRegistryService) GetRegistriesPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]models.ContainerRegistry, utils.PaginationResponse, error) {
+func (s *ContainerRegistryService) GetRegistriesPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]dto.ContainerRegistryDto, utils.PaginationResponse, error) {
 	var registries []models.ContainerRegistry
 	query := s.db.WithContext(ctx).Model(&models.ContainerRegistry{})
 
@@ -41,7 +42,12 @@ func (s *ContainerRegistryService) GetRegistriesPaginated(ctx context.Context, r
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate container registries: %w", err)
 	}
 
-	return registries, pagination, nil
+	out, mapErr := dto.MapSlice[models.ContainerRegistry, dto.ContainerRegistryDto](registries)
+	if mapErr != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to map registries: %w", mapErr)
+	}
+
+	return out, pagination, nil
 }
 
 func (s *ContainerRegistryService) GetRegistryByID(ctx context.Context, id string) (*models.ContainerRegistry, error) {

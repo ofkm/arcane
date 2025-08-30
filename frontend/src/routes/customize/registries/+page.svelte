@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Key } from '@lucide/svelte';
+	import KeyIcon from '@lucide/svelte/icons/key';
 	import { toast } from 'svelte-sonner';
 	import type { ContainerRegistry } from '$lib/models/container-registry';
 	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/dto/container-registry-dto';
@@ -8,17 +8,16 @@
 	import ContainerRegistryFormSheet from '$lib/components/sheets/container-registry-sheet.svelte';
 	import RegistryTable from './registry-table.svelte';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
-	import type { PageData } from './$types';
+	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
+	import { tryCatch } from '$lib/utils/try-catch';
 
-	let { data }: { data: PageData } = $props();
+	let { data } = $props();
 
-	let registries = $state<ContainerRegistry[]>([]);
-	let paginatedRegistries = $state<Paginated<ContainerRegistry> | null>(null);
+	let registries = $state(data.registries);
 	let selectedIds = $state<string[]>([]);
 	let isRegistryDialogOpen = $state(false);
 	let registryToEdit = $state<ContainerRegistry | null>(null);
-	let requestOptions = $state<SearchPaginationSortRequest>(data.registryRequestOptions);
+	let requestOptions = $state(data.registryRequestOptions);
 
 	let isLoading = $state({
 		create: false,
@@ -26,72 +25,17 @@
 		refresh: false
 	});
 
-	$effect(() => {
-		if (data.registries) {
-			if (Array.isArray(data.registries)) {
-				registries = data.registries;
-				const paginatedData: Paginated<ContainerRegistry> = {
-					data: data.registries,
-					pagination: {
-						totalPages: 1,
-						totalItems: data.registries.length,
-						currentPage: 1,
-						itemsPerPage: data.registries.length
-					}
-				};
-				paginatedRegistries = paginatedData;
-			} else {
-				const paginatedData: Paginated<ContainerRegistry> = {
-					data: data.registries.data,
-					pagination: data.registries.pagination
-				};
-				paginatedRegistries = paginatedData;
-				registries = data.registries.data || [];
-			}
-		}
-	});
-
-	async function onRefresh(options: SearchPaginationSortRequest): Promise<Paginated<ContainerRegistry>> {
-		const response = await containerRegistryAPI.getRegistries(options.pagination, options.sort, options.search, options.filters);
-
-		if (Array.isArray(response)) {
-			registries = response;
-			const paginatedResponse: Paginated<ContainerRegistry> = {
-				data: response,
-				pagination: {
-					totalPages: 1,
-					totalItems: response.length,
-					currentPage: options.pagination?.page || 1,
-					itemsPerPage: response.length
-				}
-			};
-			paginatedRegistries = paginatedResponse;
-			return paginatedResponse;
-		} else {
-			const paginatedResponse: Paginated<ContainerRegistry> = {
-				data: response.data,
-				pagination: response.pagination
-			};
-			paginatedRegistries = paginatedResponse;
-			registries = response.data || [];
-			return paginatedResponse;
-		}
-	}
-
 	async function refreshRegistries() {
 		isLoading.refresh = true;
-		try {
-			await onRefresh(requestOptions);
-		} catch (error) {
-			console.error('Failed to refresh registries:', error);
-			toast.error('Failed to refresh registries');
-		} finally {
-			isLoading.refresh = false;
-		}
-	}
-
-	async function onRegistriesChanged() {
-		await refreshRegistries();
+		handleApiResultWithCallbacks({
+			result: await tryCatch(containerRegistryAPI.getRegistries(requestOptions)),
+			message: 'Failed to Refresh Registries',
+			setLoadingState: (value) => (isLoading.refresh = value),
+			onSuccess: async (newRegistries) => {
+				registries = newRegistries;
+				toast.success('Registries Refreshed!');
+			}
+		});
 	}
 
 	function openCreateRegistryDialog() {
@@ -121,7 +65,7 @@
 				toast.success('Registry created successfully');
 			}
 
-			await refreshRegistries();
+			registries = await containerRegistryAPI.getRegistries(requestOptions);
 			isRegistryDialogOpen = false;
 		} catch (error) {
 			console.error('Error saving registry:', error);
@@ -132,15 +76,6 @@
 	}
 </script>
 
-<svelte:head><title>Arcane</title></svelte:head>
-
-<ContainerRegistryFormSheet
-	bind:open={isRegistryDialogOpen}
-	bind:registryToEdit
-	onSubmit={handleRegistryDialogSubmit}
-	isLoading={isLoading.create || isLoading.edit}
-/>
-
 <div class="space-y-6">
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
@@ -150,6 +85,7 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-2">
+			<ArcaneButton action="create" onclick={openCreateRegistryDialog} customLabel="Add Registry" />
 			<ArcaneButton
 				action="restart"
 				onclick={refreshRegistries}
@@ -157,7 +93,6 @@
 				loading={isLoading.refresh}
 				disabled={isLoading.refresh}
 			/>
-			<ArcaneButton action="create" onclick={openCreateRegistryDialog} customLabel="Add Registry" />
 		</div>
 	</div>
 
@@ -165,7 +100,7 @@
 		<Card.Header class="pb-4">
 			<div class="flex items-center gap-3">
 				<div class="rounded-full bg-green-500/10 p-2">
-					<Key class="size-5 text-green-500" />
+					<KeyIcon class="size-5 text-green-500" />
 				</div>
 				<div>
 					<Card.Title>Docker Registry Credentials</Card.Title>
@@ -177,23 +112,7 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			<RegistryTable
-				registries={paginatedRegistries || {
-					data: registries,
-					pagination: {
-						totalPages: 1,
-						totalItems: registries.length,
-						currentPage: 1,
-						itemsPerPage: registries.length
-					}
-				}}
-				bind:selectedIds
-				bind:requestOptions
-				{onRefresh}
-				{onRegistriesChanged}
-				onCreateRegistry={openCreateRegistryDialog}
-				onEditRegistry={openEditRegistryDialog}
-			/>
+			<RegistryTable bind:registries bind:selectedIds bind:requestOptions onEditRegistry={openEditRegistryDialog} />
 		</Card.Content>
 	</Card.Root>
 
@@ -238,3 +157,10 @@
 		</Card.Content>
 	</Card.Root>
 </div>
+
+<ContainerRegistryFormSheet
+	bind:open={isRegistryDialogOpen}
+	bind:registryToEdit
+	onSubmit={handleRegistryDialogSubmit}
+	isLoading={isLoading.create || isLoading.edit}
+/>

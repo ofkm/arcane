@@ -1,0 +1,14 @@
+package dto
+
+import "time"
+
+type ContainerRegistryDto struct {
+	ID          string    `json:"id"`
+	URL         string    `json:"url"`
+	Username    string    `json:"username"`
+	Description *string   `json:"description,omitempty"`
+	Insecure    bool      `json:"insecure"`
+	Enabled     bool      `json:"enabled"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
