@@ -386,7 +386,9 @@
 {/snippet}
 
 <div class="space-y-4">
-	<DataTableToolbar {table} {selectedIds} {selectionDisabled} {onRemoveSelected} />
+	{#if !withoutSearch}
+		<DataTableToolbar {table} {selectedIds} {selectionDisabled} {onRemoveSelected} />
+	{/if}
 	<div class="rounded-md">
 		<Table.Root>
 			<Table.Header>

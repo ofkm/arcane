@@ -1,18 +1,16 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import {
-		Box,
-		HardDrive,
-		RefreshCw,
-		Monitor,
-		MemoryStick,
-		Cpu,
-		Container,
-		LoaderCircleIcon,
-		CirclePlayIcon,
-		CircleStopIcon,
-		Trash2
-	} from '@lucide/svelte';
+	import BoxIcon from '@lucide/svelte/icons/box';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import MonitorIcon from '@lucide/svelte/icons/monitor';
+	import MemoryStickIcon from '@lucide/svelte/icons/memory-stick';
+	import CpuIcon from '@lucide/svelte/icons/cpu';
+	import ContainerIcon from '@lucide/svelte/icons/container';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import CirclePlayIcon from '@lucide/svelte/icons/circle-play';
+	import CircleStopIcon from '@lucide/svelte/icons/circle-stop';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { toast } from 'svelte-sonner';
@@ -259,7 +257,7 @@
 			{#if isLoading.refreshing}
 				<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
 			{:else}
-				<RefreshCw class="mr-2 size-4" />
+				<RefreshCwIcon class="mr-2 size-4" />
 			{/if}
 			Refresh
 		</ArcaneButton>
@@ -340,7 +338,7 @@
 						{#if isLoading.pruning}
 							<LoaderCircleIcon class="size-3 animate-spin text-red-500" />
 						{:else}
-							<Trash2 class="size-3 text-red-500" />
+							<Trash2Icon class="size-3 text-red-500" />
 						{/if}
 					</div>
 					<div class="flex-1 text-left">
@@ -357,13 +355,13 @@
 			id="system-overview"
 			title="System Overview"
 			description="Hardware and Docker engine information"
-			icon={Monitor}
+			icon={MonitorIcon}
 			defaultExpanded={true}
 		>
 			<div class="grid grid-cols-2 gap-4 md:grid-cols-4">
 				<MeterMetric
 					title="Running Containers"
-					icon={Container}
+					icon={ContainerIcon}
 					description="Active containers"
 					currentValue={isLoading.loadingStats ? undefined : dockerInfo?.containersRunning}
 					formatValue={(v) => v.toString()}
@@ -375,7 +373,7 @@
 
 				<MeterMetric
 					title="CPU Usage"
-					icon={Cpu}
+					icon={CpuIcon}
 					description="Processor utilization"
 					currentValue={isLoading.loadingStats || !hasInitialStatsLoaded ? undefined : currentStats?.cpuUsage}
 					unit="%"
@@ -385,7 +383,7 @@
 
 				<MeterMetric
 					title="Memory Usage"
-					icon={MemoryStick}
+					icon={MemoryStickIcon}
 					description="RAM utilization"
 					currentValue={isLoading.loadingStats || !hasInitialStatsLoaded
 						? undefined
@@ -399,7 +397,7 @@
 				/>
 
 				<MeterMetric
-					icon={HardDrive}
+					icon={HardDriveIcon}
 					title="Disk Usage"
 					description="Storage utilization"
 					currentValue={isLoading.loadingStats || !hasInitialStatsLoaded
@@ -450,14 +448,14 @@
 								{#if isLoading.loadingStats}
 									<LoaderCircleIcon class="size-5 animate-spin text-green-500" />
 								{:else}
-									<Box class="size-5 text-green-500" />
+									<BoxIcon class="size-5 text-green-500" />
 								{/if}
 							</div>
 							<div class="min-w-0 flex-1">
 								{#if isLoading.loadingStats}
 									<div class="space-y-2">
-										<div class="bg-muted h-4 w-28 animate-pulse rounded"></div>
-										<div class="bg-muted h-3 w-20 animate-pulse rounded"></div>
+										<div class="bg-muted h-4 w-24 animate-pulse rounded"></div>
+										<div class="bg-muted h-3 w-32 animate-pulse rounded"></div>
 									</div>
 								{:else}
 									<p class="text-sm font-medium">Total Containers</p>
@@ -477,7 +475,7 @@
 								{#if isLoading.loadingImages}
 									<LoaderCircleIcon class="size-5 animate-spin text-purple-500" />
 								{:else}
-									<HardDrive class="size-5 text-purple-500" />
+									<HardDriveIcon class="size-5 text-purple-500" />
 								{/if}
 							</div>
 							<div class="min-w-0 flex-1">
