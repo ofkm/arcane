@@ -3,7 +3,7 @@
 	"repos": ["@ieedan/shadcn-svelte-extras"],
 	"includeTests": false,
 	"includeDocs": false,
-	"watermark": true,
+	"watermark": false,
 	"formatter": "prettier",
 	"configFiles": {},
 	"paths": {
