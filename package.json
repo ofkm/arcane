@@ -10,6 +10,7 @@
     "dev": "pnpm --filter arcane-frontend dev",
     "build": "pnpm --filter arcane-frontend build",
     "test": "pnpm --filter arcane-tests test",
-    "format": "pnpm --filter arcane-frontend format"
+    "format": "pnpm --filter arcane-frontend format",
+    "check": "pnpm --filter arcane-frontend check"
   }
 }
