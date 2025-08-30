@@ -1,6 +1,6 @@
 import BaseAPIService from './api-service';
-import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/dto/container-registry-dto';
-import type { ContainerRegistry } from '$lib/models/container-registry';
+import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/types/container-registry.type';
+import type { ContainerRegistry } from '$lib/types/container-registry.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
 export default class ContainerRegistryAPIService extends BaseAPIService {

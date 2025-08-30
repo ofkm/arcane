@@ -23,7 +23,7 @@
 	import DropdownCard from '$lib/components/dropdown-card.svelte';
 	import MeterMetric from '$lib/components/meter-metric.svelte';
 	import DockerIcon from '$lib/icons/docker-icon.svelte';
-	import type { SystemStats } from '$lib/models/system-stats';
+	import type { SystemStats } from '$lib/types/system-stats.type';
 	import DashboardContainerTable from './dash-container-table.svelte';
 	import DashboardImageTable from './dash-image-table.svelte';
 

@@ -1,4 +1,4 @@
-import type { DockerInfo } from '$lib/models/docker-info.type';
+import type { DockerInfo } from '$lib/types/docker-info.type';
 import BaseAPIService from './api-service';
 
 export default class SystemAPIService extends BaseAPIService {

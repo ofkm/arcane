@@ -1,6 +1,6 @@
 import BaseAPIService from './api-service';
 import type { Environment } from '$lib/stores/environment.store';
-import type { CreateEnvironmentDTO, UpdateEnvironmentDTO } from '$lib/dto/environment-dto';
+import type { CreateEnvironmentDTO, UpdateEnvironmentDTO } from '$lib/types/environment.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
 export default class EnvironmentManagementAPIService extends BaseAPIService {

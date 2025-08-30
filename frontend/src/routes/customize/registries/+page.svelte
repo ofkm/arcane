@@ -2,8 +2,8 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import KeyIcon from '@lucide/svelte/icons/key';
 	import { toast } from 'svelte-sonner';
-	import type { ContainerRegistry } from '$lib/models/container-registry';
-	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/dto/container-registry-dto';
+	import type { ContainerRegistry } from '$lib/types/container-registry.type';
+	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/types/container-registry.type';
 	import { containerRegistryAPI } from '$lib/services/api';
 	import ContainerRegistryFormSheet from '$lib/components/sheets/container-registry-sheet.svelte';
 	import RegistryTable from './registry-table.svelte';

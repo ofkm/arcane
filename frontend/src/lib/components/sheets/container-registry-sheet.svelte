@@ -5,8 +5,8 @@
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import PackagePlusIcon from '@lucide/svelte/icons/package-plus';
-	import type { ContainerRegistry } from '$lib/models/container-registry';
-	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/dto/container-registry-dto';
+	import type { ContainerRegistry } from '$lib/types/container-registry.type';
+	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/types/container-registry.type';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 

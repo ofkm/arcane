@@ -12,7 +12,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { containerRegistryAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
-	import type { ContainerRegistry } from '$lib/models/container-registry';
+	import type { ContainerRegistry } from '$lib/types/container-registry.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { format } from 'date-fns';
 

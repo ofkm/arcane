@@ -12,7 +12,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { environmentManagementAPI } from '$lib/services/api';
 	import type { Environment } from '$lib/stores/environment.store';
-	import type { CreateEnvironmentDTO } from '$lib/dto/environment-dto';
+	import type { CreateEnvironmentDTO } from '$lib/types/environment.type';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 
