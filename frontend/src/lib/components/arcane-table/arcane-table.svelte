@@ -19,7 +19,6 @@
 	import * as Table from '$lib/components/ui/table/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { renderComponent, renderSnippet } from '$lib/components/ui/data-table/render-helpers.js';
-	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
@@ -35,6 +34,7 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { Snippet } from 'svelte';
 	import type { ColumnSpec } from './arcane-table.types';
+	import TableCheckbox from './arcane-table-checkbox.svelte';
 
 	let {
 		items,
@@ -44,7 +44,9 @@
 		selectionDisabled = false,
 		onRefresh,
 		columns,
-		rowActions
+		rowActions,
+		selectedIds = $bindable<string[]>([]),
+		onRemoveSelected
 	}: {
 		items: Paginated<TData>;
 		requestOptions: SearchPaginationSortRequest;
@@ -54,6 +56,8 @@
 		onRefresh: (requestOptions: SearchPaginationSortRequest) => Promise<Paginated<TData>>;
 		columns: ColumnSpec<TData>[];
 		rowActions?: Snippet<[{ row: Row<TData>; item: TData }]>;
+		selectedIds?: string[];
+		onRemoveSelected?: (ids: string[]) => void;
 	} = $props();
 
 	let rowSelection = $state<RowSelectionState>({});
@@ -91,25 +95,54 @@
 		updatePagination({ limit, page: 1 });
 	}
 
+	function onToggleAll(checked: boolean, table: TableType<TData>) {
+		const pageIds = table.getRowModel().rows.map((r) => (r.original as TData).id);
+		if (checked) {
+			const set = new Set([...(selectedIds ?? []), ...pageIds]);
+			selectedIds = Array.from(set);
+		} else {
+			const pageSet = new Set(pageIds);
+			selectedIds = (selectedIds ?? []).filter((id) => !pageSet.has(id));
+		}
+	}
+
+	function onToggleRow(checked: boolean, id: string) {
+		if (checked) {
+			if (!selectedIds?.includes(id)) selectedIds = [...(selectedIds ?? []), id];
+		} else {
+			selectedIds = (selectedIds ?? []).filter((x) => x !== id);
+		}
+	}
+
 	function buildColumns(specs: ColumnSpec<TData>[]): ColumnDef<TData>[] {
 		const cols: ColumnDef<TData>[] = [];
 
 		if (!selectionDisabled) {
 			cols.push({
 				id: 'select',
-				header: ({ table }) =>
-					renderComponent(Checkbox, {
-						checked: table.getIsAllPageRowsSelected(),
-						onCheckedChange: (value) => table.toggleAllPageRowsSelected(value),
-						indeterminate: table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected(),
+				header: ({ table }) => {
+					const pageIds = table.getRowModel().rows.map((r) => (r.original as TData).id);
+					const selectedSet = new Set(selectedIds ?? []);
+					const total = pageIds.length;
+					const selectedOnPage = pageIds.filter((id) => selectedSet.has(id)).length;
+					const checked = total > 0 && selectedOnPage === total;
+					const indeterminate = selectedOnPage > 0 && selectedOnPage < total;
+
+					return renderComponent(TableCheckbox, {
+						checked,
+						indeterminate,
+						onCheckedChange: (value) => onToggleAll(!!value, table),
 						'aria-label': 'Select all'
-					}),
-				cell: ({ row }) =>
-					renderComponent(Checkbox, {
-						checked: row.getIsSelected(),
-						onCheckedChange: (value) => row.toggleSelected(value),
+					});
+				},
+				cell: ({ row }) => {
+					const id = (row.original as TData).id;
+					return renderComponent(TableCheckbox, {
+						checked: (selectedIds ?? []).includes(id),
+						onCheckedChange: (value) => onToggleRow(!!value, id),
 						'aria-label': 'Select row'
-					}),
+					});
+				},
 				enableSorting: false,
 				enableHiding: false
 			});
@@ -353,7 +386,7 @@
 {/snippet}
 
 <div class="space-y-4">
-	<DataTableToolbar {table} />
+	<DataTableToolbar {table} {selectedIds} {selectionDisabled} {onRemoveSelected} />
 	<div class="rounded-md">
 		<Table.Root>
 			<Table.Header>
@@ -371,7 +404,7 @@
 			</Table.Header>
 			<Table.Body>
 				{#each table.getRowModel().rows as row (row.id)}
-					<Table.Row data-state={row.getIsSelected() && 'selected'}>
+					<Table.Row data-state={(selectedIds ?? []).includes((row.original as TData).id) && 'selected'}>
 						{#each row.getVisibleCells() as cell (cell.id)}
 							<Table.Cell>
 								<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
@@ -386,5 +419,7 @@
 			</Table.Body>
 		</Table.Root>
 	</div>
-	{@render Pagination({ table })}
+	{#if !withoutPagination}
+		{@render Pagination({ table })}
+	{/if}
 </div>

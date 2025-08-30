@@ -35,6 +35,49 @@
 
 	let isPullingInline = $state<Record<string, boolean>>({});
 
+	async function handleDeleteSelected(ids: string[]) {
+		if (!ids || ids.length === 0) return;
+
+		openConfirmDialog({
+			title: `Remove ${ids.length} Image${ids.length > 1 ? 's' : ''}`,
+			message: `Are you sure you want to remove the selected image${ids.length > 1 ? 's' : ''}? This action cannot be undone.`,
+			confirm: {
+				label: 'Remove',
+				destructive: true,
+				action: async () => {
+					isLoading.removing = true;
+					let successCount = 0;
+					let failureCount = 0;
+
+					for (const id of ids) {
+						const result = await tryCatch(environmentAPI.deleteImage(id));
+						handleApiResultWithCallbacks({
+							result,
+							message: `Failed to remove image`,
+							setLoadingState: () => {},
+							onSuccess: () => {
+								successCount++;
+							}
+						});
+						if (result.error) failureCount++;
+					}
+
+					isLoading.removing = false;
+
+					if (successCount > 0) {
+						toast.success(`Successfully removed ${successCount} image${successCount > 1 ? 's' : ''}`);
+						images = await environmentAPI.getImages(requestOptions);
+					}
+					if (failureCount > 0) {
+						toast.error(`Failed to remove ${failureCount} image${failureCount > 1 ? 's' : ''}`);
+					}
+
+					selectedIds = [];
+				}
+			}
+		});
+	}
+
 	async function deleteImage(id: string) {
 		openConfirmDialog({
 			title: 'Remove Image',
@@ -213,6 +256,8 @@
 			<ArcaneTable
 				items={images}
 				bind:requestOptions
+				bind:selectedIds
+				onRemoveSelected={(ids) => handleDeleteSelected(ids)}
 				onRefresh={async (options) => (images = await environmentAPI.getImages(options))}
 				{columns}
 				rowActions={RowActions}

@@ -6,14 +6,26 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { imageUpdateFilters, usageFilters } from './data.js';
 	import { debounced } from '$lib/utils';
+	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 
-	let { table }: { table: Table<TData> } = $props();
+	let {
+		table,
+		selectedIds = [],
+		selectionDisabled = false,
+		onRemoveSelected
+	}: {
+		table: Table<TData>;
+		selectedIds?: string[];
+		selectionDisabled?: boolean;
+		onRemoveSelected?: (ids: string[]) => void;
+	} = $props();
 
 	const isFiltered = $derived(table.getState().columnFilters.length > 0 || !!table.getState().globalFilter);
 	const usageColumn = $derived(table.getColumn('inUse'));
 	const updatesColumn = $derived(table.getColumn('updates'));
 
 	const debouncedSetGlobal = debounced((v: string) => table.setGlobalFilter(v), 300);
+	const hasSelection = $derived(!selectionDisabled && (selectedIds?.length ?? 0) > 0);
 </script>
 
 <div class="flex items-center justify-between">
@@ -50,5 +62,16 @@
 			</Button>
 		{/if}
 	</div>
-	<DataTableViewOptions {table} />
+
+	<div class="flex items-center gap-2">
+		{#if hasSelection}
+			<ArcaneButton
+				action="remove"
+				size="sm"
+				customLabel={`Remove Selected (${selectedIds?.length ?? 0})`}
+				onclick={() => onRemoveSelected?.(selectedIds!)}
+			/>
+		{/if}
+		<DataTableViewOptions {table} />
+	</div>
 </div>

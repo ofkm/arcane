@@ -99,10 +99,7 @@
 	{#if !withoutSearch}
 		<Input
 			value={searchValue}
-			class={cn(
-				'relative z-50 mb-4 max-w-sm',
-				items.data.length == 0 && searchValue == '' && 'hidden'
-			)}
+			class={cn('relative z-50 mb-4 max-w-sm', items.data.length == 0 && searchValue == '' && 'hidden')}
 			placeholder={filterPlaceholder}
 			type="text"
 			oninput={(e) => onSearch(e.currentTarget.value)}
@@ -128,20 +125,11 @@
 								<Button
 									variant="ghost"
 									class="flex items-center"
-									onclick={() =>
-										onSort(
-											column.sortColumn,
-											requestOptions.sort?.direction === 'desc' ? 'asc' : 'desc'
-										)}
+									onclick={() => onSort(column.sortColumn, requestOptions.sort?.direction === 'desc' ? 'asc' : 'desc')}
 								>
 									{column.label}
 									{#if requestOptions.sort?.column === column.sortColumn}
-										<ChevronDown
-											class={cn(
-												'ml-2 size-4',
-												requestOptions.sort?.direction === 'asc' ? 'rotate-180' : ''
-											)}
-										/>
+										<ChevronDown class={cn('ml-2 size-4', requestOptions.sort?.direction === 'asc' ? 'rotate-180' : '')} />
 									{/if}
 								</Button>
 							{:else}
@@ -156,10 +144,7 @@
 					<Table.Row class={selectedIds?.includes(item.id) ? 'bg-muted/20' : ''}>
 						{#if selectedIds && !selectionDisabled}
 							<Table.Cell class="w-12">
-								<Checkbox
-									checked={selectedIds.includes(item.id)}
-									onCheckedChange={(c) => onCheck(c as boolean, item.id)}
-								/>
+								<Checkbox checked={selectedIds.includes(item.id)} onCheckedChange={(c) => onCheck(c as boolean, item.id)} />
 							</Table.Cell>
 						{/if}
 						{@render rows({ item })}
