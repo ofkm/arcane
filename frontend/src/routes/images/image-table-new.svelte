@@ -1,7 +1,11 @@
 <script lang="ts">
 	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Download, Trash2, Ellipsis, ScanSearch, LoaderCircle } from '@lucide/svelte';
+	import DownloadIcon from '@lucide/svelte/icons/download';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
+	import ScanSearchIcon from '@lucide/svelte/icons/scan-search';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -214,14 +218,14 @@
 			{#snippet child({ props })}
 				<Button {...props} variant="ghost" size="icon" class="relative size-8 p-0">
 					<span class="sr-only">Open menu</span>
-					<Ellipsis />
+					<EllipsisIcon />
 				</Button>
 			{/snippet}
 		</DropdownMenu.Trigger>
 		<DropdownMenu.Content align="end">
 			<DropdownMenu.Group>
 				<DropdownMenu.Item onclick={() => goto(`/images/${item.id}`)}>
-					<ScanSearch class="size-4" />
+					<ScanSearchIcon class="size-4" />
 					Inspect
 				</DropdownMenu.Item>
 				<DropdownMenu.Item
@@ -229,19 +233,19 @@
 					disabled={isPullingInline[item.id] || !item.repoTags?.[0]}
 				>
 					{#if isPullingInline[item.id]}
-						<LoaderCircle class="size-4 animate-spin" />
+						<LoaderCircleIcon class="size-4 animate-spin" />
 						Pulling...
 					{:else}
-						<Download class="size-4" />
+						<DownloadIcon class="size-4" />
 						Pull
 					{/if}
 				</DropdownMenu.Item>
 				<DropdownMenu.Separator />
 				<DropdownMenu.Item variant="destructive" onclick={() => deleteImage(item.id)} disabled={isLoading.removing}>
 					{#if isLoading.removing}
-						<LoaderCircle class="size-4 animate-spin" />
+						<LoaderCircleIcon class="size-4 animate-spin" />
 					{:else}
-						<Trash2 class="size-4" />
+						<Trash2Icon class="size-4" />
 					{/if}
 					Remove
 				</DropdownMenu.Item>

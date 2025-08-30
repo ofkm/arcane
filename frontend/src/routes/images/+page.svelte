@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { AlertCircle, HardDrive, Loader2, Package } from '@lucide/svelte';
-	import * as Alert from '$lib/components/ui/alert/index.js';
-	import * as Card from '$lib/components/ui/card/index.js';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
+	import PackageIcon from '@lucide/svelte/icons/package';
 	import { toast } from 'svelte-sonner';
 	import ImagePullSheet from '$lib/components/sheets/image-pull-sheet.svelte';
 	import { formatBytes } from '$lib/utils/bytes.util';
@@ -12,17 +12,13 @@
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI, imageUpdateAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
-	// import ImageTable from './image-table.svelte';
 	import ImageTableNew from './image-table-new.svelte';
 
 	let { data } = $props();
 
 	let images = $state(data.images);
 	let requestOptions = $state(data.imageRequestOptions);
-
-	let error = $state<string | null>(null);
 	let selectedIds = $state<string[]>([]);
-	let isLoadingImages = $state(false);
 
 	let isLoading = $state({
 		pulling: false,
@@ -110,26 +106,18 @@
 		</div>
 	</div>
 
-	{#if error}
-		<Alert.Root variant="destructive">
-			<AlertCircle class="mr-2 size-4" />
-			<Alert.Title>Error Loading Images</Alert.Title>
-			<Alert.Description>{error}</Alert.Description>
-		</Alert.Root>
-	{/if}
-
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<StatCard
 			title="Total Images"
 			value={images.pagination.totalItems}
-			icon={HardDrive}
+			icon={HardDriveIcon}
 			iconColor="text-blue-500"
 			class="border-l-4 border-l-blue-500"
 		/>
 		<StatCard
 			title="Total Size"
 			value={formatBytes(data.totalSize)}
-			icon={Package}
+			icon={PackageIcon}
 			iconColor="text-amber-500"
 			class="border-l-4 border-l-amber-500"
 		/>
@@ -154,7 +142,7 @@
 				<Button variant="outline" onclick={() => (isConfirmPruneDialogOpen = false)} disabled={isLoading.pruning}>Cancel</Button>
 				<Button variant="destructive" onclick={handlePruneImages} disabled={isLoading.pruning}>
 					{#if isLoading.pruning}
-						<Loader2 class="mr-2 size-4 animate-spin" /> Prune Images
+						<LoaderCircleIcon class="mr-2 size-4 animate-spin" /> Prune Images
 					{:else}
 						Prune Images
 					{/if}
