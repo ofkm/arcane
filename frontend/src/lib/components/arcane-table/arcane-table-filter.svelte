@@ -34,7 +34,13 @@
 <Popover.Root>
 	<Popover.Trigger>
 		{#snippet child({ props })}
-			<Button {...props} variant="outline" size="sm" class="h-8 border-dashed">
+			<Button
+				{...props}
+				variant="outline"
+				size="sm"
+				class="h-8 border-dashed"
+				data-testid={`facet-${title.toLowerCase()}-trigger`}
+			>
 				<ListFilterIcon />
 				{title}
 				{#if selectedValues.size > 0}
@@ -59,7 +65,7 @@
 			</Button>
 		{/snippet}
 	</Popover.Trigger>
-	<Popover.Content class="w-[200px] p-0" align="start">
+	<Popover.Content class="w-[200px] p-0" align="start" data-testid={`facet-${title.toLowerCase()}-content`}>
 		<Command.Root>
 			<Command.Input placeholder={title} />
 			<Command.List>
@@ -68,12 +74,10 @@
 					{#each options as option (option)}
 						{@const isSelected = selectedValues.has(option.value)}
 						<Command.Item
+							data-testid={`facet-${title.toLowerCase()}-option-${String(option.value)}`}
 							onSelect={() => {
-								if (isSelected) {
-									selectedValues.delete(option.value);
-								} else {
-									selectedValues.add(option.value);
-								}
+								if (isSelected) selectedValues.delete(option.value);
+								else selectedValues.add(option.value);
 								const filterValues = Array.from(selectedValues);
 								column?.setFilterValue(filterValues.length ? filterValues : undefined);
 							}}

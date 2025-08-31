@@ -42,7 +42,7 @@
 		/>
 
 		{#if usageColumn}
-			<DataTableFacetedFilter column={usageColumn} title="Usage" showCheckboxes={false} options={usageFilters} />
+			<DataTableFacetedFilter column={usageColumn} title="Usage" options={usageFilters} />
 		{/if}
 		{#if updatesColumn}
 			<DataTableFacetedFilter column={updatesColumn} title="Updates" options={imageUpdateFilters} />

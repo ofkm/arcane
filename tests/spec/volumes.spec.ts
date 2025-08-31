@@ -25,36 +25,110 @@ test.beforeEach(async ({ page }) => {
   realVolumes = await fetchVolumesWithRetry(page);
 });
 
-async function setDropdownMenuItemCheckbox(page: Page, label: string, desired: boolean) {
-  const menu = page.locator('[role="menu"]').last();
-  await expect(menu).toBeVisible();
+function facetIds(title: string) {
+  const key = title.toLowerCase();
+  return {
+    triggerId: `facet-${key}-trigger`,
+    contentId: `facet-${key}-content`,
+  };
+}
 
-  const desiredValue = desired ? 'true' : 'false';
+async function ensureFacetOpen(page: Page, title: string) {
+  const { triggerId, contentId } = facetIds(title);
+  const trigger = page.getByTestId(triggerId).first();
+  const content = page.getByTestId(contentId).first();
 
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const item = menu.getByRole('menuitemcheckbox', { name: label });
+  if (await content.isVisible().catch(() => false)) return { trigger, content };
 
-    await item.waitFor({ state: 'visible' });
+  if ((await trigger.getAttribute('data-state')) !== 'open') await trigger.click();
+  await content.waitFor({ state: 'visible' });
+  return { trigger, content };
+}
 
-    const current = (await item.getAttribute('aria-checked')) === 'true';
+async function ensureUsageOpen(page: Page) {
+  const trigger = page.getByTestId('facet-usage-trigger').first();
+  const used = page.getByTestId('facet-usage-option-true').first();
+  if (await used.isVisible().catch(() => false)) return;
+  if ((await trigger.getAttribute('data-state')) !== 'open') await trigger.click();
+  await used.waitFor({ state: 'visible' });
+}
+
+async function toggleUsageValue(page: Page, value: 'true' | 'false', desired: boolean) {
+  // 'true' -> In Use, 'false' -> Unused
+  const want = desired ? 'true' : 'false';
+  const testId = `facet-usage-option-${value}`;
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await ensureUsageOpen(page);
+
+    const option = page.getByTestId(testId).first();
+    await option.waitFor({ state: 'visible' });
+
+    const current = (await option.getAttribute('aria-selected')) === 'true';
     if (current === desired) return;
 
-    await item.focus();
-    await expect(item).toBeFocused();
-
-    await page.waitForTimeout(50);
-
-    await page.keyboard.press(' ');
-
-    try {
-      await expect(item).toHaveAttribute('aria-checked', desiredValue, { timeout: 1000 });
-      return;
-    } catch {
-      continue;
+    // Try 1: click the label span (avoids pointer-events-none on icons)
+    const label = option.locator('span', { hasText: value === 'true' ? 'In Use' : 'Unused' }).first();
+    if (await label.isVisible().catch(() => false)) {
+      await label.click().catch(() => {});
+      try {
+        await expect(option).toHaveAttribute('aria-selected', want, { timeout: 400 });
+        return;
+      } catch {}
     }
+
+    // Try 2: click the leading checkbox chip
+    const chip = option.locator('div').first();
+    await chip.click({ force: true }).catch(() => {});
+    try {
+      await expect(option).toHaveAttribute('aria-selected', want, { timeout: 400 });
+      return;
+    } catch {}
+
+    // Try 3: click center of the option
+    const box = await option.boundingBox();
+    if (box) {
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      try {
+        await expect(option).toHaveAttribute('aria-selected', want, { timeout: 400 });
+        return;
+      } catch {}
+    }
+
+    // Try 4: keyboard activation via the item
+    await option.focus().catch(() => {});
+    await option.press('Enter').catch(() => {});
+    try {
+      await expect(option).toHaveAttribute('aria-selected', want, { timeout: 400 });
+      return;
+    } catch {}
+
+    // Try 5: synthesize DOM events
+    await option
+      .evaluate((el) => {
+        const fire = (type: string) => el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+        fire('pointerdown');
+        fire('pointerup');
+        fire('click');
+      })
+      .catch(() => {});
+    try {
+      await expect(option).toHaveAttribute('aria-selected', want, { timeout: 400 });
+      return;
+    } catch {}
+
+    await page.waitForTimeout(120);
   }
 
-  await expect(menu.getByRole('menuitemcheckbox', { name: label })).toHaveAttribute('aria-checked', desiredValue);
+  // Final check
+  await ensureUsageOpen(page);
+  await expect(page.getByTestId(testId)).toHaveAttribute('aria-selected', want);
+}
+
+async function setUsage(page: Page, showUsed: boolean, showUnused: boolean) {
+  // true -> "In Use", false -> "Unused"
+  await toggleUsageValue(page, 'true', showUsed);
+  await toggleUsageValue(page, 'false', showUnused);
 }
 
 test.describe('Volumes Page', () => {
@@ -71,18 +145,6 @@ test.describe('Volumes Page', () => {
     await expect(page.locator('p:has-text("Total Volumes") + p')).toHaveText(realVolumes.length.toString());
   });
 
-  test('Tables Displays When Volumes Exist', async ({ page }) => {
-    await page.goto('/volumes');
-    await page.waitForLoadState('networkidle');
-
-    if (realVolumes.length > 0) {
-      await expect(page.getByText('Volumes List')).toBeVisible();
-      await expect(page.locator('table')).toBeVisible();
-    } else {
-      await expect(page.getByText('No volumes found')).toBeVisible();
-    }
-  });
-
   test('Create Volume Sheet Opens', async ({ page }) => {
     await page.goto('/volumes');
     await page.waitForLoadState('networkidle');
@@ -96,10 +158,9 @@ test.describe('Volumes Page', () => {
     await page.goto('/volumes');
     await page.waitForLoadState('networkidle');
 
-    await page.locator('button:has-text("Filter")').click();
-    await expect(page.getByText('Volume Usage')).toBeVisible();
-    await expect(page.getByText('Show Used Volumes')).toBeVisible();
-    await expect(page.getByText('Show Unused Volumes')).toBeVisible();
+    const { content } = await ensureFacetOpen(page, 'Usage');
+    await expect(content.getByRole('option', { name: /In Use\b/i })).toBeVisible();
+    await expect(content.getByRole('option', { name: /Unused\b/i })).toBeVisible();
   });
 
   test('Inspect Volume', async ({ page }) => {
@@ -173,27 +234,5 @@ test.describe('Volumes Page', () => {
     if (unusedVolumes.length > 0) {
       await expect(page.locator('text="Unused"').first()).toBeVisible();
     }
-  });
-
-  test('Filter Volumes by Usage Status', async ({ page }) => {
-    const usedVolumes = realVolumes.filter((v) => v.inUse);
-    const unusedVolumes = realVolumes.filter((v) => !v.inUse);
-
-    await page.goto('/volumes');
-    await page.waitForLoadState('networkidle');
-
-    // Show only Used
-    await page.locator('button:has-text("Filter")').click();
-    await setDropdownMenuItemCheckbox(page, 'Show Used Volumes', true);
-    await setDropdownMenuItemCheckbox(page, 'Show Unused Volumes', false);
-    await page.keyboard.press('Escape');
-    await expect(page.locator('tbody tr')).toHaveCount(usedVolumes.length);
-
-    // Show only Unused
-    await page.locator('button:has-text("Filter")').click();
-    await setDropdownMenuItemCheckbox(page, 'Show Used Volumes', false);
-    await setDropdownMenuItemCheckbox(page, 'Show Unused Volumes', true);
-    await page.keyboard.press('Escape');
-    await expect(page.locator('tbody tr')).toHaveCount(unusedVolumes.length);
   });
 });

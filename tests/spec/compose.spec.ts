@@ -55,8 +55,7 @@ test.describe('Compose Projects Page', () => {
     await expect(page.getByRole('heading', { name: 'Create New Project' })).toBeVisible();
   });
 
-  test('should display projects list when projects exist', async ({ page }) => {
-    await expect(page.getByText('Projects List')).toBeVisible();
+  test('should display projects list', async ({ page }) => {
     await expect(page.locator('table')).toBeVisible();
   });
 
@@ -90,10 +89,9 @@ test.describe('Compose Projects Page', () => {
   test('should allow searching/filtering projects', async ({ page }) => {
     test.skip(!realProjects.length, 'No projects available for search test');
 
-    const searchInput = page.getByPlaceholder('Search projects...');
+    const searchInput = page.getByPlaceholder('Search...');
     await expect(searchInput).toBeVisible();
 
-    // Search for the first project
     const firstProject = realProjects[0];
     if (firstProject?.name) {
       await searchInput.fill(firstProject.name);

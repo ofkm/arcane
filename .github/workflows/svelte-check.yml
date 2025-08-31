@@ -40,8 +40,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,9 +55,3 @@ jobs:
         uses: ofkm/gha-svelte-check@v1
         with:
           working-directory: './frontend'
-
-      # - name: Add svelte-check problem matcher
-      #   run: echo "::add-matcher::.github/svelte-check-matcher.json"
-
-      # - name: Run svelte-check via npm script
-      #   run: pnpm --filter arcane-frontend check

@@ -49,8 +49,8 @@ test.describe('Networks Page', () => {
     await page.waitForLoadState('networkidle');
 
     if (realNetworks.length > 0) {
-      await expect(page.getByText('Network List')).toBeVisible();
       await expect(page.locator('table')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Name' })).toBeVisible();
     } else {
       await expect(page.getByText('No networks found')).toBeVisible();
     }
@@ -121,7 +121,7 @@ test.describe('Networks Page', () => {
     await page.goto(`/networks/${bridge.id}`);
     await page.waitForLoadState('networkidle');
 
-    const removeBtn = page.getByRole('button', { name: 'Cannot remove predefined networks' });
+    const removeBtn = page.getByRole('button', { name: 'Remove Network' });
     await expect(removeBtn).toBeDisabled();
   });
 
