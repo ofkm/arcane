@@ -8,7 +8,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { basicSetup } from 'codemirror';
-	import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/view';
+	import { EditorView, keymap, placeholder as placeholderExt, gutter } from '@codemirror/view';
 	import { EditorState, StateEffect, type Extension } from '@codemirror/state';
 	import { indentWithTab } from '@codemirror/commands';
 	import { indentUnit, type LanguageSupport, foldGutter, foldKeymap } from '@codemirror/language';
@@ -35,20 +35,6 @@
 		onReconfigure?: (view: EditorView) => void;
 	}
 
-	function debounce<T extends (...args: any[]) => any>(func: T, threshold: number, execAsap = false): T {
-		let timeout: any;
-		return function debounced(this: any, ...args: any[]): any {
-			const self = this;
-			if (timeout) clearTimeout(timeout);
-			else if (execAsap) func.apply(self, args);
-			timeout = setTimeout(delayed, threshold || 100);
-			function delayed(): void {
-				if (!execAsap) func.apply(self, args);
-				timeout = null;
-			}
-		} as T;
-	}
-
 	let {
 		class: classes = '',
 		value = $bindable(''),
@@ -68,6 +54,20 @@
 		onChange = undefined,
 		onReconfigure = undefined
 	}: Props = $props();
+
+	function debounce<T extends (...args: any[]) => any>(func: T, threshold: number, execAsap = false): T {
+		let timeout: any;
+		return function debounced(this: any, ...args: any[]): any {
+			const self = this;
+			if (timeout) clearTimeout(timeout);
+			else if (execAsap) func.apply(self, args);
+			timeout = setTimeout(delayed, threshold || 100);
+			function delayed(): void {
+				if (!execAsap) func.apply(self, args);
+				timeout = null;
+			}
+		} as T;
+	}
 
 	const is_browser = typeof window !== 'undefined';
 
@@ -151,23 +151,14 @@
 			indentUnit.of(' '.repeat(tabSize)),
 			EditorView.editable.of(editable),
 			EditorState.readOnly.of(readonly),
-
-			// Gutters + folding
 			lineNumbers(),
-			highlightActiveLineGutter(),
-			foldGutter({
-				openText: '▾', // visible markers regardless of CSS
-				closedText: '▸'
-			}),
-			keymap.of([...foldKeymap]),
-
-			// Ensure fold gutter is visible over both themes
-			EditorView.theme({
-				'.cm-gutters': { background: 'transparent', border: 'none' },
-				'.cm-foldGutter': { width: '16px' },
-				'.cm-foldGutter .cm-gutterElement': { padding: '0 4px', color: 'var(--muted-foreground)' },
-				'.cm-foldGutter .cm-gutterElement:hover': { color: 'var(--primary)', cursor: 'pointer' }
-			})
+			highlightActiveLineGutter()
+			// gutter({ class: 'cm-gutter' }),
+			// foldGutter({
+			// 	openText: '▾', // visible markers regardless of CSS
+			// 	closedText: '▸'
+			// }),
+			// keymap.of([...foldKeymap])
 		];
 
 		if (basic) exts.push(basicSetup);
@@ -202,13 +193,7 @@
 	let on_change = $derived(nodebounce ? handle_change : debounce(handle_change, 300));
 </script>
 
-{#if is_browser}
-	<div class="codemirror-wrapper {classes}" bind:this={element}></div>
-{:else}
-	<div class="scm-waiting {classes}">
-		<!-- SSR fallback trimmed -->
-	</div>
-{/if}
+<div class="codemirror-wrapper {classes}" bind:this={element}></div>
 
 <style>
 	.codemirror-wrapper :global(.cm-focused) {

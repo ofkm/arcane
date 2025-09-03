@@ -1,12 +1,13 @@
 <script lang="ts">
-	// import CodeMirror from 'svelte-codemirror-editor';
+	import CodeMirror from 'svelte-codemirror-editor';
 	import EditorRaw from './editor-raw.svelte';
 	import { yaml } from '@codemirror/lang-yaml';
 	import { StreamLanguage } from '@codemirror/language';
 	import { properties } from '@codemirror/legacy-modes/mode/properties';
 	import { linter, lintGutter } from '@codemirror/lint';
 	import jsyaml from 'js-yaml';
-	import { arcaneDark, arcaneLight } from './arcane-theme';
+	import { githubDark } from '@uiw/codemirror-theme-github';
+	import { arcaneDark } from './theme';
 	import type { EditorView } from '@codemirror/view';
 	import type { Extension } from '@codemirror/state';
 	import type { Diagnostic, LintSource } from '@codemirror/lint';
@@ -26,9 +27,6 @@
 
 	let editorView: EditorView;
 
-	const isDark = $derived(mode.current === 'dark');
-	const editorTheme = $derived(isDark ? arcaneDark : arcaneLight);
-
 	function getLanguageExtension(lang: CodeLanguage): Extension[] {
 		const extensions: Extension[] = [];
 
@@ -47,8 +45,8 @@
 		return extensions;
 	}
 
-	function yamlLinter(view: { state: { doc: { toString(): string } } }) {
-		const diagnostics = [];
+	const yamlLinter: LintSource = (view): Diagnostic[] => {
+		const diagnostics: Diagnostic[] = [];
 		try {
 			jsyaml.load(view.state.doc.toString());
 		} catch (e: unknown) {
@@ -58,12 +56,14 @@
 			diagnostics.push({
 				from: start,
 				to: end,
-				severity: 'error' as const,
+				severity: 'error',
 				message: err.message
 			});
 		}
 		return diagnostics;
-	}
+	};
+
+	const extensions = $derived([...getLanguageExtension(language), arcaneDark]);
 
 	const styles = $derived({
 		'&': {
@@ -84,16 +84,24 @@
 </script>
 
 <div class={`overflow-hidden rounded-md border ${className}`}>
-	<EditorRaw
+	<CodeMirror
 		bind:value
-		theme={editorTheme}
-		basic={true}
-		extensions={getLanguageExtension(language)}
+		on:ready={(view) => handleReady(view.detail)}
+		{extensions}
 		{styles}
 		{placeholder}
 		readonly={readOnly}
 		nodebounce={true}
-		onReady={handleReady}
-		class=""
 	/>
 </div>
+
+<style>
+	:global(.cm-editor .cm-gutters) {
+		background-color: #18181b;
+		border-right: none;
+	}
+	:global(.cm-editor .cm-activeLineGutter) {
+		background-color: #2c313a;
+		color: #e5e7eb;
+	}
+</style>

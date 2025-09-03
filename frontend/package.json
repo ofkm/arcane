@@ -29,7 +29,8 @@
 		"prettier": "^3.6.2",
 		"prettier-plugin-svelte": "^3.4.0",
 		"prettier-plugin-tailwindcss": "^0.6.14",
-		"svelte-codemirror-editor": "^1.4.1"
+		"svelte-codemirror-editor": "^1.4.1",
+		"thememirror": "^2.0.1"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.3.2",
