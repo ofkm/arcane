@@ -32,9 +32,11 @@
 </script>
 
 <div
-	class="hover:shadow-3xl group relative overflow-hidden rounded-xl border border-gray-200/50 bg-white/95 shadow-2xl shadow-black/10 backdrop-blur-sm transition-all duration-300 hover:border-gray-300/60 hover:shadow-black/15 dark:border-gray-800/50 dark:bg-gray-950/95 dark:shadow-black/30 dark:hover:border-gray-700/60"
+	class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-border/40 group relative
+	       isolate overflow-hidden rounded-xl border
+	       shadow-sm ring-1 ring-inset
+	       backdrop-blur-sm transition-all duration-300 hover:shadow-md dark:shadow-none"
 >
-	<!-- Header Section with Gradient -->
 	<div class="bg-gradient-to-br from-gray-50 to-slate-50/30 p-4 dark:from-gray-900/20 dark:to-slate-900/10">
 		<div class="flex items-center gap-3">
 			<div

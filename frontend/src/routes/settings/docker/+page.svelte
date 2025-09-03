@@ -107,7 +107,6 @@
 
 <div class="settings-page">
 	<div class="space-y-8">
-		<!-- Header Section -->
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 			<div class="space-y-1">
 				<h1 class="settings-title text-3xl font-bold tracking-tight">Docker Settings</h1>
