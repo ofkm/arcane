@@ -29,5 +29,4 @@ export {
   DropdownTrigger as DropdownButtonPrimitiveTrigger,
 };
 
-// Re-export types
-export type { DropdownButtonOption, DropdownButtonProps } from './dropdown-button.svelte';
+export type { DropdownButtonProps } from './dropdown-button.svelte';

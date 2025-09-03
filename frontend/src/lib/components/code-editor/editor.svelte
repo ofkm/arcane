@@ -1,6 +1,5 @@
 <script lang="ts">
 	import CodeMirror from 'svelte-codemirror-editor';
-	import EditorRaw from './editor-raw.svelte';
 	import { yaml } from '@codemirror/lang-yaml';
 	import { StreamLanguage } from '@codemirror/language';
 	import { properties } from '@codemirror/legacy-modes/mode/properties';

@@ -12,11 +12,30 @@
 
 <script lang="ts">
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
+  import { tryUseDropdownButtonRoot } from './dropdown-button.svelte.js';
+  const root = tryUseDropdownButtonRoot();
 
-  let { class: className, variant = 'default', size = 'default', ref = $bindable(null), type = 'button', disabled, builders = [], children, ...restProps }: DropdownButtonTriggerProps = $props();
+  let {
+    class: className,
+    variant = root?.variant ?? 'default',
+    size = root?.size ?? 'default',
+    ref = $bindable(null),
+    type = 'button',
+    disabled = root?.disabled ?? undefined,
+    builders = [],
+    children,
+    ...restProps
+  }: DropdownButtonTriggerProps = $props();
 </script>
 
-<button bind:this={ref} use:builders[0] data-slot="dropdown-button-trigger" class={cn(buttonVariants({ variant, size }), 'rounded-l-none px-2 border-l border-l-background/20', className)} {type} {disabled} {...restProps}>
+<button
+  bind:this={ref}
+  use:builders[0]
+  data-slot="dropdown-button-trigger"
+  class={cn(buttonVariants({ variant, size }), 'rounded-l-none px-2 border-l border-l-background/20', className)}
+  {type}
+  {disabled}
+  {...restProps}>
   {#if children}
     {@render children()}
   {:else}
