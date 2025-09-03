@@ -22,7 +22,7 @@
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import CodeEditor from '$lib/components/editor.svelte';
+	import CodeEditor from '$lib/components/code-editor/editor.svelte';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { environmentAPI } from '$lib/services/api';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -47,7 +47,6 @@
 		saving: false
 	});
 
-	// Remove local name/composeContent/envContent state; use form inputs instead
 	let originalName = $derived(editorState.originalName);
 	let originalComposeContent = $derived(editorState.originalComposeContent);
 	let originalEnvContent = $derived(editorState.originalEnvContent || '');
@@ -117,7 +116,6 @@
 			onSuccess: async (updatedStack: Project) => {
 				toast.success('Project updated successfully!');
 
-				// Keep local "original" snapshots in sync so hasChanges resets
 				originalName = updatedStack.name;
 				originalComposeContent = $inputs.composeContent.value;
 				originalEnvContent = $inputs.envContent.value;

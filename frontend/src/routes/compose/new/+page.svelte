@@ -9,7 +9,7 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import CodeEditor from '$lib/components/editor.svelte';
+	import CodeEditor from '$lib/components/code-editor/editor.svelte';
 	import { preventDefault, createForm } from '$lib/utils/form.utils';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
