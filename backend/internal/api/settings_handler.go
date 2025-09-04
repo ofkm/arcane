@@ -59,12 +59,11 @@ func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
 		return
 	}
 
-	// Convert to DTO format
 	settingDtos := make([]dto.PublicSettingDto, 0, len(publicSettings))
 	for _, setting := range publicSettings {
 		settingDtos = append(settingDtos, dto.PublicSettingDto{
 			Key:      setting.Key,
-			Type:     "string", // All stored as strings in new structure
+			Type:     "string",
 			Value:    setting.Value,
 			IsPublic: true,
 		})

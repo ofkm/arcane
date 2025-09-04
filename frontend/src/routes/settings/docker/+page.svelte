@@ -1,6 +1,5 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import type { FormInput as FormInputType } from '$lib/utils/form.utils';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import ImageMinusIcon from '@lucide/svelte/icons/image-minus';
@@ -16,38 +15,23 @@
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsAPI } from '$lib/services/api';
 	import FormInput from '$lib/components/form/form-input.svelte';
+	import { z } from 'zod/v4';
+	import { createForm } from '$lib/utils/form.utils';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings);
 
-	let isLoading = $state({
-		saving: false,
-		testing: false
+	let isLoading = $state({ saving: false, testing: false });
+
+	const formSchema = z.object({
+		pollingEnabled: z.boolean(),
+		pollingInterval: z.number().int(),
+		autoUpdateEnabled: z.boolean(),
+		autoUpdateInterval: z.number().int(),
+		dockerPruneMode: z.enum(['all', 'dangling'])
 	});
 
-	let pollingIntervalInput = $state<FormInputType<number>>({
-		value: 0,
-		error: null
-	});
-
-	let pollingEnabledSwitch = $state<FormInputType<boolean>>({
-		value: false,
-		error: null
-	});
-
-	let autoUpdateSwitch = $state<FormInputType<boolean>>({
-		value: false,
-		error: null
-	});
-
-	let autoUpdateIntervalInput = $state<FormInputType<number>>({
-		value: 5,
-		error: null
-	});
-
-	const _initialPruneMode = data.settings?.dockerPruneMode === 'dangling' ? 'dangling' : 'all';
-
-	let pruneModeValue = $state<'all' | 'dangling'>(_initialPruneMode);
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
 	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
 		try {
@@ -65,12 +49,19 @@
 
 	function handleDockerSettingUpdates() {
 		isLoading.saving = true;
+
+		const dataValidated = form.validate();
+		if (!dataValidated) {
+			isLoading.saving = false;
+			return;
+		}
+
 		updateSettingsConfig({
-			dockerPruneMode: pruneModeValue,
-			autoUpdateEnabled: autoUpdateSwitch.value,
-			pollingEnabled: pollingEnabledSwitch.value,
-			pollingInterval: pollingIntervalInput.value,
-			autoUpdateInterval: autoUpdateIntervalInput.value
+			dockerPruneMode: dataValidated.dockerPruneMode,
+			autoUpdateEnabled: dataValidated.autoUpdateEnabled,
+			pollingEnabled: dataValidated.pollingEnabled,
+			pollingInterval: dataValidated.pollingInterval,
+			autoUpdateInterval: dataValidated.autoUpdateInterval
 		})
 			.then(() => {
 				toast.success(`Settings Saved Successfully`);
@@ -84,25 +75,8 @@
 			});
 	}
 
-	$effect(() => {
-		if (!isLoading.saving) {
-			pollingIntervalInput.value = currentSettings.pollingInterval || 60;
-			pollingEnabledSwitch.value = currentSettings.pollingEnabled || false;
-			autoUpdateSwitch.value = currentSettings.autoUpdateEnabled || false;
-			autoUpdateIntervalInput.value = currentSettings.autoUpdateInterval || 60;
-			pruneModeValue = currentSettings.dockerPruneMode === 'dangling' ? 'dangling' : 'all';
-		}
-	});
-
-	let isPollingConfigValid = $derived(
-		!pollingEnabledSwitch.value || (pollingIntervalInput.value >= 5 && pollingIntervalInput.value <= 1440)
-	);
-
-	let isAutoUpdateConfigValid = $derived(
-		!autoUpdateSwitch.value || (autoUpdateIntervalInput.value >= 5 && autoUpdateIntervalInput.value <= 1440)
-	);
-
-	let canSave = $derived(isPollingConfigValid && isAutoUpdateConfigValid);
+	let pruneModeValue = $derived($formInputs.dockerPruneMode.value);
+	let canSave = $derived(!isLoading.saving);
 </script>
 
 <div class="settings-page">
@@ -132,8 +106,7 @@
 			</div>
 		</div>
 
-		<!-- Alert Section -->
-		{#if autoUpdateSwitch.value && pollingEnabledSwitch.value}
+		{#if $formInputs.autoUpdateEnabled.value && $formInputs.pollingEnabled.value}
 			<div class="settings-alert">
 				<Alert.Root variant="warning">
 					<ZapIcon class="size-4" />
@@ -143,7 +116,6 @@
 			</div>
 		{/if}
 
-		<!-- Settings Grid -->
 		<div class="settings-grid grid gap-6 md:grid-cols-1">
 			<div class="grid grid-cols-1 gap-6">
 				<Card.Root class="rounded-lg border shadow-sm">
@@ -160,17 +132,17 @@
 					</Card.Header>
 					<Card.Content class="space-y-6 pt-0">
 						<FormInput
-							bind:input={pollingEnabledSwitch}
+							bind:input={$formInputs.pollingEnabled}
 							type="switch"
 							id="pollingEnabled"
 							label="Enable Image Polling"
 							description="Periodically check registries for newer image versions"
 						/>
 
-						{#if pollingEnabledSwitch.value}
+						{#if $formInputs.pollingEnabled.value}
 							<div class="space-y-4 pl-4">
 								<FormInput
-									bind:input={pollingIntervalInput}
+									bind:input={$formInputs.pollingInterval}
 									type="number"
 									id="pollingInterval"
 									label="Polling Interval (minutes)"
@@ -178,7 +150,7 @@
 									description="How often to check for new images (5-1440 minutes)"
 								/>
 
-								{#if pollingIntervalInput.value < 30}
+								{#if $formInputs.pollingInterval.value < 30}
 									<Alert.Root variant="warning">
 										<ZapIcon class="size-4" />
 										<Alert.Title>Rate Limiting Warning</Alert.Title>
@@ -190,17 +162,17 @@
 								{/if}
 
 								<FormInput
-									bind:input={autoUpdateSwitch}
+									bind:input={$formInputs.autoUpdateEnabled}
 									type="switch"
 									id="autoUpdateSwitch"
 									label="Auto-update Containers"
 									description="Automatically update containers when newer images are found"
 								/>
 
-								{#if autoUpdateSwitch.value}
+								{#if $formInputs.autoUpdateEnabled.value}
 									<div class="pl-4">
 										<FormInput
-											bind:input={autoUpdateIntervalInput}
+											bind:input={$formInputs.autoUpdateInterval}
 											type="number"
 											id="autoUpdateInterval"
 											label="Auto-update Interval (minutes)"
@@ -216,8 +188,8 @@
 								<Alert.Title>Automation Summary</Alert.Title>
 								<Alert.Description>
 									<ul class="list-inside list-disc text-sm">
-										{#if autoUpdateSwitch.value}
-											<li>Images checked every {pollingIntervalInput.value || 60} minutes</li>
+										{#if $formInputs.autoUpdateEnabled.value}
+											<li>Images checked every {$formInputs.pollingInterval.value || 60} minutes</li>
 										{:else}
 											<li>Manual updates only (auto-update disabled)</li>
 										{/if}
@@ -246,10 +218,10 @@
 						<Label for="pruneMode" class="text-base font-medium">Prune Action Behavior</Label>
 
 						<RadioGroup.Root
-							value={pruneModeValue}
+							value={$formInputs.dockerPruneMode.value}
 							onValueChange={(val) => {
-								pruneModeValue = val as 'all' | 'dangling';
-								updateSettingsConfig({ dockerPruneMode: pruneModeValue }).catch((error) => {
+								$formInputs.dockerPruneMode.value = val as 'all' | 'dangling';
+								updateSettingsConfig({ dockerPruneMode: $formInputs.dockerPruneMode.value }).catch((error) => {
 									toast.error('Failed to update prune mode');
 									console.error('Error updating prune mode:', error);
 								});

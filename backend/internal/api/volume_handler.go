@@ -31,7 +31,6 @@ func (h *VolumeHandler) List(c *gin.Context) {
 		return
 	}
 
-	// defaults like container handler
 	if req.Pagination.Page == 0 {
 		req.Pagination.Page = 1
 	}

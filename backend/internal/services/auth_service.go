@@ -17,7 +17,6 @@ import (
 	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
-// Common errors
 var (
 	ErrInvalidCredentials     = errors.New("invalid credentials")
 	ErrUserNotFound           = errors.New("user not found")
@@ -28,14 +27,12 @@ var (
 	ErrPasswordChangeRequired = errors.New("password change required")
 )
 
-// TokenPair represents access and refresh tokens
 type TokenPair struct {
 	AccessToken  string    `json:"accessToken"`
 	RefreshToken string    `json:"refreshToken"`
 	ExpiresAt    time.Time `json:"expiresAt"`
 }
 
-// AuthSettings represents the auth configuration structure
 type AuthSettings struct {
 	LocalAuthEnabled bool               `json:"localAuthEnabled"`
 	OidcEnabled      bool               `json:"oidcEnabled"`
@@ -43,7 +40,6 @@ type AuthSettings struct {
 	Oidc             *models.OidcConfig `json:"oidc,omitempty"`
 }
 
-// OidcStatusInfo provides detailed OIDC configuration status
 type OidcStatusInfo struct {
 	EnvForced             bool `json:"envForced"`
 	EnvConfigured         bool `json:"envConfigured"`
@@ -97,10 +93,13 @@ func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error
 		return nil, fmt.Errorf("failed to get settings: %w", err)
 	}
 
+	// Normalize using GetSessionTimeout so UI sees the same effective minutes we enforce
+	timeoutMinutes, _ := s.GetSessionTimeout(ctx)
+
 	authSettings := &AuthSettings{
 		LocalAuthEnabled: settings.AuthLocalEnabled.IsTrue(),
 		OidcEnabled:      settings.AuthOidcEnabled.IsTrue(),
-		SessionTimeout:   settings.AuthSessionTimeout.AsInt() / 60, // Convert seconds to minutes
+		SessionTimeout:   timeoutMinutes, // minutes
 	}
 
 	if authSettings.OidcEnabled && settings.AuthOidcConfig.Value != "" {
@@ -145,14 +144,22 @@ func (s *AuthService) GetOidcConfigurationStatus(ctx context.Context) (*dto.Oidc
 func (s *AuthService) GetSessionTimeout(ctx context.Context) (int, error) {
 	settings, err := s.settingsService.GetSettings(ctx)
 	if err != nil {
-		return 60, err // Default 60 minutes
+		return 60, nil
 	}
 
 	timeoutSeconds := settings.AuthSessionTimeout.AsInt()
-	if timeoutSeconds == 0 {
-		timeoutSeconds = 3600 // Default 1 hour
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 3600 // 1 hour default in seconds
 	}
-	return timeoutSeconds / 60, nil
+	minutes := timeoutSeconds / 60
+
+	if minutes < 15 {
+		minutes = 15
+	} else if minutes > 1440 {
+		minutes = 1440
+	}
+
+	return minutes, nil
 }
 
 func (s *AuthService) IsLocalAuthEnabled(ctx context.Context) (bool, error) {
@@ -482,10 +489,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID, currentPasswor
 }
 
 func (s *AuthService) generateTokenPair(ctx context.Context, user *models.User) (*TokenPair, error) {
-	sessionTimeout, err := s.GetSessionTimeout(ctx)
-	if err != nil {
-		sessionTimeout = 1440
-	}
+	sessionTimeout, _ := s.GetSessionTimeout(ctx)
 
 	accessTokenExpiry := time.Now().Add(time.Duration(sessionTimeout) * time.Minute)
 

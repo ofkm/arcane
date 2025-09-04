@@ -6,14 +6,22 @@
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import FolderIcon from '@lucide/svelte/icons/folder';
 	import GlobeIcon from '@lucide/svelte/icons/globe';
-	import type { FormInput as FormInputType } from '$lib/utils/form.utils';
 	import { toast } from 'svelte-sonner';
 	import type { Settings } from '$lib/types/settings.type';
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsAPI } from '$lib/services/api';
+	import { z } from 'zod/v4';
+	import { createForm } from '$lib/utils/form.utils';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
+
+	const formSchema = z.object({
+		stacksDirectory: z.string().min(1, 'Projects directory is required'),
+		baseServerUrl: z.string().min(1, 'Base server URL is required')
+	});
+
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
 	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
 		try {
@@ -31,9 +39,16 @@
 
 	function handleGeneralSettingUpdates() {
 		isLoading.saving = true;
+
+		const dataValidated = form.validate();
+		if (!dataValidated) {
+			isLoading.saving = false;
+			return;
+		}
+
 		updateSettingsConfig({
-			stacksDirectory: projectsDirectoryInput.value,
-			baseServerUrl: baseServerUrlInput.value
+			stacksDirectory: dataValidated.stacksDirectory,
+			baseServerUrl: dataValidated.baseServerUrl
 		})
 			.then(async () => {
 				toast.success(`Settings Saved Successfully`);
@@ -47,35 +62,10 @@
 			});
 	}
 
-	let projectsDirectoryInput = $state<FormInputType<string>>({
-		value: '',
-		error: null
-	});
-
-	let baseServerUrlInput = $state<FormInputType<string>>({
-		value: '',
-		error: null
-	});
-
-	let isLoading = $state({
-		saving: false
-	});
-
-	$effect(() => {
-		const s = $settingsStore ?? currentSettings;
-		if (!s) return;
-
-		currentSettings = s;
-
-		if (!isLoading.saving) {
-			projectsDirectoryInput.value = s.stacksDirectory || '';
-			baseServerUrlInput.value = s.baseServerUrl || 'localhost';
-		}
-	});
+	let isLoading = $state({ saving: false });
 </script>
 
 <div class="space-y-8">
-	<!-- Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 		<div class="space-y-1">
 			<h1 class="text-3xl font-bold tracking-tight">General Settings</h1>
@@ -95,9 +85,7 @@
 		</Button>
 	</div>
 
-	<!-- Settings Cards -->
 	<div class="grid gap-6 md:grid-cols-2">
-		<!-- Storage Configuration -->
 		<Card.Root class="rounded-lg border shadow-sm">
 			<Card.Header class="pb-2">
 				<div class="flex items-center gap-3">
@@ -114,13 +102,12 @@
 				<FormInput
 					label="Projects Directory"
 					placeholder="data/projects"
-					bind:input={projectsDirectoryInput}
+					bind:input={$formInputs.stacksDirectory}
 					helpText="Directory where Docker Compose files are stored (this is inside the container)"
 				/>
 			</Card.Content>
 		</Card.Root>
 
-		<!-- Network Configuration -->
 		<Card.Root class="rounded-lg border shadow-sm">
 			<Card.Header class="pb-2">
 				<div class="flex items-center gap-3">
@@ -137,7 +124,7 @@
 				<FormInput
 					label="Base Server URL"
 					placeholder="localhost"
-					bind:input={baseServerUrlInput}
+					bind:input={$formInputs.baseServerUrl}
 					helpText="Base URL for accessing Arcane (used for webhooks and notifications)"
 				/>
 			</Card.Content>

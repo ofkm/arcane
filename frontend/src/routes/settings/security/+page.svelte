@@ -16,9 +16,24 @@
 	import { invalidateAll } from '$app/navigation';
 	import type { Settings } from '$lib/types/settings.type';
 	import { settingsAPI } from '$lib/services/api';
+	import { z } from 'zod/v4';
+	import { createForm } from '$lib/utils/form.utils';
 
 	let { data }: { data: PageData } = $props();
 	let currentSettings = $state(data.settings);
+
+	const formSchema = z.object({
+		authLocalEnabled: z.boolean(),
+		authOidcEnabled: z.boolean(),
+		authSessionTimeout: z
+			.number('Session timeout is required')
+			.int('Must be an integer')
+			.min(15, 'Minimum is 15 minutes')
+			.max(1440, 'Maximum is 1440 minutes'),
+		authPasswordPolicy: z.enum(['basic', 'standard', 'strong'])
+	});
+
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
 	let showOidcConfigDialog = $state(false);
 	let oidcConfigForm = $state({
@@ -28,24 +43,10 @@
 		scopes: 'openid email profile'
 	});
 
-	let localAuthEnabled = $state(true);
-	let oidcEnabled = $state(false);
-	let sessionTimeout = $state(60);
-	let passwordPolicy = $state('strong');
-
-	let isLoading = $state({
-		saving: false
-	});
-
+	let isLoading = $state({ saving: false });
 	let isOidcViewMode = $derived(data.oidcStatus.envForced && data.oidcStatus.envConfigured);
 
 	$effect(() => {
-		localAuthEnabled = currentSettings.authLocalEnabled ?? true;
-		oidcEnabled = currentSettings.authOidcEnabled ?? false;
-		sessionTimeout = currentSettings.authSessionTimeout ?? 60;
-		passwordPolicy = currentSettings.authPasswordPolicy ?? 'strong';
-
-		// Parse OIDC config from string if it exists
 		if (currentSettings.authOidcConfig) {
 			try {
 				const oidcConfig = JSON.parse(currentSettings.authOidcConfig);
@@ -76,9 +77,14 @@
 	function handleSecuritySettingUpdates() {
 		isLoading.saving = true;
 
-		// Prepare OIDC config if needed
+		const dataValidated = form.validate();
+		if (!dataValidated) {
+			isLoading.saving = false;
+			return;
+		}
+
 		let oidcConfigString = currentSettings.authOidcConfig;
-		if (oidcEnabled && !data.oidcStatus.envForced) {
+		if (dataValidated.authOidcEnabled && !data.oidcStatus.envForced) {
 			oidcConfigString = JSON.stringify({
 				clientId: oidcConfigForm.clientId,
 				clientSecret: oidcConfigForm.clientSecret || '',
@@ -88,10 +94,10 @@
 		}
 
 		updateSettingsConfig({
-			authLocalEnabled: localAuthEnabled,
-			authOidcEnabled: oidcEnabled,
-			authSessionTimeout: sessionTimeout,
-			authPasswordPolicy: passwordPolicy,
+			authLocalEnabled: dataValidated.authLocalEnabled,
+			authOidcEnabled: dataValidated.authOidcEnabled,
+			authSessionTimeout: dataValidated.authSessionTimeout,
+			authPasswordPolicy: dataValidated.authPasswordPolicy,
 			authOidcConfig: oidcConfigString
 		})
 			.then(async () => {
@@ -107,7 +113,7 @@
 	}
 
 	function handleOidcSwitchChange(checked: boolean) {
-		oidcEnabled = checked;
+		$formInputs.authOidcEnabled.value = checked;
 
 		if (checked && !data.oidcStatus.envForced && !data.oidcStatus.effectivelyConfigured) {
 			showOidcConfigDialog = true;
@@ -134,7 +140,13 @@
 	async function handleSaveOidcConfig() {
 		try {
 			isLoading.saving = true;
-			oidcEnabled = true;
+			$formInputs.authOidcEnabled.value = true;
+
+			const dataValidated = form.validate();
+			if (!dataValidated) {
+				isLoading.saving = false;
+				return;
+			}
 
 			const oidcConfigString = JSON.stringify({
 				clientId: oidcConfigForm.clientId,
@@ -144,10 +156,10 @@
 			});
 
 			await updateSettingsConfig({
-				authLocalEnabled: localAuthEnabled,
+				authLocalEnabled: dataValidated.authLocalEnabled,
 				authOidcEnabled: true,
-				authSessionTimeout: sessionTimeout,
-				authPasswordPolicy: passwordPolicy,
+				authSessionTimeout: dataValidated.authSessionTimeout,
+				authPasswordPolicy: dataValidated.authPasswordPolicy,
 				authOidcConfig: oidcConfigString
 			});
 
@@ -212,9 +224,9 @@
 							</div>
 							<Switch
 								id="localAuthSwitch"
-								checked={localAuthEnabled}
+								checked={$formInputs.authLocalEnabled.value}
 								onCheckedChange={(checked) => {
-									localAuthEnabled = checked;
+									$formInputs.authLocalEnabled.value = checked;
 								}}
 							/>
 						</div>
@@ -257,7 +269,7 @@
 							</div>
 							<Switch
 								id="oidcAuthSwitch"
-								checked={oidcEnabled}
+								checked={$formInputs.authOidcEnabled.value}
 								disabled={data.oidcStatus.envForced}
 								onCheckedChange={handleOidcSwitchChange}
 							/>
@@ -292,7 +304,17 @@
 					<div class="space-y-5">
 						<div class="space-y-2">
 							<label for="sessionTimeout" class="text-sm font-medium">Session Timeout (minutes)</label>
-							<Input type="number" id="sessionTimeout" name="sessionTimeout" bind:value={sessionTimeout} min="15" max="1440" />
+							<Input
+								type="number"
+								id="sessionTimeout"
+								name="sessionTimeout"
+								bind:value={$formInputs.authSessionTimeout.value}
+								min="15"
+								max="1440"
+							/>
+							{#if $formInputs.authSessionTimeout.error}
+								<p class="text-destructive mt-1 text-xs">{$formInputs.authSessionTimeout.error}</p>
+							{/if}
 							<p class="text-muted-foreground text-xs">Inactive sessions will be logged out automatically (15–1440 minutes).</p>
 						</div>
 
@@ -300,37 +322,33 @@
 							<label for="passwordPolicy" class="text-sm font-medium">Password Policy</label>
 							<div class="grid grid-cols-3 gap-2">
 								<Button
-									variant={passwordPolicy === 'basic' ? 'default' : 'outline'}
-									class={passwordPolicy === 'basic' ? 'arcane-button-create w-full' : 'arcane-button-restart w-full'}
+									variant={$formInputs.authPasswordPolicy.value === 'basic' ? 'default' : 'outline'}
+									class={$formInputs.authPasswordPolicy.value === 'basic'
+										? 'arcane-button-create w-full'
+										: 'arcane-button-restart w-full'}
 									onclick={() => {
-										passwordPolicy = 'basic';
+										$formInputs.authPasswordPolicy.value = 'basic';
 									}}>Basic</Button
 								>
 								<Button
-									variant={passwordPolicy === 'standard' ? 'default' : 'outline'}
-									class={passwordPolicy === 'standard' ? 'arcane-button-create w-full' : 'arcane-button-restart w-full'}
+									variant={$formInputs.authPasswordPolicy.value === 'standard' ? 'default' : 'outline'}
+									class={$formInputs.authPasswordPolicy.value === 'standard'
+										? 'arcane-button-create w-full'
+										: 'arcane-button-restart w-full'}
 									onclick={() => {
-										passwordPolicy = 'standard';
+										$formInputs.authPasswordPolicy.value = 'standard';
 									}}>Standard</Button
 								>
 								<Button
-									variant={passwordPolicy === 'strong' ? 'default' : 'outline'}
-									class={passwordPolicy === 'strong' ? 'arcane-button-create w-full' : 'arcane-button-restart w-full'}
+									variant={$formInputs.authPasswordPolicy.value === 'strong' ? 'default' : 'outline'}
+									class={$formInputs.authPasswordPolicy.value === 'strong'
+										? 'arcane-button-create w-full'
+										: 'arcane-button-restart w-full'}
 									onclick={() => {
-										passwordPolicy = 'strong';
+										$formInputs.authPasswordPolicy.value = 'strong';
 									}}>Strong</Button
 								>
 							</div>
-							<input type="hidden" id="passwordPolicy" name="passwordPolicy" value={passwordPolicy} />
-							<p class="text-muted-foreground mt-1 text-xs">
-								{#if passwordPolicy === 'basic'}
-									Basic: Minimum 8 characters
-								{:else if passwordPolicy === 'standard'}
-									Standard: Minimum 10 characters, requires mixed case and numbers
-								{:else}
-									Strong: Minimum 12 characters, requires mixed case, numbers and special characters
-								{/if}
-							</p>
 						</div>
 					</div>
 				</Card.Content>

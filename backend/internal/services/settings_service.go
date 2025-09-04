@@ -37,7 +37,6 @@ func (s *SettingsService) GetSettings(ctx context.Context) (*models.Settings, er
 
 	settings := &models.Settings{}
 
-	// Load values from database into the struct
 	for _, sv := range settingVars {
 		if err := settings.UpdateField(sv.Key, sv.Value, false); err != nil {
 			// If key not found, it's okay
@@ -58,14 +57,14 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		AutoUpdate:         models.SettingVariable{Value: "true"},
 		AutoUpdateInterval: models.SettingVariable{Value: "3600"},
 		PollingEnabled:     models.SettingVariable{Value: "true"},
-		PollingInterval:    models.SettingVariable{Value: "300"}, // 5 minutes in seconds
+		PollingInterval:    models.SettingVariable{Value: "300"},
 		PruneMode:          models.SettingVariable{Value: "dangling"},
 		BaseServerURL:      models.SettingVariable{Value: ""},
 
 		// Authentication settings
 		AuthLocalEnabled:   models.SettingVariable{Value: "true"},
 		AuthOidcEnabled:    models.SettingVariable{Value: "false"},
-		AuthSessionTimeout: models.SettingVariable{Value: "86400"}, // 24 hours in seconds
+		AuthSessionTimeout: models.SettingVariable{Value: "1440"},
 		AuthPasswordPolicy: models.SettingVariable{Value: "strong"},
 		AuthRbacEnabled:    models.SettingVariable{Value: "false"},
 		AuthOidcConfig:     models.SettingVariable{Value: "{}"},
@@ -85,7 +84,6 @@ func (s *SettingsService) SyncOidcEnvToDatabase(ctx context.Context) ([]models.S
 		return nil, errors.New("OIDC sync called but OIDC_ENABLED is false")
 	}
 
-	// Add validation to ensure required env vars are present
 	if s.config.OidcClientID == "" || s.config.OidcIssuerURL == "" {
 		return nil, errors.New("required OIDC environment variables are missing (OIDC_CLIENT_ID or OIDC_ISSUER_URL)")
 	}

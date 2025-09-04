@@ -17,7 +17,7 @@ export type Settings = {
 	authLocalEnabled: boolean;
 	authOidcEnabled: boolean;
 	authSessionTimeout: number;
-	authPasswordPolicy: string;
+	authPasswordPolicy: 'basic' | 'standard' | 'strong';
 	authRbacEnabled: boolean;
 	authOidcConfig: string;
 
