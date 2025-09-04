@@ -25,7 +25,7 @@
 	const formSchema = z.object({
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int(),
-		autoUpdateEnabled: z.boolean(),
+		autoUpdate: z.boolean(),
 		autoUpdateInterval: z.number().int(),
 		dockerPruneMode: z.enum(['all', 'dangling'])
 	});
@@ -44,7 +44,7 @@
 	let pruneModeValue = $derived($formInputs.dockerPruneMode.value);
 </script>
 
-{#if $formInputs.autoUpdateEnabled.value && $formInputs.pollingEnabled.value}
+{#if settings.autoUpdate && settings.pollingEnabled}
 	<div class="settings-alert">
 		<Alert.Root variant="warning">
 			<ZapIcon class="size-4" />
@@ -91,10 +91,10 @@
 					id="autoUpdateSwitch"
 					label="Auto-update Containers"
 					description="Automatically update containers when newer images are found"
-					bind:checked={$formInputs.autoUpdateEnabled.value}
+					bind:checked={$formInputs.autoUpdate.value}
 				/>
 
-				{#if $formInputs.autoUpdateEnabled.value}
+				{#if $formInputs.autoUpdate.value}
 					<FormInput
 						bind:input={$formInputs.autoUpdateInterval}
 						type="number"
@@ -110,7 +110,7 @@
 					<Alert.Title>Automation Summary</Alert.Title>
 					<Alert.Description>
 						<ul class="list-inside list-disc text-sm">
-							{#if $formInputs.autoUpdateEnabled.value}
+							{#if $formInputs.autoUpdate.value}
 								<li>Images checked every {$formInputs.pollingInterval.value || 60} minutes</li>
 							{:else}
 								<li>Manual updates only (auto-update disabled)</li>

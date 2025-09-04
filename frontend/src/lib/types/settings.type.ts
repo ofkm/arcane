@@ -7,7 +7,7 @@ export type SettingRawResponse = {
 
 export type Settings = {
 	stacksDirectory: string;
-	autoUpdateEnabled: boolean;
+	autoUpdate: boolean;
 	autoUpdateInterval: number;
 	pollingEnabled: boolean;
 	pollingInterval: number;
