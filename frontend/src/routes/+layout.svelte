@@ -51,7 +51,7 @@
 		<Sidebar.Provider>
 			<AppSidebar {versionInformation} {user} />
 			<main class="flex-1">
-				<section class="p-10">
+				<section class="p-5">
 					{@render children()}
 				</section>
 			</main>
