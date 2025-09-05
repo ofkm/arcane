@@ -1,34 +1,17 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
-	import FormInput from '$lib/components/form/form-input.svelte';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import SaveIcon from '@lucide/svelte/icons/save';
-	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
-	import FolderIcon from '@lucide/svelte/icons/folder';
-	import GlobeIcon from '@lucide/svelte/icons/globe';
-	import { toast } from 'svelte-sonner';
 	import type { Settings } from '$lib/types/settings.type';
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsAPI } from '$lib/services/api';
-	import { z } from 'zod/v4';
-	import { createForm } from '$lib/utils/form.utils';
+	import GeneralSettingsForm from '../forms/general-settings-form.svelte';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
 
-	const formSchema = z.object({
-		stacksDirectory: z.string().min(1, 'Projects directory is required'),
-		baseServerUrl: z.string().min(1, 'Base server URL is required')
-	});
-
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
-
 	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
 		try {
-			currentSettings = await settingsAPI.updateSettings({
-				...currentSettings,
-				...updatedSettings
-			});
+			await settingsAPI.updateSettings(updatedSettings as any);
+			currentSettings = { ...currentSettings, ...updatedSettings };
 			settingsStore.set(currentSettings);
 			settingsStore.reload();
 		} catch (error) {
@@ -36,98 +19,26 @@
 			throw error;
 		}
 	}
-
-	function handleGeneralSettingUpdates() {
-		isLoading.saving = true;
-
-		const dataValidated = form.validate();
-		if (!dataValidated) {
-			isLoading.saving = false;
-			return;
-		}
-
-		updateSettingsConfig({
-			stacksDirectory: dataValidated.stacksDirectory,
-			baseServerUrl: dataValidated.baseServerUrl
-		})
-			.then(async () => {
-				toast.success(`Settings Saved Successfully`);
-			})
-			.catch((error) => {
-				toast.error('Failed to save settings');
-				console.error('Settings save error:', error);
-			})
-			.finally(() => {
-				isLoading.saving = false;
-			});
-	}
-
-	let isLoading = $state({ saving: false });
 </script>
 
-<div class="space-y-8">
-	<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-		<div class="space-y-1">
-			<h1 class="text-3xl font-bold tracking-tight">General Settings</h1>
-			<p class="text-muted-foreground max-w-2xl text-sm">
-				Core configuration for how Arcane operates and manages your containers.
-			</p>
+<div class="settings-page px-4 py-6">
+	<div
+		class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 shadow-sm"
+	>
+		<div class="bg-primary/10 pointer-events-none absolute -right-10 -top-10 size-40 rounded-full blur-3xl"></div>
+		<div class="bg-muted/40 pointer-events-none absolute -bottom-10 -left-10 size-40 rounded-full blur-3xl"></div>
+		<div class="relative flex items-start gap-4">
+			<div class="bg-primary/10 text-primary ring-primary/20 flex size-10 items-center justify-center rounded-lg ring-1">
+				<SettingsIcon class="size-5" />
+			</div>
+			<div>
+				<h1 class="settings-title">General Settings</h1>
+				<p class="settings-description">Core configuration for how Arcane operates</p>
+			</div>
 		</div>
-
-		<Button onclick={() => handleGeneralSettingUpdates()} disabled={isLoading.saving} class="h-10 min-w-[140px]">
-			{#if isLoading.saving}
-				<RefreshCwIcon class="size-4 animate-spin" />
-				Saving...
-			{:else}
-				<SaveIcon class="size-4" />
-				Save Settings
-			{/if}
-		</Button>
 	</div>
 
-	<div class="grid gap-6 md:grid-cols-2">
-		<Card.Root class="rounded-lg border shadow-sm">
-			<Card.Header class="pb-2">
-				<div class="flex items-center gap-3">
-					<div class="rounded-md bg-blue-500/10 p-2">
-						<FolderIcon class="size-5 text-blue-600" />
-					</div>
-					<div>
-						<Card.Title class="text-lg">Storage Configuration</Card.Title>
-						<Card.Description class="text-sm">Configure where Arcane stores stack files and data</Card.Description>
-					</div>
-				</div>
-			</Card.Header>
-			<Card.Content class="pt-0">
-				<FormInput
-					label="Projects Directory"
-					placeholder="data/projects"
-					bind:input={$formInputs.stacksDirectory}
-					helpText="Directory where Docker Compose files are stored (this is inside the container)"
-				/>
-			</Card.Content>
-		</Card.Root>
-
-		<Card.Root class="rounded-lg border shadow-sm">
-			<Card.Header class="pb-2">
-				<div class="flex items-center gap-3">
-					<div class="rounded-md bg-green-500/10 p-2">
-						<GlobeIcon class="size-5 text-green-600" />
-					</div>
-					<div>
-						<Card.Title class="text-lg">Network Configuration</Card.Title>
-						<Card.Description class="text-sm">Configure base server URL and network settings</Card.Description>
-					</div>
-				</div>
-			</Card.Header>
-			<Card.Content class="pt-0">
-				<FormInput
-					label="Base Server URL"
-					placeholder="localhost"
-					bind:input={$formInputs.baseServerUrl}
-					helpText="Base URL for accessing Arcane (used for webhooks and notifications)"
-				/>
-			</Card.Content>
-		</Card.Root>
+	<div class="settings-grid settings-grid-single">
+		<GeneralSettingsForm settings={currentSettings} callback={updateSettingsConfig} />
 	</div>
 </div>

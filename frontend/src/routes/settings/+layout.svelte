@@ -11,7 +11,7 @@
 </script>
 
 <div class="settings-container">
-	<div class="settings-content mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+	<div class="settings-content w-full px-4 sm:px-6 lg:px-8">
 		{@render children()}
 	</div>
 </div>
