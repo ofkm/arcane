@@ -6,7 +6,7 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import { autoUpdateAPI, environmentAPI } from '$lib/services/api';
+	import { environmentAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import ProjectsTable from './compose-table.svelte';
 	import { goto } from '$app/navigation';
@@ -29,7 +29,7 @@
 	async function handleCheckForUpdates() {
 		isLoading.updating = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(autoUpdateAPI.checkForUpdates()),
+			result: await tryCatch(environmentAPI.runAutoUpdate()),
 			message: 'Failed to Check Compose Projects for Updates',
 			setLoadingState: (value) => (isLoading.updating = value),
 			async onSuccess() {

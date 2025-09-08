@@ -5,7 +5,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import StatCard from '$lib/components/stat-card.svelte';
-	import { autoUpdateAPI, environmentAPI } from '$lib/services/api';
+	import { environmentAPI } from '$lib/services/api';
 	import ContainerTable from './container-table.svelte';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 
@@ -25,7 +25,7 @@
 	async function handleCheckForUpdates() {
 		isLoading.checking = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(autoUpdateAPI.checkForUpdates()),
+			result: await tryCatch(environmentAPI.runAutoUpdate()),
 			message: 'Failed to Check Containers for Updates',
 			setLoadingState: (value) => (isLoading.checking = value),
 			async onSuccess() {

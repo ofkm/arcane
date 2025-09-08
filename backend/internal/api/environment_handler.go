@@ -27,7 +27,8 @@ type EnvironmentHandler struct {
 	volumeService      *services.VolumeService
 	stackService       *services.StackService
 	settingsService    *services.SettingsService
-	imageUpdateService *services.ImageUpdateService // NEW
+	imageUpdateService *services.ImageUpdateService
+	updaterService     *services.UpdaterService // NEW
 	cfg                *config.Config
 }
 
@@ -36,7 +37,8 @@ func NewEnvironmentHandler(
 	environmentService *services.EnvironmentService,
 	containerService *services.ContainerService,
 	imageService *services.ImageService,
-	imageUpdateService *services.ImageUpdateService, // NEW
+	imageUpdateService *services.ImageUpdateService,
+	updaterService *services.UpdaterService, // NEW
 	networkService *services.NetworkService,
 	volumeService *services.VolumeService,
 	stackService *services.StackService,
@@ -49,7 +51,8 @@ func NewEnvironmentHandler(
 		environmentService: environmentService,
 		containerService:   containerService,
 		imageService:       imageService,
-		imageUpdateService: imageUpdateService, // NEW
+		imageUpdateService: imageUpdateService,
+		updaterService:     updaterService, // NEW
 		networkService:     networkService,
 		volumeService:      volumeService,
 		stackService:       stackService,
@@ -117,6 +120,7 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/stacks/:stackId/logs/stream", handler.GetStackLogsStream)
 		apiGroup.POST("/:id/stacks/convert", handler.ConvertDockerRun)
 
+		// Image update endpoints
 		apiGroup.GET("/:id/image-updates/check", handler.CheckImageUpdate)
 		apiGroup.GET("/:id/image-updates/check/:imageId", handler.CheckImageUpdateByID)
 		apiGroup.POST("/:id/image-updates/check-batch", handler.CheckMultipleImages)
@@ -124,6 +128,11 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/image-updates/summary", handler.GetUpdateSummary)
 		apiGroup.GET("/:id/image-updates/versions", handler.GetImageVersions)
 		apiGroup.POST("/:id/image-updates/compare", handler.CompareVersions)
+
+		// Updater endpoints
+		apiGroup.POST("/:id/updater/run", handler.UpdaterRun)
+		apiGroup.GET("/:id/updater/status", handler.UpdaterStatus)
+		apiGroup.GET("/:id/updater/history", handler.UpdaterHistory)
 
 		apiGroup.POST("/:id/agent/pair", handler.PairAgent)
 	}
@@ -188,11 +197,42 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	if h.handleStackEndpoints(c, endpoint) {
 		return
 	}
+	if h.handleUpdaterEndpoints(c, endpoint) {
+		return
+	}
 
 	c.JSON(http.StatusNotFound, gin.H{
 		"success": false,
 		"data":    gin.H{"error": "Endpoint not found"},
 	})
+}
+
+func (h *EnvironmentHandler) handleUpdaterEndpoints(c *gin.Context, endpoint string) bool {
+	updaterHandler := &UpdaterHandler{
+		updaterService: h.updaterService,
+	}
+	switch {
+	case endpoint == "/updater/run" && c.Request.Method == http.MethodPost:
+		updaterHandler.Run(c)
+		return true
+	case endpoint == "/updater/status" && c.Request.Method == http.MethodGet:
+		updaterHandler.Status(c)
+		return true
+	case endpoint == "/updater/history" && c.Request.Method == http.MethodGet:
+		updaterHandler.History(c)
+		return true
+	}
+	return false
+}
+
+func (h *EnvironmentHandler) UpdaterRun(c *gin.Context) {
+	h.routeRequest(c, "/updater/run")
+}
+func (h *EnvironmentHandler) UpdaterStatus(c *gin.Context) {
+	h.routeRequest(c, "/updater/status")
+}
+func (h *EnvironmentHandler) UpdaterHistory(c *gin.Context) {
+	h.routeRequest(c, "/updater/history")
 }
 
 func (h *EnvironmentHandler) handleImageUpdateEndpoints(c *gin.Context, endpoint string) bool {

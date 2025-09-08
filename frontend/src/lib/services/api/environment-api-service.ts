@@ -10,6 +10,7 @@ import type { ImageSummaryDto, ImageUpdateInfoDto } from '$lib/types/image.type'
 import type { NetworkSummaryDto } from '$lib/types/network.type';
 import type { VolumeSummaryDto, VolumeDetailDto, VolumeUsageDto } from '$lib/types/volume.type';
 import type { ImageUpdateSummary, ImageVersions, VersionComparison, CompareVersionRequest } from '$lib/types/image.type';
+import type { AutoUpdateCheck, AutoUpdateResult, AutoUpdateRecord, AutoUpdateStatus } from '$lib/types/auto-update.type';
 
 export class EnvironmentAPIService extends BaseAPIService {
 	private async getCurrentEnvironmentId(): Promise<string> {
@@ -359,6 +360,22 @@ export class EnvironmentAPIService extends BaseAPIService {
 		const envId = await this.getCurrentEnvironmentId();
 		const res = await this.api.post(`/environments/${envId}/image-updates/compare`, request);
 		return this.handleResponse(res.data);
+	}
+
+	async runAutoUpdate(options?: AutoUpdateCheck): Promise<AutoUpdateResult> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/updater/run`, options));
+	}
+
+	async getAutoUpdateStatus(): Promise<AutoUpdateStatus> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/updater/status`));
+	}
+
+	async getAutoUpdateHistory(limit?: number): Promise<AutoUpdateRecord[]> {
+		const envId = await this.getCurrentEnvironmentId();
+		const params = limit ? { limit } : undefined;
+		return this.handleResponse(this.api.get(`/environments/${envId}/updater/history`, { params }));
 	}
 }
 
