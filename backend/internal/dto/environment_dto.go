@@ -9,7 +9,7 @@ type CreateEnvironmentDto struct {
 }
 
 type UpdateEnvironmentDto struct {
-	ApiUrl         *string `json:"apiUrl,omitempty"`
+	ApiUrl         *string `json:"apiUrl,omitempty" binding:"omitempty,url"`
 	Name           *string `json:"name,omitempty"`
 	Enabled        *bool   `json:"enabled,omitempty"`
 	AccessToken    *string `json:"accessToken,omitempty"`
@@ -27,7 +27,6 @@ type EnvironmentDto struct {
 	ApiUrl    string  `json:"apiUrl"`
 	Status    string  `json:"status"`
 	Enabled   bool    `json:"enabled"`
-	LastSeen  *string `json:"lastSeen,omitempty"`
 	CreatedAt string  `json:"createdAt"`
 	UpdatedAt *string `json:"updatedAt,omitempty"`
 }
