@@ -59,8 +59,10 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	}))
 
 	authMiddleware := middleware.NewAuthMiddleware(appServices.Auth, cfg)
-	router.Use(middleware.SetupCORS(cfg))
+	corsMiddleware := middleware.NewCORSMiddleware(cfg).Add()
+	router.Use(corsMiddleware)
 
+	// TODO :- Refactor to a api endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "UP"})
 	})

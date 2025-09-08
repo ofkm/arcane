@@ -9,138 +9,98 @@ import (
 	"github.com/ofkm/arcane-backend/internal/config"
 )
 
-func SetupCORS(cfg *config.Config) gin.HandlerFunc {
-	corsConfig := cors.DefaultConfig()
+type CORSMiddleware struct {
+	cfg           *config.Config
+	customOrigins []string
+}
 
-	allowedOrigins := []string{}
+func NewCORSMiddleware(cfg *config.Config) *CORSMiddleware {
+	return &CORSMiddleware{cfg: cfg}
+}
 
-	if cfg.AppUrl != "" {
-		if parsedURL, err := url.Parse(cfg.AppUrl); err == nil {
-			origin := parsedURL.Scheme + "://" + parsedURL.Host
-			allowedOrigins = append(allowedOrigins, origin)
-		}
-	}
+func (m *CORSMiddleware) WithOrigins(origins []string) *CORSMiddleware {
+	clone := *m
+	clone.customOrigins = append([]string(nil), origins...)
+	return &clone
+}
 
-	if cfg.Environment != "production" {
-		devOrigins := []string{
-			"http://localhost:3000",
-			"http://localhost:3552",
-		}
-		allowedOrigins = append(allowedOrigins, devOrigins...)
-	}
-
-	if len(allowedOrigins) == 0 {
-		if cfg.Environment == "production" {
-			slog.Warn("CORS: No origins specified for production - this may cause issues")
-			allowedOrigins = []string{"https://localhost"}
-		} else {
-			allowedOrigins = []string{"*"}
-		}
-	}
-
-	corsConfig.AllowOrigins = allowedOrigins
-	corsConfig.AllowCredentials = true
-	corsConfig.AllowMethods = []string{
-		"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD",
-	}
-	corsConfig.AllowHeaders = []string{
+func (m *CORSMiddleware) Add() gin.HandlerFunc {
+	conf := cors.DefaultConfig()
+	conf.AllowOrigins = deriveAllowedOrigins(m.cfg, m.customOrigins)
+	conf.AllowCredentials = true
+	conf.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"}
+	conf.AllowHeaders = []string{
 		"Authorization",
 		"Content-Type",
 		"X-CSRF-Token",
-		"Origin",
+		"X-Requested-With",
 		"Accept",
+		"Accept-Language",
+		"Accept-Encoding",
 		"User-Agent",
 		"Cache-Control",
-		"X-Requested-With",
-		"Accept-Encoding",
-		"Accept-Language",
-		"Connection",
-		"Host",
+		"Origin",
 		"Referer",
+		"Host",
+		"Connection",
 		"X-Arcane-Agent-Token",
 	}
-	corsConfig.ExposeHeaders = []string{
+	conf.ExposeHeaders = []string{
 		"Content-Length",
 		"Content-Type",
 		"X-Total-Count",
 		"X-Page",
 		"X-Per-Page",
 	}
-	corsConfig.MaxAge = 300
+	conf.MaxAge = 300
 
-	return cors.New(corsConfig)
+	return cors.New(conf)
 }
 
-func SetupCORSWithCustomOrigins(cfg *config.Config, customOrigins []string) gin.HandlerFunc {
-	corsConfig := cors.DefaultConfig()
-
-	if len(customOrigins) > 0 {
-		corsConfig.AllowOrigins = customOrigins
-	} else {
-		return SetupCORS(cfg)
+func deriveAllowedOrigins(cfg *config.Config, custom []string) []string {
+	if len(custom) > 0 {
+		return dedupe(custom)
 	}
 
-	corsConfig.AllowCredentials = true
-	corsConfig.AllowMethods = []string{
-		"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD",
+	var origins []string
+	// App URL if set
+	if cfg != nil && cfg.AppUrl != "" {
+		if u, err := url.Parse(cfg.AppUrl); err == nil {
+			origins = append(origins, u.Scheme+"://"+u.Host)
+		}
 	}
-	corsConfig.AllowHeaders = []string{
-		"Authorization",
-		"Content-Type",
-		"X-CSRF-Token",
-		"Origin",
-		"Accept",
-		"User-Agent",
-		"Cache-Control",
-		"X-Requested-With",
-		"Accept-Encoding",
-		"Accept-Language",
-		"Connection",
-		"Host",
-		"Referer",
-		"X-Arcane-Agent-Token",
-	}
-	corsConfig.ExposeHeaders = []string{
-		"Content-Length",
-		"Content-Type",
-		"X-Total-Count",
-		"X-Page",
-		"X-Per-Page",
-	}
-	corsConfig.MaxAge = 300
 
-	return cors.New(corsConfig)
+	// Dev defaults
+	if cfg == nil || cfg.Environment != "production" {
+		origins = append(origins,
+			"http://localhost:3000", "http://127.0.0.1:3000",
+			"http://localhost:3552", "http://127.0.0.1:3552",
+		)
+	}
+
+	origins = dedupe(origins)
+
+	if len(origins) == 0 {
+		if cfg != nil && cfg.Environment == "production" {
+			slog.Warn("CORS: No origins specified for production - defaulting to https://localhost")
+			return []string{"https://localhost"}
+		}
+		// Fallback in dev (avoid "*" with credentials=true)
+		return []string{"http://localhost:3000"}
+	}
+
+	return origins
 }
 
-func GetAllowedOrigins(cfg *config.Config) []string {
-	allowedOrigins := []string{}
-
-	if cfg.AppUrl != "" {
-		if parsedURL, err := url.Parse(cfg.AppUrl); err == nil {
-			origin := parsedURL.Scheme + "://" + parsedURL.Host
-			allowedOrigins = append(allowedOrigins, origin)
+func dedupe(in []string) []string {
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, v := range in {
+		if _, ok := seen[v]; ok {
+			continue
 		}
+		seen[v] = struct{}{}
+		out = append(out, v)
 	}
-
-	if cfg.Environment != "production" {
-		devOrigins := []string{
-			"http://localhost:5173",
-			"http://127.0.0.1:5173",
-			"http://localhost:3000",
-			"http://127.0.0.1:3000",
-			"http://localhost:4173",
-			"http://127.0.0.1:4173",
-		}
-		allowedOrigins = append(allowedOrigins, devOrigins...)
-	}
-
-	if len(allowedOrigins) == 0 {
-		if cfg.Environment == "production" {
-			allowedOrigins = []string{"https://localhost"}
-		} else {
-			allowedOrigins = []string{"*"}
-		}
-	}
-
-	return allowedOrigins
+	return out
 }
