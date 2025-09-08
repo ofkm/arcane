@@ -34,7 +34,7 @@ RUN CGO_ENABLED=0 \
 
 ARG COMPOSE_VERSION=2.39.2
 ARG TARGETARCH
-COPY scripts/development/download-compose.sh /tmp/download-compose.sh
+COPY ../scripts/development/download-compose.sh /tmp/download-compose.sh
 RUN set -eux; install -d /out; chmod +x /tmp/download-compose.sh; \
     /tmp/download-compose.sh "${COMPOSE_VERSION}" "/out/docker-compose" "${TARGETARCH}"
 
@@ -53,7 +53,7 @@ RUN mkdir -p /app/data && chmod 755 /app/data
 
 COPY --from=backend-builder /build/arcane .
 COPY --from=backend-builder /out/docker-compose /usr/local/bin/docker-compose
-COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chmod=755 ../scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 EXPOSE 3552
 VOLUME ["/app/data"]

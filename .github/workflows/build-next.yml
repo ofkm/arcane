@@ -70,7 +70,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.DOCKER_IMAGE_NAME }}:next
-          file: Dockerfile-static
+          file: docker/Dockerfile-static
       - name: Container image attestation
         uses: actions/attest-build-provenance@v2
         with:

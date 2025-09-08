@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: build-agent-image
+  group: build-agent-next
   cancel-in-progress: true
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
       - name: Set DOCKER_IMAGE_NAME
         run: |
           REPO_OWNER=${{ github.repository_owner }}
-          DOCKER_IMAGE_NAME="ghcr.io/${REPO_OWNER,,}/arcane-agent"
+          DOCKER_IMAGE_NAME="ghcr.io/${REPO_OWNER,,}/arcane-headless"
           echo "DOCKER_IMAGE_NAME=${DOCKER_IMAGE_NAME}" >>${GITHUB_ENV}
 
       - name: Login to GHCR
@@ -46,7 +46,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile-agent
+          file: docker/Dockerfile-agent
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.DOCKER_IMAGE_NAME }}:next

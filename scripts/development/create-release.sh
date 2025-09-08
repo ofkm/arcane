@@ -82,13 +82,13 @@ git add .revision
 
 # Update default ARG VERSION in Dockerfile
 echo "Updating Dockerfile ARG VERSION..."
-sed -i.bak "s/^ARG VERSION=.*$/ARG VERSION=\"$NEW_VERSION\"/" Dockerfile && rm Dockerfile.bak
-git add Dockerfile 
+sed -i.bak "s/^ARG VERSION=.*$/ARG VERSION=\"$NEW_VERSION\"/" docker/Dockerfile && rm docker/Dockerfile.bak
+git add docker/Dockerfile 
 
 # Update default ARG REVISION in Dockerfile
 echo "Updating Dockerfile ARG REVISION..."
-sed -i.bak "s/^ARG REVISION=.*$/ARG REVISION=\"$LATEST_REVISION\"/" Dockerfile && rm Dockerfile.bak
-git add Dockerfile
+sed -i.bak "s/^ARG REVISION=.*$/ARG REVISION=\"$LATEST_REVISION\"/" docker/Dockerfile && rm docker/Dockerfile.bak
+git add docker/Dockerfile
 
 # Check if conventional-changelog is installed, if not install it
 if ! command -v conventional-changelog &>/dev/null; then

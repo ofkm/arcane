@@ -79,8 +79,8 @@ jobs:
         id: build-push
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: Dockerfile-static
+          context: ./
+          file: docker/Dockerfile-static
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
