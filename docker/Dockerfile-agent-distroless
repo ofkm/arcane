@@ -1,0 +1,33 @@
+FROM golang:1.25-alpine AS agent-builder
+ARG BUILD_TAGS="exclude_frontend"
+ARG COMPOSE_VERSION=2.39.2
+ARG TARGETARCH
+WORKDIR /build
+RUN apk add --no-cache git ca-certificates tzdata curl
+COPY ./backend/go.mod ./backend/go.sum ./
+RUN go mod download
+COPY ./backend ./backend
+
+WORKDIR /build/backend
+RUN CGO_ENABLED=0 GOOS=linux go build -tags "${BUILD_TAGS}" -ldflags='-w -s' -trimpath -o /out/arcane-agent ./cmd/main.go
+
+COPY scripts/development/download-compose.sh /tmp/download-compose.sh
+RUN set -eux; chmod +x /tmp/download-compose.sh; /tmp/download-compose.sh "${COMPOSE_VERSION}" "/out/docker-compose" "${TARGETARCH}"
+
+
+FROM gcr.io/distroless/base-debian12:nonroot AS agent
+WORKDIR /app
+ENV PATH=/usr/local/bin:/usr/bin:/bin \
+    GIN_MODE=release \
+    PORT=3553 \
+    AGENT_MODE=true \
+    ENVIRONMENT=production
+
+
+COPY --from=agent-builder /out/arcane-agent /usr/local/bin/arcane-agent
+COPY --from=agent-builder /out/docker-compose /usr/local/bin/docker-compose
+
+VOLUME ["/app/data"]
+EXPOSE 3553
+
+CMD ["/usr/local/bin/arcane-agent"]

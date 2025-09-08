@@ -1,0 +1,28 @@
+services:
+  arcane-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile-agent-distroless
+    image: arcane-agent:distroless
+    container_name: arcane-agent
+    environment:
+      - AGENT_MODE=true
+      # Use either a fixed agent token or enable bootstrap pairing
+      - AGENT_TOKEN=replace-with-agent-token
+      # - AGENT_BOOTSTRAP_TOKEN=replace-with-bootstrap
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-kqRNG7bBrN9e7lagJbEkv4Zj3kA8qShQZgBok5X+h6g=}
+      - PORT=3553
+    ports:
+      - '3553:3553'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Use a bind mount you can chmod on the host (distroless can’t chown at runtime)
+      - ./agent-data:/app/data
+    # Distroless nonroot UID; stays non-root
+    user: '65532:65532'
+    # Give the container the docker.sock group so it can read/write the socket
+    # On Linux: export DOCKER_SOCK_GID=$(stat -c '%g' /var/run/docker.sock)
+    # On macOS Docker Desktop: this is typically 0
+    group_add:
+      - '${DOCKER_SOCK_GID:-0}'
+    restart: unless-stopped
