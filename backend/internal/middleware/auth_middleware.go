@@ -49,6 +49,12 @@ func (m *AuthMiddleware) WithSuccessOptional() *AuthMiddleware {
 func (m *AuthMiddleware) Add() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if m.cfg != nil && m.cfg.AgentMode {
+			// Allow OPTIONS preflight to pass through in agent mode
+			if c.Request.Method == http.MethodOptions {
+				c.Next()
+				return
+			}
+
 			// Allow pairing with bootstrap token
 			if strings.HasPrefix(c.Request.URL.Path, "/api/environments/0/agent/pair") &&
 				m.cfg.AgentBootstrapToken != "" &&
