@@ -3,13 +3,11 @@ FROM golang:1.25-alpine AS agent-builder
 ARG BUILD_TAGS="exclude_frontend"
 WORKDIR /build
 
-RUN apk add --no-cache git ca-certificates tzdata
+RUN apk add --no-cache git ca-certificates tzdata curl
 
-# Go deps
 COPY ./backend/go.mod ./backend/go.sum ./
 RUN go mod download
 
-# Source
 COPY ./backend ./backend
 
 # Build agent binary
@@ -23,27 +21,36 @@ RUN CGO_ENABLED=0 \
     -o /out/arcane-agent \
     ./cmd/main.go
 
-# Runtime
+ARG COMPOSE_VERSION=2.39.2
+ARG TARGETARCH
+RUN set -eux; \
+    case "${TARGETARCH:-amd64}" in \
+      amd64) ARCH=x86_64 ;; \
+      arm64) ARCH=aarch64 ;; \
+      *) ARCH="${TARGETARCH:-x86_64}" ;; \
+    esac; \
+    curl -fsSL -o /out/docker-compose "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${ARCH}"; \
+    chmod +x /out/docker-compose
+
 FROM alpine:3 AS agent
-
-RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl shadow su-exec docker docker-compose
-
-RUN delgroup ping && apk del iputils
+RUN apk --no-cache add ca-certificates tzdata curl su-exec
 
 WORKDIR /app
 RUN mkdir -p /app/data && chmod 755 /app/data
 
-# Copy agent binary and entrypoint
 COPY --from=agent-builder /out/arcane-agent /usr/local/bin/arcane-agent
-COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --from=agent-builder /out/docker-compose /usr/local/bin/docker-compose
 
-# Default env
+COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
 ENV GIN_MODE=release \
     PORT=3553 \
     AGENT_MODE=true
 
+ENV ENVIRONMENT=production
+
 EXPOSE 3553
 VOLUME ["/app/data"]
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/usr/local/bin/arcane-agent"]

@@ -1,17 +1,28 @@
 FROM alpine:3
 
 ARG TARGETARCH
+ARG COMPOSE_VERSION=2.39.2
+
 WORKDIR /app
 
-RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl shadow su-exec docker docker-compose
+RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl su-exec \
+ && (delgroup ping || true) && (apk del iputils || true)
 
-RUN delgroup ping && apk del iputils
+RUN set -eux; \
+    case "${TARGETARCH:-amd64}" in \
+      amd64) ARCH=x86_64 ;; \
+      arm64) ARCH=aarch64 ;; \
+      *) ARCH="${TARGETARCH:-x86_64}" ;; \
+    esac; \
+    curl -fsSL -o /usr/local/bin/docker-compose "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${ARCH}"; \
+    chmod +x /usr/local/bin/docker-compose
 
 COPY ./backend/.bin/arcane-linux-${TARGETARCH} ./arcane
+
 COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 EXPOSE 3552
-ENV APP_ENV=production
+ENV ENVIRONMENT=production
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["./arcane"]
