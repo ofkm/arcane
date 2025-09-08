@@ -326,40 +326,36 @@ export class EnvironmentAPIService extends BaseAPIService {
 
 	async checkImageUpdateByID(imageId: string): Promise<ImageUpdateInfoDto> {
 		const envId = await this.getCurrentEnvironmentId();
-		const res = await this.api.get(`/environments/${envId}/image-updates/check/${imageId}`);
-		return this.handleResponse(res.data);
+		return this.handleResponse(this.api.get(`/environments/${envId}/image-updates/check/${imageId}`));
 	}
 
 	async checkMultipleImages(imageRefs: string[]): Promise<Record<string, ImageUpdateInfoDto>> {
 		const envId = await this.getCurrentEnvironmentId();
-		const res = await this.api.post(`/environments/${envId}/image-updates/check-batch`, { imageRefs });
-		return this.handleResponse(res.data);
+		return this.handleResponse(this.api.post(`/environments/${envId}/image-updates/check-batch`, { imageRefs }));
 	}
 
 	async checkAllImages(limit = 50): Promise<Record<string, ImageUpdateInfoDto>> {
 		const envId = await this.getCurrentEnvironmentId();
-		const res = await this.api.get(`/environments/${envId}/image-updates/check-all`, { params: { limit } });
-		return this.handleResponse(res.data);
+		return this.handleResponse(this.api.get(`/environments/${envId}/image-updates/check-all`, { params: { limit } }));
 	}
 
 	async getUpdateSummary(): Promise<ImageUpdateSummary> {
 		const envId = await this.getCurrentEnvironmentId();
-		const res = await this.api.get(`/environments/${envId}/image-updates/summary`);
-		return this.handleResponse(res.data);
+		return this.handleResponse(this.api.get(`/environments/${envId}/image-updates/summary`));
 	}
 
 	async getImageVersions(imageRef: string, limit = 20): Promise<ImageVersions> {
 		const envId = await this.getCurrentEnvironmentId();
-		const res = await this.api.get(`/environments/${envId}/image-updates/versions`, {
-			params: { imageRef, limit }
-		});
-		return this.handleResponse(res.data);
+		return this.handleResponse(
+			this.api.get(`/environments/${envId}/image-updates/versions`, {
+				params: { imageRef, limit }
+			})
+		);
 	}
 
 	async compareVersions(request: CompareVersionRequest): Promise<VersionComparison> {
 		const envId = await this.getCurrentEnvironmentId();
-		const res = await this.api.post(`/environments/${envId}/image-updates/compare`, request);
-		return this.handleResponse(res.data);
+		return this.handleResponse(this.api.post(`/environments/${envId}/image-updates/compare`, request));
 	}
 
 	async runAutoUpdate(options?: AutoUpdateCheck): Promise<AutoUpdateResult> {
