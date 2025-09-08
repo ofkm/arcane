@@ -69,12 +69,6 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 
 	if cfg.AgentMode {
 		api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.Network, appServices.Volume, appServices.Stack, authMiddleware, cfg)
-		api.NewImageHandler(apiGroup, appServices.Image, appServices.ImageUpdate, authMiddleware)
-		api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)
-		api.NewContainerHandler(apiGroup, appServices.Container, appServices.Image, authMiddleware)
-		api.NewNetworkHandler(apiGroup, appServices.Network, authMiddleware)
-		api.NewVolumeHandler(apiGroup, appServices.Volume, authMiddleware)
-
 		return router
 	}
 

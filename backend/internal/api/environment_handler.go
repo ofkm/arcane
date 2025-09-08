@@ -417,16 +417,21 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 
 	// Copy headers except hop-by-hop and Authorization (we’ll set explicitly)
 	skip := map[string]struct{}{
-		"Host":                {},
-		"Connection":          {},
-		"Keep-Alive":          {},
-		"Proxy-Authenticate":  {},
-		"Proxy-Authorization": {},
-		"Te":                  {},
-		"Trailer":             {},
-		"Transfer-Encoding":   {},
-		"Upgrade":             {},
-		"Content-Length":      {},
+		"Host":                           {},
+		"Connection":                     {},
+		"Keep-Alive":                     {},
+		"Proxy-Authenticate":             {},
+		"Proxy-Authorization":            {},
+		"Te":                             {},
+		"Trailer":                        {},
+		"Transfer-Encoding":              {},
+		"Upgrade":                        {},
+		"Content-Length":                 {},
+		"Origin":                         {},
+		"Referer":                        {},
+		"Access-Control-Request-Method":  {},
+		"Access-Control-Request-Headers": {},
+		"Cookie":                         {},
 	}
 	for k, vs := range c.Request.Header {
 		ck := http.CanonicalHeaderKey(k)
@@ -438,20 +443,17 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 		}
 	}
 
-	// Forward Authorization (or promote token cookie)
+	// Forward Authorization (or promote cookie)
 	if auth := c.GetHeader("Authorization"); auth != "" {
 		req.Header.Set("Authorization", auth)
 	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
 		req.Header.Set("Authorization", "Bearer "+cookieToken)
 	}
 
-	// Forward agent token if we have one
+	// Forward agent token if stored
 	if environment.AccessToken != nil && *environment.AccessToken != "" {
 		req.Header.Set("X-Arcane-Agent-Token", *environment.AccessToken)
 	}
-
-	// Mark as proxied by manager (agent can trust this in AgentMode)
-	req.Header.Set("X-Arcane-Agent-Proxy", "1")
 
 	req.Header.Set("X-Forwarded-For", c.ClientIP())
 	req.Header.Set("X-Forwarded-Host", c.Request.Host)

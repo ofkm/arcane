@@ -48,50 +48,26 @@ func (m *AuthMiddleware) WithSuccessOptional() *AuthMiddleware {
 
 func (m *AuthMiddleware) Add() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Agent API-key/JWT mode
 		if m.cfg != nil && m.cfg.AgentMode {
-			// 0) Allow trusted manager proxy marker (helps unblock while we test)
-			if c.GetHeader("X-Arcane-Agent-Proxy") == "1" {
-				slog.Info("Agent auth: proxy marker accepted", "path", c.Request.URL.Path, "method", c.Request.Method)
-				agentSudo(c)
-				return
-			}
-
-			// 1) Allow pairing via bootstrap token
+			// Allow pairing with bootstrap token
 			if strings.HasPrefix(c.Request.URL.Path, "/api/environments/0/agent/pair") &&
 				m.cfg.AgentBootstrapToken != "" &&
 				c.GetHeader("X-Arcane-Agent-Bootstrap") == m.cfg.AgentBootstrapToken {
-				slog.Info("Agent auth: bootstrap pairing accepted")
+				slog.Info("Agent auth: bootstrap pairing accepted", "path", c.Request.URL.Path, "method", c.Request.Method)
 				agentSudo(c)
 				return
 			}
 
-			// 2) Prefer X-Arcane-Agent-Token
+			// Require X-Arcane-Agent-Token
 			if tok := c.GetHeader("X-Arcane-Agent-Token"); tok != "" && m.cfg.AgentToken != "" && tok == m.cfg.AgentToken {
-				slog.Info("Agent auth: agent token accepted")
+				slog.Info("Agent auth: agent token accepted", "path", c.Request.URL.Path, "method", c.Request.Method)
 				agentSudo(c)
 				return
 			}
 
-			// 3) Fallback Bearer JWT
-			if bearer := extractBearerOrCookieToken(c); bearer != "" {
-				user, err := m.authService.VerifyToken(c.Request.Context(), bearer)
-				if err == nil {
-					isAdmin := userHasRole(user, "admin")
-					slog.Info("Agent auth: bearer accepted", "isAdmin", isAdmin)
-					c.Set("userID", user.ID)
-					c.Set("currentUser", user)
-					c.Set("userIsAdmin", isAdmin)
-					c.Next()
-					return
-				}
-			}
-
-			// Debug why forbidden
 			slog.Warn("Agent auth forbidden",
 				"path", c.Request.URL.Path,
 				"method", c.Request.Method,
-				"has_proxy_marker", c.GetHeader("X-Arcane-Agent-Proxy") == "1",
 				"has_agent_token_hdr", c.GetHeader("X-Arcane-Agent-Token") != "",
 				"agent_token_config_set", m.cfg.AgentToken != "",
 				"has_bearer", c.GetHeader("Authorization") != "")
@@ -150,10 +126,10 @@ func (m *AuthMiddleware) Add() gin.HandlerFunc {
 }
 
 func agentSudo(c *gin.Context) {
-	agentEmail := func() *string { s := "agent@arcane.dev"; return &s }()
+	email := "agent@arcane.dev"
 	agentUser := &models.User{
 		BaseModel: models.BaseModel{ID: "agent"},
-		Email:     agentEmail,
+		Email:     &email,
 		Roles:     []string{"admin"},
 	}
 	c.Set("userID", agentUser.ID)
@@ -164,7 +140,7 @@ func agentSudo(c *gin.Context) {
 
 func extractBearerOrCookieToken(c *gin.Context) string {
 	authHeader := c.GetHeader("Authorization")
-	if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+	if strings.HasPrefix(authHeader, "Bearer ") {
 		return strings.TrimPrefix(authHeader, "Bearer ")
 	}
 	if tokenCookie, err := c.Cookie("token"); err == nil && tokenCookie != "" {

@@ -41,13 +41,7 @@ func SetupCORS(cfg *config.Config) gin.HandlerFunc {
 	corsConfig.AllowOrigins = allowedOrigins
 	corsConfig.AllowCredentials = true
 	corsConfig.AllowMethods = []string{
-		"GET",
-		"POST",
-		"PUT",
-		"DELETE",
-		"OPTIONS",
-		"PATCH",
-		"HEAD",
+		"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD",
 	}
 	corsConfig.AllowHeaders = []string{
 		"Authorization",
@@ -63,6 +57,7 @@ func SetupCORS(cfg *config.Config) gin.HandlerFunc {
 		"Connection",
 		"Host",
 		"Referer",
+		"X-Arcane-Agent-Token",
 	}
 	corsConfig.ExposeHeaders = []string{
 		"Content-Length",
@@ -87,13 +82,7 @@ func SetupCORSWithCustomOrigins(cfg *config.Config, customOrigins []string) gin.
 
 	corsConfig.AllowCredentials = true
 	corsConfig.AllowMethods = []string{
-		"GET",
-		"POST",
-		"PUT",
-		"DELETE",
-		"OPTIONS",
-		"PATCH",
-		"HEAD",
+		"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD",
 	}
 	corsConfig.AllowHeaders = []string{
 		"Authorization",
@@ -109,6 +98,7 @@ func SetupCORSWithCustomOrigins(cfg *config.Config, customOrigins []string) gin.
 		"Connection",
 		"Host",
 		"Referer",
+		"X-Arcane-Agent-Token",
 	}
 	corsConfig.ExposeHeaders = []string{
 		"Content-Length",
