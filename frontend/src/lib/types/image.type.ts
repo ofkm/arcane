@@ -65,3 +65,38 @@ export interface ImageDetailSummaryDto {
 		size: number;
 	};
 }
+
+export type ImageUpdateData = ImageUpdateInfoDto;
+
+export interface ImageUpdateSummary {
+	totalImages: number;
+	imagesWithUpdates: number;
+	digestUpdates: number;
+	tagUpdates: number;
+	errorsCount: number;
+}
+
+export interface ImageVersions {
+	imageRef: string;
+	current: string;
+	versions: string[];
+	latest?: string;
+}
+
+export interface VersionComparison {
+	currentVersion: string;
+	targetVersion: string;
+	isNewer: boolean;
+	updateType: string;
+	changeLevel: string;
+}
+
+export interface BatchImageUpdateRequest {
+	imageRefs: string[];
+}
+
+export interface CompareVersionRequest {
+	currentVersion: string;
+	targetVersion: string;
+	imageRef: string;
+}

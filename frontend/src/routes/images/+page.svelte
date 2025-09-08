@@ -10,7 +10,7 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import { environmentAPI, imageUpdateAPI } from '$lib/services/api';
+	import { environmentAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import ImageTableNew from './image-table.svelte';
 
@@ -49,7 +49,7 @@
 		isLoading.checking = true;
 		try {
 			const imageRefs = images.data.map((img) => img.repoTags?.[0] || `image:${img.id}`);
-			await imageUpdateAPI.checkMultipleImages(imageRefs);
+			await environmentAPI.checkMultipleImages(imageRefs);
 			toast.success('Update check completed');
 			images = await environmentAPI.getImages(requestOptions);
 		} catch (error) {

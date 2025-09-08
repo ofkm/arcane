@@ -9,9 +9,9 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import PackageIcon from '@lucide/svelte/icons/package';
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
-	import { imageUpdateAPI } from '$lib/services/api';
+	import { environmentAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
-	import type { ImageUpdateData } from '$lib/services/api/image-update-api-service';
+	import type { ImageUpdateData } from '$lib/types/image.type';
 
 	interface Props {
 		updateInfo?: ImageUpdateData | undefined;
@@ -89,7 +89,7 @@
 
 		isChecking = true;
 		try {
-			const result = await imageUpdateAPI.checkImageUpdateByID(imageId);
+			const result = await environmentAPI.checkImageUpdateByID(imageId);
 			if (result) {
 				if (result.error) {
 					localUpdateInfo = result;

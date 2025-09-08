@@ -1,4 +1,4 @@
-import { environmentAPI, settingsAPI, systemAPI } from '$lib/services/api';
+import { environmentAPI, settingsAPI } from '$lib/services/api';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import type { PageLoad } from './$types';
 

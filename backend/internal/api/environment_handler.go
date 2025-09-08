@@ -27,15 +27,29 @@ type EnvironmentHandler struct {
 	volumeService      *services.VolumeService
 	stackService       *services.StackService
 	settingsService    *services.SettingsService
+	imageUpdateService *services.ImageUpdateService // NEW
 	cfg                *config.Config
 }
 
-func NewEnvironmentHandler(group *gin.RouterGroup, environmentService *services.EnvironmentService, containerService *services.ContainerService, imageService *services.ImageService, networkService *services.NetworkService, volumeService *services.VolumeService, stackService *services.StackService, settingsService *services.SettingsService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
+func NewEnvironmentHandler(
+	group *gin.RouterGroup,
+	environmentService *services.EnvironmentService,
+	containerService *services.ContainerService,
+	imageService *services.ImageService,
+	imageUpdateService *services.ImageUpdateService, // NEW
+	networkService *services.NetworkService,
+	volumeService *services.VolumeService,
+	stackService *services.StackService,
+	settingsService *services.SettingsService,
+	authMiddleware *middleware.AuthMiddleware,
+	cfg *config.Config,
+) {
 
 	handler := &EnvironmentHandler{
 		environmentService: environmentService,
 		containerService:   containerService,
 		imageService:       imageService,
+		imageUpdateService: imageUpdateService, // NEW
 		networkService:     networkService,
 		volumeService:      volumeService,
 		stackService:       stackService,
@@ -103,6 +117,14 @@ func NewEnvironmentHandler(group *gin.RouterGroup, environmentService *services.
 		apiGroup.GET("/:id/stacks/:stackId/logs/stream", handler.GetStackLogsStream)
 		apiGroup.POST("/:id/stacks/convert", handler.ConvertDockerRun)
 
+		apiGroup.GET("/:id/image-updates/check", handler.CheckImageUpdate)
+		apiGroup.GET("/:id/image-updates/check/:imageId", handler.CheckImageUpdateByID)
+		apiGroup.POST("/:id/image-updates/check-batch", handler.CheckMultipleImages)
+		apiGroup.GET("/:id/image-updates/check-all", handler.CheckAllImages)
+		apiGroup.GET("/:id/image-updates/summary", handler.GetUpdateSummary)
+		apiGroup.GET("/:id/image-updates/versions", handler.GetImageVersions)
+		apiGroup.POST("/:id/image-updates/compare", handler.CompareVersions)
+
 		apiGroup.POST("/:id/agent/pair", handler.PairAgent)
 	}
 }
@@ -154,6 +176,9 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	if h.handleImageEndpoints(c, endpoint) {
 		return
 	}
+	if h.handleImageUpdateEndpoints(c, endpoint) {
+		return
+	}
 	if h.handleNetworkEndpoints(c, endpoint) {
 		return
 	}
@@ -168,6 +193,66 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 		"success": false,
 		"data":    gin.H{"error": "Endpoint not found"},
 	})
+}
+
+func (h *EnvironmentHandler) handleImageUpdateEndpoints(c *gin.Context, endpoint string) bool {
+	imageUpdateHandler := &ImageUpdateHandler{
+		imageUpdateService: h.imageUpdateService,
+	}
+
+	switch {
+	case endpoint == "/image-updates/check" && c.Request.Method == http.MethodGet:
+		imageUpdateHandler.CheckImageUpdate(c)
+		return true
+	case strings.HasPrefix(endpoint, "/image-updates/check/") && c.Request.Method == http.MethodGet:
+		imageUpdateHandler.CheckImageUpdateByID(c)
+		return true
+	case endpoint == "/image-updates/check-batch" && c.Request.Method == http.MethodPost:
+		imageUpdateHandler.CheckMultipleImages(c)
+		return true
+	case endpoint == "/image-updates/check-all" && c.Request.Method == http.MethodGet:
+		imageUpdateHandler.CheckAllImages(c)
+		return true
+	case endpoint == "/image-updates/summary" && c.Request.Method == http.MethodGet:
+		imageUpdateHandler.GetUpdateSummary(c)
+		return true
+	case endpoint == "/image-updates/versions" && c.Request.Method == http.MethodGet:
+		imageUpdateHandler.GetImageVersions(c)
+		return true
+	case endpoint == "/image-updates/compare" && c.Request.Method == http.MethodPost:
+		imageUpdateHandler.CompareVersions(c)
+		return true
+	}
+	return false
+}
+
+func (h *EnvironmentHandler) CheckImageUpdate(c *gin.Context) {
+	h.routeRequest(c, "/image-updates/check")
+}
+
+func (h *EnvironmentHandler) CheckImageUpdateByID(c *gin.Context) {
+	imageID := c.Param("imageId")
+	h.routeRequest(c, "/image-updates/check/"+imageID)
+}
+
+func (h *EnvironmentHandler) CheckMultipleImages(c *gin.Context) {
+	h.routeRequest(c, "/image-updates/check-batch")
+}
+
+func (h *EnvironmentHandler) CheckAllImages(c *gin.Context) {
+	h.routeRequest(c, "/image-updates/check-all")
+}
+
+func (h *EnvironmentHandler) GetUpdateSummary(c *gin.Context) {
+	h.routeRequest(c, "/image-updates/summary")
+}
+
+func (h *EnvironmentHandler) GetImageVersions(c *gin.Context) {
+	h.routeRequest(c, "/image-updates/versions")
+}
+
+func (h *EnvironmentHandler) CompareVersions(c *gin.Context) {
+	h.routeRequest(c, "/image-updates/compare")
 }
 
 func (h *EnvironmentHandler) handleContainerEndpoints(c *gin.Context, endpoint string) bool {

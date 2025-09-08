@@ -7,6 +7,7 @@ export const LOCAL_DOCKER_ENVIRONMENT_ID = '0';
 
 export const localDockerEnvironment: Environment = {
 	id: LOCAL_DOCKER_ENVIRONMENT_ID,
+	name: 'Local Docker',
 	apiUrl: 'http://localhost',
 	status: 'online',
 	enabled: true,

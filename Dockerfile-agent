@@ -27,7 +27,7 @@ RUN set -eux; chmod +x /tmp/download-compose.sh; \
     /tmp/download-compose.sh "${COMPOSE_VERSION}" "/out/docker-compose" "${TARGETARCH}"
 
 FROM alpine:3 AS agent
-RUN apk --no-cache add ca-certificates tzdata curl su-exec
+RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl su-exec
 
 WORKDIR /app
 RUN mkdir -p /app/data && chmod 755 /app/data
