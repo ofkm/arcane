@@ -57,6 +57,7 @@ func InitializeApp() (*App, error) {
 		return nil, fmt.Errorf("services initialization failed: %w", err)
 	}
 
+	// Ensure default settings (safe in agent), but skip user bootstrap in agent mode
 	slog.InfoContext(appCtx, "Ensuring default settings are initialized")
 	if err := appServices.Settings.EnsureDefaultSettings(appCtx); err != nil {
 		slog.WarnContext(appCtx, "Failed to initialize default settings",
@@ -89,15 +90,18 @@ func InitializeApp() (*App, error) {
 		slog.InfoContext(appCtx, "Initial Docker image synchronization complete")
 	}
 
-	if err := appServices.User.CreateDefaultAdmin(); err != nil {
-		slog.WarnContext(appCtx, "Failed to create default admin user",
-			slog.String("error", err.Error()))
-	}
-
-	if cfg.OidcEnabled {
-		if _, err := appServices.Settings.SyncOidcEnvToDatabase(appCtx); err != nil {
-			slog.WarnContext(appCtx, "Failed to sync OIDC environment variables to database",
+	// Skip default admin creation and OIDC in agent mode
+	if !cfg.AgentMode {
+		if err := appServices.User.CreateDefaultAdmin(); err != nil {
+			slog.WarnContext(appCtx, "Failed to create default admin user",
 				slog.String("error", err.Error()))
+		}
+
+		if cfg.OidcEnabled {
+			if _, err := appServices.Settings.SyncOidcEnvToDatabase(appCtx); err != nil {
+				slog.WarnContext(appCtx, "Failed to sync OIDC environment variables to database",
+					slog.String("error", err.Error()))
+			}
 		}
 	}
 

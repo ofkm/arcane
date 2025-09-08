@@ -27,11 +27,15 @@
 	let isSubmitting = $state(false);
 
 	const formSchema = z.object({
-		apiUrl: z.string().url('Must be a valid URL').min(1, 'Server URL is required')
+		apiUrl: z.url('Must be a valid URL').min(1, 'Server URL is required'),
+		accessToken: z.string().optional(),
+		bootstrapToken: z.string().optional()
 	});
 
 	let formData = $state({
-		apiUrl: ''
+		apiUrl: '',
+		accessToken: '',
+		bootstrapToken: ''
 	});
 
 	let { inputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
@@ -55,19 +59,10 @@
 		try {
 			isSubmitting = true;
 
-			// Derive a hostname from the URL (for backend compatibility)
-			let derivedHostname = '';
-			try {
-				const u = new URL(data.apiUrl);
-				derivedHostname = u.hostname || u.host || data.apiUrl;
-			} catch {
-				derivedHostname = data.apiUrl;
-			}
-
 			const dto: CreateEnvironmentDTO = {
-				hostname: derivedHostname,
-				apiUrl: data.apiUrl
-				// description omitted; enabled defaults server-side
+				apiUrl: data.apiUrl,
+				accessToken: data.accessToken || undefined,
+				bootstrapToken: data.bootstrapToken || undefined
 			};
 
 			await environmentManagementAPI.create(dto);
@@ -147,9 +142,25 @@
 						<FormInput
 							label="Server URL *"
 							type="text"
-							placeholder="http://192.168.1.100:3552"
+							placeholder="http://192.168.1.100:3553"
 							description="Full URL to the Arcane server endpoint"
 							bind:input={$inputs.apiUrl}
+						/>
+
+						<FormInput
+							label="Agent Token (optional)"
+							type="password"
+							placeholder="Paste token from agent"
+							description="If provided, manager will use this token for all proxied requests"
+							bind:input={$inputs.accessToken}
+						/>
+
+						<FormInput
+							label="Bootstrap Token (optional)"
+							type="password"
+							placeholder="AGENT_BOOTSTRAP_TOKEN from the agent"
+							description="If provided, manager will auto‑pair with the agent and store the generated token"
+							bind:input={$inputs.bootstrapToken}
 						/>
 
 						<Button type="submit" class="w-full" disabled={isSubmitting}>

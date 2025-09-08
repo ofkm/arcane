@@ -2,6 +2,8 @@ package api
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -25,11 +28,20 @@ type EnvironmentHandler struct {
 	networkService     *services.NetworkService
 	volumeService      *services.VolumeService
 	stackService       *services.StackService
+	cfg                *config.Config
 }
 
-func NewEnvironmentHandler(group *gin.RouterGroup, environmentService *services.EnvironmentService, containerService *services.ContainerService, imageService *services.ImageService, networkService *services.NetworkService, volumeService *services.VolumeService, stackService *services.StackService, authMiddleware *middleware.AuthMiddleware) {
+func NewEnvironmentHandler(group *gin.RouterGroup, environmentService *services.EnvironmentService, containerService *services.ContainerService, imageService *services.ImageService, networkService *services.NetworkService, volumeService *services.VolumeService, stackService *services.StackService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
 
-	handler := &EnvironmentHandler{environmentService: environmentService, containerService: containerService, imageService: imageService, networkService: networkService, volumeService: volumeService, stackService: stackService}
+	handler := &EnvironmentHandler{
+		environmentService: environmentService,
+		containerService:   containerService,
+		imageService:       imageService,
+		networkService:     networkService,
+		volumeService:      volumeService,
+		stackService:       stackService,
+		cfg:                cfg,
+	}
 
 	apiGroup := group.Group("/environments")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -90,7 +102,71 @@ func NewEnvironmentHandler(group *gin.RouterGroup, environmentService *services.
 		apiGroup.DELETE("/:id/stacks/:stackId/destroy", handler.DestroyStack)
 		apiGroup.GET("/:id/stacks/:stackId/logs/stream", handler.GetStackLogsStream)
 		apiGroup.POST("/:id/stacks/convert", handler.ConvertDockerRun)
+
+		// Agent pairing (local env only)
+		apiGroup.POST("/:id/agent/pair", handler.PairAgent)
 	}
+}
+
+// PairAgent issues or rotates the agent token. Requires:
+// - id == "0"
+// - AGENT_BOOTSTRAP_TOKEN header: X-Arcane-Agent-Bootstrap (validated in middleware)
+func (h *EnvironmentHandler) PairAgent(c *gin.Context) {
+	if c.Param("id") != LOCAL_DOCKER_ENVIRONMENT_ID {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Not found"}})
+		return
+	}
+	// Optional rotate flag (ignored for now)
+	type pairReq struct {
+		Rotate *bool `json:"rotate,omitempty"`
+	}
+	var req pairReq
+	_ = c.ShouldBindJSON(&req)
+
+	if h.cfg.AgentToken == "" || (req.Rotate != nil && *req.Rotate) {
+		h.cfg.AgentToken = utils.GenerateRandomString(48)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"token": h.cfg.AgentToken,
+		},
+	})
+}
+
+func (h *EnvironmentHandler) pairWithAgent(ctx context.Context, apiUrl, bootstrapToken string) (string, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(apiUrl, "/")+"/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/agent/pair", nil)
+	if err != nil {
+		return "", fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("X-Arcane-Agent-Bootstrap", bootstrapToken)
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var parsed struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Token string `json:"token"`
+		} `json:"data"`
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return "", fmt.Errorf("decode response: %w", err)
+	}
+	if !parsed.Success || parsed.Data.Token == "" {
+		return "", fmt.Errorf("pairing unsuccessful")
+	}
+	return parsed.Data.Token, nil
 }
 
 func (h *EnvironmentHandler) routeRequest(c *gin.Context, endpoint string) {
@@ -310,109 +386,91 @@ func (h *EnvironmentHandler) handleStackEndpoints(c *gin.Context, endpoint strin
 
 func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID string, endpoint string) {
 	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), environmentID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Environment not found"},
-		})
+	if err != nil || environment == nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found"}})
 		return
 	}
-
 	if !environment.Enabled {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Environment is disabled"},
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Environment is disabled"}})
 		return
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	url := environment.ApiUrl + "/api" + endpoint
+	target := strings.TrimRight(environment.ApiUrl, "/") +
+		"/api/environments/" + LOCAL_DOCKER_ENVIRONMENT_ID + endpoint
+	if qs := c.Request.URL.RawQuery; qs != "" {
+		target += "?" + qs
+	}
 
 	var reqBody io.Reader
 	if c.Request.Body != nil {
-		bodyBytes, err := io.ReadAll(c.Request.Body)
-		if err == nil && len(bodyBytes) > 0 {
-			reqBody = bytes.NewBuffer(bodyBytes)
-		}
+		buf, _ := io.ReadAll(c.Request.Body)
+		// reset original body in case other middlewares need it later
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(buf))
+		reqBody = bytes.NewReader(buf)
 	}
 
-	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, url, reqBody)
+	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, target, reqBody)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to create request",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to create proxy request"}})
 		return
 	}
 
-	skipHeaders := map[string]struct{}{
-		"Host":           {},
-		"Content-Length": {},
-		"Connection":     {},
+	// Copy headers except hop-by-hop and Authorization (we’ll set explicitly)
+	skip := map[string]struct{}{
+		"Host":                {},
+		"Connection":          {},
+		"Keep-Alive":          {},
+		"Proxy-Authenticate":  {},
+		"Proxy-Authorization": {},
+		"Te":                  {},
+		"Trailer":             {},
+		"Transfer-Encoding":   {},
+		"Upgrade":             {},
+		"Content-Length":      {},
+	}
+	for k, vs := range c.Request.Header {
+		ck := http.CanonicalHeaderKey(k)
+		if _, ok := skip[ck]; ok || ck == "Authorization" {
+			continue
+		}
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
 	}
 
-	for key, values := range c.Request.Header {
-		upperKey := http.CanonicalHeaderKey(key)
-		if _, skip := skipHeaders[upperKey]; skip {
-			continue
-		}
-		if strings.HasPrefix(upperKey, "X-Forwarded-") {
-			continue
-		}
-		if upperKey == "Authorization" {
-			if auth := c.GetHeader("Authorization"); auth != "" {
-				req.Header.Set("Authorization", auth)
-			}
-			continue
-		}
-		for _, value := range values {
-			req.Header.Add(key, value)
-		}
+	// Forward Authorization (or promote token cookie)
+	if auth := c.GetHeader("Authorization"); auth != "" {
+		req.Header.Set("Authorization", auth)
+	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
+		req.Header.Set("Authorization", "Bearer "+cookieToken)
 	}
+
+	// Forward agent token if we have one
+	if environment.AccessToken != nil && *environment.AccessToken != "" {
+		req.Header.Set("X-Arcane-Agent-Token", *environment.AccessToken)
+	}
+
+	// Mark as proxied by manager (agent can trust this in AgentMode)
+	req.Header.Set("X-Arcane-Agent-Proxy", "1")
 
 	req.Header.Set("X-Forwarded-For", c.ClientIP())
 	req.Header.Set("X-Forwarded-Host", c.Request.Host)
-	req.Header.Set("X-Forwarded-Proto", c.Request.URL.Scheme)
 
-	q := req.URL.Query()
-	for key, values := range c.Request.URL.Query() {
-		for _, value := range values {
-			q.Add(key, value)
-		}
-	}
-	req.URL.RawQuery = q.Encode()
-
+	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		_ = h.environmentService.UpdateEnvironmentStatus(c.Request.Context(), environmentID, "offline")
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"success": false,
-			"error":   fmt.Sprintf("Failed to connect to environment: %v", err),
-		})
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": fmt.Sprintf("Proxy request failed: %v", err)}})
 		return
 	}
 	defer resp.Body.Close()
 
-	_ = h.environmentService.UpdateEnvironmentHeartbeat(c.Request.Context(), environmentID)
-
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to read response",
-		})
-		return
-	}
-
-	for key, values := range resp.Header {
-		for _, value := range values {
-			c.Header(key, value)
+	for k, vs := range resp.Header {
+		for _, v := range vs {
+			c.Writer.Header().Add(k, v)
 		}
 	}
-
 	c.Status(resp.StatusCode)
-	_, _ = c.Writer.Write(responseBody)
+	_, _ = io.Copy(c.Writer, resp.Body)
 }
 
 // Create
@@ -423,35 +481,41 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		return
 	}
 
-	environment := &models.Environment{
-		Hostname:    req.Hostname,
-		ApiUrl:      req.ApiUrl,
-		Description: req.Description,
-		Enabled:     true,
+	env := &models.Environment{
+		ApiUrl:  req.ApiUrl,
+		Enabled: true,
 	}
 	if req.Enabled != nil {
-		environment.Enabled = *req.Enabled
+		env.Enabled = *req.Enabled
 	}
 
-	createdEnvironment, err := h.environmentService.CreateEnvironment(c.Request.Context(), environment)
+	// If accessToken is not provided but bootstrapToken is, auto-pair to get the token
+	if (req.AccessToken == nil || *req.AccessToken == "") && req.BootstrapToken != nil && *req.BootstrapToken != "" {
+		if token, err := h.pairWithAgent(c.Request.Context(), req.ApiUrl, *req.BootstrapToken); err == nil && token != "" {
+			env.AccessToken = &token
+		} else if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Agent pairing failed: " + err.Error()}})
+			return
+		}
+	} else if req.AccessToken != nil && *req.AccessToken != "" {
+		env.AccessToken = req.AccessToken
+	}
+
+	created, err := h.environmentService.CreateEnvironment(c.Request.Context(), env)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to create environment: " + err.Error()}})
 		return
 	}
 
-	out, mapErr := dto.MapOne[*models.Environment, dto.EnvironmentDto](createdEnvironment)
+	out, mapErr := dto.MapOne[*models.Environment, dto.EnvironmentDto](created)
 	if mapErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to map environment"}})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	c.JSON(http.StatusCreated, gin.H{"success": true, "data": out})
 }
 
-// List (paginated)
 func (h *EnvironmentHandler) ListEnvironments(c *gin.Context) {
 	var req utils.SortedPaginationRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -506,45 +570,54 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 
 	var req dto.UpdateEnvironmentDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid request format: " + err.Error()}})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid request body"}})
 		return
 	}
 
-	updates := make(map[string]interface{})
-	if req.Hostname != nil {
-		updates["hostname"] = *req.Hostname
-	}
+	updates := map[string]interface{}{}
 	if req.ApiUrl != nil {
 		updates["api_url"] = *req.ApiUrl
-	}
-	if req.Description != nil {
-		updates["description"] = *req.Description
 	}
 	if req.Enabled != nil {
 		updates["enabled"] = *req.Enabled
 	}
 
-	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "No fields to update"}})
-		return
+	// If caller asked to pair (bootstrapToken present) and no accessToken provided in the request,
+	// fetch current apiUrl to know where to pair if apiUrl wasn't updated above.
+	if (req.AccessToken == nil) && req.BootstrapToken != nil && *req.BootstrapToken != "" {
+		// Get current environment to resolve url
+		current, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), environmentID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found"}})
+			return
+		}
+		apiUrl := current.ApiUrl
+		if req.ApiUrl != nil && *req.ApiUrl != "" {
+			apiUrl = *req.ApiUrl
+		}
+		if token, err := h.pairWithAgent(c.Request.Context(), apiUrl, *req.BootstrapToken); err == nil && token != "" {
+			updates["access_token"] = token
+		} else if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Agent pairing failed: " + err.Error()}})
+			return
+		}
+	} else if req.AccessToken != nil {
+		updates["access_token"] = *req.AccessToken
 	}
 
-	updatedEnvironment, err := h.environmentService.UpdateEnvironment(c.Request.Context(), environmentID, updates)
+	updated, err := h.environmentService.UpdateEnvironment(c.Request.Context(), environmentID, updates)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to update environment: " + err.Error()}})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to update environment"}})
 		return
 	}
 
-	out, mapErr := dto.MapOne[*models.Environment, dto.EnvironmentDto](updatedEnvironment)
+	out, mapErr := dto.MapOne[*models.Environment, dto.EnvironmentDto](updated)
 	if mapErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to map environment"}})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": out})
 }
 
 // Delete

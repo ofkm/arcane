@@ -62,11 +62,7 @@ func (s *EnvironmentService) ListEnvironmentsPaginated(ctx context.Context, req 
 
 	if req.Search != "" {
 		like := "%" + req.Search + "%"
-		q = q.Where(
-			s.db.Or("hostname ILIKE ?", like).
-				Or("api_url ILIKE ?", like).
-				Or("description ILIKE ?", like),
-		)
+		q = q.Where("api_url ILIKE ?", like)
 	}
 
 	if req.Filters != nil {

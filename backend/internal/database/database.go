@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -92,6 +94,9 @@ func connectDatabase(databaseURL string, environment string) (*DB, error) {
 		connString, err := parseSqliteConnectionString(databaseURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse SQLite connection string: %w", err)
+		}
+		if err := ensureSQLiteDirectory(connString); err != nil {
+			return nil, fmt.Errorf("failed to prepare SQLite directory: %w", err)
 		}
 		dialector = glsqlite.Open(connString)
 	case strings.HasPrefix(databaseURL, "postgres"):
@@ -196,4 +201,32 @@ func (db *DB) Close() error {
 		return err
 	}
 	return sqlDB.Close()
+}
+
+// Create parent directory for file-based SQLite if needed
+func ensureSQLiteDirectory(connString string) error {
+	if !strings.HasPrefix(connString, "file:") {
+		return nil
+	}
+	u, err := url.Parse(connString)
+	if err != nil {
+		return fmt.Errorf("failed to parse SQLite DSN: %w", err)
+	}
+
+	// For "file:data/arcane.db?...", path is in Opaque; for "file:/abs/path.db", it's in Path
+	pathPart := u.Opaque
+	if pathPart == "" {
+		pathPart = u.Path
+	}
+	// Trim leading slash to handle file:/relative.db
+	pathPart = strings.TrimPrefix(pathPart, "/")
+	if pathPart == "" || strings.HasPrefix(pathPart, ":memory:") {
+		return nil
+	}
+
+	dir := filepath.Dir(pathPart)
+	if dir == "" || dir == "." {
+		return nil
+	}
+	return os.MkdirAll(dir, 0o755)
 }

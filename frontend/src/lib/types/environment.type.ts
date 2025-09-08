@@ -1,15 +1,16 @@
 import type { Environment } from '$lib/stores/environment.store';
 
 export interface CreateEnvironmentDTO {
-	hostname: string;
 	apiUrl: string;
-	description?: string;
+	accessToken?: string;
+	bootstrapToken?: string;
 }
 
 export interface UpdateEnvironmentDTO {
-	hostname?: string;
 	apiUrl?: string;
-	description?: string;
+	enabled?: boolean;
+	accessToken?: string;
+	bootstrapToken?: string;
 }
 
 export interface EnvironmentResponse {

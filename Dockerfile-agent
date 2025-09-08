@@ -1,0 +1,49 @@
+# Build agent binary (no frontend)
+FROM golang:1.25-alpine AS agent-builder
+ARG BUILD_TAGS="exclude_frontend"
+WORKDIR /build
+
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Go deps
+COPY ./backend/go.mod ./backend/go.sum ./
+RUN go mod download
+
+# Source
+COPY ./backend ./backend
+
+# Build agent binary
+WORKDIR /build/backend
+RUN CGO_ENABLED=0 \
+    GOOS=linux \
+    go build \
+    -tags "${BUILD_TAGS}" \
+    -ldflags='-w -s' \
+    -trimpath \
+    -o /out/arcane-agent \
+    ./cmd/main.go
+
+# Runtime
+FROM alpine:3 AS agent
+
+RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl shadow su-exec docker docker-compose
+
+RUN delgroup ping && apk del iputils
+
+WORKDIR /app
+RUN mkdir -p /app/data && chmod 755 /app/data
+
+# Copy agent binary and entrypoint
+COPY --from=agent-builder /out/arcane-agent /usr/local/bin/arcane-agent
+COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# Default env
+ENV GIN_MODE=release \
+    PORT=3553 \
+    AGENT_MODE=true
+
+EXPOSE 3553
+VOLUME ["/app/data"]
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["/usr/local/bin/arcane-agent"]

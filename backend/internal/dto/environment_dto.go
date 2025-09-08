@@ -1,17 +1,17 @@
 package dto
 
 type CreateEnvironmentDto struct {
-	Hostname    string  `json:"hostname" binding:"required"`
-	ApiUrl      string  `json:"apiUrl" binding:"required,url"`
-	Description *string `json:"description"`
-	Enabled     *bool   `json:"enabled"`
+	ApiUrl         string  `json:"apiUrl" binding:"required,url"`
+	Enabled        *bool   `json:"enabled,omitempty"`
+	AccessToken    *string `json:"accessToken,omitempty"`
+	BootstrapToken *string `json:"bootstrapToken,omitempty"`
 }
 
 type UpdateEnvironmentDto struct {
-	Hostname    *string `json:"hostname"`
-	ApiUrl      *string `json:"apiUrl"`
-	Description *string `json:"description"`
-	Enabled     *bool   `json:"enabled"`
+	ApiUrl         *string `json:"apiUrl,omitempty"`
+	Enabled        *bool   `json:"enabled,omitempty"`
+	AccessToken    *string `json:"accessToken,omitempty"`
+	BootstrapToken *string `json:"bootstrapToken,omitempty"`
 }
 
 type TestConnectionDto struct {
@@ -20,13 +20,11 @@ type TestConnectionDto struct {
 }
 
 type EnvironmentDto struct {
-	ID          string  `json:"id"`
-	Hostname    string  `json:"hostname"`
-	ApiUrl      string  `json:"apiUrl"`
-	Description *string `json:"description,omitempty"`
-	Status      string  `json:"status"`
-	Enabled     bool    `json:"enabled"`
-	LastSeen    *string `json:"lastSeen,omitempty"`
-	CreatedAt   string  `json:"createdAt"`
-	UpdatedAt   *string `json:"updatedAt,omitempty"`
+	ID        string  `json:"id"`
+	ApiUrl    string  `json:"apiUrl"`
+	Status    string  `json:"status"`
+	Enabled   bool    `json:"enabled"`
+	LastSeen  *string `json:"lastSeen,omitempty"`
+	CreatedAt string  `json:"createdAt"`
+	UpdatedAt *string `json:"updatedAt,omitempty"`
 }
