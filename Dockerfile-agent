@@ -1,4 +1,4 @@
-# Build agent binary (no frontend)
+# Build agent binary
 FROM golang:1.25-alpine AS agent-builder
 ARG BUILD_TAGS="exclude_frontend"
 WORKDIR /build
@@ -10,7 +10,6 @@ RUN go mod download
 
 COPY ./backend ./backend
 
-# Build agent binary
 WORKDIR /build/backend
 RUN CGO_ENABLED=0 \
     GOOS=linux \
@@ -23,14 +22,9 @@ RUN CGO_ENABLED=0 \
 
 ARG COMPOSE_VERSION=2.39.2
 ARG TARGETARCH
-RUN set -eux; \
-    case "${TARGETARCH:-amd64}" in \
-      amd64) ARCH=x86_64 ;; \
-      arm64) ARCH=aarch64 ;; \
-      *) ARCH="${TARGETARCH:-x86_64}" ;; \
-    esac; \
-    curl -fsSL -o /out/docker-compose "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${ARCH}"; \
-    chmod +x /out/docker-compose
+COPY scripts/development/download-compose.sh /tmp/download-compose.sh
+RUN set -eux; chmod +x /tmp/download-compose.sh; \
+    /tmp/download-compose.sh "${COMPOSE_VERSION}" "/out/docker-compose" "${TARGETARCH}"
 
 FROM alpine:3 AS agent
 RUN apk --no-cache add ca-certificates tzdata curl su-exec
@@ -46,9 +40,8 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 ENV GIN_MODE=release \
     PORT=3553 \
-    AGENT_MODE=true
-
-ENV ENVIRONMENT=production
+    AGENT_MODE=true \
+    ENVIRONMENT=production
 
 EXPOSE 3553
 VOLUME ["/app/data"]
