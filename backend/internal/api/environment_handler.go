@@ -28,7 +28,7 @@ type EnvironmentHandler struct {
 	stackService       *services.StackService
 	settingsService    *services.SettingsService
 	imageUpdateService *services.ImageUpdateService
-	updaterService     *services.UpdaterService // NEW
+	updaterService     *services.UpdaterService
 	cfg                *config.Config
 }
 
@@ -38,7 +38,7 @@ func NewEnvironmentHandler(
 	containerService *services.ContainerService,
 	imageService *services.ImageService,
 	imageUpdateService *services.ImageUpdateService,
-	updaterService *services.UpdaterService, // NEW
+	updaterService *services.UpdaterService,
 	networkService *services.NetworkService,
 	volumeService *services.VolumeService,
 	stackService *services.StackService,
@@ -52,7 +52,7 @@ func NewEnvironmentHandler(
 		containerService:   containerService,
 		imageService:       imageService,
 		imageUpdateService: imageUpdateService,
-		updaterService:     updaterService, // NEW
+		updaterService:     updaterService,
 		networkService:     networkService,
 		volumeService:      volumeService,
 		stackService:       stackService,
