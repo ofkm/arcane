@@ -558,13 +558,43 @@ func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID s
 	}
 	defer resp.Body.Close()
 
+	// Skip hop-by-hop headers and any named in the Connection header (RFC 7230)
+	hop := map[string]struct{}{
+		http.CanonicalHeaderKey("Connection"):          {},
+		http.CanonicalHeaderKey("Keep-Alive"):          {},
+		http.CanonicalHeaderKey("Proxy-Authenticate"):  {},
+		http.CanonicalHeaderKey("Proxy-Authorization"): {},
+		http.CanonicalHeaderKey("TE"):                  {},
+		http.CanonicalHeaderKey("Trailers"):            {},
+		http.CanonicalHeaderKey("Trailer"):             {},
+		http.CanonicalHeaderKey("Transfer-Encoding"):   {},
+		http.CanonicalHeaderKey("Upgrade"):             {},
+	}
+
+	for _, connVal := range resp.Header.Values("Connection") {
+		for _, token := range strings.Split(connVal, ",") {
+			if t := strings.TrimSpace(token); t != "" {
+				hop[http.CanonicalHeaderKey(t)] = struct{}{}
+			}
+		}
+	}
+
+	// Copy response headers except hop-by-hop
 	for k, vs := range resp.Header {
+		ck := http.CanonicalHeaderKey(k)
+		if _, ok := hop[ck]; ok {
+			continue
+		}
 		for _, v := range vs {
 			c.Writer.Header().Add(k, v)
 		}
 	}
+
 	c.Status(resp.StatusCode)
-	_, _ = io.Copy(c.Writer, resp.Body)
+
+	if c.Request.Method != http.MethodHead {
+		_, _ = io.Copy(c.Writer, resp.Body)
+	}
 }
 
 // Create

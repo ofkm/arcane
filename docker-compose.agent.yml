@@ -2,7 +2,7 @@ services:
   arcane-agent:
     build:
       context: .
-      dockerfile: Dockerfile-agent
+      dockerfile: docker/Dockerfile-agent
       target: agent
       args:
         BUILD_TAGS: exclude_frontend
