@@ -21,14 +21,25 @@ func InitEncryption(cfg *config.Config) {
 	keyString := strings.TrimSpace(cfg.EncryptionKey)
 
 	if keyString == "" {
-		if cfg.Environment == "production" {
+		if cfg.Environment == "production" && !cfg.AgentMode {
 			panic("ENCRYPTION_KEY is required in production environment")
 		}
-		slog.Warn("No ENCRYPTION_KEY provided; deriving development key")
-		sum := sha256.Sum256([]byte("arcane-dev-key"))
+
+		var seed, mode string
+		if cfg.AgentMode {
+			slog.Warn("No ENCRYPTION_KEY provided; running in agent mode with derived key")
+			seed = "arcane-agent-key"
+			mode = "derived-agent"
+		} else {
+			slog.Warn("No ENCRYPTION_KEY provided; deriving development key")
+			seed = "arcane-dev-key"
+			mode = "derived-dev"
+		}
+
+		sum := sha256.Sum256([]byte(seed))
 		encryptionKey = sum[:]
-		if cfg.Environment != "production" {
-			slog.Info("Encryption initialized", "env", cfg.Environment, "key_length_bytes", len(encryptionKey), "mode", "derived-dev")
+		if cfg.Environment != "production" || cfg.AgentMode {
+			slog.Info("Encryption initialized", "env", cfg.Environment, "key_length_bytes", len(encryptionKey), "mode", mode)
 		}
 		return
 	}

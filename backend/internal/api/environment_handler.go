@@ -2,8 +2,6 @@ package api
 
 import (
 	"bytes"
-	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,10 +26,11 @@ type EnvironmentHandler struct {
 	networkService     *services.NetworkService
 	volumeService      *services.VolumeService
 	stackService       *services.StackService
+	settingsService    *services.SettingsService
 	cfg                *config.Config
 }
 
-func NewEnvironmentHandler(group *gin.RouterGroup, environmentService *services.EnvironmentService, containerService *services.ContainerService, imageService *services.ImageService, networkService *services.NetworkService, volumeService *services.VolumeService, stackService *services.StackService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
+func NewEnvironmentHandler(group *gin.RouterGroup, environmentService *services.EnvironmentService, containerService *services.ContainerService, imageService *services.ImageService, networkService *services.NetworkService, volumeService *services.VolumeService, stackService *services.StackService, settingsService *services.SettingsService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
 
 	handler := &EnvironmentHandler{
 		environmentService: environmentService,
@@ -40,6 +39,7 @@ func NewEnvironmentHandler(group *gin.RouterGroup, environmentService *services.
 		networkService:     networkService,
 		volumeService:      volumeService,
 		stackService:       stackService,
+		settingsService:    settingsService,
 		cfg:                cfg,
 	}
 
@@ -103,20 +103,15 @@ func NewEnvironmentHandler(group *gin.RouterGroup, environmentService *services.
 		apiGroup.GET("/:id/stacks/:stackId/logs/stream", handler.GetStackLogsStream)
 		apiGroup.POST("/:id/stacks/convert", handler.ConvertDockerRun)
 
-		// Agent pairing (local env only)
 		apiGroup.POST("/:id/agent/pair", handler.PairAgent)
 	}
 }
 
-// PairAgent issues or rotates the agent token. Requires:
-// - id == "0"
-// - AGENT_BOOTSTRAP_TOKEN header: X-Arcane-Agent-Bootstrap (validated in middleware)
 func (h *EnvironmentHandler) PairAgent(c *gin.Context) {
 	if c.Param("id") != LOCAL_DOCKER_ENVIRONMENT_ID {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Not found"}})
 		return
 	}
-	// Optional rotate flag (ignored for now)
 	type pairReq struct {
 		Rotate *bool `json:"rotate,omitempty"`
 	}
@@ -127,46 +122,18 @@ func (h *EnvironmentHandler) PairAgent(c *gin.Context) {
 		h.cfg.AgentToken = utils.GenerateRandomString(48)
 	}
 
+	// Persist token on the agent so it survives restarts
+	if err := h.settingsService.SetStringSetting(c.Request.Context(), "agentToken", h.cfg.AgentToken); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to persist agent token"}})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
 			"token": h.cfg.AgentToken,
 		},
 	})
-}
-
-func (h *EnvironmentHandler) pairWithAgent(ctx context.Context, apiUrl, bootstrapToken string) (string, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(apiUrl, "/")+"/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/agent/pair", nil)
-	if err != nil {
-		return "", fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("X-Arcane-Agent-Bootstrap", bootstrapToken)
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var parsed struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Token string `json:"token"`
-		} `json:"data"`
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return "", fmt.Errorf("decode response: %w", err)
-	}
-	if !parsed.Success || parsed.Data.Token == "" {
-		return "", fmt.Errorf("pairing unsuccessful")
-	}
-	return parsed.Data.Token, nil
 }
 
 func (h *EnvironmentHandler) routeRequest(c *gin.Context, endpoint string) {
@@ -491,9 +458,9 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		env.Enabled = *req.Enabled
 	}
 
-	// If accessToken is not provided but bootstrapToken is, auto-pair to get the token
+	// Auto-pair with agent if bootstrap token is provided
 	if (req.AccessToken == nil || *req.AccessToken == "") && req.BootstrapToken != nil && *req.BootstrapToken != "" {
-		if token, err := h.pairWithAgent(c.Request.Context(), req.ApiUrl, *req.BootstrapToken); err == nil && token != "" {
+		if token, err := h.environmentService.PairAgentWithBootstrap(c.Request.Context(), req.ApiUrl, *req.BootstrapToken); err == nil && token != "" {
 			env.AccessToken = &token
 		} else if err != nil {
 			c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Agent pairing failed: " + err.Error()}})
@@ -585,11 +552,10 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	}
 
 	// If caller asked to pair (bootstrapToken present) and no accessToken provided in the request,
-	// fetch current apiUrl to know where to pair if apiUrl wasn't updated above.
+	// resolve apiUrl (current or updated) and let the service pair and persist the token.
 	if (req.AccessToken == nil) && req.BootstrapToken != nil && *req.BootstrapToken != "" {
-		// Get current environment to resolve url
 		current, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), environmentID)
-		if err != nil {
+		if err != nil || current == nil {
 			c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found"}})
 			return
 		}
@@ -597,9 +563,7 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 		if req.ApiUrl != nil && *req.ApiUrl != "" {
 			apiUrl = *req.ApiUrl
 		}
-		if token, err := h.pairWithAgent(c.Request.Context(), apiUrl, *req.BootstrapToken); err == nil && token != "" {
-			updates["access_token"] = token
-		} else if err != nil {
+		if _, err := h.environmentService.PairAndPersistAgentToken(c.Request.Context(), environmentID, apiUrl, *req.BootstrapToken); err != nil {
 			c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Agent pairing failed: " + err.Error()}})
 			return
 		}

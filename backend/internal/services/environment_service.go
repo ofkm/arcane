@@ -2,9 +2,12 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -213,4 +216,54 @@ func (s *EnvironmentService) IsEnvironmentOnline(environment *models.Environment
 
 	timeoutDuration := time.Duration(timeoutMinutes) * time.Minute
 	return time.Since(*environment.LastSeen) < timeoutDuration
+}
+
+func (s *EnvironmentService) PairAgentWithBootstrap(ctx context.Context, apiUrl, bootstrapToken string) (string, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(apiUrl, "/")+"/api/environments/0/agent/pair", nil)
+	if err != nil {
+		return "", fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("X-Arcane-Agent-Bootstrap", bootstrapToken)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var parsed struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Token string `json:"token"`
+		} `json:"data"`
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return "", fmt.Errorf("decode response: %w", err)
+	}
+	if !parsed.Success || parsed.Data.Token == "" {
+		return "", fmt.Errorf("pairing unsuccessful")
+	}
+
+	return parsed.Data.Token, nil
+}
+
+func (s *EnvironmentService) PairAndPersistAgentToken(ctx context.Context, environmentID, apiUrl, bootstrapToken string) (string, error) {
+	token, err := s.PairAgentWithBootstrap(ctx, apiUrl, bootstrapToken)
+	if err != nil {
+		return "", err
+	}
+	if err := s.db.WithContext(ctx).
+		Model(&models.Environment{}).
+		Where("id = ?", environmentID).
+		Update("access_token", token).Error; err != nil {
+		return "", fmt.Errorf("failed to persist agent token: %w", err)
+	}
+	return token, nil
 }

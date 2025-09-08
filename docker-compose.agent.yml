@@ -13,10 +13,8 @@ services:
     environment:
       - AGENT_MODE=true
       # Required for auto-pairing from the manager (use the same value as bootstrapToken in the manager Create/Update call)
-      # - AGENT_BOOTSTRAP_TOKEN=this-is-my-test-bs-token
-      - AGENT_TOKEN=KcN1hzVSYo7yGIieMVCP-w_pcVDjXgz5AYvCOQbRU7-4a5gA
-      # Encryption key for at-rest secrets (32+ bytes, base64 OK)
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-kqRNG7bBrN9e7lagJbEkv4Zj3kA8qShQZgBok5X+h6g=}
+      - AGENT_BOOTSTRAP_TOKEN=this-is-my-test-bs-token
+      # - AGENT_TOKEN=KcN1hzVSYo7yGIieMVCP-w_pcVDjXgz5AYvCOQbRU7-4a5gA
       # Optional: override DB location (defaults to SQLite in /app/data)
       # - DATABASE_URL=file:/app/data/arcane.db?_pragma=journal_mode(WAL)&_pragma=busy_timeout(2500)&_txlock=immediate
       - PUID=1000

@@ -34,7 +34,7 @@ func InitializeApp() (*App, error) {
 	ctx := context.Background()
 	loadErr := godotenv.Load()
 	cfg := config.Load()
-	utils.InitEncryption(cfg)
+
 	SetupLogger(cfg)
 	ConfigureGormLogger(cfg)
 
@@ -57,7 +57,24 @@ func InitializeApp() (*App, error) {
 		return nil, fmt.Errorf("services initialization failed: %w", err)
 	}
 
-	// Ensure default settings (safe in agent), but skip user bootstrap in agent mode
+	if cfg.AgentMode && cfg.AgentToken == "" {
+		if tok := appServices.Settings.GetStringSetting(appCtx, "agentToken", ""); tok != "" {
+			cfg.AgentToken = tok
+			slog.InfoContext(appCtx, "Loaded agent token from database")
+		}
+	}
+
+	if cfg.AgentMode || cfg.Environment != "production" {
+		if key, err := appServices.Settings.EnsureEncryptionKey(appCtx); err != nil {
+			slog.WarnContext(appCtx, "Failed to ensure encryption key; falling back to derived behavior",
+				slog.String("error", err.Error()))
+		} else {
+			cfg.EncryptionKey = key
+		}
+	}
+	utils.InitEncryption(cfg)
+
+	// Ensure default settings but skip user bootstrap in agent mode
 	slog.InfoContext(appCtx, "Ensuring default settings are initialized")
 	if err := appServices.Settings.EnsureDefaultSettings(appCtx); err != nil {
 		slog.WarnContext(appCtx, "Failed to initialize default settings",
@@ -90,7 +107,6 @@ func InitializeApp() (*App, error) {
 		slog.InfoContext(appCtx, "Initial Docker image synchronization complete")
 	}
 
-	// Skip default admin creation and OIDC in agent mode
 	if !cfg.AgentMode {
 		if err := appServices.User.CreateDefaultAdmin(); err != nil {
 			slog.WarnContext(appCtx, "Failed to create default admin user",

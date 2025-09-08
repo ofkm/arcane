@@ -2,12 +2,15 @@ package services
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/ofkm/arcane-backend/internal/config"
@@ -326,4 +329,43 @@ func (s *SettingsService) SetIntSetting(ctx context.Context, key string, value i
 
 func (s *SettingsService) SetStringSetting(ctx context.Context, key, value string) error {
 	return s.UpdateSetting(ctx, key, value)
+}
+
+func (s *SettingsService) EnsureEncryptionKey(ctx context.Context) (string, error) {
+	const keyName = "encryptionKey"
+
+	var sv models.SettingVariable
+	err := s.db.WithContext(ctx).
+		Where("key = ?", keyName).
+		First(&sv).Error
+
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", fmt.Errorf("failed to load encryption key: %w", err)
+	}
+
+	if sv.Value != "" {
+		return sv.Value, nil
+	}
+
+	// Generate uuid -> sha256 -> base64 key (32 bytes)
+	u := uuid.New().String()
+	sum := sha256.Sum256([]byte(u))
+	key := base64.StdEncoding.EncodeToString(sum[:])
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		if createErr := s.db.WithContext(ctx).
+			Create(&models.SettingVariable{Key: keyName, Value: key}).Error; createErr != nil {
+			return "", fmt.Errorf("failed to persist encryption key: %w", createErr)
+		}
+		return key, nil
+	}
+
+	if updErr := s.db.WithContext(ctx).
+		Model(&models.SettingVariable{}).
+		Where("key = ?", keyName).
+		Update("value", key).Error; updErr != nil {
+		return "", fmt.Errorf("failed to update encryption key: %w", updErr)
+	}
+
+	return key, nil
 }
