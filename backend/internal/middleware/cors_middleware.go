@@ -41,8 +41,6 @@ func (m *CORSMiddleware) Add() gin.HandlerFunc {
 		"Cache-Control",
 		"Origin",
 		"Referer",
-		"Host",
-		"Connection",
 		"X-Arcane-Agent-Token",
 	}
 	conf.ExposeHeaders = []string{
