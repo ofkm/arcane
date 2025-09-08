@@ -21,11 +21,13 @@
 	let isSubmitting = $state(false);
 
 	const formSchema = z.object({
+		name: z.string().min(1, 'Name is required').max(25, 'Name too long'),
 		apiUrl: z.url('Must be a valid URL').min(1, 'Server URL is required'),
 		bootstrapToken: z.string()
 	});
 
 	let formData = $state({
+		name: '',
 		apiUrl: '',
 		bootstrapToken: ''
 	});
@@ -40,6 +42,7 @@
 			isSubmitting = true;
 
 			const dto: CreateEnvironmentDTO = {
+				name: data.name,
 				apiUrl: data.apiUrl,
 				bootstrapToken: data.bootstrapToken
 			};
@@ -94,6 +97,8 @@
 				</Card.Header>
 				<Card.Content>
 					<form onsubmit={preventDefault(handleSubmit)} class="space-y-4">
+						<FormInput label="Name" placeholder="My Lab Server" bind:input={$inputs.name} />
+
 						<FormInput
 							label="Server URL *"
 							type="text"

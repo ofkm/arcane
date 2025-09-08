@@ -46,12 +46,10 @@
 	}
 
 	function getEnvLabel(env: Environment): string {
-		if (env.isLocal) return 'Local Docker';
-		try {
-			const u = new URL(env.apiUrl);
-			return u.host || env.apiUrl;
-		} catch {
-			return env.apiUrl;
+		if (env.isLocal) {
+			return 'Local Docker';
+		} else {
+			return env.name;
 		}
 	}
 </script>

@@ -14,7 +14,6 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { toast } from 'svelte-sonner';
-	import { formatDistanceToNow } from 'date-fns';
 	import { environmentManagementAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
@@ -31,15 +30,6 @@
 	} = $props();
 
 	let isLoading = $state({ removing: false, testing: false });
-
-	function envLabel(env: Environment): string {
-		try {
-			const u = new URL(env.apiUrl);
-			return u.host || env.apiUrl;
-		} catch {
-			return env.apiUrl;
-		}
-	}
 
 	async function handleDeleteSelected(ids: string[]) {
 		if (!ids?.length) return;
@@ -125,18 +115,13 @@
 		isLoading.testing = false;
 	}
 
-	function formatLastSeen(lastSeen?: string | null) {
-		if (!lastSeen) return 'Never';
-		return `${formatDistanceToNow(new Date(lastSeen))} ago`;
-	}
-
 	const columns = [
 		{ accessorKey: 'id', title: 'ID', hidden: true },
 		{
-			id: 'environment',
-			title: 'Environment',
+			id: 'name',
+			title: 'Friendly Name',
 			sortable: true,
-			accessorFn: (row) => envLabel(row),
+			accessorFn: (row) => row.name,
 			cell: EnvironmentCell
 		},
 		{
@@ -172,7 +157,7 @@
 			></div>
 		</div>
 		<div>
-			<div class="font-medium">{envLabel(item)}</div>
+			<div class="font-medium">{item.name}</div>
 			<div class="text-muted-foreground font-mono text-xs">{item.id}</div>
 		</div>
 	</div>
@@ -213,7 +198,7 @@
 				<DropdownMenu.Separator />
 				<DropdownMenu.Item
 					variant="destructive"
-					onclick={() => handleDeleteOne(item.id, envLabel(item))}
+					onclick={() => handleDeleteOne(item.id, item.name)}
 					disabled={isLoading.removing}
 				>
 					<Trash2Icon class="size-4" />

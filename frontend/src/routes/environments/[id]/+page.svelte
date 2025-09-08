@@ -17,16 +17,6 @@
 	let { data }: { data: PageData } = $props();
 	let { environment } = $derived(data);
 
-	function envLabel(env: { apiUrl?: string } | null | undefined): string {
-		if (!env?.apiUrl) return 'Environment';
-		try {
-			const u = new URL(env.apiUrl);
-			return u.host || env.apiUrl;
-		} catch {
-			return env.apiUrl;
-		}
-	}
-
 	let isRefreshing = $state(false);
 	let isTestingConnection = $state(false);
 	let isPairing = $state(false);
@@ -91,14 +81,14 @@
 		}
 	}
 
-	const environmentDisplayName = $derived(envLabel(environment));
+	const environmentDisplayName = $derived(environment.name);
 </script>
 
 <div class="space-y-6 pb-16">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
 			<Button variant="ghost" size="icon" onclick={() => goto('/environments')}>
-				<ArrowLeftIcon class="h-4 w-4" />
+				<ArrowLeftIcon class="size-4" />
 			</Button>
 			<div>
 				<h1 class="text-3xl font-bold tracking-tight">{environmentDisplayName}</h1>
@@ -108,17 +98,17 @@
 		<div class="flex items-center gap-2">
 			<Button variant="outline" onclick={testConnection} disabled={isTestingConnection}>
 				{#if isTestingConnection}
-					<RefreshCwIcon class="mr-2 h-4 w-4 animate-spin" />
+					<RefreshCwIcon class="mr-2 size-4 animate-spin" />
 				{:else}
-					<TerminalIcon class="mr-2 h-4 w-4" />
+					<TerminalIcon class="mr-2 size-4" />
 				{/if}
 				Test Connection
 			</Button>
 			<Button onclick={refreshEnvironment} disabled={isRefreshing}>
 				{#if isRefreshing}
-					<RefreshCwIcon class="mr-2 h-4 w-4 animate-spin" />
+					<RefreshCwIcon class="mr-2 size-4 animate-spin" />
 				{:else}
-					<RefreshCwIcon class="mr-2 h-4 w-4" />
+					<RefreshCwIcon class="mr-2 size-4" />
 				{/if}
 				Refresh
 			</Button>

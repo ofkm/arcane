@@ -454,6 +454,9 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		ApiUrl:  req.ApiUrl,
 		Enabled: true,
 	}
+	if req.Name != nil {
+		env.Name = *req.Name
+	}
 	if req.Enabled != nil {
 		env.Enabled = *req.Enabled
 	}
@@ -546,6 +549,9 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	updates := map[string]interface{}{}
 	if req.ApiUrl != nil {
 		updates["api_url"] = *req.ApiUrl
+	}
+	if req.Name != nil {
+		updates["name"] = *req.Name
 	}
 	if req.Enabled != nil {
 		updates["enabled"] = *req.Enabled
