@@ -1,5 +1,5 @@
 import BaseAPIService from './api-service';
-import type { Environment } from '$lib/stores/environment.store';
+import type { Environment } from '$lib/types/environment.type';
 import type { CreateEnvironmentDTO, UpdateEnvironmentDTO } from '$lib/types/environment.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
@@ -12,12 +12,6 @@ export default class EnvironmentManagementAPIService extends BaseAPIService {
 	async getEnvironments(options: SearchPaginationSortRequest): Promise<Paginated<Environment>> {
 		const res = await this.api.get('/environments', { params: options });
 		return res.data;
-	}
-
-	// Back-compat helper used by layout/env switcher
-	async list(): Promise<Environment[]> {
-		const res = await this.api.get('/environments', { params: { 'pagination.page': 1, 'pagination.limit': 1000 } });
-		return (res.data?.data as Environment[]) ?? [];
 	}
 
 	async get(environmentId: string): Promise<Environment> {

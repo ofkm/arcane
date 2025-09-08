@@ -19,15 +19,11 @@ const PROTECTED_RE = new RegExp(`^/(?:${PROTECTED_PREFIXES.map(escapeRe).join('|
 
 const isProtectedPath = (path: string) => {
 	const result = PROTECTED_RE.test(path);
-	console.log(`Testing path: "${path}" against regex | Result: ${result}`);
-	console.log(`Regex pattern: ${PROTECTED_RE.source}`);
 	return result;
 };
 
 export function getAuthRedirectPath(path: string, user: User | null, settings: Settings | null) {
 	const isSignedIn = !!user;
-
-	console.log(`Path: ${path}, isProtected: ${isProtectedPath(path)}, isSignedIn: ${isSignedIn}`);
 
 	const isUnauthenticatedOnlyPath =
 		path === '/auth/login' ||

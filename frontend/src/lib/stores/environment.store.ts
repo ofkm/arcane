@@ -1,25 +1,12 @@
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
-import { invalidateAll } from '$app/navigation';
-
-export type Environment = {
-	id: string;
-	hostname: string;
-	apiUrl: string;
-	description?: string;
-	status: 'online' | 'offline' | 'error';
-	enabled: boolean;
-	lastSeen?: string;
-	createdAt: string;
-	updatedAt?: string;
-	isLocal?: boolean;
-};
+import { goto } from '$app/navigation';
+import type { Environment } from '$lib/types/environment.type';
 
 export const LOCAL_DOCKER_ENVIRONMENT_ID = '0';
 
 export const localDockerEnvironment: Environment = {
 	id: LOCAL_DOCKER_ENVIRONMENT_ID,
-	hostname: 'Local Docker',
 	apiUrl: 'http://localhost',
 	status: 'online',
 	enabled: true,
@@ -116,7 +103,10 @@ function createEnvironmentManagementStore() {
 				}
 
 				if (browser) {
-					await invalidateAll();
+					await goto(window.location.pathname + window.location.search, {
+						replaceState: true,
+						invalidateAll: true
+					});
 				}
 			}
 		},

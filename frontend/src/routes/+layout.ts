@@ -5,6 +5,7 @@ import { versionService } from '$lib/services/app-version-service';
 import { tryCatch } from '$lib/utils/try-catch';
 import userStore from '$lib/stores/user-store';
 import settingsStore from '$lib/stores/config-store';
+import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
 export const ssr = false;
 
@@ -17,11 +18,18 @@ export const load = async () => {
 		return settingsAPI.getPublicSettings().catch(() => null);
 	});
 
+	const environmentRequestOptions: SearchPaginationSortRequest = {
+		pagination: {
+			page: 1,
+			limit: 1000
+		}
+	};
+
 	const environmentsPromise = userPromise.then(async (user) => {
 		if (!environmentStore.isInitialized() && user) {
-			const environments = await tryCatch(environmentManagementAPI.list());
+			const environments = await tryCatch(environmentManagementAPI.getEnvironments(environmentRequestOptions));
 			if (!environments.error) {
-				await environmentStore.initialize(environments.data || [], true);
+				await environmentStore.initialize(environments.data.data, true);
 			}
 		}
 		return null;

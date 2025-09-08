@@ -33,10 +33,7 @@
 			String(page.url.pathname).includes('/callback')
 	);
 
-	// const isLoginPage = $derived(page.url.pathname.startsWith('/auth/login'));
-
 	const redirectPath = getAuthRedirectPath(page.url.pathname, user, settings);
-	console.log(page.url.pathname);
 	if (redirectPath) {
 		goto(redirectPath);
 	}

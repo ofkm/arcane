@@ -38,7 +38,7 @@
 
 		{#if showButton}
 			<div class="mt-5 flex items-center justify-center gap-2">
-				<Button size="sm" href={actionHref}>{actionLabel}</Button>
+				<Button href={actionHref}>{actionLabel}</Button>
 			</div>
 		{/if}
 	</div>

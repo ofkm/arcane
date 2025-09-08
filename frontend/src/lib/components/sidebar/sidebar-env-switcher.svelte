@@ -7,7 +7,8 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import ServerIcon from '@lucide/svelte/icons/server';
-	import { environmentStore, type Environment } from '$lib/stores/environment.store';
+	import { environmentStore } from '$lib/stores/environment.store';
+	import type { Environment } from '$lib/types/environment.type';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 
@@ -43,6 +44,16 @@
 			toast.error('Failed to Connect to Environment');
 		}
 	}
+
+	function getEnvLabel(env: Environment): string {
+		if (env.isLocal) return 'Local Docker';
+		try {
+			const u = new URL(env.apiUrl);
+			return u.host || env.apiUrl;
+		} catch {
+			return env.apiUrl;
+		}
+	}
 </script>
 
 <Sidebar.Menu>
@@ -70,7 +81,7 @@
 							</div>
 							<div class="grid flex-1 text-left text-sm leading-tight">
 								<span class="truncate font-medium">
-									{currentSelectedEnvironment.hostname}
+									{getEnvLabel(currentSelectedEnvironment)}
 								</span>
 								<span class="truncate text-xs">
 									{currentSelectedEnvironment.isLocal ? 'unix:///var/run/docker.sock' : currentSelectedEnvironment.apiUrl}
@@ -116,7 +127,7 @@
 								{/if}
 							</div>
 							<div class="flex flex-col">
-								<span>{env.hostname}</span>
+								<span>{getEnvLabel(env)}</span>
 								{#if env.isLocal}
 									<span class="text-muted-foreground text-xs">unix:///var/run/docker.sock</span>
 								{:else}
@@ -126,8 +137,8 @@
 						</DropdownMenu.Item>
 					{/each}
 				{/if}
-				<DropdownMenu.Separator />
 				{#if isAdmin}
+					<DropdownMenu.Separator />
 					<DropdownMenu.Item class="gap-2 p-2" onSelect={() => goto('/environments')}>
 						<div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
 							<PlusIcon class="size-4" />

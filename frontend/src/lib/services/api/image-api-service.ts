@@ -6,28 +6,6 @@ export default class ImageAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.get('/images', { params: { filters } }));
 	}
 
-	async listPaginated(
-		pagination: PaginationRequest,
-		sort?: SortRequest,
-		filters?: Record<string, string>
-	): Promise<PaginatedApiResponse<any>> {
-		const params: any = {
-			page: pagination.page,
-			limit: pagination.limit
-		};
-
-		if (sort) {
-			params.column = sort.column;
-			params.direction = sort.direction;
-		}
-
-		if (filters) {
-			params.filters = filters;
-		}
-
-		return this.handleResponse(this.api.get('/images', { params }));
-	}
-
 	async getTotalSize() {
 		return this.handleResponse(this.api.get(`/images/total-size`));
 	}

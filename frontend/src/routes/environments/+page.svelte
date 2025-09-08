@@ -1,7 +1,6 @@
 <script lang="ts">
 	import ServerIcon from '@lucide/svelte/icons/server';
 	import { toast } from 'svelte-sonner';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import NewEnvironmentSheet from '$lib/components/sheets/new-environment-sheet.svelte';
 	import EnvironmentTable from './environment-table.svelte';
@@ -76,8 +75,9 @@
 		});
 	}
 
-	function onEnvironmentCreated() {
+	async function onEnvironmentCreated() {
 		showEnvironmentSheet = false;
+		environments = await environmentManagementAPI.getEnvironments(requestOptions);
 		toast.success('Environment added successfully');
 		refresh();
 	}
@@ -115,11 +115,7 @@
 		</div>
 	</div>
 
-	<Card.Root class="border shadow-sm">
-		<Card.Content>
-			<EnvironmentTable bind:environments bind:selectedIds bind:requestOptions />
-		</Card.Content>
-	</Card.Root>
+	<EnvironmentTable bind:environments bind:selectedIds bind:requestOptions />
 </div>
 
 <NewEnvironmentSheet bind:open={showEnvironmentSheet} {onEnvironmentCreated} />
