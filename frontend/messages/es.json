@@ -1045,5 +1045,6 @@
 	"max_retry_placeholder": "5",
 	"max_retry_description": "Número máximo de intentos de reinicio",
 	"containers_labels_description": "Introduzca las etiquetas de metadatos como pares clave=valor, una por línea",
-	"containers_creating": "Creando..."
+	"containers_creating": "Creando...",
+	"containers_remove_files_label": "Remove project files from storage"
 }
