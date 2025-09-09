@@ -70,7 +70,7 @@
     "tw-animate-css": "^1.3.6",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.2",
+    "vite": "^7.1.5",
     "zod": "^4.0.17",
     "@inlang/paraglide-js": "2.2.0"
   }
