@@ -1050,5 +1050,6 @@
 	"general_settings_save_failed": "Error al guardar la configuración general",
 	"common_continue": "Continuar",
 	"security_settings_save_failed": "Error al guardar la configuración de seguridad",
-	"common_skip": "Saltar"
+	"common_skip": "Saltar",
+	"language": "Language"
 }
