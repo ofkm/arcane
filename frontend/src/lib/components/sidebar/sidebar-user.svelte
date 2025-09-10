@@ -38,7 +38,8 @@
 	const locales: Record<string, string> = {
 		en: 'English',
 		es: 'Español',
-		nl: 'Nederlands'
+		nl: 'Nederlands',
+		zh: 'Chinese'
 	};
 
 	async function updateLocale(locale: Locale) {

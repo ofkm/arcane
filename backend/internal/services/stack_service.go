@@ -440,7 +440,9 @@ func (s *StackService) pullImagesViaImageService(ctx context.Context, stack *mod
 	})
 
 	var firstErr error
-	for _, img := range images {
+	for _, raw := range images {
+		img := refForPull(raw) // strip digest and ensure a tag
+
 		le.WriteJSON(map[string]any{"status": "Pulling", "id": img})
 
 		if err := s.imageService.PullImage(ctx, img, w, systemUser); err != nil {
@@ -465,6 +467,22 @@ func (s *StackService) pullImagesViaImageService(ctx context.Context, stack *mod
 
 	le.WriteJSON(map[string]any{"status": "Done", "id": stack.Name})
 	return firstErr
+}
+
+// refForPull strips any digest from the reference and ensures a tag (defaults to ":latest")
+func refForPull(ref string) string {
+	ref = strings.TrimSpace(ref)
+	// remove digest if present
+	if i := strings.Index(ref, "@"); i != -1 {
+		ref = ref[:i]
+	}
+	// ensure a tag exists; consider ":" only if it appears after the last "/"
+	lastSlash := strings.LastIndex(ref, "/")
+	lastColon := strings.LastIndex(ref, ":")
+	if lastColon <= lastSlash {
+		ref += ":latest"
+	}
+	return ref
 }
 
 func (s *StackService) composePull(ctx context.Context, stack *models.Stack, w io.Writer) error {

@@ -225,28 +225,23 @@ func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef stri
 }
 
 func (s *ImageService) extractRegistryHost(imageRef string) string {
-	parts := strings.Split(imageRef, "@")
-	if len(parts) > 1 {
-		imageRef = parts[0]
+	// strip digest if present
+	if i := strings.IndexByte(imageRef, '@'); i != -1 {
+		imageRef = imageRef[:i]
 	}
 
-	parts = strings.Split(imageRef, ":")
-	if len(parts) > 1 {
-		imageRef = parts[0]
-	}
-
-	parts = strings.Split(imageRef, "/")
-
-	if len(parts) == 1 {
+	// split on first slash; if no slash, it's a Docker Hub shorthand
+	hostCandidate, _, found := strings.Cut(imageRef, "/")
+	if !found {
 		return "docker.io"
 	}
 
-	firstPart := parts[0]
-	if strings.Contains(firstPart, ".") || strings.Contains(firstPart, ":") {
-		return firstPart
+	// first segment is either a registry host[:port] or a namespace
+	// if it doesn't look like a host (no dot/colon), default to docker.io
+	if !strings.Contains(hostCandidate, ".") && !strings.Contains(hostCandidate, ":") {
+		return "docker.io"
 	}
-
-	return "docker.io"
+	return hostCandidate
 }
 
 func (s *ImageService) isRegistryMatch(credURL, registryHost string) bool {
@@ -261,10 +256,14 @@ func (s *ImageService) normalizeRegistryForComparison(url string) string {
 	url = strings.TrimPrefix(url, "http://")
 	url = strings.TrimSuffix(url, "/")
 
+	// keep only host part (drop any path like ghcr.io/org or /v2/)
+	if slash := strings.Index(url, "/"); slash != -1 {
+		url = url[:slash]
+	}
+
 	if url == "docker.io" || url == "registry-1.docker.io" || url == "index.docker.io" {
 		return "docker.io"
 	}
-
 	return url
 }
 
