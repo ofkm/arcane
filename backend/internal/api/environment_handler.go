@@ -302,6 +302,9 @@ func (h *EnvironmentHandler) handleContainerEndpoints(c *gin.Context, endpoint s
 	}
 
 	switch {
+	case endpoint == "/containers/" && strings.HasSuffix(endpoint, "/running") && c.Request.Method == http.MethodGet:
+		containerHandler.GetRunningContainers(c)
+		return true
 	case endpoint == "/containers" && c.Request.Method == http.MethodGet:
 		containerHandler.List(c)
 		return true

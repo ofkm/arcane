@@ -6,7 +6,7 @@ export const load: PageLoad = async () => {
 	const containerRequestOptions: SearchPaginationSortRequest = {
 		pagination: {
 			page: 1,
-			limit: 20
+			limit: 5
 		},
 		sort: {
 			column: 'created',
@@ -15,6 +15,7 @@ export const load: PageLoad = async () => {
 	};
 
 	const containers = await environmentAPI.getContainers(containerRequestOptions);
+	const runningContainers = await environmentAPI.getRunningContainers();
 
-	return { containers, containerRequestOptions };
+	return { containers, runningContainers, containerRequestOptions };
 };

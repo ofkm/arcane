@@ -22,6 +22,7 @@ export type PaginationResponse = {
 	totalItems: number;
 	currentPage: number;
 	itemsPerPage: number;
+	grandTotalItems?: number;
 };
 
 export type Paginated<T> = {

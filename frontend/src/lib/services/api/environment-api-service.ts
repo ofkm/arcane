@@ -31,6 +31,13 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return res.data;
 	}
 
+	async getRunningContainers(): Promise<ContainerSummaryDto[]> {
+		const envId = await this.getCurrentEnvironmentId();
+
+		const res = await this.api.get(`/environments/${envId}/containers/running`);
+		return res.data;
+	}
+
 	async getContainer(containerId: string): Promise<any> {
 		const envId = await this.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.get(`/environments/${envId}/containers/${containerId}`));

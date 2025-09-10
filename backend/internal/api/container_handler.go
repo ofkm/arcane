@@ -18,14 +18,17 @@ import (
 type ContainerHandler struct {
 	containerService *services.ContainerService
 	imageService     *services.ImageService
+	dockerService    *services.DockerClientService
 }
 
-func NewContainerHandler(group *gin.RouterGroup, containerService *services.ContainerService, imageService *services.ImageService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &ContainerHandler{containerService: containerService, imageService: imageService}
+func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, containerService *services.ContainerService, imageService *services.ImageService, authMiddleware *middleware.AuthMiddleware) {
+	handler := &ContainerHandler{dockerService: dockerService, containerService: containerService, imageService: imageService}
 
 	apiGroup := group.Group("/containers")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
+		apiGroup.GET("/running", handler.GetRunningContainers)
+
 		apiGroup.GET("", handler.List)
 		apiGroup.POST("", handler.Create)
 		apiGroup.GET("/:id", handler.GetByID)
@@ -37,6 +40,7 @@ func NewContainerHandler(group *gin.RouterGroup, containerService *services.Cont
 		apiGroup.GET("/:id/logs", handler.GetLogs)
 		apiGroup.GET("/:id/logs/stream", handler.GetLogsStream)
 		apiGroup.DELETE("/:id", handler.Delete)
+
 	}
 }
 
@@ -260,6 +264,22 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 	})
 }
 
+func (h *ContainerHandler) GetRunningContainers(c *gin.Context) {
+	containers, err := h.dockerService.GetRunningContainers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to list running containers: " + err.Error()},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    containers,
+	})
+}
+
 func (h *ContainerHandler) IsImageInUse(c *gin.Context) {
 	imageID := c.Param("imageId")
 	if imageID == "" {
@@ -270,7 +290,7 @@ func (h *ContainerHandler) IsImageInUse(c *gin.Context) {
 		return
 	}
 
-	containers, err := h.containerService.ListContainers(c.Request.Context(), true)
+	containers, err := h.dockerService.GetAllContainers(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
