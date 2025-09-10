@@ -1050,5 +1050,6 @@
 	"general_settings_save_failed": "Algemene instellingen opslaan mislukt",
 	"common_continue": "Doorgaan",
 	"security_settings_save_failed": "Kan beveiligingsinstellingen niet opslaan",
-	"common_skip": "Overslaan"
+	"common_skip": "Overslaan",
+	"language": "Language"
 }
