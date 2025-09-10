@@ -1046,5 +1046,9 @@
 	"max_retry_description": "Número máximo de intentos de reinicio",
 	"containers_labels_description": "Introduzca las etiquetas de metadatos como pares clave=valor, una por línea",
 	"containers_creating": "Creando...",
-	"containers_remove_files_label": "Eliminar archivos de proyecto del almacenamiento"
+	"containers_remove_files_label": "Eliminar archivos de proyecto del almacenamiento",
+	"general_settings_save_failed": "Error al guardar la configuración general",
+	"common_continue": "Continuar",
+	"security_settings_save_failed": "Error al guardar la configuración de seguridad",
+	"common_skip": "Saltar"
 }
