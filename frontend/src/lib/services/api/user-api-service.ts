@@ -48,10 +48,6 @@ export default class UserAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.delete(`/users/${id}`)) as Promise<void>;
 	}
 
-	async login(credentials: { username: string; password: string; rememberMe?: boolean }) {
-		return this.handleResponse(this.api.post('/auth/login', credentials));
-	}
-
 	async logout(): Promise<void> {
 		return this.handleResponse(this.api.post('/auth/logout')) as Promise<void>;
 	}

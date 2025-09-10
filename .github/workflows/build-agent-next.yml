@@ -1,8 +1,14 @@
-name: Build Agent Image
+name: Build Next Image (Agent)
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'frontend/package.json'
   workflow_dispatch:
 
 concurrency:
@@ -28,6 +34,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+
       - name: Set DOCKER_IMAGE_NAME
         run: |
           REPO_OWNER=${{ github.repository_owner }}
@@ -41,18 +52,21 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build agent binaries
+        run: bash scripts/development/build-binaries.sh --docker --agent
+
       - name: Build and push agent image
         id: build-push-image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile-agent
+          file: docker/Dockerfile-agent-static
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.DOCKER_IMAGE_NAME }}:next
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: '${{ env.DOCKER_IMAGE_NAME }}'
           subject-digest: ${{ steps.build-push-image.outputs.digest }}

@@ -1,6 +1,6 @@
 services:
   arcane-agent:
-    image: ghcr.io/ofkm/arcane-headless:1.0-preview
+    image: ghcr.io/ofkm/arcane-headless:latest
     container_name: arcane-agent
     ports:
       - '3553:3553'

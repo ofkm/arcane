@@ -23,6 +23,9 @@ if ! command -v gh &>/dev/null; then
     exit 1
 fi
 
+# Ensure local tags are up to date (don't fail if no remote)
+git fetch --tags --quiet || true
+
 # Check if we're on the main branch
 if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then
     echo "Error: This script must be run on the main branch."
@@ -71,13 +74,20 @@ else
     LATEST_TAG=$(git describe --tags --abbrev=0 || echo "")
     if [ -z "$LATEST_TAG" ]; then
         RELEASE_TYPE="minor"
-    elif git log "$LATEST_TAG"..HEAD --oneline | grep -q "feat"; then
-        RELEASE_TYPE="minor"
-    elif git log "$LATEST_TAG"..HEAD --oneline | grep -q "fix"; then
-        RELEASE_TYPE="patch"
     else
-        echo "No 'fix' or 'feat' commits found since the latest release. No new release will be created."
-        exit 0
+        # Look only at commit subjects since the last tag (exclude merges)
+        SUBJECTS=$(git log --no-merges --format=%s "${LATEST_TAG}..HEAD")
+
+        if echo "$SUBJECTS" | grep -Eiq '^feat(\([^)]+\))?: '; then
+            RELEASE_TYPE="minor"
+        elif echo "$SUBJECTS" | grep -Eiq '^fix(\([^)]+\))?: '; then
+            RELEASE_TYPE="patch"
+        else
+            echo "No 'fix' or 'feat' commits found since the latest release (${LATEST_TAG}). No new release will be created."
+            echo "Commits since ${LATEST_TAG}:"
+            git log --oneline --no-merges "${LATEST_TAG}..HEAD" || true
+            exit 0
+        fi
     fi
 fi
 

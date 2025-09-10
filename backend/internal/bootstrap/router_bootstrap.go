@@ -80,6 +80,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewNetworkHandler(apiGroup, appServices.Network, authMiddleware)
 	api.NewOidcHandler(apiGroup, appServices.Auth, appServices.Oidc, cfg)
 	api.NewSettingsHandler(apiGroup, appServices.Settings, authMiddleware)
+	api.NewStackHandler(apiGroup, appServices.Stack, authMiddleware)
 	api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, authMiddleware)
 	api.NewTemplateHandler(apiGroup, appServices.Template, authMiddleware)
 	api.NewUpdaterHandler(apiGroup, appServices.Updater, authMiddleware)

@@ -7,19 +7,41 @@ import (
 )
 
 var (
-	TokenCookieName     = "__Host-token" // #nosec G101: cookie name label, not a credential
-	OidcStateCookieName = "oidc_state"
+	TokenCookieName         = "__Host-token" // #nosec G101: cookie name label, not a credential
+	InsecureTokenCookieName = "token"        // #nosec G101: cookie name label, not a credential
+	OidcStateCookieName     = "oidc_state"
 )
+
+func isSecure(c *gin.Context) bool {
+	return c.Request.TLS != nil
+}
+
+func tokenCookieName(c *gin.Context) string {
+	if isSecure(c) {
+		return TokenCookieName
+	}
+	return InsecureTokenCookieName
+}
 
 func CreateTokenCookie(c *gin.Context, maxAgeInSeconds int, token string) {
 	if maxAgeInSeconds < 0 {
 		maxAgeInSeconds = 0
 	}
-	c.SetCookie(TokenCookieName, token, maxAgeInSeconds, "/", "", true, true)
+	name := tokenCookieName(c)
+	c.SetCookie(name, token, maxAgeInSeconds, "/", "", isSecure(c), true)
 }
 
 func ClearTokenCookie(c *gin.Context) {
-	c.SetCookie(TokenCookieName, "", -1, "/", "", true, true)
+	name := tokenCookieName(c)
+	c.SetCookie(name, "", -1, "/", "", isSecure(c), true)
+}
+
+func GetTokenCookie(c *gin.Context) (string, error) {
+	// Try secure name first, then fallback to insecure
+	if v, err := c.Cookie(TokenCookieName); err == nil {
+		return v, nil
+	}
+	return c.Cookie(InsecureTokenCookieName)
 }
 
 func CreateOidcStateCookie(c *gin.Context, value string, maxAgeInSeconds int) {
@@ -27,7 +49,7 @@ func CreateOidcStateCookie(c *gin.Context, value string, maxAgeInSeconds int) {
 	if maxAgeInSeconds < 0 {
 		maxAgeInSeconds = 0
 	}
-	c.SetCookie(OidcStateCookieName, value, maxAgeInSeconds, "/", "", true, true)
+	c.SetCookie(OidcStateCookieName, value, maxAgeInSeconds, "/", "", c.Request.TLS != nil, true)
 }
 
 func GetOidcStateCookie(c *gin.Context) (string, error) {
@@ -35,5 +57,5 @@ func GetOidcStateCookie(c *gin.Context) (string, error) {
 }
 
 func ClearOidcStateCookie(c *gin.Context) {
-	c.SetCookie(OidcStateCookieName, "", -1, "/", "", true, true)
+	c.SetCookie(OidcStateCookieName, "", -1, "/", "", c.Request.TLS != nil, true)
 }

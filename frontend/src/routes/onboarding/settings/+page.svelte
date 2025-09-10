@@ -1,44 +1,39 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import * as Select from '$lib/components/ui/select';
-	import { Switch } from '$lib/components/ui/switch';
+	import * as FieldSet from '$lib/components/ui/field-set';
+	import FormInput from '$lib/components/form/form-input.svelte';
+	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import { settingsAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { createForm, preventDefault } from '$lib/utils/form.utils';
+	import { z } from 'zod/v4';
+	import { m } from '$lib/paraglide/messages';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
 
 	let isLoading = $state(false);
 
-	let appSettings = $state<{
-		autoUpdate: boolean;
-		autoUpdateInterval: string;
-		pruneMode: 'dangling' | 'all';
-		maturityThresholdDays: number;
-		baseServerUrl: string;
-	}>({
-		autoUpdate: true,
-		autoUpdateInterval: '300',
-		pruneMode: 'dangling',
-		maturityThresholdDays: 30,
-		baseServerUrl: ''
+	const formSchema = z.object({
+		stacksDirectory: z.string().min(1, m.general_projects_directory_required()),
+		baseServerUrl: z.string().min(1, m.general_base_url_required()),
+		enableGravatar: z.boolean()
 	});
 
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
+
 	async function handleNext() {
+		const validated = form.validate();
+		if (!validated) return;
+
 		isLoading = true;
 
 		try {
 			await settingsAPI.updateSettings({
 				...currentSettings,
-				autoUpdate: appSettings.autoUpdate,
-				autoUpdateInterval: parseInt(appSettings.autoUpdateInterval),
-				dockerPruneMode: appSettings.pruneMode,
-				baseServerUrl: appSettings.baseServerUrl,
+				...validated,
 				onboardingCompleted: false,
 				onboardingSteps: {
 					...currentSettings.onboardingSteps,
@@ -48,7 +43,7 @@
 
 			goto('/onboarding/complete');
 		} catch (error) {
-			toast.error('Failed to save application settings');
+			toast.error(m.general_settings_save_failed());
 		} finally {
 			isLoading = false;
 		}
@@ -61,94 +56,64 @@
 
 <div class="space-y-6">
 	<div class="text-center">
-		<h2 class="text-2xl font-bold">Application Settings</h2>
-		<p class="text-muted-foreground mt-2">Configure general application behavior and features</p>
+		<h2 class="text-2xl font-bold">{m.general_title()}</h2>
+		<p class="text-muted-foreground mt-2">{m.general_description()}</p>
 	</div>
 
-	<div class="grid gap-6 md:grid-cols-2">
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Auto Update</Card.Title>
-				<Card.Description>Configure automatic updating of containers and projects</Card.Description>
-			</Card.Header>
-			<Card.Content class="space-y-4">
-				<div class="flex items-center justify-between">
-					<div class="space-y-0.5">
-						<Label>Enable Auto Update</Label>
-						<p class="text-muted-foreground text-xs">Automatically check for and apply updates</p>
+	<form onsubmit={preventDefault(handleNext)} class="space-y-6">
+		<FieldSet.Root>
+			<FieldSet.Content class="grid grid-cols-1 gap-6 md:grid-cols-2">
+				<div class="bg-background/40 min-w-0 space-y-4 rounded-lg border p-5 shadow-sm">
+					<div class="space-y-1">
+						<h3 class="text-base font-medium">{m.general_projects_heading()}</h3>
+						<p class="text-muted-foreground text-sm">{m.general_projects_description()}</p>
 					</div>
-					<Switch bind:checked={appSettings.autoUpdate} />
+
+					<FormInput
+						label={m.general_projects_directory_label()}
+						placeholder={m.general_projects_directory_placeholder()}
+						bind:input={$formInputs.stacksDirectory}
+						helpText={m.general_projects_directory_help()}
+					/>
+
+					<FormInput
+						label={m.general_base_url_label()}
+						placeholder={m.general_base_url_placeholder()}
+						bind:input={$formInputs.baseServerUrl}
+						helpText={m.general_base_url_help()}
+					/>
 				</div>
 
-				{#if appSettings.autoUpdate}
-					<div class="space-y-2">
-						<Label>Update Interval</Label>
-						<Select.Root type="single" bind:value={appSettings.autoUpdateInterval}>
-							<Select.Trigger>
-								{appSettings.autoUpdateInterval}
-							</Select.Trigger>
-							<Select.Content>
-								<Select.Item value="300">5 minutes</Select.Item>
-								<Select.Item value="900">15 minutes</Select.Item>
-								<Select.Item value="1800">30 minutes</Select.Item>
-								<Select.Item value="3600">1 hour</Select.Item>
-								<Select.Item value="21600">6 hours</Select.Item>
-							</Select.Content>
-						</Select.Root>
+				<div class="bg-background/40 min-w-0 space-y-4 rounded-lg border p-5 shadow-sm">
+					<div class="space-y-1">
+						<h3 class="text-base font-medium">{m.general_user_avatars_heading()}</h3>
+						<p class="text-muted-foreground text-sm">{m.general_user_avatars_description()}</p>
 					</div>
-				{/if}
-			</Card.Content>
-		</Card.Root>
 
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>System Maintenance</Card.Title>
-				<Card.Description>Configure system cleanup and maintenance settings</Card.Description>
-			</Card.Header>
-			<Card.Content class="space-y-4">
-				<div class="space-y-2">
-					<Label>Prune Mode</Label>
-					<Select.Root type="single" bind:value={appSettings.pruneMode}>
-						<Select.Trigger>
-							{appSettings.pruneMode}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Item value="dangling">Dangling Only</Select.Item>
-							<Select.Item value="all">All Unused</Select.Item>
-						</Select.Content>
-					</Select.Root>
-					<p class="text-muted-foreground text-xs">How aggressive to be when pruning unused resources</p>
+					<SwitchWithLabel
+						id="enableGravatar"
+						label={m.general_enable_gravatar_label()}
+						description={m.general_enable_gravatar_description()}
+						bind:checked={$formInputs.enableGravatar.value}
+					/>
 				</div>
-			</Card.Content>
-		</Card.Root>
+			</FieldSet.Content>
 
-		<Card.Root class="md:col-span-2">
-			<Card.Header>
-				<Card.Title>Network Settings</Card.Title>
-				<Card.Description>Configure network and URL settings</Card.Description>
-			</Card.Header>
-			<Card.Content class="space-y-4">
-				<div class="space-y-2">
-					<Label for="base-server-url">Base Server URL (Optional)</Label>
-					<Input id="base-server-url" bind:value={appSettings.baseServerUrl} placeholder="https://arcane.yourdomain.com" />
-					<p class="text-muted-foreground text-xs">
-						Used for generating external links and webhooks. Leave empty for auto-detection.
-					</p>
+			<FieldSet.Footer>
+				<div class="flex w-full place-items-center justify-between">
+					<span class="text-muted-foreground text-sm">{m.general_save_instructions()}</span>
+					<div class="flex gap-2">
+						<Button type="button" variant="outline" onclick={() => goto('/onboarding/security')}>Back</Button>
+						<Button type="button" variant="ghost" onclick={handleSkip}>Skip</Button>
+						<Button type="submit" disabled={isLoading}>
+							{#if isLoading}
+								<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+							{/if}
+							{m.common_continue()}
+						</Button>
+					</div>
 				</div>
-			</Card.Content>
-		</Card.Root>
-	</div>
-
-	<div class="flex justify-between">
-		<Button variant="outline" onclick={() => goto('/onboarding/security')}>Back</Button>
-		<div class="flex gap-2">
-			<Button variant="ghost" onclick={handleSkip}>Skip</Button>
-			<Button onclick={handleNext} disabled={isLoading}>
-				{#if isLoading}
-					<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
-				{/if}
-				Complete Setup
-			</Button>
-		</div>
-	</div>
+			</FieldSet.Footer>
+		</FieldSet.Root>
+	</form>
 </div>

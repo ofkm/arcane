@@ -10,9 +10,11 @@
 	import UserIcon from '@lucide/svelte/icons/user';
 	import type { PageData } from './$types';
 	import { goto, invalidateAll } from '$app/navigation';
+	import { settingsAPI } from '$lib/services/api';
 	import { authService } from '$lib/services/api/auth-api-service';
 	import { toast } from 'svelte-sonner';
 	import userStore from '$lib/stores/user-store';
+	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
 
 	let { data }: { data: PageData } = $props();
@@ -47,10 +49,11 @@
 		try {
 			const user = await authService.login({ username, password });
 			userStore.setUser(user);
+			// Load settings to determine onboarding redirect
+			const settings = await settingsAPI.getSettings();
+			settingsStore.set(settings);
 			const redirectTo = data.redirectTo || '/dashboard';
-			toast.success(`Welcome Back, ${user.displayName}`);
-			await invalidateAll();
-			goto(redirectTo, { replaceState: true });
+			goto(!settings.onboardingCompleted ? '/onboarding/welcome' : redirectTo, { replaceState: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Login failed';
 		} finally {

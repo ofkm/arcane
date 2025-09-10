@@ -7,6 +7,8 @@
 	import userStore from '$lib/stores/user-store';
 	import type { User } from '$lib/types/user.type';
 	import { m } from '$lib/paraglide/messages';
+	import { settingsAPI } from '$lib/services/api';
+	import settingsStore from '$lib/stores/config-store';
 
 	let isProcessing = $state(true);
 	let error = $state('');
@@ -75,9 +77,16 @@
 				};
 
 				userStore.setUser(user);
+
+				async function finalizeLogin() {
+					const settings = await settingsAPI.getSettings();
+					settingsStore.set(settings);
+					toast.success('Successfully logged in!');
+					goto(!settings.onboardingCompleted ? '/onboarding/welcome' : redirectTo, { replaceState: true });
+				}
+
 				await invalidateAll();
-				toast.success(m.auth_welcome_back_toast({ name: user.displayName ?? m.common_unknown() }));
-				goto(redirectTo, { replaceState: true });
+				finalizeLogin();
 			} else {
 				error = m.auth_oidc_user_info_missing();
 				setTimeout(() => goto('/auth/login?error=oidc_user_info_missing'), 3000);

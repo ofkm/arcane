@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: 'npm'
-    directory: '/frontend'
+    directory: '/'
     schedule:
       interval: 'daily'
     groups:
@@ -45,23 +45,17 @@ updates:
         update-types:
           - 'major'
 
-  # Backend dependencies
   - package-ecosystem: 'gomod'
     directory: '/backend'
     schedule:
       interval: 'daily'
     groups:
       backend-dependencies:
-        patterns:
-          - '*'
-        update-types:
-          - 'minor'
-          - 'patch'
+        patterns: ['*']
+        update-types: ['minor', 'patch']
       backend-major-updates:
-        patterns:
-          - '*'
-        update-types:
-          - 'major'
+        patterns: ['*']
+        update-types: ['major']
 
   - package-ecosystem: 'github-actions'
     directory: '/'
@@ -69,6 +63,6 @@ updates:
       interval: 'daily'
 
   - package-ecosystem: 'docker'
-    directory: '/'
+    directory: '/docker'
     schedule:
       interval: 'daily'

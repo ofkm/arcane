@@ -162,8 +162,8 @@ func extractBearerOrCookieToken(c *gin.Context) string {
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		return strings.TrimPrefix(authHeader, "Bearer ")
 	}
-	if tokenCookie, err := c.Cookie(cookie.TokenCookieName); err == nil && tokenCookie != "" {
-		return tokenCookie
+	if tok, err := cookie.GetTokenCookie(c); err == nil && tok != "" {
+		return tok
 	}
 	return ""
 }

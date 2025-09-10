@@ -1,42 +1,63 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import * as Select from '$lib/components/ui/select';
-	import { Switch } from '$lib/components/ui/switch';
-	import { settingsAPI } from '$lib/services/api';
+	import * as Alert from '$lib/components/ui/alert';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import ZapIcon from '@lucide/svelte/icons/zap';
+	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
+	import FormInput from '$lib/components/form/form-input.svelte';
+	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
+	import { createForm } from '$lib/utils/form.utils';
+	import { z } from 'zod/v4';
+	import { m } from '$lib/paraglide/messages';
+	import { settingsAPI } from '$lib/services/api';
+	import settingsStore from '$lib/stores/config-store';
+	import type { Settings } from '$lib/types/settings.type';
 
 	let { data } = $props();
-	let currentSettings = $state(data.settings);
+	let currentSettings = $state<Settings>(data.settings);
 
 	let isLoading = $state(false);
+	let pruneMode = $derived(currentSettings.dockerPruneMode);
 
-	let dockerSettings = $state({
-		stacksDirectory: 'data/projects',
-		pollingEnabled: true,
-		pollingInterval: '5'
+	const pruneModeOptions = [
+		{ value: 'all', label: m.docker_prune_all(), description: m.docker_prune_all_description() },
+		{ value: 'dangling', label: m.docker_prune_dangling(), description: m.docker_prune_dangling_description() }
+	];
+
+	const pruneModeDescription = $derived(
+		pruneModeOptions.find((o) => o.value === pruneMode)?.description ?? m.docker_prune_mode_description()
+	);
+
+	const formSchema = z.object({
+		pollingEnabled: z.boolean(),
+		pollingInterval: z.number().int(),
+		autoUpdate: z.boolean(),
+		autoUpdateInterval: z.number().int(),
+		dockerPruneMode: z.enum(['all', 'dangling'])
 	});
 
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
+
 	async function handleNext() {
+		const data = form.validate();
+		if (!data) return;
 		isLoading = true;
 
 		try {
-			const currentSettings = await settingsAPI.getSettings();
-			await settingsAPI.updateSettings({
+			const updated = {
 				...currentSettings,
-				stacksDirectory: dockerSettings.stacksDirectory,
-				pollingEnabled: dockerSettings.pollingEnabled,
-				pollingInterval: parseInt(dockerSettings.pollingInterval),
+				...data,
 				onboardingCompleted: false,
-				onboardingSteps: {
-					...currentSettings.onboardingSteps,
-					docker: true
-				}
-			});
+				onboardingSteps: { ...currentSettings.onboardingSteps, docker: true }
+			} as Partial<Settings>;
+
+			await settingsAPI.updateSettings(updated as any);
+			currentSettings = { ...(currentSettings as Settings), ...(updated as Settings) };
+			settingsStore.set(currentSettings);
+			settingsStore.reload();
 
 			goto('/onboarding/security');
 		} catch (error) {
@@ -54,54 +75,89 @@
 <div class="space-y-6">
 	<div class="text-center">
 		<h2 class="text-2xl font-bold">Docker Configuration</h2>
-		<p class="text-muted-foreground mt-2">Configure how Arcane connects to your Docker environment</p>
+		<p class="text-muted-foreground mt-2">Configure how Arcane checks Docker and auto-updates</p>
 	</div>
+
+	{#if $formInputs.autoUpdate.value && $formInputs.pollingEnabled.value}
+		<Alert.Root variant="warning">
+			<ZapIcon class="size-4" />
+			<Alert.Title>{m.docker_auto_update_alert_title()}</Alert.Title>
+			<Alert.Description>{m.docker_auto_update_alert_description()}</Alert.Description>
+		</Alert.Root>
+	{/if}
 
 	<div class="grid gap-6 md:grid-cols-2">
 		<Card.Root>
 			<Card.Header>
-				<Card.Title>Basic Settings</Card.Title>
-				<Card.Description>Configure the basic Docker connection settings</Card.Description>
+				<Card.Title>{m.docker_title()}</Card.Title>
+				<Card.Description>{m.docker_description()}</Card.Description>
 			</Card.Header>
-			<Card.Content class="space-y-4">
-				<div class="space-y-2">
-					<Label for="project-directory">Project Directory</Label>
-					<Input id="project-directory" bind:value={dockerSettings.stacksDirectory} placeholder="data/projects" />
-					<p class="text-muted-foreground text-xs">Directory where Docker Compose files will be stored</p>
-				</div>
+			<Card.Content class="space-y-6">
+				<SwitchWithLabel
+					id="pollingEnabled"
+					label={m.docker_enable_polling_label()}
+					description={m.docker_enable_polling_description()}
+					bind:checked={$formInputs.pollingEnabled.value}
+				/>
+
+				{#if $formInputs.pollingEnabled.value}
+					<div class="space-y-4">
+						<FormInput
+							bind:input={$formInputs.pollingInterval}
+							type="number"
+							id="pollingInterval"
+							label={m.docker_polling_interval_label()}
+							placeholder={m.docker_polling_interval_placeholder()}
+							description={m.docker_polling_interval_description()}
+						/>
+
+						{#if $formInputs.pollingInterval.value < 30}
+							<Alert.Root variant="warning">
+								<ZapIcon class="size-4" />
+								<Alert.Title>{m.docker_rate_limit_warning_title()}</Alert.Title>
+								<Alert.Description>{m.docker_rate_limit_warning_description()}</Alert.Description>
+							</Alert.Root>
+						{/if}
+
+						<SwitchWithLabel
+							id="autoUpdateSwitch"
+							label={m.docker_auto_update_label()}
+							description={m.docker_auto_update_description()}
+							bind:checked={$formInputs.autoUpdate.value}
+						/>
+
+						{#if $formInputs.autoUpdate.value}
+							<FormInput
+								bind:input={$formInputs.autoUpdateInterval}
+								type="number"
+								id="autoUpdateInterval"
+								label={m.docker_auto_update_interval_label()}
+								placeholder={m.docker_auto_update_interval_placeholder()}
+								description={m.docker_auto_update_interval_description()}
+							/>
+						{/if}
+					</div>
+				{/if}
 			</Card.Content>
 		</Card.Root>
 
 		<Card.Root>
 			<Card.Header>
-				<Card.Title>Polling Settings</Card.Title>
-				<Card.Description>Configure how often Arcane checks Docker for updates</Card.Description>
+				<Card.Title>{m.docker_prune_action_label()}</Card.Title>
+				<Card.Description>{pruneModeDescription}</Card.Description>
 			</Card.Header>
-			<Card.Content class="space-y-4">
-				<div class="flex items-center justify-between">
-					<div class="space-y-0.5">
-						<Label>Enable Polling</Label>
-						<p class="text-muted-foreground text-xs">Automatically refresh container states</p>
-					</div>
-					<Switch bind:checked={dockerSettings.pollingEnabled} />
-				</div>
-
-				{#if dockerSettings.pollingEnabled}
-					<div class="space-y-2">
-						<Label for="polling-interval">Polling Interval (seconds)</Label>
-						<Select.Root type="single" bind:value={dockerSettings.pollingInterval}>
-							<Select.Trigger>
-								{dockerSettings.pollingInterval}
-							</Select.Trigger>
-							<Select.Content>
-								<Select.Item value="5">5 seconds</Select.Item>
-								<Select.Item value="10">10 seconds</Select.Item>
-								<Select.Item value="30">30 seconds</Select.Item>
-								<Select.Item value="60">1 minute</Select.Item>
-							</Select.Content>
-						</Select.Root>
-					</div>
-				{/if}
+			<Card.Content>
+				<SelectWithLabel
+					id="dockerPruneMode"
+					name="pruneMode"
+					bind:value={$formInputs.dockerPruneMode.value}
+					label={m.docker_prune_action_label()}
+					description={pruneModeDescription}
+					placeholder={m.docker_prune_placeholder()}
+					options={pruneModeOptions}
+					groupLabel={m.docker_prune_group_label()}
+					onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
+				/>
 			</Card.Content>
 		</Card.Root>
 	</div>
