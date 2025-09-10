@@ -1050,5 +1050,6 @@
 	"general_settings_save_failed": "Failed to Save General Settings",
 	"common_continue": "Continue",
 	"security_settings_save_failed": "Failed to save security settings",
-	"common_skip": "Skip"
+	"common_skip": "Skip",
+	"language": "Language"
 }
