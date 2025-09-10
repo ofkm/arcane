@@ -33,7 +33,7 @@
     "prettier": "^3.6.2",
     "prettier-plugin-svelte": "^3.4.0",
     "prettier-plugin-tailwindcss": "^0.6.14",
-    "svelte-codemirror-editor": "^1.4.1",
+    "svelte-codemirror-editor": "^2.0.0",
     "thememirror": "^2.0.1"
   },
   "devDependencies": {
@@ -64,7 +64,7 @@
     "svelte-toolbelt": "^0.9.3",
     "sveltekit-superforms": "^2.27.1",
     "tailwind-merge": "^3.3.1",
-    "tailwind-variants": "^1.0.0",
+    "tailwind-variants": "^3.1.1",
     "tailwindcss": "^4.1.13",
     "tsx": "^4.20.5",
     "tw-animate-css": "^1.3.8",
