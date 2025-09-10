@@ -115,19 +115,19 @@ jobs:
           cache-to: type=gha,scope=release-agent,mode=max
 
       - name: Binary attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-path: 'backend/.bin/*'
 
       - name: Container image attestation (manager)
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: '${{ env.DOCKER_IMAGE_NAME }}'
           subject-digest: ${{ steps.build-manager.outputs.digest }}
           push-to-registry: true
 
       - name: Container image attestation (agent)
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: '${{ env.AGENT_IMAGE_NAME }}'
           subject-digest: ${{ steps.build-agent.outputs.digest }}

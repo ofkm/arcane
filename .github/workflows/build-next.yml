@@ -79,7 +79,7 @@ jobs:
           tags: ${{ env.DOCKER_IMAGE_NAME }}:next
           file: docker/Dockerfile-static
       - name: Container image attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: '${{ env.DOCKER_IMAGE_NAME }}'
           subject-digest: ${{ steps.build-push-image.outputs.digest }}
