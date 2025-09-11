@@ -173,7 +173,7 @@
 	"networks_create_failed": "Aanmaken van netwerk \"{name} \" mislukt",
 	"networks_refresh_failed": "Vernieuwen van netwerken mislukt",
 	"networks_total": "Totaal aantal netwerken",
-	"networks_bridge": "Brug netwerken",
+	"unused_networks": "Ongebruikte netwerken",
 	"networks_host": "Hostnaam",
 	"networks_overlay": "Overlay",
 	"networks_macvlan": "Macvlan",
