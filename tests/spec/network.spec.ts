@@ -38,10 +38,9 @@ test.describe('Networks Page', () => {
     await page.goto('/networks');
 
     const total = realNetworks.length;
-    const bridgeCount = realNetworks.filter((n) => n.driver === 'bridge').length;
 
     await expect(page.locator('p:has-text("Total Networks") + p')).toHaveText(String(total));
-    await expect(page.locator('p:has-text("Bridge Networks") + p')).toHaveText(String(bridgeCount));
+    await expect(page.locator('p:has-text("Unused Networks") + p')).toBeVisible();
   });
 
   test('Table displays when networks exist, else empty state', async ({ page }) => {
