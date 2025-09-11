@@ -51,7 +51,7 @@
     "bytes": "^3.1.2",
     "clsx": "^2.1.1",
     "eslint": "^9.35.0",
-    "eslint-plugin-svelte": "^3.12.2",
+    "eslint-plugin-svelte": "^3.12.3",
     "formsnap": "^2.0.1",
     "globals": "^16.4.0",
     "isomorphic-dompurify": "^2.26.0",
