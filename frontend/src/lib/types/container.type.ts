@@ -10,6 +10,12 @@ export interface BaseContainer {
 	status: string;
 }
 
+export interface ContainerStatusCounts {
+	runningContainers: number;
+	stoppedContainers: number;
+	totalContainers: number;
+}
+
 export interface PortDto {
 	ip?: string;
 	privatePort: number;

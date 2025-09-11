@@ -16,6 +16,12 @@ type NetworkSummaryDto struct {
 	Labels  map[string]string `json:"labels"`
 }
 
+type NetworkUsageCounts struct {
+	Inuse  int `json:"networksInuse"`
+	Unused int `json:"networksUnused"`
+	Total  int `json:"totalNetworks"`
+}
+
 type NetworkInspectDto struct {
 	ID         string                              `json:"id"`
 	Name       string                              `json:"name"`

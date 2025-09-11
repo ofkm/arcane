@@ -14,6 +14,13 @@ export interface ImageUpdateInfoDto {
 	usedCredential?: boolean;
 }
 
+export interface ImageUsageCounts {
+	imagesInuse: number;
+	imagesUnused: number;
+	totalImages: number;
+	totalImageSize: number;
+}
+
 export interface ImageSummaryDto {
 	id: string;
 	repoTags: string[];

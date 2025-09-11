@@ -173,7 +173,7 @@
 	"networks_create_failed": "Failed to Create Network \"{name}\"",
 	"networks_refresh_failed": "Failed to Refresh Networks",
 	"networks_total": "Total Networks",
-	"networks_bridge": "Bridge Networks",
+	"unused_networks": "Unused Networks",
 	"networks_host": "Host",
 	"networks_overlay": "Overlay",
 	"networks_macvlan": "Macvlan",

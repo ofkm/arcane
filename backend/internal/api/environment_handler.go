@@ -71,6 +71,7 @@ func NewEnvironmentHandler(
 		apiGroup.POST("/:id/test", handler.TestConnection)
 		apiGroup.POST("/:id/heartbeat", handler.UpdateHeartbeat)
 
+		apiGroup.GET("/:id/containers/counts", handler.GetContainerStatusCounts)
 		apiGroup.POST("/:id/containers", handler.CreateContainer)
 		apiGroup.GET("/:id/containers", handler.GetContainers)
 		apiGroup.GET("/:id/containers/:containerId", handler.GetContainer)
@@ -89,13 +90,14 @@ func NewEnvironmentHandler(
 		apiGroup.DELETE("/:id/images/:imageId", handler.RemoveImage)
 		apiGroup.POST("/:id/images/pull", handler.PullImage)
 		apiGroup.POST("/:id/images/prune", handler.PruneImages)
-		apiGroup.GET("/:id/images/total-size", handler.GetTotalImageSize)
 
+		apiGroup.GET("/:id/networks/counts", handler.GetNetworkUsageCounts)
 		apiGroup.GET("/:id/networks", handler.GetNetworks)
 		apiGroup.POST("/:id/networks", handler.CreateNetwork)
 		apiGroup.GET("/:id/networks/:networkId", handler.GetNetwork)
 		apiGroup.DELETE("/:id/networks/:networkId", handler.RemoveNetwork)
 
+		apiGroup.GET("/:id/volumes/counts", handler.GetVolumeUsageCounts)
 		apiGroup.GET("/:id/volumes", handler.GetVolumes)
 		apiGroup.POST("/:id/volumes", handler.CreateVolume)
 		apiGroup.GET("/:id/volumes/:volumeName", handler.GetVolume)
@@ -108,9 +110,7 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/stacks/:stackId", handler.GetStack)
 		apiGroup.PUT("/:id/stacks/:stackId", handler.UpdateStack)
 		apiGroup.DELETE("/:id/stacks/:stackId", handler.DeleteStack)
-		apiGroup.POST("/:id/stacks/:stackId/start", handler.StartStack)
 		apiGroup.POST("/:id/stacks/:stackId/deploy", handler.DeployStack)
-		apiGroup.POST("/:id/stacks/:stackId/stop", handler.StopStack)
 		apiGroup.POST("/:id/stacks/:stackId/restart", handler.RestartStack)
 		apiGroup.GET("/:id/stacks/:stackId/services", handler.GetStackServices)
 		apiGroup.POST("/:id/stacks/:stackId/pull", handler.PullStackImages)
@@ -120,7 +120,6 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/stacks/:stackId/logs/stream", handler.GetStackLogsStream)
 		apiGroup.POST("/:id/stacks/convert", handler.ConvertDockerRun)
 
-		// Image update endpoints
 		apiGroup.GET("/:id/image-updates/check", handler.CheckImageUpdate)
 		apiGroup.GET("/:id/image-updates/check/:imageId", handler.CheckImageUpdateByID)
 		apiGroup.POST("/:id/image-updates/check-batch", handler.CheckMultipleImages)
@@ -129,7 +128,6 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/image-updates/versions", handler.GetImageVersions)
 		apiGroup.POST("/:id/image-updates/compare", handler.CompareVersions)
 
-		// Updater endpoints
 		apiGroup.POST("/:id/updater/run", handler.UpdaterRun)
 		apiGroup.GET("/:id/updater/status", handler.UpdaterStatus)
 		apiGroup.GET("/:id/updater/history", handler.UpdaterHistory)
@@ -302,8 +300,8 @@ func (h *EnvironmentHandler) handleContainerEndpoints(c *gin.Context, endpoint s
 	}
 
 	switch {
-	case endpoint == "/containers/" && strings.HasSuffix(endpoint, "/running") && c.Request.Method == http.MethodGet:
-		containerHandler.GetRunningContainers(c)
+	case endpoint == "/containers/counts" && c.Request.Method == http.MethodGet:
+		containerHandler.GetContainerStatusCounts(c)
 		return true
 	case endpoint == "/containers" && c.Request.Method == http.MethodGet:
 		containerHandler.List(c)
@@ -352,11 +350,11 @@ func (h *EnvironmentHandler) handleImageEndpoints(c *gin.Context, endpoint strin
 	}
 
 	switch {
+	case endpoint == "/images/counts" && c.Request.Method == http.MethodGet:
+		imageHandler.GetImageUsageCounts(c)
+		return true
 	case endpoint == "/images" && c.Request.Method == http.MethodGet:
 		imageHandler.List(c)
-		return true
-	case endpoint == "/images/total-size" && c.Request.Method == http.MethodGet:
-		imageHandler.GetTotalSize(c)
 		return true
 	case endpoint == "/images/pull" && c.Request.Method == http.MethodPost:
 		imageHandler.Pull(c)
@@ -380,6 +378,9 @@ func (h *EnvironmentHandler) handleNetworkEndpoints(c *gin.Context, endpoint str
 	}
 
 	switch {
+	case endpoint == "/networks/counts" && c.Request.Method == http.MethodGet:
+		networkHandler.GetNetworkUsageCounts(c)
+		return true
 	case endpoint == "/networks" && c.Request.Method == http.MethodGet:
 		networkHandler.List(c)
 		return true
@@ -402,6 +403,9 @@ func (h *EnvironmentHandler) handleVolumeEndpoints(c *gin.Context, endpoint stri
 	}
 
 	switch {
+	case endpoint == "/volumes/counts" && c.Request.Method == http.MethodGet:
+		volumeHandler.GetVolumeUsageCounts(c)
+		return true
 	case endpoint == "/volumes" && c.Request.Method == http.MethodGet:
 		volumeHandler.List(c)
 		return true
@@ -438,12 +442,6 @@ func (h *EnvironmentHandler) handleStackEndpoints(c *gin.Context, endpoint strin
 		return true
 	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/deploy"):
 		stackHandler.DeployStack(c)
-		return true
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/start"):
-		stackHandler.StartStack(c)
-		return true
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/stop"):
-		stackHandler.StopStack(c)
 		return true
 	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/restart"):
 		stackHandler.RestartStack(c)
@@ -811,6 +809,10 @@ func (h *EnvironmentHandler) GetImages(c *gin.Context) {
 	h.routeRequest(c, "/images")
 }
 
+func (h *EnvironmentHandler) GetNetworkUsageCounts(c *gin.Context) {
+	h.routeRequest(c, "/networks/counts")
+}
+
 func (h *EnvironmentHandler) GetNetworks(c *gin.Context) {
 	h.routeRequest(c, "/networks")
 }
@@ -831,6 +833,10 @@ func (h *EnvironmentHandler) CreateVolume(c *gin.Context) {
 	h.routeRequest(c, "/volumes")
 }
 
+func (h *EnvironmentHandler) GetVolumeUsageCounts(c *gin.Context) {
+	h.routeRequest(c, "/volumes/counts")
+}
+
 func (h *EnvironmentHandler) CreateStack(c *gin.Context) {
 	h.routeRequest(c, "/stacks")
 }
@@ -840,6 +846,10 @@ func (h *EnvironmentHandler) CreateStack(c *gin.Context) {
 func (h *EnvironmentHandler) GetContainer(c *gin.Context) {
 	containerID := c.Param("containerId")
 	h.routeRequest(c, "/containers/"+containerID)
+}
+
+func (h *EnvironmentHandler) GetContainerStatusCounts(c *gin.Context) {
+	h.routeRequest(c, "/containers/counts")
 }
 
 func (h *EnvironmentHandler) StartContainer(c *gin.Context) {
@@ -900,8 +910,8 @@ func (h *EnvironmentHandler) GetImage(c *gin.Context) {
 	h.routeRequest(c, "/images/"+imageID)
 }
 
-func (h *EnvironmentHandler) GetTotalImageSize(c *gin.Context) {
-	h.routeRequest(c, "/images/total-size")
+func (h *EnvironmentHandler) GetImageUsageCounts(c *gin.Context) {
+	h.routeRequest(c, "/images/counts")
 }
 
 func (h *EnvironmentHandler) RemoveImage(c *gin.Context) {
@@ -948,11 +958,6 @@ func (h *EnvironmentHandler) GetStack(c *gin.Context) {
 	h.routeRequest(c, "/stacks/"+stackId)
 }
 
-func (h *EnvironmentHandler) StartStack(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId+"/start")
-}
-
 func (h *EnvironmentHandler) UpdateStack(c *gin.Context) {
 	stackId := c.Param("stackId")
 	h.routeRequest(c, "/stacks/"+stackId)
@@ -961,11 +966,6 @@ func (h *EnvironmentHandler) UpdateStack(c *gin.Context) {
 func (h *EnvironmentHandler) DeleteStack(c *gin.Context) {
 	stackId := c.Param("stackId")
 	h.routeRequest(c, "/stacks/"+stackId)
-}
-
-func (h *EnvironmentHandler) StopStack(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId+"/stop")
 }
 
 func (h *EnvironmentHandler) RestartStack(c *gin.Context) {

@@ -57,21 +57,6 @@ func (s *ContainerService) PullContainerImage(ctx context.Context, containerID s
 	return err
 }
 
-// func (s *ContainerService) ListContainers(ctx context.Context, includeAll bool) ([]container.Summary, error) {
-// 	dockerClient, err := s.dockerService.CreateConnection(ctx)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
-// 	}
-// 	defer dockerClient.Close()
-
-// 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: includeAll})
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to list Docker containers: %w", err)
-// 	}
-
-// 	return containers, nil
-// }
-
 func (s *ContainerService) StartContainer(ctx context.Context, containerID string, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {

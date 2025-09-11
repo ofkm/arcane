@@ -18,3 +18,9 @@ export interface VolumeUsageDto {
 	inUse: boolean;
 	containers: string[];
 }
+
+export interface VolumeUsageCounts {
+	volumesInuse: number;
+	volumesUnused: number;
+	totalVolumes: number;
+}

@@ -27,8 +27,6 @@ func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerC
 	apiGroup := group.Group("/containers")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
-		apiGroup.GET("/running", handler.GetRunningContainers)
-
 		apiGroup.GET("", handler.List)
 		apiGroup.POST("", handler.Create)
 		apiGroup.GET("/:id", handler.GetByID)
@@ -264,19 +262,25 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 	})
 }
 
-func (h *ContainerHandler) GetRunningContainers(c *gin.Context) {
-	containers, err := h.dockerService.GetRunningContainers(c.Request.Context())
+func (h *ContainerHandler) GetContainerStatusCounts(c *gin.Context) {
+	_, running, stopped, total, err := h.dockerService.GetAllContainers(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to list running containers: " + err.Error()},
+			"data":    gin.H{"error": "Failed to get container counts: " + err.Error()},
 		})
 		return
 	}
 
+	out := dto.ContainerStatusLengthsDto{
+		RunningContainers: running,
+		StoppedContainers: stopped,
+		TotalContainers:   total,
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    containers,
+		"data":    out,
 	})
 }
 
@@ -290,7 +294,7 @@ func (h *ContainerHandler) IsImageInUse(c *gin.Context) {
 		return
 	}
 
-	containers, err := h.dockerService.GetAllContainers(c.Request.Context())
+	containers, _, _, _, err := h.dockerService.GetAllContainers(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

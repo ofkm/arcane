@@ -14,8 +14,7 @@
 
 	let { data } = $props();
 
-	let networks = $state(data.networks);
-	let requestOptions = $state(data.networkRequestOptions);
+	let { networks, networkUsageCounts, networkRequestOptions: requestOptions } = $state(data);
 	let selectedIds = $state<string[]>([]);
 	let isCreateDialogOpen = $state(false);
 
@@ -24,8 +23,8 @@
 		refresh: false
 	});
 
-	const totalNetworks = $derived(networks.data.length);
-	const bridgeNetworks = $derived(networks.data.filter((n) => n.driver === 'bridge').length);
+	const totalNetworks = $derived(networkUsageCounts.totalNetworks);
+	const unusedNetworks = $derived(networkUsageCounts.networksUnused);
 
 	async function refreshNetworks() {
 		isLoading.refresh = true;
@@ -82,11 +81,11 @@
 			class="border-l-4 border-l-blue-500"
 		/>
 		<StatCard
-			title={m.networks_bridge()}
-			value={bridgeNetworks}
+			title={m.unused_networks()}
+			value={unusedNetworks}
 			icon={EthernetPortIcon}
-			iconColor="text-green-500"
-			class="border-l-4 border-l-green-500"
+			iconColor="text-amber-500"
+			class="border-l-4 border-l-amber-500"
 		/>
 	</div>
 

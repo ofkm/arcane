@@ -32,7 +32,6 @@ func NewStackHandler(group *gin.RouterGroup, stackService *services.StackService
 		apiGroup.GET("/:id", handler.GetStack)
 		apiGroup.PUT("/:id", handler.UpdateStack)
 		apiGroup.POST("/:id/deploy", handler.DeployStack)
-		apiGroup.POST("/:id/stop", handler.StopStack)
 		apiGroup.POST("/:id/restart", handler.RestartStack)
 		apiGroup.GET("/:id/services", handler.GetStackServices)
 		apiGroup.POST("/:id/pull", handler.PullImages)
@@ -285,64 +284,6 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    resp,
-	})
-}
-
-func (h *StackHandler) StartStack(c *gin.Context) {
-	stackID := c.Param("stackId")
-	if stackID == "" {
-		stackID = c.Param("id")
-	}
-
-	if stackID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Stack ID is required",
-		})
-		return
-	}
-
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "User not authenticated"})
-		return
-	}
-	if err := h.stackService.DeployStack(c.Request.Context(), stackID, *currentUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Stack started successfully"},
-	})
-}
-
-func (h *StackHandler) StopStack(c *gin.Context) {
-	stackID := c.Param("stackId")
-	if stackID == "" {
-		stackID = c.Param("id")
-	}
-
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "User not authenticated"})
-		return
-	}
-	if err := h.stackService.StopStack(c.Request.Context(), stackID, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to stop stack",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Stack stopped successfully"},
 	})
 }
 

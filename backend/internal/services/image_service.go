@@ -458,18 +458,6 @@ func (s *ImageService) deleteAllImages(ctx context.Context) error {
 	return nil
 }
 
-func (s *ImageService) ListImagesWithUpdates(ctx context.Context) ([]*models.Image, error) {
-	err := s.SyncDockerImages(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list and sync Docker images: %w", err)
-	}
-	var images []*models.Image
-	if err := s.db.WithContext(ctx).Preload("UpdateRecord").Find(&images).Error; err != nil {
-		return nil, fmt.Errorf("failed to get images with update data from DB: %w", err)
-	}
-	return images, nil
-}
-
 func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID string) error {
 	if dockerImageID == "" {
 		return fmt.Errorf("docker image ID cannot be empty")

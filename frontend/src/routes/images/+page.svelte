@@ -17,8 +17,7 @@
 
 	let { data } = $props();
 
-	let images = $state(data.images);
-	let requestOptions = $state(data.imageRequestOptions);
+	let { images, imageUsageCounts, imageRequestOptions: requestOptions } = $state(data);
 	let selectedIds = $state<string[]>([]);
 
 	let isLoading = $state({
@@ -111,14 +110,14 @@
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<StatCard
 			title={m.images_total()}
-			value={images.pagination.totalItems}
+			value={imageUsageCounts.totalImages}
 			icon={HardDriveIcon}
 			iconColor="text-blue-500"
 			class="border-l-4 border-l-blue-500"
 		/>
 		<StatCard
 			title={m.images_total_size()}
-			value={String(bytes.format(data.totalSize))}
+			value={String(bytes.format(imageUsageCounts.totalImageSize))}
 			icon={PackageIcon}
 			iconColor="text-amber-500"
 			class="border-l-4 border-l-amber-500"
