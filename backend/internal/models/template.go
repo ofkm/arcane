@@ -29,6 +29,7 @@ type ComposeTemplateMetadata struct {
 	EnvURL           *string `json:"envUrl,omitempty" gorm:"column:meta_env_url"`
 	DocumentationURL *string `json:"documentationUrl,omitempty" gorm:"column:meta_documentation_url"`
 	IconURL          *string `json:"iconUrl,omitempty" gorm:"column:meta_icon_url"`
+	Source           *string `json:"source,omitempty" gorm:"column:meta_source"` // "filesystem", "remote", "downloaded", etc.
 }
 
 func (TemplateRegistry) TableName() string {

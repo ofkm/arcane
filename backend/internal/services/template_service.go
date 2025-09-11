@@ -17,6 +17,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	appfs "github.com/ofkm/arcane-backend/internal/utils/fs"
 	"gorm.io/gorm"
 )
 
@@ -113,6 +114,10 @@ func (s *TemplateService) ensureRemoteTemplatesLoaded(ctx context.Context) error
 }
 
 func (s *TemplateService) GetAllTemplates(ctx context.Context) ([]models.ComposeTemplate, error) {
+	if err := s.syncLocalTemplates(ctx, appfs.TemplatesDir()); err != nil {
+		fmt.Printf("Warning: template filesystem sync failed: %v\n", err)
+	}
+
 	var templates []models.ComposeTemplate
 
 	err := s.db.WithContext(ctx).Preload("Registry").Find(&templates).Error
@@ -233,7 +238,7 @@ func (s *TemplateService) DeleteTemplate(ctx context.Context, id string) error {
 }
 
 func (s *TemplateService) GetEnvTemplate() string {
-	envPath := filepath.Join("data", "templates", ".env.template")
+	envPath := filepath.Join(appfs.TemplatesDir(), ".env.template")
 	if content, err := os.ReadFile(envPath); err == nil {
 		return string(content)
 	}
@@ -242,13 +247,11 @@ func (s *TemplateService) GetEnvTemplate() string {
 }
 
 func (s *TemplateService) SaveEnvTemplate(content string) error {
-	templateDir := filepath.Join("data", "templates")
-	if err := os.MkdirAll(templateDir, 0755); err != nil {
-		return fmt.Errorf("failed to create template directory: %w", err)
+	if _, err := appfs.EnsureTemplatesDir(); err != nil {
+		return fmt.Errorf("failed ensuring templates dir: %w", err)
 	}
-
-	envPath := filepath.Join(templateDir, ".env.template")
-	if err := os.WriteFile(envPath, []byte(content), 0600); err != nil {
+	envPath := filepath.Join(appfs.TemplatesDir(), ".env.template")
+	if err := os.WriteFile(envPath, []byte(content), 0o600); err != nil {
 		return fmt.Errorf("failed to save env template: %w", err)
 	}
 
@@ -551,6 +554,7 @@ func (s *TemplateService) DownloadTemplate(ctx context.Context, remoteTemplate *
 	if envContent != "" {
 		localTemplate.EnvContent = &envContent
 	}
+	source := "downloaded"
 
 	if remoteTemplate.Metadata != nil {
 		localTemplate.Metadata = &models.ComposeTemplateMetadata{
@@ -576,4 +580,155 @@ func (s *TemplateService) DownloadTemplate(ctx context.Context, remoteTemplate *
 
 func (s *TemplateService) invalidateRemoteCache() {
 	s.setRemoteCache(remoteCache{})
+}
+
+// syncLocalTemplates scans a directory for compose template files and syncs them into the DB.
+// Rules:
+//   - Accepts *.yml / *.yaml
+//   - Skips .env.template (handled separately) and non-regular files
+//   - Uses filename (without ext) as ID (slugified). If it would start with remote: prefix, add local-
+//   - Marks templates as IsCustom=true, IsRemote=false
+//   - If an existing local (non-remote) template with same ID exists, updates content/env only when changed
+func (s *TemplateService) syncLocalTemplates(ctx context.Context, dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read dir %s: %w", dir, err)
+	}
+
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+
+		// Skip the shared env template
+		if name == ".env.template" {
+			continue
+		}
+
+		lower := strings.ToLower(name)
+		if !(strings.HasSuffix(lower, ".yml") || strings.HasSuffix(lower, ".yaml")) {
+			continue
+		}
+
+		fullPath := filepath.Join(dir, name)
+		contentBytes, err := os.ReadFile(fullPath)
+		if err != nil {
+			fmt.Printf("Warning: unable to read template file %s: %v\n", fullPath, err)
+			continue
+		}
+		content := string(contentBytes)
+
+		base := strings.TrimSuffix(strings.TrimSuffix(name, ".yml"), ".yaml")
+		id := s.generateTemplateID(base)
+		if strings.HasPrefix(id, remoteIDPrefix+":") {
+			id = "local-" + id
+		}
+
+		// Optional sibling env file: <base>.env
+		var envPtr *string
+		envPath := filepath.Join(dir, base+".env")
+		if data, err := os.ReadFile(envPath); err == nil {
+			env := string(data)
+			envPtr = &env
+		}
+
+		// Derive description from leading comment lines
+		description := deriveDescriptionFromContent(content)
+
+		var existing models.ComposeTemplate
+		err = s.db.WithContext(ctx).Where("id = ?", id).First(&existing).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Insert new
+				newTpl := &models.ComposeTemplate{
+					BaseModel:   models.BaseModel{ID: id},
+					Name:        base,
+					Description: description,
+					Content:     content,
+					EnvContent:  envPtr,
+					IsCustom:    true,
+					IsRemote:    false,
+				}
+				if createErr := s.db.WithContext(ctx).Create(newTpl).Error; createErr != nil {
+					fmt.Printf("Warning: failed to create template %s: %v\n", id, createErr)
+				}
+			} else {
+				fmt.Printf("Warning: failed to query template %s: %v\n", id, err)
+			}
+			continue
+		}
+
+		// Skip remote templates with same ID (shouldn't normally happen)
+		if existing.IsRemote {
+			continue
+		}
+
+		needsUpdate := false
+		if existing.Content != content {
+			existing.Content = content
+			needsUpdate = true
+		}
+		// Update env content only if changed (handle nil vs value)
+		switch {
+		case existing.EnvContent == nil && envPtr != nil:
+			existing.EnvContent = envPtr
+			needsUpdate = true
+		case existing.EnvContent != nil && envPtr == nil:
+			// Keep existing unless you want deletion; current policy: retain old env if file removed
+		case existing.EnvContent != nil && envPtr != nil && *existing.EnvContent != *envPtr:
+			existing.EnvContent = envPtr
+			needsUpdate = true
+		}
+		if existing.Description == "" && description != "" {
+			existing.Description = description
+			needsUpdate = true
+		}
+
+		if needsUpdate {
+			if saveErr := s.db.WithContext(ctx).Save(&existing).Error; saveErr != nil {
+				fmt.Printf("Warning: failed to update template %s: %v\n", id, saveErr)
+			}
+		}
+	}
+
+	return nil
+}
+
+// deriveDescriptionFromContent pulls the first contiguous block of leading
+// comment lines (# ...) as a description (truncated).
+func deriveDescriptionFromContent(content string) string {
+	lines := strings.Split(content, "\n")
+	var collected []string
+	for _, l := range lines {
+		trim := strings.TrimSpace(l)
+		if trim == "" {
+			if len(collected) == 0 {
+				continue
+			}
+			break
+		}
+		if strings.HasPrefix(trim, "#") {
+			text := strings.TrimSpace(strings.TrimPrefix(trim, "#"))
+			if text != "" {
+				collected = append(collected, text)
+				continue
+			}
+		}
+		// First non-comment / non-empty after collecting ends description
+		if len(collected) > 0 {
+			break
+		} else {
+			// No leading comments, abort
+			return ""
+		}
+	}
+	desc := strings.Join(collected, " ")
+	if len(desc) > 300 {
+		desc = desc[:300]
+	}
+	return desc
 }

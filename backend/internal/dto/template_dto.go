@@ -38,6 +38,7 @@ type ComposeTemplateMetadataDto struct {
 	EnvURL           *string `json:"envUrl,omitempty"`
 	DocumentationURL *string `json:"documentationUrl,omitempty"`
 	IconURL          *string `json:"iconUrl,omitempty"`
+	Source           *string `json:"source,omitempty"`
 	UpdatedAt        *string `json:"updatedAt,omitempty"`
 }
 
