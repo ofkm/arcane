@@ -1051,5 +1051,6 @@
 	"common_continue": "继续",
 	"security_settings_save_failed": "保存安全设置失败",
 	"common_skip": "跳过",
-	"language": "语言"
+	"language": "语言",
+	"bridge": "Bridge"
 }
