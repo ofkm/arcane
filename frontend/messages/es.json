@@ -173,7 +173,7 @@
 	"networks_create_failed": "Error al crear la red \"{name}\"",
 	"networks_refresh_failed": "Error al actualizar las redes",
 	"networks_total": "Redes totales",
-	"networks_bridge": "Redes Bridge",
+	"unused_networks": "Redes no utilizadas",
 	"networks_host": "Anfitrión",
 	"networks_overlay": "Overlay",
 	"networks_macvlan": "Macvlán",
