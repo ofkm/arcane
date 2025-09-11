@@ -2,7 +2,7 @@ import BaseAPIService from './api-service';
 import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
 import type { ContainerCreateOptions, NetworkCreateOptions, VolumeCreateOptions, ContainerStats } from 'dockerode';
-import type { Project } from '$lib/types/project.type';
+import type { Project, ProjectStatusCounts } from '$lib/types/project.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import { browser } from '$app/environment';
 import type { ContainerStatusCounts, ContainerSummaryDto } from '$lib/types/container.type';
@@ -224,6 +224,13 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return res.data;
 	}
 
+	async getProjectStatusCounts(): Promise<ProjectStatusCounts> {
+		const envId = await this.getCurrentEnvironmentId();
+
+		const res = await this.api.get(`/environments/${envId}/stacks/counts`);
+		return res.data.data;
+	}
+
 	async getProject(projectName: string): Promise<Project> {
 		const envId = await this.getCurrentEnvironmentId();
 		const response = await this.handleResponse<{ stack?: Project; success?: boolean }>(
@@ -237,7 +244,7 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return response as Project;
 	}
 
-	async deployProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
+	async createProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
 		const envId = await this.getCurrentEnvironmentId();
 		const payload = {
 			name: projectName,
@@ -256,9 +263,9 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.put(`/environments/${envId}/stacks/${projectName}`, payload));
 	}
 
-	async startProject(projectId: string): Promise<Project> {
+	async deployProject(projectId: string): Promise<Project> {
 		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectId}/start`));
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectId}/deploy`));
 	}
 
 	async restartProject(projectId: string): Promise<Project> {

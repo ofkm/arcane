@@ -18,6 +18,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/docker"
 	"gorm.io/gorm"
 )
 
@@ -107,8 +108,8 @@ func (s *StackService) DeployStack(ctx context.Context, stackID string, user mod
 		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
 	}
 
-	composeFileName := s.findComposeFileName(stack.Path)
-	if composeFileName == "" {
+	composeFileFullPath := docker.LocateComposeFile(stack.Path)
+	if composeFileFullPath == "" {
 		return fmt.Errorf("no compose file found in stack directory: %s", stack.Path)
 	}
 
@@ -116,8 +117,7 @@ func (s *StackService) DeployStack(ctx context.Context, stackID string, user mod
 		return fmt.Errorf("failed to update stack status to deploying: %w", err)
 	}
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", composeFileName, "up", "-d")
-	cmd.Dir = stack.Path
+	cmd := exec.CommandContext(ctx, "docker-compose", "-f", composeFileFullPath, "up", "-d")
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
 	)
@@ -143,47 +143,6 @@ func (s *StackService) DeployStack(ctx context.Context, stackID string, user mod
 	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusRunning)
 }
 
-func (s *StackService) StopStack(ctx context.Context, stackID string, user models.User) error {
-	stack, err := s.GetStackByID(ctx, stackID)
-	if err != nil {
-		return err
-	}
-
-	// Verify stack directory exists
-	if _, err := os.Stat(stack.Path); os.IsNotExist(err) {
-		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
-	}
-
-	// Update status to stopping first
-	if err := s.UpdateStackStatus(ctx, stackID, models.StackStatusStopping); err != nil {
-		return fmt.Errorf("failed to update stack status to stopping: %w", err)
-	}
-
-	cmd := exec.CommandContext(ctx, "docker-compose", "stop")
-	cmd.Dir = stack.Path
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
-	)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to stop stack: %w\nOutput: %s", err, string(output))
-	}
-
-	// Log stack stop event
-	metadata := models.JSON{
-		"action":    "stop",
-		"stackId":   stackID,
-		"stackName": stack.Name,
-	}
-	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackStop, stackID, stack.Name, user.ID, user.Username, "0", metadata); logErr != nil {
-		fmt.Printf("Could not log stack stop action: %s\n", logErr)
-	}
-
-	// Update status and counts after successful stop
-	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusStopped)
-}
-
 func (s *StackService) DownStack(ctx context.Context, stackID string, user models.User) error {
 	stack, err := s.GetStackByID(ctx, stackID)
 	if err != nil {
@@ -195,8 +154,8 @@ func (s *StackService) DownStack(ctx context.Context, stackID string, user model
 		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
 	}
 
-	composeFileName := s.findComposeFileName(stack.Path)
-	if composeFileName == "" {
+	composeFileFullPath := docker.LocateComposeFile(stack.Path)
+	if composeFileFullPath == "" {
 		return fmt.Errorf("no compose file found in stack directory: %s", stack.Path)
 	}
 
@@ -205,8 +164,7 @@ func (s *StackService) DownStack(ctx context.Context, stackID string, user model
 		return fmt.Errorf("failed to update stack status to stopping: %w", err)
 	}
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", composeFileName, "down")
-	cmd.Dir = stack.Path
+	cmd := exec.CommandContext(ctx, "docker-compose", "-f", composeFileFullPath, "down")
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
 	)
@@ -258,7 +216,7 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 		return services, nil
 	}
 
-	composeFile := s.findComposeFile(stack.Path)
+	composeFile := docker.LocateComposeFile(stack.Path)
 	if composeFile == "" {
 		return nil, fmt.Errorf("no compose file found for stack")
 	}
@@ -414,7 +372,7 @@ func (le lineEmitter) WriteJSON(m map[string]any) {
 }
 
 func (s *StackService) collectStackImages(ctx context.Context, stack *models.Stack) ([]string, error) {
-	composeFile := s.findComposeFile(stack.Path)
+	composeFile := docker.LocateComposeFile(stack.Path)
 	if composeFile == "" {
 		return nil, fmt.Errorf("no compose file found for stack")
 	}
@@ -625,7 +583,7 @@ func (s *StackService) SyncAllStacksFromFilesystem(ctx context.Context) error {
 		seenDirs[dirPath] = struct{}{}
 
 		// Skip if no compose file
-		if s.findComposeFile(dirPath) == "" {
+		if docker.LocateComposeFile(dirPath) == "" {
 			continue
 		}
 
@@ -669,7 +627,7 @@ func (s *StackService) SyncAllStacksFromFilesystem(ctx context.Context) error {
 			continue
 		}
 
-		if s.findComposeFile(stack.Path) == "" {
+		if docker.LocateComposeFile(stack.Path) == "" {
 			if err := s.db.WithContext(ctx).Where("stack_id = ?", stack.ID).Delete(&models.ProjectCache{}).Error; err != nil {
 				fmt.Printf("Warning: failed to delete cache for removed stack %s: %v\n", stack.ID, err)
 			}
@@ -706,7 +664,7 @@ func (s *StackService) syncStackWithFilesystem(ctx context.Context, stack *model
 	}
 
 	// Check if compose file still exists
-	if s.findComposeFile(stack.Path) == "" {
+	if docker.LocateComposeFile(stack.Path) == "" {
 		stack.Status = "unknown"
 		stack.ServiceCount = 0
 		stack.RunningCount = 0
@@ -755,7 +713,7 @@ func (s *StackService) UpdateStackContent(ctx context.Context, stackID string, c
 	}
 
 	if composeContent != nil {
-		existingComposeFile := s.findComposeFile(stack.Path)
+		existingComposeFile := docker.LocateComposeFile(stack.Path)
 		var composePath string
 
 		if existingComposeFile != "" {
@@ -789,7 +747,7 @@ func (s *StackService) GetStackContent(ctx context.Context, stackID string) (com
 		return "", "", err
 	}
 
-	composeFile := s.findComposeFile(stack.Path)
+	composeFile := docker.LocateComposeFile(stack.Path)
 	if composeFile != "" {
 		if content, err := os.ReadFile(composeFile); err == nil {
 			composeContent = string(content)
@@ -902,7 +860,7 @@ func (s *StackService) getLiveStackStatus(ctx context.Context, stackDir, project
 	}
 
 	// Get service count from compose file to know the expected total
-	composeFile := s.findComposeFile(stackDir)
+	composeFile := docker.LocateComposeFile(stackDir)
 	if composeFile != "" {
 		if expectedServices, err := s.parseServicesFromComposeFile(ctx, composeFile, projectName); err == nil {
 			expectedTotal := len(expectedServices)
@@ -1147,7 +1105,7 @@ func (s *StackService) saveStackFiles(stackPath, composeContent string, envConte
 		return fmt.Errorf("failed to create stack directory: %w", err)
 	}
 
-	existingComposeFile := s.findComposeFile(stackPath)
+	existingComposeFile := docker.LocateComposeFile(stackPath)
 	var composePath string
 
 	if existingComposeFile != "" {
@@ -1168,35 +1126,6 @@ func (s *StackService) saveStackFiles(stackPath, composeContent string, envConte
 	}
 
 	return nil
-}
-
-// Centralize compose filename candidates once.
-var composeFileCandidates = []string{
-	"compose.yaml",
-	"compose.yml",
-	"docker-compose.yaml",
-	"docker-compose.yml",
-}
-
-// findFirstExistingComposeFile returns (fullPath, filename) of the first compose file found.
-func findFirstExistingComposeFile(stackDir string) (string, string) {
-	for _, filename := range composeFileCandidates {
-		fullPath := filepath.Join(stackDir, filename)
-		if info, err := os.Stat(fullPath); err == nil && !info.IsDir() {
-			return fullPath, filename
-		}
-	}
-	return "", ""
-}
-
-func (s *StackService) findComposeFile(stackDir string) string {
-	full, _ := findFirstExistingComposeFile(stackDir)
-	return full
-}
-
-func (s *StackService) findComposeFileName(stackDir string) string {
-	_, name := findFirstExistingComposeFile(stackDir)
-	return name
 }
 
 func (s *StackService) parseComposePS(output string) ([]StackServiceInfo, error) {
@@ -1311,7 +1240,7 @@ func (s *StackService) importExternalStack(ctx context.Context, dirName, stackNa
 	}
 
 	path := filepath.Join(stacksDir, dirName)
-	if s.findComposeFile(path) == "" {
+	if docker.LocateComposeFile(path) == "" {
 		return nil, fmt.Errorf("no compose file found in %q", path)
 	}
 
@@ -1350,4 +1279,57 @@ func (s *StackService) importExternalStack(ctx context.Context, dirName, stackNa
 	}
 
 	return stack, nil
+}
+
+func (s *StackService) GetProjectStatusCounts(ctx context.Context) (folderCount, runningStacks, stoppedStacks, totalStacks int, err error) {
+	stacksDir, derr := s.getStacksDirectory(ctx)
+	if derr != nil {
+		return 0, 0, 0, 0, fmt.Errorf("could not determine stacks directory: %w", derr)
+	}
+
+	// Count only directories that contain a compose file
+	if info, statErr := os.Stat(stacksDir); statErr == nil && info.IsDir() {
+		entries, readErr := os.ReadDir(stacksDir)
+		if readErr != nil {
+			return 0, 0, 0, 0, fmt.Errorf("failed to read stacks directory %s: %w", stacksDir, readErr)
+		}
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			dirPath := filepath.Join(stacksDir, e.Name())
+			if docker.LocateComposeFile(dirPath) != "" {
+				folderCount++
+			}
+		}
+	} else if os.IsNotExist(statErr) {
+		// Directory missing: folderCount stays 0
+	} else if statErr != nil {
+		return 0, 0, 0, 0, fmt.Errorf("unable to access stacks directory %s: %w", stacksDir, statErr)
+	}
+
+	// DB counts
+	var (
+		running int64
+		stopped int64
+		total   int64
+	)
+	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Count(&total).Error; err != nil {
+		return folderCount, 0, 0, 0, fmt.Errorf("failed to count total stacks: %w", err)
+	}
+	// running = running + partially_running
+	if err := s.db.WithContext(ctx).
+		Model(&models.Stack{}).
+		Where("status IN ?", []models.StackStatus{models.StackStatusRunning, models.StackStatusPartiallyRunning}).
+		Count(&running).Error; err != nil {
+		return folderCount, 0, 0, int(total), fmt.Errorf("failed to count running stacks: %w", err)
+	}
+	if err := s.db.WithContext(ctx).
+		Model(&models.Stack{}).
+		Where("status = ?", models.StackStatusStopped).
+		Count(&stopped).Error; err != nil {
+		return folderCount, int(running), 0, int(total), fmt.Errorf("failed to count stopped stacks: %w", err)
+	}
+
+	return folderCount, int(running), int(stopped), int(total), nil
 }

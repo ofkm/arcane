@@ -105,6 +105,7 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/volumes/:volumeName/usage", handler.GetVolumeUsage)
 		apiGroup.POST("/:id/volumes/prune", handler.PruneVolumes)
 
+		apiGroup.GET("/:id/stacks/counts", handler.GetStackStatusCounts)
 		apiGroup.GET("/:id/stacks", handler.GetStacks)
 		apiGroup.POST("/:id/stacks", handler.CreateStack)
 		apiGroup.GET("/:id/stacks/:stackId", handler.GetStack)
@@ -434,6 +435,9 @@ func (h *EnvironmentHandler) handleStackEndpoints(c *gin.Context, endpoint strin
 	}
 
 	switch {
+	case endpoint == "/stacks/counts" && c.Request.Method == http.MethodGet:
+		stackHandler.GetProjectStatusCounts(c)
+		return true
 	case endpoint == "/stacks" && c.Request.Method == http.MethodGet:
 		stackHandler.ListStacks(c)
 		return true
@@ -951,6 +955,10 @@ func (h *EnvironmentHandler) RemoveVolume(c *gin.Context) {
 
 func (h *EnvironmentHandler) PruneVolumes(c *gin.Context) {
 	h.routeRequest(c, "/volumes/prune")
+}
+
+func (h *EnvironmentHandler) GetStackStatusCounts(c *gin.Context) {
+	h.routeRequest(c, "/stacks/counts")
 }
 
 func (h *EnvironmentHandler) GetStack(c *gin.Context) {

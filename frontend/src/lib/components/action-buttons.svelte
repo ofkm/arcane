@@ -207,7 +207,7 @@
 	async function handleStart() {
 		setLoading('start', true);
 		await handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? environmentAPI.startContainer(id) : environmentAPI.startProject(id)),
+			result: await tryCatch(type === 'container' ? environmentAPI.startContainer(id) : environmentAPI.deployProject(id)),
 			message: m.action_failed_generic({ action: m.common_start(), type }),
 			setLoadingState: (value) => setLoading('start', value),
 			onSuccess: async () => {
@@ -221,7 +221,7 @@
 	async function handleDeploy() {
 		setLoading('start', true);
 		await handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.startProject(id)),
+			result: await tryCatch(environmentAPI.deployProject(id)),
 			message: m.action_failed_generic({ action: m.common_start(), type }),
 			setLoadingState: (value) => setLoading('start', value),
 			onSuccess: async () => {

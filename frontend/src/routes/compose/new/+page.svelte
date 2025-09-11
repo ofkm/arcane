@@ -64,7 +64,7 @@
 		const { name, composeContent, envContent } = validated;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.deployProject(name, composeContent, envContent)),
+			result: await tryCatch(environmentAPI.createProject(name, composeContent, envContent)),
 			message: m.compose_create_failed(),
 			setLoadingState: (value) => (saving = value),
 			onSuccess: async (project) => {
