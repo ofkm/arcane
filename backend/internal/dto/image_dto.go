@@ -29,6 +29,13 @@ type ImageUpdateInfoDto struct {
 	UsedCredential bool   `json:"usedCredential,omitempty"`
 }
 
+type ImageUsageCountsDto struct {
+	Inuse     int   `json:"imagesInuse"`
+	Unused    int   `json:"imagesUnused"`
+	Total     int   `json:"totalImages"`
+	TotalSize int64 `json:"totalImageSize"`
+}
+
 type ImageSummaryDto struct {
 	ID          string                 `json:"id" sortable:"true"`
 	RepoTags    []string               `json:"repoTags"`
@@ -236,8 +243,4 @@ func NewImagePruneReportDto(src image.PruneReport) ImagePruneReportDto {
 
 type MessageDto struct {
 	Message string `json:"message"`
-}
-
-type TotalImageSizeDto struct {
-	TotalSize int64 `json:"totalSize"`
 }

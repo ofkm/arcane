@@ -26,6 +26,12 @@ type CreateContainerDto struct {
 	CPUs          float64           `json:"cpus,omitempty"`
 }
 
+type ContainerStatusLengthsDto struct {
+	RunningContainers int `json:"runningContainers"`
+	StoppedContainers int `json:"stoppedContainers"`
+	TotalContainers   int `json:"totalContainers"`
+}
+
 type ContainerActionResult struct {
 	Started []string `json:"started,omitempty"`
 	Stopped []string `json:"stopped,omitempty"`

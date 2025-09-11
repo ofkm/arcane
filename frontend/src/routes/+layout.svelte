@@ -61,7 +61,7 @@
 	{/if}
 </div>
 
-<ModeWatcher />
+<ModeWatcher disableTransitions={false} />
 <Toaster
 	toastOptions={{
 		classes: {

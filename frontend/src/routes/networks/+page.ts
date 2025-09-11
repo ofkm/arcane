@@ -15,6 +15,7 @@ export const load: PageLoad = async () => {
 	};
 
 	const networks = await environmentAPI.getNetworks(networkRequestOptions);
+	const networkUsageCounts = await environmentAPI.getNetworkUsageCounts();
 
-	return { networks, networkRequestOptions };
+	return { networks, networkRequestOptions, networkUsageCounts };
 };

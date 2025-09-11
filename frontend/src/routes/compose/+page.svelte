@@ -14,8 +14,7 @@
 
 	let { data } = $props();
 
-	let projects = $state(data.projects);
-	let projectRequestOptions = $state(data.projectRequestOptions);
+	let { projects, projectStatusCounts, projectRequestOptions } = $state(data);
 	let selectedIds = $state<string[]>([]);
 
 	let isLoading = $state({
@@ -23,9 +22,9 @@
 		refreshing: false
 	});
 
-	const totalCompose = $derived(projects.pagination.totalItems);
-	const runningCompose = $derived(projects.data.filter((s) => s.status === 'running').length);
-	const stoppedCompose = $derived(projects.data.filter((s) => s.status === 'stopped').length);
+	const totalCompose = $derived(projectStatusCounts.totalProjects);
+	const runningCompose = $derived(projectStatusCounts.runningProjects);
+	const stoppedCompose = $derived(projectStatusCounts.stoppedProjects);
 
 	async function handleCheckForUpdates() {
 		isLoading.updating = true;

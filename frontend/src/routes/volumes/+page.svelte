@@ -15,8 +15,8 @@
 
 	let { data } = $props();
 
-	let volumes = $state(data.volumes);
-	let requestOptions = $state(data.volumeRequestOptions);
+	let { volumes, volumeUsageCounts, volumeRequestOptions: requestOptions } = $state(data);
+
 	let selectedIds = $state<string[]>([]);
 	let isCreateDialogOpen = $state(false);
 
@@ -26,9 +26,9 @@
 		removingSelected: false
 	});
 
-	const totalVolumes = $derived(volumes.data.length);
-	const usedVolumes = $derived(volumes.data.filter((v) => v.inUse).length);
-	const unusedVolumes = $derived(volumes.data.filter((v) => !v.inUse).length);
+	const totalVolumes = $derived(volumeUsageCounts.totalVolumes);
+	const usedVolumes = $derived(volumeUsageCounts.volumesInuse);
+	const unusedVolumes = $derived(volumeUsageCounts.volumesUnused);
 
 	async function handleCreateVolumeSubmit(options: VolumeCreateOptions) {
 		isLoading.creating = true;

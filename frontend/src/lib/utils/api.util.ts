@@ -18,29 +18,35 @@ function extractDockerErrorMessage(error: any): string {
 	return JSON.stringify(error);
 }
 
-export function handleApiResultWithCallbacks<T>({
+export async function handleApiResultWithCallbacks<T>({
 	result,
 	message,
 	setLoadingState = () => {},
-	onSuccess,
-	onError = () => {}
+	onSuccess = async () => {},
+	onError = async () => {}
 }: {
 	result: Result<T, Error>;
 	message: string;
 	setLoadingState?: (value: boolean) => void;
-	onSuccess: (data: T) => void;
-	onError?: (error: Error) => void;
+	onSuccess?: (data: T) => void | Promise<void>;
+	onError?: (error: Error) => void | Promise<void>;
 }) {
-	setLoadingState(true);
+	try {
+		setLoadingState(true);
 
-	if (result.error) {
-		const dockerMsg = extractDockerErrorMessage(result.error);
-		console.error(`API Error: ${message}:`, result.error);
-		toast.error(`${message}: ${dockerMsg}`);
-		onError(result.error);
-		setLoadingState(false);
-	} else {
-		onSuccess(result.data as T);
-		setLoadingState(false);
+		if (result.error) {
+			const dockerMsg = extractDockerErrorMessage(result.error);
+			console.error(`API Error: ${message}:`, result.error);
+			toast.error(`${message}: ${dockerMsg}`);
+			await Promise.resolve(onError(result.error));
+		} else {
+			await Promise.resolve(onSuccess(result.data as T));
+		}
+	} finally {
+		try {
+			setLoadingState(false);
+		} catch (e) {
+			console.warn('Failed to clear loading state', e);
+		}
 	}
 }

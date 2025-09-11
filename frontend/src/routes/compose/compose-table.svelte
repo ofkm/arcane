@@ -53,7 +53,7 @@
 		try {
 			if (action === 'start') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(environmentAPI.startProject(id)),
+					result: await tryCatch(environmentAPI.deployProject(id)),
 					message: m.compose_start_failed(),
 					setLoadingState: (value) => (isLoading.start = value),
 					onSuccess: async () => {

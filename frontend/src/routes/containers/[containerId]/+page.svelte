@@ -21,7 +21,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { onDestroy } from 'svelte';
 	import LogViewer from '$lib/components/log-viewer.svelte';
-	import Meter from '$lib/components/ui/meter/meter.svelte';
+	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { browser } from '$app/environment';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import type { ContainerDetailsDto, NetworkSettingsDto } from '$lib/types/container.type';
@@ -497,23 +497,39 @@
 										{#if stats && container.state?.running}
 											<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 												<div class="space-y-6">
-													<Meter
-														label={m.dashboard_meter_cpu()}
-														valueLabel="{cpuUsagePercent.toFixed(2)}%"
-														value={cpuUsagePercent}
-														max={100}
-														variant={cpuUsagePercent > 80 ? 'destructive' : cpuUsagePercent > 60 ? 'warning' : 'default'}
-														size="lg"
-													/>
+													<div class="space-y-2">
+														<div class="flex justify-between">
+															<span class="text-sm font-medium">{m.dashboard_meter_cpu()}</span>
+															<span class="text-muted-foreground text-sm">{cpuUsagePercent.toFixed(2)}%</span>
+														</div>
+														<Progress
+															value={cpuUsagePercent}
+															max={100}
+															class="h-2 {cpuUsagePercent > 80
+																? '[&>div]:bg-destructive'
+																: cpuUsagePercent > 60
+																	? '[&>div]:bg-warning'
+																	: ''}"
+														/>
+													</div>
 
-													<Meter
-														label={m.dashboard_meter_memory()}
-														valueLabel="{memoryUsageFormatted} / {memoryLimitFormatted} ({memoryUsagePercent.toFixed(1)}%)"
-														value={memoryUsagePercent}
-														max={100}
-														variant={memoryUsagePercent > 80 ? 'destructive' : memoryUsagePercent > 60 ? 'warning' : 'default'}
-														size="lg"
-													/>
+													<div class="space-y-2">
+														<div class="flex justify-between">
+															<span class="text-sm font-medium">{m.dashboard_meter_memory()}</span>
+															<span class="text-muted-foreground text-sm"
+																>{memoryUsageFormatted} / {memoryLimitFormatted} ({memoryUsagePercent.toFixed(1)}%)</span
+															>
+														</div>
+														<Progress
+															value={memoryUsagePercent}
+															max={100}
+															class="h-2 {memoryUsagePercent > 80
+																? '[&>div]:bg-destructive'
+																: memoryUsagePercent > 60
+																	? '[&>div]:bg-warning'
+																	: ''}"
+														/>
+													</div>
 												</div>
 
 												<div class="space-y-6">

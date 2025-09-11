@@ -55,7 +55,9 @@
 							result,
 							message: m.environments_bulk_remove_failed_many({ count: selectedIds.length }),
 							setLoadingState: () => {},
-							onSuccess: () => (successCount += 1)
+							onSuccess: () => {
+								successCount += 1;
+							}
 						});
 						if (result.error) failureCount += 1;
 					}

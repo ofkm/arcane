@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Meter from '$lib/components/ui/meter/meter.svelte';
+	import { Progress } from '$lib/components/ui/progress/index.js';
 	import type { Icon as IconType } from '@lucide/svelte';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import { m } from '$lib/paraglide/messages';
@@ -50,22 +50,21 @@
 				{/if}
 			</div>
 			<div class="min-w-0 flex-1">
-				<div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</div>
+				<div class="text-foreground text-sm font-semibold">{title}</div>
 				{#if description}
-					<div class="text-xs text-gray-700/80 dark:text-gray-300/80">{description}</div>
+					<div class="text-muted-foreground text-xs">{description}</div>
 				{/if}
 			</div>
 		</div>
 	</div>
 
-	<!-- Content Section -->
-	<div class="bg-white/90 p-4 dark:bg-gray-950/90">
+	<div class="bg-card/90 p-4">
 		<div class="space-y-3">
 			<div class="text-center">
 				{#if loading}
 					<div class="bg-muted mx-auto h-8 w-16 animate-pulse rounded"></div>
 				{:else}
-					<div class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+					<div class="text-foreground text-2xl font-bold">
 						{currentValue !== undefined ? formatValue(currentValue) : m.common_na()}
 					</div>
 				{/if}
@@ -76,7 +75,7 @@
 					{#if loading}
 						<div class="bg-muted h-2 w-full animate-pulse rounded"></div>
 					{:else}
-						<Meter value={percentage} class="h-2 bg-gray-200 dark:bg-gray-800" />
+						<Progress value={percentage} max={100} class="h-2" />
 					{/if}
 				</div>
 			</div>

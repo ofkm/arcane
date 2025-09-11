@@ -137,7 +137,7 @@ func (s *SystemService) StartAllContainers(ctx context.Context) (*dto.ContainerA
 		Success: true,
 	}
 
-	containers, err := s.containerService.ListContainers(ctx, true)
+	containers, _, _, _, err := s.dockerService.GetAllContainers(ctx)
 	if err != nil {
 		result.Success = false
 		result.Errors = append(result.Errors, fmt.Sprintf("Failed to list containers: %v", err))
@@ -164,7 +164,7 @@ func (s *SystemService) StartAllStoppedContainers(ctx context.Context) (*dto.Con
 		Success: true,
 	}
 
-	containers, err := s.containerService.ListContainers(ctx, true)
+	containers, _, _, _, err := s.dockerService.GetAllContainers(ctx)
 	if err != nil {
 		result.Success = false
 		result.Errors = append(result.Errors, fmt.Sprintf("Failed to list containers: %v", err))
@@ -191,7 +191,7 @@ func (s *SystemService) StopAllContainers(ctx context.Context) (*dto.ContainerAc
 		Success: true,
 	}
 
-	containers, err := s.containerService.ListContainers(ctx, false)
+	containers, _, _, _, err := s.dockerService.GetAllContainers(ctx)
 	if err != nil {
 		result.Success = false
 		result.Errors = append(result.Errors, fmt.Sprintf("Failed to list containers: %v", err))

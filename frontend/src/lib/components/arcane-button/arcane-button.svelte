@@ -79,13 +79,10 @@
 	aria-disabled={href ? disabled : undefined}
 	role={href && disabled ? 'link' : undefined}
 	tabindex={href && disabled ? -1 : tabindex}
-	class={cn(arcaneButtonVariants({ tone: config.tone, size }), className)}
+	class={cn('relative', arcaneButtonVariants({ tone: config.tone, size }), className)}
 	aria-label={hasChildren ? undefined : isIconOnlyButton ? displayLabel : undefined}
 	bind:this={ref}
-	onclick={async (
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		e: any
-	) => {
+	onclick={async (e: any) => {
 		onclick?.(e);
 		if (type === undefined) return;
 		if (onClickPromise) {

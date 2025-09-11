@@ -70,14 +70,14 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 
 	api.NewHealthHandler(apiGroup)
 	api.NewAuthHandler(apiGroup, appServices.User, appServices.Auth, appServices.Oidc, authMiddleware)
-	api.NewContainerHandler(apiGroup, appServices.Container, appServices.Image, authMiddleware)
+	api.NewContainerHandler(apiGroup, appServices.Docker, appServices.Container, appServices.Image, authMiddleware)
 	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
 	api.NewConverterHandler(apiGroup, appServices.Converter, authMiddleware)
 	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Stack, appServices.Settings, authMiddleware, cfg)
 	api.NewEventHandler(apiGroup, appServices.Event, authMiddleware)
-	api.NewImageHandler(apiGroup, appServices.Image, appServices.ImageUpdate, authMiddleware)
+	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, authMiddleware)
 	api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)
-	api.NewNetworkHandler(apiGroup, appServices.Network, authMiddleware)
+	api.NewNetworkHandler(apiGroup, appServices.Docker, appServices.Network, authMiddleware)
 	api.NewOidcHandler(apiGroup, appServices.Auth, appServices.Oidc, cfg)
 	api.NewSettingsHandler(apiGroup, appServices.Settings, authMiddleware)
 	api.NewStackHandler(apiGroup, appServices.Stack, authMiddleware)
@@ -85,7 +85,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewTemplateHandler(apiGroup, appServices.Template, authMiddleware)
 	api.NewUpdaterHandler(apiGroup, appServices.Updater, authMiddleware)
 	api.NewUserHandler(apiGroup, appServices.User, authMiddleware)
-	api.NewVolumeHandler(apiGroup, appServices.Volume, authMiddleware)
+	api.NewVolumeHandler(apiGroup, appServices.Docker, appServices.Volume, authMiddleware)
 
 	if cfg.Environment != "production" {
 		for _, registerFunc := range registerPlaywrightRoutes {

@@ -12,8 +12,9 @@
 
 	let { data } = $props();
 
-	let containers = $state(data.containers);
-	let requestOptions = $state(data.containerRequestOptions);
+	let { containers, containerStatusCounts, containerRequestOptions } = $state(data);
+
+	let requestOptions = $state(containerRequestOptions);
 	let selectedIds = $state([]);
 	let isCreateDialogOpen = $state(false);
 
@@ -35,9 +36,6 @@
 			}
 		});
 	}
-
-	const runningContainers = $derived(containers.data.filter((s) => s.state === 'running').length);
-	const stoppedContainers = $derived(containers.data.filter((s) => s.state != 'running').length);
 
 	async function refreshContainers() {
 		isLoading.refreshing = true;
@@ -86,13 +84,13 @@
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 		<StatCard
 			title={m.containers_total()}
-			value={containers.pagination.totalItems}
+			value={containerStatusCounts.totalContainers}
 			icon={BoxIcon}
 			class="border-l-primary border-l-4 transition-shadow hover:shadow-lg"
 		/>
 		<StatCard
 			title={m.containers_running()}
-			value={runningContainers}
+			value={containerStatusCounts.runningContainers}
 			icon={BoxIcon}
 			iconColor="text-green-500"
 			bgColor="bg-green-500/10"
@@ -100,7 +98,7 @@
 		/>
 		<StatCard
 			title={m.containers_stopped()}
-			value={stoppedContainers}
+			value={containerStatusCounts.stoppedContainers}
 			icon={BoxIcon}
 			iconColor="text-amber-500"
 			class="border-l-4 border-l-amber-500"

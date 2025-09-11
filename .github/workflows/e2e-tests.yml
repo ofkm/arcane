@@ -96,7 +96,7 @@ jobs:
           docker network create my-test-network || true
 
       - name: Download Arcane Docker image artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: arcane-image
           path: /tmp

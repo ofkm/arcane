@@ -74,7 +74,9 @@
 				result,
 				message: m.volumes_remove_failed({ name: safeName }),
 				setLoadingState: () => {},
-				onSuccess: () => (successCount += 1)
+				onSuccess: (_data) => {
+					successCount += 1;
+				}
 			});
 			if (result.error) failureCount += 1;
 		}

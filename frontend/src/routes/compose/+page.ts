@@ -15,6 +15,7 @@ export const load: PageLoad = async () => {
 	};
 
 	const projects = await environmentAPI.getProjects(projectRequestOptions);
+	const projectStatusCounts = await environmentAPI.getProjectStatusCounts();
 
-	return { projects, projectRequestOptions };
+	return { projects, projectRequestOptions, projectStatusCounts };
 };

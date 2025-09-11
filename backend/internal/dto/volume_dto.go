@@ -28,6 +28,12 @@ func NewVolumeDto(v volume.Volume, inUse bool) VolumeDto {
 	}
 }
 
+type VolumeUsageCounts struct {
+	Inuse  int `json:"volumesInuse"`
+	Unused int `json:"volumesUnused"`
+	Total  int `json:"totalVolumes"`
+}
+
 type VolumePruneReportDto struct {
 	VolumesDeleted []string `json:"volumesDeleted"`
 	SpaceReclaimed uint64   `json:"spaceReclaimed"`

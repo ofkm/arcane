@@ -13,10 +13,11 @@ import (
 
 type VolumeHandler struct {
 	volumeService *services.VolumeService
+	dockerService *services.DockerClientService
 }
 
-func NewVolumeHandler(group *gin.RouterGroup, volumeService *services.VolumeService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &VolumeHandler{volumeService: volumeService}
+func NewVolumeHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, volumeService *services.VolumeService, authMiddleware *middleware.AuthMiddleware) {
+	handler := &VolumeHandler{dockerService: dockerService, volumeService: volumeService}
 
 	apiGroup := group.Group("/volumes")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -183,5 +184,27 @@ func (h *VolumeHandler) GetUsage(c *gin.Context) {
 			"inUse":      inUse,
 			"containers": containers,
 		},
+	})
+}
+
+func (h *VolumeHandler) GetVolumeUsageCounts(c *gin.Context) {
+	_, running, stopped, total, err := h.dockerService.GetAllVolumes(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to get container counts: " + err.Error()},
+		})
+		return
+	}
+
+	out := dto.VolumeUsageCounts{
+		Inuse:  running,
+		Unused: stopped,
+		Total:  total,
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    out,
 	})
 }

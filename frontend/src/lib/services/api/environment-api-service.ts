@@ -2,13 +2,13 @@ import BaseAPIService from './api-service';
 import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
 import type { ContainerCreateOptions, NetworkCreateOptions, VolumeCreateOptions, ContainerStats } from 'dockerode';
-import type { Project } from '$lib/types/project.type';
+import type { Project, ProjectStatusCounts } from '$lib/types/project.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import { browser } from '$app/environment';
-import type { ContainerSummaryDto } from '$lib/types/container.type';
-import type { ImageSummaryDto, ImageUpdateInfoDto } from '$lib/types/image.type';
-import type { NetworkSummaryDto } from '$lib/types/network.type';
-import type { VolumeSummaryDto, VolumeDetailDto, VolumeUsageDto } from '$lib/types/volume.type';
+import type { ContainerStatusCounts, ContainerSummaryDto } from '$lib/types/container.type';
+import type { ImageSummaryDto, ImageUpdateInfoDto, ImageUsageCounts } from '$lib/types/image.type';
+import type { NetworkSummaryDto, NetworkUsageCounts } from '$lib/types/network.type';
+import type { VolumeSummaryDto, VolumeDetailDto, VolumeUsageDto, VolumeUsageCounts } from '$lib/types/volume.type';
 import type { ImageUpdateSummary, ImageVersions, VersionComparison, CompareVersionRequest } from '$lib/types/image.type';
 import type { AutoUpdateCheck, AutoUpdateResult, AutoUpdateRecord, AutoUpdateStatus } from '$lib/types/auto-update.type';
 
@@ -29,6 +29,13 @@ export class EnvironmentAPIService extends BaseAPIService {
 
 		const res = await this.api.get(`/environments/${envId}/containers`, { params: options });
 		return res.data;
+	}
+
+	async getContainerStatusCounts(): Promise<ContainerStatusCounts> {
+		const envId = await this.getCurrentEnvironmentId();
+
+		const res = await this.api.get(`/environments/${envId}/containers/counts`);
+		return res.data.data;
 	}
 
 	async getContainer(containerId: string): Promise<any> {
@@ -83,16 +90,11 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async getTotalImageSize(): Promise<number> {
+	async getImageUsageCounts(): Promise<ImageUsageCounts> {
 		const envId = await this.getCurrentEnvironmentId();
-		const res = await this.handleResponse<any>(this.api.get(`/environments/${envId}/images/total-size`));
-		// Support both shapes just in case
-		if (typeof res === 'number') return res;
-		if (res && typeof res === 'object') {
-			if ('totalSize' in res && typeof res.totalSize === 'number') return res.totalSize;
-			if ('data' in res && res.data && typeof res.data.totalSize === 'number') return res.data.totalSize;
-		}
-		return 0;
+
+		const res = await this.api.get(`/environments/${envId}/images/counts`);
+		return res.data.data;
 	}
 
 	async getImage(imageId: string): Promise<any> {
@@ -121,26 +123,18 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.get(`/environments/${envId}/images/${imageId}/inspect`));
 	}
 
-	async searchImages(term: string, limit?: number): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/images/search`, { params: { term, limit } }));
-	}
-
-	async tagImage(imageId: string, repo: string, tag: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/images/${imageId}/tag`, { repo, tag }));
-	}
-
-	async getImageHistory(imageId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/images/${imageId}/history`));
-	}
-
 	async getNetworks(options?: SearchPaginationSortRequest): Promise<Paginated<NetworkSummaryDto>> {
 		const envId = await this.getCurrentEnvironmentId();
 
 		const res = await this.api.get(`/environments/${envId}/networks`, { params: options });
 		return res.data;
+	}
+
+	async getNetworkUsageCounts(): Promise<NetworkUsageCounts> {
+		const envId = await this.getCurrentEnvironmentId();
+
+		const res = await this.api.get(`/environments/${envId}/networks/counts`);
+		return res.data.data;
 	}
 
 	async getNetwork(networkId: string): Promise<any> {
@@ -173,6 +167,13 @@ export class EnvironmentAPIService extends BaseAPIService {
 	async getVolumeUsage(volumeName: string): Promise<VolumeUsageDto> {
 		const envId = await this.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.get(`/environments/${envId}/volumes/${volumeName}/usage`)) as Promise<VolumeUsageDto>;
+	}
+
+	async getVolumeUsageCounts(): Promise<VolumeUsageCounts> {
+		const envId = await this.getCurrentEnvironmentId();
+
+		const res = await this.api.get(`/environments/${envId}/volumes/counts`);
+		return res.data.data;
 	}
 
 	async createVolume(options: VolumeCreateOptions): Promise<any> {
@@ -223,6 +224,13 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return res.data;
 	}
 
+	async getProjectStatusCounts(): Promise<ProjectStatusCounts> {
+		const envId = await this.getCurrentEnvironmentId();
+
+		const res = await this.api.get(`/environments/${envId}/stacks/counts`);
+		return res.data.data;
+	}
+
 	async getProject(projectName: string): Promise<Project> {
 		const envId = await this.getCurrentEnvironmentId();
 		const response = await this.handleResponse<{ stack?: Project; success?: boolean }>(
@@ -236,7 +244,7 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return response as Project;
 	}
 
-	async deployProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
+	async createProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
 		const envId = await this.getCurrentEnvironmentId();
 		const payload = {
 			name: projectName,
@@ -255,14 +263,9 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.put(`/environments/${envId}/stacks/${projectName}`, payload));
 	}
 
-	async startProject(projectId: string): Promise<Project> {
+	async deployProject(projectId: string): Promise<Project> {
 		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectId}/start`));
-	}
-
-	async stopProject(projectId: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectId}/stop`));
+		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectId}/deploy`));
 	}
 
 	async restartProject(projectId: string): Promise<Project> {

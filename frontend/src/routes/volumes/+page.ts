@@ -15,6 +15,7 @@ export const load: PageLoad = async () => {
 	};
 
 	const volumes = await environmentAPI.getVolumes(volumeRequestOptions);
+	const volumeUsageCounts = await environmentAPI.getVolumeUsageCounts();
 
-	return { volumes, volumeRequestOptions };
+	return { volumes, volumeRequestOptions, volumeUsageCounts };
 };

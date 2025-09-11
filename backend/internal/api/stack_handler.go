@@ -32,7 +32,6 @@ func NewStackHandler(group *gin.RouterGroup, stackService *services.StackService
 		apiGroup.GET("/:id", handler.GetStack)
 		apiGroup.PUT("/:id", handler.UpdateStack)
 		apiGroup.POST("/:id/deploy", handler.DeployStack)
-		apiGroup.POST("/:id/stop", handler.StopStack)
 		apiGroup.POST("/:id/restart", handler.RestartStack)
 		apiGroup.GET("/:id/services", handler.GetStackServices)
 		apiGroup.POST("/:id/pull", handler.PullImages)
@@ -288,64 +287,6 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 	})
 }
 
-func (h *StackHandler) StartStack(c *gin.Context) {
-	stackID := c.Param("stackId")
-	if stackID == "" {
-		stackID = c.Param("id")
-	}
-
-	if stackID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Stack ID is required",
-		})
-		return
-	}
-
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "User not authenticated"})
-		return
-	}
-	if err := h.stackService.DeployStack(c.Request.Context(), stackID, *currentUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Stack started successfully"},
-	})
-}
-
-func (h *StackHandler) StopStack(c *gin.Context) {
-	stackID := c.Param("stackId")
-	if stackID == "" {
-		stackID = c.Param("id")
-	}
-
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "User not authenticated"})
-		return
-	}
-	if err := h.stackService.StopStack(c.Request.Context(), stackID, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to stop stack",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Stack stopped successfully"},
-	})
-}
-
 func (h *StackHandler) RestartStack(c *gin.Context) {
 	stackID := c.Param("stackId")
 	if stackID == "" {
@@ -495,16 +436,10 @@ func (h *StackHandler) DeployStack(c *gin.Context) {
 		stackID = c.Param("id")
 	}
 
-	var req struct {
-		Profiles      []string          `json:"profiles"`
-		EnvOverrides  map[string]string `json:"env_overrides"`
-		ForceRecreate bool              `json:"force_recreate"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if stackID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "Stack ID is required",
 		})
 		return
 	}
@@ -515,7 +450,7 @@ func (h *StackHandler) DeployStack(c *gin.Context) {
 		return
 	}
 	if err := h.stackService.DeployStack(c.Request.Context(), stackID, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   err.Error(),
 		})
@@ -524,7 +459,7 @@ func (h *StackHandler) DeployStack(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    gin.H{"message": "Stack deployed successfully"},
+		"data":    gin.H{"message": "Project deployed successfully"},
 	})
 }
 
@@ -669,4 +604,26 @@ func (h *StackHandler) parseStackLogLine(logLine string) gin.H {
 		"timestamp": timestamp,
 		"service":   service,
 	}
+}
+
+func (h *StackHandler) GetProjectStatusCounts(c *gin.Context) {
+	_, running, stopped, total, err := h.stackService.GetProjectStatusCounts(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to get project counts: " + err.Error()},
+		})
+		return
+	}
+
+	out := dto.ProjectStatusCounts{
+		RunningProjects: int(running),
+		StoppedProjects: int(stopped),
+		TotalProjects:   int(total),
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    out,
+	})
 }

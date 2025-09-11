@@ -13,10 +13,9 @@ export const load: PageLoad = async () => {
 			direction: 'desc' as const
 		}
 	};
-
-	const totalSize = await environmentAPI.getTotalImageSize();
 	const images = await environmentAPI.getImages(imageRequestOptions);
 	const settings = await settingsAPI.getSettings();
+	const imageUsageCounts = await environmentAPI.getImageUsageCounts();
 
-	return { totalSize, images, imageRequestOptions, settings };
+	return { images, imageRequestOptions, settings, imageUsageCounts };
 };

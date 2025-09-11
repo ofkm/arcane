@@ -15,6 +15,7 @@ export const load: PageLoad = async () => {
 	};
 
 	const containers = await environmentAPI.getContainers(containerRequestOptions);
+	const containerStatusCounts = await environmentAPI.getContainerStatusCounts();
 
-	return { containers, containerRequestOptions };
+	return { containers, containerStatusCounts, containerRequestOptions };
 };

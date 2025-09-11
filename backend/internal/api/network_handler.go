@@ -13,10 +13,11 @@ import (
 
 type NetworkHandler struct {
 	networkService *services.NetworkService
+	dockerService  *services.DockerClientService
 }
 
-func NewNetworkHandler(group *gin.RouterGroup, networkService *services.NetworkService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &NetworkHandler{networkService: networkService}
+func NewNetworkHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, networkService *services.NetworkService, authMiddleware *middleware.AuthMiddleware) {
+	handler := &NetworkHandler{dockerService: dockerService, networkService: networkService}
 
 	apiGroup := group.Group("/networks")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -25,8 +26,6 @@ func NewNetworkHandler(group *gin.RouterGroup, networkService *services.NetworkS
 		apiGroup.GET("/:id", handler.GetByID)
 		apiGroup.POST("", handler.Create)
 		apiGroup.DELETE("/:id", handler.Remove)
-		apiGroup.POST("/:id/connect", handler.ConnectContainer)
-		apiGroup.POST("/:id/disconnect", handler.DisconnectContainer)
 		apiGroup.POST("/prune", handler.Prune)
 	}
 }
@@ -150,73 +149,25 @@ func (h *NetworkHandler) Remove(c *gin.Context) {
 	})
 }
 
-func (h *NetworkHandler) ConnectContainer(c *gin.Context) {
-	networkID := c.Param("networkId")
-
-	var req struct {
-		ContainerID string                    `json:"containerId" binding:"required"`
-		Config      *network.EndpointSettings `json:"config"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
-		return
-	}
-
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "data": dto.MessageDto{Message: "User not authenticated"}})
-		return
-	}
-	if err := h.networkService.ConnectContainer(c.Request.Context(), networkID, req.ContainerID, req.Config, *currentUser); err != nil {
+func (h *NetworkHandler) GetNetworkUsageCounts(c *gin.Context) {
+	_, running, stopped, total, err := h.dockerService.GetAllNetworks(c.Request.Context())
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
+			"data":    gin.H{"error": "Failed to get container counts: " + err.Error()},
 		})
 		return
+	}
+
+	out := dto.NetworkUsageCounts{
+		Inuse:  running,
+		Unused: stopped,
+		Total:  total,
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    dto.MessageDto{Message: "Container connected to network successfully"},
-	})
-}
-
-func (h *NetworkHandler) DisconnectContainer(c *gin.Context) {
-	networkID := c.Param("networkId")
-
-	var req struct {
-		ContainerID string `json:"containerId" binding:"required"`
-		Force       bool   `json:"force"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
-		return
-	}
-
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "data": dto.MessageDto{Message: "User not authenticated"}})
-		return
-	}
-	if err := h.networkService.DisconnectContainer(c.Request.Context(), networkID, req.ContainerID, req.Force, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    dto.MessageDto{Message: "Container disconnected from network successfully"},
+		"data":    out,
 	})
 }
 

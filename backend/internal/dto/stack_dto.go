@@ -58,3 +58,9 @@ type StackDetailsDto struct {
 	UpdatedAt      string `json:"updatedAt"`
 	Services       []any  `json:"services,omitempty"`
 }
+
+type ProjectStatusCounts struct {
+	RunningProjects int `json:"runningProjects"`
+	StoppedProjects int `json:"stoppedProjects"`
+	TotalProjects   int `json:"totalProjects"`
+}

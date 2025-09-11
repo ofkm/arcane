@@ -13,7 +13,6 @@
 	import { m } from '$lib/paraglide/messages';
 
 	type TargetType = 'container' | 'stack';
-
 	type LoadingStates = {
 		start?: boolean;
 		stop?: boolean;
@@ -29,24 +28,55 @@
 		id,
 		type = 'container',
 		itemState = 'stopped',
-		loading = {},
-		onActionComplete = $bindable(() => {})
+		loading = $bindable<LoadingStates>({}),
+		onActionComplete = $bindable<(status?: string) => void>(() => {}),
+		startLoading = $bindable(false),
+		stopLoading = $bindable(false),
+		restartLoading = $bindable(false),
+		removeLoading = $bindable(false),
+		redeployLoading = $bindable(false)
 	}: {
 		id: string;
 		type?: TargetType;
 		itemState?: string;
-		loading: LoadingStates;
-		onActionComplete?: () => void;
+		loading?: LoadingStates;
+		onActionComplete?: (status?: string) => void;
+		startLoading?: boolean;
+		stopLoading?: boolean;
+		restartLoading?: boolean;
+		removeLoading?: boolean;
+		redeployLoading?: boolean;
 	} = $props();
 
-	let isLoading = $state({
+	let isLoading = $state<LoadingStates>({
 		start: false,
 		stop: false,
 		restart: false,
 		remove: false,
-		pulling: false,
+		pull: false,
 		redeploy: false,
 		validating: false
+	});
+
+	function setLoading<K extends keyof LoadingStates>(key: K, value: boolean) {
+		isLoading[key] = value;
+		loading = { ...loading, [key]: value };
+
+		if (key === 'start') startLoading = value;
+		if (key === 'stop') stopLoading = value;
+		if (key === 'restart') restartLoading = value;
+		if (key === 'remove') removeLoading = value;
+		if (key === 'redeploy') redeployLoading = value;
+	}
+
+	const uiLoading = $derived({
+		start: !!(isLoading.start || loading?.start || startLoading),
+		stop: !!(isLoading.stop || loading?.stop || stopLoading),
+		restart: !!(isLoading.restart || loading?.restart || restartLoading),
+		remove: !!(isLoading.remove || loading?.remove || removeLoading),
+		pulling: !!(isLoading.pull || loading?.pull),
+		redeploy: !!(isLoading.redeploy || loading?.redeploy || redeployLoading),
+		validating: !!(isLoading.validating || loading?.validating)
 	});
 
 	let pullPopoverOpen = $state(false);
@@ -56,16 +86,6 @@
 	let layerProgress = $state<Record<string, { current: number; total: number; status: string }>>({});
 
 	const isRunning = $derived(itemState === 'running' || (type === 'stack' && itemState === 'partially running'));
-
-	$effect(() => {
-		isLoading.start = loading.start ?? false;
-		isLoading.stop = loading.stop ?? false;
-		isLoading.pulling = loading.pull ?? false;
-		isLoading.remove = loading.remove ?? false;
-		isLoading.restart = loading.restart ?? false;
-		isLoading.redeploy = loading.redeploy ?? false;
-		isLoading.validating = loading.validating ?? false;
-	});
 
 	function resetPullState() {
 		pullProgress = 0;
@@ -128,7 +148,7 @@
 						const removeFiles = checkboxStates['removeFiles'] === true;
 						const removeVolumes = checkboxStates['removeVolumes'] === true;
 
-						isLoading.remove = true;
+						setLoading('remove', true);
 						handleApiResultWithCallbacks({
 							result: await tryCatch(
 								type === 'container'
@@ -139,7 +159,7 @@
 								action: type === 'stack' ? m.compose_destroy() : m.common_remove(),
 								type: type
 							}),
-							setLoadingState: (value) => (isLoading.remove = value),
+							setLoadingState: (value) => setLoading('remove', value),
 							onSuccess: async () => {
 								toast.success(
 									type === 'stack'
@@ -147,7 +167,7 @@
 										: m.action_removed_success({ type: m.common_container() })
 								);
 								await invalidateAll();
-								goto(`${type === 'stack' ? '/compose' : 'containers'}`);
+								goto(type === 'stack' ? '/compose' : '/containers');
 							}
 						});
 					}
@@ -168,14 +188,14 @@
 				confirm: {
 					label: m.action_redeploy(),
 					action: async () => {
-						isLoading.redeploy = true;
+						setLoading('redeploy', true);
 						handleApiResultWithCallbacks({
 							result: await tryCatch(environmentAPI.redeployProject(id)),
 							message: m.action_failed_generic({ action: m.action_redeploy(), type }),
-							setLoadingState: (value) => (isLoading.redeploy = value),
+							setLoadingState: (value) => setLoading('redeploy', value),
 							onSuccess: async () => {
-								toast.success(m.action_redeploy_success({ type: type }));
-								await invalidateAll();
+								toast.success(m.action_redeploy_success({ type }));
+								onActionComplete('running');
 							}
 						});
 					}
@@ -185,68 +205,71 @@
 	}
 
 	async function handleStart() {
-		isLoading.start = true;
-		handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? environmentAPI.startContainer(id) : environmentAPI.startProject(id)),
+		setLoading('start', true);
+		await handleApiResultWithCallbacks({
+			result: await tryCatch(type === 'container' ? environmentAPI.startContainer(id) : environmentAPI.deployProject(id)),
 			message: m.action_failed_generic({ action: m.common_start(), type }),
-			setLoadingState: (value) => (isLoading.start = value),
+			setLoadingState: (value) => setLoading('start', value),
 			onSuccess: async () => {
+				itemState = 'running';
 				toast.success(m.action_started_success({ type }));
-				await invalidateAll();
+				onActionComplete('running');
 			}
 		});
 	}
 
 	async function handleDeploy() {
-		isLoading.start = true;
-		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.startProject(id)),
+		setLoading('start', true);
+		await handleApiResultWithCallbacks({
+			result: await tryCatch(environmentAPI.deployProject(id)),
 			message: m.action_failed_generic({ action: m.common_start(), type }),
-			setLoadingState: (value) => (isLoading.start = value),
+			setLoadingState: (value) => setLoading('start', value),
 			onSuccess: async () => {
+				itemState = 'running';
 				toast.success(m.action_started_success({ type }));
-				await invalidateAll();
+				onActionComplete('running');
 			}
 		});
 	}
 
 	async function handleStop() {
-		isLoading.stop = true;
-		handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? environmentAPI.stopContainer(id) : environmentAPI.stopProject(id)),
+		setLoading('stop', true);
+		await handleApiResultWithCallbacks({
+			result: await tryCatch(type === 'container' ? environmentAPI.stopContainer(id) : environmentAPI.downProject(id)),
 			message: m.action_failed_generic({ action: m.common_stop(), type }),
-			setLoadingState: (value) => (isLoading.stop = value),
+			setLoadingState: (value) => setLoading('stop', value),
 			onSuccess: async () => {
+				itemState = 'stopped';
 				toast.success(m.action_stopped_success({ type }));
-				await invalidateAll();
+				onActionComplete('stopped');
 			}
 		});
 	}
 
 	async function handleRestart() {
-		isLoading.restart = true;
-		handleApiResultWithCallbacks({
+		setLoading('restart', true);
+		await handleApiResultWithCallbacks({
 			result: await tryCatch(type === 'container' ? environmentAPI.restartContainer(id) : environmentAPI.restartProject(id)),
 			message: m.action_failed_generic({ action: m.common_restart(), type }),
-			setLoadingState: (value) => (isLoading.restart = value),
+			setLoadingState: (value) => setLoading('restart', value),
 			onSuccess: async () => {
+				itemState = 'running';
 				toast.success(m.action_restarted_success({ type }));
-				await invalidateAll();
+				onActionComplete('running');
 			}
 		});
 	}
 
 	async function handlePull() {
 		if (type === 'container') {
-			// Use existing API for containers
-			isLoading.pulling = true;
-			handleApiResultWithCallbacks({
+			isLoading.pull = true;
+			await handleApiResultWithCallbacks({
 				result: await tryCatch(environmentAPI.pullContainerImage(id)),
 				message: m.images_pull_failed(),
-				setLoadingState: (value) => (isLoading.pulling = value),
+				setLoadingState: (value) => (isLoading.pull = value),
 				onSuccess: async () => {
 					toast.success(m.images_pulled_success());
-					await invalidateAll();
+					onActionComplete();
 				}
 			});
 		} else {
@@ -256,7 +279,7 @@
 
 	async function handleStackPull() {
 		resetPullState();
-		isLoading.pulling = true;
+		isLoading.pull = true;
 		pullPopoverOpen = true;
 		pullStatusText = m.images_pull_initiating();
 
@@ -352,7 +375,7 @@
 
 			setTimeout(() => {
 				pullPopoverOpen = false;
-				isLoading.pulling = false;
+				isLoading.pull = false;
 				resetPullState();
 			}, 2000);
 		} catch (error: any) {
@@ -363,7 +386,7 @@
 			toast.error(message);
 		} finally {
 			if (!wasSuccessful) {
-				isLoading.pulling = false;
+				isLoading.pull = false;
 			}
 		}
 	}
@@ -374,22 +397,24 @@
 		<ArcaneButton
 			action={type === 'container' ? 'start' : 'deploy'}
 			onclick={type === 'container' ? () => handleStart() : () => handleDeploy()}
-			loading={isLoading.start}
+			loading={uiLoading.start}
 		/>
-	{:else}
+	{/if}
+
+	{#if isRunning}
 		<ArcaneButton
-			customLabel={m.action_down ? m.action_down() : 'Down'}
 			action="stop"
+			customLabel={type === 'stack' ? (m.action_down ? m.action_down() : 'Down') : undefined}
 			onclick={() => handleStop()}
-			loading={isLoading.stop}
+			loading={uiLoading.stop}
 		/>
-		<ArcaneButton action="restart" onclick={() => handleRestart()} loading={isLoading.restart} />
+		<ArcaneButton action="restart" onclick={() => handleRestart()} loading={uiLoading.restart} />
 	{/if}
 
 	{#if type === 'container'}
-		<ArcaneButton action="remove" onclick={() => confirmAction('remove')} loading={isLoading.remove} />
+		<ArcaneButton action="remove" onclick={() => confirmAction('remove')} loading={uiLoading.remove} />
 	{:else}
-		<ArcaneButton action="redeploy" onclick={() => confirmAction('redeploy')} loading={isLoading.redeploy} />
+		<ArcaneButton action="redeploy" onclick={() => confirmAction('redeploy')} loading={uiLoading.redeploy} />
 
 		{#if type === 'stack'}
 			<ProgressPopover
@@ -398,20 +423,20 @@
 				title={m.progress_pulling_images()}
 				statusText={pullStatusText}
 				error={pullError}
-				loading={isLoading.pulling}
+				loading={uiLoading.pulling}
 				icon={DownloadIcon}
 			>
-				<ArcaneButton action="pull" onclick={() => handlePull()} loading={isLoading.pulling} />
+				<ArcaneButton action="pull" onclick={() => handlePull()} loading={uiLoading.pulling} />
 			</ProgressPopover>
 		{:else}
-			<ArcaneButton action="pull" onclick={() => handlePull()} loading={isLoading.pulling} />
+			<ArcaneButton action="pull" onclick={() => handlePull()} loading={uiLoading.pulling} />
 		{/if}
 
 		<ArcaneButton
 			customLabel={type === 'stack' ? m.compose_destroy() : m.common_remove()}
 			action="remove"
 			onclick={() => confirmAction('remove')}
-			loading={isLoading.remove}
+			loading={uiLoading.remove}
 		/>
 	{/if}
 </div>

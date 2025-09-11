@@ -15,6 +15,10 @@
 	import SidebarUpdatebanner from './sidebar-updatebanner.svelte';
 	import userStore from '$lib/stores/user-store';
 	import { m } from '$lib/paraglide/messages';
+	import * as Button from '$lib/components/ui/button/index.js';
+	import LogOutIcon from '@lucide/svelte/icons/log-out';
+	import LogInIcon from '@lucide/svelte/icons/log-in';
+	import { cn } from '$lib/utils';
 
 	let {
 		ref = $bindable(null),
@@ -56,7 +60,39 @@
 	<Sidebar.Footer>
 		<SidebarUpdatebanner {isCollapsed} {versionInformation} updateAvailable={versionInformation.updateAvailable} />
 		{#if effectiveUser}
-			<SidebarUser {isCollapsed} user={effectiveUser} />
+			{#if isCollapsed}
+				<div class="px-0 pb-2">
+					<div class="flex flex-col items-center gap-2">
+						<form action="/auth/logout" method="POST">
+							<Button.Root
+								variant="ghost"
+								title={m.common_logout()}
+								type="submit"
+								class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9 w-9 rounded-xl p-0"
+							>
+								<LogOutIcon size={16} />
+							</Button.Root>
+						</form>
+						<SidebarUser {isCollapsed} user={effectiveUser} />
+					</div>
+				</div>
+			{:else}
+				<div class="px-3 pb-2">
+					<div class="flex items-center gap-2">
+						<SidebarUser {isCollapsed} user={effectiveUser} />
+						<form action="/auth/logout" method="POST" class="ml-auto">
+							<Button.Root
+								variant="ghost"
+								title={m.common_logout()}
+								type="submit"
+								class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9 w-9 rounded-xl p-0"
+							>
+								<LogOutIcon size={16} />
+							</Button.Root>
+						</form>
+					</div>
+				</div>
+			{/if}
 		{/if}
 	</Sidebar.Footer>
 	<Sidebar.Rail />

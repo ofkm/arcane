@@ -94,14 +94,6 @@
 		}
 	});
 
-	$effect(() => {
-		isLoading.deploying = false;
-		isLoading.stopping = false;
-		isLoading.restarting = false;
-		isLoading.removing = false;
-		isLoading.saving = false;
-	});
-
 	async function handleSaveChanges() {
 		if (!project || !hasChanges) return;
 
@@ -228,12 +220,11 @@
 							id={project.id}
 							type="stack"
 							itemState={project.status}
-							loading={{
-								start: isLoading.deploying,
-								stop: isLoading.stopping,
-								restart: isLoading.restarting,
-								remove: isLoading.removing
-							}}
+							bind:startLoading={isLoading.deploying}
+							bind:stopLoading={isLoading.stopping}
+							bind:restartLoading={isLoading.restarting}
+							bind:removeLoading={isLoading.removing}
+							bind:redeployLoading={isLoading.redeploying}
 							onActionComplete={() => invalidateAll()}
 						/>
 					</div>
@@ -262,12 +253,11 @@
 							id={project.id}
 							type="stack"
 							itemState={project.status}
-							loading={{
-								start: isLoading.deploying,
-								stop: isLoading.stopping,
-								restart: isLoading.restarting,
-								remove: isLoading.removing
-							}}
+							bind:startLoading={isLoading.deploying}
+							bind:stopLoading={isLoading.stopping}
+							bind:restartLoading={isLoading.restarting}
+							bind:removeLoading={isLoading.removing}
+							bind:redeployLoading={isLoading.redeploying}
 							onActionComplete={() => invalidateAll()}
 						/>
 					</div>

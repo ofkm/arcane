@@ -57,21 +57,6 @@ func (s *ContainerService) PullContainerImage(ctx context.Context, containerID s
 	return err
 }
 
-func (s *ContainerService) ListContainers(ctx context.Context, includeAll bool) ([]container.Summary, error) {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: includeAll})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list Docker containers: %w", err)
-	}
-
-	return containers, nil
-}
-
 func (s *ContainerService) StartContainer(ctx context.Context, containerID string, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -450,10 +435,18 @@ func (s *ContainerService) readAllLogs(logs io.ReadCloser, logsChan chan<- strin
 
 //nolint:gocognit
 func (s *ContainerService) ListContainersPaginated(ctx context.Context, req utils.SortedPaginationRequest, includeAll bool) ([]dto.ContainerSummaryDto, utils.PaginationResponse, error) {
-	dockerContainers, err := s.ListContainers(ctx, includeAll)
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	dockerContainers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: includeAll})
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker containers: %w", err)
 	}
+
+	grandTotal := len(dockerContainers)
 
 	// Map to DTOs
 	result := make([]dto.ContainerSummaryDto, 0, len(dockerContainers))
@@ -509,10 +502,11 @@ func (s *ContainerService) ListContainersPaginated(ctx context.Context, req util
 
 	totalPages := (totalItems + req.Pagination.Limit - 1) / req.Pagination.Limit
 	pagination := utils.PaginationResponse{
-		TotalPages:   int64(totalPages),
-		TotalItems:   int64(totalItems),
-		CurrentPage:  req.Pagination.Page,
-		ItemsPerPage: req.Pagination.Limit,
+		TotalPages:      int64(totalPages),
+		TotalItems:      int64(totalItems),
+		CurrentPage:     req.Pagination.Page,
+		ItemsPerPage:    req.Pagination.Limit,
+		GrandTotalItems: int64(grandTotal),
 	}
 
 	return pageItems, pagination, nil

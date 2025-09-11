@@ -1,11 +1,11 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 
-	"github.com/docker/docker/api/types/image"
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
@@ -16,10 +16,11 @@ import (
 type ImageHandler struct {
 	imageService       *services.ImageService
 	imageUpdateService *services.ImageUpdateService
+	dockerService      *services.DockerClientService
 }
 
-func NewImageHandler(group *gin.RouterGroup, imageService *services.ImageService, imageUpdateService *services.ImageUpdateService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &ImageHandler{imageService: imageService, imageUpdateService: imageUpdateService}
+func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, imageService *services.ImageService, imageUpdateService *services.ImageUpdateService, authMiddleware *middleware.AuthMiddleware) {
+	handler := &ImageHandler{dockerService: dockerService, imageService: imageService, imageUpdateService: imageUpdateService}
 
 	apiGroup := group.Group("/images")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -29,8 +30,6 @@ func NewImageHandler(group *gin.RouterGroup, imageService *services.ImageService
 		apiGroup.DELETE("/:id", handler.Remove)
 		apiGroup.POST("/pull", handler.Pull)
 		apiGroup.POST("/prune", handler.Prune)
-		apiGroup.GET("/:id/history", handler.GetHistory)
-		apiGroup.GET("/total-size", handler.GetTotalSize)
 	}
 }
 
@@ -162,44 +161,46 @@ func (h *ImageHandler) Prune(c *gin.Context) {
 	})
 }
 
-func (h *ImageHandler) GetHistory(c *gin.Context) {
-	id := c.Param("id")
+func (h *ImageHandler) GetImageUsageCounts(c *gin.Context) {
+	ctx := c.Request.Context()
 
-	history, err := h.imageService.GetImageHistory(c.Request.Context(), id)
+	var (
+		inuse, unused, total int
+		totalSize            int64
+		errs                 []error
+	)
+
+	_, iu, un, tot, err := h.dockerService.GetAllImages(ctx)
 	if err != nil {
+		errs = append(errs, fmt.Errorf("get images: %w", err))
+	} else {
+		inuse, unused, total = iu, un, tot
+	}
+
+	sz, err := h.imageService.GetTotalImageSize(ctx)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("get total image size: %w", err))
+	} else {
+		totalSize = sz
+	}
+
+	if len(errs) > 0 {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
+			"data":    dto.MessageDto{Message: errors.Join(errs...).Error()},
 		})
 		return
 	}
 
-	out, mapErr := dto.MapSlice[image.HistoryResponseItem, dto.ImageHistoryItemDto](history)
-	if mapErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: mapErr.Error()}})
-		return
+	out := dto.ImageUsageCountsDto{
+		Inuse:     inuse,
+		Unused:    unused,
+		Total:     total,
+		TotalSize: totalSize,
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    out,
-	})
-}
-
-func (h *ImageHandler) GetTotalSize(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	total, err := h.imageService.GetTotalImageSize(ctx)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    dto.TotalImageSizeDto{TotalSize: total},
 	})
 }

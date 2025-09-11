@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -108,7 +110,7 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, u
 		"force":   force,
 	}
 	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageDelete, id, imageName, user.ID, user.Username, "0", metadata); logErr != nil {
-		fmt.Printf("Could not log image deletion action: %s\n", logErr)
+		slog.Warn("could not log image deletion action", slog.Any("err", logErr), slog.String("image", imageName), slog.String("image_id", id))
 	}
 
 	return nil
@@ -121,11 +123,11 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	}
 	defer dockerClient.Close()
 
-	fmt.Printf("Attempting to pull image: %s\n", imageName)
+	slog.Debug("attempting to pull image", slog.String("image", imageName))
 
 	pullOptions, err := s.getPullOptionsWithAuth(ctx, imageName)
 	if err != nil {
-		fmt.Printf("Warning: Failed to get registry authentication for %s: %v\n", imageName, err)
+		slog.Warn("failed to get registry authentication for image; proceeding without auth", slog.String("image", imageName), slog.Any("err", err))
 		pullOptions = image.PullOptions{}
 	}
 
@@ -153,22 +155,22 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	}
 	if scanErr := scanner.Err(); scanErr != nil {
 		if errors.Is(scanErr, context.Canceled) || strings.Contains(scanErr.Error(), "context canceled") {
-			fmt.Printf("Image pull stream canceled for %s: %v\n", imageName, scanErr)
+			slog.Debug("image pull stream canceled", slog.String("image", imageName), slog.Any("err", scanErr))
 			return fmt.Errorf("image pull stream canceled for %s: %w", imageName, scanErr)
 		}
 		return fmt.Errorf("error reading image pull stream for %s: %w", imageName, scanErr)
 	}
 
-	fmt.Printf("Image %s pull stream completed, attempting to sync database.\n", imageName)
+	slog.Debug("image pull stream completed, attempting to sync database", slog.String("image", imageName))
 
 	latestImages, listErr := dockerClient.ImageList(ctx, image.ListOptions{})
 	if listErr != nil {
-		fmt.Printf("Warning: failed to list images after pull for sync: %v\n", listErr)
+		slog.Warn("failed to list images after pull for sync", slog.Any("err", listErr))
 	} else {
 		if syncErr := s.syncImagesToDatabase(ctx, latestImages, dockerClient); syncErr != nil {
-			fmt.Printf("Warning: error during image synchronization after pull: %v\n", syncErr)
+			slog.Warn("error during image synchronization after pull", slog.Any("err", syncErr))
 		} else {
-			fmt.Printf("Database synchronized successfully after pulling image %s.\n", imageName)
+			slog.Debug("database synchronized successfully after pulling image", slog.String("image", imageName))
 		}
 	}
 
@@ -178,7 +180,7 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 		"imageName": imageName,
 	}
 	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImagePull, "", imageName, user.ID, user.Username, "0", metadata); logErr != nil {
-		fmt.Printf("Could not log image pull action: %s\n", logErr)
+		slog.Warn("could not log image pull action", slog.Any("err", logErr), slog.String("image", imageName))
 	}
 
 	return nil
@@ -306,7 +308,7 @@ func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.P
 		"spaceReclaimed": report.SpaceReclaimed,
 	}
 	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageDelete, "", "bulk_prune", systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
-		fmt.Printf("Could not log image prune action: %s\n", logErr)
+		slog.Warn("could not log image prune action", slog.Any("err", logErr))
 	}
 
 	return &report, nil
@@ -335,7 +337,7 @@ func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []
 	for _, di := range dockerImages {
 		currentDockerImageIDs = append(currentDockerImageIDs, di.ID)
 		if err := s.syncSingleImage(ctx, di, inUseImageIDs); err != nil {
-			fmt.Printf("Error syncing image %s to database: %v\n", di.ID, err)
+			slog.Warn("error syncing image to database", slog.String("image_id", di.ID), slog.Any("err", err))
 			lastErr = err
 		}
 	}
@@ -345,7 +347,7 @@ func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []
 	}
 
 	if err := s.imageUpdateService.CleanupOrphanedRecords(ctx); err != nil {
-		fmt.Printf("Warning: failed to cleanup orphaned image update records: %v\n", err)
+		slog.Warn("failed to cleanup orphaned image update records", slog.Any("err", err))
 		if lastErr == nil {
 			lastErr = err
 		}
@@ -358,7 +360,7 @@ func (s *ImageService) getInUseImageIDs(ctx context.Context, dockerClient *clien
 	inUseImageIDs := make(map[string]bool)
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
-		fmt.Printf("Error listing containers for InUse check: %v. InUse status may be inaccurate.\n", err)
+		slog.Warn("error listing containers for in-use check; in-use status may be inaccurate", slog.Any("err", err))
 		return inUseImageIDs
 	}
 
@@ -438,34 +440,22 @@ func (s *ImageService) cleanupStaleImages(ctx context.Context, currentDockerImag
 func (s *ImageService) deleteStaleImages(ctx context.Context, currentDockerImageIDs []string) error {
 	deleteResult := s.db.WithContext(ctx).Where("id NOT IN ?", currentDockerImageIDs).Delete(&models.Image{})
 	if deleteResult.Error != nil {
-		fmt.Printf("Error deleting stale images from database: %v\n", deleteResult.Error)
+		slog.Warn("error deleting stale images from database", slog.Any("err", deleteResult.Error))
 		return deleteResult.Error
 	}
-	fmt.Printf("%d stale image records deleted from database.\n", deleteResult.RowsAffected)
+	slog.Debug("stale image records deleted from database", slog.Int64("rows_affected", deleteResult.RowsAffected))
 	return nil
 }
 
 func (s *ImageService) deleteAllImages(ctx context.Context) error {
-	fmt.Println("No images found in Docker daemon, attempting to delete all image records from database.")
+	slog.Debug("no images found in Docker daemon, attempting to delete all image records from database")
 	deleteAllResult := s.db.WithContext(ctx).Delete(&models.Image{}, "1 = 1")
 	if deleteAllResult.Error != nil {
-		fmt.Printf("Error deleting all image records from database when Docker is empty: %v\n", deleteAllResult.Error)
+		slog.Warn("error deleting all image records from database when Docker is empty", slog.Any("err", deleteAllResult.Error))
 		return deleteAllResult.Error
 	}
-	fmt.Printf("All (%d) image records deleted from database as Docker reported no images.\n", deleteAllResult.RowsAffected)
+	slog.Debug("all image records deleted from database as Docker reported no images", slog.Int64("rows_affected", deleteAllResult.RowsAffected))
 	return nil
-}
-
-func (s *ImageService) ListImagesWithUpdates(ctx context.Context) ([]*models.Image, error) {
-	err := s.SyncDockerImages(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list and sync Docker images: %w", err)
-	}
-	var images []*models.Image
-	if err := s.db.WithContext(ctx).Preload("UpdateRecord").Find(&images).Error; err != nil {
-		return nil, fmt.Errorf("failed to get images with update data from DB: %w", err)
-	}
-	return images, nil
 }
 
 func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID string) error {
@@ -480,7 +470,7 @@ func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID 
 
 	if result.RowsAffected == 0 {
 	} else {
-		fmt.Printf("Successfully deleted image %s from database.\n", dockerImageID)
+		slog.Debug("successfully deleted image from database", slog.String("image_id", dockerImageID))
 	}
 	return nil
 }

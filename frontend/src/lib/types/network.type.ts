@@ -11,6 +11,12 @@ export interface NetworkCreateOptions {
 	checkDuplicate?: boolean;
 }
 
+export interface NetworkUsageCounts {
+	networksInuse: number;
+	networksUnused: number;
+	totalNetworks: number;
+}
+
 export interface IPAMConfig {
 	driver?: string;
 	config?: IPAMSubnet[];
