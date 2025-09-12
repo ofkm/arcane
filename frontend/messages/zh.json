@@ -1044,7 +1044,7 @@
 	"max_retry_label": "最大重试次数",
 	"max_retry_placeholder": "5",
 	"max_retry_description": "最大重启尝试次数",
-	"containers_labels_description": "以key=value键值对的格式输入元素据，每行一项",
+	"containers_labels_description": "以key=value键值对的格式输入元数据，每行一项",
 	"containers_creating": "正在创建......",
 	"containers_remove_files_label": "从存储中删除项目文件",
 	"general_settings_save_failed": "保存常规设置失败",
