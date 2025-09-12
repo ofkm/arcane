@@ -237,6 +237,7 @@
 <Card.Root>
 	<Card.Content class="py-5">
 		<ArcaneTable
+			persistKey="arcane-project-table"
 			items={projects}
 			bind:requestOptions
 			bind:selectedIds

@@ -33,9 +33,17 @@
 	import { cn } from '$lib/utils.js';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { Snippet } from 'svelte';
-	import type { ColumnSpec } from './arcane-table.types';
+	import type { ColumnSpec } from './arcane-table.types.svelte';
 	import TableCheckbox from './arcane-table-checkbox.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { PersistedState } from 'runed';
+	import {
+		type CompactTablePrefs,
+		encodeHidden,
+		applyHiddenPatch,
+		encodeFilters,
+		decodeFilters
+	} from './arcane-table.types.svelte';
 
 	let {
 		items,
@@ -47,7 +55,8 @@
 		columns,
 		rowActions,
 		selectedIds = $bindable<string[]>([]),
-		onRemoveSelected
+		onRemoveSelected,
+		persistKey
 	}: {
 		items: Paginated<TData>;
 		requestOptions: SearchPaginationSortRequest;
@@ -59,6 +68,7 @@
 		rowActions?: Snippet<[{ row: Row<TData>; item: TData }]>;
 		selectedIds?: string[];
 		onRemoveSelected?: (ids: string[]) => void;
+		persistKey?: string;
 	} = $props();
 
 	let rowSelection = $state<RowSelectionState>({});
@@ -66,6 +76,17 @@
 	let columnFilters = $state<ColumnFiltersState>([]);
 	let sorting = $state<SortingState>([]);
 	let globalFilter = $state<string>('');
+
+	const enablePersist = !!persistKey;
+
+	const getDefaultLimit = () => requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 20;
+	const prefs = enablePersist
+		? new PersistedState<CompactTablePrefs>(
+				persistKey as string,
+				{ v: [], f: [], g: '', l: getDefaultLimit() },
+				{ syncTabs: false }
+			)
+		: null;
 
 	const passAllGlobal: (row: unknown, columnId: string, filterValue: unknown) => boolean = () => true;
 
@@ -75,6 +96,37 @@
 	const pageSize = $derived(requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 20);
 	const canPrev = $derived(currentPage > 1);
 	const canNext = $derived(currentPage < totalPages);
+
+	// Apply persisted state on mount
+	import { onMount } from 'svelte';
+	onMount(() => {
+		if (!enablePersist) return;
+		const cur = prefs?.current ?? { v: [], f: [], g: '', l: getDefaultLimit() };
+
+		applyHiddenPatch(columnVisibility, cur.v);
+
+		// Filters
+		let shouldRefresh = false;
+		const restoredFilters = decodeFilters(cur.f);
+		if (restoredFilters.length) columnFilters = restoredFilters;
+		if (cur.g && cur.g !== globalFilter) {
+			globalFilter = cur.g;
+			requestOptions = {
+				...requestOptions,
+				search: cur.g,
+				pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
+			};
+			shouldRefresh = true;
+		}
+		// Page size
+		const persistedLimit = cur.l ?? getDefaultLimit();
+		const currentLimit = requestOptions?.pagination?.limit ?? getDefaultLimit();
+		if (persistedLimit !== currentLimit) {
+			requestOptions = { ...requestOptions, pagination: { page: 1, limit: persistedLimit } };
+			shouldRefresh = true;
+		}
+		if (shouldRefresh) onRefresh(requestOptions);
+	});
 
 	function updatePagination(patch: Partial<{ page: number; limit: number }>) {
 		const prev = requestOptions?.pagination ?? {
@@ -93,6 +145,8 @@
 	}
 
 	function setPageSize(limit: number) {
+		// Persist page size
+		if (enablePersist && prefs) prefs.current = { ...prefs.current, l: limit };
 		updatePagination({ limit, page: 1 });
 	}
 
@@ -245,9 +299,17 @@
 		},
 		onColumnFiltersChange: (updater) => {
 			columnFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
+			// Persist column filters
+			if (enablePersist && prefs) {
+				prefs.current = { ...prefs.current, f: encodeFilters(columnFilters) };
+			}
 		},
 		onColumnVisibilityChange: (updater) => {
 			columnVisibility = typeof updater === 'function' ? updater(columnVisibility) : updater;
+			// Persist visibility
+			if (enablePersist && prefs) {
+				prefs.current = { ...prefs.current, v: encodeHidden(columnVisibility) };
+			}
 		},
 		onGlobalFilterChange: (value) => {
 			globalFilter = (value ?? '') as string;
@@ -257,6 +319,10 @@
 				search: globalFilter,
 				pagination: { page: 1, limit }
 			};
+			// Persist global filter
+			if (enablePersist && prefs) {
+				prefs.current = { ...prefs.current, g: globalFilter };
+			}
 			onRefresh(requestOptions);
 		},
 		getCoreRowModel: getCoreRowModel(),

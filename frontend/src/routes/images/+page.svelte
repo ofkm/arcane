@@ -12,7 +12,7 @@
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
-	import ImageTableNew from './image-table.svelte';
+	import ImageTable from './image-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let { data } = $props();
@@ -122,7 +122,7 @@
 			class="border-l-4 border-l-amber-500"
 		/>
 	</div>
-	<ImageTableNew bind:images bind:selectedIds bind:requestOptions />
+	<ImageTable bind:images bind:selectedIds bind:requestOptions />
 
 	<ImagePullSheet
 		bind:open={isPullDialogOpen}

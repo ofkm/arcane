@@ -162,6 +162,7 @@
 <Card.Root>
 	<Card.Content class="py-5">
 		<ArcaneTable
+			persistKey="arcane-volumes-table"
 			items={volumes}
 			bind:requestOptions
 			bind:selectedIds

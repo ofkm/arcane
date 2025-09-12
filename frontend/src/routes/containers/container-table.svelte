@@ -230,6 +230,7 @@
 <Card.Root class="border shadow-sm">
 	<Card.Content>
 		<ArcaneTable
+			persistKey="arcane-container-table"
 			items={containers}
 			bind:requestOptions
 			bind:selectedIds
