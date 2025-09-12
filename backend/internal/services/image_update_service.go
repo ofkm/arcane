@@ -382,7 +382,6 @@ func (s *ImageUpdateService) matchesVersionStructure(base, candidate *VersionInf
 	return true
 }
 
-// isAllowedByUpdateScope implements update type filtering like Rust's UpdateType enum
 func (s *ImageUpdateService) isAllowedByUpdateScope(base, candidate *VersionInfo, updateScope string) bool {
 	switch updateScope {
 	case UpdateScopeMajor:
@@ -974,7 +973,6 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 	updateScope := s.getUpdateScope()
 
 	for _, ref := range imageRefs {
-		ref := ref
 		go func() {
 			defer wg.Done()
 			checkStart := time.Now()
