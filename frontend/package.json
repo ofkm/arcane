@@ -26,7 +26,7 @@
     "@tanstack/table-core": "^8.21.3",
     "@uiw/codemirror-theme-github": "^4.25.1",
     "@uiw/codemirror-themes": "^4.25.1",
-    "axios": "^1.11.0",
+    "axios": "^1.12.0",
     "codemirror": "^6.0.2",
     "date-fns": "^4.1.0",
     "js-yaml": "^4.1.0",
