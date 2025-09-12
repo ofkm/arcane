@@ -243,6 +243,9 @@
 		const targetId = type === 'stack' ? stackId : containerId;
 		if (targetId) {
 			startLogStream();
+			if (logContainer) {
+				logContainer.scrollTop = logContainer.scrollHeight;
+			}
 		}
 	});
 

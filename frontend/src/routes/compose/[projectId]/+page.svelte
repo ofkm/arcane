@@ -1,19 +1,13 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import type { Project, ProjectService, ProjectPort } from '$lib/types/project.type';
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
+	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
-	import CircleAlertIcon from '@lucide/svelte/icons/alert-circle';
 	import FileStackIcon from '@lucide/svelte/icons/file-stack';
 	import LayersIcon from '@lucide/svelte/icons/layers';
-	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
-	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
-	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
-	import ActivityIcon from '@lucide/svelte/icons/activity';
-	import * as Alert from '$lib/components/ui/alert/index.js';
+	import InfoIcon from '@lucide/svelte/icons/info';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
@@ -32,9 +26,12 @@
 	import { z } from 'zod/v4';
 	import { createForm } from '$lib/utils/form.utils';
 	import { m } from '$lib/paraglide/messages';
+	import * as Tabs from '$lib/components/ui/tabs/index.js';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+	import ProjectServiceCard from '$lib/components/project-service-card.svelte';
 
 	let { data }: { data: PageData } = $props();
-	let { project, editorState, servicePorts, settings } = $derived(data);
+	let { project, editorState, settings } = $derived(data);
 
 	let isLoading = $state({
 		deploying: false,
@@ -77,29 +74,56 @@
 
 	const baseServerUrl = $derived(settings?.baseServerUrl || 'localhost');
 
-	let activeSection = $state<string>('overview');
+	// Editor Tabs (Compose / Env / Logs)
+	let activeEditorTab = $state<'compose' | 'env' | 'logs'>('compose');
+	$effect(() => {
+		if (browser && project?.id) {
+			const stored = localStorage.getItem(`project:${project.id}:editorTab`);
+			if (stored === 'compose' || stored === 'env' || stored === 'logs') {
+				activeEditorTab = stored;
+			}
+		}
+	});
+	$effect(() => {
+		if (browser && project?.id) {
+			localStorage.setItem(`project:${project.id}:editorTab`, activeEditorTab);
+		}
+	});
+
 	let autoScrollStackLogs = $state(true);
 	let isStackLogsStreaming = $state(false);
 	let stackLogViewer = $state<LogViewer>();
 	let showFloatingHeader = $state(false);
+	let editorHeight = $state('600px');
+
+	function recalcEditorHeight() {
+		if (!browser) return;
+		const el = document.getElementById('editor-area');
+		if (!el) return;
+		const rect = el.getBoundingClientRect();
+		const bottomPadding = 40; // space below editor
+		const available = window.innerHeight - rect.top - bottomPadding;
+		editorHeight = Math.max(220, available) + 'px';
+	}
 
 	$effect(() => {
 		if (browser) {
 			const handleScroll = () => {
 				showFloatingHeader = window.scrollY > 100;
+				recalcEditorHeight();
 			};
-
 			window.addEventListener('scroll', handleScroll);
+			window.addEventListener('resize', recalcEditorHeight);
+			// initial calc after DOM paint
+			queueMicrotask(recalcEditorHeight);
 			return () => window.removeEventListener('scroll', handleScroll);
 		}
 	});
 
 	async function handleSaveChanges() {
 		if (!project || !hasChanges) return;
-
 		const validated = form.validate();
 		if (!validated) return;
-
 		const { composeContent, envContent } = validated;
 
 		handleApiResultWithCallbacks({
@@ -108,12 +132,10 @@
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Project) => {
 				toast.success('Project updated successfully!');
-
 				originalName = updatedStack.name;
 				originalComposeContent = $inputs.composeContent.value;
 				originalEnvContent = $inputs.envContent.value;
-
-				await new Promise((resolve) => setTimeout(resolve, 200));
+				await new Promise((r) => setTimeout(r, 200));
 				await invalidateAll();
 			}
 		});
@@ -121,79 +143,48 @@
 
 	function getHostForService(service: ProjectService): string {
 		if (!service?.networkSettings?.Networks) return baseServerUrl;
-
 		const networks = service.networkSettings.Networks;
 		for (const networkName in networks) {
 			const network = networks[networkName];
-			if (network.Driver === 'macvlan' || network.Driver === 'ipvlan') {
-				if (network.IPAddress) return network.IPAddress;
+			if ((network.Driver === 'macvlan' || network.Driver === 'ipvlan') && network.IPAddress) {
+				return network.IPAddress;
 			}
 		}
-
 		return baseServerUrl;
 	}
 
 	function getServicePortUrl(service: ProjectService, port: string | number | ProjectPort, protocol = 'http'): string {
 		const host = getHostForService(service);
-
 		if (typeof port === 'string') {
 			const parts = port.split('/');
 			const portNumber = parseInt(parts[0], 10);
-
-			if (parts.length > 1 && parts[1] === 'udp') {
-				protocol = 'udp';
-			}
-
+			if (parts.length > 1 && parts[1] === 'udp') protocol = 'udp';
 			return `${protocol}://${host}:${portNumber}`;
 		}
-
-		if (typeof port === 'number') {
-			return `${protocol}://${host}:${port}`;
-		}
-
+		if (typeof port === 'number') return `${protocol}://${host}:${port}`;
 		if (port && typeof port === 'object') {
 			const portNumber = port.PublicPort || port.PrivatePort || 80;
-			if (port.Type) {
-				protocol = port.Type.toLowerCase() === 'tcp' ? 'http' : 'https';
-			}
+			if (port.Type) protocol = port.Type.toLowerCase() === 'tcp' ? 'http' : 'https';
 			return `${protocol}://${host}:${portNumber}`;
 		}
-
 		return `${protocol}://${host}:80`;
 	}
 
 	function handleStackLogStart() {
 		isStackLogsStreaming = true;
 	}
-
 	function handleStackLogStop() {
 		isStackLogsStreaming = false;
 	}
-
 	function handleStackLogClear() {}
-
 	function handleToggleStackAutoScroll() {}
 
-	const navigationSections = [
-		{ id: 'overview', label: m.compose_nav_overview(), icon: FileStackIcon },
-		{ id: 'services', label: m.compose_nav_services(), icon: LayersIcon },
-		{ id: 'config', label: m.compose_nav_config(), icon: SettingsIcon },
-		{ id: 'logs', label: m.compose_nav_logs(), icon: TerminalIcon }
-	] as const;
-
-	type SectionId = (typeof navigationSections)[number]['id'];
-
-	function scrollToSection(sectionId: SectionId) {
-		activeSection = sectionId;
-		const element = document.getElementById(sectionId);
-		if (element) {
-			element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-		}
-	}
+	const createdDate = $derived(project?.createdAt ? new Date(project.createdAt).toLocaleDateString() : '');
 </script>
 
 <div class="bg-background min-h-screen">
 	{#if project}
+		<!-- Main Header -->
 		<div
 			class="bg-background/95 sticky top-0 z-20 border-b backdrop-blur transition-all duration-300"
 			style="opacity: {showFloatingHeader ? 0 : 1}; pointer-events: {showFloatingHeader ? 'none' : 'auto'};"
@@ -206,13 +197,22 @@
 							{m.common_back()}
 						</Button>
 						<div class="bg-border h-4 w-px"></div>
-						<div class="flex items-center gap-2">
-							<h1 class="max-w-[300px] truncate text-lg font-semibold" title={project.name}>
-								{project.name}
-							</h1>
-							{#if project.status}
-								<StatusBadge variant={getStatusVariant(project.status)} text={capitalizeFirstLetter(project.status)} />
-							{/if}
+						<div class="flex flex-col">
+							<div class="flex items-center gap-2">
+								<h1 class="max-w-[340px] truncate text-lg font-semibold" title={project.name}>
+									{project.name}
+								</h1>
+								{#if project.status}
+									<StatusBadge variant={getStatusVariant(project.status)} text={capitalizeFirstLetter(project.status)} />
+								{/if}
+							</div>
+							<div class="text-muted-foreground mt-0.5 flex items-center gap-3 text-xs">
+								{#if createdDate}
+									<span>{m.common_created()}: {createdDate}</span>
+								{/if}
+								<span class="bg-border h-3 w-px"></span>
+								<span>{m.compose_services()} {project.runningCount}/{project.serviceCount}</span>
+							</div>
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
@@ -232,23 +232,28 @@
 			</div>
 		</div>
 
+		<!-- Floating Mini Header -->
 		{#if showFloatingHeader}
 			<div class="fixed left-1/2 top-4 z-30 -translate-x-1/2 transition-all duration-300 ease-in-out">
 				<div class="bg-background/90 border-border/50 rounded-lg border px-4 py-3 shadow-xl backdrop-blur-xl">
 					<div class="flex items-center gap-4">
-						<div class="flex items-center gap-2">
-							<h2 class="max-w-[150px] truncate text-sm font-medium" title={project.name}>
-								{project.name}
-							</h2>
-							{#if project.status}
-								<StatusBadge
-									variant={getStatusVariant(project.status)}
-									text={capitalizeFirstLetter(project.status)}
-									class="text-xs"
-								/>
-							{/if}
+						<div class="flex flex-col">
+							<div class="flex items-center gap-2">
+								<h2 class="max-w-[150px] truncate text-sm font-medium" title={project.name}>{project.name}</h2>
+								{#if project.status}
+									<StatusBadge
+										variant={getStatusVariant(project.status)}
+										text={capitalizeFirstLetter(project.status)}
+										class="text-xs"
+									/>
+								{/if}
+							</div>
+							<div class="text-muted-foreground mt-0.5 flex items-center gap-2 text-[10px]">
+								{#if createdDate}<span>{createdDate}</span>{/if}
+								<span>{project.runningCount}/{project.serviceCount} {m.compose_services()}</span>
+							</div>
 						</div>
-						<div class="bg-border h-4 w-px"></div>
+						<div class="bg-border h-8 w-px"></div>
 						<ActionButtons
 							id={project.id}
 							type="stack"
@@ -265,168 +270,12 @@
 			</div>
 		{/if}
 
-		{#if data.error}
-			<div class="max-w-full px-4 py-4">
-				<Alert.Root variant="destructive">
-					<CircleAlertIcon class="size-4" />
-					<Alert.Title>{m.compose_error_loading_stack_title()}</Alert.Title>
-					<Alert.Description>{data.error}</Alert.Description>
-				</Alert.Root>
-			</div>
-		{/if}
-
 		<div class="flex min-h-0 overflow-hidden">
-			<div class="bg-background/50 w-16 shrink-0 border-r">
-				<div class="sticky top-16 p-2">
-					<nav class="space-y-1">
-						{#each navigationSections as section}
-							{@const IconComponent = section.icon}
-							<button
-								onclick={() => scrollToSection(section.id)}
-								class="relative flex w-full items-center justify-center rounded-md p-3 text-sm font-medium transition-colors
-                                    {activeSection === section.id
-									? 'bg-primary/10 text-primary border-primary/20 border'
-									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
-								title={section.label}
-							>
-								<IconComponent class="size-4" />
-								{#if section.id === 'services' && project.serviceCount}
-									<span
-										class="bg-primary text-primary-foreground absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-xs"
-									>
-										{project.serviceCount}
-									</span>
-								{/if}
-							</button>
-						{/each}
-					</nav>
-				</div>
-			</div>
-
+			<!-- Main Content (sidebar removed) -->
 			<div class="min-w-0 flex-1 overflow-hidden">
 				<div class="max-w-none p-6">
-					<div class="space-y-8">
-						<section id="overview" class="scroll-mt-20">
-							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
-								<FileStackIcon class="size-5" />
-								{m.compose_overview_title()}
-							</h2>
-
-							<div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
-								<Card.Root class="border">
-									<Card.Content class="flex items-center justify-between p-6">
-										<div>
-											<p class="text-muted-foreground text-sm font-medium">{m.compose_services()}</p>
-											<p class="text-2xl font-bold">{project.serviceCount}</p>
-										</div>
-										<div class="bg-primary/10 rounded-full p-3">
-											<LayersIcon class="text-primary size-5" />
-										</div>
-									</Card.Content>
-								</Card.Root>
-
-								<Card.Root class="border">
-									<Card.Content class="flex items-center justify-between p-6">
-										<div>
-											<p class="text-muted-foreground text-sm font-medium">{m.compose_running()}</p>
-											<p class="text-2xl font-bold">{project.runningCount}</p>
-										</div>
-										<div class="rounded-full bg-green-500/10 p-3">
-											<ActivityIcon class="size-5 text-green-500" />
-										</div>
-									</Card.Content>
-								</Card.Root>
-
-								<Card.Root class="border">
-									<Card.Content class="flex items-center justify-between p-6">
-										<div>
-											<p class="text-muted-foreground text-sm font-medium">{m.common_created()}</p>
-											<p class="text-lg font-medium">
-												{new Date(project.createdAt ?? '').toLocaleDateString()}
-											</p>
-										</div>
-										<div class="rounded-full bg-blue-500/10 p-3">
-											<FileStackIcon class="size-5 text-blue-500" />
-										</div>
-									</Card.Content>
-								</Card.Root>
-
-								{#if servicePorts && Object.keys(servicePorts).length > 0}
-									{@const allUniquePorts = [...new Set((Object.values(servicePorts) as any).flat())] as (
-										| string
-										| number
-										| ProjectPort
-									)[]}
-									<Card.Root class="border">
-										<Card.Header class="pb-4">
-											<Card.Title>{m.compose_exposed_ports()}</Card.Title>
-										</Card.Header>
-										<Card.Content>
-											<div class="flex flex-wrap gap-2">
-												{#each allUniquePorts as port (port)}
-													{@const portValue =
-														typeof port === 'string' || typeof port === 'number' || (typeof port === 'object' && port !== null)
-															? port
-															: String(port)}
-													{@const serviceWithPort = project.services?.find((s) => s.ports?.includes(String(port))) || {
-														container_id: '',
-														name: '',
-														status: ''
-													}}
-													<a
-														href={getServicePortUrl(serviceWithPort, portValue)}
-														target="_blank"
-														rel="noopener noreferrer"
-														class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
-													>
-														{m.compose_port_label({ port: String(port) })}
-														<ExternalLinkIcon class="ml-2 size-4" />
-													</a>
-												{/each}
-											</div>
-										</Card.Content>
-									</Card.Root>
-								{/if}
-							</div>
-
-							{#if servicePorts && Object.keys(servicePorts).length > 0}
-								{@const allUniquePorts = [...new Set((Object.values(servicePorts) as any).flat())] as (
-									| string
-									| number
-									| ProjectPort
-								)[]}
-								<Card.Root class="border">
-									<Card.Header class="pb-4">
-										<Card.Title>{m.compose_exposed_ports()}</Card.Title>
-									</Card.Header>
-									<Card.Content>
-										<div class="flex flex-wrap gap-2">
-											{#each allUniquePorts as port (port)}
-												{@const portValue =
-													typeof port === 'string' || typeof port === 'number' || (typeof port === 'object' && port !== null)
-														? port
-														: String(port)}
-												{@const serviceWithPort = project.services?.find((s) => s.ports?.includes(String(port))) || {
-													container_id: '',
-													name: '',
-													status: ''
-												}}
-												<a
-													href={getServicePortUrl(serviceWithPort, portValue)}
-													target="_blank"
-													rel="noopener noreferrer"
-													class="inline-flex items-center rounded-md bg-blue-500/10 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
-												>
-													{m.compose_port_label({ port: String(port) })}
-													<ExternalLinkIcon class="ml-2 size-4" />
-												</a>
-											{/each}
-										</div>
-									</Card.Content>
-								</Card.Root>
-							{/if}
-						</section>
-
+					<div class="space-y-12">
+						<!-- Services Section -->
 						<section id="services" class="scroll-mt-20">
 							<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
 								<LayersIcon class="size-5" />
@@ -435,55 +284,9 @@
 
 							{#if project.services && project.services.length > 0}
 								<div class="bg-card rounded-lg border">
-									<div class="grid grid-cols-1 gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
+									<div class="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
 										{#each project.services as service (service.container_id || service.name)}
-											{@const status = service.status || 'unknown'}
-											{@const variant = getStatusVariant(status)}
-
-											{#if service.container_id}
-												<a
-													href={`/containers/${service.container_id}`}
-													class="bg-background hover:bg-muted/50 group flex items-center gap-3 rounded-lg border p-3 transition-all"
-												>
-													<div class="bg-primary/10 shrink-0 rounded-full p-2">
-														<LayersIcon class="text-primary size-3" />
-													</div>
-													<div class="min-w-0 flex-1">
-														<div class="flex items-center justify-between">
-															<p class="truncate text-sm font-medium" title={service.name}>
-																{service.name}
-															</p>
-															<ArrowRightIcon
-																class="text-primary size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-															/>
-														</div>
-														<div class="mt-1 flex items-center gap-2">
-															<StatusBadge {variant} text={capitalizeFirstLetter(status)} class="text-xs" />
-															{#if service.ports && service.ports.length > 0}
-																<span class="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-xs">
-																	{service.ports.length}
-																	{service.ports.length > 1 ? m.compose_ports_label_many() : m.compose_ports_label_one()}
-																</span>
-															{/if}
-														</div>
-													</div>
-												</a>
-											{:else}
-												<div class="bg-muted/10 flex items-center gap-3 rounded-lg border p-3">
-													<div class="bg-muted/50 shrink-0 rounded-full p-2">
-														<LayersIcon class="text-muted-foreground size-3" />
-													</div>
-													<div class="min-w-0 flex-1">
-														<p class="truncate text-sm font-medium" title={service.name}>
-															{service.name}
-														</p>
-														<div class="mt-1 flex items-center gap-2">
-															<StatusBadge {variant} text={capitalizeFirstLetter(status)} class="text-xs" />
-															<span class="text-muted-foreground text-xs">{m.compose_service_not_created()}</span>
-														</div>
-													</div>
-												</div>
-											{/if}
+											<ProjectServiceCard {service} />
 										{/each}
 									</div>
 								</div>
@@ -497,6 +300,7 @@
 							{/if}
 						</section>
 
+						<!-- Config / Editors Section -->
 						<section id="config" class="scroll-mt-20">
 							<div class="mb-6 flex items-center justify-between">
 								<h2 class="flex items-center gap-2 text-xl font-semibold">
@@ -515,130 +319,138 @@
 									/>
 								{/if}
 							</div>
-
-							<div class="mb-6 space-y-2">
-								<Label for="name" class="mb-10 text-sm font-medium">{m.compose_name_label()}</Label>
-								<div class="max-w-md">
-									<Input
-										type="text"
-										id="name"
-										name="name"
-										bind:value={$inputs.name.value}
-										required
-										class="my-2 {$inputs.name.error ? 'border-destructive' : ''}"
-										disabled={isLoading.saving || project?.status === 'running' || project?.status === 'partially running'}
-									/>
-									{#if $inputs.name.error}
-										<p class="text-destructive mt-1 text-xs">{$inputs.name.error}</p>
-									{/if}
-									{#if project?.status === 'running' || project?.status === 'partially running'}
-										<p class="text-muted-foreground mt-2 text-sm">
-											{m.compose_name_change_not_allowed()}
-										</p>
-									{/if}
-								</div>
-							</div>
-
-							<div class="grid min-w-0 grid-cols-1 gap-6 overflow-hidden lg:grid-cols-3">
-								<div class="min-w-0 overflow-hidden lg:col-span-2">
-									<div class="space-y-4">
-										<h3 class="text-lg">{m.compose_compose_file_title()}</h3>
-										<div class="h-[590px] w-full min-w-0 overflow-hidden rounded-md">
-											<CodeEditor
-												bind:value={$inputs.composeContent.value}
-												language="yaml"
-												placeholder={m.compose_compose_placeholder()}
-											/>
-										</div>
-										{#if $inputs.composeContent.error}
-											<p class="text-destructive mt-1 text-xs">{$inputs.composeContent.error}</p>
-										{/if}
+							<!-- Name Input -->
+							<div class="mb-6 max-w-md space-y-2">
+								<Label for="name" class="text-sm font-medium">{m.compose_name_label()}</Label>
+								<div class="flex items-center gap-2">
+									<div class="mt-2 flex-1">
+										<Input
+											type="text"
+											id="name"
+											name="name"
+											bind:value={$inputs.name.value}
+											required
+											disabled={project?.status === 'running' || project?.status === 'partially running'}
+											class={$inputs.name.error ? 'border-destructive' : ''}
+										/>
 									</div>
+									<Tooltip.Provider>
+										<Tooltip.Root>
+											<Tooltip.Trigger
+												type="button"
+												class={buttonVariants({ variant: 'ghost', size: 'icon' })}
+												aria-label="Project name info"
+											>
+												<InfoIcon class="size-4" />
+											</Tooltip.Trigger>
+											<Tooltip.Content side="top" align="center">
+												{#if project?.status === 'running' || project?.status === 'partially running'}
+													{m.compose_name_change_not_allowed()}
+												{/if}
+											</Tooltip.Content>
+										</Tooltip.Root>
+									</Tooltip.Provider>
 								</div>
-
-								<div class="min-w-0 overflow-hidden lg:col-span-1">
-									<div class="space-y-4">
-										<h3 class="text-lg font-semibold">{m.compose_env_title()}</h3>
-										<div class="h-[590px] w-full min-w-0 overflow-hidden rounded-md">
-											<CodeEditor
-												bind:value={$inputs.envContent.value}
-												language="env"
-												placeholder={m.compose_env_placeholder()}
-											/>
-										</div>
-										{#if $inputs.envContent.error}
-											<p class="text-destructive mt-1 text-xs">{$inputs.envContent.error}</p>
-										{/if}
-									</div>
-								</div>
+								{#if $inputs.name.error}
+									<p class="text-destructive mt-1 text-xs">{$inputs.name.error}</p>
+								{/if}
 							</div>
-						</section>
-
-						{#if project.status == 'running'}
-							<section id="logs" class="scroll-mt-20">
-								<div class="mb-6 flex items-center justify-between">
-									<h2 class="flex items-center gap-2 text-xl font-semibold">
-										<TerminalIcon class="size-5" />
-										{m.compose_logs_title()}
-									</h2>
-									<div class="flex items-center gap-3">
-										<label class="flex items-center gap-2">
-											<input type="checkbox" bind:checked={autoScrollStackLogs} class="size-4" />
-											{m.common_autoscroll()}
-										</label>
-										<Button variant="outline" size="sm" onclick={() => stackLogViewer?.clearLogs()}>{m.common_clear()}</Button>
-										{#if isStackLogsStreaming}
-											<div class="flex items-center gap-2">
-												<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
-												<span class="text-sm font-medium text-green-600">{m.common_live()}</span>
+							<!-- Tabs -->
+							<Tabs.Root
+								value={activeEditorTab}
+								onValueChange={(v) => (activeEditorTab = v as 'compose' | 'env' | 'logs')}
+								class="w-auto"
+								id="editor-area"
+							>
+								<Tabs.List>
+									<Tabs.Trigger value="compose">{m.compose_compose_file_title()}</Tabs.Trigger>
+									<Tabs.Trigger value="env">{m.compose_env_title()}</Tabs.Trigger>
+									{#if project.status === 'running'}
+										<Tabs.Trigger value="logs">{m.compose_logs_title()}</Tabs.Trigger>
+									{/if}
+								</Tabs.List>
+								<Tabs.Content value="compose">
+									<div class="mt-4 overflow-hidden rounded-md" style={`height:${editorHeight};`}>
+										<CodeEditor
+											bind:value={$inputs.composeContent.value}
+											language="yaml"
+											placeholder={m.compose_compose_placeholder()}
+										/>
+									</div>
+									{#if $inputs.composeContent.error}
+										<p class="text-destructive mt-1 text-xs">{$inputs.composeContent.error}</p>
+									{/if}
+								</Tabs.Content>
+								<Tabs.Content value="env">
+									<div class="mt-4 overflow-hidden rounded-md" style={`height:${editorHeight};`}>
+										<CodeEditor bind:value={$inputs.envContent.value} language="env" placeholder={m.compose_env_placeholder()} />
+									</div>
+									{#if $inputs.envContent.error}
+										<p class="text-destructive mt-1 text-xs">{$inputs.envContent.error}</p>
+									{/if}
+								</Tabs.Content>
+								{#if project.status === 'running'}
+									<Tabs.Content value="logs">
+										<div class="mt-4 flex h-full flex-col gap-4">
+											<div class="flex flex-wrap items-center gap-3">
+												<label class="flex items-center gap-2 text-sm">
+													<input type="checkbox" bind:checked={autoScrollStackLogs} class="size-4" />
+													{m.common_autoscroll()}
+												</label>
+												<Button variant="outline" size="sm" onclick={() => stackLogViewer?.clearLogs()}>{m.common_clear()}</Button
+												>
+												{#if isStackLogsStreaming}
+													<div class="flex items-center gap-2 pr-2">
+														<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
+														<span class="text-sm font-medium text-green-600">{m.common_live()}</span>
+													</div>
+													<Button variant="outline" size="sm" onclick={() => stackLogViewer?.stopLogStream()}
+														>{m.common_stop()}</Button
+													>
+												{:else}
+													<Button
+														variant="outline"
+														size="sm"
+														onclick={() => stackLogViewer?.startLogStream()}
+														disabled={!project?.id}
+													>
+														{m.common_start()}
+													</Button>
+												{/if}
+												<Button
+													variant="outline"
+													size="sm"
+													onclick={() => {
+														stackLogViewer?.stopLogStream();
+														stackLogViewer?.startLogStream();
+													}}
+												>
+													<RefreshCwIcon class="size-4" />
+												</Button>
 											</div>
-											<Button variant="outline" size="sm" onclick={() => stackLogViewer?.stopLogStream()}
-												>{m.common_stop()}</Button
-											>
-										{:else}
-											<Button
-												variant="outline"
-												size="sm"
-												onclick={() => stackLogViewer?.startLogStream()}
-												disabled={!project?.id}
-											>
-												{m.common_start()}
-											</Button>
-										{/if}
-										<Button
-											variant="outline"
-											size="sm"
-											onclick={() => {
-												stackLogViewer?.stopLogStream();
-												stackLogViewer?.startLogStream();
-											}}
-										>
-											<RefreshCwIcon class="size-4" />
-										</Button>
-									</div>
-								</div>
 
-								<Card.Root class="min-w-0 overflow-hidden border">
-									<Card.Content class="min-w-0 overflow-hidden p-0">
-										<div class="w-full min-w-0 overflow-hidden">
-											<LogViewer
-												bind:this={stackLogViewer}
-												bind:autoScroll={autoScrollStackLogs}
-												stackId={project?.id}
-												type="stack"
-												maxLines={500}
-												showTimestamps={true}
-												height="600px"
-												onStart={handleStackLogStart}
-												onStop={handleStackLogStop}
-												onClear={handleStackLogClear}
-												onToggleAutoScroll={handleToggleStackAutoScroll}
-											/>
+											<div class="min-w-0 flex-1 overflow-hidden rounded-md" style={`height:${editorHeight};`}>
+												<LogViewer
+													bind:this={stackLogViewer}
+													bind:autoScroll={autoScrollStackLogs}
+													stackId={project?.id}
+													type="stack"
+													maxLines={500}
+													showTimestamps={true}
+													height={editorHeight}
+													onStart={handleStackLogStart}
+													onStop={handleStackLogStop}
+													onClear={handleStackLogClear}
+													onToggleAutoScroll={handleToggleStackAutoScroll}
+												/>
+											</div>
 										</div>
-									</Card.Content>
-								</Card.Root>
-							</section>
-						{/if}
+									</Tabs.Content>
+								{/if}
+							</Tabs.Root>
+							<div class="pb-8"></div>
+							<!-- bottom padding -->
+						</section>
 					</div>
 				</div>
 			</div>
