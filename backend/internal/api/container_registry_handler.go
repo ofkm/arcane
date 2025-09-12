@@ -12,6 +12,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	registry "github.com/ofkm/arcane-backend/internal/utils/registry"
 )
 
 type ContainerRegistryHandler struct {
@@ -226,24 +227,24 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 	})
 }
 
-func (h *ContainerRegistryHandler) performRegistryTest(ctx context.Context, registry *models.ContainerRegistry, decryptedToken string) (map[string]interface{}, error) {
-	var creds *utils.RegistryCredentials
-	if registry.Username != "" && decryptedToken != "" {
-		creds = &utils.RegistryCredentials{
-			Username: registry.Username,
+func (h *ContainerRegistryHandler) performRegistryTest(ctx context.Context, registryModel *models.ContainerRegistry, decryptedToken string) (map[string]interface{}, error) {
+	var creds *registry.Credentials
+	if registryModel.Username != "" && decryptedToken != "" {
+		creds = &registry.Credentials{
+			Username: registryModel.Username,
 			Token:    decryptedToken,
 		}
 	}
 
-	testResult, err := utils.TestRegistryConnection(ctx, registry.URL, creds)
+	testResult, err := registry.TestRegistryConnection(ctx, registryModel.URL, creds)
 	if err != nil {
 		return nil, fmt.Errorf("registry test failed: %w", err)
 	}
 
 	result := map[string]interface{}{
 		"status":          getStatusString(testResult.OverallSuccess),
-		"url":             registry.URL,
-		"username":        registry.Username,
+		"url":             registryModel.URL,
+		"username":        registryModel.Username,
 		"timestamp":       testResult.Timestamp.Format(time.RFC3339),
 		"overall_success": testResult.OverallSuccess,
 		"ping_success":    testResult.PingSuccess,
