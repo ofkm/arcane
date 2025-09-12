@@ -844,18 +844,26 @@ func (s *ImageUpdateService) getImageIDByRef(ctx context.Context, imageRef strin
 	return inspectResponse.ID, nil
 }
 
-func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs []string) (map[string]*dto.ImageUpdateResponse, error) {
-	startBatch := time.Now()
-	results := make(map[string]*dto.ImageUpdateResponse, len(imageRefs))
-	if len(imageRefs) == 0 {
-		return results, nil
-	}
+type batchCred struct {
+	username string
+	token    string
+}
 
-	rc := registry.NewClient()
+type regAuth struct {
+	token string
+	auth  *authDetails
+}
 
-	// Group repositories by registry
-	type repoSet map[string]struct{}
-	regRepos := map[string]repoSet{}
+type batchImage struct {
+	ref   string
+	parts *ImageParts
+}
+
+func (s *ImageUpdateService) parseAndGroupImages(imageRefs []string) (map[string]map[string]struct{}, map[string]*dto.ImageUpdateResponse, []batchImage) {
+	regRepos := make(map[string]map[string]struct{})
+	results := make(map[string]*dto.ImageUpdateResponse)
+	var images []batchImage
+
 	for _, ref := range imageRefs {
 		parts := s.parseImageReference(ref)
 		if parts == nil {
@@ -867,33 +875,27 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 			continue
 		}
 		if _, ok := regRepos[parts.Registry]; !ok {
-			regRepos[parts.Registry] = repoSet{}
+			regRepos[parts.Registry] = make(map[string]struct{})
 		}
 		regRepos[parts.Registry][s.normalizeRepository(parts.Registry, parts.Repository)] = struct{}{}
+		images = append(images, batchImage{ref: ref, parts: parts})
 	}
+	return regRepos, results, images
+}
 
-	// LOAD REGISTRY CREDENTIALS FROM DB (enabled only) INSTEAD OF IN-MEMORY LIST
-	enabledRegs, credErr := s.registryService.GetEnabledRegistries(ctx)
-	if credErr != nil {
-		slog.DebugContext(ctx, "Failed to load enabled registries",
-			slog.String("error", credErr.Error()))
+func (s *ImageUpdateService) buildCredentialMap(ctx context.Context) (map[string]batchCred, []models.ContainerRegistry) {
+	enabledRegs, err := s.registryService.GetEnabledRegistries(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "Failed to load enabled registries", slog.String("error", err.Error()))
+		return map[string]batchCred{}, nil
 	}
-
-	// Build a host -> decrypted credential map (first match wins)
-	type cred struct {
-		username string
-		token    string
-	}
-	credMap := make(map[string]cred, len(enabledRegs))
-
+	credMap := make(map[string]batchCred, len(enabledRegs))
 	normalizeHost := func(u string) string {
 		u = strings.TrimSpace(u)
 		u = strings.TrimPrefix(u, "https://")
 		u = strings.TrimPrefix(u, "http://")
-		u = strings.TrimSuffix(u, "/")
-		return u
+		return strings.TrimSuffix(u, "/")
 	}
-
 	for _, r := range enabledRegs {
 		if r.Username == "" || r.Token == "" {
 			continue
@@ -902,26 +904,28 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 		if host == "" {
 			continue
 		}
-		// decrypt
-		dec, err := utils.Decrypt(r.Token)
-		if err != nil {
+		dec, decErr := utils.Decrypt(r.Token)
+		if decErr != nil {
 			slog.DebugContext(ctx, "Decrypt registry token failed",
 				slog.String("registryURL", r.URL),
-				slog.String("error", err.Error()))
+				slog.String("error", decErr.Error()))
 			continue
 		}
-		// only keep first (avoid overwriting)
 		if _, exists := credMap[host]; !exists {
-			credMap[host] = cred{username: r.Username, token: dec}
+			credMap[host] = batchCred{username: r.Username, token: dec}
 		}
 	}
+	return credMap, enabledRegs
+}
 
-	// Acquire one token per registry (anonymous first → then credential)
-	type regAuth struct {
-		token string
-		auth  *authDetails
-	}
+func (s *ImageUpdateService) buildRegistryAuthMap(ctx context.Context, rc *registry.Client, regRepos map[string]map[string]struct{}, credMap map[string]batchCred) map[string]regAuth {
 	regAuthMap := make(map[string]regAuth, len(regRepos))
+	normalizeHost := func(u string) string {
+		u = strings.TrimSpace(u)
+		u = strings.TrimPrefix(u, "https://")
+		u = strings.TrimPrefix(u, "http://")
+		return strings.TrimSuffix(u, "/")
+	}
 
 	for regHost, set := range regRepos {
 		repos := make([]string, 0, len(set))
@@ -937,6 +941,7 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 			regAuthMap[regHost] = regAuth{token: "", auth: &authDetails{Method: "unknown", Registry: regHost}}
 			continue
 		}
+		// No auth required
 		if authURL == "" {
 			regAuthMap[regHost] = regAuth{token: "", auth: &authDetails{Method: "none", Registry: regHost}}
 			continue
@@ -946,11 +951,11 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 			regAuthMap[regHost] = regAuth{token: anonToken, auth: &authDetails{Method: "anonymous", Registry: regHost}}
 			continue
 		}
-		// Credential attempt (match by normalized host)
+		// Credential attempt
 		host := normalizeHost(regHost)
 		if c, ok := credMap[host]; ok && c.username != "" && c.token != "" {
-			rcd := &registry.Credentials{Username: c.username, Token: c.token}
-			if tok, tokErr := rc.GetTokenMulti(ctx, authURL, repos, rcd); tokErr == nil && tok != "" {
+			creds := &registry.Credentials{Username: c.username, Token: c.token}
+			if tok, tokErr := rc.GetTokenMulti(ctx, authURL, repos, creds); tokErr == nil && tok != "" {
 				regAuthMap[regHost] = regAuth{
 					token: tok,
 					auth:  &authDetails{Method: "credential", Username: c.username, Registry: regHost},
@@ -958,137 +963,157 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 				continue
 			}
 		}
-		// Fallback
+		// Fallback unknown
 		regAuthMap[regHost] = regAuth{token: "", auth: &authDetails{Method: "unknown", Registry: regHost}}
 	}
+	return regAuthMap
+}
 
-	type item struct {
+func (s *ImageUpdateService) checkSingleImageInBatch(
+	ctx context.Context,
+	rc *registry.Client,
+	authMap map[string]regAuth,
+	enabledRegs []models.ContainerRegistry,
+	parts *ImageParts,
+	updateScope string,
+) *dto.ImageUpdateResponse {
+
+	start := time.Now()
+	authInfo := authMap[parts.Registry]
+	token := authInfo.token
+	auth := authInfo.auth
+	normalizedRepo := s.normalizeRepository(parts.Registry, parts.Repository)
+
+	remoteDigest, _, digestErr := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token)
+	if digestErr != nil && strings.Contains(strings.ToLower(digestErr.Error()), "unauthorized") {
+		challenge := digestErr.Error()
+		if idx := strings.Index(strings.ToLower(challenge), "bearer "); idx >= 0 {
+			challenge = challenge[idx:]
+		}
+		if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
+			token = newTok
+			auth.Method = method
+			auth.Username = user
+			// retry once
+			if rd2, _, rd2Err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token); rd2Err == nil {
+				remoteDigest = rd2
+				digestErr = nil
+			} else {
+				digestErr = rd2Err
+			}
+		}
+	}
+	if digestErr != nil {
+		return &dto.ImageUpdateResponse{
+			Error:          digestErr.Error(),
+			CheckTime:      time.Now(),
+			ResponseTimeMs: int(time.Since(start).Milliseconds()),
+			AuthMethod:     auth.Method,
+			AuthUsername:   auth.Username,
+			AuthRegistry:   auth.Registry,
+			UsedCredential: auth.Method == "credential",
+		}
+	}
+
+	localDigest, ldErr := s.getLocalImageDigest(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
+	if ldErr != nil {
+		return &dto.ImageUpdateResponse{
+			Error:          ldErr.Error(),
+			CheckTime:      time.Now(),
+			ResponseTimeMs: int(time.Since(start).Milliseconds()),
+			AuthMethod:     auth.Method,
+			AuthUsername:   auth.Username,
+			AuthRegistry:   auth.Registry,
+			UsedCredential: auth.Method == "credential",
+		}
+	}
+
+	hasDigestUpdate := localDigest != remoteDigest
+
+	// Tag update path only if digest unchanged and tag is version-like
+	if !hasDigestUpdate && !s.isSpecialTag(parts.Tag) {
+		curVer := s.parseVersion(parts.Tag)
+		if curVer != nil {
+			tags, tagErr := rc.GetImageTags(ctx, parts.Registry, normalizedRepo, token)
+			if tagErr == nil {
+				if latestVer := s.findLatestCompatibleVersionWithScope(curVer, tags, updateScope); latestVer != nil && s.isNewerVersion(latestVer, curVer) {
+					return &dto.ImageUpdateResponse{
+						HasUpdate:      true,
+						UpdateType:     "tag",
+						CurrentVersion: parts.Tag,
+						LatestVersion:  s.versionToString(latestVer),
+						CheckTime:      time.Now(),
+						ResponseTimeMs: int(time.Since(start).Milliseconds()),
+						AuthMethod:     auth.Method,
+						AuthUsername:   auth.Username,
+						AuthRegistry:   auth.Registry,
+						UsedCredential: auth.Method == "credential",
+					}
+				}
+			}
+		}
+	}
+
+	return &dto.ImageUpdateResponse{
+		HasUpdate:      hasDigestUpdate,
+		UpdateType:     "digest",
+		CurrentDigest:  localDigest,
+		LatestDigest:   remoteDigest,
+		CheckTime:      time.Now(),
+		ResponseTimeMs: int(time.Since(start).Milliseconds()),
+		AuthMethod:     auth.Method,
+		AuthUsername:   auth.Username,
+		AuthRegistry:   auth.Registry,
+		UsedCredential: auth.Method == "credential",
+	}
+}
+
+func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs []string) (map[string]*dto.ImageUpdateResponse, error) {
+	startBatch := time.Now()
+	results := make(map[string]*dto.ImageUpdateResponse, len(imageRefs))
+	if len(imageRefs) == 0 {
+		return results, nil
+	}
+
+	rc := registry.NewClient()
+
+	// Parse & group
+	regRepos, initialResults, images := s.parseAndGroupImages(imageRefs)
+	for k, v := range initialResults {
+		results[k] = v
+	}
+
+	// Credentials + enabled registry list (for challenge retries)
+	credMap, enabledRegs := s.buildCredentialMap(ctx)
+
+	// Registry auth map
+	regAuthMap := s.buildRegistryAuthMap(ctx, rc, regRepos, credMap)
+
+	// Concurrency
+	updateScope := s.getUpdateScope()
+	outCh := make(chan struct {
 		ref string
 		res *dto.ImageUpdateResponse
-	}
-	outCh := make(chan item, len(imageRefs))
+	}, len(images))
+
 	wg := sync.WaitGroup{}
-	wg.Add(len(imageRefs))
-
-	updateScope := s.getUpdateScope()
-
-	for _, ref := range imageRefs {
+	wg.Add(len(images))
+	for _, img := range images {
 		go func() {
 			defer wg.Done()
-			checkStart := time.Now()
-			parts := s.parseImageReference(ref)
-			if parts == nil {
-				outCh <- item{ref, &dto.ImageUpdateResponse{
-					Error:          "Invalid image reference format",
-					CheckTime:      time.Now(),
-					ResponseTimeMs: int(time.Since(checkStart).Milliseconds()),
-				}}
-				return
-			}
-			authInfo := regAuthMap[parts.Registry]
-			token := authInfo.token
-			auth := authInfo.auth
-			normalizedRepo := s.normalizeRepository(parts.Registry, parts.Repository)
-
-			remoteDigest, _, digestErr := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token)
-			if digestErr != nil && strings.Contains(strings.ToLower(digestErr.Error()), "unauthorized") {
-				challenge := digestErr.Error()
-				if idx := strings.Index(strings.ToLower(challenge), "bearer "); idx >= 0 {
-					challenge = challenge[idx:]
-				}
-				enabledRegs, _ := s.registryService.GetEnabledRegistries(ctx)
-				if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
-					token = newTok
-					auth.Method = method
-					auth.Username = user
-					// Update cache so subsequent images in same registry reuse fresh token
-					regAuthMap[parts.Registry] = regAuth{token: token, auth: auth}
-					if rd2, _, rd2Err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token); rd2Err == nil {
-						remoteDigest = rd2
-						digestErr = nil
-					} else {
-						digestErr = rd2Err
-					}
-				}
-			}
-			if digestErr != nil {
-				res := &dto.ImageUpdateResponse{
-					Error:          digestErr.Error(),
-					CheckTime:      time.Now(),
-					ResponseTimeMs: int(time.Since(checkStart).Milliseconds()),
-					AuthMethod:     auth.Method,
-					AuthUsername:   auth.Username,
-					AuthRegistry:   auth.Registry,
-					UsedCredential: auth.Method == "credential",
-				}
-				_ = s.saveUpdateResult(ctx, ref, res)
-				outCh <- item{ref, res}
-				return
-			}
-
-			localDigest, ldErr := s.getLocalImageDigest(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
-			if ldErr != nil {
-				res := &dto.ImageUpdateResponse{
-					Error:          ldErr.Error(),
-					CheckTime:      time.Now(),
-					ResponseTimeMs: int(time.Since(checkStart).Milliseconds()),
-					AuthMethod:     auth.Method,
-					AuthUsername:   auth.Username,
-					AuthRegistry:   auth.Registry,
-					UsedCredential: auth.Method == "credential",
-				}
-				_ = s.saveUpdateResult(ctx, ref, res)
-				outCh <- item{ref, res}
-				return
-			}
-
-			hasDigestUpdate := localDigest != remoteDigest
-			if !hasDigestUpdate && !s.isSpecialTag(parts.Tag) {
-				curVer := s.parseVersion(parts.Tag)
-				if curVer != nil {
-					tags, tagErr := rc.GetImageTags(ctx, parts.Registry, normalizedRepo, token)
-					if tagErr == nil {
-						latestVer := s.findLatestCompatibleVersionWithScope(curVer, tags, updateScope)
-						if latestVer != nil && s.isNewerVersion(latestVer, curVer) {
-							res := &dto.ImageUpdateResponse{
-								HasUpdate:      true,
-								UpdateType:     "tag",
-								CurrentVersion: parts.Tag,
-								LatestVersion:  s.versionToString(latestVer),
-								CheckTime:      time.Now(),
-								ResponseTimeMs: int(time.Since(checkStart).Milliseconds()),
-								AuthMethod:     auth.Method,
-								AuthUsername:   auth.Username,
-								AuthRegistry:   auth.Registry,
-								UsedCredential: auth.Method == "credential",
-							}
-							_ = s.saveUpdateResult(ctx, ref, res)
-							outCh <- item{ref, res}
-							return
-						}
-					}
-				}
-			}
-
-			res := &dto.ImageUpdateResponse{
-				HasUpdate:      hasDigestUpdate,
-				UpdateType:     "digest",
-				CurrentDigest:  localDigest,
-				LatestDigest:   remoteDigest,
-				CheckTime:      time.Now(),
-				ResponseTimeMs: int(time.Since(checkStart).Milliseconds()),
-				AuthMethod:     auth.Method,
-				AuthUsername:   auth.Username,
-				AuthRegistry:   auth.Registry,
-				UsedCredential: auth.Method == "credential",
-			}
-			_ = s.saveUpdateResult(ctx, ref, res)
-			outCh <- item{ref, res}
+			res := s.checkSingleImageInBatch(ctx, rc, regAuthMap, enabledRegs, img.parts, updateScope)
+			// Persist
+			_ = s.saveUpdateResult(ctx, img.ref, res)
+			outCh <- struct {
+				ref string
+				res *dto.ImageUpdateResponse
+			}{ref: img.ref, res: res}
 		}()
 	}
 
 	wg.Wait()
 	close(outCh)
+
 	for it := range outCh {
 		results[it.ref] = it.res
 	}
@@ -1096,6 +1121,7 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 	slog.DebugContext(ctx, "Batch image update check complete",
 		slog.Int("count", len(results)),
 		slog.Int64("elapsedMs", time.Since(startBatch).Milliseconds()))
+
 	return results, nil
 }
 

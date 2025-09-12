@@ -122,9 +122,13 @@ func TestGetImageTagsPagination(t *testing.T) {
 		case r.URL.Path == "/v2/org/repo/tags/list" && (r.URL.RawQuery == "" || r.URL.RawQuery == "page=1"):
 			page2 := server.URL + "/v2/org/repo/tags/list?page=2"
 			w.Header().Set("Link", `<`+page2+`>; rel="next"`)
-			_ = json.NewEncoder(w).Encode(tagsResp{Tags: []string{"a", "b"}})
+			if err := json.NewEncoder(w).Encode(tagsResp{Tags: []string{"a", "b"}}); err != nil {
+				http.Error(w, "encode error: "+err.Error(), http.StatusInternalServerError)
+			}
 		case r.URL.Path == "/v2/org/repo/tags/list" && r.URL.RawQuery == "page=2":
-			_ = json.NewEncoder(w).Encode(tagsResp{Tags: []string{"c"}})
+			if err := json.NewEncoder(w).Encode(tagsResp{Tags: []string{"c"}}); err != nil {
+				http.Error(w, "encode error: "+err.Error(), http.StatusInternalServerError)
+			}
 		default:
 			http.NotFound(w, r)
 		}
