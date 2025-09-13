@@ -346,7 +346,7 @@
 	"dashboard_start_all_failed": "Kon niet alle containers starten",
 	"dashboard_start_all_success": "Alle containers zijn succesvol gestart",
 	"dashboard_stop_all_title": "Stop alle containers",
-	"dashboard_stop_all_confirm": "Are you sure you want to stop all running containers? This will not stop arcane itself.",
+	"dashboard_stop_all_confirm": "Weet u zeker dat u wilt stoppen met het uitvoeren van alle containers? Dit zal niet stoppen met arcane zelf.",
 	"dashboard_stop_all_failed": "Fout bij het stoppen van alle draaiende containers",
 	"dashboard_stop_all_success": "Alle containers zijn succesvol gestopt",
 	"dashboard_prune_failed": "Mislukt om te snoeien {types}",
