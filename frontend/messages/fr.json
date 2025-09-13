@@ -96,7 +96,7 @@
 	"security_session_heading": "Session",
 	"security_session_timeout_label": "Session Timeout (minutes)",
 	"security_session_timeout_placeholder": "60",
-	"security_session_timeout_description": "Inactive sessions will be logged out automatically (15–1440 minutes).",
+	"security_session_timeout_description": "Les sessions inactives seront automatiquement déconnectées (15 à 1440 minutes).",
 	"security_session_timeout_required": "Session timeout is required",
 	"security_session_timeout_integer": "Must be an integer",
 	"security_session_timeout_min": "Minimum is 15 minutes",
