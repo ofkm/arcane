@@ -6,8 +6,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-
-	"github.com/ofkm/arcane-backend/internal/services"
 )
 
 func CountSubdirectories(path string) (int, error) {
@@ -25,13 +23,8 @@ func CountSubdirectories(path string) (int, error) {
 	return count, nil
 }
 
-func GetProjectsDirectory(ctx context.Context, settingsService *services.SettingsService) (string, error) {
-	settings, err := settingsService.GetSettings(ctx)
-	if err != nil {
-		return "data/projects", err
-	}
-
-	projectsDirectory := settings.StacksDirectory.Value
+func GetProjectsDirectory(ctx context.Context, stacksDir string) (string, error) {
+	projectsDirectory := stacksDir
 	if projectsDirectory == "" {
 		projectsDirectory = "data/projects"
 	}

@@ -44,7 +44,12 @@ func RegisterFilesystemWatcherJob(ctx context.Context, scheduler *Scheduler, sta
 }
 
 func (j *FilesystemWatcherJob) Start(ctx context.Context) error {
-	projectsDirectory, err := fs.GetProjectsDirectory(ctx, j.settingsService)
+
+	settings, err := j.settingsService.GetSettings(ctx)
+	if err != nil {
+		return err
+	}
+	projectsDirectory, err := fs.GetProjectsDirectory(ctx, settings.StacksDirectory.Value)
 	if err != nil {
 		return err
 	}

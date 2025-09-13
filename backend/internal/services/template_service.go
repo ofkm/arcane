@@ -18,6 +18,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	appfs "github.com/ofkm/arcane-backend/internal/utils/fs"
 	"gorm.io/gorm"
 )
 
@@ -543,7 +544,8 @@ func (s *TemplateService) DownloadTemplate(ctx context.Context, remoteTemplate *
 		First(&existing).Error; err == nil {
 		composeContent, envContent, err := s.FetchTemplateContent(ctx, remoteTemplate)
 		if err != nil {
-			return &existing, nil
+			// fix nilerr: propagate the error
+			return nil, fmt.Errorf("failed to fetch template content for existing local template: %w", err)
 		}
 		_ = os.WriteFile(composePath, []byte(composeContent), 0600)
 		if strings.TrimSpace(envContent) != "" {
@@ -636,8 +638,68 @@ func (s *TemplateService) SyncLocalTemplatesFromFilesystem(ctx context.Context) 
 	return s.syncFilesystemTemplatesInternal(ctx)
 }
 
+// upsertFilesystemTemplate centralizes insert/update logic for filesystem templates.
+func (s *TemplateService) upsertFilesystemTemplate(ctx context.Context, name, desc, compose string, envPtr *string) error {
+	var existing models.ComposeTemplate
+	q := s.db.WithContext(ctx).
+		Where("is_remote = ? AND registry_id IS NULL AND description = ?", false, desc).
+		First(&existing)
+
+	if q.Error == nil {
+		existing.Name = name
+		existing.Content = compose
+		existing.EnvContent = envPtr
+		existing.IsCustom = true
+		existing.IsRemote = false
+		if err := s.db.WithContext(ctx).Save(&existing).Error; err != nil {
+			return fmt.Errorf("update template %s: %w", existing.ID, err)
+		}
+		return nil
+	}
+	if !errors.Is(q.Error, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("query existing template: %w", q.Error)
+	}
+
+	tpl := &models.ComposeTemplate{
+		BaseModel:   models.BaseModel{ID: uuid.NewString()},
+		Name:        name,
+		Description: desc,
+		Content:     compose,
+		EnvContent:  envPtr,
+		IsCustom:    true,
+		IsRemote:    false,
+		RegistryID:  nil,
+		Registry:    nil,
+		Metadata:    nil,
+	}
+	if err := s.db.WithContext(ctx).Create(tpl).Error; err != nil {
+		return fmt.Errorf("insert template %s: %w", name, err)
+	}
+	return nil
+}
+
+func (s *TemplateService) processFolderEntry(ctx context.Context, baseDir, folder string) error {
+	compose, envPtr, desc, found, err := appfs.ReadFolderComposeTemplate(baseDir, folder)
+	if err != nil || !found {
+		return err
+	}
+	return s.upsertFilesystemTemplate(ctx, folder, desc, compose, envPtr)
+}
+
+func (s *TemplateService) processRootFile(ctx context.Context, baseDir, file string) error {
+	base, compose, envPtr, desc, err := appfs.ReadRootComposeTemplate(baseDir, file)
+	if err != nil {
+		return err
+	}
+	return s.upsertFilesystemTemplate(ctx, base, desc, compose, envPtr)
+}
+
 func (s *TemplateService) syncFilesystemTemplatesInternal(ctx context.Context) error {
-	dir := filepath.Join("data", "templates")
+	dir, err := appfs.GetTemplatesDirectory(ctx)
+	if err != nil {
+		return fmt.Errorf("ensure templates dir: %w", err)
+	}
+
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -648,131 +710,17 @@ func (s *TemplateService) syncFilesystemTemplatesInternal(ctx context.Context) e
 
 	for _, ent := range entries {
 		if ent.IsDir() {
-			// Folder-style template: <dir>/compose.yaml and optional <dir>/.env.example (or .env)
-			folder := ent.Name()
-			composePath := filepath.Join(dir, folder, "compose.yaml")
-			if _, err := os.Stat(composePath); err != nil {
-				// No compose.yaml; skip
-				continue
-			}
-			composeBytes, err := os.ReadFile(composePath)
-			if err != nil {
-				fmt.Printf("Warning: failed to read compose template %s: %v\n", composePath, err)
-				continue
-			}
-			var envPtr *string
-			// Prefer .env.example, fallback to .env
-			for _, envName := range []string{".env.example", ".env"} {
-				envPath := filepath.Join(dir, folder, envName)
-				if b, err := os.ReadFile(envPath); err == nil {
-					envContent := string(b)
-					envPtr = &envContent
-					break
-				}
-			}
-			srcDesc := fmt.Sprintf("Imported from data/templates/%s/compose.yaml", folder)
-			var existing models.ComposeTemplate
-			err = s.db.WithContext(ctx).
-				Where("is_remote = ? AND registry_id IS NULL AND description = ?", false, srcDesc).
-				First(&existing).Error
-			if err == nil {
-				existing.Name = folder
-				existing.Content = string(composeBytes)
-				existing.EnvContent = envPtr
-				existing.IsCustom = true
-				existing.IsRemote = false
-				if err := s.db.WithContext(ctx).Save(&existing).Error; err != nil {
-					fmt.Printf("Warning: failed to update filesystem template %s: %v\n", existing.ID, err)
-				}
-				continue
-			}
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				fmt.Printf("Warning: failed to query filesystem template %s: %v\n", folder, err)
-				continue
-			}
-			tpl := &models.ComposeTemplate{
-				BaseModel:   models.BaseModel{ID: uuid.NewString()},
-				Name:        folder,
-				Description: srcDesc,
-				Content:     string(composeBytes),
-				EnvContent:  envPtr,
-				IsCustom:    true,
-				IsRemote:    false,
-				RegistryID:  nil,
-				Registry:    nil,
-				Metadata:    nil,
-			}
-			if err := s.db.WithContext(ctx).Create(tpl).Error; err != nil {
-				fmt.Printf("Warning: failed to insert filesystem template (%s): %v\n", folder, err)
-				continue
+			if err := s.processFolderEntry(ctx, dir, ent.Name()); err != nil {
+				fmt.Printf("Warning: failed to read folder template %s: %v\n", ent.Name(), err)
 			}
 			continue
 		}
-
-		// Legacy root-level YAML files (*.yml|*.yaml)
-		name := ent.Name()
-		ext := strings.ToLower(filepath.Ext(name))
+		ext := strings.ToLower(filepath.Ext(ent.Name()))
 		if ext != ".yml" && ext != ".yaml" {
 			continue
 		}
-		base := strings.TrimSuffix(name, ext)
-		composePath := filepath.Join(dir, name)
-		composeBytes, err := os.ReadFile(composePath)
-		if err != nil {
-			fmt.Printf("Warning: failed to read compose template %s: %v\n", composePath, err)
-			continue
-		}
-
-		var envPtr *string
-		// Prefer .env.example, fallback to .env (legacy root style)
-		for _, envExt := range []string{".env.example", ".env"} {
-			envPath := filepath.Join(dir, base+envExt)
-			if b, err := os.ReadFile(envPath); err == nil {
-				envContent := string(b)
-				envPtr = &envContent
-				break
-			}
-		}
-
-		srcDesc := fmt.Sprintf("Imported from data/templates/%s", name)
-		var existing models.ComposeTemplate
-		err = s.db.WithContext(ctx).
-			Where("is_remote = ? AND registry_id IS NULL AND description = ?", false, srcDesc).
-			First(&existing).Error
-
-		if err == nil {
-			// Overwrite content and env
-			existing.Name = base
-			existing.Content = string(composeBytes)
-			existing.EnvContent = envPtr
-			existing.IsCustom = true
-			existing.IsRemote = false
-			if err := s.db.WithContext(ctx).Save(&existing).Error; err != nil {
-				fmt.Printf("Warning: failed to update filesystem template %s: %v\n", existing.ID, err)
-			}
-			continue
-		}
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			fmt.Printf("Warning: failed to query filesystem template %s: %v\n", name, err)
-			continue
-		}
-
-		// Create new with UUID ID
-		tpl := &models.ComposeTemplate{
-			BaseModel:   models.BaseModel{ID: uuid.NewString()},
-			Name:        base,
-			Description: srcDesc,
-			Content:     string(composeBytes),
-			EnvContent:  envPtr,
-			IsCustom:    true,
-			IsRemote:    false,
-			RegistryID:  nil,
-			Registry:    nil,
-			Metadata:    nil,
-		}
-		if err := s.db.WithContext(ctx).Create(tpl).Error; err != nil {
-			fmt.Printf("Warning: failed to insert filesystem template (%s): %v\n", name, err)
-			continue
+		if err := s.processRootFile(ctx, dir, ent.Name()); err != nil {
+			fmt.Printf("Warning: failed to read file template %s: %v\n", ent.Name(), err)
 		}
 	}
 	return nil
