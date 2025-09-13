@@ -26,6 +26,7 @@
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import type { ContainerDetailsDto, NetworkSettingsDto } from '$lib/types/container.type';
 	import { m } from '$lib/paraglide/messages';
+	import PortBadges from '$lib/components/port-badges.svelte';
 
 	interface NetworkConfig {
 		IPAddress?: string;
@@ -264,6 +265,10 @@
 		const d = parseDockerDate(input);
 		return d ? format(d, fmt) : 'N/A';
 	}
+
+	const baseServerUrl = $derived(
+		(data?.settings as any)?.serverBaseUrl ?? (data?.settings as any)?.baseServerUrl ?? (data?.settings as any)?.baseUrl ?? ''
+	);
 </script>
 
 <div class="bg-background min-h-screen">
@@ -705,25 +710,7 @@
 										{#if hasPorts}
 											<div>
 												<h3 class="mb-3 text-sm font-semibold tracking-tight">{m.containers_port_mappings()}</h3>
-
-												<ul class="divide-border/60 divide-y">
-													{#each container.ports as p, idx (idx)}
-														<li class="px-4 py-2.5">
-															<div class="flex min-w-0 items-center gap-3">
-																<Badge variant="secondary">
-																	{p.privatePort}/{p.type}
-																</Badge>
-																{#if p.publicPort}
-																	<span class="truncate font-semibold">
-																		{p.ip || '0.0.0.0'}:{p.publicPort} → {p.privatePort}/{p.type}
-																	</span>
-																{:else}
-																	<span class="text-muted-foreground font-semibold">{m.containers_not_published()}</span>
-																{/if}
-															</div>
-														</li>
-													{/each}
-												</ul>
+												<PortBadges ports={container.ports ?? []} {baseServerUrl} />
 											</div>
 										{/if}
 

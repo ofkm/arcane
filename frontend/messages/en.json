@@ -578,10 +578,7 @@
 	"compose_nav_logs": "Logs",
 	"compose_overview_title": "Overview",
 	"compose_exposed_ports": "Exposed Ports",
-	"compose_port_label": "Port {port}",
 	"compose_services_header": "Services ({count})",
-	"compose_ports_label_one": "port",
-	"compose_ports_label_many": "ports",
 	"compose_no_services_found": "No services found for this project",
 	"compose_service_not_created": "Not created",
 	"compose_configuration_title": "Configuration",
@@ -1052,5 +1049,6 @@
 	"security_settings_save_failed": "Failed to save security settings",
 	"common_skip": "Skip",
 	"language": "Language",
-	"bridge": "Bridge"
+	"bridge": "Bridge",
+	"ports": "Ports"
 }

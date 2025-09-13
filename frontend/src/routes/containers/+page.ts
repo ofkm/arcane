@@ -1,21 +1,18 @@
-import { environmentAPI } from '$lib/services/api';
+import { environmentAPI, settingsAPI } from '$lib/services/api';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async () => {
 	const containerRequestOptions: SearchPaginationSortRequest = {
-		pagination: {
-			page: 1,
-			limit: 20
-		},
-		sort: {
-			column: 'created',
-			direction: 'desc' as const
-		}
+		pagination: { page: 1, limit: 20 },
+		sort: { column: 'created', direction: 'desc' as const }
 	};
 
-	const containers = await environmentAPI.getContainers(containerRequestOptions);
-	const containerStatusCounts = await environmentAPI.getContainerStatusCounts();
+	const [containers, containerStatusCounts, settings] = await Promise.all([
+		environmentAPI.getContainers(containerRequestOptions),
+		environmentAPI.getContainerStatusCounts(),
+		settingsAPI.getSettings()
+	]);
 
-	return { containers, containerStatusCounts, containerRequestOptions };
+	return { containers, containerStatusCounts, containerRequestOptions, settings };
 };

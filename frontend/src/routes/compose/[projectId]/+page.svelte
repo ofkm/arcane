@@ -459,12 +459,6 @@
 														</div>
 														<div class="mt-1 flex items-center gap-2">
 															<StatusBadge {variant} text={capitalizeFirstLetter(status)} class="text-xs" />
-															{#if service.ports && service.ports.length > 0}
-																<span class="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-xs">
-																	{service.ports.length}
-																	{service.ports.length > 1 ? m.compose_ports_label_many() : m.compose_ports_label_one()}
-																</span>
-															{/if}
 														</div>
 													</div>
 												</a>

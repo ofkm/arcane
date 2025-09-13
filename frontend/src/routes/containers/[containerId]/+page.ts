@@ -1,21 +1,25 @@
 import type { PageLoad } from './$types';
-import { environmentAPI } from '$lib/services/api';
+import { environmentAPI, settingsAPI } from '$lib/services/api';
 import { error } from '@sveltejs/kit';
 
 export const load: PageLoad = async ({ params }) => {
 	const containerId = params.containerId;
 
 	try {
-		const container = await environmentAPI.getContainer(containerId);
-		const containerStats = await environmentAPI.getContainerStats(containerId);
+		const [container, containerStats, settings] = await Promise.all([
+			environmentAPI.getContainer(containerId),
+			environmentAPI.getContainerStats(containerId),
+			settingsAPI.getSettings()
+		]);
 
 		if (!container) {
 			throw error(404, 'Container not found');
 		}
 
 		return {
-			container: container,
-			stats: containerStats
+			container,
+			stats: containerStats,
+			settings
 		};
 	} catch (err: any) {
 		console.error('Failed to load container:', err);

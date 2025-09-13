@@ -23,15 +23,18 @@
 	import type { ContainerSummaryDto } from '$lib/types/container.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
+	import PortBadges from '$lib/components/port-badges.svelte';
 
 	let {
 		containers = $bindable(),
 		selectedIds = $bindable(),
-		requestOptions = $bindable()
+		requestOptions = $bindable(),
+		baseServerUrl = $bindable()
 	}: {
 		containers: Paginated<ContainerSummaryDto>;
 		selectedIds: string[];
 		requestOptions: SearchPaginationSortRequest;
+		baseServerUrl: string;
 	} = $props();
 
 	let isLoading = $state({
@@ -128,9 +131,14 @@
 		{ accessorKey: 'image', title: m.common_image(), sortable: true },
 		{ accessorKey: 'state', title: m.common_state(), sortable: true, cell: StateCell },
 		{ accessorKey: 'status', title: m.common_status() },
+		{ accessorKey: 'ports', title: m.ports(), cell: PortsCell },
 		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell }
 	] satisfies ColumnSpec<ContainerSummaryDto>[];
 </script>
+
+{#snippet PortsCell({ item }: { item: ContainerSummaryDto })}
+	<PortBadges ports={item.ports ?? []} {baseServerUrl} />
+{/snippet}
 
 {#snippet NameCell({ item }: { item: ContainerSummaryDto })}
 	<a class="font-medium hover:underline" href="/containers/{item.id}/">

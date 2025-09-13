@@ -24,6 +24,10 @@
 		refreshing: false
 	});
 
+	const baseServerUrl = $derived(
+		(data.settings as any)?.serverBaseUrl ?? (data.settings as any)?.baseServerUrl ?? (data.settings as any)?.baseUrl ?? ''
+	);
+
 	async function handleCheckForUpdates() {
 		isLoading.checking = true;
 		handleApiResultWithCallbacks({
@@ -105,7 +109,7 @@
 		/>
 	</div>
 
-	<ContainerTable bind:containers bind:selectedIds bind:requestOptions />
+	<ContainerTable bind:containers bind:selectedIds bind:requestOptions {baseServerUrl} />
 
 	<CreateContainerSheet
 		bind:open={isCreateDialogOpen}
