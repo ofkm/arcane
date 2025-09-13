@@ -22,19 +22,14 @@ type ComposeTemplate struct {
 }
 
 type ComposeTemplateMetadata struct {
-	Version          *string `json:"version,omitempty" gorm:"column:meta_version"`
-	Author           *string `json:"author,omitempty" gorm:"column:meta_author"`
-	Tags             *string `json:"tags,omitempty" gorm:"column:meta_tags"`
-	RemoteURL        *string `json:"remoteUrl,omitempty" gorm:"column:meta_remote_url"`
-	EnvURL           *string `json:"envUrl,omitempty" gorm:"column:meta_env_url"`
-	DocumentationURL *string `json:"documentationUrl,omitempty" gorm:"column:meta_documentation_url"`
-	IconURL          *string `json:"iconUrl,omitempty" gorm:"column:meta_icon_url"`
+	Version          *string `json:"version,omitempty"`
+	Author           *string `json:"author,omitempty"`
+	Tags             *string `json:"tags,omitempty"`
+	RemoteURL        *string `json:"remoteUrl,omitempty"`
+	EnvURL           *string `json:"envUrl,omitempty"`
+	DocumentationURL *string `json:"documentationUrl,omitempty"`
+	IconURL          *string `json:"iconUrl,omitempty"`
 }
 
-func (TemplateRegistry) TableName() string {
-	return "template_registries"
-}
-
-func (ComposeTemplate) TableName() string {
-	return "compose_templates"
-}
+func (TemplateRegistry) TableName() string { return "template_registries" }
+func (ComposeTemplate) TableName() string  { return "compose_templates" }

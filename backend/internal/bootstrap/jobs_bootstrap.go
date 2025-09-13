@@ -25,7 +25,7 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 		slog.ErrorContext(appCtx, "Failed to register event cleanup job", slog.Any("error", err))
 	}
 
-	if err := job.RegisterFilesystemWatcherJob(appCtx, scheduler, appServices.Stack, appServices.Settings); err != nil {
+	if err := job.RegisterFilesystemWatcherJob(appCtx, scheduler, appServices.Stack, appServices.Template, appServices.Settings); err != nil {
 		slog.ErrorContext(appCtx, "Failed to register filesystem watcher job", slog.Any("error", err))
 	}
 

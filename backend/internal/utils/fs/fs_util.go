@@ -1,8 +1,13 @@
 package fs
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
+	"path/filepath"
+
+	"github.com/ofkm/arcane-backend/internal/services"
 )
 
 func CountSubdirectories(path string) (int, error) {
@@ -18,4 +23,36 @@ func CountSubdirectories(path string) (int, error) {
 		}
 	}
 	return count, nil
+}
+
+func GetProjectsDirectory(ctx context.Context, settingsService *services.SettingsService) (string, error) {
+	settings, err := settingsService.GetSettings(ctx)
+	if err != nil {
+		return "data/projects", err
+	}
+
+	projectsDirectory := settings.StacksDirectory.Value
+	if projectsDirectory == "" {
+		projectsDirectory = "data/projects"
+	}
+
+	if _, err := os.Stat(projectsDirectory); os.IsNotExist(err) {
+		if err := os.MkdirAll(projectsDirectory, 0755); err != nil {
+			return "", err
+		}
+		slog.InfoContext(ctx, "Created projects directory", "path", projectsDirectory)
+	}
+
+	return projectsDirectory, nil
+}
+
+func GetTemplatesDirectory(ctx context.Context) (string, error) {
+	templatesDir := filepath.Join("data", "templates")
+	if _, err := os.Stat(templatesDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(templatesDir, 0755); err != nil {
+			return "", err
+		}
+		slog.InfoContext(ctx, "Created templates directory", "path", templatesDir)
+	}
+	return templatesDir, nil
 }

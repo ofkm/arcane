@@ -3,33 +3,36 @@ package job
 import (
 	"context"
 	"log/slog"
-	"os"
 	"time"
 
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/fs"
 )
 
 type FilesystemWatcherJob struct {
-	stackService    *services.StackService
-	settingsService *services.SettingsService
-	watcher         *utils.FilesystemWatcher
+	stackService     *services.StackService
+	templateService  *services.TemplateService
+	settingsService  *services.SettingsService
+	projectsWatcher  *utils.FilesystemWatcher
+	templatesWatcher *utils.FilesystemWatcher
 }
 
 func NewFilesystemWatcherJob(
 	stackService *services.StackService,
+	templateService *services.TemplateService,
 	settingsService *services.SettingsService,
 ) *FilesystemWatcherJob {
 	return &FilesystemWatcherJob{
 		stackService:    stackService,
+		templateService: templateService,
 		settingsService: settingsService,
 	}
 }
 
-func RegisterFilesystemWatcherJob(ctx context.Context, scheduler *Scheduler, stackService *services.StackService, settingsService *services.SettingsService) error {
-	job := NewFilesystemWatcherJob(stackService, settingsService)
+func RegisterFilesystemWatcherJob(ctx context.Context, scheduler *Scheduler, stackService *services.StackService, templateService *services.TemplateService, settingsService *services.SettingsService) error {
+	job := NewFilesystemWatcherJob(stackService, templateService, settingsService)
 
-	// Start the filesystem watcher as a background task
 	go func() {
 		if err := job.Start(ctx); err != nil {
 			slog.ErrorContext(ctx, "Filesystem watcher failed", "error", err)
@@ -41,22 +44,12 @@ func RegisterFilesystemWatcherJob(ctx context.Context, scheduler *Scheduler, sta
 }
 
 func (j *FilesystemWatcherJob) Start(ctx context.Context) error {
-	// Get stacks directory from settings
-	stacksDir, err := j.getStacksDirectory(ctx)
+	projectsDirectory, err := fs.GetProjectsDirectory(ctx, j.settingsService)
 	if err != nil {
 		return err
 	}
 
-	// Ensure directory exists
-	if _, err := os.Stat(stacksDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(stacksDir, 0755); err != nil {
-			return err
-		}
-		slog.InfoContext(ctx, "Created stacks directory", "path", stacksDir)
-	}
-
-	// Create filesystem watcher
-	watcher, err := utils.NewFilesystemWatcher(stacksDir, utils.WatcherOptions{
+	sw, err := utils.NewFilesystemWatcher(projectsDirectory, utils.WatcherOptions{
 		Debounce: 3 * time.Second, // Wait 3 seconds after last change before syncing
 		OnChange: j.handleFilesystemChange,
 	})
@@ -64,27 +57,58 @@ func (j *FilesystemWatcherJob) Start(ctx context.Context) error {
 		return err
 	}
 
-	j.watcher = watcher
+	j.projectsWatcher = sw
 
-	// Start watching
-	if err := j.watcher.Start(ctx); err != nil {
+	templatesDir, err := fs.GetTemplatesDirectory(ctx)
+	if err != nil {
 		return err
 	}
 
-	slog.InfoContext(ctx, "Filesystem watcher started for stacks directory",
-		"path", stacksDir)
+	if j.templateService != nil {
+		tw, err := utils.NewFilesystemWatcher(templatesDir, utils.WatcherOptions{
+			Debounce: 3 * time.Second,
+			OnChange: j.handleTemplatesChange,
+		})
+		if err != nil {
+			return err
+		}
+		j.templatesWatcher = tw
+	}
 
-	// Keep the watcher running until context is cancelled
+	if err := j.projectsWatcher.Start(ctx); err != nil {
+		return err
+	}
+	if j.templatesWatcher != nil {
+		if err := j.templatesWatcher.Start(ctx); err != nil {
+			return err
+		}
+	}
+
+	slog.InfoContext(ctx, "Filesystem watcher started for projects directory",
+		"path", projectsDirectory)
+	if j.templatesWatcher != nil {
+		slog.InfoContext(ctx, "Filesystem watcher started for templates directory",
+			"path", templatesDir)
+	}
+
 	<-ctx.Done()
 
 	return j.Stop()
 }
 
 func (j *FilesystemWatcherJob) Stop() error {
-	if j.watcher != nil {
-		return j.watcher.Stop()
+	var firstErr error
+	if j.projectsWatcher != nil {
+		if err := j.projectsWatcher.Stop(); err != nil {
+			firstErr = err
+		}
 	}
-	return nil
+	if j.templatesWatcher != nil {
+		if err := j.templatesWatcher.Stop(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 func (j *FilesystemWatcherJob) handleFilesystemChange(ctx context.Context) {
@@ -98,10 +122,14 @@ func (j *FilesystemWatcherJob) handleFilesystemChange(ctx context.Context) {
 	}
 }
 
-func (j *FilesystemWatcherJob) getStacksDirectory(ctx context.Context) (string, error) {
-	settings, err := j.settingsService.GetSettings(ctx)
-	if err != nil {
-		return "data/projects", err
+func (j *FilesystemWatcherJob) handleTemplatesChange(ctx context.Context) {
+	slog.InfoContext(ctx, "Template directory change detected, syncing templates")
+	if j.templateService == nil {
+		return
 	}
-	return settings.StacksDirectory.Value, nil
+	if err := j.templateService.SyncLocalTemplatesFromFilesystem(ctx); err != nil {
+		slog.ErrorContext(ctx, "Failed to sync templates after filesystem change", "error", err)
+	} else {
+		slog.InfoContext(ctx, "Template sync completed after filesystem change")
+	}
 }
