@@ -71,5 +71,8 @@ LABEL org.opencontainers.image.ref.name="arcane"
 LABEL org.opencontainers.image.title="Arcane"
 LABEL org.opencontainers.image.description="Modern Docker Management, Made for Everyone"
 
+LABEL com.ofkm.arcane.updater="false"
+LABEL com.ofkm.arcane.server="true"
+
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["./arcane"]

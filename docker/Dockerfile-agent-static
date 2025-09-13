@@ -15,6 +15,9 @@ COPY ./backend/.bin/arcane-agent-linux-${TARGETARCH} ./arcane-agent
 
 COPY --chmod=755 ../scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
+LABEL com.ofkm.arcane.updater="false"
+LABEL com.ofkm.arcane.server="true"
+
 EXPOSE 3553
 ENV ENVIRONMENT=production \
     AGENT_MODE=true \

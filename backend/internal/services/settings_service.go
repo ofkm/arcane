@@ -57,7 +57,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 	return &models.Settings{
 		// Docker settings
 		StacksDirectory:    models.SettingVariable{Value: "data/projects"},
-		AutoUpdate:         models.SettingVariable{Value: "true"},
+		AutoUpdate:         models.SettingVariable{Value: "false"},
 		AutoUpdateInterval: models.SettingVariable{Value: "1440"},
 		PollingEnabled:     models.SettingVariable{Value: "true"},
 		PollingInterval:    models.SettingVariable{Value: "60"},

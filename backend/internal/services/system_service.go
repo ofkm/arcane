@@ -199,6 +199,10 @@ func (s *SystemService) StopAllContainers(ctx context.Context) (*dto.ContainerAc
 	}
 
 	for _, cont := range containers {
+		// Skip Arcane server container
+		if cont.Labels != nil && cont.Labels["com.ofkm.arcane.server"] == "true" {
+			continue
+		}
 		if err := s.containerService.StopContainer(ctx, cont.ID, systemUser); err != nil {
 			result.Failed = append(result.Failed, cont.ID)
 			result.Errors = append(result.Errors, fmt.Sprintf("Failed to stop container %s: %v", cont.ID, err))

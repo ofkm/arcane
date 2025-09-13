@@ -105,6 +105,10 @@ if [ -d "$PROJECTS_DIR" ] && is_mountpoint "$PROJECTS_DIR"; then
     SKIP_PROJECTS_CHOWN=true
 fi
 
+# Always ensure /app/data itself is owned and writable does not touch projects folder
+chown "${PUID}:${PGID}" "$DATA_DIR" || true
+chmod 775 "$DATA_DIR" || true
+
 # Chown everything under /app/data except projects if skipped
 if [ "$SKIP_PROJECTS_CHOWN" = "true" ]; then
     for entry in "$DATA_DIR"/*; do
@@ -119,8 +123,16 @@ fi
 # Grant access to bind-mounted projects without changing host ownership:
 # Map the container user into the host GID owning the projects dir.
 if [ -d "$PROJECTS_DIR" ]; then
-    PRJ_UID=$(stat -c '%u' "$PROJECTS_DIR" 2>/dev/null || echo "")
-    PRJ_GID=$(stat -c '%g' "$PROJECTS_DIR" 2>/dev/null || echo "")
+    # Prefer a real entry inside the mount (some mounts mask dir metadata)
+    PRJ_PATH="$PROJECTS_DIR"
+    CANDIDATE="$(find "$PROJECTS_DIR" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null || true)"
+    if [ -n "$CANDIDATE" ]; then
+        PRJ_PATH="$CANDIDATE"
+    fi
+    PRJ_UID="$(stat -c '%u' "$PRJ_PATH" 2>/dev/null || echo "")"
+    PRJ_GID="$(stat -c '%g' "$PRJ_PATH" 2>/dev/null || echo "")"
+
+    echo "Entrypoint: Projects path used for GID detection: $PRJ_PATH (uid:$PRJ_UID gid:$PRJ_GID)"
     if [ -n "$PRJ_GID" ]; then
         if getent group "$PRJ_GID" >/dev/null 2>&1; then
             HOST_GROUP=$(getent group "$PRJ_GID" | cut -d: -f1)
@@ -140,6 +152,12 @@ if [ -d "$PROJECTS_DIR" ]; then
             echo "WARNING: Host permissions may be too restrictive (e.g., 700). Not modifying host ownership."
         fi
     fi
+fi
+
+# Verify /app/data is writable before starting
+if ! su-exec "$APP_USER" sh -lc "test -w '$DATA_DIR' && touch '$DATA_DIR/.rwtest' && rm -f '$DATA_DIR/.rwtest'"; then
+    echo "ERROR: $DATA_DIR is not writable by ${APP_USER}. Check volume permissions."
+    exit 1
 fi
 
 # Ensure app directory ownership

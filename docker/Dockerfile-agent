@@ -46,6 +46,9 @@ ENV GIN_MODE=release \
     AGENT_MODE=true \
     ENVIRONMENT=production
 
+LABEL com.ofkm.arcane.updater="false"
+LABEL com.ofkm.arcane.server="true"
+
 EXPOSE 3553
 VOLUME ["/app/data"]
 
