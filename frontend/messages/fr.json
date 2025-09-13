@@ -346,7 +346,7 @@
 	"dashboard_start_all_failed": "Failed to start all containers",
 	"dashboard_start_all_success": "All containers started successfully",
 	"dashboard_stop_all_title": "Stop All Containers",
-	"dashboard_stop_all_confirm": "Are you sure you want to stop all running containers?",
+	"dashboard_stop_all_confirm": "Are you sure you want to stop all running containers? This will not stop arcane itself.",
 	"dashboard_stop_all_failed": "Failed to stop all running containers",
 	"dashboard_stop_all_success": "All containers stopped successfully",
 	"dashboard_prune_failed": "Failed to prune {types}",
