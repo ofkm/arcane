@@ -578,10 +578,7 @@
 	"compose_nav_logs": "日志",
 	"compose_overview_title": "概览",
 	"compose_exposed_ports": "暴露端口",
-	"compose_port_label": "端口{port}",
 	"compose_services_header": "服务（{count}）",
-	"compose_ports_label_one": "端口",
-	"compose_ports_label_many": "端口",
 	"compose_no_services_found": "没有找到该项目的服务",
 	"compose_service_not_created": "未创建",
 	"compose_configuration_title": "配置",
@@ -1052,5 +1049,6 @@
 	"security_settings_save_failed": "保存安全设置失败",
 	"common_skip": "跳过",
 	"language": "语言",
-	"bridge": "网关"
+	"bridge": "网关",
+	"ports": "Ports"
 }
