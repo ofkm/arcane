@@ -578,10 +578,7 @@
 	"compose_nav_logs": "Logboeken",
 	"compose_overview_title": "Overzicht.",
 	"compose_exposed_ports": "Blootende poorten",
-	"compose_port_label": "Poort {port}",
 	"compose_services_header": "Diensten ({count})",
-	"compose_ports_label_one": "poort",
-	"compose_ports_label_many": "poorten",
 	"compose_no_services_found": "Geen services gevonden voor dit project",
 	"compose_service_not_created": "Niet aangemaakt",
 	"compose_configuration_title": "Configuratie",
@@ -1052,5 +1049,6 @@
 	"security_settings_save_failed": "Kan beveiligingsinstellingen niet opslaan",
 	"common_skip": "Overslaan",
 	"language": "Taal",
-	"bridge": "Brug"
+	"bridge": "Brug",
+	"ports": "Ports"
 }
