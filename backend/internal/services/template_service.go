@@ -544,15 +544,28 @@ func (s *TemplateService) DownloadTemplate(ctx context.Context, remoteTemplate *
 		First(&existing).Error; err == nil {
 		composeContent, envContent, err := s.FetchTemplateContent(ctx, remoteTemplate)
 		if err != nil {
-			// fix nilerr: propagate the error
 			return nil, fmt.Errorf("failed to fetch template content for existing local template: %w", err)
 		}
-		_ = os.WriteFile(composePath, []byte(composeContent), 0600)
-		if strings.TrimSpace(envContent) != "" {
-			_ = os.WriteFile(envPath, []byte(envContent), 0600)
+
+		// Write compose file and handle errors
+		if err := os.WriteFile(composePath, []byte(composeContent), 0600); err != nil {
+			return nil, fmt.Errorf("failed to write compose file: %w", err)
+		}
+
+		// Write env file if present and handle errors
+		hasEnv := strings.TrimSpace(envContent) != ""
+		if hasEnv {
+			if err := os.WriteFile(envPath, []byte(envContent), 0600); err != nil {
+				return nil, fmt.Errorf("failed to write env file: %w", err)
+			}
+		}
+
+		// Only set fields after successful writes
+		existing.Content = composeContent
+		if hasEnv {
 			existing.EnvContent = &envContent
 		}
-		existing.Content = composeContent
+
 		if remoteTemplate.Metadata != nil {
 			existing.Metadata = &models.ComposeTemplateMetadata{
 				Version:          remoteTemplate.Metadata.Version,
@@ -564,7 +577,10 @@ func (s *TemplateService) DownloadTemplate(ctx context.Context, remoteTemplate *
 				IconURL:          remoteTemplate.Metadata.IconURL,
 			}
 		}
-		_ = s.db.WithContext(ctx).Save(&existing)
+
+		if err := s.db.WithContext(ctx).Save(&existing).Error; err != nil {
+			return nil, fmt.Errorf("failed to update existing local template: %w", err)
+		}
 		return &existing, nil
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("failed to check existing template: %w", err)

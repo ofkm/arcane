@@ -85,6 +85,9 @@ func (j *FilesystemWatcherJob) Start(ctx context.Context) error {
 	}
 	if j.templatesWatcher != nil {
 		if err := j.templatesWatcher.Start(ctx); err != nil {
+			if stopErr := j.projectsWatcher.Stop(); stopErr != nil {
+				slog.ErrorContext(ctx, "Failed to stop projects watcher after templates watcher start error", "error", stopErr)
+			}
 			return err
 		}
 	}
@@ -94,6 +97,16 @@ func (j *FilesystemWatcherJob) Start(ctx context.Context) error {
 	if j.templatesWatcher != nil {
 		slog.InfoContext(ctx, "Filesystem watcher started for templates directory",
 			"path", templatesDir)
+	}
+
+	// Initial sync to surface pre-existing resources
+	if err := j.stackService.SyncAllStacksFromFilesystem(ctx); err != nil {
+		slog.ErrorContext(ctx, "Initial stack sync failed", "error", err)
+	}
+	if j.templateService != nil {
+		if err := j.templateService.SyncLocalTemplatesFromFilesystem(ctx); err != nil {
+			slog.ErrorContext(ctx, "Initial template sync failed", "error", err)
+		}
 	}
 
 	<-ctx.Done()
