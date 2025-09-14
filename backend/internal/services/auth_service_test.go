@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"testing"
 	"time"
@@ -14,7 +15,15 @@ import (
 
 func newTestAuthService(secret string) *AuthService {
 	if secret == "" {
-		secret = "test-secret-32-bytes-minimum-length!"
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			panic(err)
+		}
+		return &AuthService{
+			jwtSecret:     b,
+			refreshExpiry: 24 * time.Hour,
+			config:        &config.Config{},
+		}
 	}
 	return &AuthService{
 		jwtSecret:     []byte(secret),
@@ -97,7 +106,10 @@ func TestVerifyToken_InvalidSubject(t *testing.T) {
 func TestVerifyToken_InvalidSignature(t *testing.T) {
 	s := newTestAuthService("")
 	exp := time.Now().Add(5 * time.Minute)
-	otherSecret := []byte("another-secret-32-bytes-long!!")
+	otherSecret := make([]byte, 32)
+	if _, err := rand.Read(otherSecret); err != nil {
+		t.Fatalf("rand.Read: %v", err)
+	}
 	token := makeAccessToken(t, otherSecret, "access", "u1", "bob", []string{"user"}, "", "", exp)
 
 	_, err := s.VerifyToken(context.Background(), token)

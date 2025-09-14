@@ -29,12 +29,14 @@ func TestDiscoverOidcEndpoints_Success(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		json.NewEncoder(w).Encode(dto.OidcDiscoveryDocument{
+		if err := json.NewEncoder(w).Encode(dto.OidcDiscoveryDocument{
 			AuthorizationEndpoint: "https://example/authorize",
 			TokenEndpoint:         "https://example/token",
 			UserinfoEndpoint:      "https://example/userinfo",
 			JwksURI:               "https://example/jwks",
-		})
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -56,7 +58,9 @@ func TestDiscoverOidcEndpoints_NonJSON(t *testing.T) {
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("not json"))
+		if _, err := w.Write([]byte("not json")); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -91,8 +95,10 @@ func TestDiscoverOidcEndpoints_MissingEndpoints(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		// Missing token endpoint
-		w.Write([]byte(`{"authorization_endpoint":"https://example/auth"}`))
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`{"authorization_endpoint":"https://example/auth"}`)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -118,13 +124,15 @@ func TestExchangeCodeForTokens_Success(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(dto.OidcTokenResponse{
+		if err := json.NewEncoder(w).Encode(dto.OidcTokenResponse{
 			AccessToken:  "access-1",
 			RefreshToken: "refresh-1",
 			ExpiresIn:    3600,
 			IDToken:      "id-1",
 			TokenType:    "Bearer",
-		})
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -172,7 +180,7 @@ func TestGetUserInfo_Success(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{
+		const body = `{
             "sub": "user-1",
             "name": "Alice",
             "email": "a@example.com",
@@ -182,7 +190,10 @@ func TestGetUserInfo_Success(t *testing.T) {
             "admin": true,
             "roles": ["admin","user"],
             "groups": ["devs","ops"]
-        }`))
+        }`
+		if _, err := w.Write([]byte(body)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -210,7 +221,9 @@ func TestGetUserInfo_MissingSub(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/userinfo", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"email":"x@example.com"}`)) // no sub
+		if _, err := w.Write([]byte(`{"email":"x@example.com"}`)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -251,7 +264,10 @@ func TestDecodeState_Success(t *testing.T) {
 		RedirectTo:   "/home",
 		CreatedAt:    now,
 	}
-	raw, _ := json.Marshal(state)
+	raw, err := json.Marshal(state)
+	if err != nil {
+		t.Fatalf("json.Marshal(state): %v", err)
+	}
 	enc := base64.URLEncoding.EncodeToString(raw)
 
 	svc := newTestOidcService()
@@ -279,11 +295,14 @@ func TestHandleCallback_StateMismatch(t *testing.T) {
 		RedirectTo:   "/",
 		CreatedAt:    time.Now(),
 	}
-	raw, _ := json.Marshal(stored)
+	raw, err := json.Marshal(stored)
+	if err != nil {
+		t.Fatalf("json.Marshal(stored): %v", err)
+	}
 	enc := base64.URLEncoding.EncodeToString(raw)
 
 	svc := newTestOidcService()
-	_, _, err := svc.HandleCallback(context.Background(), "code", "bad", enc)
+	_, _, err = svc.HandleCallback(context.Background(), "code", "bad", enc)
 	if err == nil || !strings.Contains(err.Error(), "invalid state parameter") {
 		t.Fatalf("expected invalid state error, got %v", err)
 	}
@@ -296,11 +315,14 @@ func TestHandleCallback_ExpiredState(t *testing.T) {
 		RedirectTo:   "/",
 		CreatedAt:    time.Now().Add(-11 * time.Minute),
 	}
-	raw, _ := json.Marshal(stored)
+	raw, err := json.Marshal(stored)
+	if err != nil {
+		t.Fatalf("json.Marshal(stored): %v", err)
+	}
 	enc := base64.URLEncoding.EncodeToString(raw)
 
 	svc := newTestOidcService()
-	_, _, err := svc.HandleCallback(context.Background(), "code", "s", enc)
+	_, _, err = svc.HandleCallback(context.Background(), "code", "s", enc)
 	if err == nil || !strings.Contains(err.Error(), "state has expired") {
 		t.Fatalf("expected expired state error, got %v", err)
 	}
@@ -320,7 +342,9 @@ func TestTokenEndpoint_FormShape(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"access_token":"a","token_type":"Bearer","expires_in":1,"refresh_token":"r"}`))
+		if _, err := w.Write([]byte(`{"access_token":"a","token_type":"Bearer","expires_in":1,"refresh_token":"r"}`)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
