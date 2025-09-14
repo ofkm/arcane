@@ -49,7 +49,7 @@ type NetworkPruneReportDto struct {
 }
 
 func NewNetworkSummaryDto(s network.Summary) NetworkSummaryDto {
-	iu := len(s.Containers) > 1
+	iu := len(s.Containers) > 0
 
 	return NetworkSummaryDto{
 		ID:      s.ID,

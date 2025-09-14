@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/ofkm/arcane-backend/internal/database"
@@ -193,10 +194,37 @@ func (s *NetworkService) ListNetworksPaginated(ctx context.Context, req utils.So
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker networks: %w", err)
 	}
 
+	inUseByID := map[string]bool{}
+	inUseByName := map[string]bool{}
+	{
+		dockerClient, derr := s.dockerService.CreateConnection(ctx)
+		if derr == nil {
+			defer dockerClient.Close()
+			containers, lerr := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+			if lerr == nil {
+				for _, c := range containers {
+					if c.NetworkSettings == nil || c.NetworkSettings.Networks == nil {
+						continue
+					}
+					for netName, es := range c.NetworkSettings.Networks {
+						if es.NetworkID != "" {
+							inUseByID[es.NetworkID] = true
+						}
+						inUseByName[netName] = true
+					}
+				}
+			}
+		}
+	}
+
 	// Map to DTOs
 	items := make([]dto.NetworkSummaryDto, 0, len(nets))
 	for _, n := range nets {
-		items = append(items, dto.NewNetworkSummaryDto(n))
+		d := dto.NewNetworkSummaryDto(n)
+		if inUseByID[n.ID] || inUseByName[n.Name] {
+			d.InUse = true
+		}
+		items = append(items, d)
 	}
 
 	// Search filter

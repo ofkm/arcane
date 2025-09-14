@@ -48,10 +48,13 @@ func makeRemoteID(registryID, slug string) string {
 	return fmt.Sprintf("%s:%s:%s", remoteIDPrefix, registryID, slug)
 }
 
-func NewTemplateService(db *database.DB) *TemplateService {
+func NewTemplateService(db *database.DB, httpClient *http.Client) *TemplateService {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
 	s := &TemplateService{
 		db:         db,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: httpClient,
 		cacheCmdCh: make(chan cacheCmd, 1),
 	}
 	s.remoteCache.Store(remoteCache{})
@@ -374,6 +377,10 @@ func (s *TemplateService) loadRemoteTemplates(ctx context.Context) ([]models.Com
 	}
 
 	return templates, nil
+}
+
+func (s *TemplateService) FetchRaw(ctx context.Context, url string) ([]byte, error) {
+	return s.doGET(ctx, url)
 }
 
 func (s *TemplateService) doGET(ctx context.Context, url string) ([]byte, error) {

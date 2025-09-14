@@ -1,13 +1,8 @@
 package api
 
 import (
-	"compress/gzip"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -514,44 +509,9 @@ func (h *TemplateHandler) FetchRegistry(c *gin.Context) {
 		return
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, url, nil)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid URL: " + err.Error()}})
-		return
-	}
-
-	req.Header.Set("User-Agent", "Arcane-Backend/1.0")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Accept-Encoding", "gzip, deflate")
-	req.Header.Set("Cache-Control", "no-cache")
-
-	resp, err := client.Do(req)
+	body, err := h.templateService.FetchRaw(c.Request.Context(), url)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Failed to fetch registry: " + err.Error()}})
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": fmt.Sprintf("Registry returned status %d", resp.StatusCode)}})
-		return
-	}
-
-	var reader io.Reader = resp.Body
-	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
-		gzipReader, err := gzip.NewReader(resp.Body)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to create gzip reader: " + err.Error()}})
-			return
-		}
-		defer gzipReader.Close()
-		reader = gzipReader
-	}
-
-	body, err := io.ReadAll(reader)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to read response: " + err.Error()}})
 		return
 	}
 
