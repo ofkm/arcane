@@ -25,4 +25,4 @@ ENV ENVIRONMENT=production \
     PORT=3553
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["./arcane-agent"]
+CMD ["./arcane-agent", "serve"]

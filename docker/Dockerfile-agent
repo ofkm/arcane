@@ -52,4 +52,4 @@ LABEL com.ofkm.arcane.server="true"
 EXPOSE 3553
 VOLUME ["/app/data"]
 
-CMD ["/usr/local/bin/arcane-agent"]
+CMD ["/usr/local/bin/arcane-agent", "serve"]

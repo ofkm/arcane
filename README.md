@@ -9,8 +9,9 @@ Arcane is a modern easy to use way to manage your docker containers, images, vol
 
 ---
 
-<img width="1685" alt="image" src=".github/assets/arcane-ss.jpeg" />
-
+<p align="center">
+  <img width="1685" alt="image" src=".github/assets/arcane-ss.jpeg" />
+</p>
 ---
 
 ## Documentation

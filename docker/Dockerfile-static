@@ -22,4 +22,4 @@ EXPOSE 3552
 ENV ENVIRONMENT=production
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["./arcane"]
+CMD ["./arcane", "serve"]
