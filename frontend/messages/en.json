@@ -1050,5 +1050,6 @@
 	"common_skip": "Skip",
 	"language": "Language",
 	"bridge": "Bridge",
-	"ports": "Ports"
+	"ports": "Ports",
+	"common_show": "Show"
 }
