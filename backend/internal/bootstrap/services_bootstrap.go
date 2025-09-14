@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"net/http"
+
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/services"
@@ -25,9 +27,10 @@ type Services struct {
 	System            *services.SystemService
 	Updater           *services.UpdaterService
 	Event             *services.EventService
+	Version           *services.VersionService
 }
 
-func initializeServices(db *database.DB, cfg *config.Config) (*Services, *services.DockerClientService, error) {
+func initializeServices(db *database.DB, cfg *config.Config, httpClient *http.Client) (*Services, *services.DockerClientService, error) {
 	svc := &Services{}
 
 	svc.Event = services.NewEventService(db)
@@ -49,6 +52,7 @@ func initializeServices(db *database.DB, cfg *config.Config) (*Services, *servic
 	svc.Oidc = services.NewOidcService(svc.Auth, cfg)
 	svc.Updater = services.NewUpdaterService(db, svc.Settings, svc.Docker, svc.Stack, svc.ImageUpdate, svc.ContainerRegistry, svc.Event, svc.Image)
 	svc.System = services.NewSystemService(db, svc.Docker, svc.Container, svc.Image, svc.Volume, svc.Network, svc.Settings)
+	svc.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled)
 
 	return svc, dockerClient, nil
 }
