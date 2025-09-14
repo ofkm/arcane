@@ -224,7 +224,10 @@ func TestSettingsService_UpdateSettings_MergeOidcSecret(t *testing.T) {
 		ClientSecret: "keep-this",
 		IssuerURL:    "https://issuer",
 	}
-	b, _ := json.Marshal(existing)
+	b, err := json.Marshal(existing)
+	if err != nil {
+		t.Fatalf("marshal existing oidc config: %v", err)
+	}
 	if err := svc.UpdateSetting(ctx, "authOidcConfig", string(b)); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -234,7 +237,10 @@ func TestSettingsService_UpdateSettings_MergeOidcSecret(t *testing.T) {
 		ClientID:  "new",
 		IssuerURL: "https://issuer",
 	}
-	nb, _ := json.Marshal(incoming)
+	nb, err := json.Marshal(incoming)
+	if err != nil {
+		t.Fatalf("marshal incoming oidc config: %v", err)
+	}
 	s := string(nb)
 
 	updates := dto.UpdateSettingsDto{
