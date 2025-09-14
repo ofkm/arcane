@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 type ErrStale struct {
@@ -20,6 +22,8 @@ type Cache[T any] struct {
 	val T
 	exp time.Time
 	set bool
+
+	sf singleflight.Group
 }
 
 func New[T any](ttl time.Duration) *Cache[T] {
@@ -27,22 +31,30 @@ func New[T any](ttl time.Duration) *Cache[T] {
 }
 
 func (c *Cache[T]) GetOrFetch(ctx context.Context, fetch func(ctx context.Context) (T, error)) (T, error) {
-	now := time.Now()
-
-	// Fast path: fresh cache
 	c.mu.RLock()
-	if c.set && now.Before(c.exp) {
+	if c.set && time.Now().Before(c.exp) {
 		v := c.val
 		c.mu.RUnlock()
 		return v, nil
 	}
-	// Capture stale value (if any) to return when fetch fails
+
 	hasStale := c.set
 	stale := c.val
 	c.mu.RUnlock()
 
-	// Fetch new value
-	v, err := fetch(ctx)
+	res, err, _ := c.sf.Do("singleton", func() (any, error) {
+		v, err := fetch(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		c.mu.Lock()
+		c.val = v
+		c.set = true
+		c.exp = time.Now().Add(c.ttl)
+		c.mu.Unlock()
+		return v, nil
+	})
 	if err != nil {
 		if hasStale {
 			return stale, &ErrStale{Err: err}
@@ -51,12 +63,6 @@ func (c *Cache[T]) GetOrFetch(ctx context.Context, fetch func(ctx context.Contex
 		return zero, err
 	}
 
-	// Store and return fresh value
-	c.mu.Lock()
-	c.val = v
-	c.set = true
-	c.exp = now.Add(c.ttl)
-	c.mu.Unlock()
-
+	v, _ := res.(T)
 	return v, nil
 }
