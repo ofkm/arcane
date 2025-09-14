@@ -50,7 +50,9 @@ func InitializeApp() (*App, error) {
 		return nil, fmt.Errorf("db initialization failed: %w", err)
 	}
 
-	appServices, dockerClientService, err := initializeServices(db, cfg)
+	httpClient := newHTTPClient()
+
+	appServices, dockerClientService, err := initializeServices(db, cfg, httpClient)
 	if err != nil {
 		db.Close()
 		cancelApp()
@@ -177,4 +179,19 @@ func (app *App) Start() {
 	}
 
 	slog.InfoContext(app.AppCtx, "Server exiting")
+}
+
+// newHTTPClient returns a shared HTTP client for outbound requests.
+func newHTTPClient() *http.Client {
+	transport := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	return &http.Client{
+		Transport: transport,
+		Timeout:   10 * time.Second,
+	}
 }

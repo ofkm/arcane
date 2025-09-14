@@ -19,11 +19,15 @@ import (
 )
 
 type EnvironmentService struct {
-	db *database.DB
+	db         *database.DB
+	httpClient *http.Client
 }
 
-func NewEnvironmentService(db *database.DB) *EnvironmentService {
-	return &EnvironmentService{db: db}
+func NewEnvironmentService(db *database.DB, httpClient *http.Client) *EnvironmentService {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+	return &EnvironmentService{db: db, httpClient: httpClient}
 }
 
 func (s *EnvironmentService) CreateEnvironment(ctx context.Context, environment *models.Environment) (*models.Environment, error) {
@@ -124,14 +128,15 @@ func (s *EnvironmentService) TestConnection(ctx context.Context, id string) (str
 		return "error", err
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	url := strings.TrimRight(environment.ApiUrl, "/") + "/api/health"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
 	if err != nil {
 		_ = s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusOffline))
 		return "offline", fmt.Errorf("failed to create request: %w", err)
 	}
-	resp, err := client.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		_ = s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusOffline))
 		return "offline", fmt.Errorf("connection failed: %w", err)
@@ -220,14 +225,15 @@ func (s *EnvironmentService) IsEnvironmentOnline(environment *models.Environment
 }
 
 func (s *EnvironmentService) PairAgentWithBootstrap(ctx context.Context, apiUrl, bootstrapToken string) (string, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(apiUrl, "/")+"/api/environments/0/agent/pair", nil)
+	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, strings.TrimRight(apiUrl, "/")+"/api/environments/0/agent/pair", nil)
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("X-Arcane-Agent-Bootstrap", bootstrapToken)
 
-	resp, err := client.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("request failed: %w", err)
 	}

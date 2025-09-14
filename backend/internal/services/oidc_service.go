@@ -31,11 +31,14 @@ type OidcState struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-func NewOidcService(authService *AuthService, cfg *config.Config) *OidcService {
+func NewOidcService(authService *AuthService, cfg *config.Config, httpClient *http.Client) *OidcService {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
 	return &OidcService{
 		authService: authService,
 		config:      cfg,
-		httpClient:  &http.Client{Timeout: 30 * time.Second},
+		httpClient:  httpClient,
 	}
 }
 

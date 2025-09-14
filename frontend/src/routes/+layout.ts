@@ -1,17 +1,15 @@
-import { env } from '$env/dynamic/public';
 import { settingsAPI, userAPI, environmentManagementAPI } from '$lib/services/api';
 import { environmentStore } from '$lib/stores/environment.store';
-import { versionService } from '$lib/services/app-version-service';
+import versionService from '$lib/services/version-service';
 import { tryCatch } from '$lib/utils/try-catch';
 import userStore from '$lib/stores/user-store';
 import settingsStore from '$lib/stores/config-store';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
+import type { AppVersionInformation } from '$lib/types/application-configuration';
 
 export const ssr = false;
 
 export const load = async () => {
-	const updateCheckDisabled = env.PUBLIC_UPDATE_CHECK_DISABLED === 'true';
-
 	const userPromise = userAPI.getCurrentUser().catch(() => null);
 	const settingsPromise = settingsAPI.getSettings().catch((e) => {
 		console.error('Error fetching settings:', e);
@@ -35,16 +33,21 @@ export const load = async () => {
 		return null;
 	});
 
-	const versionPromise = updateCheckDisabled
-		? Promise.resolve({ currentVersion: versionService.getCurrentVersion() })
-		: versionService.getVersionInformation();
+	let versionInformation: AppVersionInformation = {
+		currentVersion: versionService.getCurrentVersion()
+	};
 
-	const [user, settings, , versionInformation] = await Promise.all([
-		userPromise,
-		settingsPromise,
-		environmentsPromise,
-		versionPromise
-	]);
+	try {
+		const info = await versionService.getVersionInformation();
+		versionInformation = {
+			currentVersion: info.currentVersion,
+			newestVersion: info.newestVersion,
+			updateAvailable: info.newestVersion ? info.newestVersion !== info.currentVersion : false,
+			releaseUrl: info.releaseUrl
+		};
+	} catch {}
+
+	const [user, settings] = await Promise.all([userPromise, settingsPromise, environmentsPromise]);
 
 	if (user) {
 		await userStore.setUser(user);
@@ -57,7 +60,6 @@ export const load = async () => {
 	return {
 		user,
 		settings,
-		versionInformation,
-		updateCheckDisabled
+		versionInformation
 	};
 };

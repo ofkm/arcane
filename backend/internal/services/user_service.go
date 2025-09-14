@@ -223,7 +223,8 @@ func (s *UserService) CreateDefaultAdmin() error {
 	}
 
 	slog.Info("👑 Default admin user created!")
-	slog.Info("🔑 Username: admin")
+	slog.Info("🔑 Username: arcane")
+	slog.Info("🔑 Password: arcane-admin")
 	slog.Info("⚠️  Please change this password after first login!")
 
 	return nil
