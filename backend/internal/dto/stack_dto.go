@@ -24,10 +24,10 @@ type CreateStackResponseDto struct {
 }
 
 type UpdateStackDto struct {
+	ID             *string `json:"id,omitempty"`
 	Name           *string `json:"name,omitempty"`
 	ComposeContent *string `json:"composeContent,omitempty"`
 	EnvContent     *string `json:"envContent,omitempty"`
-	AutoUpdate     *bool   `json:"autoUpdate,omitempty"`
 }
 
 type RedeployStackDto struct {

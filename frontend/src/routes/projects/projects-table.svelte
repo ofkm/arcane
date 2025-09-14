@@ -28,13 +28,11 @@
 	let {
 		projects = $bindable(),
 		selectedIds = $bindable(),
-		requestOptions = $bindable(),
-		onCheckForUpdates
+		requestOptions = $bindable()
 	}: {
 		projects: Paginated<Project>;
 		selectedIds: string[];
 		requestOptions: SearchPaginationSortRequest;
-		onCheckForUpdates: () => Promise<void>;
 	} = $props();
 
 	let isLoading = $state({
@@ -143,7 +141,7 @@
 </script>
 
 {#snippet NameCell({ item }: { item: Project })}
-	<a class="font-medium hover:underline" href="/compose/{item.id}/">
+	<a class="font-medium hover:underline" href="/projects/{item.id}/">
 		{item.name}
 	</a>
 {/snippet}

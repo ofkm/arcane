@@ -254,13 +254,15 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/environments/${envId}/stacks`, payload));
 	}
 
-	async updateProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
+	async updateProject(id: string, projectName: string, composeContent: string, envContent?: string): Promise<Project> {
 		const envId = await this.getCurrentEnvironmentId();
 		const payload = {
+			id,
+			name: projectName,
 			composeContent,
 			envContent
 		};
-		return this.handleResponse(this.api.put(`/environments/${envId}/stacks/${projectName}`, payload));
+		return this.handleResponse(this.api.put(`/environments/${envId}/stacks/${id}`, payload));
 	}
 
 	async deployProject(projectId: string): Promise<Project> {

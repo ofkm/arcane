@@ -26,7 +26,7 @@ export const sidebarItems: Record<string, SidebarItem[]> = {
 	managementItems: [
 		{ title: m.dashboard_title(), url: '/dashboard', icon: HouseIcon },
 		{ title: m.containers_title(), url: '/containers', icon: ContainerIcon },
-		{ title: m.compose_title(), url: '/compose', icon: FileStackIcon },
+		{ title: m.compose_title(), url: '/projects', icon: FileStackIcon },
 		{ title: m.images_title(), url: '/images', icon: ImageIcon },
 		{ title: m.networks_title(), url: '/networks', icon: NetworkIcon },
 		{ title: m.volumes_title(), url: '/volumes', icon: HardDriveIcon }

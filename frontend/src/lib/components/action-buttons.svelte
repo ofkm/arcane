@@ -167,7 +167,7 @@
 										: m.action_removed_success({ type: m.common_container() })
 								);
 								await invalidateAll();
-								goto(type === 'stack' ? '/compose' : '/containers');
+								goto(type === 'stack' ? '/projects' : '/containers');
 							}
 						});
 					}

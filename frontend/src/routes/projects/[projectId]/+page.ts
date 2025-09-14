@@ -4,7 +4,6 @@ import type { PageLoad } from './$types';
 export const load: PageLoad = async ({ params }) => {
 	const project = await environmentAPI.getProject(params.projectId);
 
-	// Set up editor state with the project data
 	const editorState = {
 		name: project.name || '',
 		composeContent: project.composeContent || '',
@@ -17,7 +16,6 @@ export const load: PageLoad = async ({ params }) => {
 	return {
 		project,
 		editorState,
-		servicePorts: {}, // TODO: Extract from project services if needed
 		error: null
 	};
 };

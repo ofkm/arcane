@@ -219,7 +219,7 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 		}
 	}
 
-	if req.Name != nil || req.AutoUpdate != nil {
+	if req.Name != nil {
 		stack, err := h.stackService.GetStackByID(c.Request.Context(), stackID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -231,9 +231,6 @@ func (h *StackHandler) UpdateStack(c *gin.Context) {
 
 		if req.Name != nil {
 			stack.Name = *req.Name
-		}
-		if req.AutoUpdate != nil {
-			stack.AutoUpdate = *req.AutoUpdate
 		}
 
 		if _, err := h.stackService.UpdateStack(c.Request.Context(), stack); err != nil {

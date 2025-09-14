@@ -8,7 +8,7 @@
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
-	import ProjectsTable from './compose-table.svelte';
+	import ProjectsTable from './projects-table.svelte';
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages';
 
@@ -101,10 +101,5 @@
 		/>
 	</div>
 
-	<ProjectsTable
-		bind:projects
-		bind:selectedIds
-		requestOptions={projectRequestOptions}
-		onCheckForUpdates={handleCheckForUpdates}
-	/>
+	<ProjectsTable bind:projects bind:selectedIds bind:requestOptions={projectRequestOptions} />
 </div>
