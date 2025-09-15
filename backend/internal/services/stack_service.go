@@ -116,12 +116,8 @@ func (s *StackService) DeployStack(ctx context.Context, stackID string, user mod
 		return fmt.Errorf("failed to update stack status to deploying: %w", err)
 	}
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", composeFileFullPath, "up", "-d")
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
-	)
+	output, err := projects.RunComposeAction(ctx, composeFileFullPath, stack.Name, "deploy")
 
-	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if updateErr := s.UpdateStackStatus(ctx, stackID, models.StackStatusStopped); updateErr != nil {
 			return fmt.Errorf("failed to deploy stack: %w, also failed to update status: %w", err, updateErr)
@@ -195,55 +191,26 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 		return nil, err
 	}
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "ps", "--format", "json")
-	cmd.Dir = stack.Path
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
-	)
-
-	var services []StackServiceInfo
-
-	output, err := cmd.Output()
-	if err == nil {
-		services, err = s.parseComposePS(string(output))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse compose ps output: %w", err)
-		}
-	}
-
-	if len(services) > 0 {
-		return services, nil
-	}
-
 	composeFile, derr := projects.DetectComposeFile(stack.Path)
 	if derr != nil {
 		return nil, fmt.Errorf("no compose file found for stack")
 	}
 
-	servicesFromFile, err := s.parseServicesFromComposeFile(ctx, composeFile, stack.Name)
+	project, err := projects.LoadComposeProject(ctx, composeFile, stack.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse services from compose file: %w", err)
+		return nil, fmt.Errorf("failed to load compose project: %w", err)
 	}
 
-	return servicesFromFile, nil
-}
-
-func (s *StackService) parseServicesFromComposeFile(ctx context.Context, composeFile, stackName string) ([]StackServiceInfo, error) {
-	project, err := projects.LoadComposeProject(ctx, composeFile, stackName)
-	if err != nil {
-		return nil, err
-	}
-
-	var services []StackServiceInfo
-	for _, service := range project.Services {
+	services := make([]StackServiceInfo, 0, len(project.Services))
+	for _, svc := range project.Services {
 		info := StackServiceInfo{
-			Name:        service.Name,
-			Image:       service.Image,
+			Name:        svc.Name,
+			Image:       svc.Image,
 			Status:      "not created",
 			ContainerID: "",
 			Ports:       []string{},
 		}
-		for _, port := range service.Ports {
+		for _, port := range svc.Ports {
 			if port.Published != "" && port.Target != 0 {
 				p := fmt.Sprintf("%s:%d", port.Published, port.Target)
 				if port.Protocol != "" {
@@ -254,6 +221,7 @@ func (s *StackService) parseServicesFromComposeFile(ctx context.Context, compose
 		}
 		services = append(services, info)
 	}
+
 	return services, nil
 }
 
@@ -263,12 +231,10 @@ func (s *StackService) RestartStack(ctx context.Context, stackID string, user mo
 		return err
 	}
 
-	// Verify stack directory exists
 	if _, err := os.Stat(stack.Path); os.IsNotExist(err) {
 		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
 	}
 
-	// Update status to restarting first
 	if err := s.UpdateStackStatus(ctx, stackID, models.StackStatusRestarting); err != nil {
 		return fmt.Errorf("failed to update stack status to restarting: %w", err)
 	}
@@ -294,7 +260,6 @@ func (s *StackService) RestartStack(ctx context.Context, stackID string, user mo
 		fmt.Printf("Could not log stack restart action: %s\n", logErr)
 	}
 
-	// Update status and counts after restart
 	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusRunning)
 }
 
@@ -309,7 +274,6 @@ func (s *StackService) PullStackImages(ctx context.Context, stackID string, prog
 		return err
 	}
 
-	// Prefer ImageService when available (structured progress), otherwise fallback to docker-compose pull
 	if s.imageService != nil && len(images) > 0 {
 		return s.pullImagesViaImageService(ctx, stack, images, progressWriter)
 	}
@@ -356,19 +320,14 @@ func (le lineEmitter) WriteJSON(m map[string]any) {
 }
 
 func (s *StackService) collectStackImages(ctx context.Context, stack *models.Stack) ([]string, error) {
-	composeFile, derr := projects.DetectComposeFile(stack.Path)
-	if derr != nil {
-		return nil, fmt.Errorf("no compose file found for stack")
-	}
-
-	servicesFromFile, err := s.parseServicesFromComposeFile(ctx, composeFile, stack.Name)
+	services, err := s.GetStackServices(ctx, stack.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse services from compose file: %w", err)
+		return nil, fmt.Errorf("failed to get stack services: %w", err)
 	}
 
 	seen := map[string]struct{}{}
 	var images []string
-	for _, svc := range servicesFromFile {
+	for _, svc := range services {
 		img := strings.TrimSpace(svc.Image)
 		if img == "" {
 			continue
@@ -856,48 +815,33 @@ func (s *StackService) getLiveStackStatus(ctx context.Context, stackDir, project
 	)
 	out, err := cmd.Output()
 	if err != nil {
-		// Only return unknown if the command itself failed (e.g., compose file invalid)
 		return models.StackStatusUnknown, 0, 0, err
 	}
 
 	svcs, err := s.parseComposePS(string(out))
 	if err != nil {
-		// If we can't parse the output, that's unknown
 		return models.StackStatusUnknown, 0, 0, err
 	}
 
-	// Get service count from compose file to know the expected total
+	// Derive expected service count from compose project using LoadComposeProject
+	expectedTotal := 0
 	if composeFile, derr := projects.DetectComposeFile(stackDir); derr == nil {
-		if expectedServices, err := s.parseServicesFromComposeFile(ctx, composeFile, projectName); err == nil {
-			expectedTotal := len(expectedServices)
-			total, running := s.getServiceCounts(svcs)
-
-			switch {
-			case total == 0 && expectedTotal > 0:
-				// No containers running but compose file has services = stopped
-				return models.StackStatusStopped, expectedTotal, 0, nil
-			case running == total && total > 0:
-				return models.StackStatusRunning, total, running, nil
-			case running > 0:
-				return models.StackStatusPartiallyRunning, total, running, nil
-			case total == 0 && expectedTotal == 0:
-				// Edge case: empty compose file
-				return models.StackStatusStopped, 0, 0, nil
-			default:
-				return models.StackStatusStopped, total, running, nil
-			}
+		if proj, lerr := projects.LoadComposeProject(ctx, composeFile, projectName); lerr == nil && proj != nil {
+			expectedTotal = len(proj.Services)
 		}
 	}
 
-	// Fallback to original logic if we can't read compose file
 	total, running := s.getServiceCounts(svcs)
+
 	switch {
-	case total == 0:
-		return models.StackStatusStopped, total, running, nil
-	case running == total:
+	case total == 0 && expectedTotal > 0:
+		return models.StackStatusStopped, expectedTotal, 0, nil
+	case running == total && total > 0:
 		return models.StackStatusRunning, total, running, nil
 	case running > 0:
 		return models.StackStatusPartiallyRunning, total, running, nil
+	case total == 0 && expectedTotal == 0:
+		return models.StackStatusStopped, 0, 0, nil
 	default:
 		return models.StackStatusStopped, total, running, nil
 	}

@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/compose-spec/compose-go/v2/cli"
 	composetypes "github.com/compose-spec/compose-go/v2/types"
+	"github.com/joho/godotenv"
 )
 
 var ComposeFileCandidates = []string{
@@ -36,20 +39,57 @@ func DetectComposeFile(dir string) (string, error) {
 }
 
 func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*composetypes.Project, error) {
+	workdir := filepath.Dir(composeFile)
+	envFile := filepath.Join(workdir, ".env")
+
+	// Merge OS env with .env (OS wins)
+	envMap := map[string]string{}
+	for _, kv := range os.Environ() {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			envMap[k] = v
+		}
+	}
+	if info, err := os.Stat(envFile); err == nil && !info.IsDir() {
+		if fileEnv, rerr := godotenv.Read(envFile); rerr == nil {
+			for k, v := range fileEnv {
+				if _, exists := envMap[k]; !exists {
+					envMap[k] = v
+				}
+			}
+		}
+	}
+
+	// Convert to slice for cli.WithEnv
+	keys := make([]string, 0, len(envMap))
+	for k := range envMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys) // deterministic
+	envSlice := make([]string, 0, len(envMap))
+	for _, k := range keys {
+		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, envMap[k]))
+	}
+
 	opts, err := cli.NewProjectOptions(
 		[]string{composeFile},
-		cli.WithWorkingDirectory(filepath.Dir(composeFile)),
-		cli.WithOsEnv,
-		cli.WithDotEnv,
+		cli.WithWorkingDirectory(workdir),
 		cli.WithName(projectName),
+		cli.WithInterpolation(true),
+		cli.WithEnv(envSlice),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create project options: %w", err)
 	}
+
 	proj, err := opts.LoadProject(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("load project: %w", err)
 	}
+
+	if resolved, rerr := proj.WithServicesEnvironmentResolved(false); rerr == nil && resolved != nil {
+		proj = resolved
+	}
+
 	return proj, nil
 }
 
