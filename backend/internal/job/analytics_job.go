@@ -19,6 +19,7 @@ import (
 const (
 	AnalyticsJobName         = "analytics-heartbeat"
 	defaultHeartbeatEndpoint = "https://analytics.ofkm.arcane.dev/heartbeat"
+	analyticsInterval        = 24 * time.Hour
 )
 
 type AnalyticsJob struct {
@@ -65,21 +66,18 @@ func (j *AnalyticsJob) Register(ctx context.Context) error {
 		return nil
 	}
 
-	interval := j.getInterval(ctx)
-
-	// ensure single instance
 	j.scheduler.RemoveJobByName(AnalyticsJobName)
 
-	jobDefinition := gocron.DurationJob(interval)
+	jobDefinition := gocron.DurationJob(analyticsInterval)
 	slog.InfoContext(ctx, "registering analytics heartbeat job",
-		"jobName", AnalyticsJobName, "interval", interval.String(), "endpoint", j.heartbeatURL)
+		"jobName", AnalyticsJobName, "interval", analyticsInterval.String(), "endpoint", j.heartbeatURL)
 
 	return j.scheduler.RegisterJob(
 		ctx,
 		AnalyticsJobName,
 		jobDefinition,
 		j.Execute,
-		true, // send heartbeat immediately on startup
+		true, // run immediately on startup
 	)
 }
 
@@ -102,11 +100,10 @@ func (j *AnalyticsJob) Reschedule(ctx context.Context) error {
 		return nil
 	}
 
-	interval := j.getInterval(ctx)
 	slog.InfoContext(ctx, "analytics settings changed; rescheduling heartbeat job",
-		"jobName", AnalyticsJobName, "interval", interval.String())
+		"jobName", AnalyticsJobName, "interval", analyticsInterval.String())
 
-	return j.scheduler.RescheduleDurationJobByName(ctx, AnalyticsJobName, interval, j.Execute, true)
+	return j.scheduler.RescheduleDurationJobByName(ctx, AnalyticsJobName, analyticsInterval, j.Execute, true)
 }
 
 func (j *AnalyticsJob) Remove(ctx context.Context) {
@@ -145,7 +142,7 @@ func (j *AnalyticsJob) Execute(parentCtx context.Context) error {
 	}
 
 	slog.InfoContext(parentCtx, "sending analytics heartbeat",
-		"jobName", AnalyticsJobName, "endpoint", j.heartbeatURL)
+		"jobName", AnalyticsJobName)
 
 	_, err = backoff.Retry(
 		parentCtx,
@@ -181,16 +178,6 @@ func (j *AnalyticsJob) Execute(parentCtx context.Context) error {
 
 	slog.InfoContext(parentCtx, "analytics heartbeat sent successfully", "jobName", AnalyticsJobName)
 	return nil
-}
-
-func (j *AnalyticsJob) getInterval(ctx context.Context) time.Duration {
-	mins := j.settingsService.GetIntSetting(ctx, "analyticsInterval", 1440)
-	if mins < 60 {
-		slog.WarnContext(ctx, "analytics interval too low; using minimum 60m",
-			"requested_minutes", mins, "effective_minutes", 60)
-		mins = 60
-	}
-	return time.Duration(mins) * time.Minute
 }
 
 func (j *AnalyticsJob) isProduction() bool {
