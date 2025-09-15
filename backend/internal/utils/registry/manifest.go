@@ -1,28 +1,23 @@
 package registry
 
-import (
-	"fmt"
-
-	ref "github.com/distribution/reference"
-)
+import "fmt"
 
 func BuildManifestURLFromRef(imageRef string) (string, error) {
-	named, err := ref.ParseNormalizedNamed(imageRef)
+	named, err := parseNormalizedNamed(imageRef)
 	if err != nil {
 		return "", err
 	}
-	// Ensure a tag (default latest if none)
-	named = ref.TagNameOnly(named)
+	named = tagNameOnly(named)
 
 	host, err := GetRegistryAddress(named.String())
 	if err != nil {
 		return "", err
 	}
 
-	imgPath := ref.Path(named)
+	imgPath := referencePath(named)
 	tag := "latest"
-	if nt, ok := named.(ref.NamedTagged); ok {
-		tag = nt.Tag()
+	if t, ok := getTag(named); ok {
+		tag = t
 	}
 
 	return fmt.Sprintf("https://%s/v2/%s/manifests/%s", host, imgPath, tag), nil
