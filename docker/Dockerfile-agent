@@ -1,6 +1,11 @@
 # Build agent binary
+ARG VERSION="dev"
+ARG REVISION="unknown"
+
 FROM golang:1.25-alpine AS agent-builder
 ARG BUILD_TAGS="exclude_frontend"
+ARG VERSION
+ARG REVISION
 WORKDIR /build
 
 RUN apk add --no-cache git ca-certificates tzdata curl
@@ -15,7 +20,7 @@ RUN CGO_ENABLED=0 \
     GOOS=linux \
     go build \
     -tags "${BUILD_TAGS}" \
-    -ldflags='-w -s' \
+    -ldflags "-w -s -X github.com/ofkm/arcane-backend/internal/config.Version=${VERSION} -X github.com/ofkm/arcane-backend/internal/config.Revision=${REVISION}" \
     -trimpath \
     -o /out/arcane-agent \
     ./cmd/main.go
@@ -38,13 +43,24 @@ COPY --from=agent-builder /out/docker-compose /usr/local/bin/docker-compose
 COPY --chmod=755 ../scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
-ARG VERSION="1.1.0"
-ARG REVISION="4f1c9a9d"
+ARG VERSION="dev"
+ARG REVISION="unknown"
 
-ENV GIN_MODE=release \
-    PORT=3553 \
+ENV ENVIRONMENT=production \
     AGENT_MODE=true \
-    ENVIRONMENT=production
+    GIN_MODE=release \
+    PORT=3553
+
+LABEL org.opencontainers.image.authors="OFKM Technologies"
+LABEL org.opencontainers.image.url="https://github.com/ofkm/arcane"
+LABEL org.opencontainers.image.documentation="https://github.com/ofkm/arcane/blob/main/README.md"
+LABEL org.opencontainers.image.source="https://github.com/ofkm/arcane"
+LABEL org.opencontainers.image.version=$VERSION
+LABEL org.opencontainers.image.revision=$REVISION
+LABEL org.opencontainers.image.licenses="BSD-3-Clause"
+LABEL org.opencontainers.image.ref.name="arcane-agent"
+LABEL org.opencontainers.image.title="Arcane Agent"
+LABEL org.opencontainers.image.description="Arcane Agent"
 
 LABEL com.ofkm.arcane.updater="false"
 LABEL com.ofkm.arcane.server="true"

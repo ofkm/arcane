@@ -138,7 +138,7 @@ func (app *App) Start() {
 	defer app.DB.Close()
 	defer app.CancelApp()
 
-	registerJobs(app.AppCtx, app.Scheduler, app.Services)
+	registerJobs(app.AppCtx, app.Scheduler, app.Services, app.Config)
 
 	go func() {
 		slog.InfoContext(app.AppCtx, "Starting scheduler goroutine")

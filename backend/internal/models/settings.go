@@ -63,6 +63,8 @@ type Settings struct {
 	// Onboarding
 	OnboardingCompleted SettingVariable `key:"onboardingCompleted,public"`
 	OnboardingSteps     SettingVariable `key:"onboardingSteps"`
+
+	InstanceID SettingVariable `key:"instanceId,internal"`
 }
 
 func (SettingVariable) TableName() string {

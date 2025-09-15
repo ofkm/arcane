@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
@@ -78,6 +79,9 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		// Onboarding settings
 		OnboardingCompleted: models.SettingVariable{Value: "false"},
 		OnboardingSteps:     models.SettingVariable{Value: "[]"},
+
+		// Instance
+		InstanceID: models.SettingVariable{Value: ""},
 	}
 }
 
@@ -289,7 +293,7 @@ func (s *SettingsService) EnsureDefaultSettings(ctx context.Context) error {
 	defaultSettings := s.getDefaultSettings()
 	defaultSettingVars := defaultSettings.ToSettingVariableSlice(true, false)
 
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, defaultSetting := range defaultSettingVars {
 			var existing models.SettingVariable
 			err := tx.Where("key = ?", defaultSetting.Key).First(&existing).Error
@@ -301,10 +305,56 @@ func (s *SettingsService) EnsureDefaultSettings(ctx context.Context) error {
 			} else if err != nil {
 				return fmt.Errorf("failed to check for existing setting %s: %w", defaultSetting.Key, err)
 			}
-			// If setting exists, leave it as is (don't overwrite user values)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	if _, err := s.EnsureInstanceID(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SettingsService) EnsureInstanceID(ctx context.Context) (string, error) {
+	const key = "instanceId"
+
+	var newID string
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var sv models.SettingVariable
+
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("key = ?", key).
+			First(&sv).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				newID = uuid.New().String()
+				if createErr := tx.Create(&models.SettingVariable{Key: key, Value: newID}).Error; createErr != nil {
+					return fmt.Errorf("failed to persist %s: %w", key, createErr)
+				}
+				return nil
+			}
+			return fmt.Errorf("failed to load %s: %w", key, err)
+		}
+
+		if sv.Value != "" {
+			newID = sv.Value
+			return nil
+		}
+
+		newID = uuid.New().String()
+		if updErr := tx.Model(&models.SettingVariable{}).
+			Where("key = ?", key).
+			Update("value", newID).Error; updErr != nil {
+			return fmt.Errorf("failed to update %s: %w", key, updErr)
 		}
 		return nil
 	})
+
+	if err != nil {
+		return "", err
+	}
+	return newID, nil
 }
 
 func (s *SettingsService) GetBoolSetting(ctx context.Context, key string, defaultValue bool) bool {

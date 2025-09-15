@@ -14,11 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/compose-spec/compose-go/v2/cli"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
-	"github.com/ofkm/arcane-backend/internal/utils/docker"
+	"github.com/ofkm/arcane-backend/internal/utils/projects"
 	"gorm.io/gorm"
 )
 
@@ -108,8 +107,8 @@ func (s *StackService) DeployStack(ctx context.Context, stackID string, user mod
 		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
 	}
 
-	composeFileFullPath := docker.LocateComposeFile(stack.Path)
-	if composeFileFullPath == "" {
+	composeFileFullPath, derr := projects.DetectComposeFile(stack.Path)
+	if derr != nil {
 		return fmt.Errorf("no compose file found in stack directory: %s", stack.Path)
 	}
 
@@ -154,8 +153,8 @@ func (s *StackService) DownStack(ctx context.Context, stackID string, user model
 		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
 	}
 
-	composeFileFullPath := docker.LocateComposeFile(stack.Path)
-	if composeFileFullPath == "" {
+	composeFileFullPath, derr := projects.DetectComposeFile(stack.Path)
+	if derr != nil {
 		return fmt.Errorf("no compose file found in stack directory: %s", stack.Path)
 	}
 
@@ -216,8 +215,8 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 		return services, nil
 	}
 
-	composeFile := docker.LocateComposeFile(stack.Path)
-	if composeFile == "" {
+	composeFile, derr := projects.DetectComposeFile(stack.Path)
+	if derr != nil {
 		return nil, fmt.Errorf("no compose file found for stack")
 	}
 
@@ -230,46 +229,31 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 }
 
 func (s *StackService) parseServicesFromComposeFile(ctx context.Context, composeFile, stackName string) ([]StackServiceInfo, error) {
-	options, err := cli.NewProjectOptions(
-		[]string{composeFile},
-		cli.WithOsEnv,
-		cli.WithDotEnv,
-		cli.WithName(stackName),
-		cli.WithWorkingDirectory(filepath.Dir(composeFile)),
-	)
+	project, err := projects.LoadComposeProject(ctx, composeFile, stackName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create project options: %w", err)
-	}
-
-	project, err := options.LoadProject(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load project: %w", err)
+		return nil, err
 	}
 
 	var services []StackServiceInfo
-
 	for _, service := range project.Services {
-		serviceInfo := StackServiceInfo{
+		info := StackServiceInfo{
 			Name:        service.Name,
 			Image:       service.Image,
 			Status:      "not created",
 			ContainerID: "",
 			Ports:       []string{},
 		}
-
 		for _, port := range service.Ports {
 			if port.Published != "" && port.Target != 0 {
-				portStr := fmt.Sprintf("%s:%d", port.Published, port.Target)
+				p := fmt.Sprintf("%s:%d", port.Published, port.Target)
 				if port.Protocol != "" {
-					portStr += "/" + port.Protocol
+					p += "/" + port.Protocol
 				}
-				serviceInfo.Ports = append(serviceInfo.Ports, portStr)
+				info.Ports = append(info.Ports, p)
 			}
 		}
-
-		services = append(services, serviceInfo)
+		services = append(services, info)
 	}
-
 	return services, nil
 }
 
@@ -372,8 +356,8 @@ func (le lineEmitter) WriteJSON(m map[string]any) {
 }
 
 func (s *StackService) collectStackImages(ctx context.Context, stack *models.Stack) ([]string, error) {
-	composeFile := docker.LocateComposeFile(stack.Path)
-	if composeFile == "" {
+	composeFile, derr := projects.DetectComposeFile(stack.Path)
+	if derr != nil {
 		return nil, fmt.Errorf("no compose file found for stack")
 	}
 
@@ -609,7 +593,7 @@ func (s *StackService) SyncAllStacksFromFilesystem(ctx context.Context) error {
 		seenDirs[dirPath] = struct{}{}
 
 		// Skip if no compose file
-		if docker.LocateComposeFile(dirPath) == "" {
+		if _, err := projects.DetectComposeFile(dirPath); err != nil {
 			continue
 		}
 
@@ -653,7 +637,7 @@ func (s *StackService) SyncAllStacksFromFilesystem(ctx context.Context) error {
 			continue
 		}
 
-		if docker.LocateComposeFile(stack.Path) == "" {
+		if _, err := projects.DetectComposeFile(stack.Path); err != nil {
 			if err := s.db.WithContext(ctx).Where("stack_id = ?", stack.ID).Delete(&models.ProjectCache{}).Error; err != nil {
 				fmt.Printf("Warning: failed to delete cache for removed stack %s: %v\n", stack.ID, err)
 			}
@@ -690,7 +674,7 @@ func (s *StackService) syncStackWithFilesystem(ctx context.Context, stack *model
 	}
 
 	// Check if compose file still exists
-	if docker.LocateComposeFile(stack.Path) == "" {
+	if _, err := projects.DetectComposeFile(stack.Path); err != nil {
 		stack.Status = "unknown"
 		stack.ServiceCount = 0
 		stack.RunningCount = 0
@@ -739,10 +723,8 @@ func (s *StackService) UpdateStackContent(ctx context.Context, stackID string, c
 	}
 
 	if composeContent != nil {
-		existingComposeFile := docker.LocateComposeFile(stack.Path)
 		var composePath string
-
-		if existingComposeFile != "" {
+		if existingComposeFile, derr := projects.DetectComposeFile(stack.Path); derr == nil && existingComposeFile != "" {
 			composePath = existingComposeFile
 		} else {
 			composePath = filepath.Join(stack.Path, "compose.yaml")
@@ -773,8 +755,7 @@ func (s *StackService) GetStackContent(ctx context.Context, stackID string) (com
 		return "", "", err
 	}
 
-	composeFile := docker.LocateComposeFile(stack.Path)
-	if composeFile != "" {
+	if composeFile, derr := projects.DetectComposeFile(stack.Path); derr == nil {
 		if content, err := os.ReadFile(composeFile); err == nil {
 			composeContent = string(content)
 		}
@@ -886,8 +867,7 @@ func (s *StackService) getLiveStackStatus(ctx context.Context, stackDir, project
 	}
 
 	// Get service count from compose file to know the expected total
-	composeFile := docker.LocateComposeFile(stackDir)
-	if composeFile != "" {
+	if composeFile, derr := projects.DetectComposeFile(stackDir); derr == nil {
 		if expectedServices, err := s.parseServicesFromComposeFile(ctx, composeFile, projectName); err == nil {
 			expectedTotal := len(expectedServices)
 			total, running := s.getServiceCounts(svcs)
@@ -1131,10 +1111,8 @@ func (s *StackService) saveStackFiles(stackPath, composeContent string, envConte
 		return fmt.Errorf("failed to create stack directory: %w", err)
 	}
 
-	existingComposeFile := docker.LocateComposeFile(stackPath)
 	var composePath string
-
-	if existingComposeFile != "" {
+	if existingComposeFile, derr := projects.DetectComposeFile(stackPath); derr == nil && existingComposeFile != "" {
 		composePath = existingComposeFile
 	} else {
 		composePath = filepath.Join(stackPath, "compose.yaml")
@@ -1266,7 +1244,7 @@ func (s *StackService) importExternalStack(ctx context.Context, dirName, stackNa
 	}
 
 	path := filepath.Join(stacksDir, dirName)
-	if docker.LocateComposeFile(path) == "" {
+	if _, derr := projects.DetectComposeFile(path); derr != nil {
 		return nil, fmt.Errorf("no compose file found in %q", path)
 	}
 
@@ -1324,7 +1302,7 @@ func (s *StackService) GetProjectStatusCounts(ctx context.Context) (folderCount,
 				continue
 			}
 			dirPath := filepath.Join(stacksDir, e.Name())
-			if docker.LocateComposeFile(dirPath) != "" {
+			if _, err := projects.DetectComposeFile(dirPath); err == nil {
 				folderCount++
 			}
 		}
