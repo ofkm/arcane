@@ -240,7 +240,7 @@ const ChallengeHeader = "WWW-Authenticate"
 
 // GetChallengeRequest creates a request for getting challenge instructions
 func GetChallengeRequest(u url.URL) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
