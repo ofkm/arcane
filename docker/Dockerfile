@@ -31,7 +31,7 @@ RUN CGO_ENABLED=0 \
     GOOS=linux \
     go build \
     -tags "${BUILD_TAGS}" \
-    -ldflags "-w -s -X 'github.com/ofkm/arcane-backend/internal/config.Version=${VERSION}' -X 'github.com/ofkm/arcane-backend/internal/config.Revision=${REVISION}'" \
+    -ldflags "-w -s -X github.com/ofkm/arcane-backend/internal/config.Version=${VERSION} -X github.com/ofkm/arcane-backend/internal/config.Revision=${REVISION}" \
     -trimpath \
     -o /build/arcane \
     ./cmd/main.go

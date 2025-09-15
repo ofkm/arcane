@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 \
     GOOS=linux \
     go build \
     -tags "${BUILD_TAGS}" \
-    -ldflags "-w -s -X 'github.com/ofkm/arcane-backend/internal/config.Version=${VERSION}' -X 'github.com/ofkm/arcane-backend/internal/config.Revision=${REVISION}'" \
+    -ldflags "-w -s -X github.com/ofkm/arcane-backend/internal/config.Version=${VERSION} -X github.com/ofkm/arcane-backend/internal/config.Revision=${REVISION}" \
     -trimpath \
     -o /out/arcane-agent \
     ./cmd/main.go
@@ -47,6 +47,7 @@ ARG VERSION="dev"
 ARG REVISION="unknown"
 
 ENV ENVIRONMENT=production \
+    AGENT_MODE=true \
     GIN_MODE=release \
     PORT=3553
 

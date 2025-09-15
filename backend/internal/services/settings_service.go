@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
@@ -319,29 +320,39 @@ func (s *SettingsService) EnsureDefaultSettings(ctx context.Context) error {
 func (s *SettingsService) EnsureInstanceID(ctx context.Context) (string, error) {
 	const key = "instanceId"
 
-	var sv models.SettingVariable
-	err := s.db.WithContext(ctx).Where("key = ?", key).First(&sv).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", fmt.Errorf("failed to load %s: %w", key, err)
-	}
-	if sv.Value != "" {
-		return sv.Value, nil
-	}
+	var newID string
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var sv models.SettingVariable
 
-	newID := uuid.New().String()
-
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		if createErr := s.db.WithContext(ctx).Create(&models.SettingVariable{Key: key, Value: newID}).Error; createErr != nil {
-			return "", fmt.Errorf("failed to persist %s: %w", key, createErr)
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("key = ?", key).
+			First(&sv).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				newID = uuid.New().String()
+				if createErr := tx.Create(&models.SettingVariable{Key: key, Value: newID}).Error; createErr != nil {
+					return fmt.Errorf("failed to persist %s: %w", key, createErr)
+				}
+				return nil
+			}
+			return fmt.Errorf("failed to load %s: %w", key, err)
 		}
-		return newID, nil
-	}
 
-	if updErr := s.db.WithContext(ctx).
-		Model(&models.SettingVariable{}).
-		Where("key = ?", key).
-		Update("value", newID).Error; updErr != nil {
-		return "", fmt.Errorf("failed to update %s: %w", key, updErr)
+		if sv.Value != "" {
+			newID = sv.Value
+			return nil
+		}
+
+		newID = uuid.New().String()
+		if updErr := tx.Model(&models.SettingVariable{}).
+			Where("key = ?", key).
+			Update("value", newID).Error; updErr != nil {
+			return fmt.Errorf("failed to update %s: %w", key, updErr)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return "", err
 	}
 	return newID, nil
 }
