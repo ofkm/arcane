@@ -19,7 +19,8 @@ func RunComposeAction(ctx context.Context, composeFileFullPath, projectName, act
 		"start":   true,
 		"stop":    true,
 		"logs":    true,
-		"deploy":  true, // new alias -> up -d
+		"deploy":  true,
+		"ps":      true,
 	}
 
 	action = strings.TrimSpace(strings.ToLower(action))
@@ -46,6 +47,8 @@ func RunComposeAction(ctx context.Context, composeFileFullPath, projectName, act
 		args = append(args, "stop")
 	case "logs":
 		args = append(args, "logs", "--no-color")
+	case "ps":
+		args = append(args, "ps", "--format", "json")
 	default:
 		args = append(args, action)
 	}
