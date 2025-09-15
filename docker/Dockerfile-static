@@ -15,6 +15,10 @@ COPY ./backend/.bin/arcane-linux-${TARGETARCH} ./arcane
 
 COPY --chmod=755 ../scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
+LABEL org.opencontainers.image.title="Arcane"
+LABEL org.opencontainers.image.description="Modern Docker Management, Made for Everyone"
+LABEL org.opencontainers.image.source="https://github.com/ofkm/arcane"
+
 LABEL com.ofkm.arcane.updater="false"
 LABEL com.ofkm.arcane.server="true"
 

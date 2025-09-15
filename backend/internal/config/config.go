@@ -32,6 +32,8 @@ type Config struct {
 	AgentToken          string
 	AgentBootstrapToken string
 	UpdateCheckDisabled bool
+
+	AnalyticsDisabled bool
 }
 
 func Load() *Config {
@@ -57,6 +59,8 @@ func Load() *Config {
 		AgentToken:          os.Getenv("AGENT_TOKEN"),
 		AgentBootstrapToken: os.Getenv("AGENT_BOOTSTRAP_TOKEN"),
 		UpdateCheckDisabled: getBoolEnvOrDefault("UPDATE_CHECK_DISABLED", false),
+
+		AnalyticsDisabled: getBoolEnvOrDefault("ANALYTICS_DISABLED", false),
 	}
 }
 

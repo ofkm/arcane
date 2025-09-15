@@ -78,6 +78,9 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		// Onboarding settings
 		OnboardingCompleted: models.SettingVariable{Value: "false"},
 		OnboardingSteps:     models.SettingVariable{Value: "[]"},
+
+		// Instance
+		InstanceID: models.SettingVariable{Value: ""},
 	}
 }
 
@@ -289,7 +292,7 @@ func (s *SettingsService) EnsureDefaultSettings(ctx context.Context) error {
 	defaultSettings := s.getDefaultSettings()
 	defaultSettingVars := defaultSettings.ToSettingVariableSlice(true, false)
 
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, defaultSetting := range defaultSettingVars {
 			var existing models.SettingVariable
 			err := tx.Where("key = ?", defaultSetting.Key).First(&existing).Error
@@ -301,10 +304,46 @@ func (s *SettingsService) EnsureDefaultSettings(ctx context.Context) error {
 			} else if err != nil {
 				return fmt.Errorf("failed to check for existing setting %s: %w", defaultSetting.Key, err)
 			}
-			// If setting exists, leave it as is (don't overwrite user values)
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	if _, err := s.EnsureInstanceID(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SettingsService) EnsureInstanceID(ctx context.Context) (string, error) {
+	const key = "instanceId"
+
+	var sv models.SettingVariable
+	err := s.db.WithContext(ctx).Where("key = ?", key).First(&sv).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", fmt.Errorf("failed to load %s: %w", key, err)
+	}
+	if sv.Value != "" {
+		return sv.Value, nil
+	}
+
+	newID := uuid.New().String()
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		if createErr := s.db.WithContext(ctx).Create(&models.SettingVariable{Key: key, Value: newID}).Error; createErr != nil {
+			return "", fmt.Errorf("failed to persist %s: %w", key, createErr)
+		}
+		return newID, nil
+	}
+
+	if updErr := s.db.WithContext(ctx).
+		Model(&models.SettingVariable{}).
+		Where("key = ?", key).
+		Update("value", newID).Error; updErr != nil {
+		return "", fmt.Errorf("failed to update %s: %w", key, updErr)
+	}
+	return newID, nil
 }
 
 func (s *SettingsService) GetBoolSetting(ctx context.Context, key string, defaultValue bool) bool {
