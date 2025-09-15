@@ -158,7 +158,7 @@ func (s *StackService) DownStack(ctx context.Context, stackID string, user model
 
 	out, err := projects.RunComposeAction(ctx, composeFileFullPath, stack.Name, "down")
 	if err != nil {
-		if updateErr := s.UpdateStackStatus(ctx, stackID, models.StackStatusDeploying); updateErr != nil {
+		if updateErr := s.UpdateStackStatus(ctx, stackID, models.StackStatusRunning); updateErr != nil {
 			return fmt.Errorf("failed to down project: %w, also failed to update status: %w", err, updateErr)
 		}
 		return fmt.Errorf("failed to bring down stack: %w\nOutput: %s", err, out)
