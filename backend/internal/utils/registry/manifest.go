@@ -15,10 +15,13 @@ func BuildManifestURLFromRef(imageRef string) (string, error) {
 	}
 
 	imgPath := referencePath(named)
-	tag := "latest"
-	if t, ok := getTag(named); ok {
-		tag = t
+
+	identifier := "latest"
+	if dgst, ok := getDigest(named); ok {
+		identifier = dgst
+	} else if t, ok := getTag(named); ok {
+		identifier = t
 	}
 
-	return fmt.Sprintf("https://%s/v2/%s/manifests/%s", host, imgPath, tag), nil
+	return fmt.Sprintf("https://%s/v2/%s/manifests/%s", host, imgPath, identifier), nil
 }

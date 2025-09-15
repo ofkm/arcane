@@ -28,3 +28,10 @@ func getTag(n ref.Named) (string, bool) {
 	}
 	return "", false
 }
+
+func getDigest(n ref.Named) (string, bool) {
+	if d, ok := n.(ref.Digested); ok {
+		return d.Digest().String(), true
+	}
+	return "", false
+}
