@@ -235,10 +235,6 @@ func normalizeRepositoryForDockerIO(registryHost, repo string) string {
 	return repo
 }
 
-// ChallengeHeader is the HTTP header containing auth challenge instructions
-const ChallengeHeader = "WWW-Authenticate"
-
-// GetChallengeRequest creates a request for getting challenge instructions
 func GetChallengeRequest(ctx context.Context, u url.URL) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
@@ -252,11 +248,11 @@ func GetChallengeRequest(ctx context.Context, u url.URL) (*http.Request, error) 
 // GetChallengeURL returns https://<host>/v2/ for a given image ref (normalized).
 // host is normalized so docker.io => index.docker.io.
 func GetChallengeURL(imageRef string) (url.URL, error) {
-	named, err := refParseNormalizedNamed(imageRef)
+	named, err := parseNormalizedNamed(imageRef)
 	if err != nil {
 		return url.URL{}, err
 	}
-	host, err := GetRegistryAddress(named.String())
+	host, err := GetRegistryAddress(named.Name())
 	if err != nil {
 		return url.URL{}, err
 	}
@@ -267,11 +263,17 @@ func GetChallengeURL(imageRef string) (url.URL, error) {
 // It supports Basic and Bearer challenges. For Bearer, it reuses AcquireTokenViaChallenge which
 // looks up credentials from the database (enabledRegs) when needed.
 func GetAuthHeaderForImage(ctx context.Context, imageRef string, enabledRegs []models.ContainerRegistry) (string, error) {
-	// Build and send challenge request
 	chURL, err := GetChallengeURL(imageRef)
 	if err != nil {
 		return "", err
 	}
+
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+	}
+
 	req, err := GetChallengeRequest(ctx, chURL)
 	if err != nil {
 		return "", err
@@ -289,10 +291,16 @@ func GetAuthHeaderForImage(ctx context.Context, imageRef string, enabledRegs []m
 		// try alternate case just in case
 		ch = resp.Header.Get("Www-Authenticate")
 	}
+
+	// If /v2/ returns 200 or there's no WWW-Authenticate header, the registry is open —
+	// no auth header required. Return empty header instead of an error.
+	if resp.StatusCode == http.StatusOK || strings.TrimSpace(ch) == "" {
+		return "", nil
+	}
+
 	chLower := strings.ToLower(strings.TrimSpace(ch))
 
-	// Parse image into host/repo for Bearer scope or Basic lookup
-	named, err := refParseNormalizedNamed(imageRef)
+	named, err := parseNormalizedNamed(imageRef)
 	if err != nil {
 		return "", err
 	}
@@ -300,11 +308,10 @@ func GetAuthHeaderForImage(ctx context.Context, imageRef string, enabledRegs []m
 	if err != nil {
 		return "", err
 	}
-	repo := refPath(named)
+	repo := referencePath(named)
 
 	switch {
 	case strings.HasPrefix(chLower, "basic"):
-		// Find matching DB credentials for this host, build Basic header
 		h := normalizeHost(host)
 		for _, cr := range enabledRegs {
 			if !cr.Enabled || cr.Username == "" || cr.Token == "" {
@@ -323,7 +330,6 @@ func GetAuthHeaderForImage(ctx context.Context, imageRef string, enabledRegs []m
 		return "", fmt.Errorf("no credentials available for basic auth at %s", host)
 
 	case strings.HasPrefix(chLower, "bearer"):
-		// Use existing DB-aware flow to acquire a token via the challenge
 		token, _, _, err := AcquireTokenViaChallenge(ctx, host, repo, ch, enabledRegs)
 		if err != nil {
 			return "", err
@@ -362,16 +368,4 @@ func ResolveAuthHeaderForRepository(ctx context.Context, host, repository, tag s
 	default:
 		return hdr, "unknown", "", nil
 	}
-}
-
-// --- small internal helpers to avoid importing ref directly in the public API ---
-
-// refParseNormalizedNamed mirrors reference.ParseNormalizedNamed
-func refParseNormalizedNamed(s string) (named refNamed, err error) {
-	return parseNormalizedNamed(s)
-}
-
-// refPath mirrors reference.Path
-func refPath(n refNamed) string {
-	return referencePath(n)
 }
