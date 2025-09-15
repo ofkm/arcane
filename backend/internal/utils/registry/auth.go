@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -232,4 +233,139 @@ func normalizeRepositoryForDockerIO(registryHost, repo string) string {
 		}
 	}
 	return repo
+}
+
+func GetChallengeRequest(ctx context.Context, u url.URL) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("User-Agent", "Arcane")
+	return req, nil
+}
+
+// GetChallengeURL returns https://<host>/v2/ for a given image ref (normalized).
+// host is normalized so docker.io => index.docker.io.
+func GetChallengeURL(imageRef string) (url.URL, error) {
+	named, err := parseNormalizedNamed(imageRef)
+	if err != nil {
+		return url.URL{}, err
+	}
+	host, err := GetRegistryAddress(named.Name())
+	if err != nil {
+		return url.URL{}, err
+	}
+	return url.URL{Scheme: "https", Host: host, Path: "/v2/"}, nil
+}
+
+// GetAuthHeaderForImage performs the /v2/ challenge for an image and returns a usable Authorization header.
+// It supports Basic and Bearer challenges. For Bearer, it reuses AcquireTokenViaChallenge which
+// looks up credentials from the database (enabledRegs) when needed.
+func GetAuthHeaderForImage(ctx context.Context, imageRef string, enabledRegs []models.ContainerRegistry) (string, error) {
+	chURL, err := GetChallengeURL(imageRef)
+	if err != nil {
+		return "", err
+	}
+
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+	}
+
+	req, err := GetChallengeRequest(ctx, chURL)
+	if err != nil {
+		return "", err
+	}
+
+	c := NewClient()
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	ch := resp.Header.Get(ChallengeHeader)
+	if ch == "" {
+		// try alternate case just in case
+		ch = resp.Header.Get("Www-Authenticate")
+	}
+
+	// If /v2/ returns 200 or there's no WWW-Authenticate header, the registry is open —
+	// no auth header required. Return empty header instead of an error.
+	if resp.StatusCode == http.StatusOK || strings.TrimSpace(ch) == "" {
+		return "", nil
+	}
+
+	chLower := strings.ToLower(strings.TrimSpace(ch))
+
+	named, err := parseNormalizedNamed(imageRef)
+	if err != nil {
+		return "", err
+	}
+	host, err := GetRegistryAddress(named.Name())
+	if err != nil {
+		return "", err
+	}
+	repo := referencePath(named)
+
+	switch {
+	case strings.HasPrefix(chLower, "basic"):
+		h := normalizeHost(host)
+		for _, cr := range enabledRegs {
+			if !cr.Enabled || cr.Username == "" || cr.Token == "" {
+				continue
+			}
+			if normalizeHost(cr.URL) != h {
+				continue
+			}
+			dec, err := utils.Decrypt(cr.Token)
+			if err != nil {
+				continue
+			}
+			ba := []byte(cr.Username + ":" + dec)
+			return "Basic " + base64.StdEncoding.EncodeToString(ba), nil
+		}
+		return "", fmt.Errorf("no credentials available for basic auth at %s", host)
+
+	case strings.HasPrefix(chLower, "bearer"):
+		token, _, _, err := AcquireTokenViaChallenge(ctx, host, repo, ch, enabledRegs)
+		if err != nil {
+			return "", err
+		}
+		if token == "" {
+			return "", fmt.Errorf("empty bearer token")
+		}
+		return "Bearer " + token, nil
+
+	default:
+		return "", fmt.Errorf("unsupported challenge type from registry: %q", ch)
+	}
+}
+
+func ResolveAuthHeaderForRepository(ctx context.Context, host, repository, tag string, enabledRegs []models.ContainerRegistry) (string, string, string, error) {
+	var imageRef string
+	if tag != "" {
+		imageRef = fmt.Sprintf("%s/%s:%s", host, repository, tag)
+	} else {
+		imageRef = fmt.Sprintf("%s/%s", host, repository)
+	}
+
+	hdr, err := GetAuthHeaderForImage(ctx, imageRef, enabledRegs)
+	if err != nil {
+		return "", "", "", err
+	}
+	if hdr == "" {
+		return "", "none", "", nil
+	}
+	lh := strings.ToLower(strings.TrimSpace(hdr))
+	switch {
+	case strings.HasPrefix(lh, "basic "):
+		return hdr, "basic", "", nil
+	case strings.HasPrefix(lh, "bearer "):
+		return hdr, "bearer", "", nil
+	default:
+		return hdr, "unknown", "", nil
+	}
 }

@@ -38,10 +38,10 @@ func DetectComposeFile(dir string) (string, error) {
 func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*composetypes.Project, error) {
 	opts, err := cli.NewProjectOptions(
 		[]string{composeFile},
+		cli.WithWorkingDirectory(filepath.Dir(composeFile)),
 		cli.WithOsEnv,
 		cli.WithDotEnv,
 		cli.WithName(projectName),
-		cli.WithWorkingDirectory(filepath.Dir(composeFile)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create project options: %w", err)

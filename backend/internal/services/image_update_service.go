@@ -256,18 +256,11 @@ func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *Image
 	start := time.Now()
 	remoteDigest, _, err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token)
 	if err != nil && strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
-		challenge := err.Error()
+		// Attempt to resolve auth header via registry helpers and retry once
 		enabledRegs, _ := s.registryService.GetEnabledRegistries(ctx)
-		if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
-			token = newTok
-			auth.Method = method
-			auth.Username = user
-			if rd2, _, rd2Err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token); rd2Err == nil {
-				remoteDigest = rd2
-				err = nil
-			} else {
-				err = rd2Err
-			}
+		authHeader, _, _, resolveErr := registry.ResolveAuthHeaderForRepository(ctx, parts.Registry, normalizedRepo, parts.Tag, enabledRegs)
+		if resolveErr == nil && authHeader != "" {
+			remoteDigest, _, err = rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, authHeader)
 		}
 	}
 	elapsed := time.Since(start)
@@ -428,20 +421,13 @@ func (s *ImageUpdateService) getImageTags(ctx context.Context, parts *ImageParts
 
 	tags, err := rc.GetImageTags(ctx, parts.Registry, normalizedRepo, token)
 	if err != nil && strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
-		challenge := err.Error()
-		if idx := strings.Index(strings.ToLower(challenge), "bearer "); idx >= 0 {
-			challenge = challenge[idx:]
-		}
 		enabledRegs, _ := s.registryService.GetEnabledRegistries(ctx)
-		if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
-			token = newTok
-			auth.Method = method
-			auth.Username = user
-			if retryTags, rErr := rc.GetImageTags(ctx, parts.Registry, normalizedRepo, token); rErr == nil {
-				tags = retryTags
-				err = nil
-			} else {
-				err = rErr
+		authHeader, method, username, resolveErr := registry.ResolveAuthHeaderForRepository(ctx, parts.Registry, normalizedRepo, "", enabledRegs)
+		if resolveErr == nil && authHeader != "" {
+			tags, err = rc.GetImageTags(ctx, parts.Registry, normalizedRepo, authHeader)
+			if err == nil {
+				// update auth info to reflect how we retried
+				auth = &authDetails{Method: method, Username: username, Registry: parts.Registry}
 			}
 		}
 	}
@@ -986,20 +972,11 @@ func (s *ImageUpdateService) checkSingleImageInBatch(
 
 	remoteDigest, _, digestErr := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token)
 	if digestErr != nil && strings.Contains(strings.ToLower(digestErr.Error()), "unauthorized") {
-		challenge := digestErr.Error()
-		if idx := strings.Index(strings.ToLower(challenge), "bearer "); idx >= 0 {
-			challenge = challenge[idx:]
-		}
-		if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
-			token = newTok
-			auth.Method = method
-			auth.Username = user
-			// retry once
-			if rd2, _, rd2Err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token); rd2Err == nil {
-				remoteDigest = rd2
-				digestErr = nil
-			} else {
-				digestErr = rd2Err
+		authHeader, method, username, resolveErr := registry.ResolveAuthHeaderForRepository(ctx, parts.Registry, normalizedRepo, parts.Tag, enabledRegs)
+		if resolveErr == nil && authHeader != "" {
+			remoteDigest, _, digestErr = rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, authHeader)
+			if digestErr == nil {
+				auth = &authDetails{Method: method, Username: username, Registry: parts.Registry}
 			}
 		}
 	}
