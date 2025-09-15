@@ -1,3 +1,5 @@
 package registry
 
 const DefaultRegistry = "registry-1.docker.io"
+
+const ContentDigestHeader = "Docker-Content-Digest"

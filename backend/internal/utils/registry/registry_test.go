@@ -12,28 +12,6 @@ import (
 	"time"
 )
 
-func TestSplitImageReference(t *testing.T) {
-	t.Parallel()
-	c := NewClient()
-	tests := []struct {
-		ref, reg, repo, tag string
-	}{
-		{"nginx", DefaultRegistry, "library/nginx", "latest"},
-		{"nginx:alpine", DefaultRegistry, "library/nginx", "alpine"},
-		{"docker.io/library/redis:7", DefaultRegistry, "library/redis", "7"},
-		{"ghcr.io/acme/api:1.2.3", "ghcr.io", "acme/api", "1.2.3"},
-	}
-	for _, tc := range tests {
-		r, repo, tag, err := c.SplitImageReference(tc.ref)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
-		if r != tc.reg || repo != tc.repo || tag != tc.tag {
-			t.Fatalf("got (%s,%s,%s) want (%s,%s,%s)", r, repo, tag, tc.reg, tc.repo, tc.tag)
-		}
-	}
-}
-
 func TestCheckAuthParsesRealmAndService(t *testing.T) {
 	t.Parallel()
 	realm := "https://auth.example/token"

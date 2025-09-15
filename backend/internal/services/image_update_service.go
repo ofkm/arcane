@@ -258,15 +258,54 @@ func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *Image
 	if err != nil && strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
 		challenge := err.Error()
 		enabledRegs, _ := s.registryService.GetEnabledRegistries(ctx)
-		if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
-			token = newTok
-			auth.Method = method
-			auth.Username = user
-			if rd2, _, rd2Err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token); rd2Err == nil {
-				remoteDigest = rd2
-				err = nil
+
+		// Try Basic challenge path using new helper (handles Basic and Bearer)
+		if idx := strings.Index(strings.ToLower(challenge), "basic "); idx >= 0 {
+			imgRef := fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag)
+
+			if hdr, hErr := registry.GetAuthHeaderForImage(ctx, imgRef, enabledRegs); hErr == nil && hdr != "" {
+				// Set auth details for Basic if possible
+				if strings.HasPrefix(strings.ToLower(hdr), "basic ") {
+					auth.Method = "basic"
+					// best-effort: pick first matching credential username for this registry
+					for _, cr := range registries {
+						if cr.Enabled && cr.Username != "" {
+							auth.Username = cr.Username
+							break
+						}
+					}
+					// Pass full header to digest getter (supported by buildAuthHeader)
+					token = hdr
+				} else if strings.HasPrefix(strings.ToLower(hdr), "bearer ") {
+					// Normalize to raw token for potential reuse
+					auth.Method = "credential"
+					token = strings.TrimSpace(strings.TrimPrefix(hdr, "Bearer"))
+				}
+
+				if rd2, _, rd2Err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token); rd2Err == nil {
+					remoteDigest = rd2
+					err = nil
+				} else {
+					err = rd2Err
+				}
 			} else {
-				err = rd2Err
+				// Fall through to Bearer token acquisition if Basic path fails
+				challenge = "bearer"
+			}
+		}
+
+		// Bearer challenge path using DB-aware flow
+		if err != nil && strings.Contains(strings.ToLower(challenge), "bearer") {
+			if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
+				token = newTok
+				auth.Method = method
+				auth.Username = user
+				if rd2, _, rd2Err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token); rd2Err == nil {
+					remoteDigest = rd2
+					err = nil
+				} else {
+					err = rd2Err
+				}
 			}
 		}
 	}
@@ -429,19 +468,47 @@ func (s *ImageUpdateService) getImageTags(ctx context.Context, parts *ImageParts
 	tags, err := rc.GetImageTags(ctx, parts.Registry, normalizedRepo, token)
 	if err != nil && strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
 		challenge := err.Error()
-		if idx := strings.Index(strings.ToLower(challenge), "bearer "); idx >= 0 {
-			challenge = challenge[idx:]
-		}
 		enabledRegs, _ := s.registryService.GetEnabledRegistries(ctx)
-		if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
-			token = newTok
-			auth.Method = method
-			auth.Username = user
-			if retryTags, rErr := rc.GetImageTags(ctx, parts.Registry, normalizedRepo, token); rErr == nil {
-				tags = retryTags
-				err = nil
-			} else {
-				err = rErr
+
+		// Try Basic challenge first via GetAuthHeaderForImage (also supports Bearer)
+		if idx := strings.Index(strings.ToLower(challenge), "basic "); idx >= 0 {
+			imgRef := fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag)
+			if hdr, hErr := registry.GetAuthHeaderForImage(ctx, imgRef, enabledRegs); hErr == nil && hdr != "" {
+				lowHdr := strings.ToLower(hdr)
+				if strings.HasPrefix(lowHdr, "basic ") {
+					auth.Method = "basic"
+					for _, cr := range registries {
+						if cr.Enabled && cr.Username != "" {
+							auth.Username = cr.Username
+							break
+						}
+					}
+					token = hdr // pass full header
+				} else if strings.HasPrefix(lowHdr, "bearer ") {
+					auth.Method = "credential"
+					token = hdr // pass full header
+				}
+				if retryTags, rErr := rc.GetImageTags(ctx, parts.Registry, normalizedRepo, token); rErr == nil {
+					tags = retryTags
+					err = nil
+				} else {
+					err = rErr
+				}
+			}
+		}
+
+		// Bearer challenge via AcquireTokenViaChallenge
+		if err != nil && strings.Contains(strings.ToLower(challenge), "bearer") {
+			if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
+				token = newTok
+				auth.Method = method
+				auth.Username = user
+				if retryTags, rErr := rc.GetImageTags(ctx, parts.Registry, normalizedRepo, token); rErr == nil {
+					tags = retryTags
+					err = nil
+				} else {
+					err = rErr
+				}
 			}
 		}
 	}
@@ -987,19 +1054,48 @@ func (s *ImageUpdateService) checkSingleImageInBatch(
 	remoteDigest, _, digestErr := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token)
 	if digestErr != nil && strings.Contains(strings.ToLower(digestErr.Error()), "unauthorized") {
 		challenge := digestErr.Error()
-		if idx := strings.Index(strings.ToLower(challenge), "bearer "); idx >= 0 {
-			challenge = challenge[idx:]
-		}
-		if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
-			token = newTok
-			auth.Method = method
-			auth.Username = user
-			// retry once
-			if rd2, _, rd2Err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token); rd2Err == nil {
-				remoteDigest = rd2
-				digestErr = nil
+		// Try Basic challenge first via GetAuthHeaderForImage (also supports Bearer)
+		if idx := strings.Index(strings.ToLower(challenge), "basic "); idx >= 0 {
+			imgRef := fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag)
+			if hdr, hErr := registry.GetAuthHeaderForImage(ctx, imgRef, enabledRegs); hErr == nil && hdr != "" {
+				lowHdr := strings.ToLower(hdr)
+				if strings.HasPrefix(lowHdr, "basic ") {
+					auth.Method = "basic"
+					for _, cr := range enabledRegs {
+						if cr.Enabled && cr.Username != "" && s.normalizeRegistryURL(cr.URL) == s.normalizeRegistryURL(parts.Registry) {
+							auth.Username = cr.Username
+							break
+						}
+					}
+					token = hdr // pass full header; digest uses buildAuthHeader
+				} else if strings.HasPrefix(lowHdr, "bearer ") {
+					auth.Method = "credential"
+					token = hdr // pass full header; digest uses buildAuthHeader
+				}
+				if rd2, _, rd2Err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token); rd2Err == nil {
+					remoteDigest = rd2
+					digestErr = nil
+				} else {
+					digestErr = rd2Err
+				}
 			} else {
-				digestErr = rd2Err
+				// fall through to Bearer
+				challenge = "bearer"
+			}
+		}
+		// Bearer challenge via AcquireTokenViaChallenge
+		if digestErr != nil && strings.Contains(strings.ToLower(challenge), "bearer") {
+			if newTok, method, user, aErr := registry.AcquireTokenViaChallenge(ctx, parts.Registry, normalizedRepo, challenge, enabledRegs); aErr == nil && newTok != "" {
+				token = newTok
+				auth.Method = method
+				auth.Username = user
+				// retry once
+				if rd2, _, rd2Err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token); rd2Err == nil {
+					remoteDigest = rd2
+					digestErr = nil
+				} else {
+					digestErr = rd2Err
+				}
 			}
 		}
 	}

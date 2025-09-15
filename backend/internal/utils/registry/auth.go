@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -232,4 +233,119 @@ func normalizeRepositoryForDockerIO(registryHost, repo string) string {
 		}
 	}
 	return repo
+}
+
+// ChallengeHeader is the HTTP header containing auth challenge instructions
+const ChallengeHeader = "WWW-Authenticate"
+
+// GetChallengeRequest creates a request for getting challenge instructions
+func GetChallengeRequest(u url.URL) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("User-Agent", "Arcane")
+	return req, nil
+}
+
+// GetChallengeURL returns https://<host>/v2/ for a given image ref (normalized).
+// host is normalized so docker.io => index.docker.io.
+func GetChallengeURL(imageRef string) (url.URL, error) {
+	named, err := refParseNormalizedNamed(imageRef)
+	if err != nil {
+		return url.URL{}, err
+	}
+	host, err := GetRegistryAddress(named.String())
+	if err != nil {
+		return url.URL{}, err
+	}
+	return url.URL{Scheme: "https", Host: host, Path: "/v2/"}, nil
+}
+
+// GetAuthHeaderForImage performs the /v2/ challenge for an image and returns a usable Authorization header.
+// It supports Basic and Bearer challenges. For Bearer, it reuses AcquireTokenViaChallenge which
+// looks up credentials from the database (enabledRegs) when needed.
+func GetAuthHeaderForImage(ctx context.Context, imageRef string, enabledRegs []models.ContainerRegistry) (string, error) {
+	// Build and send challenge request
+	chURL, err := GetChallengeURL(imageRef)
+	if err != nil {
+		return "", err
+	}
+	req, err := GetChallengeRequest(chURL)
+	if err != nil {
+		return "", err
+	}
+
+	c := NewClient()
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	ch := resp.Header.Get(ChallengeHeader)
+	if ch == "" {
+		// try alternate case just in case
+		ch = resp.Header.Get("Www-Authenticate")
+	}
+	chLower := strings.ToLower(strings.TrimSpace(ch))
+
+	// Parse image into host/repo for Bearer scope or Basic lookup
+	named, err := refParseNormalizedNamed(imageRef)
+	if err != nil {
+		return "", err
+	}
+	host, err := GetRegistryAddress(named.Name())
+	if err != nil {
+		return "", err
+	}
+	repo := refPath(named)
+
+	switch {
+	case strings.HasPrefix(chLower, "basic"):
+		// Find matching DB credentials for this host, build Basic header
+		h := normalizeHost(host)
+		for _, cr := range enabledRegs {
+			if !cr.Enabled || cr.Username == "" || cr.Token == "" {
+				continue
+			}
+			if normalizeHost(cr.URL) != h {
+				continue
+			}
+			dec, err := utils.Decrypt(cr.Token)
+			if err != nil {
+				continue
+			}
+			ba := []byte(cr.Username + ":" + dec)
+			return "Basic " + base64.StdEncoding.EncodeToString(ba), nil
+		}
+		return "", fmt.Errorf("no credentials available for basic auth at %s", host)
+
+	case strings.HasPrefix(chLower, "bearer"):
+		// Use existing DB-aware flow to acquire a token via the challenge
+		token, _, _, err := AcquireTokenViaChallenge(ctx, host, repo, ch, enabledRegs)
+		if err != nil {
+			return "", err
+		}
+		if token == "" {
+			return "", fmt.Errorf("empty bearer token")
+		}
+		return "Bearer " + token, nil
+
+	default:
+		return "", fmt.Errorf("unsupported challenge type from registry: %q", ch)
+	}
+}
+
+// --- small internal helpers to avoid importing ref directly in the public API ---
+
+// refParseNormalizedNamed mirrors reference.ParseNormalizedNamed
+func refParseNormalizedNamed(s string) (named refNamed, err error) {
+	return parseNormalizedNamed(s)
+}
+
+// refPath mirrors reference.Path
+func refPath(n refNamed) string {
+	return referencePath(n)
 }
