@@ -15,6 +15,10 @@ COPY ./backend/.bin/arcane-agent-linux-${TARGETARCH} ./arcane-agent
 
 COPY --chmod=755 ../scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
+LABEL org.opencontainers.image.title="Arcane Agent"
+LABEL org.opencontainers.image.description="Arcane Agent"
+LABEL org.opencontainers.image.source="https://github.com/ofkm/arcane"
+
 LABEL com.ofkm.arcane.updater="false"
 LABEL com.ofkm.arcane.server="true"
 

@@ -1,5 +1,7 @@
 # Tags passed to "go build"
 ARG BUILD_TAGS=""
+ARG VERSION="dev"
+ARG REVISION="unknown"
 
 # Stage 1: Build Frontend
 FROM node:24 AS frontend-builder
@@ -16,6 +18,8 @@ RUN pnpm -C frontend build
 # Stage 2: Build Backend
 FROM golang:1.25-alpine AS backend-builder
 ARG BUILD_TAGS
+ARG VERSION
+ARG REVISION
 WORKDIR /build
 RUN apk add --no-cache git ca-certificates tzdata curl
 COPY ./backend/go.mod ./backend/go.sum ./
@@ -27,7 +31,7 @@ RUN CGO_ENABLED=0 \
     GOOS=linux \
     go build \
     -tags "${BUILD_TAGS}" \
-    -ldflags='-w -s' \
+    -ldflags "-w -s -X github.com/ofkm/arcane-backend/internal/config.Version=${VERSION} -X github.com/ofkm/arcane-backend/internal/config.Revision=${REVISION}" \
     -trimpath \
     -o /build/arcane \
     ./cmd/main.go
@@ -58,8 +62,9 @@ COPY --chmod=755 ../scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 EXPOSE 3552
 VOLUME ["/app/data"]
 
-ARG VERSION="1.1.0"
-ARG REVISION="4f1c9a9d"
+ARG VERSION="dev"
+ARG REVISION="unknown"
+
 LABEL org.opencontainers.image.authors="OFKM Technologies"
 LABEL org.opencontainers.image.url="https://github.com/ofkm/arcane"
 LABEL org.opencontainers.image.documentation="https://github.com/ofkm/arcane/blob/main/README.md"

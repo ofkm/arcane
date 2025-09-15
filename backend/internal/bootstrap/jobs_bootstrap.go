@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/job"
 )
 
@@ -16,7 +17,7 @@ func initializeScheduler() (*job.Scheduler, error) {
 	return scheduler, nil
 }
 
-func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices *Services) {
+func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices *Services, appConfig *config.Config) {
 	autoUpdateJob := job.NewAutoUpdateJob(scheduler, appServices.Updater, appServices.Settings)
 	if err := autoUpdateJob.Register(appCtx); err != nil {
 		slog.ErrorContext(appCtx, "Failed to register auto-update job", slog.Any("error", err))
@@ -25,6 +26,12 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 	imagePollingJob := job.NewImagePollingJob(scheduler, appServices.ImageUpdate, appServices.Settings)
 	if err := imagePollingJob.Register(appCtx); err != nil {
 		slog.ErrorContext(appCtx, "Failed to register image polling job", slog.Any("error", err))
+	}
+
+	// Register analytics heartbeat job
+	analyticsJob := job.NewAnalyticsJob(scheduler, appServices.Settings, nil, appConfig)
+	if err := analyticsJob.Register(appCtx); err != nil {
+		slog.ErrorContext(appCtx, "Failed to register analytics heartbeat job", slog.Any("error", err))
 	}
 
 	if err := job.RegisterEventCleanupJob(appCtx, scheduler, appServices.Event); err != nil {

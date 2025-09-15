@@ -127,20 +127,6 @@ LATEST_REVISION=$(git rev-parse --short HEAD)
 echo "$LATEST_REVISION" > .revision
 git add .revision
 
-# Update default ARG VERSION/REVISION in Dockerfiles (if present)
-if [ -f docker/Dockerfile ]; then
-  echo "Updating docker/Dockerfile ARGs..."
-  sed -i.bak "s/^ARG VERSION=.*$/ARG VERSION=\"$NEW_VERSION\"/" docker/Dockerfile && rm docker/Dockerfile.bak
-  sed -i.bak "s/^ARG REVISION=.*$/ARG REVISION=\"$LATEST_REVISION\"/" docker/Dockerfile && rm docker/Dockerfile.bak
-  git add docker/Dockerfile
-fi
-if [ -f docker/Dockerfile-agent ]; then
-  echo "Updating docker/Dockerfile-agent ARGs..."
-  sed -i.bak "s/^ARG VERSION=.*$/ARG VERSION=\"$NEW_VERSION\"/" docker/Dockerfile-agent && rm docker/Dockerfile-agent.bak
-  sed -i.bak "s/^ARG REVISION=.*$/ARG REVISION=\"$LATEST_REVISION\"/" docker/Dockerfile-agent && rm docker/Dockerfile-agent.bak
-  git add docker/Dockerfile-agent
-fi
-
 # Generate changelog
 echo "Generating changelog..."
 conventional-changelog -p conventionalcommits -i CHANGELOG.md -s
