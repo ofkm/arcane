@@ -346,7 +346,7 @@
 	"dashboard_start_all_failed": "启动所有容器失败",
 	"dashboard_start_all_success": "所有容器启动成功",
 	"dashboard_stop_all_title": "停止所有容器",
-	"dashboard_stop_all_confirm": "您确定要停止所有正在运行的容器吗？这将不会阻止奥术本身。",
+	"dashboard_stop_all_confirm": "您确定要停止所有正在运行的容器吗？此操作不会停止Arcane。",
 	"dashboard_stop_all_failed": "停止所有正在运行的容器失败",
 	"dashboard_stop_all_success": "所有容器停止成功",
 	"dashboard_prune_failed": "清理{types}失败",
