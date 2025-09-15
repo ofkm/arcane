@@ -116,12 +116,8 @@ func (s *StackService) DeployStack(ctx context.Context, stackID string, user mod
 		return fmt.Errorf("failed to update stack status to deploying: %w", err)
 	}
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", composeFileFullPath, "up", "-d")
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
-	)
+	output, err := projects.RunComposeAction(ctx, composeFileFullPath, stack.Name, "deploy")
 
-	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if updateErr := s.UpdateStackStatus(ctx, stackID, models.StackStatusStopped); updateErr != nil {
 			return fmt.Errorf("failed to deploy stack: %w, also failed to update status: %w", err, updateErr)
@@ -129,7 +125,6 @@ func (s *StackService) DeployStack(ctx context.Context, stackID string, user mod
 		return fmt.Errorf("failed to deploy stack: %w\nCommand output: %s", err, string(output))
 	}
 
-	// Log stack deployment event
 	metadata := models.JSON{
 		"action":    "deploy",
 		"stackId":   stackID,
@@ -148,7 +143,6 @@ func (s *StackService) DownStack(ctx context.Context, stackID string, user model
 		return err
 	}
 
-	// Verify stack directory exists
 	if _, err := os.Stat(stack.Path); os.IsNotExist(err) {
 		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
 	}
@@ -158,25 +152,18 @@ func (s *StackService) DownStack(ctx context.Context, stackID string, user model
 		return fmt.Errorf("no compose file found in stack directory: %s", stack.Path)
 	}
 
-	// Update status to stopping first
 	if err := s.UpdateStackStatus(ctx, stackID, models.StackStatusStopping); err != nil {
 		return fmt.Errorf("failed to update stack status to stopping: %w", err)
 	}
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "-f", composeFileFullPath, "down")
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
-	)
-
-	output, err := cmd.CombinedOutput()
+	out, err := projects.RunComposeAction(ctx, composeFileFullPath, stack.Name, "down")
 	if err != nil {
-		if updateErr := s.UpdateStackStatus(ctx, stackID, models.StackStatusDeploying); updateErr != nil {
+		if updateErr := s.UpdateStackStatus(ctx, stackID, models.StackStatusRunning); updateErr != nil {
 			return fmt.Errorf("failed to down project: %w, also failed to update status: %w", err, updateErr)
 		}
-		return fmt.Errorf("failed to bring down stack: %w\nOutput: %s", err, string(output))
+		return fmt.Errorf("failed to bring down stack: %w\nOutput: %s", err, out)
 	}
 
-	// Log stack down event
 	metadata := models.JSON{
 		"action":    "down",
 		"stackId":   stackID,
@@ -195,65 +182,32 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 		return nil, err
 	}
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "ps", "--format", "json")
-	cmd.Dir = stack.Path
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
-	)
-
-	var services []StackServiceInfo
-
-	output, err := cmd.Output()
-	if err == nil {
-		services, err = s.parseComposePS(string(output))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse compose ps output: %w", err)
-		}
-	}
-
-	if len(services) > 0 {
-		return services, nil
-	}
-
 	composeFile, derr := projects.DetectComposeFile(stack.Path)
 	if derr != nil {
 		return nil, fmt.Errorf("no compose file found for stack")
 	}
 
-	servicesFromFile, err := s.parseServicesFromComposeFile(ctx, composeFile, stack.Name)
+	project, err := projects.LoadComposeProject(ctx, composeFile, stack.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse services from compose file: %w", err)
+		return nil, fmt.Errorf("failed to load compose project: %w", err)
 	}
 
-	return servicesFromFile, nil
-}
-
-func (s *StackService) parseServicesFromComposeFile(ctx context.Context, composeFile, stackName string) ([]StackServiceInfo, error) {
-	project, err := projects.LoadComposeProject(ctx, composeFile, stackName)
+	statuses, err := projects.ComposeServicesStatus(ctx, project, composeFile, stack.Name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get compose services status: %w", err)
 	}
 
 	var services []StackServiceInfo
-	for _, service := range project.Services {
-		info := StackServiceInfo{
-			Name:        service.Name,
-			Image:       service.Image,
-			Status:      "not created",
-			ContainerID: "",
-			Ports:       []string{},
-		}
-		for _, port := range service.Ports {
-			if port.Published != "" && port.Target != 0 {
-				p := fmt.Sprintf("%s:%d", port.Published, port.Target)
-				if port.Protocol != "" {
-					p += "/" + port.Protocol
-				}
-				info.Ports = append(info.Ports, p)
-			}
-		}
-		services = append(services, info)
+	for _, ssvc := range statuses {
+		services = append(services, StackServiceInfo{
+			Name:        ssvc.Name,
+			Image:       ssvc.Image,
+			Status:      ssvc.Status,
+			ContainerID: ssvc.ContainerID,
+			Ports:       ssvc.Ports,
+		})
 	}
+
 	return services, nil
 }
 
@@ -263,12 +217,10 @@ func (s *StackService) RestartStack(ctx context.Context, stackID string, user mo
 		return err
 	}
 
-	// Verify stack directory exists
 	if _, err := os.Stat(stack.Path); os.IsNotExist(err) {
 		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
 	}
 
-	// Update status to restarting first
 	if err := s.UpdateStackStatus(ctx, stackID, models.StackStatusRestarting); err != nil {
 		return fmt.Errorf("failed to update stack status to restarting: %w", err)
 	}
@@ -284,7 +236,6 @@ func (s *StackService) RestartStack(ctx context.Context, stackID string, user mo
 		return fmt.Errorf("failed to restart stack: %w\nOutput: %s", err, string(output))
 	}
 
-	// Log stack restart event
 	metadata := models.JSON{
 		"action":    "restart",
 		"stackId":   stackID,
@@ -294,7 +245,6 @@ func (s *StackService) RestartStack(ctx context.Context, stackID string, user mo
 		fmt.Printf("Could not log stack restart action: %s\n", logErr)
 	}
 
-	// Update status and counts after restart
 	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusRunning)
 }
 
@@ -309,7 +259,6 @@ func (s *StackService) PullStackImages(ctx context.Context, stackID string, prog
 		return err
 	}
 
-	// Prefer ImageService when available (structured progress), otherwise fallback to docker-compose pull
 	if s.imageService != nil && len(images) > 0 {
 		return s.pullImagesViaImageService(ctx, stack, images, progressWriter)
 	}
@@ -317,7 +266,6 @@ func (s *StackService) PullStackImages(ctx context.Context, stackID string, prog
 	return s.composePull(ctx, stack, progressWriter)
 }
 
-// lineEmitter provides line/JSON writing with optional HTTP flushing.
 type lineEmitter struct {
 	w       io.Writer
 	flusher http.Flusher
@@ -356,19 +304,14 @@ func (le lineEmitter) WriteJSON(m map[string]any) {
 }
 
 func (s *StackService) collectStackImages(ctx context.Context, stack *models.Stack) ([]string, error) {
-	composeFile, derr := projects.DetectComposeFile(stack.Path)
-	if derr != nil {
-		return nil, fmt.Errorf("no compose file found for stack")
-	}
-
-	servicesFromFile, err := s.parseServicesFromComposeFile(ctx, composeFile, stack.Name)
+	services, err := s.GetStackServices(ctx, stack.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse services from compose file: %w", err)
+		return nil, fmt.Errorf("failed to get stack services: %w", err)
 	}
 
 	seen := map[string]struct{}{}
 	var images []string
-	for _, svc := range servicesFromFile {
+	for _, svc := range services {
 		img := strings.TrimSpace(svc.Image)
 		if img == "" {
 			continue
@@ -391,7 +334,7 @@ func (s *StackService) pullImagesViaImageService(ctx context.Context, stack *mod
 
 	var firstErr error
 	for _, raw := range images {
-		img := refForPull(raw) // strip digest and ensure a tag
+		img := refForPull(raw)
 
 		le.WriteJSON(map[string]any{"status": "Pulling", "id": img})
 
@@ -419,14 +362,11 @@ func (s *StackService) pullImagesViaImageService(ctx context.Context, stack *mod
 	return firstErr
 }
 
-// refForPull strips any digest from the reference and ensures a tag (defaults to ":latest")
 func refForPull(ref string) string {
 	ref = strings.TrimSpace(ref)
-	// remove digest if present
 	if i := strings.Index(ref, "@"); i != -1 {
 		ref = ref[:i]
 	}
-	// ensure a tag exists; consider ":" only if it appears after the last "/"
 	lastSlash := strings.LastIndex(ref, "/")
 	lastColon := strings.LastIndex(ref, ":")
 	if lastColon <= lastSlash {
@@ -526,7 +466,6 @@ func (s *StackService) ListStacksPaginated(ctx context.Context, req utils.Sorted
 		req.Sort.Column = "dir_name"
 	case "name", "status", "path":
 	default:
-		// no-op
 	}
 
 	pagination, err := utils.PaginateAndSort(req, query, &stacks)
@@ -551,7 +490,6 @@ func (s *StackService) ListStacksPaginated(ctx context.Context, req utils.Sorted
 	return result, pagination, nil
 }
 
-//nolint:gocognit
 func (s *StackService) SyncAllStacksFromFilesystem(ctx context.Context) error {
 	stacksDir, dirErr := s.getStacksDirectory(ctx)
 	if dirErr != nil {
@@ -562,26 +500,36 @@ func (s *StackService) SyncAllStacksFromFilesystem(ctx context.Context) error {
 	}
 	stacksDir = filepath.Clean(stacksDir)
 
-	// If the stacks directory doesn't exist, create it and treat as empty.
 	if _, statErr := os.Stat(stacksDir); os.IsNotExist(statErr) {
 		if mkErr := os.MkdirAll(stacksDir, 0755); mkErr != nil {
 			fmt.Printf("Warning: failed to create stacks directory %q: %v\n", stacksDir, mkErr)
-			return nil // treat as empty
+			return nil
 		}
-		return nil // created; nothing to sync
+		return nil
 	} else if statErr != nil {
 		fmt.Printf("Warning: unable to access stacks directory %q: %v\n", stacksDir, statErr)
-		return nil // treat as empty
+		return nil
 	}
 
+	seenDirs := utils.NewEmptyStructMap[string]()
+
+	if err := s.processStacksDirectoryEntries(ctx, stacksDir, seenDirs); err != nil {
+		fmt.Printf("Warning: error while processing stacks directory %q: %v\n", stacksDir, err)
+	}
+
+	if err := s.cleanupDBStacks(ctx); err != nil {
+		fmt.Printf("Warning: error during DB cleanup of stacks: %v\n", err)
+	}
+
+	return nil
+}
+
+func (s *StackService) processStacksDirectoryEntries(ctx context.Context, stacksDir string, seenDirs map[string]struct{}) error {
 	entries, err := os.ReadDir(stacksDir)
 	if err != nil {
 		fmt.Printf("Warning: failed to read stacks directory %q: %v\n", stacksDir, err)
-		return nil // treat as empty
+		return err
 	}
-
-	// Track which directories we've seen
-	seenDirs := utils.NewEmptyStructMap[string]()
 
 	for _, entry := range entries {
 		if !entry.IsDir() {
@@ -592,12 +540,10 @@ func (s *StackService) SyncAllStacksFromFilesystem(ctx context.Context) error {
 		dirPath := filepath.Join(stacksDir, dirName)
 		seenDirs[dirPath] = struct{}{}
 
-		// Skip if no compose file
 		if _, err := projects.DetectComposeFile(dirPath); err != nil {
 			continue
 		}
 
-		// Check if already tracked
 		var existingStack models.Stack
 		err := s.db.WithContext(ctx).Where("path = ? OR dir_name = ?", dirPath, dirName).First(&existingStack).Error
 
@@ -609,62 +555,69 @@ func (s *StackService) SyncAllStacksFromFilesystem(ctx context.Context) error {
 			s.syncStackWithFilesystem(ctx, &existingStack)
 		}
 	}
+	return nil
+}
 
-	// Remove stacks whose directories or compose files no longer exist
+func (s *StackService) cleanupDBStacks(ctx context.Context) error {
 	var allStacks []models.Stack
-	s.db.WithContext(ctx).Find(&allStacks)
+	if err := s.db.WithContext(ctx).Find(&allStacks).Error; err != nil {
+		return fmt.Errorf("failed to list stacks for cleanup: %w", err)
+	}
 
 	for _, stack := range allStacks {
-		// Directory missing
-		if _, err := os.Stat(stack.Path); os.IsNotExist(err) {
-			if err := s.db.WithContext(ctx).Where("stack_id = ?", stack.ID).Delete(&models.ProjectCache{}).Error; err != nil {
-				fmt.Printf("Warning: failed to delete cache for removed stack %s: %v\n", stack.ID, err)
-			}
-			if err := s.db.WithContext(ctx).Delete(&models.Stack{}, "id = ?", stack.ID).Error; err != nil {
-				fmt.Printf("Warning: failed to delete removed stack %s: %v\n", stack.ID, err)
-			} else {
-				metadata := models.JSON{
-					"action":    "auto-delete",
-					"stackId":   stack.ID,
-					"stackName": stack.Name,
-					"path":      stack.Path,
-					"reason":    "missing_directory",
-				}
-				if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDelete, stack.ID, stack.Name, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
-					fmt.Printf("Could not log auto-delete action: %s\n", logErr)
-				}
-			}
-			continue
-		}
-
-		if _, err := projects.DetectComposeFile(stack.Path); err != nil {
-			if err := s.db.WithContext(ctx).Where("stack_id = ?", stack.ID).Delete(&models.ProjectCache{}).Error; err != nil {
-				fmt.Printf("Warning: failed to delete cache for removed stack %s: %v\n", stack.ID, err)
-			}
-			if err := s.db.WithContext(ctx).Delete(&models.Stack{}, "id = ?", stack.ID).Error; err != nil {
-				fmt.Printf("Warning: failed to delete removed stack %s: %v\n", stack.ID, err)
-			} else {
-				metadata := models.JSON{
-					"action":    "auto-delete",
-					"stackId":   stack.ID,
-					"stackName": stack.Name,
-					"path":      stack.Path,
-					"reason":    "missing_compose_file",
-				}
-				if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDelete, stack.ID, stack.Name, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
-					fmt.Printf("Could not log auto-delete action: %s\n", logErr)
-				}
-			}
-			continue
+		if err := s.cleanupSingleStackIfNeeded(ctx, &stack); err != nil {
+			// keep processing remaining stacks even on per-stack errors
+			fmt.Printf("Warning: cleanup issue for stack %s: %v\n", stack.ID, err)
 		}
 	}
 
 	return nil
 }
 
-// syncStackWithFilesystem updates the stack with current filesystem/docker status
+func (s *StackService) cleanupSingleStackIfNeeded(ctx context.Context, stack *models.Stack) error {
+	// If directory missing -> delete stack and its cache
+	if _, err := os.Stat(stack.Path); os.IsNotExist(err) {
+		return s.deleteStackAndCache(ctx, stack, "missing_directory")
+	} else if err != nil {
+		// unexpected stat error - surface as warning to caller
+		return fmt.Errorf("unable to stat stack path %q: %w", stack.Path, err)
+	}
+
+	// If compose file missing -> delete stack and its cache
+	if _, err := projects.DetectComposeFile(stack.Path); err != nil {
+		return s.deleteStackAndCache(ctx, stack, "missing_compose_file")
+	}
+
+	return nil
+}
+
+func (s *StackService) deleteStackAndCache(ctx context.Context, stack *models.Stack, reason string) error {
+	if err := s.db.WithContext(ctx).Where("stack_id = ?", stack.ID).Delete(&models.ProjectCache{}).Error; err != nil {
+		fmt.Printf("Warning: failed to delete cache for removed stack %s: %v\n", stack.ID, err)
+	}
+
+	if err := s.db.WithContext(ctx).Delete(&models.Stack{}, "id = ?", stack.ID).Error; err != nil {
+		fmt.Printf("Warning: failed to delete removed stack %s: %v\n", stack.ID, err)
+		return err
+	}
+
+	metadata := models.JSON{
+		"action":    "auto-delete",
+		"stackId":   stack.ID,
+		"stackName": stack.Name,
+		"path":      stack.Path,
+		"reason":    reason,
+	}
+	if s.eventService != nil {
+		if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDelete, stack.ID, stack.Name, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
+			fmt.Printf("Could not log auto-delete action: %s\n", logErr)
+		}
+	}
+
+	return nil
+}
+
 func (s *StackService) syncStackWithFilesystem(ctx context.Context, stack *models.Stack) {
-	// Check if directory still exists
 	if _, err := os.Stat(stack.Path); os.IsNotExist(err) {
 		stack.Status = "unknown"
 		stack.ServiceCount = 0
@@ -673,7 +626,6 @@ func (s *StackService) syncStackWithFilesystem(ctx context.Context, stack *model
 		return
 	}
 
-	// Check if compose file still exists
 	if _, err := projects.DetectComposeFile(stack.Path); err != nil {
 		stack.Status = "unknown"
 		stack.ServiceCount = 0
@@ -682,9 +634,7 @@ func (s *StackService) syncStackWithFilesystem(ctx context.Context, stack *model
 		return
 	}
 
-	// Get live status from docker-compose
 	if status, total, running, err := s.getLiveStackStatus(ctx, stack.Path, stack.Name); err == nil {
-		// Only update if there's a change to avoid unnecessary DB writes
 		if stack.Status != status || stack.ServiceCount != total || stack.RunningCount != running {
 			stack.Status = status
 			stack.ServiceCount = total
@@ -694,7 +644,6 @@ func (s *StackService) syncStackWithFilesystem(ctx context.Context, stack *model
 	}
 }
 
-// updateStackInDB updates the stack record in database (async to avoid blocking)
 func (s *StackService) updateStackInDB(ctx context.Context, stack *models.Stack) {
 	go func() {
 		if err := s.db.WithContext(ctx).Model(stack).Updates(map[string]interface{}{
@@ -703,7 +652,6 @@ func (s *StackService) updateStackInDB(ctx context.Context, stack *models.Stack)
 			"running_count": stack.RunningCount,
 			"updated_at":    time.Now(),
 		}).Error; err != nil {
-			// Log error but don't fail the main operation
 			fmt.Printf("Warning: failed to update stack %s in database: %v\n", stack.ID, err)
 		}
 	}()
@@ -801,7 +749,6 @@ func (s *StackService) DestroyStack(ctx context.Context, stackID string, removeF
 		return fmt.Errorf("failed to delete stack from database: %w", err)
 	}
 
-	// Log stack destroy event
 	metadata := models.JSON{
 		"action":        "destroy",
 		"stackId":       stackID,
@@ -822,17 +769,14 @@ func (s *StackService) RedeployStack(ctx context.Context, stackID string, profil
 		return err
 	}
 
-	// Pull first (wait for completion and auth via ImageService)
 	if err := s.PullStackImages(ctx, stackID, io.Discard); err != nil {
 		fmt.Printf("Warning: failed to pull images: %v\n", err)
 	}
 
-	// Use down (not stop) to avoid port/name conflicts and ensure a clean restart
 	if err := s.DownStack(ctx, stackID, systemUser); err != nil {
 		return fmt.Errorf("failed to down stack for redeploy: %w", err)
 	}
 
-	// Log stack redeploy event
 	metadata := models.JSON{
 		"action":    "redeploy",
 		"stackId":   stackID,
@@ -846,58 +790,37 @@ func (s *StackService) RedeployStack(ctx context.Context, stackID string, profil
 	return s.DeployStack(ctx, stackID, systemUser)
 }
 
-// getLiveStackStatus runs `docker-compose ps --format json` in the stackDir
-// and returns a status plus total / running service counts.
 func (s *StackService) getLiveStackStatus(ctx context.Context, stackDir, projectName string) (models.StackStatus, int, int, error) {
-	cmd := exec.CommandContext(ctx, "docker-compose", "ps", "--format", "json")
-	cmd.Dir = stackDir
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", projectName),
-	)
-	out, err := cmd.Output()
+	live, err := projects.ComposePS(ctx, stackDir, projectName)
 	if err != nil {
-		// Only return unknown if the command itself failed (e.g., compose file invalid)
 		return models.StackStatusUnknown, 0, 0, err
 	}
 
-	svcs, err := s.parseComposePS(string(out))
-	if err != nil {
-		// If we can't parse the output, that's unknown
-		return models.StackStatusUnknown, 0, 0, err
-	}
-
-	// Get service count from compose file to know the expected total
+	expectedTotal := 0
 	if composeFile, derr := projects.DetectComposeFile(stackDir); derr == nil {
-		if expectedServices, err := s.parseServicesFromComposeFile(ctx, composeFile, projectName); err == nil {
-			expectedTotal := len(expectedServices)
-			total, running := s.getServiceCounts(svcs)
-
-			switch {
-			case total == 0 && expectedTotal > 0:
-				// No containers running but compose file has services = stopped
-				return models.StackStatusStopped, expectedTotal, 0, nil
-			case running == total && total > 0:
-				return models.StackStatusRunning, total, running, nil
-			case running > 0:
-				return models.StackStatusPartiallyRunning, total, running, nil
-			case total == 0 && expectedTotal == 0:
-				// Edge case: empty compose file
-				return models.StackStatusStopped, 0, 0, nil
-			default:
-				return models.StackStatusStopped, total, running, nil
-			}
+		if proj, lerr := projects.LoadComposeProject(ctx, composeFile, projectName); lerr == nil && proj != nil {
+			expectedTotal = len(proj.Services)
 		}
 	}
 
-	// Fallback to original logic if we can't read compose file
-	total, running := s.getServiceCounts(svcs)
+	total := len(live)
+	running := 0
+	for _, it := range live {
+		st := strings.ToLower(strings.TrimSpace(it.Status))
+		if st == "running" || st == "up" {
+			running++
+		}
+	}
+
 	switch {
-	case total == 0:
-		return models.StackStatusStopped, total, running, nil
-	case running == total:
+	case total == 0 && expectedTotal > 0:
+		return models.StackStatusStopped, expectedTotal, 0, nil
+	case running == total && total > 0:
 		return models.StackStatusRunning, total, running, nil
 	case running > 0:
 		return models.StackStatusPartiallyRunning, total, running, nil
+	case total == 0 && expectedTotal == 0:
+		return models.StackStatusStopped, 0, 0, nil
 	default:
 		return models.StackStatusStopped, total, running, nil
 	}
@@ -971,25 +894,20 @@ func (s *StackService) StreamStackLogs(ctx context.Context, stackID string, logs
 		return fmt.Errorf("failed to start docker-compose logs: %w", err)
 	}
 
-	// Handle stdout and stderr concurrently
 	done := make(chan error, 2)
 
-	// Read stdout
 	go func() {
 		done <- s.readStackLogsFromReader(ctx, stdout, logsChan, "stdout")
 	}()
 
-	// Read stderr
 	go func() {
 		done <- s.readStackLogsFromReader(ctx, stderr, logsChan, "stderr")
 	}()
 
-	// Wait for command completion or context cancellation
 	go func() {
 		done <- cmd.Wait()
 	}()
 
-	// Wait for context cancellation or error
 	select {
 	case <-ctx.Done():
 		if cmd.Process != nil {
@@ -1009,7 +927,7 @@ func (s *StackService) StreamStackLogs(ctx context.Context, stackID string, logs
 
 func (s *StackService) readStackLogsFromReader(ctx context.Context, reader io.Reader, logsChan chan<- string, source string) error {
 	scanner := bufio.NewScanner(reader)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // Increase buffer size for large log lines
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
 	for scanner.Scan() {
 		select {
@@ -1018,7 +936,6 @@ func (s *StackService) readStackLogsFromReader(ctx context.Context, reader io.Re
 		default:
 			line := scanner.Text()
 			if line != "" {
-				// Add source prefix for stderr logs
 				if source == "stderr" {
 					line = "[STDERR] " + line
 				}
@@ -1060,16 +977,13 @@ func (s *StackService) UpdateStackStatus(ctx context.Context, id string, status 
 }
 
 func (s *StackService) updateStackStatusAndCounts(ctx context.Context, stackID string, status models.StackStatus) error {
-	// Get current service counts
 	services, err := s.GetStackServices(ctx, stackID)
 	if err != nil {
-		// If we can't get services, just update status
 		return s.UpdateStackStatus(ctx, stackID, status)
 	}
 
 	serviceCount, runningCount := s.getServiceCounts(services)
 
-	// Update all fields at once
 	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", stackID).Updates(map[string]interface{}{
 		"status":        status,
 		"service_count": serviceCount,
@@ -1132,105 +1046,11 @@ func (s *StackService) saveStackFiles(stackPath, composeContent string, envConte
 	return nil
 }
 
-func (s *StackService) parseComposePS(output string) ([]StackServiceInfo, error) {
-	if strings.TrimSpace(output) == "" {
-		return []StackServiceInfo{}, nil
-	}
-
-	// The output from docker-compose ps --format json can be either:
-	// 1. A JSON array of objects
-	// 2. Multiple JSON objects separated by newlines (JSONL format)
-
-	var services []StackServiceInfo
-
-	if strings.HasPrefix(strings.TrimSpace(output), "[") {
-		var psOutput []map[string]interface{}
-		if err := json.Unmarshal([]byte(output), &psOutput); err == nil {
-			for _, item := range psOutput {
-				service := s.parseComposeService(item)
-				if service != nil {
-					services = append(services, *service)
-				}
-			}
-			return services, nil
-		}
-	}
-
-	lines := strings.Split(strings.TrimSpace(output), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		var item map[string]interface{}
-		if err := json.Unmarshal([]byte(line), &item); err != nil {
-			// Skip invalid JSON lines
-			continue
-		}
-
-		service := s.parseComposeService(item)
-		if service != nil {
-			services = append(services, *service)
-		}
-	}
-
-	return services, nil
-}
-
-func (s *StackService) parseComposeService(item map[string]interface{}) *StackServiceInfo {
-	service := &StackServiceInfo{}
-
-	if name, ok := item["Name"].(string); ok {
-		service.Name = name
-	} else if service_name, ok := item["Service"].(string); ok {
-		service.Name = service_name
-	}
-
-	if image, ok := item["Image"].(string); ok {
-		service.Image = image
-	}
-
-	if state, ok := item["State"].(string); ok {
-		service.Status = state
-	} else if status, ok := item["Status"].(string); ok {
-		service.Status = status
-	}
-
-	if id, ok := item["ID"].(string); ok {
-		service.ContainerID = id
-	} else if container_id, ok := item["ContainerID"].(string); ok {
-		service.ContainerID = container_id
-	}
-
-	if portsInterface, ok := item["Ports"]; ok {
-		switch ports := portsInterface.(type) {
-		case string:
-			if ports != "" {
-				service.Ports = []string{ports}
-			}
-		case []interface{}:
-			for _, port := range ports {
-				if portStr, ok := port.(string); ok && portStr != "" {
-					service.Ports = append(service.Ports, portStr)
-				}
-			}
-		case []string:
-			service.Ports = ports
-		}
-	}
-
-	if service.Name == "" {
-		return nil
-	}
-
-	return service
-}
-
 func (s *StackService) getServiceCounts(services []StackServiceInfo) (total int, running int) {
 	total = len(services)
 	for _, service := range services {
-		if service.Status == "running" || service.Status == "Up" {
+		st := strings.ToLower(strings.TrimSpace(service.Status))
+		if st == "running" || st == "up" {
 			running++
 		}
 	}
@@ -1248,10 +1068,8 @@ func (s *StackService) importExternalStack(ctx context.Context, dirName, stackNa
 		return nil, fmt.Errorf("no compose file found in %q", path)
 	}
 
-	// probe live status & counts
 	status, svcCount, runCount, err := s.getLiveStackStatus(ctx, path, stackName)
 	if err != nil {
-		// we'll still import it, but mark unknown
 		status = models.StackStatusUnknown
 	}
 
@@ -1269,7 +1087,6 @@ func (s *StackService) importExternalStack(ctx context.Context, dirName, stackNa
 		return nil, fmt.Errorf("failed to import external stack: %w", err)
 	}
 
-	// Log stack import event
 	metadata := models.JSON{
 		"action":     "import",
 		"stackId":    stack.ID,
