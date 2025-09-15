@@ -46,6 +46,7 @@ func (c *Client) GetLatestDigest(ctx context.Context, registry, repository, tag,
 	req.Header.Add("Accept", "application/vnd.docker.distribution.manifest.list.v2+json")
 	req.Header.Add("Accept", "application/vnd.docker.distribution.manifest.v1+json")
 	req.Header.Add("Accept", "application/vnd.oci.image.index.v1+json")
+	req.Header.Add("Accept", "application/vnd.oci.image.manifest.v1+json")
 	req.Header.Set("User-Agent", "Arcane")
 
 	if ah := buildAuthHeader(token); ah != "" {
