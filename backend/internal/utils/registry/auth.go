@@ -239,8 +239,8 @@ func normalizeRepositoryForDockerIO(registryHost, repo string) string {
 const ChallengeHeader = "WWW-Authenticate"
 
 // GetChallengeRequest creates a request for getting challenge instructions
-func GetChallengeRequest(u url.URL) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, u.String(), nil)
+func GetChallengeRequest(ctx context.Context, u url.URL) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ func GetAuthHeaderForImage(ctx context.Context, imageRef string, enabledRegs []m
 	if err != nil {
 		return "", err
 	}
-	req, err := GetChallengeRequest(chURL)
+	req, err := GetChallengeRequest(ctx, chURL)
 	if err != nil {
 		return "", err
 	}
@@ -335,6 +335,32 @@ func GetAuthHeaderForImage(ctx context.Context, imageRef string, enabledRegs []m
 
 	default:
 		return "", fmt.Errorf("unsupported challenge type from registry: %q", ch)
+	}
+}
+
+func ResolveAuthHeaderForRepository(ctx context.Context, host, repository, tag string, enabledRegs []models.ContainerRegistry) (string, string, string, error) {
+	var imageRef string
+	if tag != "" {
+		imageRef = fmt.Sprintf("%s/%s:%s", host, repository, tag)
+	} else {
+		imageRef = fmt.Sprintf("%s/%s", host, repository)
+	}
+
+	hdr, err := GetAuthHeaderForImage(ctx, imageRef, enabledRegs)
+	if err != nil {
+		return "", "", "", err
+	}
+	if hdr == "" {
+		return "", "none", "", nil
+	}
+	lh := strings.ToLower(strings.TrimSpace(hdr))
+	switch {
+	case strings.HasPrefix(lh, "basic "):
+		return hdr, "basic", "", nil
+	case strings.HasPrefix(lh, "bearer "):
+		return hdr, "bearer", "", nil
+	default:
+		return hdr, "unknown", "", nil
 	}
 }
 
