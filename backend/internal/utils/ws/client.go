@@ -40,9 +40,9 @@ func ServeClient(ctx context.Context, hub *Hub, conn *websocket.Conn) {
 }
 
 func (c *Client) readPump(ctx context.Context, hub *Hub) {
-	defer func() {
-		hub.unregister <- c
-	}()
+	// Ensure client is removed from hub without sending on a potentially
+	// unserviced channel. Use hub.remove which is safe when the hub has exited.
+	defer hub.remove(c)
 
 	c.conn.SetReadLimit(maxMessageSize)
 	_ = c.conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -67,9 +67,10 @@ func (c *Client) readPump(ctx context.Context, hub *Hub) {
 
 func (c *Client) writePump(ctx context.Context, hub *Hub) {
 	ticker := time.NewTicker(pingPeriod)
+	// Stop ticker and ensure client is removed from hub without writing to hub.unregister.
 	defer func() {
 		ticker.Stop()
-		hub.unregister <- c
+		hub.remove(c)
 	}()
 
 	for {

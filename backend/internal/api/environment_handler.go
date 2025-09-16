@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -65,8 +66,6 @@ func NewEnvironmentHandler(
 
 	apiGroup := group.Group("/environments")
 
-	apiGroup.GET("/:id/containers/:containerId/logs/ws", handler.GetContainerLogsWS)
-	apiGroup.GET("/:id/stacks/:stackId/logs/ws", handler.GetStackLogsWS)
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
 		apiGroup.GET("", handler.ListEnvironments)
@@ -89,6 +88,7 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/containers/:containerId/logs", handler.GetContainerLogs)
 		apiGroup.GET("/:id/containers/:containerId/stats", handler.GetContainerStats)
 		apiGroup.GET("/:id/containers/:containerId/stats/stream", handler.GetContainerStatsStream)
+		apiGroup.GET("/:id/containers/:containerId/logs/ws", handler.GetContainerLogsWS)
 
 		apiGroup.GET("/:id/images", handler.GetImages)
 		apiGroup.GET("/:id/images/:imageId", handler.GetImage)
@@ -123,6 +123,7 @@ func NewEnvironmentHandler(
 		apiGroup.POST("/:id/stacks/:stackId/redeploy", handler.RedeployStack)
 		apiGroup.POST("/:id/stacks/:stackId/down", handler.DownStack)
 		apiGroup.DELETE("/:id/stacks/:stackId/destroy", handler.DestroyStack)
+		apiGroup.GET("/:id/stacks/:stackId/logs/ws", handler.GetStackLogsWS)
 
 		apiGroup.GET("/:id/image-updates/check", handler.CheckImageUpdate)
 		apiGroup.GET("/:id/image-updates/check/:imageId", handler.CheckImageUpdateByID)
@@ -1035,7 +1036,7 @@ func (h *EnvironmentHandler) GetStackLogsWS(c *gin.Context) {
 	} else {
 		u.Scheme = "ws"
 	}
-	u.Path = "/api/environments/" + LOCAL_DOCKER_ENVIRONMENT_ID + "/stacks/" + stackId + "/logs/ws"
+	u.Path = path.Join(u.Path, "/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/stacks/"+stackId+"/logs/ws")
 	u.RawQuery = c.Request.URL.RawQuery
 
 	hdr := http.Header{}
@@ -1082,7 +1083,7 @@ func (h *EnvironmentHandler) GetContainerLogsWS(c *gin.Context) {
 	} else {
 		u.Scheme = "ws"
 	}
-	u.Path = "/api/environments/" + LOCAL_DOCKER_ENVIRONMENT_ID + "/containers/" + containerID + "/logs/ws"
+	u.Path = path.Join(u.Path, "/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/containers/"+containerID+"/logs/ws")
 	u.RawQuery = c.Request.URL.RawQuery
 
 	hdr := http.Header{}
