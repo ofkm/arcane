@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -41,7 +40,6 @@ func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerC
 		apiGroup.POST("/:id/stop", handler.Stop)
 		apiGroup.POST("/:id/restart", handler.Restart)
 		apiGroup.GET("/:id/logs", handler.GetLogs)
-		apiGroup.GET("/:id/logs/stream", handler.GetLogsStream)
 		apiGroup.GET("/:id/logs/ws", handler.GetLogsWS)
 		apiGroup.DELETE("/:id", handler.Delete)
 
@@ -546,59 +544,6 @@ func (h *ContainerHandler) GetStatsStream(c *gin.Context) {
 				return false
 			}
 			c.SSEvent("stats", stats)
-			return true
-		case err, ok := <-errChan:
-			if !ok || err == nil {
-				// graceful shutdown or no error; stop streaming
-				return false
-			}
-			c.SSEvent("error", gin.H{"error": err.Error()})
-			return false
-		case <-c.Request.Context().Done():
-			return false
-		}
-	})
-}
-
-func (h *ContainerHandler) GetLogsStream(c *gin.Context) {
-	containerID := c.Param("containerId")
-	if containerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Container ID is required"},
-		})
-		return
-	}
-
-	follow := c.DefaultQuery("follow", "true") == "true"
-	tail := c.DefaultQuery("tail", "100")
-	since := c.Query("since")
-	timestamps := c.DefaultQuery("timestamps", "false") == "true"
-
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-
-	logsChan := make(chan string, 10)
-	errChan := make(chan error, 1)
-
-	go func() {
-		defer close(logsChan)
-		defer close(errChan)
-
-		if err := h.containerService.StreamLogs(c.Request.Context(), containerID, logsChan, follow, tail, since, timestamps); err != nil {
-			errChan <- err
-		}
-	}()
-
-	c.Stream(func(w io.Writer) bool {
-		select {
-		case logLine, ok := <-logsChan:
-			if !ok {
-				return false
-			}
-			c.SSEvent("log", gin.H{"data": logLine, "timestamp": time.Now()})
 			return true
 		case err, ok := <-errChan:
 			if !ok || err == nil {

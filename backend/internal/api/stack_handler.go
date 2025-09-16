@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -42,7 +41,6 @@ func NewStackHandler(group *gin.RouterGroup, stackService *services.StackService
 		apiGroup.POST("/:id/redeploy", handler.RedeployStack)
 		apiGroup.POST("/:id/down", handler.DownStack)
 		apiGroup.DELETE("/:id/destroy", handler.DestroyStack)
-		apiGroup.GET("/:id/logs/stream", handler.GetStackLogsStream)
 		apiGroup.GET("/:id/logs/ws", handler.GetStackLogsWS)
 	}
 }
@@ -572,65 +570,6 @@ func (h *StackHandler) PullImages(c *gin.Context) {
 		})
 		return
 	}
-}
-
-func (h *StackHandler) GetStackLogsStream(c *gin.Context) {
-	stackID := c.Param("stackId")
-	if stackID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Stack ID is required",
-		})
-		return
-	}
-
-	follow := c.DefaultQuery("follow", "true") == "true"
-	tail := c.DefaultQuery("tail", "100")
-	since := c.Query("since")
-	timestamps := c.DefaultQuery("timestamps", "false") == "true"
-
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-
-	logsChan := make(chan string, 100)
-	errChan := make(chan error, 1)
-
-	ctx, cancel := context.WithCancel(c.Request.Context())
-	defer cancel()
-
-	go func() {
-		defer close(logsChan)
-		defer close(errChan)
-
-		if err := h.stackService.StreamStackLogs(ctx, stackID, logsChan, follow, tail, since, timestamps); err != nil {
-			errChan <- err
-		}
-	}()
-
-	c.Stream(func(w io.Writer) bool {
-		select {
-		case logLine, ok := <-logsChan:
-			if !ok {
-				return false
-			}
-			parsedLog := h.parseStackLogLine(logLine)
-			c.SSEvent("log", parsedLog)
-			return true
-		case err, ok := <-errChan:
-			if !ok || err == nil {
-				return false
-			}
-			c.SSEvent("error", gin.H{"error": err.Error()})
-			return false
-		case <-ctx.Done():
-			return false
-		case <-time.After(30 * time.Second):
-			c.SSEvent("ping", gin.H{"message": "keepalive"})
-			return true
-		}
-	})
 }
 
 func (h *StackHandler) parseStackLogLine(logLine string) gin.H {

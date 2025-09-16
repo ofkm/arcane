@@ -87,7 +87,6 @@ func NewEnvironmentHandler(
 		apiGroup.POST("/:id/containers/:containerId/restart", handler.RestartContainer)
 		apiGroup.DELETE("/:id/containers/:containerId", handler.RemoveContainer)
 		apiGroup.GET("/:id/containers/:containerId/logs", handler.GetContainerLogs)
-		apiGroup.GET("/:id/containers/:containerId/logs/stream", handler.GetContainerLogsStream)
 		apiGroup.GET("/:id/containers/:containerId/stats", handler.GetContainerStats)
 		apiGroup.GET("/:id/containers/:containerId/stats/stream", handler.GetContainerStatsStream)
 
@@ -124,7 +123,6 @@ func NewEnvironmentHandler(
 		apiGroup.POST("/:id/stacks/:stackId/redeploy", handler.RedeployStack)
 		apiGroup.POST("/:id/stacks/:stackId/down", handler.DownStack)
 		apiGroup.DELETE("/:id/stacks/:stackId/destroy", handler.DestroyStack)
-		apiGroup.GET("/:id/stacks/:stackId/logs/stream", handler.GetStackLogsStream)
 
 		apiGroup.GET("/:id/image-updates/check", handler.CheckImageUpdate)
 		apiGroup.GET("/:id/image-updates/check/:imageId", handler.CheckImageUpdateByID)
@@ -322,9 +320,6 @@ func (h *EnvironmentHandler) handleContainerEndpoints(c *gin.Context, endpoint s
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs/ws"):
 		containerHandler.GetLogsWS(c)
 		return true
-	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs/stream"):
-		containerHandler.GetLogsStream(c)
-		return true
 	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs"):
 		containerHandler.GetLogs(c)
 		return true
@@ -464,9 +459,6 @@ func (h *EnvironmentHandler) handleStackEndpoints(c *gin.Context, endpoint strin
 		return true
 	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/destroy"):
 		stackHandler.DestroyStack(c)
-		return true
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/logs/stream"):
-		stackHandler.GetStackLogsStream(c)
 		return true
 	case strings.HasSuffix(endpoint, "/logs/ws"):
 		stackHandler.GetStackLogsWS(c)
@@ -903,11 +895,6 @@ func (h *EnvironmentHandler) GetContainerStatsStream(c *gin.Context) {
 	h.routeRequest(c, "/containers/"+containerID+"/stats/stream")
 }
 
-func (h *EnvironmentHandler) GetContainerLogsStream(c *gin.Context) {
-	containerID := c.Param("containerId")
-	h.routeRequest(c, "/containers/"+containerID+"/logs/stream")
-}
-
 // End Containers
 
 // Images
@@ -1021,11 +1008,6 @@ func (h *EnvironmentHandler) DownStack(c *gin.Context) {
 func (h *EnvironmentHandler) DestroyStack(c *gin.Context) {
 	stackId := c.Param("stackId")
 	h.routeRequest(c, "/stacks/"+stackId+"/destroy")
-}
-
-func (h *EnvironmentHandler) GetStackLogsStream(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId+"/logs/stream")
 }
 
 func (h *EnvironmentHandler) GetStackLogsWS(c *gin.Context) {

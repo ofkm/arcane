@@ -273,22 +273,6 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectId}/restart`));
 	}
 
-	async getProjectLogs(projectId: string): Promise<string> {
-		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ logs?: string }>(
-			this.api.get(`/environments/${envId}/stacks/${projectId}/logs`)
-		);
-		return response.logs || '';
-	}
-
-	async deployProjectWithOptions(
-		projectName: string,
-		options?: { profiles?: string[]; envOverrides?: Record<string, string> }
-	): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectName}/deploy`, options || {}));
-	}
-
 	async downProject(projectName: string): Promise<Project> {
 		const envId = await this.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectName}/down`));
