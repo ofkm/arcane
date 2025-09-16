@@ -4,20 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
 type StackHandler struct {
 	stackService *services.StackService
+	logStreams   sync.Map // map[string]*logStream
 }
 
 func NewStackHandler(group *gin.RouterGroup, stackService *services.StackService, authMiddleware *middleware.AuthMiddleware) {
@@ -38,8 +41,67 @@ func NewStackHandler(group *gin.RouterGroup, stackService *services.StackService
 		apiGroup.POST("/:id/redeploy", handler.RedeployStack)
 		apiGroup.POST("/:id/down", handler.DownStack)
 		apiGroup.DELETE("/:id/destroy", handler.DestroyStack)
-		apiGroup.GET("/:id/logs/stream", handler.GetStackLogsStream)
+		apiGroup.GET("/:id/logs/ws", handler.GetStackLogsWS)
 	}
+}
+
+var wsUpgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+type projectLogStream struct {
+	hub    *ws.Hub
+	once   sync.Once
+	cancel context.CancelFunc
+}
+
+func (h *StackHandler) getOrStartStackLogHub(stackID string, follow bool, tail, since string, timestamps bool) *ws.Hub {
+	v, _ := h.logStreams.LoadOrStore(stackID, &projectLogStream{
+		hub: ws.NewHub(1024),
+	})
+	ls := v.(*projectLogStream)
+
+	ls.once.Do(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		ls.cancel = cancel
+
+		go ls.hub.Run(ctx)
+
+		lines := make(chan string, 256)
+		go func() {
+			defer close(lines)
+			_ = h.stackService.StreamStackLogs(ctx, stackID, lines, follow, tail, since, timestamps)
+		}()
+		go ws.ForwardLines(ctx, ls.hub, lines)
+	})
+
+	return ls.hub
+}
+
+// WebSocket endpoint: /api/stacks/:id/logs/ws and /api/environments/:id/stacks/:stackId/logs/ws
+func (h *StackHandler) GetStackLogsWS(c *gin.Context) {
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
+	if strings.TrimSpace(stackID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Stack ID is required"})
+		return
+	}
+
+	follow := c.DefaultQuery("follow", "true") == "true"
+	tail := c.DefaultQuery("tail", "100")
+	since := c.Query("since")
+	timestamps := c.DefaultQuery("timestamps", "false") == "true"
+
+	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	hub := h.getOrStartStackLogHub(stackID, follow, tail, since, timestamps)
+
+	// don't use the request context here; it is canceled when handler returns.
+	ws.ServeClient(context.Background(), hub, conn)
 }
 
 func (h *StackHandler) ListStacks(c *gin.Context) {
@@ -504,102 +566,6 @@ func (h *StackHandler) PullImages(c *gin.Context) {
 			"error":   err.Error(),
 		})
 		return
-	}
-}
-
-func (h *StackHandler) GetStackLogsStream(c *gin.Context) {
-	stackID := c.Param("stackId")
-	if stackID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Stack ID is required",
-		})
-		return
-	}
-
-	follow := c.DefaultQuery("follow", "true") == "true"
-	tail := c.DefaultQuery("tail", "100")
-	since := c.Query("since")
-	timestamps := c.DefaultQuery("timestamps", "false") == "true"
-
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-
-	logsChan := make(chan string, 100)
-	errChan := make(chan error, 1)
-
-	ctx, cancel := context.WithCancel(c.Request.Context())
-	defer cancel()
-
-	go func() {
-		defer close(logsChan)
-		defer close(errChan)
-
-		if err := h.stackService.StreamStackLogs(ctx, stackID, logsChan, follow, tail, since, timestamps); err != nil {
-			errChan <- err
-		}
-	}()
-
-	c.Stream(func(w io.Writer) bool {
-		select {
-		case logLine, ok := <-logsChan:
-			if !ok {
-				return false
-			}
-			parsedLog := h.parseStackLogLine(logLine)
-			c.SSEvent("log", parsedLog)
-			return true
-		case err, ok := <-errChan:
-			if !ok || err == nil {
-				return false
-			}
-			c.SSEvent("error", gin.H{"error": err.Error()})
-			return false
-		case <-ctx.Done():
-			return false
-		case <-time.After(30 * time.Second):
-			c.SSEvent("ping", gin.H{"message": "keepalive"})
-			return true
-		}
-	})
-}
-
-func (h *StackHandler) parseStackLogLine(logLine string) gin.H {
-	var service, message, timestamp string
-	var level = "info"
-
-	if strings.HasPrefix(logLine, "[STDERR] ") {
-		level = "stderr"
-		logLine = strings.TrimPrefix(logLine, "[STDERR] ")
-	}
-
-	parts := strings.SplitN(logLine, " ", 2)
-	if len(parts) == 2 && strings.Contains(parts[0], "T") && strings.Contains(parts[0], "Z") {
-		timestamp = parts[0]
-		logLine = parts[1]
-	} else {
-		timestamp = time.Now().Format(time.RFC3339Nano)
-	}
-
-	if strings.Contains(logLine, " | ") {
-		serviceParts := strings.SplitN(logLine, " | ", 2)
-		if len(serviceParts) == 2 {
-			service = strings.TrimSpace(serviceParts[0])
-			message = serviceParts[1]
-		} else {
-			message = logLine
-		}
-	} else {
-		message = logLine
-	}
-
-	return gin.H{
-		"level":     level,
-		"message":   message,
-		"timestamp": timestamp,
-		"service":   service,
 	}
 }
 

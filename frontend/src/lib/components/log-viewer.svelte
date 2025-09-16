@@ -46,6 +46,12 @@
 	let isStreaming = $state(false);
 	let error: string | null = $state(null);
 	let eventSource: EventSource | null = null;
+	let ws: WebSocket | null = null;
+	let currentStreamKey: string | null = null;
+	function streamKey() {
+		return type === 'stack' ? (stackId ? `stack:${stackId}` : null) : containerId ? `ctr:${containerId}` : null;
+	}
+
 	const humanType = type === 'stack' ? m.common_stack() : m.common_container();
 
 	const DOCKER_TS_ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z?\s*/;
@@ -64,6 +70,21 @@
 		return `${baseEndpoint}?follow=true&tail=100&timestamps=${showTimestamps}`;
 	}
 
+	function buildWebSocketEndpoint(path: string): string {
+		const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+		return `${protocol}://${window.location.host}${path}`;
+	}
+
+	async function buildLogWsEndpoint(): Promise<string> {
+		const currentEnv = get(environmentStore.selected);
+		const envId = currentEnv?.id || 'local';
+		const basePath =
+			type === 'stack'
+				? `/api/environments/${envId}/stacks/${stackId}/logs/ws`
+				: `/api/environments/${envId}/containers/${containerId}/logs/ws`;
+		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=100&timestamps=${showTimestamps}`);
+	}
+
 	export async function startLogStream() {
 		const targetId = type === 'stack' ? stackId : containerId;
 
@@ -73,87 +94,8 @@
 			isStreaming = true;
 			error = null;
 			onStart?.();
-
-			const endpoint = await buildLogStreamEndpoint();
-
-			eventSource = new EventSource(endpoint);
-
-			eventSource.addEventListener('log', (event) => {
-				try {
-					const logData = JSON.parse(event.data);
-
-					if (logData.message !== undefined) {
-						addLogEntry({
-							level: logData.level || 'info',
-							message: logData.message,
-							timestamp: logData.timestamp || new Date().toISOString(),
-							service: logData.service,
-							containerId: logData.containerId
-						});
-					} else if (logData.data !== undefined) {
-						addLogEntry({
-							level: logData.data.includes('[STDERR]') ? 'stderr' : 'stdout',
-							message: logData.data.replace('[STDERR] ', ''),
-							timestamp: logData.timestamp || new Date().toISOString(),
-							service: logData.service,
-							containerId: logData.containerId
-						});
-					}
-				} catch (parseError) {
-					console.error('Failed to parse log event data:', parseError, 'Raw data:', event.data);
-					addLogEntry({
-						level: 'info',
-						message: event.data,
-						timestamp: new Date().toISOString()
-					});
-				}
-			});
-
-			eventSource.onmessage = (event) => {
-				try {
-					const logData = JSON.parse(event.data);
-
-					if (logData.data) {
-						addLogEntry({
-							level: logData.data.includes('[STDERR]') ? 'stderr' : 'stdout',
-							message: logData.data.replace('[STDERR] ', ''),
-							timestamp: logData.timestamp || new Date().toISOString(),
-							service: logData.service,
-							containerId: logData.containerId
-						});
-					} else {
-						addLogEntry({
-							level: logData.level || 'info',
-							message: logData.message || logData.data || event.data,
-							timestamp: logData.timestamp || new Date().toISOString(),
-							service: logData.service,
-							containerId: logData.containerId
-						});
-					}
-				} catch (parseError) {
-					console.error('Failed to parse log data:', parseError, 'Raw data:', event.data);
-					addLogEntry({
-						level: 'info',
-						message: event.data,
-						timestamp: new Date().toISOString()
-					});
-				}
-			};
-
-			eventSource.onopen = () => {
-				if (dev) console.log(m.log_viewer_connected({ type: humanType }));
-				error = null;
-			};
-
-			eventSource.onerror = (event) => {
-				console.error('Log stream error:', event);
-				error = m.log_stream_connection_lost({ type: humanType });
-				isStreaming = false;
-
-				if (eventSource?.readyState === EventSource.CLOSED) {
-					error = m.log_stream_closed_by_server({ type: humanType });
-				}
-			};
+			await startWebSocketStream();
+			return;
 		} catch (err) {
 			console.error('Failed to start log stream:', err);
 			error = m.log_stream_failed_connect({ type: humanType });
@@ -161,11 +103,77 @@
 		}
 	}
 
+	async function startWebSocketStream() {
+		const url = await buildLogWsEndpoint();
+		ws = new WebSocket(url);
+
+		ws.onopen = () => {
+			if (dev) console.log(m.log_viewer_connected({ type: humanType }));
+			error = null;
+			isStreaming = true;
+		};
+
+		ws.onmessage = (evt) => {
+			const data = typeof evt.data === 'string' ? evt.data : '';
+			if (!data) return;
+			for (const line of data.split('\n')) {
+				if (!line.trim()) continue;
+				handleIncomingLine(line);
+			}
+		};
+
+		ws.onerror = (evt) => {
+			console.error('WebSocket log stream error:', evt);
+			error = m.log_stream_connection_lost({ type: humanType });
+		};
+
+		ws.onclose = () => {
+			isStreaming = false;
+			if (!error) {
+				error = m.log_stream_closed_by_server({ type: humanType });
+			}
+		};
+	}
+
+	function handleIncomingLine(raw: string) {
+		let level: LogEntry['level'] = raw.startsWith('[STDERR] ') ? 'stderr' : 'stdout';
+		let line = raw.replace('[STDERR] ', '');
+
+		// Try to extract "service | message" if present
+		let service: string | undefined;
+		if (line.includes(' | ')) {
+			const parts = line.split(' | ', 2);
+			if (parts.length === 2) {
+				service = parts[0].trim();
+				line = parts[1];
+			}
+		}
+
+		addLogEntry({
+			level,
+			message: line,
+			timestamp: new Date().toISOString(),
+			service
+		});
+	}
+
 	export function stopLogStream() {
 		if (eventSource) {
 			if (dev) console.log(m.log_viewer_stopping({ type: humanType }));
 			eventSource.close();
 			eventSource = null;
+		}
+		if (ws) {
+			try {
+				ws.onerror = null;
+				ws.onclose = null;
+				if (ws.readyState === WebSocket.CONNECTING) {
+					ws.addEventListener('open', () => ws?.close(), { once: true });
+				} else {
+					ws.close();
+				}
+			} catch {}
+			ws = null;
 		}
 		isStreaming = false;
 		onStop?.();
@@ -237,27 +245,15 @@
 		}
 	}
 
-	onMount(() => {
-		const targetId = type === 'stack' ? stackId : containerId;
-		if (targetId) {
-			startLogStream();
-			if (logContainer) {
-				logContainer.scrollTop = logContainer.scrollHeight;
-			}
-		}
-	});
-
-	onDestroy(() => {
-		stopLogStream();
-	});
-
 	$effect(() => {
-		const targetId = type === 'stack' ? stackId : containerId;
-		if (targetId) {
-			stopLogStream();
-			logs = [];
-			startLogStream();
-		}
+		if (!browser) return;
+		const key = streamKey();
+		if (!key) return;
+		if (key === currentStreamKey && isStreaming) return;
+		if (currentStreamKey) stopLogStream();
+		logs = [];
+		currentStreamKey = key;
+		startLogStream();
 	});
 </script>
 
@@ -318,8 +314,8 @@
 	</div>
 </div>
 
-<style>
+<!-- <style>
 	.log-viewer {
 		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 	}
-</style>
+</style> -->
