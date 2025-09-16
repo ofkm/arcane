@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
@@ -17,6 +18,10 @@ import (
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 )
+
+var sysWsUpgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
 
 type SystemHandler struct {
 	dockerService *services.DockerClientService
@@ -29,9 +34,8 @@ func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 	apiGroup := group.Group("/system")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
-		apiGroup.GET("/stats", handler.GetStats)
+		apiGroup.GET("/stats/ws", handler.GetStatsWS)
 		apiGroup.GET("/docker/info", handler.GetDockerInfo)
-
 		apiGroup.POST("/prune", handler.PruneAll)
 		apiGroup.POST("/containers/start-all", handler.StartAllContainers)
 		apiGroup.POST("/containers/start-stopped", handler.StartAllStoppedContainers)
@@ -49,72 +53,6 @@ type SystemStats struct {
 	Architecture string  `json:"architecture"`
 	Platform     string  `json:"platform"`
 	Hostname     string  `json:"hostname,omitempty"`
-}
-
-func (h *SystemHandler) GetStats(c *gin.Context) {
-	cpuPercent, err := cpu.Percent(time.Second, false)
-	var cpuUsage float64
-	if err != nil || len(cpuPercent) == 0 {
-		cpuUsage = 0
-	} else {
-		cpuUsage = cpuPercent[0]
-	}
-
-	cpuCount, err := cpu.Counts(true)
-	if err != nil {
-		cpuCount = runtime.NumCPU()
-	}
-
-	memInfo, err := mem.VirtualMemory()
-	var memoryUsage, memoryTotal uint64
-	if err != nil {
-		memoryUsage = 0
-		memoryTotal = 0
-	} else {
-		memoryUsage = memInfo.Used
-		memoryTotal = memInfo.Total
-	}
-
-	diskInfo, err := disk.Usage("/")
-	var diskUsage, diskTotal uint64
-	if err != nil {
-		diskUsage = 0
-		diskTotal = 0
-	} else {
-		diskUsage = diskInfo.Used
-		diskTotal = diskInfo.Total
-	}
-
-	hostInfo, err := host.Info()
-	var hostname string
-	if err == nil {
-		hostname = hostInfo.Hostname
-	}
-
-	stats := SystemStats{
-		CPUUsage:     cpuUsage,
-		MemoryUsage:  memoryUsage,
-		MemoryTotal:  memoryTotal,
-		DiskUsage:    diskUsage,
-		DiskTotal:    diskTotal,
-		CPUCount:     cpuCount,
-		Architecture: runtime.GOARCH,
-		Platform:     runtime.GOOS,
-		Hostname:     hostname,
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success":      true,
-		"cpuUsage":     stats.CPUUsage,
-		"memoryUsage":  stats.MemoryUsage,
-		"memoryTotal":  stats.MemoryTotal,
-		"diskUsage":    stats.DiskUsage,
-		"diskTotal":    stats.DiskTotal,
-		"cpuCount":     stats.CPUCount,
-		"architecture": stats.Architecture,
-		"platform":     stats.Platform,
-		"hostname":     stats.Hostname,
-	})
 }
 
 func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
@@ -324,4 +262,90 @@ func (h *SystemHandler) StopAllContainers(c *gin.Context) {
 		"message": "Container stop operation completed",
 		"data":    result,
 	})
+}
+
+func (h *SystemHandler) GetStatsWS(c *gin.Context) {
+	conn, err := sysWsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	sendStats := func() error {
+		cpuPercent, err := cpu.Percent(time.Second, false)
+		var cpuUsage float64
+		if err != nil || len(cpuPercent) == 0 {
+			cpuUsage = 0
+		} else {
+			cpuUsage = cpuPercent[0]
+		}
+
+		cpuCount, err := cpu.Counts(true)
+		if err != nil {
+			cpuCount = runtime.NumCPU()
+		}
+
+		memInfo, err := mem.VirtualMemory()
+		var memoryUsage, memoryTotal uint64
+		if err != nil {
+			memoryUsage = 0
+			memoryTotal = 0
+		} else {
+			memoryUsage = memInfo.Used
+			memoryTotal = memInfo.Total
+		}
+
+		diskInfo, err := disk.Usage("/")
+		var diskUsage, diskTotal uint64
+		if err != nil {
+			diskUsage = 0
+			diskTotal = 0
+		} else {
+			diskUsage = diskInfo.Used
+			diskTotal = diskInfo.Total
+		}
+
+		hostInfo, err := host.Info()
+		var hostname string
+		if err == nil {
+			hostname = hostInfo.Hostname
+		}
+
+		stats := SystemStats{
+			CPUUsage:     cpuUsage,
+			MemoryUsage:  memoryUsage,
+			MemoryTotal:  memoryTotal,
+			DiskUsage:    diskUsage,
+			DiskTotal:    diskTotal,
+			CPUCount:     cpuCount,
+			Architecture: runtime.GOARCH,
+			Platform:     runtime.GOOS,
+			Hostname:     hostname,
+		}
+
+		// write as JSON text message
+		_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		return conn.WriteJSON(stats)
+	}
+
+	// initial send
+	if err := sendStats(); err != nil {
+		slog.Debug("failed to send initial system stats websocket", "err", err)
+		return
+	}
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return
+		case <-ticker.C:
+			if err := sendStats(); err != nil {
+				slog.Debug("failed to send system stats websocket", "err", err)
+				return
+			}
+		}
+	}
 }

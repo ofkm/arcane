@@ -4,6 +4,7 @@
 	import { get } from 'svelte/store';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import { m } from '$lib/paraglide/messages';
+	import { ReconnectingWebSocket } from '$lib/utils/ws';
 
 	interface LogEntry {
 		timestamp: string;
@@ -46,7 +47,7 @@
 	let isStreaming = $state(false);
 	let error: string | null = $state(null);
 	let eventSource: EventSource | null = null;
-	let ws: WebSocket | null = null;
+	let wsClient: ReconnectingWebSocket<string> | null = null;
 	let currentStreamKey: string | null = null;
 	function streamKey() {
 		return type === 'stack' ? (stackId ? `stack:${stackId}` : null) : containerId ? `ctr:${containerId}` : null;
@@ -106,35 +107,39 @@
 	}
 
 	async function startWebSocketStream() {
-		const url = await buildLogWsEndpoint();
-		ws = new WebSocket(url);
+		wsClient = new ReconnectingWebSocket<string>({
+			buildUrl: async () => {
+				return await buildLogWsEndpoint();
+			},
+			parseMessage: (evt) => {
+				return typeof evt.data === 'string' ? evt.data : '';
+			},
+			onOpen: () => {
+				if (dev) console.log(m.log_viewer_connected({ type: humanType }));
+				error = null;
+				isStreaming = true;
+			},
+			onMessage: (payload) => {
+				if (!payload) return;
+				for (const line of payload.split('\n')) {
+					if (!line.trim()) continue;
+					handleIncomingLine(line);
+				}
+			},
+			onError: (e) => {
+				console.error('WebSocket log stream error:', e);
+				error = m.log_stream_connection_lost({ type: humanType });
+			},
+			onClose: () => {
+				isStreaming = false;
+				if (!error) {
+					error = m.log_stream_closed_by_server({ type: humanType });
+				}
+			},
+			maxBackoff: 10000
+		});
 
-		ws.onopen = () => {
-			if (dev) console.log(m.log_viewer_connected({ type: humanType }));
-			error = null;
-			isStreaming = true;
-		};
-
-		ws.onmessage = (evt) => {
-			const data = typeof evt.data === 'string' ? evt.data : '';
-			if (!data) return;
-			for (const line of data.split('\n')) {
-				if (!line.trim()) continue;
-				handleIncomingLine(line);
-			}
-		};
-
-		ws.onerror = (evt) => {
-			console.error('WebSocket log stream error:', evt);
-			error = m.log_stream_connection_lost({ type: humanType });
-		};
-
-		ws.onclose = () => {
-			isStreaming = false;
-			if (!error) {
-				error = m.log_stream_closed_by_server({ type: humanType });
-			}
-		};
+		await wsClient.connect();
 	}
 
 	function handleIncomingLine(raw: string) {
@@ -165,17 +170,11 @@
 			eventSource.close();
 			eventSource = null;
 		}
-		if (ws) {
+		if (wsClient) {
 			try {
-				ws.onerror = null;
-				ws.onclose = null;
-				if (ws.readyState === WebSocket.CONNECTING) {
-					ws.addEventListener('open', () => ws?.close(), { once: true });
-				} else {
-					ws.close();
-				}
+				wsClient.close();
 			} catch {}
-			ws = null;
+			wsClient = null;
 		}
 		isStreaming = false;
 		onStop?.();

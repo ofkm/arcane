@@ -137,6 +137,8 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/updater/history", handler.UpdaterHistory)
 
 		apiGroup.POST("/:id/agent/pair", handler.PairAgent)
+
+		apiGroup.GET("/:id/stats/ws", handler.GetStatsWS)
 	}
 }
 
@@ -1092,6 +1094,68 @@ func (h *EnvironmentHandler) GetContainerLogsWS(c *gin.Context) {
 	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
 		hdr.Set("Authorization", "Bearer "+cookieToken)
 	}
+	if environment.AccessToken != nil && *environment.AccessToken != "" {
+		hdr.Set("X-Arcane-Agent-Token", *environment.AccessToken)
+	}
+
+	_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
+}
+
+func (h *EnvironmentHandler) GetStatsWS(c *gin.Context) {
+	envID := c.Param("id")
+
+	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
+		u := &url.URL{}
+		if c.Request.TLS != nil {
+			u.Scheme = "wss"
+		} else {
+			u.Scheme = "ws"
+		}
+		u.Host = c.Request.Host
+		u.Path = "/api/system/stats/ws"
+		u.RawQuery = c.Request.URL.RawQuery
+
+		hdr := http.Header{}
+		// Forward auth if present (or promote cookie)
+		if auth := c.GetHeader("Authorization"); auth != "" {
+			hdr.Set("Authorization", auth)
+		} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
+			hdr.Set("Authorization", "Bearer "+cookieToken)
+		}
+
+		_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
+		return
+	}
+
+	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
+	if err != nil || environment == nil || !environment.Enabled {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
+		return
+	}
+
+	u, err := url.Parse(strings.TrimRight(environment.ApiUrl, "/"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid environment URL"}})
+		return
+	}
+
+	// websocket scheme
+	if u.Scheme == "https" {
+		u.Scheme = "wss"
+	} else {
+		u.Scheme = "ws"
+	}
+	u.Path = path.Join(u.Path, "/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/stats/ws")
+	u.RawQuery = c.Request.URL.RawQuery
+
+	hdr := http.Header{}
+	// Forward auth if present
+	if auth := c.GetHeader("Authorization"); auth != "" {
+		hdr.Set("Authorization", auth)
+	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
+		hdr.Set("Authorization", "Bearer "+cookieToken)
+	}
+	// Agent token
 	if environment.AccessToken != nil && *environment.AccessToken != "" {
 		hdr.Set("X-Arcane-Agent-Token", *environment.AccessToken)
 	}
