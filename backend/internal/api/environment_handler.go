@@ -1106,11 +1106,26 @@ func (h *EnvironmentHandler) GetStatsWS(c *gin.Context) {
 
 	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
 		u := &url.URL{}
-		if c.Request.TLS != nil {
-			u.Scheme = "wss"
+
+		xfp := strings.TrimSpace(c.GetHeader("X-Forwarded-Proto"))
+		if xfp != "" {
+			if idx := strings.Index(xfp, ","); idx != -1 {
+				xfp = xfp[:idx]
+			}
+			if strings.HasPrefix(strings.ToLower(xfp), "https") {
+				u.Scheme = "wss"
+			} else {
+				u.Scheme = "ws"
+			}
 		} else {
-			u.Scheme = "ws"
+
+			if c.Request.TLS != nil {
+				u.Scheme = "wss"
+			} else {
+				u.Scheme = "ws"
+			}
 		}
+
 		u.Host = c.Request.Host
 		u.Path = "/api/system/stats/ws"
 		u.RawQuery = c.Request.URL.RawQuery
