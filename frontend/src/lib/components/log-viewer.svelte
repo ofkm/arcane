@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { browser, dev } from '$app/environment';
+	import { dev } from '$app/environment';
 	import { get } from 'svelte/store';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import { m } from '$lib/paraglide/messages';
@@ -52,9 +52,7 @@
 	const DOCKER_TS_SLASH_RE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s*/;
 
 	async function buildLogStreamEndpoint(): Promise<string> {
-		if (browser) {
-			await environmentStore.ready;
-		}
+		await environmentStore.ready;
 		const currentEnvironment = get(environmentStore.selected);
 		const envId = currentEnvironment?.id || 'local';
 
@@ -69,7 +67,7 @@
 	export async function startLogStream() {
 		const targetId = type === 'stack' ? stackId : containerId;
 
-		if (!targetId || !browser) return;
+		if (!targetId) return;
 
 		try {
 			isStreaming = true;
@@ -243,6 +241,9 @@
 		const targetId = type === 'stack' ? stackId : containerId;
 		if (targetId) {
 			startLogStream();
+			if (logContainer) {
+				logContainer.scrollTop = logContainer.scrollHeight;
+			}
 		}
 	});
 
@@ -252,7 +253,7 @@
 
 	$effect(() => {
 		const targetId = type === 'stack' ? stackId : containerId;
-		if (targetId && browser) {
+		if (targetId) {
 			stopLogStream();
 			logs = [];
 			startLogStream();

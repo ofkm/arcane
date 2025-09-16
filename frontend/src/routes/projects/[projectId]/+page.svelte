@@ -6,10 +6,10 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
-	import CircleAlertIcon from '@lucide/svelte/icons/alert-circle';
 	import FileStackIcon from '@lucide/svelte/icons/file-stack';
 	import LayersIcon from '@lucide/svelte/icons/layers';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import LogsIcon from '@lucide/svelte/icons/logs';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { getStatusVariant } from '$lib/utils/status.utils';
@@ -21,7 +21,6 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { z } from 'zod/v4';
 	import { createForm } from '$lib/utils/form.utils';
-	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { m } from '$lib/paraglide/messages';
 	import { PersistedState } from 'runed';
 	import EditableName from '../components/EditableName.svelte';
@@ -157,10 +156,10 @@
 	}
 </script>
 
-<div class="bg-background min-h-screen">
+<div class="bg-background flex h-full flex-col overflow-hidden overscroll-y-none">
 	{#if project}
-		<Tabs.Root value={selectedTab} class="w-full">
-			<div class="bg-background/90 sticky top-0 z-30 border-b backdrop-blur">
+		<Tabs.Root value={selectedTab} class="flex min-h-0 w-full flex-1 flex-col">
+			<div class="bg-background sticky top-0 z-30 flex-shrink-0 border-b backdrop-blur">
 				<div class="mx-auto max-w-full px-4 py-3">
 					<div class="flex items-center justify-between gap-3">
 						<div class="flex min-w-0 items-center gap-3">
@@ -216,8 +215,8 @@
 						</div>
 					</div>
 
-					<div class="mt-3">
-						<Tabs.List class="w-full justify-start gap-1">
+					<div class="mt-4">
+						<Tabs.List class="w-full justify-start gap-4">
 							<Tabs.Trigger
 								value="services"
 								class="gap-2"
@@ -256,6 +255,7 @@
 									persistPrefs();
 								}}
 							>
+								<LogsIcon class="size-4" />
 								{m.compose_nav_logs()}
 							</Tabs.Trigger>
 						</Tabs.List>
@@ -263,61 +263,48 @@
 				</div>
 			</div>
 
-			{#if data.error}
-				<div class="max-w-full px-4 py-4">
-					<Alert.Root variant="destructive">
-						<CircleAlertIcon class="size-4" />
-						<Alert.Title>{m.compose_error_loading_stack_title()}</Alert.Title>
-						<Alert.Description>{data.error}</Alert.Description>
-					</Alert.Root>
+			<div class="min-h-0 flex-1 overflow-hidden">
+				<div class="h-full px-4 py-4">
+					<Tabs.Content value="services" class="h-full min-h-0">
+						<ServicesGrid services={project.services} />
+					</Tabs.Content>
+
+					<Tabs.Content value="compose" class="h-full min-h-0">
+						<div class="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-3" style="grid-template-rows: 1fr;">
+							<div class="h-full min-h-0 lg:col-span-2">
+								<CodePanel
+									bind:open={composeOpen}
+									title={m.compose_compose_file_title()}
+									language="yaml"
+									bind:value={$inputs.composeContent.value}
+									placeholder={m.compose_compose_placeholder()}
+									error={$inputs.composeContent.error ?? undefined}
+								/>
+							</div>
+
+							<div class="h-full min-h-0 lg:col-span-1">
+								<CodePanel
+									bind:open={envOpen}
+									title={m.compose_env_title()}
+									language="env"
+									bind:value={$inputs.envContent.value}
+									placeholder={m.compose_env_placeholder()}
+									error={$inputs.envContent.error ?? undefined}
+								/>
+							</div>
+						</div>
+					</Tabs.Content>
+
+					<Tabs.Content value="logs" class="h-full min-h-0">
+						{#if project.status == 'running'}
+							<div class="h-full min-h-0">
+								<StackLogsPanel stackId={project.id} bind:autoScroll={autoScrollStackLogs} />
+							</div>
+						{:else}
+							<div class="text-muted-foreground py-12 text-center">{m.compose_logs_title()} Unavailable</div>
+						{/if}
+					</Tabs.Content>
 				</div>
-			{/if}
-
-			<div class="mx-auto max-w-none px-4 py-4">
-				<Tabs.Content value="services" class="mt-2">
-					<ServicesGrid services={project.services} />
-				</Tabs.Content>
-
-				<Tabs.Content value="compose" class="mt-2">
-					<div class="mb-4 flex items-center justify-between">
-						<div class="flex items-center gap-2">
-							<SettingsIcon class="size-5" />
-							<h2 class="text-xl font-semibold">{m.compose_configuration_title()}</h2>
-						</div>
-					</div>
-
-					<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-						<div class="lg:col-span-2">
-							<CodePanel
-								bind:open={composeOpen}
-								title={m.compose_compose_file_title()}
-								language="yaml"
-								bind:value={$inputs.composeContent.value}
-								placeholder={m.compose_compose_placeholder()}
-								error={$inputs.composeContent.error ?? undefined}
-							/>
-						</div>
-
-						<div class="lg:col-span-1">
-							<CodePanel
-								bind:open={envOpen}
-								title={m.compose_env_title()}
-								language="env"
-								bind:value={$inputs.envContent.value}
-								placeholder={m.compose_env_placeholder()}
-								error={$inputs.envContent.error ?? undefined}
-							/>
-						</div>
-					</div>
-				</Tabs.Content>
-
-				<Tabs.Content value="logs" class="mt-2">
-					{#if project.status == 'running'}
-						<StackLogsPanel stackId={project.id} bind:autoScroll={autoScrollStackLogs} />
-					{:else}
-						<div class="text-muted-foreground py-12 text-center">{m.compose_logs_title()} Unavailable</div>
-					{/if}
-				</Tabs.Content>
 			</div>
 		</Tabs.Root>
 	{:else if !data.error}
@@ -330,7 +317,7 @@
 				<p class="text-muted-foreground mb-8 max-w-md text-center">
 					{m.compose_not_found_description()}
 				</p>
-				<Button variant="outline" href="/compose">
+				<Button variant="outline" href="/projects">
 					<ArrowLeftIcon class="mr-2 size-4" />
 					{m.compose_back_to_projects()}
 				</Button>
@@ -340,3 +327,9 @@
 
 	<Tooltip.Provider />
 </div>
+
+<style>
+	:global(.tab-body) {
+		height: calc(100dvh - 152px);
+	}
+</style>

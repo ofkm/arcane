@@ -166,6 +166,7 @@
 			<Tooltip.Content
 				side="right"
 				class="tooltip-with-arrow relative max-w-[280px] rounded-xl border border-gray-200/50 bg-white/95 p-0 shadow-2xl shadow-black/10 backdrop-blur-sm dark:border-gray-800/50 dark:bg-gray-950/95 dark:shadow-black/30"
+				arrowClasses="bg-popover"
 				align="center"
 			>
 				<div class="overflow-hidden rounded-xl">
@@ -405,6 +406,7 @@
 			<Tooltip.Content
 				side="right"
 				class="tooltip-with-arrow relative max-w-[220px] rounded-xl border border-gray-200/50 bg-white/95 p-0 shadow-2xl shadow-black/10 backdrop-blur-sm dark:border-gray-800/50 dark:bg-gray-950/95 dark:shadow-black/30"
+				arrowClasses="bg-popover"
 				align="center"
 			>
 				<div class="overflow-hidden rounded-xl">
@@ -452,6 +454,7 @@
 			<Tooltip.Content
 				side="right"
 				class="tooltip-with-arrow relative max-w-[240px] rounded-xl border border-gray-200/50 bg-white/95 p-0 shadow-2xl shadow-black/10 backdrop-blur-sm dark:border-gray-800/50 dark:bg-gray-950/95 dark:shadow-black/30"
+				arrowClasses="bg-popover"
 				align="center"
 			>
 				<div class="overflow-hidden rounded-xl">

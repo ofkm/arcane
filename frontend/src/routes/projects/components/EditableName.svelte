@@ -5,6 +5,7 @@
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import { tick } from 'svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		value = $bindable(),
@@ -58,10 +59,10 @@
 			disabled={!canEdit}
 		/>
 	{:else}
-		<h1 class="max-w-[360px]">
+		<h1 class="m-0 max-w-[360px]">
 			<button
 				type="button"
-				class="w-full truncate bg-transparent px-0 py-0 text-left text-lg font-semibold"
+				class="w-full truncate bg-transparent px-0 py-0 text-left text-lg font-semibold leading-none"
 				title={value}
 				onclick={beginEdit}
 				disabled={!canEdit}
@@ -83,11 +84,11 @@
 		{:else}
 			<Tooltip.Root>
 				<Tooltip.Trigger>
-					<span class="text-muted-foreground inline-flex cursor-help items-center">
-						<InfoIcon class="size-4" />
+					<span class="text-muted-foreground inline-flex cursor-help items-center leading-none">
+						<InfoIcon class="relative top-0.5 size-4 shrink-0" />
 					</span>
 				</Tooltip.Trigger>
-				<Tooltip.Content>Changing name is not allowed while running</Tooltip.Content>
+				<Tooltip.Content>{m.compose_name_change_not_allowed()}</Tooltip.Content>
 			</Tooltip.Root>
 		{/if}
 	{/if}
