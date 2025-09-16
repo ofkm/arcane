@@ -572,43 +572,6 @@ func (h *StackHandler) PullImages(c *gin.Context) {
 	}
 }
 
-func (h *StackHandler) parseStackLogLine(logLine string) gin.H {
-	var service, message, timestamp string
-	var level = "info"
-
-	if strings.HasPrefix(logLine, "[STDERR] ") {
-		level = "stderr"
-		logLine = strings.TrimPrefix(logLine, "[STDERR] ")
-	}
-
-	parts := strings.SplitN(logLine, " ", 2)
-	if len(parts) == 2 && strings.Contains(parts[0], "T") && strings.Contains(parts[0], "Z") {
-		timestamp = parts[0]
-		logLine = parts[1]
-	} else {
-		timestamp = time.Now().Format(time.RFC3339Nano)
-	}
-
-	if strings.Contains(logLine, " | ") {
-		serviceParts := strings.SplitN(logLine, " | ", 2)
-		if len(serviceParts) == 2 {
-			service = strings.TrimSpace(serviceParts[0])
-			message = serviceParts[1]
-		} else {
-			message = logLine
-		}
-	} else {
-		message = logLine
-	}
-
-	return gin.H{
-		"level":     level,
-		"message":   message,
-		"timestamp": timestamp,
-		"service":   service,
-	}
-}
-
 func (h *StackHandler) GetProjectStatusCounts(c *gin.Context) {
 	_, running, stopped, total, err := h.stackService.GetProjectStatusCounts(c.Request.Context())
 	if err != nil {

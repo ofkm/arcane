@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"io"
 	"net/http"
 	"time"
 
@@ -23,7 +24,12 @@ func ProxyHTTP(w http.ResponseWriter, r *http.Request, remoteWS string, header h
 		Proxy:            http.ProxyFromEnvironment,
 		HandshakeTimeout: 45 * time.Second,
 	}
-	remoteConn, _, err := dialer.Dial(remoteWS, header)
+	remoteConn, resp, err := dialer.Dial(remoteWS, header)
+	// Ensure the response body is drained & closed to avoid leaking resources.
+	if resp != nil {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}
 	if err != nil {
 		_ = clientConn.WriteMessage(websocket.CloseMessage, []byte{})
 		return err
