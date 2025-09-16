@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+
+	wsutil "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
 const LOCAL_DOCKER_ENVIRONMENT_ID = "0"
@@ -61,6 +64,8 @@ func NewEnvironmentHandler(
 	}
 
 	apiGroup := group.Group("/environments")
+
+	apiGroup.GET("/:id/stacks/:stackId/logs/ws", handler.GetStackLogsWS)
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
 		apiGroup.GET("", handler.ListEnvironments)
@@ -119,7 +124,6 @@ func NewEnvironmentHandler(
 		apiGroup.POST("/:id/stacks/:stackId/down", handler.DownStack)
 		apiGroup.DELETE("/:id/stacks/:stackId/destroy", handler.DestroyStack)
 		apiGroup.GET("/:id/stacks/:stackId/logs/stream", handler.GetStackLogsStream)
-		apiGroup.POST("/:id/stacks/convert", handler.ConvertDockerRun)
 
 		apiGroup.GET("/:id/image-updates/check", handler.CheckImageUpdate)
 		apiGroup.GET("/:id/image-updates/check/:imageId", handler.CheckImageUpdateByID)
@@ -459,6 +463,9 @@ func (h *EnvironmentHandler) handleStackEndpoints(c *gin.Context, endpoint strin
 		return true
 	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/logs/stream"):
 		stackHandler.GetStackLogsStream(c)
+		return true
+	case strings.HasSuffix(endpoint, "/logs/ws"):
+		stackHandler.GetStackLogsWS(c)
 		return true
 	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodGet:
 		stackHandler.GetStack(c)
@@ -1015,6 +1022,49 @@ func (h *EnvironmentHandler) DestroyStack(c *gin.Context) {
 func (h *EnvironmentHandler) GetStackLogsStream(c *gin.Context) {
 	stackId := c.Param("stackId")
 	h.routeRequest(c, "/stacks/"+stackId+"/logs/stream")
+}
+
+func (h *EnvironmentHandler) GetStackLogsWS(c *gin.Context) {
+	envID := c.Param("id")
+	stackId := c.Param("stackId")
+
+	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
+		h.routeRequest(c, "/stacks/"+stackId+"/logs/ws")
+		return
+	}
+
+	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
+	if err != nil || environment == nil || !environment.Enabled {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
+		return
+	}
+
+	u, err := url.Parse(strings.TrimRight(environment.ApiUrl, "/"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid environment URL"}})
+		return
+	}
+	if u.Scheme == "https" {
+		u.Scheme = "wss"
+	} else {
+		u.Scheme = "ws"
+	}
+	u.Path = "/api/environments/" + LOCAL_DOCKER_ENVIRONMENT_ID + "/stacks/" + stackId + "/logs/ws"
+	u.RawQuery = c.Request.URL.RawQuery
+
+	hdr := http.Header{}
+	// Forward auth if present
+	if auth := c.GetHeader("Authorization"); auth != "" {
+		hdr.Set("Authorization", auth)
+	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
+		hdr.Set("Authorization", "Bearer "+cookieToken)
+	}
+	// Agent token
+	if environment.AccessToken != nil && *environment.AccessToken != "" {
+		hdr.Set("X-Arcane-Agent-Token", *environment.AccessToken)
+	}
+
+	_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
 }
 
 func (h *EnvironmentHandler) ConvertDockerRun(c *gin.Context) {

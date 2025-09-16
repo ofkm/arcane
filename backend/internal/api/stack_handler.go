@@ -7,17 +7,21 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
 type StackHandler struct {
 	stackService *services.StackService
+	logStreams   sync.Map // map[string]*logStream
 }
 
 func NewStackHandler(group *gin.RouterGroup, stackService *services.StackService, authMiddleware *middleware.AuthMiddleware) {
@@ -39,7 +43,68 @@ func NewStackHandler(group *gin.RouterGroup, stackService *services.StackService
 		apiGroup.POST("/:id/down", handler.DownStack)
 		apiGroup.DELETE("/:id/destroy", handler.DestroyStack)
 		apiGroup.GET("/:id/logs/stream", handler.GetStackLogsStream)
+		apiGroup.GET("/:id/logs/ws", handler.GetStackLogsWS)
 	}
+}
+
+var wsUpgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+type logStream struct {
+	hub    *ws.Hub
+	once   sync.Once
+	cancel context.CancelFunc
+}
+
+// Lazily start a shared hub + log streamer per stackId.
+func (h *StackHandler) getOrStartStackLogHub(stackID string, follow bool, tail, since string, timestamps bool) *ws.Hub {
+	v, _ := h.logStreams.LoadOrStore(stackID, &logStream{
+		hub: ws.NewHub(1024),
+	})
+	ls := v.(*logStream)
+
+	ls.once.Do(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		ls.cancel = cancel
+
+		go ls.hub.Run(ctx)
+
+		lines := make(chan string, 256)
+		go func() {
+			defer close(lines)
+			_ = h.stackService.StreamStackLogs(ctx, stackID, lines, follow, tail, since, timestamps)
+		}()
+		go ws.ForwardLines(ctx, ls.hub, lines)
+	})
+
+	return ls.hub
+}
+
+// WebSocket endpoint: /api/stacks/:id/logs/ws and /api/environments/:id/stacks/:stackId/logs/ws (via proxy)
+func (h *StackHandler) GetStackLogsWS(c *gin.Context) {
+	stackID := c.Param("stackId")
+	if stackID == "" {
+		stackID = c.Param("id")
+	}
+	if strings.TrimSpace(stackID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Stack ID is required"})
+		return
+	}
+
+	follow := c.DefaultQuery("follow", "true") == "true"
+	tail := c.DefaultQuery("tail", "100")
+	since := c.Query("since")
+	timestamps := c.DefaultQuery("timestamps", "false") == "true"
+
+	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	hub := h.getOrStartStackLogHub(stackID, follow, tail, since, timestamps)
+
+	// don't use the request context here; it is canceled when handler returns.
+	ws.ServeClient(context.Background(), hub, conn)
 }
 
 func (h *StackHandler) ListStacks(c *gin.Context) {

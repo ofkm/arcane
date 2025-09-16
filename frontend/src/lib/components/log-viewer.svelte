@@ -46,6 +46,12 @@
 	let isStreaming = $state(false);
 	let error: string | null = $state(null);
 	let eventSource: EventSource | null = null;
+	let ws: WebSocket | null = null;
+	let currentStreamKey: string | null = null;
+	function streamKey() {
+		return type === 'stack' ? (stackId ? `stack:${stackId}` : null) : containerId ? `ctr:${containerId}` : null;
+	}
+
 	const humanType = type === 'stack' ? m.common_stack() : m.common_container();
 
 	const DOCKER_TS_ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z?\s*/;
@@ -66,6 +72,18 @@
 		return `${baseEndpoint}?follow=true&tail=100&timestamps=${showTimestamps}`;
 	}
 
+	function buildWebSocketEndpoint(path: string): string {
+		const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+		return `${protocol}://${window.location.host}${path}`;
+	}
+
+	async function buildLogWsEndpoint(): Promise<string> {
+		const currentEnv = get(environmentStore.selected);
+		const envId = currentEnv?.id || 'local';
+		const basePath = `/api/environments/${envId}/stacks/${stackId}/logs/ws`;
+		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=100&timestamps=${showTimestamps}`);
+	}
+
 	export async function startLogStream() {
 		const targetId = type === 'stack' ? stackId : containerId;
 
@@ -76,8 +94,13 @@
 			error = null;
 			onStart?.();
 
-			const endpoint = await buildLogStreamEndpoint();
+			// Use WebSocket for stacks, SSE for containers
+			if (type === 'stack') {
+				await startWebSocketStream();
+				return;
+			}
 
+			const endpoint = await buildLogStreamEndpoint();
 			eventSource = new EventSource(endpoint);
 
 			eventSource.addEventListener('log', (event) => {
@@ -163,11 +186,81 @@
 		}
 	}
 
+	async function startWebSocketStream() {
+		const url = await buildLogWsEndpoint();
+		ws = new WebSocket(url);
+
+		ws.onopen = () => {
+			if (dev) console.log(m.log_viewer_connected({ type: humanType }));
+			error = null;
+			isStreaming = true;
+		};
+
+		ws.onmessage = (evt) => {
+			// Server may send one or many lines per frame
+			const data = typeof evt.data === 'string' ? evt.data : '';
+			if (!data) return;
+			for (const line of data.split('\n')) {
+				if (!line.trim()) continue;
+				handleIncomingLine(line);
+			}
+		};
+
+		ws.onerror = (evt) => {
+			console.error('WebSocket log stream error:', evt);
+			error = m.log_stream_connection_lost({ type: humanType });
+		};
+
+		ws.onclose = () => {
+			isStreaming = false;
+			if (!error) {
+				error = m.log_stream_closed_by_server({ type: humanType });
+			}
+		};
+	}
+
+	function handleIncomingLine(raw: string) {
+		// Optional stderr prefix
+		let level: LogEntry['level'] = raw.startsWith('[STDERR] ') ? 'stderr' : 'stdout';
+		let line = raw.replace('[STDERR] ', '');
+
+		// Try to extract "service | message" if present
+		let service: string | undefined;
+		if (line.includes(' | ')) {
+			const parts = line.split(' | ', 2);
+			if (parts.length === 2) {
+				service = parts[0].trim();
+				line = parts[1];
+			}
+		}
+
+		// Add as a log entry; addLogEntry will strip docker timestamps if present
+		addLogEntry({
+			level,
+			message: line,
+			timestamp: new Date().toISOString(),
+			service
+		});
+	}
+
 	export function stopLogStream() {
 		if (eventSource) {
 			if (dev) console.log(m.log_viewer_stopping({ type: humanType }));
 			eventSource.close();
 			eventSource = null;
+		}
+		if (ws) {
+			try {
+				// Silence “closed before established” during CONNECTING
+				ws.onerror = null;
+				ws.onclose = null;
+				if (ws.readyState === WebSocket.CONNECTING) {
+					ws.addEventListener('open', () => ws?.close(), { once: true });
+				} else {
+					ws.close();
+				}
+			} catch {}
+			ws = null;
 		}
 		isStreaming = false;
 		onStop?.();
@@ -240,23 +333,19 @@
 	}
 
 	onMount(() => {
-		const targetId = type === 'stack' ? stackId : containerId;
-		if (targetId) {
-			startLogStream();
-		}
-	});
-
-	onDestroy(() => {
-		stopLogStream();
+		// Defer to $effect below to handle initial start and key changes
 	});
 
 	$effect(() => {
-		const targetId = type === 'stack' ? stackId : containerId;
-		if (targetId && browser) {
-			stopLogStream();
-			logs = [];
-			startLogStream();
-		}
+		if (!browser) return;
+		const key = streamKey();
+		if (!key) return;
+		if (key === currentStreamKey && isStreaming) return; // no-op if unchanged
+		// Key changed or not streaming: restart
+		if (currentStreamKey) stopLogStream();
+		logs = [];
+		currentStreamKey = key;
+		startLogStream();
 	});
 </script>
 
