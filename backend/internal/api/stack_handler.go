@@ -51,18 +51,17 @@ var wsUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-type logStream struct {
+type projectLogStream struct {
 	hub    *ws.Hub
 	once   sync.Once
 	cancel context.CancelFunc
 }
 
-// Lazily start a shared hub + log streamer per stackId.
 func (h *StackHandler) getOrStartStackLogHub(stackID string, follow bool, tail, since string, timestamps bool) *ws.Hub {
-	v, _ := h.logStreams.LoadOrStore(stackID, &logStream{
+	v, _ := h.logStreams.LoadOrStore(stackID, &projectLogStream{
 		hub: ws.NewHub(1024),
 	})
-	ls := v.(*logStream)
+	ls := v.(*projectLogStream)
 
 	ls.once.Do(func() {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -81,7 +80,7 @@ func (h *StackHandler) getOrStartStackLogHub(stackID string, follow bool, tail, 
 	return ls.hub
 }
 
-// WebSocket endpoint: /api/stacks/:id/logs/ws and /api/environments/:id/stacks/:stackId/logs/ws (via proxy)
+// WebSocket endpoint: /api/stacks/:id/logs/ws and /api/environments/:id/stacks/:stackId/logs/ws
 func (h *StackHandler) GetStackLogsWS(c *gin.Context) {
 	stackID := c.Param("stackId")
 	if stackID == "" {

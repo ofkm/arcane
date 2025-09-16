@@ -1,8 +1,11 @@
 package api
 
 import (
+	"context"
 	"io"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -13,12 +16,14 @@ import (
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
 type ContainerHandler struct {
 	containerService *services.ContainerService
 	imageService     *services.ImageService
 	dockerService    *services.DockerClientService
+	logStreams       sync.Map // map[string]*logStream
 }
 
 func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, containerService *services.ContainerService, imageService *services.ImageService, authMiddleware *middleware.AuthMiddleware) {
@@ -37,9 +42,64 @@ func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerC
 		apiGroup.POST("/:id/restart", handler.Restart)
 		apiGroup.GET("/:id/logs", handler.GetLogs)
 		apiGroup.GET("/:id/logs/stream", handler.GetLogsStream)
+		apiGroup.GET("/:id/logs/ws", handler.GetLogsWS)
 		apiGroup.DELETE("/:id", handler.Delete)
 
 	}
+}
+
+type containerLogStream struct {
+	hub    *ws.Hub
+	once   sync.Once
+	cancel context.CancelFunc
+}
+
+func (h *ContainerHandler) getOrStartContainerLogHub(containerID string, follow bool, tail, since string, timestamps bool) *ws.Hub {
+	v, _ := h.logStreams.LoadOrStore(containerID, &containerLogStream{
+		hub: ws.NewHub(1024),
+	})
+	ls := v.(*containerLogStream)
+
+	ls.once.Do(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		ls.cancel = cancel
+
+		go ls.hub.Run(ctx)
+
+		lines := make(chan string, 256)
+		go func() {
+			defer close(lines)
+			_ = h.containerService.StreamLogs(ctx, containerID, lines, follow, tail, since, timestamps)
+		}()
+		go ws.ForwardLines(ctx, ls.hub, lines)
+	})
+
+	return ls.hub
+}
+
+// GET /api/containers/:id/logs/ws
+// /api/environments/:envId/containers/:containerId/logs/ws
+func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
+	containerID := c.Param("containerId")
+	if containerID == "" {
+		containerID = c.Param("id")
+	}
+	if strings.TrimSpace(containerID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Container ID is required"}})
+		return
+	}
+
+	follow := c.DefaultQuery("follow", "true") == "true"
+	tail := c.DefaultQuery("tail", "100")
+	since := c.Query("since")
+	timestamps := c.DefaultQuery("timestamps", "false") == "true"
+
+	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	hub := h.getOrStartContainerLogHub(containerID, follow, tail, since, timestamps)
+	ws.ServeClient(context.Background(), hub, conn)
 }
 
 func (h *ContainerHandler) PullImage(c *gin.Context) {
