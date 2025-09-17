@@ -44,8 +44,9 @@ COPY backend/go.mod backend/go.sum ./
 # Download Go dependencies
 RUN go mod download
 
-# Create data directory for development
+# Create directories for development
 RUN mkdir -p /app/data && chmod 755 /app/data
+RUN mkdir -p /app/.bin && chmod 755 /app/.bin
 
 # Expose backend development port
 EXPOSE 3552
