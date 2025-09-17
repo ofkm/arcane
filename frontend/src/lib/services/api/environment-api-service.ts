@@ -390,7 +390,9 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return pulled;
 	}
 
-	async pullProjectImages(projectId: string, onLine: (data: any) => void): Promise<void> {
+	pullProjectImages(projectId: string): Promise<void>;
+	pullProjectImages(projectId: string, onLine: (data: any) => void): Promise<void>;
+	async pullProjectImages(projectId: string, onLine?: (data: any) => void): Promise<void> {
 		await this.streamProjectPull(projectId, onLine);
 	}
 

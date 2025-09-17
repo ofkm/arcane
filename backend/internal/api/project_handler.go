@@ -248,14 +248,14 @@ func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 	c.Writer.Header().Set("Connection", "keep-alive")
 	c.Writer.Header().Set("X-Accel-Buffering", "no")
 
-	_, _ = c.Writer.Write([]byte(`{"status":"starting project image pull"}` + "\n"))
+	_, _ = fmt.Fprintln(c.Writer, `{"status":"starting project image pull"}`)
 
 	if err := h.projectService.PullProjectImages(c.Request.Context(), projectID, c.Writer); err != nil {
-		_, _ = c.Writer.Write([]byte(fmt.Sprintf(`{"error":%q}`+"\n", err.Error())))
+		_, _ = fmt.Fprintf(c.Writer, `{"error":%q}`+"\n", err.Error())
 		return
 	}
 
-	_, _ = c.Writer.Write([]byte(`{"status":"complete"}` + "\n"))
+	_, _ = fmt.Fprintln(c.Writer, `{"status":"complete"}`)
 }
 
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
