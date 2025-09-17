@@ -32,6 +32,7 @@ tests/test-results/*
 tests/.report/*
 tests/.auth/
 backend/.bin
+backend/build-errors.log
 frontend/bun.lock
 tests/bun.lock
 tests/package-lock.json

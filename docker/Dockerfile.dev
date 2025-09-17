@@ -1,0 +1,55 @@
+# Development Dockerfile with hot reload support
+ARG NODE_VERSION="24"
+ARG GO_VERSION="1.25"
+
+# Stage 1: Frontend Development
+FROM node:${NODE_VERSION} AS frontend-dev
+RUN corepack enable
+WORKDIR /app
+
+# Copy package configuration files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY frontend/package.json ./frontend/package.json
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Set development environment
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# Expose frontend development port
+EXPOSE 3000
+
+# Start frontend development server with hot reload
+CMD ["pnpm", "-C", "frontend", "dev", "--host", "0.0.0.0"]
+
+# Stage 2: Backend Development  
+FROM golang:${GO_VERSION}-alpine AS backend-dev
+
+# Install development tools and dependencies
+RUN go install github.com/air-verse/air@latest
+RUN apk add --no-cache git ca-certificates tzdata curl gcc musl-dev
+
+# Set development environment variables
+ENV GIN_MODE=debug
+ENV PORT=3552
+ENV ENVIRONMENT=development
+
+WORKDIR /app
+
+# Copy Go module files
+COPY backend/go.mod backend/go.sum ./
+
+# Download Go dependencies
+RUN go mod download
+
+# Create directories for development
+RUN mkdir -p /app/data && chmod 755 /app/data
+RUN mkdir -p /app/.bin && chmod 755 /app/.bin
+
+# Expose backend development port
+EXPOSE 3552
+
+# Use Air for hot reloading in development
+CMD ["air", "-c", ".air.toml"]
