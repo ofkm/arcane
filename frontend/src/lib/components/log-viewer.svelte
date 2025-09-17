@@ -15,8 +15,8 @@
 
 	interface Props {
 		containerId?: string | null;
-		stackId?: string | null;
-		type?: 'container' | 'stack';
+		projectId?: string | null;
+		type?: 'container' | 'project';
 		maxLines?: number;
 		autoScroll?: boolean;
 		showTimestamps?: boolean;
@@ -29,7 +29,7 @@
 
 	let {
 		containerId = null,
-		stackId = null,
+		projectId = null,
 		type = 'container',
 		maxLines = 1000,
 		autoScroll = $bindable(true),
@@ -49,10 +49,10 @@
 	let wsClient: ReconnectingWebSocket<string> | null = null;
 	let currentStreamKey: string | null = null;
 	function streamKey() {
-		return type === 'stack' ? (stackId ? `stack:${stackId}` : null) : containerId ? `ctr:${containerId}` : null;
+		return type === 'project' ? (projectId ? `project:${projectId}` : null) : containerId ? `ctr:${containerId}` : null;
 	}
 
-	const humanType = type === 'stack' ? m.common_stack() : m.common_container();
+	const humanType = type === 'project' ? m.project() : m.container();
 
 	const DOCKER_TS_ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z?\s*/;
 	const DOCKER_TS_SLASH_RE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s*/;
@@ -66,14 +66,14 @@
 		const currentEnv = get(environmentStore.selected);
 		const envId = currentEnv?.id || 'local';
 		const basePath =
-			type === 'stack'
-				? `/api/environments/${envId}/projects/${stackId}/logs/ws`
+			type === 'project'
+				? `/api/environments/${envId}/projects/${projectId}/logs/ws`
 				: `/api/environments/${envId}/containers/${containerId}/logs/ws`;
 		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=100&timestamps=${showTimestamps}`);
 	}
 
 	export async function startLogStream() {
-		const targetId = type === 'stack' ? stackId : containerId;
+		const targetId = type === 'project' ? projectId : containerId;
 
 		if (!targetId || !browser) return;
 
@@ -284,7 +284,7 @@
 						{log.level.toUpperCase()}
 					</span>
 
-					{#if type === 'stack' && log.service}
+					{#if type === 'project' && log.service}
 						<span class="mr-2 min-w-fit shrink-0 truncate text-xs text-blue-400" title={log.service}>
 							{log.service}
 						</span>

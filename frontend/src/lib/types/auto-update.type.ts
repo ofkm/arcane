@@ -1,11 +1,11 @@
 export type AutoUpdateResourceType = 'image' | 'container' | 'project';
 
 export interface AutoUpdateCheck {
-	type?: 'containers' | 'stacks' | 'all';
+	type?: 'containers' | 'projects' | 'all';
 	resourceIds?: string[];
 	forceUpdate?: boolean;
 	dryRun?: boolean;
-	resourceType?: AutoUpdateResourceType; // was 'stack'
+	resourceType?: AutoUpdateResourceType;
 }
 
 export interface AutoUpdateResult {
@@ -48,7 +48,7 @@ export interface AutoUpdateRecord {
 
 export interface AutoUpdateStatus {
 	updatingContainers: number;
-	updatingStacks: number;
+	updatingProjects: number;
 	containerIds: string[];
-	stackIds: string[];
+	projectIds: string[];
 }
