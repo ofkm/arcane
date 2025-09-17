@@ -332,9 +332,37 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/environments/${envId}/projects/${projectName}/redeploy`));
 	}
 
-	async pullProjectImages(projectName: string): Promise<Project> {
+	async pullProjectImages(projectId: string, onLine: (data: any) => void): Promise<void> {
 		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/projects/${projectName}/pull`));
+		const url = `/api/environments/${envId}/projects/${projectId}/pull`;
+
+		const res = await fetch(url, { method: 'POST' });
+		if (!res.ok || !res.body) {
+			throw new Error(`Failed to start project image pull (${res.status})`);
+		}
+
+		const reader = res.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+
+		while (true) {
+			const { value, done } = await reader.read();
+			if (done) break;
+
+			buffer += decoder.decode(value, { stream: true });
+			const lines = buffer.split('\n');
+			buffer = lines.pop() || '';
+
+			for (const line of lines) {
+				const trimmed = line.trim();
+				if (!trimmed) continue;
+				try {
+					onLine(JSON.parse(trimmed));
+				} catch {
+					// ignore malformed line
+				}
+			}
+		}
 	}
 
 	async destroyProject(projectName: string, removeVolumes = false, removeFiles = false): Promise<void> {

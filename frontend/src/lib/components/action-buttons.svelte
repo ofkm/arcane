@@ -283,86 +283,49 @@
 		let wasSuccessful = false;
 
 		try {
-			const response = await fetch(buildPullApiUrl(), {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
+			await environmentAPI.pullProjectImages(id, (data) => {
+				if (!data) return;
+
+				if (data.error) {
+					const errMsg = typeof data.error === 'string' ? data.error : data.error.message || m.images_pull_stream_error();
+					pullError = errMsg;
+					pullStatusText = m.images_pull_failed_with_error({ error: errMsg });
+					return;
 				}
+
+				if (data.status) pullStatusText = data.status;
+
+				if (data.id) {
+					const currentLayer = layerProgress[data.id] || { current: 0, total: 0, status: '' };
+					currentLayer.status = data.status || currentLayer.status;
+
+					if (data.progressDetail) {
+						const { current, total } = data.progressDetail;
+						if (typeof current === 'number') currentLayer.current = current;
+						if (typeof total === 'number') currentLayer.total = total;
+					}
+					layerProgress[data.id] = currentLayer;
+				}
+
+				calculateOverallProgress();
 			});
 
-			if (!response.ok || !response.body) {
-				const errorData = await response.json().catch(() => ({
-					error: m.images_pull_server_error()
-				}));
-				const errorMessage =
-					typeof errorData.error === 'string'
-						? errorData.error
-						: errorData.message || `${m.images_pull_server_error()}: HTTP ${response.status}`;
-				throw new Error(errorMessage);
-			}
-
-			const reader = response.body.getReader();
-			const decoder = new TextDecoder();
-			let buffer = '';
-
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) {
-					pullStatusText = m.images_pull_processing_final_layers();
-					break;
-				}
-
-				buffer += decoder.decode(value, { stream: true });
-				const lines = buffer.split('\n');
-				buffer = lines.pop() || '';
-
-				for (const line of lines) {
-					if (line.trim() === '') continue;
-					try {
-						const data = JSON.parse(line);
-
-						if (data.error) {
-							console.error('Error in stream:', data.error);
-							pullError = typeof data.error === 'string' ? data.error : data.error.message || m.images_pull_stream_error();
-							pullStatusText = m.images_pull_failed_with_error({ error: pullError });
-							continue;
-						}
-
-						pullStatusText = data.status || pullStatusText;
-						if (data.id) {
-							const currentLayer = layerProgress[data.id] || { current: 0, total: 0, status: '' };
-							currentLayer.status = data.status || currentLayer.status;
-
-							if (data.progressDetail) {
-								currentLayer.current = data.progressDetail.current || currentLayer.current;
-								currentLayer.total = data.progressDetail.total || currentLayer.total;
-							}
-							layerProgress[data.id] = currentLayer;
-						}
-						calculateOverallProgress();
-					} catch (e: any) {
-						console.warn('Failed to parse stream line or process data:', line, e);
-					}
-				}
-			}
-
+			// Stream finished
 			calculateOverallProgress();
 			if (!pullError && pullProgress < 100) {
-				const allLayersCompleteOrExisting = Object.values(layerProgress).every(
+				const allDone = Object.values(layerProgress).every(
 					(l) =>
 						l.status &&
 						(l.status.toLowerCase().includes('complete') ||
 							l.status.toLowerCase().includes('already exists') ||
 							l.status.toLowerCase().includes('downloaded newer image'))
 				);
-				if (allLayersCompleteOrExisting && Object.keys(layerProgress).length > 0) {
+				if (allDone && Object.keys(layerProgress).length > 0) {
 					pullProgress = 100;
 				}
 			}
 
-			if (pullError) {
-				throw new Error(pullError);
-			}
+			if (pullError) throw new Error(pullError);
 
 			wasSuccessful = true;
 			pullProgress = 100;
@@ -376,8 +339,7 @@
 				resetPullState();
 			}, 2000);
 		} catch (error: any) {
-			console.error('Pull images error:', error);
-			const message = error.message || m.images_pull_failed();
+			const message = error?.message || m.images_pull_failed();
 			pullError = message;
 			pullStatusText = m.images_pull_failed_with_error({ error: message });
 			toast.error(message);
