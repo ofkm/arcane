@@ -5,12 +5,12 @@ ARG REVISION="unknown"
 
 # Stage 1: Build Frontend
 FROM node:24 AS frontend-builder
-RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
+RUN corepack enable
 WORKDIR /build
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/package.json
 COPY frontend ./frontend
-ENV NODE_OPTIONS="--max-old-space-size=3072"
+
 RUN pnpm -C frontend install --frozen-lockfile
 ENV BUILD_PATH=dist
 RUN pnpm -C frontend build
@@ -36,12 +36,6 @@ RUN CGO_ENABLED=0 \
     -o /build/arcane \
     ./cmd/main.go
 
-ARG COMPOSE_VERSION=2.39.2
-ARG TARGETARCH
-COPY ../scripts/development/download-compose.sh /tmp/download-compose.sh
-RUN set -eux; install -d /out; chmod +x /tmp/download-compose.sh; \
-    /tmp/download-compose.sh "${COMPOSE_VERSION}" "/out/docker-compose" "${TARGETARCH}"
-
 # Stage 3: Production Image
 FROM alpine:3 AS runner
 RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl shadow su-exec
@@ -56,7 +50,6 @@ WORKDIR /app
 RUN mkdir -p /app/data && chmod 755 /app/data
 
 COPY --from=backend-builder /build/arcane .
-COPY --from=backend-builder /out/docker-compose /usr/local/bin/docker-compose
 COPY --chmod=755 ../scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 EXPOSE 3552

@@ -14,6 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
+	"github.com/docker/compose/v2/pkg/api"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
@@ -100,29 +103,40 @@ func (s *StackService) CreateStack(ctx context.Context, name, composeContent str
 func (s *StackService) DeployStack(ctx context.Context, stackID string, user models.User) error {
 	stack, err := s.GetStackByID(ctx, stackID)
 	if err != nil {
-		return fmt.Errorf("failed to get stack: %w", err)
-	}
-
-	if _, err := os.Stat(stack.Path); os.IsNotExist(err) {
-		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
+		return fmt.Errorf("failed to get project: %w", err)
 	}
 
 	composeFileFullPath, derr := projects.DetectComposeFile(stack.Path)
 	if derr != nil {
-		return fmt.Errorf("no compose file found in stack directory: %s", stack.Path)
+		return fmt.Errorf("no compose file found in project directory: %s", stack.Path)
+	}
+
+	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, stack.Name)
+
+	if loadErr != nil {
+		return fmt.Errorf("failed to load compose project from %s: %w", stack.Path, loadErr)
 	}
 
 	if err := s.UpdateStackStatus(ctx, stackID, models.StackStatusDeploying); err != nil {
-		return fmt.Errorf("failed to update stack status to deploying: %w", err)
+		return fmt.Errorf("failed to update project status to deploying: %w", err)
 	}
+	if err := projects.ComposeUp(ctx, project, project.Services.GetProfiles()); err != nil {
 
-	output, err := projects.RunComposeAction(ctx, composeFileFullPath, stack.Name, "deploy")
-
-	if err != nil {
-		if updateErr := s.UpdateStackStatus(ctx, stackID, models.StackStatusStopped); updateErr != nil {
-			return fmt.Errorf("failed to deploy stack: %w, also failed to update status: %w", err, updateErr)
+		slog.Error("compose up failed",
+			"projectName", project.Name,
+			"stackId", stackID,
+			"error", err,
+			"services", project.Services,
+		)
+		// Check what containers were actually created
+		if containers, psErr := s.GetStackServices(ctx, stackID); psErr == nil {
+			slog.Info("containers after failed deploy",
+				"stackId", stackID,
+				"containers", containers,
+			)
 		}
-		return fmt.Errorf("failed to deploy stack: %w\nCommand output: %s", err, string(output))
+		_ = s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusStopped)
+		return fmt.Errorf("failed to deploy project: %w", err)
 	}
 
 	metadata := models.JSON{
@@ -131,10 +145,14 @@ func (s *StackService) DeployStack(ctx context.Context, stackID string, user mod
 		"stackName": stack.Name,
 	}
 	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDeploy, stackID, stack.Name, user.ID, user.Username, "0", metadata); logErr != nil {
-		fmt.Printf("Could not log stack deployment action: %s\n", logErr)
+		fmt.Printf("Could not log project deployment action: %s\n", logErr)
 	}
 
-	return s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusRunning)
+	err = s.updateStackStatusAndCounts(ctx, stackID, models.StackStatusRunning)
+	if err != nil {
+		slog.Error("failed to update project status and counts after deploy", "stackId", stackID, "error", err)
+	}
+	return err
 }
 
 func (s *StackService) DownStack(ctx context.Context, stackID string, user models.User) error {
@@ -147,21 +165,21 @@ func (s *StackService) DownStack(ctx context.Context, stackID string, user model
 		return fmt.Errorf("stack directory does not exist: %s", stack.Path)
 	}
 
-	composeFileFullPath, derr := projects.DetectComposeFile(stack.Path)
-	if derr != nil {
-		return fmt.Errorf("no compose file found in stack directory: %s", stack.Path)
+	// Explicitly load project to include .env file resolution
+	proj, _, lerr := projects.LoadComposeProjectFromDir(ctx, stack.Path, stack.Name)
+	if lerr != nil {
+		_ = s.UpdateStackStatus(ctx, stackID, models.StackStatusRunning)
+		return fmt.Errorf("failed to load compose project: %w", lerr)
 	}
 
 	if err := s.UpdateStackStatus(ctx, stackID, models.StackStatusStopping); err != nil {
 		return fmt.Errorf("failed to update stack status to stopping: %w", err)
 	}
 
-	out, err := projects.RunComposeAction(ctx, composeFileFullPath, stack.Name, "down")
-	if err != nil {
-		if updateErr := s.UpdateStackStatus(ctx, stackID, models.StackStatusRunning); updateErr != nil {
-			return fmt.Errorf("failed to down project: %w, also failed to update status: %w", err, updateErr)
-		}
-		return fmt.Errorf("failed to bring down stack: %w\nOutput: %s", err, out)
+	// Keep default behavior (no volume removal). Set to true if you want `--volumes`.
+	if err := projects.ComposeDown(ctx, proj, false); err != nil {
+		_ = s.UpdateStackStatus(ctx, stackID, models.StackStatusRunning)
+		return fmt.Errorf("failed to bring down stack: %w", err)
 	}
 
 	metadata := models.JSON{
@@ -182,33 +200,59 @@ func (s *StackService) GetStackServices(ctx context.Context, stackID string) ([]
 		return nil, err
 	}
 
-	composeFile, derr := projects.DetectComposeFile(stack.Path)
-	if derr != nil {
-		return nil, fmt.Errorf("no compose file found for stack")
+	project, _, err := projects.LoadComposeProjectFromDir(ctx, stack.Path, stack.Name)
+	if err != nil {
+		slog.Warn("failed to load compose project for GetStackServices", "stackId", stackID, "error", err)
+		return []StackServiceInfo{}, nil
 	}
 
-	project, err := projects.LoadComposeProject(ctx, composeFile, stack.Name)
+	containers, err := projects.ComposePs(ctx, project, nil, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load compose project: %w", err)
-	}
-
-	statuses, err := projects.ComposeServicesStatus(ctx, project, composeFile, stack.Name)
-	if err != nil {
+		slog.Error("compose ps error", "projectName", project.Name, "error", err)
 		return nil, fmt.Errorf("failed to get compose services status: %w", err)
 	}
+	slog.Debug("compose ps finished", "projectName", project.Name, "containerCount", len(containers))
 
+	// Build map of services that have containers
+	have := map[string]bool{}
 	var services []StackServiceInfo
-	for _, ssvc := range statuses {
+
+	for _, c := range containers {
+		slog.WarnContext(ctx, "services", "container", c)
 		services = append(services, StackServiceInfo{
-			Name:        ssvc.Name,
-			Image:       ssvc.Image,
-			Status:      ssvc.Status,
-			ContainerID: ssvc.ContainerID,
-			Ports:       ssvc.Ports,
+			Name:        c.Service,
+			Image:       c.Image,
+			Status:      c.State, // running/created/exited
+			ContainerID: c.ID,
+			Ports:       formatPorts(c.Publishers),
 		})
+		have[c.Service] = true
+	}
+
+	// Add missing services from compose project as "stopped"
+	for _, svc := range project.Services {
+		if !have[svc.Name] {
+			services = append(services, StackServiceInfo{
+				Name:   svc.Name,
+				Image:  svc.Image,
+				Status: "stopped",
+				Ports:  []string{},
+			})
+		}
 	}
 
 	return services, nil
+}
+
+// Helper function to format ports from compose v2 API
+func formatPorts(publishers []api.PortPublisher) []string {
+	var ports []string
+	for _, pub := range publishers {
+		if pub.PublishedPort > 0 {
+			ports = append(ports, fmt.Sprintf("%d:%d/%s", pub.PublishedPort, pub.TargetPort, pub.Protocol))
+		}
+	}
+	return ports
 }
 
 func (s *StackService) RestartStack(ctx context.Context, stackID string, user models.User) error {
@@ -225,15 +269,15 @@ func (s *StackService) RestartStack(ctx context.Context, stackID string, user mo
 		return fmt.Errorf("failed to update stack status to restarting: %w", err)
 	}
 
-	cmd := exec.CommandContext(ctx, "docker-compose", "restart")
-	cmd.Dir = stack.Path
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("COMPOSE_PROJECT_NAME=%s", stack.Name),
-	)
+	proj, _, lerr := projects.LoadComposeProjectFromDir(ctx, stack.Path, stack.Name)
+	if lerr != nil {
+		_ = s.UpdateStackStatus(ctx, stackID, models.StackStatusRunning)
+		return fmt.Errorf("failed to load compose project: %w", lerr)
+	}
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to restart stack: %w\nOutput: %s", err, string(output))
+	if err := projects.ComposeRestart(ctx, proj, nil); err != nil {
+		_ = s.UpdateStackStatus(ctx, stackID, models.StackStatusRunning)
+		return fmt.Errorf("failed to restart stack: %w", err)
 	}
 
 	metadata := models.JSON{
@@ -475,12 +519,21 @@ func (s *StackService) ListStacksPaginated(ctx context.Context, req utils.Sorted
 
 	var result []map[string]interface{}
 	for _, stack := range stacks {
+		displayServiceCount := stack.ServiceCount
+		if displayServiceCount == 0 {
+			if _, derr := projects.DetectComposeFile(stack.Path); derr == nil {
+				if proj, _, perr := projects.LoadComposeProjectFromDir(ctx, stack.Path, stack.Name); perr == nil {
+					displayServiceCount = len(proj.Services)
+				}
+			}
+		}
+
 		result = append(result, map[string]interface{}{
 			"id":           stack.ID,
 			"name":         stack.Name,
 			"path":         stack.Path,
 			"status":       stack.Status,
-			"serviceCount": stack.ServiceCount,
+			"serviceCount": displayServiceCount,
 			"runningCount": stack.RunningCount,
 			"createdAt":    stack.CreatedAt,
 			"updatedAt":    stack.UpdatedAt,
@@ -791,39 +844,51 @@ func (s *StackService) RedeployStack(ctx context.Context, stackID string, profil
 }
 
 func (s *StackService) getLiveStackStatus(ctx context.Context, stackDir, projectName string) (models.StackStatus, int, int, error) {
-	live, err := projects.ComposePS(ctx, stackDir, projectName)
+	project, _, err := projects.LoadComposeProjectFromDir(ctx, stackDir, projectName)
 	if err != nil {
 		return models.StackStatusUnknown, 0, 0, err
 	}
 
-	expectedTotal := 0
-	if composeFile, derr := projects.DetectComposeFile(stackDir); derr == nil {
-		if proj, lerr := projects.LoadComposeProject(ctx, composeFile, projectName); lerr == nil && proj != nil {
-			expectedTotal = len(proj.Services)
-		}
+	expectedTotal := len(project.Services)
+
+	slog.Debug("compose ps (live status)", "projectName", project.Name, "expectedTotal", expectedTotal)
+
+	containers, err := projects.ComposePs(ctx, project, nil, true)
+	if err != nil {
+		slog.Error("compose ps error (live status)", "projectName", project.Name, "error", err)
+		return models.StackStatusUnknown, expectedTotal, 0, err
 	}
 
-	total := len(live)
+	// Use defined service count for total; derive running from actual containers
+	total := expectedTotal
 	running := 0
-	for _, it := range live {
-		st := strings.ToLower(strings.TrimSpace(it.Status))
+	for _, container := range containers {
+		st := strings.ToLower(strings.TrimSpace(container.State))
 		if st == "running" || st == "up" {
 			running++
 		}
 	}
 
+	var status models.StackStatus
 	switch {
-	case total == 0 && expectedTotal > 0:
-		return models.StackStatusStopped, expectedTotal, 0, nil
-	case running == total && total > 0:
-		return models.StackStatusRunning, total, running, nil
+	case total == 0:
+		status = models.StackStatusStopped
+	case running == total:
+		status = models.StackStatusRunning
 	case running > 0:
-		return models.StackStatusPartiallyRunning, total, running, nil
-	case total == 0 && expectedTotal == 0:
-		return models.StackStatusStopped, 0, 0, nil
+		status = models.StackStatusPartiallyRunning
 	default:
-		return models.StackStatusStopped, total, running, nil
+		status = models.StackStatusStopped
 	}
+
+	slog.Debug("compose status evaluated",
+		"projectName", project.Name,
+		"status", status,
+		"total", total,
+		"running", running,
+		"expectedTotal", expectedTotal,
+	)
+	return status, total, running, nil
 }
 
 func (s *StackService) GetStackLogs(ctx context.Context, stackID string, tail int, follow bool) (string, error) {
@@ -979,10 +1044,17 @@ func (s *StackService) UpdateStackStatus(ctx context.Context, id string, status 
 func (s *StackService) updateStackStatusAndCounts(ctx context.Context, stackID string, status models.StackStatus) error {
 	services, err := s.GetStackServices(ctx, stackID)
 	if err != nil {
+		slog.Error("GetStackServices failed during status update", "stackId", stackID, "error", err)
 		return s.UpdateStackStatus(ctx, stackID, status)
 	}
 
 	serviceCount, runningCount := s.getServiceCounts(services)
+	slog.Debug("updating stack counts",
+		"stackId", stackID,
+		"status", status,
+		"serviceCount", serviceCount,
+		"runningCount", runningCount,
+	)
 
 	if err := s.db.WithContext(ctx).Model(&models.Stack{}).Where("id = ?", stackID).Updates(map[string]interface{}{
 		"status":        status,
