@@ -3,17 +3,20 @@
 # Arcane Development Environment Manager
 # This script helps manage the Docker-based development environment with hot reloading
 
-set -e
+set -euo pipefail
 
-COMPOSE_FILE="docker-compose.dev.yml"
-PROJECT_NAME="arcane-dev"
+# Configuration
+readonly COMPOSE_FILE="docker-compose.dev.yml"
+readonly PROJECT_NAME="arcane-dev"
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly NC='\033[0m' # No Color
 
 # Helper functions
 log_info() {
@@ -32,23 +35,39 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-check_docker() {
+check_requirements() {
+    local errors=0
+    
     if ! command -v docker &> /dev/null; then
         log_error "Docker is not installed or not in PATH"
-        exit 1
+        ((errors++))
     fi
     
     if ! docker info &> /dev/null; then
         log_error "Docker daemon is not running"
+        ((errors++))
+    fi
+    
+    if ! docker compose version &> /dev/null; then
+        log_error "Docker Compose is not available"
+        ((errors++))
+    fi
+    
+    if [[ $errors -gt 0 ]]; then
+        log_error "Please install Docker and Docker Compose, then ensure the Docker daemon is running"
         exit 1
     fi
 }
 
-check_compose() {
-    if ! docker compose version &> /dev/null; then
-        log_error "Docker Compose is not available"
+ensure_project_root() {
+    if [[ ! -f "${PROJECT_ROOT}/${COMPOSE_FILE}" ]]; then
+        log_error "Could not find ${COMPOSE_FILE} in project root"
+        log_error "Please run this script from the project root directory or ensure the compose file exists"
         exit 1
     fi
+    
+    # Change to project root to ensure relative paths work correctly
+    cd "${PROJECT_ROOT}"
 }
 
 show_status() {
@@ -57,23 +76,33 @@ show_status() {
 }
 
 show_logs() {
-    local service=$1
-    if [ -z "$service" ]; then
+    local service="${1:-}"
+    
+    if [[ -z "$service" ]]; then
         log_info "Showing logs for all services..."
-        docker compose -f $COMPOSE_FILE -p $PROJECT_NAME logs -f
+        docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" logs -f
     else
+        # Validate service name
+        if [[ ! "$service" =~ ^(frontend|backend)$ ]]; then
+            log_error "Invalid service name: $service"
+            log_error "Valid services: frontend, backend"
+            exit 1
+        fi
+        
         log_info "Showing logs for service: $service"
-        docker compose -f $COMPOSE_FILE -p $PROJECT_NAME logs -f "$service"
+        docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" logs -f "$service"
     fi
 }
 
-start_dev() {
-    log_info "Starting Arcane development environment..."
+create_env_file() {
+    local env_file=".env"
     
-    # Check if .env file exists, create a basic one if not
-    if [ ! -f .env ]; then
-        log_warning ".env file not found, creating basic development configuration..."
-        cat > .env << EOF
+    if [[ -f "$env_file" ]]; then
+        return 0
+    fi
+    
+    log_warning ".env file not found, creating basic development configuration..."
+    cat > "$env_file" << 'EOF'
 # Development Environment Configuration
 # WARNING: These are development-only values, never use in production!
 
@@ -84,10 +113,18 @@ DATABASE_PATH=/app/data/arcane.db
 GIN_MODE=debug
 ENVIRONMENT=development
 EOF
-        log_success "Created .env file with development defaults"
-    fi
+    log_success "Created .env file with development defaults"
+}
+
+start_dev() {
+    log_info "Starting Arcane development environment..."
     
-    docker compose -f $COMPOSE_FILE -p $PROJECT_NAME up -d --build
+    create_env_file
+    
+    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" up -d --build; then
+        log_error "Failed to start development environment"
+        exit 1
+    fi
     
     log_success "Development environment started!"
     log_info "Frontend: http://localhost:3000"
@@ -99,13 +136,19 @@ EOF
 
 stop_dev() {
     log_info "Stopping Arcane development environment..."
-    docker compose -f $COMPOSE_FILE -p $PROJECT_NAME down
+    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down; then
+        log_error "Failed to stop development environment"
+        exit 1
+    fi
     log_success "Development environment stopped!"
 }
 
 restart_dev() {
     log_info "Restarting Arcane development environment..."
-    docker compose -f $COMPOSE_FILE -p $PROJECT_NAME restart
+    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" restart; then
+        log_error "Failed to restart development environment"
+        exit 1
+    fi
     log_success "Development environment restarted!"
 }
 
@@ -115,8 +158,15 @@ clean_dev() {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         log_info "Cleaning up development environment..."
-        docker compose -f $COMPOSE_FILE -p $PROJECT_NAME down -v --remove-orphans
-        docker system prune -f
+        if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down -v --remove-orphans; then
+            log_error "Failed to remove containers and volumes"
+            exit 1
+        fi
+        
+        if ! docker system prune -f; then
+            log_warning "Failed to prune Docker system, but containers were removed"
+        fi
+        
         log_success "Development environment cleaned!"
     else
         log_info "Cleanup cancelled."
@@ -125,21 +175,46 @@ clean_dev() {
 
 rebuild_dev() {
     log_info "Rebuilding development environment..."
-    docker compose -f $COMPOSE_FILE -p $PROJECT_NAME down
-    docker compose -f $COMPOSE_FILE -p $PROJECT_NAME build --no-cache
-    docker compose -f $COMPOSE_FILE -p $PROJECT_NAME up -d
+    
+    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down; then
+        log_error "Failed to stop containers"
+        exit 1
+    fi
+    
+    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" build --no-cache; then
+        log_error "Failed to rebuild containers"
+        exit 1
+    fi
+    
+    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" up -d; then
+        log_error "Failed to start containers"
+        exit 1
+    fi
+    
     log_success "Development environment rebuilt and started!"
 }
 
 shell_into() {
-    local service=$1
-    if [ -z "$service" ]; then
+    local service="${1:-}"
+    
+    if [[ -z "$service" ]]; then
         log_error "Please specify a service: frontend or backend"
         exit 1
     fi
     
+    # Validate service name
+    if [[ ! "$service" =~ ^(frontend|backend)$ ]]; then
+        log_error "Invalid service name: $service"
+        log_error "Valid services: frontend, backend"
+        exit 1
+    fi
+    
     log_info "Opening shell in $service container..."
-    docker compose -f $COMPOSE_FILE -p $PROJECT_NAME exec "$service" /bin/sh
+    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" exec "$service" /bin/sh; then
+        log_error "Failed to open shell in $service container"
+        log_error "Make sure the container is running: ./scripts/development/dev.sh status"
+        exit 1
+    fi
 }
 
 show_help() {
@@ -165,10 +240,14 @@ show_help() {
 }
 
 # Main script logic
-check_docker
-check_compose
-
-case "${1:-help}" in
+main() {
+    # Check requirements and ensure we're in the right directory
+    check_requirements
+    ensure_project_root
+    
+    local command="${1:-help}"
+    
+    case "$command" in
     start)
         start_dev
         ;;
@@ -197,9 +276,13 @@ case "${1:-help}" in
         show_help
         ;;
     *)
-        log_error "Unknown command: $1"
+        log_error "Unknown command: $command"
         echo
         show_help
         exit 1
         ;;
-esac
+    esac
+}
+
+# Run main function with all arguments
+main "$@"

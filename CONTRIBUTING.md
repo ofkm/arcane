@@ -18,6 +18,8 @@ Thanks for helping make Arcane better! We've built a modern, streamlined develop
 - **Docker & Docker Compose** (that's it! 🎉)
 - **VS Code** based IDE (recommended for the best developer experience)
 
+> **💡 Working Directory**: Unless otherwise specified, all commands in this guide should be run from the project root directory (`arcane/`).
+
 ### 1. Fork and Clone
 
 ```bash
@@ -26,6 +28,8 @@ cd arcane
 ```
 
 ### 2. Start Development Environment
+
+From the project root directory:
 
 ```bash
 ./scripts/development/dev.sh start
@@ -82,7 +86,7 @@ Press `Ctrl/Cmd+Shift+B` to run the default build task (Start Environment).
    git switch -c fix/issue-123
    ```
 
-2. **Start development**:
+2. **Start development** (from project root):
    ```bash
    ./scripts/development/dev.sh start
    # or use VS Code Task: "Start"
@@ -105,6 +109,8 @@ Press `Ctrl/Cmd+Shift+B` to run the default build task (Start Environment).
    - **Backend**: Auto-rebuild and restart via Air
 
 ## 🛠️ Development Commands
+
+**Note**: All commands should be run from the project root directory (`arcane/`).
 
 ### Environment Management
 ```bash
@@ -205,7 +211,7 @@ git commit -m "refactor: simplify API response handling"
 
 **Port conflicts:**
 ```bash
-# Stop and clean everything
+# Stop and clean everything (from project root)
 ./scripts/development/dev.sh clean
 
 # Check for conflicting processes
@@ -215,7 +221,7 @@ lsof -i :3552  # Backend port
 
 **Docker issues:**
 ```bash
-# Reset Docker environment
+# Reset Docker environment (from project root)
 ./scripts/development/dev.sh clean
 docker system prune -f
 
@@ -224,9 +230,10 @@ docker system prune -f
 ```
 
 **VS Code tasks not working:**
-- Ensure you've opened the project folder (not a parent directory)
+- Ensure you've opened the project root folder (`arcane/`) in VS Code, not a subfolder or parent directory
 - Install recommended extensions when prompted
 - Restart VS Code if tasks don't appear
+- Verify you're in the correct working directory when running terminal commands
 
 ### Need Help?
 
