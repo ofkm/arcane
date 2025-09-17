@@ -11,7 +11,7 @@ import (
 
 type BaseModel struct {
 	ID        string     `json:"id" gorm:"primaryKey;type:text;not null"`
-	CreatedAt time.Time  `json:"createdAt" gorm:"not null"`
+	CreatedAt time.Time  `json:"createdAt" gorm:"not null" sortable:"true"`
 	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
 }
 

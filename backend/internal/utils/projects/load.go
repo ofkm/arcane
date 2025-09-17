@@ -35,6 +35,7 @@ func DetectComposeFile(dir string) (string, error) {
 	if compose == "" {
 		return "", fmt.Errorf("no compose file found in %q", dir)
 	}
+
 	return compose, nil
 }
 

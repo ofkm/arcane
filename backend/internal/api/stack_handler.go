@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,32 +13,28 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
-	"github.com/ofkm/arcane-backend/internal/utils"
 	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
 type StackHandler struct {
-	stackService *services.StackService
-	logStreams   sync.Map // map[string]*logStream
+	stackService   *services.StackService
+	projectService *services.ProjectService
+	logStreams     sync.Map
 }
 
-func NewStackHandler(group *gin.RouterGroup, stackService *services.StackService, authMiddleware *middleware.AuthMiddleware) {
+func NewStackHandler(group *gin.RouterGroup, stackService *services.StackService, projectService *services.ProjectService, authMiddleware *middleware.AuthMiddleware) {
 
-	handler := &StackHandler{stackService: stackService}
+	handler := &StackHandler{stackService: stackService, projectService: projectService}
 
 	apiGroup := group.Group("/stacks")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
-		apiGroup.GET("", handler.ListStacks)
-		apiGroup.POST("", handler.CreateStack)
 		apiGroup.GET("/:id", handler.GetStack)
 		apiGroup.PUT("/:id", handler.UpdateStack)
-		apiGroup.POST("/:id/deploy", handler.DeployStack)
 		apiGroup.POST("/:id/restart", handler.RestartStack)
 		apiGroup.GET("/:id/services", handler.GetStackServices)
 		apiGroup.POST("/:id/pull", handler.PullImages)
 		apiGroup.POST("/:id/redeploy", handler.RedeployStack)
-		apiGroup.POST("/:id/down", handler.DownStack)
 		apiGroup.DELETE("/:id/destroy", handler.DestroyStack)
 		apiGroup.GET("/:id/logs/ws", handler.GetStackLogsWS)
 	}
@@ -102,87 +97,6 @@ func (h *StackHandler) GetStackLogsWS(c *gin.Context) {
 
 	// don't use the request context here; it is canceled when handler returns.
 	ws.ServeClient(context.Background(), hub, conn)
-}
-
-func (h *StackHandler) ListStacks(c *gin.Context) {
-	var req utils.SortedPaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid pagination or sort parameters: " + err.Error(),
-		})
-		return
-	}
-
-	if req.Pagination.Page == 0 {
-		req.Pagination.Page = 1
-	}
-	if req.Pagination.Limit == 0 {
-		req.Pagination.Limit = 20
-	}
-
-	stacks, pagination, err := h.stackService.ListStacksPaginated(c.Request.Context(), req)
-	if err != nil {
-		if errors.Is(err, context.Canceled) {
-			c.JSON(http.StatusRequestTimeout, gin.H{
-				"success": false,
-				"error":   "Request was canceled",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to list stacks: " + err.Error(),
-		})
-		return
-	}
-
-	// Ensure data is never null - always return empty array if no stacks
-	if stacks == nil {
-		stacks = []map[string]interface{}{}
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"data":       stacks,
-		"pagination": pagination,
-	})
-}
-
-func (h *StackHandler) CreateStack(c *gin.Context) {
-	var req dto.CreateStackDto
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
-		return
-	}
-
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "User not authenticated"})
-		return
-	}
-	stack, err := h.stackService.CreateStack(c.Request.Context(), req.Name, req.ComposeContent, req.EnvContent, *currentUser)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
-		return
-	}
-
-	var response dto.CreateStackResponseDto
-	if err := dto.MapStruct(stack, &response); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to map response"})
-		return
-	}
-	response.Status = string(stack.Status)
-	response.CreatedAt = stack.CreatedAt.Format(time.RFC3339)
-	response.UpdatedAt = stack.UpdatedAt.Format(time.RFC3339)
-	if stack.DirName != nil {
-		response.DirName = *stack.DirName
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    response,
-	})
 }
 
 func (h *StackHandler) GetStack(c *gin.Context) {
@@ -407,31 +321,6 @@ func (h *StackHandler) RedeployStack(c *gin.Context) {
 	})
 }
 
-func (h *StackHandler) DownStack(c *gin.Context) {
-	stackID := c.Param("stackId")
-	if stackID == "" {
-		stackID = c.Param("id")
-	}
-
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "User not authenticated"})
-		return
-	}
-	if err := h.stackService.DownStack(c.Request.Context(), stackID, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   fmt.Sprintf("Failed to bring down stack: %v", err),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Stack brought down successfully"},
-	})
-}
-
 func (h *StackHandler) DestroyStack(c *gin.Context) {
 	stackID := c.Param("stackId")
 	if stackID == "" {
@@ -490,39 +379,6 @@ func (h *StackHandler) PullStack(c *gin.Context) {
 		return
 	}
 
-}
-
-func (h *StackHandler) DeployStack(c *gin.Context) {
-	stackID := c.Param("stackId")
-	if stackID == "" {
-		stackID = c.Param("id")
-	}
-
-	if stackID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Stack ID is required",
-		})
-		return
-	}
-
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "User not authenticated"})
-		return
-	}
-	if err := h.stackService.DeployStack(c.Request.Context(), stackID, *currentUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Project deployed successfully"},
-	})
 }
 
 func (h *StackHandler) GetStackServices(c *gin.Context) {

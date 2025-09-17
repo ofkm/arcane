@@ -217,13 +217,6 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/environments/${envId}/execute`, { command, args }));
 	}
 
-	async getProjects(options?: SearchPaginationSortRequest): Promise<Paginated<Project>> {
-		const envId = await this.getCurrentEnvironmentId();
-
-		const res = await this.api.get(`/environments/${envId}/stacks`, { params: options });
-		return res.data;
-	}
-
 	async getProjectStatusCounts(): Promise<ProjectStatusCounts> {
 		const envId = await this.getCurrentEnvironmentId();
 
@@ -244,16 +237,6 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return response as Project;
 	}
 
-	async createProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		const payload = {
-			name: projectName,
-			composeContent,
-			envContent
-		};
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks`, payload));
-	}
-
 	async updateProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
 		const envId = await this.getCurrentEnvironmentId();
 		const payload = {
@@ -263,19 +246,9 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.put(`/environments/${envId}/stacks/${projectName}`, payload));
 	}
 
-	async deployProject(projectId: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectId}/deploy`));
-	}
-
 	async restartProject(projectId: string): Promise<Project> {
 		const envId = await this.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectId}/restart`));
-	}
-
-	async downProject(projectName: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectName}/down`));
 	}
 
 	async redeployProject(projectName: string): Promise<Project> {
@@ -350,6 +323,37 @@ export class EnvironmentAPIService extends BaseAPIService {
 		const params = limit ? { limit } : undefined;
 		return this.handleResponse(this.api.get(`/environments/${envId}/updater/history`, { params }));
 	}
+
+	// New Project Api Handlers
+
+	async getProjects(options?: SearchPaginationSortRequest): Promise<Paginated<Project>> {
+		const envId = await this.getCurrentEnvironmentId();
+
+		const res = await this.api.get(`/environments/${envId}/projects`, { params: options });
+		return res.data;
+	}
+
+	async deployProject(projectId: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/projects/${projectId}/up`));
+	}
+
+	async downProject(projectName: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/projects/${projectName}/down`));
+	}
+
+	async createProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		const payload = {
+			name: projectName,
+			composeContent,
+			envContent
+		};
+		return this.handleResponse(this.api.post(`/environments/${envId}/projects`, payload));
+	}
+
+	//End New Project Api Handlers
 }
 
 export const environmentAPI = new EnvironmentAPIService();

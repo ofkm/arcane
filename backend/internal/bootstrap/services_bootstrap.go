@@ -11,6 +11,7 @@ import (
 type Services struct {
 	User              *services.UserService
 	Stack             *services.StackService
+	Project           *services.ProjectService
 	Environment       *services.EnvironmentService
 	Settings          *services.SettingsService
 	Container         *services.ContainerService
@@ -43,6 +44,7 @@ func initializeServices(db *database.DB, cfg *config.Config, httpClient *http.Cl
 	svc.ImageUpdate = services.NewImageUpdateService(db, svc.Settings, svc.ContainerRegistry, svc.Docker, svc.Event)
 	svc.Image = services.NewImageService(db, svc.Docker, svc.ContainerRegistry, svc.ImageUpdate, svc.Event)
 	svc.Stack = services.NewStackService(db, svc.Settings, svc.Event, svc.Image)
+	svc.Project = services.NewProjectService(db, svc.Settings, svc.Event, svc.Image)
 	svc.Environment = services.NewEnvironmentService(db, httpClient)
 	svc.Container = services.NewContainerService(db, svc.Event, svc.Docker)
 	svc.Volume = services.NewVolumeService(db, svc.Docker, svc.Event)
