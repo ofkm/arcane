@@ -1,5 +1,7 @@
 FROM alpine:3
 
+ARG TARGETARCH
+
 WORKDIR /app
 RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl su-exec \
  && (delgroup ping || true) && (apk del iputils || true)

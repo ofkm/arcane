@@ -1,0 +1,153 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start",
+      "type": "shell",
+      "command": "./scripts/development/dev.sh",
+      "args": ["start"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "silent",
+        "close": false,
+        "clear": false,
+        "echo": false,
+        "focus": false,
+        "showReuseMessage": false
+      },
+      "isBackground": true,
+      "detail": "Start the Docker development environment with hot reload"
+    },
+    {
+      "label": "Stop",
+      "type": "shell",
+      "command": "./scripts/development/dev.sh",
+      "args": ["stop"],
+      "group": "build",
+      "presentation": {
+        "reveal": "silent",
+        "close": false,
+        "clear": false,
+        "echo": false,
+        "focus": false,
+        "showReuseMessage": false
+      },
+      "isBackground": true,
+      "detail": "Stop the Docker development environment"
+    },
+    {
+      "label": "Restart",
+      "type": "shell",
+      "command": "./scripts/development/dev.sh",
+      "args": ["restart"],
+      "group": "build",
+      "presentation": {
+        "reveal": "silent",
+        "close": false,
+        "clear": false,
+        "echo": false,
+        "focus": false,
+        "showReuseMessage": false
+      },
+      "isBackground": true,
+      "detail": "Restart all services in the development environment"
+    },
+    {
+      "label": "Rebuild",
+      "type": "shell",
+      "command": "./scripts/development/dev.sh",
+      "args": ["rebuild"],
+      "group": "build",
+      "presentation": {
+        "reveal": "silent",
+        "close": false,
+        "clear": false,
+        "echo": false,
+        "focus": false,
+        "showReuseMessage": false
+      },
+      "isBackground": true,
+      "detail": "Rebuild containers and restart (useful after dependency changes)"
+    },
+    {
+      "label": "Clean",
+      "type": "shell",
+      "command": "./scripts/development/dev.sh",
+      "args": ["clean"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "detail": "Remove all containers, networks, and volumes (WARNING: destructive)"
+    },
+    {
+      "label": "Logs",
+      "type": "shell",
+      "command": "./scripts/development/dev.sh",
+      "args": [
+        "logs",
+        "${input:logService}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "detail": "Select which service logs to view"
+    },
+    {
+      "label": "Open Frontend",
+      "type": "process",
+      "command": "open",
+      "args": ["http://localhost:3000"],
+      "group": "test",
+      "presentation": {
+        "reveal": "never",
+        "close": true,
+        "clear": false,
+        "echo": false,
+        "focus": false,
+        "showReuseMessage": false
+      },
+      "runOptions": {
+        "runOn": "default"
+      },
+      "isBackground": true,
+      "detail": "Open the frontend application in your default browser"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "logService",
+      "description": "Which service logs to view",
+      "type": "pickString",
+      "options": [
+        {
+          "label": "All Services",
+          "value": ""
+        },
+        {
+          "label": "Frontend Only",
+          "value": "frontend"
+        },
+        {
+          "label": "Backend Only",
+          "value": "backend"
+        }
+      ],
+      "default": ""
+    }
+  ]
+}

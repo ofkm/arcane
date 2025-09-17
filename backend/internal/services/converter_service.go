@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/ofkm/arcane-backend/internal/models"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 type ConverterService struct{}

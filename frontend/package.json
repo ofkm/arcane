@@ -41,13 +41,13 @@
     "@eslint/js": "^9.35.0",
     "@internationalized/date": "^3.9.0",
     "@lucide/svelte": "^0.544.0",
-    "@sveltejs/kit": "^2.41.0",
+    "@sveltejs/kit": "^2.42.1",
     "@sveltejs/vite-plugin-svelte": "^6.2.0",
     "@tailwindcss/vite": "^4.1.13",
     "@types/bytes": "^3.1.5",
     "@types/dockerode": "^3.3.43",
     "@types/js-yaml": "^4.0.9",
-    "bits-ui": "^2.9.8",
+    "bits-ui": "^2.9.9",
     "bytes": "^3.1.2",
     "clsx": "^2.1.1",
     "eslint": "^9.35.0",
@@ -71,7 +71,7 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.0",
     "vite": "^7.1.5",
-    "zod": "^4.1.8",
+    "zod": "^4.1.9",
     "@inlang/paraglide-js": "2.3.2"
   }
 }
