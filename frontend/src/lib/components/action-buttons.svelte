@@ -122,10 +122,7 @@
 
 	function buildPullApiUrl(): string {
 		const envId = getCurrentEnvironmentId();
-		if (envId === LOCAL_DOCKER_ENVIRONMENT_ID) {
-			return `/api/stacks/${id}/pull`;
-		}
-		return `/api/environments/${envId}/stacks/${id}/pull`;
+		return `/api/environments/${envId}/projects/${id}/pull`;
 	}
 
 	function getCurrentEnvironmentId(): string {

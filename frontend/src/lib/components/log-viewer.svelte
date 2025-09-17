@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
 	import { browser, dev } from '$app/environment';
 	import { get } from 'svelte/store';
 	import { environmentStore } from '$lib/stores/environment.store';
@@ -58,21 +57,6 @@
 	const DOCKER_TS_ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z?\s*/;
 	const DOCKER_TS_SLASH_RE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s*/;
 
-	async function buildLogStreamEndpoint(): Promise<string> {
-		if (browser) {
-			await environmentStore.ready;
-		}
-		const currentEnvironment = get(environmentStore.selected);
-		const envId = currentEnvironment?.id || 'local';
-
-		const baseEndpoint =
-			type === 'stack'
-				? `/api/environments/${envId}/stacks/${stackId}/logs/stream`
-				: `/api/environments/${envId}/containers/${containerId}/logs/stream`;
-
-		return `${baseEndpoint}?follow=true&tail=100&timestamps=${showTimestamps}`;
-	}
-
 	function buildWebSocketEndpoint(path: string): string {
 		const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
 		return `${protocol}://${window.location.host}${path}`;
@@ -83,7 +67,7 @@
 		const envId = currentEnv?.id || 'local';
 		const basePath =
 			type === 'stack'
-				? `/api/environments/${envId}/stacks/${stackId}/logs/ws`
+				? `/api/environments/${envId}/projects/${stackId}/logs/ws`
 				: `/api/environments/${envId}/containers/${containerId}/logs/ws`;
 		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=100&timestamps=${showTimestamps}`);
 	}
@@ -314,9 +298,3 @@
 		{/if}
 	</div>
 </div>
-
-<!-- <style>
-	.log-viewer {
-		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-	}
-</style> -->

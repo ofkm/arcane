@@ -29,7 +29,6 @@ type EnvironmentHandler struct {
 	imageService       *services.ImageService
 	networkService     *services.NetworkService
 	volumeService      *services.VolumeService
-	stackService       *services.StackService
 	projectService     *services.ProjectService
 	settingsService    *services.SettingsService
 	imageUpdateService *services.ImageUpdateService
@@ -46,7 +45,6 @@ func NewEnvironmentHandler(
 	updaterService *services.UpdaterService,
 	networkService *services.NetworkService,
 	volumeService *services.VolumeService,
-	stackService *services.StackService,
 	projectService *services.ProjectService,
 	settingsService *services.SettingsService,
 	authMiddleware *middleware.AuthMiddleware,
@@ -61,7 +59,6 @@ func NewEnvironmentHandler(
 		updaterService:     updaterService,
 		networkService:     networkService,
 		volumeService:      volumeService,
-		stackService:       stackService,
 		projectService:     projectService,
 		settingsService:    settingsService,
 		cfg:                cfg,
@@ -113,21 +110,18 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/volumes/:volumeName/usage", handler.GetVolumeUsage)
 		apiGroup.POST("/:id/volumes/prune", handler.PruneVolumes)
 
-		apiGroup.GET("/:id/stacks/counts", handler.GetStackStatusCounts)
-		apiGroup.GET("/:id/stacks/:stackId", handler.GetStack)
-		apiGroup.PUT("/:id/stacks/:stackId", handler.UpdateStack)
-		apiGroup.DELETE("/:id/stacks/:stackId", handler.DeleteStack)
-		apiGroup.POST("/:id/stacks/:stackId/restart", handler.RestartStack)
-		apiGroup.GET("/:id/stacks/:stackId/services", handler.GetStackServices)
-		apiGroup.POST("/:id/stacks/:stackId/pull", handler.PullStackImages)
-		apiGroup.POST("/:id/stacks/:stackId/redeploy", handler.RedeployStack)
-		apiGroup.DELETE("/:id/stacks/:stackId/destroy", handler.DestroyStack)
-		apiGroup.GET("/:id/stacks/:stackId/logs/ws", handler.GetStackLogsWS)
-
 		apiGroup.GET("/:id/projects", handler.ListProjects)
 		apiGroup.POST("/:id/projects/:projectId/up", handler.ProjectUp)
 		apiGroup.POST("/:id/projects/:projectId/down", handler.ProjectDown)
 		apiGroup.POST("/:id/projects", handler.ProjectCreate)
+		apiGroup.GET("/:id/projects/:projectId", handler.GetProject)
+		apiGroup.POST("/:id/projects/:projectId/pull", handler.PullProjectImages)
+		apiGroup.POST("/:id/projects/:projectId/redeploy", handler.RedeployProject)
+		apiGroup.DELETE("/:id/projects/:projectId/destroy", handler.DestroyProject)
+		apiGroup.PUT("/:id/projects/:projectId", handler.UpdateProject)
+		apiGroup.POST("/:id/projects/:projectId/restart", handler.RestartProject)
+		apiGroup.GET("/:id/projects/counts", handler.GetProjectCounts)
+		apiGroup.GET("/:id/projects/:projectId/logs/ws", handler.GetProjectLogsWS)
 
 		apiGroup.GET("/:id/image-updates/check", handler.CheckImageUpdate)
 		apiGroup.GET("/:id/image-updates/check/:imageId", handler.CheckImageUpdateByID)
@@ -202,10 +196,6 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	if h.handleVolumeEndpoints(c, endpoint) {
 		return
 	}
-	if h.handleStackEndpoints(c, endpoint) {
-		return
-	}
-
 	if h.handleProjectEndpoints(c, endpoint) {
 		return
 	}
@@ -444,51 +434,38 @@ func (h *EnvironmentHandler) handleProjectEndpoints(c *gin.Context, endpoint str
 	case endpoint == "/projects" && c.Request.Method == http.MethodGet:
 		projectHandler.ListProjects(c)
 		return true
+	case endpoint == "/projects" && c.Request.Method == http.MethodPost:
+		projectHandler.CreateProject(c)
+		return true
+	case endpoint == "/projects/counts" && c.Request.Method == http.MethodGet:
+		projectHandler.GetProjectStatusCounts(c)
+		return true
+	case strings.HasSuffix(endpoint, "/logs/ws"):
+		projectHandler.GetProjectLogsWS(c)
+		return true
 	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/up"):
 		projectHandler.DeployProject(c)
 		return true
 	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/down"):
 		projectHandler.DownProject(c)
 		return true
-	case endpoint == "/projects" && c.Request.Method == http.MethodPost:
-		projectHandler.CreateProject(c)
+	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/pull"):
+		projectHandler.PullProjectImages(c)
 		return true
-	}
-	return false
-}
-
-func (h *EnvironmentHandler) handleStackEndpoints(c *gin.Context, endpoint string) bool {
-	stackHandler := &StackHandler{
-		stackService: h.stackService,
-	}
-
-	switch {
-	case endpoint == "/stacks/counts" && c.Request.Method == http.MethodGet:
-		stackHandler.GetProjectStatusCounts(c)
+	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/redeploy"):
+		projectHandler.RedeployProject(c)
 		return true
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/restart"):
-		stackHandler.RestartStack(c)
+	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/destroy"):
+		projectHandler.DestroyProject(c)
 		return true
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/services"):
-		stackHandler.GetStackServices(c)
+	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/restart"):
+		projectHandler.RestartProject(c)
 		return true
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/pull"):
-		stackHandler.PullImages(c)
+	case strings.HasPrefix(endpoint, "/projects/") && c.Request.Method == http.MethodPut:
+		projectHandler.UpdateProject(c)
 		return true
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/redeploy"):
-		stackHandler.RedeployStack(c)
-		return true
-	case strings.HasPrefix(endpoint, "/stacks/") && strings.HasSuffix(endpoint, "/destroy"):
-		stackHandler.DestroyStack(c)
-		return true
-	case strings.HasSuffix(endpoint, "/logs/ws"):
-		stackHandler.GetStackLogsWS(c)
-		return true
-	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodGet:
-		stackHandler.GetStack(c)
-		return true
-	case strings.HasPrefix(endpoint, "/stacks/") && c.Request.Method == http.MethodPut:
-		stackHandler.UpdateStack(c)
+	case strings.HasPrefix(endpoint, "/projects/") && c.Request.Method == http.MethodGet:
+		projectHandler.GetProject(c)
 		return true
 	}
 	return false
@@ -960,35 +937,6 @@ func (h *EnvironmentHandler) PruneVolumes(c *gin.Context) {
 	h.routeRequest(c, "/volumes/prune")
 }
 
-func (h *EnvironmentHandler) GetStackStatusCounts(c *gin.Context) {
-	h.routeRequest(c, "/stacks/counts")
-}
-
-func (h *EnvironmentHandler) GetStack(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId)
-}
-
-func (h *EnvironmentHandler) UpdateStack(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId)
-}
-
-func (h *EnvironmentHandler) DeleteStack(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId)
-}
-
-func (h *EnvironmentHandler) RestartStack(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId+"/restart")
-}
-
-func (h *EnvironmentHandler) GetStackLogs(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId+"/logs")
-}
-
 func (h *EnvironmentHandler) GetVolumeUsage(c *gin.Context) {
 	h.routeRequest(c, "/volumes/"+c.Param("volumeName")+"/usage")
 }
@@ -996,64 +944,6 @@ func (h *EnvironmentHandler) GetVolumeUsage(c *gin.Context) {
 func (h *EnvironmentHandler) GetStackServices(c *gin.Context) {
 	stackId := c.Param("stackId")
 	h.routeRequest(c, "/stacks/"+stackId+"/services")
-}
-
-func (h *EnvironmentHandler) PullStackImages(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId+"/pull")
-}
-
-func (h *EnvironmentHandler) RedeployStack(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId+"/redeploy")
-}
-
-func (h *EnvironmentHandler) DestroyStack(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId+"/destroy")
-}
-
-func (h *EnvironmentHandler) GetStackLogsWS(c *gin.Context) {
-	envID := c.Param("id")
-	stackId := c.Param("stackId")
-
-	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
-		h.routeRequest(c, "/stacks/"+stackId+"/logs/ws")
-		return
-	}
-
-	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
-	if err != nil || environment == nil || !environment.Enabled {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
-		return
-	}
-
-	u, err := url.Parse(strings.TrimRight(environment.ApiUrl, "/"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid environment URL"}})
-		return
-	}
-	if u.Scheme == "https" {
-		u.Scheme = "wss"
-	} else {
-		u.Scheme = "ws"
-	}
-	u.Path = path.Join(u.Path, "/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/stacks/"+stackId+"/logs/ws")
-	u.RawQuery = c.Request.URL.RawQuery
-
-	hdr := http.Header{}
-	// Forward auth if present
-	if auth := c.GetHeader("Authorization"); auth != "" {
-		hdr.Set("Authorization", auth)
-	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
-		hdr.Set("Authorization", "Bearer "+cookieToken)
-	}
-	// Agent token
-	if environment.AccessToken != nil && *environment.AccessToken != "" {
-		hdr.Set("X-Arcane-Agent-Token", *environment.AccessToken)
-	}
-
-	_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
 }
 
 func (h *EnvironmentHandler) ConvertDockerRun(c *gin.Context) {
@@ -1196,4 +1086,81 @@ func (h *EnvironmentHandler) ProjectDown(c *gin.Context) {
 
 func (h *EnvironmentHandler) ProjectCreate(c *gin.Context) {
 	h.routeRequest(c, "/projects")
+}
+
+func (h *EnvironmentHandler) GetProject(c *gin.Context) {
+	projectId := c.Param("projectId")
+	h.routeRequest(c, "/projects/"+projectId)
+}
+
+func (h *EnvironmentHandler) PullProjectImages(c *gin.Context) {
+	projectId := c.Param("projectId")
+	h.routeRequest(c, "/projects/"+projectId+"/pull")
+}
+
+func (h *EnvironmentHandler) RedeployProject(c *gin.Context) {
+	projectId := c.Param("projectId")
+	h.routeRequest(c, "/projects/"+projectId+"/redeploy")
+}
+
+func (h *EnvironmentHandler) DestroyProject(c *gin.Context) {
+	projectId := c.Param("projectId")
+	h.routeRequest(c, "/projects/"+projectId+"/destroy")
+}
+
+func (h *EnvironmentHandler) UpdateProject(c *gin.Context) {
+	projectId := c.Param("projectId")
+	h.routeRequest(c, "/projects/"+projectId)
+}
+
+func (h *EnvironmentHandler) RestartProject(c *gin.Context) {
+	projectId := c.Param("projectId")
+	h.routeRequest(c, "/projects/"+projectId+"/restart")
+}
+
+func (h *EnvironmentHandler) GetProjectLogsWS(c *gin.Context) {
+	envID := c.Param("id")
+	projectId := c.Param("projectId")
+
+	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
+		h.routeRequest(c, "/projects/"+projectId+"/logs/ws")
+		return
+	}
+
+	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
+	if err != nil || environment == nil || !environment.Enabled {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
+		return
+	}
+
+	u, err := url.Parse(strings.TrimRight(environment.ApiUrl, "/"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid environment URL"}})
+		return
+	}
+	if u.Scheme == "https" {
+		u.Scheme = "wss"
+	} else {
+		u.Scheme = "ws"
+	}
+	u.Path = path.Join(u.Path, "/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/projects/"+projectId+"/logs/ws")
+	u.RawQuery = c.Request.URL.RawQuery
+
+	hdr := http.Header{}
+	// Forward auth if present
+	if auth := c.GetHeader("Authorization"); auth != "" {
+		hdr.Set("Authorization", auth)
+	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
+		hdr.Set("Authorization", "Bearer "+cookieToken)
+	}
+	// Agent token
+	if environment.AccessToken != nil && *environment.AccessToken != "" {
+		hdr.Set("X-Arcane-Agent-Token", *environment.AccessToken)
+	}
+
+	_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
+}
+
+func (h *EnvironmentHandler) GetProjectCounts(c *gin.Context) {
+	h.routeRequest(c, "/projects/counts")
 }

@@ -3,6 +3,7 @@ package projects
 import (
 	"context"
 	"io"
+	"strings"
 
 	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/docker/cli/cli/command"
@@ -70,11 +71,23 @@ func (w writerConsumer) Start(container string)       {}
 func (w writerConsumer) Stop(container string)        {}
 func (w writerConsumer) Status(container, msg string) {}
 func (w writerConsumer) Log(container, msg string) {
-	if w.out != nil {
-		_, _ = w.out.Write([]byte(msg))
+	if w.out == nil {
+		return
 	}
+	if !strings.HasSuffix(msg, "\n") {
+		msg += "\n"
+	}
+	_, _ = io.WriteString(w.out, msg)
 }
-func (w writerConsumer) Err(container, msg string) {}
+func (w writerConsumer) Err(container, msg string) {
+	if w.out == nil {
+		return
+	}
+	if !strings.HasSuffix(msg, "\n") {
+		msg += "\n"
+	}
+	_, _ = io.WriteString(w.out, msg)
+}
 
 func (c *Client) Logs(ctx context.Context, projectName string, out io.Writer, opts api.LogOptions) error {
 	return c.svc.Logs(ctx, projectName, writerConsumer{out: out}, opts)

@@ -41,7 +41,7 @@ func ComposeUp(ctx context.Context, proj *types.Project, services []string) erro
 		Services: proj.ServiceNames(),
 		Wait:     true,
 	}
-	return c.Up(context.TODO(), proj, api.UpOptions{Create: upOptions, Start: startOptions})
+	return c.Up(ctx, proj, api.UpOptions{Create: upOptions, Start: startOptions})
 }
 
 func ComposePs(ctx context.Context, proj *types.Project, services []string, all bool) ([]api.ContainerSummary, error) {
@@ -51,7 +51,7 @@ func ComposePs(ctx context.Context, proj *types.Project, services []string, all 
 	}
 	defer c.Close()
 
-	return c.Ps(context.TODO(), proj, api.PsOptions{
+	return c.Ps(ctx, proj, api.PsOptions{
 		All: all,
 	})
 }

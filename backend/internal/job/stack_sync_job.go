@@ -10,27 +10,26 @@ import (
 	"github.com/ofkm/arcane-backend/internal/services"
 )
 
-const StackSyncJobName = "StackSync"
+const ProjectSyncJobName = "ProjectSync"
 
-func RegisterStackSyncJob(
+func RegisterProjectSyncJob(
 	ctx context.Context,
 	scheduler *Scheduler,
-	stackService *services.StackService,
+	projectService *services.ProjectService,
 ) error {
-	slog.InfoContext(ctx, "Registering stack sync job", "jobName", StackSyncJobName)
+	slog.InfoContext(ctx, "Registering project sync job", "jobName", ProjectSyncJobName)
 
 	taskFunc := func(jobCtx context.Context) error {
-		slog.InfoContext(jobCtx, "Running stack sync job", "jobName", StackSyncJobName)
+		slog.InfoContext(jobCtx, "Running project sync job", "jobName", ProjectSyncJobName)
 
-		// Sync all stacks with filesystem (this handles both discovery and updates)
-		if err := stackService.SyncAllStacksFromFilesystem(jobCtx); err != nil {
-			slog.ErrorContext(jobCtx, "Failed to sync stacks with filesystem",
-				"jobName", StackSyncJobName,
+		if err := projectService.SyncProjectsFromFileSystem(jobCtx); err != nil {
+			slog.ErrorContext(jobCtx, "Failed to sync projects with filesystem",
+				"jobName", ProjectSyncJobName,
 				slog.Any("error", err))
 			return err
 		}
 
-		slog.InfoContext(jobCtx, "Stack sync job completed", "jobName", StackSyncJobName)
+		slog.InfoContext(jobCtx, "Project sync job completed", "jobName", ProjectSyncJobName)
 		return nil
 	}
 
@@ -38,16 +37,16 @@ func RegisterStackSyncJob(
 
 	err := scheduler.RegisterJob(
 		ctx,
-		StackSyncJobName,
+		ProjectSyncJobName,
 		jobDefinition,
 		taskFunc,
 		true, // Run immediately on startup
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to register stack sync job %q: %w", StackSyncJobName, err)
+		return fmt.Errorf("failed to register project sync job %q: %w", ProjectSyncJobName, err)
 	}
 
-	slog.InfoContext(ctx, "Stack sync job registered successfully", "jobName", StackSyncJobName)
+	slog.InfoContext(ctx, "Project sync job registered successfully", "jobName", ProjectSyncJobName)
 	return nil
 }

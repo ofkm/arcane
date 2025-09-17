@@ -42,6 +42,21 @@ func GetProjectsDirectory(ctx context.Context, stacksDir string) (string, error)
 	return projectsDirectory, nil
 }
 
+func ReadProjectFiles(projectPath string) (composeContent, envContent string, err error) {
+	if composeFile, derr := projects.DetectComposeFile(projectPath); derr == nil && composeFile != "" {
+		if content, rerr := os.ReadFile(composeFile); rerr == nil {
+			composeContent = string(content)
+		}
+	}
+
+	envPath := filepath.Join(projectPath, ".env")
+	if content, rerr := os.ReadFile(envPath); rerr == nil {
+		envContent = string(content)
+	}
+
+	return composeContent, envContent, nil
+}
+
 func GetTemplatesDirectory(ctx context.Context) (string, error) {
 	templatesDir := filepath.Join("data", "templates")
 	if _, err := os.Stat(templatesDir); os.IsNotExist(err) {
