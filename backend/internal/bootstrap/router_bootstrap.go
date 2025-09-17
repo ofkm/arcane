@@ -65,7 +65,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 
 	if cfg.AgentMode {
 		api.NewHealthHandler(apiGroup)
-		api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Stack, appServices.Settings, authMiddleware, cfg)
+		api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Project, appServices.Settings, authMiddleware, cfg)
 		return router
 	}
 
@@ -75,14 +75,14 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewContainerHandler(apiGroup, appServices.Docker, appServices.Container, appServices.Image, authMiddleware)
 	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
 	api.NewConverterHandler(apiGroup, appServices.Converter, authMiddleware)
-	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Stack, appServices.Settings, authMiddleware, cfg)
+	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Project, appServices.Settings, authMiddleware, cfg)
 	api.NewEventHandler(apiGroup, appServices.Event, authMiddleware)
 	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, authMiddleware)
 	api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)
 	api.NewNetworkHandler(apiGroup, appServices.Docker, appServices.Network, authMiddleware)
 	api.NewOidcHandler(apiGroup, appServices.Auth, appServices.Oidc, cfg)
 	api.NewSettingsHandler(apiGroup, appServices.Settings, authMiddleware)
-	api.NewStackHandler(apiGroup, appServices.Stack, authMiddleware)
+	api.NewProjectHandler(apiGroup, appServices.Project, authMiddleware)
 	api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, authMiddleware)
 	api.NewTemplateHandler(apiGroup, appServices.Template, authMiddleware)
 	api.NewUpdaterHandler(apiGroup, appServices.Updater, authMiddleware)

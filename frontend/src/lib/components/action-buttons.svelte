@@ -12,7 +12,7 @@
 	import { get } from 'svelte/store';
 	import { m } from '$lib/paraglide/messages';
 
-	type TargetType = 'container' | 'stack';
+	type TargetType = 'container' | 'project';
 	type LoadingStates = {
 		start?: boolean;
 		stop?: boolean;
@@ -85,7 +85,7 @@
 	let pullError = $state('');
 	let layerProgress = $state<Record<string, { current: number; total: number; status: string }>>({});
 
-	const isRunning = $derived(itemState === 'running' || (type === 'stack' && itemState === 'partially running'));
+	const isRunning = $derived(itemState === 'running' || (type === 'project' && itemState === 'partially running'));
 
 	function resetPullState() {
 		pullProgress = 0;
@@ -122,10 +122,7 @@
 
 	function buildPullApiUrl(): string {
 		const envId = getCurrentEnvironmentId();
-		if (envId === LOCAL_DOCKER_ENVIRONMENT_ID) {
-			return `/api/stacks/${id}/pull`;
-		}
-		return `/api/environments/${envId}/stacks/${id}/pull`;
+		return `/api/environments/${envId}/projects/${id}/pull`;
 	}
 
 	function getCurrentEnvironmentId(): string {
@@ -136,13 +133,13 @@
 	function confirmAction(action: string) {
 		if (action === 'remove') {
 			openConfirmDialog({
-				title: type === 'stack' ? m.compose_destroy() : m.action_confirm_removal_title(),
+				title: type === 'project' ? m.compose_destroy() : m.action_confirm_removal_title(),
 				message:
-					type === 'stack'
-						? m.action_confirm_destroy_message({ type: m.common_project() })
-						: m.action_confirm_removal_message({ type: m.common_container() }),
+					type === 'project'
+						? m.action_confirm_destroy_message({ type: m.project() })
+						: m.action_confirm_removal_message({ type: m.container() }),
 				confirm: {
-					label: type === 'stack' ? m.compose_destroy() : m.common_remove(),
+					label: type === 'project' ? m.compose_destroy() : m.common_remove(),
 					destructive: true,
 					action: async (checkboxStates) => {
 						const removeFiles = checkboxStates['removeFiles'] === true;
@@ -156,18 +153,18 @@
 									: environmentAPI.destroyProject(id, removeVolumes, removeFiles)
 							),
 							message: m.action_failed_generic({
-								action: type === 'stack' ? m.compose_destroy() : m.common_remove(),
+								action: type === 'project' ? m.compose_destroy() : m.common_remove(),
 								type: type
 							}),
 							setLoadingState: (value) => setLoading('remove', value),
 							onSuccess: async () => {
 								toast.success(
-									type === 'stack'
-										? m.action_destroyed_success({ type: m.common_stack() })
-										: m.action_removed_success({ type: m.common_container() })
+									type === 'project'
+										? m.action_destroyed_success({ type: m.project() })
+										: m.action_removed_success({ type: m.container() })
 								);
 								await invalidateAll();
-								goto(type === 'stack' ? '/compose' : '/containers');
+								goto(type === 'project' ? '/compose' : '/containers');
 							}
 						});
 					}
@@ -273,11 +270,11 @@
 				}
 			});
 		} else {
-			await handleStackPull();
+			await handleProjectPull();
 		}
 	}
 
-	async function handleStackPull() {
+	async function handleProjectPull() {
 		resetPullState();
 		isLoading.pull = true;
 		pullPopoverOpen = true;
@@ -404,7 +401,7 @@
 	{#if isRunning}
 		<ArcaneButton
 			action="stop"
-			customLabel={type === 'stack' ? (m.action_down ? m.action_down() : 'Down') : undefined}
+			customLabel={type === 'project' ? (m.action_down ? m.action_down() : 'Down') : undefined}
 			onclick={() => handleStop()}
 			loading={uiLoading.stop}
 		/>
@@ -416,7 +413,7 @@
 	{:else}
 		<ArcaneButton action="redeploy" onclick={() => confirmAction('redeploy')} loading={uiLoading.redeploy} />
 
-		{#if type === 'stack'}
+		{#if type === 'project'}
 			<ProgressPopover
 				bind:open={pullPopoverOpen}
 				bind:progress={pullProgress}
@@ -433,7 +430,7 @@
 		{/if}
 
 		<ArcaneButton
-			customLabel={type === 'stack' ? m.compose_destroy() : m.common_remove()}
+			customLabel={type === 'project' ? m.compose_destroy() : m.common_remove()}
 			action="remove"
 			onclick={() => confirmAction('remove')}
 			loading={uiLoading.remove}

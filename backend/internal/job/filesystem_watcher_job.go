@@ -11,7 +11,7 @@ import (
 )
 
 type FilesystemWatcherJob struct {
-	stackService     *services.StackService
+	projectService   *services.ProjectService
 	templateService  *services.TemplateService
 	settingsService  *services.SettingsService
 	projectsWatcher  *utils.FilesystemWatcher
@@ -19,19 +19,19 @@ type FilesystemWatcherJob struct {
 }
 
 func NewFilesystemWatcherJob(
-	stackService *services.StackService,
+	projectService *services.ProjectService,
 	templateService *services.TemplateService,
 	settingsService *services.SettingsService,
 ) *FilesystemWatcherJob {
 	return &FilesystemWatcherJob{
-		stackService:    stackService,
+		projectService:  projectService,
 		templateService: templateService,
 		settingsService: settingsService,
 	}
 }
 
-func RegisterFilesystemWatcherJob(ctx context.Context, scheduler *Scheduler, stackService *services.StackService, templateService *services.TemplateService, settingsService *services.SettingsService) error {
-	job := NewFilesystemWatcherJob(stackService, templateService, settingsService)
+func RegisterFilesystemWatcherJob(ctx context.Context, scheduler *Scheduler, projectService *services.ProjectService, templateService *services.TemplateService, settingsService *services.SettingsService) error {
+	job := NewFilesystemWatcherJob(projectService, templateService, settingsService)
 
 	go func() {
 		if err := job.Start(ctx); err != nil {
@@ -49,7 +49,7 @@ func (j *FilesystemWatcherJob) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	projectsDirectory, err := fs.GetProjectsDirectory(ctx, settings.StacksDirectory.Value)
+	projectsDirectory, err := fs.GetProjectsDirectory(ctx, settings.ProjectsDirectory.Value)
 	if err != nil {
 		return err
 	}
@@ -100,8 +100,8 @@ func (j *FilesystemWatcherJob) Start(ctx context.Context) error {
 	}
 
 	// Initial sync to surface pre-existing resources
-	if err := j.stackService.SyncAllStacksFromFilesystem(ctx); err != nil {
-		slog.ErrorContext(ctx, "Initial stack sync failed", "error", err)
+	if err := j.projectService.SyncProjectsFromFileSystem(ctx); err != nil {
+		slog.ErrorContext(ctx, "Initial project sync failed", "error", err)
 	}
 	if j.templateService != nil {
 		if err := j.templateService.SyncLocalTemplatesFromFilesystem(ctx); err != nil {
@@ -130,13 +130,13 @@ func (j *FilesystemWatcherJob) Stop() error {
 }
 
 func (j *FilesystemWatcherJob) handleFilesystemChange(ctx context.Context) {
-	slog.InfoContext(ctx, "Filesystem change detected, syncing stacks")
+	slog.InfoContext(ctx, "Filesystem change detected, syncing projects")
 
-	if err := j.stackService.SyncAllStacksFromFilesystem(ctx); err != nil {
-		slog.ErrorContext(ctx, "Failed to sync stacks after filesystem change",
+	if err := j.projectService.SyncProjectsFromFileSystem(ctx); err != nil {
+		slog.ErrorContext(ctx, "Failed to sync projects after filesystem change",
 			"error", err)
 	} else {
-		slog.InfoContext(ctx, "Stack sync completed after filesystem change")
+		slog.InfoContext(ctx, "Project sync completed after filesystem change")
 	}
 }
 

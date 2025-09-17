@@ -77,9 +77,9 @@
 	// removed: service port host resolution
 
 	let activeSection = $state<string>('overview');
-	let autoScrollStackLogs = $state(true);
-	let isStackLogsStreaming = $state(false);
-	let stackLogViewer = $state<LogViewer>();
+	let autoScrollProjectLogs = $state(true);
+	let isProjectLogsStreaming = $state(false);
+	let projectLogViewer = $state<LogViewer>();
 	let showFloatingHeader = $state(false);
 
 	$effect(() => {
@@ -105,10 +105,10 @@
 			result: await tryCatch(environmentAPI.updateProject(project.id, composeContent, envContent)),
 			message: 'Failed to Save Project',
 			setLoadingState: (value) => (isLoading.saving = value),
-			onSuccess: async (updatedStack: Project) => {
+			onSuccess: async (updated: Project) => {
 				toast.success('Project updated successfully!');
 
-				originalName = updatedStack.name;
+				originalName = updated.name;
 				originalComposeContent = $inputs.composeContent.value;
 				originalEnvContent = $inputs.envContent.value;
 
@@ -118,17 +118,17 @@
 		});
 	}
 
-	function handleStackLogStart() {
-		isStackLogsStreaming = true;
+	function handleProjectLogStart() {
+		isProjectLogsStreaming = true;
 	}
 
-	function handleStackLogStop() {
-		isStackLogsStreaming = false;
+	function handleProjectLogStop() {
+		isProjectLogsStreaming = false;
 	}
 
-	function handleStackLogClear() {}
+	function handleProjectLogClear() {}
 
-	function handleToggleStackAutoScroll() {}
+	function handleToggleProjectAutoScroll() {}
 
 	const navigationSections = [
 		{ id: 'overview', label: m.compose_nav_overview(), icon: FileStackIcon },
@@ -174,7 +174,7 @@
 					<div class="flex items-center gap-2">
 						<ActionButtons
 							id={project.id}
-							type="stack"
+							type="project"
 							itemState={project.status}
 							bind:startLoading={isLoading.deploying}
 							bind:stopLoading={isLoading.stopping}
@@ -207,7 +207,7 @@
 						<div class="bg-border h-4 w-px"></div>
 						<ActionButtons
 							id={project.id}
-							type="stack"
+							type="project"
 							itemState={project.status}
 							bind:startLoading={isLoading.deploying}
 							bind:stopLoading={isLoading.stopping}
@@ -458,23 +458,23 @@
 									</h2>
 									<div class="flex items-center gap-3">
 										<label class="flex items-center gap-2">
-											<input type="checkbox" bind:checked={autoScrollStackLogs} class="size-4" />
+											<input type="checkbox" bind:checked={autoScrollProjectLogs} class="size-4" />
 											{m.common_autoscroll()}
 										</label>
-										<Button variant="outline" size="sm" onclick={() => stackLogViewer?.clearLogs()}>{m.common_clear()}</Button>
-										{#if isStackLogsStreaming}
+										<Button variant="outline" size="sm" onclick={() => projectLogViewer?.clearLogs()}>{m.common_clear()}</Button>
+										{#if isProjectLogsStreaming}
 											<div class="flex items-center gap-2">
 												<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
 												<span class="text-sm font-medium text-green-600">{m.common_live()}</span>
 											</div>
-											<Button variant="outline" size="sm" onclick={() => stackLogViewer?.stopLogStream()}
+											<Button variant="outline" size="sm" onclick={() => projectLogViewer?.stopLogStream()}
 												>{m.common_stop()}</Button
 											>
 										{:else}
 											<Button
 												variant="outline"
 												size="sm"
-												onclick={() => stackLogViewer?.startLogStream()}
+												onclick={() => projectLogViewer?.startLogStream()}
 												disabled={!project?.id}
 											>
 												{m.common_start()}
@@ -484,8 +484,8 @@
 											variant="outline"
 											size="sm"
 											onclick={() => {
-												stackLogViewer?.stopLogStream();
-												stackLogViewer?.startLogStream();
+												projectLogViewer?.stopLogStream();
+												projectLogViewer?.startLogStream();
 											}}
 										>
 											<RefreshCwIcon class="size-4" />
@@ -497,17 +497,17 @@
 									<Card.Content class="min-w-0 overflow-hidden p-0">
 										<div class="w-full min-w-0 overflow-hidden">
 											<LogViewer
-												bind:this={stackLogViewer}
-												bind:autoScroll={autoScrollStackLogs}
-												stackId={project?.id}
-												type="stack"
+												bind:this={projectLogViewer}
+												bind:autoScroll={autoScrollProjectLogs}
+												projectId={project.id}
+												type="project"
 												maxLines={500}
 												showTimestamps={true}
 												height="600px"
-												onStart={handleStackLogStart}
-												onStop={handleStackLogStop}
-												onClear={handleStackLogClear}
-												onToggleAutoScroll={handleToggleStackAutoScroll}
+												onStart={handleProjectLogStart}
+												onStop={handleProjectLogStop}
+												onClear={handleProjectLogClear}
+												onToggleAutoScroll={handleToggleProjectAutoScroll}
 											/>
 										</div>
 									</Card.Content>

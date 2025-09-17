@@ -217,89 +217,6 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/environments/${envId}/execute`, { command, args }));
 	}
 
-	async getProjects(options?: SearchPaginationSortRequest): Promise<Paginated<Project>> {
-		const envId = await this.getCurrentEnvironmentId();
-
-		const res = await this.api.get(`/environments/${envId}/stacks`, { params: options });
-		return res.data;
-	}
-
-	async getProjectStatusCounts(): Promise<ProjectStatusCounts> {
-		const envId = await this.getCurrentEnvironmentId();
-
-		const res = await this.api.get(`/environments/${envId}/stacks/counts`);
-		return res.data.data;
-	}
-
-	async getProject(projectName: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		const response = await this.handleResponse<{ stack?: Project; success?: boolean }>(
-			this.api.get(`/environments/${envId}/stacks/${projectName}`)
-		);
-
-		if (response.stack) {
-			return response.stack;
-		}
-
-		return response as Project;
-	}
-
-	async createProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		const payload = {
-			name: projectName,
-			composeContent,
-			envContent
-		};
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks`, payload));
-	}
-
-	async updateProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		const payload = {
-			composeContent,
-			envContent
-		};
-		return this.handleResponse(this.api.put(`/environments/${envId}/stacks/${projectName}`, payload));
-	}
-
-	async deployProject(projectId: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectId}/deploy`));
-	}
-
-	async restartProject(projectId: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectId}/restart`));
-	}
-
-	async downProject(projectName: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectName}/down`));
-	}
-
-	async redeployProject(projectName: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectName}/redeploy`));
-	}
-
-	async pullProjectImages(projectName: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/stacks/${projectName}/pull`));
-	}
-
-	async destroyProject(projectName: string, removeVolumes = false, removeFiles = false): Promise<void> {
-		const envId = await this.getCurrentEnvironmentId();
-		await this.handleResponse(
-			this.api.delete(`/environments/${envId}/stacks/${projectName}/destroy`, {
-				data: {
-					removeVolumes,
-					removeFiles
-				}
-			})
-		);
-	}
-
 	async checkImageUpdate(imageRef: string): Promise<ImageUpdateInfoDto> {
 		const envId = await this.getCurrentEnvironmentId();
 		const res = await this.api.get(`/environments/${envId}/image-updates/check`, { params: { imageRef } });
@@ -350,6 +267,89 @@ export class EnvironmentAPIService extends BaseAPIService {
 		const params = limit ? { limit } : undefined;
 		return this.handleResponse(this.api.get(`/environments/${envId}/updater/history`, { params }));
 	}
+
+	// New Project Api Handlers
+
+	async getProjects(options?: SearchPaginationSortRequest): Promise<Paginated<Project>> {
+		const envId = await this.getCurrentEnvironmentId();
+
+		const res = await this.api.get(`/environments/${envId}/projects`, { params: options });
+		return res.data;
+	}
+
+	async deployProject(projectId: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/projects/${projectId}/up`));
+	}
+
+	async downProject(projectName: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/projects/${projectName}/down`));
+	}
+
+	async createProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		const payload = {
+			name: projectName,
+			composeContent,
+			envContent
+		};
+		return this.handleResponse(this.api.post(`/environments/${envId}/projects`, payload));
+	}
+
+	async getProject(projectId: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		const response = await this.handleResponse<{ project?: Project; success?: boolean }>(
+			this.api.get(`/environments/${envId}/projects/${projectId}`)
+		);
+
+		return response.project ? response.project : (response as Project);
+	}
+
+	async getProjectStatusCounts(): Promise<ProjectStatusCounts> {
+		const envId = await this.getCurrentEnvironmentId();
+
+		const res = await this.api.get(`/environments/${envId}/projects/counts`);
+		return res.data.data;
+	}
+
+	async updateProject(projectName: string, composeContent: string, envContent?: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		const payload = {
+			composeContent,
+			envContent
+		};
+		return this.handleResponse(this.api.put(`/environments/${envId}/projects/${projectName}`, payload));
+	}
+
+	async restartProject(projectId: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/projects/${projectId}/restart`));
+	}
+
+	async redeployProject(projectName: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/projects/${projectName}/redeploy`));
+	}
+
+	async pullProjectImages(projectName: string): Promise<Project> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/projects/${projectName}/pull`));
+	}
+
+	async destroyProject(projectName: string, removeVolumes = false, removeFiles = false): Promise<void> {
+		const envId = await this.getCurrentEnvironmentId();
+		await this.handleResponse(
+			this.api.delete(`/environments/${envId}/projects/${projectName}/destroy`, {
+				data: {
+					removeVolumes,
+					removeFiles
+				}
+			})
+		);
+	}
+
+	//End New Project Api Handlers
 }
 
 export const environmentAPI = new EnvironmentAPIService();

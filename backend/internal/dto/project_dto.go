@@ -1,13 +1,18 @@
 package dto
 
-type CreateStackDto struct {
+type CreateProjectDto struct {
 	Name           string  `json:"name" binding:"required"`
 	ComposeContent string  `json:"composeContent" binding:"required"`
 	EnvContent     *string `json:"envContent,omitempty"`
-	AgentID        *string `json:"agentId,omitempty"`
 }
 
-type CreateStackResponseDto struct {
+type UpdateProjectDto struct {
+	Name           *string `json:"name,omitempty"`
+	ComposeContent *string `json:"composeContent,omitempty"`
+	EnvContent     *string `json:"envContent,omitempty"`
+}
+
+type CreateProjectReponseDto struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
 	DirName      string `json:"dirName,omitempty"`
@@ -15,32 +20,11 @@ type CreateStackResponseDto struct {
 	Status       string `json:"status"`
 	ServiceCount int    `json:"serviceCount"`
 	RunningCount int    `json:"runningCount"`
-	AutoUpdate   bool   `json:"autoUpdate"`
-	IsExternal   bool   `json:"isExternal"`
-	IsLegacy     bool   `json:"isLegacy"`
-	IsRemote     bool   `json:"isRemote"`
 	CreatedAt    string `json:"createdAt"`
 	UpdatedAt    string `json:"updatedAt"`
 }
 
-type UpdateStackDto struct {
-	Name           *string `json:"name,omitempty"`
-	ComposeContent *string `json:"composeContent,omitempty"`
-	EnvContent     *string `json:"envContent,omitempty"`
-	AutoUpdate     *bool   `json:"autoUpdate,omitempty"`
-}
-
-type RedeployStackDto struct {
-	Profiles     []string          `json:"profiles,omitempty"`
-	EnvOverrides map[string]string `json:"envOverrides,omitempty"`
-}
-
-type DestroyStackDto struct {
-	RemoveFiles   bool `json:"removeFiles,omitempty"`
-	RemoveVolumes bool `json:"removeVolumes,omitempty"`
-}
-
-type StackDetailsDto struct {
+type ProjectDetailsDto struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
 	DirName        string `json:"dirName,omitempty"`
@@ -50,13 +34,14 @@ type StackDetailsDto struct {
 	Status         string `json:"status"`
 	ServiceCount   int    `json:"serviceCount"`
 	RunningCount   int    `json:"runningCount"`
-	AutoUpdate     bool   `json:"autoUpdate"`
-	IsExternal     bool   `json:"isExternal"`
-	IsLegacy       bool   `json:"isLegacy"`
-	IsRemote       bool   `json:"isRemote"`
 	CreatedAt      string `json:"createdAt"`
 	UpdatedAt      string `json:"updatedAt"`
 	Services       []any  `json:"services,omitempty"`
+}
+
+type DestroyProjectDto struct {
+	RemoveFiles   bool `json:"removeFiles,omitempty"`
+	RemoveVolumes bool `json:"removeVolumes,omitempty"`
 }
 
 type ProjectStatusCounts struct {

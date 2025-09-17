@@ -39,7 +39,6 @@ export interface Project {
 	status: string;
 	updatedAt: string;
 	createdAt: string;
-	autoUpdate?: boolean;
 	services?: ProjectService[];
 	composeContent?: string;
 	envContent?: string;

@@ -21,12 +21,12 @@ const (
 	EventTypeImageDelete EventType = "image.delete"
 	EventTypeImageScan   EventType = "image.scan"
 
-	EventTypeStackDeploy EventType = "project.deploy"
-	EventTypeStackDelete EventType = "project.delete"
-	EventTypeStackStart  EventType = "project.start"
-	EventTypeStackStop   EventType = "project.stop"
-	EventTypeStackCreate EventType = "project.create"
-	EventTypeStackUpdate EventType = "project.update"
+	EventTypeProjectDeploy EventType = "project.deploy"
+	EventTypeProjectDelete EventType = "project.delete"
+	EventTypeProjectStart  EventType = "project.start"
+	EventTypeProjectStop   EventType = "project.stop"
+	EventTypeProjectCreate EventType = "project.create"
+	EventTypeProjectUpdate EventType = "project.update"
 
 	EventTypeVolumeCreate EventType = "volume.create"
 	EventTypeVolumeDelete EventType = "volume.delete"

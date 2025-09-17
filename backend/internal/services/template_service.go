@@ -468,7 +468,7 @@ func (s *TemplateService) convertRemoteToLocal(remote dto.RemoteTemplate, regist
 
 func (s *TemplateService) getDefaultEnvTemplate() string {
 	return `# Environment Variables
-# These variables will be available to your stack services
+# These variables will be available to your project services
 # Format: VARIABLE_NAME=value
 
 # Web Server Configuration

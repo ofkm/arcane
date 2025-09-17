@@ -44,7 +44,7 @@ func (s SettingVariable) AsDurationSeconds() time.Duration {
 
 type Settings struct {
 	// Docker
-	StacksDirectory    SettingVariable `key:"stacksDirectory"`
+	ProjectsDirectory  SettingVariable `key:"projectsDirectory"`
 	AutoUpdate         SettingVariable `key:"autoUpdate"`
 	AutoUpdateInterval SettingVariable `key:"autoUpdateInterval"`
 	PollingEnabled     SettingVariable `key:"pollingEnabled"`

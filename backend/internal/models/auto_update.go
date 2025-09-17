@@ -17,7 +17,7 @@ const (
 
 type AutoUpdateRecord struct {
 	ResourceID       string           `json:"resourceId" gorm:"index;not null"`
-	ResourceType     string           `json:"resourceType" gorm:"not null"` // "container" or "stack"
+	ResourceType     string           `json:"resourceType" gorm:"not null"`
 	ResourceName     string           `json:"resourceName" gorm:"not null"`
 	Status           AutoUpdateStatus `json:"status" gorm:"not null"`
 	StartTime        time.Time        `json:"startTime" gorm:"not null"`

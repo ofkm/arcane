@@ -13,7 +13,7 @@ type SettingDto struct {
 
 type UpdateSettingsDto struct {
 	// Core settings
-	StacksDirectory    *string `json:"stacksDirectory,omitempty"`
+	ProjectsDirectory  *string `json:"projectsDirectory,omitempty"`
 	AutoUpdate         *string `json:"autoUpdate,omitempty"`
 	AutoUpdateInterval *string `json:"autoUpdateInterval,omitempty"`
 	PollingEnabled     *string `json:"pollingEnabled,omitempty"`

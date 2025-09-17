@@ -12,31 +12,31 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/ofkm/arcane-backend/internal/models"
 
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
-	"github.com/ofkm/arcane-backend/internal/models"
 )
 
 type UpdaterService struct {
 	db                 *database.DB
 	settingsService    *SettingsService
 	dockerService      *DockerClientService
-	stackService       *StackService
+	projectService     *ProjectService
 	imageUpdateService *ImageUpdateService
 	registryService    *ContainerRegistryService
 	eventService       *EventService
 	imageService       *ImageService
 
 	updatingContainers map[string]bool
-	updatingStacks     map[string]bool
+	updatingProjects   map[string]bool
 }
 
 func NewUpdaterService(
 	db *database.DB,
 	settings *SettingsService,
 	docker *DockerClientService,
-	stacks *StackService,
+	projects *ProjectService,
 	imageUpdates *ImageUpdateService,
 	registries *ContainerRegistryService,
 	events *EventService,
@@ -46,13 +46,13 @@ func NewUpdaterService(
 		db:                 db,
 		settingsService:    settings,
 		dockerService:      docker,
-		stackService:       stacks,
+		projectService:     projects,
 		imageUpdateService: imageUpdates,
 		registryService:    registries,
 		eventService:       events,
 		imageService:       imageSvc,
 		updatingContainers: map[string]bool{},
-		updatingStacks:     map[string]bool{},
+		updatingProjects:   map[string]bool{},
 	}
 }
 
@@ -179,7 +179,6 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.Up
 		})
 	}
 
-	// Restart containers using old image IDs (skip stack-managed)
 	if !dryRun && len(oldIDToNewRef) > 0 {
 		results, err := s.restartContainersUsingOldIDs(ctx, oldIDToNewRef, oldRefToNewRef)
 		if err != nil {
@@ -219,9 +218,9 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.Up
 			})
 		}
 
-		// Redeploy impacted stacks (only running ones)
-		if err := s.redeployStacksUsingOldIDs(ctx, oldIDToNewRef, out); err != nil {
-			slog.Warn("stack redeploys had errors", "err", err)
+		// Redeploy impacted projects (only running ones)
+		if err := s.redeployProjectsUsingOldIDs(ctx, oldIDToNewRef, out); err != nil {
+			slog.Warn("project redeploys had errors", "err", err)
 		}
 	}
 
@@ -274,16 +273,16 @@ func (s *UpdaterService) GetStatus() map[string]any {
 	for id := range s.updatingContainers {
 		containerIDs = append(containerIDs, id)
 	}
-	stackIDs := make([]string, 0, len(s.updatingStacks))
-	for id := range s.updatingStacks {
-		stackIDs = append(stackIDs, id)
+	projectIDs := make([]string, 0, len(s.updatingProjects))
+	for id := range s.updatingProjects {
+		projectIDs = append(projectIDs, id)
 	}
 
 	return map[string]any{
 		"updatingContainers": len(s.updatingContainers),
-		"updatingStacks":     len(s.updatingStacks),
+		"updatingProjects":   len(s.updatingProjects),
 		"containerIds":       containerIDs,
-		"stackIds":           stackIDs,
+		"projectIds":         projectIDs,
 	}
 }
 
@@ -430,8 +429,11 @@ func (s *UpdaterService) collectUsedImagesFromContainers(ctx context.Context, dc
 	return nil
 }
 
-func (s *UpdaterService) isStackOptedOut(ctx context.Context, dcli *client.Client, stackName string) bool {
-	containers, err := s.getStackContainers(ctx, dcli, stackName)
+func (s *UpdaterService) isProjectOptedOut(ctx context.Context, dcli *client.Client, projectName string) bool {
+	if dcli == nil {
+		return false
+	}
+	containers, err := s.getProjectContainers(ctx, dcli, projectName)
 	if err != nil {
 		return false
 	}
@@ -443,47 +445,54 @@ func (s *UpdaterService) isStackOptedOut(ctx context.Context, dcli *client.Clien
 	return false
 }
 
-func (s *UpdaterService) collectUsedImagesFromStacks(ctx context.Context, dcli *client.Client, out map[string]struct{}) error {
-	stacks, err := s.stackService.ListStacks(ctx)
-	if err != nil {
-		return err
-	}
-	for _, st := range stacks {
-		if st.Status != models.StackStatusRunning {
-			continue
-		}
-		if dcli != nil && s.isStackOptedOut(ctx, dcli, st.Name) {
-			continue
-		}
-		srvs, err := s.stackService.GetStackServices(ctx, st.ID)
-		if err != nil {
-			continue
-		}
-		for _, svc := range srvs {
-			if svc.Image == "" {
-				continue
-			}
-			out[s.normalizeRef(svc.Image)] = struct{}{}
-		}
-	}
-	return nil
-}
-
+// Aggregate images in use across containers and compose projects
 func (s *UpdaterService) collectUsedImages(ctx context.Context) (map[string]struct{}, error) {
 	out := map[string]struct{}{}
 
-	// Try to connect to Docker once; proceed with stacks even if it fails.
 	dcli, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		_ = err // keep going without container details
-	} else {
+	if err == nil && dcli != nil {
 		defer dcli.Close()
 	}
 
 	_ = s.collectUsedImagesFromContainers(ctx, dcli, out)
-	_ = s.collectUsedImagesFromStacks(ctx, dcli, out)
+	_ = s.collectUsedImagesFromProjects(ctx, dcli, out)
 
 	return out, nil
+}
+
+func (s *UpdaterService) collectUsedImagesFromProjects(ctx context.Context, dcli *client.Client, out map[string]struct{}) error {
+	if s.projectService == nil {
+		return nil
+	}
+
+	projs, err := s.projectService.ListAllProjects(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range projs {
+		// consider running and partially running projects
+		if p.Status != models.ProjectStatusRunning && p.Status != models.ProjectStatusPartiallyRunning {
+			continue
+		}
+		// optional opt-out via labels on compose project
+		if dcli != nil && s.isProjectOptedOut(ctx, dcli, p.Name) {
+			continue
+		}
+
+		services, serr := s.projectService.GetProjectServices(ctx, p.ID)
+		if serr != nil {
+			continue
+		}
+		for _, svc := range services {
+			img := strings.TrimSpace(svc.Image)
+			if img == "" {
+				continue
+			}
+			out[s.normalizeRef(img)] = struct{}{}
+		}
+	}
+	return nil
 }
 
 func (s *UpdaterService) getNormalizedTagsForContainer(ctx context.Context, dcli *client.Client, inspect container.InspectResponse) []string {
@@ -559,13 +568,9 @@ func (s *UpdaterService) recordRun(ctx context.Context, item dto.UpdaterItem) er
 	return s.db.WithContext(ctx).Create(rec).Error
 }
 
-func (s *UpdaterService) isPartOfStack(labels map[string]string) bool {
+func (s *UpdaterService) isProjectManaged(labels map[string]string) bool {
 	if labels == nil {
 		return false
-	}
-	// Swarm stack label
-	if _, ok := labels["com.docker.stack.namespace"]; ok {
-		return true
 	}
 	// Compose project label
 	if _, ok := labels["com.docker.compose.project"]; ok {
@@ -604,8 +609,8 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 
 	var results []dto.AutoUpdateResourceResult
 	for _, c := range list {
-		// Skip stack-managed containers; stacks handled separately
-		if s.isPartOfStack(c.Labels) {
+		// Skip project-managed containers; projects handled separately
+		if s.isProjectManaged(c.Labels) {
 			continue
 		}
 		// Skip containers with opt-out label
@@ -672,10 +677,14 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 	return results, nil
 }
 
-func (s *UpdaterService) redeployStacksUsingOldIDs(ctx context.Context, oldIDToNewRef map[string]string, out *dto.UpdaterRunResult) error {
-	stacks, err := s.stackService.ListStacks(ctx)
+func (s *UpdaterService) redeployProjectsUsingOldIDs(ctx context.Context, oldIDToNewRef map[string]string, out *dto.UpdaterRunResult) error {
+	if s.projectService == nil {
+		return nil
+	}
+
+	projects, err := s.projectService.ListAllProjects(ctx)
 	if err != nil {
-		return fmt.Errorf("list stacks: %w", err)
+		return fmt.Errorf("list projects: %w", err)
 	}
 
 	dcli, derr := s.dockerService.CreateConnection(ctx)
@@ -684,13 +693,13 @@ func (s *UpdaterService) redeployStacksUsingOldIDs(ctx context.Context, oldIDToN
 	}
 	defer dcli.Close()
 
-	for _, st := range stacks {
-		// Only redeploy stacks that are currently running
-		if st.Status != models.StackStatusRunning {
+	for _, p := range projects {
+		// Only redeploy projects that are currently running (or partially)
+		if p.Status != models.ProjectStatusRunning && p.Status != models.ProjectStatusPartiallyRunning {
 			out.Items = append(out.Items, dto.UpdaterItem{
-				ResourceID:   st.ID,
-				ResourceType: "stack",
-				ResourceName: st.Name,
+				ResourceID:   p.ID,
+				ResourceType: "project",
+				ResourceName: p.Name,
 				Status:       "skipped",
 			})
 			out.Skipped++
@@ -698,13 +707,13 @@ func (s *UpdaterService) redeployStacksUsingOldIDs(ctx context.Context, oldIDToN
 			continue
 		}
 
-		containers, lerr := s.getStackContainers(ctx, dcli, st.Name)
+		containers, lerr := s.getProjectContainers(ctx, dcli, p.Name)
 		if lerr != nil {
-			slog.Warn("list stack containers failed", "stack", st.Name, "err", lerr)
+			slog.Warn("list project containers failed", "project", p.Name, "err", lerr)
 			continue
 		}
 
-		// Skip entire stack if any container declares the opt-out label
+		// Skip entire project if any container declares the opt-out label
 		skip := false
 		for _, c := range containers {
 			if s.isUpdateDisabled(c.Labels) {
@@ -714,19 +723,19 @@ func (s *UpdaterService) redeployStacksUsingOldIDs(ctx context.Context, oldIDToN
 		}
 		if skip {
 			out.Items = append(out.Items, dto.UpdaterItem{
-				ResourceID:   st.ID,
-				ResourceType: "stack",
-				ResourceName: st.Name,
+				ResourceID:   p.ID,
+				ResourceType: "project",
+				ResourceName: p.Name,
 				Status:       "skipped",
 			})
 			out.Skipped++
 			out.Checked++
 			s.logAutoUpdate(ctx, models.EventSeverityInfo, models.JSON{
-				"phase":     "stack",
-				"stackId":   st.ID,
-				"stackName": st.Name,
-				"status":    "skipped",
-				"reason":    "com.ofkm.arcane.updater=false",
+				"phase":       "project",
+				"projectId":   p.ID,
+				"projectName": p.Name,
+				"status":      "skipped",
+				"reason":      "com.ofkm.arcane.updater=false",
 			})
 			continue
 		}
@@ -745,9 +754,9 @@ func (s *UpdaterService) redeployStacksUsingOldIDs(ctx context.Context, oldIDToN
 
 		if !impacted {
 			out.Items = append(out.Items, dto.UpdaterItem{
-				ResourceID:   st.ID,
-				ResourceType: "stack",
-				ResourceName: st.Name,
+				ResourceID:   p.ID,
+				ResourceType: "project",
+				ResourceName: p.Name,
 				Status:       "skipped",
 			})
 			out.Skipped++
@@ -756,18 +765,15 @@ func (s *UpdaterService) redeployStacksUsingOldIDs(ctx context.Context, oldIDToN
 		}
 
 		item := dto.UpdaterItem{
-			ResourceID:   st.ID,
-			ResourceType: "stack",
-			ResourceName: st.Name,
+			ResourceID:   p.ID,
+			ResourceType: "project",
+			ResourceName: p.Name,
 			Status:       "checked",
 		}
 		out.Checked++
 
-		// Pull, down, deploy to avoid conflicts and ensure fresh images
-		if err := s.stackService.PullStackImages(ctx, st.ID, io.Discard); err != nil {
-			slog.Warn("stack pull warning", "stack_id", st.ID, "err", err)
-		}
-		if err := s.stackService.RedeployStack(ctx, st.ID, nil, nil, systemUser); err != nil {
+		// Redeploy with ProjectService (handles pull/down/up internally)
+		if err := s.projectService.RedeployProject(ctx, p.ID, systemUser); err != nil {
 			item.Status = "failed"
 			item.Error = err.Error()
 			out.Failed++
@@ -779,44 +785,33 @@ func (s *UpdaterService) redeployStacksUsingOldIDs(ctx context.Context, oldIDToN
 		out.Items = append(out.Items, item)
 		_ = s.recordRun(ctx, item)
 
-		// Emit auto-update stack event
+		// Emit auto-update project event
 		s.logAutoUpdate(ctx, s.severityFromStatus(item.Status), models.JSON{
-			"phase":     "stack",
-			"stackId":   st.ID,
-			"stackName": st.Name,
-			"status":    item.Status,
-			"error":     item.Error,
+			"phase":       "project",
+			"projectId":   p.ID,
+			"projectName": p.Name,
+			"status":      item.Status,
+			"error":       item.Error,
 		})
 	}
 	return nil
 }
 
-func (s *UpdaterService) getStackContainers(ctx context.Context, dcli *client.Client, stackName string) ([]container.Summary, error) {
+func (s *UpdaterService) getProjectContainers(ctx context.Context, dcli *client.Client, projectName string) ([]container.Summary, error) {
 	byID := map[string]container.Summary{}
 
 	// Compose label
 	f1 := filters.NewArgs()
-	f1.Add("label", "com.docker.compose.project="+stackName)
-	cs1, err1 := dcli.ContainerList(ctx, container.ListOptions{All: true, Filters: f1})
-	if err1 == nil {
+	f1.Add("label", "com.docker.compose.project="+projectName)
+	cs1, err := dcli.ContainerList(ctx, container.ListOptions{All: true, Filters: f1})
+	if err == nil {
 		for _, c := range cs1 {
 			byID[c.ID] = c
 		}
 	}
 
-	// Swarm namespace label
-	f2 := filters.NewArgs()
-	f2.Add("label", "com.docker.stack.namespace="+stackName)
-	cs2, err2 := dcli.ContainerList(ctx, container.ListOptions{All: true, Filters: f2})
-	if err2 == nil {
-		for _, c := range cs2 {
-			byID[c.ID] = c
-		}
-	}
-
-	// If both failed, return the last error
-	if err1 != nil && err2 != nil {
-		return nil, err2
+	if err != nil {
+		return nil, err
 	}
 
 	out := make([]container.Summary, 0, len(byID))
@@ -853,15 +848,15 @@ func (s *UpdaterService) logAutoUpdate(ctx context.Context, sev models.EventSeve
 		} else {
 			title = "Auto-update: container"
 		}
-	case "stack":
-		name := fmt.Sprint(metadata["stackName"])
+	case "project":
+		name := fmt.Sprint(metadata["projectName"])
 		if name == "" {
-			name = fmt.Sprint(metadata["stackId"])
+			name = fmt.Sprint(metadata["projectId"])
 		}
 		if name != "" {
-			title = fmt.Sprintf("Auto-update: stack %s", name)
+			title = fmt.Sprintf("Auto-update: project %s", name)
 		} else {
-			title = "Auto-update: stack"
+			title = "Auto-update: project"
 		}
 	case "complete":
 		title = "Auto-update run completed"

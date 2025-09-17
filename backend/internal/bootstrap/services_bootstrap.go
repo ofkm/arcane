@@ -10,7 +10,7 @@ import (
 
 type Services struct {
 	User              *services.UserService
-	Stack             *services.StackService
+	Project           *services.ProjectService
 	Environment       *services.EnvironmentService
 	Settings          *services.SettingsService
 	Container         *services.ContainerService
@@ -42,7 +42,7 @@ func initializeServices(db *database.DB, cfg *config.Config, httpClient *http.Cl
 	svc.ContainerRegistry = services.NewContainerRegistryService(db)
 	svc.ImageUpdate = services.NewImageUpdateService(db, svc.Settings, svc.ContainerRegistry, svc.Docker, svc.Event)
 	svc.Image = services.NewImageService(db, svc.Docker, svc.ContainerRegistry, svc.ImageUpdate, svc.Event)
-	svc.Stack = services.NewStackService(db, svc.Settings, svc.Event, svc.Image)
+	svc.Project = services.NewProjectService(db, svc.Settings, svc.Event, svc.Image)
 	svc.Environment = services.NewEnvironmentService(db, httpClient)
 	svc.Container = services.NewContainerService(db, svc.Event, svc.Docker)
 	svc.Volume = services.NewVolumeService(db, svc.Docker, svc.Event)
@@ -50,7 +50,7 @@ func initializeServices(db *database.DB, cfg *config.Config, httpClient *http.Cl
 	svc.Template = services.NewTemplateService(db, httpClient)
 	svc.Auth = services.NewAuthService(svc.User, svc.Settings, svc.Event, cfg.JWTSecret, cfg)
 	svc.Oidc = services.NewOidcService(svc.Auth, cfg, httpClient)
-	svc.Updater = services.NewUpdaterService(db, svc.Settings, svc.Docker, svc.Stack, svc.ImageUpdate, svc.ContainerRegistry, svc.Event, svc.Image)
+	svc.Updater = services.NewUpdaterService(db, svc.Settings, svc.Docker, svc.Project, svc.ImageUpdate, svc.ContainerRegistry, svc.Event, svc.Image)
 	svc.System = services.NewSystemService(db, svc.Docker, svc.Container, svc.Image, svc.Volume, svc.Network, svc.Settings)
 	svc.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled)
 

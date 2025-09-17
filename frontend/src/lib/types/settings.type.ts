@@ -6,7 +6,7 @@ export type SettingRawResponse = {
 }[];
 
 export type Settings = {
-	stacksDirectory: string;
+	projectsDirectory: string;
 	autoUpdate: boolean;
 	autoUpdateInterval: number;
 	pollingEnabled: boolean;
