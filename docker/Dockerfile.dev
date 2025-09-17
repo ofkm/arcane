@@ -29,7 +29,7 @@ FROM golang:${GO_VERSION}-alpine AS backend-dev
 
 # Install development tools and dependencies
 RUN go install github.com/air-verse/air@latest
-RUN apk add --no-cache git ca-certificates tzdata curl
+RUN apk add --no-cache git ca-certificates tzdata curl gcc musl-dev
 
 # Set development environment variables
 ENV GIN_MODE=debug

@@ -379,7 +379,7 @@ main() {
         show_status
         ;;
     logs)
-        show_logs "$2"
+        show_logs "${2:-}"
         ;;
     clean)
         clean_dev
@@ -388,7 +388,7 @@ main() {
         rebuild_dev
         ;;
     shell)
-        shell_into "$2"
+        shell_into "${2:-}"
         ;;
     help|--help|-h)
         show_help
