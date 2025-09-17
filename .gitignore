@@ -35,3 +35,7 @@ backend/.bin
 frontend/bun.lock
 tests/bun.lock
 tests/package-lock.json
+
+# Development environment
+backend/tmp/
+backend/build-errors.log
