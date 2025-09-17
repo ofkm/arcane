@@ -1,0 +1,82 @@
+services:
+  # Frontend development service with hot reload
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+      target: frontend-dev
+      args:
+        NODE_VERSION: "24"
+    container_name: arcane-frontend-dev
+    ports:
+      - '3000:3000'
+    volumes:
+      # Source code mounting for hot reload
+      - ./frontend:/app/frontend:cached
+      - ./package.json:/app/package.json:ro
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
+      # Anonymous volumes for node_modules to avoid conflicts
+      - /app/node_modules
+      - /app/frontend/node_modules
+    environment:
+      - NODE_ENV=development
+      - DEV_BACKEND_URL=http://backend:3552
+    depends_on:
+      - backend
+    networks:
+      - arcane-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:3000 >/dev/null 2>&1 || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Backend development service with hot reload
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+      target: backend-dev
+      args:
+        GO_VERSION: "1.25"
+    container_name: arcane-backend-dev
+    ports:
+      - '3552:3552'
+    volumes:
+      # Source code mounting for hot reload
+      - ./backend:/app:cached
+      - ./backend/.air.toml:/app/.air.toml:ro
+      # Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persistent data storage
+      - arcane-dev-data:/app/data
+    environment:
+      - GIN_MODE=debug
+      - PORT=3552
+      - ENVIRONMENT=development
+      - PUID=1000
+      - PGID=1000
+      - ENCRYPTION_KEY=dev-encryption-key-replace-in-production
+      - JWT_SECRET=dev-jwt-secret-replace-in-production
+    working_dir: /app
+    networks:
+      - arcane-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:3552/api/health >/dev/null || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  arcane-dev:
+    driver: bridge
+    name: arcane-dev-network
+
+volumes:
+  arcane-dev-data:
+    name: arcane-dev-data
