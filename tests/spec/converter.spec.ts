@@ -20,7 +20,7 @@ test.describe('Docker Run to Compose Converter', () => {
     await page.getByPlaceholder('docker run -d --name my-app -p 8080:80 nginx:alpine').fill(dockerCommand);
 
     // Mock the API response
-    await page.route('/api/stacks/convert', async (route) => {
+    await page.route('/api/convert', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -61,7 +61,7 @@ test.describe('Docker Run to Compose Converter', () => {
     await page.getByPlaceholder('docker run -d --name my-app -p 8080:80 nginx:alpine').fill(dockerCommand);
 
     // Mock the API response
-    await page.route('/api/stacks/convert', async (route) => {
+    await page.route('/api/convert', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
