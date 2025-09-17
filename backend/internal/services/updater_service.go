@@ -29,7 +29,7 @@ type UpdaterService struct {
 	imageService       *ImageService
 
 	updatingContainers map[string]bool
-	updatingStacks     map[string]bool
+	updatingProjects   map[string]bool
 }
 
 func NewUpdaterService(
@@ -52,7 +52,7 @@ func NewUpdaterService(
 		eventService:       events,
 		imageService:       imageSvc,
 		updatingContainers: map[string]bool{},
-		updatingStacks:     map[string]bool{},
+		updatingProjects:   map[string]bool{},
 	}
 }
 
@@ -179,7 +179,6 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.Up
 		})
 	}
 
-	// Restart containers using old image IDs (skip stack-managed)
 	if !dryRun && len(oldIDToNewRef) > 0 {
 		results, err := s.restartContainersUsingOldIDs(ctx, oldIDToNewRef, oldRefToNewRef)
 		if err != nil {
@@ -274,16 +273,16 @@ func (s *UpdaterService) GetStatus() map[string]any {
 	for id := range s.updatingContainers {
 		containerIDs = append(containerIDs, id)
 	}
-	stackIDs := make([]string, 0, len(s.updatingStacks))
-	for id := range s.updatingStacks {
-		stackIDs = append(stackIDs, id)
+	projectIDs := make([]string, 0, len(s.updatingProjects))
+	for id := range s.updatingProjects {
+		projectIDs = append(projectIDs, id)
 	}
 
 	return map[string]any{
 		"updatingContainers": len(s.updatingContainers),
-		"updatingStacks":     len(s.updatingStacks),
+		"updatingProjects":   len(s.updatingProjects),
 		"containerIds":       containerIDs,
-		"stackIds":           stackIDs,
+		"projectIds":         projectIDs,
 	}
 }
 
@@ -569,13 +568,9 @@ func (s *UpdaterService) recordRun(ctx context.Context, item dto.UpdaterItem) er
 	return s.db.WithContext(ctx).Create(rec).Error
 }
 
-func (s *UpdaterService) isPartOfStack(labels map[string]string) bool {
+func (s *UpdaterService) isProjectManaged(labels map[string]string) bool {
 	if labels == nil {
 		return false
-	}
-	// Swarm stack label
-	if _, ok := labels["com.docker.stack.namespace"]; ok {
-		return true
 	}
 	// Compose project label
 	if _, ok := labels["com.docker.compose.project"]; ok {
@@ -614,8 +609,8 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 
 	var results []dto.AutoUpdateResourceResult
 	for _, c := range list {
-		// Skip stack-managed containers; stacks handled separately
-		if s.isPartOfStack(c.Labels) {
+		// Skip project-managed containers; projects handled separately
+		if s.isProjectManaged(c.Labels) {
 			continue
 		}
 		// Skip containers with opt-out label

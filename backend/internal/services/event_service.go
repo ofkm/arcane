@@ -245,20 +245,20 @@ func (s *EventService) LogImageEvent(ctx context.Context, eventType models.Event
 	return err
 }
 
-func (s *EventService) LogStackEvent(ctx context.Context, eventType models.EventType, stackID, stackName, userID, username, environmentID string, metadata models.JSON) error {
-	title := s.generateEventTitle(eventType, stackName)
-	description := s.generateEventDescription(eventType, "stack", stackName)
+func (s *EventService) LogProjectEvent(ctx context.Context, eventType models.EventType, projectID, projectName, userID, username, environmentID string, metadata models.JSON) error {
+	title := s.generateEventTitle(eventType, projectName)
+	description := s.generateEventDescription(eventType, "project", projectName)
 	severity := s.getEventSeverity(eventType)
 
-	resourceType := "stack"
+	resourceType := "project"
 	_, err := s.CreateEvent(ctx, CreateEventRequest{
 		Type:          eventType,
 		Severity:      severity,
 		Title:         title,
 		Description:   description,
 		ResourceType:  &resourceType,
-		ResourceID:    &stackID,
-		ResourceName:  &stackName,
+		ResourceID:    &projectID,
+		ResourceName:  &projectName,
 		UserID:        &userID,
 		Username:      &username,
 		EnvironmentID: &environmentID,
@@ -375,18 +375,18 @@ func (s *EventService) generateEventTitle(eventType models.EventType, resourceNa
 		return fmt.Sprintf("Image deleted: %s", resourceName)
 	case models.EventTypeImageScan:
 		return fmt.Sprintf("Image scanned: %s", resourceName)
-	case models.EventTypeStackDeploy:
-		return fmt.Sprintf("Stack deployed: %s", resourceName)
-	case models.EventTypeStackDelete:
-		return fmt.Sprintf("Stack deleted: %s", resourceName)
-	case models.EventTypeStackStart:
-		return fmt.Sprintf("Stack started: %s", resourceName)
-	case models.EventTypeStackStop:
-		return fmt.Sprintf("Stack stopped: %s", resourceName)
-	case models.EventTypeStackCreate:
-		return fmt.Sprintf("Stack created: %s", resourceName)
-	case models.EventTypeStackUpdate:
-		return fmt.Sprintf("Stack updated: %s", resourceName)
+	case models.EventTypeProjectDeploy:
+		return fmt.Sprintf("Project deployed: %s", resourceName)
+	case models.EventTypeProjectDelete:
+		return fmt.Sprintf("Project deleted: %s", resourceName)
+	case models.EventTypeProjectStart:
+		return fmt.Sprintf("Project started: %s", resourceName)
+	case models.EventTypeProjectStop:
+		return fmt.Sprintf("Project stopped: %s", resourceName)
+	case models.EventTypeProjectCreate:
+		return fmt.Sprintf("Project created: %s", resourceName)
+	case models.EventTypeProjectUpdate:
+		return fmt.Sprintf("Project updated: %s", resourceName)
 	case models.EventTypeVolumeCreate:
 		return fmt.Sprintf("Volume created: %s", resourceName)
 	case models.EventTypeVolumeDelete:
@@ -428,18 +428,18 @@ func (s *EventService) generateEventDescription(eventType models.EventType, reso
 		return fmt.Sprintf("Image '%s' has been pulled", resourceName)
 	case models.EventTypeImageDelete:
 		return fmt.Sprintf("Image '%s' has been deleted", resourceName)
-	case models.EventTypeStackDeploy:
-		return fmt.Sprintf("Stack '%s' has been deployed", resourceName)
-	case models.EventTypeStackDelete:
-		return fmt.Sprintf("Stack '%s' has been deleted", resourceName)
-	case models.EventTypeStackStart:
-		return fmt.Sprintf("Stack '%s' has been started", resourceName)
-	case models.EventTypeStackStop:
-		return fmt.Sprintf("Stack '%s' has been stopped", resourceName)
-	case models.EventTypeStackCreate:
-		return fmt.Sprintf("Stack '%s' has been created", resourceName)
-	case models.EventTypeStackUpdate:
-		return fmt.Sprintf("Stack '%s' has been updated", resourceName)
+	case models.EventTypeProjectDeploy:
+		return fmt.Sprintf("Project '%s' has been deployed", resourceName)
+	case models.EventTypeProjectDelete:
+		return fmt.Sprintf("Project '%s' has been deleted", resourceName)
+	case models.EventTypeProjectStart:
+		return fmt.Sprintf("Project '%s' has been started", resourceName)
+	case models.EventTypeProjectStop:
+		return fmt.Sprintf("Project '%s' has been stopped", resourceName)
+	case models.EventTypeProjectCreate:
+		return fmt.Sprintf("Project '%s' has been created", resourceName)
+	case models.EventTypeProjectUpdate:
+		return fmt.Sprintf("Project '%s' has been updated", resourceName)
 	case models.EventTypeVolumeCreate:
 		return fmt.Sprintf("Volume '%s' has been created", resourceName)
 	case models.EventTypeVolumeDelete:
@@ -463,11 +463,11 @@ func (s *EventService) generateEventDescription(eventType models.EventType, reso
 
 func (s *EventService) getEventSeverity(eventType models.EventType) models.EventSeverity {
 	switch eventType {
-	case models.EventTypeContainerDelete, models.EventTypeImageDelete, models.EventTypeStackDelete, models.EventTypeVolumeDelete, models.EventTypeNetworkDelete:
+	case models.EventTypeContainerDelete, models.EventTypeImageDelete, models.EventTypeProjectDelete, models.EventTypeVolumeDelete, models.EventTypeNetworkDelete:
 		return models.EventSeverityWarning
-	case models.EventTypeContainerStart, models.EventTypeContainerCreate, models.EventTypeImagePull, models.EventTypeStackDeploy, models.EventTypeStackStart, models.EventTypeStackCreate, models.EventTypeVolumeCreate, models.EventTypeNetworkCreate:
+	case models.EventTypeContainerStart, models.EventTypeContainerCreate, models.EventTypeImagePull, models.EventTypeProjectDeploy, models.EventTypeProjectStart, models.EventTypeProjectCreate, models.EventTypeVolumeCreate, models.EventTypeNetworkCreate:
 		return models.EventSeveritySuccess
-	case models.EventTypeContainerStop, models.EventTypeContainerRestart, models.EventTypeContainerScan, models.EventTypeContainerUpdate, models.EventTypeImageScan, models.EventTypeStackStop, models.EventTypeStackUpdate, models.EventTypeSystemPrune, models.EventTypeSystemAutoUpdate, models.EventTypeUserLogin, models.EventTypeUserLogout:
+	case models.EventTypeContainerStop, models.EventTypeContainerRestart, models.EventTypeContainerScan, models.EventTypeContainerUpdate, models.EventTypeImageScan, models.EventTypeProjectStop, models.EventTypeProjectUpdate, models.EventTypeSystemPrune, models.EventTypeSystemAutoUpdate, models.EventTypeUserLogin, models.EventTypeUserLogout:
 		return models.EventSeverityInfo
 	default:
 		return models.EventSeverityInfo

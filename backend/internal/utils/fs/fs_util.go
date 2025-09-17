@@ -26,8 +26,8 @@ func CountSubdirectories(path string) (int, error) {
 	return count, nil
 }
 
-func GetProjectsDirectory(ctx context.Context, stacksDir string) (string, error) {
-	projectsDirectory := stacksDir
+func GetProjectsDirectory(ctx context.Context, projectsDir string) (string, error) {
+	projectsDirectory := projectsDir
 	if projectsDirectory == "" {
 		projectsDirectory = "data/projects"
 	}
@@ -99,7 +99,7 @@ func SanitizeProjectName(name string) string {
 
 func SaveOrUpdateProjectFiles(projectPath, composeContent string, envContent *string) error {
 	if err := os.MkdirAll(projectPath, 0755); err != nil {
-		return fmt.Errorf("failed to create stack directory: %w", err)
+		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
 	var composePath string

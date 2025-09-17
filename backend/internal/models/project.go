@@ -24,5 +24,5 @@ type Project struct {
 }
 
 func (Project) TableName() string {
-	return "stacks"
+	return "projects"
 }

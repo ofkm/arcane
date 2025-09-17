@@ -59,28 +59,22 @@ func (s *SettingsService) GetSettings(ctx context.Context) (*models.Settings, er
 
 func (s *SettingsService) getDefaultSettings() *models.Settings {
 	return &models.Settings{
-		// Docker settings
-		StacksDirectory:    models.SettingVariable{Value: "data/projects"},
-		AutoUpdate:         models.SettingVariable{Value: "false"},
-		AutoUpdateInterval: models.SettingVariable{Value: "1440"},
-		PollingEnabled:     models.SettingVariable{Value: "true"},
-		PollingInterval:    models.SettingVariable{Value: "60"},
-		PruneMode:          models.SettingVariable{Value: "dangling"},
-		BaseServerURL:      models.SettingVariable{Value: ""},
-		EnableGravatar:     models.SettingVariable{Value: "true"},
-
-		// Authentication settings
-		AuthLocalEnabled:   models.SettingVariable{Value: "true"},
-		AuthOidcEnabled:    models.SettingVariable{Value: "false"},
-		AuthSessionTimeout: models.SettingVariable{Value: "1440"},
-		AuthPasswordPolicy: models.SettingVariable{Value: "strong"},
-		AuthOidcConfig:     models.SettingVariable{Value: "{}"},
-
-		// Onboarding settings
+		ProjectsDirectory:   models.SettingVariable{Value: "data/projects"},
+		AutoUpdate:          models.SettingVariable{Value: "false"},
+		AutoUpdateInterval:  models.SettingVariable{Value: "1440"},
+		PollingEnabled:      models.SettingVariable{Value: "true"},
+		PollingInterval:     models.SettingVariable{Value: "60"},
+		PruneMode:           models.SettingVariable{Value: "dangling"},
+		BaseServerURL:       models.SettingVariable{Value: ""},
+		EnableGravatar:      models.SettingVariable{Value: "true"},
+		AuthLocalEnabled:    models.SettingVariable{Value: "true"},
+		AuthOidcEnabled:     models.SettingVariable{Value: "false"},
+		AuthSessionTimeout:  models.SettingVariable{Value: "1440"},
+		AuthPasswordPolicy:  models.SettingVariable{Value: "strong"},
+		AuthOidcConfig:      models.SettingVariable{Value: "{}"},
 		OnboardingCompleted: models.SettingVariable{Value: "false"},
 		OnboardingSteps:     models.SettingVariable{Value: "[]"},
 
-		// Instance
 		InstanceID: models.SettingVariable{Value: ""},
 	}
 }

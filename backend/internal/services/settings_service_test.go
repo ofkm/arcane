@@ -56,7 +56,7 @@ func TestSettingsService_EnsureDefaultSettings_Idempotent(t *testing.T) {
 	}
 
 	// Spot-check a couple keys exist
-	for _, key := range []string{"authLocalEnabled", "stacksDirectory"} {
+	for _, key := range []string{"authLocalEnabled", "projectsDirectory"} {
 		var sv models.SettingVariable
 		err := svc.db.WithContext(ctx).Where("key = ?", key).First(&sv).Error
 		if err != nil {

@@ -244,7 +244,7 @@ func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 		return
 	}
 
-	if err := h.projectService.PullStackImages(c.Request.Context(), projectID, io.Discard); err != nil {
+	if err := h.projectService.PullProjectImages(c.Request.Context(), projectID, io.Discard); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": fmt.Sprintf("Failed to pull images: %v", err)})
 		return
 	}

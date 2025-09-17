@@ -48,18 +48,18 @@ type ProjectServiceInfo struct {
 	Ports       []string `json:"ports"`
 }
 
-func (s *ProjectService) GetProjectFromDatabaseByID(ctx context.Context, id string) (*models.Stack, error) {
-	var stack models.Stack
-	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&stack).Error; err != nil {
+func (s *ProjectService) GetProjectFromDatabaseByID(ctx context.Context, id string) (*models.Project, error) {
+	var project models.Project
+	if err := s.db.WithContext(ctx).Where("id = ?", id).First(&project).Error; err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return nil, fmt.Errorf("request canceled or timed out")
 		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("stack not found")
+			return nil, fmt.Errorf("project not found")
 		}
-		return nil, fmt.Errorf("failed to get stack: %w", err)
+		return nil, fmt.Errorf("failed to get project: %w", err)
 	}
-	return &stack, nil
+	return &project, nil
 }
 
 func (s *ProjectService) getServiceCounts(services []ProjectServiceInfo) (total int, running int) {
@@ -76,7 +76,7 @@ func (s *ProjectService) getServiceCounts(services []ProjectServiceInfo) (total 
 func (s *ProjectService) updateProjectStatusandCountsInternal(ctx context.Context, projectID string, status models.ProjectStatus) error {
 	services, err := s.GetProjectServices(ctx, projectID)
 	if err != nil {
-		slog.Error("GetStackServices failed during status update", "projectID", projectID, "error", err)
+		slog.Error("GetProjectServices failed during status update", "projectID", projectID, "error", err)
 		return s.updateProjectStatusInternal(ctx, projectID, status)
 	}
 
@@ -209,17 +209,17 @@ func (s *ProjectService) GetProjectDetails(ctx context.Context, projectID string
 }
 
 func (s *ProjectService) SyncProjectsFromFileSystem(ctx context.Context) error {
-	stacksDirSetting := s.settingsService.GetStringSetting(ctx, "stacksDirectory", "data/projects")
-	stacksDir, err := fs.GetProjectsDirectory(ctx, strings.TrimSpace(stacksDirSetting))
+	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+	projectsDir, err := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
 	if err != nil {
 		slog.WarnContext(ctx, "unable to prepare projects directory", "error", err)
 		return nil
 	}
-	stacksDir = filepath.Clean(stacksDir)
+	projectsDir = filepath.Clean(projectsDir)
 
-	entries, rerr := os.ReadDir(stacksDir)
+	entries, rerr := os.ReadDir(projectsDir)
 	if rerr != nil {
-		slog.WarnContext(ctx, "failed to read projects directory", "dir", stacksDir, "error", rerr)
+		slog.WarnContext(ctx, "failed to read projects directory", "dir", projectsDir, "error", rerr)
 		return nil
 	}
 
@@ -229,7 +229,7 @@ func (s *ProjectService) SyncProjectsFromFileSystem(ctx context.Context) error {
 			continue
 		}
 		dirName := e.Name()
-		dirPath := filepath.Join(stacksDir, dirName)
+		dirPath := filepath.Join(projectsDir, dirName)
 
 		// Only consider folders that contain a compose file
 		if _, derr := projects.DetectComposeFile(dirPath); derr != nil {
@@ -349,7 +349,7 @@ func formatPorts(publishers []api.PortPublisher) []string {
 }
 
 func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCount, runningProjects, stoppedProjects, totalProjects int, err error) {
-	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "stacksDirectory", "data/projects")
+	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
 	projectsDir, derr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
 	if derr != nil {
 		return 0, 0, 0, 0, fmt.Errorf("could not determine projects directory: %w", derr)
@@ -437,7 +437,7 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 	}
 
 	metadata := models.JSON{"action": "deploy", "projectID": projectID, "projectName": project.Name}
-	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDeploy, projectID, project.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+	if logErr := s.eventService.LogProjectEvent(ctx, models.EventTypeProjectDeploy, projectID, project.Name, user.ID, user.Username, "0", metadata); logErr != nil {
 		slog.ErrorContext(ctx, "could not log project deployment action", "error", logErr)
 	}
 
@@ -461,7 +461,7 @@ func (s *ProjectService) DownProject(ctx context.Context, projectID string, user
 	}
 
 	if err := s.updateProjectStatusInternal(ctx, projectID, models.ProjectStatusStopped); err != nil {
-		return fmt.Errorf("failed to update stack status to stopping: %w", err)
+		return fmt.Errorf("failed to update project status to stopping: %w", err)
 	}
 
 	if err := projects.ComposeDown(ctx, proj, false); err != nil {
@@ -470,11 +470,11 @@ func (s *ProjectService) DownProject(ctx context.Context, projectID string, user
 	}
 
 	metadata := models.JSON{
-		"action":    "down",
-		"projectID": projectID,
-		"stackName": projectFromDb.Name,
+		"action":      "down",
+		"projectID":   projectID,
+		"projectName": projectFromDb.Name,
 	}
-	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackStop, projectID, projectFromDb.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+	if logErr := s.eventService.LogProjectEvent(ctx, models.EventTypeProjectStop, projectID, projectFromDb.Name, user.ID, user.Username, "0", metadata); logErr != nil {
 		slog.ErrorContext(ctx, "could not log project down action", "error", logErr)
 	}
 
@@ -484,7 +484,7 @@ func (s *ProjectService) DownProject(ctx context.Context, projectID string, user
 func (s *ProjectService) CreateProject(ctx context.Context, name, composeContent string, envContent *string, user models.User) (*models.Project, error) {
 	sanitized := fs.SanitizeProjectName(name)
 
-	projectsDirectory, err := fs.GetProjectsDirectory(ctx, s.settingsService.GetStringSetting(ctx, "stacksDirectory", "data/projects"))
+	projectsDirectory, err := fs.GetProjectsDirectory(ctx, s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get projects directory: %w", err)
 	}
@@ -514,7 +514,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, name, composeContent
 	}
 
 	metadata := models.JSON{"action": "create", "projectID": proj.ID, "projectName": name, "path": projectPath}
-	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackCreate, proj.ID, name, user.ID, user.Username, "0", metadata); logErr != nil {
+	if logErr := s.eventService.LogProjectEvent(ctx, models.EventTypeProjectCreate, proj.ID, name, user.ID, user.Username, "0", metadata); logErr != nil {
 		slog.ErrorContext(ctx, "could not log project creation", "error", logErr)
 	}
 
@@ -552,7 +552,7 @@ func (s *ProjectService) DestroyProject(ctx context.Context, projectID string, r
 	}
 
 	metadata := models.JSON{"action": "destroy", "projectID": projectID, "projectName": proj.Name, "removeFiles": removeFiles, "removeVolumes": removeVolumes}
-	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDelete, projectID, proj.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+	if logErr := s.eventService.LogProjectEvent(ctx, models.EventTypeProjectDelete, projectID, proj.Name, user.ID, user.Username, "0", metadata); logErr != nil {
 		slog.ErrorContext(ctx, "could not log project destroy action", "error", logErr)
 	}
 
@@ -565,23 +565,23 @@ func (s *ProjectService) RedeployProject(ctx context.Context, projectID string, 
 		return err
 	}
 
-	if err := s.PullStackImages(ctx, projectID, io.Discard); err != nil {
+	if err := s.PullProjectImages(ctx, projectID, io.Discard); err != nil {
 		slog.WarnContext(ctx, "failed to pull project images", "error", err)
 	}
 
 	if err := s.DownProject(ctx, projectID, systemUser); err != nil {
-		return fmt.Errorf("failed to down stack for redeploy: %w", err)
+		return fmt.Errorf("failed to down project for redeploy: %w", err)
 	}
 
-	metadata := models.JSON{"action": "redeploy", "projectID": projectID, "stackName": proj.Name}
-	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackDeploy, projectID, proj.Name, user.ID, user.Username, "0", metadata); logErr != nil {
-		slog.ErrorContext(ctx, "could not log stack redeploy action", "error", logErr)
+	metadata := models.JSON{"action": "redeploy", "projectID": projectID, "projectName": proj.Name}
+	if logErr := s.eventService.LogProjectEvent(ctx, models.EventTypeProjectDeploy, projectID, proj.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+		slog.ErrorContext(ctx, "could not log project redeploy action", "error", logErr)
 	}
 
 	return s.DeployProject(ctx, projectID, systemUser)
 }
 
-func (s *ProjectService) PullStackImages(ctx context.Context, projectID string, progressWriter io.Writer) error {
+func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string, progressWriter io.Writer) error {
 	proj, err := s.GetProjectFromDatabaseByID(ctx, projectID)
 	if err != nil {
 		return err
@@ -624,7 +624,7 @@ func (s *ProjectService) RestartProject(ctx context.Context, projectID string, u
 		"projectID":   projectID,
 		"projectName": proj.Name,
 	}
-	if logErr := s.eventService.LogStackEvent(ctx, models.EventTypeStackStart, projectID, proj.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+	if logErr := s.eventService.LogProjectEvent(ctx, models.EventTypeProjectStart, projectID, proj.Name, user.ID, user.Username, "0", metadata); logErr != nil {
 		slog.ErrorContext(ctx, "could not log project restart action", "error", logErr)
 	}
 

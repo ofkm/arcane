@@ -20,9 +20,9 @@ var ComposeFileCandidates = []string{
 	"docker-compose.yml",
 }
 
-func locateComposeFile(stackDir string) string {
+func locateComposeFile(projectsDir string) string {
 	for _, filename := range ComposeFileCandidates {
-		fullPath := filepath.Join(stackDir, filename)
+		fullPath := filepath.Join(projectsDir, filename)
 		if info, err := os.Stat(fullPath); err == nil && !info.IsDir() {
 			return fullPath
 		}

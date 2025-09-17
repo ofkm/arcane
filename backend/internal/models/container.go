@@ -13,11 +13,11 @@ type Container struct {
 	Labels      JSON        `json:"labels,omitempty" gorm:"type:text"`
 	Environment StringSlice `json:"environment,omitempty" gorm:"type:text"`
 	Command     StringSlice `json:"command,omitempty" gorm:"type:text"`
-	StackID     *string     `json:"stackId,omitempty" gorm:"column:stack_id;index"`
+	ProjectID   *string     `json:"projectId,omitempty" gorm:"column:project_id;index"`
 	CreatedAt   time.Time   `json:"createdAt" gorm:"not null" sortable:"true"`
 	StartedAt   *time.Time  `json:"startedAt,omitempty" gorm:"column:started_at" sortable:"true"`
 
-	Stack *Stack `json:"stack,omitempty" gorm:"foreignKey:StackID;references:ID"`
+	Project *Project `json:"project,omitempty" gorm:"foreignKey:ProjectID;references:ID"`
 
 	BaseModel
 }

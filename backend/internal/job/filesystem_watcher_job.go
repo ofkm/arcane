@@ -49,7 +49,7 @@ func (j *FilesystemWatcherJob) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	projectsDirectory, err := fs.GetProjectsDirectory(ctx, settings.StacksDirectory.Value)
+	projectsDirectory, err := fs.GetProjectsDirectory(ctx, settings.ProjectsDirectory.Value)
 	if err != nil {
 		return err
 	}
