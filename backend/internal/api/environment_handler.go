@@ -941,11 +941,6 @@ func (h *EnvironmentHandler) GetVolumeUsage(c *gin.Context) {
 	h.routeRequest(c, "/volumes/"+c.Param("volumeName")+"/usage")
 }
 
-func (h *EnvironmentHandler) GetStackServices(c *gin.Context) {
-	stackId := c.Param("stackId")
-	h.routeRequest(c, "/stacks/"+stackId+"/services")
-}
-
 func (h *EnvironmentHandler) ConvertDockerRun(c *gin.Context) {
 	h.routeRequest(c, "/stacks/convert")
 }
