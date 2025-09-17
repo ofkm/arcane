@@ -164,7 +164,7 @@
 										: m.action_removed_success({ type: m.container() })
 								);
 								await invalidateAll();
-								goto(type === 'stack' ? '/projects' : '/containers');
+								goto(type === 'project' ? '/projects' : '/containers');
 							}
 						});
 					}

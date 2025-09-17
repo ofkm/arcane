@@ -124,7 +124,7 @@
 		const { name, composeContent, envContent } = validated;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.updateProject(project.id, name, composeContent, envContent)),
+			result: await tryCatch(environmentAPI.updateProject(name, composeContent, envContent)),
 			message: 'Failed to Save Project',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Project) => {
@@ -203,7 +203,7 @@
 							{/if}
 							<ActionButtons
 								id={project.id}
-								type="stack"
+								type="project"
 								itemState={project.status}
 								bind:startLoading={isLoading.deploying}
 								bind:stopLoading={isLoading.stopping}
@@ -298,7 +298,7 @@
 					<Tabs.Content value="logs" class="h-full min-h-0">
 						{#if project.status == 'running'}
 							<div class="h-full min-h-0">
-								<StackLogsPanel stackId={project.id} bind:autoScroll={autoScrollStackLogs} />
+								<StackLogsPanel projectId={project.id} bind:autoScroll={autoScrollStackLogs} />
 							</div>
 						{:else}
 							<div class="text-muted-foreground py-12 text-center">{m.compose_logs_title()} Unavailable</div>

@@ -7,10 +7,10 @@
 	import { m } from '$lib/paraglide/messages';
 
 	let {
-		stackId,
+		projectId,
 		autoScroll = $bindable()
 	}: {
-		stackId: string;
+		projectId: string;
 		autoScroll: boolean;
 	} = $props();
 
@@ -45,7 +45,7 @@
 			</div>
 			<Button variant="outline" size="sm" onclick={() => viewer?.stopLogStream()}>{m.common_stop()}</Button>
 		{:else}
-			<Button variant="outline" size="sm" onclick={() => viewer?.startLogStream()} disabled={!stackId}>
+			<Button variant="outline" size="sm" onclick={() => viewer?.startLogStream()} disabled={!projectId}>
 				{m.common_start()}
 			</Button>
 		{/if}
@@ -70,8 +70,8 @@
 			<LogViewer
 				bind:this={viewer}
 				bind:autoScroll
-				{stackId}
-				type="stack"
+				{projectId}
+				type="project"
 				maxLines={500}
 				showTimestamps={true}
 				height="600px"
