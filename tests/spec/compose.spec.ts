@@ -4,7 +4,7 @@ async function fetchProjectsWithRetry(page: Page, maxRetries = 3): Promise<any[]
   let retries = 0;
   while (retries < maxRetries) {
     try {
-      const response = await page.request.get('/api/environments/0/stacks');
+      const response = await page.request.get('/api/environments/0/projects');
       const projects = await response.json();
       return Array.isArray(projects) ? projects : projects.data || [];
     } catch (error) {
@@ -149,7 +149,7 @@ test.describe('New Compose Project Page', () => {
     const composeEditor = page.locator('.cm-editor').first();
     await expect(composeEditor).toBeVisible();
 
-    await page.route('/api/environments/*/stacks', async (route) => {
+    await page.route('/api/environments/*/projects', async (route) => {
       if (route.request().method() === 'POST') {
         const response = await route.fetch();
         const responseBody = await response.text();

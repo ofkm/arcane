@@ -17,7 +17,7 @@
 	let isLoading = $state(false);
 
 	const formSchema = z.object({
-		stacksDirectory: z.string().min(1, m.general_projects_directory_required()),
+		projectsDirectory: z.string().min(1, m.general_projects_directory_required()),
 		baseServerUrl: z.string().min(1, m.general_base_url_required()),
 		enableGravatar: z.boolean()
 	});
@@ -72,7 +72,7 @@
 					<FormInput
 						label={m.general_projects_directory_label()}
 						placeholder={m.general_projects_directory_placeholder()}
-						bind:input={$formInputs.stacksDirectory}
+						bind:input={$formInputs.projectsDirectory}
 						helpText={m.general_projects_directory_help()}
 					/>
 

@@ -6,7 +6,7 @@ type UpdaterRunRequest struct {
 
 type UpdaterItem struct {
 	ResourceID    string            `json:"resourceId"`
-	ResourceType  string            `json:"resourceType"` // "image" | "container" | "stack"
+	ResourceType  string            `json:"resourceType"` // "image" | "container" | "project"
 	ResourceName  string            `json:"resourceName,omitempty"`
 	Status        string            `json:"status"` // "checked" | "updated" | "skipped" | "failed" | "up_to_date" | "update_available"
 	Error         string            `json:"error,omitempty"`

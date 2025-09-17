@@ -11,6 +11,10 @@
 	import { systemAPI, settingsAPI, environmentAPI } from '$lib/services/api';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
+	import { environmentStore } from '$lib/stores/environment.store';
+	import { createStatsWebSocket } from '$lib/utils/ws';
+	import type { ReconnectingWebSocket } from '$lib/utils/ws';
 	import MeterMetric from '$lib/components/meter-metric.svelte';
 	import QuickActions from '$lib/components/quick-actions.svelte';
 	import DockerDetailsCards from '$lib/components/docker-details-cards.svelte';
@@ -18,6 +22,7 @@
 	import DashboardContainerTable from './dash-container-table.svelte';
 	import DashboardImageTable from './dash-image-table.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { invalidateAll } from '$app/navigation';
 
 	let { data } = $props();
 	let containers = $state(data.containers);
@@ -45,7 +50,7 @@
 	});
 
 	let liveSystemStats = $state(null as SystemStats | null);
-	let statsInterval: NodeJS.Timeout | null = null;
+	let statsWSClient: ReconnectingWebSocket<SystemStats> | null = null;
 	let hasInitialStatsLoaded = $state(false);
 
 	let historicalData = $state({
@@ -93,41 +98,6 @@
 		}
 	}
 
-	async function fetchLiveSystemStats() {
-		if (!hasInitialStatsLoaded) {
-			isLoading.loadingStats = true;
-		}
-
-		try {
-			const response = await systemAPI.getStats();
-
-			let stats: SystemStats | null = null;
-
-			if (response && typeof response === 'object') {
-				if ('success' in response && response.success && 'data' in response) {
-					stats = response.data as SystemStats;
-				} else if ('cpuUsage' in response) {
-					stats = response as SystemStats;
-				}
-			}
-
-			if (stats) {
-				liveSystemStats = stats;
-				dashboardStates.systemStats = stats;
-				addToHistoricalData(stats);
-			} else {
-				console.warn('Invalid system stats response format:', response);
-			}
-		} catch (error) {
-			console.error('Failed to fetch live system stats:', error);
-		} finally {
-			if (!hasInitialStatsLoaded) {
-				isLoading.loadingStats = false;
-				hasInitialStatsLoaded = true;
-			}
-		}
-	}
-
 	let imageRequestOptions = $state(data.imageRequestOptions);
 
 	async function refreshData() {
@@ -146,7 +116,7 @@
 
 		if (dockerInfoResult.status === 'fulfilled' && !dockerInfoResult.value.error) {
 			dashboardStates.dockerInfo = dockerInfoResult.value.data;
-			dockerInfo = dockerInfoResult.value.data; // keep meters/cards in sync
+			dockerInfo = dockerInfoResult.value.data;
 		}
 		isLoading.loadingDockerInfo = false;
 
@@ -165,29 +135,48 @@
 			containerStatusCounts = statusCountsResult.value.data;
 		}
 
-		await fetchLiveSystemStats();
+		await invalidateAll();
 		isLoading.refreshing = false;
 	}
 
 	onMount(() => {
 		let mounted = true;
 
-		fetchLiveSystemStats();
+		(async () => {
+			await environmentStore.ready;
 
-		if (!statsInterval) {
-			statsInterval = setInterval(() => {
-				if (mounted) {
-					fetchLiveSystemStats();
+			const getEnvId = () => {
+				const env = get(environmentStore.selected);
+				return env ? env.id : '0';
+			};
+
+			statsWSClient = createStatsWebSocket({
+				getEnvId,
+				onOpen: () => {
+					if (!hasInitialStatsLoaded) {
+						isLoading.loadingStats = true;
+					}
+				},
+				onMessage: (data) => {
+					if (!mounted) return;
+					liveSystemStats = data;
+					dashboardStates.systemStats = data;
+					addToHistoricalData(data);
+					hasInitialStatsLoaded = true;
+					isLoading.loadingStats = false;
+				},
+				onError: (e) => {
+					console.error('Stats websocket error:', e);
 				}
-			}, 5000);
-		}
+			});
+
+			statsWSClient.connect();
+		})();
 
 		return () => {
 			mounted = false;
-			if (statsInterval) {
-				clearInterval(statsInterval);
-				statsInterval = null;
-			}
+			statsWSClient?.close();
+			statsWSClient = null;
 		};
 	});
 

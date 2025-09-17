@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
-	import { dev } from '$app/environment';
+	import { browser, dev } from '$app/environment';
 	import { get } from 'svelte/store';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import { m } from '$lib/paraglide/messages';
+	import { ReconnectingWebSocket } from '$lib/utils/ws';
 
 	interface LogEntry {
 		timestamp: string;
@@ -15,8 +15,8 @@
 
 	interface Props {
 		containerId?: string | null;
-		stackId?: string | null;
-		type?: 'container' | 'stack';
+		projectId?: string | null;
+		type?: 'container' | 'project';
 		maxLines?: number;
 		autoScroll?: boolean;
 		showTimestamps?: boolean;
@@ -29,7 +29,7 @@
 
 	let {
 		containerId = null,
-		stackId = null,
+		projectId = null,
 		type = 'container',
 		maxLines = 1000,
 		autoScroll = $bindable(true),
@@ -46,29 +46,16 @@
 	let isStreaming = $state(false);
 	let error: string | null = $state(null);
 	let eventSource: EventSource | null = null;
-	let ws: WebSocket | null = null;
+	let wsClient: ReconnectingWebSocket<string> | null = null;
 	let currentStreamKey: string | null = null;
 	function streamKey() {
-		return type === 'stack' ? (stackId ? `stack:${stackId}` : null) : containerId ? `ctr:${containerId}` : null;
+		return type === 'project' ? (projectId ? `project:${projectId}` : null) : containerId ? `ctr:${containerId}` : null;
 	}
 
-	const humanType = type === 'stack' ? m.common_stack() : m.common_container();
+	const humanType = type === 'project' ? m.project() : m.container();
 
 	const DOCKER_TS_ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z?\s*/;
 	const DOCKER_TS_SLASH_RE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s*/;
-
-	async function buildLogStreamEndpoint(): Promise<string> {
-		await environmentStore.ready;
-		const currentEnvironment = get(environmentStore.selected);
-		const envId = currentEnvironment?.id || 'local';
-
-		const baseEndpoint =
-			type === 'stack'
-				? `/api/environments/${envId}/stacks/${stackId}/logs/stream`
-				: `/api/environments/${envId}/containers/${containerId}/logs/stream`;
-
-		return `${baseEndpoint}?follow=true&tail=100&timestamps=${showTimestamps}`;
-	}
 
 	function buildWebSocketEndpoint(path: string): string {
 		const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -79,14 +66,14 @@
 		const currentEnv = get(environmentStore.selected);
 		const envId = currentEnv?.id || 'local';
 		const basePath =
-			type === 'stack'
-				? `/api/environments/${envId}/stacks/${stackId}/logs/ws`
+			type === 'project'
+				? `/api/environments/${envId}/projects/${projectId}/logs/ws`
 				: `/api/environments/${envId}/containers/${containerId}/logs/ws`;
 		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=100&timestamps=${showTimestamps}`);
 	}
 
 	export async function startLogStream() {
-		const targetId = type === 'stack' ? stackId : containerId;
+		const targetId = type === 'project' ? projectId : containerId;
 
 		if (!targetId) return;
 
@@ -104,35 +91,39 @@
 	}
 
 	async function startWebSocketStream() {
-		const url = await buildLogWsEndpoint();
-		ws = new WebSocket(url);
+		wsClient = new ReconnectingWebSocket<string>({
+			buildUrl: async () => {
+				return await buildLogWsEndpoint();
+			},
+			parseMessage: (evt) => {
+				return typeof evt.data === 'string' ? evt.data : '';
+			},
+			onOpen: () => {
+				if (dev) console.log(m.log_viewer_connected({ type: humanType }));
+				error = null;
+				isStreaming = true;
+			},
+			onMessage: (payload) => {
+				if (!payload) return;
+				for (const line of payload.split('\n')) {
+					if (!line.trim()) continue;
+					handleIncomingLine(line);
+				}
+			},
+			onError: (e) => {
+				console.error('WebSocket log stream error:', e);
+				error = m.log_stream_connection_lost({ type: humanType });
+			},
+			onClose: () => {
+				isStreaming = false;
+				if (!error) {
+					error = m.log_stream_closed_by_server({ type: humanType });
+				}
+			},
+			maxBackoff: 10000
+		});
 
-		ws.onopen = () => {
-			if (dev) console.log(m.log_viewer_connected({ type: humanType }));
-			error = null;
-			isStreaming = true;
-		};
-
-		ws.onmessage = (evt) => {
-			const data = typeof evt.data === 'string' ? evt.data : '';
-			if (!data) return;
-			for (const line of data.split('\n')) {
-				if (!line.trim()) continue;
-				handleIncomingLine(line);
-			}
-		};
-
-		ws.onerror = (evt) => {
-			console.error('WebSocket log stream error:', evt);
-			error = m.log_stream_connection_lost({ type: humanType });
-		};
-
-		ws.onclose = () => {
-			isStreaming = false;
-			if (!error) {
-				error = m.log_stream_closed_by_server({ type: humanType });
-			}
-		};
+		await wsClient.connect();
 	}
 
 	function handleIncomingLine(raw: string) {
@@ -163,17 +154,11 @@
 			eventSource.close();
 			eventSource = null;
 		}
-		if (ws) {
+		if (wsClient) {
 			try {
-				ws.onerror = null;
-				ws.onclose = null;
-				if (ws.readyState === WebSocket.CONNECTING) {
-					ws.addEventListener('open', () => ws?.close(), { once: true });
-				} else {
-					ws.close();
-				}
+				wsClient.close();
 			} catch {}
-			ws = null;
+			wsClient = null;
 		}
 		isStreaming = false;
 		onStop?.();
@@ -299,7 +284,7 @@
 						{log.level.toUpperCase()}
 					</span>
 
-					{#if type === 'stack' && log.service}
+					{#if type === 'project' && log.service}
 						<span class="mr-2 min-w-fit shrink-0 truncate text-xs text-blue-400" title={log.service}>
 							{log.service}
 						</span>
@@ -313,9 +298,3 @@
 		{/if}
 	</div>
 </div>
-
-<!-- <style>
-	.log-viewer {
-		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-	}
-</style> -->

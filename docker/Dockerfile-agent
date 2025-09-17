@@ -25,12 +25,6 @@ RUN CGO_ENABLED=0 \
     -o /out/arcane-agent \
     ./cmd/main.go
 
-ARG COMPOSE_VERSION=2.39.2
-ARG TARGETARCH
-COPY ../scripts/development/download-compose.sh /tmp/download-compose.sh
-RUN set -eux; chmod +x /tmp/download-compose.sh; \
-    /tmp/download-compose.sh "${COMPOSE_VERSION}" "/out/docker-compose" "${TARGETARCH}"
-
 FROM alpine:3 AS agent
 RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl su-exec
 
