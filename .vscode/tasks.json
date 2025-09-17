@@ -11,8 +11,8 @@
         "isDefault": true
       },
       "presentation": {
-        "reveal": "never",
-        "close": true,
+        "reveal": "silent",
+        "close": false,
         "clear": false,
         "echo": false,
         "focus": false,
@@ -28,8 +28,8 @@
       "args": ["stop"],
       "group": "build",
       "presentation": {
-        "reveal": "never",
-        "close": true,
+        "reveal": "silent",
+        "close": false,
         "clear": false,
         "echo": false,
         "focus": false,
@@ -45,8 +45,8 @@
       "args": ["restart"],
       "group": "build",
       "presentation": {
-        "reveal": "never",
-        "close": true,
+        "reveal": "silent",
+        "close": false,
         "clear": false,
         "echo": false,
         "focus": false,
@@ -62,8 +62,8 @@
       "args": ["rebuild"],
       "group": "build",
       "presentation": {
-        "reveal": "never",
-        "close": true,
+        "reveal": "silent",
+        "close": false,
         "clear": false,
         "echo": false,
         "focus": false,
