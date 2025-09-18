@@ -5,6 +5,7 @@ type PruneSystemDto struct {
 	Images     bool `json:"images"`
 	Volumes    bool `json:"volumes"`
 	Networks   bool `json:"networks"`
+	BuildCache bool `json:"buildCache"`
 	Dangling   bool `json:"dangling"`
 }
 
