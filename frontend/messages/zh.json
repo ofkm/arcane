@@ -134,9 +134,9 @@
 	"general_save_instructions": "保存您已修改的设置。",
 	"docker_enable_polling_label": "启用镜像轮询",
 	"docker_enable_polling_description": "定期检查registries中是否有较新的镜像",
-	"docker_polling_interval_label": "镜像轮询间隔(分钟)",
+	"docker_polling_interval_label": "投票间隔",
 	"docker_polling_interval_placeholder": "60",
-	"docker_polling_interval_description": "检查镜像更新的频率(5 - 1440 分钟)",
+	"docker_polling_interval_description": "检查新图像的频率(5-10080分钟)",
 	"docker_auto_update_label": "自动更新容器",
 	"docker_auto_update_description": "发现镜像更像是时自动更新容器",
 	"docker_auto_update_interval_label": "自动更新间隔 (分钟)",
@@ -1049,5 +1049,14 @@
 	"common_skip": "跳过",
 	"language": "语言",
 	"bridge": "网关",
-	"ports": "端口"
+	"ports": "端口",
+	"custom": "自定义",
+	"weekly": "每周的",
+	"daily": "每天",
+	"hourly": "每小时",
+	"polling_hourly_description": "每隔60分钟检查新图像",
+	"polling_daily_description": "每1440分钟检查新图像",
+	"polling_weekly_description": "每10080分钟检查新图像",
+	"use_custom_polling_value": "使用介于 5-10080 分钟内的自定义轮询值",
+	"custom_polling_interval": "自定义投票间隔(分钟)"
 }
