@@ -1059,5 +1059,5 @@
 	"polling_weekly_description": "Vérifier les nouvelles images toutes les 10080 minutes",
 	"use_custom_polling_value": "Utiliser une valeur de sondage personnalisée entre 5-10080 minutes",
 	"custom_polling_interval": "Intervalle de vote personnalisé (minutes)",
-	"build_cache": "Build Cache"
+	"build_cache": "Cache de compilation"
 }
