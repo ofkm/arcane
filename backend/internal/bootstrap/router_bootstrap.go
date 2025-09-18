@@ -27,12 +27,12 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	router.Use(gin.Recovery())
 
 	loggerSkipPatterns := []string{
-		"GET /api/containers/*/stats/stream",
-		"GET /api/containers/*/logs/stream",
-		"GET /_app",
+		"GET /api/*/*/stats/ws",
+		"GET /api/system/stats/ws",
+		"GET /api/*/*/logs/ws",
+		"GET /_app/*",
 		"GET /img",
 		"GET /fonts",
-		"GET /api/system/stats",
 		"GET /api/health",
 		"HEAD /api/health",
 	}
@@ -66,6 +66,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	if cfg.AgentMode {
 		api.NewHealthHandler(apiGroup)
 		api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Project, appServices.Settings, authMiddleware, cfg)
+		api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, authMiddleware)
 		return router
 	}
 

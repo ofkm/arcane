@@ -12,7 +12,7 @@
       },
       "presentation": {
         "reveal": "silent",
-        "close": false,
+        "close": true,
         "clear": false,
         "echo": false,
         "focus": false,
@@ -46,7 +46,7 @@
       "group": "build",
       "presentation": {
         "reveal": "silent",
-        "close": false,
+        "close": true,
         "clear": false,
         "echo": false,
         "focus": false,
@@ -63,7 +63,7 @@
       "group": "build",
       "presentation": {
         "reveal": "silent",
-        "close": false,
+        "close": true,
         "clear": false,
         "echo": false,
         "focus": false,

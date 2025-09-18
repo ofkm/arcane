@@ -30,6 +30,16 @@
 	let dockerInfo = $state(data.dockerInfo);
 	let containerStatusCounts = $state(data.containerStatusCounts);
 
+	// Keep page state in sync when the route's load data updates (e.g., after env switch)
+	$effect(() => {
+		containers = data.containers;
+		images = data.images;
+		dockerInfo = data.dockerInfo;
+		containerStatusCounts = data.containerStatusCounts;
+		dashboardStates.dockerInfo = data.dockerInfo;
+		dashboardStates.settings = data.settings;
+	});
+
 	let dashboardStates = $state({
 		dockerInfo: data.dockerInfo,
 		settings: data.settings,
@@ -145,32 +155,9 @@
 		(async () => {
 			await environmentStore.ready;
 
-			const getEnvId = () => {
-				const env = get(environmentStore.selected);
-				return env ? env.id : '0';
-			};
-
-			statsWSClient = createStatsWebSocket({
-				getEnvId,
-				onOpen: () => {
-					if (!hasInitialStatsLoaded) {
-						isLoading.loadingStats = true;
-					}
-				},
-				onMessage: (data) => {
-					if (!mounted) return;
-					liveSystemStats = data;
-					dashboardStates.systemStats = data;
-					addToHistoricalData(data);
-					hasInitialStatsLoaded = true;
-					isLoading.loadingStats = false;
-				},
-				onError: (e) => {
-					console.error('Stats websocket error:', e);
-				}
-			});
-
-			statsWSClient.connect();
+			if (mounted) {
+				setupStatsWS();
+			}
 		})();
 
 		return () => {
@@ -178,6 +165,61 @@
 			statsWSClient?.close();
 			statsWSClient = null;
 		};
+	});
+
+	function resetStats() {
+		liveSystemStats = null;
+		hasInitialStatsLoaded = false;
+		historicalData = {
+			cpu: [],
+			memory: [],
+			disk: [],
+			containers: []
+		};
+	}
+
+	function setupStatsWS() {
+		const getEnvId = () => {
+			const env = get(environmentStore.selected);
+			return env ? env.id : '0';
+		};
+
+		statsWSClient = createStatsWebSocket({
+			getEnvId,
+			onOpen: () => {
+				if (!hasInitialStatsLoaded) {
+					isLoading.loadingStats = true;
+				}
+			},
+			onMessage: (data) => {
+				liveSystemStats = data;
+				dashboardStates.systemStats = data;
+				addToHistoricalData(data);
+				hasInitialStatsLoaded = true;
+				isLoading.loadingStats = false;
+			},
+			onError: (e) => {
+				console.error('Stats websocket error:', e);
+			}
+		});
+		statsWSClient.connect();
+	}
+
+	// Reconnect stats WS and refresh data when environment changes
+	$effect(() => {
+		const unsubscribe = environmentStore.selected.subscribe(async (env) => {
+			if (!env) return;
+			// If already mounted and client exists, reconnect and refresh
+			if (statsWSClient) {
+				statsWSClient.close();
+				statsWSClient = null;
+				resetStats();
+				setupStatsWS();
+				// Also refresh non-WS data for this page
+				await refreshData();
+			}
+		});
+		return () => unsubscribe();
 	});
 
 	async function handleStartAll() {

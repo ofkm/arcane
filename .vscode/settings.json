@@ -8,8 +8,5 @@
   },
   "typescript.tsdk": "frontend/node_modules/typescript/lib",
   "go.buildTags": "playwright",
-  "prettier.documentSelectors": [
-    "**/*.svelte"
-  ],
-  "kiroAgent.configureMCP": "Disabled"
+  "prettier.documentSelectors": ["**/*.svelte"]
 }
