@@ -35,7 +35,8 @@
 			value: 'hourly',
 			minutes: 60,
 			label: m.hourly(),
-			description: m.polling_daily_description()
+			// If these were swapped, fix them:
+			description: m.polling_hourly_description()
 		},
 		{
 			value: 'daily',
@@ -128,7 +129,6 @@
 								label={m.docker_polling_interval_label()}
 								placeholder="Select interval"
 								options={imagePollingOptions.map(({ value, label, description }) => ({ value, label, description }))}
-								groupLabel="Polling interval"
 							/>
 							{#if pollingIntervalMode === 'custom'}
 								<FormInput
@@ -181,7 +181,6 @@
 						description={pruneModeDescription}
 						placeholder={m.docker_prune_placeholder()}
 						options={pruneModeOptions}
-						groupLabel={m.docker_prune_group_label()}
 						onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
 					/>
 				</div>
