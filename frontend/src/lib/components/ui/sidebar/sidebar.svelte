@@ -31,7 +31,7 @@
 		{@render children?.()}
 	</div>
 {:else if sidebar.isMobile}
-	<Sheet.Root bind:open={() => sidebar.openMobile, (v) => sidebar.setOpenMobile(v)} {...restProps}>
+	<Sheet.Root bind:open={sidebar.openMobile} onOpenChange={sidebar.setOpenMobile} {...restProps}>
 		<Sheet.Content
 			data-sidebar="sidebar"
 			data-slot="sidebar"
@@ -57,6 +57,7 @@
 		data-collapsible={sidebar.state === 'collapsed' ? collapsible : ''}
 		data-variant={variant}
 		data-side={side}
+		data-hovered={sidebar.isHovered ? 'true' : 'false'}
 		data-slot="sidebar"
 	>
 		<!-- This is what handles the sidebar gap on desktop -->
@@ -74,7 +75,7 @@
 		<div
 			data-slot="sidebar-container"
 			class={cn(
-				'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
+				'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex overflow-x-hidden',
 				side === 'left'
 					? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
 					: 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
@@ -82,14 +83,25 @@
 				variant === 'floating' || variant === 'inset'
 					? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
 					: 'group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l',
+				// Hover overlay effect - expand to full width when collapsed and hovered
+				'group-data-[collapsible=icon]:group-data-[hovered=true]:w-(--sidebar-width)',
+				'group-data-[collapsible=icon]:group-data-[hovered=true]:shadow-lg',
 				className
 			)}
+			onmouseenter={() => {
+				if (sidebar.state === 'collapsed') {
+					sidebar.setHovered(true);
+				}
+			}}
+			onmouseleave={() => {
+				sidebar.setHovered(false, 150);
+			}}
 			{...restProps}
 		>
 			<div
 				data-sidebar="sidebar"
 				data-slot="sidebar-inner"
-				class="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+				class="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col overflow-x-hidden group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
 			>
 				{@render children?.()}
 			</div>

@@ -13,16 +13,16 @@
 	import type { AppVersionInformation } from '$lib/types/application-configuration';
 	import SidebarLogo from './sidebar-logo.svelte';
 	import SidebarUpdatebanner from './sidebar-updatebanner.svelte';
+	import SidebarPinButton from './sidebar-pin-button.svelte';
 	import userStore from '$lib/stores/user-store';
 	import { m } from '$lib/paraglide/messages';
 	import * as Button from '$lib/components/ui/button/index.js';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
-	import LogInIcon from '@lucide/svelte/icons/log-in';
-	import { cn } from '$lib/utils';
 
 	let {
 		ref = $bindable(null),
 		collapsible = 'icon',
+		variant = 'floating',
 		user,
 		versionInformation,
 		...restProps
@@ -40,13 +40,21 @@
 	});
 	const effectiveUser = $derived(user ?? storeUser);
 
-	const isCollapsed = $derived(sidebar.state === 'collapsed');
+	const isCollapsed = $derived(sidebar.state === 'collapsed' && !sidebar.isHovered);
 	const isAdmin = $derived(!!effectiveUser?.roles?.includes('admin'));
 </script>
 
-<Sidebar.Root {collapsible} {...restProps}>
+<Sidebar.Root {collapsible} {variant} {...restProps}>
 	<Sidebar.Header>
-		<SidebarLogo {isCollapsed} {versionInformation} />
+		<div class="relative">
+			<SidebarLogo {isCollapsed} {versionInformation} />
+			<!-- Pin button positioned in top right, only visible when not collapsed or on hover -->
+			{#if !isCollapsed || sidebar.isHovered}
+				<div class="absolute top-0 right-0 -mt-1 -mr-1">
+					<SidebarPinButton />
+				</div>
+			{/if}
+		</div>
 		<SidebarEnvSwitcher {isAdmin} />
 	</Sidebar.Header>
 	<Sidebar.Content>
@@ -63,16 +71,6 @@
 			{#if isCollapsed}
 				<div class="px-0 pb-2">
 					<div class="flex flex-col items-center gap-2">
-						<form action="/auth/logout" method="POST">
-							<Button.Root
-								variant="ghost"
-								title={m.common_logout()}
-								type="submit"
-								class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9 w-9 rounded-xl p-0"
-							>
-								<LogOutIcon size={16} />
-							</Button.Root>
-						</form>
 						<SidebarUser {isCollapsed} user={effectiveUser} />
 					</div>
 				</div>
@@ -95,5 +93,4 @@
 			{/if}
 		{/if}
 	</Sidebar.Footer>
-	<Sidebar.Rail />
 </Sidebar.Root>
