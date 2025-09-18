@@ -111,6 +111,6 @@ networks:
 
 volumes:
   arcane-dev-data:
-    name: arcane-dev-data-
+    name: arcane-dev-data
   agent-dev-data:
     name: agent-dev-data

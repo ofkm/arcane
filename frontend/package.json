@@ -58,7 +58,7 @@
     "mode-watcher": "^1.1.0",
     "paneforge": "^1.0.2",
     "runed": "^0.31.1",
-    "svelte": "^5.38.10",
+    "svelte": "^5.39.1",
     "svelte-check": "^4.3.1",
     "svelte-sonner": "^1.0.5",
     "svelte-toolbelt": "^0.9.3",
