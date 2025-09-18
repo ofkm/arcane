@@ -134,9 +134,9 @@
 	"general_save_instructions": "Guarda tus ajustes actualizados.",
 	"docker_enable_polling_label": "Activar Encuesta de Imagen",
 	"docker_enable_polling_description": "Periodically check registries for newer image versions",
-	"docker_polling_interval_label": "Intervalo de encuesta (minutos)",
+	"docker_polling_interval_label": "Intervalo de encuesta",
 	"docker_polling_interval_placeholder": "60",
-	"docker_polling_interval_description": "Con qué frecuencia comprobar imágenes nuevas (5-1440 minutos)",
+	"docker_polling_interval_description": "Con qué frecuencia comprobar nuevas imágenes (5-10080 minutos)",
 	"docker_auto_update_label": "Contenedores de actualización automática",
 	"docker_auto_update_description": "Actualizar automáticamente los contenedores cuando se encuentran nuevas imágenes",
 	"docker_auto_update_interval_label": "Intervalo de actualización automática (minutos)",
@@ -1049,5 +1049,14 @@
 	"common_skip": "Saltar",
 	"language": "Idioma",
 	"bridge": "Puente",
-	"ports": "Puertos"
+	"ports": "Puertos",
+	"custom": "Personalizado",
+	"weekly": "Semanal",
+	"daily": "Diario",
+	"hourly": "Por hora",
+	"polling_hourly_description": "Buscar imágenes nuevas cada 60 minutos",
+	"polling_daily_description": "Buscar imágenes nuevas cada 1440 minutos",
+	"polling_weekly_description": "Buscar imágenes nuevas cada 10080 minutos",
+	"use_custom_polling_value": "Usar un valor de encuesta personalizado entre 5-10080 minutos",
+	"custom_polling_interval": "Intervalo de Encuesta Personalizada (minutos)"
 }
