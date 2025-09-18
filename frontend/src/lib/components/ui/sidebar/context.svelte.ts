@@ -30,6 +30,7 @@ class SidebarState {
 	#isTablet: IsTablet;
 	#isPinned = $state(true); // User's pinning preference - defaults to pinned
 	#isHovered = $state(false);
+	#hoverTimeout: ReturnType<typeof setTimeout> | null = null;
 	state = $derived.by(() => (this.open ? 'expanded' : 'collapsed'));
 
 	constructor(props: SidebarStateProps) {
@@ -85,9 +86,27 @@ class SidebarState {
 		return this.open || (!this.open && this.#isHovered);
 	}
 
-	// Set hover state
-	setHovered = (value: boolean) => {
-		this.#isHovered = value;
+	// Set hover state with optional delay for clearing
+	setHovered = (value: boolean, delay = 0) => {
+		// Clear any existing timeout
+		if (this.#hoverTimeout !== null) {
+			clearTimeout(this.#hoverTimeout);
+			this.#hoverTimeout = null;
+		}
+
+		if (value) {
+			// Immediately set hover to true
+			this.#isHovered = true;
+		} else if (delay > 0) {
+			// Delay clearing hover state
+			this.#hoverTimeout = setTimeout(() => {
+				this.#isHovered = false;
+				this.#hoverTimeout = null;
+			}, delay);
+		} else {
+			// Immediately clear hover state
+			this.#isHovered = false;
+		}
 	};
 
 	// Event handler to apply to the `<svelte:window>`

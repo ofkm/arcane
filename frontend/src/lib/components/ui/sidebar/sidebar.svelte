@@ -94,7 +94,7 @@
 				}
 			}}
 			onmouseleave={() => {
-				sidebar.setHovered(false);
+				sidebar.setHovered(false, 150);
 			}}
 			{...restProps}
 		>

@@ -16,6 +16,14 @@
 	let { user, isCollapsed }: { user: User; isCollapsed: boolean } = $props();
 	const sidebar = useSidebar();
 
+	let dropdownOpen = $state(false);
+
+	$effect(() => {
+		if (sidebar.state === 'collapsed' && !sidebar.isHovered && dropdownOpen) {
+			dropdownOpen = false;
+		}
+	});
+
 	async function getGravatarUrl(email: string | undefined, size = 40): Promise<string> {
 		if (!email) return '';
 
@@ -31,7 +39,7 @@
 
 <Sidebar.Menu>
 	<Sidebar.MenuItem>
-		<DropdownMenu.Root>
+		<DropdownMenu.Root bind:open={dropdownOpen}>
 			<DropdownMenu.Trigger>
 				{#snippet child({ props })}
 					<Sidebar.MenuButton
@@ -74,7 +82,17 @@
 				align="end"
 				sideOffset={12}
 			>
-				<DropdownMenu.Label class="px-3 pb-2 pt-2 font-normal">
+				<div
+					onmouseenter={() => {
+						if (sidebar.state === 'collapsed') {
+							sidebar.setHovered(true);
+						}
+					}}
+					onmouseleave={() => {
+						sidebar.setHovered(false, 150);
+					}}
+				>
+					<DropdownMenu.Label class="px-3 pb-2 pt-2 font-normal">
 					<div class="flex items-center gap-3 text-left text-sm">
 						<Avatar.Root class="size-8 shrink-0 rounded-lg">
 							{#if $settingsStore.enableGravatar}
@@ -124,6 +142,7 @@
 						<span class="font-medium">{m.common_toggle_theme()}</span>
 					</Button.Root>
 				</DropdownMenu.Group>
+				</div>
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
 	</Sidebar.MenuItem>
