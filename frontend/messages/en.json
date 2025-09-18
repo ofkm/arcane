@@ -134,9 +134,9 @@
 	"general_save_instructions": "Save your updated settings.",
 	"docker_enable_polling_label": "Enable Image Polling",
 	"docker_enable_polling_description": "Periodically check registries for newer image versions",
-	"docker_polling_interval_label": "Polling Interval (minutes)",
+	"docker_polling_interval_label": "Polling Interval",
 	"docker_polling_interval_placeholder": "60",
-	"docker_polling_interval_description": "How often to check for new images (5-1440 minutes)",
+	"docker_polling_interval_description": "How often to check for new images (5-10080 minutes)",
 	"docker_auto_update_label": "Auto-update Containers",
 	"docker_auto_update_description": "Automatically update containers when newer images are found",
 	"docker_auto_update_interval_label": "Auto-update Interval (minutes)",
@@ -1049,5 +1049,14 @@
 	"common_skip": "Skip",
 	"language": "Language",
 	"bridge": "Bridge",
-	"ports": "Ports"
+	"ports": "Ports",
+	"custom": "Custom",
+	"weekly": "Weekly",
+	"daily": "Daily",
+	"hourly": "Hourly",
+	"polling_hourly_description": "Check for new images every 60 minutes",
+	"polling_daily_description": "Check for new images every 1440 minutes",
+	"polling_weekly_description": "Check for new images every 10080 minutes",
+	"use_custom_polling_value": "Use a custom polling value between 5-10080 minutes",
+	"custom_polling_interval": "Custom Polling Interval (minutes)"
 }
