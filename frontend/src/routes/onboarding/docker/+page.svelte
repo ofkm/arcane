@@ -55,7 +55,7 @@
 
 	const formSchema = z.object({
 		pollingEnabled: z.boolean(),
-		pollingInterval: z.number().int(),
+		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
 		autoUpdateInterval: z.number().int(),
 		dockerPruneMode: z.enum(['all', 'dangling'])
@@ -136,7 +136,6 @@
 							name="pollingIntervalMode"
 							bind:value={pollingIntervalMode}
 							label={m.docker_polling_interval_label()}
-							placeholder="Select interval"
 							options={imagePollingOptions.map(({ value, label, description }) => ({ value, label, description }))}
 						/>
 
