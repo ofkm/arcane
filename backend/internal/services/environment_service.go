@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -273,4 +275,69 @@ func (s *EnvironmentService) PairAndPersistAgentToken(ctx context.Context, envir
 		return "", fmt.Errorf("failed to persist agent token: %w", err)
 	}
 	return token, nil
+}
+
+func (s *EnvironmentService) BuildWSAuthHeadersFromRequest(req *http.Request, agentToken string) http.Header {
+	h := http.Header{}
+	if auth := req.Header.Get("Authorization"); auth != "" {
+		h.Set("Authorization", auth)
+	} else if c, err := req.Cookie("token"); err == nil && c != nil && c.Value != "" {
+		h.Set("Authorization", "Bearer "+c.Value)
+	}
+	if agentToken != "" {
+		h.Set("X-Arcane-Agent-Token", agentToken)
+	}
+	return h
+}
+
+func wsScheme(req *http.Request) string {
+	xfp := strings.TrimSpace(req.Header.Get("X-Forwarded-Proto"))
+	if xfp != "" {
+		if idx := strings.Index(xfp, ","); idx != -1 {
+			xfp = strings.TrimSpace(xfp[:idx])
+		}
+		if strings.HasPrefix(strings.ToLower(xfp), "https") {
+			return "wss"
+		}
+		return "ws"
+	}
+	if req.TLS != nil {
+		return "wss"
+	}
+	return "ws"
+}
+
+// BuildLocalWSTarget returns ws URL and headers to proxy to this server.
+func (s *EnvironmentService) BuildLocalWSTarget(req *http.Request, absolutePath string, agentToken string) (string, http.Header) {
+	u := &url.URL{
+		Scheme:   wsScheme(req),
+		Host:     req.Host,
+		Path:     absolutePath,
+		RawQuery: req.URL.RawQuery,
+	}
+	h := s.BuildWSAuthHeadersFromRequest(req, agentToken)
+	return u.String(), h
+}
+
+// BuildRemoteWSTarget returns ws URL and headers for a remote environment.
+// absolutePath should be the full API path (e.g. "/api/environments/0/stats/ws").
+func (s *EnvironmentService) BuildRemoteWSTarget(environment *models.Environment, absolutePath string, req *http.Request) (string, http.Header, error) {
+	base, err := url.Parse(strings.TrimRight(environment.ApiUrl, "/"))
+	if err != nil {
+		return "", nil, fmt.Errorf("invalid environment url: %w", err)
+	}
+	if base.Scheme == "https" {
+		base.Scheme = "wss"
+	} else {
+		base.Scheme = "ws"
+	}
+	base.Path = path.Join(base.Path, absolutePath)
+	base.RawQuery = req.URL.RawQuery
+
+	agentToken := ""
+	if environment.AccessToken != nil {
+		agentToken = *environment.AccessToken
+	}
+	h := s.BuildWSAuthHeadersFromRequest(req, agentToken)
+	return base.String(), h, nil
 }

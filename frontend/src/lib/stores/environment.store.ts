@@ -1,6 +1,5 @@
 import { writable, get } from 'svelte/store';
-import { browser } from '$app/environment';
-import { goto } from '$app/navigation';
+import { invalidateAll } from '$app/navigation';
 import type { Environment } from '$lib/types/environment.type';
 
 export const LOCAL_DOCKER_ENVIRONMENT_ID = '0';
@@ -39,7 +38,7 @@ function createEnvironmentManagementStore() {
 	}
 
 	function _getSavedEnvironmentId(): string | null {
-		if (browser && localStorage) {
+		if (localStorage) {
 			return localStorage.getItem('selectedEnvironmentId');
 		}
 		return null;
@@ -99,16 +98,11 @@ function createEnvironmentManagementStore() {
 			if (currentSelected?.id !== environment.id) {
 				_selectedEnvironment.set(environment);
 
-				if (browser && localStorage) {
+				if (localStorage) {
 					localStorage.setItem('selectedEnvironmentId', environment.id);
 				}
 
-				if (browser) {
-					await goto(window.location.pathname + window.location.search, {
-						replaceState: true,
-						invalidateAll: true
-					});
-				}
+				await invalidateAll();
 			}
 		},
 		isInitialized: () => _initialized,

@@ -37,9 +37,9 @@
 		};
 	});
 
-	function handleSelect(env: Environment) {
+	async function handleSelect(env: Environment) {
 		try {
-			environmentStore.setEnvironment(env);
+			await environmentStore.setEnvironment(env);
 		} catch (error) {
 			console.error('Failed to set environment:', error);
 			toast.error('Failed to Connect to Environment');

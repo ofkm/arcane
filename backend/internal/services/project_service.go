@@ -426,8 +426,13 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 	if err := s.updateProjectStatusInternal(ctx, projectID, models.ProjectStatusDeploying); err != nil {
 		return fmt.Errorf("failed to update project status to deploying: %w", err)
 	}
-	if err := projects.ComposeUp(ctx, project, project.Services.GetProfiles()); err != nil {
 
+	// Pre-pull all images using auth-aware ImageService
+	if perr := s.PullProjectImages(ctx, projectID, io.Discard); perr != nil {
+		slog.Warn("pre-pull images failed (continuing to compose up)", "projectID", projectID, "error", perr)
+	}
+
+	if err := projects.ComposeUp(ctx, project, project.Services.GetProfiles()); err != nil {
 		slog.Error("compose up failed", "projectName", project.Name, "projectID", projectID, "error", err)
 		if containers, psErr := s.GetProjectServices(ctx, projectID); psErr == nil {
 			slog.Info("containers after failed deploy", "projectID", projectID, "containers", containers)
@@ -592,8 +597,19 @@ func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string
 		return fmt.Errorf("failed to load compose project: %w", lerr)
 	}
 
-	if err := projects.ComposePull(ctx, compProj); err != nil {
-		return fmt.Errorf("failed to pull images via compose api: %w", err)
+	images := map[string]struct{}{}
+	for _, svc := range compProj.Services {
+		img := strings.TrimSpace(svc.Image)
+		if img == "" {
+			continue
+		}
+		images[img] = struct{}{}
+	}
+
+	for img := range images {
+		if err := s.imageService.PullImage(ctx, img, progressWriter, systemUser); err != nil {
+			return fmt.Errorf("failed to pull image %s: %w", img, err)
+		}
 	}
 	return nil
 }

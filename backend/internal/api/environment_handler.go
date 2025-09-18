@@ -984,79 +984,26 @@ func (h *EnvironmentHandler) GetContainerLogsWS(c *gin.Context) {
 
 func (h *EnvironmentHandler) GetStatsWS(c *gin.Context) {
 	envID := c.Param("id")
-
 	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
-		u := &url.URL{}
-
-		xfp := strings.TrimSpace(c.GetHeader("X-Forwarded-Proto"))
-		if xfp != "" {
-			if idx := strings.Index(xfp, ","); idx != -1 {
-				xfp = xfp[:idx]
-			}
-			if strings.HasPrefix(strings.ToLower(xfp), "https") {
-				u.Scheme = "wss"
-			} else {
-				u.Scheme = "ws"
-			}
-		} else {
-
-			if c.Request.TLS != nil {
-				u.Scheme = "wss"
-			} else {
-				u.Scheme = "ws"
-			}
+		agentToken := ""
+		if h.cfg != nil && h.cfg.AgentMode && h.cfg.AgentToken != "" {
+			agentToken = h.cfg.AgentToken
 		}
-
-		u.Host = c.Request.Host
-		u.Path = "/api/system/stats/ws"
-		u.RawQuery = c.Request.URL.RawQuery
-
-		hdr := http.Header{}
-		// Forward auth if present (or promote cookie)
-		if auth := c.GetHeader("Authorization"); auth != "" {
-			hdr.Set("Authorization", auth)
-		} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
-			hdr.Set("Authorization", "Bearer "+cookieToken)
-		}
-
-		_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
+		target, hdr := h.environmentService.BuildLocalWSTarget(c.Request, "/api/system/stats/ws", agentToken)
+		_ = wsutil.ProxyHTTP(c.Writer, c.Request, target, hdr)
 		return
 	}
-
 	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
 	if err != nil || environment == nil || !environment.Enabled {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
 		return
 	}
-
-	u, err := url.Parse(strings.TrimRight(environment.ApiUrl, "/"))
+	target, hdr, err := h.environmentService.BuildRemoteWSTarget(environment, "/api/environments/0/stats/ws", c.Request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid environment URL"}})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": err.Error()}})
 		return
 	}
-
-	// websocket scheme
-	if u.Scheme == "https" {
-		u.Scheme = "wss"
-	} else {
-		u.Scheme = "ws"
-	}
-	u.Path = path.Join(u.Path, "/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/stats/ws")
-	u.RawQuery = c.Request.URL.RawQuery
-
-	hdr := http.Header{}
-	// Forward auth if present
-	if auth := c.GetHeader("Authorization"); auth != "" {
-		hdr.Set("Authorization", auth)
-	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
-		hdr.Set("Authorization", "Bearer "+cookieToken)
-	}
-	// Agent token
-	if environment.AccessToken != nil && *environment.AccessToken != "" {
-		hdr.Set("X-Arcane-Agent-Token", *environment.AccessToken)
-	}
-
-	_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
+	_ = wsutil.ProxyHTTP(c.Writer, c.Request, target, hdr)
 }
 
 // New Project Handlers
