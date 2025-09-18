@@ -52,47 +52,38 @@ func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*
 		slog.Bool("images", req.Images),
 		slog.Bool("volumes", req.Volumes),
 		slog.Bool("networks", req.Networks),
+		slog.Bool("build_cache", req.BuildCache),
 		slog.Bool("dangling", req.Dangling))
 
-	result := &dto.PruneAllResult{
-		Success: true,
-	}
+	result := &dto.PruneAllResult{Success: true}
 
 	if req.Containers {
-		slog.DebugContext(ctx, "Processing container pruning")
 		if err := s.pruneContainers(ctx, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Container pruning failed: %v", err))
 			result.Success = false
 		}
 	}
 
+	danglingOnly, err := s.getDanglingModeFromSettings(ctx)
+	if err != nil {
+		danglingOnly = req.Dangling
+	}
+	slog.DebugContext(ctx, "Resolved image prune mode", slog.Bool("dangling_only", danglingOnly))
+
 	if req.Images {
-		danglingOnly, settingsErr := s.getDanglingModeFromSettings(ctx)
-		if settingsErr != nil {
-			danglingOnly = req.Dangling
-			result.Errors = append(result.Errors, fmt.Sprintf("Warning: Could not get prune mode from settings, using request parameter: %v", settingsErr))
-			slog.WarnContext(ctx, "Could not get prune mode from settings, using request parameter",
-				slog.String("error", settingsErr.Error()),
-				slog.Bool("fallback_dangling", req.Dangling))
-		}
-
-		slog.DebugContext(ctx, "Processing image pruning",
-			slog.Bool("settings_dangling_mode", danglingOnly),
-			slog.Bool("request_dangling", req.Dangling))
-
 		if err := s.pruneImages(ctx, danglingOnly, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Image pruning failed: %v", err))
 			result.Success = false
 		}
+	}
 
-		slog.DebugContext(ctx, "Processing build cache pruning as part of image pruning")
+	if req.BuildCache {
 		if buildCacheErr := s.pruneBuildCache(ctx, result, !danglingOnly); buildCacheErr != nil {
 			slog.WarnContext(ctx, "Build cache pruning encountered an error", slog.String("error", buildCacheErr.Error()))
 		}
 	}
 
 	if req.Volumes {
-		slog.DebugContext(ctx, "Processing volume pruning")
 		if err := s.pruneVolumes(ctx, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Volume pruning failed: %v", err))
 			result.Success = false
@@ -100,7 +91,6 @@ func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*
 	}
 
 	if req.Networks {
-		slog.DebugContext(ctx, "Processing network pruning")
 		if err := s.pruneNetworks(ctx, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Network pruning failed: %v", err))
 			result.Success = false
@@ -315,13 +305,8 @@ func (s *SystemService) pruneBuildCache(ctx context.Context, result *dto.PruneAl
 }
 
 func (s *SystemService) pruneVolumes(ctx context.Context, result *dto.PruneAllResult) error {
+	// Always prune only unused volumes here (safe default)
 	allVolumes := false
-	if s.settingsService != nil {
-		danglingOnly, _ := s.getDanglingModeFromSettings(ctx)
-		allVolumes = !danglingOnly
-	}
-	slog.DebugContext(ctx, "Processing volume pruning", slog.Bool("all", allVolumes))
-
 	report, err := s.volumeService.PruneVolumesWithOptions(ctx, allVolumes)
 	if err != nil {
 		return err

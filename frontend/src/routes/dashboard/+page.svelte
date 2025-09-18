@@ -47,7 +47,7 @@
 		isPruneDialogOpen: false
 	});
 
-	type PruneType = 'containers' | 'images' | 'networks' | 'volumes';
+	type PruneType = 'containers' | 'images' | 'networks' | 'volumes' | 'buildCache';
 
 	let isLoading = $state({
 		starting: false,
@@ -268,10 +268,18 @@
 			images: selectedTypes.includes('images'),
 			volumes: selectedTypes.includes('volumes'),
 			networks: selectedTypes.includes('networks'),
+			buildCache: selectedTypes.includes('buildCache'),
 			dangling: dashboardStates.settings?.dockerPruneMode === 'dangling'
 		};
 
-		const typesString = selectedTypes.map((type) => capitalizeFirstLetter(type)).join(', ');
+		const typeLabels: Record<PruneType, string> = {
+			containers: m.prune_stopped_containers(),
+			images: m.prune_unused_images(),
+			networks: m.prune_unused_networks(),
+			volumes: m.prune_unused_volumes(),
+			buildCache: 'Build cache'
+		};
+		const typesString = selectedTypes.map((t) => typeLabels[t]).join(', ');
 
 		handleApiResultWithCallbacks({
 			result: await tryCatch(systemAPI.pruneAll(pruneOptions)),
