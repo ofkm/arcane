@@ -1058,5 +1058,6 @@
 	"polling_daily_description": "Check for new images every 1440 minutes",
 	"polling_weekly_description": "Check for new images every 10080 minutes",
 	"use_custom_polling_value": "Use a custom polling value between 5-10080 minutes",
-	"custom_polling_interval": "Custom Polling Interval (minutes)"
+	"custom_polling_interval": "Custom Polling Interval (minutes)",
+	"build_cache": "Build Cache"
 }
