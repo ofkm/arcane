@@ -23,6 +23,48 @@
 	let isLoading = $state(false);
 	let pruneMode = $state(settings.dockerPruneMode);
 
+	type PollingIntervalMode = 'hourly' | 'daily' | 'weekly' | 'custom';
+
+	const imagePollingOptions: Array<{
+		value: PollingIntervalMode;
+		label: string;
+		description: string;
+		minutes?: number;
+	}> = [
+		{
+			value: 'hourly',
+			minutes: 60,
+			label: m.hourly(),
+			// If these were swapped, fix them:
+			description: m.polling_hourly_description()
+		},
+		{
+			value: 'daily',
+			minutes: 1440,
+			label: m.daily(),
+			description: m.polling_daily_description()
+		},
+		{
+			value: 'weekly',
+			minutes: 10080,
+			label: m.weekly(),
+			description: m.polling_weekly_description()
+		},
+		{
+			value: 'custom',
+			label: m.custom(),
+			description: m.use_custom_polling_value()
+		}
+	];
+
+	const presetToMinutes = Object.fromEntries(
+		imagePollingOptions.filter((o) => o.value !== 'custom').map((o) => [o.value, o.minutes!])
+	) as Record<Exclude<PollingIntervalMode, 'custom'>, number>;
+
+	let pollingIntervalMode = $state<PollingIntervalMode>(
+		imagePollingOptions.find((o) => o.minutes === settings.pollingInterval)?.value ?? 'custom'
+	);
+
 	const pruneModeOptions = [
 		{
 			value: 'all',
@@ -42,13 +84,20 @@
 
 	const formSchema = z.object({
 		pollingEnabled: z.boolean(),
-		pollingInterval: z.number().int(),
+		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
 		autoUpdateInterval: z.number().int(),
 		dockerPruneMode: z.enum(['all', 'dangling'])
 	});
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, settings));
+
+	// Keep form value in sync with preset selection unless "custom"
+	$effect(() => {
+		if (pollingIntervalMode !== 'custom') {
+			$formInputs.pollingInterval.value = presetToMinutes[pollingIntervalMode];
+		}
+	});
 
 	async function onSubmit() {
 		const data = form.validate();
@@ -73,14 +122,25 @@
 					/>
 					{#if $formInputs.pollingEnabled.value}
 						<div class="space-y-4">
-							<FormInput
-								bind:input={$formInputs.pollingInterval}
-								type="number"
-								id="pollingInterval"
+							<SelectWithLabel
+								id="pollingIntervalMode"
+								name="pollingIntervalMode"
+								bind:value={pollingIntervalMode}
 								label={m.docker_polling_interval_label()}
-								placeholder={m.docker_polling_interval_placeholder()}
-								description={m.docker_polling_interval_description()}
+								placeholder="Select interval"
+								options={imagePollingOptions.map(({ value, label, description }) => ({ value, label, description }))}
 							/>
+							{#if pollingIntervalMode === 'custom'}
+								<FormInput
+									bind:input={$formInputs.pollingInterval}
+									type="number"
+									id="pollingInterval"
+									label={m.custom_polling_interval()}
+									placeholder={m.docker_polling_interval_placeholder()}
+									description={m.docker_polling_interval_description()}
+								/>
+							{/if}
+
 							<div>
 								{#if $formInputs.pollingInterval.value < 30}
 									<Alert.Root variant="warning">
@@ -90,6 +150,7 @@
 									</Alert.Root>
 								{/if}
 							</div>
+
 							<div>
 								<SwitchWithLabel
 									id="autoUpdateSwitch"
@@ -120,7 +181,6 @@
 						description={pruneModeDescription}
 						placeholder={m.docker_prune_placeholder()}
 						options={pruneModeOptions}
-						groupLabel={m.docker_prune_group_label()}
 						onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
 					/>
 				</div>

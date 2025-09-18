@@ -80,6 +80,9 @@
 	});
 
 	let pullPopoverOpen = $state(false);
+	let deployPullPopoverOpen = $state(false);
+	let projectPulling = $state(false); // only for Project Pull button/popover
+	let deployPulling = $state(false); // only for Deploy popover
 	let pullProgress = $state(0);
 	let pullStatusText = $state('');
 	let pullError = $state('');
@@ -120,9 +123,18 @@
 		}
 	}
 
-	function buildPullApiUrl(): string {
-		const envId = getCurrentEnvironmentId();
-		return `/api/environments/${envId}/projects/${id}/pull`;
+	function isDownloadingLine(data: any): boolean {
+		const status = String(data?.status ?? '').toLowerCase();
+		const pd = data?.progressDetail;
+		// Open if we see byte progress or any of the common pull statuses
+		if (pd && (typeof pd.total === 'number' || typeof pd.current === 'number')) return true;
+		return (
+			status.includes('downloading') ||
+			status.includes('extracting') ||
+			status.includes('pulling fs layer') ||
+			status.includes('download complete') ||
+			status.includes('pull complete')
+		);
 	}
 
 	function getCurrentEnvironmentId(): string {
@@ -216,17 +228,89 @@
 	}
 
 	async function handleDeploy() {
+		resetPullState();
 		setLoading('start', true);
-		await handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.deployProject(id)),
-			message: m.action_failed_generic({ action: m.common_start(), type }),
-			setLoadingState: (value) => setLoading('start', value),
-			onSuccess: async () => {
-				itemState = 'running';
-				toast.success(m.action_started_success({ type }));
-				onActionComplete('running');
+		let openedPopover = false;
+		let hadError = false;
+
+		try {
+			const { pulled } = await environmentAPI.deployProjectMaybePull(id, (data) => {
+				if (!data) return;
+
+				if (!openedPopover && isDownloadingLine(data)) {
+					deployPullPopoverOpen = true;
+					deployPulling = true;
+					pullStatusText = m.images_pull_initiating();
+					openedPopover = true;
+				}
+
+				if (data.error) {
+					const errMsg = typeof data.error === 'string' ? data.error : data.error.message || m.images_pull_stream_error();
+					pullError = errMsg;
+					pullStatusText = m.images_pull_failed_with_error({ error: errMsg });
+					hadError = true;
+					return;
+				}
+
+				if (data.status) pullStatusText = data.status;
+
+				if (data.id) {
+					const currentLayer = layerProgress[data.id] || { current: 0, total: 0, status: '' };
+					currentLayer.status = data.status || currentLayer.status;
+					if (data.progressDetail) {
+						const { current, total } = data.progressDetail;
+						if (typeof current === 'number') currentLayer.current = current;
+						if (typeof total === 'number') currentLayer.total = total;
+					}
+					layerProgress[data.id] = currentLayer;
+				}
+
+				calculateOverallProgress();
+			});
+
+			// If popover was shown, finish/close it nicely
+			if (openedPopover) {
+				calculateOverallProgress();
+				if (hadError) throw new Error(pullError || m.images_pull_failed());
+
+				if (pullProgress < 100) {
+					const allDone = Object.values(layerProgress).every(
+						(l) =>
+							l.status &&
+							(l.status.toLowerCase().includes('complete') ||
+								l.status.toLowerCase().includes('already exists') ||
+								l.status.toLowerCase().includes('downloaded newer image'))
+					);
+					if (allDone && Object.keys(layerProgress).length > 0) {
+						pullProgress = 100;
+					}
+				}
+				pullStatusText = m.images_pulled_success();
+				toast.success(m.images_pulled_success());
+				await invalidateAll();
+
+				setTimeout(() => {
+					deployPullPopoverOpen = false;
+					deployPulling = false;
+					resetPullState();
+				}, 1500);
 			}
-		});
+
+			// Deploy already completed successfully
+			itemState = 'running';
+			toast.success(m.action_started_success({ type }));
+			onActionComplete('running');
+		} catch (e: any) {
+			const message = e?.message || m.action_failed_generic({ action: m.common_start(), type });
+			if (openedPopover) {
+				pullError = message;
+				pullStatusText = m.images_pull_failed_with_error({ error: message });
+				deployPulling = false;
+			}
+			toast.error(message);
+		} finally {
+			setLoading('start', false);
+		}
 	}
 
 	async function handleStop() {
@@ -276,93 +360,56 @@
 
 	async function handleProjectPull() {
 		resetPullState();
-		isLoading.pull = true;
+		projectPulling = true;
 		pullPopoverOpen = true;
 		pullStatusText = m.images_pull_initiating();
 
 		let wasSuccessful = false;
 
 		try {
-			const response = await fetch(buildPullApiUrl(), {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
+			await environmentAPI.pullProjectImages(id, (data) => {
+				if (!data) return;
+
+				if (data.error) {
+					const errMsg = typeof data.error === 'string' ? data.error : data.error.message || m.images_pull_stream_error();
+					pullError = errMsg;
+					pullStatusText = m.images_pull_failed_with_error({ error: errMsg });
+					return;
 				}
+
+				if (data.status) pullStatusText = data.status;
+
+				if (data.id) {
+					const currentLayer = layerProgress[data.id] || { current: 0, total: 0, status: '' };
+					currentLayer.status = data.status || currentLayer.status;
+
+					if (data.progressDetail) {
+						const { current, total } = data.progressDetail;
+						if (typeof current === 'number') currentLayer.current = current;
+						if (typeof total === 'number') currentLayer.total = total;
+					}
+					layerProgress[data.id] = currentLayer;
+				}
+
+				calculateOverallProgress();
 			});
 
-			if (!response.ok || !response.body) {
-				const errorData = await response.json().catch(() => ({
-					error: m.images_pull_server_error()
-				}));
-				const errorMessage =
-					typeof errorData.error === 'string'
-						? errorData.error
-						: errorData.message || `${m.images_pull_server_error()}: HTTP ${response.status}`;
-				throw new Error(errorMessage);
-			}
-
-			const reader = response.body.getReader();
-			const decoder = new TextDecoder();
-			let buffer = '';
-
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) {
-					pullStatusText = m.images_pull_processing_final_layers();
-					break;
-				}
-
-				buffer += decoder.decode(value, { stream: true });
-				const lines = buffer.split('\n');
-				buffer = lines.pop() || '';
-
-				for (const line of lines) {
-					if (line.trim() === '') continue;
-					try {
-						const data = JSON.parse(line);
-
-						if (data.error) {
-							console.error('Error in stream:', data.error);
-							pullError = typeof data.error === 'string' ? data.error : data.error.message || m.images_pull_stream_error();
-							pullStatusText = m.images_pull_failed_with_error({ error: pullError });
-							continue;
-						}
-
-						pullStatusText = data.status || pullStatusText;
-						if (data.id) {
-							const currentLayer = layerProgress[data.id] || { current: 0, total: 0, status: '' };
-							currentLayer.status = data.status || currentLayer.status;
-
-							if (data.progressDetail) {
-								currentLayer.current = data.progressDetail.current || currentLayer.current;
-								currentLayer.total = data.progressDetail.total || currentLayer.total;
-							}
-							layerProgress[data.id] = currentLayer;
-						}
-						calculateOverallProgress();
-					} catch (e: any) {
-						console.warn('Failed to parse stream line or process data:', line, e);
-					}
-				}
-			}
-
+			// Stream finished
 			calculateOverallProgress();
 			if (!pullError && pullProgress < 100) {
-				const allLayersCompleteOrExisting = Object.values(layerProgress).every(
+				const allDone = Object.values(layerProgress).every(
 					(l) =>
 						l.status &&
 						(l.status.toLowerCase().includes('complete') ||
 							l.status.toLowerCase().includes('already exists') ||
 							l.status.toLowerCase().includes('downloaded newer image'))
 				);
-				if (allLayersCompleteOrExisting && Object.keys(layerProgress).length > 0) {
+				if (allDone && Object.keys(layerProgress).length > 0) {
 					pullProgress = 100;
 				}
 			}
 
-			if (pullError) {
-				throw new Error(pullError);
-			}
+			if (pullError) throw new Error(pullError);
 
 			wasSuccessful = true;
 			pullProgress = 100;
@@ -372,18 +419,17 @@
 
 			setTimeout(() => {
 				pullPopoverOpen = false;
-				isLoading.pull = false;
+				projectPulling = false;
 				resetPullState();
 			}, 2000);
 		} catch (error: any) {
-			console.error('Pull images error:', error);
-			const message = error.message || m.images_pull_failed();
+			const message = error?.message || m.images_pull_failed();
 			pullError = message;
 			pullStatusText = m.images_pull_failed_with_error({ error: message });
 			toast.error(message);
 		} finally {
 			if (!wasSuccessful) {
-				isLoading.pull = false;
+				projectPulling = false;
 			}
 		}
 	}
@@ -391,11 +437,21 @@
 
 <div class="flex items-center gap-2">
 	{#if !isRunning}
-		<ArcaneButton
-			action={type === 'container' ? 'start' : 'deploy'}
-			onclick={type === 'container' ? () => handleStart() : () => handleDeploy()}
-			loading={uiLoading.start}
-		/>
+		{#if type === 'container'}
+			<ArcaneButton action="start" onclick={() => handleStart()} loading={uiLoading.start} />
+		{:else}
+			<ProgressPopover
+				bind:open={deployPullPopoverOpen}
+				bind:progress={pullProgress}
+				title={m.progress_pulling_images()}
+				statusText={pullStatusText}
+				error={pullError}
+				loading={deployPulling}
+				icon={DownloadIcon}
+			>
+				<ArcaneButton action="deploy" onclick={() => handleDeploy()} loading={uiLoading.start} />
+			</ProgressPopover>
+		{/if}
 	{/if}
 
 	{#if isRunning}
@@ -420,10 +476,10 @@
 				title={m.progress_pulling_images()}
 				statusText={pullStatusText}
 				error={pullError}
-				loading={uiLoading.pulling}
+				loading={projectPulling}
 				icon={DownloadIcon}
 			>
-				<ArcaneButton action="pull" onclick={() => handlePull()} loading={uiLoading.pulling} />
+				<ArcaneButton action="pull" onclick={() => handlePull()} loading={projectPulling} />
 			</ProgressPopover>
 		{:else}
 			<ArcaneButton action="pull" onclick={() => handlePull()} loading={uiLoading.pulling} />

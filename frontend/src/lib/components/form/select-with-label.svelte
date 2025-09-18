@@ -58,7 +58,12 @@
 			{:else}
 				{#each options as option (option.value)}
 					<Select.Item value={option.value}>
-						{option.label}
+						<div class="flex flex-col items-start gap-1">
+							<span class="font-medium">{option.label}</span>
+							{#if option.description}
+								<span class="text-muted-foreground text-xs">{option.description}</span>
+							{/if}
+						</div>
 					</Select.Item>
 				{/each}
 			{/if}
