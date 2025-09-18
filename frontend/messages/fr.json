@@ -134,9 +134,9 @@
 	"general_save_instructions": "Enregistrez vos paramètres mis à jour.",
 	"docker_enable_polling_label": "Activer le vote d'image",
 	"docker_enable_polling_description": "Vérifier périodiquement les registres pour les nouvelles versions d'image",
-	"docker_polling_interval_label": "Intervalle de vote (en minutes)",
+	"docker_polling_interval_label": "Intervalle de vote",
 	"docker_polling_interval_placeholder": "60",
-	"docker_polling_interval_description": "À quelle fréquence vérifier les nouvelles images (5-1440 minutes)",
+	"docker_polling_interval_description": "À quelle fréquence vérifier les nouvelles images (5-10080 minutes)",
 	"docker_auto_update_label": "Mettre à jour automatiquement les conteneurs",
 	"docker_auto_update_description": "Mettre à jour automatiquement les conteneurs lorsque de nouvelles images sont trouvées",
 	"docker_auto_update_interval_label": "Intervalle de mise à jour automatique (en minutes)",
@@ -1049,5 +1049,14 @@
 	"common_skip": "Skip",
 	"language": "Language",
 	"bridge": "Passerelle",
-	"ports": "Ports"
+	"ports": "Ports",
+	"custom": "Personnalisé",
+	"weekly": "Hebdomadaire",
+	"daily": "Tous les jours",
+	"hourly": "Heures",
+	"polling_hourly_description": "Vérifier les nouvelles images toutes les 60 minutes",
+	"polling_daily_description": "Vérifier les nouvelles images toutes les 1440 minutes",
+	"polling_weekly_description": "Vérifier les nouvelles images toutes les 10080 minutes",
+	"use_custom_polling_value": "Utiliser une valeur de sondage personnalisée entre 5-10080 minutes",
+	"custom_polling_interval": "Intervalle de vote personnalisé (minutes)"
 }
