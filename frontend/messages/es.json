@@ -1059,5 +1059,5 @@
 	"polling_weekly_description": "Buscar imágenes nuevas cada 10080 minutos",
 	"use_custom_polling_value": "Usar un valor de encuesta personalizado entre 5-10080 minutos",
 	"custom_polling_interval": "Intervalo de Encuesta Personalizada (minutos)",
-	"build_cache": "Build Cache"
+	"build_cache": "Construir caché"
 }
