@@ -24,7 +24,7 @@
 </script>
 
 {#if updateAvailable}
-	<div class={cn('pb-2', isCollapsed ? 'px-1' : 'px-2')}>
+	<div class={cn('pb-2', isCollapsed ? 'px-1' : 'px-4')}>
 		<Separator.Root class="mb-3 opacity-30" />
 
 		{#if !isCollapsed}

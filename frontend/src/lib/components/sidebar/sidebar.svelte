@@ -75,7 +75,7 @@
 					</div>
 				</div>
 			{:else}
-				<div class="px-1 pb-2">
+				<div class="px-3 pb-2">
 					<div class="flex items-center gap-2">
 						<SidebarUser {isCollapsed} user={effectiveUser} />
 						<form action="/auth/logout" method="POST" class="ml-auto">
