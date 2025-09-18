@@ -36,10 +36,7 @@
 				{#snippet child({ props })}
 					<Sidebar.MenuButton
 						size="lg"
-						class={cn(
-							'data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground',
-							!isCollapsed && 'w-full'
-						)}
+						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 						{...props}
 					>
 						{#if user && user.displayName}

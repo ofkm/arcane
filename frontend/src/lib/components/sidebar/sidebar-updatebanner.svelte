@@ -24,7 +24,7 @@
 </script>
 
 {#if updateAvailable}
-	<div class={cn('pb-2', isCollapsed ? 'px-1' : 'px-4')}>
+	<div class={cn('pb-2', isCollapsed ? 'px-1' : 'px-2')}>
 		<Separator.Root class="mb-3 opacity-30" />
 
 		{#if !isCollapsed}
@@ -67,7 +67,7 @@
 							</div>
 						{/snippet}
 					</Tooltip.Trigger>
-					<Tooltip.Content side="right" align="center" hidden={sidebar.state !== 'collapsed' || sidebar.isMobile}>
+					<Tooltip.Content side="right" align="center" hidden={sidebar.state !== 'collapsed' || sidebar.isMobile || sidebar.isHovered}>
 						{m.sidebar_update_available_tooltip({ version: versionInformation?.newestVersion ?? m.common_unknown() })}
 					</Tooltip.Content>
 				</Tooltip.Root>

@@ -21,7 +21,14 @@
 	tabIndex={sidebar.isTablet ? -1 : -1}
 	onclick={(e) => {
 		if (!sidebar.isTablet) {
-			sidebar.toggle();
+			// If we're in overlay mode (collapsed and hovered), clicking should expand the sidebar
+			if (sidebar.state === 'collapsed' && sidebar.isHovered) {
+				sidebar.setOpen(true);
+				sidebar.setHovered(false); // Clear hover state when pinning
+			} else {
+				// Otherwise, toggle normally
+				sidebar.toggle();
+			}
 		}
 	}}
 	title={sidebar.isTablet ? '' : 'Toggle Sidebar'}
@@ -32,7 +39,10 @@
 			'hover:after:bg-sidebar-border',
 			'in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize',
 			'[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize',
-			'hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full'
+			'hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full',
+			// Show rail more prominently when sidebar is hovered in collapsed state
+			'group-data-[collapsible=icon]:group-data-[hovered=true]:after:bg-sidebar-border',
+			'group-data-[collapsible=icon]:group-data-[hovered=true]:opacity-100'
 		],
 		'[[data-side=left][data-collapsible=offcanvas]_&]:-right-2',
 		'[[data-side=right][data-collapsible=offcanvas]_&]:-left-2',

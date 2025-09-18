@@ -48,7 +48,7 @@
 	{:else if !isOnboardingPage && !isLoginPage}
 		<Sidebar.Provider>
 			<AppSidebar {versionInformation} {user} />
-			<main class="flex-1">
+			<main class="flex-1 transition-all duration-200 ease-linear">
 				<section class="p-5">
 					{@render children()}
 				</section>

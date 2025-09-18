@@ -12,6 +12,7 @@
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';
+	import { cn } from '$lib/utils';
 
 	type Props = {
 		isAdmin?: boolean;
@@ -56,9 +57,10 @@
 </script>
 
 <Sidebar.Menu>
-	{#if sidebar.open}
-		<Label class="text-sidebar-foreground/60 mb-2 px-2 text-xs font-medium">{m.sidebar_environment_label()}</Label>
-	{/if}
+	<Label class={cn(
+		"text-sidebar-foreground/60 mb-2 px-2 text-xs font-medium transition-opacity duration-200",
+		(sidebar.open || sidebar.isHovered) ? "opacity-100" : "opacity-0"
+	)}>{m.sidebar_environment_label()}</Label>
 	<Sidebar.MenuItem>
 		<DropdownMenu.Root>
 			<DropdownMenu.Trigger>

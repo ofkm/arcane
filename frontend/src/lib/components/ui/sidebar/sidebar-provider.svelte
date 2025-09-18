@@ -43,6 +43,11 @@
 	const sidebar = setSidebar({
 		open: () => open,
 		setOpen: (value: boolean) => {
+			// Don't allow expanding sidebar on tablet screens
+			if (isTablet.current && !isMobile.current && value === true) {
+				return;
+			}
+			
 			open = value;
 			onOpenChange(value);
 

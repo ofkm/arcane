@@ -28,8 +28,8 @@ class SidebarState {
 	setOpen: SidebarStateProps['setOpen'];
 	#isMobile: IsMobile;
 	#isTablet: IsTablet;
-	#userHasManuallySet = $state(false);
-	#lastScreenSize = $state<'mobile' | 'tablet' | 'desktop'>('desktop');
+	#isPinned = $state(true); // User's pinning preference - defaults to pinned
+	#isHovered = $state(false);
 	state = $derived.by(() => (this.open ? 'expanded' : 'collapsed'));
 
 	constructor(props: SidebarStateProps) {
@@ -38,28 +38,19 @@ class SidebarState {
 		this.#isTablet = new IsTablet();
 		this.props = props;
 		
-		// Track screen size changes and auto-adjust only on breakpoint transitions
+		// Sync the open state based on pinning preference and screen size
 		$effect(() => {
-			const currentScreenSize = this.#isMobile.current ? 'mobile' : 
-									  this.#isTablet.current ? 'tablet' : 'desktop';
-			
-			if (currentScreenSize !== this.#lastScreenSize) {
-				// Always force collapse in tablet mode, regardless of manual settings
-				if (currentScreenSize === 'tablet' && this.open) {
+			// On tablet and mobile, always collapse regardless of pinning preference
+			if (this.#isTablet.current || this.#isMobile.current) {
+				if (this.open) {
 					this.setOpen(false);
 				}
-				// Only auto-expand on desktop if user hasn't manually set state
-				else if (currentScreenSize === 'desktop' && !this.open && !this.#userHasManuallySet) {
-					this.setOpen(true);
+			} else {
+				// On desktop, respect the pinning preference
+				if (this.open !== this.#isPinned) {
+					this.setOpen(this.#isPinned);
 				}
 			}
-			
-			// Reset manual flag when crossing to/from mobile (different behavior)
-			if ((this.#lastScreenSize === 'mobile') !== (currentScreenSize === 'mobile')) {
-				this.#userHasManuallySet = false;
-			}
-			
-			this.#lastScreenSize = currentScreenSize;
 		});
 	}
 
@@ -73,6 +64,31 @@ class SidebarState {
 	get isTablet() {
 		return this.#isTablet.current;
 	}
+
+	// Getter for hover state
+	get isHovered() {
+		return this.#isHovered;
+	}
+
+	// Getter for pinning preference
+	get isPinned() {
+		return this.#isPinned;
+	}
+
+	// Derived state that shows if sidebar should be visually expanded (either open or hovered)
+	get isExpanded() {
+		// In desktop mode: expanded if open OR (collapsed AND hovered)
+		// In tablet mode: expanded only when hovered (since it's always collapsed)
+		if (this.#isTablet.current) {
+			return this.#isHovered;
+		}
+		return this.open || (!this.open && this.#isHovered);
+	}
+
+	// Set hover state
+	setHovered = (value: boolean) => {
+		this.#isHovered = value;
+	};
 
 	// Event handler to apply to the `<svelte:window>`
 	handleShortcutKeydown = (e: KeyboardEvent) => {
@@ -96,9 +112,9 @@ class SidebarState {
 			// In tablet mode, sidebar should stay collapsed - no toggle allowed
 			return;
 		} else {
-			// Mark that user has manually interacted with sidebar
-			this.#userHasManuallySet = true;
-			return this.setOpen(!this.open);
+			// On desktop, toggle the pinning preference
+			this.#isPinned = !this.#isPinned;
+			return this.setOpen(this.#isPinned);
 		}
 	};
 }
@@ -123,3 +139,4 @@ export function setSidebar(props: SidebarStateProps): SidebarState {
 export function useSidebar(): SidebarState {
 	return getContext(Symbol.for(SYMBOL_KEY));
 }
+
