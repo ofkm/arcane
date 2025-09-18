@@ -1058,5 +1058,6 @@
 	"polling_daily_description": "Elke 1440 minuten op nieuwe afbeeldingen controleren",
 	"polling_weekly_description": "Elke 10080 minuten op nieuwe afbeeldingen controleren",
 	"use_custom_polling_value": "Gebruik een aangepaste stemverhouding waarde tussen 5-10080 minuten",
-	"custom_polling_interval": "Aangepaste Polling Interval (minuten)"
+	"custom_polling_interval": "Aangepaste Polling Interval (minuten)",
+	"build_cache": "Build Cache"
 }
