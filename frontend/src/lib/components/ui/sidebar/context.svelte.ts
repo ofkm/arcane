@@ -1,6 +1,7 @@
 import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
 import { IsTablet } from '$lib/hooks/is-tablet.svelte.js';
 import { getContext, setContext } from 'svelte';
+import { PersistedState } from 'runed';
 import { SIDEBAR_KEYBOARD_SHORTCUT } from './constants.js';
 
 type Getter<T> = () => T;
@@ -28,7 +29,7 @@ class SidebarState {
 	setOpen: SidebarStateProps['setOpen'];
 	#isMobile: IsMobile;
 	#isTablet: IsTablet;
-	#isPinned = $state(true); // User's pinning preference - defaults to pinned
+	#isPinnedState = new PersistedState('sidebar-pinned', true);
 	#isHovered = $state(false);
 	#hoverTimeout: ReturnType<typeof setTimeout> | null = null;
 	state = $derived.by(() => (this.open ? 'expanded' : 'collapsed'));
@@ -48,8 +49,8 @@ class SidebarState {
 				}
 			} else {
 				// On desktop, respect the pinning preference
-				if (this.open !== this.#isPinned) {
-					this.setOpen(this.#isPinned);
+				if (this.open !== this.#isPinnedState.current) {
+					this.setOpen(this.#isPinnedState.current);
 				}
 			}
 		});
@@ -73,7 +74,7 @@ class SidebarState {
 
 	// Getter for pinning preference
 	get isPinned() {
-		return this.#isPinned;
+		return this.#isPinnedState.current;
 	}
 
 	// Derived state that shows if sidebar should be visually expanded (either open or hovered)
@@ -132,8 +133,8 @@ class SidebarState {
 			return;
 		} else {
 			// On desktop, toggle the pinning preference
-			this.#isPinned = !this.#isPinned;
-			return this.setOpen(this.#isPinned);
+			this.#isPinnedState.current = !this.#isPinnedState.current;
+			return this.setOpen(this.#isPinnedState.current);
 		}
 	};
 }
