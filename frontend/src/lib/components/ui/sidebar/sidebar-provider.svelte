@@ -4,6 +4,8 @@
 	import type { HTMLAttributes } from 'svelte/elements';
 	import { SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from './constants.js';
 	import { setSidebar } from './context.svelte.js';
+	import { IsTablet } from '$lib/hooks/is-tablet.svelte.js';
+	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
 
 	let {
 		ref = $bindable(null),
@@ -17,6 +19,26 @@
 		open?: boolean;
 		onOpenChange?: (open: boolean) => void;
 	} = $props();
+
+	// Initialize breakpoint detection utilities
+	const isTablet = new IsTablet();
+	const isMobile = new IsMobile();
+	let initialAdjustmentDone = $state(false);
+
+	// Set initial state based on screen size (only runs once)
+	$effect(() => {
+		if (!initialAdjustmentDone) {
+			// On tablet screens (but not mobile), force collapse the sidebar
+			if (isTablet.current && !isMobile.current) {
+				open = false;
+			}
+			// On desktop screens (1024px and above), auto-expand the sidebar
+			else if (!isTablet.current && !isMobile.current && !open) {
+				open = true;
+			}
+			initialAdjustmentDone = true;
+		}
+	});
 
 	const sidebar = setSidebar({
 		open: () => open,
