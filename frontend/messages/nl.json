@@ -134,9 +134,9 @@
 	"general_save_instructions": "Sla uw bijgewerkte instellingen op.",
 	"docker_enable_polling_label": "Schakel afbeelding Polling in",
 	"docker_enable_polling_description": "Controleer periodiek registraties voor nieuwere beeldversies",
-	"docker_polling_interval_label": "Polling Interval (minuten)",
+	"docker_polling_interval_label": "Polling Interval",
 	"docker_polling_interval_placeholder": "60",
-	"docker_polling_interval_description": "Hoe vaak te controleren op nieuwe afbeeldingen (5-1440 minuten)",
+	"docker_polling_interval_description": "Hoe vaak te controleren op nieuwe afbeeldingen (5-10080 minuten)",
 	"docker_auto_update_label": "Auto-update containers",
 	"docker_auto_update_description": "Update containers automatisch wanneer nieuwere afbeeldingen worden gevonden",
 	"docker_auto_update_interval_label": "Interval automatisch bijwerken (minuten)",
@@ -1049,5 +1049,14 @@
 	"common_skip": "Overslaan",
 	"language": "Taal",
 	"bridge": "Brug",
-	"ports": "Poorten"
+	"ports": "Poorten",
+	"custom": "Aangepaste",
+	"weekly": "wekelijks",
+	"daily": "Dagelijks",
+	"hourly": "Per uur",
+	"polling_hourly_description": "Elke 60 minuten op nieuwe afbeeldingen controleren",
+	"polling_daily_description": "Elke 1440 minuten op nieuwe afbeeldingen controleren",
+	"polling_weekly_description": "Elke 10080 minuten op nieuwe afbeeldingen controleren",
+	"use_custom_polling_value": "Gebruik een aangepaste stemverhouding waarde tussen 5-10080 minuten",
+	"custom_polling_interval": "Aangepaste Polling Interval (minuten)"
 }
