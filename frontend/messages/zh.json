@@ -1059,5 +1059,5 @@
 	"polling_weekly_description": "每10080分钟检查新图像",
 	"use_custom_polling_value": "使用介于 5-10080 分钟内的自定义轮询值",
 	"custom_polling_interval": "自定义投票间隔(分钟)",
-	"build_cache": "Build Cache"
+	"build_cache": "构建缓存"
 }
