@@ -27,12 +27,21 @@ type remoteCache struct {
 	lastFetch time.Time
 }
 
+// per-registry conditional GET metadata
+type registryFetchMeta struct {
+	LastModified string
+	Templates    []dto.RemoteTemplate
+}
+
 type TemplateService struct {
 	db         *database.DB
 	httpClient *http.Client
 
 	remoteMu    sync.RWMutex
 	remoteCache remoteCache
+
+	registryMu        sync.RWMutex
+	registryFetchMeta map[string]*registryFetchMeta
 }
 
 const remoteCacheDuration = 5 * time.Minute
@@ -48,9 +57,10 @@ func NewTemplateService(db *database.DB, httpClient *http.Client) *TemplateServi
 		httpClient = http.DefaultClient
 	}
 	return &TemplateService{
-		db:          db,
-		httpClient:  httpClient,
-		remoteCache: remoteCache{},
+		db:                db,
+		httpClient:        httpClient,
+		remoteCache:       remoteCache{},
+		registryFetchMeta: make(map[string]*registryFetchMeta),
 	}
 }
 
@@ -333,7 +343,7 @@ func (s *TemplateService) loadRemoteTemplates(ctx context.Context) ([]models.Com
 			continue
 		}
 
-		remoteTemplates, err := s.fetchRegistryTemplates(ctx, reg.URL)
+		remoteTemplates, err := s.fetchRegistryTemplates(ctx, &reg)
 		if err != nil {
 			slog.WarnContext(ctx, "failed to fetch templates from registry", "registry", reg.Name, "url", reg.URL, "error", err)
 			continue
@@ -374,18 +384,57 @@ func (s *TemplateService) doGET(ctx context.Context, url string) ([]byte, error)
 	return body, nil
 }
 
-func (s *TemplateService) fetchRegistryTemplates(ctx context.Context, url string) ([]dto.RemoteTemplate, error) {
-	body, err := s.doGET(ctx, url)
+// fetchRegistryTemplates performs a conditional GET using If-Modified-Since.
+// If the server replies 304 Not Modified, cached templates for the registry are reused.
+func (s *TemplateService) fetchRegistryTemplates(ctx context.Context, reg *models.TemplateRegistry) ([]dto.RemoteTemplate, error) {
+	s.registryMu.RLock()
+	meta := s.registryFetchMeta[reg.ID]
+	s.registryMu.RUnlock()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reg.URL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	if meta != nil && meta.LastModified != "" {
+		req.Header.Set("If-Modified-Since", meta.LastModified)
 	}
 
-	var registry dto.RemoteRegistry
-	if err := json.Unmarshal(body, &registry); err != nil {
-		return nil, fmt.Errorf("failed to parse registry JSON: %w", err)
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotModified {
+		if meta != nil {
+			return meta.Templates, nil
+		}
+		return nil, fmt.Errorf("received 304 without cached data")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode)
 	}
 
-	return registry.Templates, nil
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
+
+	var regDTO dto.RemoteRegistry
+	if err := json.Unmarshal(body, &regDTO); err != nil {
+		return nil, fmt.Errorf("parse registry JSON: %w", err)
+	}
+
+	lm := resp.Header.Get("Last-Modified")
+	newMeta := &registryFetchMeta{
+		LastModified: lm,
+		Templates:    regDTO.Templates,
+	}
+	s.registryMu.Lock()
+	s.registryFetchMeta[reg.ID] = newMeta
+	s.registryMu.Unlock()
+
+	return regDTO.Templates, nil
 }
 
 func (s *TemplateService) fetchRegistryManifest(ctx context.Context, url string) (*dto.RemoteRegistry, error) {
@@ -588,6 +637,10 @@ func (s *TemplateService) invalidateRemoteCache() {
 	s.remoteMu.Lock()
 	s.remoteCache = remoteCache{}
 	s.remoteMu.Unlock()
+
+	s.registryMu.Lock()
+	s.registryFetchMeta = make(map[string]*registryFetchMeta)
+	s.registryMu.Unlock()
 }
 
 func (s *TemplateService) SyncLocalTemplatesFromFilesystem(ctx context.Context) error {
