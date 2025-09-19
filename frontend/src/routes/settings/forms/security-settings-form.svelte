@@ -5,8 +5,6 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import FormInput from '$lib/components/form/form-input.svelte';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
 	import { toast } from 'svelte-sonner';
@@ -249,7 +247,7 @@
 					id="localAuthSwitch"
 					label={m.security_local_auth_label()}
 					description={m.security_local_auth_description()}
-					checked={$formInputs.authLocalEnabled.value}
+					bind:checked={$formInputs.authLocalEnabled.value}
 					onCheckedChange={handleLocalSwitchChange}
 				/>
 
@@ -259,7 +257,7 @@
 						label={m.security_oidc_auth_label()}
 						description={oidcStatus.envForced ? m.security_oidc_auth_description_forced() : m.security_oidc_auth_description()}
 						disabled={oidcStatus.envForced}
-						checked={$formInputs.authOidcEnabled.value}
+						bind:checked={$formInputs.authOidcEnabled.value}
 						onCheckedChange={handleOidcSwitchChange}
 					/>
 
@@ -301,21 +299,13 @@
 			</div>
 		</Card.Header>
 		<Card.Content class="px-3 sm:px-6 py-4">
-			<div class="space-y-2">
-				<Label class="text-sm font-medium">{m.security_session_timeout_label()}</Label>
-				<Input
-					type="number"
-					id="sessionTimeout"
-					placeholder={m.security_session_timeout_placeholder()}
-					bind:value={$formInputs.authSessionTimeout.value}
-					class={$formInputs.authSessionTimeout.error ? 'border-destructive' : ''}
-				/>
-				{#if $formInputs.authSessionTimeout.error}
-					<p class="text-destructive mt-1 text-sm">{$formInputs.authSessionTimeout.error}</p>
-				{:else}
-					<p class="text-muted-foreground mt-1 text-xs">{m.security_session_timeout_description()}</p>
-				{/if}
-			</div>
+			<FormInput
+				bind:input={$formInputs.authSessionTimeout}
+				label={m.security_session_timeout_label()}
+				placeholder={m.security_session_timeout_placeholder()}
+				helpText={m.security_session_timeout_description()}
+				type="number"
+			/>
 		</Card.Content>
 	</Card.Root>
 

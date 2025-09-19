@@ -4,8 +4,6 @@
 	import { createForm } from '$lib/utils/form.utils';
 	import * as Card from '$lib/components/ui/card';
 	import FormInput from '$lib/components/form/form-input.svelte';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
 	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
@@ -117,35 +115,21 @@
 		</Card.Header>
 		<Card.Content class="px-3 sm:px-6 py-4">
 			<div class="space-y-3">
-				<div class="space-y-2">
-					<Label class="text-sm font-medium">{m.general_projects_directory_label()}</Label>
-					<Input
-						type="text"
-						placeholder={m.general_projects_directory_placeholder()}
-						bind:value={$formInputs.projectsDirectory.value}
-						class={$formInputs.projectsDirectory.error ? 'border-destructive' : ''}
-					/>
-					{#if $formInputs.projectsDirectory.error}
-						<p class="text-destructive mt-1 text-sm">{$formInputs.projectsDirectory.error}</p>
-					{:else}
-						<p class="text-muted-foreground mt-1 text-xs">{m.general_projects_directory_help()}</p>
-					{/if}
-				</div>
+				<FormInput
+					bind:input={$formInputs.projectsDirectory}
+					label={m.general_projects_directory_label()}
+					placeholder={m.general_projects_directory_placeholder()}
+					helpText={m.general_projects_directory_help()}
+					type="text"
+				/>
 
-				<div class="space-y-2">
-					<Label class="text-sm font-medium">{m.general_base_url_label()}</Label>
-					<Input
-						type="text"
-						placeholder={m.general_base_url_placeholder()}
-						bind:value={$formInputs.baseServerUrl.value}
-						class={$formInputs.baseServerUrl.error ? 'border-destructive' : ''}
-					/>
-					{#if $formInputs.baseServerUrl.error}
-						<p class="text-destructive mt-1 text-sm">{$formInputs.baseServerUrl.error}</p>
-					{:else}
-						<p class="text-muted-foreground mt-1 text-xs">{m.general_base_url_help()}</p>
-					{/if}
-				</div>
+				<FormInput
+					bind:input={$formInputs.baseServerUrl}
+					label={m.general_base_url_label()}
+					placeholder={m.general_base_url_placeholder()}
+					helpText={m.general_base_url_help()}
+					type="text"
+				/>
 			</div>
 		</Card.Content>
 	</Card.Root>
@@ -168,8 +152,7 @@
 				id="enableGravatar"
 				label={m.general_enable_gravatar_label()}
 				description={m.general_enable_gravatar_description()}
-				checked={$formInputs.enableGravatar.value}
-				onCheckedChange={(checked) => ($formInputs.enableGravatar.value = checked)}
+				bind:checked={$formInputs.enableGravatar.value}
 			/>
 		</Card.Content>
 	</Card.Root>

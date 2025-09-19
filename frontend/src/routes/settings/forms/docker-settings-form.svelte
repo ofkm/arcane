@@ -4,8 +4,6 @@
 	import { toast } from 'svelte-sonner';
 	import type { Settings } from '$lib/types/settings.type';
 	import FormInput from '$lib/components/form/form-input.svelte';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
@@ -204,8 +202,7 @@
 					id="pollingEnabled"
 					label={m.docker_enable_polling_label()}
 					description={m.docker_enable_polling_description()}
-					checked={$formInputs.pollingEnabled.value}
-					onCheckedChange={(checked) => ($formInputs.pollingEnabled.value = checked)}
+					bind:checked={$formInputs.pollingEnabled.value}
 				/>
 				
 				{#if $formInputs.pollingEnabled.value}
@@ -220,21 +217,13 @@
 						/>
 						
 						{#if pollingIntervalMode === 'custom'}
-							<div class="space-y-2">
-								<Label class="text-sm font-medium">{m.custom_polling_interval()}</Label>
-								<Input
-									type="number"
-									id="pollingInterval"
-									placeholder={m.docker_polling_interval_placeholder()}
-									bind:value={$formInputs.pollingInterval.value}
-									class={$formInputs.pollingInterval.error ? 'border-destructive' : ''}
-								/>
-								{#if $formInputs.pollingInterval.error}
-									<p class="text-destructive mt-1 text-sm">{$formInputs.pollingInterval.error}</p>
-								{:else}
-									<p class="text-muted-foreground mt-1 text-xs">{m.docker_polling_interval_description()}</p>
-								{/if}
-							</div>
+							<FormInput
+								bind:input={$formInputs.pollingInterval}
+								label={m.custom_polling_interval()}
+								placeholder={m.docker_polling_interval_placeholder()}
+								helpText={m.docker_polling_interval_description()}
+								type="number"
+							/>
 						{/if}
 
 						{#if $formInputs.pollingInterval.value < 30}
@@ -270,27 +259,18 @@
 						id="autoUpdateSwitch"
 						label={m.docker_auto_update_label()}
 						description={m.docker_auto_update_description()}
-						checked={$formInputs.autoUpdate.value}
-						onCheckedChange={(checked) => ($formInputs.autoUpdate.value = checked)}
+						bind:checked={$formInputs.autoUpdate.value}
 					/>
 					
 					{#if $formInputs.autoUpdate.value}
 						<div class="pl-3 border-l-2 border-primary/20">
-							<div class="space-y-2">
-								<Label class="text-sm font-medium">{m.docker_auto_update_interval_label()}</Label>
-								<Input
-									type="number"
-									id="autoUpdateInterval"
-									placeholder={m.docker_auto_update_interval_placeholder()}
-									bind:value={$formInputs.autoUpdateInterval.value}
-									class={$formInputs.autoUpdateInterval.error ? 'border-destructive' : ''}
-								/>
-								{#if $formInputs.autoUpdateInterval.error}
-									<p class="text-destructive mt-1 text-sm">{$formInputs.autoUpdateInterval.error}</p>
-								{:else}
-									<p class="text-muted-foreground mt-1 text-xs">{m.docker_auto_update_interval_description()}</p>
-								{/if}
-							</div>
+							<FormInput
+								bind:input={$formInputs.autoUpdateInterval}
+								label={m.docker_auto_update_interval_label()}
+								placeholder={m.docker_auto_update_interval_placeholder()}
+								helpText={m.docker_auto_update_interval_description()}
+								type="number"
+							/>
 						</div>
 					{/if}
 				</div>
