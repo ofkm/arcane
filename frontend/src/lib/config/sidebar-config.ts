@@ -59,13 +59,7 @@ export const sidebarItems: Record<string, SidebarItem[]> = {
 		{
 			title: m.sidebar_settings(),
 			url: '/settings',
-			icon: SettingsIcon,
-			items: [
-				{ title: m.general_title(), url: '/settings/general', icon: SettingsIcon },
-				{ title: m.docker_title(), url: '/settings/docker', icon: DatabaseIcon },
-				{ title: m.users_title(), url: '/settings/users', icon: UserIcon },
-				{ title: m.security_title(), url: '/settings/security', icon: ShieldIcon }
-			]
-		}
+			icon: SettingsIcon
+		},
 	]
 };
