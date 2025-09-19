@@ -25,7 +25,6 @@ export interface Template {
 		remoteUrl?: string;
 		envUrl?: string;
 		documentationUrl?: string;
-		iconUrl?: string;
 		updatedAt?: string;
 	};
 	createdAt: string;
