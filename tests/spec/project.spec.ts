@@ -179,7 +179,7 @@ test.describe('New Compose Project Page', () => {
       await expect(page).toHaveURL(new RegExp(`/projects/[a-f0-9\\-]{36}`));
     }
 
-    await expect(page.getByText(projectName)).toBeVisible();
+    await expect(page.getByRole('button', { name: projectName })).toBeVisible();
   });
 });
 
