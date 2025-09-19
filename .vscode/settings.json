@@ -7,6 +7,6 @@
     "typescript": true
   },
   "typescript.tsdk": "frontend/node_modules/typescript/lib",
-  "go.buildTags": "exclude_frontend playwright",
+  "go.buildTags": "playwright",
   "prettier.documentSelectors": ["**/*.svelte"]
 }
