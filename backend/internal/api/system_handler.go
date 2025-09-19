@@ -183,6 +183,7 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 		slog.Bool("images", req.Images),
 		slog.Bool("volumes", req.Volumes),
 		slog.Bool("networks", req.Networks),
+		slog.Bool("build_cache", req.BuildCache),
 		slog.Bool("dangling", req.Dangling))
 
 	result, err := h.systemService.PruneAll(ctx, req)
@@ -326,12 +327,10 @@ func (h *SystemHandler) GetStatsWS(c *gin.Context) {
 			Hostname:     hostname,
 		}
 
-		// write as JSON text message
 		_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 		return conn.WriteJSON(stats)
 	}
 
-	// initial send
 	if err := sendStats(); err != nil {
 		slog.Debug("failed to send initial system stats websocket", "err", err)
 		return

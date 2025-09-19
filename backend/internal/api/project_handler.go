@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -244,12 +243,19 @@ func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 		return
 	}
 
-	if err := h.projectService.PullProjectImages(c.Request.Context(), projectID, io.Discard); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": fmt.Sprintf("Failed to pull images: %v", err)})
+	c.Writer.Header().Set("Content-Type", "application/x-json-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+
+	_, _ = fmt.Fprintln(c.Writer, `{"status":"starting project image pull"}`)
+
+	if err := h.projectService.PullProjectImages(c.Request.Context(), projectID, c.Writer); err != nil {
+		_, _ = fmt.Fprintf(c.Writer, `{"error":%q}`+"\n", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"message": "Images pulled successfully"}})
+	_, _ = fmt.Fprintln(c.Writer, `{"status":"complete"}`)
 }
 
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {

@@ -80,7 +80,7 @@ export type ActionConfig = {
 export const actionConfigs: Record<Action, ActionConfig> = {
 	start: { defaultLabel: m.common_start(), IconComponent: PlayIcon, tone: 'outline-primary', loadingLabel: m.action_starting() },
 	deploy: {
-		defaultLabel: m.action_deploy(),
+		defaultLabel: m.action_up(),
 		IconComponent: PlayIcon,
 		tone: 'outline-primary',
 		loadingLabel: m.action_deploying()

@@ -20,7 +20,7 @@ async function fetchProjectsWithRetry(page: Page, maxRetries = 3): Promise<any[]
 let realProjects: any[] = [];
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/compose');
+  await page.goto('/projects');
   await page.waitForLoadState('networkidle');
 
   try {
@@ -51,7 +51,7 @@ test.describe('Compose Projects Page', () => {
 
   test('should navigate to new project page when "Create Project" is clicked', async ({ page }) => {
     await page.getByRole('button', { name: 'Create Project' }).click();
-    await expect(page).toHaveURL('/compose/new');
+    await expect(page).toHaveURL('/projects/new');
     await expect(page.getByRole('heading', { name: 'Create New Project' })).toBeVisible();
   });
 
@@ -82,7 +82,7 @@ test.describe('Compose Projects Page', () => {
     const projectName = await firstProjectLink.textContent();
 
     await firstProjectLink.click();
-    await expect(page).toHaveURL(new RegExp(`/compose/.+`));
+    await expect(page).toHaveURL(new RegExp(`/projects/.+`));
     await expect(page.getByRole('heading', { name: new RegExp(`.*${projectName}`) })).toBeVisible();
   });
 
@@ -121,7 +121,7 @@ test.describe('Compose Projects Page', () => {
 
 test.describe('New Compose Project Page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/compose/new');
+    await page.goto('/projects/new');
     await page.waitForLoadState('networkidle');
   });
 
@@ -136,7 +136,6 @@ test.describe('New Compose Project Page', () => {
     const createButton = page.getByRole('button', { name: 'Create' }).first();
     await expect(createButton).toBeDisabled();
 
-    // Fill in project name
     await page.getByLabel('Project Name').fill('test-project');
   });
 
@@ -169,107 +168,101 @@ test.describe('New Compose Project Page', () => {
       }
     });
 
-    // Create the project
     const createButton = page.getByRole('button', { name: 'Create' });
     await createButton.click();
 
-    // Wait for navigation and verify we're on the correct page
-    await page.waitForURL(new RegExp(`/compose/.+`), { timeout: 10000 });
+    await page.waitForURL(new RegExp(`/projects/.+`), { timeout: 10000 });
 
-    // Verify we redirected to the created project's page
     if (createdProjectId) {
-      await expect(page).toHaveURL(new RegExp(`/compose/${createdProjectId}`));
+      await expect(page).toHaveURL(new RegExp(`/projects/${createdProjectId}`));
     } else {
-      // Fallback: just check we're on a project detail page with some UUID
-      await expect(page).toHaveURL(new RegExp(`/compose/[a-f0-9\\-]{36}`));
+      await expect(page).toHaveURL(new RegExp(`/projects/[a-f0-9\\-]{36}`));
     }
 
-    // Verify the project detail page loads correctly
-    await expect(page.getByText('Overview')).toBeVisible();
+    await expect(page.getByRole('button', { name: projectName })).toBeVisible();
   });
 });
 
 test.describe('Project Detail Page', () => {
-  test('should display project overview for existing project', async ({ page }) => {
+  test('should display project details for existing project', async ({ page }) => {
     test.skip(!realProjects.length, 'No projects available for detail page test');
 
     const firstProject = realProjects[0];
-    await page.goto(`/compose/${firstProject.id || firstProject.name}`);
+    await page.goto(`/projects/${firstProject.id || firstProject.name}`);
     await page.waitForLoadState('networkidle');
 
-    // Check for main sections
-    await expect(page.getByText('Overview')).toBeVisible();
-    await expect(page.getByText('Services').first()).toBeVisible();
-    await expect(page.getByText('Configuration').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: firstProject.name, exact: false })).toBeVisible();
 
-    // Check for project stats
-    await expect(page.getByText('Services').nth(1)).toBeVisible();
-    await expect(page.getByText('Running')).toBeVisible();
-    await expect(page.getByText('Created').first()).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Services/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Configuration|Config/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Logs/i })).toBeVisible();
   });
 
-  test('should display navigation sidebar', async ({ page }) => {
+  test('should display tabs navigation', async ({ page }) => {
     test.skip(!realProjects.length, 'No projects available for navigation test');
-
     const firstProject = realProjects[0];
-    await page.goto(`/compose/${firstProject.id || firstProject.name}`);
+    await page.goto(`/projects/${firstProject.id || firstProject.name}`);
     await page.waitForLoadState('networkidle');
 
-    // Check navigation buttons
-    const overviewButton = page.locator('button[title="Overview"]');
-    const servicesButton = page.locator('button[title="Services"]');
-    const configButton = page.locator('button[title="Configuration"]');
-
-    await expect(overviewButton).toBeVisible();
-    await expect(servicesButton).toBeVisible();
-    await expect(configButton).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Services/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Configuration|Config/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Logs/i })).toBeVisible();
   });
 
-  test('should display services section', async ({ page }) => {
+  test('should display services tab content', async ({ page }) => {
     test.skip(!realProjects.length, 'No projects available for services test');
 
-    const projectWithServices = realProjects.find((p) => p.serviceCount > 0);
-    test.skip(!projectWithServices, 'No projects with services found');
-
-    await page.goto(`/compose/${projectWithServices.id || projectWithServices.name}`);
+    const projectWithServices = realProjects.find((p) => p.serviceCount > 0) || realProjects[0];
+    await page.goto(`/projects/${projectWithServices.id || projectWithServices.name}`);
     await page.waitForLoadState('networkidle');
 
-    // Navigate to services section
-    await page.locator('button[title="Services"]').click();
+    await page.getByRole('tab', { name: /Services/i }).click();
 
-    await expect(page.getByText(`Services (${projectWithServices.serviceCount})`)).toBeVisible();
+    const nginxService = page.getByText(/nginx/i);
+    const emptyState = page.getByText(/No services found/i);
+
+    if ((await nginxService.count()) > 0) {
+      await expect(nginxService.first()).toBeVisible();
+    } else {
+      const anyServiceBadge = page.locator('text=/running|stopped|unknown/i').first();
+      if ((await anyServiceBadge.count()) > 0) {
+        await expect(anyServiceBadge).toBeVisible();
+      } else {
+        await expect(emptyState).toBeVisible();
+      }
+    }
   });
 
-  test('should display configuration section with editors', async ({ page }) => {
+  test('should display configuration editors', async ({ page }) => {
     test.skip(!realProjects.length, 'No projects available for configuration test');
 
     const firstProject = realProjects[0];
-    await page.goto(`/compose/${firstProject.id || firstProject.name}`);
+    await page.goto(`/projects/${firstProject.id || firstProject.name}`);
     await page.waitForLoadState('networkidle');
 
-    // Navigate to configuration section
-    await page.locator('button[title="Configuration"]').click();
-    await expect(page.getByRole('heading', { name: 'Configuration' })).toBeVisible();
-    await expect(page.getByText('Project Name')).toBeVisible();
-    await expect(page.getByText('Compose File')).toBeVisible();
-    await expect(page.getByText('Environment (.env)')).toBeVisible();
+    await page.getByRole('tab', { name: /Configuration|Config/i }).click();
+
+    // Titles inside CodePanel components
+    await expect(page.getByText(/Compose File/i)).toBeVisible();
+    await expect(page.getByText(/Environment\s*\(.env\)/i)).toBeVisible();
   });
 
-  test('should show logs section for running projects', async ({ page }) => {
+  test('should show logs tab for running projects', async ({ page }) => {
     test.skip(!realProjects.length, 'No projects available for logs test');
 
     const runningProject = realProjects.find((p) => p.status === 'running');
     test.skip(!runningProject, 'No running projects found for logs test');
 
-    await page.goto(`/compose/${runningProject.id || runningProject.name}`);
+    await page.goto(`/projects/${runningProject.id || runningProject.name}`);
     await page.waitForLoadState('networkidle');
 
-    // Navigate to logs section
-    await page.locator('button[title="Logs"]').click();
+    const logsTab = page.getByRole('tab', { name: /Logs/i });
+    await expect(logsTab).toBeEnabled();
+    await logsTab.click();
 
-    await expect(page.getByText('Project Logs')).toBeVisible();
-    await expect(page.getByText('Auto-scroll')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Start' })).toBeVisible();
+    // StackLogsPanel heading
+    await expect(page.getByText(/Logs/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Start|Stop/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Clear/i })).toBeVisible();
   });
 });

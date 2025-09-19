@@ -29,10 +29,12 @@
 	size="icon"
 	class={cn('size-7', className)}
 	type="button"
-	{disabled}
+	disabled={disabled || sidebar.isTablet}
 	onclick={(e) => {
 		onclick?.(e);
-		sidebar.toggle();
+		if (!sidebar.isTablet) {
+			sidebar.toggle();
+		}
 	}}
 	{...restProps}
 >

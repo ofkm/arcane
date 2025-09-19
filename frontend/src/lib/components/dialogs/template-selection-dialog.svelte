@@ -109,14 +109,16 @@
 
 		try {
 			const details = await templateAPI.getTemplateContent(template.id);
-			if (!details?.content) {
+			if (!details) {
 				toast.error(m.templates_load_failed());
 				return;
 			}
+			const compose = typeof details.content === 'string' ? details.content : '';
+			const env = typeof details.envContent === 'string' ? details.envContent : '';
 			onSelect({
 				...details.template,
-				content: details.content,
-				envContent: details.envContent
+				content: compose,
+				envContent: env
 			});
 			open = false;
 			toast.success(m.templates_loaded_success({ name: template.name }));

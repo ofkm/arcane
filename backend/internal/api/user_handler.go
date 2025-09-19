@@ -210,6 +210,18 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		user.Locale = req.Locale
 	}
 
+	if req.Password != nil && *req.Password != "" {
+		hashedPassword, err := h.userService.HashPassword(*req.Password)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"data":    gin.H{"error": "Failed to hash password"},
+			})
+			return
+		}
+		user.PasswordHash = hashedPassword
+	}
+
 	now := time.Now()
 	user.UpdatedAt = &now
 

@@ -150,26 +150,14 @@ func (fw *FilesystemWatcher) handleDebounce(ctx context.Context, timer *time.Tim
 func (fw *FilesystemWatcher) shouldHandleEvent(event fsnotify.Event) bool {
 	name := filepath.Base(event.Name)
 
-	// Skip temporary files and hidden files
-	if len(name) > 0 && (name[0] == '.' || name[0] == '~') {
-		return false
+	// Watch for new directories, compose files, .env being manipulated.
+	if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) || event.Has(fsnotify.Rename) || event.Has(fsnotify.Remove) {
+		if info, err := os.Stat(event.Name); err == nil && info.IsDir() || isProjectFile(name) {
+			return true
+		}
 	}
 
-	// Skip backup files
-	if filepath.Ext(name) == ".bak" || filepath.Ext(name) == ".tmp" {
-		return false
-	}
-
-	// We care about:
-	// 1. Directory operations (create/remove/rename)
-	// 2. Compose file changes
-	// 3. .env file changes
-	return event.Has(fsnotify.Create) ||
-		event.Has(fsnotify.Remove) ||
-		event.Has(fsnotify.Rename) ||
-		event.Has(fsnotify.Write) ||
-		isComposeFile(name) ||
-		name == ".env"
+	return false
 }
 
 func (fw *FilesystemWatcher) addExistingDirectories(root string) error {
@@ -193,10 +181,13 @@ func (fw *FilesystemWatcher) addExistingDirectories(root string) error {
 	})
 }
 
-func isComposeFile(filename string) bool {
+func isProjectFile(filename string) bool {
 	composeFiles := []string{
-		"compose.yaml", "compose.yml",
-		"docker-compose.yaml", "docker-compose.yml",
+		"compose.yaml",
+		"compose.yml",
+		"docker-compose.yaml",
+		"docker-compose.yml",
+		".env",
 	}
 
 	for _, cf := range composeFiles {

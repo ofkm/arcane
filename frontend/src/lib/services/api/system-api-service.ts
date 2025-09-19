@@ -7,6 +7,7 @@ export default class SystemAPIService extends BaseAPIService {
 		images?: boolean;
 		volumes?: boolean;
 		networks?: boolean;
+		buildCache?: boolean;
 		dangling?: boolean;
 		until?: string;
 	}) {

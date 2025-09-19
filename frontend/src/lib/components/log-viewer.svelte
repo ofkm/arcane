@@ -75,7 +75,7 @@
 	export async function startLogStream() {
 		const targetId = type === 'project' ? projectId : containerId;
 
-		if (!targetId || !browser) return;
+		if (!targetId) return;
 
 		try {
 			isStreaming = true;

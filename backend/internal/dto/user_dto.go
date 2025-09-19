@@ -14,6 +14,7 @@ type UpdateUserDto struct {
 	Email       *string  `json:"email,omitempty"`
 	Roles       []string `json:"roles,omitempty"`
 	Locale      *string  `json:"locale,omitempty"`
+	Password    *string  `json:"password,omitempty"`
 }
 
 type UserResponseDto struct {

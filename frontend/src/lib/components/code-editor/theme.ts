@@ -2,7 +2,6 @@ import { tags as t } from '@lezer/highlight';
 import { createTheme, type CreateThemeOptions } from '@uiw/codemirror-themes';
 
 export const arcaneDarkSettings: CreateThemeOptions['settings'] = {
-	// Higher-contrast dark base
 	background: '#0d1117',
 	foreground: '#c9d1d9',
 	caret: '#a78bfa',
@@ -14,7 +13,6 @@ export const arcaneDarkSettings: CreateThemeOptions['settings'] = {
 	gutterActiveForeground: '#c9d1d9',
 	gutterBorder: 'transparent',
 
-	// Typography
 	fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
 	fontSize: '13px'
 };
@@ -31,7 +29,6 @@ export const arcaneDarkStyles: CreateThemeOptions['styles'] = [
 	{ tag: [t.string, t.inserted, t.regexp, t.special(t.string)], color: '#7ee787' },
 	{ tag: [t.operator, t.url, t.link, t.escape], color: '#a5d6ff' },
 
-	// Make separators/punctuation (e.g., "=") visible
 	{ tag: [t.separator, t.punctuation], color: '#6e7681' },
 
 	{ tag: t.heading, color: '#e6edf3', fontWeight: 'bold' },

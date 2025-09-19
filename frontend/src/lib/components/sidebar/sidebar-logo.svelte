@@ -9,7 +9,7 @@
 <div
 	class={cn(
 		'border-border/30 flex h-16 items-center border-b transition-all duration-300',
-		isCollapsed ? 'justify-center px-2' : 'gap-3 px-6'
+		isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'
 	)}
 >
 	<div class="relative flex shrink-0 items-center justify-center">

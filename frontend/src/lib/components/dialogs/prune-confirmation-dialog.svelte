@@ -9,7 +9,7 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { m } from '$lib/paraglide/messages';
 
-	type PruneType = 'containers' | 'images' | 'networks' | 'volumes';
+	type PruneType = 'containers' | 'images' | 'networks' | 'volumes' | 'buildCache';
 
 	interface Props {
 		open?: boolean;
@@ -31,6 +31,7 @@
 	let pruneImages = $state(true);
 	let pruneNetworks = $state(true);
 	let pruneVolumes = $state(false);
+	let pruneBuildCache = $state(false);
 
 	const selectedTypes = $derived.by(() => {
 		const types: PruneType[] = [];
@@ -38,6 +39,7 @@
 		if (pruneImages) types.push('images');
 		if (pruneNetworks) types.push('networks');
 		if (pruneVolumes) types.push('volumes');
+		if (pruneBuildCache) types.push('buildCache');
 		return types;
 	});
 
@@ -73,9 +75,11 @@
 				<Label
 					for="prune-containers"
 					class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-					>{m.prune_stopped_containers()}</Label
 				>
+					{m.prune_stopped_containers()}
+				</Label>
 			</div>
+
 			<div class="flex items-center space-x-3">
 				<Checkbox.Root id="prune-images" bind:checked={pruneImages} disabled={isPruning} />
 				<Label
@@ -85,14 +89,28 @@
 					{m.prune_unused_images()} ({imagePruneMode === 'dangling' ? m.prune_images_mode_dangling() : m.prune_images_mode_all()})
 				</Label>
 			</div>
+
+			<!-- Build cache -->
+			<div class="flex items-center space-x-3">
+				<Checkbox.Root id="prune-build-cache" bind:checked={pruneBuildCache} disabled={isPruning} />
+				<Label
+					for="prune-build-cache"
+					class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+				>
+					{m.build_cache()}
+				</Label>
+			</div>
+
 			<div class="flex items-center space-x-3">
 				<Checkbox.Root id="prune-networks" bind:checked={pruneNetworks} disabled={isPruning} />
 				<Label
 					for="prune-networks"
 					class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-					>{m.prune_unused_networks()}</Label
 				>
+					{m.prune_unused_networks()}
+				</Label>
 			</div>
+
 			<div class="flex items-start space-x-3">
 				<Checkbox.Root id="prune-volumes" bind:checked={pruneVolumes} disabled={isPruning} class="mt-1" />
 				<div class="grid gap-1.5 leading-none">
@@ -113,9 +131,9 @@
 		</div>
 
 		<Dialog.Footer>
-			<Button class="arcane-button-cancel" variant="outline" onclick={handleCancel} disabled={isPruning}
-				>{m.common_cancel()}</Button
-			>
+			<Button class="arcane-button-cancel" variant="outline" onclick={handleCancel} disabled={isPruning}>
+				{m.common_cancel()}
+			</Button>
 			<Button
 				class="arcane-button-remove"
 				variant="destructive"
