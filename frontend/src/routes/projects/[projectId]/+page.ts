@@ -14,6 +14,7 @@ export const load: PageLoad = async ({ params }) => {
 	};
 
 	return {
+		projectId: params.projectId,
 		project,
 		editorState,
 		error: null
