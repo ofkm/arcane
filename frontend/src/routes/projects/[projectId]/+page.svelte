@@ -164,7 +164,7 @@
 <div class="bg-background flex h-full flex-col overflow-hidden overscroll-y-none">
 	{#if project}
 		<Tabs.Root value={selectedTab} class="flex min-h-0 w-full flex-1 flex-col">
-			<div class="bg-background sticky top-0 z-30 flex-shrink-0 border-b backdrop-blur">
+			<div class="bg-background sticky top-0 flex-shrink-0 border-b backdrop-blur">
 				<div class="mx-auto max-w-full px-4 py-3">
 					<div class="flex items-center justify-between gap-3">
 						<div class="flex min-w-0 items-center gap-3">
