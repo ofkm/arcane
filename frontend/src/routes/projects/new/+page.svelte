@@ -69,7 +69,7 @@
 			setLoadingState: (value) => (saving = value),
 			onSuccess: async (project) => {
 				toast.success(m.compose_create_success({ name }));
-				goto(`/compose/${project.id}`, { invalidateAll: true });
+				goto(`/projects/${project.id}`, { invalidateAll: true });
 			}
 		});
 	}
@@ -99,10 +99,8 @@
 	async function handleTemplateSelect(template: Template) {
 		showTemplateDialog = false;
 
-		$inputs.composeContent.value = template.content;
-		if (template.envContent) {
-			$inputs.envContent.value = template.envContent;
-		}
+		$inputs.composeContent.value = template.content ?? '';
+		$inputs.envContent.value = template.envContent ?? '';
 
 		if (!$inputs.name.value?.trim()) {
 			$inputs.name.value = template.name.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
@@ -133,11 +131,11 @@
 </script>
 
 <div class="bg-background min-h-screen">
-	<div class="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 border-b backdrop-blur">
+	<div class="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 border-b backdrop-blur">
 		<div class="max-w-full px-4 py-3">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-3">
-					<Button variant="ghost" size="sm" href="/compose" class="gap-2">
+					<Button variant="ghost" size="sm" href="/projects" class="gap-2">
 						<ArrowLeftIcon class="size-4" />
 						{m.common_back()}
 					</Button>

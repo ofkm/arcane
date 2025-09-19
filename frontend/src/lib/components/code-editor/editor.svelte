@@ -5,12 +5,10 @@
 	import { properties } from '@codemirror/legacy-modes/mode/properties';
 	import { linter, lintGutter } from '@codemirror/lint';
 	import jsyaml from 'js-yaml';
-	import { githubDark } from '@uiw/codemirror-theme-github';
 	import { arcaneDark } from './theme';
 	import type { EditorView } from '@codemirror/view';
 	import type { Extension } from '@codemirror/state';
 	import type { Diagnostic, LintSource } from '@codemirror/lint';
-	import { mode } from 'mode-watcher';
 	import { m } from '$lib/paraglide/messages';
 
 	type CodeLanguage = 'yaml' | 'env';

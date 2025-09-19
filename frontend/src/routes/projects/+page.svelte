@@ -8,7 +8,7 @@
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { environmentAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
-	import ProjectsTable from './compose-table.svelte';
+	import ProjectsTable from './projects-table.svelte';
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages';
 
@@ -55,7 +55,7 @@
 <div class="space-y-6">
 	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
-			<h1 class="text-3xl font-bold tracking-tight">{m.compose_title()}</h1>
+			<h1 class="text-3xl font-bold tracking-tight">{m.projects_title()}</h1>
 			<p class="text-muted-foreground mt-1 text-sm">{m.compose_subtitle()}</p>
 		</div>
 		<div class="flex items-center gap-2">
@@ -66,7 +66,7 @@
 				loading={isLoading.updating}
 				disabled={isLoading.updating}
 			/>
-			<ArcaneButton action="create" customLabel={m.compose_create_project()} onclick={() => goto(`/compose/new`)} />
+			<ArcaneButton action="create" customLabel={m.compose_create_project()} onclick={() => goto(`/projects/new`)} />
 			<ArcaneButton
 				action="restart"
 				customLabel={m.common_refresh()}
@@ -101,10 +101,5 @@
 		/>
 	</div>
 
-	<ProjectsTable
-		bind:projects
-		bind:selectedIds
-		requestOptions={projectRequestOptions}
-		onCheckForUpdates={handleCheckForUpdates}
-	/>
+	<ProjectsTable bind:projects bind:selectedIds bind:requestOptions={projectRequestOptions} />
 </div>
