@@ -8,6 +8,7 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
+	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -19,6 +20,30 @@
 	let currentPath = $derived(page.url.pathname);
 	let isSubPage = $derived(currentPath !== '/settings');
 	let currentPageName = $derived(page.url.pathname.split('/').pop() || 'settings');
+	
+	// Get sidebar context to handle spacing
+	const sidebar = useSidebar();
+	
+	// Calculate left position based on sidebar state to match sidebar spacing system
+	// Uses the same CSS variables and spacing as the sidebar component
+	const leftPosition = $derived(() => {
+		const margin = '1rem'; // Standard spacing-4 equivalent
+		
+		if (sidebar.isMobile) {
+			// Mobile sidebar is overlay - uses standard margin
+			return margin;
+		}
+		
+		if (sidebar.state === 'expanded') {
+			// Full sidebar width + standard margin
+			return `calc(var(--sidebar-width) + ${margin})`;
+		} else {
+			// For floating variant with icon collapsible:
+			// sidebar-width-icon + spacing(4) + 2px padding + standard margin
+			// This matches the exact calculation from sidebar.svelte line 84
+			return `calc(var(--sidebar-width-icon) + 1rem + 2px + ${margin})`;
+		}
+	});
 	
 	// Get page title based on current path
 	let pageTitle = $derived(() => {
@@ -55,8 +80,11 @@
 
 <!-- Breadcrumb Navigation - only show on sub-pages -->
 {#if isSubPage}
-	<div class="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md shadow-sm">
-		<div class="px-4 sm:px-6 lg:px-8 py-3">
+	<div 
+		class="fixed top-4 z-[5] border border-border/50 bg-background/80 backdrop-blur-md shadow-lg rounded-lg transition-all duration-200"
+		style="left: {leftPosition()}; right: 1rem;"
+	>
+		<div class="px-4 py-3">
 			<div class="flex items-center justify-between gap-4">
 				<div class="flex items-center gap-2 min-w-0">
 					<!-- Back Button -->
@@ -129,7 +157,7 @@
 {/if}
 
 <div class="settings-container">
-	<div class="settings-content w-full max-w-none" class:pt-16={isSubPage}>
+	<div class="settings-content w-full max-w-none" class:pt-20={isSubPage}>
 		{@render children()}
 	</div>
 </div>
