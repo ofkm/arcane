@@ -13,14 +13,13 @@
 	import type { Settings } from '$lib/types/settings.type';
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsAPI } from '$lib/services/api';
-	import GeneralSettingsForm from './forms/general-settings-form.svelte';
-	import DockerSettingsForm from './forms/docker-settings-form.svelte';
-	import SecuritySettingsForm from './forms/security-settings-form.svelte';
 
 	interface SettingMeta {
 		key: string;
 		label: string;
 		type: string;
+		keywords?: string[];
+		description?: string;
 	}
 
 	interface SettingsCategory {
@@ -49,11 +48,29 @@
 			description: m.general_description(),
 			icon: SettingsIcon,
 			url: '/settings/general',
-			keywords: ['projects', 'directory', 'base', 'url', 'gravatar', 'avatars', 'general', 'core'],
+			keywords: ['general', 'core', 'basic', 'main'],
 			settings: [
-				{ key: 'projectsDirectory', label: m.general_projects_directory_label(), type: 'text' },
-				{ key: 'baseServerUrl', label: m.general_base_url_label(), type: 'text' },
-				{ key: 'enableGravatar', label: m.general_enable_gravatar_label(), type: 'boolean' }
+				{ 
+					key: 'projectsDirectory', 
+					label: m.general_projects_directory_label(), 
+					type: 'text',
+					description: 'Configure where project files are stored',
+					keywords: ['projects', 'directory', 'path', 'folder', 'location', 'storage', 'files', 'compose', 'docker-compose']
+				},
+				{ 
+					key: 'baseServerUrl', 
+					label: m.general_base_url_label(), 
+					type: 'text',
+					description: 'Set the base URL for the application',
+					keywords: ['base', 'url', 'server', 'domain', 'host', 'endpoint', 'address', 'link']
+				},
+				{ 
+					key: 'enableGravatar', 
+					label: m.general_enable_gravatar_label(), 
+					type: 'boolean',
+					description: 'Enable Gravatar profile pictures for users',
+					keywords: ['gravatar', 'avatar', 'profile', 'picture', 'image', 'user', 'photo']
+				}
 			]
 		},
 		{
@@ -62,13 +79,43 @@
 			description: 'Configure Docker settings, polling, and auto-updates',
 			icon: DatabaseIcon,
 			url: '/settings/docker',
-			keywords: ['docker', 'polling', 'auto', 'update', 'prune', 'interval', 'images'],
+			keywords: ['docker', 'container', 'image'],
 			settings: [
-				{ key: 'pollingEnabled', label: m.docker_enable_polling_label(), type: 'boolean' },
-				{ key: 'pollingInterval', label: m.docker_polling_interval_label(), type: 'number' },
-				{ key: 'autoUpdate', label: m.docker_auto_update_label(), type: 'boolean' },
-				{ key: 'autoUpdateInterval', label: m.docker_auto_update_interval_label(), type: 'number' },
-				{ key: 'dockerPruneMode', label: m.docker_prune_action_label(), type: 'select' }
+				{ 
+					key: 'pollingEnabled', 
+					label: m.docker_enable_polling_label(), 
+					type: 'boolean',
+					description: 'Enable automatic checking for image updates',
+					keywords: ['polling', 'check', 'monitor', 'watch', 'scan', 'detection', 'automatic']
+				},
+				{ 
+					key: 'pollingInterval', 
+					label: m.docker_polling_interval_label(), 
+					type: 'number',
+					description: 'How often to check for image updates',
+					keywords: ['interval', 'frequency', 'schedule', 'time', 'minutes', 'period', 'delay']
+				},
+				{ 
+					key: 'autoUpdate', 
+					label: m.docker_auto_update_label(), 
+					type: 'boolean',
+					description: 'Automatically update containers when new images are available',
+					keywords: ['auto', 'update', 'automatic', 'upgrade', 'refresh', 'restart', 'deploy']
+				},
+				{ 
+					key: 'autoUpdateInterval', 
+					label: m.docker_auto_update_interval_label(), 
+					type: 'number',
+					description: 'Interval between automatic updates',
+					keywords: ['auto', 'update', 'interval', 'frequency', 'schedule', 'automatic', 'timing']
+				},
+				{ 
+					key: 'dockerPruneMode', 
+					label: m.docker_prune_action_label(), 
+					type: 'select',
+					description: 'Configure how unused Docker images are cleaned up',
+					keywords: ['prune', 'cleanup', 'clean', 'remove', 'delete', 'unused', 'dangling', 'space', 'disk']
+				}
 			]
 		},
 		{
@@ -77,12 +124,36 @@
 			description: 'Manage authentication and security settings',
 			icon: ShieldIcon,
 			url: '/settings/security',
-			keywords: ['security', 'auth', 'authentication', 'oidc', 'local', 'session', 'timeout', 'password', 'policy'],
+			keywords: ['security', 'safety', 'protection'],
 			settings: [
-				{ key: 'authLocalEnabled', label: m.security_local_auth_label(), type: 'boolean' },
-				{ key: 'authOidcEnabled', label: m.security_oidc_auth_label(), type: 'boolean' },
-				{ key: 'authSessionTimeout', label: m.security_session_timeout_label(), type: 'number' },
-				{ key: 'authPasswordPolicy', label: m.security_password_policy_label(), type: 'select' }
+				{ 
+					key: 'authLocalEnabled', 
+					label: m.security_local_auth_label(), 
+					type: 'boolean',
+					description: 'Enable local username/password authentication',
+					keywords: ['local', 'auth', 'authentication', 'username', 'password', 'login', 'credentials']
+				},
+				{ 
+					key: 'authOidcEnabled', 
+					label: m.security_oidc_auth_label(), 
+					type: 'boolean',
+					description: 'Enable OpenID Connect (OIDC) authentication',
+					keywords: ['oidc', 'openid', 'connect', 'sso', 'oauth', 'external', 'provider', 'federation']
+				},
+				{ 
+					key: 'authSessionTimeout', 
+					label: m.security_session_timeout_label(), 
+					type: 'number',
+					description: 'How long user sessions remain active',
+					keywords: ['session', 'timeout', 'expire', 'duration', 'lifetime', 'minutes', 'logout']
+				},
+				{ 
+					key: 'authPasswordPolicy', 
+					label: m.security_password_policy_label(), 
+					type: 'select',
+					description: 'Set password strength requirements',
+					keywords: ['password', 'policy', 'strength', 'complexity', 'requirements', 'security', 'rules']
+				}
 			]
 		},
 		{
@@ -91,7 +162,7 @@
 			description: m.users_subtitle(),
 			icon: UserIcon,
 			url: '/settings/users',
-			keywords: ['users', 'accounts', 'admin', 'roles', 'management'],
+			keywords: ['users', 'accounts', 'admin', 'roles', 'management', 'people'],
 			settings: []
 		}
 	];
@@ -116,25 +187,54 @@
 			const categoryMatch = 
 				category.title.toLowerCase().includes(query) ||
 				category.description.toLowerCase().includes(query) ||
-				category.keywords.some(keyword => keyword.includes(query));
+				category.keywords.some(keyword => keyword.toLowerCase().includes(query));
 
-			// Check individual settings
-			const matchingSettings = category.settings.filter(setting => 
-				setting.key.toLowerCase().includes(query) ||
-				setting.label.toLowerCase().includes(query)
-			);
+			// Check individual settings with enhanced matching
+			const matchingSettings = category.settings.filter(setting => {
+				const keyMatch = setting.key.toLowerCase().includes(query);
+				const labelMatch = setting.label.toLowerCase().includes(query);
+				const descriptionMatch = setting.description?.toLowerCase().includes(query) || false;
+				const keywordsMatch = setting.keywords?.some(keyword => 
+					keyword.toLowerCase().includes(query)
+				) || false;
+				
+				return keyMatch || labelMatch || descriptionMatch || keywordsMatch;
+			});
 
 			if (categoryMatch || matchingSettings.length > 0) {
+				// Calculate relevance score based on match quality
+				let relevanceScore = 0;
+				
+				if (categoryMatch) {
+					// Category title/description match gets high score
+					if (category.title.toLowerCase().includes(query)) relevanceScore += 20;
+					if (category.description.toLowerCase().includes(query)) relevanceScore += 15;
+					if (category.keywords.some(keyword => keyword.toLowerCase() === query)) relevanceScore += 25;
+					if (category.keywords.some(keyword => keyword.toLowerCase().includes(query))) relevanceScore += 10;
+				}
+				
+				// Add score for individual setting matches
+				matchingSettings.forEach(setting => {
+					if (setting.key.toLowerCase() === query) relevanceScore += 30;
+					else if (setting.key.toLowerCase().includes(query)) relevanceScore += 15;
+					
+					if (setting.label.toLowerCase().includes(query)) relevanceScore += 12;
+					if (setting.description?.toLowerCase().includes(query)) relevanceScore += 8;
+					
+					if (setting.keywords?.some(keyword => keyword.toLowerCase() === query)) relevanceScore += 20;
+					else if (setting.keywords?.some(keyword => keyword.toLowerCase().includes(query))) relevanceScore += 5;
+				});
+
 				const categoryResult: SettingsCategory = {
 					...category,
 					matchingSettings: matchingSettings.length > 0 ? matchingSettings : category.settings,
-					relevanceScore: categoryMatch ? 10 : matchingSettings.length
+					relevanceScore
 				};
 				results.push(categoryResult);
 			}
 		});
 
-		// Sort by relevance
+		// Sort by relevance (highest first)
 		searchResults = results.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 	}
 
@@ -244,34 +344,63 @@
 					<p class="text-muted-foreground text-sm sm:text-base">Try adjusting your search terms or browse categories above.</p>
 				</div>
 			{:else}
-				<!-- Inline Settings Forms -->
+				<!-- Search Results with Individual Settings -->
 				<div class="space-y-4 sm:space-y-6">
 					{#each searchResults as result}
-						<div class="bg-background/40 rounded-lg border p-4 sm:p-6 shadow-sm">
-							<div class="mb-4 sm:mb-6 flex items-center gap-3">
-								<svelte:component this={result.icon} class="text-primary size-4 sm:size-5 shrink-0" />
-								<h3 class="text-base sm:text-lg font-semibold">{result.title}</h3>
+						<div class="bg-background/40 rounded-lg border shadow-sm">
+							<div class="p-4 sm:p-6 border-b">
+								<div class="flex items-center justify-between">
+									<div class="flex items-center gap-3">
+										<svelte:component this={result.icon} class="text-primary size-4 sm:size-5 shrink-0" />
+										<div>
+											<h3 class="text-base sm:text-lg font-semibold">{result.title}</h3>
+											<p class="text-muted-foreground text-xs sm:text-sm">{result.description}</p>
+										</div>
+									</div>
+									<Button 
+										variant="outline" 
+										size="sm"
+										onclick={() => navigateToCategory(result.url)}
+										class="shrink-0"
+									>
+										Go to Page
+									</Button>
+								</div>
 							</div>
 
-							<!-- Render appropriate settings form based on category -->
-							{#if result.id === 'general'}
-								<GeneralSettingsForm settings={currentSettings} callback={updateSettingsConfig} />
-							{:else if result.id === 'docker'}
-								<DockerSettingsForm settings={currentSettings} callback={updateSettingsConfig} />
-							{:else if result.id === 'security'}
-								<SecuritySettingsForm 
-									settings={currentSettings} 
-									oidcStatus={data.oidcStatus}
-									callback={updateSettingsConfig} 
-								/>
-							{:else if result.id === 'users'}
-								<div class="text-center py-6 sm:py-8">
-									<UserIcon class="text-muted-foreground mx-auto size-8 sm:size-12 mb-3 sm:mb-4" />
-									<h4 class="text-sm sm:text-base font-medium mb-2">User Management</h4>
-									<p class="text-muted-foreground text-xs sm:text-sm mb-4">Manage user accounts and permissions</p>
-									<Button onclick={() => navigateToCategory(result.url)} size="sm">
-										Go to User Management
-									</Button>
+							<!-- Show matching settings with descriptions -->
+							{#if result.matchingSettings && result.matchingSettings.length > 0}
+								<div class="p-4 sm:p-6 space-y-3">
+									<h4 class="text-sm font-medium text-muted-foreground mb-3">Matching Settings:</h4>
+									{#each result.matchingSettings as setting}
+										<div class="bg-background/60 rounded-md p-3 border-l-2 border-primary/20">
+											<div class="flex items-start justify-between gap-3">
+												<div class="min-w-0 flex-1">
+													<h5 class="text-sm font-medium">{setting.label}</h5>
+													{#if setting.description}
+														<p class="text-muted-foreground text-xs mt-1">{setting.description}</p>
+													{/if}
+													{#if setting.keywords && setting.keywords.length > 0}
+														<div class="mt-2 flex flex-wrap gap-1">
+															{#each setting.keywords.slice(0, 6) as keyword}
+																<span class="bg-muted/50 text-muted-foreground px-2 py-0.5 rounded text-xs">
+																	{keyword}
+																</span>
+															{/each}
+															{#if setting.keywords.length > 6}
+																<span class="text-muted-foreground text-xs px-2 py-0.5">
+																	+{setting.keywords.length - 6} more
+																</span>
+															{/if}
+														</div>
+													{/if}
+												</div>
+												<div class="bg-muted/30 text-muted-foreground px-2 py-1 rounded text-xs font-mono shrink-0">
+													{setting.type}
+												</div>
+											</div>
+										</div>
+									{/each}
 								</div>
 							{/if}
 						</div>
