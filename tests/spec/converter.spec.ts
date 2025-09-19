@@ -7,7 +7,7 @@ async function openConvertFromDockerRun(page: Page) {
 
 test.describe('Docker Run to Compose Converter', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/compose/new');
+    await page.goto('/projects/new');
     await page.waitForLoadState('networkidle');
   });
 
