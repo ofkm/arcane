@@ -154,9 +154,8 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 }
 
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
-	user, exists := middleware.GetCurrentUser(c)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "data": gin.H{"error": "Not authenticated"}})
+	user, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
 

@@ -19,7 +19,6 @@ import (
 	registry "github.com/ofkm/arcane-backend/internal/utils/registry"
 )
 
-// Local regex copies (previously referenced from utils.*VersionRegex)
 var (
 	semanticVersionRegex = regexp.MustCompile(`^(?:v)?(\d+)\.(\d+)\.(\d+)$`)
 	dateVersionRegex     = regexp.MustCompile(`^(\d{4})\.(\d{1,2})\.(\d{1,2})$`)
@@ -1108,57 +1107,6 @@ func (s *ImageUpdateService) CheckAllImages(ctx context.Context, limit int) (map
 		return nil, fmt.Errorf("failed to get image references: %w", err)
 	}
 	return s.CheckMultipleImages(ctx, imageRefs)
-}
-
-func (s *ImageUpdateService) TriggerBulkUpdateCheck(ctx context.Context, imageIDs []string) error {
-	// Log bulk update check start
-	metadata := models.JSON{
-		"action":   "bulk_update_check",
-		"imageIDs": imageIDs,
-		"count":    len(imageIDs),
-	}
-	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, "", "bulk_check", systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
-		slog.WarnContext(ctx, "Failed to log bulk update check start event",
-			slog.String("error", logErr.Error()))
-	}
-
-	successCount := 0
-	errorCount := 0
-	for _, imageID := range imageIDs {
-		_, err := s.CheckImageUpdateByID(ctx, imageID)
-		if err != nil {
-			errorCount++
-			continue
-		}
-		successCount++
-	}
-
-	// Log bulk update check completion
-	completionMetadata := models.JSON{
-		"action":       "bulk_update_check_complete",
-		"totalImages":  len(imageIDs),
-		"successCount": successCount,
-		"errorCount":   errorCount,
-	}
-	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, "", "bulk_check_complete", systemUser.ID, systemUser.Username, "0", completionMetadata); logErr != nil {
-		slog.WarnContext(ctx, "Failed to log bulk update check completion event",
-			slog.String("error", logErr.Error()))
-	}
-
-	return nil
-}
-
-func (s *ImageUpdateService) GetUpdateRecordByImageID(ctx context.Context, imageID string) (*models.ImageUpdateRecord, error) {
-	var record models.ImageUpdateRecord
-	err := s.db.WithContext(ctx).Where("id = ?", imageID).First(&record).Error
-	if err != nil {
-		return nil, err
-	}
-	return &record, nil
-}
-
-func (s *ImageUpdateService) DeleteUpdateRecord(ctx context.Context, imageID string) error {
-	return s.db.WithContext(ctx).Where("id = ?", imageID).Delete(&models.ImageUpdateRecord{}).Error
 }
 
 func (s *ImageUpdateService) CleanupOrphanedRecords(ctx context.Context) error {

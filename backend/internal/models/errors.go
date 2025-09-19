@@ -32,7 +32,6 @@ type APISuccessResponse struct {
 	Message string      `json:"message,omitempty"`
 }
 
-// APIError is a general API error type that implements error interface
 type APIError struct {
 	Message    string       `json:"message"`
 	Code       APIErrorCode `json:"code"`
@@ -60,7 +59,6 @@ func NewAPIError(message string, code APIErrorCode, statusCode int) *APIError {
 	}
 }
 
-// NewAPIErrorWithDetails creates a new APIError with details
 func NewAPIErrorWithDetails(message string, code APIErrorCode, statusCode int, details interface{}) *APIError {
 	return &APIError{
 		Message:    message,
@@ -68,19 +66,6 @@ func NewAPIErrorWithDetails(message string, code APIErrorCode, statusCode int, d
 		StatusCode: statusCode,
 		Details:    details,
 	}
-}
-
-// Predefined API errors for common cases
-func NewBadRequestError(message string) *APIError {
-	return NewAPIError(message, APIErrorCodeBadRequest, http.StatusBadRequest)
-}
-
-func NewUnauthorizedError(message string) *APIError {
-	return NewAPIError(message, APIErrorCodeUnauthorized, http.StatusUnauthorized)
-}
-
-func NewForbiddenError(message string) *APIError {
-	return NewAPIError(message, APIErrorCodeForbidden, http.StatusForbidden)
 }
 
 func NewNotFoundError(message string) *APIError {
@@ -99,7 +84,6 @@ func NewValidationError(message string, details interface{}) *APIError {
 	return NewAPIErrorWithDetails(message, APIErrorCodeValidationError, http.StatusBadRequest, details)
 }
 
-// Custom error types
 type NotFoundError struct {
 	Message string
 }
@@ -142,7 +126,6 @@ func (e *ValidationError) Error() string {
 	return e.Message
 }
 
-// Helper function to convert any error to APIError
 func ToAPIError(err error) *APIError {
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {

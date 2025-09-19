@@ -40,7 +40,7 @@ export class AuthService extends BaseAPIService {
 
 	async logout(): Promise<void> {
 		try {
-			await this.api.post('/auth/logout');
+			await this.api.post('/api/auth/logout');
 		} catch (error) {
 			console.error('Logout error:', error);
 		} finally {

@@ -314,21 +314,6 @@ func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.P
 	return &report, nil
 }
 
-func (s *ImageService) GetImageHistory(ctx context.Context, id string) ([]image.HistoryResponseItem, error) {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	history, err := dockerClient.ImageHistory(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get image history: %w", err)
-	}
-
-	return history, nil
-}
-
 func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []image.Summary, dockerClient *client.Client) error {
 	inUseImageIDs := s.getInUseImageIDs(ctx, dockerClient)
 	currentDockerImageIDs := make([]string, 0, len(dockerImages))

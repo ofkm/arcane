@@ -3,15 +3,13 @@ import { browser } from '$app/environment';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch }) => {
-	if (browser) {
-		try {
-			await fetch('/api/auth/logout', {
-				method: 'POST',
-				credentials: 'include'
-			});
-		} catch (error) {
-			console.error('Logout error:', error);
-		}
+	try {
+		await fetch('/api/auth/logout', {
+			method: 'POST',
+			credentials: 'include'
+		});
+	} catch (error) {
+		console.error('Logout error:', error);
 	}
 
 	throw redirect(302, '/auth/login');

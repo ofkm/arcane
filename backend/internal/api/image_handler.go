@@ -87,9 +87,8 @@ func (h *ImageHandler) Remove(c *gin.Context) {
 	id := c.Param("imageId")
 	force := c.Query("force") == "true"
 
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "data": dto.MessageDto{Message: "User not authenticated"}})
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
 	if err := h.imageService.RemoveImage(c.Request.Context(), id, force, *currentUser); err != nil {
@@ -123,9 +122,8 @@ func (h *ImageHandler) Pull(c *gin.Context) {
 	c.Writer.Header().Set("Connection", "keep-alive")
 	c.Writer.Header().Set("X-Accel-Buffering", "no")
 
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "data": dto.MessageDto{Message: "User not authenticated"}})
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
 

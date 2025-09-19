@@ -220,32 +220,6 @@ func (s *VolumeService) PruneVolumesWithOptions(ctx context.Context, all bool) (
 	}, nil
 }
 
-func (s *VolumeService) GetVolumesByDriver(ctx context.Context, driver string) ([]dto.VolumeDto, error) {
-	volumes, err := s.ListVolumes(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	usage, err := s.buildVolumeUsageMap(ctx, dockerClient)
-	if err != nil {
-		return nil, err
-	}
-
-	var filtered []dto.VolumeDto
-	for _, v := range volumes {
-		if v.Driver == driver {
-			filtered = append(filtered, dto.NewVolumeDto(v, usage[v.Name]))
-		}
-	}
-	return filtered, nil
-}
-
 func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, []string, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -332,34 +306,6 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.Sort
 	}
 
 	return pageItems, pagination, nil
-}
-
-func (s *VolumeService) ListVolumesWithUsage(ctx context.Context, driver string) ([]dto.VolumeDto, error) {
-	volumes, err := s.ListVolumes(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list Docker volumes: %w", err)
-	}
-
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	volumeUsageMap, err := s.buildVolumeUsageMap(ctx, dockerClient)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []dto.VolumeDto
-	for _, v := range volumes {
-		if driver != "" && v.Driver != driver {
-			continue
-		}
-		result = append(result, dto.NewVolumeDto(v, volumeUsageMap[v.Name]))
-	}
-
-	return result, nil
 }
 
 func sortVolumes(items []dto.VolumeDto, field, direction string) {

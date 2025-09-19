@@ -427,7 +427,6 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 		return fmt.Errorf("failed to update project status to deploying: %w", err)
 	}
 
-	// Pre-pull all images using auth-aware ImageService
 	if perr := s.PullProjectImages(ctx, projectID, io.Discard); perr != nil {
 		slog.Warn("pre-pull images failed (continuing to compose up)", "projectID", projectID, "error", perr)
 	}

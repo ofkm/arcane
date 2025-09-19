@@ -16,7 +16,3 @@ type Network struct {
 
 	BaseModel
 }
-
-func (Network) TableName() string {
-	return "networks"
-}
