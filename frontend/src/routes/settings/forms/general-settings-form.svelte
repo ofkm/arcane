@@ -4,6 +4,8 @@
 	import { createForm } from '$lib/utils/form.utils';
 	import * as Card from '$lib/components/ui/card';
 	import FormInput from '$lib/components/form/form-input.svelte';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
@@ -27,24 +29,42 @@
 		enableGravatar: z.boolean()
 	});
 
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, settings));
+	// Store original values for comparison
+	let originalSettings = $state({
+		projectsDirectory: settings.projectsDirectory,
+		baseServerUrl: settings.baseServerUrl,
+		enableGravatar: settings.enableGravatar
+	});
+
+	let formData = $derived({
+		projectsDirectory: settings.projectsDirectory,
+		baseServerUrl: settings.baseServerUrl,
+		enableGravatar: settings.enableGravatar
+	});
+
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
+
+	// Update original settings when settings prop changes
+	$effect(() => {
+		originalSettings.projectsDirectory = settings.projectsDirectory;
+		originalSettings.baseServerUrl = settings.baseServerUrl;
+		originalSettings.enableGravatar = settings.enableGravatar;
+	});
 
 	// Get form state context from layout
 	const formState = getContext('settingsFormState') as any;
 
 	// Track if any changes have been made
-	const hasChanges = $derived(() => {
-		return (
-			$formInputs.projectsDirectory.value !== settings.projectsDirectory ||
-			$formInputs.baseServerUrl.value !== settings.baseServerUrl ||
-			$formInputs.enableGravatar.value !== settings.enableGravatar
-		);
-	});
+	const hasChanges = $derived(
+		$formInputs.projectsDirectory.value !== originalSettings.projectsDirectory ||
+		$formInputs.baseServerUrl.value !== originalSettings.baseServerUrl ||
+		$formInputs.enableGravatar.value !== originalSettings.enableGravatar
+	);
 
 	// Update the header state when form state changes
 	$effect(() => {
 		if (formState) {
-			formState.hasChanges = hasChanges();
+			formState.hasChanges = hasChanges;
 			formState.isLoading = isLoading;
 		}
 	});
@@ -67,9 +87,9 @@
 	}
 
 	function resetForm() {
-		$formInputs.projectsDirectory.value = settings.projectsDirectory;
-		$formInputs.baseServerUrl.value = settings.baseServerUrl;
-		$formInputs.enableGravatar.value = settings.enableGravatar;
+		$formInputs.projectsDirectory.value = originalSettings.projectsDirectory;
+		$formInputs.baseServerUrl.value = originalSettings.baseServerUrl;
+		$formInputs.enableGravatar.value = originalSettings.enableGravatar;
 	}
 
 	// Register save and reset functions with the header on mount
@@ -97,19 +117,35 @@
 		</Card.Header>
 		<Card.Content class="px-3 sm:px-6 py-4">
 			<div class="space-y-3">
-				<FormInput
-					label={m.general_projects_directory_label()}
-					placeholder={m.general_projects_directory_placeholder()}
-					bind:input={$formInputs.projectsDirectory}
-					helpText={m.general_projects_directory_help()}
-				/>
+				<div class="space-y-2">
+					<Label class="text-sm font-medium">{m.general_projects_directory_label()}</Label>
+					<Input
+						type="text"
+						placeholder={m.general_projects_directory_placeholder()}
+						bind:value={$formInputs.projectsDirectory.value}
+						class={$formInputs.projectsDirectory.error ? 'border-destructive' : ''}
+					/>
+					{#if $formInputs.projectsDirectory.error}
+						<p class="text-destructive mt-1 text-sm">{$formInputs.projectsDirectory.error}</p>
+					{:else}
+						<p class="text-muted-foreground mt-1 text-xs">{m.general_projects_directory_help()}</p>
+					{/if}
+				</div>
 
-				<FormInput
-					label={m.general_base_url_label()}
-					placeholder={m.general_base_url_placeholder()}
-					bind:input={$formInputs.baseServerUrl}
-					helpText={m.general_base_url_help()}
-				/>
+				<div class="space-y-2">
+					<Label class="text-sm font-medium">{m.general_base_url_label()}</Label>
+					<Input
+						type="text"
+						placeholder={m.general_base_url_placeholder()}
+						bind:value={$formInputs.baseServerUrl.value}
+						class={$formInputs.baseServerUrl.error ? 'border-destructive' : ''}
+					/>
+					{#if $formInputs.baseServerUrl.error}
+						<p class="text-destructive mt-1 text-sm">{$formInputs.baseServerUrl.error}</p>
+					{:else}
+						<p class="text-muted-foreground mt-1 text-xs">{m.general_base_url_help()}</p>
+					{/if}
+				</div>
 			</div>
 		</Card.Content>
 	</Card.Root>

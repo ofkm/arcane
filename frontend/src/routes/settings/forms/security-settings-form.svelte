@@ -5,6 +5,8 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import FormInput from '$lib/components/form/form-input.svelte';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
 	import { toast } from 'svelte-sonner';
@@ -61,25 +63,46 @@
 			}
 		});
 
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, settings));
+	// Store original values for comparison
+	let originalSettings = $state({
+		authLocalEnabled: settings.authLocalEnabled,
+		authOidcEnabled: settings.authOidcEnabled,
+		authSessionTimeout: settings.authSessionTimeout,
+		authPasswordPolicy: settings.authPasswordPolicy
+	});
+
+	let formData = $derived({
+		authLocalEnabled: settings.authLocalEnabled,
+		authOidcEnabled: settings.authOidcEnabled,
+		authSessionTimeout: settings.authSessionTimeout,
+		authPasswordPolicy: settings.authPasswordPolicy
+	});
+
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
+
+	// Update original settings when settings prop changes
+	$effect(() => {
+		originalSettings.authLocalEnabled = settings.authLocalEnabled;
+		originalSettings.authOidcEnabled = settings.authOidcEnabled;
+		originalSettings.authSessionTimeout = settings.authSessionTimeout;
+		originalSettings.authPasswordPolicy = settings.authPasswordPolicy;
+	});
 
 	// Get form state context from layout
 	const formState = getContext('settingsFormState') as any;
 
 	// Track if any changes have been made
-	const hasChanges = $derived(() => {
-		return (
-			$formInputs.authLocalEnabled.value !== settings.authLocalEnabled ||
-			$formInputs.authOidcEnabled.value !== settings.authOidcEnabled ||
-			$formInputs.authSessionTimeout.value !== settings.authSessionTimeout ||
-			$formInputs.authPasswordPolicy.value !== settings.authPasswordPolicy
-		);
-	});
+	const hasChanges = $derived(
+		$formInputs.authLocalEnabled.value !== originalSettings.authLocalEnabled ||
+		$formInputs.authOidcEnabled.value !== originalSettings.authOidcEnabled ||
+		$formInputs.authSessionTimeout.value !== originalSettings.authSessionTimeout ||
+		$formInputs.authPasswordPolicy.value !== originalSettings.authPasswordPolicy
+	);
 
 	// Update the header state when form state changes
 	$effect(() => {
 		if (formState) {
-			formState.hasChanges = hasChanges();
+			formState.hasChanges = hasChanges;
 			formState.isLoading = isLoading.saving;
 		}
 	});
@@ -123,10 +146,10 @@
 	}
 
 	function resetForm() {
-		$formInputs.authLocalEnabled.value = settings.authLocalEnabled;
-		$formInputs.authOidcEnabled.value = settings.authOidcEnabled;
-		$formInputs.authSessionTimeout.value = settings.authSessionTimeout;
-		$formInputs.authPasswordPolicy.value = settings.authPasswordPolicy;
+		$formInputs.authLocalEnabled.value = originalSettings.authLocalEnabled;
+		$formInputs.authOidcEnabled.value = originalSettings.authOidcEnabled;
+		$formInputs.authSessionTimeout.value = originalSettings.authSessionTimeout;
+		$formInputs.authPasswordPolicy.value = originalSettings.authPasswordPolicy;
 	}
 
 	// Register save and reset functions with the header on mount
@@ -278,14 +301,21 @@
 			</div>
 		</Card.Header>
 		<Card.Content class="px-3 sm:px-6 py-4">
-			<FormInput
-				type="number"
-				id="sessionTimeout"
-				label={m.security_session_timeout_label()}
-				placeholder={m.security_session_timeout_placeholder()}
-				bind:input={$formInputs.authSessionTimeout}
-				description={m.security_session_timeout_description()}
-			/>
+			<div class="space-y-2">
+				<Label class="text-sm font-medium">{m.security_session_timeout_label()}</Label>
+				<Input
+					type="number"
+					id="sessionTimeout"
+					placeholder={m.security_session_timeout_placeholder()}
+					bind:value={$formInputs.authSessionTimeout.value}
+					class={$formInputs.authSessionTimeout.error ? 'border-destructive' : ''}
+				/>
+				{#if $formInputs.authSessionTimeout.error}
+					<p class="text-destructive mt-1 text-sm">{$formInputs.authSessionTimeout.error}</p>
+				{:else}
+					<p class="text-muted-foreground mt-1 text-xs">{m.security_session_timeout_description()}</p>
+				{/if}
+			</div>
 		</Card.Content>
 	</Card.Root>
 

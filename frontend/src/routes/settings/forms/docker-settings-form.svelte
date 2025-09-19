@@ -4,6 +4,8 @@
 	import { toast } from 'svelte-sonner';
 	import type { Settings } from '$lib/types/settings.type';
 	import FormInput from '$lib/components/form/form-input.svelte';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
@@ -93,26 +95,50 @@
 		dockerPruneMode: z.enum(['all', 'dangling'])
 	});
 
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, settings));
+	// Store original values for comparison
+	let originalSettings = $state({
+		pollingEnabled: settings.pollingEnabled,
+		pollingInterval: settings.pollingInterval,
+		autoUpdate: settings.autoUpdate,
+		autoUpdateInterval: settings.autoUpdateInterval,
+		dockerPruneMode: settings.dockerPruneMode
+	});
+
+	let formData = $derived({
+		pollingEnabled: settings.pollingEnabled,
+		pollingInterval: settings.pollingInterval,
+		autoUpdate: settings.autoUpdate,
+		autoUpdateInterval: settings.autoUpdateInterval,
+		dockerPruneMode: settings.dockerPruneMode
+	});
+
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
+
+	// Update original settings when settings prop changes
+	$effect(() => {
+		originalSettings.pollingEnabled = settings.pollingEnabled;
+		originalSettings.pollingInterval = settings.pollingInterval;
+		originalSettings.autoUpdate = settings.autoUpdate;
+		originalSettings.autoUpdateInterval = settings.autoUpdateInterval;
+		originalSettings.dockerPruneMode = settings.dockerPruneMode;
+	});
 
 	// Get form state context from layout
 	const formState = getContext('settingsFormState') as any;
 
 	// Track if any changes have been made
-	const hasChanges = $derived(() => {
-		return (
-			$formInputs.pollingEnabled.value !== settings.pollingEnabled ||
-			$formInputs.pollingInterval.value !== settings.pollingInterval ||
-			$formInputs.autoUpdate.value !== settings.autoUpdate ||
-			$formInputs.autoUpdateInterval.value !== settings.autoUpdateInterval ||
-			$formInputs.dockerPruneMode.value !== settings.dockerPruneMode
-		);
-	});
+	const hasChanges = $derived(
+		$formInputs.pollingEnabled.value !== originalSettings.pollingEnabled ||
+		$formInputs.pollingInterval.value !== originalSettings.pollingInterval ||
+		$formInputs.autoUpdate.value !== originalSettings.autoUpdate ||
+		$formInputs.autoUpdateInterval.value !== originalSettings.autoUpdateInterval ||
+		$formInputs.dockerPruneMode.value !== originalSettings.dockerPruneMode
+	);
 
 	// Update the header state when form state changes
 	$effect(() => {
 		if (formState) {
-			formState.hasChanges = hasChanges();
+			formState.hasChanges = hasChanges;
 			formState.isLoading = isLoading;
 		}
 	});
@@ -142,11 +168,11 @@
 	}
 
 	function resetForm() {
-		$formInputs.pollingEnabled.value = settings.pollingEnabled;
-		$formInputs.pollingInterval.value = settings.pollingInterval;
-		$formInputs.autoUpdate.value = settings.autoUpdate;
-		$formInputs.autoUpdateInterval.value = settings.autoUpdateInterval;
-		$formInputs.dockerPruneMode.value = settings.dockerPruneMode;
+		$formInputs.pollingEnabled.value = originalSettings.pollingEnabled;
+		$formInputs.pollingInterval.value = originalSettings.pollingInterval;
+		$formInputs.autoUpdate.value = originalSettings.autoUpdate;
+		$formInputs.autoUpdateInterval.value = originalSettings.autoUpdateInterval;
+		$formInputs.dockerPruneMode.value = originalSettings.dockerPruneMode;
 	}
 
 	// Register save and reset functions with the header on mount
@@ -194,14 +220,21 @@
 						/>
 						
 						{#if pollingIntervalMode === 'custom'}
-							<FormInput
-								bind:input={$formInputs.pollingInterval}
-								type="number"
-								id="pollingInterval"
-								label={m.custom_polling_interval()}
-								placeholder={m.docker_polling_interval_placeholder()}
-								description={m.docker_polling_interval_description()}
-							/>
+							<div class="space-y-2">
+								<Label class="text-sm font-medium">{m.custom_polling_interval()}</Label>
+								<Input
+									type="number"
+									id="pollingInterval"
+									placeholder={m.docker_polling_interval_placeholder()}
+									bind:value={$formInputs.pollingInterval.value}
+									class={$formInputs.pollingInterval.error ? 'border-destructive' : ''}
+								/>
+								{#if $formInputs.pollingInterval.error}
+									<p class="text-destructive mt-1 text-sm">{$formInputs.pollingInterval.error}</p>
+								{:else}
+									<p class="text-muted-foreground mt-1 text-xs">{m.docker_polling_interval_description()}</p>
+								{/if}
+							</div>
 						{/if}
 
 						{#if $formInputs.pollingInterval.value < 30}
@@ -243,14 +276,21 @@
 					
 					{#if $formInputs.autoUpdate.value}
 						<div class="pl-3 border-l-2 border-primary/20">
-							<FormInput
-								bind:input={$formInputs.autoUpdateInterval}
-								type="number"
-								id="autoUpdateInterval"
-								label={m.docker_auto_update_interval_label()}
-								placeholder={m.docker_auto_update_interval_placeholder()}
-								description={m.docker_auto_update_interval_description()}
-							/>
+							<div class="space-y-2">
+								<Label class="text-sm font-medium">{m.docker_auto_update_interval_label()}</Label>
+								<Input
+									type="number"
+									id="autoUpdateInterval"
+									placeholder={m.docker_auto_update_interval_placeholder()}
+									bind:value={$formInputs.autoUpdateInterval.value}
+									class={$formInputs.autoUpdateInterval.error ? 'border-destructive' : ''}
+								/>
+								{#if $formInputs.autoUpdateInterval.error}
+									<p class="text-destructive mt-1 text-sm">{$formInputs.autoUpdateInterval.error}</p>
+								{:else}
+									<p class="text-muted-foreground mt-1 text-xs">{m.docker_auto_update_interval_description()}</p>
+								{/if}
+							</div>
 						</div>
 					{/if}
 				</div>
