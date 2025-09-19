@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
-	import { createForm, preventDefault } from '$lib/utils/form.utils';
+	import { createForm } from '$lib/utils/form.utils';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import FormInput from '$lib/components/form/form-input.svelte';
@@ -15,7 +15,6 @@
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import KeyIcon from '@lucide/svelte/icons/key';
-	import SaveIcon from '@lucide/svelte/icons/save';
 
 	let {
 		settings,
@@ -210,7 +209,7 @@
 <div class="space-y-4 sm:space-y-6">
 	<!-- Authentication Methods Card -->
 	<Card.Root class="overflow-hidden">
-		<Card.Header class="bg-muted/20 border-b">
+		<Card.Header class="py-4! bg-muted/20 border-b">
 			<div class="flex items-center gap-3">
 				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 					<LockIcon class="size-4" />
@@ -221,7 +220,7 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 sm:pt-3">
+		<Card.Content class="px-3 sm:px-6 py-4">
 			<div class="space-y-3">
 				<SwitchWithLabel
 					id="localAuthSwitch"
@@ -267,7 +266,7 @@
 
 	<!-- Session Settings Card -->
 	<Card.Root class="overflow-hidden">
-		<Card.Header class="bg-muted/20 border-b">
+		<Card.Header class="py-4! bg-muted/20 border-b">
 			<div class="flex items-center gap-3">
 				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 					<ClockIcon class="size-4" />
@@ -278,7 +277,7 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 sm:pt-3">
+		<Card.Content class="px-3 sm:px-6 py-4">
 			<FormInput
 				type="number"
 				id="sessionTimeout"
@@ -292,7 +291,7 @@
 
 	<!-- Password Policy Card -->
 	<Card.Root class="overflow-hidden">
-		<Card.Header class="bg-muted/20 border-b">
+		<Card.Header class="py-4! bg-muted/20 border-b">
 			<div class="flex items-center gap-3">
 				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 					<KeyIcon class="size-4" />
@@ -303,7 +302,7 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 sm:pt-3">
+		<Card.Content class="px-3 sm:px-6 py-4">
 			<Tooltip.Provider>
 				<div class="grid grid-cols-1 gap-2 sm:gap-3 sm:grid-cols-3" role="group" aria-labelledby="passwordPolicyLabel">
 					<Tooltip.Root>

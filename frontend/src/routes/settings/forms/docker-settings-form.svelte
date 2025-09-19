@@ -6,8 +6,7 @@
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
-	import { createForm, preventDefault } from '$lib/utils/form.utils';
-	import { Button } from '$lib/components/ui/button';
+	import { createForm } from '$lib/utils/form.utils';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
@@ -15,7 +14,6 @@
 	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import TrashIcon from '@lucide/svelte/icons/trash';
-	import SaveIcon from '@lucide/svelte/icons/save';
 
 	let {
 		callback,
@@ -163,7 +161,7 @@
 <div class="space-y-4 sm:space-y-6">
 	<!-- Image Polling Card -->
 	<Card.Root class="overflow-hidden">
-		<Card.Header class="bg-muted/20 border-b">
+		<Card.Header class="py-4! bg-muted/20 border-b">
 			<div class="flex items-center gap-3">
 				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 					<ActivityIcon class="size-4" />
@@ -174,7 +172,7 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 sm:pt-3">
+		<Card.Content class="px-3 sm:px-6 py-4">
 			<div class="space-y-3">
 				<SwitchWithLabel
 					id="pollingEnabled"
@@ -222,7 +220,7 @@
 	<!-- Auto Update Card -->
 	{#if $formInputs.pollingEnabled.value}
 		<Card.Root class="overflow-hidden">
-			<Card.Header class="bg-muted/20 border-b">
+			<Card.Header class="py-4! bg-muted/20 border-b">
 				<div class="flex items-center gap-3">
 					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 						<RefreshCwIcon class="size-4" />
@@ -233,7 +231,7 @@
 					</div>
 				</div>
 			</Card.Header>
-			<Card.Content class="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 sm:pt-3">
+			<Card.Content class="px-3 sm:px-6 py-4">
 				<div class="space-y-3">
 					<SwitchWithLabel
 						id="autoUpdateSwitch"
@@ -262,7 +260,7 @@
 
 	<!-- Cleanup Settings Card -->
 	<Card.Root class="overflow-hidden">
-		<Card.Header class="bg-muted/20 border-b">
+		<Card.Header class="py-4! bg-muted/20 border-b">
 			<div class="flex items-center gap-3">
 				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 					<TrashIcon class="size-4" />
@@ -273,7 +271,7 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-4 pb-3 sm:pb-4 pt-2 sm:pt-3">
+		<Card.Content class="px-3 sm:px-6 py-4">
 			<SelectWithLabel
 				id="dockerPruneMode"
 				name="pruneMode"
