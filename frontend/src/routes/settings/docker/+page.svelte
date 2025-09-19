@@ -27,24 +27,24 @@
 	}
 </script>
 
-<div class="settings-page px-4 py-6">
+<div class="settings-page px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
 	<div
-		class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 shadow-sm"
+		class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 sm:p-6 shadow-sm"
 	>
 		<div class="bg-primary/10 pointer-events-none absolute -right-10 -top-10 size-40 rounded-full blur-3xl"></div>
 		<div class="bg-muted/40 pointer-events-none absolute -bottom-10 -left-10 size-40 rounded-full blur-3xl"></div>
-		<div class="relative flex items-start gap-4">
-			<div class="bg-primary/10 text-primary ring-primary/20 flex size-10 items-center justify-center rounded-lg ring-1">
-				<BoxesIcon class="size-5" />
+		<div class="relative flex items-start gap-3 sm:gap-4">
+			<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 sm:size-10 items-center justify-center rounded-lg ring-1 shrink-0">
+				<BoxesIcon class="size-4 sm:size-5" />
 			</div>
-			<div>
-				<h1 class="settings-title">{m.docker_title()}</h1>
-				<p class="settings-description">{m.docker_description()}</p>
+			<div class="min-w-0">
+				<h1 class="settings-title text-xl sm:text-3xl">{m.docker_title()}</h1>
+				<p class="settings-description text-sm sm:text-base">{m.docker_description()}</p>
 			</div>
 		</div>
 	</div>
 
-	<div class="settings-grid settings-grid-single">
+	<div class="settings-grid settings-grid-single mt-6 sm:mt-8">
 		<DockerSettingsForm settings={currentSettings} callback={updateSettingsConfig} />
 	</div>
 </div>

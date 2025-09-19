@@ -110,13 +110,13 @@
 	}
 </script>
 
-<div class="space-y-6 pb-8">
-	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-		<div>
-			<h1 class="text-3xl font-bold tracking-tight">{m.users_title()}</h1>
-			<p class="text-muted-foreground mt-1 text-sm">{m.users_subtitle()}</p>
+<div class="space-y-4 sm:space-y-6 pb-6 sm:pb-8 px-4 sm:px-6 lg:px-8">
+	<div class="flex flex-col justify-between gap-3 sm:gap-4 sm:flex-row sm:items-center">
+		<div class="min-w-0">
+			<h1 class="text-xl sm:text-3xl font-bold tracking-tight">{m.users_title()}</h1>
+			<p class="text-muted-foreground mt-1 text-xs sm:text-sm">{m.users_subtitle()}</p>
 		</div>
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-2 shrink-0">
 			<ArcaneButton
 				action="create"
 				customLabel={m.users_create_button()}
@@ -127,7 +127,7 @@
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+	<div class="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-3">
 		<StatCard
 			title={m.users_total()}
 			value={totalUsers}

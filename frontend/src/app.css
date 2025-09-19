@@ -173,6 +173,69 @@ main {
 	@apply text-foreground text-3xl font-bold tracking-tight;
 }
 
+.settings-description {
+	@apply text-muted-foreground;
+}
+
+.settings-grid {
+	@apply space-y-4 sm:space-y-6;
+}
+
+.settings-grid-single {
+	@apply space-y-4 sm:space-y-6;
+}
+
+/* Mobile-first responsive improvements for settings */
+@media (max-width: 640px) {
+	.settings-dashboard {
+		@apply px-3 py-3;
+	}
+	
+	.settings-page {
+		@apply px-3 py-3;
+	}
+	
+	/* Ensure forms don't overflow on mobile */
+	.settings-dashboard :global(form),
+	.settings-page :global(form) {
+		@apply min-w-0;
+	}
+	
+	/* Better spacing for form elements on mobile */
+	.settings-dashboard :global(.field-set-content),
+	.settings-page :global(.field-set-content) {
+		@apply gap-3;
+	}
+	
+	/* Adjust button sizing for mobile */
+	.settings-dashboard :global(.arcane-button),
+	.settings-page :global(.arcane-button) {
+		@apply text-xs px-3 py-2;
+	}
+}
+
+/* Tablet optimizations */
+@media (min-width: 641px) and (max-width: 1024px) {
+	.settings-dashboard {
+		@apply px-4 py-4;
+	}
+	
+	.settings-page {
+		@apply px-4 py-4;
+	}
+}
+
+/* Ensure overflow handling for all screen sizes */
+.settings-dashboard,
+.settings-page {
+	@apply overflow-x-hidden;
+}
+
+.settings-dashboard :global(.settings-grid),
+.settings-page :global(.settings-grid) {
+	@apply min-w-0;
+}
+
 html {
 	scrollbar-gutter: stable;
 }
