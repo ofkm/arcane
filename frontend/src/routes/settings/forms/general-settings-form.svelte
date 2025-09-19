@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { z } from 'zod/v4';
+	import { getContext, onMount } from 'svelte';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -30,6 +31,9 @@
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, settings));
 
+	// Get form state context from layout
+	const formState = getContext('settingsFormState') as any;
+
 	// Track if any changes have been made
 	const hasChanges = $derived(() => {
 		return (
@@ -37,6 +41,14 @@
 			$formInputs.baseServerUrl.value !== settings.baseServerUrl ||
 			$formInputs.enableGravatar.value !== settings.enableGravatar
 		);
+	});
+
+	// Update the header state when form state changes
+	$effect(() => {
+		if (formState) {
+			formState.hasChanges = hasChanges();
+			formState.isLoading = isLoading;
+		}
 	});
 
 	async function onSubmit() {
@@ -55,6 +67,20 @@
 			})
 			.finally(() => (isLoading = false));
 	}
+
+	function resetForm() {
+		$formInputs.projectsDirectory.value = settings.projectsDirectory;
+		$formInputs.baseServerUrl.value = settings.baseServerUrl;
+		$formInputs.enableGravatar.value = settings.enableGravatar;
+	}
+
+	// Register save and reset functions with the header on mount
+	onMount(() => {
+		if (formState) {
+			formState.saveFunction = onSubmit;
+			formState.resetFunction = resetForm;
+		}
+	});
 </script>
 
 <div class="space-y-4 sm:space-y-6">
@@ -115,41 +141,3 @@
 	</Card.Root>
 </div>
 
-<!-- Save Actions -->
-<div class="mt-8 flex items-center justify-between border-t pt-6">
-	<div class="text-sm text-muted-foreground">
-		{#if hasChanges()}
-			<span class="text-orange-600 dark:text-orange-400">• Unsaved changes</span>
-		{:else}
-			<span class="text-green-600 dark:text-green-400">• All changes saved</span>
-		{/if}
-	</div>
-	
-	<div class="flex gap-3">
-		{#if hasChanges()}
-			<Button 
-				variant="outline" 
-				onclick={() => window.location.reload()}
-				disabled={isLoading}
-			>
-				{m.common_reset()}
-			</Button>
-		{/if}
-		
-		<form onsubmit={preventDefault(onSubmit)} class="inline">
-			<Button 
-				type="submit" 
-				disabled={isLoading || !hasChanges()} 
-				class="min-w-[120px]"
-			>
-				{#if isLoading}
-					<div class="mr-2 size-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
-					{m.common_saving()}
-				{:else}
-					<SaveIcon class="mr-2 size-4" />
-					{m.common_save()}
-				{/if}
-			</Button>
-		</form>
-	</div>
-</div>

@@ -29,13 +29,15 @@
 	>
 		<div class="bg-primary/10 pointer-events-none absolute -right-10 -top-10 size-40 rounded-full blur-3xl"></div>
 		<div class="bg-muted/40 pointer-events-none absolute -bottom-10 -left-10 size-40 rounded-full blur-3xl"></div>
-		<div class="relative flex items-start gap-3 sm:gap-4">
-			<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 sm:size-10 items-center justify-center rounded-lg ring-1 shrink-0">
-				<LockIcon class="size-4 sm:size-5" />
-			</div>
-			<div class="min-w-0">
-				<h1 class="settings-title text-xl sm:text-3xl">{m.security_title()}</h1>
-				<p class="settings-description text-sm sm:text-base">{m.security_description()}</p>
+		<div class="relative flex items-start justify-between gap-3 sm:gap-4">
+			<div class="flex items-start gap-3 sm:gap-4 min-w-0">
+				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 sm:size-10 items-center justify-center rounded-lg ring-1 shrink-0">
+					<LockIcon class="size-4 sm:size-5" />
+				</div>
+				<div class="min-w-0">
+					<h1 class="settings-title text-xl sm:text-3xl">{m.security_title()}</h1>
+					<p class="settings-description text-sm sm:text-base">{m.security_description()}</p>
+				</div>
 			</div>
 		</div>
 	</div>
