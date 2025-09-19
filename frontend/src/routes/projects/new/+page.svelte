@@ -69,7 +69,7 @@
 			setLoadingState: (value) => (saving = value),
 			onSuccess: async (project) => {
 				toast.success(m.compose_create_success({ name }));
-				goto(`/compose/${project.id}`, { invalidateAll: true });
+				goto(`/projects/${project.id}`, { invalidateAll: true });
 			}
 		});
 	}

@@ -66,7 +66,7 @@
 				loading={isLoading.updating}
 				disabled={isLoading.updating}
 			/>
-			<ArcaneButton action="create" customLabel={m.compose_create_project()} onclick={() => goto(`/compose/new`)} />
+			<ArcaneButton action="create" customLabel={m.compose_create_project()} onclick={() => goto(`/projects/new`)} />
 			<ArcaneButton
 				action="restart"
 				customLabel={m.common_refresh()}
