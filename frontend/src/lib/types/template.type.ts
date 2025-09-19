@@ -57,8 +57,6 @@ export interface TemplateRegistryConfig {
 	url: string;
 	name: string;
 	enabled: boolean;
-	last_updated?: string;
-	cache_ttl?: number;
 }
 
 export interface TemplateEnvVar {

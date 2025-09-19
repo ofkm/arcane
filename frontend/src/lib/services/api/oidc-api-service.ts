@@ -13,11 +13,6 @@ export interface OidcUserInfo {
 	groups?: string[];
 }
 
-// export interface OidcStatus {
-// 	envForced: boolean;
-// 	envConfigured: boolean;
-// }
-
 export default class OidcAPIService extends BaseAPIService {
 	async getAuthUrl(redirectUri: string): Promise<string> {
 		const response = (await this.handleResponse(this.api.post('/oidc/url', { redirectUri }))) as {
@@ -40,14 +35,5 @@ export default class OidcAPIService extends BaseAPIService {
 
 	async getStatus(): Promise<OidcStatusInfo> {
 		return this.handleResponse(this.api.get('/oidc/status'));
-	}
-
-	async getConfig(): Promise<OidcConfig & { redirectUri: string }> {
-		return this.handleResponse(this.api.get('/oidc/config'));
-	}
-
-	async updateConfig(config: Partial<OidcConfig>): Promise<OidcConfig> {
-		const { ...updatePayload } = config;
-		return this.handleResponse(this.api.put('/oidc/config', updatePayload));
 	}
 }

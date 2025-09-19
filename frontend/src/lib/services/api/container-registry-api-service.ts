@@ -9,10 +9,6 @@ export default class ContainerRegistryAPIService extends BaseAPIService {
 		return res.data;
 	}
 
-	async getAllRegistries(): Promise<ContainerRegistry[]> {
-		return this.handleResponse(this.api.get(`/container-registries`));
-	}
-
 	async getRegistry(id: string): Promise<ContainerRegistry> {
 		return this.handleResponse(this.api.get(`/container-registries/${id}`));
 	}

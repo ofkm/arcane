@@ -1,10 +1,3 @@
-export interface ProjectPort {
-	PublicPort?: number;
-	PrivatePort?: number;
-	Type?: string;
-	[key: string]: any;
-}
-
 export interface NetworkSettings {
 	Networks: Record<
 		string,

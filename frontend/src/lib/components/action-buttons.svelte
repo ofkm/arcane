@@ -341,23 +341,6 @@
 		});
 	}
 
-	async function handlePull() {
-		if (type === 'container') {
-			isLoading.pull = true;
-			await handleApiResultWithCallbacks({
-				result: await tryCatch(environmentAPI.pullContainerImage(id)),
-				message: m.images_pull_failed(),
-				setLoadingState: (value) => (isLoading.pull = value),
-				onSuccess: async () => {
-					toast.success(m.images_pulled_success());
-					onActionComplete();
-				}
-			});
-		} else {
-			await handleProjectPull();
-		}
-	}
-
 	async function handleProjectPull() {
 		resetPullState();
 		projectPulling = true;
@@ -479,10 +462,8 @@
 				loading={projectPulling}
 				icon={DownloadIcon}
 			>
-				<ArcaneButton action="pull" onclick={() => handlePull()} loading={projectPulling} />
+				<ArcaneButton action="pull" onclick={() => handleProjectPull()} loading={projectPulling} />
 			</ProgressPopover>
-		{:else}
-			<ArcaneButton action="pull" onclick={() => handlePull()} loading={uiLoading.pulling} />
 		{/if}
 
 		<ArcaneButton

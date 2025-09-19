@@ -69,12 +69,7 @@
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {
 							toast.success(m.events_delete_success({ title: safeTitle }));
-							events = await eventAPI.listPaginated(
-								requestOptions.pagination,
-								requestOptions.sort,
-								requestOptions.search,
-								requestOptions.filters
-							);
+							events = await eventAPI.getEvents(requestOptions);
 						}
 					});
 				}
@@ -189,8 +184,7 @@
 				items={events}
 				bind:requestOptions
 				bind:selectedIds
-				onRefresh={async (options) =>
-					(events = await eventAPI.listPaginated(options.pagination, options.sort, options.search, options.filters))}
+				onRefresh={async (options) => (events = await eventAPI.getEvents(options))}
 				{columns}
 				rowActions={RowActions}
 			/>

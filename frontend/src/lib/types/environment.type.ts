@@ -24,7 +24,3 @@ export interface UpdateEnvironmentDTO {
 	enabled?: boolean;
 	bootstrapToken?: string;
 }
-
-export interface EnvironmentResponse {
-	data: Environment;
-}

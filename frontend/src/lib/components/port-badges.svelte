@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { PortDto } from '$lib/types/container.type';
+	import type { ContainerPorts } from '$lib/types/container.type';
 	import { m } from '$lib/paraglide/messages';
 
-	let { ports = [] as PortDto[], baseServerUrl = '' } = $props<{
-		ports?: PortDto[];
+	let { ports = [] as ContainerPorts[], baseServerUrl = '' } = $props<{
+		ports?: ContainerPorts[];
 		baseServerUrl?: string;
 	}>();
 
@@ -14,19 +14,19 @@
 		ip?: string | null;
 	};
 
-	function getPublicPort(p: PortDto): string | null {
+	function getPublicPort(p: ContainerPorts): string | null {
 		return (p as any).publicPort?.toString?.() ?? (p as any).hostPort?.toString?.() ?? (p as any).published?.toString?.() ?? null;
 	}
 
-	function getPrivatePort(p: PortDto): string {
+	function getPrivatePort(p: ContainerPorts): string {
 		return ((p as any).privatePort ?? (p as any).target ?? '?').toString();
 	}
 
-	function getProto(p: PortDto): string | undefined {
+	function getProto(p: ContainerPorts): string | undefined {
 		return (p as any).type ?? (p as any).protocol ?? undefined;
 	}
 
-	function normalize(p: PortDto): NormalizedPort | null {
+	function normalize(p: ContainerPorts): NormalizedPort | null {
 		const hostPort = getPublicPort(p);
 		if (!hostPort) return null;
 		return {
@@ -37,7 +37,7 @@
 		};
 	}
 
-	function uniquePublished(list: PortDto[]): NormalizedPort[] {
+	function uniquePublished(list: ContainerPorts[]): NormalizedPort[] {
 		const map = new Map<string, NormalizedPort>();
 		for (const p of list) {
 			const n = normalize(p);

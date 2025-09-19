@@ -30,29 +30,19 @@ export type Paginated<T> = {
 	pagination: PaginationResponse;
 };
 
-export interface PaginatedApiResponse<T> {
-	success: boolean;
-	data: T[];
-	pagination: PaginationResponse;
-}
+// export interface PaginatedApiResponse<T> {
+// 	success: boolean;
+// 	data: T[];
+// 	pagination: PaginationResponse;
+// }
 
-export interface SortedPaginationRequest {
-	pagination: {
-		page: number;
-		limit: number;
-	};
-	sort: {
-		column: string;
-		direction: 'asc' | 'desc';
-	};
-}
-
-export interface ExternalPagination {
-	pageSize: number;
-	currentPage: number;
-	totalPages: number;
-	totalItems: number;
-}
-
-export const DEFAULT_PAGE_SIZE = 20;
-export const MAX_PAGE_SIZE = 100;
+// export interface SortedPaginationRequest {
+// 	pagination: {
+// 		page: number;
+// 		limit: number;
+// 	};
+// 	sort: {
+// 		column: string;
+// 		direction: 'asc' | 'desc';
+// 	};
+// }
