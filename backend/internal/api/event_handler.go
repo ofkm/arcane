@@ -2,8 +2,6 @@ package api
 
 import (
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -150,35 +148,5 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    gin.H{"message": "Event deleted successfully"},
-	})
-}
-
-func (h *EventHandler) DeleteOldEvents(c *gin.Context) {
-	daysStr := c.Query("days")
-	if daysStr == "" {
-		daysStr = c.Query("olderThanDays")
-	}
-
-	days, err := strconv.Atoi(daysStr)
-	if err != nil || days <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid or missing 'days' parameter"},
-		})
-		return
-	}
-
-	duration := time.Duration(days) * 24 * time.Hour
-	if err := h.eventService.DeleteOldEvents(c.Request.Context(), duration); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to delete old events: " + err.Error()},
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Old events deleted successfully"},
 	})
 }

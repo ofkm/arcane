@@ -342,39 +342,6 @@ func (h *ContainerHandler) GetContainerStatusCounts(c *gin.Context) {
 	})
 }
 
-func (h *ContainerHandler) IsImageInUse(c *gin.Context) {
-	imageID := c.Param("imageId")
-	if imageID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Image ID is required"},
-		})
-		return
-	}
-
-	containers, _, _, _, err := h.dockerService.GetAllContainers(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to list containers: " + err.Error()},
-		})
-		return
-	}
-
-	inUse := false
-	for _, container := range containers {
-		if container.ImageID == imageID || container.Image == imageID {
-			inUse = true
-			break
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"inUse": inUse},
-	})
-}
-
 func (h *ContainerHandler) Create(c *gin.Context) {
 	var req dto.CreateContainerDto
 	if err := c.ShouldBindJSON(&req); err != nil {

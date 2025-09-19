@@ -95,6 +95,7 @@ func NewEnvironmentHandler(
 		apiGroup.DELETE("/:id/images/:imageId", handler.RemoveImage)
 		apiGroup.POST("/:id/images/pull", handler.PullImage)
 		apiGroup.POST("/:id/images/prune", handler.PruneImages)
+		apiGroup.GET("/:id/images/counts", handler.GetImageUsageCounts)
 
 		apiGroup.GET("/:id/networks/counts", handler.GetNetworkUsageCounts)
 		apiGroup.GET("/:id/networks", handler.GetNetworks)

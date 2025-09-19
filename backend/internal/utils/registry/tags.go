@@ -65,12 +65,6 @@ func (c *Client) GetImageTags(ctx context.Context, registry, repository, token s
 	return all, nil
 }
 
-func (c *Client) GetImageTagsTimed(ctx context.Context, registry, repository, token string) ([]string, time.Duration, error) {
-	start := time.Now()
-	t, err := c.GetImageTags(ctx, registry, repository, token)
-	return t, time.Since(start), err
-}
-
 func parseLinkHeader(h string) string {
 	if h == "" {
 		return ""

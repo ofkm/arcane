@@ -23,11 +23,6 @@ func NewImagePollingJob(scheduler *Scheduler, imageUpdateService *services.Image
 	}
 }
 
-func RegisterImagePollingJob(ctx context.Context, scheduler *Scheduler, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService) error {
-	j := NewImagePollingJob(scheduler, imageUpdateService, settingsService)
-	return j.Register(ctx)
-}
-
 func (j *ImagePollingJob) Register(ctx context.Context) error {
 	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
 	pollingInterval := j.settingsService.GetIntSetting(ctx, "pollingInterval", 60)

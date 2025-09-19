@@ -23,11 +23,6 @@ func NewAutoUpdateJob(scheduler *Scheduler, updaterService *services.UpdaterServ
 	}
 }
 
-func RegisterAutoUpdateJob(ctx context.Context, scheduler *Scheduler, updaterService *services.UpdaterService, settingsService *services.SettingsService) error {
-	j := NewAutoUpdateJob(scheduler, updaterService, settingsService)
-	return j.Register(ctx)
-}
-
 func (j *AutoUpdateJob) Register(ctx context.Context) error {
 	autoUpdateEnabled := j.settingsService.GetBoolSetting(ctx, "autoUpdate", false)
 	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)

@@ -14,7 +14,7 @@ func ComposePull(ctx context.Context, proj *types.Project) error {
 		return err
 	}
 	defer c.Close()
-	return c.Pull(ctx, proj, api.PullOptions{})
+	return c.svc.Pull(ctx, proj, api.PullOptions{})
 }
 
 func ComposeRestart(ctx context.Context, proj *types.Project, services []string) error {
@@ -23,7 +23,7 @@ func ComposeRestart(ctx context.Context, proj *types.Project, services []string)
 		return err
 	}
 	defer c.Close()
-	return c.Restart(ctx, proj, services)
+	return c.svc.Restart(ctx, proj.Name, api.RestartOptions{Services: services})
 }
 
 func ComposeUp(ctx context.Context, proj *types.Project, services []string) error {
@@ -41,7 +41,8 @@ func ComposeUp(ctx context.Context, proj *types.Project, services []string) erro
 		Services: proj.ServiceNames(),
 		Wait:     true,
 	}
-	return c.Up(ctx, proj, api.UpOptions{Create: upOptions, Start: startOptions})
+
+	return c.svc.Up(ctx, proj, api.UpOptions{Create: upOptions, Start: startOptions})
 }
 
 func ComposePs(ctx context.Context, proj *types.Project, services []string, all bool) ([]api.ContainerSummary, error) {
@@ -51,9 +52,7 @@ func ComposePs(ctx context.Context, proj *types.Project, services []string, all 
 	}
 	defer c.Close()
 
-	return c.Ps(ctx, proj, api.PsOptions{
-		All: all,
-	})
+	return c.svc.Ps(ctx, proj.Name, api.PsOptions{All: all})
 }
 
 func ComposeDown(ctx context.Context, proj *types.Project, removeVolumes bool) error {
@@ -62,7 +61,8 @@ func ComposeDown(ctx context.Context, proj *types.Project, removeVolumes bool) e
 		return err
 	}
 	defer c.Close()
-	return c.Down(ctx, proj, api.DownOptions{RemoveOrphans: true, Volumes: removeVolumes})
+
+	return c.svc.Down(ctx, proj.Name, api.DownOptions{RemoveOrphans: true, Volumes: removeVolumes})
 }
 
 func ComposeLogs(ctx context.Context, projectName string, out io.Writer, follow bool, tail string) error {
@@ -71,5 +71,6 @@ func ComposeLogs(ctx context.Context, projectName string, out io.Writer, follow 
 		return err
 	}
 	defer c.Close()
-	return c.Logs(ctx, projectName, out, api.LogOptions{Follow: follow, Tail: tail})
+
+	return c.svc.Logs(ctx, projectName, writerConsumer{out: out}, api.LogOptions{Follow: follow, Tail: tail})
 }

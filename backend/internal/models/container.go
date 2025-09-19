@@ -21,7 +21,3 @@ type Container struct {
 
 	BaseModel
 }
-
-func (Container) TableName() string {
-	return "containers"
-}

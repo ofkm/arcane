@@ -48,17 +48,6 @@ func NewAnalyticsJob(
 	}
 }
 
-func RegisterAnalyticsJob(
-	ctx context.Context,
-	scheduler *Scheduler,
-	settingsService *services.SettingsService,
-	httpClient *http.Client,
-	cfg *config.Config,
-) error {
-	j := NewAnalyticsJob(scheduler, settingsService, httpClient, cfg)
-	return j.Register(ctx)
-}
-
 func (j *AnalyticsJob) Register(ctx context.Context) error {
 	if j.cfg.AnalyticsDisabled || !j.isProduction() {
 		slog.InfoContext(ctx, "analytics disabled or not in production; heartbeat job not registered",
