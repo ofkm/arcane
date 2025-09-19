@@ -14,16 +14,20 @@
 	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import TrashIcon from '@lucide/svelte/icons/trash';
+	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 
 	let {
 		callback,
-		settings
+		settings,
+		hasChanges = $bindable(),
+		isLoading = $bindable(false)
 	}: {
 		settings: Settings;
 		callback: (appConfig: Partial<Settings>) => Promise<void>;
+		hasChanges: boolean;
+		isLoading: boolean;
 	} = $props();
 
-	let isLoading = $state(false);
 	let pruneMode = $state(settings.dockerPruneMode);
 
 	type PollingIntervalMode = 'hourly' | 'daily' | 'weekly' | 'custom';
@@ -38,7 +42,6 @@
 			value: 'hourly',
 			minutes: 60,
 			label: m.hourly(),
-			// If these were swapped, fix them:
 			description: m.polling_hourly_description()
 		},
 		{
@@ -93,52 +96,19 @@
 		dockerPruneMode: z.enum(['all', 'dangling'])
 	});
 
-	// Store original values for comparison
-	let originalSettings = $state({
-		pollingEnabled: settings.pollingEnabled,
-		pollingInterval: settings.pollingInterval,
-		autoUpdate: settings.autoUpdate,
-		autoUpdateInterval: settings.autoUpdateInterval,
-		dockerPruneMode: settings.dockerPruneMode
-	});
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, settings));
 
-	let formData = $derived({
-		pollingEnabled: settings.pollingEnabled,
-		pollingInterval: settings.pollingInterval,
-		autoUpdate: settings.autoUpdate,
-		autoUpdateInterval: settings.autoUpdateInterval,
-		dockerPruneMode: settings.dockerPruneMode
-	});
-
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
-
-	// Update original settings when settings prop changes
-	$effect(() => {
-		originalSettings.pollingEnabled = settings.pollingEnabled;
-		originalSettings.pollingInterval = settings.pollingInterval;
-		originalSettings.autoUpdate = settings.autoUpdate;
-		originalSettings.autoUpdateInterval = settings.autoUpdateInterval;
-		originalSettings.dockerPruneMode = settings.dockerPruneMode;
-	});
-
-	// Get form state context from layout
-	const formState = getContext('settingsFormState') as any;
-
-	// Track if any changes have been made
-	const hasChanges = $derived(
-		$formInputs.pollingEnabled.value !== originalSettings.pollingEnabled ||
-		$formInputs.pollingInterval.value !== originalSettings.pollingInterval ||
-		$formInputs.autoUpdate.value !== originalSettings.autoUpdate ||
-		$formInputs.autoUpdateInterval.value !== originalSettings.autoUpdateInterval ||
-		$formInputs.dockerPruneMode.value !== originalSettings.dockerPruneMode
+	const formHasChanges = $derived.by(
+		() =>
+			$formInputs.pollingEnabled.value !== settings.pollingEnabled ||
+			$formInputs.pollingInterval.value !== settings.pollingInterval ||
+			$formInputs.autoUpdate.value !== settings.autoUpdate ||
+			$formInputs.autoUpdateInterval.value != settings.autoUpdateInterval ||
+			$formInputs.dockerPruneMode.value != settings.dockerPruneMode
 	);
 
-	// Update the header state when form state changes
 	$effect(() => {
-		if (formState) {
-			formState.hasChanges = hasChanges;
-			formState.isLoading = isLoading;
-		}
+		hasChanges = formHasChanges;
 	});
 
 	// Keep form value in sync with preset selection unless "custom"
@@ -166,15 +136,15 @@
 	}
 
 	function resetForm() {
-		$formInputs.pollingEnabled.value = originalSettings.pollingEnabled;
-		$formInputs.pollingInterval.value = originalSettings.pollingInterval;
-		$formInputs.autoUpdate.value = originalSettings.autoUpdate;
-		$formInputs.autoUpdateInterval.value = originalSettings.autoUpdateInterval;
-		$formInputs.dockerPruneMode.value = originalSettings.dockerPruneMode;
+		$formInputs.pollingEnabled.value = settings.pollingEnabled;
+		$formInputs.pollingInterval.value = settings.pollingInterval;
+		$formInputs.autoUpdate.value = settings.autoUpdate;
+		$formInputs.autoUpdateInterval.value = settings.autoUpdateInterval;
+		$formInputs.dockerPruneMode.value = settings.dockerPruneMode;
 	}
 
-	// Register save and reset functions with the header on mount
 	onMount(() => {
+		const formState = getContext('settingsFormState') as any;
 		if (formState) {
 			formState.saveFunction = onSubmit;
 			formState.resetFunction = resetForm;
@@ -196,7 +166,7 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-6 py-4">
+		<Card.Content class="px-3 py-4 sm:px-6">
 			<div class="space-y-3">
 				<SwitchWithLabel
 					id="pollingEnabled"
@@ -204,9 +174,9 @@
 					description={m.docker_enable_polling_description()}
 					bind:checked={$formInputs.pollingEnabled.value}
 				/>
-				
+
 				{#if $formInputs.pollingEnabled.value}
-					<div class="space-y-3 pl-3 border-l-2 border-primary/20">
+					<div class="border-primary/20 space-y-3 border-l-2 pl-3">
 						<SelectWithLabel
 							id="pollingIntervalMode"
 							name="pollingIntervalMode"
@@ -215,10 +185,10 @@
 							placeholder="Select interval"
 							options={imagePollingOptions.map(({ value, label, description }) => ({ value, label, description }))}
 						/>
-						
+
 						{#if pollingIntervalMode === 'custom'}
-							<FormInput
-								bind:input={$formInputs.pollingInterval}
+							<TextInputWithLabel
+								bind:value={$formInputs.pollingInterval.value}
 								label={m.custom_polling_interval()}
 								placeholder={m.docker_polling_interval_placeholder()}
 								helpText={m.docker_polling_interval_description()}
@@ -253,7 +223,7 @@
 					</div>
 				</div>
 			</Card.Header>
-			<Card.Content class="px-3 sm:px-6 py-4">
+			<Card.Content class="px-3 py-4 sm:px-6">
 				<div class="space-y-3">
 					<SwitchWithLabel
 						id="autoUpdateSwitch"
@@ -261,11 +231,11 @@
 						description={m.docker_auto_update_description()}
 						bind:checked={$formInputs.autoUpdate.value}
 					/>
-					
+
 					{#if $formInputs.autoUpdate.value}
-						<div class="pl-3 border-l-2 border-primary/20">
-							<FormInput
-								bind:input={$formInputs.autoUpdateInterval}
+						<div class="border-primary/20 border-l-2 pl-3">
+							<TextInputWithLabel
+								bind:value={$formInputs.autoUpdateInterval.value}
 								label={m.docker_auto_update_interval_label()}
 								placeholder={m.docker_auto_update_interval_placeholder()}
 								helpText={m.docker_auto_update_interval_description()}
@@ -291,7 +261,7 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-6 py-4">
+		<Card.Content class="px-3 py-4 sm:px-6">
 			<SelectWithLabel
 				id="dockerPruneMode"
 				name="pruneMode"
@@ -305,4 +275,3 @@
 		</Card.Content>
 	</Card.Root>
 </div>
-

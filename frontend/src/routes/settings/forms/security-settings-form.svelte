@@ -19,14 +19,17 @@
 	let {
 		settings,
 		oidcStatus,
-		callback
+		callback,
+		hasChanges = $bindable(),
+		isLoading = $bindable(false)
 	}: {
 		settings: Settings;
 		oidcStatus: OidcStatusInfo;
 		callback: (appConfig: Partial<Settings>) => Promise<void>;
+		hasChanges: boolean;
+		isLoading: boolean;
 	} = $props();
 
-	let isLoading = $state({ saving: false });
 	let showOidcConfigDialog = $state(false);
 
 	let oidcConfigForm = $state({
@@ -61,48 +64,18 @@
 			}
 		});
 
-	// Store original values for comparison
-	let originalSettings = $state({
-		authLocalEnabled: settings.authLocalEnabled,
-		authOidcEnabled: settings.authOidcEnabled,
-		authSessionTimeout: settings.authSessionTimeout,
-		authPasswordPolicy: settings.authPasswordPolicy
-	});
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, settings));
 
-	let formData = $derived({
-		authLocalEnabled: settings.authLocalEnabled,
-		authOidcEnabled: settings.authOidcEnabled,
-		authSessionTimeout: settings.authSessionTimeout,
-		authPasswordPolicy: settings.authPasswordPolicy
-	});
-
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
-
-	// Update original settings when settings prop changes
-	$effect(() => {
-		originalSettings.authLocalEnabled = settings.authLocalEnabled;
-		originalSettings.authOidcEnabled = settings.authOidcEnabled;
-		originalSettings.authSessionTimeout = settings.authSessionTimeout;
-		originalSettings.authPasswordPolicy = settings.authPasswordPolicy;
-	});
-
-	// Get form state context from layout
-	const formState = getContext('settingsFormState') as any;
-
-	// Track if any changes have been made
-	const hasChanges = $derived(
-		$formInputs.authLocalEnabled.value !== originalSettings.authLocalEnabled ||
-		$formInputs.authOidcEnabled.value !== originalSettings.authOidcEnabled ||
-		$formInputs.authSessionTimeout.value !== originalSettings.authSessionTimeout ||
-		$formInputs.authPasswordPolicy.value !== originalSettings.authPasswordPolicy
+	const formHasChanges = $derived.by(
+		() =>
+			$formInputs.authLocalEnabled.value !== settings.authLocalEnabled ||
+			$formInputs.authOidcEnabled.value !== settings.authOidcEnabled ||
+			$formInputs.authSessionTimeout.value !== settings.authSessionTimeout ||
+			$formInputs.authPasswordPolicy.value !== settings.authPasswordPolicy
 	);
 
-	// Update the header state when form state changes
 	$effect(() => {
-		if (formState) {
-			formState.hasChanges = hasChanges;
-			formState.isLoading = isLoading.saving;
-		}
+		hasChanges = formHasChanges;
 	});
 
 	// Helper: treat OIDC as active if forced by server or enabled in form
@@ -115,7 +88,7 @@
 			return;
 		}
 
-		isLoading.saving = true;
+		isLoading = true;
 
 		let authOidcConfig = settings.authOidcConfig;
 		if (data.authOidcEnabled && !oidcStatus.envForced) {
@@ -140,18 +113,18 @@
 				console.error('Failed to save settings:', error);
 				toast.error('Failed to save settings. Please try again.');
 			})
-			.finally(() => (isLoading.saving = false));
+			.finally(() => (isLoading = false));
 	}
 
 	function resetForm() {
-		$formInputs.authLocalEnabled.value = originalSettings.authLocalEnabled;
-		$formInputs.authOidcEnabled.value = originalSettings.authOidcEnabled;
-		$formInputs.authSessionTimeout.value = originalSettings.authSessionTimeout;
-		$formInputs.authPasswordPolicy.value = originalSettings.authPasswordPolicy;
+		$formInputs.authLocalEnabled.value = settings.authLocalEnabled;
+		$formInputs.authOidcEnabled.value = settings.authOidcEnabled;
+		$formInputs.authSessionTimeout.value = settings.authSessionTimeout;
+		$formInputs.authPasswordPolicy.value = settings.authPasswordPolicy;
 	}
 
-	// Register save and reset functions with the header on mount
 	onMount(() => {
+		const formState = getContext('settingsFormState') as any;
 		if (formState) {
 			formState.saveFunction = onSubmit;
 			formState.resetFunction = resetForm;
@@ -196,12 +169,12 @@
 
 	async function handleSaveOidcConfig() {
 		try {
-			isLoading.saving = true;
+			isLoading = true;
 			$formInputs.authOidcEnabled.value = true;
 
 			const data = form.validate();
 			if (!data) {
-				isLoading.saving = false;
+				isLoading = false;
 				return;
 			}
 
@@ -222,7 +195,7 @@
 			toast.success(m.security_oidc_saved());
 			showOidcConfigDialog = false;
 		} finally {
-			isLoading.saving = false;
+			isLoading = false;
 		}
 	}
 </script>
@@ -241,7 +214,7 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-6 py-4">
+		<Card.Content class="px-3 py-4 sm:px-6">
 			<div class="space-y-3">
 				<SwitchWithLabel
 					id="localAuthSwitch"
@@ -298,7 +271,7 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-6 py-4">
+		<Card.Content class="px-3 py-4 sm:px-6">
 			<FormInput
 				bind:input={$formInputs.authSessionTimeout}
 				label={m.security_session_timeout_label()}
@@ -322,16 +295,16 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-6 py-4">
+		<Card.Content class="px-3 py-4 sm:px-6">
 			<Tooltip.Provider>
-				<div class="grid grid-cols-1 gap-2 sm:gap-3 sm:grid-cols-3" role="group" aria-labelledby="passwordPolicyLabel">
+				<div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-labelledby="passwordPolicyLabel">
 					<Tooltip.Root>
 						<Tooltip.Trigger>
 							<Button
 								variant={$formInputs.authPasswordPolicy.value === 'basic' ? 'default' : 'outline'}
 								class={$formInputs.authPasswordPolicy.value === 'basic'
-									? 'arcane-button-create w-full text-xs sm:text-sm h-12'
-									: 'arcane-button-restart w-full text-xs sm:text-sm h-12'}
+									? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
+									: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
 								onclick={() => ($formInputs.authPasswordPolicy.value = 'basic')}
 								type="button"
 								>{m.security_password_policy_basic()}
@@ -345,8 +318,8 @@
 							<Button
 								variant={$formInputs.authPasswordPolicy.value === 'standard' ? 'default' : 'outline'}
 								class={$formInputs.authPasswordPolicy.value === 'standard'
-									? 'arcane-button-create w-full text-xs sm:text-sm h-12'
-									: 'arcane-button-restart w-full text-xs sm:text-sm h-12'}
+									? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
+									: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
 								onclick={() => ($formInputs.authPasswordPolicy.value = 'standard')}
 								type="button"
 								>{m.security_password_policy_standard()}
@@ -360,8 +333,8 @@
 							<Button
 								variant={$formInputs.authPasswordPolicy.value === 'strong' ? 'default' : 'outline'}
 								class={$formInputs.authPasswordPolicy.value === 'strong'
-									? 'arcane-button-create w-full text-xs sm:text-sm h-12'
-									: 'arcane-button-restart w-full text-xs sm:text-sm h-12'}
+									? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
+									: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
 								onclick={() => ($formInputs.authPasswordPolicy.value = 'strong')}
 								type="button"
 								>{m.security_password_policy_strong()}

@@ -36,6 +36,7 @@
 	} = $props();
 
 	const id = label?.toLowerCase().replace(/ /g, '-');
+	let inputValue = $derived(input?.value);
 </script>
 
 <div {...restProps}>
@@ -50,11 +51,11 @@
 			{@render children()}
 		{:else if input}
 			{#if type === 'switch'}
-				<Switch {id} bind:checked={input.value as boolean} {disabled} />
+				<Switch {id} bind:checked={inputValue as boolean} {disabled} />
 			{:else if type === 'textarea'}
-				<Textarea {id} {placeholder} {rows} bind:value={input.value as string} {disabled} />
+				<Textarea {id} {placeholder} {rows} bind:value={inputValue as string} {disabled} />
 			{:else}
-				<Input {id} {placeholder} {type} bind:value={input.value} {disabled} {autocomplete} />
+				<Input {id} {placeholder} {type} bind:value={inputValue} {disabled} {autocomplete} />
 			{/if}
 		{/if}
 		{#if input?.error}

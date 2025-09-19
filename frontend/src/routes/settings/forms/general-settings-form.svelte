@@ -3,23 +3,25 @@
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
 	import * as Card from '$lib/components/ui/card';
-	import FormInput from '$lib/components/form/form-input.svelte';
 	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import FolderIcon from '@lucide/svelte/icons/folder';
 	import UserIcon from '@lucide/svelte/icons/user';
+	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 
 	let {
 		settings,
-		callback
+		callback,
+		hasChanges = $bindable(),
+		isLoading = $bindable(false)
 	}: {
 		settings: Settings;
 		callback: (appConfig: Partial<Settings>) => Promise<void>;
+		hasChanges: boolean;
+		isLoading: boolean;
 	} = $props();
-
-	let isLoading = $state(false);
 
 	const formSchema = z.object({
 		projectsDirectory: z.string().min(1, m.general_projects_directory_required()),
@@ -27,44 +29,17 @@
 		enableGravatar: z.boolean()
 	});
 
-	// Store original values for comparison
-	let originalSettings = $state({
-		projectsDirectory: settings.projectsDirectory,
-		baseServerUrl: settings.baseServerUrl,
-		enableGravatar: settings.enableGravatar
-	});
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, settings));
 
-	let formData = $derived({
-		projectsDirectory: settings.projectsDirectory,
-		baseServerUrl: settings.baseServerUrl,
-		enableGravatar: settings.enableGravatar
-	});
-
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
-
-	// Update original settings when settings prop changes
-	$effect(() => {
-		originalSettings.projectsDirectory = settings.projectsDirectory;
-		originalSettings.baseServerUrl = settings.baseServerUrl;
-		originalSettings.enableGravatar = settings.enableGravatar;
-	});
-
-	// Get form state context from layout
-	const formState = getContext('settingsFormState') as any;
-
-	// Track if any changes have been made
-	const hasChanges = $derived(
-		$formInputs.projectsDirectory.value !== originalSettings.projectsDirectory ||
-		$formInputs.baseServerUrl.value !== originalSettings.baseServerUrl ||
-		$formInputs.enableGravatar.value !== originalSettings.enableGravatar
+	const formHasChanges = $derived.by(
+		() =>
+			$formInputs.projectsDirectory.value !== settings.projectsDirectory ||
+			$formInputs.baseServerUrl.value !== settings.baseServerUrl ||
+			$formInputs.enableGravatar.value !== settings.enableGravatar
 	);
 
-	// Update the header state when form state changes
 	$effect(() => {
-		if (formState) {
-			formState.hasChanges = hasChanges;
-			formState.isLoading = isLoading;
-		}
+		hasChanges = formHasChanges;
 	});
 
 	async function onSubmit() {
@@ -85,13 +60,13 @@
 	}
 
 	function resetForm() {
-		$formInputs.projectsDirectory.value = originalSettings.projectsDirectory;
-		$formInputs.baseServerUrl.value = originalSettings.baseServerUrl;
-		$formInputs.enableGravatar.value = originalSettings.enableGravatar;
+		$formInputs.projectsDirectory.value = settings.projectsDirectory;
+		$formInputs.baseServerUrl.value = settings.baseServerUrl;
+		$formInputs.enableGravatar.value = settings.enableGravatar;
 	}
 
-	// Register save and reset functions with the header on mount
 	onMount(() => {
+		const formState = getContext('settingsFormState') as any;
 		if (formState) {
 			formState.saveFunction = onSubmit;
 			formState.resetFunction = resetForm;
@@ -113,18 +88,18 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-6 py-4">
+		<Card.Content class="px-3 py-4 sm:px-6">
 			<div class="space-y-3">
-				<FormInput
-					bind:input={$formInputs.projectsDirectory}
+				<TextInputWithLabel
+					bind:value={$formInputs.projectsDirectory.value}
 					label={m.general_projects_directory_label()}
 					placeholder={m.general_projects_directory_placeholder()}
 					helpText={m.general_projects_directory_help()}
 					type="text"
 				/>
 
-				<FormInput
-					bind:input={$formInputs.baseServerUrl}
+				<TextInputWithLabel
+					bind:value={$formInputs.baseServerUrl.value}
 					label={m.general_base_url_label()}
 					placeholder={m.general_base_url_placeholder()}
 					helpText={m.general_base_url_help()}
@@ -147,7 +122,7 @@
 				</div>
 			</div>
 		</Card.Header>
-		<Card.Content class="px-3 sm:px-6 py-4">
+		<Card.Content class="px-3 py-4 sm:px-6">
 			<SwitchWithLabel
 				id="enableGravatar"
 				label={m.general_enable_gravatar_label()}
@@ -157,4 +132,3 @@
 		</Card.Content>
 	</Card.Root>
 </div>
-
