@@ -1,0 +1,33 @@
+/* Dropdown overflow prevention */
+[data-slot="select-content"] {
+	/* Prevent horizontal overflow */
+	max-width: calc(100vw - 2rem) !important;
+	/* Ensure the dropdown has the same width as its trigger */
+	width: var(--radix-popper-anchor-width) !important;
+	min-width: var(--radix-popper-anchor-width) !important;
+}
+
+/* Ensure dropdown menus also respect viewport boundaries */
+[data-slot="dropdown-menu-content"] {
+	max-width: calc(100vw - 2rem) !important;
+}
+
+/* Force proper positioning for select content */
+[data-radix-popper-content-wrapper] {
+	/* Prevent content from extending beyond viewport */
+	max-width: 100vw !important;
+	overflow: visible !important;
+}
+
+/* Specific fix for bits-ui select content */
+[data-bits-select-content] {
+	max-width: calc(100vw - 2rem) !important;
+}
+
+/* Responsive dropdown adjustments */
+@media (max-width: 768px) {
+	[data-slot="select-content"],
+	[data-slot="dropdown-menu-content"] {
+		max-width: calc(100vw - 1rem) !important;
+	}
+}

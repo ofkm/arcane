@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '$lib/styles/dropdown.css';
 	import { cn } from '$lib/utils.js';
 	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 
