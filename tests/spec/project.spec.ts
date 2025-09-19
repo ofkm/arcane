@@ -33,9 +33,9 @@ test.beforeEach(async ({ page }) => {
   console.log(`Found ${realProjects.length} real projects for testing`);
 });
 
-test.describe('Compose Projects Page', () => {
+test.describe('Projects Page', () => {
   test('should display the main heading and description', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Compose Projects', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projects', level: 1 })).toBeVisible();
     await expect(page.getByText('View and Manage Compose Projects')).toBeVisible();
   });
 
