@@ -3,7 +3,6 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { toast } from 'svelte-sonner';
 	import type { Settings } from '$lib/types/settings.type';
-	import FormInput from '$lib/components/form/form-input.svelte';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';

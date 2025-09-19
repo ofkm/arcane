@@ -4,7 +4,6 @@
 	import { createForm } from '$lib/utils/form.utils';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
-	import FormInput from '$lib/components/form/form-input.svelte';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
 	import { toast } from 'svelte-sonner';
@@ -15,6 +14,7 @@
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import KeyIcon from '@lucide/svelte/icons/key';
+	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 
 	let {
 		settings,
@@ -272,8 +272,8 @@
 			</div>
 		</Card.Header>
 		<Card.Content class="px-3 py-4 sm:px-6">
-			<FormInput
-				bind:input={$formInputs.authSessionTimeout}
+			<TextInputWithLabel
+				bind:value={$formInputs.authSessionTimeout.value}
 				label={m.security_session_timeout_label()}
 				placeholder={m.security_session_timeout_placeholder()}
 				helpText={m.security_session_timeout_description()}
