@@ -1,5 +1,4 @@
 import { goto } from '$app/navigation';
-import { browser } from '$app/environment';
 import { invalidateAll } from '$app/navigation';
 import BaseAPIService from './api-service';
 import userStore from '$lib/stores/user-store';
@@ -20,38 +19,14 @@ type LoginResponseData = {
 
 export class AuthService extends BaseAPIService {
 	async login(credentials: LoginCredentials): Promise<User> {
-		try {
-			const data = await this.handleResponse<LoginResponseData>(this.api.post('/auth/login', credentials));
-			const user = data.user as User;
+		const data = await this.handleResponse<LoginResponseData>(this.api.post('/auth/login', credentials));
+		const user = data.user as User;
 
-			userStore.setUser(user);
+		userStore.setUser(user);
+		await invalidateAll();
+		goto('/auth/login');
 
-			if (browser) {
-				await invalidateAll();
-				goto('/auth/login');
-			}
-
-			return user;
-		} catch (error: any) {
-			const errorMessage = error.response?.data?.error || 'Login failed';
-			throw new Error(errorMessage);
-		}
-	}
-
-	async logout(): Promise<void> {
-		try {
-			await this.api.post('/auth/logout');
-		} catch (error) {
-			console.error('Logout error:', error);
-		} finally {
-			// Clear user from store
-			userStore.clearUser();
-
-			if (browser) {
-				await invalidateAll();
-				goto('/auth/login');
-			}
-		}
+		return user;
 	}
 
 	async getCurrentUser(): Promise<User | null> {
@@ -67,14 +42,6 @@ export class AuthService extends BaseAPIService {
 			userStore.clearUser();
 			return null;
 		}
-	}
-
-	async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-		const response = await this.api.post('/auth/password', {
-			currentPassword: oldPassword,
-			newPassword
-		});
-		return response.data;
 	}
 }
 

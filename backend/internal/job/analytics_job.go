@@ -48,17 +48,6 @@ func NewAnalyticsJob(
 	}
 }
 
-func RegisterAnalyticsJob(
-	ctx context.Context,
-	scheduler *Scheduler,
-	settingsService *services.SettingsService,
-	httpClient *http.Client,
-	cfg *config.Config,
-) error {
-	j := NewAnalyticsJob(scheduler, settingsService, httpClient, cfg)
-	return j.Register(ctx)
-}
-
 func (j *AnalyticsJob) Register(ctx context.Context) error {
 	if j.cfg.AnalyticsDisabled || !j.isProduction() {
 		slog.InfoContext(ctx, "analytics disabled or not in production; heartbeat job not registered",
@@ -79,36 +68,6 @@ func (j *AnalyticsJob) Register(ctx context.Context) error {
 		j.Execute,
 		true, // run immediately on startup
 	)
-}
-
-func UpdateAnalyticsJobSchedule(
-	ctx context.Context,
-	scheduler *Scheduler,
-	settingsService *services.SettingsService,
-	httpClient *http.Client,
-	cfg *config.Config,
-) error {
-	j := NewAnalyticsJob(scheduler, settingsService, httpClient, cfg)
-	return j.Reschedule(ctx)
-}
-
-func (j *AnalyticsJob) Reschedule(ctx context.Context) error {
-	if j.cfg.AnalyticsDisabled || !j.isProduction() {
-		j.scheduler.RemoveJobByName(AnalyticsJobName)
-		slog.InfoContext(ctx, "analytics disabled or not in production; removed heartbeat job if present",
-			"analyticsDisabled", j.cfg.AnalyticsDisabled, "env", j.cfg.Environment)
-		return nil
-	}
-
-	slog.InfoContext(ctx, "analytics settings changed; rescheduling heartbeat job",
-		"jobName", AnalyticsJobName, "interval", analyticsInterval.String())
-
-	return j.scheduler.RescheduleDurationJobByName(ctx, AnalyticsJobName, analyticsInterval, j.Execute, true)
-}
-
-func (j *AnalyticsJob) Remove(ctx context.Context) {
-	j.scheduler.RemoveJobByName(AnalyticsJobName)
-	slog.InfoContext(ctx, "analytics heartbeat job removed", "jobName", AnalyticsJobName)
 }
 
 func (j *AnalyticsJob) Execute(parentCtx context.Context) error {

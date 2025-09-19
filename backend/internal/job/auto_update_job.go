@@ -23,11 +23,6 @@ func NewAutoUpdateJob(scheduler *Scheduler, updaterService *services.UpdaterServ
 	}
 }
 
-func RegisterAutoUpdateJob(ctx context.Context, scheduler *Scheduler, updaterService *services.UpdaterService, settingsService *services.SettingsService) error {
-	j := NewAutoUpdateJob(scheduler, updaterService, settingsService)
-	return j.Register(ctx)
-}
-
 func (j *AutoUpdateJob) Register(ctx context.Context) error {
 	autoUpdateEnabled := j.settingsService.GetBoolSetting(ctx, "autoUpdate", false)
 	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
@@ -89,11 +84,6 @@ func (j *AutoUpdateJob) Execute(ctx context.Context) error {
 	return nil
 }
 
-func UpdateAutoUpdateJobSchedule(ctx context.Context, scheduler *Scheduler, updaterService *services.UpdaterService, settingsService *services.SettingsService) error {
-	j := NewAutoUpdateJob(scheduler, updaterService, settingsService)
-	return j.Reschedule(ctx)
-}
-
 func (j *AutoUpdateJob) Reschedule(ctx context.Context) error {
 	autoUpdateEnabled := j.settingsService.GetBoolSetting(ctx, "autoUpdate", false)
 	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
@@ -113,9 +103,4 @@ func (j *AutoUpdateJob) Reschedule(ctx context.Context) error {
 	slog.InfoContext(ctx, "auto-update settings changed; rescheduling", "interval", interval.String())
 
 	return j.scheduler.RescheduleDurationJobByName(ctx, "auto-update", interval, j.Execute, false)
-}
-
-func (j *AutoUpdateJob) Remove(ctx context.Context) {
-	j.scheduler.RemoveJobByName("auto-update")
-	slog.InfoContext(ctx, "auto-update job removed")
 }

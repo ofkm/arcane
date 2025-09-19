@@ -1,11 +1,13 @@
 package registry
 
+import ref "github.com/distribution/reference"
+
 func GetRegistryAddress(imageRef string) (string, error) {
-	named, err := parseNormalizedNamed(imageRef)
+	named, err := ref.ParseNormalizedNamed(imageRef)
 	if err != nil {
 		return "", err
 	}
-	addr := referenceDomain(named)
+	addr := ref.Domain(named)
 	if addr == DefaultRegistryDomain {
 		return DefaultRegistryHost, nil
 	}

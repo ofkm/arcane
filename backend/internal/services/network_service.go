@@ -14,7 +14,6 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
-	"github.com/ofkm/arcane-backend/internal/utils/docker"
 )
 
 type NetworkService struct {
@@ -123,68 +122,6 @@ func (s *NetworkService) PruneNetworks(ctx context.Context) (*network.PruneRepor
 	}
 
 	return &report, nil
-}
-
-func (s *NetworkService) GetNetworksByDriver(ctx context.Context, driver string) ([]network.Summary, error) {
-	networks, _, _, _, err := s.dockerService.GetAllNetworks(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var filtered []network.Summary
-	for _, net := range networks {
-		if net.Driver == driver {
-			filtered = append(filtered, net)
-		}
-	}
-
-	return filtered, nil
-}
-
-func (s *NetworkService) GetDefaultNetworks(ctx context.Context) ([]network.Summary, error) {
-	networks, _, _, _, err := s.dockerService.GetAllNetworks(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var defaults []network.Summary
-	for _, net := range networks {
-		if docker.IsDefaultNetwork(net.Name) {
-			defaults = append(defaults, net)
-		}
-	}
-	return defaults, nil
-}
-
-func (s *NetworkService) GetNetworksByScope(ctx context.Context, scope string) ([]network.Summary, error) {
-	networks, _, _, _, err := s.dockerService.GetAllNetworks(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var filtered []network.Summary
-	for _, net := range networks {
-		if net.Scope == scope {
-			filtered = append(filtered, net)
-		}
-	}
-
-	return filtered, nil
-}
-
-func (s *NetworkService) GetUserDefinedNetworks(ctx context.Context) ([]network.Summary, error) {
-	networks, _, _, _, err := s.dockerService.GetAllNetworks(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var userDefined []network.Summary
-	for _, net := range networks {
-		if !docker.IsDefaultNetwork(net.Name) {
-			userDefined = append(userDefined, net)
-		}
-	}
-	return userDefined, nil
 }
 
 //nolint:gocognit

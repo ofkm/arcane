@@ -134,34 +134,6 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, dockerInfo)
 }
 
-func (h *SystemHandler) TestDockerConnection(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	dockerClient, err := h.dockerService.CreateConnection(ctx)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Failed to create Docker client: " + err.Error(),
-		})
-		return
-	}
-	defer dockerClient.Close()
-
-	_, err = dockerClient.Ping(ctx)
-	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"success": false,
-			"error":   "Docker is not accessible: " + err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Docker connection successful",
-	})
-}
-
 func (h *SystemHandler) PruneAll(c *gin.Context) {
 	ctx := c.Request.Context()
 	slog.InfoContext(ctx, "System prune operation initiated")

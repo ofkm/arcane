@@ -16,7 +16,6 @@ export const load: PageLoad = async ({ params }) => {
 
 		const volume = {
 			...volumeBase,
-			inUse: Boolean(usage?.inUse),
 			containers: Array.isArray(usage?.containers) ? usage.containers : []
 		};
 

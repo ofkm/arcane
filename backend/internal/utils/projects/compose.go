@@ -5,7 +5,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/flags"
 	"github.com/docker/compose/v2/pkg/api"
@@ -40,30 +39,6 @@ func (c *Client) Close() error {
 	return nil
 }
 
-func (c *Client) Up(ctx context.Context, proj *types.Project, opts api.UpOptions) error {
-	return c.svc.Up(ctx, proj, opts)
-}
-
-func (c *Client) Down(ctx context.Context, proj *types.Project, opts api.DownOptions) error {
-	return c.svc.Down(ctx, proj.Name, opts)
-}
-
-func (c *Client) Pull(ctx context.Context, proj *types.Project, opts api.PullOptions) error {
-	return c.svc.Pull(ctx, proj, opts)
-}
-
-func (c *Client) Restart(ctx context.Context, proj *types.Project, services []string) error {
-	return c.svc.Restart(ctx, proj.Name, api.RestartOptions{Services: services})
-}
-
-func (c *Client) Create(ctx context.Context, proj *types.Project, opts api.CreateOptions) error {
-	return c.svc.Create(ctx, proj, opts)
-}
-
-func (c *Client) Start(ctx context.Context, projectName string, opts api.StartOptions) error {
-	return c.svc.Start(ctx, projectName, opts)
-}
-
 type writerConsumer struct{ out io.Writer }
 
 func (w writerConsumer) Register(container string)    {}
@@ -87,12 +62,4 @@ func (w writerConsumer) Err(container, msg string) {
 		msg += "\n"
 	}
 	_, _ = io.WriteString(w.out, msg)
-}
-
-func (c *Client) Logs(ctx context.Context, projectName string, out io.Writer, opts api.LogOptions) error {
-	return c.svc.Logs(ctx, projectName, writerConsumer{out: out}, opts)
-}
-
-func (c *Client) Ps(ctx context.Context, proj *types.Project, opts api.PsOptions) ([]api.ContainerSummary, error) {
-	return c.svc.Ps(ctx, proj.Name, opts)
 }

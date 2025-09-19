@@ -29,26 +29,3 @@ export interface AutoUpdateResourceResult {
 	error?: string;
 	details?: Record<string, any>;
 }
-
-export interface AutoUpdateRecord {
-	id: string;
-	resourceId: string;
-	resourceType: string;
-	resourceName: string;
-	status: string;
-	startTime: string;
-	endTime?: string;
-	updateAvailable: boolean;
-	updateApplied: boolean;
-	oldImageVersions?: Record<string, string>;
-	newImageVersions?: Record<string, string>;
-	error?: string;
-	details?: Record<string, any>;
-}
-
-export interface AutoUpdateStatus {
-	updatingContainers: number;
-	updatingProjects: number;
-	containerIds: string[];
-	projectIds: string[];
-}

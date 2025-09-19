@@ -24,7 +24,7 @@
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { browser } from '$app/environment';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import type { ContainerDetailsDto, NetworkSettingsDto } from '$lib/types/container.type';
+	import type { ContainerDetailsDto, ContainerNetworkSettings } from '$lib/types/container.type';
 	import { m } from '$lib/paraglide/messages';
 	import PortBadges from '$lib/components/port-badges.svelte';
 
@@ -144,7 +144,7 @@
 	const memoryLimitFormatted = $derived(bytes.format(memoryLimitBytes));
 	const memoryUsagePercent = $derived(memoryLimitBytes > 0 ? (memoryUsageBytes / memoryLimitBytes) * 100 : 0);
 
-	const getPrimaryIpAddress = (networkSettings: NetworkSettingsDto | undefined | null): string => {
+	const getPrimaryIpAddress = (networkSettings: ContainerNetworkSettings | undefined | null): string => {
 		if (!networkSettings?.networks) return 'N/A';
 
 		for (const networkName in networkSettings.networks) {

@@ -30,33 +30,6 @@ func NewContainerService(db *database.DB, eventService *EventService, dockerServ
 	return &ContainerService{db: db, eventService: eventService, dockerService: dockerService}
 }
 
-func (s *ContainerService) PullContainerImage(ctx context.Context, containerID string) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	container, err := s.GetContainerByID(ctx, containerID)
-	if err != nil {
-		return fmt.Errorf("failed to get container: %w", err)
-	}
-
-	imageName := container.Image
-	if imageName == "" {
-		return fmt.Errorf("container has no image to pull")
-	}
-
-	reader, err := dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to pull image %s: %w", imageName, err)
-	}
-	defer reader.Close()
-
-	_, err = io.Copy(io.Discard, reader)
-	return err
-}
-
 func (s *ContainerService) StartContainer(ctx context.Context, containerID string, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {

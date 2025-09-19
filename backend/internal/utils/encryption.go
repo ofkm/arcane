@@ -213,7 +213,3 @@ func Decrypt(ciphertext string) (string, error) {
 
 	return string(plaintext), nil
 }
-
-func IsInitialized() bool {
-	return encryptionKey != nil
-}

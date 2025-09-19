@@ -195,11 +195,6 @@ func GetCurrentUser(c *gin.Context) (*models.User, bool) {
 	return u, ok
 }
 
-func IsAuthenticated(c *gin.Context) bool {
-	_, exists := GetCurrentUser(c)
-	return exists
-}
-
 func RequireAuthentication(c *gin.Context) (*models.User, bool) {
 	user, exists := GetCurrentUser(c)
 	if !exists {

@@ -121,16 +121,11 @@ func (h *ContainerHandler) PullImage(c *gin.Context) {
 		return
 	}
 
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "User not authenticated"},
-		})
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
-	err = h.imageService.PullImage(c.Request.Context(), imageName, c.Writer, *currentUser)
-	if err != nil {
+	if err := h.imageService.PullImage(c.Request.Context(), imageName, c.Writer, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    gin.H{"error": "Failed to pull image: " + err.Error()},
@@ -202,12 +197,8 @@ func (h *ContainerHandler) GetByID(c *gin.Context) {
 func (h *ContainerHandler) Start(c *gin.Context) {
 	id := c.Param("containerId")
 
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "User not authenticated"},
-		})
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
 	if err := h.containerService.StartContainer(c.Request.Context(), id, *currentUser); err != nil {
@@ -227,12 +218,8 @@ func (h *ContainerHandler) Start(c *gin.Context) {
 func (h *ContainerHandler) Stop(c *gin.Context) {
 	id := c.Param("containerId")
 
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "User not authenticated"},
-		})
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
 	if err := h.containerService.StopContainer(c.Request.Context(), id, *currentUser); err != nil {
@@ -252,12 +239,8 @@ func (h *ContainerHandler) Stop(c *gin.Context) {
 func (h *ContainerHandler) Restart(c *gin.Context) {
 	id := c.Param("containerId")
 
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "User not authenticated"},
-		})
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
 	if err := h.containerService.RestartContainer(c.Request.Context(), id, *currentUser); err != nil {
@@ -298,12 +281,8 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 	force := c.Query("force") == "true"
 	removeVolumes := c.Query("volumes") == "true"
 
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "User not authenticated"},
-		})
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
 	if err := h.containerService.DeleteContainer(c.Request.Context(), id, force, removeVolumes, *currentUser); err != nil {
@@ -339,39 +318,6 @@ func (h *ContainerHandler) GetContainerStatusCounts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    out,
-	})
-}
-
-func (h *ContainerHandler) IsImageInUse(c *gin.Context) {
-	imageID := c.Param("imageId")
-	if imageID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Image ID is required"},
-		})
-		return
-	}
-
-	containers, _, _, _, err := h.dockerService.GetAllContainers(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to list containers: " + err.Error()},
-		})
-		return
-	}
-
-	inUse := false
-	for _, container := range containers {
-		if container.ImageID == imageID || container.Image == imageID {
-			inUse = true
-			break
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"inUse": inUse},
 	})
 }
 
@@ -443,12 +389,8 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 		}
 	}
 
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "User not authenticated"},
-		})
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
 	containerJSON, err := h.containerService.CreateContainer(

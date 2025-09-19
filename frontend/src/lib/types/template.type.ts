@@ -57,27 +57,4 @@ export interface TemplateRegistryConfig {
 	url: string;
 	name: string;
 	enabled: boolean;
-	last_updated?: string;
-	cache_ttl?: number;
-}
-
-export interface TemplateEnvVar {
-	name: string;
-	label?: string;
-	description?: string;
-	default?: string;
-	preset?: boolean;
-	select?: TemplateSelectOption[];
-}
-
-export interface TemplateSelectOption {
-	text: string;
-	value: string;
-	default?: boolean;
-}
-
-export interface TemplateVolume {
-	container: string;
-	bind?: string;
-	readonly?: boolean;
 }

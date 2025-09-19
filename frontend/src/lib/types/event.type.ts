@@ -15,27 +15,3 @@ export interface Event {
 	createdAt: string;
 	updatedAt?: string;
 }
-
-export interface CreateEvent {
-	type: string;
-	severity?: 'info' | 'warning' | 'error' | 'success';
-	title: string;
-	description?: string;
-	resourceType?: string;
-	resourceId?: string;
-	resourceName?: string;
-	userId?: string;
-	username?: string;
-	environmentId?: string;
-	metadata?: Record<string, any>;
-}
-
-export interface EventListResponse {
-	events: Event[];
-	total: number;
-	page: number;
-	pageSize: number;
-	totalPages: number;
-	hasNext: boolean;
-	hasPrevious: boolean;
-}

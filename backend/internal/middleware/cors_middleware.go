@@ -18,12 +18,6 @@ func NewCORSMiddleware(cfg *config.Config) *CORSMiddleware {
 	return &CORSMiddleware{cfg: cfg}
 }
 
-func (m *CORSMiddleware) WithOrigins(origins []string) *CORSMiddleware {
-	clone := *m
-	clone.customOrigins = append([]string(nil), origins...)
-	return &clone
-}
-
 func (m *CORSMiddleware) Add() gin.HandlerFunc {
 	conf := cors.DefaultConfig()
 	conf.AllowOrigins = deriveAllowedOrigins(m.cfg, m.customOrigins)
@@ -68,7 +62,6 @@ func deriveAllowedOrigins(cfg *config.Config, custom []string) []string {
 		}
 	}
 
-	// Dev defaults
 	if cfg == nil || cfg.Environment != "production" {
 		origins = append(origins,
 			"http://localhost:3000", "http://127.0.0.1:3000",

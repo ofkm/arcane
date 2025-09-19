@@ -101,11 +101,11 @@ func (h *NetworkHandler) Create(c *gin.Context) {
 		return
 	}
 
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "data": dto.MessageDto{Message: "User not authenticated"}})
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
+
 	response, err := h.networkService.CreateNetwork(c.Request.Context(), req.Name, req.Options, *currentUser)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -130,11 +130,11 @@ func (h *NetworkHandler) Create(c *gin.Context) {
 func (h *NetworkHandler) Remove(c *gin.Context) {
 	id := c.Param("networkId")
 
-	currentUser, exists := middleware.GetCurrentUser(c)
-	if !exists || currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "data": dto.MessageDto{Message: "User not authenticated"}})
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
 		return
 	}
+
 	if err := h.networkService.RemoveNetwork(c.Request.Context(), id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

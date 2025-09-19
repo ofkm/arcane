@@ -7,11 +7,6 @@ export default class TemplateAPIService extends BaseAPIService {
 		return response.data?.data ?? [];
 	}
 
-	async getById(id: string): Promise<Template> {
-		const response = await this.api.get(`/templates/${encodeURIComponent(id)}`);
-		return response.data?.data;
-	}
-
 	async getTemplateContent(id: string): Promise<{
 		content: string;
 		envContent: string;
@@ -25,27 +20,6 @@ export default class TemplateAPIService extends BaseAPIService {
 			envContent: data.envContent,
 			template: data.template
 		};
-	}
-
-	async create(template: { name: string; description: string; content: string; envContent?: string }): Promise<Template> {
-		const response = await this.api.post('/templates', template);
-		return response.data?.data;
-	}
-
-	async update(
-		id: string,
-		template: {
-			name: string;
-			description: string;
-			content: string;
-			envContent?: string;
-		}
-	): Promise<void> {
-		await this.api.put(`/templates/${id}`, template);
-	}
-
-	async delete(id: string): Promise<void> {
-		await this.api.delete(`/templates/${id}`);
 	}
 
 	async download(id: string): Promise<Template> {
@@ -96,88 +70,5 @@ export default class TemplateAPIService extends BaseAPIService {
 
 	async deleteRegistry(id: string): Promise<void> {
 		await this.api.delete(`/templates/registries/${id}`);
-	}
-
-	async getByName(name: string): Promise<Template> {
-		const templates = await this.loadAll();
-		const template = templates.find((t) => t.name === name);
-		if (!template) {
-			throw new Error(`Template with name "${name}" not found`);
-		}
-		return template;
-	}
-
-	async search(query: string, category?: string): Promise<Template[]> {
-		const templates = await this.loadAll();
-		return templates.filter(
-			(template) =>
-				template.name.toLowerCase().includes(query.toLowerCase()) ||
-				template.description.toLowerCase().includes(query.toLowerCase())
-		);
-	}
-
-	async getCategories(): Promise<string[]> {
-		const templates = await this.loadAll();
-		const categories = new Set<string>();
-		templates.forEach((template) => {
-			if (template.metadata?.tags) {
-				const tags = Array.isArray(template.metadata.tags) ? template.metadata.tags : JSON.parse(template.metadata.tags || '[]');
-				tags.forEach((tag: string) => categories.add(tag));
-			}
-		});
-		return Array.from(categories);
-	}
-
-	async refresh(): Promise<{ updated: number; added: number; removed: number }> {
-		await this.loadAll();
-		return { updated: 0, added: 0, removed: 0 };
-	}
-
-	async validateTemplate(template: Partial<Template>): Promise<{
-		valid: boolean;
-		errors: string[];
-		warnings: string[];
-	}> {
-		const errors: string[] = [];
-		const warnings: string[] = [];
-
-		if (!template.name) errors.push('Template name is required');
-		if (!template.content) errors.push('Template content is required');
-
-		return {
-			valid: errors.length === 0,
-			errors,
-			warnings
-		};
-	}
-
-	async getTemplateByRegistry(registryId: string): Promise<Template[]> {
-		const templates = await this.loadAll();
-		return templates.filter((template) => template.registryId === registryId);
-	}
-
-	async importFromUrl(url: string): Promise<Template> {
-		throw new Error('Import from URL not yet implemented');
-	}
-
-	async exportTemplate(id: string): Promise<Blob> {
-		const template = await this.getById(id);
-		const content = JSON.stringify(template, null, 2);
-		return new Blob([content], { type: 'application/json' });
-	}
-
-	async refreshRegistry(id: string): Promise<void> {
-		await this.loadAll();
-	}
-
-	async getTemplates(registryId?: string): Promise<Template[]> {
-		if (registryId) {
-			return this.getTemplateByRegistry(registryId);
-		}
-		return this.loadAll();
-	}
-
-	async getTemplate(id: string): Promise<Template> {
-		return this.getById(id);
 	}
 }

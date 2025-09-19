@@ -1,3 +1,5 @@
+// Base Container Types
+
 export interface BaseContainer {
 	id: string;
 	names: string[];
@@ -10,20 +12,30 @@ export interface BaseContainer {
 	status: string;
 }
 
-export interface ContainerStatusCounts {
-	runningContainers: number;
-	stoppedContainers: number;
-	totalContainers: number;
+export interface ContainerSummaryDto extends BaseContainer {
+	ports: ContainerPorts[];
+	hostConfig: ContainerHostConfig;
+	networkSettings: ContainerNetworkSettings;
+	mounts: ContainerMounts[];
 }
 
-export interface PortDto {
+export interface ContainerPorts {
 	ip?: string;
 	privatePort: number;
 	publicPort?: number;
 	type: string;
 }
 
-export interface MountDto {
+export interface ContainerHostConfig {
+	networkMode: string;
+	restartPolicy?: string;
+}
+
+export interface ContainerNetworkSettings {
+	networks: Record<string, ContainerNetwork>;
+}
+
+export interface ContainerMounts {
 	type: string;
 	name?: string;
 	source?: string;
@@ -34,7 +46,7 @@ export interface MountDto {
 	propagation?: string;
 }
 
-export interface NetworkDto {
+export interface ContainerNetwork {
 	ipamConfig: any | null;
 	links: string[] | null;
 	aliases: string[] | null;
@@ -52,20 +64,12 @@ export interface NetworkDto {
 	dnsNames: string[] | null;
 }
 
-export interface HostConfigDto {
-	networkMode: string;
-	restartPolicy?: string;
-}
+// End Base Container Types
 
-export interface NetworkSettingsDto {
-	networks: Record<string, NetworkDto>;
-}
-
-export interface ContainerSummaryDto extends BaseContainer {
-	ports: PortDto[];
-	hostConfig: HostConfigDto;
-	networkSettings: NetworkSettingsDto;
-	mounts: MountDto[];
+export interface ContainerStatusCounts {
+	runningContainers: number;
+	stoppedContainers: number;
+	totalContainers: number;
 }
 
 export interface CreateContainerDto {
@@ -130,9 +134,9 @@ export interface ContainerDetailsDto {
 	created: string;
 	state: ContainerStateDto;
 	config: ContainerConfigDto;
-	hostConfig: HostConfigDto;
-	networkSettings: NetworkSettingsDto;
-	ports: PortDto[];
-	mounts: MountDto[];
+	hostConfig: ContainerHostConfig;
+	networkSettings: ContainerNetworkSettings;
+	ports: ContainerPorts[];
+	mounts: ContainerMounts[];
 	labels: Record<string, string>;
 }

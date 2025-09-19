@@ -23,11 +23,6 @@ func NewImagePollingJob(scheduler *Scheduler, imageUpdateService *services.Image
 	}
 }
 
-func RegisterImagePollingJob(ctx context.Context, scheduler *Scheduler, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService) error {
-	j := NewImagePollingJob(scheduler, imageUpdateService, settingsService)
-	return j.Register(ctx)
-}
-
 func (j *ImagePollingJob) Register(ctx context.Context) error {
 	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
 	pollingInterval := j.settingsService.GetIntSetting(ctx, "pollingInterval", 60)
@@ -94,11 +89,6 @@ func (j *ImagePollingJob) Execute(ctx context.Context) error {
 	return nil
 }
 
-func UpdateImagePollingJobSchedule(ctx context.Context, scheduler *Scheduler, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService) error {
-	j := NewImagePollingJob(scheduler, imageUpdateService, settingsService)
-	return j.Reschedule(ctx)
-}
-
 func (j *ImagePollingJob) Reschedule(ctx context.Context) error {
 	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
 	pollingInterval := j.settingsService.GetIntSetting(ctx, "pollingInterval", 60)
@@ -116,9 +106,4 @@ func (j *ImagePollingJob) Reschedule(ctx context.Context) error {
 	slog.InfoContext(ctx, "polling settings changed; rescheduling", "interval", interval.String())
 
 	return j.scheduler.RescheduleDurationJobByName(ctx, "image-polling", interval, j.Execute, false)
-}
-
-func (j *ImagePollingJob) Remove(ctx context.Context) {
-	j.scheduler.RemoveJobByName("image-polling")
-	slog.InfoContext(ctx, "image-polling job removed")
 }

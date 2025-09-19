@@ -4,25 +4,24 @@ import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/envir
 import type { ContainerCreateOptions, NetworkCreateOptions, VolumeCreateOptions, ContainerStats } from 'dockerode';
 import type { Project, ProjectStatusCounts } from '$lib/types/project.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
-import { browser } from '$app/environment';
 import type { ContainerStatusCounts, ContainerSummaryDto } from '$lib/types/container.type';
 import type { ImageSummaryDto, ImageUpdateInfoDto, ImageUsageCounts } from '$lib/types/image.type';
 import type { NetworkSummaryDto, NetworkUsageCounts } from '$lib/types/network.type';
 import type { VolumeSummaryDto, VolumeDetailDto, VolumeUsageDto, VolumeUsageCounts } from '$lib/types/volume.type';
-import type { ImageUpdateSummary, ImageVersions, VersionComparison, CompareVersionRequest } from '$lib/types/image.type';
-import type { AutoUpdateCheck, AutoUpdateResult, AutoUpdateRecord, AutoUpdateStatus } from '$lib/types/auto-update.type';
+import type { AutoUpdateCheck, AutoUpdateResult } from '$lib/types/auto-update.type';
 
 export class EnvironmentAPIService extends BaseAPIService {
 	private async getCurrentEnvironmentId(): Promise<string> {
-		if (browser) {
-			await environmentStore.ready;
-		}
+		await environmentStore.ready;
+
 		const currentEnvironment = get(environmentStore.selected);
 		if (!currentEnvironment) {
 			return LOCAL_DOCKER_ENVIRONMENT_ID;
 		}
 		return currentEnvironment.id;
 	}
+
+	// Container Api Calls
 
 	async getContainers(options?: SearchPaginationSortRequest): Promise<Paginated<ContainerSummaryDto>> {
 		const envId = await this.getCurrentEnvironmentId();
@@ -78,10 +77,9 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.delete(`/environments/${envId}/containers/${containerId}`, { params }));
 	}
 
-	async pullContainerImage(containerId: string): Promise<Project> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/pull`));
-	}
+	// End Container Api Calls
+
+	// Image Api Calls
 
 	async getImages(options?: SearchPaginationSortRequest): Promise<Paginated<ImageSummaryDto>> {
 		const envId = await this.getCurrentEnvironmentId();
@@ -118,10 +116,9 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/environments/${envId}/images/prune`, body));
 	}
 
-	async inspectImage(imageId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/images/${imageId}/inspect`));
-	}
+	// End Image Api Calls
+
+	// Network Api Calls
 
 	async getNetworks(options?: SearchPaginationSortRequest): Promise<Paginated<NetworkSummaryDto>> {
 		const envId = await this.getCurrentEnvironmentId();
@@ -151,6 +148,10 @@ export class EnvironmentAPIService extends BaseAPIService {
 		const envId = await this.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.delete(`/environments/${envId}/networks/${networkId}`));
 	}
+
+	// End Network Api Calls
+
+	// Volume Api Calls
 
 	async getVolumes(options?: SearchPaginationSortRequest): Promise<Paginated<VolumeSummaryDto>> {
 		const envId = await this.getCurrentEnvironmentId();
@@ -186,42 +187,9 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.delete(`/environments/${envId}/volumes/${volumeName}`));
 	}
 
-	async pruneVolumes(): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/volumes/prune`));
-	}
+	// End Volume Api Calls
 
-	async getAllResources(): Promise<Record<string, any>> {
-		const [containers, images, networks, volumes] = await Promise.all([
-			this.getContainers(),
-			this.getImages(),
-			this.getNetworks(),
-			this.getVolumes()
-		]);
-
-		return {
-			containers,
-			images,
-			networks,
-			volumes
-		};
-	}
-
-	async syncResources(): Promise<void> {
-		const envId = await this.getCurrentEnvironmentId();
-		await this.handleResponse(this.api.post(`/environments/${envId}/sync`));
-	}
-
-	async executeDockerCommand(command: string, args: string[] = []): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/execute`, { command, args }));
-	}
-
-	async checkImageUpdate(imageRef: string): Promise<ImageUpdateInfoDto> {
-		const envId = await this.getCurrentEnvironmentId();
-		const res = await this.api.get(`/environments/${envId}/image-updates/check`, { params: { imageRef } });
-		return this.handleResponse(res.data);
-	}
+	// Image Updater Api Calls
 
 	async checkImageUpdateByID(imageId: string): Promise<ImageUpdateInfoDto> {
 		const envId = await this.getCurrentEnvironmentId();
@@ -233,42 +201,14 @@ export class EnvironmentAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.get(`/environments/${envId}/image-updates/check-all`));
 	}
 
-	async getUpdateSummary(): Promise<ImageUpdateSummary> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/image-updates/summary`));
-	}
-
-	async getImageVersions(imageRef: string, limit = 20): Promise<ImageVersions> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(
-			this.api.get(`/environments/${envId}/image-updates/versions`, {
-				params: { imageRef, limit }
-			})
-		);
-	}
-
-	async compareVersions(request: CompareVersionRequest): Promise<VersionComparison> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/image-updates/compare`, request));
-	}
-
 	async runAutoUpdate(options?: AutoUpdateCheck): Promise<AutoUpdateResult> {
 		const envId = await this.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.post(`/environments/${envId}/updater/run`, options));
 	}
 
-	async getAutoUpdateStatus(): Promise<AutoUpdateStatus> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/updater/status`));
-	}
+	// End Image Updater Api Calls
 
-	async getAutoUpdateHistory(limit?: number): Promise<AutoUpdateRecord[]> {
-		const envId = await this.getCurrentEnvironmentId();
-		const params = limit ? { limit } : undefined;
-		return this.handleResponse(this.api.get(`/environments/${envId}/updater/history`, { params }));
-	}
-
-	// New Project Api Handlers
+	// Project Api Calls
 
 	async getProjects(options?: SearchPaginationSortRequest): Promise<Paginated<Project>> {
 		const envId = await this.getCurrentEnvironmentId();
@@ -417,7 +357,7 @@ export class EnvironmentAPIService extends BaseAPIService {
 		);
 	}
 
-	//End New Project Api Handlers
+	//End New Project Api Calls
 }
 
 export const environmentAPI = new EnvironmentAPIService();

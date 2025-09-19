@@ -57,14 +57,6 @@ func (s *EnvironmentService) GetEnvironmentByID(ctx context.Context, id string) 
 	return &environment, nil
 }
 
-func (s *EnvironmentService) ListEnvironments(ctx context.Context) ([]*models.Environment, error) {
-	var environments []*models.Environment
-	if err := s.db.WithContext(ctx).Order("created_at DESC").Find(&environments).Error; err != nil {
-		return nil, fmt.Errorf("failed to list environments: %w", err)
-	}
-	return environments, nil
-}
-
 func (s *EnvironmentService) ListEnvironmentsPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]dto.EnvironmentDto, utils.PaginationResponse, error) {
 	var envs []models.Environment
 	q := s.db.WithContext(ctx).Model(&models.Environment{})
@@ -135,26 +127,26 @@ func (s *EnvironmentService) TestConnection(ctx context.Context, id string) (str
 	url := strings.TrimRight(environment.ApiUrl, "/") + "/api/health"
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
 	if err != nil {
-		_ = s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusOffline))
+		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
 		return "offline", fmt.Errorf("failed to create request: %w", err)
 	}
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		_ = s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusOffline))
+		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
 		return "offline", fmt.Errorf("connection failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		_ = s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusOnline))
+		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOnline))
 		return "online", nil
 	}
 
-	_ = s.updateEnvironmentStatus(ctx, id, string(models.EnvironmentStatusError))
+	_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusError))
 	return "error", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 }
 
-func (s *EnvironmentService) updateEnvironmentStatus(ctx context.Context, id, status string) error {
+func (s *EnvironmentService) updateEnvironmentStatusInternal(ctx context.Context, id, status string) error {
 	now := time.Now()
 	updates := map[string]interface{}{
 		"status":     status,
@@ -167,20 +159,6 @@ func (s *EnvironmentService) updateEnvironmentStatus(ctx context.Context, id, st
 	return nil
 }
 
-func (s *EnvironmentService) UpdateEnvironmentStatus(ctx context.Context, id, status string) error {
-	now := time.Now()
-	updates := map[string]interface{}{
-		"status":     status,
-		"updated_at": &now,
-	}
-
-	if status == string(models.EnvironmentStatusOnline) {
-		updates["last_seen"] = &now
-	}
-
-	return s.db.WithContext(ctx).Model(&models.Environment{}).Where("id = ?", id).Updates(updates).Error
-}
-
 func (s *EnvironmentService) UpdateEnvironmentHeartbeat(ctx context.Context, id string) error {
 	now := time.Now()
 	if err := s.db.WithContext(ctx).Model(&models.Environment{}).Where("id = ?", id).Updates(map[string]interface{}{
@@ -191,39 +169,6 @@ func (s *EnvironmentService) UpdateEnvironmentHeartbeat(ctx context.Context, id 
 		return fmt.Errorf("failed to update environment heartbeat: %w", err)
 	}
 	return nil
-}
-
-func (s *EnvironmentService) GetOnlineEnvironments(ctx context.Context, timeoutMinutes int) ([]*models.Environment, error) {
-	allEnvironments, err := s.ListEnvironments(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var onlineEnvironments []*models.Environment
-	for _, env := range allEnvironments {
-		if s.IsEnvironmentOnline(env, timeoutMinutes) {
-			onlineEnvironments = append(onlineEnvironments, env)
-		}
-	}
-
-	return onlineEnvironments, nil
-}
-
-func (s *EnvironmentService) IsEnvironmentOnline(environment *models.Environment, timeoutMinutes int) bool {
-	if !environment.Enabled {
-		return false
-	}
-
-	if environment.Status != string(models.EnvironmentStatusOnline) {
-		return false
-	}
-
-	if environment.LastSeen == nil {
-		return false
-	}
-
-	timeoutDuration := time.Duration(timeoutMinutes) * time.Minute
-	return time.Since(*environment.LastSeen) < timeoutDuration
 }
 
 func (s *EnvironmentService) PairAgentWithBootstrap(ctx context.Context, apiUrl, bootstrapToken string) (string, error) {
@@ -307,7 +252,6 @@ func wsScheme(req *http.Request) string {
 	return "ws"
 }
 
-// BuildLocalWSTarget returns ws URL and headers to proxy to this server.
 func (s *EnvironmentService) BuildLocalWSTarget(req *http.Request, absolutePath string, agentToken string) (string, http.Header) {
 	u := &url.URL{
 		Scheme:   wsScheme(req),

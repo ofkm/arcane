@@ -408,18 +408,6 @@ func (s *AuthService) persistOidcTokens(user *models.User, tokenResp *dto.OidcTo
 	}
 }
 
-func (s *AuthService) Logout(ctx context.Context, user *models.User) error {
-	metadata := models.JSON{
-		"action":    "logout",
-		"ipAddress": "", // Could be extracted from context if available
-	}
-	if logErr := s.eventService.LogUserEvent(ctx, models.EventTypeUserLogout, user.ID, user.Username, metadata); logErr != nil {
-		fmt.Printf("Could not log user logout action: %s\n", logErr)
-	}
-
-	return nil
-}
-
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	token, err := jwt.ParseWithClaims(refreshToken, &jwt.RegisteredClaims{},
 		func(t *jwt.Token) (interface{}, error) {

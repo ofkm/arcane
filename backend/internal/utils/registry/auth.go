@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	ref "github.com/distribution/reference"
+
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
 )
@@ -248,7 +250,7 @@ func GetChallengeRequest(ctx context.Context, u url.URL) (*http.Request, error) 
 // GetChallengeURL returns https://<host>/v2/ for a given image ref (normalized).
 // host is normalized so docker.io => index.docker.io.
 func GetChallengeURL(imageRef string) (url.URL, error) {
-	named, err := parseNormalizedNamed(imageRef)
+	named, err := ref.ParseNormalizedNamed(imageRef)
 	if err != nil {
 		return url.URL{}, err
 	}
@@ -300,7 +302,7 @@ func GetAuthHeaderForImage(ctx context.Context, imageRef string, enabledRegs []m
 
 	chLower := strings.ToLower(strings.TrimSpace(ch))
 
-	named, err := parseNormalizedNamed(imageRef)
+	named, err := ref.ParseNormalizedNamed(imageRef)
 	if err != nil {
 		return "", err
 	}
@@ -308,7 +310,7 @@ func GetAuthHeaderForImage(ctx context.Context, imageRef string, enabledRegs []m
 	if err != nil {
 		return "", err
 	}
-	repo := referencePath(named)
+	repo := ref.Path(named)
 
 	switch {
 	case strings.HasPrefix(chLower, "basic"):
