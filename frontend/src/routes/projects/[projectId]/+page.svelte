@@ -29,7 +29,8 @@
 	import StackLogsPanel from '../components/StackLogsPanel.svelte';
 
 	let { data } = $props();
-	let { project, editorState } = $state(data);
+	let project = $derived(data.project);
+	let editorState = $derived(data.editorState);
 
 	let isLoading = $state({
 		deploying: false,
@@ -96,24 +97,28 @@
 	};
 
 	let prefs: PersistedState<ComposeUIPrefs> | null = null;
-	if (project?.id) {
-		const key = `arcane.compose.ui:${project.id}`;
-		prefs = new PersistedState<ComposeUIPrefs>(key, defaultComposeUIPrefs, {
+
+	$effect(() => {
+		if (!project?.id) return;
+		prefs = new PersistedState<ComposeUIPrefs>(`arcane.compose.ui:${project.id}`, defaultComposeUIPrefs, {
 			storage: 'session',
 			syncTabs: false
 		});
-
 		const cur = prefs.current ?? {};
 		selectedTab = cur.tab ?? defaultComposeUIPrefs.tab;
 		composeOpen = cur.composeOpen ?? defaultComposeUIPrefs.composeOpen;
 		envOpen = cur.envOpen ?? defaultComposeUIPrefs.envOpen;
 		autoScrollStackLogs = cur.autoScroll ?? defaultComposeUIPrefs.autoScroll;
-	}
+	});
 
-	function handleScroll() {
-		showFloatingHeader = window.scrollY > 100;
-	}
-	window.addEventListener('scroll', handleScroll);
+	// Scroll listener with cleanup (reactive)
+	$effect(() => {
+		const handleScroll = () => {
+			showFloatingHeader = window.scrollY > 100;
+		};
+		window.addEventListener('scroll', handleScroll);
+		return () => window.removeEventListener('scroll', handleScroll);
+	});
 
 	async function handleSaveChanges() {
 		if (!project || !hasChanges) return;
