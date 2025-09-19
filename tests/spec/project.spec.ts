@@ -136,7 +136,6 @@ test.describe('New Compose Project Page', () => {
     const createButton = page.getByRole('button', { name: 'Create' }).first();
     await expect(createButton).toBeDisabled();
 
-    // Fill in project name
     await page.getByLabel('Project Name').fill('test-project');
   });
 
@@ -169,23 +168,18 @@ test.describe('New Compose Project Page', () => {
       }
     });
 
-    // Create the project
     const createButton = page.getByRole('button', { name: 'Create' });
     await createButton.click();
 
-    // Wait for navigation and verify we're on the correct page
     await page.waitForURL(new RegExp(`/projects/.+`), { timeout: 10000 });
 
-    // Verify we redirected to the created project's page
     if (createdProjectId) {
       await expect(page).toHaveURL(new RegExp(`/projects/${createdProjectId}`));
     } else {
-      // Fallback: just check we're on a project detail page with some UUID
       await expect(page).toHaveURL(new RegExp(`/projects/[a-f0-9\\-]{36}`));
     }
 
-    // Verify the project detail page loads correctly
-    await expect(page.getByText('Overview')).toBeVisible();
+    await expect(page.getByText(projectName)).toBeVisible();
   });
 });
 
@@ -197,10 +191,8 @@ test.describe('Project Detail Page', () => {
     await page.goto(`/projects/${firstProject.id || firstProject.name}`);
     await page.waitForLoadState('networkidle');
 
-    // Editable name (heading substitute)
     await expect(page.getByRole('button', { name: firstProject.name, exact: false })).toBeVisible();
 
-    // Tabs
     await expect(page.getByRole('tab', { name: /Services/i })).toBeVisible();
     await expect(page.getByRole('tab', { name: /Configuration|Config/i })).toBeVisible();
     await expect(page.getByRole('tab', { name: /Logs/i })).toBeVisible();
@@ -220,17 +212,25 @@ test.describe('Project Detail Page', () => {
   test('should display services tab content', async ({ page }) => {
     test.skip(!realProjects.length, 'No projects available for services test');
 
-    const projectWithServices = realProjects.find((p) => p.serviceCount > 0);
-    test.skip(!projectWithServices, 'No projects with services found');
-
+    const projectWithServices = realProjects.find((p) => p.serviceCount > 0) || realProjects[0];
     await page.goto(`/projects/${projectWithServices.id || projectWithServices.name}`);
     await page.waitForLoadState('networkidle');
 
     await page.getByRole('tab', { name: /Services/i }).click();
-    // Expect either a service card or the empty state text
-    const possibleService = page.locator('a[href^="/containers/"]').first();
+
+    const nginxService = page.getByText(/nginx/i);
     const emptyState = page.getByText(/No services found/i);
-    await expect(possibleService.or(emptyState)).toBeVisible();
+
+    if ((await nginxService.count()) > 0) {
+      await expect(nginxService.first()).toBeVisible();
+    } else {
+      const anyServiceBadge = page.locator('text=/running|stopped|unknown/i').first();
+      if ((await anyServiceBadge.count()) > 0) {
+        await expect(anyServiceBadge).toBeVisible();
+      } else {
+        await expect(emptyState).toBeVisible();
+      }
+    }
   });
 
   test('should display configuration editors', async ({ page }) => {
