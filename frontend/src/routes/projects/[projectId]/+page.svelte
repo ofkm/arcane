@@ -29,6 +29,7 @@
 	import StackLogsPanel from '../components/StackLogsPanel.svelte';
 
 	let { data } = $props();
+	let projectId = $derived(data.projectId);
 	let project = $derived(data.project);
 	let editorState = $derived(data.editorState);
 
@@ -129,7 +130,7 @@
 		const { name, composeContent, envContent } = validated;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.updateProject(name, composeContent, envContent)),
+			result: await tryCatch(environmentAPI.updateProject(projectId, composeContent, envContent)),
 			message: 'Failed to Save Project',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Project) => {
