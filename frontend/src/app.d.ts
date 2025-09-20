@@ -13,32 +13,6 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
-
-	interface Window {
-		workbox?: any;
-	}
-
-	interface Navigator {
-		standalone?: boolean;
-	}
-
-	// PWA types
-	interface BeforeInstallPromptEvent extends Event {
-		readonly platforms: string[];
-		readonly userChoice: Promise<{
-			outcome: 'accepted' | 'dismissed';
-			platform: string;
-		}>;
-		prompt(): Promise<void>;
-	}
-
-	interface WindowEventMap {
-		beforeinstallprompt: BeforeInstallPromptEvent;
-		appinstalled: Event;
-	}
-
-	// Service Worker types
-	declare let self: ServiceWorkerGlobalScope;
 }
 
 export {};
