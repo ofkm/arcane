@@ -69,6 +69,28 @@ func (s *SettingsService) LoadDatabaseSettings(ctx context.Context) (err error) 
 	return nil
 }
 
+func (s *SettingsService) getDefaultSettings() *models.Settings {
+	return &models.Settings{
+		ProjectsDirectory:   models.SettingVariable{Value: "data/projects"},
+		AutoUpdate:          models.SettingVariable{Value: "false"},
+		AutoUpdateInterval:  models.SettingVariable{Value: "1440"},
+		PollingEnabled:      models.SettingVariable{Value: "true"},
+		PollingInterval:     models.SettingVariable{Value: "60"},
+		PruneMode:           models.SettingVariable{Value: "dangling"},
+		BaseServerURL:       models.SettingVariable{Value: ""},
+		EnableGravatar:      models.SettingVariable{Value: "true"},
+		AuthLocalEnabled:    models.SettingVariable{Value: "true"},
+		AuthOidcEnabled:     models.SettingVariable{Value: "false"},
+		AuthSessionTimeout:  models.SettingVariable{Value: "1440"},
+		AuthPasswordPolicy:  models.SettingVariable{Value: "strong"},
+		AuthOidcConfig:      models.SettingVariable{Value: "{}"},
+		OnboardingCompleted: models.SettingVariable{Value: "false"},
+		OnboardingSteps:     models.SettingVariable{Value: "[]"},
+
+		InstanceID: models.SettingVariable{Value: ""},
+	}
+}
+
 func (s *SettingsService) loadDatabaseSettingsInternal(ctx context.Context, db *database.DB) (*models.Settings, error) {
 
 	if config.Load().UIConfigurationDisabled {
@@ -156,83 +178,32 @@ func (s *SettingsService) GetSettings(ctx context.Context) (*models.Settings, er
 	return settings, nil
 }
 
-func (s *SettingsService) getDefaultSettings() *models.Settings {
-	return &models.Settings{
-		ProjectsDirectory:   models.SettingVariable{Value: "data/projects"},
-		AutoUpdate:          models.SettingVariable{Value: "false"},
-		AutoUpdateInterval:  models.SettingVariable{Value: "1440"},
-		PollingEnabled:      models.SettingVariable{Value: "true"},
-		PollingInterval:     models.SettingVariable{Value: "60"},
-		PruneMode:           models.SettingVariable{Value: "dangling"},
-		BaseServerURL:       models.SettingVariable{Value: ""},
-		EnableGravatar:      models.SettingVariable{Value: "true"},
-		AuthLocalEnabled:    models.SettingVariable{Value: "true"},
-		AuthOidcEnabled:     models.SettingVariable{Value: "false"},
-		AuthSessionTimeout:  models.SettingVariable{Value: "1440"},
-		AuthPasswordPolicy:  models.SettingVariable{Value: "strong"},
-		AuthOidcConfig:      models.SettingVariable{Value: "{}"},
-		OnboardingCompleted: models.SettingVariable{Value: "false"},
-		OnboardingSteps:     models.SettingVariable{Value: "[]"},
-
-		InstanceID: models.SettingVariable{Value: ""},
-	}
-}
-
 func (s *SettingsService) SyncOidcEnvToDatabase(ctx context.Context) ([]models.SettingVariable, error) {
-	if config.Load().OidcEnabled {
-		return nil, errors.New("OIDC sync called but OIDC_ENABLED is false")
+	cfg := config.Load()
+	if cfg.OidcClientID == "" || cfg.OidcIssuerURL == "" {
+		return nil, errors.New("missing OIDC_CLIENT_ID or OIDC_ISSUER_URL")
 	}
 
-	if config.Load().OidcClientID == "" || config.Load().OidcIssuerURL == "" {
-		return nil, errors.New("required OIDC environment variables are missing (OIDC_CLIENT_ID or OIDC_ISSUER_URL)")
+	envOidc := models.OidcConfig{
+		ClientID:     cfg.OidcClientID,
+		ClientSecret: cfg.OidcClientSecret,
+		IssuerURL:    cfg.OidcIssuerURL,
+		Scopes:       cfg.OidcScopes,
+		AdminClaim:   cfg.OidcAdminClaim,
+		AdminValue:   cfg.OidcAdminValue,
 	}
-
-	envOidcConfig := models.OidcConfig{
-		ClientID:     config.Load().OidcClientID,
-		ClientSecret: config.Load().OidcClientSecret,
-		IssuerURL:    config.Load().OidcIssuerURL,
-		Scopes:       config.Load().OidcScopes,
-		AdminClaim:   config.Load().OidcAdminClaim,
-		AdminValue:   config.Load().OidcAdminValue,
-	}
-
-	oidcConfigBytes, err := json.Marshal(envOidcConfig)
+	b, err := json.Marshal(envOidc)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal OIDC config from env: %w", err)
+		return nil, fmt.Errorf("marshal oidc config: %w", err)
 	}
 
-	// Force update the settings directly to bypass empty value checks
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Force update AuthOidcEnabled
-		if err := tx.Save(&models.SettingVariable{
-			Key:   "authOidcEnabled",
-			Value: "true",
-		}).Error; err != nil {
-			return fmt.Errorf("failed to update authOidcEnabled: %w", err)
-		}
+	trueStr := "true"
+	cfgStr := string(b)
 
-		// Force update AuthOidcConfig
-		if err := tx.Save(&models.SettingVariable{
-			Key:   "authOidcConfig",
-			Value: string(oidcConfigBytes),
-		}).Error; err != nil {
-			return fmt.Errorf("failed to update authOidcConfig: %w", err)
-		}
-
-		return nil
+	return s.UpdateSettings(ctx, dto.UpdateSettingsDto{
+		AuthOidcEnabled: &trueStr,
+		AuthOidcConfig:  &cfgStr,
 	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to sync OIDC settings to database: %w", err)
-	}
-
-	// Return the updated settings
-	settings, err := s.GetSettings(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve updated settings: %w", err)
-	}
-
-	return settings.ToSettingVariableSlice(false, false), nil
 }
 
 func (s *SettingsService) UpdateSetting(ctx context.Context, key, value string) error {

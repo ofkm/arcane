@@ -36,16 +36,6 @@ type Config struct {
 	AnalyticsDisabled       bool
 }
 
-var EnvSettings = Load()
-
-// func init() {
-// 	err := parseEnvConfig()
-// 	if err != nil {
-// 		slog.Error("Configuration error", slog.Any("error", err))
-// 		os.Exit(1)
-// 	}
-// }
-
 func Load() *Config {
 	return &Config{
 		AppUrl:        getEnvOrDefault("APP_URL", "http://localhost:3552"),
