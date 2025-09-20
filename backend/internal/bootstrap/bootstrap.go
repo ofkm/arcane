@@ -52,7 +52,7 @@ func InitializeApp() (*App, error) {
 
 	httpClient := newHTTPClient()
 
-	appServices, dockerClientService, err := initializeServices(db, cfg, httpClient)
+	appServices, dockerClientService, err := initializeServices(appCtx, db, cfg, httpClient)
 	if err != nil {
 		db.Close()
 		cancelApp()
@@ -79,8 +79,7 @@ func InitializeApp() (*App, error) {
 	// Ensure default settings but skip user bootstrap in agent mode
 	slog.InfoContext(appCtx, "Ensuring default settings are initialized")
 	if err := appServices.Settings.EnsureDefaultSettings(appCtx); err != nil {
-		slog.WarnContext(appCtx, "Failed to initialize default settings",
-			slog.String("error", err.Error()))
+		slog.WarnContext(appCtx, "Failed to initialize default settings", slog.String("error", err.Error()))
 	} else {
 		slog.InfoContext(appCtx, "Default settings initialized successfully")
 	}

@@ -1,14 +1,14 @@
 package dto
 
 type PublicSettingDto struct {
-	Key      string `json:"key"`
-	Type     string `json:"type"`
-	Value    string `json:"value"`
-	IsPublic bool   `json:"isPublic"`
+	Key   string `json:"key"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
 }
 
 type SettingDto struct {
 	PublicSettingDto
+	IsPublic bool `json:"isPublic"`
 }
 
 type UpdateSettingsDto struct {

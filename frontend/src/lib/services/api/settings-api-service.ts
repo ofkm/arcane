@@ -4,14 +4,12 @@ import type { Settings, SettingRawResponse, OidcStatusInfo } from '$lib/types/se
 export default class SettingsAPIService extends BaseAPIService {
 	async getSettings(): Promise<Settings> {
 		const response = await this.api.get('/settings');
-		const parsed = this.parseConfigList(response.data.settings);
-		return parsed;
+		return this.parseConfigList(response.data);
 	}
 
 	async getPublicSettings(): Promise<Settings> {
 		const response = await this.api.get('/settings/public');
-		const parsed = this.parseConfigList(response.data.settings);
-		return parsed;
+		return this.parseConfigList(response.data);
 	}
 
 	async updateSettings(settings: Settings) {
