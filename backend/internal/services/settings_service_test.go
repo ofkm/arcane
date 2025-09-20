@@ -33,7 +33,7 @@ func TestSettingsService_EnsureDefaultSettings_Idempotent(t *testing.T) {
 
 	var count1 int64
 	require.NoError(t, svc.db.WithContext(ctx).Model(&models.SettingVariable{}).Count(&count1).Error)
-	require.Greater(t, count1, int64(0))
+	require.Positive(t, count1)
 
 	require.NoError(t, svc.EnsureDefaultSettings(ctx))
 
