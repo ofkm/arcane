@@ -101,8 +101,10 @@
 
 					<nav class="flex min-w-0 items-center gap-2 text-sm">
 						<Button
+							variant="ghost"
+							size="sm"
 							onclick={goBackToSettings}
-							class="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-2 transition-colors"
+							class="text-muted-foreground hover:text-foreground shrink-0 gap-2"
 						>
 							<SettingsIcon class="size-4" />
 							<span>Settings</span>
