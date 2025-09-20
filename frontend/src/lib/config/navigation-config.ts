@@ -15,14 +15,14 @@ import LockKeyholeIcon from '@lucide/svelte/icons/lock-keyhole';
 import AlarmClockIcon from '@lucide/svelte/icons/alarm-clock';
 import { m } from '$lib/paraglide/messages';
 
-export type SidebarItem = {
+export type NavigationItem = {
 	title: string;
 	url: string;
 	icon: typeof IconType;
-	items?: SidebarItem[];
+	items?: NavigationItem[];
 };
 
-export const sidebarItems: Record<string, SidebarItem[]> = {
+export const navigationItems: Record<string, NavigationItem[]> = {
 	managementItems: [
 		{ title: m.dashboard_title(), url: '/dashboard', icon: HouseIcon },
 		{ title: m.containers_title(), url: '/containers', icon: ContainerIcon },
@@ -69,3 +69,11 @@ export const sidebarItems: Record<string, SidebarItem[]> = {
 		}
 	]
 };
+
+// Mobile navigation items (hardcoded for now)
+export const mobileNavigationItems: NavigationItem[] = [
+	{ title: m.dashboard_title(), url: '/dashboard', icon: HouseIcon },
+	{ title: m.containers_title(), url: '/containers', icon: ContainerIcon },
+	{ title: m.images_title(), url: '/images', icon: ImageIcon },
+	{ title: m.volumes_title(), url: '/volumes', icon: HardDriveIcon }
+];
