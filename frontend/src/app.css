@@ -165,14 +165,8 @@ main {
 	overflow-x: hidden;
 }
 
-.settings-header {
-	@apply flex flex-col justify-between gap-4;
-}
-
-.settings-title {
-	@apply text-foreground text-3xl font-bold tracking-tight;
-}
 
 html {
 	scrollbar-gutter: stable;
 }
+
