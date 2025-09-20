@@ -96,14 +96,17 @@ func (s *SettingsService) loadDatabaseSettingsInternal(ctx context.Context, db *
 	if config.Load().UIConfigurationDisabled {
 		dst, err := s.loadDatabaseConfigFromEnv(ctx, db)
 
-		var onboardingVars []models.SettingVariable
-		if err := db.WithContext(ctx).
-			Where("key IN ?", []string{"onboardingCompleted", "onboardingSteps"}).
-			Find(&onboardingVars).Error; err == nil {
-			for _, v := range onboardingVars {
-				_ = dst.UpdateField(v.Key, v.Value, false)
+		if config.Load().Environment != "testing" {
+			var onboardingVars []models.SettingVariable
+			if err := db.WithContext(ctx).
+				Where("key IN ?", []string{"onboardingCompleted", "onboardingSteps"}).
+				Find(&onboardingVars).Error; err == nil {
+				for _, v := range onboardingVars {
+					_ = dst.UpdateField(v.Key, v.Value, false)
+				}
 			}
 		}
+
 		return dst, err
 	}
 
