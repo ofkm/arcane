@@ -10,6 +10,7 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
 	import { m } from '$lib/paraglide/messages';
+	import UiConfigDisabledBanner from '$lib/components/ui-config-disabled-banner.svelte';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -80,6 +81,8 @@
 		}
 	}
 </script>
+
+<UiConfigDisabledBanner />
 
 {#if isSubPage}
 	<div

@@ -33,6 +33,12 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		_ = c.Error(err)
 	}
 
+	settingsDto = append(settingsDto, dto.PublicSettingDto{
+		Key:   "uiConfigDisabled",
+		Value: strconv.FormatBool(config.Load().UIConfigurationDisabled),
+		Type:  "boolean",
+	})
+
 	c.JSON(http.StatusOK, settingsDto)
 }
 

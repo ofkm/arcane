@@ -77,7 +77,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		PollingEnabled:      models.SettingVariable{Value: "true"},
 		PollingInterval:     models.SettingVariable{Value: "60"},
 		PruneMode:           models.SettingVariable{Value: "dangling"},
-		BaseServerURL:       models.SettingVariable{Value: ""},
+		BaseServerURL:       models.SettingVariable{Value: "http://localhost"},
 		EnableGravatar:      models.SettingVariable{Value: "true"},
 		AuthLocalEnabled:    models.SettingVariable{Value: "true"},
 		AuthOidcEnabled:     models.SettingVariable{Value: "false"},
