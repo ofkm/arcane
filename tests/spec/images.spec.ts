@@ -1,30 +1,20 @@
 import { test, expect, type Page } from '@playwright/test';
+import { fetchImagesWithRetry } from '../utils/fetch.util';
 
-async function fetchImagesWithRetry(page: Page, maxRetries = 3): Promise<any[]> {
-  let retries = 0;
-  while (retries < maxRetries) {
-    try {
-      const response = await page.request.get('/api/environments/0/images');
-      if (!response.ok()) {
-        throw new Error(`HTTP ${response.status()}`);
-      }
-      const body = await response.json().catch(() => null as any);
-      const data = Array.isArray(body?.data) ? body.data : [];
-      return data;
-    } catch (error) {
-      retries++;
-      if (retries >= maxRetries) return [];
-      await page.waitForTimeout(1000);
-    }
-  }
-  return [];
+const ROUTES = {
+  page: '/images',
+  apiImages: '/api/environments/0/images',
+};
+
+async function navigateToImages(page: Page) {
+  await page.goto(ROUTES.page);
+  await page.waitForLoadState('networkidle');
 }
 
 let realImages: any[] = [];
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/images');
-  await page.waitForLoadState('networkidle');
+  await navigateToImages(page);
 
   try {
     const images = await fetchImagesWithRetry(page);
@@ -32,52 +22,44 @@ test.beforeEach(async ({ page }) => {
   } catch {
     realImages = [];
   }
-
-  console.log(`Found ${realImages.length} real images for testing`);
 });
 
 test.describe('Images Page', () => {
   test('should display the images page title and description', async ({ page }) => {
-    await page.goto('/images');
+    await navigateToImages(page);
 
     await expect(page.getByRole('heading', { name: 'Images', level: 1 })).toBeVisible();
     await expect(page.getByText('View and Manage your Container images').first()).toBeVisible();
   });
 
   test('should display stats cards with correct counts and size', async ({ page }) => {
-    await page.goto('/images');
+    await navigateToImages(page);
 
     await expect(page.locator('p:has-text("Total Images") + p')).toHaveText(realImages.length.toString());
     await expect(page.locator('p:has-text("Total Size") + p')).not.toBeEmpty();
   });
 
   test('should display the image table when images exist', async ({ page }) => {
-    await page.goto('/images');
-
-    await page.waitForLoadState('networkidle');
+    await navigateToImages(page);
 
     await expect(page.locator('table')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Repository' })).toBeVisible();
   });
 
   test('should open the Pull Image dialog', async ({ page }) => {
-    await page.goto('/images');
-    await page.waitForLoadState('networkidle');
+    await navigateToImages(page);
     await page.locator('button:has-text("Pull Image")').first().click();
     await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Pull Image")')).toBeVisible();
   });
 
   test('should open the Prune Unused Images dialog', async ({ page }) => {
-    await page.goto('/images');
-    await page.waitForLoadState('networkidle');
+    await navigateToImages(page);
     await page.locator('button:has-text("Prune Unused")').click();
     await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Prune Unused Images")')).toBeVisible();
   });
 
   test('should navigate to image details on inspect click', async ({ page }) => {
-    await page.goto('/images');
-
-    await page.waitForLoadState('networkidle');
+    await navigateToImages(page);
 
     const firstRow = page.locator('tbody tr').first();
     await firstRow.getByRole('button', { name: 'Open menu' }).click();
@@ -86,13 +68,10 @@ test.describe('Images Page', () => {
 
   test('should pull image from dropdown menu', async ({ page }) => {
     test.skip(!realImages.length, 'No images available for pull API test');
-    await page.goto('/images');
-
-    await page.waitForLoadState('networkidle');
+    await navigateToImages(page);
 
     const firstRow = await page.getByRole('row', { name: 'ghcr.io/linuxserver/nginx' });
     await firstRow.getByRole('button', { name: 'Open menu' }).click();
-
     await page.getByRole('menuitem', { name: 'Pull' }).click();
 
     await page.waitForLoadState('networkidle');
@@ -102,9 +81,7 @@ test.describe('Images Page', () => {
 
   test('should call remove API on row action remove click and confirmation', async ({ page }) => {
     test.skip(!realImages.length, 'No images available for remove API test');
-    await page.goto('/images');
-
-    await page.waitForLoadState('networkidle');
+    await navigateToImages(page);
 
     const deleteableImage = realImages.find((img) => img.repoTags?.[0]?.includes('ghcr.io/linuxserver/radarr'));
     test.skip(!deleteableImage, 'No deletable images available');
@@ -122,9 +99,7 @@ test.describe('Images Page', () => {
   });
 
   test('should call prune API on prune click and confirmation', async ({ page }) => {
-    await page.goto('/images');
-
-    await page.waitForLoadState('networkidle');
+    await navigateToImages(page);
 
     await page.locator('button:has-text("Prune Unused")').click();
 
@@ -138,9 +113,7 @@ test.describe('Images Page', () => {
   });
 
   test('should pull image via form', async ({ page }) => {
-    await page.goto('/images');
-
-    await page.waitForLoadState('networkidle');
+    await navigateToImages(page);
 
     await page.locator('button:has-text("Pull Image")').first().click();
     const dialogHeading = page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Pull Image")');

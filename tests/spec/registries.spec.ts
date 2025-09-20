@@ -72,11 +72,14 @@ test.describe('Container Registries', () => {
     const firstRowCheckbox = page.locator('tbody tr input[type="checkbox"]').first();
     if (await firstRowCheckbox.count()) {
       await firstRowCheckbox.check();
+
       const removeSelected = page.getByRole('button', { name: /Remove Selected/i });
       if (await removeSelected.count()) {
         await removeSelected.click();
+
         const confirm = page.locator('div[role="heading"][aria-level="2"][data-dialog-title], [role="dialog"] >> text=Remove');
         await expect(confirm).toBeVisible();
+
         await page.getByRole('button', { name: 'Cancel' }).click();
         await expect(confirm).toBeHidden();
       }
