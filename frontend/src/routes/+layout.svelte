@@ -13,6 +13,7 @@
 	import type { Snippet } from 'svelte';
 	import Error from '$lib/components/error.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import PWARegister from '$lib/components/pwa-register.svelte';
 
 	let {
 		data,
@@ -76,3 +77,4 @@
 />
 <ConfirmDialog />
 <LoadingIndicator active={isNavigating} thickness="h-1.5" />
+<PWARegister />
