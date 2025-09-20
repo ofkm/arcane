@@ -432,15 +432,31 @@ func (s *SettingsService) GetStringSetting(ctx context.Context, key, defaultValu
 }
 
 func (s *SettingsService) SetBoolSetting(ctx context.Context, key string, value bool) error {
-	return s.UpdateSetting(ctx, key, fmt.Sprintf("%t", value))
+	if err := s.UpdateSetting(ctx, key, fmt.Sprintf("%t", value)); err != nil {
+		return err
+	}
+	// keep in-memory cache consistent for immediate reads (e.g. Playwright)
+	cfg := s.GetSettingsConfig()
+	_ = cfg.UpdateField(key, fmt.Sprintf("%t", value), false)
+	return nil
 }
 
 func (s *SettingsService) SetIntSetting(ctx context.Context, key string, value int) error {
-	return s.UpdateSetting(ctx, key, fmt.Sprintf("%d", value))
+	if err := s.UpdateSetting(ctx, key, fmt.Sprintf("%d", value)); err != nil {
+		return err
+	}
+	cfg := s.GetSettingsConfig()
+	_ = cfg.UpdateField(key, fmt.Sprintf("%d", value), false)
+	return nil
 }
 
 func (s *SettingsService) SetStringSetting(ctx context.Context, key, value string) error {
-	return s.UpdateSetting(ctx, key, value)
+	if err := s.UpdateSetting(ctx, key, value); err != nil {
+		return err
+	}
+	cfg := s.GetSettingsConfig()
+	_ = cfg.UpdateField(key, value, false)
+	return nil
 }
 
 func (s *SettingsService) EnsureEncryptionKey(ctx context.Context) (string, error) {

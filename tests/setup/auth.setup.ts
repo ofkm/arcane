@@ -1,6 +1,6 @@
 import { test as setup } from '@playwright/test';
 import { skipOnboarding } from '../utils/onboarding.util';
-import authUtil from '../utils//auth.util';
+import authUtil from '../utils/auth.util';
 
 const authFile = '.auth/login.json';
 

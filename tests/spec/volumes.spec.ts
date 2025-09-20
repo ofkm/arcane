@@ -21,7 +21,6 @@ let realVolumes: any[] = [];
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/volumes');
-  await page.waitForLoadState('networkidle');
   realVolumes = await fetchVolumesWithRetry(page);
 });
 
