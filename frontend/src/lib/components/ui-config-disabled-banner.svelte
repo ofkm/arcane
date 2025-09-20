@@ -2,6 +2,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import XIcon from '@lucide/svelte/icons/x';
+	import { m } from '$lib/paraglide/messages';
 
 	let dismissed = $state(false);
 	const active = $derived.by(() => $settingsStore.uiConfigDisabled && !dismissed);
@@ -21,8 +22,8 @@
 					<div class="size-2.5 rounded-full bg-amber-500 ring-4 ring-amber-500/30"></div>
 				</div>
 				<div class="flex-1 space-y-1">
-					<p class="text-sm font-medium">UI configuration is disabled</p>
-					<p class="text-xs leading-relaxed">Settings must be managed via environment variables.</p>
+					<p class="text-sm font-medium">{m.ui_config_disabled_title()}</p>
+					<p class="text-xs leading-relaxed">{m.ui_config_disabled_description()}</p>
 				</div>
 				<Button
 					type="button"
