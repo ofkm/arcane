@@ -351,12 +351,6 @@
 			</Card.Content>
 		</Card.Root>
 	</div>
-
-	{#if uiConfigDisabled}
-		<div
-			class="bg-background/65 ring-border/40 pointer-events-none absolute inset-0 z-20 rounded-md ring-1 backdrop-blur-sm"
-		></div>
-	{/if}
 </fieldset>
 
 <OidcConfigDialog

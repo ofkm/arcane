@@ -136,10 +136,4 @@
 			</Card.Content>
 		</Card.Root>
 	</div>
-
-	{#if uiConfigDisabled}
-		<div
-			class="bg-background/65 ring-border/40 backdrop-blur-xsm pointer-events-none absolute inset-0 z-20 rounded-md ring-1"
-		></div>
-	{/if}
 </fieldset>
