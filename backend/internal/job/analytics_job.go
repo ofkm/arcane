@@ -78,14 +78,6 @@ func (j *AnalyticsJob) Execute(parentCtx context.Context) error {
 	}
 
 	instanceID := j.settingsService.GetStringSetting(parentCtx, "instanceId", "")
-	if instanceID == "" {
-		if ensuredID, err := j.settingsService.EnsureInstanceID(parentCtx); err == nil {
-			instanceID = ensuredID
-		} else {
-			slog.WarnContext(parentCtx, "failed to ensure instance ID; using 'unknown'", "error", err)
-			instanceID = "unknown"
-		}
-	}
 
 	payload := struct {
 		Version    string `json:"version"`

@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/ofkm/arcane-backend/internal/config"
@@ -30,29 +32,32 @@ type Services struct {
 	Version           *services.VersionService
 }
 
-func initializeServices(db *database.DB, cfg *config.Config, httpClient *http.Client) (*Services, *services.DockerClientService, error) {
-	svc := &Services{}
+func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config, httpClient *http.Client) (svcs *Services, dockerSrvice *services.DockerClientService, err error) {
+	svcs = &Services{}
 
-	svc.Event = services.NewEventService(db)
-	svc.Converter = services.NewConverterService()
-	svc.Settings = services.NewSettingsService(db, cfg)
+	svcs.Event = services.NewEventService(db)
+	svcs.Converter = services.NewConverterService()
+	svcs.Settings, err = services.NewSettingsService(ctx, db)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to settings service: %w", err)
+	}
 	dockerClient := services.NewDockerClientService(db)
-	svc.Docker = dockerClient
-	svc.User = services.NewUserService(db)
-	svc.ContainerRegistry = services.NewContainerRegistryService(db)
-	svc.ImageUpdate = services.NewImageUpdateService(db, svc.Settings, svc.ContainerRegistry, svc.Docker, svc.Event)
-	svc.Image = services.NewImageService(db, svc.Docker, svc.ContainerRegistry, svc.ImageUpdate, svc.Event)
-	svc.Project = services.NewProjectService(db, svc.Settings, svc.Event, svc.Image)
-	svc.Environment = services.NewEnvironmentService(db, httpClient)
-	svc.Container = services.NewContainerService(db, svc.Event, svc.Docker)
-	svc.Volume = services.NewVolumeService(db, svc.Docker, svc.Event)
-	svc.Network = services.NewNetworkService(db, svc.Docker, svc.Event)
-	svc.Template = services.NewTemplateService(db, httpClient)
-	svc.Auth = services.NewAuthService(svc.User, svc.Settings, svc.Event, cfg.JWTSecret, cfg)
-	svc.Oidc = services.NewOidcService(svc.Auth, cfg, httpClient)
-	svc.Updater = services.NewUpdaterService(db, svc.Settings, svc.Docker, svc.Project, svc.ImageUpdate, svc.ContainerRegistry, svc.Event, svc.Image)
-	svc.System = services.NewSystemService(db, svc.Docker, svc.Container, svc.Image, svc.Volume, svc.Network, svc.Settings)
-	svc.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled)
+	svcs.Docker = dockerClient
+	svcs.User = services.NewUserService(db)
+	svcs.ContainerRegistry = services.NewContainerRegistryService(db)
+	svcs.ImageUpdate = services.NewImageUpdateService(db, svcs.Settings, svcs.ContainerRegistry, svcs.Docker, svcs.Event)
+	svcs.Image = services.NewImageService(db, svcs.Docker, svcs.ContainerRegistry, svcs.ImageUpdate, svcs.Event)
+	svcs.Project = services.NewProjectService(db, svcs.Settings, svcs.Event, svcs.Image)
+	svcs.Environment = services.NewEnvironmentService(db, httpClient)
+	svcs.Container = services.NewContainerService(db, svcs.Event, svcs.Docker)
+	svcs.Volume = services.NewVolumeService(db, svcs.Docker, svcs.Event)
+	svcs.Network = services.NewNetworkService(db, svcs.Docker, svcs.Event)
+	svcs.Template = services.NewTemplateService(db, httpClient)
+	svcs.Auth = services.NewAuthService(svcs.User, svcs.Settings, svcs.Event, cfg.JWTSecret, cfg)
+	svcs.Oidc = services.NewOidcService(svcs.Auth, cfg, httpClient)
+	svcs.Updater = services.NewUpdaterService(db, svcs.Settings, svcs.Docker, svcs.Project, svcs.ImageUpdate, svcs.ContainerRegistry, svcs.Event, svcs.Image)
+	svcs.System = services.NewSystemService(db, svcs.Docker, svcs.Container, svcs.Image, svcs.Volume, svcs.Network, svcs.Settings)
+	svcs.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled)
 
-	return svc, dockerClient, nil
+	return svcs, dockerClient, nil
 }

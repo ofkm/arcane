@@ -7,32 +7,132 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
+	"sync/atomic"
+	"time"
 
-	"github.com/google/uuid"
+	"github.com/hashicorp/go-uuid"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type SettingsService struct {
 	db     *database.DB
-	config *config.Config
+	config atomic.Pointer[models.Settings]
 
 	OnImagePollingSettingsChanged func(ctx context.Context)
 	OnAutoUpdateSettingsChanged   func(ctx context.Context)
 }
 
-func NewSettingsService(db *database.DB, cfg *config.Config) *SettingsService {
-	return &SettingsService{
-		db:     db,
-		config: cfg,
+func NewSettingsService(ctx context.Context, db *database.DB) (*SettingsService, error) {
+	svc := &SettingsService{
+		db: db,
 	}
+
+	err := svc.LoadDatabaseSettings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load settings: %w", err)
+	}
+
+	err = svc.setupInstanceID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup instance ID: %w", err)
+	}
+
+	return svc, nil
+}
+
+func (s *SettingsService) GetSettingsConfig() *models.Settings {
+	v := s.config.Load()
+	if v == nil {
+		panic("GetSettingsConfig called before Settings has been loaded")
+	}
+
+	return v
+}
+
+func (s *SettingsService) LoadDatabaseSettings(ctx context.Context) (err error) {
+	dst, err := s.loadDatabaseSettingsInternal(ctx, s.db)
+	if err != nil {
+		return err
+	}
+
+	s.config.Store(dst)
+
+	return nil
+}
+
+func (s *SettingsService) loadDatabaseSettingsInternal(ctx context.Context, db *database.DB) (*models.Settings, error) {
+
+	if config.Load().UIConfigurationDisabled {
+		dst, err := s.loadDatabaseConfigFromEnv(ctx, db)
+		return dst, err
+	}
+
+	dest := s.getDefaultSettings()
+
+	var loaded []models.SettingVariable
+	queryCtx, queryCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer queryCancel()
+	err := db.
+		WithContext(queryCtx).
+		Find(&loaded).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration from the database: %w", err)
+	}
+
+	for _, v := range loaded {
+		err = dest.UpdateField(v.Key, v.Value, false)
+
+		if err != nil && !errors.Is(err, models.SettingKeyNotFoundError{}) {
+			return nil, fmt.Errorf("failed to process settings for key '%s': %w", v.Key, err)
+		}
+	}
+
+	return dest, nil
+
+}
+
+func (s *SettingsService) loadDatabaseConfigFromEnv(ctx context.Context, db *database.DB) (*models.Settings, error) {
+	dest := s.getDefaultSettings()
+
+	rt := reflect.ValueOf(dest).Elem().Type()
+	rv := reflect.ValueOf(dest).Elem()
+	for i := range rt.NumField() {
+		field := rt.Field(i)
+
+		key, attrs, _ := strings.Cut(field.Tag.Get("key"), ",")
+
+		if attrs == "internal" {
+			var value string
+			err := db.WithContext(ctx).
+				Model(&models.SettingVariable{}).
+				Where("key = ?", key).
+				Select("value").
+				First(&value).Error
+			if err == nil {
+				rv.Field(i).FieldByName("Value").SetString(value)
+			}
+			continue
+		}
+
+		envVarName := utils.CamelCaseToScreamingSnakeCase(key)
+
+		value, ok := os.LookupEnv(envVarName)
+		if ok {
+			rv.Field(i).FieldByName("Value").SetString(value)
+			continue
+		}
+	}
+
+	return dest, nil
 }
 
 func (s *SettingsService) GetSettings(ctx context.Context) (*models.Settings, error) {
@@ -46,7 +146,6 @@ func (s *SettingsService) GetSettings(ctx context.Context) (*models.Settings, er
 
 	for _, sv := range settingVars {
 		if err := settings.UpdateField(sv.Key, sv.Value, false); err != nil {
-			// If key not found, it's okay
 			var notFoundErr models.SettingKeyNotFoundError
 			if !errors.As(err, &notFoundErr) {
 				return nil, fmt.Errorf("failed to load setting %s: %w", sv.Key, err)
@@ -80,21 +179,21 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 }
 
 func (s *SettingsService) SyncOidcEnvToDatabase(ctx context.Context) ([]models.SettingVariable, error) {
-	if !s.config.OidcEnabled {
+	if config.Load().OidcEnabled {
 		return nil, errors.New("OIDC sync called but OIDC_ENABLED is false")
 	}
 
-	if s.config.OidcClientID == "" || s.config.OidcIssuerURL == "" {
+	if config.Load().OidcClientID == "" || config.Load().OidcIssuerURL == "" {
 		return nil, errors.New("required OIDC environment variables are missing (OIDC_CLIENT_ID or OIDC_ISSUER_URL)")
 	}
 
 	envOidcConfig := models.OidcConfig{
-		ClientID:     s.config.OidcClientID,
-		ClientSecret: s.config.OidcClientSecret,
-		IssuerURL:    s.config.OidcIssuerURL,
-		Scopes:       s.config.OidcScopes,
-		AdminClaim:   s.config.OidcAdminClaim,
-		AdminValue:   s.config.OidcAdminValue,
+		ClientID:     config.Load().OidcClientID,
+		ClientSecret: config.Load().OidcClientSecret,
+		IssuerURL:    config.Load().OidcIssuerURL,
+		Scopes:       config.Load().OidcScopes,
+		AdminClaim:   config.Load().OidcAdminClaim,
+		AdminValue:   config.Load().OidcAdminValue,
 	}
 
 	oidcConfigBytes, err := json.Marshal(envOidcConfig)
@@ -131,15 +230,6 @@ func (s *SettingsService) SyncOidcEnvToDatabase(ctx context.Context) ([]models.S
 	settings, err := s.GetSettings(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve updated settings: %w", err)
-	}
-
-	return settings.ToSettingVariableSlice(false, false), nil
-}
-
-func (s *SettingsService) GetPublicSettings(ctx context.Context) ([]models.SettingVariable, error) {
-	settings, err := s.GetSettings(ctx)
-	if err != nil {
-		return nil, err
 	}
 
 	return settings.ToSettingVariableSlice(false, false), nil
@@ -305,50 +395,30 @@ func (s *SettingsService) EnsureDefaultSettings(ctx context.Context) error {
 		return err
 	}
 
-	if _, err := s.EnsureInstanceID(ctx); err != nil {
-		return err
-	}
 	return nil
 }
 
-func (s *SettingsService) EnsureInstanceID(ctx context.Context) (string, error) {
-	const key = "instanceId"
+func (s *SettingsService) ListSettings(all bool) []models.SettingVariable {
+	return s.GetSettingsConfig().ToSettingVariableSlice(all, true)
+}
 
-	var newID string
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var sv models.SettingVariable
-
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("key = ?", key).
-			First(&sv).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				newID = uuid.New().String()
-				if createErr := tx.Create(&models.SettingVariable{Key: key, Value: newID}).Error; createErr != nil {
-					return fmt.Errorf("failed to persist %s: %w", key, createErr)
-				}
-				return nil
-			}
-			return fmt.Errorf("failed to load %s: %w", key, err)
-		}
-
-		if sv.Value != "" {
-			newID = sv.Value
-			return nil
-		}
-
-		newID = uuid.New().String()
-		if updErr := tx.Model(&models.SettingVariable{}).
-			Where("key = ?", key).
-			Update("value", newID).Error; updErr != nil {
-			return fmt.Errorf("failed to update %s: %w", key, updErr)
-		}
+func (s *SettingsService) setupInstanceID(ctx context.Context) error {
+	instanceID := s.GetSettingsConfig().InstanceID.Value
+	if instanceID != "" {
 		return nil
-	})
-
-	if err != nil {
-		return "", err
 	}
-	return newID, nil
+
+	createdInstanceID, err := uuid.GenerateUUID()
+	if err != nil {
+		return fmt.Errorf("failed to created a new instance ID: %w", err)
+	}
+
+	err = s.UpdateSetting(ctx, "instanceId", createdInstanceID)
+	if err != nil {
+		return fmt.Errorf("failed to set instance ID in database: %w", err)
+	}
+
+	return nil
 }
 
 func (s *SettingsService) GetBoolSetting(ctx context.Context, key string, defaultValue bool) bool {
@@ -402,16 +472,22 @@ func (s *SettingsService) EnsureEncryptionKey(ctx context.Context) (string, erro
 		return "", fmt.Errorf("failed to load encryption key: %w", err)
 	}
 
+	// If already present and non-empty, return it
 	if sv.Value != "" {
 		return sv.Value, nil
 	}
 
-	// Generate uuid -> sha256 -> base64 key (32 bytes)
-	u := uuid.New().String()
+	notFound := errors.Is(err, gorm.ErrRecordNotFound)
+
+	// Generate uuid -> sha256 -> base64 key (32 bytes raw -> 44 chars base64)
+	u, genErr := uuid.GenerateUUID()
+	if genErr != nil {
+		return "", fmt.Errorf("failed to generate encryption key: %w", genErr)
+	}
 	sum := sha256.Sum256([]byte(u))
 	key := base64.StdEncoding.EncodeToString(sum[:])
 
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if notFound {
 		if createErr := s.db.WithContext(ctx).
 			Create(&models.SettingVariable{Key: keyName, Value: key}).Error; createErr != nil {
 			return "", fmt.Errorf("failed to persist encryption key: %w", createErr)
@@ -419,6 +495,7 @@ func (s *SettingsService) EnsureEncryptionKey(ctx context.Context) (string, erro
 		return key, nil
 	}
 
+	// Record existed but empty value; update it
 	if updErr := s.db.WithContext(ctx).
 		Model(&models.SettingVariable{}).
 		Where("key = ?", keyName).
