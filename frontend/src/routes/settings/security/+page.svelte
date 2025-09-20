@@ -6,9 +6,21 @@
 	import SecuritySettingsForm from '../forms/security-settings-form.svelte';
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import { m } from '$lib/paraglide/messages';
+	import { getContext } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 	let currentSettings = $state<Settings>(data.settings);
+	let hasChanges = $state(false);
+	let isLoading = $state(false);
+
+	const formState = getContext('settingsFormState') as any;
+
+	$effect(() => {
+		if (formState) {
+			formState.hasChanges = hasChanges;
+			formState.isLoading = isLoading;
+		}
+	});
 
 	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
 		try {
@@ -23,24 +35,34 @@
 	}
 </script>
 
-<div class="settings-page px-4 py-6">
+<div class="settings-page px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
 	<div
-		class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 shadow-sm"
+		class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 shadow-sm sm:p-6"
 	>
 		<div class="bg-primary/10 pointer-events-none absolute -right-10 -top-10 size-40 rounded-full blur-3xl"></div>
 		<div class="bg-muted/40 pointer-events-none absolute -bottom-10 -left-10 size-40 rounded-full blur-3xl"></div>
-		<div class="relative flex items-start gap-4">
-			<div class="bg-primary/10 text-primary ring-primary/20 flex size-10 items-center justify-center rounded-lg ring-1">
-				<LockIcon class="size-5" />
-			</div>
-			<div>
-				<h1 class="settings-title">{m.security_title()}</h1>
-				<p class="settings-description">{m.security_description()}</p>
+		<div class="relative flex items-start justify-between gap-3 sm:gap-4">
+			<div class="flex min-w-0 items-start gap-3 sm:gap-4">
+				<div
+					class="bg-primary/10 text-primary ring-primary/20 flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 sm:size-10"
+				>
+					<LockIcon class="size-4 sm:size-5" />
+				</div>
+				<div class="min-w-0">
+					<h1 class="settings-title text-xl sm:text-3xl">{m.security_title()}</h1>
+					<p class="settings-description text-sm sm:text-base">{m.security_description()}</p>
+				</div>
 			</div>
 		</div>
 	</div>
 
-	<div class="settings-grid settings-grid-single">
-		<SecuritySettingsForm settings={currentSettings} oidcStatus={data.oidcStatus} callback={updateSettingsConfig} />
+	<div class="settings-grid settings-grid-single mt-6 sm:mt-8">
+		<SecuritySettingsForm
+			settings={currentSettings}
+			oidcStatus={data.oidcStatus}
+			callback={updateSettingsConfig}
+			bind:hasChanges
+			bind:isLoading
+		/>
 	</div>
 </div>
