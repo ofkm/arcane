@@ -10,6 +10,7 @@
 	import FolderIcon from '@lucide/svelte/icons/folder';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
+	import settingsStore from '$lib/stores/config-store';
 
 	let {
 		settings,
@@ -22,6 +23,8 @@
 		hasChanges: boolean;
 		isLoading: boolean;
 	} = $props();
+
+	const uiConfigDisabled = $state($settingsStore.uiConfigDisabled);
 
 	const formSchema = z.object({
 		projectsDirectory: z.string().min(1, m.general_projects_directory_required()),
@@ -74,7 +77,10 @@
 	});
 </script>
 
-<div class="space-y-4 sm:space-y-6">
+<fieldset disabled={uiConfigDisabled} class="relative space-y-4 sm:space-y-6">
+	{#if uiConfigDisabled}
+		<div class="bg-background/60 absolute inset-0 z-10 cursor-not-allowed backdrop-blur-[1px]"></div>
+	{/if}
 	<!-- Projects Configuration Card -->
 	<Card.Root class="overflow-hidden">
 		<Card.Header class="py-4! bg-muted/20 border-b">
@@ -131,4 +137,4 @@
 			/>
 		</Card.Content>
 	</Card.Root>
-</div>
+</fieldset>
