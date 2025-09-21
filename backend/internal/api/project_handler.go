@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -35,6 +36,7 @@ type projectLogStream struct {
 	once   sync.Once
 	cancel context.CancelFunc
 	format string
+	seq    atomic.Uint64
 }
 
 func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectService, authMiddleware *middleware.AuthMiddleware) {
@@ -335,22 +337,14 @@ func (h *ProjectHandler) getOrStartProjectLogHub(projectID, format string, batch
 			go func() {
 				defer close(msgs)
 				for line := range lines {
-					line = ws.StripANSI(line)
-					level := "stdout"
-					if strings.HasPrefix(line, "[STDERR] ") {
-						level = "stderr"
-						line = strings.TrimPrefix(line, "[STDERR] ")
-					}
-					var service string
-					if parts := strings.SplitN(line, " | ", 2); len(parts) == 2 {
-						service = strings.TrimSpace(parts[0])
-						line = parts[1]
-					}
+					level, service, msg := ws.NormalizeProjectLine(line)
+					seq := ls.seq.Add(1)
 					msgs <- ws.LogMessage{
+						Seq:       seq,
 						Level:     level,
-						Message:   line,
+						Message:   msg,
 						Service:   service,
-						Timestamp: time.Now(),
+						Timestamp: ws.NowRFC3339(),
 					}
 				}
 			}()
@@ -360,7 +354,15 @@ func (h *ProjectHandler) getOrStartProjectLogHub(projectID, format string, batch
 				go ws.ForwardLogJSON(ctx, ls.hub, msgs)
 			}
 		} else {
-			go ws.ForwardLines(ctx, ls.hub, lines)
+			cleanChan := make(chan string, 256)
+			go func() {
+				defer close(cleanChan)
+				for line := range lines {
+					_, _, msg := ws.NormalizeProjectLine(line)
+					cleanChan <- msg
+				}
+			}()
+			go ws.ForwardLines(ctx, ls.hub, cleanChan)
 		}
 	})
 

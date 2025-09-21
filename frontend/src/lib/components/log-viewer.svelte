@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser, dev } from '$app/environment';
+	import { dev } from '$app/environment';
 	import { get } from 'svelte/store';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import { m } from '$lib/paraglide/messages';
@@ -47,14 +47,11 @@
 	let flushScheduled = false;
 	let seq = 0;
 
-	// Soft-clear marker: hide everything with id < dropBefore (cheap)
 	let dropBefore = $state(0);
 
-	// Compact threshold (when hidden + visible exceeds this, we physically trim)
-	const COMPACT_FACTOR = 2; // 2 * maxLines
+	const COMPACT_FACTOR = 2;
 	let lastCompactSeq = 0;
 
-	// Only logs with id >= dropBefore are rendered
 	let visibleLogs = $derived.by(() => {
 		if (dropBefore === 0) return logs;
 		return logs.filter((l) => l.id >= dropBefore);
@@ -127,9 +124,6 @@
 	}
 
 	const humanType = type === 'project' ? m.project() : m.container();
-
-	const DOCKER_TS_ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z?\s*/;
-	const DOCKER_TS_SLASH_RE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s*/;
 
 	function buildWebSocketEndpoint(path: string): string {
 		const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -236,17 +230,12 @@
 	}
 
 	function addLogEntry(logData: { level: string; message: string; timestamp?: string; service?: string; containerId?: string }) {
-		let cleanMessage = logData.message;
-		let timestamp = logData.timestamp || new Date().toISOString();
-
-		if (DOCKER_TS_ISO_RE.test(cleanMessage)) cleanMessage = cleanMessage.replace(DOCKER_TS_ISO_RE, '').trim();
-		if (DOCKER_TS_SLASH_RE.test(cleanMessage)) cleanMessage = cleanMessage.replace(DOCKER_TS_SLASH_RE, '').trim();
-
+		const timestamp = logData.timestamp || new Date().toISOString();
 		pending.push({
 			id: seq++,
 			timestamp,
 			level: logData.level as LogEntry['level'],
-			message: cleanMessage,
+			message: logData.message,
 			service: logData.service,
 			containerId: logData.containerId
 		});
@@ -285,7 +274,6 @@
 	}
 
 	$effect(() => {
-		if (!browser) return;
 		const key = streamKey();
 		if (!key) return;
 		if (key === currentStreamKey && isStreaming) return;

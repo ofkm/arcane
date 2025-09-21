@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -52,6 +53,7 @@ type containerLogStream struct {
 	once   sync.Once
 	cancel context.CancelFunc
 	format string
+	seq    atomic.Uint64
 }
 
 // getOrStartContainerLogHub now isolated per (containerID, format)
@@ -80,16 +82,13 @@ func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string,
 			go func() {
 				defer close(msgs)
 				for line := range lines {
-					line = ws.StripANSI(line)
-					level := "stdout"
-					if strings.HasPrefix(line, "[STDERR] ") {
-						level = "stderr"
-						line = strings.TrimPrefix(line, "[STDERR] ")
-					}
+					level, msg := ws.NormalizeContainerLine(line)
+					seq := ls.seq.Add(1)
 					msgs <- ws.LogMessage{
+						Seq:       seq,
 						Level:     level,
-						Message:   line,
-						Timestamp: time.Now(),
+						Message:   msg,
+						Timestamp: ws.NowRFC3339(),
 					}
 				}
 			}()
@@ -99,7 +98,16 @@ func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string,
 				go ws.ForwardLogJSON(ctx, ls.hub, msgs)
 			}
 		} else {
-			go ws.ForwardLines(ctx, ls.hub, lines)
+			// Plain text mode still strips ANSI & timestamps for consistency
+			cleanChan := make(chan string, 256)
+			go func() {
+				defer close(cleanChan)
+				for line := range lines {
+					_, msg := ws.NormalizeContainerLine(line)
+					cleanChan <- msg
+				}
+			}()
+			go ws.ForwardLines(ctx, ls.hub, cleanChan)
 		}
 	})
 

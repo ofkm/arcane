@@ -7,11 +7,12 @@ import (
 )
 
 type LogMessage struct {
-	Level       string    `json:"level,omitempty"`
-	Message     string    `json:"message"`
-	Timestamp   time.Time `json:"timestamp"`
-	Service     string    `json:"service,omitempty"`
-	ContainerID string    `json:"containerId,omitempty"`
+	Seq         uint64 `json:"seq"`
+	Level       string `json:"level,omitempty"`
+	Message     string `json:"message"`
+	Timestamp   string `json:"timestamp"` // RFC3339(9) string
+	Service     string `json:"service,omitempty"`
+	ContainerID string `json:"containerId,omitempty"`
 }
 
 // ForwardLines forwards plain text lines to the hub.
@@ -39,8 +40,8 @@ func ForwardLogJSON(ctx context.Context, hub *Hub, logs <-chan LogMessage) {
 			if !ok {
 				return
 			}
-			if m.Timestamp.IsZero() {
-				m.Timestamp = time.Now()
+			if m.Timestamp == "" {
+				m.Timestamp = time.Now().Format(time.RFC3339)
 			}
 			if b, err := json.Marshal(m); err == nil {
 				hub.Broadcast(b)
@@ -82,8 +83,8 @@ func ForwardLogJSONBatched(ctx context.Context, hub *Hub, logs <-chan LogMessage
 				flush()
 				return
 			}
-			if m.Timestamp.IsZero() {
-				m.Timestamp = time.Now()
+			if m.Timestamp == "" {
+				m.Timestamp = time.Now().Format(time.RFC3339)
 			}
 			buf = append(buf, m)
 			if len(buf) >= maxBatch {
