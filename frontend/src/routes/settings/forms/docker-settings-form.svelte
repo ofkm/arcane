@@ -156,8 +156,8 @@
 <fieldset disabled={uiConfigDisabled} class="relative">
 	<div class="space-y-4 sm:space-y-6">
 		<!-- Image Polling Card -->
-		<Card.Root class="overflow-hidden">
-			<Card.Header class="py-4! bg-muted/20 border-b">
+		<Card.Root class="pt-0 overflow-hidden">
+			<Card.Header class="!py-4 bg-muted/20 border-b">
 				<div class="flex items-center gap-3">
 					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 						<ActivityIcon class="size-4" />
@@ -213,8 +213,8 @@
 
 		{#if $formInputs.pollingEnabled.value}
 			<!-- Auto Update Card -->
-			<Card.Root class="overflow-hidden">
-				<Card.Header class="py-4! bg-muted/20 border-b">
+			<Card.Root class="pt-0 overflow-hidden">
+				<Card.Header class="!py-4 bg-muted/20 border-b">
 					<div class="flex items-center gap-3">
 						<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 							<RefreshCwIcon class="size-4" />
@@ -251,8 +251,8 @@
 		{/if}
 
 		<!-- Cleanup Settings Card -->
-		<Card.Root class="overflow-hidden">
-			<Card.Header class="py-4! bg-muted/20 border-b">
+		<Card.Root class="pt-0 overflow-hidden">
+			<Card.Header class="!py-4 bg-muted/20 border-b">
 				<div class="flex items-center gap-3">
 					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 						<TrashIcon class="size-4" />

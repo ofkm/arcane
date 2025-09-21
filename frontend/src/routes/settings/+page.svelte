@@ -237,18 +237,6 @@
 		searchResults = results.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 	}
 
-	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		try {
-			await settingsAPI.updateSettings(updatedSettings as any);
-			currentSettings = { ...currentSettings, ...updatedSettings };
-			settingsStore.set(currentSettings);
-			settingsStore.reload();
-		} catch (error) {
-			console.error('Error updating settings:', error);
-			throw error;
-		}
-	}
-
 	function navigateToCategory(categoryUrl: string) {
 		goto(categoryUrl);
 	}
@@ -259,7 +247,7 @@
 	}
 </script>
 
-<div class="settings-dashboard px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+<div class="px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
 	<!-- Header -->
 	<div class="mb-6 sm:mb-8">
 		<div
@@ -289,12 +277,12 @@
 
 				<!-- Search Bar -->
 				<div class="relative mt-4 w-full sm:mt-6 sm:max-w-md">
-					<SearchIcon class="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+					<SearchIcon class="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2 z-10" />
 					<input
 						type="text"
 						placeholder="Search settings..."
 						bind:value={searchQuery}
-						class="bg-background/50 border-border/50 border-input ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 pl-10 text-sm backdrop-blur-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+						class="bg-background/50 border-input ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 pl-10 text-sm backdrop-blur-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 					/>
 					{#if showSearchResults}
 						<Button variant="ghost" size="sm" onclick={clearSearch} class="absolute right-2 top-1/2 h-6 w-6 -translate-y-1/2 p-0">
@@ -409,20 +397,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.settings-dashboard :global(.settings-page) {
-		padding-left: 0;
-		padding-right: 0;
-		padding-top: 0;
-		padding-bottom: 0;
-	}
-
-	.settings-dashboard :global(.settings-grid) {
-		margin-top: 0;
-	}
-
-	.settings-dashboard :global(.settings-grid .w-full) {
-		padding: 0;
-	}
-</style>

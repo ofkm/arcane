@@ -38,7 +38,7 @@
 	}
 </script>
 
-<div class="settings-page px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+<div class="px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
 	<div
 		class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 shadow-sm sm:p-6"
 	>
@@ -64,7 +64,7 @@
 		</div>
 	</div>
 
-	<div class="settings-grid settings-grid-single mt-6 sm:mt-8">
+	<div class="mt-6 sm:mt-8">
 		<SecuritySettingsForm
 			settings={currentSettings}
 			oidcStatus={data.oidcStatus}
