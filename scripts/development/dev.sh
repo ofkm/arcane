@@ -289,19 +289,27 @@ restart_dev() {
     # Check if .env file exists and create if needed (to pick up any new changes)
     create_env_file
     
-    # Stop and start containers to reload environment variables
-    # Note: Docker Compose restart doesn't reload env files, so we use down/up
+    # Stop containers gracefully to allow Air to clean up properly
+    log_info "Stopping containers gracefully..."
     if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down; then
         log_error "Failed to stop development environment"
         exit 1
     fi
     
+    # Wait a moment for file locks to be released
+    log_info "Waiting for file locks to be released..."
+    sleep 2
+    
+    # Start containers with fresh environment
+    log_info "Starting containers with updated environment..."
     if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" up -d; then
         log_error "Failed to start development environment"
         exit 1
     fi
     
     log_success "Development environment restarted with updated configuration!"
+    log_info "Frontend: http://localhost:3000"
+    log_info "Backend:  http://localhost:3552"
 }
 
 clean_dev() {
@@ -328,22 +336,34 @@ clean_dev() {
 rebuild_dev() {
     log_info "Rebuilding development environment..."
     
+    # Stop containers
     if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down; then
         log_error "Failed to stop containers"
         exit 1
     fi
     
+    # Clean up any leftover build artifacts
+    log_info "Cleaning up build artifacts..."
+    if docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" exec backend rm -rf .bin 2>/dev/null; then
+        log_info "Cleaned backend build directory"
+    fi
+    
+    # Rebuild with no cache
+    log_info "Rebuilding containers from scratch..."
     if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" build --no-cache; then
         log_error "Failed to rebuild containers"
         exit 1
     fi
     
+    # Start fresh
     if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" up -d; then
         log_error "Failed to start containers"
         exit 1
     fi
     
     log_success "Development environment rebuilt and started!"
+    log_info "Frontend: http://localhost:3000"
+    log_info "Backend:  http://localhost:3552"
 }
 
 shell_into() {
