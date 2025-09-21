@@ -46,6 +46,10 @@ func NewSettingsService(ctx context.Context, db *database.DB) (*SettingsService,
 		return nil, fmt.Errorf("failed to setup instance ID: %w", err)
 	}
 
+	if err = svc.LoadDatabaseSettings(ctx); err != nil {
+		return nil, fmt.Errorf("failed to reload settings after instance ID setup: %w", err)
+	}
+
 	return svc, nil
 }
 
@@ -435,9 +439,10 @@ func (s *SettingsService) SetBoolSetting(ctx context.Context, key string, value 
 	if err := s.UpdateSetting(ctx, key, fmt.Sprintf("%t", value)); err != nil {
 		return err
 	}
-	// keep in-memory cache consistent for immediate reads (e.g. Playwright)
-	cfg := s.GetSettingsConfig()
-	_ = cfg.UpdateField(key, fmt.Sprintf("%t", value), false)
+	// Rebuild a fresh snapshot instead of mutating current pointer (avoids races)
+	if err := s.LoadDatabaseSettings(ctx); err != nil {
+		return fmt.Errorf("failed to refresh settings cache: %w", err)
+	}
 	return nil
 }
 
@@ -445,8 +450,9 @@ func (s *SettingsService) SetIntSetting(ctx context.Context, key string, value i
 	if err := s.UpdateSetting(ctx, key, fmt.Sprintf("%d", value)); err != nil {
 		return err
 	}
-	cfg := s.GetSettingsConfig()
-	_ = cfg.UpdateField(key, fmt.Sprintf("%d", value), false)
+	if err := s.LoadDatabaseSettings(ctx); err != nil {
+		return fmt.Errorf("failed to refresh settings cache: %w", err)
+	}
 	return nil
 }
 
@@ -454,8 +460,9 @@ func (s *SettingsService) SetStringSetting(ctx context.Context, key, value strin
 	if err := s.UpdateSetting(ctx, key, value); err != nil {
 		return err
 	}
-	cfg := s.GetSettingsConfig()
-	_ = cfg.UpdateField(key, value, false)
+	if err := s.LoadDatabaseSettings(ctx); err != nil {
+		return fmt.Errorf("failed to refresh settings cache: %w", err)
+	}
 	return nil
 }
 
