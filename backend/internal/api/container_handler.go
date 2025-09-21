@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -56,9 +57,8 @@ type containerLogStream struct {
 	seq    atomic.Uint64
 }
 
-// getOrStartContainerLogHub now isolated per (containerID, format)
 func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string, batched bool, follow bool, tail, since string, timestamps bool) *ws.Hub {
-	key := containerID + "::" + format
+	key := fmt.Sprintf("%s::%s::batched=%t", containerID, format, batched)
 	v, _ := h.logStreams.LoadOrStore(key, &containerLogStream{
 		hub:    ws.NewHub(1024),
 		format: format,
@@ -82,13 +82,17 @@ func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string,
 			go func() {
 				defer close(msgs)
 				for line := range lines {
-					level, msg := ws.NormalizeContainerLine(line)
+					level, msg, ts := ws.NormalizeContainerLine(line)
 					seq := ls.seq.Add(1)
+					timestamp := ts
+					if timestamp == "" {
+						timestamp = ws.NowRFC3339()
+					}
 					msgs <- ws.LogMessage{
 						Seq:       seq,
 						Level:     level,
 						Message:   msg,
-						Timestamp: ws.NowRFC3339(),
+						Timestamp: timestamp,
 					}
 				}
 			}()
@@ -103,7 +107,7 @@ func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string,
 			go func() {
 				defer close(cleanChan)
 				for line := range lines {
-					_, msg := ws.NormalizeContainerLine(line)
+					_, msg, _ := ws.NormalizeContainerLine(line)
 					cleanChan <- msg
 				}
 			}()

@@ -41,7 +41,7 @@ func ForwardLogJSON(ctx context.Context, hub *Hub, logs <-chan LogMessage) {
 				return
 			}
 			if m.Timestamp == "" {
-				m.Timestamp = time.Now().Format(time.RFC3339)
+				m.Timestamp = NowRFC3339()
 			}
 			if b, err := json.Marshal(m); err == nil {
 				hub.Broadcast(b)
@@ -84,7 +84,7 @@ func ForwardLogJSONBatched(ctx context.Context, hub *Hub, logs <-chan LogMessage
 				return
 			}
 			if m.Timestamp == "" {
-				m.Timestamp = time.Now().Format(time.RFC3339)
+				m.Timestamp = NowRFC3339()
 			}
 			buf = append(buf, m)
 			if len(buf) >= maxBatch {

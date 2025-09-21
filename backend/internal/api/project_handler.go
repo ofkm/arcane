@@ -337,14 +337,18 @@ func (h *ProjectHandler) getOrStartProjectLogHub(projectID, format string, batch
 			go func() {
 				defer close(msgs)
 				for line := range lines {
-					level, service, msg := ws.NormalizeProjectLine(line)
+					level, service, msg, ts := ws.NormalizeProjectLine(line)
 					seq := ls.seq.Add(1)
+					timestamp := ts
+					if timestamp == "" {
+						timestamp = ws.NowRFC3339()
+					}
 					msgs <- ws.LogMessage{
 						Seq:       seq,
 						Level:     level,
 						Message:   msg,
 						Service:   service,
-						Timestamp: ws.NowRFC3339(),
+						Timestamp: timestamp,
 					}
 				}
 			}()
@@ -358,7 +362,7 @@ func (h *ProjectHandler) getOrStartProjectLogHub(projectID, format string, batch
 			go func() {
 				defer close(cleanChan)
 				for line := range lines {
-					_, _, msg := ws.NormalizeProjectLine(line)
+					_, _, msg, _ := ws.NormalizeProjectLine(line)
 					cleanChan <- msg
 				}
 			}()

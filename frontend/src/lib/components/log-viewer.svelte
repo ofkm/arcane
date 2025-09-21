@@ -58,15 +58,20 @@
 	});
 
 	function maybeCompact() {
-		if (logs.length <= maxLines * COMPACT_FACTOR) return;
+		const threshold = maxLines * COMPACT_FACTOR;
+		if (logs.length <= threshold) return;
 		if (seq - lastCompactSeq < maxLines) return;
 
-		if (dropBefore > 0) {
-			const trimmed = logs.filter((l) => l.id >= dropBefore);
-			logs = trimmed;
-			lastCompactSeq = seq;
-			dropBefore = 0;
+		// Keep the most recent maxLines entries, trim older ones
+		const keepCount = Math.max(1, maxLines);
+		if (logs.length > keepCount) {
+			const start = logs.length - keepCount;
+			logs = logs.slice(start);
 		}
+
+		// mark compaction point and clear dropBefore so future compactions don't rely on it
+		lastCompactSeq = seq;
+		dropBefore = 0;
 	}
 
 	function scheduleFlush() {
