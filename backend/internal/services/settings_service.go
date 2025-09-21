@@ -357,6 +357,8 @@ func (s *SettingsService) UpdateSettings(ctx context.Context, updates dto.Update
 		return nil, fmt.Errorf("failed to retrieve updated settings: %w", err)
 	}
 
+	s.config.Store(settings)
+
 	return settings.ToSettingVariableSlice(false, false), nil
 }
 

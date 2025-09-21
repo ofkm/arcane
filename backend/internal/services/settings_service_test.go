@@ -234,3 +234,30 @@ func TestSettingsService_LoadDatabaseSettings_UIConfigurationDisabled_Env(t *tes
 	require.Equal(t, "env/projects", cfg.ProjectsDirectory.Value)
 	require.Equal(t, "https://env.example", cfg.BaseServerURL.Value)
 }
+
+func TestSettingsService_UpdateSettings_RefreshesCache(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+	require.NoError(t, svc.EnsureDefaultSettings(ctx))
+
+	newDir := "custom/projects2"
+	req := dto.UpdateSettingsDto{
+		ProjectsDirectory: &newDir,
+	}
+
+	_, err = svc.UpdateSettings(ctx, req)
+	require.NoError(t, err)
+
+	// ListSettings uses the cached snapshot; should reflect updated value
+	list := svc.ListSettings(true)
+	found := false
+	for _, sv := range list {
+		if sv.Key == "projectsDirectory" {
+			found = true
+			require.Equal(t, newDir, sv.Value)
+		}
+	}
+	require.True(t, found, "projectsDirectory setting not found in cached list")
+}
