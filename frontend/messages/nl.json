@@ -1060,5 +1060,7 @@
 	"polling_weekly_description": "Elke 10080 minuten op nieuwe afbeeldingen controleren",
 	"use_custom_polling_value": "Gebruik een aangepaste stemverhouding waarde tussen 5-10080 minuten",
 	"custom_polling_interval": "Aangepaste Polling Interval (minuten)",
-	"build_cache": "Bouw Cache"
+	"build_cache": "Bouw Cache",
+	"ui_config_disabled_title": "Gebruikersinterface configuratie is uitgeschakeld",
+	"ui_config_disabled_description": "Instellingen moeten worden beheerd via omgevingsvariabelen."
 }
