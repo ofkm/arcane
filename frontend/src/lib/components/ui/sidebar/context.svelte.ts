@@ -1,4 +1,3 @@
-import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
 import { IsTablet } from '$lib/hooks/is-tablet.svelte.js';
 import { getContext, setContext } from 'svelte';
 import { PersistedState } from 'runed';
@@ -25,9 +24,7 @@ export type SidebarStateProps = {
 class SidebarState {
 	readonly props: SidebarStateProps;
 	open = $derived.by(() => this.props.open());
-	openMobile = $state(false);
 	setOpen: SidebarStateProps['setOpen'];
-	#isMobile: IsMobile;
 	#isTablet: IsTablet;
 	#isPinnedState = new PersistedState('sidebar-pinned', true);
 	#isHovered = $state(false);
@@ -36,14 +33,13 @@ class SidebarState {
 
 	constructor(props: SidebarStateProps) {
 		this.setOpen = props.setOpen;
-		this.#isMobile = new IsMobile();
 		this.#isTablet = new IsTablet();
 		this.props = props;
 		
 		// Sync the open state based on pinning preference and screen size
 		$effect(() => {
-			// On tablet and mobile, always collapse regardless of pinning preference
-			if (this.#isTablet.current || this.#isMobile.current) {
+			// On tablet, always collapse regardless of pinning preference
+			if (this.#isTablet.current) {
 				if (this.open) {
 					this.setOpen(false);
 				}
@@ -54,12 +50,6 @@ class SidebarState {
 				}
 			}
 		});
-	}
-
-	// Convenience getter for checking if the sidebar is mobile
-	// without this, we would need to use `sidebar.isMobile.current` everywhere
-	get isMobile() {
-		return this.#isMobile.current;
 	}
 
 	// Convenience getter for checking if the screen is tablet size
@@ -121,17 +111,10 @@ class SidebarState {
 		}
 	};
 
-	setOpenMobile = (value: boolean) => {
-		this.openMobile = value;
-	};
+	
 
 	toggle = () => {
-		if (this.#isMobile.current) {
-			return this.openMobile = !this.openMobile;
-		} else if (this.#isTablet.current) {
-			// In tablet mode, sidebar should stay collapsed - no toggle allowed
-			return;
-		} else {
+		if (!this.#isTablet.current) {
 			// On desktop, toggle the pinning preference
 			this.#isPinnedState.current = !this.#isPinnedState.current;
 			return this.setOpen(this.#isPinnedState.current);

@@ -13,6 +13,9 @@
 	import type { Snippet } from 'svelte';
 	import Error from '$lib/components/error.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
+	import * as NavigationDrawer from '$lib/components/navigation-drawer/index.js';
+	import AppNavigationDrawer from '$lib/components/navigation-drawer/navigation-drawer.svelte';
 
 	let {
 		data,
@@ -24,6 +27,7 @@
 
 	const { versionInformation, user, settings } = data;
 
+	const isMobile = new IsMobile();
 	const isNavigating = $derived(navigating.type !== null);
 	const isOnboardingPage = $derived(String(page.url.pathname).startsWith('/onboarding'));
 	const isLoginPage = $derived(
@@ -46,14 +50,26 @@
 	{#if !settings}
 		<Error message={m.error_occurred()} showButton={true} />
 	{:else if !isOnboardingPage && !isLoginPage}
-		<Sidebar.Provider>
-			<AppSidebar {versionInformation} {user} />
-			<main class="flex-1">
-				<section class="p-5">
-					{@render children()}
-				</section>
-			</main>
-		</Sidebar.Provider>
+		{#if isMobile.current}
+			<NavigationDrawer.Provider>
+				{@const navigationDrawer = NavigationDrawer.useNavigationDrawer()}
+				<main class="flex-1">
+					<section class="px-2 py-5 sm:p-5" style="margin-bottom: {navigationDrawer.contentBottomPadding}">
+						{@render children()}
+					</section>
+				</main>
+				<AppNavigationDrawer />
+			</NavigationDrawer.Provider>
+		{:else}
+			<Sidebar.Provider>
+				<AppSidebar {versionInformation} {user} />
+				<main class="flex-1">
+					<section class="p-5">
+						{@render children()}
+					</section>
+				</main>
+			</Sidebar.Provider>
+		{/if}
 	{:else}
 		<main class="flex-1">
 			{@render children()}

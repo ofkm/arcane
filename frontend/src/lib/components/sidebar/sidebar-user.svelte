@@ -78,7 +78,7 @@
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Content
 				class="min-w-56 rounded-lg p-0"
-				side={sidebar.isMobile ? 'bottom' : 'right'}
+				side="right"
 				align="end"
 				sideOffset={12}
 			>
