@@ -10,7 +10,9 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
 	import { m } from '$lib/paraglide/messages';
-	import UiConfigDisabledBanner from '$lib/components/ui-config-disabled-banner.svelte';
+	import UiConfigDisabledTag from '$lib/components/ui-config-disabled-tag.svelte';
+	import settingsStore from '$lib/stores/config-store';
+	import LockIcon from '@lucide/svelte/icons/lock';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -23,6 +25,7 @@
 	let currentPageName = $derived(page.url.pathname.split('/').pop() || 'settings');
 
 	const sidebar = useSidebar();
+	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
 
 	// Calculate left position based on sidebar state to match sidebar spacing system
 	// Uses the same CSS variables and spacing as the sidebar component
@@ -82,8 +85,6 @@
 	}
 </script>
 
-<UiConfigDisabledBanner />
-
 {#if isSubPage}
 	<div
 		class="border-border/50 bg-background/80 fixed top-4 z-[5] rounded-lg border shadow-lg backdrop-blur-md transition-all duration-200"
@@ -113,44 +114,58 @@
 							<span>Settings</span>
 						</Button>
 						<ChevronRightIcon class="text-muted-foreground size-4 shrink-0" />
-						<span class="text-foreground truncate font-medium">{pageTitle()}</span>
+						{#if isReadOnly}
+							<!-- Desktop: Normal title -->
+							<span class="text-foreground hidden truncate font-medium sm:inline">{pageTitle()}</span>
+							<!-- Mobile: Styled tag with lock icon -->
+							<span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200 dark:bg-amber-900/50 dark:text-amber-200 dark:ring-amber-800 sm:hidden">
+								<LockIcon class="size-3" />
+								{pageTitle()}
+							</span>
+						{:else}
+							<span class="text-foreground truncate font-medium">{pageTitle()}</span>
+						{/if}
 					</nav>
 				</div>
 
-				<!-- Save Section - Desktop only -->
+				<!-- Save Section / Read-only Indicator - Desktop only -->
 				<div class="hidden shrink-0 items-center gap-3 sm:flex">
-					{#if formState.hasChanges}
-						<span class="text-xs text-orange-600 dark:text-orange-400"> Unsaved changes </span>
-					{:else if !formState.hasChanges && formState.saveFunction}
-						<span class="text-xs text-green-600 dark:text-green-400"> All changes saved </span>
-					{/if}
+					{#if isReadOnly}
+						<UiConfigDisabledTag />
+					{:else}
+						{#if formState.hasChanges}
+							<span class="text-xs text-orange-600 dark:text-orange-400"> Unsaved changes </span>
+						{:else if !formState.hasChanges && formState.saveFunction}
+							<span class="text-xs text-green-600 dark:text-green-400"> All changes saved </span>
+						{/if}
 
-					{#if formState.hasChanges && formState.resetFunction}
+						{#if formState.hasChanges && formState.resetFunction}
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={() => formState.resetFunction && formState.resetFunction()}
+								disabled={formState.isLoading}
+								class="gap-2"
+							>
+								{m.common_reset()}
+							</Button>
+						{/if}
+
 						<Button
-							variant="outline"
+							onclick={handleSave}
+							disabled={formState.isLoading || !formState.hasChanges || !formState.saveFunction}
 							size="sm"
-							onclick={() => formState.resetFunction && formState.resetFunction()}
-							disabled={formState.isLoading}
-							class="gap-2"
+							class="min-w-[80px] gap-2"
 						>
-							{m.common_reset()}
-						</Button>
-					{/if}
-
-					<Button
-						onclick={handleSave}
-						disabled={formState.isLoading || !formState.hasChanges || !formState.saveFunction}
-						size="sm"
-						class="min-w-[80px] gap-2"
-					>
-						{#if formState.isLoading}
-							<div class="border-background size-4 animate-spin rounded-full border-2 border-t-transparent"></div>
-							{m.common_saving()}
-						{:else}
-							<SaveIcon class="size-4" />
+							{#if formState.isLoading}
+								<div class="border-background size-4 animate-spin rounded-full border-2 border-t-transparent"></div>
+								{m.common_saving()}
+							{:else}
+								<SaveIcon class="size-4" />
 							{m.common_save()}
 						{/if}
 					</Button>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -164,7 +179,7 @@
 </div>
 
 <!-- Mobile Floating Action Buttons -->
-{#if isSubPage}
+{#if isSubPage && !isReadOnly}
 	<div class="fixed bottom-4 right-4 z-50 flex flex-col gap-3 sm:hidden">
 		{#if formState.hasChanges && formState.resetFunction}
 			<Button
