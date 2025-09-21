@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -50,26 +51,56 @@ type containerLogStream struct {
 	hub    *ws.Hub
 	once   sync.Once
 	cancel context.CancelFunc
+	format string
 }
 
-func (h *ContainerHandler) getOrStartContainerLogHub(containerID string, follow bool, tail, since string, timestamps bool) *ws.Hub {
-	v, _ := h.logStreams.LoadOrStore(containerID, &containerLogStream{
-		hub: ws.NewHub(1024),
+// getOrStartContainerLogHub now isolated per (containerID, format)
+func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string, batched bool, follow bool, tail, since string, timestamps bool) *ws.Hub {
+	key := containerID + "::" + format
+	v, _ := h.logStreams.LoadOrStore(key, &containerLogStream{
+		hub:    ws.NewHub(1024),
+		format: format,
 	})
 	ls := v.(*containerLogStream)
 
 	ls.once.Do(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		ls.cancel = cancel
-
 		go ls.hub.Run(ctx)
 
+		// Always pull raw lines first
 		lines := make(chan string, 256)
 		go func() {
 			defer close(lines)
 			_ = h.containerService.StreamLogs(ctx, containerID, lines, follow, tail, since, timestamps)
 		}()
-		go ws.ForwardLines(ctx, ls.hub, lines)
+
+		if format == "json" {
+			msgs := make(chan ws.LogMessage, 256)
+			go func() {
+				defer close(msgs)
+				for line := range lines {
+					line = ws.StripANSI(line)
+					level := "stdout"
+					if strings.HasPrefix(line, "[STDERR] ") {
+						level = "stderr"
+						line = strings.TrimPrefix(line, "[STDERR] ")
+					}
+					msgs <- ws.LogMessage{
+						Level:     level,
+						Message:   line,
+						Timestamp: time.Now(),
+					}
+				}
+			}()
+			if batched {
+				go ws.ForwardLogJSONBatched(ctx, ls.hub, msgs, 50, 400*time.Millisecond)
+			} else {
+				go ws.ForwardLogJSON(ctx, ls.hub, msgs)
+			}
+		} else {
+			go ws.ForwardLines(ctx, ls.hub, lines)
+		}
 	})
 
 	return ls.hub
@@ -91,12 +122,14 @@ func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
 	tail := c.DefaultQuery("tail", "100")
 	since := c.Query("since")
 	timestamps := c.DefaultQuery("timestamps", "false") == "true"
+	format := c.DefaultQuery("format", "text")
+	batched := c.DefaultQuery("batched", "false") == "true"
 
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}
-	hub := h.getOrStartContainerLogHub(containerID, follow, tail, since, timestamps)
+	hub := h.getOrStartContainerLogHub(containerID, format, batched, follow, tail, since, timestamps)
 	ws.ServeClient(context.Background(), hub, conn)
 }
 
