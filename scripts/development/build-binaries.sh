@@ -4,6 +4,8 @@ set -euo pipefail
 cd backend
 mkdir -p .bin
 
+HOST_OS="$(go env GOHOSTOS)"   # added
+
 # Read version from repo root .version (trim whitespace), fallback to "dev"
 VERSION=$(cat ../.version | sed 's/^\s*\|\s*$//g')
 REVISION=$(cat ../.revision 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -23,7 +25,6 @@ for arg in "${@:-}"; do
   esac
 done
 
-# Decide binary base name and build tags
 BINARY_BASENAME="arcane"
 BUILD_TAGS=""
 if [ "$AGENT_BUILD" = true ]; then
@@ -34,44 +35,50 @@ fi
 build_platform() {
   local target="$1" os="$2" arch="$3" arm_version="${4:-}"
 
-  local ext=""
-  local output_path=".bin/${BINARY_BASENAME}-${target}${ext}"
+  # skip macOS builds on non-mac hosts (prevents clang -arch failure)
+  if [ "$os" = "darwin" ] && [ "$HOST_OS" != "darwin" ]; then
+    echo "Skipping $os/$arch (host=$HOST_OS, no macOS toolchain)"
+    return 0
+  fi
+
+  local output_path=".bin/${BINARY_BASENAME}-${target}"
+
+  local cgo_enabled=0
+  if [ "$os" = "darwin" ] && [ "$HOST_OS" = "darwin" ]; then
+    cgo_enabled="${CGO_ENABLED_DARWIN_OVERRIDE:-1}"
+  fi
 
   if [ -n "$arm_version" ]; then
-    printf "Building %s (GOOS=%s GOARCH=%s GOARM=%s)%s ... " \
-      "$output_path" "$os" "$arch" "$arm_version" "${BUILD_TAGS:+ tags=$BUILD_TAGS}"
+    printf "Building %s (GOOS=%s GOARCH=%s GOARM=%s CGO_ENABLED=%s)%s ... " \
+      "$output_path" "$os" "$arch" "$arm_version" "$cgo_enabled" "${BUILD_TAGS:+ tags=$BUILD_TAGS}"
   else
-    printf "Building %s (GOOS=%s GOARCH=%s)%s ... " \
-      "$output_path" "$os" "$arch" "${BUILD_TAGS:+ tags=$BUILD_TAGS}"
+    printf "Building %s (GOOS=%s GOARCH=%s CGO_ENABLED=%s)%s ... " \
+      "$output_path" "$os" "$arch" "$cgo_enabled" "${BUILD_TAGS:+ tags=$BUILD_TAGS}"
   fi
 
   local build_flags=()
-  if [ -n "$BUILD_TAGS" ]; then
-    build_flags=(-tags "$BUILD_TAGS")
-  fi
+  [ -n "$BUILD_TAGS" ] && build_flags=(-tags "$BUILD_TAGS")
 
   if [ -n "$arm_version" ]; then
-    GOARM="$arm_version" CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" \
+    GOARM="$arm_version" CGO_ENABLED="$cgo_enabled" GOOS="$os" GOARCH="$arch" \
       go build "${build_flags[@]}" -ldflags="$LDFLAGS" -trimpath -o "$output_path" ./cmd/main.go
   else
-    CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" \
+    CGO_ENABLED="$cgo_enabled" GOOS="$os" GOARCH="$arch" \
       go build "${build_flags[@]}" -ldflags="$LDFLAGS" -trimpath -o "$output_path" ./cmd/main.go
   fi
-
   echo "Done"
 }
 
-if [ "$DOCKER_ONLY" = true ]; then
-  echo "Version: ${VERSION}"
+echo "Version: ${VERSION}"
+if [ "$DOCKER_ONLY" = true ] ; then
   if [ "$AGENT_BUILD" = true ]; then
-    echo "Building agent binaries for Docker platforms only (linux/amd64, linux/arm64)..."
+    echo "Building agent binaries (docker-only linux targets)..."
   else
-    echo "Building binaries for Docker platforms only (linux/amd64, linux/arm64)..."
+    echo "Building binaries (docker-only linux targets)..."
   fi
   build_platform "linux-amd64" "linux" "amd64"
   build_platform "linux-arm64" "linux" "arm64"
 else
-  echo "Version: ${VERSION}"
   if [ "$AGENT_BUILD" = true ]; then
     echo "Building agent binaries for all platforms..."
   else

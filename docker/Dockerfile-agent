@@ -32,7 +32,6 @@ WORKDIR /app
 RUN mkdir -p /app/data && chmod 755 /app/data
 
 COPY --from=agent-builder /out/arcane-agent /usr/local/bin/arcane-agent
-COPY --from=agent-builder /out/docker-compose /usr/local/bin/docker-compose
 
 COPY --chmod=755 ../scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

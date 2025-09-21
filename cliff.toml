@@ -11,13 +11,14 @@ conventional_commits = true
 filter_unconventional = true
 commit_preprocessors = [{ pattern = '\((\w+\s)?#([0-9]+)\)', replace = "" }]
 commit_parsers = [
-        { message = "^feat", group = "Features" },
-        { message = "^fix", group = "Bug Fixes" },
-        { message = "^docs", group = "Documentation" },
-        { message = "^perf", group = "Performance Improvements" },
+        { message = "^feat", group = "<!-- 0 --> New features" },
+        { message = "^fix", group = "<!-- 1 --> Bug fixes" },
+        { message = "^perf", group = "<!-- 2 --> Performance Improvements" },
+        { message = "^docs", group = "<!-- 3 --> Documentation", default_scope = "other" },
         { message = "^release", skip = true },
         { message = "update translations via Crowdin", skip = true },
-        { message = ".*", group = "Other", default_scope = "other"},
+        { message = "^chore\\(deps\\)", group = "<!-- 4 --> Dependencies" },
+        { message = ".*", group = "<!-- 5 --> Other", default_scope = "other"},
 ]
 filter_commits = false
 
@@ -26,7 +27,7 @@ trim = true
 body = """
 ## {{ version | default(value="Unknown Version") }}
 {% for group, commits in commits | group_by(attribute="group") %}
-### {{ group | title }}
+### {{ group | striptags | trim | upper_first }}
 {% for commit in commits %}
   * {{ commit.message }} \
     {%- if commit.remote.pr_number -%}
