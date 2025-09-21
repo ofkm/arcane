@@ -206,8 +206,8 @@
 <fieldset disabled={uiConfigDisabled} class="relative">
 	<div class="space-y-4 sm:space-y-6">
 		<!-- Authentication Methods Card -->
-		<Card.Root class="overflow-hidden">
-			<Card.Header class="py-4! bg-muted/20 border-b">
+		<Card.Root class="pt-0 overflow-hidden">
+			<Card.Header class="!py-4 bg-muted/20 border-b">
 				<div class="flex items-center gap-3">
 					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 						<LockIcon class="size-4" />
@@ -263,8 +263,8 @@
 		</Card.Root>
 
 		<!-- Session Settings Card -->
-		<Card.Root class="overflow-hidden">
-			<Card.Header class="py-4! bg-muted/20 border-b">
+		<Card.Root class="pt-0 overflow-hidden">
+			<Card.Header class="!py-4 bg-muted/20 border-b">
 				<div class="flex items-center gap-3">
 					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 						<ClockIcon class="size-4" />
@@ -287,8 +287,8 @@
 		</Card.Root>
 
 		<!-- Password Policy Card -->
-		<Card.Root class="overflow-hidden">
-			<Card.Header class="py-4! bg-muted/20 border-b">
+		<Card.Root class="pt-0 overflow-hidden">
+			<Card.Header class="!py-4 bg-muted/20 border-b">
 				<div class="flex items-center gap-3">
 					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 						<KeyIcon class="size-4" />

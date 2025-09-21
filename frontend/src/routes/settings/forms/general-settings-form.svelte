@@ -80,8 +80,8 @@
 <fieldset disabled={uiConfigDisabled} class="relative">
 	<div class="space-y-4 sm:space-y-6">
 		<!-- Projects Configuration Card -->
-		<Card.Root class="relative overflow-hidden">
-			<Card.Header class="py-4! bg-muted/20 border-b">
+		<Card.Root class="pt-0 overflow-hidden">
+			<Card.Header class="!py-4 bg-muted/20 border-b">
 				<div class="flex items-center gap-3">
 					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 						<FolderIcon class="size-4" />
@@ -114,8 +114,8 @@
 		</Card.Root>
 
 		<!-- User Preferences Card -->
-		<Card.Root class="relative overflow-hidden">
-			<Card.Header class="py-4! bg-muted/20 border-b">
+		<Card.Root class="pt-0 overflow-hidden">
+			<Card.Header class="!py-4 bg-muted/20 border-b">
 				<div class="flex items-center gap-3">
 					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
 						<UserIcon class="size-4" />
