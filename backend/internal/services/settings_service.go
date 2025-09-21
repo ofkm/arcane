@@ -97,7 +97,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 
 func (s *SettingsService) loadDatabaseSettingsInternal(ctx context.Context, db *database.DB) (*models.Settings, error) {
 
-	if config.Load().UIConfigurationDisabled {
+	if config.Load().UIConfigurationDisabled || config.Load().AgentMode {
 		dst, err := s.loadDatabaseConfigFromEnv(ctx, db)
 
 		if config.Load().Environment != "testing" {
