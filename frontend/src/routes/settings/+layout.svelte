@@ -10,9 +10,7 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
 	import { m } from '$lib/paraglide/messages';
-	import UiConfigDisabledTag from '$lib/components/ui-config-disabled-tag.svelte';
 	import settingsStore from '$lib/stores/config-store';
-	import LockIcon from '@lucide/svelte/icons/lock';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -114,25 +112,13 @@
 							<span>Settings</span>
 						</Button>
 						<ChevronRightIcon class="text-muted-foreground size-4 shrink-0" />
-						{#if isReadOnly}
-							<!-- Desktop: Normal title -->
-							<span class="text-foreground hidden truncate font-medium sm:inline">{pageTitle()}</span>
-							<!-- Mobile: Styled tag with lock icon -->
-							<span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200 dark:bg-amber-900/50 dark:text-amber-200 dark:ring-amber-800 sm:hidden">
-								<LockIcon class="size-3" />
-								{pageTitle()}
-							</span>
-						{:else}
-							<span class="text-foreground truncate font-medium">{pageTitle()}</span>
-						{/if}
+						<span class="text-foreground truncate font-medium">{pageTitle()}</span>
 					</nav>
 				</div>
 
-				<!-- Save Section / Read-only Indicator - Desktop only -->
+				<!-- Save Section - Desktop only -->
 				<div class="hidden shrink-0 items-center gap-3 sm:flex">
-					{#if isReadOnly}
-						<UiConfigDisabledTag />
-					{:else}
+					{#if !isReadOnly}
 						{#if formState.hasChanges}
 							<span class="text-xs text-orange-600 dark:text-orange-400"> Unsaved changes </span>
 						{:else if !formState.hasChanges && formState.saveFunction}
