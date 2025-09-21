@@ -114,7 +114,7 @@
 	<div class="flex flex-col justify-between gap-3 sm:gap-4 sm:flex-row sm:items-center">
 		<div class="min-w-0">
 			<h1 class="text-xl sm:text-3xl font-bold tracking-tight">{m.users_title()}</h1>
-			<p class="text-muted-foreground mt-1 text-xs sm:text-sm">{m.users_subtitle()}</p>
+			<p class="text-muted-foreground mt-1 text-sm sm:text-base">{m.users_subtitle()}</p>
 		</div>
 		<div class="flex items-center gap-2 shrink-0">
 			<ArcaneButton
