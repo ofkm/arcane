@@ -1,53 +1,29 @@
 import { test, expect, type Page } from '@playwright/test';
+import { fetchContainersWithRetry, type ContainerSummary, type Paginated } from '../utils/fetch.util';
 
-type ContainerSummary = {
-  id: string;
-  names?: string[];
-  image?: string;
-  state: string;
-  status?: string;
-  created?: number; // seconds
-};
+const CONTAINERS_ROUTE = '/containers';
 
-type Paginated<T> = { data: T[]; pagination?: { totalItems?: number } };
-
-async function fetchContainersWithRetry(page: Page, maxRetries = 3): Promise<Paginated<ContainerSummary>> {
-  let retries = 0;
-  while (retries < maxRetries) {
-    try {
-      const response = await page.request.get('/api/environments/0/containers');
-      if (!response.ok()) throw new Error(`HTTP ${response.status()}`);
-      const body = await response.json().catch(() => null as any);
-      const data = Array.isArray(body?.data) ? (body.data as ContainerSummary[]) : [];
-      const pagination = body?.pagination || { totalItems: data.length };
-      return { data, pagination };
-    } catch {
-      retries++;
-      if (retries >= maxRetries) break;
-      await page.waitForTimeout(1000);
-    }
-  }
-  return { data: [], pagination: { totalItems: 0 } };
+async function navigateToContainers(page: Page) {
+  await page.goto(CONTAINERS_ROUTE);
+  await page.waitForLoadState('networkidle');
 }
 
 let containersData: Paginated<ContainerSummary> = { data: [], pagination: { totalItems: 0 } };
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/containers');
-  await page.waitForLoadState('networkidle');
+  await navigateToContainers(page);
   containersData = await fetchContainersWithRetry(page);
-  console.log(`Found ${containersData.data.length} containers (totalItems=${containersData.pagination?.totalItems ?? 0})`);
 });
 
 test.describe('Containers Page', () => {
   test('should display the containers page title and description', async ({ page }) => {
-    await page.goto('/containers');
+    await navigateToContainers(page);
     await expect(page.getByRole('heading', { name: 'Containers', level: 1 })).toBeVisible();
     await expect(page.getByText('View and Manage your Containers').first()).toBeVisible();
   });
 
   test('should display stat cards with correct counts', async ({ page }) => {
-    await page.goto('/containers');
+    await navigateToContainers(page);
 
     const total = containersData.pagination?.totalItems ?? containersData.data.length;
     const running = containersData.data.filter((c) => c.state === 'running').length;
@@ -59,9 +35,7 @@ test.describe('Containers Page', () => {
   });
 
   test('should display the container table with columns', async ({ page }) => {
-    await page.goto('/containers');
-    await page.waitForLoadState('networkidle');
-
+    await navigateToContainers(page);
     await expect(page.locator('table')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Name' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'ID' })).toBeVisible();
@@ -72,8 +46,7 @@ test.describe('Containers Page', () => {
 
   test('should navigate to container details on Inspect', async ({ page }) => {
     test.skip(containersData.data.length === 0, 'No containers available');
-    await page.goto('/containers');
-    await page.waitForLoadState('networkidle');
+    await navigateToContainers(page);
 
     const firstRow = page.locator('tbody tr').first();
     await firstRow.getByRole('button', { name: 'Open menu' }).click();
@@ -87,15 +60,14 @@ test.describe('Containers Page', () => {
     const running = containersData.data.find((c) => c.state === 'running');
     const stopped = containersData.data.find((c) => c.state !== 'running');
 
-    await page.goto('/containers');
-    await page.waitForLoadState('networkidle');
+    await navigateToContainers(page);
 
     if (running) {
       const row = page.locator(`tr:has(a[href="/containers/${running.id}/"])`);
       await row.getByRole('button', { name: 'Open menu' }).click();
       await expect(page.getByRole('menuitem', { name: 'Restart' })).toBeVisible();
       await expect(page.getByRole('menuitem', { name: 'Stop' })).toBeVisible();
-      await page.keyboard.press('Escape'); // close menu
+      await page.keyboard.press('Escape');
     } else {
       test.info().annotations.push({ type: 'note', description: 'No running container to validate actions' });
     }
@@ -114,8 +86,7 @@ test.describe('Containers Page', () => {
     test.skip(containersData.data.length === 0, 'No containers available');
     const any = containersData.data[0];
 
-    await page.goto('/containers');
-    await page.waitForLoadState('networkidle');
+    await navigateToContainers(page);
 
     const row = page.locator(`tr:has(a[href="/containers/${any.id}/"])`);
     await row.getByRole('button', { name: 'Open menu' }).click();
@@ -124,7 +95,6 @@ test.describe('Containers Page', () => {
     const dialog = page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Confirm Container Removal")');
     await expect(dialog).toBeVisible();
 
-    // Cancel removal (do not mutate)
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialog).toBeHidden();
   });

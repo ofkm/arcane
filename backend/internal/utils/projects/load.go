@@ -68,7 +68,6 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*
 	}
 
 	project, err := loader.LoadWithContext(ctx, cfg, func(opts *loader.Options) {
-		opts.SkipResolveEnvironment = true
 		opts.SetProjectName(projectName, true)
 	})
 	if err != nil {

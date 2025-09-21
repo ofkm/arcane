@@ -2,8 +2,10 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
@@ -24,60 +26,47 @@ func NewSettingsHandler(group *gin.RouterGroup, settingsService *services.Settin
 }
 
 func (h *SettingsHandler) GetSettings(c *gin.Context) {
-	settings, err := h.settingsService.GetSettings(c.Request.Context())
-	if err != nil {
+	settings := h.settingsService.ListSettings(true)
+
+	var settingsDto []dto.PublicSettingDto
+	if err := dto.MapStructList(settings, &settingsDto); err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to fetch settings",
+			"error":   "Failed to map settings",
 		})
 		return
 	}
 
-	settingsSlice := settings.ToSettingVariableSlice(true, true)
-
-	settingDtos := make([]dto.SettingDto, 0, len(settingsSlice))
-	for _, setting := range settingsSlice {
-		_, isPublic, _, _ := settings.FieldByKey(setting.Key)
-		settingDtos = append(settingDtos, dto.SettingDto{
-			PublicSettingDto: dto.PublicSettingDto{
-				Key:      setting.Key,
-				Type:     "string",
-				Value:    setting.Value,
-				IsPublic: isPublic,
-			},
-		})
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"settings": settingDtos,
+	settingsDto = append(settingsDto, dto.PublicSettingDto{
+		Key:   "uiConfigDisabled",
+		Value: strconv.FormatBool(config.Load().UIConfigurationDisabled),
+		Type:  "boolean",
 	})
+
+	c.JSON(http.StatusOK, settingsDto)
 }
 
 func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
-	publicSettings, err := h.settingsService.GetPublicSettings(c.Request.Context())
-	if err != nil {
+	settings := h.settingsService.ListSettings(false)
+
+	var settingsDto []dto.PublicSettingDto
+	if err := dto.MapStructList(settings, &settingsDto); err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to fetch public settings",
+			"error":   "Failed to map settings",
 		})
 		return
 	}
 
-	settingDtos := make([]dto.PublicSettingDto, 0, len(publicSettings))
-	for _, setting := range publicSettings {
-		settingDtos = append(settingDtos, dto.PublicSettingDto{
-			Key:      setting.Key,
-			Type:     "string",
-			Value:    setting.Value,
-			IsPublic: true,
-		})
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"settings": settingDtos,
+	settingsDto = append(settingsDto, dto.PublicSettingDto{
+		Key:   "uiConfigDisabled",
+		Value: strconv.FormatBool(config.Load().UIConfigurationDisabled),
+		Type:  "boolean",
 	})
+
+	c.JSON(http.StatusOK, settingsDto)
 }
 
 func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
@@ -99,15 +88,13 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
-	// Convert to DTO format
 	settingDtos := make([]dto.SettingDto, 0, len(updatedSettings))
 	for _, setting := range updatedSettings {
 		settingDtos = append(settingDtos, dto.SettingDto{
 			PublicSettingDto: dto.PublicSettingDto{
-				Key:      setting.Key,
-				Type:     "string",
-				Value:    setting.Value,
-				IsPublic: false, // We'll determine this from the struct later if needed
+				Key:   setting.Key,
+				Type:  "string",
+				Value: setting.Value,
 			},
 		})
 	}

@@ -9,7 +9,10 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	ReadBufferSize:    32 * 1024,
+	WriteBufferSize:   32 * 1024,
+	EnableCompression: true,
+	CheckOrigin:       func(r *http.Request) bool { return true },
 }
 
 // ProxyHTTP upgrades the incoming client connection and bridges it to remoteWS.

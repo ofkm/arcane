@@ -83,6 +83,8 @@
 				sideOffset={12}
 			>
 				<div
+					role="group"
+					tabindex="-1"
 					onmouseenter={() => {
 						if (sidebar.state === 'collapsed') {
 							sidebar.setHovered(true);
@@ -93,55 +95,55 @@
 					}}
 				>
 					<DropdownMenu.Label class="px-3 pb-2 pt-2 font-normal">
-					<div class="flex items-center gap-3 text-left text-sm">
-						<Avatar.Root class="size-8 shrink-0 rounded-lg">
-							{#if $settingsStore.enableGravatar}
-								{#await getGravatarUrl(user?.email)}
+						<div class="flex items-center gap-3 text-left text-sm">
+							<Avatar.Root class="size-8 shrink-0 rounded-lg">
+								{#if $settingsStore.enableGravatar}
+									{#await getGravatarUrl(user?.email)}
+										<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
+									{:then url}
+										<Avatar.Image src={url || '/img/profile.jpg'} alt={user.displayName} />
+									{:catch _}
+										<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
+									{/await}
+								{:else}
 									<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
-								{:then url}
-									<Avatar.Image src={url || '/img/profile.jpg'} alt={user.displayName} />
-								{:catch _}
-									<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
-								{/await}
-							{:else}
-								<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
-							{/if}
-							<Avatar.Fallback
-								class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-gradient-to-br"
-							>
-								{user.displayName?.charAt(0).toUpperCase()}
-							</Avatar.Fallback>
-						</Avatar.Root>
-						<div class="grid min-w-0 flex-1 text-left text-sm leading-tight">
-							<span class="truncate font-medium">{user.displayName}</span>
-							<span class="truncate text-xs">{user.email}</span>
+								{/if}
+								<Avatar.Fallback
+									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-gradient-to-br"
+								>
+									{user.displayName?.charAt(0).toUpperCase()}
+								</Avatar.Fallback>
+							</Avatar.Root>
+							<div class="grid min-w-0 flex-1 text-left text-sm leading-tight">
+								<span class="truncate font-medium">{user.displayName}</span>
+								<span class="truncate text-xs">{user.email}</span>
+							</div>
 						</div>
-					</div>
-				</DropdownMenu.Label>
-				<DropdownMenu.Separator />
+					</DropdownMenu.Label>
+					<DropdownMenu.Separator />
 
-				<SidebarLocalePicker />
+					<SidebarLocalePicker />
 
-				<DropdownMenu.Group class="px-3 pb-2">
-					<Button.Root
-						variant="ghost"
-						class={cn(
-							'text-muted-foreground flex w-full items-center rounded-xl text-sm font-medium transition-all duration-200 hover:bg-gradient-to-br',
-							'h-11 justify-start gap-3 px-3 py-2.5'
-						)}
-						title={m.common_toggle_theme()}
-						onclick={toggleMode}
-					>
-						<div class="group-hover:bg-muted-foreground/10 rounded-lg bg-transparent p-1 transition-colors duration-200">
-							{#if mode.current === 'dark'}
-								<Sun size={16} class="transition-transform duration-200" />
-							{:else}
-								<Moon size={16} class="transition-transform duration-200" />
-							{/if}
-						</div>
-						<span class="font-medium">{m.common_toggle_theme()}</span>
-					</Button.Root>
-				</DropdownMenu.Group>
+					<DropdownMenu.Group class="px-3 pb-2">
+						<Button.Root
+							variant="ghost"
+							class={cn(
+								'text-muted-foreground flex w-full items-center rounded-xl text-sm font-medium transition-all duration-200 hover:bg-gradient-to-br',
+								'h-11 justify-start gap-3 px-3 py-2.5'
+							)}
+							title={m.common_toggle_theme()}
+							onclick={toggleMode}
+						>
+							<div class="group-hover:bg-muted-foreground/10 rounded-lg bg-transparent p-1 transition-colors duration-200">
+								{#if mode.current === 'dark'}
+									<Sun size={16} class="transition-transform duration-200" />
+								{:else}
+									<Moon size={16} class="transition-transform duration-200" />
+								{/if}
+							</div>
+							<span class="font-medium">{m.common_toggle_theme()}</span>
+						</Button.Root>
+					</DropdownMenu.Group>
 				</div>
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>

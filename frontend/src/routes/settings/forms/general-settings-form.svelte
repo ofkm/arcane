@@ -10,6 +10,7 @@
 	import FolderIcon from '@lucide/svelte/icons/folder';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
+	import settingsStore from '$lib/stores/config-store';
 
 	let {
 		settings,
@@ -22,6 +23,8 @@
 		hasChanges: boolean;
 		isLoading: boolean;
 	} = $props();
+
+	const uiConfigDisabled = $state($settingsStore.uiConfigDisabled);
 
 	const formSchema = z.object({
 		projectsDirectory: z.string().min(1, m.general_projects_directory_required()),
@@ -74,61 +77,63 @@
 	});
 </script>
 
-<div class="space-y-4 sm:space-y-6">
-	<!-- Projects Configuration Card -->
-	<Card.Root class="overflow-hidden">
-		<Card.Header class="py-4! bg-muted/20 border-b">
-			<div class="flex items-center gap-3">
-				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-					<FolderIcon class="size-4" />
+<fieldset disabled={uiConfigDisabled} class="relative">
+	<div class="space-y-4 sm:space-y-6">
+		<!-- Projects Configuration Card -->
+		<Card.Root class="relative overflow-hidden">
+			<Card.Header class="py-4! bg-muted/20 border-b">
+				<div class="flex items-center gap-3">
+					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
+						<FolderIcon class="size-4" />
+					</div>
+					<div>
+						<Card.Title class="text-base">{m.general_projects_heading()}</Card.Title>
+						<Card.Description class="text-xs">{m.general_projects_description()}</Card.Description>
+					</div>
 				</div>
-				<div>
-					<Card.Title class="text-base">{m.general_projects_heading()}</Card.Title>
-					<Card.Description class="text-xs">{m.general_projects_description()}</Card.Description>
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content class="px-3 py-4 sm:px-6">
-			<div class="space-y-3">
-				<TextInputWithLabel
-					bind:value={$formInputs.projectsDirectory.value}
-					label={m.general_projects_directory_label()}
-					placeholder={m.general_projects_directory_placeholder()}
-					helpText={m.general_projects_directory_help()}
-					type="text"
-				/>
+			</Card.Header>
+			<Card.Content class="px-3 py-4 sm:px-6">
+				<div class="space-y-3">
+					<TextInputWithLabel
+						bind:value={$formInputs.projectsDirectory.value}
+						label={m.general_projects_directory_label()}
+						placeholder={m.general_projects_directory_placeholder()}
+						helpText={m.general_projects_directory_help()}
+						type="text"
+					/>
 
-				<TextInputWithLabel
-					bind:value={$formInputs.baseServerUrl.value}
-					label={m.general_base_url_label()}
-					placeholder={m.general_base_url_placeholder()}
-					helpText={m.general_base_url_help()}
-					type="text"
-				/>
-			</div>
-		</Card.Content>
-	</Card.Root>
+					<TextInputWithLabel
+						bind:value={$formInputs.baseServerUrl.value}
+						label={m.general_base_url_label()}
+						placeholder={m.general_base_url_placeholder()}
+						helpText={m.general_base_url_help()}
+						type="text"
+					/>
+				</div>
+			</Card.Content>
+		</Card.Root>
 
-	<!-- User Preferences Card -->
-	<Card.Root class="overflow-hidden">
-		<Card.Header class="py-4! bg-muted/20 border-b">
-			<div class="flex items-center gap-3">
-				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-					<UserIcon class="size-4" />
+		<!-- User Preferences Card -->
+		<Card.Root class="relative overflow-hidden">
+			<Card.Header class="py-4! bg-muted/20 border-b">
+				<div class="flex items-center gap-3">
+					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
+						<UserIcon class="size-4" />
+					</div>
+					<div>
+						<Card.Title class="text-base">{m.general_user_avatars_heading()}</Card.Title>
+						<Card.Description class="text-xs">{m.general_user_avatars_description()}</Card.Description>
+					</div>
 				</div>
-				<div>
-					<Card.Title class="text-base">{m.general_user_avatars_heading()}</Card.Title>
-					<Card.Description class="text-xs">{m.general_user_avatars_description()}</Card.Description>
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content class="px-3 py-4 sm:px-6">
-			<SwitchWithLabel
-				id="enableGravatar"
-				label={m.general_enable_gravatar_label()}
-				description={m.general_enable_gravatar_description()}
-				bind:checked={$formInputs.enableGravatar.value}
-			/>
-		</Card.Content>
-	</Card.Root>
-</div>
+			</Card.Header>
+			<Card.Content class="px-3 py-4 sm:px-6">
+				<SwitchWithLabel
+					id="enableGravatar"
+					label={m.general_enable_gravatar_label()}
+					description={m.general_enable_gravatar_description()}
+					bind:checked={$formInputs.enableGravatar.value}
+				/>
+			</Card.Content>
+		</Card.Root>
+	</div>
+</fieldset>

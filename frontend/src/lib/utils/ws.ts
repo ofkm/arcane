@@ -1,16 +1,13 @@
 import type { SystemStats } from '$lib/types/system-stats.type';
 
 export interface ReconnectWSOptions<T> {
-	// builds the websocket URL (can be async)
 	buildUrl: () => string | Promise<string>;
-	// parse an incoming MessageEvent into T (default: JSON.parse for string payloads)
 	parseMessage?: (evt: MessageEvent) => T;
 	onMessage?: (msg: T) => void;
 	onOpen?: () => void;
 	onClose?: () => void;
 	onError?: (err: Event | Error) => void;
 	maxBackoff?: number;
-	// optional: whether to autoConnect immediately
 	autoConnect?: boolean;
 }
 
@@ -91,12 +88,11 @@ export class ReconnectingWebSocket<T = unknown> {
 
 	private scheduleReconnect() {
 		this.attempt++;
-		const backoff = Math.min(1000 * Math.pow(1.5, this.attempt), this.maxBackoff);
+		const exp = Math.min(1000 * Math.pow(1.5, this.attempt), this.maxBackoff);
+		const jitter = Math.random() * 0.3 * exp;
+		const backoff = exp - jitter;
 		setTimeout(() => {
-			if (!this.closed) {
-				// ignore connectOnce race if already connecting
-				this.connectOnce();
-			}
+			if (!this.closed) this.connectOnce();
 		}, backoff);
 	}
 

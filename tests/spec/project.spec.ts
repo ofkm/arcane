@@ -1,36 +1,27 @@
 import { test, expect, type Page } from '@playwright/test';
+import { fetchProjectsWithRetry, type Project } from '../utils/fetch.util';
 
-async function fetchProjectsWithRetry(page: Page, maxRetries = 3): Promise<any[]> {
-  let retries = 0;
-  while (retries < maxRetries) {
-    try {
-      const response = await page.request.get('/api/environments/0/projects');
-      const projects = await response.json();
-      return Array.isArray(projects) ? projects : projects.data || [];
-    } catch (error) {
-      retries++;
-      console.log(`Attempt ${retries} failed, ${maxRetries - retries} retries left`);
-      if (retries >= maxRetries) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-  return [];
+const ROUTES = {
+  page: '/projects',
+  apiProjects: '/api/environments/0/projects',
+  newProject: '/projects/new',
+};
+
+async function navigateToProjects(page: Page) {
+  await page.goto(ROUTES.page);
+  await page.waitForLoadState('networkidle');
 }
 
-let realProjects: any[] = [];
+let realProjects: Project[] = [];
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/projects');
-  await page.waitForLoadState('networkidle');
+  await navigateToProjects(page);
 
   try {
     realProjects = await fetchProjectsWithRetry(page);
   } catch (error) {
-    console.warn('Could not fetch projects after multiple retries:', error);
     realProjects = [];
   }
-
-  console.log(`Found ${realProjects.length} real projects for testing`);
 });
 
 test.describe('Projects Page', () => {
@@ -51,7 +42,7 @@ test.describe('Projects Page', () => {
 
   test('should navigate to new project page when "Create Project" is clicked', async ({ page }) => {
     await page.getByRole('button', { name: 'Create Project' }).click();
-    await expect(page).toHaveURL('/projects/new');
+    await expect(page).toHaveURL(ROUTES.newProject);
     await expect(page.getByRole('heading', { name: 'Create New Project' })).toBeVisible();
   });
 
@@ -82,7 +73,7 @@ test.describe('Projects Page', () => {
     const projectName = await firstProjectLink.textContent();
 
     await firstProjectLink.click();
-    await expect(page).toHaveURL(new RegExp(`/projects/.+`));
+    await expect(page).toHaveURL(/\/projects\/.+/);
     await expect(page.getByRole('heading', { name: new RegExp(`.*${projectName}`) })).toBeVisible();
   });
 
@@ -105,7 +96,6 @@ test.describe('Projects Page', () => {
 
     await page.waitForLoadState('networkidle');
 
-    // Look for status badges in the table
     const runningProjects = realProjects.filter((p) => p.status === 'running');
     const stoppedProjects = realProjects.filter((p) => p.status === 'stopped');
 
@@ -121,7 +111,7 @@ test.describe('Projects Page', () => {
 
 test.describe('New Compose Project Page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/projects/new');
+    await page.goto(ROUTES.newProject);
     await page.waitForLoadState('networkidle');
   });
 
@@ -154,10 +144,10 @@ test.describe('New Compose Project Page', () => {
         const responseBody = await response.text();
 
         try {
-          const parsedResponse = JSON.parse(responseBody);
-          createdProjectId = parsedResponse.id;
-        } catch (error) {
-          console.error('Failed to parse response:', error);
+          const parsed = JSON.parse(responseBody);
+          createdProjectId = parsed.id;
+        } catch {
+          createdProjectId = createdProjectId;
         }
 
         await route.fulfill({
@@ -165,13 +155,15 @@ test.describe('New Compose Project Page', () => {
           headers: response.headers(),
           body: responseBody,
         });
+      } else {
+        await route.continue();
       }
     });
 
     const createButton = page.getByRole('button', { name: 'Create' });
     await createButton.click();
 
-    await page.waitForURL(new RegExp(`/projects/.+`), { timeout: 10000 });
+    await page.waitForURL(/\/projects\/.+/, { timeout: 10000 });
 
     if (createdProjectId) {
       await expect(page).toHaveURL(new RegExp(`/projects/${createdProjectId}`));
@@ -242,7 +234,6 @@ test.describe('Project Detail Page', () => {
 
     await page.getByRole('tab', { name: /Configuration|Config/i }).click();
 
-    // Titles inside CodePanel components
     await expect(page.getByText(/Compose File/i)).toBeVisible();
     await expect(page.getByText(/Environment\s*\(.env\)/i)).toBeVisible();
   });
@@ -260,7 +251,6 @@ test.describe('Project Detail Page', () => {
     await expect(logsTab).toBeEnabled();
     await logsTab.click();
 
-    // StackLogsPanel heading
     await expect(page.getByText(/Logs/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /Start|Stop/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Clear/i })).toBeVisible();

@@ -11,13 +11,13 @@ tmp_dir = ".bin"
   exclude_unchanged = false
   follow_symlink = false
   include_ext = ["go", "tpl", "tmpl", "html"]
-  kill_delay = "0s"
+  kill_delay = "2s"
   log = "build-errors.log"
   poll = false
   poll_interval = 0
   rerun = false
   rerun_delay = 500
-  send_interrupt = false
+  send_interrupt = true
   stop_on_root = false
 
 [color]
@@ -32,7 +32,7 @@ tmp_dir = ".bin"
   time = false
 
 [misc]
-  clean_on_exit = false
+  clean_on_exit = true
 
 [screen]
   clear_on_rebuild = false

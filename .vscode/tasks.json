@@ -108,6 +108,25 @@
       "detail": "Select which service logs to view"
     },
     {
+      "label": "Env Vars",
+      "type": "shell",
+      "command": "./scripts/development/dev.sh",
+      "args": [
+        "env",
+        "${input:envService}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "detail": "Show current environment configuration from running container"
+    },
+    {
       "label": "Open Frontend",
       "type": "process",
       "command": "open",
@@ -145,9 +164,33 @@
         {
           "label": "Backend Only",
           "value": "backend"
+        },
+        {
+          "label": "Agent Only",
+          "value": "agent"
         }
       ],
       "default": ""
+    },
+    {
+      "id": "envService",
+      "description": "Which service environment to view",
+      "type": "pickString",
+      "options": [
+        {
+          "label": "Backend",
+          "value": "backend"
+        },
+        {
+          "label": "Frontend",
+          "value": "frontend"
+        },
+        {
+          "label": "Agent",
+          "value": "arcane-agent"
+        }
+      ],
+      "default": "backend"
     }
   ]
 }

@@ -14,6 +14,7 @@
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import TrashIcon from '@lucide/svelte/icons/trash';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
+	import settingsStore from '$lib/stores/config-store';
 
 	let {
 		callback,
@@ -28,6 +29,7 @@
 	} = $props();
 
 	let pruneMode = $state(settings.dockerPruneMode);
+	const uiConfigDisabled = $state($settingsStore.uiConfigDisabled);
 
 	type PollingIntervalMode = 'hourly' | 'daily' | 'weekly' | 'custom';
 
@@ -151,126 +153,128 @@
 	});
 </script>
 
-<div class="space-y-4 sm:space-y-6">
-	<!-- Image Polling Card -->
-	<Card.Root class="overflow-hidden">
-		<Card.Header class="py-4! bg-muted/20 border-b">
-			<div class="flex items-center gap-3">
-				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-					<ActivityIcon class="size-4" />
-				</div>
-				<div>
-					<Card.Title class="text-base">Image Polling</Card.Title>
-					<Card.Description class="text-xs">Configure automatic image update checking</Card.Description>
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content class="px-3 py-4 sm:px-6">
-			<div class="space-y-3">
-				<SwitchWithLabel
-					id="pollingEnabled"
-					label={m.docker_enable_polling_label()}
-					description={m.docker_enable_polling_description()}
-					bind:checked={$formInputs.pollingEnabled.value}
-				/>
-
-				{#if $formInputs.pollingEnabled.value}
-					<div class="border-primary/20 space-y-3 border-l-2 pl-3">
-						<SelectWithLabel
-							id="pollingIntervalMode"
-							name="pollingIntervalMode"
-							bind:value={pollingIntervalMode}
-							label={m.docker_polling_interval_label()}
-							placeholder="Select interval"
-							options={imagePollingOptions.map(({ value, label, description }) => ({ value, label, description }))}
-						/>
-
-						{#if pollingIntervalMode === 'custom'}
-							<TextInputWithLabel
-								bind:value={$formInputs.pollingInterval.value}
-								label={m.custom_polling_interval()}
-								placeholder={m.docker_polling_interval_placeholder()}
-								helpText={m.docker_polling_interval_description()}
-								type="number"
-							/>
-						{/if}
-
-						{#if $formInputs.pollingInterval.value < 30}
-							<Alert.Root variant="warning">
-								<ZapIcon class="size-4" />
-								<Alert.Title>{m.docker_rate_limit_warning_title()}</Alert.Title>
-								<Alert.Description>{m.docker_rate_limit_warning_description()}</Alert.Description>
-							</Alert.Root>
-						{/if}
-					</div>
-				{/if}
-			</div>
-		</Card.Content>
-	</Card.Root>
-
-	<!-- Auto Update Card -->
-	{#if $formInputs.pollingEnabled.value}
+<fieldset disabled={uiConfigDisabled} class="relative">
+	<div class="space-y-4 sm:space-y-6">
+		<!-- Image Polling Card -->
 		<Card.Root class="overflow-hidden">
 			<Card.Header class="py-4! bg-muted/20 border-b">
 				<div class="flex items-center gap-3">
 					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-						<RefreshCwIcon class="size-4" />
+						<ActivityIcon class="size-4" />
 					</div>
 					<div>
-						<Card.Title class="text-base">Auto Updates</Card.Title>
-						<Card.Description class="text-xs">Automatically update containers when new images are available</Card.Description>
+						<Card.Title class="text-base">Image Polling</Card.Title>
+						<Card.Description class="text-xs">Configure automatic image update checking</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
 			<Card.Content class="px-3 py-4 sm:px-6">
 				<div class="space-y-3">
 					<SwitchWithLabel
-						id="autoUpdateSwitch"
-						label={m.docker_auto_update_label()}
-						description={m.docker_auto_update_description()}
-						bind:checked={$formInputs.autoUpdate.value}
+						id="pollingEnabled"
+						label={m.docker_enable_polling_label()}
+						description={m.docker_enable_polling_description()}
+						bind:checked={$formInputs.pollingEnabled.value}
 					/>
 
-					{#if $formInputs.autoUpdate.value}
-						<div class="border-primary/20 border-l-2 pl-3">
-							<TextInputWithLabel
-								bind:value={$formInputs.autoUpdateInterval.value}
-								label={m.docker_auto_update_interval_label()}
-								placeholder={m.docker_auto_update_interval_placeholder()}
-								helpText={m.docker_auto_update_interval_description()}
-								type="number"
+					{#if $formInputs.pollingEnabled.value}
+						<div class="border-primary/20 space-y-3 border-l-2 pl-3">
+							<SelectWithLabel
+								id="pollingIntervalMode"
+								name="pollingIntervalMode"
+								bind:value={pollingIntervalMode}
+								label={m.docker_polling_interval_label()}
+								placeholder="Select interval"
+								options={imagePollingOptions.map(({ value, label, description }) => ({ value, label, description }))}
 							/>
+
+							{#if pollingIntervalMode === 'custom'}
+								<TextInputWithLabel
+									bind:value={$formInputs.pollingInterval.value}
+									label={m.custom_polling_interval()}
+									placeholder={m.docker_polling_interval_placeholder()}
+									helpText={m.docker_polling_interval_description()}
+									type="number"
+								/>
+							{/if}
+
+							{#if $formInputs.pollingInterval.value < 30}
+								<Alert.Root variant="warning">
+									<ZapIcon class="size-4" />
+									<Alert.Title>{m.docker_rate_limit_warning_title()}</Alert.Title>
+									<Alert.Description>{m.docker_rate_limit_warning_description()}</Alert.Description>
+								</Alert.Root>
+							{/if}
 						</div>
 					{/if}
 				</div>
 			</Card.Content>
 		</Card.Root>
-	{/if}
 
-	<!-- Cleanup Settings Card -->
-	<Card.Root class="overflow-hidden">
-		<Card.Header class="py-4! bg-muted/20 border-b">
-			<div class="flex items-center gap-3">
-				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-					<TrashIcon class="size-4" />
+		{#if $formInputs.pollingEnabled.value}
+			<!-- Auto Update Card -->
+			<Card.Root class="overflow-hidden">
+				<Card.Header class="py-4! bg-muted/20 border-b">
+					<div class="flex items-center gap-3">
+						<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
+							<RefreshCwIcon class="size-4" />
+						</div>
+						<div>
+							<Card.Title class="text-base">Auto Updates</Card.Title>
+							<Card.Description class="text-xs">Automatically update containers when new images are available</Card.Description>
+						</div>
+					</div>
+				</Card.Header>
+				<Card.Content class="px-3 py-4 sm:px-6">
+					<div class="space-y-3">
+						<SwitchWithLabel
+							id="autoUpdateSwitch"
+							label={m.docker_auto_update_label()}
+							description={m.docker_auto_update_description()}
+							bind:checked={$formInputs.autoUpdate.value}
+						/>
+
+						{#if $formInputs.autoUpdate.value}
+							<div class="border-primary/20 border-l-2 pl-3">
+								<TextInputWithLabel
+									bind:value={$formInputs.autoUpdateInterval.value}
+									label={m.docker_auto_update_interval_label()}
+									placeholder={m.docker_auto_update_interval_placeholder()}
+									helpText={m.docker_auto_update_interval_description()}
+									type="number"
+								/>
+							</div>
+						{/if}
+					</div>
+				</Card.Content>
+			</Card.Root>
+		{/if}
+
+		<!-- Cleanup Settings Card -->
+		<Card.Root class="overflow-hidden">
+			<Card.Header class="py-4! bg-muted/20 border-b">
+				<div class="flex items-center gap-3">
+					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
+						<TrashIcon class="size-4" />
+					</div>
+					<div>
+						<Card.Title class="text-base">Cleanup Settings</Card.Title>
+						<Card.Description class="text-xs">Configure how Docker images are pruned</Card.Description>
+					</div>
 				</div>
-				<div>
-					<Card.Title class="text-base">Cleanup Settings</Card.Title>
-					<Card.Description class="text-xs">Configure how Docker images are pruned</Card.Description>
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content class="px-3 py-4 sm:px-6">
-			<SelectWithLabel
-				id="dockerPruneMode"
-				name="pruneMode"
-				bind:value={$formInputs.dockerPruneMode.value}
-				label={m.docker_prune_action_label()}
-				description={pruneModeDescription}
-				placeholder={m.docker_prune_placeholder()}
-				options={pruneModeOptions}
-				onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
-			/>
-		</Card.Content>
-	</Card.Root>
-</div>
+			</Card.Header>
+			<Card.Content class="px-3 py-4 sm:px-6">
+				<SelectWithLabel
+					id="dockerPruneMode"
+					name="pruneMode"
+					bind:value={$formInputs.dockerPruneMode.value}
+					label={m.docker_prune_action_label()}
+					description={pruneModeDescription}
+					placeholder={m.docker_prune_placeholder()}
+					options={pruneModeOptions}
+					onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
+				/>
+			</Card.Content>
+		</Card.Root>
+	</div>
+</fieldset>
