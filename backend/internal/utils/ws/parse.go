@@ -16,13 +16,14 @@ func NormalizeContainerLine(raw string) (level string, msg string) {
 	line := StripANSI(strings.TrimRight(raw, "\r\n"))
 
 	level = "stdout"
-	if strings.HasPrefix(line, "[STDERR] ") {
+	switch {
+	case strings.HasPrefix(line, "[STDERR] "):
 		level = "stderr"
 		line = strings.TrimPrefix(line, "[STDERR] ")
-	} else if strings.HasPrefix(line, "stderr:") {
+	case strings.HasPrefix(line, "stderr:"):
 		level = "stderr"
 		line = strings.TrimPrefix(line, "stderr:")
-	} else if strings.HasPrefix(line, "stdout:") {
+	case strings.HasPrefix(line, "stdout:"):
 		level = "stdout"
 		line = strings.TrimPrefix(line, "stdout:")
 	}
