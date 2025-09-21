@@ -31,6 +31,11 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 	var settingsDto []dto.PublicSettingDto
 	if err := dto.MapStructList(settings, &settingsDto); err != nil {
 		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to map settings",
+		})
+		return
 	}
 
 	settingsDto = append(settingsDto, dto.PublicSettingDto{
@@ -48,6 +53,11 @@ func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
 	var settingsDto []dto.PublicSettingDto
 	if err := dto.MapStructList(settings, &settingsDto); err != nil {
 		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to map settings",
+		})
+		return
 	}
 
 	settingsDto = append(settingsDto, dto.PublicSettingDto{
@@ -78,7 +88,6 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
-	// Convert to DTO format
 	settingDtos := make([]dto.SettingDto, 0, len(updatedSettings))
 	for _, setting := range updatedSettings {
 		settingDtos = append(settingDtos, dto.SettingDto{
