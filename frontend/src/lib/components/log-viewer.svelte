@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { browser, dev } from '$app/environment';
+	import { dev } from '$app/environment';
 	import { get } from 'svelte/store';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import { m } from '$lib/paraglide/messages';
 	import { ReconnectingWebSocket } from '$lib/utils/ws';
 
 	interface LogEntry {
+		id: number;
 		timestamp: string;
 		level: 'stdout' | 'stderr' | 'info' | 'error';
 		message: string;
@@ -42,6 +43,81 @@
 	}: Props = $props();
 
 	let logs: LogEntry[] = $state([]);
+	let pending: LogEntry[] = [];
+	let flushScheduled = false;
+	let seq = 0;
+
+	let dropBefore = $state(0);
+
+	const COMPACT_FACTOR = 2;
+	let lastCompactSeq = 0;
+
+	let visibleLogs = $derived.by(() => {
+		if (dropBefore === 0) return logs;
+		return logs.filter((l) => l.id >= dropBefore);
+	});
+
+	function maybeCompact() {
+		const threshold = maxLines * COMPACT_FACTOR;
+		if (logs.length <= threshold) return;
+		if (seq - lastCompactSeq < maxLines) return;
+
+		// Keep the most recent maxLines entries, trim older ones
+		const keepCount = Math.max(1, maxLines);
+		if (logs.length > keepCount) {
+			const start = logs.length - keepCount;
+			logs = logs.slice(start);
+		}
+
+		// mark compaction point and clear dropBefore so future compactions don't rely on it
+		lastCompactSeq = seq;
+		dropBefore = 0;
+	}
+
+	function scheduleFlush() {
+		if (flushScheduled) return;
+		flushScheduled = true;
+		queueMicrotask(() => {
+			flushScheduled = false;
+			if (!pending.length) return;
+			logs = [...logs, ...pending];
+			pending = [];
+			if (logs.length > maxLines * COMPACT_FACTOR) {
+				maybeCompact();
+			}
+			if (autoScroll && logContainer) {
+				requestAnimationFrame(() => {
+					if (logContainer) logContainer.scrollTop = logContainer.scrollHeight;
+				});
+			}
+		});
+	}
+
+	export function clearLogs(opts?: { hard?: boolean; restart?: boolean }) {
+		const hard = opts?.hard === true;
+
+		if (hard) {
+			logs = [];
+			pending = [];
+			seq = 0;
+			dropBefore = 0;
+			lastCompactSeq = 0;
+		} else {
+			dropBefore = seq;
+		}
+
+		onClear?.();
+
+		if (opts?.restart) {
+			stopLogStream();
+			startLogStream();
+		}
+	}
+
+	export function hardClearLogs(restart = false) {
+		clearLogs({ hard: true, restart });
+	}
+
 	let logContainer: HTMLElement | undefined = $state();
 	let isStreaming = $state(false);
 	let error: string | null = $state(null);
@@ -53,9 +129,6 @@
 	}
 
 	const humanType = type === 'project' ? m.project() : m.container();
-
-	const DOCKER_TS_ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z?\s*/;
-	const DOCKER_TS_SLASH_RE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s*/;
 
 	function buildWebSocketEndpoint(path: string): string {
 		const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -69,7 +142,7 @@
 			type === 'project'
 				? `/api/environments/${envId}/projects/${projectId}/logs/ws`
 				: `/api/environments/${envId}/containers/${containerId}/logs/ws`;
-		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=100&timestamps=${showTimestamps}`);
+		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=100&timestamps=${showTimestamps}&format=json&batched=true`);
 	}
 
 	export async function startLogStream() {
@@ -96,7 +169,12 @@
 				return await buildLogWsEndpoint();
 			},
 			parseMessage: (evt) => {
-				return typeof evt.data === 'string' ? evt.data : '';
+				if (typeof evt.data !== 'string') return null;
+				try {
+					return JSON.parse(evt.data);
+				} catch {
+					return null;
+				}
 			},
 			onOpen: () => {
 				if (dev) console.log(m.log_viewer_connected({ type: humanType }));
@@ -105,9 +183,10 @@
 			},
 			onMessage: (payload) => {
 				if (!payload) return;
-				for (const line of payload.split('\n')) {
-					if (!line.trim()) continue;
-					handleIncomingLine(line);
+				if (Array.isArray(payload)) {
+					for (const obj of payload) processLogObject(obj);
+				} else if (typeof payload === 'object') {
+					processLogObject(payload);
 				}
 			},
 			onError: (e) => {
@@ -126,25 +205,16 @@
 		await wsClient.connect();
 	}
 
-	function handleIncomingLine(raw: string) {
-		let level: LogEntry['level'] = raw.startsWith('[STDERR] ') ? 'stderr' : 'stdout';
-		let line = raw.replace('[STDERR] ', '');
-
-		// Try to extract "service | message" if present
-		let service: string | undefined;
-		if (line.includes(' | ')) {
-			const parts = line.split(' | ', 2);
-			if (parts.length === 2) {
-				service = parts[0].trim();
-				line = parts[1];
-			}
-		}
+	function processLogObject(obj: any) {
+		if (!obj || typeof obj !== 'object') return;
+		const { level = 'stdout', message = '', timestamp = new Date().toISOString(), service, containerId } = obj;
 
 		addLogEntry({
 			level,
-			message: line,
-			timestamp: new Date().toISOString(),
-			service
+			message,
+			timestamp,
+			service,
+			containerId
 		});
 	}
 
@@ -164,9 +234,17 @@
 		onStop?.();
 	}
 
-	export function clearLogs() {
-		logs = [];
-		onClear?.();
+	function addLogEntry(logData: { level: string; message: string; timestamp?: string; service?: string; containerId?: string }) {
+		const timestamp = logData.timestamp || new Date().toISOString();
+		pending.push({
+			id: seq++,
+			timestamp,
+			level: logData.level as LogEntry['level'],
+			message: logData.message,
+			service: logData.service,
+			containerId: logData.containerId
+		});
+		scheduleFlush();
 	}
 
 	export function toggleAutoScroll() {
@@ -180,36 +258,6 @@
 
 	export function getLogCount() {
 		return logs.length;
-	}
-
-	function addLogEntry(logData: { level: string; message: string; timestamp?: string; service?: string; containerId?: string }) {
-		let cleanMessage = logData.message;
-		let timestamp = logData.timestamp || new Date().toISOString();
-
-		if (DOCKER_TS_ISO_RE.test(cleanMessage)) {
-			cleanMessage = cleanMessage.replace(DOCKER_TS_ISO_RE, '').trim();
-		}
-		if (DOCKER_TS_SLASH_RE.test(cleanMessage)) {
-			cleanMessage = cleanMessage.replace(DOCKER_TS_SLASH_RE, '').trim();
-		}
-
-		const entry: LogEntry = {
-			timestamp,
-			level: logData.level as LogEntry['level'],
-			message: cleanMessage,
-			service: logData.service,
-			containerId: logData.containerId
-		};
-
-		logs = [...logs.slice(-(maxLines - 1)), entry];
-
-		if (autoScroll && logContainer) {
-			requestAnimationFrame(() => {
-				if (logContainer) {
-					logContainer.scrollTop = logContainer.scrollHeight;
-				}
-			});
-		}
 	}
 
 	function formatTimestamp(timestamp: string): string {
@@ -231,7 +279,6 @@
 	}
 
 	$effect(() => {
-		if (!browser) return;
 		const key = streamKey();
 		if (!key) return;
 		if (key === currentStreamKey && isStreaming) return;
@@ -272,24 +319,21 @@
 				{/if}
 			</div>
 		{:else}
-			{#each logs as log (log.timestamp + log.message + (log.service || ''))}
+			{#each visibleLogs as log (log.id)}
 				<div class="flex border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50">
 					{#if showTimestamps}
 						<span class="mr-3 min-w-fit shrink-0 text-xs text-gray-500">
 							{formatTimestamp(log.timestamp)}
 						</span>
 					{/if}
-
 					<span class="mr-2 shrink-0 text-xs {getLevelClass(log.level)} min-w-fit">
 						{log.level.toUpperCase()}
 					</span>
-
 					{#if type === 'project' && log.service}
 						<span class="mr-2 min-w-fit shrink-0 truncate text-xs text-blue-400" title={log.service}>
 							{log.service}
 						</span>
 					{/if}
-
 					<span class="flex-1 whitespace-pre-wrap break-words text-gray-300">
 						{log.message}
 					</span>

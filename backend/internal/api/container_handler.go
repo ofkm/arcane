@@ -2,10 +2,13 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -50,26 +53,66 @@ type containerLogStream struct {
 	hub    *ws.Hub
 	once   sync.Once
 	cancel context.CancelFunc
+	format string
+	seq    atomic.Uint64
 }
 
-func (h *ContainerHandler) getOrStartContainerLogHub(containerID string, follow bool, tail, since string, timestamps bool) *ws.Hub {
-	v, _ := h.logStreams.LoadOrStore(containerID, &containerLogStream{
-		hub: ws.NewHub(1024),
+func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string, batched bool, follow bool, tail, since string, timestamps bool) *ws.Hub {
+	key := fmt.Sprintf("%s::%s::batched=%t", containerID, format, batched)
+	v, _ := h.logStreams.LoadOrStore(key, &containerLogStream{
+		hub:    ws.NewHub(1024),
+		format: format,
 	})
 	ls := v.(*containerLogStream)
 
 	ls.once.Do(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		ls.cancel = cancel
-
 		go ls.hub.Run(ctx)
 
+		// Always pull raw lines first
 		lines := make(chan string, 256)
 		go func() {
 			defer close(lines)
 			_ = h.containerService.StreamLogs(ctx, containerID, lines, follow, tail, since, timestamps)
 		}()
-		go ws.ForwardLines(ctx, ls.hub, lines)
+
+		if format == "json" {
+			msgs := make(chan ws.LogMessage, 256)
+			go func() {
+				defer close(msgs)
+				for line := range lines {
+					level, msg, ts := ws.NormalizeContainerLine(line)
+					seq := ls.seq.Add(1)
+					timestamp := ts
+					if timestamp == "" {
+						timestamp = ws.NowRFC3339()
+					}
+					msgs <- ws.LogMessage{
+						Seq:       seq,
+						Level:     level,
+						Message:   msg,
+						Timestamp: timestamp,
+					}
+				}
+			}()
+			if batched {
+				go ws.ForwardLogJSONBatched(ctx, ls.hub, msgs, 50, 400*time.Millisecond)
+			} else {
+				go ws.ForwardLogJSON(ctx, ls.hub, msgs)
+			}
+		} else {
+			// Plain text mode still strips ANSI & timestamps for consistency
+			cleanChan := make(chan string, 256)
+			go func() {
+				defer close(cleanChan)
+				for line := range lines {
+					_, msg, _ := ws.NormalizeContainerLine(line)
+					cleanChan <- msg
+				}
+			}()
+			go ws.ForwardLines(ctx, ls.hub, cleanChan)
+		}
 	})
 
 	return ls.hub
@@ -91,12 +134,14 @@ func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
 	tail := c.DefaultQuery("tail", "100")
 	since := c.Query("since")
 	timestamps := c.DefaultQuery("timestamps", "false") == "true"
+	format := c.DefaultQuery("format", "text")
+	batched := c.DefaultQuery("batched", "false") == "true"
 
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}
-	hub := h.getOrStartContainerLogHub(containerID, follow, tail, since, timestamps)
+	hub := h.getOrStartContainerLogHub(containerID, format, batched, follow, tail, since, timestamps)
 	ws.ServeClient(context.Background(), hub, conn)
 }
 
