@@ -110,24 +110,38 @@
 	}
 </script>
 
-<div class="space-y-4 sm:space-y-6 pb-6 sm:pb-8 px-4 sm:px-6 lg:px-8">
-	<div class="flex flex-col justify-between gap-3 sm:gap-4 sm:flex-row sm:items-center">
-		<div class="min-w-0">
-			<h1 class="text-xl sm:text-3xl font-bold tracking-tight">{m.users_title()}</h1>
-			<p class="text-muted-foreground mt-1 text-sm sm:text-base">{m.users_subtitle()}</p>
-		</div>
-		<div class="flex items-center gap-2 shrink-0">
-			<ArcaneButton
-				action="create"
-				customLabel={m.users_create_button()}
-				onclick={openCreateDialog}
-				loading={isLoading.creating}
-				disabled={isLoading.creating}
-			/>
+<div class="px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+	<div
+		class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 shadow-sm sm:p-6"
+	>
+		<div class="bg-primary/10 pointer-events-none absolute -right-10 -top-10 size-40 rounded-full blur-3xl"></div>
+		<div class="bg-muted/40 pointer-events-none absolute -bottom-10 -left-10 size-40 rounded-full blur-3xl"></div>
+		<div class="relative flex items-start gap-3 sm:gap-4">
+			<div
+				class="bg-primary/10 text-primary ring-primary/20 flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 sm:size-10"
+			>
+				<UsersIcon class="size-4 sm:size-5" />
+			</div>
+			<div class="min-w-0 flex-1">
+				<div class="flex items-start justify-between gap-3">
+					<h1 class="settings-title text-xl sm:text-3xl min-w-0">{m.users_title()}</h1>
+					<div class="flex items-center gap-2 shrink-0">
+						<ArcaneButton
+							action="create"
+							customLabel={m.users_create_button()}
+							onclick={openCreateDialog}
+							loading={isLoading.creating}
+							disabled={isLoading.creating}
+						/>
+					</div>
+				</div>
+				<p class="text-muted-foreground mt-1 text-sm sm:text-base">{m.users_subtitle()}</p>
+			</div>
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-3">
+	<div class="space-y-4 sm:space-y-6 mt-6 sm:mt-8">
+		<div class="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-3">
 		<StatCard
 			title={m.users_total()}
 			value={totalUsers}
@@ -149,9 +163,9 @@
 			iconColor="text-green-500"
 			class="border-l-4 border-l-green-500"
 		/>
-	</div>
+		</div>
 
-	<UserTable
+		<UserTable
 		bind:users
 		bind:selectedIds
 		bind:requestOptions
@@ -161,19 +175,20 @@
 		onEditUser={openEditDialog}
 	/>
 
-	<UserFormSheet
-		bind:open={isDialogOpen.create}
-		userToEdit={null}
-		roles={[]}
-		onSubmit={handleUserSubmit}
-		isLoading={isLoading.creating}
-	/>
+		<UserFormSheet
+			bind:open={isDialogOpen.create}
+			userToEdit={null}
+			roles={[]}
+			onSubmit={handleUserSubmit}
+			isLoading={isLoading.creating}
+		/>
 
-	<UserFormSheet
-		bind:open={isDialogOpen.edit}
-		{userToEdit}
-		roles={[]}
-		onSubmit={handleUserSubmit}
-		isLoading={isLoading.editing}
-	/>
+		<UserFormSheet
+			bind:open={isDialogOpen.edit}
+			{userToEdit}
+			roles={[]}
+			onSubmit={handleUserSubmit}
+			isLoading={isLoading.editing}
+		/>
+	</div>
 </div>
