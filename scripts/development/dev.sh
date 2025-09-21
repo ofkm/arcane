@@ -184,6 +184,34 @@ show_status() {
     docker compose -f $COMPOSE_FILE -p $PROJECT_NAME ps
 }
 
+show_env_config() {
+    local service="${1:-backend}"
+    
+    log_info "Current environment configuration:"
+    
+    # Check if the specified service container is running
+    if docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" ps "$service" | grep -q "Up"; then
+        log_info "Environment variables from running $service container:"
+        echo "----------------------------------------"
+        if docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" exec "$service" env | grep -E "^[A-Z_]+" | sort; then
+            echo "----------------------------------------"
+        else
+            log_error "Failed to retrieve environment variables from $service container"
+            return 1
+        fi
+    else
+        log_warning "$service container is not running."
+        if [[ -f ".env" ]]; then
+            log_info "Environment variables from .env file (container not started):"
+            echo "----------------------------------------"
+            grep -E "^[A-Z_]+" .env | sort
+            echo "----------------------------------------"
+        else
+            log_warning "No .env file found. Run 'start' to create one from .env.dev"
+        fi
+    fi
+}
+
 show_logs() {
     local service="${1:-}"
     
@@ -192,10 +220,15 @@ show_logs() {
         docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" logs -f
     else
         # Validate service name
-        if [[ ! "$service" =~ ^(frontend|backend)$ ]]; then
+        if [[ ! "$service" =~ ^(frontend|backend|arcane-agent|agent)$ ]]; then
             log_error "Invalid service name: $service"
-            log_error "Valid services: frontend, backend"
+            log_error "Valid services: frontend, backend, agent"
             exit 1
+        fi
+        
+        # Normalize agent service name
+        if [[ "$service" == "agent" ]]; then
+            service="arcane-agent"
         fi
         
         log_info "Showing logs for service: $service"
@@ -205,24 +238,22 @@ show_logs() {
 
 create_env_file() {
     local env_file=".env"
+    local env_dev=".env.dev"
     
     if [[ -f "$env_file" ]]; then
         return 0
     fi
     
-    log_warning ".env file not found, creating basic development configuration..."
-    cat > "$env_file" << 'EOF'
-# Development Environment Configuration
-# WARNING: These are development-only values, never use in production!
-
-ENCRYPTION_KEY=dev-encryption-key-replace-in-production-must-be-32-chars
-JWT_SECRET=dev-jwt-secret-replace-in-production-must-be-long-enough
-DATABASE_TYPE=sqlite
-DATABASE_PATH=/app/data/arcane.db
-GIN_MODE=debug
-ENVIRONMENT=development
-EOF
-    log_success "Created .env file with development defaults"
+    if [[ ! -f "$env_dev" ]]; then
+        log_error ".env.dev file not found!"
+        log_error "Please ensure .env.dev exists in the project root"
+        exit 1
+    fi
+    
+    log_warning ".env file not found, creating from .env.dev..."
+    cp "$env_dev" "$env_file"
+    log_success "Created .env file from .env.dev template"
+    log_info "You can customize the values in .env for your development setup"
 }
 
 start_dev() {
@@ -254,11 +285,31 @@ stop_dev() {
 
 restart_dev() {
     log_info "Restarting Arcane development environment..."
-    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" restart; then
-        log_error "Failed to restart development environment"
+    
+    # Check if .env file exists and create if needed (to pick up any new changes)
+    create_env_file
+    
+    # Stop containers gracefully to allow Air to clean up properly
+    log_info "Stopping containers gracefully..."
+    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down; then
+        log_error "Failed to stop development environment"
         exit 1
     fi
-    log_success "Development environment restarted!"
+    
+    # Wait a moment for file locks to be released
+    log_info "Waiting for file locks to be released..."
+    sleep 2
+    
+    # Start containers with fresh environment
+    log_info "Starting containers with updated environment..."
+    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" up -d; then
+        log_error "Failed to start development environment"
+        exit 1
+    fi
+    
+    log_success "Development environment restarted with updated configuration!"
+    log_info "Frontend: http://localhost:3000"
+    log_info "Backend:  http://localhost:3552"
 }
 
 clean_dev() {
@@ -285,37 +336,54 @@ clean_dev() {
 rebuild_dev() {
     log_info "Rebuilding development environment..."
     
+    # Stop containers
     if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down; then
         log_error "Failed to stop containers"
         exit 1
     fi
     
+    # Clean up any leftover build artifacts
+    log_info "Cleaning up build artifacts..."
+    if docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" exec backend rm -rf .bin 2>/dev/null; then
+        log_info "Cleaned backend build directory"
+    fi
+    
+    # Rebuild with no cache
+    log_info "Rebuilding containers from scratch..."
     if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" build --no-cache; then
         log_error "Failed to rebuild containers"
         exit 1
     fi
     
+    # Start fresh
     if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" up -d; then
         log_error "Failed to start containers"
         exit 1
     fi
     
     log_success "Development environment rebuilt and started!"
+    log_info "Frontend: http://localhost:3000"
+    log_info "Backend:  http://localhost:3552"
 }
 
 shell_into() {
     local service="${1:-}"
     
     if [[ -z "$service" ]]; then
-        log_error "Please specify a service: frontend or backend"
+        log_error "Please specify a service: frontend, backend, or agent"
         exit 1
     fi
     
     # Validate service name
-    if [[ ! "$service" =~ ^(frontend|backend)$ ]]; then
+    if [[ ! "$service" =~ ^(frontend|backend|arcane-agent|agent)$ ]]; then
         log_error "Invalid service name: $service"
-        log_error "Valid services: frontend, backend"
+        log_error "Valid services: frontend, backend, agent"
         exit 1
+    fi
+    
+    # Normalize agent service name
+    if [[ "$service" == "agent" ]]; then
+        service="arcane-agent"
     fi
     
     log_info "Opening shell in $service container..."
@@ -334,12 +402,13 @@ show_help() {
     echo "Commands:"
     echo "  start     Start the development environment"
     echo "  stop      Stop the development environment"
-    echo "  restart   Restart the development environment"
+    echo "  restart   Restart the development environment (reloads .env file)"
     echo "  status    Show status of all services"
-    echo "  logs      Show logs (optionally specify service: frontend, backend)"
+    echo "  env       Show current environment configuration (optionally specify service: backend, frontend)"
+    echo "  logs      Show logs (optionally specify service: frontend, backend, agent)"
     echo "  clean     Remove all containers, networks, and volumes"
     echo "  rebuild   Rebuild and restart the development environment"
-    echo "  shell     Open shell in a service container (specify: frontend or backend)"
+    echo "  shell     Open shell in a service container (specify: frontend, backend, or agent)"
     echo "  help      Show this help message"
     echo
     echo "Features:"
@@ -350,7 +419,9 @@ show_help() {
     echo
     echo "Examples:"
     echo "  $0 start"
+    echo "  $0 env backend"
     echo "  $0 logs backend"
+    echo "  $0 logs agent"
     echo "  $0 shell frontend"
     echo
     echo "Note: If Docker or Docker Compose are not installed, you'll be prompted"
@@ -377,6 +448,9 @@ main() {
         ;;
     status)
         show_status
+        ;;
+    env)
+        show_env_config "${2:-}"
         ;;
     logs)
         show_logs "${2:-}"

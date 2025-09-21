@@ -6,217 +6,159 @@ import (
 	"testing"
 
 	glsqlite "github.com/glebarez/sqlite"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
+
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
-	"gorm.io/gorm"
 )
 
 func setupSettingsTestDB(t *testing.T) *database.DB {
 	t.Helper()
 	db, err := gorm.Open(glsqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	if err := db.AutoMigrate(&models.SettingVariable{}); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&models.SettingVariable{}))
 	return &database.DB{DB: db}
 }
 
 func TestSettingsService_EnsureDefaultSettings_Idempotent(t *testing.T) {
 	ctx := context.Background()
 	db := setupSettingsTestDB(t)
-	svc := NewSettingsService(db, &config.Config{})
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
 
-	if err := svc.EnsureDefaultSettings(ctx); err != nil {
-		t.Fatalf("EnsureDefaultSettings: %v", err)
-	}
+	require.NoError(t, svc.EnsureDefaultSettings(ctx))
 
 	var count1 int64
-	if err := svc.db.WithContext(ctx).Model(&models.SettingVariable{}).Count(&count1).Error; err != nil {
-		t.Fatalf("count: %v", err)
-	}
-	if count1 == 0 {
-		t.Fatalf("expected defaults inserted")
-	}
+	require.NoError(t, svc.db.WithContext(ctx).Model(&models.SettingVariable{}).Count(&count1).Error)
+	require.Positive(t, count1)
 
-	// Run again (should not duplicate)
-	if err := svc.EnsureDefaultSettings(ctx); err != nil {
-		t.Fatalf("EnsureDefaultSettings 2nd run: %v", err)
-	}
+	require.NoError(t, svc.EnsureDefaultSettings(ctx))
 
 	var count2 int64
-	if err := svc.db.WithContext(ctx).Model(&models.SettingVariable{}).Count(&count2).Error; err != nil {
-		t.Fatalf("count2: %v", err)
-	}
-	if count2 != count1 {
-		t.Fatalf("defaults not idempotent: first=%d second=%d", count1, count2)
-	}
+	require.NoError(t, svc.db.WithContext(ctx).Model(&models.SettingVariable{}).Count(&count2).Error)
+	require.Equal(t, count1, count2)
 
 	// Spot-check a couple keys exist
 	for _, key := range []string{"authLocalEnabled", "projectsDirectory"} {
 		var sv models.SettingVariable
 		err := svc.db.WithContext(ctx).Where("key = ?", key).First(&sv).Error
-		if err != nil {
-			t.Fatalf("missing default key %s: %v", key, err)
-		}
+		require.NoErrorf(t, err, "missing default key %s", key)
 	}
 }
 
 func TestSettingsService_GetSettings_UnknownKeysIgnored(t *testing.T) {
 	ctx := context.Background()
 	db := setupSettingsTestDB(t)
-	svc := NewSettingsService(db, &config.Config{})
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
 
-	// Unknown key should not break loading
-	if err := svc.db.WithContext(ctx).Create(&models.SettingVariable{Key: "someUnknownKey", Value: "x"}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	if _, err := svc.GetSettings(ctx); err != nil {
-		t.Fatalf("GetSettings should ignore unknown key: %v", err)
-	}
+	require.NoError(t, svc.db.WithContext(ctx).
+		Create(&models.SettingVariable{Key: "someUnknownKey", Value: "x"}).Error)
+
+	_, err = svc.GetSettings(ctx)
+	require.NoError(t, err)
 }
 
 func TestSettingsService_GetSetHelpers(t *testing.T) {
 	ctx := context.Background()
 	db := setupSettingsTestDB(t)
-	svc := NewSettingsService(db, &config.Config{})
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
 
 	// Defaults for missing keys
-	if got := svc.GetBoolSetting(ctx, "nonexistentBool", true); got != true {
-		t.Fatalf("GetBoolSetting default mismatch: got %v", got)
-	}
-	if got := svc.GetIntSetting(ctx, "nonexistentInt", 42); got != 42 {
-		t.Fatalf("GetIntSetting default mismatch: got %v", got)
-	}
-	if got := svc.GetStringSetting(ctx, "nonexistentStr", "def"); got != "def" {
-		t.Fatalf("GetStringSetting default mismatch: got %v", got)
-	}
+	require.True(t, svc.GetBoolSetting(ctx, "nonexistentBool", true))
+	require.Equal(t, 42, svc.GetIntSetting(ctx, "nonexistentInt", 42))
+	require.Equal(t, "def", svc.GetStringSetting(ctx, "nonexistentStr", "def"))
 
 	// Set and read back
-	if err := svc.SetBoolSetting(ctx, "enableGravatar", true); err != nil {
-		t.Fatalf("SetBoolSetting: %v", err)
-	}
-	if got := svc.GetBoolSetting(ctx, "enableGravatar", false); !got {
-		t.Fatalf("GetBoolSetting persisted mismatch")
-	}
+	require.NoError(t, svc.SetBoolSetting(ctx, "enableGravatar", true))
+	require.True(t, svc.GetBoolSetting(ctx, "enableGravatar", false))
 
-	if err := svc.SetIntSetting(ctx, "authSessionTimeout", 123); err != nil {
-		t.Fatalf("SetIntSetting: %v", err)
-	}
-	if got := svc.GetIntSetting(ctx, "authSessionTimeout", 0); got != 123 {
-		t.Fatalf("GetIntSetting persisted mismatch: %v", got)
-	}
+	require.NoError(t, svc.SetIntSetting(ctx, "authSessionTimeout", 123))
+	require.Equal(t, 123, svc.GetIntSetting(ctx, "authSessionTimeout", 0))
 
-	if err := svc.SetStringSetting(ctx, "baseServerUrl", "http://localhost"); err != nil {
-		t.Fatalf("SetStringSetting: %v", err)
-	}
-	if got := svc.GetStringSetting(ctx, "baseServerUrl", ""); got != "http://localhost" {
-		t.Fatalf("GetStringSetting persisted mismatch: %q", got)
-	}
+	require.NoError(t, svc.SetStringSetting(ctx, "baseServerUrl", "http://localhost"))
+	require.Equal(t, "http://localhost", svc.GetStringSetting(ctx, "baseServerUrl", ""))
 }
 
 func TestSettingsService_UpdateSetting(t *testing.T) {
 	ctx := context.Background()
 	db := setupSettingsTestDB(t)
-	svc := NewSettingsService(db, &config.Config{})
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
 
-	if err := svc.UpdateSetting(ctx, "dockerPruneMode", "all"); err != nil {
-		t.Fatalf("UpdateSetting: %v", err)
-	}
+	// Use an existing key ("pruneMode") instead of a non-existent one
+	require.NoError(t, svc.UpdateSetting(ctx, "pruneMode", "all"))
+
 	var sv models.SettingVariable
-	if err := svc.db.WithContext(ctx).Where("key = ?", "dockerPruneMode").First(&sv).Error; err != nil {
-		t.Fatalf("query: %v", err)
-	}
-	if sv.Value != "all" {
-		t.Fatalf("value mismatch: %q", sv.Value)
-	}
+	require.NoError(t, svc.db.WithContext(ctx).Where("key = ?", "pruneMode").First(&sv).Error)
+	require.Equal(t, "all", sv.Value)
 }
 
 func TestSettingsService_EnsureEncryptionKey(t *testing.T) {
 	ctx := context.Background()
 	db := setupSettingsTestDB(t)
-	svc := NewSettingsService(db, &config.Config{})
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
 
 	k1, err := svc.EnsureEncryptionKey(ctx)
-	if err != nil {
-		t.Fatalf("EnsureEncryptionKey: %v", err)
-	}
-	if k1 == "" {
-		t.Fatalf("empty key")
-	}
+	require.NoError(t, err)
+	require.NotEmpty(t, k1)
 
-	// Key should be persisted and reused
 	k2, err := svc.EnsureEncryptionKey(ctx)
-	if err != nil {
-		t.Fatalf("EnsureEncryptionKey 2nd: %v", err)
-	}
-	if k2 != k1 {
-		t.Fatalf("key not stable: first=%q second=%q", k1, k2)
-	}
+	require.NoError(t, err)
+	require.Equal(t, k1, k2, "encryption key should be stable between calls")
 
 	var sv models.SettingVariable
-	if err := svc.db.WithContext(ctx).Where("key = ?", "encryptionKey").First(&sv).Error; err != nil {
-		t.Fatalf("query encryptionKey: %v", err)
-	}
-	if sv.Value != k1 {
-		t.Fatalf("stored key mismatch")
-	}
+	require.NoError(t, svc.db.WithContext(ctx).Where("key = ?", "encryptionKey").First(&sv).Error)
+	require.Equal(t, k1, sv.Value)
 }
 
 func TestSettingsService_SyncOidcEnvToDatabase(t *testing.T) {
+	// Set env BEFORE creating service so config loader (if any) sees them
+	t.Setenv("OIDC_ENABLED", "false")
+	t.Setenv("OIDC_CLIENT_ID", "cid")
+	t.Setenv("OIDC_CLIENT_SECRET", "csec")
+	t.Setenv("OIDC_ISSUER_URL", "https://issuer.example")
+	t.Setenv("OIDC_SCOPES", "openid profile email")
+	t.Setenv("OIDC_ADMIN_CLAIM", "roles")
+	t.Setenv("OIDC_ADMIN_VALUE", "admin")
+
 	ctx := context.Background()
 	db := setupSettingsTestDB(t)
-	cfg := &config.Config{
-		OidcEnabled:      true,
-		OidcClientID:     "cid",
-		OidcClientSecret: "csec",
-		OidcIssuerURL:    "https://issuer.example",
-		OidcScopes:       "openid profile email",
-		OidcAdminClaim:   "roles",
-		OidcAdminValue:   "admin",
-	}
-	svc := NewSettingsService(db, cfg)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
 
+	// (Re)load settings after env prepared
 	vars, err := svc.SyncOidcEnvToDatabase(ctx)
-	if err != nil {
-		t.Fatalf("SyncOidcEnvToDatabase: %v", err)
-	}
-	if len(vars) == 0 {
-		t.Fatalf("expected settings slice returned")
-	}
+	require.NoError(t, err)
+	require.NotEmpty(t, vars)
 
-	// Verify persisted values
 	var enabled models.SettingVariable
-	if err := svc.db.WithContext(ctx).Where("key = ?", "authOidcEnabled").First(&enabled).Error; err != nil {
-		t.Fatalf("query authOidcEnabled: %v", err)
-	}
-	if enabled.Value != "true" {
-		t.Fatalf("authOidcEnabled not true: %q", enabled.Value)
-	}
+	require.NoError(t, svc.db.WithContext(ctx).Where("key = ?", "authOidcEnabled").First(&enabled).Error)
+	require.Equal(t, "true", enabled.Value)
 
 	var cfgVar models.SettingVariable
-	if err := svc.db.WithContext(ctx).Where("key = ?", "authOidcConfig").First(&cfgVar).Error; err != nil {
-		t.Fatalf("query authOidcConfig: %v", err)
-	}
+	require.NoError(t, svc.db.WithContext(ctx).Where("key = ?", "authOidcConfig").First(&cfgVar).Error)
+
 	var oc models.OidcConfig
-	if err := json.Unmarshal([]byte(cfgVar.Value), &oc); err != nil {
-		t.Fatalf("unmarshal oidc cfg: %v", err)
-	}
-	if oc.ClientID != "cid" || oc.ClientSecret != "csec" || oc.IssuerURL != "https://issuer.example" {
-		t.Fatalf("oidc cfg mismatch: %+v", oc)
-	}
-	if oc.Scopes != "openid profile email" || oc.AdminClaim != "roles" || oc.AdminValue != "admin" {
-		t.Fatalf("oidc cfg extras mismatch: %+v", oc)
-	}
+	require.NoError(t, json.Unmarshal([]byte(cfgVar.Value), &oc))
+	require.Equal(t, "cid", oc.ClientID)
+	require.Equal(t, "csec", oc.ClientSecret)
+	require.Equal(t, "https://issuer.example", oc.IssuerURL)
+	require.Equal(t, "openid profile email", oc.Scopes)
+	require.Equal(t, "roles", oc.AdminClaim)
+	require.Equal(t, "admin", oc.AdminValue)
 }
 
 func TestSettingsService_UpdateSettings_MergeOidcSecret(t *testing.T) {
 	ctx := context.Background()
 	db := setupSettingsTestDB(t)
-	svc := NewSettingsService(db, &config.Config{})
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
 
 	// Seed existing OIDC config with a secret
 	existing := models.OidcConfig{
@@ -225,12 +167,8 @@ func TestSettingsService_UpdateSettings_MergeOidcSecret(t *testing.T) {
 		IssuerURL:    "https://issuer",
 	}
 	b, err := json.Marshal(existing)
-	if err != nil {
-		t.Fatalf("marshal existing oidc config: %v", err)
-	}
-	if err := svc.UpdateSetting(ctx, "authOidcConfig", string(b)); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, svc.UpdateSetting(ctx, "authOidcConfig", string(b)))
 
 	// Incoming update missing clientSecret should preserve existing one
 	incoming := models.OidcConfig{
@@ -238,30 +176,61 @@ func TestSettingsService_UpdateSettings_MergeOidcSecret(t *testing.T) {
 		IssuerURL: "https://issuer",
 	}
 	nb, err := json.Marshal(incoming)
-	if err != nil {
-		t.Fatalf("marshal incoming oidc config: %v", err)
-	}
+	require.NoError(t, err)
 	s := string(nb)
 
 	updates := dto.UpdateSettingsDto{
 		AuthOidcConfig: &s,
 	}
-	if _, err := svc.UpdateSettings(ctx, updates); err != nil {
-		t.Fatalf("UpdateSettings: %v", err)
-	}
+	_, err = svc.UpdateSettings(ctx, updates)
+	require.NoError(t, err)
 
 	var cfgVar models.SettingVariable
-	if err := svc.db.WithContext(ctx).Where("key = ?", "authOidcConfig").First(&cfgVar).Error; err != nil {
-		t.Fatalf("query: %v", err)
-	}
+	require.NoError(t, svc.db.WithContext(ctx).Where("key = ?", "authOidcConfig").First(&cfgVar).Error)
+
 	var merged models.OidcConfig
-	if err := json.Unmarshal([]byte(cfgVar.Value), &merged); err != nil {
-		t.Fatalf("unmarshal merged: %v", err)
-	}
-	if merged.ClientID != "new" {
-		t.Fatalf("clientId not updated: %q", merged.ClientID)
-	}
-	if merged.ClientSecret != "keep-this" {
-		t.Fatalf("clientSecret not preserved: %q", merged.ClientSecret)
-	}
+	require.NoError(t, json.Unmarshal([]byte(cfgVar.Value), &merged))
+	require.Equal(t, "new", merged.ClientID)
+	require.Equal(t, "keep-this", merged.ClientSecret)
+}
+
+func TestSettingsService_LoadDatabaseSettings_ReloadsChanges(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	// Initially empty DB -> defaults (not persisted yet)
+	require.NoError(t, svc.EnsureDefaultSettings(ctx))
+
+	// Update a value directly in DB
+	require.NoError(t, svc.UpdateSetting(ctx, "projectsDirectory", "custom/projects"))
+
+	// Force reload
+	require.NoError(t, svc.LoadDatabaseSettings(ctx))
+
+	cfg := svc.GetSettingsConfig()
+	require.Equal(t, "custom/projects", cfg.ProjectsDirectory.Value)
+}
+
+func TestSettingsService_LoadDatabaseSettings_UIConfigurationDisabled_Env(t *testing.T) {
+	// Set env + disable flag BEFORE service init
+	t.Setenv("UI_CONFIGURATION_DISABLED", "true")
+	t.Setenv("PROJECTS_DIRECTORY", "env/projects")
+	t.Setenv("BASE_SERVER_URL", "https://env.example")
+
+	c := config.Load()
+	c.UIConfigurationDisabled = true
+
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	// Reload explicitly (NewSettingsService already did, but explicit for clarity)
+	require.NoError(t, svc.LoadDatabaseSettings(ctx))
+
+	cfg := svc.GetSettingsConfig()
+	require.Equal(t, "env/projects", cfg.ProjectsDirectory.Value)
+	require.Equal(t, "https://env.example", cfg.BaseServerURL.Value)
 }

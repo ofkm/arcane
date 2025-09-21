@@ -13,6 +13,7 @@
 	import type { Settings } from '$lib/types/settings.type';
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsAPI } from '$lib/services/api';
+	import UiConfigDisabledTag from '$lib/components/ui-config-disabled-tag.svelte';
 
 	interface SettingMeta {
 		key: string;
@@ -268,14 +269,19 @@
 			<div class="bg-muted/40 pointer-events-none absolute -bottom-10 -left-10 size-40 rounded-full blur-3xl"></div>
 			<div class="relative">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-					<div class="flex items-start gap-3 sm:gap-4">
+					<div class="flex items-start gap-3 sm:gap-4 w-full">
 						<div
 							class="bg-primary/10 text-primary ring-primary/20 flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 sm:size-10"
 						>
 							<SettingsIcon class="size-4 sm:size-5" />
 						</div>
-						<div class="min-w-0">
-							<h1 class="text-xl font-bold tracking-tight sm:text-2xl">{m.sidebar_settings()}</h1>
+						<div class="min-w-0 flex-1">
+							<div class="flex items-start justify-between gap-3">
+								<h1 class="text-xl font-bold tracking-tight sm:text-2xl min-w-0">{m.sidebar_settings()}</h1>
+								<div class="shrink-0">
+									<UiConfigDisabledTag />
+								</div>
+							</div>
 							<p class="text-muted-foreground mt-1 text-sm sm:text-base">Configure and customize your Arcane experience</p>
 						</div>
 					</div>

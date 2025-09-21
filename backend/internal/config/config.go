@@ -26,14 +26,14 @@ type Config struct {
 	OidcAdminClaim   string
 	OidcAdminValue   string
 
-	LogJson             bool
-	LogLevel            string
-	AgentMode           bool
-	AgentToken          string
-	AgentBootstrapToken string
-	UpdateCheckDisabled bool
-
-	AnalyticsDisabled bool
+	LogJson                 bool
+	LogLevel                string
+	AgentMode               bool
+	AgentToken              string
+	AgentBootstrapToken     string
+	UpdateCheckDisabled     bool
+	UIConfigurationDisabled bool
+	AnalyticsDisabled       bool
 }
 
 func Load() *Config {
@@ -53,14 +53,14 @@ func Load() *Config {
 		OidcAdminClaim:   getEnvOrDefault("OIDC_ADMIN_CLAIM", ""),
 		OidcAdminValue:   getEnvOrDefault("OIDC_ADMIN_VALUE", ""),
 
-		LogJson:             getBoolEnvOrDefault("LOG_JSON", false),
-		LogLevel:            strings.ToLower(getEnvOrDefault("LOG_LEVEL", "info")),
-		AgentMode:           getBoolEnvOrDefault("AGENT_MODE", false),
-		AgentToken:          os.Getenv("AGENT_TOKEN"),
-		AgentBootstrapToken: os.Getenv("AGENT_BOOTSTRAP_TOKEN"),
-		UpdateCheckDisabled: getBoolEnvOrDefault("UPDATE_CHECK_DISABLED", false),
-
-		AnalyticsDisabled: getBoolEnvOrDefault("ANALYTICS_DISABLED", false),
+		LogJson:                 getBoolEnvOrDefault("LOG_JSON", false),
+		LogLevel:                strings.ToLower(getEnvOrDefault("LOG_LEVEL", "info")),
+		AgentMode:               getBoolEnvOrDefault("AGENT_MODE", false),
+		AgentToken:              os.Getenv("AGENT_TOKEN"),
+		AgentBootstrapToken:     os.Getenv("AGENT_BOOTSTRAP_TOKEN"),
+		UpdateCheckDisabled:     getBoolEnvOrDefault("UPDATE_CHECK_DISABLED", false),
+		UIConfigurationDisabled: getBoolEnvOrDefault("UI_CONFIGURATION_DISABLED", false),
+		AnalyticsDisabled:       getBoolEnvOrDefault("ANALYTICS_DISABLED", false),
 	}
 }
 

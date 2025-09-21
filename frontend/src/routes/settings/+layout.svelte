@@ -10,6 +10,7 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
 	import { m } from '$lib/paraglide/messages';
+	import settingsStore from '$lib/stores/config-store';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -22,6 +23,7 @@
 	let currentPageName = $derived(page.url.pathname.split('/').pop() || 'settings');
 
 	const sidebar = useSidebar();
+	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
 
 	// Calculate left position based on sidebar state to match sidebar spacing system
 	// Uses the same CSS variables and spacing as the sidebar component
@@ -116,38 +118,40 @@
 
 				<!-- Save Section - Desktop only -->
 				<div class="hidden shrink-0 items-center gap-3 sm:flex">
-					{#if formState.hasChanges}
-						<span class="text-xs text-orange-600 dark:text-orange-400"> Unsaved changes </span>
-					{:else if !formState.hasChanges && formState.saveFunction}
-						<span class="text-xs text-green-600 dark:text-green-400"> All changes saved </span>
-					{/if}
+					{#if !isReadOnly}
+						{#if formState.hasChanges}
+							<span class="text-xs text-orange-600 dark:text-orange-400"> Unsaved changes </span>
+						{:else if !formState.hasChanges && formState.saveFunction}
+							<span class="text-xs text-green-600 dark:text-green-400"> All changes saved </span>
+						{/if}
 
-					{#if formState.hasChanges && formState.resetFunction}
+						{#if formState.hasChanges && formState.resetFunction}
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={() => formState.resetFunction && formState.resetFunction()}
+								disabled={formState.isLoading}
+								class="gap-2"
+							>
+								{m.common_reset()}
+							</Button>
+						{/if}
+
 						<Button
-							variant="outline"
+							onclick={handleSave}
+							disabled={formState.isLoading || !formState.hasChanges || !formState.saveFunction}
 							size="sm"
-							onclick={() => formState.resetFunction && formState.resetFunction()}
-							disabled={formState.isLoading}
-							class="gap-2"
+							class="min-w-[80px] gap-2"
 						>
-							{m.common_reset()}
-						</Button>
-					{/if}
-
-					<Button
-						onclick={handleSave}
-						disabled={formState.isLoading || !formState.hasChanges || !formState.saveFunction}
-						size="sm"
-						class="min-w-[80px] gap-2"
-					>
-						{#if formState.isLoading}
-							<div class="border-background size-4 animate-spin rounded-full border-2 border-t-transparent"></div>
-							{m.common_saving()}
-						{:else}
-							<SaveIcon class="size-4" />
+							{#if formState.isLoading}
+								<div class="border-background size-4 animate-spin rounded-full border-2 border-t-transparent"></div>
+								{m.common_saving()}
+							{:else}
+								<SaveIcon class="size-4" />
 							{m.common_save()}
 						{/if}
 					</Button>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -161,7 +165,7 @@
 </div>
 
 <!-- Mobile Floating Action Buttons -->
-{#if isSubPage}
+{#if isSubPage && !isReadOnly}
 	<div class="fixed bottom-4 right-4 z-50 flex flex-col gap-3 sm:hidden">
 		{#if formState.hasChanges && formState.resetFunction}
 			<Button

@@ -15,6 +15,7 @@
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import KeyIcon from '@lucide/svelte/icons/key';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
+	import settingsStore from '$lib/stores/config-store';
 
 	let {
 		settings,
@@ -198,155 +199,159 @@
 			isLoading = false;
 		}
 	}
+
+	const uiConfigDisabled = $state($settingsStore.uiConfigDisabled);
 </script>
 
-<div class="space-y-4 sm:space-y-6">
-	<!-- Authentication Methods Card -->
-	<Card.Root class="overflow-hidden">
-		<Card.Header class="py-4! bg-muted/20 border-b">
-			<div class="flex items-center gap-3">
-				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-					<LockIcon class="size-4" />
+<fieldset disabled={uiConfigDisabled} class="relative">
+	<div class="space-y-4 sm:space-y-6">
+		<!-- Authentication Methods Card -->
+		<Card.Root class="overflow-hidden">
+			<Card.Header class="py-4! bg-muted/20 border-b">
+				<div class="flex items-center gap-3">
+					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
+						<LockIcon class="size-4" />
+					</div>
+					<div>
+						<Card.Title class="text-base">{m.security_authentication_heading()}</Card.Title>
+						<Card.Description class="text-xs">Configure login methods for your application</Card.Description>
+					</div>
 				</div>
-				<div>
-					<Card.Title class="text-base">{m.security_authentication_heading()}</Card.Title>
-					<Card.Description class="text-xs">Configure login methods for your application</Card.Description>
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content class="px-3 py-4 sm:px-6">
-			<div class="space-y-3">
-				<SwitchWithLabel
-					id="localAuthSwitch"
-					label={m.security_local_auth_label()}
-					description={m.security_local_auth_description()}
-					bind:checked={$formInputs.authLocalEnabled.value}
-					onCheckedChange={handleLocalSwitchChange}
-				/>
-
-				<div class="space-y-2">
+			</Card.Header>
+			<Card.Content class="px-3 py-4 sm:px-6">
+				<div class="space-y-3">
 					<SwitchWithLabel
-						id="oidcAuthSwitch"
-						label={m.security_oidc_auth_label()}
-						description={oidcStatus.envForced ? m.security_oidc_auth_description_forced() : m.security_oidc_auth_description()}
-						disabled={oidcStatus.envForced}
-						bind:checked={$formInputs.authOidcEnabled.value}
-						onCheckedChange={handleOidcSwitchChange}
+						id="localAuthSwitch"
+						label={m.security_local_auth_label()}
+						description={m.security_local_auth_description()}
+						bind:checked={$formInputs.authLocalEnabled.value}
+						onCheckedChange={handleLocalSwitchChange}
 					/>
 
-					{#if isOidcActive()}
-						<div class="pl-8 sm:pl-11">
-							{#if oidcStatus.envForced}
-								{#if !oidcStatus.envConfigured}
-									<Button variant="link" class="text-destructive h-auto p-0 text-xs hover:underline" onclick={openOidcDialog}>
-										{m.security_server_forces_oidc_missing_env()}
-									</Button>
+					<div class="space-y-2">
+						<SwitchWithLabel
+							id="oidcAuthSwitch"
+							label={m.security_oidc_auth_label()}
+							description={oidcStatus.envForced ? m.security_oidc_auth_description_forced() : m.security_oidc_auth_description()}
+							disabled={oidcStatus.envForced}
+							bind:checked={$formInputs.authOidcEnabled.value}
+							onCheckedChange={handleOidcSwitchChange}
+						/>
+
+						{#if isOidcActive()}
+							<div class="pl-8 sm:pl-11">
+								{#if oidcStatus.envForced}
+									{#if !oidcStatus.envConfigured}
+										<Button variant="link" class="text-destructive h-auto p-0 text-xs hover:underline" onclick={openOidcDialog}>
+											{m.security_server_forces_oidc_missing_env()}
+										</Button>
+									{:else}
+										<Button variant="link" class="h-auto p-0 text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
+											{m.security_oidc_configured_forced_view()}
+										</Button>
+									{/if}
 								{:else}
 									<Button variant="link" class="h-auto p-0 text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
-										{m.security_oidc_configured_forced_view()}
+										{m.security_manage_oidc_config()}
 									</Button>
 								{/if}
-							{:else}
-								<Button variant="link" class="h-auto p-0 text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
-									{m.security_manage_oidc_config()}
+							</div>
+						{/if}
+					</div>
+				</div>
+			</Card.Content>
+		</Card.Root>
+
+		<!-- Session Settings Card -->
+		<Card.Root class="overflow-hidden">
+			<Card.Header class="py-4! bg-muted/20 border-b">
+				<div class="flex items-center gap-3">
+					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
+						<ClockIcon class="size-4" />
+					</div>
+					<div>
+						<Card.Title class="text-base">{m.security_session_heading()}</Card.Title>
+						<Card.Description class="text-xs">Configure session timeout and duration</Card.Description>
+					</div>
+				</div>
+			</Card.Header>
+			<Card.Content class="px-3 py-4 sm:px-6">
+				<TextInputWithLabel
+					bind:value={$formInputs.authSessionTimeout.value}
+					label={m.security_session_timeout_label()}
+					placeholder={m.security_session_timeout_placeholder()}
+					helpText={m.security_session_timeout_description()}
+					type="number"
+				/>
+			</Card.Content>
+		</Card.Root>
+
+		<!-- Password Policy Card -->
+		<Card.Root class="overflow-hidden">
+			<Card.Header class="py-4! bg-muted/20 border-b">
+				<div class="flex items-center gap-3">
+					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
+						<KeyIcon class="size-4" />
+					</div>
+					<div>
+						<Card.Title class="text-base">{m.security_password_policy_label()}</Card.Title>
+						<Card.Description class="text-xs">Set password strength requirements</Card.Description>
+					</div>
+				</div>
+			</Card.Header>
+			<Card.Content class="px-3 py-4 sm:px-6">
+				<Tooltip.Provider>
+					<div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-labelledby="passwordPolicyLabel">
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								<Button
+									variant={$formInputs.authPasswordPolicy.value === 'basic' ? 'default' : 'outline'}
+									class={$formInputs.authPasswordPolicy.value === 'basic'
+										? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
+										: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
+									onclick={() => ($formInputs.authPasswordPolicy.value = 'basic')}
+									type="button"
+									>{m.security_password_policy_basic()}
 								</Button>
-							{/if}
-						</div>
-					{/if}
-				</div>
-			</div>
-		</Card.Content>
-	</Card.Root>
+							</Tooltip.Trigger>
+							<Tooltip.Content side="top" align="center">{m.security_password_policy_basic_tooltip()}</Tooltip.Content>
+						</Tooltip.Root>
 
-	<!-- Session Settings Card -->
-	<Card.Root class="overflow-hidden">
-		<Card.Header class="py-4! bg-muted/20 border-b">
-			<div class="flex items-center gap-3">
-				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-					<ClockIcon class="size-4" />
-				</div>
-				<div>
-					<Card.Title class="text-base">{m.security_session_heading()}</Card.Title>
-					<Card.Description class="text-xs">Configure session timeout and duration</Card.Description>
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content class="px-3 py-4 sm:px-6">
-			<TextInputWithLabel
-				bind:value={$formInputs.authSessionTimeout.value}
-				label={m.security_session_timeout_label()}
-				placeholder={m.security_session_timeout_placeholder()}
-				helpText={m.security_session_timeout_description()}
-				type="number"
-			/>
-		</Card.Content>
-	</Card.Root>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								<Button
+									variant={$formInputs.authPasswordPolicy.value === 'standard' ? 'default' : 'outline'}
+									class={$formInputs.authPasswordPolicy.value === 'standard'
+										? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
+										: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
+									onclick={() => ($formInputs.authPasswordPolicy.value = 'standard')}
+									type="button"
+									>{m.security_password_policy_standard()}
+								</Button>
+							</Tooltip.Trigger>
+							<Tooltip.Content side="top" align="center">{m.security_password_policy_standard_tooltip()}</Tooltip.Content>
+						</Tooltip.Root>
 
-	<!-- Password Policy Card -->
-	<Card.Root class="overflow-hidden">
-		<Card.Header class="py-4! bg-muted/20 border-b">
-			<div class="flex items-center gap-3">
-				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-					<KeyIcon class="size-4" />
-				</div>
-				<div>
-					<Card.Title class="text-base">{m.security_password_policy_label()}</Card.Title>
-					<Card.Description class="text-xs">Set password strength requirements</Card.Description>
-				</div>
-			</div>
-		</Card.Header>
-		<Card.Content class="px-3 py-4 sm:px-6">
-			<Tooltip.Provider>
-				<div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-labelledby="passwordPolicyLabel">
-					<Tooltip.Root>
-						<Tooltip.Trigger>
-							<Button
-								variant={$formInputs.authPasswordPolicy.value === 'basic' ? 'default' : 'outline'}
-								class={$formInputs.authPasswordPolicy.value === 'basic'
-									? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
-									: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
-								onclick={() => ($formInputs.authPasswordPolicy.value = 'basic')}
-								type="button"
-								>{m.security_password_policy_basic()}
-							</Button>
-						</Tooltip.Trigger>
-						<Tooltip.Content side="top" align="center">{m.security_password_policy_basic_tooltip()}</Tooltip.Content>
-					</Tooltip.Root>
-
-					<Tooltip.Root>
-						<Tooltip.Trigger>
-							<Button
-								variant={$formInputs.authPasswordPolicy.value === 'standard' ? 'default' : 'outline'}
-								class={$formInputs.authPasswordPolicy.value === 'standard'
-									? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
-									: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
-								onclick={() => ($formInputs.authPasswordPolicy.value = 'standard')}
-								type="button"
-								>{m.security_password_policy_standard()}
-							</Button>
-						</Tooltip.Trigger>
-						<Tooltip.Content side="top" align="center">{m.security_password_policy_standard_tooltip()}</Tooltip.Content>
-					</Tooltip.Root>
-
-					<Tooltip.Root>
-						<Tooltip.Trigger>
-							<Button
-								variant={$formInputs.authPasswordPolicy.value === 'strong' ? 'default' : 'outline'}
-								class={$formInputs.authPasswordPolicy.value === 'strong'
-									? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
-									: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
-								onclick={() => ($formInputs.authPasswordPolicy.value = 'strong')}
-								type="button"
-								>{m.security_password_policy_strong()}
-							</Button>
-						</Tooltip.Trigger>
-						<Tooltip.Content side="top" align="center">{m.security_password_policy_strong_tooltip()}</Tooltip.Content>
-					</Tooltip.Root>
-				</div>
-			</Tooltip.Provider>
-		</Card.Content>
-	</Card.Root>
-</div>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								<Button
+									variant={$formInputs.authPasswordPolicy.value === 'strong' ? 'default' : 'outline'}
+									class={$formInputs.authPasswordPolicy.value === 'strong'
+										? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
+										: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
+									onclick={() => ($formInputs.authPasswordPolicy.value = 'strong')}
+									type="button"
+									>{m.security_password_policy_strong()}
+								</Button>
+							</Tooltip.Trigger>
+							<Tooltip.Content side="top" align="center">{m.security_password_policy_strong_tooltip()}</Tooltip.Content>
+						</Tooltip.Root>
+					</div>
+				</Tooltip.Provider>
+			</Card.Content>
+		</Card.Root>
+	</div>
+</fieldset>
 
 <OidcConfigDialog
 	bind:open={showOidcConfigDialog}

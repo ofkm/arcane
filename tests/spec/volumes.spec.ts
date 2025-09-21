@@ -1,27 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
-
-async function fetchVolumesWithRetry(page: Page, maxRetries = 3): Promise<any[]> {
-  let retries = 0;
-  while (retries < maxRetries) {
-    try {
-      const response = await page.request.get('/api/volumes');
-      const volumes = await response.json();
-      return volumes.data;
-    } catch (error) {
-      retries++;
-      console.log(`Attempt ${retries} failed, ${maxRetries - retries} retries left`);
-      if (retries >= maxRetries) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-  return [];
-}
+import { fetchVolumesWithRetry } from '../utils/fetch.util';
 
 let realVolumes: any[] = [];
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/volumes');
-  await page.waitForLoadState('networkidle');
   realVolumes = await fetchVolumesWithRetry(page);
 });
 
@@ -43,92 +26,6 @@ async function ensureFacetOpen(page: Page, title: string) {
   if ((await trigger.getAttribute('data-state')) !== 'open') await trigger.click();
   await content.waitFor({ state: 'visible' });
   return { trigger, content };
-}
-
-async function ensureUsageOpen(page: Page) {
-  const trigger = page.getByTestId('facet-usage-trigger').first();
-  const used = page.getByTestId('facet-usage-option-true').first();
-  if (await used.isVisible().catch(() => false)) return;
-  if ((await trigger.getAttribute('data-state')) !== 'open') await trigger.click();
-  await used.waitFor({ state: 'visible' });
-}
-
-async function toggleUsageValue(page: Page, value: 'true' | 'false', desired: boolean) {
-  // 'true' -> In Use, 'false' -> Unused
-  const want = desired ? 'true' : 'false';
-  const testId = `facet-usage-option-${value}`;
-
-  for (let attempt = 0; attempt < 6; attempt++) {
-    await ensureUsageOpen(page);
-
-    const option = page.getByTestId(testId).first();
-    await option.waitFor({ state: 'visible' });
-
-    const current = (await option.getAttribute('aria-selected')) === 'true';
-    if (current === desired) return;
-
-    // Try 1: click the label span (avoids pointer-events-none on icons)
-    const label = option.locator('span', { hasText: value === 'true' ? 'In Use' : 'Unused' }).first();
-    if (await label.isVisible().catch(() => false)) {
-      await label.click().catch(() => {});
-      try {
-        await expect(option).toHaveAttribute('aria-selected', want, { timeout: 400 });
-        return;
-      } catch {}
-    }
-
-    // Try 2: click the leading checkbox chip
-    const chip = option.locator('div').first();
-    await chip.click({ force: true }).catch(() => {});
-    try {
-      await expect(option).toHaveAttribute('aria-selected', want, { timeout: 400 });
-      return;
-    } catch {}
-
-    // Try 3: click center of the option
-    const box = await option.boundingBox();
-    if (box) {
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-      try {
-        await expect(option).toHaveAttribute('aria-selected', want, { timeout: 400 });
-        return;
-      } catch {}
-    }
-
-    // Try 4: keyboard activation via the item
-    await option.focus().catch(() => {});
-    await option.press('Enter').catch(() => {});
-    try {
-      await expect(option).toHaveAttribute('aria-selected', want, { timeout: 400 });
-      return;
-    } catch {}
-
-    // Try 5: synthesize DOM events
-    await option
-      .evaluate((el) => {
-        const fire = (type: string) => el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
-        fire('pointerdown');
-        fire('pointerup');
-        fire('click');
-      })
-      .catch(() => {});
-    try {
-      await expect(option).toHaveAttribute('aria-selected', want, { timeout: 400 });
-      return;
-    } catch {}
-
-    await page.waitForTimeout(120);
-  }
-
-  // Final check
-  await ensureUsageOpen(page);
-  await expect(page.getByTestId(testId)).toHaveAttribute('aria-selected', want);
-}
-
-async function setUsage(page: Page, showUsed: boolean, showUnused: boolean) {
-  // true -> "In Use", false -> "Unused"
-  await toggleUsageValue(page, 'true', showUsed);
-  await toggleUsageValue(page, 'false', showUnused);
 }
 
 test.describe('Volumes Page', () => {

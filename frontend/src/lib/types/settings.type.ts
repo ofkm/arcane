@@ -16,6 +16,7 @@ export type Settings = {
 	dockerPruneMode: 'all' | 'dangling';
 	baseServerUrl: string;
 	enableGravatar: boolean;
+	uiConfigDisabled: boolean;
 
 	authLocalEnabled: boolean;
 	authOidcEnabled: boolean;
