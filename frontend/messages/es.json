@@ -1060,5 +1060,7 @@
 	"polling_weekly_description": "Buscar imágenes nuevas cada 10080 minutos",
 	"use_custom_polling_value": "Usar un valor de encuesta personalizado entre 5-10080 minutos",
 	"custom_polling_interval": "Intervalo de Encuesta Personalizada (minutos)",
-	"build_cache": "Construir caché"
+	"build_cache": "Construir caché",
+	"ui_config_disabled_title": "La configuración de la interfaz está desactivada",
+	"ui_config_disabled_description": "Los ajustes deben ser administrados a través de variables de entorno."
 }
