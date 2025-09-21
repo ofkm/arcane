@@ -28,7 +28,7 @@
 	bind:clientHeight={currentHeight}
 	data-slot="navigation-drawer"
 	class={cn(
-		'fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border/50 pb-safe',
+		'fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border/50 pb-[env(safe-area-inset-bottom)]',
 		className
 	)}
 	style={style}
