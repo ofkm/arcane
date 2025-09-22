@@ -160,28 +160,35 @@
 			description: 'Customize navigation behavior and appearance',
 			icon: NavigationIcon,
 			url: '/settings/navigation',
-			keywords: ['navigation', 'nav', 'menu', 'bar', 'floating', 'behavior', 'mobile', 'desktop'],
+			keywords: ['navigation', 'nav', 'menu', 'bar', 'floating', 'docked', 'behavior', 'mobile', 'desktop', 'ui', 'interface', 'layout', 'appearance', 'customize'],
 			settings: [
+				{
+					key: 'mobileNavigationMode',
+					label: 'Navigation Mode',
+					type: 'select',
+					description: 'Choose between floating or docked navigation style',
+					keywords: ['mode', 'style', 'type', 'floating', 'docked', 'position', 'layout', 'design', 'appearance', 'bottom']
+				},
 				{
 					key: 'mobileNavigationShowLabels',
 					label: 'Show Labels',
 					type: 'boolean',
 					description: 'Display text labels below navigation icons',
-					keywords: ['labels', 'text', 'icons', 'display', 'show', 'hide']
+					keywords: ['labels', 'text', 'icons', 'display', 'show', 'hide', 'names', 'captions', 'titles', 'visible', 'toggle']
 				},
 				{
 					key: 'mobileNavigationScrollToHide',
 					label: 'Scroll to Hide',
 					type: 'boolean',
 					description: 'Hide navigation bar when scrolling down',
-					keywords: ['scroll', 'hide', 'auto-hide', 'behavior', 'down', 'up']
+					keywords: ['scroll', 'hide', 'auto-hide', 'behavior', 'down', 'up', 'automatic', 'disappear', 'vanish', 'minimize', 'collapse']
 				},
 				{
 					key: 'mobileNavigationTapToHide',
 					label: 'Tap to Hide',
 					type: 'boolean',
 					description: 'Tap outside navigation to show/hide',
-					keywords: ['tap', 'touch', 'hide', 'show', 'toggle', 'gesture']
+					keywords: ['tap', 'touch', 'hide', 'show', 'toggle', 'gesture', 'click', 'outside', 'dismiss', 'interact', 'control']
 				}
 			]
 		},
