@@ -13,8 +13,14 @@ const set = (settings: Settings) => {
 	settingsStore.set(settings);
 };
 
+
+const update = (updater: (settings: Settings) => Settings) => {
+	settingsStore.update(updater);
+};
+
 export default {
 	subscribe: settingsStore.subscribe,
 	reload,
-	set
+	set,
+	update
 };
