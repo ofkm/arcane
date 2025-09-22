@@ -39,8 +39,22 @@ export type MobileNavPreferences = {
 	lastUpdated: number;
 };
 
+// Navigation behavior settings type
+export type NavigationBehaviorSettings = {
+	showLabels: boolean;
+	scrollToHide: boolean;
+	tapToHide: boolean;
+};
+
 // Default preferences
 export const defaultMobileNavPreferences: MobileNavPreferences = {
 	pinnedItems: defaultMobilePinnedItems.map(item => item.url),
 	lastUpdated: Date.now()
+};
+
+// Default navigation behavior settings
+export const defaultNavigationBehaviorSettings: NavigationBehaviorSettings = {
+	showLabels: true,
+	scrollToHide: true,
+	tapToHide: false
 };

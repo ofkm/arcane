@@ -4,8 +4,12 @@ import {
 	defaultMobilePinnedItems, 
 	getAvailableMobileNavItems,
 	defaultMobileNavPreferences,
-	type MobileNavPreferences 
+	defaultNavigationBehaviorSettings,
+	type MobileNavPreferences,
+	type NavigationBehaviorSettings
 } from '$lib/config/mobile-navigation-config';
+import { createEffectiveNavigationSettings } from '$lib/utils/persisted-state';
+import settingsStore from '$lib/stores/config-store';
 
 // Store for mobile navigation state
 function createMobileNavStore() {
@@ -13,7 +17,8 @@ function createMobileNavStore() {
 		pinnedItems: defaultMobilePinnedItems,
 		visible: true,
 		menuOpen: false,
-		preferences: defaultMobileNavPreferences
+		preferences: defaultMobileNavPreferences,
+		behaviorSettings: defaultNavigationBehaviorSettings
 	});
 
 	return {
@@ -33,6 +38,10 @@ function createMobileNavStore() {
 		setMenuOpen: (open: boolean) => update(state => ({ 
 			...state, 
 			menuOpen: open 
+		})),
+		setBehaviorSettings: (settings: NavigationBehaviorSettings) => update(state => ({
+			...state,
+			behaviorSettings: settings
 		})),
 		loadPreferences: () => {
 			try {
@@ -86,6 +95,18 @@ function createMobileNavStore() {
 					preferences,
 					pinnedItems 
 				};
+			});
+		},
+		initializeEffectiveSettings: () => {
+			// Create effective settings that combine server settings with local overrides
+			const effectiveSettings = createEffectiveNavigationSettings(settingsStore);
+			
+			// Subscribe to changes and update the mobile nav store
+			effectiveSettings.subscribe(settings => {
+				update(state => ({
+					...state,
+					behaviorSettings: settings
+				}));
 			});
 		}
 	};

@@ -5,6 +5,7 @@
 	import DatabaseIcon from '@lucide/svelte/icons/database';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import ShieldIcon from '@lucide/svelte/icons/shield';
+	import NavigationIcon from '@lucide/svelte/icons/navigation';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
@@ -150,6 +151,37 @@
 					type: 'select',
 					description: 'Set password strength requirements',
 					keywords: ['password', 'policy', 'strength', 'complexity', 'requirements', 'security', 'rules']
+				}
+			]
+		},
+		{
+			id: 'navigation',
+			title: 'Navigation',
+			description: 'Customize navigation behavior and appearance',
+			icon: NavigationIcon,
+			url: '/settings/navigation',
+			keywords: ['navigation', 'nav', 'menu', 'bar', 'floating', 'behavior', 'mobile', 'desktop'],
+			settings: [
+				{
+					key: 'mobileNavigationShowLabels',
+					label: 'Show Labels',
+					type: 'boolean',
+					description: 'Display text labels below navigation icons',
+					keywords: ['labels', 'text', 'icons', 'display', 'show', 'hide']
+				},
+				{
+					key: 'mobileNavigationScrollToHide',
+					label: 'Scroll to Hide',
+					type: 'boolean',
+					description: 'Hide navigation bar when scrolling down',
+					keywords: ['scroll', 'hide', 'auto-hide', 'behavior', 'down', 'up']
+				},
+				{
+					key: 'mobileNavigationTapToHide',
+					label: 'Tap to Hide',
+					type: 'boolean',
+					description: 'Tap outside navigation to show/hide',
+					keywords: ['tap', 'touch', 'hide', 'show', 'toggle', 'gesture']
 				}
 			]
 		},

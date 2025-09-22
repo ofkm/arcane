@@ -64,6 +64,11 @@ type Settings struct {
 	OnboardingCompleted SettingVariable `key:"onboardingCompleted,public"`
 	OnboardingSteps     SettingVariable `key:"onboardingSteps"`
 
+	// Navigation
+	MobileNavigationShowLabels   SettingVariable `key:"mobileNavigationShowLabels,public"`
+	MobileNavigationScrollToHide SettingVariable `key:"mobileNavigationScrollToHide,public"`
+	MobileNavigationTapToHide    SettingVariable `key:"mobileNavigationTapToHide,public"`
+
 	InstanceID SettingVariable `key:"instanceId,internal"`
 }
 

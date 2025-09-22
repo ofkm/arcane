@@ -14,18 +14,23 @@
 		visible = true,
 		user = null,
 		versionInformation = null,
-		showLabels = true,
 		class: className = ''
 	}: {
 		pinnedItems: NavigationItem[];
 		visible?: boolean;
 		user?: any;
 		versionInformation?: any;
-		showLabels?: boolean;
 		class?: string;
 	} = $props();
 
 	const currentPath = $derived(page.url.pathname);
+	
+	// Get navigation behavior settings from store
+	const navigationState = $derived($mobileNavStore);
+	const behaviorSettings = $derived(navigationState.behaviorSettings);
+	const showLabels = $derived(behaviorSettings.showLabels);
+	const scrollToHideEnabled = $derived(behaviorSettings.scrollToHide);
+	const tapToHideEnabled = $derived(behaviorSettings.tapToHide);
 	
 	// Scroll behavior
 	const scrollDetector = new ScrollDirectionDetector(15); // 15px threshold
@@ -45,7 +50,8 @@
 		const scrollY = scrollDetector.scrollY;
 		
 		// Only update store when scroll direction or position changes significantly
-		if (direction !== lastScrollDirection || Math.abs(scrollY - lastScrollY) > 50) {
+		// Also check if scroll to hide is enabled
+		if ((direction !== lastScrollDirection || Math.abs(scrollY - lastScrollY) > 50) && scrollToHideEnabled) {
 			lastScrollDirection = direction;
 			lastScrollY = scrollY;
 			
@@ -101,6 +107,9 @@
 	
 	// Tap outside to toggle navigation visibility
 	const tapDetector = new TapOutsideDetector(() => {
+		// Only respond to tap gestures if tap to hide is enabled
+		if (!tapToHideEnabled) return;
+		
 		// Debounce rapid taps to prevent bouncing animation
 		if (tapDebounceTimeout) {
 			clearTimeout(tapDebounceTimeout);
@@ -119,7 +128,8 @@
 	
 	// Set the target element for tap detection
 	$effect(() => {
-		if (navElement) {
+		if (navElement && tapToHideEnabled) {
+			// Only set up tap detection if tap to hide is enabled
 			// Always set the nav element as the target, regardless of visibility
 			// The detector needs to know what to exclude, even when hidden
 			tapDetector.setTargetElement(navElement);

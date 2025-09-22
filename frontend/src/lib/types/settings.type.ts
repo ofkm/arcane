@@ -33,6 +33,10 @@ export type Settings = {
 		settings?: boolean;
 	};
 
+	mobileNavigationShowLabels: boolean;
+	mobileNavigationScrollToHide: boolean;
+	mobileNavigationTapToHide: boolean;
+
 	registryCredentials: RegistryCredential[];
 	templateRegistries: TemplateRegistryConfig[];
 };

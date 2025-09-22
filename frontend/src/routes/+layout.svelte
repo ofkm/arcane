@@ -46,7 +46,11 @@
 
 	// Load mobile navigation preferences on mount
 	onMount(() => {
+		// Load mobile navigation preferences on app start
 		mobileNavStore.loadPreferences();
+		
+		// Initialize effective settings that combine server settings with local overrides
+		mobileNavStore.initializeEffectiveSettings();
 	});
 </script>
 

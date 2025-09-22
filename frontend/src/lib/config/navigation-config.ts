@@ -13,6 +13,7 @@ import ShieldIcon from '@lucide/svelte/icons/shield';
 import ComputerIcon from '@lucide/svelte/icons/computer';
 import LockKeyholeIcon from '@lucide/svelte/icons/lock-keyhole';
 import AlarmClockIcon from '@lucide/svelte/icons/alarm-clock';
+import NavigationIcon from '@lucide/svelte/icons/navigation';
 import { m } from '$lib/paraglide/messages';
 
 export type NavigationItem = {
@@ -63,8 +64,9 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 			items: [
 				{ title: m.general_title(), url: '/settings/general', icon: SettingsIcon },
 				{ title: m.docker_title(), url: '/settings/docker', icon: DatabaseIcon },
-				{ title: m.users_title(), url: '/settings/users', icon: UserIcon },
-				{ title: m.security_title(), url: '/settings/security', icon: ShieldIcon }
+				{ title: m.security_title(), url: '/settings/security', icon: ShieldIcon },
+				{ title: 'Navigation', url: '/settings/navigation', icon: NavigationIcon },
+				{ title: m.users_title(), url: '/settings/users', icon: UserIcon }
 			]
 		}
 	]

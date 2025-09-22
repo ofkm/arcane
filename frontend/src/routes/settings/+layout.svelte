@@ -58,6 +58,8 @@
 				return m.security_title();
 			case 'users':
 				return m.users_title();
+			case 'navigation':
+				return 'Navigation';
 			default:
 				return m.sidebar_settings();
 		}
