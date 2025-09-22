@@ -297,7 +297,8 @@
 </script>
 
 <div class="space-y-8">
-	<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+	<!-- make this container relative so we can absolutely position the mobile ellipsis -->
+	<div class="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 		<div class="space-y-1">
 			<h1 class="text-3xl font-bold tracking-tight">{m.dashboard_title()}</h1>
 			<p class="text-muted-foreground max-w-2xl text-sm">{m.dashboard_subtitle()}</p>
@@ -305,7 +306,7 @@
 
 		<div class="flex flex-wrap items-center justify-end gap-2">
 			<QuickActions
-				class="flex flex-wrap items-center gap-2"
+				class="absolute right-4 top-4 z-50 flex-wrap items-center gap-2 sm:static sm:flex"
 				compact
 				dockerInfo={dashboardStates.dockerInfo}
 				{stoppedContainers}
