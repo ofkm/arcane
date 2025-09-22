@@ -3,32 +3,76 @@ import { onMount } from 'svelte';
 export class TapOutsideDetector {
 	private callback: () => void;
 	private targetElement = $state<HTMLElement | null>(null);
+	private touchStartTime = 0;
+	private touchStartPosition = { x: 0, y: 0 };
 
 	constructor(callback: () => void) {
 		this.callback = callback;
 		
 		onMount(() => {
-			const handleClick = (event: MouseEvent) => {
+			const handleInteraction = (event: MouseEvent | TouchEvent) => {
 				// Only trigger on non-interactive elements
 				const target = event.target as HTMLElement;
 				
-				// Check if the click is on an interactive element
+				// Check if the interaction is on an interactive element
 				const isInteractive = this.isInteractiveElement(target);
 				
-				// Check if click is outside the floating nav
-				const isOutsideNav = this.targetElement ? 
-					!this.targetElement.contains(target) : true;
+				// For navigation bar, check if it's actually visible and clickable
+				// Hidden elements shouldn't block the tap detection
+				const isVisibleNavElement = this.targetElement && 
+					this.targetElement.contains(target) && 
+					window.getComputedStyle(this.targetElement).visibility !== 'hidden' &&
+					window.getComputedStyle(this.targetElement).opacity !== '0';
+				
+				// Check if interaction is outside the floating nav (or nav is hidden)
+				const isOutsideNav = !isVisibleNavElement;
 				
 				if (!isInteractive && isOutsideNav) {
 					this.callback();
 				}
 			};
 			
-			// Use capture phase to catch events before they reach interactive elements
-			document.addEventListener('click', handleClick, true);
+			const handleTouchStart = (event: TouchEvent) => {
+				const touch = event.touches[0];
+				this.touchStartTime = Date.now();
+				this.touchStartPosition = { x: touch.clientX, y: touch.clientY };
+			};
+			
+			const handleTouchEnd = (event: TouchEvent) => {
+				const touch = event.changedTouches[0];
+				const endTime = Date.now();
+				const endPosition = { x: touch.clientX, y: touch.clientY };
+				
+				// Calculate distance moved and time elapsed
+				const distance = Math.sqrt(
+					Math.pow(endPosition.x - this.touchStartPosition.x, 2) + 
+					Math.pow(endPosition.y - this.touchStartPosition.y, 2)
+				);
+				const duration = endTime - this.touchStartTime;
+				
+				// Only trigger if it's a tap (short duration, minimal movement)
+				// This prevents triggering on swipes, scrolls, or long presses
+				if (duration < 300 && distance < 10) {
+					const target = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement;
+					
+					if (target) {
+						// Create a synthetic event for consistency
+						const syntheticEvent = { target } as unknown as TouchEvent;
+						handleInteraction(syntheticEvent);
+					}
+				}
+			};
+			
+			// Use capture phase to catch events before they reach other elements
+			// But use bubble phase for touchend to avoid conflicts with navigation bar
+			document.addEventListener('click', handleInteraction, true);
+			document.addEventListener('touchstart', handleTouchStart, true);
+			document.addEventListener('touchend', handleTouchEnd, false);
 			
 			return () => {
-				document.removeEventListener('click', handleClick, true);
+				document.removeEventListener('click', handleInteraction, true);
+				document.removeEventListener('touchstart', handleTouchStart, true);
+				document.removeEventListener('touchend', handleTouchEnd, false);
 			};
 		});
 	}

@@ -29,53 +29,75 @@
 	const scrollDetector = new ScrollDirectionDetector(15); // 15px threshold
 	let navElement: HTMLElement;
 	let autoHidden = $state(false);
+	let tapDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 	
-	// Compute visibility based on scroll direction and manual visibility
-	// Memoize this computation to avoid unnecessary recalculations
-	const shouldShow = $derived.by(() => {
-		if (!visible) return false;
-		
+	// Compute visibility based on scroll direction - always use manual state
+	const shouldShow = $derived(visible);
+	
+	// Track scroll changes and permanently update the store state
+	let lastScrollDirection: string | null = null;
+	let lastScrollY = 0;
+	
+	$effect(() => {
 		const direction = scrollDetector.direction;
 		const scrollY = scrollDetector.scrollY;
 		
-		// Hide on scroll down after minimum scroll distance
-		if (direction === 'down' && scrollY > 100) {
-			return false;
+		// Only update store when scroll direction or position changes significantly
+		if (direction !== lastScrollDirection || Math.abs(scrollY - lastScrollY) > 50) {
+			lastScrollDirection = direction;
+			lastScrollY = scrollY;
+			
+			// Permanently update visibility state based on scroll behavior
+			if (direction === 'down' && scrollY > 100) {
+				// Hide on scroll down after minimum distance - permanently set to hidden
+				if (visible) {
+					mobileNavStore.setVisibility(false);
+				}
+			} else if (direction === 'up') {
+				// Show on scroll up immediately - permanently set to visible
+				if (!visible) {
+					mobileNavStore.setVisibility(true);
+				}
+			} else if (direction === 'idle' && scrollY <= 100) {
+				// Near top of page when idle - permanently set to visible
+				if (!visible) {
+					mobileNavStore.setVisibility(true);
+				}
+			}
 		}
-		
-		// Show on scroll up immediately
-		if (direction === 'up') {
-			return true;
-		}
-		
-		// Show when idle and not far scrolled
-		if (direction === 'idle' && scrollY <= 100) {
-			return true;
-		}
-		
-		// Default to current visibility state
-		return !autoHidden;
 	});
 	
-	// Update auto-hidden state and sync with store
+	// Update auto-hidden state
 	$effect(() => {
 		const newAutoHidden = !shouldShow;
 		if (newAutoHidden !== autoHidden) {
 			autoHidden = newAutoHidden;
-			// Don't override manual visibility changes, just track auto-hide state
 		}
 	});
 	
-	// Tap outside to show navigation when auto-hidden
+	// Tap outside to toggle navigation visibility
 	const tapDetector = new TapOutsideDetector(() => {
-		if (autoHidden && !visible) {
-			mobileNavStore.setVisibility(true);
+		// Debounce rapid taps to prevent bouncing animation
+		if (tapDebounceTimeout) {
+			clearTimeout(tapDebounceTimeout);
+			tapDebounceTimeout = null;
+			return; // Ignore rapid successive taps
 		}
+		
+		// Simple toggle: flip the current visibility state
+		mobileNavStore.setVisibility(!visible);
+		
+		// Set debounce timeout to prevent rapid taps
+		tapDebounceTimeout = setTimeout(() => {
+			tapDebounceTimeout = null;
+		}, 300); // 300ms debounce
 	});
 	
 	// Set the target element for tap detection
 	$effect(() => {
 		if (navElement) {
+			// Always set the nav element as the target, regardless of visibility
+			// The detector needs to know what to exclude, even when hidden
 			tapDetector.setTargetElement(navElement);
 		}
 	});
@@ -230,6 +252,11 @@
 				if (navElement) {
 					navElement.style.pointerEvents = '';
 				}
+				// Clean up tap debounce timeout
+				if (tapDebounceTimeout) {
+					clearTimeout(tapDebounceTimeout);
+					tapDebounceTimeout = null;
+				}
 			};
 		}
 	});
@@ -238,10 +265,11 @@
 <nav
 	bind:this={navElement}
 	class={cn(
-		'fixed bottom-6 left-1/2 z-50 transform -translate-x-1/2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+		'fixed bottom-6 left-1/2 z-50 transform -translate-x-1/2',
 		'bg-background/80 backdrop-blur-md border border-border/50 shadow-lg rounded-full',
 		'px-2 py-1.5 flex items-center gap-1',
 		'select-none', // Prevent text selection but allow touch
+		'transition-all duration-300 ease-out', // Smoother easing
 		shouldShow ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95',
 		className
 	)}
@@ -270,6 +298,13 @@
 		overscroll-behavior: contain;
 		/* Isolate touch interactions similar to pointer device behavior */
 		isolation: isolate;
+		/* Hardware acceleration for smooth animations */
+		will-change: transform, opacity;
+		/* Prevent layout shifts during animation */
+		transform-origin: center bottom;
+		/* Smooth subpixel rendering */
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
 	}
 	
 	/* Ensure buttons are fully interactive */
