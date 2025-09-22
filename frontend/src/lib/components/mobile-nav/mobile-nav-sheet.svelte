@@ -24,6 +24,22 @@
 	let menuElement: HTMLElement;
 	let storeUser: any = $state(null);
 	
+	// Bottom sheet drag state
+	let isDragging = $state(false);
+	let dragStartY = $state(0);
+	let currentDragY = $state(0);
+	let dragTranslateY = $state(0);
+	let isAtScrollTop = $state(true);
+	let isAtScrollBottom = $state(false);
+	
+	// Trackpad/wheel scroll state
+	let wheelAccumulator = $state(0);
+	let lastWheelTime = $state(0);
+	let isWheelDragging = $state(false);
+	let wheelResetTimeout: ReturnType<typeof setTimeout> | null = null;
+	let wheelVelocityHistory: number[] = [];
+	let scrollStartedFromTop = $state(false);
+	
 	$effect(() => {
 		const unsub = userStore.subscribe((u) => (storeUser = u));
 		return unsub;
@@ -32,7 +48,195 @@
 	// Use memoized values defined later for better performance
 	const currentPath = $derived(page.url.pathname);
 
-	// Swipe gesture to close menu
+	// Track scroll position for bottom sheet behavior
+	function updateScrollPosition() {
+		if (!menuElement) return;
+		
+		const scrollTop = menuElement.scrollTop;
+		const scrollHeight = menuElement.scrollHeight;
+		const clientHeight = menuElement.clientHeight;
+		
+		isAtScrollTop = scrollTop <= 2; // Small tolerance for smooth scrolling
+		isAtScrollBottom = Math.abs(scrollHeight - clientHeight - scrollTop) <= 2;
+		
+		// Check if we're in the top 10% of the scrollable area (for drag-to-close)
+		const topThreshold = Math.max(clientHeight * 0.1, 50); // 10% of viewport or 50px minimum
+		const isInTopArea = scrollTop <= topThreshold;
+		
+		// Reset scroll started flag if we leave the top area
+		if (!isInTopArea && scrollStartedFromTop) {
+			scrollStartedFromTop = false;
+		}
+	}
+
+	// Enhanced touch handling for bottom sheet behavior
+	function handleTouchStart(e: TouchEvent) {
+		if (!open || !menuElement) return;
+		
+		const touch = e.touches[0];
+		dragStartY = touch.clientY;
+		currentDragY = touch.clientY;
+		
+		// Check if touch is on the handle or at scroll boundaries
+		const target = e.target as HTMLElement;
+		const isOnHandle = target.closest('[data-drag-handle]');
+		
+		if (isOnHandle || isAtScrollTop || isAtScrollBottom) {
+			isDragging = true;
+		}
+	}
+
+	function handleTouchMove(e: TouchEvent) {
+		if (!isDragging || !open) return;
+		
+		const touch = e.touches[0];
+		currentDragY = touch.clientY;
+		const deltaY = currentDragY - dragStartY;
+		
+		// Only allow downward drag to close
+		if (deltaY > 0) {
+			// If we're at scroll top or on the handle, allow immediate drag
+			if (isAtScrollTop || e.target && (e.target as HTMLElement).closest('[data-drag-handle]')) {
+				dragTranslateY = deltaY;
+				e.preventDefault();
+			}
+			// If we're at scroll bottom and trying to scroll down more, allow drag to close
+			else if (isAtScrollBottom && deltaY > 20) {
+				dragTranslateY = deltaY - 20; // Offset by the initial resistance
+				e.preventDefault();
+			}
+		} else {
+			// Reset drag state for upward movement
+			dragTranslateY = 0;
+		}
+	}
+
+	function handleTouchEnd(e: TouchEvent) {
+		if (!isDragging) return;
+		
+		isDragging = false;
+		const deltaY = currentDragY - dragStartY;
+		
+		// Close if dragged down more than 120px or with significant velocity
+		const shouldClose = dragTranslateY > 120 || (dragTranslateY > 50 && deltaY > 80);
+		
+		if (shouldClose) {
+			// Add a slight delay to feel more natural
+			setTimeout(() => {
+				mobileNavStore.setMenuOpen(false);
+			}, 50);
+		}
+		
+		// Reset drag state
+		dragTranslateY = 0;
+		dragStartY = 0;
+		currentDragY = 0;
+	}
+
+	// Handle trackpad/wheel scrolling for drag-to-close
+	function handleWheel(e: WheelEvent) {
+		if (!open || !menuElement) return;
+		
+		const now = Date.now();
+		const timeDelta = now - lastWheelTime;
+		lastWheelTime = now;
+		
+		const scrollTop = menuElement.scrollTop;
+		const clientHeight = menuElement.clientHeight;
+		const topThreshold = Math.max(clientHeight * 0.1, 50); // 10% of viewport or 50px minimum
+		const isInTopArea = scrollTop <= topThreshold;
+		
+		// Track if this scroll gesture started from the top area
+		if (timeDelta > 150) {
+			// New scroll gesture - check if starting from top area
+			scrollStartedFromTop = isInTopArea;
+			wheelAccumulator = 0;
+			isWheelDragging = false;
+			wheelVelocityHistory = [];
+		}
+		
+		// Track velocity to detect flinging vs intentional scrolling
+		const currentVelocity = Math.abs(e.deltaY);
+		wheelVelocityHistory.push(currentVelocity);
+		
+		// Keep only recent velocity samples (last 5 events)
+		if (wheelVelocityHistory.length > 5) {
+			wheelVelocityHistory.shift();
+		}
+		
+		// Calculate average velocity to detect flinging
+		const avgVelocity = wheelVelocityHistory.reduce((sum, v) => sum + v, 0) / wheelVelocityHistory.length;
+		const isFlinging = avgVelocity > 15; // High velocity indicates flinging
+		
+		// Reset if flinging detected
+		if (isFlinging) {
+			resetWheelState();
+			return;
+		}
+		
+		// Only allow drag-to-close if:
+		// 1. Scroll gesture started from the top 10% area
+		// 2. Currently at scroll top (scrollTop <= 2)
+		// 3. Trying to scroll up more (negative deltaY)
+		// 4. Not flinging
+		const canDragToClose = scrollStartedFromTop && isAtScrollTop && e.deltaY < 0;
+		
+		if (canDragToClose) {
+			wheelAccumulator += Math.abs(e.deltaY);
+			
+			// Start wheel dragging if we accumulate enough scroll
+			if (wheelAccumulator > 20) {
+				isWheelDragging = true;
+				
+				// Convert wheel delta to drag distance (scale down for more control)
+				const dragDistance = Math.min((wheelAccumulator - 20) * 0.8, 300);
+				dragTranslateY = dragDistance;
+				
+				// Prevent default to stop page scrolling
+				e.preventDefault();
+				
+				// Auto-close if dragged far enough
+				if (dragDistance > 120) {
+					setTimeout(() => {
+						mobileNavStore.setMenuOpen(false);
+						resetWheelState();
+					}, 50);
+				} else {
+					// Schedule reset if not closing
+					scheduleWheelReset();
+				}
+			}
+		} else {
+			// Reset when conditions are not met for drag-to-close
+			resetWheelState();
+		}
+	}
+	
+	function resetWheelState() {
+		wheelAccumulator = 0;
+		isWheelDragging = false;
+		wheelVelocityHistory = [];
+		scrollStartedFromTop = false;
+		if (!isDragging) {
+			dragTranslateY = 0;
+		}
+		if (wheelResetTimeout) {
+			clearTimeout(wheelResetTimeout);
+			wheelResetTimeout = null;
+		}
+	}
+	
+	// Auto-reset wheel state after inactivity
+	function scheduleWheelReset() {
+		if (wheelResetTimeout) {
+			clearTimeout(wheelResetTimeout);
+		}
+		wheelResetTimeout = setTimeout(() => {
+			resetWheelState();
+		}, 300);
+	}
+
+	// Swipe gesture to close menu (keep existing horizontal swipes)
 	const swipeDetector = new SwipeGestureDetector((direction: SwipeDirection) => {
 		if ((direction === 'left' || direction === 'right') && open) {
 			mobileNavStore.setMenuOpen(false);
@@ -42,21 +246,33 @@
 	$effect(() => {
 		if (menuElement) {
 			swipeDetector.setElement(menuElement);
+			
+			// Add scroll listener
+			menuElement.addEventListener('scroll', updateScrollPosition, { passive: true });
+			
+			// Add touch listeners for drag-to-close
+			menuElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+			menuElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+			menuElement.addEventListener('touchend', handleTouchEnd, { passive: false });
+			
+			// Add wheel listener for trackpad/mouse wheel support
+			menuElement.addEventListener('wheel', handleWheel, { passive: false });
+			
+			// Initial scroll position check
+			updateScrollPosition();
+			
+			return () => {
+				menuElement.removeEventListener('scroll', updateScrollPosition);
+				menuElement.removeEventListener('touchstart', handleTouchStart);
+				menuElement.removeEventListener('touchmove', handleTouchMove);
+				menuElement.removeEventListener('touchend', handleTouchEnd);
+				menuElement.removeEventListener('wheel', handleWheel);
+			};
 		}
 	});
 
-	// Handle scroll to top to close menu and keyboard navigation
+	// Handle keyboard navigation
 	onMount(() => {
-		const handleScroll = () => {
-			if (open && window.scrollY <= 0) {
-				// User is trying to over-scroll at the top
-				const scrollThreshold = -20; // Allow some over-scroll
-				if (window.scrollY < scrollThreshold) {
-					mobileNavStore.setMenuOpen(false);
-				}
-			}
-		};
-
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (!open) return;
 			
@@ -66,11 +282,9 @@
 			}
 		};
 
-		window.addEventListener('scroll', handleScroll, { passive: true });
 		window.addEventListener('keydown', handleKeyDown);
 		
 		return () => {
-			window.removeEventListener('scroll', handleScroll);
 			window.removeEventListener('keydown', handleKeyDown);
 		};
 	});
@@ -148,7 +362,11 @@
 <!-- Backdrop -->
 {#if open}
 	<div
-		class="fixed inset-0 z-40 bg-background/20 backdrop-blur-md transition-opacity duration-300"
+		class={cn(
+			"fixed inset-0 z-40 bg-background/20 backdrop-blur-md",
+			(isDragging || isWheelDragging) ? "transition-none" : "transition-opacity duration-300"
+		)}
+		style={`opacity: ${Math.max(0.1, (open ? 1 : 0) - (dragTranslateY / 400))}; touch-action: manipulation;`}
 		onclick={() => mobileNavStore.setMenuOpen(false)}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') {
@@ -169,7 +387,6 @@
 		}}
 		aria-hidden="true"
 		role="presentation"
-		style="touch-action: manipulation;"
 	></div>
 {/if}
 
@@ -178,11 +395,17 @@
 	bind:this={menuElement}
 	class={cn(
 		'fixed inset-x-0 bottom-0 z-50 bg-background/60 backdrop-blur-xl rounded-t-3xl border-t border-border/30 shadow-sm',
-		'transform transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]',
+		'transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]',
 		'max-h-[85vh] overflow-y-auto overscroll-contain',
-		open ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
+		open ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0',
+		(isDragging || isWheelDragging) ? 'transition-none' : ''
 	)}
-	style="touch-action: pan-y; -webkit-overflow-scrolling: touch;"
+	style={`
+		touch-action: pan-y; 
+		-webkit-overflow-scrolling: touch;
+		transform: translateY(${open ? ((isDragging || isWheelDragging) ? dragTranslateY : 0) : '100%'}px);
+		opacity: ${open ? Math.max(0.3, 1 - (dragTranslateY / 300)) : 0};
+	`}
 	data-testid="mobile-nav-sheet"
 	role="dialog"
 	aria-modal="true"
@@ -191,8 +414,15 @@
 	tabindex={open ? 0 : -1}
 >
 	<!-- Handle indicator -->
-	<div class="flex justify-center pt-4 pb-3">
-		<div class="w-10 h-1.5 bg-muted-foreground/20 rounded-full"></div>
+	<div class="flex justify-center pt-4 pb-3" data-drag-handle>
+		<div 
+			class={cn(
+				"w-10 h-1.5 rounded-full transition-all duration-200",
+				(isDragging || isWheelDragging) ? "bg-muted-foreground/40 w-12 h-2" : "bg-muted-foreground/20",
+				"hover:bg-muted-foreground/30 active:bg-muted-foreground/40"
+			)}
+			style={`transform: ${(isDragging || isWheelDragging) ? 'scale(1.1)' : 'scale(1)'}`}
+		></div>
 	</div>
 
 	<div class="px-6 pb-8">
