@@ -30,11 +30,6 @@
 	const leftPosition = $derived(() => {
 		const margin = '1rem'; // Standard spacing-4 equivalent
 
-		if (sidebar.isMobile) {
-			// Mobile sidebar is overlay - uses standard margin
-			return margin;
-		}
-
 		if (sidebar.state === 'expanded') {
 			// Full sidebar width + standard margin
 			return `calc(var(--sidebar-width) + ${margin})`;

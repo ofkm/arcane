@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import DatabaseIcon from '@lucide/svelte/icons/database';
@@ -10,9 +9,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { m } from '$lib/paraglide/messages';
-	import type { Settings } from '$lib/types/settings.type';
-	import settingsStore from '$lib/stores/config-store';
-	import { settingsAPI } from '$lib/services/api';
 	import UiConfigDisabledTag from '$lib/components/ui-config-disabled-tag.svelte';
 
 	interface SettingMeta {
