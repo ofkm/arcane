@@ -148,7 +148,7 @@
 <!-- Backdrop -->
 {#if open}
 	<div
-		class="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm transition-opacity duration-300"
+		class="fixed inset-0 z-40 bg-background/20 backdrop-blur-md transition-opacity duration-300"
 		onclick={() => mobileNavStore.setMenuOpen(false)}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') {
@@ -177,7 +177,7 @@
 <div
 	bind:this={menuElement}
 	class={cn(
-		'fixed inset-x-0 bottom-0 z-50 bg-background rounded-t-3xl border-t border-border shadow-2xl',
+		'fixed inset-x-0 bottom-0 z-50 bg-background/60 backdrop-blur-xl rounded-t-3xl border-t border-border/30 shadow-sm',
 		'transform transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]',
 		'max-h-[85vh] overflow-y-auto overscroll-contain',
 		open ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
@@ -191,22 +191,22 @@
 	tabindex={open ? 0 : -1}
 >
 	<!-- Handle indicator -->
-	<div class="flex justify-center pt-3 pb-2">
-		<div class="w-12 h-1 bg-muted-foreground/30 rounded-full"></div>
+	<div class="flex justify-center pt-4 pb-3">
+		<div class="w-10 h-1.5 bg-muted-foreground/20 rounded-full"></div>
 	</div>
 
-	<div class="px-6 pb-6">
+	<div class="px-6 pb-8">
 		<!-- User Profile Section -->
 		{#if memoizedUser}
-			<div class="flex items-center gap-4 p-4 mb-6 bg-muted/50 rounded-2xl">
-				<div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-					<span class="text-lg font-medium text-primary">
+			<div class="flex items-center gap-4 p-5 mb-6 bg-muted/30 rounded-3xl border border-border/20">
+				<div class="w-14 h-14 bg-muted/50 rounded-2xl flex items-center justify-center">
+					<span class="text-xl font-semibold text-foreground">
 						{memoizedUser.username?.charAt(0).toUpperCase() || 'U'}
 					</span>
 				</div>
 				<div class="flex-1">
-					<h3 class="font-medium text-foreground">{memoizedUser.username || 'User'}</h3>
-					<p class="text-sm text-muted-foreground">
+					<h3 class="font-semibold text-foreground text-lg">{memoizedUser.username || 'User'}</h3>
+					<p class="text-sm text-muted-foreground/80">
 						{memoizedUser.roles?.join(', ') || 'User'}
 					</p>
 				</div>
@@ -216,7 +216,7 @@
 						size="icon"
 						type="submit"
 						title={m.common_logout()}
-						class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-10 w-10 rounded-xl"
+						class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-12 w-12 rounded-2xl transition-all duration-200 hover:scale-105"
 					>
 						<LogOutIcon size={18} />
 					</Button.Root>
@@ -225,24 +225,24 @@
 		{/if}
 
 		<!-- Navigation Sections -->
-		<div class="space-y-6">
+		<div class="space-y-8">
 			<!-- Management -->
 			<section>
-				<h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
+				<h4 class="text-[11px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-4 px-3">
 					{m.sidebar_management()}
 				</h4>
-				<div class="space-y-1">
+				<div class="space-y-2">
 					{#each navigationItems.managementItems as item}
 						{@const IconComponent = item.icon}
 						<a
 							href={item.url}
 							onclick={() => handleItemClick(item)}
 							class={cn(
-								'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors',
-								'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+								'flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-200 ease-out',
+								'focus-visible:ring-1 focus-visible:ring-muted-foreground/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent hover:scale-[1.01]',
 								isActiveItem(item)
-									? 'bg-primary text-primary-foreground'
-									: 'text-foreground hover:bg-muted/70'
+									? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
+									: 'text-foreground hover:bg-muted/50'
 							)}
 							aria-current={isActiveItem(item) ? 'page' : undefined}
 						>
@@ -255,21 +255,21 @@
 
 			<!-- Customization -->
 			<section>
-				<h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
+				<h4 class="text-[11px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-4 px-3">
 					{m.sidebar_customization()}
 				</h4>
-				<div class="space-y-1">
+				<div class="space-y-2">
 					{#each navigationItems.customizationItems as item}
 						{@const IconComponent = item.icon}
 						<a
 							href={item.url}
 							onclick={() => handleItemClick(item)}
 							class={cn(
-								'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors',
-								'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+								'flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-200 ease-out',
+								'focus-visible:ring-1 focus-visible:ring-muted-foreground/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent hover:scale-[1.01]',
 								isActiveItem(item)
-									? 'bg-primary text-primary-foreground'
-									: 'text-foreground hover:bg-muted/70'
+									? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
+									: 'text-foreground hover:bg-muted/50'
 							)}
 							aria-current={isActiveItem(item) ? 'page' : undefined}
 						>
@@ -285,20 +285,20 @@
 				<!-- Environments -->
 				{#if navigationItems.environmentItems}
 					<section>
-						<h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
+						<h4 class="text-[11px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-4 px-3">
 							{m.sidebar_environments()}
 						</h4>
-						<div class="space-y-1">
+						<div class="space-y-2">
 							{#each navigationItems.environmentItems as item}
 								{@const IconComponent = item.icon}
 								<a
 									href={item.url}
 									onclick={() => handleItemClick(item)}
 									class={cn(
-										'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors',
+										'flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-200 ease-out',
 										isActiveItem(item)
-											? 'bg-primary text-primary-foreground'
-											: 'text-foreground hover:bg-muted/70'
+											? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
+											: 'text-foreground hover:bg-muted/50'
 									)}
 								>
 									<IconComponent size={20} />
@@ -312,23 +312,23 @@
 				<!-- Administration -->
 				{#if navigationItems.settingsItems}
 					<section>
-						<h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
+						<h4 class="text-[11px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-4 px-3">
 							{m.sidebar_administration()}
 						</h4>
-						<div class="space-y-1">
+						<div class="space-y-2">
 							{#each navigationItems.settingsItems as item}
 								{#if item.items}
 									<!-- Settings with subitems -->
 									{@const IconComponent = item.icon}
-									<div class="space-y-1">
+									<div class="space-y-2">
 										<a
 											href={item.url}
 											onclick={() => handleItemClick(item)}
 											class={cn(
-												'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors',
+												'flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-200 ease-out',
 												isActiveItem(item)
-													? 'bg-primary text-primary-foreground'
-													: 'text-foreground hover:bg-muted/70'
+													? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
+													: 'text-foreground hover:bg-muted/50'
 											)}
 										>
 											<IconComponent size={20} />
@@ -342,11 +342,11 @@
 													href={subItem.url}
 													onclick={() => handleItemClick(subItem)}
 													class={cn(
-														'flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors',
-														'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+														'flex items-center gap-3 px-4 py-2 rounded-xl text-sm transition-all duration-200 ease-out',
+														'focus-visible:ring-1 focus-visible:ring-muted-foreground/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent hover:scale-[1.01]',
 														isActiveItem(subItem)
-															? 'bg-primary/80 text-primary-foreground'
-															: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+															? 'bg-muted/70 text-foreground shadow-sm'
+															: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
 													)}
 													aria-current={isActiveItem(subItem) ? 'page' : undefined}
 												>
@@ -362,10 +362,10 @@
 										href={item.url}
 										onclick={() => handleItemClick(item)}
 										class={cn(
-											'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors',
+											'flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-200 ease-out',
 											isActiveItem(item)
-												? 'bg-primary text-primary-foreground'
-												: 'text-foreground hover:bg-muted/70'
+												? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
+												: 'text-foreground hover:bg-muted/50'
 										)}
 									>
 										<IconComponent size={20} />
@@ -381,11 +381,11 @@
 
 		<!-- Version Information -->
 		{#if versionInformation}
-			<div class="mt-8 pt-6 border-t border-border">
-				<div class="text-center text-xs text-muted-foreground">
-					<p>Arcane v{versionInformation.version}</p>
+			<div class="mt-8 pt-6 border-t border-border/30">
+				<div class="text-center text-xs text-muted-foreground/60">
+					<p class="font-medium">Arcane v{versionInformation.currentVersion}</p>
 					{#if versionInformation.updateAvailable}
-						<p class="text-primary mt-1">Update available</p>
+						<p class="text-primary/80 mt-1 font-medium">Update available</p>
 					{/if}
 				</div>
 			</div>
