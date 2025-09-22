@@ -14,12 +14,14 @@
 		visible = true,
 		user = null,
 		versionInformation = null,
+		showLabels = true,
 		class: className = ''
 	}: {
 		pinnedItems: NavigationItem[];
 		visible?: boolean;
 		user?: any;
 		versionInformation?: any;
+		showLabels?: boolean;
 		class?: string;
 	} = $props();
 
@@ -246,6 +248,29 @@
 				// Capture pointer to prevent other interactions
 				document.body.style.pointerEvents = 'none';
 				navElement.style.pointerEvents = 'auto';
+				
+				// Add dimming overlay with blur (desktop/pointer devices only)
+				if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+					const overlay = document.createElement('div');
+					overlay.id = 'nav-hover-overlay';
+					overlay.style.cssText = `
+						position: fixed;
+						top: 0;
+						left: 0;
+						right: 0;
+						bottom: 0;
+						background-color: rgba(0, 0, 0, 0.2);
+						backdrop-filter: blur(1px);
+						z-index: 40;
+						transition: opacity 200ms ease-out, backdrop-filter 200ms ease-out;
+						pointer-events: none;
+					`;
+					document.body.appendChild(overlay);
+					// Trigger transition
+					requestAnimationFrame(() => {
+						overlay.style.opacity = '1';
+					});
+				}
 			};
 			
 			const handleMouseLeave = () => {
@@ -256,6 +281,17 @@
 				document.body.style.overflow = '';
 				document.body.style.pointerEvents = '';
 				navElement.style.pointerEvents = '';
+				
+				// Remove dimming overlay
+				const overlay = document.getElementById('nav-hover-overlay');
+				if (overlay) {
+					overlay.style.opacity = '0';
+					setTimeout(() => {
+						if (overlay.parentNode) {
+							overlay.parentNode.removeChild(overlay);
+						}
+					}, 200);
+				}
 			};
 			
 			// Add mouse event listeners for cursor/pointer devices
@@ -279,6 +315,11 @@
 				if (navElement) {
 					navElement.style.pointerEvents = '';
 				}
+				// Clean up any remaining overlay
+				const overlay = document.getElementById('nav-hover-overlay');
+				if (overlay && overlay.parentNode) {
+					overlay.parentNode.removeChild(overlay);
+				}
 				// Clean up tap debounce timeout
 				if (tapDebounceTimeout) {
 					clearTimeout(tapDebounceTimeout);
@@ -293,10 +334,13 @@
 	bind:this={navElement}
 	class={cn(
 		'fixed bottom-6 left-1/2 z-50 transform -translate-x-1/2',
-		'bg-background/80 backdrop-blur-md border border-border/50 shadow-lg rounded-full',
-		'px-2 py-1.5 flex items-center gap-1',
+		'bg-background/60 backdrop-blur-xl border border-border/30',
+		'shadow-sm rounded-3xl',
 		'select-none', // Prevent text selection but allow touch
 		'transition-all duration-300 ease-out', // Smoother easing
+		showLabels 
+			? 'px-3 py-2 flex items-center gap-2' 
+			: 'px-4 py-2.5 flex items-center gap-3',
 		shouldShow ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95',
 		className
 	)}
@@ -304,7 +348,7 @@
 	aria-label="Mobile navigation"
 >
 	{#each pinnedItems as item (item.url)}
-		<MobileNavItem {item} active={currentPath === item.url || currentPath.startsWith(item.url + '/')} />
+		<MobileNavItem {item} {showLabels} active={currentPath === item.url || currentPath.startsWith(item.url + '/')} />
 	{/each}
 </nav>
 
@@ -347,16 +391,13 @@
 	
 	/* Cursor device visual hint */
 	@media (hover: hover) and (pointer: fine) {
-		nav {
-			cursor: pointer;
-		}
-		
 		nav:hover {
 			/* Subtle visual hint that scrolling up will open menu without moving the bar */
-			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
-			backdrop-filter: blur(20px);
+			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+			backdrop-filter: blur(24px);
+			border-color: var(--muted);
 		}
-		
+
 		nav :global(button),
 		nav :global(a) {
 			cursor: pointer;
