@@ -1060,5 +1060,7 @@
 	"polling_weekly_description": "每10080分钟检查镜像更新",
 	"use_custom_polling_value": "自定义检查更新间隔（5-10080分钟）",
 	"custom_polling_interval": "自定义检查更新间隔(分钟)",
-	"build_cache": "构建缓存"
+	"build_cache": "构建缓存",
+	"ui_config_disabled_title": "界面配置已禁用",
+	"ui_config_disabled_description": "必须通过环境变量来管理设置。"
 }

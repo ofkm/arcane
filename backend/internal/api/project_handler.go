@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,13 +25,18 @@ type ProjectHandler struct {
 }
 
 var wsUpgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin:       func(r *http.Request) bool { return true },
+	ReadBufferSize:    32 * 1024,
+	WriteBufferSize:   32 * 1024,
+	EnableCompression: true,
 }
 
 type projectLogStream struct {
 	hub    *ws.Hub
 	once   sync.Once
 	cancel context.CancelFunc
+	format string
+	seq    atomic.Uint64
 }
 
 func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectService, authMiddleware *middleware.AuthMiddleware) {
@@ -307,16 +313,17 @@ func (h *ProjectHandler) RestartProject(c *gin.Context) {
 	})
 }
 
-func (h *ProjectHandler) getOrStartProjectLogHub(projectID string, follow bool, tail, since string, timestamps bool) *ws.Hub {
-	v, _ := h.logStreams.LoadOrStore(projectID, &projectLogStream{
-		hub: ws.NewHub(1024),
+func (h *ProjectHandler) getOrStartProjectLogHub(projectID, format string, batched bool, follow bool, tail, since string, timestamps bool) *ws.Hub {
+	key := projectID + "::" + format
+	v, _ := h.logStreams.LoadOrStore(key, &projectLogStream{
+		hub:    ws.NewHub(1024),
+		format: format,
 	})
 	ls := v.(*projectLogStream)
 
 	ls.once.Do(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		ls.cancel = cancel
-
 		go ls.hub.Run(ctx)
 
 		lines := make(chan string, 256)
@@ -324,7 +331,43 @@ func (h *ProjectHandler) getOrStartProjectLogHub(projectID string, follow bool, 
 			defer close(lines)
 			_ = h.projectService.StreamProjectLogs(ctx, projectID, lines, follow, tail, since, timestamps)
 		}()
-		go ws.ForwardLines(ctx, ls.hub, lines)
+
+		if format == "json" {
+			msgs := make(chan ws.LogMessage, 256)
+			go func() {
+				defer close(msgs)
+				for line := range lines {
+					level, service, msg, ts := ws.NormalizeProjectLine(line)
+					seq := ls.seq.Add(1)
+					timestamp := ts
+					if timestamp == "" {
+						timestamp = ws.NowRFC3339()
+					}
+					msgs <- ws.LogMessage{
+						Seq:       seq,
+						Level:     level,
+						Message:   msg,
+						Service:   service,
+						Timestamp: timestamp,
+					}
+				}
+			}()
+			if batched {
+				go ws.ForwardLogJSONBatched(ctx, ls.hub, msgs, 50, 400*time.Millisecond)
+			} else {
+				go ws.ForwardLogJSON(ctx, ls.hub, msgs)
+			}
+		} else {
+			cleanChan := make(chan string, 256)
+			go func() {
+				defer close(cleanChan)
+				for line := range lines {
+					_, _, msg, _ := ws.NormalizeProjectLine(line)
+					cleanChan <- msg
+				}
+			}()
+			go ws.ForwardLines(ctx, ls.hub, cleanChan)
+		}
 	})
 
 	return ls.hub
@@ -341,14 +384,14 @@ func (h *ProjectHandler) GetProjectLogsWS(c *gin.Context) {
 	tail := c.DefaultQuery("tail", "100")
 	since := c.Query("since")
 	timestamps := c.DefaultQuery("timestamps", "false") == "true"
+	format := c.DefaultQuery("format", "text")
+	batched := c.DefaultQuery("batched", "false") == "true"
 
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}
-	hub := h.getOrStartProjectLogHub(projectID, follow, tail, since, timestamps)
-
-	// don't use the request context; it is canceled when handler returns.
+	hub := h.getOrStartProjectLogHub(projectID, format, batched, follow, tail, since, timestamps)
 	ws.ServeClient(context.Background(), hub, conn)
 }
 

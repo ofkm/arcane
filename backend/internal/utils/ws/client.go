@@ -3,6 +3,7 @@ package ws
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -13,16 +14,19 @@ const (
 	pongWait   = 60 * time.Second
 	pingPeriod = pongWait * 9 / 10
 
-	maxMessageSize = 1024
+	maxMessageSize = 64 * 1024
 )
 
 // Client represents a single WebSocket connection.
 type Client struct {
 	conn *websocket.Conn
 	send chan []byte
+	once sync.Once
 }
 
 func NewClient(conn *websocket.Conn, sendBuffer int) *Client {
+	// Enable per-message deflate if negotiated (safe to ignore error)
+	_ = conn.SetCompressionLevel(1)
 	return &Client{
 		conn: conn,
 		send: make(chan []byte, sendBuffer),
@@ -39,10 +43,16 @@ func ServeClient(ctx context.Context, hub *Hub, conn *websocket.Conn) {
 	go c.readPump(ctx, hub)
 }
 
+func (c *Client) safeRemove(hub *Hub) {
+	c.once.Do(func() {
+		hub.remove(c)
+	})
+}
+
 func (c *Client) readPump(ctx context.Context, hub *Hub) {
 	// Ensure client is removed from hub without sending on a potentially
 	// unserviced channel. Use hub.remove which is safe when the hub has exited.
-	defer hub.remove(c)
+	defer c.safeRemove(hub)
 
 	c.conn.SetReadLimit(maxMessageSize)
 	_ = c.conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -70,7 +80,7 @@ func (c *Client) writePump(ctx context.Context, hub *Hub) {
 	// Stop ticker and ensure client is removed from hub without writing to hub.unregister.
 	defer func() {
 		ticker.Stop()
-		hub.remove(c)
+		c.safeRemove(hub)
 	}()
 
 	for {

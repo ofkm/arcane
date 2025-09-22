@@ -3,7 +3,6 @@
 	import MemoryStickIcon from '@lucide/svelte/icons/memory-stick';
 	import CpuIcon from '@lucide/svelte/icons/cpu';
 	import ContainerIcon from '@lucide/svelte/icons/container';
-	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { toast } from 'svelte-sonner';
 	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -30,7 +29,6 @@
 	let dockerInfo = $state(data.dockerInfo);
 	let containerStatusCounts = $state(data.containerStatusCounts);
 
-	// Keep page state in sync when the route's load data updates (e.g., after env switch)
 	$effect(() => {
 		containers = data.containers;
 		images = data.images;
@@ -330,10 +328,10 @@
 				title={m.dashboard_meter_running()}
 				icon={ContainerIcon}
 				description={m.dashboard_meter_running_desc()}
-				currentValue={isLoading.loadingStats ? undefined : dockerInfo?.containersRunning}
+				currentValue={isLoading.loadingStats ? undefined : runningContainers}
 				formatValue={(v) => v.toString()}
 				maxValue={Math.max(totalContainers, 1)}
-				footerText={`${dockerInfo?.containersRunning} of ${totalContainers} running`}
+				footerText={`${runningContainers} of ${totalContainers} running`}
 				unit="containers"
 				loading={isLoading.loadingStats}
 			/>
