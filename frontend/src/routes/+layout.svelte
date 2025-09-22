@@ -14,6 +14,9 @@
 	import Error from '$lib/components/error.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
+	import MobileFloatingNav from '$lib/components/mobile-nav/mobile-floating-nav.svelte';
+	import { mobileNavStore } from '$lib/stores/mobile-nav-store';
+	import { onMount } from 'svelte';
 
 	let {
 		data,
@@ -40,6 +43,11 @@
 	if (redirectPath) {
 		goto(redirectPath);
 	}
+
+	// Load mobile navigation preferences on mount
+	onMount(() => {
+		mobileNavStore.loadPreferences();
+	});
 </script>
 
 <svelte:head><title>{m.layout_title()}</title></svelte:head>
@@ -50,10 +58,17 @@
 	{:else if !isOnboardingPage && !isLoginPage}
 		{#if isMobile.current}
 			<main class="flex-1">
-				<section class="px-2 py-5 sm:p-5">
+				<section class="px-2 py-5 pb-24 sm:p-5">
 					{@render children()}
 				</section>
 			</main>
+			<!-- Mobile Floating Navigation -->
+			<MobileFloatingNav 
+				pinnedItems={$mobileNavStore.pinnedItems} 
+				visible={$mobileNavStore.visible}
+				{user}
+				{versionInformation}
+			/>
 		{:else}
 			<Sidebar.Provider>
 				<AppSidebar {versionInformation} {user} />
