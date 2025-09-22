@@ -69,7 +69,7 @@
 		}
 	});
 	
-	// Make navigation bar visible when fullscreen menu closes
+	// Make navigation bar visible when fullscreen menu closes and ensure touch is restored
 	let previousMenuOpen = $state($mobileNavStore.menuOpen);
 	$effect(() => {
 		const currentMenuOpen = $mobileNavStore.menuOpen;
@@ -77,6 +77,15 @@
 		// If menu was open and is now closed, make navigation bar visible
 		if (previousMenuOpen && !currentMenuOpen) {
 			mobileNavStore.setVisibility(true);
+		}
+		
+		// If menu just opened, ensure touch scrolling is restored for the menu
+		if (!previousMenuOpen && currentMenuOpen) {
+			// Restore scrolling immediately when menu opens to allow menu content scrolling
+			setTimeout(() => {
+				document.body.style.overflow = '';
+				document.documentElement.style.overflow = '';
+			}, 50);
 		}
 		
 		previousMenuOpen = currentMenuOpen;
@@ -117,9 +126,13 @@
 		}
 	});
 	
+	// Track gesture timing to help with touch restoration
+	let lastGestureTime = 0;
+	
 	// Swipe gesture detection for opening fullscreen menu
 	const swipeDetector = new SwipeGestureDetector((direction: SwipeDirection) => {
 		if (direction === 'up' && shouldShow) {
+			lastGestureTime = Date.now();
 			mobileNavStore.setMenuOpen(true);
 		}
 	}, { threshold: 20, velocity: 0.1, timeLimit: 1000 });
@@ -143,19 +156,14 @@
 				touchStartTarget = e.target as HTMLElement;
 				isInteractiveTouch = !!touchStartTarget.closest('button, a, [role="button"]');
 				
-				// Always prevent background scrolling when touching the navigation bar
-				// This ensures consistent behavior similar to pointer devices
-				document.body.style.overflow = 'hidden';
-				document.documentElement.style.overflow = 'hidden';
-				
-				// If touching an interactive element, allow normal touch behavior
-				if (isInteractiveTouch) {
-					// Don't interfere with button/link touches, but still prevent background scroll
-					return;
+				// Only prevent background scrolling for gesture interactions
+				// This ensures consistent behavior while allowing interactive elements to work
+				if (!isInteractiveTouch) {
+					document.body.style.overflow = 'hidden';
+					document.documentElement.style.overflow = 'hidden';
+					// For non-interactive touches, stop propagation to prevent page interactions
+					e.stopPropagation();
 				}
-				
-				// For non-interactive touches, stop propagation to prevent page interactions
-				e.stopPropagation();
 			};
 
 			const handleTouchMove = (e: TouchEvent) => {
@@ -185,14 +193,15 @@
 			};
 
 			const handleTouchEnd = (e: TouchEvent) => {
-				// Only restore scrolling if menu is not open (to avoid conflicts)
-				if (!$mobileNavStore.menuOpen) {
-					// Small delay to ensure gesture processing is complete
-					setTimeout(() => {
+				// Always restore scrolling after a brief delay to ensure gesture processing is complete
+				// The delay allows the swipe gesture to complete before re-enabling scroll
+				setTimeout(() => {
+					// Only restore if menu is still closed, or if menu just opened (to allow menu scrolling)
+					if (!$mobileNavStore.menuOpen || Date.now() - lastGestureTime < 500) {
 						document.body.style.overflow = '';
 						document.documentElement.style.overflow = '';
-					}, 100);
-				}
+					}
+				}, 150);
 				
 				// Reset touch state
 				touchStartTarget = null;
