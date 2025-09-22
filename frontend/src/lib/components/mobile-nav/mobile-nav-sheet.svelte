@@ -31,14 +31,17 @@
 	let dragTranslateY = $state(0);
 	let isAtScrollTop = $state(true);
 	let isAtScrollBottom = $state(false);
+	let isOverscrolling = $state(false);
+	let overscrollStartY = $state(0);
+	let maxSheetHeight = $state(0);
 	
 	// Trackpad/wheel scroll state
-	let wheelAccumulator = $state(0);
+	let wheelCloseThreshold = $state(0);
 	let lastWheelTime = $state(0);
 	let isWheelDragging = $state(false);
 	let wheelResetTimeout: ReturnType<typeof setTimeout> | null = null;
-	let wheelVelocityHistory: number[] = [];
-	let scrollStartedFromTop = $state(false);
+	let wheelStartedAtTop = $state(false);
+	let isClosing = $state(false);
 	
 	$effect(() => {
 		const unsub = userStore.subscribe((u) => (storeUser = u));
@@ -59,54 +62,75 @@
 		isAtScrollTop = scrollTop <= 2; // Small tolerance for smooth scrolling
 		isAtScrollBottom = Math.abs(scrollHeight - clientHeight - scrollTop) <= 2;
 		
-		// Check if we're in the top 10% of the scrollable area (for drag-to-close)
-		const topThreshold = Math.max(clientHeight * 0.1, 50); // 10% of viewport or 50px minimum
-		const isInTopArea = scrollTop <= topThreshold;
-		
-		// Reset scroll started flag if we leave the top area
-		if (!isInTopArea && scrollStartedFromTop) {
-			scrollStartedFromTop = false;
-		}
+		// Calculate max sheet height (85vh as per CSS)
+		maxSheetHeight = Math.min(window.innerHeight * 0.85, clientHeight);
 	}
 
-	// Enhanced touch handling for bottom sheet behavior
+	// Enhanced touch handling for overscroll sheet behavior
 	function handleTouchStart(e: TouchEvent) {
 		if (!open || !menuElement) return;
 		
 		const touch = e.touches[0];
 		dragStartY = touch.clientY;
 		currentDragY = touch.clientY;
+		overscrollStartY = touch.clientY;
 		
-		// Check if touch is on the handle or at scroll boundaries
+		// Check if touch is on the handle
 		const target = e.target as HTMLElement;
 		const isOnHandle = target.closest('[data-drag-handle]');
 		
-		if (isOnHandle || isAtScrollTop || isAtScrollBottom) {
+		// Always enable dragging for handle, or prepare for potential overscroll
+		if (isOnHandle) {
 			isDragging = true;
+			isOverscrolling = false;
+		} else {
+			isDragging = false;
+			isOverscrolling = false;
 		}
 	}
 
 	function handleTouchMove(e: TouchEvent) {
-		if (!isDragging || !open) return;
+		if (!open || isClosing) return;
 		
 		const touch = e.touches[0];
 		currentDragY = touch.clientY;
 		const deltaY = currentDragY - dragStartY;
 		
-		// Only allow downward drag to close
-		if (deltaY > 0) {
-			// If we're at scroll top or on the handle, allow immediate drag
-			if (isAtScrollTop || e.target && (e.target as HTMLElement).closest('[data-drag-handle]')) {
-				dragTranslateY = deltaY;
-				e.preventDefault();
+		// Check if we're on the drag handle
+		const isOnHandle = e.target && (e.target as HTMLElement).closest('[data-drag-handle]');
+		
+		// Handle drag handle behavior (always works)
+		if (isDragging && isOnHandle && deltaY > 0) {
+			dragTranslateY = deltaY;
+			e.preventDefault();
+			return;
+		}
+		
+		// Handle overscroll behavior
+		if (!isDragging && !isOnHandle) {
+			// Check for overscroll conditions
+			const canOverscrollDown = isAtScrollTop && deltaY > 0; // Trying to scroll up when at top
+			const canOverscrollUp = isAtScrollBottom && deltaY < 0; // Trying to scroll down when at bottom
+			
+			if (canOverscrollDown) {
+				// Start overscroll drag
+				if (!isOverscrolling) {
+					isOverscrolling = true;
+					overscrollStartY = touch.clientY;
+					isDragging = true;
+				}
+				
+				// Calculate drag distance from overscroll start
+				const overscrollDelta = touch.clientY - overscrollStartY;
+				if (overscrollDelta > 0) {
+					dragTranslateY = overscrollDelta * 0.6; // Add some resistance
+					e.preventDefault();
+				}
 			}
-			// If we're at scroll bottom and trying to scroll down more, allow drag to close
-			else if (isAtScrollBottom && deltaY > 20) {
-				dragTranslateY = deltaY - 20; // Offset by the initial resistance
-				e.preventDefault();
-			}
-		} else {
-			// Reset drag state for upward movement
+		}
+		
+		// Reset drag if moving upward and not on handle
+		if (deltaY < 0 && !isOnHandle) {
 			dragTranslateY = 0;
 		}
 	}
@@ -114,116 +138,106 @@
 	function handleTouchEnd(e: TouchEvent) {
 		if (!isDragging) return;
 		
-		isDragging = false;
 		const deltaY = currentDragY - dragStartY;
 		
-		// Close if dragged down more than 120px or with significant velocity
-		const shouldClose = dragTranslateY > 120 || (dragTranslateY > 50 && deltaY > 80);
+		// Calculate half of max sheet height for snap close
+		const snapCloseThreshold = maxSheetHeight * 0.5;
+		
+		// Close if dragged down more than half the max height
+		const shouldClose = dragTranslateY > snapCloseThreshold;
 		
 		if (shouldClose) {
-			// Add a slight delay to feel more natural
-			setTimeout(() => {
-				mobileNavStore.setMenuOpen(false);
-			}, 50);
+			closeSheet();
+		} else {
+			// Reset drag state only if not closing
+			isDragging = false;
+			dragTranslateY = 0;
+			dragStartY = 0;
+			currentDragY = 0;
+			isOverscrolling = false;
+			overscrollStartY = 0;
 		}
-		
-		// Reset drag state
-		dragTranslateY = 0;
-		dragStartY = 0;
-		currentDragY = 0;
 	}
 
-	// Handle trackpad/wheel scrolling for drag-to-close
+	// Handle trackpad/wheel scrolling for overscroll behavior
 	function handleWheel(e: WheelEvent) {
-		if (!open || !menuElement) return;
+		if (!open || !menuElement || isClosing) return;
 		
 		const now = Date.now();
 		const timeDelta = now - lastWheelTime;
 		lastWheelTime = now;
 		
 		const scrollTop = menuElement.scrollTop;
-		const clientHeight = menuElement.clientHeight;
-		const topThreshold = Math.max(clientHeight * 0.1, 50); // 10% of viewport or 50px minimum
-		const isInTopArea = scrollTop <= topThreshold;
+		const isAtTop = scrollTop <= 1;
+		const isScrollingUp = e.deltaY < 0; // Negative deltaY means scrolling up
 		
-		// Track if this scroll gesture started from the top area
-		if (timeDelta > 150) {
-			// New scroll gesture - check if starting from top area
-			scrollStartedFromTop = isInTopArea;
-			wheelAccumulator = 0;
+		// Reset threshold on new gesture (gap > 100ms indicates new gesture)
+		if (timeDelta > 100) {
+			wheelCloseThreshold = 0;
 			isWheelDragging = false;
-			wheelVelocityHistory = [];
 		}
 		
-		// Track velocity to detect flinging vs intentional scrolling
-		const currentVelocity = Math.abs(e.deltaY);
-		wheelVelocityHistory.push(currentVelocity);
+		// Check for overscroll condition - trying to scroll up when at top
+		const canOverscroll = isAtTop && isScrollingUp;
 		
-		// Keep only recent velocity samples (last 5 events)
-		if (wheelVelocityHistory.length > 5) {
-			wheelVelocityHistory.shift();
-		}
-		
-		// Calculate average velocity to detect flinging
-		const avgVelocity = wheelVelocityHistory.reduce((sum, v) => sum + v, 0) / wheelVelocityHistory.length;
-		const isFlinging = avgVelocity > 15; // High velocity indicates flinging
-		
-		// Reset if flinging detected
-		if (isFlinging) {
-			resetWheelState();
-			return;
-		}
-		
-		// Only allow drag-to-close if:
-		// 1. Scroll gesture started from the top 10% area
-		// 2. Currently at scroll top (scrollTop <= 2)
-		// 3. Trying to scroll up more (negative deltaY)
-		// 4. Not flinging
-		const canDragToClose = scrollStartedFromTop && isAtScrollTop && e.deltaY < 0;
-		
-		if (canDragToClose) {
-			wheelAccumulator += Math.abs(e.deltaY);
+		if (canOverscroll) {
+			// Accumulate overscroll attempts
+			wheelCloseThreshold += Math.abs(e.deltaY);
 			
-			// Start wheel dragging if we accumulate enough scroll
-			if (wheelAccumulator > 20) {
+			// Start visual feedback after small threshold
+			if (wheelCloseThreshold > 15) {
 				isWheelDragging = true;
-				
-				// Convert wheel delta to drag distance (scale down for more control)
-				const dragDistance = Math.min((wheelAccumulator - 20) * 0.8, 300);
+				// Scale down for wheel input and apply resistance
+				const dragDistance = Math.min((wheelCloseThreshold - 15) * 0.4, maxSheetHeight * 0.6);
 				dragTranslateY = dragDistance;
 				
-				// Prevent default to stop page scrolling
+				// Prevent page scroll
 				e.preventDefault();
 				
-				// Auto-close if dragged far enough
-				if (dragDistance > 120) {
-					setTimeout(() => {
-						mobileNavStore.setMenuOpen(false);
-						resetWheelState();
-					}, 50);
+				// Close if dragged past half max height
+				const snapCloseThreshold = maxSheetHeight * 0.5;
+				if (dragDistance > snapCloseThreshold) {
+					closeSheet();
 				} else {
-					// Schedule reset if not closing
+					// Auto-reset if no more wheel events
 					scheduleWheelReset();
 				}
 			}
 		} else {
-			// Reset when conditions are not met for drag-to-close
+			// Reset if conditions not met
 			resetWheelState();
 		}
 	}
 	
 	function resetWheelState() {
-		wheelAccumulator = 0;
+		wheelCloseThreshold = 0;
 		isWheelDragging = false;
-		wheelVelocityHistory = [];
-		scrollStartedFromTop = false;
-		if (!isDragging) {
+		if (!isDragging && !isClosing) {
 			dragTranslateY = 0;
 		}
 		if (wheelResetTimeout) {
 			clearTimeout(wheelResetTimeout);
 			wheelResetTimeout = null;
 		}
+	}
+	
+	function closeSheet() {
+		isClosing = true;
+		// Don't reset visual state immediately - let the closing animation handle it
+		// Just reset the interaction states
+		isWheelDragging = false;
+		isDragging = false;
+		isOverscrolling = false;
+		overscrollStartY = 0;
+		
+		// Close immediately - let CSS transitions handle the smooth animation
+		mobileNavStore.setMenuOpen(false);
+		
+		// Reset remaining state after animation completes
+		setTimeout(() => {
+			dragTranslateY = 0;
+			isClosing = false;
+		}, 500); // Match the CSS transition duration
 	}
 	
 	// Auto-reset wheel state after inactivity
@@ -233,7 +247,7 @@
 		}
 		wheelResetTimeout = setTimeout(() => {
 			resetWheelState();
-		}, 300);
+		}, 200);
 	}
 
 	// Swipe gesture to close menu (keep existing horizontal swipes)
@@ -364,9 +378,15 @@
 	<div
 		class={cn(
 			"fixed inset-0 z-40 bg-background/20 backdrop-blur-md",
-			(isDragging || isWheelDragging) ? "transition-none" : "transition-opacity duration-300"
+			(isDragging || isWheelDragging || isOverscrolling) && !isClosing ? "transition-none" : "transition-opacity duration-300"
 		)}
-		style={`opacity: ${Math.max(0.1, (open ? 1 : 0) - (dragTranslateY / 400))}; touch-action: manipulation;`}
+		style={`
+			${(isDragging || isWheelDragging || isOverscrolling) && !isClosing ? 
+				`opacity: ${Math.max(0.1, 1 - (dragTranslateY / 400))};` : 
+				''
+			}
+			touch-action: manipulation;
+		`}
 		onclick={() => mobileNavStore.setMenuOpen(false)}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') {
@@ -398,13 +418,15 @@
 		'transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]',
 		'max-h-[85vh] overflow-y-auto overscroll-contain',
 		open ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0',
-		(isDragging || isWheelDragging) ? 'transition-none' : ''
+		(isDragging || isWheelDragging || isOverscrolling) && !isClosing ? 'transition-none' : ''
 	)}
 	style={`
 		touch-action: pan-y; 
 		-webkit-overflow-scrolling: touch;
-		transform: translateY(${open ? ((isDragging || isWheelDragging) ? dragTranslateY : 0) : '100%'}px);
-		opacity: ${open ? Math.max(0.3, 1 - (dragTranslateY / 300)) : 0};
+		${(isDragging || isWheelDragging || isOverscrolling) && !isClosing ? 
+			`transform: translateY(${dragTranslateY}px); opacity: ${Math.max(0.3, 1 - (dragTranslateY / 300))};` : 
+			''
+		}
 	`}
 	data-testid="mobile-nav-sheet"
 	role="dialog"
@@ -418,10 +440,10 @@
 		<div 
 			class={cn(
 				"w-10 h-1.5 rounded-full transition-all duration-200",
-				(isDragging || isWheelDragging) ? "bg-muted-foreground/40 w-12 h-2" : "bg-muted-foreground/20",
+				(isDragging || isWheelDragging || isOverscrolling) && !isClosing ? "bg-muted-foreground/40 w-12 h-2" : "bg-muted-foreground/20",
 				"hover:bg-muted-foreground/30 active:bg-muted-foreground/40"
 			)}
-			style={`transform: ${(isDragging || isWheelDragging) ? 'scale(1.1)' : 'scale(1)'}`}
+			style={`transform: ${(isDragging || isWheelDragging || isOverscrolling) && !isClosing ? 'scale(1.1)' : 'scale(1)'}`}
 		></div>
 	</div>
 
