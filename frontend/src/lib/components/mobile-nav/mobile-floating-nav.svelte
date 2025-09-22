@@ -92,24 +92,74 @@
 		if (navElement) {
 			swipeDetector.setElement(navElement);
 			
-			// Minimal touch handling: only stop momentum when needed, let SwipeGestureDetector handle gestures
+			// Enhanced touch handling: prevent background scrolling during all touch interactions
+			let touchStartTarget: HTMLElement | null = null;
+			let isInteractiveTouch = false;
+			
 			const handleTouchStart = (e: TouchEvent) => {
-				// Check if touching a button/link - if so, don't interfere
-				const target = e.target as HTMLElement;
-				const isInteractive = target.closest('button, a, [role="button"]');
+				// Store touch start target and check if it's interactive
+				touchStartTarget = e.target as HTMLElement;
+				isInteractiveTouch = !!touchStartTarget.closest('button, a, [role="button"]');
 				
-				if (!isInteractive) {
-					// Only stop scroll momentum briefly, don't prevent the event
-					// This allows the SwipeGestureDetector to still process the touch
-					document.body.style.overflow = 'hidden';
-					setTimeout(() => {
-						document.body.style.overflow = '';
-					}, 50);
+				// Always prevent background scrolling when touching the navigation bar
+				// This ensures consistent behavior similar to pointer devices
+				document.body.style.overflow = 'hidden';
+				document.documentElement.style.overflow = 'hidden';
+				
+				// If touching an interactive element, allow normal touch behavior
+				if (isInteractiveTouch) {
+					// Don't interfere with button/link touches, but still prevent background scroll
+					return;
+				}
+				
+				// For non-interactive touches, stop propagation to prevent page interactions
+				e.stopPropagation();
+			};
+
+			const handleTouchMove = (e: TouchEvent) => {
+				// Always prevent default for touchmove to stop page scrolling
+				// This is crucial for preventing the "swipe up scrolls page" issue
+				e.preventDefault();
+				e.stopPropagation();
+				
+				// If touch started on an interactive element, allow some movement tolerance
+				// but still prevent page scrolling
+				if (isInteractiveTouch) {
+					// Check if we've moved too far from interactive element - if so, treat as gesture
+					const touch = e.touches[0];
+					const target = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement;
+					const stillOnInteractive = target && target.closest('button, a, [role="button"]');
+					
+					if (!stillOnInteractive) {
+						// Moved off interactive element, treat as gesture
+						isInteractiveTouch = false;
+					}
 				}
 			};
+
+			const handleTouchEnd = (e: TouchEvent) => {
+				// Always restore scrolling after touch sequence ends
+				// Small delay to ensure gesture processing is complete
+				setTimeout(() => {
+					document.body.style.overflow = '';
+					document.documentElement.style.overflow = '';
+				}, 100);
+				
+				// Reset touch state
+				touchStartTarget = null;
+				isInteractiveTouch = false;
+			};
 			
-			// Add minimal touch start listener to handle momentum
+			// Add touch listeners to prevent background scrolling during gestures
 			navElement.addEventListener('touchstart', handleTouchStart, { 
+				passive: false, 
+				capture: false 
+			});
+			navElement.addEventListener('touchmove', handleTouchMove, { 
+				passive: false, 
+				capture: false 
+			});
+			navElement.addEventListener('touchend', handleTouchEnd, { 
 				passive: true, 
 				capture: false 
 			});
@@ -167,6 +217,8 @@
 			
 			return () => {
 				navElement.removeEventListener('touchstart', handleTouchStart);
+				navElement.removeEventListener('touchmove', handleTouchMove);
+				navElement.removeEventListener('touchend', handleTouchEnd);
 				navElement.removeEventListener('mouseenter', handleMouseEnter);
 				navElement.removeEventListener('mouseleave', handleMouseLeave);
 				navElement.removeEventListener('wheel', handleWheel);
@@ -174,6 +226,7 @@
 				// Ensure all styles are restored
 				document.body.style.overflow = '';
 				document.body.style.pointerEvents = '';
+				document.documentElement.style.overflow = '';
 				if (navElement) {
 					navElement.style.pointerEvents = '';
 				}
@@ -211,10 +264,12 @@
 	/* Ensure proper pointer and touch handling */
 	nav {
 		pointer-events: auto;
-		/* Allow touch gestures and scrolling */
-		touch-action: auto;
-		-webkit-overflow-scrolling: auto;
+		/* Prevent browser's default touch gestures but allow custom ones */
+		touch-action: none;
+		-webkit-overflow-scrolling: touch;
 		overscroll-behavior: contain;
+		/* Isolate touch interactions similar to pointer device behavior */
+		isolation: isolate;
 	}
 	
 	/* Ensure buttons are fully interactive */
@@ -224,6 +279,8 @@
 		touch-action: manipulation; /* Allow taps and prevent interfering gestures */
 		position: relative;
 		z-index: 1; /* Ensure buttons are above gesture detection */
+		/* Isolate button touches from parent's touch handling */
+		isolation: isolate;
 	}
 	
 	/* Cursor device visual hint */
