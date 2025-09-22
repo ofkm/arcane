@@ -297,7 +297,6 @@
 </script>
 
 <div class="space-y-8">
-	<!-- make this container relative so we can absolutely position the mobile ellipsis -->
 	<div class="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 		<div class="space-y-1">
 			<h1 class="text-3xl font-bold tracking-tight">{m.dashboard_title()}</h1>
@@ -324,7 +323,7 @@
 
 	<section>
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 			<MeterMetric
 				title={m.dashboard_meter_running()}
 				icon={ContainerIcon}
