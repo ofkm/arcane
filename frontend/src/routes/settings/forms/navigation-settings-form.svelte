@@ -12,6 +12,7 @@
 	import { persistedNavigationStore, getEffectiveNavigationSetting } from '$lib/utils/persisted-state';
 	import NavigationSettingControl from '$lib/components/navigation-setting-control.svelte';
 	import settingsStore from '$lib/stores/config-store';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		settings,
@@ -72,7 +73,7 @@
 		isLoading = true;
 
 		await callback(data)
-			.then(() => toast.success('Navigation settings saved successfully'))
+					.then(() => toast.success(m.navigation_settings_saved()))
 			.catch((error) => {
 				console.error('Failed to save navigation settings:', error);
 				toast.error('Failed to save navigation settings. Please try again.');
@@ -105,8 +106,8 @@
 						<NavigationIcon class="size-4" />
 					</div>
 					<div>
-						<Card.Title class="text-base">Mobile Navigation Behavior</Card.Title>
-						<Card.Description class="text-xs">Configure global defaults and personal overrides for mobile navigation behavior</Card.Description>
+						<Card.Title class="text-base">{m.navigation_mobile_behavior_title()}</Card.Title>
+						<Card.Description class="text-xs">{m.navigation_mobile_behavior_description()}</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
@@ -114,8 +115,8 @@
 				<div class="grid grid-cols-1 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))] gap-3 sm:gap-4">
 					<NavigationSettingControl
 						id="mobileNavigationShowLabels"
-						label="Show Labels"
-						description="Display text labels below navigation icons for better clarity and accessibility"
+						label={m.navigation_show_labels_label()}
+						description={m.navigation_show_labels_description()}
 						icon={EyeIcon}
 						serverValue={$formInputs.mobileNavigationShowLabels.value}
 						localOverride={persistedState.overrides.showLabels}
@@ -127,8 +128,8 @@
 
 					<NavigationSettingControl
 						id="mobileNavigationScrollToHide"
-						label="Scroll to Hide"
-						description="Automatically hide the navigation bar when scrolling down for a cleaner viewing experience"
+						label={m.navigation_scroll_to_hide_label()}
+						description={m.navigation_scroll_to_hide_description()}
 						icon={ScrollTextIcon}
 						serverValue={$formInputs.mobileNavigationScrollToHide.value}
 						localOverride={persistedState.overrides.scrollToHide}
@@ -140,8 +141,8 @@
 
 					<NavigationSettingControl
 						id="mobileNavigationTapToHide"
-						label="Tap to Hide"
-						description="Allow users to tap outside the navigation area to quickly show or hide the navigation bar"
+						label={m.navigation_tap_to_hide_label()}
+						description={m.navigation_tap_to_hide_description()}
 						icon={MousePointerClickIcon}
 						serverValue={$formInputs.mobileNavigationTapToHide.value}
 						localOverride={persistedState.overrides.tapToHide}

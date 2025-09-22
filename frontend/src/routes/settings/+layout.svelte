@@ -59,7 +59,7 @@
 			case 'users':
 				return m.users_title();
 			case 'navigation':
-				return 'Navigation';
+				return m.navigation_title();
 			default:
 				return m.sidebar_settings();
 		}

@@ -5,6 +5,7 @@
 	import UiConfigDisabledTag from '$lib/components/ui-config-disabled-tag.svelte';
 	import NavigationSettingsForm from '../forms/navigation-settings-form.svelte';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
+	import { m } from '$lib/paraglide/messages';
 	import { getContext } from 'svelte';
 
 	let { data } = $props();
@@ -50,14 +51,14 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<div class="flex items-start justify-between gap-3">
-					<h1 class="settings-title text-xl sm:text-3xl min-w-0">Navigation Settings</h1>
+					<h1 class="settings-title text-xl sm:text-3xl min-w-0">{m.navigation_title()}</h1>
 					{#if isReadOnly}
 						<div class="shrink-0">
 							<UiConfigDisabledTag />
 						</div>
 					{/if}
 				</div>
-				<p class="text-muted-foreground mt-1 text-sm sm:text-base">Customize navigation behavior and appearance</p>
+				<p class="text-muted-foreground mt-1 text-sm sm:text-base">{m.navigation_description()}</p>
 			</div>
 		</div>
 	</div>

@@ -65,7 +65,7 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 				{ title: m.general_title(), url: '/settings/general', icon: SettingsIcon },
 				{ title: m.docker_title(), url: '/settings/docker', icon: DatabaseIcon },
 				{ title: m.security_title(), url: '/settings/security', icon: ShieldIcon },
-				{ title: 'Navigation', url: '/settings/navigation', icon: NavigationIcon },
+				{ title: m.navigation_title(), url: '/settings/navigation', icon: NavigationIcon },
 				{ title: m.users_title(), url: '/settings/users', icon: UserIcon }
 			]
 		}
