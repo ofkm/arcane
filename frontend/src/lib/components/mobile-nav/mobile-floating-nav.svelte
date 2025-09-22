@@ -67,6 +67,19 @@
 		}
 	});
 	
+	// Make navigation bar visible when fullscreen menu closes
+	let previousMenuOpen = $state($mobileNavStore.menuOpen);
+	$effect(() => {
+		const currentMenuOpen = $mobileNavStore.menuOpen;
+		
+		// If menu was open and is now closed, make navigation bar visible
+		if (previousMenuOpen && !currentMenuOpen) {
+			mobileNavStore.setVisibility(true);
+		}
+		
+		previousMenuOpen = currentMenuOpen;
+	});
+	
 	// Update auto-hidden state
 	$effect(() => {
 		const newAutoHidden = !shouldShow;
@@ -107,7 +120,7 @@
 		if (direction === 'up' && shouldShow) {
 			mobileNavStore.setMenuOpen(true);
 		}
-	}, { threshold: 40, velocity: 0.3 });
+	}, { threshold: 20, velocity: 0.1, timeLimit: 1000 });
 	
 	// Set the target element for swipe detection and stop scroll momentum
 	$effect(() => {
@@ -119,6 +132,11 @@
 			let isInteractiveTouch = false;
 			
 			const handleTouchStart = (e: TouchEvent) => {
+				// Don't interfere if the fullscreen menu is open
+				if ($mobileNavStore.menuOpen) {
+					return;
+				}
+				
 				// Store touch start target and check if it's interactive
 				touchStartTarget = e.target as HTMLElement;
 				isInteractiveTouch = !!touchStartTarget.closest('button, a, [role="button"]');
@@ -139,6 +157,11 @@
 			};
 
 			const handleTouchMove = (e: TouchEvent) => {
+				// Don't interfere if the fullscreen menu is open
+				if ($mobileNavStore.menuOpen) {
+					return;
+				}
+				
 				// Always prevent default for touchmove to stop page scrolling
 				// This is crucial for preventing the "swipe up scrolls page" issue
 				e.preventDefault();
@@ -160,12 +183,14 @@
 			};
 
 			const handleTouchEnd = (e: TouchEvent) => {
-				// Always restore scrolling after touch sequence ends
-				// Small delay to ensure gesture processing is complete
-				setTimeout(() => {
-					document.body.style.overflow = '';
-					document.documentElement.style.overflow = '';
-				}, 100);
+				// Only restore scrolling if menu is not open (to avoid conflicts)
+				if (!$mobileNavStore.menuOpen) {
+					// Small delay to ensure gesture processing is complete
+					setTimeout(() => {
+						document.body.style.overflow = '';
+						document.documentElement.style.overflow = '';
+					}, 100);
+				}
 				
 				// Reset touch state
 				touchStartTarget = null;
@@ -245,10 +270,12 @@
 				navElement.removeEventListener('mouseleave', handleMouseLeave);
 				navElement.removeEventListener('wheel', handleWheel);
 				document.removeEventListener('wheel', handleDocumentWheel, true);
-				// Ensure all styles are restored
-				document.body.style.overflow = '';
-				document.body.style.pointerEvents = '';
-				document.documentElement.style.overflow = '';
+				// Ensure all styles are restored - but only if menu is not open
+				if (!$mobileNavStore.menuOpen) {
+					document.body.style.overflow = '';
+					document.body.style.pointerEvents = '';
+					document.documentElement.style.overflow = '';
+				}
 				if (navElement) {
 					navElement.style.pointerEvents = '';
 				}

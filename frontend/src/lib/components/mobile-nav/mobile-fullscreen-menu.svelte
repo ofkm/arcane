@@ -78,18 +78,28 @@
 	// Focus management and body scroll prevention for accessibility
 	$effect(() => {
 		if (open) {
-			// Prevent body scroll when menu is open
+			// Prevent body scroll when menu is open but allow menu content to scroll
 			const originalOverflow = document.body.style.overflow;
 			const originalPosition = document.body.style.position;
 			const originalTop = document.body.style.top;
+			const originalWidth = document.body.style.width;
 			const scrollY = window.scrollY;
 			
+			// Properly lock the body while preserving menu scrollability
 			document.body.style.overflow = 'hidden';
 			document.body.style.position = 'fixed';
 			document.body.style.top = `-${scrollY}px`;
 			document.body.style.width = '100%';
+			document.body.style.left = '0';
+			document.body.style.right = '0';
 			
+			// Ensure the menu element can scroll independently
 			if (menuElement) {
+				// Reset any overflow restrictions that might interfere
+				menuElement.style.overflowY = 'auto';
+				(menuElement.style as any).webkitOverflowScrolling = 'touch';
+				menuElement.style.touchAction = 'pan-y'; // Allow vertical scrolling only
+				
 				// Focus the menu when opened - use requestAnimationFrame for better performance
 				requestAnimationFrame(() => {
 					const firstFocusable = menuElement.querySelector('a, button') as HTMLElement;
@@ -104,8 +114,19 @@
 				document.body.style.overflow = originalOverflow;
 				document.body.style.position = originalPosition;
 				document.body.style.top = originalTop;
-				document.body.style.width = '';
+				document.body.style.width = originalWidth;
+				document.body.style.left = '';
+				document.body.style.right = '';
+				
+				// Restore scroll position
 				window.scrollTo(0, scrollY);
+				
+				// Clean up menu styles
+				if (menuElement) {
+					menuElement.style.overflowY = '';
+					(menuElement.style as any).webkitOverflowScrolling = '';
+					menuElement.style.touchAction = '';
+				}
 			};
 		}
 	});
@@ -127,18 +148,28 @@
 <!-- Backdrop -->
 {#if open}
 	<div
-		class="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm transition-opacity duration-300 touch-none"
+		class="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm transition-opacity duration-300"
 		onclick={() => mobileNavStore.setMenuOpen(false)}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') {
 				mobileNavStore.setMenuOpen(false);
 			}
 		}}
-		ontouchstart={(e) => e.preventDefault()}
-		ontouchmove={(e) => e.preventDefault()}
+		ontouchstart={(e) => {
+			// Only prevent if touch is outside menu area
+			if (!menuElement || !menuElement.contains(e.target as Node)) {
+				e.preventDefault();
+			}
+		}}
+		ontouchmove={(e) => {
+			// Only prevent if touch is outside menu area
+			if (!menuElement || !menuElement.contains(e.target as Node)) {
+				e.preventDefault();
+			}
+		}}
 		aria-hidden="true"
 		role="presentation"
-		style="touch-action: none;"
+		style="touch-action: manipulation;"
 	></div>
 {/if}
 
@@ -151,6 +182,7 @@
 		'max-h-[85vh] overflow-y-auto overscroll-contain',
 		open ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
 	)}
+	style="touch-action: pan-y; -webkit-overflow-scrolling: touch;"
 	data-testid="mobile-fullscreen-menu"
 	role="dialog"
 	aria-modal="true"
