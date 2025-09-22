@@ -183,10 +183,10 @@
 		open ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
 	)}
 	style="touch-action: pan-y; -webkit-overflow-scrolling: touch;"
-	data-testid="mobile-fullscreen-menu"
+	data-testid="mobile-nav-sheet"
 	role="dialog"
 	aria-modal="true"
-	aria-label="Main navigation menu"
+	aria-label="Main navigation sheet"
 	aria-hidden={!open}
 	tabindex={open ? 0 : -1}
 >
@@ -396,24 +396,24 @@
 <style>
 	/* Ensure smooth scrolling and prevent overscroll issues */
 	@supports (overscroll-behavior: contain) {
-		div[data-testid="mobile-fullscreen-menu"] {
+		div[data-testid="mobile-nav-sheet"] {
 			overscroll-behavior: contain;
 		}
 	}
 
 	/* Respect reduced motion preferences */
 	@media (prefers-reduced-motion: reduce) {
-		div[data-testid="mobile-fullscreen-menu"] {
+		div[data-testid="mobile-nav-sheet"] {
 			transition: none;
 		}
 		
 		/* Instantly show/hide without animation */
-		div[data-testid="mobile-fullscreen-menu"]:not([aria-hidden="true"]) {
+		div[data-testid="mobile-nav-sheet"]:not([aria-hidden="true"]) {
 			transform: translateY(0);
 			opacity: 1;
 		}
 		
-		div[data-testid="mobile-fullscreen-menu"][aria-hidden="true"] {
+		div[data-testid="mobile-nav-sheet"][aria-hidden="true"] {
 			transform: translateY(100%);
 			opacity: 0;
 		}

@@ -7,7 +7,7 @@
 	import { TapOutsideDetector } from '$lib/hooks/use-tap-outside.svelte';
 	import { SwipeGestureDetector, type SwipeDirection } from '$lib/hooks/use-swipe-gesture.svelte';
 	import { mobileNavStore } from '$lib/stores/mobile-nav-store';
-	import MobileFullscreenMenu from './mobile-fullscreen-menu.svelte';
+	import MobileNavSheet from './mobile-nav-sheet.svelte';
 
 	let {
 		pinnedItems = [],
@@ -69,7 +69,7 @@
 		}
 	});
 	
-	// Make navigation bar visible when fullscreen menu closes and ensure touch is restored
+	// Make navigation bar visible when navigation sheet closes and ensure touch is restored
 	let previousMenuOpen = $state($mobileNavStore.menuOpen);
 	$effect(() => {
 		const currentMenuOpen = $mobileNavStore.menuOpen;
@@ -129,7 +129,7 @@
 	// Track gesture timing to help with touch restoration
 	let lastGestureTime = 0;
 	
-	// Swipe gesture detection for opening fullscreen menu
+	// Swipe gesture detection for opening navigation sheet
 	const swipeDetector = new SwipeGestureDetector((direction: SwipeDirection) => {
 		if (direction === 'up' && shouldShow) {
 			lastGestureTime = Date.now();
@@ -147,7 +147,7 @@
 			let isInteractiveTouch = false;
 			
 			const handleTouchStart = (e: TouchEvent) => {
-				// Don't interfere if the fullscreen menu is open
+				// Don't interfere if the navigation sheet is open
 				if ($mobileNavStore.menuOpen) {
 					return;
 				}
@@ -167,7 +167,7 @@
 			};
 
 			const handleTouchMove = (e: TouchEvent) => {
-				// Don't interfere if the fullscreen menu is open
+				// Don't interfere if the navigation sheet is open
 				if ($mobileNavStore.menuOpen) {
 					return;
 				}
@@ -361,8 +361,8 @@
 	{/each}
 </nav>
 
-<!-- Fullscreen Menu -->
-<MobileFullscreenMenu 
+<!-- Navigation Sheet -->
+<MobileNavSheet 
 	open={$mobileNavStore.menuOpen} 
 	{user} 
 	{versionInformation} 
