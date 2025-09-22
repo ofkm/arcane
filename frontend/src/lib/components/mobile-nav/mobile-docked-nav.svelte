@@ -354,19 +354,18 @@
 <nav
 	bind:this={navElement}
 	class={cn(
-		'mobile-nav-base mobile-nav-floating',
-		'fixed left-1/2 z-50 transform -translate-x-1/2',
-		'bg-background/60 backdrop-blur-xl border border-border/30',
-		'shadow-sm rounded-3xl',
+		'mobile-nav-base mobile-nav-docked',
+		'fixed bottom-0 left-0 right-0 z-50',
+		'bg-background/95 backdrop-blur-sm border-t border-border/50',
+		'shadow-lg',
 		'select-none', // Prevent text selection but allow touch
 		'transition-all duration-300 ease-out', // Smoother easing
-		showLabels 
-			? 'px-3 py-2 flex items-center gap-2' 
-			: 'px-4 py-2.5 flex items-center gap-3',
-		shouldShow ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95',
+		'flex items-center justify-around',
+		showLabels ? 'px-3 py-2' : 'px-3 py-2.5',
+		shouldShow ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0',
 		className
 	)}
-	data-testid="mobile-floating-nav"
+	data-testid="mobile-docked-nav"
 	aria-label="Mobile navigation"
 >
 	{#each pinnedItems as item (item.url)}

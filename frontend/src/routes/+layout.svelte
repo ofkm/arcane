@@ -15,6 +15,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
 	import MobileFloatingNav from '$lib/components/mobile-nav/mobile-floating-nav.svelte';
+	import MobileDockedNav from '$lib/components/mobile-nav/mobile-docked-nav.svelte';
 	import { mobileNavStore } from '$lib/stores/mobile-nav-store';
 	import { onMount } from 'svelte';
 
@@ -31,6 +32,7 @@
 	const isMobile = new IsMobile();
 	const isNavigating = $derived(navigating.type !== null);
 	const isOnboardingPage = $derived(String(page.url.pathname).startsWith('/onboarding'));
+	const navigationMode = $derived($mobileNavStore.appearanceSettings.mode);
 	const isLoginPage = $derived(
 		String(page.url.pathname) === '/login' ||
 			String(page.url.pathname).startsWith('/auth/login') ||
@@ -62,17 +64,29 @@
 	{:else if !isOnboardingPage && !isLoginPage}
 		{#if isMobile.current}
 			<main class="flex-1">
-				<section class="px-2 py-5 pb-24 sm:p-5">
+				<section 
+			class={`px-2 py-5 sm:p-5 ${navigationMode === 'docked' ? 'pb-6' : 'pb-24'}`}
+			style={navigationMode === 'docked' ? 'padding-bottom: max(1.5rem, calc(4rem + env(safe-area-inset-bottom)))' : ''}
+		>
 					{@render children()}
 				</section>
 			</main>
-			<!-- Mobile Floating Navigation -->
-			<MobileFloatingNav 
-				pinnedItems={$mobileNavStore.pinnedItems} 
-				visible={$mobileNavStore.visible}
-				{user}
-				{versionInformation}
-			/>
+			<!-- Mobile Navigation - Floating or Docked -->
+			{#if navigationMode === 'floating'}
+				<MobileFloatingNav 
+					pinnedItems={$mobileNavStore.pinnedItems} 
+					visible={$mobileNavStore.visible}
+					{user}
+					{versionInformation}
+				/>
+			{:else}
+				<MobileDockedNav 
+					pinnedItems={$mobileNavStore.pinnedItems} 
+					visible={$mobileNavStore.visible}
+					{user}
+					{versionInformation}
+				/>
+			{/if}
 		{:else}
 			<Sidebar.Provider>
 				<AppSidebar {versionInformation} {user} />

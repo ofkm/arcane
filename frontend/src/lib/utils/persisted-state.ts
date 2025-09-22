@@ -3,6 +3,7 @@ import type { Writable } from 'svelte/store';
 
 // Interface for navigation settings that can be overridden locally
 export interface NavigationSettings {
+	mode?: 'floating' | 'docked';
 	showLabels?: boolean;
 	scrollToHide?: boolean;
 	tapToHide?: boolean;
@@ -118,12 +119,13 @@ export const persistedNavigationStore = createPersistedNavigationStore();
  * Combines server settings with local overrides
  */
 export function getEffectiveNavigationSetting(
-	serverSettings: { [key: string]: boolean },
+	serverSettings: { [key: string]: any },
 	overrides: NavigationSettings,
 	key: keyof NavigationSettings
-): boolean {
+): any {
 	// Map internal keys to server setting keys
 	const serverKeyMap = {
+		mode: 'mobileNavigationMode',
 		showLabels: 'mobileNavigationShowLabels',
 		scrollToHide: 'mobileNavigationScrollToHide',
 		tapToHide: 'mobileNavigationTapToHide'
@@ -136,7 +138,14 @@ export function getEffectiveNavigationSetting(
 		return overrides[key]!;
 	}
 
-	return serverSettings[serverKey] ?? true; // Default to true
+	// Provide appropriate defaults based on key
+	if (key === 'mode') {
+		return serverSettings[serverKey] ?? 'floating';
+	}
+	if (key === 'tapToHide') {
+		return serverSettings[serverKey] ?? false;
+	}
+	return serverSettings[serverKey] ?? true; // Default to true for showLabels and scrollToHide
 }
 
 /**
@@ -145,14 +154,16 @@ export function getEffectiveNavigationSetting(
 export function createEffectiveNavigationSettings(serverSettingsStore: Writable<any>) {
 	return writable(
 		{
+			mode: 'floating',
 			showLabels: true,
 			scrollToHide: true,
-			tapToHide: true
+			tapToHide: false
 		},
 		(set) => {
 			const unsubscribeServer = serverSettingsStore.subscribe(serverSettings => {
 				const unsubscribePersisted = persistedNavigationStore.subscribe(persistedState => {
 					set({
+						mode: getEffectiveNavigationSetting(serverSettings, persistedState.overrides, 'mode'),
 						showLabels: getEffectiveNavigationSetting(serverSettings, persistedState.overrides, 'showLabels'),
 						scrollToHide: getEffectiveNavigationSetting(serverSettings, persistedState.overrides, 'scrollToHide'),
 						tapToHide: getEffectiveNavigationSetting(serverSettings, persistedState.overrides, 'tapToHide')

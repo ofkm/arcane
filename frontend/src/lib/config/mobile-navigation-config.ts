@@ -39,12 +39,23 @@ export type MobileNavPreferences = {
 	lastUpdated: number;
 };
 
-// Navigation behavior settings type
-export type NavigationBehaviorSettings = {
+// Navigation mode type
+export type NavigationMode = 'floating' | 'docked';
+
+// Navigation appearance settings type
+export type NavigationAppearanceSettings = {
+	mode: NavigationMode;
 	showLabels: boolean;
+};
+
+// Navigation behavior settings type  
+export type NavigationBehaviorSettings = {
 	scrollToHide: boolean;
 	tapToHide: boolean;
 };
+
+// Combined navigation settings
+export type NavigationSettings = NavigationAppearanceSettings & NavigationBehaviorSettings;
 
 // Default preferences
 export const defaultMobileNavPreferences: MobileNavPreferences = {
@@ -52,9 +63,20 @@ export const defaultMobileNavPreferences: MobileNavPreferences = {
 	lastUpdated: Date.now()
 };
 
+// Default navigation appearance settings
+export const defaultNavigationAppearanceSettings: NavigationAppearanceSettings = {
+	mode: 'floating',
+	showLabels: true
+};
+
 // Default navigation behavior settings
 export const defaultNavigationBehaviorSettings: NavigationBehaviorSettings = {
-	showLabels: true,
 	scrollToHide: true,
 	tapToHide: false
+};
+
+// Combined default navigation settings
+export const defaultNavigationSettings: NavigationSettings = {
+	...defaultNavigationAppearanceSettings,
+	...defaultNavigationBehaviorSettings
 };

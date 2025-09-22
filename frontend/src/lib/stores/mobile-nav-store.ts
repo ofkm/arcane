@@ -4,9 +4,14 @@ import {
 	defaultMobilePinnedItems, 
 	getAvailableMobileNavItems,
 	defaultMobileNavPreferences,
+	defaultNavigationAppearanceSettings,
 	defaultNavigationBehaviorSettings,
+	defaultNavigationSettings,
 	type MobileNavPreferences,
-	type NavigationBehaviorSettings
+	type NavigationAppearanceSettings,
+	type NavigationBehaviorSettings,
+	type NavigationSettings,
+	type NavigationMode
 } from '$lib/config/mobile-navigation-config';
 import { createEffectiveNavigationSettings } from '$lib/utils/persisted-state';
 import settingsStore from '$lib/stores/config-store';
@@ -18,7 +23,15 @@ function createMobileNavStore() {
 		visible: true,
 		menuOpen: false,
 		preferences: defaultMobileNavPreferences,
-		behaviorSettings: defaultNavigationBehaviorSettings
+		appearanceSettings: defaultNavigationAppearanceSettings,
+		behaviorSettings: defaultNavigationBehaviorSettings,
+		// Computed combined settings for backward compatibility
+		get combinedSettings(): NavigationSettings {
+			return {
+				...this.appearanceSettings,
+				...this.behaviorSettings
+			};
+		}
 	});
 
 	return {
@@ -39,9 +52,24 @@ function createMobileNavStore() {
 			...state, 
 			menuOpen: open 
 		})),
+		setAppearanceSettings: (settings: NavigationAppearanceSettings) => update(state => ({
+			...state,
+			appearanceSettings: settings
+		})),
 		setBehaviorSettings: (settings: NavigationBehaviorSettings) => update(state => ({
 			...state,
 			behaviorSettings: settings
+		})),
+		setCombinedSettings: (settings: NavigationSettings) => update(state => ({
+			...state,
+			appearanceSettings: {
+				mode: settings.mode,
+				showLabels: settings.showLabels
+			},
+			behaviorSettings: {
+				scrollToHide: settings.scrollToHide,
+				tapToHide: settings.tapToHide
+			}
 		})),
 		loadPreferences: () => {
 			try {
@@ -105,7 +133,14 @@ function createMobileNavStore() {
 			effectiveSettings.subscribe(settings => {
 				update(state => ({
 					...state,
-					behaviorSettings: settings
+					appearanceSettings: {
+						mode: settings.mode as NavigationMode,
+						showLabels: settings.showLabels
+					},
+					behaviorSettings: {
+						scrollToHide: settings.scrollToHide,
+						tapToHide: settings.tapToHide
+					}
 				}));
 			});
 		}

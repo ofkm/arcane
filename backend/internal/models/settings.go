@@ -65,6 +65,7 @@ type Settings struct {
 	OnboardingSteps     SettingVariable `key:"onboardingSteps"`
 
 	// Navigation
+	MobileNavigationMode         SettingVariable `key:"mobileNavigationMode,public"`
 	MobileNavigationShowLabels   SettingVariable `key:"mobileNavigationShowLabels,public"`
 	MobileNavigationScrollToHide SettingVariable `key:"mobileNavigationScrollToHide,public"`
 	MobileNavigationTapToHide    SettingVariable `key:"mobileNavigationTapToHide,public"`
