@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -65,6 +66,9 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.Up
 	if err := s.db.WithContext(ctx).Where("has_update = ?", true).Find(&records).Error; err != nil {
 		return nil, fmt.Errorf("query pending image updates: %w", err)
 	}
+	// debug: how many pending records and dryRun flag
+	slog.DebugContext(ctx, "ApplyPending: found pending image update records", "records", len(records), "dryRun", dryRun)
+
 	if len(records) == 0 {
 		out.Duration = time.Since(start).String()
 		return out, nil
@@ -85,6 +89,9 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.Up
 	}
 	var plans []updatePlan
 
+	// track all old image IDs we saw so we can prune them after restart
+	oldIDSet := map[string]struct{}{}
+
 	for _, r := range records {
 		if r.Repository == "" || r.Tag == "" {
 			continue
@@ -104,6 +111,11 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.Up
 		}
 
 		oldIDs, _ := s.resolveLocalImageIDsForRef(ctx, oldRef)
+		for _, id := range oldIDs {
+			if id != "" {
+				oldIDSet[id] = struct{}{}
+			}
+		}
 		plans = append(plans, updatePlan{oldRef: oldRef, newRef: newRef, oldIDs: oldIDs})
 	}
 
@@ -217,10 +229,16 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.Up
 				"error":        r.Error,
 			})
 		}
+	}
 
-		// Redeploy impacted projects (only running ones)
-		if err := s.redeployProjectsUsingOldIDs(ctx, oldIDToNewRef, out); err != nil {
-			slog.Warn("project redeploys had errors", "err", err)
+	// Prune old images that are no longer used
+	if !dryRun && len(oldIDSet) > 0 {
+		ids := make([]string, 0, len(oldIDSet))
+		for id := range oldIDSet {
+			ids = append(ids, id)
+		}
+		if err := s.pruneImageIDs(ctx, ids); err != nil {
+			slog.Warn("image prune failed", "err", err)
 		}
 	}
 
@@ -268,6 +286,53 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.Up
 	return out, nil
 }
 
+func (s *UpdaterService) pruneImageIDs(ctx context.Context, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	slog.DebugContext(ctx, "pruneImageIDs: attempting to prune image ids", "count", len(ids))
+
+	dcli, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return fmt.Errorf("docker connect: %w", err)
+	}
+	defer dcli.Close()
+
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+
+		slog.DebugContext(ctx, "pruneImageIDs: checking image id", "imageId", id)
+
+		inUse, err := s.anyImageIDsStillInUse(ctx, []string{id})
+		if err != nil {
+			slog.Warn("check image usage failed", "imageId", id, "err", err)
+			continue
+		}
+		if inUse {
+			slog.DebugContext(ctx, "pruneImageIDs: image still in use, skipping", "imageId", id)
+			// still referenced by a container; skip
+			continue
+		}
+
+		if _, err := dcli.ImageRemove(ctx, id, image.RemoveOptions{PruneChildren: true}); err != nil {
+			slog.Warn("image remove failed", "imageId", id, "err", err)
+			continue
+		}
+
+		s.logAutoUpdate(ctx, models.EventSeverityInfo, models.JSON{
+			"phase":   "image_prune",
+			"imageId": id,
+			"status":  "removed",
+		})
+		slog.DebugContext(ctx, "pruneImageIDs: image removed", "imageId", id)
+	}
+
+	return nil
+}
+
 func (s *UpdaterService) GetStatus() map[string]any {
 	containerIDs := make([]string, 0, len(s.updatingContainers))
 	for id := range s.updatingContainers {
@@ -308,15 +373,18 @@ func (s *UpdaterService) updateContainer(ctx context.Context, cnt container.Summ
 	defer dcli.Close()
 
 	name := s.getContainerName(cnt)
+	slog.DebugContext(ctx, "updateContainer: starting update", "containerId", cnt.ID, "containerName", name, "newRef", newRef)
 
 	// stop
 	if err := dcli.ContainerStop(ctx, cnt.ID, container.StopOptions{}); err != nil {
+		slog.DebugContext(ctx, "updateContainer: stop failed", "containerId", cnt.ID, "err", err)
 		return fmt.Errorf("stop: %w", err)
 	}
 	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerStop, cnt.ID, name, systemUser.ID, systemUser.Username, "0", models.JSON{"action": "updater_stop"})
 
 	// remove
 	if err := dcli.ContainerRemove(ctx, cnt.ID, container.RemoveOptions{}); err != nil {
+		slog.DebugContext(ctx, "updateContainer: remove failed", "containerId", cnt.ID, "err", err)
 		return fmt.Errorf("remove: %w", err)
 	}
 	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerDelete, cnt.ID, name, systemUser.ID, systemUser.Username, "0", models.JSON{"action": "updater_delete"})
@@ -326,15 +394,18 @@ func (s *UpdaterService) updateContainer(ctx context.Context, cnt container.Summ
 	cfg.Image = newRef
 	resp, err := dcli.ContainerCreate(ctx, cfg, inspect.HostConfig, &network.NetworkingConfig{EndpointsConfig: inspect.NetworkSettings.Networks}, nil, inspect.Name)
 	if err != nil {
+		slog.DebugContext(ctx, "updateContainer: create failed", "containerName", inspect.Name, "err", err)
 		return fmt.Errorf("create: %w", err)
 	}
 	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerCreate, resp.ID, name, systemUser.ID, systemUser.Username, "0", models.JSON{"action": "updater_create", "newImageId": resp.ID})
 
 	if err := dcli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+		slog.DebugContext(ctx, "updateContainer: start failed", "newContainerId", resp.ID, "err", err)
 		return fmt.Errorf("start: %w", err)
 	}
 	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerStart, resp.ID, name, systemUser.ID, systemUser.Username, "0", models.JSON{"action": "updater_start"})
 
+	slog.DebugContext(ctx, "updateContainer: update complete", "oldContainerId", cnt.ID, "newContainerId", resp.ID)
 	return nil
 }
 
@@ -411,15 +482,19 @@ func (s *UpdaterService) collectUsedImagesFromContainers(ctx context.Context, dc
 	if err != nil {
 		return err
 	}
+	slog.DebugContext(ctx, "collectUsedImagesFromContainers: container list fetched", "count", len(list))
 	for _, c := range list {
 		if s.isUpdateDisabled(c.Labels) {
+			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container opted out by labels", "containerId", c.ID)
 			continue
 		}
 		inspect, err := dcli.ContainerInspect(ctx, c.ID)
 		if err != nil {
+			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container inspect failed", "containerId", c.ID, "err", err)
 			continue
 		}
 		if inspect.Config != nil && s.isUpdateDisabled(inspect.Config.Labels) {
+			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container inspect labels opted out", "containerId", c.ID)
 			continue
 		}
 		for _, t := range s.getNormalizedTagsForContainer(ctx, dcli, inspect) {
@@ -452,11 +527,15 @@ func (s *UpdaterService) collectUsedImages(ctx context.Context) (map[string]stru
 	dcli, err := s.dockerService.CreateConnection(ctx)
 	if err == nil && dcli != nil {
 		defer dcli.Close()
+		slog.DebugContext(ctx, "collectUsedImages: docker connection created")
+	} else {
+		slog.DebugContext(ctx, "collectUsedImages: docker connection not available, continuing without container list", "err", err)
 	}
 
 	_ = s.collectUsedImagesFromContainers(ctx, dcli, out)
 	_ = s.collectUsedImagesFromProjects(ctx, dcli, out)
 
+	slog.DebugContext(ctx, "collectUsedImages: collected used images", "count", len(out))
 	return out, nil
 }
 
@@ -501,12 +580,15 @@ func (s *UpdaterService) getNormalizedTagsForContainer(ctx context.Context, dcli
 	// Prefer tags from the image object (handles sha256 IDs)
 	if dcli != nil {
 		if ii, err := dcli.ImageInspect(ctx, inspect.Image); err == nil {
+			slog.DebugContext(ctx, "getNormalizedTagsForContainer: image inspect success", "imageId", inspect.Image, "repoTags", len(ii.RepoTags))
 			for _, tag := range ii.RepoTags {
 				if tag == "<none>:<none>" || tag == "" {
 					continue
 				}
 				seen[s.normalizeRef(tag)] = struct{}{}
 			}
+		} else {
+			slog.DebugContext(ctx, "getNormalizedTagsForContainer: image inspect failed", "imageId", inspect.Image, "err", err)
 		}
 	}
 
@@ -518,6 +600,7 @@ func (s *UpdaterService) getNormalizedTagsForContainer(ctx context.Context, dcli
 	for k := range seen {
 		out = append(out, k)
 	}
+	slog.DebugContext(ctx, "getNormalizedTagsForContainer: normalized tags", "count", len(out))
 	return out
 }
 
@@ -568,20 +651,11 @@ func (s *UpdaterService) recordRun(ctx context.Context, item dto.UpdaterItem) er
 	return s.db.WithContext(ctx).Create(rec).Error
 }
 
-func (s *UpdaterService) isProjectManaged(labels map[string]string) bool {
-	if labels == nil {
-		return false
-	}
-	// Compose project label
-	if _, ok := labels["com.docker.compose.project"]; ok {
-		return true
-	}
-	return false
-}
-
 // Resolve the local image ID(s) currently referenced by ref (repo:tag) before we pull.
 // Returns IDs like "sha256:...".
 func (s *UpdaterService) resolveLocalImageIDsForRef(ctx context.Context, ref string) ([]string, error) {
+	slog.DebugContext(ctx, "resolveLocalImageIDsForRef: resolving local image ids for ref", "ref", ref)
+
 	dcli, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return nil, err
@@ -592,6 +666,7 @@ func (s *UpdaterService) resolveLocalImageIDsForRef(ctx context.Context, ref str
 	if ii, err := dcli.ImageInspect(ctx, ref); err == nil && ii.ID != "" {
 		ids = append(ids, ii.ID)
 	}
+	slog.DebugContext(ctx, "resolveLocalImageIDsForRef: resolved ids", "ref", ref, "ids", ids)
 	return ids, nil
 }
 
@@ -606,13 +681,10 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 	if err != nil {
 		return nil, fmt.Errorf("list containers: %w", err)
 	}
+	slog.DebugContext(ctx, "restartContainersUsingOldIDs: scanning containers for matching images", "containers", len(list), "oldIDMatches", len(oldIDToNewRef), "oldRefMatches", len(oldRefToNewRef))
 
 	var results []dto.AutoUpdateResourceResult
 	for _, c := range list {
-		// Skip project-managed containers; projects handled separately
-		if s.isProjectManaged(c.Labels) {
-			continue
-		}
 		// Skip containers with opt-out label
 		if s.isUpdateDisabled(c.Labels) {
 			continue
@@ -654,6 +726,8 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 			}
 		}
 
+		slog.DebugContext(ctx, "restartContainersUsingOldIDs: matched container for update", "containerId", c.ID, "match", match, "newRef", newRef)
+
 		name := s.getContainerName(c)
 		res := dto.AutoUpdateResourceResult{
 			ResourceID:   c.ID,
@@ -667,134 +741,17 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 		if err := s.updateContainer(ctx, c, inspect, newRef); err != nil {
 			res.Status = "failed"
 			res.Error = err.Error()
+			slog.DebugContext(ctx, "restartContainersUsingOldIDs: update failed", "containerId", c.ID, "err", err)
 		} else {
 			res.Status = "updated"
 			res.UpdateAvailable = true
 			res.UpdateApplied = true
+			slog.DebugContext(ctx, "restartContainersUsingOldIDs: update succeeded", "containerId", c.ID)
 		}
 		results = append(results, res)
 	}
+	slog.DebugContext(ctx, "restartContainersUsingOldIDs: completed scanning", "results", len(results))
 	return results, nil
-}
-
-func (s *UpdaterService) redeployProjectsUsingOldIDs(ctx context.Context, oldIDToNewRef map[string]string, out *dto.UpdaterRunResult) error {
-	if s.projectService == nil {
-		return nil
-	}
-
-	projects, err := s.projectService.ListAllProjects(ctx)
-	if err != nil {
-		return fmt.Errorf("list projects: %w", err)
-	}
-
-	dcli, derr := s.dockerService.CreateConnection(ctx)
-	if derr != nil {
-		return fmt.Errorf("docker connect: %w", derr)
-	}
-	defer dcli.Close()
-
-	for _, p := range projects {
-		// Only redeploy projects that are currently running (or partially)
-		if p.Status != models.ProjectStatusRunning && p.Status != models.ProjectStatusPartiallyRunning {
-			out.Items = append(out.Items, dto.UpdaterItem{
-				ResourceID:   p.ID,
-				ResourceType: "project",
-				ResourceName: p.Name,
-				Status:       "skipped",
-			})
-			out.Skipped++
-			out.Checked++
-			continue
-		}
-
-		containers, lerr := s.getProjectContainers(ctx, dcli, p.Name)
-		if lerr != nil {
-			slog.Warn("list project containers failed", "project", p.Name, "err", lerr)
-			continue
-		}
-
-		// Skip entire project if any container declares the opt-out label
-		skip := false
-		for _, c := range containers {
-			if s.isUpdateDisabled(c.Labels) {
-				skip = true
-				break
-			}
-		}
-		if skip {
-			out.Items = append(out.Items, dto.UpdaterItem{
-				ResourceID:   p.ID,
-				ResourceType: "project",
-				ResourceName: p.Name,
-				Status:       "skipped",
-			})
-			out.Skipped++
-			out.Checked++
-			s.logAutoUpdate(ctx, models.EventSeverityInfo, models.JSON{
-				"phase":       "project",
-				"projectId":   p.ID,
-				"projectName": p.Name,
-				"status":      "skipped",
-				"reason":      "com.ofkm.arcane.updater=false",
-			})
-			continue
-		}
-
-		impacted := false
-		for _, c := range containers {
-			inspect, ierr := dcli.ContainerInspect(ctx, c.ID)
-			if ierr != nil {
-				continue
-			}
-			if _, ok := oldIDToNewRef[inspect.Image]; ok {
-				impacted = true
-				break
-			}
-		}
-
-		if !impacted {
-			out.Items = append(out.Items, dto.UpdaterItem{
-				ResourceID:   p.ID,
-				ResourceType: "project",
-				ResourceName: p.Name,
-				Status:       "skipped",
-			})
-			out.Skipped++
-			out.Checked++
-			continue
-		}
-
-		item := dto.UpdaterItem{
-			ResourceID:   p.ID,
-			ResourceType: "project",
-			ResourceName: p.Name,
-			Status:       "checked",
-		}
-		out.Checked++
-
-		// Redeploy with ProjectService (handles pull/down/up internally)
-		if err := s.projectService.RedeployProject(ctx, p.ID, systemUser); err != nil {
-			item.Status = "failed"
-			item.Error = err.Error()
-			out.Failed++
-		} else {
-			item.Status = "updated"
-			item.UpdateApplied = true
-			out.Updated++
-		}
-		out.Items = append(out.Items, item)
-		_ = s.recordRun(ctx, item)
-
-		// Emit auto-update project event
-		s.logAutoUpdate(ctx, s.severityFromStatus(item.Status), models.JSON{
-			"phase":       "project",
-			"projectId":   p.ID,
-			"projectName": p.Name,
-			"status":      item.Status,
-			"error":       item.Error,
-		})
-	}
-	return nil
 }
 
 func (s *UpdaterService) getProjectContainers(ctx context.Context, dcli *client.Client, projectName string) ([]container.Summary, error) {
@@ -837,6 +794,13 @@ func (s *UpdaterService) logAutoUpdate(ctx context.Context, sev models.EventSeve
 			title = fmt.Sprintf("Auto-update: image pull %s", img)
 		} else {
 			title = "Auto-update: image pull"
+		}
+	case "image_prune":
+		imageID := fmt.Sprint(metadata["imageId"])
+		if imageID != "" {
+			title = fmt.Sprintf("Auto-update: image prune %s", imageID)
+		} else {
+			title = "Auto-update: image prune"
 		}
 	case "container":
 		name := fmt.Sprint(metadata["container"])
@@ -899,6 +863,8 @@ func (s *UpdaterService) anyImageIDsStillInUse(ctx context.Context, ids []string
 		}
 	}
 
+	slog.DebugContext(ctx, "anyImageIDsStillInUse: checking ids", "ids", ids)
+
 	dcli, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return false, fmt.Errorf("docker connect: %w", err)
@@ -915,9 +881,11 @@ func (s *UpdaterService) anyImageIDsStillInUse(ctx context.Context, ids []string
 			continue
 		}
 		if _, ok := set[inspect.Image]; ok {
+			slog.DebugContext(ctx, "anyImageIDsStillInUse: image still used by container", "imageId", inspect.Image, "containerId", c.ID)
 			return true, nil
 		}
 	}
+	slog.DebugContext(ctx, "anyImageIDsStillInUse: no matching usage found")
 	return false, nil
 }
 

@@ -1,5 +1,3 @@
 {
-    "recommendations": [
-        "actboy168.tasks"
-    ]
+  "recommendations": ["actboy168.tasks", "svelte.svelte-vscode", "golang.go"]
 }

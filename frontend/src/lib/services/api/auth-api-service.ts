@@ -37,7 +37,7 @@ export class AuthService extends BaseAPIService {
 			userStore.setUser(user);
 
 			return user;
-		} catch (error) {
+		} catch {
 			// Clear user from store on error
 			userStore.clearUser();
 			return null;

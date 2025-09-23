@@ -3,6 +3,7 @@ package middleware
 import (
 	"log/slog"
 	"net/url"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -55,10 +56,15 @@ func deriveAllowedOrigins(cfg *config.Config, custom []string) []string {
 	}
 
 	var origins []string
-	// App URL if set
 	if cfg != nil && cfg.AppUrl != "" {
-		if u, err := url.Parse(cfg.AppUrl); err == nil {
+		appURL := cfg.AppUrl
+		if !strings.HasPrefix(appURL, "http://") && !strings.HasPrefix(appURL, "https://") {
+			appURL = "https://" + appURL
+		}
+		if u, err := url.Parse(appURL); err == nil {
 			origins = append(origins, u.Scheme+"://"+u.Host)
+		} else {
+			slog.Warn("Failed to parse APP_URL for CORS origins", "url", cfg.AppUrl, "error", err)
 		}
 	}
 

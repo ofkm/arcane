@@ -4,14 +4,14 @@ ARG VERSION="dev"
 ARG REVISION="unknown"
 
 # Stage 1: Build Frontend
-FROM node:24 AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 RUN corepack enable
 WORKDIR /build
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/package.json
 COPY frontend ./frontend
 
-RUN pnpm -C frontend install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.pnpm-store pnpm -C frontend install --frozen-lockfile
 ENV BUILD_PATH=dist
 RUN pnpm -C frontend build
 
@@ -21,13 +21,13 @@ ARG BUILD_TAGS
 ARG VERSION
 ARG REVISION
 WORKDIR /build
-RUN apk add --no-cache git ca-certificates tzdata curl
+RUN apk add --no-cache ca-certificates curl git tzdata
 COPY ./backend/go.mod ./backend/go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY ./backend ./
 COPY --from=frontend-builder /build/frontend/dist ./frontend/dist
 
-RUN CGO_ENABLED=0 \
+RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 \
     GOOS=linux \
     go build \
     -tags "${BUILD_TAGS}" \

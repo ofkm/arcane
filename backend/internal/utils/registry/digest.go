@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -32,6 +33,21 @@ func getHeaderCI(h http.Header, key string) string {
 	return ""
 }
 
+func extractDigestFromHeaders(h http.Header) string {
+	d := getHeaderCI(h, ContentDigestHeader)
+	if d != "" {
+		return d
+	}
+	etag := getHeaderCI(h, "ETag")
+	if etag != "" {
+		etag = strings.Trim(etag, `"`)
+		if strings.HasPrefix(etag, "sha256:") {
+			return etag
+		}
+	}
+	return ""
+}
+
 func (c *Client) GetLatestDigest(ctx context.Context, registry, repository, tag, token string) (string, error) {
 	url := fmt.Sprintf("%s/v2/%s/manifests/%s", c.GetRegistryURL(registry), repository, tag)
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -53,15 +69,43 @@ func (c *Client) GetLatestDigest(ctx context.Context, registry, repository, tag,
 		req.Header.Set("Authorization", ah)
 	}
 
+	start := time.Now()
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 
+	// If HEAD isn't supported by the registry, fall back to GET and try again.
+	if resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden {
+		slog.DebugContext(ctx, "HEAD not supported or returned unexpected status, retrying with GET",
+			slog.String("url", url),
+			slog.Int("status", resp.StatusCode))
+		// create GET request
+		getReq, rerr := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if rerr != nil {
+			return "", rerr
+		}
+		getReq.Header = req.Header.Clone()
+		getResp, derr := c.http.Do(getReq)
+		if derr != nil {
+			return "", derr
+		}
+		defer getResp.Body.Close()
+		resp = getResp
+	}
+
+	elapsed := time.Since(start)
+	slog.DebugContext(ctx, "manifest request completed",
+		slog.String("url", url),
+		slog.Int("status", resp.StatusCode),
+		slog.Duration("elapsed", elapsed))
+
 	if resp.StatusCode == http.StatusUnauthorized {
 		h := getHeaderCI(resp.Header, "WWW-Authenticate")
 		if h != "" {
+			slog.DebugContext(ctx, "manifest request unauthorized",
+				slog.String("www-authenticate", h))
 			return "", fmt.Errorf("unauthorized: %s", h)
 		}
 		return "", fmt.Errorf("manifest request failed with status: 401")
@@ -71,22 +115,23 @@ func (c *Client) GetLatestDigest(ctx context.Context, registry, repository, tag,
 		if www == "" {
 			www = "not present"
 		}
+		slog.DebugContext(ctx, "manifest request unexpected status",
+			slog.String("www-authenticate", www))
 		return "", fmt.Errorf("manifest request failed with status: %d, auth: %q", resp.StatusCode, www)
 	}
 
-	d := getHeaderCI(resp.Header, ContentDigestHeader)
-	if d == "" {
-		etag := getHeaderCI(resp.Header, "ETag")
-		if etag != "" {
-			etag = strings.Trim(etag, `"`)
-			if strings.HasPrefix(etag, "sha256:") {
-				d = etag
-			}
-		}
-	}
+	d := extractDigestFromHeaders(resp.Header)
 	if d == "" {
 		return "", fmt.Errorf("no digest header found in response")
 	}
+
+	slog.DebugContext(ctx, "resolved remote digest",
+		slog.String("registry", registry),
+		slog.String("repository", repository),
+		slog.String("tag", tag),
+		slog.String("digest", d),
+		slog.Duration("elapsed", elapsed))
+
 	return d, nil
 }
 

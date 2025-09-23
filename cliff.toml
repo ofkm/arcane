@@ -17,7 +17,6 @@ commit_parsers = [
         { message = "^docs", group = "<!-- 3 --> Documentation", default_scope = "other" },
         { message = "^release", skip = true },
         { message = "update translations via Crowdin", skip = true },
-        { message = "^chore\\(deps\\)", group = "<!-- 4 --> Dependencies" },
         { message = ".*", group = "<!-- 5 --> Other", default_scope = "other"},
 ]
 filter_commits = false
