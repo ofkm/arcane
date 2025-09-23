@@ -116,7 +116,7 @@
 		isLoading.loadingImages = true;
 
 		const [dockerInfoResult, settingsResult, imagesResult, statusCountsResult] = await Promise.allSettled([
-			tryCatch(systemAPI.getDockerInfo()),
+			tryCatch(environmentAPI.getDockerInfo()),
 			tryCatch(settingsAPI.getSettings()),
 			tryCatch(environmentAPI.getImages(imageRequestOptions)),
 			tryCatch(environmentAPI.getContainerStatusCounts())
