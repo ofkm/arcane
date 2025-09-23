@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"runtime" // added
 	"strings"
 	"time"
 
@@ -17,6 +18,10 @@ import (
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
 
 	wsutil "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
@@ -54,97 +59,96 @@ func NewEnvironmentHandler(
 	authMiddleware *middleware.AuthMiddleware,
 	cfg *config.Config,
 ) {
-
-	handler := &EnvironmentHandler{
+	h := &EnvironmentHandler{
 		environmentService: environmentService,
 		containerService:   containerService,
 		imageService:       imageService,
-		imageUpdateService: imageUpdateService,
-		updaterService:     updaterService,
 		networkService:     networkService,
 		volumeService:      volumeService,
 		projectService:     projectService,
 		settingsService:    settingsService,
+		imageUpdateService: imageUpdateService,
+		updaterService:     updaterService,
 		systemService:      systemService,
 		dockerService:      dockerService,
 		cfg:                cfg,
 	}
 
 	apiGroup := group.Group("/environments")
-
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
-		apiGroup.GET("", handler.ListEnvironments)
-		apiGroup.POST("", handler.CreateEnvironment)
-		apiGroup.GET("/:id", handler.GetEnvironment)
-		apiGroup.PUT("/:id", handler.UpdateEnvironment)
-		apiGroup.DELETE("/:id", handler.DeleteEnvironment)
-		apiGroup.POST("/:id/test", handler.TestConnection)
-		apiGroup.POST("/:id/heartbeat", handler.UpdateHeartbeat)
+		apiGroup.GET("", h.ListEnvironments)
+		apiGroup.POST("", h.CreateEnvironment)
+		apiGroup.GET("/:id", h.GetEnvironment)
+		apiGroup.PUT("/:id", h.UpdateEnvironment)
+		apiGroup.DELETE("/:id", h.DeleteEnvironment)
+		apiGroup.POST("/:id/test", h.TestConnection)
+		apiGroup.POST("/:id/heartbeat", h.UpdateHeartbeat)
 
-		apiGroup.GET("/:id/containers/counts", handler.GetContainerStatusCounts)
-		apiGroup.POST("/:id/containers", handler.CreateContainer)
-		apiGroup.GET("/:id/containers", handler.GetContainers)
-		apiGroup.GET("/:id/containers/:containerId", handler.GetContainer)
-		apiGroup.POST("/:id/containers/:containerId/pull", handler.PullContainerImage)
-		apiGroup.POST("/:id/containers/:containerId/start", handler.StartContainer)
-		apiGroup.POST("/:id/containers/:containerId/stop", handler.StopContainer)
-		apiGroup.POST("/:id/containers/:containerId/restart", handler.RestartContainer)
-		apiGroup.DELETE("/:id/containers/:containerId", handler.RemoveContainer)
-		apiGroup.GET("/:id/containers/:containerId/logs", handler.GetContainerLogs)
-		apiGroup.GET("/:id/containers/:containerId/stats", handler.GetContainerStats)
-		apiGroup.GET("/:id/containers/:containerId/stats/stream", handler.GetContainerStatsStream)
-		apiGroup.GET("/:id/containers/:containerId/logs/ws", handler.GetContainerLogsWS)
+		apiGroup.GET("/:id/containers/counts", h.GetContainerStatusCounts)
+		apiGroup.POST("/:id/containers", h.CreateContainer)
+		apiGroup.GET("/:id/containers", h.GetContainers)
+		apiGroup.GET("/:id/containers/:containerId", h.GetContainer)
+		apiGroup.POST("/:id/containers/:containerId/pull", h.PullContainerImage)
+		apiGroup.POST("/:id/containers/:containerId/start", h.StartContainer)
+		apiGroup.POST("/:id/containers/:containerId/stop", h.StopContainer)
+		apiGroup.POST("/:id/containers/:containerId/restart", h.RestartContainer)
+		apiGroup.DELETE("/:id/containers/:containerId", h.RemoveContainer)
+		apiGroup.GET("/:id/containers/:containerId/logs", h.GetContainerLogs)
+		apiGroup.GET("/:id/containers/:containerId/stats", h.GetContainerStats)
+		apiGroup.GET("/:id/containers/:containerId/stats/stream", h.GetContainerStatsStream)
+		apiGroup.GET("/:id/containers/:containerId/logs/ws", h.GetContainerLogsWS)
 
-		apiGroup.GET("/:id/images", handler.GetImages)
-		apiGroup.GET("/:id/images/:imageId", handler.GetImage)
-		apiGroup.DELETE("/:id/images/:imageId", handler.RemoveImage)
-		apiGroup.POST("/:id/images/pull", handler.PullImage)
-		apiGroup.POST("/:id/images/prune", handler.PruneImages)
-		apiGroup.GET("/:id/images/counts", handler.GetImageUsageCounts)
+		apiGroup.GET("/:id/images", h.GetImages)
+		apiGroup.GET("/:id/images/:imageId", h.GetImage)
+		apiGroup.DELETE("/:id/images/:imageId", h.RemoveImage)
+		apiGroup.POST("/:id/images/pull", h.PullImage)
+		apiGroup.POST("/:id/images/prune", h.PruneImages)
+		apiGroup.GET("/:id/images/counts", h.GetImageUsageCounts)
 
-		apiGroup.GET("/:id/networks/counts", handler.GetNetworkUsageCounts)
-		apiGroup.GET("/:id/networks", handler.GetNetworks)
-		apiGroup.POST("/:id/networks", handler.CreateNetwork)
-		apiGroup.GET("/:id/networks/:networkId", handler.GetNetwork)
-		apiGroup.DELETE("/:id/networks/:networkId", handler.RemoveNetwork)
+		apiGroup.GET("/:id/networks/counts", h.GetNetworkUsageCounts)
+		apiGroup.GET("/:id/networks", h.GetNetworks)
+		apiGroup.POST("/:id/networks", h.CreateNetwork)
+		apiGroup.GET("/:id/networks/:networkId", h.GetNetwork)
+		apiGroup.DELETE("/:id/networks/:networkId", h.RemoveNetwork)
 
-		apiGroup.GET("/:id/volumes/counts", handler.GetVolumeUsageCounts)
-		apiGroup.GET("/:id/volumes", handler.GetVolumes)
-		apiGroup.POST("/:id/volumes", handler.CreateVolume)
-		apiGroup.GET("/:id/volumes/:volumeName", handler.GetVolume)
-		apiGroup.DELETE("/:id/volumes/:volumeName", handler.RemoveVolume)
-		apiGroup.GET("/:id/volumes/:volumeName/usage", handler.GetVolumeUsage)
-		apiGroup.POST("/:id/volumes/prune", handler.PruneVolumes)
+		apiGroup.GET("/:id/volumes/counts", h.GetVolumeUsageCounts)
+		apiGroup.GET("/:id/volumes", h.GetVolumes)
+		apiGroup.POST("/:id/volumes", h.CreateVolume)
+		apiGroup.GET("/:id/volumes/:volumeName", h.GetVolume)
+		apiGroup.DELETE("/:id/volumes/:volumeName", h.RemoveVolume)
+		apiGroup.GET("/:id/volumes/:volumeName/usage", h.GetVolumeUsage)
+		apiGroup.POST("/:id/volumes/prune", h.PruneVolumes)
 
-		apiGroup.GET("/:id/projects", handler.ListProjects)
-		apiGroup.POST("/:id/projects/:projectId/up", handler.ProjectUp)
-		apiGroup.POST("/:id/projects/:projectId/down", handler.ProjectDown)
-		apiGroup.POST("/:id/projects", handler.ProjectCreate)
-		apiGroup.GET("/:id/projects/:projectId", handler.GetProject)
-		apiGroup.POST("/:id/projects/:projectId/pull", handler.PullProjectImages)
-		apiGroup.POST("/:id/projects/:projectId/redeploy", handler.RedeployProject)
-		apiGroup.DELETE("/:id/projects/:projectId/destroy", handler.DestroyProject)
-		apiGroup.PUT("/:id/projects/:projectId", handler.UpdateProject)
-		apiGroup.POST("/:id/projects/:projectId/restart", handler.RestartProject)
-		apiGroup.GET("/:id/projects/counts", handler.GetProjectCounts)
-		apiGroup.GET("/:id/projects/:projectId/logs/ws", handler.GetProjectLogsWS)
+		apiGroup.GET("/:id/projects", h.ListProjects)
+		apiGroup.POST("/:id/projects/:projectId/up", h.ProjectUp)
+		apiGroup.POST("/:id/projects/:projectId/down", h.ProjectDown)
+		apiGroup.POST("/:id/projects", h.ProjectCreate)
+		apiGroup.GET("/:id/projects/:projectId", h.GetProject)
+		apiGroup.POST("/:id/projects/:projectId/pull", h.PullProjectImages)
+		apiGroup.POST("/:id/projects/:projectId/redeploy", h.RedeployProject)
+		apiGroup.DELETE("/:id/projects/:projectId/destroy", h.DestroyProject)
+		apiGroup.PUT("/:id/projects/:projectId", h.UpdateProject)
+		apiGroup.POST("/:id/projects/:projectId/restart", h.RestartProject)
+		apiGroup.GET("/:id/projects/counts", h.GetProjectCounts)
+		apiGroup.GET("/:id/projects/:projectId/logs/ws", h.GetProjectLogsWS)
 
-		apiGroup.GET("/:id/image-updates/check", handler.CheckImageUpdate)
-		apiGroup.GET("/:id/image-updates/check/:imageId", handler.CheckImageUpdateByID)
-		apiGroup.GET("/:id/image-updates/check-all", handler.CheckAllImages)
-		apiGroup.GET("/:id/image-updates/summary", handler.GetUpdateSummary)
-		apiGroup.GET("/:id/image-updates/versions", handler.GetImageVersions)
-		apiGroup.POST("/:id/image-updates/compare", handler.CompareVersions)
+		apiGroup.GET("/:id/image-updates/check", h.CheckImageUpdate)
+		apiGroup.GET("/:id/image-updates/check/:imageId", h.CheckImageUpdateByID)
+		apiGroup.GET("/:id/image-updates/check-all", h.CheckAllImages)
+		apiGroup.GET("/:id/image-updates/summary", h.GetUpdateSummary)
+		apiGroup.GET("/:id/image-updates/versions", h.GetImageVersions)
+		apiGroup.POST("/:id/image-updates/compare", h.CompareVersions)
 
-		apiGroup.POST("/:id/updater/run", handler.UpdaterRun)
-		apiGroup.GET("/:id/updater/status", handler.UpdaterStatus)
-		apiGroup.GET("/:id/updater/history", handler.UpdaterHistory)
+		apiGroup.POST("/:id/updater/run", h.UpdaterRun)
+		apiGroup.GET("/:id/updater/status", h.UpdaterStatus)
+		apiGroup.GET("/:id/updater/history", h.UpdaterHistory)
 
-		apiGroup.POST("/:id/agent/pair", handler.PairAgent)
+		apiGroup.POST("/:id/agent/pair", h.PairAgent)
 
-		apiGroup.GET("/:id/stats/ws", handler.GetStatsWS)
-		apiGroup.GET("/:id/docker/info", handler.GetDockerInfo)
+		apiGroup.GET("/:id/stats/ws", h.GetStatsWS)
+
+		apiGroup.GET("/:id/docker/info", h.GetDockerInfo)
 	}
 }
 
@@ -1011,20 +1015,98 @@ func (h *EnvironmentHandler) GetContainerLogsWS(c *gin.Context) {
 
 func (h *EnvironmentHandler) GetStatsWS(c *gin.Context) {
 	envID := c.Param("id")
-	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
-		agentToken := ""
-		if h.cfg != nil && h.cfg.AgentMode && h.cfg.AgentToken != "" {
-			agentToken = h.cfg.AgentToken
-		}
-		target, hdr := h.environmentService.BuildLocalWSTarget(c.Request, "/api/system/stats/ws", agentToken)
-		_ = wsutil.ProxyHTTP(c.Writer, c.Request, target, hdr)
-		return
+	if envID == "" {
+		envID = LOCAL_DOCKER_ENVIRONMENT_ID
 	}
+
+	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
+		conn, err := sysWsUpgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+
+		var lastCPU float64
+
+		send := func(block bool) error {
+			var cpuUsage float64
+			if block {
+				if vals, err := cpu.Percent(time.Second, false); err == nil && len(vals) > 0 {
+					cpuUsage = vals[0]
+					lastCPU = cpuUsage
+				} else {
+					cpuUsage = lastCPU
+				}
+			} else {
+				cpuUsage = lastCPU
+			}
+
+			cpuCount, err := cpu.Counts(true)
+			if err != nil {
+				cpuCount = runtime.NumCPU()
+			}
+
+			memInfo, _ := mem.VirtualMemory()
+			var memUsed, memTotal uint64
+			if memInfo != nil {
+				memUsed = memInfo.Used
+				memTotal = memInfo.Total
+			}
+
+			diskInfo, _ := disk.Usage("/")
+			var diskUsed, diskTotal uint64
+			if diskInfo != nil {
+				diskUsed = diskInfo.Used
+				diskTotal = diskInfo.Total
+			}
+
+			hostInfo, _ := host.Info()
+			var hostname string
+			if hostInfo != nil {
+				hostname = hostInfo.Hostname
+			}
+
+			stats := SystemStats{
+				CPUUsage:     cpuUsage,
+				MemoryUsage:  memUsed,
+				MemoryTotal:  memTotal,
+				DiskUsage:    diskUsed,
+				DiskTotal:    diskTotal,
+				CPUCount:     cpuCount,
+				Architecture: runtime.GOARCH,
+				Platform:     runtime.GOOS,
+				Hostname:     hostname,
+			}
+
+			_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			return conn.WriteJSON(stats)
+		}
+
+		if err := send(true); err != nil {
+			return
+		}
+
+		for {
+			select {
+			case <-c.Request.Context().Done():
+				return
+			case <-ticker.C:
+				if err := send(true); err != nil {
+					return
+				}
+			}
+		}
+	}
+
 	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
 	if err != nil || environment == nil || !environment.Enabled {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
 		return
 	}
+
 	target, hdr, err := h.environmentService.BuildRemoteWSTarget(environment, "/api/environments/0/stats/ws", c.Request)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": err.Error()}})
