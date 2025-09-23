@@ -229,11 +229,6 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.Up
 				"error":        r.Error,
 			})
 		}
-
-		// Redeploy impacted projects (only running ones)
-		if err := s.redeployProjectsUsingOldIDs(ctx, oldIDToNewRef, out); err != nil {
-			slog.Warn("project redeploys had errors", "err", err)
-		}
 	}
 
 	// Prune old images that are no longer used
@@ -656,17 +651,6 @@ func (s *UpdaterService) recordRun(ctx context.Context, item dto.UpdaterItem) er
 	return s.db.WithContext(ctx).Create(rec).Error
 }
 
-func (s *UpdaterService) isProjectManaged(labels map[string]string) bool {
-	if labels == nil {
-		return false
-	}
-	// Compose project label
-	if _, ok := labels["com.docker.compose.project"]; ok {
-		return true
-	}
-	return false
-}
-
 // Resolve the local image ID(s) currently referenced by ref (repo:tag) before we pull.
 // Returns IDs like "sha256:...".
 func (s *UpdaterService) resolveLocalImageIDsForRef(ctx context.Context, ref string) ([]string, error) {
@@ -701,10 +685,6 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 
 	var results []dto.AutoUpdateResourceResult
 	for _, c := range list {
-		// Skip project-managed containers; projects handled separately
-		if s.isProjectManaged(c.Labels) {
-			continue
-		}
 		// Skip containers with opt-out label
 		if s.isUpdateDisabled(c.Labels) {
 			continue
@@ -772,128 +752,6 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 	}
 	slog.DebugContext(ctx, "restartContainersUsingOldIDs: completed scanning", "results", len(results))
 	return results, nil
-}
-
-func (s *UpdaterService) redeployProjectsUsingOldIDs(ctx context.Context, oldIDToNewRef map[string]string, out *dto.UpdaterRunResult) error {
-	if s.projectService == nil {
-		return nil
-	}
-
-	projects, err := s.projectService.ListAllProjects(ctx)
-	if err != nil {
-		return fmt.Errorf("list projects: %w", err)
-	}
-	slog.DebugContext(ctx, "redeployProjectsUsingOldIDs: projects fetched", "count", len(projects))
-
-	dcli, derr := s.dockerService.CreateConnection(ctx)
-	if derr != nil {
-		return fmt.Errorf("docker connect: %w", derr)
-	}
-	defer dcli.Close()
-
-	for _, p := range projects {
-		// Only redeploy projects that are currently running (or partially)
-		if p.Status != models.ProjectStatusRunning && p.Status != models.ProjectStatusPartiallyRunning {
-			out.Items = append(out.Items, dto.UpdaterItem{
-				ResourceID:   p.ID,
-				ResourceType: "project",
-				ResourceName: p.Name,
-				Status:       "skipped",
-			})
-			out.Skipped++
-			out.Checked++
-			continue
-		}
-
-		containers, lerr := s.getProjectContainers(ctx, dcli, p.Name)
-		if lerr != nil {
-			slog.Warn("list project containers failed", "project", p.Name, "err", lerr)
-			continue
-		}
-
-		// Skip entire project if any container declares the opt-out label
-		skip := false
-		for _, c := range containers {
-			if s.isUpdateDisabled(c.Labels) {
-				skip = true
-				break
-			}
-		}
-		if skip {
-			out.Items = append(out.Items, dto.UpdaterItem{
-				ResourceID:   p.ID,
-				ResourceType: "project",
-				ResourceName: p.Name,
-				Status:       "skipped",
-			})
-			out.Skipped++
-			out.Checked++
-			s.logAutoUpdate(ctx, models.EventSeverityInfo, models.JSON{
-				"phase":       "project",
-				"projectId":   p.ID,
-				"projectName": p.Name,
-				"status":      "skipped",
-				"reason":      "com.ofkm.arcane.updater=false",
-			})
-			continue
-		}
-
-		impacted := false
-		for _, c := range containers {
-			inspect, ierr := dcli.ContainerInspect(ctx, c.ID)
-			if ierr != nil {
-				continue
-			}
-			if _, ok := oldIDToNewRef[inspect.Image]; ok {
-				impacted = true
-				break
-			}
-		}
-
-		if !impacted {
-			out.Items = append(out.Items, dto.UpdaterItem{
-				ResourceID:   p.ID,
-				ResourceType: "project",
-				ResourceName: p.Name,
-				Status:       "skipped",
-			})
-			out.Skipped++
-			out.Checked++
-			continue
-		}
-
-		item := dto.UpdaterItem{
-			ResourceID:   p.ID,
-			ResourceType: "project",
-			ResourceName: p.Name,
-			Status:       "checked",
-		}
-		out.Checked++
-
-		// Redeploy with ProjectService (handles pull/down/up internally)
-		if err := s.projectService.RedeployProject(ctx, p.ID, systemUser); err != nil {
-			item.Status = "failed"
-			item.Error = err.Error()
-			out.Failed++
-		} else {
-			item.Status = "updated"
-			item.UpdateApplied = true
-			out.Updated++
-		}
-		out.Items = append(out.Items, item)
-		_ = s.recordRun(ctx, item)
-
-		// Emit auto-update project event
-		s.logAutoUpdate(ctx, s.severityFromStatus(item.Status), models.JSON{
-			"phase":       "project",
-			"projectId":   p.ID,
-			"projectName": p.Name,
-			"status":      item.Status,
-			"error":       item.Error,
-		})
-	}
-	slog.DebugContext(ctx, "redeployProjectsUsingOldIDs: completed project scan")
-	return nil
 }
 
 func (s *UpdaterService) getProjectContainers(ctx context.Context, dcli *client.Client, projectName string) ([]container.Summary, error) {
