@@ -16,7 +16,8 @@
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
 	import MobileFloatingNav from '$lib/components/mobile-nav/mobile-floating-nav.svelte';
 	import MobileDockedNav from '$lib/components/mobile-nav/mobile-docked-nav.svelte';
-	import { mobileNavStore } from '$lib/stores/mobile-nav-store';
+	import { pinnedItemsStore, getEffectiveNavigationSettings } from '$lib/utils/mobile-nav-utils';
+	import { defaultMobilePinnedItems, getAvailableMobileNavItems } from '$lib/config/mobile-navigation-config';
 	import { onMount } from 'svelte';
 
 	let {
@@ -32,7 +33,13 @@
 	const isMobile = new IsMobile();
 	const isNavigating = $derived(navigating.type !== null);
 	const isOnboardingPage = $derived(String(page.url.pathname).startsWith('/onboarding'));
-	const navigationMode = $derived($mobileNavStore.appearanceSettings.mode);
+	
+	// Get effective navigation settings (server + overrides)
+	let navigationSettings = $state(getEffectiveNavigationSettings());
+	const navigationMode = $derived(navigationSettings.mode);
+	
+	// Get pinned items
+	let pinnedItems = $state(defaultMobilePinnedItems);
 	const isLoginPage = $derived(
 		String(page.url.pathname) === '/login' ||
 			String(page.url.pathname).startsWith('/auth/login') ||
@@ -48,11 +55,31 @@
 
 	// Load mobile navigation preferences on mount
 	onMount(() => {
-		// Load mobile navigation preferences on app start
-		mobileNavStore.loadPreferences();
+		// Load pinned items from persistent storage
+		const preferences = pinnedItemsStore.current;
+		const availableItems = getAvailableMobileNavItems();
 		
-		// Initialize effective settings that combine server settings with local overrides
-		mobileNavStore.initializeEffectiveSettings();
+		// Map URLs back to NavigationItems
+		const loadedPinnedItems = preferences.pinnedItems
+			.map(url => availableItems.find(item => item.url === url))
+			.filter(item => item !== undefined);
+		
+		pinnedItems = loadedPinnedItems.length > 0 ? loadedPinnedItems : defaultMobilePinnedItems;
+		
+		// Load navigation settings
+		navigationSettings = getEffectiveNavigationSettings();
+		
+		// Listen for navigation override changes
+		const handleOverrideChange = () => {
+			navigationSettings = getEffectiveNavigationSettings();
+		};
+		
+		window.addEventListener('navigation-overrides-changed', handleOverrideChange);
+		
+		// Cleanup
+		return () => {
+			window.removeEventListener('navigation-overrides-changed', handleOverrideChange);
+		};
 	});
 </script>
 
@@ -74,15 +101,15 @@
 			<!-- Mobile Navigation - Floating or Docked -->
 			{#if navigationMode === 'floating'}
 				<MobileFloatingNav 
-					pinnedItems={$mobileNavStore.pinnedItems} 
-					visible={$mobileNavStore.visible}
+					{pinnedItems}
+					{navigationSettings}
 					{user}
 					{versionInformation}
 				/>
 			{:else}
 				<MobileDockedNav 
-					pinnedItems={$mobileNavStore.pinnedItems} 
-					visible={$mobileNavStore.visible}
+					{pinnedItems}
+					{navigationSettings}
 					{user}
 					{versionInformation}
 				/>

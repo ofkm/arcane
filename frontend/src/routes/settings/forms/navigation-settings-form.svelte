@@ -9,11 +9,11 @@
 	import MousePointerClickIcon from '@lucide/svelte/icons/mouse-pointer-click';
 	import ScrollTextIcon from '@lucide/svelte/icons/scroll-text';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
-	import { persistedNavigationStore } from '$lib/utils/persisted-state';
 	import NavigationSettingControl from '$lib/components/navigation-setting-control.svelte';
 	import NavigationModeSettingControl from '$lib/components/navigation-mode-setting-control.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
+	import { PersistedState } from 'runed';
 
 	let {
 		settings,
@@ -29,13 +29,21 @@
 
 	const uiConfigDisabled = $state($settingsStore.uiConfigDisabled);
 
-	// Track local override state
-	let persistedState = $state($persistedNavigationStore);
-	$effect(() => {
-		persistedNavigationStore.subscribe(state => {
-			persistedState = state;
-		});
+	// Create persisted state for navigation overrides
+	const navigationOverrides = new PersistedState('navigation-settings-overrides', {
+		mode: undefined,
+		showLabels: undefined,
+		scrollToHide: undefined,
+		tapToHide: undefined
+	} as {
+		mode?: 'floating' | 'docked';
+		showLabels?: boolean;
+		scrollToHide?: boolean;
+		tapToHide?: boolean;
 	});
+
+	// Track local override state
+	let persistedState = $state(navigationOverrides.current);
 
 	const formSchema = z.object({
 		mobileNavigationMode: z.enum(['floating', 'docked']),
@@ -67,11 +75,27 @@
 	});
 
 	function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide' | 'tapToHide', value: any) {
-		persistedNavigationStore.setOverride(key, value);
+		const currentOverrides = navigationOverrides.current;
+		navigationOverrides.current = {
+			...currentOverrides,
+			[key]: value
+		};
+		persistedState = navigationOverrides.current;
+		
+		// Trigger a custom event to notify the layout about the change
+		window.dispatchEvent(new CustomEvent('navigation-overrides-changed'));
 	}
 
 	function clearLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide' | 'tapToHide') {
-		persistedNavigationStore.setOverride(key, undefined);
+		const currentOverrides = navigationOverrides.current;
+		const newOverrides = { ...currentOverrides };
+		delete newOverrides[key];
+		navigationOverrides.current = newOverrides;
+		persistedState = navigationOverrides.current;
+		
+		// Trigger a custom event to notify the layout about the change
+		window.dispatchEvent(new CustomEvent('navigation-overrides-changed'));
+		
 		toast.success(`Local override cleared for ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
 	}
 
@@ -130,7 +154,7 @@
 						description={m.navigation_mode_description()}
 						icon={NavigationIcon}
 						serverValue={$formInputs.mobileNavigationMode.value}
-						localOverride={persistedState.overrides.mode}
+						localOverride={persistedState.mode}
 						onServerChange={(value) => { $formInputs.mobileNavigationMode.value = value; }}
 						onLocalOverride={(value) => setLocalOverride('mode', value)}
 						onClearOverride={() => clearLocalOverride('mode')}
@@ -143,7 +167,7 @@
 						description={m.navigation_show_labels_description()}
 						icon={EyeIcon}
 						serverValue={$formInputs.mobileNavigationShowLabels.value}
-						localOverride={persistedState.overrides.showLabels}
+						localOverride={persistedState.showLabels}
 						onServerChange={(value) => { $formInputs.mobileNavigationShowLabels.value = value; }}
 						onLocalOverride={(value) => setLocalOverride('showLabels', value)}
 						onClearOverride={() => clearLocalOverride('showLabels')}
@@ -174,7 +198,7 @@
 						description={m.navigation_scroll_to_hide_description()}
 						icon={ScrollTextIcon}
 						serverValue={$formInputs.mobileNavigationScrollToHide.value}
-						localOverride={persistedState.overrides.scrollToHide}
+						localOverride={persistedState.scrollToHide}
 						onServerChange={(value) => { $formInputs.mobileNavigationScrollToHide.value = value; }}
 						onLocalOverride={(value) => setLocalOverride('scrollToHide', value)}
 						onClearOverride={() => clearLocalOverride('scrollToHide')}
@@ -187,7 +211,7 @@
 						description={m.navigation_tap_to_hide_description()}
 						icon={MousePointerClickIcon}
 						serverValue={$formInputs.mobileNavigationTapToHide.value}
-						localOverride={persistedState.overrides.tapToHide}
+						localOverride={persistedState.tapToHide}
 						onServerChange={(value) => { $formInputs.mobileNavigationTapToHide.value = value; }}
 						onLocalOverride={(value) => setLocalOverride('tapToHide', value)}
 						onClearOverride={() => clearLocalOverride('tapToHide')}

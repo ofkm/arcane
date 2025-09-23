@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { navigationItems } from '$lib/config/navigation-config';
 	import type { NavigationItem } from '$lib/config/navigation-config';
-	import { mobileNavStore } from '$lib/stores/mobile-nav-store';
 	import { cn } from '$lib/utils';
 	import { SwipeGestureDetector, type SwipeDirection } from '$lib/hooks/use-swipe-gesture.svelte';
 	import { page } from '$app/state';
@@ -12,7 +11,7 @@
 	import { onMount } from 'svelte';
 
 	let {
-		open = false,
+		open = $bindable(false),
 		user = null,
 		versionInformation = null
 	}: {
@@ -231,7 +230,7 @@
 		overscrollStartY = 0;
 		
 		// Close immediately - let CSS transitions handle the smooth animation
-		mobileNavStore.setMenuOpen(false);
+		open = false;
 		
 		// Reset remaining state after animation completes
 		setTimeout(() => {
@@ -253,7 +252,7 @@
 	// Swipe gesture to close menu (keep existing horizontal swipes)
 	const swipeDetector = new SwipeGestureDetector((direction: SwipeDirection) => {
 		if ((direction === 'left' || direction === 'right') && open) {
-			mobileNavStore.setMenuOpen(false);
+			open = false;
 		}
 	}, { threshold: 60, velocity: 0.4 });
 
@@ -292,7 +291,7 @@
 			
 			if (e.key === 'Escape') {
 				e.preventDefault();
-				mobileNavStore.setMenuOpen(false);
+				open = false;
 			}
 		};
 
@@ -365,7 +364,7 @@
 
 	function handleItemClick(item: NavigationItem) {
 		// Close menu when navigating
-		mobileNavStore.setMenuOpen(false);
+		open = false;
 	}
 
 	function isActiveItem(item: NavigationItem): boolean {
@@ -387,10 +386,10 @@
 			}
 			touch-action: manipulation;
 		`}
-		onclick={() => mobileNavStore.setMenuOpen(false)}
+		onclick={() => open = false}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') {
-				mobileNavStore.setMenuOpen(false);
+				open = false;
 			}
 		}}
 		ontouchstart={(e) => {

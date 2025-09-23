@@ -6,19 +6,23 @@
 	import { ScrollDirectionDetector } from '$lib/hooks/use-scroll-direction.svelte';
 	import { TapOutsideDetector } from '$lib/hooks/use-tap-outside.svelte';
 	import { SwipeGestureDetector, type SwipeDirection } from '$lib/hooks/use-swipe-gesture.svelte';
-	import { mobileNavStore } from '$lib/stores/mobile-nav-store';
 	import MobileNavSheet from './mobile-nav-sheet.svelte';
 	import './styles.css';
 
 	let {
 		pinnedItems = [],
-		visible = true,
+		navigationSettings,
 		user = null,
 		versionInformation = null,
 		class: className = ''
 	}: {
 		pinnedItems: NavigationItem[];
-		visible?: boolean;
+		navigationSettings: {
+			mode: string;
+			showLabels: boolean;
+			scrollToHide: boolean;
+			tapToHide: boolean;
+		};
 		user?: any;
 		versionInformation?: any;
 		class?: string;
@@ -26,13 +30,14 @@
 
 	const currentPath = $derived(page.url.pathname);
 	
-	// Get navigation settings from store
-	const navigationState = $derived($mobileNavStore);
-	const appearanceSettings = $derived(navigationState.appearanceSettings);
-	const behaviorSettings = $derived(navigationState.behaviorSettings);
-	const showLabels = $derived(appearanceSettings.showLabels);
-	const scrollToHideEnabled = $derived(behaviorSettings.scrollToHide);
-	const tapToHideEnabled = $derived(behaviorSettings.tapToHide);
+	// Get navigation settings from props
+	const showLabels = $derived(navigationSettings.showLabels);
+	const scrollToHideEnabled = $derived(navigationSettings.scrollToHide);
+	const tapToHideEnabled = $derived(navigationSettings.tapToHide);
+	
+	// Local state for visibility and menu
+	let visible = $state(true);
+	let menuOpen = $state(false);
 	
 	// Scroll behavior
 	const scrollDetector = new ScrollDirectionDetector(15); // 15px threshold
@@ -60,31 +65,25 @@
 			// Permanently update visibility state based on scroll behavior
 			if (direction === 'down' && scrollY > 100) {
 				// Hide on scroll down after minimum distance - permanently set to hidden
-				if (visible) {
-					mobileNavStore.setVisibility(false);
-				}
+				visible = false;
 			} else if (direction === 'up') {
 				// Show on scroll up immediately - permanently set to visible
-				if (!visible) {
-					mobileNavStore.setVisibility(true);
-				}
+				visible = true;
 			} else if (direction === 'idle' && scrollY <= 100) {
 				// Near top of page when idle - permanently set to visible
-				if (!visible) {
-					mobileNavStore.setVisibility(true);
-				}
+				visible = true;
 			}
 		}
 	});
 	
 	// Make navigation bar visible when navigation sheet closes and ensure touch is restored
-	let previousMenuOpen = $state($mobileNavStore.menuOpen);
+	let previousMenuOpen = $state(false);
 	$effect(() => {
-		const currentMenuOpen = $mobileNavStore.menuOpen;
+		const currentMenuOpen = menuOpen;
 		
 		// If menu was open and is now closed, make navigation bar visible
 		if (previousMenuOpen && !currentMenuOpen) {
-			mobileNavStore.setVisibility(true);
+			visible = true;
 		}
 		
 		// If menu just opened, ensure touch scrolling is restored for the menu
@@ -120,7 +119,7 @@
 		}
 		
 		// Simple toggle: flip the current visibility state
-		mobileNavStore.setVisibility(!visible);
+		visible = !visible;
 		
 		// Set debounce timeout to prevent rapid taps
 		tapDebounceTimeout = setTimeout(() => {
@@ -145,7 +144,7 @@
 	const swipeDetector = new SwipeGestureDetector((direction: SwipeDirection) => {
 		if (direction === 'up' && shouldShow) {
 			lastGestureTime = Date.now();
-			mobileNavStore.setMenuOpen(true);
+			menuOpen = true;
 		}
 	}, { threshold: 20, velocity: 0.1, timeLimit: 1000 });
 	
@@ -160,7 +159,7 @@
 			
 			const handleTouchStart = (e: TouchEvent) => {
 				// Don't interfere if the navigation sheet is open
-				if ($mobileNavStore.menuOpen) {
+				if (menuOpen) {
 					return;
 				}
 				
@@ -180,7 +179,7 @@
 
 			const handleTouchMove = (e: TouchEvent) => {
 				// Don't interfere if the navigation sheet is open
-				if ($mobileNavStore.menuOpen) {
+				if (menuOpen) {
 					return;
 				}
 				
@@ -209,7 +208,7 @@
 				// The delay allows the swipe gesture to complete before re-enabling scroll
 				setTimeout(() => {
 					// Only restore if menu is still closed, or if menu just opened (to allow menu scrolling)
-					if (!$mobileNavStore.menuOpen || Date.now() - lastGestureTime < 500) {
+					if (!menuOpen || Date.now() - lastGestureTime < 500) {
 						document.body.style.overflow = '';
 						document.documentElement.style.overflow = '';
 					}
@@ -246,7 +245,7 @@
 				// - Trackpads with natural scrolling disabled: scroll down = positive deltaY
 				// - Trackpads with natural scrolling enabled: swipe down = positive deltaY
 				if (e.deltaY > 10) {
-					mobileNavStore.setMenuOpen(true);
+					menuOpen = true;
 				}
 			};
 			
@@ -328,7 +327,7 @@
 				navElement.removeEventListener('wheel', handleWheel);
 				document.removeEventListener('wheel', handleDocumentWheel, true);
 				// Ensure all styles are restored - but only if menu is not open
-				if (!$mobileNavStore.menuOpen) {
+				if (!menuOpen) {
 					document.body.style.overflow = '';
 					document.body.style.pointerEvents = '';
 					document.documentElement.style.overflow = '';
@@ -375,7 +374,7 @@
 
 <!-- Navigation Sheet -->
 <MobileNavSheet 
-	open={$mobileNavStore.menuOpen} 
+	bind:open={menuOpen}
 	{user} 
 	{versionInformation} 
 />
