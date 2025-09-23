@@ -30,13 +30,14 @@ export class AuthService extends BaseAPIService {
 	}
 
 	async getCurrentUser(): Promise<User | null> {
+		try {
 			const response = await this.api.get('/auth/me');
 			const user = (response.data.user as User) || (response.data.data as User);
 
 			userStore.setUser(user);
 
 			return user;
-		} catch (error) {
+		} catch {
 			// Clear user from store on error
 			userStore.clearUser();
 			return null;
