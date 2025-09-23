@@ -305,7 +305,7 @@
 
 		<div class="flex flex-wrap items-center justify-end gap-2">
 			<QuickActions
-				class="absolute right-4 top-4 z-50 flex-wrap items-center gap-2 sm:static sm:flex"
+				class="absolute right-4 top-4 flex-wrap items-center gap-2 sm:static sm:flex"
 				compact
 				dockerInfo={dashboardStates.dockerInfo}
 				{stoppedContainers}
