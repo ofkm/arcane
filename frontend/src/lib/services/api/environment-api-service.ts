@@ -9,6 +9,7 @@ import type { ImageSummaryDto, ImageUpdateInfoDto, ImageUsageCounts } from '$lib
 import type { NetworkSummaryDto, NetworkUsageCounts } from '$lib/types/network.type';
 import type { VolumeSummaryDto, VolumeDetailDto, VolumeUsageDto, VolumeUsageCounts } from '$lib/types/volume.type';
 import type { AutoUpdateCheck, AutoUpdateResult } from '$lib/types/auto-update.type';
+import type { DockerInfo } from '$lib/types/docker-info.type';
 
 export class EnvironmentAPIService extends BaseAPIService {
 	private async getCurrentEnvironmentId(): Promise<string> {
@@ -19,6 +20,13 @@ export class EnvironmentAPIService extends BaseAPIService {
 			return LOCAL_DOCKER_ENVIRONMENT_ID;
 		}
 		return currentEnvironment.id;
+	}
+
+	// System Api Calls
+
+	async getDockerInfo(): Promise<DockerInfo> {
+		const envId = await this.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.get(`/environments/${envId}/docker/info`));
 	}
 
 	// Container Api Calls

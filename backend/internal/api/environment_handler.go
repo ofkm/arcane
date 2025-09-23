@@ -33,6 +33,8 @@ type EnvironmentHandler struct {
 	settingsService    *services.SettingsService
 	imageUpdateService *services.ImageUpdateService
 	updaterService     *services.UpdaterService
+	systemService      *services.SystemService
+	dockerService      *services.DockerClientService
 	cfg                *config.Config
 }
 
@@ -47,6 +49,8 @@ func NewEnvironmentHandler(
 	volumeService *services.VolumeService,
 	projectService *services.ProjectService,
 	settingsService *services.SettingsService,
+	systemService *services.SystemService,
+	dockerService *services.DockerClientService,
 	authMiddleware *middleware.AuthMiddleware,
 	cfg *config.Config,
 ) {
@@ -61,6 +65,8 @@ func NewEnvironmentHandler(
 		volumeService:      volumeService,
 		projectService:     projectService,
 		settingsService:    settingsService,
+		systemService:      systemService,
+		dockerService:      dockerService,
 		cfg:                cfg,
 	}
 
@@ -138,6 +144,7 @@ func NewEnvironmentHandler(
 		apiGroup.POST("/:id/agent/pair", handler.PairAgent)
 
 		apiGroup.GET("/:id/stats/ws", handler.GetStatsWS)
+		apiGroup.GET("/:id/docker/info", handler.GetDockerInfo)
 	}
 }
 
@@ -203,6 +210,9 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	if h.handleUpdaterEndpoints(c, endpoint) {
 		return
 	}
+	if h.handleSystemRoutes(c, endpoint) {
+		return
+	}
 
 	c.JSON(http.StatusNotFound, gin.H{
 		"success": false,
@@ -226,6 +236,22 @@ func (h *EnvironmentHandler) handleUpdaterEndpoints(c *gin.Context, endpoint str
 		return true
 	}
 	return false
+}
+
+func (h *EnvironmentHandler) handleSystemRoutes(c *gin.Context, endpoint string) bool {
+	systemHandler := &SystemHandler{
+		systemService: h.systemService,
+		dockerService: h.dockerService,
+	}
+	if endpoint == "/docker/info" && c.Request.Method == http.MethodGet {
+		systemHandler.GetDockerInfo(c)
+		return true
+	}
+	return false
+}
+
+func (h *EnvironmentHandler) GetDockerInfo(c *gin.Context) {
+	h.routeRequest(c, "/docker/info")
 }
 
 func (h *EnvironmentHandler) UpdaterRun(c *gin.Context) {

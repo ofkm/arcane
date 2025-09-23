@@ -65,7 +65,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 
 	if cfg.AgentMode {
 		api.NewHealthHandler(apiGroup)
-		api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Project, appServices.Settings, authMiddleware, cfg)
+		api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Project, appServices.Settings, appServices.System, appServices.Docker, authMiddleware, cfg)
 		api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, authMiddleware)
 		return router
 	}
@@ -76,7 +76,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewContainerHandler(apiGroup, appServices.Docker, appServices.Container, appServices.Image, authMiddleware)
 	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
 	api.NewConverterHandler(apiGroup, appServices.Converter, authMiddleware)
-	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Project, appServices.Settings, authMiddleware, cfg)
+	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Project, appServices.Settings, appServices.System, appServices.Docker, authMiddleware, cfg)
 	api.NewEventHandler(apiGroup, appServices.Event, authMiddleware)
 	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, authMiddleware)
 	api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)
