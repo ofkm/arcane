@@ -243,8 +243,7 @@ func (h *EnvironmentHandler) handleSystemRoutes(c *gin.Context, endpoint string)
 		systemService: h.systemService,
 		dockerService: h.dockerService,
 	}
-	switch {
-	case endpoint == "/docker/info" && c.Request.Method == http.MethodGet:
+	if endpoint == "/docker/info" && c.Request.Method == http.MethodGet {
 		systemHandler.GetDockerInfo(c)
 		return true
 	}
