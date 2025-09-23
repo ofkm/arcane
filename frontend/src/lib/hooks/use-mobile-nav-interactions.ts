@@ -1,6 +1,6 @@
 import { ScrollDirectionDetector } from './use-scroll-direction.svelte';
 import { TapOutsideDetector } from './use-tap-outside.svelte';
-import { SwipeGestureDetector, type SwipeDirection } from './use-swipe-gesture.svelte.ts';
+import { SwipeGestureDetector, type SwipeDirection } from './use-swipe-gesture.svelte';
 
 export interface MobileNavInteractionOptions {
 	// Scroll detection options
@@ -8,15 +8,15 @@ export interface MobileNavInteractionOptions {
 	scrollMinDistance?: number;
 	scrollTopThreshold?: number;
 	scrollChangeThreshold?: number;
-	
+
 	// Tap detection options
 	tapDebounceTimeout?: number;
-	
+
 	// Swipe detection options
 	swipeThreshold?: number;
 	swipeVelocity?: number;
 	swipeTimeLimit?: number;
-	
+
 	// Touch handling options
 	touchEndDelay?: number;
 	menuOpenRestoreDelay?: number;
@@ -38,31 +38,28 @@ export interface MobileNavInteractionState {
 }
 
 export class MobileNavInteractionManager {
-	private scrollDetector: ScrollDirectionDetector;
-	private tapDetector: TapOutsideDetector;
-	private swipeDetector: SwipeGestureDetector;
-	
-	private options: Required<MobileNavInteractionOptions>;
-	private callbacks: MobileNavInteractionCallbacks;
+	private readonly scrollDetector: ScrollDirectionDetector;
+	private readonly tapDetector: TapOutsideDetector;
+	private readonly swipeDetector: SwipeGestureDetector;
+
+	private readonly options: Required<MobileNavInteractionOptions>;
+	private readonly callbacks: MobileNavInteractionCallbacks;
 	private state: MobileNavInteractionState;
-	
+
 	private navElement: HTMLElement | null = null;
 	private tapDebounceTimeoutId: ReturnType<typeof setTimeout> | null = null;
 	private lastGestureTime = 0;
 	private lastScrollDirection: string | null = null;
 	private lastScrollY = 0;
-	
+
 	// Touch handling state
 	private touchStartTarget: HTMLElement | null = null;
 	private isInteractiveTouch = false;
-	
+
 	// Cleanup functions
 	private cleanupFunctions: (() => void)[] = [];
 
-	constructor(
-		callbacks: MobileNavInteractionCallbacks,
-		options: MobileNavInteractionOptions = {}
-	) {
+	constructor(callbacks: MobileNavInteractionCallbacks, options: MobileNavInteractionOptions = {}) {
 		this.callbacks = callbacks;
 		this.options = {
 			scrollThreshold: options.scrollThreshold ?? 15,
@@ -76,23 +73,18 @@ export class MobileNavInteractionManager {
 			touchEndDelay: options.touchEndDelay ?? 150,
 			menuOpenRestoreDelay: options.menuOpenRestoreDelay ?? 50,
 			overlayFadeOutDelay: options.overlayFadeOutDelay ?? 200,
-			wheelThreshold: options.wheelThreshold ?? 10,
+			wheelThreshold: options.wheelThreshold ?? 10
 		};
 
 		this.state = {
 			menuOpen: false,
 			scrollToHideEnabled: false,
-			tapToHideEnabled: false,
+			tapToHideEnabled: false
 		};
 
-		this.setupDetectors();
-	}
-
-	private setupDetectors() {
-		// Setup scroll detector
+		// Initialize detectors directly in constructor
 		this.scrollDetector = new ScrollDirectionDetector(this.options.scrollThreshold);
 
-		// Setup tap detector
 		this.tapDetector = new TapOutsideDetector(() => {
 			if (!this.state.tapToHideEnabled) return;
 
@@ -112,7 +104,6 @@ export class MobileNavInteractionManager {
 			}, this.options.tapDebounceTimeout);
 		});
 
-		// Setup swipe detector
 		this.swipeDetector = new SwipeGestureDetector(
 			(direction: SwipeDirection) => {
 				if (direction === 'up') {
@@ -123,7 +114,7 @@ export class MobileNavInteractionManager {
 			{
 				threshold: this.options.swipeThreshold,
 				velocity: this.options.swipeVelocity,
-				timeLimit: this.options.swipeTimeLimit,
+				timeLimit: this.options.swipeTimeLimit
 			}
 		);
 	}
@@ -135,7 +126,7 @@ export class MobileNavInteractionManager {
 	public setupElement(element: HTMLElement | null) {
 		// Cleanup previous setup
 		this.cleanup();
-		
+
 		this.navElement = element;
 
 		if (!element) return;
@@ -241,7 +232,7 @@ export class MobileNavInteractionManager {
 			// Prevent page scrolling except on navbar when hovering navbar
 			document.addEventListener('wheel', handleDocumentWheel, { passive: false, capture: true });
 			element.addEventListener('wheel', handleWheel, { passive: false });
-			
+
 			// Prevent page body scrolling and capture pointer
 			this.lockBodyScroll();
 			document.body.style.pointerEvents = 'none';
@@ -255,7 +246,7 @@ export class MobileNavInteractionManager {
 			// Restore page scrolling when leaving navbar
 			document.removeEventListener('wheel', handleDocumentWheel, true);
 			element.removeEventListener('wheel', handleWheel);
-			
+
 			// Restore scrolling and interactions
 			this.unlockBodyScroll();
 			document.body.style.pointerEvents = '';
@@ -280,8 +271,7 @@ export class MobileNavInteractionManager {
 	public handleScrollEffect(direction: string, scrollY: number) {
 		// Only update when scroll direction or position changes significantly
 		if (
-			(direction !== this.lastScrollDirection || 
-			Math.abs(scrollY - this.lastScrollY) > this.options.scrollChangeThreshold) && 
+			(direction !== this.lastScrollDirection || Math.abs(scrollY - this.lastScrollY) > this.options.scrollChangeThreshold) &&
 			this.state.scrollToHideEnabled
 		) {
 			this.lastScrollDirection = direction;
@@ -363,7 +353,7 @@ export class MobileNavInteractionManager {
 
 	public cleanup() {
 		// Cleanup all event listeners
-		this.cleanupFunctions.forEach(fn => fn());
+		this.cleanupFunctions.forEach((fn) => fn());
 		this.cleanupFunctions = [];
 
 		// Clear tap debounce timeout
@@ -397,9 +387,6 @@ export class MobileNavInteractionManager {
 }
 
 // Convenience function for Svelte components
-export function createMobileNavInteractions(
-	callbacks: MobileNavInteractionCallbacks,
-	options: MobileNavInteractionOptions = {}
-) {
+export function createMobileNavInteractions(callbacks: MobileNavInteractionCallbacks, options: MobileNavInteractionOptions = {}) {
 	return new MobileNavInteractionManager(callbacks, options);
 }
