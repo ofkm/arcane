@@ -95,8 +95,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=release-manager
-          cache-to: type=gha,scope=release-manager,mode=max
     outputs:
       digest: ${{ steps.build.outputs.digest }}
 
@@ -133,8 +131,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=release-agent
-          cache-to: type=gha,scope=release-agent,mode=max
     outputs:
       digest: ${{ steps.build.outputs.digest }}
 

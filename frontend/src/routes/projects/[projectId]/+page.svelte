@@ -199,7 +199,6 @@
 							{#if hasChanges}
 								<ArcaneButton
 									action="save"
-									size="sm"
 									loading={isLoading.saving}
 									onclick={handleSaveChanges}
 									disabled={!hasChanges}
