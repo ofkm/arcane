@@ -229,6 +229,15 @@ func (s *EnvironmentService) BuildWSAuthHeadersFromRequest(req *http.Request, ag
 	} else if c, err := req.Cookie("token"); err == nil && c != nil && c.Value != "" {
 		h.Set("Authorization", "Bearer "+c.Value)
 	}
+
+	// If no Authorization header was set, forward original cookies (needed for external SSO like Authelia).
+	if h.Get("Authorization") == "" {
+		if cookieHeader := req.Header.Get("Cookie"); cookieHeader != "" {
+			// Pass through all cookies so upstream auth (Authelia) still sees its session.
+			h.Set("Cookie", cookieHeader)
+		}
+	}
+
 	if agentToken != "" {
 		h.Set("X-Arcane-Agent-Token", agentToken)
 	}
@@ -236,16 +245,48 @@ func (s *EnvironmentService) BuildWSAuthHeadersFromRequest(req *http.Request, ag
 }
 
 func wsScheme(req *http.Request) string {
-	xfp := strings.TrimSpace(req.Header.Get("X-Forwarded-Proto"))
-	if xfp != "" {
-		if idx := strings.Index(xfp, ","); idx != -1 {
-			xfp = strings.TrimSpace(xfp[:idx])
+	// Prefer explicit headers set by reverse proxies.
+	check := func(v string) string {
+		v = strings.TrimSpace(strings.ToLower(v))
+		if v == "" {
+			return ""
 		}
-		if strings.HasPrefix(strings.ToLower(xfp), "https") {
+		if strings.HasPrefix(v, "https") {
 			return "wss"
 		}
-		return "ws"
+		if strings.HasPrefix(v, "http") {
+			return "ws"
+		}
+		return ""
 	}
+
+	if s := check(req.Header.Get("X-Forwarded-Proto")); s != "" {
+		return s
+	}
+	if s := check(req.Header.Get("X-Forwarded-Scheme")); s != "" {
+		return s
+	}
+
+	// Parse standardized Forwarded header: Forwarded: proto=https; host=...
+	if fwd := req.Header.Get("Forwarded"); fwd != "" {
+		// naive parse: split by ; and ,
+		parts := strings.Split(fwd, ";")
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if strings.HasPrefix(strings.ToLower(p), "proto=") {
+				if s := check(strings.TrimPrefix(p, "proto=")); s != "" {
+					return s
+				}
+			}
+		}
+	}
+
+	// Fallback: infer from Origin
+	if origin := req.Header.Get("Origin"); strings.HasPrefix(strings.ToLower(origin), "https://") {
+		return "wss"
+	}
+
+	// Direct TLS?
 	if req.TLS != nil {
 		return "wss"
 	}
