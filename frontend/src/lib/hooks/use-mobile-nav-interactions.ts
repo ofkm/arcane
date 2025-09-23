@@ -362,11 +362,9 @@ export class MobileNavInteractionManager {
 			this.tapDebounceTimeoutId = null;
 		}
 
-		// Ensure all styles are restored - but only if menu is not open
-		if (!this.state.menuOpen) {
-			this.unlockBodyScroll();
-			document.body.style.pointerEvents = '';
-		}
+		// Always ensure all mouse interactions are unlocked during cleanup
+		this.unlockBodyScroll();
+		document.body.style.pointerEvents = '';
 
 		if (this.navElement) {
 			this.navElement.style.pointerEvents = '';
