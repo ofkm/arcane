@@ -157,7 +157,7 @@
 				</div>
 
 				<div class="rounded-lg border p-3">
-					<div class="text-muted-foreground text-xs">{m.common_user}</div>
+					<div class="text-muted-foreground text-xs">{m.common_user()}</div>
 					<div class="mt-1 flex items-center gap-2 text-sm">
 						<UserIcon class="text-muted-foreground size-4" />
 						{event?.username ?? m.common_unknown()}
