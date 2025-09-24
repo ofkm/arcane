@@ -169,7 +169,11 @@ func (s *SettingsService) loadDatabaseConfigFromEnv(ctx context.Context, db *dat
 
 		// debug: log each env name checked and whether a value exists
 		if val, ok := os.LookupEnv(envVarName); ok {
-			slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: env override found", "key", key, "env", envVarName, "value", val)
+			mask := "<empty>"
+			if len(val) > 0 {
+				mask = fmt.Sprintf("%d chars", len(val))
+			}
+			slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: env override found", "key", key, "env", envVarName, "valueMasked", mask)
 			rv.Field(i).FieldByName("Value").SetString(val)
 			continue
 		} else {
@@ -410,7 +414,8 @@ func (s *SettingsService) PersistEnvSettingsIfMissing(ctx context.Context) error
 
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, v := range vars {
-			if v.Value == "" {
+			envVal, ok := os.LookupEnv(v.Key)
+			if !ok {
 				continue
 			}
 
@@ -418,14 +423,15 @@ func (s *SettingsService) PersistEnvSettingsIfMissing(ctx context.Context) error
 			err := tx.Where("key = ?", v.Key).First(&existing).Error
 			switch {
 			case errors.Is(err, gorm.ErrRecordNotFound):
-				if err := tx.Create(&v).Error; err != nil {
+				newVar := models.SettingVariable{Key: v.Key, Value: envVal}
+				if err := tx.Create(&newVar).Error; err != nil {
 					return fmt.Errorf("persist env setting %s: %w", v.Key, err)
 				}
 			case err != nil:
 				return fmt.Errorf("check setting %s: %w", v.Key, err)
 			default:
-				if existing.Value != v.Value {
-					if err := tx.Model(&existing).Update("value", v.Value).Error; err != nil {
+				if existing.Value != envVal {
+					if err := tx.Model(&existing).Update("value", envVal).Error; err != nil {
 						return fmt.Errorf("update env setting %s: %w", v.Key, err)
 					}
 				}
