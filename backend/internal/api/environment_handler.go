@@ -37,7 +37,6 @@ type EnvironmentHandler struct {
 	projectService     *services.ProjectService
 	settingsService    *services.SettingsService
 	imageUpdateService *services.ImageUpdateService
-	updaterService     *services.UpdaterService
 	systemService      *services.SystemService
 	dockerService      *services.DockerClientService
 	cfg                *config.Config
@@ -49,7 +48,6 @@ func NewEnvironmentHandler(
 	containerService *services.ContainerService,
 	imageService *services.ImageService,
 	imageUpdateService *services.ImageUpdateService,
-	updaterService *services.UpdaterService,
 	networkService *services.NetworkService,
 	volumeService *services.VolumeService,
 	projectService *services.ProjectService,
@@ -68,7 +66,6 @@ func NewEnvironmentHandler(
 		projectService:     projectService,
 		settingsService:    settingsService,
 		imageUpdateService: imageUpdateService,
-		updaterService:     updaterService,
 		systemService:      systemService,
 		dockerService:      dockerService,
 		cfg:                cfg,
@@ -140,10 +137,6 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/image-updates/versions", h.GetImageVersions)
 		apiGroup.POST("/:id/image-updates/compare", h.CompareVersions)
 
-		apiGroup.POST("/:id/updater/run", h.UpdaterRun)
-		apiGroup.GET("/:id/updater/status", h.UpdaterStatus)
-		apiGroup.GET("/:id/updater/history", h.UpdaterHistory)
-
 		apiGroup.POST("/:id/agent/pair", h.PairAgent)
 		apiGroup.GET("/:id/stats/ws", h.GetStatsWS)
 		apiGroup.GET("/:id/docker/info", h.GetDockerInfo)
@@ -209,9 +202,6 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	if h.handleProjectEndpoints(c, endpoint) {
 		return
 	}
-	if h.handleUpdaterEndpoints(c, endpoint) {
-		return
-	}
 	if h.handleSystemRoutes(c, endpoint) {
 		return
 	}
@@ -220,24 +210,6 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 		"success": false,
 		"data":    gin.H{"error": "Endpoint not found"},
 	})
-}
-
-func (h *EnvironmentHandler) handleUpdaterEndpoints(c *gin.Context, endpoint string) bool {
-	updaterHandler := &UpdaterHandler{
-		updaterService: h.updaterService,
-	}
-	switch {
-	case endpoint == "/updater/run" && c.Request.Method == http.MethodPost:
-		updaterHandler.Run(c)
-		return true
-	case endpoint == "/updater/status" && c.Request.Method == http.MethodGet:
-		updaterHandler.Status(c)
-		return true
-	case endpoint == "/updater/history" && c.Request.Method == http.MethodGet:
-		updaterHandler.History(c)
-		return true
-	}
-	return false
 }
 
 func (h *EnvironmentHandler) handleSystemRoutes(c *gin.Context, endpoint string) bool {
@@ -254,16 +226,6 @@ func (h *EnvironmentHandler) handleSystemRoutes(c *gin.Context, endpoint string)
 
 func (h *EnvironmentHandler) GetDockerInfo(c *gin.Context) {
 	h.routeRequest(c, "/docker/info")
-}
-
-func (h *EnvironmentHandler) UpdaterRun(c *gin.Context) {
-	h.routeRequest(c, "/updater/run")
-}
-func (h *EnvironmentHandler) UpdaterStatus(c *gin.Context) {
-	h.routeRequest(c, "/updater/status")
-}
-func (h *EnvironmentHandler) UpdaterHistory(c *gin.Context) {
-	h.routeRequest(c, "/updater/history")
 }
 
 func (h *EnvironmentHandler) handleImageUpdateEndpoints(c *gin.Context, endpoint string) bool {
