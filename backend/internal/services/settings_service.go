@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"reflect"
 	"strings"
@@ -102,6 +103,9 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 func (s *SettingsService) loadDatabaseSettingsInternal(ctx context.Context, db *database.DB) (*models.Settings, error) {
 
 	if config.Load().UIConfigurationDisabled || config.Load().AgentMode {
+		// debug: show why we're using env path
+		slog.DebugContext(ctx, "loadDatabaseSettingsInternal: using env path", "UIConfigurationDisabled", config.Load().UIConfigurationDisabled, "AgentMode", config.Load().AgentMode, "Environment", config.Load().Environment)
+
 		dst, err := s.loadDatabaseConfigFromEnv(ctx, db)
 
 		if config.Load().Environment != "testing" {
@@ -167,12 +171,29 @@ func (s *SettingsService) loadDatabaseConfigFromEnv(ctx context.Context, db *dat
 
 		envVarName := utils.CamelCaseToScreamingSnakeCase(key)
 
-		value, ok := os.LookupEnv(envVarName)
-		if ok {
-			rv.Field(i).FieldByName("Value").SetString(value)
+		// debug: log each env name checked and whether a value exists
+		if val, ok := os.LookupEnv(envVarName); ok {
+			mask := "<empty>"
+			if len(val) > 0 {
+				mask = fmt.Sprintf("%d chars", len(val))
+			}
+			slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: env override found", "key", key, "env", envVarName, "valueMasked", mask)
+			rv.Field(i).FieldByName("Value").SetString(val)
 			continue
+		} else {
+			slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: env not set", "key", key, "env", envVarName)
 		}
 	}
+
+	// debug: final snapshot (only show which fields are non-empty)
+	count := 0
+	for i := range rt.NumField() {
+		v := rv.Field(i).FieldByName("Value").String()
+		if v != "" {
+			count++
+		}
+	}
+	slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: completed env load", "loadedFields", count)
 
 	return dest, nil
 }
@@ -381,6 +402,43 @@ func (s *SettingsService) EnsureDefaultSettings(ctx context.Context) error {
 				}
 			} else if err != nil {
 				return fmt.Errorf("failed to check for existing setting %s: %w", defaultSetting.Key, err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *SettingsService) PersistEnvSettingsIfMissing(ctx context.Context) error {
+	settings := s.GetSettingsConfig()
+	vars := settings.ToSettingVariableSlice(true, false)
+
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, v := range vars {
+			envVal, ok := os.LookupEnv(v.Key)
+			if !ok {
+				continue
+			}
+
+			var existing models.SettingVariable
+			err := tx.Where("key = ?", v.Key).First(&existing).Error
+			switch {
+			case errors.Is(err, gorm.ErrRecordNotFound):
+				newVar := models.SettingVariable{Key: v.Key, Value: envVal}
+				if err := tx.Create(&newVar).Error; err != nil {
+					return fmt.Errorf("persist env setting %s: %w", v.Key, err)
+				}
+			case err != nil:
+				return fmt.Errorf("check setting %s: %w", v.Key, err)
+			default:
+				if existing.Value != envVal {
+					if err := tx.Model(&existing).Update("value", envVal).Error; err != nil {
+						return fmt.Errorf("update env setting %s: %w", v.Key, err)
+					}
+				}
 			}
 		}
 		return nil

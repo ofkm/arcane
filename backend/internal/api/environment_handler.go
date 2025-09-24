@@ -145,9 +145,7 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/updater/history", h.UpdaterHistory)
 
 		apiGroup.POST("/:id/agent/pair", h.PairAgent)
-
 		apiGroup.GET("/:id/stats/ws", h.GetStatsWS)
-
 		apiGroup.GET("/:id/docker/info", h.GetDockerInfo)
 	}
 }

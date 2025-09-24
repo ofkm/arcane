@@ -64,9 +64,11 @@ func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*
 		}
 	}
 
-	danglingOnly, err := s.getDanglingModeFromSettings(ctx)
-	if err != nil {
-		danglingOnly = req.Dangling
+	danglingOnly := req.Dangling
+	if settingsDangling, _ := s.getDanglingModeFromSettings(ctx); settingsDangling != danglingOnly {
+		slog.DebugContext(ctx, "Prune request overriding stored image prune mode",
+			slog.Bool("settings_dangling_only", settingsDangling),
+			slog.Bool("request_dangling_only", danglingOnly))
 	}
 	slog.DebugContext(ctx, "Resolved image prune mode", slog.Bool("dangling_only", danglingOnly))
 

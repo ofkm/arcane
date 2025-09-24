@@ -159,6 +159,8 @@ func (h *ImageHandler) Prune(c *gin.Context) {
 		}
 	}
 
+	slog.DebugContext(c.Request.Context(), "Image prune request", slog.Bool("dangling_only", dangling))
+
 	report, err := h.imageService.PruneImages(c.Request.Context(), dangling)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

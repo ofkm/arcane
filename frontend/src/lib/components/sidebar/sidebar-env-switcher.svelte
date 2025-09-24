@@ -64,10 +64,12 @@
 </script>
 
 <Sidebar.Menu>
-	<Label class={cn(
-		"text-sidebar-foreground/60 mb-2 px-2 text-xs font-medium transition-opacity duration-200",
-		(sidebar.open || sidebar.isHovered) ? "opacity-100" : "opacity-0"
-	)}>{m.sidebar_environment_label()}</Label>
+	<Label
+		class={cn(
+			'text-sidebar-foreground/60 mb-2 px-2 text-xs font-medium transition-opacity duration-200',
+			sidebar.open || sidebar.isHovered ? 'opacity-100' : 'opacity-0'
+		)}>{m.sidebar_environment_label()}</Label
+	>
 	<Sidebar.MenuItem>
 		<DropdownMenu.Root bind:open={dropdownOpen}>
 			<DropdownMenu.Trigger>
@@ -117,6 +119,7 @@
 				sideOffset={4}
 			>
 				<div
+					role="group"
 					onmouseenter={() => {
 						// Keep sidebar hovered when mouse is over dropdown
 						if (sidebar.state === 'collapsed') {
@@ -129,43 +132,43 @@
 					}}
 				>
 					<DropdownMenu.Label class="text-muted-foreground text-xs">{m.sidebar_select_environment()}</DropdownMenu.Label>
-				{#if availableEnvironments.length === 0}
-					<DropdownMenu.Item disabled class="gap-2 p-2">
-						<div class="flex size-6 items-center justify-center rounded-md border">
-							<ServerIcon class="size-3.5 shrink-0" />
-						</div>
-						<span>{m.sidebar_no_environments()}</span>
-					</DropdownMenu.Item>
-				{:else}
-					{#each availableEnvironments as env (env.id)}
-						<DropdownMenu.Item onSelect={() => handleSelect(env)} class="gap-2 p-2">
+					{#if availableEnvironments.length === 0}
+						<DropdownMenu.Item disabled class="gap-2 p-2">
 							<div class="flex size-6 items-center justify-center rounded-md border">
-								{#if env.isLocal}
-									<ServerIcon class="size-3.5 shrink-0" />
-								{:else}
-									<GlobeIcon class="size-3.5 shrink-0" />
-								{/if}
+								<ServerIcon class="size-3.5 shrink-0" />
 							</div>
-							<div class="flex flex-col">
-								<span>{getEnvLabel(env)}</span>
-								{#if env.isLocal}
-									<span class="text-muted-foreground text-xs">{m.sidebar_local_docker_socket()}</span>
-								{:else}
-									<span class="text-muted-foreground max-w-32 truncate text-xs">{env.apiUrl}</span>
-								{/if}
-							</div>
+							<span>{m.sidebar_no_environments()}</span>
 						</DropdownMenu.Item>
-					{/each}
-				{/if}
-				{#if isAdmin}
-					<DropdownMenu.Separator />
-					<DropdownMenu.Item class="gap-2 p-2" onSelect={() => goto('/environments')}>
-						<div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
-							<PlusIcon class="size-4" />
-						</div>
-						<div class="text-muted-foreground font-medium">{m.sidebar_manage_environments()}</div>
-					</DropdownMenu.Item>
-				{/if}
+					{:else}
+						{#each availableEnvironments as env (env.id)}
+							<DropdownMenu.Item onSelect={() => handleSelect(env)} class="gap-2 p-2">
+								<div class="flex size-6 items-center justify-center rounded-md border">
+									{#if env.isLocal}
+										<ServerIcon class="size-3.5 shrink-0" />
+									{:else}
+										<GlobeIcon class="size-3.5 shrink-0" />
+									{/if}
+								</div>
+								<div class="flex flex-col">
+									<span>{getEnvLabel(env)}</span>
+									{#if env.isLocal}
+										<span class="text-muted-foreground text-xs">{m.sidebar_local_docker_socket()}</span>
+									{:else}
+										<span class="text-muted-foreground max-w-32 truncate text-xs">{env.apiUrl}</span>
+									{/if}
+								</div>
+							</DropdownMenu.Item>
+						{/each}
+					{/if}
+					{#if isAdmin}
+						<DropdownMenu.Separator />
+						<DropdownMenu.Item class="gap-2 p-2" onSelect={() => goto('/environments')}>
+							<div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
+								<PlusIcon class="size-4" />
+							</div>
+							<div class="text-muted-foreground font-medium">{m.sidebar_manage_environments()}</div>
+						</DropdownMenu.Item>
+					{/if}
 				</div>
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>

@@ -30,6 +30,7 @@ type App struct {
 	CancelApp context.CancelFunc
 }
 
+//nolint:gocognit
 func InitializeApp() (*App, error) {
 	ctx := context.Background()
 	loadErr := godotenv.Load()
@@ -78,6 +79,14 @@ func InitializeApp() (*App, error) {
 
 	// Ensure default settings but skip user bootstrap in agent mode
 	slog.InfoContext(appCtx, "Ensuring default settings are initialized")
+	if cfg.AgentMode || cfg.UIConfigurationDisabled {
+		if err := appServices.Settings.PersistEnvSettingsIfMissing(appCtx); err != nil {
+			slog.WarnContext(appCtx, "Failed to persist env-driven settings", slog.String("error", err.Error()))
+		} else {
+			slog.DebugContext(appCtx, "Persisted env-driven settings if missing")
+		}
+	}
+
 	if err := appServices.Settings.EnsureDefaultSettings(appCtx); err != nil {
 		slog.WarnContext(appCtx, "Failed to initialize default settings", slog.String("error", err.Error()))
 	} else {
