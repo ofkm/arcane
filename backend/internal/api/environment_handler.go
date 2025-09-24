@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"runtime" // added
+	"runtime"
 	"strings"
 	"time"
 
@@ -32,7 +32,6 @@ type EnvironmentHandler struct {
 	environmentService *services.EnvironmentService
 	containerService   *services.ContainerService
 	imageService       *services.ImageService
-	networkService     *services.NetworkService
 	volumeService      *services.VolumeService
 	projectService     *services.ProjectService
 	settingsService    *services.SettingsService
@@ -48,7 +47,6 @@ func NewEnvironmentHandler(
 	containerService *services.ContainerService,
 	imageService *services.ImageService,
 	imageUpdateService *services.ImageUpdateService,
-	networkService *services.NetworkService,
 	volumeService *services.VolumeService,
 	projectService *services.ProjectService,
 	settingsService *services.SettingsService,
@@ -61,7 +59,6 @@ func NewEnvironmentHandler(
 		environmentService: environmentService,
 		containerService:   containerService,
 		imageService:       imageService,
-		networkService:     networkService,
 		volumeService:      volumeService,
 		projectService:     projectService,
 		settingsService:    settingsService,
@@ -95,19 +92,6 @@ func NewEnvironmentHandler(
 		apiGroup.GET("/:id/containers/:containerId/stats", h.GetContainerStats)
 		apiGroup.GET("/:id/containers/:containerId/stats/stream", h.GetContainerStatsStream)
 		apiGroup.GET("/:id/containers/:containerId/logs/ws", h.GetContainerLogsWS)
-
-		apiGroup.GET("/:id/images", h.GetImages)
-		apiGroup.GET("/:id/images/:imageId", h.GetImage)
-		apiGroup.DELETE("/:id/images/:imageId", h.RemoveImage)
-		apiGroup.POST("/:id/images/pull", h.PullImage)
-		apiGroup.POST("/:id/images/prune", h.PruneImages)
-		apiGroup.GET("/:id/images/counts", h.GetImageUsageCounts)
-
-		apiGroup.GET("/:id/networks/counts", h.GetNetworkUsageCounts)
-		apiGroup.GET("/:id/networks", h.GetNetworks)
-		apiGroup.POST("/:id/networks", h.CreateNetwork)
-		apiGroup.GET("/:id/networks/:networkId", h.GetNetwork)
-		apiGroup.DELETE("/:id/networks/:networkId", h.RemoveNetwork)
 
 		apiGroup.GET("/:id/volumes/counts", h.GetVolumeUsageCounts)
 		apiGroup.GET("/:id/volumes", h.GetVolumes)
@@ -187,13 +171,7 @@ func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string)
 	if h.handleContainerEndpoints(c, endpoint) {
 		return
 	}
-	if h.handleImageEndpoints(c, endpoint) {
-		return
-	}
 	if h.handleImageUpdateEndpoints(c, endpoint) {
-		return
-	}
-	if h.handleNetworkEndpoints(c, endpoint) {
 		return
 	}
 	if h.handleVolumeEndpoints(c, endpoint) {
@@ -326,60 +304,6 @@ func (h *EnvironmentHandler) handleContainerEndpoints(c *gin.Context, endpoint s
 		return true
 	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == http.MethodDelete:
 		containerHandler.Delete(c)
-		return true
-	}
-	return false
-}
-
-func (h *EnvironmentHandler) handleImageEndpoints(c *gin.Context, endpoint string) bool {
-	imageHandler := &ImageHandler{
-		imageService:       h.imageService,
-		imageUpdateService: nil,
-	}
-
-	switch {
-	case endpoint == "/images/counts" && c.Request.Method == http.MethodGet:
-		imageHandler.GetImageUsageCounts(c)
-		return true
-	case endpoint == "/images" && c.Request.Method == http.MethodGet:
-		imageHandler.List(c)
-		return true
-	case endpoint == "/images/pull" && c.Request.Method == http.MethodPost:
-		imageHandler.Pull(c)
-		return true
-	case endpoint == "/images/prune" && c.Request.Method == http.MethodPost:
-		imageHandler.Prune(c)
-		return true
-	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == http.MethodGet:
-		imageHandler.GetByID(c)
-		return true
-	case strings.HasPrefix(endpoint, "/images/") && c.Request.Method == http.MethodDelete:
-		imageHandler.Remove(c)
-		return true
-	}
-	return false
-}
-
-func (h *EnvironmentHandler) handleNetworkEndpoints(c *gin.Context, endpoint string) bool {
-	networkHandler := &NetworkHandler{
-		networkService: h.networkService,
-	}
-
-	switch {
-	case endpoint == "/networks/counts" && c.Request.Method == http.MethodGet:
-		networkHandler.GetNetworkUsageCounts(c)
-		return true
-	case endpoint == "/networks" && c.Request.Method == http.MethodGet:
-		networkHandler.List(c)
-		return true
-	case endpoint == "/networks" && c.Request.Method == http.MethodPost:
-		networkHandler.Create(c)
-		return true
-	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == http.MethodGet:
-		networkHandler.GetByID(c)
-		return true
-	case strings.HasPrefix(endpoint, "/networks/") && c.Request.Method == http.MethodDelete:
-		networkHandler.Remove(c)
 		return true
 	}
 	return false
@@ -793,24 +717,8 @@ func (h *EnvironmentHandler) GetContainers(c *gin.Context) {
 	h.routeRequest(c, "/containers")
 }
 
-func (h *EnvironmentHandler) GetImages(c *gin.Context) {
-	h.routeRequest(c, "/images")
-}
-
-func (h *EnvironmentHandler) GetNetworkUsageCounts(c *gin.Context) {
-	h.routeRequest(c, "/networks/counts")
-}
-
-func (h *EnvironmentHandler) GetNetworks(c *gin.Context) {
-	h.routeRequest(c, "/networks")
-}
-
 func (h *EnvironmentHandler) GetVolumes(c *gin.Context) {
 	h.routeRequest(c, "/volumes")
-}
-
-func (h *EnvironmentHandler) CreateNetwork(c *gin.Context) {
-	h.routeRequest(c, "/networks")
 }
 
 func (h *EnvironmentHandler) CreateVolume(c *gin.Context) {
@@ -877,32 +785,6 @@ func (h *EnvironmentHandler) GetContainerStatsStream(c *gin.Context) {
 }
 
 // End Containers
-
-// Images
-
-func (h *EnvironmentHandler) GetImage(c *gin.Context) {
-	imageID := c.Param("imageId")
-	h.routeRequest(c, "/images/"+imageID)
-}
-
-func (h *EnvironmentHandler) GetImageUsageCounts(c *gin.Context) {
-	h.routeRequest(c, "/images/counts")
-}
-
-func (h *EnvironmentHandler) RemoveImage(c *gin.Context) {
-	imageID := c.Param("imageId")
-	h.routeRequest(c, "/images/"+imageID)
-}
-
-func (h *EnvironmentHandler) PullImage(c *gin.Context) {
-	h.routeRequest(c, "/images/pull")
-}
-
-func (h *EnvironmentHandler) PruneImages(c *gin.Context) {
-	h.routeRequest(c, "/images/prune")
-}
-
-// End Images
 
 func (h *EnvironmentHandler) GetNetwork(c *gin.Context) {
 	networkID := c.Param("networkId")
