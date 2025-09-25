@@ -70,14 +70,6 @@
 		}
 	}
 
-	function buildApiUrl(fullImageName: string): string {
-		const envId = getCurrentEnvironmentId();
-		if (envId === LOCAL_DOCKER_ENVIRONMENT_ID) {
-			return '/api/images/pull';
-		}
-		return `/api/environments/${envId}/images/pull`;
-	}
-
 	async function handleSubmit() {
 		const data = form.validate();
 		if (!data) return;
@@ -101,7 +93,7 @@
 		pullStatusText = `${m.images_pulling()} ${fullImageName}`;
 
 		try {
-			const response = await fetch(buildApiUrl(fullImageName), {
+			const response = await fetch('/api/environments/${envId}/images/pull', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'

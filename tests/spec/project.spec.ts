@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fetchProjectsWithRetry, type Project } from '../utils/fetch.util';
+import { fetchProjectCountsWithRetry, fetchProjectsWithRetry } from '../utils/fetch.util';
+import { Project, ProjectStatusCounts } from 'types/project.type';
 
 const ROUTES = {
   page: '/projects',
@@ -13,12 +14,14 @@ async function navigateToProjects(page: Page) {
 }
 
 let realProjects: Project[] = [];
+let projectCounts: ProjectStatusCounts = { runningProjects: 0, stoppedProjects: 0, totalProjects: 0 };
 
 test.beforeEach(async ({ page }) => {
   await navigateToProjects(page);
 
   try {
     realProjects = await fetchProjectsWithRetry(page);
+    projectCounts = await fetchProjectCountsWithRetry(page);
   } catch (error) {
     realProjects = [];
   }
@@ -35,9 +38,9 @@ test.describe('Projects Page', () => {
   });
 
   test('should display summary cards with correct counts', async ({ page }) => {
-    await expect(page.getByText('Total Projects')).toBeVisible();
-    await expect(page.getByText('Running')).toBeVisible();
-    await expect(page.getByText('Stopped').first()).toBeVisible();
+    await expect(page.locator('p:has-text("Total Projects") + p')).toHaveText(String(projectCounts.totalProjects));
+    await expect(page.locator('p:has-text("Running") + p')).toHaveText(String(projectCounts.runningProjects));
+    await expect(page.locator('p:has-text("Stopped") + p')).toHaveText(String(projectCounts.stoppedProjects));
   });
 
   test('should navigate to new project page when "Create Project" is clicked', async ({ page }) => {

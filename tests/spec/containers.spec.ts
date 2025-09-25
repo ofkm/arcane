@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fetchContainersWithRetry, type ContainerSummary, type Paginated } from '../utils/fetch.util';
+import { fetchContainersWithRetry, type Paginated } from '../utils/fetch.util';
+import { ContainerSummary } from 'types/containers.type';
 
 const CONTAINERS_ROUTE = '/containers';
 

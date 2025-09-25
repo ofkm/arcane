@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fetchNetworksWithRetry, type NetworkSummary } from '../utils/fetch.util';
+import { fetchNetworksCountsWithRetry, fetchNetworksWithRetry } from '../utils/fetch.util';
+import { NetworkSummary, NetworkUsageCounts } from 'types/networks.type';
 
 async function navigateToNetworks(page: Page) {
   await page.goto('/networks');
@@ -7,10 +8,12 @@ async function navigateToNetworks(page: Page) {
 }
 
 let realNetworks: NetworkSummary[] = [];
+let networkCount: NetworkUsageCounts = { networksInuse: 0, networksUnused: 0, totalNetworks: 0 };
 
 test.beforeEach(async ({ page }) => {
   await navigateToNetworks(page);
   realNetworks = await fetchNetworksWithRetry(page).catch(() => []);
+  networkCount = await fetchNetworksCountsWithRetry(page);
 });
 
 test.describe('Networks Page', () => {
@@ -22,9 +25,8 @@ test.describe('Networks Page', () => {
 
   test('Stat cards show correct counts', async ({ page }) => {
     await navigateToNetworks(page);
-    const total = realNetworks.length;
-    await expect(page.locator('p:has-text("Total Networks") + p')).toHaveText(String(total));
-    await expect(page.locator('p:has-text("Unused Networks") + p')).toBeVisible();
+    await expect(page.locator('p:has-text("Total Networks") + p')).toHaveText(String(networkCount.totalNetworks));
+    await expect(page.locator('p:has-text("Unused Networks") + p')).toHaveText(String(networkCount.networksUnused));
   });
 
   test('Table displays when networks exist, else empty state', async ({ page }) => {
