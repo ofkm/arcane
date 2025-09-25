@@ -5,11 +5,11 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import StatCard from '$lib/components/stat-card.svelte';
-	import { environmentAPI } from '$lib/services/api';
 	import { containerService } from '$lib/services/container-service';
 	import ContainerTable from './container-table.svelte';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { m } from '$lib/paraglide/messages';
+	import { imageService } from '$lib/services/image-service';
 
 	let { data } = $props();
 
@@ -32,7 +32,7 @@
 	async function handleCheckForUpdates() {
 		isLoading.checking = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.runAutoUpdate()),
+			result: await tryCatch(imageService.runAutoUpdate()),
 			message: 'Failed to Check Containers for Updates',
 			setLoadingState: (value) => (isLoading.checking = value),
 			async onSuccess() {

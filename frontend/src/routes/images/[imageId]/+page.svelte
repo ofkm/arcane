@@ -17,8 +17,8 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { toast } from 'svelte-sonner';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import { environmentAPI } from '$lib/services/api';
 	import { m } from '$lib/paraglide/messages';
+	import { imageService } from '$lib/services/image-service.js';
 
 	let { data } = $props();
 	let { image } = $derived(data);
@@ -55,7 +55,7 @@
 				destructive: true,
 				action: async () => {
 					await handleApiResultWithCallbacks({
-						result: await tryCatch(environmentAPI.deleteImage(id)),
+						result: await tryCatch(imageService.deleteImage(id)),
 						message: m.images_remove_failed(),
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {

@@ -10,10 +10,10 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import { environmentAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import ImageTable from './image-table.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { imageService } from '$lib/services/image-service';
 
 	let { data } = $props();
 
@@ -34,12 +34,12 @@
 		isLoading.pruning = true;
 		const dangling = data.settings?.dockerPruneMode === 'dangling';
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.pruneImages(dangling)),
+			result: await tryCatch(imageService.pruneImages(dangling)),
 			message: m.images_prune_failed(),
 			setLoadingState: (value) => (isLoading.pruning = value),
 			onSuccess: async () => {
 				toast.success(m.images_pruned_success());
-				images = await environmentAPI.getImages(requestOptions);
+				images = await imageService.getImages(requestOptions);
 				isConfirmPruneDialogOpen = false;
 			}
 		});
@@ -48,9 +48,9 @@
 	async function handleTriggerBulkUpdateCheck() {
 		isLoading.checking = true;
 		try {
-			await environmentAPI.checkAllImages();
+			await imageService.checkAllImages();
 			toast.success(m.images_update_check_completed());
-			images = await environmentAPI.getImages(requestOptions);
+			images = await imageService.getImages(requestOptions);
 		} catch (error) {
 			console.error('Failed to check for updates:', error);
 			toast.error(m.images_update_check_failed());
@@ -62,7 +62,7 @@
 	async function refreshImages() {
 		isLoading.refreshing = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.getImages(requestOptions)),
+			result: await tryCatch(imageService.getImages(requestOptions)),
 			message: m.images_refresh_failed(),
 			setLoadingState: (value) => (isLoading.refreshing = value),
 			async onSuccess(newImages) {
@@ -126,7 +126,7 @@
 
 	<ImagePullSheet
 		bind:open={isPullDialogOpen}
-		onPullFinished={async () => (images = await environmentAPI.getImages(requestOptions))}
+		onPullFinished={async () => (images = await imageService.getImages(requestOptions))}
 	/>
 
 	<Dialog.Root bind:open={isConfirmPruneDialogOpen}>

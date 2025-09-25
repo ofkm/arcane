@@ -1,12 +1,9 @@
-import { settingsAPI } from '$lib/services/api';
+import { settingsService } from '$lib/services/settings-service';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async () => {
 	try {
-		const [settings, oidcStatus] = await Promise.all([
-			settingsAPI.getSettings(),
-			settingsAPI.getOidcStatus()
-		]);
+		const [settings, oidcStatus] = await Promise.all([settingsService.getSettings(), settingsService.getOidcStatus()]);
 
 		return {
 			settings,

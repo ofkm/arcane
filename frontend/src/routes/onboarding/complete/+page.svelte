@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { settingsAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import { goto, invalidateAll } from '$app/navigation';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import CircleCheckIcon from '@lucide/svelte/icons/check-circle';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+	import { settingsService } from '$lib/services/settings-service.js';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
@@ -16,7 +16,7 @@
 		isLoading = true;
 
 		try {
-			await settingsAPI.updateSettings({
+			await settingsService.updateSettings({
 				...currentSettings,
 				onboardingCompleted: true,
 				onboardingSteps: {

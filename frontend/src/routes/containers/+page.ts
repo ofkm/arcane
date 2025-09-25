@@ -1,7 +1,7 @@
-import { settingsAPI } from '$lib/services/api';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import { containerService } from '$lib/services/container-service';
 import type { PageLoad } from './$types';
+import { settingsService } from '$lib/services/settings-service';
 
 export const load: PageLoad = async () => {
 	const containerRequestOptions: SearchPaginationSortRequest = {
@@ -12,7 +12,7 @@ export const load: PageLoad = async () => {
 	const [containers, containerStatusCounts, settings] = await Promise.all([
 		containerService.getContainers(containerRequestOptions),
 		containerService.getContainerStatusCounts(),
-		settingsAPI.getSettings()
+		settingsService.getSettings()
 	]);
 
 	return { containers, containerStatusCounts, containerRequestOptions, settings };

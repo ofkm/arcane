@@ -1,8 +1,8 @@
-import { environmentAPI } from '$lib/services/api';
+import { projectService } from '$lib/services/project-service';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ params }) => {
-	const project = await environmentAPI.getProject(params.projectId);
+	const project = await projectService.getProject(params.projectId);
 
 	const editorState = {
 		name: project.name || '',

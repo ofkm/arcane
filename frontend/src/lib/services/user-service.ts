@@ -1,4 +1,4 @@
-import BaseAPIService from './api-service';
+import BaseAPIService from './api/api-service';
 import type { User, CreateUser } from '$lib/types/user.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
@@ -32,3 +32,5 @@ export default class UserAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post('/auth/password', data)) as Promise<void>;
 	}
 }
+
+export const userService = new UserAPIService();

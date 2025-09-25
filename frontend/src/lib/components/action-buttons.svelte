@@ -2,7 +2,6 @@
 	import { openConfirmDialog } from './confirm-dialog';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { environmentAPI } from '$lib/services/api';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
@@ -11,6 +10,8 @@
 	import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
 	import { get } from 'svelte/store';
 	import { m } from '$lib/paraglide/messages';
+	import { containerService } from '$lib/services/container-service';
+	import { projectService } from '$lib/services/project-service';
 
 	type TargetType = 'container' | 'project';
 	type LoadingStates = {
@@ -137,11 +138,6 @@
 		);
 	}
 
-	function getCurrentEnvironmentId(): string {
-		const env = get(environmentStore.selected);
-		return env?.id || LOCAL_DOCKER_ENVIRONMENT_ID;
-	}
-
 	function confirmAction(action: string) {
 		if (action === 'remove') {
 			openConfirmDialog({
@@ -161,8 +157,8 @@
 						handleApiResultWithCallbacks({
 							result: await tryCatch(
 								type === 'container'
-									? environmentAPI.deleteContainer(id)
-									: environmentAPI.destroyProject(id, removeVolumes, removeFiles)
+									? containerService.deleteContainer(id)
+									: projectService.destroyProject(id, removeVolumes, removeFiles)
 							),
 							message: m.action_failed_generic({
 								action: type === 'project' ? m.compose_destroy() : m.common_remove(),
@@ -199,7 +195,7 @@
 					action: async () => {
 						setLoading('redeploy', true);
 						handleApiResultWithCallbacks({
-							result: await tryCatch(environmentAPI.redeployProject(id)),
+							result: await tryCatch(projectService.redeployProject(id)),
 							message: m.action_failed_generic({ action: m.action_redeploy(), type }),
 							setLoadingState: (value) => setLoading('redeploy', value),
 							onSuccess: async () => {
@@ -216,7 +212,7 @@
 	async function handleStart() {
 		setLoading('start', true);
 		await handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? environmentAPI.startContainer(id) : environmentAPI.deployProject(id)),
+			result: await tryCatch(type === 'container' ? containerService.startContainer(id) : projectService.deployProject(id)),
 			message: m.action_failed_generic({ action: m.common_start(), type }),
 			setLoadingState: (value) => setLoading('start', value),
 			onSuccess: async () => {
@@ -234,7 +230,7 @@
 		let hadError = false;
 
 		try {
-			const { pulled } = await environmentAPI.deployProjectMaybePull(id, (data) => {
+			const { pulled } = await projectService.deployProjectMaybePull(id, (data) => {
 				if (!data) return;
 
 				if (!openedPopover && isDownloadingLine(data)) {
@@ -316,7 +312,7 @@
 	async function handleStop() {
 		setLoading('stop', true);
 		await handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? environmentAPI.stopContainer(id) : environmentAPI.downProject(id)),
+			result: await tryCatch(type === 'container' ? containerService.stopContainer(id) : projectService.downProject(id)),
 			message: m.action_failed_generic({ action: m.common_stop(), type }),
 			setLoadingState: (value) => setLoading('stop', value),
 			onSuccess: async () => {
@@ -330,7 +326,7 @@
 	async function handleRestart() {
 		setLoading('restart', true);
 		await handleApiResultWithCallbacks({
-			result: await tryCatch(type === 'container' ? environmentAPI.restartContainer(id) : environmentAPI.restartProject(id)),
+			result: await tryCatch(type === 'container' ? containerService.restartContainer(id) : projectService.restartProject(id)),
 			message: m.action_failed_generic({ action: m.common_restart(), type }),
 			setLoadingState: (value) => setLoading('restart', value),
 			onSuccess: async () => {
@@ -350,7 +346,7 @@
 		let wasSuccessful = false;
 
 		try {
-			await environmentAPI.pullProjectImages(id, (data) => {
+			await projectService.pullProjectImages(id, (data) => {
 				if (!data) return;
 
 				if (data.error) {

@@ -16,10 +16,10 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import { environmentAPI } from '$lib/services/api';
 	import { format } from 'date-fns';
 	import ContainerIcon from '@lucide/svelte/icons/container';
 	import { m } from '$lib/paraglide/messages';
+	import { volumeService } from '$lib/services/volume-service.js';
 
 	let { data } = $props();
 	let volume = $state(data.volume);
@@ -43,7 +43,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(environmentAPI.deleteVolume(safeName)),
+						result: await tryCatch(volumeService.deleteVolume(safeName)),
 						message: m.volumes_remove_failed({ name: safeName }),
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {

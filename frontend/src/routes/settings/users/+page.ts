@@ -1,8 +1,9 @@
-import { settingsAPI, userAPI } from '$lib/services/api';
+import { settingsService } from '$lib/services/settings-service';
+import { userService } from '$lib/services/user-service';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
 export const load = async () => {
-	const settings = await settingsAPI.getSettings();
+	const settings = await settingsService.getSettings();
 
 	const userRequestOptions: SearchPaginationSortRequest = {
 		pagination: {
@@ -15,7 +16,7 @@ export const load = async () => {
 		}
 	};
 
-	const users = await userAPI.getUsers(userRequestOptions);
+	const users = await userService.getUsers(userRequestOptions);
 
 	return {
 		settings,

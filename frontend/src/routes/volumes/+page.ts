@@ -1,4 +1,4 @@
-import { environmentAPI } from '$lib/services/api';
+import { volumeService } from '$lib/services/volume-service';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import type { PageLoad } from './$types';
 
@@ -14,8 +14,8 @@ export const load: PageLoad = async () => {
 		}
 	};
 
-	const volumes = await environmentAPI.getVolumes(volumeRequestOptions);
-	const volumeUsageCounts = await environmentAPI.getVolumeUsageCounts();
+	const volumes = await volumeService.getVolumes(volumeRequestOptions);
+	const volumeUsageCounts = await volumeService.getVolumeUsageCounts();
 
 	return { volumes, volumeRequestOptions, volumeUsageCounts };
 };

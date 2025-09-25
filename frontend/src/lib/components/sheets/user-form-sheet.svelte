@@ -33,7 +33,6 @@
 	let canEditUsername = $derived(!isEditMode || allowUsernameEdit);
 	let SubmitIcon = $derived(isEditMode ? SaveIcon : UserPlusIcon);
 
-	// Disable most fields for OIDC users
 	let isOidcUser = $derived(!!userToEdit?.oidcSubjectId);
 
 	const formSchema = z.object({

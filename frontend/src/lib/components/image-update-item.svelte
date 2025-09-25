@@ -9,10 +9,10 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import PackageIcon from '@lucide/svelte/icons/package';
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
-	import { environmentAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import type { ImageUpdateData } from '$lib/types/image.type';
 	import { m } from '$lib/paraglide/messages';
+	import { imageService } from '$lib/services/image-service';
 
 	interface Props {
 		updateInfo?: ImageUpdateData | undefined;
@@ -91,7 +91,7 @@
 
 		isChecking = true;
 		try {
-			const result = await environmentAPI.checkImageUpdateByID(imageId);
+			const result = await imageService.checkImageUpdateByID(imageId);
 			if (result) {
 				if (result.error) {
 					localUpdateInfo = result;
