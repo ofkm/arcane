@@ -22,24 +22,44 @@
 	let menuElement: HTMLElement;
 	let storeUser: any = $state(null);
 
-	// Bottom sheet drag state
-	let isDragging = $state(false);
-	let dragStartY = $state(0);
-	let currentDragY = $state(0);
-	let dragTranslateY = $state(0);
-	let isAtScrollTop = $state(true);
-	let isAtScrollBottom = $state(false);
-	let isOverscrolling = $state(false);
-	let overscrollStartY = $state(0);
-	let maxSheetHeight = $state(0);
+	// Interaction state
+	interface InteractionState {
+		isDragging: boolean;
+		dragDistance: number;
+		startY: number;
+		currentY: number;
+		inputType: 'touch' | 'wheel' | 'none';
+		isAtScrollTop: boolean;
+		isAtScrollBottom: boolean;
+		canDragToClose: boolean;
+		dragStartedFromHandle: boolean;
+	}
 
-	// Trackpad/wheel scroll state
-	let wheelCloseThreshold = $state(0);
-	let lastWheelTime = $state(0);
-	let isWheelDragging = $state(false);
-	let wheelResetTimeout: ReturnType<typeof setTimeout> | null = null;
-	let wheelStartedAtTop = $state(false);
+	let interaction = $state<InteractionState>({
+		isDragging: false,
+		dragDistance: 0,
+		startY: 0,
+		currentY: 0,
+		inputType: 'none',
+		isAtScrollTop: true,
+		isAtScrollBottom: false,
+		canDragToClose: false,
+		dragStartedFromHandle: false
+	});
+
+	let maxSheetHeight = $state(0);
+	let resetTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isClosing = $state(false);
+
+	// Physics configuration
+	const PHYSICS = {
+		closeThreshold: 0.3, // 30% of sheet height
+		resistanceFactor: 0.8, // Resistance when dragging
+		velocityThreshold: 0.5, // Minimum velocity for quick close
+		snapAnimationDuration: 200, // ms
+		wheelSensitivity: 2.0, // Wheel scroll sensitivity (higher for trackpads)
+		resetDelay: 150 // ms before resetting wheel state
+	} as const;
 
 	$effect(() => {
 		const unsub = userStore.subscribe((u) => (storeUser = u));
@@ -49,7 +69,7 @@
 	// Use memoized values defined later for better performance
 	const currentPath = $derived(page.url.pathname);
 
-	// Track scroll position for bottom sheet behavior
+	// Physics functions
 	function updateScrollPosition() {
 		if (!menuElement) return;
 
@@ -57,195 +77,198 @@
 		const scrollHeight = menuElement.scrollHeight;
 		const clientHeight = menuElement.clientHeight;
 
-		isAtScrollTop = scrollTop <= 2; // Small tolerance for smooth scrolling
-		isAtScrollBottom = Math.abs(scrollHeight - clientHeight - scrollTop) <= 2;
+		interaction.isAtScrollTop = scrollTop === 0;
+		interaction.isAtScrollBottom = Math.abs(scrollHeight - clientHeight - scrollTop) <= 2;
 
 		// Calculate max sheet height (85vh as per CSS)
 		maxSheetHeight = Math.min(window.innerHeight * 0.85, clientHeight);
 	}
 
-	// Enhanced touch handling for overscroll sheet behavior
+	function calculateDragDistance(currentY: number): number {
+		const deltaY = currentY - interaction.startY;
+		if (deltaY <= 0) return 0;
+
+		// Apply consistent resistance curve for all input types
+		const rawDistance = deltaY * PHYSICS.resistanceFactor;
+		return Math.min(rawDistance, maxSheetHeight * 0.8);
+	}
+
+	function shouldCloseSheet(distance: number, velocity: number = 0): boolean {
+		const thresholdDistance = maxSheetHeight * PHYSICS.closeThreshold;
+		return distance > thresholdDistance || velocity > PHYSICS.velocityThreshold;
+	}
+
+	function resetInteractionState() {
+		interaction.isDragging = false;
+		interaction.dragDistance = 0;
+		interaction.startY = 0;
+		interaction.currentY = 0;
+		interaction.inputType = 'none';
+		interaction.canDragToClose = false;
+		interaction.dragStartedFromHandle = false;
+
+		if (resetTimeout) {
+			clearTimeout(resetTimeout);
+			resetTimeout = null;
+		}
+	}
+
+	function provideFeedback(type: 'grab' | 'close' | 'reset' | 'tap' = 'tap') {
+		if (!('vibrate' in navigator)) return;
+
+		const patterns = {
+			grab: 5,
+			close: 20,
+			reset: 10,
+			tap: 10
+		};
+
+		navigator.vibrate(patterns[type]);
+	}
+
+	// Touch handling
 	function handleTouchStart(e: TouchEvent) {
-		if (!open || !menuElement) return;
+		if (!open || !menuElement || isClosing) return;
 
 		const touch = e.touches[0];
-		dragStartY = touch.clientY;
-		currentDragY = touch.clientY;
-		overscrollStartY = touch.clientY;
-
-		// Check if touch is on the handle
 		const target = e.target as HTMLElement;
 		const isOnHandle = target.closest('[data-drag-handle]');
 
-		// Always enable dragging for handle, or prepare for potential overscroll
-		if (isOnHandle) {
-			isDragging = true;
-			isOverscrolling = false;
-		} else {
-			isDragging = false;
-			isOverscrolling = false;
+		// Check current scroll position in real-time
+		const currentScrollTop = menuElement.scrollTop;
+		const isAtScrollTop = currentScrollTop === 0;
+
+		// Initialize interaction state
+		interaction.startY = touch.clientY;
+		interaction.currentY = touch.clientY;
+		interaction.inputType = 'touch';
+		interaction.dragStartedFromHandle = !!isOnHandle;
+
+		// Determine if we can drag to close (handle always works, content only at scroll top)
+		interaction.canDragToClose = !!isOnHandle || isAtScrollTop;
+
+		if (interaction.canDragToClose) {
+			interaction.isDragging = true;
+			provideFeedback('grab');
 		}
 	}
 
 	function handleTouchMove(e: TouchEvent) {
-		if (!open || isClosing) return;
+		if (!open || isClosing || !interaction.isDragging) return;
 
 		const touch = e.touches[0];
-		currentDragY = touch.clientY;
-		const deltaY = currentDragY - dragStartY;
+		interaction.currentY = touch.clientY;
 
-		// Check if we're on the drag handle
-		const isOnHandle = e.target && (e.target as HTMLElement).closest('[data-drag-handle]');
+		// For handle-based drags, always allow
+		// For content-based drags, ensure we're still at scroll top
+		let canContinueDrag = interaction.dragStartedFromHandle;
 
-		// Handle drag handle behavior (always works)
-		if (isDragging && isOnHandle && deltaY > 0) {
-			dragTranslateY = deltaY;
+		if (!interaction.dragStartedFromHandle) {
+			const currentScrollTop = menuElement.scrollTop;
+			const isAtScrollTop = currentScrollTop === 0;
+			canContinueDrag = isAtScrollTop;
+		}
+
+		// Calculate drag distance using unified physics
+		const newDistance = calculateDragDistance(interaction.currentY);
+
+		// Only update if dragging downward and we can continue the drag
+		if (newDistance > 0 && canContinueDrag) {
+			interaction.dragDistance = newDistance;
 			e.preventDefault();
-			return;
-		}
-
-		// Handle overscroll behavior
-		if (!isDragging && !isOnHandle) {
-			// Check for overscroll conditions
-			const canOverscrollDown = isAtScrollTop && deltaY > 0; // Trying to scroll up when at top
-			const canOverscrollUp = isAtScrollBottom && deltaY < 0; // Trying to scroll down when at bottom
-
-			if (canOverscrollDown) {
-				// Start overscroll drag
-				if (!isOverscrolling) {
-					isOverscrolling = true;
-					overscrollStartY = touch.clientY;
-					isDragging = true;
-				}
-
-				// Calculate drag distance from overscroll start
-				const overscrollDelta = touch.clientY - overscrollStartY;
-				if (overscrollDelta > 0) {
-					dragTranslateY = overscrollDelta * 0.6; // Add some resistance
-					e.preventDefault();
-				}
-			}
-		}
-
-		// Reset drag if moving upward and not on handle
-		if (deltaY < 0 && !isOnHandle) {
-			dragTranslateY = 0;
+		} else if (interaction.currentY < interaction.startY || !canContinueDrag) {
+			// Reset if dragging upward or conditions no longer allow dragging
+			resetInteractionState();
 		}
 	}
 
 	function handleTouchEnd(e: TouchEvent) {
-		if (!isDragging) return;
+		if (!interaction.isDragging || interaction.inputType !== 'touch') return;
 
-		const deltaY = currentDragY - dragStartY;
+		const deltaY = interaction.currentY - interaction.startY;
+		const dragVelocity = Math.abs(deltaY) / (performance.now() - (e.timeStamp || Date.now()));
 
-		// Calculate half of max sheet height for snap close
-		const snapCloseThreshold = maxSheetHeight * 0.5;
-
-		// Close if dragged down more than half the max height
-		const shouldClose = dragTranslateY > snapCloseThreshold;
-
-		if (shouldClose) {
+		// Use unified physics to determine if sheet should close
+		if (shouldCloseSheet(interaction.dragDistance, dragVelocity)) {
 			closeSheet();
 		} else {
-			// Reset drag state only if not closing
-			isDragging = false;
-			dragTranslateY = 0;
-			dragStartY = 0;
-			currentDragY = 0;
-			isOverscrolling = false;
-			overscrollStartY = 0;
+			// Provide reset feedback if significant drag occurred
+			if (interaction.dragDistance > 30) {
+				provideFeedback('reset');
+			}
+			resetInteractionState();
 		}
 	}
 
-	// Handle trackpad/wheel scrolling for overscroll behavior
+	// Unified wheel handling
 	function handleWheel(e: WheelEvent) {
 		if (!open || !menuElement || isClosing) return;
 
-		const now = Date.now();
-		const timeDelta = now - lastWheelTime;
-		lastWheelTime = now;
+		// Check current scroll position in real-time
+		const currentScrollTop = menuElement.scrollTop;
+		const isAtScrollTop = currentScrollTop === 0;
+		const isScrollingUp = e.deltaY < 0;
 
-		const scrollTop = menuElement.scrollTop;
-		const isAtTop = scrollTop <= 1;
-		const isScrollingUp = e.deltaY < 0; // Negative deltaY means scrolling up
+		// Only handle wheel drag when exactly at scroll top AND scrolling up
+		if (isAtScrollTop && isScrollingUp) {
+			// Initialize wheel interaction if not already active
+			if (interaction.inputType === 'none') {
+				interaction.inputType = 'wheel';
+				interaction.startY = 0; // Virtual start position for wheel
+				interaction.canDragToClose = true;
+				interaction.isDragging = true;
+				interaction.dragDistance = 0; // Reset accumulated distance
+			}
 
-		// Reset threshold on new gesture (gap > 100ms indicates new gesture)
-		if (timeDelta > 100) {
-			wheelCloseThreshold = 0;
-			isWheelDragging = false;
-		}
+			// Only accumulate if we're still at the top and in wheel mode
+			if (interaction.inputType === 'wheel' && isAtScrollTop) {
+				const wheelDistance = Math.abs(e.deltaY) * PHYSICS.wheelSensitivity;
 
-		// Check for overscroll condition - trying to scroll up when at top
-		const canOverscroll = isAtTop && isScrollingUp;
+				// For wheel events, we accumulate raw distance and apply resistance directly
+				const rawDistance = interaction.dragDistance + wheelDistance;
+				const resistedDistance = rawDistance * PHYSICS.resistanceFactor;
+				interaction.dragDistance = Math.min(resistedDistance, maxSheetHeight * 0.8);
 
-		if (canOverscroll) {
-			// Accumulate overscroll attempts
-			wheelCloseThreshold += Math.abs(e.deltaY);
-
-			// Start visual feedback after small threshold
-			if (wheelCloseThreshold > 15) {
-				isWheelDragging = true;
-				// Scale down for wheel input and apply resistance
-				const dragDistance = Math.min((wheelCloseThreshold - 15) * 0.4, maxSheetHeight * 0.6);
-				dragTranslateY = dragDistance;
-
-				// Prevent page scroll
 				e.preventDefault();
 
-				// Close if dragged past half max height
-				const snapCloseThreshold = maxSheetHeight * 0.5;
-				if (dragDistance > snapCloseThreshold) {
+				// Check if should close using unified physics
+				if (shouldCloseSheet(interaction.dragDistance)) {
 					closeSheet();
-				} else {
-					// Auto-reset if no more wheel events
-					scheduleWheelReset();
+					return;
 				}
+
+				// Schedule reset after wheel stops
+				scheduleReset();
 			}
 		} else {
-			// Reset if conditions not met
-			resetWheelState();
+			// Reset when conditions change (not at top or not scrolling up)
+			if (interaction.inputType === 'wheel') {
+				resetInteractionState();
+			}
 		}
 	}
 
-	function resetWheelState() {
-		wheelCloseThreshold = 0;
-		isWheelDragging = false;
-		if (!isDragging && !isClosing) {
-			dragTranslateY = 0;
+	function scheduleReset() {
+		if (resetTimeout) {
+			clearTimeout(resetTimeout);
 		}
-		if (wheelResetTimeout) {
-			clearTimeout(wheelResetTimeout);
-			wheelResetTimeout = null;
-		}
+		resetTimeout = setTimeout(() => {
+			if (interaction.inputType === 'wheel') {
+				resetInteractionState();
+			}
+		}, PHYSICS.resetDelay);
 	}
 
 	function closeSheet() {
 		isClosing = true;
-		// Don't reset visual state immediately - let the closing animation handle it
-		// Just reset the interaction states
-		isWheelDragging = false;
-		isDragging = false;
-		isOverscrolling = false;
-		overscrollStartY = 0;
+		provideFeedback('close');
+
+		// Reset all interaction states immediately
+		resetInteractionState();
 
 		// Close immediately - let CSS transitions handle the smooth animation
 		open = false;
-
-		// Reset remaining state after animation completes
-		setTimeout(() => {
-			dragTranslateY = 0;
-			isClosing = false;
-		}, 500); // Match the CSS transition duration
-	}
-
-	// Auto-reset wheel state after inactivity
-	function scheduleWheelReset() {
-		if (wheelResetTimeout) {
-			clearTimeout(wheelResetTimeout);
-		}
-		wheelResetTimeout = setTimeout(() => {
-			resetWheelState();
-		}, 200);
+		isClosing = false;
 	}
 
 	// Swipe gesture to close menu (keep existing horizontal swipes)
@@ -265,10 +288,10 @@
 			// Add scroll listener
 			menuElement.addEventListener('scroll', updateScrollPosition, { passive: true });
 
-			// Add touch listeners for drag-to-close
-			menuElement.addEventListener('touchstart', handleTouchStart, { passive: false });
-			menuElement.addEventListener('touchmove', handleTouchMove, { passive: false });
-			menuElement.addEventListener('touchend', handleTouchEnd, { passive: false });
+			// Add touch listeners for drag-to-close with optimized passive settings
+			menuElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+			menuElement.addEventListener('touchmove', handleTouchMove, { passive: false }); // Needs to prevent default
+			menuElement.addEventListener('touchend', handleTouchEnd, { passive: true });
 
 			// Add wheel listener for trackpad/mouse wheel support
 			menuElement.addEventListener('wheel', handleWheel, { passive: false });
@@ -293,6 +316,7 @@
 
 			if (e.key === 'Escape') {
 				e.preventDefault();
+				provideFeedback('close');
 				open = false;
 			}
 		};
@@ -326,15 +350,13 @@
 			if (menuElement) {
 				// Reset any overflow restrictions that might interfere
 				menuElement.style.overflowY = 'auto';
-				(menuElement.style as any).webkitOverflowScrolling = 'touch';
+				// Disable momentum scrolling to prevent glidy feeling when closing
+				(menuElement.style as any).webkitOverflowScrolling = 'auto';
 				menuElement.style.touchAction = 'pan-y'; // Allow vertical scrolling only
 
-				// Focus the menu when opened - use requestAnimationFrame for better performance
+				// Focus the menu container itself for accessibility without highlighting specific elements
 				requestAnimationFrame(() => {
-					const firstFocusable = menuElement.querySelector('a, button') as HTMLElement;
-					if (firstFocusable) {
-						firstFocusable.focus();
-					}
+					menuElement.focus();
 				});
 			}
 
@@ -365,7 +387,7 @@
 	const memoizedIsAdmin = $derived.by(() => !!memoizedUser?.roles?.includes('admin'));
 
 	function handleItemClick(item: NavigationItem) {
-		// Close menu when navigating
+		provideFeedback('tap');
 		open = false;
 	}
 
@@ -379,15 +401,19 @@
 	<div
 		class={cn(
 			'bg-background/20 fixed inset-0 z-40 backdrop-blur-md',
-			(isDragging || isWheelDragging || isOverscrolling) && !isClosing ? 'transition-none' : 'transition-opacity duration-300'
+			interaction.isDragging && !isClosing ? 'transition-none' : 'transition-opacity duration-200'
 		)}
 		style={`
-			${(isDragging || isWheelDragging || isOverscrolling) && !isClosing ? `opacity: ${Math.max(0.1, 1 - dragTranslateY / 400)};` : ''}
+			${interaction.isDragging && !isClosing ? `opacity: ${Math.max(0.1, 1 - interaction.dragDistance / 400)};` : ''}
 			touch-action: manipulation;
 		`}
-		onclick={() => (open = false)}
+		onclick={() => {
+			provideFeedback('close');
+			open = false;
+		}}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') {
+				provideFeedback('close');
 				open = false;
 			}
 		}}
@@ -413,17 +439,17 @@
 	bind:this={menuElement}
 	class={cn(
 		'bg-background/60 border-border/30 fixed inset-x-0 bottom-0 z-50 rounded-t-3xl border-t shadow-sm backdrop-blur-xl',
-		'transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]',
+		'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
 		'max-h-[85vh] overflow-y-auto overscroll-contain',
 		open ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0',
-		(isDragging || isWheelDragging || isOverscrolling) && !isClosing ? 'transition-none' : ''
+		interaction.isDragging && !isClosing ? 'transition-none' : ''
 	)}
 	style={`
 		touch-action: pan-y; 
 		-webkit-overflow-scrolling: touch;
 		${
-			(isDragging || isWheelDragging || isOverscrolling) && !isClosing
-				? `transform: translateY(${dragTranslateY}px); opacity: ${Math.max(0.3, 1 - dragTranslateY / 300)};`
+			interaction.isDragging && !isClosing
+				? `transform: translateY(${interaction.dragDistance}px); opacity: ${Math.max(0.3, 1 - interaction.dragDistance / 300)};`
 				: ''
 		}
 	`}
@@ -438,13 +464,12 @@
 	<div class="flex justify-center pt-4 pb-3" data-drag-handle>
 		<div
 			class={cn(
-				'h-1.5 w-10 rounded-full transition-all duration-200',
-				(isDragging || isWheelDragging || isOverscrolling) && !isClosing
-					? 'bg-muted-foreground/40 h-2 w-12'
-					: 'bg-muted-foreground/20',
-				'hover:bg-muted-foreground/30 active:bg-muted-foreground/40'
+				'h-1.5 w-10 rounded-full transition-all duration-150',
+				interaction.isDragging && !isClosing ? 'bg-muted-foreground/50 h-2 w-12' : 'bg-muted-foreground/20',
+				'hover:bg-muted-foreground/30 active:bg-muted-foreground/50'
 			)}
-			style={`transform: ${(isDragging || isWheelDragging || isOverscrolling) && !isClosing ? 'scale(1.1)' : 'scale(1)'}`}
+			style={`transform: ${interaction.isDragging && !isClosing ? 'scale(1.15)' : 'scale(1)'};
+				transition: transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 150ms ease;`}
 		></div>
 	</div>
 
@@ -625,6 +650,11 @@
 		div[data-testid='mobile-nav-sheet'] {
 			overscroll-behavior: contain;
 		}
+	}
+
+	/* Remove focus outline from dialog container since it's focused for accessibility */
+	div[data-testid='mobile-nav-sheet']:focus {
+		outline: none;
 	}
 
 	/* Respect reduced motion preferences */
