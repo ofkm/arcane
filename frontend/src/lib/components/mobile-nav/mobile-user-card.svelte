@@ -11,7 +11,7 @@
 	import type { Environment } from '$lib/types/environment.type';
 	import { getLocale, type Locale } from '$lib/paraglide/runtime';
 	import { setLocale } from '$lib/utils/locale.util';
-	import UserAPIService from '$lib/services/api/user-api-service';
+	import UserAPIService from '$lib/services/user-service';
 	import { mode, toggleMode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';

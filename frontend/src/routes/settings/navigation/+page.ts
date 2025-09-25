@@ -1,10 +1,10 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import { settingsAPI } from '$lib/services/api';
+import { settingsService } from '$lib/services/settings-service';
 
 export const load: PageLoad = async () => {
 	try {
-		const settings = await settingsAPI.getSettings();
+		const settings = await settingsService.getSettings();
 		
 		return {
 			settings
