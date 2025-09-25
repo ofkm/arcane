@@ -7,7 +7,6 @@
 	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { systemAPI } from '$lib/services/api';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
@@ -22,6 +21,7 @@
 	import DashboardImageTable from './dash-image-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { invalidateAll } from '$app/navigation';
+	import { systemService } from '$lib/services/system-service';
 
 	let { data } = $props();
 	let containers = $state(data.containers);
@@ -220,7 +220,7 @@
 		if (isLoading.starting || !dashboardStates.dockerInfo || stoppedContainers === 0) return;
 		isLoading.starting = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(systemAPI.startAllStoppedContainers()),
+			result: await tryCatch(systemService.startAllStoppedContainers()),
 			message: m.dashboard_start_all_failed(),
 			setLoadingState: (value) => (isLoading.starting = value),
 			onSuccess: async () => {
@@ -240,7 +240,7 @@
 				destructive: false,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(systemAPI.stopAllContainers()),
+						result: await tryCatch(systemService.stopAllContainers()),
 						message: m.dashboard_stop_all_failed(),
 						setLoadingState: (value) => (isLoading.stopping = value),
 						onSuccess: async () => {
@@ -276,7 +276,7 @@
 		const typesString = selectedTypes.map((t) => typeLabels[t]).join(', ');
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(systemAPI.pruneAll(pruneOptions)),
+			result: await tryCatch(systemService.pruneAll(pruneOptions)),
 			message: m.dashboard_prune_failed({ types: typesString }),
 			setLoadingState: (value) => (isLoading.pruning = value),
 			onSuccess: async () => {

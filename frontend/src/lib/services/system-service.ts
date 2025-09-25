@@ -1,8 +1,8 @@
-import type { DockerInfo } from '$lib/types/docker-info.type';
-import BaseAPIService from './api-service';
+import BaseAPIService from './api/api-service';
 import { environmentStore } from '$lib/stores/environment.store';
+import type { DockerInfo } from '$lib/types/docker-info.type';
 
-export default class SystemAPIService extends BaseAPIService {
+export class SystemService extends BaseAPIService {
 	async pruneAll(options: {
 		containers?: boolean;
 		images?: boolean;
@@ -12,7 +12,8 @@ export default class SystemAPIService extends BaseAPIService {
 		dangling?: boolean;
 		until?: string;
 	}) {
-		return this.handleResponse(this.api.post('/system/prune', options));
+		const envId = await environmentStore.getCurrentEnvironmentId();
+		return this.handleResponse(this.api.post(`/environments/${envId}/system/prune`, options));
 	}
 
 	async startAllStoppedContainers() {
@@ -30,3 +31,5 @@ export default class SystemAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.get(`/environments/${envId}/system/docker/info`));
 	}
 }
+
+export const systemService = new SystemService();

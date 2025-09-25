@@ -1,7 +1,7 @@
-import { systemAPI } from '$lib/services/api';
 import { containerService } from '$lib/services/container-service';
 import { imageService } from '$lib/services/image-service';
 import { settingsService } from '$lib/services/settings-service';
+import { systemService } from '$lib/services/system-service';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import type { PageLoad } from './$types';
 
@@ -31,7 +31,10 @@ export const load: PageLoad = async () => {
 	const images = await imageService.getImages(imageRequestOptions);
 	const containerStatusCounts = await containerService.getContainerStatusCounts();
 
-	const [dockerInfoResult, settingsResult] = await Promise.allSettled([systemAPI.getDockerInfo(), settingsService.getSettings()]);
+	const [dockerInfoResult, settingsResult] = await Promise.allSettled([
+		systemService.getDockerInfo(),
+		settingsService.getSettings()
+	]);
 
 	const dockerInfo = dockerInfoResult.status === 'fulfilled' ? dockerInfoResult.value : null;
 	const settings = settingsResult.status === 'fulfilled' ? settingsResult.value : null;

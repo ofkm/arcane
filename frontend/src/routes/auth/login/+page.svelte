@@ -10,11 +10,11 @@
 	import UserIcon from '@lucide/svelte/icons/user';
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
-	import { authService } from '$lib/services/api/auth-api-service';
 	import userStore from '$lib/stores/user-store';
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
 	import { settingsService } from '$lib/services/settings-service';
+	import { authService } from '$lib/services/auth-service';
 
 	let { data }: { data: PageData } = $props();
 
