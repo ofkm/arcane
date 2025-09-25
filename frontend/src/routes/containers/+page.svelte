@@ -43,14 +43,21 @@
 
 	async function refreshContainers() {
 		isLoading.refreshing = true;
-		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.getContainers(requestOptions)),
-			message: 'Failed to Refresh Containers',
-			setLoadingState: (value) => (isLoading.refreshing = value),
-			async onSuccess(newContainers) {
-				containers = newContainers;
-			}
-		});
+
+		const [containerResult, statusCountsResult] = await Promise.allSettled([
+			tryCatch(environmentAPI.getContainers(requestOptions)),
+			tryCatch(environmentAPI.getContainerStatusCounts())
+		]);
+
+		if (containerResult.status === 'fulfilled' && !containerResult.value.error) {
+			containers = containerResult.value.data;
+		}
+
+		if (statusCountsResult.status === 'fulfilled' && !statusCountsResult.value.error) {
+			containerStatusCounts = statusCountsResult.value.data;
+		}
+
+		isLoading.refreshing = false;
 	}
 </script>
 
