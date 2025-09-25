@@ -242,11 +242,6 @@ func (h *SystemHandler) StopAllContainers(c *gin.Context) {
 
 //nolint:gocognit
 func (h *SystemHandler) Stats(c *gin.Context) {
-	envID := c.Param("id")
-	if envID == "" {
-		envID = LOCAL_DOCKER_ENVIRONMENT_ID
-	}
-
 	conn, err := sysWsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return

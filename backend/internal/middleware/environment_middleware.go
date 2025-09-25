@@ -26,6 +26,8 @@ func NewEnvProxyMiddleware(localID string, resolver EnvResolver) gin.HandlerFunc
 // is remote. paramName is the URL param key (e.g. "id") that contains the environment id when using
 // router groups; if that param is not present the middleware will attempt to auto-detect the id
 // by parsing the request path after the first "/environments/" segment.
+//
+//nolint:gocognit
 func NewEnvProxyMiddlewareWithParam(localID string, paramName string, resolver EnvResolver) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		envID := c.Param(paramName)
