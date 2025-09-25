@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"path"
 	"strings"
@@ -73,16 +74,33 @@ func NewEnvProxyMiddlewareWithParam(localID string, paramName string, resolver E
 		}
 
 		if strings.EqualFold(c.GetHeader("Upgrade"), "websocket") || strings.Contains(strings.ToLower(c.GetHeader("Connection")), "upgrade") {
+			wsTarget := target
+			if strings.HasPrefix(target, "https://") {
+				wsTarget = "wss://" + strings.TrimPrefix(target, "https://")
+			} else if strings.HasPrefix(target, "http://") {
+				wsTarget = "ws://" + strings.TrimPrefix(target, "http://")
+			}
+
 			hdr := http.Header{}
 			if auth := c.GetHeader("Authorization"); auth != "" {
 				hdr.Set("Authorization", auth)
 			} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
 				hdr.Set("Authorization", "Bearer "+cookieToken)
 			}
+
+			if hdr.Get("Authorization") == "" {
+				if cookieHeader := c.Request.Header.Get("Cookie"); cookieHeader != "" {
+					hdr.Set("Cookie", cookieHeader)
+				}
+			}
+
 			if accessToken != nil && *accessToken != "" {
 				hdr.Set("X-Arcane-Agent-Token", *accessToken)
 			}
-			_ = wsutil.ProxyHTTP(c.Writer, c.Request, target, hdr)
+
+			if err := wsutil.ProxyHTTP(c.Writer, c.Request, wsTarget, hdr); err != nil {
+				slog.Error("websocket proxy failed", "env_id", envID, "target", wsTarget, "err", err)
+			}
 			c.Abort()
 			return
 		}
