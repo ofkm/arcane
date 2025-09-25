@@ -14,11 +14,11 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { toast } from 'svelte-sonner';
-	import { environmentManagementAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import type { Environment } from '$lib/types/environment.type';
 	import { m } from '$lib/paraglide/messages';
+	import { environmentManagementService } from '$lib/services/env-mgmt-service';
 
 	let {
 		environments = $bindable(),
@@ -47,7 +47,7 @@
 					let failureCount = 0;
 
 					for (const id of ids) {
-						const result = await tryCatch(environmentManagementAPI.delete(id));
+						const result = await tryCatch(environmentManagementService.delete(id));
 						handleApiResultWithCallbacks({
 							result,
 							message: m.environments_bulk_remove_failed_many({ count: ids.length }),
@@ -67,7 +67,7 @@
 								? m.environments_bulk_remove_success_one()
 								: m.environments_bulk_remove_success_many({ count: successCount });
 						toast.success(msg);
-						environments = await environmentManagementAPI.getEnvironments(requestOptions);
+						environments = await environmentManagementService.getEnvironments(requestOptions);
 					}
 					if (failureCount > 0) {
 						const msg =
@@ -92,14 +92,14 @@
 				destructive: true,
 				action: async () => {
 					isLoading.removing = true;
-					const result = await tryCatch(environmentManagementAPI.delete(id));
+					const result = await tryCatch(environmentManagementService.delete(id));
 					handleApiResultWithCallbacks({
 						result,
 						message: m.environments_delete_failed({ name: hostname }),
 						setLoadingState: () => {},
 						onSuccess: async () => {
 							toast.success(m.environments_delete_success({ name: hostname }));
-							environments = await environmentManagementAPI.getEnvironments(requestOptions);
+							environments = await environmentManagementService.getEnvironments(requestOptions);
 						}
 					});
 					isLoading.removing = false;
@@ -110,7 +110,7 @@
 
 	async function handleTest(id: string) {
 		isLoading.testing = true;
-		const result = await tryCatch(environmentManagementAPI.testConnection(id));
+		const result = await tryCatch(environmentManagementService.testConnection(id));
 		handleApiResultWithCallbacks({
 			result,
 			message: m.environments_test_connection_failed(),
@@ -226,7 +226,7 @@
 				bind:requestOptions
 				bind:selectedIds
 				onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-				onRefresh={async (options) => (environments = await environmentManagementAPI.getEnvironments(options))}
+				onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
 				{columns}
 				rowActions={RowActions}
 			/>

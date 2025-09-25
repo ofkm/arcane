@@ -18,7 +18,6 @@
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import TemplateSelectionDialog from '$lib/components/dialogs/template-selection-dialog.svelte';
-	import { converterAPI } from '$lib/services/api';
 	import type { Template } from '$lib/types/template.type';
 	import * as DropdownButton from '$lib/components/ui/dropdown-button/index.js';
 	import { z } from 'zod/v4';
@@ -26,6 +25,7 @@
 	import PlusCircleIcon from '@lucide/svelte/icons/plus-circle';
 	import { m } from '$lib/paraglide/messages';
 	import { projectService } from '$lib/services/project-service.js';
+	import { systemService } from '$lib/services/system-service.js';
 
 	let { data } = $props();
 
@@ -82,7 +82,7 @@
 		}
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(converterAPI.convert(dockerRunCommand)),
+			result: await tryCatch(systemService.convert(dockerRunCommand)),
 			message: m.compose_convert_failed(),
 			setLoadingState: (value) => (converting = value),
 			onSuccess: (data) => {

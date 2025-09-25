@@ -1,9 +1,9 @@
-import BaseAPIService from './api-service';
+import BaseAPIService from './api/api-service';
 import type { Environment } from '$lib/types/environment.type';
 import type { CreateEnvironmentDTO, UpdateEnvironmentDTO } from '$lib/types/environment.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
-export default class EnvironmentManagementAPIService extends BaseAPIService {
+export default class EnvironmentManagementService extends BaseAPIService {
 	async create(dto: CreateEnvironmentDTO): Promise<Environment> {
 		const res = await this.api.post('/environments', dto);
 		return res.data.data as Environment;
@@ -33,3 +33,5 @@ export default class EnvironmentManagementAPIService extends BaseAPIService {
 		return res.data.data as { status: 'online' | 'offline'; message?: string };
 	}
 }
+
+export const environmentManagementService = new EnvironmentManagementService();

@@ -30,6 +30,14 @@ export class SystemService extends BaseAPIService {
 		const envId = await environmentStore.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.get(`/environments/${envId}/system/docker/info`));
 	}
+
+	async convert(dockerRunCommand: string) {
+		const envId = await environmentStore.getCurrentEnvironmentId();
+		const res = await this.api.post(`/environments/${envId}/system/convert`, {
+			dockerRunCommand
+		});
+		return res.data;
+	}
 }
 
 export const systemService = new SystemService();

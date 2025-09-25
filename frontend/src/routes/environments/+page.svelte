@@ -7,8 +7,8 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
-	import { environmentManagementAPI } from '$lib/services/api';
 	import { m } from '$lib/paraglide/messages';
+	import { environmentManagementService } from '$lib/services/env-mgmt-service';
 
 	let { data } = $props();
 
@@ -26,7 +26,7 @@
 	async function refresh() {
 		isLoading.refresh = true;
 		try {
-			environments = await environmentManagementAPI.getEnvironments(requestOptions);
+			environments = await environmentManagementService.getEnvironments(requestOptions);
 		} catch (err) {
 			console.error('Failed to refresh environments:', err);
 			toast.error(m.environments_refresh_failed());
@@ -50,7 +50,7 @@
 					let failureCount = 0;
 
 					for (const id of selectedIds) {
-						const result = await tryCatch(environmentManagementAPI.delete(id));
+						const result = await tryCatch(environmentManagementService.delete(id));
 						handleApiResultWithCallbacks({
 							result,
 							message: m.environments_bulk_remove_failed_many({ count: selectedIds.length }),
@@ -88,7 +88,7 @@
 
 	async function onEnvironmentCreated() {
 		showEnvironmentSheet = false;
-		environments = await environmentManagementAPI.getEnvironments(requestOptions);
+		environments = await environmentManagementService.getEnvironments(requestOptions);
 		toast.success(m.environments_created_success());
 		refresh();
 	}

@@ -9,10 +9,10 @@
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import { goto, invalidateAll } from '$app/navigation';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { environmentManagementAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import Label from '$lib/components/ui/label/label.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { environmentManagementService } from '$lib/services/env-mgmt-service.js';
 
 	let { data } = $props();
 	let { environment } = $derived(data);
@@ -47,7 +47,7 @@
 		if (isTestingConnection) return;
 		try {
 			isTestingConnection = true;
-			const result = await environmentManagementAPI.testConnection(environment.id);
+			const result = await environmentManagementService.testConnection(environment.id);
 			if (result.status === 'online') {
 				toast.success('Connection successful');
 			} else {
@@ -69,7 +69,7 @@
 		}
 		try {
 			isPairing = true;
-			await environmentManagementAPI.update(environment.id, { bootstrapToken });
+			await environmentManagementService.update(environment.id, { bootstrapToken });
 			toast.success('Agent paired successfully');
 			bootstrapToken = '';
 			await refreshEnvironment();

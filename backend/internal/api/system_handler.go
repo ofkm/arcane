@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
+	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -40,6 +41,8 @@ func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 		apiGroup.POST("/containers/start-all", handler.StartAllContainers)
 		apiGroup.POST("/containers/start-stopped", handler.StartAllStoppedContainers)
 		apiGroup.POST("/containers/stop-all", handler.StopAllContainers)
+		apiGroup.POST("/convert", handler.ConvertDockerRun)
+
 	}
 }
 
@@ -323,4 +326,42 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 			}
 		}
 	}
+}
+
+func (h *SystemHandler) ConvertDockerRun(c *gin.Context) {
+	var req models.ConvertDockerRunRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request format: " + err.Error(),
+		})
+		return
+	}
+
+	parsed, err := h.systemService.ParseDockerRunCommand(req.DockerRunCommand)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Failed to parse docker run command. Please check the syntax.",
+			"code":    "BAD_REQUEST",
+		})
+		return
+	}
+
+	dockerCompose, envVars, serviceName, err := h.systemService.ConvertToDockerCompose(parsed)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to convert to Docker Compose format.",
+			"code":    "CONVERSION_ERROR",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.ConvertDockerRunResponse{
+		Success:       true,
+		DockerCompose: dockerCompose,
+		EnvVars:       envVars,
+		ServiceName:   serviceName,
+	})
 }

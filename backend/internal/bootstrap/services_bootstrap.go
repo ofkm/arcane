@@ -23,7 +23,6 @@ type Services struct {
 	Auth              *services.AuthService
 	Oidc              *services.OidcService
 	Docker            *services.DockerClientService
-	Converter         *services.ConverterService
 	Template          *services.TemplateService
 	ContainerRegistry *services.ContainerRegistryService
 	System            *services.SystemService
@@ -36,7 +35,6 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs = &Services{}
 
 	svcs.Event = services.NewEventService(db)
-	svcs.Converter = services.NewConverterService()
 	svcs.Settings, err = services.NewSettingsService(ctx, db)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to settings service: %w", err)
