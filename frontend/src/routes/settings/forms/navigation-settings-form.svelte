@@ -131,8 +131,7 @@
 	});
 </script>
 
-<fieldset disabled={uiConfigDisabled} class="relative">
-	<div class="space-y-4 sm:space-y-6">
+<div class="space-y-4 sm:space-y-6">
 		<!-- Mobile Navigation Appearance Card -->
 		<Card.Root class="pt-0 overflow-hidden">
 			<Card.Header class="!py-4 bg-muted/20 border-b">
@@ -220,5 +219,4 @@
 				</div>
 			</Card.Content>
 		</Card.Root>
-	</div>
-</fieldset>
+</div>
