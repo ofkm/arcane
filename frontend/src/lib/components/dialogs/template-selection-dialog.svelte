@@ -12,7 +12,6 @@
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
-	import { templateAPI } from '$lib/services/api';
 	import type { Template } from '$lib/types/template.type';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
@@ -21,6 +20,7 @@
 
 	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';
+	import { templateService } from '$lib/services/template-service';
 
 	interface Props {
 		open: boolean;
@@ -108,7 +108,7 @@
 		loadingStates = new Map(loadingStates);
 
 		try {
-			const details = await templateAPI.getTemplateContent(template.id);
+			const details = await templateService.getTemplateContent(template.id);
 			if (!details) {
 				toast.error(m.templates_load_failed());
 				return;
@@ -139,7 +139,7 @@
 		loadingStates = new Map(loadingStates);
 
 		try {
-			const result = await templateAPI.download(templateId);
+			const result = await templateService.download(templateId);
 
 			if (result) {
 				toast.success(m.templates_downloaded_success({ name: template.name }));

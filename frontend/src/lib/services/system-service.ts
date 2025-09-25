@@ -1,4 +1,4 @@
-import BaseAPIService from './api/api-service';
+import BaseAPIService from './api-service';
 import { environmentStore } from '$lib/stores/environment.store';
 import type { DockerInfo } from '$lib/types/docker-info.type';
 

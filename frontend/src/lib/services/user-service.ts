@@ -1,4 +1,4 @@
-import BaseAPIService from './api/api-service';
+import BaseAPIService from './api-service';
 import type { User, CreateUser } from '$lib/types/user.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 

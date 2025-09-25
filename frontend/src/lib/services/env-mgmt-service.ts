@@ -1,4 +1,4 @@
-import BaseAPIService from './api/api-service';
+import BaseAPIService from './api-service';
 import type { Environment } from '$lib/types/environment.type';
 import type { CreateEnvironmentDTO, UpdateEnvironmentDTO } from '$lib/types/environment.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';

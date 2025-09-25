@@ -1,9 +1,9 @@
-import { templateAPI } from '$lib/services/api';
+import { templateService } from '$lib/services/template-service';
 
 export const load = async () => {
 	const [templates, registries] = await Promise.all([
-		templateAPI.loadAll().catch(() => []),
-		templateAPI.getRegistries().catch(() => [])
+		templateService.loadAll().catch(() => []),
+		templateService.getRegistries().catch(() => [])
 	]);
 
 	return {

@@ -1,4 +1,4 @@
-import { containerRegistryAPI } from '$lib/services/api';
+import { containerRegistryService } from '$lib/services/container-registry-service';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import type { PageLoad } from './$types';
 
@@ -14,7 +14,7 @@ export const load: PageLoad = async () => {
 		}
 	};
 
-	const registries = await containerRegistryAPI.getRegistries(registryRequestOptions);
+	const registries = await containerRegistryService.getRegistries(registryRequestOptions);
 
 	return { registries, registryRequestOptions };
 };

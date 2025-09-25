@@ -1,4 +1,4 @@
-import BaseAPIService from './api/api-service';
+import BaseAPIService from './api-service';
 import type { Settings, OidcStatusInfo } from '$lib/types/settings.type';
 
 type KeyValuePair = { key: string; value: string };

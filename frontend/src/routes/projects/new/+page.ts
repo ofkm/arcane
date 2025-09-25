@@ -1,13 +1,13 @@
-import { templateAPI } from '$lib/services/api';
 import { defaultComposeTemplate } from '$lib/constants';
+import { templateService } from '$lib/services/template-service';
 
 export const load = async () => {
 	const [allTemplates, envTemplate] = await Promise.all([
-		templateAPI.loadAll().catch((err) => {
+		templateService.loadAll().catch((err) => {
 			console.warn('Failed to load templates:', err);
 			return [];
 		}),
-		templateAPI.getEnvTemplate().catch((err) => {
+		templateService.getEnvTemplate().catch((err) => {
 			console.warn('Failed to load env template:', err);
 			return '';
 		})

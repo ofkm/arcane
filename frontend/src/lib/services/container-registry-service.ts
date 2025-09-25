@@ -3,7 +3,7 @@ import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$li
 import type { ContainerRegistry } from '$lib/types/container-registry.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
-export default class ContainerRegistryAPIService extends BaseAPIService {
+export default class ContainerRegistryService extends BaseAPIService {
 	async getRegistries(options?: SearchPaginationSortRequest): Promise<Paginated<ContainerRegistry>> {
 		const res = await this.api.get('/container-registries', { params: options });
 		return res.data;
@@ -29,3 +29,5 @@ export default class ContainerRegistryAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/container-registries/${id}/test`));
 	}
 }
+
+export const containerRegistryService = new ContainerRegistryService();

@@ -10,12 +10,12 @@
 	import { toast } from 'svelte-sonner';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { containerRegistryAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ContainerRegistry } from '$lib/types/container-registry.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { format } from 'date-fns';
 	import { m } from '$lib/paraglide/messages';
+	import { containerRegistryService } from '$lib/services/container-registry-service';
 
 	let {
 		registries = $bindable(),
@@ -58,7 +58,7 @@
 					let failureCount = 0;
 					for (const id of ids) {
 						const reg = registries.data.find((r) => r.id === id);
-						const result = await tryCatch(containerRegistryAPI.deleteRegistry(id));
+						const result = await tryCatch(containerRegistryService.deleteRegistry(id));
 						if (result.error) {
 							failureCount++;
 							toast.error(m.registries_delete_failed({ url: reg?.url ?? m.common_unknown() }));
@@ -69,7 +69,7 @@
 
 					if (successCount > 0) {
 						toast.success(m.registries_bulk_remove_success({ count: successCount }));
-						registries = await containerRegistryAPI.getRegistries(requestOptions);
+						registries = await containerRegistryService.getRegistries(requestOptions);
 					}
 					if (failureCount > 0) toast.error(m.registries_bulk_remove_failed({ count: failureCount }));
 
@@ -91,14 +91,14 @@
 				action: async () => {
 					isLoading.removing = true;
 
-					const result = await tryCatch(containerRegistryAPI.deleteRegistry(id));
+					const result = await tryCatch(containerRegistryService.deleteRegistry(id));
 					handleApiResultWithCallbacks({
 						result,
 						message: m.registries_delete_failed({ url: safeUrl }),
 						setLoadingState: () => {},
 						onSuccess: async () => {
 							toast.success(m.registries_delete_success({ url: safeUrl }));
-							registries = await containerRegistryAPI.getRegistries(requestOptions);
+							registries = await containerRegistryService.getRegistries(requestOptions);
 						}
 					});
 
@@ -111,7 +111,7 @@
 	async function handleTest(id: string, url: string) {
 		isLoading.testing = true;
 		const safeUrl = url ?? m.common_unknown();
-		const result = await tryCatch(containerRegistryAPI.testRegistry(id));
+		const result = await tryCatch(containerRegistryService.testRegistry(id));
 		handleApiResultWithCallbacks({
 			result,
 			message: m.registries_test_failed({ url: safeUrl }),
@@ -228,7 +228,7 @@
 		bind:requestOptions
 		bind:selectedIds
 		onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-		onRefresh={async (options) => (registries = await containerRegistryAPI.getRegistries(options))}
+		onRefresh={async (options) => (registries = await containerRegistryService.getRegistries(options))}
 		{columns}
 		rowActions={RowActions}
 	/>

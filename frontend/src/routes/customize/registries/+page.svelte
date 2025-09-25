@@ -4,13 +4,13 @@
 	import { toast } from 'svelte-sonner';
 	import type { ContainerRegistry } from '$lib/types/container-registry.type';
 	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/types/container-registry.type';
-	import { containerRegistryAPI } from '$lib/services/api';
 	import ContainerRegistryFormSheet from '$lib/components/sheets/container-registry-sheet.svelte';
 	import RegistryTable from './registry-table.svelte';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { m } from '$lib/paraglide/messages';
+	import { containerRegistryService } from '$lib/services/container-registry-service';
 
 	let { data } = $props();
 
@@ -29,7 +29,7 @@
 	async function refreshRegistries() {
 		isLoading.refresh = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(containerRegistryAPI.getRegistries(requestOptions)),
+			result: await tryCatch(containerRegistryService.getRegistries(requestOptions)),
 			message: m.registries_refresh_failed(),
 			setLoadingState: (value) => (isLoading.refresh = value),
 			onSuccess: async (newRegistries) => {
@@ -59,14 +59,14 @@
 
 		try {
 			if (isEditMode && registryToEdit?.id) {
-				await containerRegistryAPI.updateRegistry(registryToEdit.id, registry as ContainerRegistryUpdateDto);
+				await containerRegistryService.updateRegistry(registryToEdit.id, registry as ContainerRegistryUpdateDto);
 				toast.success(m.registries_update_success());
 			} else {
-				await containerRegistryAPI.createRegistry(registry as ContainerRegistryCreateDto);
+				await containerRegistryService.createRegistry(registry as ContainerRegistryCreateDto);
 				toast.success(m.registries_create_success());
 			}
 
-			registries = await containerRegistryAPI.getRegistries(requestOptions);
+			registries = await containerRegistryService.getRegistries(requestOptions);
 			isRegistryDialogOpen = false;
 		} catch (error) {
 			console.error('Error saving registry:', error);

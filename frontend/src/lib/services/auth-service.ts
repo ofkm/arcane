@@ -1,6 +1,6 @@
 import { goto } from '$app/navigation';
 import { invalidateAll } from '$app/navigation';
-import BaseAPIService from './api/api-service';
+import BaseAPIService from './api-service';
 import userStore from '$lib/stores/user-store';
 import type { User } from '$lib/types/user.type';
 import type { OidcStatusInfo } from '$lib/types/settings.type';

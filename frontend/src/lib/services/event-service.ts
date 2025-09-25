@@ -1,4 +1,4 @@
-import BaseAPIService from './api/api-service';
+import BaseAPIService from './api-service';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import type { Event } from '$lib/types/event.type';
 

@@ -1,4 +1,4 @@
-import BaseAPIService from './api/api-service';
+import BaseAPIService from './api-service';
 import { environmentStore } from '$lib/stores/environment.store';
 import type { ImageSummaryDto, ImageUsageCounts, ImageUpdateInfoDto } from '$lib/types/image.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
