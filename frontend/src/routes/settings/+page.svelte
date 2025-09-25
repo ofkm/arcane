@@ -281,7 +281,7 @@
 	}
 </script>
 
-<div class="px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+<div class="px-2 py-4 sm:px-6 sm:py-6 lg:px-8">
 	<!-- Header -->
 	<div class="mb-6 sm:mb-8">
 		<div
