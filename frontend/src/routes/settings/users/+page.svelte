@@ -6,7 +6,6 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import { userAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import UserTable from './user-table.svelte';
 	import UserFormSheet from '$lib/components/sheets/user-form-sheet.svelte';
@@ -14,6 +13,7 @@
 	import type { User } from '$lib/types/user.type';
 	import type { CreateUser } from '$lib/types/user.type';
 	import { m } from '$lib/paraglide/messages';
+	import { userService } from '$lib/services/user-service';
 
 	let { data } = $props();
 
@@ -63,14 +63,14 @@
 		try {
 			if (isEditMode && userId) {
 				const safeUsername = user.username?.trim() || m.common_unknown();
-				const result = await tryCatch(userAPI.update(userId, user));
+				const result = await tryCatch(userService.update(userId, user));
 				handleApiResultWithCallbacks({
 					result,
 					message: m.users_update_failed({ username: safeUsername }),
 					setLoadingState: (value) => (isLoading[loading] = value),
 					onSuccess: async () => {
 						toast.success(m.users_update_success({ username: safeUsername }));
-						users = await userAPI.getUsers(requestOptions);
+						users = await userService.getUsers(requestOptions);
 						isDialogOpen.edit = false;
 						userToEdit = null;
 					}
@@ -92,14 +92,14 @@
 					roles: user.roles ?? ['user']
 				};
 
-				const result = await tryCatch(userAPI.create(createUser));
+				const result = await tryCatch(userService.create(createUser));
 				handleApiResultWithCallbacks({
 					result,
 					message: m.users_create_failed({ username: safeUsername }),
 					setLoadingState: (value) => (isLoading[loading] = value),
 					onSuccess: async () => {
 						toast.success(m.users_create_success({ username: safeUsername }));
-						users = await userAPI.getUsers(requestOptions);
+						users = await userService.getUsers(requestOptions);
 						isDialogOpen.create = false;
 					}
 				});
@@ -124,8 +124,8 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<div class="flex items-start justify-between gap-3">
-					<h1 class="settings-title text-xl sm:text-3xl min-w-0">{m.users_title()}</h1>
-					<div class="flex items-center gap-2 shrink-0">
+					<h1 class="settings-title min-w-0 text-xl sm:text-3xl">{m.users_title()}</h1>
+					<div class="flex shrink-0 items-center gap-2">
 						<ArcaneButton
 							action="create"
 							customLabel={m.users_create_button()}
@@ -140,40 +140,40 @@
 		</div>
 	</div>
 
-	<div class="space-y-4 sm:space-y-6 mt-6 sm:mt-8">
-		<div class="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-3">
-		<StatCard
-			title={m.users_total()}
-			value={totalUsers}
-			icon={UsersIcon}
-			iconColor="text-blue-500"
-			class="border-l-4 border-l-blue-500"
-		/>
-		<StatCard
-			title={m.users_administrators()}
-			value={adminUsers}
-			icon={ShieldIcon}
-			iconColor="text-red-500"
-			class="border-l-4 border-l-red-500"
-		/>
-		<StatCard
-			title={m.users_regular()}
-			value={regularUsers}
-			icon={UserCheckIcon}
-			iconColor="text-green-500"
-			class="border-l-4 border-l-green-500"
-		/>
+	<div class="mt-6 space-y-4 sm:mt-8 sm:space-y-6">
+		<div class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+			<StatCard
+				title={m.users_total()}
+				value={totalUsers}
+				icon={UsersIcon}
+				iconColor="text-blue-500"
+				class="border-l-4 border-l-blue-500"
+			/>
+			<StatCard
+				title={m.users_administrators()}
+				value={adminUsers}
+				icon={ShieldIcon}
+				iconColor="text-red-500"
+				class="border-l-4 border-l-red-500"
+			/>
+			<StatCard
+				title={m.users_regular()}
+				value={regularUsers}
+				icon={UserCheckIcon}
+				iconColor="text-green-500"
+				class="border-l-4 border-l-green-500"
+			/>
 		</div>
 
 		<UserTable
-		bind:users
-		bind:selectedIds
-		bind:requestOptions
-		onUsersChanged={async () => {
-			users = await userAPI.getUsers(requestOptions);
-		}}
-		onEditUser={openEditDialog}
-	/>
+			bind:users
+			bind:selectedIds
+			bind:requestOptions
+			onUsersChanged={async () => {
+				users = await userService.getUsers(requestOptions);
+			}}
+			onEditUser={openEditDialog}
+		/>
 
 		<UserFormSheet
 			bind:open={isDialogOpen.create}

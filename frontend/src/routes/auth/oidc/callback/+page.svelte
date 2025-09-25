@@ -2,13 +2,13 @@
 	import { onMount } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { oidcAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import userStore from '$lib/stores/user-store';
 	import type { User } from '$lib/types/user.type';
 	import { m } from '$lib/paraglide/messages';
-	import { settingsAPI } from '$lib/services/api';
 	import settingsStore from '$lib/stores/config-store';
+	import { settingsService } from '$lib/services/settings-service';
+	import { authService } from '$lib/services/auth-service';
 
 	let isProcessing = $state(true);
 	let error = $state('');
@@ -44,7 +44,7 @@
 				return;
 			}
 
-			const authResult = await oidcAPI.handleCallback(code, stateFromUrl);
+			const authResult = await authService.handleCallback(code, stateFromUrl);
 
 			if (!authResult.success) {
 				let userMessage = m.auth_oidc_auth_failed();
@@ -79,7 +79,7 @@
 				userStore.setUser(user);
 
 				async function finalizeLogin() {
-					const settings = await settingsAPI.getSettings();
+					const settings = await settingsService.getSettings();
 					settingsStore.set(settings);
 					toast.success('Successfully logged in!');
 					goto(!settings.onboardingCompleted ? '/onboarding/welcome' : redirectTo, { replaceState: true });

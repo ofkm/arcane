@@ -1,7 +1,7 @@
 import BaseAPIService from './api-service';
 import type { TemplateRegistry, Template, RemoteRegistry } from '$lib/types/template.type';
 
-export default class TemplateAPIService extends BaseAPIService {
+export default class TemplateService extends BaseAPIService {
 	async loadAll(): Promise<Template[]> {
 		const response = await this.api.get('/templates');
 		return response.data?.data ?? [];
@@ -72,3 +72,5 @@ export default class TemplateAPIService extends BaseAPIService {
 		await this.api.delete(`/templates/registries/${id}`);
 	}
 }
+
+export const templateService = new TemplateService();

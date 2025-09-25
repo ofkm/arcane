@@ -17,7 +17,7 @@ type UpdaterHandler struct {
 func NewUpdaterHandler(group *gin.RouterGroup, updaterService *services.UpdaterService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &UpdaterHandler{updaterService: updaterService}
 
-	apiGroup := group.Group("/updater")
+	apiGroup := group.Group("/environments/:id/updater")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
 		apiGroup.POST("/run", handler.Run)

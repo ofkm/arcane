@@ -19,13 +19,14 @@ type NetworkHandler struct {
 func NewNetworkHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, networkService *services.NetworkService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &NetworkHandler{dockerService: dockerService, networkService: networkService}
 
-	apiGroup := group.Group("/networks")
+	apiGroup := group.Group("/environments/:id/networks")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
+		apiGroup.GET("/counts", handler.GetNetworkUsageCounts)
 		apiGroup.GET("", handler.List)
-		apiGroup.GET("/:id", handler.GetByID)
+		apiGroup.GET("/:networkId", handler.GetByID)
 		apiGroup.POST("", handler.Create)
-		apiGroup.DELETE("/:id", handler.Remove)
+		apiGroup.DELETE("/:networkId", handler.Remove)
 		apiGroup.POST("/prune", handler.Prune)
 	}
 }

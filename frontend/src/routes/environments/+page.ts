@@ -1,6 +1,6 @@
 import type { PageLoad } from './$types';
-import { environmentManagementAPI } from '$lib/services/api';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
+import { environmentManagementService } from '$lib/services/env-mgmt-service';
 
 export const load: PageLoad = async () => {
 	const environmentRequestOptions: SearchPaginationSortRequest = {
@@ -14,7 +14,7 @@ export const load: PageLoad = async () => {
 		}
 	};
 
-	const environments = await environmentManagementAPI.getEnvironments(environmentRequestOptions);
+	const environments = await environmentManagementService.getEnvironments(environmentRequestOptions);
 
 	return { environments, environmentRequestOptions };
 };

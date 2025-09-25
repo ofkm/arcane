@@ -1,8 +1,5 @@
 <script lang="ts">
-	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
 	import CodeEditor from '$lib/components/code-editor/editor.svelte';
-	import { m } from '$lib/paraglide/messages';
 
 	type CodeLanguage = 'yaml' | 'env';
 

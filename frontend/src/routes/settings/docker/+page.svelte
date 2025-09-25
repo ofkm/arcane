@@ -1,18 +1,18 @@
 <script lang="ts">
 	import type { Settings } from '$lib/types/settings.type';
 	import settingsStore from '$lib/stores/config-store';
-	import { settingsAPI } from '$lib/services/api';
 	import UiConfigDisabledTag from '$lib/components/ui-config-disabled-tag.svelte';
 	import DockerSettingsForm from '../forms/docker-settings-form.svelte';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { m } from '$lib/paraglide/messages';
 	import { getContext } from 'svelte';
+	import { settingsService } from '$lib/services/settings-service';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings);
 	let hasChanges = $state(false);
 	let isLoading = $state(false);
-	
+
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
 
 	const formState = getContext('settingsFormState') as any;
@@ -26,7 +26,7 @@
 
 	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
 		try {
-			await settingsAPI.updateSettings(updatedSettings as any);
+			await settingsService.updateSettings(updatedSettings as any);
 
 			currentSettings = { ...currentSettings, ...updatedSettings };
 
@@ -53,7 +53,7 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<div class="flex items-start justify-between gap-3">
-					<h1 class="settings-title text-xl sm:text-3xl min-w-0">{m.docker_title()}</h1>
+					<h1 class="settings-title min-w-0 text-xl sm:text-3xl">{m.docker_title()}</h1>
 					{#if isReadOnly}
 						<div class="shrink-0">
 							<UiConfigDisabledTag />
@@ -69,4 +69,3 @@
 		<DockerSettingsForm settings={currentSettings} callback={updateSettingsConfig} bind:hasChanges bind:isLoading />
 	</div>
 </div>
-

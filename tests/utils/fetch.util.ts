@@ -1,28 +1,9 @@
 import type { Page } from '@playwright/test';
-
-export type Project = {
-  id?: string;
-  name?: string;
-  status?: string;
-  serviceCount?: number;
-  [key: string]: any;
-};
-
-export type NetworkSummary = {
-  id: string;
-  name: string;
-  driver?: string;
-  scope?: string;
-};
-
-export type ContainerSummary = {
-  id: string;
-  names?: string[];
-  image?: string;
-  state: string;
-  status?: string;
-  created?: number;
-};
+import { ContainerSummary } from 'types/containers.type';
+import { ImageUsageCounts } from 'types/image.type';
+import { NetworkSummary, NetworkUsageCounts } from 'types/networks.type';
+import { Project, ProjectStatusCounts } from 'types/project.type';
+import { VolumeUsageCounts } from 'types/volumes.type';
 
 export type Paginated<T> = { data: T[]; pagination?: { totalItems?: number } };
 
@@ -41,10 +22,23 @@ async function retry<T>(fn: () => Promise<T>, maxRetries: number, delayMs = 1000
 
 export async function fetchVolumesWithRetry(page: Page, maxRetries = 1): Promise<any[]> {
   return retry(async () => {
-    const res = await page.request.get('/api/volumes');
+    const res = await page.request.get('/api/environments/0/volumes');
     const json = await res.json();
     return Array.isArray(json?.data) ? json.data : [];
   }, maxRetries);
+}
+
+export async function fetchVolumeCountsWithRetry(page: Page, maxRetries = 3): Promise<VolumeUsageCounts> {
+  return retry(
+    async () => {
+      const res = await page.request.get('/api/environments/0/volumes/counts');
+      const json = await res.json().catch(() => null);
+      const data = Array.isArray(json) ? json : json?.data?.data ?? json?.data ?? [];
+      return (data ?? []) as VolumeUsageCounts;
+    },
+    maxRetries,
+    800
+  );
 }
 
 const PROJECTS_ENDPOINT = '/api/environments/0/projects';
@@ -59,13 +53,39 @@ export async function fetchProjectsWithRetry(page: Page, maxRetries = 3): Promis
   }, maxRetries);
 }
 
+export async function fetchProjectCountsWithRetry(page: Page, maxRetries = 3): Promise<ProjectStatusCounts> {
+  return retry(
+    async () => {
+      const res = await page.request.get('/api/environments/0/projects/counts');
+      const json = await res.json().catch(() => null);
+      const data = Array.isArray(json) ? json : json?.data?.data ?? json?.data ?? [];
+      return data as ProjectStatusCounts;
+    },
+    maxRetries,
+    800
+  );
+}
+
 export async function fetchNetworksWithRetry(page: Page, maxRetries = 3): Promise<NetworkSummary[]> {
   return retry(
     async () => {
-      const res = await page.request.get('/api/networks');
+      const res = await page.request.get('/api/environments/0/networks');
       const json = await res.json().catch(() => null);
       const data = Array.isArray(json) ? json : json?.data?.data ?? json?.data ?? [];
       return (data ?? []) as NetworkSummary[];
+    },
+    maxRetries,
+    800
+  );
+}
+
+export async function fetchNetworksCountsWithRetry(page: Page, maxRetries = 3): Promise<NetworkUsageCounts> {
+  return retry(
+    async () => {
+      const res = await page.request.get('/api/environments/0/networks/counts');
+      const json = await res.json().catch(() => null);
+      const data = Array.isArray(json) ? json : json?.data?.data ?? json?.data ?? [];
+      return (data ?? []) as NetworkUsageCounts;
     },
     maxRetries,
     800
@@ -79,6 +99,19 @@ export async function fetchImagesWithRetry(page: Page, maxRetries = 3): Promise<
     const body = await res.json().catch(() => null as any);
     return Array.isArray(body?.data) ? body.data : [];
   }, maxRetries);
+}
+
+export async function fetchImageCountsWithRetry(page: Page, maxRetries = 3): Promise<ImageUsageCounts> {
+  return retry(
+    async () => {
+      const res = await page.request.get('/api/environments/0/images/counts');
+      const json = await res.json().catch(() => null);
+      const data = Array.isArray(json) ? json : json?.data?.data ?? json?.data ?? [];
+      return data as ImageUsageCounts;
+    },
+    maxRetries,
+    800
+  );
 }
 
 export async function fetchContainersWithRetry(page: Page, maxRetries = 3): Promise<Paginated<ContainerSummary>> {

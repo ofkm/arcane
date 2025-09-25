@@ -31,20 +31,20 @@ type ContainerHandler struct {
 func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, containerService *services.ContainerService, imageService *services.ImageService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &ContainerHandler{dockerService: dockerService, containerService: containerService, imageService: imageService}
 
-	apiGroup := group.Group("/containers")
+	apiGroup := group.Group("/environments/:id/containers")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
+		apiGroup.GET("/counts", handler.GetContainerStatusCounts)
 		apiGroup.GET("", handler.List)
 		apiGroup.POST("", handler.Create)
-		apiGroup.GET("/:id", handler.GetByID)
-		apiGroup.GET("/:id/stats", handler.GetStats)
-		apiGroup.GET("/:id/stats/stream", handler.GetStatsStream)
-		apiGroup.POST("/:id/start", handler.Start)
-		apiGroup.POST("/:id/stop", handler.Stop)
-		apiGroup.POST("/:id/restart", handler.Restart)
-		apiGroup.GET("/:id/logs", handler.GetLogs)
-		apiGroup.GET("/:id/logs/ws", handler.GetLogsWS)
-		apiGroup.DELETE("/:id", handler.Delete)
+		apiGroup.GET("/:containerId", handler.GetByID)
+		apiGroup.GET("/:containerId/stats", handler.GetStats)
+		apiGroup.GET("/:containerId/stats/stream", handler.GetStatsStream)
+		apiGroup.POST("/:containerId/start", handler.Start)
+		apiGroup.POST("/:containerId/stop", handler.Stop)
+		apiGroup.POST("/:containerId/restart", handler.Restart)
+		apiGroup.GET("/:containerId/logs/ws", handler.GetLogsWS)
+		apiGroup.DELETE("/:containerId", handler.Delete)
 
 	}
 }
@@ -299,25 +299,6 @@ func (h *ContainerHandler) Restart(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    gin.H{"message": "Container restarted successfully"},
-	})
-}
-
-func (h *ContainerHandler) GetLogs(c *gin.Context) {
-	id := c.Param("id")
-	tail := c.DefaultQuery("tail", "100")
-
-	logs, err := h.containerService.GetContainerLogs(c.Request.Context(), id, tail)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"logs": logs},
 	})
 }
 

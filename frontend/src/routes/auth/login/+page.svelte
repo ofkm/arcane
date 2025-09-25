@@ -9,13 +9,12 @@
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import type { PageData } from './$types';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { settingsAPI } from '$lib/services/api';
-	import { authService } from '$lib/services/api/auth-api-service';
-	import { toast } from 'svelte-sonner';
+	import { goto } from '$app/navigation';
 	import userStore from '$lib/stores/user-store';
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
+	import { settingsService } from '$lib/services/settings-service';
+	import { authService } from '$lib/services/auth-service';
 
 	let { data }: { data: PageData } = $props();
 
@@ -50,7 +49,7 @@
 			const user = await authService.login({ username, password });
 			userStore.setUser(user);
 			// Load settings to determine onboarding redirect
-			const settings = await settingsAPI.getSettings();
+			const settings = await settingsService.getSettings();
 			settingsStore.set(settings);
 			const redirectTo = data.redirectTo || '/dashboard';
 			goto(!settings.onboardingCompleted ? '/onboarding/welcome' : redirectTo, { replaceState: true });

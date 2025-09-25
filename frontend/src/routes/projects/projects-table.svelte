@@ -17,13 +17,13 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { environmentAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import { getStatusVariant } from '$lib/utils/status.utils';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { format } from 'date-fns';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
+	import { projectService } from '$lib/services/project-service';
 
 	let {
 		projects = $bindable(),
@@ -51,42 +51,42 @@
 		try {
 			if (action === 'start') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(environmentAPI.deployProject(id)),
+					result: await tryCatch(projectService.deployProject(id)),
 					message: m.compose_start_failed(),
 					setLoadingState: (value) => (isLoading.start = value),
 					onSuccess: async () => {
 						toast.success(m.compose_start_success());
-						projects = await environmentAPI.getProjects(requestOptions);
+						projects = await projectService.getProjects(requestOptions);
 					}
 				});
 			} else if (action === 'stop') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(environmentAPI.downProject(id)),
+					result: await tryCatch(projectService.downProject(id)),
 					message: m.compose_stop_failed(),
 					setLoadingState: (value) => (isLoading.stop = value),
 					onSuccess: async () => {
 						toast.success(m.compose_stop_success());
-						projects = await environmentAPI.getProjects(requestOptions);
+						projects = await projectService.getProjects(requestOptions);
 					}
 				});
 			} else if (action === 'restart') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(environmentAPI.restartProject(id)),
+					result: await tryCatch(projectService.restartProject(id)),
 					message: m.compose_restart_failed(),
 					setLoadingState: (value) => (isLoading.restart = value),
 					onSuccess: async () => {
 						toast.success(m.compose_restart_success());
-						projects = await environmentAPI.getProjects(requestOptions);
+						projects = await projectService.getProjects(requestOptions);
 					}
 				});
 			} else if (action === 'pull') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(environmentAPI.pullProjectImages(id)),
+					result: await tryCatch(projectService.pullProjectImages(id)),
 					message: m.compose_pull_failed(),
 					setLoadingState: (value) => (isLoading.pull = value),
 					onSuccess: async () => {
 						toast.success(m.compose_pull_success());
-						projects = await environmentAPI.getProjects(requestOptions);
+						projects = await projectService.getProjects(requestOptions);
 					}
 				});
 			} else if (action === 'destroy') {
@@ -113,12 +113,12 @@
 							const removeFiles = !!(result?.checkboxes?.files ?? result?.files);
 
 							handleApiResultWithCallbacks({
-								result: await tryCatch(environmentAPI.destroyProject(id, removeVolumes, removeFiles)),
+								result: await tryCatch(projectService.destroyProject(id, removeVolumes, removeFiles)),
 								message: m.compose_destroy_failed(),
 								setLoadingState: (value) => (isLoading.destroy = value),
 								onSuccess: async () => {
 									toast.success(m.compose_destroy_success());
-									projects = await environmentAPI.getProjects(requestOptions);
+									projects = await projectService.getProjects(requestOptions);
 								}
 							});
 						}
@@ -239,7 +239,7 @@
 			items={projects}
 			bind:requestOptions
 			bind:selectedIds
-			onRefresh={async (options) => (projects = await environmentAPI.getProjects(options))}
+			onRefresh={async (options) => (projects = await projectService.getProjects(options))}
 			{columns}
 			rowActions={RowActions}
 		/>

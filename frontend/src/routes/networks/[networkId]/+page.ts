@@ -1,12 +1,12 @@
 import type { PageLoad } from './$types';
-import { environmentAPI } from '$lib/services/api';
 import { error } from '@sveltejs/kit';
+import { networkService } from '$lib/services/network-service';
 
 export const load: PageLoad = async ({ params }) => {
 	const { networkId } = params;
 
 	try {
-		const network = await environmentAPI.getNetwork(networkId);
+		const network = await networkService.getNetwork(networkId);
 
 		if (!network) {
 			throw error(404, 'Network not found');

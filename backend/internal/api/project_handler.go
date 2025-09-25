@@ -43,9 +43,10 @@ func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectS
 
 	handler := &ProjectHandler{projectService: projectService}
 
-	apiGroup := group.Group("/projects")
+	apiGroup := group.Group("/environments/:id/projects")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
+		apiGroup.GET("/counts", handler.GetProjectStatusCounts)
 		apiGroup.GET("/", handler.ListProjects)
 		apiGroup.POST("/:projectId/up", handler.DeployProject)
 		apiGroup.POST("/:projectId/down", handler.DownProject)

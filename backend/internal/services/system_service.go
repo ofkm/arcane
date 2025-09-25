@@ -4,12 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
+	"strings"
 
 	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/goccy/go-yaml"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils/converter"
 )
 
 type SystemService struct {
@@ -327,4 +331,142 @@ func (s *SystemService) pruneNetworks(ctx context.Context, result *dto.PruneAllR
 
 	result.NetworksDeleted = report.NetworksDeleted
 	return nil
+}
+
+func (s *SystemService) ParseDockerRunCommand(command string) (*models.DockerRunCommand, error) {
+	if command == "" {
+		return nil, fmt.Errorf("docker run command must be a non-empty string")
+	}
+
+	cmd := strings.TrimSpace(command)
+	cmd = regexp.MustCompile(`^docker\s+run\s+`).ReplaceAllString(cmd, "")
+
+	if cmd == "" {
+		return nil, fmt.Errorf("no arguments found after 'docker run'")
+	}
+
+	result := &models.DockerRunCommand{}
+	tokens, err := converter.ParseCommandTokens(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse command tokens: %w", err)
+	}
+
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("no valid tokens found in docker run command")
+	}
+
+	if err := converter.ParseTokens(tokens, result); err != nil {
+		return nil, err
+	}
+
+	if result.Image == "" {
+		return nil, fmt.Errorf("no Docker image specified in command")
+	}
+
+	return result, nil
+}
+
+func (s *SystemService) ConvertToDockerCompose(parsed *models.DockerRunCommand) (string, string, string, error) {
+	if parsed.Image == "" {
+		return "", "", "", fmt.Errorf("cannot convert to Docker Compose: no image specified")
+	}
+
+	serviceName := parsed.Name
+	if serviceName == "" {
+		serviceName = "app"
+	}
+
+	service := models.DockerComposeService{
+		Image: parsed.Image,
+	}
+
+	if parsed.Name != "" {
+		service.ContainerName = parsed.Name
+	}
+
+	if len(parsed.Ports) > 0 {
+		service.Ports = parsed.Ports
+	}
+
+	if len(parsed.Volumes) > 0 {
+		service.Volumes = parsed.Volumes
+	}
+
+	if len(parsed.Environment) > 0 {
+		service.Environment = parsed.Environment
+	}
+
+	if len(parsed.Networks) > 0 {
+		service.Networks = parsed.Networks
+	}
+
+	if parsed.Restart != "" {
+		service.Restart = parsed.Restart
+	}
+
+	if parsed.Workdir != "" {
+		service.WorkingDir = parsed.Workdir
+	}
+
+	if parsed.User != "" {
+		service.User = parsed.User
+	}
+
+	if parsed.Entrypoint != "" {
+		service.Entrypoint = parsed.Entrypoint
+	}
+
+	if parsed.Command != "" {
+		service.Command = parsed.Command
+	}
+
+	if parsed.Interactive && parsed.TTY {
+		service.StdinOpen = true
+		service.TTY = true
+	}
+
+	if parsed.Privileged {
+		service.Privileged = true
+	}
+
+	if len(parsed.Labels) > 0 {
+		service.Labels = parsed.Labels
+	}
+
+	if parsed.HealthCheck != "" {
+		service.Healthcheck = &models.DockerComposeHealthcheck{
+			Test: parsed.HealthCheck,
+		}
+	}
+
+	if parsed.MemoryLimit != "" || parsed.CPULimit != "" {
+		service.Deploy = &models.DockerComposeDeploy{
+			Resources: &models.DockerComposeResources{
+				Limits: &models.DockerComposeResourceLimits{},
+			},
+		}
+		if parsed.MemoryLimit != "" {
+			service.Deploy.Resources.Limits.Memory = parsed.MemoryLimit
+		}
+		if parsed.CPULimit != "" {
+			service.Deploy.Resources.Limits.CPUs = parsed.CPULimit
+		}
+	}
+
+	compose := models.DockerComposeConfig{
+		Services: map[string]models.DockerComposeService{
+			serviceName: service,
+		},
+	}
+
+	// Convert to YAML
+	yamlData, err := yaml.Marshal(&compose)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to convert to YAML: %w", err)
+	}
+
+	// Generate environment variables file content
+	envVars := strings.Join(parsed.Environment, "\n")
+
+	return string(yamlData), envVars, serviceName, nil
 }

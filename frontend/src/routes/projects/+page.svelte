@@ -6,11 +6,12 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import { environmentAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import ProjectsTable from './projects-table.svelte';
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages';
+	import { projectService } from '$lib/services/project-service';
+	import { imageService } from '$lib/services/image-service';
 
 	let { data } = $props();
 
@@ -29,12 +30,12 @@
 	async function handleCheckForUpdates() {
 		isLoading.updating = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.runAutoUpdate()),
+			result: await tryCatch(imageService.runAutoUpdate()),
 			message: 'Failed to Check Compose Projects for Updates',
 			setLoadingState: (value) => (isLoading.updating = value),
 			async onSuccess() {
 				toast.success('Compose Projects Updated Successfully.');
-				projects = await environmentAPI.getProjects(projectRequestOptions);
+				projects = await projectService.getProjects(projectRequestOptions);
 			}
 		});
 	}
@@ -42,7 +43,7 @@
 	async function refreshCompose() {
 		isLoading.refreshing = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.getProjects(projectRequestOptions)),
+			result: await tryCatch(projectService.getProjects(projectRequestOptions)),
 			message: 'Failed to Refresh Projects',
 			setLoadingState: (v) => (isLoading.refreshing = v),
 			async onSuccess(newProjects) {

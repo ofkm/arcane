@@ -17,8 +17,7 @@ type ImageUpdateHandler struct {
 func NewImageUpdateHandler(group *gin.RouterGroup, imageUpdateService *services.ImageUpdateService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &ImageUpdateHandler{imageUpdateService: imageUpdateService}
 
-	apiGroup := group.Group("/image-updates")
-
+	apiGroup := group.Group("/environments/:id/image-updates")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
 		apiGroup.GET("/check", handler.CheckImageUpdate)

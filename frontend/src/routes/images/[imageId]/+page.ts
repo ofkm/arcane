@@ -1,4 +1,4 @@
-import { environmentAPI } from '$lib/services/api';
+import { imageService } from '$lib/services/image-service.js';
 import type { ImageDetailSummaryDto } from '$lib/types/image.type.js';
 import { error } from '@sveltejs/kit';
 
@@ -11,7 +11,7 @@ export const load = async ({ params }): Promise<ImageDetailData> => {
 	const { imageId } = params;
 
 	try {
-		const image = await environmentAPI.getImage(imageId);
+		const image = await imageService.getImage(imageId);
 
 		if (!image) {
 			throw error(404, 'Image not found');

@@ -4,10 +4,9 @@
 	import { m } from '$lib/paraglide/messages';
 	import userStore from '$lib/stores/user-store';
 	import { setLocale } from '$lib/utils/locale.util';
-	import UserAPIService from '$lib/services/api/user-api-service';
 	import { Label } from '$lib/components/ui/label/index.js';
+	import { userService } from '$lib/services/user-service';
 
-	const userApi = new UserAPIService();
 	const currentLocale = getLocale();
 	const controlId = 'localePicker';
 
@@ -22,7 +21,7 @@
 
 	async function updateLocale(locale: Locale) {
 		if ($userStore) {
-			await userApi.update($userStore.id, { ...$userStore, locale });
+			await userService.update($userStore.id, { ...$userStore, locale });
 		}
 		await setLocale(locale);
 	}

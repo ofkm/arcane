@@ -32,3 +32,5 @@ export default class UserAPIService extends BaseAPIService {
 		return this.handleResponse(this.api.post('/auth/password', data)) as Promise<void>;
 	}
 }
+
+export const userService = new UserAPIService();

@@ -33,7 +33,6 @@
 	}
 
 	let { data } = $props();
-	let currentSettings = $state(data.settings);
 	let searchQuery = $state('');
 	let showSearchResults = $state(false);
 	let searchResults = $state<SettingsCategory[]>([]);
@@ -292,7 +291,7 @@
 			<div class="bg-muted/40 pointer-events-none absolute -bottom-10 -left-10 size-40 rounded-full blur-3xl"></div>
 			<div class="relative">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-					<div class="flex items-start gap-3 sm:gap-4 w-full">
+					<div class="flex w-full items-start gap-3 sm:gap-4">
 						<div
 							class="bg-primary/10 text-primary ring-primary/20 flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 sm:size-10"
 						>
@@ -300,7 +299,7 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="flex items-start justify-between gap-3">
-								<h1 class="text-xl font-bold tracking-tight sm:text-2xl min-w-0">{m.sidebar_settings()}</h1>
+								<h1 class="min-w-0 text-xl font-bold tracking-tight sm:text-2xl">{m.sidebar_settings()}</h1>
 								<div class="shrink-0">
 									<UiConfigDisabledTag />
 								</div>
@@ -312,7 +311,7 @@
 
 				<!-- Search Bar -->
 				<div class="relative mt-4 w-full sm:mt-6 sm:max-w-md">
-					<SearchIcon class="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2 z-10" />
+					<SearchIcon class="text-muted-foreground absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2" />
 					<input
 						type="text"
 						placeholder="Search settings..."

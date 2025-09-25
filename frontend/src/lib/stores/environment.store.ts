@@ -107,7 +107,12 @@ function createEnvironmentManagementStore() {
 		},
 		isInitialized: () => _initialized,
 		getLocalEnvironment: () => localDockerEnvironment,
-		ready: _readyPromise
+		ready: _readyPromise,
+		getCurrentEnvironmentId: async (): Promise<string> => {
+			await _readyPromise;
+			const current = get(_selectedEnvironment);
+			return current ? current.id : LOCAL_DOCKER_ENVIRONMENT_ID;
+		}
 	};
 }
 

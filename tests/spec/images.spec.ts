@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fetchImagesWithRetry } from '../utils/fetch.util';
+import { fetchImageCountsWithRetry, fetchImagesWithRetry } from '../utils/fetch.util';
+import { ImageUsageCounts } from 'types/image.type';
 
 const ROUTES = {
   page: '/images',
@@ -12,6 +13,7 @@ async function navigateToImages(page: Page) {
 }
 
 let realImages: any[] = [];
+let imageCounts: ImageUsageCounts = { imagesInuse: 0, imagesUnused: 0, totalImages: 0, totalImageSize: 0 };
 
 test.beforeEach(async ({ page }) => {
   await navigateToImages(page);
@@ -19,6 +21,7 @@ test.beforeEach(async ({ page }) => {
   try {
     const images = await fetchImagesWithRetry(page);
     realImages = Array.isArray(images) ? images : [];
+    imageCounts = await fetchImageCountsWithRetry(page);
   } catch {
     realImages = [];
   }
@@ -35,7 +38,7 @@ test.describe('Images Page', () => {
   test('should display stats cards with correct counts and size', async ({ page }) => {
     await navigateToImages(page);
 
-    await expect(page.locator('p:has-text("Total Images") + p')).toHaveText(realImages.length.toString());
+    await expect(page.locator('p:has-text("Total Images") + p')).toHaveText(imageCounts.totalImages.toString());
     await expect(page.locator('p:has-text("Total Size") + p')).not.toBeEmpty();
   });
 
@@ -89,7 +92,6 @@ test.describe('Images Page', () => {
     const firstRow = await page.getByRole('row', { name: 'ghcr.io/linuxserver/radarr' });
     await firstRow.getByRole('button', { name: 'Open menu' }).click();
     await page.getByRole('menuitem', { name: 'Remove' }).click();
-    console.log(firstRow);
 
     await expect(page.locator('div[role="heading"][aria-level="2"][data-dialog-title]:has-text("Remove Image")')).toBeVisible();
 

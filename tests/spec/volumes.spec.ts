@@ -1,11 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fetchVolumesWithRetry } from '../utils/fetch.util';
+import { fetchVolumeCountsWithRetry, fetchVolumesWithRetry } from '../utils/fetch.util';
+import { VolumeUsageCounts } from 'types/volumes.type';
 
 let realVolumes: any[] = [];
+let volumeCount: VolumeUsageCounts = { volumesInuse: 0, volumesUnused: 0, totalVolumes: 0 };
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/volumes');
   realVolumes = await fetchVolumesWithRetry(page);
+  volumeCount = await fetchVolumeCountsWithRetry(page);
 });
 
 function facetIds(title: string) {
@@ -39,7 +42,7 @@ test.describe('Volumes Page', () => {
   test('Correct Volume Stat Card Counts', async ({ page }) => {
     await page.goto('/volumes');
 
-    await expect(page.locator('p:has-text("Total Volumes") + p')).toHaveText(realVolumes.length.toString());
+    await expect(page.locator('p:has-text("Total Volumes") + p')).toHaveText(volumeCount.totalVolumes.toString());
   });
 
   test('Create Volume Sheet Opens', async ({ page }) => {

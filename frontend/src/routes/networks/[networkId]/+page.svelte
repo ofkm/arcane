@@ -22,9 +22,9 @@
 	import { goto } from '$app/navigation';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { environmentAPI } from '$lib/services/api';
 	import type { NetworkInspectDto } from '$lib/types/network.type';
 	import { m } from '$lib/paraglide/messages';
+	import { networkService } from '$lib/services/network-service';
 
 	let { data }: { data: PageData } = $props();
 	let { network }: { network: NetworkInspectDto | null | undefined } = $derived(data);
@@ -60,7 +60,7 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(environmentAPI.deleteNetwork(network.id)),
+						result: await tryCatch(networkService.deleteNetwork(network.id)),
 						message: m.networks_remove_failed({ name: network?.name ?? shortId }),
 						setLoadingState: (value) => (isRemoving = value),
 						onSuccess: async () => {

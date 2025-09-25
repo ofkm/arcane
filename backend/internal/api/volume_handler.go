@@ -19,9 +19,10 @@ type VolumeHandler struct {
 func NewVolumeHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, volumeService *services.VolumeService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &VolumeHandler{dockerService: dockerService, volumeService: volumeService}
 
-	apiGroup := group.Group("/volumes")
+	apiGroup := group.Group("/environments/:id/volumes")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
+		apiGroup.GET("/counts", handler.GetVolumeUsageCounts)
 		apiGroup.GET("", handler.List)
 		apiGroup.GET("/:volumeName", handler.GetByName)
 		apiGroup.POST("", handler.Create)

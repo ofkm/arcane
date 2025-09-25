@@ -6,11 +6,11 @@
 	import type { PageData } from './$types';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import type { Event } from '$lib/types/event.type';
-	import { eventAPI } from '$lib/services/api';
 	import EventTable from './event-table.svelte';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { m } from '$lib/paraglide/messages';
+	import { eventService } from '$lib/services/event-service';
 
 	let { data }: { data: PageData } = $props();
 
@@ -32,7 +32,7 @@
 	async function refreshEvents() {
 		isLoading.refreshing = true;
 		try {
-			events = await eventAPI.getEvents(requestOptions);
+			events = await eventService.getEvents(requestOptions);
 		} catch (error) {
 			console.error('Failed to refresh events:', error);
 			toast.error(m.events_refresh_failed());
@@ -56,7 +56,7 @@
 					let failureCount = 0;
 
 					for (const eventId of selectedIds) {
-						const result = await tryCatch(eventAPI.delete(eventId));
+						const result = await tryCatch(eventService.delete(eventId));
 						handleApiResultWithCallbacks({
 							result,
 							message: m.events_delete_item_failed({ id: eventId }),

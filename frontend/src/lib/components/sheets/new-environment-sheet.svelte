@@ -6,11 +6,11 @@
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import ServerIcon from '@lucide/svelte/icons/server';
 	import * as Card from '$lib/components/ui/card';
-	import { environmentManagementAPI } from '$lib/services/api';
 	import type { CreateEnvironmentDTO } from '$lib/types/environment.type';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 	import { m } from '$lib/paraglide/messages';
+	import { environmentManagementService } from '$lib/services/env-mgmt-service';
 
 	type NewEnvironmentSheetProps = {
 		open: boolean;
@@ -48,10 +48,10 @@
 				bootstrapToken: data.bootstrapToken
 			};
 
-			const created = await environmentManagementAPI.create(dto);
+			const created = await environmentManagementService.create(dto);
 
 			try {
-				const result = await environmentManagementAPI.testConnection(created.id);
+				const result = await environmentManagementService.testConnection(created.id);
 				if (result.status === 'online') {
 					toast.success(m.environments_test_connection_success());
 				} else {

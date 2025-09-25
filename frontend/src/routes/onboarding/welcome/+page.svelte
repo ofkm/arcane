@@ -4,13 +4,13 @@
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { goto } from '$app/navigation';
 	import settingsStore from '$lib/stores/config-store';
-	import { settingsAPI } from '$lib/services/api';
+	import { settingsService } from '$lib/services/settings-service.js';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
 
 	async function continueToNextStep() {
-		await settingsAPI.updateSettings({
+		await settingsService.updateSettings({
 			...currentSettings,
 			onboardingCompleted: false,
 			onboardingSteps: {
