@@ -3,6 +3,8 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"runtime"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -11,6 +13,10 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 var sysWsUpgrader = websocket.Upgrader{
@@ -25,9 +31,10 @@ type SystemHandler struct {
 func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, systemService *services.SystemService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &SystemHandler{dockerService: dockerService, systemService: systemService}
 
-	apiGroup := group.Group("/system")
+	apiGroup := group.Group("/environments/:id/system")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
+		apiGroup.GET("/stats/ws", handler.Stats)
 		apiGroup.GET("/docker/info", handler.GetDockerInfo)
 		apiGroup.POST("/prune", handler.PruneAll)
 		apiGroup.POST("/containers/start-all", handler.StartAllContainers)
@@ -228,4 +235,92 @@ func (h *SystemHandler) StopAllContainers(c *gin.Context) {
 		"message": "Container stop operation completed",
 		"data":    result,
 	})
+}
+
+//nolint:gocognit
+func (h *SystemHandler) Stats(c *gin.Context) {
+	envID := c.Param("id")
+	if envID == "" {
+		envID = LOCAL_DOCKER_ENVIRONMENT_ID
+	}
+
+	conn, err := sysWsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	var lastCPU float64
+
+	send := func(block bool) error {
+		var cpuUsage float64
+		if block {
+			if vals, err := cpu.Percent(time.Second, false); err == nil && len(vals) > 0 {
+				cpuUsage = vals[0]
+				lastCPU = cpuUsage
+			} else {
+				cpuUsage = lastCPU
+			}
+		} else {
+			cpuUsage = lastCPU
+		}
+
+		cpuCount, err := cpu.Counts(true)
+		if err != nil {
+			cpuCount = runtime.NumCPU()
+		}
+
+		memInfo, _ := mem.VirtualMemory()
+		var memUsed, memTotal uint64
+		if memInfo != nil {
+			memUsed = memInfo.Used
+			memTotal = memInfo.Total
+		}
+
+		diskInfo, _ := disk.Usage("/")
+		var diskUsed, diskTotal uint64
+		if diskInfo != nil {
+			diskUsed = diskInfo.Used
+			diskTotal = diskInfo.Total
+		}
+
+		hostInfo, _ := host.Info()
+		var hostname string
+		if hostInfo != nil {
+			hostname = hostInfo.Hostname
+		}
+
+		stats := SystemStats{
+			CPUUsage:     cpuUsage,
+			MemoryUsage:  memUsed,
+			MemoryTotal:  memTotal,
+			DiskUsage:    diskUsed,
+			DiskTotal:    diskTotal,
+			CPUCount:     cpuCount,
+			Architecture: runtime.GOARCH,
+			Platform:     runtime.GOOS,
+			Hostname:     hostname,
+		}
+
+		_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		return conn.WriteJSON(stats)
+	}
+
+	if err := send(true); err != nil {
+		return
+	}
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return
+		case <-ticker.C:
+			if err := send(true); err != nil {
+				return
+			}
+		}
+	}
 }

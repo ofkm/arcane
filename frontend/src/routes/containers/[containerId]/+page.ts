@@ -1,14 +1,15 @@
 import type { PageLoad } from './$types';
 import { environmentAPI, settingsAPI } from '$lib/services/api';
 import { error } from '@sveltejs/kit';
+import { containerService } from '$lib/services/container-service';
 
 export const load: PageLoad = async ({ params }) => {
 	const containerId = params.containerId;
 
 	try {
 		const [container, containerStats, settings] = await Promise.all([
-			environmentAPI.getContainer(containerId),
-			environmentAPI.getContainerStats(containerId),
+			containerService.getContainer(containerId),
+			containerService.getContainerStats(containerId),
 			settingsAPI.getSettings()
 		]);
 

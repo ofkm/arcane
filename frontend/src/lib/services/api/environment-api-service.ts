@@ -1,15 +1,13 @@
 import BaseAPIService from './api-service';
 import { get } from 'svelte/store';
 import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
-import type { ContainerCreateOptions, NetworkCreateOptions, VolumeCreateOptions, ContainerStats } from 'dockerode';
+import type { NetworkCreateOptions, VolumeCreateOptions } from 'dockerode';
 import type { Project, ProjectStatusCounts } from '$lib/types/project.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
-import type { ContainerStatusCounts, ContainerSummaryDto } from '$lib/types/container.type';
 import type { ImageSummaryDto, ImageUpdateInfoDto, ImageUsageCounts } from '$lib/types/image.type';
 import type { NetworkSummaryDto, NetworkUsageCounts } from '$lib/types/network.type';
 import type { VolumeSummaryDto, VolumeDetailDto, VolumeUsageDto, VolumeUsageCounts } from '$lib/types/volume.type';
 import type { AutoUpdateCheck, AutoUpdateResult } from '$lib/types/auto-update.type';
-import type { DockerInfo } from '$lib/types/docker-info.type';
 
 export class EnvironmentAPIService extends BaseAPIService {
 	private async getCurrentEnvironmentId(): Promise<string> {
@@ -21,71 +19,6 @@ export class EnvironmentAPIService extends BaseAPIService {
 		}
 		return currentEnvironment.id;
 	}
-
-	// System Api Calls
-
-	async getDockerInfo(): Promise<DockerInfo> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/docker/info`));
-	}
-
-	// Container Api Calls
-
-	async getContainers(options?: SearchPaginationSortRequest): Promise<Paginated<ContainerSummaryDto>> {
-		const envId = await this.getCurrentEnvironmentId();
-
-		const res = await this.api.get(`/environments/${envId}/containers`, { params: options });
-		return res.data;
-	}
-
-	async getContainerStatusCounts(): Promise<ContainerStatusCounts> {
-		const envId = await this.getCurrentEnvironmentId();
-
-		const res = await this.api.get(`/environments/${envId}/containers/counts`);
-		return res.data.data;
-	}
-
-	async getContainer(containerId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/containers/${containerId}`));
-	}
-
-	async startContainer(containerId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/start`));
-	}
-
-	async createContainer(options: ContainerCreateOptions): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/containers`, options));
-	}
-
-	async getContainerStats(containerId: string, stream: boolean = false): Promise<ContainerStats> {
-		const envId = await this.getCurrentEnvironmentId();
-		const url = `/environments/${envId}/containers/${containerId}/stats${stream ? '?stream=true' : ''}`;
-		return this.handleResponse(this.api.get(url)) as Promise<ContainerStats>;
-	}
-
-	async stopContainer(containerId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/stop`));
-	}
-
-	async restartContainer(containerId: string): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/restart`));
-	}
-
-	async deleteContainer(containerId: string, opts?: { force?: boolean; volumes?: boolean }): Promise<any> {
-		const envId = await this.getCurrentEnvironmentId();
-		const params: Record<string, string> = {};
-		if (opts?.force !== undefined) params.force = String(!!opts.force);
-		if (opts?.volumes !== undefined) params.volumes = String(!!opts.volumes);
-
-		return this.handleResponse(this.api.delete(`/environments/${envId}/containers/${containerId}`, { params }));
-	}
-
-	// End Container Api Calls
 
 	// Image Api Calls
 

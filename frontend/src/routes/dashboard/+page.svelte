@@ -109,39 +109,35 @@
 	let imageRequestOptions = $state(data.imageRequestOptions);
 
 	async function refreshData() {
-		if (isLoading.refreshing) return;
 		isLoading.refreshing = true;
 
-		isLoading.loadingDockerInfo = true;
-		isLoading.loadingImages = true;
+		// const [dockerInfoResult, settingsResult, imagesResult, statusCountsResult] = await Promise.allSettled([
+		// 	tryCatch(environmentAPI.getDockerInfo()),
+		// 	tryCatch(settingsAPI.getSettings()),
+		// 	tryCatch(environmentAPI.getImages(imageRequestOptions)),
+		// 	tryCatch(environmentAPI.getContainerStatusCounts())
+		// ]);
 
-		const [dockerInfoResult, settingsResult, imagesResult, statusCountsResult] = await Promise.allSettled([
-			tryCatch(environmentAPI.getDockerInfo()),
-			tryCatch(settingsAPI.getSettings()),
-			tryCatch(environmentAPI.getImages(imageRequestOptions)),
-			tryCatch(environmentAPI.getContainerStatusCounts())
-		]);
+		// if (dockerInfoResult.status === 'fulfilled' && !dockerInfoResult.value.error) {
+		// 	dashboardStates.dockerInfo = dockerInfoResult.value.data;
+		// 	dockerInfo = dockerInfoResult.value.data;
+		// }
+		// isLoading.loadingDockerInfo = false;
 
-		if (dockerInfoResult.status === 'fulfilled' && !dockerInfoResult.value.error) {
-			dashboardStates.dockerInfo = dockerInfoResult.value.data;
-			dockerInfo = dockerInfoResult.value.data;
-		}
-		isLoading.loadingDockerInfo = false;
+		// if (settingsResult.status === 'fulfilled' && !settingsResult.value.error) {
+		// 	dashboardStates.settings = settingsResult.value.data;
+		// }
 
-		if (settingsResult.status === 'fulfilled' && !settingsResult.value.error) {
-			dashboardStates.settings = settingsResult.value.data;
-		}
+		// if (imagesResult.status === 'fulfilled') {
+		// 	if (!imagesResult.value.error) {
+		// 		images = imagesResult.value.data;
+		// 	}
+		// }
+		// isLoading.loadingImages = false;
 
-		if (imagesResult.status === 'fulfilled') {
-			if (!imagesResult.value.error) {
-				images = imagesResult.value.data;
-			}
-		}
-		isLoading.loadingImages = false;
-
-		if (statusCountsResult.status === 'fulfilled' && !statusCountsResult.value.error) {
-			containerStatusCounts = statusCountsResult.value.data;
-		}
+		// if (statusCountsResult.status === 'fulfilled' && !statusCountsResult.value.error) {
+		// 	containerStatusCounts = statusCountsResult.value.data;
+		// }
 
 		await invalidateAll();
 		isLoading.refreshing = false;

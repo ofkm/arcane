@@ -6,6 +6,7 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import { environmentAPI } from '$lib/services/api';
+	import { containerService } from '$lib/services/container-service';
 	import ContainerTable from './container-table.svelte';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { m } from '$lib/paraglide/messages';
@@ -36,7 +37,7 @@
 			setLoadingState: (value) => (isLoading.checking = value),
 			async onSuccess() {
 				toast.success('Containers Updated Successfully.');
-				containers = await environmentAPI.getContainers(requestOptions);
+				containers = await containerService.getContainers(requestOptions);
 			}
 		});
 	}
@@ -44,7 +45,7 @@
 	async function refreshContainers() {
 		isLoading.refreshing = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.getContainers(requestOptions)),
+			result: await tryCatch(containerService.getContainers(requestOptions)),
 			message: 'Failed to Refresh Containers',
 			setLoadingState: (value) => (isLoading.refreshing = value),
 			async onSuccess(newContainers) {
@@ -120,12 +121,12 @@
 		onSubmit={async (options) => {
 			isLoading.create = true;
 			handleApiResultWithCallbacks({
-				result: await tryCatch(environmentAPI.createContainer(options)),
+				result: await tryCatch(containerService.createContainer(options)),
 				message: m.containers_create_failed(),
 				setLoadingState: (value) => (isLoading.create = value),
 				onSuccess: async () => {
 					toast.success(m.containers_create_success());
-					containers = await environmentAPI.getContainers(requestOptions);
+					containers = await containerService.getContainers(requestOptions);
 					isCreateDialogOpen = false;
 				}
 			});

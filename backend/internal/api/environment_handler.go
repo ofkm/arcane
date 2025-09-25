@@ -1,15 +1,7 @@
 package api
 
 import (
-	"bytes"
-	"fmt"
-	"io"
 	"net/http"
-	"net/url"
-	"path"
-	"runtime"
-	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/config"
@@ -18,53 +10,26 @@ import (
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/host"
-	"github.com/shirou/gopsutil/v3/mem"
-
-	wsutil "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
 const LOCAL_DOCKER_ENVIRONMENT_ID = "0"
 
 type EnvironmentHandler struct {
 	environmentService *services.EnvironmentService
-	containerService   *services.ContainerService
-	imageService       *services.ImageService
-	volumeService      *services.VolumeService
-	projectService     *services.ProjectService
 	settingsService    *services.SettingsService
-	imageUpdateService *services.ImageUpdateService
-	systemService      *services.SystemService
-	dockerService      *services.DockerClientService
 	cfg                *config.Config
 }
 
 func NewEnvironmentHandler(
 	group *gin.RouterGroup,
 	environmentService *services.EnvironmentService,
-	containerService *services.ContainerService,
-	imageService *services.ImageService,
-	imageUpdateService *services.ImageUpdateService,
-	volumeService *services.VolumeService,
-	projectService *services.ProjectService,
 	settingsService *services.SettingsService,
-	systemService *services.SystemService,
-	dockerService *services.DockerClientService,
 	authMiddleware *middleware.AuthMiddleware,
 	cfg *config.Config,
 ) {
 	h := &EnvironmentHandler{
 		environmentService: environmentService,
-		containerService:   containerService,
-		imageService:       imageService,
-		volumeService:      volumeService,
-		projectService:     projectService,
 		settingsService:    settingsService,
-		imageUpdateService: imageUpdateService,
-		systemService:      systemService,
-		dockerService:      dockerService,
 		cfg:                cfg,
 	}
 
@@ -78,52 +43,7 @@ func NewEnvironmentHandler(
 		apiGroup.DELETE("/:id", h.DeleteEnvironment)
 		apiGroup.POST("/:id/test", h.TestConnection)
 		apiGroup.POST("/:id/heartbeat", h.UpdateHeartbeat)
-
-		apiGroup.GET("/:id/containers/counts", h.GetContainerStatusCounts)
-		apiGroup.POST("/:id/containers", h.CreateContainer)
-		apiGroup.GET("/:id/containers", h.GetContainers)
-		apiGroup.GET("/:id/containers/:containerId", h.GetContainer)
-		apiGroup.POST("/:id/containers/:containerId/pull", h.PullContainerImage)
-		apiGroup.POST("/:id/containers/:containerId/start", h.StartContainer)
-		apiGroup.POST("/:id/containers/:containerId/stop", h.StopContainer)
-		apiGroup.POST("/:id/containers/:containerId/restart", h.RestartContainer)
-		apiGroup.DELETE("/:id/containers/:containerId", h.RemoveContainer)
-		apiGroup.GET("/:id/containers/:containerId/logs", h.GetContainerLogs)
-		apiGroup.GET("/:id/containers/:containerId/stats", h.GetContainerStats)
-		apiGroup.GET("/:id/containers/:containerId/stats/stream", h.GetContainerStatsStream)
-		apiGroup.GET("/:id/containers/:containerId/logs/ws", h.GetContainerLogsWS)
-
-		apiGroup.GET("/:id/volumes/counts", h.GetVolumeUsageCounts)
-		apiGroup.GET("/:id/volumes", h.GetVolumes)
-		apiGroup.POST("/:id/volumes", h.CreateVolume)
-		apiGroup.GET("/:id/volumes/:volumeName", h.GetVolume)
-		apiGroup.DELETE("/:id/volumes/:volumeName", h.RemoveVolume)
-		apiGroup.GET("/:id/volumes/:volumeName/usage", h.GetVolumeUsage)
-		apiGroup.POST("/:id/volumes/prune", h.PruneVolumes)
-
-		apiGroup.GET("/:id/projects", h.ListProjects)
-		apiGroup.POST("/:id/projects/:projectId/up", h.ProjectUp)
-		apiGroup.POST("/:id/projects/:projectId/down", h.ProjectDown)
-		apiGroup.POST("/:id/projects", h.ProjectCreate)
-		apiGroup.GET("/:id/projects/:projectId", h.GetProject)
-		apiGroup.POST("/:id/projects/:projectId/pull", h.PullProjectImages)
-		apiGroup.POST("/:id/projects/:projectId/redeploy", h.RedeployProject)
-		apiGroup.DELETE("/:id/projects/:projectId/destroy", h.DestroyProject)
-		apiGroup.PUT("/:id/projects/:projectId", h.UpdateProject)
-		apiGroup.POST("/:id/projects/:projectId/restart", h.RestartProject)
-		apiGroup.GET("/:id/projects/counts", h.GetProjectCounts)
-		apiGroup.GET("/:id/projects/:projectId/logs/ws", h.GetProjectLogsWS)
-
-		apiGroup.GET("/:id/image-updates/check", h.CheckImageUpdate)
-		apiGroup.GET("/:id/image-updates/check/:imageId", h.CheckImageUpdateByID)
-		apiGroup.GET("/:id/image-updates/check-all", h.CheckAllImages)
-		apiGroup.GET("/:id/image-updates/summary", h.GetUpdateSummary)
-		apiGroup.GET("/:id/image-updates/versions", h.GetImageVersions)
-		apiGroup.POST("/:id/image-updates/compare", h.CompareVersions)
-
 		apiGroup.POST("/:id/agent/pair", h.PairAgent)
-		apiGroup.GET("/:id/stats/ws", h.GetStatsWS)
-		apiGroup.GET("/:id/docker/info", h.GetDockerInfo)
 	}
 }
 
@@ -156,356 +76,148 @@ func (h *EnvironmentHandler) PairAgent(c *gin.Context) {
 	})
 }
 
-func (h *EnvironmentHandler) routeRequest(c *gin.Context, endpoint string) {
-	environmentID := c.Param("id")
+// func (h *EnvironmentHandler) routeRequest(c *gin.Context, endpoint string) {
+// 	environmentID := c.Param("id")
 
-	if environmentID == LOCAL_DOCKER_ENVIRONMENT_ID {
-		h.handleLocalRequest(c, endpoint)
-		return
-	}
+// 	if environmentID == LOCAL_DOCKER_ENVIRONMENT_ID {
+// 		h.handleLocalRequest(c, endpoint)
+// 		return
+// 	}
 
-	h.handleRemoteRequest(c, environmentID, endpoint)
-}
+// 	h.handleRemoteRequest(c, environmentID, endpoint)
+// }
 
-func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string) {
-	if h.handleContainerEndpoints(c, endpoint) {
-		return
-	}
-	if h.handleImageUpdateEndpoints(c, endpoint) {
-		return
-	}
-	if h.handleVolumeEndpoints(c, endpoint) {
-		return
-	}
-	if h.handleProjectEndpoints(c, endpoint) {
-		return
-	}
-	if h.handleSystemRoutes(c, endpoint) {
-		return
-	}
+// func (h *EnvironmentHandler) handleLocalRequest(c *gin.Context, endpoint string) {
+// 	if h.handleSystemRoutes(c, endpoint) {
+// 		return
+// 	}
 
-	c.JSON(http.StatusNotFound, gin.H{
-		"success": false,
-		"data":    gin.H{"error": "Endpoint not found"},
-	})
-}
+// 	c.JSON(http.StatusNotFound, gin.H{
+// 		"success": false,
+// 		"data":    gin.H{"error": "Endpoint not found"},
+// 	})
+// }
 
-func (h *EnvironmentHandler) handleSystemRoutes(c *gin.Context, endpoint string) bool {
-	systemHandler := &SystemHandler{
-		systemService: h.systemService,
-		dockerService: h.dockerService,
-	}
-	if endpoint == "/docker/info" && c.Request.Method == http.MethodGet {
-		systemHandler.GetDockerInfo(c)
-		return true
-	}
-	return false
-}
+// func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID string, endpoint string) {
+// 	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), environmentID)
+// 	if err != nil || environment == nil {
+// 		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found"}})
+// 		return
+// 	}
+// 	if !environment.Enabled {
+// 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Environment is disabled"}})
+// 		return
+// 	}
 
-func (h *EnvironmentHandler) GetDockerInfo(c *gin.Context) {
-	h.routeRequest(c, "/docker/info")
-}
+// 	target := strings.TrimRight(environment.ApiUrl, "/") +
+// 		"/api/environments/" + LOCAL_DOCKER_ENVIRONMENT_ID + endpoint
+// 	if qs := c.Request.URL.RawQuery; qs != "" {
+// 		target += "?" + qs
+// 	}
 
-func (h *EnvironmentHandler) handleImageUpdateEndpoints(c *gin.Context, endpoint string) bool {
-	imageUpdateHandler := &ImageUpdateHandler{
-		imageUpdateService: h.imageUpdateService,
-	}
+// 	var reqBody io.Reader
+// 	if c.Request.Body != nil {
+// 		buf, _ := io.ReadAll(c.Request.Body)
+// 		// reset original body in case other middlewares need it later
+// 		c.Request.Body = io.NopCloser(bytes.NewBuffer(buf))
+// 		reqBody = bytes.NewReader(buf)
+// 	}
 
-	switch {
-	case endpoint == "/image-updates/check" && c.Request.Method == http.MethodGet:
-		imageUpdateHandler.CheckImageUpdate(c)
-		return true
-	case strings.HasPrefix(endpoint, "/image-updates/check/") && c.Request.Method == http.MethodGet:
-		imageUpdateHandler.CheckImageUpdateByID(c)
-		return true
-	case endpoint == "/image-updates/check-all" && c.Request.Method == http.MethodGet:
-		imageUpdateHandler.CheckAllImages(c)
-		return true
-	case endpoint == "/image-updates/summary" && c.Request.Method == http.MethodGet:
-		imageUpdateHandler.GetUpdateSummary(c)
-		return true
-	case endpoint == "/image-updates/versions" && c.Request.Method == http.MethodGet:
-		imageUpdateHandler.GetImageVersions(c)
-		return true
-	case endpoint == "/image-updates/compare" && c.Request.Method == http.MethodPost:
-		imageUpdateHandler.CompareVersions(c)
-		return true
-	}
-	return false
-}
+// 	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, target, reqBody)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to create proxy request"}})
+// 		return
+// 	}
 
-func (h *EnvironmentHandler) CheckImageUpdate(c *gin.Context) {
-	h.routeRequest(c, "/image-updates/check")
-}
+// 	// Copy headers except hop-by-hop and Authorization (we’ll set explicitly)
+// 	skip := map[string]struct{}{
+// 		"Host":                           {},
+// 		"Connection":                     {},
+// 		"Keep-Alive":                     {},
+// 		"Proxy-Authenticate":             {},
+// 		"Proxy-Authorization":            {},
+// 		"Te":                             {},
+// 		"Trailer":                        {},
+// 		"Transfer-Encoding":              {},
+// 		"Upgrade":                        {},
+// 		"Content-Length":                 {},
+// 		"Origin":                         {},
+// 		"Referer":                        {},
+// 		"Access-Control-Request-Method":  {},
+// 		"Access-Control-Request-Headers": {},
+// 		"Cookie":                         {},
+// 	}
+// 	for k, vs := range c.Request.Header {
+// 		ck := http.CanonicalHeaderKey(k)
+// 		if _, ok := skip[ck]; ok || ck == "Authorization" {
+// 			continue
+// 		}
+// 		for _, v := range vs {
+// 			req.Header.Add(k, v)
+// 		}
+// 	}
 
-func (h *EnvironmentHandler) CheckImageUpdateByID(c *gin.Context) {
-	imageID := c.Param("imageId")
-	h.routeRequest(c, "/image-updates/check/"+imageID)
-}
+// 	// Forward Authorization (or promote cookie)
+// 	if auth := c.GetHeader("Authorization"); auth != "" {
+// 		req.Header.Set("Authorization", auth)
+// 	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
+// 		req.Header.Set("Authorization", "Bearer "+cookieToken)
+// 	}
 
-func (h *EnvironmentHandler) CheckAllImages(c *gin.Context) {
-	h.routeRequest(c, "/image-updates/check-all")
-}
+// 	// Forward agent token if stored
+// 	if environment.AccessToken != nil && *environment.AccessToken != "" {
+// 		req.Header.Set("X-Arcane-Agent-Token", *environment.AccessToken)
+// 	}
 
-func (h *EnvironmentHandler) GetUpdateSummary(c *gin.Context) {
-	h.routeRequest(c, "/image-updates/summary")
-}
+// 	req.Header.Set("X-Forwarded-For", c.ClientIP())
+// 	req.Header.Set("X-Forwarded-Host", c.Request.Host)
 
-func (h *EnvironmentHandler) GetImageVersions(c *gin.Context) {
-	h.routeRequest(c, "/image-updates/versions")
-}
+// 	client := &http.Client{Timeout: 60 * time.Second}
+// 	resp, err := client.Do(req)
+// 	if err != nil {
+// 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": fmt.Sprintf("Proxy request failed: %v", err)}})
+// 		return
+// 	}
+// 	defer resp.Body.Close()
 
-func (h *EnvironmentHandler) CompareVersions(c *gin.Context) {
-	h.routeRequest(c, "/image-updates/compare")
-}
+// 	// Skip hop-by-hop headers and any named in the Connection header (RFC 7230)
+// 	hop := map[string]struct{}{
+// 		http.CanonicalHeaderKey("Connection"):          {},
+// 		http.CanonicalHeaderKey("Keep-Alive"):          {},
+// 		http.CanonicalHeaderKey("Proxy-Authenticate"):  {},
+// 		http.CanonicalHeaderKey("Proxy-Authorization"): {},
+// 		http.CanonicalHeaderKey("TE"):                  {},
+// 		http.CanonicalHeaderKey("Trailers"):            {},
+// 		http.CanonicalHeaderKey("Trailer"):             {},
+// 		http.CanonicalHeaderKey("Transfer-Encoding"):   {},
+// 		http.CanonicalHeaderKey("Upgrade"):             {},
+// 	}
 
-func (h *EnvironmentHandler) handleContainerEndpoints(c *gin.Context, endpoint string) bool {
-	containerHandler := &ContainerHandler{
-		containerService: h.containerService,
-		imageService:     h.imageService,
-	}
+// 	for _, connVal := range resp.Header.Values("Connection") {
+// 		for _, token := range strings.Split(connVal, ",") {
+// 			if t := strings.TrimSpace(token); t != "" {
+// 				hop[http.CanonicalHeaderKey(t)] = struct{}{}
+// 			}
+// 		}
+// 	}
 
-	switch {
-	case endpoint == "/containers/counts" && c.Request.Method == http.MethodGet:
-		containerHandler.GetContainerStatusCounts(c)
-		return true
-	case endpoint == "/containers" && c.Request.Method == http.MethodGet:
-		containerHandler.List(c)
-		return true
-	case endpoint == "/containers" && c.Request.Method == http.MethodPost:
-		containerHandler.Create(c)
-		return true
-	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/start"):
-		containerHandler.Start(c)
-		return true
-	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stop"):
-		containerHandler.Stop(c)
-		return true
-	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/restart"):
-		containerHandler.Restart(c)
-		return true
-	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/pull"):
-		containerHandler.PullImage(c)
-		return true
-	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs/ws"):
-		containerHandler.GetLogsWS(c)
-		return true
-	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/logs"):
-		containerHandler.GetLogs(c)
-		return true
-	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stats/stream"):
-		containerHandler.GetStatsStream(c)
-		return true
-	case strings.HasPrefix(endpoint, "/containers/") && strings.HasSuffix(endpoint, "/stats"):
-		containerHandler.GetStats(c)
-		return true
-	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == http.MethodGet:
-		containerHandler.GetByID(c)
-		return true
-	case strings.HasPrefix(endpoint, "/containers/") && c.Request.Method == http.MethodDelete:
-		containerHandler.Delete(c)
-		return true
-	}
-	return false
-}
+// 	// Copy response headers except hop-by-hop
+// 	for k, vs := range resp.Header {
+// 		ck := http.CanonicalHeaderKey(k)
+// 		if _, ok := hop[ck]; ok {
+// 			continue
+// 		}
+// 		for _, v := range vs {
+// 			c.Writer.Header().Add(k, v)
+// 		}
+// 	}
 
-func (h *EnvironmentHandler) handleVolumeEndpoints(c *gin.Context, endpoint string) bool {
-	volumeHandler := &VolumeHandler{
-		volumeService: h.volumeService,
-	}
+// 	c.Status(resp.StatusCode)
 
-	switch {
-	case endpoint == "/volumes/counts" && c.Request.Method == http.MethodGet:
-		volumeHandler.GetVolumeUsageCounts(c)
-		return true
-	case endpoint == "/volumes" && c.Request.Method == http.MethodGet:
-		volumeHandler.List(c)
-		return true
-	case endpoint == "/volumes" && c.Request.Method == http.MethodPost:
-		volumeHandler.Create(c)
-		return true
-	case endpoint == "/volumes/prune" && c.Request.Method == http.MethodPost:
-		volumeHandler.Prune(c)
-		return true
-	case strings.HasPrefix(endpoint, "/volumes/") && strings.HasSuffix(endpoint, "/usage"):
-		volumeHandler.GetUsage(c)
-		return true
-	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == http.MethodGet:
-		volumeHandler.GetByName(c)
-		return true
-	case strings.HasPrefix(endpoint, "/volumes/") && c.Request.Method == http.MethodDelete:
-		volumeHandler.Remove(c)
-		return true
-	}
-	return false
-}
-
-func (h *EnvironmentHandler) handleProjectEndpoints(c *gin.Context, endpoint string) bool {
-	projectHandler := &ProjectHandler{
-		projectService: h.projectService,
-	}
-
-	switch {
-	case endpoint == "/projects" && c.Request.Method == http.MethodGet:
-		projectHandler.ListProjects(c)
-		return true
-	case endpoint == "/projects" && c.Request.Method == http.MethodPost:
-		projectHandler.CreateProject(c)
-		return true
-	case endpoint == "/projects/counts" && c.Request.Method == http.MethodGet:
-		projectHandler.GetProjectStatusCounts(c)
-		return true
-	case strings.HasSuffix(endpoint, "/logs/ws"):
-		projectHandler.GetProjectLogsWS(c)
-		return true
-	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/up"):
-		projectHandler.DeployProject(c)
-		return true
-	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/down"):
-		projectHandler.DownProject(c)
-		return true
-	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/pull"):
-		projectHandler.PullProjectImages(c)
-		return true
-	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/redeploy"):
-		projectHandler.RedeployProject(c)
-		return true
-	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/destroy"):
-		projectHandler.DestroyProject(c)
-		return true
-	case strings.HasPrefix(endpoint, "/projects/") && strings.HasSuffix(endpoint, "/restart"):
-		projectHandler.RestartProject(c)
-		return true
-	case strings.HasPrefix(endpoint, "/projects/") && c.Request.Method == http.MethodPut:
-		projectHandler.UpdateProject(c)
-		return true
-	case strings.HasPrefix(endpoint, "/projects/") && c.Request.Method == http.MethodGet:
-		projectHandler.GetProject(c)
-		return true
-	}
-	return false
-}
-
-func (h *EnvironmentHandler) handleRemoteRequest(c *gin.Context, environmentID string, endpoint string) {
-	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), environmentID)
-	if err != nil || environment == nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found"}})
-		return
-	}
-	if !environment.Enabled {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Environment is disabled"}})
-		return
-	}
-
-	target := strings.TrimRight(environment.ApiUrl, "/") +
-		"/api/environments/" + LOCAL_DOCKER_ENVIRONMENT_ID + endpoint
-	if qs := c.Request.URL.RawQuery; qs != "" {
-		target += "?" + qs
-	}
-
-	var reqBody io.Reader
-	if c.Request.Body != nil {
-		buf, _ := io.ReadAll(c.Request.Body)
-		// reset original body in case other middlewares need it later
-		c.Request.Body = io.NopCloser(bytes.NewBuffer(buf))
-		reqBody = bytes.NewReader(buf)
-	}
-
-	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, target, reqBody)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to create proxy request"}})
-		return
-	}
-
-	// Copy headers except hop-by-hop and Authorization (we’ll set explicitly)
-	skip := map[string]struct{}{
-		"Host":                           {},
-		"Connection":                     {},
-		"Keep-Alive":                     {},
-		"Proxy-Authenticate":             {},
-		"Proxy-Authorization":            {},
-		"Te":                             {},
-		"Trailer":                        {},
-		"Transfer-Encoding":              {},
-		"Upgrade":                        {},
-		"Content-Length":                 {},
-		"Origin":                         {},
-		"Referer":                        {},
-		"Access-Control-Request-Method":  {},
-		"Access-Control-Request-Headers": {},
-		"Cookie":                         {},
-	}
-	for k, vs := range c.Request.Header {
-		ck := http.CanonicalHeaderKey(k)
-		if _, ok := skip[ck]; ok || ck == "Authorization" {
-			continue
-		}
-		for _, v := range vs {
-			req.Header.Add(k, v)
-		}
-	}
-
-	// Forward Authorization (or promote cookie)
-	if auth := c.GetHeader("Authorization"); auth != "" {
-		req.Header.Set("Authorization", auth)
-	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
-		req.Header.Set("Authorization", "Bearer "+cookieToken)
-	}
-
-	// Forward agent token if stored
-	if environment.AccessToken != nil && *environment.AccessToken != "" {
-		req.Header.Set("X-Arcane-Agent-Token", *environment.AccessToken)
-	}
-
-	req.Header.Set("X-Forwarded-For", c.ClientIP())
-	req.Header.Set("X-Forwarded-Host", c.Request.Host)
-
-	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": fmt.Sprintf("Proxy request failed: %v", err)}})
-		return
-	}
-	defer resp.Body.Close()
-
-	// Skip hop-by-hop headers and any named in the Connection header (RFC 7230)
-	hop := map[string]struct{}{
-		http.CanonicalHeaderKey("Connection"):          {},
-		http.CanonicalHeaderKey("Keep-Alive"):          {},
-		http.CanonicalHeaderKey("Proxy-Authenticate"):  {},
-		http.CanonicalHeaderKey("Proxy-Authorization"): {},
-		http.CanonicalHeaderKey("TE"):                  {},
-		http.CanonicalHeaderKey("Trailers"):            {},
-		http.CanonicalHeaderKey("Trailer"):             {},
-		http.CanonicalHeaderKey("Transfer-Encoding"):   {},
-		http.CanonicalHeaderKey("Upgrade"):             {},
-	}
-
-	for _, connVal := range resp.Header.Values("Connection") {
-		for _, token := range strings.Split(connVal, ",") {
-			if t := strings.TrimSpace(token); t != "" {
-				hop[http.CanonicalHeaderKey(t)] = struct{}{}
-			}
-		}
-	}
-
-	// Copy response headers except hop-by-hop
-	for k, vs := range resp.Header {
-		ck := http.CanonicalHeaderKey(k)
-		if _, ok := hop[ck]; ok {
-			continue
-		}
-		for _, v := range vs {
-			c.Writer.Header().Add(k, v)
-		}
-	}
-
-	c.Status(resp.StatusCode)
-
-	if c.Request.Method != http.MethodHead {
-		_, _ = io.Copy(c.Writer, resp.Body)
-	}
-}
+// 	if c.Request.Method != http.MethodHead {
+// 		_, _ = io.Copy(c.Writer, resp.Body)
+// 	}
+// }
 
 // Create
 func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
@@ -713,344 +425,189 @@ func (h *EnvironmentHandler) UpdateHeartbeat(c *gin.Context) {
 	})
 }
 
-func (h *EnvironmentHandler) GetContainers(c *gin.Context) {
-	h.routeRequest(c, "/containers")
-}
+// func (h *EnvironmentHandler) getContainerLogsWS(c *gin.Context) {
+// 	envID := c.Param("id")
+// 	containerID := c.Param("containerId")
 
-func (h *EnvironmentHandler) GetVolumes(c *gin.Context) {
-	h.routeRequest(c, "/volumes")
-}
+// 	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
+// 		h.routeRequest(c, "/containers/"+containerID+"/logs/ws")
+// 		return
+// 	}
 
-func (h *EnvironmentHandler) CreateVolume(c *gin.Context) {
-	h.routeRequest(c, "/volumes")
-}
+// 	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
+// 	if err != nil || environment == nil || !environment.Enabled {
+// 		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
+// 		return
+// 	}
 
-func (h *EnvironmentHandler) GetVolumeUsageCounts(c *gin.Context) {
-	h.routeRequest(c, "/volumes/counts")
-}
+// 	u, err := url.Parse(strings.TrimRight(environment.ApiUrl, "/"))
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid environment URL"}})
+// 		return
+// 	}
+// 	if u.Scheme == "https" {
+// 		u.Scheme = "wss"
+// 	} else {
+// 		u.Scheme = "ws"
+// 	}
+// 	u.Path = path.Join(u.Path, "/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/containers/"+containerID+"/logs/ws")
+// 	u.RawQuery = c.Request.URL.RawQuery
 
-// Containers
+// 	hdr := http.Header{}
+// 	if auth := c.GetHeader("Authorization"); auth != "" {
+// 		hdr.Set("Authorization", auth)
+// 	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
+// 		hdr.Set("Authorization", "Bearer "+cookieToken)
+// 	}
+// 	if environment.AccessToken != nil && *environment.AccessToken != "" {
+// 		hdr.Set("X-Arcane-Agent-Token", *environment.AccessToken)
+// 	}
 
-func (h *EnvironmentHandler) GetContainer(c *gin.Context) {
-	containerID := c.Param("containerId")
-	h.routeRequest(c, "/containers/"+containerID)
-}
+// 	_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
+// }
 
-func (h *EnvironmentHandler) GetContainerStatusCounts(c *gin.Context) {
-	h.routeRequest(c, "/containers/counts")
-}
+// //nolint:gocognit
+// func (h *EnvironmentHandler) GetStatsWS(c *gin.Context) {
+// 	envID := c.Param("id")
+// 	if envID == "" {
+// 		envID = LOCAL_DOCKER_ENVIRONMENT_ID
+// 	}
 
-func (h *EnvironmentHandler) StartContainer(c *gin.Context) {
-	containerID := c.Param("containerId")
-	h.routeRequest(c, "/containers/"+containerID+"/start")
-}
+// 	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
+// 		conn, err := sysWsUpgrader.Upgrade(c.Writer, c.Request, nil)
+// 		if err != nil {
+// 			return
+// 		}
+// 		defer conn.Close()
 
-func (h *EnvironmentHandler) StopContainer(c *gin.Context) {
-	containerID := c.Param("containerId")
-	h.routeRequest(c, "/containers/"+containerID+"/stop")
-}
+// 		ticker := time.NewTicker(2 * time.Second)
+// 		defer ticker.Stop()
 
-func (h *EnvironmentHandler) CreateContainer(c *gin.Context) {
-	h.routeRequest(c, "/containers")
-}
+// 		var lastCPU float64
 
-func (h *EnvironmentHandler) PullContainerImage(c *gin.Context) {
-	containerID := c.Param("containerId")
-	h.routeRequest(c, "/containers/"+containerID+"/pull")
-}
+// 		send := func(block bool) error {
+// 			var cpuUsage float64
+// 			if block {
+// 				if vals, err := cpu.Percent(time.Second, false); err == nil && len(vals) > 0 {
+// 					cpuUsage = vals[0]
+// 					lastCPU = cpuUsage
+// 				} else {
+// 					cpuUsage = lastCPU
+// 				}
+// 			} else {
+// 				cpuUsage = lastCPU
+// 			}
 
-func (h *EnvironmentHandler) RestartContainer(c *gin.Context) {
-	containerID := c.Param("containerId")
-	h.routeRequest(c, "/containers/"+containerID+"/restart")
-}
+// 			cpuCount, err := cpu.Counts(true)
+// 			if err != nil {
+// 				cpuCount = runtime.NumCPU()
+// 			}
 
-func (h *EnvironmentHandler) RemoveContainer(c *gin.Context) {
-	containerID := c.Param("containerId")
-	h.routeRequest(c, "/containers/"+containerID)
-}
+// 			memInfo, _ := mem.VirtualMemory()
+// 			var memUsed, memTotal uint64
+// 			if memInfo != nil {
+// 				memUsed = memInfo.Used
+// 				memTotal = memInfo.Total
+// 			}
 
-func (h *EnvironmentHandler) GetContainerLogs(c *gin.Context) {
-	containerID := c.Param("containerId")
-	h.routeRequest(c, "/containers/"+containerID+"/logs")
-}
+// 			diskInfo, _ := disk.Usage("/")
+// 			var diskUsed, diskTotal uint64
+// 			if diskInfo != nil {
+// 				diskUsed = diskInfo.Used
+// 				diskTotal = diskInfo.Total
+// 			}
 
-func (h *EnvironmentHandler) GetContainerStats(c *gin.Context) {
-	containerID := c.Param("containerId")
-	h.routeRequest(c, "/containers/"+containerID+"/stats")
-}
+// 			hostInfo, _ := host.Info()
+// 			var hostname string
+// 			if hostInfo != nil {
+// 				hostname = hostInfo.Hostname
+// 			}
 
-func (h *EnvironmentHandler) GetContainerStatsStream(c *gin.Context) {
-	containerID := c.Param("containerId")
-	h.routeRequest(c, "/containers/"+containerID+"/stats/stream")
-}
+// 			stats := SystemStats{
+// 				CPUUsage:     cpuUsage,
+// 				MemoryUsage:  memUsed,
+// 				MemoryTotal:  memTotal,
+// 				DiskUsage:    diskUsed,
+// 				DiskTotal:    diskTotal,
+// 				CPUCount:     cpuCount,
+// 				Architecture: runtime.GOARCH,
+// 				Platform:     runtime.GOOS,
+// 				Hostname:     hostname,
+// 			}
 
-// End Containers
+// 			_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+// 			return conn.WriteJSON(stats)
+// 		}
 
-func (h *EnvironmentHandler) GetNetwork(c *gin.Context) {
-	networkID := c.Param("networkId")
-	h.routeRequest(c, "/networks/"+networkID)
-}
+// 		if err := send(true); err != nil {
+// 			return
+// 		}
 
-func (h *EnvironmentHandler) RemoveNetwork(c *gin.Context) {
-	networkID := c.Param("networkId")
-	h.routeRequest(c, "/networks/"+networkID)
-}
+// 		for {
+// 			select {
+// 			case <-c.Request.Context().Done():
+// 				return
+// 			case <-ticker.C:
+// 				if err := send(true); err != nil {
+// 					return
+// 				}
+// 			}
+// 		}
+// 	}
 
-func (h *EnvironmentHandler) GetVolume(c *gin.Context) {
-	volumeName := c.Param("volumeName")
-	h.routeRequest(c, "/volumes/"+volumeName)
-}
+// 	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
+// 	if err != nil || environment == nil || !environment.Enabled {
+// 		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
+// 		return
+// 	}
 
-func (h *EnvironmentHandler) RemoveVolume(c *gin.Context) {
-	volumeName := c.Param("volumeName")
-	h.routeRequest(c, "/volumes/"+volumeName)
-}
+// 	target, hdr, err := h.environmentService.BuildRemoteWSTarget(environment, "/api/environments/0/stats/ws", c.Request)
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": err.Error()}})
+// 		return
+// 	}
+// 	_ = wsutil.ProxyHTTP(c.Writer, c.Request, target, hdr)
+// }
 
-func (h *EnvironmentHandler) PruneVolumes(c *gin.Context) {
-	h.routeRequest(c, "/volumes/prune")
-}
+// func (h *EnvironmentHandler) getProjectLogsWS(c *gin.Context) {
+// 	envID := c.Param("id")
+// 	projectId := c.Param("projectId")
 
-func (h *EnvironmentHandler) GetVolumeUsage(c *gin.Context) {
-	h.routeRequest(c, "/volumes/"+c.Param("volumeName")+"/usage")
-}
+// 	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
+// 		h.routeRequest(c, "/projects/"+projectId+"/logs/ws")
+// 		return
+// 	}
 
-func (h *EnvironmentHandler) GetContainerLogsWS(c *gin.Context) {
-	envID := c.Param("id")
-	containerID := c.Param("containerId")
+// 	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
+// 	if err != nil || environment == nil || !environment.Enabled {
+// 		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
+// 		return
+// 	}
 
-	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
-		h.routeRequest(c, "/containers/"+containerID+"/logs/ws")
-		return
-	}
+// 	u, err := url.Parse(strings.TrimRight(environment.ApiUrl, "/"))
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid environment URL"}})
+// 		return
+// 	}
+// 	if u.Scheme == "https" {
+// 		u.Scheme = "wss"
+// 	} else {
+// 		u.Scheme = "ws"
+// 	}
+// 	u.Path = path.Join(u.Path, "/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/projects/"+projectId+"/logs/ws")
+// 	u.RawQuery = c.Request.URL.RawQuery
 
-	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
-	if err != nil || environment == nil || !environment.Enabled {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
-		return
-	}
+// 	hdr := http.Header{}
+// 	// Forward auth if present
+// 	if auth := c.GetHeader("Authorization"); auth != "" {
+// 		hdr.Set("Authorization", auth)
+// 	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
+// 		hdr.Set("Authorization", "Bearer "+cookieToken)
+// 	}
+// 	// Agent token
+// 	if environment.AccessToken != nil && *environment.AccessToken != "" {
+// 		hdr.Set("X-Arcane-Agent-Token", *environment.AccessToken)
+// 	}
 
-	u, err := url.Parse(strings.TrimRight(environment.ApiUrl, "/"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid environment URL"}})
-		return
-	}
-	if u.Scheme == "https" {
-		u.Scheme = "wss"
-	} else {
-		u.Scheme = "ws"
-	}
-	u.Path = path.Join(u.Path, "/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/containers/"+containerID+"/logs/ws")
-	u.RawQuery = c.Request.URL.RawQuery
-
-	hdr := http.Header{}
-	if auth := c.GetHeader("Authorization"); auth != "" {
-		hdr.Set("Authorization", auth)
-	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
-		hdr.Set("Authorization", "Bearer "+cookieToken)
-	}
-	if environment.AccessToken != nil && *environment.AccessToken != "" {
-		hdr.Set("X-Arcane-Agent-Token", *environment.AccessToken)
-	}
-
-	_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
-}
-
-//nolint:gocognit
-func (h *EnvironmentHandler) GetStatsWS(c *gin.Context) {
-	envID := c.Param("id")
-	if envID == "" {
-		envID = LOCAL_DOCKER_ENVIRONMENT_ID
-	}
-
-	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
-		conn, err := sysWsUpgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			return
-		}
-		defer conn.Close()
-
-		ticker := time.NewTicker(2 * time.Second)
-		defer ticker.Stop()
-
-		var lastCPU float64
-
-		send := func(block bool) error {
-			var cpuUsage float64
-			if block {
-				if vals, err := cpu.Percent(time.Second, false); err == nil && len(vals) > 0 {
-					cpuUsage = vals[0]
-					lastCPU = cpuUsage
-				} else {
-					cpuUsage = lastCPU
-				}
-			} else {
-				cpuUsage = lastCPU
-			}
-
-			cpuCount, err := cpu.Counts(true)
-			if err != nil {
-				cpuCount = runtime.NumCPU()
-			}
-
-			memInfo, _ := mem.VirtualMemory()
-			var memUsed, memTotal uint64
-			if memInfo != nil {
-				memUsed = memInfo.Used
-				memTotal = memInfo.Total
-			}
-
-			diskInfo, _ := disk.Usage("/")
-			var diskUsed, diskTotal uint64
-			if diskInfo != nil {
-				diskUsed = diskInfo.Used
-				diskTotal = diskInfo.Total
-			}
-
-			hostInfo, _ := host.Info()
-			var hostname string
-			if hostInfo != nil {
-				hostname = hostInfo.Hostname
-			}
-
-			stats := SystemStats{
-				CPUUsage:     cpuUsage,
-				MemoryUsage:  memUsed,
-				MemoryTotal:  memTotal,
-				DiskUsage:    diskUsed,
-				DiskTotal:    diskTotal,
-				CPUCount:     cpuCount,
-				Architecture: runtime.GOARCH,
-				Platform:     runtime.GOOS,
-				Hostname:     hostname,
-			}
-
-			_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			return conn.WriteJSON(stats)
-		}
-
-		if err := send(true); err != nil {
-			return
-		}
-
-		for {
-			select {
-			case <-c.Request.Context().Done():
-				return
-			case <-ticker.C:
-				if err := send(true); err != nil {
-					return
-				}
-			}
-		}
-	}
-
-	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
-	if err != nil || environment == nil || !environment.Enabled {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
-		return
-	}
-
-	target, hdr, err := h.environmentService.BuildRemoteWSTarget(environment, "/api/environments/0/stats/ws", c.Request)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": err.Error()}})
-		return
-	}
-	_ = wsutil.ProxyHTTP(c.Writer, c.Request, target, hdr)
-}
-
-// New Project Handlers
-
-func (h *EnvironmentHandler) ListProjects(c *gin.Context) {
-	h.routeRequest(c, "/projects")
-}
-
-func (h *EnvironmentHandler) ProjectUp(c *gin.Context) {
-	projectId := c.Param("projectId")
-	h.routeRequest(c, "/projects/"+projectId+"/up")
-}
-
-func (h *EnvironmentHandler) ProjectDown(c *gin.Context) {
-	projectId := c.Param("projectId")
-	h.routeRequest(c, "/projects/"+projectId+"/down")
-}
-
-func (h *EnvironmentHandler) ProjectCreate(c *gin.Context) {
-	h.routeRequest(c, "/projects")
-}
-
-func (h *EnvironmentHandler) GetProject(c *gin.Context) {
-	projectId := c.Param("projectId")
-	h.routeRequest(c, "/projects/"+projectId)
-}
-
-func (h *EnvironmentHandler) PullProjectImages(c *gin.Context) {
-	projectId := c.Param("projectId")
-	h.routeRequest(c, "/projects/"+projectId+"/pull")
-}
-
-func (h *EnvironmentHandler) RedeployProject(c *gin.Context) {
-	projectId := c.Param("projectId")
-	h.routeRequest(c, "/projects/"+projectId+"/redeploy")
-}
-
-func (h *EnvironmentHandler) DestroyProject(c *gin.Context) {
-	projectId := c.Param("projectId")
-	h.routeRequest(c, "/projects/"+projectId+"/destroy")
-}
-
-func (h *EnvironmentHandler) UpdateProject(c *gin.Context) {
-	projectId := c.Param("projectId")
-	h.routeRequest(c, "/projects/"+projectId)
-}
-
-func (h *EnvironmentHandler) RestartProject(c *gin.Context) {
-	projectId := c.Param("projectId")
-	h.routeRequest(c, "/projects/"+projectId+"/restart")
-}
-
-func (h *EnvironmentHandler) GetProjectLogsWS(c *gin.Context) {
-	envID := c.Param("id")
-	projectId := c.Param("projectId")
-
-	if envID == LOCAL_DOCKER_ENVIRONMENT_ID {
-		h.routeRequest(c, "/projects/"+projectId+"/logs/ws")
-		return
-	}
-
-	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), envID)
-	if err != nil || environment == nil || !environment.Enabled {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found or disabled"}})
-		return
-	}
-
-	u, err := url.Parse(strings.TrimRight(environment.ApiUrl, "/"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid environment URL"}})
-		return
-	}
-	if u.Scheme == "https" {
-		u.Scheme = "wss"
-	} else {
-		u.Scheme = "ws"
-	}
-	u.Path = path.Join(u.Path, "/api/environments/"+LOCAL_DOCKER_ENVIRONMENT_ID+"/projects/"+projectId+"/logs/ws")
-	u.RawQuery = c.Request.URL.RawQuery
-
-	hdr := http.Header{}
-	// Forward auth if present
-	if auth := c.GetHeader("Authorization"); auth != "" {
-		hdr.Set("Authorization", auth)
-	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
-		hdr.Set("Authorization", "Bearer "+cookieToken)
-	}
-	// Agent token
-	if environment.AccessToken != nil && *environment.AccessToken != "" {
-		hdr.Set("X-Arcane-Agent-Token", *environment.AccessToken)
-	}
-
-	_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
-}
-
-func (h *EnvironmentHandler) GetProjectCounts(c *gin.Context) {
-	h.routeRequest(c, "/projects/counts")
-}
+// 	_ = wsutil.ProxyHTTP(c.Writer, c.Request, u.String(), hdr)
+// }
