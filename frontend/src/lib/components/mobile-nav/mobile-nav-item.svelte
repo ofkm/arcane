@@ -23,7 +23,7 @@
 	aria-label={`${item.title}${active ? ' (current page)' : ''}`}
 	aria-current={active ? 'page' : undefined}
 	class={cn(
-		'transition-all duration-200 ease-out',
+		'flex-1 transition-all duration-200 ease-out',
 		'hover:bg-muted/50 hover:text-foreground hover:scale-[1.02]',
 		'focus-visible:ring-1 focus-visible:ring-muted-foreground/50 focus-visible:ring-offset-1',
 		'focus-visible:ring-offset-transparent focus-visible:scale-[1.02]',

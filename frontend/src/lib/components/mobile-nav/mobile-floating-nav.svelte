@@ -27,21 +27,21 @@
 	} = $props();
 
 	const currentPath = $derived(page.url.pathname);
-	
+
 	// Get navigation settings from props
 	const showLabels = $derived(navigationSettings.showLabels);
 	const scrollToHideEnabled = $derived(navigationSettings.scrollToHide);
 	const tapToHideEnabled = $derived(navigationSettings.tapToHide);
-	
+
 	// Local state for visibility and menu
 	let visible = $state(true);
 	let menuOpen = $state(false);
 	let navElement: HTMLElement;
 	let autoHidden = $state(false);
-	
+
 	// Compute visibility based on scroll direction - always use manual state
 	const shouldShow = $derived(visible);
-	
+
 	// Setup mobile navigation interactions with floating nav specific tuning
 	const mobileNavInteractions = createMobileNavInteractions(
 		{
@@ -51,7 +51,7 @@
 			onMenuOpen: () => {
 				menuOpen = true;
 			},
-			shouldPreventTouch: (currentMenuOpen: boolean) => currentMenuOpen,
+			shouldPreventTouch: (currentMenuOpen: boolean) => currentMenuOpen
 		},
 		{
 			// Floating nav specific tuning - potentially different from docked
@@ -65,36 +65,36 @@
 			swipeTimeLimit: 1000,
 			touchEndDelay: 150,
 			menuOpenRestoreDelay: 50,
-			wheelThreshold: 10,
+			wheelThreshold: 10
 		}
 	);
-	
+
 	$effect(() => {
 		const direction = mobileNavInteractions.scrollDirection;
 		const scrollY = mobileNavInteractions.scrollY;
-		
+
 		// Update interaction manager state
 		mobileNavInteractions.updateState({
 			menuOpen,
 			scrollToHideEnabled,
-			tapToHideEnabled,
+			tapToHideEnabled
 		});
-		
+
 		// Handle scroll effects
 		mobileNavInteractions.handleScrollEffect(direction, scrollY);
 	});
-	
+
 	// Make navigation bar visible when navigation sheet closes and ensure touch is restored
 	let previousMenuOpen = $state(false);
 	$effect(() => {
 		const currentMenuOpen = menuOpen;
-		
+
 		// Handle menu state changes
 		mobileNavInteractions.handleMenuStateChange(previousMenuOpen, currentMenuOpen);
-		
+
 		previousMenuOpen = currentMenuOpen;
 	});
-	
+
 	// Update auto-hidden state
 	$effect(() => {
 		const newAutoHidden = !shouldShow;
@@ -102,13 +102,13 @@
 			autoHidden = newAutoHidden;
 		}
 	});
-	
+
 	// Set up mobile navigation interactions
 	$effect(() => {
 		if (navElement) {
 			// Setup the element with the interaction manager
 			mobileNavInteractions.setupElement(navElement);
-			
+
 			// Return cleanup function
 			return () => {
 				mobileNavInteractions.cleanup();
@@ -121,15 +121,13 @@
 	bind:this={navElement}
 	class={cn(
 		'mobile-nav-base mobile-nav-floating',
-		'fixed left-1/2 z-50 transform -translate-x-1/2',
-		'bg-background/60 backdrop-blur-xl border border-border/30',
-		'shadow-sm rounded-3xl',
+		'fixed left-1/2 z-50 -translate-x-1/2 transform',
+		'bg-background/60 border-border/30 border backdrop-blur-xl',
+		'rounded-3xl shadow-sm',
 		'select-none', // Prevent text selection but allow touch
 		'transition-all duration-300 ease-out', // Smoother easing
-		showLabels 
-			? 'px-3 py-2 flex items-center gap-2' 
-			: 'px-4 py-2.5 flex items-center gap-3',
-		shouldShow ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full opacity-0 scale-95',
+		showLabels ? 'flex items-center gap-2 px-3 py-2' : 'flex items-center gap-3 px-4 py-2.5',
+		shouldShow ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-full scale-95 opacity-0',
 		className
 	)}
 	data-testid="mobile-floating-nav"
@@ -141,8 +139,4 @@
 </nav>
 
 <!-- Navigation Sheet -->
-<MobileNavSheet 
-	bind:open={menuOpen}
-	{user} 
-	{versionInformation} 
-/>
+<MobileNavSheet bind:open={menuOpen} {user} {versionInformation} />
