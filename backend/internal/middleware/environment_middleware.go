@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -107,9 +106,7 @@ func NewEnvProxyMiddlewareWithParam(localID string, paramName string, resolver E
 
 		var bodyReader io.Reader
 		if c.Request.Body != nil {
-			buf, _ := io.ReadAll(c.Request.Body)
-			c.Request.Body = io.NopCloser(bytes.NewBuffer(buf))
-			bodyReader = bytes.NewReader(buf)
+			bodyReader = c.Request.Body
 		}
 
 		req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, target, bodyReader)
