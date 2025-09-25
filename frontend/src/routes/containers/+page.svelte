@@ -9,6 +9,8 @@
 	import ContainerTable from './container-table.svelte';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { m } from '$lib/paraglide/messages';
+    import { environmentStore } from '$lib/stores/environment.store';
+    import type { Environment } from '$lib/types/environment.type';
 
 	let { data } = $props();
 
@@ -59,6 +61,23 @@
 
 		isLoading.refreshing = false;
 	}
+
+	// React to environment changes
+	const selectedEnvStore = environmentStore.selected;
+	let lastEnvId: string | null = null;
+	$effect(() => {
+		const env = $selectedEnvStore as Environment | null;
+		if (!env) return;
+		// Skip initial page load
+		if (lastEnvId === null) {
+			lastEnvId = env.id;
+			return;
+		}
+		if (env.id !== lastEnvId) {
+			lastEnvId = env.id;
+			refreshContainers();
+		}
+	});
 </script>
 
 <div class="space-y-6">
