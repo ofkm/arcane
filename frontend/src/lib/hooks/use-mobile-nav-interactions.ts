@@ -237,9 +237,6 @@ export class MobileNavInteractionManager {
 			this.lockBodyScroll();
 			document.body.style.pointerEvents = 'none';
 			element.style.pointerEvents = 'auto';
-
-			// Add dimming overlay with blur (desktop/pointer devices only)
-			this.createHoverOverlay();
 		};
 
 		const handleMouseLeave = () => {
@@ -251,9 +248,6 @@ export class MobileNavInteractionManager {
 			this.unlockBodyScroll();
 			document.body.style.pointerEvents = '';
 			element.style.pointerEvents = '';
-
-			// Remove dimming overlay
-			this.removeHoverOverlay();
 		};
 
 		element.addEventListener('mouseenter', handleMouseEnter);
@@ -315,42 +309,6 @@ export class MobileNavInteractionManager {
 		document.documentElement.style.overflow = '';
 	}
 
-	private createHoverOverlay() {
-		if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-			const overlay = document.createElement('div');
-			overlay.id = 'nav-hover-overlay';
-			overlay.style.cssText = `
-				position: fixed;
-				top: 0;
-				left: 0;
-				right: 0;
-				bottom: 0;
-				background-color: rgba(0, 0, 0, 0.2);
-				backdrop-filter: blur(1px);
-				z-index: 40;
-				transition: opacity 200ms ease-out, backdrop-filter 200ms ease-out;
-				pointer-events: none;
-			`;
-			document.body.appendChild(overlay);
-			// Trigger transition
-			requestAnimationFrame(() => {
-				overlay.style.opacity = '1';
-			});
-		}
-	}
-
-	private removeHoverOverlay() {
-		const overlay = document.getElementById('nav-hover-overlay');
-		if (overlay) {
-			overlay.style.opacity = '0';
-			setTimeout(() => {
-				if (overlay.parentNode) {
-					overlay.parentNode.removeChild(overlay);
-				}
-			}, this.options.overlayFadeOutDelay);
-		}
-	}
-
 	public cleanup() {
 		// Cleanup all event listeners
 		this.cleanupFunctions.forEach((fn) => fn());
@@ -371,7 +329,6 @@ export class MobileNavInteractionManager {
 		}
 
 		// Clean up any remaining overlay
-		this.removeHoverOverlay();
 	}
 
 	// Getters for accessing detectors
