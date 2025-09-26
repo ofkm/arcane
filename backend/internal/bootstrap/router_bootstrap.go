@@ -64,6 +64,13 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 
 	apiGroup := router.Group("/api")
 
+	api.NewUserHandler(apiGroup, appServices.User, authMiddleware)
+	api.NewVersionHandler(apiGroup, appServices.Version)
+	api.NewAuthHandler(apiGroup, appServices.User, appServices.Auth, appServices.Oidc, authMiddleware)
+	api.NewEventHandler(apiGroup, appServices.Event, authMiddleware)
+	api.NewOidcHandler(apiGroup, appServices.Auth, appServices.Oidc, cfg)
+	api.NewSettingsHandler(apiGroup, appServices.Settings, authMiddleware)
+
 	apiGroup.Use(middleware.NewEnvProxyMiddleware(api.LOCAL_DOCKER_ENVIRONMENT_ID, func(ctx context.Context, id string) (string, *string, bool, error) {
 		env, err := appServices.Environment.GetEnvironmentByID(ctx, id)
 		if err != nil || env == nil {
@@ -73,22 +80,17 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	}))
 
 	api.NewHealthHandler(apiGroup)
-	api.NewVersionHandler(apiGroup, appServices.Version)
-	api.NewAuthHandler(apiGroup, appServices.User, appServices.Auth, appServices.Oidc, authMiddleware)
+
 	api.NewContainerHandler(apiGroup, appServices.Docker, appServices.Container, appServices.Image, authMiddleware)
 	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
 	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Settings, authMiddleware, cfg)
-	api.NewEventHandler(apiGroup, appServices.Event, authMiddleware)
 	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, authMiddleware)
 	api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)
 	api.NewNetworkHandler(apiGroup, appServices.Docker, appServices.Network, authMiddleware)
-	api.NewOidcHandler(apiGroup, appServices.Auth, appServices.Oidc, cfg)
-	api.NewSettingsHandler(apiGroup, appServices.Settings, authMiddleware)
 	api.NewProjectHandler(apiGroup, appServices.Project, authMiddleware)
 	api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, authMiddleware)
 	api.NewTemplateHandler(apiGroup, appServices.Template, authMiddleware)
 	api.NewUpdaterHandler(apiGroup, appServices.Updater, authMiddleware)
-	api.NewUserHandler(apiGroup, appServices.User, authMiddleware)
 	api.NewVolumeHandler(apiGroup, appServices.Docker, appServices.Volume, authMiddleware)
 
 	if cfg.Environment != "production" {
