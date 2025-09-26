@@ -6,6 +6,8 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import ProjectsTable from './projects-table.svelte';
 	import { goto } from '$app/navigation';
@@ -54,12 +56,12 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+	<div class="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">{m.projects_title()}</h1>
 			<p class="text-muted-foreground mt-1 text-sm">{m.compose_subtitle()}</p>
 		</div>
-		<div class="flex items-center gap-2">
+		<div class="hidden items-center gap-2 sm:flex">
 			<ArcaneButton
 				action="inspect"
 				customLabel={m.compose_update_projects()}
@@ -75,6 +77,30 @@
 				loading={isLoading.refreshing}
 				disabled={isLoading.refreshing}
 			/>
+		</div>
+
+		<div class="absolute right-4 top-4 flex items-center sm:hidden">
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border">
+					<span class="sr-only">{m.common_open_menu()}</span>
+					<EllipsisIcon />
+				</DropdownMenu.Trigger>
+
+				<DropdownMenu.Content
+					align="end"
+					class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[180px] rounded-md p-1 shadow-lg backdrop-blur-sm supports-[backdrop-filter]:backdrop-blur-sm"
+				>
+					<DropdownMenu.Group>
+						<DropdownMenu.Item onclick={handleCheckForUpdates} disabled={isLoading.updating}>
+							{m.compose_update_projects()}
+						</DropdownMenu.Item>
+						<DropdownMenu.Item onclick={() => goto(`/projects/new`)}>{m.compose_create_project()}</DropdownMenu.Item>
+						<DropdownMenu.Item onclick={refreshCompose} disabled={isLoading.refreshing}>
+							{m.common_refresh()}
+						</DropdownMenu.Item>
+					</DropdownMenu.Group>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 		</div>
 	</div>
 

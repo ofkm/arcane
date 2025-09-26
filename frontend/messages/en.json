@@ -335,7 +335,7 @@
 	"common_disabled": "Disabled",
 	"common_online": "Online",
 	"common_offline": "Offline",
-	"environments_title": "Environment Management",
+	"environments_title": "Environments",
 	"environments_subtitle": "Manage and monitor your Arcane environments",
 	"environments_remove_selected_button": "Remove Selected",
 	"environments_add_button": "Add Environment",

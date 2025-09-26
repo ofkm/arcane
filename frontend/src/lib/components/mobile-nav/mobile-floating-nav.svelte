@@ -28,18 +28,15 @@
 
 	const currentPath = $derived(page.url.pathname);
 
-	// Get navigation settings from props
 	const showLabels = $derived(navigationSettings.showLabels);
 	const scrollToHideEnabled = $derived(navigationSettings.scrollToHide);
 	const tapToHideEnabled = $derived(navigationSettings.tapToHide);
 
-	// Local state for visibility and menu
 	let visible = $state(true);
 	let menuOpen = $state(false);
 	let navElement: HTMLElement;
 	let autoHidden = $state(false);
 
-	// Compute visibility based on scroll direction - always use manual state
 	const shouldShow = $derived(visible);
 
 	// Setup mobile navigation interactions with floating nav specific tuning
@@ -103,7 +100,6 @@
 		}
 	});
 
-	// Set up mobile navigation interactions
 	$effect(() => {
 		if (navElement) {
 			// Setup the element with the interaction manager
@@ -138,5 +134,4 @@
 	{/each}
 </nav>
 
-<!-- Navigation Sheet -->
 <MobileNavSheet bind:open={menuOpen} {user} {versionInformation} />
