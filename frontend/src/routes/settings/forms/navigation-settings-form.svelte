@@ -13,7 +13,7 @@
 	import NavigationModeSettingControl from '$lib/components/navigation-mode-setting-control.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
-	import { PersistedState } from 'runed';
+	import { navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
 
 	let {
 		settings,
@@ -29,21 +29,8 @@
 
 	const uiConfigDisabled = $state($settingsStore.uiConfigDisabled);
 
-	// Create persisted state for navigation overrides
-	const navigationOverrides = new PersistedState('navigation-settings-overrides', {
-		mode: undefined,
-		showLabels: undefined,
-		scrollToHide: undefined,
-		tapToHide: undefined
-	} as {
-		mode?: 'floating' | 'docked';
-		showLabels?: boolean;
-		scrollToHide?: boolean;
-		tapToHide?: boolean;
-	});
-
-	// Track local override state
-	let persistedState = $state(navigationOverrides.current);
+	// Track local override state using the shared store
+	let persistedState = $state(navigationSettingsOverridesStore.current);
 
 	const formSchema = z.object({
 		mobileNavigationMode: z.enum(['floating', 'docked']),
@@ -75,27 +62,21 @@
 	});
 
 	function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide' | 'tapToHide', value: any) {
-		const currentOverrides = navigationOverrides.current;
-		navigationOverrides.current = {
+		const currentOverrides = navigationSettingsOverridesStore.current;
+		navigationSettingsOverridesStore.current = {
 			...currentOverrides,
 			[key]: value
 		};
-		persistedState = navigationOverrides.current;
-		
-		// Trigger a custom event to notify the layout about the change
-		window.dispatchEvent(new CustomEvent('navigation-overrides-changed'));
+		persistedState = navigationSettingsOverridesStore.current;
 	}
 
 	function clearLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide' | 'tapToHide') {
-		const currentOverrides = navigationOverrides.current;
+		const currentOverrides = navigationSettingsOverridesStore.current;
 		const newOverrides = { ...currentOverrides };
 		delete newOverrides[key];
-		navigationOverrides.current = newOverrides;
-		persistedState = navigationOverrides.current;
-		
-		// Trigger a custom event to notify the layout about the change
-		window.dispatchEvent(new CustomEvent('navigation-overrides-changed'));
-		
+		navigationSettingsOverridesStore.current = newOverrides;
+		persistedState = navigationSettingsOverridesStore.current;
+
 		toast.success(`Local override cleared for ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
 	}
 
@@ -108,7 +89,7 @@
 		isLoading = true;
 
 		await callback(data)
-					.then(() => toast.success(m.navigation_settings_saved()))
+			.then(() => toast.success(m.navigation_settings_saved()))
 			.catch((error) => {
 				console.error('Failed to save navigation settings:', error);
 				toast.error('Failed to save navigation settings. Please try again.');
@@ -132,91 +113,99 @@
 </script>
 
 <div class="space-y-4 sm:space-y-6">
-		<!-- Mobile Navigation Appearance Card -->
-		<Card.Root class="pt-0 overflow-hidden">
-			<Card.Header class="!py-4 bg-muted/20 border-b">
-				<div class="flex items-center gap-3">
-					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-						<NavigationIcon class="size-4" />
-					</div>
-					<div>
-						<Card.Title class="text-base">{m.navigation_mobile_appearance_title()}</Card.Title>
-						<Card.Description class="text-xs">{m.navigation_mobile_appearance_description()}</Card.Description>
-					</div>
+	<!-- Mobile Navigation Appearance Card -->
+	<Card.Root class="overflow-hidden pt-0">
+		<Card.Header class="bg-muted/20 border-b !py-4">
+			<div class="flex items-center gap-3">
+				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
+					<NavigationIcon class="size-4" />
 				</div>
-			</Card.Header>
-			<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
-				<div class="grid grid-cols-1 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))] gap-3 sm:gap-4">
-					<NavigationModeSettingControl
-						id="mobileNavigationMode"
-						label={m.navigation_mode_label()}
-						description={m.navigation_mode_description()}
-						icon={NavigationIcon}
-						serverValue={$formInputs.mobileNavigationMode.value}
-						localOverride={persistedState.mode}
-						onServerChange={(value) => { $formInputs.mobileNavigationMode.value = value; }}
-						onLocalOverride={(value) => setLocalOverride('mode', value)}
-						onClearOverride={() => clearLocalOverride('mode')}
-						serverDisabled={uiConfigDisabled}
-					/>
+				<div>
+					<Card.Title class="text-base">{m.navigation_mobile_appearance_title()}</Card.Title>
+					<Card.Description class="text-xs">{m.navigation_mobile_appearance_description()}</Card.Description>
+				</div>
+			</div>
+		</Card.Header>
+		<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
+			<div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))]">
+				<NavigationModeSettingControl
+					id="mobileNavigationMode"
+					label={m.navigation_mode_label()}
+					description={m.navigation_mode_description()}
+					icon={NavigationIcon}
+					serverValue={$formInputs.mobileNavigationMode.value}
+					localOverride={persistedState.mode}
+					onServerChange={(value) => {
+						$formInputs.mobileNavigationMode.value = value;
+					}}
+					onLocalOverride={(value) => setLocalOverride('mode', value)}
+					onClearOverride={() => clearLocalOverride('mode')}
+					serverDisabled={uiConfigDisabled}
+				/>
 
-					<NavigationSettingControl
-						id="mobileNavigationShowLabels"
-						label={m.navigation_show_labels_label()}
-						description={m.navigation_show_labels_description()}
-						icon={EyeIcon}
-						serverValue={$formInputs.mobileNavigationShowLabels.value}
-						localOverride={persistedState.showLabels}
-						onServerChange={(value) => { $formInputs.mobileNavigationShowLabels.value = value; }}
-						onLocalOverride={(value) => setLocalOverride('showLabels', value)}
-						onClearOverride={() => clearLocalOverride('showLabels')}
-						serverDisabled={uiConfigDisabled}
-					/>
-				</div>
-			</Card.Content>
-		</Card.Root>
+				<NavigationSettingControl
+					id="mobileNavigationShowLabels"
+					label={m.navigation_show_labels_label()}
+					description={m.navigation_show_labels_description()}
+					icon={EyeIcon}
+					serverValue={$formInputs.mobileNavigationShowLabels.value}
+					localOverride={persistedState.showLabels}
+					onServerChange={(value) => {
+						$formInputs.mobileNavigationShowLabels.value = value;
+					}}
+					onLocalOverride={(value) => setLocalOverride('showLabels', value)}
+					onClearOverride={() => clearLocalOverride('showLabels')}
+					serverDisabled={uiConfigDisabled}
+				/>
+			</div>
+		</Card.Content>
+	</Card.Root>
 
-		<!-- Mobile Navigation Behavior Card -->
-		<Card.Root class="pt-0 overflow-hidden">
-			<Card.Header class="!py-4 bg-muted/20 border-b">
-				<div class="flex items-center gap-3">
-					<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-						<NavigationIcon class="size-4" />
-					</div>
-					<div>
-						<Card.Title class="text-base">{m.navigation_mobile_behavior_title()}</Card.Title>
-						<Card.Description class="text-xs">{m.navigation_mobile_behavior_description()}</Card.Description>
-					</div>
+	<!-- Mobile Navigation Behavior Card -->
+	<Card.Root class="overflow-hidden pt-0">
+		<Card.Header class="bg-muted/20 border-b !py-4">
+			<div class="flex items-center gap-3">
+				<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
+					<NavigationIcon class="size-4" />
 				</div>
-			</Card.Header>
-			<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
-				<div class="grid grid-cols-1 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))] gap-3 sm:gap-4">
-					<NavigationSettingControl
-						id="mobileNavigationScrollToHide"
-						label={m.navigation_scroll_to_hide_label()}
-						description={m.navigation_scroll_to_hide_description()}
-						icon={ScrollTextIcon}
-						serverValue={$formInputs.mobileNavigationScrollToHide.value}
-						localOverride={persistedState.scrollToHide}
-						onServerChange={(value) => { $formInputs.mobileNavigationScrollToHide.value = value; }}
-						onLocalOverride={(value) => setLocalOverride('scrollToHide', value)}
-						onClearOverride={() => clearLocalOverride('scrollToHide')}
-						serverDisabled={uiConfigDisabled}
-					/>
+				<div>
+					<Card.Title class="text-base">{m.navigation_mobile_behavior_title()}</Card.Title>
+					<Card.Description class="text-xs">{m.navigation_mobile_behavior_description()}</Card.Description>
+				</div>
+			</div>
+		</Card.Header>
+		<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
+			<div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))]">
+				<NavigationSettingControl
+					id="mobileNavigationScrollToHide"
+					label={m.navigation_scroll_to_hide_label()}
+					description={m.navigation_scroll_to_hide_description()}
+					icon={ScrollTextIcon}
+					serverValue={$formInputs.mobileNavigationScrollToHide.value}
+					localOverride={persistedState.scrollToHide}
+					onServerChange={(value) => {
+						$formInputs.mobileNavigationScrollToHide.value = value;
+					}}
+					onLocalOverride={(value) => setLocalOverride('scrollToHide', value)}
+					onClearOverride={() => clearLocalOverride('scrollToHide')}
+					serverDisabled={uiConfigDisabled}
+				/>
 
-					<NavigationSettingControl
-						id="mobileNavigationTapToHide"
-						label={m.navigation_tap_to_hide_label()}
-						description={m.navigation_tap_to_hide_description()}
-						icon={MousePointerClickIcon}
-						serverValue={$formInputs.mobileNavigationTapToHide.value}
-						localOverride={persistedState.tapToHide}
-						onServerChange={(value) => { $formInputs.mobileNavigationTapToHide.value = value; }}
-						onLocalOverride={(value) => setLocalOverride('tapToHide', value)}
-						onClearOverride={() => clearLocalOverride('tapToHide')}
-						serverDisabled={uiConfigDisabled}
-					/>
-				</div>
-			</Card.Content>
-		</Card.Root>
+				<NavigationSettingControl
+					id="mobileNavigationTapToHide"
+					label={m.navigation_tap_to_hide_label()}
+					description={m.navigation_tap_to_hide_description()}
+					icon={MousePointerClickIcon}
+					serverValue={$formInputs.mobileNavigationTapToHide.value}
+					localOverride={persistedState.tapToHide}
+					onServerChange={(value) => {
+						$formInputs.mobileNavigationTapToHide.value = value;
+					}}
+					onLocalOverride={(value) => setLocalOverride('tapToHide', value)}
+					onClearOverride={() => clearLocalOverride('tapToHide')}
+					serverDisabled={uiConfigDisabled}
+				/>
+			</div>
+		</Card.Content>
+	</Card.Root>
 </div>

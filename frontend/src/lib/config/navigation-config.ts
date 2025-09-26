@@ -72,10 +72,48 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 	]
 };
 
-// Mobile navigation items (hardcoded for now)
-export const mobileNavigationItems: NavigationItem[] = [
-	{ title: m.dashboard_title(), url: '/dashboard', icon: HouseIcon },
-	{ title: m.containers_title(), url: '/containers', icon: ContainerIcon },
-	{ title: m.images_title(), url: '/images', icon: ImageIcon },
-	{ title: m.volumes_title(), url: '/volumes', icon: HardDriveIcon }
+export const defaultMobilePinnedItems: NavigationItem[] = [
+	navigationItems.managementItems[0], // Dashboard
+	navigationItems.managementItems[1], // Containers
+	navigationItems.managementItems[3], // Images
+	navigationItems.managementItems[5] // Volumes
 ];
+
+export type MobileNavigationSettings = {
+	pinnedItems: string[];
+	mode: 'floating' | 'docked';
+	showLabels: boolean;
+	scrollToHide: boolean;
+	tapToHide: boolean;
+};
+
+export function getAvailableMobileNavItems(): NavigationItem[] {
+	const flatItems: NavigationItem[] = [];
+
+	// Add all management items (core Docker resources)
+	flatItems.push(...navigationItems.managementItems);
+
+	// Add customization items (templates and registries)
+	flatItems.push(...navigationItems.customizationItems);
+
+	// Add environment items (admin-only, filtered at component level)
+	if (navigationItems.environmentItems) {
+		flatItems.push(...navigationItems.environmentItems);
+	}
+
+	// Add top-level settings items only (exclude nested sub-items)
+	if (navigationItems.settingsItems) {
+		const settingsTopLevel = navigationItems.settingsItems.filter((item) => !item.items);
+		flatItems.push(...settingsTopLevel);
+	}
+
+	return flatItems;
+}
+
+export const defaultMobileNavigationSettings: MobileNavigationSettings = {
+	pinnedItems: defaultMobilePinnedItems.map((item) => item.url),
+	mode: 'floating',
+	showLabels: true,
+	scrollToHide: true,
+	tapToHide: false
+};

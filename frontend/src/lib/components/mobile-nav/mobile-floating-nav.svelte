@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import type { NavigationItem } from '$lib/config/navigation-config';
+	import type { NavigationItem, MobileNavigationSettings } from '$lib/config/navigation-config';
 	import MobileNavItem from './mobile-nav-item.svelte';
 	import { cn } from '$lib/utils';
 	import { createMobileNavInteractions } from '$lib/hooks/use-mobile-nav-interactions';
@@ -15,12 +15,7 @@
 		class: className = ''
 	}: {
 		pinnedItems: NavigationItem[];
-		navigationSettings: {
-			mode: string;
-			showLabels: boolean;
-			scrollToHide: boolean;
-			tapToHide: boolean;
-		};
+		navigationSettings: MobileNavigationSettings;
 		user?: any;
 		versionInformation?: any;
 		class?: string;

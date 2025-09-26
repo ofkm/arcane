@@ -16,9 +16,8 @@
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
 	import MobileFloatingNav from '$lib/components/mobile-nav/mobile-floating-nav.svelte';
 	import MobileDockedNav from '$lib/components/mobile-nav/mobile-docked-nav.svelte';
-	import { pinnedItemsStore, getEffectiveNavigationSettings } from '$lib/utils/mobile-nav-utils';
-	import { defaultMobilePinnedItems, getAvailableMobileNavItems } from '$lib/config/mobile-navigation-config';
-	import { onMount } from 'svelte';
+	import { getEffectiveNavigationSettings, navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
+	import { getAvailableMobileNavItems } from '$lib/config/navigation-config';
 
 	let {
 		data,
@@ -33,13 +32,21 @@
 	const isMobile = new IsMobile();
 	const isNavigating = $derived(navigating.type !== null);
 	const isOnboardingPage = $derived(String(page.url.pathname).startsWith('/onboarding'));
-	
+
 	// Get effective navigation settings (server + overrides)
-	let navigationSettings = $state(getEffectiveNavigationSettings());
+	const navigationSettings = $derived.by(() => {
+		settings; // Reactive to server settings
+		navigationSettingsOverridesStore.current; // Reactive to local overrides
+		return getEffectiveNavigationSettings();
+	});
 	const navigationMode = $derived(navigationSettings.mode);
-	
-	// Get pinned items
-	let pinnedItems = $state(defaultMobilePinnedItems);
+
+	// Get pinned items from navigation settings
+	const pinnedItemsUrls = $derived(navigationSettings.pinnedItems);
+	const pinnedItems = $derived.by(() => {
+		const availableItems = getAvailableMobileNavItems();
+		return pinnedItemsUrls.map((url) => availableItems.find((item) => item.url === url)).filter((item) => item !== undefined);
+	});
 	const isLoginPage = $derived(
 		String(page.url.pathname) === '/login' ||
 			String(page.url.pathname).startsWith('/auth/login') ||
@@ -52,35 +59,6 @@
 	if (redirectPath) {
 		goto(redirectPath);
 	}
-
-	// Load mobile navigation preferences on mount
-	onMount(() => {
-		// Load pinned items from persistent storage
-		const preferences = pinnedItemsStore.current;
-		const availableItems = getAvailableMobileNavItems();
-		
-		// Map URLs back to NavigationItems
-		const loadedPinnedItems = preferences.pinnedItems
-			.map(url => availableItems.find(item => item.url === url))
-			.filter(item => item !== undefined);
-		
-		pinnedItems = loadedPinnedItems.length > 0 ? loadedPinnedItems : defaultMobilePinnedItems;
-		
-		// Load navigation settings
-		navigationSettings = getEffectiveNavigationSettings();
-		
-		// Listen for navigation override changes
-		const handleOverrideChange = () => {
-			navigationSettings = getEffectiveNavigationSettings();
-		};
-		
-		window.addEventListener('navigation-overrides-changed', handleOverrideChange);
-		
-		// Cleanup
-		return () => {
-			window.removeEventListener('navigation-overrides-changed', handleOverrideChange);
-		};
-	});
 </script>
 
 <svelte:head><title>{m.layout_title()}</title></svelte:head>
@@ -91,28 +69,18 @@
 	{:else if !isOnboardingPage && !isLoginPage}
 		{#if isMobile.current}
 			<main class="flex-1">
-				<section 
-			class={`px-2 py-5 sm:p-5 ${navigationMode === 'docked' ? 'pb-6' : 'pb-24'}`}
-			style={navigationMode === 'docked' ? 'padding-bottom: max(1.5rem, calc(4rem + env(safe-area-inset-bottom)))' : ''}
-		>
+				<section
+					class={`px-2 py-5 sm:p-5 ${navigationMode === 'docked' ? 'pb-6' : 'pb-24'}`}
+					style={navigationMode === 'docked' ? 'padding-bottom: max(1.5rem, calc(4rem + env(safe-area-inset-bottom)))' : ''}
+				>
 					{@render children()}
 				</section>
 			</main>
 			<!-- Mobile Navigation - Floating or Docked -->
 			{#if navigationMode === 'floating'}
-				<MobileFloatingNav 
-					{pinnedItems}
-					{navigationSettings}
-					{user}
-					{versionInformation}
-				/>
+				<MobileFloatingNav {pinnedItems} {navigationSettings} {user} {versionInformation} />
 			{:else}
-				<MobileDockedNav 
-					{pinnedItems}
-					{navigationSettings}
-					{user}
-					{versionInformation}
-				/>
+				<MobileDockedNav {pinnedItems} {navigationSettings} {user} {versionInformation} />
 			{/if}
 		{:else}
 			<Sidebar.Provider>
