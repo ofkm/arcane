@@ -43,6 +43,7 @@
 
 	const formHasChanges = $derived.by(
 		() =>
+			$formInputs.mobileNavigationMode.value !== settings.mobileNavigationMode ||
 			$formInputs.mobileNavigationShowLabels.value !== settings.mobileNavigationShowLabels ||
 			$formInputs.mobileNavigationScrollToHide.value !== settings.mobileNavigationScrollToHide ||
 			$formInputs.mobileNavigationTapToHide.value !== settings.mobileNavigationTapToHide
@@ -80,7 +81,6 @@
 		isLoading = true;
 
 		await callback(data)
-			.then(() => toast.success(m.navigation_settings_saved()))
 			.then(() => toast.success(m.navigation_settings_saved()))
 			.catch((error) => {
 				console.error('Failed to save navigation settings:', error);
@@ -153,23 +153,6 @@
 			</div>
 		</Card.Content>
 	</Card.Root>
-				<NavigationSettingControl
-					id="mobileNavigationShowLabels"
-					label={m.navigation_show_labels_label()}
-					description={m.navigation_show_labels_description()}
-					icon={EyeIcon}
-					serverValue={$formInputs.mobileNavigationShowLabels.value}
-					localOverride={persistedState.showLabels}
-					onServerChange={(value) => {
-						$formInputs.mobileNavigationShowLabels.value = value;
-					}}
-					onLocalOverride={(value) => setLocalOverride('showLabels', value)}
-					onClearOverride={() => clearLocalOverride('showLabels')}
-					serverDisabled={uiConfigDisabled}
-				/>
-			</div>
-		</Card.Content>
-	</Card.Root>
 
 	<!-- Mobile Navigation Behavior Card -->
 	<Card.Root class="overflow-hidden pt-0">
@@ -201,23 +184,6 @@
 					serverDisabled={uiConfigDisabled}
 				/>
 
-				<NavigationSettingControl
-					id="mobileNavigationTapToHide"
-					label={m.navigation_tap_to_hide_label()}
-					description={m.navigation_tap_to_hide_description()}
-					icon={MousePointerClickIcon}
-					serverValue={$formInputs.mobileNavigationTapToHide.value}
-					localOverride={persistedState.tapToHide}
-					onServerChange={(value) => {
-						$formInputs.mobileNavigationTapToHide.value = value;
-					}}
-					onLocalOverride={(value) => setLocalOverride('tapToHide', value)}
-					onClearOverride={() => clearLocalOverride('tapToHide')}
-					serverDisabled={uiConfigDisabled}
-				/>
-			</div>
-		</Card.Content>
-	</Card.Root>
 				<NavigationSettingControl
 					id="mobileNavigationTapToHide"
 					label={m.navigation_tap_to_hide_label()}
