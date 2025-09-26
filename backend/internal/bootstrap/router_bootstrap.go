@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"log/slog"
 	"path"
 	"strings"
@@ -63,20 +64,20 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 
 	apiGroup := router.Group("/api")
 
-	if cfg.AgentMode {
-		api.NewHealthHandler(apiGroup)
-		api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Project, appServices.Settings, appServices.System, appServices.Docker, authMiddleware, cfg)
-		api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, authMiddleware)
-		return router
-	}
+	apiGroup.Use(middleware.NewEnvProxyMiddleware(api.LOCAL_DOCKER_ENVIRONMENT_ID, func(ctx context.Context, id string) (string, *string, bool, error) {
+		env, err := appServices.Environment.GetEnvironmentByID(ctx, id)
+		if err != nil || env == nil {
+			return "", nil, false, err
+		}
+		return env.ApiUrl, env.AccessToken, env.Enabled, nil
+	}))
 
 	api.NewHealthHandler(apiGroup)
 	api.NewVersionHandler(apiGroup, appServices.Version)
 	api.NewAuthHandler(apiGroup, appServices.User, appServices.Auth, appServices.Oidc, authMiddleware)
 	api.NewContainerHandler(apiGroup, appServices.Docker, appServices.Container, appServices.Image, authMiddleware)
 	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
-	api.NewConverterHandler(apiGroup, appServices.Converter, authMiddleware)
-	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Container, appServices.Image, appServices.ImageUpdate, appServices.Updater, appServices.Network, appServices.Volume, appServices.Project, appServices.Settings, appServices.System, appServices.Docker, authMiddleware, cfg)
+	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Settings, authMiddleware, cfg)
 	api.NewEventHandler(apiGroup, appServices.Event, authMiddleware)
 	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, authMiddleware)
 	api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)

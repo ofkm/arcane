@@ -1,4 +1,4 @@
-import { environmentAPI } from '$lib/services/api';
+import { projectService } from '$lib/services/project-service';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import type { PageLoad } from './$types';
 
@@ -14,8 +14,8 @@ export const load: PageLoad = async () => {
 		}
 	};
 
-	const projects = await environmentAPI.getProjects(projectRequestOptions);
-	const projectStatusCounts = await environmentAPI.getProjectStatusCounts();
+	const projects = await projectService.getProjects(projectRequestOptions);
+	const projectStatusCounts = await projectService.getProjectStatusCounts();
 
 	return { projects, projectRequestOptions, projectStatusCounts };
 };

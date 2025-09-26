@@ -1,4 +1,5 @@
-import { environmentAPI, settingsAPI } from '$lib/services/api';
+import { imageService } from '$lib/services/image-service';
+import { settingsService } from '$lib/services/settings-service';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import type { PageLoad } from './$types';
 
@@ -13,9 +14,9 @@ export const load: PageLoad = async () => {
 			direction: 'desc' as const
 		}
 	};
-	const images = await environmentAPI.getImages(imageRequestOptions);
-	const settings = await settingsAPI.getSettings();
-	const imageUsageCounts = await environmentAPI.getImageUsageCounts();
+	const images = await imageService.getImages(imageRequestOptions);
+	const settings = await settingsService.getSettings();
+	const imageUsageCounts = await imageService.getImageUsageCounts();
 
 	return { images, imageRequestOptions, settings, imageUsageCounts };
 };

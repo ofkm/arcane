@@ -137,7 +137,7 @@ export function createStatsWebSocket(opts: {
 	const buildUrl = () => {
 		const envId = opts.getEnvId() || '0';
 		const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-		return `${protocol}://${location.host}/api/environments/${envId}/stats/ws`;
+		return `${protocol}://${location.host}/api/environments/${envId}/system/stats/ws`;
 	};
 
 	return new ReconnectingWebSocket<SystemStats>({

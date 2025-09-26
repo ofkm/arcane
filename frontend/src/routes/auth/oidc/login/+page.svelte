@@ -2,8 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { oidcAPI } from '$lib/services/api';
 	import { m } from '$lib/paraglide/messages';
+	import { authService } from '$lib/services/auth-service';
 
 	let isRedirecting = $state(true);
 	let error = $state('');
@@ -12,9 +12,7 @@
 		try {
 			const redirect = page.url.searchParams.get('redirect') || '/dashboard';
 
-			const status = await oidcAPI.getStatus();
-
-			const authUrl = await oidcAPI.getAuthUrl(redirect);
+			const authUrl = await authService.getAuthUrl(redirect);
 			if (!authUrl) {
 				error = m.auth_oidc_url_generation_failed();
 				setTimeout(() => goto('/auth/login?error=oidc_url_generation_failed'), 3000);

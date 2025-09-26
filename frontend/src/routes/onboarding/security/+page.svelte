@@ -9,10 +9,10 @@
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
-	import { settingsAPI } from '$lib/services/api';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 	import { z } from 'zod/v4';
 	import { m } from '$lib/paraglide/messages';
+	import { settingsService } from '$lib/services/settings-service';
 
 	let { data }: { data: PageData } = $props();
 	let currentSettings = $state(data.settings);
@@ -118,7 +118,7 @@
 				authOidcConfig
 			};
 
-			await settingsAPI.updateSettings(payload);
+			await settingsService.updateSettings(payload);
 			toast.success(m.security_oidc_saved());
 			showOidcConfigDialog = false;
 		} finally {
@@ -142,7 +142,7 @@
 				}
 			};
 
-			await settingsAPI.updateSettings(payload);
+			await settingsService.updateSettings(payload);
 			goto('/onboarding/settings');
 		} catch {
 			toast.error(m.security_settings_save_failed());

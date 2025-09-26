@@ -6,11 +6,11 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import CreateNetworkSheet from '$lib/components/sheets/create-network-sheet.svelte';
-	import { environmentAPI } from '$lib/services/api';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import NetworkTable from './network-table.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { networkService } from '$lib/services/network-service';
 
 	let { data } = $props();
 
@@ -29,7 +29,7 @@
 	async function refreshNetworks() {
 		isLoading.refresh = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.getNetworks(requestOptions)),
+			result: await tryCatch(networkService.getNetworks(requestOptions)),
 			message: m.networks_refresh_failed(),
 			setLoadingState: (value) => (isLoading.refresh = value),
 			async onSuccess(newNetworks) {
@@ -42,12 +42,12 @@
 		isLoading.create = true;
 		const name = options.Name?.trim() || m.common_unknown();
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.createNetwork(options)),
+			result: await tryCatch(networkService.createNetwork(options)),
 			message: m.networks_create_failed({ name }),
 			setLoadingState: (value) => (isLoading.create = value),
 			onSuccess: async () => {
 				toast.success(m.networks_created_success({ name }));
-				networks = await environmentAPI.getNetworks(requestOptions);
+				networks = await networkService.getNetworks(requestOptions);
 				isCreateDialogOpen = false;
 			}
 		});

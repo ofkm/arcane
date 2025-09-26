@@ -6,16 +6,16 @@
 	import CircleAlertIcon from '@lucide/svelte/icons/alert-circle';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { preventDefault } from '$lib/utils/form.utils';
-	import { userAPI } from '$lib/services/api';
 	import { goto } from '$app/navigation';
 	import settingsStore from '$lib/stores/config-store';
-	import { settingsAPI } from '$lib/services/api';
+	import { settingsService } from '$lib/services/settings-service.js';
+	import { userService } from '$lib/services/user-service.js';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
 
 	async function continueToNextStep() {
-		const updatedSettings = await settingsAPI.updateSettings({
+		const updatedSettings = await settingsService.updateSettings({
 			...currentSettings,
 			onboardingCompleted: false,
 			onboardingSteps: {
@@ -52,7 +52,7 @@
 		}
 
 		try {
-			await userAPI.changePassword({
+			await userService.changePassword({
 				currentPassword: 'arcane-admin',
 				newPassword: password
 			});

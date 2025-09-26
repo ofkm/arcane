@@ -12,13 +12,13 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { formatDistanceToNow } from 'date-fns';
-	import { eventAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { Event } from '$lib/types/event.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import EventDetailsDialog from '$lib/components/dialogs/event-details-dialog.svelte';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import { m } from '$lib/paraglide/messages';
+	import { eventService } from '$lib/services/event-service';
 
 	let {
 		events = $bindable(),
@@ -64,12 +64,12 @@
 				action: async () => {
 					isLoading.removing = true;
 					handleApiResultWithCallbacks({
-						result: await tryCatch(eventAPI.delete(eventId)),
+						result: await tryCatch(eventService.delete(eventId)),
 						message: m.events_delete_failed({ title: safeTitle }),
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {
 							toast.success(m.events_delete_success({ title: safeTitle }));
-							events = await eventAPI.getEvents(requestOptions);
+							events = await eventService.getEvents(requestOptions);
 						}
 					});
 				}
@@ -184,7 +184,7 @@
 				items={events}
 				bind:requestOptions
 				bind:selectedIds
-				onRefresh={async (options) => (events = await eventAPI.getEvents(options))}
+				onRefresh={async (options) => (events = await eventService.getEvents(options))}
 				{columns}
 				rowActions={RowActions}
 			/>

@@ -14,11 +14,11 @@
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import FolderOpenIcon from '@lucide/svelte/icons/folder-open';
 	import UsersIcon from '@lucide/svelte/icons/users';
-	import { templateAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import AddTemplateRegistrySheet from '$lib/components/sheets/add-template-registry-sheet.svelte';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { templateService } from '$lib/services/template-service.js';
 
 	let { data } = $props();
 
@@ -47,14 +47,14 @@
 				return;
 			}
 
-			await templateAPI.updateRegistry(id, {
+			await templateService.updateRegistry(id, {
 				name: registry.name,
 				url: registry.url,
 				description: registry.description,
 				enabled: updates.enabled ?? registry.enabled
 			});
 
-			registries = await templateAPI.getRegistries();
+			registries = await templateService.getRegistries();
 			toast.success(m.registries_update_success());
 		} catch (error) {
 			console.error('Error updating registry:', error);
@@ -70,9 +70,9 @@
 
 		try {
 			const reg = registries.find((r) => r.id === id);
-			await templateAPI.deleteRegistry(id);
+			await templateService.deleteRegistry(id);
 			registries = registries.filter((r) => r.id !== id);
-			registries = await templateAPI.getRegistries();
+			registries = await templateService.getRegistries();
 			toast.success(reg ? m.registries_delete_success({ url: reg.url }) : m.templates_registry_removed_success());
 		} catch (error) {
 			console.error('Error removing registry:', error);
@@ -84,7 +84,7 @@
 
 	async function refreshTemplates() {
 		try {
-			templates = await templateAPI.loadAll();
+			templates = await templateService.loadAll();
 			toast.success(m.templates_refreshed());
 		} catch (error) {
 			console.error('Error refreshing templates:', error);
@@ -96,14 +96,14 @@
 		isLoading.addingRegistry = true;
 
 		try {
-			const created = await templateAPI.addRegistry({
+			const created = await templateService.addRegistry({
 				name: registry.name.trim(),
 				url: registry.url.trim(),
 				description: registry.description?.trim() || undefined,
 				enabled: registry.enabled
 			});
 
-			registries = await templateAPI.getRegistries();
+			registries = await templateService.getRegistries();
 			showAddRegistrySheet = false;
 
 			toast.success(m.registries_create_success());

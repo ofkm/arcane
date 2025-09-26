@@ -11,11 +11,11 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { userAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { User } from '$lib/types/user.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
+	import { userService } from '$lib/services/user-service';
 
 	let {
 		users = $bindable(),
@@ -50,7 +50,7 @@
 					let failureCount = 0;
 
 					for (const userId of selectedIds) {
-						const result = await tryCatch(userAPI.delete(userId));
+						const result = await tryCatch(userService.delete(userId));
 						handleApiResultWithCallbacks({
 							result,
 							message: m.users_delete_selected_item_failed({ id: userId }),
@@ -95,7 +95,7 @@
 				action: async () => {
 					isLoading.removing = true;
 					handleApiResultWithCallbacks({
-						result: await tryCatch(userAPI.delete(userId)),
+						result: await tryCatch(userService.delete(userId)),
 						message: m.users_delete_user_failed({ username: safeName }),
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {

@@ -8,9 +8,9 @@
 	import AlertCircleIcon from '@lucide/svelte/icons/alert-circle';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
-	import { templateAPI } from '$lib/services/api';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { m } from '$lib/paraglide/messages';
+	import { templateService } from '$lib/services/template-service';
 
 	type TemplateRegistryFormProps = {
 		open: boolean;
@@ -41,7 +41,7 @@
 		if (!data) return;
 
 		try {
-			const registryData = await templateAPI.fetchRegistry(data.url);
+			const registryData = await templateService.fetchRegistry(data.url);
 
 			if (!registryData.name || !registryData.templates || !Array.isArray(registryData.templates)) {
 				throw new Error(m.templates_registry_invalid_format());

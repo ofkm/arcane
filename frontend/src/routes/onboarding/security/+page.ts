@@ -1,11 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import { settingsAPI } from '$lib/services/api';
+import { settingsService } from '$lib/services/settings-service';
 
 export const load: PageLoad = async () => {
 	const [settings, oidcStatus] = await Promise.all([
-		settingsAPI.getSettings(),
-		settingsAPI.getOidcStatus().catch(() => ({
+		settingsService.getSettings(),
+		settingsService.getOidcStatus().catch(() => ({
 			envForced: false,
 			envConfigured: false
 		}))

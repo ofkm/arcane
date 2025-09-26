@@ -2,6 +2,7 @@ package ws
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -19,6 +20,7 @@ var upgrader = websocket.Upgrader{
 func ProxyHTTP(w http.ResponseWriter, r *http.Request, remoteWS string, header http.Header) error {
 	clientConn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		slog.Error("failed to upgrade client connection", "remoteWS", remoteWS, "err", err)
 		return err
 	}
 	defer clientConn.Close()
@@ -27,6 +29,8 @@ func ProxyHTTP(w http.ResponseWriter, r *http.Request, remoteWS string, header h
 		Proxy:            http.ProxyFromEnvironment,
 		HandshakeTimeout: 45 * time.Second,
 	}
+
+	slog.Debug("attempting websocket dial", "remoteWS", remoteWS, "headers", header)
 	remoteConn, resp, err := dialer.Dial(remoteWS, header)
 	// Ensure the response body is drained & closed to avoid leaking resources.
 	if resp != nil {
@@ -34,10 +38,18 @@ func ProxyHTTP(w http.ResponseWriter, r *http.Request, remoteWS string, header h
 		_ = resp.Body.Close()
 	}
 	if err != nil {
+		slog.Error("failed to dial remote websocket", "remoteWS", remoteWS, "err", err, "resp_status", func() int {
+			if resp != nil {
+				return resp.StatusCode
+			}
+			return 0
+		}())
 		_ = clientConn.WriteMessage(websocket.CloseMessage, []byte{})
 		return err
 	}
 	defer remoteConn.Close()
+
+	slog.Debug("websocket proxy established", "remoteWS", remoteWS)
 
 	errc := make(chan struct{}, 2)
 

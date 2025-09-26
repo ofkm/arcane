@@ -8,10 +8,10 @@
 	import CreateVolumeSheet from '$lib/components/sheets/create-volume-sheet.svelte';
 	import type { VolumeCreateOptions } from 'dockerode';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import { environmentAPI } from '$lib/services/api';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import VolumeTable from './volume-table.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { volumeService } from '$lib/services/volume-service';
 
 	let { data } = $props();
 
@@ -34,12 +34,12 @@
 		isLoading.creating = true;
 		const name = options.Name?.trim() || m.common_unknown();
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.createVolume(options)),
+			result: await tryCatch(volumeService.createVolume(options)),
 			message: m.volumes_create_failed({ name }),
 			setLoadingState: (value) => (isLoading.creating = value),
 			onSuccess: async () => {
 				toast.success(m.volumes_created_success({ name }));
-				volumes = await environmentAPI.getVolumes(requestOptions);
+				volumes = await volumeService.getVolumes(requestOptions);
 				isCreateDialogOpen = false;
 			}
 		});
@@ -48,7 +48,7 @@
 	async function refreshVolumes() {
 		isLoading.refresh = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.getVolumes(requestOptions)),
+			result: await tryCatch(volumeService.getVolumes(requestOptions)),
 			message: m.volumes_refresh_failed(),
 			setLoadingState: (value) => (isLoading.refresh = value),
 			async onSuccess(newVolumes) {

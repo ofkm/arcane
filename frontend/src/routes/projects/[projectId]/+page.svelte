@@ -17,7 +17,6 @@
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { environmentAPI } from '$lib/services/api';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { z } from 'zod/v4';
 	import { createForm } from '$lib/utils/form.utils';
@@ -26,7 +25,8 @@
 	import EditableName from '../components/EditableName.svelte';
 	import ServicesGrid from '../components/ServicesGrid.svelte';
 	import CodePanel from '../components/CodePanel.svelte';
-	import StackLogsPanel from '../components/StackLogsPanel.svelte';
+	import StackLogsPanel from '../components/ProjectLogsPanel.svelte';
+	import { projectService } from '$lib/services/project-service';
 
 	let { data } = $props();
 	let projectId = $derived(data.projectId);
@@ -130,7 +130,7 @@
 		const { name, composeContent, envContent } = validated;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(environmentAPI.updateProject(projectId, composeContent, envContent)),
+			result: await tryCatch(projectService.updateProject(projectId, composeContent, envContent)),
 			message: 'Failed to Save Project',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Project) => {

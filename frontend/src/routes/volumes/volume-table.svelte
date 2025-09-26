@@ -14,11 +14,11 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { format } from 'date-fns';
 	import { truncateString } from '$lib/utils/string.utils';
-	import { environmentAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { VolumeSummaryDto } from '$lib/types/volume.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
+	import { volumeService } from '$lib/services/volume-service';
 
 	let {
 		volumes = $bindable(),
@@ -45,12 +45,12 @@
 				action: async () => {
 					isLoading.removing = true;
 					handleApiResultWithCallbacks({
-						result: await tryCatch(environmentAPI.deleteVolume(safeName)),
+						result: await tryCatch(volumeService.deleteVolume(safeName)),
 						message: m.volumes_remove_failed({ name: safeName }),
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {
 							toast.success(m.volumes_remove_success({ name: safeName }));
-							volumes = await environmentAPI.getVolumes(requestOptions);
+							volumes = await volumeService.getVolumes(requestOptions);
 						}
 					});
 				}
@@ -69,7 +69,7 @@
 		for (const id of ids) {
 			const name = idToName.get(id);
 			const safeName = name?.trim() || m.common_unknown();
-			const result = await tryCatch(environmentAPI.deleteVolume(safeName));
+			const result = await tryCatch(volumeService.deleteVolume(safeName));
 			handleApiResultWithCallbacks({
 				result,
 				message: m.volumes_remove_failed({ name: safeName }),
@@ -86,7 +86,7 @@
 			const successMsg =
 				successCount === 1 ? m.volumes_bulk_remove_success_one() : m.volumes_bulk_remove_success_many({ count: successCount });
 			toast.success(successMsg);
-			volumes = await environmentAPI.getVolumes(requestOptions);
+			volumes = await volumeService.getVolumes(requestOptions);
 		}
 		if (failureCount > 0) {
 			const failureMsg =
@@ -167,7 +167,7 @@
 			bind:requestOptions
 			bind:selectedIds
 			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-			onRefresh={async (options) => (volumes = await environmentAPI.getVolumes(options))}
+			onRefresh={async (options) => (volumes = await volumeService.getVolumes(options))}
 			{columns}
 			rowActions={RowActions}
 		/>

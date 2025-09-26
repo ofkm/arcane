@@ -1,4 +1,4 @@
-import { eventAPI } from '$lib/services/api';
+import { eventService } from '$lib/services/event-service';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import type { PageLoad } from './$types';
 
@@ -14,7 +14,7 @@ export const load: PageLoad = async () => {
 		}
 	};
 
-	const events = await eventAPI.getEvents(eventRequestOptions);
+	const events = await eventService.getEvents(eventRequestOptions);
 
 	return { events, eventRequestOptions };
 };

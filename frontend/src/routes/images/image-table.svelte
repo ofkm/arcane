@@ -16,12 +16,12 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ImageUpdateItem from '$lib/components/image-update-item.svelte';
-	import { environmentAPI } from '$lib/services/api';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ImageSummaryDto } from '$lib/types/image.type';
 	import { format } from 'date-fns';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
+	import { imageService } from '$lib/services/image-service';
 
 	let {
 		images = $bindable(),
@@ -55,7 +55,7 @@
 					let failureCount = 0;
 
 					for (const id of ids) {
-						const result = await tryCatch(environmentAPI.deleteImage(id));
+						const result = await tryCatch(imageService.deleteImage(id));
 						handleApiResultWithCallbacks({
 							result,
 							message: m.images_remove_failed(),
@@ -73,7 +73,7 @@
 						const msg =
 							successCount === 1 ? m.images_remove_success_one() : m.images_remove_success_many({ count: successCount });
 						toast.success(msg);
-						images = await environmentAPI.getImages(requestOptions);
+						images = await imageService.getImages(requestOptions);
 					}
 					if (failureCount > 0) {
 						const msg = failureCount === 1 ? m.images_remove_failed_one() : m.images_remove_failed_many({ count: failureCount });
@@ -96,14 +96,14 @@
 				action: async () => {
 					isLoading.removing = true;
 
-					const result = await tryCatch(environmentAPI.deleteImage(id));
+					const result = await tryCatch(imageService.deleteImage(id));
 					handleApiResultWithCallbacks({
 						result,
 						message: m.images_remove_failed(),
 						setLoadingState: () => {},
 						onSuccess: async () => {
 							toast.success(m.images_remove_success());
-							images = await environmentAPI.getImages(requestOptions);
+							images = await imageService.getImages(requestOptions);
 						}
 					});
 
@@ -121,14 +121,14 @@
 
 		isPullingInline[imageId] = true;
 
-		const result = await tryCatch(environmentAPI.pullImage(repoTag));
+		const result = await tryCatch(imageService.pullImage(repoTag));
 		handleApiResultWithCallbacks({
 			result,
 			message: m.images_pull_failed(),
 			setLoadingState: () => {},
 			onSuccess: async () => {
 				toast.success(m.images_pull_success({ repoTag }));
-				images = await environmentAPI.getImages(requestOptions);
+				images = await imageService.getImages(requestOptions);
 			}
 		});
 
@@ -261,7 +261,7 @@
 			bind:requestOptions
 			bind:selectedIds
 			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-			onRefresh={async (options) => (images = await environmentAPI.getImages(options))}
+			onRefresh={async (options) => (images = await imageService.getImages(options))}
 			{columns}
 			rowActions={RowActions}
 		/>

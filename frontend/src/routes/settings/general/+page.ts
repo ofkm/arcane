@@ -1,7 +1,7 @@
-import { settingsAPI } from '$lib/services/api';
+import { settingsService } from '$lib/services/settings-service';
 
 export const load = async () => {
-	const settings = await settingsAPI.getSettings();
+	const settings = await settingsService.getSettings();
 
 	return {
 		settings

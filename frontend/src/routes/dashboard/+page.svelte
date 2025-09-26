@@ -7,7 +7,6 @@
 	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { systemAPI, settingsAPI, environmentAPI } from '$lib/services/api';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
@@ -22,6 +21,7 @@
 	import DashboardImageTable from './dash-image-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { invalidateAll } from '$app/navigation';
+	import { systemService } from '$lib/services/system-service';
 
 	let { data } = $props();
 	let containers = $state(data.containers);
@@ -109,39 +109,35 @@
 	let imageRequestOptions = $state(data.imageRequestOptions);
 
 	async function refreshData() {
-		if (isLoading.refreshing) return;
 		isLoading.refreshing = true;
 
-		isLoading.loadingDockerInfo = true;
-		isLoading.loadingImages = true;
+		// const [dockerInfoResult, settingsResult, imagesResult, statusCountsResult] = await Promise.allSettled([
+		// 	tryCatch(environmentAPI.getDockerInfo()),
+		// 	tryCatch(settingsAPI.getSettings()),
+		// 	tryCatch(environmentAPI.getImages(imageRequestOptions)),
+		// 	tryCatch(environmentAPI.getContainerStatusCounts())
+		// ]);
 
-		const [dockerInfoResult, settingsResult, imagesResult, statusCountsResult] = await Promise.allSettled([
-			tryCatch(environmentAPI.getDockerInfo()),
-			tryCatch(settingsAPI.getSettings()),
-			tryCatch(environmentAPI.getImages(imageRequestOptions)),
-			tryCatch(environmentAPI.getContainerStatusCounts())
-		]);
+		// if (dockerInfoResult.status === 'fulfilled' && !dockerInfoResult.value.error) {
+		// 	dashboardStates.dockerInfo = dockerInfoResult.value.data;
+		// 	dockerInfo = dockerInfoResult.value.data;
+		// }
+		// isLoading.loadingDockerInfo = false;
 
-		if (dockerInfoResult.status === 'fulfilled' && !dockerInfoResult.value.error) {
-			dashboardStates.dockerInfo = dockerInfoResult.value.data;
-			dockerInfo = dockerInfoResult.value.data;
-		}
-		isLoading.loadingDockerInfo = false;
+		// if (settingsResult.status === 'fulfilled' && !settingsResult.value.error) {
+		// 	dashboardStates.settings = settingsResult.value.data;
+		// }
 
-		if (settingsResult.status === 'fulfilled' && !settingsResult.value.error) {
-			dashboardStates.settings = settingsResult.value.data;
-		}
+		// if (imagesResult.status === 'fulfilled') {
+		// 	if (!imagesResult.value.error) {
+		// 		images = imagesResult.value.data;
+		// 	}
+		// }
+		// isLoading.loadingImages = false;
 
-		if (imagesResult.status === 'fulfilled') {
-			if (!imagesResult.value.error) {
-				images = imagesResult.value.data;
-			}
-		}
-		isLoading.loadingImages = false;
-
-		if (statusCountsResult.status === 'fulfilled' && !statusCountsResult.value.error) {
-			containerStatusCounts = statusCountsResult.value.data;
-		}
+		// if (statusCountsResult.status === 'fulfilled' && !statusCountsResult.value.error) {
+		// 	containerStatusCounts = statusCountsResult.value.data;
+		// }
 
 		await invalidateAll();
 		isLoading.refreshing = false;
@@ -224,7 +220,7 @@
 		if (isLoading.starting || !dashboardStates.dockerInfo || stoppedContainers === 0) return;
 		isLoading.starting = true;
 		handleApiResultWithCallbacks({
-			result: await tryCatch(systemAPI.startAllStoppedContainers()),
+			result: await tryCatch(systemService.startAllStoppedContainers()),
 			message: m.dashboard_start_all_failed(),
 			setLoadingState: (value) => (isLoading.starting = value),
 			onSuccess: async () => {
@@ -244,7 +240,7 @@
 				destructive: false,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(systemAPI.stopAllContainers()),
+						result: await tryCatch(systemService.stopAllContainers()),
 						message: m.dashboard_stop_all_failed(),
 						setLoadingState: (value) => (isLoading.stopping = value),
 						onSuccess: async () => {
@@ -280,7 +276,7 @@
 		const typesString = selectedTypes.map((t) => typeLabels[t]).join(', ');
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(systemAPI.pruneAll(pruneOptions)),
+			result: await tryCatch(systemService.pruneAll(pruneOptions)),
 			message: m.dashboard_prune_failed({ types: typesString }),
 			setLoadingState: (value) => (isLoading.pruning = value),
 			onSuccess: async () => {

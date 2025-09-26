@@ -9,7 +9,7 @@ type ConvertResponse = {
 
 const ROUTES = {
   page: '/projects/new',
-  apiConvert: '/api/convert',
+  apiConvert: '/api/environments/0/system/convert',
 };
 
 const SELECTORS = {

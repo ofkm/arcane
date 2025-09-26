@@ -1,14 +1,15 @@
 import type { PageLoad } from './$types';
-import { environmentAPI } from '$lib/services/api';
 import { error } from '@sveltejs/kit';
 import type { VolumeUsageDto } from '$lib/types/volume.type';
+import { volumeService } from '$lib/services/volume-service';
+import { containerService } from '$lib/services/container-service';
 
 export const load: PageLoad = async ({ params }) => {
 	const { volumeName } = params;
 
 	try {
-		const volumeBase = await environmentAPI.getVolume(volumeName);
-		const usageRes = await environmentAPI.getVolumeUsage(volumeName);
+		const volumeBase = await volumeService.getVolume(volumeName);
+		const usageRes = await volumeService.getVolumeUsage(volumeName);
 
 		const usage: VolumeUsageDto = (
 			usageRes && typeof usageRes === 'object' && 'data' in usageRes ? (usageRes as any).data : usageRes
@@ -24,7 +25,7 @@ export const load: PageLoad = async ({ params }) => {
 			containersDetailed = await Promise.all(
 				volume.containers.map(async (id: string) => {
 					try {
-						const c = await environmentAPI.getContainer(id);
+						const c = await containerService.getContainer(id);
 						const idVal = (c?.id || c?.Id || id) as string;
 						const nameVal = (c?.name ||
 							c?.Name ||

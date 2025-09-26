@@ -15,7 +15,6 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { environmentAPI } from '$lib/services/api';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { format } from 'date-fns';
@@ -24,6 +23,7 @@
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import PortBadges from '$lib/components/port-badges.svelte';
+	import { containerService } from '$lib/services/container-service';
 
 	let {
 		containers = $bindable(),
@@ -51,32 +51,32 @@
 		try {
 			if (action === 'start') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(environmentAPI.startContainer(id)),
+					result: await tryCatch(containerService.startContainer(id)),
 					message: m.containers_start_failed(),
 					setLoadingState: (value) => (isLoading.start = value),
 					async onSuccess() {
 						toast.success(m.containers_start_success());
-						containers = await environmentAPI.getContainers(requestOptions);
+						containers = await containerService.getContainers(requestOptions);
 					}
 				});
 			} else if (action === 'stop') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(environmentAPI.stopContainer(id)),
+					result: await tryCatch(containerService.stopContainer(id)),
 					message: m.containers_stop_failed(),
 					setLoadingState: (value) => (isLoading.stop = value),
 					async onSuccess() {
 						toast.success(m.containers_stop_success());
-						containers = await environmentAPI.getContainers(requestOptions);
+						containers = await containerService.getContainers(requestOptions);
 					}
 				});
 			} else if (action === 'restart') {
 				handleApiResultWithCallbacks({
-					result: await tryCatch(environmentAPI.restartContainer(id)),
+					result: await tryCatch(containerService.restartContainer(id)),
 					message: m.containers_restart_failed(),
 					setLoadingState: (value) => (isLoading.restart = value),
 					async onSuccess() {
 						toast.success(m.containers_restart_success());
-						containers = await environmentAPI.getContainers(requestOptions);
+						containers = await containerService.getContainers(requestOptions);
 					}
 				});
 			}
@@ -110,12 +110,12 @@
 					const force = !!checkboxStates.force;
 					const volumes = !!checkboxStates.volumes;
 					handleApiResultWithCallbacks({
-						result: await tryCatch(environmentAPI.deleteContainer(id, { force, volumes })),
+						result: await tryCatch(containerService.deleteContainer(id, { force, volumes })),
 						message: m.containers_remove_failed(),
 						setLoadingState: (value) => (isLoading.remove = value),
 						async onSuccess() {
 							toast.success(m.containers_remove_success());
-							containers = await environmentAPI.getContainers(requestOptions);
+							containers = await containerService.getContainers(requestOptions);
 						}
 					});
 				}
@@ -242,7 +242,7 @@
 			items={containers}
 			bind:requestOptions
 			bind:selectedIds
-			onRefresh={async (options) => (containers = await environmentAPI.getContainers(options))}
+			onRefresh={async (options) => (containers = await containerService.getContainers(options))}
 			{columns}
 			rowActions={RowActions}
 			selectionDisabled

@@ -8,9 +8,9 @@
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import type { ContainerSummaryDto } from '$lib/types/container.type';
-	import { environmentAPI } from '$lib/services/api';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
+	import { containerService } from '$lib/services/container-service';
 
 	let {
 		containers = $bindable(),
@@ -71,7 +71,7 @@
 				items={containers}
 				bind:requestOptions
 				bind:selectedIds
-				onRefresh={async (options) => (containers = await environmentAPI.getContainers(options))}
+				onRefresh={async (options) => (containers = await containerService.getContainers(options))}
 				withoutSearch={true}
 				withoutPagination={true}
 				selectionDisabled={true}

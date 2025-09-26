@@ -12,7 +12,6 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { environmentAPI } from '$lib/services/api';
 	import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
@@ -20,6 +19,7 @@
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
+	import { networkService } from '$lib/services/network-service';
 
 	let {
 		networks = $bindable(),
@@ -49,12 +49,12 @@
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
-						result: await tryCatch(environmentAPI.deleteNetwork(id)),
+						result: await tryCatch(networkService.deleteNetwork(id)),
 						message: m.networks_delete_failed({ name: safeName }),
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
 							toast.success(m.networks_delete_success({ name: safeName }));
-							networks = await environmentAPI.getNetworks(requestOptions);
+							networks = await networkService.getNetworks(requestOptions);
 						}
 					});
 				}
@@ -87,7 +87,7 @@
 						const network = networks.data.find((n) => n.id === networkId);
 						if (!network) continue;
 
-						const result = await tryCatch(environmentAPI.deleteNetwork(networkId));
+						const result = await tryCatch(networkService.deleteNetwork(networkId));
 						if (result.error) {
 							failureCount++;
 							toast.error(m.networks_delete_failed({ name: network.name ?? m.common_unknown() }));
@@ -100,7 +100,7 @@
 					isLoading.remove = false;
 
 					if (successCount > 0) {
-						networks = await environmentAPI.getNetworks(requestOptions);
+						networks = await networkService.getNetworks(requestOptions);
 					}
 					selectedIds = [];
 				}
@@ -225,7 +225,7 @@
 				bind:requestOptions
 				bind:selectedIds
 				onRemoveSelected={(ids) => handleDeleteSelectedNetworks(ids)}
-				onRefresh={async (options) => (networks = await environmentAPI.getNetworks(options))}
+				onRefresh={async (options) => (networks = await networkService.getNetworks(options))}
 				{columns}
 				rowActions={RowActions}
 			/>

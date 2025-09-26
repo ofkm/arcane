@@ -6,10 +6,10 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import type { ImageSummaryDto } from '$lib/types/image.type';
-	import { environmentAPI } from '$lib/services/api';
 	import bytes from 'bytes';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
+	import { imageService } from '$lib/services/image-service';
 
 	let {
 		images = $bindable(),
@@ -91,7 +91,7 @@
 				items={images}
 				bind:requestOptions
 				bind:selectedIds
-				onRefresh={async (options) => (images = await environmentAPI.getImages(options))}
+				onRefresh={async (options) => (images = await imageService.getImages(options))}
 				withoutSearch={true}
 				selectionDisabled={true}
 				withoutPagination={true}

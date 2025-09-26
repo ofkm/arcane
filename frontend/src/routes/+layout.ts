@@ -1,4 +1,3 @@
-import { settingsAPI, userAPI, environmentManagementAPI } from '$lib/services/api';
 import { environmentStore } from '$lib/stores/environment.store';
 import versionService from '$lib/services/version-service';
 import { tryCatch } from '$lib/utils/try-catch';
@@ -6,14 +5,17 @@ import userStore from '$lib/stores/user-store';
 import settingsStore from '$lib/stores/config-store';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import type { AppVersionInformation } from '$lib/types/application-configuration';
+import { userService } from '$lib/services/user-service';
+import { settingsService } from '$lib/services/settings-service';
+import { environmentManagementService } from '$lib/services/env-mgmt-service';
 
 export const ssr = false;
 
 export const load = async () => {
-	const userPromise = userAPI.getCurrentUser().catch(() => null);
-	const settingsPromise = settingsAPI.getSettings().catch((e) => {
+	const userPromise = userService.getCurrentUser().catch(() => null);
+	const settingsPromise = settingsService.getSettings().catch((e) => {
 		console.error('Error fetching settings:', e);
-		return settingsAPI.getPublicSettings().catch(() => null);
+		return settingsService.getPublicSettings().catch(() => null);
 	});
 
 	const environmentRequestOptions: SearchPaginationSortRequest = {
@@ -25,7 +27,7 @@ export const load = async () => {
 
 	const environmentsPromise = userPromise.then(async (user) => {
 		if (!environmentStore.isInitialized() && user) {
-			const environments = await tryCatch(environmentManagementAPI.getEnvironments(environmentRequestOptions));
+			const environments = await tryCatch(environmentManagementService.getEnvironments(environmentRequestOptions));
 			if (!environments.error) {
 				await environmentStore.initialize(environments.data.data, true);
 			}

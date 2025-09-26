@@ -22,12 +22,13 @@ type ImageHandler struct {
 func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, imageService *services.ImageService, imageUpdateService *services.ImageUpdateService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &ImageHandler{dockerService: dockerService, imageService: imageService, imageUpdateService: imageUpdateService}
 
-	apiGroup := group.Group("/images")
+	apiGroup := group.Group("/environments/:id/images")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
+		apiGroup.GET("/counts", handler.GetImageUsageCounts)
 		apiGroup.GET("", handler.List)
-		apiGroup.GET("/:id", handler.GetByID)
-		apiGroup.DELETE("/:id", handler.Remove)
+		apiGroup.GET("/:imageId", handler.GetByID)
+		apiGroup.DELETE("/:imageId", handler.Remove)
 		apiGroup.POST("/pull", handler.Pull)
 		apiGroup.POST("/prune", handler.Prune)
 	}

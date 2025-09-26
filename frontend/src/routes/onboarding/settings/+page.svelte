@@ -3,13 +3,13 @@
 	import * as FieldSet from '$lib/components/ui/field-set';
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
-	import { settingsAPI } from '$lib/services/api';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 	import { z } from 'zod/v4';
 	import { m } from '$lib/paraglide/messages';
+	import { settingsService } from '$lib/services/settings-service.js';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
@@ -31,7 +31,7 @@
 		isLoading = true;
 
 		try {
-			await settingsAPI.updateSettings({
+			await settingsService.updateSettings({
 				...currentSettings,
 				...validated,
 				onboardingCompleted: false,

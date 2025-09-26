@@ -1,4 +1,4 @@
-import { environmentAPI } from '$lib/services/api';
+import { networkService } from '$lib/services/network-service';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import type { PageLoad } from './$types';
 
@@ -14,8 +14,8 @@ export const load: PageLoad = async () => {
 		}
 	};
 
-	const networks = await environmentAPI.getNetworks(networkRequestOptions);
-	const networkUsageCounts = await environmentAPI.getNetworkUsageCounts();
+	const networks = await networkService.getNetworks(networkRequestOptions);
+	const networkUsageCounts = await networkService.getNetworkUsageCounts();
 
 	return { networks, networkRequestOptions, networkUsageCounts };
 };

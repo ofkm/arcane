@@ -1,9 +1,9 @@
 import BaseAPIService from './api-service';
-import type { Settings, SettingRawResponse, OidcStatusInfo } from '$lib/types/settings.type';
+import type { Settings, OidcStatusInfo } from '$lib/types/settings.type';
 
 type KeyValuePair = { key: string; value: string };
 
-export default class SettingsAPIService extends BaseAPIService {
+export default class SettingsService extends BaseAPIService {
 	async getSettings(): Promise<Settings> {
 		const res = await this.api.get('/settings');
 		return this.normalize(res.data);
@@ -59,3 +59,5 @@ export default class SettingsAPIService extends BaseAPIService {
 		return value;
 	}
 }
+
+export const settingsService = new SettingsService();

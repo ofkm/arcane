@@ -3,6 +3,8 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"runtime"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -10,7 +12,12 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
+	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 var sysWsUpgrader = websocket.Upgrader{
@@ -25,14 +32,17 @@ type SystemHandler struct {
 func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, systemService *services.SystemService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &SystemHandler{dockerService: dockerService, systemService: systemService}
 
-	apiGroup := group.Group("/system")
+	apiGroup := group.Group("/environments/:id/system")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
+		apiGroup.GET("/stats/ws", handler.Stats)
 		apiGroup.GET("/docker/info", handler.GetDockerInfo)
 		apiGroup.POST("/prune", handler.PruneAll)
 		apiGroup.POST("/containers/start-all", handler.StartAllContainers)
 		apiGroup.POST("/containers/start-stopped", handler.StartAllStoppedContainers)
 		apiGroup.POST("/containers/stop-all", handler.StopAllContainers)
+		apiGroup.POST("/convert", handler.ConvertDockerRun)
+
 	}
 }
 
@@ -227,5 +237,126 @@ func (h *SystemHandler) StopAllContainers(c *gin.Context) {
 		"success": true,
 		"message": "Container stop operation completed",
 		"data":    result,
+	})
+}
+
+//nolint:gocognit
+func (h *SystemHandler) Stats(c *gin.Context) {
+	conn, err := sysWsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	var lastCPU float64
+
+	send := func(block bool) error {
+		var cpuUsage float64
+		if block {
+			if vals, err := cpu.Percent(time.Second, false); err == nil && len(vals) > 0 {
+				cpuUsage = vals[0]
+				lastCPU = cpuUsage
+			} else {
+				cpuUsage = lastCPU
+			}
+		} else {
+			cpuUsage = lastCPU
+		}
+
+		cpuCount, err := cpu.Counts(true)
+		if err != nil {
+			cpuCount = runtime.NumCPU()
+		}
+
+		memInfo, _ := mem.VirtualMemory()
+		var memUsed, memTotal uint64
+		if memInfo != nil {
+			memUsed = memInfo.Used
+			memTotal = memInfo.Total
+		}
+
+		diskInfo, _ := disk.Usage("/")
+		var diskUsed, diskTotal uint64
+		if diskInfo != nil {
+			diskUsed = diskInfo.Used
+			diskTotal = diskInfo.Total
+		}
+
+		hostInfo, _ := host.Info()
+		var hostname string
+		if hostInfo != nil {
+			hostname = hostInfo.Hostname
+		}
+
+		stats := SystemStats{
+			CPUUsage:     cpuUsage,
+			MemoryUsage:  memUsed,
+			MemoryTotal:  memTotal,
+			DiskUsage:    diskUsed,
+			DiskTotal:    diskTotal,
+			CPUCount:     cpuCount,
+			Architecture: runtime.GOARCH,
+			Platform:     runtime.GOOS,
+			Hostname:     hostname,
+		}
+
+		_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		return conn.WriteJSON(stats)
+	}
+
+	if err := send(true); err != nil {
+		return
+	}
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return
+		case <-ticker.C:
+			if err := send(true); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func (h *SystemHandler) ConvertDockerRun(c *gin.Context) {
+	var req models.ConvertDockerRunRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request format: " + err.Error(),
+		})
+		return
+	}
+
+	parsed, err := h.systemService.ParseDockerRunCommand(req.DockerRunCommand)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Failed to parse docker run command. Please check the syntax.",
+			"code":    "BAD_REQUEST",
+		})
+		return
+	}
+
+	dockerCompose, envVars, serviceName, err := h.systemService.ConvertToDockerCompose(parsed)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to convert to Docker Compose format.",
+			"code":    "CONVERSION_ERROR",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.ConvertDockerRunResponse{
+		Success:       true,
+		DockerCompose: dockerCompose,
+		EnvVars:       envVars,
+		ServiceName:   serviceName,
 	})
 }
