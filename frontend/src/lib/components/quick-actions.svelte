@@ -4,6 +4,8 @@
 	import CircleStopIcon from '@lucide/svelte/icons/circle-stop';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { m } from '$lib/paraglide/messages';
 
 	type IsLoadingFlags = {
@@ -52,7 +54,7 @@
 				{/each}
 			</div>
 		{:else}
-			<div class="flex flex-wrap items-center gap-2">
+			<div class="hidden flex-wrap items-center gap-2 sm:flex">
 				<button
 					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors transition-shadow hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={!dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}
@@ -119,6 +121,54 @@
 					<span class="font-medium">{m.common_refresh()}</span>
 				</button>
 			</div>
+
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger
+					class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border sm:hidden"
+				>
+					<span class="sr-only">{m.common_open_menu()}</span>
+					<EllipsisIcon />
+				</DropdownMenu.Trigger>
+
+				<DropdownMenu.Content
+					align="end"
+					class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[160px] rounded-md p-1 shadow-lg backdrop-blur-sm supports-[backdrop-filter]:backdrop-blur-sm"
+				>
+					<DropdownMenu.Group>
+						<DropdownMenu.Item
+							onclick={onStartAll}
+							disabled={!dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}
+						>
+							{m.quick_actions_start_all()}
+						</DropdownMenu.Item>
+
+						<DropdownMenu.Item
+							onclick={onStopAll}
+							disabled={!dockerInfo ||
+								(dockerInfo?.containersRunning ?? 0) === 0 ||
+								isLoading.starting ||
+								isLoading.stopping ||
+								isLoading.pruning}
+						>
+							{m.quick_actions_stop_all()}
+						</DropdownMenu.Item>
+
+						<DropdownMenu.Item
+							onclick={onOpenPruneDialog}
+							disabled={!dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
+						>
+							{m.quick_actions_prune_system()}
+						</DropdownMenu.Item>
+
+						<DropdownMenu.Item
+							onclick={onRefresh}
+							disabled={isLoading.starting || isLoading.stopping || isLoading.pruning || refreshing}
+						>
+							{m.common_refresh()}
+						</DropdownMenu.Item>
+					</DropdownMenu.Group>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 		{/if}
 	{:else}
 		<h2 class="mb-3 text-lg font-semibold tracking-tight">{m.quick_actions_title()}</h2>

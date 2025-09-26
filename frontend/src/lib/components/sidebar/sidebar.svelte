@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	import { sidebarItems } from '$lib/config/sidebar-config';
+	import { navigationItems } from '$lib/config/navigation-config';
 </script>
 
 <script lang="ts">
@@ -48,7 +48,6 @@
 	<Sidebar.Header>
 		<div class="relative">
 			<SidebarLogo {isCollapsed} {versionInformation} />
-			<!-- Pin button positioned in top right, only visible when not collapsed or on hover -->
 			{#if !isCollapsed || sidebar.isHovered}
 				<div class="absolute top-0 right-0 -mt-1 -mr-1">
 					<SidebarPinButton />
@@ -58,11 +57,11 @@
 		<SidebarEnvSwitcher {isAdmin} />
 	</Sidebar.Header>
 	<Sidebar.Content>
-		<SidebarItemGroup label={m.sidebar_management()} items={sidebarItems.managementItems} />
-		<SidebarItemGroup label={m.sidebar_customization()} items={sidebarItems.customizationItems} />
+		<SidebarItemGroup label={m.sidebar_management()} items={navigationItems.managementItems} />
+		<SidebarItemGroup label={m.sidebar_customization()} items={navigationItems.customizationItems} />
 		{#if isAdmin}
-			<SidebarItemGroup label={m.sidebar_environments()} items={sidebarItems.environmentItems} />
-			<SidebarItemGroup label={m.sidebar_administration()} items={sidebarItems.settingsItems} />
+			<SidebarItemGroup label={m.sidebar_environments()} items={navigationItems.environmentItems} />
+			<SidebarItemGroup label={m.sidebar_administration()} items={navigationItems.settingsItems} />
 		{/if}
 	</Sidebar.Content>
 	<Sidebar.Footer>

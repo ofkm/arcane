@@ -11,6 +11,7 @@
 	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
 	import { m } from '$lib/paraglide/messages';
 	import settingsStore from '$lib/stores/config-store';
+	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -23,6 +24,7 @@
 	let currentPageName = $derived(page.url.pathname.split('/').pop() || 'settings');
 
 	const sidebar = useSidebar();
+	const isMobile = new IsMobile();
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
 
 	// Calculate left position based on sidebar state to match sidebar spacing system
@@ -30,8 +32,8 @@
 	const leftPosition = $derived(() => {
 		const margin = '1rem'; // Standard spacing-4 equivalent
 
-		if (sidebar.isMobile) {
-			// Mobile sidebar is overlay - uses standard margin
+		// On mobile, use standard margin without sidebar offset
+		if (isMobile.current) {
 			return margin;
 		}
 
@@ -56,6 +58,8 @@
 				return m.security_title();
 			case 'users':
 				return m.users_title();
+			case 'navigation':
+				return m.navigation_title();
 			default:
 				return m.sidebar_settings();
 		}
@@ -133,7 +137,8 @@
 								disabled={formState.isLoading}
 								class="gap-2"
 							>
-								{m.common_reset()}
+								<RotateCcwIcon class="size-4" />
+								<span class="hidden sm:inline">{m.common_reset()}</span>
 							</Button>
 						{/if}
 
@@ -145,12 +150,12 @@
 						>
 							{#if formState.isLoading}
 								<div class="border-background size-4 animate-spin rounded-full border-2 border-t-transparent"></div>
-								{m.common_saving()}
+								<span class="hidden sm:inline">{m.common_saving()}</span>
 							{:else}
 								<SaveIcon class="size-4" />
-							{m.common_save()}
-						{/if}
-					</Button>
+								<span class="hidden sm:inline">{m.common_save()}</span>
+							{/if}
+						</Button>
 					{/if}
 				</div>
 			</div>
@@ -166,7 +171,7 @@
 
 <!-- Mobile Floating Action Buttons -->
 {#if isSubPage && !isReadOnly}
-	<div class="fixed bottom-4 right-4 z-50 flex flex-col gap-3 sm:hidden">
+	<div class="fixed right-4 bottom-4 z-50 flex flex-col gap-3 sm:hidden">
 		{#if formState.hasChanges && formState.resetFunction}
 			<Button
 				variant="outline"
@@ -194,7 +199,7 @@
 
 		<!-- Status indicator for mobile -->
 		{#if formState.hasChanges}
-			<div class="absolute -left-2 -top-2 size-3 animate-pulse rounded-full bg-orange-500"></div>
+			<div class="absolute -top-2 -left-2 size-3 animate-pulse rounded-full bg-orange-500"></div>
 		{/if}
 	</div>
 {/if}

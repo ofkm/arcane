@@ -15,6 +15,8 @@
 	import FolderOpenIcon from '@lucide/svelte/icons/folder-open';
 	import UsersIcon from '@lucide/svelte/icons/users';
 	import { toast } from 'svelte-sonner';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import AddTemplateRegistrySheet from '$lib/components/sheets/add-template-registry-sheet.svelte';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -117,7 +119,7 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+	<div class="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">{m.templates_title()}</h1>
 			<p class="text-muted-foreground mt-1 text-sm">
@@ -126,10 +128,32 @@
 			</p>
 		</div>
 
-		<Button onclick={refreshTemplates} class="h-10" variant="outline">
-			<RefreshCwIcon class="mr-2 size-4" />
-			{m.templates_refresh()}
-		</Button>
+		<div class="hidden sm:flex">
+			<Button onclick={refreshTemplates} class="h-10" variant="outline">
+				<RefreshCwIcon class="mr-2 size-4" />
+				{m.templates_refresh()}
+			</Button>
+		</div>
+
+		<div class="absolute right-4 top-4 flex items-center sm:hidden">
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border">
+					<span class="sr-only">{m.common_open_menu()}</span>
+					<EllipsisIcon />
+				</DropdownMenu.Trigger>
+
+				<DropdownMenu.Content
+					align="end"
+					class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[160px] rounded-md p-1 shadow-lg backdrop-blur-sm supports-[backdrop-filter]:backdrop-blur-sm"
+				>
+					<DropdownMenu.Group>
+						<DropdownMenu.Item onclick={refreshTemplates}>
+							{m.templates_refresh()}
+						</DropdownMenu.Item>
+					</DropdownMenu.Group>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
+		</div>
 	</div>
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
