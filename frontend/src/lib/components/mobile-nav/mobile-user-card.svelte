@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Button from '$lib/components/ui/button/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
+	import { cn } from '$lib/utils';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import ServerIcon from '@lucide/svelte/icons/server';
@@ -14,6 +15,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import type { User } from '$lib/types/user.type';
 	import LocalePicker from '$lib/components/locale-picker.svelte';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 
 	type Props = {
 		user: User;
@@ -83,19 +85,12 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<div class="text-muted-foreground/60 transition-transform duration-200 {userCardExpanded ? 'rotate-180' : ''}">
-				<svg
-					width="16"
-					height="16"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				>
-					<path d="m6 9 6 6 6-6" />
-				</svg>
+			<div
+				role="button"
+				aria-label="Expand user card"
+				class={cn('text-muted-foreground/60 transition-transform duration-200', userCardExpanded && 'rotate-180 transform')}
+			>
+				<ChevronDownIcon class="size-4" />
 			</div>
 			<form action="/auth/logout" method="POST">
 				<Button.Root
