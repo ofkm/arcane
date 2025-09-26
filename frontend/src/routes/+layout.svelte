@@ -32,10 +32,9 @@
 	const isNavigating = $derived(navigating.type !== null);
 	const isOnboardingPage = $derived(String(page.url.pathname).startsWith('/onboarding'));
 
-	// Get effective navigation settings (server + overrides)
 	const navigationSettings = $derived.by(() => {
-		settings; // Reactive to server settings
-		navigationSettingsOverridesStore.current; // Reactive to local overrides
+		settings;
+		navigationSettingsOverridesStore.current;
 		return getEffectiveNavigationSettings();
 	});
 	const navigationMode = $derived(navigationSettings.mode);
@@ -68,7 +67,6 @@
 					{@render children()}
 				</section>
 			</main>
-			<!-- Mobile Navigation - Floating or Docked -->
 			{#if navigationMode === 'floating'}
 				<MobileFloatingNav {navigationSettings} {user} {versionInformation} />
 			{:else}

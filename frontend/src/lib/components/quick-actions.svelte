@@ -54,7 +54,6 @@
 				{/each}
 			</div>
 		{:else}
-			<!-- Desktop / tablet buttons -->
 			<div class="hidden flex-wrap items-center gap-2 sm:flex">
 				<button
 					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors transition-shadow hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
@@ -123,7 +122,6 @@
 				</button>
 			</div>
 
-			<!-- Mobile: ellipsis dropdown -->
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger
 					class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border sm:hidden"

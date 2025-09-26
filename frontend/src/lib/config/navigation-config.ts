@@ -73,10 +73,10 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 };
 
 export const defaultMobilePinnedItems: NavigationItem[] = [
-	navigationItems.managementItems[0], // Dashboard
-	navigationItems.managementItems[1], // Containers
-	navigationItems.managementItems[3], // Images
-	navigationItems.managementItems[5] // Volumes
+	navigationItems.managementItems[0],
+	navigationItems.managementItems[1],
+	navigationItems.managementItems[3],
+	navigationItems.managementItems[5]
 ];
 
 export type MobileNavigationSettings = {
@@ -90,18 +90,12 @@ export type MobileNavigationSettings = {
 export function getAvailableMobileNavItems(): NavigationItem[] {
 	const flatItems: NavigationItem[] = [];
 
-	// Add all management items (core Docker resources)
 	flatItems.push(...navigationItems.managementItems);
-
-	// Add customization items (templates and registries)
 	flatItems.push(...navigationItems.customizationItems);
 
-	// Add environment items (admin-only, filtered at component level)
 	if (navigationItems.environmentItems) {
 		flatItems.push(...navigationItems.environmentItems);
 	}
-
-	// Add top-level settings items only (exclude nested sub-items)
 	if (navigationItems.settingsItems) {
 		const settingsTopLevel = navigationItems.settingsItems.filter((item) => !item.items);
 		flatItems.push(...settingsTopLevel);
