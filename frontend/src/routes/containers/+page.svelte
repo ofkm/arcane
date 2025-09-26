@@ -10,6 +10,8 @@
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { m } from '$lib/paraglide/messages';
 	import { imageService } from '$lib/services/image-service';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 
 	let { data } = $props();
 
@@ -56,12 +58,13 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+	<div class="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">{m.containers_title()}</h1>
 			<p class="text-muted-foreground mt-1 text-sm">{m.containers_subtitle()}</p>
 		</div>
-		<div class="flex items-center gap-2">
+		<!-- Desktop buttons -->
+		<div class="hidden items-center gap-2 sm:flex">
 			<ArcaneButton
 				action="create"
 				customLabel={m.containers_create_button()}
@@ -83,6 +86,33 @@
 				loading={isLoading.refreshing}
 				disabled={isLoading.refreshing}
 			/>
+		</div>
+
+		<!-- Mobile / tablet: dropdown menu (positioned top-right on small screens) -->
+		<div class="absolute right-4 top-4 flex items-center sm:static sm:hidden">
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border">
+					<span class="sr-only">{m.common_open_menu()}</span>
+					<EllipsisIcon />
+				</DropdownMenu.Trigger>
+
+				<DropdownMenu.Content
+					align="end"
+					class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[160px] rounded-md p-1 shadow-lg backdrop-blur-sm supports-[backdrop-filter]:backdrop-blur-sm"
+				>
+					<DropdownMenu.Group>
+						<DropdownMenu.Item onclick={() => (isCreateDialogOpen = true)} disabled={isLoading.create}>
+							{m.containers_create_button()}
+						</DropdownMenu.Item>
+						<DropdownMenu.Item onclick={handleCheckForUpdates} disabled={isLoading.checking}>
+							{m.containers_check_updates()}
+						</DropdownMenu.Item>
+						<DropdownMenu.Item onclick={refreshContainers} disabled={isLoading.refreshing}>
+							{m.common_refresh()}
+						</DropdownMenu.Item>
+					</DropdownMenu.Group>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 		</div>
 	</div>
 
