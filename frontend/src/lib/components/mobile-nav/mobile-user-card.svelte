@@ -79,9 +79,9 @@
 			</span>
 		</div>
 		<div class="flex-1">
-			<h3 class="text-foreground text-lg font-semibold">{effectiveUser.username || 'User'}</h3>
+			<h3 class="text-foreground text-lg font-semibold">{effectiveUser.username}</h3>
 			<p class="text-muted-foreground/80 text-sm">
-				{effectiveUser.roles?.join(', ') || 'User'} • Tap for settings
+				{effectiveUser.roles?.join(', ')}
 			</p>
 		</div>
 		<div class="flex items-center gap-2">
