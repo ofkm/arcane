@@ -7,9 +7,20 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { userService } from '$lib/services/user-service';
 
-	let { inline = false, id = 'localePicker', class: className = '' } = $props();
+	let {
+		inline = false,
+		id = 'localePicker',
+		class: className = '',
+		onOpenChange
+	}: {
+		inline?: boolean;
+		id?: string;
+		class?: string;
+		onOpenChange?: (open: boolean) => void;
+	} = $props();
 
 	const currentLocale = $state(getLocale());
+	let isOpen = $state(false);
 
 	const locales: Record<string, string> = {
 		en: 'English',
@@ -34,11 +45,20 @@
 
 <div class={`locale-picker ${className}`}>
 	{#if inline}
-		<Select.Root type="single" value={currentLocale} onValueChange={(v) => updateLocale(v as Locale)}>
+		<Select.Root
+			type="single"
+			value={currentLocale}
+			onValueChange={(v) => updateLocale(v as Locale)}
+			open={isOpen}
+			onOpenChange={(open) => {
+				isOpen = open;
+				onOpenChange?.(open);
+			}}
+		>
 			<Select.Trigger {id} class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium">
 				<span class="truncate">{locales[currentLocale]}</span>
 			</Select.Trigger>
-			<Select.Content class="min-w-[160px] max-w-[280px]">
+			<Select.Content class="max-w-[280px] min-w-[160px]">
 				{#each Object.entries(locales) as [value, label]}
 					<Select.Item class="text-sm" {value}>{label}</Select.Item>
 				{/each}
@@ -47,10 +67,19 @@
 	{:else}
 		<div class="px-3 py-2">
 			<div class="grid gap-2">
-				<Label for={id} class="text-sm font-medium leading-none">
+				<Label for={id} class="text-sm leading-none font-medium">
 					{m.language()}
 				</Label>
-				<Select.Root type="single" value={currentLocale} onValueChange={(v) => updateLocale(v as Locale)}>
+				<Select.Root
+					type="single"
+					value={currentLocale}
+					onValueChange={(v) => updateLocale(v as Locale)}
+					open={isOpen}
+					onOpenChange={(open) => {
+						isOpen = open;
+						onOpenChange?.(open);
+					}}
+				>
 					<Select.Trigger {id} class="h-9 w-full justify-between" aria-label={m.common_select_locale()}>
 						<span class="truncate">{locales[currentLocale]}</span>
 					</Select.Trigger>

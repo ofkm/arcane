@@ -17,6 +17,7 @@
 	const sidebar = useSidebar();
 
 	let dropdownOpen = $state(false);
+	let localePickerOpen = $state(false);
 
 	$effect(() => {
 		if (sidebar.state === 'collapsed' && !sidebar.isHovered && dropdownOpen) {
@@ -86,7 +87,9 @@
 						}
 					}}
 					onmouseleave={() => {
-						sidebar.setHovered(false, 150);
+						if (!localePickerOpen) {
+							sidebar.setHovered(false, 150);
+						}
 					}}
 				>
 					<DropdownMenu.Label class="px-3 pb-2 pt-2 font-normal">
@@ -117,7 +120,15 @@
 					</DropdownMenu.Label>
 					<DropdownMenu.Separator />
 
-					<LocalePicker inline={false} />
+					<LocalePicker 
+						inline={false} 
+						onOpenChange={(open: boolean) => {
+							localePickerOpen = open;
+							if (!open && sidebar.state === 'collapsed') {
+								sidebar.setHovered(false, 150);
+							}
+						}}
+					/>
 
 					<DropdownMenu.Group class="px-3 pb-2">
 						<Button.Root
