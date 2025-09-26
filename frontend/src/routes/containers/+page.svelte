@@ -156,12 +156,12 @@
 		onSubmit={async (options) => {
 			isLoading.create = true;
 			handleApiResultWithCallbacks({
-				result: await tryCatch(environmentAPI.createContainer(options)),
+				result: await tryCatch(containerService.createContainer(options)),
 				message: m.containers_create_failed(),
 				setLoadingState: (value) => (isLoading.create = value),
 				onSuccess: async () => {
 					toast.success(m.containers_create_success());
-					containers = await environmentAPI.getContainers(requestOptions);
+					containers = await containerService.getContainers(requestOptions);
 					isCreateDialogOpen = false;
 				}
 			});
