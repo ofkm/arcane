@@ -12,6 +12,8 @@
 	import VolumeTable from './volume-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { volumeService } from '$lib/services/volume-service';
+    import { environmentStore } from '$lib/stores/environment.store';
+    import type { Environment } from '$lib/types/environment.type';
 
 	let { data } = $props();
 
@@ -47,15 +49,48 @@
 
 	async function refreshVolumes() {
 		isLoading.refresh = true;
+		let refreshingVolumeList = true;
+		let refreshingVolumeCounts = true;		
 		handleApiResultWithCallbacks({
 			result: await tryCatch(volumeService.getVolumes(requestOptions)),
 			message: m.volumes_refresh_failed(),
-			setLoadingState: (value) => (isLoading.refresh = value),
+			setLoadingState: (value) => {
+				refreshingVolumeList = value;
+				isLoading.refresh = refreshingVolumeCounts || refreshingVolumeList;
+			},
 			async onSuccess(newVolumes) {
 				volumes = newVolumes;
 			}
 		});
+		handleApiResultWithCallbacks({
+			result: await tryCatch(volumeService.getVolumeUsageCounts()),
+			message: m.volumes_refresh_failed(),
+			setLoadingState: (value) => {
+				refreshingVolumeCounts = value;
+				isLoading.refresh = refreshingVolumeCounts || refreshingVolumeList;
+			},
+			async onSuccess(newVolumeCounts) {
+				volumeUsageCounts = newVolumeCounts;
+			}
+		});
 	}
+
+	// React to environment changes
+	const selectedEnvStore = environmentStore.selected;
+	let lastEnvId: string | null = null;
+	$effect(() => {
+		const env = $selectedEnvStore as Environment | null;
+		if (!env) return;
+		// Skip initial page load
+		if (lastEnvId === null) {
+			lastEnvId = env.id;
+			return;
+		}
+		if (env.id !== lastEnvId) {
+			lastEnvId = env.id;
+			refreshVolumes();
+		}
+	});
 </script>
 
 <div class="space-y-6">

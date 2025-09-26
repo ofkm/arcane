@@ -14,6 +14,8 @@
 	import ImageTable from './image-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { imageService } from '$lib/services/image-service';
+    import { environmentStore } from '$lib/stores/environment.store';
+    import type { Environment } from '$lib/types/environment.type';
 
 	let { data } = $props();
 
@@ -61,15 +63,48 @@
 
 	async function refreshImages() {
 		isLoading.refreshing = true;
+		let refreshingImageList = true;
+		let refreshingImageCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(imageService.getImages(requestOptions)),
 			message: m.images_refresh_failed(),
-			setLoadingState: (value) => (isLoading.refreshing = value),
+			setLoadingState: (value) => {
+				refreshingImageList = value;
+				isLoading.refreshing = refreshingImageCounts || refreshingImageList;
+			},
 			async onSuccess(newImages) {
 				images = newImages;
 			}
 		});
+		handleApiResultWithCallbacks({
+			result: await tryCatch(imageService.getImageUsageCounts()),
+			message: m.images_refresh_failed(),
+			setLoadingState: (value) => {
+				refreshingImageCounts = value;
+				isLoading.refreshing = refreshingImageCounts || refreshingImageList;
+			},
+			async onSuccess(newImageCounts) {
+				imageUsageCounts = newImageCounts;
+			}
+		});	
 	}
+
+	// React to environment changes
+	const selectedEnvStore = environmentStore.selected;
+	let lastEnvId: string | null = null;
+	$effect(() => {
+		const env = $selectedEnvStore as Environment | null;
+		if (!env) return;
+		// Skip initial page load
+		if (lastEnvId === null) {
+			lastEnvId = env.id;
+			return;
+		}
+		if (env.id !== lastEnvId) {
+			lastEnvId = env.id;
+			refreshImages();
+		}
+	});
 </script>
 
 <div class="space-y-6">

@@ -12,6 +12,8 @@
 	import { m } from '$lib/paraglide/messages';
 	import { projectService } from '$lib/services/project-service';
 	import { imageService } from '$lib/services/image-service';
+    import { environmentStore } from '$lib/stores/environment.store';
+    import type { Environment } from '$lib/types/environment.type';
 
 	let { data } = $props();
 
@@ -31,10 +33,10 @@
 		isLoading.updating = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(imageService.runAutoUpdate()),
-			message: 'Failed to Check Compose Projects for Updates',
+			message: m.containers_check_updates_failed(),
 			setLoadingState: (value) => (isLoading.updating = value),
 			async onSuccess() {
-				toast.success('Compose Projects Updated Successfully.');
+				toast.success(m.compose_update_success());
 				projects = await projectService.getProjects(projectRequestOptions);
 			}
 		});
@@ -42,15 +44,48 @@
 
 	async function refreshCompose() {
 		isLoading.refreshing = true;
+		let refreshingProjectList = true;
+		let refreshingProjectCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(projectService.getProjects(projectRequestOptions)),
-			message: 'Failed to Refresh Projects',
-			setLoadingState: (v) => (isLoading.refreshing = v),
+			message: m.compose_refresh_failed(),
+			setLoadingState: (v) => {
+				refreshingProjectList = v;
+				isLoading.refreshing = refreshingProjectCounts || refreshingProjectList;
+			},
 			async onSuccess(newProjects) {
 				projects = newProjects;
 			}
 		});
+		handleApiResultWithCallbacks({
+			result: await tryCatch(projectService.getProjectStatusCounts()),
+			message: m.compose_refresh_failed(),
+			setLoadingState: (v) => {
+				refreshingProjectCounts = v;
+				isLoading.refreshing = refreshingProjectCounts || refreshingProjectList;
+			},
+			async onSuccess(newProjectCounts) {
+				projectStatusCounts = newProjectCounts;
+			}
+		});
 	}
+
+	// React to environment changes
+	const selectedEnvStore = environmentStore.selected;
+	let lastEnvId: string | null = null;
+	$effect(() => {
+		const env = $selectedEnvStore as Environment | null;
+		if (!env) return;
+		// Skip initial page load
+		if (lastEnvId === null) {
+			lastEnvId = env.id;
+			return;
+		}
+		if (env.id !== lastEnvId) {
+			lastEnvId = env.id;
+			refreshCompose();
+		}
+	});
 </script>
 
 <div class="space-y-6">

@@ -11,6 +11,8 @@
 	import NetworkTable from './network-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { networkService } from '$lib/services/network-service';
+    import { environmentStore } from '$lib/stores/environment.store';
+    import type { Environment } from '$lib/types/environment.type';
 
 	let { data } = $props();
 
@@ -28,12 +30,28 @@
 
 	async function refreshNetworks() {
 		isLoading.refresh = true;
+		let refreshingNetworkList = true;
+		let refreshingNetworkCounts = true;		
 		handleApiResultWithCallbacks({
 			result: await tryCatch(networkService.getNetworks(requestOptions)),
 			message: m.networks_refresh_failed(),
-			setLoadingState: (value) => (isLoading.refresh = value),
+			setLoadingState: (value) => {
+				refreshingNetworkList = value;
+				isLoading.refresh = refreshingNetworkCounts || refreshingNetworkList;
+			},
 			async onSuccess(newNetworks) {
 				networks = newNetworks;
+			}
+		});
+		handleApiResultWithCallbacks({
+			result: await tryCatch(networkService.getNetworkUsageCounts()),
+			message: m.networks_refresh_failed(),
+			setLoadingState: (value) => {
+				refreshingNetworkCounts = value;
+				isLoading.refresh = refreshingNetworkCounts || refreshingNetworkList;
+			},
+			async onSuccess(newNetworkCounts) {
+				networkUsageCounts = newNetworkCounts;
 			}
 		});
 	}
@@ -52,6 +70,23 @@
 			}
 		});
 	}
+
+	// React to environment changes
+	const selectedEnvStore = environmentStore.selected;
+	let lastEnvId: string | null = null;
+	$effect(() => {
+		const env = $selectedEnvStore as Environment | null;
+		if (!env) return;
+		// Skip initial page load
+		if (lastEnvId === null) {
+			lastEnvId = env.id;
+			return;
+		}
+		if (env.id !== lastEnvId) {
+			lastEnvId = env.id;
+			refreshNetworks();
+		}
+	});
 </script>
 
 <div class="space-y-6">
