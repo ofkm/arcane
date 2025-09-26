@@ -3,6 +3,7 @@
 	import type { NavigationItem, MobileNavigationSettings } from '$lib/config/navigation-config';
 	import { getAvailableMobileNavItems } from '$lib/config/navigation-config';
 	import MobileNavItem from './mobile-nav-item.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import { cn } from '$lib/utils';
 	import { createMobileNavInteractions } from '$lib/hooks/use-mobile-nav-interactions';
 	import { registerNavigationManager } from '$lib/utils/navigation.utils';
@@ -129,7 +130,7 @@
 	bind:this={navElement}
 	class={cn(
 		'mobile-nav-base mobile-nav-docked',
-		'fixed right-0 bottom-0 left-0 z-50 gap-2',
+		'fixed bottom-0 left-0 right-0 z-50 gap-2',
 		'bg-background/95 border-border/50 border-t backdrop-blur-sm',
 		'shadow-lg',
 		'select-none', // Prevent text selection but allow touch
@@ -140,12 +141,11 @@
 		className
 	)}
 	data-testid="mobile-docked-nav"
-	aria-label="Mobile navigation"
+	aria-label={m.mobile_navigation()}
 >
 	{#each pinnedItems as item (item.url)}
 		<MobileNavItem {item} {showLabels} active={currentPath === item.url || currentPath.startsWith(item.url + '/')} />
 	{/each}
 </nav>
 
-<!-- Navigation Sheet -->
 <MobileNavSheet bind:open={menuOpen} {user} {versionInformation} />

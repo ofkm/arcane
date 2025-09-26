@@ -1079,5 +1079,15 @@
 	"navigation_scroll_to_hide_description": "Automatically hide the navigation bar when scrolling down for a cleaner viewing experience",
 	"navigation_tap_to_hide_label": "Tap to Hide",
 	"navigation_tap_to_hide_description": "Allow users to tap outside the navigation area to quickly show or hide the navigation bar",
-	"navigation_settings_saved": "Navigation settings saved successfully"
+	"navigation_settings_saved": "Navigation settings saved successfully",
+	"server_default": "Server Default",
+	"applies_to_all_users": "Applies to all users",
+	"this_device": "This Device",
+	"override": "Override",
+	"current_state": "Current State",
+	"local_override": "Local Override",
+	"clear_local_override": "Clear local override",
+	"overriding_server_default": "Overriding server default",
+	"using_server_default": "Using server default",
+	"mobile_navigation": "Mobile navigation"
 }
