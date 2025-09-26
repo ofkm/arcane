@@ -10,12 +10,13 @@
 	import { environmentStore } from '$lib/stores/environment.store';
 	import type { Environment } from '$lib/types/environment.type';
 	import { getLocale, type Locale } from '$lib/paraglide/runtime';
+	import userStore from '$lib/stores/user-store';
 	import { setLocale } from '$lib/utils/locale.util';
-	import UserAPIService from '$lib/services/user-service';
 	import { mode, toggleMode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';
 	import type { User } from '$lib/types/user.type';
+	import { userService } from '$lib/services/user-service';
 
 	type Props = {
 		user: User;
@@ -24,16 +25,11 @@
 
 	let { user, class: className = '' }: Props = $props();
 
-	// User state
 	let userCardExpanded = $state(false);
-
-	// Environment state
 	let currentSelectedEnvironment = $state<Environment | null>(null);
 	let availableEnvironments = $state<Environment[]>([]);
 
-	// Language state
-	const userApi = new UserAPIService();
-	const currentLocale = getLocale();
+	const currentLocale = $state(getLocale());
 	const locales: Record<string, string> = {
 		en: 'English',
 		eo: 'Esperanto',
@@ -43,10 +39,8 @@
 		zh: 'Chinese'
 	};
 
-	// Theme state
 	const isDarkMode = $derived(mode.current === 'dark');
 
-	// Environment store subscription
 	$effect(() => {
 		const unsubscribeSelected = environmentStore.selected.subscribe((value) => {
 			currentSelectedEnvironment = value;
@@ -60,12 +54,10 @@
 		};
 	});
 
-	// Computed values
 	const effectiveUser = $derived(user);
 	const isAdmin = $derived(!!effectiveUser.roles?.includes('admin'));
 	const selectedValue = $derived(currentSelectedEnvironment?.id || '');
 
-	// Environment handler
 	async function handleEnvSelect(envId: string) {
 		const env = availableEnvironments.find((e) => e.id === envId);
 		if (!env) return;
@@ -86,17 +78,15 @@
 		}
 	}
 
-	// Language handler
 	async function updateLocale(locale: Locale) {
-		if (user) {
-			await userApi.update(user.id, { ...user, locale });
+		if ($userStore) {
+			await userService.update($userStore.id, { ...$userStore, locale });
 		}
 		await setLocale(locale);
 	}
 </script>
 
 <div class={`bg-muted/30 border-border/20 overflow-hidden rounded-3xl border ${className}`}>
-	<!-- User Card Header (Tappable) -->
 	<button
 		class="hover:bg-muted/40 flex w-full items-center gap-4 p-5 text-left transition-all duration-200"
 		onclick={() => (userCardExpanded = !userCardExpanded)}
@@ -128,7 +118,6 @@
 					<path d="m6 9 6 6 6-6" />
 				</svg>
 			</div>
-			<!-- Logout button -->
 			<form action="/auth/logout" method="POST">
 				<Button.Root
 					variant="ghost"
@@ -144,11 +133,9 @@
 		</div>
 	</button>
 
-	<!-- Expanded Quick Settings -->
 	{#if userCardExpanded}
 		<div class="border-border/20 bg-muted/10 space-y-4 border-t p-4">
 			{#if isAdmin}
-				<!-- Environment Switcher -->
 				<div class="bg-background/50 border-border/20 rounded-2xl border p-4">
 					<div class="flex items-center gap-3">
 						<div class="bg-primary/10 text-primary flex aspect-square size-8 items-center justify-center rounded-lg">
@@ -159,7 +146,7 @@
 							{/if}
 						</div>
 						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground/70 text-xs font-medium tracking-widest uppercase">
+							<div class="text-muted-foreground/70 text-xs font-medium uppercase tracking-widest">
 								{m.sidebar_environment_label()}
 							</div>
 							<div class="text-foreground text-sm font-medium">
@@ -168,10 +155,10 @@
 						</div>
 						{#if availableEnvironments.length > 1}
 							<Select.Root type="single" value={selectedValue} onValueChange={handleEnvSelect}>
-								<Select.Trigger class="bg-background/50 border-border/30 h-9 w-32 text-xs">
+								<Select.Trigger class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium">
 									<span class="truncate">Switch</span>
 								</Select.Trigger>
-								<Select.Content class="max-w-[280px]">
+								<Select.Content class="min-w-[160px] max-w-[280px]">
 									{#each availableEnvironments as env (env.id)}
 										<Select.Item value={env.id} class="text-sm">
 											{getEnvLabel(env)}
@@ -184,31 +171,29 @@
 				</div>
 			{/if}
 
-			<!-- Language and Theme Toggle Row -->
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				<!-- Language Toggle -->
 				<div class="bg-background/50 border-border/20 rounded-2xl border p-4">
 					<div class="flex h-full items-center gap-3">
 						<div class="bg-primary/10 text-primary flex aspect-square size-8 items-center justify-center rounded-lg">
 							<LanguagesIcon class="size-4" />
 						</div>
-						<div class="flex min-w-0 flex-1 flex-col justify-center">
-							<div class="text-muted-foreground/70 mb-1 text-xs font-medium tracking-widest uppercase">Language</div>
-							<Select.Root type="single" value={currentLocale} onValueChange={(v) => updateLocale(v as Locale)}>
-								<Select.Trigger class="bg-muted/30 border-border/20 text-foreground h-8 w-full text-sm font-medium">
-									<span class="truncate">{locales[currentLocale]}</span>
-								</Select.Trigger>
-								<Select.Content>
-									{#each Object.entries(locales) as [value, label]}
-										<Select.Item {value}>{label}</Select.Item>
-									{/each}
-								</Select.Content>
-							</Select.Root>
+						<div class="min-w-0 flex-1">
+							<div class="text-muted-foreground/70 mb-1 text-xs font-medium uppercase tracking-widest">Language</div>
+							<div class="text-foreground text-sm font-medium">{locales[currentLocale]}</div>
 						</div>
+						<Select.Root type="single" value={currentLocale} onValueChange={(v) => updateLocale(v as Locale)}>
+							<Select.Trigger class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium">
+								<span class="truncate">{locales[currentLocale]}</span>
+							</Select.Trigger>
+							<Select.Content class="min-w-[160px] max-w-[280px]">
+								{#each Object.entries(locales) as [value, label]}
+									<Select.Item class="text-sm" {value}>{label}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
 					</div>
 				</div>
 
-				<!-- Theme Toggle -->
 				<div class="bg-background/50 border-border/20 rounded-2xl border p-4">
 					<button class="flex h-full w-full items-center gap-3 text-left" onclick={toggleMode}>
 						<div class="bg-primary/10 text-primary flex aspect-square size-8 items-center justify-center rounded-lg">
@@ -219,7 +204,7 @@
 							{/if}
 						</div>
 						<div class="flex min-w-0 flex-1 flex-col justify-center">
-							<div class="text-muted-foreground/70 mb-1 text-xs font-medium tracking-widest uppercase">Theme</div>
+							<div class="text-muted-foreground/70 mb-1 text-xs font-medium uppercase tracking-widest">Theme</div>
 							<div class="text-foreground text-sm font-medium">
 								{isDarkMode ? 'Dark' : 'Light'}
 							</div>
