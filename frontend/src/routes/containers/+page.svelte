@@ -9,8 +9,8 @@
 	import ContainerTable from './container-table.svelte';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { m } from '$lib/paraglide/messages';
-  import { environmentStore } from '$lib/stores/environment.store';
-  import type { Environment } from '$lib/types/environment.type';
+    import { environmentStore } from '$lib/stores/environment.store';
+    import type { Environment } from '$lib/types/environment.type';
 	import { imageService } from '$lib/services/image-service';
 
 	let { data } = $props();
@@ -35,10 +35,10 @@
 		isLoading.checking = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(imageService.runAutoUpdate()),
-			message: 'Failed to Check Containers for Updates',
+			message: m.containers_check_updates_failed(),
 			setLoadingState: (value) => (isLoading.checking = value),
 			async onSuccess() {
-				toast.success('Containers Updated Successfully.');
+				toast.success(m.containers_check_updates_success());
 				containers = await containerService.getContainers(requestOptions);
 			}
 		});
@@ -46,21 +46,30 @@
 
 	async function refreshContainers() {
 		isLoading.refreshing = true;
-
-		const [containerResult, statusCountsResult] = await Promise.allSettled([
-			tryCatch(containerService.getContainers(requestOptions)),
-			tryCatch(containerService.getContainerStatusCounts())
-		]);
-
-		if (containerResult.status === 'fulfilled' && !containerResult.value.error) {
-			containers = containerResult.value.data;
-		}
-
-		if (statusCountsResult.status === 'fulfilled' && !statusCountsResult.value.error) {
-			containerStatusCounts = statusCountsResult.value.data;
-		}
-
-		isLoading.refreshing = false;
+		let refreshingContainerList = true;
+		let refreshingContainerCounts = true;
+		handleApiResultWithCallbacks({
+			result: await tryCatch(containerService.getContainers(requestOptions)),
+			message: m.containers_refresh_failed(),
+			setLoadingState: (value) => {
+				refreshingContainerList = value;
+				isLoading.refreshing = refreshingContainerCounts || refreshingContainerList;
+			},
+			async onSuccess(newContainers) {
+				containers = newContainers;
+			}
+		});
+		handleApiResultWithCallbacks({
+			result: await tryCatch(containerService.getContainerStatusCounts()),
+			message: m.containers_refresh_failed(),
+			setLoadingState: (value) => {
+				refreshingContainerCounts = value;
+				isLoading.refreshing = refreshingContainerCounts || refreshingContainerList;
+			},
+			async onSuccess(newStatusCounts) {
+				containerStatusCounts = newStatusCounts;
+			}
+		});
 	}
 
 	// React to environment changes
@@ -147,12 +156,12 @@
 		onSubmit={async (options) => {
 			isLoading.create = true;
 			handleApiResultWithCallbacks({
-				result: await tryCatch(containerService.createContainer(options)),
+				result: await tryCatch(environmentAPI.createContainer(options)),
 				message: m.containers_create_failed(),
 				setLoadingState: (value) => (isLoading.create = value),
 				onSuccess: async () => {
 					toast.success(m.containers_create_success());
-					containers = await containerService.getContainers(requestOptions);
+					containers = await environmentAPI.getContainers(requestOptions);
 					isCreateDialogOpen = false;
 				}
 			});
