@@ -11,7 +11,7 @@
 	import { cn } from '$lib/utils';
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
-	import SidebarLocalePicker from './sidebar-locale-picker.svelte';
+	import LocalePicker from '$lib/components/locale-picker.svelte';
 
 	let { user, isCollapsed }: { user: User; isCollapsed: boolean } = $props();
 	const sidebar = useSidebar();
@@ -76,12 +76,7 @@
 					</Sidebar.MenuButton>
 				{/snippet}
 			</DropdownMenu.Trigger>
-			<DropdownMenu.Content
-				class="min-w-56 rounded-lg p-0"
-				side="right"
-				align="end"
-				sideOffset={12}
-			>
+			<DropdownMenu.Content class="min-w-56 rounded-lg p-0" side="right" align="end" sideOffset={12}>
 				<div
 					role="group"
 					tabindex="-1"
@@ -122,7 +117,7 @@
 					</DropdownMenu.Label>
 					<DropdownMenu.Separator />
 
-					<SidebarLocalePicker />
+					<LocalePicker inline={false} />
 
 					<DropdownMenu.Group class="px-3 pb-2">
 						<Button.Root

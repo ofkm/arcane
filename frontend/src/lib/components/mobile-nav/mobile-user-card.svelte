@@ -9,14 +9,11 @@
 	import Moon from '@lucide/svelte/icons/moon';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import type { Environment } from '$lib/types/environment.type';
-	import { getLocale, type Locale } from '$lib/paraglide/runtime';
-	import userStore from '$lib/stores/user-store';
-	import { setLocale } from '$lib/utils/locale.util';
 	import { mode, toggleMode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';
 	import type { User } from '$lib/types/user.type';
-	import { userService } from '$lib/services/user-service';
+	import LocalePicker from '$lib/components/locale-picker.svelte';
 
 	type Props = {
 		user: User;
@@ -28,16 +25,6 @@
 	let userCardExpanded = $state(false);
 	let currentSelectedEnvironment = $state<Environment | null>(null);
 	let availableEnvironments = $state<Environment[]>([]);
-
-	const currentLocale = $state(getLocale());
-	const locales: Record<string, string> = {
-		en: 'English',
-		eo: 'Esperanto',
-		es: 'Español',
-		fr: 'Français',
-		nl: 'Nederlands',
-		zh: 'Chinese'
-	};
 
 	const isDarkMode = $derived(mode.current === 'dark');
 
@@ -77,13 +64,6 @@
 			return env.name;
 		}
 	}
-
-	async function updateLocale(locale: Locale) {
-		if ($userStore) {
-			await userService.update($userStore.id, { ...$userStore, locale });
-		}
-		await setLocale(locale);
-	}
 </script>
 
 <div class={`bg-muted/30 border-border/20 overflow-hidden rounded-3xl border ${className}`}>
@@ -103,7 +83,6 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<!-- Expansion indicator -->
 			<div class="text-muted-foreground/60 transition-transform duration-200 {userCardExpanded ? 'rotate-180' : ''}">
 				<svg
 					width="16"
@@ -179,18 +158,13 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="text-muted-foreground/70 mb-1 text-xs font-medium uppercase tracking-widest">Language</div>
-							<div class="text-foreground text-sm font-medium">{locales[currentLocale]}</div>
+							<div class="text-foreground text-sm font-medium"></div>
 						</div>
-						<Select.Root type="single" value={currentLocale} onValueChange={(v) => updateLocale(v as Locale)}>
-							<Select.Trigger class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium">
-								<span class="truncate">{locales[currentLocale]}</span>
-							</Select.Trigger>
-							<Select.Content class="min-w-[160px] max-w-[280px]">
-								{#each Object.entries(locales) as [value, label]}
-									<Select.Item class="text-sm" {value}>{label}</Select.Item>
-								{/each}
-							</Select.Content>
-						</Select.Root>
+						<LocalePicker
+							inline={true}
+							id="mobileLocalePicker"
+							class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium"
+						/>
 					</div>
 				</div>
 
