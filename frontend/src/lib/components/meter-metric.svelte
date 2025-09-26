@@ -81,12 +81,12 @@
 				</div>
 			</div>
 
-			<div class="bg-primary/10 dark:bg-primary/20 mt-auto rounded-lg p-2 sm:p-3">
+			<div class="bg-primary/10 dark:bg-primary/20 mt-auto flex min-h-[44px] items-center justify-center rounded-lg p-3 sm:p-4">
 				{#if loading}
 					<div class="bg-muted mx-auto h-3 w-20 animate-pulse rounded"></div>
 				{:else}
-					<div class="text-primary dark:text-primary text-center text-xs font-medium leading-relaxed sm:text-xs">
-						{footerText ?? m.meter_footer_usage({ percent: percentage.toFixed(1) })}
+					<div class="text-primary dark:text-primary text-center text-xs font-medium leading-tight sm:text-sm">
+						{footerText ?? m.meter_footer_usage({ percent: Number(percentage).toFixed(1) })}
 					</div>
 				{/if}
 			</div>

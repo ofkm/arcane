@@ -106,38 +106,8 @@
 		}
 	}
 
-	let imageRequestOptions = $state(data.imageRequestOptions);
-
 	async function refreshData() {
 		isLoading.refreshing = true;
-
-		// const [dockerInfoResult, settingsResult, imagesResult, statusCountsResult] = await Promise.allSettled([
-		// 	tryCatch(environmentAPI.getDockerInfo()),
-		// 	tryCatch(settingsAPI.getSettings()),
-		// 	tryCatch(environmentAPI.getImages(imageRequestOptions)),
-		// 	tryCatch(environmentAPI.getContainerStatusCounts())
-		// ]);
-
-		// if (dockerInfoResult.status === 'fulfilled' && !dockerInfoResult.value.error) {
-		// 	dashboardStates.dockerInfo = dockerInfoResult.value.data;
-		// 	dockerInfo = dockerInfoResult.value.data;
-		// }
-		// isLoading.loadingDockerInfo = false;
-
-		// if (settingsResult.status === 'fulfilled' && !settingsResult.value.error) {
-		// 	dashboardStates.settings = settingsResult.value.data;
-		// }
-
-		// if (imagesResult.status === 'fulfilled') {
-		// 	if (!imagesResult.value.error) {
-		// 		images = imagesResult.value.data;
-		// 	}
-		// }
-		// isLoading.loadingImages = false;
-
-		// if (statusCountsResult.status === 'fulfilled' && !statusCountsResult.value.error) {
-		// 	containerStatusCounts = statusCountsResult.value.data;
-		// }
 
 		await invalidateAll();
 		isLoading.refreshing = false;
@@ -271,7 +241,7 @@
 			images: m.prune_unused_images(),
 			networks: m.prune_unused_networks(),
 			volumes: m.prune_unused_volumes(),
-			buildCache: 'Build cache'
+			buildCache: m.build_cache()
 		};
 		const typesString = selectedTypes.map((t) => typeLabels[t]).join(', ');
 
@@ -323,7 +293,6 @@
 			<MeterMetric
 				title={m.dashboard_meter_running()}
 				icon={ContainerIcon}
-				description={m.dashboard_meter_running_desc()}
 				currentValue={isLoading.loadingStats ? undefined : runningContainers}
 				formatValue={(v) => v.toString()}
 				maxValue={Math.max(totalContainers, 1)}

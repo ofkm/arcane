@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
+	import { Switch } from '$lib/components/ui/switch/index.js';
+	import { m } from '$lib/paraglide/messages';
 	import ServerIcon from '@lucide/svelte/icons/server';
 	import SmartphoneIcon from '@lucide/svelte/icons/smartphone';
 	import XIcon from '@lucide/svelte/icons/x';
@@ -32,121 +34,100 @@
 	const hasOverride = $derived(localOverride !== undefined);
 </script>
 
-<div class={`border rounded-lg p-3 sm:p-4 h-full flex flex-col ${hasOverride ? 'border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20' : 'border-border'}`}>
-	<div class="flex flex-col h-full space-y-3">
-		<!-- Header with icon, title and clear button -->
+<div
+	class={`flex h-full flex-col rounded-lg border p-3 sm:p-4 ${hasOverride ? 'border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20' : 'border-border'}`}
+>
+	<div class="flex h-full flex-col space-y-3">
 		<div class="flex items-start gap-3">
-			<div class={`flex size-7 sm:size-8 items-center justify-center rounded-lg ring-1 flex-shrink-0 ${hasOverride ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 ring-orange-500/20' : 'bg-primary/10 text-primary ring-primary/20'}`}>
+			<div
+				class={`flex size-7 flex-shrink-0 items-center justify-center rounded-lg ring-1 sm:size-8 ${hasOverride ? 'bg-orange-500/10 text-orange-600 ring-orange-500/20 dark:text-orange-400' : 'bg-primary/10 text-primary ring-primary/20'}`}
+			>
 				<Icon class="size-3 sm:size-4" />
 			</div>
-			
-			<div class="flex-1 min-w-0">
-				<div class="flex items-start justify-between gap-2 mb-1">
+
+			<div class="min-w-0 flex-1">
+				<div class="mb-1 flex items-start justify-between gap-2">
 					<div class="min-w-0 flex-1">
-						<h4 class="font-medium text-sm leading-tight">{label}</h4>
+						<h4 class="text-sm font-medium leading-tight">{label}</h4>
 					</div>
-					
+
 					{#if hasOverride}
-						<Button 
-							variant="ghost" 
-							size="sm" 
+						<Button
+							variant="ghost"
+							size="sm"
 							onclick={onClearOverride}
-							class="h-6 w-6 p-0 text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 flex-shrink-0"
-							title="Clear local override"
+							class="h-6 w-6 flex-shrink-0 p-0 text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
+							title={m.clear_local_override()}
 						>
 							<XIcon class="size-3" />
 						</Button>
 					{/if}
 				</div>
-				<p class="text-xs text-muted-foreground leading-relaxed">{description}</p>
+				<p class="text-muted-foreground text-xs leading-relaxed">{description}</p>
 			</div>
 		</div>
 
-		<!-- Settings Controls -->
-		<div class="flex-1 flex flex-col justify-end space-y-2 sm:space-y-3">
-			<!-- Server Setting -->
-			<div class="bg-background/50 border rounded-md">
+		<div class="flex flex-1 flex-col justify-end space-y-2 sm:space-y-3">
+			<div class="bg-background/50 rounded-md border">
 				<div class="flex items-center justify-between p-2 sm:p-3">
-					<div class="flex items-center gap-2 min-w-0 flex-1">
-						<ServerIcon class="size-3 sm:size-4 text-muted-foreground flex-shrink-0" />
+					<div class="flex min-w-0 flex-1 items-center gap-2">
+						<ServerIcon class="text-muted-foreground size-3 flex-shrink-0 sm:size-4" />
 						<div class="min-w-0 flex-1">
-							<p class="text-xs font-medium leading-tight">Server Default</p>
-							<p class="text-xs text-muted-foreground leading-tight hidden sm:block">Applies to all users</p>
+							<p class="text-xs font-medium leading-tight">{m.server_default()}</p>
+							<p class="text-muted-foreground hidden text-xs leading-tight sm:block">{m.applies_to_all_users()}</p>
 						</div>
 					</div>
-					
-					<div class="flex gap-1 flex-shrink-0">
-						<Button
-							variant={!serverValue ? 'default' : 'outline'}
-							size="sm"
-							onclick={() => !serverDisabled && onServerChange(false)}
-							disabled={serverDisabled}
-							class="text-xs px-2 sm:px-3 h-7 sm:h-8 min-w-[2.5rem]"
-						>
-							OFF
-						</Button>
-						<Button
-							variant={serverValue ? 'default' : 'outline'}
-							size="sm"
-							onclick={() => !serverDisabled && onServerChange(true)}
-							disabled={serverDisabled}
-							class="text-xs px-2 sm:px-3 h-7 sm:h-8 min-w-[2.5rem]"
-						>
-							ON
-						</Button>
+
+					<div class="flex flex-shrink-0 gap-1">
+						<div class="flex items-center">
+							<Switch
+								id={`server-${id}`}
+								bind:checked={serverValue}
+								disabled={serverDisabled}
+								onCheckedChange={(v) => !serverDisabled && onServerChange(!!v)}
+							/>
+						</div>
 					</div>
 				</div>
 			</div>
 
-			<!-- Local Override -->
-			<div class={`border rounded-md ${hasOverride ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800' : 'bg-muted/30 border-border'}`}>
+			<div
+				class={`rounded-md border ${hasOverride ? 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30' : 'bg-muted/30 border-border'}`}
+			>
 				<div class="flex items-center justify-between p-2 sm:p-3">
-					<div class="flex items-center gap-2 min-w-0 flex-1">
-						<SmartphoneIcon class="size-3 sm:size-4 text-muted-foreground flex-shrink-0" />
+					<div class="flex min-w-0 flex-1 items-center gap-2">
+						<SmartphoneIcon class="text-muted-foreground size-3 flex-shrink-0 sm:size-4" />
 						<div class="min-w-0 flex-1">
 							<div class="flex flex-col sm:flex-row sm:items-center sm:gap-1">
-								<p class="text-xs font-medium leading-tight">This Device</p>
+								<p class="text-xs font-medium leading-tight">{m.this_device()}</p>
 								{#if hasOverride}
-									<span class="text-xs text-orange-600 dark:text-orange-400 leading-tight">(Override)</span>
+									<span class="text-xs leading-tight text-orange-600 dark:text-orange-400">({m.override()})</span>
 								{/if}
 							</div>
-							<p class="text-xs text-muted-foreground leading-tight hidden sm:block">
-								{hasOverride ? 'Overriding server default' : 'Using server default'}
+							<p class="text-muted-foreground hidden text-xs leading-tight sm:block">
+								{hasOverride ? m.overriding_server_default() : m.server_default()}
 							</p>
 						</div>
 					</div>
-					
+
 					{#if hasOverride}
-						<div class="flex gap-1 flex-shrink-0">
-							<Button
-								variant={!localOverride ? 'default' : 'outline'}
-								size="sm"
-								onclick={() => onLocalOverride(false)}
-								class="text-xs px-2 sm:px-3 h-7 sm:h-8 min-w-[2.5rem]"
-							>
-								OFF
-							</Button>
-							<Button
-								variant={localOverride ? 'default' : 'outline'}
-								size="sm"
-								onclick={() => onLocalOverride(true)}
-								class="text-xs px-2 sm:px-3 h-7 sm:h-8 min-w-[2.5rem]"
-							>
-								ON
-							</Button>
+						<div class="flex flex-shrink-0 gap-1">
+							<div class="flex items-center">
+								<Switch id={`local-${id}`} bind:checked={localOverride} onCheckedChange={(v) => onLocalOverride(!!v)} />
+							</div>
 						</div>
 					{:else}
-						<div class="flex items-center gap-2 flex-shrink-0">
-							<span class="text-xs text-muted-foreground font-medium hidden sm:inline">
-								{effectiveValue ? 'ON' : 'OFF'}
+						<div class="flex flex-shrink-0 items-center gap-2">
+							<span class="text-muted-foreground hidden text-xs font-medium sm:inline">
+								{effectiveValue ? m.on() : m.off()}
 							</span>
-							<Button 
-								variant="outline" 
-								size="sm" 
+							<Button
+								variant="outline"
+								size="sm"
 								onclick={() => onLocalOverride(!effectiveValue)}
-								class="h-6 sm:h-7 text-xs px-2"
+								class="h-6 px-2 text-xs sm:h-7"
 							>
-								Override
+								{m.override()}
 							</Button>
 						</div>
 					{/if}
@@ -154,16 +135,17 @@
 			</div>
 		</div>
 
-		<!-- Current State Summary -->
-		<div class="bg-muted/30 border rounded-md p-2">
+		<div class="bg-muted/30 rounded-md border p-2">
 			<div class="flex items-center justify-between gap-2">
-				<span class="text-xs font-medium text-muted-foreground">Current State:</span>
-				<div class="flex items-center gap-1 flex-wrap justify-end">
-					<span class={`text-xs font-medium ${effectiveValue ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
-						{effectiveValue ? 'ON' : 'OFF'}
+				<span class="text-muted-foreground text-xs font-medium">{m.current_state()}:</span>
+				<div class="flex flex-wrap items-center justify-end gap-1">
+					<span
+						class={`text-xs font-medium ${effectiveValue ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}
+					>
+						{effectiveValue ? m.on() : m.off()}
 					</span>
-					<span class="text-xs text-muted-foreground">
-						({hasOverride ? 'Local Override' : 'Server Default'})
+					<span class="text-muted-foreground text-xs">
+						({hasOverride ? m.local_override() : m.server_default()})
 					</span>
 				</div>
 			</div>
