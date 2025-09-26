@@ -1,25 +1,33 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import type { NavigationItem, MobileNavigationSettings } from '$lib/config/navigation-config';
+	import { getAvailableMobileNavItems } from '$lib/config/navigation-config';
 	import MobileNavItem from './mobile-nav-item.svelte';
 	import { cn } from '$lib/utils';
 	import { createMobileNavInteractions } from '$lib/hooks/use-mobile-nav-interactions';
+	import { registerNavigationManager } from '$lib/utils/navigation.utils';
 	import MobileNavSheet from './mobile-nav-sheet.svelte';
 	import './styles.css';
 
 	let {
-		pinnedItems = [],
 		navigationSettings,
 		user = null,
 		versionInformation = null,
 		class: className = ''
 	}: {
-		pinnedItems: NavigationItem[];
 		navigationSettings: MobileNavigationSettings;
 		user?: any;
 		versionInformation?: any;
 		class?: string;
 	} = $props();
+
+	// Get pinned items from navigation settings
+	const pinnedItems = $derived.by(() => {
+		const availableItems = getAvailableMobileNavItems();
+		return navigationSettings.pinnedItems
+			.map((url) => availableItems.find((item) => item.url === url))
+			.filter((item) => item !== undefined);
+	});
 
 	const currentPath = $derived(page.url.pathname);
 
@@ -42,6 +50,8 @@
 		{
 			onVisibilityChange: (newVisible: boolean) => {
 				visible = newVisible;
+				// Sync the interaction manager's state
+				mobileNavInteractions.updateState({ visible: newVisible });
 			},
 			onMenuOpen: () => {
 				menuOpen = true;
@@ -103,6 +113,9 @@
 		if (navElement) {
 			// Setup the element with the interaction manager
 			mobileNavInteractions.setupElement(navElement);
+
+			// Register this manager globally so settings can access it
+			registerNavigationManager(mobileNavInteractions);
 
 			// Return cleanup function
 			return () => {

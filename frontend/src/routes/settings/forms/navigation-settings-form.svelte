@@ -13,7 +13,7 @@
 	import NavigationModeSettingControl from '$lib/components/navigation-mode-setting-control.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
-	import { navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
+	import { navigationSettingsOverridesStore, resetNavigationVisibility } from '$lib/utils/navigation.utils';
 
 	let {
 		settings,
@@ -60,6 +60,11 @@
 			[key]: value
 		};
 		persistedState = navigationSettingsOverridesStore.current;
+		
+		// Reset navigation bar visibility when behavior settings change
+		if (key === 'scrollToHide' || key === 'tapToHide') {
+			resetNavigationVisibility();
+		}
 	}
 
 	function clearLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide' | 'tapToHide') {
@@ -68,6 +73,11 @@
 		delete newOverrides[key];
 		navigationSettingsOverridesStore.current = newOverrides;
 		persistedState = navigationSettingsOverridesStore.current;
+
+		// Reset navigation bar visibility when behavior settings change
+		if (key === 'scrollToHide' || key === 'tapToHide') {
+			resetNavigationVisibility();
+		}
 
 		toast.success(`Local override cleared for ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
 	}
@@ -80,8 +90,20 @@
 		}
 		isLoading = true;
 
+		// Check if behavior settings changed
+		const behaviorChanged = 
+			data.mobileNavigationScrollToHide !== settings.mobileNavigationScrollToHide ||
+			data.mobileNavigationTapToHide !== settings.mobileNavigationTapToHide;
+
 		await callback(data)
-			.then(() => toast.success(m.navigation_settings_saved()))
+			.then(() => {
+				toast.success(m.navigation_settings_saved());
+				
+				// Reset navigation bar visibility if behavior settings changed
+				if (behaviorChanged) {
+					resetNavigationVisibility();
+				}
+			})
 			.catch((error) => {
 				console.error('Failed to save navigation settings:', error);
 				toast.error('Failed to save navigation settings. Please try again.');

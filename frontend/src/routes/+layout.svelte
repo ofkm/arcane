@@ -17,7 +17,6 @@
 	import MobileFloatingNav from '$lib/components/mobile-nav/mobile-floating-nav.svelte';
 	import MobileDockedNav from '$lib/components/mobile-nav/mobile-docked-nav.svelte';
 	import { getEffectiveNavigationSettings, navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
-	import { getAvailableMobileNavItems } from '$lib/config/navigation-config';
 
 	let {
 		data,
@@ -40,13 +39,6 @@
 		return getEffectiveNavigationSettings();
 	});
 	const navigationMode = $derived(navigationSettings.mode);
-
-	// Get pinned items from navigation settings
-	const pinnedItemsUrls = $derived(navigationSettings.pinnedItems);
-	const pinnedItems = $derived.by(() => {
-		const availableItems = getAvailableMobileNavItems();
-		return pinnedItemsUrls.map((url) => availableItems.find((item) => item.url === url)).filter((item) => item !== undefined);
-	});
 	const isLoginPage = $derived(
 		String(page.url.pathname) === '/login' ||
 			String(page.url.pathname).startsWith('/auth/login') ||
@@ -78,9 +70,9 @@
 			</main>
 			<!-- Mobile Navigation - Floating or Docked -->
 			{#if navigationMode === 'floating'}
-				<MobileFloatingNav {pinnedItems} {navigationSettings} {user} {versionInformation} />
+				<MobileFloatingNav {navigationSettings} {user} {versionInformation} />
 			{:else}
-				<MobileDockedNav {pinnedItems} {navigationSettings} {user} {versionInformation} />
+				<MobileDockedNav {navigationSettings} {user} {versionInformation} />
 			{/if}
 		{:else}
 			<Sidebar.Provider>

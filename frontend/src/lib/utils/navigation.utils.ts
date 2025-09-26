@@ -1,16 +1,33 @@
 import { PersistedState } from 'runed';
-import { defaultMobileNavigationSettings, type MobileNavigationSettings } from '$lib/config/navigation-config';
+import { 
+	defaultMobileNavigationSettings,
+	type MobileNavigationSettings
+} from '$lib/config/navigation-config';
 import settingsStore from '$lib/stores/config-store';
 import { get } from 'svelte/store';
+import type { MobileNavInteractionManager } from '$lib/hooks/use-mobile-nav-interactions';
 
 // Persistent storage for pinned navigation items
-export const pinnedItemsStore = new PersistedState('mobile-nav-preferences', defaultMobileNavigationSettings);
+export const pinnedItemsStore = new PersistedState('mobile-nav-settings', defaultMobileNavigationSettings);
 
 // Persistent storage for navigation settings overrides
 export const navigationSettingsOverridesStore = new PersistedState<Partial<MobileNavigationSettings>>(
 	'navigation-settings-overrides',
 	{}
 );
+
+// Global reference to navigation interaction managers
+let mobileNavManager: MobileNavInteractionManager | null = null;
+
+export function registerNavigationManager(manager: MobileNavInteractionManager) {
+	mobileNavManager = manager;
+}
+
+export function resetNavigationVisibility() {
+	if (mobileNavManager) {
+		mobileNavManager.resetVisibility();
+	}
+}
 
 export function getEffectiveNavigationSettings(): MobileNavigationSettings {
 	const serverSettings = get(settingsStore);

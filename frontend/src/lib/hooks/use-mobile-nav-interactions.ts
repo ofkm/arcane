@@ -35,6 +35,7 @@ export interface MobileNavInteractionState {
 	menuOpen: boolean;
 	scrollToHideEnabled: boolean;
 	tapToHideEnabled: boolean;
+	visible: boolean;
 }
 
 export class MobileNavInteractionManager {
@@ -79,7 +80,8 @@ export class MobileNavInteractionManager {
 		this.state = {
 			menuOpen: false,
 			scrollToHideEnabled: false,
-			tapToHideEnabled: false
+			tapToHideEnabled: false,
+			visible: true
 		};
 
 		// Initialize detectors directly in constructor
@@ -95,8 +97,10 @@ export class MobileNavInteractionManager {
 				return;
 			}
 
-			// Toggle visibility
-			this.callbacks.onVisibilityChange(false);
+			// Toggle visibility - if visible, hide it; if hidden, show it
+			const newVisibility = !this.state.visible;
+			this.state.visible = newVisibility;
+			this.callbacks.onVisibilityChange(newVisibility);
 
 			// Set debounce timeout
 			this.tapDebounceTimeoutId = setTimeout(() => {
@@ -121,6 +125,11 @@ export class MobileNavInteractionManager {
 
 	public updateState(newState: Partial<MobileNavInteractionState>) {
 		this.state = { ...this.state, ...newState };
+	}
+
+	public resetVisibility() {
+		this.state.visible = true;
+		this.callbacks.onVisibilityChange(true);
 	}
 
 	public setupElement(element: HTMLElement | null) {
@@ -276,10 +285,13 @@ export class MobileNavInteractionManager {
 
 			// Update visibility state based on scroll behavior
 			if (direction === 'down' && scrollY > this.options.scrollMinDistance) {
+				this.state.visible = false;
 				this.callbacks.onVisibilityChange(false);
 			} else if (direction === 'up') {
+				this.state.visible = true;
 				this.callbacks.onVisibilityChange(true);
 			} else if (direction === 'idle' && scrollY <= this.options.scrollTopThreshold) {
+				this.state.visible = true;
 				this.callbacks.onVisibilityChange(true);
 			}
 		}
@@ -288,6 +300,7 @@ export class MobileNavInteractionManager {
 	public handleMenuStateChange(previousMenuOpen: boolean, currentMenuOpen: boolean) {
 		// If menu was open and is now closed, make navigation bar visible
 		if (previousMenuOpen && !currentMenuOpen) {
+			this.state.visible = true;
 			this.callbacks.onVisibilityChange(true);
 		}
 
