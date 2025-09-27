@@ -145,7 +145,7 @@
 	"docker_auto_update_alert_title": "Mise à jour automatique activée",
 	"docker_auto_update_alert_description": "Automatic container updates are active with polling enabled",
 	"docker_rate_limit_warning_title": "Rate Limiting Warning",
-	"docker_rate_limit_warning_description": "Polling intervals below 30 minutes may trigger registry rate limits. Prefer longer intervals in production.",
+	"docker_rate_limit_warning_description": "",
 	"docker_prune_all": "Tout",
 	"docker_prune_all_description": "Remove all images not referenced by containers and include named, unused volumes during System Prune.",
 	"docker_prune_dangling": "Dangling",
