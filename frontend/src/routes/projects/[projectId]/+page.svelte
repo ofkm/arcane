@@ -10,6 +10,7 @@
 	import LayersIcon from '@lucide/svelte/icons/layers';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogsIcon from '@lucide/svelte/icons/logs';
+	import { TabBar, type TabItem } from '$lib/components/tab-bar/index.js';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { getStatusVariant } from '$lib/utils/status.utils';
@@ -80,6 +81,26 @@
 	let selectedTab = $state<'services' | 'compose' | 'logs'>('compose');
 	let composeOpen = $state(true);
 	let envOpen = $state(true);
+
+	const tabItems = $derived<TabItem[]>([
+		{
+			value: 'services',
+			label: m.compose_nav_services(),
+			icon: LayersIcon,
+			badge: project?.serviceCount
+		},
+		{
+			value: 'compose',
+			label: m.compose_nav_config(),
+			icon: SettingsIcon
+		},
+		{
+			value: 'logs',
+			label: m.compose_nav_logs(),
+			icon: LogsIcon,
+			disabled: project?.status !== 'running'
+		}
+	]);
 
 	let nameInputRef = $state<HTMLInputElement | null>(null);
 
@@ -221,55 +242,20 @@
 					</div>
 
 					<div class="mt-4">
-						<Tabs.List class="w-full justify-start gap-4">
-							<Tabs.Trigger
-								value="services"
-								class="gap-2"
-								onclick={() => {
-									selectedTab = 'services';
-									persistPrefs();
-								}}
-							>
-								<LayersIcon class="size-4" />
-								{m.compose_nav_services()}
-								{#if project.serviceCount}
-									<span
-										class="bg-primary text-primary-foreground ml-1 inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-medium"
-									>
-										{project.serviceCount}
-									</span>
-								{/if}
-							</Tabs.Trigger>
-							<Tabs.Trigger
-								value="compose"
-								class="gap-2"
-								onclick={() => {
-									selectedTab = 'compose';
-									persistPrefs();
-								}}
-							>
-								<SettingsIcon class="size-4" />
-								{m.compose_nav_config()}
-							</Tabs.Trigger>
-							<Tabs.Trigger
-								value="logs"
-								class="gap-2"
-								disabled={project.status !== 'running'}
-								onclick={() => {
-									selectedTab = 'logs';
-									persistPrefs();
-								}}
-							>
-								<LogsIcon class="size-4" />
-								{m.compose_nav_logs()}
-							</Tabs.Trigger>
-						</Tabs.List>
+						<TabBar
+							items={tabItems}
+							value={selectedTab}
+							onValueChange={(value: string) => {
+								selectedTab = value as 'services' | 'compose' | 'logs';
+								persistPrefs();
+							}}
+						/>
 					</div>
 				</div>
 			</div>
 
 			<div class="min-h-0 flex-1 overflow-hidden">
-				<div class="h-full px-4 py-4">
+				<div class="h-full px-1 py-4 sm:px-4">
 					<Tabs.Content value="services" class="h-full min-h-0">
 						<ServicesGrid services={project.services} />
 					</Tabs.Content>

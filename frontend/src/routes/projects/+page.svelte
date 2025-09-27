@@ -14,8 +14,8 @@
 	import { m } from '$lib/paraglide/messages';
 	import { projectService } from '$lib/services/project-service';
 	import { imageService } from '$lib/services/image-service';
-    import { environmentStore } from '$lib/stores/environment.store';
-    import type { Environment } from '$lib/types/environment.type';
+	import { environmentStore } from '$lib/stores/environment.store';
+	import type { Environment } from '$lib/types/environment.type';
 
 	let { data } = $props();
 
@@ -114,9 +114,9 @@
 			/>
 		</div>
 
-		<div class="absolute right-4 top-4 flex items-center sm:hidden">
+		<div class="absolute top-4 right-4 flex items-center sm:hidden">
 			<DropdownMenu.Root>
-				<DropdownMenu.Trigger class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border">
+				<DropdownMenu.Trigger class="bg-background/70 inline-flex size-9 items-center justify-center rounded-lg border">
 					<span class="sr-only">{m.common_open_menu()}</span>
 					<EllipsisIcon />
 				</DropdownMenu.Trigger>
