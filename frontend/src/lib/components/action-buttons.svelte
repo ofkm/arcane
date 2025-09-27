@@ -9,8 +9,6 @@
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
-	import { get } from 'svelte/store';
 	import { m } from '$lib/paraglide/messages';
 	import { containerService } from '$lib/services/container-service';
 	import { projectService } from '$lib/services/project-service';

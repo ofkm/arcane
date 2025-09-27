@@ -3,14 +3,14 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import FileStackIcon from '@lucide/svelte/icons/file-stack';
 	import LayersIcon from '@lucide/svelte/icons/layers';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogsIcon from '@lucide/svelte/icons/logs';
-	import { TabBar, type TabItem } from '$lib/components/tab-bar/index.js';
+	import { type TabItem } from '$lib/components/tab-bar/index.js';
+	import TabbedPageLayout from '$lib/layouts/tabbed-page-layout.svelte';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { getStatusVariant } from '$lib/utils/status.utils';
@@ -183,141 +183,123 @@
 	}
 </script>
 
-<div class="bg-background flex h-full flex-col overflow-hidden overscroll-y-none">
-	{#if project}
-		<Tabs.Root value={selectedTab} class="flex min-h-0 w-full flex-1 flex-col">
-			<div class="bg-background sticky top-0 flex-shrink-0 border-b backdrop-blur">
-				<div class="mx-auto max-w-full px-4 py-3">
-					<div class="flex items-center justify-between gap-3">
-						<div class="flex min-w-0 items-center gap-3">
-							<Button variant="ghost" size="sm" href="/projects">
-								<ArrowLeftIcon class="mr-2 size-4" />
-								{m.common_back()}
-							</Button>
-							<Separator orientation="vertical" class="mx-1 h-5" />
-							<div class="min-w-0">
-								<div class="flex items-center gap-2">
-									<EditableName
-										bind:value={$inputs.name.value}
-										bind:ref={nameInputRef}
-										error={$inputs.name.error ?? undefined}
-										originalValue={originalName}
-										canEdit={canEditName}
-										onCommit={saveNameIfChanged}
-									/>
-									{#if project.status}
-										<StatusBadge variant={getStatusVariant(project.status)} text={capitalizeFirstLetter(project.status)} />
-									{/if}
-								</div>
-								{#if project.createdAt}
-									<p class="text-muted-foreground mt-0.5 text-xs">
-										{m.common_created()}: {new Date(project.createdAt ?? '').toLocaleDateString()}
-									</p>
-								{/if}
-							</div>
-						</div>
-						<div class="flex items-center gap-2">
-							{#if hasChanges}
-								<ArcaneButton
-									action="save"
-									loading={isLoading.saving}
-									onclick={handleSaveChanges}
-									disabled={!hasChanges}
-									customLabel={m.common_save()}
-									loadingLabel={m.common_saving()}
-								/>
-							{/if}
-							<ActionButtons
-								id={project.id}
-								type="project"
-								itemState={project.status}
-								bind:startLoading={isLoading.deploying}
-								bind:stopLoading={isLoading.stopping}
-								bind:restartLoading={isLoading.restarting}
-								bind:removeLoading={isLoading.removing}
-								bind:redeployLoading={isLoading.redeploying}
-								onActionComplete={() => invalidateAll()}
-							/>
-						</div>
+{#if project}
+	<TabbedPageLayout
+		backUrl="/projects"
+		backLabel={m.common_back()}
+		{tabItems}
+		{selectedTab}
+		onTabChange={(value) => {
+			selectedTab = value as 'services' | 'compose' | 'logs';
+			persistPrefs();
+		}}
+	>
+		{#snippet headerInfo()}
+			<div class="flex items-center gap-2">
+				<EditableName
+					bind:value={$inputs.name.value}
+					bind:ref={nameInputRef}
+					error={$inputs.name.error ?? undefined}
+					originalValue={originalName}
+					canEdit={canEditName}
+					onCommit={saveNameIfChanged}
+				/>
+				{#if project.status}
+					<StatusBadge variant={getStatusVariant(project.status)} text={capitalizeFirstLetter(project.status)} />
+				{/if}
+			</div>
+			{#if project.createdAt}
+				<p class="text-muted-foreground mt-0.5 text-xs">
+					{m.common_created()}: {new Date(project.createdAt ?? '').toLocaleDateString()}
+				</p>
+			{/if}
+		{/snippet}
+
+		{#snippet headerActions()}
+			{#if hasChanges}
+				<ArcaneButton
+					action="save"
+					loading={isLoading.saving}
+					onclick={handleSaveChanges}
+					disabled={!hasChanges}
+					customLabel={m.common_save()}
+					loadingLabel={m.common_saving()}
+				/>
+			{/if}
+			<ActionButtons
+				id={project.id}
+				type="project"
+				itemState={project.status}
+				bind:startLoading={isLoading.deploying}
+				bind:stopLoading={isLoading.stopping}
+				bind:restartLoading={isLoading.restarting}
+				bind:removeLoading={isLoading.removing}
+				bind:redeployLoading={isLoading.redeploying}
+				onActionComplete={() => invalidateAll()}
+			/>
+		{/snippet}
+
+		{#snippet tabContent(tab)}
+			<Tabs.Content value="services" class="h-full min-h-0">
+				<ServicesGrid services={project.services} />
+			</Tabs.Content>
+
+			<Tabs.Content value="compose" class="h-full min-h-0">
+				<div class="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-3" style="grid-template-rows: 1fr;">
+					<div class="h-full min-h-0 lg:col-span-2">
+						<CodePanel
+							bind:open={composeOpen}
+							title={m.compose_compose_file_title()}
+							language="yaml"
+							bind:value={$inputs.composeContent.value}
+							placeholder={m.compose_compose_placeholder()}
+							error={$inputs.composeContent.error ?? undefined}
+						/>
 					</div>
 
-					<div class="mt-4">
-						<TabBar
-							items={tabItems}
-							value={selectedTab}
-							onValueChange={(value: string) => {
-								selectedTab = value as 'services' | 'compose' | 'logs';
-								persistPrefs();
-							}}
+					<div class="h-full min-h-0 lg:col-span-1">
+						<CodePanel
+							bind:open={envOpen}
+							title={m.compose_env_title()}
+							language="env"
+							bind:value={$inputs.envContent.value}
+							placeholder={m.compose_env_placeholder()}
+							error={$inputs.envContent.error ?? undefined}
 						/>
 					</div>
 				</div>
+			</Tabs.Content>
+
+			<Tabs.Content value="logs" class="h-full min-h-0">
+				{#if project.status == 'running'}
+					<div class="h-full min-h-0">
+						<StackLogsPanel projectId={project.id} bind:autoScroll={autoScrollStackLogs} />
+					</div>
+				{:else}
+					<div class="text-muted-foreground py-12 text-center">{m.compose_logs_title()} Unavailable</div>
+				{/if}
+			</Tabs.Content>
+		{/snippet}
+	</TabbedPageLayout>
+{:else if !data.error}
+	<div class="flex min-h-screen items-center justify-center">
+		<div class="text-center">
+			<div class="bg-muted/50 mb-6 inline-flex rounded-full p-6">
+				<FileStackIcon class="text-muted-foreground size-10" />
 			</div>
-
-			<div class="min-h-0 flex-1 overflow-hidden">
-				<div class="h-full px-1 py-4 sm:px-4">
-					<Tabs.Content value="services" class="h-full min-h-0">
-						<ServicesGrid services={project.services} />
-					</Tabs.Content>
-
-					<Tabs.Content value="compose" class="h-full min-h-0">
-						<div class="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-3" style="grid-template-rows: 1fr;">
-							<div class="h-full min-h-0 lg:col-span-2">
-								<CodePanel
-									bind:open={composeOpen}
-									title={m.compose_compose_file_title()}
-									language="yaml"
-									bind:value={$inputs.composeContent.value}
-									placeholder={m.compose_compose_placeholder()}
-									error={$inputs.composeContent.error ?? undefined}
-								/>
-							</div>
-
-							<div class="h-full min-h-0 lg:col-span-1">
-								<CodePanel
-									bind:open={envOpen}
-									title={m.compose_env_title()}
-									language="env"
-									bind:value={$inputs.envContent.value}
-									placeholder={m.compose_env_placeholder()}
-									error={$inputs.envContent.error ?? undefined}
-								/>
-							</div>
-						</div>
-					</Tabs.Content>
-
-					<Tabs.Content value="logs" class="h-full min-h-0">
-						{#if project.status == 'running'}
-							<div class="h-full min-h-0">
-								<StackLogsPanel projectId={project.id} bind:autoScroll={autoScrollStackLogs} />
-							</div>
-						{:else}
-							<div class="text-muted-foreground py-12 text-center">{m.compose_logs_title()} Unavailable</div>
-						{/if}
-					</Tabs.Content>
-				</div>
-			</div>
-		</Tabs.Root>
-	{:else if !data.error}
-		<div class="flex min-h-screen items-center justify-center">
-			<div class="text-center">
-				<div class="bg-muted/50 mb-6 inline-flex rounded-full p-6">
-					<FileStackIcon class="text-muted-foreground size-10" />
-				</div>
-				<h2 class="mb-3 text-2xl font-medium">{m.compose_not_found_title()}</h2>
-				<p class="text-muted-foreground mb-8 max-w-md text-center">
-					{m.compose_not_found_description()}
-				</p>
-				<Button variant="outline" href="/projects">
-					<ArrowLeftIcon class="mr-2 size-4" />
-					{m.compose_back_to_projects()}
-				</Button>
-			</div>
+			<h2 class="mb-3 text-2xl font-medium">{m.compose_not_found_title()}</h2>
+			<p class="text-muted-foreground mb-8 max-w-md text-center">
+				{m.compose_not_found_description()}
+			</p>
+			<Button variant="outline" href="/projects">
+				<ArrowLeftIcon class="mr-2 size-4" />
+				{m.compose_back_to_projects()}
+			</Button>
 		</div>
-	{/if}
+	</div>
+{/if}
 
-	<Tooltip.Provider />
-</div>
+<Tooltip.Provider />
 
 <style>
 	:global(.tab-body) {
