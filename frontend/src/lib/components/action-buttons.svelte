@@ -7,6 +7,8 @@
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import ProgressPopover from '$lib/components/progress-popover.svelte';
 	import DownloadIcon from '@lucide/svelte/icons/download';
+	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
 	import { get } from 'svelte/store';
 	import { m } from '$lib/paraglide/messages';
@@ -414,59 +416,118 @@
 	}
 </script>
 
-<div class="flex items-center gap-2">
-	{#if !isRunning}
+<div>
+	<!-- Desktop / tablet buttons -->
+	<div class="hidden items-center gap-2 sm:flex">
+		{#if !isRunning}
+			{#if type === 'container'}
+				<ArcaneButton action="start" onclick={() => handleStart()} loading={uiLoading.start} />
+			{:else}
+				<ProgressPopover
+					bind:open={deployPullPopoverOpen}
+					bind:progress={pullProgress}
+					title={m.progress_pulling_images()}
+					statusText={pullStatusText}
+					error={pullError}
+					loading={deployPulling}
+					icon={DownloadIcon}
+				>
+					<ArcaneButton action="deploy" onclick={() => handleDeploy()} loading={uiLoading.start} />
+				</ProgressPopover>
+			{/if}
+		{/if}
+
+		{#if isRunning}
+			<ArcaneButton
+				action="stop"
+				customLabel={type === 'project' ? (m.action_down ? m.action_down() : 'Down') : undefined}
+				onclick={() => handleStop()}
+				loading={uiLoading.stop}
+			/>
+			<ArcaneButton action="restart" onclick={() => handleRestart()} loading={uiLoading.restart} />
+		{/if}
+
 		{#if type === 'container'}
-			<ArcaneButton action="start" onclick={() => handleStart()} loading={uiLoading.start} />
+			<ArcaneButton action="remove" onclick={() => confirmAction('remove')} loading={uiLoading.remove} />
 		{:else}
-			<ProgressPopover
-				bind:open={deployPullPopoverOpen}
-				bind:progress={pullProgress}
-				title={m.progress_pulling_images()}
-				statusText={pullStatusText}
-				error={pullError}
-				loading={deployPulling}
-				icon={DownloadIcon}
-			>
-				<ArcaneButton action="deploy" onclick={() => handleDeploy()} loading={uiLoading.start} />
-			</ProgressPopover>
+			<ArcaneButton action="redeploy" onclick={() => confirmAction('redeploy')} loading={uiLoading.redeploy} />
+
+			{#if type === 'project'}
+				<ProgressPopover
+					bind:open={pullPopoverOpen}
+					bind:progress={pullProgress}
+					title={m.progress_pulling_images()}
+					statusText={pullStatusText}
+					error={pullError}
+					loading={projectPulling}
+					icon={DownloadIcon}
+				>
+					<ArcaneButton action="pull" onclick={() => handleProjectPull()} loading={projectPulling} />
+				</ProgressPopover>
+			{/if}
+
+			<ArcaneButton
+				customLabel={type === 'project' ? m.compose_destroy() : m.common_remove()}
+				action="remove"
+				onclick={() => confirmAction('remove')}
+				loading={uiLoading.remove}
+			/>
 		{/if}
-	{/if}
+	</div>
 
-	{#if isRunning}
-		<ArcaneButton
-			action="stop"
-			customLabel={type === 'project' ? (m.action_down ? m.action_down() : 'Down') : undefined}
-			onclick={() => handleStop()}
-			loading={uiLoading.stop}
-		/>
-		<ArcaneButton action="restart" onclick={() => handleRestart()} loading={uiLoading.restart} />
-	{/if}
+	<!-- Mobile: ellipsis dropdown -->
+	<div class="flex items-center sm:hidden">
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border">
+				<span class="sr-only">{m.common_open_menu()}</span>
+				<EllipsisIcon />
+			</DropdownMenu.Trigger>
 
-	{#if type === 'container'}
-		<ArcaneButton action="remove" onclick={() => confirmAction('remove')} loading={uiLoading.remove} />
-	{:else}
-		<ArcaneButton action="redeploy" onclick={() => confirmAction('redeploy')} loading={uiLoading.redeploy} />
-
-		{#if type === 'project'}
-			<ProgressPopover
-				bind:open={pullPopoverOpen}
-				bind:progress={pullProgress}
-				title={m.progress_pulling_images()}
-				statusText={pullStatusText}
-				error={pullError}
-				loading={projectPulling}
-				icon={DownloadIcon}
+			<DropdownMenu.Content
+				align="end"
+				class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[180px] rounded-md p-1 shadow-lg backdrop-blur-sm supports-[backdrop-filter]:backdrop-blur-sm"
 			>
-				<ArcaneButton action="pull" onclick={() => handleProjectPull()} loading={projectPulling} />
-			</ProgressPopover>
-		{/if}
+				<DropdownMenu.Group>
+					{#if !isRunning}
+						{#if type === 'container'}
+							<DropdownMenu.Item onclick={handleStart} disabled={uiLoading.start}>
+								{m.common_start()}
+							</DropdownMenu.Item>
+						{:else}
+							<DropdownMenu.Item onclick={handleDeploy} disabled={uiLoading.start}>
+								{m.action_up()}
+							</DropdownMenu.Item>
+						{/if}
+					{:else}
+						<DropdownMenu.Item onclick={handleStop} disabled={uiLoading.stop}>
+							{type === 'project' && m.action_down ? m.action_down() : m.common_stop()}
+						</DropdownMenu.Item>
+						<DropdownMenu.Item onclick={handleRestart} disabled={uiLoading.restart}>
+							{m.common_restart()}
+						</DropdownMenu.Item>
+					{/if}
 
-		<ArcaneButton
-			customLabel={type === 'project' ? m.compose_destroy() : m.common_remove()}
-			action="remove"
-			onclick={() => confirmAction('remove')}
-			loading={uiLoading.remove}
-		/>
-	{/if}
+					{#if type === 'container'}
+						<DropdownMenu.Item onclick={() => confirmAction('remove')} disabled={uiLoading.remove}>
+							{m.common_remove()}
+						</DropdownMenu.Item>
+					{:else}
+						<DropdownMenu.Item onclick={() => confirmAction('redeploy')} disabled={uiLoading.redeploy}>
+							{m.action_redeploy()}
+						</DropdownMenu.Item>
+
+						{#if type === 'project'}
+							<DropdownMenu.Item onclick={handleProjectPull} disabled={projectPulling || uiLoading.pulling}>
+								{m.images_pull()}
+							</DropdownMenu.Item>
+						{/if}
+
+						<DropdownMenu.Item onclick={() => confirmAction('remove')} disabled={uiLoading.remove}>
+							{type === 'project' ? m.compose_destroy() : m.common_remove()}
+						</DropdownMenu.Item>
+					{/if}
+				</DropdownMenu.Group>
+			</DropdownMenu.Content>
+		</DropdownMenu.Root>
+	</div>
 </div>

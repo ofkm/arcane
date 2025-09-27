@@ -106,38 +106,8 @@
 		}
 	}
 
-	let imageRequestOptions = $state(data.imageRequestOptions);
-
 	async function refreshData() {
 		isLoading.refreshing = true;
-
-		// const [dockerInfoResult, settingsResult, imagesResult, statusCountsResult] = await Promise.allSettled([
-		// 	tryCatch(environmentAPI.getDockerInfo()),
-		// 	tryCatch(settingsAPI.getSettings()),
-		// 	tryCatch(environmentAPI.getImages(imageRequestOptions)),
-		// 	tryCatch(environmentAPI.getContainerStatusCounts())
-		// ]);
-
-		// if (dockerInfoResult.status === 'fulfilled' && !dockerInfoResult.value.error) {
-		// 	dashboardStates.dockerInfo = dockerInfoResult.value.data;
-		// 	dockerInfo = dockerInfoResult.value.data;
-		// }
-		// isLoading.loadingDockerInfo = false;
-
-		// if (settingsResult.status === 'fulfilled' && !settingsResult.value.error) {
-		// 	dashboardStates.settings = settingsResult.value.data;
-		// }
-
-		// if (imagesResult.status === 'fulfilled') {
-		// 	if (!imagesResult.value.error) {
-		// 		images = imagesResult.value.data;
-		// 	}
-		// }
-		// isLoading.loadingImages = false;
-
-		// if (statusCountsResult.status === 'fulfilled' && !statusCountsResult.value.error) {
-		// 	containerStatusCounts = statusCountsResult.value.data;
-		// }
 
 		await invalidateAll();
 		isLoading.refreshing = false;
@@ -271,7 +241,7 @@
 			images: m.prune_unused_images(),
 			networks: m.prune_unused_networks(),
 			volumes: m.prune_unused_volumes(),
-			buildCache: 'Build cache'
+			buildCache: m.build_cache()
 		};
 		const typesString = selectedTypes.map((t) => typeLabels[t]).join(', ');
 
@@ -293,7 +263,7 @@
 </script>
 
 <div class="space-y-8">
-	<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+	<div class="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 		<div class="space-y-1">
 			<h1 class="text-3xl font-bold tracking-tight">{m.dashboard_title()}</h1>
 			<p class="text-muted-foreground max-w-2xl text-sm">{m.dashboard_subtitle()}</p>
@@ -301,7 +271,7 @@
 
 		<div class="flex flex-wrap items-center justify-end gap-2">
 			<QuickActions
-				class="flex flex-wrap items-center gap-2"
+				class="absolute right-4 top-4 flex-wrap items-center gap-2 sm:static sm:flex"
 				compact
 				dockerInfo={dashboardStates.dockerInfo}
 				{stoppedContainers}
@@ -319,11 +289,10 @@
 
 	<section>
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 			<MeterMetric
 				title={m.dashboard_meter_running()}
 				icon={ContainerIcon}
-				description={m.dashboard_meter_running_desc()}
 				currentValue={isLoading.loadingStats ? undefined : runningContainers}
 				formatValue={(v) => v.toString()}
 				maxValue={Math.max(totalContainers, 1)}

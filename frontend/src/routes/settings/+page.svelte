@@ -5,6 +5,7 @@
 	import DatabaseIcon from '@lucide/svelte/icons/database';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import ShieldIcon from '@lucide/svelte/icons/shield';
+	import NavigationIcon from '@lucide/svelte/icons/navigation';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
@@ -153,6 +154,71 @@
 			]
 		},
 		{
+			id: 'navigation',
+			title: m.navigation_title(),
+			description: m.navigation_description(),
+			icon: NavigationIcon,
+			url: '/settings/navigation',
+			keywords: [
+				'navigation',
+				'nav',
+				'menu',
+				'bar',
+				'floating',
+				'docked',
+				'behavior',
+				'mobile',
+				'desktop',
+				'ui',
+				'interface',
+				'layout',
+				'appearance',
+				'customize'
+			],
+			settings: [
+				{
+					key: 'mobileNavigationMode',
+					label: m.navigation_mode_label(),
+					type: 'select',
+					description: m.navigation_mode_description(),
+					keywords: ['mode', 'style', 'type', 'floating', 'docked', 'position', 'layout', 'design', 'appearance', 'bottom']
+				},
+				{
+					key: 'mobileNavigationShowLabels',
+					label: m.navigation_show_labels_label(),
+					type: 'boolean',
+					description: m.navigation_show_labels_description(),
+					keywords: ['labels', 'text', 'icons', 'display', 'show', 'hide', 'names', 'captions', 'titles', 'visible', 'toggle']
+				},
+				{
+					key: 'mobileNavigationScrollToHide',
+					label: m.navigation_scroll_to_hide_label(),
+					type: 'boolean',
+					description: m.navigation_scroll_to_hide_description(),
+					keywords: [
+						'scroll',
+						'hide',
+						'auto-hide',
+						'behavior',
+						'down',
+						'up',
+						'automatic',
+						'disappear',
+						'vanish',
+						'minimize',
+						'collapse'
+					]
+				},
+				{
+					key: 'mobileNavigationTapToHide',
+					label: m.navigation_tap_to_hide_label(),
+					type: 'boolean',
+					description: m.navigation_tap_to_hide_description(),
+					keywords: ['tap', 'touch', 'hide', 'show', 'toggle', 'gesture', 'click', 'outside', 'dismiss', 'interact', 'control']
+				}
+			]
+		},
+		{
 			id: 'users',
 			title: m.users_title(),
 			description: m.users_subtitle(),
@@ -242,8 +308,7 @@
 	}
 </script>
 
-<div class="px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-	<!-- Header -->
+<div class="px-2 py-4 sm:px-6 sm:py-6 lg:px-8">
 	<div class="mb-6 sm:mb-8">
 		<div
 			class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 shadow-sm sm:p-6"
@@ -270,7 +335,6 @@
 					</div>
 				</div>
 
-				<!-- Search Bar -->
 				<div class="relative mt-4 w-full sm:mt-6 sm:max-w-md">
 					<SearchIcon class="text-muted-foreground absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2" />
 					<input

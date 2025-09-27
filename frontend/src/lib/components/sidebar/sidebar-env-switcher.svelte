@@ -115,7 +115,7 @@
 			<DropdownMenu.Content
 				class="w-[var(--bits-dropdown-menu-anchor-width)] min-w-56 rounded-lg"
 				align="start"
-				side={sidebar.isMobile ? 'bottom' : 'right'}
+				side="right"
 				sideOffset={4}
 			>
 				<div

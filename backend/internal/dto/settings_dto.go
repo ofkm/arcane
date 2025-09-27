@@ -32,4 +32,10 @@ type UpdateSettingsDto struct {
 	// Onboarding settings
 	OnboardingCompleted *string `json:"onboardingCompleted,omitempty"`
 	OnboardingSteps     *string `json:"onboardingSteps,omitempty"`
+
+	// Navigation settings
+	MobileNavigationMode         *string `json:"mobileNavigationMode,omitempty"`
+	MobileNavigationShowLabels   *string `json:"mobileNavigationShowLabels,omitempty"`
+	MobileNavigationScrollToHide *string `json:"mobileNavigationScrollToHide,omitempty"`
+	MobileNavigationTapToHide    *string `json:"mobileNavigationTapToHide,omitempty"`
 }

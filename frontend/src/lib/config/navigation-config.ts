@@ -13,16 +13,17 @@ import ShieldIcon from '@lucide/svelte/icons/shield';
 import ComputerIcon from '@lucide/svelte/icons/computer';
 import LockKeyholeIcon from '@lucide/svelte/icons/lock-keyhole';
 import AlarmClockIcon from '@lucide/svelte/icons/alarm-clock';
+import NavigationIcon from '@lucide/svelte/icons/navigation';
 import { m } from '$lib/paraglide/messages';
 
-export type SidebarItem = {
+export type NavigationItem = {
 	title: string;
 	url: string;
 	icon: typeof IconType;
-	items?: SidebarItem[];
+	items?: NavigationItem[];
 };
 
-export const sidebarItems: Record<string, SidebarItem[]> = {
+export const navigationItems: Record<string, NavigationItem[]> = {
 	managementItems: [
 		{ title: m.dashboard_title(), url: '/dashboard', icon: HouseIcon },
 		{ title: m.containers_title(), url: '/containers', icon: ContainerIcon },
@@ -63,9 +64,50 @@ export const sidebarItems: Record<string, SidebarItem[]> = {
 			items: [
 				{ title: m.general_title(), url: '/settings/general', icon: SettingsIcon },
 				{ title: m.docker_title(), url: '/settings/docker', icon: DatabaseIcon },
-				{ title: m.users_title(), url: '/settings/users', icon: UserIcon },
-				{ title: m.security_title(), url: '/settings/security', icon: ShieldIcon }
+				{ title: m.security_title(), url: '/settings/security', icon: ShieldIcon },
+				{ title: m.navigation_title(), url: '/settings/navigation', icon: NavigationIcon },
+				{ title: m.users_title(), url: '/settings/users', icon: UserIcon }
 			]
 		}
 	]
+};
+
+export const defaultMobilePinnedItems: NavigationItem[] = [
+	navigationItems.managementItems[0],
+	navigationItems.managementItems[1],
+	navigationItems.managementItems[3],
+	navigationItems.managementItems[5]
+];
+
+export type MobileNavigationSettings = {
+	pinnedItems: string[];
+	mode: 'floating' | 'docked';
+	showLabels: boolean;
+	scrollToHide: boolean;
+	tapToHide: boolean;
+};
+
+export function getAvailableMobileNavItems(): NavigationItem[] {
+	const flatItems: NavigationItem[] = [];
+
+	flatItems.push(...navigationItems.managementItems);
+	flatItems.push(...navigationItems.customizationItems);
+
+	if (navigationItems.environmentItems) {
+		flatItems.push(...navigationItems.environmentItems);
+	}
+	if (navigationItems.settingsItems) {
+		const settingsTopLevel = navigationItems.settingsItems.filter((item) => !item.items);
+		flatItems.push(...settingsTopLevel);
+	}
+
+	return flatItems;
+}
+
+export const defaultMobileNavigationSettings: MobileNavigationSettings = {
+	pinnedItems: defaultMobilePinnedItems.map((item) => item.url),
+	mode: 'floating',
+	showLabels: true,
+	scrollToHide: true,
+	tapToHide: false
 };

@@ -13,6 +13,10 @@
 	import type { Snippet } from 'svelte';
 	import Error from '$lib/components/error.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
+	import MobileFloatingNav from '$lib/components/mobile-nav/mobile-floating-nav.svelte';
+	import MobileDockedNav from '$lib/components/mobile-nav/mobile-docked-nav.svelte';
+	import { getEffectiveNavigationSettings, navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
 
 	let {
 		data,
@@ -24,8 +28,16 @@
 
 	const { versionInformation, user, settings } = data;
 
+	const isMobile = new IsMobile();
 	const isNavigating = $derived(navigating.type !== null);
 	const isOnboardingPage = $derived(String(page.url.pathname).startsWith('/onboarding'));
+
+	const navigationSettings = $derived.by(() => {
+		settings;
+		navigationSettingsOverridesStore.current;
+		return getEffectiveNavigationSettings();
+	});
+	const navigationMode = $derived(navigationSettings.mode);
 	const isLoginPage = $derived(
 		String(page.url.pathname) === '/login' ||
 			String(page.url.pathname).startsWith('/auth/login') ||
@@ -46,14 +58,30 @@
 	{#if !settings}
 		<Error message={m.error_occurred()} showButton={true} />
 	{:else if !isOnboardingPage && !isLoginPage}
-		<Sidebar.Provider>
-			<AppSidebar {versionInformation} {user} />
+		{#if isMobile.current}
 			<main class="flex-1">
-				<section class="p-5">
+				<section
+					class={`px-2 py-5 sm:p-5 ${navigationMode === 'docked' ? 'pb-6' : 'pb-24'}`}
+					style={navigationMode === 'docked' ? 'padding-bottom: max(1.5rem, calc(4rem + env(safe-area-inset-bottom)))' : ''}
+				>
 					{@render children()}
 				</section>
 			</main>
-		</Sidebar.Provider>
+			{#if navigationMode === 'floating'}
+				<MobileFloatingNav {navigationSettings} {user} {versionInformation} />
+			{:else}
+				<MobileDockedNav {navigationSettings} {user} {versionInformation} />
+			{/if}
+		{:else}
+			<Sidebar.Provider>
+				<AppSidebar {versionInformation} {user} />
+				<main class="flex-1">
+					<section class="p-5">
+						{@render children()}
+					</section>
+				</main>
+			</Sidebar.Provider>
+		{/if}
 	{:else}
 		<main class="flex-1">
 			{@render children()}

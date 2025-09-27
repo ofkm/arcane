@@ -74,7 +74,6 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*
 		return nil, fmt.Errorf("load compose project: %w", err)
 	}
 
-	// Optional: drop unused resources
 	project = project.WithoutUnnecessaryResources()
 
 	// Ensure Compose discovery labels via CustomLabels
@@ -86,6 +85,9 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*
 		s.CustomLabels[api.ServiceLabel] = s.Name
 		s.CustomLabels[api.VersionLabel] = api.ComposeVersion
 		s.CustomLabels[api.OneoffLabel] = "False"
+		s.CustomLabels[api.WorkingDirLabel] = workdir
+		s.CustomLabels[api.ConfigFilesLabel] = composeFile
+
 		project.Services[i] = s
 	}
 
