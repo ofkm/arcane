@@ -38,10 +38,6 @@
 		[key: string]: any;
 	}
 
-	function ensureNetworkConfig(config: any): NetworkConfig {
-		return config as NetworkConfig;
-	}
-
 	let { data } = $props();
 	let container = $derived(data?.container as ContainerDetailsDto);
 	let stats = $derived((data?.stats ?? null) as Docker.ContainerStats | null);

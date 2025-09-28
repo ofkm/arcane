@@ -115,7 +115,6 @@
 		}
 	}
 
-	// Configure action buttons for the layout
 	const actionButtons: ActionButton[] = [
 		{
 			id: 'refresh',
@@ -200,7 +199,7 @@
 												{registry.enabled ? m.common_enabled() : m.common_disabled()}
 											</Badge>
 										</div>
-										<p class="text-muted-foreground text-sm break-all">{registry.url}</p>
+										<p class="text-muted-foreground break-all text-sm">{registry.url}</p>
 										{#if registry.description}
 											<p class="text-muted-foreground mt-1 text-sm">{registry.description}</p>
 										{/if}
@@ -212,7 +211,11 @@
 											disabled={isLoading.updating.has(registry.id)}
 										/>
 
-										<Button variant="outline" size="sm" onclick={() => window.open(registry.url, '_blank')}>
+										<Button
+											variant="outline"
+											size="sm"
+											onclick={() => window.open(registry.url, '_blank', 'noopener,noreferrer')}
+										>
 											<ExternalLinkIcon class="size-4" />
 										</Button>
 
