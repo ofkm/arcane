@@ -106,14 +106,14 @@
 			<div class="flex items-center justify-center">
 				<span class="text-muted-foreground flex items-center gap-0.5 text-[8px] whitespace-nowrap opacity-30">
 					<PencilIcon class="size-1.5" />
-					Tap to edit
+					{m.tap_to_edit()}
 				</span>
 			</div>
 		{:else}
 			<div class="flex items-center justify-center">
 				<span class="text-muted-foreground inline-flex cursor-help items-center gap-0.5 text-[8px] whitespace-nowrap opacity-40">
 					<InfoIcon class="size-1.5" />
-					Cannot edit
+					{m.cannot_edit()}
 				</span>
 			</div>
 		{/if}

@@ -217,27 +217,29 @@
 		{/snippet}
 
 		{#snippet headerActions()}
-			{#if hasChanges}
-				<ArcaneButton
-					action="save"
-					loading={isLoading.saving}
-					onclick={handleSaveChanges}
-					disabled={!hasChanges}
-					customLabel={m.common_save()}
-					loadingLabel={m.common_saving()}
+			<div class="flex items-center gap-2">
+				{#if hasChanges}
+					<ArcaneButton
+						action="save"
+						loading={isLoading.saving}
+						onclick={handleSaveChanges}
+						disabled={!hasChanges}
+						customLabel={m.common_save()}
+						loadingLabel={m.common_saving()}
+					/>
+				{/if}
+				<ActionButtons
+					id={project.id}
+					type="project"
+					itemState={project.status}
+					bind:startLoading={isLoading.deploying}
+					bind:stopLoading={isLoading.stopping}
+					bind:restartLoading={isLoading.restarting}
+					bind:removeLoading={isLoading.removing}
+					bind:redeployLoading={isLoading.redeploying}
+					onActionComplete={() => invalidateAll()}
 				/>
-			{/if}
-			<ActionButtons
-				id={project.id}
-				type="project"
-				itemState={project.status}
-				bind:startLoading={isLoading.deploying}
-				bind:stopLoading={isLoading.stopping}
-				bind:restartLoading={isLoading.restarting}
-				bind:removeLoading={isLoading.removing}
-				bind:redeployLoading={isLoading.redeploying}
-				onActionComplete={() => invalidateAll()}
-			/>
+			</div>
 		{/snippet}
 
 		{#snippet tabContent()}
