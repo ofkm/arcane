@@ -112,6 +112,22 @@ func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*
 		slog.Uint64("space_reclaimed", result.SpaceReclaimed),
 		slog.Int("error_count", len(result.Errors)))
 
+	if s.networkService != nil {
+		if err := s.networkService.SyncDockerNetworks(ctx); err != nil {
+			slog.WarnContext(ctx, "failed to sync networks after prune", slog.Any("err", err))
+		}
+	}
+	if s.volumeService != nil {
+		if err := s.volumeService.SyncDockerVolumes(ctx); err != nil {
+			slog.WarnContext(ctx, "failed to sync volumes after prune", slog.Any("err", err))
+		}
+	}
+	if s.containerService != nil {
+		if err := s.containerService.SyncDockerContainers(ctx); err != nil {
+			slog.WarnContext(ctx, "failed to sync containers after prune", slog.Any("err", err))
+		}
+	}
+
 	return result, nil
 }
 

@@ -1,6 +1,11 @@
 package dto
 
-import "github.com/docker/docker/api/types/volume"
+import (
+	"strings"
+	"time"
+
+	"github.com/docker/docker/api/types/volume"
+)
 
 type VolumeDto struct {
 	ID         string            `json:"id"`
@@ -15,6 +20,10 @@ type VolumeDto struct {
 }
 
 func NewVolumeDto(v volume.Volume, inUse bool) VolumeDto {
+	created := v.CreatedAt
+	if strings.TrimSpace(created) == "" {
+		created = time.Now().Format(time.RFC3339)
+	}
 	return VolumeDto{
 		ID:         v.Name,
 		Name:       v.Name,
@@ -23,7 +32,7 @@ func NewVolumeDto(v volume.Volume, inUse bool) VolumeDto {
 		Scope:      v.Scope,
 		Options:    v.Options,
 		Labels:     v.Labels,
-		CreatedAt:  v.CreatedAt,
+		CreatedAt:  created,
 		InUse:      inUse,
 	}
 }

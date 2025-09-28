@@ -82,7 +82,7 @@ func (s *ContainerService) upsertContainerInspect(ctx context.Context, inspect *
 		State:     inspect.State.Status,
 		Ports:     ports,
 		Mounts:    mounts,
-		Networks:  models.StringSlice{}, // not populated here
+		Networks:  models.StringSlice{},
 		Labels:    labels,
 		CreatedAt: createdAt,
 		StartedAt: nil,
