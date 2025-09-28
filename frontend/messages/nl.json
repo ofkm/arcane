@@ -1091,5 +1091,7 @@
 	"using_server_default": "Serverstandaard wordt gebruikt",
 	"mobile_navigation": "Mobiele navigatie",
 	"on": "op",
-	"off": "UIT"
+	"off": "UIT",
+	"tap_to_edit": "Tik om te bewerken",
+	"cannot_edit": "Kan niet bewerken"
 }
