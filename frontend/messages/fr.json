@@ -1091,5 +1091,7 @@
 	"using_server_default": "Utiliser le serveur par défaut",
 	"mobile_navigation": "Navigation mobile",
 	"on": "Activé",
-	"off": "Désactivé"
+	"off": "Désactivé",
+	"tap_to_edit": "Appuyer pour modifier",
+	"cannot_edit": "Impossible de modifier"
 }
