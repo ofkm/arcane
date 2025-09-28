@@ -75,7 +75,6 @@
 	let canEditName = $derived(!isLoading.saving && project?.status !== 'running' && project?.status !== 'partially running');
 
 	let autoScrollStackLogs = $state(true);
-	let showFloatingHeader = $state(false);
 
 	let selectedTab = $state<'services' | 'compose' | 'logs'>('compose');
 	let composeOpen = $state(true);
@@ -130,15 +129,6 @@
 		composeOpen = cur.composeOpen ?? defaultComposeUIPrefs.composeOpen;
 		envOpen = cur.envOpen ?? defaultComposeUIPrefs.envOpen;
 		autoScrollStackLogs = cur.autoScroll ?? defaultComposeUIPrefs.autoScroll;
-	});
-
-	// Scroll listener with cleanup (reactive)
-	$effect(() => {
-		const handleScroll = () => {
-			showFloatingHeader = window.scrollY > 100;
-		};
-		window.addEventListener('scroll', handleScroll);
-		return () => window.removeEventListener('scroll', handleScroll);
 	});
 
 	async function handleSaveChanges() {

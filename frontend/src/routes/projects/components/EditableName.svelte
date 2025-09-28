@@ -44,7 +44,7 @@
 			<Input
 				bind:ref
 				bind:value
-				class="h-8 w-full px-1 text-center text-base font-semibold {error ? 'border-destructive' : ''}"
+				class="h-8 min-w-[120px] max-w-[280px] px-2 text-left text-base font-semibold {error ? 'border-destructive' : ''}"
 				autofocus
 				onkeydown={(e) => {
 					if (e.key === 'Enter') {
