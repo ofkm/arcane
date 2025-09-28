@@ -1091,5 +1091,7 @@
 	"using_server_default": "Using server default",
 	"mobile_navigation": "Mobile navigation",
 	"on": "On",
-	"off": "Off"
+	"off": "Off",
+	"tap_to_edit": "Tap to edit",
+	"cannot_edit": "Cannot edit"
 }
