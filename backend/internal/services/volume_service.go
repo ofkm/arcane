@@ -3,18 +3,20 @@ package services
 import (
 	"context"
 	"fmt"
-	"sort"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/volume"
+	dockervol "github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"gorm.io/gorm/clause"
 )
 
 type VolumeService struct {
@@ -29,6 +31,85 @@ func NewVolumeService(db *database.DB, dockerService *DockerClientService, event
 		dockerService: dockerService,
 		eventService:  eventService,
 	}
+}
+
+//nolint:gocognit
+func (s *VolumeService) SyncDockerVolumes(ctx context.Context) error {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	list, err := dockerClient.VolumeList(ctx, dockervol.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list Docker volumes: %w", err)
+	}
+
+	usageMap, _ := s.buildVolumeUsageMap(ctx, dockerClient)
+
+	current := make([]string, 0, len(list.Volumes))
+	var lastErr error
+	for _, v := range list.Volumes {
+		if v == nil {
+			continue
+		}
+		current = append(current, v.Name)
+
+		inUse := usageMap[v.Name]
+
+		labelsJSON := models.JSON{}
+		if v.Labels != nil {
+			for k, val := range v.Labels {
+				labelsJSON[k] = val
+			}
+		}
+
+		optionsJSON := models.JSON{}
+		if v.Options != nil {
+			for k, val := range v.Options {
+				optionsJSON[k] = val
+			}
+		}
+
+		statusJSON := models.JSON{}
+		if v.Status != nil {
+			for k, val := range v.Status {
+				statusJSON[k] = val
+			}
+		}
+
+		dbVol := models.Volume{
+			Name:          v.Name,
+			Driver:        v.Driver,
+			Mountpoint:    v.Mountpoint,
+			Labels:        labelsJSON,
+			Scope:         v.Scope,
+			Options:       optionsJSON,
+			Status:        statusJSON,
+			ClusterVolume: nil,
+			UsageData:     nil,
+			InUse:         inUse,
+			CreatedAt:     v.CreatedAt,
+		}
+
+		if s.db != nil {
+			if err := s.db.WithContext(ctx).Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "name"}},
+				DoUpdates: clause.AssignmentColumns([]string{"driver", "mountpoint", "labels", "scope", "options", "status", "cluster_volume", "usage_data", "in_use", "docker_created_at", "updated_at"}),
+			}).Create(&dbVol).Error; err != nil {
+				lastErr = err
+			}
+		}
+	}
+
+	if s.db != nil {
+		if err := s.cleanupStaleVolumes(ctx, current); err != nil {
+			lastErr = err
+		}
+	}
+
+	return lastErr
 }
 
 func (s *VolumeService) buildVolumeUsageMap(ctx context.Context, dockerClient *client.Client) (map[string]bool, error) {
@@ -239,132 +320,79 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 }
 
 //nolint:gocognit
-func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.SortedPaginationRequest, driver string) ([]dto.VolumeDto, utils.PaginationResponse, error) {
-	volumes, err := s.ListVolumes(ctx)
+func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.SortedPaginationRequest, rawQuery url.Values) ([]dto.VolumeDto, utils.PaginationResponse, error) {
+	parsedFilters := utils.ParseFiltersFromQuery(rawQuery)
+
+	var vols []models.Volume
+	query := s.db.WithContext(ctx).Model(&models.Volume{})
+
+	if driver := rawQuery.Get("driver"); driver != "" {
+		query = query.Where("driver = ?", driver)
+	}
+
+	if term := strings.TrimSpace(req.Search); term != "" {
+		like := "%" + strings.ToLower(term) + "%"
+		query = query.Where("LOWER(name) LIKE ? OR LOWER(driver) LIKE ? OR LOWER(scope) LIKE ?", like, like, like)
+	}
+
+	pagination, err := utils.PaginateAndSort(req, query, &vols, parsedFilters)
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker volumes: %w", err)
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate volumes: %w", err)
 	}
 
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	volumeUsageMap, err := s.buildVolumeUsageMap(ctx, dockerClient)
-	if err != nil {
-		return nil, utils.PaginationResponse{}, err
+	dockerClient, derr := s.dockerService.CreateConnection(ctx)
+	var usageMap map[string]bool
+	if derr == nil {
+		defer dockerClient.Close()
+		usageMap, _ = s.buildVolumeUsageMap(ctx, dockerClient)
+	} else {
+		usageMap = map[string]bool{}
 	}
 
-	result := make([]dto.VolumeDto, 0, len(volumes))
-	for _, v := range volumes {
-		if driver != "" && v.Driver != driver {
-			continue
-		}
-		result = append(result, dto.NewVolumeDto(v, volumeUsageMap[v.Name]))
-	}
-
-	if req.Search != "" {
-		filtered := make([]dto.VolumeDto, 0, len(result))
-		searchLower := strings.ToLower(req.Search)
-		for _, vol := range result {
-			if strings.Contains(strings.ToLower(vol.Name), searchLower) ||
-				strings.Contains(strings.ToLower(vol.Driver), searchLower) {
-				filtered = append(filtered, vol)
+	result := make([]dto.VolumeDto, 0, len(vols))
+	for _, v := range vols {
+		opts := map[string]string{}
+		if v.Options != nil {
+			for k, val := range v.Options {
+				if sstr, ok := val.(string); ok {
+					opts[k] = sstr
+				}
 			}
 		}
-		result = filtered
+		labels := map[string]string{}
+		if v.Labels != nil {
+			for k, val := range v.Labels {
+				if sstr, ok := val.(string); ok {
+					labels[k] = sstr
+				}
+			}
+		}
+
+		inUse := v.InUse || usageMap[v.Name]
+
+		volDto := dto.VolumeDto{
+			ID:         v.Name,
+			Name:       v.Name,
+			Driver:     v.Driver,
+			Mountpoint: v.Mountpoint,
+			Scope:      v.Scope,
+			Options:    opts,
+			Labels:     labels,
+			CreatedAt:  v.CreatedAt,
+			InUse:      inUse,
+		}
+		result = append(result, volDto)
 	}
 
-	totalItems := len(result)
-
-	if req.Sort.Column != "" {
-		sortVolumes(result, req.Sort.Column, req.Sort.Direction)
-	}
-
-	startIdx := (req.Pagination.Page - 1) * req.Pagination.Limit
-	endIdx := startIdx + req.Pagination.Limit
-
-	if startIdx > len(result) {
-		startIdx = len(result)
-	}
-	if endIdx > len(result) {
-		endIdx = len(result)
-	}
-
-	pageItems := []dto.VolumeDto{}
-	if startIdx < endIdx {
-		pageItems = result[startIdx:endIdx]
-	}
-
-	totalPages := (totalItems + req.Pagination.Limit - 1) / req.Pagination.Limit
-	pagination := utils.PaginationResponse{
-		TotalPages:   int64(totalPages),
-		TotalItems:   int64(totalItems),
-		CurrentPage:  req.Pagination.Page,
-		ItemsPerPage: req.Pagination.Limit,
-	}
-
-	return pageItems, pagination, nil
+	return result, pagination, nil
 }
 
-func sortVolumes(items []dto.VolumeDto, field, direction string) {
-	dir := utils.NormalizeSortDirection(direction)
-	f := strings.ToLower(strings.TrimSpace(field))
-	desc := dir == "desc"
-
-	lessStr := func(a, b string) bool {
-		if desc {
-			return a > b
-		}
-		return a < b
+func (s *VolumeService) cleanupStaleVolumes(ctx context.Context, current []string) error {
+	if s.db == nil {
+		return nil
 	}
-	lessBool := func(a, b bool) bool {
-		if desc {
-			return a && !b
-		}
-		return !a && b
+	if len(current) == 0 {
+		return s.db.WithContext(ctx).Where("1=1").Delete(&models.Volume{}).Error
 	}
-	parseTime := func(s string) (time.Time, bool) {
-		if s == "" {
-			return time.Time{}, false
-		}
-		if t, err := time.Parse(time.RFC3339, s); err == nil {
-			return t, true
-		}
-		return time.Time{}, false
-	}
-	lessTime := func(aS, bS string) bool {
-		aT, aOk := parseTime(aS)
-		bT, bOk := parseTime(bS)
-		if aOk && bOk {
-			if desc {
-				return aT.After(bT)
-			}
-			return aT.Before(bT)
-		}
-
-		return lessStr(aS, bS)
-	}
-
-	sort.Slice(items, func(i, j int) bool {
-		a, b := items[i], items[j]
-		switch f {
-		case "name":
-			return lessStr(a.Name, b.Name)
-		case "driver":
-			return lessStr(a.Driver, b.Driver)
-		case "mountpoint":
-			return lessStr(a.Mountpoint, b.Mountpoint)
-		case "scope":
-			return lessStr(a.Scope, b.Scope)
-		case "created", "createdat":
-			return lessTime(a.CreatedAt, b.CreatedAt)
-		case "inuse":
-			return lessBool(a.InUse, b.InUse)
-		default:
-			// no-op keeps original order
-			return false
-		}
-	})
+	return s.db.WithContext(ctx).Where("name NOT IN ?", current).Delete(&models.Volume{}).Error
 }
