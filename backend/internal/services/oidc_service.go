@@ -12,6 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
+	"github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
+
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -42,81 +47,30 @@ func NewOidcService(authService *AuthService, cfg *config.Config, httpClient *ht
 	}
 }
 
-func (s *OidcService) discoverOidcEndpoints(ctx context.Context, issuerURL string) (*dto.OidcDiscoveryDocument, error) {
-	wellKnownURL := strings.TrimSuffix(issuerURL, "/") + "/.well-known/openid-configuration"
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, wellKnownURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create discovery request: %w", err)
-	}
-
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "Arcane-OIDC-Client/1.0")
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch OIDC discovery document from %s: %w", wellKnownURL, err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read discovery response body: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("OIDC discovery endpoint %s returned %d: %s",
-			wellKnownURL, resp.StatusCode, string(bodyBytes))
-	}
-
-	contentType := resp.Header.Get("Content-Type")
-	if !strings.Contains(contentType, "application/json") {
-		return nil, fmt.Errorf("OIDC discovery endpoint returned non-JSON content-type: %s, body: %s",
-			contentType, string(bodyBytes[:min(500, len(bodyBytes))]))
-	}
-
-	var discovery dto.OidcDiscoveryDocument
-	if err := json.Unmarshal(bodyBytes, &discovery); err != nil {
-		return nil, fmt.Errorf("failed to decode discovery document from %s: %w. Response body: %s",
-			wellKnownURL, err, string(bodyBytes[:min(500, len(bodyBytes))]))
-	}
-
-	if discovery.AuthorizationEndpoint == "" || discovery.TokenEndpoint == "" {
-		return nil, fmt.Errorf("discovery document missing required endpoints. Auth: %s, Token: %s",
-			discovery.AuthorizationEndpoint, discovery.TokenEndpoint)
-	}
-
-	return &discovery, nil
-}
-
 func (s *OidcService) getEffectiveConfig(ctx context.Context) (*models.OidcConfig, error) {
 	config, err := s.authService.GetOidcConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
-
 	if config.IssuerURL == "" {
 		return nil, errors.New("either issuerUrl or explicit endpoints must be configured")
 	}
-
-	discovery, err := s.discoverOidcEndpoints(ctx, config.IssuerURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to discover OIDC endpoints: %w", err)
-	}
-
-	effectiveConfig := *config
-	effectiveConfig.AuthorizationEndpoint = discovery.AuthorizationEndpoint
-	effectiveConfig.TokenEndpoint = discovery.TokenEndpoint
-	effectiveConfig.UserinfoEndpoint = discovery.UserinfoEndpoint
-	effectiveConfig.JwksURI = discovery.JwksURI
-
-	return &effectiveConfig, nil
+	return config, nil
 }
 
 func (s *OidcService) GenerateAuthURL(ctx context.Context, redirectTo string) (string, string, error) {
 	config, err := s.getEffectiveConfig(ctx)
 	if err != nil {
+		slog.Error("GenerateAuthURL: failed to get OIDC config", "error", err)
 		return "", "", err
+	}
+
+	// Use provider discovery via go-oidc
+	providerCtx := oidc.ClientContext(ctx, s.httpClient)
+	provider, err := oidc.NewProvider(providerCtx, config.IssuerURL)
+	if err != nil {
+		slog.Error("GenerateAuthURL: provider discovery failed", "issuer", config.IssuerURL, "error", err)
+		return "", "", fmt.Errorf("failed to discover provider: %w", err)
 	}
 
 	state := utils.GenerateRandomString(32)
@@ -125,24 +79,21 @@ func (s *OidcService) GenerateAuthURL(ctx context.Context, redirectTo string) (s
 
 	scopes := strings.Fields(config.Scopes)
 	if len(scopes) == 0 {
-		scopes = []string{"openid", "email", "profile"}
+		scopes = []string{oidc.ScopeOpenID, "email", "profile"}
 	}
 
-	authURL, err := url.Parse(config.AuthorizationEndpoint)
-	if err != nil {
-		return "", "", fmt.Errorf("invalid authorization endpoint: %w", err)
+	oauth2Config := oauth2.Config{
+		ClientID:     config.ClientID,
+		ClientSecret: config.ClientSecret,
+		Endpoint:     provider.Endpoint(),
+		RedirectURL:  s.config.GetOidcRedirectURI(),
+		Scopes:       scopes,
 	}
-	redirectURI := s.config.GetOidcRedirectURI()
 
-	query := authURL.Query()
-	query.Set("response_type", "code")
-	query.Set("client_id", config.ClientID)
-	query.Set("redirect_uri", redirectURI)
-	query.Set("scope", strings.Join(scopes, " "))
-	query.Set("state", state)
-	query.Set("code_challenge", codeChallenge)
-	query.Set("code_challenge_method", "S256")
-	authURL.RawQuery = query.Encode()
+	authURL := oauth2Config.AuthCodeURL(state,
+		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+	)
 
 	stateData := OidcState{
 		State:        state,
@@ -153,60 +104,215 @@ func (s *OidcService) GenerateAuthURL(ctx context.Context, redirectTo string) (s
 
 	stateJSON, err := json.Marshal(stateData)
 	if err != nil {
+		slog.Error("GenerateAuthURL: failed to marshal state", "error", err)
 		return "", "", err
 	}
 	encodedState := base64.URLEncoding.EncodeToString(stateJSON)
 
-	return authURL.String(), encodedState, nil
+	return authURL, encodedState, nil
+}
+
+func (s *OidcService) discoverProvider(ctx context.Context, issuer string) (*oidc.Provider, error) {
+	providerCtx := oidc.ClientContext(ctx, s.httpClient)
+	provider, err := oidc.NewProvider(providerCtx, issuer)
+	if err != nil {
+		slog.Error("discoverProvider: discovery failed", "issuer", issuer, "error", err)
+		return nil, fmt.Errorf("failed to discover provider: %w", err)
+	}
+	return provider, nil
+}
+
+func (s *OidcService) exchangeToken(ctx context.Context, cfg *models.OidcConfig, provider *oidc.Provider, code string, verifier string) (*oauth2.Token, error) {
+	oauth2Config := oauth2.Config{
+		ClientID:     cfg.ClientID,
+		ClientSecret: cfg.ClientSecret,
+		Endpoint:     provider.Endpoint(),
+		RedirectURL:  s.config.GetOidcRedirectURI(),
+		Scopes:       strings.Fields(cfg.Scopes),
+	}
+	providerCtx := oidc.ClientContext(ctx, s.httpClient)
+	token, err := oauth2Config.Exchange(providerCtx, code, oauth2.SetAuthURLParam("code_verifier", verifier))
+	if err != nil {
+		slog.Error("exchangeToken: token exchange failed", "token_endpoint", oauth2Config.Endpoint.TokenURL, "error", err)
+		return nil, fmt.Errorf("failed to exchange code for tokens: %w", err)
+	}
+	return token, nil
+}
+
+func (s *OidcService) fetchClaims(ctx context.Context, provider *oidc.Provider, token *oauth2.Token, idToken *oidc.IDToken, cfg *models.OidcConfig) (map[string]any, error) {
+	providerCtx := oidc.ClientContext(ctx, s.httpClient)
+	var rawClaims map[string]any
+
+	userInfo, uerr := provider.UserInfo(providerCtx, oauth2.StaticTokenSource(token))
+	if uerr == nil && userInfo != nil {
+		if cerr := userInfo.Claims(&rawClaims); cerr == nil {
+			slog.Debug("fetchClaims: userinfo claims fetched")
+			return rawClaims, nil
+		} else {
+			slog.Debug("fetchClaims: userinfo claims decode failed", "error", cerr)
+		}
+	} else if uerr != nil {
+		slog.Debug("fetchClaims: userinfo endpoint call failed", "error", uerr)
+	}
+
+	if idToken != nil {
+		if err := idToken.Claims(&rawClaims); err != nil {
+			slog.Debug("fetchClaims: id_token claims decode failed", "error", err)
+		}
+		slog.Debug("fetchClaims: claims extracted from id_token")
+		return rawClaims, nil
+
+	}
+
+	wellKnown := strings.TrimSuffix(cfg.IssuerURL, "/") + "/.well-known/openid-configuration"
+	req, rerr := http.NewRequestWithContext(providerCtx, http.MethodGet, wellKnown, nil)
+	if rerr != nil {
+		slog.Debug("fetchClaims: well-known request creation failed", "error", rerr)
+		return nil, errors.New("no claims available")
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, derr := s.httpClient.Do(req)
+	if derr != nil || resp == nil {
+		if derr != nil {
+			slog.Debug("fetchClaims: discovery request failed", "error", derr)
+		}
+		return nil, errors.New("no claims available")
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	var disco dto.OidcDiscoveryDocument
+	if json.Unmarshal(body, &disco) == nil && disco.UserinfoEndpoint != "" {
+		slog.Debug("fetchClaims: discovered userinfo endpoint", "userinfo_endpoint", disco.UserinfoEndpoint)
+		req2, _ := http.NewRequestWithContext(providerCtx, http.MethodGet, disco.UserinfoEndpoint, nil)
+		req2.Header.Set("Authorization", "Bearer "+token.AccessToken)
+		req2.Header.Set("Accept", "application/json")
+		if resp2, err2 := s.httpClient.Do(req2); err2 == nil && resp2 != nil {
+			var tmp map[string]any
+			if json.NewDecoder(resp2.Body).Decode(&tmp) == nil {
+				resp2.Body.Close()
+				slog.Debug("fetchClaims: direct userinfo endpoint returned claims")
+				return tmp, nil
+			}
+			resp2.Body.Close()
+			slog.Debug("fetchClaims: direct userinfo decode failed")
+		} else if err2 != nil {
+			slog.Debug("fetchClaims: direct userinfo request failed", "error", err2)
+		}
+	}
+
+	return nil, errors.New("no claims available")
 }
 
 func (s *OidcService) HandleCallback(ctx context.Context, code, state, storedState string) (*dto.OidcUserInfo, *dto.OidcTokenResponse, error) {
+	slog.Debug("HandleCallback: start", "code_len", len(code), "state_len", len(state))
+
 	stateData, err := s.decodeState(storedState)
 	if err != nil {
+		slog.Error("HandleCallback: failed to decode stored state", "error", err)
 		return nil, nil, fmt.Errorf("failed to decode state: %w", err)
 	}
 
 	if state != stateData.State {
+		slog.Error("HandleCallback: invalid state parameter", "received", state, "expected_len", len(stateData.State))
 		return nil, nil, errors.New("invalid state parameter")
 	}
 
-	// Check if state is not too old (10 minutes max)
 	if time.Since(stateData.CreatedAt) > 10*time.Minute {
+		slog.Error("HandleCallback: state expired", "created_at", stateData.CreatedAt)
 		return nil, nil, errors.New("state has expired")
 	}
 
-	config, err := s.getEffectiveConfig(ctx)
+	cfg, err := s.getEffectiveConfig(ctx)
+	if err != nil {
+		slog.Error("HandleCallback: failed to get effective config", "error", err)
+		return nil, nil, err
+	}
+
+	provider, err := s.discoverProvider(ctx, cfg.IssuerURL)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	tokenResponse, err := s.exchangeCodeForTokens(ctx, config, code, stateData.CodeVerifier)
+	token, err := s.exchangeToken(ctx, cfg, provider, code, stateData.CodeVerifier)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to exchange code for tokens: %w", err)
+		return nil, nil, err
 	}
 
-	userInfo, err := s.getUserInfo(ctx, config, tokenResponse.AccessToken)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get user info: %w", err)
+	var rawIDToken string
+	if t := token.Extra("id_token"); t != nil {
+		if sID, ok := t.(string); ok {
+			rawIDToken = sID
+		}
 	}
 
-	return userInfo, tokenResponse, nil
+	var idToken *oidc.IDToken
+	if rawIDToken != "" {
+		verifier := provider.Verifier(&oidc.Config{ClientID: cfg.ClientID})
+		idToken, err = verifier.Verify(oidc.ClientContext(ctx, s.httpClient), rawIDToken)
+		if err != nil {
+			slog.Error("HandleCallback: id_token verification failed", "error", err)
+			return nil, nil, fmt.Errorf("failed to verify id_token: %w", err)
+		}
+		slog.Debug("HandleCallback: id_token verified", "id_token_len", len(rawIDToken))
+	} else {
+		slog.Debug("HandleCallback: no id_token present in token response")
+	}
+
+	rawClaims, cerr := s.fetchClaims(ctx, provider, token, idToken, cfg)
+	if cerr != nil {
+		slog.Debug("HandleCallback: fetchClaims returned no claims", "error", cerr)
+		rawClaims = map[string]any{}
+	}
+
+	userInfoDto := dto.OidcUserInfo{
+		Subject:           utils.GetStringClaim(rawClaims, "sub"),
+		Name:              utils.GetStringClaim(rawClaims, "name"),
+		Email:             utils.GetStringClaim(rawClaims, "email"),
+		PreferredUsername: utils.GetStringClaim(rawClaims, "preferred_username"),
+		GivenName:         utils.GetStringClaim(rawClaims, "given_name"),
+		FamilyName:        utils.GetStringClaim(rawClaims, "family_name"),
+		Admin:             utils.GetBoolClaim(rawClaims, "admin"),
+		Roles:             utils.GetStringSliceClaim(rawClaims, "roles"),
+		Groups:            utils.GetStringSliceClaim(rawClaims, "groups"),
+		Extra:             rawClaims,
+	}
+
+	if userInfoDto.Subject == "" {
+		slog.Error("HandleCallback: missing 'sub' claim after all attempts", "claims_empty", len(rawClaims) == 0)
+		return nil, nil, errors.New("missing required 'sub' field in userinfo/claims")
+	}
+
+	tokenResp := &dto.OidcTokenResponse{
+		AccessToken:  token.AccessToken,
+		RefreshToken: token.RefreshToken,
+		IDToken:      rawIDToken,
+	}
+	if !token.Expiry.IsZero() {
+		tokenResp.ExpiresIn = int(time.Until(token.Expiry).Seconds())
+	}
+
+	slog.Debug("HandleCallback: completed successfully", "subject", userInfoDto.Subject)
+
+	return &userInfoDto, tokenResp, nil
 }
 
 func (s *OidcService) RefreshToken(ctx context.Context, refreshToken string) (*dto.OidcTokenResponse, error) {
-	config, err := s.getEffectiveConfig(ctx)
+	cfg, err := s.getEffectiveConfig(ctx)
 	if err != nil {
+		slog.Error("RefreshToken: failed to get effective config", "error", err)
 		return nil, err
 	}
 
+	// Use oauth2 token refresh via token endpoint
 	data := url.Values{}
 	data.Set("grant_type", "refresh_token")
 	data.Set("refresh_token", refreshToken)
-	data.Set("client_id", config.ClientID)
-	data.Set("client_secret", config.ClientSecret)
+	data.Set("client_id", cfg.ClientID)
+	data.Set("client_secret", cfg.ClientSecret)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, config.TokenEndpoint, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.TokenEndpoint, strings.NewReader(data.Encode()))
 	if err != nil {
+		slog.Error("RefreshToken: failed to create request", "error", err)
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -214,112 +320,36 @@ func (s *OidcService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
+		slog.Error("RefreshToken: token endpoint request failed", "token_endpoint", cfg.TokenEndpoint, "error", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
+		slog.Error("RefreshToken: token endpoint returned non-200", "status", resp.StatusCode, "body", string(bodyBytes))
 		return nil, fmt.Errorf("token endpoint returned %d on refresh: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var tokenResponse dto.OidcTokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
+		slog.Error("RefreshToken: failed to decode token response", "error", err)
 		return nil, err
 	}
+	slog.Debug("RefreshToken: refresh successful", "has_refresh_token", tokenResponse.RefreshToken != "")
 	return &tokenResponse, nil
-}
-
-func (s *OidcService) exchangeCodeForTokens(ctx context.Context, config *models.OidcConfig, code, codeVerifier string) (*dto.OidcTokenResponse, error) {
-	redirectURI := s.config.GetOidcRedirectURI()
-
-	data := url.Values{}
-	data.Set("grant_type", "authorization_code")
-	data.Set("code", code)
-	data.Set("redirect_uri", redirectURI)
-	data.Set("client_id", config.ClientID)
-	data.Set("client_secret", config.ClientSecret)
-	data.Set("code_verifier", codeVerifier)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, config.TokenEndpoint, strings.NewReader(data.Encode()))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("token endpoint returned %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	var tokenResponse dto.OidcTokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
-		return nil, err
-	}
-
-	return &tokenResponse, nil
-}
-
-func (s *OidcService) getUserInfo(ctx context.Context, config *models.OidcConfig, accessToken string) (*dto.OidcUserInfo, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, config.UserinfoEndpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("userinfo endpoint returned %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	var raw map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-		return nil, err
-	}
-
-	userInfo := dto.OidcUserInfo{
-		Subject:           utils.GetStringClaim(raw, "sub"),
-		Name:              utils.GetStringClaim(raw, "name"),
-		Email:             utils.GetStringClaim(raw, "email"),
-		PreferredUsername: utils.GetStringClaim(raw, "preferred_username"),
-		GivenName:         utils.GetStringClaim(raw, "given_name"),
-		FamilyName:        utils.GetStringClaim(raw, "family_name"),
-		Admin:             utils.GetBoolClaim(raw, "admin"),
-		Roles:             utils.GetStringSliceClaim(raw, "roles"),
-		Groups:            utils.GetStringSliceClaim(raw, "groups"),
-		Extra:             raw,
-	}
-
-	if userInfo.Subject == "" {
-		return nil, errors.New("missing required 'sub' field in userinfo response")
-	}
-
-	return &userInfo, nil
 }
 
 func (s *OidcService) decodeState(encodedState string) (*OidcState, error) {
 	stateJSON, err := base64.URLEncoding.DecodeString(encodedState)
 	if err != nil {
+		slog.Error("decodeState: failed to decode base64 state", "error", err)
 		return nil, err
 	}
 
 	var stateData OidcState
 	if err := json.Unmarshal(stateJSON, &stateData); err != nil {
+		slog.Error("decodeState: failed to unmarshal state JSON", "error", err)
 		return nil, err
 	}
 

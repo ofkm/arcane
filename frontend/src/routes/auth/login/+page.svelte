@@ -68,7 +68,7 @@
 		<div class="flex flex-col gap-6">
 			<Card.Root class="overflow-hidden p-0">
 				<Card.Content class="grid p-0 md:grid-cols-2">
-					<div class="p-6 md:p-8">
+					<div class={showOidcLoginButton && !showLocalLoginForm ? 'flex items-center justify-center p-6 md:p-8' : 'p-6 md:p-8'}>
 						<div class="flex flex-col gap-6">
 							<div class="flex flex-col items-center text-center">
 								<h1 class="text-2xl font-bold">{m.auth_welcome_back_title()}</h1>
@@ -193,20 +193,15 @@
 						</div>
 					</div>
 
-					<div class="bg-muted relative hidden md:block">
-						<div class="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10">
-							<div
-								class="bg-[url(&quot;data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e2e8f0' fill-opacity='0.2'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3Ccircle cx='7' cy='37' r='1'/%3E%3Ccircle cx='37' cy='7' r='1'/%3E%3Ccircle cx='37' cy='37' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E&quot;)] dark:bg-[url(&quot;data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23475569' fill-opacity='0.1'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3Ccircle cx='7' cy='37' r='1'/%3E%3Ccircle cx='37' cy='7' r='1'/%3E%3Ccircle cx='37' cy='37' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E&quot;)] absolute inset-0"
-							></div>
-						</div>
-						<div class="absolute inset-0 flex items-center justify-center">
-							<div class="space-y-4 p-8 text-center">
-								<div class="mb-8">
-									<img class="mx-auto h-32 w-auto opacity-60" src="/img/arcane.svg" alt={m.layout_title()} />
-								</div>
-								<h2 class="text-foreground/80 text-2xl font-bold">{m.layout_title()}</h2>
-								<p class="text-muted-foreground max-w-xs text-balance">{m.auth_tagline()}</p>
+					<div
+						class="hidden bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10 md:flex md:items-center md:justify-center"
+					>
+						<div class="space-y-4 p-8 text-center">
+							<div class="mb-8">
+								<img class="mx-auto h-32 w-auto opacity-60" src="/img/arcane.svg" alt={m.layout_title()} />
 							</div>
+							<h2 class="text-foreground/80 text-2xl font-bold">{m.layout_title()}</h2>
+							<p class="text-muted-foreground max-w-xs text-balance">{m.auth_tagline()}</p>
 						</div>
 					</div>
 				</Card.Content>

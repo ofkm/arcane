@@ -74,7 +74,6 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*
 		return nil, fmt.Errorf("load compose project: %w", err)
 	}
 
-	// Optional: drop unused resources
 	project = project.WithoutUnnecessaryResources()
 
 	// Ensure Compose discovery labels via CustomLabels
