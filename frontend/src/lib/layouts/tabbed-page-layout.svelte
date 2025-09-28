@@ -35,7 +35,7 @@
 <div class="bg-background flex h-full flex-col overflow-hidden overscroll-y-none {className}">
 	<Tabs.Root value={selectedTab} class="flex min-h-0 w-full flex-1 flex-col">
 		<div class="bg-background sticky top-0 flex-shrink-0 border-b backdrop-blur">
-			<div class="mx-auto max-w-full px-4 py-3">
+			<div class="mx-auto max-w-full py-3">
 				<div class="flex items-center justify-between gap-3">
 					<div class="flex min-w-0 items-center gap-3">
 						<Button variant="ghost" size="sm" href={backUrl}>

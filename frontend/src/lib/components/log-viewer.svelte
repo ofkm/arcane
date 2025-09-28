@@ -298,8 +298,8 @@
 
 	<div
 		bind:this={logContainer}
-		class="log-viewer overflow-y-auto rounded-lg border bg-black font-mono text-sm text-white"
-		style="height: {height}"
+		class="log-viewer overflow-y-auto rounded-lg border bg-black font-mono text-white sm:text-sm text-xs"
+		style="height: {height}; min-height: 300px;"
 		role="log"
 		aria-live={isStreaming ? 'polite' : 'off'}
 		aria-relevant="additions"
@@ -319,26 +319,49 @@
 				{/if}
 			</div>
 		{:else}
-			{#each visibleLogs as log (log.id)}
-				<div class="flex border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50">
-					{#if showTimestamps}
-						<span class="mr-3 min-w-fit shrink-0 text-xs text-gray-500">
-							{formatTimestamp(log.timestamp)}
-						</span>
-					{/if}
-					<span class="mr-2 shrink-0 text-xs {getLevelClass(log.level)} min-w-fit">
+		{#each visibleLogs as log (log.id)}
+			<!-- Mobile Layout: Stack vertically -->
+			<div class="border-l-2 border-transparent px-3 py-2 transition-colors hover:border-blue-500 hover:bg-gray-900/50 sm:hidden">
+				<div class="mb-1 flex items-center gap-2 text-xs">
+					<span class="shrink-0 {getLevelClass(log.level)}">
 						{log.level.toUpperCase()}
 					</span>
 					{#if type === 'project' && log.service}
-						<span class="mr-2 min-w-fit shrink-0 truncate text-xs text-blue-400" title={log.service}>
+						<span class="shrink-0 truncate text-blue-400" title={log.service}>
 							{log.service}
 						</span>
 					{/if}
-					<span class="flex-1 whitespace-pre-wrap break-words text-gray-300">
-						{log.message}
-					</span>
+					{#if showTimestamps}
+						<span class="ml-auto shrink-0 text-gray-500">
+							{new Date(log.timestamp).toLocaleTimeString()}
+						</span>
+					{/if}
 				</div>
-			{/each}
+				<div class="whitespace-pre-wrap break-words text-sm text-gray-300">
+					{log.message}
+				</div>
+			</div>
+
+			<!-- Desktop Layout: Horizontal -->
+			<div class="hidden border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50 sm:flex">
+				{#if showTimestamps}
+					<span class="mr-3 min-w-fit shrink-0 text-xs text-gray-500">
+						{formatTimestamp(log.timestamp)}
+					</span>
+				{/if}
+				<span class="mr-2 shrink-0 text-xs {getLevelClass(log.level)} min-w-fit">
+					{log.level.toUpperCase()}
+				</span>
+				{#if type === 'project' && log.service}
+					<span class="mr-2 min-w-fit shrink-0 truncate text-xs text-blue-400" title={log.service}>
+						{log.service}
+					</span>
+				{/if}
+				<span class="flex-1 whitespace-pre-wrap break-words text-gray-300">
+					{log.message}
+				</span>
+			</div>
+		{/each}
 		{/if}
 	</div>
 </div>

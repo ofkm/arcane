@@ -19,9 +19,16 @@
 		placeholder = m.editor_placeholder(),
 		readOnly = false,
 		height = '550px',
-		fontSize = '11px',
+		fontSize = '12px',
 		class: className = ''
 	} = $props();
+
+	const dynamicHeight = $derived(() => {
+		if (height === 'full' || height === 'auto') {
+			return 'calc(100dvh - 240px)';
+		}
+		return height;
+	});
 
 	let editorView: EditorView;
 
@@ -65,7 +72,7 @@
 
 	const styles = $derived({
 		'&': {
-			height,
+			height: dynamicHeight(),
 			fontSize
 		},
 		'&.cm-editor[contenteditable=false]': {

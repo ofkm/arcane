@@ -27,10 +27,62 @@
 	function onToggleAutoScroll() {}
 </script>
 
-<div class="mb-3 flex items-center justify-between">
-	<div class="flex items-center gap-2">
+<div class="mb-3 flex flex-col gap-3 sm:hidden">
+	<div class="flex items-center justify-between">
+		<div class="flex items-center gap-2">
+			<TerminalIcon class="size-5" />
+			<h2 class="text-lg font-semibold">{m.compose_logs_title()}</h2>
+		</div>
+		{#if isStreaming}
+			<div class="flex items-center gap-2">
+				<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
+				<span class="text-sm font-medium text-green-600">{m.common_live()}</span>
+			</div>
+		{/if}
+	</div>
+	
+	<div class="flex items-center justify-between gap-3">
+		<label class="flex items-center gap-2 text-sm">
+			<input type="checkbox" bind:checked={autoScroll} class="size-4" />
+			{m.common_autoscroll()}
+		</label>
+		<div class="flex items-center gap-2">
+			<Button variant="outline" size="sm" onclick={() => viewer?.clearLogs()}>{m.common_clear()}</Button>
+			{#if isStreaming}
+				<Button variant="outline" size="sm" onclick={() => viewer?.stopLogStream()}>
+					{m.common_stop()}
+				</Button>
+			{:else}
+				<Button variant="outline" size="sm" onclick={() => viewer?.startLogStream()} disabled={!projectId}>
+					{m.common_start()}
+				</Button>
+			{/if}
+			<Button
+				variant="outline"
+				size="sm"
+				onclick={() => {
+					viewer?.stopLogStream();
+					viewer?.startLogStream();
+				}}
+				aria-label="Refresh logs"
+				title="Refresh"
+			>
+				<RefreshCwIcon class="size-4" />
+			</Button>
+		</div>
+	</div>
+</div>
+
+<div class="mb-3 hidden items-center justify-between sm:flex">
+	<div class="flex items-center gap-3">
 		<TerminalIcon class="size-5" />
 		<h2 class="text-xl font-semibold">{m.compose_logs_title()}</h2>
+		{#if isStreaming}
+			<div class="flex items-center gap-2">
+				<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
+				<span class="text-sm font-medium text-green-600">{m.common_live()}</span>
+			</div>
+		{/if}
 	</div>
 	<div class="flex items-center gap-3">
 		<label class="flex items-center gap-2">
@@ -39,10 +91,6 @@
 		</label>
 		<Button variant="outline" size="sm" onclick={() => viewer?.clearLogs()}>{m.common_clear()}</Button>
 		{#if isStreaming}
-			<div class="flex items-center gap-2">
-				<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
-				<span class="text-sm font-medium text-green-600">{m.common_live()}</span>
-			</div>
 			<Button variant="outline" size="sm" onclick={() => viewer?.stopLogStream()}>{m.common_stop()}</Button>
 		{:else}
 			<Button variant="outline" size="sm" onclick={() => viewer?.startLogStream()} disabled={!projectId}>
@@ -74,7 +122,7 @@
 				type="project"
 				maxLines={500}
 				showTimestamps={true}
-				height="600px"
+				height="calc(100vh - 280px)"
 				{onStart}
 				{onStop}
 				{onClear}

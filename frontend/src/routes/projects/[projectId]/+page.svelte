@@ -26,7 +26,7 @@
 	import EditableName from '../components/EditableName.svelte';
 	import ServicesGrid from '../components/ServicesGrid.svelte';
 	import CodePanel from '../components/CodePanel.svelte';
-	import StackLogsPanel from '../components/ProjectLogsPanel.svelte';
+	import ProjectsLogsPanel from '../components/ProjectLogsPanel.svelte';
 	import { projectService } from '$lib/services/project-service';
 
 	let { data } = $props();
@@ -239,14 +239,14 @@
 			/>
 		{/snippet}
 
-		{#snippet tabContent(tab)}
-			<Tabs.Content value="services" class="h-full min-h-0">
+		{#snippet tabContent()}
+			<Tabs.Content value="services" class="h-full">
 				<ServicesGrid services={project.services} />
 			</Tabs.Content>
 
-			<Tabs.Content value="compose" class="h-full min-h-0">
-				<div class="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-3" style="grid-template-rows: 1fr;">
-					<div class="h-full min-h-0 lg:col-span-2">
+			<Tabs.Content value="compose" class="h-full">
+				<div class="grid h-full grid-cols-1 gap-4 lg:grid-cols-5" style="grid-template-rows: 1fr;">
+					<div class="h-full lg:col-span-3">
 						<CodePanel
 							bind:open={composeOpen}
 							title={m.compose_compose_file_title()}
@@ -257,7 +257,7 @@
 						/>
 					</div>
 
-					<div class="h-full min-h-0 lg:col-span-1">
+					<div class="h-full lg:col-span-2">
 						<CodePanel
 							bind:open={envOpen}
 							title={m.compose_env_title()}
@@ -270,10 +270,10 @@
 				</div>
 			</Tabs.Content>
 
-			<Tabs.Content value="logs" class="h-full min-h-0">
+			<Tabs.Content value="logs" class="h-full">
 				{#if project.status == 'running'}
-					<div class="h-full min-h-0">
-						<StackLogsPanel projectId={project.id} bind:autoScroll={autoScrollStackLogs} />
+					<div class="h-full">
+						<ProjectsLogsPanel projectId={project.id} bind:autoScroll={autoScrollStackLogs} />
 					</div>
 				{:else}
 					<div class="text-muted-foreground py-12 text-center">{m.compose_logs_title()} Unavailable</div>
@@ -298,8 +298,6 @@
 		</div>
 	</div>
 {/if}
-
-<Tooltip.Provider />
 
 <style>
 	:global(.tab-body) {

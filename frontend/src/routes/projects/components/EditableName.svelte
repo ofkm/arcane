@@ -62,7 +62,7 @@
 		<h1 class="m-0 max-w-[360px]">
 			<button
 				type="button"
-				class="w-full truncate bg-transparent px-0 py-0 text-left text-lg font-semibold leading-none"
+				class="w-full truncate bg-transparent px-0 py-0 text-left text-lg leading-none font-semibold"
 				title={value}
 				onclick={beginEdit}
 				disabled={!canEdit}
@@ -82,14 +82,16 @@
 				<PencilIcon class="size-3.5" />
 			</Button>
 		{:else}
-			<Tooltip.Root>
-				<Tooltip.Trigger>
-					<span class="text-muted-foreground inline-flex cursor-help items-center leading-none">
-						<InfoIcon class="relative top-0.5 size-4 shrink-0" />
-					</span>
-				</Tooltip.Trigger>
-				<Tooltip.Content>{m.compose_name_change_not_allowed()}</Tooltip.Content>
-			</Tooltip.Root>
+			<Tooltip.Provider>
+				<Tooltip.Root>
+					<Tooltip.Trigger>
+						<span class="text-muted-foreground inline-flex cursor-help items-center leading-none">
+							<InfoIcon class="relative top-0.5 size-4 shrink-0" />
+						</span>
+					</Tooltip.Trigger>
+					<Tooltip.Content>{m.compose_name_change_not_allowed()}</Tooltip.Content>
+				</Tooltip.Root>
+			</Tooltip.Provider>
 		{/if}
 	{/if}
 </div>
