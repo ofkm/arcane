@@ -5,6 +5,7 @@ import "time"
 type Container struct {
 	Name        string      `json:"name" gorm:"not null" sortable:"true"`
 	Image       string      `json:"image" gorm:"not null" sortable:"true"`
+	ImageID     string      `json:"imageId,omitempty" gorm:"column:image_id;index" sortable:"true"`
 	Status      string      `json:"status" gorm:"not null" sortable:"true"`
 	State       string      `json:"state" gorm:"not null" sortable:"true"`
 	Ports       JSON        `json:"ports,omitempty" gorm:"type:text"`

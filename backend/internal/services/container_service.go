@@ -7,8 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sort"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -18,6 +19,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"gorm.io/gorm/clause"
 )
 
 type ContainerService struct {
@@ -30,6 +32,80 @@ func NewContainerService(db *database.DB, eventService *EventService, dockerServ
 	return &ContainerService{db: db, eventService: eventService, dockerService: dockerService}
 }
 
+// upsertContainerInspect persists a single container inspect result into the DB (best-effort).
+func (s *ContainerService) upsertContainerInspect(ctx context.Context, inspect *container.InspectResponse) error {
+	if s.db == nil || inspect == nil {
+		return nil
+	}
+
+	// build DB model similar to SyncDockerContainers
+	name := ""
+	if len(inspect.Name) > 0 {
+		name = inspect.Name
+		if len(name) > 0 && name[0] == '/' {
+			name = name[1:]
+		}
+	}
+	createdAt := time.Time{}
+	if inspect.Created != "" {
+		if t, err := time.Parse(time.RFC3339, inspect.Created); err == nil {
+			createdAt = t
+		}
+	}
+
+	var ports models.JSON
+	if b, err := json.Marshal(inspect.NetworkSettings.Ports); err == nil {
+		_ = json.Unmarshal(b, &ports)
+	}
+
+	var mounts models.JSON
+	if b, err := json.Marshal(inspect.Mounts); err == nil {
+		_ = json.Unmarshal(b, &mounts)
+	}
+
+	var labels models.JSON
+	if b, err := json.Marshal(inspect.Config.Labels); err == nil {
+		_ = json.Unmarshal(b, &labels)
+	}
+
+	cmd := models.StringSlice{}
+	if inspect.Config != nil {
+		if len(inspect.Config.Cmd) > 0 {
+			cmd = models.StringSlice(inspect.Config.Cmd)
+		} else if inspect.Config.Image != "" && len(inspect.Config.Cmd) == 0 {
+			// fallback: keep empty
+		}
+	}
+
+	dbContainer := models.Container{
+		BaseModel: models.BaseModel{ID: inspect.ID},
+		Name:      name,
+		Image:     inspect.Config.Image,
+		ImageID:   inspect.Image,
+		Status:    inspect.State.Status,
+		State:     inspect.State.Status,
+		Ports:     ports,
+		Mounts:    mounts,
+		Networks:  models.StringSlice{}, // not populated here
+		Labels:    labels,
+		CreatedAt: createdAt,
+		StartedAt: nil,
+		Command:   cmd,
+	}
+	if inspect.State != nil && inspect.State.StartedAt != "" {
+		if t, err := time.Parse(time.RFC3339, inspect.State.StartedAt); err == nil {
+			dbContainer.StartedAt = &t
+		}
+	}
+
+	// upsert by id
+	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"name", "image", "image_id", "command", "status", "state", "ports", "mounts", "labels", "docker_created_at", "started_at", "updated_at"}),
+	}).Create(&dbContainer).Error
+}
+
+// StartContainer -> start and persist current state
 func (s *ContainerService) StartContainer(ctx context.Context, containerID string, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -42,15 +118,21 @@ func (s *ContainerService) StartContainer(ctx context.Context, containerID strin
 		"containerId": containerID,
 	}
 
-	err = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerStart, containerID, "name", user.ID, user.Username, "0", metadata)
+	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerStart, containerID, "name", user.ID, user.Username, "0", metadata)
 
-	if err != nil {
-		fmt.Printf("Could not log container start action: %s\n", err)
+	if err := dockerClient.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
+		return err
 	}
 
-	return dockerClient.ContainerStart(ctx, containerID, container.StartOptions{})
+	// inspect and persist DB state (best-effort)
+	if insp, ierr := dockerClient.ContainerInspect(ctx, containerID); ierr == nil {
+		_ = s.upsertContainerInspect(ctx, &insp)
+	}
+
+	return nil
 }
 
+// StopContainer -> stop and persist current state
 func (s *ContainerService) StopContainer(ctx context.Context, containerID string, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -63,15 +145,22 @@ func (s *ContainerService) StopContainer(ctx context.Context, containerID string
 		"containerId": containerID,
 	}
 
-	err = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerStop, containerID, "name", user.ID, user.Username, "0", metadata)
-	if err != nil {
-		return fmt.Errorf("failed to log action: %w", err)
-	}
+	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerStop, containerID, "name", user.ID, user.Username, "0", metadata)
 
 	timeout := 30
-	return dockerClient.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout})
+	if err := dockerClient.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout}); err != nil {
+		return err
+	}
+
+	// inspect and persist DB state (best-effort)
+	if insp, ierr := dockerClient.ContainerInspect(ctx, containerID); ierr == nil {
+		_ = s.upsertContainerInspect(ctx, &insp)
+	}
+
+	return nil
 }
 
+// RestartContainer -> restart and persist current state
 func (s *ContainerService) RestartContainer(ctx context.Context, containerID string, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -84,14 +173,21 @@ func (s *ContainerService) RestartContainer(ctx context.Context, containerID str
 		"containerId": containerID,
 	}
 
-	err = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerRestart, containerID, "name", user.ID, user.Username, "0", metadata)
-	if err != nil {
-		return fmt.Errorf("failed to log action: %w", err)
+	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerRestart, containerID, "name", user.ID, user.Username, "0", metadata)
+
+	if err := dockerClient.ContainerRestart(ctx, containerID, container.StopOptions{}); err != nil {
+		return err
 	}
 
-	return dockerClient.ContainerRestart(ctx, containerID, container.StopOptions{})
+	// inspect and persist DB state (best-effort)
+	if insp, ierr := dockerClient.ContainerInspect(ctx, containerID); ierr == nil {
+		_ = s.upsertContainerInspect(ctx, &insp)
+	}
+
+	return nil
 }
 
+// GetContainerLogs(ctx context.Context, containerID string, tail string) (string, error)
 func (s *ContainerService) GetContainerLogs(ctx context.Context, containerID string, tail string) (string, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -119,6 +215,7 @@ func (s *ContainerService) GetContainerLogs(ctx context.Context, containerID str
 	return string(logBytes), nil
 }
 
+// GetContainerByID(ctx context.Context, id string) (*container.InspectResponse, error)
 func (s *ContainerService) GetContainerByID(ctx context.Context, id string) (*container.InspectResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -134,6 +231,7 @@ func (s *ContainerService) GetContainerByID(ctx context.Context, id string) (*co
 	return &container, nil
 }
 
+// DeleteContainer(ctx context.Context, containerID string, force bool, removeVolumes bool, user models.User) error
 func (s *ContainerService) DeleteContainer(ctx context.Context, containerID string, force bool, removeVolumes bool, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -141,12 +239,11 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, containerID stri
 	}
 	defer dockerClient.Close()
 
-	err = dockerClient.ContainerRemove(ctx, containerID, container.RemoveOptions{
+	if err := dockerClient.ContainerRemove(ctx, containerID, container.RemoveOptions{
 		Force:         force,
 		RemoveVolumes: removeVolumes,
 		RemoveLinks:   false,
-	})
-	if err != nil {
+	}); err != nil {
 		return fmt.Errorf("failed to delete container: %w", err)
 	}
 
@@ -154,15 +251,17 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, containerID stri
 		"action":      "delete",
 		"containerId": containerID,
 	}
+	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerDelete, containerID, "name", user.ID, user.Username, "0", metadata)
 
-	err = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerDelete, containerID, "name", user.ID, user.Username, "0", metadata)
-	if err != nil {
-		return fmt.Errorf("failed to log action: %w", err)
+	// remove DB row (best-effort)
+	if s.db != nil {
+		_ = s.db.WithContext(ctx).Delete(&models.Container{}, "id = ?", containerID).Error
 	}
 
 	return nil
 }
 
+// CreateContainer -> create/start and persist DB row
 func (s *ContainerService) CreateContainer(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string, user models.User) (*container.InspectResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -194,9 +293,7 @@ func (s *ContainerService) CreateContainer(ctx context.Context, config *containe
 		"containerId": resp.ID,
 	}
 
-	if logErr := s.eventService.LogContainerEvent(ctx, models.EventTypeContainerCreate, resp.ID, "name", user.ID, user.Username, "0", metadata); logErr != nil {
-		fmt.Printf("Could not log container stop action: %s\n", logErr)
-	}
+	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerCreate, resp.ID, "name", user.ID, user.Username, "0", metadata)
 
 	if err := dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		_ = dockerClient.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
@@ -207,6 +304,9 @@ func (s *ContainerService) CreateContainer(ctx context.Context, config *containe
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect created container: %w", err)
 	}
+
+	// persist upsert DB row (best-effort)
+	_ = s.upsertContainerInspect(ctx, &containerJSON)
 
 	return &containerJSON, nil
 }
@@ -407,125 +507,204 @@ func (s *ContainerService) readAllLogs(logs io.ReadCloser, logsChan chan<- strin
 }
 
 //nolint:gocognit
-func (s *ContainerService) ListContainersPaginated(ctx context.Context, req utils.SortedPaginationRequest, includeAll bool) ([]dto.ContainerSummaryDto, utils.PaginationResponse, error) {
+func (s *ContainerService) ListContainersPaginated(ctx context.Context, req utils.SortedPaginationRequest, includeAll bool, rawQuery url.Values) ([]dto.ContainerSummaryDto, utils.PaginationResponse, error) {
+	parsedFilters := utils.ParseFiltersFromQuery(rawQuery)
+
+	if v, ok := parsedFilters["created"]; ok {
+		parsedFilters["createdAt"] = v
+		delete(parsedFilters, "created")
+	}
+	if v, ok := parsedFilters["created_at"]; ok {
+		parsedFilters["createdAt"] = v
+		delete(parsedFilters, "created_at")
+	}
+
+	switch strings.ToLower(req.Sort.Column) {
+	case "names":
+		req.Sort.Column = "name"
+	case "created":
+		req.Sort.Column = "createdAt"
+	}
+
+	var containers []models.Container
+	query := s.db.WithContext(ctx).Model(&models.Container{})
+
+	if term := strings.TrimSpace(req.Search); term != "" {
+		like := "%" + strings.ToLower(term) + "%"
+		query = query.Where("LOWER(name) LIKE ? OR LOWER(image) LIKE ? OR LOWER(state) LIKE ?", like, like, like)
+	}
+
+	pagination, err := utils.PaginateAndSort(req, query, &containers, parsedFilters)
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate containers: %w", err)
+	}
+
+	result := make([]dto.ContainerSummaryDto, 0, len(containers))
+	for _, m := range containers {
+		// map labels
+		labels := map[string]string{}
+		if m.Labels != nil {
+			for k, v := range m.Labels {
+				if sstr, ok := v.(string); ok {
+					labels[k] = sstr
+				}
+			}
+		}
+
+		ports := []dto.PortDto{}
+		if m.Ports != nil {
+			if raw, err := json.Marshal(m.Ports); err == nil {
+				var parsed []container.Port
+				_ = json.Unmarshal(raw, &parsed)
+				for _, p := range parsed {
+					ports = append(ports, dto.PortDto{
+						IP:          p.IP,
+						PrivatePort: int(p.PrivatePort),
+						PublicPort:  int(p.PublicPort),
+						Type:        p.Type,
+					})
+				}
+			}
+		}
+
+		names := []string{m.Name}
+		created := int64(0)
+		if !m.CreatedAt.IsZero() {
+			created = m.CreatedAt.Unix()
+		}
+
+		cmd := ""
+		if len(m.Command) > 0 {
+			// Command in DB is stored as []string; present as single string in DTO
+			cmd = strings.Join(m.Command, " ")
+		}
+
+		result = append(result, dto.ContainerSummaryDto{
+			ID:              m.ID,
+			Names:           names,
+			Image:           m.Image,
+			ImageID:         m.ImageID,
+			Command:         cmd,
+			Created:         created,
+			Ports:           ports,
+			Labels:          labels,
+			State:           m.State,
+			Status:          m.Status,
+			HostConfig:      dto.HostConfigDto{NetworkMode: ""},
+			NetworkSettings: dto.NetworkSettingsDto{Networks: map[string]dto.NetworkDto{}},
+			Mounts:          []dto.MountDto{},
+		})
+	}
+
+	return result, pagination, nil
+}
+
+func (s *ContainerService) SyncDockerContainers(ctx context.Context) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to connect to Docker: %w", err)
+		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
-	dockerContainers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: includeAll})
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker containers: %w", err)
+		return fmt.Errorf("failed to list Docker containers: %w", err)
 	}
 
-	grandTotal := len(dockerContainers)
-
-	// Map to DTOs
-	result := make([]dto.ContainerSummaryDto, 0, len(dockerContainers))
-	for _, dc := range dockerContainers {
-		result = append(result, dto.NewContainerSummaryDto(dc))
-	}
-
-	// Search filter
-	if req.Search != "" {
-		searchLower := strings.ToLower(req.Search)
-		filtered := make([]dto.ContainerSummaryDto, 0, len(result))
-		for _, c := range result {
-			matched := false
-			for _, name := range c.Names {
-				if strings.Contains(strings.ToLower(name), searchLower) {
-					matched = true
-					break
+	var lastErr error
+	currentIDs := make([]string, 0, len(containers))
+	for _, c := range containers {
+		inspect, ierr := dockerClient.ContainerInspect(ctx, c.ID)
+		var createdAt time.Time
+		var startedAt *time.Time
+		if ierr == nil {
+			// container.Created is RFC3339 string in inspect
+			if t, perr := time.Parse(time.RFC3339, inspect.Created); perr == nil {
+				createdAt = t
+			}
+			if inspect.State != nil && inspect.State.StartedAt != "" {
+				if t, perr := time.Parse(time.RFC3339, inspect.State.StartedAt); perr == nil {
+					startedAt = &t
 				}
 			}
-			if !matched && strings.Contains(strings.ToLower(c.Image), searchLower) {
-				matched = true
+		} else {
+			if c.Created > 0 {
+				createdAt = time.Unix(c.Created, 0)
 			}
-			if !matched && strings.Contains(strings.ToLower(c.State), searchLower) {
-				matched = true
-			}
-			if matched {
-				filtered = append(filtered, c)
+			startedAt = nil
+		}
+
+		name := c.Names
+		var firstName string
+		if len(name) > 0 {
+			firstName = name[0]
+			if len(firstName) > 0 && firstName[0] == '/' {
+				firstName = firstName[1:]
 			}
 		}
-		result = filtered
+
+		currentIDs = append(currentIDs, c.ID)
+
+		var ports models.JSON
+		if b, merr := json.Marshal(c.Ports); merr == nil {
+			_ = json.Unmarshal(b, &ports)
+		}
+
+		var mounts models.JSON
+		if b, merr := json.Marshal(c.Mounts); merr == nil {
+			_ = json.Unmarshal(b, &mounts)
+		}
+
+		var labels models.JSON
+		if b, merr := json.Marshal(c.Labels); merr == nil {
+			_ = json.Unmarshal(b, &labels)
+		}
+
+		dbContainer := models.Container{
+			BaseModel: models.BaseModel{ID: c.ID},
+			Name:      firstName,
+			Image:     c.Image,
+			ImageID:   c.ImageID,
+			Status:    c.Status,
+			State:     c.State,
+			Ports:     ports,
+			Mounts:    mounts,
+			Networks:  models.StringSlice{},
+			Labels:    labels,
+			CreatedAt: createdAt,
+			StartedAt: startedAt,
+			Command:   models.StringSlice{c.Command},
+		}
+
+		if s.db != nil {
+			if err := s.db.WithContext(ctx).Clauses(clause.OnConflict{
+				Columns: []clause.Column{{Name: "id"}},
+				DoUpdates: clause.AssignmentColumns([]string{
+					"name", "image", "image_id", "command", "status", "state",
+					"ports", "mounts", "labels", "docker_created_at", "started_at", "updated_at",
+				}),
+			}).Create(&dbContainer).Error; err != nil {
+				lastErr = fmt.Errorf("failed to upsert container %s: %w", firstName, err)
+			}
+		}
 	}
 
-	totalItems := len(result)
-
-	// Sort
-	if req.Sort.Column != "" {
-		sortContainers(result, req.Sort.Column, req.Sort.Direction)
+	// cleanup DB rows that no longer exist in Docker
+	if s.db != nil {
+		if err := s.cleanupStaleContainers(ctx, currentIDs); err != nil {
+			lastErr = err
+		}
 	}
 
-	// Pagination window
-	startIdx := (req.Pagination.Page - 1) * req.Pagination.Limit
-	endIdx := startIdx + req.Pagination.Limit
-	if startIdx > len(result) {
-		startIdx = len(result)
-	}
-	if endIdx > len(result) {
-		endIdx = len(result)
-	}
-	pageItems := []dto.ContainerSummaryDto{}
-	if startIdx < endIdx {
-		pageItems = result[startIdx:endIdx]
-	}
-
-	totalPages := (totalItems + req.Pagination.Limit - 1) / req.Pagination.Limit
-	pagination := utils.PaginationResponse{
-		TotalPages:      int64(totalPages),
-		TotalItems:      int64(totalItems),
-		CurrentPage:     req.Pagination.Page,
-		ItemsPerPage:    req.Pagination.Limit,
-		GrandTotalItems: int64(grandTotal),
-	}
-
-	return pageItems, pagination, nil
+	return lastErr
 }
 
-func sortContainers(items []dto.ContainerSummaryDto, field, direction string) {
-	dir := utils.NormalizeSortDirection(direction)
-	f := strings.ToLower(strings.TrimSpace(field))
-
-	desc := dir == "desc"
-	lessStr := func(a, b string) bool {
-		if desc {
-			return a > b
-		}
-		return a < b
+func (s *ContainerService) cleanupStaleContainers(ctx context.Context, current []string) error {
+	if s.db == nil {
+		return nil
 	}
-	lessInt := func(a, b int64) bool {
-		if desc {
-			return a > b
-		}
-		return a < b
+	if len(current) == 0 {
+		return s.db.WithContext(ctx).Where("1=1").Delete(&models.Container{}).Error
 	}
-
-	sort.Slice(items, func(i, j int) bool {
-		a, b := items[i], items[j]
-		switch f {
-		case "name", "names":
-			var n1, n2 string
-			if len(a.Names) > 0 {
-				n1 = a.Names[0]
-			}
-			if len(b.Names) > 0 {
-				n2 = b.Names[0]
-			}
-			return lessStr(n1, n2)
-		case "image":
-			return lessStr(a.Image, b.Image)
-		case "state":
-			return lessStr(a.State, b.State)
-		case "status":
-			return lessStr(a.Status, b.Status)
-		case "created":
-			return lessInt(a.Created, b.Created)
-		default:
-			// no-op sort keeps original order
-			return false
-		}
-	})
+	return s.db.WithContext(ctx).Where("id NOT IN ?", current).Delete(&models.Container{}).Error
 }

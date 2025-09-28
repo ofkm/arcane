@@ -22,19 +22,22 @@ import (
 	"gorm.io/gorm"
 )
 
+// Add containerService dependency so project actions can refresh container DB rows.
 type ProjectService struct {
-	db              *database.DB
-	settingsService *SettingsService
-	eventService    *EventService
-	imageService    *ImageService
+	db               *database.DB
+	settingsService  *SettingsService
+	eventService     *EventService
+	imageService     *ImageService
+	containerService *ContainerService
 }
 
-func NewProjectService(db *database.DB, settingsService *SettingsService, eventService *EventService, imageService *ImageService) *ProjectService {
+func NewProjectService(db *database.DB, settingsService *SettingsService, eventService *EventService, imageService *ImageService, containerService *ContainerService) *ProjectService {
 	return &ProjectService{
-		db:              db,
-		settingsService: settingsService,
-		eventService:    eventService,
-		imageService:    imageService,
+		db:               db,
+		settingsService:  settingsService,
+		eventService:     eventService,
+		imageService:     imageService,
+		containerService: containerService,
 	}
 }
 
@@ -449,6 +452,14 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 	if err != nil {
 		slog.Error("failed to update project status and counts after deploy", "projectID", projectID, "error", err)
 	}
+
+	// best-effort: refresh container DB rows so UI sees up-to-date containers for this project
+	if s.containerService != nil {
+		if serr := s.containerService.SyncDockerContainers(ctx); serr != nil {
+			slog.WarnContext(ctx, "failed to sync docker containers after project deploy", "error", serr)
+		}
+	}
+
 	return err
 }
 
@@ -480,6 +491,13 @@ func (s *ProjectService) DownProject(ctx context.Context, projectID string, user
 	}
 	if logErr := s.eventService.LogProjectEvent(ctx, models.EventTypeProjectStop, projectID, projectFromDb.Name, user.ID, user.Username, "0", metadata); logErr != nil {
 		slog.ErrorContext(ctx, "could not log project down action", "error", logErr)
+	}
+
+	// refresh containers in DB after bringing project down
+	if s.containerService != nil {
+		if serr := s.containerService.SyncDockerContainers(ctx); serr != nil {
+			slog.WarnContext(ctx, "failed to sync docker containers after project down", "error", serr)
+		}
 	}
 
 	return s.updateProjectStatusandCountsInternal(ctx, projectID, models.ProjectStatusStopped)
@@ -582,7 +600,13 @@ func (s *ProjectService) RedeployProject(ctx context.Context, projectID string, 
 		slog.ErrorContext(ctx, "could not log project redeploy action", "error", logErr)
 	}
 
-	return s.DeployProject(ctx, projectID, systemUser)
+	// after redeploy, ensure containers DB reflect new state
+	if s.containerService != nil {
+		if serr := s.containerService.SyncDockerContainers(ctx); serr != nil {
+			slog.WarnContext(ctx, "failed to sync docker containers after project redeploy", "error", serr)
+		}
+	}
+	return s.DeployProject(ctx, projectID, user)
 }
 
 func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string, progressWriter io.Writer) error {

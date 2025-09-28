@@ -203,7 +203,7 @@ func (h *ContainerHandler) List(c *gin.Context) {
 
 	includeAll := true
 
-	containers, pagination, err := h.containerService.ListContainersPaginated(c.Request.Context(), req, includeAll)
+	containers, pagination, err := h.containerService.ListContainersPaginated(c.Request.Context(), req, includeAll, c.Request.URL.Query())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

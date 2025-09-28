@@ -43,11 +43,11 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.Docker = dockerClient
 	svcs.User = services.NewUserService(db)
 	svcs.ContainerRegistry = services.NewContainerRegistryService(db)
+	svcs.Container = services.NewContainerService(db, svcs.Event, svcs.Docker)
 	svcs.ImageUpdate = services.NewImageUpdateService(db, svcs.Settings, svcs.ContainerRegistry, svcs.Docker, svcs.Event)
 	svcs.Image = services.NewImageService(db, svcs.Docker, svcs.ContainerRegistry, svcs.ImageUpdate, svcs.Event)
-	svcs.Project = services.NewProjectService(db, svcs.Settings, svcs.Event, svcs.Image)
+	svcs.Project = services.NewProjectService(db, svcs.Settings, svcs.Event, svcs.Image, svcs.Container)
 	svcs.Environment = services.NewEnvironmentService(db, httpClient)
-	svcs.Container = services.NewContainerService(db, svcs.Event, svcs.Docker)
 	svcs.Volume = services.NewVolumeService(db, svcs.Docker, svcs.Event)
 	svcs.Network = services.NewNetworkService(db, svcs.Docker, svcs.Event)
 	svcs.Template = services.NewTemplateService(db, httpClient)
