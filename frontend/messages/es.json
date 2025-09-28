@@ -1091,5 +1091,7 @@
 	"using_server_default": "Usando el servidor por defecto",
 	"mobile_navigation": "Navegación móvil",
 	"on": "En",
-	"off": "Apagado"
+	"off": "Apagado",
+	"tap_to_edit": "Toca para editar",
+	"cannot_edit": "No se puede editar"
 }
