@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+	"net/url"
 	"reflect"
 	"sort"
 	"strconv"
@@ -47,24 +49,80 @@ type PaginationOptions struct {
 	AllowedSorts    []string
 }
 
-func PaginateAndSort(sortedPaginationRequest SortedPaginationRequest, query *gorm.DB, result interface{}) (PaginationResponse, error) {
+// PaginateAndSort applies sorting, optional filtering and pagination to the provided GORM query.
+// filtersOpt is an optional override for filters: map[string][]string. If omitted, filters are taken from the request.
+func PaginateAndSort(sortedPaginationRequest SortedPaginationRequest, query *gorm.DB, result interface{}, filtersOpt ...map[string][]string) (PaginationResponse, error) {
+	var filters map[string][]string
+	if len(filtersOpt) > 0 && filtersOpt[0] != nil {
+		filters = filtersOpt[0]
+	} else {
+		// convert request Filters (map[string]interface{}) -> map[string][]string
+		filters = make(map[string][]string)
+		for k, v := range sortedPaginationRequest.Filters {
+			switch tv := v.(type) {
+			case []string:
+				filters[k] = tv
+			case string:
+				// allow comma separated or single string
+				parts := strings.Split(tv, ",")
+				for i := range parts {
+					parts[i] = strings.TrimSpace(parts[i])
+				}
+				filters[k] = parts
+			case []interface{}:
+				var out []string
+				for _, it := range tv {
+					out = append(out, fmt.Sprintf("%v", it))
+				}
+				filters[k] = out
+			default:
+				// fallback single value
+				filters[k] = []string{fmt.Sprintf("%v", tv)}
+			}
+		}
+	}
+
 	pagination := sortedPaginationRequest.Pagination
-	sort := sortedPaginationRequest.Sort
+	sortReq := sortedPaginationRequest.Sort
 
-	capitalizedSortColumn := CapitalizeFirstLetter(sort.Column)
+	capitalizedSortColumn := CapitalizeFirstLetter(sortReq.Column)
 
-	sortField, sortFieldFound := reflect.TypeOf(result).Elem().Elem().FieldByName(capitalizedSortColumn)
-	isSortable, _ := strconv.ParseBool(sortField.Tag.Get("sortable"))
+	// Find struct field on result to check sortable tag
+	sortFieldFound := false
+	isSortable := false
+	if result != nil {
+		if t := reflect.TypeOf(result); t != nil {
+			// derive model field type safely
+			if t.Kind() == reflect.Ptr {
+				t = t.Elem()
+			}
+			if t.Kind() == reflect.Slice {
+				t = t.Elem()
+			}
+			if t.Kind() == reflect.Ptr {
+				t = t.Elem()
+			}
+			if t.Kind() == reflect.Struct {
+				if f, ok := t.FieldByName(capitalizedSortColumn); ok {
+					sortFieldFound = true
+					isSortable, _ = strconv.ParseBool(f.Tag.Get("sortable"))
+				}
+			}
+		}
+	}
 
-	sort.Direction = NormalizeSortDirection(sort.Direction)
-
+	sortReq.Direction = NormalizeSortDirection(sortReq.Direction)
 	if sortFieldFound && isSortable {
-		columnName := CamelCaseToSnakeCase(sort.Column)
+		columnName := CamelCaseToSnakeCase(sortReq.Column)
 		query = query.Clauses(clause.OrderBy{
 			Columns: []clause.OrderByColumn{
-				{Column: clause.Column{Name: columnName}, Desc: sort.Direction == "desc"},
+				{Column: clause.Column{Name: columnName}, Desc: sortReq.Direction == "desc"},
 			},
 		})
+	}
+
+	if len(filters) > 0 && result != nil {
+		query = applyFilters(filters, query, result)
 	}
 
 	return Paginate(pagination.Page, pagination.Limit, query, result)
@@ -106,11 +164,127 @@ func Paginate(page int, pageSize int, query *gorm.DB, result interface{}) (Pagin
 	}
 
 	return PaginationResponse{
-		TotalPages:   totalPages,
-		TotalItems:   totalItems,
-		CurrentPage:  page,
-		ItemsPerPage: pageSize,
+		TotalPages:      totalPages,
+		TotalItems:      totalItems,
+		CurrentPage:     page,
+		ItemsPerPage:    pageSize,
+		GrandTotalItems: totalItems,
 	}, nil
+}
+
+// applyFilters applies the provided filter map to the GORM query.
+// It mirrors the sortable allowlist logic using the model's `filterable:"true"` tag.
+//
+//nolint:gocognit
+func applyFilters(filters map[string][]string, query *gorm.DB, result interface{}) *gorm.DB {
+	if len(filters) == 0 || result == nil {
+		return query
+	}
+
+	// Derive model type from *[]T or *[]*T
+	t := reflect.TypeOf(result)
+	if t == nil {
+		return query
+	}
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Slice {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return query
+	}
+	modelType := t
+
+	for col, vals := range filters {
+		field, ok := modelType.FieldByName(CapitalizeFirstLetter(col))
+		if !ok {
+			continue
+		}
+		isFilterable, _ := strconv.ParseBool(field.Tag.Get("filterable"))
+		if !isFilterable {
+			continue
+		}
+		columnName := CamelCaseToSnakeCase(col)
+
+		// Unwrap pointer fields
+		ft := field.Type
+		if ft.Kind() == reflect.Ptr {
+			ft = ft.Elem()
+		}
+		kind := ft.Kind()
+
+		// Bool handling
+		if kind == reflect.Bool {
+			var arr []bool
+			for _, s := range vals {
+				if b, err := strconv.ParseBool(strings.ToLower(strings.TrimSpace(s))); err == nil {
+					arr = append(arr, b)
+				}
+			}
+			if len(arr) > 0 {
+				query = query.Where(columnName+" IN ?", arr)
+			}
+			continue
+		}
+
+		// Signed integers
+		if isSignedIntKind(kind) {
+			var arr []int64
+			for _, s := range vals {
+				if n, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64); err == nil {
+					arr = append(arr, n)
+				}
+			}
+			if len(arr) > 0 {
+				query = query.Where(columnName+" IN ?", arr)
+			}
+			continue
+		}
+
+		// Unsigned integers
+		if isUnsignedIntKind(kind) {
+			var arr []uint64
+			for _, s := range vals {
+				if n, err := strconv.ParseUint(strings.TrimSpace(s), 10, 64); err == nil {
+					arr = append(arr, n)
+				}
+			}
+			if len(arr) > 0 {
+				query = query.Where(columnName+" IN ?", arr)
+			}
+			continue
+		}
+
+		// Fallback: treat as string values
+		var arr []string
+		for _, s := range vals {
+			if v := strings.TrimSpace(s); v != "" {
+				arr = append(arr, v)
+			}
+		}
+		if len(arr) > 0 {
+			valsIface := make([]interface{}, len(arr))
+			for i, v := range arr {
+				valsIface[i] = v
+			}
+			query = query.Where(clause.IN{Column: clause.Column{Name: columnName}, Values: valsIface})
+		}
+	}
+
+	return query
+}
+
+func isSignedIntKind(k reflect.Kind) bool {
+	return k == reflect.Int || k == reflect.Int8 || k == reflect.Int16 || k == reflect.Int32 || k == reflect.Int64
+}
+
+func isUnsignedIntKind(k reflect.Kind) bool {
+	return k == reflect.Uint || k == reflect.Uint8 || k == reflect.Uint16 || k == reflect.Uint32 || k == reflect.Uint64 || k == reflect.Uintptr
 }
 
 //nolint:gocognit
@@ -174,4 +348,27 @@ func SortSliceByField(data []map[string]interface{}, field, direction string) {
 			return false
 		}
 	})
+}
+
+func ParseFiltersFromQuery(raw url.Values) map[string][]string {
+	out := make(map[string][]string)
+	if raw == nil {
+		return out
+	}
+	for k, vals := range raw {
+		if !strings.HasPrefix(k, "filters[") {
+			continue
+		}
+		rest := k[len("filters["):]
+		i := strings.IndexByte(rest, ']')
+		if i <= 0 {
+			continue
+		}
+		name := rest[:i]
+		if name == "" || len(vals) == 0 {
+			continue
+		}
+		out[name] = append(out[name], vals...)
+	}
+	return out
 }

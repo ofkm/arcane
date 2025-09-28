@@ -7,11 +7,11 @@ import (
 )
 
 type NetworkSummaryDto struct {
-	ID      string            `json:"id"`
-	Name    string            `json:"name"`
-	Driver  string            `json:"driver"`
-	Scope   string            `json:"scope"`
-	Created time.Time         `json:"created"`
+	ID      string            `json:"id" sortable:"true"`
+	Name    string            `json:"name" sortable:"true"`
+	Driver  string            `json:"driver" sortable:"true"`
+	Scope   string            `json:"scope" sortable:"true"`
+	Created time.Time         `json:"created" sortable:"true"`
 	Options map[string]string `json:"options"`
 	Labels  map[string]string `json:"labels"`
 	InUse   bool              `json:"inUse"`

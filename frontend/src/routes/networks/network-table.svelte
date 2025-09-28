@@ -126,7 +126,6 @@
 		{
 			accessorKey: 'inUse',
 			title: m.common_status(),
-			sortable: true,
 			cell: StatusCell,
 			filterFn: (row, columnId, filterValue) => {
 				const selected = Array.isArray(filterValue) ? (filterValue as boolean[]) : [];

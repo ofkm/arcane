@@ -48,7 +48,7 @@ func (h *NetworkHandler) List(c *gin.Context) {
 		req.Pagination.Limit = 20
 	}
 
-	networks, pagination, err := h.networkService.ListNetworksPaginated(c.Request.Context(), req)
+	networks, pagination, err := h.networkService.ListNetworksPaginated(c.Request.Context(), req, c.Request.URL.Query())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
