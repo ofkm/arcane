@@ -28,7 +28,7 @@
 		class?: string;
 	}
 
-    export type StatCardsColumns = 'auto' | 1 | 2 | 3 | 4 | 5;
+	export type StatCardsColumns = 'auto' | 1 | 2 | 3 | 4 | 5;
 
 	interface Props {
 		title: string;
@@ -54,16 +54,21 @@
 		containerClass = 'space-y-6'
 	}: Props = $props();
 
-	const mobileVisibleButtons = $derived(actionButtons.filter(btn => btn.showOnMobile));
-	const mobileDropdownButtons = $derived(actionButtons.filter(btn => !btn.showOnMobile));
+	const mobileVisibleButtons = $derived(actionButtons.filter((btn) => btn.showOnMobile));
+	const mobileDropdownButtons = $derived(actionButtons.filter((btn) => !btn.showOnMobile));
 
 	const getStatCardsGridClass = (columns: typeof statCardsColumns) => {
 		switch (columns) {
-			case 1: return 'grid-cols-1';
-			case 2: return 'grid-cols-1 sm:grid-cols-2';
-			case 3: return 'grid-cols-1 sm:grid-cols-3';
-			case 4: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
-			case 5: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-5';
+			case 1:
+				return 'grid-cols-1';
+			case 2:
+				return 'grid-cols-1 sm:grid-cols-2';
+			case 3:
+				return 'grid-cols-1 sm:grid-cols-3';
+			case 4:
+				return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+			case 5:
+				return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-5';
 			case 'auto':
 			default:
 				if (statCards.length <= 2) return 'grid-cols-1 sm:grid-cols-2';
@@ -100,7 +105,7 @@
 			</div>
 
 			<!-- Mobile Action Buttons -->
-			<div class="absolute right-4 top-4 flex items-center gap-2 sm:hidden">
+			<div class="absolute top-4 right-4 flex items-center gap-2 sm:hidden">
 				<!-- Mobile visible buttons (if any) -->
 				{#each mobileVisibleButtons as button}
 					<ArcaneButton
@@ -128,11 +133,8 @@
 						>
 							<DropdownMenu.Group>
 								{#each mobileDropdownButtons as button}
-									<DropdownMenu.Item 
-										onclick={button.onclick} 
-										disabled={button.disabled || button.loading}
-									>
-										{button.loading ? (button.loadingLabel || button.label) : button.label}
+									<DropdownMenu.Item onclick={button.onclick} disabled={button.disabled || button.loading}>
+										{button.loading ? button.loadingLabel || button.label : button.label}
 									</DropdownMenu.Item>
 								{/each}
 							</DropdownMenu.Group>
@@ -144,7 +146,7 @@
 	</div>
 
 	<!-- Statistics Cards Section -->
-	{#if statCards.length > 0}
+	{#if statCards && statCards.length > 0}
 		<div class="grid gap-4 {getStatCardsGridClass(statCardsColumns)}">
 			{#each statCards as card}
 				<StatCard
