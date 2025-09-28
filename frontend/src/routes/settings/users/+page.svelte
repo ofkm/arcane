@@ -108,8 +108,7 @@
 		}
 	}
 
-	// Configure action buttons for the layout
-	const actionButtons: SettingsActionButton[] = [
+	const actionButtons: SettingsActionButton[] = $derived.by(() => [
 		{
 			id: 'create',
 			action: 'create',
@@ -118,9 +117,8 @@
 			loading: isLoading.creating,
 			disabled: isLoading.creating
 		}
-	];
+	]);
 
-	// Configure stat cards for the layout
 	const statCards: SettingsStatCard[] = $derived([
 		{
 			title: m.users_total(),

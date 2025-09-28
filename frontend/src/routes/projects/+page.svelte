@@ -84,7 +84,7 @@
 		}
 	});
 
-	const actionButtons: ActionButton[] = [
+	const actionButtons: ActionButton[] = $derived.by(() => [
 		{
 			id: 'check-updates',
 			action: 'inspect',
@@ -107,7 +107,7 @@
 			loading: isLoading.refreshing,
 			disabled: isLoading.refreshing
 		}
-	];
+	]);
 
 	const statCards: StatCardConfig[] = $derived([
 		{
