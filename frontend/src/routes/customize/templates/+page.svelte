@@ -137,7 +137,7 @@
 
 		<div class="absolute right-4 top-4 flex items-center sm:hidden">
 			<DropdownMenu.Root>
-				<DropdownMenu.Trigger class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border">
+				<DropdownMenu.Trigger class="bg-background/70 inline-flex size-9 items-center justify-center rounded-lg border">
 					<span class="sr-only">{m.common_open_menu()}</span>
 					<EllipsisIcon />
 				</DropdownMenu.Trigger>

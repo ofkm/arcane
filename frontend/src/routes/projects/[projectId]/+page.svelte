@@ -2,7 +2,6 @@
 	import type { Project } from '$lib/types/project.type';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
-	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import FileStackIcon from '@lucide/svelte/icons/file-stack';

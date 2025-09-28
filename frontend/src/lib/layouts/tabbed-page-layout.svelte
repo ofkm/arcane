@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { TabBar, type TabItem } from '$lib/components/tab-bar/index.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
