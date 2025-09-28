@@ -103,7 +103,7 @@
 		}
 	});
 
-	const actionButtons: ActionButton[] = [
+	const actionButtons: ActionButton[] = $derived.by(() => [
 		{
 			id: 'pull',
 			action: 'pull',
@@ -136,7 +136,7 @@
 			loading: isLoading.refreshing,
 			disabled: isLoading.refreshing
 		}
-	];
+	]);
 
 	const statCards: StatCardConfig[] = $derived([
 		{
