@@ -221,6 +221,7 @@ func (s *NetworkService) ListNetworksPaginated(ctx context.Context, req utils.So
 	return result, pagination, nil
 }
 
+//nolint:gocognit
 func (s *NetworkService) SyncDockerNetworks(ctx context.Context) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -302,6 +303,8 @@ func (s *NetworkService) SyncDockerNetworks(ctx context.Context) error {
 }
 
 // updated signature to accept optional usage maps (nil allowed)
+//
+//nolint:gocognit
 func (s *NetworkService) syncSingleNetwork(ctx context.Context, inspect network.Inspect, inUseByID, inUseByName map[string]bool) error {
 	var optionsMap map[string]interface{}
 	var labelsMap map[string]interface{}

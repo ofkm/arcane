@@ -32,7 +32,7 @@ func NewContainerService(db *database.DB, eventService *EventService, dockerServ
 	return &ContainerService{db: db, eventService: eventService, dockerService: dockerService}
 }
 
-// upsertContainerInspect persists a single container inspect result into the DB (best-effort).
+// upsertContainerInspect persists a single container inspect result into the DB
 func (s *ContainerService) upsertContainerInspect(ctx context.Context, inspect *container.InspectResponse) error {
 	if s.db == nil || inspect == nil {
 		return nil
@@ -69,12 +69,8 @@ func (s *ContainerService) upsertContainerInspect(ctx context.Context, inspect *
 	}
 
 	cmd := models.StringSlice{}
-	if inspect.Config != nil {
-		if len(inspect.Config.Cmd) > 0 {
-			cmd = models.StringSlice(inspect.Config.Cmd)
-		} else if inspect.Config.Image != "" && len(inspect.Config.Cmd) == 0 {
-			// fallback: keep empty
-		}
+	if inspect.Config != nil && len(inspect.Config.Cmd) > 0 {
+		cmd = models.StringSlice(inspect.Config.Cmd)
 	}
 
 	dbContainer := models.Container{
@@ -605,6 +601,7 @@ func (s *ContainerService) ListContainersPaginated(ctx context.Context, req util
 	return result, pagination, nil
 }
 
+//nolint:gocognit
 func (s *ContainerService) SyncDockerContainers(ctx context.Context) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {

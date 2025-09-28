@@ -49,6 +49,72 @@ type PaginationOptions struct {
 	AllowedSorts    []string
 }
 
+// normalizeFilters converts request Filters (map[string]interface{}) into map[string][]string.
+func normalizeFilters(reqFilters map[string]interface{}) map[string][]string {
+	out := make(map[string][]string)
+	if reqFilters == nil {
+		return out
+	}
+	for k, v := range reqFilters {
+		switch tv := v.(type) {
+		case []string:
+			out[k] = tv
+		case string:
+			parts := strings.Split(tv, ",")
+			for i := range parts {
+				parts[i] = strings.TrimSpace(parts[i])
+			}
+			out[k] = parts
+		case []interface{}:
+			var arr []string
+			for _, it := range tv {
+				arr = append(arr, fmt.Sprintf("%v", it))
+			}
+			out[k] = arr
+		default:
+			out[k] = []string{fmt.Sprintf("%v", tv)}
+		}
+	}
+	return out
+}
+
+// resolveSortableField inspects the result type to determine if sortColumn is marked sortable.
+// It returns the snake_case column name and true if sortable, otherwise ("", false).
+func resolveSortableField(result interface{}, sortColumn string) (string, bool) {
+	if sortColumn == "" || result == nil {
+		return "", false
+	}
+
+	// Capitalize request column to match struct field name
+	capitalized := CapitalizeFirstLetter(sortColumn)
+
+	t := reflect.TypeOf(result)
+	if t == nil {
+		return "", false
+	}
+	// unwrap pointers and slices to reach element struct
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Slice {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return "", false
+	}
+
+	if f, ok := t.FieldByName(capitalized); ok {
+		isSortable, _ := strconv.ParseBool(f.Tag.Get("sortable"))
+		if isSortable {
+			return CamelCaseToSnakeCase(sortColumn), true
+		}
+	}
+	return "", false
+}
+
 // PaginateAndSort applies sorting, optional filtering and pagination to the provided GORM query.
 // filtersOpt is an optional override for filters: map[string][]string. If omitted, filters are taken from the request.
 func PaginateAndSort(sortedPaginationRequest SortedPaginationRequest, query *gorm.DB, result interface{}, filtersOpt ...map[string][]string) (PaginationResponse, error) {
@@ -56,64 +122,17 @@ func PaginateAndSort(sortedPaginationRequest SortedPaginationRequest, query *gor
 	if len(filtersOpt) > 0 && filtersOpt[0] != nil {
 		filters = filtersOpt[0]
 	} else {
-		// convert request Filters (map[string]interface{}) -> map[string][]string
-		filters = make(map[string][]string)
-		for k, v := range sortedPaginationRequest.Filters {
-			switch tv := v.(type) {
-			case []string:
-				filters[k] = tv
-			case string:
-				// allow comma separated or single string
-				parts := strings.Split(tv, ",")
-				for i := range parts {
-					parts[i] = strings.TrimSpace(parts[i])
-				}
-				filters[k] = parts
-			case []interface{}:
-				var out []string
-				for _, it := range tv {
-					out = append(out, fmt.Sprintf("%v", it))
-				}
-				filters[k] = out
-			default:
-				// fallback single value
-				filters[k] = []string{fmt.Sprintf("%v", tv)}
-			}
-		}
+		filters = normalizeFilters(sortedPaginationRequest.Filters)
 	}
 
 	pagination := sortedPaginationRequest.Pagination
 	sortReq := sortedPaginationRequest.Sort
 
-	capitalizedSortColumn := CapitalizeFirstLetter(sortReq.Column)
-
-	// Find struct field on result to check sortable tag
-	sortFieldFound := false
-	isSortable := false
-	if result != nil {
-		if t := reflect.TypeOf(result); t != nil {
-			// derive model field type safely
-			if t.Kind() == reflect.Ptr {
-				t = t.Elem()
-			}
-			if t.Kind() == reflect.Slice {
-				t = t.Elem()
-			}
-			if t.Kind() == reflect.Ptr {
-				t = t.Elem()
-			}
-			if t.Kind() == reflect.Struct {
-				if f, ok := t.FieldByName(capitalizedSortColumn); ok {
-					sortFieldFound = true
-					isSortable, _ = strconv.ParseBool(f.Tag.Get("sortable"))
-				}
-			}
-		}
-	}
+	// resolve sortable column from model/type
+	columnName, isSortable := resolveSortableField(result, sortReq.Column)
 
 	sortReq.Direction = NormalizeSortDirection(sortReq.Direction)
-	if sortFieldFound && isSortable {
-		columnName := CamelCaseToSnakeCase(sortReq.Column)
+	if isSortable && columnName != "" {
 		query = query.Clauses(clause.OrderBy{
 			Columns: []clause.OrderByColumn{
 				{Column: clause.Column{Name: columnName}, Desc: sortReq.Direction == "desc"},
