@@ -10,7 +10,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/volume"
-	dockervol "github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -41,7 +40,7 @@ func (s *VolumeService) SyncDockerVolumes(ctx context.Context) error {
 	}
 	defer dockerClient.Close()
 
-	list, err := dockerClient.VolumeList(ctx, dockervol.ListOptions{})
+	list, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list Docker volumes: %w", err)
 	}

@@ -526,6 +526,12 @@ func (s *ContainerService) ListContainersPaginated(ctx context.Context, req util
 		req.Sort.Column = "createdAt"
 	}
 
+	if !includeAll {
+		if _, hasState := parsedFilters["state"]; !hasState {
+			parsedFilters["state"] = []string{"running"}
+		}
+	}
+
 	var containers []models.Container
 	query := s.db.WithContext(ctx).Model(&models.Container{})
 

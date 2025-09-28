@@ -1,7 +1,3 @@
--- Create containers table for persisted container records (includes BaseModel.id)
-DROP TABLE IF EXISTS containers_table;
-DROP TABLE IF EXISTS containers;
-
 CREATE TABLE IF NOT EXISTS containers (
   id              TEXT PRIMARY KEY NOT NULL,
   name            TEXT NOT NULL,
