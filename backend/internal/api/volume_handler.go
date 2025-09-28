@@ -42,6 +42,7 @@ func (h *VolumeHandler) List(c *gin.Context) {
 		return
 	}
 
+	// ensure sane defaults
 	if req.Pagination.Page == 0 {
 		req.Pagination.Page = 1
 	}
@@ -49,9 +50,10 @@ func (h *VolumeHandler) List(c *gin.Context) {
 		req.Pagination.Limit = 20
 	}
 
+	rawQ := c.Request.URL.Query() // <-- pass raw query
 	driver := c.Query("driver")
 
-	volumes, pagination, err := h.volumeService.ListVolumesPaginated(c.Request.Context(), req, driver)
+	volumes, pagination, err := h.volumeService.ListVolumesPaginated(c.Request.Context(), req, driver, rawQ)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

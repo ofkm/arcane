@@ -3,7 +3,9 @@ package services
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +18,81 @@ import (
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
 )
+
+// normalizeQueryToFilters converts raw URL query values into a flat filters map.
+// It supports: filters[foo]=bar, filters.foo=bar, foo=bar and returns map[string]interface{}.
+func normalizeQueryToFilters(q url.Values) map[string]interface{} {
+	if q == nil {
+		return nil
+	}
+	out := map[string]interface{}{}
+	for k, vals := range q {
+		// skip reserved
+		if strings.HasPrefix(k, "pagination[") || strings.HasPrefix(k, "sort[") || k == "search" {
+			continue
+		}
+		key := k
+		if strings.HasPrefix(key, "filters[") && strings.HasSuffix(key, "]") {
+			key = key[len("filters[") : len(key)-1]
+		} else if strings.HasPrefix(key, "filters.") {
+			key = key[len("filters."):]
+		}
+		if len(vals) == 1 {
+			out[key] = vals[0]
+		} else if len(vals) > 1 {
+			out[key] = vals
+		}
+	}
+	return out
+}
+
+// normalizeFilterKeys flattens common encodings like "filters[inUse]" or "filters.inUse" to "inUse".
+func normalizeFilterKeys(filtersMap map[string]interface{}) map[string]interface{} {
+	if filtersMap == nil {
+		return nil
+	}
+	out := make(map[string]interface{}, len(filtersMap))
+	for k, v := range filtersMap {
+		key := strings.TrimSpace(k)
+		if strings.HasPrefix(key, "filters[") && strings.HasSuffix(key, "]") {
+			key = key[len("filters[") : len(key)-1]
+		} else if strings.HasPrefix(key, "filters.") {
+			key = key[len("filters."):]
+		}
+		out[key] = v
+	}
+	return out
+}
+
+func parseBoolAny(v interface{}) (bool, bool) {
+	switch t := v.(type) {
+	case bool:
+		return t, true
+	case string:
+		s := strings.ToLower(strings.TrimSpace(t))
+		if s == "true" || s == "1" {
+			return true, true
+		}
+		if s == "false" || s == "0" {
+			return false, true
+		}
+		if b, err := strconv.ParseBool(s); err == nil {
+			return b, true
+		}
+	case []string:
+		if len(t) > 0 {
+			return parseBoolAny(t[0])
+		}
+	case []interface{}:
+		if len(t) > 0 {
+			return parseBoolAny(t[0])
+		}
+	default:
+		s := fmt.Sprintf("%v", t)
+		return parseBoolAny(s)
+	}
+	return false, false
+}
 
 type VolumeService struct {
 	db            *database.DB
@@ -239,52 +316,103 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 }
 
 //nolint:gocognit
-func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.SortedPaginationRequest, driver string) ([]dto.VolumeDto, utils.PaginationResponse, error) {
-	volumes, err := s.ListVolumes(ctx)
-	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker volumes: %w", err)
-	}
-
+func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.SortedPaginationRequest, driver string, rawQuery url.Values) ([]dto.VolumeDto, utils.PaginationResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
-	volumeUsageMap, err := s.buildVolumeUsageMap(ctx, dockerClient)
-	if err != nil {
-		return nil, utils.PaginationResponse{}, err
-	}
-
-	result := make([]dto.VolumeDto, 0, len(volumes))
-	for _, v := range volumes {
-		if driver != "" && v.Driver != driver {
-			continue
+	// Merge raw query into req.Filters and normalize keys
+	if rawQuery != nil {
+		if norm := normalizeQueryToFilters(rawQuery); norm != nil {
+			if req.Filters == nil {
+				req.Filters = norm
+			} else {
+				for k, v := range norm {
+					req.Filters[k] = v
+				}
+			}
 		}
-		result = append(result, dto.NewVolumeDto(v, volumeUsageMap[v.Name]))
+	}
+	req.Filters = normalizeFilterKeys(req.Filters)
+
+	// Detect inUse filter (backend-only concept) and convert to Docker's dangling filter
+	// Docker: dangling=true => UNUSED volumes (not referenced by any container)
+	//         dangling=false => IN-USE volumes
+	var wantInUse *bool
+	if req.Filters != nil {
+		for _, k := range []string{"inUse", "inuse", "in_use"} {
+			if raw, ok := req.Filters[k]; ok {
+				if b, ok := parseBoolAny(raw); ok {
+					wantInUse = &b
+					break
+				}
+			}
+		}
 	}
 
+	// Build daemon-side filters (driver, label, name, and map inUse -> dangling)
+	allowed := []string{"driver", "label", "name", "dangling"}
+	if driver != "" {
+		if req.Filters == nil {
+			req.Filters = map[string]interface{}{}
+		}
+		req.Filters["driver"] = driver
+	}
+	if wantInUse != nil {
+		// inUse=true  -> dangling=false
+		// inUse=false -> dangling=true
+		req.Filters["dangling"] = strconv.FormatBool(!*wantInUse)
+	}
+
+	filterArgs := buildDockerFiltersFromRequest(req, allowed)
+	volListBody, err := dockerClient.VolumeList(ctx, volume.ListOptions{Filters: filterArgs})
+	if err != nil {
+		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker volumes: %w", err)
+	}
+
+	// Convert returned volumes
+	volumes := make([]volume.Volume, 0, len(volListBody.Volumes))
+	for _, v := range volListBody.Volumes {
+		if v != nil {
+			volumes = append(volumes, *v)
+		}
+	}
+
+	// Build DTOs. If inUse filter was used, Docker already filtered set; set InUse accordingly without extra scans.
+	result := make([]dto.VolumeDto, 0, len(volumes))
+	if wantInUse != nil {
+		for _, v := range volumes {
+			result = append(result, dto.NewVolumeDto(v, *wantInUse))
+		}
+	} else {
+		// Defer expensive inUse checks until after pagination
+		for _, v := range volumes {
+			result = append(result, dto.NewVolumeDto(v, false))
+		}
+	}
+
+	// Optional partial-search fallback
 	if req.Search != "" {
-		filtered := make([]dto.VolumeDto, 0, len(result))
-		searchLower := strings.ToLower(req.Search)
+		filtered := result[:0]
+		needle := strings.ToLower(req.Search)
 		for _, vol := range result {
-			if strings.Contains(strings.ToLower(vol.Name), searchLower) ||
-				strings.Contains(strings.ToLower(vol.Driver), searchLower) {
+			if strings.Contains(strings.ToLower(vol.Name), needle) ||
+				strings.Contains(strings.ToLower(vol.Driver), needle) {
 				filtered = append(filtered, vol)
 			}
 		}
 		result = filtered
 	}
 
+	// Sort + paginate in-memory
 	totalItems := len(result)
-
 	if req.Sort.Column != "" {
 		sortVolumes(result, req.Sort.Column, req.Sort.Direction)
 	}
-
 	startIdx := (req.Pagination.Page - 1) * req.Pagination.Limit
 	endIdx := startIdx + req.Pagination.Limit
-
 	if startIdx > len(result) {
 		startIdx = len(result)
 	}
@@ -295,6 +423,13 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.Sort
 	pageItems := []dto.VolumeDto{}
 	if startIdx < endIdx {
 		pageItems = result[startIdx:endIdx]
+		// Compute inUse only when not requested explicitly
+		if wantInUse == nil {
+			for i := range pageItems {
+				inUse, _, _ := s.containersUsingVolume(ctx, dockerClient, pageItems[i].Name)
+				pageItems[i].InUse = inUse
+			}
+		}
 	}
 
 	totalPages := (totalItems + req.Pagination.Limit - 1) / req.Pagination.Limit
@@ -304,7 +439,6 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.Sort
 		CurrentPage:  req.Pagination.Page,
 		ItemsPerPage: req.Pagination.Limit,
 	}
-
 	return pageItems, pagination, nil
 }
 
@@ -367,4 +501,36 @@ func sortVolumes(items []dto.VolumeDto, field, direction string) {
 			return false
 		}
 	})
+}
+
+// Keep using this to offload to Docker where possible.
+func buildDockerFiltersFromRequest(req utils.SortedPaginationRequest, allowedKeys []string) filters.Args {
+	f := filters.NewArgs()
+	if req.Search != "" {
+		f.Add("name", req.Search)
+	}
+	allowed := map[string]bool{}
+	for _, k := range allowedKeys {
+		allowed[k] = true
+	}
+	for k, v := range req.Filters {
+		if !allowed[k] {
+			continue
+		}
+		switch t := v.(type) {
+		case string:
+			f.Add(k, t)
+		case []string:
+			for _, s := range t {
+				f.Add(k, s)
+			}
+		case []interface{}:
+			for _, it := range t {
+				f.Add(k, fmt.Sprintf("%v", it))
+			}
+		default:
+			f.Add(k, fmt.Sprintf("%v", t))
+		}
+	}
+	return f
 }
