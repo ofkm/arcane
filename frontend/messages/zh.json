@@ -1091,5 +1091,7 @@
 	"using_server_default": "使用服务器默认",
 	"mobile_navigation": "移动导航",
 	"on": "开启",
-	"off": "关闭"
+	"off": "关闭",
+	"tap_to_edit": "点击编辑",
+	"cannot_edit": "无法编辑"
 }
