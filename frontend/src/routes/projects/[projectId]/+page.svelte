@@ -199,17 +199,29 @@
 				<EditableName
 					bind:value={$inputs.name.value}
 					bind:ref={nameInputRef}
+					variant="inline"
 					error={$inputs.name.error ?? undefined}
 					originalValue={originalName}
 					canEdit={canEditName}
 					onCommit={saveNameIfChanged}
+					class="hidden sm:block"
+				/>
+				<EditableName
+					bind:value={$inputs.name.value}
+					bind:ref={nameInputRef}
+					variant="block"
+					error={$inputs.name.error ?? undefined}
+					originalValue={originalName}
+					canEdit={canEditName}
+					onCommit={saveNameIfChanged}
+					class="block sm:hidden"
 				/>
 				{#if project.status}
 					<StatusBadge variant={getStatusVariant(project.status)} text={capitalizeFirstLetter(project.status)} />
 				{/if}
 			</div>
 			{#if project.createdAt}
-				<p class="text-muted-foreground mt-0.5 text-xs">
+				<p class="text-muted-foreground mt-0.5 hidden text-xs sm:block">
 					{m.common_created()}: {new Date(project.createdAt ?? '').toLocaleDateString()}
 				</p>
 			{/if}
