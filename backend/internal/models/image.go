@@ -12,7 +12,7 @@ type Image struct {
 
 	Repo  string `json:"repo" gorm:"column:repo;index" sortable:"true"`
 	Tag   string `json:"tag" gorm:"column:tag;index" sortable:"true"`
-	InUse bool   `json:"inUse" gorm:"column:in_use;default:false" sortable:"true"`
+	InUse bool   `json:"inUse" gorm:"column:in_use;default:false" sortable:"true" filterable:"true"`
 
 	UpdateRecord *ImageUpdateRecord `json:"updateInfo,omitempty" gorm:"foreignKey:ID;references:ID"`
 

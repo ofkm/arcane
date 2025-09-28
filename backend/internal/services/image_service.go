@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -460,11 +461,14 @@ func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID 
 	return nil
 }
 
-func (s *ImageService) ListImagesWithUpdatesPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]dto.ImageSummaryDto, utils.PaginationResponse, error) {
+func (s *ImageService) ListImagesWithUpdatesPaginated(ctx context.Context, req utils.SortedPaginationRequest, rawQuery url.Values) ([]dto.ImageSummaryDto, utils.PaginationResponse, error) {
 	err := s.SyncDockerImages(ctx)
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list and sync Docker images: %w", err)
 	}
+
+	parsedFilters := utils.ParseFiltersFromQuery(rawQuery)
+
 	var images []models.Image
 	query := s.db.WithContext(ctx).Model(&models.Image{}).Preload("UpdateRecord")
 	if term := strings.TrimSpace(req.Search); term != "" {
@@ -476,7 +480,8 @@ func (s *ImageService) ListImagesWithUpdatesPaginated(ctx context.Context, req u
 			LOWER(repo || ':' || tag) LIKE ?
 		`, like, like, like, like)
 	}
-	pagination, err := utils.PaginateAndSort(req, query, &images)
+
+	pagination, err := utils.PaginateAndSort(req, query, &images, parsedFilters)
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate images: %w", err)
 	}

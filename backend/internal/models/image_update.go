@@ -8,7 +8,7 @@ type ImageUpdateRecord struct {
 	ID             string    `json:"id" gorm:"primaryKey;type:text"`
 	Repository     string    `json:"repository" gorm:"not null;index"`
 	Tag            string    `json:"tag" gorm:"not null;index"`
-	HasUpdate      bool      `json:"hasUpdate" gorm:"column:has_update;default:false"`
+	HasUpdate      bool      `json:"hasUpdate" gorm:"column:has_update;default:false" filterable:"true"`
 	UpdateType     string    `json:"updateType" gorm:"column:update_type"`
 	CurrentVersion string    `json:"currentVersion" gorm:"column:current_version"`
 	LatestVersion  *string   `json:"latestVersion,omitempty" gorm:"column:latest_version"`

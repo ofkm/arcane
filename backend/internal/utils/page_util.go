@@ -201,6 +201,24 @@ func applyFilters(filters map[string][]string, query *gorm.DB, result interface{
 	modelType := t
 
 	for col, vals := range filters {
+		// Special-case: support filtering on image update flag stored in image_updates table
+		// Accept keys: "hasUpdate", "updates", "updateInfo.hasUpdate" when model is Image.
+		if modelType.Name() == "Image" {
+			lc := strings.ToLower(col)
+			if lc == "hasupdate" || lc == "updates" || lc == "updateinfo.hasupdate" {
+				var arr []bool
+				for _, s := range vals {
+					if b, err := strconv.ParseBool(strings.ToLower(strings.TrimSpace(s))); err == nil {
+						arr = append(arr, b)
+					}
+				}
+				if len(arr) > 0 {
+					query = query.Where("EXISTS (SELECT 1 FROM image_updates WHERE image_updates.id = images.id AND image_updates.has_update IN ?)", arr)
+				}
+				continue
+			}
+		}
+
 		field, ok := modelType.FieldByName(CapitalizeFirstLetter(col))
 		if !ok {
 			continue

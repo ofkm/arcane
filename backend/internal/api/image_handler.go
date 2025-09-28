@@ -51,7 +51,7 @@ func (h *ImageHandler) List(c *gin.Context) {
 		req.Pagination.Limit = 20
 	}
 
-	images, pagination, err := h.imageService.ListImagesWithUpdatesPaginated(c.Request.Context(), req)
+	images, pagination, err := h.imageService.ListImagesWithUpdatesPaginated(c.Request.Context(), req, c.Request.URL.Query())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
