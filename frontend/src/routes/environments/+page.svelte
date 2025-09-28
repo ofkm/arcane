@@ -93,7 +93,6 @@
 		refresh();
 	}
 
-	// Configure action buttons for the layout
 	const actionButtons: ActionButton[] = $derived([
 		...(selectedIds.length > 0
 			? [

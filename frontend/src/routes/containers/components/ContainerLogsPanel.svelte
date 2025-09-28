@@ -44,7 +44,6 @@
 	}
 </script>
 
-<!-- Mobile Layout -->
 <div class="mb-3 flex flex-col gap-3 sm:hidden">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-2">
@@ -91,7 +90,6 @@
 	</div>
 </div>
 
-<!-- Desktop Layout -->
 <div class="mb-3 hidden items-center justify-between sm:flex">
 	<div class="flex items-center gap-3">
 		<FileTextIcon class="size-5" />

@@ -86,23 +86,18 @@
 </script>
 
 <div class="px-2 py-4 sm:px-6 sm:py-6 lg:px-8 {className}">
-	<!-- Header Section -->
 	<div
 		class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 shadow-sm sm:p-6"
 	>
-		<!-- Gradient Background Effects -->
-		<div class="bg-primary/10 pointer-events-none absolute -right-10 -top-10 size-40 rounded-full blur-3xl"></div>
+		<div class="bg-primary/10 pointer-events-none absolute -top-10 -right-10 size-40 rounded-full blur-3xl"></div>
 		<div class="bg-muted/40 pointer-events-none absolute -bottom-10 -left-10 size-40 rounded-full blur-3xl"></div>
-		
 		<div class="relative flex items-start gap-3 sm:gap-4">
-			<!-- Icon -->
 			<div
 				class="bg-primary/10 text-primary ring-primary/20 flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 sm:size-10"
 			>
 				<Icon class="size-4 sm:size-5" />
 			</div>
-			
-			<!-- Title and Description -->
+
 			<div class="min-w-0 flex-1">
 				<div class="flex items-start justify-between gap-3">
 					<h1 class="settings-title min-w-0 text-xl sm:text-3xl">{title}</h1>
@@ -110,10 +105,8 @@
 						{#if showReadOnlyTag}
 							<UiConfigDisabledTag />
 						{/if}
-						
-						<!-- Action Buttons for Management Pages -->
+
 						{#if pageType === 'management' && actionButtons.length > 0}
-							<!-- Desktop buttons -->
 							<div class="hidden items-center gap-2 sm:flex">
 								{#each actionButtons as button}
 									<ArcaneButton
@@ -128,7 +121,6 @@
 								{/each}
 							</div>
 
-							<!-- Mobile dropdown -->
 							<div class="flex items-center gap-2 sm:hidden">
 								{#each mobileVisibleButtons as button}
 									<ArcaneButton
@@ -144,7 +136,9 @@
 
 								{#if mobileDropdownButtons.length > 0}
 									<DropdownMenu.Root>
-										<DropdownMenu.Trigger class="bg-background/70 inline-flex size-8 items-center justify-center rounded-lg border">
+										<DropdownMenu.Trigger
+											class="bg-background/70 inline-flex size-8 items-center justify-center rounded-lg border"
+										>
 											<span class="sr-only">Open menu</span>
 											<EllipsisIcon class="size-4" />
 										</DropdownMenu.Trigger>
@@ -174,7 +168,6 @@
 		</div>
 	</div>
 
-	<!-- Statistics Cards Section (for management pages) -->
 	{#if pageType === 'management' && statCards && statCards.length > 0}
 		<div class="mt-6 grid gap-4 sm:mt-8 {getStatCardsGridClass(statCardsColumns)}">
 			{#each statCards as card}
@@ -191,12 +184,10 @@
 		</div>
 	{/if}
 
-	<!-- Main Content Section -->
 	<div class="mt-6 sm:mt-8">
 		{@render mainContent()}
 	</div>
 
-	<!-- Additional Content Section (dialogs, sheets, etc.) -->
 	{#if additionalContent}
 		{@render additionalContent()}
 	{/if}

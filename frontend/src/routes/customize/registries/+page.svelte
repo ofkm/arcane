@@ -76,7 +76,6 @@
 		}
 	}
 
-	// Configure action buttons for the layout
 	const actionButtons: ActionButton[] = [
 		{
 			id: 'create',

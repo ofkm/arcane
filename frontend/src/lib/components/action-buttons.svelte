@@ -415,7 +415,6 @@
 </script>
 
 <div>
-	<!-- Desktop buttons -->
 	<div class="hidden items-center gap-2 lg:flex">
 		{#if !isRunning}
 			{#if type === 'container'}
@@ -473,7 +472,6 @@
 		{/if}
 	</div>
 
-	<!-- Mobile/Tablet: ellipsis dropdown -->
 	<div class="flex items-center lg:hidden">
 		<DropdownMenu.Root>
 			<DropdownMenu.Trigger class="bg-background/70 inline-flex size-9 items-center justify-center rounded-lg border">

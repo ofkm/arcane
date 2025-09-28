@@ -299,9 +299,3 @@
 		</div>
 	</div>
 {/if}
-
-<style>
-	:global(.tab-body) {
-		height: calc(100dvh - 152px);
-	}
-</style>

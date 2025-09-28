@@ -87,7 +87,6 @@
 		});
 	}
 
-	// Configure action buttons for the layout
 	const actionButtons: ActionButton[] = $derived([
 		...(selectedIds.length > 0
 			? [
@@ -111,7 +110,6 @@
 		}
 	]);
 
-	// Configure stat cards for the layout
 	const statCards: StatCardConfig[] = $derived([
 		{
 			title: m.events_total(),

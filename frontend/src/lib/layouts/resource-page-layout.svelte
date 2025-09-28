@@ -80,7 +80,6 @@
 </script>
 
 <div class="{containerClass} {className}">
-	<!-- Header Section -->
 	<div class="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
 			<h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
@@ -89,7 +88,6 @@
 			{/if}
 		</div>
 
-		<!-- Desktop Action Buttons -->
 		{#if actionButtons.length > 0}
 			<div class="hidden items-center gap-2 sm:flex">
 				{#each actionButtons as button}
@@ -104,9 +102,7 @@
 				{/each}
 			</div>
 
-			<!-- Mobile Action Buttons -->
 			<div class="absolute top-4 right-4 flex items-center gap-2 sm:hidden">
-				<!-- Mobile visible buttons (if any) -->
 				{#each mobileVisibleButtons as button}
 					<ArcaneButton
 						action={button.action}
@@ -119,7 +115,6 @@
 					/>
 				{/each}
 
-				<!-- Mobile dropdown menu -->
 				{#if mobileDropdownButtons.length > 0}
 					<DropdownMenu.Root>
 						<DropdownMenu.Trigger class="bg-background/70 inline-flex size-9 items-center justify-center rounded-lg border">
@@ -145,7 +140,6 @@
 		{/if}
 	</div>
 
-	<!-- Statistics Cards Section -->
 	{#if statCards && statCards.length > 0}
 		<div class="grid gap-4 {getStatCardsGridClass(statCardsColumns)}">
 			{#each statCards as card}
@@ -162,10 +156,8 @@
 		</div>
 	{/if}
 
-	<!-- Main Content Section -->
 	{@render mainContent()}
 
-	<!-- Additional Content Section (dialogs, sheets, etc.) -->
 	{#if additionalContent}
 		{@render additionalContent()}
 	{/if}

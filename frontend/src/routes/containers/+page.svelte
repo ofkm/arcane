@@ -71,13 +71,11 @@
 		});
 	}
 
-	// React to environment changes
 	const selectedEnvStore = environmentStore.selected;
 	let lastEnvId: string | null = null;
 	$effect(() => {
 		const env = $selectedEnvStore as Environment | null;
 		if (!env) return;
-		// Skip initial page load
 		if (lastEnvId === null) {
 			lastEnvId = env.id;
 			return;
@@ -88,7 +86,6 @@
 		}
 	});
 
-	// Configure action buttons for the layout
 	const actionButtons: ActionButton[] = [
 		{
 			id: 'create',
@@ -116,7 +113,6 @@
 		}
 	];
 
-	// Configure stat cards for the layout
 	const statCards: StatCardConfig[] = $derived([
 		{
 			title: m.containers_total(),

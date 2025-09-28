@@ -115,7 +115,6 @@
 		}
 	}
 
-	// Configure action buttons for the layout
 	const actionButtons: ActionButton[] = [
 		{
 			id: 'refresh',
@@ -125,7 +124,6 @@
 		}
 	];
 
-	// Configure stat cards for the layout
 	const statCards: StatCardConfig[] = $derived([
 		{
 			title: m.templates_local_templates(),
