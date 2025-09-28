@@ -88,8 +88,7 @@
 		}
 	});
 
-	// Configure action buttons for the layout
-	const actionButtons: ActionButton[] = [
+	const actionButtons: ActionButton[] = $derived.by(() => [
 		{
 			id: 'create',
 			action: 'create',
@@ -114,9 +113,8 @@
 			loading: isLoading.refreshing,
 			disabled: isLoading.refreshing
 		}
-	];
+	]);
 
-	// Configure stat cards for the layout
 	const statCards: StatCardConfig[] = $derived([
 		{
 			title: m.containers_total(),
