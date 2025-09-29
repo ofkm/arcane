@@ -9,8 +9,6 @@
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
-	import { get } from 'svelte/store';
 	import { m } from '$lib/paraglide/messages';
 	import { containerService } from '$lib/services/container-service';
 	import { projectService } from '$lib/services/project-service';
@@ -417,8 +415,7 @@
 </script>
 
 <div>
-	<!-- Desktop / tablet buttons -->
-	<div class="hidden items-center gap-2 sm:flex">
+	<div class="hidden items-center gap-2 lg:flex">
 		{#if !isRunning}
 			{#if type === 'container'}
 				<ArcaneButton action="start" onclick={() => handleStart()} loading={uiLoading.start} />
@@ -475,10 +472,9 @@
 		{/if}
 	</div>
 
-	<!-- Mobile: ellipsis dropdown -->
-	<div class="flex items-center sm:hidden">
+	<div class="flex items-center lg:hidden">
 		<DropdownMenu.Root>
-			<DropdownMenu.Trigger class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border">
+			<DropdownMenu.Trigger class="bg-background/70 inline-flex size-9 items-center justify-center rounded-lg border">
 				<span class="sr-only">{m.common_open_menu()}</span>
 				<EllipsisIcon />
 			</DropdownMenu.Trigger>

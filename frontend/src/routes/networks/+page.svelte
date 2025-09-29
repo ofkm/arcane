@@ -6,15 +6,12 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import CreateNetworkSheet from '$lib/components/sheets/create-network-sheet.svelte';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
-	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import StatCard from '$lib/components/stat-card.svelte';
 	import NetworkTable from './network-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { networkService } from '$lib/services/network-service';
-    import { environmentStore } from '$lib/stores/environment.store';
-    import type { Environment } from '$lib/types/environment.type';
+	import { environmentStore } from '$lib/stores/environment.store';
+	import type { Environment } from '$lib/types/environment.type';
+	import { ResourcePageLayout, type ActionButton, type StatCardConfig } from '$lib/layouts/index.js';
 
 	let { data } = $props();
 
@@ -33,7 +30,7 @@
 	async function refreshNetworks() {
 		isLoading.refresh = true;
 		let refreshingNetworkList = true;
-		let refreshingNetworkCounts = true;		
+		let refreshingNetworkCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(networkService.getNetworks(requestOptions)),
 			message: m.networks_refresh_failed(),
@@ -73,13 +70,11 @@
 		});
 	}
 
-	// React to environment changes
 	const selectedEnvStore = environmentStore.selected;
 	let lastEnvId: string | null = null;
 	$effect(() => {
 		const env = $selectedEnvStore as Environment | null;
 		if (!env) return;
-		// Skip initial page load
 		if (lastEnvId === null) {
 			lastEnvId = env.id;
 			return;
@@ -89,65 +84,48 @@
 			refreshNetworks();
 		}
 	});
+
+	const actionButtons: ActionButton[] = $derived.by(() => [
+		{
+			id: 'create',
+			action: 'create',
+			label: m.networks_create_button(),
+			onclick: () => (isCreateDialogOpen = true)
+		},
+		{
+			id: 'refresh',
+			action: 'restart',
+			label: m.common_refresh(),
+			onclick: refreshNetworks,
+			loading: isLoading.refresh,
+			disabled: isLoading.refresh
+		}
+	]);
+
+	const statCards: StatCardConfig[] = $derived([
+		{
+			title: m.networks_total(),
+			value: totalNetworks,
+			icon: NetworkIcon,
+			iconColor: 'text-blue-500',
+			class: 'border-l-4 border-l-blue-500'
+		},
+		{
+			title: m.unused_networks(),
+			value: unusedNetworks,
+			icon: EthernetPortIcon,
+			iconColor: 'text-amber-500',
+			class: 'border-l-4 border-l-amber-500'
+		}
+	]);
 </script>
 
-<div class="space-y-6">
-	<div class="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-		<div>
-			<h1 class="text-3xl font-bold tracking-tight">{m.networks_title()}</h1>
-			<p class="text-muted-foreground mt-1 text-sm">{m.networks_subtitle()}</p>
-		</div>
-		<div class="hidden items-center gap-2 sm:flex">
-			<ArcaneButton action="create" customLabel={m.networks_create_button()} onclick={() => (isCreateDialogOpen = true)} />
-			<ArcaneButton
-				action="restart"
-				onclick={refreshNetworks}
-				customLabel={m.common_refresh()}
-				loading={isLoading.refresh}
-				disabled={isLoading.refresh}
-			/>
-		</div>
+<ResourcePageLayout title={m.networks_title()} subtitle={m.networks_subtitle()} {actionButtons} {statCards} statCardsColumns={2}>
+	{#snippet mainContent()}
+		<NetworkTable bind:networks bind:selectedIds bind:requestOptions />
+	{/snippet}
 
-		<div class="absolute right-4 top-4 flex items-center sm:hidden">
-			<DropdownMenu.Root>
-				<DropdownMenu.Trigger class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border">
-					<span class="sr-only">{m.common_open_menu()}</span>
-					<EllipsisIcon />
-				</DropdownMenu.Trigger>
-
-				<DropdownMenu.Content
-					align="end"
-					class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[160px] rounded-md p-1 shadow-lg backdrop-blur-sm supports-[backdrop-filter]:backdrop-blur-sm"
-				>
-					<DropdownMenu.Group>
-						<DropdownMenu.Item onclick={() => (isCreateDialogOpen = true)} disabled={isLoading.create}
-							>{m.networks_create_button()}</DropdownMenu.Item
-						>
-						<DropdownMenu.Item onclick={refreshNetworks} disabled={isLoading.refresh}>{m.common_refresh()}</DropdownMenu.Item>
-					</DropdownMenu.Group>
-				</DropdownMenu.Content>
-			</DropdownMenu.Root>
-		</div>
-	</div>
-
-	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-		<StatCard
-			title={m.networks_total()}
-			value={totalNetworks}
-			icon={NetworkIcon}
-			iconColor="text-blue-500"
-			class="border-l-4 border-l-blue-500"
-		/>
-		<StatCard
-			title={m.unused_networks()}
-			value={unusedNetworks}
-			icon={EthernetPortIcon}
-			iconColor="text-amber-500"
-			class="border-l-4 border-l-amber-500"
-		/>
-	</div>
-
-	<NetworkTable bind:networks bind:selectedIds bind:requestOptions />
-
-	<CreateNetworkSheet bind:open={isCreateDialogOpen} isLoading={isLoading.create} onSubmit={handleCreateNetworkSubmit} />
-</div>
+	{#snippet additionalContent()}
+		<CreateNetworkSheet bind:open={isCreateDialogOpen} isLoading={isLoading.create} onSubmit={handleCreateNetworkSubmit} />
+	{/snippet}
+</ResourcePageLayout>

@@ -5,8 +5,6 @@
 	import { toast } from 'svelte-sonner';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import StatCard from '$lib/components/stat-card.svelte';
 	import UserTable from './user-table.svelte';
 	import UserFormSheet from '$lib/components/sheets/user-form-sheet.svelte';
 	import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
@@ -14,6 +12,7 @@
 	import type { CreateUser } from '$lib/types/user.type';
 	import { m } from '$lib/paraglide/messages';
 	import { userService } from '$lib/services/user-service';
+	import { SettingsPageLayout, type SettingsActionButton, type SettingsStatCard } from '$lib/layouts/index.js';
 
 	let { data } = $props();
 
@@ -108,63 +107,53 @@
 			console.error('Failed to submit user:', error);
 		}
 	}
+
+	const actionButtons: SettingsActionButton[] = $derived.by(() => [
+		{
+			id: 'create',
+			action: 'create',
+			label: m.users_create_button(),
+			onclick: openCreateDialog,
+			loading: isLoading.creating,
+			disabled: isLoading.creating
+		}
+	]);
+
+	const statCards: SettingsStatCard[] = $derived([
+		{
+			title: m.users_total(),
+			value: totalUsers,
+			icon: UsersIcon,
+			iconColor: 'text-blue-500',
+			class: 'border-l-4 border-l-blue-500'
+		},
+		{
+			title: m.users_administrators(),
+			value: adminUsers,
+			icon: ShieldIcon,
+			iconColor: 'text-red-500',
+			class: 'border-l-4 border-l-red-500'
+		},
+		{
+			title: m.users_regular(),
+			value: regularUsers,
+			icon: UserCheckIcon,
+			iconColor: 'text-green-500',
+			class: 'border-l-4 border-l-green-500'
+		}
+	]);
 </script>
 
-<div class="px-2 py-4 sm:px-6 sm:py-6 lg:px-8">
-	<div
-		class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 shadow-sm sm:p-6"
-	>
-		<div class="bg-primary/10 pointer-events-none absolute -right-10 -top-10 size-40 rounded-full blur-3xl"></div>
-		<div class="bg-muted/40 pointer-events-none absolute -bottom-10 -left-10 size-40 rounded-full blur-3xl"></div>
-		<div class="relative flex items-start gap-3 sm:gap-4">
-			<div
-				class="bg-primary/10 text-primary ring-primary/20 flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 sm:size-10"
-			>
-				<UsersIcon class="size-4 sm:size-5" />
-			</div>
-			<div class="min-w-0 flex-1">
-				<div class="flex items-start justify-between gap-3">
-					<h1 class="settings-title min-w-0 text-xl sm:text-3xl">{m.users_title()}</h1>
-					<div class="flex shrink-0 items-center gap-2">
-						<ArcaneButton
-							action="create"
-							customLabel={m.users_create_button()}
-							onclick={openCreateDialog}
-							loading={isLoading.creating}
-							disabled={isLoading.creating}
-						/>
-					</div>
-				</div>
-				<p class="text-muted-foreground mt-1 text-sm sm:text-base">{m.users_subtitle()}</p>
-			</div>
-		</div>
-	</div>
-
-	<div class="mt-6 space-y-4 sm:mt-8 sm:space-y-6">
-		<div class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-			<StatCard
-				title={m.users_total()}
-				value={totalUsers}
-				icon={UsersIcon}
-				iconColor="text-blue-500"
-				class="border-l-4 border-l-blue-500"
-			/>
-			<StatCard
-				title={m.users_administrators()}
-				value={adminUsers}
-				icon={ShieldIcon}
-				iconColor="text-red-500"
-				class="border-l-4 border-l-red-500"
-			/>
-			<StatCard
-				title={m.users_regular()}
-				value={regularUsers}
-				icon={UserCheckIcon}
-				iconColor="text-green-500"
-				class="border-l-4 border-l-green-500"
-			/>
-		</div>
-
+<SettingsPageLayout
+	title={m.users_title()}
+	description={m.users_subtitle()}
+	icon={UsersIcon}
+	pageType="management"
+	{actionButtons}
+	{statCards}
+	statCardsColumns={3}
+>
+	{#snippet mainContent()}
 		<UserTable
 			bind:users
 			bind:selectedIds
@@ -174,7 +163,9 @@
 			}}
 			onEditUser={openEditDialog}
 		/>
+	{/snippet}
 
+	{#snippet additionalContent()}
 		<UserFormSheet
 			bind:open={isDialogOpen.create}
 			userToEdit={null}
@@ -190,5 +181,5 @@
 			onSubmit={handleUserSubmit}
 			isLoading={isLoading.editing}
 		/>
-	</div>
-</div>
+	{/snippet}
+</SettingsPageLayout>

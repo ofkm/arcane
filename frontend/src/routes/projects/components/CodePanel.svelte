@@ -20,11 +20,11 @@
 	} = $props();
 </script>
 
-<div class="flex items-center justify-between px-4 py-2">
-	<h3 class="text-sm font-semibold">{title}</h3>
+<div class="flex items-center justify-between py-2">
+	<h3 class="text-xs font-semibold sm:text-sm">{title}</h3>
 </div>
-<div class="h-[560px] w-full overflow-hidden px-4 pb-4">
-	<CodeEditor bind:value {language} {placeholder} />
+<div class="min-h-[560px] w-full overflow-hidden pb-4 [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
+	<CodeEditor bind:value {language} {placeholder} height="full" />
 	{#if error}
 		<p class="text-destructive mt-2 text-xs">{error}</p>
 	{/if}

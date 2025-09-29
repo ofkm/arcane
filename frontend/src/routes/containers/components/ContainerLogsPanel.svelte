@@ -1,37 +1,54 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import TerminalIcon from '@lucide/svelte/icons/terminal';
+	import FileTextIcon from '@lucide/svelte/icons/file-text';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import LogViewer from '$lib/components/log-viewer.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let {
-		projectId,
-		autoScroll = $bindable()
+		containerId,
+		autoScroll = $bindable(),
+		onStart,
+		onStop,
+		onClear,
+		onToggleAutoScroll
 	}: {
-		projectId: string;
+		containerId: string | undefined;
 		autoScroll: boolean;
+		onStart: () => void;
+		onStop: () => void;
+		onClear: () => void;
+		onToggleAutoScroll: () => void;
 	} = $props();
 
 	let isStreaming = $state(false);
 	let viewer = $state<LogViewer>();
 
-	function onStart() {
+	function handleStart() {
 		isStreaming = true;
+		onStart();
 	}
-	function onStop() {
+
+	function handleStop() {
 		isStreaming = false;
+		onStop();
 	}
-	function onClear() {}
-	function onToggleAutoScroll() {}
+
+	function handleClear() {
+		onClear();
+	}
+
+	function handleToggleAutoScroll() {
+		onToggleAutoScroll();
+	}
 </script>
 
 <div class="mb-3 flex flex-col gap-3 sm:hidden">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-2">
-			<TerminalIcon class="size-5" />
-			<h2 class="text-lg font-semibold">{m.compose_logs_title()}</h2>
+			<FileTextIcon class="size-5" />
+			<h2 class="text-lg font-semibold">{m.containers_logs_title()}</h2>
 		</div>
 		{#if isStreaming}
 			<div class="flex items-center gap-2">
@@ -40,9 +57,9 @@
 			</div>
 		{/if}
 	</div>
-	
+
 	<div class="flex items-center justify-between gap-3">
-		<label class="flex items-center gap-2 text-sm">
+		<label class="flex items-center gap-2">
 			<input type="checkbox" bind:checked={autoScroll} class="size-4" />
 			{m.common_autoscroll()}
 		</label>
@@ -53,7 +70,7 @@
 					{m.common_stop()}
 				</Button>
 			{:else}
-				<Button variant="outline" size="sm" onclick={() => viewer?.startLogStream()} disabled={!projectId}>
+				<Button variant="outline" size="sm" onclick={() => viewer?.startLogStream()} disabled={!containerId}>
 					{m.common_start()}
 				</Button>
 			{/if}
@@ -75,8 +92,8 @@
 
 <div class="mb-3 hidden items-center justify-between sm:flex">
 	<div class="flex items-center gap-3">
-		<TerminalIcon class="size-5" />
-		<h2 class="text-xl font-semibold">{m.compose_logs_title()}</h2>
+		<FileTextIcon class="size-5" />
+		<h2 class="text-xl font-semibold">{m.containers_logs_title()}</h2>
 		{#if isStreaming}
 			<div class="flex items-center gap-2">
 				<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
@@ -93,7 +110,7 @@
 		{#if isStreaming}
 			<Button variant="outline" size="sm" onclick={() => viewer?.stopLogStream()}>{m.common_stop()}</Button>
 		{:else}
-			<Button variant="outline" size="sm" onclick={() => viewer?.startLogStream()} disabled={!projectId}>
+			<Button variant="outline" size="sm" onclick={() => viewer?.startLogStream()} disabled={!containerId}>
 				{m.common_start()}
 			</Button>
 		{/if}
@@ -118,15 +135,15 @@
 			<LogViewer
 				bind:this={viewer}
 				bind:autoScroll
-				{projectId}
-				type="project"
+				type="container"
+				{containerId}
 				maxLines={500}
 				showTimestamps={true}
 				height="calc(100vh - 280px)"
-				{onStart}
-				{onStop}
-				{onClear}
-				{onToggleAutoScroll}
+				onStart={handleStart}
+				onStop={handleStop}
+				onClear={handleClear}
+				onToggleAutoScroll={handleToggleAutoScroll}
 			/>
 		</div>
 	</Card.Content>
