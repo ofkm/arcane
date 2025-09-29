@@ -12,7 +12,7 @@ func ConvertQueryParamsToSortedRequest(q QueryParams) SortedPaginationRequest {
 	}
 
 	var r SortedPaginationRequest
-	r.Search = q.search
+	r.Search = q.Search
 	r.Sort.Column = q.sort
 
 	// Convert SortOrder to string and default to asc when empty

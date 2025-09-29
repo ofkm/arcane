@@ -2,12 +2,13 @@ import BaseAPIService from './api-service';
 import { environmentStore } from '$lib/stores/environment.store';
 import type { Project, ProjectStatusCounts } from '$lib/types/project.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
+import { transformPaginationParams } from '$lib/utils/params.util';
 
 export class ProjectService extends BaseAPIService {
 	async getProjects(options?: SearchPaginationSortRequest): Promise<Paginated<Project>> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-
-		const res = await this.api.get(`/environments/${envId}/projects`, { params: options });
+		const params = transformPaginationParams(options);
+		const res = await this.api.get(`/environments/${envId}/projects`, { params });
 		return res.data;
 	}
 

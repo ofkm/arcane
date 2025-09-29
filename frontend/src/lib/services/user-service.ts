@@ -1,10 +1,12 @@
 import BaseAPIService from './api-service';
 import type { User, CreateUser } from '$lib/types/user.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
+import { transformPaginationParams } from '$lib/utils/params.util';
 
 export default class UserAPIService extends BaseAPIService {
 	async getUsers(options?: SearchPaginationSortRequest): Promise<Paginated<User>> {
-		const res = await this.api.get('/users', { params: options });
+		const params = transformPaginationParams(options);
+		const res = await this.api.get('/users', { params });
 		return res.data;
 	}
 

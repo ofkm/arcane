@@ -33,7 +33,7 @@ func ExtractListModifiersQueryParams(c *gin.Context) QueryParams {
 
 	return QueryParams{
 		SearchQuery{
-			search: search,
+			Search: search,
 		},
 		SortParams{
 			sort:  sortField,

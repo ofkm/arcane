@@ -2,6 +2,7 @@ import BaseAPIService from './api-service';
 import type { Environment } from '$lib/types/environment.type';
 import type { CreateEnvironmentDTO, UpdateEnvironmentDTO } from '$lib/types/environment.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
+import { transformPaginationParams } from '$lib/utils/params.util';
 
 export default class EnvironmentManagementService extends BaseAPIService {
 	async create(dto: CreateEnvironmentDTO): Promise<Environment> {
@@ -10,7 +11,8 @@ export default class EnvironmentManagementService extends BaseAPIService {
 	}
 
 	async getEnvironments(options: SearchPaginationSortRequest): Promise<Paginated<Environment>> {
-		const res = await this.api.get('/environments', { params: options });
+		const params = transformPaginationParams(options);
+		const res = await this.api.get('/environments', { params });
 		return res.data;
 	}
 

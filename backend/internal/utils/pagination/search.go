@@ -10,11 +10,11 @@ import (
 type SearchAccessor[T any] = func(T) (string, error)
 
 type SearchQuery struct {
-	search string
+	Search string
 }
 
 func searchFn[T any](items []T, params SearchQuery, accessors []SearchAccessor[T]) []T {
-	search := strings.TrimSpace(params.search)
+	search := strings.TrimSpace(params.Search)
 
 	if search == "" {
 		return items
