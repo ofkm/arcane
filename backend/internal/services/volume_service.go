@@ -33,27 +33,6 @@ func NewVolumeService(db *database.DB, dockerService *DockerClientService, event
 	}
 }
 
-func (s *VolumeService) buildVolumeUsageMap(ctx context.Context, dockerClient *client.Client) (map[string]bool, error) {
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list containers: %w", err)
-	}
-
-	usage := make(map[string]bool)
-	for _, c := range containers {
-		info, err := dockerClient.ContainerInspect(ctx, c.ID)
-		if err != nil {
-			continue
-		}
-		for _, m := range info.Mounts {
-			if m.Type == "volume" && m.Name != "" {
-				usage[m.Name] = true
-			}
-		}
-	}
-	return usage, nil
-}
-
 func (s *VolumeService) containersUsingVolume(ctx context.Context, dockerClient *client.Client, name string) (bool, []string, error) {
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {

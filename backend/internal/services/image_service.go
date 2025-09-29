@@ -49,7 +49,11 @@ func (s *ImageService) SyncDockerImages(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	defer dockerClient.Close()
+	defer func() {
+		if clientErr := dockerClient.Close(); clientErr != nil {
+			slog.Warn("failed to close Docker client", slog.Any("err", clientErr))
+		}
+	}()
 
 	images, err := dockerClient.ImageList(ctx, image.ListOptions{})
 	if err != nil {
@@ -69,12 +73,12 @@ func (s *ImageService) GetImageByID(ctx context.Context, id string) (*image.Insp
 	}
 	defer dockerClient.Close()
 
-	image, err := dockerClient.ImageInspect(ctx, id)
+	inspect, err := dockerClient.ImageInspect(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("image not found: %w", err)
+		return nil, fmt.Errorf("inspect not found: %w", err)
 	}
 
-	return &image, nil
+	return &inspect, nil
 }
 
 func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, user models.User) error {
@@ -381,7 +385,7 @@ func (s *ImageService) buildImageModel(di image.Summary, isInUse bool) models.Im
 		for k, v := range di.Labels {
 			labelsJSON[k] = v
 		}
-		imageModel.Labels = models.JSON(labelsJSON)
+		imageModel.Labels = labelsJSON
 	}
 
 	s.setRepoAndTag(&imageModel, di.RepoTags)

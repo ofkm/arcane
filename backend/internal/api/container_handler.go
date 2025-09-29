@@ -17,7 +17,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
-	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
@@ -185,25 +185,15 @@ func (h *ContainerHandler) PullImage(c *gin.Context) {
 }
 
 func (h *ContainerHandler) List(c *gin.Context) {
-	var req utils.SortedPaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid pagination or sort parameters: " + err.Error()},
-		})
-		return
-	}
+	params := pagination.ExtractListModifiersQueryParams(c)
 
-	if req.Pagination.Page == 0 {
-		req.Pagination.Page = 1
-	}
-	if req.Pagination.Limit == 0 {
-		req.Pagination.Limit = 20
+	if params.Limit == 0 {
+		params.Limit = 20
 	}
 
 	includeAll := true
 
-	containers, pagination, err := h.containerService.ListContainersPaginated(c.Request.Context(), req, includeAll)
+	containers, paginationResp, err := h.containerService.ListContainersPaginated(c.Request.Context(), params, includeAll)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -212,10 +202,16 @@ func (h *ContainerHandler) List(c *gin.Context) {
 		return
 	}
 
+	pagination.ApplyFilterResultsHeaders(&c.Writer, pagination.FilterResult[dto.ContainerSummaryDto]{
+		Items:          containers,
+		TotalCount:     int(paginationResp.TotalItems),
+		TotalAvailable: int(paginationResp.GrandTotalItems),
+	})
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"data":       containers,
-		"pagination": pagination,
+		"pagination": paginationResp,
 	})
 }
 
