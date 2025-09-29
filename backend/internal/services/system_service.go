@@ -258,22 +258,31 @@ func (s *SystemService) pruneImages(ctx context.Context, danglingOnly bool, resu
 		slog.Int("images_deleted", len(report.ImagesDeleted)),
 		slog.Uint64("bytes_reclaimed", report.SpaceReclaimed))
 
+	// Clean up update records for pruned images
 	for _, imgReport := range report.ImagesDeleted {
 		var prunedDockerID string
 		if imgReport.Deleted != "" {
 			prunedDockerID = imgReport.Deleted
-			result.ImagesDeleted = append(result.ImagesDeleted, prunedDockerID)
+		} else if imgReport.Untagged != "" {
+			prunedDockerID = imgReport.Untagged
 		}
 
-		if prunedDockerID != "" {
-			slog.DebugContext(ctx, "Attempting to delete image from database", slog.String("docker_id", prunedDockerID))
-			if dbErr := s.imageService.DeleteImageByDockerID(ctx, prunedDockerID); dbErr != nil {
-				errMsg := fmt.Sprintf("Failed to delete image %s from database: %v", prunedDockerID, dbErr)
-				result.Errors = append(result.Errors, errMsg)
-				slog.ErrorContext(ctx, "Failed to delete image from database",
-					slog.String("docker_id", prunedDockerID),
-					slog.String("error", dbErr.Error()))
+		if prunedDockerID != "" && s.db != nil {
+			// Only delete the update record
+			if err := s.db.WithContext(ctx).Delete(&models.ImageUpdateRecord{}, "id = ?", prunedDockerID).Error; err != nil {
+				slog.WarnContext(ctx, "Failed to delete image update record",
+					slog.String("imageId", prunedDockerID),
+					slog.String("error", err.Error()))
 			}
+		}
+	}
+
+	result.ImagesDeleted = make([]string, 0, len(report.ImagesDeleted))
+	for _, img := range report.ImagesDeleted {
+		if img.Deleted != "" {
+			result.ImagesDeleted = append(result.ImagesDeleted, img.Deleted)
+		} else if img.Untagged != "" {
+			result.ImagesDeleted = append(result.ImagesDeleted, img.Untagged)
 		}
 	}
 	result.SpaceReclaimed += report.SpaceReclaimed

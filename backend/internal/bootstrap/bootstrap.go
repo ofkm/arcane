@@ -109,14 +109,6 @@ func InitializeApp() (*App, error) {
 		dockerClient.Close()
 	}
 
-	slog.InfoContext(appCtx, "Performing initial Docker image synchronization with the database")
-	if err := appServices.Image.SyncDockerImages(appCtx); err != nil {
-		slog.WarnContext(appCtx, "Initial Docker image synchronization failed, image data may be stale",
-			slog.String("error", err.Error()))
-	} else {
-		slog.InfoContext(appCtx, "Initial Docker image synchronization complete")
-	}
-
 	if !cfg.AgentMode {
 		if err := appServices.User.CreateDefaultAdmin(); err != nil {
 			slog.WarnContext(appCtx, "Failed to create default admin user",
