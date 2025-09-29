@@ -37,3 +37,12 @@ backend/build-errors.log
 frontend/bun.lock
 tests/bun.lock
 tests/package-lock.json
+/.idea/.gitignore
+/.idea/arcane.iml
+/.idea/copilot.data.migration.agent.xml
+/.idea/copilot.data.migration.ask.xml
+/.idea/copilot.data.migration.edit.xml
+/.idea/modules.xml
+/.idea/prettier.xml
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/vcs.xml
