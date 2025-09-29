@@ -44,39 +44,42 @@
 	}
 </script>
 
-<div class="mb-3 flex flex-col gap-3 sm:hidden">
+<div class="mb-8 flex flex-col gap-4 sm:hidden">
 	<div class="flex items-center justify-between">
-		<div class="flex items-center gap-2">
-			<FileTextIcon class="size-5" />
-			<h2 class="text-lg font-semibold">{m.containers_logs_title()}</h2>
+		<div class="flex items-center gap-3">
+			<div class="bg-primary/10 rounded-lg p-2.5">
+				<FileTextIcon class="text-primary size-6" />
+			</div>
+			<h2 class="text-foreground text-2xl font-bold tracking-tight">{m.containers_logs_title()}</h2>
 		</div>
 		{#if isStreaming}
 			<div class="flex items-center gap-2">
-				<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
-				<span class="text-sm font-medium text-green-600">{m.common_live()}</span>
+				<div class="size-2.5 animate-pulse rounded-full bg-green-500"></div>
+				<span class="text-sm font-semibold text-green-600">{m.common_live()}</span>
 			</div>
 		{/if}
 	</div>
 
-	<div class="flex items-center justify-between gap-3">
-		<label class="flex items-center gap-2">
+	<div class="flex items-center justify-between gap-4">
+		<label class="flex items-center gap-3">
 			<input type="checkbox" bind:checked={autoScroll} class="size-4" />
-			{m.common_autoscroll()}
+			<span class="text-sm font-medium">{m.common_autoscroll()}</span>
 		</label>
-		<div class="flex items-center gap-2">
-			<Button variant="outline" size="sm" onclick={() => viewer?.clearLogs()}>{m.common_clear()}</Button>
+		<div class="flex items-center gap-3">
+			<Button variant="outline" size="sm" class="font-medium" onclick={() => viewer?.clearLogs()}>{m.common_clear()}</Button>
 			{#if isStreaming}
-				<Button variant="outline" size="sm" onclick={() => viewer?.stopLogStream()}>
+				<Button variant="outline" size="sm" class="font-medium" onclick={() => viewer?.stopLogStream()}>
 					{m.common_stop()}
 				</Button>
 			{:else}
-				<Button variant="outline" size="sm" onclick={() => viewer?.startLogStream()} disabled={!containerId}>
+				<Button variant="outline" size="sm" class="font-medium" onclick={() => viewer?.startLogStream()} disabled={!containerId}>
 					{m.common_start()}
 				</Button>
 			{/if}
 			<Button
 				variant="outline"
 				size="sm"
+				class="font-medium"
 				onclick={() => {
 					viewer?.stopLogStream();
 					viewer?.startLogStream();
@@ -90,33 +93,36 @@
 	</div>
 </div>
 
-<div class="mb-3 hidden items-center justify-between sm:flex">
-	<div class="flex items-center gap-3">
-		<FileTextIcon class="size-5" />
-		<h2 class="text-xl font-semibold">{m.containers_logs_title()}</h2>
+<div class="mb-8 hidden items-center justify-between sm:flex">
+	<div class="flex items-center gap-4">
+		<div class="bg-muted/50 rounded-lg p-2.5">
+			<FileTextIcon class="text-muted-foreground size-6" />
+		</div>
+		<h2 class="text-foreground text-2xl font-bold tracking-tight">{m.containers_logs_title()}</h2>
 		{#if isStreaming}
-			<div class="flex items-center gap-2">
-				<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
-				<span class="text-sm font-medium text-green-600">{m.common_live()}</span>
+			<div class="flex items-center gap-3">
+				<div class="size-3 animate-pulse rounded-full bg-green-500"></div>
+				<span class="text-base font-semibold text-green-600">{m.common_live()}</span>
 			</div>
 		{/if}
 	</div>
-	<div class="flex items-center gap-3">
-		<label class="flex items-center gap-2">
+	<div class="flex items-center gap-4">
+		<label class="flex items-center gap-3">
 			<input type="checkbox" bind:checked={autoScroll} class="size-4" />
-			{m.common_autoscroll()}
+			<span class="font-medium">{m.common_autoscroll()}</span>
 		</label>
-		<Button variant="outline" size="sm" onclick={() => viewer?.clearLogs()}>{m.common_clear()}</Button>
+		<Button variant="outline" size="sm" class="font-medium" onclick={() => viewer?.clearLogs()}>{m.common_clear()}</Button>
 		{#if isStreaming}
-			<Button variant="outline" size="sm" onclick={() => viewer?.stopLogStream()}>{m.common_stop()}</Button>
+			<Button variant="outline" size="sm" class="font-medium" onclick={() => viewer?.stopLogStream()}>{m.common_stop()}</Button>
 		{:else}
-			<Button variant="outline" size="sm" onclick={() => viewer?.startLogStream()} disabled={!containerId}>
+			<Button variant="outline" size="sm" class="font-medium" onclick={() => viewer?.startLogStream()} disabled={!containerId}>
 				{m.common_start()}
 			</Button>
 		{/if}
 		<Button
 			variant="outline"
 			size="sm"
+			class="font-medium"
 			onclick={() => {
 				viewer?.stopLogStream();
 				viewer?.startLogStream();
@@ -129,22 +135,20 @@
 	</div>
 </div>
 
-<Card.Root class="overflow-hidden border">
+<Card.Root>
 	<Card.Content class="p-0">
-		<div class="w-full overflow-hidden">
-			<LogViewer
-				bind:this={viewer}
-				bind:autoScroll
-				type="container"
-				{containerId}
-				maxLines={500}
-				showTimestamps={true}
-				height="calc(100vh - 280px)"
-				onStart={handleStart}
-				onStop={handleStop}
-				onClear={handleClear}
-				onToggleAutoScroll={handleToggleAutoScroll}
-			/>
-		</div>
+		<LogViewer
+			bind:this={viewer}
+			bind:autoScroll
+			type="container"
+			{containerId}
+			maxLines={500}
+			showTimestamps={true}
+			height="calc(100vh - 280px)"
+			onStart={handleStart}
+			onStop={handleStop}
+			onClear={handleClear}
+			onToggleAutoScroll={handleToggleAutoScroll}
+		/>
 	</Card.Content>
 </Card.Root>
