@@ -3,18 +3,18 @@ import { environmentStore } from '$lib/stores/environment.store';
 import type { NetworkSummaryDto, NetworkUsageCounts } from '$lib/types/network.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import type { NetworkCreateOptions } from 'dockerode';
+import { transformPaginationParams } from '$lib/utils/params.util';
 
 export class NetworkService extends BaseAPIService {
 	async getNetworks(options?: SearchPaginationSortRequest): Promise<Paginated<NetworkSummaryDto>> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-
-		const res = await this.api.get(`/environments/${envId}/networks`, { params: options });
+		const params = transformPaginationParams(options);
+		const res = await this.api.get(`/environments/${envId}/networks`, { params });
 		return res.data;
 	}
 
 	async getNetworkUsageCounts(): Promise<NetworkUsageCounts> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-
 		const res = await this.api.get(`/environments/${envId}/networks/counts`);
 		return res.data.data;
 	}
