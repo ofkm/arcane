@@ -142,6 +142,25 @@
 	<StatusBadge text={getRoleText(item.roles)} variant={getRoleBadgeVariant(item.roles)} />
 {/snippet}
 
+{#snippet UserMobileCard({ row, item }: { row: any; item: User })}
+	<Card.Root class="p-4">
+		<Card.Content class="p-0">
+			<div class="space-y-3">
+				<div class="flex items-start justify-between gap-3">
+					<div class="min-w-0 flex-1">
+						<div class="truncate text-base font-medium">{item.username}</div>
+						<div class="text-muted-foreground truncate text-sm">{item.email || 'No email'}</div>
+					</div>
+					<div class="flex flex-shrink-0 items-center gap-2">
+						<StatusBadge variant={'blue'} text={'User'} />
+						{@render RowActions({ item })}
+					</div>
+				</div>
+			</div>
+		</Card.Content>
+	</Card.Root>
+{/snippet}
+
 {#snippet RowActions({ item }: { item: User })}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
@@ -183,6 +202,7 @@
 			}}
 			{columns}
 			rowActions={RowActions}
+			mobileCard={UserMobileCard}
 		/>
 	</Card.Content>
 </Card.Root>

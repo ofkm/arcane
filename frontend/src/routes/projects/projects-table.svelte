@@ -155,6 +155,51 @@
 	{#if value}{format(new Date(String(value)), 'PP p')}{/if}
 {/snippet}
 
+{#snippet ProjectMobileCard({ row, item }: { row: any; item: Project })}
+	<Card.Root class="p-4">
+		<Card.Content class="p-0">
+			<div class="space-y-3">
+				<div class="flex items-start justify-between gap-3">
+					<div class="min-w-0 flex-1">
+						<a class="block truncate text-base font-medium hover:underline" href="/projects/{item.id}/">
+							{item.name}
+						</a>
+						<div class="text-muted-foreground truncate text-sm">
+							{item.id}
+						</div>
+					</div>
+					<div class="flex flex-shrink-0 items-center gap-2">
+						<StatusBadge variant={getStatusVariant(item.status)} text={capitalizeFirstLetter(item.status)} />
+						{@render RowActions({ item })}
+					</div>
+				</div>
+
+				<div class="space-y-2">
+					<div class="flex items-start justify-between gap-2">
+						<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
+							{m.common_status()}:
+						</span>
+						<span class="min-w-0 flex-1 text-right text-sm">
+							{item.services?.length || 0} services
+						</span>
+					</div>
+
+					{#if item.updatedAt}
+						<div class="flex items-start justify-between gap-2">
+							<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
+								{m.common_created()}:
+							</span>
+							<span class="min-w-0 flex-1 text-right text-sm">
+								{format(new Date(item.updatedAt), 'PP p')}
+							</span>
+						</div>
+					{/if}
+				</div>
+			</div>
+		</Card.Content>
+	</Card.Root>
+{/snippet}
+
 {#snippet RowActions({ item }: { item: Project })}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
@@ -242,6 +287,7 @@
 			onRefresh={async (options) => (projects = await projectService.getProjects(options))}
 			{columns}
 			rowActions={RowActions}
+			mobileCard={ProjectMobileCard}
 		/>
 	</Card.Content>
 </Card.Root>

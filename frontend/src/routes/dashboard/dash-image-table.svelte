@@ -68,6 +68,32 @@
 	{bytes.format(item.size)}
 {/snippet}
 
+{#snippet DashImageMobileCard({ row, item }: { row: any; item: ImageSummaryDto })}
+	<Card.Root class="p-4">
+		<Card.Content class="p-0">
+			<div class="space-y-2">
+				<div class="flex items-center justify-between gap-2">
+					<a class="font-medium hover:underline text-sm truncate" href="/images/{item.id}/">
+						{#if item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>'}
+							{item.repoTags[0]}
+						{:else}
+							<span class="text-muted-foreground italic">{m.images_untagged()}</span>
+						{/if}
+					</a>
+					{#if item.inUse}
+						<StatusBadge text={m.common_in_use()} variant="green" />
+					{:else}
+						<StatusBadge text={m.common_unused()} variant="amber" />
+					{/if}
+				</div>
+				<div class="text-xs text-muted-foreground">
+					{bytes.format(item.size)}
+				</div>
+			</div>
+		</Card.Content>
+	</Card.Root>
+{/snippet}
+
 <Card.Root class="relative flex flex-col rounded-lg border shadow-sm">
 	<Card.Header class="px-6 pb-3 pt-5">
 		<div class="flex items-center justify-between">
@@ -96,6 +122,7 @@
 				selectionDisabled={true}
 				withoutPagination={true}
 				{columns}
+				mobileCard={DashImageMobileCard}
 			/>
 			{#if images.data.length > 5}
 				<div class="bg-muted/40 text-muted-foreground border-t px-6 py-2 text-xs">

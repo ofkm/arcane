@@ -167,6 +167,80 @@
 	</span>
 {/snippet}
 
+{#snippet ContainerMobileCard({ row, item }: { row: any; item: ContainerSummaryDto })}
+	<Card.Root class="p-4">
+		<Card.Content class="p-0">
+			<div class="space-y-3">
+				<div class="flex items-start justify-between gap-3">
+					<div class="min-w-0 flex-1">
+						<a class="block truncate text-base font-medium hover:underline" href="/containers/{item.id}/">
+							{#if item.names && item.names.length > 0}
+								{item.names[0].startsWith('/') ? item.names[0].substring(1) : item.names[0]}
+							{:else}
+								{item.id.substring(0, 12)}
+							{/if}
+						</a>
+						<div class="text-muted-foreground truncate font-mono text-sm">
+							{String(item.id).substring(0, 12)}
+						</div>
+					</div>
+					<div class="flex flex-shrink-0 items-center gap-2">
+						<StatusBadge
+							variant={item.state === 'running' ? 'green' : item.state === 'exited' ? 'red' : 'amber'}
+							text={capitalizeFirstLetter(item.state)}
+						/>
+						{@render RowActions({ item })}
+					</div>
+				</div>
+
+				<div class="space-y-2">
+					<div class="flex items-start justify-between gap-2">
+						<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
+							{m.common_image()}:
+						</span>
+						<span class="min-w-0 flex-1 truncate text-right text-sm">
+							{item.image}
+						</span>
+					</div>
+
+					{#if item.status}
+						<div class="flex items-start justify-between gap-2">
+							<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
+								{m.common_status()}:
+							</span>
+							<span class="min-w-0 flex-1 text-right text-sm">
+								{item.status}
+							</span>
+						</div>
+					{/if}
+
+					{#if item.ports && item.ports.length > 0}
+						<div class="flex items-start justify-between gap-2">
+							<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
+								{m.ports()}:
+							</span>
+							<div class="min-w-0 flex-1 text-right text-sm">
+								<PortBadge ports={item.ports} {baseServerUrl} />
+							</div>
+						</div>
+					{/if}
+
+					{#if item.created}
+						<div class="flex items-start justify-between gap-2">
+							<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
+								{m.common_created()}:
+							</span>
+							<span class="min-w-0 flex-1 text-right text-sm">
+								{format(new Date(item.created * 1000), 'PP p')}
+							</span>
+						</div>
+					{/if}
+				</div>
+			</div>
+		</Card.Content>
+	</Card.Root>
+{/snippet}
+
 {#snippet RowActions({ item }: { item: ContainerSummaryDto })}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
@@ -245,6 +319,7 @@
 			onRefresh={async (options) => (containers = await containerService.getContainers(options))}
 			{columns}
 			rowActions={RowActions}
+			mobileCard={ContainerMobileCard}
 			selectionDisabled
 		/>
 	</Card.Content>

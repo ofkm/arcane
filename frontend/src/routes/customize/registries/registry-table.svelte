@@ -2,6 +2,8 @@
 	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import * as Card from '$lib/components/ui/card/index.js';
+	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import TestTubeIcon from '@lucide/svelte/icons/test-tube';
@@ -189,6 +191,25 @@
 	<span class="text-sm">{value ? format(new Date(String(value)), 'PP p') : m.common_na()}</span>
 {/snippet}
 
+{#snippet RegistryMobileCard({ row, item }: { row: any; item: ContainerRegistry })}
+	<Card.Root class="p-4">
+		<Card.Content class="p-0">
+			<div class="space-y-3">
+				<div class="flex items-start justify-between gap-3">
+					<div class="min-w-0 flex-1">
+						<div class="truncate text-base font-medium">{item.url}</div>
+						<div class="text-muted-foreground truncate text-sm">{item.url}</div>
+					</div>
+					<div class="flex flex-shrink-0 items-center gap-2">
+						<StatusBadge variant={'gray'} text={'Registry'} />
+						{@render RowActions({ item })}
+					</div>
+				</div>
+			</div>
+		</Card.Content>
+	</Card.Root>
+{/snippet}
+
 {#snippet RowActions({ item }: { item: ContainerRegistry })}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
@@ -210,7 +231,7 @@
 					{m.common_edit()}
 				</DropdownMenu.Item>
 				<DropdownMenu.Item
-					class="focus:text-red-700! text-red-500"
+					class="text-red-500 focus:text-red-700!"
 					onclick={() => handleDeleteOne(item.id, item.url)}
 					disabled={isLoading.removing}
 				>
@@ -231,5 +252,6 @@
 		onRefresh={async (options) => (registries = await containerRegistryService.getRegistries(options))}
 		{columns}
 		rowActions={RowActions}
+		mobileCard={RegistryMobileCard}
 	/>
 </div>

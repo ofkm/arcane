@@ -185,6 +185,64 @@
 	{/if}
 {/snippet}
 
+{#snippet NetworkMobileCard({ row, item }: { row: any; item: NetworkSummaryDto })}
+	<Card.Root class="p-4">
+		<Card.Content class="p-0">
+			<div class="space-y-3">
+				<div class="flex items-start justify-between gap-3">
+					<div class="min-w-0 flex-1">
+						<a class="block truncate text-base font-medium hover:underline" href="/networks/{item.id}/">
+							{item.name}
+						</a>
+						<div class="text-muted-foreground truncate font-mono text-sm">
+							{String(item.id).substring(0, 12)}
+						</div>
+					</div>
+					<div class="flex flex-shrink-0 items-center gap-2">
+						{#if item.inUse}
+							<StatusBadge text={m.common_in_use()} variant="green" />
+						{:else}
+							<StatusBadge text={m.common_unused()} variant="amber" />
+						{/if}
+						{@render RowActions({ item })}
+					</div>
+				</div>
+
+				<div class="space-y-2">
+					<div class="flex items-start justify-between gap-2">
+						<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
+							{m.common_driver()}:
+						</span>
+						<div class="min-w-0 flex-1 text-right text-sm">
+							<StatusBadge
+								variant={item.driver === 'bridge'
+									? 'blue'
+									: item.driver === 'overlay'
+										? 'purple'
+										: item.driver === 'ipvlan'
+											? 'red'
+											: item.driver === 'macvlan'
+												? 'orange'
+												: 'gray'}
+								text={capitalizeFirstLetter(item.driver)}
+							/>
+						</div>
+					</div>
+
+					<div class="flex items-start justify-between gap-2">
+						<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
+							{m.common_scope()}:
+						</span>
+						<div class="min-w-0 flex-1 text-right text-sm">
+							<StatusBadge variant={item.scope === 'local' ? 'green' : 'amber'} text={capitalizeFirstLetter(item.scope)} />
+						</div>
+					</div>
+				</div>
+			</div>
+		</Card.Content>
+	</Card.Root>
+{/snippet}
+
 {#snippet RowActions({ item }: { item: NetworkSummaryDto })}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
@@ -228,6 +286,7 @@
 				onRefresh={async (options) => (networks = await networkService.getNetworks(options))}
 				{columns}
 				rowActions={RowActions}
+				mobileCard={NetworkMobileCard}
 			/>
 		</Card.Content>
 	</Card.Root>

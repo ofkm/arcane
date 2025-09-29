@@ -134,6 +134,53 @@
 	{format(new Date(String(value)), 'PP p')}
 {/snippet}
 
+{#snippet VolumeMobileCard({ row, item }: { row: any; item: VolumeSummaryDto })}
+	<Card.Root class="p-4">
+		<Card.Content class="p-0">
+			<div class="space-y-3">
+				<div class="flex items-start justify-between gap-3">
+					<div class="min-w-0 flex-1">
+						<a class="block truncate text-base font-medium hover:underline" href="/volumes/{item.id}/" title={item.name}>
+							{truncateString(item.name, 40)}
+						</a>
+						<div class="text-muted-foreground truncate font-mono text-sm">
+							{String(item.id).substring(0, 12)}
+						</div>
+					</div>
+					<div class="flex flex-shrink-0 items-center gap-2">
+						{#if item.inUse}
+							<StatusBadge text={m.common_in_use()} variant="green" />
+						{:else}
+							<StatusBadge text={m.common_unused()} variant="amber" />
+						{/if}
+						{@render RowActions({ item })}
+					</div>
+				</div>
+
+				<div class="space-y-2">
+					<div class="flex items-start justify-between gap-2">
+						<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
+							{m.common_driver()}:
+						</span>
+						<span class="min-w-0 flex-1 text-right text-sm">
+							{item.driver}
+						</span>
+					</div>
+
+					<div class="flex items-start justify-between gap-2">
+						<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
+							{m.common_created()}:
+						</span>
+						<span class="min-w-0 flex-1 text-right text-sm">
+							{format(new Date(String(item.createdAt)), 'PP p')}
+						</span>
+					</div>
+				</div>
+			</div>
+		</Card.Content>
+	</Card.Root>
+{/snippet}
+
 {#snippet RowActions({ item }: { item: VolumeSummaryDto })}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
@@ -170,6 +217,7 @@
 			onRefresh={async (options) => (volumes = await volumeService.getVolumes(options))}
 			{columns}
 			rowActions={RowActions}
+			mobileCard={VolumeMobileCard}
 		/>
 	</Card.Content>
 </Card.Root>

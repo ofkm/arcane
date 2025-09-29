@@ -29,8 +29,8 @@
 	const hasSelection = $derived(!selectionDisabled && (selectedIds?.length ?? 0) > 0);
 </script>
 
-<div class="flex items-center justify-between">
-	<div class="flex flex-1 items-center space-x-2">
+<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+	<div class="flex flex-col gap-2 sm:flex-1 sm:flex-row sm:items-center sm:space-x-2">
 		<Input
 			placeholder={m.common_search()}
 			value={(table.getState().globalFilter as string) ?? ''}
@@ -39,32 +39,34 @@
 			onkeydown={(e) => {
 				if (e.key === 'Enter') table.setGlobalFilter((e.currentTarget as HTMLInputElement).value);
 			}}
-			class="h-8 w-[150px] lg:w-[250px]"
+			class="h-8 w-full sm:w-[150px] lg:w-[250px]"
 		/>
 
-		{#if usageColumn}
-			<DataTableFacetedFilter column={usageColumn} title={m.common_usage()} options={usageFilters} />
-		{/if}
-		{#if updatesColumn}
-			<DataTableFacetedFilter column={updatesColumn} title={m.images_updates()} options={imageUpdateFilters} />
-		{/if}
+		<div class="flex flex-wrap gap-2 sm:gap-0 sm:space-x-2">
+			{#if usageColumn}
+				<DataTableFacetedFilter column={usageColumn} title={m.common_usage()} options={usageFilters} />
+			{/if}
+			{#if updatesColumn}
+				<DataTableFacetedFilter column={updatesColumn} title={m.images_updates()} options={imageUpdateFilters} />
+			{/if}
 
-		{#if isFiltered}
-			<Button
-				variant="ghost"
-				onclick={() => {
-					table.resetColumnFilters();
-					table.resetGlobalFilter();
-				}}
-				class="h-8 px-2 lg:px-3"
-			>
-				{m.common_reset()}
-				<XIcon />
-			</Button>
-		{/if}
+			{#if isFiltered}
+				<Button
+					variant="ghost"
+					onclick={() => {
+						table.resetColumnFilters();
+						table.resetGlobalFilter();
+					}}
+					class="h-8 px-2 lg:px-3"
+				>
+					{m.common_reset()}
+					<XIcon />
+				</Button>
+			{/if}
+		</div>
 	</div>
 
-	<div class="flex items-center gap-2">
+	<div class="flex flex-wrap items-center justify-end gap-2">
 		{#if hasSelection && onRemoveSelected}
 			<ArcaneButton
 				action="remove"

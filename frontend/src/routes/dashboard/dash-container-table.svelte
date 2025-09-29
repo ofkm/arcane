@@ -50,6 +50,33 @@
 	<StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.state)} />
 {/snippet}
 
+{#snippet DashContainerMobileCard({ row, item }: { row: any; item: ContainerSummaryDto })}
+	<Card.Root class="p-4">
+		<Card.Content class="p-0">
+			<div class="space-y-2">
+				<div class="flex items-center justify-between gap-2">
+					<a class="font-medium hover:underline text-sm truncate" href="/containers/{item.id}/">
+						{#if item.names && item.names.length > 0}
+							{item.names[0].startsWith('/') ? item.names[0].substring(1) : item.names[0]}
+						{:else}
+							{item.id.substring(0, 12)}
+						{/if}
+					</a>
+					<StatusBadge variant={getStatusVariant(item.state)} text={capitalizeFirstLetter(item.state)} />
+				</div>
+				<div class="text-xs text-muted-foreground truncate">
+					{item.image}
+				</div>
+				{#if item.status}
+					<div class="text-xs text-muted-foreground">
+						{item.status}
+					</div>
+				{/if}
+			</div>
+		</Card.Content>
+	</Card.Root>
+{/snippet}
+
 <Card.Root class="relative flex flex-col rounded-lg border shadow-sm">
 	<Card.Header class="px-6 pb-3 pt-5">
 		<div class="flex items-center justify-between">
@@ -76,6 +103,7 @@
 				withoutPagination={true}
 				selectionDisabled={true}
 				{columns}
+				mobileCard={DashContainerMobileCard}
 			/>
 			{#if containers.data.length > 5}
 				<div class="bg-muted/40 text-muted-foreground border-t px-6 py-2 text-xs">

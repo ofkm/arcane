@@ -18,6 +18,7 @@
 	import FlexRender from '$lib/components/ui/data-table/flex-render.svelte';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import * as Card from '$lib/components/ui/card/index.js';
 	import { renderComponent, renderSnippet } from '$lib/components/ui/data-table/render-helpers.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
@@ -54,6 +55,7 @@
 		onRefresh,
 		columns,
 		rowActions,
+		mobileCard,
 		selectedIds = $bindable<string[]>([]),
 		onRemoveSelected,
 		persistKey
@@ -66,6 +68,7 @@
 		onRefresh: (requestOptions: SearchPaginationSortRequest) => Promise<Paginated<TData>>;
 		columns: ColumnSpec<TData>[];
 		rowActions?: Snippet<[{ row: Row<TData>; item: TData }]>;
+		mobileCard: Snippet<[{ row: Row<TData>; item: TData }]>;
 		selectedIds?: string[];
 		onRemoveSelected?: (ids: string[]) => void;
 		persistKey?: string;
@@ -353,12 +356,12 @@
 {/snippet}
 
 {#snippet Pagination({ table }: { table: TableType<TData> })}
-	<div class="flex items-center justify-between px-2">
-		<div class="text-muted-foreground flex-1 text-sm">
+	<div class="flex flex-col gap-4 px-2 sm:flex-row sm:items-center sm:justify-between">
+		<div class="text-muted-foreground order-2 text-sm sm:order-1">
 			{m.common_showing_of_total({ shown: table.getFilteredRowModel().rows.length, total: totalItems })}
 		</div>
-		<div class="flex items-center space-x-6 lg:space-x-8">
-			<div class="flex items-center space-x-2">
+		<div class="order-1 flex flex-col gap-4 sm:order-2 sm:flex-row sm:items-center sm:space-x-6 lg:space-x-8">
+			<div class="flex items-center justify-between space-x-2 sm:justify-start">
 				<p class="text-sm font-medium">{m.common_rows_per_page()}</p>
 				<Select.Root
 					allowDeselect={false}
@@ -378,29 +381,35 @@
 					</Select.Content>
 				</Select.Root>
 			</div>
-			<div class="flex w-[100px] items-center justify-center text-sm font-medium">
-				{m.common_page_of({ page: currentPage, total: totalPages })}
-			</div>
-			<div class="flex items-center space-x-2">
-				<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(1)} disabled={!canPrev}>
-					<span class="sr-only">{m.common_go_first_page()}</span>
-					<ChevronsLeftIcon />
-				</Button>
-				<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage - 1)} disabled={!canPrev}>
-					<span class="sr-only">{m.common_go_prev_page()}</span>
-					<ChevronLeftIcon />
-				</Button>
-				<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage + 1)} disabled={!canNext}>
-					<span class="sr-only">{m.common_go_next_page()}</span>
-					<ChevronRightIcon />
-				</Button>
-				<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(totalPages)} disabled={!canNext}>
-					<span class="sr-only">{m.common_go_last_page()}</span>
-					<ChevronsRightIcon />
-				</Button>
+			<div class="flex items-center justify-between sm:justify-center">
+				<div class="flex items-center justify-center text-sm font-medium sm:w-[100px]">
+					{m.common_page_of({ page: currentPage, total: totalPages })}
+				</div>
+				<div class="flex items-center space-x-1 sm:space-x-2">
+					<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(1)} disabled={!canPrev}>
+						<span class="sr-only">{m.common_go_first_page()}</span>
+						<ChevronsLeftIcon />
+					</Button>
+					<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage - 1)} disabled={!canPrev}>
+						<span class="sr-only">{m.common_go_prev_page()}</span>
+						<ChevronLeftIcon />
+					</Button>
+					<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage + 1)} disabled={!canNext}>
+						<span class="sr-only">{m.common_go_next_page()}</span>
+						<ChevronRightIcon />
+					</Button>
+					<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(totalPages)} disabled={!canNext}>
+						<span class="sr-only">{m.common_go_last_page()}</span>
+						<ChevronsRightIcon />
+					</Button>
+				</div>
 			</div>
 		</div>
 	</div>
+{/snippet}
+
+{#snippet MobileCard({ row, item }: { row: Row<TData>; item: TData })}
+	{@render mobileCard({ row, item })}
 {/snippet}
 
 {#snippet ColumnHeader({
@@ -456,7 +465,9 @@
 	{#if !withoutSearch}
 		<DataTableToolbar {table} {selectedIds} {selectionDisabled} {onRemoveSelected} />
 	{/if}
-	<div class="rounded-md">
+
+	<!-- Desktop Table View -->
+	<div class="hidden rounded-md md:block">
 		<Table.Root>
 			<Table.Header>
 				{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
@@ -488,6 +499,18 @@
 			</Table.Body>
 		</Table.Root>
 	</div>
+
+	<!-- Mobile Card View -->
+	<div class="space-y-3 md:hidden">
+		{#each table.getRowModel().rows as row (row.id)}
+			{@render MobileCard({ row, item: row.original as TData })}
+		{:else}
+			<div class="h-24 flex items-center justify-center text-center text-muted-foreground">
+				{m.common_no_results_found()}
+			</div>
+		{/each}
+	</div>
+
 	{#if !withoutPagination}
 		{@render Pagination({ table })}
 	{/if}
