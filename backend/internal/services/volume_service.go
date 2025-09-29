@@ -3,9 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,7 +13,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
-	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type VolumeService struct {
@@ -219,60 +216,35 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 	return inUse, usingContainers, nil
 }
 
-//nolint:gocognit
-func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.SortedPaginationRequest, driver string, rawQuery url.Values) ([]dto.VolumeDto, utils.PaginationResponse, error) {
+func (s *VolumeService) ListVolumesPaginated(ctx context.Context, params pagination.QueryParams) ([]dto.VolumeDto, pagination.Response, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to connect to Docker: %w", err)
+		return nil, pagination.Response{}, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
-	// Merge raw query into req.Filters and normalize keys
-	if rawQuery != nil {
-		if norm := utils.NormalizeQueryToFilters(rawQuery); norm != nil {
-			if req.Filters == nil {
-				req.Filters = norm
-			} else {
-				for k, v := range norm {
-					req.Filters[k] = v
-				}
-			}
-		}
-	}
-	req.Filters = utils.NormalizeFilterKeys(req.Filters)
-
-	// Detect inUse filter and convert to Docker's dangling filter
-	var wantInUse *bool
-	if req.Filters != nil {
-		for _, k := range []string{"inUse", "inuse", "in_use"} {
-			if raw, ok := req.Filters[k]; ok {
-				if b, ok := utils.ParseBoolAny(raw); ok {
-					wantInUse = &b
-					break
-				}
-			}
-		}
-	}
-
-	allowed := []string{"driver", "label", "name", "dangling"}
-	if driver != "" {
-		if req.Filters == nil {
-			req.Filters = map[string]interface{}{}
-		}
-		req.Filters["driver"] = driver
-	}
-	if wantInUse != nil {
-		// inUse=true  -> dangling=false; inUse=false -> dangling=true
-		req.Filters["dangling"] = strconv.FormatBool(!*wantInUse)
-	}
-
-	filterArgs := utils.BuildDockerFiltersFromMap(req.Filters, req.Search, allowed)
-	volListBody, err := dockerClient.VolumeList(ctx, volume.ListOptions{Filters: filterArgs})
+	// Get all containers ONCE
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker volumes: %w", err)
+		return nil, pagination.Response{}, fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	// Convert returned volumes
+	// Build inUse map in a single pass
+	inUseMap := make(map[string]bool)
+	for _, c := range containers {
+		for _, m := range c.Mounts {
+			if m.Type == "volume" && m.Name != "" {
+				inUseMap[m.Name] = true
+			}
+		}
+	}
+
+	// List all volumes
+	volListBody, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
+	if err != nil {
+		return nil, pagination.Response{}, fmt.Errorf("failed to list Docker volumes: %w", err)
+	}
+
 	volumes := make([]volume.Volume, 0, len(volListBody.Volumes))
 	for _, v := range volListBody.Volumes {
 		if v != nil {
@@ -280,106 +252,98 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.Sort
 		}
 	}
 
-	// Build DTOs
-	result := make([]dto.VolumeDto, 0, len(volumes))
-	if wantInUse != nil {
-		// Docker already filtered by dangling; set InUse to requested value
-		for _, v := range volumes {
-			result = append(result, dto.NewVolumeDto(v, *wantInUse))
-		}
-	} else {
-		for _, v := range volumes {
-			result = append(result, dto.NewVolumeDto(v, false))
-		}
+	// Build DTOs using the inUse map (O(1) lookup)
+	items := make([]dto.VolumeDto, 0, len(volumes))
+	for _, v := range volumes {
+		items = append(items, dto.NewVolumeDto(v, inUseMap[v.Name]))
 	}
 
-	// Optional partial-search fallback
-	if req.Search != "" {
-		filtered := result[:0]
-		needle := strings.ToLower(req.Search)
-		for _, vol := range result {
-			if strings.Contains(strings.ToLower(vol.Name), needle) ||
-				strings.Contains(strings.ToLower(vol.Driver), needle) {
-				filtered = append(filtered, vol)
-			}
-		}
-		result = filtered
+	config := pagination.Config[dto.VolumeDto]{
+		SearchAccessors: []pagination.SearchAccessor[dto.VolumeDto]{
+			func(v dto.VolumeDto) (string, error) { return v.Name, nil },
+			func(v dto.VolumeDto) (string, error) { return v.Driver, nil },
+			func(v dto.VolumeDto) (string, error) { return v.Mountpoint, nil },
+			func(v dto.VolumeDto) (string, error) { return v.Scope, nil },
+		},
+		SortBindings: []pagination.SortBinding[dto.VolumeDto]{
+			{
+				Key: "name",
+				Fn: func(a, b dto.VolumeDto) int {
+					return strings.Compare(a.Name, b.Name)
+				},
+			},
+			{
+				Key: "driver",
+				Fn: func(a, b dto.VolumeDto) int {
+					return strings.Compare(a.Driver, b.Driver)
+				},
+			},
+			{
+				Key: "mountpoint",
+				Fn: func(a, b dto.VolumeDto) int {
+					return strings.Compare(a.Mountpoint, b.Mountpoint)
+				},
+			},
+			{
+				Key: "scope",
+				Fn: func(a, b dto.VolumeDto) int {
+					return strings.Compare(a.Scope, b.Scope)
+				},
+			},
+			{
+				Key: "created",
+				Fn: func(a, b dto.VolumeDto) int {
+					return strings.Compare(a.CreatedAt, b.CreatedAt)
+				},
+			},
+			{
+				Key: "inUse",
+				Fn: func(a, b dto.VolumeDto) int {
+					if a.InUse == b.InUse {
+						return 0
+					}
+					if a.InUse {
+						return -1
+					}
+					return 1
+				},
+			},
+		},
+		FilterAccessors: []pagination.FilterAccessor[dto.VolumeDto]{
+			{
+				Key: "inUse",
+				Fn: func(v dto.VolumeDto, filterValue string) bool {
+					if filterValue == "true" {
+						return v.InUse
+					}
+					if filterValue == "false" {
+						return !v.InUse
+					}
+					return true
+				},
+			},
+		},
 	}
 
-	// Sort in-memory
-	if req.Sort.Column != "" {
-		sortVolumes(result, req.Sort.Column, req.Sort.Direction)
+	result := pagination.SearchOrderAndPaginate(items, params, config)
+
+	totalPages := int64(0)
+	if params.Limit > 0 {
+		totalPages = (int64(result.TotalCount) + int64(params.Limit) - 1) / int64(params.Limit)
 	}
 
-	// Paginate using utils
-	pageItems, pagination := utils.PaginateSlice(result, req.Pagination.Page, req.Pagination.Limit)
-	if wantInUse == nil {
-		for i := range pageItems {
-			inUse, _, _ := s.containersUsingVolume(ctx, dockerClient, pageItems[i].Name)
-			pageItems[i].InUse = inUse
-		}
+	page := 1
+	if params.Limit > 0 {
+		page = (params.Start / params.Limit) + 1
 	}
 
-	return pageItems, pagination, nil
-}
-
-func sortVolumes(items []dto.VolumeDto, field, direction string) {
-	dir := utils.NormalizeSortDirection(direction)
-	f := strings.ToLower(strings.TrimSpace(field))
-	desc := dir == "desc"
-
-	lessStr := func(a, b string) bool {
-		if desc {
-			return a > b
-		}
-		return a < b
-	}
-	lessBool := func(a, b bool) bool {
-		if desc {
-			return a && !b
-		}
-		return !a && b
-	}
-	parseTime := func(s string) (time.Time, bool) {
-		if s == "" {
-			return time.Time{}, false
-		}
-		if t, err := time.Parse(time.RFC3339, s); err == nil {
-			return t, true
-		}
-		return time.Time{}, false
-	}
-	lessTime := func(aS, bS string) bool {
-		aT, aOk := parseTime(aS)
-		bT, bOk := parseTime(bS)
-		if aOk && bOk {
-			if desc {
-				return aT.After(bT)
-			}
-			return aT.Before(bT)
-		}
-
-		return lessStr(aS, bS)
+	paginationResp := pagination.Response{
+		TotalPages:      totalPages,
+		TotalItems:      int64(result.TotalCount),
+		CurrentPage:     page,
+		ItemsPerPage:    params.Limit,
+		GrandTotalItems: int64(result.TotalAvailable),
 	}
 
-	sort.Slice(items, func(i, j int) bool {
-		a, b := items[i], items[j]
-		switch f {
-		case "name":
-			return lessStr(a.Name, b.Name)
-		case "driver":
-			return lessStr(a.Driver, b.Driver)
-		case "mountpoint":
-			return lessStr(a.Mountpoint, b.Mountpoint)
-		case "scope":
-			return lessStr(a.Scope, b.Scope)
-		case "created", "createdat":
-			return lessTime(a.CreatedAt, b.CreatedAt)
-		case "inuse":
-			return lessBool(a.InUse, b.InUse)
-		default:
-			// no-op keeps original order
-			return false
-		}
-	})
+	return result.Items, paginationResp, nil
 }

@@ -8,10 +8,7 @@
 		type SortingState,
 		type VisibilityState,
 		type Table as TableType,
-		getCoreRowModel,
-		getFacetedRowModel,
-		getFacetedUniqueValues,
-		getFilteredRowModel
+		getCoreRowModel
 	} from '@tanstack/table-core';
 	import DataTableToolbar from './arcane-table-toolbar.svelte';
 	import { createSvelteTable } from '$lib/components/ui/data-table/data-table.svelte.js';
@@ -224,8 +221,7 @@
 					return renderSnippet(TextCell, { value });
 				},
 				enableSorting: !!spec.sortable,
-				enableHiding: true,
-				filterFn: spec.filterFn
+				enableHiding: true
 			});
 
 			if (spec.hidden) {
@@ -333,10 +329,7 @@
 			}
 			onRefresh(requestOptions);
 		},
-		getCoreRowModel: getCoreRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
-		getFacetedRowModel: getFacetedRowModel(),
-		getFacetedUniqueValues: getFacetedUniqueValues()
+		getCoreRowModel: getCoreRowModel()
 	});
 
 	function toFilterMap(filters: ColumnFiltersState): FilterMap {
@@ -383,7 +376,7 @@
 {#snippet Pagination({ table }: { table: TableType<TData> })}
 	<div class="flex items-center justify-between px-2">
 		<div class="text-muted-foreground flex-1 text-sm">
-			{m.common_showing_of_total({ shown: table.getFilteredRowModel().rows.length, total: totalItems })}
+			{m.common_showing_of_total({ shown: items.data.length, total: totalItems })}
 		</div>
 		<div class="flex items-center space-x-6 lg:space-x-8">
 			<div class="flex items-center space-x-2">

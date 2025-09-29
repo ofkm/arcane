@@ -9,6 +9,7 @@ type QueryParams struct {
 	SearchQuery
 	SortParams
 	PaginationParams
+	Filters map[string]string
 }
 
 func ExtractListModifiersQueryParams(c *gin.Context) QueryParams {
@@ -20,6 +21,15 @@ func ExtractListModifiersQueryParams(c *gin.Context) QueryParams {
 	// pagination
 	start, _ := arcanehttp.GetIntQueryParam(c, "start", true)
 	limit, _ := arcanehttp.GetIntQueryParam(c, "limit", true)
+
+	filters := make(map[string]string)
+	for key, values := range c.Request.URL.Query() {
+		if key != "search" && key != "sort" && key != "order" && key != "start" && key != "limit" {
+			if len(values) > 0 {
+				filters[key] = values[0]
+			}
+		}
+	}
 
 	return QueryParams{
 		SearchQuery{
@@ -33,5 +43,6 @@ func ExtractListModifiersQueryParams(c *gin.Context) QueryParams {
 			Start: start,
 			Limit: limit,
 		},
+		filters,
 	}
 }
