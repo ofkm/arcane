@@ -20,7 +20,7 @@
     "@codemirror/legacy-modes": "^6.5.1",
     "@codemirror/lint": "^6.8.5",
     "@codemirror/state": "^6.5.2",
-    "@codemirror/view": "^6.38.3",
+    "@codemirror/view": "^6.38.4",
     "@lezer/highlight": "^1.2.1",
     "@sveltejs/adapter-static": "^3.0.9",
     "@tanstack/table-core": "^8.21.3",

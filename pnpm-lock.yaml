@@ -32,8 +32,8 @@ importers:
         specifier: ^6.5.2
         version: 6.5.2
       '@codemirror/view':
-        specifier: ^6.38.3
-        version: 6.38.3
+        specifier: ^6.38.4
+        version: 6.38.4
       '@lezer/highlight':
         specifier: ^1.2.1
         version: 1.2.1
@@ -45,10 +45,10 @@ importers:
         version: 8.21.3
       '@uiw/codemirror-theme-github':
         specifier: ^4.25.2
-        version: 4.25.2(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.3)
+        version: 4.25.2(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.4)
       '@uiw/codemirror-themes':
         specifier: ^4.25.2
-        version: 4.25.2(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.3)
+        version: 4.25.2(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.4)
       axios:
         specifier: ^1.12.2
         version: 1.12.2
@@ -75,7 +75,7 @@ importers:
         version: 2.0.0(codemirror@6.0.2)(svelte@5.39.6)
       thememirror:
         specifier: ^2.0.1
-        version: 2.0.1(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.3)
+        version: 2.0.1(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.4)
     devDependencies:
       '@eslint/compat':
         specifier: ^1.4.0
@@ -240,8 +240,8 @@ packages:
   '@codemirror/state@6.5.2':
     resolution: {integrity: sha512-FVqsPqtPWKVVL3dPSxy8wEF/ymIEuVzF1PK3VbUgrxXpJUSHQWWZz4JMToquRxnkw+36LTamCZG2iua2Ptq0fA==}
 
-  '@codemirror/view@6.38.3':
-    resolution: {integrity: sha512-x2t87+oqwB1mduiQZ6huIghjMt4uZKFEdj66IcXw7+a5iBEvv9lh7EWDRHI7crnD4BMGpnyq/RzmCGbiEZLcvQ==}
+  '@codemirror/view@6.38.4':
+    resolution: {integrity: sha512-hduz0suCcUSC/kM8Fq3A9iLwInJDl8fD1xLpTIk+5xkNm8z/FT7UsIa9sOXrkpChh+XXc18RzswE8QqELsVl+g==}
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -2465,14 +2465,14 @@ snapshots:
     dependencies:
       '@codemirror/language': 6.11.3
       '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.3
+      '@codemirror/view': 6.38.4
       '@lezer/common': 1.2.3
 
   '@codemirror/commands@6.8.1':
     dependencies:
       '@codemirror/language': 6.11.3
       '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.3
+      '@codemirror/view': 6.38.4
       '@lezer/common': 1.2.3
 
   '@codemirror/lang-yaml@6.1.2':
@@ -2488,7 +2488,7 @@ snapshots:
   '@codemirror/language@6.11.3':
     dependencies:
       '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.3
+      '@codemirror/view': 6.38.4
       '@lezer/common': 1.2.3
       '@lezer/highlight': 1.2.1
       '@lezer/lr': 1.4.2
@@ -2501,20 +2501,20 @@ snapshots:
   '@codemirror/lint@6.8.5':
     dependencies:
       '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.3
+      '@codemirror/view': 6.38.4
       crelt: 1.0.6
 
   '@codemirror/search@6.5.11':
     dependencies:
       '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.3
+      '@codemirror/view': 6.38.4
       crelt: 1.0.6
 
   '@codemirror/state@6.5.2':
     dependencies:
       '@marijn/find-cluster-break': 1.0.2
 
-  '@codemirror/view@6.38.3':
+  '@codemirror/view@6.38.4':
     dependencies:
       '@codemirror/state': 6.5.2
       crelt: 1.0.6
@@ -3194,19 +3194,19 @@ snapshots:
       '@typescript-eslint/types': 8.44.1
       eslint-visitor-keys: 4.2.1
 
-  '@uiw/codemirror-theme-github@4.25.2(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.3)':
+  '@uiw/codemirror-theme-github@4.25.2(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.4)':
     dependencies:
-      '@uiw/codemirror-themes': 4.25.2(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.3)
+      '@uiw/codemirror-themes': 4.25.2(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.4)
     transitivePeerDependencies:
       - '@codemirror/language'
       - '@codemirror/state'
       - '@codemirror/view'
 
-  '@uiw/codemirror-themes@4.25.2(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.3)':
+  '@uiw/codemirror-themes@4.25.2(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.4)':
     dependencies:
       '@codemirror/language': 6.11.3
       '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.3
+      '@codemirror/view': 6.38.4
 
   '@vinejs/compiler@3.0.0':
     optional: true
@@ -3339,7 +3339,7 @@ snapshots:
       '@codemirror/lint': 6.8.5
       '@codemirror/search': 6.5.11
       '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.3
+      '@codemirror/view': 6.38.4
 
   color-convert@2.0.1:
     dependencies:
@@ -4359,11 +4359,11 @@ snapshots:
       source-map-support: 0.5.21
     optional: true
 
-  thememirror@2.0.1(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.3):
+  thememirror@2.0.1(@codemirror/language@6.11.3)(@codemirror/state@6.5.2)(@codemirror/view@6.38.4):
     dependencies:
       '@codemirror/language': 6.11.3
       '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.3
+      '@codemirror/view': 6.38.4
 
   tiny-case@1.0.3:
     optional: true
