@@ -34,9 +34,11 @@
 	<Card.Header class="bg-muted rounded-t-xl p-4">
 		<Card.Title class="flex items-center gap-2 text-lg">
 			<ActivityIcon class="text-primary size-5" />
-			{m.containers_resource_metrics()}
+			<h2>
+				{m.containers_resource_metrics()}
+			</h2>
 		</Card.Title>
-		<Card.Description>Real-time performance metrics and resource utilization</Card.Description>
+		<Card.Description>{m.containers_resource_metrics_description()}</Card.Description>
 	</Card.Header>
 	<Card.Content class="p-4">
 		{#if stats && container.state?.running}

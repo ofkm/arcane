@@ -30,9 +30,11 @@
 		<Card.Header class="bg-muted rounded-t-xl p-4">
 			<Card.Title class="flex items-center gap-2 text-lg">
 				<NetworkIcon class="text-primary size-5" />
-				{m.containers_networks_title()}
+				<h2>
+					{m.containers_networks_title()}
+				</h2>
 			</Card.Title>
-			<Card.Description>Network interfaces and connectivity configuration for this container</Card.Description>
+			<Card.Description>{m.containers_networks_description()}</Card.Description>
 		</Card.Header>
 		<Card.Content class="p-4">
 			{#if container.networkSettings?.networks && Object.keys(container.networkSettings.networks).length > 0}
@@ -55,24 +57,28 @@
 										<Card.Title class="text-base break-all">
 											{networkName}
 										</Card.Title>
-										<Card.Description class="text-xs">
-											Network interface
-										</Card.Description>
+										<Card.Description class="text-xs">{m.network_interface()}</Card.Description>
 									</div>
 								</div>
 							</Card.Header>
-							<Card.Content class="pt-0 space-y-4">
+							<Card.Content class="space-y-4 pt-0">
 								<div class="space-y-2">
 									<div class="text-muted-foreground text-xs font-semibold uppercase">
 										{m.containers_ip_address()}
 									</div>
-									<div class="text-foreground overflow-hidden font-mono text-sm font-medium break-all select-all cursor-pointer" title="Click to select">
+									<div
+										class="text-foreground cursor-pointer overflow-hidden font-mono text-sm font-medium break-all select-all"
+										title="Click to select"
+									>
 										{rawNetworkConfig.ipAddress || m.common_na()}
 									</div>
 								</div>
 								<div class="space-y-2">
 									<div class="text-muted-foreground text-xs font-semibold uppercase">{m.containers_gateway()}</div>
-									<div class="text-foreground overflow-hidden font-mono text-sm font-medium break-all select-all cursor-pointer" title="Click to select">
+									<div
+										class="text-foreground cursor-pointer overflow-hidden font-mono text-sm font-medium break-all select-all"
+										title="Click to select"
+									>
 										{rawNetworkConfig.gateway || m.common_na()}
 									</div>
 								</div>
@@ -80,13 +86,19 @@
 									<div class="text-muted-foreground text-xs font-semibold uppercase">
 										{m.containers_mac_address()}
 									</div>
-									<div class="text-foreground overflow-hidden font-mono text-sm font-medium break-all select-all cursor-pointer" title="Click to select">
+									<div
+										class="text-foreground cursor-pointer overflow-hidden font-mono text-sm font-medium break-all select-all"
+										title="Click to select"
+									>
 										{rawNetworkConfig.macAddress || m.common_na()}
 									</div>
 								</div>
 								<div class="space-y-2">
 									<div class="text-muted-foreground text-xs font-semibold uppercase">{m.containers_subnet()}</div>
-									<div class="text-foreground overflow-hidden font-mono text-sm font-medium break-all select-all cursor-pointer" title="Click to select">
+									<div
+										class="text-foreground cursor-pointer overflow-hidden font-mono text-sm font-medium break-all select-all"
+										title="Click to select"
+									>
 										{rawNetworkConfig.ipPrefixLen
 											? `${rawNetworkConfig.ipAddress}/${rawNetworkConfig.ipPrefixLen}`
 											: m.common_na()}
@@ -97,7 +109,10 @@
 										<div class="text-muted-foreground text-xs font-semibold uppercase">
 											{m.containers_aliases()}
 										</div>
-										<div class="text-foreground overflow-hidden font-mono text-sm font-medium break-all select-all cursor-pointer" title="Click to select">
+										<div
+											class="text-foreground cursor-pointer overflow-hidden font-mono text-sm font-medium break-all select-all"
+											title="Click to select"
+										>
 											{rawNetworkConfig.aliases.join(', ')}
 										</div>
 									</div>

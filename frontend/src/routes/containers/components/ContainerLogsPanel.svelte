@@ -49,7 +49,11 @@
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-2">
 				<FileTextIcon class="text-primary size-5" />
-				<Card.Title class="text-lg">{m.containers_logs_title()}</Card.Title>
+				<Card.Title class="text-lg">
+					<h2>
+						{m.containers_logs_title()}
+					</h2>
+				</Card.Title>
 				{#if isStreaming}
 					<div class="flex items-center gap-2">
 						<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
@@ -93,7 +97,7 @@
 				</div>
 			</div>
 		</div>
-		<Card.Description>Real-time container logs</Card.Description>
+		<Card.Description>{m.containers_logs_description()}</Card.Description>
 	</Card.Header>
 	<Card.Content class="p-0">
 		<div class="rounded-lg border bg-card/50 p-0">

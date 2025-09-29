@@ -48,9 +48,11 @@
 	<Card.Header class="bg-muted rounded-t-xl p-4">
 		<Card.Title class="flex items-center gap-2 text-lg">
 			<InfoIcon class="text-primary size-5" />
-			Container Details
+			<h2>
+				{m.containers_details_title()}
+			</h2>
 		</Card.Title>
-		<Card.Description>Essential information about this container instance</Card.Description>
+		<Card.Description>{m.containers_details_description()}</Card.Description>
 	</Card.Header>
 	<Card.Content class="p-4">
 		<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
@@ -108,7 +110,7 @@
 						<InfoIcon class="size-5 text-indigo-500" />
 					</div>
 					<div class="min-w-0 flex-1">
-						<p class="text-muted-foreground text-sm font-medium">Working Dir</p>
+						<p class="text-muted-foreground text-sm font-medium">{m.containers_working_directory()}</p>
 						<p
 							class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm"
 							title="Click to select"

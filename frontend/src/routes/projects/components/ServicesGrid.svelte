@@ -19,9 +19,11 @@
 	<Card.Header class="bg-muted rounded-t-xl p-4">
 		<Card.Title class="flex items-center gap-2 text-lg">
 			<LayersIcon class="text-primary size-5" />
-			Services
+			<h2>
+				{m.compose_services()}
+			</h2>
 		</Card.Title>
-		<Card.Description>Docker Compose services and their current status</Card.Description>
+		<Card.Description>{m.compose_services_description()}</Card.Description>
 	</Card.Header>
 	<Card.Content class="p-4">
 		{#if services && services.length > 0}
@@ -47,7 +49,7 @@
 											<div class="mt-3 flex items-center gap-2">
 												<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
 											</div>
-											<p class="text-muted-foreground mt-2 text-sm">Active container</p>
+											<p class="text-muted-foreground mt-2 text-sm">{m.compose_active_container()}</p>
 										</div>
 									</div>
 								</Card.Content>

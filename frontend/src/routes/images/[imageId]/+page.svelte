@@ -111,7 +111,7 @@
 						<InfoIcon class="text-primary size-5" />
 						{m.images_details_title()}
 					</Card.Title>
-					<Card.Description>Essential information about this image</Card.Description>
+					<Card.Description>{m.images_details_description()}</Card.Description>
 				</Card.Header>
 				<Card.Content class="p-4">
 					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
@@ -184,7 +184,7 @@
 									<InfoIcon class="size-5 text-purple-500" />
 								</div>
 								<div class="min-w-0 flex-1">
-									<p class="text-muted-foreground text-sm font-medium">Docker Version</p>
+									<p class="text-muted-foreground text-sm font-medium">{m.common_docker_version()}</p>
 									<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
 										{image.dockerVersion}
 									</p>
@@ -198,7 +198,7 @@
 									<InfoIcon class="size-5 text-pink-500" />
 								</div>
 								<div class="min-w-0 flex-1">
-									<p class="text-muted-foreground text-sm font-medium">Author</p>
+									<p class="text-muted-foreground text-sm font-medium">{m.common_author()}</p>
 									<p class="mt-1 cursor-pointer text-sm font-semibold break-all select-all sm:text-base" title="Click to select">
 										{image.author}
 									</p>
@@ -212,7 +212,7 @@
 									<InfoIcon class="size-5 text-amber-500" />
 								</div>
 								<div class="min-w-0 flex-1">
-									<p class="text-muted-foreground text-sm font-medium">Working Dir</p>
+									<p class="text-muted-foreground text-sm font-medium">{m.common_working_dir()}</p>
 									<p
 										class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm"
 										title="Click to select"
@@ -233,7 +233,7 @@
 							<TagIcon class="text-primary size-5" />
 							{m.images_tags_title()}
 						</Card.Title>
-						<Card.Description>Repository tags associated with this image</Card.Description>
+						<Card.Description>{m.images_tags_description()}</Card.Description>
 					</Card.Header>
 					<Card.Content class="p-4">
 						<div class="flex flex-wrap gap-2">
@@ -252,7 +252,7 @@
 							<SettingsIcon class="text-primary size-5" />
 							{m.images_env_vars_title()}
 						</Card.Title>
-						<Card.Description>Environment variables defined in this image</Card.Description>
+						<Card.Description>{m.images_env_vars_description()}</Card.Description>
 					</Card.Header>
 					<Card.Content class="space-y-2 p-4">
 						{#each image.config.env as env (env)}

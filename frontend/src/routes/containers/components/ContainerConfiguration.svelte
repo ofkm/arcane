@@ -24,9 +24,11 @@
 			<Card.Header class="bg-muted rounded-t-xl p-4">
 				<Card.Title class="flex items-center gap-2 text-lg">
 					<SettingsIcon class="text-primary size-5" />
-					{m.containers_env_vars_title()}
+					<h2>
+						{m.containers_env_vars_title()}
+					</h2>
 				</Card.Title>
-				<Card.Description>Runtime environment variables for your container</Card.Description>
+				<Card.Description>{m.containers_env_vars_description()}</Card.Description>
 			</Card.Header>
 			<Card.Content class="p-4">
 				{#if container.config?.env && container.config.env.length > 0}
@@ -65,9 +67,11 @@
 			<Card.Header class="bg-muted rounded-t-xl p-4">
 				<Card.Title class="flex items-center gap-2 text-lg">
 					<NetworkIcon class="text-primary size-5" />
-					{m.containers_port_mappings()}
+					<h2>
+						{m.containers_port_mappings()}
+					</h2>
 				</Card.Title>
-				<Card.Description>Network ports exposed by this container for external access</Card.Description>
+				<Card.Description>{m.containers_port_mappings_description()}</Card.Description>
 			</Card.Header>
 			<Card.Content class="p-4">
 				<PortBadge ports={container.ports ?? []} {baseServerUrl} />
@@ -80,9 +84,11 @@
 			<Card.Header class="bg-muted rounded-t-xl p-4">
 				<Card.Title class="flex items-center gap-2 text-lg">
 					<TagIcon class="text-primary size-5" />
-					{m.common_labels()}
+					<h2>
+						{m.common_labels()}
+					</h2>
 				</Card.Title>
-				<Card.Description>Metadata labels attached to this container for organization and automation</Card.Description>
+				<Card.Description>{m.common_labels_description()}</Card.Description>
 			</Card.Header>
 			<Card.Content class="p-4">
 				{#if container.labels && Object.keys(container.labels).length > 0}
