@@ -110,23 +110,23 @@
 
 	{#if volume}
 		<div class="space-y-6">
-			<Card.Root class="border shadow-sm">
-				<Card.Header class="pb-0">
+			<Card.Root class="pt-0">
+				<Card.Header class="bg-muted rounded-t-xl p-4">
 					<Card.Title class="flex items-center gap-2 text-lg">
-						<DatabaseIcon class="text-primary size-5" />
+						<InfoIcon class="text-primary size-5" />
 						{m.volumes_details_title()}
 					</Card.Title>
 					<Card.Description>{m.volumes_details_description()}</Card.Description>
 				</Card.Header>
-				<Card.Content class="pt-6">
-					<div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+				<Card.Content class="p-4">
+					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
 								<DatabaseIcon class="size-5 text-gray-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.common_name()}</p>
-								<p class="mt-1 break-words text-base font-semibold">{volume.name}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold break-all select-all sm:text-base" title="Click to select">{volume.name}</p>
 							</div>
 						</div>
 
@@ -136,7 +136,7 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.common_driver()}</p>
-								<p class="mt-1 text-base font-semibold">{volume.driver}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">{volume.driver}</p>
 							</div>
 						</div>
 
@@ -146,7 +146,7 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.common_created()}</p>
-								<p class="mt-1 text-base font-semibold">{createdDate}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">{createdDate}</p>
 							</div>
 						</div>
 
@@ -156,7 +156,7 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.common_scope()}</p>
-								<p class="mt-1 text-base font-semibold capitalize">{volume.scope}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold capitalize select-all sm:text-base" title="Click to select">{volume.scope}</p>
 							</div>
 						</div>
 
@@ -176,13 +176,13 @@
 							</div>
 						</div>
 
-						<div class="col-span-1 flex items-start gap-3 sm:col-span-2 lg:col-span-3">
+						<div class="col-span-1 flex items-start gap-3 sm:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-6">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-teal-500/10 p-2">
 								<LayersIcon class="size-5 text-teal-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.common_mountpoint()}</p>
-								<div class="bg-muted/50 mt-2 rounded-lg border p-3">
+								<div class="bg-muted/50 mt-2 rounded-lg border p-3 cursor-pointer select-all" title="Click to select">
 									<code class="break-all font-mono text-sm">{volume.mountpoint}</code>
 								</div>
 							</div>
@@ -191,15 +191,15 @@
 				</Card.Content>
 			</Card.Root>
 
-			<Card.Root class="border shadow-sm">
-				<Card.Header class="pb-0">
+			<Card.Root class="pt-0">
+				<Card.Header class="bg-muted rounded-t-xl p-4">
 					<Card.Title class="flex items-center gap-2 text-lg">
-						<HardDriveIcon class="text-primary size-5" />
+						<ContainerIcon class="text-primary size-5" />
 						{m.volumes_containers_using_title()}
 					</Card.Title>
 					<Card.Description>{m.volumes_containers_using_description()}</Card.Description>
 				</Card.Header>
-				<Card.Content class="pt-6">
+				<Card.Content class="p-4">
 					{#if containersDetailed.length > 0}
 						<div class="bg-card divide-y rounded-lg border">
 							{#each containersDetailed as c (c.id)}
@@ -211,7 +211,7 @@
 										</a>
 									</div>
 									<div class="w-full pl-0 sm:w-2/3 sm:pl-4">
-										<code class="bg-muted text-muted-foreground break-all rounded px-1.5 py-0.5 font-mono text-xs sm:text-sm">
+										<code class="bg-muted text-muted-foreground break-all rounded px-1.5 py-0.5 font-mono text-xs sm:text-sm cursor-pointer select-all" title="Click to select">
 											{truncateString(c.id, 48)}
 										</code>
 									</div>
@@ -235,22 +235,22 @@
 			</Card.Root>
 
 			{#if volume.labels && Object.keys(volume.labels).length > 0}
-				<Card.Root class="border shadow-sm">
-					<Card.Header class="pb-0">
+				<Card.Root class="pt-0">
+					<Card.Header class="bg-muted rounded-t-xl p-4">
 						<Card.Title class="flex items-center gap-2 text-lg">
 							<TagIcon class="text-primary size-5" />
 							{m.common_labels()}
 						</Card.Title>
 						<Card.Description>{m.volumes_labels_description()}</Card.Description>
 					</Card.Header>
-					<Card.Content class="pt-6">
+					<Card.Content class="p-4">
 						<div class="bg-card divide-y rounded-lg border">
 							{#each Object.entries(volume.labels) as [key, value] (key)}
 								<div class="flex flex-col p-3 sm:flex-row">
 									<div class="text-muted-foreground mb-2 w-full break-all font-medium sm:mb-0 sm:w-1/3">
 										{key}
 									</div>
-									<div class="bg-muted/50 w-full break-all rounded p-2 font-mono text-xs sm:w-2/3 sm:text-sm">
+									<div class="bg-muted/50 w-full break-all rounded p-2 font-mono text-xs sm:w-2/3 sm:text-sm cursor-pointer select-all" title="Click to select">
 										{value}
 									</div>
 								</div>
@@ -261,22 +261,22 @@
 			{/if}
 
 			{#if volume.options && Object.keys(volume.options).length > 0}
-				<Card.Root class="border shadow-sm">
-					<Card.Header class="pb-0">
+				<Card.Root class="pt-0">
+					<Card.Header class="bg-muted rounded-t-xl p-4">
 						<Card.Title class="flex items-center gap-2 text-lg">
 							<HardDriveIcon class="text-primary size-5" />
 							{m.common_driver_options()}
 						</Card.Title>
 						<Card.Description>{m.volumes_driver_options_description()}</Card.Description>
 					</Card.Header>
-					<Card.Content class="pt-6">
+					<Card.Content class="p-4">
 						<div class="bg-card divide-y rounded-lg border">
 							{#each Object.entries(volume.options) as [key, value] (key)}
 								<div class="flex flex-col p-3 sm:flex-row">
 									<div class="text-muted-foreground mb-2 w-full break-all font-medium sm:mb-0 sm:w-1/3">
 										{key}
 									</div>
-									<div class="bg-muted/50 w-full break-all rounded p-2 font-mono text-xs sm:w-2/3 sm:text-sm">
+									<div class="bg-muted/50 w-full break-all rounded p-2 font-mono text-xs sm:w-2/3 sm:text-sm cursor-pointer select-all" title="Click to select">
 										{value}
 									</div>
 								</div>

@@ -44,181 +44,133 @@
 	}
 </script>
 
-<section class="scroll-mt-20">
-	<div class="space-y-8">
-		<div class="space-y-4">
-			<h2 class="text-foreground flex items-center gap-3 text-2xl font-bold tracking-tight">
-				<div class="bg-primary/10 rounded-lg p-2.5">
-					<InfoIcon class="text-primary size-6" />
+<Card.Root class="pt-0">
+	<Card.Header class="bg-muted rounded-t-xl p-4">
+		<Card.Title class="flex items-center gap-2 text-lg">
+			<InfoIcon class="text-primary size-5" />
+			Container Details
+		</Card.Title>
+		<Card.Description>Essential information about this container instance</Card.Description>
+	</Card.Header>
+	<Card.Content class="p-4">
+		<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+			<div class="flex items-start gap-3">
+				<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2">
+					<HardDriveIcon class="size-5 text-blue-500" />
 				</div>
-				Container Details
-			</h2>
-			<p class="text-muted-foreground max-w-2xl text-sm leading-relaxed">Essential information about this container instance</p>
-		</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-muted-foreground text-sm font-medium">{m.common_image()}</p>
+					<p class="mt-1 cursor-pointer text-sm font-semibold break-all select-all sm:text-base" title="Click to select">
+						{container.image || m.common_na()}
+					</p>
+				</div>
+			</div>
 
-		<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-			<Card.Root>
-				<Card.Content class="p-5">
-					<div class="flex items-start gap-4">
-						<div class="rounded-lg bg-blue-500/10 p-2.5">
-							<HardDriveIcon class="size-5 text-blue-500" />
-						</div>
-						<div class="min-w-0 flex-1 space-y-2.5">
-							<div class="text-foreground text-sm font-semibold">{m.common_image()}</div>
-							<div class="group bg-background/30 hover:bg-muted/60 cursor-pointer rounded-md border px-3 py-2 transition-colors">
-								<div class="text-foreground font-mono text-sm font-medium break-all select-all" title="Click to select">
-									{container.image || m.common_na()}
-								</div>
-							</div>
+			<div class="flex items-start gap-3">
+				<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2">
+					<ClockIcon class="size-5 text-green-500" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-muted-foreground text-sm font-medium">{m.common_created()}</p>
+					<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+						{formatDockerDate(container?.created)}
+					</p>
+				</div>
+			</div>
+
+			<div class="flex items-start gap-3">
+				<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-purple-500/10 p-2">
+					<NetworkIcon class="size-5 text-purple-500" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-muted-foreground text-sm font-medium">{m.containers_ip_address()}</p>
+					<p class="mt-1 cursor-pointer font-mono text-sm font-semibold select-all sm:text-base" title="Click to select">
+						{primaryIpAddress}
+					</p>
+				</div>
+			</div>
+
+			<div class="flex items-start gap-3">
+				<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
+					<CpuIcon class="size-5 text-gray-500" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-muted-foreground text-sm font-medium">{m.common_id()}</p>
+					<p class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm" title="Click to select">
+						{container.id}
+					</p>
+				</div>
+			</div>
+
+			{#if container.config?.workingDir}
+				<div class="flex items-start gap-3">
+					<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 p-2">
+						<InfoIcon class="size-5 text-indigo-500" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-muted-foreground text-sm font-medium">Working Dir</p>
+						<p
+							class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm"
+							title="Click to select"
+						>
+							{container.config.workingDir}
+						</p>
+					</div>
+				</div>
+			{/if}
+
+			{#if container.config?.user}
+				<div class="flex items-start gap-3">
+					<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 p-2">
+						<InfoIcon class="size-5 text-orange-500" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-muted-foreground text-sm font-medium">User</p>
+						<p class="mt-1 cursor-pointer font-mono text-sm font-semibold select-all" title="Click to select">
+							{container.config.user}
+						</p>
+					</div>
+				</div>
+			{/if}
+
+			{#if container.state?.health}
+				<div class="flex items-start gap-3">
+					<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-pink-500/10 p-2">
+						<InfoIcon class="size-5 text-pink-500" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-muted-foreground text-sm font-medium">Health Status</p>
+						<div class="mt-2">
+							<StatusBadge
+								variant={container.state.health.status === 'healthy'
+									? 'green'
+									: container.state.health.status === 'unhealthy'
+										? 'red'
+										: 'amber'}
+								text={container.state.health.status}
+								size="sm"
+							/>
 						</div>
 					</div>
-				</Card.Content>
-			</Card.Root>
+				</div>
+			{/if}
 
-			<Card.Root>
-				<Card.Content class="p-5">
-					<div class="flex items-start gap-4">
-						<div class="rounded-lg bg-green-500/10 p-2.5">
-							<ClockIcon class="size-5 text-green-500" />
-						</div>
-						<div class="min-w-0 flex-1 space-y-2.5">
-							<div class="text-foreground text-sm font-semibold">{m.common_created()}</div>
-							<div class="group bg-background/30 hover:bg-muted/60 cursor-pointer rounded-md border px-3 py-2 transition-colors">
-								<div class="text-foreground text-sm font-medium select-all" title="Click to select">
-									{formatDockerDate(container?.created)}
-								</div>
-							</div>
-						</div>
-					</div>
-				</Card.Content>
-			</Card.Root>
-
-			<Card.Root>
-				<Card.Content class="p-5">
-					<div class="flex items-start gap-4">
-						<div class="rounded-lg bg-purple-500/10 p-2.5">
-							<NetworkIcon class="size-5 text-purple-500" />
-						</div>
-						<div class="min-w-0 flex-1 space-y-2.5">
-							<div class="text-foreground text-sm font-semibold">{m.containers_ip_address()}</div>
-							<div class="group bg-background/30 hover:bg-muted/60 cursor-pointer rounded-md border px-3 py-2 transition-colors">
-								<div class="text-foreground font-mono text-sm font-medium select-all" title="Click to select">
-									{primaryIpAddress}
-								</div>
-							</div>
-						</div>
-					</div>
-				</Card.Content>
-			</Card.Root>
-
-		<Card.Root>
-			<Card.Content class="p-5">
-				<div class="flex items-start gap-4">
-					<div class="rounded-lg bg-amber-500/10 p-2.5">
+			{#if container.config?.cmd && container.config.cmd.length > 0}
+				<div class="col-span-1 flex items-start gap-3 sm:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-6">
+					<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 p-2">
 						<TerminalIcon class="size-5 text-amber-500" />
 					</div>
-						<div class="min-w-0 flex-1 space-y-2.5">
-							<div class="text-foreground text-sm font-semibold">{m.containers_command()}</div>
-							<div class="group bg-background/30 hover:bg-muted/60 cursor-pointer rounded-md border px-3 py-2 transition-colors">
-								<div
-									class="text-foreground font-mono text-sm leading-relaxed font-medium break-all select-all"
-									title="Click to select"
-								>
-									{container.config?.cmd?.join(' ') || m.common_na()}
-								</div>
-							</div>
-						</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-muted-foreground text-sm font-medium">{m.containers_command()}</p>
+						<p
+							class="mt-1 cursor-pointer font-mono text-xs leading-relaxed font-medium break-all select-all sm:text-sm"
+							title="Click to select"
+						>
+							{container.config.cmd.join(' ')}
+						</p>
 					</div>
-				</Card.Content>
-			</Card.Root>
+				</div>
+			{/if}
 		</div>
-
-		<div class="mt-16 space-y-8">
-			<div class="space-y-4">
-				<h2 class="text-foreground flex items-center gap-3 text-2xl font-bold tracking-tight">
-					<div class="bg-primary/10 rounded-lg p-2.5">
-						<CpuIcon class="text-primary size-6" />
-					</div>
-					System Information
-				</h2>
-				<p class="text-muted-foreground max-w-2xl text-sm leading-relaxed">Technical details and runtime configuration</p>
-			</div>
-
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-				<Card.Root>
-					<Card.Content class="p-4">
-						<div class="space-y-2.5">
-							<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{m.common_id()}</div>
-							<div class="group bg-background/30 hover:bg-muted/60 cursor-pointer rounded-md border px-3 py-2 transition-colors">
-								<div class="text-foreground font-mono text-sm font-medium break-all select-all" title="Click to select">
-									{container.id}
-								</div>
-							</div>
-						</div>
-					</Card.Content>
-				</Card.Root>
-
-				{#if container.config?.workingDir}
-					<div class="bg-card rounded-lg border p-4">
-						<div class="space-y-2.5">
-							<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-								{m.containers_working_directory()}
-							</div>
-							<div class="group bg-background/30 hover:bg-muted/60 cursor-pointer rounded-md border px-3 py-2 transition-colors">
-								<div class="text-foreground font-mono text-sm font-medium break-all select-all" title="Click to select">
-									{container.config.workingDir}
-								</div>
-							</div>
-						</div>
-					</div>
-				{/if}
-
-				{#if container.config?.user}
-					<Card.Root>
-						<Card.Content class="p-4">
-							<div class="space-y-2.5">
-								<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{m.common_user()}</div>
-								<div class="group bg-muted/30 hover:bg-muted/50 cursor-pointer rounded-md border px-3 py-2 transition-colors">
-									<div class="text-foreground font-mono text-sm font-medium select-all" title="Click to select">
-										{container.config.user}
-									</div>
-								</div>
-							</div>
-						</Card.Content>
-					</Card.Root>
-				{/if}
-
-				{#if container.state?.health}
-					<Card.Root class="lg:col-span-2">
-						<Card.Content class="p-4">
-							<div class="space-y-3">
-								<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-									{m.containers_health_label()}
-								</div>
-								<div class="flex flex-wrap items-center gap-4">
-									<StatusBadge
-										variant={container.state.health.status === 'healthy'
-											? 'green'
-											: container.state.health.status === 'unhealthy'
-												? 'red'
-												: 'amber'}
-										text={container.state.health.status}
-									/>
-									{#if container.state.health.log && container.state.health.log.length > 0}
-										{@const first = container.state.health.log[0]}
-										{@const lastCheck = (first?.Start ?? first?.start) as string | undefined}
-										{#if lastCheck}
-											<span class="text-muted-foreground text-sm font-medium">
-												{m.containers_health_last_check({ time: formatDockerDate(lastCheck) })}
-											</span>
-										{/if}
-									{/if}
-								</div>
-							</div>
-						</Card.Content>
-					</Card.Root>
-				{/if}
-			</div>
-		</div>
-	</div>
-</section>
+	</Card.Content>
+</Card.Root>

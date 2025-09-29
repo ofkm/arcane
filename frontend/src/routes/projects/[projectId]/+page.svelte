@@ -275,9 +275,7 @@
 
 			<Tabs.Content value="logs" class="h-full">
 				{#if project.status == 'running'}
-					<div class="h-full">
-						<ProjectsLogsPanel projectId={project.id} bind:autoScroll={autoScrollStackLogs} />
-					</div>
+					<ProjectsLogsPanel projectId={project.id} bind:autoScroll={autoScrollStackLogs} />
 				{:else}
 					<div class="text-muted-foreground py-12 text-center">{m.compose_logs_title()} Unavailable</div>
 				{/if}
