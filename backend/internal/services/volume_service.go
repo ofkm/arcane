@@ -19,81 +19,6 @@ import (
 	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
-// normalizeQueryToFilters converts raw URL query values into a flat filters map.
-// It supports: filters[foo]=bar, filters.foo=bar, foo=bar and returns map[string]interface{}.
-func normalizeQueryToFilters(q url.Values) map[string]interface{} {
-	if q == nil {
-		return nil
-	}
-	out := map[string]interface{}{}
-	for k, vals := range q {
-		// skip reserved
-		if strings.HasPrefix(k, "pagination[") || strings.HasPrefix(k, "sort[") || k == "search" {
-			continue
-		}
-		key := k
-		if strings.HasPrefix(key, "filters[") && strings.HasSuffix(key, "]") {
-			key = key[len("filters[") : len(key)-1]
-		} else if strings.HasPrefix(key, "filters.") {
-			key = key[len("filters."):]
-		}
-		if len(vals) == 1 {
-			out[key] = vals[0]
-		} else if len(vals) > 1 {
-			out[key] = vals
-		}
-	}
-	return out
-}
-
-// normalizeFilterKeys flattens common encodings like "filters[inUse]" or "filters.inUse" to "inUse".
-func normalizeFilterKeys(filtersMap map[string]interface{}) map[string]interface{} {
-	if filtersMap == nil {
-		return nil
-	}
-	out := make(map[string]interface{}, len(filtersMap))
-	for k, v := range filtersMap {
-		key := strings.TrimSpace(k)
-		if strings.HasPrefix(key, "filters[") && strings.HasSuffix(key, "]") {
-			key = key[len("filters[") : len(key)-1]
-		} else if strings.HasPrefix(key, "filters.") {
-			key = key[len("filters."):]
-		}
-		out[key] = v
-	}
-	return out
-}
-
-func parseBoolAny(v interface{}) (bool, bool) {
-	switch t := v.(type) {
-	case bool:
-		return t, true
-	case string:
-		s := strings.ToLower(strings.TrimSpace(t))
-		if s == "true" || s == "1" {
-			return true, true
-		}
-		if s == "false" || s == "0" {
-			return false, true
-		}
-		if b, err := strconv.ParseBool(s); err == nil {
-			return b, true
-		}
-	case []string:
-		if len(t) > 0 {
-			return parseBoolAny(t[0])
-		}
-	case []interface{}:
-		if len(t) > 0 {
-			return parseBoolAny(t[0])
-		}
-	default:
-		s := fmt.Sprintf("%v", t)
-		return parseBoolAny(s)
-	}
-	return false, false
-}
-
 type VolumeService struct {
 	db            *database.DB
 	dockerService *DockerClientService
@@ -325,7 +250,7 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.Sort
 
 	// Merge raw query into req.Filters and normalize keys
 	if rawQuery != nil {
-		if norm := normalizeQueryToFilters(rawQuery); norm != nil {
+		if norm := utils.NormalizeQueryToFilters(rawQuery); norm != nil {
 			if req.Filters == nil {
 				req.Filters = norm
 			} else {
@@ -335,16 +260,14 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.Sort
 			}
 		}
 	}
-	req.Filters = normalizeFilterKeys(req.Filters)
+	req.Filters = utils.NormalizeFilterKeys(req.Filters)
 
-	// Detect inUse filter (backend-only concept) and convert to Docker's dangling filter
-	// Docker: dangling=true => UNUSED volumes (not referenced by any container)
-	//         dangling=false => IN-USE volumes
+	// Detect inUse filter and convert to Docker's dangling filter
 	var wantInUse *bool
 	if req.Filters != nil {
 		for _, k := range []string{"inUse", "inuse", "in_use"} {
 			if raw, ok := req.Filters[k]; ok {
-				if b, ok := parseBoolAny(raw); ok {
+				if b, ok := utils.ParseBoolAny(raw); ok {
 					wantInUse = &b
 					break
 				}
@@ -352,7 +275,6 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.Sort
 		}
 	}
 
-	// Build daemon-side filters (driver, label, name, and map inUse -> dangling)
 	allowed := []string{"driver", "label", "name", "dangling"}
 	if driver != "" {
 		if req.Filters == nil {
@@ -361,12 +283,11 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.Sort
 		req.Filters["driver"] = driver
 	}
 	if wantInUse != nil {
-		// inUse=true  -> dangling=false
-		// inUse=false -> dangling=true
+		// inUse=true  -> dangling=false; inUse=false -> dangling=true
 		req.Filters["dangling"] = strconv.FormatBool(!*wantInUse)
 	}
 
-	filterArgs := buildDockerFiltersFromRequest(req, allowed)
+	filterArgs := utils.BuildDockerFiltersFromMap(req.Filters, req.Search, allowed)
 	volListBody, err := dockerClient.VolumeList(ctx, volume.ListOptions{Filters: filterArgs})
 	if err != nil {
 		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker volumes: %w", err)
@@ -380,14 +301,14 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.Sort
 		}
 	}
 
-	// Build DTOs. If inUse filter was used, Docker already filtered set; set InUse accordingly without extra scans.
+	// Build DTOs
 	result := make([]dto.VolumeDto, 0, len(volumes))
 	if wantInUse != nil {
+		// Docker already filtered by dangling; set InUse to requested value
 		for _, v := range volumes {
 			result = append(result, dto.NewVolumeDto(v, *wantInUse))
 		}
 	} else {
-		// Defer expensive inUse checks until after pagination
 		for _, v := range volumes {
 			result = append(result, dto.NewVolumeDto(v, false))
 		}
@@ -406,39 +327,20 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, req utils.Sort
 		result = filtered
 	}
 
-	// Sort + paginate in-memory
-	totalItems := len(result)
+	// Sort in-memory
 	if req.Sort.Column != "" {
 		sortVolumes(result, req.Sort.Column, req.Sort.Direction)
 	}
-	startIdx := (req.Pagination.Page - 1) * req.Pagination.Limit
-	endIdx := startIdx + req.Pagination.Limit
-	if startIdx > len(result) {
-		startIdx = len(result)
-	}
-	if endIdx > len(result) {
-		endIdx = len(result)
-	}
 
-	pageItems := []dto.VolumeDto{}
-	if startIdx < endIdx {
-		pageItems = result[startIdx:endIdx]
-		// Compute inUse only when not requested explicitly
-		if wantInUse == nil {
-			for i := range pageItems {
-				inUse, _, _ := s.containersUsingVolume(ctx, dockerClient, pageItems[i].Name)
-				pageItems[i].InUse = inUse
-			}
+	// Paginate using utils
+	pageItems, pagination := utils.PaginateSlice(result, req.Pagination.Page, req.Pagination.Limit)
+	if wantInUse == nil {
+		for i := range pageItems {
+			inUse, _, _ := s.containersUsingVolume(ctx, dockerClient, pageItems[i].Name)
+			pageItems[i].InUse = inUse
 		}
 	}
 
-	totalPages := (totalItems + req.Pagination.Limit - 1) / req.Pagination.Limit
-	pagination := utils.PaginationResponse{
-		TotalPages:   int64(totalPages),
-		TotalItems:   int64(totalItems),
-		CurrentPage:  req.Pagination.Page,
-		ItemsPerPage: req.Pagination.Limit,
-	}
 	return pageItems, pagination, nil
 }
 
@@ -501,36 +403,4 @@ func sortVolumes(items []dto.VolumeDto, field, direction string) {
 			return false
 		}
 	})
-}
-
-// Keep using this to offload to Docker where possible.
-func buildDockerFiltersFromRequest(req utils.SortedPaginationRequest, allowedKeys []string) filters.Args {
-	f := filters.NewArgs()
-	if req.Search != "" {
-		f.Add("name", req.Search)
-	}
-	allowed := map[string]bool{}
-	for _, k := range allowedKeys {
-		allowed[k] = true
-	}
-	for k, v := range req.Filters {
-		if !allowed[k] {
-			continue
-		}
-		switch t := v.(type) {
-		case string:
-			f.Add(k, t)
-		case []string:
-			for _, s := range t {
-				f.Add(k, s)
-			}
-		case []interface{}:
-			for _, it := range t {
-				f.Add(k, fmt.Sprintf("%v", it))
-			}
-		default:
-			f.Add(k, fmt.Sprintf("%v", t))
-		}
-	}
-	return f
 }
