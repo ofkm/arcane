@@ -3,7 +3,7 @@
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import NetworkIcon from '@lucide/svelte/icons/network';
 	import TagIcon from '@lucide/svelte/icons/tag';
-	import PortBadge from '$lib/components/port-badge.svelte';
+	import { PortBadge } from '$lib/components/badges/index.js';
 	import { m } from '$lib/paraglide/messages';
 	import type { ContainerDetailsDto } from '$lib/types/container.type';
 

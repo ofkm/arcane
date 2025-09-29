@@ -22,7 +22,7 @@
 	import type { ContainerSummaryDto } from '$lib/types/container.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
-	import PortBadge from '$lib/components/port-badge.svelte';
+	import { PortBadge } from '$lib/components/badges/index.js';
 	import { containerService } from '$lib/services/container-service';
 
 	let {

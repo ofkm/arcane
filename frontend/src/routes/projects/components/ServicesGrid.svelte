@@ -46,7 +46,7 @@
 				</a>
 			{:else}
 				<Card.Root class="h-full opacity-75">
-					<Card.Content class="p-6">
+					<Card.Content class="p-6 py-2">
 						<div class="flex items-start gap-4">
 							<div class="rounded-lg bg-amber-500/10 p-2.5">
 								<LayersIcon class="size-5 text-amber-500" />
