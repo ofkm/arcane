@@ -1,21 +1,18 @@
 package middleware
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils/remenv"
 	wsutil "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
@@ -31,8 +28,6 @@ func NewEnvProxyMiddleware(localID string, resolver EnvResolver) gin.HandlerFunc
 // is remote. paramName is the URL param key (e.g. "id") that contains the environment id when using
 // router groups; if that param is not present the middleware will attempt to auto-detect the id
 // by parsing the request path after the first "/environments/" segment.
-//
-//nolint:gocognit
 func NewEnvProxyMiddlewareWithParam(localID string, paramName string, resolver EnvResolver, envService *services.EnvironmentService) gin.HandlerFunc {
 	m := &EnvironmentMiddleware{
 		localID:    localID,
@@ -54,19 +49,7 @@ type EnvironmentMiddleware struct {
 
 func (m *EnvironmentMiddleware) handle(paramName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		envID := c.Param(paramName)
-
-		// Fallback: try to auto-detect env id from path like "/.../environments/<envID>/..."
-		if envID == "" {
-			const marker = "/environments/"
-			if idx := strings.Index(c.Request.URL.Path, marker); idx >= 0 {
-				rest := c.Request.URL.Path[idx+len(marker):]
-				parts := strings.SplitN(rest, "/", 2)
-				if len(parts) > 0 && parts[0] != "" {
-					envID = parts[0]
-				}
-			}
-		}
+		envID := m.extractEnvironmentID(c, paramName)
 
 		if envID == "" || envID == m.localID {
 			c.Next()
@@ -85,18 +68,9 @@ func (m *EnvironmentMiddleware) handle(paramName string) gin.HandlerFunc {
 			return
 		}
 
-		// Build target: map incoming /api/environments/:id/... -> remoteApiUrl/api/environments/<localID>/...
-		prefix := "/api/environments/" + envID
-		suffix := strings.TrimPrefix(c.Request.URL.Path, prefix)
-		if !strings.HasPrefix(suffix, "/") && suffix != "" {
-			suffix = "/" + suffix
-		}
-		target := strings.TrimRight(apiURL, "/") + path.Join("/api/environments/", m.localID) + suffix
-		if qs := c.Request.URL.RawQuery; qs != "" {
-			target += "?" + qs
-		}
+		target := m.buildTargetURL(c, envID, apiURL)
 
-		if strings.EqualFold(c.GetHeader("Upgrade"), "websocket") || strings.Contains(strings.ToLower(c.GetHeader("Connection")), "upgrade") {
+		if m.isWebSocketRequest(c) {
 			m.handleWebSocket(c, target, accessToken, envID)
 			return
 		}
@@ -105,15 +79,67 @@ func (m *EnvironmentMiddleware) handle(paramName string) gin.HandlerFunc {
 	}
 }
 
-func (m *EnvironmentMiddleware) handleWebSocket(c *gin.Context, target string, accessToken *string, envID string) {
-	wsTarget := target
-	if strings.HasPrefix(target, "https://") {
-		wsTarget = "wss://" + strings.TrimPrefix(target, "https://")
-	} else if strings.HasPrefix(target, "http://") {
-		wsTarget = "ws://" + strings.TrimPrefix(target, "http://")
+func (m *EnvironmentMiddleware) extractEnvironmentID(c *gin.Context, paramName string) string {
+	envID := c.Param(paramName)
+	if envID != "" {
+		return envID
 	}
 
+	const marker = "/environments/"
+	if idx := strings.Index(c.Request.URL.Path, marker); idx >= 0 {
+		rest := c.Request.URL.Path[idx+len(marker):]
+		parts := strings.SplitN(rest, "/", 2)
+		if len(parts) > 0 && parts[0] != "" {
+			return parts[0]
+		}
+	}
+
+	return ""
+}
+
+func (m *EnvironmentMiddleware) buildTargetURL(c *gin.Context, envID, apiURL string) string {
+	prefix := "/api/environments/" + envID
+	suffix := strings.TrimPrefix(c.Request.URL.Path, prefix)
+	if !strings.HasPrefix(suffix, "/") && suffix != "" {
+		suffix = "/" + suffix
+	}
+
+	target := strings.TrimRight(apiURL, "/") + path.Join("/api/environments/", m.localID) + suffix
+	if qs := c.Request.URL.RawQuery; qs != "" {
+		target += "?" + qs
+	}
+
+	return target
+}
+
+func (m *EnvironmentMiddleware) isWebSocketRequest(c *gin.Context) bool {
+	return strings.EqualFold(c.GetHeader("Upgrade"), "websocket") ||
+		strings.Contains(strings.ToLower(c.GetHeader("Connection")), "upgrade")
+}
+
+func (m *EnvironmentMiddleware) handleWebSocket(c *gin.Context, target string, accessToken *string, envID string) {
+	wsTarget := m.convertToWebSocketURL(target)
+	hdr := m.buildWebSocketHeaders(c, accessToken)
+
+	if err := wsutil.ProxyHTTP(c.Writer, c.Request, wsTarget, hdr); err != nil {
+		slog.Error("websocket proxy failed", "env_id", envID, "target", wsTarget, "err", err)
+	}
+	c.Abort()
+}
+
+func (m *EnvironmentMiddleware) convertToWebSocketURL(target string) string {
+	if strings.HasPrefix(target, "https://") {
+		return "wss://" + strings.TrimPrefix(target, "https://")
+	}
+	if strings.HasPrefix(target, "http://") {
+		return "ws://" + strings.TrimPrefix(target, "http://")
+	}
+	return target
+}
+
+func (m *EnvironmentMiddleware) buildWebSocketHeaders(c *gin.Context, accessToken *string) http.Header {
 	hdr := http.Header{}
+
 	if auth := c.GetHeader("Authorization"); auth != "" {
 		hdr.Set("Authorization", auth)
 	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
@@ -130,63 +156,15 @@ func (m *EnvironmentMiddleware) handleWebSocket(c *gin.Context, target string, a
 		hdr.Set("X-Arcane-Agent-Token", *accessToken)
 	}
 
-	if err := wsutil.ProxyHTTP(c.Writer, c.Request, wsTarget, hdr); err != nil {
-		slog.Error("websocket proxy failed", "env_id", envID, "target", wsTarget, "err", err)
-	}
-	c.Abort()
+	return hdr
 }
 
 func (m *EnvironmentMiddleware) proxyHTTP(c *gin.Context, target string, accessToken *string) {
-	var bodyReader io.Reader
-	if c.Request.Body != nil {
-		bodyReader = c.Request.Body
-	}
-
-	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, target, bodyReader)
+	req, err := m.createProxyRequest(c, target, accessToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to create proxy request"}})
 		c.Abort()
 		return
-	}
-
-	skip := map[string]struct{}{
-		"Host": {}, "Connection": {}, "Keep-Alive": {}, "Proxy-Authenticate": {},
-		"Proxy-Authorization": {}, "Te": {}, "Trailer": {}, "Transfer-Encoding": {},
-		"Upgrade": {}, "Content-Length": {}, "Origin": {}, "Referer": {},
-		"Access-Control-Request-Method": {}, "Access-Control-Request-Headers": {}, "Cookie": {},
-	}
-	for k, vs := range c.Request.Header {
-		ck := http.CanonicalHeaderKey(k)
-		if _, ok := skip[ck]; ok || ck == "Authorization" {
-			continue
-		}
-		for _, v := range vs {
-			req.Header.Add(k, v)
-		}
-	}
-
-	if auth := c.GetHeader("Authorization"); auth != "" {
-		req.Header.Set("Authorization", auth)
-	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
-		req.Header.Set("Authorization", "Bearer "+cookieToken)
-	}
-
-	if accessToken != nil && *accessToken != "" {
-		req.Header.Set("X-Arcane-Agent-Token", *accessToken)
-	}
-
-	req.Header.Set("X-Forwarded-For", c.ClientIP())
-	req.Header.Set("X-Forwarded-Host", c.Request.Host)
-
-	needsCredentials := strings.Contains(target, "/image-updates/check") ||
-		strings.Contains(target, "/images/pull")
-
-	if needsCredentials && req.Method == http.MethodPost && m.envService != nil {
-		if err := m.injectRegistryCredentials(c, req); err != nil {
-			slog.WarnContext(c.Request.Context(), "Failed to inject registry credentials",
-				slog.String("error", err.Error()),
-				slog.String("target", target))
-		}
 	}
 
 	resp, err := m.httpClient.Do(req)
@@ -197,112 +175,44 @@ func (m *EnvironmentMiddleware) proxyHTTP(c *gin.Context, target string, accessT
 	}
 	defer resp.Body.Close()
 
-	hop := map[string]struct{}{
-		http.CanonicalHeaderKey("Connection"): {}, http.CanonicalHeaderKey("Keep-Alive"): {},
-		http.CanonicalHeaderKey("Proxy-Authenticate"): {}, http.CanonicalHeaderKey("Proxy-Authorization"): {},
-		http.CanonicalHeaderKey("TE"): {}, http.CanonicalHeaderKey("Trailers"): {},
-		http.CanonicalHeaderKey("Trailer"): {}, http.CanonicalHeaderKey("Transfer-Encoding"): {},
-		http.CanonicalHeaderKey("Upgrade"): {},
+	m.copyResponseToClient(c, resp)
+	c.Abort()
+}
+
+func (m *EnvironmentMiddleware) createProxyRequest(c *gin.Context, target string, accessToken *string) (*http.Request, error) {
+	var bodyReader io.Reader
+	if c.Request.Body != nil {
+		bodyReader = c.Request.Body
 	}
-	for _, connVal := range resp.Header.Values("Connection") {
-		for _, token := range strings.Split(connVal, ",") {
-			if t := strings.TrimSpace(token); t != "" {
-				hop[http.CanonicalHeaderKey(t)] = struct{}{}
-			}
+
+	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, target, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+
+	skip := remenv.GetSkipHeaders()
+	remenv.CopyRequestHeaders(c.Request.Header, req.Header, skip)
+	remenv.SetAuthHeader(req, c)
+	remenv.SetAgentToken(req, accessToken)
+	remenv.SetForwardedHeaders(req, c.ClientIP(), c.Request.Host)
+
+	if remenv.NeedsCredentialInjection(target) {
+		if err := remenv.InjectRegistryCredentials(c.Request.Context(), req, m.envService); err != nil {
+			slog.WarnContext(c.Request.Context(), "Failed to inject registry credentials",
+				slog.String("error", err.Error()),
+				slog.String("target", target))
 		}
 	}
 
-	for k, vs := range resp.Header {
-		ck := http.CanonicalHeaderKey(k)
-		if _, ok := hop[ck]; ok {
-			continue
-		}
-		for _, v := range vs {
-			c.Writer.Header().Add(k, v)
-		}
-	}
+	return req, nil
+}
+
+func (m *EnvironmentMiddleware) copyResponseToClient(c *gin.Context, resp *http.Response) {
+	hop := remenv.BuildHopByHopHeaders(resp.Header)
+	remenv.CopyResponseHeaders(resp.Header, c.Writer.Header(), hop)
 
 	c.Status(resp.StatusCode)
 	if c.Request.Method != http.MethodHead {
 		_, _ = io.Copy(c.Writer, resp.Body)
 	}
-
-	c.Abort()
-}
-
-func (m *EnvironmentMiddleware) injectRegistryCredentials(c *gin.Context, req *http.Request) error {
-	if m.envService == nil {
-		return nil
-	}
-
-	if req.Method != http.MethodPost {
-		return nil
-	}
-
-	bodyBytes, err := io.ReadAll(req.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read request body: %w", err)
-	}
-	req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
-	var pullReq dto.ImagePullDto
-	if err := json.Unmarshal(bodyBytes, &pullReq); err != nil {
-		var batchReq dto.BatchImageUpdateRequest
-		if err := json.Unmarshal(bodyBytes, &batchReq); err != nil {
-			req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-			return nil
-		}
-
-		if len(batchReq.Credentials) > 0 {
-			return nil
-		}
-
-		creds, err := m.envService.GetEnabledRegistryCredentials(c.Request.Context())
-		if err != nil {
-			return fmt.Errorf("failed to load registry credentials: %w", err)
-		}
-
-		if len(creds) > 0 {
-			batchReq.Credentials = creds
-			modifiedBody, err := json.Marshal(batchReq)
-			if err != nil {
-				return fmt.Errorf("failed to marshal modified request: %w", err)
-			}
-
-			req.Body = io.NopCloser(bytes.NewBuffer(modifiedBody))
-			req.ContentLength = int64(len(modifiedBody))
-			req.Header.Set("Content-Length", strconv.Itoa(len(modifiedBody)))
-
-			slog.DebugContext(c.Request.Context(), "Injected registry credentials into batch update request",
-				slog.Int("credentialCount", len(creds)))
-		}
-		return nil
-	}
-
-	if len(pullReq.Credentials) > 0 {
-		return nil
-	}
-
-	creds, err := m.envService.GetEnabledRegistryCredentials(c.Request.Context())
-	if err != nil {
-		return fmt.Errorf("failed to load registry credentials: %w", err)
-	}
-
-	if len(creds) > 0 {
-		pullReq.Credentials = creds
-		modifiedBody, err := json.Marshal(pullReq)
-		if err != nil {
-			return fmt.Errorf("failed to marshal modified request: %w", err)
-		}
-
-		req.Body = io.NopCloser(bytes.NewBuffer(modifiedBody))
-		req.ContentLength = int64(len(modifiedBody))
-		req.Header.Set("Content-Length", strconv.Itoa(len(modifiedBody)))
-
-		slog.DebugContext(c.Request.Context(), "Injected registry credentials into image pull request",
-			slog.Int("credentialCount", len(creds)),
-			slog.String("imageName", pullReq.ImageName))
-	}
-
-	return nil
 }
