@@ -61,7 +61,7 @@ func (s *EnvironmentService) ListEnvironmentsPaginated(ctx context.Context, para
 	var envs []models.Environment
 	q := s.db.WithContext(ctx).Model(&models.Environment{})
 
-	if term := strings.TrimSpace(params.SearchQuery.Search); term != "" {
+	if term := strings.TrimSpace(params.Search); term != "" {
 		searchPattern := "%" + term + "%"
 		q = q.Where(
 			"name LIKE ? OR api_url LIKE ?",

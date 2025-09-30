@@ -33,7 +33,7 @@ func (s *ContainerRegistryService) GetRegistriesPaginated(ctx context.Context, p
 	var registries []models.ContainerRegistry
 	q := s.db.WithContext(ctx).Model(&models.ContainerRegistry{})
 
-	if term := strings.TrimSpace(params.SearchQuery.Search); term != "" {
+	if term := strings.TrimSpace(params.Search); term != "" {
 		searchPattern := "%" + term + "%"
 		q = q.Where(
 			"url LIKE ? OR username LIKE ? OR COALESCE(description, '') LIKE ?",

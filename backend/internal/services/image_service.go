@@ -295,77 +295,15 @@ func (s *ImageService) ListImagesPaginated(ctx context.Context, params paginatio
 		return nil, pagination.Response{}, fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	inUseMap := make(map[string]bool)
-	for _, c := range containers {
-		inUseMap[c.ImageID] = true
-	}
+	inUseMap := buildInUseMap(containers)
 
 	var updateRecords []models.ImageUpdateRecord
 	if s.db != nil {
 		s.db.WithContext(ctx).Find(&updateRecords)
 	}
-	updateMap := make(map[string]*models.ImageUpdateRecord)
-	for i := range updateRecords {
-		updateMap[updateRecords[i].ID] = &updateRecords[i]
-	}
+	updateMap := buildUpdateMap(updateRecords)
 
-	items := make([]dto.ImageSummaryDto, 0, len(dockerImages))
-	for _, di := range dockerImages {
-		inUse := inUseMap[di.ID]
-
-		imageDto := dto.ImageSummaryDto{
-			ID:          di.ID,
-			RepoTags:    di.RepoTags,
-			RepoDigests: di.RepoDigests,
-			Created:     di.Created,
-			Size:        di.Size,
-			VirtualSize: di.SharedSize,
-			Labels:      convertLabels(di.Labels),
-			InUse:       inUse,
-		}
-
-		if len(di.RepoTags) > 0 {
-			repoTag := di.RepoTags[0]
-			if strings.Contains(repoTag, ":") {
-				parts := strings.SplitN(repoTag, ":", 2)
-				imageDto.Repo = parts[0]
-				imageDto.Tag = parts[1]
-			} else {
-				imageDto.Repo = repoTag
-				imageDto.Tag = "latest"
-			}
-		} else {
-			imageDto.Repo = "<none>"
-			imageDto.Tag = "<none>"
-		}
-
-		if updateRecord, exists := updateMap[di.ID]; exists {
-			sp := func(p *string) string {
-				if p == nil {
-					return ""
-				}
-				return *p
-			}
-
-			imageDto.UpdateInfo = &dto.ImageUpdateInfoDto{
-				HasUpdate:      updateRecord.HasUpdate,
-				UpdateType:     updateRecord.UpdateType,
-				CurrentVersion: updateRecord.CurrentVersion,
-				LatestVersion:  sp(updateRecord.LatestVersion),
-				CurrentDigest:  sp(updateRecord.CurrentDigest),
-				LatestDigest:   sp(updateRecord.LatestDigest),
-				CheckTime:      updateRecord.CheckTime,
-				ResponseTimeMs: updateRecord.ResponseTimeMs,
-				Error:          sp(updateRecord.LastError),
-				AuthMethod:     sp(updateRecord.AuthMethod),
-				AuthUsername:   sp(updateRecord.AuthUsername),
-				AuthRegistry:   sp(updateRecord.AuthRegistry),
-				UsedCredential: updateRecord.UsedCredential,
-			}
-		}
-
-		items = append(items, imageDto)
-	}
+	items := mapDockerImagesToDTOs(dockerImages, inUseMap, updateMap)
 
 	config := pagination.Config[dto.ImageSummaryDto]{
 		SearchAccessors: []pagination.SearchAccessor[dto.ImageSummaryDto]{
@@ -510,4 +448,81 @@ func (s *ImageService) GetTotalImageSize(ctx context.Context) (int64, error) {
 	}
 
 	return total, nil
+}
+
+func buildInUseMap(containers []container.Summary) map[string]bool {
+	inUseMap := make(map[string]bool)
+	for _, c := range containers {
+		inUseMap[c.ImageID] = true
+	}
+	return inUseMap
+}
+
+func buildUpdateMap(records []models.ImageUpdateRecord) map[string]*models.ImageUpdateRecord {
+	updateMap := make(map[string]*models.ImageUpdateRecord, len(records))
+	for i := range records {
+		updateMap[records[i].ID] = &records[i]
+	}
+	return updateMap
+}
+
+func mapDockerImagesToDTOs(dockerImages []image.Summary, inUseMap map[string]bool, updateMap map[string]*models.ImageUpdateRecord) []dto.ImageSummaryDto {
+	items := make([]dto.ImageSummaryDto, 0, len(dockerImages))
+	for _, di := range dockerImages {
+		inUse := inUseMap[di.ID]
+
+		imageDto := dto.ImageSummaryDto{
+			ID:          di.ID,
+			RepoTags:    di.RepoTags,
+			RepoDigests: di.RepoDigests,
+			Created:     di.Created,
+			Size:        di.Size,
+			VirtualSize: di.SharedSize,
+			Labels:      convertLabels(di.Labels),
+			InUse:       inUse,
+		}
+
+		if len(di.RepoTags) > 0 {
+			repoTag := di.RepoTags[0]
+			if strings.Contains(repoTag, ":") {
+				parts := strings.SplitN(repoTag, ":", 2)
+				imageDto.Repo = parts[0]
+				imageDto.Tag = parts[1]
+			} else {
+				imageDto.Repo = repoTag
+				imageDto.Tag = "latest"
+			}
+		} else {
+			imageDto.Repo = "<none>"
+			imageDto.Tag = "<none>"
+		}
+
+		if updateRecord, exists := updateMap[di.ID]; exists {
+			sp := func(p *string) string {
+				if p == nil {
+					return ""
+				}
+				return *p
+			}
+
+			imageDto.UpdateInfo = &dto.ImageUpdateInfoDto{
+				HasUpdate:      updateRecord.HasUpdate,
+				UpdateType:     updateRecord.UpdateType,
+				CurrentVersion: updateRecord.CurrentVersion,
+				LatestVersion:  sp(updateRecord.LatestVersion),
+				CurrentDigest:  sp(updateRecord.CurrentDigest),
+				LatestDigest:   sp(updateRecord.LatestDigest),
+				CheckTime:      updateRecord.CheckTime,
+				ResponseTimeMs: updateRecord.ResponseTimeMs,
+				Error:          sp(updateRecord.LastError),
+				AuthMethod:     sp(updateRecord.AuthMethod),
+				AuthUsername:   sp(updateRecord.AuthUsername),
+				AuthRegistry:   sp(updateRecord.AuthRegistry),
+				UsedCredential: updateRecord.UsedCredential,
+			}
+		}
+
+		items = append(items, imageDto)
+	}
+	return items
 }

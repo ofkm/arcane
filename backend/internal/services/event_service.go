@@ -102,7 +102,7 @@ func (s *EventService) ListEventsPaginated(ctx context.Context, params paginatio
 	var events []models.Event
 	q := s.db.WithContext(ctx).Model(&models.Event{})
 
-	if term := strings.TrimSpace(params.SearchQuery.Search); term != "" {
+	if term := strings.TrimSpace(params.Search); term != "" {
 		searchPattern := "%" + term + "%"
 		q = q.Where(
 			"title LIKE ? OR description LIKE ? OR COALESCE(resource_name, '') LIKE ? OR COALESCE(username, '') LIKE ?",
@@ -143,7 +143,7 @@ func (s *EventService) GetEventsByEnvironmentPaginated(ctx context.Context, envi
 	var events []models.Event
 	q := s.db.WithContext(ctx).Model(&models.Event{}).Where("environment_id = ?", environmentID)
 
-	if term := strings.TrimSpace(params.SearchQuery.Search); term != "" {
+	if term := strings.TrimSpace(params.Search); term != "" {
 		searchPattern := "%" + term + "%"
 		q = q.Where(
 			"title LIKE ? OR description LIKE ? OR COALESCE(resource_name, '') LIKE ? OR COALESCE(username, '') LIKE ?",

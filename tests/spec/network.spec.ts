@@ -79,7 +79,7 @@ test.describe('Networks Page', () => {
     await expect(row).toBeVisible();
 
     await row.getByRole('button', { name: 'Open menu' }).click();
-    await page.getByRole('menuitem', { name: 'Remove' }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
 
     await expect(page.getByRole('heading', { name: 'Delete Network' })).toBeVisible();
     await page.locator('button:has-text("Delete")').click();

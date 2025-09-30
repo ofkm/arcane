@@ -9,8 +9,8 @@ import (
 )
 
 func PaginateAndSortDB(params QueryParams, query *gorm.DB, result interface{}) (Response, error) {
-	sortColumn := params.SortParams.sort
-	sortDirection := string(params.SortParams.order)
+	sortColumn := params.sort
+	sortDirection := string(params.order)
 
 	if sortDirection == "" {
 		sortDirection = "asc"
