@@ -613,7 +613,7 @@ func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string
 	}
 
 	for img := range images {
-		if err := s.imageService.PullImage(ctx, img, progressWriter, systemUser); err != nil {
+		if err := s.imageService.PullImage(ctx, img, progressWriter, systemUser, nil); err != nil {
 			return fmt.Errorf("failed to pull image %s: %w", img, err)
 		}
 	}

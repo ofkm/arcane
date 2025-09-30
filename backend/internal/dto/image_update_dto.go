@@ -43,7 +43,8 @@ type VersionComparisonResponse struct {
 }
 
 type BatchImageUpdateRequest struct {
-	ImageRefs []string `json:"imageRefs" binding:"required"`
+	ImageRefs   []string                      `json:"imageRefs" binding:"required"`
+	Credentials []ContainerRegistryCredential `json:"credentials,omitempty"`
 }
 
 type BatchImageUpdateResponse map[string]*ImageUpdateResponse

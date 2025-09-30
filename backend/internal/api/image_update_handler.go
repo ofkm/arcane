@@ -98,7 +98,7 @@ func (h *ImageUpdateHandler) CheckMultipleImages(c *gin.Context) {
 		return
 	}
 
-	results, err := h.imageUpdateService.CheckMultipleImages(c.Request.Context(), req.ImageRefs)
+	results, err := h.imageUpdateService.CheckMultipleImages(c.Request.Context(), req.ImageRefs, req.Credentials)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -116,7 +116,10 @@ func (h *ImageUpdateHandler) CheckMultipleImages(c *gin.Context) {
 }
 
 func (h *ImageUpdateHandler) CheckAllImages(c *gin.Context) {
-	results, err := h.imageUpdateService.CheckAllImages(c.Request.Context(), 0)
+	var req dto.BatchImageUpdateRequest
+	_ = c.ShouldBindJSON(&req)
+
+	results, err := h.imageUpdateService.CheckAllImages(c.Request.Context(), 0, req.Credentials)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

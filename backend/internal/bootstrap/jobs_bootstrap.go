@@ -23,7 +23,7 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 		slog.ErrorContext(appCtx, "Failed to register auto-update job", slog.Any("error", err))
 	}
 
-	imagePollingJob := job.NewImagePollingJob(scheduler, appServices.ImageUpdate, appServices.Settings)
+	imagePollingJob := job.NewImagePollingJob(scheduler, appServices.ImageUpdate, appServices.Settings, appServices.ContainerRegistry)
 	if err := imagePollingJob.Register(appCtx); err != nil {
 		slog.ErrorContext(appCtx, "Failed to register image polling job", slog.Any("error", err))
 	}

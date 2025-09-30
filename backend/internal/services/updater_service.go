@@ -170,7 +170,7 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.Up
 			continue
 		}
 
-		if err := s.imageService.PullImage(ctx, p.newRef, io.Discard, systemUser); err != nil {
+		if err := s.imageService.PullImage(ctx, p.newRef, io.Discard, systemUser, nil); err != nil {
 			item.Status = "failed"
 			item.Error = err.Error()
 			out.Failed++

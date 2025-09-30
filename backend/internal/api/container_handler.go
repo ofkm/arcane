@@ -170,7 +170,7 @@ func (h *ContainerHandler) PullImage(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.imageService.PullImage(c.Request.Context(), imageName, c.Writer, *currentUser); err != nil {
+	if err := h.imageService.PullImage(c.Request.Context(), imageName, c.Writer, *currentUser, nil); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    gin.H{"error": "Failed to pull image: " + err.Error()},

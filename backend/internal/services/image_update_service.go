@@ -887,20 +887,49 @@ func (s *ImageUpdateService) parseAndGroupImages(imageRefs []string) (map[string
 	return regRepos, results, images
 }
 
-func (s *ImageUpdateService) buildCredentialMap(ctx context.Context) (map[string]batchCred, []models.ContainerRegistry) {
-	enabledRegs, err := s.registryService.GetEnabledRegistries(ctx)
-	if err != nil {
-		slog.DebugContext(ctx, "Failed to load enabled registries", slog.String("error", err.Error()))
-		return map[string]batchCred{}, nil
-	}
-	credMap := make(map[string]batchCred, len(enabledRegs))
+func (s *ImageUpdateService) buildCredentialMap(ctx context.Context, externalCreds []dto.ContainerRegistryCredential) (map[string]batchCred, []models.ContainerRegistry) {
+	var enabledRegs []models.ContainerRegistry
+	credMap := make(map[string]batchCred)
+
 	normalizeHost := func(u string) string {
 		u = strings.TrimSpace(u)
 		u = strings.TrimPrefix(u, "https://")
 		u = strings.TrimPrefix(u, "http://")
 		return strings.TrimSuffix(u, "/")
 	}
-	for _, r := range enabledRegs {
+
+	if len(externalCreds) > 0 {
+		for _, c := range externalCreds {
+			if !c.Enabled || c.Username == "" || c.Token == "" {
+				continue
+			}
+			host := normalizeHost(c.URL)
+			if host == "" {
+				continue
+			}
+			if _, exists := credMap[host]; !exists {
+				credMap[host] = batchCred{username: c.Username, token: c.Token}
+			}
+			enabledRegs = append(enabledRegs, models.ContainerRegistry{
+				URL:      c.URL,
+				Username: c.Username,
+				Token:    c.Token,
+				Enabled:  c.Enabled,
+			})
+		}
+		slog.DebugContext(ctx, "Using external credentials for batch check",
+			slog.Int("credentialCount", len(credMap)))
+		return credMap, enabledRegs
+	}
+
+	dbRegs, err := s.registryService.GetEnabledRegistries(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "Failed to load enabled registries", slog.String("error", err.Error()))
+		return credMap, nil
+	}
+	enabledRegs = dbRegs
+
+	for _, r := range dbRegs {
 		if r.Username == "" || r.Token == "" {
 			continue
 		}
@@ -1063,7 +1092,7 @@ func (s *ImageUpdateService) checkSingleImageInBatch(
 	}
 }
 
-func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs []string) (map[string]*dto.ImageUpdateResponse, error) {
+func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs []string, externalCreds []dto.ContainerRegistryCredential) (map[string]*dto.ImageUpdateResponse, error) {
 	startBatch := time.Now()
 	results := make(map[string]*dto.ImageUpdateResponse, len(imageRefs))
 	if len(imageRefs) == 0 {
@@ -1072,19 +1101,15 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 
 	rc := registry.NewClient()
 
-	// Parse & group
 	regRepos, initialResults, images := s.parseAndGroupImages(imageRefs)
 	for k, v := range initialResults {
 		results[k] = v
 	}
 
-	// Credentials + enabled registry list (for challenge retries)
-	credMap, enabledRegs := s.buildCredentialMap(ctx)
+	credMap, enabledRegs := s.buildCredentialMap(ctx, externalCreds)
 
-	// Registry auth map
 	regAuthMap := s.buildRegistryAuthMap(ctx, rc, regRepos, credMap)
 
-	// Concurrency
 	updateScope := s.getUpdateScope()
 	outCh := make(chan struct {
 		ref string
@@ -1094,38 +1119,46 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 	wg := sync.WaitGroup{}
 	wg.Add(len(images))
 	for _, img := range images {
-		go func() {
+		go func(bi batchImage) {
 			defer wg.Done()
-			res := s.checkSingleImageInBatch(ctx, rc, regAuthMap, enabledRegs, img.parts, updateScope)
-			// Persist
-			_ = s.saveUpdateResult(ctx, img.ref, res)
+			res := s.checkSingleImageInBatch(ctx, rc, regAuthMap, enabledRegs, bi.parts, updateScope)
 			outCh <- struct {
 				ref string
 				res *dto.ImageUpdateResponse
-			}{ref: img.ref, res: res}
-		}()
+			}{bi.ref, res}
+		}(img)
 	}
-
 	wg.Wait()
 	close(outCh)
 
-	for it := range outCh {
-		results[it.ref] = it.res
+	for item := range outCh {
+		results[item.ref] = item.res
+		if err := s.saveUpdateResult(ctx, item.ref, item.res); err != nil {
+			slog.WarnContext(ctx, "Failed to save update result",
+				slog.String("imageRef", item.ref),
+				slog.String("error", err.Error()))
+		}
 	}
 
-	slog.DebugContext(ctx, "Batch image update check complete",
-		slog.Int("count", len(results)),
-		slog.Int64("elapsedMs", time.Since(startBatch).Milliseconds()))
+	slog.InfoContext(ctx, "Batch image update check completed",
+		slog.Int("totalImages", len(imageRefs)),
+		slog.Int("successCount", len(results)),
+		slog.Duration("duration", time.Since(startBatch)))
 
 	return results, nil
 }
 
-func (s *ImageUpdateService) CheckAllImages(ctx context.Context, limit int) (map[string]*dto.ImageUpdateResponse, error) {
+func (s *ImageUpdateService) CheckAllImages(ctx context.Context, limit int, externalCreds []dto.ContainerRegistryCredential) (map[string]*dto.ImageUpdateResponse, error) {
 	imageRefs, err := s.getAllImageRefs(ctx, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get image references: %w", err)
 	}
-	return s.CheckMultipleImages(ctx, imageRefs)
+
+	if len(imageRefs) == 0 {
+		return make(map[string]*dto.ImageUpdateResponse), nil
+	}
+
+	return s.CheckMultipleImages(ctx, imageRefs, externalCreds)
 }
 
 func (s *ImageUpdateService) CleanupOrphanedRecords(ctx context.Context) error {

@@ -124,7 +124,7 @@ func (h *ImageHandler) Pull(c *gin.Context) {
 		return
 	}
 
-	if err := h.imageService.PullImage(ctx, req.ImageName, c.Writer, *currentUser); err != nil {
+	if err := h.imageService.PullImage(ctx, req.ImageName, c.Writer, *currentUser, req.Credentials); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    dto.MessageDto{Message: fmt.Sprintf("Failed to pull image '%s': %s", req.ImageName, err.Error())},

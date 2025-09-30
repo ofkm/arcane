@@ -12,3 +12,10 @@ type ContainerRegistryDto struct {
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
+
+type ContainerRegistryCredential struct {
+	URL      string `json:"url" binding:"required"`
+	Username string `json:"username" binding:"required"`
+	Token    string `json:"token" binding:"required"`
+	Enabled  bool   `json:"enabled"`
+}
