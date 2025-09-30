@@ -10,12 +10,11 @@
 	import { toast } from 'svelte-sonner';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
-	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import NetworkIcon from '@lucide/svelte/icons/network';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
@@ -127,13 +126,7 @@
 			accessorKey: 'inUse',
 			title: m.common_status(),
 			sortable: true,
-			cell: StatusCell,
-			filterFn: (row, columnId, filterValue) => {
-				const selected = Array.isArray(filterValue) ? (filterValue as boolean[]) : [];
-				if (selected.length === 0) return true;
-				const value = Boolean(row.getValue<boolean>(columnId));
-				return selected.includes(value);
-			}
+			cell: StatusCell
 		},
 		{
 			accessorKey: 'driver',
@@ -201,40 +194,31 @@
 					<ScanSearchIcon class="size-4" />
 					{m.common_inspect()}
 				</DropdownMenu.Item>
-				{#if !DEFAULT_NETWORK_NAMES.has(item.name)}
-					<DropdownMenu.Item
-						variant="destructive"
-						onclick={() => handleDeleteNetwork(item.id, item.name)}
-						disabled={DEFAULT_NETWORK_NAMES.has(item.name) || isAnyLoading}
-					>
-						<Trash2Icon class="size-4" />
-						{m.common_remove()}
-					</DropdownMenu.Item>
-				{/if}
+				<DropdownMenu.Separator />
+				<DropdownMenu.Item
+					variant="destructive"
+					onclick={() => handleDeleteNetwork(item.id, item.name)}
+					disabled={isAnyLoading || DEFAULT_NETWORK_NAMES.has(item.name)}
+				>
+					<Trash2Icon class="size-4" />
+					{m.common_delete()}
+				</DropdownMenu.Item>
 			</DropdownMenu.Group>
 		</DropdownMenu.Content>
 	</DropdownMenu.Root>
 {/snippet}
 
-{#if hasNetworks}
-	<Card.Root>
-		<Card.Content class="py-5">
-			<ArcaneTable
-				persistKey="arcane-networks-table"
-				items={networks}
-				bind:requestOptions
-				bind:selectedIds
-				onRemoveSelected={(ids) => handleDeleteSelectedNetworks(ids)}
-				onRefresh={async (options) => (networks = await networkService.getNetworks(options))}
-				{columns}
-				rowActions={RowActions}
-			/>
-		</Card.Content>
-	</Card.Root>
-{:else}
-	<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
-		<NetworkIcon class="text-muted-foreground mb-4 size-12 opacity-40" />
-		<p class="text-lg font-medium">{m.networks_empty_title()}</p>
-		<p class="text-muted-foreground mt-1 text-sm">{m.networks_empty_description()}</p>
-	</div>
-{/if}
+<Card.Root>
+	<Card.Content class="py-5">
+		<ArcaneTable
+			persistKey="arcane-networks-table"
+			items={networks}
+			bind:requestOptions
+			bind:selectedIds
+			onRemoveSelected={(ids) => handleDeleteSelectedNetworks(ids)}
+			onRefresh={async (options) => (networks = await networkService.getNetworks(options))}
+			{columns}
+			rowActions={RowActions}
+		/>
+	</Card.Content>
+</Card.Root>

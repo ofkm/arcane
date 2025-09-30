@@ -2,6 +2,7 @@ import BaseAPIService from './api-service';
 import { environmentStore } from '$lib/stores/environment.store';
 import type { ContainerStatusCounts, ContainerSummaryDto } from '$lib/types/container.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
+import { transformPaginationParams } from '$lib/utils/params.util';
 
 // Would like to get rid of dockerode
 import type { ContainerCreateOptions, ContainerStats } from 'dockerode';
@@ -9,8 +10,8 @@ import type { ContainerCreateOptions, ContainerStats } from 'dockerode';
 export class ContainerService extends BaseAPIService {
 	async getContainers(options?: SearchPaginationSortRequest): Promise<Paginated<ContainerSummaryDto>> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-
-		const res = await this.api.get(`/environments/${envId}/containers`, { params: options });
+		const params = transformPaginationParams(options);
+		const res = await this.api.get(`/environments/${envId}/containers`, { params });
 		return res.data;
 	}
 

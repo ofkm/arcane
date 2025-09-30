@@ -7,7 +7,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
-	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type EventHandler struct {
@@ -28,23 +28,9 @@ func NewEventHandler(group *gin.RouterGroup, eventService *services.EventService
 }
 
 func (h *EventHandler) ListEvents(c *gin.Context) {
-	var req utils.SortedPaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid pagination or sort parameters: " + err.Error()},
-		})
-		return
-	}
+	params := pagination.ExtractListModifiersQueryParams(c)
 
-	if req.Pagination.Page == 0 {
-		req.Pagination.Page = 1
-	}
-	if req.Pagination.Limit == 0 {
-		req.Pagination.Limit = 20
-	}
-
-	events, pagination, err := h.eventService.ListEventsPaginated(c.Request.Context(), req)
+	events, paginationResp, err := h.eventService.ListEventsPaginated(c.Request.Context(), params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -56,7 +42,7 @@ func (h *EventHandler) ListEvents(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"data":       events,
-		"pagination": pagination,
+		"pagination": paginationResp,
 	})
 }
 
@@ -70,23 +56,9 @@ func (h *EventHandler) GetEventsByEnvironment(c *gin.Context) {
 		return
 	}
 
-	var req utils.SortedPaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid pagination or sort parameters: " + err.Error()},
-		})
-		return
-	}
+	params := pagination.ExtractListModifiersQueryParams(c)
 
-	if req.Pagination.Page == 0 {
-		req.Pagination.Page = 1
-	}
-	if req.Pagination.Limit == 0 {
-		req.Pagination.Limit = 20
-	}
-
-	events, pagination, err := h.eventService.GetEventsByEnvironmentPaginated(c.Request.Context(), environmentID, req)
+	events, paginationResp, err := h.eventService.GetEventsByEnvironmentPaginated(c.Request.Context(), environmentID, params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -98,7 +70,7 @@ func (h *EventHandler) GetEventsByEnvironment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"data":       events,
-		"pagination": pagination,
+		"pagination": paginationResp,
 	})
 }
 

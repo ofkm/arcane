@@ -10,7 +10,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
-	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type ImageHandler struct {
@@ -35,23 +35,13 @@ func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClien
 }
 
 func (h *ImageHandler) List(c *gin.Context) {
-	var req utils.SortedPaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: "Invalid pagination or sort parameters: " + err.Error()},
-		})
-		return
+	params := pagination.ExtractListModifiersQueryParams(c)
+
+	if params.Limit == 0 {
+		params.Limit = 20
 	}
 
-	if req.Pagination.Page == 0 {
-		req.Pagination.Page = 1
-	}
-	if req.Pagination.Limit == 0 {
-		req.Pagination.Limit = 20
-	}
-
-	images, pagination, err := h.imageService.ListImagesWithUpdatesPaginated(c.Request.Context(), req)
+	images, paginationResp, err := h.imageService.ListImagesPaginated(c.Request.Context(), params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -60,10 +50,16 @@ func (h *ImageHandler) List(c *gin.Context) {
 		return
 	}
 
+	pagination.ApplyFilterResultsHeaders(&c.Writer, pagination.FilterResult[dto.ImageSummaryDto]{
+		Items:          images,
+		TotalCount:     int(paginationResp.TotalItems),
+		TotalAvailable: int(paginationResp.GrandTotalItems),
+	})
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"data":       images,
-		"pagination": pagination,
+		"pagination": paginationResp,
 	})
 }
 
@@ -136,7 +132,7 @@ func (h *ImageHandler) Pull(c *gin.Context) {
 		return
 	}
 
-	slog.InfoContext(ctx, "Image pull stream completed and database sync attempted",
+	slog.InfoContext(ctx, "Image pull stream completed",
 		slog.String("imageName", req.ImageName))
 }
 

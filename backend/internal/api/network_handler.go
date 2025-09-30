@@ -8,7 +8,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
-	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type NetworkHandler struct {
@@ -32,23 +32,13 @@ func NewNetworkHandler(group *gin.RouterGroup, dockerService *services.DockerCli
 }
 
 func (h *NetworkHandler) List(c *gin.Context) {
-	var req utils.SortedPaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: "Invalid pagination or sort parameters: " + err.Error()},
-		})
-		return
+	params := pagination.ExtractListModifiersQueryParams(c)
+
+	if params.Limit == 0 {
+		params.Limit = 20
 	}
 
-	if req.Pagination.Page == 0 {
-		req.Pagination.Page = 1
-	}
-	if req.Pagination.Limit == 0 {
-		req.Pagination.Limit = 20
-	}
-
-	networks, pagination, err := h.networkService.ListNetworksPaginated(c.Request.Context(), req)
+	networks, paginationResp, err := h.networkService.ListNetworksPaginated(c.Request.Context(), params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -57,10 +47,16 @@ func (h *NetworkHandler) List(c *gin.Context) {
 		return
 	}
 
+	pagination.ApplyFilterResultsHeaders(&c.Writer, pagination.FilterResult[dto.NetworkSummaryDto]{
+		Items:          networks,
+		TotalCount:     int(paginationResp.TotalItems),
+		TotalAvailable: int(paginationResp.GrandTotalItems),
+	})
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"data":       networks,
-		"pagination": pagination,
+		"pagination": paginationResp,
 	})
 }
 

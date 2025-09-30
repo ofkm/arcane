@@ -3,18 +3,18 @@ import { environmentStore } from '$lib/stores/environment.store';
 import type { ImageSummaryDto, ImageUsageCounts, ImageUpdateInfoDto } from '$lib/types/image.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import type { AutoUpdateCheck, AutoUpdateResult } from '$lib/types/auto-update.type';
+import { transformPaginationParams } from '$lib/utils/params.util';
 
 export class ImageService extends BaseAPIService {
 	async getImages(options?: SearchPaginationSortRequest): Promise<Paginated<ImageSummaryDto>> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-
-		const res = await this.api.get(`/environments/${envId}/images`, { params: options });
+		const params = transformPaginationParams(options);
+		const res = await this.api.get(`/environments/${envId}/images`, { params });
 		return res.data;
 	}
 
 	async getImageUsageCounts(): Promise<ImageUsageCounts> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-
 		const res = await this.api.get(`/environments/${envId}/images/counts`);
 		return res.data.data;
 	}

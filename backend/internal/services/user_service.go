@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -19,7 +18,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
-	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type Argon2Params struct {
@@ -264,57 +263,29 @@ func (s *UserService) UpgradePasswordHash(ctx context.Context, userID, password 
 		Update("password_hash", newHash).Error
 }
 
-func (s *UserService) ListUsersPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]dto.UserResponseDto, utils.PaginationResponse, error) {
-	users, err := s.ListUsers(ctx)
+func (s *UserService) ListUsersPaginated(ctx context.Context, params pagination.QueryParams) ([]dto.UserResponseDto, pagination.Response, error) {
+	var users []models.User
+	query := s.db.WithContext(ctx).Model(&models.User{})
+
+	if term := strings.TrimSpace(params.Search); term != "" {
+		searchPattern := "%" + term + "%"
+		query = query.Where(
+			"username LIKE ? OR COALESCE(email, '') LIKE ? OR COALESCE(display_name, '') LIKE ?",
+			searchPattern, searchPattern, searchPattern,
+		)
+	}
+
+	paginationResp, err := pagination.PaginateAndSortDB(params, query, &users)
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list users: %w", err)
+		return nil, pagination.Response{}, fmt.Errorf("failed to paginate users: %w", err)
 	}
 
-	var result []dto.UserResponseDto
-	for _, user := range users {
-		result = append(result, toUserResponseDto(user))
+	result := make([]dto.UserResponseDto, len(users))
+	for i, user := range users {
+		result[i] = toUserResponseDto(user)
 	}
 
-	// Apply search filter if provided
-	if req.Search != "" {
-		var filtered []dto.UserResponseDto
-		searchLower := strings.ToLower(req.Search)
-		for _, u := range result {
-			if matchesSearch(u, searchLower) {
-				filtered = append(filtered, u)
-			}
-		}
-		result = filtered
-	}
-
-	totalItems := len(result)
-
-	// Apply sorting if specified
-	if req.Sort.Column != "" && req.Sort.Direction != "" {
-		utils.SortUserResponses(result, req.Sort.Column, req.Sort.Direction)
-	}
-
-	// Apply pagination
-	start := (req.Pagination.Page - 1) * req.Pagination.Limit
-	end := start + req.Pagination.Limit
-
-	if start > len(result) {
-		result = []dto.UserResponseDto{}
-	} else {
-		if end > len(result) {
-			end = len(result)
-		}
-		result = result[start:end]
-	}
-
-	pagination := utils.PaginationResponse{
-		TotalPages:   int64(math.Ceil(float64(totalItems) / float64(req.Pagination.Limit))),
-		TotalItems:   int64(totalItems),
-		CurrentPage:  req.Pagination.Page,
-		ItemsPerPage: req.Pagination.Limit,
-	}
-
-	return result, pagination, nil
+	return result, paginationResp, nil
 }
 
 func toUserResponseDto(user models.User) dto.UserResponseDto {
@@ -329,12 +300,6 @@ func toUserResponseDto(user models.User) dto.UserResponseDto {
 		CreatedAt:     user.CreatedAt.Format("2006-01-02T15:04:05.999999Z"),
 		UpdatedAt:     user.UpdatedAt.Format("2006-01-02T15:04:05.999999Z"),
 	}
-}
-
-func matchesSearch(u dto.UserResponseDto, searchLower string) bool {
-	return strings.Contains(strings.ToLower(u.Username), searchLower) ||
-		(u.Email != nil && strings.Contains(strings.ToLower(*u.Email), searchLower)) ||
-		(u.DisplayName != nil && strings.Contains(strings.ToLower(*u.DisplayName), searchLower))
 }
 
 func (s *UserService) GetUser(ctx context.Context, userID string) (*models.User, error) {

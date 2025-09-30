@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -17,7 +16,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
-	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type ContainerService struct {
@@ -406,126 +405,102 @@ func (s *ContainerService) readAllLogs(logs io.ReadCloser, logsChan chan<- strin
 	return nil
 }
 
-//nolint:gocognit
-func (s *ContainerService) ListContainersPaginated(ctx context.Context, req utils.SortedPaginationRequest, includeAll bool) ([]dto.ContainerSummaryDto, utils.PaginationResponse, error) {
+func (s *ContainerService) ListContainersPaginated(ctx context.Context, params pagination.QueryParams, includeAll bool) ([]dto.ContainerSummaryDto, pagination.Response, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to connect to Docker: %w", err)
+		return nil, pagination.Response{}, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
 	dockerContainers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: includeAll})
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list Docker containers: %w", err)
+		return nil, pagination.Response{}, fmt.Errorf("failed to list Docker containers: %w", err)
 	}
 
-	grandTotal := len(dockerContainers)
-
-	// Map to DTOs
-	result := make([]dto.ContainerSummaryDto, 0, len(dockerContainers))
+	items := make([]dto.ContainerSummaryDto, 0, len(dockerContainers))
 	for _, dc := range dockerContainers {
-		result = append(result, dto.NewContainerSummaryDto(dc))
+		items = append(items, dto.NewContainerSummaryDto(dc))
 	}
 
-	// Search filter
-	if req.Search != "" {
-		searchLower := strings.ToLower(req.Search)
-		filtered := make([]dto.ContainerSummaryDto, 0, len(result))
-		for _, c := range result {
-			matched := false
-			for _, name := range c.Names {
-				if strings.Contains(strings.ToLower(name), searchLower) {
-					matched = true
-					break
+	config := pagination.Config[dto.ContainerSummaryDto]{
+		SearchAccessors: []pagination.SearchAccessor[dto.ContainerSummaryDto]{
+			func(c dto.ContainerSummaryDto) (string, error) {
+				if len(c.Names) > 0 {
+					return c.Names[0], nil
 				}
-			}
-			if !matched && strings.Contains(strings.ToLower(c.Image), searchLower) {
-				matched = true
-			}
-			if !matched && strings.Contains(strings.ToLower(c.State), searchLower) {
-				matched = true
-			}
-			if matched {
-				filtered = append(filtered, c)
-			}
-		}
-		result = filtered
+				return "", nil
+			},
+			func(c dto.ContainerSummaryDto) (string, error) { return c.Image, nil },
+			func(c dto.ContainerSummaryDto) (string, error) { return c.State, nil },
+			func(c dto.ContainerSummaryDto) (string, error) { return c.Status, nil },
+		},
+		SortBindings: []pagination.SortBinding[dto.ContainerSummaryDto]{
+			{
+				Key: "name",
+				Fn: func(a, b dto.ContainerSummaryDto) int {
+					nameA := ""
+					if len(a.Names) > 0 {
+						nameA = a.Names[0]
+					}
+					nameB := ""
+					if len(b.Names) > 0 {
+						nameB = b.Names[0]
+					}
+					return strings.Compare(nameA, nameB)
+				},
+			},
+			{
+				Key: "image",
+				Fn: func(a, b dto.ContainerSummaryDto) int {
+					return strings.Compare(a.Image, b.Image)
+				},
+			},
+			{
+				Key: "state",
+				Fn: func(a, b dto.ContainerSummaryDto) int {
+					return strings.Compare(a.State, b.State)
+				},
+			},
+			{
+				Key: "status",
+				Fn: func(a, b dto.ContainerSummaryDto) int {
+					return strings.Compare(a.Status, b.Status)
+				},
+			},
+			{
+				Key: "created",
+				Fn: func(a, b dto.ContainerSummaryDto) int {
+					if a.Created < b.Created {
+						return -1
+					}
+					if a.Created > b.Created {
+						return 1
+					}
+					return 0
+				},
+			},
+		},
 	}
 
-	totalItems := len(result)
+	result := pagination.SearchOrderAndPaginate(items, params, config)
 
-	// Sort
-	if req.Sort.Column != "" {
-		sortContainers(result, req.Sort.Column, req.Sort.Direction)
+	totalPages := int64(0)
+	if params.Limit > 0 {
+		totalPages = (int64(result.TotalCount) + int64(params.Limit) - 1) / int64(params.Limit)
 	}
 
-	// Pagination window
-	startIdx := (req.Pagination.Page - 1) * req.Pagination.Limit
-	endIdx := startIdx + req.Pagination.Limit
-	if startIdx > len(result) {
-		startIdx = len(result)
-	}
-	if endIdx > len(result) {
-		endIdx = len(result)
-	}
-	pageItems := []dto.ContainerSummaryDto{}
-	if startIdx < endIdx {
-		pageItems = result[startIdx:endIdx]
+	page := 1
+	if params.Limit > 0 {
+		page = (params.Start / params.Limit) + 1
 	}
 
-	totalPages := (totalItems + req.Pagination.Limit - 1) / req.Pagination.Limit
-	pagination := utils.PaginationResponse{
-		TotalPages:      int64(totalPages),
-		TotalItems:      int64(totalItems),
-		CurrentPage:     req.Pagination.Page,
-		ItemsPerPage:    req.Pagination.Limit,
-		GrandTotalItems: int64(grandTotal),
+	paginationResp := pagination.Response{
+		TotalPages:      totalPages,
+		TotalItems:      int64(result.TotalCount),
+		CurrentPage:     page,
+		ItemsPerPage:    params.Limit,
+		GrandTotalItems: int64(result.TotalAvailable),
 	}
 
-	return pageItems, pagination, nil
-}
-
-func sortContainers(items []dto.ContainerSummaryDto, field, direction string) {
-	dir := utils.NormalizeSortDirection(direction)
-	f := strings.ToLower(strings.TrimSpace(field))
-
-	desc := dir == "desc"
-	lessStr := func(a, b string) bool {
-		if desc {
-			return a > b
-		}
-		return a < b
-	}
-	lessInt := func(a, b int64) bool {
-		if desc {
-			return a > b
-		}
-		return a < b
-	}
-
-	sort.Slice(items, func(i, j int) bool {
-		a, b := items[i], items[j]
-		switch f {
-		case "name", "names":
-			var n1, n2 string
-			if len(a.Names) > 0 {
-				n1 = a.Names[0]
-			}
-			if len(b.Names) > 0 {
-				n2 = b.Names[0]
-			}
-			return lessStr(n1, n2)
-		case "image":
-			return lessStr(a.Image, b.Image)
-		case "state":
-			return lessStr(a.State, b.State)
-		case "status":
-			return lessStr(a.Status, b.Status)
-		case "created":
-			return lessInt(a.Created, b.Created)
-		default:
-			// no-op sort keeps original order
-			return false
-		}
-	})
+	return result.Items, paginationResp, nil
 }
