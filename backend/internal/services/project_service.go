@@ -18,6 +18,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
 	"github.com/ofkm/arcane-backend/internal/utils/fs"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	"github.com/ofkm/arcane-backend/internal/utils/projects"
 	"gorm.io/gorm"
 )
@@ -737,11 +738,11 @@ func (s *ProjectService) StreamProjectLogs(ctx context.Context, projectID string
 
 // Table Functions
 
-func (s *ProjectService) ListProjects(ctx context.Context, req utils.SortedPaginationRequest) ([]dto.ProjectDetailsDto, utils.PaginationResponse, error) {
+func (s *ProjectService) ListProjects(ctx context.Context, params pagination.QueryParams) ([]dto.ProjectDetailsDto, pagination.Response, error) {
 	var projectsArray []models.Project
 	query := s.db.WithContext(ctx).Model(&models.Project{})
 
-	if term := strings.TrimSpace(req.Search); term != "" {
+	if term := strings.TrimSpace(params.Search); term != "" {
 		searchPattern := "%" + term + "%"
 		query = query.Where(
 			"name LIKE ? OR path LIKE ? OR status LIKE ? OR COALESCE(dir_name, '') LIKE ?",
@@ -749,9 +750,9 @@ func (s *ProjectService) ListProjects(ctx context.Context, req utils.SortedPagin
 		)
 	}
 
-	pagination, err := utils.PaginateAndSort(req, query, &projectsArray)
+	paginationResp, err := pagination.PaginateAndSortDB(params, query, &projectsArray)
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate projects: %w", err)
+		return nil, pagination.Response{}, fmt.Errorf("failed to paginate projects: %w", err)
 	}
 
 	var result []dto.ProjectDetailsDto
@@ -777,7 +778,7 @@ func (s *ProjectService) ListProjects(ctx context.Context, req utils.SortedPagin
 			UpdatedAt:    project.UpdatedAt.Format(time.RFC3339),
 		})
 	}
-	return result, pagination, nil
+	return result, paginationResp, nil
 }
 
 // End Table Functions

@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"log/slog"
 
@@ -18,12 +17,10 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/registry"
-	"github.com/docker/docker/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
-	"github.com/ofkm/arcane-backend/internal/utils"
-	"gorm.io/gorm/clause"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type ImageService struct {
@@ -44,24 +41,6 @@ func NewImageService(db *database.DB, dockerService *DockerClientService, regist
 	}
 }
 
-func (s *ImageService) SyncDockerImages(ctx context.Context) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	images, err := dockerClient.ImageList(ctx, image.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to list Docker images: %w", err)
-	}
-
-	if err := s.syncImagesToDatabase(ctx, images, dockerClient); err != nil {
-		return fmt.Errorf("error during image synchronization: %w", err)
-	}
-	return nil
-}
-
 func (s *ImageService) GetImageByID(ctx context.Context, id string) (*image.InspectResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -69,12 +48,12 @@ func (s *ImageService) GetImageByID(ctx context.Context, id string) (*image.Insp
 	}
 	defer dockerClient.Close()
 
-	image, err := dockerClient.ImageInspect(ctx, id)
+	inspect, err := dockerClient.ImageInspect(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("image not found: %w", err)
+		return nil, fmt.Errorf("inspect not found: %w", err)
 	}
 
-	return &image, nil
+	return &inspect, nil
 }
 
 func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, user models.User) error {
@@ -102,7 +81,9 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, u
 		return fmt.Errorf("failed to remove image: %w", err)
 	}
 
-	s.db.WithContext(ctx).Delete(&models.Image{}, "id = ?", id)
+	if s.db != nil {
+		s.db.WithContext(ctx).Delete(&models.ImageUpdateRecord{}, "id = ?", id)
+	}
 
 	metadata := models.JSON{
 		"action":  "delete",
@@ -161,20 +142,8 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 		return fmt.Errorf("error reading image pull stream for %s: %w", imageName, scanErr)
 	}
 
-	slog.Debug("image pull stream completed, attempting to sync database", slog.String("image", imageName))
+	slog.Debug("image pull stream completed", slog.String("image", imageName))
 
-	latestImages, listErr := dockerClient.ImageList(ctx, image.ListOptions{})
-	if listErr != nil {
-		slog.Warn("failed to list images after pull for sync", slog.Any("err", listErr))
-	} else {
-		if syncErr := s.syncImagesToDatabase(ctx, latestImages, dockerClient); syncErr != nil {
-			slog.Warn("error during image synchronization after pull", slog.Any("err", syncErr))
-		} else {
-			slog.Debug("database synchronized successfully after pulling image", slog.String("image", imageName))
-		}
-	}
-
-	// Log image pull event
 	metadata := models.JSON{
 		"action":    "pull",
 		"imageName": imageName,
@@ -227,19 +196,15 @@ func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef stri
 }
 
 func (s *ImageService) extractRegistryHost(imageRef string) string {
-	// strip digest if present
 	if i := strings.IndexByte(imageRef, '@'); i != -1 {
 		imageRef = imageRef[:i]
 	}
 
-	// split on first slash; if no slash, it's a Docker Hub shorthand
 	hostCandidate, _, found := strings.Cut(imageRef, "/")
 	if !found {
 		return "docker.io"
 	}
 
-	// first segment is either a registry host[:port] or a namespace
-	// if it doesn't look like a host (no dot/colon), default to docker.io
 	if !strings.Contains(hostCandidate, ".") && !strings.Contains(hostCandidate, ":") {
 		return "docker.io"
 	}
@@ -258,7 +223,6 @@ func (s *ImageService) normalizeRegistryForComparison(url string) string {
 	url = strings.TrimPrefix(url, "http://")
 	url = strings.TrimSuffix(url, "/")
 
-	// keep only host part (drop any path like ghcr.io/org or /v2/)
 	if slash := strings.Index(url, "/"); slash != -1 {
 		url = url[:slash]
 	}
@@ -314,186 +278,251 @@ func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.P
 	return &report, nil
 }
 
-func (s *ImageService) syncImagesToDatabase(ctx context.Context, dockerImages []image.Summary, dockerClient *client.Client) error {
-	inUseImageIDs := s.getInUseImageIDs(ctx, dockerClient)
-	currentDockerImageIDs := make([]string, 0, len(dockerImages))
-	var lastErr error
+func (s *ImageService) ListImagesPaginated(ctx context.Context, params pagination.QueryParams) ([]dto.ImageSummaryDto, pagination.Response, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, pagination.Response{}, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
 
-	for _, di := range dockerImages {
-		currentDockerImageIDs = append(currentDockerImageIDs, di.ID)
-		if err := s.syncSingleImage(ctx, di, inUseImageIDs); err != nil {
-			slog.Warn("error syncing image to database", slog.String("image_id", di.ID), slog.Any("err", err))
-			lastErr = err
-		}
+	dockerImages, err := dockerClient.ImageList(ctx, image.ListOptions{})
+	if err != nil {
+		return nil, pagination.Response{}, fmt.Errorf("failed to list Docker images: %w", err)
 	}
 
-	if err := s.cleanupStaleImages(ctx, currentDockerImageIDs); err != nil {
-		lastErr = err
-	}
-
-	if err := s.imageUpdateService.CleanupOrphanedRecords(ctx); err != nil {
-		slog.Warn("failed to cleanup orphaned image update records", slog.Any("err", err))
-		if lastErr == nil {
-			lastErr = err
-		}
-	}
-
-	return lastErr
-}
-
-func (s *ImageService) getInUseImageIDs(ctx context.Context, dockerClient *client.Client) map[string]bool {
-	inUseImageIDs := make(map[string]bool)
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
-		slog.Warn("error listing containers for in-use check; in-use status may be inaccurate", slog.Any("err", err))
-		return inUseImageIDs
+		return nil, pagination.Response{}, fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	for _, cont := range containers {
-		inUseImageIDs[cont.ImageID] = true
+	inUseMap := buildInUseMap(containers)
+
+	var updateRecords []models.ImageUpdateRecord
+	if s.db != nil {
+		s.db.WithContext(ctx).Find(&updateRecords)
 	}
-	return inUseImageIDs
+	updateMap := buildUpdateMap(updateRecords)
+
+	items := mapDockerImagesToDTOs(dockerImages, inUseMap, updateMap)
+
+	config := pagination.Config[dto.ImageSummaryDto]{
+		SearchAccessors: []pagination.SearchAccessor[dto.ImageSummaryDto]{
+			func(i dto.ImageSummaryDto) (string, error) { return i.Repo, nil },
+			func(i dto.ImageSummaryDto) (string, error) { return i.Tag, nil },
+			func(i dto.ImageSummaryDto) (string, error) { return i.ID, nil },
+			func(i dto.ImageSummaryDto) (string, error) {
+				if len(i.RepoTags) > 0 {
+					return i.RepoTags[0], nil
+				}
+				return "", nil
+			},
+		},
+		SortBindings: []pagination.SortBinding[dto.ImageSummaryDto]{
+			{
+				Key: "repo",
+				Fn: func(a, b dto.ImageSummaryDto) int {
+					return strings.Compare(a.Repo, b.Repo)
+				},
+			},
+			{
+				Key: "tag",
+				Fn: func(a, b dto.ImageSummaryDto) int {
+					return strings.Compare(a.Tag, b.Tag)
+				},
+			},
+			{
+				Key: "size",
+				Fn: func(a, b dto.ImageSummaryDto) int {
+					if a.Size < b.Size {
+						return -1
+					}
+					if a.Size > b.Size {
+						return 1
+					}
+					return 0
+				},
+			},
+			{
+				Key: "created",
+				Fn: func(a, b dto.ImageSummaryDto) int {
+					if a.Created < b.Created {
+						return -1
+					}
+					if a.Created > b.Created {
+						return 1
+					}
+					return 0
+				},
+			},
+			{
+				Key: "inUse",
+				Fn: func(a, b dto.ImageSummaryDto) int {
+					if a.InUse == b.InUse {
+						return 0
+					}
+					if a.InUse {
+						return -1
+					}
+					return 1
+				},
+			},
+		},
+		FilterAccessors: []pagination.FilterAccessor[dto.ImageSummaryDto]{
+			{
+				Key: "inUse",
+				Fn: func(i dto.ImageSummaryDto, filterValue string) bool {
+					if filterValue == "true" {
+						return i.InUse
+					}
+					if filterValue == "false" {
+						return !i.InUse
+					}
+					return true
+				},
+			},
+			{
+				Key: "updates",
+				Fn: func(i dto.ImageSummaryDto, filterValue string) bool {
+					hasUpdate := i.UpdateInfo != nil && i.UpdateInfo.HasUpdate
+					if filterValue == "true" {
+						return hasUpdate
+					}
+					if filterValue == "false" {
+						return !hasUpdate
+					}
+					return true
+				},
+			},
+		},
+	}
+
+	result := pagination.SearchOrderAndPaginate(items, params, config)
+
+	totalPages := int64(0)
+	if params.Limit > 0 {
+		totalPages = (int64(result.TotalCount) + int64(params.Limit) - 1) / int64(params.Limit)
+	}
+
+	page := 1
+	if params.Limit > 0 {
+		page = (params.Start / params.Limit) + 1
+	}
+
+	paginationResp := pagination.Response{
+		TotalPages:      totalPages,
+		TotalItems:      int64(result.TotalCount),
+		CurrentPage:     page,
+		ItemsPerPage:    params.Limit,
+		GrandTotalItems: int64(result.TotalAvailable),
+	}
+
+	return result.Items, paginationResp, nil
 }
 
-func (s *ImageService) syncSingleImage(ctx context.Context, di image.Summary, inUseImageIDs map[string]bool) error {
-	_, isInUse := inUseImageIDs[di.ID]
-
-	imageModel := s.buildImageModel(di, isInUse)
-
-	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"repo_tags", "repo_digests", "size", "virtual_size", "created", "labels", "repo", "tag", "in_use"}),
-	}).Create(&imageModel).Error
-}
-
-func (s *ImageService) buildImageModel(di image.Summary, isInUse bool) models.Image {
-	imageModel := models.Image{
-		RepoTags:    models.StringSlice(di.RepoTags),
-		RepoDigests: models.StringSlice(di.RepoDigests),
-		Size:        di.Size,
-		Created:     time.Unix(di.Created, 0),
-		InUse:       isInUse,
+func convertLabels(labels map[string]string) map[string]interface{} {
+	if labels == nil {
+		return nil
 	}
-	imageModel.ID = di.ID
-
-	if di.Labels != nil {
-		labelsJSON := make(map[string]interface{})
-		for k, v := range di.Labels {
-			labelsJSON[k] = v
-		}
-		imageModel.Labels = models.JSON(labelsJSON)
+	result := make(map[string]interface{}, len(labels))
+	for k, v := range labels {
+		result[k] = v
 	}
-
-	s.setRepoAndTag(&imageModel, di.RepoTags)
-	return imageModel
-}
-
-func (s *ImageService) setRepoAndTag(imageModel *models.Image, repoTags []string) {
-	var repoTag string
-	for _, t := range repoTags {
-		if t != "" && !strings.Contains(t, "<none>") {
-			repoTag = t
-			break
-		}
-	}
-	if repoTag == "" && len(repoTags) > 0 {
-		repoTag = repoTags[0]
-	}
-
-	if repoTag != "" {
-		if strings.Contains(repoTag, ":") {
-			parts := strings.SplitN(repoTag, ":", 2)
-			imageModel.Repo = parts[0]
-			imageModel.Tag = parts[1]
-		} else {
-			imageModel.Repo = repoTag
-			imageModel.Tag = "latest"
-		}
-	} else {
-		imageModel.Repo = "<none>"
-		imageModel.Tag = "<none>"
-	}
-}
-
-func (s *ImageService) cleanupStaleImages(ctx context.Context, currentDockerImageIDs []string) error {
-	if len(currentDockerImageIDs) > 0 {
-		return s.deleteStaleImages(ctx, currentDockerImageIDs)
-	}
-	return s.deleteAllImages(ctx)
-}
-
-func (s *ImageService) deleteStaleImages(ctx context.Context, currentDockerImageIDs []string) error {
-	deleteResult := s.db.WithContext(ctx).Where("id NOT IN ?", currentDockerImageIDs).Delete(&models.Image{})
-	if deleteResult.Error != nil {
-		slog.Warn("error deleting stale images from database", slog.Any("err", deleteResult.Error))
-		return deleteResult.Error
-	}
-	slog.Debug("stale image records deleted from database", slog.Int64("rows_affected", deleteResult.RowsAffected))
-	return nil
-}
-
-func (s *ImageService) deleteAllImages(ctx context.Context) error {
-	slog.Debug("no images found in Docker daemon, attempting to delete all image records from database")
-	deleteAllResult := s.db.WithContext(ctx).Delete(&models.Image{}, "1 = 1")
-	if deleteAllResult.Error != nil {
-		slog.Warn("error deleting all image records from database when Docker is empty", slog.Any("err", deleteAllResult.Error))
-		return deleteAllResult.Error
-	}
-	slog.Debug("all image records deleted from database as Docker reported no images", slog.Int64("rows_affected", deleteAllResult.RowsAffected))
-	return nil
-}
-
-func (s *ImageService) DeleteImageByDockerID(ctx context.Context, dockerImageID string) error {
-	if dockerImageID == "" {
-		return fmt.Errorf("docker image ID cannot be empty")
-	}
-
-	result := s.db.WithContext(ctx).Where("id = ?", dockerImageID).Delete(&models.Image{})
-	if result.Error != nil {
-		return fmt.Errorf("failed to delete image %s from database: %w", dockerImageID, result.Error)
-	}
-
-	if result.RowsAffected == 0 {
-	} else {
-		slog.Debug("successfully deleted image from database", slog.String("image_id", dockerImageID))
-	}
-	return nil
-}
-
-func (s *ImageService) ListImagesWithUpdatesPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]dto.ImageSummaryDto, utils.PaginationResponse, error) {
-	err := s.SyncDockerImages(ctx)
-	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to list and sync Docker images: %w", err)
-	}
-	var images []models.Image
-	query := s.db.WithContext(ctx).Model(&models.Image{}).Preload("UpdateRecord")
-	if term := strings.TrimSpace(req.Search); term != "" {
-		like := "%" + strings.ToLower(term) + "%"
-		query = query.Where(`
-			LOWER(repo) LIKE ? OR
-			LOWER(tag) LIKE ? OR
-			LOWER(id) LIKE ? OR
-			LOWER(repo || ':' || tag) LIKE ?
-		`, like, like, like, like)
-	}
-	pagination, err := utils.PaginateAndSort(req, query, &images)
-	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate images: %w", err)
-	}
-	result := make([]dto.ImageSummaryDto, 0, len(images))
-	for i := range images {
-		result = append(result, dto.NewImageSummaryDto(&images[i]))
-	}
-	return result, pagination, nil
+	return result
 }
 
 func (s *ImageService) GetTotalImageSize(ctx context.Context) (int64, error) {
-	if err := s.SyncDockerImages(ctx); err != nil {
-		return 0, fmt.Errorf("failed to sync images: %w", err)
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
+	defer dockerClient.Close()
+
+	images, err := dockerClient.ImageList(ctx, image.ListOptions{})
+	if err != nil {
+		return 0, fmt.Errorf("failed to list images: %w", err)
+	}
+
 	var total int64
-	if err := s.db.WithContext(ctx).Model(&models.Image{}).Select("COALESCE(SUM(size), 0)").Scan(&total).Error; err != nil {
-		return 0, fmt.Errorf("failed to sum image sizes: %w", err)
+	for _, img := range images {
+		total += img.Size
 	}
+
 	return total, nil
+}
+
+func buildInUseMap(containers []container.Summary) map[string]bool {
+	inUseMap := make(map[string]bool)
+	for _, c := range containers {
+		inUseMap[c.ImageID] = true
+	}
+	return inUseMap
+}
+
+func buildUpdateMap(records []models.ImageUpdateRecord) map[string]*models.ImageUpdateRecord {
+	updateMap := make(map[string]*models.ImageUpdateRecord, len(records))
+	for i := range records {
+		updateMap[records[i].ID] = &records[i]
+	}
+	return updateMap
+}
+
+func mapDockerImagesToDTOs(dockerImages []image.Summary, inUseMap map[string]bool, updateMap map[string]*models.ImageUpdateRecord) []dto.ImageSummaryDto {
+	items := make([]dto.ImageSummaryDto, 0, len(dockerImages))
+	for _, di := range dockerImages {
+		inUse := inUseMap[di.ID]
+
+		imageDto := dto.ImageSummaryDto{
+			ID:          di.ID,
+			RepoTags:    di.RepoTags,
+			RepoDigests: di.RepoDigests,
+			Created:     di.Created,
+			Size:        di.Size,
+			VirtualSize: di.SharedSize,
+			Labels:      convertLabels(di.Labels),
+			InUse:       inUse,
+		}
+
+		if len(di.RepoTags) > 0 {
+			repoTag := di.RepoTags[0]
+			if strings.Contains(repoTag, ":") {
+				parts := strings.SplitN(repoTag, ":", 2)
+				imageDto.Repo = parts[0]
+				imageDto.Tag = parts[1]
+			} else {
+				imageDto.Repo = repoTag
+				imageDto.Tag = "latest"
+			}
+		} else {
+			imageDto.Repo = "<none>"
+			imageDto.Tag = "<none>"
+		}
+
+		if updateRecord, exists := updateMap[di.ID]; exists {
+			sp := func(p *string) string {
+				if p == nil {
+					return ""
+				}
+				return *p
+			}
+
+			imageDto.UpdateInfo = &dto.ImageUpdateInfoDto{
+				HasUpdate:      updateRecord.HasUpdate,
+				UpdateType:     updateRecord.UpdateType,
+				CurrentVersion: updateRecord.CurrentVersion,
+				LatestVersion:  sp(updateRecord.LatestVersion),
+				CurrentDigest:  sp(updateRecord.CurrentDigest),
+				LatestDigest:   sp(updateRecord.LatestDigest),
+				CheckTime:      updateRecord.CheckTime,
+				ResponseTimeMs: updateRecord.ResponseTimeMs,
+				Error:          sp(updateRecord.LastError),
+				AuthMethod:     sp(updateRecord.AuthMethod),
+				AuthUsername:   sp(updateRecord.AuthUsername),
+				AuthRegistry:   sp(updateRecord.AuthRegistry),
+				UsedCredential: updateRecord.UsedCredential,
+			}
+		}
+
+		items = append(items, imageDto)
+	}
+	return items
 }

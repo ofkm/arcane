@@ -1,7 +1,6 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import ActivityIcon from '@lucide/svelte/icons/activity';
-	import NetworkIcon from '@lucide/svelte/icons/network';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { m } from '$lib/paraglide/messages';
 	import bytes from 'bytes';
@@ -31,113 +30,135 @@
 	}: Props = $props();
 </script>
 
-<section class="scroll-mt-20">
-	<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
-		<ActivityIcon class="size-5" />
-		{m.containers_resource_metrics()}
-	</h2>
-
-	<Card.Root class="rounded-lg border shadow-sm">
-		<Card.Content class="p-6">
-			{#if stats && container.state?.running}
-				<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-					<div class="space-y-6">
-						<div class="space-y-2">
-							<div class="flex justify-between">
-								<span class="text-sm font-medium">{m.dashboard_meter_cpu()}</span>
-								<span class="text-muted-foreground text-sm">{cpuUsagePercent.toFixed(2)}%</span>
-							</div>
-							<Progress
-								value={cpuUsagePercent}
-								max={100}
-								class="h-2 {cpuUsagePercent > 80 ? '[&>div]:bg-destructive' : cpuUsagePercent > 60 ? '[&>div]:bg-warning' : ''}"
-							/>
+<Card.Root class="pt-0">
+	<Card.Header class="bg-muted rounded-t-xl p-4">
+		<Card.Title class="flex items-center gap-2 text-lg">
+			<ActivityIcon class="text-primary size-5" />
+			<h2>
+				{m.containers_resource_metrics()}
+			</h2>
+		</Card.Title>
+		<Card.Description>{m.containers_resource_metrics_description()}</Card.Description>
+	</Card.Header>
+	<Card.Content class="p-4">
+		{#if stats && container.state?.running}
+			<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+				<div class="col-span-1 sm:col-span-2 lg:col-span-1 xl:col-span-2">
+					<div class="space-y-3">
+						<div class="flex items-center justify-between">
+							<span class="text-foreground text-base font-bold">{m.dashboard_meter_cpu()}</span>
+							<span class="text-muted-foreground text-sm font-semibold">{cpuUsagePercent.toFixed(2)}%</span>
 						</div>
-
-						<div class="space-y-2">
-							<div class="flex justify-between">
-								<span class="text-sm font-medium">{m.dashboard_meter_memory()}</span>
-								<span class="text-muted-foreground text-sm"
-									>{memoryUsageFormatted} / {memoryLimitFormatted} ({memoryUsagePercent.toFixed(1)}%)</span
-								>
-							</div>
-							<Progress
-								value={memoryUsagePercent}
-								max={100}
-								class="h-2 {memoryUsagePercent > 80
-									? '[&>div]:bg-destructive'
-									: memoryUsagePercent > 60
-										? '[&>div]:bg-warning'
-										: ''}"
-							/>
-						</div>
+						<Progress
+							value={cpuUsagePercent}
+							max={100}
+							class="h-3 {cpuUsagePercent > 80 ? '[&>div]:bg-destructive' : cpuUsagePercent > 60 ? '[&>div]:bg-warning' : ''}"
+						/>
 					</div>
+				</div>
 
-					<div class="space-y-6">
-						<div>
-							<h4 class="mb-4 flex items-center gap-2 font-medium">
-								<NetworkIcon class="size-4" />
-								{m.containers_network_io()}
-							</h4>
-							<div class="grid grid-cols-2 gap-4">
-								<div class="bg-muted/30 rounded p-4">
-									<div class="text-muted-foreground text-sm">{m.containers_network_received()}</div>
-									<div class="mt-1 font-medium">
-										{bytes.format(stats.networks?.eth0?.rx_bytes || 0)}
-									</div>
-								</div>
-								<div class="bg-muted/30 rounded p-4">
-									<div class="text-muted-foreground text-sm">{m.containers_network_transmitted()}</div>
-									<div class="mt-1 font-medium">
-										{bytes.format(stats.networks?.eth0?.tx_bytes || 0)}
-									</div>
-								</div>
+				<div class="col-span-1 sm:col-span-2 lg:col-span-1 xl:col-span-2">
+					<div class="space-y-3">
+						<div class="flex items-start justify-between">
+							<span class="text-foreground text-base font-bold">{m.dashboard_meter_memory()}</span>
+							<div class="text-right">
+								<div class="text-muted-foreground text-sm font-semibold">{memoryUsagePercent.toFixed(1)}%</div>
+								<div class="text-muted-foreground text-xs">{memoryUsageFormatted} / {memoryLimitFormatted}</div>
 							</div>
 						</div>
-
-						{#if stats.blkio_stats && stats.blkio_stats.io_service_bytes_recursive && stats.blkio_stats.io_service_bytes_recursive.length > 0}
-							<div>
-								<h4 class="mb-4 font-medium">{m.containers_block_io()}</h4>
-								<div class="grid grid-cols-2 gap-4">
-									<div class="bg-muted/30 rounded p-4">
-										<div class="text-muted-foreground text-sm">{m.containers_block_io_read()}</div>
-										<div class="mt-1 font-medium">
-											{bytes.format(
-												stats.blkio_stats.io_service_bytes_recursive
-													.filter((item) => item.op === 'Read')
-													.reduce((acc, item) => acc + item.value, 0)
-											)}
-										</div>
-									</div>
-									<div class="bg-muted/30 rounded p-4">
-										<div class="text-muted-foreground text-sm">{m.containers_block_io_write()}</div>
-										<div class="mt-1 font-medium">
-											{bytes.format(
-												stats.blkio_stats.io_service_bytes_recursive
-													.filter((item) => item.op === 'Write')
-													.reduce((acc, item) => acc + item.value, 0)
-											)}
-										</div>
-									</div>
-								</div>
-							</div>
-						{/if}
+						<Progress
+							value={memoryUsagePercent}
+							max={100}
+							class="h-3 {memoryUsagePercent > 80
+								? '[&>div]:bg-destructive'
+								: memoryUsagePercent > 60
+									? '[&>div]:bg-warning'
+									: ''}"
+						/>
 					</div>
 				</div>
 
 				{#if stats.pids_stats && stats.pids_stats.current !== undefined}
-					<div class="mt-6 border-t pt-6">
-						<div class="text-sm">
-							<span class="text-muted-foreground">{m.containers_process_count()}</span>
-							<span class="ml-2 font-medium">{stats.pids_stats.current}</span>
+					<div class="col-span-1">
+						<div class="bg-muted/30 flex h-full flex-col justify-center rounded-lg p-4">
+							<div class="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+								{m.containers_process_count()}
+							</div>
+							<div class="text-foreground text-2xl font-bold">{stats.pids_stats.current}</div>
 						</div>
 					</div>
 				{/if}
-			{:else if !container.state?.running}
-				<div class="text-muted-foreground py-12 text-center">{m.containers_stats_unavailable()}</div>
-			{:else}
-				<div class="text-muted-foreground py-12 text-center">{m.containers_stats_loading()}</div>
-			{/if}
-		</Card.Content>
-	</Card.Root>
-</section>
+
+				<div class="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-1">
+					<div class="bg-muted/30 h-full rounded-lg p-4">
+						<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
+							{m.containers_network_io()}
+						</div>
+						<div class="grid grid-cols-2 gap-3">
+							<div>
+								<div class="text-muted-foreground text-xs font-medium">
+									{m.containers_network_received()}
+								</div>
+								<div class="text-foreground text-sm font-bold">
+									{bytes.format(stats.networks?.eth0?.rx_bytes || 0)}
+								</div>
+							</div>
+							<div>
+								<div class="text-muted-foreground text-xs font-medium">
+									{m.containers_network_transmitted()}
+								</div>
+								<div class="text-foreground text-sm font-bold">
+									{bytes.format(stats.networks?.eth0?.tx_bytes || 0)}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{#if stats.blkio_stats && stats.blkio_stats.io_service_bytes_recursive && stats.blkio_stats.io_service_bytes_recursive.length > 0}
+					<div class="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-1">
+						<div class="bg-muted/30 h-full rounded-lg p-4">
+							<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
+								{m.containers_block_io()}
+							</div>
+							<div class="grid grid-cols-2 gap-3">
+								<div>
+									<div class="text-muted-foreground text-xs font-medium">
+										{m.containers_block_io_read()}
+									</div>
+									<div class="text-foreground text-sm font-bold">
+										{bytes.format(
+											stats.blkio_stats.io_service_bytes_recursive
+												.filter((item) => item.op === 'Read')
+												.reduce((acc, item) => acc + item.value, 0)
+										)}
+									</div>
+								</div>
+								<div>
+									<div class="text-muted-foreground text-xs font-medium">
+										{m.containers_block_io_write()}
+									</div>
+									<div class="text-foreground text-sm font-bold">
+										{bytes.format(
+											stats.blkio_stats.io_service_bytes_recursive
+												.filter((item) => item.op === 'Write')
+												.reduce((acc, item) => acc + item.value, 0)
+										)}
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{:else if !container.state?.running}
+			<div class="text-muted-foreground rounded-lg border border-dashed py-12 text-center">
+				<div class="text-sm">{m.containers_stats_unavailable()}</div>
+			</div>
+		{:else}
+			<div class="text-muted-foreground rounded-lg border border-dashed py-12 text-center">
+				<div class="text-sm">{m.containers_stats_loading()}</div>
+			</div>
+		{/if}
+	</Card.Content>
+</Card.Root>

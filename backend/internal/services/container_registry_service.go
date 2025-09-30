@@ -10,6 +10,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type ContainerRegistryService struct {
@@ -28,26 +29,47 @@ func (s *ContainerRegistryService) GetAllRegistries(ctx context.Context) ([]mode
 	return registries, nil
 }
 
-func (s *ContainerRegistryService) GetRegistriesPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]dto.ContainerRegistryDto, utils.PaginationResponse, error) {
+func (s *ContainerRegistryService) GetRegistriesPaginated(ctx context.Context, params pagination.QueryParams) ([]dto.ContainerRegistryDto, pagination.Response, error) {
 	var registries []models.ContainerRegistry
-	query := s.db.WithContext(ctx).Model(&models.ContainerRegistry{})
+	q := s.db.WithContext(ctx).Model(&models.ContainerRegistry{})
 
-	if req.Search != "" {
-		searchTerm := "%" + strings.ToLower(req.Search) + "%"
-		query = query.Where("LOWER(url) LIKE ? OR LOWER(username) LIKE ? OR LOWER(description) LIKE ?", searchTerm, searchTerm, searchTerm)
+	if term := strings.TrimSpace(params.Search); term != "" {
+		searchPattern := "%" + term + "%"
+		q = q.Where(
+			"url LIKE ? OR username LIKE ? OR COALESCE(description, '') LIKE ?",
+			searchPattern, searchPattern, searchPattern,
+		)
 	}
 
-	pagination, err := utils.PaginateAndSort(req, query, &registries)
+	if enabled := params.Filters["enabled"]; enabled != "" {
+		switch enabled {
+		case "true", "1":
+			q = q.Where("enabled = ?", true)
+		case "false", "0":
+			q = q.Where("enabled = ?", false)
+		}
+	}
+
+	if insecure := params.Filters["insecure"]; insecure != "" {
+		switch insecure {
+		case "true", "1":
+			q = q.Where("insecure = ?", true)
+		case "false", "0":
+			q = q.Where("insecure = ?", false)
+		}
+	}
+
+	paginationResp, err := pagination.PaginateAndSortDB(params, q, &registries)
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate container registries: %w", err)
+		return nil, pagination.Response{}, fmt.Errorf("failed to paginate container registries: %w", err)
 	}
 
 	out, mapErr := dto.MapSlice[models.ContainerRegistry, dto.ContainerRegistryDto](registries)
 	if mapErr != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to map registries: %w", mapErr)
+		return nil, pagination.Response{}, fmt.Errorf("failed to map registries: %w", mapErr)
 	}
 
-	return out, pagination, nil
+	return out, paginationResp, nil
 }
 
 func (s *ContainerRegistryService) GetRegistryByID(ctx context.Context, id string) (*models.ContainerRegistry, error) {

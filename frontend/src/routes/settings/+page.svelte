@@ -10,7 +10,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { m } from '$lib/paraglide/messages';
-	import UiConfigDisabledTag from '$lib/components/ui-config-disabled-tag.svelte';
+	import { UiConfigDisabledTag } from '$lib/components/badges/index.js';
 
 	interface SettingMeta {
 		key: string;
@@ -313,7 +313,7 @@
 		<div
 			class="from-background/60 via-background/40 to-background/60 relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 shadow-sm sm:p-6"
 		>
-			<div class="bg-primary/10 pointer-events-none absolute -right-10 -top-10 size-40 rounded-full blur-3xl"></div>
+			<div class="bg-primary/10 pointer-events-none absolute -top-10 -right-10 size-40 rounded-full blur-3xl"></div>
 			<div class="bg-muted/40 pointer-events-none absolute -bottom-10 -left-10 size-40 rounded-full blur-3xl"></div>
 			<div class="relative">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -336,15 +336,15 @@
 				</div>
 
 				<div class="relative mt-4 w-full sm:mt-6 sm:max-w-md">
-					<SearchIcon class="text-muted-foreground absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2" />
+					<SearchIcon class="text-muted-foreground absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2" />
 					<input
 						type="text"
 						placeholder="Search settings..."
 						bind:value={searchQuery}
-						class="bg-background/50 border-input ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 pl-10 text-sm backdrop-blur-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+						class="bg-background/50 border-input ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 pl-10 text-sm backdrop-blur-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 					/>
 					{#if showSearchResults}
-						<Button variant="ghost" size="sm" onclick={clearSearch} class="absolute right-2 top-1/2 h-6 w-6 -translate-y-1/2 p-0">
+						<Button variant="ghost" size="sm" onclick={clearSearch} class="absolute top-1/2 right-2 h-6 w-6 -translate-y-1/2 p-0">
 							×
 						</Button>
 					{/if}
@@ -367,7 +367,7 @@
 									<Icon class="size-5 sm:size-6" />
 								</div>
 								<div class="min-w-0 flex-1">
-									<h3 class="text-sm font-semibold leading-tight sm:text-base">{category.title}</h3>
+									<h3 class="text-sm leading-tight font-semibold sm:text-base">{category.title}</h3>
 									<p class="text-muted-foreground mt-1 text-xs leading-relaxed sm:text-sm">{category.description}</p>
 								</div>
 							</div>

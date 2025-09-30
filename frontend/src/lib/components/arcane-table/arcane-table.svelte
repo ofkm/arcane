@@ -8,10 +8,7 @@
 		type SortingState,
 		type VisibilityState,
 		type Table as TableType,
-		getCoreRowModel,
-		getFacetedRowModel,
-		getFacetedUniqueValues,
-		getFilteredRowModel
+		getCoreRowModel
 	} from '@tanstack/table-core';
 	import DataTableToolbar from './arcane-table-toolbar.svelte';
 	import { createSvelteTable } from '$lib/components/ui/data-table/data-table.svelte.js';
@@ -32,7 +29,7 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import { cn } from '$lib/utils.js';
-	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
+	import type { Paginated, SearchPaginationSortRequest, FilterMap } from '$lib/types/pagination.type';
 	import type { Snippet } from 'svelte';
 	import type { ColumnSpec } from './arcane-table.types.svelte';
 	import TableCheckbox from './arcane-table-checkbox.svelte';
@@ -227,8 +224,7 @@
 					return renderSnippet(TextCell, { value });
 				},
 				enableSorting: !!spec.sortable,
-				enableHiding: true,
-				filterFn: spec.filterFn
+				enableHiding: true
 			});
 
 			if (spec.hidden) {
@@ -302,10 +298,18 @@
 		},
 		onColumnFiltersChange: (updater) => {
 			columnFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
-			// Persist column filters
 			if (enablePersist && prefs) {
 				prefs.current = { ...prefs.current, f: encodeFilters(columnFilters) };
 			}
+			requestOptions = {
+				...requestOptions,
+				filters: toFilterMap(columnFilters),
+				pagination: {
+					page: 1,
+					limit: requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 10
+				}
+			};
+			onRefresh(requestOptions);
 		},
 		onColumnVisibilityChange: (updater) => {
 			columnVisibility = typeof updater === 'function' ? updater(columnVisibility) : updater;
@@ -328,11 +332,28 @@
 			}
 			onRefresh(requestOptions);
 		},
-		getCoreRowModel: getCoreRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
-		getFacetedRowModel: getFacetedRowModel(),
-		getFacetedUniqueValues: getFacetedUniqueValues()
+		getCoreRowModel: getCoreRowModel()
 	});
+
+	function toFilterMap(filters: ColumnFiltersState): FilterMap {
+		const out: FilterMap = {};
+		for (const f of filters ?? []) {
+			const id = f.id;
+			let v: unknown = (f as any).value;
+			if (Array.isArray(v)) {
+				if (v.length === 0) continue;
+				v = v[0];
+			} else if (v && typeof v === 'object' && v instanceof Set) {
+				const first = (v as Set<unknown>).values().next().value;
+				if (first === undefined) continue;
+				v = first;
+			}
+			if (v !== undefined && v !== null && String(v).trim() !== '') {
+				out[id] = v as any; // scalar only
+			}
+		}
+		return out;
+	}
 
 	$effect(() => {
 		const s = requestOptions?.sort;
@@ -358,7 +379,7 @@
 {#snippet Pagination({ table }: { table: TableType<TData> })}
 	<div class="flex flex-col gap-4 px-2 sm:flex-row sm:items-center sm:justify-between">
 		<div class="text-muted-foreground order-2 text-sm sm:order-1">
-			{m.common_showing_of_total({ shown: table.getFilteredRowModel().rows.length, total: totalItems })}
+			{m.common_showing_of_total({ shown: items.data.length, total: totalItems })}
 		</div>
 		<div class="order-1 flex flex-col gap-4 sm:order-2 sm:flex-row sm:items-center sm:space-x-6 lg:space-x-8">
 			<div class="flex items-center justify-between space-x-2 sm:justify-start">

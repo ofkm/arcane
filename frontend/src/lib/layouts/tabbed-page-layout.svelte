@@ -49,7 +49,7 @@
 <div class={cn('bg-background min-h-screen', className)}>
 	<Tabs.Root value={selectedTab} class="flex min-h-0 w-full flex-1 flex-col">
 		<div
-			class="bg-background/95 sticky top-0 z-20 border-b backdrop-blur transition-all duration-300"
+			class="bg-background/95 sticky top-0 border-b backdrop-blur transition-all duration-300"
 			style="opacity: {showFloatingHeader ? 0 : 1}; pointer-events: {showFloatingHeader ? 'none' : 'auto'};"
 		>
 			<div class="max-w-full px-4 py-3">

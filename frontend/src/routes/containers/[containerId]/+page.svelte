@@ -266,14 +266,11 @@
 
 		{#snippet tabContent(activeTab)}
 			<Tabs.Content value="overview" class="h-full">
-				<div class="space-y-8">
 					<ContainerOverview {container} {primaryIpAddress} />
-				</div>
 			</Tabs.Content>
 
 			{#if showStats}
 				<Tabs.Content value="stats" class="h-full">
-					<div class="space-y-8">
 						<ContainerStats
 							{container}
 							{stats}
@@ -284,12 +281,10 @@
 							{memoryLimitFormatted}
 							{memoryUsagePercent}
 						/>
-					</div>
 				</Tabs.Content>
 			{/if}
 
 			<Tabs.Content value="logs" class="h-full">
-				<div class="h-full">
 					<ContainerLogsPanel
 						containerId={container?.id}
 						bind:autoScroll={autoScrollLogs}
@@ -298,30 +293,23 @@
 						onClear={handleLogClear}
 						onToggleAutoScroll={handleToggleAutoScroll}
 					/>
-				</div>
 			</Tabs.Content>
 
 			{#if showConfiguration}
 				<Tabs.Content value="config" class="h-full">
-					<div class="space-y-8">
 						<ContainerConfiguration {container} {hasEnvVars} {hasPorts} {hasLabels} {baseServerUrl} />
-					</div>
 				</Tabs.Content>
 			{/if}
 
 			{#if hasNetworks}
 				<Tabs.Content value="network" class="h-full">
-					<div class="space-y-8">
 						<ContainerNetwork {container} />
-					</div>
 				</Tabs.Content>
 			{/if}
 
 			{#if hasMounts}
 				<Tabs.Content value="storage" class="h-full">
-					<div class="space-y-8">
 						<ContainerStorage {container} />
-					</div>
 				</Tabs.Content>
 			{/if}
 		{/snippet}

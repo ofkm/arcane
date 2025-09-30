@@ -29,9 +29,7 @@ FROM golang:${GO_VERSION}-alpine AS backend-dev
 RUN apk add --no-cache \
     ca-certificates \
     curl \
-    gcc \
     git \
-    musl-dev \
     tzdata && \
     go install github.com/air-verse/air@latest
 
@@ -39,15 +37,20 @@ RUN apk add --no-cache \
 ENV GIN_MODE=debug
 ENV PORT=3552
 ENV ENVIRONMENT=development
+ENV GOCACHE=/go/cache
+ENV GOMODCACHE=/go/pkg/mod
 
 WORKDIR /app
 
 # Copy Go module files and download dependencies
 COPY backend/go.mod backend/go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/go/cache \
+    go mod download
 
-# Create directories for development
-RUN mkdir -p /app/data /app/.bin && chmod 755 /app/data /app/.bin
+# Create directories for development with proper permissions
+RUN mkdir -p /app/data /app/.bin /go/cache && \
+    chmod 755 /app/data /app/.bin /go/cache
 
 # Expose backend development port
 EXPOSE 3552
