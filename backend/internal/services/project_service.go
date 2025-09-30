@@ -178,19 +178,23 @@ func (s *ProjectService) GetProjectDetails(ctx context.Context, projectID string
 	services, serr := s.GetProjectServices(ctx, projectID)
 
 	var serviceCount, runningCount int
+	var liveStatus models.ProjectStatus
+
 	if serr == nil && services != nil {
 		serviceCount = len(services)
 		_, runningCount = s.getServiceCounts(services)
+		liveStatus = s.calculateProjectStatus(services)
 	} else {
 		serviceCount = proj.ServiceCount
 		runningCount = proj.RunningCount
+		liveStatus = proj.Status
 	}
 
 	var resp dto.ProjectDetailsDto
 	if err := dto.MapStruct(proj, &resp); err != nil {
 		return dto.ProjectDetailsDto{}, fmt.Errorf("failed to map project: %w", err)
 	}
-	resp.Status = string(proj.Status)
+	resp.Status = string(liveStatus)
 	resp.CreatedAt = proj.CreatedAt.Format(time.RFC3339)
 	resp.UpdatedAt = proj.UpdatedAt.Format(time.RFC3339)
 	resp.ComposeContent = composeContent
@@ -357,7 +361,6 @@ func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCoun
 	}
 	projectsDir = filepath.Clean(projectsDir)
 
-	// Count only directories that contain a compose file
 	if info, statErr := os.Stat(projectsDir); statErr == nil && info.IsDir() {
 		entries, readErr := os.ReadDir(projectsDir)
 		if readErr != nil {
@@ -373,35 +376,38 @@ func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCoun
 			}
 		}
 	} else if os.IsNotExist(statErr) {
-		// Directory missing: folderCount stays 0
+		// Directory missing
 	} else if statErr != nil {
 		return 0, 0, 0, 0, fmt.Errorf("unable to access projects directory %s: %w", projectsDir, statErr)
 	}
 
-	// DB counts
-	var (
-		running int64
-		stopped int64
-		total   int64
-	)
-	if err := s.db.WithContext(ctx).Model(&models.Project{}).Count(&total).Error; err != nil {
-		return folderCount, 0, 0, 0, fmt.Errorf("failed to count total projects: %w", err)
-	}
-	// running = running + partially_running
-	if err := s.db.WithContext(ctx).
-		Model(&models.Project{}).
-		Where("status IN ?", []models.ProjectStatus{models.ProjectStatusRunning, models.ProjectStatusPartiallyRunning}).
-		Count(&running).Error; err != nil {
-		return folderCount, 0, 0, int(total), fmt.Errorf("failed to count running projects: %w", err)
-	}
-	if err := s.db.WithContext(ctx).
-		Model(&models.Project{}).
-		Where("status = ?", models.ProjectStatusStopped).
-		Count(&stopped).Error; err != nil {
-		return folderCount, int(running), 0, int(total), fmt.Errorf("failed to count stopped projects: %w", err)
+	// Get all projects and calculate live status
+	var projects []models.Project
+	if err := s.db.WithContext(ctx).Find(&projects).Error; err != nil {
+		return folderCount, 0, 0, 0, fmt.Errorf("failed to list projects: %w", err)
 	}
 
-	return folderCount, int(running), int(stopped), int(total), nil
+	totalProjects = len(projects)
+	runningProjects = 0
+	stoppedProjects = 0
+
+	for _, proj := range projects {
+		services, serr := s.GetProjectServices(ctx, proj.ID)
+		if serr != nil {
+			continue
+		}
+
+		status := s.calculateProjectStatus(services)
+		switch status {
+		case models.ProjectStatusRunning, models.ProjectStatusPartiallyRunning, models.ProjectStatusDeploying, models.ProjectStatusRestarting:
+			runningProjects++
+		case models.ProjectStatusStopped, models.ProjectStatusStopping:
+			stoppedProjects++
+		case models.ProjectStatusUnknown:
+		}
+	}
+
+	return folderCount, runningProjects, stoppedProjects, totalProjects, nil
 }
 
 // End Helpers
@@ -758,7 +764,16 @@ func (s *ProjectService) ListProjects(ctx context.Context, params pagination.Que
 	var result []dto.ProjectDetailsDto
 	for _, project := range projectsArray {
 		displayServiceCount := project.ServiceCount
-		if displayServiceCount == 0 {
+		displayRunningCount := project.RunningCount
+		displayStatus := string(project.Status)
+
+		// Get live status from Docker
+		if services, serr := s.GetProjectServices(ctx, project.ID); serr == nil {
+			displayServiceCount = len(services)
+			_, displayRunningCount = s.getServiceCounts(services)
+			displayStatus = string(s.calculateProjectStatus(services))
+		} else if displayServiceCount == 0 {
+			// Fallback: try to detect service count from compose file
 			if _, derr := projects.DetectComposeFile(project.Path); derr == nil {
 				if proj, _, perr := projects.LoadComposeProjectFromDir(ctx, project.Path, project.Name); perr == nil {
 					displayServiceCount = len(proj.Services)
@@ -771,9 +786,9 @@ func (s *ProjectService) ListProjects(ctx context.Context, params pagination.Que
 			Name:         project.Name,
 			DirName:      utils.DerefString(project.DirName),
 			Path:         project.Path,
-			Status:       string(project.Status),
+			Status:       displayStatus,
 			ServiceCount: displayServiceCount,
-			RunningCount: project.RunningCount,
+			RunningCount: displayRunningCount,
 			CreatedAt:    project.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:    project.UpdatedAt.Format(time.RFC3339),
 		})
@@ -782,3 +797,33 @@ func (s *ProjectService) ListProjects(ctx context.Context, params pagination.Que
 }
 
 // End Table Functions
+
+func (s *ProjectService) calculateProjectStatus(services []ProjectServiceInfo) models.ProjectStatus {
+	if len(services) == 0 {
+		return models.ProjectStatusUnknown
+	}
+
+	runningCount := 0
+	stoppedCount := 0
+
+	for _, svc := range services {
+		state := strings.ToLower(strings.TrimSpace(svc.Status))
+		switch state {
+		case "running", "up":
+			runningCount++
+		case "exited", "stopped", "dead":
+			stoppedCount++
+		}
+	}
+
+	if runningCount == len(services) {
+		return models.ProjectStatusRunning
+	}
+	if runningCount > 0 {
+		return models.ProjectStatusPartiallyRunning
+	}
+	if stoppedCount > 0 {
+		return models.ProjectStatusStopped
+	}
+	return models.ProjectStatusUnknown
+}
