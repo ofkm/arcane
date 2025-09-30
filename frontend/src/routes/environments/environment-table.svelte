@@ -16,6 +16,7 @@
 	import { toast } from 'svelte-sonner';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { EnvironmentMobileCard } from '$lib/components/arcane-table';
 	import type { Environment } from '$lib/types/environment.type';
 	import { m } from '$lib/paraglide/messages';
 	import { environmentManagementService } from '$lib/services/env-mgmt-service';
@@ -184,29 +185,8 @@
 	<StatusBadge text={Boolean(value) ? 'Enabled' : 'Disabled'} variant={Boolean(value) ? 'green' : 'gray'} />
 {/snippet}
 
-{#snippet EnvironmentMobileCard({ row, item }: { row: any; item: Environment })}
-	<Card.Root class="p-4">
-		<Card.Content class="p-0">
-			<div class="space-y-3">
-				<div class="flex items-start justify-between gap-3">
-					<div class="min-w-0 flex-1">
-						<div class="truncate text-base font-medium">{item.name || item.id}</div>
-						<div class="text-muted-foreground truncate text-sm">{item.id}</div>
-					</div>
-					<div class="flex flex-shrink-0 items-center gap-2">
-						<StatusBadge variant={'green'} text={'Environment'} />
-						{@render RowActions({ item })}
-					</div>
-				</div>
-				<div class="space-y-2">
-					<div class="flex items-start justify-between gap-2">
-						<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">ID:</span>
-						<span class="min-w-0 flex-1 truncate text-right text-sm">{item.id}</span>
-					</div>
-				</div>
-			</div>
-		</Card.Content>
-	</Card.Root>
+{#snippet EnvironmentMobileCardSnippet({ row, item }: { row: any; item: Environment })}
+	<EnvironmentMobileCard {item} rowActions={RowActions} />
 {/snippet}
 
 {#snippet RowActions({ item }: { item: Environment })}
@@ -254,7 +234,7 @@
 				onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
 				{columns}
 				rowActions={RowActions}
-				mobileCard={EnvironmentMobileCard}
+				mobileCard={EnvironmentMobileCardSnippet}
 			/>
 		</Card.Content>
 	</Card.Root>

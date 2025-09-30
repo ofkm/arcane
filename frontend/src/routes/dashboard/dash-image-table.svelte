@@ -4,6 +4,7 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import { ImageMobileCard } from '$lib/components/arcane-table/index.js';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import type { ImageSummaryDto } from '$lib/types/image.type';
 	import bytes from 'bytes';
@@ -69,33 +70,17 @@
 {/snippet}
 
 {#snippet DashImageMobileCard({ row, item }: { row: any; item: ImageSummaryDto })}
-	<Card.Root class="p-4">
-		<Card.Content class="p-0">
-			<div class="space-y-2">
-				<div class="flex items-center justify-between gap-2">
-					<a class="font-medium hover:underline text-sm truncate" href="/images/{item.id}/">
-						{#if item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>'}
-							{item.repoTags[0]}
-						{:else}
-							<span class="text-muted-foreground italic">{m.images_untagged()}</span>
-						{/if}
-					</a>
-					{#if item.inUse}
-						<StatusBadge text={m.common_in_use()} variant="green" />
-					{:else}
-						<StatusBadge text={m.common_unused()} variant="amber" />
-					{/if}
-				</div>
-				<div class="text-xs text-muted-foreground">
-					{bytes.format(item.size)}
-				</div>
-			</div>
-		</Card.Content>
-	</Card.Root>
+	<ImageMobileCard
+		{item}
+		showUpdateInfo={false}
+		showCreated={false}
+		onclick={(item: ImageSummaryDto) => (window.location.href = `/images/${item.id}/`)}
+		class="mx-4"
+	/>
 {/snippet}
 
 <Card.Root class="relative flex flex-col rounded-lg border shadow-sm">
-	<Card.Header class="px-6 pb-3 pt-5">
+	<Card.Header class="px-6 pt-5 pb-3">
 		<div class="flex items-center justify-between">
 			<div>
 				<Card.Title>

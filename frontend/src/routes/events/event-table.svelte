@@ -15,6 +15,7 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { Event } from '$lib/types/event.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { EventMobileCard } from '$lib/components/arcane-table';
 	import EventDetailsDialog from '$lib/components/dialogs/event-details-dialog.svelte';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import { m } from '$lib/paraglide/messages';
@@ -148,35 +149,8 @@
 	<span class="text-sm">{formatTimestamp(String(value ?? new Date().toISOString()))}</span>
 {/snippet}
 
-{#snippet EventMobileCard({ row, item }: { row: any; item: Event })}
-	<Card.Root class="p-4">
-		<Card.Content class="p-0">
-			<div class="space-y-3">
-				<div class="flex items-start justify-between gap-3">
-					<div class="min-w-0 flex-1">
-						<div class="truncate text-base font-medium">{item.title}</div>
-						<div class="text-muted-foreground text-sm">{formatTimestamp(item.timestamp)}</div>
-					</div>
-					<div class="flex flex-shrink-0 items-center gap-2">
-						<StatusBadge variant={getSeverityBadgeVariant(item.severity)} text={item.severity} />
-						{@render RowActions({ item })}
-					</div>
-				</div>
-				<div class="space-y-2">
-					<div class="flex items-start justify-between gap-2">
-						<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">Type:</span>
-						<Badge variant="outline" class="text-xs">{item.type}</Badge>
-					</div>
-					{#if item.resourceId}
-						<div class="flex items-start justify-between gap-2">
-							<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">Resource:</span>
-							<span class="min-w-0 flex-1 truncate text-right text-sm">{item.resourceId}</span>
-						</div>
-					{/if}
-				</div>
-			</div>
-		</Card.Content>
-	</Card.Root>
+{#snippet EventMobileCardSnippet({ row, item }: { row: any; item: Event })}
+	<EventMobileCard {item} rowActions={RowActions} {formatTimestamp} {getSeverityBadgeVariant} />
 {/snippet}
 
 {#snippet RowActions({ item }: { item: Event })}
@@ -218,7 +192,7 @@
 				onRefresh={async (options) => (events = await eventService.getEvents(options))}
 				{columns}
 				rowActions={RowActions}
-				mobileCard={EventMobileCard}
+				mobileCard={EventMobileCardSnippet}
 			/>
 		</Card.Content>
 	</Card.Root>

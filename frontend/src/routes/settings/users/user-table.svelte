@@ -14,6 +14,7 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { User } from '$lib/types/user.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { UserMobileCard } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { userService } from '$lib/services/user-service';
 
@@ -142,23 +143,8 @@
 	<StatusBadge text={getRoleText(item.roles)} variant={getRoleBadgeVariant(item.roles)} />
 {/snippet}
 
-{#snippet UserMobileCard({ row, item }: { row: any; item: User })}
-	<Card.Root class="p-4">
-		<Card.Content class="p-0">
-			<div class="space-y-3">
-				<div class="flex items-start justify-between gap-3">
-					<div class="min-w-0 flex-1">
-						<div class="truncate text-base font-medium">{item.username}</div>
-						<div class="text-muted-foreground truncate text-sm">{item.email || 'No email'}</div>
-					</div>
-					<div class="flex flex-shrink-0 items-center gap-2">
-						<StatusBadge variant={'blue'} text={'User'} />
-						{@render RowActions({ item })}
-					</div>
-				</div>
-			</div>
-		</Card.Content>
-	</Card.Root>
+{#snippet UserMobileCardSnippet({ row, item }: { row: any; item: User })}
+	<UserMobileCard {item} rowActions={RowActions} />
 {/snippet}
 
 {#snippet RowActions({ item }: { item: User })}
@@ -202,7 +188,7 @@
 			}}
 			{columns}
 			rowActions={RowActions}
-			mobileCard={UserMobileCard}
+			mobileCard={UserMobileCardSnippet}
 		/>
 	</Card.Content>
 </Card.Root>

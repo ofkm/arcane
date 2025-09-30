@@ -4,6 +4,7 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import { ContainerMobileCard } from '$lib/components/arcane-table/index.js';
 	import { getStatusVariant } from '$lib/utils/status.utils';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
@@ -51,34 +52,18 @@
 {/snippet}
 
 {#snippet DashContainerMobileCard({ row, item }: { row: any; item: ContainerSummaryDto })}
-	<Card.Root class="p-4">
-		<Card.Content class="p-0">
-			<div class="space-y-2">
-				<div class="flex items-center justify-between gap-2">
-					<a class="font-medium hover:underline text-sm truncate" href="/containers/{item.id}/">
-						{#if item.names && item.names.length > 0}
-							{item.names[0].startsWith('/') ? item.names[0].substring(1) : item.names[0]}
-						{:else}
-							{item.id.substring(0, 12)}
-						{/if}
-					</a>
-					<StatusBadge variant={getStatusVariant(item.state)} text={capitalizeFirstLetter(item.state)} />
-				</div>
-				<div class="text-xs text-muted-foreground truncate">
-					{item.image}
-				</div>
-				{#if item.status}
-					<div class="text-xs text-muted-foreground">
-						{item.status}
-					</div>
-				{/if}
-			</div>
-		</Card.Content>
-	</Card.Root>
+	<ContainerMobileCard
+		{item}
+		compact={true}
+		showPorts={false}
+		showCreated={false}
+		onclick={(item: ContainerSummaryDto) => (window.location.href = `/containers/${item.id}/`)}
+		class="mx-4"
+	/>
 {/snippet}
 
 <Card.Root class="relative flex flex-col rounded-lg border shadow-sm">
-	<Card.Header class="px-6 pb-3 pt-5">
+	<Card.Header class="px-6 pt-5 pb-3">
 		<div class="flex items-center justify-between">
 			<div>
 				<Card.Title>

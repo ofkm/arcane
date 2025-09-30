@@ -15,6 +15,7 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ContainerRegistry } from '$lib/types/container-registry.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { RegistryMobileCard } from '$lib/components/arcane-table';
 	import { format } from 'date-fns';
 	import { m } from '$lib/paraglide/messages';
 	import { containerRegistryService } from '$lib/services/container-registry-service';
@@ -191,23 +192,8 @@
 	<span class="text-sm">{value ? format(new Date(String(value)), 'PP p') : m.common_na()}</span>
 {/snippet}
 
-{#snippet RegistryMobileCard({ row, item }: { row: any; item: ContainerRegistry })}
-	<Card.Root class="p-4">
-		<Card.Content class="p-0">
-			<div class="space-y-3">
-				<div class="flex items-start justify-between gap-3">
-					<div class="min-w-0 flex-1">
-						<div class="truncate text-base font-medium">{item.url}</div>
-						<div class="text-muted-foreground truncate text-sm">{item.url}</div>
-					</div>
-					<div class="flex flex-shrink-0 items-center gap-2">
-						<StatusBadge variant={'gray'} text={'Registry'} />
-						{@render RowActions({ item })}
-					</div>
-				</div>
-			</div>
-		</Card.Content>
-	</Card.Root>
+{#snippet RegistryMobileCardSnippet({ row, item }: { row: any; item: ContainerRegistry })}
+	<RegistryMobileCard {item} rowActions={RowActions} />
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ContainerRegistry })}
@@ -252,6 +238,6 @@
 		onRefresh={async (options) => (registries = await containerRegistryService.getRegistries(options))}
 		{columns}
 		rowActions={RowActions}
-		mobileCard={RegistryMobileCard}
+		mobileCard={RegistryMobileCardSnippet}
 	/>
 </div>
