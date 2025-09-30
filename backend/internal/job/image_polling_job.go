@@ -8,21 +8,20 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/services"
-	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
 type ImagePollingJob struct {
 	imageUpdateService *services.ImageUpdateService
 	settingsService    *services.SettingsService
-	registryService    *services.ContainerRegistryService
+	environmentService *services.EnvironmentService
 	scheduler          *Scheduler
 }
 
-func NewImagePollingJob(scheduler *Scheduler, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService, registryService *services.ContainerRegistryService) *ImagePollingJob {
+func NewImagePollingJob(scheduler *Scheduler, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService, environmentService *services.EnvironmentService) *ImagePollingJob {
 	return &ImagePollingJob{
 		imageUpdateService: imageUpdateService,
 		settingsService:    settingsService,
-		registryService:    registryService,
+		environmentService: environmentService,
 		scheduler:          scheduler,
 	}
 }
@@ -99,37 +98,7 @@ func (j *ImagePollingJob) Execute(ctx context.Context) error {
 }
 
 func (j *ImagePollingJob) loadRegistryCredentials(ctx context.Context) ([]dto.ContainerRegistryCredential, error) {
-	registries, err := j.registryService.GetEnabledRegistries(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var creds []dto.ContainerRegistryCredential
-	for _, reg := range registries {
-		if !reg.Enabled || reg.Username == "" || reg.Token == "" {
-			continue
-		}
-
-		decryptedToken, err := utils.Decrypt(reg.Token)
-		if err != nil {
-			slog.WarnContext(ctx, "Failed to decrypt registry token during polling",
-				slog.String("registryURL", reg.URL),
-				slog.String("error", err.Error()))
-			continue
-		}
-
-		creds = append(creds, dto.ContainerRegistryCredential{
-			URL:      reg.URL,
-			Username: reg.Username,
-			Token:    decryptedToken,
-			Enabled:  reg.Enabled,
-		})
-	}
-
-	slog.DebugContext(ctx, "Loaded registry credentials for polling",
-		slog.Int("credentialCount", len(creds)))
-
-	return creds, nil
+	return j.environmentService.GetEnabledRegistryCredentials(ctx)
 }
 
 func (j *ImagePollingJob) Reschedule(ctx context.Context) error {
