@@ -3,12 +3,12 @@ tmp_dir = ".bin"
 
 [build]
   bin = "./.bin/arcane"
-  cmd = "CGO_ENABLED=1 go build -tags 'exclude_frontend playwright' -o ./.bin/arcane ./cmd"
-  exclude_dir = [".bin", "data"]
+  cmd = "CGO_ENABLED=0 go build -tags 'exclude_frontend' -ldflags='-buildid=' -o ./.bin/arcane ./cmd"
+  exclude_dir = [".bin", "data", "node_modules", ".git"]
   stop_on_error = true
-  delay = 1000
-  exclude_regex = ["_test.go"]
-  exclude_unchanged = false
+  delay = 500
+  exclude_regex = ["_test.go", "_mock.go", ".*_test\\.go$"]
+  exclude_unchanged = true
   follow_symlink = false
   include_ext = ["go", "tpl", "tmpl", "html"]
   kill_delay = "2s"
@@ -16,7 +16,7 @@ tmp_dir = ".bin"
   poll = false
   poll_interval = 0
   rerun = false
-  rerun_delay = 500
+  rerun_delay = 300
   send_interrupt = true
   stop_on_root = false
 
@@ -29,10 +29,11 @@ tmp_dir = ".bin"
 
 [log]
   main_only = false
-  time = false
+  time = true
 
 [misc]
-  clean_on_exit = true
+  # Preserves incremental builds
+  clean_on_exit = false
 
 [screen]
   clear_on_rebuild = false

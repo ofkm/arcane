@@ -8,5 +8,7 @@
   },
   "typescript.tsdk": "frontend/node_modules/typescript/lib",
   "go.buildTags": "playwright",
-  "prettier.documentSelectors": ["**/*.svelte"]
+  "prettier.documentSelectors": ["**/*.svelte"],
+  "tasks.statusbar.default.hide": true,
+  "tasks.statusbar.limit": 8,
 }

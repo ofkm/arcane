@@ -55,6 +55,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       # Persistent data storage
       - arcane-dev-data:/app/data
+      # Persistent Go build cache
+      - go-build-cache:/go/cache
+      - go-mod-cache:/go/pkg/mod
     env_file:
       - .env
     environment:
@@ -94,6 +97,9 @@ services:
       # Optional: hot-reload the agent too (same as backend dev)
       - ./backend:/app:cached
       - ./backend/.air.toml:/app/.air.toml:ro
+      # Shared Go build cache with backend for consistency
+      - go-build-cache:/go/cache
+      - go-mod-cache:/go/pkg/mod
     networks:
       - arcane-dev
     restart: unless-stopped
@@ -114,3 +120,7 @@ volumes:
     name: arcane-dev-data
   agent-dev-data:
     name: agent-dev-data
+  go-build-cache:
+    name: arcane-go-build-cache
+  go-mod-cache:
+    name: arcane-go-mod-cache
