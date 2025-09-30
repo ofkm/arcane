@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { Icon as IconType } from '@lucide/svelte';
-	import UiConfigDisabledTag from '$lib/components/ui-config-disabled-tag.svelte';
+	import { UiConfigDisabledTag } from '$lib/components/badges/index.js';
 	import StatCard from '$lib/components/stat-card.svelte';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';

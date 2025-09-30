@@ -1110,10 +1110,47 @@ func (s *ImageUpdateService) CheckAllImages(ctx context.Context, limit int) (map
 }
 
 func (s *ImageUpdateService) CleanupOrphanedRecords(ctx context.Context) error {
-	subQuery := s.db.WithContext(ctx).Model(&models.Image{}).Select("id")
-	return s.db.WithContext(ctx).
-		Where("id NOT IN (?)", subQuery).
-		Delete(&models.ImageUpdateRecord{}).Error
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	// Get all image IDs from Docker
+	dockerImages, err := dockerClient.ImageList(ctx, image.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list Docker images: %w", err)
+	}
+
+	dockerImageIDs := make(map[string]bool)
+	for _, img := range dockerImages {
+		dockerImageIDs[img.ID] = true
+	}
+
+	// Get all update records from database
+	var updateRecords []models.ImageUpdateRecord
+	if err := s.db.WithContext(ctx).Find(&updateRecords).Error; err != nil {
+		return fmt.Errorf("failed to query update records: %w", err)
+	}
+
+	// Delete records for images that no longer exist in Docker
+	orphanedCount := 0
+	for _, record := range updateRecords {
+		if !dockerImageIDs[record.ID] {
+			if err := s.db.WithContext(ctx).Delete(&models.ImageUpdateRecord{}, "id = ?", record.ID).Error; err != nil {
+				slog.WarnContext(ctx, "Failed to delete orphaned update record",
+					slog.String("imageId", record.ID),
+					slog.String("error", err.Error()))
+			} else {
+				orphanedCount++
+			}
+		}
+	}
+
+	slog.InfoContext(ctx, "Cleaned up orphaned image update records",
+		slog.Int("deletedCount", orphanedCount))
+
+	return nil
 }
 
 func (s *ImageUpdateService) GetUpdateSummary(ctx context.Context) (*dto.ImageUpdateSummaryResponse, error) {

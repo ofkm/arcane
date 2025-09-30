@@ -9,7 +9,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
-	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type UserHandler struct {
@@ -32,49 +32,9 @@ func NewUserHandler(group *gin.RouterGroup, userService *services.UserService, a
 }
 
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	var req utils.SortedPaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid pagination or sort parameters: " + err.Error()},
-		})
-		return
-	}
+	params := pagination.ExtractListModifiersQueryParams(c)
 
-	if req.Pagination.Page == 0 {
-		req.Pagination.Page = 1
-	}
-	if req.Pagination.Limit == 0 {
-		req.Pagination.Limit = 20
-	}
-
-	if req.Pagination.Page == 1 && req.Pagination.Limit == 20 && req.Search == "" && req.Sort.Column == "" {
-		users, err := h.userService.ListUsers(c.Request.Context())
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"data":    gin.H{"error": "Failed to fetch users"},
-			})
-			return
-		}
-
-		userResponses, err := dto.MapSlice[models.User, dto.UserResponseDto](users)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"data":    gin.H{"error": "Failed to map users"},
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"data":    userResponses,
-		})
-		return
-	}
-
-	users, pagination, err := h.userService.ListUsersPaginated(c.Request.Context(), req)
+	users, paginationResp, err := h.userService.ListUsersPaginated(c.Request.Context(), params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -86,7 +46,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"data":       users,
-		"pagination": pagination,
+		"pagination": paginationResp,
 	})
 }
 

@@ -3,12 +3,13 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
-	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type EventService struct {
@@ -97,88 +98,83 @@ func (s *EventService) CreateEventFromDto(ctx context.Context, req dto.CreateEve
 	return s.toEventDto(event), nil
 }
 
-func (s *EventService) ListEventsPaginated(ctx context.Context, req utils.SortedPaginationRequest) ([]dto.EventDto, utils.PaginationResponse, error) {
+func (s *EventService) ListEventsPaginated(ctx context.Context, params pagination.QueryParams) ([]dto.EventDto, pagination.Response, error) {
 	var events []models.Event
+	q := s.db.WithContext(ctx).Model(&models.Event{})
 
-	query := s.db.WithContext(ctx).Model(&models.Event{})
-
-	if req.Search != "" {
-		searchQuery := "%" + req.Search + "%"
-		query = query.Where("title LIKE ? OR description LIKE ? OR resource_name LIKE ? OR username LIKE ?",
-			searchQuery, searchQuery, searchQuery, searchQuery)
+	if term := strings.TrimSpace(params.Search); term != "" {
+		searchPattern := "%" + term + "%"
+		q = q.Where(
+			"title LIKE ? OR description LIKE ? OR COALESCE(resource_name, '') LIKE ? OR COALESCE(username, '') LIKE ?",
+			searchPattern, searchPattern, searchPattern, searchPattern,
+		)
 	}
 
-	if req.Filters != nil {
-		for key, value := range req.Filters {
-			if value != nil && value != "" {
-				switch key {
-				case "severity":
-					query = query.Where("severity = ?", value)
-				case "type":
-					query = query.Where("type = ?", value)
-				case "resourceType":
-					query = query.Where("resource_type = ?", value)
-				case "username":
-					query = query.Where("username = ?", value)
-				case "environmentId":
-					query = query.Where("environment_id = ?", value)
-				}
-			}
-		}
+	if severity := params.Filters["severity"]; severity != "" {
+		q = q.Where("severity = ?", severity)
+	}
+	if eventType := params.Filters["type"]; eventType != "" {
+		q = q.Where("type = ?", eventType)
+	}
+	if resourceType := params.Filters["resourceType"]; resourceType != "" {
+		q = q.Where("resource_type = ?", resourceType)
+	}
+	if username := params.Filters["username"]; username != "" {
+		q = q.Where("username = ?", username)
+	}
+	if environmentId := params.Filters["environmentId"]; environmentId != "" {
+		q = q.Where("environment_id = ?", environmentId)
 	}
 
-	pagination, err := utils.PaginateAndSort(req, query, &events)
+	paginationResp, err := pagination.PaginateAndSortDB(params, q, &events)
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate events: %w", err)
+		return nil, pagination.Response{}, fmt.Errorf("failed to paginate events: %w", err)
 	}
 
 	eventDtos, mapErr := dto.MapSlice[models.Event, dto.EventDto](events)
 	if mapErr != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to map events: %w", mapErr)
+		return nil, pagination.Response{}, fmt.Errorf("failed to map events: %w", mapErr)
 	}
 
-	return eventDtos, pagination, nil
+	return eventDtos, paginationResp, nil
 }
 
-func (s *EventService) GetEventsByEnvironmentPaginated(ctx context.Context, environmentID string, req utils.SortedPaginationRequest) ([]dto.EventDto, utils.PaginationResponse, error) {
+func (s *EventService) GetEventsByEnvironmentPaginated(ctx context.Context, environmentID string, params pagination.QueryParams) ([]dto.EventDto, pagination.Response, error) {
 	var events []models.Event
+	q := s.db.WithContext(ctx).Model(&models.Event{}).Where("environment_id = ?", environmentID)
 
-	query := s.db.WithContext(ctx).Model(&models.Event{}).Where("environment_id = ?", environmentID)
-
-	if req.Search != "" {
-		searchQuery := "%" + req.Search + "%"
-		query = query.Where("title LIKE ? OR description LIKE ? OR resource_name LIKE ? OR username LIKE ?",
-			searchQuery, searchQuery, searchQuery, searchQuery)
+	if term := strings.TrimSpace(params.Search); term != "" {
+		searchPattern := "%" + term + "%"
+		q = q.Where(
+			"title LIKE ? OR description LIKE ? OR COALESCE(resource_name, '') LIKE ? OR COALESCE(username, '') LIKE ?",
+			searchPattern, searchPattern, searchPattern, searchPattern,
+		)
 	}
 
-	if req.Filters != nil {
-		for key, value := range req.Filters {
-			if value != nil && value != "" {
-				switch key {
-				case "severity":
-					query = query.Where("severity = ?", value)
-				case "type":
-					query = query.Where("type = ?", value)
-				case "resourceType":
-					query = query.Where("resource_type = ?", value)
-				case "username":
-					query = query.Where("username = ?", value)
-				}
-			}
-		}
+	if severity := params.Filters["severity"]; severity != "" {
+		q = q.Where("severity = ?", severity)
+	}
+	if eventType := params.Filters["type"]; eventType != "" {
+		q = q.Where("type = ?", eventType)
+	}
+	if resourceType := params.Filters["resourceType"]; resourceType != "" {
+		q = q.Where("resource_type = ?", resourceType)
+	}
+	if username := params.Filters["username"]; username != "" {
+		q = q.Where("username = ?", username)
 	}
 
-	pagination, err := utils.PaginateAndSort(req, query, &events)
+	paginationResp, err := pagination.PaginateAndSortDB(params, q, &events)
 	if err != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to paginate events: %w", err)
+		return nil, pagination.Response{}, fmt.Errorf("failed to paginate events: %w", err)
 	}
 
 	eventDtos, mapErr := dto.MapSlice[models.Event, dto.EventDto](events)
 	if mapErr != nil {
-		return nil, utils.PaginationResponse{}, fmt.Errorf("failed to map events: %w", mapErr)
+		return nil, pagination.Response{}, fmt.Errorf("failed to map events: %w", mapErr)
 	}
 
-	return eventDtos, pagination, nil
+	return eventDtos, paginationResp, nil
 }
 
 func (s *EventService) DeleteEvent(ctx context.Context, eventID string) error {

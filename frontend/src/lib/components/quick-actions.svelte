@@ -56,7 +56,7 @@
 		{:else}
 			<div class="hidden flex-wrap items-center gap-2 sm:flex">
 				<button
-					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors transition-shadow hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={!dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}
 					onclick={onStartAll}
 					aria-busy={isLoading.starting}
@@ -73,7 +73,7 @@
 				</button>
 
 				<button
-					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-sky-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors transition-shadow hover:border-sky-500/40 hover:bg-sky-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-sky-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-sky-500/40 hover:bg-sky-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={!dockerInfo ||
 						(dockerInfo?.containersRunning ?? 0) === 0 ||
 						isLoading.starting ||
@@ -94,7 +94,7 @@
 				</button>
 
 				<button
-					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-red-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors transition-shadow hover:border-red-500/40 hover:bg-red-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-red-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={!dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
 					onclick={onOpenPruneDialog}
 					aria-busy={isLoading.pruning}
@@ -108,7 +108,7 @@
 				</button>
 
 				<button
-					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-violet-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors transition-shadow hover:border-violet-500/40 hover:bg-violet-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-violet-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-violet-500/40 hover:bg-violet-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={isLoading.starting || isLoading.stopping || isLoading.pruning || refreshing}
 					onclick={onRefresh}
 					aria-busy={refreshing}
@@ -124,7 +124,7 @@
 
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger
-					class="bg-background/70 flex inline-flex size-9 items-center justify-center rounded-lg border sm:hidden"
+					class="bg-background/70 inline-flex size-9 items-center justify-center rounded-lg border sm:hidden"
 				>
 					<span class="sr-only">{m.common_open_menu()}</span>
 					<EllipsisIcon />

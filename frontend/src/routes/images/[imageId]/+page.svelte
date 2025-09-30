@@ -6,6 +6,8 @@
 	import LayersIcon from '@lucide/svelte/icons/layers';
 	import HashIcon from '@lucide/svelte/icons/hash';
 	import CpuIcon from '@lucide/svelte/icons/cpu';
+	import InfoIcon from '@lucide/svelte/icons/info';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { goto } from '$app/navigation';
 	import { Separator } from '$lib/components/ui/separator/index.js';
@@ -84,7 +86,7 @@
 				</Breadcrumb.List>
 			</Breadcrumb.Root>
 			<div class="mt-2 flex items-center gap-2">
-				<h1 class="break-all text-2xl font-bold tracking-tight">
+				<h1 class="text-2xl font-bold tracking-tight break-all">
 					{image?.repoTags?.[0] || shortId()}
 				</h1>
 			</div>
@@ -103,101 +105,165 @@
 
 	{#if image}
 		<div class="space-y-6">
-			<Card.Root class="border shadow-sm">
-				<Card.Header>
-					<Card.Title>{m.images_details_title()}</Card.Title>
+			<Card.Root class="pt-0">
+				<Card.Header class="bg-muted rounded-t-xl p-4">
+					<Card.Title class="flex items-center gap-2 text-lg">
+						<InfoIcon class="text-primary size-5" />
+						{m.images_details_title()}
+					</Card.Title>
+					<Card.Description>{m.images_details_description()}</Card.Description>
 				</Card.Header>
-				<Card.Content>
-					<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-						<!-- ID -->
+				<Card.Content class="p-4">
+					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
 								<HashIcon class="size-5 text-gray-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.common_id()}</p>
-								<p class="mt-1 truncate text-base font-semibold" title={image.id}>{shortId()}</p>
+								<p
+									class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm"
+									title="Click to select"
+								>
+									{shortId()}
+								</p>
 							</div>
 						</div>
 
-						<!-- Size -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2">
 								<HardDriveIcon class="size-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.images_size()}</p>
-								<p class="mt-1 text-base font-semibold">{imageSize()}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+									{imageSize()}
+								</p>
 							</div>
 						</div>
 
-						<!-- Created -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2">
 								<ClockIcon class="size-5 text-green-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.common_created()}</p>
-								<p class="mt-1 text-base font-semibold">{createdDate()}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+									{createdDate()}
+								</p>
 							</div>
 						</div>
 
-						<!-- Architecture -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 p-2">
 								<CpuIcon class="size-5 text-orange-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.images_architecture()}</p>
-								<p class="mt-1 text-base font-semibold">{architecture()}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+									{architecture()}
+								</p>
 							</div>
 						</div>
 
-						<!-- OS -->
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 p-2">
 								<LayersIcon class="size-5 text-indigo-500" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.images_os()}</p>
-								<p class="mt-1 text-base font-semibold">{osName()}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+									{osName()}
+								</p>
 							</div>
 						</div>
+
+						{#if image?.dockerVersion}
+							<div class="flex items-start gap-3">
+								<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-purple-500/10 p-2">
+									<InfoIcon class="size-5 text-purple-500" />
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="text-muted-foreground text-sm font-medium">{m.common_docker_version()}</p>
+									<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+										{image.dockerVersion}
+									</p>
+								</div>
+							</div>
+						{/if}
+
+						{#if image?.author}
+							<div class="flex items-start gap-3">
+								<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-pink-500/10 p-2">
+									<InfoIcon class="size-5 text-pink-500" />
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="text-muted-foreground text-sm font-medium">{m.common_author()}</p>
+									<p class="mt-1 cursor-pointer text-sm font-semibold break-all select-all sm:text-base" title="Click to select">
+										{image.author}
+									</p>
+								</div>
+							</div>
+						{/if}
+
+						{#if image.config?.workingDir}
+							<div class="flex items-start gap-3">
+								<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 p-2">
+									<InfoIcon class="size-5 text-amber-500" />
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="text-muted-foreground text-sm font-medium">{m.common_working_dir()}</p>
+									<p
+										class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm"
+										title="Click to select"
+									>
+										{image.config.workingDir}
+									</p>
+								</div>
+							</div>
+						{/if}
 					</div>
 				</Card.Content>
 			</Card.Root>
 
-			<!-- Tags Card -->
 			{#if image.repoTags && image.repoTags.length > 0}
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title class="flex items-center gap-2"
-							><TagIcon class="text-muted-foreground size-5" /> {m.images_tags_title()}</Card.Title
-						>
+				<Card.Root class="pt-0">
+					<Card.Header class="bg-muted rounded-t-xl p-4">
+						<Card.Title class="flex items-center gap-2 text-lg">
+							<TagIcon class="text-primary size-5" />
+							{m.images_tags_title()}
+						</Card.Title>
+						<Card.Description>{m.images_tags_description()}</Card.Description>
 					</Card.Header>
-					<Card.Content>
+					<Card.Content class="p-4">
 						<div class="flex flex-wrap gap-2">
 							{#each image.repoTags as tag (tag)}
-								<Badge variant="secondary">{tag}</Badge>
+								<Badge variant="secondary" class="cursor-pointer text-sm select-all" title="Click to select">{tag}</Badge>
 							{/each}
 						</div>
 					</Card.Content>
 				</Card.Root>
 			{/if}
 
-			<!-- Environment Variables Card -->
 			{#if image.config?.env && image.config.env.length > 0}
-				<Card.Root class="border shadow-sm">
-					<Card.Header>
-						<Card.Title>{m.images_env_vars_title()}</Card.Title>
+				<Card.Root class="pt-0">
+					<Card.Header class="bg-muted rounded-t-xl p-4">
+						<Card.Title class="flex items-center gap-2 text-lg">
+							<SettingsIcon class="text-primary size-5" />
+							{m.images_env_vars_title()}
+						</Card.Title>
+						<Card.Description>{m.images_env_vars_description()}</Card.Description>
 					</Card.Header>
-					<Card.Content class="space-y-2">
+					<Card.Content class="space-y-2 p-4">
 						{#each image.config.env as env (env)}
 							{@const [key, ...valueParts] = env.split('=')}
 							{@const value = valueParts.join('=')}
 							<div class="flex flex-col text-sm sm:flex-row sm:items-center">
-								<span class="text-muted-foreground w-full break-all font-medium sm:w-1/4">{key}:</span>
-								<span class="w-full break-all font-mono text-xs sm:w-3/4 sm:text-sm">{value}</span>
+								<span class="text-muted-foreground w-full font-medium break-all sm:w-1/4">{key}:</span>
+								<span
+									class="w-full cursor-pointer font-mono text-xs break-all select-all sm:w-3/4 sm:text-sm"
+									title="Click to select">{value}</span
+								>
 							</div>
 							{#if env !== image.config.env[image.config.env.length - 1]}
 								<Separator class="my-2" />
