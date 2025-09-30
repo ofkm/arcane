@@ -211,7 +211,7 @@
 <Card.Root>
 	<Card.Content class="py-5">
 		<ArcaneTable
-			persistKey="arcane-network-table"
+			persistKey="arcane-networks-table"
 			items={networks}
 			bind:requestOptions
 			bind:selectedIds
