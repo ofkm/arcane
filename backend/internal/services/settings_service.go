@@ -84,6 +84,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		PruneMode:                    models.SettingVariable{Value: "dangling"},
 		BaseServerURL:                models.SettingVariable{Value: "http://localhost"},
 		EnableGravatar:               models.SettingVariable{Value: "true"},
+		DefaultShell:                 models.SettingVariable{Value: "/bin/sh"},
 		AuthLocalEnabled:             models.SettingVariable{Value: "true"},
 		AuthOidcEnabled:              models.SettingVariable{Value: "false"},
 		AuthSessionTimeout:           models.SettingVariable{Value: "1440"},

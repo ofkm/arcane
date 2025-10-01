@@ -33,6 +33,7 @@
 
 		terminal = new Terminal({
 			cursorBlink: true,
+			cursorStyle: 'underline',
 			fontSize: 14,
 			fontFamily: 'Geist Mono, monospace',
 			theme: {
@@ -162,4 +163,14 @@
 	});
 </script>
 
-<div bind:this={container} class="h-full w-full" style="height: {height}"></div>
+<div bind:this={container} class="terminal-container h-full w-full" style="height: {height}"></div>
+
+<style>
+	:global(.terminal-container .xterm) {
+		padding: 8px 12px;
+	}
+
+	:global(.terminal-container .xterm-viewport) {
+		background-color: transparent !important;
+	}
+</style>

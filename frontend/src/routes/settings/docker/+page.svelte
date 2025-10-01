@@ -13,6 +13,7 @@
 	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import TrashIcon from '@lucide/svelte/icons/trash';
+	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
@@ -31,7 +32,8 @@
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
 		autoUpdateInterval: z.number().int(),
-		dockerPruneMode: z.enum(['all', 'dangling'])
+		dockerPruneMode: z.enum(['all', 'dangling']),
+		defaultShell: z.string()
 	});
 
 	let pruneMode = $derived(currentSettings.dockerPruneMode);
@@ -94,6 +96,15 @@
 		pruneModeOptions.find((o) => o.value === pruneMode)?.description ?? m.docker_prune_mode_description()
 	);
 
+	const shellOptions = [
+		{ value: '/bin/sh', label: '/bin/sh', description: m.docker_shell_sh_description() },
+		{ value: '/bin/bash', label: '/bin/bash', description: m.docker_shell_bash_description() },
+		{ value: '/bin/ash', label: '/bin/ash', description: m.docker_shell_ash_description() },
+		{ value: '/bin/zsh', label: '/bin/zsh', description: m.docker_shell_zsh_description() }
+	];
+
+	let shellSelectValue = $state<string>(shellOptions.find((o) => o.value === currentSettings.defaultShell)?.value ?? 'custom');
+
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
 	const formHasChanges = $derived.by(
@@ -102,7 +113,8 @@
 			$formInputs.pollingInterval.value !== currentSettings.pollingInterval ||
 			$formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
 			$formInputs.autoUpdateInterval.value != currentSettings.autoUpdateInterval ||
-			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode
+			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode ||
+			$formInputs.defaultShell.value != currentSettings.defaultShell
 	);
 
 	$effect(() => {
@@ -113,10 +125,15 @@
 		}
 	});
 
-	// Keep form value in sync with preset selection unless "custom"
 	$effect(() => {
 		if (pollingIntervalMode !== 'custom') {
 			$formInputs.pollingInterval.value = presetToMinutes[pollingIntervalMode];
+		}
+	});
+
+	$effect(() => {
+		if (shellSelectValue !== 'custom') {
+			$formInputs.defaultShell.value = shellSelectValue;
 		}
 	});
 
@@ -155,6 +172,7 @@
 		$formInputs.autoUpdate.value = currentSettings.autoUpdate;
 		$formInputs.autoUpdateInterval.value = currentSettings.autoUpdateInterval;
 		$formInputs.dockerPruneMode.value = currentSettings.dockerPruneMode;
+		$formInputs.defaultShell.value = currentSettings.defaultShell;
 	}
 
 	onMount(() => {
@@ -182,8 +200,8 @@
 								<ActivityIcon class="size-4" />
 							</div>
 							<div>
-								<Card.Title class="text-base">Image Polling</Card.Title>
-								<Card.Description class="text-xs">Configure automatic image update checking</Card.Description>
+								<Card.Title class="text-base">{m.docker_image_polling_title()}</Card.Title>
+								<Card.Description class="text-xs">{m.docker_image_polling_description()}</Card.Description>
 							</div>
 						</div>
 					</Card.Header>
@@ -203,7 +221,7 @@
 										name="pollingIntervalMode"
 										bind:value={pollingIntervalMode}
 										label={m.docker_polling_interval_label()}
-										placeholder="Select interval"
+										placeholder={m.docker_polling_interval_placeholder_select()}
 										options={imagePollingOptions.map(({ value, label, description }) => ({ value, label, description }))}
 									/>
 
@@ -238,10 +256,8 @@
 									<RefreshCwIcon class="size-4" />
 								</div>
 								<div>
-									<Card.Title class="text-base">Auto Updates</Card.Title>
-									<Card.Description class="text-xs"
-										>Automatically update containers when new images are available</Card.Description
-									>
+									<Card.Title class="text-base">{m.docker_auto_updates_title()}</Card.Title>
+									<Card.Description class="text-xs">{m.docker_auto_updates_description()}</Card.Description>
 								</div>
 							</div>
 						</Card.Header>
@@ -277,8 +293,8 @@
 								<TrashIcon class="size-4" />
 							</div>
 							<div>
-								<Card.Title class="text-base">Cleanup Settings</Card.Title>
-								<Card.Description class="text-xs">Configure how Docker images are pruned</Card.Description>
+								<Card.Title class="text-base">{m.docker_cleanup_settings_title()}</Card.Title>
+								<Card.Description class="text-xs">{m.docker_cleanup_settings_description()}</Card.Description>
 							</div>
 						</div>
 					</Card.Header>
@@ -293,6 +309,48 @@
 							options={pruneModeOptions}
 							onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
 						/>
+					</Card.Content>
+				</Card.Root>
+
+				<Card.Root class="overflow-hidden pt-0">
+					<Card.Header class="bg-muted/20 border-b !py-4">
+						<div class="flex items-center gap-3">
+							<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
+								<TerminalIcon class="size-4" />
+							</div>
+							<div>
+								<Card.Title class="text-base">{m.docker_terminal_settings_title()}</Card.Title>
+								<Card.Description class="text-xs">{m.docker_terminal_settings_description()}</Card.Description>
+							</div>
+						</div>
+					</Card.Header>
+					<Card.Content class="px-3 py-4 sm:px-6">
+						<div class="space-y-3">
+							<SelectWithLabel
+								id="shellSelectValue"
+								name="shellSelectValue"
+								bind:value={shellSelectValue}
+								label={m.docker_default_shell_label()}
+								description={m.docker_default_shell_description()}
+								placeholder={m.docker_default_shell_placeholder()}
+								options={[
+									...shellOptions,
+									{ value: 'custom', label: m.custom(), description: m.docker_shell_custom_description() }
+								]}
+							/>
+
+							{#if shellSelectValue === 'custom'}
+								<div class="border-primary/20 border-l-2 pl-3">
+									<TextInputWithLabel
+										bind:value={$formInputs.defaultShell.value}
+										label={m.custom()}
+										placeholder={m.docker_shell_custom_path_placeholder()}
+										helpText={m.docker_shell_custom_path_help()}
+										type="text"
+									/>
+								</div>
+							{/if}
+						</div>
 					</Card.Content>
 				</Card.Root>
 			</div>

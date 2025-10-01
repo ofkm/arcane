@@ -17,6 +17,7 @@ export type Settings = {
 	baseServerUrl: string;
 	enableGravatar: boolean;
 	uiConfigDisabled: boolean;
+	defaultShell: string;
 
 	authLocalEnabled: boolean;
 	authOidcEnabled: boolean;

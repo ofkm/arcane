@@ -52,6 +52,7 @@ type Settings struct {
 	PruneMode          SettingVariable `key:"dockerPruneMode"`
 	BaseServerURL      SettingVariable `key:"baseServerUrl"`
 	EnableGravatar     SettingVariable `key:"enableGravatar"`
+	DefaultShell       SettingVariable `key:"defaultShell"`
 
 	// Authentication
 	AuthLocalEnabled   SettingVariable `key:"authLocalEnabled,public"`
