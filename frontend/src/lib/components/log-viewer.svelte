@@ -161,6 +161,7 @@
 			error = null;
 			onStart?.();
 			await startWebSocketStream();
+			return;
 		} catch (err) {
 			console.error('Failed to start log stream:', err);
 			error = m.log_stream_failed_connect({ type: humanType });

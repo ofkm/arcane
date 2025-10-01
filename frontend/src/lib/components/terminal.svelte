@@ -34,7 +34,7 @@
 		terminal = new Terminal({
 			cursorBlink: true,
 			fontSize: 14,
-			fontFamily: 'JetBrains Mono, Menlo, Monaco, "Courier New", monospace',
+			fontFamily: 'Geist Mono, monospace',
 			theme: {
 				background: '#09090b',
 				foreground: '#e4e4e7',
