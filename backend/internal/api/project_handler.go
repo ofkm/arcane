@@ -12,10 +12,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
@@ -23,13 +25,7 @@ import (
 type ProjectHandler struct {
 	projectService *services.ProjectService
 	logStreams     sync.Map
-}
-
-var wsUpgrader = websocket.Upgrader{
-	CheckOrigin:       func(r *http.Request) bool { return true },
-	ReadBufferSize:    32 * 1024,
-	WriteBufferSize:   32 * 1024,
-	EnableCompression: true,
+	wsUpgrader     websocket.Upgrader
 }
 
 type projectLogStream struct {
@@ -40,9 +36,17 @@ type projectLogStream struct {
 	seq    atomic.Uint64
 }
 
-func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectService, authMiddleware *middleware.AuthMiddleware) {
+func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
 
-	handler := &ProjectHandler{projectService: projectService}
+	handler := &ProjectHandler{
+		projectService: projectService,
+		wsUpgrader: websocket.Upgrader{
+			CheckOrigin:       httputil.ValidateWebSocketOrigin(cfg.AppUrl),
+			ReadBufferSize:    32 * 1024,
+			WriteBufferSize:   32 * 1024,
+			EnableCompression: true,
+		},
+	}
 
 	apiGroup := group.Group("/environments/:id/projects")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -383,7 +387,7 @@ func (h *ProjectHandler) GetProjectLogsWS(c *gin.Context) {
 	format := c.DefaultQuery("format", "text")
 	batched := c.DefaultQuery("batched", "false") == "true"
 
-	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := h.wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}

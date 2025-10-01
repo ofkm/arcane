@@ -16,29 +16,35 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
-var containerWSUpgrader = websocket.Upgrader{
-	CheckOrigin:       func(r *http.Request) bool { return true },
-	ReadBufferSize:    32 * 1024,
-	WriteBufferSize:   32 * 1024,
-	EnableCompression: true,
-}
-
 type ContainerHandler struct {
-	containerService *services.ContainerService
-	imageService     *services.ImageService
-	dockerService    *services.DockerClientService
-	logStreams       sync.Map // map[string]*logStream
+	containerService    *services.ContainerService
+	imageService        *services.ImageService
+	dockerService       *services.DockerClientService
+	logStreams          sync.Map
+	containerWSUpgrader websocket.Upgrader
 }
 
-func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, containerService *services.ContainerService, imageService *services.ImageService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &ContainerHandler{dockerService: dockerService, containerService: containerService, imageService: imageService}
+func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, containerService *services.ContainerService, imageService *services.ImageService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
+	handler := &ContainerHandler{
+		dockerService:    dockerService,
+		containerService: containerService,
+		imageService:     imageService,
+		containerWSUpgrader: websocket.Upgrader{
+			CheckOrigin:       httputil.ValidateWebSocketOrigin(cfg.AppUrl),
+			ReadBufferSize:    32 * 1024,
+			WriteBufferSize:   32 * 1024,
+			EnableCompression: true,
+		},
+	}
 
 	apiGroup := group.Group("/environments/:id/containers")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -158,7 +164,7 @@ func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
 	format := c.DefaultQuery("format", "text")
 	batched := c.DefaultQuery("batched", "false") == "true"
 
-	conn, err := containerWSUpgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := h.containerWSUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		slog.Error("Failed to upgrade websocket connection", "err", err)
 		return
@@ -181,7 +187,7 @@ func (h *ContainerHandler) GetExecWS(c *gin.Context) {
 
 	shell := c.DefaultQuery("shell", "/bin/sh")
 
-	conn, err := containerWSUpgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := h.containerWSUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Failed to upgrade connection: " + err.Error()}})
 		return
