@@ -97,23 +97,31 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, u
 	return nil
 }
 
-func (s *ImageService) PullImage(ctx context.Context, imageName string, progressWriter io.Writer, user models.User) error {
+func (s *ImageService) PullImage(ctx context.Context, imageName string, progressWriter io.Writer, user models.User, externalCreds []dto.ContainerRegistryCredential) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
-	slog.Debug("attempting to pull image", slog.String("image", imageName))
+	slog.DebugContext(ctx, "Attempting to pull image",
+		slog.String("image", imageName),
+		slog.Int("externalCredCount", len(externalCreds)))
 
-	pullOptions, err := s.getPullOptionsWithAuth(ctx, imageName)
+	pullOptions, err := s.getPullOptionsWithAuth(ctx, imageName, externalCreds)
 	if err != nil {
-		slog.Warn("failed to get registry authentication for image; proceeding without auth", slog.String("image", imageName), slog.Any("err", err))
+		slog.WarnContext(ctx, "Failed to get registry authentication for image; proceeding without auth",
+			slog.String("image", imageName),
+			slog.String("error", err.Error()))
 		pullOptions = image.PullOptions{}
 	}
 
 	reader, err := dockerClient.ImagePull(ctx, imageName, pullOptions)
 	if err != nil {
+		slog.ErrorContext(ctx, "Docker ImagePull failed",
+			slog.String("image", imageName),
+			slog.Bool("hasAuth", pullOptions.RegistryAuth != ""),
+			slog.String("error", err.Error()))
 		return fmt.Errorf("failed to initiate image pull for %s: %w", imageName, err)
 	}
 	defer reader.Close()
@@ -155,14 +163,42 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	return nil
 }
 
-func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef string) (image.PullOptions, error) {
+func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef string, externalCreds []dto.ContainerRegistryCredential) (image.PullOptions, error) {
 	pullOptions := image.PullOptions{}
+
+	registryHost := s.extractRegistryHost(imageRef)
+
+	if len(externalCreds) > 0 {
+		for _, cred := range externalCreds {
+			if !cred.Enabled || cred.Username == "" || cred.Token == "" {
+				continue
+			}
+
+			credHost := s.normalizeRegistryForComparison(cred.URL)
+			if credHost == s.normalizeRegistryForComparison(registryHost) {
+				authConfig := &registry.AuthConfig{
+					Username:      cred.Username,
+					Password:      cred.Token,
+					ServerAddress: s.normalizeRegistryURL(cred.URL),
+				}
+
+				authBytes, err := json.Marshal(authConfig)
+				if err != nil {
+					return pullOptions, fmt.Errorf("failed to marshal auth config: %w", err)
+				}
+
+				pullOptions.RegistryAuth = base64.StdEncoding.EncodeToString(authBytes)
+				slog.DebugContext(ctx, "Using external credentials for image pull",
+					slog.String("registry", credHost),
+					slog.String("username", cred.Username))
+				return pullOptions, nil
+			}
+		}
+	}
 
 	if s.registryService == nil {
 		return pullOptions, nil
 	}
-
-	registryHost := s.extractRegistryHost(imageRef)
 
 	registries, err := s.registryService.GetEnabledRegistries(ctx)
 	if err != nil {
@@ -187,7 +223,10 @@ func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef stri
 				return pullOptions, fmt.Errorf("failed to marshal auth config: %w", err)
 			}
 
-			pullOptions.RegistryAuth = base64.URLEncoding.EncodeToString(authBytes)
+			pullOptions.RegistryAuth = base64.StdEncoding.EncodeToString(authBytes)
+			slog.DebugContext(ctx, "Using database credentials for image pull",
+				slog.String("registry", registryHost),
+				slog.String("username", reg.Username))
 			break
 		}
 	}

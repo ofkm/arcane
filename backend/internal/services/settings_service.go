@@ -413,31 +413,40 @@ func (s *SettingsService) EnsureDefaultSettings(ctx context.Context) error {
 }
 
 func (s *SettingsService) PersistEnvSettingsIfMissing(ctx context.Context) error {
-	settings := s.GetSettingsConfig()
-	vars := settings.ToSettingVariableSlice(true, false)
+	rt := reflect.TypeOf(models.Settings{})
 
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		for _, v := range vars {
-			envVal, ok := os.LookupEnv(v.Key)
+		for i := 0; i < rt.NumField(); i++ {
+			field := rt.Field(i)
+			key, attrs, _ := strings.Cut(field.Tag.Get("key"), ",")
+
+			if key == "" || attrs == "internal" {
+				continue
+			}
+
+			envVarName := utils.CamelCaseToScreamingSnakeCase(key)
+			envVal, ok := os.LookupEnv(envVarName)
 			if !ok {
 				continue
 			}
 
 			var existing models.SettingVariable
-			err := tx.Where("key = ?", v.Key).First(&existing).Error
+			err := tx.Where("key = ?", key).First(&existing).Error
 			switch {
 			case errors.Is(err, gorm.ErrRecordNotFound):
-				newVar := models.SettingVariable{Key: v.Key, Value: envVal}
+				newVar := models.SettingVariable{Key: key, Value: envVal}
 				if err := tx.Create(&newVar).Error; err != nil {
-					return fmt.Errorf("persist env setting %s: %w", v.Key, err)
+					return fmt.Errorf("persist env setting %s: %w", key, err)
 				}
+				slog.DebugContext(ctx, "Created setting from environment", "key", key)
 			case err != nil:
-				return fmt.Errorf("check setting %s: %w", v.Key, err)
+				return fmt.Errorf("check setting %s: %w", key, err)
 			default:
 				if existing.Value != envVal {
 					if err := tx.Model(&existing).Update("value", envVal).Error; err != nil {
-						return fmt.Errorf("update env setting %s: %w", v.Key, err)
+						return fmt.Errorf("update env setting %s: %w", key, err)
 					}
+					slog.DebugContext(ctx, "Updated setting from environment", "key", key)
 				}
 			}
 		}
@@ -446,7 +455,8 @@ func (s *SettingsService) PersistEnvSettingsIfMissing(ctx context.Context) error
 		return err
 	}
 
-	return nil
+	// Reload settings after persisting env vars
+	return s.LoadDatabaseSettings(ctx)
 }
 
 func (s *SettingsService) ListSettings(all bool) []models.SettingVariable {

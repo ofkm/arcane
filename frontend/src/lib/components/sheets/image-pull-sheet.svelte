@@ -104,12 +104,15 @@
 
 			if (!response.ok || !response.body) {
 				const errorData = await response.json().catch(() => ({
-					error: m.images_pull_server_error()
+					data: { message: m.images_pull_server_error() }
 				}));
+
 				const errorMessage =
-					typeof errorData.error === 'string'
-						? errorData.error
-						: errorData.message || `${m.images_pull_server_error()}: HTTP ${response.status}`;
+					errorData.data?.message ||
+					errorData.error ||
+					errorData.message ||
+					`${m.images_pull_server_error()}: HTTP ${response.status}`;
+
 				throw new Error(errorMessage);
 			}
 

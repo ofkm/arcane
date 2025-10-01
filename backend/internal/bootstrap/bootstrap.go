@@ -77,13 +77,18 @@ func InitializeApp() (*App, error) {
 	}
 	utils.InitEncryption(cfg)
 
-	// Ensure default settings but skip user bootstrap in agent mode
 	slog.InfoContext(appCtx, "Ensuring default settings are initialized")
 	if cfg.AgentMode || cfg.UIConfigurationDisabled {
 		if err := appServices.Settings.PersistEnvSettingsIfMissing(appCtx); err != nil {
 			slog.WarnContext(appCtx, "Failed to persist env-driven settings", slog.String("error", err.Error()))
 		} else {
 			slog.DebugContext(appCtx, "Persisted env-driven settings if missing")
+		}
+
+		if err := appServices.Settings.SetBoolSetting(appCtx, "onboardingCompleted", true); err != nil {
+			slog.WarnContext(appCtx, "Failed to mark onboarding as completed", slog.String("error", err.Error()))
+		} else {
+			slog.InfoContext(appCtx, "Onboarding automatically completed (UI configuration disabled)")
 		}
 	}
 

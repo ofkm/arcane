@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
@@ -16,6 +17,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	"gorm.io/gorm"
 )
@@ -321,4 +323,39 @@ func (s *EnvironmentService) BuildRemoteWSTarget(environment *models.Environment
 	}
 	h := s.BuildWSAuthHeadersFromRequest(req, agentToken)
 	return base.String(), h, nil
+}
+
+func (s *EnvironmentService) GetDB() *database.DB {
+	return s.db
+}
+
+func (s *EnvironmentService) GetEnabledRegistryCredentials(ctx context.Context) ([]dto.ContainerRegistryCredential, error) {
+	var registries []models.ContainerRegistry
+	if err := s.db.WithContext(ctx).Where("enabled = ?", true).Find(&registries).Error; err != nil {
+		return nil, fmt.Errorf("failed to get enabled container registries: %w", err)
+	}
+
+	var creds []dto.ContainerRegistryCredential
+	for _, reg := range registries {
+		if !reg.Enabled || reg.Username == "" || reg.Token == "" {
+			continue
+		}
+
+		decryptedToken, err := utils.Decrypt(reg.Token)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to decrypt registry token",
+				slog.String("registryURL", reg.URL),
+				slog.String("error", err.Error()))
+			continue
+		}
+
+		creds = append(creds, dto.ContainerRegistryCredential{
+			URL:      reg.URL,
+			Username: reg.Username,
+			Token:    decryptedToken,
+			Enabled:  reg.Enabled,
+		})
+	}
+
+	return creds, nil
 }

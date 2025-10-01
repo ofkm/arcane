@@ -48,11 +48,12 @@
 <section class={className}>
 	{#if compact}
 		{#if loadingDockerInfo}
-			<div class="flex flex-wrap items-center gap-2">
+			<div class="hidden flex-wrap items-center gap-2 sm:flex">
 				{#each Array(4) as _}
 					<div class="bg-muted/40 h-9 w-28 animate-pulse rounded-lg border"></div>
 				{/each}
 			</div>
+			<div class="bg-muted/40 size-9 animate-pulse rounded-lg border sm:hidden"></div>
 		{:else}
 			<div class="hidden flex-wrap items-center gap-2 sm:flex">
 				<button
@@ -123,16 +124,14 @@
 			</div>
 
 			<DropdownMenu.Root>
-				<DropdownMenu.Trigger
-					class="bg-background/70 inline-flex size-9 items-center justify-center rounded-lg border sm:hidden"
-				>
+				<DropdownMenu.Trigger class="bg-background/70 inline-flex size-9 items-center justify-center rounded-lg border sm:hidden">
 					<span class="sr-only">{m.common_open_menu()}</span>
-					<EllipsisIcon />
+					<EllipsisIcon class="size-4" />
 				</DropdownMenu.Trigger>
 
 				<DropdownMenu.Content
 					align="end"
-					class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[160px] rounded-md p-1 shadow-lg backdrop-blur-sm supports-[backdrop-filter]:backdrop-blur-sm"
+					class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[160px] rounded-md p-1 shadow-lg backdrop-blur-sm"
 				>
 					<DropdownMenu.Group>
 						<DropdownMenu.Item
@@ -232,6 +231,34 @@
 									<LoaderCircleIcon class="size-4 text-sky-400 motion-safe:animate-spin" />
 								{:else}
 									<CircleStopIcon class="size-5 text-sky-400" />
+								{/if}
+							</div>
+							<div
+								class="pointer-events-none absolute -inset-1 rounded-lg bg-sky-500/20 opacity-0 blur-lg transition-opacity group-hover:opacity-40"
+							></div>
+						</div>
+						<div class="flex-1 text-left">
+							<div class="text-sm font-medium">{m.quick_actions_stop_all()}</div>
+							<div class="text-muted-foreground text-xs">
+								<span class="rounded-full border px-1.5 py-0.5">{m.quick_actions_containers({ count: runningContainers })}</span>
+							</div>
+						</div>
+					</button>
+				</div>
+
+				<div class="group rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/0 p-[1px]">
+					<button
+						class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-offset-background focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 shadow-sm backdrop-blur transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+						disabled={!dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
+						onclick={onOpenPruneDialog}
+						aria-busy={isLoading.pruning}
+					>
+						<div class="relative">
+							<div class="flex size-10 items-center justify-center rounded-lg bg-red-500/10 ring-1 ring-red-500/30">
+								{#if isLoading.pruning}
+									<LoaderCircleIcon class="size-4 text-red-400 motion-safe:animate-spin" />
+								{:else}
+									<Trash2Icon class="size-5 text-red-400" />
 								{/if}
 							</div>
 							<div

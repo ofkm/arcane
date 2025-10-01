@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -96,14 +97,23 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		env.Enabled = *req.Enabled
 	}
 
-	// Auto-pair with agent if bootstrap token is provided
 	if (req.AccessToken == nil || *req.AccessToken == "") && req.BootstrapToken != nil && *req.BootstrapToken != "" {
-		if token, err := h.environmentService.PairAgentWithBootstrap(c.Request.Context(), req.ApiUrl, *req.BootstrapToken); err == nil && token != "" {
-			env.AccessToken = &token
-		} else if err != nil {
-			c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Agent pairing failed: " + err.Error()}})
+		token, err := h.environmentService.PairAgentWithBootstrap(c.Request.Context(), req.ApiUrl, *req.BootstrapToken)
+		if err != nil {
+			slog.ErrorContext(c.Request.Context(), "Failed to pair with agent",
+				slog.String("apiUrl", req.ApiUrl),
+				slog.String("error", err.Error()))
+
+			c.JSON(http.StatusBadGateway, gin.H{
+				"success": false,
+				"data": gin.H{
+					"error": "Agent pairing failed: " + err.Error(),
+					"hint":  "Ensure the agent is running and the bootstrap token matches AGENT_BOOTSTRAP_TOKEN",
+				},
+			})
 			return
 		}
+		env.AccessToken = &token
 	} else if req.AccessToken != nil && *req.AccessToken != "" {
 		env.AccessToken = req.AccessToken
 	}

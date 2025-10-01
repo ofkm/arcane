@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils/remenv"
 	wsutil "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
@@ -19,37 +21,42 @@ type EnvResolver func(ctx context.Context, id string) (apiURL string, accessToke
 
 // NewEnvProxyMiddleware preserves the previous API and uses "id" as the param name.
 func NewEnvProxyMiddleware(localID string, resolver EnvResolver) gin.HandlerFunc {
-	return NewEnvProxyMiddlewareWithParam(localID, "id", resolver)
+	return NewEnvProxyMiddlewareWithParam(localID, "id", resolver, nil)
 }
 
 // NewEnvProxyMiddlewareWithParam returns a gin middleware that proxies requests whose environment id
 // is remote. paramName is the URL param key (e.g. "id") that contains the environment id when using
 // router groups; if that param is not present the middleware will attempt to auto-detect the id
 // by parsing the request path after the first "/environments/" segment.
-//
-//nolint:gocognit
-func NewEnvProxyMiddlewareWithParam(localID string, paramName string, resolver EnvResolver) gin.HandlerFunc {
+func NewEnvProxyMiddlewareWithParam(localID string, paramName string, resolver EnvResolver, envService *services.EnvironmentService) gin.HandlerFunc {
+	m := &EnvironmentMiddleware{
+		localID:    localID,
+		resolver:   resolver,
+		envService: envService,
+		httpClient: &http.Client{
+			Timeout: 60 * time.Second,
+		},
+	}
+	return m.handle(paramName)
+}
+
+type EnvironmentMiddleware struct {
+	localID    string
+	resolver   EnvResolver
+	envService *services.EnvironmentService
+	httpClient *http.Client
+}
+
+func (m *EnvironmentMiddleware) handle(paramName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		envID := c.Param(paramName)
+		envID := m.extractEnvironmentID(c, paramName)
 
-		// Fallback: try to auto-detect env id from path like "/.../environments/<envID>/..."
-		if envID == "" {
-			const marker = "/environments/"
-			if idx := strings.Index(c.Request.URL.Path, marker); idx >= 0 {
-				rest := c.Request.URL.Path[idx+len(marker):]
-				parts := strings.SplitN(rest, "/", 2)
-				if len(parts) > 0 && parts[0] != "" {
-					envID = parts[0]
-				}
-			}
-		}
-
-		if envID == "" || envID == localID {
+		if envID == "" || envID == m.localID {
 			c.Next()
 			return
 		}
 
-		apiURL, accessToken, enabled, err := resolver(c.Request.Context(), envID)
+		apiURL, accessToken, enabled, err := m.resolver(c.Request.Context(), envID)
 		if err != nil || apiURL == "" {
 			c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found"}})
 			c.Abort()
@@ -61,146 +68,151 @@ func NewEnvProxyMiddlewareWithParam(localID string, paramName string, resolver E
 			return
 		}
 
-		// Build target: map incoming /api/environments/:id/... -> remoteApiUrl/api/environments/<localID>/...
-		prefix := "/api/environments/" + envID
-		suffix := strings.TrimPrefix(c.Request.URL.Path, prefix)
-		if !strings.HasPrefix(suffix, "/") && suffix != "" {
-			suffix = "/" + suffix
-		}
-		target := strings.TrimRight(apiURL, "/") + path.Join("/api/environments/", localID) + suffix
-		if qs := c.Request.URL.RawQuery; qs != "" {
-			target += "?" + qs
-		}
+		target := m.buildTargetURL(c, envID, apiURL)
 
-		if strings.EqualFold(c.GetHeader("Upgrade"), "websocket") || strings.Contains(strings.ToLower(c.GetHeader("Connection")), "upgrade") {
-			wsTarget := target
-			if strings.HasPrefix(target, "https://") {
-				wsTarget = "wss://" + strings.TrimPrefix(target, "https://")
-			} else if strings.HasPrefix(target, "http://") {
-				wsTarget = "ws://" + strings.TrimPrefix(target, "http://")
-			}
-
-			hdr := http.Header{}
-			if auth := c.GetHeader("Authorization"); auth != "" {
-				hdr.Set("Authorization", auth)
-			} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
-				hdr.Set("Authorization", "Bearer "+cookieToken)
-			}
-
-			if hdr.Get("Authorization") == "" {
-				if cookieHeader := c.Request.Header.Get("Cookie"); cookieHeader != "" {
-					hdr.Set("Cookie", cookieHeader)
-				}
-			}
-
-			if accessToken != nil && *accessToken != "" {
-				hdr.Set("X-Arcane-Agent-Token", *accessToken)
-			}
-
-			if err := wsutil.ProxyHTTP(c.Writer, c.Request, wsTarget, hdr); err != nil {
-				slog.Error("websocket proxy failed", "env_id", envID, "target", wsTarget, "err", err)
-			}
-			c.Abort()
+		if m.isWebSocketRequest(c) {
+			m.handleWebSocket(c, target, accessToken, envID)
 			return
 		}
 
-		var bodyReader io.Reader
-		if c.Request.Body != nil {
-			bodyReader = c.Request.Body
-		}
+		m.proxyHTTP(c, target, accessToken)
+	}
+}
 
-		req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, target, bodyReader)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to create proxy request"}})
-			c.Abort()
-			return
-		}
+func (m *EnvironmentMiddleware) extractEnvironmentID(c *gin.Context, paramName string) string {
+	envID := c.Param(paramName)
+	if envID != "" {
+		return envID
+	}
 
-		skip := map[string]struct{}{
-			"Host":                           {},
-			"Connection":                     {},
-			"Keep-Alive":                     {},
-			"Proxy-Authenticate":             {},
-			"Proxy-Authorization":            {},
-			"Te":                             {},
-			"Trailer":                        {},
-			"Transfer-Encoding":              {},
-			"Upgrade":                        {},
-			"Content-Length":                 {},
-			"Origin":                         {},
-			"Referer":                        {},
-			"Access-Control-Request-Method":  {},
-			"Access-Control-Request-Headers": {},
-			"Cookie":                         {},
+	const marker = "/environments/"
+	if idx := strings.Index(c.Request.URL.Path, marker); idx >= 0 {
+		rest := c.Request.URL.Path[idx+len(marker):]
+		parts := strings.SplitN(rest, "/", 2)
+		if len(parts) > 0 && parts[0] != "" {
+			return parts[0]
 		}
-		for k, vs := range c.Request.Header {
-			ck := http.CanonicalHeaderKey(k)
-			if _, ok := skip[ck]; ok || ck == "Authorization" {
-				continue
-			}
-			for _, v := range vs {
-				req.Header.Add(k, v)
-			}
-		}
+	}
 
-		// Forward Authorization (or promote cookie)
-		if auth := c.GetHeader("Authorization"); auth != "" {
-			req.Header.Set("Authorization", auth)
-		} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
-			req.Header.Set("Authorization", "Bearer "+cookieToken)
-		}
+	return ""
+}
 
-		// Forward agent token if provided by resolver
-		if accessToken != nil && *accessToken != "" {
-			req.Header.Set("X-Arcane-Agent-Token", *accessToken)
-		}
+func (m *EnvironmentMiddleware) buildTargetURL(c *gin.Context, envID, apiURL string) string {
+	prefix := "/api/environments/" + envID
+	suffix := strings.TrimPrefix(c.Request.URL.Path, prefix)
+	if !strings.HasPrefix(suffix, "/") && suffix != "" {
+		suffix = "/" + suffix
+	}
 
-		req.Header.Set("X-Forwarded-For", c.ClientIP())
-		req.Header.Set("X-Forwarded-Host", c.Request.Host)
+	target := strings.TrimRight(apiURL, "/") + path.Join("/api/environments/", m.localID) + suffix
+	if qs := c.Request.URL.RawQuery; qs != "" {
+		target += "?" + qs
+	}
 
-		client := &http.Client{Timeout: 60 * time.Second}
-		resp, err := client.Do(req)
-		if err != nil {
-			c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": fmt.Sprintf("Proxy request failed: %v", err)}})
-			c.Abort()
-			return
-		}
-		defer resp.Body.Close()
+	return target
+}
 
-		hop := map[string]struct{}{
-			http.CanonicalHeaderKey("Connection"):          {},
-			http.CanonicalHeaderKey("Keep-Alive"):          {},
-			http.CanonicalHeaderKey("Proxy-Authenticate"):  {},
-			http.CanonicalHeaderKey("Proxy-Authorization"): {},
-			http.CanonicalHeaderKey("TE"):                  {},
-			http.CanonicalHeaderKey("Trailers"):            {},
-			http.CanonicalHeaderKey("Trailer"):             {},
-			http.CanonicalHeaderKey("Transfer-Encoding"):   {},
-			http.CanonicalHeaderKey("Upgrade"):             {},
-		}
-		for _, connVal := range resp.Header.Values("Connection") {
-			for _, token := range strings.Split(connVal, ",") {
-				if t := strings.TrimSpace(token); t != "" {
-					hop[http.CanonicalHeaderKey(t)] = struct{}{}
-				}
-			}
-		}
+func (m *EnvironmentMiddleware) isWebSocketRequest(c *gin.Context) bool {
+	return strings.EqualFold(c.GetHeader("Upgrade"), "websocket") ||
+		strings.Contains(strings.ToLower(c.GetHeader("Connection")), "upgrade")
+}
 
-		for k, vs := range resp.Header {
-			ck := http.CanonicalHeaderKey(k)
-			if _, ok := hop[ck]; ok {
-				continue
-			}
-			for _, v := range vs {
-				c.Writer.Header().Add(k, v)
-			}
-		}
+func (m *EnvironmentMiddleware) handleWebSocket(c *gin.Context, target string, accessToken *string, envID string) {
+	wsTarget := m.convertToWebSocketURL(target)
+	hdr := m.buildWebSocketHeaders(c, accessToken)
 
-		c.Status(resp.StatusCode)
-		if c.Request.Method != http.MethodHead {
-			_, _ = io.Copy(c.Writer, resp.Body)
-		}
+	if err := wsutil.ProxyHTTP(c.Writer, c.Request, wsTarget, hdr); err != nil {
+		slog.Error("websocket proxy failed", "env_id", envID, "target", wsTarget, "err", err)
+	}
+	c.Abort()
+}
 
+func (m *EnvironmentMiddleware) convertToWebSocketURL(target string) string {
+	if strings.HasPrefix(target, "https://") {
+		return "wss://" + strings.TrimPrefix(target, "https://")
+	}
+	if strings.HasPrefix(target, "http://") {
+		return "ws://" + strings.TrimPrefix(target, "http://")
+	}
+	return target
+}
+
+func (m *EnvironmentMiddleware) buildWebSocketHeaders(c *gin.Context, accessToken *string) http.Header {
+	hdr := http.Header{}
+
+	if auth := c.GetHeader("Authorization"); auth != "" {
+		hdr.Set("Authorization", auth)
+	} else if cookieToken, err := c.Cookie("token"); err == nil && cookieToken != "" {
+		hdr.Set("Authorization", "Bearer "+cookieToken)
+	}
+
+	if hdr.Get("Authorization") == "" {
+		if cookieHeader := c.Request.Header.Get("Cookie"); cookieHeader != "" {
+			hdr.Set("Cookie", cookieHeader)
+		}
+	}
+
+	if accessToken != nil && *accessToken != "" {
+		hdr.Set("X-Arcane-Agent-Token", *accessToken)
+	}
+
+	return hdr
+}
+
+func (m *EnvironmentMiddleware) proxyHTTP(c *gin.Context, target string, accessToken *string) {
+	req, err := m.createProxyRequest(c, target, accessToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to create proxy request"}})
 		c.Abort()
+		return
+	}
+
+	resp, err := m.httpClient.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": fmt.Sprintf("Proxy request failed: %v", err)}})
+		c.Abort()
+		return
+	}
+	defer resp.Body.Close()
+
+	m.copyResponseToClient(c, resp)
+	c.Abort()
+}
+
+func (m *EnvironmentMiddleware) createProxyRequest(c *gin.Context, target string, accessToken *string) (*http.Request, error) {
+	var bodyReader io.Reader
+	if c.Request.Body != nil {
+		bodyReader = c.Request.Body
+	}
+
+	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, target, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+
+	skip := remenv.GetSkipHeaders()
+	remenv.CopyRequestHeaders(c.Request.Header, req.Header, skip)
+	remenv.SetAuthHeader(req, c)
+	remenv.SetAgentToken(req, accessToken)
+	remenv.SetForwardedHeaders(req, c.ClientIP(), c.Request.Host)
+
+	if remenv.NeedsCredentialInjection(target) {
+		if err := remenv.InjectRegistryCredentials(c.Request.Context(), req, m.envService); err != nil {
+			slog.WarnContext(c.Request.Context(), "Failed to inject registry credentials",
+				slog.String("error", err.Error()),
+				slog.String("target", target))
+		}
+	}
+
+	return req, nil
+}
+
+func (m *EnvironmentMiddleware) copyResponseToClient(c *gin.Context, resp *http.Response) {
+	hop := remenv.BuildHopByHopHeaders(resp.Header)
+	remenv.CopyResponseHeaders(resp.Header, c.Writer.Header(), hop)
+
+	c.Status(resp.StatusCode)
+	if c.Request.Method != http.MethodHead {
+		_, _ = io.Copy(c.Writer, resp.Body)
 	}
 }

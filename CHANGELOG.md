@@ -1,3 +1,55 @@
+## v1.3.0
+
+### New features
+
+* mobile navigation ([#537](https://github.com/ofkm/arcane/pull/537) by @cabaucom376)
+* redesigned dashboard stats and docker info cards ([#607](https://github.com/ofkm/arcane/pull/607) by @kmendell)
+
+### Bug fixes
+
+* correct display of user label in event details ([#563](https://github.com/ofkm/arcane/pull/563) by @neilsb)
+* use display: fullscreen for app.webmanifest([d711d44](https://github.com/ofkm/arcane/commit/d711d44831e740be72f5e87c43e64805fe3ce12a) by @kmendell)
+* refresh container list when environment changes ([#573](https://github.com/ofkm/arcane/pull/573) by @neilsb)
+* environment handler not registering correctly([05a1806](https://github.com/ofkm/arcane/commit/05a180686c7cd2aaab4b1f2cb4912d73ff70f67a) by @kmendell)
+* remove unused argument for environment handler([b3effbb](https://github.com/ofkm/arcane/commit/b3effbbad1bc65e75088b70998fcc66c4711eb08) by @kmendell)
+* add work directory and config files labels to projects([1c25aa8](https://github.com/ofkm/arcane/commit/1c25aa840f59c6f9392b7e28dec9373c8e84534c) by @kmendell)
+* properly align login screen elements when only oidc is enabled([4aeb845](https://github.com/ofkm/arcane/commit/4aeb845d5289cc0580a918fa045b08553324562f) by @kmendell)
+* sort and filter properly using docker api ([#593](https://github.com/ofkm/arcane/pull/593) by @kmendell)
+* project title not saving([fe4e8b4](https://github.com/ofkm/arcane/commit/fe4e8b43a4160a56470c1082eef2e3822fdb0bce) by @kmendell)
+* use live project status vs stored value([1426374](https://github.com/ofkm/arcane/commit/14263744ebbc899b649fc205316dfe00599c4f84) by @kmendell)
+* image update item not retreving the correct update data([d6c449c](https://github.com/ofkm/arcane/commit/d6c449cabae66a87a94e31d7ebf604283e5a9568) by @kmendell)
+* skip onboarding when UI configuration is disabled ([#602](https://github.com/ofkm/arcane/pull/602) by @kmendell)
+* pass registry credentials to environments ([#603](https://github.com/ofkm/arcane/pull/603) by @kmendell)
+* remove trailing slash on projectId route([f824aa4](https://github.com/ofkm/arcane/commit/f824aa4d4dc87145a0ad771c2ce9567f25a7f807) by @kmendell)
+* use correct destructive variant for registry delete item([cd4a49b](https://github.com/ofkm/arcane/commit/cd4a49ba5b352e36f3b672161a9024d7b871c3a7) by @kmendell)
+* use correct status badge for container registry table([9fdbe02](https://github.com/ofkm/arcane/commit/9fdbe025de0bf4bb68129b6f1c09a65a17bd2c0f) by @kmendell)
+* restrict docker dialog to screen bounds([2f74a3e](https://github.com/ofkm/arcane/commit/2f74a3e74df15d4992a00bb568437b1e09c79761) by @kmendell)
+
+### Other
+
+* bump @playwright/test from 1.55.0 to 1.55.1 in the dev-dependencies group ([#560](https://github.com/ofkm/arcane/pull/560) by @dependabot[bot])
+* bump the prod-dependencies group across 1 directory with 5 updates ([#565](https://github.com/ofkm/arcane/pull/565) by @dependabot[bot])
+* bump github.com/go-co-op/gocron/v2 from 2.16.5 to 2.16.6 in /backend in the backend-dependencies group ([#570](https://github.com/ofkm/arcane/pull/570) by @dependabot[bot])
+* generalize environment routes into individual handlers ([#568](https://github.com/ofkm/arcane/pull/568) by @kmendell)
+* non env endpoints registered before env middleware ([#580](https://github.com/ofkm/arcane/pull/580) by @kmendell)
+* bump the prod-dependencies group across 1 directory with 5 updates ([#577](https://github.com/ofkm/arcane/pull/577) by @dependabot[bot])
+* use coreos/go-oidc library for oidc auth([80317bb](https://github.com/ofkm/arcane/commit/80317bbf9301cd70d9a2e5900643650a359c5eb8) by @kmendell)
+* add APP_URL to .env.dev([17738b1](https://github.com/ofkm/arcane/commit/17738b181af781c9045ba6ab7147d485adaf2fb8) by @kmendell)
+* improve ui consistency and maintainability ([#582](https://github.com/ofkm/arcane/pull/582) by @cabaucom376)
+* bump @codemirror/view from 6.38.3 to 6.38.4 in the prod-dependencies group ([#594](https://github.com/ofkm/arcane/pull/594) by @dependabot[bot])
+* update package manager to 10.17.1([6b287e8](https://github.com/ofkm/arcane/commit/6b287e8accbac215897514b87766c2fcf8f52c69) by @kmendell)
+* add CODEOWNERS([c621fab](https://github.com/ofkm/arcane/commit/c621fab260156eb757bb0f81c5ac9b422034ca00) by @kmendell)
+* tweak the styling of resource detail pages ([#595](https://github.com/ofkm/arcane/pull/595) by @cabaucom376)
+* enhance the development pipeline by incorporating caching and troubleshooting tools ([#596](https://github.com/ofkm/arcane/pull/596) by @cabaucom376)
+* bump typescript-eslint from 8.44.1 to 8.45.0 in the prod-dependencies group ([#599](https://github.com/ofkm/arcane/pull/599) by @dependabot[bot])
+* bump @types/node from 24.5.2 to 24.6.0 in the dev-dependencies group ([#598](https://github.com/ofkm/arcane/pull/598) by @dependabot[bot])
+* bump the dev-dependencies group with 2 updates ([#606](https://github.com/ofkm/arcane/pull/606) by @dependabot[bot])
+* bump the prod-dependencies group with 3 updates ([#605](https://github.com/ofkm/arcane/pull/605) by @dependabot[bot])
+
+
+
+**Full Changelog**: https://github.com/ofkm/arcane/compare/v1.2.2...v1.3.0
+
 ## v1.2.2
 
 ### Bug fixes

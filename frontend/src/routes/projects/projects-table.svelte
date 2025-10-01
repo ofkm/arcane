@@ -142,7 +142,7 @@
 </script>
 
 {#snippet NameCell({ item }: { item: Project })}
-	<a class="font-medium hover:underline" href="/projects/{item.id}/">
+	<a class="font-medium hover:underline" href="/projects/{item.id}">
 		{item.name}
 	</a>
 {/snippet}

@@ -9,7 +9,8 @@ import (
 )
 
 type ImagePullDto struct {
-	ImageName string `json:"imageName" binding:"required"`
+	ImageName   string                        `json:"imageName" binding:"required"`
+	Credentials []ContainerRegistryCredential `json:"credentials,omitempty"`
 }
 
 type ImageUpdateInfoDto struct {

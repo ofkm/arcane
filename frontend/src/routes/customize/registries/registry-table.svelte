@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
+	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
@@ -179,13 +180,7 @@
 
 {#snippet StatusCell({ value }: { value: unknown })}
 	{@const enabled = Boolean(value)}
-	<span
-		class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {enabled
-			? 'bg-green-100 text-green-800'
-			: 'bg-gray-100 text-gray-800'}"
-	>
-		{enabled ? m.common_enabled() : m.common_disabled()}
-	</span>
+	<StatusBadge variant={enabled ? 'green' : 'red'} text={enabled ? m.common_enabled() : m.common_disabled()} />
 {/snippet}
 
 {#snippet CreatedCell({ value }: { value: unknown })}
@@ -216,11 +211,7 @@
 					<PencilIcon class="size-4" />
 					{m.common_edit()}
 				</DropdownMenu.Item>
-				<DropdownMenu.Item
-					class="text-red-500 focus:text-red-700!"
-					onclick={() => handleDeleteOne(item.id, item.url)}
-					disabled={isLoading.removing}
-				>
+				<DropdownMenu.Item variant="destructive" onclick={() => handleDeleteOne(item.id, item.url)} disabled={isLoading.removing}>
 					<Trash2Icon class="size-4" />
 					{m.common_remove()}
 				</DropdownMenu.Item>
