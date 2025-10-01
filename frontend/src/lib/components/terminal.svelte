@@ -21,7 +21,13 @@
 	let fitAddon: FitAddon | null = null;
 	let ws: WebSocket | null = null;
 
-	onMount(() => {
+	function initializeTerminal() {
+		if (!container) return;
+
+		if (terminal) {
+			terminal.dispose();
+		}
+
 		terminal = new Terminal({
 			cursorBlink: true,
 			fontSize: 14,
@@ -37,12 +43,17 @@
 		terminal.open(container);
 		fitAddon.fit();
 
-		const handleResize = () => {
-			if (fitAddon) {
-				fitAddon.fit();
+		terminal.onData((data) => {
+			if (ws && ws.readyState === WebSocket.OPEN) {
+				ws.send(data);
 			}
-		};
-		window.addEventListener('resize', handleResize);
+		});
+	}
+
+	function connectWebSocket() {
+		if (ws) {
+			ws.close();
+		}
 
 		ws = new WebSocket(websocketUrl);
 		ws.binaryType = 'arraybuffer';
@@ -64,7 +75,7 @@
 			}
 		};
 
-		ws.onerror = (error) => {
+		ws.onerror = () => {
 			terminal?.writeln('\r\n\x1b[31mWebSocket error occurred\x1b[0m');
 		};
 
@@ -72,18 +83,31 @@
 			terminal?.writeln('\r\n\x1b[33mConnection closed\x1b[0m');
 			onDisconnected?.();
 		};
+	}
 
-		terminal.onData((data) => {
-			if (ws && ws.readyState === WebSocket.OPEN) {
-				ws.send(data);
-			}
-		});
+	function handleResize() {
+		if (fitAddon) {
+			fitAddon.fit();
+		}
+	}
+
+	onMount(() => {
+		initializeTerminal();
+		connectWebSocket();
+		window.addEventListener('resize', handleResize);
 
 		return () => {
 			window.removeEventListener('resize', handleResize);
 			ws?.close();
 			terminal?.dispose();
 		};
+	});
+
+	$effect(() => {
+		if (websocketUrl && terminal) {
+			terminal.clear();
+			connectWebSocket();
+		}
 	});
 
 	onDestroy(() => {
