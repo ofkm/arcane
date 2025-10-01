@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
@@ -44,6 +45,7 @@ func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerC
 		apiGroup.POST("/:containerId/stop", handler.Stop)
 		apiGroup.POST("/:containerId/restart", handler.Restart)
 		apiGroup.GET("/:containerId/logs/ws", handler.GetLogsWS)
+		apiGroup.GET("/:containerId/exec/ws", handler.GetExecWS)
 		apiGroup.DELETE("/:containerId", handler.Delete)
 
 	}
@@ -143,6 +145,74 @@ func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
 	}
 	hub := h.getOrStartContainerLogHub(containerID, format, batched, follow, tail, since, timestamps)
 	ws.ServeClient(context.Background(), hub, conn)
+}
+
+// GET /api/environments/:id/containers/:containerId/exec/ws
+func (h *ContainerHandler) GetExecWS(c *gin.Context) {
+	containerID := c.Param("containerId")
+	if strings.TrimSpace(containerID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Container ID is required"})
+		return
+	}
+
+	shell := c.DefaultQuery("shell", "/bin/sh")
+	
+	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
+	execID, err := h.containerService.CreateExec(ctx, containerID, []string{shell})
+	if err != nil {
+		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error creating exec: %v\r\n", err)))
+		return
+	}
+
+	stdin, stdout, err := h.containerService.AttachExec(ctx, execID)
+	if err != nil {
+		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error attaching to exec: %v\r\n", err)))
+		return
+	}
+	defer stdin.Close()
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		buf := make([]byte, 8192)
+		for {
+			n, err := stdout.Read(buf)
+			if n > 0 {
+				if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+					return
+				}
+			}
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			messageType, data, err := conn.ReadMessage()
+			if err != nil {
+				cancel()
+				return
+			}
+			if messageType == websocket.BinaryMessage || messageType == websocket.TextMessage {
+				if _, err := stdin.Write(data); err != nil {
+					return
+				}
+			}
+		}
+	}()
+
+	<-done
 }
 
 func (h *ContainerHandler) PullImage(c *gin.Context) {

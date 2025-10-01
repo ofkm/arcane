@@ -9,6 +9,7 @@
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import NetworkIcon from '@lucide/svelte/icons/network';
 	import DatabaseIcon from '@lucide/svelte/icons/database';
+	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import { invalidateAll } from '$app/navigation';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
@@ -27,6 +28,7 @@
 	import ContainerNetwork from '../components/ContainerNetwork.svelte';
 	import ContainerStorage from '../components/ContainerStorage.svelte';
 	import ContainerLogsPanel from '../components/ContainerLogsPanel.svelte';
+	import ContainerShell from '../components/ContainerShell.svelte';
 
 	interface NetworkConfig {
 		IPAddress?: string;
@@ -189,11 +191,13 @@
 	);
 	const hasMounts = $derived(!!(container?.mounts && container.mounts.length > 0));
 	const showStats = $derived(!!(container?.state?.running && stats));
+	const showShell = $derived(!!(container?.state?.running));
 
 	const tabItems = $derived<TabItem[]>([
 		{ value: 'overview', label: m.containers_nav_overview(), icon: HardDriveIcon },
 		...(showStats ? [{ value: 'stats', label: m.containers_nav_metrics(), icon: ActivityIcon }] : []),
 		{ value: 'logs', label: m.containers_nav_logs(), icon: FileTextIcon },
+		...(showShell ? [{ value: 'shell', label: 'Shell', icon: TerminalIcon }] : []),
 		...(showConfiguration ? [{ value: 'config', label: m.containers_nav_config(), icon: SettingsIcon }] : []),
 		...(hasNetworks ? [{ value: 'network', label: m.containers_nav_networks(), icon: NetworkIcon }] : []),
 		...(hasMounts ? [{ value: 'storage', label: m.containers_nav_storage(), icon: DatabaseIcon }] : [])
@@ -294,6 +298,12 @@
 						onToggleAutoScroll={handleToggleAutoScroll}
 					/>
 			</Tabs.Content>
+
+			{#if showShell}
+				<Tabs.Content value="shell" class="h-full">
+						<ContainerShell containerId={container?.id} />
+				</Tabs.Content>
+			{/if}
 
 			{#if showConfiguration}
 				<Tabs.Content value="config" class="h-full">

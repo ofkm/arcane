@@ -31,6 +31,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 		"GET /api/*/*/stats/ws",
 		"GET /api/system/stats/ws",
 		"GET /api/*/*/logs/ws",
+		"GET /api/*/*/exec/ws",
 		"GET /_app/*",
 		"GET /img",
 		"GET /fonts",
