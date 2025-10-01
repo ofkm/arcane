@@ -910,10 +910,17 @@ func (s *ImageUpdateService) buildCredentialMap(ctx context.Context, externalCre
 			if _, exists := credMap[host]; !exists {
 				credMap[host] = batchCred{username: c.Username, token: c.Token}
 			}
+			encToken, encErr := utils.Encrypt(c.Token)
+			if encErr != nil {
+				slog.WarnContext(ctx, "Failed to encrypt external registry token",
+					slog.String("registryURL", c.URL),
+					slog.String("error", encErr.Error()))
+				continue
+			}
 			enabledRegs = append(enabledRegs, models.ContainerRegistry{
 				URL:      c.URL,
 				Username: c.Username,
-				Token:    c.Token,
+				Token:    encToken,
 				Enabled:  c.Enabled,
 			})
 		}
