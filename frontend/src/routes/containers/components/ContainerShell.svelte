@@ -25,7 +25,7 @@
 		{ value: '/bin/bash', label: 'bash' },
 		{ value: '/bin/ash', label: 'ash' },
 		{ value: '/bin/zsh', label: 'zsh' },
-		{ value: 'custom', label: 'Custom...' }
+		{ value: 'custom', label: m.custom() }
 	];
 
 	const shellLabels: Record<string, string> = {
@@ -33,7 +33,7 @@
 		'/bin/bash': 'bash',
 		'/bin/ash': 'ash',
 		'/bin/zsh': 'zsh',
-		custom: 'Custom...'
+		custom: m.custom()
 	};
 
 	$effect(() => {
@@ -86,7 +86,7 @@
 			<div class="flex items-center gap-2">
 				<TerminalIcon class="text-primary size-5" />
 				<Card.Title class="text-lg">
-					<h2>Shell</h2>
+					<h2>{m.shell_title()}</h2>
 				</Card.Title>
 				{#if isConnected}
 					<div class="flex items-center gap-2">
@@ -99,7 +99,7 @@
 			<div class="flex items-center gap-2">
 				<Select.Root bind:value={selectedShell} type="single" onValueChange={handleShellChange}>
 					<Select.Trigger class="h-8 w-[140px]">
-						{shellLabels[selectedShell] ?? 'Select shell'}
+						{shellLabels[selectedShell] ?? m.shell_select_placeholder()}
 					</Select.Trigger>
 					<Select.Content>
 						{#each commonShells as shell}
@@ -115,7 +115,7 @@
 						<Input
 							type="text"
 							bind:value={customShell}
-							placeholder="/usr/bin/fish"
+							placeholder={m.shell_custom_placeholder()}
 							class="h-8 w-[180px]"
 							onkeydown={(e) => {
 								if (e.key === 'Enter') {
@@ -123,15 +123,17 @@
 								}
 							}}
 						/>
-						<Button size="sm" variant="outline" onclick={handleCustomShellSubmit} class="h-8">Apply</Button>
+						<Button size="sm" variant="outline" onclick={handleCustomShellSubmit} class="h-8">
+							{m.apply()}
+						</Button>
 					</div>
 				{/if}
 			</div>
 		</div>
-		<Card.Description>Interactive shell access to container</Card.Description>
+		<Card.Description>{m.shell_interactive_access()}</Card.Description>
 	</Card.Header>
-	<Card.Content class="p-0">
-		<div class="bg-card/50 rounded-lg border p-0">
+	<Card.Content class="overflow-hidden p-2">
+		<div class="h-full overflow-hidden rounded-lg border">
 			{#if websocketUrl}
 				<Terminal {websocketUrl} height="calc(100vh - 320px)" onConnected={handleConnected} onDisconnected={handleDisconnected} />
 			{/if}

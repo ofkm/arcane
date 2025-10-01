@@ -3,6 +3,7 @@
 	import { Terminal } from '@xterm/xterm';
 	import { FitAddon } from '@xterm/addon-fit';
 	import '@xterm/xterm/css/xterm.css';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		websocketUrl,
@@ -20,6 +21,7 @@
 	let terminal: Terminal | null = null;
 	let fitAddon: FitAddon | null = null;
 	let ws: WebSocket | null = null;
+	let isReconnecting = false;
 
 	function initializeTerminal() {
 		if (!container) return;
@@ -31,10 +33,27 @@
 		terminal = new Terminal({
 			cursorBlink: true,
 			fontSize: 14,
-			fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+			fontFamily: 'JetBrains Mono, Menlo, Monaco, "Courier New", monospace',
 			theme: {
-				background: '#1e1e1e',
-				foreground: '#d4d4d4'
+				background: '#09090b',
+				foreground: '#e4e4e7',
+				cursor: '#e4e4e7',
+				black: '#18181b',
+				red: '#f87171',
+				green: '#4ade80',
+				yellow: '#facc15',
+				blue: '#60a5fa',
+				magenta: '#c084fc',
+				cyan: '#22d3ee',
+				white: '#e4e4e7',
+				brightBlack: '#52525b',
+				brightRed: '#fca5a5',
+				brightGreen: '#86efac',
+				brightYellow: '#fde047',
+				brightBlue: '#93c5fd',
+				brightMagenta: '#d8b4fe',
+				brightCyan: '#67e8f9',
+				brightWhite: '#fafafa'
 			}
 		});
 
@@ -52,36 +71,44 @@
 
 	function connectWebSocket() {
 		if (ws) {
+			ws.onclose = null;
+			ws.onerror = null;
+			ws.onmessage = null;
 			ws.close();
+			ws = null;
 		}
 
+		isReconnecting = true;
 		ws = new WebSocket(websocketUrl);
 		ws.binaryType = 'arraybuffer';
 
 		ws.onopen = () => {
-			terminal?.writeln('Connected to container shell...');
+			isReconnecting = false;
 			onConnected?.();
 		};
 
 		ws.onmessage = (event) => {
-			if (terminal) {
-				if (event.data instanceof ArrayBuffer) {
-					const uint8Array = new Uint8Array(event.data);
-					const text = new TextDecoder().decode(uint8Array);
-					terminal.write(text);
-				} else {
-					terminal.write(event.data);
-				}
+			if (!terminal) return;
+			if (event.data instanceof ArrayBuffer) {
+				const uint8Array = new Uint8Array(event.data);
+				const text = new TextDecoder().decode(uint8Array);
+				terminal.write(text);
+			} else {
+				terminal.write(event.data);
 			}
 		};
 
 		ws.onerror = () => {
-			terminal?.writeln('\r\n\x1b[31mWebSocket error occurred\x1b[0m');
+			if (!isReconnecting && terminal) {
+				terminal.writeln(`\r\n\x1b[31m${m.terminal_websocket_error()}\x1b[0m`);
+			}
 		};
 
 		ws.onclose = () => {
-			terminal?.writeln('\r\n\x1b[33mConnection closed\x1b[0m');
-			onDisconnected?.();
+			if (!isReconnecting && terminal) {
+				terminal.writeln(`\r\n\x1b[33m${m.terminal_connection_closed()}\x1b[0m`);
+				onDisconnected?.();
+			}
 		};
 	}
 
@@ -98,6 +125,7 @@
 
 		return () => {
 			window.removeEventListener('resize', handleResize);
+			isReconnecting = true;
 			ws?.close();
 			terminal?.dispose();
 		};
@@ -111,6 +139,7 @@
 	});
 
 	onDestroy(() => {
+		isReconnecting = true;
 		ws?.close();
 		terminal?.dispose();
 	});

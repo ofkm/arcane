@@ -168,31 +168,42 @@ func (h *ContainerHandler) GetExecWS(c *gin.Context) {
 
 	execID, err := h.containerService.CreateExec(ctx, containerID, []string{shell})
 	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error creating exec: %v\r\n", err)))
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error creating exec: %v\r\n", err)))
 		return
 	}
 
 	stdin, stdout, err := h.containerService.AttachExec(ctx, execID)
 	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error attaching to exec: %v\r\n", err)))
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error attaching to exec: %v\r\n", err)))
 		return
 	}
 	defer stdin.Close()
 
 	done := make(chan struct{})
+	readErr := make(chan error, 1)
+	writeErr := make(chan error, 1)
 
 	go func() {
 		defer close(done)
 		buf := make([]byte, 8192)
 		for {
-			n, err := stdout.Read(buf)
-			if n > 0 {
-				if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				n, err := stdout.Read(buf)
+				if n > 0 {
+					if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+						writeErr <- err
+						return
+					}
+				}
+				if err != nil {
+					if err != io.EOF {
+						readErr <- err
+					}
 					return
 				}
-			}
-			if err != nil {
-				return
 			}
 		}
 	}()
