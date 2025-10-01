@@ -4,6 +4,8 @@
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import Terminal from '$lib/components/terminal.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { get } from 'svelte/store';
+	import { environmentStore } from '$lib/stores/environment.store';
 
 	let {
 		containerId
@@ -13,12 +15,15 @@
 
 	let isConnected = $state(false);
 	let websocketUrl = $state('');
+	let selectedShell = $state('/bin/sh');
 
 	$effect(() => {
 		if (containerId) {
+			const currentEnv = get(environmentStore);
+			const envId = currentEnv?.id || 'local';
 			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 			const host = window.location.host;
-			websocketUrl = `${protocol}//${host}/api/containers/${containerId}/exec/ws?shell=/bin/sh`;
+			websocketUrl = `${protocol}//${host}/api/environments/${envId}/containers/${containerId}/exec/ws?shell=${encodeURIComponent(selectedShell)}`;
 		}
 	});
 
