@@ -9,6 +9,7 @@ export interface ReconnectWSOptions<T> {
 	onError?: (err: Event | Error) => void;
 	maxBackoff?: number;
 	autoConnect?: boolean;
+	shouldReconnect?: () => boolean;
 }
 
 export class ReconnectingWebSocket<T = unknown> {
@@ -18,6 +19,7 @@ export class ReconnectingWebSocket<T = unknown> {
 	private readonly maxBackoff: number;
 	private opts: ReconnectWSOptions<T>;
 	private connecting = false;
+	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(opts: ReconnectWSOptions<T>) {
 		this.opts = opts;
@@ -64,7 +66,6 @@ export class ReconnectingWebSocket<T = unknown> {
 				const parser =
 					this.opts.parseMessage ??
 					((e: MessageEvent) => {
-						// default: try JSON.parse for string payloads, else return raw data
 						if (typeof e.data === 'string') return JSON.parse(e.data) as unknown as T;
 						return e.data as unknown as T;
 					});
@@ -87,11 +88,21 @@ export class ReconnectingWebSocket<T = unknown> {
 	}
 
 	private scheduleReconnect() {
+		if (this.opts.shouldReconnect && !this.opts.shouldReconnect()) {
+			return;
+		}
+
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+		}
+
 		this.attempt++;
 		const exp = Math.min(1000 * Math.pow(1.5, this.attempt), this.maxBackoff);
 		const jitter = Math.random() * 0.3 * exp;
 		const backoff = exp - jitter;
-		setTimeout(() => {
+
+		this.reconnectTimer = setTimeout(() => {
+			this.reconnectTimer = null;
 			if (!this.closed) this.connectOnce();
 		}, backoff);
 	}
@@ -111,11 +122,16 @@ export class ReconnectingWebSocket<T = unknown> {
 	close() {
 		this.closed = true;
 		this.attempt = 0;
+
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = null;
+		}
+
 		try {
 			this.ws?.close();
-		} catch {
-			// ignore
-		}
+		} catch {}
+
 		this.ws = null;
 		this.connecting = false;
 	}
@@ -125,7 +141,6 @@ export class ReconnectingWebSocket<T = unknown> {
 	}
 }
 
-/* small convenience wrapper for the dashboard stats (keeps existing shape) */
 export function createStatsWebSocket(opts: {
 	getEnvId: () => string;
 	onMessage: (data: SystemStats) => void;

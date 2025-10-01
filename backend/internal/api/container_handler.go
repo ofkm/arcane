@@ -141,8 +141,11 @@ func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
 
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Failed to upgrade connection: " + err.Error()}})
 		return
 	}
+	defer conn.Close()
+
 	hub := h.getOrStartContainerLogHub(containerID, format, batched, follow, tail, since, timestamps)
 	ws.ServeClient(context.Background(), hub, conn)
 }
@@ -151,7 +154,7 @@ func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
 func (h *ContainerHandler) GetExecWS(c *gin.Context) {
 	containerID := c.Param("containerId")
 	if strings.TrimSpace(containerID) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Container ID is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Container ID is required"}})
 		return
 	}
 
@@ -159,6 +162,7 @@ func (h *ContainerHandler) GetExecWS(c *gin.Context) {
 
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Failed to upgrade connection: " + err.Error()}})
 		return
 	}
 	defer conn.Close()
@@ -177,53 +181,91 @@ func (h *ContainerHandler) GetExecWS(c *gin.Context) {
 		_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error attaching to exec: %v\r\n", err)))
 		return
 	}
-	defer stdin.Close()
+	defer func() {
+		if closeErr := stdin.Close(); closeErr != nil {
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error closing stdin: %v\r\n", closeErr)))
+		}
+	}()
 
 	done := make(chan struct{})
 	readErr := make(chan error, 1)
 	writeErr := make(chan error, 1)
 
-	go func() {
-		defer close(done)
-		buf := make([]byte, 8192)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				n, err := stdout.Read(buf)
-				if n > 0 {
-					if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
-						writeErr <- err
-						return
-					}
-				}
-				if err != nil {
-					if err != io.EOF {
-						readErr <- err
+	go h.execOutputPump(ctx, stdout, conn, done, writeErr)
+	go h.execInputPump(ctx, stdin, conn, cancel, readErr, writeErr)
+
+	h.waitForExecCompletion(conn, done, readErr, writeErr, ctx)
+}
+
+func (h *ContainerHandler) execOutputPump(ctx context.Context, stdout io.Reader, conn *websocket.Conn, done chan struct{}, writeErr chan error) {
+	defer close(done)
+	buf := make([]byte, 8192)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			n, err := stdout.Read(buf)
+			if n > 0 {
+				if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+					select {
+					case writeErr <- err:
+					default:
 					}
 					return
 				}
 			}
-		}
-	}()
-
-	go func() {
-		for {
-			messageType, data, err := conn.ReadMessage()
 			if err != nil {
-				cancel()
+				if err != io.EOF {
+					select {
+					case writeErr <- err:
+					default:
+					}
+				}
 				return
 			}
-			if messageType == websocket.BinaryMessage || messageType == websocket.TextMessage {
-				if _, err := stdin.Write(data); err != nil {
-					return
+		}
+	}
+}
+
+func (h *ContainerHandler) execInputPump(ctx context.Context, stdin io.WriteCloser, conn *websocket.Conn, cancel context.CancelFunc, readErr, writeErr chan error) {
+	for {
+		messageType, data, err := conn.ReadMessage()
+		if err != nil {
+			if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				select {
+				case readErr <- fmt.Errorf("read message error: %w", err):
+				default:
 				}
 			}
+			cancel()
+			return
 		}
-	}()
+		if messageType == websocket.BinaryMessage || messageType == websocket.TextMessage {
+			if _, err := stdin.Write(data); err != nil {
+				select {
+				case writeErr <- fmt.Errorf("stdin write error: %w", err):
+				default:
+				}
+				return
+			}
+		}
+	}
+}
 
-	<-done
+func (h *ContainerHandler) waitForExecCompletion(conn *websocket.Conn, done chan struct{}, readErr, writeErr chan error, ctx context.Context) {
+	select {
+	case <-done:
+	case err := <-readErr:
+		if err != nil {
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("\r\nRead error: %v\r\n", err)))
+		}
+	case err := <-writeErr:
+		if err != nil {
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("\r\nWrite error: %v\r\n", err)))
+		}
+	case <-ctx.Done():
+	}
 }
 
 func (h *ContainerHandler) PullImage(c *gin.Context) {

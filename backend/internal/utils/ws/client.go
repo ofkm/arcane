@@ -3,6 +3,7 @@ package ws
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -68,7 +69,9 @@ func (c *Client) readPump(ctx context.Context, hub *Hub) {
 		default:
 			// We ignore application messages; reads are only for control frames (close/pong).
 			if _, _, err := c.conn.ReadMessage(); err != nil {
-				slog.Debug("websocket readPump end", "err", err)
+				if !isExpectedCloseError(err) {
+					slog.Debug("websocket readPump end", "err", err)
+				}
 				return
 			}
 		}
@@ -95,7 +98,9 @@ func (c *Client) writePump(ctx context.Context, hub *Hub) {
 				return
 			}
 			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				slog.Debug("websocket write error", "err", err)
+				if !isExpectedCloseError(err) {
+					slog.Debug("websocket write error", "err", err)
+				}
 				return
 			}
 		case <-ticker.C:
@@ -105,4 +110,22 @@ func (c *Client) writePump(ctx context.Context, hub *Hub) {
 			}
 		}
 	}
+}
+
+func isExpectedCloseError(err error) bool {
+	if err == nil {
+		return true
+	}
+
+	if websocket.IsCloseError(err,
+		websocket.CloseNormalClosure,
+		websocket.CloseGoingAway,
+		websocket.CloseNoStatusReceived) {
+		return true
+	}
+
+	errStr := err.Error()
+	return strings.Contains(errStr, "use of closed network connection") ||
+		strings.Contains(errStr, "connection reset by peer") ||
+		strings.Contains(errStr, "broken pipe")
 }

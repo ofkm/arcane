@@ -22,6 +22,7 @@
 	let fitAddon: FitAddon | null = null;
 	let ws: WebSocket | null = null;
 	let isReconnecting = false;
+	let resizeObserver: ResizeObserver | null = null;
 
 	function initializeTerminal() {
 		if (!container) return;
@@ -60,13 +61,23 @@
 		fitAddon = new FitAddon();
 		terminal.loadAddon(fitAddon);
 		terminal.open(container);
-		fitAddon.fit();
+
+		requestAnimationFrame(() => {
+			if (fitAddon && container.offsetParent !== null) {
+				fitAddon.fit();
+			}
+		});
 
 		terminal.onData((data) => {
 			if (ws && ws.readyState === WebSocket.OPEN) {
 				ws.send(data);
 			}
 		});
+
+		resizeObserver = new ResizeObserver(() => {
+			handleResize();
+		});
+		resizeObserver.observe(container);
 	}
 
 	function connectWebSocket() {
@@ -113,8 +124,12 @@
 	}
 
 	function handleResize() {
-		if (fitAddon) {
-			fitAddon.fit();
+		if (fitAddon && container && container.offsetParent !== null) {
+			try {
+				fitAddon.fit();
+			} catch (e) {
+				console.warn('Terminal resize failed:', e);
+			}
 		}
 	}
 
@@ -125,6 +140,7 @@
 
 		return () => {
 			window.removeEventListener('resize', handleResize);
+			resizeObserver?.disconnect();
 			isReconnecting = true;
 			ws?.close();
 			terminal?.dispose();
@@ -139,6 +155,7 @@
 	});
 
 	onDestroy(() => {
+		resizeObserver?.disconnect();
 		isReconnecting = true;
 		ws?.close();
 		terminal?.dispose();

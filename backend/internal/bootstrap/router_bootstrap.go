@@ -28,10 +28,11 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	router.Use(gin.Recovery())
 
 	loggerSkipPatterns := []string{
-		"GET /api/*/*/stats/ws",
-		"GET /api/system/stats/ws",
-		"GET /api/*/*/logs/ws",
-		"GET /api/*/*/exec/ws",
+		"GET /api/environments/*/containers/*/logs/ws",
+		"GET /api/environments/*/containers/*/stats/ws",
+		"GET /api/environments/*/system/stats/ws",
+		"GET /api/environments/*/projects/*/logs/ws",
+		"GET /api/environments/*/containers/*/exec/ws",
 		"GET /_app/*",
 		"GET /img",
 		"GET /fonts",
