@@ -53,7 +53,7 @@
 		</div>
 	</div>
 
-	<div class="bg-card/90 flex flex-1 items-center p-3 sm:p-4">
+	<div class="flex flex-1 items-center p-3 sm:p-4">
 		<div class="flex w-full items-center gap-4">
 			<div class="flex-1 space-y-2">
 				{#if loading}
