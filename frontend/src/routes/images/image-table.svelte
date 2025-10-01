@@ -182,7 +182,7 @@
 
 {#snippet RepoCell({ item }: { item: ImageSummaryDto })}
 	{#if item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>'}
-		<a class="font-medium hover:underline" href="/images/{item.id}/">{item.repoTags[0]}</a>
+		<a class="font-medium hover:underline" href="/images/{item.id}">{item.repoTags[0]}</a>
 	{:else}
 		<span class="text-muted-foreground italic">{m.images_untagged()}</span>
 	{/if}

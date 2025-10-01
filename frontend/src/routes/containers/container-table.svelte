@@ -141,7 +141,7 @@
 {/snippet}
 
 {#snippet NameCell({ item }: { item: ContainerSummaryDto })}
-	<a class="font-medium hover:underline" href="/containers/{item.id}/">
+	<a class="font-medium hover:underline" href="/containers/{item.id}">
 		{#if item.names && item.names.length > 0}
 			{item.names[0].startsWith('/') ? item.names[0].substring(1) : item.names[0]}
 		{:else}

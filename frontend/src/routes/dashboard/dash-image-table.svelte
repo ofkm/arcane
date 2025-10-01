@@ -37,7 +37,7 @@
 {#snippet NameCell({ item }: { item: ImageSummaryDto })}
 	<div class="flex items-center gap-2">
 		<div class="flex flex-1 items-center">
-			<a class="shrink truncate font-medium hover:underline" href="/images/{item.id}/">
+			<a class="shrink truncate font-medium hover:underline" href="/images/{item.id}">
 				{#if item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>'}
 					{item.repoTags[0].split(':')[0]}
 				{:else}

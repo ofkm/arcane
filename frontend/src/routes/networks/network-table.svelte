@@ -144,7 +144,7 @@
 </script>
 
 {#snippet NameCell({ item }: { item: NetworkSummaryDto })}
-	<a class="font-medium hover:underline" href="/networks/{item.id}/">{item.name}</a>
+	<a class="font-medium hover:underline" href="/networks/{item.id}">{item.name}</a>
 {/snippet}
 
 {#snippet IdCell({ value }: { value: unknown })}

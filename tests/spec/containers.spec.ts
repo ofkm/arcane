@@ -64,7 +64,7 @@ test.describe('Containers Page', () => {
     await navigateToContainers(page);
 
     if (running) {
-      const row = page.locator(`tr:has(a[href="/containers/${running.id}/"])`);
+      const row = page.locator(`tr:has(a[href="/containers/${running.id}"])`);
       await row.getByRole('button', { name: 'Open menu' }).click();
       await expect(page.getByRole('menuitem', { name: 'Restart' })).toBeVisible();
       await expect(page.getByRole('menuitem', { name: 'Stop' })).toBeVisible();
@@ -74,7 +74,7 @@ test.describe('Containers Page', () => {
     }
 
     if (stopped) {
-      const row = page.locator(`tr:has(a[href="/containers/${stopped.id}/"])`);
+      const row = page.locator(`tr:has(a[href="/containers/${stopped.id}"])`);
       await row.getByRole('button', { name: 'Open menu' }).click();
       await expect(page.getByRole('menuitem', { name: 'Start' })).toBeVisible();
       await page.keyboard.press('Escape');

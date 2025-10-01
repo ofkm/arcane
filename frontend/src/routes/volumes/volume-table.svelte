@@ -111,7 +111,7 @@
 </script>
 
 {#snippet NameCell({ item }: { item: VolumeSummaryDto })}
-	<a class="font-medium hover:underline" href="/volumes/{item.id}/" title={item.name}>
+	<a class="font-medium hover:underline" href="/volumes/{item.id}" title={item.name}>
 		{truncateString(item.name, 40)}
 	</a>
 {/snippet}
