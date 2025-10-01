@@ -6,10 +6,12 @@
 
 	let {
 		websocketUrl,
+		height = '100%',
 		onConnected,
 		onDisconnected
 	}: {
 		websocketUrl: string;
+		height?: string;
 		onConnected?: () => void;
 		onDisconnected?: () => void;
 	} = $props();
@@ -90,4 +92,4 @@
 	});
 </script>
 
-<div bind:this={container} class="h-full w-full"></div>
+<div bind:this={container} class="h-full w-full" style="height: {height}"></div>

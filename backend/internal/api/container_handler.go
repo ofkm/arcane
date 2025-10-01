@@ -156,7 +156,7 @@ func (h *ContainerHandler) GetExecWS(c *gin.Context) {
 	}
 
 	shell := c.DefaultQuery("shell", "/bin/sh")
-	
+
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
