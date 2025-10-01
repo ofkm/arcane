@@ -312,25 +312,250 @@ restart_dev() {
     log_info "Backend:  http://localhost:3552"
 }
 
-clean_dev() {
-    log_warning "This will remove all containers, networks, and volumes for the development environment."
-    read -p "Are you sure? (y/N): " -n 1 -r
+show_status() {
+    log_info "Complete development environment status:"
+    echo "========================================"
+    
+    # Docker Environment
     echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log_info "Cleaning up development environment..."
-        if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down -v --remove-orphans; then
-            log_error "Failed to remove containers and volumes"
-            exit 1
-        fi
-        
-        if ! docker system prune -f; then
-            log_warning "Failed to prune Docker system, but containers were removed"
-        fi
-        
-        log_success "Development environment cleaned!"
+    log_info "🐳 Docker Environment:"
+    echo "----------------------------------------"
+    
+    # Show running containers
+    local containers=$(docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" ps --format "table" 2>/dev/null || echo "No containers found")
+    echo "Containers:"
+    echo "$containers"
+    echo
+    
+    # Show volumes
+    echo "Volumes:"
+    docker volume ls --filter "name=arcane" --format "table {{.Name}}\t{{.Size}}" 2>/dev/null || echo "No volumes found"
+    echo
+    
+    # Show networks
+    echo "Networks:"
+    docker network ls --filter "name=arcane" --format "table {{.Name}}\t{{.Driver}}" 2>/dev/null || echo "No networks found"
+    
+    # Build Performance & Caches
+    echo
+    log_info "🔧 Build Performance & Caches:"
+    echo "----------------------------------------"
+    
+    # Show build cache status
+    if docker volume ls | grep -q "arcane-go-build-cache"; then
+        local build_cache_size=$(docker run --rm -v arcane-go-build-cache:/cache alpine du -sh /cache 2>/dev/null | cut -f1 || echo "Unknown")
+        echo "Go build cache: ${build_cache_size}"
     else
-        log_info "Cleanup cancelled."
+        echo "Go build cache: Not created"
     fi
+    
+    if docker volume ls | grep -q "arcane-go-mod-cache"; then
+        local mod_cache_size=$(docker run --rm -v arcane-go-mod-cache:/cache alpine du -sh /cache 2>/dev/null | cut -f1 || echo "Unknown")
+        echo "Go module cache: ${mod_cache_size}"
+    else
+        echo "Go module cache: Not created"
+    fi
+    
+    # Show local build artifacts
+    if [[ -f "${PROJECT_ROOT}/backend/.bin/arcane" ]]; then
+        local binary_size=$(du -sh "${PROJECT_ROOT}/backend/.bin/arcane" | cut -f1)
+        local binary_date=$(stat -c %y "${PROJECT_ROOT}/backend/.bin/arcane" 2>/dev/null || stat -f %Sm "${PROJECT_ROOT}/backend/.bin/arcane")
+        echo "Backend binary: ${binary_size} (${binary_date})"
+    else
+        echo "Backend binary: Not built"
+    fi
+    
+    if [[ -d "${PROJECT_ROOT}/backend/.bin" ]]; then
+        local build_dir_size=$(du -sh "${PROJECT_ROOT}/backend/.bin" | cut -f1)
+        echo "Build directory: ${build_dir_size}"
+    else
+        echo "Build directory: Not found"
+    fi
+    
+    echo "========================================"
+}
+
+clean_containers_only() {
+    log_warning "This will stop and remove all development containers."
+    log_info "Volumes, networks, and data will be preserved."
+    read -p "Continue? (y/N): " -n 1 -r
+    echo
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Stopping and removing containers..."
+        if docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down --remove-orphans; then
+            log_success "Containers cleaned successfully!"
+            log_info "To restart: $0 start"
+        else
+            log_error "Failed to clean containers"
+            return 1
+        fi
+    else
+        log_info "Container cleanup cancelled."
+    fi
+}
+
+clean_environment_preserve_data() {
+    log_warning "This will remove containers and networks."
+    log_info "All volumes and application data will be preserved."
+    read -p "Continue? (y/N): " -n 1 -r
+    echo
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Resetting Docker environment..."
+        if docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down --remove-orphans; then
+            # Remove the specific network
+            docker network rm arcane-dev-network 2>/dev/null || true
+            log_success "Docker environment reset successfully!"
+            log_info "All data and caches preserved."
+            log_info "To restart: $0 start"
+        else
+            log_error "Failed to reset Docker environment"
+            return 1
+        fi
+    else
+        log_info "Reset cancelled."
+    fi
+}
+
+clean_nuclear() {
+    log_error "⚠️  NUCLEAR CLEANUP - ALL DATA WILL BE LOST ⚠️"
+    log_warning "This will remove:"
+    echo "  • All containers and images"
+    echo "  • All networks"
+    echo "  • All volumes (including databases and uploads)"
+    echo "  • All build caches"
+    echo "  • Local build artifacts"
+    echo
+    log_warning "This action cannot be undone!"
+    read -p "Type 'DESTROY' to confirm nuclear cleanup: " -r
+    echo
+    
+    if [[ "$REPLY" == "DESTROY" ]]; then
+        log_info "Performing nuclear cleanup..."
+        
+        # Stop everything
+        docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" down -v --remove-orphans || true
+        
+        # Remove all project-related volumes
+        docker volume ls --filter "name=arcane" --format "{{.Name}}" | xargs -r docker volume rm 2>/dev/null || true
+        
+        # Remove networks
+        docker network rm arcane-dev-network 2>/dev/null || true
+        
+        # Clean local artifacts
+        rm -rf "${PROJECT_ROOT}/backend/.bin" 2>/dev/null || true
+        
+        # System prune
+        docker system prune -f --volumes || log_warning "System prune failed, but cleanup completed"
+        
+        log_success "Nuclear cleanup completed!"
+        log_info "Environment completely reset. To restart: $0 start"
+    else
+        log_info "Nuclear cleanup cancelled."
+    fi
+}
+
+
+clean_dev() {
+    echo
+    log_info "Development Environment Cleanup & Troubleshooting:"
+    echo
+    echo "📊 Status & Information:"
+    echo "1) Show environment status"
+    echo "   └─ View containers, networks, volumes, and build caches"
+    echo
+    echo "🔧 Build Performance Issues:"
+    echo "2) Fix slow builds - clean build cache"
+    echo "   └─ Removes compiled Go packages, keeps modules"
+    echo "   └─ Recovery: ~30-60 seconds | Use for: Builds taking too long"
+    echo
+    echo "3) Fix dependency issues - clean module cache"
+    echo "   └─ Removes downloaded modules, keeps compiled packages"
+    echo "   └─ Recovery: ~2-3 minutes | Use for: After go.mod changes"
+    echo
+    echo "4) Quick build fix - clean local binary"
+    echo "   └─ Removes backend binary only, keeps all caches"
+    echo "   └─ Recovery: ~2-5 seconds | Use for: Binary won't start"
+    echo
+    echo "🐳 Docker Environment Issues:"
+    echo "5) Restart containers (soft reset)"
+    echo "   └─ Stops and starts containers, preserves all data"
+    echo "   └─ Recovery: ~30 seconds | Use for: Container/port issues"
+    echo
+    echo "6) Reset Docker environment (preserve data)"
+    echo "   └─ Removes containers and networks, keeps all data"
+    echo "   └─ Recovery: ~1 minute | Use for: Network/environment issues"
+    echo
+    echo "🧹 Complete Cleanup:"
+    echo "7) Clean all build caches (preserve Docker data)"
+    echo "   └─ Removes all build artifacts, keeps application data"
+    echo "   └─ Recovery: ~3-5 minutes | Use for: All build issues"
+    echo
+    echo "8) Nuclear reset - destroy everything"
+    echo "   └─ Removes ALL containers, networks, volumes, and data"
+    echo "   └─ Recovery: ~5-10 minutes | Use for: Complete corruption"
+    echo
+    echo "🚀 Maintenance:"
+    echo "9) Warm up caches (after cleaning)"
+    echo "   └─ Pre-populates caches for faster subsequent builds"
+    echo "   └─ Recovery: ~1-2 minutes | Use for: After cache cleaning"
+    echo
+    echo "10) Optimize caches (weekly maintenance)"
+    echo "    └─ Cleans unused modules and optimizes build performance"
+    echo "    └─ Recovery: ~1-2 minutes | Use for: Regular maintenance"
+    echo
+    echo "0) Exit"
+    echo
+    
+    read -p "Select option (0-10) [default: 0]: " -r
+    echo
+    
+    if [[ -z "$REPLY" ]]; then
+        REPLY="0"
+    fi
+    
+    case $REPLY in
+    1)
+        show_status
+        ;;
+    2)
+        clean_cache_type "build"
+        ;;
+    3)
+        clean_cache_type "modules"
+        ;;
+    4)
+        clean_cache_type "binary"
+        ;;
+    5)
+        clean_containers_only
+        ;;
+    6)
+        clean_environment_preserve_data
+        ;;
+    7)
+        clean_cache_type "all"
+        ;;
+    8)
+        clean_nuclear
+        ;;
+    9)
+        warm_cache
+        ;;
+    10)
+        optimize_cache
+        ;;
+    0|"")
+        return 0
+        ;;
+    *)
+        log_error "Invalid option: $REPLY"
+        ;;
+    esac
+    
+    echo
+    read -p "Press Enter to continue..."
 }
 
 rebuild_dev() {
@@ -394,6 +619,101 @@ shell_into() {
     fi
 }
 
+# Cache Management Functions
+
+clean_cache_type() {
+    local cache_type="${1:-all}"
+    
+    case "$cache_type" in
+    "build")
+        log_warning "Cleaning Go build cache..."
+        if docker volume ls | grep -q "arcane-go-build-cache"; then
+            # Stop containers that might be using the volume
+            docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" stop backend arcane-agent 2>/dev/null || true
+            docker volume rm arcane-go-build-cache || true
+            log_success "Build cache cleaned"
+        else
+            log_info "Build cache doesn't exist"
+        fi
+        ;;
+    "modules")
+        log_warning "Cleaning Go module cache..."
+        if docker volume ls | grep -q "arcane-go-mod-cache"; then
+            # Stop containers that might be using the volume
+            docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" stop backend arcane-agent 2>/dev/null || true
+            docker volume rm arcane-go-mod-cache || true
+            log_success "Module cache cleaned"
+        else
+            log_info "Module cache doesn't exist"
+        fi
+        ;;
+    "binary")
+        log_warning "Cleaning backend binary..."
+        if [[ -f "${PROJECT_ROOT}/backend/.bin/arcane" ]]; then
+            rm -f "${PROJECT_ROOT}/backend/.bin/arcane"
+            log_success "Backend binary cleaned"
+        else
+            log_info "Backend binary doesn't exist"
+        fi
+        ;;
+    "all")
+        log_warning "This will clean all Go caches and force a complete rebuild."
+        read -p "Are you sure? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            clean_cache_type "build"
+            clean_cache_type "modules"
+            clean_cache_type "binary"
+            log_success "All caches cleaned"
+        else
+            log_info "Cache cleaning cancelled"
+        fi
+        ;;
+    *)
+        log_error "Invalid cache type: $cache_type"
+        log_error "Valid types: build, modules, binary, all"
+        exit 1
+        ;;
+    esac
+}
+
+warm_cache() {
+    log_info "Warming up Go caches..."
+    
+    # Ensure containers are running
+    if ! docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" ps backend | grep -q "Up"; then
+        log_info "Starting backend container to warm cache..."
+        docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" up -d backend
+        sleep 5
+    fi
+    
+    # Trigger a build to warm the cache
+    log_info "Triggering initial build to populate cache..."
+    docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" exec backend go mod download
+    docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" exec backend go build -tags 'exclude_frontend' -o /tmp/warmup ./cmd
+    
+    log_success "Cache warmed up successfully"
+}
+
+optimize_cache() {
+    log_info "Optimizing Go caches..."
+    
+    if docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" ps backend | grep -q "Up"; then
+        # Clean module cache of unused modules
+        log_info "Cleaning unused modules..."
+        docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" exec backend go mod tidy
+        docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" exec backend go clean -modcache
+        
+        # Rebuild module cache
+        docker compose -f "${COMPOSE_FILE}" -p "${PROJECT_NAME}" exec backend go mod download
+        
+        log_success "Cache optimized"
+    else
+        log_warning "Backend container is not running. Start it first with: $0 start"
+    fi
+}
+
+
 show_help() {
     echo "Arcane Development Environment Manager"
     echo
@@ -406,7 +726,7 @@ show_help() {
     echo "  status    Show status of all services"
     echo "  env       Show current environment configuration (optionally specify service: backend, frontend)"
     echo "  logs      Show logs (optionally specify service: frontend, backend, agent)"
-    echo "  clean     Remove all containers, networks, and volumes"
+    echo "  clean     Unified cleanup & troubleshooting menu"
     echo "  rebuild   Rebuild and restart the development environment"
     echo "  shell     Open shell in a service container (specify: frontend, backend, or agent)"
     echo "  help      Show this help message"
@@ -414,14 +734,16 @@ show_help() {
     echo "Features:"
     echo "  • Automatic Docker/Compose installation if missing (using project scripts)"
     echo "  • Hot reload for both frontend (Vite) and backend (Air)"
+    echo "  • Persistent Go build caches for faster incremental builds"
+    echo "  • Interactive cache management with clear guidance"
     echo "  • Interactive log viewing with service selection"
     echo "  • Automatic project root detection"
     echo
     echo "Examples:"
     echo "  $0 start"
+    echo "  $0 clean"
     echo "  $0 env backend"
     echo "  $0 logs backend"
-    echo "  $0 logs agent"
     echo "  $0 shell frontend"
     echo
     echo "Note: If Docker or Docker Compose are not installed, you'll be prompted"

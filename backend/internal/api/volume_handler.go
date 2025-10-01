@@ -8,7 +8,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
-	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type VolumeHandler struct {
@@ -33,25 +33,13 @@ func NewVolumeHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 }
 
 func (h *VolumeHandler) List(c *gin.Context) {
-	var req utils.SortedPaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid pagination or sort parameters: " + err.Error()},
-		})
-		return
+	params := pagination.ExtractListModifiersQueryParams(c)
+
+	if params.Limit == 0 {
+		params.Limit = 20
 	}
 
-	if req.Pagination.Page == 0 {
-		req.Pagination.Page = 1
-	}
-	if req.Pagination.Limit == 0 {
-		req.Pagination.Limit = 20
-	}
-
-	driver := c.Query("driver")
-
-	volumes, pagination, err := h.volumeService.ListVolumesPaginated(c.Request.Context(), req, driver)
+	volumes, paginationResp, err := h.volumeService.ListVolumesPaginated(c.Request.Context(), params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -60,10 +48,16 @@ func (h *VolumeHandler) List(c *gin.Context) {
 		return
 	}
 
+	pagination.ApplyFilterResultsHeaders(&c.Writer, pagination.FilterResult[dto.VolumeDto]{
+		Items:          volumes,
+		TotalCount:     int(paginationResp.TotalItems),
+		TotalAvailable: int(paginationResp.GrandTotalItems),
+	})
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"data":       volumes,
-		"pagination": pagination,
+		"pagination": paginationResp,
 	})
 }
 

@@ -25,7 +25,7 @@
 
 	const dynamicHeight = $derived(() => {
 		if (height === 'full' || height === 'auto') {
-			return 'calc(100dvh - 240px)';
+			return 'calc(100dvh - 300px)';
 		}
 		return height;
 	});

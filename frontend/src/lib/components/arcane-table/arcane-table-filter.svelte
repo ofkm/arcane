@@ -28,7 +28,6 @@
 		showCheckboxes?: boolean;
 	} = $props();
 
-	const facets = $derived(column?.getFacetedUniqueValues());
 	const selectedValues = $derived(new SvelteSet(column?.getFilterValue() as any[]));
 </script>
 
@@ -99,18 +98,13 @@
 							{/if}
 
 							<span>{option.label}</span>
-							{#if facets?.get(option.value)}
-								<span class="ml-auto flex size-4 items-center justify-center font-mono text-xs">
-									{facets.get(option.value)}
-								</span>
-							{/if}
 						</Command.Item>
 					{/each}
 				</Command.Group>
 				{#if selectedValues.size > 0}
 					<Command.Separator />
 					<Command.Group>
-						<Command.Item onSelect={() => column?.setFilterValue(undefined)} class="justify-center text-center">
+						<Command.Item onselect={() => column?.setFilterValue(undefined)} class="justify-center text-center">
 							{m.common_clear_filters()}
 						</Command.Item>
 					</Command.Group>

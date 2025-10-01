@@ -77,13 +77,18 @@ func InitializeApp() (*App, error) {
 	}
 	utils.InitEncryption(cfg)
 
-	// Ensure default settings but skip user bootstrap in agent mode
 	slog.InfoContext(appCtx, "Ensuring default settings are initialized")
 	if cfg.AgentMode || cfg.UIConfigurationDisabled {
 		if err := appServices.Settings.PersistEnvSettingsIfMissing(appCtx); err != nil {
 			slog.WarnContext(appCtx, "Failed to persist env-driven settings", slog.String("error", err.Error()))
 		} else {
 			slog.DebugContext(appCtx, "Persisted env-driven settings if missing")
+		}
+
+		if err := appServices.Settings.SetBoolSetting(appCtx, "onboardingCompleted", true); err != nil {
+			slog.WarnContext(appCtx, "Failed to mark onboarding as completed", slog.String("error", err.Error()))
+		} else {
+			slog.InfoContext(appCtx, "Onboarding automatically completed (UI configuration disabled)")
 		}
 	}
 
@@ -107,14 +112,6 @@ func InitializeApp() (*App, error) {
 			slog.String("error", err.Error()))
 	} else {
 		dockerClient.Close()
-	}
-
-	slog.InfoContext(appCtx, "Performing initial Docker image synchronization with the database")
-	if err := appServices.Image.SyncDockerImages(appCtx); err != nil {
-		slog.WarnContext(appCtx, "Initial Docker image synchronization failed, image data may be stale",
-			slog.String("error", err.Error()))
-	} else {
-		slog.InfoContext(appCtx, "Initial Docker image synchronization complete")
 	}
 
 	if !cfg.AgentMode {

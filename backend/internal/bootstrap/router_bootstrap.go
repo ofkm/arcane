@@ -71,25 +71,30 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewOidcHandler(apiGroup, appServices.Auth, appServices.Oidc, cfg)
 	api.NewSettingsHandler(apiGroup, appServices.Settings, authMiddleware)
 	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Settings, authMiddleware, cfg)
+	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
+	api.NewTemplateHandler(apiGroup, appServices.Template, authMiddleware)
 
-	apiGroup.Use(middleware.NewEnvProxyMiddleware(api.LOCAL_DOCKER_ENVIRONMENT_ID, func(ctx context.Context, id string) (string, *string, bool, error) {
-		env, err := appServices.Environment.GetEnvironmentByID(ctx, id)
-		if err != nil || env == nil {
-			return "", nil, false, err
-		}
-		return env.ApiUrl, env.AccessToken, env.Enabled, nil
-	}))
+	envMiddleware := middleware.NewEnvProxyMiddlewareWithParam(
+		api.LOCAL_DOCKER_ENVIRONMENT_ID,
+		"id",
+		func(ctx context.Context, id string) (string, *string, bool, error) {
+			env, err := appServices.Environment.GetEnvironmentByID(ctx, id)
+			if err != nil || env == nil {
+				return "", nil, false, err
+			}
+			return env.ApiUrl, env.AccessToken, env.Enabled, nil
+		},
+		appServices.Environment,
+	)
+	apiGroup.Use(envMiddleware)
 
 	api.NewHealthHandler(apiGroup)
-
 	api.NewContainerHandler(apiGroup, appServices.Docker, appServices.Container, appServices.Image, authMiddleware)
-	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
 	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, authMiddleware)
 	api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)
 	api.NewNetworkHandler(apiGroup, appServices.Docker, appServices.Network, authMiddleware)
 	api.NewProjectHandler(apiGroup, appServices.Project, authMiddleware)
 	api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, authMiddleware)
-	api.NewTemplateHandler(apiGroup, appServices.Template, authMiddleware)
 	api.NewUpdaterHandler(apiGroup, appServices.Updater, authMiddleware)
 	api.NewVolumeHandler(apiGroup, appServices.Docker, appServices.Volume, authMiddleware)
 

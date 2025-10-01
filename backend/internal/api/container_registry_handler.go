@@ -12,6 +12,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	registry "github.com/ofkm/arcane-backend/internal/utils/registry"
 )
 
@@ -36,23 +37,9 @@ func NewContainerRegistryHandler(group *gin.RouterGroup, registryService *servic
 }
 
 func (h *ContainerRegistryHandler) GetRegistries(c *gin.Context) {
-	var req utils.SortedPaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid pagination or sort parameters: " + err.Error()},
-		})
-		return
-	}
+	params := pagination.ExtractListModifiersQueryParams(c)
 
-	if req.Pagination.Page == 0 {
-		req.Pagination.Page = 1
-	}
-	if req.Pagination.Limit == 0 {
-		req.Pagination.Limit = 20
-	}
-
-	registries, pagination, err := h.registryService.GetRegistriesPaginated(c.Request.Context(), req)
+	registries, paginationResp, err := h.registryService.GetRegistriesPaginated(c.Request.Context(), params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -64,7 +51,7 @@ func (h *ContainerRegistryHandler) GetRegistries(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"data":       registries,
-		"pagination": pagination,
+		"pagination": paginationResp,
 	})
 }
 

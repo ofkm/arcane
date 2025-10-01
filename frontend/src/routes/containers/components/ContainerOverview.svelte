@@ -4,7 +4,8 @@
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import NetworkIcon from '@lucide/svelte/icons/network';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import InfoIcon from '@lucide/svelte/icons/info';
+	import CpuIcon from '@lucide/svelte/icons/cpu';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { ContainerDetailsDto } from '$lib/types/container.type';
@@ -43,128 +44,135 @@
 	}
 </script>
 
-<section class="scroll-mt-20">
-	<h2 class="mb-6 flex items-center gap-2 text-xl font-semibold">
-		<HardDriveIcon class="size-5" />
-		{m.containers_details_title()}
-	</h2>
+<Card.Root class="pt-0">
+	<Card.Header class="bg-muted rounded-t-xl p-4">
+		<Card.Title class="flex items-center gap-2 text-lg">
+			<InfoIcon class="text-primary size-5" />
+			<h2>
+				{m.containers_details_title()}
+			</h2>
+		</Card.Title>
+		<Card.Description>{m.containers_details_description()}</Card.Description>
+	</Card.Header>
+	<Card.Content class="p-4">
+		<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+			<div class="flex items-start gap-3">
+				<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2">
+					<HardDriveIcon class="size-5 text-blue-500" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-muted-foreground text-sm font-medium">{m.common_image()}</p>
+					<p class="mt-1 cursor-pointer text-sm font-semibold break-all select-all sm:text-base" title="Click to select">
+						{container.image || m.common_na()}
+					</p>
+				</div>
+			</div>
 
-	<div class="mb-6">
-		<Card.Root class="rounded-lg border shadow-sm">
-			<Card.Header class="pb-4">
-				<Card.Title>{m.containers_details_title()}</Card.Title>
-				<Card.Description class="text-muted-foreground text-sm">
-					{m.containers_details_description()}
-				</Card.Description>
-			</Card.Header>
+			<div class="flex items-start gap-3">
+				<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 p-2">
+					<ClockIcon class="size-5 text-green-500" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-muted-foreground text-sm font-medium">{m.common_created()}</p>
+					<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+						{formatDockerDate(container?.created)}
+					</p>
+				</div>
+			</div>
 
-			<Card.Content class="space-y-6">
-				<div class="space-y-4">
-					<div class="flex items-center gap-3">
-						<div class="rounded bg-blue-50 p-2 dark:bg-blue-950/20">
-							<HardDriveIcon class="size-4 text-blue-600" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-sm">{m.common_image()}</div>
-							<div class="truncate font-medium" title={container.image}>
-								{container.image || m.common_na()}
-							</div>
-						</div>
+			<div class="flex items-start gap-3">
+				<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-purple-500/10 p-2">
+					<NetworkIcon class="size-5 text-purple-500" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-muted-foreground text-sm font-medium">{m.containers_ip_address()}</p>
+					<p class="mt-1 cursor-pointer font-mono text-sm font-semibold select-all sm:text-base" title="Click to select">
+						{primaryIpAddress}
+					</p>
+				</div>
+			</div>
+
+			<div class="flex items-start gap-3">
+				<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
+					<CpuIcon class="size-5 text-gray-500" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<p class="text-muted-foreground text-sm font-medium">{m.common_id()}</p>
+					<p class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm" title="Click to select">
+						{container.id}
+					</p>
+				</div>
+			</div>
+
+			{#if container.config?.workingDir}
+				<div class="flex items-start gap-3">
+					<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 p-2">
+						<InfoIcon class="size-5 text-indigo-500" />
 					</div>
-
-					<div class="flex items-center gap-3">
-						<div class="rounded bg-green-50 p-2 dark:bg-green-950/20">
-							<ClockIcon class="size-4 text-green-600" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-sm">{m.common_created()}</div>
-							<div class="font-medium" title={formatDockerDate(container?.created)}>
-								{formatDockerDate(container?.created)}
-							</div>
-						</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-muted-foreground text-sm font-medium">{m.containers_working_directory()}</p>
+						<p
+							class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm"
+							title="Click to select"
+						>
+							{container.config.workingDir}
+						</p>
 					</div>
+				</div>
+			{/if}
 
-					<div class="flex items-center gap-3">
-						<div class="rounded bg-purple-50 p-2 dark:bg-purple-950/20">
-							<NetworkIcon class="size-4 text-purple-600" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-sm">{m.containers_ip_address()}</div>
-							<div class="font-medium">{primaryIpAddress}</div>
-						</div>
+			{#if container.config?.user}
+				<div class="flex items-start gap-3">
+					<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 p-2">
+						<InfoIcon class="size-5 text-orange-500" />
 					</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-muted-foreground text-sm font-medium">User</p>
+						<p class="mt-1 cursor-pointer font-mono text-sm font-semibold select-all" title="Click to select">
+							{container.config.user}
+						</p>
+					</div>
+				</div>
+			{/if}
 
-					<div class="flex items-center gap-3">
-						<div class="rounded bg-amber-50 p-2 dark:bg-amber-950/20">
-							<TerminalIcon class="size-4 text-amber-600" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-sm">{m.containers_command()}</div>
-							<div class="truncate font-medium" title={container.config?.cmd?.join(' ')}>
-								{container.config?.cmd?.join(' ') || m.common_na()}
-							</div>
+			{#if container.state?.health}
+				<div class="flex items-start gap-3">
+					<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-pink-500/10 p-2">
+						<InfoIcon class="size-5 text-pink-500" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-muted-foreground text-sm font-medium">Health Status</p>
+						<div class="mt-2">
+							<StatusBadge
+								variant={container.state.health.status === 'healthy'
+									? 'green'
+									: container.state.health.status === 'unhealthy'
+										? 'red'
+										: 'amber'}
+								text={container.state.health.status}
+								size="sm"
+							/>
 						</div>
 					</div>
 				</div>
+			{/if}
 
-				<Separator />
-
-				<div class="space-y-3">
-					<h4 class="text-sm font-semibold tracking-tight">{m.containers_system()}</h4>
-
-					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						<div class="space-y-1">
-							<div class="text-muted-foreground text-xs">{m.common_id()}</div>
-							<div class="bg-muted/50 max-w-full truncate rounded px-2 py-1.5 font-mono text-xs">
-								{container.id}
-							</div>
-						</div>
-
-						{#if container.config?.workingDir}
-							<div class="space-y-1">
-								<div class="text-muted-foreground text-xs">{m.containers_working_directory()}</div>
-								<div class="bg-muted/50 max-w-full truncate rounded px-2 py-1.5 font-mono text-xs">
-									{container.config.workingDir}
-								</div>
-							</div>
-						{/if}
-
-						{#if container.config?.user}
-							<div class="space-y-1">
-								<div class="text-muted-foreground text-xs">{m.common_user()}</div>
-								<div class="bg-muted/50 inline-flex rounded px-2 py-1.5 font-mono text-xs">
-									{container.config.user}
-								</div>
-							</div>
-						{/if}
-
-						{#if container.state?.health}
-							<div class="space-y-1 sm:col-span-2">
-								<div class="text-muted-foreground text-xs">{m.containers_health_label()}</div>
-								<div class="flex flex-wrap items-center gap-3">
-									<StatusBadge
-										variant={container.state.health.status === 'healthy'
-											? 'green'
-											: container.state.health.status === 'unhealthy'
-												? 'red'
-												: 'amber'}
-										text={container.state.health.status}
-									/>
-									{#if container.state.health.log && container.state.health.log.length > 0}
-										{@const first = container.state.health.log[0]}
-										{@const lastCheck = (first?.Start ?? first?.start) as string | undefined}
-										{#if lastCheck}
-											<span class="text-muted-foreground text-xs">
-												{m.containers_health_last_check({ time: formatDockerDate(lastCheck) })}
-											</span>
-										{/if}
-									{/if}
-								</div>
-							</div>
-						{/if}
+			{#if container.config?.cmd && container.config.cmd.length > 0}
+				<div class="col-span-1 flex items-start gap-3 sm:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-6">
+					<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 p-2">
+						<TerminalIcon class="size-5 text-amber-500" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="text-muted-foreground text-sm font-medium">{m.containers_command()}</p>
+						<p
+							class="mt-1 cursor-pointer font-mono text-xs leading-relaxed font-medium break-all select-all sm:text-sm"
+							title="Click to select"
+						>
+							{container.config.cmd.join(' ')}
+						</p>
 					</div>
 				</div>
-			</Card.Content>
-		</Card.Root>
-	</div>
-</section>
+			{/if}
+		</div>
+	</Card.Content>
+</Card.Root>

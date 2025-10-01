@@ -17,7 +17,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ImageUpdateItem from '$lib/components/image-update-item.svelte';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
-	import type { ImageSummaryDto } from '$lib/types/image.type';
+	import type { ImageSummaryDto, ImageUpdateInfoDto } from '$lib/types/image.type';
 	import { format } from 'date-fns';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
@@ -26,11 +26,13 @@
 	let {
 		images = $bindable(),
 		selectedIds = $bindable(),
-		requestOptions = $bindable()
+		requestOptions = $bindable(),
+		onImageUpdated
 	}: {
 		images: Paginated<ImageSummaryDto>;
 		selectedIds: string[];
 		requestOptions: SearchPaginationSortRequest;
+		onImageUpdated?: () => Promise<void>;
 	} = $props();
 
 	let isLoading = $state({
@@ -149,6 +151,15 @@
 		return { repo: repo || '<none>', tag: tag || '<none>' };
 	}
 
+	async function handleUpdateInfoChanged(imageId: string, newUpdateInfo: ImageUpdateInfoDto) {
+		const imageIndex = images.data.findIndex((img) => img.id === imageId);
+		if (imageIndex !== -1) {
+			images.data[imageIndex].updateInfo = newUpdateInfo;
+			images = { ...images, data: [...images.data] };
+		}
+		await onImageUpdated?.();
+	}
+
 	const columns = [
 		{ accessorKey: 'id', title: m.common_id(), hidden: true },
 		{ accessorKey: 'repoTags', title: m.images_repository(), sortable: true, cell: RepoCell },
@@ -158,26 +169,13 @@
 			accessorKey: 'inUse',
 			title: m.common_status(),
 			sortable: true,
-			cell: StatusCell,
-			filterFn: (row, columnId, filterValue) => {
-				const selected = Array.isArray(filterValue) ? (filterValue as boolean[]) : [];
-				if (selected.length === 0) return true;
-				const value = Boolean(row.getValue<boolean>(columnId));
-				return selected.includes(value);
-			}
+			cell: StatusCell
 		},
 		{
 			id: 'updates',
 			accessorFn: (row) => row.updateInfo?.hasUpdate ?? false,
 			title: m.images_updates(),
-			cell: UpdatesCell,
-			filterFn: (row, columnId, filterValue) => {
-				const selected = Array.isArray(filterValue) ? (filterValue as boolean[]) : [];
-				if (selected.length === 0) return true;
-
-				const hasUpdate = row.getValue(columnId) as boolean;
-				return selected.includes(hasUpdate);
-			}
+			cell: UpdatesCell
 		}
 	] satisfies ColumnSpec<ImageSummaryDto>[];
 </script>
@@ -208,7 +206,13 @@
 
 {#snippet UpdatesCell({ item }: { item: ImageSummaryDto })}
 	{@const { repo, tag } = extractRepoAndTag(item.repoTags)}
-	<ImageUpdateItem updateInfo={item.updateInfo} imageId={item.id} {repo} {tag} />
+	<ImageUpdateItem
+		updateInfo={item.updateInfo}
+		imageId={item.id}
+		{repo}
+		{tag}
+		onUpdated={(newInfo) => handleUpdateInfoChanged(item.id, newInfo)}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ImageSummaryDto })}

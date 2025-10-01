@@ -2,10 +2,12 @@ import BaseAPIService from './api-service';
 import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/types/container-registry.type';
 import type { ContainerRegistry } from '$lib/types/container-registry.type';
 import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
+import { transformPaginationParams } from '$lib/utils/params.util';
 
 export default class ContainerRegistryService extends BaseAPIService {
 	async getRegistries(options?: SearchPaginationSortRequest): Promise<Paginated<ContainerRegistry>> {
-		const res = await this.api.get('/container-registries', { params: options });
+		const params = transformPaginationParams(options);
+		const res = await this.api.get('/container-registries', { params });
 		return res.data;
 	}
 

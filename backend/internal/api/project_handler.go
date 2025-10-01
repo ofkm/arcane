@@ -16,6 +16,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
@@ -46,11 +47,12 @@ func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectS
 	apiGroup := group.Group("/environments/:id/projects")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
+
+		apiGroup.GET("", handler.ListProjects)
 		apiGroup.GET("/counts", handler.GetProjectStatusCounts)
-		apiGroup.GET("/", handler.ListProjects)
 		apiGroup.POST("/:projectId/up", handler.DeployProject)
 		apiGroup.POST("/:projectId/down", handler.DownProject)
-		apiGroup.POST("/", handler.CreateProject)
+		apiGroup.POST("", handler.CreateProject)
 		apiGroup.GET("/:projectId", handler.GetProject)
 		apiGroup.POST("/:projectId/pull", handler.PullProjectImages)
 		apiGroup.POST("/:projectId/redeploy", handler.RedeployProject)
@@ -63,16 +65,9 @@ func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectS
 }
 
 func (h *ProjectHandler) ListProjects(c *gin.Context) {
-	var req utils.SortedPaginationRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid pagination or sort parameters: " + err.Error(),
-		})
-		return
-	}
+	params := pagination.ExtractListModifiersQueryParams(c)
 
-	projectsResponse, pagination, err := h.projectService.ListProjects(c.Request.Context(), req)
+	projectsResponse, paginationResp, err := h.projectService.ListProjects(c.Request.Context(), params)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			c.JSON(http.StatusRequestTimeout, gin.H{
@@ -94,7 +89,7 @@ func (h *ProjectHandler) ListProjects(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"data":       projectsResponse,
-		"pagination": pagination,
+		"pagination": paginationResp,
 	})
 }
 

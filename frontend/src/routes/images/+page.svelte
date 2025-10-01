@@ -158,7 +158,14 @@
 
 <ResourcePageLayout title={m.images_title()} subtitle={m.images_subtitle()} {actionButtons} {statCards} statCardsColumns={2}>
 	{#snippet mainContent()}
-		<ImageTable bind:images bind:selectedIds bind:requestOptions />
+		<ImageTable
+			bind:images
+			bind:selectedIds
+			bind:requestOptions
+			onImageUpdated={async () => {
+				images = await imageService.getImages(requestOptions);
+			}}
+		/>
 	{/snippet}
 
 	{#snippet additionalContent()}

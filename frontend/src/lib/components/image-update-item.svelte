@@ -93,12 +93,12 @@
 		try {
 			const result = await imageService.checkImageUpdateByID(imageId);
 			if (result) {
+				localUpdateInfo = result;
+				onUpdated?.(result);
+
 				if (result.error) {
-					localUpdateInfo = result;
 					toast.error(result.error || m.images_update_check_failed());
 				} else {
-					localUpdateInfo = result;
-					onUpdated?.(result);
 					toast.success(m.images_update_check_completed());
 				}
 			} else {
@@ -106,7 +106,7 @@
 			}
 		} catch (error) {
 			console.error('Error checking update:', error);
-			localUpdateInfo = {
+			const errorInfo: ImageUpdateData = {
 				hasUpdate: false,
 				updateType: 'error',
 				currentVersion: tag || '',
@@ -117,7 +117,9 @@
 				responseTimeMs: 0,
 				error: (error as Error)?.message || m.images_update_check_failed()
 			};
-			toast.error(localUpdateInfo?.error || m.images_update_check_failed());
+			localUpdateInfo = errorInfo;
+			onUpdated?.(errorInfo);
+			toast.error(errorInfo.error);
 		} finally {
 			isChecking = false;
 		}

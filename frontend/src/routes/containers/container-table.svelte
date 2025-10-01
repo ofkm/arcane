@@ -22,7 +22,7 @@
 	import type { ContainerSummaryDto } from '$lib/types/container.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
-	import PortBadges from '$lib/components/port-badges.svelte';
+	import { PortBadge } from '$lib/components/badges/index.js';
 	import { containerService } from '$lib/services/container-service';
 
 	let {
@@ -137,7 +137,7 @@
 </script>
 
 {#snippet PortsCell({ item }: { item: ContainerSummaryDto })}
-	<PortBadges ports={item.ports ?? []} {baseServerUrl} />
+	<PortBadge ports={item.ports ?? []} {baseServerUrl} />
 {/snippet}
 
 {#snippet NameCell({ item }: { item: ContainerSummaryDto })}

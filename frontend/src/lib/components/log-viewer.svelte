@@ -4,6 +4,7 @@
 	import { environmentStore } from '$lib/stores/environment.store';
 	import { m } from '$lib/paraglide/messages';
 	import { ReconnectingWebSocket } from '$lib/utils/ws';
+	import { cn } from '$lib/utils';
 
 	interface LogEntry {
 		id: number;
@@ -15,6 +16,7 @@
 	}
 
 	interface Props {
+		class?: string;
 		containerId?: string | null;
 		projectId?: string | null;
 		type?: 'container' | 'project';
@@ -29,6 +31,7 @@
 	}
 
 	let {
+		class: className,
 		containerId = null,
 		projectId = null,
 		type = 'container',
@@ -289,7 +292,7 @@
 	});
 </script>
 
-<div class="log-viewer rounded-md border bg-black text-white">
+<div class={cn('log-viewer rounded-t-none rounded-b-xl border bg-black text-white', className)}>
 	{#if error}
 		<div class="border-b border-red-700 bg-red-900/20 p-3 text-sm text-red-200">
 			{error}
@@ -298,7 +301,7 @@
 
 	<div
 		bind:this={logContainer}
-		class="log-viewer overflow-y-auto rounded-lg border bg-black font-mono text-xs text-white sm:text-sm"
+		class="log-viewer overflow-y-auto rounded-t-none rounded-b-xl border bg-black font-mono text-xs text-white sm:text-sm"
 		style="height: {height}; min-height: 300px;"
 		role="log"
 		aria-live={isStreaming ? 'polite' : 'off'}

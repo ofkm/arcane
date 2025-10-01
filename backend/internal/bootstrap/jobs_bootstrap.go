@@ -23,12 +23,11 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 		slog.ErrorContext(appCtx, "Failed to register auto-update job", slog.Any("error", err))
 	}
 
-	imagePollingJob := job.NewImagePollingJob(scheduler, appServices.ImageUpdate, appServices.Settings)
+	imagePollingJob := job.NewImagePollingJob(scheduler, appServices.ImageUpdate, appServices.Settings, appServices.Environment)
 	if err := imagePollingJob.Register(appCtx); err != nil {
 		slog.ErrorContext(appCtx, "Failed to register image polling job", slog.Any("error", err))
 	}
 
-	// Register analytics heartbeat job
 	analyticsJob := job.NewAnalyticsJob(scheduler, appServices.Settings, nil, appConfig)
 	if err := analyticsJob.Register(appCtx); err != nil {
 		slog.ErrorContext(appCtx, "Failed to register analytics heartbeat job", slog.Any("error", err))

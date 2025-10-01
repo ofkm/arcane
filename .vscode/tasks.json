@@ -2,7 +2,8 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Start",
+      "label": "Start Development Environment",
+      "detail": "Start the Arcane development environment with hot reload",
       "type": "shell",
       "command": "./scripts/development/dev.sh",
       "args": ["start"],
@@ -16,30 +17,42 @@
         "clear": false,
         "echo": false,
         "focus": false,
-        "showReuseMessage": false
+        "showReuseMessage": false,
       },
       "isBackground": true,
-      "detail": "Start the Docker development environment with hot reload"
+      "options": {
+        "statusbar": {
+          "hide": false,
+          "label": "Start"
+        }
+      }
     },
     {
-      "label": "Stop",
+      "label": "Stop Development Environment",
+      "detail": "Stop the Arcane development environment",
       "type": "shell",
       "command": "./scripts/development/dev.sh",
       "args": ["stop"],
       "group": "build",
       "presentation": {
         "reveal": "silent",
-        "close": false,
+        "close": true,
         "clear": false,
         "echo": false,
         "focus": false,
         "showReuseMessage": false
       },
       "isBackground": true,
-      "detail": "Stop the Docker development environment"
+      "options": {
+        "statusbar": {
+          "hide": false,
+          "label": "Stop"
+        }
+      }
     },
     {
-      "label": "Restart",
+      "label": "Restart Development Environment",
+      "detail": "Restart the Arcane development environment",
       "type": "shell",
       "command": "./scripts/development/dev.sh",
       "args": ["restart"],
@@ -53,10 +66,16 @@
         "showReuseMessage": false
       },
       "isBackground": true,
-      "detail": "Restart all services in the development environment"
+      "options": {
+        "statusbar": {
+          "hide": false,
+          "label": "Restart"
+        }
+      }
     },
     {
-      "label": "Rebuild",
+      "label": "Rebuild Development Environment",
+      "detail": "Rebuild the Arcane development environment",
       "type": "shell",
       "command": "./scripts/development/dev.sh",
       "args": ["rebuild"],
@@ -70,10 +89,16 @@
         "showReuseMessage": false
       },
       "isBackground": true,
-      "detail": "Rebuild containers and restart (useful after dependency changes)"
+      "options": {
+        "statusbar": {
+          "hide": false,
+          "label": "Rebuild"
+        }
+      }
     },
     {
-      "label": "Clean",
+      "label": "Clean Development Environment",
+      "detail": "Clean the Arcane development environment",
       "type": "shell",
       "command": "./scripts/development/dev.sh",
       "args": ["clean"],
@@ -84,12 +109,19 @@
         "focus": true,
         "panel": "dedicated",
         "showReuseMessage": false,
-        "clear": true
+        "clear": true,
+        "close": true
       },
-      "detail": "Remove all containers, networks, and volumes (WARNING: destructive)"
+      "options": {
+        "statusbar": {
+          "hide": false,
+          "label": "Clean"
+        }
+      }
     },
     {
-      "label": "Logs",
+      "label": "Logs Development Environment",
+      "detail": "View the logs of the Arcane development environment",
       "type": "shell",
       "command": "./scripts/development/dev.sh",
       "args": [
@@ -105,10 +137,16 @@
         "showReuseMessage": false,
         "clear": true
       },
-      "detail": "Select which service logs to view"
+      "options": {
+        "statusbar": {
+          "hide": false,
+          "label": "Logs"
+        }
+      }
     },
     {
-      "label": "Env Vars",
+      "label": "Show Environment Variables",
+      "detail": "Show current environment configuration from running container",
       "type": "shell",
       "command": "./scripts/development/dev.sh",
       "args": [
@@ -124,13 +162,22 @@
         "showReuseMessage": false,
         "clear": true
       },
-      "detail": "Show current environment configuration from running container"
+      "options": {
+        "statusbar": {
+          "hide": false,
+          "label": "Env Vars"
+        }
+      }
     },
     {
       "label": "Open Frontend",
-      "type": "process",
-      "command": "open",
-      "args": ["http://localhost:3000"],
+      "detail": "Open the frontend application in your default browser",
+      "type": "shell",
+      "command": "sh",
+      "args": [
+        "-c",
+        "if [ -f .env ]; then source .env; fi; open \"${APP_URL:-http://localhost:3000}\""
+      ],
       "group": "test",
       "presentation": {
         "reveal": "never",
@@ -144,8 +191,38 @@
         "runOn": "default"
       },
       "isBackground": true,
-      "detail": "Open the frontend application in your default browser"
-    }
+      "options": {
+        "statusbar": {
+          "hide": false,
+          "label": "Open Frontend"
+        }
+      }
+    },
+    {
+      "label": "Shell into Service",
+      "detail": "Open interactive shell in a development service container",
+      "type": "shell",
+      "command": "./scripts/development/dev.sh",
+      "args": [
+        "shell",
+        "${input:shellService}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "options": {
+        "statusbar": {
+          "hide": true,
+          "label": "Shell"
+        }
+      }
+    },
   ],
   "inputs": [
     {
@@ -187,7 +264,27 @@
         },
         {
           "label": "Agent",
-          "value": "arcane-agent"
+          "value": "agent"
+        }
+      ],
+      "default": "backend"
+    },
+    {
+      "id": "shellService",
+      "description": "Which service to open shell in",
+      "type": "pickString",
+      "options": [
+        {
+          "label": "Backend Container",
+          "value": "backend"
+        },
+        {
+          "label": "Frontend Container",
+          "value": "frontend"
+        },
+        {
+          "label": "Agent Container",
+          "value": "agent"
         }
       ],
       "default": "backend"
