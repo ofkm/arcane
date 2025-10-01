@@ -1,8 +1,6 @@
 <script lang="ts">
-	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import MemoryStickIcon from '@lucide/svelte/icons/memory-stick';
 	import CpuIcon from '@lucide/svelte/icons/cpu';
-	import ContainerIcon from '@lucide/svelte/icons/container';
 	import { toast } from 'svelte-sonner';
 	import PruneConfirmationDialog from '$lib/components/dialogs/prune-confirmation-dialog.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -14,14 +12,16 @@
 	import { createStatsWebSocket } from '$lib/utils/ws';
 	import type { ReconnectingWebSocket } from '$lib/utils/ws';
 	import MeterMetric from '$lib/components/meter-metric.svelte';
+	import DiskMeter from '$lib/components/disk-meter.svelte';
 	import QuickActions from '$lib/components/quick-actions.svelte';
-	import DockerDetailsCards from '$lib/components/docker-details-cards.svelte';
+	import DockerOverview from '$lib/components/docker-overview.svelte';
 	import type { SystemStats } from '$lib/types/system-stats.type';
 	import DashboardContainerTable from './dash-container-table.svelte';
 	import DashboardImageTable from './dash-image-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { invalidateAll } from '$app/navigation';
 	import { systemService } from '$lib/services/system-service';
+	import bytes from 'bytes';
 
 	let { data } = $props();
 	let containers = $state(data.containers);
@@ -108,7 +108,6 @@
 
 	async function refreshData() {
 		isLoading.refreshing = true;
-
 		await invalidateAll();
 		isLoading.refreshing = false;
 	}
@@ -169,17 +168,14 @@
 		statsWSClient.connect();
 	}
 
-	// Reconnect stats WS and refresh data when environment changes
 	$effect(() => {
 		const unsubscribe = environmentStore.selected.subscribe(async (env) => {
 			if (!env) return;
-			// If already mounted and client exists, reconnect and refresh
 			if (statsWSClient) {
 				statsWSClient.close();
 				statsWSClient = null;
 				resetStats();
 				setupStatsWS();
-				// Also refresh non-WS data for this page
 				await refreshData();
 			}
 		});
@@ -263,15 +259,15 @@
 </script>
 
 <div class="space-y-8">
-	<div class="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-		<div class="space-y-1">
-			<h1 class="text-3xl font-bold tracking-tight">{m.dashboard_title()}</h1>
-			<p class="text-muted-foreground max-w-2xl text-sm">{m.dashboard_subtitle()}</p>
-		</div>
+	<div class="flex flex-col gap-4">
+		<div class="flex items-start justify-between gap-3">
+			<div class="flex-1 space-y-1">
+				<h1 class="text-3xl font-bold tracking-tight">{m.dashboard_title()}</h1>
+				<p class="text-muted-foreground max-w-2xl text-sm">{m.dashboard_subtitle()}</p>
+			</div>
 
-		<div class="flex flex-wrap items-center justify-end gap-2">
 			<QuickActions
-				class="absolute right-4 top-4 flex-wrap items-center gap-2 sm:static sm:flex"
+				class="shrink-0"
 				compact
 				dockerInfo={dashboardStates.dockerInfo}
 				{stoppedContainers}
@@ -289,72 +285,55 @@
 
 	<section>
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
-		<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-			<MeterMetric
-				title={m.dashboard_meter_running()}
-				icon={ContainerIcon}
-				currentValue={isLoading.loadingStats ? undefined : runningContainers}
-				formatValue={(v) => v.toString()}
-				maxValue={Math.max(totalContainers, 1)}
-				footerText={`${runningContainers} of ${totalContainers} running`}
-				unit="containers"
-				loading={isLoading.loadingStats}
-			/>
+		<div class="space-y-3">
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+				<MeterMetric
+					title={m.dashboard_meter_cpu()}
+					icon={CpuIcon}
+					description={m.dashboard_meter_cpu_desc()}
+					currentValue={isLoading.loadingStats || !hasInitialStatsLoaded ? undefined : currentStats?.cpuUsage}
+					unit="%"
+					maxValue={100}
+					formatValue={(v) => `${v.toFixed(1)}`}
+					loading={isLoading.loadingStats || !hasInitialStatsLoaded}
+				/>
 
-			<MeterMetric
-				title={m.dashboard_meter_cpu()}
-				icon={CpuIcon}
-				description={m.dashboard_meter_cpu_desc()}
-				currentValue={isLoading.loadingStats || !hasInitialStatsLoaded ? undefined : currentStats?.cpuUsage}
-				unit="%"
-				maxValue={100}
-				formatValue={(v) => `${v.toFixed(1)}`}
-				loading={isLoading.loadingStats || !hasInitialStatsLoaded}
-			/>
+				<MeterMetric
+					title={m.dashboard_meter_memory()}
+					icon={MemoryStickIcon}
+					description={m.dashboard_meter_memory_desc()}
+					currentValue={isLoading.loadingStats || !hasInitialStatsLoaded ? undefined : currentStats?.memoryUsage}
+					unit="%"
+					formatValue={(v) => {
+						if (currentStats?.memoryTotal) {
+							return ((v / currentStats.memoryTotal) * 100).toFixed(1);
+						}
+						return '0';
+					}}
+					maxValue={currentStats?.memoryTotal}
+					showAbsoluteValues={true}
+					formatAbsoluteValue={(v) => bytes.format(v, { unitSeparator: ' ' }) ?? '-'}
+					loading={isLoading.loadingStats || !hasInitialStatsLoaded}
+				/>
 
-			<MeterMetric
-				title={m.dashboard_meter_memory()}
-				icon={MemoryStickIcon}
-				description={m.dashboard_meter_memory_desc()}
-				currentValue={isLoading.loadingStats || !hasInitialStatsLoaded
-					? undefined
-					: currentStats?.memoryUsage !== undefined && currentStats?.memoryTotal !== undefined
-						? (currentStats.memoryUsage / currentStats.memoryTotal) * 100
-						: undefined}
-				unit="%"
-				formatValue={(v) => `${v.toFixed(1)}`}
-				maxValue={100}
-				loading={isLoading.loadingStats || !hasInitialStatsLoaded}
-			/>
+				<DiskMeter
+					diskUsage={currentStats?.diskUsage}
+					diskTotal={currentStats?.diskTotal}
+					loading={isLoading.loadingStats || !hasInitialStatsLoaded}
+					class="col-span-2 sm:col-span-1"
+				/>
+			</div>
 
-			<MeterMetric
-				icon={HardDriveIcon}
-				title={m.dashboard_meter_disk()}
-				description={m.dashboard_meter_disk_desc()}
-				currentValue={isLoading.loadingStats || !hasInitialStatsLoaded
-					? undefined
-					: currentStats?.diskUsage !== undefined && currentStats?.diskTotal !== undefined
-						? (currentStats.diskUsage / currentStats.diskTotal) * 100
-						: undefined}
-				unit="%"
-				formatValue={(v) => `${v.toFixed(1)}`}
-				maxValue={100}
-				loading={isLoading.loadingStats || !hasInitialStatsLoaded}
+			<DockerOverview
+				dockerInfo={dashboardStates.dockerInfo}
+				containersRunning={runningContainers}
+				containersStopped={stoppedContainers}
+				{totalContainers}
+				totalImages={images.pagination.totalItems}
+				loading={isLoading.loadingDockerInfo}
 			/>
 		</div>
 	</section>
-
-	<DockerDetailsCards
-		title={m.dashboard_docker_details_title()}
-		isLoadingDockerInfo={isLoading.loadingDockerInfo}
-		isLoadingStats={isLoading.loadingStats}
-		isLoadingImages={isLoading.loadingImages}
-		dockerInfo={dashboardStates.dockerInfo}
-		totalContainers={containers.pagination.totalItems}
-		{stoppedContainers}
-		containersRunning={dockerInfo?.containersRunning ?? 0}
-		bind:imagesTotal={images.pagination.totalItems}
-	/>
 
 	<section>
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">Resources</h2>
