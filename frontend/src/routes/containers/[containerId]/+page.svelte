@@ -33,7 +33,7 @@
 	import ContainerLogsPanel from '../components/ContainerLogsPanel.svelte';
 	import ContainerShell from '../components/ContainerShell.svelte';
 	import { createContainerStatsWebSocket, type ReconnectingWebSocket } from '$lib/utils/ws';
-	import { page } from '$app/state';
+	import { environmentStore } from '$lib/stores/environment.store';
 
 	let { data } = $props();
 	let container = $derived(data?.container as ContainerDetailsDto);
@@ -58,12 +58,14 @@
 
 	const containerDisplayName = $derived(cleanContainerName(container?.name));
 
-	function startStatsStream() {
+	async function startStatsStream() {
 		if (statsWebSocket || !container?.id || !container.state?.running) return;
 
 		try {
+			const envId = await environmentStore.getCurrentEnvironmentId();
+
 			const ws = createContainerStatsWebSocket({
-				getEnvId: () => page.params.id || '0',
+				getEnvId: () => envId,
 				containerId: container.id,
 				onMessage: (statsData) => {
 					if (statsData.removed) {
@@ -96,7 +98,7 @@
 
 	$effect(() => {
 		if (selectedTab === 'stats' && container?.state?.running) {
-			startStatsStream();
+			void startStatsStream();
 		} else if (statsWebSocket) {
 			closeStatsStream();
 		}
