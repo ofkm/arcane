@@ -124,7 +124,6 @@ func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string,
 				go ws.ForwardLogJSON(ctx, ls.hub, msgs)
 			}
 		} else {
-			// Plain text mode still strips ANSI & timestamps for consistency
 			cleanChan := make(chan string, 256)
 			go func() {
 				defer close(cleanChan)
@@ -138,13 +137,6 @@ func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string,
 	})
 
 	return ls.hub
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // GET /api/containers/:id/logs/ws
@@ -221,7 +213,7 @@ func (h *ContainerHandler) GetExecWS(c *gin.Context) {
 	writeErr := make(chan error, 1)
 
 	go h.execOutputPump(ctx, stdout, conn, done, writeErr)
-	go h.execInputPump(ctx, stdin, conn, cancel, readErr, writeErr)
+	go h.execInputPump(stdin, conn, cancel, readErr, writeErr)
 
 	h.waitForExecCompletion(conn, done, readErr, writeErr, ctx)
 }
@@ -257,7 +249,7 @@ func (h *ContainerHandler) execOutputPump(ctx context.Context, stdout io.Reader,
 	}
 }
 
-func (h *ContainerHandler) execInputPump(ctx context.Context, stdin io.WriteCloser, conn *websocket.Conn, cancel context.CancelFunc, readErr, writeErr chan error) {
+func (h *ContainerHandler) execInputPump(stdin io.WriteCloser, conn *websocket.Conn, cancel context.CancelFunc, readErr, writeErr chan error) {
 	for {
 		messageType, data, err := conn.ReadMessage()
 		if err != nil {
