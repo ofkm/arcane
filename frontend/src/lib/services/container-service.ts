@@ -35,12 +35,6 @@ export class ContainerService extends BaseAPIService {
 		return this.handleResponse(this.api.post(`/environments/${envId}/containers`, options));
 	}
 
-	async getContainerStats(containerId: string, stream: boolean = false): Promise<ContainerStats> {
-		const envId = await environmentStore.getCurrentEnvironmentId();
-		const url = `/environments/${envId}/containers/${containerId}/stats${stream ? '?stream=true' : ''}`;
-		return this.handleResponse(this.api.get(url)) as Promise<ContainerStats>;
-	}
-
 	async stopContainer(containerId: string): Promise<any> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.post(`/environments/${envId}/containers/${containerId}/stop`));

@@ -7,11 +7,7 @@ export const load: PageLoad = async ({ params }) => {
 	const containerId = params.containerId;
 
 	try {
-		const [container, containerStats, settings] = await Promise.all([
-			containerService.getContainer(containerId),
-			containerService.getContainerStats(containerId),
-			settingsService.getSettings()
-		]);
+		const [container, settings] = await Promise.all([containerService.getContainer(containerId), settingsService.getSettings()]);
 
 		if (!container) {
 			throw error(404, 'Container not found');
@@ -19,7 +15,6 @@ export const load: PageLoad = async ({ params }) => {
 
 		return {
 			container,
-			stats: containerStats,
 			settings
 		};
 	} catch (err: any) {

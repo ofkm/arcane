@@ -2,6 +2,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import { Progress } from '$lib/components/ui/progress/index.js';
+	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { m } from '$lib/paraglide/messages';
 	import bytes from 'bytes';
 	import type { ContainerDetailsDto, ContainerStats as ContainerStatsType } from '$lib/types/container.type';
@@ -13,14 +14,21 @@
 		memoryUsageFormatted: string;
 		memoryLimitFormatted: string;
 		memoryUsagePercent: number;
+		loading?: boolean;
 	}
 
-	let { container, stats, cpuUsagePercent, memoryUsageFormatted, memoryLimitFormatted, memoryUsagePercent }: Props = $props();
+	let {
+		container,
+		stats,
+		cpuUsagePercent,
+		memoryUsageFormatted,
+		memoryLimitFormatted,
+		memoryUsagePercent,
+		loading = false
+	}: Props = $props();
 
-	// Derived network interfaces
 	const networkInterfaces = $derived(stats?.networks ? Object.entries(stats.networks) : []);
 
-	// Derived total network stats across all interfaces
 	const totalNetworkRx = $derived.by(() => {
 		if (!stats?.networks) return 0;
 		return Object.values(stats.networks).reduce((acc, net) => acc + (net.rx_bytes || 0), 0);
@@ -41,7 +49,6 @@
 		return Object.values(stats.networks).reduce((acc, net) => acc + (net.tx_packets || 0), 0);
 	});
 
-	// Derived block I/O stats
 	const blockIoRead = $derived.by(() => {
 		if (!stats?.blkio_stats?.io_service_bytes_recursive) return 0;
 		return stats.blkio_stats.io_service_bytes_recursive
@@ -56,11 +63,90 @@
 			.reduce((acc, item) => acc + item.value, 0);
 	});
 
-	// Memory cache stats support both cgroup v1 'cache' and v2 'file'
 	const memoryCacheBytes = $derived(stats?.memory_stats?.stats?.file ?? stats?.memory_stats?.stats?.cache ?? 0);
 	const memoryActiveBytes = $derived(stats?.memory_stats?.stats?.active_anon || 0);
 	const memoryInactiveBytes = $derived(stats?.memory_stats?.stats?.inactive_anon || 0);
 </script>
+
+{#snippet progressBarSkeleton()}
+	<div class="space-y-3">
+		<div class="flex min-h-[44px] items-start justify-between">
+			<Skeleton class="h-6 w-20" />
+			<div class="text-right">
+				<Skeleton class="mb-1 h-5 w-12" />
+				<Skeleton class="h-4 w-24" />
+			</div>
+		</div>
+		<Skeleton class="h-3 w-full" />
+		<div class="mt-2 flex items-center justify-between">
+			<Skeleton class="h-3 w-24" />
+			<Skeleton class="h-3 w-28" />
+		</div>
+	</div>
+{/snippet}
+
+{#snippet statCardSkeleton()}
+	<div class="bg-muted/30 flex flex-col rounded-lg p-4">
+		<Skeleton class="mb-3 h-3 w-24" />
+		<div class="grid flex-1 grid-cols-2 gap-3">
+			<div class="space-y-1">
+				<Skeleton class="h-3 w-16" />
+				<Skeleton class="h-5 w-20" />
+				<Skeleton class="h-3 w-24" />
+			</div>
+			<div class="space-y-1">
+				<Skeleton class="h-3 w-16" />
+				<Skeleton class="h-5 w-20" />
+				<Skeleton class="h-3 w-24" />
+			</div>
+		</div>
+	</div>
+{/snippet}
+
+{#snippet processCardSkeleton()}
+	<div class="bg-muted/30 flex flex-col justify-center rounded-lg p-4">
+		<Skeleton class="mb-2 h-3 w-32" />
+		<Skeleton class="h-8 w-16" />
+		<Skeleton class="mt-1 h-3 w-24" />
+	</div>
+{/snippet}
+
+{#snippet networkInterfacesSkeleton()}
+	<div class="bg-muted/30 rounded-lg p-4">
+		<Skeleton class="mb-3 h-3 w-36" />
+		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+			{#each Array(4) as _}
+				<div class="border-border bg-background flex flex-col rounded-md border p-3">
+					<Skeleton class="mb-2 h-4 w-16" />
+					<div class="flex-1 space-y-1">
+						<div class="flex justify-between">
+							<Skeleton class="h-3 w-8" />
+							<Skeleton class="h-3 w-16" />
+						</div>
+						<div class="flex justify-between">
+							<Skeleton class="h-3 w-8" />
+							<Skeleton class="h-3 w-16" />
+						</div>
+					</div>
+				</div>
+			{/each}
+		</div>
+	</div>
+{/snippet}
+
+{#snippet detailsSkeleton()}
+	<div class="bg-muted/30 flex flex-col rounded-lg p-4">
+		<Skeleton class="mb-3 h-3 w-28" />
+		<div class="grid flex-1 grid-cols-2 gap-x-4 gap-y-2">
+			{#each Array(8) as _}
+				<div class="flex justify-between">
+					<Skeleton class="h-3 w-24" />
+					<Skeleton class="h-3 w-16" />
+				</div>
+			{/each}
+		</div>
+	</div>
+{/snippet}
 
 <Card.Root class="pt-0">
 	<Card.Header class="bg-muted rounded-t-xl p-4">
@@ -73,7 +159,31 @@
 		<Card.Description>{m.containers_resource_metrics_description()}</Card.Description>
 	</Card.Header>
 	<Card.Content class="p-4">
-		{#if stats && container.state?.running}
+		{#if loading}
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+				<div class="lg:col-span-2">
+					{@render progressBarSkeleton()}
+				</div>
+				<div class="lg:col-span-2">
+					{@render progressBarSkeleton()}
+				</div>
+			</div>
+
+			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{@render processCardSkeleton()}
+				{@render statCardSkeleton()}
+				{@render statCardSkeleton()}
+			</div>
+
+			<div class="mt-4">
+				{@render networkInterfacesSkeleton()}
+			</div>
+
+			<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+				{@render detailsSkeleton()}
+				{@render detailsSkeleton()}
+			</div>
+		{:else if stats && container.state?.running}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<!-- CPU Usage -->
 				<div class="lg:col-span-2">

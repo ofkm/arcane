@@ -174,6 +174,7 @@ export function createContainerStatsWebSocket(opts: {
 	onClose?: () => void;
 	onError?: (err: Event | Error) => void;
 	maxBackoff?: number;
+	shouldReconnect?: () => boolean;
 }) {
 	const buildUrl = () => {
 		const envId = opts.getEnvId() || '0';
@@ -189,6 +190,7 @@ export function createContainerStatsWebSocket(opts: {
 		onClose: opts.onClose,
 		onError: opts.onError,
 		maxBackoff: opts.maxBackoff,
-		autoConnect: false
+		autoConnect: false,
+		shouldReconnect: opts.shouldReconnect
 	});
 }

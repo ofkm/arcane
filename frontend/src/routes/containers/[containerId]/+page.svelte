@@ -37,7 +37,7 @@
 
 	let { data } = $props();
 	let container = $derived(data?.container as ContainerDetailsDto);
-	let stats = $state((data?.stats ?? null) as ContainerStatsType | null);
+	let stats = $state(null as ContainerStatsType | null);
 
 	let starting = $state(false);
 	let stopping = $state(false);
@@ -50,6 +50,8 @@
 	let isStreaming = $state(false);
 
 	let statsWebSocket: ReconnectingWebSocket<any> | null = $state(null);
+	let isConnecting = $state(false);
+	let hasInitialStatsLoaded = $state(false);
 
 	const cleanContainerName = (name: string | undefined): string => {
 		if (!name) return m.containers_not_found_title();
@@ -59,8 +61,9 @@
 	const containerDisplayName = $derived(cleanContainerName(container?.name));
 
 	async function startStatsStream() {
-		if (statsWebSocket || !container?.id || !container.state?.running) return;
+		if (statsWebSocket || isConnecting || !container?.id || !container.state?.running) return;
 
+		isConnecting = true;
 		try {
 			const envId = await environmentStore.getCurrentEnvironmentId();
 
@@ -73,19 +76,27 @@
 						return;
 					}
 					stats = statsData;
+					hasInitialStatsLoaded = true;
+				},
+				onOpen: () => {
+					isConnecting = false;
 				},
 				onError: (err) => {
 					console.error('Stats WebSocket error:', err);
+					isConnecting = false;
 				},
 				onClose: () => {
-					statsWebSocket = null;
-				}
+					isConnecting = false;
+				},
+				maxBackoff: 5000,
+				shouldReconnect: () => selectedTab === 'stats' && container?.state?.running === true
 			});
 
 			ws.connect();
 			statsWebSocket = ws;
 		} catch (error) {
 			console.error('Failed to connect to stats stream:', error);
+			isConnecting = false;
 		}
 	}
 
@@ -94,6 +105,8 @@
 			statsWebSocket.close();
 			statsWebSocket = null;
 		}
+		isConnecting = false;
+		hasInitialStatsLoaded = false;
 	}
 
 	$effect(() => {
@@ -181,7 +194,7 @@
 		!!(container?.networkSettings?.networks && Object.keys(container.networkSettings.networks).length > 0)
 	);
 	const hasMounts = $derived(!!(container?.mounts && container.mounts.length > 0));
-	const showStats = $derived(!!(container?.state?.running && stats));
+	const showStats = $derived(!!container?.state?.running);
 	const showShell = $derived(!!container?.state?.running);
 
 	const tabItems = $derived<TabItem[]>([
@@ -273,6 +286,7 @@
 						{memoryUsageFormatted}
 						{memoryLimitFormatted}
 						{memoryUsagePercent}
+						loading={!hasInitialStatsLoaded}
 					/>
 				</Tabs.Content>
 			{/if}

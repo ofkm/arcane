@@ -19,11 +19,6 @@ import (
 // EnvResolver should return the environment api url, optional access token, whether the env is enabled, and an error.
 type EnvResolver func(ctx context.Context, id string) (apiURL string, accessToken *string, enabled bool, err error)
 
-// NewEnvProxyMiddleware preserves the previous API and uses "id" as the param name.
-func NewEnvProxyMiddleware(localID string, resolver EnvResolver) gin.HandlerFunc {
-	return NewEnvProxyMiddlewareWithParam(localID, "id", resolver, nil)
-}
-
 // NewEnvProxyMiddlewareWithParam returns a gin middleware that proxies requests whose environment id
 // is remote. paramName is the URL param key (e.g. "id") that contains the environment id when using
 // router groups; if that param is not present the middleware will attempt to auto-detect the id

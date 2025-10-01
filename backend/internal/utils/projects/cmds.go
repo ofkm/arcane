@@ -8,15 +8,6 @@ import (
 	"github.com/docker/compose/v2/pkg/api"
 )
 
-func ComposePull(ctx context.Context, proj *types.Project) error {
-	c, err := NewClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-	return c.svc.Pull(ctx, proj, api.PullOptions{})
-}
-
 func ComposeRestart(ctx context.Context, proj *types.Project, services []string) error {
 	c, err := NewClient(ctx)
 	if err != nil {

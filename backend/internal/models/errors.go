@@ -149,10 +149,3 @@ func ToAPIError(err error) *APIError {
 	}
 	return NewInternalServerError(err.Error())
 }
-
-type UiSettingsDisabledError struct{}
-
-func (e *UiSettingsDisabledError) Error() string {
-	return "The settings can't be changed since UI configuration is disabled"
-}
-func (e *UiSettingsDisabledError) HttpStatusCode() int { return http.StatusForbidden }

@@ -229,14 +229,6 @@ func (s *UserService) CreateDefaultAdmin() error {
 	return nil
 }
 
-func (s *UserService) ListUsers(ctx context.Context) ([]models.User, error) {
-	var users []models.User
-	if err := s.db.WithContext(ctx).Find(&users).Error; err != nil {
-		return nil, fmt.Errorf("failed to list users: %w", err)
-	}
-	return users, nil
-}
-
 func (s *UserService) DeleteUser(ctx context.Context, id string) error {
 	if err := s.db.WithContext(ctx).Delete(&models.User{}, "id = ?", id).Error; err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)

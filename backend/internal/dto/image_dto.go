@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/image"
-	"github.com/ofkm/arcane-backend/internal/models"
 )
 
 type ImagePullDto struct {
@@ -49,54 +48,6 @@ type ImageSummaryDto struct {
 	Repo        string                 `json:"repo" sortable:"true"`
 	Tag         string                 `json:"tag" sortable:"true"`
 	UpdateInfo  *ImageUpdateInfoDto    `json:"updateInfo,omitempty"`
-}
-
-func NewImageSummaryDto(m *models.Image) ImageSummaryDto {
-	var labels map[string]interface{}
-	if m.Labels != nil {
-		labels = map[string]interface{}(m.Labels)
-	}
-
-	var update *ImageUpdateInfoDto
-	if m.UpdateRecord != nil {
-		sp := func(p *string) string {
-			if p == nil {
-				return ""
-			}
-			return *p
-		}
-
-		update = &ImageUpdateInfoDto{
-			HasUpdate:      m.UpdateRecord.HasUpdate,
-			UpdateType:     m.UpdateRecord.UpdateType,
-			CurrentVersion: m.UpdateRecord.CurrentVersion,
-			LatestVersion:  sp(m.UpdateRecord.LatestVersion),
-			CurrentDigest:  sp(m.UpdateRecord.CurrentDigest),
-			LatestDigest:   sp(m.UpdateRecord.LatestDigest),
-			CheckTime:      m.UpdateRecord.CheckTime,
-			ResponseTimeMs: m.UpdateRecord.ResponseTimeMs,
-			Error:          sp(m.UpdateRecord.LastError),
-
-			AuthMethod:     sp(m.UpdateRecord.AuthMethod),
-			AuthUsername:   sp(m.UpdateRecord.AuthUsername),
-			AuthRegistry:   sp(m.UpdateRecord.AuthRegistry),
-			UsedCredential: m.UpdateRecord.UsedCredential,
-		}
-	}
-
-	return ImageSummaryDto{
-		ID:          m.ID,
-		RepoTags:    []string(m.RepoTags),
-		RepoDigests: []string(m.RepoDigests),
-		Created:     m.Created.Unix(),
-		Size:        m.Size,
-		VirtualSize: m.VirtualSize,
-		Labels:      labels,
-		InUse:       m.InUse,
-		Repo:        m.Repo,
-		Tag:         m.Tag,
-		UpdateInfo:  update,
-	}
 }
 
 type ImageDetailSummaryDto struct {
