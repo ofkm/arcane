@@ -18,7 +18,7 @@ export default defineConfig({
 		})
 	],
 	server: {
-		host: process.env.APP_URL,
+		host: process.env.HOST,
 		proxy: {
 			'/api': {
 				target: process.env.DEV_BACKEND_URL || 'http://localhost:3552',

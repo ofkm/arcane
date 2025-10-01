@@ -535,12 +535,12 @@ func (s *ContainerService) AttachExec(ctx context.Context, execID string) (io.Wr
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
+	defer dockerClient.Close()
 
 	execAttach, err := dockerClient.ContainerExecAttach(ctx, execID, container.ExecAttachOptions{
 		Tty: true,
 	})
 	if err != nil {
-		dockerClient.Close()
 		return nil, nil, fmt.Errorf("failed to attach to exec: %w", err)
 	}
 
