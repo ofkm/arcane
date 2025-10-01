@@ -3,8 +3,6 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import * as Card from '$lib/components/ui/card/index.js';
-	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import TestTubeIcon from '@lucide/svelte/icons/test-tube';
