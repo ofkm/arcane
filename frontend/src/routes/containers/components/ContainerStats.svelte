@@ -56,8 +56,8 @@
 			.reduce((acc, item) => acc + item.value, 0);
 	});
 
-	// Memory cache stats
-	const memoryCacheBytes = $derived(stats?.memory_stats?.stats?.file || 0);
+	// Memory cache stats support both cgroup v1 'cache' and v2 'file'
+	const memoryCacheBytes = $derived(stats?.memory_stats?.stats?.file ?? stats?.memory_stats?.stats?.cache ?? 0);
 	const memoryActiveBytes = $derived(stats?.memory_stats?.stats?.active_anon || 0);
 	const memoryInactiveBytes = $derived(stats?.memory_stats?.stats?.inactive_anon || 0);
 </script>
@@ -74,7 +74,6 @@
 	</Card.Header>
 	<Card.Content class="p-4">
 		{#if stats && container.state?.running}
-			<!-- Main metrics grid -->
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<!-- CPU Usage -->
 				<div class="lg:col-span-2">
@@ -146,7 +145,6 @@
 				</div>
 			</div>
 
-			<!-- Secondary stats grid - 3 columns -->
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				<!-- Process Count -->
 				{#if stats.pids_stats && stats.pids_stats.current !== undefined}
@@ -264,7 +262,6 @@
 				</div>
 			{/if}
 
-			<!-- Detailed stats grid -->
 			<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
 				<!-- Memory Details -->
 				{#if stats.memory_stats?.stats}
@@ -283,7 +280,7 @@
 							</div>
 							<div class="flex justify-between">
 								<span class="text-muted-foreground">{m.containers_stats_cache()}:</span>
-								<span class="text-foreground font-medium">{bytes.format(stats.memory_stats.stats.file || 0)}</span>
+								<span class="text-foreground font-medium">{bytes.format(memoryCacheBytes)}</span>
 							</div>
 							<div class="flex justify-between">
 								<span class="text-muted-foreground">{m.containers_stats_memory_rss()}:</span>
