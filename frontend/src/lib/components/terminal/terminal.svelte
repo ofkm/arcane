@@ -83,6 +83,7 @@
 
 	function connectWebSocket() {
 		if (ws) {
+			isReconnecting = true;
 			ws.onclose = null;
 			ws.onerror = null;
 			ws.onmessage = null;
@@ -90,12 +91,11 @@
 			ws = null;
 		}
 
-		isReconnecting = true;
+		isReconnecting = false;
 		ws = new WebSocket(websocketUrl);
 		ws.binaryType = 'arraybuffer';
 
 		ws.onopen = () => {
-			isReconnecting = false;
 			onConnected?.();
 		};
 
