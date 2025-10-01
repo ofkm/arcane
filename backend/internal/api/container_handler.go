@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -55,6 +56,7 @@ func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerC
 		apiGroup.GET("/:containerId", handler.GetByID)
 		apiGroup.GET("/:containerId/stats", handler.GetStats)
 		apiGroup.GET("/:containerId/stats/stream", handler.GetStatsStream)
+		apiGroup.GET("/:containerId/stats/ws", handler.GetStatsWS)
 		apiGroup.POST("/:containerId/start", handler.Start)
 		apiGroup.POST("/:containerId/stop", handler.Stop)
 		apiGroup.POST("/:containerId/restart", handler.Restart)
@@ -661,7 +663,6 @@ func (h *ContainerHandler) GetStatsStream(c *gin.Context) {
 			return true
 		case err, ok := <-errChan:
 			if !ok || err == nil {
-				// graceful shutdown or no error; stop streaming
 				return false
 			}
 			c.SSEvent("error", gin.H{"error": err.Error()})
@@ -670,4 +671,79 @@ func (h *ContainerHandler) GetStatsStream(c *gin.Context) {
 			return false
 		}
 	})
+}
+
+type containerStatsStream struct {
+	hub    *ws.Hub
+	once   sync.Once
+	cancel context.CancelFunc
+}
+
+func (h *ContainerHandler) getOrStartContainerStatsHub(containerID string) *ws.Hub {
+	key := fmt.Sprintf("%s::stats", containerID)
+	v, _ := h.logStreams.LoadOrStore(key, &containerStatsStream{
+		hub: ws.NewHub(1024),
+	})
+	ss := v.(*containerStatsStream)
+
+	ss.once.Do(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		ss.cancel = cancel
+		go ss.hub.Run(ctx)
+
+		slog.Debug("starting stats stream pipeline", "containerID", containerID)
+
+		statsChan := make(chan interface{}, 256)
+		go func() {
+			defer func() {
+				close(statsChan)
+				slog.Debug("stats channel closed", "containerID", containerID)
+			}()
+
+			if err := h.containerService.StreamStats(ctx, containerID, statsChan); err != nil {
+				slog.Error("StreamStats failed", "containerID", containerID, "err", err)
+			}
+		}()
+
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case stats, ok := <-statsChan:
+					if !ok {
+						return
+					}
+					if b, err := json.Marshal(stats); err == nil {
+						ss.hub.Broadcast(b)
+					}
+				}
+			}
+		}()
+	})
+
+	return ss.hub
+}
+
+func (h *ContainerHandler) GetStatsWS(c *gin.Context) {
+	containerID := c.Param("containerId")
+	if containerID == "" {
+		containerID = c.Param("id")
+	}
+	if strings.TrimSpace(containerID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Container ID is required"}})
+		return
+	}
+
+	conn, err := h.containerWSUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		slog.Error("Failed to upgrade websocket connection", "err", err)
+		return
+	}
+
+	slog.Debug("websocket connection upgraded for stats", "containerID", containerID)
+
+	hub := h.getOrStartContainerStatsHub(containerID)
+	ws.ServeClient(context.Background(), hub, conn)
+	slog.Debug("websocket connection closed for stats", "containerID", containerID)
 }
