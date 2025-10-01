@@ -21,10 +21,8 @@
 		if ($settingsStore.defaultShell) {
 			selectedShell = $settingsStore.defaultShell;
 		}
-	});
 
-	$effect(() => {
-		if (containerId) {
+		if (containerId && selectedShell) {
 			updateWebSocketUrl();
 		}
 	});
