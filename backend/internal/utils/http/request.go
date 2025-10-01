@@ -2,10 +2,64 @@ package http
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
+
+// ValidateWebSocketOrigin validates the Origin header for WebSocket connections
+// to prevent CSRF attacks. It checks:
+// 1. Same-origin requests (Origin matches Host)
+// 2. Allowed origins from appURL
+// 3. Handles empty Origin headers (some clients don't send it)
+func ValidateWebSocketOrigin(appURL string) func(r *http.Request) bool {
+	return func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+
+		if origin == "" {
+			return true
+		}
+
+		originURL, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+
+		if originURL.Host == r.Host {
+			return true
+		}
+
+		appURLParsed, err := url.Parse(appURL)
+		if err != nil {
+			return false
+		}
+		if originURL.Host == appURLParsed.Host {
+			return true
+		}
+
+		if isLocalhost(originURL.Host) && isLocalhost(r.Host) {
+			return true
+		}
+
+		return false
+	}
+}
+
+func isLocalhost(host string) bool {
+	hostOnly := host
+	if idx := strings.LastIndex(host, ":"); idx != -1 {
+		hostOnly = host[:idx]
+	}
+
+	return hostOnly == "localhost" ||
+		hostOnly == "127.0.0.1" ||
+		hostOnly == "::1" ||
+		strings.HasPrefix(hostOnly, "127.") ||
+		hostOnly == "[::1]"
+}
 
 // GetQueryParam reads a string query parameter from the Gin context.
 // If `required` is true and the parameter is missing or empty, an error is returned.

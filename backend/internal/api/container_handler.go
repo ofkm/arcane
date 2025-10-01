@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -14,22 +15,36 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
 type ContainerHandler struct {
-	containerService *services.ContainerService
-	imageService     *services.ImageService
-	dockerService    *services.DockerClientService
-	logStreams       sync.Map // map[string]*logStream
+	containerService    *services.ContainerService
+	imageService        *services.ImageService
+	dockerService       *services.DockerClientService
+	logStreams          sync.Map
+	containerWSUpgrader websocket.Upgrader
 }
 
-func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, containerService *services.ContainerService, imageService *services.ImageService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &ContainerHandler{dockerService: dockerService, containerService: containerService, imageService: imageService}
+func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, containerService *services.ContainerService, imageService *services.ImageService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
+	handler := &ContainerHandler{
+		dockerService:    dockerService,
+		containerService: containerService,
+		imageService:     imageService,
+		containerWSUpgrader: websocket.Upgrader{
+			CheckOrigin:       httputil.ValidateWebSocketOrigin(cfg.AppUrl),
+			ReadBufferSize:    32 * 1024,
+			WriteBufferSize:   32 * 1024,
+			EnableCompression: true,
+		},
+	}
 
 	apiGroup := group.Group("/environments/:id/containers")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -44,6 +59,7 @@ func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerC
 		apiGroup.POST("/:containerId/stop", handler.Stop)
 		apiGroup.POST("/:containerId/restart", handler.Restart)
 		apiGroup.GET("/:containerId/logs/ws", handler.GetLogsWS)
+		apiGroup.GET("/:containerId/exec/ws", handler.GetExecWS)
 		apiGroup.DELETE("/:containerId", handler.Delete)
 
 	}
@@ -70,18 +86,30 @@ func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string,
 		ls.cancel = cancel
 		go ls.hub.Run(ctx)
 
-		// Always pull raw lines first
+		slog.Debug("starting log stream pipeline", "containerID", containerID, "format", format, "batched", batched)
+
 		lines := make(chan string, 256)
 		go func() {
-			defer close(lines)
-			_ = h.containerService.StreamLogs(ctx, containerID, lines, follow, tail, since, timestamps)
+			defer func() {
+				close(lines)
+				slog.Debug("lines channel closed", "containerID", containerID)
+			}()
+
+			if err := h.containerService.StreamLogs(ctx, containerID, lines, follow, tail, since, timestamps); err != nil {
+				slog.Error("StreamLogs failed", "containerID", containerID, "err", err)
+			}
 		}()
 
 		if format == "json" {
 			msgs := make(chan ws.LogMessage, 256)
 			go func() {
-				defer close(msgs)
+				defer func() {
+					close(msgs)
+					slog.Debug("msgs channel closed", "containerID", containerID)
+				}()
+				lineCount := 0
 				for line := range lines {
+					lineCount++
 					level, msg, ts := ws.NormalizeContainerLine(line)
 					seq := ls.seq.Add(1)
 					timestamp := ts
@@ -102,7 +130,6 @@ func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string,
 				go ws.ForwardLogJSON(ctx, ls.hub, msgs)
 			}
 		} else {
-			// Plain text mode still strips ANSI & timestamps for consistency
 			cleanChan := make(chan string, 256)
 			go func() {
 				defer close(cleanChan)
@@ -137,12 +164,135 @@ func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
 	format := c.DefaultQuery("format", "text")
 	batched := c.DefaultQuery("batched", "false") == "true"
 
-	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := h.containerWSUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
+		slog.Error("Failed to upgrade websocket connection", "err", err)
 		return
 	}
+
+	slog.Debug("websocket connection upgraded", "containerID", containerID)
+
 	hub := h.getOrStartContainerLogHub(containerID, format, batched, follow, tail, since, timestamps)
 	ws.ServeClient(context.Background(), hub, conn)
+	slog.Debug("websocket connection closed", "containerID", containerID)
+}
+
+// GET /api/environments/:id/containers/:containerId/exec/ws
+func (h *ContainerHandler) GetExecWS(c *gin.Context) {
+	containerID := c.Param("containerId")
+	if strings.TrimSpace(containerID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Container ID is required"}})
+		return
+	}
+
+	shell := c.DefaultQuery("shell", "/bin/sh")
+
+	conn, err := h.containerWSUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Failed to upgrade connection: " + err.Error()}})
+		return
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
+	execID, err := h.containerService.CreateExec(ctx, containerID, []string{shell})
+	if err != nil {
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error creating exec: %v\r\n", err)))
+		return
+	}
+
+	stdin, stdout, err := h.containerService.AttachExec(ctx, execID)
+	if err != nil {
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error attaching to exec: %v\r\n", err)))
+		return
+	}
+	defer func() {
+		if closeErr := stdin.Close(); closeErr != nil {
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error closing stdin: %v\r\n", closeErr)))
+		}
+	}()
+
+	done := make(chan struct{})
+	readErr := make(chan error, 1)
+	writeErr := make(chan error, 1)
+
+	go h.execOutputPump(ctx, stdout, conn, done, writeErr)
+	go h.execInputPump(stdin, conn, cancel, readErr, writeErr)
+
+	h.waitForExecCompletion(conn, done, readErr, writeErr, ctx)
+}
+
+func (h *ContainerHandler) execOutputPump(ctx context.Context, stdout io.Reader, conn *websocket.Conn, done chan struct{}, writeErr chan error) {
+	defer close(done)
+	buf := make([]byte, 8192)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			n, err := stdout.Read(buf)
+			if n > 0 {
+				if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+					select {
+					case writeErr <- err:
+					default:
+					}
+					return
+				}
+			}
+			if err != nil {
+				if err != io.EOF {
+					select {
+					case writeErr <- err:
+					default:
+					}
+				}
+				return
+			}
+		}
+	}
+}
+
+func (h *ContainerHandler) execInputPump(stdin io.WriteCloser, conn *websocket.Conn, cancel context.CancelFunc, readErr, writeErr chan error) {
+	for {
+		messageType, data, err := conn.ReadMessage()
+		if err != nil {
+			if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				select {
+				case readErr <- fmt.Errorf("read message error: %w", err):
+				default:
+				}
+			}
+			cancel()
+			return
+		}
+		if messageType == websocket.BinaryMessage || messageType == websocket.TextMessage {
+			if _, err := stdin.Write(data); err != nil {
+				select {
+				case writeErr <- fmt.Errorf("stdin write error: %w", err):
+				default:
+				}
+				return
+			}
+		}
+	}
+}
+
+func (h *ContainerHandler) waitForExecCompletion(conn *websocket.Conn, done chan struct{}, readErr, writeErr chan error, ctx context.Context) {
+	select {
+	case <-done:
+	case err := <-readErr:
+		if err != nil {
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("\r\nRead error: %v\r\n", err)))
+		}
+	case err := <-writeErr:
+		if err != nil {
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("\r\nWrite error: %v\r\n", err)))
+		}
+	case <-ctx.Done():
+	}
 }
 
 func (h *ContainerHandler) PullImage(c *gin.Context) {

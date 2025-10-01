@@ -10,27 +10,32 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
-var sysWsUpgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
-}
-
 type SystemHandler struct {
 	dockerService *services.DockerClientService
 	systemService *services.SystemService
+	sysWsUpgrader websocket.Upgrader
 }
 
-func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, systemService *services.SystemService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &SystemHandler{dockerService: dockerService, systemService: systemService}
+func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, systemService *services.SystemService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
+	handler := &SystemHandler{
+		dockerService: dockerService,
+		systemService: systemService,
+		sysWsUpgrader: websocket.Upgrader{
+			CheckOrigin: httputil.ValidateWebSocketOrigin(cfg.AppUrl),
+		},
+	}
 
 	apiGroup := group.Group("/environments/:id/system")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -242,7 +247,7 @@ func (h *SystemHandler) StopAllContainers(c *gin.Context) {
 
 //nolint:gocognit
 func (h *SystemHandler) Stats(c *gin.Context) {
-	conn, err := sysWsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := h.sysWsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}

@@ -504,3 +504,45 @@ func (s *ContainerService) ListContainersPaginated(ctx context.Context, params p
 
 	return result.Items, paginationResp, nil
 }
+
+// CreateExec creates an exec instance in the container
+func (s *ContainerService) CreateExec(ctx context.Context, containerID string, cmd []string) (string, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	execConfig := container.ExecOptions{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+		Cmd:          cmd,
+	}
+
+	execResp, err := dockerClient.ContainerExecCreate(ctx, containerID, execConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to create exec: %w", err)
+	}
+
+	return execResp.ID, nil
+}
+
+// AttachExec attaches to an exec instance and returns stdin, stdout/stderr streams
+func (s *ContainerService) AttachExec(ctx context.Context, execID string) (io.WriteCloser, io.Reader, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	execAttach, err := dockerClient.ContainerExecAttach(ctx, execID, container.ExecAttachOptions{
+		Tty: true,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to attach to exec: %w", err)
+	}
+
+	return execAttach.Conn, execAttach.Reader, nil
+}

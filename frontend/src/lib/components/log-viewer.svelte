@@ -5,6 +5,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { ReconnectingWebSocket } from '$lib/utils/ws';
 	import { cn } from '$lib/utils';
+	import { onDestroy } from 'svelte';
 
 	interface LogEntry {
 		id: number;
@@ -123,6 +124,7 @@
 
 	let logContainer: HTMLElement | undefined = $state();
 	let isStreaming = $state(false);
+	let shouldBeStreaming = $state(false);
 	let error: string | null = $state(null);
 	let eventSource: EventSource | null = null;
 	let wsClient: ReconnectingWebSocket<string> | null = null;
@@ -154,6 +156,7 @@
 		if (!targetId) return;
 
 		try {
+			shouldBeStreaming = true;
 			isStreaming = true;
 			error = null;
 			onStart?.();
@@ -163,6 +166,7 @@
 			console.error('Failed to start log stream:', err);
 			error = m.log_stream_failed_connect({ type: humanType });
 			isStreaming = false;
+			shouldBeStreaming = false;
 		}
 	}
 
@@ -198,10 +202,11 @@
 			},
 			onClose: () => {
 				isStreaming = false;
-				if (!error) {
+				if (!error && shouldBeStreaming) {
 					error = m.log_stream_closed_by_server({ type: humanType });
 				}
 			},
+			shouldReconnect: () => shouldBeStreaming,
 			maxBackoff: 10000
 		});
 
@@ -222,6 +227,8 @@
 	}
 
 	export function stopLogStream() {
+		shouldBeStreaming = false;
+
 		if (eventSource) {
 			if (dev) console.log(m.log_viewer_stopping({ type: humanType }));
 			eventSource.close();
@@ -249,6 +256,10 @@
 		});
 		scheduleFlush();
 	}
+
+	onDestroy(() => {
+		stopLogStream();
+	});
 
 	export function toggleAutoScroll() {
 		autoScroll = !autoScroll;
@@ -292,7 +303,7 @@
 	});
 </script>
 
-<div class={cn('log-viewer rounded-t-none rounded-b-xl border bg-black text-white', className)}>
+<div class={cn('log-viewer rounded-b-xl rounded-t-none border bg-black text-white', className)}>
 	{#if error}
 		<div class="border-b border-red-700 bg-red-900/20 p-3 text-sm text-red-200">
 			{error}
@@ -301,7 +312,7 @@
 
 	<div
 		bind:this={logContainer}
-		class="log-viewer overflow-y-auto rounded-t-none rounded-b-xl border bg-black font-mono text-xs text-white sm:text-sm"
+		class="log-viewer overflow-y-auto rounded-b-xl rounded-t-none border bg-black font-mono text-xs text-white sm:text-sm"
 		style="height: {height}; min-height: 300px;"
 		role="log"
 		aria-live={isStreaming ? 'polite' : 'off'}
@@ -341,7 +352,7 @@
 							</span>
 						{/if}
 					</div>
-					<div class="text-sm break-words whitespace-pre-wrap text-gray-300">
+					<div class="whitespace-pre-wrap break-words text-sm text-gray-300">
 						{log.message}
 					</div>
 				</div>
@@ -362,7 +373,7 @@
 							{log.service}
 						</span>
 					{/if}
-					<span class="flex-1 break-words whitespace-pre-wrap text-gray-300">
+					<span class="flex-1 whitespace-pre-wrap break-words text-gray-300">
 						{log.message}
 					</span>
 				</div>

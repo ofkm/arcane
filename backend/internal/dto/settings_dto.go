@@ -21,6 +21,7 @@ type UpdateSettingsDto struct {
 	PruneMode          *string `json:"dockerPruneMode,omitempty" binding:"omitempty,oneof=all dangling"`
 	BaseServerURL      *string `json:"baseServerUrl,omitempty"`
 	EnableGravatar     *string `json:"enableGravatar,omitempty"`
+	DefaultShell       *string `json:"defaultShell,omitempty"`
 
 	// Authentication settings
 	AuthLocalEnabled   *string `json:"authLocalEnabled,omitempty"`
