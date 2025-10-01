@@ -89,7 +89,7 @@ test.describe('Containers Page', () => {
 
     await navigateToContainers(page);
 
-    const row = page.locator(`tr:has(a[href="/containers/${any.id}/"])`);
+    const row = page.locator(`tr:has(a[href="/containers/${any.id}"])`);
     await row.getByRole('button', { name: 'Open menu' }).click();
     await page.getByRole('menuitem', { name: 'Remove' }).click();
 
