@@ -95,9 +95,7 @@
 							<div class="text-muted-foreground mt-2 flex items-center justify-between text-xs">
 								<span>{m.containers_stats_online_cpus()}: {stats.cpu_stats.online_cpus}</span>
 								<span>
-									{m.containers_stats_system_cpu()}: {bytes.format(stats.cpu_stats.system_cpu_usage || 0, {
-										unitSeparator: ' '
-									})}
+									{m.containers_stats_system_cpu()}: {((stats.cpu_stats.system_cpu_usage || 0) / 1e9).toFixed(2)}s
 								</span>
 							</div>
 						{/if}
