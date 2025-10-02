@@ -1,9 +1,15 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import LogViewer from '$lib/components/log-viewer.svelte';
+	import {
+		ArcaneCard,
+		ArcaneCardHeader,
+		ArcaneCardContent,
+		ArcaneCardTitle,
+		ArcaneCardDescription
+	} from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 
 	let {
@@ -27,18 +33,20 @@
 	function onToggleAutoScroll() {}
 </script>
 
-<Card.Root class="gap-0 p-0">
-	<Card.Header class="bg-muted rounded-t-xl p-4">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<div class="flex items-center gap-2">
-				<TerminalIcon class="text-primary size-5" />
-				<Card.Title class="text-lg">{m.compose_logs_title()}</Card.Title>
-				{#if isStreaming}
-					<div class="flex items-center gap-2">
-						<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
-						<span class="text-xs font-semibold text-green-600 sm:text-sm">{m.common_live()}</span>
-					</div>
-				{/if}
+<ArcaneCard class="gap-0 p-0">
+	<ArcaneCardHeader icon={TerminalIcon} class="pb-4">
+		<div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+			<div class="flex flex-col gap-1.5">
+				<div class="flex items-center gap-2">
+					<ArcaneCardTitle>{m.compose_logs_title()}</ArcaneCardTitle>
+					{#if isStreaming}
+						<div class="flex items-center gap-2">
+							<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
+							<span class="text-xs font-semibold text-green-600 sm:text-sm">{m.common_live()}</span>
+						</div>
+					{/if}
+				</div>
+				<ArcaneCardDescription>Real-time project logs</ArcaneCardDescription>
 			</div>
 
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -82,9 +90,8 @@
 				</div>
 			</div>
 		</div>
-		<Card.Description>Real-time project logs</Card.Description>
-	</Card.Header>
-	<Card.Content class="p-0">
+	</ArcaneCardHeader>
+	<ArcaneCardContent class="p-0">
 		<LogViewer
 			bind:this={viewer}
 			bind:autoScroll
@@ -98,5 +105,5 @@
 			{onClear}
 			{onToggleAutoScroll}
 		/>
-	</Card.Content>
-</Card.Root>
+	</ArcaneCardContent>
+</ArcaneCard>

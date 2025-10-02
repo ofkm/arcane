@@ -1,6 +1,13 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import NetworkIcon from '@lucide/svelte/icons/network';
+	import {
+		ArcaneCard,
+		ArcaneCardHeader,
+		ArcaneCardContent,
+		ArcaneCardTitle,
+		ArcaneCardDescription
+	} from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import type { ContainerDetailsDto } from '$lib/types/container.type';
 
@@ -26,17 +33,12 @@
 </script>
 
 <div class="space-y-6">
-	<Card.Root class="pt-0">
-		<Card.Header class="bg-muted rounded-t-xl p-4">
-			<Card.Title class="flex items-center gap-2 text-lg">
-				<NetworkIcon class="text-primary size-5" />
-				<h2>
-					{m.containers_networks_title()}
-				</h2>
-			</Card.Title>
-			<Card.Description>{m.containers_networks_description()}</Card.Description>
-		</Card.Header>
-		<Card.Content class="p-4">
+	<ArcaneCard>
+		<ArcaneCardHeader icon={NetworkIcon}>
+			<ArcaneCardTitle>{m.containers_networks_title()}</ArcaneCardTitle>
+			<ArcaneCardDescription>{m.containers_networks_description()}</ArcaneCardDescription>
+		</ArcaneCardHeader>
+		<ArcaneCardContent class="p-4">
 			{#if container.networkSettings?.networks && Object.keys(container.networkSettings.networks).length > 0}
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
 					{#each Object.entries(container.networkSettings.networks) as [networkName, rawNetworkConfig] (networkName)}
@@ -126,6 +128,6 @@
 					<div class="text-sm">{m.containers_no_networks_connected()}</div>
 				</div>
 			{/if}
-		</Card.Content>
-	</Card.Root>
+		</ArcaneCardContent>
+	</ArcaneCard>
 </div>

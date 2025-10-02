@@ -1,8 +1,14 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
 	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
+	import {
+		ArcaneCard,
+		ArcaneCardHeader,
+		ArcaneCardContent,
+		ArcaneCardTitle,
+		ArcaneCardDescription
+	} from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import bytes from 'bytes';
 	import type { ContainerDetailsDto, ContainerStats as ContainerStatsType } from '$lib/types/container.type';
@@ -148,17 +154,12 @@
 	</div>
 {/snippet}
 
-<Card.Root class="pt-0">
-	<Card.Header class="bg-muted rounded-t-xl p-4">
-		<Card.Title class="flex items-center gap-2 text-lg">
-			<ActivityIcon class="text-primary size-5" />
-			<h2>
-				{m.containers_resource_metrics()}
-			</h2>
-		</Card.Title>
-		<Card.Description>{m.containers_resource_metrics_description()}</Card.Description>
-	</Card.Header>
-	<Card.Content class="p-4">
+<ArcaneCard>
+	<ArcaneCardHeader icon={ActivityIcon}>
+		<ArcaneCardTitle>{m.containers_resource_metrics()}</ArcaneCardTitle>
+		<ArcaneCardDescription>{m.containers_resource_metrics_description()}</ArcaneCardDescription>
+	</ArcaneCardHeader>
+	<ArcaneCardContent class="p-4">
 		{#if loading}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<div class="lg:col-span-2">
@@ -257,7 +258,7 @@
 				<!-- Process Count -->
 				{#if stats.pids_stats && stats.pids_stats.current !== undefined}
 					<div class="bg-muted/30 flex flex-col justify-center rounded-lg p-4">
-						<div class="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wide">
+						<div class="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
 							{m.containers_process_count()}
 						</div>
 						<div class="text-foreground text-2xl font-bold">{stats.pids_stats.current}</div>
@@ -271,7 +272,7 @@
 
 				<!-- Network I/O Summary -->
 				<div class="bg-muted/30 flex flex-col rounded-lg p-4">
-					<div class="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
+					<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
 						{m.containers_network_io()}
 					</div>
 					<div class="grid flex-1 grid-cols-2 gap-3">
@@ -305,7 +306,7 @@
 				<!-- Block I/O -->
 				{#if stats.blkio_stats && stats.blkio_stats.io_service_bytes_recursive && stats.blkio_stats.io_service_bytes_recursive.length > 0}
 					<div class="bg-muted/30 flex flex-col rounded-lg p-4">
-						<div class="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
+						<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
 							{m.containers_block_io()}
 						</div>
 						<div class="grid flex-1 grid-cols-2 gap-3">
@@ -334,7 +335,7 @@
 			{#if networkInterfaces.length > 0}
 				<div class="mt-4">
 					<div class="bg-muted/30 rounded-lg p-4">
-						<div class="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
+						<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
 							{m.containers_stats_network_interfaces()}
 						</div>
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -374,7 +375,7 @@
 				<!-- Memory Details -->
 				{#if stats.memory_stats?.stats}
 					<div class="bg-muted/30 flex flex-col rounded-lg p-4">
-						<div class="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
+						<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
 							{m.containers_stats_memory_details()}
 						</div>
 						<div class="grid flex-1 grid-cols-2 gap-x-4 gap-y-2 text-xs">
@@ -421,7 +422,7 @@
 				<!-- CPU Details -->
 				{#if stats.cpu_stats}
 					<div class="bg-muted/30 flex flex-col rounded-lg p-4">
-						<div class="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
+						<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
 							{m.containers_stats_cpu_details()}
 						</div>
 						<div class="grid flex-1 grid-cols-2 gap-x-4 gap-y-2 text-xs">
@@ -470,5 +471,5 @@
 				<div class="text-sm">{m.containers_stats_loading()}</div>
 			</div>
 		{/if}
-	</Card.Content>
-</Card.Root>
+	</ArcaneCardContent>
+</ArcaneCard>

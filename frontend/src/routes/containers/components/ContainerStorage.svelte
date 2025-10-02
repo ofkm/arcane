@@ -4,6 +4,13 @@
 	import DatabaseIcon from '@lucide/svelte/icons/database';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
+	import {
+		ArcaneCard,
+		ArcaneCardHeader,
+		ArcaneCardContent,
+		ArcaneCardTitle,
+		ArcaneCardDescription
+	} from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import type { ContainerDetailsDto } from '$lib/types/container.type';
 
@@ -15,17 +22,12 @@
 </script>
 
 <div class="space-y-6">
-	<Card.Root class="pt-0">
-		<Card.Header class="bg-muted rounded-t-xl p-4">
-			<Card.Title class="flex items-center gap-2 text-lg">
-				<DatabaseIcon class="text-primary size-5" />
-				<h2>
-					{m.containers_storage_title()}
-				</h2>
-			</Card.Title>
-			<Card.Description>{m.containers_storage_description()}</Card.Description>
-		</Card.Header>
-		<Card.Content class="p-4">
+	<ArcaneCard>
+		<ArcaneCardHeader icon={DatabaseIcon}>
+			<ArcaneCardTitle>{m.containers_storage_title()}</ArcaneCardTitle>
+			<ArcaneCardDescription>{m.containers_storage_description()}</ArcaneCardDescription>
+		</ArcaneCardHeader>
+		<ArcaneCardContent class="p-4">
 			{#if container.mounts && container.mounts.length > 0}
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
 					{#each container.mounts as mount (mount.destination)}
@@ -66,12 +68,15 @@
 									</Badge>
 								</div>
 							</Card.Header>
-							<Card.Content class="pt-0 space-y-4">
+							<Card.Content class="space-y-4 pt-0">
 								<div class="space-y-2">
 									<div class="text-muted-foreground text-xs font-semibold uppercase">
 										{m.containers_mount_label_container()}
 									</div>
-									<div class="text-foreground overflow-hidden font-mono text-sm font-medium break-all select-all cursor-pointer" title="Click to select">
+									<div
+										class="text-foreground cursor-pointer overflow-hidden font-mono text-sm font-medium break-all select-all"
+										title="Click to select"
+									>
 										{mount.destination}
 									</div>
 								</div>
@@ -83,7 +88,10 @@
 												? m.containers_mount_label_host()
 												: m.containers_mount_label_source()}
 									</div>
-									<div class="text-foreground overflow-hidden font-mono text-sm font-medium break-all select-all cursor-pointer" title="Click to select">
+									<div
+										class="text-foreground cursor-pointer overflow-hidden font-mono text-sm font-medium break-all select-all"
+										title="Click to select"
+									>
 										{mount.source}
 									</div>
 								</div>
@@ -99,6 +107,6 @@
 					<div class="text-muted-foreground text-sm">{m.containers_no_mounts_configured()}</div>
 				</div>
 			{/if}
-		</Card.Content>
-	</Card.Root>
+		</ArcaneCardContent>
+	</ArcaneCard>
 </div>

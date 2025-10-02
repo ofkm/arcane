@@ -7,6 +7,13 @@
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import CpuIcon from '@lucide/svelte/icons/cpu';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import {
+		ArcaneCard,
+		ArcaneCardHeader,
+		ArcaneCardContent,
+		ArcaneCardTitle,
+		ArcaneCardDescription
+	} from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import type { ContainerDetailsDto } from '$lib/types/container.type';
 	import { format } from 'date-fns';
@@ -44,17 +51,12 @@
 	}
 </script>
 
-<Card.Root class="pt-0">
-	<Card.Header class="bg-muted rounded-t-xl p-4">
-		<Card.Title class="flex items-center gap-2 text-lg">
-			<InfoIcon class="text-primary size-5" />
-			<h2>
-				{m.containers_details_title()}
-			</h2>
-		</Card.Title>
-		<Card.Description>{m.containers_details_description()}</Card.Description>
-	</Card.Header>
-	<Card.Content class="p-4">
+<ArcaneCard>
+	<ArcaneCardHeader icon={InfoIcon}>
+		<ArcaneCardTitle>{m.containers_details_title()}</ArcaneCardTitle>
+		<ArcaneCardDescription>{m.containers_details_description()}</ArcaneCardDescription>
+	</ArcaneCardHeader>
+	<ArcaneCardContent class="p-4">
 		<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
 			<div class="flex items-start gap-3">
 				<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10 p-2">
@@ -174,5 +176,5 @@
 				</div>
 			{/if}
 		</div>
-	</Card.Content>
-</Card.Root>
+	</ArcaneCardContent>
+</ArcaneCard>
