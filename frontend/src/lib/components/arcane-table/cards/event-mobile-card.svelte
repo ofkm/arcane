@@ -50,9 +50,35 @@
 	const severityVariant = $derived(getSeverityBadgeVariant(item.severity));
 </script>
 
-<Card.Root class={className} onclick={onclick ? () => onclick(item) : undefined}>
-	<Card.Header icon={BellIcon} {iconVariant} {compact} enableHover={!!onclick}>
-		<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
+<Card.Root variant="subtle" class={className} onclick={onclick ? () => onclick(item) : undefined}>
+	<Card.Content class={cn('flex flex-col', compact ? 'gap-1.5 p-2' : 'gap-3 p-4')}>
+		<div class="flex items-start gap-3">
+			<div
+				class={cn(
+					'flex shrink-0 items-center justify-center rounded-lg',
+					compact ? 'size-7' : 'size-9',
+					iconVariant === 'emerald'
+						? 'bg-emerald-500/10'
+						: iconVariant === 'red'
+							? 'bg-red-500/10'
+							: iconVariant === 'amber'
+								? 'bg-amber-500/10'
+								: 'bg-blue-500/10'
+				)}
+			>
+				<BellIcon
+					class={cn(
+						iconVariant === 'emerald'
+							? 'text-emerald-500'
+							: iconVariant === 'red'
+								? 'text-red-500'
+								: iconVariant === 'amber'
+									? 'text-amber-500'
+									: 'text-blue-500',
+						compact ? 'size-3.5' : 'size-4'
+					)}
+				/>
+			</div>
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.title}>
 					{compact ? truncateString(item.title, 30) : item.title}
@@ -68,10 +94,8 @@
 				{/if}
 			</div>
 		</div>
-	</Card.Header>
 
-	{#if !compact}
-		<Card.Content class="flex flex-1 flex-col p-3.5">
+		{#if !compact}
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{#if showType}
 					<div class="flex items-start gap-2.5">
@@ -110,9 +134,7 @@
 					</span>
 				</div>
 			{/if}
-		</Card.Content>
-	{:else}
-		<Card.Content class="flex flex-1 flex-col space-y-1.5 p-2">
+		{:else}
 			{#if showType}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.events_col_type()}:</span>
@@ -127,6 +149,6 @@
 					</span>
 				</div>
 			{/if}
-		</Card.Content>
-	{/if}
+		{/if}
+	</Card.Content>
 </Card.Root>

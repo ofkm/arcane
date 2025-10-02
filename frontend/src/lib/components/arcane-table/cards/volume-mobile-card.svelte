@@ -33,9 +33,20 @@
 	const iconVariant = $derived<'emerald' | 'amber'>(item.inUse ? 'emerald' : 'amber');
 </script>
 
-<Card.Root class={className} onclick={onclick ? () => onclick(item) : undefined}>
-	<Card.Header icon={DatabaseIcon} {iconVariant} {compact} enableHover={!!onclick}>
-		<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
+<Card.Root variant="subtle" class={className} onclick={onclick ? () => onclick(item) : undefined}>
+	<Card.Content class={cn('flex flex-col', compact ? 'gap-1.5 p-2' : 'gap-3 p-4')}>
+		<div class="flex items-start gap-3">
+			<div
+				class={cn(
+					'flex shrink-0 items-center justify-center rounded-lg',
+					compact ? 'size-7' : 'size-9',
+					iconVariant === 'emerald' ? 'bg-emerald-500/10' : 'bg-amber-500/10'
+				)}
+			>
+				<DatabaseIcon
+					class={cn(iconVariant === 'emerald' ? 'text-emerald-500' : 'text-amber-500', compact ? 'size-3.5' : 'size-4')}
+				/>
+			</div>
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.name}>
 					{compact ? truncateString(item.name, 25) : truncateString(item.name, 40)}
@@ -57,10 +68,8 @@
 				{/if}
 			</div>
 		</div>
-	</Card.Header>
 
-	{#if !compact}
-		<Card.Content class="flex flex-1 flex-col p-3.5">
+		{#if !compact}
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{#if showDriver}
 					<div class="flex items-start gap-2.5">
@@ -90,9 +99,7 @@
 					</span>
 				</div>
 			{/if}
-		</Card.Content>
-	{:else}
-		<Card.Content class="flex flex-1 flex-col space-y-1.5 p-2">
+		{:else}
 			{#if showDriver}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_driver()}:</span>
@@ -109,6 +116,6 @@
 					</span>
 				</div>
 			{/if}
-		</Card.Content>
-	{/if}
+		{/if}
+	</Card.Content>
 </Card.Root>

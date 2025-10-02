@@ -68,210 +68,217 @@
 	const restartPolicy = $derived(item.hostConfig?.restartPolicy ?? 'no');
 </script>
 
-<Card.Root class={className} onclick={onclick ? () => onclick(item) : undefined}>
-	{#snippet children()}
-		<Card.Header icon={BoxIcon} {iconVariant} {compact} enableHover={!!onclick}>
-			{#snippet children()}
-				<div class="min-w-0 flex-1">
-					<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-[13px]' : 'text-base')}>
-						{containerName}
-					</h3>
-					<div class="text-muted-foreground mt-0.5 flex items-center gap-2">
-						<span class={cn('truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
-							{String(item.id).substring(0, 12)}
-						</span>
-					</div>
+<Card.Root variant="subtle" class={className} onclick={onclick ? () => onclick(item) : undefined}>
+	<Card.Content class={cn('flex flex-col', compact ? 'gap-1.5 p-2' : 'gap-3 p-4')}>
+		<div class="flex items-start gap-3">
+			<div
+				class={cn(
+					'flex shrink-0 items-center justify-center rounded-lg',
+					compact ? 'size-7' : 'size-9',
+					iconVariant === 'emerald' ? 'bg-emerald-500/10' : iconVariant === 'red' ? 'bg-red-500/10' : 'bg-amber-500/10'
+				)}
+			>
+				<BoxIcon
+					class={cn(
+						iconVariant === 'emerald' ? 'text-emerald-500' : iconVariant === 'red' ? 'text-red-500' : 'text-amber-500',
+						compact ? 'size-3.5' : 'size-4'
+					)}
+				/>
+			</div>
+			<div class="min-w-0 flex-1">
+				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-[13px]' : 'text-base')}>
+					{containerName}
+				</h3>
+				<div class="text-muted-foreground mt-0.5 flex items-center gap-2">
+					<span class={cn('truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
+						{String(item.id).substring(0, 12)}
+					</span>
 				</div>
-
-				<div class="flex flex-shrink-0 items-center gap-2">
-					<StatusBadge variant={statusVariant} text={capitalizeFirstLetter(item.state)} size="sm" />
-					{#if rowActions}
-						{@render rowActions({ item })}
-					{/if}
-				</div>
-			{/snippet}
-		</Card.Header>
+			</div>
+			<div class="flex flex-shrink-0 items-center gap-2">
+				<StatusBadge variant={statusVariant} text={capitalizeFirstLetter(item.state)} size="sm" />
+				{#if rowActions}
+					{@render rowActions({ item })}
+				{/if}
+			</div>
+		</div>
 
 		{#if !compact}
-			<Card.Content class="flex flex-1 flex-col p-3.5">
-				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-					{#if showImage}
-						<div class="flex items-start gap-2.5">
-							<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
-								<ImageIcon class="size-3.5 text-blue-500" />
-							</div>
-							<div class="min-w-0 flex-1">
-								<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-									{m.common_image()}
-								</div>
-								<div class="mt-0.5 truncate font-mono text-xs font-medium">
-									{item.image}
-								</div>
-							</div>
-						</div>
-					{/if}
-
-					{#if showStatus && item.status}
-						<div class="flex items-start gap-2.5">
-							<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
-								<ClockIcon class="size-3.5 text-purple-500" />
-							</div>
-							<div class="min-w-0 flex-1">
-								<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-									{m.common_status()}
-								</div>
-								<div class="mt-0.5 text-xs font-medium">
-									{item.status}
-								</div>
-							</div>
-						</div>
-					{/if}
-
-					{#if showNetwork && networkNames.length > 0}
-						<div class="flex items-start gap-2.5">
-							<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10">
-								<NetworkIcon class="size-3.5 text-cyan-500" />
-							</div>
-							<div class="min-w-0 flex-1">
-								<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">Network</div>
-								<div class="mt-0.5 flex flex-wrap gap-1">
-									{#each networkNames.slice(0, 2) as network}
-										<span
-											class="inline-flex items-center rounded-md bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-700 ring-1 ring-cyan-500/20 ring-inset dark:text-cyan-300 dark:ring-cyan-500/30"
-										>
-											{network}
-										</span>
-									{/each}
-									{#if networkNames.length > 2}
-										<span class="text-muted-foreground inline-flex items-center text-[10px] font-medium">
-											+{networkNames.length - 2}
-										</span>
-									{/if}
-								</div>
-							</div>
-						</div>
-					{/if}
-
-					{#if showMounts && mountCount > 0}
-						<div class="flex items-start gap-2.5">
-							<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
-								<HardDriveIcon class="size-3.5 text-orange-500" />
-							</div>
-							<div class="min-w-0 flex-1">
-								<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">Mounts</div>
-								<div class="mt-0.5 text-xs font-medium">
-									{mountCount}
-									{mountCount === 1 ? 'mount' : 'mounts'}
-								</div>
-							</div>
-						</div>
-					{/if}
-
-					{#if showRestartPolicy && restartPolicy && restartPolicy !== 'no'}
-						<div class="flex items-start gap-2.5">
-							<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10">
-								<RefreshCwIcon class="size-3.5 text-indigo-500" />
-							</div>
-							<div class="min-w-0 flex-1">
-								<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">Restart Policy</div>
-								<div class="mt-0.5 text-xs font-medium">
-									{capitalizeFirstLetter(restartPolicy)}
-								</div>
-							</div>
-						</div>
-					{/if}
-				</div>
-
-				{#if showPorts && item.ports && item.ports.length > 0}
-					<div class="mt-3 flex items-start gap-2.5">
-						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
-							<NetworkIcon class="size-3.5 text-sky-500" />
+			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+				{#if showImage}
+					<div class="flex items-start gap-2.5">
+						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+							<ImageIcon class="size-3.5 text-blue-500" />
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-								{m.ports()}
+								{m.common_image()}
 							</div>
-							<div class="mt-1">
-								<PortBadge ports={item.ports} {baseServerUrl} />
+							<div class="mt-0.5 truncate font-mono text-xs font-medium">
+								{item.image}
 							</div>
 						</div>
 					</div>
 				{/if}
 
-				{#if showCreated && item.created}
-					<div class="border-muted/40 mt-3 flex items-center gap-2 border-t pt-3">
-						<ClockIcon class="text-muted-foreground size-3.5" />
-						<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-							{m.common_created()}
-						</span>
-						<span class="text-muted-foreground ml-auto font-mono text-[11px]">
-							{format(new Date(item.created * 1000), 'PP p')}
-						</span>
-					</div>
-				{/if}
-			</Card.Content>
-		{:else}
-			<Card.Content class="flex flex-1 flex-col space-y-1.5 p-2">
-				{#if showImage}
-					<div class="flex items-baseline gap-1.5">
-						<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_image()}:</span>
-						<span class="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[11px] leading-tight">
-							{item.image}
-						</span>
-					</div>
-				{/if}
 				{#if showStatus && item.status}
-					<div class="flex items-baseline gap-1.5">
-						<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_status()}:</span>
-						<span class="text-muted-foreground truncate text-[11px] leading-tight">
-							{item.status}
-						</span>
-					</div>
-				{/if}
-				{#if showNetwork && networkNames.length > 0}
-					<div class="flex items-baseline gap-1.5">
-						<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.network_interface()}:</span>
-						<span class="text-muted-foreground truncate text-[11px] leading-tight">
-							{networkNames.join(', ')}
-						</span>
-					</div>
-				{/if}
-				{#if showMounts && mountCount > 0}
-					<div class="flex items-baseline gap-1.5">
-						<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase"
-							>{m.containers_storage_title()}:</span
-						>
-						<span class="text-muted-foreground text-[11px] leading-tight">
-							{mountCount}
-							{mountCount === 1 ? 'mount' : 'mounts'}
-						</span>
-					</div>
-				{/if}
-				{#if showRestartPolicy && restartPolicy && restartPolicy !== 'no'}
-					<div class="flex items-baseline gap-1.5">
-						<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.restart_policy_label()}:</span>
-						<span class="text-muted-foreground text-[11px] leading-tight">
-							{capitalizeFirstLetter(restartPolicy)}
-						</span>
-					</div>
-				{/if}
-				{#if showPorts && item.ports && item.ports.length > 0}
-					<div class="flex items-baseline gap-1.5">
-						<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.ports()}:</span>
+					<div class="flex items-start gap-2.5">
+						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
+							<ClockIcon class="size-3.5 text-purple-500" />
+						</div>
 						<div class="min-w-0 flex-1">
-							<PortBadge ports={item.ports} {baseServerUrl} />
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+								{m.common_status()}
+							</div>
+							<div class="mt-0.5 text-xs font-medium">
+								{item.status}
+							</div>
 						</div>
 					</div>
 				{/if}
-				{#if showCreated && item.created}
-					<div class="flex items-baseline gap-1.5">
-						<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_created()}:</span>
-						<span class="text-muted-foreground font-mono text-[11px] leading-tight">
-							{format(new Date(item.created * 1000), 'PP')}
-						</span>
+
+				{#if showNetwork && networkNames.length > 0}
+					<div class="flex items-start gap-2.5">
+						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10">
+							<NetworkIcon class="size-3.5 text-cyan-500" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">Network</div>
+							<div class="mt-0.5 flex flex-wrap gap-1">
+								{#each networkNames.slice(0, 2) as network}
+									<span
+										class="inline-flex items-center rounded-md bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-700 ring-1 ring-cyan-500/20 ring-inset dark:text-cyan-300 dark:ring-cyan-500/30"
+									>
+										{network}
+									</span>
+								{/each}
+								{#if networkNames.length > 2}
+									<span class="text-muted-foreground inline-flex items-center text-[10px] font-medium">
+										+{networkNames.length - 2}
+									</span>
+								{/if}
+							</div>
+						</div>
 					</div>
 				{/if}
-			</Card.Content>
+
+				{#if showMounts && mountCount > 0}
+					<div class="flex items-start gap-2.5">
+						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
+							<HardDriveIcon class="size-3.5 text-orange-500" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">Mounts</div>
+							<div class="mt-0.5 text-xs font-medium">
+								{mountCount}
+								{mountCount === 1 ? 'mount' : 'mounts'}
+							</div>
+						</div>
+					</div>
+				{/if}
+
+				{#if showRestartPolicy && restartPolicy && restartPolicy !== 'no'}
+					<div class="flex items-start gap-2.5">
+						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10">
+							<RefreshCwIcon class="size-3.5 text-indigo-500" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">Restart Policy</div>
+							<div class="mt-0.5 text-xs font-medium">
+								{capitalizeFirstLetter(restartPolicy)}
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			{#if showPorts && item.ports && item.ports.length > 0}
+				<div class="mt-3 flex items-start gap-2.5">
+					<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
+						<NetworkIcon class="size-3.5 text-sky-500" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+							{m.ports()}
+						</div>
+						<div class="mt-1">
+							<PortBadge ports={item.ports} {baseServerUrl} />
+						</div>
+					</div>
+				</div>
+			{/if}
+
+			{#if showCreated && item.created}
+				<div class="border-muted/40 mt-3 flex items-center gap-2 border-t pt-3">
+					<ClockIcon class="text-muted-foreground size-3.5" />
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+						{m.common_created()}
+					</span>
+					<span class="text-muted-foreground ml-auto font-mono text-[11px]">
+						{format(new Date(item.created * 1000), 'PP p')}
+					</span>
+				</div>
+			{/if}
+		{:else}
+			{#if showImage}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_image()}:</span>
+					<span class="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[11px] leading-tight">
+						{item.image}
+					</span>
+				</div>
+			{/if}
+			{#if showStatus && item.status}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_status()}:</span>
+					<span class="text-muted-foreground truncate text-[11px] leading-tight">
+						{item.status}
+					</span>
+				</div>
+			{/if}
+			{#if showNetwork && networkNames.length > 0}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.network_interface()}:</span>
+					<span class="text-muted-foreground truncate text-[11px] leading-tight">
+						{networkNames.join(', ')}
+					</span>
+				</div>
+			{/if}
+			{#if showMounts && mountCount > 0}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase"
+						>{m.containers_storage_title()}:</span
+					>
+					<span class="text-muted-foreground text-[11px] leading-tight">
+						{mountCount}
+						{mountCount === 1 ? 'mount' : 'mounts'}
+					</span>
+				</div>
+			{/if}
+			{#if showRestartPolicy && restartPolicy && restartPolicy !== 'no'}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.restart_policy_label()}:</span>
+					<span class="text-muted-foreground text-[11px] leading-tight">
+						{capitalizeFirstLetter(restartPolicy)}
+					</span>
+				</div>
+			{/if}
+			{#if showPorts && item.ports && item.ports.length > 0}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.ports()}:</span>
+					<div class="min-w-0 flex-1">
+						<PortBadge ports={item.ports} {baseServerUrl} />
+					</div>
+				</div>
+			{/if}
+			{#if showCreated && item.created}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_created()}:</span>
+					<span class="text-muted-foreground font-mono text-[11px] leading-tight">
+						{format(new Date(item.created * 1000), 'PP')}
+					</span>
+				</div>
+			{/if}
 		{/if}
-	{/snippet}
+	</Card.Content>
 </Card.Root>

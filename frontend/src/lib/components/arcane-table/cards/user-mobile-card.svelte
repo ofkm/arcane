@@ -29,9 +29,12 @@
 	} = $props();
 </script>
 
-<Card.Root class={className} onclick={onclick ? () => onclick(item) : undefined}>
-	<Card.Header icon={UserIcon} iconVariant="blue" {compact} enableHover={!!onclick}>
-		<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
+<Card.Root variant="subtle" class={className} onclick={onclick ? () => onclick(item) : undefined}>
+	<Card.Content class={cn('flex flex-col', compact ? 'gap-1.5 p-2' : 'gap-3 p-4')}>
+		<div class="flex items-start gap-3">
+			<div class={cn('flex shrink-0 items-center justify-center rounded-lg bg-blue-500/10', compact ? 'size-7' : 'size-9')}>
+				<UserIcon class={cn('text-blue-500', compact ? 'size-3.5' : 'size-4')} />
+			</div>
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.username}>
 					{compact ? truncateString(item.username, 25) : item.username}
@@ -49,10 +52,8 @@
 				{/if}
 			</div>
 		</div>
-	</Card.Header>
 
-	{#if !compact}
-		<Card.Content class="flex flex-1 flex-col p-3.5">
+		{#if !compact}
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{#if showEmail && item.email}
 					<div class="flex items-start gap-2.5">
@@ -81,17 +82,13 @@
 					</div>
 				{/if}
 			</div>
-		</Card.Content>
-	{:else}
-		<Card.Content class="flex flex-1 flex-col space-y-1.5 p-2">
-			{#if showEmail && item.email}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_email()}:</span>
-					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
-						{item.email}
-					</span>
-				</div>
-			{/if}
-		</Card.Content>
-	{/if}
+		{:else if showEmail && item.email}
+			<div class="flex items-baseline gap-1.5">
+				<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_email()}:</span>
+				<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
+					{item.email}
+				</span>
+			</div>
+		{/if}
+	</Card.Content>
 </Card.Root>

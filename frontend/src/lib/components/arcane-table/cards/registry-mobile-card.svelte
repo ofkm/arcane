@@ -29,9 +29,12 @@
 	} = $props();
 </script>
 
-<Card.Root class={className} onclick={onclick ? () => onclick(item) : undefined}>
-	<Card.Header icon={PackageIcon} iconVariant="purple" {compact} enableHover={!!onclick}>
-		<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
+<Card.Root variant="subtle" class={className} onclick={onclick ? () => onclick(item) : undefined}>
+	<Card.Content class={cn('flex flex-col', compact ? 'gap-1.5 p-2' : 'gap-3 p-4')}>
+		<div class="flex items-start gap-3">
+			<div class={cn('flex shrink-0 items-center justify-center rounded-lg bg-purple-500/10', compact ? 'size-7' : 'size-9')}>
+				<PackageIcon class={cn('text-purple-500', compact ? 'size-3.5' : 'size-4')} />
+			</div>
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.url}>
 					{compact ? truncateString(item.url, 30) : item.url}
@@ -47,10 +50,8 @@
 				{/if}
 			</div>
 		</div>
-	</Card.Header>
 
-	{#if !compact}
-		<Card.Content class="flex flex-1 flex-col p-3.5">
+		{#if !compact}
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{#if showUrl}
 					<div class="flex items-start gap-2.5">
@@ -79,9 +80,7 @@
 					</div>
 				{/if}
 			</div>
-		</Card.Content>
-	{:else}
-		<Card.Content class="flex flex-1 flex-col space-y-1.5 p-2">
+		{:else}
 			{#if showUrl}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.registries_url()}:</span>
@@ -98,6 +97,6 @@
 					</span>
 				</div>
 			{/if}
-		</Card.Content>
-	{/if}
+		{/if}
+	</Card.Content>
 </Card.Root>

@@ -99,7 +99,7 @@
 			</div>
 		</div>
 	</Card.Header>
-	<Card.Content class="flex-1 p-0 px-6">
+	<Card.Content class="flex-1 p-0">
 		<div class="flex h-full flex-col">
 			<ArcaneTable
 				items={images}
