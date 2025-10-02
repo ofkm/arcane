@@ -29,8 +29,10 @@
 <div class="space-y-6">
 	<ArcaneCard>
 		<ArcaneCardHeader icon={NetworkIcon}>
-			<Card.Title>{m.containers_networks_title()}</Card.Title>
-			<Card.Description>{m.containers_networks_description()}</Card.Description>
+			<div class="flex flex-col space-y-1.5">
+				<Card.Title>{m.containers_networks_title()}</Card.Title>
+				<Card.Description>{m.containers_networks_description()}</Card.Description>
+			</div>
 		</ArcaneCardHeader>
 		<Card.Content class="p-4">
 			{#if container.networkSettings?.networks && Object.keys(container.networkSettings.networks).length > 0}

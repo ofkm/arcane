@@ -223,10 +223,12 @@
 	{#snippet mainContent()}
 		<fieldset disabled={isReadOnly} class="relative">
 			<div class="space-y-4 sm:space-y-6">
-				<ArcaneCard class="overflow-hidden pt-0">
+				<ArcaneCard>
 					<ArcaneCardHeader icon={LockIcon}>
-						<Card.Title>{m.security_authentication_heading()}</Card.Title>
-						<Card.Description>Configure login methods for your application</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.security_authentication_heading()}</Card.Title>
+							<Card.Description>Configure login methods for your application</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
@@ -278,10 +280,12 @@
 					</Card.Content>
 				</ArcaneCard>
 
-				<ArcaneCard class="overflow-hidden pt-0">
-					<ArcaneCardHeader icon={ClockIcon}>
-						<Card.Title>{m.security_session_heading()}</Card.Title>
-						<Card.Description>Configure session timeout and duration</Card.Description>
+				<ArcaneCard>
+					<ArcaneCardHeader icon={ClockIcon} class="items-start">
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.security_session_heading()}</Card.Title>
+							<Card.Description>Configure session timeout and duration</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<TextInputWithLabel
@@ -294,10 +298,12 @@
 					</Card.Content>
 				</ArcaneCard>
 
-				<ArcaneCard class="overflow-hidden pt-0">
-					<ArcaneCardHeader icon={KeyIcon}>
-						<Card.Title>{m.security_password_policy_label()}</Card.Title>
-						<Card.Description>Set password strength requirements</Card.Description>
+				<ArcaneCard>
+					<ArcaneCardHeader icon={KeyIcon} class="items-start">
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.security_password_policy_label()}</Card.Title>
+							<Card.Description>Set password strength requirements</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<Tooltip.Provider>

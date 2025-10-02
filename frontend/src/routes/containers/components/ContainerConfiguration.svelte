@@ -23,8 +23,10 @@
 	{#if hasEnvVars}
 		<ArcaneCard>
 			<ArcaneCardHeader icon={SettingsIcon}>
-				<Card.Title>{m.containers_env_vars_title()}</Card.Title>
-				<Card.Description>{m.containers_env_vars_description()}</Card.Description>
+				<div class="flex flex-col space-y-1.5">
+					<Card.Title>{m.containers_env_vars_title()}</Card.Title>
+					<Card.Description>{m.containers_env_vars_description()}</Card.Description>
+				</div>
 			</ArcaneCardHeader>
 			<Card.Content class="p-4">
 				{#if container.config?.env && container.config.env.length > 0}
@@ -61,8 +63,10 @@
 	{#if hasPorts}
 		<ArcaneCard>
 			<ArcaneCardHeader icon={NetworkIcon}>
-				<Card.Title>{m.containers_port_mappings()}</Card.Title>
-				<Card.Description>{m.containers_port_mappings_description()}</Card.Description>
+				<div class="flex flex-col space-y-1.5">
+					<Card.Title>{m.containers_port_mappings()}</Card.Title>
+					<Card.Description>{m.containers_port_mappings_description()}</Card.Description>
+				</div>
 			</ArcaneCardHeader>
 			<Card.Content class="p-4">
 				<PortBadge ports={container.ports ?? []} {baseServerUrl} />
@@ -73,8 +77,10 @@
 	{#if hasLabels}
 		<ArcaneCard>
 			<ArcaneCardHeader icon={TagIcon}>
-				<Card.Title>{m.common_labels()}</Card.Title>
-				<Card.Description>{m.common_labels_description()}</Card.Description>
+				<div class="flex flex-col space-y-1.5">
+					<Card.Title>{m.common_labels()}</Card.Title>
+					<Card.Description>{m.common_labels_description()}</Card.Description>
+				</div>
 			</ArcaneCardHeader>
 			<Card.Content class="p-4">
 				{#if container.labels && Object.keys(container.labels).length > 0}

@@ -23,8 +23,8 @@
 	} = $props();
 </script>
 
-<ArcaneCard class="gap-0 p-0">
-	<ArcaneCardHeader icon={FileTextIcon}>
+<ArcaneCard>
+	<ArcaneCardHeader icon={FileTextIcon} class="items-center">
 		<Card.Title>{title}</Card.Title>
 	</ArcaneCardHeader>
 	<Card.Content class="p-0">

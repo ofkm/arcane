@@ -145,8 +145,10 @@
 		<div class="space-y-6">
 			<ArcaneCard>
 				<ArcaneCardHeader icon={InfoIcon}>
-					<Card.Title>{m.networks_details_title()}</Card.Title>
-					<Card.Description>{m.networks_details_description()}</Card.Description>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>{m.networks_details_title()}</Card.Title>
+						<Card.Description>{m.networks_details_description()}</Card.Description>
+					</div>
 				</ArcaneCardHeader>
 				<Card.Content class="p-4">
 					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
@@ -264,8 +266,10 @@
 			{#if network.ipam?.Config && network.ipam.Config.length > 0}
 				<ArcaneCard>
 					<ArcaneCardHeader icon={SettingsIcon}>
-						<Card.Title>{m.networks_ipam_title()}</Card.Title>
-						<Card.Description>{m.networks_ipam_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.networks_ipam_title()}</Card.Title>
+							<Card.Description>{m.networks_ipam_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="p-4">
 						{#each network.ipam.Config as config, i (i)}
@@ -360,10 +364,12 @@
 			{#if connectedContainers.length > 0}
 				<ArcaneCard>
 					<ArcaneCardHeader icon={ContainerIcon}>
-						<Card.Title>{m.networks_connected_containers_title()}</Card.Title>
-						<Card.Description
-							>{m.networks_connected_containers_description({ count: connectedContainers.length })}</Card.Description
-						>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.networks_connected_containers_title()}</Card.Title>
+							<Card.Description
+								>{m.networks_connected_containers_description({ count: connectedContainers.length })}</Card.Description
+							>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="p-4">
 						<div class="bg-card divide-y rounded-lg border">
@@ -393,8 +399,10 @@
 			{#if network.labels && Object.keys(network.labels).length > 0}
 				<ArcaneCard>
 					<ArcaneCardHeader icon={TagIcon}>
-						<Card.Title>{m.networks_labels_title()}</Card.Title>
-						<Card.Description>{m.networks_labels_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.networks_labels_title()}</Card.Title>
+							<Card.Description>{m.networks_labels_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="p-4">
 						<div class="bg-card divide-y rounded-lg border">
@@ -419,8 +427,10 @@
 			{#if network.options && Object.keys(network.options).length > 0}
 				<ArcaneCard>
 					<ArcaneCardHeader icon={SettingsIcon}>
-						<Card.Title>{m.networks_options_title()}</Card.Title>
-						<Card.Description>{m.networks_options_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.networks_options_title()}</Card.Title>
+							<Card.Description>{m.networks_options_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="p-4">
 						<div class="bg-card divide-y rounded-lg border">

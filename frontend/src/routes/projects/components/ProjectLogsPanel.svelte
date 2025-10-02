@@ -28,8 +28,8 @@
 	function onToggleAutoScroll() {}
 </script>
 
-<ArcaneCard class="gap-0 p-0">
-	<ArcaneCardHeader icon={TerminalIcon} class="pb-4">
+<ArcaneCard>
+	<ArcaneCardHeader icon={TerminalIcon}>
 		<div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 			<div class="flex flex-col gap-1.5">
 				<div class="flex items-center gap-2">

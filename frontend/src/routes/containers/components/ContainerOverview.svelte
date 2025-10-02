@@ -47,8 +47,10 @@
 
 <ArcaneCard>
 	<ArcaneCardHeader icon={InfoIcon}>
-		<Card.Title>{m.containers_details_title()}</Card.Title>
-		<Card.Description>{m.containers_details_description()}</Card.Description>
+		<div class="flex flex-col space-y-1.5">
+			<Card.Title>{m.containers_details_title()}</Card.Title>
+			<Card.Description>{m.containers_details_description()}</Card.Description>
+		</div>
 	</ArcaneCardHeader>
 	<Card.Content class="p-4">
 		<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">

@@ -113,8 +113,10 @@
 		<div class="space-y-6">
 			<ArcaneCard>
 				<ArcaneCardHeader icon={InfoIcon}>
-					<Card.Title>{m.volumes_details_title()}</Card.Title>
-					<Card.Description>{m.volumes_details_description()}</Card.Description>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>{m.volumes_details_title()}</Card.Title>
+						<Card.Description>{m.volumes_details_description()}</Card.Description>
+					</div>
 				</ArcaneCardHeader>
 				<Card.Content class="p-4">
 					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
@@ -199,8 +201,10 @@
 
 			<ArcaneCard>
 				<ArcaneCardHeader icon={ContainerIcon}>
-					<Card.Title>{m.volumes_containers_using_title()}</Card.Title>
-					<Card.Description>{m.volumes_containers_using_description()}</Card.Description>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>{m.volumes_containers_using_title()}</Card.Title>
+						<Card.Description>{m.volumes_containers_using_description()}</Card.Description>
+					</div>
 				</ArcaneCardHeader>
 				<Card.Content class="p-4">
 					{#if containersDetailed.length > 0}
@@ -243,8 +247,10 @@
 			{#if volume.labels && Object.keys(volume.labels).length > 0}
 				<ArcaneCard>
 					<ArcaneCardHeader icon={TagIcon}>
-						<Card.Title>{m.common_labels()}</Card.Title>
-						<Card.Description>{m.volumes_labels_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.common_labels()}</Card.Title>
+							<Card.Description>{m.volumes_labels_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="p-4">
 						<div class="bg-card divide-y rounded-lg border">
@@ -269,8 +275,10 @@
 			{#if volume.options && Object.keys(volume.options).length > 0}
 				<ArcaneCard>
 					<ArcaneCardHeader icon={HardDriveIcon}>
-						<Card.Title>{m.common_driver_options()}</Card.Title>
-						<Card.Description>{m.volumes_driver_options_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.common_driver_options()}</Card.Title>
+							<Card.Description>{m.volumes_driver_options_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="p-4">
 						<div class="bg-card divide-y rounded-lg border">

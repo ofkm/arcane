@@ -151,8 +151,10 @@
 
 <ArcaneCard>
 	<ArcaneCardHeader icon={ActivityIcon}>
-		<Card.Title>{m.containers_resource_metrics()}</Card.Title>
-		<Card.Description>{m.containers_resource_metrics_description()}</Card.Description>
+		<div class="flex flex-col space-y-1.5">
+			<Card.Title>{m.containers_resource_metrics()}</Card.Title>
+			<Card.Description>{m.containers_resource_metrics_description()}</Card.Description>
+		</div>
 	</ArcaneCardHeader>
 	<Card.Content class="p-4">
 		{#if loading}

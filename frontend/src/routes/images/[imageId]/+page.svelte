@@ -108,8 +108,10 @@
 		<div class="space-y-6">
 			<ArcaneCard>
 				<ArcaneCardHeader icon={InfoIcon}>
-					<Card.Title>{m.images_details_title()}</Card.Title>
-					<Card.Description>{m.images_details_description()}</Card.Description>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>{m.images_details_title()}</Card.Title>
+						<Card.Description>{m.images_details_description()}</Card.Description>
+					</div>
 				</ArcaneCardHeader>
 				<Card.Content class="p-4">
 					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
@@ -227,8 +229,10 @@
 			{#if image.repoTags && image.repoTags.length > 0}
 				<ArcaneCard>
 					<ArcaneCardHeader icon={TagIcon}>
-						<Card.Title>{m.images_tags_title()}</Card.Title>
-						<Card.Description>{m.images_tags_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.images_tags_title()}</Card.Title>
+							<Card.Description>{m.images_tags_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="p-4">
 						<div class="flex flex-wrap gap-2">
@@ -243,8 +247,10 @@
 			{#if image.config?.env && image.config.env.length > 0}
 				<ArcaneCard>
 					<ArcaneCardHeader icon={SettingsIcon}>
-						<Card.Title>{m.images_env_vars_title()}</Card.Title>
-						<Card.Description>{m.images_env_vars_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.images_env_vars_title()}</Card.Title>
+							<Card.Description>{m.images_env_vars_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="space-y-2 p-4">
 						{#each image.config.env as env (env)}

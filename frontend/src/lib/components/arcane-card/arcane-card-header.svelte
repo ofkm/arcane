@@ -36,7 +36,9 @@
 	class={cn(
 		'flex flex-row items-start space-y-0 bg-gradient-to-br from-gray-50 to-slate-50/30 dark:from-gray-900/20 dark:to-slate-900/10',
 		compact ? 'gap-2 p-2' : 'gap-3 p-3.5',
-		enableHover ? 'transition-colors group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-gray-100 group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-slate-100/50 dark:group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-gray-800/40 dark:group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-slate-800/30' : '',
+		enableHover
+			? 'transition-colors group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-gray-100 group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-slate-100/50 dark:group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-gray-800/40 dark:group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-slate-800/30'
+			: '',
 		className
 	)}
 >
@@ -52,7 +54,5 @@
 			<IconComponent class={cn('text-white', compact ? 'size-4 sm:size-5' : 'size-5')} />
 		</div>
 	{/if}
-	<div class="flex flex-col space-y-1.5">
-		{@render children?.()}
-	</div>
+	{@render children?.()}
 </Card.Header>

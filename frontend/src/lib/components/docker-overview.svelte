@@ -35,7 +35,7 @@
 
 <ArcaneCard class={className}>
 	{#snippet children()}
-		<ArcaneCardHeader icon={loading ? LoaderCircleIcon : DockerIcon} iconVariant="primary">
+		<ArcaneCardHeader icon={loading ? LoaderCircleIcon : DockerIcon} iconVariant="primary" class="items-center">
 			{#snippet children()}
 				{#if loading}
 					<div class="flex flex-1 flex-col gap-2">
@@ -67,17 +67,17 @@
 							</span>
 						</div>
 					</div>
-				{/if}
 
-				{#if !loading && dockerInfo}
-					<Button
-						variant="ghost"
-						size="icon"
-						class="text-muted-foreground hover:text-foreground size-8 shrink-0"
-						onclick={() => (dockerInfoDialogOpen = true)}
-					>
-						<InfoIcon class="size-4" />
-					</Button>
+					{#if dockerInfo}
+						<Button
+							variant="ghost"
+							size="icon"
+							class="text-muted-foreground hover:text-foreground size-8 shrink-0"
+							onclick={() => (dockerInfoDialogOpen = true)}
+						>
+							<InfoIcon class="size-4" />
+						</Button>
+					{/if}
 				{/if}
 			{/snippet}
 		</ArcaneCardHeader>

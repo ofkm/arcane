@@ -18,8 +18,10 @@
 <div class="space-y-6">
 	<ArcaneCard>
 		<ArcaneCardHeader icon={DatabaseIcon}>
-			<Card.Title>{m.containers_storage_title()}</Card.Title>
-			<Card.Description>{m.containers_storage_description()}</Card.Description>
+			<div class="flex flex-col space-y-1.5">
+				<Card.Title>{m.containers_storage_title()}</Card.Title>
+				<Card.Description>{m.containers_storage_description()}</Card.Description>
+			</div>
 		</ArcaneCardHeader>
 		<Card.Content class="p-4">
 			{#if container.mounts && container.mounts.length > 0}

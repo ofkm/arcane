@@ -46,7 +46,7 @@
 </script>
 
 <ArcaneCard class="gap-0 p-0">
-	<ArcaneCardHeader icon={FileTextIcon} class="pb-4">
+	<ArcaneCardHeader icon={FileTextIcon}>
 		<div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 			<div class="flex flex-col gap-1.5">
 				<div class="flex items-center gap-2">

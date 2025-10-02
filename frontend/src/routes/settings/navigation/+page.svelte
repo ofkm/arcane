@@ -147,10 +147,12 @@
 >
 	{#snippet mainContent()}
 		<div class="space-y-4 sm:space-y-6">
-			<ArcaneCard class="overflow-hidden pt-0">
+			<ArcaneCard>
 				<ArcaneCardHeader icon={NavigationIcon}>
-					<Card.Title>{m.navigation_mobile_appearance_title()}</Card.Title>
-					<Card.Description>{m.navigation_mobile_appearance_description()}</Card.Description>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>{m.navigation_mobile_appearance_title()}</Card.Title>
+						<Card.Description>{m.navigation_mobile_appearance_description()}</Card.Description>
+					</div>
 				</ArcaneCardHeader>
 				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
 					<div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))]">
@@ -187,10 +189,12 @@
 				</Card.Content>
 			</ArcaneCard>
 
-			<ArcaneCard class="overflow-hidden pt-0">
+			<ArcaneCard>
 				<ArcaneCardHeader icon={NavigationIcon}>
-					<Card.Title>{m.navigation_mobile_behavior_title()}</Card.Title>
-					<Card.Description>{m.navigation_mobile_behavior_description()}</Card.Description>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>{m.navigation_mobile_behavior_title()}</Card.Title>
+						<Card.Description>{m.navigation_mobile_behavior_description()}</Card.Description>
+					</div>
 				</ArcaneCardHeader>
 				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
 					<div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))]">

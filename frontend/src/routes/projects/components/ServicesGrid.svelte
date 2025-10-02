@@ -18,8 +18,10 @@
 
 <ArcaneCard>
 	<ArcaneCardHeader icon={LayersIcon}>
-		<Card.Title>{m.compose_services()}</Card.Title>
-		<Card.Description>{m.compose_services_description()}</Card.Description>
+		<div class="flex flex-col space-y-1.5">
+			<Card.Title>{m.compose_services()}</Card.Title>
+			<Card.Description>{m.compose_services_description()}</Card.Description>
+		</div>
 	</ArcaneCardHeader>
 	<Card.Content class="p-4">
 		{#if services && services.length > 0}

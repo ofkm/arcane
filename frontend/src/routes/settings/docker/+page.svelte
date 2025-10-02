@@ -194,10 +194,12 @@
 	{#snippet mainContent()}
 		<fieldset disabled={isReadOnly} class="relative">
 			<div class="space-y-4 sm:space-y-6">
-				<ArcaneCard class="overflow-hidden pt-0">
+				<ArcaneCard>
 					<ArcaneCardHeader icon={ActivityIcon}>
-						<Card.Title>{m.docker_image_polling_title()}</Card.Title>
-						<Card.Description>{m.docker_image_polling_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.docker_image_polling_title()}</Card.Title>
+							<Card.Description>{m.docker_image_polling_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
@@ -243,10 +245,12 @@
 				</ArcaneCard>
 
 				{#if $formInputs.pollingEnabled.value}
-					<ArcaneCard class="overflow-hidden pt-0">
+					<ArcaneCard>
 						<ArcaneCardHeader icon={RefreshCwIcon}>
-							<Card.Title>{m.docker_auto_updates_title()}</Card.Title>
-							<Card.Description>{m.docker_auto_updates_description()}</Card.Description>
+							<div class="flex flex-col space-y-1.5">
+								<Card.Title>{m.docker_auto_updates_title()}</Card.Title>
+								<Card.Description>{m.docker_auto_updates_description()}</Card.Description>
+							</div>
 						</ArcaneCardHeader>
 						<Card.Content class="px-3 py-4 sm:px-6">
 							<div class="space-y-3">
@@ -273,10 +277,12 @@
 					</ArcaneCard>
 				{/if}
 
-				<ArcaneCard class="overflow-hidden pt-0">
+				<ArcaneCard>
 					<ArcaneCardHeader icon={TrashIcon}>
-						<Card.Title>{m.docker_cleanup_settings_title()}</Card.Title>
-						<Card.Description>{m.docker_cleanup_settings_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.docker_cleanup_settings_title()}</Card.Title>
+							<Card.Description>{m.docker_cleanup_settings_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<SelectWithLabel
@@ -292,10 +298,12 @@
 					</Card.Content>
 				</ArcaneCard>
 
-				<ArcaneCard class="overflow-hidden pt-0">
+				<ArcaneCard>
 					<ArcaneCardHeader icon={TerminalIcon}>
-						<Card.Title>{m.docker_terminal_settings_title()}</Card.Title>
-						<Card.Description>{m.docker_terminal_settings_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.docker_terminal_settings_title()}</Card.Title>
+							<Card.Description>{m.docker_terminal_settings_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">

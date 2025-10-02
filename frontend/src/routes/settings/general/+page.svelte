@@ -99,10 +99,12 @@
 	{#snippet mainContent()}
 		<fieldset disabled={isReadOnly} class="relative">
 			<div class="space-y-4 sm:space-y-6">
-				<ArcaneCard class="overflow-hidden pt-0">
+				<ArcaneCard>
 					<ArcaneCardHeader icon={FolderIcon}>
-						<Card.Title>{m.general_projects_heading()}</Card.Title>
-						<Card.Description>{m.general_projects_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.general_projects_heading()}</Card.Title>
+							<Card.Description>{m.general_projects_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
@@ -125,10 +127,12 @@
 					</Card.Content>
 				</ArcaneCard>
 
-				<ArcaneCard class="overflow-hidden pt-0">
+				<ArcaneCard>
 					<ArcaneCardHeader icon={UserIcon}>
-						<Card.Title>{m.general_user_avatars_heading()}</Card.Title>
-						<Card.Description>{m.general_user_avatars_description()}</Card.Description>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.general_user_avatars_heading()}</Card.Title>
+							<Card.Description>{m.general_user_avatars_description()}</Card.Description>
+						</div>
 					</ArcaneCardHeader>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<SwitchWithLabel
