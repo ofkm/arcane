@@ -116,6 +116,7 @@
 	] satisfies ColumnSpec<Event>[];
 
 	const mobileFields = [
+		{ id: 'severity', label: m.events_col_severity(), defaultVisible: true },
 		{ id: 'type', label: m.events_col_type(), defaultVisible: true },
 		{ id: 'resource', label: m.events_col_resource(), defaultVisible: true },
 		{ id: 'username', label: m.common_user(), defaultVisible: true },
@@ -172,6 +173,7 @@
 		rowActions={RowActions}
 		{formatTimestamp}
 		{getSeverityBadgeVariant}
+		showSeverity={mobileFieldVisibility.severity ?? true}
 		showType={mobileFieldVisibility.type ?? true}
 		showResource={mobileFieldVisibility.resource ?? true}
 		showUsername={mobileFieldVisibility.username ?? true}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { PortBadge } from '$lib/components/badges/index.js';
+	import { PortBadge } from '$lib/components/badges';
 	import { format } from 'date-fns';
 	import { capitalizeFirstLetter, truncateString } from '$lib/utils/string.utils';
 	import type { ContainerSummaryDto } from '$lib/types/container.type';

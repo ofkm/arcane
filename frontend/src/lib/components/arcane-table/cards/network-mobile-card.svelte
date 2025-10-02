@@ -32,6 +32,16 @@
 		onclick?: (item: NetworkSummaryDto) => void;
 	} = $props();
 
+	function getDriverVariant(driver: string): 'blue' | 'purple' | 'red' | 'orange' | 'gray' {
+		const variantMap: Record<string, 'blue' | 'purple' | 'red' | 'orange' | 'gray'> = {
+			bridge: 'blue',
+			overlay: 'purple',
+			ipvlan: 'red',
+			macvlan: 'orange'
+		};
+		return variantMap[driver] || 'gray';
+	}
+
 	const iconVariant = $derived<'emerald' | 'amber'>(item.inUse ? 'emerald' : 'amber');
 </script>
 
@@ -85,18 +95,7 @@
 								{m.common_driver()}
 							</div>
 							<div class="mt-0.5 text-xs font-medium">
-								<StatusBadge
-									variant={item.driver === 'bridge'
-										? 'blue'
-										: item.driver === 'overlay'
-											? 'purple'
-											: item.driver === 'ipvlan'
-												? 'red'
-												: item.driver === 'macvlan'
-													? 'orange'
-													: 'gray'}
-									text={capitalizeFirstLetter(item.driver)}
-								/>
+								<StatusBadge variant={getDriverVariant(item.driver)} text={capitalizeFirstLetter(item.driver)} />
 							</div>
 						</div>
 					</div>
@@ -122,18 +121,7 @@
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_driver()}:</span>
 					<div class="min-w-0 flex-1">
-						<StatusBadge
-							variant={item.driver === 'bridge'
-								? 'blue'
-								: item.driver === 'overlay'
-									? 'purple'
-									: item.driver === 'ipvlan'
-										? 'red'
-										: item.driver === 'macvlan'
-											? 'orange'
-											: 'gray'}
-							text={capitalizeFirstLetter(item.driver)}
-						/>
+						<StatusBadge variant={getDriverVariant(item.driver)} text={capitalizeFirstLetter(item.driver)} />
 					</div>
 				</div>
 			{/if}

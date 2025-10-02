@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { Badge } from '$lib/components/ui/badge/index.js';
+	import { Badge } from '$lib/components/ui/badge';
 	import { truncateString } from '$lib/utils/string.utils';
 	import type { Event } from '$lib/types/event.type';
 	import type { Snippet } from 'svelte';
@@ -10,7 +10,6 @@
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import TagIcon from '@lucide/svelte/icons/tag';
 	import ServerIcon from '@lucide/svelte/icons/server';
-	import ClockIcon from '@lucide/svelte/icons/clock';
 	import UserIcon from '@lucide/svelte/icons/user';
 
 	let {
@@ -20,6 +19,7 @@
 		getSeverityBadgeVariant,
 		compact = false,
 		class: className = '',
+		showSeverity = true,
 		showType = true,
 		showResource = true,
 		showUsername = true,
@@ -32,6 +32,7 @@
 		getSeverityBadgeVariant: (severity: string) => 'green' | 'red' | 'amber' | 'blue' | 'purple' | 'gray';
 		compact?: boolean;
 		class?: string;
+		showSeverity?: boolean;
 		showType?: boolean;
 		showResource?: boolean;
 		showUsername?: boolean;
@@ -93,7 +94,9 @@
 				{/if}
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
-				<StatusBadge variant={severityVariant} text={item.severity} size="sm" />
+				{#if showSeverity}
+					<StatusBadge variant={severityVariant} text={item.severity} size="sm" />
+				{/if}
 				{#if rowActions}
 					{@render rowActions({ item })}
 				{/if}
@@ -157,7 +160,8 @@
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.events_col_resource()}:</span>
 					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
 						{item.resourceType || '-'}
-						{#if item.resourceName} - {item.resourceName}{/if}
+						{#if item.resourceName}
+							- {item.resourceName}{/if}
 					</span>
 				</div>
 			{/if}

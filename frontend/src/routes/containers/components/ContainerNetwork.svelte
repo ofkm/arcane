@@ -19,10 +19,6 @@
 	}
 
 	let { container }: Props = $props();
-
-	function ensureNetworkConfig(config: any): NetworkConfig {
-		return config as NetworkConfig;
-	}
 </script>
 
 <div class="space-y-6">
