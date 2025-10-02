@@ -73,8 +73,10 @@
 	<ImageMobileCard
 		{item}
 		compact
-		showUpdateInfo={false}
+		showId={false}
+		showRepoTags={false}
 		showCreated={false}
+		showUpdates={false}
 		onclick={(item: ImageSummaryDto) => (window.location.href = `/images/${item.id}/`)}
 		class="mx-2"
 	/>

@@ -179,6 +179,17 @@
 			cell: UpdatesCell
 		}
 	] satisfies ColumnSpec<ImageSummaryDto>[];
+
+	const mobileFields = [
+		{ id: 'id', label: m.common_id(), defaultVisible: false },
+		{ id: 'repoTags', label: m.images_repository(), defaultVisible: true },
+		{ id: 'size', label: m.images_size(), defaultVisible: true },
+		{ id: 'created', label: m.common_created(), defaultVisible: true },
+		{ id: 'inUse', label: m.common_in_use(), defaultVisible: true },
+		{ id: 'updates', label: m.images_updates(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet RepoCell({ item }: { item: ImageSummaryDto })}
@@ -216,8 +227,26 @@
 	/>
 {/snippet}
 
-{#snippet ImageMobileCardSnippet({ row, item }: { row: any; item: ImageSummaryDto })}
-	<ImageMobileCard {item} rowActions={RowActions} onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)} />
+{#snippet ImageMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: ImageSummaryDto;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<ImageMobileCard
+		{item}
+		rowActions={RowActions}
+		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
+		showId={mobileFieldVisibility.id ?? false}
+		showRepoTags={mobileFieldVisibility.repoTags ?? true}
+		showSize={mobileFieldVisibility.size ?? true}
+		showCreated={mobileFieldVisibility.created ?? true}
+		showInUse={mobileFieldVisibility.inUse ?? true}
+		showUpdates={mobileFieldVisibility.updates ?? true}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ImageSummaryDto })}
@@ -269,9 +298,11 @@
 			items={images}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
 			onRefresh={async (options) => (images = await imageService.getImages(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
 			mobileCard={ImageMobileCardSnippet}
 		/>

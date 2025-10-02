@@ -55,10 +55,10 @@
 	<ContainerMobileCard
 		{item}
 		compact
-		showNetwork={false}
+		showId={false}
+		showImage={false}
 		showPorts={false}
 		showStatus={false}
-		showMounts={false}
 		onclick={(item: ContainerSummaryDto) => (window.location.href = `/containers/${item.id}/`)}
 		class="mx-2"
 	/>

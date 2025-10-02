@@ -8,23 +8,28 @@
 	import { cn } from '$lib/utils';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import MailIcon from '@lucide/svelte/icons/mail';
-	import ShieldIcon from '@lucide/svelte/icons/shield';
 
 	let {
 		item,
 		rowActions,
 		compact = false,
 		class: className = '',
+		showDisplayName = true,
 		showEmail = true,
 		showRole = true,
+		getRoleBadgeVariant,
+		getRoleText,
 		onclick
 	}: {
 		item: User;
 		rowActions?: Snippet<[{ item: User }]>;
 		compact?: boolean;
 		class?: string;
+		showDisplayName?: boolean;
 		showEmail?: boolean;
 		showRole?: boolean;
+		getRoleBadgeVariant?: (roles: string[]) => 'red' | 'green';
+		getRoleText?: (roles: string[]) => string;
 		onclick?: (item: User) => void;
 	} = $props();
 </script>
@@ -44,8 +49,8 @@
 				</p>
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
-				{#if showRole}
-					<StatusBadge variant="blue" text={m.common_user()} size="sm" />
+				{#if showRole && getRoleBadgeVariant && getRoleText}
+					<StatusBadge variant={getRoleBadgeVariant(item.roles)} text={getRoleText(item.roles)} size="sm" />
 				{/if}
 				{#if rowActions}
 					{@render rowActions({ item })}
@@ -55,6 +60,19 @@
 
 		{#if !compact}
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+				{#if showDisplayName && item.displayName}
+					<div class="flex items-start gap-2.5">
+						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
+							<UserIcon class="text-muted-foreground size-3.5" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_display_name()}</div>
+							<div class="mt-0.5 truncate text-xs font-medium">
+								{item.displayName}
+							</div>
+						</div>
+					</div>
+				{/if}
 				{#if showEmail && item.email}
 					<div class="flex items-start gap-2.5">
 						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
@@ -68,27 +86,24 @@
 						</div>
 					</div>
 				{/if}
-				{#if showRole}
-					<div class="flex items-start gap-2.5">
-						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
-							<ShieldIcon class="text-muted-foreground size-3.5" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_role()}</div>
-							<div class="mt-0.5 text-xs font-medium">
-								<StatusBadge variant="blue" text={m.common_user()} />
-							</div>
-						</div>
-					</div>
-				{/if}
 			</div>
-		{:else if showEmail && item.email}
-			<div class="flex items-baseline gap-1.5">
-				<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_email()}:</span>
-				<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
-					{item.email}
-				</span>
-			</div>
+		{:else}
+			{#if showDisplayName && item.displayName}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_display_name()}:</span>
+					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
+						{item.displayName}
+					</span>
+				</div>
+			{/if}
+			{#if showEmail && item.email}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_email()}:</span>
+					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
+						{item.email}
+					</span>
+				</div>
+			{/if}
 		{/if}
 	</Card.Content>
 </Card.Root>

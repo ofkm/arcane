@@ -16,18 +16,18 @@
 		rowActions,
 		compact = false,
 		class: className = '',
-		showServices = true,
+		showServiceCount = true,
 		showStatus = true,
-		showUpdated = true,
+		showCreatedAt = true,
 		onclick
 	}: {
 		item: Project;
 		rowActions?: Snippet<[{ item: Project }]>;
 		compact?: boolean;
 		class?: string;
-		showServices?: boolean;
+		showServiceCount?: boolean;
 		showStatus?: boolean;
-		showUpdated?: boolean;
+		showCreatedAt?: boolean;
 		onclick?: (item: Project) => void;
 	} = $props();
 
@@ -41,7 +41,7 @@
 
 	const statusVariant = $derived(getStatusVariant(item.status));
 	const iconVariant = $derived(getIconVariant(item.status));
-	const serviceCount = $derived(item.services?.length || 0);
+	const serviceCount = $derived(item.serviceCount ? Number(item.serviceCount) : (item.services?.length ?? 0));
 </script>
 
 <Card.Root variant="subtle" class={className} onclick={onclick ? () => onclick(item) : undefined}>
@@ -81,7 +81,7 @@
 
 		{#if !compact}
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				{#if showServices}
+				{#if showServiceCount}
 					<div class="flex items-start gap-2.5">
 						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
 							<LayersIcon class="text-muted-foreground size-3.5" />
@@ -90,24 +90,24 @@
 							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.services()}</div>
 							<div class="mt-0.5 text-xs font-medium">
 								{serviceCount}
-								{serviceCount === 1 ? 'service' : 'services'}
+								{Number(serviceCount) === 1 ? 'service' : 'services'}
 							</div>
 						</div>
 					</div>
 				{/if}
 			</div>
 
-			{#if showUpdated && item.updatedAt}
+			{#if showCreatedAt && item.createdAt}
 				<div class="border-muted/40 mt-3 flex items-center gap-2 border-t pt-3">
 					<ClockIcon class="text-muted-foreground size-3.5" />
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.updated()}</span>
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_created()}</span>
 					<span class="text-muted-foreground ml-auto text-[11px]">
-						{format(new Date(item.updatedAt), 'PP p')}
+						{format(new Date(item.createdAt), 'PP p')}
 					</span>
 				</div>
 			{/if}
 		{:else}
-			{#if showServices}
+			{#if showServiceCount}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.services()}:</span>
 					<span class="text-muted-foreground text-[11px] leading-tight">
@@ -115,11 +115,11 @@
 					</span>
 				</div>
 			{/if}
-			{#if showUpdated && item.updatedAt}
+			{#if showCreatedAt && item.createdAt}
 				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.updated()}:</span>
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_created()}:</span>
 					<span class="text-muted-foreground truncate text-[11px] leading-tight">
-						{format(new Date(item.updatedAt), 'PP')}
+						{format(new Date(item.createdAt), 'PP')}
 					</span>
 				</div>
 			{/if}

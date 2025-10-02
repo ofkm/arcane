@@ -1,7 +1,7 @@
 export { default as DataTableToolbar } from './arcane-table-toolbar.svelte';
 export { default as DataTableViewOptions } from './arcane-table-view-options.svelte';
 export { default as DataTableFacetedFilter } from './arcane-table-filter.svelte';
-export type { ColumnSpec } from './arcane-table.types.svelte';
+export type { ColumnSpec, FieldSpec } from './arcane-table.types.svelte';
 export { default as ImageMobileCard } from './cards/image-mobile-card.svelte';
 export { default as ContainerMobileCard } from './cards/container-mobile-card.svelte';
 export { default as NetworkMobileCard } from './cards/network-mobile-card.svelte';

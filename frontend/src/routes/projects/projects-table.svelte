@@ -139,6 +139,14 @@
 		{ accessorKey: 'status', title: m.common_status(), sortable: true, cell: StatusCell },
 		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell }
 	] satisfies ColumnSpec<Project>[];
+
+	const mobileFields = [
+		{ id: 'serviceCount', label: m.compose_services(), defaultVisible: true },
+		{ id: 'status', label: m.common_status(), defaultVisible: true },
+		{ id: 'createdAt', label: m.common_created(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet NameCell({ item }: { item: Project })}
@@ -156,8 +164,23 @@
 	{#if value}{format(new Date(String(value)), 'PP p')}{/if}
 {/snippet}
 
-{#snippet ProjectMobileCardSnippet({ row, item }: { row: any; item: Project })}
-	<ProjectMobileCard {item} rowActions={RowActions} onclick={() => goto(`/projects/${item.id}`)} />
+{#snippet ProjectMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: Project;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<ProjectMobileCard
+		{item}
+		rowActions={RowActions}
+		onclick={() => goto(`/projects/${item.id}`)}
+		showServiceCount={mobileFieldVisibility.serviceCount ?? true}
+		showStatus={mobileFieldVisibility.status ?? true}
+		showCreatedAt={mobileFieldVisibility.createdAt ?? true}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: Project })}
@@ -244,8 +267,10 @@
 			items={projects}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRefresh={async (options) => (projects = await projectService.getProjects(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
 			mobileCard={ProjectMobileCardSnippet}
 		/>

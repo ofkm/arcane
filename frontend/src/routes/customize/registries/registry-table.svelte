@@ -159,6 +159,13 @@
 			cell: CreatedCell
 		}
 	] satisfies ColumnSpec<ContainerRegistry>[];
+
+	const mobileFields = [
+		{ id: 'url', label: m.registries_url(), defaultVisible: true },
+		{ id: 'username', label: m.common_username(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet UrlCell({ item }: { item: ContainerRegistry })}
@@ -185,8 +192,21 @@
 	<span class="text-sm">{value ? format(new Date(String(value)), 'PP p') : m.common_na()}</span>
 {/snippet}
 
-{#snippet RegistryMobileCardSnippet({ row, item }: { row: any; item: ContainerRegistry })}
-	<RegistryMobileCard {item} rowActions={RowActions} />
+{#snippet RegistryMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: ContainerRegistry;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<RegistryMobileCard
+		{item}
+		rowActions={RowActions}
+		showUrl={mobileFieldVisibility.url ?? true}
+		showUsername={mobileFieldVisibility.username ?? true}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ContainerRegistry })}
@@ -220,12 +240,15 @@
 
 <div>
 	<ArcaneTable
+		persistKey="arcane-registries-table"
 		items={registries}
 		bind:requestOptions
 		bind:selectedIds
+		bind:mobileFieldVisibility
 		onRemoveSelected={(ids) => handleDeleteSelected(ids)}
 		onRefresh={async (options) => (registries = await containerRegistryService.getRegistries(options))}
 		{columns}
+		{mobileFields}
 		rowActions={RowActions}
 		mobileCard={RegistryMobileCardSnippet}
 	/>

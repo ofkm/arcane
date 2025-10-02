@@ -109,6 +109,14 @@
 		{ accessorKey: 'driver', title: m.common_driver(), sortable: true },
 		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell }
 	] satisfies ColumnSpec<VolumeSummaryDto>[];
+
+	const mobileFields = [
+		{ id: 'driver', label: m.common_driver(), defaultVisible: true },
+		{ id: 'created', label: m.common_created(), defaultVisible: true },
+		{ id: 'status', label: m.common_status(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet NameCell({ item }: { item: VolumeSummaryDto })}
@@ -129,8 +137,23 @@
 	{format(new Date(String(value)), 'PP p')}
 {/snippet}
 
-{#snippet VolumeMobileCardSnippet({ row, item }: { row: any; item: VolumeSummaryDto })}
-	<VolumeMobileCard {item} rowActions={RowActions} onclick={() => goto(`/volumes/${item.id}`)} />
+{#snippet VolumeMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: VolumeSummaryDto;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<VolumeMobileCard
+		{item}
+		rowActions={RowActions}
+		onclick={() => goto(`/volumes/${item.id}`)}
+		showDriver={mobileFieldVisibility.driver ?? true}
+		showCreated={mobileFieldVisibility.created ?? true}
+		showStatus={mobileFieldVisibility.status ?? true}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: VolumeSummaryDto })}
@@ -165,9 +188,11 @@
 			items={volumes}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
 			onRefresh={async (options) => (volumes = await volumeService.getVolumes(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
 			mobileCard={VolumeMobileCardSnippet}
 		/>

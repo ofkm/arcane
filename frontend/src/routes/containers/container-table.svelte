@@ -135,6 +135,17 @@
 		{ accessorKey: 'ports', title: m.ports(), cell: PortsCell },
 		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell }
 	] satisfies ColumnSpec<ContainerSummaryDto>[];
+
+	const mobileFields = [
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'image', label: m.common_image(), defaultVisible: true },
+		{ id: 'state', label: m.common_state(), defaultVisible: true },
+		{ id: 'status', label: m.common_status(), defaultVisible: true },
+		{ id: 'ports', label: m.ports(), defaultVisible: true },
+		{ id: 'created', label: m.common_created(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet PortsCell({ item }: { item: ContainerSummaryDto })}
@@ -168,12 +179,26 @@
 	</span>
 {/snippet}
 
-{#snippet ContainerMobileCardSnippet({ row, item }: { row: any; item: ContainerSummaryDto })}
+{#snippet ContainerMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: ContainerSummaryDto;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
 	<ContainerMobileCard
 		{item}
 		rowActions={RowActions}
 		{baseServerUrl}
 		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
+		showId={mobileFieldVisibility.id ?? true}
+		showImage={mobileFieldVisibility.image ?? true}
+		showState={mobileFieldVisibility.state ?? true}
+		showStatus={mobileFieldVisibility.status ?? true}
+		showPorts={mobileFieldVisibility.ports ?? true}
+		showCreated={mobileFieldVisibility.created ?? true}
 	/>
 {/snippet}
 
@@ -252,8 +277,10 @@
 			items={containers}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRefresh={async (options) => (containers = await containerService.getContainers(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
 			mobileCard={ContainerMobileCardSnippet}
 			selectionDisabled

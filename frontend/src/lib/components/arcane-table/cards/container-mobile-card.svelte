@@ -20,13 +20,12 @@
 		rowActions,
 		compact = false,
 		class: className = '',
-		showCreated = true,
+		showId = true,
 		showImage = true,
-		showMounts = true,
-		showNetwork = true,
-		showPorts = true,
-		showRestartPolicy = true,
+		showState = true,
 		showStatus = true,
+		showPorts = true,
+		showCreated = true,
 		baseServerUrl = '',
 		onclick
 	}: {
@@ -34,13 +33,12 @@
 		rowActions?: Snippet<[{ item: ContainerSummaryDto }]>;
 		compact?: boolean;
 		class?: string;
-		showCreated?: boolean;
+		showId?: boolean;
 		showImage?: boolean;
-		showMounts?: boolean;
-		showNetwork?: boolean;
-		showPorts?: boolean;
-		showRestartPolicy?: boolean;
+		showState?: boolean;
 		showStatus?: boolean;
+		showPorts?: boolean;
+		showCreated?: boolean;
 		baseServerUrl?: string;
 		onclick?: (item: ContainerSummaryDto) => void;
 	} = $props();
@@ -63,9 +61,6 @@
 	const containerName = $derived(getContainerName(item));
 	const statusVariant = $derived(getStatusVariant(item.state));
 	const iconVariant = $derived(getIconVariant(item.state));
-	const networkNames = $derived(item.networkSettings?.networks ? Object.keys(item.networkSettings.networks) : []);
-	const mountCount = $derived(item.mounts?.length ?? 0);
-	const restartPolicy = $derived(item.hostConfig?.restartPolicy ?? 'no');
 </script>
 
 <Card.Root variant="subtle" class={className} onclick={onclick ? () => onclick(item) : undefined}>
@@ -89,14 +84,18 @@
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-[13px]' : 'text-base')}>
 					{containerName}
 				</h3>
-				<div class="text-muted-foreground mt-0.5 flex items-center gap-2">
-					<span class={cn('truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
-						{String(item.id).substring(0, 12)}
-					</span>
-				</div>
+				{#if showId}
+					<div class="text-muted-foreground mt-0.5 flex items-center gap-2">
+						<span class={cn('truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
+							{String(item.id).substring(0, 12)}
+						</span>
+					</div>
+				{/if}
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
-				<StatusBadge variant={statusVariant} text={capitalizeFirstLetter(item.state)} size="sm" />
+				{#if showState}
+					<StatusBadge variant={statusVariant} text={capitalizeFirstLetter(item.state)} size="sm" />
+				{/if}
 				{#if rowActions}
 					{@render rowActions({ item })}
 				{/if}
@@ -132,60 +131,6 @@
 							</div>
 							<div class="mt-0.5 text-xs font-medium">
 								{item.status}
-							</div>
-						</div>
-					</div>
-				{/if}
-
-				{#if showNetwork && networkNames.length > 0}
-					<div class="flex items-start gap-2.5">
-						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10">
-							<NetworkIcon class="size-3.5 text-cyan-500" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">Network</div>
-							<div class="mt-0.5 flex flex-wrap gap-1">
-								{#each networkNames.slice(0, 2) as network}
-									<span
-										class="inline-flex items-center rounded-md bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-700 ring-1 ring-cyan-500/20 ring-inset dark:text-cyan-300 dark:ring-cyan-500/30"
-									>
-										{network}
-									</span>
-								{/each}
-								{#if networkNames.length > 2}
-									<span class="text-muted-foreground inline-flex items-center text-[10px] font-medium">
-										+{networkNames.length - 2}
-									</span>
-								{/if}
-							</div>
-						</div>
-					</div>
-				{/if}
-
-				{#if showMounts && mountCount > 0}
-					<div class="flex items-start gap-2.5">
-						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
-							<HardDriveIcon class="size-3.5 text-orange-500" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">Mounts</div>
-							<div class="mt-0.5 text-xs font-medium">
-								{mountCount}
-								{mountCount === 1 ? 'mount' : 'mounts'}
-							</div>
-						</div>
-					</div>
-				{/if}
-
-				{#if showRestartPolicy && restartPolicy && restartPolicy !== 'no'}
-					<div class="flex items-start gap-2.5">
-						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10">
-							<RefreshCwIcon class="size-3.5 text-indigo-500" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">Restart Policy</div>
-							<div class="mt-0.5 text-xs font-medium">
-								{capitalizeFirstLetter(restartPolicy)}
 							</div>
 						</div>
 					</div>
@@ -228,6 +173,14 @@
 					</span>
 				</div>
 			{/if}
+			{#if showId}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_id()}:</span>
+					<span class="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[11px] leading-tight">
+						{String(item.id).substring(0, 12)}
+					</span>
+				</div>
+			{/if}
 			{#if showStatus && item.status}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_status()}:</span>
@@ -236,31 +189,10 @@
 					</span>
 				</div>
 			{/if}
-			{#if showNetwork && networkNames.length > 0}
+			{#if showState}
 				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.network_interface()}:</span>
-					<span class="text-muted-foreground truncate text-[11px] leading-tight">
-						{networkNames.join(', ')}
-					</span>
-				</div>
-			{/if}
-			{#if showMounts && mountCount > 0}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase"
-						>{m.containers_storage_title()}:</span
-					>
-					<span class="text-muted-foreground text-[11px] leading-tight">
-						{mountCount}
-						{mountCount === 1 ? 'mount' : 'mounts'}
-					</span>
-				</div>
-			{/if}
-			{#if showRestartPolicy && restartPolicy && restartPolicy !== 'no'}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.restart_policy_label()}:</span>
-					<span class="text-muted-foreground text-[11px] leading-tight">
-						{capitalizeFirstLetter(restartPolicy)}
-					</span>
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_state()}:</span>
+					<StatusBadge variant={statusVariant} text={capitalizeFirstLetter(item.state)} size="sm" />
 				</div>
 			{/if}
 			{#if showPorts && item.ports && item.ports.length > 0}

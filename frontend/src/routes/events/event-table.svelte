@@ -114,6 +114,14 @@
 			cell: TimeCell
 		}
 	] satisfies ColumnSpec<Event>[];
+
+	const mobileFields = [
+		{ id: 'type', label: m.events_col_type(), defaultVisible: true },
+		{ id: 'resourceId', label: m.events_col_resource(), defaultVisible: true },
+		{ id: 'timestamp', label: m.events_col_time(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet SeverityCell({ value }: { value: unknown })}
@@ -149,8 +157,24 @@
 	<span class="text-sm">{formatTimestamp(String(value ?? new Date().toISOString()))}</span>
 {/snippet}
 
-{#snippet EventMobileCardSnippet({ row, item }: { row: any; item: Event })}
-	<EventMobileCard {item} rowActions={RowActions} {formatTimestamp} {getSeverityBadgeVariant} />
+{#snippet EventMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: Event;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<EventMobileCard
+		{item}
+		rowActions={RowActions}
+		{formatTimestamp}
+		{getSeverityBadgeVariant}
+		showType={mobileFieldVisibility.type ?? true}
+		showResourceId={mobileFieldVisibility.resourceId ?? true}
+		showTimestamp={mobileFieldVisibility.timestamp ?? true}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: Event })}
@@ -185,11 +209,14 @@
 <Card.Root class="flex flex-col gap-6 py-3">
 	<Card.Content class="px-6 py-5">
 		<ArcaneTable
+			persistKey="arcane-events-table"
 			items={events}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRefresh={async (options) => (events = await eventService.getEvents(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
 			mobileCard={EventMobileCardSnippet}
 		/>

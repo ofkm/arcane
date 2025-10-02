@@ -152,6 +152,10 @@
 			cell: EnabledCell
 		}
 	] satisfies ColumnSpec<Environment>[];
+
+	const mobileFields = [{ id: 'id', label: m.common_id(), defaultVisible: true }];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet EnvironmentCell({ item }: { item: Environment })}
@@ -185,8 +189,16 @@
 	<StatusBadge text={Boolean(value) ? 'Enabled' : 'Disabled'} variant={Boolean(value) ? 'green' : 'gray'} />
 {/snippet}
 
-{#snippet EnvironmentMobileCardSnippet({ row, item }: { row: any; item: Environment })}
-	<EnvironmentMobileCard {item} rowActions={RowActions} />
+{#snippet EnvironmentMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: Environment;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<EnvironmentMobileCard {item} rowActions={RowActions} showId={mobileFieldVisibility.id ?? true} />
 {/snippet}
 
 {#snippet RowActions({ item }: { item: Environment })}
@@ -226,12 +238,15 @@
 <Card.Root class="flex flex-col gap-6 py-3">
 	<Card.Content class="px-6 py-5">
 		<ArcaneTable
+			persistKey="arcane-environments-table"
 			items={environments}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
 			onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
 			mobileCard={EnvironmentMobileCardSnippet}
 		/>

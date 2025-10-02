@@ -125,6 +125,14 @@
 		{ accessorKey: 'email', title: m.common_email(), sortable: true, cell: EmailCell },
 		{ accessorKey: 'roles', title: m.common_role(), sortable: true, cell: RoleCell }
 	] satisfies ColumnSpec<User>[];
+
+	const mobileFields = [
+		{ id: 'displayName', label: m.common_display_name(), defaultVisible: true },
+		{ id: 'email', label: m.common_email(), defaultVisible: true },
+		{ id: 'role', label: m.common_role(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet UsernameCell({ item }: { item: User })}
@@ -143,8 +151,24 @@
 	<StatusBadge text={getRoleText(item.roles)} variant={getRoleBadgeVariant(item.roles)} />
 {/snippet}
 
-{#snippet UserMobileCardSnippet({ row, item }: { row: any; item: User })}
-	<UserMobileCard {item} rowActions={RowActions} />
+{#snippet UserMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: User;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<UserMobileCard
+		{item}
+		rowActions={RowActions}
+		showDisplayName={mobileFieldVisibility.displayName ?? true}
+		showEmail={mobileFieldVisibility.email ?? true}
+		showRole={mobileFieldVisibility.role ?? true}
+		{getRoleBadgeVariant}
+		{getRoleText}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: User })}
@@ -177,9 +201,11 @@
 <Card.Root class="flex flex-col gap-6 py-3">
 	<Card.Content class="px-6 py-5">
 		<ArcaneTable
+			persistKey="arcane-users-table"
 			items={users}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRemoveSelected={(ids) => handleDeleteSelected()}
 			onRefresh={async (options) => {
 				requestOptions = options;
@@ -187,6 +213,7 @@
 				return users;
 			}}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
 			mobileCard={UserMobileCardSnippet}
 		/>

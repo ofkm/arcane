@@ -15,7 +15,6 @@
 	import FlexRender from '$lib/components/ui/data-table/flex-render.svelte';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { renderComponent, renderSnippet } from '$lib/components/ui/data-table/render-helpers.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
@@ -37,10 +36,13 @@
 	import { PersistedState } from 'runed';
 	import {
 		type CompactTablePrefs,
+		type FieldSpec,
 		encodeHidden,
 		applyHiddenPatch,
 		encodeFilters,
-		decodeFilters
+		decodeFilters,
+		encodeMobileHidden,
+		applyMobileHiddenPatch
 	} from './arcane-table.types.svelte';
 
 	let {
@@ -53,6 +55,8 @@
 		columns,
 		rowActions,
 		mobileCard,
+		mobileFields = [],
+		mobileFieldVisibility = $bindable<Record<string, boolean>>({}),
 		selectedIds = $bindable<string[]>([]),
 		onRemoveSelected,
 		persistKey
@@ -65,7 +69,9 @@
 		onRefresh: (requestOptions: SearchPaginationSortRequest) => Promise<Paginated<TData>>;
 		columns: ColumnSpec<TData>[];
 		rowActions?: Snippet<[{ row: Row<TData>; item: TData }]>;
-		mobileCard: Snippet<[{ row: Row<TData>; item: TData }]>;
+		mobileCard: Snippet<[{ row: Row<TData>; item: TData; mobileFieldVisibility: Record<string, boolean> }]>;
+		mobileFields?: FieldSpec[];
+		mobileFieldVisibility?: Record<string, boolean>;
 		selectedIds?: string[];
 		onRemoveSelected?: (ids: string[]) => void;
 		persistKey?: string;
@@ -79,11 +85,20 @@
 
 	const enablePersist = !!persistKey;
 
+	// Initialize mobile field visibility from specs
+	if (!Object.keys(mobileFieldVisibility).length && mobileFields.length) {
+		const initial: Record<string, boolean> = {};
+		for (const field of mobileFields) {
+			initial[field.id] = field.defaultVisible ?? true;
+		}
+		mobileFieldVisibility = initial;
+	}
+
 	const getDefaultLimit = () => requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 20;
 	const prefs = enablePersist
 		? new PersistedState<CompactTablePrefs>(
 				persistKey as string,
-				{ v: [], f: [], g: '', l: getDefaultLimit() },
+				{ v: [], f: [], g: '', l: getDefaultLimit(), m: [] },
 				{ syncTabs: false }
 			)
 		: null;
@@ -101,9 +116,14 @@
 	import { onMount } from 'svelte';
 	onMount(() => {
 		if (!enablePersist) return;
-		const cur = prefs?.current ?? { v: [], f: [], g: '', l: getDefaultLimit() };
+		const cur = prefs?.current ?? { v: [], f: [], g: '', l: getDefaultLimit(), m: [] };
 
 		applyHiddenPatch(columnVisibility, cur.v);
+
+		// Apply mobile field visibility
+		if (cur.m && cur.m.length) {
+			applyMobileHiddenPatch(mobileFieldVisibility, cur.m);
+		}
 
 		// Filters
 		let shouldRefresh = false;
@@ -355,6 +375,25 @@
 		return out;
 	}
 
+	function onToggleMobileField(fieldId: string) {
+		mobileFieldVisibility = {
+			...mobileFieldVisibility,
+			[fieldId]: !mobileFieldVisibility[fieldId]
+		};
+		// Persist mobile field visibility
+		if (enablePersist && prefs) {
+			prefs.current = { ...prefs.current, m: encodeMobileHidden(mobileFieldVisibility) };
+		}
+	}
+
+	const mobileFieldsForOptions = $derived(
+		mobileFields.map((field) => ({
+			id: field.id,
+			label: field.label,
+			visible: mobileFieldVisibility[field.id] ?? true
+		}))
+	);
+
 	$effect(() => {
 		const s = requestOptions?.sort;
 		if (!s) {
@@ -430,7 +469,7 @@
 {/snippet}
 
 {#snippet MobileCard({ row, item }: { row: Row<TData>; item: TData })}
-	{@render mobileCard({ row, item })}
+	{@render mobileCard({ row, item, mobileFieldVisibility })}
 {/snippet}
 
 {#snippet ColumnHeader({
@@ -484,7 +523,14 @@
 
 <div class="space-y-4">
 	{#if !withoutSearch}
-		<DataTableToolbar {table} {selectedIds} {selectionDisabled} {onRemoveSelected} />
+		<DataTableToolbar
+			{table}
+			{selectedIds}
+			{selectionDisabled}
+			{onRemoveSelected}
+			mobileFields={mobileFieldsForOptions}
+			{onToggleMobileField}
+		/>
 	{/if}
 
 	<!-- Desktop Table View -->

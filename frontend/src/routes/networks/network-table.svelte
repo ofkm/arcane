@@ -142,6 +142,14 @@
 			cell: ScopeCell
 		}
 	] satisfies ColumnSpec<NetworkSummaryDto>[];
+
+	const mobileFields = [
+		{ id: 'driver', label: m.common_driver(), defaultVisible: true },
+		{ id: 'scope', label: m.common_scope(), defaultVisible: true },
+		{ id: 'status', label: m.common_status(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet NameCell({ item }: { item: NetworkSummaryDto })}
@@ -179,8 +187,23 @@
 	{/if}
 {/snippet}
 
-{#snippet NetworkMobileCardSnippet({ row, item }: { row: any; item: NetworkSummaryDto })}
-	<NetworkMobileCard {item} rowActions={RowActions} onclick={() => goto(`/networks/${item.id}`)} />
+{#snippet NetworkMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: NetworkSummaryDto;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<NetworkMobileCard
+		{item}
+		rowActions={RowActions}
+		onclick={() => goto(`/networks/${item.id}`)}
+		showDriver={mobileFieldVisibility.driver ?? true}
+		showScope={mobileFieldVisibility.scope ?? true}
+		showStatus={mobileFieldVisibility.status ?? true}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: NetworkSummaryDto })}
@@ -220,9 +243,11 @@
 			items={networks}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRemoveSelected={(ids) => handleDeleteSelectedNetworks(ids)}
 			onRefresh={async (options) => (networks = await networkService.getNetworks(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
 			mobileCard={NetworkMobileCardSnippet}
 		/>

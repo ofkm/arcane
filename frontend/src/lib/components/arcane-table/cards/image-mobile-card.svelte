@@ -11,25 +11,30 @@
 	import { cn } from '$lib/utils';
 	import ImageIcon from '@lucide/svelte/icons/image';
 	import ClockIcon from '@lucide/svelte/icons/clock';
-	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 
 	let {
 		item,
 		rowActions,
 		compact = false,
 		class: className = '',
-		showCreated = true,
+		showId = false,
+		showRepoTags = true,
 		showSize = true,
-		showUpdateInfo = true,
+		showCreated = true,
+		showInUse = true,
+		showUpdates = true,
 		onclick
 	}: {
 		item: ImageSummaryDto;
 		rowActions?: Snippet<[{ item: ImageSummaryDto }]>;
 		compact?: boolean;
 		class?: string;
-		showCreated?: boolean;
+		showId?: boolean;
+		showRepoTags?: boolean;
 		showSize?: boolean;
-		showUpdateInfo?: boolean;
+		showCreated?: boolean;
+		showInUse?: boolean;
+		showUpdates?: boolean;
 		onclick?: (item: ImageSummaryDto) => void;
 	} = $props();
 
@@ -74,17 +79,21 @@
 				>
 					{imageDisplay}
 				</h3>
-				<div class="text-muted-foreground mt-0.5 flex items-center gap-2">
-					<span class={cn('truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
-						{String(item.id).substring(0, 12)}
-					</span>
-				</div>
+				{#if showId}
+					<div class="text-muted-foreground mt-0.5 flex items-center gap-2">
+						<span class={cn('truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
+							{String(item.id).substring(0, 12)}
+						</span>
+					</div>
+				{/if}
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
-				{#if item.inUse}
-					<StatusBadge text={m.common_in_use()} variant="green" size="sm" />
-				{:else}
-					<StatusBadge text={m.common_unused()} variant="amber" size="sm" />
+				{#if showInUse}
+					{#if item.inUse}
+						<StatusBadge text={m.common_in_use()} variant="green" size="sm" />
+					{:else}
+						<StatusBadge text={m.common_unused()} variant="amber" size="sm" />
+					{/if}
 				{/if}
 				{#if rowActions}
 					{@render rowActions({ item })}
@@ -110,25 +119,31 @@
 					</div>
 				{/if}
 
-				{#if showUpdateInfo && item.updateInfo}
+				{#if showRepoTags && !isUntagged}
 					<div class="flex items-start gap-2.5">
-						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
-							<RefreshCwIcon class="size-3.5 text-amber-500" />
+						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
+							<ImageIcon class="size-3.5 text-purple-500" />
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-								{m.images_updates()}
+								{m.images_repository()}
 							</div>
-							<div class="mt-1">
-								{#if item.repoTags}
-									{@const { repo, tag } = extractRepoAndTag(item.repoTags)}
-									<ImageUpdateItem updateInfo={item.updateInfo} imageId={item.id} {repo} {tag} />
-								{/if}
+							<div class="mt-0.5 truncate text-xs font-medium">
+								{item.repoTags?.[0] || m.images_untagged()}
 							</div>
 						</div>
 					</div>
 				{/if}
 			</div>
+
+			{#if showUpdates && item.updateInfo}
+				<div class="mt-3">
+					{#if item.repoTags}
+						{@const { repo, tag } = extractRepoAndTag(item.repoTags)}
+						<ImageUpdateItem updateInfo={item.updateInfo} imageId={item.id} {repo} {tag} />
+					{/if}
+				</div>
+			{/if}
 
 			{#if showCreated}
 				<div class="border-muted/40 mt-3 flex items-center gap-2 border-t pt-3">
@@ -142,6 +157,22 @@
 				</div>
 			{/if}
 		{:else}
+			{#if showId}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_id()}:</span>
+					<span class="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[11px] leading-tight">
+						{String(item.id).substring(0, 12)}
+					</span>
+				</div>
+			{/if}
+			{#if showRepoTags && !isUntagged}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.images_repository()}:</span>
+					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
+						{item.repoTags?.[0] || m.images_untagged()}
+					</span>
+				</div>
+			{/if}
 			{#if showSize}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.images_size()}:</span>
@@ -158,7 +189,17 @@
 					</span>
 				</div>
 			{/if}
-			{#if showUpdateInfo && item.updateInfo}
+			{#if showInUse}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_in_use()}:</span>
+					{#if item.inUse}
+						<StatusBadge text={m.common_in_use()} variant="green" size="sm" />
+					{:else}
+						<StatusBadge text={m.common_unused()} variant="amber" size="sm" />
+					{/if}
+				</div>
+			{/if}
+			{#if showUpdates && item.updateInfo}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.images_updates()}:</span>
 					<div class="min-w-0 flex-1">
