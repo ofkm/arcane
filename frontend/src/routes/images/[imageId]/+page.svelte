@@ -251,21 +251,38 @@
 							<Card.Description>{m.images_env_vars_description()}</Card.Description>
 						</div>
 					</Card.Header>
-					<Card.Content class="space-y-2 p-4">
-						{#each image.config.env as env (env)}
-							{@const [key, ...valueParts] = env.split('=')}
-							{@const value = valueParts.join('=')}
-							<div class="flex flex-col text-sm sm:flex-row sm:items-center">
-								<span class="text-muted-foreground w-full font-medium break-all sm:w-1/4">{key}:</span>
-								<span
-									class="w-full cursor-pointer font-mono text-xs break-all select-all sm:w-3/4 sm:text-sm"
-									title="Click to select">{value}</span
-								>
-							</div>
-							{#if env !== image.config.env[image.config.env.length - 1]}
-								<Separator class="my-2" />
-							{/if}
-						{/each}
+					<Card.Content class="p-4">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+							{#each image.config.env as env (env)}
+								{#if env.includes('=')}
+									{@const [key, ...valueParts] = env.split('=')}
+									{@const value = valueParts.join('=')}
+									<Card.Root variant="subtle">
+										<Card.Content class="flex flex-col gap-2 p-4">
+											<div class="text-muted-foreground text-xs font-semibold tracking-wide break-all uppercase">{key}</div>
+											<div
+												class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+												title="Click to select"
+											>
+												{value}
+											</div>
+										</Card.Content>
+									</Card.Root>
+								{:else}
+									<Card.Root variant="subtle">
+										<Card.Content class="flex flex-col gap-2 p-4">
+											<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">ENV_VAR</div>
+											<div
+												class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+												title="Click to select"
+											>
+												{env}
+											</div>
+										</Card.Content>
+									</Card.Root>
+								{/if}
+							{/each}
+						</div>
 					</Card.Content>
 				</Card.Root>
 			{/if}

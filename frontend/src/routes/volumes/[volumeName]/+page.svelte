@@ -207,36 +207,40 @@
 				</Card.Header>
 				<Card.Content class="p-4">
 					{#if containersDetailed.length > 0}
-						<div class="bg-card divide-y rounded-lg border">
-							{#each containersDetailed as c (c.id)}
-								<div class="flex flex-col p-3 sm:flex-row sm:items-center">
-									<div class="mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
-										<a href="/containers/{c.id}" class="text-primary flex items-center hover:underline">
-											<ContainerIcon class="text-muted-foreground mr-1.5 size-3.5" />
-											{c.name}
-										</a>
+						<Card.Root variant="outlined">
+							<Card.Content class="divide-y p-0">
+								{#each containersDetailed as c (c.id)}
+									<div class="flex flex-col p-3 sm:flex-row sm:items-center">
+										<div class="mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
+											<a href="/containers/{c.id}" class="text-primary flex items-center hover:underline">
+												<ContainerIcon class="text-muted-foreground mr-1.5 size-3.5" />
+												{c.name}
+											</a>
+										</div>
+										<div class="w-full pl-0 sm:w-2/3 sm:pl-4">
+											<code
+												class="bg-muted text-muted-foreground cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs break-all select-all sm:text-sm"
+												title="Click to select"
+											>
+												{truncateString(c.id, 48)}
+											</code>
+										</div>
 									</div>
-									<div class="w-full pl-0 sm:w-2/3 sm:pl-4">
-										<code
-											class="bg-muted text-muted-foreground cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs break-all select-all sm:text-sm"
-											title="Click to select"
-										>
-											{truncateString(c.id, 48)}
-										</code>
-									</div>
-								</div>
-							{/each}
-						</div>
+								{/each}
+							</Card.Content>
+						</Card.Root>
 					{:else if volume.containers && volume.containers.length > 0}
 						<!-- Fallback to IDs if names not resolved -->
-						<div class="divide-y rounded-lg border">
-							{#each volume.containers as id (id)}
-								<div class="flex items-center justify-between gap-3 p-3">
-									<code class="font-mono text-sm break-all">{truncateString(id, 48)}</code>
-									<a href={`/containers/${id}`} class="text-primary text-sm hover:underline">{m.common_view()}</a>
-								</div>
-							{/each}
-						</div>
+						<Card.Root variant="subtle">
+							<Card.Content class="divide-y p-0">
+								{#each volume.containers as id (id)}
+									<div class="flex items-center justify-between gap-3 p-3">
+										<code class="font-mono text-sm break-all">{truncateString(id, 48)}</code>
+										<a href={`/containers/${id}`} class="text-primary text-sm hover:underline">{m.common_view()}</a>
+									</div>
+								{/each}
+							</Card.Content>
+						</Card.Root>
 					{:else}
 						<div class="text-muted-foreground">{m.volumes_no_containers_using()}</div>
 					{/if}
@@ -252,19 +256,19 @@
 						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
-						<div class="bg-card divide-y rounded-lg border">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
 							{#each Object.entries(volume.labels) as [key, value] (key)}
-								<div class="flex flex-col p-3 sm:flex-row">
-									<div class="text-muted-foreground mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
-										{key}
-									</div>
-									<div
-										class="bg-muted/50 w-full cursor-pointer rounded p-2 font-mono text-xs break-all select-all sm:w-2/3 sm:text-sm"
-										title="Click to select"
-									>
-										{value}
-									</div>
-								</div>
+								<Card.Root variant="subtle">
+									<Card.Content class="flex flex-col gap-2 p-4">
+										<div class="text-muted-foreground text-xs font-semibold tracking-wide break-all uppercase">{key}</div>
+										<div
+											class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+											title="Click to select"
+										>
+											{value}
+										</div>
+									</Card.Content>
+								</Card.Root>
 							{/each}
 						</div>
 					</Card.Content>
@@ -280,19 +284,19 @@
 						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
-						<div class="bg-card divide-y rounded-lg border">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
 							{#each Object.entries(volume.options) as [key, value] (key)}
-								<div class="flex flex-col p-3 sm:flex-row">
-									<div class="text-muted-foreground mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
-										{key}
-									</div>
-									<div
-										class="bg-muted/50 w-full cursor-pointer rounded p-2 font-mono text-xs break-all select-all sm:w-2/3 sm:text-sm"
-										title="Click to select"
-									>
-										{value}
-									</div>
-								</div>
+								<Card.Root variant="subtle">
+									<Card.Content class="flex flex-col gap-2 p-4">
+										<div class="text-muted-foreground text-xs font-semibold tracking-wide break-all uppercase">{key}</div>
+										<div
+											class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+											title="Click to select"
+										>
+											{value}
+										</div>
+									</Card.Content>
+								</Card.Root>
 							{/each}
 						</div>
 					</Card.Content>

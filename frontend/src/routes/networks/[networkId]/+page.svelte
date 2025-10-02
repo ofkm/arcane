@@ -271,70 +271,74 @@
 						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
-						{#each network.ipam.Config as config, i (i)}
-							<div class="bg-card/50 mb-4 rounded-lg border p-4 last:mb-0">
-								<div class="space-y-2">
-									{#if config.Subnet}
-										<div class="flex flex-col sm:flex-row sm:items-center">
-											<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
-												>{m.networks_ipam_subnet_label()}:</span
-											>
-											<code
-												class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
-												title="Click to select"
-											>
-												{config.Subnet}
-											</code>
-										</div>
-									{/if}
+						<div class="space-y-3">
+							{#each network.ipam.Config as config, i (i)}
+								<Card.Root variant="outlined">
+									<Card.Content class="p-4">
+										<div class="space-y-2">
+											{#if config.Subnet}
+												<div class="flex flex-col sm:flex-row sm:items-center">
+													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
+														>{m.networks_ipam_subnet_label()}:</span
+													>
+													<code
+														class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
+														title="Click to select"
+													>
+														{config.Subnet}
+													</code>
+												</div>
+											{/if}
 
-									{#if config.Gateway}
-										<div class="flex flex-col sm:flex-row sm:items-center">
-											<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
-												>{m.networks_ipam_gateway_label()}:</span
-											>
-											<code
-												class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
-												title="Click to select"
-											>
-												{config.Gateway}
-											</code>
-										</div>
-									{/if}
+											{#if config.Gateway}
+												<div class="flex flex-col sm:flex-row sm:items-center">
+													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
+														>{m.networks_ipam_gateway_label()}:</span
+													>
+													<code
+														class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
+														title="Click to select"
+													>
+														{config.Gateway}
+													</code>
+												</div>
+											{/if}
 
-									{#if config.IPRange}
-										<div class="flex flex-col sm:flex-row sm:items-center">
-											<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
-												>{m.networks_ipam_iprange_label()}:</span
-											>
-											<code
-												class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
-												title="Click to select"
-											>
-												{config.IPRange}
-											</code>
-										</div>
-									{/if}
+											{#if config.IPRange}
+												<div class="flex flex-col sm:flex-row sm:items-center">
+													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
+														>{m.networks_ipam_iprange_label()}:</span
+													>
+													<code
+														class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
+														title="Click to select"
+													>
+														{config.IPRange}
+													</code>
+												</div>
+											{/if}
 
-									{#if (config.AuxiliaryAddresses && Object.keys(config.AuxiliaryAddresses).length > 0) || (config.AuxAddress && Object.keys(config.AuxAddress).length > 0)}
-										<div class="mt-3">
-											<p class="text-muted-foreground mb-1 text-sm font-medium">{m.networks_ipam_aux_addresses_label()}:</p>
-											<ul class="ml-4 space-y-1">
-												{#each Object.entries(config.AuxiliaryAddresses ?? config.AuxAddress ?? {}) as [name, addr] (name)}
-													<li class="flex font-mono text-xs">
-														<span class="text-muted-foreground mr-2">{name}:</span>
-														<code
-															class="bg-muted text-muted-foreground cursor-pointer rounded px-1 py-0.5 select-all"
-															title="Click to select">{addr}</code
-														>
-													</li>
-												{/each}
-											</ul>
+											{#if (config.AuxiliaryAddresses && Object.keys(config.AuxiliaryAddresses).length > 0) || (config.AuxAddress && Object.keys(config.AuxAddress).length > 0)}
+												<div class="mt-3">
+													<p class="text-muted-foreground mb-1 text-sm font-medium">{m.networks_ipam_aux_addresses_label()}:</p>
+													<ul class="ml-4 space-y-1">
+														{#each Object.entries(config.AuxiliaryAddresses ?? config.AuxAddress ?? {}) as [name, addr] (name)}
+															<li class="flex font-mono text-xs">
+																<span class="text-muted-foreground mr-2">{name}:</span>
+																<code
+																	class="bg-muted text-muted-foreground cursor-pointer rounded px-1 py-0.5 select-all"
+																	title="Click to select">{addr}</code
+																>
+															</li>
+														{/each}
+													</ul>
+												</div>
+											{/if}
 										</div>
-									{/if}
-								</div>
-							</div>
-						{/each}
+									</Card.Content>
+								</Card.Root>
+							{/each}
+						</div>
 
 						{#if network.ipam.Driver}
 							<div class="mt-4 flex items-center">
@@ -371,26 +375,28 @@
 						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
-						<div class="bg-card divide-y rounded-lg border">
-							{#each connectedContainers as container (container.id)}
-								<div class="flex flex-col p-3 sm:flex-row sm:items-center">
-									<div class="mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
-										<a href="/containers/{container.id}" class="text-primary flex items-center hover:underline">
-											<ContainerIcon class="text-muted-foreground mr-1.5 size-3.5" />
-											{container.Name}
-										</a>
+						<Card.Root variant="outlined">
+							<Card.Content class="divide-y p-0">
+								{#each connectedContainers as container (container.id)}
+									<div class="flex flex-col p-3 sm:flex-row sm:items-center">
+										<div class="mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
+											<a href="/containers/{container.id}" class="text-primary flex items-center hover:underline">
+												<ContainerIcon class="text-muted-foreground mr-1.5 size-3.5" />
+												{container.Name}
+											</a>
+										</div>
+										<div class="w-full pl-0 sm:w-2/3 sm:pl-4">
+											<code
+												class="bg-muted text-muted-foreground cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs break-all select-all sm:text-sm"
+												title="Click to select"
+											>
+												{container.IPv4Address || container.IPv6Address || m.common_unknown()}
+											</code>
+										</div>
 									</div>
-									<div class="w-full pl-0 sm:w-2/3 sm:pl-4">
-										<code
-											class="bg-muted text-muted-foreground cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs break-all select-all sm:text-sm"
-											title="Click to select"
-										>
-											{container.IPv4Address || container.IPv6Address || m.common_unknown()}
-										</code>
-									</div>
-								</div>
-							{/each}
-						</div>
+								{/each}
+							</Card.Content>
+						</Card.Root>
 					</Card.Content>
 				</Card.Root>
 			{/if}
@@ -404,19 +410,19 @@
 						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
-						<div class="bg-card divide-y rounded-lg border">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
 							{#each Object.entries(network.labels) as [key, value] (key)}
-								<div class="flex flex-col p-3 sm:flex-row">
-									<div class="text-muted-foreground mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
-										{key}
-									</div>
-									<div
-										class="bg-muted/50 w-full cursor-pointer rounded p-2 font-mono text-xs break-all select-all sm:w-2/3 sm:text-sm"
-										title="Click to select"
-									>
-										{value}
-									</div>
-								</div>
+								<Card.Root variant="subtle">
+									<Card.Content class="flex flex-col gap-2 p-4">
+										<div class="text-muted-foreground text-xs font-semibold tracking-wide break-all uppercase">{key}</div>
+										<div
+											class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+											title="Click to select"
+										>
+											{value}
+										</div>
+									</Card.Content>
+								</Card.Root>
 							{/each}
 						</div>
 					</Card.Content>
@@ -432,19 +438,19 @@
 						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
-						<div class="bg-card divide-y rounded-lg border">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
 							{#each Object.entries(network.options) as [key, value] (key)}
-								<div class="flex flex-col p-3 sm:flex-row">
-									<div class="text-muted-foreground mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
-										{key}
-									</div>
-									<div
-										class="bg-muted/50 w-full cursor-pointer rounded p-2 font-mono text-xs break-all select-all sm:w-2/3 sm:text-sm"
-										title="Click to select"
-									>
-										{value}
-									</div>
-								</div>
+								<Card.Root variant="subtle">
+									<Card.Content class="flex flex-col gap-2 p-4">
+										<div class="text-muted-foreground text-xs font-semibold tracking-wide break-all uppercase">{key}</div>
+										<div
+											class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+											title="Click to select"
+										>
+											{value}
+										</div>
+									</Card.Content>
+								</Card.Root>
 							{/each}
 						</div>
 					</Card.Content>
