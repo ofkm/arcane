@@ -1163,7 +1163,7 @@
 	"dashboard_docker_overview": "Docker Overview",
 	"services": "Services",
 	"updated": "Updated",
-	"registry": "Registry",
+	"common_registry": "Registry",
 	"shell_title": "Shell",
 	"shell_interactive_access": "Interactive shell access to container",
 	"shell_select_placeholder": "Select shell",

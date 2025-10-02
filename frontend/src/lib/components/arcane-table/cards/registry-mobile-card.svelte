@@ -41,7 +41,7 @@
 				</p>
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
-				<StatusBadge variant="purple" text={m.registry()} size="sm" />
+				<StatusBadge variant="purple" text={m.common_registry()} size="sm" />
 				{#if rowActions}
 					{@render rowActions({ item })}
 				{/if}
