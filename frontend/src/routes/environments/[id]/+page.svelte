@@ -225,11 +225,15 @@
 							{#if settings}
 								<div class="border-t pt-6">
 									<div class="mb-4 flex items-center justify-between">
-										<h3 class="text-lg font-semibold">{m.sidebar_settings()}</h3>
-										<Button variant="outline" size="sm" onclick={handleEditSettings}>
-											<SettingsIcon class="mr-2 size-4" />
-											{m.common_edit()}
-										</Button>
+										<h3 class="text-lg font-semibold">
+											{environment.id === '0' ? m.sidebar_settings() : 'Docker & Operational Settings'}
+										</h3>
+										{#if environment.id === '0'}
+											<Button variant="outline" size="sm" onclick={handleEditSettings}>
+												<SettingsIcon class="mr-2 size-4" />
+												{m.common_edit()}
+											</Button>
+										{/if}
 									</div>
 
 									<!-- Docker Settings -->
@@ -305,8 +309,8 @@
 										</div>
 									</div>
 
-									<!-- Security Settings -->
-									{#if settings.authLocalEnabled !== undefined}
+									<!-- Security Settings  -->
+									{#if environment.id === '0' && settings.authLocalEnabled !== undefined}
 										<div class="mb-6">
 											<h4 class="text-muted-foreground mb-3 text-sm font-semibold uppercase tracking-wide">
 												{m.security_title()}
@@ -343,7 +347,7 @@
 									{/if}
 
 									<!-- Navigation Settings -->
-									{#if settings.mobileNavigationMode !== undefined}
+									{#if environment.id === '0' && settings.mobileNavigationMode !== undefined}
 										<div>
 											<h4 class="text-muted-foreground mb-3 text-sm font-semibold uppercase tracking-wide">
 												{m.navigation_title()}

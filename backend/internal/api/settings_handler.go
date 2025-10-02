@@ -26,7 +26,10 @@ func NewSettingsHandler(group *gin.RouterGroup, settingsService *services.Settin
 }
 
 func (h *SettingsHandler) GetSettings(c *gin.Context) {
-	settings := h.settingsService.ListSettings(true)
+	environmentID := c.Param("id")
+
+	showAll := environmentID == "0"
+	settings := h.settingsService.ListSettings(showAll)
 
 	var settingsDto []dto.PublicSettingDto
 	if err := dto.MapStructList(settings, &settingsDto); err != nil {
@@ -70,6 +73,8 @@ func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
 }
 
 func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
+	environmentID := c.Param("id")
+
 	var req dto.UpdateSettingsDto
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -77,6 +82,18 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 			"error":   "Invalid request format",
 		})
 		return
+	}
+
+	if environmentID != "0" {
+		if req.AuthLocalEnabled != nil || req.AuthOidcEnabled != nil ||
+			req.AuthSessionTimeout != nil || req.AuthPasswordPolicy != nil ||
+			req.AuthOidcConfig != nil {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"error":   "Authentication settings can only be updated from the main environment",
+			})
+			return
+		}
 	}
 
 	updatedSettings, err := h.settingsService.UpdateSettings(c.Request.Context(), req)
