@@ -1,0 +1,55 @@
+services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: arcane-docker-proxy-test
+    environment:
+      # Enable only the Docker API endpoints that Arcane needs
+      - CONTAINERS=1
+      - IMAGES=1
+      - NETWORKS=1
+      - VOLUMES=1
+      - INFO=1
+      - SERVICES=1
+      - TASKS=1
+      - POST=1
+      - DELETE=1
+      - EXEC=1
+      - SYSTEM=1
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - DISTRIBUTION=0
+      - GRPC=0
+      - NODES=0
+      - PLUGINS=0
+      - SECRETS=0
+      - SESSION=0
+      - SWARM=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  arcane:
+    image: arcane:playwright-tests
+    user: root
+    ports:
+      - '3002:3552'
+    environment:
+      - ENVIRONMENT=testing
+      - APP_ENV=test
+      - ENCRYPTION_KEY=3JDIgolks2tJ9ymm1AdqzlYMWu0DUWyt
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
+    volumes:
+      - arcane_data:/app/data
+      - ./projects:/app/data/projects
+    depends_on:
+      - docker-socket-proxy
+    build:
+      args:
+        - BUILD_TAGS=playwright
+      context: ../..
+      dockerfile: docker/Dockerfile
+
+volumes:
+  arcane_data:
