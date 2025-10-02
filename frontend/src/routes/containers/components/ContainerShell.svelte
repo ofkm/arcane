@@ -95,7 +95,11 @@
 		<div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 			<div class="flex flex-col gap-1.5">
 				<div class="flex items-center gap-2">
-					<Card.Title>{m.shell_title()}</Card.Title>
+					<Card.Title>
+						<h2>
+							{m.shell_title()}
+						</h2>
+					</Card.Title>
 					{#if isConnected}
 						<div class="flex items-center gap-2">
 							<div class="size-2 animate-pulse rounded-full bg-green-500"></div>

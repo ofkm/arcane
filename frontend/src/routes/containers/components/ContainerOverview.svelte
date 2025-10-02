@@ -47,7 +47,11 @@
 <Card.Root>
 	<Card.Header icon={InfoIcon}>
 		<div class="flex flex-col space-y-1.5">
-			<Card.Title>{m.containers_details_title()}</Card.Title>
+			<Card.Title>
+				<h2>
+					{m.containers_details_title()}
+				</h2>
+			</Card.Title>
 			<Card.Description>{m.containers_details_description()}</Card.Description>
 		</div>
 	</Card.Header>

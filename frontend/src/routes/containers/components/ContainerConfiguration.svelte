@@ -23,7 +23,11 @@
 		<Card.Root>
 			<Card.Header icon={SettingsIcon}>
 				<div class="flex flex-col space-y-1.5">
-					<Card.Title>{m.containers_env_vars_title()}</Card.Title>
+					<Card.Title>
+						<h2>
+							{m.containers_env_vars_title()}
+						</h2>
+					</Card.Title>
 					<Card.Description>{m.containers_env_vars_description()}</Card.Description>
 				</div>
 			</Card.Header>
@@ -63,7 +67,11 @@
 		<Card.Root>
 			<Card.Header icon={NetworkIcon}>
 				<div class="flex flex-col space-y-1.5">
-					<Card.Title>{m.containers_port_mappings()}</Card.Title>
+					<Card.Title>
+						<h2>
+							{m.containers_port_mappings()}
+						</h2>
+					</Card.Title>
 					<Card.Description>{m.containers_port_mappings_description()}</Card.Description>
 				</div>
 			</Card.Header>
@@ -77,7 +85,11 @@
 		<Card.Root>
 			<Card.Header icon={TagIcon}>
 				<div class="flex flex-col space-y-1.5">
-					<Card.Title>{m.common_labels()}</Card.Title>
+					<Card.Title>
+						<h2>
+							{m.common_labels()}
+						</h2>
+					</Card.Title>
 					<Card.Description>{m.common_labels_description()}</Card.Description>
 				</div>
 			</Card.Header>

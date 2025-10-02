@@ -24,7 +24,11 @@
 
 <Card.Root>
 	<Card.Header icon={FileTextIcon} class="items-center">
-		<Card.Title>{title}</Card.Title>
+		<Card.Title>
+			<h2>
+				{title}
+			</h2>
+		</Card.Title>
 	</Card.Header>
 	<Card.Content class="p-0">
 		<div class="min-h-[500px] w-full overflow-hidden [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">

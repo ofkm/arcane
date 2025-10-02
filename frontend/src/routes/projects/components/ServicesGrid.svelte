@@ -18,7 +18,11 @@
 <Card.Root>
 	<Card.Header icon={LayersIcon}>
 		<div class="flex flex-col space-y-1.5">
-			<Card.Title>{m.compose_services()}</Card.Title>
+			<Card.Title>
+				<h2>
+					{m.compose_services()}
+				</h2>
+			</Card.Title>
 			<Card.Description>{m.compose_services_description()}</Card.Description>
 		</div>
 	</Card.Header>

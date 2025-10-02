@@ -18,7 +18,11 @@
 	<Card.Root>
 		<Card.Header icon={DatabaseIcon}>
 			<div class="flex flex-col space-y-1.5">
-				<Card.Title>{m.containers_storage_title()}</Card.Title>
+				<Card.Title>
+					<h2>
+						{m.containers_storage_title()}
+					</h2>
+				</Card.Title>
 				<Card.Description>{m.containers_storage_description()}</Card.Description>
 			</div>
 		</Card.Header>

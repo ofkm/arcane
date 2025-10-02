@@ -151,7 +151,11 @@
 <Card.Root>
 	<Card.Header icon={ActivityIcon}>
 		<div class="flex flex-col space-y-1.5">
-			<Card.Title>{m.containers_resource_metrics()}</Card.Title>
+			<Card.Title>
+				<h2>
+					{m.containers_resource_metrics()}
+				</h2>
+			</Card.Title>
 			<Card.Description>{m.containers_resource_metrics_description()}</Card.Description>
 		</div>
 	</Card.Header>
