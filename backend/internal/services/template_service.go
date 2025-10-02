@@ -27,7 +27,6 @@ type remoteCache struct {
 	lastFetch time.Time
 }
 
-// per-registry conditional GET metadata
 type registryFetchMeta struct {
 	LastModified string
 	Templates    []dto.RemoteTemplate
@@ -56,6 +55,12 @@ func NewTemplateService(db *database.DB, httpClient *http.Client) *TemplateServi
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
+
+	ctx := context.Background()
+	if err := appfs.EnsureDefaultTemplates(ctx); err != nil {
+		slog.WarnContext(ctx, "failed to ensure default templates", "error", err)
+	}
+
 	return &TemplateService{
 		db:                db,
 		httpClient:        httpClient,
@@ -171,7 +176,6 @@ func (s *TemplateService) UpdateTemplate(ctx context.Context, id string, updates
 		return fmt.Errorf("failed to find template: %w", err)
 	}
 
-	// Only allow updating local templates
 	if existing.IsRemote {
 		return fmt.Errorf("cannot update remote template")
 	}
@@ -199,7 +203,6 @@ func (s *TemplateService) DeleteTemplate(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to find template: %w", err)
 	}
 
-	// Only allow deleting local templates
 	if existing.IsRemote {
 		return fmt.Errorf("cannot delete remote template directly")
 	}
@@ -214,13 +217,38 @@ func (s *TemplateService) DeleteTemplate(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *TemplateService) GetEnvTemplate() string {
-	envPath := filepath.Join("data", "templates", ".env.template")
-	if content, err := os.ReadFile(envPath); err == nil {
-		return string(content)
+func (s *TemplateService) GetComposeTemplate() string {
+	composePath := filepath.Join("data", "templates", ".compose.template")
+	content, err := os.ReadFile(composePath)
+	if err != nil {
+		slog.Warn("failed to read compose template", "error", err)
+		return ""
+	}
+	return string(content)
+}
+
+func (s *TemplateService) SaveComposeTemplate(content string) error {
+	templateDir := filepath.Join("data", "templates")
+	if err := os.MkdirAll(templateDir, 0755); err != nil {
+		return fmt.Errorf("failed to create template directory: %w", err)
 	}
 
-	return s.getDefaultEnvTemplate()
+	composePath := filepath.Join(templateDir, ".compose.template")
+	if err := os.WriteFile(composePath, []byte(content), 0600); err != nil {
+		return fmt.Errorf("failed to save compose template: %w", err)
+	}
+
+	return nil
+}
+
+func (s *TemplateService) GetEnvTemplate() string {
+	envPath := filepath.Join("data", "templates", ".env.template")
+	content, err := os.ReadFile(envPath)
+	if err != nil {
+		slog.Warn("failed to read env template", "error", err)
+		return ""
+	}
+	return string(content)
 }
 
 func (s *TemplateService) SaveEnvTemplate(content string) error {
@@ -481,28 +509,6 @@ func (s *TemplateService) convertRemoteToLocal(remote dto.RemoteTemplate, regist
 			DocumentationURL: &remote.DocumentationURL,
 		},
 	}
-}
-
-func (s *TemplateService) getDefaultEnvTemplate() string {
-	return `# Environment Variables
-# These variables will be available to your project services
-# Format: VARIABLE_NAME=value
-
-# Web Server Configuration
-NGINX_HOST=localhost
-NGINX_PORT=80
-
-# Database Configuration
-POSTGRES_DB=myapp
-POSTGRES_USER=myuser
-POSTGRES_PASSWORD=mypassword
-POSTGRES_PORT=5432
-
-# Example Additional Variables
-# API_KEY=your_api_key_here
-# SECRET_KEY=your_secret_key_here
-# DEBUG=false
-`
 }
 
 func (s *TemplateService) FetchTemplateContent(ctx context.Context, template *models.ComposeTemplate) (string, string, error) {

@@ -80,3 +80,70 @@ func WriteTemplateFiles(composePath, envPath, composeContent, envContent string)
 	}
 	return &envContent, nil
 }
+
+func EnsureDefaultTemplates(ctx context.Context) error {
+	templatesDir, err := GetTemplatesDirectory(ctx)
+	if err != nil {
+		return fmt.Errorf("get templates directory: %w", err)
+	}
+
+	composePath := filepath.Join(templatesDir, ".compose.template")
+	envPath := filepath.Join(templatesDir, ".env.template")
+
+	// Write default compose template if it doesn't exist
+	if _, err := os.Stat(composePath); os.IsNotExist(err) {
+		if err := os.WriteFile(composePath, []byte(getDefaultComposeTemplate()), 0600); err != nil {
+			return fmt.Errorf("write default compose template: %w", err)
+		}
+	}
+
+	// Write default env template if it doesn't exist
+	if _, err := os.Stat(envPath); os.IsNotExist(err) {
+		if err := os.WriteFile(envPath, []byte(getDefaultEnvTemplate()), 0600); err != nil {
+			return fmt.Errorf("write default env template: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func getDefaultComposeTemplate() string {
+	return `services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_service
+    env_file:
+      - .env
+    ports:
+      - "8080:80"
+    volumes:
+      - nginx_data:/usr/share/nginx/html
+    restart: unless-stopped
+
+volumes:
+  nginx_data:
+    driver: local
+`
+}
+
+func getDefaultEnvTemplate() string {
+	return `# Environment Variables
+# These variables will be available to your project services
+# Format: VARIABLE_NAME=value
+
+# Web Server Configuration
+NGINX_HOST=localhost
+NGINX_PORT=80
+
+# Database Configuration
+POSTGRES_DB=myapp
+POSTGRES_USER=myuser
+POSTGRES_PASSWORD=mypassword
+POSTGRES_PORT=5432
+
+# Example Additional Variables
+# API_KEY=your_api_key_here
+# SECRET_KEY=your_secret_key_here
+# DEBUG=false
+`
+}

@@ -14,7 +14,6 @@
 	import { preventDefault, createForm } from '$lib/utils/form.utils';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
-	import { defaultComposeTemplate } from '$lib/constants';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import TemplateSelectionDialog from '$lib/components/dialogs/template-selection-dialog.svelte';
@@ -46,7 +45,7 @@
 
 	let formData = $derived({
 		name: '',
-		composeContent: data.defaultTemplate || defaultComposeTemplate,
+		composeContent: data.defaultTemplate || '',
 		envContent: data.envTemplate || ''
 	});
 

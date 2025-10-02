@@ -27,13 +27,20 @@ export default class TemplateService extends BaseAPIService {
 		return response.data?.data;
 	}
 
-	async getEnvTemplate(): Promise<string> {
-		const response = await this.api.get('/templates/env/default');
-		return response.data?.data?.content ?? response.data?.content;
+	async getDefaultTemplates(): Promise<{ composeTemplate: string; envTemplate: string }> {
+		const response = await this.api.get('/templates/default');
+		const data = response.data?.data;
+		return {
+			composeTemplate: data?.composeTemplate ?? '',
+			envTemplate: data?.envTemplate ?? ''
+		};
 	}
 
-	async saveEnvTemplate(content: string): Promise<void> {
-		await this.api.post('/templates/env/default', { content });
+	async saveDefaultTemplates(composeContent: string, envContent: string): Promise<void> {
+		await this.api.post('/templates/default', {
+			composeContent,
+			envContent
+		});
 	}
 
 	async getRegistries(): Promise<TemplateRegistry[]> {
