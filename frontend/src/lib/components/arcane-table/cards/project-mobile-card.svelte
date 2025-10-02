@@ -16,6 +16,7 @@
 		rowActions,
 		compact = false,
 		class: className = '',
+		showId = true,
 		showServiceCount = true,
 		showStatus = true,
 		showCreatedAt = true,
@@ -25,6 +26,7 @@
 		rowActions?: Snippet<[{ item: Project }]>;
 		compact?: boolean;
 		class?: string;
+		showId?: boolean;
 		showServiceCount?: boolean;
 		showStatus?: boolean;
 		showCreatedAt?: boolean;
@@ -63,11 +65,13 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.name}>
-					{compact ? truncateString(item.name, 25) : item.name}
+					{item.name}
 				</h3>
-				<p class={cn('text-muted-foreground mt-0.5 truncate', compact ? 'text-[10px]' : 'text-xs')}>
-					{item.id}
-				</p>
+				{#if showId}
+					<p class={cn('text-muted-foreground mt-0.5 truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
+						{compact ? truncateString(item.id, 12) : item.id}
+					</p>
+				{/if}
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
 				{#if showStatus}
@@ -80,9 +84,9 @@
 		</div>
 
 		{#if !compact}
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+			<div class="flex flex-wrap gap-x-4 gap-y-3">
 				{#if showServiceCount}
-					<div class="flex items-start gap-2.5">
+					<div class="flex min-w-0 flex-1 basis-[160px] items-start gap-2.5">
 						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
 							<LayersIcon class="text-muted-foreground size-3.5" />
 						</div>
@@ -96,16 +100,6 @@
 					</div>
 				{/if}
 			</div>
-
-			{#if showCreatedAt && item.createdAt}
-				<div class="border-muted/40 mt-3 flex items-center gap-2 border-t pt-3">
-					<ClockIcon class="text-muted-foreground size-3.5" />
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_created()}</span>
-					<span class="text-muted-foreground ml-auto text-[11px]">
-						{format(new Date(item.createdAt), 'PP p')}
-					</span>
-				</div>
-			{/if}
 		{:else}
 			{#if showServiceCount}
 				<div class="flex items-baseline gap-1.5">
@@ -125,4 +119,13 @@
 			{/if}
 		{/if}
 	</Card.Content>
+	{#if !compact && showCreatedAt && item.createdAt}
+		<Card.Footer class="flex items-center gap-2 border-t-1 py-3">
+			<ClockIcon class="text-muted-foreground size-3.5" />
+			<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_created()}</span>
+			<span class="text-muted-foreground ml-auto font-mono text-[11px]">
+				{format(new Date(item.createdAt), 'PP p')}
+			</span>
+		</Card.Footer>
+	{/if}
 </Card.Root>

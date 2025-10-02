@@ -7,7 +7,6 @@
 	import { m } from '$lib/paraglide/messages';
 	import { cn } from '$lib/utils';
 	import CloudIcon from '@lucide/svelte/icons/cloud';
-	import TagIcon from '@lucide/svelte/icons/tag';
 
 	let {
 		item,
@@ -15,6 +14,7 @@
 		compact = false,
 		class: className = '',
 		showId = true,
+		showApiUrl = true,
 		onclick
 	}: {
 		item: Environment;
@@ -22,6 +22,7 @@
 		compact?: boolean;
 		class?: string;
 		showId?: boolean;
+		showApiUrl?: boolean;
 		onclick?: (item: Environment) => void;
 	} = $props();
 </script>
@@ -34,11 +35,13 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.name || item.id}>
-					{compact ? truncateString(item.name || item.id, 25) : item.name || item.id}
+					{item.name || item.id}
 				</h3>
-				<p class={cn('text-muted-foreground mt-0.5 truncate', compact ? 'text-[10px]' : 'text-xs')}>
-					{item.id}
-				</p>
+				{#if showId}
+					<p class={cn('text-muted-foreground mt-0.5 truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
+						{compact ? truncateString(item.id, 12) : item.id}
+					</p>
+				{/if}
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
 				<StatusBadge variant="green" text={m.sidebar_environment_label()} size="sm" />
@@ -48,27 +51,31 @@
 			</div>
 		</div>
 
-		{#if !compact && showId}
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				<div class="flex items-start gap-2.5">
-					<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
-						<TagIcon class="text-muted-foreground size-3.5" />
-					</div>
-					<div class="min-w-0 flex-1">
-						<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_id()}</div>
-						<div class="mt-0.5 truncate font-mono text-xs font-medium">
-							{item.id}
+		{#if !compact}
+			<div class="flex flex-wrap gap-x-4 gap-y-3">
+				{#if showApiUrl && item.apiUrl}
+					<div class="flex min-w-0 flex-1 basis-[200px] items-start gap-2.5">
+						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
+							<CloudIcon class="text-muted-foreground size-3.5" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.environments_api_url()}</div>
+							<div class="mt-0.5 truncate text-xs font-medium">
+								{item.apiUrl}
+							</div>
 						</div>
 					</div>
+				{/if}
+			</div>
+		{:else}
+			{#if showApiUrl && item.apiUrl}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.environments_api_url()}:</span>
+					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
+						{item.apiUrl}
+					</span>
 				</div>
-			</div>
-		{:else if compact && showId}
-			<div class="flex items-baseline gap-1.5">
-				<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_id()}:</span>
-				<span class="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[11px] leading-tight">
-					{item.id}
-				</span>
-			</div>
+			{/if}
 		{/if}
 	</Card.Content>
 </Card.Root>

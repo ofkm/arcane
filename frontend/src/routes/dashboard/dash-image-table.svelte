@@ -74,9 +74,9 @@
 		{item}
 		compact
 		showId={false}
-		showRepoTags={false}
-		showCreated={false}
 		showUpdates={false}
+		showCreated={false}
+		showRepoTags={false}
 		onclick={(item: ImageSummaryDto) => (window.location.href = `/images/${item.id}/`)}
 		class="mx-2"
 	/>

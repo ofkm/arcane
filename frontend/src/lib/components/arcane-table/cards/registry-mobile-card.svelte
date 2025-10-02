@@ -15,16 +15,20 @@
 		rowActions,
 		compact = false,
 		class: className = '',
+		showId = true,
 		showUrl = true,
 		showUsername = true,
+		showDescription = true,
 		onclick
 	}: {
 		item: ContainerRegistry;
 		rowActions?: Snippet<[{ item: ContainerRegistry }]>;
 		compact?: boolean;
 		class?: string;
+		showId?: boolean;
 		showUrl?: boolean;
 		showUsername?: boolean;
+		showDescription?: boolean;
 		onclick?: (item: ContainerRegistry) => void;
 	} = $props();
 </script>
@@ -37,11 +41,13 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.url}>
-					{compact ? truncateString(item.url, 30) : item.url}
+					{item.url}
 				</h3>
-				<p class={cn('text-muted-foreground mt-0.5 truncate', compact ? 'text-[10px]' : 'text-xs')}>
-					{item.username || 'No username'}
-				</p>
+				{#if showId}
+					<p class={cn('text-muted-foreground mt-0.5 truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
+						{compact ? truncateString(item.id, 12) : item.id}
+					</p>
+				{/if}
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
 				<StatusBadge variant="purple" text={m.common_registry()} size="sm" />
@@ -52,22 +58,9 @@
 		</div>
 
 		{#if !compact}
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				{#if showUrl}
-					<div class="flex items-start gap-2.5">
-						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
-							<LinkIcon class="text-muted-foreground size-3.5" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.registries_url()}</div>
-							<div class="mt-0.5 truncate text-xs font-medium">
-								{item.url}
-							</div>
-						</div>
-					</div>
-				{/if}
+			<div class="flex flex-wrap gap-x-4 gap-y-3">
 				{#if showUsername && item.username}
-					<div class="flex items-start gap-2.5">
+					<div class="flex min-w-0 flex-1 basis-[160px] items-start gap-2.5">
 						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
 							<UserIcon class="text-muted-foreground size-3.5" />
 						</div>
@@ -79,21 +72,34 @@
 						</div>
 					</div>
 				{/if}
+				{#if showDescription && item.description}
+					<div class="flex min-w-0 flex-1 basis-[200px] items-start gap-2.5">
+						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
+							<LinkIcon class="text-muted-foreground size-3.5" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_description()}</div>
+							<div class="mt-0.5 truncate text-xs font-medium">
+								{item.description}
+							</div>
+						</div>
+					</div>
+				{/if}
 			</div>
 		{:else}
-			{#if showUrl}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.registries_url()}:</span>
-					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
-						{item.url}
-					</span>
-				</div>
-			{/if}
 			{#if showUsername && item.username}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_username()}:</span>
 					<span class="text-muted-foreground truncate text-[11px] leading-tight">
 						{item.username}
+					</span>
+				</div>
+			{/if}
+			{#if showDescription && item.description}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_description()}:</span>
+					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
+						{item.description}
 					</span>
 				</div>
 			{/if}

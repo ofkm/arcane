@@ -129,7 +129,7 @@
 	const mobileFields = [
 		{ id: 'displayName', label: m.common_display_name(), defaultVisible: true },
 		{ id: 'email', label: m.common_email(), defaultVisible: true },
-		{ id: 'role', label: m.common_role(), defaultVisible: true }
+		{ id: 'roles', label: m.common_role(), defaultVisible: true }
 	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});

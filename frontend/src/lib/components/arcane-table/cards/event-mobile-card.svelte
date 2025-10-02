@@ -11,6 +11,7 @@
 	import TagIcon from '@lucide/svelte/icons/tag';
 	import ServerIcon from '@lucide/svelte/icons/server';
 	import ClockIcon from '@lucide/svelte/icons/clock';
+	import UserIcon from '@lucide/svelte/icons/user';
 
 	let {
 		item,
@@ -19,9 +20,10 @@
 		getSeverityBadgeVariant,
 		compact = false,
 		class: className = '',
-		showResourceId = true,
-		showTimestamp = true,
 		showType = true,
+		showResource = true,
+		showUsername = true,
+		showTimestamp = true,
 		onclick
 	}: {
 		item: Event;
@@ -30,9 +32,10 @@
 		getSeverityBadgeVariant: (severity: string) => 'green' | 'red' | 'amber' | 'blue' | 'purple' | 'gray';
 		compact?: boolean;
 		class?: string;
-		showResourceId?: boolean;
-		showTimestamp?: boolean;
 		showType?: boolean;
+		showResource?: boolean;
+		showUsername?: boolean;
+		showTimestamp?: boolean;
 		onclick?: (item: Event) => void;
 	} = $props();
 
@@ -83,9 +86,11 @@
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.title}>
 					{compact ? truncateString(item.title, 30) : item.title}
 				</h3>
-				<p class={cn('text-muted-foreground mt-0.5', compact ? 'text-[10px]' : 'text-xs')}>
-					{formatTimestamp(item.timestamp)}
-				</p>
+				{#if showTimestamp}
+					<p class={cn('text-muted-foreground mt-0.5', compact ? 'text-[10px]' : 'text-xs')}>
+						{formatTimestamp(item.timestamp)}
+					</p>
+				{/if}
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
 				<StatusBadge variant={severityVariant} text={item.severity} size="sm" />
@@ -96,9 +101,9 @@
 		</div>
 
 		{#if !compact}
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+			<div class="flex flex-wrap gap-x-4 gap-y-3">
 				{#if showType}
-					<div class="flex items-start gap-2.5">
+					<div class="flex min-w-0 flex-1 basis-[140px] items-start gap-2.5">
 						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
 							<TagIcon class="text-muted-foreground size-3.5" />
 						</div>
@@ -110,30 +115,36 @@
 						</div>
 					</div>
 				{/if}
-				{#if showResourceId && item.resourceId}
-					<div class="flex items-start gap-2.5">
+				{#if showResource && (item.resourceType || item.resourceName)}
+					<div class="flex min-w-0 flex-1 basis-[180px] items-start gap-2.5">
 						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
 							<ServerIcon class="text-muted-foreground size-3.5" />
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.events_col_resource()}</div>
 							<div class="mt-0.5 truncate text-xs font-medium">
-								{item.resourceId}
+								{item.resourceType || '-'}
+								{#if item.resourceName}
+									<div class="text-muted-foreground mt-0.5 truncate text-[10px]">{item.resourceName}</div>
+								{/if}
+							</div>
+						</div>
+					</div>
+				{/if}
+				{#if showUsername && item.username}
+					<div class="flex min-w-0 flex-1 basis-[140px] items-start gap-2.5">
+						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
+							<UserIcon class="text-muted-foreground size-3.5" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_user()}</div>
+							<div class="mt-0.5 truncate text-xs font-medium" class:text-red-500={item.username === 'System'}>
+								{item.username}
 							</div>
 						</div>
 					</div>
 				{/if}
 			</div>
-
-			{#if showTimestamp}
-				<div class="border-muted/40 mt-3 flex items-center gap-2 border-t pt-3">
-					<ClockIcon class="text-muted-foreground size-3.5" />
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.events_col_time()}</span>
-					<span class="text-muted-foreground ml-auto text-[11px]">
-						{formatTimestamp(item.timestamp)}
-					</span>
-				</div>
-			{/if}
 		{:else}
 			{#if showType}
 				<div class="flex items-baseline gap-1.5">
@@ -141,11 +152,20 @@
 					<Badge variant="outline" class="text-[10px]">{item.type}</Badge>
 				</div>
 			{/if}
-			{#if showResourceId && item.resourceId}
+			{#if showResource && (item.resourceType || item.resourceName)}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.events_col_resource()}:</span>
 					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
-						{item.resourceId}
+						{item.resourceType || '-'}
+						{#if item.resourceName} - {item.resourceName}{/if}
+					</span>
+				</div>
+			{/if}
+			{#if showUsername && item.username}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_user()}:</span>
+					<span class="text-muted-foreground truncate text-[11px] leading-tight" class:text-red-500={item.username === 'System'}>
+						{item.username}
 					</span>
 				</div>
 			{/if}

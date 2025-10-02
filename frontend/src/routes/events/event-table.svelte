@@ -117,7 +117,8 @@
 
 	const mobileFields = [
 		{ id: 'type', label: m.events_col_type(), defaultVisible: true },
-		{ id: 'resourceId', label: m.events_col_resource(), defaultVisible: true },
+		{ id: 'resource', label: m.events_col_resource(), defaultVisible: true },
+		{ id: 'username', label: m.common_user(), defaultVisible: true },
 		{ id: 'timestamp', label: m.events_col_time(), defaultVisible: true }
 	];
 
@@ -172,7 +173,8 @@
 		{formatTimestamp}
 		{getSeverityBadgeVariant}
 		showType={mobileFieldVisibility.type ?? true}
-		showResourceId={mobileFieldVisibility.resourceId ?? true}
+		showResource={mobileFieldVisibility.resource ?? true}
+		showUsername={mobileFieldVisibility.username ?? true}
 		showTimestamp={mobileFieldVisibility.timestamp ?? true}
 	/>
 {/snippet}

@@ -161,8 +161,9 @@
 	] satisfies ColumnSpec<ContainerRegistry>[];
 
 	const mobileFields = [
-		{ id: 'url', label: m.registries_url(), defaultVisible: true },
-		{ id: 'username', label: m.common_username(), defaultVisible: true }
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'username', label: m.common_username(), defaultVisible: true },
+		{ id: 'description', label: m.common_description(), defaultVisible: true }
 	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});
@@ -204,8 +205,9 @@
 	<RegistryMobileCard
 		{item}
 		rowActions={RowActions}
-		showUrl={mobileFieldVisibility.url ?? true}
+		showId={mobileFieldVisibility.id ?? true}
 		showUsername={mobileFieldVisibility.username ?? true}
+		showDescription={mobileFieldVisibility.description ?? true}
 	/>
 {/snippet}
 

@@ -58,17 +58,18 @@
 		showId={false}
 		showImage={false}
 		showPorts={false}
-		showStatus={false}
-		onclick={(item: ContainerSummaryDto) => (window.location.href = `/containers/${item.id}/`)}
+		showState={false}
+		showStatus={true}
+		onclick={(item: ContainerSummaryDto) => (window.location.href = `/containers/${item.id}`)}
 		class="mx-2"
 	/>
 {/snippet}
 
 <Card.Root class="pb-2">
-	<Card.Header class="flex items-center p-4 justify-between">
+	<Card.Header class="flex items-center justify-between p-4">
 		<div>
 			<Card.Title>
-				<a class="font-medium hover:underline" href="/containers">{m.containers_title()}</a>
+				{m.containers_title()}
 			</Card.Title>
 			<Card.Description>{m.containers_recent()}</Card.Description>
 		</div>

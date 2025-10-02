@@ -42,10 +42,10 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.username}>
-					{compact ? truncateString(item.username, 25) : item.username}
+					{item.username}
 				</h3>
 				<p class={cn('text-muted-foreground mt-0.5 truncate', compact ? 'text-[10px]' : 'text-xs')}>
-					{item.email || 'No email'}
+					{compact ? truncateString(item.email, 12) : item.email || 'No email'}
 				</p>
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
@@ -73,37 +73,14 @@
 						</div>
 					</div>
 				{/if}
-				{#if showEmail && item.email}
-					<div class="flex items-start gap-2.5">
-						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
-							<MailIcon class="text-muted-foreground size-3.5" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_email()}</div>
-							<div class="mt-0.5 truncate text-xs font-medium">
-								{item.email}
-							</div>
-						</div>
-					</div>
-				{/if}
 			</div>
-		{:else}
-			{#if showDisplayName && item.displayName}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_display_name()}:</span>
-					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
-						{item.displayName}
-					</span>
-				</div>
-			{/if}
-			{#if showEmail && item.email}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_email()}:</span>
-					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
-						{item.email}
-					</span>
-				</div>
-			{/if}
+		{:else if showDisplayName && item.displayName}
+			<div class="flex items-baseline gap-1.5">
+				<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_display_name()}:</span>
+				<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
+					{item.displayName}
+				</span>
+			</div>
 		{/if}
 	</Card.Content>
 </Card.Root>

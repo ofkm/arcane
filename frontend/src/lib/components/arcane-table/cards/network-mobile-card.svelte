@@ -15,18 +15,20 @@
 		rowActions,
 		compact = false,
 		class: className = '',
+		showId = true,
+		showStatus = true,
 		showDriver = true,
 		showScope = true,
-		showStatus = true,
 		onclick
 	}: {
 		item: NetworkSummaryDto;
 		rowActions?: Snippet<[{ item: NetworkSummaryDto }]>;
 		compact?: boolean;
 		class?: string;
+		showId?: boolean;
+		showStatus?: boolean;
 		showDriver?: boolean;
 		showScope?: boolean;
-		showStatus?: boolean;
 		onclick?: (item: NetworkSummaryDto) => void;
 	} = $props();
 
@@ -49,11 +51,13 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.name}>
-					{compact ? truncateString(item.name, 25) : item.name}
+					{item.name}
 				</h3>
-				<p class={cn('text-muted-foreground mt-0.5 truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
-					{String(item.id).substring(0, 12)}
-				</p>
+				{#if showId}
+					<p class={cn('text-muted-foreground mt-0.5 truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
+						{compact ? truncateString(String(item.id), 12) : item.id}
+					</p>
+				{/if}
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
 				{#if showStatus}
@@ -70,9 +74,9 @@
 		</div>
 
 		{#if !compact}
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+			<div class="flex flex-wrap gap-x-4 gap-y-3">
 				{#if showDriver}
-					<div class="flex items-start gap-2.5">
+					<div class="flex min-w-0 flex-1 basis-[160px] items-start gap-2.5">
 						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
 							<RouteIcon class="text-muted-foreground size-3.5" />
 						</div>
@@ -98,7 +102,7 @@
 					</div>
 				{/if}
 				{#if showScope}
-					<div class="flex items-start gap-2.5">
+					<div class="flex min-w-0 flex-1 basis-[160px] items-start gap-2.5">
 						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
 							<GlobeIcon class="text-muted-foreground size-3.5" />
 						</div>

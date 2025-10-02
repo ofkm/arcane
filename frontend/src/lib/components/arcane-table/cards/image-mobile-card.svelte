@@ -11,6 +11,7 @@
 	import { cn } from '$lib/utils';
 	import ImageIcon from '@lucide/svelte/icons/image';
 	import ClockIcon from '@lucide/svelte/icons/clock';
+	import { truncateString } from '$lib/utils/string.utils';
 
 	let {
 		item,
@@ -70,19 +71,27 @@
 				/>
 			</div>
 			<div class="min-w-0 flex-1">
-				<h3
-					class={cn(
-						'truncate leading-tight font-semibold',
-						compact ? 'text-[13px]' : 'text-base',
-						isUntagged ? 'text-muted-foreground italic' : ''
-					)}
-				>
-					{imageDisplay}
-				</h3>
+				<div class="flex items-center gap-3">
+					<h3
+						class={cn(
+							'truncate leading-tight font-semibold',
+							compact ? 'text-[13px]' : 'text-base',
+							isUntagged ? 'text-muted-foreground italic' : ''
+						)}
+					>
+						{imageDisplay}
+					</h3>
+					{#if showUpdates && item.updateInfo && item.repoTags}
+						{@const { repo, tag } = extractRepoAndTag(item.repoTags)}
+						<div class="flex-shrink-0">
+							<ImageUpdateItem updateInfo={item.updateInfo} imageId={item.id} {repo} {tag} />
+						</div>
+					{/if}
+				</div>
 				{#if showId}
 					<div class="text-muted-foreground mt-0.5 flex items-center gap-2">
 						<span class={cn('truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
-							{String(item.id).substring(0, 12)}
+							{compact ? truncateString(String(item.id), 18) : item.id}
 						</span>
 					</div>
 				{/if}
@@ -102,9 +111,9 @@
 		</div>
 
 		{#if !compact}
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+			<div class="flex flex-wrap gap-x-4 gap-y-3">
 				{#if showSize}
-					<div class="flex items-start gap-2.5">
+					<div class="flex min-w-0 flex-1 basis-[160px] items-start gap-2.5">
 						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
 							<HardDriveIcon class="size-3.5 text-blue-500" />
 						</div>
@@ -120,7 +129,7 @@
 				{/if}
 
 				{#if showRepoTags && !isUntagged}
-					<div class="flex items-start gap-2.5">
+					<div class="flex min-w-0 flex-1 basis-[200px] items-start gap-2.5">
 						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
 							<ImageIcon class="size-3.5 text-purple-500" />
 						</div>
@@ -135,36 +144,7 @@
 					</div>
 				{/if}
 			</div>
-
-			{#if showUpdates && item.updateInfo}
-				<div class="mt-3">
-					{#if item.repoTags}
-						{@const { repo, tag } = extractRepoAndTag(item.repoTags)}
-						<ImageUpdateItem updateInfo={item.updateInfo} imageId={item.id} {repo} {tag} />
-					{/if}
-				</div>
-			{/if}
-
-			{#if showCreated}
-				<div class="border-muted/40 mt-3 flex items-center gap-2 border-t pt-3">
-					<ClockIcon class="text-muted-foreground size-3.5" />
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-						{m.common_created()}
-					</span>
-					<span class="text-muted-foreground ml-auto font-mono text-[11px]">
-						{format(new Date(Number(item.created || 0) * 1000), 'PP p')}
-					</span>
-				</div>
-			{/if}
 		{:else}
-			{#if showId}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_id()}:</span>
-					<span class="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[11px] leading-tight">
-						{String(item.id).substring(0, 12)}
-					</span>
-				</div>
-			{/if}
 			{#if showRepoTags && !isUntagged}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.images_repository()}:</span>
@@ -189,27 +169,17 @@
 					</span>
 				</div>
 			{/if}
-			{#if showInUse}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_in_use()}:</span>
-					{#if item.inUse}
-						<StatusBadge text={m.common_in_use()} variant="green" size="sm" />
-					{:else}
-						<StatusBadge text={m.common_unused()} variant="amber" size="sm" />
-					{/if}
-				</div>
-			{/if}
-			{#if showUpdates && item.updateInfo}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.images_updates()}:</span>
-					<div class="min-w-0 flex-1">
-						{#if item.repoTags}
-							{@const { repo, tag } = extractRepoAndTag(item.repoTags)}
-							<ImageUpdateItem updateInfo={item.updateInfo} imageId={item.id} {repo} {tag} />
-						{/if}
-					</div>
-				</div>
-			{/if}
 		{/if}
 	</Card.Content>
+	{#if !compact && showCreated}
+		<Card.Footer class="flex items-center gap-2 border-t-1 py-3">
+			<ClockIcon class="text-muted-foreground size-3.5" />
+			<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+				{m.common_created()}
+			</span>
+			<span class="text-muted-foreground ml-auto font-mono text-[11px]">
+				{format(new Date(Number(item.created || 0) * 1000), 'PP p')}
+			</span>
+		</Card.Footer>
+	{/if}
 </Card.Root>

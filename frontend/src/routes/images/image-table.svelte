@@ -163,30 +163,30 @@
 
 	const columns = [
 		{ accessorKey: 'id', title: m.common_id(), hidden: true },
-		{ accessorKey: 'repoTags', title: m.images_repository(), sortable: true, cell: RepoCell },
-		{ accessorKey: 'size', title: m.images_size(), sortable: true, cell: SizeCell },
-		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell },
+		{
+			id: 'updates',
+			accessorFn: (row) => row.updateInfo?.hasUpdate ?? false,
+			title: m.images_updates(),
+			cell: UpdatesCell
+		},
 		{
 			accessorKey: 'inUse',
 			title: m.common_status(),
 			sortable: true,
 			cell: StatusCell
 		},
-		{
-			id: 'updates',
-			accessorFn: (row) => row.updateInfo?.hasUpdate ?? false,
-			title: m.images_updates(),
-			cell: UpdatesCell
-		}
+		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell },
+		{ accessorKey: 'size', title: m.images_size(), sortable: true, cell: SizeCell },
+		{ accessorKey: 'repoTags', title: m.images_repository(), sortable: true, cell: RepoCell }
 	] satisfies ColumnSpec<ImageSummaryDto>[];
 
 	const mobileFields = [
-		{ id: 'id', label: m.common_id(), defaultVisible: false },
-		{ id: 'repoTags', label: m.images_repository(), defaultVisible: true },
-		{ id: 'size', label: m.images_size(), defaultVisible: true },
-		{ id: 'created', label: m.common_created(), defaultVisible: true },
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'updates', label: m.images_updates(), defaultVisible: true },
 		{ id: 'inUse', label: m.common_in_use(), defaultVisible: true },
-		{ id: 'updates', label: m.images_updates(), defaultVisible: true }
+		{ id: 'created', label: m.common_created(), defaultVisible: true },
+		{ id: 'size', label: m.images_size(), defaultVisible: true },
+		{ id: 'repoTags', label: m.images_repository(), defaultVisible: true }
 	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});

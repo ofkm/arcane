@@ -129,8 +129,8 @@
 	const columns = [
 		{ accessorKey: 'names', title: m.common_name(), sortable: true, cell: NameCell },
 		{ accessorKey: 'id', title: m.common_id(), cell: IdCell },
-		{ accessorKey: 'image', title: m.common_image(), sortable: true },
 		{ accessorKey: 'state', title: m.common_state(), sortable: true, cell: StateCell },
+		{ accessorKey: 'image', title: m.common_image(), sortable: true },
 		{ accessorKey: 'status', title: m.common_status() },
 		{ accessorKey: 'ports', title: m.ports(), cell: PortsCell },
 		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell }
@@ -138,8 +138,8 @@
 
 	const mobileFields = [
 		{ id: 'id', label: m.common_id(), defaultVisible: true },
-		{ id: 'image', label: m.common_image(), defaultVisible: true },
 		{ id: 'state', label: m.common_state(), defaultVisible: true },
+		{ id: 'image', label: m.common_image(), defaultVisible: true },
 		{ id: 'status', label: m.common_status(), defaultVisible: true },
 		{ id: 'ports', label: m.ports(), defaultVisible: true },
 		{ id: 'created', label: m.common_created(), defaultVisible: true }
@@ -194,8 +194,8 @@
 		{baseServerUrl}
 		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
 		showId={mobileFieldVisibility.id ?? true}
-		showImage={mobileFieldVisibility.image ?? true}
 		showState={mobileFieldVisibility.state ?? true}
+		showImage={mobileFieldVisibility.image ?? true}
 		showStatus={mobileFieldVisibility.status ?? true}
 		showPorts={mobileFieldVisibility.ports ?? true}
 		showCreated={mobileFieldVisibility.created ?? true}

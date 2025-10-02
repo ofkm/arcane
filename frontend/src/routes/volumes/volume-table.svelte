@@ -98,22 +98,23 @@
 	}
 
 	const columns = [
-		{ accessorKey: 'id', title: m.common_id(), hidden: true },
 		{ accessorKey: 'name', title: m.common_name(), sortable: true, cell: NameCell },
+		{ accessorKey: 'id', title: m.common_id(), hidden: true },
 		{
 			accessorKey: 'inUse',
 			title: m.common_status(),
 			sortable: true,
 			cell: StatusCell
 		},
-		{ accessorKey: 'driver', title: m.common_driver(), sortable: true },
-		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell }
+		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell },
+		{ accessorKey: 'driver', title: m.common_driver(), sortable: true }
 	] satisfies ColumnSpec<VolumeSummaryDto>[];
 
 	const mobileFields = [
-		{ id: 'driver', label: m.common_driver(), defaultVisible: true },
-		{ id: 'created', label: m.common_created(), defaultVisible: true },
-		{ id: 'status', label: m.common_status(), defaultVisible: true }
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'status', label: m.common_status(), defaultVisible: true },
+		{ id: 'createdAt', label: m.common_created(), defaultVisible: true },
+		{ id: 'driver', label: m.common_driver(), defaultVisible: true }
 	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});
@@ -150,9 +151,10 @@
 		{item}
 		rowActions={RowActions}
 		onclick={() => goto(`/volumes/${item.id}`)}
-		showDriver={mobileFieldVisibility.driver ?? true}
-		showCreated={mobileFieldVisibility.created ?? true}
+		showId={mobileFieldVisibility.id ?? true}
+		showCreated={mobileFieldVisibility.createdAt ?? true}
 		showStatus={mobileFieldVisibility.status ?? true}
+		showDriver={mobileFieldVisibility.driver ?? true}
 	/>
 {/snippet}
 

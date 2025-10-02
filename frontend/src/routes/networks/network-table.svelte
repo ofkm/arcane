@@ -144,9 +144,10 @@
 	] satisfies ColumnSpec<NetworkSummaryDto>[];
 
 	const mobileFields = [
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'status', label: m.common_status(), defaultVisible: true },
 		{ id: 'driver', label: m.common_driver(), defaultVisible: true },
-		{ id: 'scope', label: m.common_scope(), defaultVisible: true },
-		{ id: 'status', label: m.common_status(), defaultVisible: true }
+		{ id: 'scope', label: m.common_scope(), defaultVisible: true }
 	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});
@@ -200,9 +201,10 @@
 		{item}
 		rowActions={RowActions}
 		onclick={() => goto(`/networks/${item.id}`)}
+		showId={mobileFieldVisibility.id ?? true}
+		showStatus={mobileFieldVisibility.status ?? true}
 		showDriver={mobileFieldVisibility.driver ?? true}
 		showScope={mobileFieldVisibility.scope ?? true}
-		showStatus={mobileFieldVisibility.status ?? true}
 	/>
 {/snippet}
 

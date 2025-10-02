@@ -141,19 +141,22 @@
 			cell: StatusCell
 		},
 		{
-			accessorKey: 'apiUrl',
-			title: m.environments_api_url(),
-			cell: ApiCell
-		},
-		{
 			accessorKey: 'enabled',
 			title: m.common_enabled(),
 			sortable: true,
 			cell: EnabledCell
+		},
+		{
+			accessorKey: 'apiUrl',
+			title: m.environments_api_url(),
+			cell: ApiCell
 		}
 	] satisfies ColumnSpec<Environment>[];
 
-	const mobileFields = [{ id: 'id', label: m.common_id(), defaultVisible: true }];
+	const mobileFields = [
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'apiUrl', label: m.environments_api_url(), defaultVisible: true }
+	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
@@ -198,7 +201,12 @@
 	item: Environment;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
-	<EnvironmentMobileCard {item} rowActions={RowActions} showId={mobileFieldVisibility.id ?? true} />
+	<EnvironmentMobileCard
+		{item}
+		rowActions={RowActions}
+		showId={mobileFieldVisibility.id ?? true}
+		showApiUrl={mobileFieldVisibility.apiUrl ?? true}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: Environment })}

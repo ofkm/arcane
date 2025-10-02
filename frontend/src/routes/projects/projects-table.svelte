@@ -135,15 +135,16 @@
 
 	const columns = [
 		{ accessorKey: 'name', title: m.common_name(), sortable: true, cell: NameCell },
-		{ accessorKey: 'serviceCount', title: m.compose_services(), sortable: true },
 		{ accessorKey: 'status', title: m.common_status(), sortable: true, cell: StatusCell },
-		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell }
+		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell },
+		{ accessorKey: 'serviceCount', title: m.compose_services(), sortable: true }
 	] satisfies ColumnSpec<Project>[];
 
 	const mobileFields = [
-		{ id: 'serviceCount', label: m.compose_services(), defaultVisible: true },
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
 		{ id: 'status', label: m.common_status(), defaultVisible: true },
-		{ id: 'createdAt', label: m.common_created(), defaultVisible: true }
+		{ id: 'createdAt', label: m.common_created(), defaultVisible: true },
+		{ id: 'serviceCount', label: m.compose_services(), defaultVisible: true }
 	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});
@@ -177,9 +178,10 @@
 		{item}
 		rowActions={RowActions}
 		onclick={() => goto(`/projects/${item.id}`)}
-		showServiceCount={mobileFieldVisibility.serviceCount ?? true}
+		showId={mobileFieldVisibility.id ?? true}
 		showStatus={mobileFieldVisibility.status ?? true}
 		showCreatedAt={mobileFieldVisibility.createdAt ?? true}
+		showServiceCount={mobileFieldVisibility.serviceCount ?? true}
 	/>
 {/snippet}
 

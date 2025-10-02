@@ -15,18 +15,20 @@
 		rowActions,
 		compact = false,
 		class: className = '',
+		showId = true,
+		showStatus = true,
 		showCreated = true,
 		showDriver = true,
-		showStatus = true,
 		onclick
 	}: {
 		item: VolumeSummaryDto;
 		rowActions?: Snippet<[{ item: VolumeSummaryDto }]>;
 		compact?: boolean;
 		class?: string;
+		showId?: boolean;
+		showStatus?: boolean;
 		showCreated?: boolean;
 		showDriver?: boolean;
-		showStatus?: boolean;
 		onclick?: (item: VolumeSummaryDto) => void;
 	} = $props();
 
@@ -49,11 +51,13 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.name}>
-					{compact ? truncateString(item.name, 25) : truncateString(item.name, 40)}
+					{item.name}
 				</h3>
-				<p class={cn('text-muted-foreground mt-0.5 truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
-					{String(item.id).substring(0, 12)}
-				</p>
+				{#if showId}
+					<p class={cn('text-muted-foreground mt-0.5 truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
+						{compact ? truncateString(String(item.id), 12) : item.id}
+					</p>
+				{/if}
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
 				{#if showStatus}
@@ -70,9 +74,9 @@
 		</div>
 
 		{#if !compact}
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+			<div class="flex flex-wrap gap-x-4 gap-y-3">
 				{#if showDriver}
-					<div class="flex items-start gap-2.5">
+					<div class="flex min-w-0 flex-1 basis-[180px] items-start gap-2.5">
 						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
 							<DatabaseIcon class="text-muted-foreground size-3.5" />
 						</div>
@@ -87,18 +91,6 @@
 					</div>
 				{/if}
 			</div>
-
-			{#if showCreated && item.createdAt}
-				<div class="border-muted/40 mt-3 flex items-center gap-2 border-t pt-3">
-					<CalendarIcon class="text-muted-foreground size-3.5" />
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-						{m.common_created()}
-					</span>
-					<span class="text-muted-foreground ml-auto font-mono text-[11px]">
-						{format(new Date(String(item.createdAt)), 'PP p')}
-					</span>
-				</div>
-			{/if}
 		{:else}
 			{#if showDriver}
 				<div class="flex items-baseline gap-1.5">
@@ -118,4 +110,15 @@
 			{/if}
 		{/if}
 	</Card.Content>
+	{#if !compact && showCreated && item.createdAt}
+		<Card.Footer class="flex items-center gap-2 border-t-1 py-3">
+			<CalendarIcon class="text-muted-foreground size-3.5" />
+			<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+				{m.common_created()}
+			</span>
+			<span class="text-muted-foreground ml-auto font-mono text-[11px]">
+				{format(new Date(String(item.createdAt)), 'PP p')}
+			</span>
+		</Card.Footer>
+	{/if}
 </Card.Root>

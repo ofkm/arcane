@@ -3,7 +3,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { PortBadge } from '$lib/components/badges/index.js';
 	import { format } from 'date-fns';
-	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
+	import { capitalizeFirstLetter, truncateString } from '$lib/utils/string.utils';
 	import type { ContainerSummaryDto } from '$lib/types/container.type';
 	import type { Snippet } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -11,9 +11,7 @@
 	import BoxIcon from '@lucide/svelte/icons/box';
 	import ImageIcon from '@lucide/svelte/icons/image';
 	import NetworkIcon from '@lucide/svelte/icons/network';
-	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import ClockIcon from '@lucide/svelte/icons/clock';
-	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 
 	let {
 		item,
@@ -21,8 +19,8 @@
 		compact = false,
 		class: className = '',
 		showId = true,
-		showImage = true,
 		showState = true,
+		showImage = true,
 		showStatus = true,
 		showPorts = true,
 		showCreated = true,
@@ -87,7 +85,7 @@
 				{#if showId}
 					<div class="text-muted-foreground mt-0.5 flex items-center gap-2">
 						<span class={cn('truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
-							{String(item.id).substring(0, 12)}
+							{compact ? truncateString(String(item.id), 12) : item.id}
 						</span>
 					</div>
 				{/if}
@@ -103,9 +101,9 @@
 		</div>
 
 		{#if !compact}
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+			<div class="flex flex-wrap gap-x-4 gap-y-3">
 				{#if showImage}
-					<div class="flex items-start gap-2.5">
+					<div class="flex min-w-0 flex-1 basis-[200px] items-start gap-2.5">
 						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
 							<ImageIcon class="size-3.5 text-blue-500" />
 						</div>
@@ -121,7 +119,7 @@
 				{/if}
 
 				{#if showStatus && item.status}
-					<div class="flex items-start gap-2.5">
+					<div class="flex min-w-0 flex-1 basis-[180px] items-start gap-2.5">
 						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
 							<ClockIcon class="size-3.5 text-purple-500" />
 						</div>
@@ -138,7 +136,7 @@
 			</div>
 
 			{#if showPorts && item.ports && item.ports.length > 0}
-				<div class="mt-3 flex items-start gap-2.5">
+				<div class="flex items-start gap-2.5">
 					<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
 						<NetworkIcon class="size-3.5 text-sky-500" />
 					</div>
@@ -152,18 +150,6 @@
 					</div>
 				</div>
 			{/if}
-
-			{#if showCreated && item.created}
-				<div class="border-muted/40 mt-3 flex items-center gap-2 border-t pt-3">
-					<ClockIcon class="text-muted-foreground size-3.5" />
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-						{m.common_created()}
-					</span>
-					<span class="text-muted-foreground ml-auto font-mono text-[11px]">
-						{format(new Date(item.created * 1000), 'PP p')}
-					</span>
-				</div>
-			{/if}
 		{:else}
 			{#if showImage}
 				<div class="flex items-baseline gap-1.5">
@@ -173,26 +159,12 @@
 					</span>
 				</div>
 			{/if}
-			{#if showId}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_id()}:</span>
-					<span class="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[11px] leading-tight">
-						{String(item.id).substring(0, 12)}
-					</span>
-				</div>
-			{/if}
 			{#if showStatus && item.status}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_status()}:</span>
 					<span class="text-muted-foreground truncate text-[11px] leading-tight">
 						{item.status}
 					</span>
-				</div>
-			{/if}
-			{#if showState}
-				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_state()}:</span>
-					<StatusBadge variant={statusVariant} text={capitalizeFirstLetter(item.state)} size="sm" />
 				</div>
 			{/if}
 			{#if showPorts && item.ports && item.ports.length > 0}
@@ -213,4 +185,15 @@
 			{/if}
 		{/if}
 	</Card.Content>
+	{#if !compact && showCreated && item.created}
+		<Card.Footer class="flex items-center gap-2 border-t-1 py-3">
+			<ClockIcon class="text-muted-foreground size-3.5" />
+			<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+				{m.common_created()}
+			</span>
+			<span class="text-muted-foreground ml-auto font-mono text-[11px]">
+				{format(new Date(item.created * 1000), 'PP p')}
+			</span>
+		</Card.Footer>
+	{/if}
 </Card.Root>
