@@ -80,43 +80,35 @@
 	/>
 {/snippet}
 
-<Card.Root class="relative flex flex-col gap-6 rounded-lg border py-3 shadow-sm">
-	<Card.Header
-		class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 pt-5 pb-3 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
-	>
-		<div class="flex items-center justify-between">
-			<div>
-				<Card.Title>
-					<a class="font-medium hover:underline" href="/images">{m.images_title()}</a>
-				</Card.Title>
-				<Card.Description class="pb-2">{m.images_top_largest()}</Card.Description>
-			</div>
-			<div class="flex items-center gap-3">
-				<Button variant="ghost" size="sm" href="/images" disabled={isLoading}>
-					{m.common_view_all()}
-					<ArrowRightIcon class="ml-2 size-4" />
-				</Button>
-			</div>
+<Card.Root class="pb-2">
+	<Card.Header class="flex items-center justify-between p-4">
+		<div>
+			<Card.Title>
+				<a class="font-medium hover:underline" href="/images">{m.images_title()}</a>
+			</Card.Title>
+			<Card.Description>{m.images_top_largest()}</Card.Description>
 		</div>
+		<Button variant="ghost" size="sm" href="/images" disabled={isLoading}>
+			{m.common_view_all()}
+			<ArrowRightIcon class="ml-2 size-4" />
+		</Button>
 	</Card.Header>
-	<Card.Content class="flex-1 p-0">
-		<div class="flex h-full flex-col">
-			<ArcaneTable
-				items={images}
-				bind:requestOptions
-				bind:selectedIds
-				onRefresh={async (options) => (images = await imageService.getImages(options))}
-				withoutSearch={true}
-				selectionDisabled={true}
-				withoutPagination={true}
-				{columns}
-				mobileCard={DashImageMobileCard}
-			/>
-			{#if images.data.length > 5}
-				<div class="bg-muted/40 text-muted-foreground border-t px-6 py-2 text-xs">
-					{m.images_showing_of_total({ shown: 5, total: images.pagination.totalItems })}
-				</div>
-			{/if}
-		</div>
+	<Card.Content class="p-0 pt-2">
+		<ArcaneTable
+			items={images}
+			bind:requestOptions
+			bind:selectedIds
+			onRefresh={async (options) => (images = await imageService.getImages(options))}
+			withoutSearch={true}
+			selectionDisabled={true}
+			withoutPagination={true}
+			{columns}
+			mobileCard={DashImageMobileCard}
+		/>
+		{#if images.data.length > 5}
+			<div class="bg-muted/40 text-muted-foreground border-t px-6 py-3 text-xs">
+				{m.images_showing_of_total({ shown: 5, total: images.pagination.totalItems })}
+			</div>
+		{/if}
 	</Card.Content>
 </Card.Root>
