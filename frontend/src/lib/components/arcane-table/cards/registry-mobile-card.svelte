@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ArcaneCard, ArcaneCardHeader, ArcaneCardContent } from '$lib/components/arcane-card';
+	import * as Card from '$lib/components/ui/card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { truncateString } from '$lib/utils/string.utils';
 	import type { ContainerRegistry } from '$lib/types/container-registry.type';
@@ -29,8 +29,8 @@
 	} = $props();
 </script>
 
-<ArcaneCard class={className} onclick={onclick ? () => onclick(item) : undefined}>
-	<ArcaneCardHeader icon={PackageIcon} iconVariant="purple" {compact} enableHover={!!onclick}>
+<Card.Root class={className} onclick={onclick ? () => onclick(item) : undefined}>
+	<Card.Header icon={PackageIcon} iconVariant="purple" {compact} enableHover={!!onclick}>
 		<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.url}>
@@ -47,10 +47,10 @@
 				{/if}
 			</div>
 		</div>
-	</ArcaneCardHeader>
+	</Card.Header>
 
 	{#if !compact}
-		<ArcaneCardContent class="flex flex-1 flex-col p-3.5">
+		<Card.Content class="flex flex-1 flex-col p-3.5">
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{#if showUrl}
 					<div class="flex items-start gap-2.5">
@@ -79,9 +79,9 @@
 					</div>
 				{/if}
 			</div>
-		</ArcaneCardContent>
+		</Card.Content>
 	{:else}
-		<ArcaneCardContent class="flex flex-1 flex-col space-y-1.5 p-2">
+		<Card.Content class="flex flex-1 flex-col space-y-1.5 p-2">
 			{#if showUrl}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.registries_url()}:</span>
@@ -98,6 +98,6 @@
 					</span>
 				</div>
 			{/if}
-		</ArcaneCardContent>
+		</Card.Content>
 	{/if}
-</ArcaneCard>
+</Card.Root>

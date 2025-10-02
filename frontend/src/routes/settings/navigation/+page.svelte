@@ -1,14 +1,8 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card/index.js';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
-	import {
-		ArcaneCard,
-		ArcaneCardHeader,
-		ArcaneCardContent,
-		ArcaneCardTitle,
-		ArcaneCardDescription
-	} from '$lib/components/arcane-card';
 	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import EyeIcon from '@lucide/svelte/icons/eye';
@@ -152,12 +146,12 @@
 >
 	{#snippet mainContent()}
 		<div class="space-y-4 sm:space-y-6">
-			<ArcaneCard class="overflow-hidden pt-0">
-				<ArcaneCardHeader icon={NavigationIcon}>
-					<ArcaneCardTitle>{m.navigation_mobile_appearance_title()}</ArcaneCardTitle>
-					<ArcaneCardDescription>{m.navigation_mobile_appearance_description()}</ArcaneCardDescription>
-				</ArcaneCardHeader>
-				<ArcaneCardContent class="px-3 py-3 sm:px-6 sm:py-4">
+			<Card.Root class="overflow-hidden pt-0">
+				<Card.Header icon={NavigationIcon}>
+					<Card.Title>{m.navigation_mobile_appearance_title()}</Card.Title>
+					<Card.Description>{m.navigation_mobile_appearance_description()}</Card.Description>
+				</Card.Header>
+				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
 					<div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))]">
 						<NavigationModeSettingControl
 							id="mobileNavigationMode"
@@ -189,15 +183,15 @@
 							serverDisabled={isReadOnly}
 						/>
 					</div>
-				</ArcaneCardContent>
-			</ArcaneCard>
+				</Card.Content>
+			</Card.Root>
 
-			<ArcaneCard class="overflow-hidden pt-0">
-				<ArcaneCardHeader icon={NavigationIcon}>
-					<ArcaneCardTitle>{m.navigation_mobile_behavior_title()}</ArcaneCardTitle>
-					<ArcaneCardDescription>{m.navigation_mobile_behavior_description()}</ArcaneCardDescription>
-				</ArcaneCardHeader>
-				<ArcaneCardContent class="px-3 py-3 sm:px-6 sm:py-4">
+			<Card.Root class="overflow-hidden pt-0">
+				<Card.Header icon={NavigationIcon}>
+					<Card.Title>{m.navigation_mobile_behavior_title()}</Card.Title>
+					<Card.Description>{m.navigation_mobile_behavior_description()}</Card.Description>
+				</Card.Header>
+				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
 					<div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))]">
 						<NavigationSettingControl
 							id="mobileNavigationScrollToHide"
@@ -229,8 +223,8 @@
 							serverDisabled={isReadOnly}
 						/>
 					</div>
-				</ArcaneCardContent>
-			</ArcaneCard>
+				</Card.Content>
+			</Card.Root>
 		</div>
 	{/snippet}
 </SettingsPageLayout>

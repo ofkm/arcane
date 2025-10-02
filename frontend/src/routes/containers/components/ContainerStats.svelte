@@ -1,14 +1,8 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card/index.js';
 	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import {
-		ArcaneCard,
-		ArcaneCardHeader,
-		ArcaneCardContent,
-		ArcaneCardTitle,
-		ArcaneCardDescription
-	} from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import bytes from 'bytes';
 	import type { ContainerDetailsDto, ContainerStats as ContainerStatsType } from '$lib/types/container.type';
@@ -154,12 +148,12 @@
 	</div>
 {/snippet}
 
-<ArcaneCard>
-	<ArcaneCardHeader icon={ActivityIcon}>
-		<ArcaneCardTitle>{m.containers_resource_metrics()}</ArcaneCardTitle>
-		<ArcaneCardDescription>{m.containers_resource_metrics_description()}</ArcaneCardDescription>
-	</ArcaneCardHeader>
-	<ArcaneCardContent class="p-4">
+<Card.Root>
+	<Card.Header icon={ActivityIcon}>
+		<Card.Title>{m.containers_resource_metrics()}</Card.Title>
+		<Card.Description>{m.containers_resource_metrics_description()}</Card.Description>
+	</Card.Header>
+	<Card.Content class="p-4">
 		{#if loading}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<div class="lg:col-span-2">
@@ -471,5 +465,5 @@
 				<div class="text-sm">{m.containers_stats_loading()}</div>
 			</div>
 		{/if}
-	</ArcaneCardContent>
-</ArcaneCard>
+	</Card.Content>
+</Card.Root>

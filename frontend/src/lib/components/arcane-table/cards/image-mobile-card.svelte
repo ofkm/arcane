@@ -7,7 +7,7 @@
 	import type { Snippet } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { cn } from '$lib/utils';
-	import { ArcaneCard, ArcaneCardHeader, ArcaneCardContent } from '$lib/components/arcane-card';
+	import * as Card from '$lib/components/ui/card';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import DatabaseIcon from '@lucide/svelte/icons/database';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -50,9 +50,9 @@
 	const isUntagged = $derived(!item.repoTags || item.repoTags.length === 0 || item.repoTags[0] === '<none>:<none>');
 </script>
 
-<ArcaneCard class={className} onclick={onclick ? () => onclick(item) : undefined}>
+<Card.Root class={className} onclick={onclick ? () => onclick(item) : undefined}>
 	{#snippet children()}
-		<ArcaneCardHeader icon={HardDriveIcon} {iconVariant} {compact} enableHover={!!onclick}>
+		<Card.Header icon={HardDriveIcon} {iconVariant} {compact} enableHover={!!onclick}>
 			{#snippet children()}
 				<div class="min-w-0 flex-1">
 					<h3
@@ -82,10 +82,10 @@
 					{/if}
 				</div>
 			{/snippet}
-		</ArcaneCardHeader>
+		</Card.Header>
 
 		{#if !compact}
-			<ArcaneCardContent class="flex flex-1 flex-col p-3.5">
+			<Card.Content class="flex flex-1 flex-col p-3.5">
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					{#if showSize}
 						<div class="flex items-start gap-2.5">
@@ -134,9 +134,9 @@
 						</span>
 					</div>
 				{/if}
-			</ArcaneCardContent>
+			</Card.Content>
 		{:else}
-			<ArcaneCardContent class="flex flex-1 flex-col space-y-1.5 p-2">
+			<Card.Content class="flex flex-1 flex-col space-y-1.5 p-2">
 				{#if showSize}
 					<div class="flex items-baseline gap-1.5">
 						<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.images_size()}:</span>
@@ -164,7 +164,7 @@
 						</div>
 					</div>
 				{/if}
-			</ArcaneCardContent>
+			</Card.Content>
 		{/if}
 	{/snippet}
-</ArcaneCard>
+</Card.Root>

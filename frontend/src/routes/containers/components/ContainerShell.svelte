@@ -1,17 +1,11 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import Terminal from '$lib/components/terminal/terminal.svelte';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
-	import {
-		ArcaneCard,
-		ArcaneCardHeader,
-		ArcaneCardContent,
-		ArcaneCardTitle,
-		ArcaneCardDescription
-	} from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import settingsStore from '$lib/stores/config-store';
@@ -96,12 +90,12 @@
 	}
 </script>
 
-<ArcaneCard class="flex flex-col gap-0 p-0">
-	<ArcaneCardHeader icon={TerminalIcon}>
+<Card.Root class="flex flex-col gap-0 p-0">
+	<Card.Header icon={TerminalIcon}>
 		<div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 			<div class="flex flex-col gap-1.5">
 				<div class="flex items-center gap-2">
-					<ArcaneCardTitle>{m.shell_title()}</ArcaneCardTitle>
+					<Card.Title>{m.shell_title()}</Card.Title>
 					{#if isConnected}
 						<div class="flex items-center gap-2">
 							<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
@@ -109,7 +103,7 @@
 						</div>
 					{/if}
 				</div>
-				<ArcaneCardDescription>{m.shell_interactive_access()}</ArcaneCardDescription>
+				<Card.Description>{m.shell_interactive_access()}</Card.Description>
 			</div>
 			<div class="flex items-center gap-2">
 				<Select.Root bind:value={selectedShell} type="single" onValueChange={(value) => value && handleShellChange(value)}>
@@ -147,8 +141,8 @@
 				</Button>
 			</div>
 		</div>
-	</ArcaneCardHeader>
-	<ArcaneCardContent class="overflow-hidden p-2">
+	</Card.Header>
+	<Card.Content class="overflow-hidden p-2">
 		<div class="h-full overflow-hidden rounded-lg border">
 			{#if websocketUrl}
 				{#key reconnectKey}
@@ -161,5 +155,5 @@
 				{/key}
 			{/if}
 		</div>
-	</ArcaneCardContent>
-</ArcaneCard>
+	</Card.Content>
+</Card.Root>
