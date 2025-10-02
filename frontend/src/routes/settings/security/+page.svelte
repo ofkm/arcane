@@ -1,8 +1,14 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
+	import {
+		ArcaneCard,
+		ArcaneCardHeader,
+		ArcaneCardContent,
+		ArcaneCardTitle,
+		ArcaneCardDescription
+	} from '$lib/components/arcane-card';
 	import { Button } from '$lib/components/ui/button';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
@@ -222,12 +228,12 @@
 	{#snippet mainContent()}
 		<fieldset disabled={isReadOnly} class="relative">
 			<div class="space-y-4 sm:space-y-6">
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header icon={LockIcon}>
-						<Card.Title>{m.security_authentication_heading()}</Card.Title>
-						<Card.Description>Configure login methods for your application</Card.Description>
-					</Card.Header>
-					<Card.Content class="px-3 py-4 sm:px-6">
+				<ArcaneCard class="overflow-hidden pt-0">
+					<ArcaneCardHeader icon={LockIcon}>
+						<ArcaneCardTitle>{m.security_authentication_heading()}</ArcaneCardTitle>
+						<ArcaneCardDescription>Configure login methods for your application</ArcaneCardDescription>
+					</ArcaneCardHeader>
+					<ArcaneCardContent class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
 							<SwitchWithLabel
 								id="localAuthSwitch"
@@ -274,15 +280,15 @@
 								{/if}
 							</div>
 						</div>
-					</Card.Content>
-				</Card.Root>
+					</ArcaneCardContent>
+				</ArcaneCard>
 
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header icon={ClockIcon}>
-						<Card.Title>{m.security_session_heading()}</Card.Title>
-						<Card.Description>Configure session timeout and duration</Card.Description>
-					</Card.Header>
-					<Card.Content class="px-3 py-4 sm:px-6">
+				<ArcaneCard class="overflow-hidden pt-0">
+					<ArcaneCardHeader icon={ClockIcon}>
+						<ArcaneCardTitle>{m.security_session_heading()}</ArcaneCardTitle>
+						<ArcaneCardDescription>Configure session timeout and duration</ArcaneCardDescription>
+					</ArcaneCardHeader>
+					<ArcaneCardContent class="px-3 py-4 sm:px-6">
 						<TextInputWithLabel
 							bind:value={$formInputs.authSessionTimeout.value}
 							label={m.security_session_timeout_label()}
@@ -290,15 +296,15 @@
 							helpText={m.security_session_timeout_description()}
 							type="number"
 						/>
-					</Card.Content>
-				</Card.Root>
+					</ArcaneCardContent>
+				</ArcaneCard>
 
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header icon={KeyIcon}>
-						<Card.Title>{m.security_password_policy_label()}</Card.Title>
-						<Card.Description>Set password strength requirements</Card.Description>
-					</Card.Header>
-					<Card.Content class="px-3 py-4 sm:px-6">
+				<ArcaneCard class="overflow-hidden pt-0">
+					<ArcaneCardHeader icon={KeyIcon}>
+						<ArcaneCardTitle>{m.security_password_policy_label()}</ArcaneCardTitle>
+						<ArcaneCardDescription>Set password strength requirements</ArcaneCardDescription>
+					</ArcaneCardHeader>
+					<ArcaneCardContent class="px-3 py-4 sm:px-6">
 						<Tooltip.Provider>
 							<div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-labelledby="passwordPolicyLabel">
 								<Tooltip.Root>
@@ -347,8 +353,8 @@
 								</Tooltip.Root>
 							</div>
 						</Tooltip.Provider>
-					</Card.Content>
-				</Card.Root>
+					</ArcaneCardContent>
+				</ArcaneCard>
 			</div>
 		</fieldset>
 	{/snippet}

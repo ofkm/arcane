@@ -16,6 +16,13 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
+	import {
+		ArcaneCard,
+		ArcaneCardHeader,
+		ArcaneCardContent,
+		ArcaneCardTitle,
+		ArcaneCardDescription
+	} from '$lib/components/arcane-card';
 	import { format } from 'date-fns';
 	import ContainerIcon from '@lucide/svelte/icons/container';
 	import { m } from '$lib/paraglide/messages';
@@ -110,12 +117,12 @@
 
 	{#if volume}
 		<div class="space-y-6">
-			<Card.Root>
-				<Card.Header icon={InfoIcon}>
-					<Card.Title>{m.volumes_details_title()}</Card.Title>
-					<Card.Description>{m.volumes_details_description()}</Card.Description>
-				</Card.Header>
-				<Card.Content class="p-4">
+			<ArcaneCard>
+				<ArcaneCardHeader icon={InfoIcon}>
+					<ArcaneCardTitle>{m.volumes_details_title()}</ArcaneCardTitle>
+					<ArcaneCardDescription>{m.volumes_details_description()}</ArcaneCardDescription>
+				</ArcaneCardHeader>
+				<ArcaneCardContent class="p-4">
 					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
@@ -193,15 +200,15 @@
 							</div>
 						</div>
 					</div>
-				</Card.Content>
-			</Card.Root>
+				</ArcaneCardContent>
+			</ArcaneCard>
 
-			<Card.Root>
-				<Card.Header icon={ContainerIcon}>
-					<Card.Title>{m.volumes_containers_using_title()}</Card.Title>
-					<Card.Description>{m.volumes_containers_using_description()}</Card.Description>
-				</Card.Header>
-				<Card.Content class="p-4">
+			<ArcaneCard>
+				<ArcaneCardHeader icon={ContainerIcon}>
+					<ArcaneCardTitle>{m.volumes_containers_using_title()}</ArcaneCardTitle>
+					<ArcaneCardDescription>{m.volumes_containers_using_description()}</ArcaneCardDescription>
+				</ArcaneCardHeader>
+				<ArcaneCardContent class="p-4">
 					{#if containersDetailed.length > 0}
 						<div class="bg-card divide-y rounded-lg border">
 							{#each containersDetailed as c (c.id)}
@@ -236,18 +243,18 @@
 					{:else}
 						<div class="text-muted-foreground">{m.volumes_no_containers_using()}</div>
 					{/if}
-				</Card.Content>
-			</Card.Root>
+				</ArcaneCardContent>
+			</ArcaneCard>
 
 			{#if volume.labels && Object.keys(volume.labels).length > 0}
-				<Card.Root>
-					<Card.Header icon={TagIcon}>
-						<Card.Title>
+				<ArcaneCard>
+					<ArcaneCardHeader icon={TagIcon}>
+						<ArcaneCardTitle>
 							{m.common_labels()}
-						</Card.Title>
-						<Card.Description>{m.volumes_labels_description()}</Card.Description>
-					</Card.Header>
-					<Card.Content class="p-4">
+						</ArcaneCardTitle>
+						<ArcaneCardDescription>{m.volumes_labels_description()}</ArcaneCardDescription>
+					</ArcaneCardHeader>
+					<ArcaneCardContent class="p-4">
 						<div class="bg-card divide-y rounded-lg border">
 							{#each Object.entries(volume.labels) as [key, value] (key)}
 								<div class="flex flex-col p-3 sm:flex-row">
@@ -263,17 +270,17 @@
 								</div>
 							{/each}
 						</div>
-					</Card.Content>
-				</Card.Root>
+					</ArcaneCardContent>
+				</ArcaneCard>
 			{/if}
 
 			{#if volume.options && Object.keys(volume.options).length > 0}
-				<Card.Root>
-					<Card.Header icon={HardDriveIcon}>
-						<Card.Title>{m.common_driver_options()}</Card.Title>
-						<Card.Description>{m.volumes_driver_options_description()}</Card.Description>
-					</Card.Header>
-					<Card.Content class="p-4">
+				<ArcaneCard>
+					<ArcaneCardHeader icon={HardDriveIcon}>
+						<ArcaneCardTitle>{m.common_driver_options()}</ArcaneCardTitle>
+						<ArcaneCardDescription>{m.volumes_driver_options_description()}</ArcaneCardDescription>
+					</ArcaneCardHeader>
+					<ArcaneCardContent class="p-4">
 						<div class="bg-card divide-y rounded-lg border">
 							{#each Object.entries(volume.options) as [key, value] (key)}
 								<div class="flex flex-col p-3 sm:flex-row">
@@ -289,21 +296,21 @@
 								</div>
 							{/each}
 						</div>
-					</Card.Content>
-				</Card.Root>
+					</ArcaneCardContent>
+				</ArcaneCard>
 			{/if}
 
 			{#if (!volume.labels || Object.keys(volume.labels).length === 0) && (!volume.options || Object.keys(volume.options).length === 0)}
-				<Card.Root class="bg-muted/10 border shadow-sm">
-					<Card.Content class="pt-6 pb-6 text-center">
+				<ArcaneCard class="bg-muted/10 border shadow-sm">
+					<ArcaneCardContent class="pt-6 pb-6 text-center">
 						<div class="flex flex-col items-center justify-center">
 							<div class="bg-muted/30 mb-4 rounded-full p-3">
 								<TagIcon class="text-muted-foreground size-5 opacity-50" />
 							</div>
 							<p class="text-muted-foreground">{m.volumes_no_labels_or_options()}</p>
 						</div>
-					</Card.Content>
-				</Card.Root>
+					</ArcaneCardContent>
+				</ArcaneCard>
 			{/if}
 		</div>
 	{:else}

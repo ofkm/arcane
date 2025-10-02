@@ -1,8 +1,9 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import type { Icon as IconType } from '@lucide/svelte';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';	import { m } from '$lib/paraglide/messages';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { ArcaneCard, ArcaneCardHeader, ArcaneCardContent } from '$lib/components/arcane-card';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		title: string;
@@ -34,9 +35,9 @@
 	const Icon = icon;
 </script>
 
-<Card.Root>
+<ArcaneCard>
 	{#snippet children()}
-		<Card.Header icon={loading ? LoaderCircleIcon : icon} iconVariant="primary" compact>
+		<ArcaneCardHeader icon={loading ? LoaderCircleIcon : icon} iconVariant="primary" compact>
 			{#snippet children()}
 				<div class="min-w-0 flex-1">
 					<div class="text-foreground text-sm font-semibold">{title}</div>
@@ -45,9 +46,9 @@
 					{/if}
 				</div>
 			{/snippet}
-		</Card.Header>
+		</ArcaneCardHeader>
 
-		<Card.Content class="flex flex-col justify-center p-3">
+		<ArcaneCardContent class="flex flex-col justify-center p-3">
 			<div class="w-full space-y-2">
 				<div class="text-center">
 					{#if loading}
@@ -85,6 +86,6 @@
 					</div>
 				</div>
 			</div>
-		</Card.Content>
+		</ArcaneCardContent>
 	{/snippet}
-</Card.Root>
+</ArcaneCard>

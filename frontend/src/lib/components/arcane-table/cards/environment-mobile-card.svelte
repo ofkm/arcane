@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card';
+	import { ArcaneCard, ArcaneCardHeader, ArcaneCardContent } from '$lib/components/arcane-card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { truncateString } from '$lib/utils/string.utils';
 	import type { Environment } from '$lib/types/environment.type';
@@ -26,8 +26,8 @@
 	} = $props();
 </script>
 
-<Card.Root class={className} onclick={onclick ? () => onclick(item) : undefined}>
-	<Card.Header icon={CloudIcon} iconVariant="emerald" {compact} enableHover={!!onclick}>
+<ArcaneCard class={className} onclick={onclick ? () => onclick(item) : undefined}>
+	<ArcaneCardHeader icon={CloudIcon} iconVariant="emerald" {compact} enableHover={!!onclick}>
 		<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.name || item.id}>
@@ -44,10 +44,10 @@
 				{/if}
 			</div>
 		</div>
-	</Card.Header>
+	</ArcaneCardHeader>
 
 	{#if !compact}
-		<Card.Content class="flex flex-1 flex-col p-3.5">
+		<ArcaneCardContent class="flex flex-1 flex-col p-3.5">
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{#if showId}
 					<div class="flex items-start gap-2.5">
@@ -63,9 +63,9 @@
 					</div>
 				{/if}
 			</div>
-		</Card.Content>
+		</ArcaneCardContent>
 	{:else}
-		<Card.Content class="flex flex-1 flex-col space-y-1.5 p-2">
+		<ArcaneCardContent class="flex flex-1 flex-col space-y-1.5 p-2">
 			{#if showId}
 				<div class="flex items-baseline gap-1.5">
 					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_id()}:</span>
@@ -74,6 +74,6 @@
 					</span>
 				</div>
 			{/if}
-		</Card.Content>
+		</ArcaneCardContent>
 	{/if}
-</Card.Root>
+</ArcaneCard>

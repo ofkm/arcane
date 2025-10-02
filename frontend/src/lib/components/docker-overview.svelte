@@ -1,5 +1,4 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Skeleton } from '$lib/components/ui/skeleton';
@@ -9,6 +8,7 @@
 	import BoxIcon from '@lucide/svelte/icons/box';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import DockerInfoDialog from '$lib/components/dialogs/docker-info-dialog.svelte';
+	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import type { DockerInfo } from '$lib/types/docker-info.type';
 	import { m } from '$lib/paraglide/messages';
 
@@ -33,9 +33,9 @@
 	let dockerInfoDialogOpen = $state(false);
 </script>
 
-<Card.Root class={className}>
+<ArcaneCard class={className}>
 	{#snippet children()}
-		<Card.Header icon={loading ? LoaderCircleIcon : DockerIcon} iconVariant="primary">
+		<ArcaneCardHeader icon={loading ? LoaderCircleIcon : DockerIcon} iconVariant="primary">
 			{#snippet children()}
 				{#if loading}
 					<div class="flex flex-1 flex-col gap-2">
@@ -80,8 +80,8 @@
 					</Button>
 				{/if}
 			{/snippet}
-		</Card.Header>
+		</ArcaneCardHeader>
 	{/snippet}
-</Card.Root>
+</ArcaneCard>
 
 <DockerInfoDialog bind:open={dockerInfoDialogOpen} {dockerInfo} />

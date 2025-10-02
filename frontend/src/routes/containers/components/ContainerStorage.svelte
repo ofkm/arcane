@@ -4,6 +4,13 @@
 	import DatabaseIcon from '@lucide/svelte/icons/database';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
+	import {
+		ArcaneCard,
+		ArcaneCardHeader,
+		ArcaneCardContent,
+		ArcaneCardTitle,
+		ArcaneCardDescription
+	} from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import type { ContainerDetailsDto } from '$lib/types/container.type';
 
@@ -15,12 +22,12 @@
 </script>
 
 <div class="space-y-6">
-	<Card.Root>
-		<Card.Header icon={DatabaseIcon}>
-			<Card.Title>{m.containers_storage_title()}</Card.Title>
-			<Card.Description>{m.containers_storage_description()}</Card.Description>
-		</Card.Header>
-		<Card.Content class="p-4">
+	<ArcaneCard>
+		<ArcaneCardHeader icon={DatabaseIcon}>
+			<ArcaneCardTitle>{m.containers_storage_title()}</ArcaneCardTitle>
+			<ArcaneCardDescription>{m.containers_storage_description()}</ArcaneCardDescription>
+		</ArcaneCardHeader>
+		<ArcaneCardContent class="p-4">
 			{#if container.mounts && container.mounts.length > 0}
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
 					{#each container.mounts as mount (mount.destination)}
@@ -100,6 +107,6 @@
 					<div class="text-muted-foreground text-sm">{m.containers_no_mounts_configured()}</div>
 				</div>
 			{/if}
-		</Card.Content>
-	</Card.Root>
+		</ArcaneCardContent>
+	</ArcaneCard>
 </div>

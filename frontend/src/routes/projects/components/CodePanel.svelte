@@ -1,7 +1,12 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
 	import CodeEditor from '$lib/components/code-editor/editor.svelte';
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
+	import {
+		ArcaneCard,
+		ArcaneCardHeader,
+		ArcaneCardContent,
+		ArcaneCardTitle
+	} from '$lib/components/arcane-card';
 
 	type CodeLanguage = 'yaml' | 'env';
 
@@ -22,16 +27,16 @@
 	} = $props();
 </script>
 
-<Card.Root class="gap-0 p-0">
-	<Card.Header icon={FileTextIcon}>
-		<Card.Title>{title}</Card.Title>
-	</Card.Header>
-	<Card.Content class="p-0">
+<ArcaneCard class="gap-0 p-0">
+	<ArcaneCardHeader icon={FileTextIcon}>
+		<ArcaneCardTitle>{title}</ArcaneCardTitle>
+	</ArcaneCardHeader>
+	<ArcaneCardContent class="p-0">
 		<div class="min-h-[500px] w-full overflow-hidden [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
 			<CodeEditor bind:value {language} {placeholder} height="full" class="rounded-t-none rounded-b-xl" />
 			{#if error}
 				<p class="text-destructive mt-2 text-xs">{error}</p>
 			{/if}
 		</div>
-	</Card.Content>
-</Card.Root>
+	</ArcaneCardContent>
+</ArcaneCard>

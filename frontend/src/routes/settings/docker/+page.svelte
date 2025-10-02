@@ -1,5 +1,4 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
 	import ZapIcon from '@lucide/svelte/icons/zap';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { toast } from 'svelte-sonner';
@@ -8,6 +7,13 @@
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
+	import {
+		ArcaneCard,
+		ArcaneCardHeader,
+		ArcaneCardContent,
+		ArcaneCardTitle,
+		ArcaneCardDescription
+	} from '$lib/components/arcane-card';
 	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import ActivityIcon from '@lucide/svelte/icons/activity';
@@ -193,12 +199,12 @@
 	{#snippet mainContent()}
 		<fieldset disabled={isReadOnly} class="relative">
 			<div class="space-y-4 sm:space-y-6">
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header icon={ActivityIcon}>
-						<Card.Title>{m.docker_image_polling_title()}</Card.Title>
-						<Card.Description>{m.docker_image_polling_description()}</Card.Description>
-					</Card.Header>
-					<Card.Content class="px-3 py-4 sm:px-6">
+				<ArcaneCard class="overflow-hidden pt-0">
+					<ArcaneCardHeader icon={ActivityIcon}>
+						<ArcaneCardTitle>{m.docker_image_polling_title()}</ArcaneCardTitle>
+						<ArcaneCardDescription>{m.docker_image_polling_description()}</ArcaneCardDescription>
+					</ArcaneCardHeader>
+					<ArcaneCardContent class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
 							<SwitchWithLabel
 								id="pollingEnabled"
@@ -238,16 +244,16 @@
 								</div>
 							{/if}
 						</div>
-						</Card.Content>
-				</Card.Root>
+					</ArcaneCardContent>
+				</ArcaneCard>
 
 				{#if $formInputs.pollingEnabled.value}
-					<Card.Root class="overflow-hidden pt-0">
-						<Card.Header icon={RefreshCwIcon}>
-							<Card.Title>{m.docker_auto_updates_title()}</Card.Title>
-							<Card.Description>{m.docker_auto_updates_description()}</Card.Description>
-						</Card.Header>
-						<Card.Content class="px-3 py-4 sm:px-6">
+					<ArcaneCard class="overflow-hidden pt-0">
+						<ArcaneCardHeader icon={RefreshCwIcon}>
+							<ArcaneCardTitle>{m.docker_auto_updates_title()}</ArcaneCardTitle>
+							<ArcaneCardDescription>{m.docker_auto_updates_description()}</ArcaneCardDescription>
+						</ArcaneCardHeader>
+						<ArcaneCardContent class="px-3 py-4 sm:px-6">
 							<div class="space-y-3">
 								<SwitchWithLabel
 									id="autoUpdateSwitch"
@@ -268,16 +274,16 @@
 									</div>
 								{/if}
 							</div>
-						</Card.Content>
-					</Card.Root>
+						</ArcaneCardContent>
+					</ArcaneCard>
 				{/if}
 
-					<Card.Root class="overflow-hidden pt-0">
-					<Card.Header icon={TrashIcon}>
-						<Card.Title>{m.docker_cleanup_settings_title()}</Card.Title>
-						<Card.Description>{m.docker_cleanup_settings_description()}</Card.Description>
-					</Card.Header>
-					<Card.Content class="px-3 py-4 sm:px-6">
+				<ArcaneCard class="overflow-hidden pt-0">
+					<ArcaneCardHeader icon={TrashIcon}>
+						<ArcaneCardTitle>{m.docker_cleanup_settings_title()}</ArcaneCardTitle>
+						<ArcaneCardDescription>{m.docker_cleanup_settings_description()}</ArcaneCardDescription>
+					</ArcaneCardHeader>
+					<ArcaneCardContent class="px-3 py-4 sm:px-6">
 						<SelectWithLabel
 							id="dockerPruneMode"
 							name="pruneMode"
@@ -288,15 +294,15 @@
 							options={pruneModeOptions}
 							onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
 						/>
-					</Card.Content>
-				</Card.Root>
+					</ArcaneCardContent>
+				</ArcaneCard>
 
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header icon={TerminalIcon}>
-						<Card.Title>{m.docker_terminal_settings_title()}</Card.Title>
-						<Card.Description>{m.docker_terminal_settings_description()}</Card.Description>
-					</Card.Header>
-					<Card.Content class="px-3 py-4 sm:px-6">
+				<ArcaneCard class="overflow-hidden pt-0">
+					<ArcaneCardHeader icon={TerminalIcon}>
+						<ArcaneCardTitle>{m.docker_terminal_settings_title()}</ArcaneCardTitle>
+						<ArcaneCardDescription>{m.docker_terminal_settings_description()}</ArcaneCardDescription>
+					</ArcaneCardHeader>
+					<ArcaneCardContent class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
 							<SelectWithLabel
 								id="shellSelectValue"
@@ -323,8 +329,8 @@
 								</div>
 							{/if}
 						</div>
-					</Card.Content>
-				</Card.Root>
+					</ArcaneCardContent>
+				</ArcaneCard>
 			</div>
 		</fieldset>
 	{/snippet}
