@@ -12,6 +12,7 @@
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { containerService } from '$lib/services/container-service';
+	import { goto } from '$app/navigation';
 
 	let {
 		containers = $bindable(),
@@ -60,7 +61,7 @@
 		showPorts={false}
 		showState={false}
 		showStatus={true}
-		onclick={(item: ContainerSummaryDto) => (window.location.href = `/containers/${item.id}`)}
+		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
 		class="mx-2"
 	/>
 {/snippet}

@@ -165,7 +165,7 @@
 		rowActions={RowActions}
 		showDisplayName={mobileFieldVisibility.displayName ?? true}
 		showEmail={mobileFieldVisibility.email ?? true}
-		showRole={mobileFieldVisibility.role ?? true}
+		showRoles={mobileFieldVisibility.roles ?? true}
 		{getRoleBadgeVariant}
 		{getRoleText}
 	/>

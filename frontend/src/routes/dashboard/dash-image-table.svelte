@@ -11,6 +11,7 @@
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { imageService } from '$lib/services/image-service';
+	import { goto } from '$app/navigation';
 
 	let {
 		images = $bindable(),
@@ -77,7 +78,7 @@
 		showUpdates={false}
 		showCreated={false}
 		showRepoTags={false}
-		onclick={(item: ImageSummaryDto) => (window.location.href = `/images/${item.id}/`)}
+		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
 		class="mx-2"
 	/>
 {/snippet}

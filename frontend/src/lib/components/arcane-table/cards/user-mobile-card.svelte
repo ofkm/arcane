@@ -7,7 +7,6 @@
 	import { m } from '$lib/paraglide/messages';
 	import { cn } from '$lib/utils';
 	import UserIcon from '@lucide/svelte/icons/user';
-	import MailIcon from '@lucide/svelte/icons/mail';
 
 	let {
 		item,
@@ -16,7 +15,7 @@
 		class: className = '',
 		showDisplayName = true,
 		showEmail = true,
-		showRole = true,
+		showRoles = true,
 		getRoleBadgeVariant,
 		getRoleText,
 		onclick
@@ -27,7 +26,7 @@
 		class?: string;
 		showDisplayName?: boolean;
 		showEmail?: boolean;
-		showRole?: boolean;
+		showRoles?: boolean;
 		getRoleBadgeVariant?: (roles: string[]) => 'red' | 'green';
 		getRoleText?: (roles: string[]) => string;
 		onclick?: (item: User) => void;
@@ -44,12 +43,14 @@
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.username}>
 					{item.username}
 				</h3>
-				<p class={cn('text-muted-foreground mt-0.5 truncate', compact ? 'text-[10px]' : 'text-xs')}>
-					{compact ? truncateString(item.email, 12) : item.email || 'No email'}
-				</p>
+				{#if showEmail && item.email}
+					<p class={cn('text-muted-foreground mt-0.5 truncate', compact ? 'text-[10px]' : 'text-xs')}>
+						{compact ? truncateString(item.email, 12) : item.email || 'No email'}
+					</p>
+				{/if}
 			</div>
 			<div class="flex flex-shrink-0 items-center gap-2">
-				{#if showRole && getRoleBadgeVariant && getRoleText}
+				{#if showRoles && getRoleBadgeVariant && getRoleText}
 					<StatusBadge variant={getRoleBadgeVariant(item.roles)} text={getRoleText(item.roles)} size="sm" />
 				{/if}
 				{#if rowActions}
