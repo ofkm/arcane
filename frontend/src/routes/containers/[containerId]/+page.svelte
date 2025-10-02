@@ -15,9 +15,12 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { format } from 'date-fns';
 	import bytes from 'bytes';
-	import type Docker from 'dockerode';
 	import { onDestroy } from 'svelte';
-	import type { ContainerDetailsDto, ContainerNetworkSettings } from '$lib/types/container.type';
+	import type {
+		ContainerDetailsDto,
+		ContainerNetworkSettings,
+		ContainerStats as ContainerStatsType
+	} from '$lib/types/container.type';
 	import { m } from '$lib/paraglide/messages';
 	import TabbedPageLayout from '$lib/layouts/tabbed-page-layout.svelte';
 	import { type TabItem } from '$lib/components/tab-bar/index.js';
@@ -29,20 +32,12 @@
 	import ContainerStorage from '../components/ContainerStorage.svelte';
 	import ContainerLogsPanel from '../components/ContainerLogsPanel.svelte';
 	import ContainerShell from '../components/ContainerShell.svelte';
-
-	interface NetworkConfig {
-		IPAddress?: string;
-		IPPrefixLen?: number;
-		Gateway?: string;
-		MacAddress?: string;
-		Aliases?: string[];
-		Links?: string[];
-		[key: string]: any;
-	}
+	import { createContainerStatsWebSocket, type ReconnectingWebSocket } from '$lib/utils/ws';
+	import { environmentStore } from '$lib/stores/environment.store';
 
 	let { data } = $props();
 	let container = $derived(data?.container as ContainerDetailsDto);
-	let stats = $derived((data?.stats ?? null) as Docker.ContainerStats | null);
+	let stats = $state(null as ContainerStatsType | null);
 
 	let starting = $state(false);
 	let stopping = $state(false);
@@ -54,7 +49,9 @@
 	let autoScrollLogs = $state(true);
 	let isStreaming = $state(false);
 
-	let statsEventSource: EventSource | null = $state(null);
+	let statsWebSocket: ReconnectingWebSocket<any> | null = $state(null);
+	let isConnecting = $state(false);
+	let hasInitialStatsLoaded = $state(false);
 
 	const cleanContainerName = (name: string | undefined): string => {
 		if (!name) return m.containers_not_found_title();
@@ -63,52 +60,59 @@
 
 	const containerDisplayName = $derived(cleanContainerName(container?.name));
 
-	function startStatsStream() {
-		if (statsEventSource || !container?.id || !container.state?.running) return;
+	async function startStatsStream() {
+		if (statsWebSocket || isConnecting || !container?.id || !container.state?.running) return;
 
+		isConnecting = true;
 		try {
-			const url = `/api/containers/${container.id}/stats/stream`;
-			const eventSource = new EventSource(url);
-			statsEventSource = eventSource;
+			const envId = await environmentStore.getCurrentEnvironmentId();
 
-			eventSource.onmessage = (event) => {
-				if (!event.data) return;
-
-				try {
-					const statsData = JSON.parse(event.data);
-
+			const ws = createContainerStatsWebSocket({
+				getEnvId: () => envId,
+				containerId: container.id,
+				onMessage: (statsData) => {
 					if (statsData.removed) {
 						invalidateAll();
 						return;
 					}
-
 					stats = statsData;
-				} catch (err) {
-					console.error('Error parsing stats data:', err);
-				}
-			};
+					hasInitialStatsLoaded = true;
+				},
+				onOpen: () => {
+					isConnecting = false;
+				},
+				onError: (err) => {
+					console.error('Stats WebSocket error:', err);
+					isConnecting = false;
+				},
+				onClose: () => {
+					isConnecting = false;
+				},
+				maxBackoff: 5000,
+				shouldReconnect: () => selectedTab === 'stats' && container?.state?.running === true
+			});
 
-			eventSource.onerror = (err) => {
-				console.error('Stats EventSource error:', err);
-				eventSource.close();
-				statsEventSource = null;
-			};
+			ws.connect();
+			statsWebSocket = ws;
 		} catch (error) {
 			console.error('Failed to connect to stats stream:', error);
+			isConnecting = false;
 		}
 	}
 
 	function closeStatsStream() {
-		if (statsEventSource) {
-			statsEventSource.close();
-			statsEventSource = null;
+		if (statsWebSocket) {
+			statsWebSocket.close();
+			statsWebSocket = null;
 		}
+		isConnecting = false;
+		hasInitialStatsLoaded = false;
 	}
 
 	$effect(() => {
 		if (selectedTab === 'stats' && container?.state?.running) {
-			startStatsStream();
-		} else if (statsEventSource) {
+			void startStatsStream();
+		} else if (statsWebSocket) {
 			closeStatsStream();
 		}
 	});
@@ -117,7 +121,7 @@
 		closeStatsStream();
 	});
 
-	const calculateCPUPercent = (statsData: Docker.ContainerStats | null): number => {
+	const calculateCPUPercent = (statsData: ContainerStatsType | null): number => {
 		if (!statsData || !statsData.cpu_stats || !statsData.precpu_stats) {
 			return 0;
 		}
@@ -190,7 +194,7 @@
 		!!(container?.networkSettings?.networks && Object.keys(container.networkSettings.networks).length > 0)
 	);
 	const hasMounts = $derived(!!(container?.mounts && container.mounts.length > 0));
-	const showStats = $derived(!!(container?.state?.running && stats));
+	const showStats = $derived(!!container?.state?.running);
 	const showShell = $derived(!!container?.state?.running);
 
 	const tabItems = $derived<TabItem[]>([
@@ -279,11 +283,10 @@
 						{container}
 						{stats}
 						{cpuUsagePercent}
-						{memoryUsageBytes}
-						{memoryLimitBytes}
 						{memoryUsageFormatted}
 						{memoryLimitFormatted}
 						{memoryUsagePercent}
+						loading={!hasInitialStatsLoaded}
 					/>
 				</Tabs.Content>
 			{/if}

@@ -140,3 +140,122 @@ export interface ContainerDetailsDto {
 	mounts: ContainerMounts[];
 	labels: Record<string, string>;
 }
+
+// Container Stats Types
+
+export interface BlkioStatEntry {
+	major: number;
+	minor: number;
+	op: string;
+	value: number;
+}
+
+export interface BlkioStats {
+	io_merged_recursive: BlkioStatEntry[] | null;
+	io_queue_recursive: BlkioStatEntry[] | null;
+	io_service_bytes_recursive: BlkioStatEntry[] | null;
+	io_service_time_recursive: BlkioStatEntry[] | null;
+	io_serviced_recursive: BlkioStatEntry[] | null;
+	io_time_recursive: BlkioStatEntry[] | null;
+	io_wait_time_recursive: BlkioStatEntry[] | null;
+	sectors_recursive: BlkioStatEntry[] | null;
+}
+
+export interface ThrottlingData {
+	periods: number;
+	throttled_periods: number;
+	throttled_time: number;
+}
+
+export interface CPUUsage {
+	total_usage: number;
+	usage_in_kernelmode: number;
+	usage_in_usermode: number;
+	percpu_usage?: number[];
+}
+
+export interface CPUStats {
+	cpu_usage: CPUUsage;
+	online_cpus: number;
+	system_cpu_usage: number;
+	throttling_data: ThrottlingData;
+}
+
+export interface MemoryStats {
+	limit: number;
+	usage: number;
+	max_usage?: number;
+	stats?: {
+		active_anon?: number;
+		active_file?: number;
+		anon?: number;
+		anon_thp?: number;
+		file?: number;
+		file_dirty?: number;
+		file_mapped?: number;
+		file_writeback?: number;
+		inactive_anon?: number;
+		inactive_file?: number;
+		kernel_stack?: number;
+		pgactivate?: number;
+		pgdeactivate?: number;
+		pgfault?: number;
+		pglazyfree?: number;
+		pglazyfreed?: number;
+		pgmajfault?: number;
+		pgrefill?: number;
+		pgscan?: number;
+		pgsteal?: number;
+		shmem?: number;
+		slab?: number;
+		slab_reclaimable?: number;
+		slab_unreclaimable?: number;
+		sock?: number;
+		thp_collapse_alloc?: number;
+		thp_fault_alloc?: number;
+		unevictable?: number;
+		workingset_activate?: number;
+		workingset_nodereclaim?: number;
+		workingset_refault?: number;
+		[key: string]: number | undefined;
+	};
+	failcnt?: number;
+}
+
+export interface NetworkStats {
+	rx_bytes: number;
+	rx_dropped: number;
+	rx_errors: number;
+	rx_packets: number;
+	tx_bytes: number;
+	tx_dropped: number;
+	tx_errors: number;
+	tx_packets: number;
+}
+
+export interface PidsStats {
+	current: number;
+	limit: number;
+}
+
+export interface StorageStats {
+	read_count_normalized?: number;
+	read_size_bytes?: number;
+	write_count_normalized?: number;
+	write_size_bytes?: number;
+}
+
+export interface ContainerStats {
+	id: string;
+	name: string;
+	read: string;
+	preread: string;
+	num_procs: number;
+	pids_stats: PidsStats;
+	blkio_stats: BlkioStats;
+	cpu_stats: CPUStats;
+	precpu_stats: CPUStats;
+	memory_stats: MemoryStats;
+	networks: Record<string, NetworkStats>;
+	storage_stats: StorageStats;
+}

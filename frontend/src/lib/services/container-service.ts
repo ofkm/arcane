@@ -1,11 +1,9 @@
 import BaseAPIService from './api-service';
 import { environmentStore } from '$lib/stores/environment.store';
-import type { ContainerStatusCounts, ContainerSummaryDto } from '$lib/types/container.type';
+import type { ContainerStatusCounts, ContainerSummaryDto, ContainerStats } from '$lib/types/container.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import { transformPaginationParams } from '$lib/utils/params.util';
-
-// Would like to get rid of dockerode
-import type { ContainerCreateOptions, ContainerStats } from 'dockerode';
+import type { ContainerCreateOptions } from 'dockerode';
 
 export class ContainerService extends BaseAPIService {
 	async getContainers(options?: SearchPaginationSortRequest): Promise<Paginated<ContainerSummaryDto>> {
@@ -35,12 +33,6 @@ export class ContainerService extends BaseAPIService {
 	async createContainer(options: ContainerCreateOptions): Promise<any> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.post(`/environments/${envId}/containers`, options));
-	}
-
-	async getContainerStats(containerId: string, stream: boolean = false): Promise<ContainerStats> {
-		const envId = await environmentStore.getCurrentEnvironmentId();
-		const url = `/environments/${envId}/containers/${containerId}/stats${stream ? '?stream=true' : ''}`;
-		return this.handleResponse(this.api.get(url)) as Promise<ContainerStats>;
 	}
 
 	async stopContainer(containerId: string): Promise<any> {

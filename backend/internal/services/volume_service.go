@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -54,27 +53,6 @@ func (s *VolumeService) containersUsingVolume(ctx context.Context, dockerClient 
 	return inUse, using, nil
 }
 
-func (s *VolumeService) ListVolumes(ctx context.Context) ([]volume.Volume, error) {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	volumes, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list Docker volumes: %w", err)
-	}
-
-	vols := make([]volume.Volume, len(volumes.Volumes))
-	for i, v := range volumes.Volumes {
-		if v != nil {
-			vols[i] = *v
-		}
-	}
-	return vols, nil
-}
-
 func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*dto.VolumeDto, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -110,17 +88,6 @@ func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateO
 		return nil, fmt.Errorf("failed to inspect created volume: %w", err)
 	}
 
-	if s.db != nil {
-		dbVolume := &models.Volume{
-			BaseModel:  models.BaseModel{CreatedAt: time.Now()},
-			Name:       vol.Name,
-			Driver:     vol.Driver,
-			Mountpoint: vol.Mountpoint,
-			Scope:      "local",
-		}
-		s.db.WithContext(ctx).Create(dbVolume)
-	}
-
 	metadata := models.JSON{
 		"action": "create",
 		"driver": vol.Driver,
@@ -143,10 +110,6 @@ func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force boo
 
 	if err := dockerClient.VolumeRemove(ctx, name, force); err != nil {
 		return fmt.Errorf("failed to remove volume: %w", err)
-	}
-
-	if s.db != nil {
-		s.db.WithContext(ctx).Delete(&models.Volume{}, "name = ?", name)
 	}
 
 	metadata := models.JSON{

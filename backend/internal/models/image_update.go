@@ -23,8 +23,6 @@ type ImageUpdateRecord struct {
 	AuthRegistry   *string `json:"authRegistry,omitempty" gorm:"column:auth_registry"`
 	UsedCredential bool    `json:"usedCredential,omitempty" gorm:"column:used_credential;default:false"`
 
-	Image *Image `json:"image,omitempty" gorm:"foreignKey:ID;references:ID"`
-
 	BaseModel
 }
 

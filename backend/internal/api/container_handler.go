@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -53,8 +54,7 @@ func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerC
 		apiGroup.GET("", handler.List)
 		apiGroup.POST("", handler.Create)
 		apiGroup.GET("/:containerId", handler.GetByID)
-		apiGroup.GET("/:containerId/stats", handler.GetStats)
-		apiGroup.GET("/:containerId/stats/stream", handler.GetStatsStream)
+		apiGroup.GET("/:containerId/stats/ws", handler.GetStatsWS)
 		apiGroup.POST("/:containerId/start", handler.Start)
 		apiGroup.POST("/:containerId/stop", handler.Stop)
 		apiGroup.POST("/:containerId/restart", handler.Restart)
@@ -293,45 +293,6 @@ func (h *ContainerHandler) waitForExecCompletion(conn *websocket.Conn, done chan
 		}
 	case <-ctx.Done():
 	}
-}
-
-func (h *ContainerHandler) PullImage(c *gin.Context) {
-	id := c.Param("containerId")
-
-	container, err := h.containerService.GetContainerByID(c.Request.Context(), id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Container not found: " + err.Error()},
-		})
-		return
-	}
-
-	imageName := container.Image
-	if imageName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Container has no image to pull"},
-		})
-		return
-	}
-
-	currentUser, ok := middleware.RequireAuthentication(c)
-	if !ok {
-		return
-	}
-	if err := h.imageService.PullImage(c.Request.Context(), imageName, c.Writer, *currentUser, nil); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to pull image: " + err.Error()},
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Image pulled successfully", "image": imageName},
-	})
 }
 
 func (h *ContainerHandler) List(c *gin.Context) {
@@ -595,79 +556,77 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 	})
 }
 
-// GetStats returns container resource usage statistics
-func (h *ContainerHandler) GetStats(c *gin.Context) {
-	containerID := c.Param("containerId")
-	if containerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Container ID is required"},
-		})
-		return
-	}
-
-	// Check if streaming is requested
-	stream := c.Query("stream") == "true"
-
-	stats, err := h.containerService.GetStats(c.Request.Context(), containerID, stream)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    stats,
-	})
+type containerStatsStream struct {
+	hub    *ws.Hub
+	once   sync.Once
+	cancel context.CancelFunc
 }
 
-func (h *ContainerHandler) GetStatsStream(c *gin.Context) {
+func (h *ContainerHandler) getOrStartContainerStatsHub(containerID string) *ws.Hub {
+	key := fmt.Sprintf("%s::stats", containerID)
+	v, _ := h.logStreams.LoadOrStore(key, &containerStatsStream{
+		hub: ws.NewHub(1024),
+	})
+	ss := v.(*containerStatsStream)
+
+	ss.once.Do(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		ss.cancel = cancel
+		go ss.hub.Run(ctx)
+
+		slog.Debug("starting stats stream pipeline", "containerID", containerID)
+
+		statsChan := make(chan interface{}, 256)
+		go func() {
+			defer func() {
+				close(statsChan)
+				slog.Debug("stats channel closed", "containerID", containerID)
+			}()
+
+			if err := h.containerService.StreamStats(ctx, containerID, statsChan); err != nil {
+				slog.Error("StreamStats failed", "containerID", containerID, "err", err)
+			}
+		}()
+
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case stats, ok := <-statsChan:
+					if !ok {
+						return
+					}
+					if b, err := json.Marshal(stats); err == nil {
+						ss.hub.Broadcast(b)
+					}
+				}
+			}
+		}()
+	})
+
+	return ss.hub
+}
+
+func (h *ContainerHandler) GetStatsWS(c *gin.Context) {
 	containerID := c.Param("containerId")
 	if containerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Container ID is required"},
-		})
+		containerID = c.Param("id")
+	}
+	if strings.TrimSpace(containerID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Container ID is required"}})
 		return
 	}
 
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
+	conn, err := h.containerWSUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		slog.Error("Failed to upgrade websocket connection", "err", err)
+		return
+	}
 
-	statsChan := make(chan interface{}, 10)
-	errChan := make(chan error, 1)
+	slog.Debug("websocket connection upgraded for stats", "containerID", containerID)
 
-	go func() {
-		defer close(statsChan)
-		defer close(errChan)
-
-		if err := h.containerService.StreamStats(c.Request.Context(), containerID, statsChan); err != nil {
-			errChan <- err
-		}
-	}()
-
-	c.Stream(func(w io.Writer) bool {
-		select {
-		case stats, ok := <-statsChan:
-			if !ok {
-				return false
-			}
-			c.SSEvent("stats", stats)
-			return true
-		case err, ok := <-errChan:
-			if !ok || err == nil {
-				// graceful shutdown or no error; stop streaming
-				return false
-			}
-			c.SSEvent("error", gin.H{"error": err.Error()})
-			return false
-		case <-c.Request.Context().Done():
-			return false
-		}
-	})
+	hub := h.getOrStartContainerStatsHub(containerID)
+	ws.ServeClient(context.Background(), hub, conn)
+	slog.Debug("websocket connection closed for stats", "containerID", containerID)
 }

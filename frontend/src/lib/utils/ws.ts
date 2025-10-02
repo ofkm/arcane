@@ -165,3 +165,32 @@ export function createStatsWebSocket(opts: {
 		maxBackoff: opts.maxBackoff
 	});
 }
+
+export function createContainerStatsWebSocket(opts: {
+	getEnvId: () => string;
+	containerId: string;
+	onMessage: (data: any) => void;
+	onOpen?: () => void;
+	onClose?: () => void;
+	onError?: (err: Event | Error) => void;
+	maxBackoff?: number;
+	shouldReconnect?: () => boolean;
+}) {
+	const buildUrl = () => {
+		const envId = opts.getEnvId() || '0';
+		const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+		return `${protocol}://${location.host}/api/environments/${envId}/containers/${opts.containerId}/stats/ws`;
+	};
+
+	return new ReconnectingWebSocket<any>({
+		buildUrl,
+		parseMessage: (evt) => JSON.parse(evt.data as string),
+		onMessage: opts.onMessage,
+		onOpen: opts.onOpen,
+		onClose: opts.onClose,
+		onError: opts.onError,
+		maxBackoff: opts.maxBackoff,
+		autoConnect: false,
+		shouldReconnect: opts.shouldReconnect
+	});
+}

@@ -91,33 +91,6 @@ func (s *ContainerService) RestartContainer(ctx context.Context, containerID str
 	return dockerClient.ContainerRestart(ctx, containerID, container.StopOptions{})
 }
 
-func (s *ContainerService) GetContainerLogs(ctx context.Context, containerID string, tail string) (string, error) {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	options := container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Tail:       tail,
-	}
-
-	logs, err := dockerClient.ContainerLogs(ctx, containerID, options)
-	if err != nil {
-		return "", fmt.Errorf("failed to get container logs: %w", err)
-	}
-	defer logs.Close()
-
-	logBytes, err := io.ReadAll(logs)
-	if err != nil {
-		return "", fmt.Errorf("failed to read container logs: %w", err)
-	}
-
-	return string(logBytes), nil
-}
-
 func (s *ContainerService) GetContainerByID(ctx context.Context, id string) (*container.InspectResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -208,28 +181,6 @@ func (s *ContainerService) CreateContainer(ctx context.Context, config *containe
 	}
 
 	return &containerJSON, nil
-}
-
-func (s *ContainerService) GetStats(ctx context.Context, containerID string, stream bool) (interface{}, error) {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	stats, err := dockerClient.ContainerStats(ctx, containerID, stream)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get container stats: %w", err)
-	}
-	defer stats.Body.Close()
-
-	var statsData interface{}
-	decoder := json.NewDecoder(stats.Body)
-	if err := decoder.Decode(&statsData); err != nil {
-		return nil, fmt.Errorf("failed to decode stats: %w", err)
-	}
-
-	return statsData, nil
 }
 
 func (s *ContainerService) StreamStats(ctx context.Context, containerID string, statsChan chan<- interface{}) error {
