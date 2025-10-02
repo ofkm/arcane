@@ -182,20 +182,18 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<div>
-	<Card.Root>
-		<Card.Content class="py-5">
-			<ArcaneTable
-				items={events}
-				bind:requestOptions
-				bind:selectedIds
-				onRefresh={async (options) => (events = await eventService.getEvents(options))}
-				{columns}
-				rowActions={RowActions}
-				mobileCard={EventMobileCardSnippet}
-			/>
-		</Card.Content>
-	</Card.Root>
-</div>
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Content class="px-6 py-5">
+		<ArcaneTable
+			items={events}
+			bind:requestOptions
+			bind:selectedIds
+			onRefresh={async (options) => (events = await eventService.getEvents(options))}
+			{columns}
+			rowActions={RowActions}
+			mobileCard={EventMobileCardSnippet}
+		/>
+	</Card.Content>
+</Card.Root>
 
 <EventDetailsDialog bind:open={detailsOpen} event={detailsEvent} />

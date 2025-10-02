@@ -64,8 +64,10 @@
 	/>
 {/snippet}
 
-<Card.Root class="relative flex flex-col rounded-lg border shadow-sm">
-	<Card.Header class="px-6 pt-5 pb-3">
+<Card.Root class="relative flex flex-col gap-6 rounded-lg border py-3 shadow-sm">
+	<Card.Header
+		class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 pt-5 pb-3 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+	>
 		<div class="flex items-center justify-between">
 			<div>
 				<Card.Title>
@@ -79,7 +81,7 @@
 			</Button>
 		</div>
 	</Card.Header>
-	<Card.Content class="flex-1 p-0">
+	<Card.Content class="flex-1 p-0 px-6">
 		<div class="flex h-full flex-col">
 			<ArcaneTable
 				items={containers}

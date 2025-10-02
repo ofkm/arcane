@@ -66,8 +66,8 @@
 <div class="bg-muted flex min-h-screen flex-col items-center justify-center p-6 md:p-10">
 	<div class="w-full max-w-sm md:max-w-3xl">
 		<div class="flex flex-col gap-6">
-			<Card.Root class="overflow-hidden p-0">
-				<Card.Content class="grid p-0 md:grid-cols-2">
+			<Card.Root class="flex flex-col gap-6 overflow-hidden p-0 py-3">
+				<Card.Content class="grid p-0 px-6 md:grid-cols-2">
 					<div class={showOidcLoginButton && !showLocalLoginForm ? 'flex items-center justify-center p-6 md:p-8' : 'p-6 md:p-8'}>
 						<div class="flex flex-col gap-6">
 							<div class="flex flex-col items-center text-center">
@@ -210,8 +210,8 @@
 	</div>
 </div>
 
-<div class="fixed bottom-0 left-0 right-0 p-4">
-	<div class="text-muted-foreground text-balance text-center text-xs">
+<div class="fixed right-0 bottom-0 left-0 p-4">
+	<div class="text-muted-foreground text-center text-xs text-balance">
 		<div class="flex items-center justify-center gap-4">
 			<a
 				href="https://github.com/ofkm/arcane"

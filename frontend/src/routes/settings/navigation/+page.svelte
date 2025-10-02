@@ -3,7 +3,6 @@
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import EyeIcon from '@lucide/svelte/icons/eye';
@@ -147,13 +146,13 @@
 >
 	{#snippet mainContent()}
 		<div class="space-y-4 sm:space-y-6">
-			<ArcaneCard>
-				<ArcaneCardHeader icon={NavigationIcon}>
+			<Card.Root>
+				<Card.Header icon={NavigationIcon}>
 					<div class="flex flex-col space-y-1.5">
 						<Card.Title>{m.navigation_mobile_appearance_title()}</Card.Title>
 						<Card.Description>{m.navigation_mobile_appearance_description()}</Card.Description>
 					</div>
-				</ArcaneCardHeader>
+				</Card.Header>
 				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
 					<div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))]">
 						<NavigationModeSettingControl
@@ -187,15 +186,15 @@
 						/>
 					</div>
 				</Card.Content>
-			</ArcaneCard>
+			</Card.Root>
 
-			<ArcaneCard>
-				<ArcaneCardHeader icon={NavigationIcon}>
+			<Card.Root>
+				<Card.Header icon={NavigationIcon}>
 					<div class="flex flex-col space-y-1.5">
 						<Card.Title>{m.navigation_mobile_behavior_title()}</Card.Title>
 						<Card.Description>{m.navigation_mobile_behavior_description()}</Card.Description>
 					</div>
-				</ArcaneCardHeader>
+				</Card.Header>
 				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
 					<div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))]">
 						<NavigationSettingControl
@@ -229,7 +228,7 @@
 						/>
 					</div>
 				</Card.Content>
-			</ArcaneCard>
+			</Card.Root>
 		</div>
 	{/snippet}
 </SettingsPageLayout>

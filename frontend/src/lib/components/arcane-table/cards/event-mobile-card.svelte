@@ -1,6 +1,5 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { truncateString } from '$lib/utils/string.utils';
@@ -51,8 +50,8 @@
 	const severityVariant = $derived(getSeverityBadgeVariant(item.severity));
 </script>
 
-<ArcaneCard class={className} onclick={onclick ? () => onclick(item) : undefined}>
-	<ArcaneCardHeader icon={BellIcon} {iconVariant} {compact} enableHover={!!onclick}>
+<Card.Root class={className} onclick={onclick ? () => onclick(item) : undefined}>
+	<Card.Header icon={BellIcon} {iconVariant} {compact} enableHover={!!onclick}>
 		<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
 			<div class="min-w-0 flex-1">
 				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.title}>
@@ -69,7 +68,7 @@
 				{/if}
 			</div>
 		</div>
-	</ArcaneCardHeader>
+	</Card.Header>
 
 	{#if !compact}
 		<Card.Content class="flex flex-1 flex-col p-3.5">
@@ -130,4 +129,4 @@
 			{/if}
 		</Card.Content>
 	{/if}
-</ArcaneCard>
+</Card.Root>

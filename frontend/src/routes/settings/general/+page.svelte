@@ -3,7 +3,6 @@
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
@@ -99,13 +98,13 @@
 	{#snippet mainContent()}
 		<fieldset disabled={isReadOnly} class="relative">
 			<div class="space-y-4 sm:space-y-6">
-				<ArcaneCard>
-					<ArcaneCardHeader icon={FolderIcon}>
+				<Card.Root>
+					<Card.Header icon={FolderIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.general_projects_heading()}</Card.Title>
 							<Card.Description>{m.general_projects_description()}</Card.Description>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
 							<TextInputWithLabel
@@ -125,15 +124,15 @@
 							/>
 						</div>
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 
-				<ArcaneCard>
-					<ArcaneCardHeader icon={UserIcon}>
+				<Card.Root>
+					<Card.Header icon={UserIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.general_user_avatars_heading()}</Card.Title>
 							<Card.Description>{m.general_user_avatars_description()}</Card.Description>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<SwitchWithLabel
 							id="enableGravatar"
@@ -142,7 +141,7 @@
 							bind:checked={$formInputs.enableGravatar.value}
 						/>
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 			</div>
 		</fieldset>
 	{/snippet}

@@ -7,7 +7,6 @@
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import CpuIcon from '@lucide/svelte/icons/cpu';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import type { ContainerDetailsDto } from '$lib/types/container.type';
 	import { format } from 'date-fns';
@@ -45,13 +44,13 @@
 	}
 </script>
 
-<ArcaneCard>
-	<ArcaneCardHeader icon={InfoIcon}>
+<Card.Root>
+	<Card.Header icon={InfoIcon}>
 		<div class="flex flex-col space-y-1.5">
 			<Card.Title>{m.containers_details_title()}</Card.Title>
 			<Card.Description>{m.containers_details_description()}</Card.Description>
 		</div>
-	</ArcaneCardHeader>
+	</Card.Header>
 	<Card.Content class="p-4">
 		<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
 			<div class="flex items-start gap-3">
@@ -173,4 +172,4 @@
 			{/if}
 		</div>
 	</Card.Content>
-</ArcaneCard>
+</Card.Root>

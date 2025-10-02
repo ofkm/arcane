@@ -3,7 +3,6 @@
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { Button } from '$lib/components/ui/button';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
@@ -223,13 +222,13 @@
 	{#snippet mainContent()}
 		<fieldset disabled={isReadOnly} class="relative">
 			<div class="space-y-4 sm:space-y-6">
-				<ArcaneCard>
-					<ArcaneCardHeader icon={LockIcon}>
+				<Card.Root>
+					<Card.Header icon={LockIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.security_authentication_heading()}</Card.Title>
 							<Card.Description>Configure login methods for your application</Card.Description>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
 							<SwitchWithLabel
@@ -278,15 +277,15 @@
 							</div>
 						</div>
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 
-				<ArcaneCard>
-					<ArcaneCardHeader icon={ClockIcon} class="items-start">
+				<Card.Root>
+					<Card.Header icon={ClockIcon} class="items-start">
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.security_session_heading()}</Card.Title>
 							<Card.Description>Configure session timeout and duration</Card.Description>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<TextInputWithLabel
 							bind:value={$formInputs.authSessionTimeout.value}
@@ -296,15 +295,15 @@
 							type="number"
 						/>
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 
-				<ArcaneCard>
-					<ArcaneCardHeader icon={KeyIcon} class="items-start">
+				<Card.Root>
+					<Card.Header icon={KeyIcon} class="items-start">
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.security_password_policy_label()}</Card.Title>
 							<Card.Description>Set password strength requirements</Card.Description>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<Tooltip.Provider>
 							<div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-labelledby="passwordPolicyLabel">
@@ -355,7 +354,7 @@
 							</div>
 						</Tooltip.Provider>
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 			</div>
 		</fieldset>
 	{/snippet}

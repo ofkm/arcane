@@ -8,7 +8,6 @@
 	import type { Snippet } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { cn } from '$lib/utils';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import DatabaseIcon from '@lucide/svelte/icons/database';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -51,9 +50,9 @@
 	const isUntagged = $derived(!item.repoTags || item.repoTags.length === 0 || item.repoTags[0] === '<none>:<none>');
 </script>
 
-<ArcaneCard class={className} onclick={onclick ? () => onclick(item) : undefined}>
+<Card.Root class={className} onclick={onclick ? () => onclick(item) : undefined}>
 	{#snippet children()}
-		<ArcaneCardHeader icon={HardDriveIcon} {iconVariant} {compact} enableHover={!!onclick}>
+		<Card.Header icon={HardDriveIcon} {iconVariant} {compact} enableHover={!!onclick}>
 			{#snippet children()}
 				<div class="min-w-0 flex-1">
 					<h3
@@ -83,7 +82,7 @@
 					{/if}
 				</div>
 			{/snippet}
-		</ArcaneCardHeader>
+		</Card.Header>
 
 		{#if !compact}
 			<Card.Content class="flex flex-1 flex-col p-3.5">
@@ -168,4 +167,4 @@
 			</Card.Content>
 		{/if}
 	{/snippet}
-</ArcaneCard>
+</Card.Root>

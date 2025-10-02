@@ -19,7 +19,6 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { toast } from 'svelte-sonner';
 	import { ArcaneButton } from '$lib/components/arcane-button';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import { imageService } from '$lib/services/image-service.js';
 
@@ -106,13 +105,13 @@
 
 	{#if image}
 		<div class="space-y-6">
-			<ArcaneCard>
-				<ArcaneCardHeader icon={InfoIcon}>
+			<Card.Root>
+				<Card.Header icon={InfoIcon}>
 					<div class="flex flex-col space-y-1.5">
 						<Card.Title>{m.images_details_title()}</Card.Title>
 						<Card.Description>{m.images_details_description()}</Card.Description>
 					</div>
-				</ArcaneCardHeader>
+				</Card.Header>
 				<Card.Content class="p-4">
 					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
 						<div class="flex items-start gap-3">
@@ -224,16 +223,16 @@
 						{/if}
 					</div>
 				</Card.Content>
-			</ArcaneCard>
+			</Card.Root>
 
 			{#if image.repoTags && image.repoTags.length > 0}
-				<ArcaneCard>
-					<ArcaneCardHeader icon={TagIcon}>
+				<Card.Root>
+					<Card.Header icon={TagIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.images_tags_title()}</Card.Title>
 							<Card.Description>{m.images_tags_description()}</Card.Description>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="p-4">
 						<div class="flex flex-wrap gap-2">
 							{#each image.repoTags as tag (tag)}
@@ -241,17 +240,17 @@
 							{/each}
 						</div>
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 			{/if}
 
 			{#if image.config?.env && image.config.env.length > 0}
-				<ArcaneCard>
-					<ArcaneCardHeader icon={SettingsIcon}>
+				<Card.Root>
+					<Card.Header icon={SettingsIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.images_env_vars_title()}</Card.Title>
 							<Card.Description>{m.images_env_vars_description()}</Card.Description>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="space-y-2 p-4">
 						{#each image.config.env as env (env)}
 							{@const [key, ...valueParts] = env.split('=')}
@@ -268,7 +267,7 @@
 							{/if}
 						{/each}
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 			{/if}
 		</div>
 	{:else}

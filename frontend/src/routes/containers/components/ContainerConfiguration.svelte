@@ -4,7 +4,6 @@
 	import NetworkIcon from '@lucide/svelte/icons/network';
 	import TagIcon from '@lucide/svelte/icons/tag';
 	import { PortBadge } from '$lib/components/badges';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import type { ContainerDetailsDto } from '$lib/types/container.type';
 
@@ -21,13 +20,13 @@
 
 <div class="space-y-6">
 	{#if hasEnvVars}
-		<ArcaneCard>
-			<ArcaneCardHeader icon={SettingsIcon}>
+		<Card.Root>
+			<Card.Header icon={SettingsIcon}>
 				<div class="flex flex-col space-y-1.5">
 					<Card.Title>{m.containers_env_vars_title()}</Card.Title>
 					<Card.Description>{m.containers_env_vars_description()}</Card.Description>
 				</div>
-			</ArcaneCardHeader>
+			</Card.Header>
 			<Card.Content class="p-4">
 				{#if container.config?.env && container.config.env.length > 0}
 					<div class="space-y-3">
@@ -57,31 +56,31 @@
 					</div>
 				{/if}
 			</Card.Content>
-		</ArcaneCard>
+		</Card.Root>
 	{/if}
 
 	{#if hasPorts}
-		<ArcaneCard>
-			<ArcaneCardHeader icon={NetworkIcon}>
+		<Card.Root>
+			<Card.Header icon={NetworkIcon}>
 				<div class="flex flex-col space-y-1.5">
 					<Card.Title>{m.containers_port_mappings()}</Card.Title>
 					<Card.Description>{m.containers_port_mappings_description()}</Card.Description>
 				</div>
-			</ArcaneCardHeader>
+			</Card.Header>
 			<Card.Content class="p-4">
 				<PortBadge ports={container.ports ?? []} {baseServerUrl} />
 			</Card.Content>
-		</ArcaneCard>
+		</Card.Root>
 	{/if}
 
 	{#if hasLabels}
-		<ArcaneCard>
-			<ArcaneCardHeader icon={TagIcon}>
+		<Card.Root>
+			<Card.Header icon={TagIcon}>
 				<div class="flex flex-col space-y-1.5">
 					<Card.Title>{m.common_labels()}</Card.Title>
 					<Card.Description>{m.common_labels_description()}</Card.Description>
 				</div>
-			</ArcaneCardHeader>
+			</Card.Header>
 			<Card.Content class="p-4">
 				{#if container.labels && Object.keys(container.labels).length > 0}
 					<div class="space-y-3">
@@ -100,6 +99,6 @@
 					</div>
 				{/if}
 			</Card.Content>
-		</ArcaneCard>
+		</Card.Root>
 	{/if}
 </div>

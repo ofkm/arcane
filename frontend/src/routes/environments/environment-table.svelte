@@ -223,19 +223,17 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<div>
-	<Card.Root>
-		<Card.Content class="py-5">
-			<ArcaneTable
-				items={environments}
-				bind:requestOptions
-				bind:selectedIds
-				onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-				onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
-				{columns}
-				rowActions={RowActions}
-				mobileCard={EnvironmentMobileCardSnippet}
-			/>
-		</Card.Content>
-	</Card.Root>
-</div>
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Content class="px-6 py-5">
+		<ArcaneTable
+			items={environments}
+			bind:requestOptions
+			bind:selectedIds
+			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
+			onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
+			{columns}
+			rowActions={RowActions}
+			mobileCard={EnvironmentMobileCardSnippet}
+		/>
+	</Card.Content>
+</Card.Root>

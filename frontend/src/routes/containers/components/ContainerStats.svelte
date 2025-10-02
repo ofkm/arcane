@@ -3,7 +3,6 @@
 	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import { Progress } from '$lib/components/ui/progress';
 	import { Skeleton } from '$lib/components/ui/skeleton';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import bytes from 'bytes';
 	import type { ContainerDetailsDto, ContainerStats as ContainerStatsType } from '$lib/types/container.type';
@@ -149,13 +148,13 @@
 	</div>
 {/snippet}
 
-<ArcaneCard>
-	<ArcaneCardHeader icon={ActivityIcon}>
+<Card.Root>
+	<Card.Header icon={ActivityIcon}>
 		<div class="flex flex-col space-y-1.5">
 			<Card.Title>{m.containers_resource_metrics()}</Card.Title>
 			<Card.Description>{m.containers_resource_metrics_description()}</Card.Description>
 		</div>
-	</ArcaneCardHeader>
+	</Card.Header>
 	<Card.Content class="p-4">
 		{#if loading}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -469,4 +468,4 @@
 			</div>
 		{/if}
 	</Card.Content>
-</ArcaneCard>
+</Card.Root>

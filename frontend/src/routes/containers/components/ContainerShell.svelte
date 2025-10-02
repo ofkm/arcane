@@ -6,7 +6,6 @@
 	import Terminal from '$lib/components/terminal/terminal.svelte';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import settingsStore from '$lib/stores/config-store';
@@ -91,8 +90,8 @@
 	}
 </script>
 
-<ArcaneCard>
-	<ArcaneCardHeader icon={TerminalIcon}>
+<Card.Root>
+	<Card.Header icon={TerminalIcon}>
 		<div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 			<div class="flex flex-col gap-1.5">
 				<div class="flex items-center gap-2">
@@ -142,7 +141,7 @@
 				</Button>
 			</div>
 		</div>
-	</ArcaneCardHeader>
+	</Card.Header>
 	<Card.Content class="overflow-hidden p-2">
 		<div class="h-full overflow-hidden rounded-lg border">
 			{#if websocketUrl}
@@ -157,4 +156,4 @@
 			{/if}
 		</div>
 	</Card.Content>
-</ArcaneCard>
+</Card.Root>

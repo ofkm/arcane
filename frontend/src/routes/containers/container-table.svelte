@@ -245,8 +245,8 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root class="border shadow-sm">
-	<Card.Content>
+<Card.Root class="flex flex-col gap-6 border py-3 shadow-sm">
+	<Card.Content class="px-6">
 		<ArcaneTable
 			persistKey="arcane-container-table"
 			items={containers}

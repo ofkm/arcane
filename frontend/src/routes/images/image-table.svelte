@@ -262,8 +262,8 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root>
-	<Card.Content class="py-5">
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Content class="px-6 py-5">
 		<ArcaneTable
 			persistKey="arcane-image-table"
 			items={images}

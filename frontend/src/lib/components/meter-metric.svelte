@@ -3,7 +3,6 @@
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import type { Icon as IconType } from '@lucide/svelte';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -36,9 +35,9 @@
 	const Icon = icon;
 </script>
 
-<ArcaneCard>
+<Card.Root>
 	{#snippet children()}
-		<ArcaneCardHeader icon={loading ? LoaderCircleIcon : icon} iconVariant="primary" compact>
+		<Card.Header icon={loading ? LoaderCircleIcon : icon} iconVariant="primary" compact>
 			{#snippet children()}
 				<div class="min-w-0 flex-1">
 					<div class="text-foreground text-sm font-semibold">{title}</div>
@@ -47,7 +46,7 @@
 					{/if}
 				</div>
 			{/snippet}
-		</ArcaneCardHeader>
+		</Card.Header>
 
 		<Card.Content class="flex flex-col justify-center p-3">
 			<div class="w-full space-y-2">
@@ -89,4 +88,4 @@
 			</div>
 		</Card.Content>
 	{/snippet}
-</ArcaneCard>
+</Card.Root>

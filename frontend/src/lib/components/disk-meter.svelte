@@ -3,7 +3,6 @@
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import bytes from 'bytes';
 
@@ -30,16 +29,16 @@
 	}
 </script>
 
-<ArcaneCard class={className}>
+<Card.Root class={className}>
 	{#snippet children()}
-		<ArcaneCardHeader icon={loading ? LoaderCircleIcon : HardDriveIcon} iconVariant="primary" compact>
+		<Card.Header icon={loading ? LoaderCircleIcon : HardDriveIcon} iconVariant="primary" compact>
 			{#snippet children()}
 				<div class="min-w-0 flex-1">
 					<div class="text-foreground text-sm font-semibold">{m.dashboard_meter_disk()}</div>
 					<div class="text-muted-foreground text-xs">{m.dashboard_meter_disk_desc()}</div>
 				</div>
 			{/snippet}
-		</ArcaneCardHeader>
+		</Card.Header>
 
 		<Card.Content class="flex flex-1 items-center p-3 sm:p-4">
 			<div class="flex w-full items-center gap-4">
@@ -97,4 +96,4 @@
 			</div>
 		</Card.Content>
 	{/snippet}
-</ArcaneCard>
+</Card.Root>

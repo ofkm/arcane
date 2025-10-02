@@ -1,7 +1,6 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import NetworkIcon from '@lucide/svelte/icons/network';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import type { ContainerDetailsDto } from '$lib/types/container.type';
 
@@ -27,13 +26,13 @@
 </script>
 
 <div class="space-y-6">
-	<ArcaneCard>
-		<ArcaneCardHeader icon={NetworkIcon}>
+	<Card.Root>
+		<Card.Header icon={NetworkIcon}>
 			<div class="flex flex-col space-y-1.5">
 				<Card.Title>{m.containers_networks_title()}</Card.Title>
 				<Card.Description>{m.containers_networks_description()}</Card.Description>
 			</div>
-		</ArcaneCardHeader>
+		</Card.Header>
 		<Card.Content class="p-4">
 			{#if container.networkSettings?.networks && Object.keys(container.networkSettings.networks).length > 0}
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
@@ -45,8 +44,10 @@
 							MacAddress: rawNetworkConfig.macAddress,
 							Aliases: rawNetworkConfig.aliases
 						})}
-						<Card.Root class="pt-0">
-							<Card.Header class="bg-muted/30 rounded-t-xl p-4">
+						<Card.Root class="flex flex-col gap-6 py-3 pt-0">
+							<Card.Header
+								class="bg-muted/30 @container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 rounded-t-xl p-4 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+							>
 								<div class="flex items-center gap-3">
 									<div class="rounded-lg bg-blue-500/10 p-2.5">
 										<NetworkIcon class="size-5 text-blue-500" />
@@ -59,7 +60,7 @@
 									</div>
 								</div>
 							</Card.Header>
-							<Card.Content class="space-y-4 pt-0">
+							<Card.Content class="space-y-4 px-6 pt-0">
 								<div class="space-y-2">
 									<div class="text-muted-foreground text-xs font-semibold uppercase">
 										{m.containers_ip_address()}
@@ -125,5 +126,5 @@
 				</div>
 			{/if}
 		</Card.Content>
-	</ArcaneCard>
+	</Card.Root>
 </div>

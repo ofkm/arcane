@@ -4,7 +4,6 @@
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import LogViewer from '$lib/components/log-viewer.svelte';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 
 	let {
@@ -28,8 +27,8 @@
 	function onToggleAutoScroll() {}
 </script>
 
-<ArcaneCard>
-	<ArcaneCardHeader icon={TerminalIcon}>
+<Card.Root>
+	<Card.Header icon={TerminalIcon}>
 		<div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 			<div class="flex flex-col gap-1.5">
 				<div class="flex items-center gap-2">
@@ -85,7 +84,7 @@
 				</div>
 			</div>
 		</div>
-	</ArcaneCardHeader>
+	</Card.Header>
 	<Card.Content class="p-0">
 		<LogViewer
 			bind:this={viewer}
@@ -101,4 +100,4 @@
 			{onToggleAutoScroll}
 		/>
 	</Card.Content>
-</ArcaneCard>
+</Card.Root>

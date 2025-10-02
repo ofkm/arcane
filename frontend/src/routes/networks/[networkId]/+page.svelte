@@ -20,7 +20,6 @@
 	import { toast } from 'svelte-sonner';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { ArcaneButton } from '$lib/components/arcane-button';
-	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { goto } from '$app/navigation';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -143,13 +142,13 @@
 
 	{#if network}
 		<div class="space-y-6">
-			<ArcaneCard>
-				<ArcaneCardHeader icon={InfoIcon}>
+			<Card.Root>
+				<Card.Header icon={InfoIcon}>
 					<div class="flex flex-col space-y-1.5">
 						<Card.Title>{m.networks_details_title()}</Card.Title>
 						<Card.Description>{m.networks_details_description()}</Card.Description>
 					</div>
-				</ArcaneCardHeader>
+				</Card.Header>
 				<Card.Content class="p-4">
 					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
 						<div class="flex items-start gap-3">
@@ -261,16 +260,16 @@
 						</div>
 					</div>
 				</Card.Content>
-			</ArcaneCard>
+			</Card.Root>
 
 			{#if network.ipam?.Config && network.ipam.Config.length > 0}
-				<ArcaneCard>
-					<ArcaneCardHeader icon={SettingsIcon}>
+				<Card.Root>
+					<Card.Header icon={SettingsIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.networks_ipam_title()}</Card.Title>
 							<Card.Description>{m.networks_ipam_description()}</Card.Description>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="p-4">
 						{#each network.ipam.Config as config, i (i)}
 							<div class="bg-card/50 mb-4 rounded-lg border p-4 last:mb-0">
@@ -358,19 +357,19 @@
 							</div>
 						{/if}
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 			{/if}
 
 			{#if connectedContainers.length > 0}
-				<ArcaneCard>
-					<ArcaneCardHeader icon={ContainerIcon}>
+				<Card.Root>
+					<Card.Header icon={ContainerIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.networks_connected_containers_title()}</Card.Title>
 							<Card.Description
 								>{m.networks_connected_containers_description({ count: connectedContainers.length })}</Card.Description
 							>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="p-4">
 						<div class="bg-card divide-y rounded-lg border">
 							{#each connectedContainers as container (container.id)}
@@ -393,17 +392,17 @@
 							{/each}
 						</div>
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 			{/if}
 
 			{#if network.labels && Object.keys(network.labels).length > 0}
-				<ArcaneCard>
-					<ArcaneCardHeader icon={TagIcon}>
+				<Card.Root>
+					<Card.Header icon={TagIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.networks_labels_title()}</Card.Title>
 							<Card.Description>{m.networks_labels_description()}</Card.Description>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="p-4">
 						<div class="bg-card divide-y rounded-lg border">
 							{#each Object.entries(network.labels) as [key, value] (key)}
@@ -421,17 +420,17 @@
 							{/each}
 						</div>
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 			{/if}
 
 			{#if network.options && Object.keys(network.options).length > 0}
-				<ArcaneCard>
-					<ArcaneCardHeader icon={SettingsIcon}>
+				<Card.Root>
+					<Card.Header icon={SettingsIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.networks_options_title()}</Card.Title>
 							<Card.Description>{m.networks_options_description()}</Card.Description>
 						</div>
-					</ArcaneCardHeader>
+					</Card.Header>
 					<Card.Content class="p-4">
 						<div class="bg-card divide-y rounded-lg border">
 							{#each Object.entries(network.options) as [key, value] (key)}
@@ -449,7 +448,7 @@
 							{/each}
 						</div>
 					</Card.Content>
-				</ArcaneCard>
+				</Card.Root>
 			{/if}
 		</div>
 	{:else}
