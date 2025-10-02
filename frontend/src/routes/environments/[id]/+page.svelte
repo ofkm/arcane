@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import MonitorIcon from '@lucide/svelte/icons/monitor';
@@ -13,9 +14,21 @@
 	import Label from '$lib/components/ui/label/label.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { environmentManagementService } from '$lib/services/env-mgmt-service.js';
+	import { environmentStore } from '$lib/stores/environment.store';
+	import type { Environment } from '$lib/types/environment.type';
 
 	let { data } = $props();
-	let { environment } = $derived(data);
+	let { environment, settings } = $derived(data);
+
+	let showSwitchDialog = $state(false);
+	let currentEnvironment = $state<Environment | null>(null);
+
+	$effect(() => {
+		const unsubscribe = environmentStore.selected.subscribe((env) => {
+			currentEnvironment = env;
+		});
+		return unsubscribe;
+	});
 
 	let isRefreshing = $state(false);
 	let isTestingConnection = $state(false);
@@ -82,6 +95,29 @@
 	}
 
 	const environmentDisplayName = $derived(() => environment?.name ?? m.common_unknown());
+
+	const needsEnvironmentSwitch = $derived(() => {
+		return currentEnvironment?.id !== environment?.id;
+	});
+
+	async function handleEditSettings() {
+		if (needsEnvironmentSwitch()) {
+			showSwitchDialog = true;
+		} else {
+			goto('/settings');
+		}
+	}
+
+	async function confirmSwitchAndEdit() {
+		try {
+			await environmentStore.setEnvironment(environment);
+			showSwitchDialog = false;
+			goto('/settings');
+		} catch (error) {
+			console.error('Failed to switch environment:', error);
+			toast.error('Failed to switch environment');
+		}
+	}
 </script>
 
 <div class="space-y-6 pb-16">
@@ -185,6 +221,170 @@
 									</div>
 								</div>
 							</div>
+
+							{#if settings}
+								<div class="border-t pt-6">
+									<div class="mb-4 flex items-center justify-between">
+										<h3 class="text-lg font-semibold">{m.sidebar_settings()}</h3>
+										<Button variant="outline" size="sm" onclick={handleEditSettings}>
+											<SettingsIcon class="mr-2 size-4" />
+											{m.common_edit()}
+										</Button>
+									</div>
+
+									<!-- Docker Settings -->
+									<div class="mb-6">
+										<h4 class="text-muted-foreground mb-3 text-sm font-semibold uppercase tracking-wide">{m.docker_title()}</h4>
+										<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+											<div>
+												<Label class="text-muted-foreground text-sm font-medium">{m.docker_enable_polling_label()}</Label>
+												<div class="mt-1">
+													<StatusBadge
+														text={settings.pollingEnabled ? m.common_enabled() : m.common_disabled()}
+														variant={settings.pollingEnabled ? 'green' : 'gray'}
+													/>
+												</div>
+											</div>
+											{#if settings.pollingEnabled}
+												<div>
+													<Label class="text-muted-foreground text-sm font-medium">{m.docker_polling_interval_label()}</Label>
+													<div class="mt-1 text-sm">{settings.pollingInterval} min</div>
+												</div>
+											{/if}
+											<div>
+												<Label class="text-muted-foreground text-sm font-medium">{m.docker_auto_update_label()}</Label>
+												<div class="mt-1">
+													<StatusBadge
+														text={settings.autoUpdate ? m.common_enabled() : m.common_disabled()}
+														variant={settings.autoUpdate ? 'green' : 'gray'}
+													/>
+												</div>
+											</div>
+											{#if settings.autoUpdate}
+												<div>
+													<Label class="text-muted-foreground text-sm font-medium">{m.docker_auto_update_interval_label()}</Label>
+													<div class="mt-1 text-sm">{settings.autoUpdateInterval} min</div>
+												</div>
+											{/if}
+											<div>
+												<Label class="text-muted-foreground text-sm font-medium">{m.docker_prune_action_label()}</Label>
+												<div class="mt-1 text-sm capitalize">{settings.dockerPruneMode || 'dangling'}</div>
+											</div>
+											<div>
+												<Label class="text-muted-foreground text-sm font-medium">{m.docker_default_shell_label()}</Label>
+												<div class="bg-muted mt-1 rounded px-2 py-1 font-mono text-sm">{settings.defaultShell || '/bin/sh'}</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- General Settings -->
+									<div class="mb-6">
+										<h4 class="text-muted-foreground mb-3 text-sm font-semibold uppercase tracking-wide">{m.general_title()}</h4>
+										<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+											<div>
+												<Label class="text-muted-foreground text-sm font-medium">{m.general_projects_directory_label()}</Label>
+												<div class="bg-muted mt-1 rounded px-2 py-1 font-mono text-sm">
+													{settings.projectsDirectory || 'data/projects'}
+												</div>
+											</div>
+											<div>
+												<Label class="text-muted-foreground text-sm font-medium">{m.general_base_url_label()}</Label>
+												<div class="bg-muted mt-1 rounded px-2 py-1 font-mono text-sm">
+													{settings.baseServerUrl || 'http://localhost'}
+												</div>
+											</div>
+											<div>
+												<Label class="text-muted-foreground text-sm font-medium">{m.general_enable_gravatar_label()}</Label>
+												<div class="mt-1">
+													<StatusBadge
+														text={settings.enableGravatar ? m.common_enabled() : m.common_disabled()}
+														variant={settings.enableGravatar ? 'green' : 'gray'}
+													/>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- Security Settings -->
+									{#if settings.authLocalEnabled !== undefined}
+										<div class="mb-6">
+											<h4 class="text-muted-foreground mb-3 text-sm font-semibold uppercase tracking-wide">
+												{m.security_title()}
+											</h4>
+											<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+												<div>
+													<Label class="text-muted-foreground text-sm font-medium">{m.security_local_auth_label()}</Label>
+													<div class="mt-1">
+														<StatusBadge
+															text={settings.authLocalEnabled ? m.common_enabled() : m.common_disabled()}
+															variant={settings.authLocalEnabled ? 'green' : 'gray'}
+														/>
+													</div>
+												</div>
+												<div>
+													<Label class="text-muted-foreground text-sm font-medium">{m.security_oidc_auth_label()}</Label>
+													<div class="mt-1">
+														<StatusBadge
+															text={settings.authOidcEnabled ? m.common_enabled() : m.common_disabled()}
+															variant={settings.authOidcEnabled ? 'green' : 'gray'}
+														/>
+													</div>
+												</div>
+												<div>
+													<Label class="text-muted-foreground text-sm font-medium">{m.security_session_timeout_label()}</Label>
+													<div class="mt-1 text-sm">{settings.authSessionTimeout || 1440} min</div>
+												</div>
+												<div>
+													<Label class="text-muted-foreground text-sm font-medium">{m.security_password_policy_label()}</Label>
+													<div class="mt-1 text-sm capitalize">{settings.authPasswordPolicy || 'strong'}</div>
+												</div>
+											</div>
+										</div>
+									{/if}
+
+									<!-- Navigation Settings -->
+									{#if settings.mobileNavigationMode !== undefined}
+										<div>
+											<h4 class="text-muted-foreground mb-3 text-sm font-semibold uppercase tracking-wide">
+												{m.navigation_title()}
+											</h4>
+											<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+												<div>
+													<Label class="text-muted-foreground text-sm font-medium">{m.navigation_mode_label()}</Label>
+													<div class="mt-1 text-sm capitalize">{settings.mobileNavigationMode || 'floating'}</div>
+												</div>
+												<div>
+													<Label class="text-muted-foreground text-sm font-medium">{m.navigation_show_labels_label()}</Label>
+													<div class="mt-1">
+														<StatusBadge
+															text={settings.mobileNavigationShowLabels ? m.common_enabled() : m.common_disabled()}
+															variant={settings.mobileNavigationShowLabels ? 'green' : 'gray'}
+														/>
+													</div>
+												</div>
+												<div>
+													<Label class="text-muted-foreground text-sm font-medium">{m.navigation_scroll_to_hide_label()}</Label>
+													<div class="mt-1">
+														<StatusBadge
+															text={settings.mobileNavigationScrollToHide ? m.common_enabled() : m.common_disabled()}
+															variant={settings.mobileNavigationScrollToHide ? 'green' : 'gray'}
+														/>
+													</div>
+												</div>
+												<div>
+													<Label class="text-muted-foreground text-sm font-medium">{m.navigation_tap_to_hide_label()}</Label>
+													<div class="mt-1">
+														<StatusBadge
+															text={settings.mobileNavigationTapToHide ? m.common_enabled() : m.common_disabled()}
+															variant={settings.mobileNavigationTapToHide ? 'green' : 'gray'}
+														/>
+													</div>
+												</div>
+											</div>
+										</div>
+									{/if}
+								</div>
+							{/if}
 						</Card.Content>
 					</Card.Root>
 				</div>
@@ -266,4 +466,21 @@
 			<span class="text-sm">{m.environments_refreshing()}</span>
 		</div>
 	{/if}
+
+	<AlertDialog.Root bind:open={showSwitchDialog}>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>{m.environments_switch_to_edit_title()}</AlertDialog.Title>
+				<AlertDialog.Description>
+					{m.environments_switch_to_edit_message()}
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel>{m.common_cancel()}</AlertDialog.Cancel>
+				<AlertDialog.Action onclick={confirmSwitchAndEdit}>
+					{m.environments_switch_and_edit()}
+				</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 </div>

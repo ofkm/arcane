@@ -18,7 +18,7 @@ type SettingsHandler struct {
 func NewSettingsHandler(group *gin.RouterGroup, settingsService *services.SettingsService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &SettingsHandler{settingsService: settingsService}
 
-	apiGroup := group.Group("/settings")
+	apiGroup := group.Group("/environments/:id/settings")
 
 	apiGroup.GET("/public", handler.GetPublicSettings)
 	apiGroup.GET("", authMiddleware.WithAdminNotRequired().Add(), handler.GetSettings)

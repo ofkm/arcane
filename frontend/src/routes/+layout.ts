@@ -12,6 +12,10 @@ import { environmentManagementService } from '$lib/services/env-mgmt-service';
 export const ssr = false;
 
 export const load = async () => {
+	if (!environmentStore.isInitialized()) {
+		await environmentStore.initialize([], true);
+	}
+
 	const userPromise = userService.getCurrentUser().catch(() => null);
 	const settingsPromise = settingsService.getSettings().catch((e) => {
 		console.error('Error fetching settings:', e);
@@ -26,7 +30,7 @@ export const load = async () => {
 	};
 
 	const environmentsPromise = userPromise.then(async (user) => {
-		if (!environmentStore.isInitialized() && user) {
+		if (user) {
 			const environments = await tryCatch(environmentManagementService.getEnvironments(environmentRequestOptions));
 			if (!environments.error) {
 				await environmentStore.initialize(environments.data.data, true);
