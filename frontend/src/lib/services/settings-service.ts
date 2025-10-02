@@ -1,26 +1,34 @@
 import BaseAPIService from './api-service';
 import type { Settings, OidcStatusInfo } from '$lib/types/settings.type';
+import { environmentStore } from '$lib/stores/environment.store';
 
 type KeyValuePair = { key: string; value: string };
 
 export default class SettingsService extends BaseAPIService {
 	async getSettings(): Promise<Settings> {
-		const res = await this.api.get('/settings');
+		const envId = await environmentStore.getCurrentEnvironmentId();
+		const res = await this.api.get(`/environments/${envId}/settings`);
+		return this.normalize(res.data);
+	}
+
+	async getSettingsForEnvironment(environmentId: string): Promise<Settings> {
+		const res = await this.api.get(`/environments/${environmentId}/settings`);
 		return this.normalize(res.data);
 	}
 
 	async getPublicSettings(): Promise<Settings> {
-		const res = await this.api.get('/settings/public');
+		const res = await this.api.get(`/environments/0/settings/public`);
 		return this.normalize(res.data);
 	}
 
 	async updateSettings(settings: Settings) {
+		const envId = await environmentStore.getCurrentEnvironmentId();
 		const payload: Record<string, string> = {};
 		for (const key in settings) {
 			const v = (settings as any)[key];
 			payload[key] = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
 		}
-		const res = await this.api.put('/settings', payload);
+		const res = await this.api.put(`/environments/${envId}/settings`, payload);
 		return this.normalize(res.data);
 	}
 

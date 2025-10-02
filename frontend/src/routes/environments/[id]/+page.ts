@@ -1,10 +1,20 @@
 import { environmentManagementService } from '$lib/services/env-mgmt-service';
+import { settingsService } from '$lib/services/settings-service';
+import { environmentStore } from '$lib/stores/environment.store';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ params }) => {
-	const environment = await environmentManagementService.get(params.id);
+	try {
+		const environment = await environmentManagementService.get(params.id);
 
-	return {
-		environment
-	};
+		const settings = await settingsService.getSettingsForEnvironment(params.id);
+
+		return {
+			environment,
+			settings
+		};
+	} catch (error) {
+		console.error('Failed to load environment:', error);
+		throw error;
+	}
 };
