@@ -2,14 +2,14 @@
 	import * as Card from '$lib/components/ui/card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import ImageUpdateItem from '$lib/components/image-update-item.svelte';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import { format } from 'date-fns';
 	import bytes from 'bytes';
 	import type { ImageSummaryDto } from '$lib/types/image.type';
 	import type { Snippet } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { cn } from '$lib/utils';
-	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
-	import DatabaseIcon from '@lucide/svelte/icons/database';
+	import ImageIcon from '@lucide/svelte/icons/image';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 
@@ -60,7 +60,7 @@
 					iconVariant === 'emerald' ? 'bg-emerald-500/10' : 'bg-amber-500/10'
 				)}
 			>
-				<HardDriveIcon
+				<ImageIcon
 					class={cn(iconVariant === 'emerald' ? 'text-emerald-500' : 'text-amber-500', compact ? 'size-3.5' : 'size-4')}
 				/>
 			</div>
@@ -97,7 +97,7 @@
 				{#if showSize}
 					<div class="flex items-start gap-2.5">
 						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
-							<DatabaseIcon class="size-3.5 text-blue-500" />
+							<HardDriveIcon class="size-3.5 text-blue-500" />
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
