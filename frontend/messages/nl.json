@@ -1195,5 +1195,15 @@
 	"apply": "Toepassen",
 	"terminal_websocket_error": "WebSocket fout opgetreden",
 	"terminal_connection_closed": "Verbinding verbroken",
-	"shell": "Schil"
+	"shell": "Schil",
+	"customize_defaults_title": "Standaard sjablonen aanpassen",
+	"customize_defaults_heading": "Standaard sjabloonconfiguratie",
+	"customize_defaults_description": "Pas de standaard Docker Compose en omgevingssjablonen aan die worden gebruikt bij het maken van nieuwe projecten. Deze sjablonen worden voorgevuld in het nieuwe projectformulier.",
+	"customize_compose_template_label": "Docker Compose Sjabloon (YAML)",
+	"customize_env_template_label": "Omgeving sjabloon (.env)",
+	"customize_validation_error": "Los validatiefouten op voordat u opslaat",
+	"customize_save_failed": "Standaard sjablonen opslaan mislukt",
+	"customize_save_success": "Standaard sjablonen succesvol opgeslagen",
+	"customize_reset_success": "Wijzigingen opnieuw instellen",
+	"default_templates": "Standaard sjablonen"
 }
