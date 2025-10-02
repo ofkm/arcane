@@ -11,6 +11,11 @@ export default class SettingsService extends BaseAPIService {
 		return this.normalize(res.data);
 	}
 
+	async getSettingsForEnvironment(environmentId: string): Promise<Settings> {
+		const res = await this.api.get(`/environments/${environmentId}/settings`);
+		return this.normalize(res.data);
+	}
+
 	async getPublicSettings(): Promise<Settings> {
 		const res = await this.api.get(`/environments/0/settings/public`);
 		return this.normalize(res.data);
