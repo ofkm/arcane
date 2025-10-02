@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import ImageUpdateItem from '$lib/components/image-update-item.svelte';
 	import { format } from 'date-fns';
@@ -7,7 +8,7 @@
 	import type { Snippet } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { cn } from '$lib/utils';
-	import { ArcaneCard, ArcaneCardHeader, ArcaneCardContent } from '$lib/components/arcane-card';
+	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import DatabaseIcon from '@lucide/svelte/icons/database';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -85,7 +86,7 @@
 		</ArcaneCardHeader>
 
 		{#if !compact}
-			<ArcaneCardContent class="flex flex-1 flex-col p-3.5">
+			<Card.Content class="flex flex-1 flex-col p-3.5">
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					{#if showSize}
 						<div class="flex items-start gap-2.5">
@@ -134,9 +135,9 @@
 						</span>
 					</div>
 				{/if}
-			</ArcaneCardContent>
+			</Card.Content>
 		{:else}
-			<ArcaneCardContent class="flex flex-1 flex-col space-y-1.5 p-2">
+			<Card.Content class="flex flex-1 flex-col space-y-1.5 p-2">
 				{#if showSize}
 					<div class="flex items-baseline gap-1.5">
 						<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.images_size()}:</span>
@@ -164,7 +165,7 @@
 						</div>
 					</div>
 				{/if}
-			</ArcaneCardContent>
+			</Card.Content>
 		{/if}
 	{/snippet}
 </ArcaneCard>

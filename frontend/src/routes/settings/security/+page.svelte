@@ -1,14 +1,9 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
-	import {
-		ArcaneCard,
-		ArcaneCardHeader,
-		ArcaneCardContent,
-		ArcaneCardTitle,
-		ArcaneCardDescription
-	} from '$lib/components/arcane-card';
+	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { Button } from '$lib/components/ui/button';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
@@ -23,7 +18,7 @@
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsService } from '$lib/services/settings-service';
-	import { SettingsPageLayout } from '$lib/layouts/index.js';
+	import { SettingsPageLayout } from '$lib/layouts';
 
 	let { data }: { data: PageData } = $props();
 	let currentSettings = $state<Settings>(data.settings);
@@ -230,10 +225,10 @@
 			<div class="space-y-4 sm:space-y-6">
 				<ArcaneCard class="overflow-hidden pt-0">
 					<ArcaneCardHeader icon={LockIcon}>
-						<ArcaneCardTitle>{m.security_authentication_heading()}</ArcaneCardTitle>
-						<ArcaneCardDescription>Configure login methods for your application</ArcaneCardDescription>
+						<Card.Title>{m.security_authentication_heading()}</Card.Title>
+						<Card.Description>Configure login methods for your application</Card.Description>
 					</ArcaneCardHeader>
-					<ArcaneCardContent class="px-3 py-4 sm:px-6">
+					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
 							<SwitchWithLabel
 								id="localAuthSwitch"
@@ -280,15 +275,15 @@
 								{/if}
 							</div>
 						</div>
-					</ArcaneCardContent>
+					</Card.Content>
 				</ArcaneCard>
 
 				<ArcaneCard class="overflow-hidden pt-0">
 					<ArcaneCardHeader icon={ClockIcon}>
-						<ArcaneCardTitle>{m.security_session_heading()}</ArcaneCardTitle>
-						<ArcaneCardDescription>Configure session timeout and duration</ArcaneCardDescription>
+						<Card.Title>{m.security_session_heading()}</Card.Title>
+						<Card.Description>Configure session timeout and duration</Card.Description>
 					</ArcaneCardHeader>
-					<ArcaneCardContent class="px-3 py-4 sm:px-6">
+					<Card.Content class="px-3 py-4 sm:px-6">
 						<TextInputWithLabel
 							bind:value={$formInputs.authSessionTimeout.value}
 							label={m.security_session_timeout_label()}
@@ -296,15 +291,15 @@
 							helpText={m.security_session_timeout_description()}
 							type="number"
 						/>
-					</ArcaneCardContent>
+					</Card.Content>
 				</ArcaneCard>
 
 				<ArcaneCard class="overflow-hidden pt-0">
 					<ArcaneCardHeader icon={KeyIcon}>
-						<ArcaneCardTitle>{m.security_password_policy_label()}</ArcaneCardTitle>
-						<ArcaneCardDescription>Set password strength requirements</ArcaneCardDescription>
+						<Card.Title>{m.security_password_policy_label()}</Card.Title>
+						<Card.Description>Set password strength requirements</Card.Description>
 					</ArcaneCardHeader>
-					<ArcaneCardContent class="px-3 py-4 sm:px-6">
+					<Card.Content class="px-3 py-4 sm:px-6">
 						<Tooltip.Provider>
 							<div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-labelledby="passwordPolicyLabel">
 								<Tooltip.Root>
@@ -353,7 +348,7 @@
 								</Tooltip.Root>
 							</div>
 						</Tooltip.Provider>
-					</ArcaneCardContent>
+					</Card.Content>
 				</ArcaneCard>
 			</div>
 		</fieldset>

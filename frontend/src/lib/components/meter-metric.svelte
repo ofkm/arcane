@@ -1,8 +1,9 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import type { Icon as IconType } from '@lucide/svelte';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
-	import { ArcaneCard, ArcaneCardHeader, ArcaneCardContent } from '$lib/components/arcane-card';
+	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -48,7 +49,7 @@
 			{/snippet}
 		</ArcaneCardHeader>
 
-		<ArcaneCardContent class="flex flex-col justify-center p-3">
+		<Card.Content class="flex flex-col justify-center p-3">
 			<div class="w-full space-y-2">
 				<div class="text-center">
 					{#if loading}
@@ -86,6 +87,6 @@
 					</div>
 				</div>
 			</div>
-		</ArcaneCardContent>
+		</Card.Content>
 	{/snippet}
 </ArcaneCard>

@@ -1,15 +1,10 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import NetworkIcon from '@lucide/svelte/icons/network';
 	import TagIcon from '@lucide/svelte/icons/tag';
-	import { PortBadge } from '$lib/components/badges/index.js';
-	import {
-		ArcaneCard,
-		ArcaneCardHeader,
-		ArcaneCardContent,
-		ArcaneCardTitle,
-		ArcaneCardDescription
-	} from '$lib/components/arcane-card';
+	import { PortBadge } from '$lib/components/badges';
+	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import type { ContainerDetailsDto } from '$lib/types/container.type';
 
@@ -28,10 +23,10 @@
 	{#if hasEnvVars}
 		<ArcaneCard>
 			<ArcaneCardHeader icon={SettingsIcon}>
-				<ArcaneCardTitle>{m.containers_env_vars_title()}</ArcaneCardTitle>
-				<ArcaneCardDescription>{m.containers_env_vars_description()}</ArcaneCardDescription>
+				<Card.Title>{m.containers_env_vars_title()}</Card.Title>
+				<Card.Description>{m.containers_env_vars_description()}</Card.Description>
 			</ArcaneCardHeader>
-			<ArcaneCardContent class="p-4">
+			<Card.Content class="p-4">
 				{#if container.config?.env && container.config.env.length > 0}
 					<div class="space-y-3">
 						{#each container.config.env as env, index (index)}
@@ -59,29 +54,29 @@
 						<div class="text-sm">{m.containers_no_env_vars()}</div>
 					</div>
 				{/if}
-			</ArcaneCardContent>
+			</Card.Content>
 		</ArcaneCard>
 	{/if}
 
 	{#if hasPorts}
 		<ArcaneCard>
 			<ArcaneCardHeader icon={NetworkIcon}>
-				<ArcaneCardTitle>{m.containers_port_mappings()}</ArcaneCardTitle>
-				<ArcaneCardDescription>{m.containers_port_mappings_description()}</ArcaneCardDescription>
+				<Card.Title>{m.containers_port_mappings()}</Card.Title>
+				<Card.Description>{m.containers_port_mappings_description()}</Card.Description>
 			</ArcaneCardHeader>
-			<ArcaneCardContent class="p-4">
+			<Card.Content class="p-4">
 				<PortBadge ports={container.ports ?? []} {baseServerUrl} />
-			</ArcaneCardContent>
+			</Card.Content>
 		</ArcaneCard>
 	{/if}
 
 	{#if hasLabels}
 		<ArcaneCard>
 			<ArcaneCardHeader icon={TagIcon}>
-				<ArcaneCardTitle>{m.common_labels()}</ArcaneCardTitle>
-				<ArcaneCardDescription>{m.common_labels_description()}</ArcaneCardDescription>
+				<Card.Title>{m.common_labels()}</Card.Title>
+				<Card.Description>{m.common_labels_description()}</Card.Description>
 			</ArcaneCardHeader>
-			<ArcaneCardContent class="p-4">
+			<Card.Content class="p-4">
 				{#if container.labels && Object.keys(container.labels).length > 0}
 					<div class="space-y-3">
 						{#each Object.entries(container.labels) as [key, value] (key)}
@@ -98,7 +93,7 @@
 						<div class="text-sm">{m.containers_no_labels_defined()}</div>
 					</div>
 				{/if}
-			</ArcaneCardContent>
+			</Card.Content>
 		</ArcaneCard>
 	{/if}
 </div>

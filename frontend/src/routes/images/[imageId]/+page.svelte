@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Card from '$lib/components/ui/card';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import TagIcon from '@lucide/svelte/icons/tag';
@@ -8,24 +8,18 @@
 	import CpuIcon from '@lucide/svelte/icons/cpu';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
-	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
+	import * as Breadcrumb from '$lib/components/ui/breadcrumb';
 	import { goto } from '$app/navigation';
-	import { Separator } from '$lib/components/ui/separator/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
+	import { Separator } from '$lib/components/ui/separator';
+	import { Badge } from '$lib/components/ui/badge';
 	import { format } from 'date-fns';
 	import bytes from 'bytes';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { toast } from 'svelte-sonner';
-	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
-	import {
-		ArcaneCard,
-		ArcaneCardHeader,
-		ArcaneCardContent,
-		ArcaneCardTitle,
-		ArcaneCardDescription
-	} from '$lib/components/arcane-card';
+	import { ArcaneButton } from '$lib/components/arcane-button';
+	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 	import { imageService } from '$lib/services/image-service.js';
 
@@ -114,10 +108,10 @@
 		<div class="space-y-6">
 			<ArcaneCard>
 				<ArcaneCardHeader icon={InfoIcon}>
-					<ArcaneCardTitle>{m.images_details_title()}</ArcaneCardTitle>
-					<ArcaneCardDescription>{m.images_details_description()}</ArcaneCardDescription>
+					<Card.Title>{m.images_details_title()}</Card.Title>
+					<Card.Description>{m.images_details_description()}</Card.Description>
 				</ArcaneCardHeader>
-				<ArcaneCardContent class="p-4">
+				<Card.Content class="p-4">
 					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
 						<div class="flex items-start gap-3">
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-500/10 p-2">
@@ -227,32 +221,32 @@
 							</div>
 						{/if}
 					</div>
-				</ArcaneCardContent>
+				</Card.Content>
 			</ArcaneCard>
 
 			{#if image.repoTags && image.repoTags.length > 0}
 				<ArcaneCard>
 					<ArcaneCardHeader icon={TagIcon}>
-						<ArcaneCardTitle>{m.images_tags_title()}</ArcaneCardTitle>
-						<ArcaneCardDescription>{m.images_tags_description()}</ArcaneCardDescription>
+						<Card.Title>{m.images_tags_title()}</Card.Title>
+						<Card.Description>{m.images_tags_description()}</Card.Description>
 					</ArcaneCardHeader>
-					<ArcaneCardContent class="p-4">
+					<Card.Content class="p-4">
 						<div class="flex flex-wrap gap-2">
 							{#each image.repoTags as tag (tag)}
 								<Badge variant="secondary" class="cursor-pointer text-sm select-all" title="Click to select">{tag}</Badge>
 							{/each}
 						</div>
-					</ArcaneCardContent>
+					</Card.Content>
 				</ArcaneCard>
 			{/if}
 
 			{#if image.config?.env && image.config.env.length > 0}
 				<ArcaneCard>
 					<ArcaneCardHeader icon={SettingsIcon}>
-						<ArcaneCardTitle>{m.images_env_vars_title()}</ArcaneCardTitle>
-						<ArcaneCardDescription>{m.images_env_vars_description()}</ArcaneCardDescription>
+						<Card.Title>{m.images_env_vars_title()}</Card.Title>
+						<Card.Description>{m.images_env_vars_description()}</Card.Description>
 					</ArcaneCardHeader>
-					<ArcaneCardContent class="space-y-2 p-4">
+					<Card.Content class="space-y-2 p-4">
 						{#each image.config.env as env (env)}
 							{@const [key, ...valueParts] = env.split('=')}
 							{@const value = valueParts.join('=')}
@@ -267,7 +261,7 @@
 								<Separator class="my-2" />
 							{/if}
 						{/each}
-					</ArcaneCardContent>
+					</Card.Content>
 				</ArcaneCard>
 			{/if}
 		</div>

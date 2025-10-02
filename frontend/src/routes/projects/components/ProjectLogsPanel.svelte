@@ -1,15 +1,10 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button/index.js';
+	import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import LogViewer from '$lib/components/log-viewer.svelte';
-	import {
-		ArcaneCard,
-		ArcaneCardHeader,
-		ArcaneCardContent,
-		ArcaneCardTitle,
-		ArcaneCardDescription
-	} from '$lib/components/arcane-card';
+	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { m } from '$lib/paraglide/messages';
 
 	let {
@@ -38,7 +33,7 @@
 		<div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 			<div class="flex flex-col gap-1.5">
 				<div class="flex items-center gap-2">
-					<ArcaneCardTitle>{m.compose_logs_title()}</ArcaneCardTitle>
+					<Card.Title>{m.compose_logs_title()}</Card.Title>
 					{#if isStreaming}
 						<div class="flex items-center gap-2">
 							<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
@@ -46,7 +41,7 @@
 						</div>
 					{/if}
 				</div>
-				<ArcaneCardDescription>Real-time project logs</ArcaneCardDescription>
+				<Card.Description>Real-time project logs</Card.Description>
 			</div>
 
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -91,7 +86,7 @@
 			</div>
 		</div>
 	</ArcaneCardHeader>
-	<ArcaneCardContent class="p-0">
+	<Card.Content class="p-0">
 		<LogViewer
 			bind:this={viewer}
 			bind:autoScroll
@@ -105,5 +100,5 @@
 			{onClear}
 			{onToggleAutoScroll}
 		/>
-	</ArcaneCardContent>
+	</Card.Content>
 </ArcaneCard>

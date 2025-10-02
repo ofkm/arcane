@@ -1,14 +1,8 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Card from '$lib/components/ui/card';
 	import LayersIcon from '@lucide/svelte/icons/layers';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import {
-		ArcaneCard,
-		ArcaneCardHeader,
-		ArcaneCardContent,
-		ArcaneCardTitle,
-		ArcaneCardDescription
-	} from '$lib/components/arcane-card';
+	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import { getStatusVariant } from '$lib/utils/status.utils';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { m } from '$lib/paraglide/messages';
@@ -24,10 +18,10 @@
 
 <ArcaneCard>
 	<ArcaneCardHeader icon={LayersIcon}>
-		<ArcaneCardTitle>{m.compose_services()}</ArcaneCardTitle>
-		<ArcaneCardDescription>{m.compose_services_description()}</ArcaneCardDescription>
+		<Card.Title>{m.compose_services()}</Card.Title>
+		<Card.Description>{m.compose_services_description()}</Card.Description>
 	</ArcaneCardHeader>
-	<ArcaneCardContent class="p-4">
+	<Card.Content class="p-4">
 		{#if services && services.length > 0}
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{#each services as service (service.container_id || service.name)}
@@ -89,5 +83,5 @@
 				<div class="text-muted-foreground text-sm">{m.compose_no_services_found()}</div>
 			</div>
 		{/if}
-	</ArcaneCardContent>
+	</Card.Content>
 </ArcaneCard>

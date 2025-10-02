@@ -1,14 +1,9 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
-	import {
-		ArcaneCard,
-		ArcaneCardHeader,
-		ArcaneCardContent,
-		ArcaneCardTitle,
-		ArcaneCardDescription
-	} from '$lib/components/arcane-card';
+	import { ArcaneCard, ArcaneCardHeader } from '$lib/components/arcane-card';
 	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
@@ -19,7 +14,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import { settingsService } from '$lib/services/settings-service';
-	import { SettingsPageLayout } from '$lib/layouts/index.js';
+	import { SettingsPageLayout } from '$lib/layouts';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
@@ -106,10 +101,10 @@
 			<div class="space-y-4 sm:space-y-6">
 				<ArcaneCard class="overflow-hidden pt-0">
 					<ArcaneCardHeader icon={FolderIcon}>
-						<ArcaneCardTitle>{m.general_projects_heading()}</ArcaneCardTitle>
-						<ArcaneCardDescription>{m.general_projects_description()}</ArcaneCardDescription>
+						<Card.Title>{m.general_projects_heading()}</Card.Title>
+						<Card.Description>{m.general_projects_description()}</Card.Description>
 					</ArcaneCardHeader>
-					<ArcaneCardContent class="px-3 py-4 sm:px-6">
+					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
 							<TextInputWithLabel
 								bind:value={$formInputs.projectsDirectory.value}
@@ -127,22 +122,22 @@
 								type="text"
 							/>
 						</div>
-					</ArcaneCardContent>
+					</Card.Content>
 				</ArcaneCard>
 
 				<ArcaneCard class="overflow-hidden pt-0">
 					<ArcaneCardHeader icon={UserIcon}>
-						<ArcaneCardTitle>{m.general_user_avatars_heading()}</ArcaneCardTitle>
-						<ArcaneCardDescription>{m.general_user_avatars_description()}</ArcaneCardDescription>
+						<Card.Title>{m.general_user_avatars_heading()}</Card.Title>
+						<Card.Description>{m.general_user_avatars_description()}</Card.Description>
 					</ArcaneCardHeader>
-					<ArcaneCardContent class="px-3 py-4 sm:px-6">
+					<Card.Content class="px-3 py-4 sm:px-6">
 						<SwitchWithLabel
 							id="enableGravatar"
 							label={m.general_enable_gravatar_label()}
 							description={m.general_enable_gravatar_description()}
 							bind:checked={$formInputs.enableGravatar.value}
 						/>
-					</ArcaneCardContent>
+					</Card.Content>
 				</ArcaneCard>
 			</div>
 		</fieldset>
