@@ -28,16 +28,14 @@
 		</Card.Header>
 		<Card.Content class="p-4">
 			{#if container.mounts && container.mounts.length > 0}
-				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
 					{#each container.mounts as mount (mount.destination)}
-						<Card.Root class="flex flex-col gap-6 py-3 pt-0">
-							<Card.Header
-								class="bg-muted/30 @container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 rounded-t-xl p-4 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
-							>
-								<div class="flex items-center justify-between">
+						<Card.Root variant="subtle">
+							<Card.Content class="p-4">
+								<div class="border-border mb-4 flex items-center justify-between border-b pb-4">
 									<div class="flex items-center gap-3">
 										<div
-											class="rounded-lg p-2.5 {mount.type === 'volume'
+											class="rounded-lg p-2 {mount.type === 'volume'
 												? 'bg-purple-500/10'
 												: mount.type === 'bind'
 													? 'bg-blue-500/10'
@@ -52,49 +50,77 @@
 											{/if}
 										</div>
 										<div class="min-w-0 flex-1">
-											<Card.Title class="text-base break-all">
+											<div class="text-foreground text-base font-semibold break-all">
 												{mount.type === 'tmpfs'
 													? m.containers_mount_type_tmpfs()
 													: mount.type === 'volume'
 														? mount.name || m.containers_mount_type_volume()
 														: m.containers_mount_type_bind()}
-											</Card.Title>
-											<Card.Description class="text-xs">
+											</div>
+											<div class="text-muted-foreground text-xs">
 												{mount.type} mount
-											</Card.Description>
+											</div>
 										</div>
 									</div>
 									<Badge variant={mount.rw ? 'outline' : 'secondary'} class="text-xs font-semibold">
 										{mount.rw ? m.common_rw() : m.common_ro()}
 									</Badge>
 								</div>
-							</Card.Header>
-							<Card.Content class="space-y-4 px-6 pt-0">
-								<div class="space-y-2">
-									<div class="text-muted-foreground text-xs font-semibold uppercase">
-										{m.containers_mount_label_container()}
-									</div>
-									<div
-										class="text-foreground cursor-pointer overflow-hidden font-mono text-sm font-medium break-all select-all"
-										title="Click to select"
-									>
-										{mount.destination}
-									</div>
-								</div>
-								<div class="space-y-2">
-									<div class="text-muted-foreground text-xs font-semibold uppercase">
-										{mount.type === 'volume'
-											? m.containers_mount_label_volume()
-											: mount.type === 'bind'
-												? m.containers_mount_label_host()
-												: m.containers_mount_label_source()}
-									</div>
-									<div
-										class="text-foreground cursor-pointer overflow-hidden font-mono text-sm font-medium break-all select-all"
-										title="Click to select"
-									>
-										{mount.source}
-									</div>
+
+								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+									<Card.Root variant="outlined" class="sm:col-span-2">
+										<Card.Content class="flex flex-col p-3">
+											<div class="text-muted-foreground mb-2 text-xs font-semibold">
+												{m.containers_mount_label_container()}
+											</div>
+											<div
+												class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+												title="Click to select"
+											>
+												{mount.destination}
+											</div>
+										</Card.Content>
+									</Card.Root>
+
+									<Card.Root variant="outlined" class="sm:col-span-2">
+										<Card.Content class="flex flex-col p-3">
+											<div class="text-muted-foreground mb-2 text-xs font-semibold">
+												{mount.type === 'volume'
+													? m.containers_mount_label_volume()
+													: mount.type === 'bind'
+														? m.containers_mount_label_host()
+														: m.containers_mount_label_source()}
+											</div>
+											<div
+												class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+												title="Click to select"
+											>
+												{mount.source}
+											</div>
+										</Card.Content>
+									</Card.Root>
+
+									{#if mount.type === 'volume' && mount.driver}
+										<Card.Root variant="outlined">
+											<Card.Content class="flex flex-col p-3">
+												<div class="text-muted-foreground mb-2 text-xs font-semibold">Driver</div>
+												<div class="text-foreground text-sm font-medium">
+													{mount.driver}
+												</div>
+											</Card.Content>
+										</Card.Root>
+									{/if}
+
+									{#if mount.propagation}
+										<Card.Root variant="outlined">
+											<Card.Content class="flex flex-col p-3">
+												<div class="text-muted-foreground mb-2 text-xs font-semibold">Propagation</div>
+												<div class="text-foreground text-sm font-medium">
+													{mount.propagation}
+												</div>
+											</Card.Content>
+										</Card.Root>
+									{/if}
 								</div>
 							</Card.Content>
 						</Card.Root>
