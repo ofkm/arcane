@@ -173,7 +173,7 @@
 		{item}
 		rowActions={RowActions}
 		{baseServerUrl}
-		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}/`)}
+		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
 	/>
 {/snippet}
 

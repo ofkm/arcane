@@ -217,7 +217,7 @@
 {/snippet}
 
 {#snippet ImageMobileCardSnippet({ row, item }: { row: any; item: ImageSummaryDto })}
-	<ImageMobileCard {item} rowActions={RowActions} onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}/`)} />
+	<ImageMobileCard {item} rowActions={RowActions} onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)} />
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ImageSummaryDto })}
