@@ -54,11 +54,13 @@
 {#snippet DashContainerMobileCard({ row, item }: { row: any; item: ContainerSummaryDto })}
 	<ContainerMobileCard
 		{item}
-		compact={true}
+		compact
+		showNetwork={false}
 		showPorts={false}
-		showCreated={false}
+		showStatus={false}
+		showMounts={false}
 		onclick={(item: ContainerSummaryDto) => (window.location.href = `/containers/${item.id}/`)}
-		class="mx-4"
+		class="mx-2"
 	/>
 {/snippet}
 

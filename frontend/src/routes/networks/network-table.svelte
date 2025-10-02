@@ -180,7 +180,7 @@
 {/snippet}
 
 {#snippet NetworkMobileCardSnippet({ row, item }: { row: any; item: NetworkSummaryDto })}
-	<NetworkMobileCard {item} rowActions={RowActions} />
+	<NetworkMobileCard {item} rowActions={RowActions} onclick={() => goto(`/networks/${item.id}`)} />
 {/snippet}
 
 {#snippet RowActions({ item }: { item: NetworkSummaryDto })}

@@ -157,7 +157,7 @@
 {/snippet}
 
 {#snippet ProjectMobileCardSnippet({ row, item }: { row: any; item: Project })}
-	<ProjectMobileCard {item} rowActions={RowActions} />
+	<ProjectMobileCard {item} rowActions={RowActions} onclick={() => goto(`/projects/${item.id}`)} />
 {/snippet}
 
 {#snippet RowActions({ item }: { item: Project })}

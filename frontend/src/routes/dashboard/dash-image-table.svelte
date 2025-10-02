@@ -72,10 +72,11 @@
 {#snippet DashImageMobileCard({ row, item }: { row: any; item: ImageSummaryDto })}
 	<ImageMobileCard
 		{item}
+		compact
 		showUpdateInfo={false}
 		showCreated={false}
 		onclick={(item: ImageSummaryDto) => (window.location.href = `/images/${item.id}/`)}
-		class="mx-4"
+		class="mx-2"
 	/>
 {/snippet}
 

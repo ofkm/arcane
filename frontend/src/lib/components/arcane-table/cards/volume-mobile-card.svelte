@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
+	import { ArcaneCard, ArcaneCardHeader, ArcaneCardContent } from '$lib/components/arcane-card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { format } from 'date-fns';
 	import { truncateString } from '$lib/utils/string.utils';
@@ -7,89 +7,108 @@
 	import type { Snippet } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { cn } from '$lib/utils';
+	import DatabaseIcon from '@lucide/svelte/icons/database';
+	import CalendarIcon from '@lucide/svelte/icons/calendar';
 
 	let {
 		item,
 		rowActions,
+		compact = false,
 		class: className = '',
+		showCreated = true,
+		showDriver = true,
+		showStatus = true,
 		onclick
 	}: {
 		item: VolumeSummaryDto;
 		rowActions?: Snippet<[{ item: VolumeSummaryDto }]>;
+		compact?: boolean;
 		class?: string;
+		showCreated?: boolean;
+		showDriver?: boolean;
+		showStatus?: boolean;
 		onclick?: (item: VolumeSummaryDto) => void;
 	} = $props();
 
-	function handleClick(e: MouseEvent) {
-		if (onclick) {
-			// Check if the clicked element is interactive (button, link, or has onclick)
-			const target = e.target as HTMLElement;
-			const isInteractive = target.closest('button, a, [onclick], [role="button"]');
-
-			if (!isInteractive) {
-				onclick(item);
-			}
-		}
-	}
+	const iconVariant = $derived<'emerald' | 'amber'>(item.inUse ? 'emerald' : 'amber');
 </script>
 
-<Card.Root
-	class={cn('p-4', onclick ? 'hover:bg-muted/50 cursor-pointer transition-colors' : '', className)}
-	onclick={onclick ? handleClick : undefined}
->
-	<Card.Content class="p-0">
-		<div class="space-y-3">
-			<div class="flex items-start justify-between gap-3">
-				<div class="min-w-0 flex-1">
-					{#if onclick}
-						<button
-							class="block truncate text-left text-base font-medium hover:underline"
-							type="button"
-							onclick={() => onclick?.(item)}
-							title={item.name}
-						>
-							{truncateString(item.name, 40)}
-						</button>
-					{:else}
-						<a class="block truncate text-base font-medium hover:underline" href="/volumes/{item.id}/" title={item.name}>
-							{truncateString(item.name, 40)}
-						</a>
-					{/if}
-					<div class="text-muted-foreground truncate font-mono text-sm">
-						{String(item.id).substring(0, 12)}
-					</div>
-				</div>
-				<div class="flex flex-shrink-0 items-center gap-2">
+<ArcaneCard class={className} onclick={onclick ? () => onclick(item) : undefined}>
+	<ArcaneCardHeader icon={DatabaseIcon} {iconVariant} {compact} enableHover={!!onclick}>
+		<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
+			<div class="min-w-0 flex-1">
+				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-sm' : 'text-base')} title={item.name}>
+					{compact ? truncateString(item.name, 25) : truncateString(item.name, 40)}
+				</h3>
+				<p class={cn('text-muted-foreground mt-0.5 truncate font-mono', compact ? 'text-[10px]' : 'text-xs')}>
+					{String(item.id).substring(0, 12)}
+				</p>
+			</div>
+			<div class="flex flex-shrink-0 items-center gap-2">
+				{#if showStatus}
 					{#if item.inUse}
 						<StatusBadge text={m.common_in_use()} variant="green" />
 					{:else}
 						<StatusBadge text={m.common_unused()} variant="amber" />
 					{/if}
-					{#if rowActions}
-						{@render rowActions({ item })}
-					{/if}
-				</div>
+				{/if}
+				{#if rowActions}
+					{@render rowActions({ item })}
+				{/if}
+			</div>
+		</div>
+	</ArcaneCardHeader>
+
+	{#if !compact}
+		<ArcaneCardContent class="flex flex-1 flex-col p-3.5">
+			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+				{#if showDriver}
+					<div class="flex items-start gap-2.5">
+						<div class="bg-muted flex size-7 shrink-0 items-center justify-center rounded-lg">
+							<DatabaseIcon class="text-muted-foreground size-3.5" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+								{m.common_driver()}
+							</div>
+							<div class="mt-0.5 text-xs font-medium">
+								{item.driver}
+							</div>
+						</div>
+					</div>
+				{/if}
 			</div>
 
-			<div class="space-y-2">
-				<div class="flex items-start justify-between gap-2">
-					<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
-						{m.common_driver()}:
+			{#if showCreated && item.createdAt}
+				<div class="border-muted/40 mt-3 flex items-center gap-2 border-t pt-3">
+					<CalendarIcon class="text-muted-foreground size-3.5" />
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+						{m.common_created()}
 					</span>
-					<span class="min-w-0 flex-1 text-right text-sm">
-						{item.driver}
-					</span>
-				</div>
-
-				<div class="flex items-start justify-between gap-2">
-					<span class="text-muted-foreground min-w-0 flex-shrink-0 text-sm font-medium">
-						{m.common_created()}:
-					</span>
-					<span class="min-w-0 flex-1 text-right text-sm">
+					<span class="text-muted-foreground ml-auto font-mono text-[11px]">
 						{format(new Date(String(item.createdAt)), 'PP p')}
 					</span>
 				</div>
-			</div>
-		</div>
-	</Card.Content>
-</Card.Root>
+			{/if}
+		</ArcaneCardContent>
+	{:else}
+		<ArcaneCardContent class="flex flex-1 flex-col space-y-1.5 p-2">
+			{#if showDriver}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_driver()}:</span>
+					<span class="text-muted-foreground truncate text-[11px] leading-tight">
+						{item.driver}
+					</span>
+				</div>
+			{/if}
+			{#if showCreated && item.createdAt}
+				<div class="flex items-baseline gap-1.5">
+					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_created()}:</span>
+					<span class="text-muted-foreground truncate font-mono text-[11px] leading-tight">
+						{format(new Date(String(item.createdAt)), 'PP')}
+					</span>
+				</div>
+			{/if}
+		</ArcaneCardContent>
+	{/if}
+</ArcaneCard>

@@ -130,7 +130,7 @@
 {/snippet}
 
 {#snippet VolumeMobileCardSnippet({ row, item }: { row: any; item: VolumeSummaryDto })}
-	<VolumeMobileCard {item} rowActions={RowActions} />
+	<VolumeMobileCard {item} rowActions={RowActions} onclick={() => goto(`/volumes/${item.id}`)} />
 {/snippet}
 
 {#snippet RowActions({ item }: { item: VolumeSummaryDto })}
