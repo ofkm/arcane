@@ -1195,5 +1195,15 @@
 	"apply": "应用",
 	"terminal_websocket_error": "WebSocket 发生错误",
 	"terminal_connection_closed": "连接已关闭",
-	"shell": "外壳"
+	"shell": "外壳",
+	"customize_defaults_title": "自定义默认模板",
+	"customize_defaults_heading": "默认模板配置",
+	"customize_defaults_description": "自定义创建新项目时使用的默认Docker Compose和环境模板。这些模板将在新项目表单中预先填写。",
+	"customize_compose_template_label": "Docker 合成模板 (YAML)",
+	"customize_env_template_label": "环境模板 (.env)",
+	"customize_validation_error": "保存前请修复验证错误",
+	"customize_save_failed": "保存默认模板失败",
+	"customize_save_success": "默认模板保存成功",
+	"customize_reset_success": "更改重置",
+	"default_templates": "默认模板"
 }
