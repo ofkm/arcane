@@ -12,8 +12,7 @@ export default class SettingsService extends BaseAPIService {
 	}
 
 	async getPublicSettings(): Promise<Settings> {
-		const envId = await environmentStore.getCurrentEnvironmentId();
-		const res = await this.api.get(`/environments/${envId}/settings/public`);
+		const res = await this.api.get(`/environments/0/settings/public`);
 		return this.normalize(res.data);
 	}
 
