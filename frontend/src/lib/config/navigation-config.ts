@@ -14,6 +14,7 @@ import ComputerIcon from '@lucide/svelte/icons/computer';
 import LockKeyholeIcon from '@lucide/svelte/icons/lock-keyhole';
 import AlarmClockIcon from '@lucide/svelte/icons/alarm-clock';
 import NavigationIcon from '@lucide/svelte/icons/navigation';
+import PaletteIcon from '@lucide/svelte/icons/palette';
 import { m } from '$lib/paraglide/messages';
 
 export type NavigationItem = {
@@ -33,6 +34,11 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 		{ title: m.volumes_title(), url: '/volumes', icon: HardDriveIcon }
 	],
 	customizationItems: [
+		{
+			title: m.default_templates(),
+			url: '/customize/defaults',
+			icon: PaletteIcon
+		},
 		{
 			title: m.templates_title(),
 			url: '/customize/templates',
