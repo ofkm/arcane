@@ -1,9 +1,8 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
-	import { Button } from '$lib/components/ui/button';
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
-	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
-	import LogViewer from '$lib/components/log-viewer.svelte';
+	import LogViewer from '$lib/components/logs/log-viewer.svelte';
+	import LogControls from '$lib/components/logs/log-controls.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let {
@@ -27,20 +26,24 @@
 
 	function handleStart() {
 		isStreaming = true;
+		viewer?.startLogStream();
 		onStart();
 	}
 
 	function handleStop() {
 		isStreaming = false;
+		viewer?.stopLogStream();
 		onStop();
 	}
 
 	function handleClear() {
+		viewer?.clearLogs();
 		onClear();
 	}
 
-	function handleToggleAutoScroll() {
-		onToggleAutoScroll();
+	function handleRefresh() {
+		viewer?.stopLogStream();
+		viewer?.startLogStream();
 	}
 </script>
 
@@ -63,47 +66,15 @@
 				</div>
 				<Card.Description>{m.containers_logs_description()}</Card.Description>
 			</div>
-
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-				<label class="flex items-center gap-2">
-					<input type="checkbox" bind:checked={autoScroll} class="size-4" />
-					<span class="text-sm font-medium">{m.common_autoscroll()}</span>
-				</label>
-
-				<div class="flex items-center gap-2">
-					<Button variant="outline" size="sm" class="text-xs font-medium" onclick={() => viewer?.clearLogs()}>
-						{m.common_clear()}
-					</Button>
-					{#if isStreaming}
-						<Button variant="outline" size="sm" class="text-xs font-medium" onclick={() => viewer?.stopLogStream()}>
-							{m.common_stop()}
-						</Button>
-					{:else}
-						<Button
-							variant="outline"
-							size="sm"
-							class="text-xs font-medium"
-							onclick={() => viewer?.startLogStream()}
-							disabled={!containerId}
-						>
-							{m.common_start()}
-						</Button>
-					{/if}
-					<Button
-						variant="outline"
-						size="sm"
-						class="px-2"
-						onclick={() => {
-							viewer?.stopLogStream();
-							viewer?.startLogStream();
-						}}
-						aria-label="Refresh logs"
-						title="Refresh"
-					>
-						<RefreshCwIcon class="size-4" />
-					</Button>
-				</div>
-			</div>
+			<LogControls
+				bind:autoScroll
+				{isStreaming}
+				disabled={!containerId}
+				onStart={handleStart}
+				onStop={handleStop}
+				onClear={handleClear}
+				onRefresh={handleRefresh}
+			/>
 		</div>
 	</Card.Header>
 	<Card.Content class="p-0">
@@ -119,7 +90,6 @@
 				onStart={handleStart}
 				onStop={handleStop}
 				onClear={handleClear}
-				onToggleAutoScroll={handleToggleAutoScroll}
 			/>
 		</div>
 	</Card.Content>
