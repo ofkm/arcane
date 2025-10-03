@@ -143,6 +143,26 @@
 	const canPrev = $derived(currentPage > 1);
 	const canNext = $derived(currentPage < totalPages);
 
+	function toFilterMap(filters: ColumnFiltersState): FilterMap {
+		const out: FilterMap = {};
+		for (const f of filters ?? []) {
+			const id = f.id;
+			let v: unknown = (f as any).value;
+			if (Array.isArray(v)) {
+				if (v.length === 0) continue;
+				v = v[0];
+			} else if (v && typeof v === 'object' && v instanceof Set) {
+				const first = (v as Set<unknown>).values().next().value;
+				if (first === undefined) continue;
+				v = first;
+			}
+			if (v !== undefined && v !== null && String(v).trim() !== '') {
+				out[id] = v as any;
+			}
+		}
+		return out;
+	}
+
 	import { onMount } from 'svelte';
 	onMount(() => {
 		if (!enablePersist || !persistedState) return;
@@ -163,6 +183,22 @@
 		if (persistedLimit !== currentLimit) {
 			requestOptions = { ...requestOptions, pagination: { page: 1, limit: persistedLimit } };
 			shouldRefresh = true;
+		}
+
+		// Restore filters from persistence
+		if (persistedState.f && persistedState.f.length > 0) {
+			const restoredFilters = toFilterMap(decodeFilters(persistedState.f));
+			const currentFilters = requestOptions?.filters ?? {};
+			const hasFilterChanges = JSON.stringify(restoredFilters) !== JSON.stringify(currentFilters);
+
+			if (hasFilterChanges) {
+				requestOptions = {
+					...requestOptions,
+					filters: restoredFilters,
+					pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
+				};
+				shouldRefresh = true;
+			}
 		}
 
 		if (shouldRefresh) onRefresh(requestOptions);
@@ -370,26 +406,6 @@
 		},
 		getCoreRowModel: getCoreRowModel()
 	});
-
-	function toFilterMap(filters: ColumnFiltersState): FilterMap {
-		const out: FilterMap = {};
-		for (const f of filters ?? []) {
-			const id = f.id;
-			let v: unknown = (f as any).value;
-			if (Array.isArray(v)) {
-				if (v.length === 0) continue;
-				v = v[0];
-			} else if (v && typeof v === 'object' && v instanceof Set) {
-				const first = (v as Set<unknown>).values().next().value;
-				if (first === undefined) continue;
-				v = first;
-			}
-			if (v !== undefined && v !== null && String(v).trim() !== '') {
-				out[id] = v as any; // scalar only
-			}
-		}
-		return out;
-	}
 
 	function onToggleMobileField(fieldId: string) {
 		mobileFieldVisibility = {
