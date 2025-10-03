@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -118,7 +119,7 @@ func (s *GlobalVariablesService) UpdateGlobalVariables(ctx context.Context, vars
 	var builder strings.Builder
 	builder.WriteString("# Global Environment Variables\n")
 	builder.WriteString("# These variables are available to all projects\n")
-	builder.WriteString("# Last updated: " + ctx.Value("timestamp").(string) + "\n\n")
+	builder.WriteString("# Last updated: " + time.Now().Format(time.RFC3339) + "\n\n")
 
 	// Sort by key for consistent ordering
 	sortedVars := make([]dto.GlobalVariableDto, len(vars))

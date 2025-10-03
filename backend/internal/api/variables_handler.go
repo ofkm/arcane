@@ -1,9 +1,7 @@
 package api
 
 import (
-	"context"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/config"
@@ -66,10 +64,7 @@ func (h *GlobalVariablesHandler) UpdateGlobalVariables(c *gin.Context) {
 		return
 	}
 
-	// Add timestamp to context for the service to use
-	ctx := context.WithValue(c.Request.Context(), "timestamp", time.Now().Format(time.RFC3339))
-
-	if err := h.globalVariablesService.UpdateGlobalVariables(ctx, req.Variables); err != nil {
+	if err := h.globalVariablesService.UpdateGlobalVariables(c.Request.Context(), req.Variables); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    gin.H{"error": "Failed to update global variables: " + err.Error()},
