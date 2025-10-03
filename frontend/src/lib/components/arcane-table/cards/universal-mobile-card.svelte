@@ -103,7 +103,7 @@
 
 <Card.Root variant="subtle" class={className} onclick={onclick ? () => onclick(item) : undefined}>
 	<Card.Content class={cn('flex flex-col', compact ? 'gap-1.5 p-2' : 'gap-3 p-4')}>
-		<!-- Main Row: Icon, Title, Subtitle, Badges, Actions -->
+		<!-- Main Row -->
 		<div class="flex items-start gap-3">
 			{#if resolvedIcon}
 				{@const IconComponent = resolvedIcon.component}

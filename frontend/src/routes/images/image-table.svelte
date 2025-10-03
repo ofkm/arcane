@@ -233,14 +233,7 @@
 		title={(item) =>
 			item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>' ? item.repoTags[0] : m.images_untagged()}
 		subtitle={(item) => ((mobileFieldVisibility.id ?? false) ? item.id : null)}
-		badges={[
-			(item) =>
-				(mobileFieldVisibility.inUse ?? true)
-					? item.inUse
-						? { variant: 'green', text: m.common_in_use() }
-						: { variant: 'amber', text: m.common_unused() }
-					: null
-		]}
+		badges={[]}
 		fields={[
 			{
 				label: m.images_size(),
@@ -260,12 +253,7 @@
 					item.repoTags.length > 0 &&
 					item.repoTags[0] !== '<none>:<none>'
 			}
-		].filter((field) => {
-			if (field.label === m.images_updates()) {
-				return (mobileFieldVisibility.updates ?? true) && item.updateInfo !== undefined;
-			}
-			return true;
-		})}
+		]}
 		footer={(mobileFieldVisibility.created ?? true)
 			? {
 					label: m.common_created(),
@@ -275,7 +263,40 @@
 			: undefined}
 		rowActions={RowActions}
 		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
-	/>
+	>
+		<div class="flex flex-wrap gap-x-4 gap-y-3 border-t pt-3">
+			{#if mobileFieldVisibility.inUse ?? true}
+				<div class="flex min-w-0 flex-1 basis-[140px] flex-col">
+					<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+						{m.common_usage()}
+					</div>
+					<div class="mt-0.5">
+						{#if item.inUse}
+							<StatusBadge text={m.common_in_use()} variant="green" size="sm" />
+						{:else}
+							<StatusBadge text={m.common_unused()} variant="amber" size="sm" />
+						{/if}
+					</div>
+				</div>
+			{/if}
+			{#if (mobileFieldVisibility.updates ?? true) && item.updateInfo !== undefined}
+				<div class="flex min-w-0 flex-1 basis-[180px] flex-col">
+					<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+						{m.images_updates()}
+					</div>
+					<div class="mt-0.5">
+						<ImageUpdateItem
+							updateInfo={item.updateInfo}
+							imageId={item.id}
+							repo={item.repo}
+							tag={item.tag}
+							onUpdated={(newInfo) => handleUpdateInfoChanged(item.id, newInfo)}
+						/>
+					</div>
+				</div>
+			{/if}
+		</div>
+	</UniversalMobileCard>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ImageSummaryDto })}
