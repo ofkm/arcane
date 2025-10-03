@@ -17,9 +17,12 @@
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
-	import { NetworkMobileCard } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { networkService } from '$lib/services/network-service';
+	import NetworkIcon from '@lucide/svelte/icons/network';
+	import RouteIcon from '@lucide/svelte/icons/route';
+	import GlobeIcon from '@lucide/svelte/icons/globe';
 
 	let {
 		networks = $bindable(),
@@ -111,6 +114,16 @@
 	const isAnyLoading = $derived(Object.values(isLoading).some((l) => l));
 	const hasNetworks = $derived(networks?.data?.length > 0);
 
+	function getDriverVariant(driver: string): 'blue' | 'purple' | 'red' | 'orange' | 'gray' {
+		const variantMap: Record<string, 'blue' | 'purple' | 'red' | 'orange' | 'gray'> = {
+			bridge: 'blue',
+			overlay: 'purple',
+			ipvlan: 'red',
+			macvlan: 'orange'
+		};
+		return variantMap[driver] || 'gray';
+	}
+
 	const columns = [
 		{
 			accessorKey: 'name',
@@ -197,14 +210,44 @@
 	item: NetworkSummaryDto;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
-	<NetworkMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={(item: NetworkSummaryDto) => ({
+			component: NetworkIcon,
+			variant: item.inUse ? 'emerald' : 'amber'
+		})}
+		title={(item: NetworkSummaryDto) => item.name}
+		subtitle={(item: NetworkSummaryDto) => ((mobileFieldVisibility.id ?? true) ? item.id : null)}
+		badges={[
+			(item: NetworkSummaryDto) =>
+				(mobileFieldVisibility.status ?? true)
+					? item.inUse
+						? { variant: 'green', text: m.common_in_use() }
+						: { variant: 'amber', text: m.common_unused() }
+					: null
+		]}
+		fields={[
+			{
+				label: m.common_driver(),
+				getValue: (item: NetworkSummaryDto) => capitalizeFirstLetter(item.driver),
+				icon: RouteIcon,
+				iconVariant: 'gray' as const,
+				type: 'badge' as const,
+				badgeVariant: getDriverVariant(item.driver),
+				show: mobileFieldVisibility.driver ?? true
+			},
+			{
+				label: m.common_scope(),
+				getValue: (item: NetworkSummaryDto) => capitalizeFirstLetter(item.scope),
+				icon: GlobeIcon,
+				iconVariant: 'gray' as const,
+				type: 'badge' as const,
+				badgeVariant: item.scope === 'local' ? ('green' as const) : ('amber' as const),
+				show: mobileFieldVisibility.scope ?? true
+			}
+		]}
 		rowActions={RowActions}
 		onclick={() => goto(`/networks/${item.id}`)}
-		showId={mobileFieldVisibility.id ?? true}
-		showStatus={mobileFieldVisibility.status ?? true}
-		showDriver={mobileFieldVisibility.driver ?? true}
-		showScope={mobileFieldVisibility.scope ?? true}
 	/>
 {/snippet}
 

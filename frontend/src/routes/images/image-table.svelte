@@ -16,7 +16,10 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ImageUpdateItem from '$lib/components/image-update-item.svelte';
-	import { ImageMobileCard } from '$lib/components/arcane-table/index.js';
+	import UniversalMobileCard from '$lib/components/arcane-table/cards/universal-mobile-card.svelte';
+	import ImageIcon from '@lucide/svelte/icons/image';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
+	import ClockIcon from '@lucide/svelte/icons/clock';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ImageSummaryDto, ImageUpdateInfoDto } from '$lib/types/image.type';
 	import { format } from 'date-fns';
@@ -221,16 +224,57 @@
 	item: ImageSummaryDto;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
-	<ImageMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={(item) => ({
+			component: ImageIcon,
+			variant: item.inUse ? 'emerald' : 'amber'
+		})}
+		title={(item) =>
+			item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>' ? item.repoTags[0] : m.images_untagged()}
+		subtitle={(item) => ((mobileFieldVisibility.id ?? false) ? item.id : null)}
+		badges={[
+			(item) =>
+				(mobileFieldVisibility.inUse ?? true)
+					? item.inUse
+						? { variant: 'green', text: m.common_in_use() }
+						: { variant: 'amber', text: m.common_unused() }
+					: null
+		]}
+		fields={[
+			{
+				label: m.images_size(),
+				getValue: (item: ImageSummaryDto) => bytes.format(Number(item.size ?? 0)),
+				icon: HardDriveIcon,
+				iconVariant: 'blue' as const,
+				show: mobileFieldVisibility.size ?? true
+			},
+			{
+				label: m.images_repository(),
+				getValue: (item: ImageSummaryDto) => item.repoTags?.[0] || m.images_untagged(),
+				icon: ImageIcon,
+				iconVariant: 'purple' as const,
+				show:
+					(mobileFieldVisibility.repoTags ?? true) &&
+					item.repoTags &&
+					item.repoTags.length > 0 &&
+					item.repoTags[0] !== '<none>:<none>'
+			}
+		].filter((field) => {
+			if (field.label === m.images_updates()) {
+				return (mobileFieldVisibility.updates ?? true) && item.updateInfo !== undefined;
+			}
+			return true;
+		})}
+		footer={(mobileFieldVisibility.created ?? true)
+			? {
+					label: m.common_created(),
+					getValue: (item) => format(new Date(Number(item.created || 0) * 1000), 'PP p'),
+					icon: ClockIcon
+				}
+			: undefined}
 		rowActions={RowActions}
 		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
-		showId={mobileFieldVisibility.id ?? false}
-		showRepoTags={mobileFieldVisibility.repoTags ?? true}
-		showSize={mobileFieldVisibility.size ?? true}
-		showCreated={mobileFieldVisibility.created ?? true}
-		showInUse={mobileFieldVisibility.inUse ?? true}
-		showUpdates={mobileFieldVisibility.updates ?? true}
 	/>
 {/snippet}
 

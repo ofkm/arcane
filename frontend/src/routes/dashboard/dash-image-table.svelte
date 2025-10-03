@@ -4,14 +4,15 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { ImageMobileCard } from '$lib/components/arcane-table/index.js';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import type { ImageSummaryDto } from '$lib/types/image.type';
 	import bytes from 'bytes';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { imageService } from '$lib/services/image-service';
 	import { goto } from '$app/navigation';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 
 	let {
 		images = $bindable(),
@@ -71,15 +72,33 @@
 {/snippet}
 
 {#snippet DashImageMobileCard({ row, item }: { row: any; item: ImageSummaryDto })}
-	<ImageMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={(item: ImageSummaryDto) => ({
+			component: HardDriveIcon,
+			variant: item.inUse ? 'emerald' : 'amber'
+		})}
+		title={(item: ImageSummaryDto) => {
+			if (item.repo && item.repo !== '<none>') {
+				return item.repo;
+			}
+			return m.images_untagged();
+		}}
+		badges={[
+			(item: ImageSummaryDto) =>
+				item.inUse ? { variant: 'green', text: m.common_in_use() } : { variant: 'amber', text: m.common_unused() }
+		]}
+		fields={[
+			{
+				label: m.common_status(),
+				getValue: (item: ImageSummaryDto) => (item.inUse ? m.common_in_use() : m.common_unused()),
+				badgeVariant: item.inUse ? ('green' as const) : ('amber' as const),
+				type: 'badge' as const
+			}
+		]}
 		compact
-		showId={false}
-		showUpdates={false}
-		showCreated={false}
-		showRepoTags={false}
-		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
 		class="mx-2"
+		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
 	/>
 {/snippet}
 

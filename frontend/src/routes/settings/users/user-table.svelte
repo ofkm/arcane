@@ -14,9 +14,10 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { User } from '$lib/types/user.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
-	import { UserMobileCard } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { userService } from '$lib/services/user-service';
+	import UserIcon from '@lucide/svelte/icons/user';
 
 	let {
 		users = $bindable(),
@@ -160,14 +161,30 @@
 	item: User;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
-	<UserMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={{ component: UserIcon, variant: 'blue' }}
+		title={(item: User) => item.username}
+		subtitle={(item: User) => ((mobileFieldVisibility.email ?? true) && item.email ? item.email : null)}
+		badges={[
+			(item: User) =>
+				(mobileFieldVisibility.roles ?? true)
+					? {
+							variant: getRoleBadgeVariant(item.roles) === 'red' ? 'red' : 'green',
+							text: getRoleText(item.roles)
+						}
+					: null
+		]}
+		fields={[
+			{
+				label: m.common_display_name(),
+				getValue: (item: User) => item.displayName,
+				icon: UserIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.displayName ?? true) && !!item.displayName
+			}
+		]}
 		rowActions={RowActions}
-		showDisplayName={mobileFieldVisibility.displayName ?? true}
-		showEmail={mobileFieldVisibility.email ?? true}
-		showRoles={mobileFieldVisibility.roles ?? true}
-		{getRoleBadgeVariant}
-		{getRoleText}
 	/>
 {/snippet}
 

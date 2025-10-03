@@ -4,7 +4,9 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { ContainerMobileCard } from '$lib/components/arcane-table/index.js';
+	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
+	import BoxIcon from '@lucide/svelte/icons/box';
+	import ClockIcon from '@lucide/svelte/icons/clock';
 	import { getStatusVariant } from '$lib/utils/status.utils';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
@@ -53,16 +55,34 @@
 {/snippet}
 
 {#snippet DashContainerMobileCard({ row, item }: { row: any; item: ContainerSummaryDto })}
-	<ContainerMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={(item) => {
+			const state = item.state;
+			return {
+				component: BoxIcon,
+				variant: state === 'running' ? 'emerald' : state === 'exited' ? 'red' : 'amber'
+			};
+		}}
+		title={(item) => {
+			if (item.names && item.names.length > 0) {
+				return item.names[0].startsWith('/') ? item.names[0].substring(1) : item.names[0];
+			}
+			return item.id.substring(0, 12);
+		}}
+		badges={[]}
+		fields={[
+			{
+				label: m.common_status(),
+				getValue: (item: ContainerSummaryDto) => item.status,
+				icon: ClockIcon,
+				iconVariant: 'purple' as const,
+				show: item.status !== undefined
+			}
+		]}
 		compact
-		showId={false}
-		showImage={false}
-		showPorts={false}
-		showState={false}
-		showStatus={true}
-		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
 		class="mx-2"
+		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
 	/>
 {/snippet}
 

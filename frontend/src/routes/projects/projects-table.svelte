@@ -22,9 +22,12 @@
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { format } from 'date-fns';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
-	import { ProjectMobileCard } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { projectService } from '$lib/services/project-service';
+	import FolderIcon from '@lucide/svelte/icons/folder';
+	import LayersIcon from '@lucide/svelte/icons/layers';
+	import CalendarIcon from '@lucide/svelte/icons/calendar';
 
 	let {
 		projects = $bindable(),
@@ -174,14 +177,44 @@
 	item: Project;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
-	<ProjectMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={(item: Project) => ({
+			component: FolderIcon,
+			variant: item.status === 'running' ? 'emerald' : item.status === 'exited' ? 'red' : 'amber'
+		})}
+		title={(item: Project) => item.name}
+		subtitle={(item: Project) => ((mobileFieldVisibility.id ?? true) ? item.id : null)}
+		badges={[
+			(item: Project) =>
+				(mobileFieldVisibility.status ?? true)
+					? {
+							variant: getStatusVariant(item.status),
+							text: capitalizeFirstLetter(item.status)
+						}
+					: null
+		]}
+		fields={[
+			{
+				label: m.compose_services(),
+				getValue: (item: Project) => {
+					const serviceCount = item.serviceCount ? Number(item.serviceCount) : (item.services?.length ?? 0);
+					return `${serviceCount} ${Number(serviceCount) === 1 ? 'service' : 'services'}`;
+				},
+				icon: LayersIcon,
+				iconVariant: 'gray' as const,
+				show: mobileFieldVisibility.serviceCount ?? true
+			}
+		]}
+		footer={(mobileFieldVisibility.createdAt ?? true) && item.createdAt
+			? {
+					label: m.common_created(),
+					getValue: (item: Project) => format(new Date(item.createdAt), 'PP p'),
+					icon: CalendarIcon
+				}
+			: undefined}
 		rowActions={RowActions}
 		onclick={() => goto(`/projects/${item.id}`)}
-		showId={mobileFieldVisibility.id ?? true}
-		showStatus={mobileFieldVisibility.status ?? true}
-		showCreatedAt={mobileFieldVisibility.createdAt ?? true}
-		showServiceCount={mobileFieldVisibility.serviceCount ?? true}
 	/>
 {/snippet}
 
