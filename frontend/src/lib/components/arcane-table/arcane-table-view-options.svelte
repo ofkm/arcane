@@ -4,15 +4,18 @@
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { m } from '$lib/paraglide/messages';
+	import type { Snippet } from 'svelte';
 
 	let {
 		table,
 		fields,
-		onToggleField
+		onToggleField,
+		customViewOptions
 	}: {
 		table?: Table<TData>;
 		fields?: { id: string; label: string; visible: boolean }[];
 		onToggleField?: (fieldId: string) => void;
+		customViewOptions?: Snippet;
 	} = $props();
 </script>
 
@@ -28,6 +31,14 @@
 		{m.common_view()}
 	</DropdownMenu.Trigger>
 	<DropdownMenu.Content align="end">
+		{#if customViewOptions}
+			<DropdownMenu.Group>
+				<DropdownMenu.Label>{m.common_view()}</DropdownMenu.Label>
+				<DropdownMenu.Separator />
+				{@render customViewOptions()}
+			</DropdownMenu.Group>
+			<DropdownMenu.Separator />
+		{/if}
 		<DropdownMenu.Group>
 			<DropdownMenu.Label>{m.common_toggle_columns()}</DropdownMenu.Label>
 			<DropdownMenu.Separator />

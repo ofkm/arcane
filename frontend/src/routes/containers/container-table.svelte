@@ -25,6 +25,13 @@
 	import { PortBadge } from '$lib/components/badges/index.js';
 	import { ContainerMobileCard } from '$lib/components/arcane-table/index.js';
 	import { containerService } from '$lib/services/container-service';
+	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
+	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import { Badge } from '$lib/components/ui/badge/index.js';
+	import type { Table as TableType } from '@tanstack/table-core';
+	import * as Table from '$lib/components/ui/table/index.js';
+	import FlexRender from '$lib/components/ui/data-table/flex-render.svelte';
 
 	let {
 		containers = $bindable(),
@@ -146,6 +153,43 @@
 	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});
+	let customSettings = $state<Record<string, unknown>>({});
+	let groupByProject = $derived.by(() => {
+		return (customSettings.groupByProject as boolean) ?? false;
+	});
+
+	function setGroupByProject(value: boolean) {
+		customSettings = { ...customSettings, groupByProject: value };
+	}
+
+	let projectOpenStates = $state<Map<string, boolean>>(new Map());
+
+	function getProjectName(container: ContainerSummaryDto): string {
+		const projectLabel = container.labels?.['com.docker.compose.project'];
+		return projectLabel || 'No Project';
+	}
+
+	const groupedContainers = $derived(() => {
+		if (!groupByProject) return null;
+
+		const groups = new Map<string, ContainerSummaryDto[]>();
+
+		for (const container of containers.data ?? []) {
+			const projectName = getProjectName(container);
+			if (!groups.has(projectName)) {
+				groups.set(projectName, []);
+			}
+			groups.get(projectName)!.push(container);
+		}
+
+		const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
+			if (a === 'No Project') return 1;
+			if (b === 'No Project') return -1;
+			return a.localeCompare(b);
+		});
+
+		return sortedGroups;
+	});
 </script>
 
 {#snippet PortsCell({ item }: { item: ContainerSummaryDto })}
@@ -278,12 +322,107 @@
 			bind:requestOptions
 			bind:selectedIds
 			bind:mobileFieldVisibility
+			bind:customSettings
 			onRefresh={async (options) => (containers = await containerService.getContainers(options))}
 			{columns}
 			{mobileFields}
 			rowActions={RowActions}
 			mobileCard={ContainerMobileCardSnippet}
 			selectionDisabled
+			customViewOptions={CustomViewOptions}
+			customTableView={groupByProject && groupedContainers() ? GroupedTableView : undefined}
 		/>
 	</Card.Content>
 </Card.Root>
+
+{#snippet CustomViewOptions()}
+	<DropdownMenu.CheckboxItem bind:checked={() => groupByProject, (v) => setGroupByProject(!!v)}>
+		{m.containers_group_by_project()}
+	</DropdownMenu.CheckboxItem>
+{/snippet}
+
+{#snippet GroupedTableView({ table }: { table: TableType<ContainerSummaryDto> })}
+	<div class="space-y-4">
+		{#each groupedContainers() ?? [] as [projectName, projectContainers] (projectName)}
+			{@const projectContainerIds = new Set(projectContainers.map((c) => c.id))}
+			{@const projectRows = table
+				.getRowModel()
+				.rows.filter((row) => projectContainerIds.has((row.original as ContainerSummaryDto).id))}
+
+			<Collapsible.Root
+				class="w-full"
+				open={projectOpenStates.get(projectName) ?? false}
+				onOpenChange={(open) => {
+					projectOpenStates.set(projectName, open);
+					projectOpenStates = new Map(projectOpenStates);
+				}}
+			>
+				<Card.Root class="border-2">
+					<Collapsible.Trigger
+						class="hover:bg-accent/50 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
+					>
+						<div class="flex items-center gap-2">
+							{#if projectOpenStates.get(projectName) ?? false}
+								<ChevronDownIcon class="size-4 transition-transform" />
+							{:else}
+								<ChevronRightIcon class="size-4 transition-transform" />
+							{/if}
+							<span class="font-semibold">{projectName}</span>
+							<Badge variant="secondary" class="ml-2">{projectContainers.length}</Badge>
+						</div>
+					</Collapsible.Trigger>
+					<Collapsible.Content>
+						<Card.Content class="p-0 pt-2">
+							<div class="hidden rounded-md md:block">
+								<Table.Root>
+									<Table.Header>
+										{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+											<Table.Row>
+												{#each headerGroup.headers as header (header.id)}
+													<Table.Head colspan={header.colSpan}>
+														{#if !header.isPlaceholder}
+															<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
+														{/if}
+													</Table.Head>
+												{/each}
+											</Table.Row>
+										{/each}
+									</Table.Header>
+									<Table.Body>
+										{#each projectRows as row (row.id)}
+											<Table.Row
+												data-state={(selectedIds ?? []).includes((row.original as ContainerSummaryDto).id) && 'selected'}
+											>
+												{#each row.getVisibleCells() as cell (cell.id)}
+													<Table.Cell>
+														<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+													</Table.Cell>
+												{/each}
+											</Table.Row>
+										{:else}
+											<Table.Row>
+												<Table.Cell colspan={table.getAllColumns().length} class="h-24 text-center"
+													>{m.common_no_results_found()}</Table.Cell
+												>
+											</Table.Row>
+										{/each}
+									</Table.Body>
+								</Table.Root>
+							</div>
+
+							<div class="space-y-3 md:hidden">
+								{#each projectRows as row (row.id)}
+									{@render ContainerMobileCardSnippet({ row, item: row.original as ContainerSummaryDto, mobileFieldVisibility })}
+								{:else}
+									<div class="h-24 flex items-center justify-center text-center text-muted-foreground">
+										{m.common_no_results_found()}
+									</div>
+								{/each}
+							</div>
+						</Card.Content>
+					</Collapsible.Content>
+				</Card.Root>
+			</Collapsible.Root>
+		{/each}
+	</div>
+{/snippet}
