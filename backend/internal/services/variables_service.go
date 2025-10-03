@@ -16,19 +16,19 @@ import (
 	"github.com/ofkm/arcane-backend/internal/utils/fs"
 )
 
-type GlobalVariablesService struct {
+type VariablesService struct {
 	db              *database.DB
 	settingsService *SettingsService
 }
 
-func NewGlobalVariablesService(db *database.DB, settingsService *SettingsService) *GlobalVariablesService {
-	return &GlobalVariablesService{
+func NewVariablesService(db *database.DB, settingsService *SettingsService) *VariablesService {
+	return &VariablesService{
 		db:              db,
 		settingsService: settingsService,
 	}
 }
 
-func (s *GlobalVariablesService) getGlobalVariablesPath(ctx context.Context) (string, error) {
+func (s *VariablesService) getGlobalVariablesPath(ctx context.Context) (string, error) {
 	projectsDirectory, err := fs.GetProjectsDirectory(ctx, s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects"))
 	if err != nil {
 		return "", fmt.Errorf("failed to get projects directory: %w", err)
@@ -37,7 +37,7 @@ func (s *GlobalVariablesService) getGlobalVariablesPath(ctx context.Context) (st
 	return filepath.Join(projectsDirectory, ".env.global"), nil
 }
 
-func (s *GlobalVariablesService) GetGlobalVariables(ctx context.Context) ([]dto.GlobalVariableDto, error) {
+func (s *VariablesService) GetGlobalVariables(ctx context.Context) ([]dto.VariableDto, error) {
 	envPath, err := s.getGlobalVariablesPath(ctx)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (s *GlobalVariablesService) GetGlobalVariables(ctx context.Context) ([]dto.
 
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		slog.DebugContext(ctx, "Global variables file does not exist yet", "path", envPath)
-		return []dto.GlobalVariableDto{}, nil
+		return []dto.VariableDto{}, nil
 	}
 
 	file, err := os.Open(envPath)
@@ -54,7 +54,7 @@ func (s *GlobalVariablesService) GetGlobalVariables(ctx context.Context) ([]dto.
 	}
 	defer file.Close()
 
-	vars := []dto.GlobalVariableDto{}
+	vars := []dto.VariableDto{}
 	scanner := bufio.NewScanner(file)
 	lineNum := 0
 
@@ -62,12 +62,10 @@ func (s *GlobalVariablesService) GetGlobalVariables(ctx context.Context) ([]dto.
 		lineNum++
 		line := strings.TrimSpace(scanner.Text())
 
-		// Skip empty lines and comments
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 
-		// Parse KEY=VALUE format
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) != 2 {
 			slog.WarnContext(ctx, "Skipping invalid line in global variables file",
@@ -79,7 +77,6 @@ func (s *GlobalVariablesService) GetGlobalVariables(ctx context.Context) ([]dto.
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 
-		// Remove quotes if present
 		if len(value) >= 2 {
 			if (strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) ||
 				(strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`)) {
@@ -87,7 +84,7 @@ func (s *GlobalVariablesService) GetGlobalVariables(ctx context.Context) ([]dto.
 			}
 		}
 
-		vars = append(vars, dto.GlobalVariableDto{
+		vars = append(vars, dto.VariableDto{
 			Key:   key,
 			Value: value,
 		})
@@ -97,7 +94,6 @@ func (s *GlobalVariablesService) GetGlobalVariables(ctx context.Context) ([]dto.
 		return nil, fmt.Errorf("error reading global variables file: %w", err)
 	}
 
-	// Sort by key for consistent ordering
 	sort.Slice(vars, func(i, j int) bool {
 		return vars[i].Key < vars[j].Key
 	})
@@ -105,7 +101,7 @@ func (s *GlobalVariablesService) GetGlobalVariables(ctx context.Context) ([]dto.
 	return vars, nil
 }
 
-func (s *GlobalVariablesService) UpdateGlobalVariables(ctx context.Context, vars []dto.GlobalVariableDto) error {
+func (s *VariablesService) UpdateGlobalVariables(ctx context.Context, vars []dto.VariableDto) error {
 	envPath, err := s.getGlobalVariablesPath(ctx)
 	if err != nil {
 		return err
@@ -121,8 +117,7 @@ func (s *GlobalVariablesService) UpdateGlobalVariables(ctx context.Context, vars
 	builder.WriteString("# These variables are available to all projects\n")
 	builder.WriteString("# Last updated: " + time.Now().Format(time.RFC3339) + "\n\n")
 
-	// Sort by key for consistent ordering
-	sortedVars := make([]dto.GlobalVariableDto, len(vars))
+	sortedVars := make([]dto.VariableDto, len(vars))
 	copy(sortedVars, vars)
 	sort.Slice(sortedVars, func(i, j int) bool {
 		return sortedVars[i].Key < sortedVars[j].Key
@@ -136,7 +131,6 @@ func (s *GlobalVariablesService) UpdateGlobalVariables(ctx context.Context, vars
 		key := strings.TrimSpace(v.Key)
 		value := strings.TrimSpace(v.Value)
 
-		// Quote values that contain spaces or special characters
 		if strings.ContainsAny(value, " \t\n\r#") {
 			value = fmt.Sprintf(`"%s"`, strings.ReplaceAll(value, `"`, `\"`))
 		}
@@ -144,7 +138,6 @@ func (s *GlobalVariablesService) UpdateGlobalVariables(ctx context.Context, vars
 		builder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
 	}
 
-	// Write to file with restricted permissions
 	if err := os.WriteFile(envPath, []byte(builder.String()), 0600); err != nil {
 		return fmt.Errorf("failed to write global variables file: %w", err)
 	}

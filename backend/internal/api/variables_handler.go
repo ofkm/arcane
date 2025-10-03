@@ -10,33 +10,32 @@ import (
 	"github.com/ofkm/arcane-backend/internal/services"
 )
 
-type GlobalVariablesHandler struct {
-	globalVariablesService *services.GlobalVariablesService
-	cfg                    *config.Config
+type VariablesHandler struct {
+	variablesService *services.VariablesService
+	cfg              *config.Config
 }
 
-func NewGlobalVariablesHandler(
+func NewVariablesHandler(
 	group *gin.RouterGroup,
-	globalVariablesService *services.GlobalVariablesService,
+	variablesService *services.VariablesService,
 	authMiddleware *middleware.AuthMiddleware,
 	cfg *config.Config,
 ) {
-	h := &GlobalVariablesHandler{
-		globalVariablesService: globalVariablesService,
-		cfg:                    cfg,
+	h := &VariablesHandler{
+		variablesService: variablesService,
+		cfg:              cfg,
 	}
 
 	apiGroup := group.Group("/global-variables")
 	apiGroup.Use(authMiddleware.WithAdminRequired().Add())
 	{
-		apiGroup.GET("", h.GetGlobalVariables)
-		apiGroup.PUT("", h.UpdateGlobalVariables)
+		apiGroup.GET("", h.GetVariables)
+		apiGroup.PUT("", h.UpdateVariables)
 	}
 }
 
-// GetGlobalVariables retrieves all global environment variables
-func (h *GlobalVariablesHandler) GetGlobalVariables(c *gin.Context) {
-	vars, err := h.globalVariablesService.GetGlobalVariables(c.Request.Context())
+func (h *VariablesHandler) GetVariables(c *gin.Context) {
+	vars, err := h.variablesService.GetGlobalVariables(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -47,15 +46,14 @@ func (h *GlobalVariablesHandler) GetGlobalVariables(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": dto.GetGlobalVariablesResponse{
+		"data": dto.GetVariablesResponse{
 			Variables: vars,
 		},
 	})
 }
 
-// UpdateGlobalVariables updates the global environment variables
-func (h *GlobalVariablesHandler) UpdateGlobalVariables(c *gin.Context) {
-	var req dto.UpdateGlobalVariablesRequest
+func (h *VariablesHandler) UpdateVariables(c *gin.Context) {
+	var req dto.UpdateVariablesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -64,7 +62,7 @@ func (h *GlobalVariablesHandler) UpdateGlobalVariables(c *gin.Context) {
 		return
 	}
 
-	if err := h.globalVariablesService.UpdateGlobalVariables(c.Request.Context(), req.Variables); err != nil {
+	if err := h.variablesService.UpdateGlobalVariables(c.Request.Context(), req.Variables); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    gin.H{"error": "Failed to update global variables: " + err.Error()},

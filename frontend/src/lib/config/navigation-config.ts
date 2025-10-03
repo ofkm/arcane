@@ -51,7 +51,7 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 			icon: LockKeyholeIcon
 		},
 		{
-			title: 'Global Variables',
+			title: m.variables_title(),
 			url: '/customize/variables',
 			icon: FileTextIcon
 		}
