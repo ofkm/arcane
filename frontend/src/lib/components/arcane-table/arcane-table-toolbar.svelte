@@ -36,16 +36,26 @@
 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 	<div class="flex flex-col gap-2 sm:flex-1 sm:flex-row sm:items-center sm:justify-between">
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:space-x-2">
-			<Input
-				placeholder={m.common_search()}
-				value={(table.getState().globalFilter as string) ?? ''}
-				oninput={(e) => debouncedSetGlobal(e.currentTarget.value)}
-				onchange={(e) => table.setGlobalFilter(e.currentTarget.value)}
-				onkeydown={(e) => {
-					if (e.key === 'Enter') table.setGlobalFilter((e.currentTarget as HTMLInputElement).value);
-				}}
-				class="h-8 w-full sm:w-[150px] lg:w-[250px]"
-			/>
+			<div class="flex items-center gap-2">
+				<Input
+					placeholder={m.common_search()}
+					value={(table.getState().globalFilter as string) ?? ''}
+					oninput={(e) => debouncedSetGlobal(e.currentTarget.value)}
+					onchange={(e) => table.setGlobalFilter(e.currentTarget.value)}
+					onkeydown={(e) => {
+						if (e.key === 'Enter') table.setGlobalFilter((e.currentTarget as HTMLInputElement).value);
+					}}
+					class="h-8 w-full sm:w-[150px] lg:w-[250px]"
+				/>
+
+				<div class="md:hidden">
+					{#if mobileFields.length > 0 && onToggleMobileField}
+						<DataTableViewOptions fields={mobileFields} onToggleField={onToggleMobileField} />
+					{:else}
+						<DataTableViewOptions {table} />
+					{/if}
+				</div>
+			</div>
 
 			<div class="flex flex-wrap items-center gap-2 sm:gap-0 sm:space-x-2">
 				{#if usageColumn}
@@ -71,15 +81,10 @@
 			</div>
 		</div>
 
-		<!-- View options - end aligned -->
+		<!-- View options - desktop only, end aligned -->
 		<div class="hidden md:block">
 			<DataTableViewOptions {table} />
 		</div>
-		{#if mobileFields.length > 0 && onToggleMobileField}
-			<div class="md:hidden">
-				<DataTableViewOptions fields={mobileFields} onToggleField={onToggleMobileField} />
-			</div>
-		{/if}
 	</div>
 
 	<!-- Actions on the right (wraps on mobile) -->
