@@ -77,24 +77,9 @@
 		persistKey?: string;
 	} = $props();
 
-	let rowSelection = $state<RowSelectionState>({});
-	let columnVisibility = $state<VisibilityState>({});
-	let columnFilters = $state<ColumnFiltersState>([]);
-	let sorting = $state<SortingState>([]);
-	let globalFilter = $state<string>('');
-
 	const enablePersist = !!persistKey;
-
-	// Initialize mobile field visibility from specs
-	if (!Object.keys(mobileFieldVisibility).length && mobileFields.length) {
-		const initial: Record<string, boolean> = {};
-		for (const field of mobileFields) {
-			initial[field.id] = field.defaultVisible ?? true;
-		}
-		mobileFieldVisibility = initial;
-	}
-
 	const getDefaultLimit = () => requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 20;
+
 	const prefs = enablePersist
 		? new PersistedState<CompactTablePrefs>(
 				persistKey as string,
@@ -102,6 +87,42 @@
 				{ syncTabs: false }
 			)
 		: null;
+
+	const persistedState = enablePersist ? (prefs?.current ?? { v: [], f: [], g: '', l: getDefaultLimit(), m: [] }) : null;
+
+	function initializeColumnVisibility(): VisibilityState {
+		const visibility: VisibilityState = {};
+
+		for (const spec of columns) {
+			if (spec.hidden) {
+				const id = spec.id ?? (spec.accessorKey as string);
+				if (id) visibility[id] = false;
+			}
+		}
+
+		if (persistedState?.v) {
+			applyHiddenPatch(visibility, persistedState.v);
+		}
+
+		return visibility;
+	}
+
+	let rowSelection = $state<RowSelectionState>({});
+	let columnVisibility = $state<VisibilityState>(initializeColumnVisibility());
+	let columnFilters = $state<ColumnFiltersState>(persistedState ? decodeFilters(persistedState.f) : []);
+	let sorting = $state<SortingState>([]);
+	let globalFilter = $state<string>(persistedState?.g ?? '');
+
+	if (!Object.keys(mobileFieldVisibility).length && mobileFields.length) {
+		const initial: Record<string, boolean> = {};
+		for (const field of mobileFields) {
+			initial[field.id] = field.defaultVisible ?? true;
+		}
+		if (persistedState?.m) {
+			applyMobileHiddenPatch(initial, persistedState.m);
+		}
+		mobileFieldVisibility = initial;
+	}
 
 	const passAllGlobal: (row: unknown, columnId: string, filterValue: unknown) => boolean = () => true;
 
@@ -112,39 +133,28 @@
 	const canPrev = $derived(currentPage > 1);
 	const canNext = $derived(currentPage < totalPages);
 
-	// Apply persisted state on mount
 	import { onMount } from 'svelte';
 	onMount(() => {
-		if (!enablePersist) return;
-		const cur = prefs?.current ?? { v: [], f: [], g: '', l: getDefaultLimit(), m: [] };
+		if (!enablePersist || !persistedState) return;
 
-		applyHiddenPatch(columnVisibility, cur.v);
-
-		// Apply mobile field visibility
-		if (cur.m && cur.m.length) {
-			applyMobileHiddenPatch(mobileFieldVisibility, cur.m);
-		}
-
-		// Filters
 		let shouldRefresh = false;
-		const restoredFilters = decodeFilters(cur.f);
-		if (restoredFilters.length) columnFilters = restoredFilters;
-		if (cur.g && cur.g !== globalFilter) {
-			globalFilter = cur.g;
+
+		if (persistedState.g && persistedState.g !== (requestOptions?.search ?? '')) {
 			requestOptions = {
 				...requestOptions,
-				search: cur.g,
+				search: persistedState.g,
 				pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
 			};
 			shouldRefresh = true;
 		}
-		// Page size
-		const persistedLimit = cur.l ?? getDefaultLimit();
+
+		const persistedLimit = persistedState.l ?? getDefaultLimit();
 		const currentLimit = requestOptions?.pagination?.limit ?? getDefaultLimit();
 		if (persistedLimit !== currentLimit) {
 			requestOptions = { ...requestOptions, pagination: { page: 1, limit: persistedLimit } };
 			shouldRefresh = true;
 		}
+
 		if (shouldRefresh) onRefresh(requestOptions);
 	});
 
@@ -246,10 +256,6 @@
 				enableSorting: !!spec.sortable,
 				enableHiding: true
 			});
-
-			if (spec.hidden) {
-				columnVisibility[String(accessorKey ?? id)] = false;
-			}
 		});
 
 		if (rowActions) {
