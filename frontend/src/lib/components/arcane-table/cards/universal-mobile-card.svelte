@@ -1,7 +1,6 @@
 <script lang="ts" generics="T">
 	import * as Card from '$lib/components/ui/card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import { Badge } from '$lib/components/ui/badge';
 	import { cn } from '$lib/utils';
 	import type { Snippet, Component } from 'svelte';
 

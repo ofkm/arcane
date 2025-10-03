@@ -90,10 +90,8 @@
 		]}
 		fields={[
 			{
-				label: m.common_status(),
-				getValue: (item: ImageSummaryDto) => (item.inUse ? m.common_in_use() : m.common_unused()),
-				badgeVariant: item.inUse ? ('green' as const) : ('amber' as const),
-				type: 'badge' as const
+				label: m.images_size(),
+				getValue: (item: ImageSummaryDto) => bytes.format(item.size),
 			}
 		]}
 		compact

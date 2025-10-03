@@ -6,7 +6,6 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
 	import BoxIcon from '@lucide/svelte/icons/box';
-	import ClockIcon from '@lucide/svelte/icons/clock';
 	import { getStatusVariant } from '$lib/utils/status.utils';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
@@ -70,13 +69,16 @@
 			}
 			return item.id.substring(0, 12);
 		}}
-		badges={[]}
+		badges={[
+			(item: ContainerSummaryDto) => ({
+				variant: item.state === 'running' ? 'green' : item.state === 'exited' ? 'red' : 'amber',
+				text: capitalizeFirstLetter(item.state)
+			})
+		]}
 		fields={[
 			{
 				label: m.common_status(),
 				getValue: (item: ContainerSummaryDto) => item.status,
-				icon: ClockIcon,
-				iconVariant: 'purple' as const,
 				show: item.status !== undefined
 			}
 		]}
