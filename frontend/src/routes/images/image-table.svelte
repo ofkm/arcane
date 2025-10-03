@@ -138,20 +138,6 @@
 		isPullingInline[imageId] = false;
 	}
 
-	function extractRepoAndTag(repoTags: string[] | undefined) {
-		if (!repoTags || repoTags.length === 0 || repoTags[0] === '<none>:<none>') {
-			return { repo: '<none>', tag: '<none>' };
-		}
-
-		const repoTag = repoTags[0];
-		const lastColonIndex = repoTag.lastIndexOf(':');
-		if (lastColonIndex === -1) return { repo: repoTag, tag: 'latest' };
-
-		const repo = repoTag.substring(0, lastColonIndex);
-		const tag = repoTag.substring(lastColonIndex + 1);
-		return { repo: repo || '<none>', tag: tag || '<none>' };
-	}
-
 	async function handleUpdateInfoChanged(imageId: string, newUpdateInfo: ImageUpdateInfoDto) {
 		const imageIndex = images.data.findIndex((img) => img.id === imageId);
 		if (imageIndex !== -1) {
@@ -217,12 +203,11 @@
 {/snippet}
 
 {#snippet UpdatesCell({ item }: { item: ImageSummaryDto })}
-	{@const { repo, tag } = extractRepoAndTag(item.repoTags)}
 	<ImageUpdateItem
 		updateInfo={item.updateInfo}
 		imageId={item.id}
-		{repo}
-		{tag}
+		repo={item.repo}
+		tag={item.tag}
 		onUpdated={(newInfo) => handleUpdateInfoChanged(item.id, newInfo)}
 	/>
 {/snippet}

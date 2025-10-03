@@ -40,8 +40,8 @@
 	<div class="flex items-center gap-2">
 		<div class="flex flex-1 items-center">
 			<a class="shrink truncate font-medium hover:underline" href="/images/{item.id}">
-				{#if item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>'}
-					{item.repoTags[0].split(':')[0]}
+				{#if item.repo && item.repo !== '<none>'}
+					{item.repo}
 				{:else}
 					<span class="text-muted-foreground italic">{m.images_untagged()}</span>
 				{/if}
@@ -59,8 +59,8 @@
 {/snippet}
 
 {#snippet TagCell({ item }: { item: ImageSummaryDto })}
-	{#if item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>'}
-		{item.repoTags[0].split(':')[1] || m.images_tag_latest()}
+	{#if item.tag && item.tag !== '<none>'}
+		{item.tag}
 	{:else}
 		<span class="text-muted-foreground italic">{m.images_none_label()}</span>
 	{/if}

@@ -39,12 +39,6 @@
 		onclick?: (item: ImageSummaryDto) => void;
 	} = $props();
 
-	function extractRepoAndTag(repoTags: string[]) {
-		if (!repoTags || repoTags.length === 0) return { repo: '<none>', tag: '<none>' };
-		const [repo, tag] = repoTags[0].split(':');
-		return { repo: repo || '<none>', tag: tag || '<none>' };
-	}
-
 	function getIconVariant(inUse: boolean): 'emerald' | 'amber' {
 		return inUse ? 'emerald' : 'amber';
 	}
@@ -74,17 +68,16 @@
 				<div class="flex items-center gap-3">
 					<h3
 						class={cn(
-							'truncate leading-tight font-semibold',
+							'truncate font-semibold leading-tight',
 							compact ? 'text-[13px]' : 'text-base',
 							isUntagged ? 'text-muted-foreground italic' : ''
 						)}
 					>
 						{imageDisplay}
 					</h3>
-					{#if showUpdates && item.updateInfo && item.repoTags}
-						{@const { repo, tag } = extractRepoAndTag(item.repoTags)}
+					{#if showUpdates && item.updateInfo}
 						<div class="flex-shrink-0">
-							<ImageUpdateItem updateInfo={item.updateInfo} imageId={item.id} {repo} {tag} />
+							<ImageUpdateItem updateInfo={item.updateInfo} imageId={item.id} repo={item.repo} tag={item.tag} />
 						</div>
 					{/if}
 				</div>
@@ -118,7 +111,7 @@
 							<HardDriveIcon class="size-3.5 text-blue-500" />
 						</div>
 						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+							<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
 								{m.images_size()}
 							</div>
 							<div class="mt-0.5 text-xs font-medium">
@@ -134,7 +127,7 @@
 							<ImageIcon class="size-3.5 text-purple-500" />
 						</div>
 						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+							<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
 								{m.images_repository()}
 							</div>
 							<div class="mt-0.5 truncate text-xs font-medium">
@@ -147,7 +140,7 @@
 		{:else}
 			{#if showRepoTags && !isUntagged}
 				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.images_repository()}:</span>
+					<span class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">{m.images_repository()}:</span>
 					<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
 						{item.repoTags?.[0] || m.images_untagged()}
 					</span>
@@ -155,7 +148,7 @@
 			{/if}
 			{#if showSize}
 				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.images_size()}:</span>
+					<span class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">{m.images_size()}:</span>
 					<span class="text-muted-foreground truncate text-[11px] leading-tight">
 						{bytes.format(Number(item.size ?? 0))}
 					</span>
@@ -163,7 +156,7 @@
 			{/if}
 			{#if showCreated}
 				<div class="flex items-baseline gap-1.5">
-					<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{m.common_created()}:</span>
+					<span class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">{m.common_created()}:</span>
 					<span class="text-muted-foreground truncate font-mono text-[11px] leading-tight">
 						{format(new Date(Number(item.created || 0) * 1000), 'PP')}
 					</span>
@@ -172,9 +165,9 @@
 		{/if}
 	</Card.Content>
 	{#if !compact && showCreated}
-		<Card.Footer class="flex items-center gap-2 border-t-1 py-3">
+		<Card.Footer class="border-t-1 flex items-center gap-2 py-3">
 			<ClockIcon class="text-muted-foreground size-3.5" />
-			<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+			<span class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
 				{m.common_created()}
 			</span>
 			<span class="text-muted-foreground ml-auto font-mono text-[11px]">
