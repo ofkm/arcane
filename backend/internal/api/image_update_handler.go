@@ -8,11 +8,16 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils/registry"
 )
 
 type ImageUpdateHandler struct {
 	imageUpdateService *services.ImageUpdateService
 }
+
+const (
+	maxVersionLimit = 100
+)
 
 func NewImageUpdateHandler(group *gin.RouterGroup, imageUpdateService *services.ImageUpdateService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &ImageUpdateHandler{imageUpdateService: imageUpdateService}
@@ -33,85 +38,88 @@ func NewImageUpdateHandler(group *gin.RouterGroup, imageUpdateService *services.
 func (h *ImageUpdateHandler) CheckImageUpdate(c *gin.Context) {
 	imageRef := c.Query("imageRef")
 	if imageRef == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "imageRef query parameter is required",
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Success: false,
+			Error:   "imageRef query parameter is required",
 		})
 		return
 	}
 
 	result, err := h.imageUpdateService.CheckImageUpdate(c.Request.Context(), imageRef)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to check image update: " + err.Error(),
+		status := registry.DetermineHTTPStatusFromError(err)
+		c.JSON(status, dto.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    result,
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Success: true,
+		Data:    result,
 	})
 }
 
 func (h *ImageUpdateHandler) CheckImageUpdateByID(c *gin.Context) {
 	imageID := c.Param("imageId")
 	if imageID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "imageId parameter is required",
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Success: false,
+			Error:   "imageId parameter is required",
 		})
 		return
 	}
 
 	result, err := h.imageUpdateService.CheckImageUpdateByID(c.Request.Context(), imageID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to check image update: " + err.Error(),
+		status := registry.DetermineHTTPStatusFromError(err)
+		c.JSON(status, dto.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    result,
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Success: true,
+		Data:    result,
 	})
 }
 
 func (h *ImageUpdateHandler) CheckMultipleImages(c *gin.Context) {
 	var req dto.BatchImageUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request format",
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request format: " + err.Error(),
 		})
 		return
 	}
 
 	if len(req.ImageRefs) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "At least one imageRef is required",
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Success: false,
+			Error:   "At least one imageRef is required",
 		})
 		return
 	}
 
 	results, err := h.imageUpdateService.CheckMultipleImages(c.Request.Context(), req.ImageRefs, req.Credentials)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to check image updates: " + err.Error(),
+		status := registry.DetermineHTTPStatusFromError(err)
+		c.JSON(status, dto.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
 		})
 		return
 	}
 
 	response := dto.BatchImageUpdateResponse(results)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    response,
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Success: true,
+		Data:    response,
 	})
 }
 
@@ -121,93 +129,101 @@ func (h *ImageUpdateHandler) CheckAllImages(c *gin.Context) {
 
 	results, err := h.imageUpdateService.CheckAllImages(c.Request.Context(), 0, req.Credentials)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to check all images: " + err.Error(),
+		status := registry.DetermineHTTPStatusFromError(err)
+		c.JSON(status, dto.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
 		})
 		return
 	}
 
 	response := dto.BatchImageUpdateResponse(results)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    response,
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Success: true,
+		Data:    response,
 	})
 }
 
 func (h *ImageUpdateHandler) GetUpdateSummary(c *gin.Context) {
 	summary, err := h.imageUpdateService.GetUpdateSummary(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get update summary: " + err.Error(),
+		status := registry.DetermineHTTPStatusFromError(err)
+		c.JSON(status, dto.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    summary,
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Success: true,
+		Data:    summary,
 	})
 }
 
 func (h *ImageUpdateHandler) GetImageVersions(c *gin.Context) {
 	imageRef := c.Query("imageRef")
 	if imageRef == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "imageRef query parameter is required",
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Success: false,
+			Error:   "imageRef query parameter is required",
 		})
 		return
 	}
 
 	limitStr := c.DefaultQuery("limit", "20")
 	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid limit parameter",
+	if err != nil || limit <= 0 {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Success: false,
+			Error:   "Invalid limit parameter: must be a positive integer",
 		})
 		return
+	}
+
+	if limit > maxVersionLimit {
+		limit = maxVersionLimit
 	}
 
 	versions, err := h.imageUpdateService.GetAvailableVersions(c.Request.Context(), imageRef, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get image versions: " + err.Error(),
+		status := registry.DetermineHTTPStatusFromError(err)
+		c.JSON(status, dto.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    versions,
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Success: true,
+		Data:    versions,
 	})
 }
 
 func (h *ImageUpdateHandler) CompareVersions(c *gin.Context) {
 	var req dto.CompareVersionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request format",
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request format: " + err.Error(),
 		})
 		return
 	}
 
 	comparison, err := h.imageUpdateService.CompareVersions(c.Request.Context(), req.ImageRef, req.CurrentVersion, req.TargetVersion)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to compare versions: " + err.Error(),
+		status := registry.DetermineHTTPStatusFromError(err)
+		c.JSON(status, dto.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    comparison,
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Success: true,
+		Data:    comparison,
 	})
 }
