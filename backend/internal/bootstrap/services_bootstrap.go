@@ -29,6 +29,7 @@ type Services struct {
 	Updater           *services.UpdaterService
 	Event             *services.EventService
 	Version           *services.VersionService
+	GlobalVariables   *services.GlobalVariablesService
 }
 
 func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config, httpClient *http.Client) (svcs *Services, dockerSrvice *services.DockerClientService, err error) {
@@ -56,6 +57,7 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.Updater = services.NewUpdaterService(db, svcs.Settings, svcs.Docker, svcs.Project, svcs.ImageUpdate, svcs.ContainerRegistry, svcs.Event, svcs.Image)
 	svcs.System = services.NewSystemService(db, svcs.Docker, svcs.Container, svcs.Image, svcs.Volume, svcs.Network, svcs.Settings)
 	svcs.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled)
+	svcs.GlobalVariables = services.NewGlobalVariablesService(db, svcs.Settings)
 
 	return svcs, dockerClient, nil
 }
