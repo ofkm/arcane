@@ -17,7 +17,9 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { VolumeSummaryDto } from '$lib/types/volume.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
-	import { VolumeMobileCard } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
+	import DatabaseIcon from '@lucide/svelte/icons/database';
+	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import { m } from '$lib/paraglide/messages';
 	import { volumeService } from '$lib/services/volume-service';
 
@@ -147,14 +149,40 @@
 	item: VolumeSummaryDto;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
-	<VolumeMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={(item) => ({
+			component: DatabaseIcon,
+			variant: item.inUse ? 'emerald' : 'amber'
+		})}
+		title={(item) => item.name}
+		subtitle={(item) => ((mobileFieldVisibility.id ?? true) ? item.id : null)}
+		badges={[
+			(item) =>
+				(mobileFieldVisibility.status ?? true)
+					? item.inUse
+						? { variant: 'green' as const, text: m.common_in_use() }
+						: { variant: 'amber' as const, text: m.common_unused() }
+					: null
+		]}
+		fields={[
+			{
+				label: m.common_driver(),
+				getValue: (item: VolumeSummaryDto) => item.driver,
+				icon: DatabaseIcon,
+				iconVariant: 'gray' as const,
+				show: mobileFieldVisibility.driver ?? true
+			}
+		]}
+		footer={(mobileFieldVisibility.createdAt ?? true)
+			? {
+					label: m.common_created(),
+					getValue: (item) => format(new Date(String(item.createdAt)), 'PP p'),
+					icon: CalendarIcon
+				}
+			: undefined}
 		rowActions={RowActions}
 		onclick={() => goto(`/volumes/${item.id}`)}
-		showId={mobileFieldVisibility.id ?? true}
-		showCreated={mobileFieldVisibility.createdAt ?? true}
-		showStatus={mobileFieldVisibility.status ?? true}
-		showDriver={mobileFieldVisibility.driver ?? true}
 	/>
 {/snippet}
 

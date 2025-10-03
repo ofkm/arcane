@@ -14,7 +14,10 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ContainerRegistry } from '$lib/types/container-registry.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
-	import { RegistryMobileCard } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
+	import PackageIcon from '@lucide/svelte/icons/package';
+	import UserIcon from '@lucide/svelte/icons/user';
+	import LinkIcon from '@lucide/svelte/icons/link';
 	import { format } from 'date-fns';
 	import { m } from '$lib/paraglide/messages';
 	import { containerRegistryService } from '$lib/services/container-registry-service';
@@ -202,12 +205,29 @@
 	item: ContainerRegistry;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
-	<RegistryMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={{ component: PackageIcon, variant: 'purple' as const }}
+		title={(item) => item.url}
+		subtitle={(item) => ((mobileFieldVisibility.id ?? true) ? item.id : null)}
+		badges={[{ variant: 'purple' as const, text: m.common_registry() }]}
+		fields={[
+			{
+				label: m.common_username(),
+				getValue: (item: ContainerRegistry) => item.username,
+				icon: UserIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.username ?? true) && item.username !== undefined
+			},
+			{
+				label: m.common_description(),
+				getValue: (item: ContainerRegistry) => item.description,
+				icon: LinkIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.description ?? true) && item.description !== undefined
+			}
+		]}
 		rowActions={RowActions}
-		showId={mobileFieldVisibility.id ?? true}
-		showUsername={mobileFieldVisibility.username ?? true}
-		showDescription={mobileFieldVisibility.description ?? true}
 	/>
 {/snippet}
 

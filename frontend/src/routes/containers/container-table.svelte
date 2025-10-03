@@ -23,7 +23,11 @@
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { PortBadge } from '$lib/components/badges/index.js';
-	import { ContainerMobileCard } from '$lib/components/arcane-table/index.js';
+	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
+	import BoxIcon from '@lucide/svelte/icons/box';
+	import ImageIcon from '@lucide/svelte/icons/image';
+	import NetworkIcon from '@lucide/svelte/icons/network';
+	import ClockIcon from '@lucide/svelte/icons/clock';
 	import { containerService } from '$lib/services/container-service';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
@@ -232,18 +236,82 @@
 	item: ContainerSummaryDto;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
-	<ContainerMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={(item) => {
+			const state = item.state;
+			return {
+				component: BoxIcon,
+				variant: state === 'running' ? 'emerald' : state === 'exited' ? 'red' : 'amber'
+			};
+		}}
+		title={(item) => {
+			if (item.names && item.names.length > 0) {
+				return item.names[0].startsWith('/') ? item.names[0].substring(1) : item.names[0];
+			}
+			return item.id.substring(0, 12);
+		}}
+		subtitle={(item) => ((mobileFieldVisibility.id ?? true) ? (item.id.length > 12 ? item.id : null) : null)}
+		badges={[
+			(item) =>
+				(mobileFieldVisibility.state ?? true)
+					? {
+							variant: item.state === 'running' ? 'green' : item.state === 'exited' ? 'red' : 'amber',
+							text: capitalizeFirstLetter(item.state)
+						}
+					: null
+		]}
+		fields={[
+			{
+				label: m.common_image(),
+				getValue: (item: ContainerSummaryDto) => item.image,
+				icon: ImageIcon,
+				iconVariant: 'blue' as const,
+				show: mobileFieldVisibility.image ?? true
+			},
+			{
+				label: m.common_status(),
+				getValue: (item: ContainerSummaryDto) => item.status,
+				icon: ClockIcon,
+				iconVariant: 'purple' as const,
+				show: (mobileFieldVisibility.status ?? true) && item.status !== undefined
+			},
+			{
+				label: m.ports(),
+				getValue: (item: ContainerSummaryDto) => (item.ports && item.ports.length > 0 ? `${item.ports.length} port(s)` : null),
+				icon: NetworkIcon,
+				iconVariant: 'sky' as const,
+				show: (mobileFieldVisibility.ports ?? true) && item.ports && item.ports.length > 0
+			}
+		]}
+		footer={(mobileFieldVisibility.created ?? true)
+			? {
+					label: m.common_created(),
+					getValue: (item) => format(new Date(item.created * 1000), 'PP p'),
+					icon: ClockIcon
+				}
+			: undefined}
 		rowActions={RowActions}
-		{baseServerUrl}
 		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
-		showId={mobileFieldVisibility.id ?? true}
-		showState={mobileFieldVisibility.state ?? true}
-		showImage={mobileFieldVisibility.image ?? true}
-		showStatus={mobileFieldVisibility.status ?? true}
-		showPorts={mobileFieldVisibility.ports ?? true}
-		showCreated={mobileFieldVisibility.created ?? true}
-	/>
+	>
+		{#snippet children()}
+			{#if (mobileFieldVisibility.ports ?? true) && item.ports && item.ports.length > 0}
+				<div class="flex items-start gap-2.5 border-t pt-3">
+					<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
+						<NetworkIcon class="size-3.5 text-sky-500" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+							{m.ports()}
+						</div>
+						<div class="mt-1">
+							<PortBadge ports={item.ports} {baseServerUrl} />
+						</div>
+					</div>
+				</div>
+			{/if}
+		{/snippet}
+	</UniversalMobileCard>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ContainerSummaryDto })}

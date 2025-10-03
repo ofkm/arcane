@@ -16,10 +16,11 @@
 	import { toast } from 'svelte-sonner';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
-	import { EnvironmentMobileCard } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import type { Environment } from '$lib/types/environment.type';
 	import { m } from '$lib/paraglide/messages';
 	import { environmentManagementService } from '$lib/services/env-mgmt-service';
+	import CloudIcon from '@lucide/svelte/icons/cloud';
 
 	let {
 		environments = $bindable(),
@@ -168,7 +169,7 @@
 				<MonitorIcon class="text-muted-foreground size-4" />
 			</div>
 			<div
-				class="border-background absolute -top-1 -right-1 size-3 rounded-full border-2 {item.status === 'online'
+				class="border-background absolute -right-1 -top-1 size-3 rounded-full border-2 {item.status === 'online'
 					? 'bg-green-500'
 					: 'bg-red-500'}"
 			></div>
@@ -201,11 +202,22 @@
 	item: Environment;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
-	<EnvironmentMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={{ component: CloudIcon, variant: 'emerald' }}
+		title={(item: Environment) => item.name || item.id}
+		subtitle={(item: Environment) => ((mobileFieldVisibility.id ?? true) ? item.id : null)}
+		badges={[{ variant: 'green', text: m.sidebar_environment_label() }]}
+		fields={[
+			{
+				label: m.environments_api_url(),
+				getValue: (item: Environment) => item.apiUrl,
+				icon: CloudIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.apiUrl ?? true) && !!item.apiUrl
+			}
+		]}
 		rowActions={RowActions}
-		showId={mobileFieldVisibility.id ?? true}
-		showApiUrl={mobileFieldVisibility.apiUrl ?? true}
 	/>
 {/snippet}
 

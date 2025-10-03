@@ -15,11 +15,15 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { Event } from '$lib/types/event.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
-	import { EventMobileCard } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import EventDetailsDialog from '$lib/components/dialogs/event-details-dialog.svelte';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import { m } from '$lib/paraglide/messages';
 	import { eventService } from '$lib/services/event-service';
+	import BellIcon from '@lucide/svelte/icons/bell';
+	import TagIcon from '@lucide/svelte/icons/tag';
+	import ServerIcon from '@lucide/svelte/icons/server';
+	import UserIcon from '@lucide/svelte/icons/user';
 
 	let {
 		events = $bindable(),
@@ -47,6 +51,14 @@
 			default:
 				return 'blue';
 		}
+	}
+
+	function getIconVariant(severity: string): 'emerald' | 'red' | 'amber' | 'blue' {
+		const variant = getSeverityBadgeVariant(severity);
+		if (variant === 'green') return 'emerald';
+		if (variant === 'red') return 'red';
+		if (variant === 'amber') return 'amber';
+		return 'blue';
 	}
 
 	function formatTimestamp(timestamp: string) {
@@ -168,16 +180,52 @@
 	item: Event;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
-	<EventMobileCard
+	<UniversalMobileCard
 		{item}
+		icon={(item: Event) => ({
+			component: BellIcon,
+			variant: getIconVariant(item.severity)
+		})}
+		title={(item: Event) => item.title}
+		subtitle={(item: Event) => ((mobileFieldVisibility.timestamp ?? true) ? formatTimestamp(item.timestamp) : null)}
+		badges={[
+			(item: Event) =>
+				(mobileFieldVisibility.severity ?? true)
+					? {
+							variant: getSeverityBadgeVariant(item.severity),
+							text: item.severity
+						}
+					: null
+		]}
+		fields={[
+			{
+				label: m.events_col_type(),
+				getValue: (item: Event) => item.type,
+				icon: TagIcon,
+				iconVariant: 'gray' as const,
+				show: mobileFieldVisibility.type ?? true
+			},
+			{
+				label: m.events_col_resource(),
+				getValue: (item: Event) => {
+					if (!item.resourceType && !item.resourceName) return null;
+					const parts = [item.resourceType || '-'];
+					if (item.resourceName) parts.push(item.resourceName);
+					return parts.join(' - ');
+				},
+				icon: ServerIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.resource ?? true) && (!!item.resourceType || !!item.resourceName)
+			},
+			{
+				label: m.common_user(),
+				getValue: (item: Event) => item.username,
+				icon: UserIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.username ?? true) && !!item.username
+			}
+		]}
 		rowActions={RowActions}
-		{formatTimestamp}
-		{getSeverityBadgeVariant}
-		showSeverity={mobileFieldVisibility.severity ?? true}
-		showType={mobileFieldVisibility.type ?? true}
-		showResource={mobileFieldVisibility.resource ?? true}
-		showUsername={mobileFieldVisibility.username ?? true}
-		showTimestamp={mobileFieldVisibility.timestamp ?? true}
 	/>
 {/snippet}
 
