@@ -7,9 +7,9 @@ require (
 	github.com/compose-spec/compose-go/v2 v2.9.0
 	github.com/coreos/go-oidc/v3 v3.15.0
 	github.com/distribution/reference v0.6.0
-	github.com/docker/cli v28.4.0+incompatible
+	github.com/docker/cli v28.5.0+incompatible
 	github.com/docker/compose/v2 v2.39.4
-	github.com/docker/docker v28.4.0+incompatible
+	github.com/docker/docker v28.5.0+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gin-contrib/cors v1.7.6
