@@ -10,21 +10,26 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/utils/docker"
 )
 
 type DockerClientService struct {
-	db *database.DB
+	db     *database.DB
+	config *config.Config
 }
 
-func NewDockerClientService(db *database.DB) *DockerClientService {
-	return &DockerClientService{db: db}
+func NewDockerClientService(db *database.DB, cfg *config.Config) *DockerClientService {
+	return &DockerClientService{
+		db:     db,
+		config: cfg,
+	}
 }
 
 func (s *DockerClientService) CreateConnection(ctx context.Context) (*client.Client, error) {
 	cli, err := client.NewClientWithOpts(
-		client.WithHost("unix:///var/run/docker.sock"),
+		client.WithHost(s.config.DockerHost),
 		client.WithAPIVersionNegotiation(),
 	)
 

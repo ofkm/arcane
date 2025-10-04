@@ -46,7 +46,10 @@ else
 fi
 
 # Handle Docker socket and group
-if [ -S /var/run/docker.sock ]; then
+# Skip socket configuration if using TCP proxy (DOCKER_HOST with tcp://)
+if [ -n "$DOCKER_HOST" ] && echo "$DOCKER_HOST" | grep -q "^tcp://"; then
+    echo "Entrypoint: Docker proxy mode detected (DOCKER_HOST=${DOCKER_HOST}), skipping socket setup"
+elif [ -S /var/run/docker.sock ]; then
     SOCKET_GID=$(stat -c '%g' /var/run/docker.sock)
     echo "Entrypoint: Docker socket found with GID ${SOCKET_GID}"
     if [ "$SOCKET_GID" = "0" ]; then

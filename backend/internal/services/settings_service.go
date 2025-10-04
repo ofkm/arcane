@@ -85,6 +85,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		BaseServerURL:                models.SettingVariable{Value: "http://localhost"},
 		EnableGravatar:               models.SettingVariable{Value: "true"},
 		DefaultShell:                 models.SettingVariable{Value: "/bin/sh"},
+		DockerHost:                   models.SettingVariable{Value: "unix:///var/run/docker.sock"},
 		AuthLocalEnabled:             models.SettingVariable{Value: "true"},
 		AuthOidcEnabled:              models.SettingVariable{Value: "false"},
 		AuthSessionTimeout:           models.SettingVariable{Value: "1440"},
@@ -104,7 +105,6 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 func (s *SettingsService) loadDatabaseSettingsInternal(ctx context.Context, db *database.DB) (*models.Settings, error) {
 
 	if config.Load().UIConfigurationDisabled || config.Load().AgentMode {
-		// debug: show why we're using env path
 		slog.DebugContext(ctx, "loadDatabaseSettingsInternal: using env path", "UIConfigurationDisabled", config.Load().UIConfigurationDisabled, "AgentMode", config.Load().AgentMode, "Environment", config.Load().Environment)
 
 		dst, err := s.loadDatabaseConfigFromEnv(ctx, db)

@@ -26,6 +26,7 @@ type Config struct {
 	OidcAdminClaim   string
 	OidcAdminValue   string
 
+	DockerHost              string
 	LogJson                 bool
 	LogLevel                string
 	AgentMode               bool
@@ -53,6 +54,7 @@ func Load() *Config {
 		OidcAdminClaim:   getEnvOrDefault("OIDC_ADMIN_CLAIM", ""),
 		OidcAdminValue:   getEnvOrDefault("OIDC_ADMIN_VALUE", ""),
 
+		DockerHost:              getEnvOrDefault("DOCKER_HOST", "unix:///var/run/docker.sock"),
 		LogJson:                 getBoolEnvOrDefault("LOG_JSON", false),
 		LogLevel:                strings.ToLower(getEnvOrDefault("LOG_LEVEL", "info")),
 		AgentMode:               getBoolEnvOrDefault("AGENT_MODE", false),
