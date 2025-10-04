@@ -8,6 +8,7 @@
 	import { debounced } from '$lib/utils/utils.js';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { m } from '$lib/paraglide/messages';
+	import type { Snippet } from 'svelte';
 
 	let {
 		table,
@@ -15,7 +16,8 @@
 		selectionDisabled = false,
 		onRemoveSelected,
 		mobileFields = [],
-		onToggleMobileField
+		onToggleMobileField,
+		customViewOptions
 	}: {
 		table: Table<TData>;
 		selectedIds?: string[];
@@ -23,6 +25,7 @@
 		onRemoveSelected?: (ids: string[]) => void;
 		mobileFields?: { id: string; label: string; visible: boolean }[];
 		onToggleMobileField?: (fieldId: string) => void;
+		customViewOptions?: Snippet;
 	} = $props();
 
 	const isFiltered = $derived(table.getState().columnFilters.length > 0 || !!table.getState().globalFilter);
@@ -83,7 +86,7 @@
 
 		<!-- View options - desktop only, end aligned -->
 		<div class="hidden md:block">
-			<DataTableViewOptions {table} />
+			<DataTableViewOptions {table} {customViewOptions} />
 		</div>
 	</div>
 
