@@ -1205,5 +1205,22 @@
 	"customize_save_failed": "Failed to save default templates",
 	"customize_save_success": "Default templates saved successfully",
 	"customize_reset_success": "Changes reset",
-	"default_templates": "Default Templates"
+	"default_templates": "Default Templates",
+	"variables_title": "Global Variables",
+	"variables_subtitle": "Manage global environment variables that are available to all projects",
+	"variables_about_title": "About Global Environment Variables",
+	"variables_about_description": "These variables are stored in .env.global at the root of your projects directory and are available to all Docker Compose projects.",
+	"variables_env_vars_title": "Environment Variables",
+	"variables_count_configured": "{count} variable configured",
+	"variables_count_configured_plural": "{count} variables configured",
+	"variables_add_button": "Add",
+	"variables_no_variables_title": "No environment variables yet",
+	"variables_no_variables_description": "Click \"Add\" to create your first variable",
+	"variables_no_results_title": "No variables found",
+	"variables_no_results_description": "Try a different search term",
+	"variables_key_placeholder": "KEY",
+	"variables_value_placeholder": "value",
+	"variables_duplicate_keys_error": "Duplicate keys found. Please ensure all keys are unique.",
+	"variables_save_success": "Global variables saved successfully",
+	"variables_save_failed": "Failed to save. Please try again."
 }

@@ -42,6 +42,8 @@ func DetectComposeFile(dir string) (string, error) {
 func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*composetypes.Project, error) {
 	workdir := filepath.Dir(composeFile)
 	envFile := filepath.Join(workdir, ".env")
+	projectsDir := filepath.Dir(workdir)
+	globalEnvFile := filepath.Join(projectsDir, ".env.global")
 
 	envMap := map[string]string{}
 	for _, kv := range os.Environ() {
@@ -49,12 +51,21 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*
 			envMap[k] = v
 		}
 	}
-	if info, err := os.Stat(envFile); err == nil && !info.IsDir() {
-		if fileEnv, rerr := godotenv.Read(envFile); rerr == nil {
-			for k, v := range fileEnv {
+
+	if info, err := os.Stat(globalEnvFile); err == nil && !info.IsDir() {
+		if globalEnv, rerr := godotenv.Read(globalEnvFile); rerr == nil {
+			for k, v := range globalEnv {
 				if _, exists := envMap[k]; !exists {
 					envMap[k] = v
 				}
+			}
+		}
+	}
+
+	if info, err := os.Stat(envFile); err == nil && !info.IsDir() {
+		if fileEnv, rerr := godotenv.Read(envFile); rerr == nil {
+			for k, v := range fileEnv {
+				envMap[k] = v
 			}
 		}
 	}
