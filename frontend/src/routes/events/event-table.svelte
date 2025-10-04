@@ -15,10 +15,15 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { Event } from '$lib/types/event.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import EventDetailsDialog from '$lib/components/dialogs/event-details-dialog.svelte';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import { m } from '$lib/paraglide/messages';
 	import { eventService } from '$lib/services/event-service';
+	import BellIcon from '@lucide/svelte/icons/bell';
+	import TagIcon from '@lucide/svelte/icons/tag';
+	import ServerIcon from '@lucide/svelte/icons/server';
+	import UserIcon from '@lucide/svelte/icons/user';
 
 	let {
 		events = $bindable(),
@@ -46,6 +51,14 @@
 			default:
 				return 'blue';
 		}
+	}
+
+	function getIconVariant(severity: string): 'emerald' | 'red' | 'amber' | 'blue' {
+		const variant = getSeverityBadgeVariant(severity);
+		if (variant === 'green') return 'emerald';
+		if (variant === 'red') return 'red';
+		if (variant === 'amber') return 'amber';
+		return 'blue';
 	}
 
 	function formatTimestamp(timestamp: string) {
@@ -113,6 +126,16 @@
 			cell: TimeCell
 		}
 	] satisfies ColumnSpec<Event>[];
+
+	const mobileFields = [
+		{ id: 'severity', label: m.events_col_severity(), defaultVisible: true },
+		{ id: 'type', label: m.events_col_type(), defaultVisible: true },
+		{ id: 'resource', label: m.events_col_resource(), defaultVisible: true },
+		{ id: 'username', label: m.common_user(), defaultVisible: true },
+		{ id: 'timestamp', label: m.events_col_time(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet SeverityCell({ value }: { value: unknown })}
@@ -148,6 +171,64 @@
 	<span class="text-sm">{formatTimestamp(String(value ?? new Date().toISOString()))}</span>
 {/snippet}
 
+{#snippet EventMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: Event;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<UniversalMobileCard
+		{item}
+		icon={(item: Event) => ({
+			component: BellIcon,
+			variant: getIconVariant(item.severity)
+		})}
+		title={(item: Event) => item.title}
+		subtitle={(item: Event) => ((mobileFieldVisibility.timestamp ?? true) ? formatTimestamp(item.timestamp) : null)}
+		badges={[
+			(item: Event) =>
+				(mobileFieldVisibility.severity ?? true)
+					? {
+							variant: getSeverityBadgeVariant(item.severity),
+							text: item.severity
+						}
+					: null
+		]}
+		fields={[
+			{
+				label: m.events_col_type(),
+				getValue: (item: Event) => item.type,
+				icon: TagIcon,
+				iconVariant: 'gray' as const,
+				show: mobileFieldVisibility.type ?? true
+			},
+			{
+				label: m.events_col_resource(),
+				getValue: (item: Event) => {
+					if (!item.resourceType && !item.resourceName) return null;
+					const parts = [item.resourceType || '-'];
+					if (item.resourceName) parts.push(item.resourceName);
+					return parts.join(' - ');
+				},
+				icon: ServerIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.resource ?? true) && (!!item.resourceType || !!item.resourceName)
+			},
+			{
+				label: m.common_user(),
+				getValue: (item: Event) => item.username,
+				icon: UserIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.username ?? true) && !!item.username
+			}
+		]}
+		rowActions={RowActions}
+	/>
+{/snippet}
+
 {#snippet RowActions({ item }: { item: Event })}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
@@ -177,19 +258,21 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<div>
-	<Card.Root>
-		<Card.Content class="py-5">
-			<ArcaneTable
-				items={events}
-				bind:requestOptions
-				bind:selectedIds
-				onRefresh={async (options) => (events = await eventService.getEvents(options))}
-				{columns}
-				rowActions={RowActions}
-			/>
-		</Card.Content>
-	</Card.Root>
-</div>
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Content class="px-6 py-5">
+		<ArcaneTable
+			persistKey="arcane-events-table"
+			items={events}
+			bind:requestOptions
+			bind:selectedIds
+			bind:mobileFieldVisibility
+			onRefresh={async (options) => (events = await eventService.getEvents(options))}
+			{columns}
+			{mobileFields}
+			rowActions={RowActions}
+			mobileCard={EventMobileCardSnippet}
+		/>
+	</Card.Content>
+</Card.Root>
 
 <EventDetailsDialog bind:open={detailsOpen} event={detailsEvent} />

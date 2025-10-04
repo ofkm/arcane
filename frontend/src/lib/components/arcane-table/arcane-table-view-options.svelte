@@ -5,7 +5,15 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { m } from '$lib/paraglide/messages';
 
-	let { table }: { table: Table<TData> } = $props();
+	let {
+		table,
+		fields,
+		onToggleField
+	}: {
+		table?: Table<TData>;
+		fields?: { id: string; label: string; visible: boolean }[];
+		onToggleField?: (fieldId: string) => void;
+	} = $props();
 </script>
 
 <DropdownMenu.Root>
@@ -13,24 +21,35 @@
 		class={buttonVariants({
 			variant: 'outline',
 			size: 'sm',
-			class: 'ml-auto hidden h-8 lg:flex'
+			class: 'h-8'
 		})}
 	>
 		<Settings2Icon />
 		{m.common_view()}
 	</DropdownMenu.Trigger>
-	<DropdownMenu.Content>
+	<DropdownMenu.Content align="end">
 		<DropdownMenu.Group>
 			<DropdownMenu.Label>{m.common_toggle_columns()}</DropdownMenu.Label>
 			<DropdownMenu.Separator />
-			{#each table.getAllColumns().filter((col) => typeof col.accessorFn !== 'undefined' && col.getCanHide()) as column (column)}
-				<DropdownMenu.CheckboxItem
-					bind:checked={() => column.getIsVisible(), (v) => column.toggleVisibility(!!v)}
-					class="capitalize"
-				>
-					{column.id}
-				</DropdownMenu.CheckboxItem>
-			{/each}
+
+			{#if table}
+				{#each table
+					.getAllColumns()
+					.filter((col) => typeof col.accessorFn !== 'undefined' && col.getCanHide()) as column (column)}
+					<DropdownMenu.CheckboxItem
+						bind:checked={() => column.getIsVisible(), (v) => column.toggleVisibility(!!v)}
+						class="capitalize"
+					>
+						{column.id}
+					</DropdownMenu.CheckboxItem>
+				{/each}
+			{:else if fields && onToggleField}
+				{#each fields as field (field.id)}
+					<DropdownMenu.CheckboxItem bind:checked={() => field.visible, (v) => onToggleField(field.id)} class="capitalize">
+						{field.label}
+					</DropdownMenu.CheckboxItem>
+				{/each}
+			{/if}
 		</DropdownMenu.Group>
 	</DropdownMenu.Content>
 </DropdownMenu.Root>

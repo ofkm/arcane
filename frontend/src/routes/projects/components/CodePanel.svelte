@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Card from '$lib/components/ui/card';
 	import CodeEditor from '$lib/components/code-editor/editor.svelte';
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
 
@@ -22,11 +22,12 @@
 	} = $props();
 </script>
 
-<Card.Root class="gap-0 p-0">
-	<Card.Header class="bg-muted rounded-t-xl p-4">
-		<Card.Title class="flex items-center gap-2 text-lg">
-			<FileTextIcon class="text-primary size-5" />
-			{title}
+<Card.Root>
+	<Card.Header icon={FileTextIcon} class="items-center">
+		<Card.Title>
+			<h2>
+				{title}
+			</h2>
 		</Card.Title>
 	</Card.Header>
 	<Card.Content class="p-0">

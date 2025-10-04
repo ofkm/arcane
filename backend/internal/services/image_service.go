@@ -523,11 +523,20 @@ func mapDockerImagesToDTOs(dockerImages []image.Summary, inUseMap map[string]boo
 
 		if len(di.RepoTags) > 0 {
 			repoTag := di.RepoTags[0]
-			if strings.Contains(repoTag, ":") {
-				parts := strings.SplitN(repoTag, ":", 2)
-				imageDto.Repo = parts[0]
-				imageDto.Tag = parts[1]
+			// Use LastIndex to split on the LAST colon, correctly handling registry:port/image:tag
+			lastColonIdx := strings.LastIndex(repoTag, ":")
+			if lastColonIdx != -1 {
+				imageDto.Repo = repoTag[:lastColonIdx]
+				imageDto.Tag = repoTag[lastColonIdx+1:]
+				// Handle edge cases
+				if imageDto.Repo == "" {
+					imageDto.Repo = "<none>"
+				}
+				if imageDto.Tag == "" {
+					imageDto.Tag = "<none>"
+				}
 			} else {
+				// No colon found, treat entire string as repo with default tag
 				imageDto.Repo = repoTag
 				imageDto.Tag = "latest"
 			}

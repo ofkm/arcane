@@ -16,6 +16,10 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ImageUpdateItem from '$lib/components/image-update-item.svelte';
+	import UniversalMobileCard from '$lib/components/arcane-table/cards/universal-mobile-card.svelte';
+	import ImageIcon from '@lucide/svelte/icons/image';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
+	import ClockIcon from '@lucide/svelte/icons/clock';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ImageSummaryDto, ImageUpdateInfoDto } from '$lib/types/image.type';
 	import { format } from 'date-fns';
@@ -137,20 +141,6 @@
 		isPullingInline[imageId] = false;
 	}
 
-	function extractRepoAndTag(repoTags: string[] | undefined) {
-		if (!repoTags || repoTags.length === 0 || repoTags[0] === '<none>:<none>') {
-			return { repo: '<none>', tag: '<none>' };
-		}
-
-		const repoTag = repoTags[0];
-		const lastColonIndex = repoTag.lastIndexOf(':');
-		if (lastColonIndex === -1) return { repo: repoTag, tag: 'latest' };
-
-		const repo = repoTag.substring(0, lastColonIndex);
-		const tag = repoTag.substring(lastColonIndex + 1);
-		return { repo: repo || '<none>', tag: tag || '<none>' };
-	}
-
 	async function handleUpdateInfoChanged(imageId: string, newUpdateInfo: ImageUpdateInfoDto) {
 		const imageIndex = images.data.findIndex((img) => img.id === imageId);
 		if (imageIndex !== -1) {
@@ -162,22 +152,33 @@
 
 	const columns = [
 		{ accessorKey: 'id', title: m.common_id(), hidden: true },
-		{ accessorKey: 'repoTags', title: m.images_repository(), sortable: true, cell: RepoCell },
-		{ accessorKey: 'size', title: m.images_size(), sortable: true, cell: SizeCell },
-		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell },
+		{
+			id: 'updates',
+			accessorFn: (row) => row.updateInfo?.hasUpdate ?? false,
+			title: m.images_updates(),
+			cell: UpdatesCell
+		},
 		{
 			accessorKey: 'inUse',
 			title: m.common_status(),
 			sortable: true,
 			cell: StatusCell
 		},
-		{
-			id: 'updates',
-			accessorFn: (row) => row.updateInfo?.hasUpdate ?? false,
-			title: m.images_updates(),
-			cell: UpdatesCell
-		}
+		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell },
+		{ accessorKey: 'size', title: m.images_size(), sortable: true, cell: SizeCell },
+		{ accessorKey: 'repoTags', title: m.images_repository(), sortable: true, cell: RepoCell }
 	] satisfies ColumnSpec<ImageSummaryDto>[];
+
+	const mobileFields = [
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'updates', label: m.images_updates(), defaultVisible: true },
+		{ id: 'inUse', label: m.common_in_use(), defaultVisible: true },
+		{ id: 'created', label: m.common_created(), defaultVisible: true },
+		{ id: 'size', label: m.images_size(), defaultVisible: true },
+		{ id: 'repoTags', label: m.images_repository(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet RepoCell({ item }: { item: ImageSummaryDto })}
@@ -205,14 +206,90 @@
 {/snippet}
 
 {#snippet UpdatesCell({ item }: { item: ImageSummaryDto })}
-	{@const { repo, tag } = extractRepoAndTag(item.repoTags)}
 	<ImageUpdateItem
 		updateInfo={item.updateInfo}
 		imageId={item.id}
-		{repo}
-		{tag}
+		repo={item.repo}
+		tag={item.tag}
 		onUpdated={(newInfo) => handleUpdateInfoChanged(item.id, newInfo)}
 	/>
+{/snippet}
+
+{#snippet ImageMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: ImageSummaryDto;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<UniversalMobileCard
+		{item}
+		icon={(item) => ({
+			component: ImageIcon,
+			variant: item.inUse ? 'emerald' : 'amber'
+		})}
+		title={(item) =>
+			item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>' ? item.repoTags[0] : m.images_untagged()}
+		subtitle={(item) => ((mobileFieldVisibility.id ?? false) ? item.id : null)}
+		badges={[
+			(item: ImageSummaryDto) =>
+				(mobileFieldVisibility.inUse ?? true)
+					? item.inUse
+						? { variant: 'green' as const, text: m.common_in_use() }
+						: { variant: 'amber' as const, text: m.common_unused() }
+					: null
+		]}
+		fields={[
+			{
+				label: m.images_size(),
+				getValue: (item: ImageSummaryDto) => bytes.format(Number(item.size ?? 0)),
+				icon: HardDriveIcon,
+				iconVariant: 'blue' as const,
+				show: mobileFieldVisibility.size ?? true
+			},
+			{
+				label: m.images_repository(),
+				getValue: (item: ImageSummaryDto) => item.repoTags?.[0] || m.images_untagged(),
+				icon: ImageIcon,
+				iconVariant: 'purple' as const,
+				show:
+					(mobileFieldVisibility.repoTags ?? true) &&
+					item.repoTags &&
+					item.repoTags.length > 0 &&
+					item.repoTags[0] !== '<none>:<none>'
+			}
+		]}
+		footer={(mobileFieldVisibility.created ?? true)
+			? {
+					label: m.common_created(),
+					getValue: (item) => format(new Date(Number(item.created || 0) * 1000), 'PP p'),
+					icon: ClockIcon
+				}
+			: undefined}
+		rowActions={RowActions}
+		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
+	>
+		<div class="flex flex-wrap gap-x-4 gap-y-3 border-t pt-3">
+			{#if (mobileFieldVisibility.updates ?? true) && item.updateInfo !== undefined}
+				<div class="flex min-w-0 flex-1 basis-[180px] flex-col">
+					<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+						{m.images_updates()}
+					</div>
+					<div class="mt-0.5">
+						<ImageUpdateItem
+							updateInfo={item.updateInfo}
+							imageId={item.id}
+							repo={item.repo}
+							tag={item.tag}
+							onUpdated={(newInfo) => handleUpdateInfoChanged(item.id, newInfo)}
+						/>
+					</div>
+				</div>
+			{/if}
+		</div>
+	</UniversalMobileCard>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ImageSummaryDto })}
@@ -257,17 +334,20 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root>
-	<Card.Content class="py-5">
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Content class="px-6 py-5">
 		<ArcaneTable
 			persistKey="arcane-image-table"
 			items={images}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
 			onRefresh={async (options) => (images = await imageService.getImages(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
+			mobileCard={ImageMobileCardSnippet}
 		/>
 	</Card.Content>
 </Card.Root>

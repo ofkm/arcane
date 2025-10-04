@@ -97,8 +97,10 @@
 <ResourcePageLayout title={m.registries_title()} subtitle={m.registries_subtitle()} {actionButtons}>
 	{#snippet mainContent()}
 		<div class="space-y-6">
-			<Card.Root class="border shadow-sm">
-				<Card.Header class="pb-4">
+			<Card.Root class="flex flex-col gap-6 border py-3 shadow-sm">
+				<Card.Header
+					class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 pb-4 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+				>
 					<div class="flex items-center gap-3">
 						<div class="rounded-full bg-green-500/10 p-2">
 							<KeyIcon class="size-5 text-green-500" />
@@ -111,17 +113,19 @@
 						</div>
 					</div>
 				</Card.Header>
-				<Card.Content>
+				<Card.Content class="px-6">
 					<RegistryTable bind:registries bind:selectedIds bind:requestOptions onEditRegistry={openEditRegistryDialog} />
 				</Card.Content>
 			</Card.Root>
 
-			<Card.Root class="border shadow-sm">
-				<Card.Header>
+			<Card.Root class="flex flex-col gap-6 border py-3 shadow-sm">
+				<Card.Header
+					class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+				>
 					<Card.Title class="text-lg">{m.registries_info_title()}</Card.Title>
 					<Card.Description>{m.registries_info_description()}</Card.Description>
 				</Card.Header>
-				<Card.Content>
+				<Card.Content class="px-6">
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 						<div class="space-y-3">
 							<h4 class="text-sm font-medium">{m.registries_popular_public_title()}</h4>

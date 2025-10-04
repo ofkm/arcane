@@ -8,8 +8,11 @@
 	import type { ImageSummaryDto } from '$lib/types/image.type';
 	import bytes from 'bytes';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { imageService } from '$lib/services/image-service';
+	import { goto } from '$app/navigation';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 
 	let {
 		images = $bindable(),
@@ -38,8 +41,8 @@
 	<div class="flex items-center gap-2">
 		<div class="flex flex-1 items-center">
 			<a class="shrink truncate font-medium hover:underline" href="/images/{item.id}">
-				{#if item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>'}
-					{item.repoTags[0].split(':')[0]}
+				{#if item.repo && item.repo !== '<none>'}
+					{item.repo}
 				{:else}
 					<span class="text-muted-foreground italic">{m.images_untagged()}</span>
 				{/if}
@@ -57,8 +60,8 @@
 {/snippet}
 
 {#snippet TagCell({ item }: { item: ImageSummaryDto })}
-	{#if item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>'}
-		{item.repoTags[0].split(':')[1] || m.images_tag_latest()}
+	{#if item.tag && item.tag !== '<none>'}
+		{item.tag}
 	{:else}
 		<span class="text-muted-foreground italic">{m.images_none_label()}</span>
 	{/if}
@@ -68,40 +71,64 @@
 	{bytes.format(item.size)}
 {/snippet}
 
-<Card.Root class="relative flex flex-col rounded-lg border shadow-sm">
-	<Card.Header class="px-6 pb-3 pt-5">
-		<div class="flex items-center justify-between">
-			<div>
-				<Card.Title>
-					<a class="font-medium hover:underline" href="/images">{m.images_title()}</a>
-				</Card.Title>
-				<Card.Description class="pb-2">{m.images_top_largest()}</Card.Description>
-			</div>
-			<div class="flex items-center gap-3">
-				<Button variant="ghost" size="sm" href="/images" disabled={isLoading}>
-					{m.common_view_all()}
-					<ArrowRightIcon class="ml-2 size-4" />
-				</Button>
-			</div>
+{#snippet DashImageMobileCard({ row, item }: { row: any; item: ImageSummaryDto })}
+	<UniversalMobileCard
+		{item}
+		icon={(item: ImageSummaryDto) => ({
+			component: HardDriveIcon,
+			variant: item.inUse ? 'emerald' : 'amber'
+		})}
+		title={(item: ImageSummaryDto) => {
+			if (item.repo && item.repo !== '<none>') {
+				return item.repo;
+			}
+			return m.images_untagged();
+		}}
+		badges={[
+			(item: ImageSummaryDto) =>
+				item.inUse ? { variant: 'green', text: m.common_in_use() } : { variant: 'amber', text: m.common_unused() }
+		]}
+		fields={[
+			{
+				label: m.images_size(),
+				getValue: (item: ImageSummaryDto) => bytes.format(item.size),
+			}
+		]}
+		compact
+		class="mx-2"
+		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
+	/>
+{/snippet}
+
+<Card.Root class="pb-2">
+	<Card.Header class="flex items-center justify-between p-4">
+		<div>
+			<Card.Title>
+				<a class="font-medium hover:underline" href="/images">{m.images_title()}</a>
+			</Card.Title>
+			<Card.Description>{m.images_top_largest()}</Card.Description>
 		</div>
+		<Button variant="ghost" size="sm" href="/images" disabled={isLoading}>
+			{m.common_view_all()}
+			<ArrowRightIcon class="ml-2 size-4" />
+		</Button>
 	</Card.Header>
-	<Card.Content class="flex-1 p-0">
-		<div class="flex h-full flex-col">
-			<ArcaneTable
-				items={images}
-				bind:requestOptions
-				bind:selectedIds
-				onRefresh={async (options) => (images = await imageService.getImages(options))}
-				withoutSearch={true}
-				selectionDisabled={true}
-				withoutPagination={true}
-				{columns}
-			/>
-			{#if images.data.length > 5}
-				<div class="bg-muted/40 text-muted-foreground border-t px-6 py-2 text-xs">
-					{m.images_showing_of_total({ shown: 5, total: images.pagination.totalItems })}
-				</div>
-			{/if}
-		</div>
+	<Card.Content class="p-0 pt-2">
+		<ArcaneTable
+			items={images}
+			bind:requestOptions
+			bind:selectedIds
+			onRefresh={async (options) => (images = await imageService.getImages(options))}
+			withoutSearch={true}
+			selectionDisabled={true}
+			withoutPagination={true}
+			{columns}
+			mobileCard={DashImageMobileCard}
+		/>
+		{#if images.data.length > 5}
+			<div class="bg-muted/40 text-muted-foreground border-t px-6 py-3 text-xs">
+				{m.images_showing_of_total({ shown: 5, total: images.pagination.totalItems })}
+			</div>
+		{/if}
 	</Card.Content>
 </Card.Root>

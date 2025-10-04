@@ -36,10 +36,13 @@
 	import { PersistedState } from 'runed';
 	import {
 		type CompactTablePrefs,
+		type FieldSpec,
 		encodeHidden,
 		applyHiddenPatch,
 		encodeFilters,
-		decodeFilters
+		decodeFilters,
+		encodeMobileHidden,
+		applyMobileHiddenPatch
 	} from './arcane-table.types.svelte';
 
 	let {
@@ -51,6 +54,9 @@
 		onRefresh,
 		columns,
 		rowActions,
+		mobileCard,
+		mobileFields = [],
+		mobileFieldVisibility = $bindable<Record<string, boolean>>({}),
 		selectedIds = $bindable<string[]>([]),
 		onRemoveSelected,
 		persistKey
@@ -63,27 +69,60 @@
 		onRefresh: (requestOptions: SearchPaginationSortRequest) => Promise<Paginated<TData>>;
 		columns: ColumnSpec<TData>[];
 		rowActions?: Snippet<[{ row: Row<TData>; item: TData }]>;
+		mobileCard: Snippet<[{ row: Row<TData>; item: TData; mobileFieldVisibility: Record<string, boolean> }]>;
+		mobileFields?: FieldSpec[];
+		mobileFieldVisibility?: Record<string, boolean>;
 		selectedIds?: string[];
 		onRemoveSelected?: (ids: string[]) => void;
 		persistKey?: string;
 	} = $props();
 
-	let rowSelection = $state<RowSelectionState>({});
-	let columnVisibility = $state<VisibilityState>({});
-	let columnFilters = $state<ColumnFiltersState>([]);
-	let sorting = $state<SortingState>([]);
-	let globalFilter = $state<string>('');
-
 	const enablePersist = !!persistKey;
-
 	const getDefaultLimit = () => requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 20;
+
 	const prefs = enablePersist
 		? new PersistedState<CompactTablePrefs>(
 				persistKey as string,
-				{ v: [], f: [], g: '', l: getDefaultLimit() },
+				{ v: [], f: [], g: '', l: getDefaultLimit(), m: [] },
 				{ syncTabs: false }
 			)
 		: null;
+
+	const persistedState = enablePersist ? (prefs?.current ?? { v: [], f: [], g: '', l: getDefaultLimit(), m: [] }) : null;
+
+	function initializeColumnVisibility(): VisibilityState {
+		const visibility: VisibilityState = {};
+
+		for (const spec of columns) {
+			if (spec.hidden) {
+				const id = spec.id ?? (spec.accessorKey as string);
+				if (id) visibility[id] = false;
+			}
+		}
+
+		if (persistedState?.v) {
+			applyHiddenPatch(visibility, persistedState.v);
+		}
+
+		return visibility;
+	}
+
+	let rowSelection = $state<RowSelectionState>({});
+	let columnVisibility = $state<VisibilityState>(initializeColumnVisibility());
+	let columnFilters = $state<ColumnFiltersState>(persistedState ? decodeFilters(persistedState.f) : []);
+	let sorting = $state<SortingState>([]);
+	let globalFilter = $state<string>(persistedState?.g ?? '');
+
+	if (!Object.keys(mobileFieldVisibility).length && mobileFields.length) {
+		const initial: Record<string, boolean> = {};
+		for (const field of mobileFields) {
+			initial[field.id] = field.defaultVisible ?? true;
+		}
+		if (persistedState?.m) {
+			applyMobileHiddenPatch(initial, persistedState.m);
+		}
+		mobileFieldVisibility = initial;
+	}
 
 	const passAllGlobal: (row: unknown, columnId: string, filterValue: unknown) => boolean = () => true;
 
@@ -94,34 +133,64 @@
 	const canPrev = $derived(currentPage > 1);
 	const canNext = $derived(currentPage < totalPages);
 
-	// Apply persisted state on mount
+	function toFilterMap(filters: ColumnFiltersState): FilterMap {
+		const out: FilterMap = {};
+		for (const f of filters ?? []) {
+			const id = f.id;
+			let v: unknown = (f as any).value;
+			if (Array.isArray(v)) {
+				if (v.length === 0) continue;
+				v = v[0];
+			} else if (v && typeof v === 'object' && v instanceof Set) {
+				const first = (v as Set<unknown>).values().next().value;
+				if (first === undefined) continue;
+				v = first;
+			}
+			if (v !== undefined && v !== null && String(v).trim() !== '') {
+				out[id] = v as any;
+			}
+		}
+		return out;
+	}
+
 	import { onMount } from 'svelte';
 	onMount(() => {
-		if (!enablePersist) return;
-		const cur = prefs?.current ?? { v: [], f: [], g: '', l: getDefaultLimit() };
+		if (!enablePersist || !persistedState) return;
 
-		applyHiddenPatch(columnVisibility, cur.v);
-
-		// Filters
 		let shouldRefresh = false;
-		const restoredFilters = decodeFilters(cur.f);
-		if (restoredFilters.length) columnFilters = restoredFilters;
-		if (cur.g && cur.g !== globalFilter) {
-			globalFilter = cur.g;
+
+		if (persistedState.g && persistedState.g !== (requestOptions?.search ?? '')) {
 			requestOptions = {
 				...requestOptions,
-				search: cur.g,
+				search: persistedState.g,
 				pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
 			};
 			shouldRefresh = true;
 		}
-		// Page size
-		const persistedLimit = cur.l ?? getDefaultLimit();
+
+		const persistedLimit = persistedState.l ?? getDefaultLimit();
 		const currentLimit = requestOptions?.pagination?.limit ?? getDefaultLimit();
 		if (persistedLimit !== currentLimit) {
 			requestOptions = { ...requestOptions, pagination: { page: 1, limit: persistedLimit } };
 			shouldRefresh = true;
 		}
+
+		// Restore filters from persistence
+		if (persistedState.f && persistedState.f.length > 0) {
+			const restoredFilters = toFilterMap(decodeFilters(persistedState.f));
+			const currentFilters = requestOptions?.filters ?? {};
+			const hasFilterChanges = JSON.stringify(restoredFilters) !== JSON.stringify(currentFilters);
+
+			if (hasFilterChanges) {
+				requestOptions = {
+					...requestOptions,
+					filters: restoredFilters,
+					pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
+				};
+				shouldRefresh = true;
+			}
+		}
+
 		if (shouldRefresh) onRefresh(requestOptions);
 	});
 
@@ -223,10 +292,6 @@
 				enableSorting: !!spec.sortable,
 				enableHiding: true
 			});
-
-			if (spec.hidden) {
-				columnVisibility[String(accessorKey ?? id)] = false;
-			}
 		});
 
 		if (rowActions) {
@@ -332,25 +397,24 @@
 		getCoreRowModel: getCoreRowModel()
 	});
 
-	function toFilterMap(filters: ColumnFiltersState): FilterMap {
-		const out: FilterMap = {};
-		for (const f of filters ?? []) {
-			const id = f.id;
-			let v: unknown = (f as any).value;
-			if (Array.isArray(v)) {
-				if (v.length === 0) continue;
-				v = v[0];
-			} else if (v && typeof v === 'object' && v instanceof Set) {
-				const first = (v as Set<unknown>).values().next().value;
-				if (first === undefined) continue;
-				v = first;
-			}
-			if (v !== undefined && v !== null && String(v).trim() !== '') {
-				out[id] = v as any; // scalar only
-			}
+	function onToggleMobileField(fieldId: string) {
+		mobileFieldVisibility = {
+			...mobileFieldVisibility,
+			[fieldId]: !mobileFieldVisibility[fieldId]
+		};
+		// Persist mobile field visibility
+		if (enablePersist && prefs) {
+			prefs.current = { ...prefs.current, m: encodeMobileHidden(mobileFieldVisibility) };
 		}
-		return out;
 	}
+
+	const mobileFieldsForOptions = $derived(
+		mobileFields.map((field) => ({
+			id: field.id,
+			label: field.label,
+			visible: mobileFieldVisibility[field.id] ?? true
+		}))
+	);
 
 	$effect(() => {
 		const s = requestOptions?.sort;
@@ -374,12 +438,12 @@
 {/snippet}
 
 {#snippet Pagination({ table }: { table: TableType<TData> })}
-	<div class="flex items-center justify-between px-2">
-		<div class="text-muted-foreground flex-1 text-sm">
+	<div class="flex flex-col gap-4 px-2 sm:flex-row sm:items-center sm:justify-between">
+		<div class="text-muted-foreground order-2 text-sm sm:order-1">
 			{m.common_showing_of_total({ shown: items.data.length, total: totalItems })}
 		</div>
-		<div class="flex items-center space-x-6 lg:space-x-8">
-			<div class="flex items-center space-x-2">
+		<div class="order-1 flex flex-col gap-4 sm:order-2 sm:flex-row sm:items-center sm:space-x-6 lg:space-x-8">
+			<div class="flex items-center justify-between space-x-2 sm:justify-start">
 				<p class="text-sm font-medium">{m.common_rows_per_page()}</p>
 				<Select.Root
 					allowDeselect={false}
@@ -399,29 +463,35 @@
 					</Select.Content>
 				</Select.Root>
 			</div>
-			<div class="flex w-[100px] items-center justify-center text-sm font-medium">
-				{m.common_page_of({ page: currentPage, total: totalPages })}
-			</div>
-			<div class="flex items-center space-x-2">
-				<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(1)} disabled={!canPrev}>
-					<span class="sr-only">{m.common_go_first_page()}</span>
-					<ChevronsLeftIcon />
-				</Button>
-				<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage - 1)} disabled={!canPrev}>
-					<span class="sr-only">{m.common_go_prev_page()}</span>
-					<ChevronLeftIcon />
-				</Button>
-				<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage + 1)} disabled={!canNext}>
-					<span class="sr-only">{m.common_go_next_page()}</span>
-					<ChevronRightIcon />
-				</Button>
-				<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(totalPages)} disabled={!canNext}>
-					<span class="sr-only">{m.common_go_last_page()}</span>
-					<ChevronsRightIcon />
-				</Button>
+			<div class="flex items-center justify-between sm:justify-center">
+				<div class="flex items-center justify-center text-sm font-medium sm:w-[100px]">
+					{m.common_page_of({ page: currentPage, total: totalPages })}
+				</div>
+				<div class="flex items-center space-x-1 sm:space-x-2">
+					<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(1)} disabled={!canPrev}>
+						<span class="sr-only">{m.common_go_first_page()}</span>
+						<ChevronsLeftIcon />
+					</Button>
+					<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage - 1)} disabled={!canPrev}>
+						<span class="sr-only">{m.common_go_prev_page()}</span>
+						<ChevronLeftIcon />
+					</Button>
+					<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage + 1)} disabled={!canNext}>
+						<span class="sr-only">{m.common_go_next_page()}</span>
+						<ChevronRightIcon />
+					</Button>
+					<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(totalPages)} disabled={!canNext}>
+						<span class="sr-only">{m.common_go_last_page()}</span>
+						<ChevronsRightIcon />
+					</Button>
+				</div>
 			</div>
 		</div>
 	</div>
+{/snippet}
+
+{#snippet MobileCard({ row, item }: { row: Row<TData>; item: TData })}
+	{@render mobileCard({ row, item, mobileFieldVisibility })}
 {/snippet}
 
 {#snippet ColumnHeader({
@@ -475,9 +545,18 @@
 
 <div class="space-y-4">
 	{#if !withoutSearch}
-		<DataTableToolbar {table} {selectedIds} {selectionDisabled} {onRemoveSelected} />
+		<DataTableToolbar
+			{table}
+			{selectedIds}
+			{selectionDisabled}
+			{onRemoveSelected}
+			mobileFields={mobileFieldsForOptions}
+			{onToggleMobileField}
+		/>
 	{/if}
-	<div class="rounded-md">
+
+	<!-- Desktop Table View -->
+	<div class="hidden rounded-md md:block">
 		<Table.Root>
 			<Table.Header>
 				{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
@@ -509,6 +588,18 @@
 			</Table.Body>
 		</Table.Root>
 	</div>
+
+	<!-- Mobile Card View -->
+	<div class="space-y-3 md:hidden">
+		{#each table.getRowModel().rows as row (row.id)}
+			{@render MobileCard({ row, item: row.original as TData })}
+		{:else}
+			<div class="h-24 flex items-center justify-center text-center text-muted-foreground">
+				{m.common_no_results_found()}
+			</div>
+		{/each}
+	</div>
+
 	{#if !withoutPagination}
 		{@render Pagination({ table })}
 	{/if}

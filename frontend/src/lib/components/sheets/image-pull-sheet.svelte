@@ -82,10 +82,12 @@
 		let imageTag = data.tag?.trim() || 'latest';
 
 		if (imageName.includes(':')) {
-			const parts = imageName.split(':');
-			imageName = parts[0];
-			if (parts.length > 1 && parts[1].trim() !== '') {
-				imageTag = parts[1].trim();
+			const lastColonIndex = imageName.lastIndexOf(':');
+			const possibleTag = imageName.substring(lastColonIndex + 1).trim();
+			// Only split if the part after the last colon looks like a tag (not a port number in a registry URL)
+			if (possibleTag && !possibleTag.includes('/')) {
+				imageName = imageName.substring(0, lastColonIndex);
+				imageTag = possibleTag;
 			}
 		}
 

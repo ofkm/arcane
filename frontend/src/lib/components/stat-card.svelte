@@ -24,8 +24,8 @@
 	}: Props = $props();
 </script>
 
-<Card.Root class={cn('', className)}>
-	<Card.Content class="flex items-center justify-between">
+<Card.Root class={cn('flex flex-col gap-6 py-3', className)}>
+	<Card.Content class="flex items-center justify-between px-6">
 		<div>
 			<p class="text-muted-foreground text-sm font-medium">{title}</p>
 			<p class="text-2xl font-bold">{value}</p>

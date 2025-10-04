@@ -14,6 +14,10 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ContainerRegistry } from '$lib/types/container-registry.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
+	import PackageIcon from '@lucide/svelte/icons/package';
+	import UserIcon from '@lucide/svelte/icons/user';
+	import LinkIcon from '@lucide/svelte/icons/link';
 	import { format } from 'date-fns';
 	import { m } from '$lib/paraglide/messages';
 	import { containerRegistryService } from '$lib/services/container-registry-service';
@@ -158,6 +162,14 @@
 			cell: CreatedCell
 		}
 	] satisfies ColumnSpec<ContainerRegistry>[];
+
+	const mobileFields = [
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'username', label: m.common_username(), defaultVisible: true },
+		{ id: 'description', label: m.common_description(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet UrlCell({ item }: { item: ContainerRegistry })}
@@ -182,6 +194,41 @@
 
 {#snippet CreatedCell({ value }: { value: unknown })}
 	<span class="text-sm">{value ? format(new Date(String(value)), 'PP p') : m.common_na()}</span>
+{/snippet}
+
+{#snippet RegistryMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: ContainerRegistry;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<UniversalMobileCard
+		{item}
+		icon={{ component: PackageIcon, variant: 'purple' as const }}
+		title={(item) => item.url}
+		subtitle={(item) => ((mobileFieldVisibility.id ?? true) ? item.id : null)}
+		badges={[{ variant: 'purple' as const, text: m.common_registry() }]}
+		fields={[
+			{
+				label: m.common_username(),
+				getValue: (item: ContainerRegistry) => item.username,
+				icon: UserIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.username ?? true) && item.username !== undefined
+			},
+			{
+				label: m.common_description(),
+				getValue: (item: ContainerRegistry) => item.description,
+				icon: LinkIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.description ?? true) && item.description !== undefined
+			}
+		]}
+		rowActions={RowActions}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ContainerRegistry })}
@@ -215,12 +262,16 @@
 
 <div>
 	<ArcaneTable
+		persistKey="arcane-registries-table"
 		items={registries}
 		bind:requestOptions
 		bind:selectedIds
+		bind:mobileFieldVisibility
 		onRemoveSelected={(ids) => handleDeleteSelected(ids)}
 		onRefresh={async (options) => (registries = await containerRegistryService.getRegistries(options))}
 		{columns}
+		{mobileFields}
 		rowActions={RowActions}
+		mobileCard={RegistryMobileCardSnippet}
 	/>
 </div>

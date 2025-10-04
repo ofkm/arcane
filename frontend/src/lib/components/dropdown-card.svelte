@@ -49,8 +49,11 @@
 	});
 </script>
 
-<Card.Root>
-	<Card.Header class="cursor-pointer pt-2" onclick={toggleExpanded}>
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Header
+		class="@container/card-header grid cursor-pointer auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 pt-2 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+		onclick={toggleExpanded}
+	>
 		<div class="flex items-center justify-between">
 			<div>
 				<Card.Title class="my-2 flex items-center">
@@ -70,7 +73,7 @@
 	</Card.Header>
 	{#if expanded}
 		<div transition:slide={{ duration: 200 }}>
-			<Card.Content class="bg-muted/20 pt-5">
+			<Card.Content class="bg-muted/20 px-6 pt-5">
 				{@render children()}
 			</Card.Content>
 		</div>

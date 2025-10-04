@@ -1,6 +1,6 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
 	import type { PageData } from './$types';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import CircleAlertIcon from '@lucide/svelte/icons/alert-circle';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -13,13 +13,13 @@
 	import ListTreeIcon from '@lucide/svelte/icons/list-tree';
 	import ContainerIcon from '@lucide/svelte/icons/container';
 	import InfoIcon from '@lucide/svelte/icons/info';
-	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
-	import * as Alert from '$lib/components/ui/alert/index.js';
+	import * as Breadcrumb from '$lib/components/ui/breadcrumb';
+	import * as Alert from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { format } from 'date-fns';
 	import { toast } from 'svelte-sonner';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
-	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
+	import { ArcaneButton } from '$lib/components/arcane-button';
 	import { goto } from '$app/navigation';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -142,13 +142,12 @@
 
 	{#if network}
 		<div class="space-y-6">
-			<Card.Root class="pt-0">
-				<Card.Header class="bg-muted rounded-t-xl p-4">
-					<Card.Title class="flex items-center gap-2 text-lg">
-						<InfoIcon class="text-primary size-5" />
-						{m.networks_details_title()}
-					</Card.Title>
-					<Card.Description>{m.networks_details_description()}</Card.Description>
+			<Card.Root>
+				<Card.Header icon={InfoIcon}>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>{m.networks_details_title()}</Card.Title>
+						<Card.Description>{m.networks_details_description()}</Card.Description>
+					</div>
 				</Card.Header>
 				<Card.Content class="p-4">
 					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
@@ -158,7 +157,12 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.networks_id()}</p>
-								<p class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm" title="Click to select">{network.id}</p>
+								<p
+									class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm"
+									title="Click to select"
+								>
+									{network.id}
+								</p>
 							</div>
 						</div>
 
@@ -168,7 +172,9 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.networks_name()}</p>
-								<p class="mt-1 cursor-pointer text-sm font-semibold break-all select-all sm:text-base" title="Click to select">{network.name}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold break-all select-all sm:text-base" title="Click to select">
+									{network.name}
+								</p>
 							</div>
 						</div>
 
@@ -178,7 +184,9 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.networks_driver()}</p>
-								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">{network.driver}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+									{network.driver}
+								</p>
 							</div>
 						</div>
 
@@ -188,7 +196,9 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.networks_scope()}</p>
-								<p class="mt-1 cursor-pointer text-sm font-semibold capitalize select-all sm:text-base" title="Click to select">{network.scope}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold capitalize select-all sm:text-base" title="Click to select">
+									{network.scope}
+								</p>
 							</div>
 						</div>
 
@@ -198,7 +208,9 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<p class="text-muted-foreground text-sm font-medium">{m.networks_created()}</p>
-								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">{createdDate}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+									{createdDate}
+								</p>
 							</div>
 						</div>
 
@@ -251,73 +263,82 @@
 			</Card.Root>
 
 			{#if network.ipam?.Config && network.ipam.Config.length > 0}
-				<Card.Root class="pt-0">
-					<Card.Header class="bg-muted rounded-t-xl p-4">
-						<Card.Title class="flex items-center gap-2 text-lg">
-							<SettingsIcon class="text-primary size-5" />
-							{m.networks_ipam_title()}
-						</Card.Title>
-						<Card.Description>{m.networks_ipam_description()}</Card.Description>
+				<Card.Root>
+					<Card.Header icon={SettingsIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.networks_ipam_title()}</Card.Title>
+							<Card.Description>{m.networks_ipam_description()}</Card.Description>
+						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
-						{#each network.ipam.Config as config, i (i)}
-							<div class="bg-card/50 mb-4 rounded-lg border p-4 last:mb-0">
-								<div class="space-y-2">
-									{#if config.Subnet}
-										<div class="flex flex-col sm:flex-row sm:items-center">
-											<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
-												>{m.networks_ipam_subnet_label()}:</span
-											>
-											<code
-												class="bg-muted text-muted-foreground mt-1 rounded px-1.5 py-0.5 font-mono text-xs sm:mt-0 sm:text-sm cursor-pointer select-all" title="Click to select"
-											>
-												{config.Subnet}
-											</code>
-										</div>
-									{/if}
+						<div class="space-y-3">
+							{#each network.ipam.Config as config, i (i)}
+								<Card.Root variant="outlined">
+									<Card.Content class="p-4">
+										<div class="space-y-2">
+											{#if config.Subnet}
+												<div class="flex flex-col sm:flex-row sm:items-center">
+													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
+														>{m.networks_ipam_subnet_label()}:</span
+													>
+													<code
+														class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
+														title="Click to select"
+													>
+														{config.Subnet}
+													</code>
+												</div>
+											{/if}
 
-									{#if config.Gateway}
-										<div class="flex flex-col sm:flex-row sm:items-center">
-											<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
-												>{m.networks_ipam_gateway_label()}:</span
-											>
-											<code
-												class="bg-muted text-muted-foreground mt-1 rounded px-1.5 py-0.5 font-mono text-xs sm:mt-0 sm:text-sm cursor-pointer select-all" title="Click to select"
-											>
-												{config.Gateway}
-											</code>
-										</div>
-									{/if}
+											{#if config.Gateway}
+												<div class="flex flex-col sm:flex-row sm:items-center">
+													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
+														>{m.networks_ipam_gateway_label()}:</span
+													>
+													<code
+														class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
+														title="Click to select"
+													>
+														{config.Gateway}
+													</code>
+												</div>
+											{/if}
 
-									{#if config.IPRange}
-										<div class="flex flex-col sm:flex-row sm:items-center">
-											<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
-												>{m.networks_ipam_iprange_label()}:</span
-											>
-											<code
-												class="bg-muted text-muted-foreground mt-1 rounded px-1.5 py-0.5 font-mono text-xs sm:mt-0 sm:text-sm cursor-pointer select-all" title="Click to select"
-											>
-												{config.IPRange}
-											</code>
-										</div>
-									{/if}
+											{#if config.IPRange}
+												<div class="flex flex-col sm:flex-row sm:items-center">
+													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
+														>{m.networks_ipam_iprange_label()}:</span
+													>
+													<code
+														class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
+														title="Click to select"
+													>
+														{config.IPRange}
+													</code>
+												</div>
+											{/if}
 
-									{#if (config.AuxiliaryAddresses && Object.keys(config.AuxiliaryAddresses).length > 0) || (config.AuxAddress && Object.keys(config.AuxAddress).length > 0)}
-										<div class="mt-3">
-											<p class="text-muted-foreground mb-1 text-sm font-medium">{m.networks_ipam_aux_addresses_label()}:</p>
-											<ul class="ml-4 space-y-1">
-												{#each Object.entries(config.AuxiliaryAddresses ?? config.AuxAddress ?? {}) as [name, addr] (name)}
-													<li class="flex font-mono text-xs">
-														<span class="text-muted-foreground mr-2">{name}:</span>
-														<code class="bg-muted text-muted-foreground rounded px-1 py-0.5 cursor-pointer select-all" title="Click to select">{addr}</code>
-													</li>
-												{/each}
-											</ul>
+											{#if (config.AuxiliaryAddresses && Object.keys(config.AuxiliaryAddresses).length > 0) || (config.AuxAddress && Object.keys(config.AuxAddress).length > 0)}
+												<div class="mt-3">
+													<p class="text-muted-foreground mb-1 text-sm font-medium">{m.networks_ipam_aux_addresses_label()}:</p>
+													<ul class="ml-4 space-y-1">
+														{#each Object.entries(config.AuxiliaryAddresses ?? config.AuxAddress ?? {}) as [name, addr] (name)}
+															<li class="flex font-mono text-xs">
+																<span class="text-muted-foreground mr-2">{name}:</span>
+																<code
+																	class="bg-muted text-muted-foreground cursor-pointer rounded px-1 py-0.5 select-all"
+																	title="Click to select">{addr}</code
+																>
+															</li>
+														{/each}
+													</ul>
+												</div>
+											{/if}
 										</div>
-									{/if}
-								</div>
-							</div>
-						{/each}
+									</Card.Content>
+								</Card.Root>
+							{/each}
+						</div>
 
 						{#if network.ipam.Driver}
 							<div class="mt-4 flex items-center">
@@ -344,58 +365,64 @@
 			{/if}
 
 			{#if connectedContainers.length > 0}
-				<Card.Root class="pt-0">
-					<Card.Header class="bg-muted rounded-t-xl p-4">
-						<Card.Title class="flex items-center gap-2 text-lg">
-							<ContainerIcon class="text-primary size-5" />
-							{m.networks_connected_containers_title()}
-						</Card.Title>
-						<Card.Description
-							>{m.networks_connected_containers_description({ count: connectedContainers.length })}</Card.Description
-						>
+				<Card.Root>
+					<Card.Header icon={ContainerIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.networks_connected_containers_title()}</Card.Title>
+							<Card.Description
+								>{m.networks_connected_containers_description({ count: connectedContainers.length })}</Card.Description
+							>
+						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
-						<div class="bg-card divide-y rounded-lg border">
-							{#each connectedContainers as container (container.id)}
-								<div class="flex flex-col p-3 sm:flex-row sm:items-center">
-									<div class="mb-2 w-full break-all font-medium sm:mb-0 sm:w-1/3">
-										<a href="/containers/{container.id}" class="text-primary flex items-center hover:underline">
-											<ContainerIcon class="text-muted-foreground mr-1.5 size-3.5" />
-											{container.Name}
-										</a>
+						<Card.Root variant="outlined">
+							<Card.Content class="divide-y p-0">
+								{#each connectedContainers as container (container.id)}
+									<div class="flex flex-col p-3 sm:flex-row sm:items-center">
+										<div class="mb-2 w-full font-medium break-all sm:mb-0 sm:w-1/3">
+											<a href="/containers/{container.id}" class="text-primary flex items-center hover:underline">
+												<ContainerIcon class="text-muted-foreground mr-1.5 size-3.5" />
+												{container.Name}
+											</a>
+										</div>
+										<div class="w-full pl-0 sm:w-2/3 sm:pl-4">
+											<code
+												class="bg-muted text-muted-foreground cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs break-all select-all sm:text-sm"
+												title="Click to select"
+											>
+												{container.IPv4Address || container.IPv6Address || m.common_unknown()}
+											</code>
+										</div>
 									</div>
-									<div class="w-full pl-0 sm:w-2/3 sm:pl-4">
-									<code class="bg-muted text-muted-foreground break-all rounded px-1.5 py-0.5 font-mono text-xs sm:text-sm cursor-pointer select-all" title="Click to select">
-										{container.IPv4Address || container.IPv6Address || m.common_unknown()}
-									</code>
-									</div>
-								</div>
-							{/each}
-						</div>
+								{/each}
+							</Card.Content>
+						</Card.Root>
 					</Card.Content>
 				</Card.Root>
 			{/if}
 
 			{#if network.labels && Object.keys(network.labels).length > 0}
-				<Card.Root class="pt-0">
-					<Card.Header class="bg-muted rounded-t-xl p-4">
-						<Card.Title class="flex items-center gap-2 text-lg">
-							<TagIcon class="text-primary size-5" />
-							{m.networks_labels_title()}
-						</Card.Title>
-						<Card.Description>{m.networks_labels_description()}</Card.Description>
+				<Card.Root>
+					<Card.Header icon={TagIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.networks_labels_title()}</Card.Title>
+							<Card.Description>{m.networks_labels_description()}</Card.Description>
+						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
-						<div class="bg-card divide-y rounded-lg border">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
 							{#each Object.entries(network.labels) as [key, value] (key)}
-								<div class="flex flex-col p-3 sm:flex-row">
-									<div class="text-muted-foreground mb-2 w-full break-all font-medium sm:mb-0 sm:w-1/3">
-										{key}
-									</div>
-									<div class="bg-muted/50 w-full break-all rounded p-2 font-mono text-xs sm:w-2/3 sm:text-sm cursor-pointer select-all" title="Click to select">
-										{value}
-									</div>
-								</div>
+								<Card.Root variant="subtle">
+									<Card.Content class="flex flex-col gap-2 p-4">
+										<div class="text-muted-foreground text-xs font-semibold tracking-wide break-all uppercase">{key}</div>
+										<div
+											class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+											title="Click to select"
+										>
+											{value}
+										</div>
+									</Card.Content>
+								</Card.Root>
 							{/each}
 						</div>
 					</Card.Content>
@@ -403,25 +430,27 @@
 			{/if}
 
 			{#if network.options && Object.keys(network.options).length > 0}
-				<Card.Root class="pt-0">
-					<Card.Header class="bg-muted rounded-t-xl p-4">
-						<Card.Title class="flex items-center gap-2 text-lg">
-							<SettingsIcon class="text-primary size-5" />
-							{m.networks_options_title()}
-						</Card.Title>
-						<Card.Description>{m.networks_options_description()}</Card.Description>
+				<Card.Root>
+					<Card.Header icon={SettingsIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.networks_options_title()}</Card.Title>
+							<Card.Description>{m.networks_options_description()}</Card.Description>
+						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
-						<div class="bg-card divide-y rounded-lg border">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
 							{#each Object.entries(network.options) as [key, value] (key)}
-								<div class="flex flex-col p-3 sm:flex-row">
-									<div class="text-muted-foreground mb-2 w-full break-all font-medium sm:mb-0 sm:w-1/3">
-										{key}
-									</div>
-									<div class="bg-muted/50 w-full break-all rounded p-2 font-mono text-xs sm:w-2/3 sm:text-sm cursor-pointer select-all" title="Click to select">
-										{value}
-									</div>
-								</div>
+								<Card.Root variant="subtle">
+									<Card.Content class="flex flex-col gap-2 p-4">
+										<div class="text-muted-foreground text-xs font-semibold tracking-wide break-all uppercase">{key}</div>
+										<div
+											class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+											title="Click to select"
+										>
+											{value}
+										</div>
+									</Card.Content>
+								</Card.Root>
 							{/each}
 						</div>
 					</Card.Content>

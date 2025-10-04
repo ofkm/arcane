@@ -1,7 +1,8 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Card from '$lib/components/ui/card';
 	import Terminal from '$lib/components/terminal/terminal.svelte';
-	import TerminalHeader from '$lib/components/terminal/terminal-header.svelte';
+	import TerminalControls from '$lib/components/terminal/terminal-controls.svelte';
+	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import { m } from '$lib/paraglide/messages';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import settingsStore from '$lib/stores/config-store';
@@ -55,10 +56,27 @@
 	}
 </script>
 
-<Card.Root class="flex flex-col gap-0 p-0">
-	<Card.Header class="bg-muted rounded-t-xl p-4">
-		<TerminalHeader {isConnected} bind:selectedShell onShellChange={handleShellChange} onReconnect={handleReconnect} />
-		<Card.Description class="mt-4">{m.shell_interactive_access()}</Card.Description>
+<Card.Root>
+	<Card.Header icon={TerminalIcon}>
+		<div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+			<div class="flex flex-col gap-1.5">
+				<div class="flex items-center gap-2">
+					<Card.Title>
+						<h2>
+							{m.shell_title()}
+						</h2>
+					</Card.Title>
+					{#if isConnected}
+						<div class="flex items-center gap-2">
+							<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
+							<span class="text-xs font-semibold text-green-600 sm:text-sm">{m.common_live()}</span>
+						</div>
+					{/if}
+				</div>
+				<Card.Description>{m.shell_interactive_access()}</Card.Description>
+			</div>
+			<TerminalControls bind:selectedShell onShellChange={handleShellChange} onReconnect={handleReconnect} />
+		</div>
 	</Card.Header>
 	<Card.Content class="overflow-hidden p-2">
 		<div class="h-full overflow-hidden rounded-lg border">

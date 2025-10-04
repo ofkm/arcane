@@ -1,6 +1,12 @@
 import type { Row, Column, FilterFn, ColumnFiltersState, VisibilityState } from '@tanstack/table-core';
 import type { Snippet } from 'svelte';
 
+export type FieldSpec = {
+	id: string;
+	label: string;
+	defaultVisible?: boolean;
+};
+
 export type ColumnSpec<T> = {
 	accessorKey?: keyof T & string;
 	accessorFn?: (row: T) => any;
@@ -24,6 +30,8 @@ export type CompactTablePrefs = {
 	g?: string;
 	// l: page size (limit)
 	l?: number;
+	// m: list of hidden mobile field ids
+	m?: string[];
 };
 
 export function encodeHidden(visibility: VisibilityState): string[] {
@@ -48,4 +56,19 @@ export function encodeFilters(filters: ColumnFiltersState): [string, unknown][] 
 export function decodeFilters(pairs?: [string, unknown][]): ColumnFiltersState {
 	if (!pairs?.length) return [];
 	return pairs.map(([id, value]) => ({ id, value }));
+}
+
+export function encodeMobileHidden(visibility: Record<string, boolean>): string[] {
+	const hidden: string[] = [];
+	for (const [id, visible] of Object.entries(visibility)) {
+		if (visible === false) hidden.push(id);
+	}
+	return hidden;
+}
+
+export function applyMobileHiddenPatch(target: Record<string, boolean>, hidden?: string[]) {
+	if (!hidden?.length) return;
+	for (const id of hidden) {
+		target[id] = false;
+	}
 }

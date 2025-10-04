@@ -17,6 +17,9 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { VolumeSummaryDto } from '$lib/types/volume.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
+	import DatabaseIcon from '@lucide/svelte/icons/database';
+	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import { m } from '$lib/paraglide/messages';
 	import { volumeService } from '$lib/services/volume-service';
 
@@ -97,17 +100,26 @@
 	}
 
 	const columns = [
-		{ accessorKey: 'id', title: m.common_id(), hidden: true },
 		{ accessorKey: 'name', title: m.common_name(), sortable: true, cell: NameCell },
+		{ accessorKey: 'id', title: m.common_id(), hidden: true },
 		{
 			accessorKey: 'inUse',
 			title: m.common_status(),
 			sortable: true,
 			cell: StatusCell
 		},
-		{ accessorKey: 'driver', title: m.common_driver(), sortable: true },
-		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell }
+		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell },
+		{ accessorKey: 'driver', title: m.common_driver(), sortable: true }
 	] satisfies ColumnSpec<VolumeSummaryDto>[];
+
+	const mobileFields = [
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'status', label: m.common_status(), defaultVisible: true },
+		{ id: 'createdAt', label: m.common_created(), defaultVisible: true },
+		{ id: 'driver', label: m.common_driver(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet NameCell({ item }: { item: VolumeSummaryDto })}
@@ -126,6 +138,52 @@
 
 {#snippet CreatedCell({ value }: { value: unknown })}
 	{format(new Date(String(value)), 'PP p')}
+{/snippet}
+
+{#snippet VolumeMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: VolumeSummaryDto;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<UniversalMobileCard
+		{item}
+		icon={(item) => ({
+			component: DatabaseIcon,
+			variant: item.inUse ? 'emerald' : 'amber'
+		})}
+		title={(item) => item.name}
+		subtitle={(item) => ((mobileFieldVisibility.id ?? true) ? item.id : null)}
+		badges={[
+			(item) =>
+				(mobileFieldVisibility.status ?? true)
+					? item.inUse
+						? { variant: 'green' as const, text: m.common_in_use() }
+						: { variant: 'amber' as const, text: m.common_unused() }
+					: null
+		]}
+		fields={[
+			{
+				label: m.common_driver(),
+				getValue: (item: VolumeSummaryDto) => item.driver,
+				icon: DatabaseIcon,
+				iconVariant: 'gray' as const,
+				show: mobileFieldVisibility.driver ?? true
+			}
+		]}
+		footer={(mobileFieldVisibility.createdAt ?? true)
+			? {
+					label: m.common_created(),
+					getValue: (item) => format(new Date(String(item.createdAt)), 'PP p'),
+					icon: CalendarIcon
+				}
+			: undefined}
+		rowActions={RowActions}
+		onclick={() => goto(`/volumes/${item.id}`)}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: VolumeSummaryDto })}
@@ -153,17 +211,20 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root>
-	<Card.Content class="py-5">
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Content class="px-6 py-5">
 		<ArcaneTable
 			persistKey="arcane-volumes-table"
 			items={volumes}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
 			onRefresh={async (options) => (volumes = await volumeService.getVolumes(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
+			mobileCard={VolumeMobileCardSnippet}
 		/>
 	</Card.Content>
 </Card.Root>
