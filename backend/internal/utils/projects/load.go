@@ -3,9 +3,12 @@ package projects
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"time"
 
 	"github.com/compose-spec/compose-go/v2/loader"
 	composetypes "github.com/compose-spec/compose-go/v2/types"
@@ -44,6 +47,16 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*
 	envFile := filepath.Join(workdir, ".env")
 	projectsDir := filepath.Dir(workdir)
 	globalEnvFile := filepath.Join(projectsDir, ".env.global")
+	if _, err := os.Stat(globalEnvFile); os.IsNotExist(err) {
+		header := fmt.Sprintf("# Global Environment Variables\n# These variables are available to all projects\n# Created: %s\n\n", time.Now().Format(time.RFC3339))
+		if werr := os.WriteFile(globalEnvFile, []byte(header), 0600); werr != nil {
+			slog.WarnContext(ctx, "Failed to create global env file", "path", globalEnvFile, "error", werr)
+		} else {
+			slog.InfoContext(ctx, "Created global env file", "path", globalEnvFile)
+		}
+	} else if err != nil {
+		slog.DebugContext(ctx, "Could not stat global env file", "path", globalEnvFile, "error", err)
+	}
 
 	envMap := map[string]string{}
 	for _, kv := range os.Environ() {
@@ -52,21 +65,45 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*
 		}
 	}
 
+	slog.DebugContext(ctx, "Checking for global env file", "path", globalEnvFile)
 	if info, err := os.Stat(globalEnvFile); err == nil && !info.IsDir() {
+		slog.DebugContext(ctx, "Found global env file", "path", globalEnvFile)
 		if globalEnv, rerr := godotenv.Read(globalEnvFile); rerr == nil {
+			slog.DebugContext(ctx, "Read global env file", "count", len(globalEnv))
 			for k, v := range globalEnv {
 				if _, exists := envMap[k]; !exists {
 					envMap[k] = v
 				}
 			}
+			slog.DebugContext(ctx, "Merged global env into environment map", "total_env_count", len(envMap))
+		} else {
+			slog.WarnContext(ctx, "Failed to read global env file", "path", globalEnvFile, "error", rerr)
+		}
+	} else {
+		if err != nil {
+			slog.DebugContext(ctx, "Global env file not present or inaccessible", "path", globalEnvFile, "error", err)
+		} else {
+			slog.DebugContext(ctx, "Global env file does not exist", "path", globalEnvFile)
 		}
 	}
 
+	slog.DebugContext(ctx, "Checking for project .env file", "path", envFile)
 	if info, err := os.Stat(envFile); err == nil && !info.IsDir() {
+		slog.DebugContext(ctx, "Found project .env file", "path", envFile)
 		if fileEnv, rerr := godotenv.Read(envFile); rerr == nil {
+			slog.DebugContext(ctx, "Read project .env file", "count", len(fileEnv))
 			for k, v := range fileEnv {
 				envMap[k] = v
 			}
+			slog.DebugContext(ctx, "Merged project .env into environment map", "total_env_count", len(envMap))
+		} else {
+			slog.WarnContext(ctx, "Failed to read project .env file", "path", envFile, "error", rerr)
+		}
+	} else {
+		if err != nil {
+			slog.DebugContext(ctx, "Project .env file not present or inaccessible", "path", envFile, "error", err)
+		} else {
+			slog.DebugContext(ctx, "Project .env file does not exist", "path", envFile)
 		}
 	}
 
