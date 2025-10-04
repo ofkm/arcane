@@ -11,7 +11,7 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import settingsStore from '$lib/stores/config-store';
 	import { ResourcePageLayout, type ActionButton } from '$lib/layouts/index.js';
-	import { globalVariablesService } from '$lib/services/variable-service.js';
+	import { templateService } from '$lib/services/template-service.js';
 	import type { Variable } from '$lib/types/variable.type';
 	import { m } from '$lib/paraglide/messages';
 
@@ -52,7 +52,7 @@
 	});
 
 	function addEnvVar() {
-		envVars = [{ key: '', value: '' }, ...envVars];
+		envVars = [...envVars, { key: '', value: '' }];
 	}
 
 	function removeEnvVar(index: number) {
@@ -104,7 +104,7 @@
 				return;
 			}
 
-			await globalVariablesService.updateGlobalVariables(validVars);
+			await templateService.updateGlobalVariables(validVars);
 
 			originalVars = [...validVars];
 			envVars = [...validVars];
@@ -197,7 +197,7 @@
 
 							<div class="flex items-center gap-2">
 								<div class="relative w-full sm:w-52">
-									<SearchIcon class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+									<SearchIcon class="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
 									<Input type="text" placeholder={m.common_search()} bind:value={searchQuery} class="h-9 pl-10" />
 								</div>
 								<Button type="button" size="sm" onclick={addEnvVar} disabled={isLoading} class="shrink-0">
