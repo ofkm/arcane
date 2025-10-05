@@ -28,7 +28,7 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import { cn } from '$lib/utils.js';
-	import type { Paginated, SearchPaginationSortRequest, FilterMap } from '$lib/types/pagination.type';
+	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { Snippet } from 'svelte';
 	import type { ColumnSpec } from './arcane-table.types.svelte';
 	import TableCheckbox from './arcane-table-checkbox.svelte';
@@ -40,10 +40,9 @@
 		encodeHidden,
 		applyHiddenPatch,
 		encodeFilters,
-		decodeFilters,
-		encodeMobileHidden,
-		applyMobileHiddenPatch
+		encodeMobileHidden
 	} from './arcane-table.types.svelte';
+	import { buildInitialMobileVisibility, extractPersistedPreferences, filterMapsEqual, toFilterMap } from './arcane-table.utils';
 
 	let {
 		items,
@@ -83,56 +82,21 @@
 		customSettings?: Record<string, unknown>;
 	} = $props();
 
+	let rowSelection = $state<RowSelectionState>({});
+	let columnVisibility = $state<VisibilityState>({});
+	let columnFilters = $state<ColumnFiltersState>([]);
+	let sorting = $state<SortingState>([]);
+	let globalFilter = $state<string>('');
+
 	const enablePersist = !!persistKey;
 	const getDefaultLimit = () => requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 20;
-
 	const prefs = enablePersist
 		? new PersistedState<CompactTablePrefs>(
 				persistKey as string,
-				{ v: [], f: [], g: '', l: getDefaultLimit(), m: [], c: {} },
+				{ v: [], f: [], g: '', l: getDefaultLimit() },
 				{ syncTabs: false }
 			)
 		: null;
-
-	const persistedState = enablePersist ? (prefs?.current ?? { v: [], f: [], g: '', l: getDefaultLimit(), m: [], c: {} }) : null;
-
-	if (persistedState?.c && Object.keys(persistedState.c).length > 0) {
-		customSettings = { ...persistedState.c };
-	}
-
-	function initializeColumnVisibility(): VisibilityState {
-		const visibility: VisibilityState = {};
-
-		for (const spec of columns) {
-			if (spec.hidden) {
-				const id = spec.id ?? (spec.accessorKey as string);
-				if (id) visibility[id] = false;
-			}
-		}
-
-		if (persistedState?.v) {
-			applyHiddenPatch(visibility, persistedState.v);
-		}
-
-		return visibility;
-	}
-
-	let rowSelection = $state<RowSelectionState>({});
-	let columnVisibility = $state<VisibilityState>(initializeColumnVisibility());
-	let columnFilters = $state<ColumnFiltersState>(persistedState ? decodeFilters(persistedState.f) : []);
-	let sorting = $state<SortingState>([]);
-	let globalFilter = $state<string>(persistedState?.g ?? '');
-
-	if (!Object.keys(mobileFieldVisibility).length && mobileFields.length) {
-		const initial: Record<string, boolean> = {};
-		for (const field of mobileFields) {
-			initial[field.id] = field.defaultVisible ?? true;
-		}
-		if (persistedState?.m) {
-			applyMobileHiddenPatch(initial, persistedState.m);
-		}
-		mobileFieldVisibility = initial;
-	}
 
 	const passAllGlobal: (row: unknown, columnId: string, filterValue: unknown) => boolean = () => true;
 
@@ -143,65 +107,71 @@
 	const canPrev = $derived(currentPage > 1);
 	const canNext = $derived(currentPage < totalPages);
 
-	function toFilterMap(filters: ColumnFiltersState): FilterMap {
-		const out: FilterMap = {};
-		for (const f of filters ?? []) {
-			const id = f.id;
-			let v: unknown = (f as any).value;
-			if (Array.isArray(v)) {
-				if (v.length === 0) continue;
-				v = v[0];
-			} else if (v && typeof v === 'object' && v instanceof Set) {
-				const first = (v as Set<unknown>).values().next().value;
-				if (first === undefined) continue;
-				v = first;
-			}
-			if (v !== undefined && v !== null && String(v).trim() !== '') {
-				out[id] = v as any;
-			}
-		}
-		return out;
-	}
-
 	import { onMount } from 'svelte';
 	onMount(() => {
-		if (!enablePersist || !persistedState) return;
+		if (!enablePersist) return;
+		const snapshot = extractPersistedPreferences(prefs?.current, getDefaultLimit());
+
+		applyHiddenPatch(columnVisibility, snapshot.hiddenColumns);
 
 		let shouldRefresh = false;
-
-		if (persistedState.g && persistedState.g !== (requestOptions?.search ?? '')) {
+		const { restoredFilters, filtersMap } = snapshot;
+		if (restoredFilters.length) {
+			columnFilters = restoredFilters;
+		}
+		if (Object.keys(filtersMap).length > 0) {
+			if (!filterMapsEqual(filtersMap, requestOptions?.filters)) {
+				requestOptions = {
+					...requestOptions,
+					filters: filtersMap,
+					pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
+				};
+				shouldRefresh = true;
+			}
+		} else if (requestOptions?.filters && Object.keys(requestOptions.filters).length > 0) {
 			requestOptions = {
 				...requestOptions,
-				search: persistedState.g,
+				filters: undefined,
 				pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
 			};
 			shouldRefresh = true;
 		}
 
-		const persistedLimit = persistedState.l ?? getDefaultLimit();
+		const persistedSearch = snapshot.search;
+		const currentSearch = (requestOptions?.search ?? '').trim();
+		if (persistedSearch !== globalFilter) {
+			globalFilter = persistedSearch;
+		}
+		if (persistedSearch) {
+			if (persistedSearch !== currentSearch) {
+				requestOptions = {
+					...requestOptions,
+					search: persistedSearch,
+					pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
+				};
+				shouldRefresh = true;
+			}
+		} else if (currentSearch) {
+			requestOptions = {
+				...requestOptions,
+				search: undefined,
+				pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
+			};
+			shouldRefresh = true;
+		}
+
+		const persistedLimit = snapshot.limit ?? getDefaultLimit();
 		const currentLimit = requestOptions?.pagination?.limit ?? getDefaultLimit();
 		if (persistedLimit !== currentLimit) {
 			requestOptions = { ...requestOptions, pagination: { page: 1, limit: persistedLimit } };
 			shouldRefresh = true;
 		}
-
-		// Restore filters from persistence
-		if (persistedState.f && persistedState.f.length > 0) {
-			const restoredFilters = toFilterMap(decodeFilters(persistedState.f));
-			const currentFilters = requestOptions?.filters ?? {};
-			const hasFilterChanges = JSON.stringify(restoredFilters) !== JSON.stringify(currentFilters);
-
-			if (hasFilterChanges) {
-				requestOptions = {
-					...requestOptions,
-					filters: restoredFilters,
-					pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
-				};
-				shouldRefresh = true;
-			}
-		}
-
 		if (shouldRefresh) onRefresh(requestOptions);
+
+		const initialMobileVisibility = buildInitialMobileVisibility(mobileFields, mobileFieldVisibility, snapshot.mobileHidden);
+		if (initialMobileVisibility) {
+			mobileFieldVisibility = initialMobileVisibility;
+		}
 	});
 
 	function updatePagination(patch: Partial<{ page: number; limit: number }>) {
@@ -302,6 +272,10 @@
 				enableSorting: !!spec.sortable,
 				enableHiding: true
 			});
+
+			if (spec.hidden) {
+				columnVisibility[String(accessorKey ?? id)] = false;
+			}
 		});
 
 		if (rowActions) {

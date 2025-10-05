@@ -1,21 +1,24 @@
 import { projectService } from '$lib/services/project-service';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
+import { resolveInitialTableRequest } from '$lib/utils/table-persistence.util';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async () => {
-	const projectRequestOptions: SearchPaginationSortRequest = {
+	const projectRequestOptions = resolveInitialTableRequest('arcane-project-table', {
 		pagination: {
 			page: 1,
 			limit: 20
 		},
 		sort: {
 			column: 'name',
-			direction: 'asc' as const
+			direction: 'asc'
 		}
-	};
+	} satisfies SearchPaginationSortRequest);
 
-	const projects = await projectService.getProjects(projectRequestOptions);
-	const projectStatusCounts = await projectService.getProjectStatusCounts();
+	const [projects, projectStatusCounts] = await Promise.all([
+		projectService.getProjects(projectRequestOptions),
+		projectService.getProjectStatusCounts()
+	]);
 
 	return { projects, projectRequestOptions, projectStatusCounts };
 };

@@ -29,8 +29,10 @@
 	} = $props();
 
 	const isFiltered = $derived(table.getState().columnFilters.length > 0 || !!table.getState().globalFilter);
-	const usageColumn = $derived(table.getColumn('inUse'));
-	const updatesColumn = $derived(table.getColumn('updates'));
+	const usageColumn = $derived(table.getAllColumns().some((col) => col.id === 'inUse') ? table.getColumn('inUse') : undefined);
+	const updatesColumn = $derived(
+		table.getAllColumns().some((col) => col.id === 'updates') ? table.getColumn('updates') : undefined
+	);
 
 	const debouncedSetGlobal = debounced((v: string) => table.setGlobalFilter(v), 300);
 	const hasSelection = $derived(!selectionDisabled && (selectedIds?.length ?? 0) > 0);

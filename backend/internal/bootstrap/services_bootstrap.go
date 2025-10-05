@@ -50,7 +50,7 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.Container = services.NewContainerService(db, svcs.Event, svcs.Docker)
 	svcs.Volume = services.NewVolumeService(db, svcs.Docker, svcs.Event)
 	svcs.Network = services.NewNetworkService(db, svcs.Docker, svcs.Event)
-	svcs.Template = services.NewTemplateService(ctx, db, httpClient)
+	svcs.Template = services.NewTemplateService(ctx, db, httpClient, svcs.Settings)
 	svcs.Auth = services.NewAuthService(svcs.User, svcs.Settings, svcs.Event, cfg.JWTSecret, cfg)
 	svcs.Oidc = services.NewOidcService(svcs.Auth, cfg, httpClient)
 	svcs.Updater = services.NewUpdaterService(db, svcs.Settings, svcs.Docker, svcs.Project, svcs.ImageUpdate, svcs.ContainerRegistry, svcs.Event, svcs.Image)

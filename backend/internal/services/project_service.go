@@ -120,7 +120,15 @@ func (s *ProjectService) GetProjectServices(ctx context.Context, projectID strin
 		return []ProjectServiceInfo{}, fmt.Errorf("no compose file found in project directory: %s", projectFromDb.Path)
 	}
 
-	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name)
+	// Get configured projects directory from settings
+	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+	projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+	if pdErr != nil {
+		slog.WarnContext(ctx, "unable to determine projects directory; using default", "error", pdErr)
+		projectsDirectory = "data/projects"
+	}
+
+	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory)
 	if loadErr != nil {
 		return []ProjectServiceInfo{}, fmt.Errorf("failed to load compose project from %s: %w", projectFromDb.Path, loadErr)
 	}
@@ -425,7 +433,15 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 		return fmt.Errorf("no compose file found in project directory: %s", projectFromDb.Path)
 	}
 
-	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name)
+	// Get configured projects directory from settings
+	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+	projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+	if pdErr != nil {
+		slog.WarnContext(ctx, "unable to determine projects directory; using default", "error", pdErr)
+		projectsDirectory = "data/projects"
+	}
+
+	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory)
 	if loadErr != nil {
 		return fmt.Errorf("failed to load compose project from %s: %w", projectFromDb.Path, loadErr)
 	}
@@ -465,7 +481,15 @@ func (s *ProjectService) DownProject(ctx context.Context, projectID string, user
 		return err
 	}
 
-	proj, _, lerr := projects.LoadComposeProjectFromDir(ctx, projectFromDb.Path, projectFromDb.Name)
+	// Get configured projects directory from settings
+	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+	projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+	if pdErr != nil {
+		slog.WarnContext(ctx, "unable to determine projects directory; using default", "error", pdErr)
+		projectsDirectory = "data/projects"
+	}
+
+	proj, _, lerr := projects.LoadComposeProjectFromDir(ctx, projectFromDb.Path, projectFromDb.Name, projectsDirectory)
 	if lerr != nil {
 		_ = s.updateProjectStatusInternal(ctx, projectID, models.ProjectStatusRunning)
 		return fmt.Errorf("failed to load compose project: %w", lerr)
@@ -543,7 +567,15 @@ func (s *ProjectService) DestroyProject(ctx context.Context, projectID string, r
 	}
 
 	if removeVolumes {
-		if compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, proj.Name); lerr == nil {
+		// Get configured projects directory from settings
+		projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+		projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+		if pdErr != nil {
+			slog.WarnContext(ctx, "unable to determine projects directory; using default", "error", pdErr)
+			projectsDirectory = "data/projects"
+		}
+
+		if compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, proj.Name, projectsDirectory); lerr == nil {
 			if derr := projects.ComposeDown(ctx, compProj, true); derr != nil {
 				slog.WarnContext(ctx, "failed to remove volumes", "error", derr)
 			}
@@ -598,7 +630,15 @@ func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string
 		return err
 	}
 
-	compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, proj.Name)
+	// Get configured projects directory from settings
+	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+	projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+	if pdErr != nil {
+		slog.WarnContext(ctx, "unable to determine projects directory; using default", "error", pdErr)
+		projectsDirectory = "data/projects"
+	}
+
+	compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, proj.Name, projectsDirectory)
 	if lerr != nil {
 		return fmt.Errorf("failed to load compose project: %w", lerr)
 	}
@@ -630,7 +670,15 @@ func (s *ProjectService) RestartProject(ctx context.Context, projectID string, u
 		return fmt.Errorf("failed to update project status to restarting: %w", err)
 	}
 
-	compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, proj.Name)
+	// Get configured projects directory from settings
+	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+	projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+	if pdErr != nil {
+		slog.WarnContext(ctx, "unable to determine projects directory; using default", "error", pdErr)
+		projectsDirectory = "data/projects"
+	}
+
+	compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, proj.Name, projectsDirectory)
 	if lerr != nil {
 		_ = s.updateProjectStatusInternal(ctx, projectID, models.ProjectStatusRunning)
 		return fmt.Errorf("failed to load compose project: %w", lerr)
@@ -775,7 +823,13 @@ func (s *ProjectService) ListProjects(ctx context.Context, params pagination.Que
 		} else if displayServiceCount == 0 {
 			// Fallback: try to detect service count from compose file
 			if _, derr := projects.DetectComposeFile(project.Path); derr == nil {
-				if proj, _, perr := projects.LoadComposeProjectFromDir(ctx, project.Path, project.Name); perr == nil {
+				// Get configured projects directory from settings
+				projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+				projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+				if pdErr != nil {
+					projectsDirectory = "data/projects"
+				}
+				if proj, _, perr := projects.LoadComposeProjectFromDir(ctx, project.Path, project.Name, projectsDirectory); perr == nil {
 					displayServiceCount = len(proj.Services)
 				}
 			}

@@ -276,13 +276,6 @@
 				iconVariant: 'purple' as const,
 				show: (mobileFieldVisibility.status ?? true) && item.status !== undefined
 			},
-			{
-				label: m.ports(),
-				getValue: (item: ContainerSummaryDto) => (item.ports && item.ports.length > 0 ? `${item.ports.length} port(s)` : null),
-				icon: NetworkIcon,
-				iconVariant: 'sky' as const,
-				show: (mobileFieldVisibility.ports ?? true) && item.ports && item.ports.length > 0
-			}
 		]}
 		footer={(mobileFieldVisibility.created ?? true)
 			? {
