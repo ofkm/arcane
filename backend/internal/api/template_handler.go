@@ -32,12 +32,14 @@ func NewTemplateHandler(group *gin.RouterGroup, templateService *services.Templa
 		apiGroup.PUT("/:id", handler.UpdateTemplate)
 		apiGroup.DELETE("/:id", handler.DeleteTemplate)
 		apiGroup.POST("/:id/download", handler.DownloadTemplate)
-		apiGroup.GET("/env/default", handler.GetEnvTemplate)
-		apiGroup.POST("/env/default", handler.SaveEnvTemplate)
+		apiGroup.GET("/default", handler.GetDefaultTemplates)
+		apiGroup.POST("/default", handler.SaveDefaultTemplates)
 		apiGroup.GET("/registries", handler.GetRegistries)
 		apiGroup.POST("/registries", handler.CreateRegistry)
 		apiGroup.PUT("/registries/:id", handler.UpdateRegistry)
 		apiGroup.DELETE("/registries/:id", handler.DeleteRegistry)
+		apiGroup.GET("/variables", handler.GetGlobalVariables)
+		apiGroup.PUT("/variables", handler.UpdateGlobalVariables)
 	}
 }
 
@@ -316,17 +318,23 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 	})
 }
 
-func (h *TemplateHandler) GetEnvTemplate(c *gin.Context) {
-	content := h.templateService.GetEnvTemplate()
+func (h *TemplateHandler) GetDefaultTemplates(c *gin.Context) {
+	composeTemplate := h.templateService.GetComposeTemplate()
+	envTemplate := h.templateService.GetEnvTemplate()
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    gin.H{"content": content},
+		"data": gin.H{
+			"composeTemplate": composeTemplate,
+			"envTemplate":     envTemplate,
+		},
 	})
 }
 
-func (h *TemplateHandler) SaveEnvTemplate(c *gin.Context) {
+func (h *TemplateHandler) SaveDefaultTemplates(c *gin.Context) {
 	var req struct {
-		Content string `json:"content" binding:"required"`
+		ComposeContent string `json:"composeContent" binding:"required"`
+		EnvContent     string `json:"envContent"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -336,7 +344,15 @@ func (h *TemplateHandler) SaveEnvTemplate(c *gin.Context) {
 		return
 	}
 
-	if err := h.templateService.SaveEnvTemplate(req.Content); err != nil {
+	if err := h.templateService.SaveComposeTemplate(req.ComposeContent); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to save compose template: " + err.Error()},
+		})
+		return
+	}
+
+	if err := h.templateService.SaveEnvTemplate(req.EnvContent); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    gin.H{"error": "Failed to save env template: " + err.Error()},
@@ -346,7 +362,7 @@ func (h *TemplateHandler) SaveEnvTemplate(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    gin.H{"message": "Environment template saved successfully"},
+		"data":    gin.H{"message": "Default templates saved successfully"},
 	})
 }
 
@@ -559,5 +575,47 @@ func (h *TemplateHandler) DownloadTemplate(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    out,
+	})
+}
+
+func (h *TemplateHandler) GetGlobalVariables(c *gin.Context) {
+	vars, err := h.templateService.GetGlobalVariables(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to retrieve global variables: " + err.Error()},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    vars,
+	})
+}
+
+func (h *TemplateHandler) UpdateGlobalVariables(c *gin.Context) {
+	var req dto.UpdateVariablesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Invalid request format: " + err.Error()},
+		})
+		return
+	}
+
+	if err := h.templateService.UpdateGlobalVariables(c.Request.Context(), req.Variables); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to update global variables: " + err.Error()},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"message": "Global variables updated successfully",
+		},
 	})
 }

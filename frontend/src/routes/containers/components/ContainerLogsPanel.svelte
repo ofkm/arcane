@@ -1,9 +1,8 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
+	import * as Card from '$lib/components/ui/card';
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
-	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
-	import LogViewer from '$lib/components/log-viewer.svelte';
+	import LogViewer from '$lib/components/logs/log-viewer.svelte';
+	import LogControls from '$lib/components/logs/log-controls.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let {
@@ -27,80 +26,58 @@
 
 	function handleStart() {
 		isStreaming = true;
+		viewer?.startLogStream();
 		onStart();
 	}
 
 	function handleStop() {
 		isStreaming = false;
-		onStop();
+		viewer?.stopLogStream();
 	}
 
 	function handleClear() {
+		viewer?.clearLogs();
 		onClear();
 	}
 
-	function handleToggleAutoScroll() {
-		onToggleAutoScroll();
+	function handleRefresh() {
+		viewer?.stopLogStream();
+		viewer?.startLogStream();
 	}
 </script>
 
-<Card.Root class="gap-0 p-0">
-	<Card.Header class="bg-muted rounded-t-xl p-4">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<div class="flex items-center gap-2">
-				<FileTextIcon class="text-primary size-5" />
-				<Card.Title class="text-lg">
-					<h2>
-						{m.containers_logs_title()}
-					</h2>
-				</Card.Title>
-				{#if isStreaming}
-					<div class="flex items-center gap-2">
-						<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
-						<span class="text-xs font-semibold text-green-600 sm:text-sm">{m.common_live()}</span>
-					</div>
-				{/if}
-			</div>
-			
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-				<label class="flex items-center gap-2">
-					<input type="checkbox" bind:checked={autoScroll} class="size-4" />
-					<span class="text-sm font-medium">{m.common_autoscroll()}</span>
-				</label>
-				
+<Card.Root>
+	<Card.Header icon={FileTextIcon}>
+		<div class="flex flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+			<div class="flex flex-col gap-1.5">
 				<div class="flex items-center gap-2">
-					<Button variant="outline" size="sm" class="text-xs font-medium" onclick={() => viewer?.clearLogs()}>
-						{m.common_clear()}
-					</Button>
+					<Card.Title>
+						<h2>
+							{m.containers_logs_title()}
+						</h2>
+					</Card.Title>
 					{#if isStreaming}
-						<Button variant="outline" size="sm" class="text-xs font-medium" onclick={() => viewer?.stopLogStream()}>
-							{m.common_stop()}
-						</Button>
-					{:else}
-						<Button variant="outline" size="sm" class="text-xs font-medium" onclick={() => viewer?.startLogStream()} disabled={!containerId}>
-							{m.common_start()}
-						</Button>
+						<div class="flex items-center gap-2">
+							<div class="size-2 animate-pulse rounded-full bg-green-500"></div>
+							<span class="text-xs font-semibold text-green-600 sm:text-sm">{m.common_live()}</span>
+						</div>
 					{/if}
-					<Button
-						variant="outline"
-						size="sm"
-						class="px-2"
-						onclick={() => {
-							viewer?.stopLogStream();
-							viewer?.startLogStream();
-						}}
-						aria-label="Refresh logs"
-						title="Refresh"
-					>
-						<RefreshCwIcon class="size-4" />
-					</Button>
 				</div>
+				<Card.Description>{m.containers_logs_description()}</Card.Description>
 			</div>
+			<LogControls
+				bind:autoScroll
+				{isStreaming}
+				disabled={!containerId}
+				onStart={handleStart}
+				onStop={handleStop}
+				onClear={handleClear}
+				onRefresh={handleRefresh}
+			/>
 		</div>
-		<Card.Description>{m.containers_logs_description()}</Card.Description>
 	</Card.Header>
 	<Card.Content class="p-0">
-		<div class="rounded-lg border bg-card/50 p-0">
+		<div class="bg-card/50 rounded-lg border p-0">
 			<LogViewer
 				bind:this={viewer}
 				bind:autoScroll
@@ -112,7 +89,6 @@
 				onStart={handleStart}
 				onStop={handleStop}
 				onClear={handleClear}
-				onToggleAutoScroll={handleToggleAutoScroll}
 			/>
 		</div>
 	</Card.Content>

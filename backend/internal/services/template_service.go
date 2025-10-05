@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -27,15 +29,15 @@ type remoteCache struct {
 	lastFetch time.Time
 }
 
-// per-registry conditional GET metadata
 type registryFetchMeta struct {
 	LastModified string
 	Templates    []dto.RemoteTemplate
 }
 
 type TemplateService struct {
-	db         *database.DB
-	httpClient *http.Client
+	db              *database.DB
+	httpClient      *http.Client
+	settingsService *SettingsService
 
 	remoteMu    sync.RWMutex
 	remoteCache remoteCache
@@ -52,13 +54,19 @@ func makeRemoteID(registryID, slug string) string {
 	return fmt.Sprintf("%s:%s:%s", remoteIDPrefix, registryID, slug)
 }
 
-func NewTemplateService(db *database.DB, httpClient *http.Client) *TemplateService {
+func NewTemplateService(ctx context.Context, db *database.DB, httpClient *http.Client, settingsService *SettingsService) *TemplateService {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
+
+	if err := appfs.EnsureDefaultTemplates(ctx); err != nil {
+		slog.WarnContext(ctx, "failed to ensure default templates", "error", err)
+	}
+
 	return &TemplateService{
 		db:                db,
 		httpClient:        httpClient,
+		settingsService:   settingsService,
 		remoteCache:       remoteCache{},
 		registryFetchMeta: make(map[string]*registryFetchMeta),
 	}
@@ -171,7 +179,6 @@ func (s *TemplateService) UpdateTemplate(ctx context.Context, id string, updates
 		return fmt.Errorf("failed to find template: %w", err)
 	}
 
-	// Only allow updating local templates
 	if existing.IsRemote {
 		return fmt.Errorf("cannot update remote template")
 	}
@@ -199,7 +206,6 @@ func (s *TemplateService) DeleteTemplate(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to find template: %w", err)
 	}
 
-	// Only allow deleting local templates
 	if existing.IsRemote {
 		return fmt.Errorf("cannot delete remote template directly")
 	}
@@ -214,13 +220,38 @@ func (s *TemplateService) DeleteTemplate(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *TemplateService) GetEnvTemplate() string {
-	envPath := filepath.Join("data", "templates", ".env.template")
-	if content, err := os.ReadFile(envPath); err == nil {
-		return string(content)
+func (s *TemplateService) GetComposeTemplate() string {
+	composePath := filepath.Join("data", "templates", ".compose.template")
+	content, err := os.ReadFile(composePath)
+	if err != nil {
+		slog.Warn("failed to read compose template", "error", err)
+		return ""
+	}
+	return string(content)
+}
+
+func (s *TemplateService) SaveComposeTemplate(content string) error {
+	templateDir := filepath.Join("data", "templates")
+	if err := os.MkdirAll(templateDir, 0755); err != nil {
+		return fmt.Errorf("failed to create template directory: %w", err)
 	}
 
-	return s.getDefaultEnvTemplate()
+	composePath := filepath.Join(templateDir, ".compose.template")
+	if err := os.WriteFile(composePath, []byte(content), 0600); err != nil {
+		return fmt.Errorf("failed to save compose template: %w", err)
+	}
+
+	return nil
+}
+
+func (s *TemplateService) GetEnvTemplate() string {
+	envPath := filepath.Join("data", "templates", ".env.template")
+	content, err := os.ReadFile(envPath)
+	if err != nil {
+		slog.Warn("failed to read env template", "error", err)
+		return ""
+	}
+	return string(content)
 }
 
 func (s *TemplateService) SaveEnvTemplate(content string) error {
@@ -483,28 +514,6 @@ func (s *TemplateService) convertRemoteToLocal(remote dto.RemoteTemplate, regist
 	}
 }
 
-func (s *TemplateService) getDefaultEnvTemplate() string {
-	return `# Environment Variables
-# These variables will be available to your project services
-# Format: VARIABLE_NAME=value
-
-# Web Server Configuration
-NGINX_HOST=localhost
-NGINX_PORT=80
-
-# Database Configuration
-POSTGRES_DB=myapp
-POSTGRES_USER=myuser
-POSTGRES_PASSWORD=mypassword
-POSTGRES_PORT=5432
-
-# Example Additional Variables
-# API_KEY=your_api_key_here
-# SECRET_KEY=your_secret_key_here
-# DEBUG=false
-`
-}
-
 func (s *TemplateService) FetchTemplateContent(ctx context.Context, template *models.ComposeTemplate) (string, string, error) {
 	if !template.IsRemote || template.Metadata == nil || template.Metadata.RemoteURL == nil {
 		return template.Content, "", fmt.Errorf("not a remote template or missing remote URL")
@@ -717,5 +726,126 @@ func (s *TemplateService) syncFilesystemTemplatesInternal(ctx context.Context) e
 			slog.WarnContext(ctx, "failed to read folder template", "folder", ent.Name(), "error", err)
 		}
 	}
+	return nil
+}
+
+func (s *TemplateService) getGlobalVariablesPath(ctx context.Context) (string, error) {
+	projectsDirectory, err := appfs.GetProjectsDirectory(ctx, s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects"))
+	if err != nil {
+		return "", fmt.Errorf("failed to get projects directory: %w", err)
+	}
+
+	return filepath.Join(projectsDirectory, ".env.global"), nil
+}
+
+func (s *TemplateService) GetGlobalVariables(ctx context.Context) ([]dto.VariableDto, error) {
+	envPath, err := s.getGlobalVariablesPath(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := os.Stat(envPath); os.IsNotExist(err) {
+		slog.DebugContext(ctx, "Global variables file does not exist yet", "path", envPath)
+		return []dto.VariableDto{}, nil
+	}
+
+	file, err := os.Open(envPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open global variables file: %w", err)
+	}
+	defer file.Close()
+
+	vars := []dto.VariableDto{}
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			slog.WarnContext(ctx, "Skipping invalid line in global variables file",
+				"line", lineNum,
+				"content", line)
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		if len(value) >= 2 {
+			if (strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) ||
+				(strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`)) {
+				value = value[1 : len(value)-1]
+			}
+		}
+
+		vars = append(vars, dto.VariableDto{
+			Key:   key,
+			Value: value,
+		})
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading global variables file: %w", err)
+	}
+
+	sort.Slice(vars, func(i, j int) bool {
+		return vars[i].Key < vars[j].Key
+	})
+
+	return vars, nil
+}
+
+func (s *TemplateService) UpdateGlobalVariables(ctx context.Context, vars []dto.VariableDto) error {
+	envPath, err := s.getGlobalVariablesPath(ctx)
+	if err != nil {
+		return err
+	}
+
+	projectsDirectory := filepath.Dir(envPath)
+	if err := os.MkdirAll(projectsDirectory, 0755); err != nil {
+		return fmt.Errorf("failed to create projects directory: %w", err)
+	}
+
+	var builder strings.Builder
+	builder.WriteString("# Global Environment Variables\n")
+	builder.WriteString("# These variables are available to all projects\n")
+	builder.WriteString("# Last updated: " + time.Now().Format(time.RFC3339) + "\n\n")
+
+	sortedVars := make([]dto.VariableDto, len(vars))
+	copy(sortedVars, vars)
+	sort.Slice(sortedVars, func(i, j int) bool {
+		return sortedVars[i].Key < sortedVars[j].Key
+	})
+
+	for _, v := range sortedVars {
+		if strings.TrimSpace(v.Key) == "" {
+			continue
+		}
+
+		key := strings.TrimSpace(v.Key)
+		value := strings.TrimSpace(v.Value)
+
+		if strings.ContainsAny(value, " \t\n\r#") {
+			value = fmt.Sprintf(`"%s"`, strings.ReplaceAll(value, `"`, `\"`))
+		}
+
+		builder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+	}
+
+	if err := os.WriteFile(envPath, []byte(builder.String()), 0600); err != nil {
+		return fmt.Errorf("failed to write global variables file: %w", err)
+	}
+
+	slog.InfoContext(ctx, "Updated global variables",
+		"path", envPath,
+		"count", len(sortedVars))
+
 	return nil
 }

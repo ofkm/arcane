@@ -154,11 +154,13 @@
 
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-4">
 		<div class="lg:col-span-1">
-			<Card.Root>
-				<Card.Header>
+			<Card.Root class="flex flex-col gap-6 py-3">
+				<Card.Header
+					class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+				>
 					<Card.Title class="text-lg">{m.environments_sections_title()}</Card.Title>
 				</Card.Header>
-				<Card.Content class="p-0">
+				<Card.Content class="p-0 px-6">
 					<nav class="space-y-1">
 						{#each sections as section}
 							{@const Icon = section.icon}
@@ -181,14 +183,16 @@
 		<div class="lg:col-span-3">
 			{#if activeSection === 'overview'}
 				<div class="space-y-6">
-					<Card.Root>
-						<Card.Header>
+					<Card.Root class="flex flex-col gap-6 py-3">
+						<Card.Header
+							class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+						>
 							<Card.Title class="flex items-center gap-2">
 								<MonitorIcon class="size-5" />
 								{m.environments_overview_title()}
 							</Card.Title>
 						</Card.Header>
-						<Card.Content class="space-y-6">
+						<Card.Content class="space-y-6 px-6">
 							<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 								<div class="space-y-4">
 									<div>
@@ -394,21 +398,23 @@
 				</div>
 			{:else if activeSection === 'connection'}
 				<div class="space-y-6">
-					<Card.Root>
-						<Card.Header>
+					<Card.Root class="flex flex-col gap-6 py-3">
+						<Card.Header
+							class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+						>
 							<Card.Title class="flex items-center gap-2">
 								<GlobeIcon class="h-5 w-5" />
 								{m.environments_connection_title()}
 							</Card.Title>
 						</Card.Header>
-						<Card.Content class="space-y-4">
+						<Card.Content class="space-y-4 px-6">
 							<div>
 								<Label class="text-muted-foreground text-sm font-medium">{m.common_name()}</Label>
 								<div class="mt-1 text-sm">{environmentDisplayName()}</div>
 							</div>
 							<div>
 								<Label class="text-muted-foreground text-sm font-medium">{m.environments_api_url()}</Label>
-								<div class="bg-muted mt-1 break-all rounded-md px-3 py-2 font-mono text-sm">{environment.apiUrl}</div>
+								<div class="bg-muted mt-1 rounded-md px-3 py-2 font-mono text-sm break-all">{environment.apiUrl}</div>
 							</div>
 							<div class="pt-4">
 								<Button onclick={testConnection} disabled={isTestingConnection} class="w-full">
@@ -426,8 +432,10 @@
 				</div>
 			{:else if activeSection === 'pairing'}
 				<div class="space-y-6">
-					<Card.Root>
-						<Card.Header>
+					<Card.Root class="flex flex-col gap-6 py-3">
+						<Card.Header
+							class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+						>
 							<Card.Title class="flex items-center gap-2">
 								<SettingsIcon class="h-5 w-5" />
 								{m.environments_pair_rotate_title()}
@@ -436,7 +444,7 @@
 								{m.environments_pair_rotate_description()}
 							</Card.Description>
 						</Card.Header>
-						<Card.Content class="space-y-4">
+						<Card.Content class="space-y-4 px-6">
 							<div>
 								<Label class="text-muted-foreground text-sm font-medium">{m.environments_bootstrap_label()}</Label>
 								<input
@@ -465,7 +473,7 @@
 	</div>
 
 	{#if isRefreshing}
-		<div class="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-white shadow-lg">
+		<div class="fixed right-4 bottom-4 flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-white shadow-lg">
 			<RefreshCwIcon class="h-4 w-4 animate-spin" />
 			<span class="text-sm">{m.environments_refreshing()}</span>
 		</div>

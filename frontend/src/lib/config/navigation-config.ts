@@ -14,6 +14,8 @@ import ComputerIcon from '@lucide/svelte/icons/computer';
 import LockKeyholeIcon from '@lucide/svelte/icons/lock-keyhole';
 import AlarmClockIcon from '@lucide/svelte/icons/alarm-clock';
 import NavigationIcon from '@lucide/svelte/icons/navigation';
+import PaletteIcon from '@lucide/svelte/icons/palette';
+import FileTextIcon from '@lucide/svelte/icons/file-text';
 import { m } from '$lib/paraglide/messages';
 
 export type NavigationItem = {
@@ -34,6 +36,11 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 	],
 	customizationItems: [
 		{
+			title: m.default_templates(),
+			url: '/customize/defaults',
+			icon: PaletteIcon
+		},
+		{
 			title: m.templates_title(),
 			url: '/customize/templates',
 			icon: LayoutTemplateIcon
@@ -42,6 +49,11 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 			title: m.registries_title(),
 			url: '/customize/registries',
 			icon: LockKeyholeIcon
+		},
+		{
+			title: m.variables_title(),
+			url: '/customize/variables',
+			icon: FileTextIcon
 		}
 	],
 	environmentItems: [

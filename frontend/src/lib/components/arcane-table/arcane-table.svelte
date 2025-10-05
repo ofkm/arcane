@@ -28,7 +28,7 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import { cn } from '$lib/utils.js';
-	import type { Paginated, SearchPaginationSortRequest, FilterMap } from '$lib/types/pagination.type';
+	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { Snippet } from 'svelte';
 	import type { ColumnSpec } from './arcane-table.types.svelte';
 	import TableCheckbox from './arcane-table-checkbox.svelte';
@@ -36,11 +36,13 @@
 	import { PersistedState } from 'runed';
 	import {
 		type CompactTablePrefs,
+		type FieldSpec,
 		encodeHidden,
 		applyHiddenPatch,
 		encodeFilters,
-		decodeFilters
+		encodeMobileHidden
 	} from './arcane-table.types.svelte';
+	import { buildInitialMobileVisibility, extractPersistedPreferences, filterMapsEqual, toFilterMap } from './arcane-table.utils';
 
 	let {
 		items,
@@ -51,9 +53,15 @@
 		onRefresh,
 		columns,
 		rowActions,
+		mobileCard,
+		mobileFields = [],
+		mobileFieldVisibility = $bindable<Record<string, boolean>>({}),
 		selectedIds = $bindable<string[]>([]),
 		onRemoveSelected,
-		persistKey
+		persistKey,
+		customViewOptions,
+		customTableView,
+		customSettings = $bindable<Record<string, unknown>>({})
 	}: {
 		items: Paginated<TData>;
 		requestOptions: SearchPaginationSortRequest;
@@ -63,9 +71,15 @@
 		onRefresh: (requestOptions: SearchPaginationSortRequest) => Promise<Paginated<TData>>;
 		columns: ColumnSpec<TData>[];
 		rowActions?: Snippet<[{ row: Row<TData>; item: TData }]>;
+		mobileCard: Snippet<[{ row: Row<TData>; item: TData; mobileFieldVisibility: Record<string, boolean> }]>;
+		mobileFields?: FieldSpec[];
+		mobileFieldVisibility?: Record<string, boolean>;
 		selectedIds?: string[];
 		onRemoveSelected?: (ids: string[]) => void;
 		persistKey?: string;
+		customViewOptions?: Snippet;
+		customTableView?: Snippet<[{ table: TableType<TData> }]>;
+		customSettings?: Record<string, unknown>;
 	} = $props();
 
 	let rowSelection = $state<RowSelectionState>({});
@@ -75,7 +89,6 @@
 	let globalFilter = $state<string>('');
 
 	const enablePersist = !!persistKey;
-
 	const getDefaultLimit = () => requestOptions?.pagination?.limit ?? items?.pagination?.itemsPerPage ?? 20;
 	const prefs = enablePersist
 		? new PersistedState<CompactTablePrefs>(
@@ -94,35 +107,75 @@
 	const canPrev = $derived(currentPage > 1);
 	const canNext = $derived(currentPage < totalPages);
 
-	// Apply persisted state on mount
 	import { onMount } from 'svelte';
 	onMount(() => {
 		if (!enablePersist) return;
-		const cur = prefs?.current ?? { v: [], f: [], g: '', l: getDefaultLimit() };
+		const snapshot = extractPersistedPreferences(prefs?.current, getDefaultLimit());
 
-		applyHiddenPatch(columnVisibility, cur.v);
+		applyHiddenPatch(columnVisibility, snapshot.hiddenColumns);
 
-		// Filters
 		let shouldRefresh = false;
-		const restoredFilters = decodeFilters(cur.f);
-		if (restoredFilters.length) columnFilters = restoredFilters;
-		if (cur.g && cur.g !== globalFilter) {
-			globalFilter = cur.g;
+		const { restoredFilters, filtersMap } = snapshot;
+		if (restoredFilters.length) {
+			columnFilters = restoredFilters;
+		}
+		if (Object.keys(filtersMap).length > 0) {
+			if (!filterMapsEqual(filtersMap, requestOptions?.filters)) {
+				requestOptions = {
+					...requestOptions,
+					filters: filtersMap,
+					pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
+				};
+				shouldRefresh = true;
+			}
+		} else if (requestOptions?.filters && Object.keys(requestOptions.filters).length > 0) {
 			requestOptions = {
 				...requestOptions,
-				search: cur.g,
+				filters: undefined,
 				pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
 			};
 			shouldRefresh = true;
 		}
-		// Page size
-		const persistedLimit = cur.l ?? getDefaultLimit();
+
+		const persistedSearch = snapshot.search;
+		const currentSearch = (requestOptions?.search ?? '').trim();
+		if (persistedSearch !== globalFilter) {
+			globalFilter = persistedSearch;
+		}
+		if (persistedSearch) {
+			if (persistedSearch !== currentSearch) {
+				requestOptions = {
+					...requestOptions,
+					search: persistedSearch,
+					pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
+				};
+				shouldRefresh = true;
+			}
+		} else if (currentSearch) {
+			requestOptions = {
+				...requestOptions,
+				search: undefined,
+				pagination: { page: 1, limit: requestOptions?.pagination?.limit ?? getDefaultLimit() }
+			};
+			shouldRefresh = true;
+		}
+
+		const persistedLimit = snapshot.limit ?? getDefaultLimit();
 		const currentLimit = requestOptions?.pagination?.limit ?? getDefaultLimit();
 		if (persistedLimit !== currentLimit) {
 			requestOptions = { ...requestOptions, pagination: { page: 1, limit: persistedLimit } };
 			shouldRefresh = true;
 		}
 		if (shouldRefresh) onRefresh(requestOptions);
+
+		const initialMobileVisibility = buildInitialMobileVisibility(mobileFields, mobileFieldVisibility, snapshot.mobileHidden);
+		if (initialMobileVisibility) {
+			mobileFieldVisibility = initialMobileVisibility;
+		}
+
+		if (snapshot.customSettings && Object.keys(snapshot.customSettings).length > 0) {
+			customSettings = { ...snapshot.customSettings };
+		}
 	});
 
 	function updatePagination(patch: Partial<{ page: number; limit: number }>) {
@@ -332,25 +385,24 @@
 		getCoreRowModel: getCoreRowModel()
 	});
 
-	function toFilterMap(filters: ColumnFiltersState): FilterMap {
-		const out: FilterMap = {};
-		for (const f of filters ?? []) {
-			const id = f.id;
-			let v: unknown = (f as any).value;
-			if (Array.isArray(v)) {
-				if (v.length === 0) continue;
-				v = v[0];
-			} else if (v && typeof v === 'object' && v instanceof Set) {
-				const first = (v as Set<unknown>).values().next().value;
-				if (first === undefined) continue;
-				v = first;
-			}
-			if (v !== undefined && v !== null && String(v).trim() !== '') {
-				out[id] = v as any; // scalar only
-			}
+	function onToggleMobileField(fieldId: string) {
+		mobileFieldVisibility = {
+			...mobileFieldVisibility,
+			[fieldId]: !mobileFieldVisibility[fieldId]
+		};
+		// Persist mobile field visibility
+		if (enablePersist && prefs) {
+			prefs.current = { ...prefs.current, m: encodeMobileHidden(mobileFieldVisibility) };
 		}
-		return out;
 	}
+
+	const mobileFieldsForOptions = $derived(
+		mobileFields.map((field) => ({
+			id: field.id,
+			label: field.label,
+			visible: mobileFieldVisibility[field.id] ?? true
+		}))
+	);
 
 	$effect(() => {
 		const s = requestOptions?.sort;
@@ -363,6 +415,11 @@
 			sorting = [{ id: s.column, desc }];
 		}
 	});
+
+	$effect(() => {
+		if (!enablePersist || !prefs) return;
+		prefs.current = { ...prefs.current, c: customSettings };
+	});
 </script>
 
 {#snippet TextCell({ value }: { value: unknown })}
@@ -374,12 +431,12 @@
 {/snippet}
 
 {#snippet Pagination({ table }: { table: TableType<TData> })}
-	<div class="flex items-center justify-between px-2">
-		<div class="text-muted-foreground flex-1 text-sm">
+	<div class="flex flex-col gap-4 px-2 sm:flex-row sm:items-center sm:justify-between">
+		<div class="text-muted-foreground order-2 text-sm sm:order-1">
 			{m.common_showing_of_total({ shown: items.data.length, total: totalItems })}
 		</div>
-		<div class="flex items-center space-x-6 lg:space-x-8">
-			<div class="flex items-center space-x-2">
+		<div class="order-1 flex flex-col gap-4 sm:order-2 sm:flex-row sm:items-center sm:space-x-6 lg:space-x-8">
+			<div class="flex items-center justify-between space-x-2 sm:justify-start">
 				<p class="text-sm font-medium">{m.common_rows_per_page()}</p>
 				<Select.Root
 					allowDeselect={false}
@@ -399,29 +456,35 @@
 					</Select.Content>
 				</Select.Root>
 			</div>
-			<div class="flex w-[100px] items-center justify-center text-sm font-medium">
-				{m.common_page_of({ page: currentPage, total: totalPages })}
-			</div>
-			<div class="flex items-center space-x-2">
-				<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(1)} disabled={!canPrev}>
-					<span class="sr-only">{m.common_go_first_page()}</span>
-					<ChevronsLeftIcon />
-				</Button>
-				<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage - 1)} disabled={!canPrev}>
-					<span class="sr-only">{m.common_go_prev_page()}</span>
-					<ChevronLeftIcon />
-				</Button>
-				<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage + 1)} disabled={!canNext}>
-					<span class="sr-only">{m.common_go_next_page()}</span>
-					<ChevronRightIcon />
-				</Button>
-				<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(totalPages)} disabled={!canNext}>
-					<span class="sr-only">{m.common_go_last_page()}</span>
-					<ChevronsRightIcon />
-				</Button>
+			<div class="flex items-center justify-between sm:justify-center">
+				<div class="flex items-center justify-center text-sm font-medium sm:w-[100px]">
+					{m.common_page_of({ page: currentPage, total: totalPages })}
+				</div>
+				<div class="flex items-center space-x-1 sm:space-x-2">
+					<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(1)} disabled={!canPrev}>
+						<span class="sr-only">{m.common_go_first_page()}</span>
+						<ChevronsLeftIcon />
+					</Button>
+					<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage - 1)} disabled={!canPrev}>
+						<span class="sr-only">{m.common_go_prev_page()}</span>
+						<ChevronLeftIcon />
+					</Button>
+					<Button variant="outline" class="size-8 p-0" onclick={() => setPage(currentPage + 1)} disabled={!canNext}>
+						<span class="sr-only">{m.common_go_next_page()}</span>
+						<ChevronRightIcon />
+					</Button>
+					<Button variant="outline" class="hidden size-8 p-0 lg:flex" onclick={() => setPage(totalPages)} disabled={!canNext}>
+						<span class="sr-only">{m.common_go_last_page()}</span>
+						<ChevronsRightIcon />
+					</Button>
+				</div>
 			</div>
 		</div>
 	</div>
+{/snippet}
+
+{#snippet MobileCard({ row, item }: { row: Row<TData>; item: TData })}
+	{@render mobileCard({ row, item, mobileFieldVisibility })}
 {/snippet}
 
 {#snippet ColumnHeader({
@@ -475,41 +538,66 @@
 
 <div class="space-y-4">
 	{#if !withoutSearch}
-		<DataTableToolbar {table} {selectedIds} {selectionDisabled} {onRemoveSelected} />
+		<DataTableToolbar
+			{table}
+			{selectedIds}
+			{selectionDisabled}
+			{onRemoveSelected}
+			mobileFields={mobileFieldsForOptions}
+			{onToggleMobileField}
+			{customViewOptions}
+		/>
 	{/if}
-	<div class="rounded-md">
-		<Table.Root>
-			<Table.Header>
-				{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
-					<Table.Row>
-						{#each headerGroup.headers as header (header.id)}
-							<Table.Head colspan={header.colSpan}>
-								{#if !header.isPlaceholder}
-									<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
-								{/if}
-							</Table.Head>
-						{/each}
-					</Table.Row>
-				{/each}
-			</Table.Header>
-			<Table.Body>
-				{#each table.getRowModel().rows as row (row.id)}
-					<Table.Row data-state={(selectedIds ?? []).includes((row.original as TData).id) && 'selected'}>
-						{#each row.getVisibleCells() as cell (cell.id)}
-							<Table.Cell>
-								<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
-							</Table.Cell>
-						{/each}
-					</Table.Row>
-				{:else}
-					<Table.Row>
-						<Table.Cell colspan={columnsDef.length} class="h-24 text-center">{m.common_no_results_found()}</Table.Cell>
-					</Table.Row>
-				{/each}
-			</Table.Body>
-		</Table.Root>
-	</div>
-	{#if !withoutPagination}
-		{@render Pagination({ table })}
+
+	{#if customTableView}
+		{@render customTableView({ table })}
+	{:else}
+		<div class="hidden rounded-md md:block">
+			<Table.Root>
+				<Table.Header>
+					{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+						<Table.Row>
+							{#each headerGroup.headers as header (header.id)}
+								<Table.Head colspan={header.colSpan}>
+									{#if !header.isPlaceholder}
+										<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
+									{/if}
+								</Table.Head>
+							{/each}
+						</Table.Row>
+					{/each}
+				</Table.Header>
+				<Table.Body>
+					{#each table.getRowModel().rows as row (row.id)}
+						<Table.Row data-state={(selectedIds ?? []).includes((row.original as TData).id) && 'selected'}>
+							{#each row.getVisibleCells() as cell (cell.id)}
+								<Table.Cell>
+									<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+								</Table.Cell>
+							{/each}
+						</Table.Row>
+					{:else}
+						<Table.Row>
+							<Table.Cell colspan={columnsDef.length} class="h-24 text-center">{m.common_no_results_found()}</Table.Cell>
+						</Table.Row>
+					{/each}
+				</Table.Body>
+			</Table.Root>
+		</div>
+
+		<!-- Mobile Card View -->
+		<div class="space-y-3 md:hidden">
+			{#each table.getRowModel().rows as row (row.id)}
+				{@render MobileCard({ row, item: row.original as TData })}
+			{:else}
+				<div class="h-24 flex items-center justify-center text-center text-muted-foreground">
+					{m.common_no_results_found()}
+				</div>
+			{/each}
+		</div>
+
+		{#if !withoutPagination}
+			{@render Pagination({ table })}
+		{/if}
 	{/if}
 </div>

@@ -14,8 +14,10 @@
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { User } from '$lib/types/user.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { userService } from '$lib/services/user-service';
+	import UserIcon from '@lucide/svelte/icons/user';
 
 	let {
 		users = $bindable(),
@@ -124,6 +126,14 @@
 		{ accessorKey: 'email', title: m.common_email(), sortable: true, cell: EmailCell },
 		{ accessorKey: 'roles', title: m.common_role(), sortable: true, cell: RoleCell }
 	] satisfies ColumnSpec<User>[];
+
+	const mobileFields = [
+		{ id: 'displayName', label: m.common_display_name(), defaultVisible: true },
+		{ id: 'email', label: m.common_email(), defaultVisible: true },
+		{ id: 'roles', label: m.common_role(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet UsernameCell({ item }: { item: User })}
@@ -140,6 +150,42 @@
 
 {#snippet RoleCell({ item }: { item: User })}
 	<StatusBadge text={getRoleText(item.roles)} variant={getRoleBadgeVariant(item.roles)} />
+{/snippet}
+
+{#snippet UserMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: User;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<UniversalMobileCard
+		{item}
+		icon={{ component: UserIcon, variant: 'blue' }}
+		title={(item: User) => item.username}
+		subtitle={(item: User) => ((mobileFieldVisibility.email ?? true) && item.email ? item.email : null)}
+		badges={[
+			(item: User) =>
+				(mobileFieldVisibility.roles ?? true)
+					? {
+							variant: getRoleBadgeVariant(item.roles) === 'red' ? 'red' : 'green',
+							text: getRoleText(item.roles)
+						}
+					: null
+		]}
+		fields={[
+			{
+				label: m.common_display_name(),
+				getValue: (item: User) => item.displayName,
+				icon: UserIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.displayName ?? true) && !!item.displayName
+			}
+		]}
+		rowActions={RowActions}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: User })}
@@ -169,12 +215,14 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root>
-	<Card.Content class="py-5">
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Content class="px-6 py-5">
 		<ArcaneTable
+			persistKey="arcane-users-table"
 			items={users}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRemoveSelected={(ids) => handleDeleteSelected()}
 			onRefresh={async (options) => {
 				requestOptions = options;
@@ -182,7 +230,9 @@
 				return users;
 			}}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
+			mobileCard={UserMobileCardSnippet}
 		/>
 	</Card.Content>
 </Card.Root>

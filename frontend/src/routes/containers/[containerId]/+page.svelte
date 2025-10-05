@@ -274,7 +274,7 @@
 
 		{#snippet tabContent(activeTab)}
 			<Tabs.Content value="overview" class="h-full">
-				<ContainerOverview {container} {primaryIpAddress} />
+				<ContainerOverview {container} {primaryIpAddress} {baseServerUrl} />
 			</Tabs.Content>
 
 			{#if showStats}
@@ -310,7 +310,7 @@
 
 			{#if showConfiguration}
 				<Tabs.Content value="config" class="h-full">
-					<ContainerConfiguration {container} {hasEnvVars} {hasPorts} {hasLabels} {baseServerUrl} />
+					<ContainerConfiguration {container} {hasEnvVars} {hasLabels} />
 				</Tabs.Content>
 			{/if}
 

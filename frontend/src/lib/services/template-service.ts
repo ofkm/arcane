@@ -1,5 +1,6 @@
 import BaseAPIService from './api-service';
 import type { TemplateRegistry, Template, RemoteRegistry } from '$lib/types/template.type';
+import type { Variable } from '$lib/types/variable.type';
 
 export default class TemplateService extends BaseAPIService {
 	async loadAll(): Promise<Template[]> {
@@ -27,13 +28,20 @@ export default class TemplateService extends BaseAPIService {
 		return response.data?.data;
 	}
 
-	async getEnvTemplate(): Promise<string> {
-		const response = await this.api.get('/templates/env/default');
-		return response.data?.data?.content ?? response.data?.content;
+	async getDefaultTemplates(): Promise<{ composeTemplate: string; envTemplate: string }> {
+		const response = await this.api.get('/templates/default');
+		const data = response.data?.data;
+		return {
+			composeTemplate: data?.composeTemplate ?? '',
+			envTemplate: data?.envTemplate ?? ''
+		};
 	}
 
-	async saveEnvTemplate(content: string): Promise<void> {
-		await this.api.post('/templates/env/default', { content });
+	async saveDefaultTemplates(composeContent: string, envContent: string): Promise<void> {
+		await this.api.post('/templates/default', {
+			composeContent,
+			envContent
+		});
 	}
 
 	async getRegistries(): Promise<TemplateRegistry[]> {
@@ -70,6 +78,15 @@ export default class TemplateService extends BaseAPIService {
 
 	async deleteRegistry(id: string): Promise<void> {
 		await this.api.delete(`/templates/registries/${id}`);
+	}
+
+	async getGlobalVariables(): Promise<Variable[]> {
+		const response = await this.api.get('/templates/variables');
+		return response.data?.data ?? [];
+	}
+
+	async updateGlobalVariables(variables: Variable[]): Promise<void> {
+		await this.api.put('/templates/variables', { variables });
 	}
 }
 

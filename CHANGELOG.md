@@ -1,3 +1,34 @@
+## v1.4.0
+
+### New features
+
+* interactive shell access to containers ([#611](https://github.com/ofkm/arcane/pull/611) by @Copilot)
+* container stats websocket, and overhaul ([#612](https://github.com/ofkm/arcane/pull/612) by @kmendell)
+* configure settings on environments via the web ui ([#613](https://github.com/ofkm/arcane/pull/613) by @kmendell)
+* global compose and env defaults configuration ([#617](https://github.com/ofkm/arcane/pull/617) by @kmendell)
+* global environment variables ([#620](https://github.com/ofkm/arcane/pull/620) by @cabaucom376)
+* mobile responsive tables ([#597](https://github.com/ofkm/arcane/pull/597) by @cabaucom376)
+* option to group containers by project ([#625](https://github.com/ofkm/arcane/pull/625) by @cabaucom376)
+
+### Bug fixes
+
+* remove trailing slashing for all resource links([1d2e41c](https://github.com/ofkm/arcane/commit/1d2e41c0030b29bedb2ecb93cdc5740c88c32b52) by @kmendell)
+* only show docker / general settings on environment page([57cff79](https://github.com/ofkm/arcane/commit/57cff793ba3cd32b6c4d3e3bdcb0c4a5d4d470ec) by @kmendell)
+* add missing context([ba4d20b](https://github.com/ofkm/arcane/commit/ba4d20b78a252a17ebfc479841e5566411e60671) by @kmendell)
+
+### Other
+
+* fix locators for container tests([10edce8](https://github.com/ofkm/arcane/commit/10edce81d7c40111cb1701d3ab658fbf8a6f912b) by @kmendell)
+* bump the prod-dependencies group with 4 updates ([#614](https://github.com/ofkm/arcane/pull/614) by @dependabot[bot])
+* update readme screenshot([a18e3c0](https://github.com/ofkm/arcane/commit/a18e3c0090a27de6c608aeeb9d6ec11a53313f66) by @kmendell)
+* bump the backend-dependencies group in /backend with 2 updates ([#623](https://github.com/ofkm/arcane/pull/623) by @dependabot[bot])
+* bump the prod-dependencies group with 4 updates ([#622](https://github.com/ofkm/arcane/pull/622) by @dependabot[bot])
+* bump the dev-dependencies group across 1 directory with 2 updates ([#621](https://github.com/ofkm/arcane/pull/621) by @dependabot[bot])
+
+
+
+**Full Changelog**: https://github.com/ofkm/arcane/compare/v1.3.0...v1.4.0
+
 ## v1.3.0
 
 ### New features
