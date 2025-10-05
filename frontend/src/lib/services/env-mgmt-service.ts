@@ -1,29 +1,33 @@
 import BaseAPIService from './api-service';
 import type { Environment } from '$lib/types/environment.type';
 import type { CreateEnvironmentDTO, UpdateEnvironmentDTO } from '$lib/types/environment.type';
-import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
+import type { Paginated, PaginationResponse, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import { transformPaginationParams } from '$lib/utils/params.util';
 
 export default class EnvironmentManagementService extends BaseAPIService {
 	async create(dto: CreateEnvironmentDTO): Promise<Environment> {
-		const res = await this.api.post('/environments', dto);
-		return res.data.data as Environment;
+		return this.handleResponse<Environment>(this.api.post('/environments', dto));
 	}
 
 	async getEnvironments(options: SearchPaginationSortRequest): Promise<Paginated<Environment>> {
 		const params = transformPaginationParams(options);
-		const res = await this.api.get('/environments', { params });
-		return res.data;
+		const response = await this.handleResponse<{
+			items?: Environment[];
+			pagination: PaginationResponse;
+		}>(this.api.get('/environments', { params }));
+
+		return {
+			data: Array.isArray(response.items) ? response.items : [],
+			pagination: response.pagination
+		};
 	}
 
 	async get(environmentId: string): Promise<Environment> {
-		const res = await this.api.get(`/environments/${environmentId}`);
-		return res.data.data as Environment;
+		return this.handleResponse<Environment>(this.api.get(`/environments/${environmentId}`));
 	}
 
 	async update(environmentId: string, dto: UpdateEnvironmentDTO): Promise<Environment> {
-		const res = await this.api.put(`/environments/${environmentId}`, dto);
-		return res.data.data as Environment;
+		return this.handleResponse<Environment>(this.api.put(`/environments/${environmentId}`, dto));
 	}
 
 	async delete(environmentId: string): Promise<void> {
@@ -31,8 +35,9 @@ export default class EnvironmentManagementService extends BaseAPIService {
 	}
 
 	async testConnection(environmentId: string): Promise<{ status: 'online' | 'offline'; message?: string }> {
-		const res = await this.api.post(`/environments/${environmentId}/test`);
-		return res.data.data as { status: 'online' | 'offline'; message?: string };
+		return this.handleResponse<{ status: 'online' | 'offline'; message?: string }>(
+			this.api.post(`/environments/${environmentId}/test`)
+		);
 	}
 }
 

@@ -32,7 +32,9 @@ function createEnvironmentManagementStore() {
 			newAvailable.push(localDockerEnvironment);
 		}
 
-		newAvailable.push(...environments.map((env) => ({ ...env, isLocal: false })));
+		if (Array.isArray(environments)) {
+			newAvailable.push(...environments.map((env) => ({ ...env, isLocal: false })));
+		}
 		_availableEnvironments.set(newAvailable);
 		return newAvailable;
 	}

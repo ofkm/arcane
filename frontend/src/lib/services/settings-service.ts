@@ -37,13 +37,20 @@ export default class SettingsService extends BaseAPIService {
 	}
 
 	private normalize(data: any): Settings {
-		if (data && !Array.isArray(data) && !Array.isArray(data?.settings)) {
+		if (!data) {
+			return {} as Settings;
+		}
+
+		if (!Array.isArray(data) && typeof data === 'object' && !data.key && !data.value) {
 			return data as Settings;
 		}
 
 		let list: KeyValuePair[] = [];
-		if (Array.isArray(data)) list = data;
-		else if (Array.isArray(data?.settings)) list = data.settings;
+		if (Array.isArray(data)) {
+			list = data;
+		} else {
+			return data as Settings;
+		}
 
 		const settings: Record<string, unknown> = {};
 		list.forEach(({ key, value }) => {
