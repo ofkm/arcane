@@ -172,6 +172,10 @@
 		if (initialMobileVisibility) {
 			mobileFieldVisibility = initialMobileVisibility;
 		}
+
+		if (snapshot.customSettings && Object.keys(snapshot.customSettings).length > 0) {
+			customSettings = { ...snapshot.customSettings };
+		}
 	});
 
 	function updatePagination(patch: Partial<{ page: number; limit: number }>) {

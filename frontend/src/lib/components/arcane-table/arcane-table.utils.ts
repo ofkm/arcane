@@ -10,6 +10,7 @@ export type PersistedPreferencesSnapshot = {
 	search: string;
 	limit: number;
 	mobileHidden?: string[];
+	customSettings?: Record<string, unknown>;
 };
 
 export function toFilterMap(filters: ColumnFiltersState): FilterMap {
@@ -72,7 +73,8 @@ export function extractPersistedPreferences(
 		filtersMap,
 		search,
 		limit,
-		mobileHidden: prefs.m
+		mobileHidden: prefs.m,
+		customSettings: prefs.c
 	};
 }
 
