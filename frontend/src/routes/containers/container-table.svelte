@@ -36,6 +36,7 @@
 	import type { Table as TableType } from '@tanstack/table-core';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import FlexRender from '$lib/components/ui/data-table/flex-render.svelte';
+	import { PersistedState } from 'runed';
 
 	let {
 		containers = $bindable(),
@@ -166,7 +167,15 @@
 		customSettings = { ...customSettings, groupByProject: value };
 	}
 
-	let projectOpenStates = $state<Map<string, boolean>>(new Map());
+	const projectOpenStates = new PersistedState<Record<string, boolean>>(
+		'arcane-container-groups-collapsed',
+		{},
+		{ syncTabs: false }
+	);
+
+	function toggleProjectState(projectName: string, isOpen: boolean) {
+		projectOpenStates.current = { ...projectOpenStates.current, [projectName]: isOpen };
+	}
 
 	function getProjectName(container: ContainerSummaryDto): string {
 		const projectLabel = container.labels?.['com.docker.compose.project'];
@@ -412,18 +421,15 @@
 
 			<Collapsible.Root
 				class="w-full"
-				open={projectOpenStates.get(projectName) ?? false}
-				onOpenChange={(open) => {
-					projectOpenStates.set(projectName, open);
-					projectOpenStates = new Map(projectOpenStates);
-				}}
+				open={projectOpenStates.current[projectName] ?? false}
+				onOpenChange={(open) => toggleProjectState(projectName, open)}
 			>
 				<Card.Root class="border-2">
 					<Collapsible.Trigger
 						class="hover:bg-accent/50 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
 					>
 						<div class="flex items-center gap-2">
-							{#if projectOpenStates.get(projectName) ?? false}
+							{#if projectOpenStates.current[projectName] ?? false}
 								<ChevronDownIcon class="size-4 transition-transform" />
 							{:else}
 								<ChevronRightIcon class="size-4 transition-transform" />
