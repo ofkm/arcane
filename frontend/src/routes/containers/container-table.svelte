@@ -275,7 +275,7 @@
 				icon: ClockIcon,
 				iconVariant: 'purple' as const,
 				show: (mobileFieldVisibility.status ?? true) && item.status !== undefined
-			},
+			}
 		]}
 		footer={(mobileFieldVisibility.created ?? true)
 			? {
@@ -433,7 +433,7 @@
 						</div>
 					</Collapsible.Trigger>
 					<Collapsible.Content>
-						<Card.Content class="p-0 pt-2">
+						<Card.Content class="p-0">
 							<div class="hidden rounded-md md:block">
 								<Table.Root>
 									<Table.Header>
