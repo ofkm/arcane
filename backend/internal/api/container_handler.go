@@ -26,6 +26,11 @@ import (
 	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
+// Context Strategy:
+// - Lifecycle operations (Start/Stop/Restart/Delete/Create): Use background context with 30s timeout
+//   to prevent indefinite hangs while ensuring operations complete even if client disconnects/refreshes.
+// - WebSocket operations (logs/stats/exec): Use background context for long-lived streaming connections.
+
 type ContainerHandler struct {
 	containerService    *services.ContainerService
 	imageService        *services.ImageService
@@ -354,7 +359,9 @@ func (h *ContainerHandler) Start(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	if err := h.containerService.StartContainer(ctx, id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -377,7 +384,9 @@ func (h *ContainerHandler) Stop(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	if err := h.containerService.StopContainer(ctx, id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -400,7 +409,9 @@ func (h *ContainerHandler) Restart(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	if err := h.containerService.RestartContainer(ctx, id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -425,7 +436,9 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	if err := h.containerService.DeleteContainer(ctx, id, force, removeVolumes, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -535,7 +548,9 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	containerJSON, err := h.containerService.CreateContainer(
 		ctx,
 		config,

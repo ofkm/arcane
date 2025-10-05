@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -13,6 +14,11 @@ import (
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
+
+// Context Strategy:
+// - Lifecycle operations (Remove/Prune): Use background context with timeout to prevent hangs
+//   while ensuring operations complete even if client disconnects/refreshes.
+// - Pull operations: Use background context without timeout for potentially long image downloads.
 
 type ImageHandler struct {
 	imageService       *services.ImageService
@@ -90,7 +96,9 @@ func (h *ImageHandler) Remove(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	if err := h.imageService.RemoveImage(ctx, id, force, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -159,7 +167,9 @@ func (h *ImageHandler) Prune(c *gin.Context) {
 		}
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
 	slog.DebugContext(ctx, "Image prune request", slog.Bool("dangling_only", dangling))
 
 	report, err := h.imageService.PruneImages(ctx, dangling)
