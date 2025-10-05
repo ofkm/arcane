@@ -155,7 +155,7 @@
 	"docker_prune_all": "Todos",
 	"docker_prune_all_description": "Elimina todas las imágenes no referenciadas por contenedores e incluye volúmenes con nombre y no utilizados durante la limpieza del sistema.",
 	"docker_prune_dangling": "Sin etiquetar",
-	"docker_prune_dangling_description": "Elimina solo las imágenes sin etiquetar y los volúmenes anónimos durante la limpieza del sistema."
+	"docker_prune_dangling_description": "Elimina solo las imágenes sin etiquetar y los volúmenes anónimos durante la limpieza del sistema.",
 	"docker_prune_mode_description": "Elija cómo se deben podar las imágenes y los volúmenes no utilizados.",
 	"docker_prune_action_label": "Comportamiento de acción de purga de Docker",
 	"docker_prune_placeholder": "Modo de limpieza de Docker",
