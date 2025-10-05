@@ -1225,5 +1225,6 @@
 	"variables_value_placeholder": "value",
 	"variables_duplicate_keys_error": "Duplicate keys found. Please ensure all keys are unique.",
 	"variables_save_success": "Global variables saved successfully",
-	"variables_save_failed": "Failed to save. Please try again."
+	"variables_save_failed": "Failed to save. Please try again.",
+	"containers_group_by_project": "Group by Project"
 }
