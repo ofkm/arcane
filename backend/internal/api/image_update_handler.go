@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -25,8 +24,6 @@ func NewImageUpdateHandler(group *gin.RouterGroup, imageUpdateService *services.
 		apiGroup.POST("/check-batch", handler.CheckMultipleImages)
 		apiGroup.GET("/check-all", handler.CheckAllImages)
 		apiGroup.GET("/summary", handler.GetUpdateSummary)
-		apiGroup.GET("/versions", handler.GetImageVersions)
-		apiGroup.POST("/compare", handler.CompareVersions)
 	}
 }
 
@@ -149,65 +146,5 @@ func (h *ImageUpdateHandler) GetUpdateSummary(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    summary,
-	})
-}
-
-func (h *ImageUpdateHandler) GetImageVersions(c *gin.Context) {
-	imageRef := c.Query("imageRef")
-	if imageRef == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "imageRef query parameter is required",
-		})
-		return
-	}
-
-	limitStr := c.DefaultQuery("limit", "20")
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid limit parameter",
-		})
-		return
-	}
-
-	versions, err := h.imageUpdateService.GetAvailableVersions(c.Request.Context(), imageRef, limit)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get image versions: " + err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    versions,
-	})
-}
-
-func (h *ImageUpdateHandler) CompareVersions(c *gin.Context) {
-	var req dto.CompareVersionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request format",
-		})
-		return
-	}
-
-	comparison, err := h.imageUpdateService.CompareVersions(c.Request.Context(), req.ImageRef, req.CurrentVersion, req.TargetVersion)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to compare versions: " + err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    comparison,
 	})
 }
