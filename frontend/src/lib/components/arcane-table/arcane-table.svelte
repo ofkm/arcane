@@ -550,10 +550,8 @@
 	{/if}
 
 	{#if customTableView}
-		<!-- Custom Table View provided by consumer -->
 		{@render customTableView({ table })}
 	{:else}
-		<!-- Desktop Table View -->
 		<div class="hidden rounded-md md:block">
 			<Table.Root>
 				<Table.Header>
