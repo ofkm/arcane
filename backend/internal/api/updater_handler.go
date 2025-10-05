@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 
@@ -30,7 +31,8 @@ func (h *UpdaterHandler) Run(c *gin.Context) {
 	var req dto.UpdaterRunRequest
 	_ = c.ShouldBindJSON(&req)
 
-	out, err := h.updaterService.ApplyPending(c.Request.Context(), req.DryRun)
+	ctx := context.Background()
+	out, err := h.updaterService.ApplyPending(ctx, req.DryRun)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
 		return

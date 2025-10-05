@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/docker/docker/api/types/network"
@@ -132,7 +133,8 @@ func (h *NetworkHandler) Remove(c *gin.Context) {
 		return
 	}
 
-	if err := h.networkService.RemoveNetwork(c.Request.Context(), id, *currentUser); err != nil {
+	ctx := context.Background()
+	if err := h.networkService.RemoveNetwork(ctx, id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    dto.MessageDto{Message: err.Error()},
@@ -169,7 +171,8 @@ func (h *NetworkHandler) GetNetworkUsageCounts(c *gin.Context) {
 }
 
 func (h *NetworkHandler) Prune(c *gin.Context) {
-	report, err := h.networkService.PruneNetworks(c.Request.Context())
+	ctx := context.Background()
+	report, err := h.networkService.PruneNetworks(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

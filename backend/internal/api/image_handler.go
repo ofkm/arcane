@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -88,7 +89,9 @@ func (h *ImageHandler) Remove(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.imageService.RemoveImage(c.Request.Context(), id, force, *currentUser); err != nil {
+
+	ctx := context.Background()
+	if err := h.imageService.RemoveImage(ctx, id, force, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    dto.MessageDto{Message: err.Error()},
@@ -103,7 +106,7 @@ func (h *ImageHandler) Remove(c *gin.Context) {
 }
 
 func (h *ImageHandler) Pull(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx := context.Background()
 	var req dto.ImagePullDto
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -156,9 +159,10 @@ func (h *ImageHandler) Prune(c *gin.Context) {
 		}
 	}
 
-	slog.DebugContext(c.Request.Context(), "Image prune request", slog.Bool("dangling_only", dangling))
+	ctx := context.Background()
+	slog.DebugContext(ctx, "Image prune request", slog.Bool("dangling_only", dangling))
 
-	report, err := h.imageService.PruneImages(c.Request.Context(), dangling)
+	report, err := h.imageService.PruneImages(ctx, dangling)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"runtime"
@@ -143,7 +144,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 }
 
 func (h *SystemHandler) PruneAll(c *gin.Context) {
-	ctx := c.Request.Context()
+	ctx := context.Background()
 	slog.InfoContext(ctx, "System prune operation initiated")
 
 	var req dto.PruneSystemDto
@@ -195,7 +196,8 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 }
 
 func (h *SystemHandler) StartAllContainers(c *gin.Context) {
-	result, err := h.systemService.StartAllContainers(c.Request.Context())
+	ctx := context.Background()
+	result, err := h.systemService.StartAllContainers(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -212,7 +214,8 @@ func (h *SystemHandler) StartAllContainers(c *gin.Context) {
 }
 
 func (h *SystemHandler) StartAllStoppedContainers(c *gin.Context) {
-	result, err := h.systemService.StartAllStoppedContainers(c.Request.Context())
+	ctx := context.Background()
+	result, err := h.systemService.StartAllStoppedContainers(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -229,7 +232,8 @@ func (h *SystemHandler) StartAllStoppedContainers(c *gin.Context) {
 }
 
 func (h *SystemHandler) StopAllContainers(c *gin.Context) {
-	result, err := h.systemService.StopAllContainers(c.Request.Context())
+	ctx := context.Background()
+	result, err := h.systemService.StopAllContainers(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

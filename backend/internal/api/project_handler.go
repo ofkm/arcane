@@ -109,7 +109,8 @@ func (h *ProjectHandler) DeployProject(c *gin.Context) {
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
-	if err := h.projectService.DeployProject(c.Request.Context(), projectID, *user); err != nil {
+	ctx := context.Background()
+	if err := h.projectService.DeployProject(ctx, projectID, *user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -127,7 +128,8 @@ func (h *ProjectHandler) DownProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 
 	user, _ := middleware.GetCurrentUser(c)
-	if err := h.projectService.DownProject(c.Request.Context(), projectID, *user); err != nil {
+	ctx := context.Background()
+	if err := h.projectService.DownProject(ctx, projectID, *user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   fmt.Sprintf("Failed to bring down project: %v", err),
@@ -202,7 +204,8 @@ func (h *ProjectHandler) RedeployProject(c *gin.Context) {
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
-	if err := h.projectService.RedeployProject(c.Request.Context(), projectID, *user); err != nil {
+	ctx := context.Background()
+	if err := h.projectService.RedeployProject(ctx, projectID, *user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -228,7 +231,8 @@ func (h *ProjectHandler) DestroyProject(c *gin.Context) {
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
-	if err := h.projectService.DestroyProject(c.Request.Context(), projectID, req.RemoveFiles, req.RemoveVolumes, *user); err != nil {
+	ctx := context.Background()
+	if err := h.projectService.DestroyProject(ctx, projectID, req.RemoveFiles, req.RemoveVolumes, *user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   fmt.Sprintf("Failed to destroy project: %v", err),
@@ -256,7 +260,8 @@ func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 
 	_, _ = fmt.Fprintln(c.Writer, `{"status":"starting project image pull"}`)
 
-	if err := h.projectService.PullProjectImages(c.Request.Context(), projectID, c.Writer); err != nil {
+	ctx := context.Background()
+	if err := h.projectService.PullProjectImages(ctx, projectID, c.Writer); err != nil {
 		_, _ = fmt.Fprintf(c.Writer, `{"error":%q}`+"\n", err.Error())
 		return
 	}
@@ -302,7 +307,8 @@ func (h *ProjectHandler) RestartProject(c *gin.Context) {
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
-	if err := h.projectService.RestartProject(c.Request.Context(), projectID, *user); err != nil {
+	ctx := context.Background()
+	if err := h.projectService.RestartProject(ctx, projectID, *user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}

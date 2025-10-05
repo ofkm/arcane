@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/docker/docker/api/types/volume"
@@ -125,7 +126,8 @@ func (h *VolumeHandler) Remove(c *gin.Context) {
 		return
 	}
 
-	if err := h.volumeService.DeleteVolume(c.Request.Context(), name, force, *currentUser); err != nil {
+	ctx := context.Background()
+	if err := h.volumeService.DeleteVolume(ctx, name, force, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    gin.H{"error": err.Error()},
@@ -140,7 +142,8 @@ func (h *VolumeHandler) Remove(c *gin.Context) {
 }
 
 func (h *VolumeHandler) Prune(c *gin.Context) {
-	report, err := h.volumeService.PruneVolumes(c.Request.Context())
+	ctx := context.Background()
+	report, err := h.volumeService.PruneVolumes(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

@@ -353,7 +353,9 @@ func (h *ContainerHandler) Start(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.containerService.StartContainer(c.Request.Context(), id, *currentUser); err != nil {
+
+	ctx := context.Background()
+	if err := h.containerService.StartContainer(ctx, id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    gin.H{"error": err.Error()},
@@ -374,7 +376,9 @@ func (h *ContainerHandler) Stop(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.containerService.StopContainer(c.Request.Context(), id, *currentUser); err != nil {
+
+	ctx := context.Background()
+	if err := h.containerService.StopContainer(ctx, id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    gin.H{"error": err.Error()},
@@ -395,7 +399,9 @@ func (h *ContainerHandler) Restart(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.containerService.RestartContainer(c.Request.Context(), id, *currentUser); err != nil {
+
+	ctx := context.Background()
+	if err := h.containerService.RestartContainer(ctx, id, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    gin.H{"error": err.Error()},
@@ -418,7 +424,9 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.containerService.DeleteContainer(c.Request.Context(), id, force, removeVolumes, *currentUser); err != nil {
+
+	ctx := context.Background()
+	if err := h.containerService.DeleteContainer(ctx, id, force, removeVolumes, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    gin.H{"error": err.Error()},
@@ -526,8 +534,10 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 	if !ok {
 		return
 	}
+
+	ctx := context.Background()
 	containerJSON, err := h.containerService.CreateContainer(
-		c.Request.Context(),
+		ctx,
 		config,
 		hostConfig,
 		networkingConfig,
