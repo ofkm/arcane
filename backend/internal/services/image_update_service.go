@@ -202,6 +202,7 @@ func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *Image
 	hasUpdate := true
 	for _, localDig := range allLocalDigests {
 		if localDig == remoteDigest {
+			localDigest = localDig
 			hasUpdate = false
 			break
 		}
@@ -374,11 +375,6 @@ func (s *ImageUpdateService) getAllImageRefs(ctx context.Context, limit int) ([]
 		imageRefs = imageRefs[:limit]
 	}
 	return imageRefs, nil
-}
-
-func (s *ImageUpdateService) getLocalImageDigest(ctx context.Context, imageRef string) (string, error) {
-	digest, _, err := s.getLocalImageDigestWithAll(ctx, imageRef)
-	return digest, err
 }
 
 func (s *ImageUpdateService) getLocalImageDigestWithAll(ctx context.Context, imageRef string) (string, []string, error) {
@@ -827,6 +823,7 @@ func (s *ImageUpdateService) checkSingleImageInBatch(
 	hasDigestUpdate := true
 	for _, localDig := range allLocalDigests {
 		if localDig == remoteDigest {
+			localDigest = localDig
 			hasDigestUpdate = false
 			break
 		}
