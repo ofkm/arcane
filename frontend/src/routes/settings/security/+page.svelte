@@ -1,8 +1,8 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
-	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
@@ -17,7 +17,7 @@
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsService } from '$lib/services/settings-service';
-	import { SettingsPageLayout } from '$lib/layouts/index.js';
+	import { SettingsPageLayout } from '$lib/layouts';
 
 	let { data }: { data: PageData } = $props();
 	let currentSettings = $state<Settings>(data.settings);
@@ -222,16 +222,11 @@
 	{#snippet mainContent()}
 		<fieldset disabled={isReadOnly} class="relative">
 			<div class="space-y-4 sm:space-y-6">
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header class="bg-muted/20 border-b !py-4">
-						<div class="flex items-center gap-3">
-							<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-								<LockIcon class="size-4" />
-							</div>
-							<div>
-								<Card.Title class="text-base">{m.security_authentication_heading()}</Card.Title>
-								<Card.Description class="text-xs">Configure login methods for your application</Card.Description>
-							</div>
+				<Card.Root>
+					<Card.Header icon={LockIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.security_authentication_heading()}</Card.Title>
+							<Card.Description>Configure login methods for your application</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
@@ -284,16 +279,11 @@
 					</Card.Content>
 				</Card.Root>
 
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header class="bg-muted/20 border-b !py-4">
-						<div class="flex items-center gap-3">
-							<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-								<ClockIcon class="size-4" />
-							</div>
-							<div>
-								<Card.Title class="text-base">{m.security_session_heading()}</Card.Title>
-								<Card.Description class="text-xs">Configure session timeout and duration</Card.Description>
-							</div>
+				<Card.Root>
+					<Card.Header icon={ClockIcon} class="items-start">
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.security_session_heading()}</Card.Title>
+							<Card.Description>Configure session timeout and duration</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
@@ -307,16 +297,11 @@
 					</Card.Content>
 				</Card.Root>
 
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header class="bg-muted/20 border-b !py-4">
-						<div class="flex items-center gap-3">
-							<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-								<KeyIcon class="size-4" />
-							</div>
-							<div>
-								<Card.Title class="text-base">{m.security_password_policy_label()}</Card.Title>
-								<Card.Description class="text-xs">Set password strength requirements</Card.Description>
-							</div>
+				<Card.Root>
+					<Card.Header icon={KeyIcon} class="items-start">
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.security_password_policy_label()}</Card.Title>
+							<Card.Description>Set password strength requirements</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">

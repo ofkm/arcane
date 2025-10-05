@@ -8,71 +8,97 @@
 	import { debounced } from '$lib/utils/utils.js';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { m } from '$lib/paraglide/messages';
+	import type { Snippet } from 'svelte';
 
 	let {
 		table,
 		selectedIds = [],
 		selectionDisabled = false,
-		onRemoveSelected
+		onRemoveSelected,
+		mobileFields = [],
+		onToggleMobileField,
+		customViewOptions
 	}: {
 		table: Table<TData>;
 		selectedIds?: string[];
 		selectionDisabled?: boolean;
 		onRemoveSelected?: (ids: string[]) => void;
+		mobileFields?: { id: string; label: string; visible: boolean }[];
+		onToggleMobileField?: (fieldId: string) => void;
+		customViewOptions?: Snippet;
 	} = $props();
 
 	const isFiltered = $derived(table.getState().columnFilters.length > 0 || !!table.getState().globalFilter);
-	const usageColumn = $derived(table.getColumn('inUse'));
-	const updatesColumn = $derived(table.getColumn('updates'));
+	const usageColumn = $derived(table.getAllColumns().some((col) => col.id === 'inUse') ? table.getColumn('inUse') : undefined);
+	const updatesColumn = $derived(
+		table.getAllColumns().some((col) => col.id === 'updates') ? table.getColumn('updates') : undefined
+	);
 
 	const debouncedSetGlobal = debounced((v: string) => table.setGlobalFilter(v), 300);
 	const hasSelection = $derived(!selectionDisabled && (selectedIds?.length ?? 0) > 0);
 </script>
 
-<div class="flex items-center justify-between">
-	<div class="flex flex-1 items-center space-x-2">
-		<Input
-			placeholder={m.common_search()}
-			value={(table.getState().globalFilter as string) ?? ''}
-			oninput={(e) => debouncedSetGlobal(e.currentTarget.value)}
-			onchange={(e) => table.setGlobalFilter(e.currentTarget.value)}
-			onkeydown={(e) => {
-				if (e.key === 'Enter') table.setGlobalFilter((e.currentTarget as HTMLInputElement).value);
-			}}
-			class="h-8 w-[150px] lg:w-[250px]"
+<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+	<div class="flex flex-col gap-2 sm:flex-1 sm:flex-row sm:items-center sm:justify-between">
+		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:space-x-2">
+			<div class="flex items-center gap-2">
+				<Input
+					placeholder={m.common_search()}
+					value={(table.getState().globalFilter as string) ?? ''}
+					oninput={(e) => debouncedSetGlobal(e.currentTarget.value)}
+					onchange={(e) => table.setGlobalFilter(e.currentTarget.value)}
+					onkeydown={(e) => {
+						if (e.key === 'Enter') table.setGlobalFilter((e.currentTarget as HTMLInputElement).value);
+					}}
+					class="h-8 w-full sm:w-[150px] lg:w-[250px]"
+				/>
+
+				<div class="md:hidden">
+					{#if mobileFields.length > 0 && onToggleMobileField}
+						<DataTableViewOptions fields={mobileFields} onToggleField={onToggleMobileField} />
+					{:else}
+						<DataTableViewOptions {table} />
+					{/if}
+				</div>
+			</div>
+
+			<div class="flex flex-wrap items-center gap-2 sm:gap-0 sm:space-x-2">
+				{#if usageColumn}
+					<DataTableFacetedFilter column={usageColumn} title={m.common_usage()} options={usageFilters} />
+				{/if}
+				{#if updatesColumn}
+					<DataTableFacetedFilter column={updatesColumn} title={m.images_updates()} options={imageUpdateFilters} />
+				{/if}
+
+				{#if isFiltered}
+					<Button
+						variant="ghost"
+						onclick={() => {
+							table.resetColumnFilters();
+							table.resetGlobalFilter();
+						}}
+						class="h-8 px-2 lg:px-3"
+					>
+						{m.common_reset()}
+						<XIcon />
+					</Button>
+				{/if}
+			</div>
+		</div>
+
+		<!-- View options - desktop only, end aligned -->
+		<div class="hidden md:block">
+			<DataTableViewOptions {table} {customViewOptions} />
+		</div>
+	</div>
+
+	<!-- Actions on the right (wraps on mobile) -->
+	{#if hasSelection && onRemoveSelected}
+		<ArcaneButton
+			action="remove"
+			size="sm"
+			customLabel={m.common_remove_selected({ count: selectedIds?.length ?? 0 })}
+			onclick={() => onRemoveSelected?.(selectedIds!)}
 		/>
-
-		{#if usageColumn}
-			<DataTableFacetedFilter column={usageColumn} title={m.common_usage()} options={usageFilters} />
-		{/if}
-		{#if updatesColumn}
-			<DataTableFacetedFilter column={updatesColumn} title={m.images_updates()} options={imageUpdateFilters} />
-		{/if}
-
-		{#if isFiltered}
-			<Button
-				variant="ghost"
-				onclick={() => {
-					table.resetColumnFilters();
-					table.resetGlobalFilter();
-				}}
-				class="h-8 px-2 lg:px-3"
-			>
-				{m.common_reset()}
-				<XIcon />
-			</Button>
-		{/if}
-	</div>
-
-	<div class="flex items-center gap-2">
-		{#if hasSelection && onRemoveSelected}
-			<ArcaneButton
-				action="remove"
-				size="sm"
-				customLabel={m.common_remove_selected({ count: selectedIds?.length ?? 0 })}
-				onclick={() => onRemoveSelected?.(selectedIds!)}
-			/>
-		{/if}
-		<DataTableViewOptions {table} />
-	</div>
+	{/if}
 </div>

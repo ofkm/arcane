@@ -16,9 +16,11 @@
 	import { toast } from 'svelte-sonner';
 	import type { Paginated, SearchPaginationSortRequest } from '$lib/types/pagination.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import type { Environment } from '$lib/types/environment.type';
 	import { m } from '$lib/paraglide/messages';
 	import { environmentManagementService } from '$lib/services/env-mgmt-service';
+	import CloudIcon from '@lucide/svelte/icons/cloud';
 
 	let {
 		environments = $bindable(),
@@ -140,17 +142,24 @@
 			cell: StatusCell
 		},
 		{
-			accessorKey: 'apiUrl',
-			title: m.environments_api_url(),
-			cell: ApiCell
-		},
-		{
 			accessorKey: 'enabled',
 			title: m.common_enabled(),
 			sortable: true,
 			cell: EnabledCell
+		},
+		{
+			accessorKey: 'apiUrl',
+			title: m.environments_api_url(),
+			cell: ApiCell
 		}
 	] satisfies ColumnSpec<Environment>[];
+
+	const mobileFields = [
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'apiUrl', label: m.environments_api_url(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet EnvironmentCell({ item }: { item: Environment })}
@@ -182,6 +191,34 @@
 
 {#snippet EnabledCell({ value }: { value: unknown })}
 	<StatusBadge text={Boolean(value) ? 'Enabled' : 'Disabled'} variant={Boolean(value) ? 'green' : 'gray'} />
+{/snippet}
+
+{#snippet EnvironmentMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: Environment;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<UniversalMobileCard
+		{item}
+		icon={{ component: CloudIcon, variant: 'emerald' }}
+		title={(item: Environment) => item.name || item.id}
+		subtitle={(item: Environment) => ((mobileFieldVisibility.id ?? true) ? item.id : null)}
+		badges={[{ variant: 'green', text: m.sidebar_environment_label() }]}
+		fields={[
+			{
+				label: m.environments_api_url(),
+				getValue: (item: Environment) => item.apiUrl,
+				icon: CloudIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.apiUrl ?? true) && !!item.apiUrl
+			}
+		]}
+		rowActions={RowActions}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: Environment })}
@@ -218,18 +255,20 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<div>
-	<Card.Root>
-		<Card.Content class="py-5">
-			<ArcaneTable
-				items={environments}
-				bind:requestOptions
-				bind:selectedIds
-				onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-				onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
-				{columns}
-				rowActions={RowActions}
-			/>
-		</Card.Content>
-	</Card.Root>
-</div>
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Content class="px-6 py-5">
+		<ArcaneTable
+			persistKey="arcane-environments-table"
+			items={environments}
+			bind:requestOptions
+			bind:selectedIds
+			bind:mobileFieldVisibility
+			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
+			onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
+			{columns}
+			{mobileFields}
+			rowActions={RowActions}
+			mobileCard={EnvironmentMobileCardSnippet}
+		/>
+	</Card.Content>
+</Card.Root>

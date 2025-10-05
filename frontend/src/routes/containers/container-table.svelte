@@ -23,7 +23,20 @@
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { PortBadge } from '$lib/components/badges/index.js';
+	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
+	import BoxIcon from '@lucide/svelte/icons/box';
+	import ImageIcon from '@lucide/svelte/icons/image';
+	import NetworkIcon from '@lucide/svelte/icons/network';
+	import ClockIcon from '@lucide/svelte/icons/clock';
 	import { containerService } from '$lib/services/container-service';
+	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
+	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import { Badge } from '$lib/components/ui/badge/index.js';
+	import type { Table as TableType } from '@tanstack/table-core';
+	import * as Table from '$lib/components/ui/table/index.js';
+	import FlexRender from '$lib/components/ui/data-table/flex-render.svelte';
+	import { PersistedState } from 'runed';
 
 	let {
 		containers = $bindable(),
@@ -128,12 +141,68 @@
 	const columns = [
 		{ accessorKey: 'names', title: m.common_name(), sortable: true, cell: NameCell },
 		{ accessorKey: 'id', title: m.common_id(), cell: IdCell },
-		{ accessorKey: 'image', title: m.common_image(), sortable: true },
 		{ accessorKey: 'state', title: m.common_state(), sortable: true, cell: StateCell },
+		{ accessorKey: 'image', title: m.common_image(), sortable: true },
 		{ accessorKey: 'status', title: m.common_status() },
 		{ accessorKey: 'ports', title: m.ports(), cell: PortsCell },
 		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell }
 	] satisfies ColumnSpec<ContainerSummaryDto>[];
+
+	const mobileFields = [
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'state', label: m.common_state(), defaultVisible: true },
+		{ id: 'image', label: m.common_image(), defaultVisible: true },
+		{ id: 'status', label: m.common_status(), defaultVisible: true },
+		{ id: 'ports', label: m.ports(), defaultVisible: true },
+		{ id: 'created', label: m.common_created(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
+	let customSettings = $state<Record<string, unknown>>({});
+	let groupByProject = $derived.by(() => {
+		return (customSettings.groupByProject as boolean) ?? false;
+	});
+
+	function setGroupByProject(value: boolean) {
+		customSettings = { ...customSettings, groupByProject: value };
+	}
+
+	const projectOpenStates = new PersistedState<Record<string, boolean>>(
+		'arcane-container-groups-collapsed',
+		{},
+		{ syncTabs: false }
+	);
+
+	function toggleProjectState(projectName: string, isOpen: boolean) {
+		projectOpenStates.current = { ...projectOpenStates.current, [projectName]: isOpen };
+	}
+
+	function getProjectName(container: ContainerSummaryDto): string {
+		const projectLabel = container.labels?.['com.docker.compose.project'];
+		return projectLabel || 'No Project';
+	}
+
+	const groupedContainers = $derived(() => {
+		if (!groupByProject) return null;
+
+		const groups = new Map<string, ContainerSummaryDto[]>();
+
+		for (const container of containers.data ?? []) {
+			const projectName = getProjectName(container);
+			if (!groups.has(projectName)) {
+				groups.set(projectName, []);
+			}
+			groups.get(projectName)!.push(container);
+		}
+
+		const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
+			if (a === 'No Project') return 1;
+			if (b === 'No Project') return -1;
+			return a.localeCompare(b);
+		});
+
+		return sortedGroups;
+	});
 </script>
 
 {#snippet PortsCell({ item }: { item: ContainerSummaryDto })}
@@ -165,6 +234,86 @@
 	<span class="text-sm">
 		{item.created ? format(new Date(item.created * 1000), 'PP p') : m.common_na()}
 	</span>
+{/snippet}
+
+{#snippet ContainerMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: ContainerSummaryDto;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<UniversalMobileCard
+		{item}
+		icon={(item) => {
+			const state = item.state;
+			return {
+				component: BoxIcon,
+				variant: state === 'running' ? 'emerald' : state === 'exited' ? 'red' : 'amber'
+			};
+		}}
+		title={(item) => {
+			if (item.names && item.names.length > 0) {
+				return item.names[0].startsWith('/') ? item.names[0].substring(1) : item.names[0];
+			}
+			return item.id.substring(0, 12);
+		}}
+		subtitle={(item) => ((mobileFieldVisibility.id ?? true) ? (item.id.length > 12 ? item.id : null) : null)}
+		badges={[
+			(item) =>
+				(mobileFieldVisibility.state ?? true)
+					? {
+							variant: item.state === 'running' ? 'green' : item.state === 'exited' ? 'red' : 'amber',
+							text: capitalizeFirstLetter(item.state)
+						}
+					: null
+		]}
+		fields={[
+			{
+				label: m.common_image(),
+				getValue: (item: ContainerSummaryDto) => item.image,
+				icon: ImageIcon,
+				iconVariant: 'blue' as const,
+				show: mobileFieldVisibility.image ?? true
+			},
+			{
+				label: m.common_status(),
+				getValue: (item: ContainerSummaryDto) => item.status,
+				icon: ClockIcon,
+				iconVariant: 'purple' as const,
+				show: (mobileFieldVisibility.status ?? true) && item.status !== undefined
+			}
+		]}
+		footer={(mobileFieldVisibility.created ?? true)
+			? {
+					label: m.common_created(),
+					getValue: (item) => format(new Date(item.created * 1000), 'PP p'),
+					icon: ClockIcon
+				}
+			: undefined}
+		rowActions={RowActions}
+		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
+	>
+		{#snippet children()}
+			{#if (mobileFieldVisibility.ports ?? true) && item.ports && item.ports.length > 0}
+				<div class="flex items-start gap-2.5 border-t pt-3">
+					<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
+						<NetworkIcon class="size-3.5 text-sky-500" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+							{m.ports()}
+						</div>
+						<div class="mt-1">
+							<PortBadge ports={item.ports} {baseServerUrl} />
+						</div>
+					</div>
+				</div>
+			{/if}
+		{/snippet}
+	</UniversalMobileCard>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: ContainerSummaryDto })}
@@ -235,17 +384,112 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root class="border shadow-sm">
-	<Card.Content>
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Content class="px-6 py-5">
 		<ArcaneTable
 			persistKey="arcane-container-table"
 			items={containers}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
+			bind:customSettings
 			onRefresh={async (options) => (containers = await containerService.getContainers(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
+			mobileCard={ContainerMobileCardSnippet}
 			selectionDisabled
+			customViewOptions={CustomViewOptions}
+			customTableView={groupByProject && groupedContainers() ? GroupedTableView : undefined}
 		/>
 	</Card.Content>
 </Card.Root>
+
+{#snippet CustomViewOptions()}
+	<DropdownMenu.CheckboxItem bind:checked={() => groupByProject, (v) => setGroupByProject(!!v)}>
+		{m.containers_group_by_project()}
+	</DropdownMenu.CheckboxItem>
+{/snippet}
+
+{#snippet GroupedTableView({ table }: { table: TableType<ContainerSummaryDto> })}
+	<div class="space-y-4">
+		{#each groupedContainers() ?? [] as [projectName, projectContainers] (projectName)}
+			{@const projectContainerIds = new Set(projectContainers.map((c) => c.id))}
+			{@const projectRows = table
+				.getRowModel()
+				.rows.filter((row) => projectContainerIds.has((row.original as ContainerSummaryDto).id))}
+
+			<Collapsible.Root
+				class="w-full"
+				open={projectOpenStates.current[projectName] ?? false}
+				onOpenChange={(open) => toggleProjectState(projectName, open)}
+			>
+				<Card.Root class="border-2">
+					<Collapsible.Trigger
+						class="hover:bg-accent/50 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
+					>
+						<div class="flex items-center gap-2">
+							{#if projectOpenStates.current[projectName] ?? false}
+								<ChevronDownIcon class="size-4 transition-transform" />
+							{:else}
+								<ChevronRightIcon class="size-4 transition-transform" />
+							{/if}
+							<span class="font-semibold">{projectName}</span>
+							<Badge variant="secondary" class="ml-2">{projectContainers.length}</Badge>
+						</div>
+					</Collapsible.Trigger>
+					<Collapsible.Content>
+						<Card.Content class="p-0">
+							<div class="hidden rounded-md md:block">
+								<Table.Root>
+									<Table.Header>
+										{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+											<Table.Row>
+												{#each headerGroup.headers as header (header.id)}
+													<Table.Head colspan={header.colSpan}>
+														{#if !header.isPlaceholder}
+															<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
+														{/if}
+													</Table.Head>
+												{/each}
+											</Table.Row>
+										{/each}
+									</Table.Header>
+									<Table.Body>
+										{#each projectRows as row (row.id)}
+											<Table.Row
+												data-state={(selectedIds ?? []).includes((row.original as ContainerSummaryDto).id) && 'selected'}
+											>
+												{#each row.getVisibleCells() as cell (cell.id)}
+													<Table.Cell>
+														<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+													</Table.Cell>
+												{/each}
+											</Table.Row>
+										{:else}
+											<Table.Row>
+												<Table.Cell colspan={table.getAllColumns().length} class="h-24 text-center"
+													>{m.common_no_results_found()}</Table.Cell
+												>
+											</Table.Row>
+										{/each}
+									</Table.Body>
+								</Table.Root>
+							</div>
+
+							<div class="space-y-3 md:hidden">
+								{#each projectRows as row (row.id)}
+									{@render ContainerMobileCardSnippet({ row, item: row.original as ContainerSummaryDto, mobileFieldVisibility })}
+								{:else}
+									<div class="h-24 flex items-center justify-center text-center text-muted-foreground">
+										{m.common_no_results_found()}
+									</div>
+								{/each}
+							</div>
+						</Card.Content>
+					</Collapsible.Content>
+				</Card.Root>
+			</Collapsible.Root>
+		{/each}
+	</div>
+{/snippet}

@@ -1,13 +1,13 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
 	import ZapIcon from '@lucide/svelte/icons/zap';
-	import * as Alert from '$lib/components/ui/alert/index.js';
+	import * as Alert from '$lib/components/ui/alert';
 	import { toast } from 'svelte-sonner';
 	import type { Settings } from '$lib/types/settings.type';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
-	import * as Card from '$lib/components/ui/card';
 	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import ActivityIcon from '@lucide/svelte/icons/activity';
@@ -18,7 +18,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { settingsService } from '$lib/services/settings-service';
-	import { SettingsPageLayout } from '$lib/layouts/index.js';
+	import { SettingsPageLayout } from '$lib/layouts';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings);
@@ -193,16 +193,11 @@
 	{#snippet mainContent()}
 		<fieldset disabled={isReadOnly} class="relative">
 			<div class="space-y-4 sm:space-y-6">
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header class="bg-muted/20 border-b !py-4">
-						<div class="flex items-center gap-3">
-							<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-								<ActivityIcon class="size-4" />
-							</div>
-							<div>
-								<Card.Title class="text-base">{m.docker_image_polling_title()}</Card.Title>
-								<Card.Description class="text-xs">{m.docker_image_polling_description()}</Card.Description>
-							</div>
+				<Card.Root>
+					<Card.Header icon={ActivityIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.docker_image_polling_title()}</Card.Title>
+							<Card.Description>{m.docker_image_polling_description()}</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
@@ -249,16 +244,11 @@
 				</Card.Root>
 
 				{#if $formInputs.pollingEnabled.value}
-					<Card.Root class="overflow-hidden pt-0">
-						<Card.Header class="bg-muted/20 border-b !py-4">
-							<div class="flex items-center gap-3">
-								<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-									<RefreshCwIcon class="size-4" />
-								</div>
-								<div>
-									<Card.Title class="text-base">{m.docker_auto_updates_title()}</Card.Title>
-									<Card.Description class="text-xs">{m.docker_auto_updates_description()}</Card.Description>
-								</div>
+					<Card.Root>
+						<Card.Header icon={RefreshCwIcon}>
+							<div class="flex flex-col space-y-1.5">
+								<Card.Title>{m.docker_auto_updates_title()}</Card.Title>
+								<Card.Description>{m.docker_auto_updates_description()}</Card.Description>
 							</div>
 						</Card.Header>
 						<Card.Content class="px-3 py-4 sm:px-6">
@@ -286,16 +276,11 @@
 					</Card.Root>
 				{/if}
 
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header class="bg-muted/20 border-b !py-4">
-						<div class="flex items-center gap-3">
-							<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-								<TrashIcon class="size-4" />
-							</div>
-							<div>
-								<Card.Title class="text-base">{m.docker_cleanup_settings_title()}</Card.Title>
-								<Card.Description class="text-xs">{m.docker_cleanup_settings_description()}</Card.Description>
-							</div>
+				<Card.Root>
+					<Card.Header icon={TrashIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.docker_cleanup_settings_title()}</Card.Title>
+							<Card.Description>{m.docker_cleanup_settings_description()}</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
@@ -312,16 +297,11 @@
 					</Card.Content>
 				</Card.Root>
 
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header class="bg-muted/20 border-b !py-4">
-						<div class="flex items-center gap-3">
-							<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-								<TerminalIcon class="size-4" />
-							</div>
-							<div>
-								<Card.Title class="text-base">{m.docker_terminal_settings_title()}</Card.Title>
-								<Card.Description class="text-xs">{m.docker_terminal_settings_description()}</Card.Description>
-							</div>
+				<Card.Root>
+					<Card.Header icon={TerminalIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.docker_terminal_settings_title()}</Card.Title>
+							<Card.Description>{m.docker_terminal_settings_description()}</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">

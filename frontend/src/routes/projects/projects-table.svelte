@@ -22,8 +22,12 @@
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { format } from 'date-fns';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
+	import { UniversalMobileCard } from '$lib/components/arcane-table';
 	import { m } from '$lib/paraglide/messages';
 	import { projectService } from '$lib/services/project-service';
+	import FolderIcon from '@lucide/svelte/icons/folder';
+	import LayersIcon from '@lucide/svelte/icons/layers';
+	import CalendarIcon from '@lucide/svelte/icons/calendar';
 
 	let {
 		projects = $bindable(),
@@ -134,10 +138,19 @@
 
 	const columns = [
 		{ accessorKey: 'name', title: m.common_name(), sortable: true, cell: NameCell },
-		{ accessorKey: 'serviceCount', title: m.compose_services(), sortable: true },
 		{ accessorKey: 'status', title: m.common_status(), sortable: true, cell: StatusCell },
-		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell }
+		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell },
+		{ accessorKey: 'serviceCount', title: m.compose_services(), sortable: true }
 	] satisfies ColumnSpec<Project>[];
+
+	const mobileFields = [
+		{ id: 'id', label: m.common_id(), defaultVisible: true },
+		{ id: 'status', label: m.common_status(), defaultVisible: true },
+		{ id: 'createdAt', label: m.common_created(), defaultVisible: true },
+		{ id: 'serviceCount', label: m.compose_services(), defaultVisible: true }
+	];
+
+	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet NameCell({ item }: { item: Project })}
@@ -153,6 +166,56 @@
 
 {#snippet CreatedCell({ value }: { value: unknown })}
 	{#if value}{format(new Date(String(value)), 'PP p')}{/if}
+{/snippet}
+
+{#snippet ProjectMobileCardSnippet({
+	row,
+	item,
+	mobileFieldVisibility
+}: {
+	row: any;
+	item: Project;
+	mobileFieldVisibility: Record<string, boolean>;
+})}
+	<UniversalMobileCard
+		{item}
+		icon={(item: Project) => ({
+			component: FolderIcon,
+			variant: item.status === 'running' ? 'emerald' : item.status === 'exited' ? 'red' : 'amber'
+		})}
+		title={(item: Project) => item.name}
+		subtitle={(item: Project) => ((mobileFieldVisibility.id ?? true) ? item.id : null)}
+		badges={[
+			(item: Project) =>
+				(mobileFieldVisibility.status ?? true)
+					? {
+							variant: getStatusVariant(item.status),
+							text: capitalizeFirstLetter(item.status)
+						}
+					: null
+		]}
+		fields={[
+			{
+				label: m.compose_services(),
+				getValue: (item: Project) => {
+					const serviceCount = item.serviceCount ? Number(item.serviceCount) : (item.services?.length ?? 0);
+					return `${serviceCount} ${Number(serviceCount) === 1 ? 'service' : 'services'}`;
+				},
+				icon: LayersIcon,
+				iconVariant: 'gray' as const,
+				show: mobileFieldVisibility.serviceCount ?? true
+			}
+		]}
+		footer={(mobileFieldVisibility.createdAt ?? true) && item.createdAt
+			? {
+					label: m.common_created(),
+					getValue: (item: Project) => format(new Date(item.createdAt), 'PP p'),
+					icon: CalendarIcon
+				}
+			: undefined}
+		rowActions={RowActions}
+		onclick={() => goto(`/projects/${item.id}`)}
+	/>
 {/snippet}
 
 {#snippet RowActions({ item }: { item: Project })}
@@ -232,16 +295,19 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root>
-	<Card.Content class="py-5">
+<Card.Root class="flex flex-col gap-6 py-3">
+	<Card.Content class="px-6 py-5">
 		<ArcaneTable
 			persistKey="arcane-project-table"
 			items={projects}
 			bind:requestOptions
 			bind:selectedIds
+			bind:mobileFieldVisibility
 			onRefresh={async (options) => (projects = await projectService.getProjects(options))}
 			{columns}
+			{mobileFields}
 			rowActions={RowActions}
+			mobileCard={ProjectMobileCardSnippet}
 		/>
 	</Card.Content>
 </Card.Root>

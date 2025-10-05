@@ -3,14 +3,13 @@ package projects
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/compose-spec/compose-go/v2/loader"
 	composetypes "github.com/compose-spec/compose-go/v2/types"
 	"github.com/docker/compose/v2/pkg/api"
-	"github.com/joho/godotenv"
 )
 
 var ComposeFileCandidates = []string{
@@ -20,9 +19,9 @@ var ComposeFileCandidates = []string{
 	"docker-compose.yml",
 }
 
-func locateComposeFile(projectsDir string) string {
+func locateComposeFile(dir string) string {
 	for _, filename := range ComposeFileCandidates {
-		fullPath := filepath.Join(projectsDir, filename)
+		fullPath := filepath.Join(dir, filename)
 		if info, err := os.Stat(fullPath); err == nil && !info.IsDir() {
 			return fullPath
 		}
@@ -35,28 +34,21 @@ func DetectComposeFile(dir string) (string, error) {
 	if compose == "" {
 		return "", fmt.Errorf("no compose file found in %q", dir)
 	}
-
 	return compose, nil
 }
 
-func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*composetypes.Project, error) {
+func LoadComposeProject(ctx context.Context, composeFile, projectName, projectsDirectory string) (*composetypes.Project, error) {
 	workdir := filepath.Dir(composeFile)
-	envFile := filepath.Join(workdir, ".env")
 
-	envMap := map[string]string{}
-	for _, kv := range os.Environ() {
-		if k, v, ok := strings.Cut(kv, "="); ok {
-			envMap[k] = v
-		}
+	projectsDir := projectsDirectory
+	if projectsDir == "" {
+		projectsDir = filepath.Dir(workdir)
 	}
-	if info, err := os.Stat(envFile); err == nil && !info.IsDir() {
-		if fileEnv, rerr := godotenv.Read(envFile); rerr == nil {
-			for k, v := range fileEnv {
-				if _, exists := envMap[k]; !exists {
-					envMap[k] = v
-				}
-			}
-		}
+
+	envLoader := NewEnvLoader(projectsDir, workdir)
+	envMap, injectionVars, err := envLoader.LoadEnvironment(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to load environment", "error", err)
 	}
 
 	cfg := composetypes.ConfigDetails{
@@ -76,11 +68,30 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*
 
 	project = project.WithoutUnnecessaryResources()
 
-	// Ensure Compose discovery labels via CustomLabels
+	injectServiceConfiguration(project, injectionVars, workdir, composeFile)
+
+	project.ComposeFiles = []string{composeFile}
+	return project, nil
+}
+
+func injectServiceConfiguration(project *composetypes.Project, injectionVars EnvMap, workdir, composeFile string) {
 	for i, s := range project.Services {
+		// Initialize environment if nil
+		if s.Environment == nil {
+			s.Environment = make(composetypes.MappingWithEquals)
+		}
+
+		for k, v := range injectionVars {
+			if _, exists := s.Environment[k]; !exists {
+				vcopy := v
+				s.Environment[k] = &vcopy
+			}
+		}
+
 		if s.CustomLabels == nil {
 			s.CustomLabels = composetypes.Labels{}
 		}
+
 		s.CustomLabels[api.ProjectLabel] = project.Name
 		s.CustomLabels[api.ServiceLabel] = s.Name
 		s.CustomLabels[api.VersionLabel] = api.ComposeVersion
@@ -90,19 +101,22 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName string) (*
 
 		project.Services[i] = s
 	}
-
-	project.ComposeFiles = []string{composeFile}
-	return project, nil
 }
 
-func LoadComposeProjectFromDir(ctx context.Context, dir, projectName string) (*composetypes.Project, string, error) {
+func LoadComposeProjectFromDir(ctx context.Context, dir, projectName, projectsDirectory string) (*composetypes.Project, string, error) {
 	composeFile, err := DetectComposeFile(dir)
 	if err != nil {
 		return nil, "", err
 	}
-	proj, err := LoadComposeProject(ctx, composeFile, projectName)
+
+	if projectsDirectory == "" {
+		projectsDirectory = filepath.Dir(dir)
+	}
+
+	proj, err := LoadComposeProject(ctx, composeFile, projectName, projectsDirectory)
 	if err != nil {
 		return nil, "", err
 	}
+
 	return proj, composeFile, nil
 }

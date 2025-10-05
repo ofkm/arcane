@@ -1,8 +1,8 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
-	import * as Card from '$lib/components/ui/card';
 	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
@@ -13,7 +13,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import { settingsService } from '$lib/services/settings-service';
-	import { SettingsPageLayout } from '$lib/layouts/index.js';
+	import { SettingsPageLayout } from '$lib/layouts';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
@@ -98,16 +98,11 @@
 	{#snippet mainContent()}
 		<fieldset disabled={isReadOnly} class="relative">
 			<div class="space-y-4 sm:space-y-6">
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header class="bg-muted/20 border-b !py-4">
-						<div class="flex items-center gap-3">
-							<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-								<FolderIcon class="size-4" />
-							</div>
-							<div>
-								<Card.Title class="text-base">{m.general_projects_heading()}</Card.Title>
-								<Card.Description class="text-xs">{m.general_projects_description()}</Card.Description>
-							</div>
+				<Card.Root>
+					<Card.Header icon={FolderIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.general_projects_heading()}</Card.Title>
+							<Card.Description>{m.general_projects_description()}</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
@@ -131,16 +126,11 @@
 					</Card.Content>
 				</Card.Root>
 
-				<Card.Root class="overflow-hidden pt-0">
-					<Card.Header class="bg-muted/20 border-b !py-4">
-						<div class="flex items-center gap-3">
-							<div class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-lg ring-1">
-								<UserIcon class="size-4" />
-							</div>
-							<div>
-								<Card.Title class="text-base">{m.general_user_avatars_heading()}</Card.Title>
-								<Card.Description class="text-xs">{m.general_user_avatars_description()}</Card.Description>
-							</div>
+				<Card.Root>
+					<Card.Header icon={UserIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.general_user_avatars_heading()}</Card.Title>
+							<Card.Description>{m.general_user_avatars_description()}</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">

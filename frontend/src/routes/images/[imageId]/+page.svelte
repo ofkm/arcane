@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Card from '$lib/components/ui/card';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import TagIcon from '@lucide/svelte/icons/tag';
@@ -8,17 +8,17 @@
 	import CpuIcon from '@lucide/svelte/icons/cpu';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
-	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
+	import * as Breadcrumb from '$lib/components/ui/breadcrumb';
 	import { goto } from '$app/navigation';
-	import { Separator } from '$lib/components/ui/separator/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
+	import { Separator } from '$lib/components/ui/separator';
+	import { Badge } from '$lib/components/ui/badge';
 	import { format } from 'date-fns';
 	import bytes from 'bytes';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { toast } from 'svelte-sonner';
-	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
+	import { ArcaneButton } from '$lib/components/arcane-button';
 	import { m } from '$lib/paraglide/messages';
 	import { imageService } from '$lib/services/image-service.js';
 
@@ -105,13 +105,12 @@
 
 	{#if image}
 		<div class="space-y-6">
-			<Card.Root class="pt-0">
-				<Card.Header class="bg-muted rounded-t-xl p-4">
-					<Card.Title class="flex items-center gap-2 text-lg">
-						<InfoIcon class="text-primary size-5" />
-						{m.images_details_title()}
-					</Card.Title>
-					<Card.Description>{m.images_details_description()}</Card.Description>
+			<Card.Root>
+				<Card.Header icon={InfoIcon}>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>{m.images_details_title()}</Card.Title>
+						<Card.Description>{m.images_details_description()}</Card.Description>
+					</div>
 				</Card.Header>
 				<Card.Content class="p-4">
 					<div class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
@@ -227,13 +226,12 @@
 			</Card.Root>
 
 			{#if image.repoTags && image.repoTags.length > 0}
-				<Card.Root class="pt-0">
-					<Card.Header class="bg-muted rounded-t-xl p-4">
-						<Card.Title class="flex items-center gap-2 text-lg">
-							<TagIcon class="text-primary size-5" />
-							{m.images_tags_title()}
-						</Card.Title>
-						<Card.Description>{m.images_tags_description()}</Card.Description>
+				<Card.Root>
+					<Card.Header icon={TagIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.images_tags_title()}</Card.Title>
+							<Card.Description>{m.images_tags_description()}</Card.Description>
+						</div>
 					</Card.Header>
 					<Card.Content class="p-4">
 						<div class="flex flex-wrap gap-2">
@@ -246,29 +244,45 @@
 			{/if}
 
 			{#if image.config?.env && image.config.env.length > 0}
-				<Card.Root class="pt-0">
-					<Card.Header class="bg-muted rounded-t-xl p-4">
-						<Card.Title class="flex items-center gap-2 text-lg">
-							<SettingsIcon class="text-primary size-5" />
-							{m.images_env_vars_title()}
-						</Card.Title>
-						<Card.Description>{m.images_env_vars_description()}</Card.Description>
+				<Card.Root>
+					<Card.Header icon={SettingsIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.images_env_vars_title()}</Card.Title>
+							<Card.Description>{m.images_env_vars_description()}</Card.Description>
+						</div>
 					</Card.Header>
-					<Card.Content class="space-y-2 p-4">
-						{#each image.config.env as env (env)}
-							{@const [key, ...valueParts] = env.split('=')}
-							{@const value = valueParts.join('=')}
-							<div class="flex flex-col text-sm sm:flex-row sm:items-center">
-								<span class="text-muted-foreground w-full font-medium break-all sm:w-1/4">{key}:</span>
-								<span
-									class="w-full cursor-pointer font-mono text-xs break-all select-all sm:w-3/4 sm:text-sm"
-									title="Click to select">{value}</span
-								>
-							</div>
-							{#if env !== image.config.env[image.config.env.length - 1]}
-								<Separator class="my-2" />
-							{/if}
-						{/each}
+					<Card.Content class="p-4">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+							{#each image.config.env as env (env)}
+								{#if env.includes('=')}
+									{@const [key, ...valueParts] = env.split('=')}
+									{@const value = valueParts.join('=')}
+									<Card.Root variant="subtle">
+										<Card.Content class="flex flex-col gap-2 p-4">
+											<div class="text-muted-foreground text-xs font-semibold tracking-wide break-all uppercase">{key}</div>
+											<div
+												class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+												title="Click to select"
+											>
+												{value}
+											</div>
+										</Card.Content>
+									</Card.Root>
+								{:else}
+									<Card.Root variant="subtle">
+										<Card.Content class="flex flex-col gap-2 p-4">
+											<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">ENV_VAR</div>
+											<div
+												class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
+												title="Click to select"
+											>
+												{env}
+											</div>
+										</Card.Content>
+									</Card.Root>
+								{/if}
+							{/each}
+						</div>
 					</Card.Content>
 				</Card.Root>
 			{/if}
