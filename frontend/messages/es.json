@@ -1225,5 +1225,6 @@
 	"variables_value_placeholder": "valor",
 	"variables_duplicate_keys_error": "Se han encontrado claves duplicadas. Por favor, asegúrese de que todas las claves son únicas.",
 	"variables_save_success": "Variables globales guardadas correctamente",
-	"variables_save_failed": "Error al guardar. Vuelve a intentarlo."
+	"variables_save_failed": "Error al guardar. Vuelve a intentarlo.",
+	"containers_group_by_project": "Agrupar por proyecto"
 }
