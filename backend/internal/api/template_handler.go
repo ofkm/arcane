@@ -38,6 +38,8 @@ func NewTemplateHandler(group *gin.RouterGroup, templateService *services.Templa
 		apiGroup.POST("/registries", handler.CreateRegistry)
 		apiGroup.PUT("/registries/:id", handler.UpdateRegistry)
 		apiGroup.DELETE("/registries/:id", handler.DeleteRegistry)
+		apiGroup.GET("/variables", handler.GetGlobalVariables)
+		apiGroup.PUT("/variables", handler.UpdateGlobalVariables)
 	}
 }
 
@@ -573,5 +575,47 @@ func (h *TemplateHandler) DownloadTemplate(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    out,
+	})
+}
+
+func (h *TemplateHandler) GetGlobalVariables(c *gin.Context) {
+	vars, err := h.templateService.GetGlobalVariables(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to retrieve global variables: " + err.Error()},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    vars,
+	})
+}
+
+func (h *TemplateHandler) UpdateGlobalVariables(c *gin.Context) {
+	var req dto.UpdateVariablesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Invalid request format: " + err.Error()},
+		})
+		return
+	}
+
+	if err := h.templateService.UpdateGlobalVariables(c.Request.Context(), req.Variables); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to update global variables: " + err.Error()},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"message": "Global variables updated successfully",
+		},
 	})
 }

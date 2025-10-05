@@ -1,5 +1,6 @@
 import BaseAPIService from './api-service';
 import type { TemplateRegistry, Template, RemoteRegistry } from '$lib/types/template.type';
+import type { Variable } from '$lib/types/variable.type';
 
 export default class TemplateService extends BaseAPIService {
 	async loadAll(): Promise<Template[]> {
@@ -77,6 +78,15 @@ export default class TemplateService extends BaseAPIService {
 
 	async deleteRegistry(id: string): Promise<void> {
 		await this.api.delete(`/templates/registries/${id}`);
+	}
+
+	async getGlobalVariables(): Promise<Variable[]> {
+		const response = await this.api.get('/templates/variables');
+		return response.data?.data ?? [];
+	}
+
+	async updateGlobalVariables(variables: Variable[]): Promise<void> {
+		await this.api.put('/templates/variables', { variables });
 	}
 }
 
