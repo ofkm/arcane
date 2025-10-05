@@ -1225,5 +1225,6 @@
 	"variables_value_placeholder": "waarde",
 	"variables_duplicate_keys_error": "Dubbele sleutels gevonden. Zorg ervoor dat alle sleutels uniek zijn.",
 	"variables_save_success": "Globale variabelen succesvol opgeslagen",
-	"variables_save_failed": "Opslaan mislukt. Probeer het opnieuw."
+	"variables_save_failed": "Opslaan mislukt. Probeer het opnieuw.",
+	"containers_group_by_project": "Groeperen op Project"
 }
