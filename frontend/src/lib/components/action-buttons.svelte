@@ -3,7 +3,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
-	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks, extractDockerErrorMessage } from '$lib/utils/api.util';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import ProgressPopover from '$lib/components/progress-popover.svelte';
 	import DownloadIcon from '@lucide/svelte/icons/download';
@@ -297,7 +297,7 @@
 			toast.success(m.action_started_success({ type }));
 			onActionComplete('running');
 		} catch (e: any) {
-			const message = e?.message || m.action_failed_generic({ action: m.common_start(), type });
+			const message = extractDockerErrorMessage(e) || m.action_failed_generic({ action: m.common_start(), type });
 			if (openedPopover) {
 				pullError = message;
 				pullStatusText = m.images_pull_failed_with_error({ error: message });

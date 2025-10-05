@@ -8,6 +8,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 )
 
 type UpdaterHandler struct {
@@ -32,16 +33,16 @@ func (h *UpdaterHandler) Run(c *gin.Context) {
 
 	out, err := h.updaterService.ApplyPending(c.Request.Context(), req.DryRun)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": out})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *UpdaterHandler) Status(c *gin.Context) {
 	status := h.updaterService.GetStatus()
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": status})
+	httputil.RespondWithSuccess(c, http.StatusOK, status)
 }
 
 func (h *UpdaterHandler) History(c *gin.Context) {
@@ -54,8 +55,8 @@ func (h *UpdaterHandler) History(c *gin.Context) {
 
 	history, err := h.updaterService.GetHistory(c.Request.Context(), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		httputil.RespondWithError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": history})
+	httputil.RespondWithSuccess(c, http.StatusOK, history)
 }

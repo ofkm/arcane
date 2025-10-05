@@ -7,18 +7,18 @@ type KeyValuePair = { key: string; value: string };
 export default class SettingsService extends BaseAPIService {
 	async getSettings(): Promise<Settings> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		const res = await this.api.get(`/environments/${envId}/settings`);
-		return this.normalize(res.data);
+		const data = await this.handleResponse(this.api.get(`/environments/${envId}/settings`));
+		return this.normalize(data);
 	}
 
 	async getSettingsForEnvironment(environmentId: string): Promise<Settings> {
-		const res = await this.api.get(`/environments/${environmentId}/settings`);
-		return this.normalize(res.data);
+		const data = await this.handleResponse(this.api.get(`/environments/${environmentId}/settings`));
+		return this.normalize(data);
 	}
 
 	async getPublicSettings(): Promise<Settings> {
-		const res = await this.api.get(`/environments/0/settings/public`);
-		return this.normalize(res.data);
+		const data = await this.handleResponse(this.api.get(`/environments/0/settings/public`));
+		return this.normalize(data);
 	}
 
 	async updateSettings(settings: Settings) {
@@ -28,8 +28,8 @@ export default class SettingsService extends BaseAPIService {
 			const v = (settings as any)[key];
 			payload[key] = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
 		}
-		const res = await this.api.put(`/environments/${envId}/settings`, payload);
-		return this.normalize(res.data);
+		const data = await this.handleResponse(this.api.put(`/environments/${envId}/settings`, payload));
+		return this.normalize(data);
 	}
 
 	async getOidcStatus(): Promise<OidcStatusInfo> {

@@ -68,47 +68,32 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 
 	dockerClient, err := h.dockerService.CreateConnection(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to connect to Docker: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 	defer dockerClient.Close()
 
 	version, err := dockerClient.ServerVersion(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get Docker version: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	info, err := dockerClient.Info(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get Docker info: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to list containers: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	images, err := dockerClient.ImageList(ctx, image.ListOptions{})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to list images: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -139,7 +124,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		MemTotal:          info.MemTotal,
 	}
 
-	c.JSON(http.StatusOK, dockerInfo)
+	httputil.RespondWithSuccess(c, http.StatusOK, dockerInfo)
 }
 
 func (h *SystemHandler) PruneAll(c *gin.Context) {
@@ -151,10 +136,7 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 		slog.ErrorContext(ctx, "Failed to bind prune request JSON",
 			slog.String("error", err.Error()),
 			slog.String("client_ip", c.ClientIP()))
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request body: " + err.Error(),
-		})
+		httputil.RespondBadRequest(c, "Invalid request body: "+err.Error())
 		return
 	}
 
@@ -171,10 +153,7 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 		slog.ErrorContext(ctx, "System prune operation failed",
 			slog.String("error", err.Error()),
 			slog.String("client_ip", c.ClientIP()))
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to prune resources: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -187,62 +166,37 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 		slog.Bool("success", result.Success),
 		slog.Int("error_count", len(result.Errors)))
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Pruning completed",
-		"data":    result,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, result)
 }
 
 func (h *SystemHandler) StartAllContainers(c *gin.Context) {
 	result, err := h.systemService.StartAllContainers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to start containers: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Container start operation completed",
-		"data":    result,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, result)
 }
 
 func (h *SystemHandler) StartAllStoppedContainers(c *gin.Context) {
 	result, err := h.systemService.StartAllStoppedContainers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to start stopped containers: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Stopped containers start operation completed",
-		"data":    result,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, result)
 }
 
 func (h *SystemHandler) StopAllContainers(c *gin.Context) {
 	result, err := h.systemService.StopAllContainers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to stop containers: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Container stop operation completed",
-		"data":    result,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, result)
 }
 
 //nolint:gocognit
@@ -331,37 +285,28 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 func (h *SystemHandler) ConvertDockerRun(c *gin.Context) {
 	var req models.ConvertDockerRunRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request format: " + err.Error(),
-		})
+		httputil.RespondBadRequest(c, "Invalid request format: "+err.Error())
 		return
 	}
 
 	parsed, err := h.systemService.ParseDockerRunCommand(req.DockerRunCommand)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Failed to parse docker run command. Please check the syntax.",
-			"code":    "BAD_REQUEST",
-		})
+		httputil.RespondBadRequest(c, "Failed to parse docker run command. Please check the syntax.")
 		return
 	}
 
 	dockerCompose, envVars, serviceName, err := h.systemService.ConvertToDockerCompose(parsed)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to convert to Docker Compose format.",
-			"code":    "CONVERSION_ERROR",
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, models.ConvertDockerRunResponse{
+	response := models.ConvertDockerRunResponse{
 		Success:       true,
 		DockerCompose: dockerCompose,
 		EnvVars:       envVars,
 		ServiceName:   serviceName,
-	})
+	}
+
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
@@ -36,36 +37,28 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 
 	users, paginationResp, err := h.userService.ListUsersPaginated(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to list users: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"data":       users,
+	response := gin.H{
+		"items":      users,
 		"pagination": paginationResp,
-	})
+	}
+
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }
 
 func (h *UserHandler) CreateUser(c *gin.Context) {
 	var req dto.CreateUserDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid request format"},
-		})
+		httputil.RespondBadRequest(c, "Invalid request format")
 		return
 	}
 
 	hashedPassword, err := h.userService.HashPassword(req.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to hash password"},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -87,26 +80,17 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 	createdUser, err := h.userService.CreateUser(c.Request.Context(), user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to create user"},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	out, err := dto.MapOne[*models.User, dto.UserResponseDto](createdUser)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to map user"},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusCreated, out)
 }
 
 func (h *UserHandler) GetUser(c *gin.Context) {
@@ -114,26 +98,17 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 
 	user, err := h.userService.GetUserByID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "User not found"},
-		})
+		httputil.RespondNotFound(c, "User not found")
 		return
 	}
 
 	out, err := dto.MapOne[*models.User, dto.UserResponseDto](user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to map user"},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *UserHandler) UpdateUser(c *gin.Context) {
@@ -141,19 +116,13 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 
 	var req dto.UpdateUserDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid request format"},
-		})
+		httputil.RespondBadRequest(c, "Invalid request format")
 		return
 	}
 
 	user, err := h.userService.GetUserByID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "User not found"},
-		})
+		httputil.RespondNotFound(c, "User not found")
 		return
 	}
 
@@ -173,10 +142,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	if req.Password != nil && *req.Password != "" {
 		hashedPassword, err := h.userService.HashPassword(*req.Password)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"data":    gin.H{"error": "Failed to hash password"},
-			})
+			httputil.RespondWithError(c, err)
 			return
 		}
 		user.PasswordHash = hashedPassword
@@ -187,26 +153,17 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 
 	updatedUser, err := h.userService.UpdateUser(c.Request.Context(), user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to update user"},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	out, err := dto.MapOne[*models.User, dto.UserResponseDto](updatedUser)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to map user"},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *UserHandler) DeleteUser(c *gin.Context) {
@@ -214,15 +171,9 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 
 	err := h.userService.DeleteUser(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to delete user"},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "User deleted successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "User deleted successfully")
 }

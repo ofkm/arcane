@@ -6,7 +6,7 @@
 	import type { ContainerRegistryCreateDto, ContainerRegistryUpdateDto } from '$lib/types/container-registry.type';
 	import ContainerRegistryFormSheet from '$lib/components/sheets/container-registry-sheet.svelte';
 	import RegistryTable from './registry-table.svelte';
-	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
+	import { handleApiResultWithCallbacks, extractDockerErrorMessage } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { m } from '$lib/paraglide/messages';
 	import { containerRegistryService } from '$lib/services/container-registry-service';
@@ -70,7 +70,8 @@
 			isRegistryDialogOpen = false;
 		} catch (error) {
 			console.error('Error saving registry:', error);
-			toast.error(error instanceof Error ? error.message : m.registries_save_failed());
+			const errorMsg = extractDockerErrorMessage(error);
+			toast.error(errorMsg);
 		} finally {
 			isLoading[loadingKey] = false;
 		}
@@ -99,7 +100,7 @@
 		<div class="space-y-6">
 			<Card.Root class="flex flex-col gap-6 border py-3 shadow-sm">
 				<Card.Header
-					class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 pb-4 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+					class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 pb-4"
 				>
 					<div class="flex items-center gap-3">
 						<div class="rounded-full bg-green-500/10 p-2">
@@ -120,7 +121,7 @@
 
 			<Card.Root class="flex flex-col gap-6 border py-3 shadow-sm">
 				<Card.Header
-					class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+					class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
 				>
 					<Card.Title class="text-lg">{m.registries_info_title()}</Card.Title>
 					<Card.Description>{m.registries_info_description()}</Card.Description>

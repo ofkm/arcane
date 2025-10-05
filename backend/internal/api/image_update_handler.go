@@ -7,6 +7,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 )
 
 type ImageUpdateHandler struct {
@@ -30,86 +31,56 @@ func NewImageUpdateHandler(group *gin.RouterGroup, imageUpdateService *services.
 func (h *ImageUpdateHandler) CheckImageUpdate(c *gin.Context) {
 	imageRef := c.Query("imageRef")
 	if imageRef == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "imageRef query parameter is required",
-		})
+		httputil.RespondBadRequest(c, "imageRef query parameter is required")
 		return
 	}
 
 	result, err := h.imageUpdateService.CheckImageUpdate(c.Request.Context(), imageRef)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to check image update: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    result,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, result)
 }
 
 func (h *ImageUpdateHandler) CheckImageUpdateByID(c *gin.Context) {
 	imageID := c.Param("imageId")
 	if imageID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "imageId parameter is required",
-		})
+		httputil.RespondBadRequest(c, "imageId parameter is required")
 		return
 	}
 
 	result, err := h.imageUpdateService.CheckImageUpdateByID(c.Request.Context(), imageID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to check image update: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    result,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, result)
 }
 
 func (h *ImageUpdateHandler) CheckMultipleImages(c *gin.Context) {
 	var req dto.BatchImageUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request format",
-		})
+		httputil.RespondBadRequest(c, "Invalid request format")
 		return
 	}
 
 	if len(req.ImageRefs) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "At least one imageRef is required",
-		})
+		httputil.RespondBadRequest(c, "At least one imageRef is required")
 		return
 	}
 
 	results, err := h.imageUpdateService.CheckMultipleImages(c.Request.Context(), req.ImageRefs, req.Credentials)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to check image updates: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	response := dto.BatchImageUpdateResponse(results)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    response,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }
 
 func (h *ImageUpdateHandler) CheckAllImages(c *gin.Context) {
@@ -118,33 +89,21 @@ func (h *ImageUpdateHandler) CheckAllImages(c *gin.Context) {
 
 	results, err := h.imageUpdateService.CheckAllImages(c.Request.Context(), 0, req.Credentials)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to check all images: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	response := dto.BatchImageUpdateResponse(results)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    response,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }
 
 func (h *ImageUpdateHandler) GetUpdateSummary(c *gin.Context) {
 	summary, err := h.imageUpdateService.GetUpdateSummary(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get update summary: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    summary,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, summary)
 }

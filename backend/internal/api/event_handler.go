@@ -7,6 +7,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
@@ -32,27 +33,22 @@ func (h *EventHandler) ListEvents(c *gin.Context) {
 
 	events, paginationResp, err := h.eventService.ListEventsPaginated(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to list events: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"data":       events,
+	response := gin.H{
+		"items":      events,
 		"pagination": paginationResp,
-	})
+	}
+
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }
 
 func (h *EventHandler) GetEventsByEnvironment(c *gin.Context) {
 	environmentID := c.Param("environmentId")
 	if environmentID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Environment ID is required"},
-		})
+		httputil.RespondBadRequest(c, "Environment ID is required")
 		return
 	}
 
@@ -60,65 +56,45 @@ func (h *EventHandler) GetEventsByEnvironment(c *gin.Context) {
 
 	events, paginationResp, err := h.eventService.GetEventsByEnvironmentPaginated(c.Request.Context(), environmentID, params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to list events: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"data":       events,
+	response := gin.H{
+		"items":      events,
 		"pagination": paginationResp,
-	})
+	}
+
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }
 
 func (h *EventHandler) CreateEvent(c *gin.Context) {
 	var req dto.CreateEventDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid request body: " + err.Error()},
-		})
+		httputil.RespondBadRequest(c, "Invalid request body: "+err.Error())
 		return
 	}
 
 	event, err := h.eventService.CreateEventFromDto(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to create event: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    event,
-	})
+	httputil.RespondWithSuccess(c, http.StatusCreated, event)
 }
 
 func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	eventID := c.Param("eventId")
 	if eventID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Event ID is required"},
-		})
+		httputil.RespondBadRequest(c, "Event ID is required")
 		return
 	}
 
 	if err := h.eventService.DeleteEvent(c.Request.Context(), eventID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to delete event: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Event deleted successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Event deleted successfully")
 }

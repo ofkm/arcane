@@ -153,7 +153,7 @@ func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
 		containerID = c.Param("id")
 	}
 	if strings.TrimSpace(containerID) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Container ID is required"}})
+		httputil.RespondBadRequest(c, "Container ID is required")
 		return
 	}
 
@@ -181,7 +181,7 @@ func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
 func (h *ContainerHandler) GetExecWS(c *gin.Context) {
 	containerID := c.Param("containerId")
 	if strings.TrimSpace(containerID) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Container ID is required"}})
+		httputil.RespondBadRequest(c, "Container ID is required")
 		return
 	}
 
@@ -189,7 +189,7 @@ func (h *ContainerHandler) GetExecWS(c *gin.Context) {
 
 	conn, err := h.containerWSUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Failed to upgrade connection: " + err.Error()}})
+		httputil.RespondBadRequest(c, "Failed to upgrade connection: "+err.Error())
 		return
 	}
 	defer conn.Close()
@@ -306,10 +306,7 @@ func (h *ContainerHandler) List(c *gin.Context) {
 
 	containers, paginationResp, err := h.containerService.ListContainersPaginated(c.Request.Context(), params, includeAll)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to list containers: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -331,19 +328,13 @@ func (h *ContainerHandler) GetByID(c *gin.Context) {
 
 	container, err := h.containerService.GetContainerByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	details := dto.NewContainerDetailsDto(container)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    details,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, details)
 }
 
 func (h *ContainerHandler) Start(c *gin.Context) {
@@ -354,17 +345,11 @@ func (h *ContainerHandler) Start(c *gin.Context) {
 		return
 	}
 	if err := h.containerService.StartContainer(c.Request.Context(), id, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Container started successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Container started successfully")
 }
 
 func (h *ContainerHandler) Stop(c *gin.Context) {
@@ -375,17 +360,11 @@ func (h *ContainerHandler) Stop(c *gin.Context) {
 		return
 	}
 	if err := h.containerService.StopContainer(c.Request.Context(), id, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Container stopped successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Container stopped successfully")
 }
 
 func (h *ContainerHandler) Restart(c *gin.Context) {
@@ -396,17 +375,11 @@ func (h *ContainerHandler) Restart(c *gin.Context) {
 		return
 	}
 	if err := h.containerService.RestartContainer(c.Request.Context(), id, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Container restarted successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Container restarted successfully")
 }
 
 func (h *ContainerHandler) Delete(c *gin.Context) {
@@ -419,26 +392,17 @@ func (h *ContainerHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.containerService.DeleteContainer(c.Request.Context(), id, force, removeVolumes, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Container deleted successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Container deleted successfully")
 }
 
 func (h *ContainerHandler) GetContainerStatusCounts(c *gin.Context) {
 	_, running, stopped, total, err := h.dockerService.GetAllContainers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to get container counts: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -448,19 +412,13 @@ func (h *ContainerHandler) GetContainerStatusCounts(c *gin.Context) {
 		TotalContainers:   total,
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *ContainerHandler) Create(c *gin.Context) {
 	var req dto.CreateContainerDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid request format: " + err.Error()},
-		})
+		httputil.RespondBadRequest(c, "Invalid request format: "+err.Error())
 		return
 	}
 
@@ -481,10 +439,7 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 	for containerPort, hostPort := range req.Ports {
 		port, err := nat.NewPort("tcp", containerPort)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"data":    gin.H{"error": "Invalid port format: " + err.Error()},
-			})
+			httputil.RespondBadRequest(c, "Invalid port format: "+err.Error())
 			return
 		}
 		config.ExposedPorts[port] = struct{}{}
@@ -535,10 +490,7 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 		*currentUser,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -550,10 +502,7 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 		Created: containerJSON.Created,
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusCreated, out)
 }
 
 type containerStatsStream struct {

@@ -18,6 +18,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
+	import { extractDockerErrorMessage } from '$lib/utils/api.util';
 
 	let { data }: { data: PageData } = $props();
 	let currentSettings = $state<Settings>(data.settings);
@@ -124,7 +125,8 @@
 			.then(() => toast.success(m.security_settings_saved()))
 			.catch((error) => {
 				console.error('Failed to save settings:', error);
-				toast.error('Failed to save settings. Please try again.');
+				const errorMsg = extractDockerErrorMessage(error);
+				toast.error(`Failed to save settings: ${errorMsg}`);
 			})
 			.finally(() => (isLoading = false));
 	}

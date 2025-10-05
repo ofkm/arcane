@@ -8,6 +8,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
@@ -41,10 +42,7 @@ func (h *VolumeHandler) List(c *gin.Context) {
 
 	volumes, paginationResp, err := h.volumeService.ListVolumesPaginated(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to list volumes: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -54,11 +52,12 @@ func (h *VolumeHandler) List(c *gin.Context) {
 		TotalAvailable: int(paginationResp.GrandTotalItems),
 	})
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"data":       volumes,
+	response := gin.H{
+		"items":      volumes,
 		"pagination": paginationResp,
-	})
+	}
+
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }
 
 func (h *VolumeHandler) GetByName(c *gin.Context) {
@@ -66,26 +65,17 @@ func (h *VolumeHandler) GetByName(c *gin.Context) {
 
 	vol, err := h.volumeService.GetVolumeByName(c.Request.Context(), name)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    vol,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, vol)
 }
 
 func (h *VolumeHandler) Create(c *gin.Context) {
 	var req dto.CreateVolumeDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Invalid request: " + err.Error()},
-		})
+		httputil.RespondBadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
 
@@ -103,17 +93,11 @@ func (h *VolumeHandler) Create(c *gin.Context) {
 
 	response, err := h.volumeService.CreateVolume(c.Request.Context(), options, *currentUser)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    response,
-	})
+	httputil.RespondWithSuccess(c, http.StatusCreated, response)
 }
 
 func (h *VolumeHandler) Remove(c *gin.Context) {
@@ -126,33 +110,21 @@ func (h *VolumeHandler) Remove(c *gin.Context) {
 	}
 
 	if err := h.volumeService.DeleteVolume(c.Request.Context(), name, force, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Volume removed successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Volume removed successfully")
 }
 
 func (h *VolumeHandler) Prune(c *gin.Context) {
 	report, err := h.volumeService.PruneVolumes(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    report,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, report)
 }
 
 func (h *VolumeHandler) GetUsage(c *gin.Context) {
@@ -160,29 +132,22 @@ func (h *VolumeHandler) GetUsage(c *gin.Context) {
 
 	inUse, containers, err := h.volumeService.GetVolumeUsage(c.Request.Context(), name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"inUse":      inUse,
-			"containers": containers,
-		},
-	})
+	response := gin.H{
+		"inUse":      inUse,
+		"containers": containers,
+	}
+
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }
 
 func (h *VolumeHandler) GetVolumeUsageCounts(c *gin.Context) {
 	_, running, stopped, total, err := h.dockerService.GetAllVolumes(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to get container counts: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -192,8 +157,5 @@ func (h *VolumeHandler) GetVolumeUsageCounts(c *gin.Context) {
 		Total:  total,
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }

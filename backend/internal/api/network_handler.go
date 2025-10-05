@@ -8,6 +8,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
@@ -40,10 +41,7 @@ func (h *NetworkHandler) List(c *gin.Context) {
 
 	networks, paginationResp, err := h.networkService.ListNetworksPaginated(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: "Failed to list networks: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -65,23 +63,17 @@ func (h *NetworkHandler) GetByID(c *gin.Context) {
 
 	networkInspect, err := h.networkService.GetNetworkByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	out, mapErr := dto.MapOne[network.Inspect, dto.NetworkInspectDto](*networkInspect)
 	if mapErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: mapErr.Error()}})
+		httputil.RespondWithError(c, mapErr)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *NetworkHandler) Create(c *gin.Context) {
@@ -91,10 +83,7 @@ func (h *NetworkHandler) Create(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
+		httputil.RespondBadRequest(c, err.Error())
 		return
 	}
 
@@ -105,23 +94,17 @@ func (h *NetworkHandler) Create(c *gin.Context) {
 
 	response, err := h.networkService.CreateNetwork(c.Request.Context(), req.Name, req.Options, *currentUser)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	out, mapErr := dto.MapOne[network.CreateResponse, dto.NetworkCreateResponseDto](*response)
 	if mapErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: mapErr.Error()}})
+		httputil.RespondWithError(c, mapErr)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusCreated, out)
 }
 
 func (h *NetworkHandler) Remove(c *gin.Context) {
@@ -133,26 +116,17 @@ func (h *NetworkHandler) Remove(c *gin.Context) {
 	}
 
 	if err := h.networkService.RemoveNetwork(c.Request.Context(), id, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    dto.MessageDto{Message: "Network removed successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Network removed successfully")
 }
 
 func (h *NetworkHandler) GetNetworkUsageCounts(c *gin.Context) {
 	_, running, stopped, total, err := h.dockerService.GetAllNetworks(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to get container counts: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -162,30 +136,21 @@ func (h *NetworkHandler) GetNetworkUsageCounts(c *gin.Context) {
 		Total:  total,
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *NetworkHandler) Prune(c *gin.Context) {
 	report, err := h.networkService.PruneNetworks(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	out, mapErr := dto.MapOne[network.PruneReport, dto.NetworkPruneReportDto](*report)
 	if mapErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: mapErr.Error()}})
+		httputil.RespondWithError(c, mapErr)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }

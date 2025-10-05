@@ -10,6 +10,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils/cookie"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 )
 
 type AuthHandler struct {
@@ -34,17 +35,17 @@ func NewAuthHandler(group *gin.RouterGroup, userService *services.UserService, a
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid request format"}})
+		httputil.RespondBadRequest(c, "Invalid request format")
 		return
 	}
 
 	localAuthEnabled, err := h.authService.IsLocalAuthEnabled(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to check authentication settings"}})
+		httputil.RespondWithError(c, err)
 		return
 	}
 	if !localAuthEnabled {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Local authentication is disabled"}})
+		httputil.RespondBadRequest(c, "Local authentication is disabled")
 		return
 	}
 
@@ -63,7 +64,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			statusCode = http.StatusInternalServerError
 			errorMsg = "Authentication failed"
 		}
-		c.JSON(statusCode, gin.H{"success": false, "data": gin.H{"error": errorMsg}})
+		httputil.RespondWithCustomError(c, statusCode, errorMsg, "AUTH_FAILED")
 		return
 	}
 
@@ -73,53 +74,52 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	var out dto.UserResponseDto
 	if mapErr := dto.MapStruct(user, &out); mapErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to map user"}})
+		httputil.RespondWithError(c, mapErr)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"token":        tokenPair.AccessToken,
-			"refreshToken": tokenPair.RefreshToken,
-			"expiresAt":    tokenPair.ExpiresAt,
-			"user":         out,
-		},
-	})
+	response := gin.H{
+		"token":        tokenPair.AccessToken,
+		"refreshToken": tokenPair.RefreshToken,
+		"expiresAt":    tokenPair.ExpiresAt,
+		"user":         out,
+	}
+
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	cookie.ClearTokenCookie(c)
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"message": "Logged out successfully"}})
+	httputil.RespondWithMessage(c, http.StatusOK, "Logged out successfully")
 }
 
 func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 	userID, exists := middleware.GetCurrentUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "data": gin.H{"error": "Not authenticated"}})
+		httputil.RespondWithCustomError(c, http.StatusUnauthorized, "Not authenticated", "UNAUTHORIZED")
 		return
 	}
 
 	user, err := h.userService.GetUser(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to get user information"}})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	var out dto.UserResponseDto
 	if mapErr := dto.MapStruct(user, &out); mapErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to map user"}})
+		httputil.RespondWithError(c, mapErr)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": out})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	var req dto.RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid request format"}})
+		httputil.RespondBadRequest(c, "Invalid request format")
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 			statusCode = http.StatusInternalServerError
 			errorMsg = "Failed to refresh token"
 		}
-		c.JSON(statusCode, gin.H{"success": false, "data": gin.H{"error": errorMsg}})
+		httputil.RespondWithCustomError(c, statusCode, errorMsg, "TOKEN_REFRESH_FAILED")
 		return
 	}
 
@@ -143,14 +143,13 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	maxAge := int(time.Until(tokenPair.ExpiresAt).Seconds())
 	cookie.CreateTokenCookie(c, maxAge, tokenPair.AccessToken)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"token":        tokenPair.AccessToken,
-			"refreshToken": tokenPair.RefreshToken,
-			"expiresAt":    tokenPair.ExpiresAt,
-		},
-	})
+	response := gin.H{
+		"token":        tokenPair.AccessToken,
+		"refreshToken": tokenPair.RefreshToken,
+		"expiresAt":    tokenPair.ExpiresAt,
+	}
+
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }
 
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
@@ -161,12 +160,12 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 
 	var req dto.PasswordChangeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid request format"}})
+		httputil.RespondBadRequest(c, "Invalid request format")
 		return
 	}
 
 	if req.CurrentPassword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Current password is required"}})
+		httputil.RespondBadRequest(c, "Current password is required")
 		return
 	}
 
@@ -182,9 +181,9 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 			statusCode = http.StatusInternalServerError
 			errorMsg = "Failed to change password"
 		}
-		c.JSON(statusCode, gin.H{"success": false, "data": gin.H{"error": errorMsg}})
+		httputil.RespondWithCustomError(c, statusCode, errorMsg, "PASSWORD_CHANGE_FAILED")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"message": "Password changed successfully"}})
+	httputil.RespondWithMessage(c, http.StatusOK, "Password changed successfully")
 }

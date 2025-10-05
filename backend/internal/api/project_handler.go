@@ -74,16 +74,10 @@ func (h *ProjectHandler) ListProjects(c *gin.Context) {
 	projectsResponse, paginationResp, err := h.projectService.ListProjects(c.Request.Context(), params)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			c.JSON(http.StatusRequestTimeout, gin.H{
-				"success": false,
-				"error":   "Request was canceled",
-			})
+			httputil.RespondWithCustomError(c, http.StatusRequestTimeout, "Request was canceled", "TIMEOUT")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to list projects: " + err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 	if projectsResponse == nil {
@@ -101,26 +95,17 @@ func (h *ProjectHandler) DeployProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Project ID is required",
-		})
+		httputil.RespondBadRequest(c, "Project ID is required")
 		return
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
 	if err := h.projectService.DeployProject(c.Request.Context(), projectID, *user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Project deployed successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Project deployed successfully")
 }
 
 func (h *ProjectHandler) DownProject(c *gin.Context) {
@@ -128,36 +113,30 @@ func (h *ProjectHandler) DownProject(c *gin.Context) {
 
 	user, _ := middleware.GetCurrentUser(c)
 	if err := h.projectService.DownProject(c.Request.Context(), projectID, *user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   fmt.Sprintf("Failed to bring down project: %v", err),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Project brought down successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Project brought down successfully")
 }
 
 func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	var req dto.CreateProjectDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		httputil.RespondBadRequest(c, err.Error())
 		return
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
 	proj, err := h.projectService.CreateProject(c.Request.Context(), req.Name, req.ComposeContent, req.EnvContent, *user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	var response dto.CreateProjectReponseDto
 	if err := dto.MapStruct(proj, &response); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to map response"})
+		httputil.RespondWithError(c, fmt.Errorf("failed to map response: %w", err))
 		return
 	}
 	response.Status = string(proj.Status)
@@ -165,55 +144,40 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	response.UpdatedAt = proj.UpdatedAt.Format(time.RFC3339)
 	response.DirName = utils.DerefString(proj.DirName)
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    response,
-	})
+	httputil.RespondWithSuccess(c, http.StatusCreated, response)
 }
 
 func (h *ProjectHandler) GetProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		httputil.RespondBadRequest(c, "Project ID is required")
 		return
 	}
 
 	details, err := h.projectService.GetProjectDetails(c.Request.Context(), projectID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Project not found"})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    details,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, details)
 }
 
 func (h *ProjectHandler) RedeployProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Project ID is required",
-		})
+		httputil.RespondBadRequest(c, "Project ID is required")
 		return
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
 	if err := h.projectService.RedeployProject(c.Request.Context(), projectID, *user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Project redeployed successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Project redeployed successfully")
 }
 
 func (h *ProjectHandler) DestroyProject(c *gin.Context) {
@@ -229,23 +193,17 @@ func (h *ProjectHandler) DestroyProject(c *gin.Context) {
 
 	user, _ := middleware.GetCurrentUser(c)
 	if err := h.projectService.DestroyProject(c.Request.Context(), projectID, req.RemoveFiles, req.RemoveVolumes, *user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   fmt.Sprintf("Failed to destroy project: %v", err),
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Project destroyed successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Project destroyed successfully")
 }
 
 func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		httputil.RespondBadRequest(c, "Project ID is required")
 		return
 	}
 
@@ -267,50 +225,44 @@ func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		httputil.RespondBadRequest(c, "Project ID is required")
 		return
 	}
 
 	var req dto.UpdateProjectDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid request format"})
+		httputil.RespondBadRequest(c, "Invalid request format")
 		return
 	}
 
 	if _, err := h.projectService.UpdateProject(c.Request.Context(), projectID, req.Name, req.ComposeContent, req.EnvContent); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	details, err := h.projectService.GetProjectDetails(c.Request.Context(), projectID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to fetch updated project details"})
+		httputil.RespondWithError(c, fmt.Errorf("failed to fetch updated project details: %w", err))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    details,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, details)
 }
 
 func (h *ProjectHandler) RestartProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		httputil.RespondBadRequest(c, "Project ID is required")
 		return
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
 	if err := h.projectService.RestartProject(c.Request.Context(), projectID, *user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Project restarted successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Project restarted successfully")
 }
 
 func (h *ProjectHandler) getOrStartProjectLogHub(projectID, format string, batched bool, follow bool, tail, since string, timestamps bool) *ws.Hub {
@@ -376,7 +328,7 @@ func (h *ProjectHandler) getOrStartProjectLogHub(projectID, format string, batch
 func (h *ProjectHandler) GetProjectLogsWS(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if strings.TrimSpace(projectID) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		httputil.RespondBadRequest(c, "Project ID is required")
 		return
 	}
 
@@ -398,10 +350,7 @@ func (h *ProjectHandler) GetProjectLogsWS(c *gin.Context) {
 func (h *ProjectHandler) GetProjectStatusCounts(c *gin.Context) {
 	_, running, stopped, total, err := h.projectService.GetProjectStatusCounts(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to get project counts: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -411,8 +360,5 @@ func (h *ProjectHandler) GetProjectStatusCounts(c *gin.Context) {
 		TotalProjects:   int(total),
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }

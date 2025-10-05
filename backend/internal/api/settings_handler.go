@@ -9,6 +9,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 )
 
 type SettingsHandler struct {
@@ -34,10 +35,7 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 	var settingsDto []dto.PublicSettingDto
 	if err := dto.MapStructList(settings, &settingsDto); err != nil {
 		_ = c.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to map settings",
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -47,7 +45,7 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		Type:  "boolean",
 	})
 
-	c.JSON(http.StatusOK, settingsDto)
+	httputil.RespondWithSuccess(c, http.StatusOK, settingsDto)
 }
 
 func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
@@ -56,10 +54,7 @@ func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
 	var settingsDto []dto.PublicSettingDto
 	if err := dto.MapStructList(settings, &settingsDto); err != nil {
 		_ = c.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to map settings",
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -69,7 +64,7 @@ func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
 		Type:  "boolean",
 	})
 
-	c.JSON(http.StatusOK, settingsDto)
+	httputil.RespondWithSuccess(c, http.StatusOK, settingsDto)
 }
 
 func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
@@ -77,10 +72,7 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 
 	var req dto.UpdateSettingsDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request format",
-		})
+		httputil.RespondBadRequest(c, "Invalid request format")
 		return
 	}
 
@@ -88,20 +80,14 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		if req.AuthLocalEnabled != nil || req.AuthOidcEnabled != nil ||
 			req.AuthSessionTimeout != nil || req.AuthPasswordPolicy != nil ||
 			req.AuthOidcConfig != nil {
-			c.JSON(http.StatusForbidden, gin.H{
-				"success": false,
-				"error":   "Authentication settings can only be updated from the main environment",
-			})
+			httputil.RespondWithCustomError(c, http.StatusForbidden, "Authentication settings can only be updated from the main environment", "FORBIDDEN")
 			return
 		}
 	}
 
 	updatedSettings, err := h.settingsService.UpdateSettings(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to update settings",
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -116,8 +102,7 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
+	httputil.RespondWithSuccess(c, http.StatusOK, gin.H{
 		"settings": settingDtos,
 	})
 }

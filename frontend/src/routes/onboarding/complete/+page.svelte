@@ -6,6 +6,7 @@
 	import CircleCheckIcon from '@lucide/svelte/icons/check-circle';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import { settingsService } from '$lib/services/settings-service.js';
+	import { extractDockerErrorMessage } from '$lib/utils/api.util';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
@@ -32,7 +33,8 @@
 			await invalidateAll();
 			goto('/', { replaceState: true });
 		} catch (error) {
-			toast.error('Failed to complete onboarding');
+			const errorMsg = extractDockerErrorMessage(error);
+			toast.error(`Failed to complete onboarding: ${errorMsg}`);
 		} finally {
 			isLoading = false;
 		}

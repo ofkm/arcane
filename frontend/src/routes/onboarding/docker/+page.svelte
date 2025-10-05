@@ -15,6 +15,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import type { Settings } from '$lib/types/settings.type';
 	import { settingsService } from '$lib/services/settings-service.js';
+	import { extractDockerErrorMessage } from '$lib/utils/api.util';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings);
@@ -89,7 +90,8 @@
 
 			goto('/onboarding/security');
 		} catch (error) {
-			toast.error('Failed to save Docker settings');
+			const errorMsg = extractDockerErrorMessage(error);
+			toast.error(`Failed to save Docker settings: ${errorMsg}`);
 		} finally {
 			isLoading = false;
 		}
@@ -117,7 +119,7 @@
 	<div class="grid gap-6 md:grid-cols-2">
 		<Card.Root class="flex flex-col gap-6 py-3">
 			<Card.Header
-				class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+				class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
 			>
 				<Card.Title>{m.docker_title()}</Card.Title>
 				<Card.Description>{m.docker_description()}</Card.Description>
@@ -184,7 +186,7 @@
 
 		<Card.Root class="flex flex-col gap-6 py-3">
 			<Card.Header
-				class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+				class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
 			>
 				<Card.Title>{m.docker_prune_action_label()}</Card.Title>
 				<Card.Description>{pruneModeDescription}</Card.Description>

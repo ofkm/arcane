@@ -19,6 +19,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { templateService } from '$lib/services/template-service.js';
 	import { ResourcePageLayout, type ActionButton, type StatCardConfig } from '$lib/layouts/index.js';
+	import { extractDockerErrorMessage } from '$lib/utils/api.util';
 
 	let { data } = $props();
 
@@ -58,7 +59,8 @@
 			toast.success(m.registries_update_success());
 		} catch (error) {
 			console.error('Error updating registry:', error);
-			toast.error(error instanceof Error ? error.message : m.registries_save_failed());
+			const errorMsg = extractDockerErrorMessage(error);
+			toast.error(errorMsg);
 		} finally {
 			isLoading.updating.delete(id);
 		}
@@ -76,7 +78,8 @@
 			toast.success(reg ? m.registries_delete_success({ url: reg.url }) : m.templates_registry_removed_success());
 		} catch (error) {
 			console.error('Error removing registry:', error);
-			toast.error(error instanceof Error ? error.message : m.registries_save_failed());
+			const errorMsg = extractDockerErrorMessage(error);
+			toast.error(errorMsg);
 		} finally {
 			isLoading.removing.delete(id);
 		}
@@ -109,7 +112,8 @@
 			toast.success(m.registries_create_success());
 		} catch (error) {
 			console.error('Error adding registry:', error);
-			toast.error(error instanceof Error ? error.message : m.registries_save_failed());
+			const errorMsg = extractDockerErrorMessage(error);
+			toast.error(errorMsg);
 		} finally {
 			isLoading.addingRegistry = false;
 		}

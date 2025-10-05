@@ -12,6 +12,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	registry "github.com/ofkm/arcane-backend/internal/utils/registry"
 )
@@ -41,18 +42,16 @@ func (h *ContainerRegistryHandler) GetRegistries(c *gin.Context) {
 
 	registries, paginationResp, err := h.registryService.GetRegistriesPaginated(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to list registries: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"data":       registries,
+	response := gin.H{
+		"items":      registries,
 		"pagination": paginationResp,
-	})
+	}
+
+	httputil.RespondWithSuccess(c, http.StatusOK, response)
 }
 
 func (h *ContainerRegistryHandler) GetRegistry(c *gin.Context) {
@@ -60,63 +59,39 @@ func (h *ContainerRegistryHandler) GetRegistry(c *gin.Context) {
 
 	registry, err := h.registryService.GetRegistryByID(c.Request.Context(), id)
 	if err != nil {
-		apiErr := models.ToAPIError(err)
-		c.JSON(apiErr.HTTPStatus(), gin.H{
-			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	out, mapErr := dto.MapOne[*models.ContainerRegistry, dto.ContainerRegistryDto](registry)
 	if mapErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to map registry"},
-		})
+		httputil.RespondWithError(c, mapErr)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *ContainerRegistryHandler) CreateRegistry(c *gin.Context) {
 	var req models.CreateContainerRegistryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		apiErr := models.NewValidationError("Invalid request data", err)
-		c.JSON(apiErr.HTTPStatus(), gin.H{
-			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
-		})
+		httputil.RespondBadRequest(c, "Invalid request data: "+err.Error())
 		return
 	}
 
 	registry, err := h.registryService.CreateRegistry(c.Request.Context(), req)
 	if err != nil {
-		apiErr := models.ToAPIError(err)
-		c.JSON(apiErr.HTTPStatus(), gin.H{
-			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	out, mapErr := dto.MapOne[*models.ContainerRegistry, dto.ContainerRegistryDto](registry)
 	if mapErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to map registry"},
-		})
+		httputil.RespondWithError(c, mapErr)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusCreated, out)
 }
 
 func (h *ContainerRegistryHandler) UpdateRegistry(c *gin.Context) {
@@ -124,55 +99,34 @@ func (h *ContainerRegistryHandler) UpdateRegistry(c *gin.Context) {
 
 	var req models.UpdateContainerRegistryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		apiErr := models.NewValidationError("Invalid request data", err)
-		c.JSON(apiErr.HTTPStatus(), gin.H{
-			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
-		})
+		httputil.RespondBadRequest(c, "Invalid request data: "+err.Error())
 		return
 	}
 
 	registry, err := h.registryService.UpdateRegistry(c.Request.Context(), id, req)
 	if err != nil {
-		apiErr := models.ToAPIError(err)
-		c.JSON(apiErr.HTTPStatus(), gin.H{
-			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	out, mapErr := dto.MapOne[*models.ContainerRegistry, dto.ContainerRegistryDto](registry)
 	if mapErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Failed to map registry"},
-		})
+		httputil.RespondWithError(c, mapErr)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *ContainerRegistryHandler) DeleteRegistry(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.registryService.DeleteRegistry(c.Request.Context(), id); err != nil {
-		apiErr := models.ToAPIError(err)
-		c.JSON(apiErr.HTTPStatus(), gin.H{
-			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Container registry deleted successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Container registry deleted successfully")
 }
 
 func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
@@ -180,38 +134,23 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 
 	registry, err := h.registryService.GetRegistryByID(c.Request.Context(), id)
 	if err != nil {
-		apiErr := models.ToAPIError(err)
-		c.JSON(apiErr.HTTPStatus(), gin.H{
-			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	decryptedToken, err := utils.Decrypt(registry.Token)
 	if err != nil {
-		apiErr := models.NewInternalServerError("Failed to decrypt token")
-		c.JSON(apiErr.HTTPStatus(), gin.H{
-			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
-		})
+		httputil.RespondWithError(c, fmt.Errorf("failed to decrypt token: %w", err))
 		return
 	}
 
 	testResult, err := h.performRegistryTest(c.Request.Context(), registry, decryptedToken)
 	if err != nil {
-		apiErr := models.NewInternalServerError(fmt.Sprintf("Registry test failed: %s", err.Error()))
-		c.JSON(apiErr.HTTPStatus(), gin.H{
-			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    testResult,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, testResult)
 }
 
 func (h *ContainerRegistryHandler) performRegistryTest(ctx context.Context, registryModel *models.ContainerRegistry, decryptedToken string) (map[string]interface{}, error) {

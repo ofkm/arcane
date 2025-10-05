@@ -10,6 +10,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
+	httputil "github.com/ofkm/arcane-backend/internal/utils/http"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
@@ -43,10 +44,7 @@ func (h *ImageHandler) List(c *gin.Context) {
 
 	images, paginationResp, err := h.imageService.ListImagesPaginated(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: "Failed to list images: " + err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
@@ -68,16 +66,13 @@ func (h *ImageHandler) GetByID(c *gin.Context) {
 
 	img, err := h.imageService.GetImageByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "data": dto.MessageDto{Message: err.Error()}})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	out := dto.NewImageDetailSummaryDto(img)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *ImageHandler) Remove(c *gin.Context) {
@@ -89,17 +84,11 @@ func (h *ImageHandler) Remove(c *gin.Context) {
 		return
 	}
 	if err := h.imageService.RemoveImage(c.Request.Context(), id, force, *currentUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    dto.MessageDto{Message: "Image removed successfully"},
-	})
+	httputil.RespondWithMessage(c, http.StatusOK, "Image removed successfully")
 }
 
 func (h *ImageHandler) Pull(c *gin.Context) {
@@ -107,10 +96,7 @@ func (h *ImageHandler) Pull(c *gin.Context) {
 	var req dto.ImagePullDto
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: "Invalid request body: " + err.Error()},
-		})
+		httputil.RespondBadRequest(c, "Invalid request body: "+err.Error())
 		return
 	}
 
@@ -125,10 +111,7 @@ func (h *ImageHandler) Pull(c *gin.Context) {
 	}
 
 	if err := h.imageService.PullImage(ctx, req.ImageName, c.Writer, *currentUser, req.Credentials); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: fmt.Sprintf("Failed to pull image '%s': %s", req.ImageName, err.Error())},
-		})
+		httputil.RespondWithError(c, fmt.Errorf("failed to pull image '%s': %w", req.ImageName, err))
 		return
 	}
 
@@ -160,15 +143,12 @@ func (h *ImageHandler) Prune(c *gin.Context) {
 
 	report, err := h.imageService.PruneImages(c.Request.Context(), dangling)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: err.Error()},
-		})
+		httputil.RespondWithError(c, err)
 		return
 	}
 
 	out := dto.NewImagePruneReportDto(*report)
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": out})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }
 
 func (h *ImageHandler) GetImageUsageCounts(c *gin.Context) {
@@ -195,10 +175,7 @@ func (h *ImageHandler) GetImageUsageCounts(c *gin.Context) {
 	}
 
 	if len(errs) > 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"data":    dto.MessageDto{Message: errors.Join(errs...).Error()},
-		})
+		httputil.RespondWithError(c, errors.Join(errs...))
 		return
 	}
 
@@ -209,8 +186,5 @@ func (h *ImageHandler) GetImageUsageCounts(c *gin.Context) {
 		TotalSize: totalSize,
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    out,
-	})
+	httputil.RespondWithSuccess(c, http.StatusOK, out)
 }

@@ -16,6 +16,7 @@
 	import { navigationSettingsOverridesStore, resetNavigationVisibility } from '$lib/utils/navigation.utils';
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
+	import { extractDockerErrorMessage } from '$lib/utils/api.util';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings);
@@ -117,7 +118,8 @@
 			})
 			.catch((error) => {
 				console.error('Failed to save navigation settings:', error);
-				toast.error('Failed to save navigation settings. Please try again.');
+				const errorMsg = extractDockerErrorMessage(error);
+				toast.error(`Failed to save navigation settings: ${errorMsg}`);
 			})
 			.finally(() => (isLoading = false));
 	}

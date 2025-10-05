@@ -18,6 +18,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { settingsService } from '$lib/services/settings-service';
+	import { extractDockerErrorMessage } from '$lib/utils/api.util';
 	import { SettingsPageLayout } from '$lib/layouts';
 
 	let { data } = $props();
@@ -161,7 +162,8 @@
 			.then(() => toast.success(m.general_settings_saved()))
 			.catch((error) => {
 				console.error('Failed to save settings:', error);
-				toast.error('Failed to save settings. Please try again.');
+				const errorMsg = extractDockerErrorMessage(error);
+				toast.error(`Failed to save settings: ${errorMsg}`);
 			})
 			.finally(() => (isLoading = false));
 	}

@@ -16,6 +16,7 @@
 	import { environmentManagementService } from '$lib/services/env-mgmt-service.js';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import type { Environment } from '$lib/types/environment.type';
+	import { extractDockerErrorMessage } from '$lib/utils/api.util';
 
 	let { data } = $props();
 	let { environment, settings } = $derived(data);
@@ -50,7 +51,8 @@
 			await invalidateAll();
 		} catch (err) {
 			console.error('Failed to refresh environment:', err);
-			toast.error('Failed to refresh environment data');
+			const errorMsg = extractDockerErrorMessage(err);
+			toast.error(`Failed to refresh environment: ${errorMsg}`);
 		} finally {
 			isRefreshing = false;
 		}
@@ -68,7 +70,8 @@
 			}
 			await refreshEnvironment();
 		} catch (error) {
-			toast.error('Failed to test connection');
+			const errorMsg = extractDockerErrorMessage(error);
+			toast.error(`Failed to test connection: ${errorMsg}`);
 			console.error(error);
 		} finally {
 			isTestingConnection = false;
@@ -88,7 +91,8 @@
 			await refreshEnvironment();
 		} catch (e) {
 			console.error(e);
-			toast.error('Failed to pair/rotate agent token');
+			const errorMsg = extractDockerErrorMessage(e);
+			toast.error(`Failed to pair agent: ${errorMsg}`);
 		} finally {
 			isPairing = false;
 		}
@@ -115,7 +119,8 @@
 			goto('/settings');
 		} catch (error) {
 			console.error('Failed to switch environment:', error);
-			toast.error('Failed to switch environment');
+			const errorMsg = extractDockerErrorMessage(error);
+			toast.error(`Failed to switch environment: ${errorMsg}`);
 		}
 	}
 </script>
@@ -156,7 +161,7 @@
 		<div class="lg:col-span-1">
 			<Card.Root class="flex flex-col gap-6 py-3">
 				<Card.Header
-					class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+					class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
 				>
 					<Card.Title class="text-lg">{m.environments_sections_title()}</Card.Title>
 				</Card.Header>
@@ -185,7 +190,7 @@
 				<div class="space-y-6">
 					<Card.Root class="flex flex-col gap-6 py-3">
 						<Card.Header
-							class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+							class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
 						>
 							<Card.Title class="flex items-center gap-2">
 								<MonitorIcon class="size-5" />
@@ -400,7 +405,7 @@
 				<div class="space-y-6">
 					<Card.Root class="flex flex-col gap-6 py-3">
 						<Card.Header
-							class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+							class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
 						>
 							<Card.Title class="flex items-center gap-2">
 								<GlobeIcon class="h-5 w-5" />
@@ -414,7 +419,7 @@
 							</div>
 							<div>
 								<Label class="text-muted-foreground text-sm font-medium">{m.environments_api_url()}</Label>
-								<div class="bg-muted mt-1 rounded-md px-3 py-2 font-mono text-sm break-all">{environment.apiUrl}</div>
+								<div class="bg-muted mt-1 break-all rounded-md px-3 py-2 font-mono text-sm">{environment.apiUrl}</div>
 							</div>
 							<div class="pt-4">
 								<Button onclick={testConnection} disabled={isTestingConnection} class="w-full">
@@ -434,7 +439,7 @@
 				<div class="space-y-6">
 					<Card.Root class="flex flex-col gap-6 py-3">
 						<Card.Header
-							class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+							class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
 						>
 							<Card.Title class="flex items-center gap-2">
 								<SettingsIcon class="h-5 w-5" />
@@ -473,7 +478,7 @@
 	</div>
 
 	{#if isRefreshing}
-		<div class="fixed right-4 bottom-4 flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-white shadow-lg">
+		<div class="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-white shadow-lg">
 			<RefreshCwIcon class="h-4 w-4 animate-spin" />
 			<span class="text-sm">{m.environments_refreshing()}</span>
 		</div>
