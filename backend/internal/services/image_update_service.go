@@ -811,7 +811,7 @@ func (s *ImageUpdateService) checkSingleImageInBatch(
 		}
 	}
 
-	localDigest, ldErr := s.getLocalImageDigest(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
+	localDigest, allLocalDigests, ldErr := s.getLocalImageDigestWithAll(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
 	if ldErr != nil {
 		return &dto.ImageUpdateResponse{
 			Error:          ldErr.Error(),
@@ -824,7 +824,13 @@ func (s *ImageUpdateService) checkSingleImageInBatch(
 		}
 	}
 
-	hasDigestUpdate := localDigest != remoteDigest
+	hasDigestUpdate := true
+	for _, localDig := range allLocalDigests {
+		if localDig == remoteDigest {
+			hasDigestUpdate = false
+			break
+		}
+	}
 
 	return &dto.ImageUpdateResponse{
 		HasUpdate:      hasDigestUpdate,
