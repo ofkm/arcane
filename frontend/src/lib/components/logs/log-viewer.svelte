@@ -226,7 +226,7 @@
 		});
 	}
 
-	export function stopLogStream() {
+	export 	function stopLogStream(notifyCallback = true) {
 		shouldBeStreaming = false;
 
 		if (eventSource) {
@@ -241,7 +241,9 @@
 			wsClient = null;
 		}
 		isStreaming = false;
-		onStop?.();
+		if (notifyCallback) {
+			onStop?.();
+		}
 	}
 
 	function addLogEntry(logData: { level: string; message: string; timestamp?: string; service?: string; containerId?: string }) {
@@ -258,7 +260,7 @@
 	}
 
 	onDestroy(() => {
-		stopLogStream();
+		stopLogStream(false);
 	});
 
 	export function toggleAutoScroll() {
@@ -296,7 +298,7 @@
 		const key = streamKey();
 		if (!key) return;
 		if (key === currentStreamKey && isStreaming) return;
-		if (currentStreamKey) stopLogStream();
+		if (currentStreamKey) stopLogStream(false); // Don't notify callback on internal stop
 		logs = [];
 		currentStreamKey = key;
 		startLogStream();

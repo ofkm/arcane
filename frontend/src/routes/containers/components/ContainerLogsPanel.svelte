@@ -33,7 +33,6 @@
 	function handleStop() {
 		isStreaming = false;
 		viewer?.stopLogStream();
-		onStop();
 	}
 
 	function handleClear() {
