@@ -22,6 +22,13 @@ import (
 	ws "github.com/ofkm/arcane-backend/internal/utils/ws"
 )
 
+// Context Strategy:
+// - Deployment operations (Deploy/Redeploy/Destroy/Down/Restart): Use background context with 30-minute timeout
+//   to allow long-running docker compose operations to complete even if client disconnects.
+// - PullProjectImages: Use background context with 45-minute timeout for potentially large image downloads.
+// - Read operations: Use request context for immediate cancellation on client disconnect.
+// TODO: In the future ill implementing a proper job queue system with job IDs and progress tracking.
+
 type ProjectHandler struct {
 	projectService *services.ProjectService
 	logStreams     sync.Map
@@ -109,7 +116,11 @@ func (h *ProjectHandler) DeployProject(c *gin.Context) {
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
-	ctx := context.Background()
+
+	// Use background context with generous timeout for long-running deploy operations
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
 	if err := h.projectService.DeployProject(ctx, projectID, *user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -128,7 +139,11 @@ func (h *ProjectHandler) DownProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 
 	user, _ := middleware.GetCurrentUser(c)
-	ctx := context.Background()
+
+	// Use background context with timeout for stopping all project containers
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	if err := h.projectService.DownProject(ctx, projectID, *user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -204,7 +219,11 @@ func (h *ProjectHandler) RedeployProject(c *gin.Context) {
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
-	ctx := context.Background()
+
+	// Use background context with generous timeout for redeployment (down + up)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
 	if err := h.projectService.RedeployProject(ctx, projectID, *user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -231,7 +250,11 @@ func (h *ProjectHandler) DestroyProject(c *gin.Context) {
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
-	ctx := context.Background()
+
+	// Use background context with timeout for destroying project resources
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	defer cancel()
+
 	if err := h.projectService.DestroyProject(ctx, projectID, req.RemoveFiles, req.RemoveVolumes, *user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -260,7 +283,11 @@ func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 
 	_, _ = fmt.Fprintln(c.Writer, `{"status":"starting project image pull"}`)
 
-	ctx := context.Background()
+	// Use background context with very long timeout for pulling multiple large images
+	// Operations continue even if client disconnects to avoid partial image pulls
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+	defer cancel()
+
 	if err := h.projectService.PullProjectImages(ctx, projectID, c.Writer); err != nil {
 		_, _ = fmt.Fprintf(c.Writer, `{"error":%q}`+"\n", err.Error())
 		return
@@ -307,7 +334,11 @@ func (h *ProjectHandler) RestartProject(c *gin.Context) {
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
-	ctx := context.Background()
+
+	// Use background context with timeout for restarting project containers
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	if err := h.projectService.RestartProject(ctx, projectID, *user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return

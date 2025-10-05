@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
+	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
@@ -24,10 +25,16 @@ type ImageHandler struct {
 	imageService       *services.ImageService
 	imageUpdateService *services.ImageUpdateService
 	dockerService      *services.DockerClientService
+	jobService         *services.JobService
 }
 
-func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, imageService *services.ImageService, imageUpdateService *services.ImageUpdateService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &ImageHandler{dockerService: dockerService, imageService: imageService, imageUpdateService: imageUpdateService}
+func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, imageService *services.ImageService, imageUpdateService *services.ImageUpdateService, jobService *services.JobService, authMiddleware *middleware.AuthMiddleware) {
+	handler := &ImageHandler{
+		dockerService:      dockerService,
+		imageService:       imageService,
+		imageUpdateService: imageUpdateService,
+		jobService:         jobService,
+	}
 
 	apiGroup := group.Group("/environments/:id/images")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -114,7 +121,6 @@ func (h *ImageHandler) Remove(c *gin.Context) {
 }
 
 func (h *ImageHandler) Pull(c *gin.Context) {
-	ctx := context.Background()
 	var req dto.ImagePullDto
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -125,26 +131,39 @@ func (h *ImageHandler) Pull(c *gin.Context) {
 		return
 	}
 
-	c.Writer.Header().Set("Content-Type", "application/x-json-stream")
-	c.Writer.Header().Set("Cache-Control", "no-cache")
-	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Writer.Header().Set("X-Accel-Buffering", "no")
-
 	currentUser, ok := middleware.RequireAuthentication(c)
 	if !ok {
 		return
 	}
 
-	if err := h.imageService.PullImage(ctx, req.ImageName, c.Writer, *currentUser, req.Credentials); err != nil {
+	// Create job for image pull
+	job, err := h.jobService.CreateJob(c.Request.Context(), models.JobTypeImagePull, *currentUser, models.JSON{
+		"imageName": req.ImageName,
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    dto.MessageDto{Message: fmt.Sprintf("Failed to pull image '%s': %s", req.ImageName, err.Error())},
+			"data":    dto.MessageDto{Message: "Failed to create job: " + err.Error()},
 		})
 		return
 	}
 
-	slog.InfoContext(ctx, "Image pull stream completed",
-		slog.String("imageName", req.ImageName))
+	// Start the job asynchronously
+	if err := h.jobService.StartJob(job); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    dto.MessageDto{Message: "Failed to start job: " + err.Error()},
+		})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"success": true,
+		"data": gin.H{
+			"jobId":   job.ID,
+			"message": fmt.Sprintf("Image pull started for: %s", req.ImageName),
+		},
+	})
 }
 
 func (h *ImageHandler) Prune(c *gin.Context) {

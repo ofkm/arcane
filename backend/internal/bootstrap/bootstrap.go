@@ -107,6 +107,9 @@ func InitializeApp() (*App, error) {
 
 	router := setupRouter(cfg, appServices)
 
+	// Register job executors for async job processing
+	registerJobExecutors(appServices)
+
 	if dockerClient, err := dockerClientService.CreateConnection(appCtx); err != nil {
 		slog.WarnContext(appCtx, "Docker connection failed during init, local Docker features may be unavailable",
 			slog.String("error", err.Error()))

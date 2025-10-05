@@ -35,7 +35,7 @@
 		></div>
 	</div>
 	{#if !isCollapsed}
-		<div class="flex min-w-0 flex-col justify-center">
+		<div class="flex min-w-0 flex-1 flex-col justify-center">
 			<span
 				class="from-foreground to-foreground/80 bg-gradient-to-r bg-clip-text text-lg font-bold leading-none tracking-tight text-transparent"
 				>{m.layout_title()}</span

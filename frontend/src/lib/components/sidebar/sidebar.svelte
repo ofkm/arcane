@@ -14,6 +14,7 @@
 	import SidebarLogo from './sidebar-logo.svelte';
 	import SidebarUpdatebanner from './sidebar-updatebanner.svelte';
 	import SidebarPinButton from './sidebar-pin-button.svelte';
+	import SidebarJobCounter from './sidebar-job-counter.svelte';
 	import userStore from '$lib/stores/user-store';
 	import { m } from '$lib/paraglide/messages';
 	import * as Button from '$lib/components/ui/button/index.js';
@@ -49,10 +50,13 @@
 		<div class="relative">
 			<SidebarLogo {isCollapsed} {versionInformation} />
 			{#if !isCollapsed || sidebar.isHovered}
-				<div class="absolute top-0 right-0 -mt-1 -mr-1">
+				<div class="absolute right-0 top-0 -mr-1 -mt-1">
 					<SidebarPinButton />
 				</div>
 			{/if}
+		</div>
+		<div class="px-2 pt-2">
+			<SidebarJobCounter {isCollapsed} />
 		</div>
 		<SidebarEnvSwitcher {isAdmin} />
 	</Sidebar.Header>

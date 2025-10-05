@@ -91,7 +91,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 
 	api.NewHealthHandler(apiGroup)
 	api.NewContainerHandler(apiGroup, appServices.Docker, appServices.Container, appServices.Image, authMiddleware, cfg)
-	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, authMiddleware)
+	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, appServices.Job, authMiddleware)
 	api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)
 	api.NewNetworkHandler(apiGroup, appServices.Docker, appServices.Network, authMiddleware)
 	api.NewProjectHandler(apiGroup, appServices.Project, authMiddleware, cfg)
@@ -99,6 +99,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewUpdaterHandler(apiGroup, appServices.Updater, authMiddleware)
 	api.NewVolumeHandler(apiGroup, appServices.Docker, appServices.Volume, authMiddleware)
 	api.NewSettingsHandler(apiGroup, appServices.Settings, authMiddleware)
+	api.NewJobHandler(apiGroup, appServices.Job, authMiddleware)
 
 	if cfg.Environment != "production" {
 		for _, registerFunc := range registerPlaywrightRoutes {

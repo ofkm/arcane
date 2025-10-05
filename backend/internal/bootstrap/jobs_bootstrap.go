@@ -7,6 +7,8 @@ import (
 
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/job"
+	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/services"
 )
 
 func initializeScheduler() (*job.Scheduler, error) {
@@ -54,4 +56,12 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 			slog.WarnContext(ctx, "Failed to reschedule auto-update job", slog.Any("error", err))
 		}
 	}
+}
+
+// registerJobExecutors registers all job executors for async job processing
+func registerJobExecutors(appServices *Services) {
+	// Register image pull executor
+	appServices.Job.RegisterExecutor(models.JobTypeImagePull, services.CreateImagePullExecutor(appServices.Image))
+
+	slog.Info("Job executors registered successfully")
 }
