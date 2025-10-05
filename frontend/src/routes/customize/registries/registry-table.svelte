@@ -121,9 +121,8 @@
 			result,
 			message: m.registries_test_failed({ url: safeUrl }),
 			setLoadingState: () => {},
-			onSuccess: (resp) => {
-				const msg = (resp as any)?.message ?? m.common_unknown();
-				toast.success(m.registries_test_success({ url: safeUrl, message: msg }));
+			onSuccess: () => {
+				toast.success(m.registries_test_success({ url: safeUrl, message: 'Connection successful' }));
 			}
 		});
 		isLoading.testing = false;

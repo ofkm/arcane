@@ -2,6 +2,7 @@ package docker
 
 import (
 	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -56,8 +57,8 @@ func TestExtractDockerError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ExtractDockerError(tt.err)
 
-			dockerErr, ok := result.(*models.DockerAPIError)
-			if !ok {
+			var dockerErr *models.DockerAPIError
+			if !errors.As(result, &dockerErr) {
 				t.Fatalf("Expected *models.DockerAPIError, got %T", result)
 			}
 
@@ -76,8 +77,8 @@ func TestWrapDockerError(t *testing.T) {
 	err := errors.New("Error: No such container: abc123")
 	wrapped := WrapDockerError(err, "Failed to start container")
 
-	dockerErr, ok := wrapped.(*models.DockerAPIError)
-	if !ok {
+	var dockerErr *models.DockerAPIError
+	if !errors.As(wrapped, &dockerErr) {
 		t.Fatalf("Expected *models.DockerAPIError, got %T", wrapped)
 	}
 
@@ -86,8 +87,8 @@ func TestWrapDockerError(t *testing.T) {
 		t.Errorf("Expected message %q, got %q", expected, dockerErr.Message)
 	}
 
-	if dockerErr.StatusCode != 404 {
-		t.Errorf("Expected status code 404, got %d", dockerErr.StatusCode)
+	if dockerErr.StatusCode != http.StatusNotFound {
+		t.Errorf("Expected status code %d, got %d", http.StatusNotFound, dockerErr.StatusCode)
 	}
 }
 
