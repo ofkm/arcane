@@ -56,13 +56,7 @@
 				return LoaderCircleIcon;
 			case 'pending':
 				return ClockIcon;
-			case 'completed':
-				return CheckCircle2Icon;
-			case 'failed':
-				return XCircleIcon;
 			case 'cancelled':
-			case 'cancelling':
-				return AlertCircleIcon;
 			default:
 				return ActivityIcon;
 		}
