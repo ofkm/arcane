@@ -3,26 +3,19 @@ package services
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"log/slog"
 	"sync"
 
+	ref "github.com/distribution/reference"
 	"github.com/docker/docker/api/types/image"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
 	registry "github.com/ofkm/arcane-backend/internal/utils/registry"
-)
-
-var (
-	semanticVersionRegex = regexp.MustCompile(`^(?:v)?(\d+)\.(\d+)\.(\d+)$`)
-	dateVersionRegex     = regexp.MustCompile(`^(\d{4})\.(\d{1,2})\.(\d{1,2})$`)
-	numericVersionRegex  = regexp.MustCompile(`^(\d+)(?:\.(\d+))?(?:\.(\d+))?$`)
 )
 
 type ImageUpdateService struct {
@@ -37,13 +30,6 @@ type ImageParts struct {
 	Registry   string
 	Repository string
 	Tag        string
-}
-
-type VersionInfo struct {
-	Major     *int   `json:"major"`
-	Minor     *int   `json:"minor"`
-	Patch     *int   `json:"patch"`
-	FormatStr string `json:"formatStr"`
 }
 
 func NewImageUpdateService(db *database.DB, settingsService *SettingsService, registryService *ContainerRegistryService, dockerService *DockerClientService, eventService *EventService) *ImageUpdateService {
@@ -94,57 +80,6 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 				slog.String("error", saveErr.Error()))
 		}
 		return result, err
-	}
-
-	if !digestResult.HasUpdate && !s.isSpecialTag(parts.Tag) {
-		tagResult, err := s.checkTagUpdate(ctx, parts, registries)
-		if err != nil {
-			result := &dto.ImageUpdateResponse{
-				Error:          err.Error(),
-				CheckTime:      time.Now(),
-				ResponseTimeMs: int(time.Since(startTime).Milliseconds()),
-			}
-			metadata := models.JSON{
-				"action":    "check_update",
-				"imageRef":  imageRef,
-				"error":     err.Error(),
-				"checkType": "tag",
-			}
-			if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, "", imageRef, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
-				slog.WarnContext(ctx, "Failed to log image update check error event",
-					slog.String("imageRef", imageRef),
-					slog.String("error", logErr.Error()))
-			}
-			if saveErr := s.saveUpdateResult(ctx, imageRef, result); saveErr != nil {
-				slog.WarnContext(ctx, "Failed to save update result",
-					slog.String("imageRef", imageRef),
-					slog.String("error", saveErr.Error()))
-			}
-			return result, err
-		}
-		if tagResult.HasUpdate {
-			tagResult.ResponseTimeMs = int(time.Since(startTime).Milliseconds())
-			metadata := models.JSON{
-				"action":         "check_update",
-				"imageRef":       imageRef,
-				"hasUpdate":      true,
-				"updateType":     "tag",
-				"currentVersion": tagResult.CurrentVersion,
-				"latestVersion":  tagResult.LatestVersion,
-				"responseTimeMs": tagResult.ResponseTimeMs,
-			}
-			if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageScan, "", imageRef, systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
-				slog.WarnContext(ctx, "Failed to log image update check event",
-					slog.String("imageRef", imageRef),
-					slog.String("error", logErr.Error()))
-			}
-			if saveErr := s.saveUpdateResult(ctx, imageRef, tagResult); saveErr != nil {
-				slog.WarnContext(ctx, "Failed to save update result",
-					slog.String("imageRef", imageRef),
-					slog.String("error", saveErr.Error()))
-			}
-			return tagResult, nil
-		}
 	}
 
 	digestResult.ResponseTimeMs = int(time.Since(startTime).Milliseconds())
@@ -233,15 +168,6 @@ func (s *ImageUpdateService) getRegistryToken(ctx context.Context, regHost, repo
 	return "", nil, fmt.Errorf("failed to get registry token")
 }
 
-const (
-	UpdateScopeNone  = "none"  // Allow any update that matches format structure
-	UpdateScopeMajor = "major" // Require same major (allow minor/patch changes)
-	UpdateScopeMinor = "minor" // Require same major+minor (allow patch changes)
-	UpdateScopePatch = "patch" // Require same major+minor+patch (effectively for digest-only)
-)
-
-func (s *ImageUpdateService) getUpdateScope() string { return UpdateScopeNone }
-
 func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *ImageParts, registries []models.ContainerRegistry) (*dto.ImageUpdateResponse, error) {
 	rc := registry.NewClient()
 
@@ -267,12 +193,28 @@ func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *Image
 		return nil, fmt.Errorf("failed to get remote digest: %w", err)
 	}
 
-	localDigest, err := s.getLocalImageDigest(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
+	// Get local image and all its digests
+	localDigest, allLocalDigests, err := s.getLocalImageDigestWithAll(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get local digest: %w", err)
 	}
 
-	hasUpdate := localDigest != remoteDigest
+	hasUpdate := true
+	for _, localDig := range allLocalDigests {
+		if localDig == remoteDigest {
+			localDigest = localDig
+			hasUpdate = false
+			break
+		}
+	}
+
+	slog.DebugContext(ctx, "digest comparison",
+		slog.String("imageRef", fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag)),
+		slog.String("primaryLocalDigest", localDigest),
+		slog.Any("allLocalDigests", allLocalDigests),
+		slog.String("remoteDigest", remoteDigest),
+		slog.Bool("hasUpdate", hasUpdate))
+
 	return &dto.ImageUpdateResponse{
 		HasUpdate:      hasUpdate,
 		UpdateType:     "digest",
@@ -287,208 +229,35 @@ func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *Image
 	}, nil
 }
 
-func (s *ImageUpdateService) checkTagUpdate(ctx context.Context, parts *ImageParts, registries []models.ContainerRegistry) (*dto.ImageUpdateResponse, error) {
-	startTime := time.Now()
-
-	currentVersion := s.parseVersion(parts.Tag)
-	if currentVersion == nil {
-		return &dto.ImageUpdateResponse{
-			HasUpdate:      false,
-			UpdateType:     "tag",
-			CurrentVersion: parts.Tag,
-			CheckTime:      time.Now(),
-			ResponseTimeMs: int(time.Since(startTime).Milliseconds()),
-			AuthRegistry:   parts.Registry,
-			AuthMethod:     "unknown",
-		}, nil
-	}
-
-	tags, auth, err := s.getImageTags(ctx, parts, registries)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get tags: %w", err)
-	}
-
-	updateScope := s.getUpdateScope()
-	latestVersion := s.findLatestCompatibleVersionWithScope(currentVersion, tags, updateScope)
-	if latestVersion == nil {
-		return &dto.ImageUpdateResponse{
-			HasUpdate:      false,
-			UpdateType:     "tag",
-			CurrentVersion: parts.Tag,
-			CheckTime:      time.Now(),
-			ResponseTimeMs: int(time.Since(startTime).Milliseconds()),
-			AuthMethod:     auth.Method,
-			AuthUsername:   auth.Username,
-			AuthRegistry:   auth.Registry,
-			UsedCredential: auth.Method == "credential",
-		}, nil
-	}
-
-	hasUpdate := s.isNewerVersion(latestVersion, currentVersion)
-	return &dto.ImageUpdateResponse{
-		HasUpdate:      hasUpdate,
-		UpdateType:     "tag",
-		CurrentVersion: parts.Tag,
-		LatestVersion:  s.versionToString(latestVersion),
-		CheckTime:      time.Now(),
-		ResponseTimeMs: int(time.Since(startTime).Milliseconds()),
-		AuthMethod:     auth.Method,
-		AuthUsername:   auth.Username,
-		AuthRegistry:   auth.Registry,
-		UsedCredential: auth.Method == "credential",
-	}, nil
-}
-
-func (s *ImageUpdateService) findLatestCompatibleVersionWithScope(current *VersionInfo, tags []string, updateScope string) *VersionInfo {
-	var latest *VersionInfo
-	for _, tag := range tags {
-		version := s.parseVersion(tag)
-		if version == nil || version.FormatStr != current.FormatStr {
-			continue
-		}
-		if !s.matchesVersionStructure(current, version) {
-			continue
-		}
-		if !s.isAllowedByUpdateScope(current, version, updateScope) {
-			continue
-		}
-		if latest == nil || s.isNewerVersion(version, latest) {
-			latest = version
-		}
-	}
-	return latest
-}
-
-// matchesVersionStructure ensures minor/patch presence matches between versions
-func (s *ImageUpdateService) matchesVersionStructure(base, candidate *VersionInfo) bool {
-	// Minor presence must match (both Some or both None)
-	if (base.Minor == nil) != (candidate.Minor == nil) {
-		return false
-	}
-
-	// Patch presence must match (both Some or both None)
-	if (base.Patch == nil) != (candidate.Patch == nil) {
-		return false
-	}
-
-	return true
-}
-
-func (s *ImageUpdateService) isAllowedByUpdateScope(base, candidate *VersionInfo, updateScope string) bool {
-	switch updateScope {
-	case UpdateScopeMajor:
-		// Require same major
-		return base.Major != nil && candidate.Major != nil &&
-			*base.Major == *candidate.Major
-
-	case UpdateScopeMinor:
-		// Require same major and minor
-		return base.Major != nil && candidate.Major != nil &&
-			base.Minor != nil && candidate.Minor != nil &&
-			*base.Major == *candidate.Major &&
-			*base.Minor == *candidate.Minor
-
-	case UpdateScopePatch:
-		// Require same major, minor, and patch
-		return base.Major != nil && candidate.Major != nil &&
-			base.Minor != nil && candidate.Minor != nil &&
-			base.Patch != nil && candidate.Patch != nil &&
-			*base.Major == *candidate.Major &&
-			*base.Minor == *candidate.Minor &&
-			*base.Patch == *candidate.Patch
-
-	default: // UpdateScopeNone
-		// Allow any version with matching structure
-		return true
-	}
-}
-
-func (s *ImageUpdateService) getImageTags(ctx context.Context, parts *ImageParts, registries []models.ContainerRegistry) ([]string, *authDetails, error) {
-	rc := registry.NewClient()
-
-	token, auth, err := s.getRegistryToken(ctx, parts.Registry, parts.Repository, registries)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get registry token: %w", err)
-	}
-
-	normalizedRepo := s.normalizeRepository(parts.Registry, parts.Repository)
-	slog.DebugContext(ctx, "Fetching tags",
-		slog.String("registry", parts.Registry),
-		slog.String("repository", normalizedRepo),
-		slog.String("authMethod", auth.Method),
-		slog.String("authUser", auth.Username))
-
-	tags, err := rc.GetImageTags(ctx, parts.Registry, normalizedRepo, token)
-	if err != nil && strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
-		enabledRegs, _ := s.registryService.GetEnabledRegistries(ctx)
-		authHeader, method, username, resolveErr := registry.ResolveAuthHeaderForRepository(ctx, parts.Registry, normalizedRepo, "", enabledRegs)
-		if resolveErr == nil && authHeader != "" {
-			tags, err = rc.GetImageTags(ctx, parts.Registry, normalizedRepo, authHeader)
-			if err == nil {
-				// update auth info to reflect how we retried
-				auth = &authDetails{Method: method, Username: username, Registry: parts.Registry}
-			}
-		}
-	}
-	if err != nil {
-		return nil, nil, err
-	}
-	return tags, auth, nil
-}
-
-func (s *ImageUpdateService) parseVersion(tag string) *VersionInfo {
-	if matches := semanticVersionRegex.FindStringSubmatch(tag); matches != nil {
-		major, _ := strconv.Atoi(matches[1])
-		minor, _ := strconv.Atoi(matches[2])
-		patch, _ := strconv.Atoi(matches[3])
-		return &VersionInfo{Major: &major, Minor: &minor, Patch: &patch, FormatStr: "semantic"}
-	}
-	if matches := dateVersionRegex.FindStringSubmatch(tag); matches != nil {
-		year, _ := strconv.Atoi(matches[1])
-		month, _ := strconv.Atoi(matches[2])
-		day, _ := strconv.Atoi(matches[3])
-		return &VersionInfo{Major: &year, Minor: &month, Patch: &day, FormatStr: "date"}
-	}
-	if matches := numericVersionRegex.FindStringSubmatch(tag); matches != nil {
-		major, _ := strconv.Atoi(matches[1])
-		var minor, patch *int
-		if len(matches) > 2 && matches[2] != "" {
-			m, _ := strconv.Atoi(matches[2])
-			minor = &m
-		}
-		if len(matches) > 3 && matches[3] != "" {
-			p, _ := strconv.Atoi(matches[3])
-			patch = &p
-		}
-		return &VersionInfo{Major: &major, Minor: minor, Patch: patch, FormatStr: "numeric"}
-	}
-	return nil
-}
-
-func (s *ImageUpdateService) isNewerVersion(newer, current *VersionInfo) bool {
-	if newer.Major != nil && current.Major != nil {
-		if *newer.Major > *current.Major {
-			return true
-		}
-		if *newer.Major < *current.Major {
-			return false
-		}
-	}
-	if newer.Minor != nil && current.Minor != nil {
-		if *newer.Minor > *current.Minor {
-			return true
-		}
-		if *newer.Minor < *current.Minor {
-			return false
-		}
-	}
-	if newer.Patch != nil && current.Patch != nil {
-		return *newer.Patch > *current.Patch
-	}
-	return false
-}
-
 func (s *ImageUpdateService) parseImageReference(imageRef string) *ImageParts {
+	// Use the official Docker reference parser to handle all edge cases
+	named, err := ref.ParseNormalizedNamed(imageRef)
+	if err != nil {
+		// Fallback to manual parsing if the official parser fails
+		return s.parseImageReferenceFallback(imageRef)
+	}
+
+	// Extract registry
+	registry := ref.Domain(named)
+
+	// Extract repository (path without registry)
+	repository := ref.Path(named)
+
+	// Extract tag
+	tag := "latest"
+	if tagged, ok := named.(ref.NamedTagged); ok {
+		tag = tagged.Tag()
+	}
+
+	return &ImageParts{
+		Registry:   registry,
+		Repository: repository,
+		Tag:        tag,
+	}
+}
+
+// Fallback parser for cases where the official parser fails
+func (s *ImageUpdateService) parseImageReferenceFallback(imageRef string) *ImageParts {
 	var registryHost, repository, tag string
 	if strings.Contains(imageRef, "@sha256:") {
 		digestParts := strings.Split(imageRef, "@")
@@ -608,38 +377,45 @@ func (s *ImageUpdateService) getAllImageRefs(ctx context.Context, limit int) ([]
 	return imageRefs, nil
 }
 
-func (s *ImageUpdateService) getLocalImageDigest(ctx context.Context, imageRef string) (string, error) {
+func (s *ImageUpdateService) getLocalImageDigestWithAll(ctx context.Context, imageRef string) (string, []string, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to connect to Docker: %w", err)
+		return "", nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
 	inspectResponse, err := dockerClient.ImageInspect(ctx, imageRef)
 	if err != nil {
-		return "", fmt.Errorf("failed to inspect image: %w", err)
+		return "", nil, fmt.Errorf("failed to inspect image: %w", err)
 	}
+
+	var allDigests []string
+	var primaryDigest string
+
+	// Extract all digests from RepoDigests
 	if len(inspectResponse.RepoDigests) > 0 {
-		digestParts := strings.Split(inspectResponse.RepoDigests[0], "@")
-		if len(digestParts) == 2 {
-			return digestParts[1], nil
+		for _, repoDigest := range inspectResponse.RepoDigests {
+			// Format: repository@sha256:...
+			digestParts := strings.Split(repoDigest, "@")
+			if len(digestParts) == 2 {
+				digest := digestParts[1]
+				allDigests = append(allDigests, digest)
+
+				// Use first digest as primary if not yet set
+				if primaryDigest == "" {
+					primaryDigest = digest
+				}
+			}
 		}
 	}
-	return inspectResponse.ID, nil
-}
 
-func (s *ImageUpdateService) versionToString(v *VersionInfo) string {
-	out := ""
-	if v.Major != nil {
-		out = strconv.Itoa(*v.Major)
+	// Fallback to image ID if no repo digests available
+	if primaryDigest == "" {
+		primaryDigest = inspectResponse.ID
+		allDigests = []string{primaryDigest}
 	}
-	if v.Minor != nil {
-		out += "." + strconv.Itoa(*v.Minor)
-	}
-	if v.Patch != nil {
-		out += "." + strconv.Itoa(*v.Patch)
-	}
-	return out
+
+	return primaryDigest, allDigests, nil
 }
 
 // Returns all enabled credentials whose URL matches the image registry domain (normalized)
@@ -698,20 +474,6 @@ func (s *ImageUpdateService) normalizeRepository(regHost, repo string) string {
 		return "library/" + repo
 	}
 	return repo
-}
-
-func (s *ImageUpdateService) isSpecialTag(tag string) bool {
-	special := []string{
-		"latest", "stable", "unstable", "dev", "devel", "development",
-		"test", "testing", "prod", "production", "main", "master",
-		"stage", "staging", "canary", "nightly", "edge", "next",
-	}
-	for _, v := range special {
-		if tag == v {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *ImageUpdateService) CheckImageUpdateByID(ctx context.Context, imageID string) (*dto.ImageUpdateResponse, error) {
@@ -1015,7 +777,6 @@ func (s *ImageUpdateService) checkSingleImageInBatch(
 	authMap map[string]regAuth,
 	enabledRegs []models.ContainerRegistry,
 	parts *ImageParts,
-	updateScope string,
 ) *dto.ImageUpdateResponse {
 
 	start := time.Now()
@@ -1046,7 +807,7 @@ func (s *ImageUpdateService) checkSingleImageInBatch(
 		}
 	}
 
-	localDigest, ldErr := s.getLocalImageDigest(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
+	localDigest, allLocalDigests, ldErr := s.getLocalImageDigestWithAll(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
 	if ldErr != nil {
 		return &dto.ImageUpdateResponse{
 			Error:          ldErr.Error(),
@@ -1059,29 +820,12 @@ func (s *ImageUpdateService) checkSingleImageInBatch(
 		}
 	}
 
-	hasDigestUpdate := localDigest != remoteDigest
-
-	// Tag update path only if digest unchanged and tag is version-like
-	if !hasDigestUpdate && !s.isSpecialTag(parts.Tag) {
-		curVer := s.parseVersion(parts.Tag)
-		if curVer != nil {
-			tags, tagErr := rc.GetImageTags(ctx, parts.Registry, normalizedRepo, token)
-			if tagErr == nil {
-				if latestVer := s.findLatestCompatibleVersionWithScope(curVer, tags, updateScope); latestVer != nil && s.isNewerVersion(latestVer, curVer) {
-					return &dto.ImageUpdateResponse{
-						HasUpdate:      true,
-						UpdateType:     "tag",
-						CurrentVersion: parts.Tag,
-						LatestVersion:  s.versionToString(latestVer),
-						CheckTime:      time.Now(),
-						ResponseTimeMs: int(time.Since(start).Milliseconds()),
-						AuthMethod:     auth.Method,
-						AuthUsername:   auth.Username,
-						AuthRegistry:   auth.Registry,
-						UsedCredential: auth.Method == "credential",
-					}
-				}
-			}
+	hasDigestUpdate := true
+	for _, localDig := range allLocalDigests {
+		if localDig == remoteDigest {
+			localDigest = localDig
+			hasDigestUpdate = false
+			break
 		}
 	}
 
@@ -1117,7 +861,6 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 
 	regAuthMap := s.buildRegistryAuthMap(ctx, rc, regRepos, credMap)
 
-	updateScope := s.getUpdateScope()
 	outCh := make(chan struct {
 		ref string
 		res *dto.ImageUpdateResponse
@@ -1128,7 +871,7 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 	for _, img := range images {
 		go func(bi batchImage) {
 			defer wg.Done()
-			res := s.checkSingleImageInBatch(ctx, rc, regAuthMap, enabledRegs, bi.parts, updateScope)
+			res := s.checkSingleImageInBatch(ctx, rc, regAuthMap, enabledRegs, bi.parts)
 			outCh <- struct {
 				ref string
 				res *dto.ImageUpdateResponse
@@ -1224,75 +967,6 @@ func (s *ImageUpdateService) GetUpdateSummary(ctx context.Context) (*dto.ImageUp
 		TotalImages:       int(totalImages),
 		ImagesWithUpdates: int(imagesWithUpdates),
 		DigestUpdates:     int(digestUpdates),
-		TagUpdates:        int(tagUpdates),
 		ErrorsCount:       int(errorsCount),
-	}, nil
-}
-
-func (s *ImageUpdateService) GetAvailableVersions(ctx context.Context, imageRef string, limit int) (*dto.ImageVersionsResponse, error) {
-	parts := s.parseImageReference(imageRef)
-	if parts == nil {
-		return nil, fmt.Errorf("invalid image reference format")
-	}
-	registries := s.getRegistriesForImage(ctx, parts.Registry)
-	tags, _, err := s.getImageTags(ctx, parts, registries)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get tags: %w", err)
-	}
-	if limit > 0 && len(tags) > limit {
-		tags = tags[:limit]
-	}
-	var latest string
-	currentVersion := s.parseVersion(parts.Tag)
-	if currentVersion != nil {
-		updateScope := s.getUpdateScope()
-		if latestVersion := s.findLatestCompatibleVersionWithScope(currentVersion, tags, updateScope); latestVersion != nil {
-			latest = s.versionToString(latestVersion)
-		}
-	}
-	return &dto.ImageVersionsResponse{
-		ImageRef: imageRef,
-		Current:  parts.Tag,
-		Versions: tags,
-		Latest:   latest,
-	}, nil
-}
-
-func (s *ImageUpdateService) CompareVersions(ctx context.Context, imageRef, currentVersion, targetVersion string) (*dto.VersionComparisonResponse, error) {
-	currentVer := s.parseVersion(currentVersion)
-	targetVer := s.parseVersion(targetVersion)
-
-	if currentVer == nil || targetVer == nil {
-		return &dto.VersionComparisonResponse{
-			CurrentVersion: currentVersion,
-			TargetVersion:  targetVersion,
-			IsNewer:        false,
-			UpdateType:     "unknown",
-			ChangeLevel:    "unknown",
-		}, nil
-	}
-
-	isNewer := s.isNewerVersion(targetVer, currentVer)
-
-	var changeLevel string
-	if currentVer.Major != nil && targetVer.Major != nil {
-		switch {
-		case *targetVer.Major > *currentVer.Major:
-			changeLevel = "major"
-		case targetVer.Minor != nil && currentVer.Minor != nil && *targetVer.Minor > *currentVer.Minor:
-			changeLevel = "minor"
-		default:
-			changeLevel = "patch"
-		}
-	} else {
-		changeLevel = "unknown"
-	}
-
-	return &dto.VersionComparisonResponse{
-		CurrentVersion: currentVersion,
-		TargetVersion:  targetVersion,
-		IsNewer:        isNewer,
-		UpdateType:     currentVer.FormatStr,
-		ChangeLevel:    changeLevel,
 	}, nil
 }

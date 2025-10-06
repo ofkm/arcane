@@ -1225,5 +1225,6 @@
 	"variables_value_placeholder": "值",
 	"variables_duplicate_keys_error": "找到重复的密钥。请确保所有密钥都是唯一的。",
 	"variables_save_success": "全局变量保存成功",
-	"variables_save_failed": "保存失败。请重试。"
+	"variables_save_failed": "保存失败。请重试。",
+	"containers_group_by_project": "按项目分组"
 }
