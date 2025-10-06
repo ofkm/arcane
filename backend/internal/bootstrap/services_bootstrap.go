@@ -39,7 +39,7 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to settings service: %w", err)
 	}
-	dockerClient := services.NewDockerClientService(db)
+	dockerClient := services.NewDockerClientService(db, cfg)
 	svcs.Docker = dockerClient
 	svcs.User = services.NewUserService(db)
 	svcs.ContainerRegistry = services.NewContainerRegistryService(db)

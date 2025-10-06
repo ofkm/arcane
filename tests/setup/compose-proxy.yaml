@@ -1,0 +1,56 @@
+services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: arcane-docker-proxy-test
+    environment:
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      - AUTH=0
+      - SECRETS=0
+      - POST=1
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - CONTAINERS=1
+      - DISTRIBUTION=0
+      - EXEC=1
+      - IMAGES=1
+      - INFO=1
+      - NETWORKS=1
+      - NODES=0
+      - PLUGINS=0
+      - SERVICES=0
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - TASKS=0
+      - VOLUMES=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  arcane:
+    image: arcane:playwright-tests
+    user: root
+    ports:
+      - '3002:3552'
+    environment:
+      - ENVIRONMENT=testing
+      - APP_ENV=test
+      - ENCRYPTION_KEY=3JDIgolks2tJ9ymm1AdqzlYMWu0DUWyt
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
+    volumes:
+      - arcane_data:/app/data
+      - ./projects:/app/data/projects
+    depends_on:
+      - docker-socket-proxy
+    build:
+      args:
+        - BUILD_TAGS=playwright
+      context: ../..
+      dockerfile: docker/Dockerfile
+
+volumes:
+  arcane_data:

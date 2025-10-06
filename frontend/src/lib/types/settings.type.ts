@@ -18,6 +18,7 @@ export type Settings = {
 	enableGravatar: boolean;
 	uiConfigDisabled: boolean;
 	defaultShell: string;
+	dockerHost: string;
 
 	authLocalEnabled: boolean;
 	authOidcEnabled: boolean;

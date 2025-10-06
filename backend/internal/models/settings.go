@@ -53,6 +53,7 @@ type Settings struct {
 	BaseServerURL      SettingVariable `key:"baseServerUrl"`
 	EnableGravatar     SettingVariable `key:"enableGravatar"`
 	DefaultShell       SettingVariable `key:"defaultShell"`
+	DockerHost         SettingVariable `key:"dockerHost,public,envOverride"`
 
 	// Authentication
 	AuthLocalEnabled   SettingVariable `key:"authLocalEnabled,public"`

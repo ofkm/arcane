@@ -5,7 +5,7 @@
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
 	import PlusIcon from '@lucide/svelte/icons/plus';
-	import GlobeIcon from '@lucide/svelte/icons/globe';
+	import RouterIcon from '@lucide/svelte/icons/router';
 	import ServerIcon from '@lucide/svelte/icons/server';
 	import { environmentStore } from '$lib/stores/environment.store';
 	import type { Environment } from '$lib/types/environment.type';
@@ -13,6 +13,7 @@
 	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';
 	import { cn } from '$lib/utils';
+	import settingsStore from '$lib/stores/config-store';
 
 	type Props = {
 		isAdmin?: boolean;
@@ -61,6 +62,14 @@
 			return env.name;
 		}
 	}
+
+	function getConnectionString(env: Environment): string {
+		if (env.isLocal) {
+			return $settingsStore.dockerHost || 'unix:///var/run/docker.sock';
+		} else {
+			return env.apiUrl;
+		}
+	}
 </script>
 
 <Sidebar.Menu>
@@ -86,7 +95,7 @@
 								{#if currentSelectedEnvironment.isLocal}
 									<ServerIcon class="size-4" />
 								{:else}
-									<GlobeIcon class="size-4" />
+									<RouterIcon class="size-4" />
 								{/if}
 							</div>
 							<div class="grid flex-1 text-left text-sm leading-tight">
@@ -94,7 +103,7 @@
 									{getEnvLabel(currentSelectedEnvironment)}
 								</span>
 								<span class="truncate text-xs">
-									{currentSelectedEnvironment.isLocal ? m.sidebar_local_docker_socket() : currentSelectedEnvironment.apiUrl}
+									{getConnectionString(currentSelectedEnvironment)}
 								</span>
 							</div>
 						{:else}
@@ -141,21 +150,31 @@
 						</DropdownMenu.Item>
 					{:else}
 						{#each availableEnvironments as env (env.id)}
-							<DropdownMenu.Item onSelect={() => handleSelect(env)} class="gap-2 p-2">
-								<div class="flex size-6 items-center justify-center rounded-md border">
+							{@const isActive = currentSelectedEnvironment?.id === env.id}
+							<DropdownMenu.Item
+								onSelect={() => !isActive && handleSelect(env)}
+								class={cn(
+									'gap-2 p-2',
+									isActive && 'bg-sidebar-accent text-sidebar-accent-foreground pointer-events-none font-medium'
+								)}
+							>
+								<div
+									class={cn(
+										'flex size-6 items-center justify-center rounded-md border',
+										isActive ? 'bg-sidebar-primary border-sidebar-primary' : 'border-border'
+									)}
+								>
 									{#if env.isLocal}
-										<ServerIcon class="size-3.5 shrink-0" />
+										<ServerIcon class={cn('size-3.5 shrink-0', isActive && 'text-sidebar-primary-foreground')} />
 									{:else}
-										<GlobeIcon class="size-3.5 shrink-0" />
+										<RouterIcon class={cn('size-3.5 shrink-0', isActive && 'text-sidebar-primary-foreground')} />
 									{/if}
 								</div>
 								<div class="flex flex-col">
 									<span>{getEnvLabel(env)}</span>
-									{#if env.isLocal}
-										<span class="text-muted-foreground text-xs">{m.sidebar_local_docker_socket()}</span>
-									{:else}
-										<span class="text-muted-foreground max-w-32 truncate text-xs">{env.apiUrl}</span>
-									{/if}
+									<span class={cn('text-xs', isActive ? 'text-sidebar-accent-foreground/70' : 'text-muted-foreground')}>
+										{getConnectionString(env)}
+									</span>
 								</div>
 							</DropdownMenu.Item>
 						{/each}

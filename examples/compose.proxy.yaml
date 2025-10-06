@@ -1,0 +1,76 @@
+services:
+  # Docker Socket Proxy - see https://github.com/Tecnativa/docker-socket-proxy for official documentation
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: arcane-docker-proxy
+    environment:
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      # Security critical
+      - AUTH=0
+      - SECRETS=0
+      - POST=1
+      # Not always needed
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - CONTAINERS=1
+      - DISTRIBUTION=0
+      - EXEC=1
+      - IMAGES=1
+      - INFO=1
+      - NETWORKS=1
+      - NODES=0
+      - PLUGINS=0
+      - SERVICES=0
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - TASKS=0
+      - VOLUMES=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Read-only access to host socket
+    networks:
+      - arcane-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  arcane:
+    image: ghcr.io/ofkm/arcane:latest
+    container_name: arcane
+    ports:
+      - "3552:3552"
+    volumes:
+      - arcane-data:/app/data
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxx # openssl rand -base64 32
+      - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxx # openssl rand -base64 32
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375 # Use the proxy instead of direct socket
+    networks:
+      - arcane-internal
+    depends_on:
+      - docker-socket-proxy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:3552/api/health >/dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+networks:
+  arcane-internal:
+    driver: bridge
+    name: arcane-internal
+
+volumes:
+  arcane-data:
+    name: arcane-data

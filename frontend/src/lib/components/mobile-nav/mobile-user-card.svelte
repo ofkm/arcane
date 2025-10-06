@@ -3,7 +3,7 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { cn } from '$lib/utils';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
-	import GlobeIcon from '@lucide/svelte/icons/globe';
+	import RouterIcon from '@lucide/svelte/icons/router';
 	import ServerIcon from '@lucide/svelte/icons/server';
 	import LanguagesIcon from '@lucide/svelte/icons/languages';
 	import Sun from '@lucide/svelte/icons/sun';
@@ -16,6 +16,7 @@
 	import type { User } from '$lib/types/user.type';
 	import LocalePicker from '$lib/components/locale-picker.svelte';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import settingsStore from '$lib/stores/config-store';
 
 	type Props = {
 		user: User;
@@ -64,6 +65,14 @@
 			return 'Local Docker';
 		} else {
 			return env.name;
+		}
+	}
+
+	function getConnectionString(env: Environment): string {
+		if (env.isLocal) {
+			return $settingsStore.dockerHost || 'unix:///var/run/docker.sock';
+		} else {
+			return env.apiUrl;
 		}
 	}
 </script>
@@ -116,7 +125,7 @@
 							{#if currentSelectedEnvironment?.isLocal}
 								<ServerIcon class="size-4" />
 							{:else}
-								<GlobeIcon class="size-4" />
+								<RouterIcon class="size-4" />
 							{/if}
 						</div>
 						<div class="min-w-0 flex-1">
@@ -126,6 +135,11 @@
 							<div class="text-foreground text-sm font-medium">
 								{currentSelectedEnvironment ? getEnvLabel(currentSelectedEnvironment) : m.sidebar_no_environment()}
 							</div>
+							{#if currentSelectedEnvironment}
+								<div class="text-muted-foreground/60 text-xs">
+									{getConnectionString(currentSelectedEnvironment)}
+								</div>
+							{/if}
 						</div>
 						{#if availableEnvironments.length > 1}
 							<Select.Root type="single" value={selectedValue} onValueChange={handleEnvSelect}>

@@ -5,7 +5,7 @@
   <img src=".github/assets/arcane.svg" alt="Arcane Logo" width="300" height="300"/>
 </p>
 
-Arcane is a modern easy to use way to manage your docker containers, images, volumes, and networks — all in one place.
+Arcane is designed to be an easy and modern Docker management platform, built with everybody in mind. The goal of Arcane is to be built for and by the community to make sure nobody feels left out or behind with their specific features or processes.
 
 ---
 

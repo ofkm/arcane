@@ -227,7 +227,7 @@
 	"networks_in_use_count": "En uso ({count})",
 	"networks_predefined": "Predefinido",
 	"common_yes": "Sí",
-	"common_no": "No",
+	"common_no": "Nu",
 	"networks_ipam_title": "Configuración IPAM",
 	"networks_ipam_description": "Configuración de administración de direcciones IP para esta red",
 	"networks_ipam_subnet_label": "Subred",
