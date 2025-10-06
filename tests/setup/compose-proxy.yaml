@@ -3,28 +3,29 @@ services:
     image: tecnativa/docker-socket-proxy:latest
     container_name: arcane-docker-proxy-test
     environment:
-      # Enable only the Docker API endpoints that Arcane needs
-      - CONTAINERS=1
-      - IMAGES=1
-      - NETWORKS=1
-      - VOLUMES=1
-      - INFO=1
-      - SERVICES=1
-      - TASKS=1
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      - AUTH=0
+      - SECRETS=0
       - POST=1
-      - DELETE=1
-      - EXEC=1
-      - SYSTEM=1
       - BUILD=0
       - COMMIT=0
       - CONFIGS=0
+      - CONTAINERS=1
       - DISTRIBUTION=0
-      - GRPC=0
+      - EXEC=1
+      - IMAGES=1
+      - INFO=1
+      - NETWORKS=1
       - NODES=0
       - PLUGINS=0
-      - SECRETS=0
+      - SERVICES=0
       - SESSION=0
       - SWARM=0
+      - SYSTEM=0
+      - TASKS=0
+      - VOLUMES=1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
