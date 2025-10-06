@@ -43,8 +43,10 @@
 		envContent: z.string().optional().default('')
 	});
 
+	const initialName = data.selectedTemplate ? data.selectedTemplate.name.toLowerCase().replace(/[^a-z0-9-_]/g, '-') : '';
+
 	let formData = $derived({
-		name: '',
+		name: initialName,
 		composeContent: data.defaultTemplate || '',
 		envContent: data.envTemplate || ''
 	});
@@ -141,7 +143,7 @@
 					</Button>
 					<div class="bg-border h-4 w-px"></div>
 					<div class="flex items-center gap-2">
-						<h1 class="text-lg font-semibold leading-none">{m.compose_new_title()}</h1>
+						<h1 class="text-lg leading-none font-semibold">{m.compose_new_title()}</h1>
 					</div>
 				</div>
 
@@ -174,7 +176,7 @@
 												type="button"
 												variant="ghost"
 												size="sm"
-												class="h-auto w-full justify-start whitespace-normal break-all p-2 text-left font-mono text-xs"
+												class="h-auto w-full justify-start p-2 text-left font-mono text-xs break-all whitespace-normal"
 												onclick={() => useExample(command)}
 											>
 												<CopyIcon class="mr-2 size-3 shrink-0" />
