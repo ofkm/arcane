@@ -281,7 +281,7 @@ func (s *OidcService) HandleCallback(ctx context.Context, code, state, storedSta
 		}
 
 		if stateData.Nonce != "" {
-			verifierConfig.Now = func() time.Time { return time.Now() }
+			verifierConfig.Now = time.Now
 		}
 
 		verifier := provider.Verifier(verifierConfig)
