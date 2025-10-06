@@ -1,63 +1,65 @@
-# Example docker-compose configuration using docker-socket-proxy for enhanced security
-# This setup uses tecnativa/docker-socket-proxy to provide controlled access to the Docker socket
-
 services:
-  # Docker Socket Proxy - provides secure, restricted access to Docker socket
+  # Docker Socket Proxy - see https://github.com/Tecnativa/docker-socket-proxy for official documentation
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy:latest
     container_name: arcane-docker-proxy
     environment:
-      # Enable only the Docker API endpoints that Arcane needs
-      - CONTAINERS=1
-      - IMAGES=1
-      - NETWORKS=1
-      - VOLUMES=1
-      - INFO=1
-      - SERVICES=1
-      - TASKS=1
-      - POST=1  # Required for creating/updating resources
-      - DELETE=1  # Required for deleting resources
-      - BUILD=0  # Disable if you don't need build functionality
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      # Security critical
+      - AUTH=0
+      - SECRETS=0
+      - POST=1
+      # Not always needed
+      - BUILD=0
       - COMMIT=0
       - CONFIGS=0
+      - CONTAINERS=1
       - DISTRIBUTION=0
-      - EXEC=1  # Required for container exec/terminal features
-      - GRPC=0
+      - EXEC=1
+      - IMAGES=1
+      - INFO=1
+      - NETWORKS=1
       - NODES=0
       - PLUGINS=0
-      - SECRETS=0
+      - SERVICES=0
       - SESSION=0
       - SWARM=0
-      - SYSTEM=1  # Required for system info
+      - SYSTEM=0
+      - TASKS=0
+      - VOLUMES=1
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # Read-only access to host socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Read-only access to host socket
     networks:
       - arcane-internal
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
 
-  # Arcane service configured to use the socket proxy
   arcane:
     image: ghcr.io/ofkm/arcane:latest
     container_name: arcane
     ports:
-      - '3552:3552'
+      - "3552:3552"
     volumes:
       - arcane-data:/app/data
-      - /host/path/to/projects:/app/data/projects  # Optional: for project management
     environment:
       - PUID=1000
       - PGID=1000
-      - ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxx  # Generate with: openssl rand -base64 32
-      - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxx  # Generate a secure secret
-      - DOCKER_HOST=tcp://docker-socket-proxy:2375  # Use the proxy instead of direct socket
+      - ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxx # openssl rand -base64 32
+      - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxx # openssl rand -base64 32
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375 # Use the proxy instead of direct socket
     networks:
       - arcane-internal
     depends_on:
       - docker-socket-proxy
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:3552/api/health >/dev/null || exit 1']
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:3552/api/health >/dev/null || exit 1",
+        ]
       interval: 10s
       timeout: 3s
       retries: 5

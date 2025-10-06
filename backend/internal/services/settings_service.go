@@ -143,6 +143,9 @@ func (s *SettingsService) loadDatabaseSettingsInternal(ctx context.Context, db *
 		}
 	}
 
+	// Apply environment variable overrides for fields tagged with "envOverride"
+	s.applyEnvOverrides(ctx, dest)
+
 	return dest, nil
 
 }
@@ -197,6 +200,41 @@ func (s *SettingsService) loadDatabaseConfigFromEnv(ctx context.Context, db *dat
 	slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: completed env load", "loadedFields", count)
 
 	return dest, nil
+}
+
+func (s *SettingsService) applyEnvOverrides(ctx context.Context, dest *models.Settings) {
+	rt := reflect.ValueOf(dest).Elem().Type()
+	rv := reflect.ValueOf(dest).Elem()
+
+	for i := range rt.NumField() {
+		field := rt.Field(i)
+		tagValue := field.Tag.Get("key")
+		if tagValue == "" {
+			continue
+		}
+
+		// Parse tag attributes (e.g., "dockerHost,public,envOverride")
+		parts := strings.Split(tagValue, ",")
+		key := parts[0]
+		hasEnvOverride := false
+		for _, attr := range parts[1:] {
+			if attr == "envOverride" {
+				hasEnvOverride = true
+				break
+			}
+		}
+
+		if !hasEnvOverride {
+			continue
+		}
+
+		// Check if environment variable is set
+		envVarName := utils.CamelCaseToScreamingSnakeCase(key)
+		if val, ok := os.LookupEnv(envVarName); ok && val != "" {
+			slog.DebugContext(ctx, "applyEnvOverrides: applying env override", "key", key, "env", envVarName)
+			rv.Field(i).FieldByName("Value").SetString(val)
+		}
+	}
 }
 
 func (s *SettingsService) GetSettings(ctx context.Context) (*models.Settings, error) {
