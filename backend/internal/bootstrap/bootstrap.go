@@ -26,25 +26,34 @@ func Bootstrap(ctx context.Context) error {
 	ConfigureGormLogger(cfg)
 	slog.InfoContext(ctx, "Arcane is starting")
 
+	appCtx, cancelApp := context.WithCancel(ctx)
+	defer cancelApp()
+
 	db, err := initializeDBAndMigrate(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
+	defer func() {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer shutdownCancel()
+		if err := db.Close(); err != nil {
+			slog.ErrorContext(shutdownCtx, "Error closing database", slog.Any("error", err))
+		}
+	}()
 
 	httpClient := httputils.NewHTTPClient()
 
-	appServices, dockerClientService, err := initializeServices(ctx, db, cfg, httpClient)
+	appServices, dockerClientService, err := initializeServices(appCtx, db, cfg, httpClient)
 	if err != nil {
-		db.Close()
 		return fmt.Errorf("failed to initialize services: %w", err)
 	}
 
-	utils.LoadAgentToken(ctx, cfg, appServices.Settings.GetStringSetting)
-	utils.EnsureEncryptionKey(ctx, cfg, appServices.Settings.EnsureEncryptionKey)
+	utils.LoadAgentToken(appCtx, cfg, appServices.Settings.GetStringSetting)
+	utils.EnsureEncryptionKey(appCtx, cfg, appServices.Settings.EnsureEncryptionKey)
 	utils.InitEncryption(cfg)
-	utils.InitializeDefaultSettings(ctx, cfg, appServices.Settings)
+	utils.InitializeDefaultSettings(appCtx, cfg, appServices.Settings)
 
-	utils.TestDockerConnection(ctx, func(ctx context.Context) error {
+	utils.TestDockerConnection(appCtx, func(ctx context.Context) error {
 		dockerClient, err := dockerClientService.CreateConnection(ctx)
 		if err != nil {
 			return err
@@ -53,7 +62,7 @@ func Bootstrap(ctx context.Context) error {
 		return nil
 	})
 
-	utils.InitializeNonAgentFeatures(ctx, cfg,
+	utils.InitializeNonAgentFeatures(appCtx, cfg,
 		appServices.User.CreateDefaultAdmin,
 		func(ctx context.Context) error {
 			_, err := appServices.Settings.SyncOidcEnvToDatabase(ctx)
@@ -62,33 +71,22 @@ func Bootstrap(ctx context.Context) error {
 
 	scheduler, err := initializeScheduler()
 	if err != nil {
-		db.Close()
 		return fmt.Errorf("failed to create job scheduler: %w", err)
 	}
-	registerJobs(ctx, scheduler, appServices, cfg)
+	registerJobs(appCtx, scheduler, appServices, cfg)
 
 	router := setupRouter(cfg, appServices)
 
-	err = runServices(ctx, cfg, router, scheduler)
+	err = runServices(appCtx, cfg, router, scheduler)
 	if err != nil {
 		return fmt.Errorf("failed to run services: %w", err)
 	}
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownCancel()
-
-	if err := db.Close(); err != nil {
-		slog.ErrorContext(shutdownCtx, "Error closing database", slog.Any("error", err))
-	}
-
-	slog.InfoContext(shutdownCtx, "Arcane shutdown complete")
+	slog.InfoContext(appCtx, "Arcane shutdown complete")
 	return nil
 }
 
-func runServices(ctx context.Context, cfg *config.Config, router http.Handler, scheduler interface{ Run(context.Context) error }) error {
-	appCtx, cancelApp := context.WithCancel(ctx)
-	defer cancelApp()
-
+func runServices(appCtx context.Context, cfg *config.Config, router http.Handler, scheduler interface{ Run(context.Context) error }) error {
 	go func() {
 		slog.InfoContext(appCtx, "Starting scheduler")
 		if err := scheduler.Run(appCtx); err != nil {
@@ -109,7 +107,6 @@ func runServices(ctx context.Context, cfg *config.Config, router http.Handler, s
 		slog.InfoContext(appCtx, "Starting HTTP server", slog.String("port", cfg.Port))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.ErrorContext(appCtx, "Failed to start server", slog.Any("error", err))
-			cancelApp()
 		}
 	}()
 
@@ -122,8 +119,6 @@ func runServices(ctx context.Context, cfg *config.Config, router http.Handler, s
 	case <-appCtx.Done():
 		slog.InfoContext(appCtx, "Context canceled")
 	}
-
-	cancelApp()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
