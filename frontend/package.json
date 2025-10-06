@@ -53,7 +53,7 @@
     "bits-ui": "^2.11.4",
     "bytes": "^3.1.2",
     "clsx": "^2.1.1",
-    "eslint": "^9.36.0",
+    "eslint": "^9.37.0",
     "eslint-plugin-svelte": "^3.12.4",
     "formsnap": "^2.0.1",
     "globals": "^16.4.0",
