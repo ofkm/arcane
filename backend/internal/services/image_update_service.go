@@ -54,6 +54,22 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 		}, nil
 	}
 
+	// Detect if registry redirects to Docker Hub
+	// This handles cases like docker.getoutline.com which redirects to registry.hub.docker.com
+	rc := registry.NewClient()
+	authURL, err := rc.CheckAuth(ctx, parts.Registry)
+	if err == nil && authURL != "" && strings.Contains(authURL, "auth.docker.io") && parts.Registry != "docker.io" {
+		// Registry redirects to Docker Hub
+		slog.InfoContext(ctx, "Registry redirects to Docker Hub",
+			slog.String("originalRegistry", parts.Registry),
+			slog.String("repository", parts.Repository),
+			slog.String("imageRef", imageRef))
+		// Update parts: the repository path on Docker Hub includes the original registry as part of the path
+		// e.g., docker.getoutline.com/outlinewiki/outline -> registry=docker.io, repo=docker.getoutline.com/outlinewiki/outline
+		parts.Repository = parts.Registry + "/" + parts.Repository
+		parts.Registry = "docker.io"
+	}
+
 	registries := s.getRegistriesForImage(ctx, parts.Registry)
 
 	digestResult, err := s.checkDigestUpdate(ctx, parts, registries)
@@ -230,20 +246,14 @@ func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *Image
 }
 
 func (s *ImageUpdateService) parseImageReference(imageRef string) *ImageParts {
-	// Use the official Docker reference parser to handle all edge cases
 	named, err := ref.ParseNormalizedNamed(imageRef)
 	if err != nil {
-		// Fallback to manual parsing if the official parser fails
 		return s.parseImageReferenceFallback(imageRef)
 	}
 
-	// Extract registry
 	registry := ref.Domain(named)
-
-	// Extract repository (path without registry)
 	repository := ref.Path(named)
 
-	// Extract tag
 	tag := "latest"
 	if tagged, ok := named.(ref.NamedTagged); ok {
 		tag = tagged.Tag()

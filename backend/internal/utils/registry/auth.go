@@ -74,15 +74,34 @@ func (c *Client) CheckAuth(ctx context.Context, registry string) (string, error)
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	// Create client that doesn't follow redirects so we can detect registry aliases
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+		Timeout: 10 * time.Second,
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
-	resp, err := c.http.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	// Handle redirects to Docker Hub
+	if resp.StatusCode == http.StatusFound || resp.StatusCode == http.StatusMovedPermanently {
+		location := resp.Header.Get("Location")
+		if location != "" && (strings.Contains(location, "registry.hub.docker.com") ||
+			strings.Contains(location, "registry-1.docker.io") ||
+			strings.Contains(location, "index.docker.io")) {
+			// Registry redirects to Docker Hub, use Docker Hub auth
+			return c.CheckAuth(ctx, "docker.io")
+		}
+	}
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		h := resp.Header.Get("WWW-Authenticate")
