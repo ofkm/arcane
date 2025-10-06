@@ -21,7 +21,7 @@ export default class SettingsService extends BaseAPIService {
 		return this.normalize(res.data);
 	}
 
-	async updateSettings(settings: Settings) {
+	async updateSettings(settings: Partial<Settings>) {
 		const envId = await environmentStore.getCurrentEnvironmentId();
 		const payload: Record<string, string> = {};
 		for (const key in settings) {

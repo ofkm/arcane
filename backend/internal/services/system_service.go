@@ -479,3 +479,7 @@ func (s *SystemService) ConvertToDockerCompose(parsed *models.DockerRunCommand) 
 
 	return string(yamlData), envVars, serviceName, nil
 }
+
+func (s *SystemService) GetDiskUsagePath(ctx context.Context) string {
+	return s.settingsService.GetStringSetting(ctx, "diskUsagePath", "data/projects")
+}

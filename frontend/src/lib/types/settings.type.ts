@@ -9,6 +9,7 @@ export type SettingRawResponse = {
 
 export type Settings = {
 	projectsDirectory: string;
+	diskUsagePath: string;
 	autoUpdate: boolean;
 	autoUpdateInterval: number;
 	pollingEnabled: boolean;

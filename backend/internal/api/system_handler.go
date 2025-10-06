@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"runtime"
@@ -228,6 +229,14 @@ func (h *SystemHandler) StartAllStoppedContainers(c *gin.Context) {
 	})
 }
 
+func (h *SystemHandler) getDiskUsagePath(ctx context.Context) string {
+	diskUsagePath := h.systemService.GetDiskUsagePath(ctx)
+	if diskUsagePath == "" {
+		diskUsagePath = "/"
+	}
+	return diskUsagePath
+}
+
 func (h *SystemHandler) StopAllContainers(c *gin.Context) {
 	result, err := h.systemService.StopAllContainers(c.Request.Context())
 	if err != nil {
@@ -283,7 +292,8 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 			memTotal = memInfo.Total
 		}
 
-		diskInfo, _ := disk.Usage("/")
+		diskUsagePath := h.getDiskUsagePath(c.Request.Context())
+		diskInfo, _ := disk.Usage(diskUsagePath)
 		var diskUsed, diskTotal uint64
 		if diskInfo != nil {
 			diskUsed = diskInfo.Used

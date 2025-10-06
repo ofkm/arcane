@@ -385,6 +385,14 @@
 	"dashboard_meter_memory_desc": "RAM utilization",
 	"dashboard_meter_disk": "Disk Usage",
 	"dashboard_meter_disk_desc": "Storage utilization",
+	"dashboard_meter_disk_used": "Used",
+	"dashboard_meter_disk_free": "Free",
+	"dashboard_meter_disk_monitoring": "Monitoring: {path}",
+	"disk_usage_settings": "Disk Usage Settings",
+	"disk_usage_settings_description": "Configure which directory to monitor for disk usage metrics.",
+	"disk_usage_save": "Disk usage path updated successfully",
+	"disk_usage_save_failed": "Failed to update disk usage path",
+	"directory_path": "Directory Path",
 	"dashboard_docker_details_title": "Docker Details",
 	"common_confirm": "Confirm",
 	"containers_title": "Containers",
@@ -1184,8 +1192,6 @@
 	"docker_info_paused_label": "Paused",
 	"docker_info_stopped_label": "Stopped",
 	"docker_info_images_label": "Images",
-	"dashboard_meter_disk_used": "Used",
-	"dashboard_meter_disk_free": "Free",
 	"dashboard_meter_disk_total": "Total",
 	"dashboard_docker_overview": "Docker Overview",
 	"services": "Services",
@@ -1226,5 +1232,5 @@
 	"variables_duplicate_keys_error": "Duplicate keys found. Please ensure all keys are unique.",
 	"variables_save_success": "Global variables saved successfully",
 	"variables_save_failed": "Failed to save. Please try again.",
-  "containers_group_by_project": "Group by Project"
+	"containers_group_by_project": "Group by Project"
 }

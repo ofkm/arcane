@@ -77,6 +77,7 @@ func (s *SettingsService) LoadDatabaseSettings(ctx context.Context) (err error) 
 func (s *SettingsService) getDefaultSettings() *models.Settings {
 	return &models.Settings{
 		ProjectsDirectory:            models.SettingVariable{Value: "data/projects"},
+		DiskUsagePath:                models.SettingVariable{Value: "data/projects"},
 		AutoUpdate:                   models.SettingVariable{Value: "false"},
 		AutoUpdateInterval:           models.SettingVariable{Value: "1440"},
 		PollingEnabled:               models.SettingVariable{Value: "true"},
