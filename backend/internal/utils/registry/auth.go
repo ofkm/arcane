@@ -44,6 +44,24 @@ func (c *Client) getServiceName(authURL string) string {
 	return "registry"
 }
 
+// isRedirectStatus checks if the status code is a redirect (301, 302, 307, 308)
+func (c *Client) isRedirectStatus(statusCode int) bool {
+	return statusCode == http.StatusMovedPermanently ||
+		statusCode == http.StatusFound ||
+		statusCode == http.StatusTemporaryRedirect ||
+		statusCode == http.StatusPermanentRedirect
+}
+
+// isDockerHubLocation checks if a redirect location points to Docker Hub
+func (c *Client) isDockerHubLocation(location string) bool {
+	if location == "" {
+		return false
+	}
+	return strings.Contains(location, "registry.hub.docker.com") ||
+		strings.Contains(location, "registry-1.docker.io") ||
+		strings.Contains(location, "index.docker.io")
+}
+
 func (c *Client) ParseAuthChallenge(header string) (string, string) {
 	lower := strings.ToLower(header)
 	if !strings.HasPrefix(lower, "bearer ") {
@@ -92,14 +110,16 @@ func (c *Client) CheckAuth(ctx context.Context, registry string) (string, error)
 	}
 	defer resp.Body.Close()
 
-	// Handle redirects to Docker Hub
-	if resp.StatusCode == http.StatusFound || resp.StatusCode == http.StatusMovedPermanently {
+	if c.isRedirectStatus(resp.StatusCode) {
 		location := resp.Header.Get("Location")
-		if location != "" && (strings.Contains(location, "registry.hub.docker.com") ||
-			strings.Contains(location, "registry-1.docker.io") ||
-			strings.Contains(location, "index.docker.io")) {
-			// Registry redirects to Docker Hub, use Docker Hub auth
-			return c.CheckAuth(ctx, "docker.io")
+		if c.isDockerHubLocation(location) {
+			// Registry redirects to Docker Hub -> use Docker Hub auth once
+			// Prevent infinite recursion if docker.io itself redirects
+			if normalizeHost(registry) != "docker.io" {
+				return c.CheckAuth(ctx, "docker.io")
+			}
+			// Already probing docker.io; avoid redirect loop.
+			// Fall through to proceed with normal challenge handling.
 		}
 	}
 

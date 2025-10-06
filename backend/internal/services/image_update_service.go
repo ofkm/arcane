@@ -54,11 +54,19 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 		}, nil
 	}
 
+	// Preserve original reference for local image inspection
+	localRef := fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag)
+
 	// Detect if registry redirects to Docker Hub
 	// This handles cases like docker.getoutline.com which redirects to registry.hub.docker.com
 	rc := registry.NewClient()
 	authURL, err := rc.CheckAuth(ctx, parts.Registry)
-	if err == nil && authURL != "" && strings.Contains(authURL, "auth.docker.io") && parts.Registry != "docker.io" {
+
+	// Normalize registry to detect native Docker Hub hostnames
+	normalizedRegistry := s.normalizeRegistryURL(parts.Registry)
+	isDockerHubNative := normalizedRegistry == "docker.io"
+
+	if err == nil && authURL != "" && strings.Contains(authURL, "auth.docker.io") && !isDockerHubNative {
 		// Registry redirects to Docker Hub
 		slog.InfoContext(ctx, "Registry redirects to Docker Hub",
 			slog.String("originalRegistry", parts.Registry),
@@ -72,7 +80,7 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 
 	registries := s.getRegistriesForImage(ctx, parts.Registry)
 
-	digestResult, err := s.checkDigestUpdate(ctx, parts, registries)
+	digestResult, err := s.checkDigestUpdate(ctx, parts, registries, authURL, localRef)
 	if err != nil {
 		result := &dto.ImageUpdateResponse{
 			Error:          err.Error(),
@@ -184,10 +192,69 @@ func (s *ImageUpdateService) getRegistryToken(ctx context.Context, regHost, repo
 	return "", nil, fmt.Errorf("failed to get registry token")
 }
 
-func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *ImageParts, registries []models.ContainerRegistry) (*dto.ImageUpdateResponse, error) {
+// getRegistryTokenWithAuthURL is like getRegistryToken but uses a pre-fetched auth URL
+func (s *ImageUpdateService) getRegistryTokenWithAuthURL(ctx context.Context, regHost, repository string, regs []models.ContainerRegistry, authURL string) (string, *authDetails, error) {
 	rc := registry.NewClient()
 
-	token, auth, err := s.getRegistryToken(ctx, parts.Registry, parts.Repository, registries)
+	slog.DebugContext(ctx, "Using cached auth URL",
+		slog.String("registry", regHost),
+		slog.String("repository", repository))
+
+	// No auth required
+	if authURL == "" {
+		return "", &authDetails{Method: "none", Registry: regHost}, nil
+	}
+
+	// 1) Try anonymous (works for many public repos)
+	anonToken, anonErr := rc.GetToken(ctx, authURL, repository, nil)
+	if anonErr == nil && anonToken != "" {
+		return anonToken, &authDetails{Method: "anonymous", Registry: regHost}, nil
+	}
+
+	// 2) Try each matching enabled registry credential
+	var lastErr error
+	for i, reg := range regs {
+		if reg.Username == "" || reg.Token == "" {
+			continue
+		}
+		decrypted, decErr := utils.Decrypt(reg.Token)
+		if decErr != nil {
+			lastErr = decErr
+			continue
+		}
+		creds := &registry.Credentials{Username: reg.Username, Token: decrypted}
+		token, err := rc.GetToken(ctx, authURL, repository, creds)
+		if err == nil && token != "" {
+			return token, &authDetails{Method: "credential", Username: reg.Username, Registry: regHost}, nil
+		}
+		if err != nil {
+			lastErr = err
+		} else {
+			lastErr = fmt.Errorf("empty token (cred idx %d)", i)
+		}
+	}
+
+	if lastErr != nil {
+		return "", nil, fmt.Errorf("failed to get registry token: %w", lastErr)
+	}
+	return "", nil, fmt.Errorf("failed to get registry token")
+}
+
+func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *ImageParts, registries []models.ContainerRegistry, cachedAuthURL, localRef string) (*dto.ImageUpdateResponse, error) {
+	rc := registry.NewClient()
+
+	// Use cached auth URL if provided to avoid double probing
+	var token string
+	var auth *authDetails
+	var err error
+
+	if cachedAuthURL != "" {
+		// We already have the auth URL from redirect detection
+		token, auth, err = s.getRegistryTokenWithAuthURL(ctx, parts.Registry, parts.Repository, registries, cachedAuthURL)
+	} else {
+		token, auth, err = s.getRegistryToken(ctx, parts.Registry, parts.Repository, registries)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get registry token: %w", err)
 	}
@@ -209,8 +276,8 @@ func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *Image
 		return nil, fmt.Errorf("failed to get remote digest: %w", err)
 	}
 
-	// Get local image and all its digests
-	localDigest, allLocalDigests, err := s.getLocalImageDigestWithAll(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
+	// Get local image and all its digests using the original local reference
+	localDigest, allLocalDigests, err := s.getLocalImageDigestWithAll(ctx, localRef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get local digest: %w", err)
 	}
