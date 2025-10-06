@@ -13,6 +13,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsService } from '$lib/services/settings-service';
 	import { toast } from 'svelte-sonner';
+	import { z } from 'zod/v4';
 
 	let {
 		diskUsage,
@@ -36,16 +37,26 @@
 	let popoverOpen = $state(false);
 	let isSaving = $state(false);
 
+	const pathSchema = z
+		.string()
+		.min(1, 'Path cannot be empty')
+		.refine((path) => !path.includes('..'), 'Path cannot contain ".."')
+		.refine((path) => !/^[a-zA-Z]:/.test(path), 'Windows-style paths are not supported');
+
 	async function saveDiskUsagePath() {
-		if (!diskUsagePath.trim()) {
-			toast.error('Disk usage path cannot be empty');
+		const trimmedPath = diskUsagePath.trim();
+		const result = pathSchema.safeParse(trimmedPath);
+		
+		if (!result.success) {
+			const firstError = result.error.issues[0];
+			toast.error(firstError.message);
 			return;
 		}
 
 		isSaving = true;
 		try {
-			await settingsService.updateSettings({ diskUsagePath: diskUsagePath.trim() });
-			settingsStore.set({ ...$settingsStore, diskUsagePath: diskUsagePath.trim() });
+			await settingsService.updateSettings({ diskUsagePath: trimmedPath });
+			settingsStore.set({ ...$settingsStore, diskUsagePath: trimmedPath });
 			toast.success(m.disk_usage_save());
 			popoverOpen = false;
 		} catch (error) {
