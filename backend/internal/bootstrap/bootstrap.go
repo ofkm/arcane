@@ -33,13 +33,14 @@ func Bootstrap(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
-	defer func() {
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer func(ctx context.Context) {
+		// Use background context for shutdown as appCtx is already canceled
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second) //nolint:contextcheck
 		defer shutdownCancel()
 		if err := db.Close(); err != nil {
-			slog.ErrorContext(shutdownCtx, "Error closing database", slog.Any("error", err))
+			slog.ErrorContext(shutdownCtx, "Error closing database", slog.Any("error", err)) //nolint:contextcheck
 		}
-	}()
+	}(appCtx)
 
 	httpClient := httputils.NewHTTPClient()
 
@@ -75,7 +76,7 @@ func Bootstrap(ctx context.Context) error {
 	}
 	registerJobs(appCtx, scheduler, appServices, cfg)
 
-	router := setupRouter(cfg, appServices)
+	router := setupRouter(cfg, appServices) //nolint:contextcheck
 
 	err = runServices(appCtx, cfg, router, scheduler)
 	if err != nil {
@@ -120,14 +121,15 @@ func runServices(appCtx context.Context, cfg *config.Config, router http.Handler
 		slog.InfoContext(appCtx, "Context canceled")
 	}
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Use background context for shutdown as appCtx is already canceled
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second) //nolint:contextcheck
 	defer shutdownCancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		slog.ErrorContext(shutdownCtx, "Server forced to shutdown", slog.Any("error", err))
+	if err := srv.Shutdown(shutdownCtx); err != nil { //nolint:contextcheck
+		slog.ErrorContext(shutdownCtx, "Server forced to shutdown", slog.Any("error", err)) //nolint:contextcheck
 		return err
 	}
 
-	slog.InfoContext(shutdownCtx, "Server stopped gracefully")
+	slog.InfoContext(shutdownCtx, "Server stopped gracefully") //nolint:contextcheck
 	return nil
 }
