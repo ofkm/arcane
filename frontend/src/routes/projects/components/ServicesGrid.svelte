@@ -58,16 +58,19 @@
 											<h3 class="text-foreground mb-2 text-base font-semibold transition-colors">
 												{service.name}
 											</h3>
-											<div class="flex flex-wrap items-center gap-2">
+											<div class="flex flex-wrap items-center gap-3">
 												<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
 												{#if service.health}
+													{@const healthVariant = getHealthVariant(service.health)}
+													{@const healthColor =
+														healthVariant === 'green'
+															? 'text-green-500'
+															: healthVariant === 'red'
+																? 'text-red-500'
+																: 'text-amber-500'}
 													<div class="flex items-center gap-1.5">
-														<HeartPulseIcon class="text-muted-foreground size-3.5" />
-														<StatusBadge
-															variant={getHealthVariant(service.health)}
-															text={capitalizeFirstLetter(service.health)}
-															size="sm"
-														/>
+														<HeartPulseIcon class="{healthColor} size-4" />
+														<span class="text-muted-foreground text-xs">{capitalizeFirstLetter(service.health)}</span>
 													</div>
 												{/if}
 											</div>
