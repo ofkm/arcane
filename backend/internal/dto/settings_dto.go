@@ -14,6 +14,7 @@ type SettingDto struct {
 type UpdateSettingsDto struct {
 	// Core settings
 	ProjectsDirectory  *string `json:"projectsDirectory,omitempty"`
+	DiskUsagePath      *string `json:"diskUsagePath,omitempty"`
 	AutoUpdate         *string `json:"autoUpdate,omitempty"`
 	AutoUpdateInterval *string `json:"autoUpdateInterval,omitempty"`
 	PollingEnabled     *string `json:"pollingEnabled,omitempty"`

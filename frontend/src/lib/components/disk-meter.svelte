@@ -1,10 +1,19 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
+	import * as Popover from '$lib/components/ui/popover';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import { m } from '$lib/paraglide/messages';
 	import bytes from 'bytes';
+	import settingsStore from '$lib/stores/config-store';
+	import { settingsService } from '$lib/services/settings-service';
+	import { toast } from 'svelte-sonner';
+	import { z } from 'zod/v4';
 
 	let {
 		diskUsage,
@@ -24,6 +33,40 @@
 
 	const diskFree = $derived(diskUsage !== undefined && diskTotal !== undefined ? diskTotal - diskUsage : 0);
 
+	let diskUsagePath = $state($settingsStore.diskUsagePath || 'data/projects');
+	let popoverOpen = $state(false);
+	let isSaving = $state(false);
+
+	const pathSchema = z
+		.string()
+		.min(1, 'Path cannot be empty')
+		.refine((path) => !path.includes('..'), 'Path cannot contain ".."')
+		.refine((path) => !/^[a-zA-Z]:/.test(path), 'Windows-style paths are not supported');
+
+	async function saveDiskUsagePath() {
+		const trimmedPath = diskUsagePath.trim();
+		const result = pathSchema.safeParse(trimmedPath);
+		
+		if (!result.success) {
+			const firstError = result.error.issues[0];
+			toast.error(firstError.message);
+			return;
+		}
+
+		isSaving = true;
+		try {
+			await settingsService.updateSettings({ diskUsagePath: trimmedPath });
+			settingsStore.set({ ...$settingsStore, diskUsagePath: trimmedPath });
+			toast.success(m.disk_usage_save());
+			popoverOpen = false;
+		} catch (error) {
+			console.error('Failed to update disk usage path:', error);
+			toast.error(m.disk_usage_save_failed());
+		} finally {
+			isSaving = false;
+		}
+	}
+
 	function formatBytes(value: number): string {
 		return bytes.format(value, { unitSeparator: ' ' }) ?? '-';
 	}
@@ -36,7 +79,47 @@
 				<div class="min-w-0 flex-1">
 					<div class="text-foreground text-sm font-semibold">{m.dashboard_meter_disk()}</div>
 					<div class="text-muted-foreground text-xs">{m.dashboard_meter_disk_desc()}</div>
+					<div class="text-muted-foreground/70 mt-0.5 text-[10px] font-mono">
+						{m.dashboard_meter_disk_monitoring({ path: $settingsStore.diskUsagePath })}
+					</div>
 				</div>
+				<Popover.Root bind:open={popoverOpen}>
+					<Popover.Trigger>
+						{#snippet child({ props })}
+							<Button {...props} variant="ghost" size="icon" class="hover:bg-muted h-7 w-7 shrink-0">
+								<SettingsIcon class="size-4" />
+							</Button>
+						{/snippet}
+					</Popover.Trigger>
+					<Popover.Content class="w-80">
+						<div class="space-y-4">
+							<div class="space-y-2">
+								<h4 class="text-sm font-medium leading-none">{m.disk_usage_settings()}</h4>
+								<p class="text-muted-foreground text-sm">{m.disk_usage_settings_description()}</p>
+							</div>
+							<div class="space-y-2">
+								<Label for="disk-path">{m.directory_path()}</Label>
+								<Input id="disk-path" placeholder="data/projects" bind:value={diskUsagePath} disabled={isSaving} />
+							</div>
+							<div class="flex justify-end gap-2">
+								<Button
+									variant="outline"
+									size="sm"
+									onclick={() => {
+										diskUsagePath = $settingsStore.diskUsagePath || 'data/projects';
+										popoverOpen = false;
+									}}
+									disabled={isSaving}
+								>
+									Cancel
+								</Button>
+								<Button size="sm" onclick={saveDiskUsagePath} disabled={isSaving}>
+									{isSaving ? m.common_saving() : m.common_save()}
+								</Button>
+							</div>
+						</div>
+					</Popover.Content>
+				</Popover.Root>
 			{/snippet}
 		</Card.Header>
 
@@ -70,7 +153,7 @@
 							<div class="bg-muted h-3 w-12 animate-pulse rounded"></div>
 							<div class="bg-muted h-4 w-16 animate-pulse rounded"></div>
 						{:else}
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+							<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
 								{m.dashboard_meter_disk_used()}
 							</div>
 							<div class="text-foreground text-sm font-semibold">
@@ -84,7 +167,7 @@
 							<div class="bg-muted h-3 w-12 animate-pulse rounded"></div>
 							<div class="bg-muted h-4 w-16 animate-pulse rounded"></div>
 						{:else}
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+							<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
 								{m.dashboard_meter_disk_free()}
 							</div>
 							<div class="text-foreground text-sm font-semibold">
