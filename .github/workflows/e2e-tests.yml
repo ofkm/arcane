@@ -4,13 +4,13 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - '**.md'
-      - '.github/**'
+      - "**.md"
+      - ".github/**"
   pull_request:
     branches: [main]
     paths-ignore:
-      - '**.md'
-      - '.github/**'
+      - "**.md"
+      - ".github/**"
 
 permissions:
   contents: read
@@ -92,7 +92,7 @@ jobs:
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-playwright-${{ hashFiles('tests/pnpm-lock.yaml', 'tests/package.json') }}
           restore-keys: |
             ${{ runner.os }}-playwright-
 
@@ -122,8 +122,7 @@ jobs:
 
       - name: Install Playwright Browsers
         working-directory: ./tests
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm dlx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright E2E tests
         run: pnpm --filter arcane-tests test
