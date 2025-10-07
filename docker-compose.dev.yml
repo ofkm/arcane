@@ -6,10 +6,10 @@ services:
       dockerfile: docker/Dockerfile.dev
       target: frontend-dev
       args:
-        NODE_VERSION: '24'
+        NODE_VERSION: "24"
     container_name: arcane-frontend-dev
     ports:
-      - '3000:3000'
+      - "3000:3000"
     volumes:
       # Source code mounting for hot reload
       - ./frontend:/app/frontend:cached
@@ -30,7 +30,8 @@ services:
       - arcane-dev
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:3000 >/dev/null 2>&1 || exit 1']
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:3000 >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -43,16 +44,16 @@ services:
       dockerfile: docker/Dockerfile.dev
       target: backend-dev
       args:
-        GO_VERSION: '1.25'
+        GO_VERSION: "1.25"
     container_name: arcane-backend-dev
     ports:
-      - '3552:3552'
+      - "3552:3552"
     volumes:
       # Source code mounting for hot reload
       - ./backend:/app:cached
       - ./backend/.air.toml:/app/.air.toml:ro
       # Docker socket for container management
-      - /var/run/docker.sock:/var/run/docker.sock
+      # - /var/run/docker.sock:/var/run/docker.sock
       # Persistent data storage
       - arcane-dev-data:/app/data
       # Persistent Go build cache
@@ -69,7 +70,11 @@ services:
       - arcane-dev
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:3552/api/health >/dev/null || exit 1']
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:3552/api/health >/dev/null || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -81,10 +86,10 @@ services:
       dockerfile: docker/Dockerfile.dev
       target: backend-dev
       args:
-        GO_VERSION: '1.25'
+        GO_VERSION: "1.25"
     container_name: arcane-agent
     ports:
-      - '3553:3553'
+      - "3553:3553"
     env_file:
       - .env
     environment:
@@ -104,7 +109,11 @@ services:
       - arcane-dev
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:3553/api/health >/dev/null || exit 1']
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:3553/api/health >/dev/null || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

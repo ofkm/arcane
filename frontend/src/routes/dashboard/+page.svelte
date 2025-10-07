@@ -8,13 +8,15 @@
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
-	import { environmentStore } from '$lib/stores/environment.store';
+	import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
+	import { dockerAvailability } from '$lib/stores/docker-availability.store';
 	import { createStatsWebSocket } from '$lib/utils/ws';
 	import type { ReconnectingWebSocket } from '$lib/utils/ws';
 	import MeterMetric from '$lib/components/meter-metric.svelte';
 	import DiskMeter from '$lib/components/disk-meter.svelte';
 	import QuickActions from '$lib/components/quick-actions.svelte';
 	import DockerOverview from '$lib/components/docker-overview.svelte';
+	import DockerUnavailable from '$lib/components/docker-unavailable.svelte';
 	import type { SystemStats } from '$lib/types/system-stats.type';
 	import DashboardContainerTable from './dash-container-table.svelte';
 	import DashboardImageTable from './dash-image-table.svelte';
@@ -24,6 +26,18 @@
 	import bytes from 'bytes';
 
 	let { data } = $props();
+
+	let selectedEnv = $state(get(environmentStore.selected));
+
+	$effect(() => {
+		const unsubscribe = environmentStore.selected.subscribe((env) => {
+			selectedEnv = env;
+		});
+		return unsubscribe;
+	});
+
+	const isLocalDockerUnavailable = $derived($dockerAvailability === false && selectedEnv?.id === LOCAL_DOCKER_ENVIRONMENT_ID);
+
 	let containers = $state(data.containers);
 	let images = $state(data.images);
 	let dockerInfo = $state(data.dockerInfo);
@@ -258,96 +272,100 @@
 	}
 </script>
 
-<div class="space-y-8">
-	<div class="flex flex-col gap-4">
-		<div class="flex items-start justify-between gap-3">
-			<div class="flex-1 space-y-1">
-				<h1 class="text-3xl font-bold tracking-tight">{m.dashboard_title()}</h1>
-				<p class="text-muted-foreground max-w-2xl text-sm">{m.dashboard_subtitle()}</p>
-			</div>
+{#if isLocalDockerUnavailable}
+	<DockerUnavailable />
+{:else}
+	<div class="space-y-8">
+		<div class="flex flex-col gap-4">
+			<div class="flex items-start justify-between gap-3">
+				<div class="flex-1 space-y-1">
+					<h1 class="text-3xl font-bold tracking-tight">{m.dashboard_title()}</h1>
+					<p class="text-muted-foreground max-w-2xl text-sm">{m.dashboard_subtitle()}</p>
+				</div>
 
-			<QuickActions
-				class="shrink-0"
-				compact
-				dockerInfo={dashboardStates.dockerInfo}
-				{stoppedContainers}
-				{runningContainers}
-				loadingDockerInfo={isLoading.loadingDockerInfo}
-				isLoading={{ starting: isLoading.starting, stopping: isLoading.stopping, pruning: isLoading.pruning }}
-				onStartAll={handleStartAll}
-				onStopAll={handleStopAll}
-				onOpenPruneDialog={() => (dashboardStates.isPruneDialogOpen = true)}
-				onRefresh={refreshData}
-				refreshing={isLoading.refreshing}
-			/>
+				<QuickActions
+					class="shrink-0"
+					compact
+					dockerInfo={dashboardStates.dockerInfo}
+					{stoppedContainers}
+					{runningContainers}
+					loadingDockerInfo={isLoading.loadingDockerInfo}
+					isLoading={{ starting: isLoading.starting, stopping: isLoading.stopping, pruning: isLoading.pruning }}
+					onStartAll={handleStartAll}
+					onStopAll={handleStopAll}
+					onOpenPruneDialog={() => (dashboardStates.isPruneDialogOpen = true)}
+					onRefresh={refreshData}
+					refreshing={isLoading.refreshing}
+				/>
+			</div>
 		</div>
+
+		<section>
+			<h2 class="mb-4 text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
+			<div class="space-y-3">
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					<MeterMetric
+						title={m.dashboard_meter_cpu()}
+						icon={CpuIcon}
+						description={m.dashboard_meter_cpu_desc()}
+						currentValue={isLoading.loadingStats || !hasInitialStatsLoaded ? undefined : currentStats?.cpuUsage}
+						unit="%"
+						maxValue={100}
+						formatValue={(v) => `${v.toFixed(1)}`}
+						loading={isLoading.loadingStats || !hasInitialStatsLoaded}
+					/>
+
+					<MeterMetric
+						title={m.dashboard_meter_memory()}
+						icon={MemoryStickIcon}
+						description={m.dashboard_meter_memory_desc()}
+						currentValue={isLoading.loadingStats || !hasInitialStatsLoaded ? undefined : currentStats?.memoryUsage}
+						unit="%"
+						formatValue={(v) => {
+							if (currentStats?.memoryTotal) {
+								return ((v / currentStats.memoryTotal) * 100).toFixed(1);
+							}
+							return '0';
+						}}
+						maxValue={currentStats?.memoryTotal}
+						showAbsoluteValues={true}
+						formatAbsoluteValue={(v) => bytes.format(v, { unitSeparator: ' ' }) ?? '-'}
+						loading={isLoading.loadingStats || !hasInitialStatsLoaded}
+					/>
+
+					<DiskMeter
+						diskUsage={currentStats?.diskUsage}
+						diskTotal={currentStats?.diskTotal}
+						loading={isLoading.loadingStats || !hasInitialStatsLoaded}
+						class="col-span-2 sm:col-span-1"
+					/>
+				</div>
+
+				<DockerOverview
+					dockerInfo={dashboardStates.dockerInfo}
+					containersRunning={runningContainers}
+					containersStopped={stoppedContainers}
+					{totalContainers}
+					totalImages={images.pagination.totalItems}
+					loading={isLoading.loadingDockerInfo}
+				/>
+			</div>
+		</section>
+
+		<section>
+			<h2 class="mb-4 text-lg font-semibold tracking-tight">Resources</h2>
+			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+				<DashboardContainerTable bind:containers isLoading={isLoading.loadingStats} />
+				<DashboardImageTable bind:images isLoading={isLoading.loadingImages} />
+			</div>
+		</section>
+
+		<PruneConfirmationDialog
+			bind:open={dashboardStates.isPruneDialogOpen}
+			isPruning={isLoading.pruning}
+			imagePruneMode={(dashboardStates.settings?.dockerPruneMode as 'dangling' | 'all') || 'dangling'}
+			onConfirm={confirmPrune}
+			onCancel={() => (dashboardStates.isPruneDialogOpen = false)}
+		/>
 	</div>
-
-	<section>
-		<h2 class="mb-4 text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
-		<div class="space-y-3">
-			<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-				<MeterMetric
-					title={m.dashboard_meter_cpu()}
-					icon={CpuIcon}
-					description={m.dashboard_meter_cpu_desc()}
-					currentValue={isLoading.loadingStats || !hasInitialStatsLoaded ? undefined : currentStats?.cpuUsage}
-					unit="%"
-					maxValue={100}
-					formatValue={(v) => `${v.toFixed(1)}`}
-					loading={isLoading.loadingStats || !hasInitialStatsLoaded}
-				/>
-
-				<MeterMetric
-					title={m.dashboard_meter_memory()}
-					icon={MemoryStickIcon}
-					description={m.dashboard_meter_memory_desc()}
-					currentValue={isLoading.loadingStats || !hasInitialStatsLoaded ? undefined : currentStats?.memoryUsage}
-					unit="%"
-					formatValue={(v) => {
-						if (currentStats?.memoryTotal) {
-							return ((v / currentStats.memoryTotal) * 100).toFixed(1);
-						}
-						return '0';
-					}}
-					maxValue={currentStats?.memoryTotal}
-					showAbsoluteValues={true}
-					formatAbsoluteValue={(v) => bytes.format(v, { unitSeparator: ' ' }) ?? '-'}
-					loading={isLoading.loadingStats || !hasInitialStatsLoaded}
-				/>
-
-				<DiskMeter
-					diskUsage={currentStats?.diskUsage}
-					diskTotal={currentStats?.diskTotal}
-					loading={isLoading.loadingStats || !hasInitialStatsLoaded}
-					class="col-span-2 sm:col-span-1"
-				/>
-			</div>
-
-			<DockerOverview
-				dockerInfo={dashboardStates.dockerInfo}
-				containersRunning={runningContainers}
-				containersStopped={stoppedContainers}
-				{totalContainers}
-				totalImages={images.pagination.totalItems}
-				loading={isLoading.loadingDockerInfo}
-			/>
-		</div>
-	</section>
-
-	<section>
-		<h2 class="mb-4 text-lg font-semibold tracking-tight">Resources</h2>
-		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-			<DashboardContainerTable bind:containers isLoading={isLoading.loadingStats} />
-			<DashboardImageTable bind:images isLoading={isLoading.loadingImages} />
-		</div>
-	</section>
-
-	<PruneConfirmationDialog
-		bind:open={dashboardStates.isPruneDialogOpen}
-		isPruning={isLoading.pruning}
-		imagePruneMode={(dashboardStates.settings?.dockerPruneMode as 'dangling' | 'all') || 'dangling'}
-		onConfirm={confirmPrune}
-		onCancel={() => (dashboardStates.isPruneDialogOpen = false)}
-	/>
-</div>
+{/if}

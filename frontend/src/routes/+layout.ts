@@ -8,12 +8,25 @@ import type { AppVersionInformation } from '$lib/types/application-configuration
 import { userService } from '$lib/services/user-service';
 import { settingsService } from '$lib/services/settings-service';
 import { environmentManagementService } from '$lib/services/env-mgmt-service';
+import { systemService } from '$lib/services/system-service';
+import { dockerAvailability } from '$lib/stores/docker-availability.store';
 
 export const ssr = false;
 
 export const load = async () => {
+	const dockerAvailablePromise = systemService.checkDockerAvailable();
+
+	dockerAvailablePromise
+		.then((available) => {
+			dockerAvailability.set(available);
+		})
+		.catch(() => {
+			dockerAvailability.set(false);
+		});
+
 	if (!environmentStore.isInitialized()) {
-		await environmentStore.initialize([], true);
+		const hasLocalDocker = await dockerAvailablePromise.catch(() => false);
+		await environmentStore.initialize([], hasLocalDocker);
 	}
 
 	const userPromise = userService.getCurrentUser().catch(() => null);
@@ -33,12 +46,12 @@ export const load = async () => {
 		if (user) {
 			const environments = await tryCatch(environmentManagementService.getEnvironments(environmentRequestOptions));
 			if (!environments.error) {
-				await environmentStore.initialize(environments.data.data, true);
+				const hasLocalDocker = await dockerAvailablePromise.catch(() => false);
+				await environmentStore.initialize(environments.data.data, hasLocalDocker);
 			}
 		}
 		return null;
 	});
-
 	let versionInformation: AppVersionInformation = {
 		currentVersion: versionService.getCurrentVersion()
 	};

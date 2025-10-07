@@ -40,6 +40,17 @@ func (s *DockerClientService) CreateConnection(ctx context.Context) (*client.Cli
 	return cli, nil
 }
 
+func (s *DockerClientService) IsDockerAvailable(ctx context.Context) bool {
+	dockerClient, err := s.CreateConnection(ctx)
+	if err != nil {
+		return false
+	}
+	defer dockerClient.Close()
+
+	_, err = dockerClient.Ping(ctx)
+	return err == nil
+}
+
 func (s *DockerClientService) GetAllContainers(ctx context.Context) ([]container.Summary, int, int, int, error) {
 	dockerClient, err := s.CreateConnection(ctx)
 	if err != nil {

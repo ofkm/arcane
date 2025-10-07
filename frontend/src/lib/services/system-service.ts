@@ -31,6 +31,15 @@ export class SystemService extends BaseAPIService {
 		return this.handleResponse(this.api.get(`/environments/${envId}/system/docker/info`));
 	}
 
+	async checkDockerAvailable(): Promise<boolean> {
+		try {
+			const response = await this.api.get('/environments/0/system/docker/available');
+			return response.data.available ?? false;
+		} catch {
+			return false;
+		}
+	}
+
 	async convert(dockerRunCommand: string) {
 		const envId = await environmentStore.getCurrentEnvironmentId();
 		const res = await this.api.post(`/environments/${envId}/system/convert`, {

@@ -43,6 +43,7 @@ func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 	{
 		apiGroup.GET("/stats/ws", handler.Stats)
 		apiGroup.GET("/docker/info", handler.GetDockerInfo)
+		apiGroup.GET("/docker/available", handler.CheckDockerAvailable)
 		apiGroup.POST("/prune", handler.PruneAll)
 		apiGroup.POST("/containers/start-all", handler.StartAllContainers)
 		apiGroup.POST("/containers/start-stopped", handler.StartAllStoppedContainers)
@@ -62,6 +63,16 @@ type SystemStats struct {
 	Architecture string  `json:"architecture"`
 	Platform     string  `json:"platform"`
 	Hostname     string  `json:"hostname,omitempty"`
+}
+
+func (h *SystemHandler) CheckDockerAvailable(c *gin.Context) {
+	ctx := c.Request.Context()
+	available := h.dockerService.IsDockerAvailable(ctx)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":   true,
+		"available": available,
+	})
 }
 
 func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
