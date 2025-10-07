@@ -63,7 +63,7 @@ test.describe('Projects Page', () => {
     await menuButton.click();
 
     await expect(page.getByRole('menuitem', { name: 'Edit' })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: /Start|Stop|Restart/ })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: /Up|Down|Restart/ })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: 'Pull & Redeploy' })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: 'Destroy' })).toBeVisible();
   });
