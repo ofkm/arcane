@@ -49,11 +49,14 @@ func TestRegistryConnection(ctx context.Context, registryURL string, creds *Cred
 
 	challengeManager, err := dockerregistry.PingV2Registry(endpointURL, c.http.Transport)
 	if err != nil {
-		res.Errors = append(res.Errors, fmt.Sprintf("Ping failed: %v", err))
+		res.Errors = append(res.Errors, fmt.Sprintf("Connectivity test failed: %v", err))
 		res.PingSuccess = false
-	} else {
-		res.PingSuccess = true
+		res.AuthSuccess = false
+		res.CatalogSuccess = false
+		res.OverallSuccess = false
+		return res, nil
 	}
+	res.PingSuccess = true
 
 	// Extract auth URL from challenge manager if available
 	var authURL string

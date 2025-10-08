@@ -208,7 +208,22 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	// Return appropriate status based on overall success
+	statusCode := http.StatusOK
+	if !testResult["overall_success"].(bool) {
+		// If connectivity failed, return as error
+		if !testResult["ping_success"].(bool) {
+			c.JSON(http.StatusBadGateway, gin.H{
+				"success": false,
+				"data":    testResult,
+			})
+			return
+		}
+		// Other failures are returned with 200 but success=false in data
+		statusCode = http.StatusOK
+	}
+
+	c.JSON(statusCode, gin.H{
 		"success": true,
 		"data":    testResult,
 	})
@@ -243,7 +258,16 @@ func (h *ContainerRegistryHandler) performRegistryTest(ctx context.Context, regi
 
 	if len(testResult.Errors) > 0 {
 		result["errors"] = testResult.Errors
-		result["message"] = fmt.Sprintf("Registry test completed with %d error(s)", len(testResult.Errors))
+		// Create a clear message based on what failed
+		if !testResult.PingSuccess {
+			result["message"] = fmt.Sprintf("Cannot connect to registry: %s", testResult.Errors[0])
+		} else if !testResult.AuthSuccess {
+			result["message"] = "Authentication failed: Invalid credentials"
+		} else if !testResult.CatalogSuccess {
+			result["message"] = "Registry connection successful but catalog access failed"
+		} else {
+			result["message"] = fmt.Sprintf("Registry test completed with %d error(s)", len(testResult.Errors))
+		}
 	} else {
 		result["message"] = "All registry tests passed successfully"
 	}
