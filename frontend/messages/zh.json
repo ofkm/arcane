@@ -580,7 +580,7 @@
 	"containers_subnet": "子网",
 	"containers_aliases": "别名",
 	"compose_services": "服务",
-	"compose_services_description": "Docker 编排服务及其当前状态",
+	"compose_services_description": "Docker Compose 服务及其当前状态",
 	"compose_active_container": "活动容器",
 	"compose_start_failed": "启动项目失败",
 	"compose_start_success": "项目启动成功。",
