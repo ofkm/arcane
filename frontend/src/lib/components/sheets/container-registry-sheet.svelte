@@ -23,7 +23,7 @@
 	let isEditMode = $derived(!!registryToEdit);
 
 	const formSchema = z.object({
-		url: z.string().min(1, m.registries_url_required()),
+		url: z.url().min(1, m.registries_url_required()),
 		username: z.string().min(1, m.common_username_required()),
 		token: z.string().optional(),
 		description: z.string().optional(),
