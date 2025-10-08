@@ -2,9 +2,10 @@
 ARG BUILD_TAGS=""
 ARG VERSION="dev"
 ARG REVISION="unknown"
+ARG BUILDPLATFORM
 
 # Stage 1: Build Frontend
-FROM node:24-alpine AS frontend-builder
+FROM --platform=${BUILDPLATFORM} node:24-alpine AS frontend-builder
 RUN corepack enable
 WORKDIR /build
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
@@ -16,7 +17,7 @@ ENV BUILD_PATH=dist
 RUN pnpm -C frontend build
 
 # Stage 2: Build Backend
-FROM golang:1.25-alpine AS backend-builder
+FROM --platform=${BUILDPLATFORM} golang:1.25-alpine AS backend-builder
 ARG BUILD_TAGS
 ARG VERSION
 ARG REVISION
