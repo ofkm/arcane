@@ -84,6 +84,13 @@ func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string,
 	ls.once.Do(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		ls.cancel = cancel
+
+		ls.hub.SetOnEmpty(func() {
+			slog.Debug("all clients disconnected, cleaning up log hub", "containerID", containerID, "format", format)
+			cancel()
+			h.logStreams.Delete(key)
+		})
+
 		go ls.hub.Run(ctx)
 
 		slog.Debug("starting log stream pipeline", "containerID", containerID, "format", format, "batched", batched)
@@ -572,6 +579,13 @@ func (h *ContainerHandler) getOrStartContainerStatsHub(containerID string) *ws.H
 	ss.once.Do(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		ss.cancel = cancel
+
+		ss.hub.SetOnEmpty(func() {
+			slog.Debug("all clients disconnected, cleaning up stats hub", "containerID", containerID)
+			cancel()
+			h.logStreams.Delete(key)
+		})
+
 		go ss.hub.Run(ctx)
 
 		slog.Debug("starting stats stream pipeline", "containerID", containerID)

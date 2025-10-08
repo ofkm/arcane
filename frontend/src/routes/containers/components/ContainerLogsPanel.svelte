@@ -25,13 +25,10 @@
 	let viewer = $state<LogViewer>();
 
 	function handleStart() {
-		isStreaming = true;
 		viewer?.startLogStream();
-		onStart();
 	}
 
 	function handleStop() {
-		isStreaming = false;
 		viewer?.stopLogStream();
 	}
 
@@ -42,7 +39,20 @@
 
 	function handleRefresh() {
 		viewer?.stopLogStream();
-		viewer?.startLogStream();
+		setTimeout(() => {
+			viewer?.startLogStream();
+		}, 100);
+	}
+
+	// Sync isStreaming from viewer callbacks
+	function handleStreamStart() {
+		isStreaming = true;
+		onStart();
+	}
+
+	function handleStreamStop() {
+		isStreaming = false;
+		onStop();
 	}
 </script>
 
@@ -86,9 +96,9 @@
 				maxLines={500}
 				showTimestamps={true}
 				height="calc(100vh - 320px)"
-				onStart={handleStart}
-				onStop={handleStop}
-				onClear={handleClear}
+				onStart={handleStreamStart}
+				onStop={handleStreamStop}
+				{onClear}
 			/>
 		</div>
 	</Card.Content>

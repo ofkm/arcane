@@ -28,6 +28,9 @@ export class ReconnectingWebSocket<T = unknown> {
 	}
 
 	async connect() {
+		if (this.ws && !this.closed) {
+			this.close();
+		}
 		this.closed = false;
 		this.attempt = 0;
 		await this.connectOnce();
@@ -35,6 +38,14 @@ export class ReconnectingWebSocket<T = unknown> {
 
 	async connectOnce() {
 		if (this.closed || this.connecting) return;
+
+		if (this.ws) {
+			try {
+				this.ws.close();
+			} catch {}
+			this.ws = null;
+		}
+
 		this.connecting = true;
 		let url: string;
 		try {

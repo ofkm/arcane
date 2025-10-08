@@ -15,7 +15,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { format } from 'date-fns';
 	import bytes from 'bytes';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import type {
 		ContainerDetailsDto,
 		ContainerNetworkSettings,
@@ -52,6 +52,7 @@
 	let statsWebSocket: ReconnectingWebSocket<any> | null = $state(null);
 	let isConnecting = $state(false);
 	let hasInitialStatsLoaded = $state(false);
+	let statsStreamEnabled = $state(false);
 
 	const cleanContainerName = (name: string | undefined): string => {
 		if (!name) return m.containers_not_found_title();
@@ -61,9 +62,12 @@
 	const containerDisplayName = $derived(cleanContainerName(container?.name));
 
 	async function startStatsStream() {
-		if (statsWebSocket || isConnecting || !container?.id || !container.state?.running) return;
+		if (isConnecting || statsWebSocket || !container?.id || !container.state?.running) {
+			return;
+		}
 
 		isConnecting = true;
+		statsStreamEnabled = true;
 		try {
 			const envId = await environmentStore.getCurrentEnvironmentId();
 
@@ -89,7 +93,9 @@
 					isConnecting = false;
 				},
 				maxBackoff: 5000,
-				shouldReconnect: () => selectedTab === 'stats' && container?.state?.running === true
+				shouldReconnect: () => {
+					return statsStreamEnabled && container?.state?.running === true;
+				}
 			});
 
 			ws.connect();
@@ -101,6 +107,7 @@
 	}
 
 	function closeStatsStream() {
+		statsStreamEnabled = false;
 		if (statsWebSocket) {
 			statsWebSocket.close();
 			statsWebSocket = null;
@@ -110,11 +117,18 @@
 	}
 
 	$effect(() => {
-		if (selectedTab === 'stats' && container?.state?.running) {
-			void startStatsStream();
-		} else if (statsWebSocket) {
-			closeStatsStream();
-		}
+		const isStatsTab = selectedTab === 'stats';
+
+		untrack(() => {
+			const containerRunning = container?.state?.running;
+			const hasWebSocket = !!statsWebSocket;
+
+			if (isStatsTab && containerRunning && !hasWebSocket) {
+				void startStatsStream();
+			} else if (!isStatsTab && hasWebSocket) {
+				closeStatsStream();
+			}
+		});
 	});
 
 	onDestroy(() => {
@@ -279,32 +293,38 @@
 
 			{#if showStats}
 				<Tabs.Content value="stats" class="h-full">
-					<ContainerStats
-						{container}
-						{stats}
-						{cpuUsagePercent}
-						{memoryUsageFormatted}
-						{memoryLimitFormatted}
-						{memoryUsagePercent}
-						loading={!hasInitialStatsLoaded}
-					/>
+					{#if selectedTab === 'stats'}
+						<ContainerStats
+							{container}
+							{stats}
+							{cpuUsagePercent}
+							{memoryUsageFormatted}
+							{memoryLimitFormatted}
+							{memoryUsagePercent}
+							loading={!hasInitialStatsLoaded}
+						/>
+					{/if}
 				</Tabs.Content>
 			{/if}
 
 			<Tabs.Content value="logs" class="h-full">
-				<ContainerLogsPanel
-					containerId={container?.id}
-					bind:autoScroll={autoScrollLogs}
-					onStart={handleLogStart}
-					onStop={handleLogStop}
-					onClear={handleLogClear}
-					onToggleAutoScroll={handleToggleAutoScroll}
-				/>
+				{#if selectedTab === 'logs'}
+					<ContainerLogsPanel
+						containerId={container?.id}
+						bind:autoScroll={autoScrollLogs}
+						onStart={handleLogStart}
+						onStop={handleLogStop}
+						onClear={handleLogClear}
+						onToggleAutoScroll={handleToggleAutoScroll}
+					/>
+				{/if}
 			</Tabs.Content>
 
 			{#if showShell}
 				<Tabs.Content value="shell" class="h-full">
-					<ContainerShell containerId={container?.id} />
+					{#if selectedTab === 'shell'}
+						<ContainerShell containerId={container?.id} />
+					{/if}
 				</Tabs.Content>
 			{/if}
 

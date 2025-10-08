@@ -46,7 +46,7 @@
 	async function saveDiskUsagePath() {
 		const trimmedPath = diskUsagePath.trim();
 		const result = pathSchema.safeParse(trimmedPath);
-		
+
 		if (!result.success) {
 			const firstError = result.error.issues[0];
 			toast.error(firstError.message);
@@ -54,6 +54,7 @@
 		}
 
 		isSaving = true;
+
 		try {
 			await settingsService.updateSettings({ diskUsagePath: trimmedPath });
 			settingsStore.set({ ...$settingsStore, diskUsagePath: trimmedPath });
@@ -79,7 +80,7 @@
 				<div class="min-w-0 flex-1">
 					<div class="text-foreground text-sm font-semibold">{m.dashboard_meter_disk()}</div>
 					<div class="text-muted-foreground text-xs">{m.dashboard_meter_disk_desc()}</div>
-					<div class="text-muted-foreground/70 mt-0.5 text-[10px] font-mono">
+					<div class="text-muted-foreground/70 mt-0.5 font-mono text-[10px]">
 						{m.dashboard_meter_disk_monitoring({ path: $settingsStore.diskUsagePath })}
 					</div>
 				</div>
