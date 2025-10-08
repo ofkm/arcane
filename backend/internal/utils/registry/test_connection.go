@@ -5,8 +5,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
+
+	dockerregistry "github.com/docker/docker/registry"
 )
 
 type TestResult struct {
@@ -34,12 +37,40 @@ func TestRegistryConnection(ctx context.Context, registryURL string, creds *Cred
 		reg = DefaultRegistry
 	}
 
-	authURL, err := c.CheckAuth(ctx, reg)
+	// Use official docker/registry client to ping the registry
+	registryEndpoint := c.GetRegistryURL(reg)
+	endpointURL, err := url.Parse(registryEndpoint)
+	if err != nil {
+		res.Errors = append(res.Errors, fmt.Sprintf("Invalid registry URL: %v", err))
+		res.PingSuccess = false
+		res.OverallSuccess = false
+		return res, nil
+	}
+
+	challengeManager, err := dockerregistry.PingV2Registry(endpointURL, c.http.Transport)
 	if err != nil {
 		res.Errors = append(res.Errors, fmt.Sprintf("Ping failed: %v", err))
 		res.PingSuccess = false
 	} else {
 		res.PingSuccess = true
+	}
+
+	// Extract auth URL from challenge manager if available
+	var authURL string
+	if challengeManager != nil {
+		challenges, err := challengeManager.GetChallenges(*endpointURL)
+		if err == nil {
+			for _, challenge := range challenges {
+				if challenge.Scheme == "bearer" {
+					if realm, ok := challenge.Parameters["realm"]; ok {
+						authURL = realm
+						if service, ok := challenge.Parameters["service"]; ok {
+							authURL = fmt.Sprintf("%s?service=%s", realm, service)
+						}
+					}
+				}
+			}
+		}
 	}
 
 	var authHeader string
