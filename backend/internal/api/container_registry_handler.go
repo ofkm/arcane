@@ -207,7 +207,7 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
+		"success": false,
 		"data":    testResult,
 	})
 }
