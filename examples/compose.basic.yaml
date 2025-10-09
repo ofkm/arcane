@@ -1,20 +1,24 @@
 services:
   arcane:
-    image: ghcr.io/ofkm/arcane:latest
+    image: ghcr.io/ofkm/arcane:cli
     container_name: arcane
     ports:
-      - '3552:3552'
+      - "3552:3552"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - arcane-data:/app/data
-      - /host/path/to/projects:/app/data/projects
+      # - /host/path/to/projects:/app/data/projects
     environment:
       - PUID=1000
       - PGID=1000
-      - ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxx
-      - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxx
+      - ENCRYPTION_KEY=+HbCmbFTy0DdmejlQflgp507yVXPFrz7Ld4tRggMeAE=
+      - JWT_SECRET=+HbCmbFTy0DdmejlQflgp507yVXPFrz7Ld4tRggMeAE=
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:3552/api/health >/dev/null || exit 1']
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:3552/api/health >/dev/null || exit 1",
+        ]
       interval: 10s
       timeout: 3s
       retries: 5

@@ -72,5 +72,5 @@ LABEL org.opencontainers.image.description="Modern Docker Management, Made for E
 LABEL com.ofkm.arcane.updater="false"
 LABEL com.ofkm.arcane.server="true"
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["./arcane", "bootstrap"]
 CMD ["./arcane"]
