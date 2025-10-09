@@ -4,5 +4,5 @@ import "embed"
 
 // Embedded file systems for the project
 
-//go:embed migrations
+//go:embed migrations images
 var FS embed.FS

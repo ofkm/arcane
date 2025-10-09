@@ -57,6 +57,26 @@ abstract class BaseAPIService {
 						return new Promise(() => {});
 					}
 				}
+
+				try {
+					const data = error?.response?.data;
+					const inner = (data && typeof data === 'object' ? ((data as any).data ?? data) : data) as any;
+					let serverMsg: string | undefined;
+					if (typeof inner === 'string') {
+						serverMsg = inner;
+					} else if (inner) {
+						serverMsg = inner.error || inner.message || inner.error_description;
+						if (!serverMsg && Array.isArray(inner.errors) && inner.errors.length) {
+							serverMsg = inner.errors[0]?.message || inner.errors[0];
+						}
+					}
+					if (serverMsg && typeof serverMsg === 'string') {
+						error.message = serverMsg;
+					}
+				} catch {
+					// ignore extraction issues; fall back to default axios message
+				}
+
 				return Promise.reject(error);
 			}
 		);

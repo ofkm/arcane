@@ -2,6 +2,7 @@
 	import type { AppVersionInformation } from '$lib/types/application-configuration';
 	import { cn } from '$lib/utils';
 	import { m } from '$lib/paraglide/messages';
+	import { getApplicationLogo } from '$lib/utils/image.util';
 
 	let { isCollapsed, versionInformation }: { isCollapsed: boolean; versionInformation: AppVersionInformation } = $props();
 </script>
@@ -14,25 +15,16 @@
 >
 	<div class="relative flex shrink-0 items-center justify-center">
 		<div
-			class={cn(
-				'from-primary/20 to-primary/10 text-primary border-primary/20 flex items-center justify-center rounded-full border bg-gradient-to-br font-semibold transition-all duration-300',
-				isCollapsed ? 'size-8' : 'size-10'
-			)}
+			class={cn('flex items-center justify-center font-semibold transition-all duration-300', isCollapsed ? 'size-8' : 'size-10')}
 		>
 			<img
-				src="/img/arcane.svg"
+				src={getApplicationLogo()}
 				alt={m.layout_title()}
 				class={cn('drop-shadow-sm transition-all duration-300', isCollapsed ? 'size-5' : 'size-7')}
 				width={isCollapsed ? '20' : '28'}
 				height={isCollapsed ? '20' : '28'}
 			/>
 		</div>
-		<div
-			class={cn(
-				'bg-primary/10 absolute inset-0 rounded-full opacity-60 blur-xl transition-all duration-300',
-				isCollapsed ? 'scale-75' : 'scale-100'
-			)}
-		></div>
 	</div>
 	{#if !isCollapsed}
 		<div class="flex min-w-0 flex-col justify-center">

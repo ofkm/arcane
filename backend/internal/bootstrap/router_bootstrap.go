@@ -66,6 +66,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 
 	apiGroup := router.Group("/api")
 
+	api.NewApplicationImagesHandler(apiGroup, appServices.AppImages)
 	api.NewUserHandler(apiGroup, appServices.User, authMiddleware)
 	api.NewVersionHandler(apiGroup, appServices.Version)
 	api.NewAuthHandler(apiGroup, appServices.User, appServices.Auth, appServices.Oidc, authMiddleware)

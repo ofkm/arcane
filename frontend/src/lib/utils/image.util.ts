@@ -1,0 +1,34 @@
+type SkipCacheUntil = {
+	[key: string]: number;
+};
+
+export function getApplicationLogo(): string {
+	return getCachedImageUrl('/api/app-images/logo');
+}
+
+function getCachedImageUrl(url: string) {
+	const skipCacheUntil = getSkipCacheUntil(url);
+	const skipCache = skipCacheUntil > Date.now();
+	if (skipCache) {
+		const skipCacheParam = new URLSearchParams();
+		skipCacheParam.append('skip-cache', skipCacheUntil.toString());
+		url += '?' + skipCacheParam.toString();
+	}
+
+	return url.toString();
+}
+
+function getSkipCacheUntil(url: string) {
+	const skipCacheUntil: SkipCacheUntil = JSON.parse(localStorage.getItem('skip-cache-until') ?? '{}');
+	return skipCacheUntil[hashKey(url)] ?? 0;
+}
+
+function hashKey(key: string): string {
+	let hash = 0;
+	for (let i = 0; i < key.length; i++) {
+		const char = key.charCodeAt(i);
+		hash = (hash << 5) - hash + char;
+		hash = hash & hash;
+	}
+	return Math.abs(hash).toString(36);
+}
