@@ -62,6 +62,7 @@ func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*
 	result := &dto.PruneAllResult{Success: true}
 
 	if req.Containers {
+		slog.InfoContext(ctx, "Pruning stopped containers...")
 		if err := s.pruneContainers(ctx, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Container pruning failed: %v", err))
 			result.Success = false
@@ -77,6 +78,7 @@ func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*
 	slog.DebugContext(ctx, "Resolved image prune mode", slog.Bool("dangling_only", danglingOnly))
 
 	if req.Images {
+		slog.InfoContext(ctx, "Pruning images...", slog.Bool("dangling_only", danglingOnly))
 		if err := s.pruneImages(ctx, danglingOnly, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Image pruning failed: %v", err))
 			result.Success = false
@@ -84,12 +86,14 @@ func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*
 	}
 
 	if req.BuildCache {
+		slog.InfoContext(ctx, "Pruning build cache...")
 		if buildCacheErr := s.pruneBuildCache(ctx, result, !danglingOnly); buildCacheErr != nil {
 			slog.WarnContext(ctx, "Build cache pruning encountered an error", slog.String("error", buildCacheErr.Error()))
 		}
 	}
 
 	if req.Volumes {
+		slog.InfoContext(ctx, "Pruning unused volumes (not referenced by any container)...")
 		if err := s.pruneVolumes(ctx, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Volume pruning failed: %v", err))
 			result.Success = false
@@ -97,6 +101,7 @@ func (s *SystemService) PruneAll(ctx context.Context, req dto.PruneSystemDto) (*
 	}
 
 	if req.Networks {
+		slog.InfoContext(ctx, "Pruning unused networks (not connected to any container)...")
 		if err := s.pruneNetworks(ctx, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Network pruning failed: %v", err))
 			result.Success = false
@@ -320,12 +325,19 @@ func (s *SystemService) pruneBuildCache(ctx context.Context, result *dto.PruneAl
 }
 
 func (s *SystemService) pruneVolumes(ctx context.Context, result *dto.PruneAllResult) error {
-	// Always prune only unused volumes here (safe default)
-	allVolumes := false
+	// Prune ALL unused volumes (both named and anonymous)
+	// Note: Docker API only prunes volumes that are NOT in use by any containers (running or stopped)
+	// With all=true, it will remove both named and anonymous unused volumes
+	// With all=false, it only removes anonymous (unnamed) unused volumes
+	allVolumes := true
 	report, err := s.volumeService.PruneVolumesWithOptions(ctx, allVolumes)
 	if err != nil {
 		return err
 	}
+
+	slog.InfoContext(ctx, "Volume prune completed",
+		slog.Int("volumes_deleted", len(report.VolumesDeleted)),
+		slog.Uint64("space_reclaimed", report.SpaceReclaimed))
 
 	result.VolumesDeleted = report.VolumesDeleted
 	result.SpaceReclaimed += report.SpaceReclaimed
@@ -333,10 +345,14 @@ func (s *SystemService) pruneVolumes(ctx context.Context, result *dto.PruneAllRe
 }
 
 func (s *SystemService) pruneNetworks(ctx context.Context, result *dto.PruneAllResult) error {
+	// Note: Docker API only prunes networks that are NOT in use by any containers
 	report, err := s.networkService.PruneNetworks(ctx)
 	if err != nil {
 		return err
 	}
+
+	slog.InfoContext(ctx, "Network prune completed",
+		slog.Int("networks_deleted", len(report.NetworksDeleted)))
 
 	result.NetworksDeleted = report.NetworksDeleted
 	return nil
