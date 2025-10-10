@@ -1263,5 +1263,6 @@
 	"customize_secret_variables": "Geheime variabelen",
 	"customize_variable_templates": "Variabele sjablonen",
 	"duplicate": "Duplicate",
-	"cancel": "annuleren"
+	"cancel": "annuleren",
+	"compose_project_name_placeholder": "Mijn nieuwe project"
 }
