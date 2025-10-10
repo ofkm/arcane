@@ -20,6 +20,7 @@ export type Settings = {
 	uiConfigDisabled: boolean;
 	defaultShell: string;
 	dockerHost: string;
+	accentColor: string;
 
 	authLocalEnabled: boolean;
 	authOidcEnabled: boolean;

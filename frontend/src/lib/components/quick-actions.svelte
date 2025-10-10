@@ -109,15 +109,15 @@
 				</button>
 
 				<button
-					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-violet-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-violet-500/40 hover:bg-violet-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="ring-offset-background focus-visible:ring-ring bg-background/70 border-primary/20 hover:border-primary/40 hover:bg-primary/10 group inline-flex h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs shadow-sm transition-colors hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={isLoading.starting || isLoading.stopping || isLoading.pruning || refreshing}
 					onclick={onRefresh}
 					aria-busy={refreshing}
 				>
 					{#if refreshing}
-						<Spinner class="size-3.5 text-violet-500" />
+						<Spinner class="text-primary size-3.5" />
 					{:else}
-						<RefreshCwIcon class="size-4 text-violet-500" />
+						<RefreshCwIcon class="text-primary size-4" />
 					{/if}
 					<span class="font-medium">{m.common_refresh()}</span>
 				</button>

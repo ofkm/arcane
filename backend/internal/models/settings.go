@@ -55,6 +55,7 @@ type Settings struct {
 	EnableGravatar     SettingVariable `key:"enableGravatar"`
 	DefaultShell       SettingVariable `key:"defaultShell"`
 	DockerHost         SettingVariable `key:"dockerHost,public,envOverride"`
+	AccentColor        SettingVariable `key:"accentColor,public"`
 
 	// Authentication
 	AuthLocalEnabled   SettingVariable `key:"authLocalEnabled,public"`
