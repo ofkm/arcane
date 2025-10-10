@@ -13,7 +13,6 @@ const ROUTES = {
 };
 
 const SELECTORS = {
-  dropdownTrigger: '[data-slot="dropdown-button-trigger"]',
   convertButton: (name = 'Convert to Compose') => ({ name }),
   textareaPlaceholder: 'docker run -d --name my-app -p 8080:80 nginx:alpine',
   stackNamePlaceholder: 'e.g., my-web-app',
@@ -24,7 +23,8 @@ const SELECTORS = {
 };
 
 async function openConvertFromDockerRun(page: Page) {
-  await page.locator(SELECTORS.dropdownTrigger).first().click();
+  const dropdownTrigger = page.locator('button').filter({ has: page.locator('#bits-c68') });
+  await dropdownTrigger.click();
   await page.getByRole('menuitem', { name: 'Convert from Docker Run' }).click();
 }
 
