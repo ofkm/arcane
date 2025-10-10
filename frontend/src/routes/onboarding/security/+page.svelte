@@ -6,7 +6,7 @@
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
@@ -288,7 +288,7 @@
 						<Button type="button" variant="ghost" onclick={handleSkip}>{m.common_skip()}</Button>
 						<Button type="submit" disabled={isLoading.saving}>
 							{#if isLoading.saving}
-								<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+								<Spinner class="mr-2 size-4" />
 							{/if}
 							{m.common_continue?.() ?? 'Continue'}
 						</Button>

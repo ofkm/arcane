@@ -3,7 +3,7 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import CopyIcon from '@lucide/svelte/icons/copy';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import LayoutTemplateIcon from '@lucide/svelte/icons/layout-template';
 	import WandIcon from '@lucide/svelte/icons/wand';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -188,7 +188,7 @@
 							<div class="flex w-full justify-end pt-4">
 								<Button type="button" disabled={!dockerRunCommand.trim() || converting} onclick={handleConvertDockerRun}>
 									{#if converting}
-										<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+										<Spinner class="mr-2 size-4" />
 										{m.compose_converting()}
 									{:else}
 										<WandIcon class="mr-2 size-4" />
@@ -211,7 +211,7 @@
 								class={`${templateBtnClass} gap-2 rounded-r-none hover:!translate-y-0 focus-visible:!translate-y-0 active:!translate-y-0`}
 							>
 								{#if saving}
-									<LoaderCircleIcon class="size-4 animate-spin" />
+									<Spinner class="size-4" />
 									{m.compose_creating()}
 								{:else}
 									<PlusCircleIcon class="size-4" />

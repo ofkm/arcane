@@ -1,5 +1,5 @@
 <script lang="ts">
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import CirclePlayIcon from '@lucide/svelte/icons/circle-play';
 	import CircleStopIcon from '@lucide/svelte/icons/circle-stop';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
@@ -63,7 +63,7 @@
 					aria-busy={isLoading.starting}
 				>
 					{#if isLoading.starting}
-						<LoaderCircleIcon class="size-3.5 text-emerald-500 motion-safe:animate-spin" />
+						<Spinner class="size-3.5 text-emerald-500" />
 					{:else}
 						<CirclePlayIcon class="size-4 text-emerald-500" />
 					{/if}
@@ -84,7 +84,7 @@
 					aria-busy={isLoading.stopping}
 				>
 					{#if isLoading.stopping}
-						<LoaderCircleIcon class="size-3.5 text-sky-500 motion-safe:animate-spin" />
+						<Spinner class="size-3.5 text-sky-500" />
 					{:else}
 						<CircleStopIcon class="size-4 text-sky-500" />
 					{/if}
@@ -101,7 +101,7 @@
 					aria-busy={isLoading.pruning}
 				>
 					{#if isLoading.pruning}
-						<LoaderCircleIcon class="size-3.5 text-red-500 motion-safe:animate-spin" />
+						<Spinner class="size-3.5 text-red-500" />
 					{:else}
 						<Trash2Icon class="size-4 text-red-500" />
 					{/if}
@@ -115,7 +115,7 @@
 					aria-busy={refreshing}
 				>
 					{#if refreshing}
-						<LoaderCircleIcon class="size-3.5 text-violet-500 motion-safe:animate-spin" />
+						<Spinner class="size-3.5 text-violet-500" />
 					{:else}
 						<RefreshCwIcon class="size-4 text-violet-500" />
 					{/if}
@@ -196,7 +196,7 @@
 						<div class="relative">
 							<div class="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/30">
 								{#if isLoading.starting}
-									<LoaderCircleIcon class="size-4 text-emerald-400 motion-safe:animate-spin" />
+									<Spinner class="size-4 text-emerald-400" />
 								{:else}
 									<CirclePlayIcon class="size-5 text-emerald-400" />
 								{/if}
@@ -228,7 +228,7 @@
 						<div class="relative">
 							<div class="flex size-10 items-center justify-center rounded-lg bg-sky-500/10 ring-1 ring-sky-500/30">
 								{#if isLoading.stopping}
-									<LoaderCircleIcon class="size-4 text-sky-400 motion-safe:animate-spin" />
+									<Spinner class="size-4 text-sky-400" />
 								{:else}
 									<CircleStopIcon class="size-5 text-sky-400" />
 								{/if}
@@ -256,7 +256,7 @@
 						<div class="relative">
 							<div class="flex size-10 items-center justify-center rounded-lg bg-red-500/10 ring-1 ring-red-500/30">
 								{#if isLoading.pruning}
-									<LoaderCircleIcon class="size-4 text-red-400 motion-safe:animate-spin" />
+									<Spinner class="size-4 text-red-400" />
 								{:else}
 									<Trash2Icon class="size-5 text-red-400" />
 								{/if}

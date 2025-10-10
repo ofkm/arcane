@@ -8,7 +8,7 @@
 	import FolderOpenIcon from '@lucide/svelte/icons/folder-open';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import DownloadIcon from '@lucide/svelte/icons/download';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
@@ -264,7 +264,7 @@
 																			disabled={loadingStates.get(`download-${template.id}`)}
 																		>
 																			{#if loadingStates.get(`download-${template.id}`)}
-																				<LoaderCircleIcon class="mr-1 size-3 animate-spin" />
+																				<Spinner class="mr-1 size-3" />
 																				{m.templates_downloading()}
 																			{:else}
 																				<DownloadIcon class="mr-1 size-3" />
@@ -278,7 +278,7 @@
 																		disabled={loadingStates.get(template.id)}
 																	>
 																		{#if loadingStates.get(template.id)}
-																			<LoaderCircleIcon class="mr-1 size-3 animate-spin" />
+																			<Spinner class="mr-1 size-3" />
 																			{m.templates_loading()}
 																		{:else}
 																			{m.templates_use_now()}
@@ -353,7 +353,7 @@
 													disabled={loadingStates.get(`download-${template.id}`)}
 												>
 													{#if loadingStates.get(`download-${template.id}`)}
-														<LoaderCircleIcon class="mr-1 size-3 animate-spin" />
+														<Spinner class="mr-1 size-3" />
 														{m.templates_downloading()}
 													{:else}
 														<DownloadIcon class="mr-1 size-3" />
@@ -363,7 +363,7 @@
 											{/if}
 											<Button size="sm" onclick={() => handleSelect(template)} disabled={loadingStates.get(template.id)}>
 												{#if loadingStates.get(template.id)}
-													<LoaderCircleIcon class="mr-1 size-3 animate-spin" />
+													<Spinner class="mr-1 size-3" />
 													{m.templates_loading()}
 												{:else}
 													{m.templates_use_now()}

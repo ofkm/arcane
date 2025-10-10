@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import type { Component, Snippet } from 'svelte';
 	import type { IconProps } from '@lucide/svelte';
 
@@ -46,11 +46,11 @@
 </script>
 
 <Card.Root
-	class={`bg-card/80 ring-border/40 supports-[backdrop-filter]:bg-card/60 group relative flex flex-col gap-6 overflow-hidden rounded-xl border py-3 shadow-sm ring-1 backdrop-blur ring-inset
-        before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:[mask-composite:exclude] before:p-[1px]
-        before:content-['']
+	class={`bg-card/80 ring-border/40 supports-[backdrop-filter]:bg-card/60 group relative flex flex-col gap-6 overflow-hidden rounded-xl border py-3 shadow-sm ring-1 ring-inset backdrop-blur
+        before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:p-[1px] before:content-['']
         before:[-webkit-mask-composite:xor]
         before:[-webkit-mask:linear-gradient(#000_0_0)_content-box,linear-gradient(#000_0_0)]
+        before:[mask-composite:exclude]
         before:[mask:linear-gradient(#000_0_0)_content-box,linear-gradient(#000_0_0)]
         ${frameGradientClass} ${className ?? ''}`}
 >
@@ -61,7 +61,7 @@
 				<div class="relative">
 					<div class={`flex size-10 items-center justify-center rounded-lg ${iconBoxClass}`}>
 						{#if loading}
-							<LoaderCircleIcon class={`size-4 ${iconColorClass} motion-safe:animate-spin`} />
+							<Spinner />
 						{:else}
 							<IconComponent class={`size-5 ${iconColorClass}`} />
 						{/if}

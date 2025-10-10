@@ -2,7 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { toast } from 'svelte-sonner';
 	import { goto, invalidateAll } from '$app/navigation';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import CircleCheckIcon from '@lucide/svelte/icons/check-circle';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import { settingsService } from '$lib/services/settings-service.js';
@@ -64,7 +64,7 @@
 
 		<Button onclick={completeOnboarding} disabled={isLoading} size="lg" class="w-full">
 			{#if isLoading}
-				<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+				<Spinner class="mr-2 size-4" />
 				Completing Setup...
 			{:else}
 				Go to Dashboard

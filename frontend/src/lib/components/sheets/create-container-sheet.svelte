@@ -7,7 +7,7 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import ContainerIcon from '@lucide/svelte/icons/container';
 	import XIcon from '@lucide/svelte/icons/x';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -769,7 +769,7 @@
 									>
 									<Button type="submit" disabled={isLoading}>
 										{#if isLoading}
-											<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+											<Spinner class="mr-2 size-4" />
 											{m.containers_creating()}
 										{:else}
 											<ContainerIcon class="mr-2 size-4" />

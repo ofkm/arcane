@@ -37,7 +37,7 @@
 
 <script lang="ts">
 	import { cn } from '$lib/utils';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import { arcaneButtonVariants, actionConfigs } from './variants';
 	import { m } from '$lib/paraglide/messages';
 
@@ -95,8 +95,8 @@
 	{#if shouldUseInternalContent}
 		{#if type !== undefined && loading}
 			<div class="absolute inset-0 flex place-items-center justify-center bg-inherit">
-				<div class="flex animate-spin place-items-center justify-center">
-					<LoaderCircleIcon class="size-4" />
+				<div class="flex place-items-center justify-center">
+					<Spinner class="size-4" />
 				</div>
 			</div>
 			<span class="sr-only">{m.common_loading_label({ label: displayLoadingLabel })}</span>

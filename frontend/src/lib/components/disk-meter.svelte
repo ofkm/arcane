@@ -6,7 +6,6 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import { m } from '$lib/paraglide/messages';
 	import bytes from 'bytes';
@@ -75,7 +74,7 @@
 
 <Card.Root class={className}>
 	{#snippet children()}
-		<Card.Header icon={loading ? LoaderCircleIcon : HardDriveIcon} iconVariant="primary" compact>
+		<Card.Header icon={HardDriveIcon} iconVariant="primary" compact {loading}>
 			{#snippet children()}
 				<div class="min-w-0 flex-1">
 					<div class="text-foreground text-sm font-semibold">{m.dashboard_meter_disk()}</div>

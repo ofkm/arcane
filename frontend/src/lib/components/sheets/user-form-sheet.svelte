@@ -3,7 +3,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import UserPlusIcon from '@lucide/svelte/icons/user-plus';
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import type { User } from '$lib/types/user.type';
@@ -169,7 +169,7 @@
 				>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
-						<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+						<Spinner class="mr-2 size-4" />
 					{/if}
 					<SubmitIcon class="mr-2 size-4" />
 					{isEditMode ? m.users_save_changes() : m.users_create_button()}

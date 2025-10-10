@@ -6,7 +6,7 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import StopCircleIcon from '@lucide/svelte/icons/stop-circle';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
@@ -336,7 +336,7 @@
 				{#if item.state !== 'running'}
 					<DropdownMenu.Item onclick={() => performContainerAction('start', item.id)} disabled={isLoading.start || isAnyLoading}>
 						{#if isLoading.start}
-							<LoaderCircleIcon class="size-4 animate-spin" />
+							<Spinner class="size-4" />
 						{:else}
 							<PlayIcon class="size-4" />
 						{/if}
@@ -348,7 +348,7 @@
 						disabled={isLoading.restart || isAnyLoading}
 					>
 						{#if isLoading.restart}
-							<LoaderCircleIcon class="size-4 animate-spin" />
+							<Spinner class="size-4" />
 						{:else}
 							<RotateCcwIcon class="size-4" />
 						{/if}
@@ -357,7 +357,7 @@
 
 					<DropdownMenu.Item onclick={() => performContainerAction('stop', item.id)} disabled={isLoading.stop || isAnyLoading}>
 						{#if isLoading.stop}
-							<LoaderCircleIcon class="size-4 animate-spin" />
+							<Spinner class="size-4" />
 						{:else}
 							<StopCircleIcon class="size-4" />
 						{/if}
@@ -373,7 +373,7 @@
 					disabled={isLoading.remove || isAnyLoading}
 				>
 					{#if isLoading.remove}
-						<LoaderCircleIcon class="size-4 animate-spin" />
+						<Spinner class="size-4" />
 					{:else}
 						<Trash2Icon class="size-4" />
 					{/if}

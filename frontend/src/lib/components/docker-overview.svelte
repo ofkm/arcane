@@ -4,7 +4,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import InfoIcon from '@lucide/svelte/icons/info';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import DockerIcon from '$lib/icons/docker-icon.svelte';
 	import BoxIcon from '@lucide/svelte/icons/box';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
@@ -35,7 +34,7 @@
 
 <Card.Root class={className}>
 	{#snippet children()}
-		<Card.Header icon={loading ? LoaderCircleIcon : DockerIcon} iconVariant="primary" class="items-center">
+		<Card.Header icon={DockerIcon} iconVariant="primary" class="items-center" {loading}>
 			{#snippet children()}
 				{#if loading}
 					<div class="flex flex-1 flex-col gap-2">
