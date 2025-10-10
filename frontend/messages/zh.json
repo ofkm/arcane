@@ -1263,5 +1263,6 @@
 	"customize_secret_variables": "秘密变量",
 	"customize_variable_templates": "变量模板",
 	"duplicate": "Duplicate",
-	"cancel": "取消"
+	"cancel": "取消",
+	"compose_project_name_placeholder": "我的新项目"
 }
