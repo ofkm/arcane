@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -24,9 +26,20 @@ import (
 )
 
 type SystemHandler struct {
-	dockerService *services.DockerClientService
-	systemService *services.SystemService
-	sysWsUpgrader websocket.Upgrader
+	dockerService     *services.DockerClientService
+	systemService     *services.SystemService
+	sysWsUpgrader     websocket.Upgrader
+	activeConnections sync.Map
+	cpuCache          struct {
+		sync.RWMutex
+		value     float64
+		timestamp time.Time
+	}
+	diskUsagePathCache struct {
+		sync.RWMutex
+		value     string
+		timestamp time.Time
+	}
 }
 
 func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, systemService *services.SystemService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
@@ -230,10 +243,24 @@ func (h *SystemHandler) StartAllStoppedContainers(c *gin.Context) {
 }
 
 func (h *SystemHandler) getDiskUsagePath(ctx context.Context) string {
+	h.diskUsagePathCache.RLock()
+	if h.diskUsagePathCache.value != "" && time.Since(h.diskUsagePathCache.timestamp) < 30*time.Second {
+		path := h.diskUsagePathCache.value
+		h.diskUsagePathCache.RUnlock()
+		return path
+	}
+	h.diskUsagePathCache.RUnlock()
+
 	diskUsagePath := h.systemService.GetDiskUsagePath(ctx)
 	if diskUsagePath == "" {
 		diskUsagePath = "/"
 	}
+
+	h.diskUsagePathCache.Lock()
+	h.diskUsagePathCache.value = diskUsagePath
+	h.diskUsagePathCache.timestamp = time.Now()
+	h.diskUsagePathCache.Unlock()
+
 	return diskUsagePath
 }
 
@@ -256,6 +283,28 @@ func (h *SystemHandler) StopAllContainers(c *gin.Context) {
 
 //nolint:gocognit
 func (h *SystemHandler) Stats(c *gin.Context) {
+	clientIP := c.ClientIP()
+
+	connCount, _ := h.activeConnections.LoadOrStore(clientIP, new(int32))
+	count := connCount.(*int32)
+
+	currentCount := atomic.AddInt32(count, 1)
+	if currentCount > 5 {
+		atomic.AddInt32(count, -1)
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"success": false,
+			"error":   "Too many concurrent stats connections from this IP",
+		})
+		return
+	}
+
+	defer func() {
+		newCount := atomic.AddInt32(count, -1)
+		if newCount <= 0 {
+			h.activeConnections.Delete(clientIP)
+		}
+	}()
+
 	conn, err := h.sysWsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
@@ -265,20 +314,32 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
-	var lastCPU float64
+	cpuUpdateTicker := time.NewTicker(1 * time.Second)
+	defer cpuUpdateTicker.Stop()
 
-	send := func(block bool) error {
-		var cpuUsage float64
-		if block {
-			if vals, err := cpu.Percent(time.Second, false); err == nil && len(vals) > 0 {
-				cpuUsage = vals[0]
-				lastCPU = cpuUsage
-			} else {
-				cpuUsage = lastCPU
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-cpuUpdateTicker.C:
+				if vals, err := cpu.Percent(0, false); err == nil && len(vals) > 0 {
+					h.cpuCache.Lock()
+					h.cpuCache.value = vals[0]
+					h.cpuCache.timestamp = time.Now()
+					h.cpuCache.Unlock()
+				}
 			}
-		} else {
-			cpuUsage = lastCPU
 		}
+	}(ctx)
+
+	send := func() error {
+		h.cpuCache.RLock()
+		cpuUsage := h.cpuCache.value
+		h.cpuCache.RUnlock()
 
 		cpuCount, err := cpu.Counts(true)
 		if err != nil {
@@ -322,7 +383,14 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 		return conn.WriteJSON(stats)
 	}
 
-	if err := send(true); err != nil {
+	if vals, err := cpu.Percent(time.Second, false); err == nil && len(vals) > 0 {
+		h.cpuCache.Lock()
+		h.cpuCache.value = vals[0]
+		h.cpuCache.timestamp = time.Now()
+		h.cpuCache.Unlock()
+	}
+
+	if err := send(); err != nil {
 		return
 	}
 
@@ -331,7 +399,7 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 		case <-c.Request.Context().Done():
 			return
 		case <-ticker.C:
-			if err := send(true); err != nil {
+			if err := send(); err != nil {
 				return
 			}
 		}

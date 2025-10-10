@@ -3,6 +3,7 @@ package ws
 import (
 	"context"
 	"log/slog"
+	"runtime"
 	"sync"
 )
 
@@ -12,6 +13,7 @@ type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan []byte
+	onEmpty    func()
 }
 
 func NewHub(buffer int) *Hub {
@@ -21,6 +23,18 @@ func NewHub(buffer int) *Hub {
 		unregister: make(chan *Client),
 		broadcast:  make(chan []byte, buffer),
 	}
+}
+
+func (h *Hub) ClientCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.clients)
+}
+
+func (h *Hub) SetOnEmpty(fn func()) {
+	h.mu.Lock()
+	h.onEmpty = fn
+	h.mu.Unlock()
 }
 
 func (h *Hub) Run(ctx context.Context) {
@@ -35,6 +49,18 @@ func (h *Hub) Run(ctx context.Context) {
 			h.mu.Unlock()
 		case c := <-h.unregister:
 			h.remove(c)
+			if h.ClientCount() == 0 {
+				go func() {
+					runtime.Gosched()
+					h.mu.RLock()
+					empty := len(h.clients) == 0
+					onEmpty := h.onEmpty
+					h.mu.RUnlock()
+					if empty && onEmpty != nil {
+						onEmpty()
+					}
+				}()
+			}
 		case msg := <-h.broadcast:
 			h.mu.RLock()
 			for c := range h.clients {

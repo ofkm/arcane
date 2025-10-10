@@ -155,12 +155,18 @@
 
 		if (!targetId) return;
 
+		// Prevent starting if already streaming
+		if (shouldBeStreaming && wsClient) {
+			return;
+		}
+
 		try {
 			shouldBeStreaming = true;
-			isStreaming = true;
 			error = null;
-			onStart?.();
 			await startWebSocketStream();
+			// Only notify after successful start
+			isStreaming = true;
+			onStart?.();
 			return;
 		} catch (err) {
 			console.error('Failed to start log stream:', err);
@@ -171,6 +177,14 @@
 	}
 
 	async function startWebSocketStream() {
+		// Close existing connection if any
+		if (wsClient) {
+			try {
+				wsClient.close();
+			} catch {}
+			wsClient = null;
+		}
+
 		wsClient = new ReconnectingWebSocket<string>({
 			buildUrl: async () => {
 				return await buildLogWsEndpoint();
@@ -226,7 +240,7 @@
 		});
 	}
 
-	export 	function stopLogStream(notifyCallback = true) {
+	export function stopLogStream(notifyCallback = true) {
 		shouldBeStreaming = false;
 
 		if (eventSource) {
@@ -296,12 +310,29 @@
 
 	$effect(() => {
 		const key = streamKey();
-		if (!key) return;
-		if (key === currentStreamKey && isStreaming) return;
-		if (currentStreamKey) stopLogStream(false); // Don't notify callback on internal stop
-		logs = [];
-		currentStreamKey = key;
-		startLogStream();
+		if (!key) {
+			if (currentStreamKey && shouldBeStreaming) {
+				stopLogStream(false);
+			}
+			currentStreamKey = null;
+			return;
+		}
+
+		// If key changed while streaming, restart with new key
+		if (currentStreamKey && currentStreamKey !== key) {
+			const wasStreaming = shouldBeStreaming;
+			if (wasStreaming) {
+				stopLogStream(false);
+			}
+			logs = [];
+			currentStreamKey = key;
+			if (wasStreaming) {
+				startLogStream();
+			}
+		} else if (!currentStreamKey) {
+			// First time - just set the key, don't auto-start
+			currentStreamKey = key;
+		}
 	});
 </script>
 

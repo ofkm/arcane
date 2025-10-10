@@ -9,7 +9,6 @@
 	import KeyIcon from '@lucide/svelte/icons/key';
 	import AlertCircleIcon from '@lucide/svelte/icons/alert-circle';
 	import CopyIcon from '@lucide/svelte/icons/copy';
-	import settingsStore from '$lib/stores/config-store';
 	import { ResourcePageLayout, type ActionButton } from '$lib/layouts/index.js';
 	import { templateService } from '$lib/services/template-service.js';
 	import type { Variable } from '$lib/types/variable.type';
@@ -20,8 +19,6 @@
 	let originalVars = $state<Variable[]>([...data.variables]);
 	let searchQuery = $state('');
 	let isLoading = $state(false);
-
-	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
 
 	const filteredVars = $derived.by(() => {
 		if (!searchQuery.trim()) return envVars;
@@ -158,7 +155,7 @@
 
 <ResourcePageLayout title={m.variables_title()} subtitle={m.variables_subtitle()} {actionButtons}>
 	{#snippet mainContent()}
-		<fieldset disabled={isReadOnly} class="relative">
+		<fieldset class="relative">
 			<div class="space-y-4 sm:space-y-6">
 				<Card.Root class="border-primary/20 bg-primary/5 overflow-hidden pt-0">
 					<Card.Content class="px-3 py-4 sm:px-6">

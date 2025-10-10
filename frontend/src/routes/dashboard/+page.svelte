@@ -142,6 +142,11 @@
 	}
 
 	function setupStatsWS() {
+		if (statsWSClient) {
+			statsWSClient.close();
+			statsWSClient = null;
+		}
+
 		const getEnvId = () => {
 			const env = get(environmentStore.selected);
 			return env ? env.id : '0';

@@ -6,6 +6,7 @@
 	import ShieldIcon from '@lucide/svelte/icons/shield';
 	import CircleCheckIcon from '@lucide/svelte/icons/check-circle';
 	import { page } from '$app/state';
+	import { getApplicationLogo } from '$lib/utils/image.util';
 
 	let { children } = $props();
 
@@ -24,7 +25,7 @@
 <div class="flex min-h-screen flex-col">
 	<header class="border-b px-8 py-8">
 		<div class="flex items-center">
-			<img src="/img/arcane.png" alt="Arcane" class="size-12" />
+			<img src={getApplicationLogo()} alt="Arcane" class="size-12" />
 			<h1 class="ml-4 text-2xl font-bold">Arcane Setup</h1>
 		</div>
 	</header>

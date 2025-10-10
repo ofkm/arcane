@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -324,6 +325,13 @@ func (h *ProjectHandler) getOrStartProjectLogHub(projectID, format string, batch
 	ls.once.Do(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		ls.cancel = cancel
+
+		ls.hub.SetOnEmpty(func() {
+			slog.Debug("all clients disconnected, cleaning up project log hub", "projectID", projectID, "format", format)
+			cancel()
+			h.logStreams.Delete(key)
+		})
+
 		go ls.hub.Run(ctx)
 
 		lines := make(chan string, 256)

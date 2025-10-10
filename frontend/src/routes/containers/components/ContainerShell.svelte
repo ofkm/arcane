@@ -17,29 +17,51 @@
 	let websocketUrl = $state('');
 	let selectedShell = $state($settingsStore.defaultShell || '/bin/sh');
 	let reconnectKey = $state(0);
+	let lastContainerId = $state<string | undefined>(undefined);
+	let lastShellForUrl = $state<string | undefined>(undefined);
+	let hasShellOverride = $state(false);
+	let lastDefaultShell = $state<string | undefined>(undefined);
 
 	$effect(() => {
-		if ($settingsStore.defaultShell) {
-			selectedShell = $settingsStore.defaultShell;
+		const defaultShell = $settingsStore.defaultShell;
+		if (defaultShell !== lastDefaultShell) {
+			lastDefaultShell = defaultShell;
+			hasShellOverride = false;
+			const fallbackShell = defaultShell || '/bin/sh';
+			if (selectedShell !== fallbackShell) {
+				selectedShell = fallbackShell;
+			}
+		} else if (!selectedShell) {
+			selectedShell = defaultShell || '/bin/sh';
 		}
 
-		if (containerId && selectedShell) {
-			updateWebSocketUrl();
+		const currentContainer = containerId;
+		if (!containerId || !selectedShell) {
+			return;
 		}
+
+		if (lastContainerId === currentContainer && lastShellForUrl === selectedShell) {
+			return;
+		}
+
+		lastContainerId = currentContainer;
+		lastShellForUrl = selectedShell;
+		updateWebSocketUrl(selectedShell);
 	});
 
-	function updateWebSocketUrl() {
+	function updateWebSocketUrl(shell: string) {
 		(async () => {
 			const envId = await environmentStore.getCurrentEnvironmentId();
 			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 			const host = window.location.host;
-			websocketUrl = `${protocol}//${host}/api/environments/${envId}/containers/${containerId}/exec/ws?shell=${encodeURIComponent(selectedShell)}`;
+			websocketUrl = `${protocol}//${host}/api/environments/${envId}/containers/${containerId}/exec/ws?shell=${encodeURIComponent(shell)}`;
 		})();
 	}
 
 	function handleShellChange(shell: string) {
+		const defaultShell = $settingsStore.defaultShell || '/bin/sh';
+		hasShellOverride = shell !== defaultShell;
 		selectedShell = shell;
-		updateWebSocketUrl();
 	}
 
 	function handleConnected() {
