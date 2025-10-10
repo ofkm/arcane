@@ -1,6 +1,11 @@
 {
 	"$schema": "https://inlang.com/nl/schema/inlang-message-formaat",
 	"layout_title": "Arcane",
+	"accent_color": "Accent kleur",
+	"accent_color_description": "Selecteer een accentkleur om het uiterlijk van Arcane aan te passen",
+	"custom_accent_color": "Aangepaste Accent Kleur",
+	"custom_accent_color_description": "Voer een aangepaste kleur in met behulp van een geldig CSS-kleurenformaat (bijv. hex, rgb, hsl).",
+	"color_value": "Kleur waarde",
 	"error_occurred": "Fout opgetreden",
 	"error_not_found": "Niet gevonden",
 	"error_generic": "Er ging iets mis",
@@ -1256,5 +1261,7 @@
 	"customize_registry_credentials": "Register Credentials",
 	"customize_registry_mirrors": "Register mirrors",
 	"customize_secret_variables": "Geheime variabelen",
-	"customize_variable_templates": "Variabele sjablonen"
+	"customize_variable_templates": "Variabele sjablonen",
+	"duplicate": "Duplicate",
+	"cancel": "annuleren"
 }
