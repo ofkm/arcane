@@ -80,6 +80,10 @@ export default class TemplateService extends BaseAPIService {
 		await this.api.delete(`/templates/registries/${id}`);
 	}
 
+	async deleteTemplate(id: string): Promise<void> {
+		await this.api.delete(`/templates/${encodeURIComponent(id)}`);
+	}
+
 	async getGlobalVariables(): Promise<Variable[]> {
 		const response = await this.api.get('/templates/variables');
 		return response.data?.data ?? [];

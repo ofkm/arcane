@@ -210,6 +210,22 @@ func (s *TemplateService) DeleteTemplate(ctx context.Context, id string) error {
 		return fmt.Errorf("cannot delete remote template directly")
 	}
 
+	baseDir, err := appfs.GetTemplatesDirectory(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get templates directory: %w", err)
+	} else {
+		templatePath := filepath.Join(baseDir, existing.Name)
+
+		if stat, err := os.Stat(templatePath); err == nil && stat.IsDir() {
+			composeFile := filepath.Join(templatePath, "compose.yaml")
+			if _, err := os.Stat(composeFile); err == nil {
+				if err := os.RemoveAll(templatePath); err != nil {
+					return fmt.Errorf("failed to delete template directory: %w", err)
+				}
+			}
+		}
+	}
+
 	result := s.db.WithContext(ctx).Where("id = ?", id).Delete(&models.ComposeTemplate{})
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete template: %w", result.Error)

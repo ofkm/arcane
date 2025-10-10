@@ -2,6 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
+	import { Spinner } from '$lib/components/ui/spinner';
 	import CodeEditor from '$lib/components/code-editor/editor.svelte';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import FolderIcon from '@lucide/svelte/icons/folder';
@@ -10,19 +11,79 @@
 	import BoxIcon from '@lucide/svelte/icons/box';
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import LayersIcon from '@lucide/svelte/icons/layers';
-	import { goto } from '$app/navigation';
+	import DownloadIcon from '@lucide/svelte/icons/download';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { parseComposeServices, parseEnvVariables, getServicesPreview } from '$lib/utils/compose-parser';
 	import { m } from '$lib/paraglide/messages.js';
+	import { templateService } from '$lib/services/template-service';
+	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import { toast } from 'svelte-sonner';
 
 	let { data } = $props();
 
-	const template = data.template;
-
+	let template = $derived(data.template);
 	let compose = $state(data.compose);
 	let env = $state(data.env);
 	let services = $derived(parseComposeServices(compose));
 	let envVars = $derived(parseEnvVariables(env));
 	let servicesPreview = $derived(getServicesPreview(services));
+
+	let isDownloading = $state(false);
+	let isDeleting = $state(false);
+
+	const localVersionOfRemote = $derived(() => {
+		if (!template.isRemote || !template.metadata?.remoteUrl) return null;
+		return data.allTemplates.find((t) => !t.isRemote && t.metadata?.remoteUrl === template.metadata?.remoteUrl);
+	});
+
+	const canDelete = $derived(!template.isRemote);
+	const canDownload = $derived(template.isRemote && !localVersionOfRemote());
+
+	async function handleDownload() {
+		if (isDownloading || !canDownload) return;
+
+		isDownloading = true;
+		try {
+			const downloadedTemplate = await templateService.download(template.id);
+			toast.success(m.templates_downloaded_success({ name: template.name }));
+			if (downloadedTemplate?.id) {
+				await goto(`/customize/templates/${downloadedTemplate.id}`, { replaceState: true });
+			} else {
+				await invalidateAll();
+			}
+		} catch (error) {
+			console.error('Error downloading template:', error);
+			toast.error(error instanceof Error ? error.message : m.templates_download_failed());
+		} finally {
+			isDownloading = false;
+		}
+	}
+
+	async function handleDelete() {
+		if (isDeleting || !canDelete) return;
+
+		openConfirmDialog({
+			title: m.templates_delete_confirm_title(),
+			message: m.templates_delete_confirm_message({ name: template.name }),
+			confirm: {
+				label: m.templates_delete_template(),
+				destructive: true,
+				action: async () => {
+					isDeleting = true;
+					try {
+						await templateService.deleteTemplate(template.id);
+						toast.success(m.templates_delete_success());
+						await goto('/customize/templates');
+					} catch (error) {
+						console.error('Error deleting template:', error);
+						toast.error(error instanceof Error ? error.message : m.templates_delete_failed());
+						isDeleting = false;
+					}
+				}
+			}
+		});
+	}
 </script>
 
 <div class="container mx-auto max-w-full space-y-6 overflow-hidden p-2 sm:p-6">
@@ -64,6 +125,39 @@
 				<FolderIcon class="size-4" />
 				{m.compose_create_project()}
 			</Button>
+
+			{#if canDownload}
+				<Button variant="secondary" onclick={handleDownload} disabled={isDownloading} class="w-full gap-2 sm:w-auto">
+					{#if isDownloading}
+						<Spinner class="size-4" />
+						{m.templates_downloading()}
+					{:else}
+						<DownloadIcon class="size-4" />
+						{m.templates_download()}
+					{/if}
+				</Button>
+			{:else if template.isRemote && localVersionOfRemote()}
+				<Button
+					variant="outline"
+					onclick={() => goto(`/customize/templates/${localVersionOfRemote()?.id}`)}
+					class="w-full gap-2 sm:w-auto"
+				>
+					<FolderIcon class="size-4" />
+					View Local Version
+				</Button>
+			{/if}
+
+			{#if canDelete}
+				<Button variant="destructive" onclick={handleDelete} disabled={isDeleting} class="w-full gap-2 sm:w-auto">
+					{#if isDeleting}
+						<Spinner class="size-4" />
+						{m.templates_deleting()}
+					{:else}
+						<Trash2Icon class="size-4" />
+						{m.templates_delete_template()}
+					{/if}
+				</Button>
+			{/if}
 		</div>
 	</div>
 
