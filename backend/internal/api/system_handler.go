@@ -317,16 +317,24 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 	cpuUpdateTicker := time.NewTicker(1 * time.Second)
 	defer cpuUpdateTicker.Stop()
 
-	go func() {
-		for range cpuUpdateTicker.C {
-			if vals, err := cpu.Percent(0, false); err == nil && len(vals) > 0 {
-				h.cpuCache.Lock()
-				h.cpuCache.value = vals[0]
-				h.cpuCache.timestamp = time.Now()
-				h.cpuCache.Unlock()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-cpuUpdateTicker.C:
+				if vals, err := cpu.Percent(0, false); err == nil && len(vals) > 0 {
+					h.cpuCache.Lock()
+					h.cpuCache.value = vals[0]
+					h.cpuCache.timestamp = time.Now()
+					h.cpuCache.Unlock()
+				}
 			}
 		}
-	}()
+	}(ctx)
 
 	send := func() error {
 		h.cpuCache.RLock()

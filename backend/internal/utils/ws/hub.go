@@ -3,6 +3,7 @@ package ws
 import (
 	"context"
 	"log/slog"
+	"runtime"
 	"sync"
 )
 
@@ -49,12 +50,16 @@ func (h *Hub) Run(ctx context.Context) {
 		case c := <-h.unregister:
 			h.remove(c)
 			if h.ClientCount() == 0 {
-				h.mu.RLock()
-				onEmpty := h.onEmpty
-				h.mu.RUnlock()
-				if onEmpty != nil {
-					go onEmpty()
-				}
+				go func() {
+					runtime.Gosched()
+					h.mu.RLock()
+					empty := len(h.clients) == 0
+					onEmpty := h.onEmpty
+					h.mu.RUnlock()
+					if empty && onEmpty != nil {
+						onEmpty()
+					}
+				}()
 			}
 		case msg := <-h.broadcast:
 			h.mu.RLock()

@@ -57,8 +57,9 @@ export class ReconnectingWebSocket<T = unknown> {
 			return;
 		}
 
+		let socket: WebSocket;
 		try {
-			this.ws = new WebSocket(url);
+			socket = new WebSocket(url);
 		} catch (err) {
 			this.connecting = false;
 			this.scheduleReconnect();
@@ -66,13 +67,17 @@ export class ReconnectingWebSocket<T = unknown> {
 			return;
 		}
 
-		this.ws.onopen = () => {
+		this.ws = socket;
+
+		socket.onopen = () => {
+			if (socket !== this.ws) return;
 			this.attempt = 0;
 			this.connecting = false;
 			this.opts.onOpen?.();
 		};
 
-		this.ws.onmessage = (evt) => {
+		socket.onmessage = (evt) => {
+			if (socket !== this.ws) return;
 			try {
 				const parser =
 					this.opts.parseMessage ??
@@ -87,15 +92,20 @@ export class ReconnectingWebSocket<T = unknown> {
 			}
 		};
 
-		this.ws.onerror = (e) => {
+		socket.onerror = (e) => {
+			if (socket !== this.ws) return;
 			this.opts.onError?.(e);
 		};
 
-		this.ws.onclose = () => {
+		socket.onclose = () => {
+			if (socket !== this.ws) return;
 			this.opts.onClose?.();
 			this.ws = null;
+			this.connecting = false;
 			if (!this.closed) this.scheduleReconnect();
 		};
+
+		return;
 	}
 
 	private scheduleReconnect() {
@@ -142,8 +152,6 @@ export class ReconnectingWebSocket<T = unknown> {
 		try {
 			this.ws?.close();
 		} catch {}
-
-		this.ws = null;
 		this.connecting = false;
 	}
 
