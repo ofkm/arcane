@@ -1,6 +1,7 @@
 package api
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -17,14 +18,27 @@ func NewApplicationImagesHandler(group *gin.RouterGroup, appImagesService *servi
 
 	group.GET("/app-images/logo", appImageHandler.getLogo)
 	group.GET("/app-images/favicon", appImageHandler.getFavicon)
+	group.GET("/app-images/profile", appImageHandler.getDefaultProfile)
 }
 
 func (c *ApplicationImagesHandler) getLogo(ctx *gin.Context) {
-	c.getImage(ctx, "logo")
+	name := "logo"
+
+	if fullParam := ctx.Query("full"); fullParam != "" {
+		if full, err := strconv.ParseBool(fullParam); err == nil && full {
+			name = "logo-full"
+		}
+	}
+
+	c.getImage(ctx, name)
 }
 
 func (c *ApplicationImagesHandler) getFavicon(ctx *gin.Context) {
 	c.getImage(ctx, "favicon")
+}
+
+func (c *ApplicationImagesHandler) getDefaultProfile(ctx *gin.Context) {
+	c.getImage(ctx, "profile")
 }
 
 func (c *ApplicationImagesHandler) getImage(ctx *gin.Context, name string) {

@@ -2,8 +2,12 @@ type SkipCacheUntil = {
 	[key: string]: number;
 };
 
-export function getApplicationLogo(): string {
-	return getCachedImageUrl('/api/app-images/logo');
+export function getApplicationLogo(full = false): string {
+	const url = full ? '/api/app-images/logo?full=true' : '/api/app-images/logo';
+	return getCachedImageUrl(url);
+}
+export function getDefaultProfilePicture(): string {
+	return getCachedImageUrl('/api/app-images/profile');
 }
 
 function getCachedImageUrl(url: string) {
