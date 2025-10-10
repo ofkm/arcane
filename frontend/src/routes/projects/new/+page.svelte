@@ -287,13 +287,19 @@
 								<h3 class="text-lg font-semibold">{m.compose_compose_file_title()}</h3>
 								<span class="text-muted-foreground text-xs">{m.compose_yaml_label()}</span>
 							</div>
-							<div class="h-[590px] w-full">
-								<CodeEditor
-									bind:value={$inputs.composeContent.value}
-									language="yaml"
-									placeholder={m.compose_compose_placeholder()}
-									readOnly={saving || isLoadingTemplateContent}
-								/>
+							<div
+								class="border-input focus-within:border-primary focus-within:ring-ring relative rounded-md border bg-transparent transition-colors focus-within:ring-2 focus-within:ring-offset-2"
+								class:border-destructive={$inputs.composeContent.error}
+							>
+								<div class="min-h-[500px] w-full overflow-hidden">
+									<CodeEditor
+										bind:value={$inputs.composeContent.value}
+										language="yaml"
+										height="full"
+										placeholder={m.compose_compose_placeholder()}
+										readOnly={saving || isLoadingTemplateContent}
+									/>
+								</div>
 							</div>
 							{#if $inputs.composeContent.error}
 								<p class="text-destructive mt-1 text-xs">{$inputs.composeContent.error}</p>
@@ -308,13 +314,19 @@
 								<h3 class="text-lg font-semibold">{m.compose_env_title()}</h3>
 								<span class="text-muted-foreground text-xs">{m.compose_env_kv_label()}</span>
 							</div>
-							<div class="h-[590px] w-full">
-								<CodeEditor
-									bind:value={$inputs.envContent.value}
-									language="env"
-									placeholder={m.compose_env_placeholder()}
-									readOnly={saving || isLoadingTemplateContent}
-								/>
+							<div
+								class="border-input focus-within:border-primary focus-within:ring-ring relative rounded-md border bg-transparent transition-colors focus-within:ring-2 focus-within:ring-offset-2"
+								class:border-destructive={$inputs.envContent.error}
+							>
+								<div class="min-h-[500px] w-full overflow-hidden">
+									<CodeEditor
+										bind:value={$inputs.envContent.value}
+										language="env"
+										height="full"
+										placeholder={m.compose_env_placeholder()}
+										readOnly={saving || isLoadingTemplateContent}
+									/>
+								</div>
 							</div>
 							{#if $inputs.envContent.error}
 								<p class="text-destructive mt-1 text-xs">{$inputs.envContent.error}</p>
