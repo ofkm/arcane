@@ -31,81 +31,69 @@
 
 	let { open = $bindable(), templates = [], onSelect, onDownloadSuccess }: Props = $props();
 
-	let loadingStates = $state(new Map<string, boolean>());
-	const allTemplates = $derived(templates ?? []);
-
+	let loadingStates = $state<Set<string>>(new Set());
 	let sortBy = $state<'name-asc' | 'name-desc'>('name-asc');
 	let groupByRegistry = $state(true);
 
-	function normalizeTags(template: Template): string[] {
-		const raw = template.metadata?.tags;
-		let list: unknown = raw;
+	const allTemplates = $derived(templates ?? []);
 
-		if (typeof raw === 'string') {
-			const s = raw.trim();
-			if (s.startsWith('[')) {
-				try {
-					list = JSON.parse(s);
-				} catch {
-					list = s.split(',').map((t) => t.trim());
-				}
-			} else {
-				list = s.split(',').map((t) => t.trim());
-			}
-		}
-
-		const arr = Array.isArray(list) ? list : [];
-		return arr
-			.map((t) => String(t).trim())
-			.filter(Boolean)
-			.map((t) => t.replace(/^["']|["']$/g, '')) // strip quotes
-			.map((t) => t.charAt(0).toUpperCase() + t.slice(1)); // capitalize first letter
-	}
-
-	function getRegistryName(t: Template): string {
-		return t.registry?.name ?? (t.isRemote ? m.templates_remote() : m.templates_local());
-	}
-
-	function sortTemplates(items: Template[]): Template[] {
-		const sorted = [...items];
-		if (sortBy === 'name-asc') {
-			sorted.sort((a, b) => a.name.localeCompare(b.name));
-		} else {
-			sorted.sort((a, b) => b.name.localeCompare(a.name));
-		}
+	const sortedTemplates = $derived.by(() => {
+		const sorted = [...allTemplates];
+		sorted.sort((a, b) => (sortBy === 'name-asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
 		return sorted;
-	}
+	});
 
-	type Group = { key: string; name: string; items: Template[] };
+	const groupedTemplates = $derived.by(() => {
+		if (!groupByRegistry) return [];
+
+		const groups = new Map<string, Template[]>();
+		for (const template of sortedTemplates) {
+			const key = template.registry?.name ?? (template.isRemote ? m.templates_remote() : m.templates_local());
+			const items = groups.get(key) ?? [];
+			items.push(template);
+			groups.set(key, items);
+		}
+
+		return Array.from(groups.entries())
+			.map(([name, items]) => ({ name, items }))
+			.sort((a, b) => a.name.localeCompare(b.name));
+	});
 
 	const filters = {
 		'name-asc': m.templates_sort_name_asc(),
 		'name-desc': m.templates_sort_name_desc()
 	};
 
-	const grouped: Group[] = $derived(
-		!groupByRegistry
-			? []
-			: Array.from(
-					allTemplates.reduce((map, t) => {
-						const key = getRegistryName(t);
-						const arr = map.get(key) ?? [];
-						arr.push(t);
-						map.set(key, arr);
-						return map;
-					}, new Map<string, Template[]>())
-				)
-					.map(([key, items]) => ({
-						key,
-						name: key,
-						items: sortTemplates(items)
-					}))
-					.sort((a, b) => a.name.localeCompare(b.name))
-	);
+	function normalizeTags(tags: unknown): string[] {
+		if (!tags) return [];
+
+		let list: unknown = tags;
+		if (typeof tags === 'string') {
+			const trimmed = tags.trim();
+			if (trimmed.startsWith('[')) {
+				try {
+					list = JSON.parse(trimmed);
+				} catch {
+					list = trimmed.split(',');
+				}
+			} else {
+				list = trimmed.split(',');
+			}
+		}
+
+		return (Array.isArray(list) ? list : [])
+			.map((t) =>
+				String(t)
+					.trim()
+					.replace(/^["']|["']$/g, '')
+			)
+			.filter(Boolean)
+			.map((t) => t.charAt(0).toUpperCase() + t.slice(1));
+	}
 
 	async function handleSelect(template: Template) {
-		loadingStates.set(template.id, true);
-		loadingStates = new Map(loadingStates);
+		const loadingKey = template.id;
+		loadingStates.add(loadingKey);
 
 		try {
 			const details = await templateService.getTemplateContent(template.id);
@@ -113,12 +101,11 @@
 				toast.error(m.templates_load_failed());
 				return;
 			}
-			const compose = typeof details.content === 'string' ? details.content : '';
-			const env = typeof details.envContent === 'string' ? details.envContent : '';
+
 			onSelect({
 				...details.template,
-				content: compose,
-				envContent: env
+				content: String(details.content ?? ''),
+				envContent: String(details.envContent ?? '')
 			});
 			open = false;
 			toast.success(m.templates_loaded_success({ name: template.name }));
@@ -126,21 +113,18 @@
 			console.error('Error loading template:', error);
 			toast.error(error instanceof Error ? error.message : m.templates_load_failed());
 		} finally {
-			loadingStates.delete(template.id);
-			loadingStates = new Map(loadingStates);
+			loadingStates.delete(loadingKey);
 		}
 	}
 
 	async function handleDownload(template: Template) {
 		if (!template.isRemote) return;
 
-		const templateId = template.id;
-		loadingStates.set(`download-${templateId}`, true);
-		loadingStates = new Map(loadingStates);
+		const loadingKey = `download-${template.id}`;
+		loadingStates.add(loadingKey);
 
 		try {
-			const result = await templateService.download(templateId);
-
+			const result = await templateService.download(template.id);
 			if (result) {
 				toast.success(m.templates_downloaded_success({ name: template.name }));
 				onDownloadSuccess?.();
@@ -149,15 +133,90 @@
 			}
 		} catch (error) {
 			console.error('Error downloading template:', error);
-			let errorMessage = m.templates_download_failed();
-			if (error instanceof Error) errorMessage = error.message;
-			toast.error(errorMessage);
+			toast.error(error instanceof Error ? error.message : m.templates_download_failed());
 		} finally {
-			loadingStates.delete(`download-${templateId}`);
-			loadingStates = new Map(loadingStates);
+			loadingStates.delete(loadingKey);
 		}
 	}
 </script>
+
+{#snippet templateCard(template: Template, showRegistry: boolean = false)}
+	<Card class="hover:bg-muted/50 hover:border-primary/20 border transition-colors">
+		<div class="p-4">
+			<div class="mb-2 flex items-start justify-between gap-2">
+				<h4 class="truncate pr-2 font-semibold">{template.name}</h4>
+				<div class="ml-2 flex flex-shrink-0 flex-wrap items-center gap-1">
+					{#if template.metadata?.version}
+						<Badge variant="outline" class="text-xs">v{template.metadata.version}</Badge>
+					{/if}
+					{#if template.metadata?.envUrl || template.envContent}
+						<Badge variant="secondary" class="text-xs">
+							<SettingsIcon class="mr-1 size-3" />
+							ENV
+						</Badge>
+					{/if}
+				</div>
+			</div>
+
+			{#if showRegistry}
+				<div class="mb-2">
+					<Badge variant="secondary" class="text-xs">
+						{#if template.isRemote}
+							<GlobeIcon class="mr-1 size-3" />
+						{:else}
+							<FolderOpenIcon class="mr-1 size-3" />
+						{/if}
+						{template.registry?.name ?? (template.isRemote ? m.templates_remote() : m.templates_local())}
+					</Badge>
+				</div>
+			{/if}
+
+			<p class="text-muted-foreground mb-3 line-clamp-2 text-sm">
+				{template.description}
+			</p>
+
+			{#if normalizeTags(template.metadata?.tags).length > 0}
+				<div class="mb-3 flex flex-wrap gap-1">
+					{#each normalizeTags(template.metadata?.tags) as tag}
+						<Badge variant="outline" class="text-[10px]">{tag}</Badge>
+					{/each}
+				</div>
+			{/if}
+
+			<div class="flex items-center justify-between gap-2">
+				<div class="text-muted-foreground text-xs">
+					{template.isRemote ? m.templates_remote_template_label() : m.templates_local_template_label()}
+				</div>
+				<div class="flex gap-2">
+					{#if template.isRemote}
+						<Button
+							variant="outline"
+							size="sm"
+							onclick={() => handleDownload(template)}
+							disabled={loadingStates.has(`download-${template.id}`)}
+						>
+							{#if loadingStates.has(`download-${template.id}`)}
+								<Spinner class="mr-1 size-3" />
+								{m.templates_downloading()}
+							{:else}
+								<DownloadIcon class="mr-1 size-3" />
+								{m.templates_download()}
+							{/if}
+						</Button>
+					{/if}
+					<Button size="sm" onclick={() => handleSelect(template)} disabled={loadingStates.has(template.id)}>
+						{#if loadingStates.has(template.id)}
+							<Spinner class="mr-1 size-3" />
+							{m.templates_loading()}
+						{:else}
+							{m.templates_use_now()}
+						{/if}
+					</Button>
+				</div>
+			</div>
+		</div>
+	</Card>
+{/snippet}
 
 <Dialog.Root bind:open>
 	<Dialog.Content class="max-h-screen overflow-y-auto sm:max-w-[900px]">
@@ -195,7 +254,7 @@
 
 		<div class="py-2">
 			<ScrollArea class="max-h-[65vh]">
-				{#if (allTemplates?.length ?? 0) === 0}
+				{#if allTemplates.length === 0}
 					<div class="text-muted-foreground py-10 text-center">
 						<FileTextIcon class="mx-auto mb-4 size-12 opacity-50" />
 						<p class="mb-2">{m.templates_no_templates()}</p>
@@ -205,9 +264,9 @@
 							{m.templates_add_registry_prompt_part2()}
 						</p>
 					</div>
-				{:else if groupByRegistry && grouped.length}
+				{:else if groupByRegistry && groupedTemplates.length > 0}
 					<div class="space-y-3">
-						{#each grouped as group}
+						{#each groupedTemplates as group}
 							<Collapsible.Root class="w-full">
 								<Card class="border-2">
 									<Collapsible.Trigger class="flex w-full items-center justify-between px-4 py-3 text-left">
@@ -222,72 +281,7 @@
 										<div class="px-6 pb-6">
 											<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 												{#each group.items as template}
-													<Card class="hover:bg-muted/50 hover:border-primary/20 border transition-colors">
-														<div class="p-4">
-															<div class="mb-2 flex items-start justify-between gap-2">
-																<h4 class="truncate pr-2 font-semibold">{template.name}</h4>
-																<div class="ml-2 flex flex-shrink-0 flex-wrap items-center gap-1">
-																	{#if template.metadata?.version}
-																		<Badge variant="outline" class="text-xs">v{template.metadata.version}</Badge>
-																	{/if}
-																	{#if template.metadata?.envUrl || template.envContent}
-																		<Badge variant="secondary" class="text-xs">
-																			<SettingsIcon class="mr-1 size-3" />
-																			ENV
-																		</Badge>
-																	{/if}
-																</div>
-															</div>
-
-															<p class="text-muted-foreground mb-3 line-clamp-2 text-sm">
-																{template.description}
-															</p>
-
-															{#if normalizeTags(template).length > 0}
-																<div class="mb-3 flex flex-wrap gap-1">
-																	{#each normalizeTags(template) as tag}
-																		<Badge variant="outline" class="text-[10px]">{tag}</Badge>
-																	{/each}
-																</div>
-															{/if}
-
-															<div class="flex items-center justify-between gap-2">
-																<div class="text-muted-foreground text-xs">
-																	{template.isRemote ? m.templates_remote_template_label() : m.templates_local_template_label()}
-																</div>
-																<div class="flex gap-2">
-																	{#if template.isRemote}
-																		<Button
-																			variant="outline"
-																			size="sm"
-																			onclick={() => handleDownload(template)}
-																			disabled={loadingStates.get(`download-${template.id}`)}
-																		>
-																			{#if loadingStates.get(`download-${template.id}`)}
-																				<Spinner class="mr-1 size-3" />
-																				{m.templates_downloading()}
-																			{:else}
-																				<DownloadIcon class="mr-1 size-3" />
-																				{m.templates_download()}
-																			{/if}
-																		</Button>
-																	{/if}
-																	<Button
-																		size="sm"
-																		onclick={() => handleSelect(template)}
-																		disabled={loadingStates.get(template.id)}
-																	>
-																		{#if loadingStates.get(template.id)}
-																			<Spinner class="mr-1 size-3" />
-																			{m.templates_loading()}
-																		{:else}
-																			{m.templates_use_now()}
-																		{/if}
-																	</Button>
-																</div>
-															</div>
-														</div>
-													</Card>
+													{@render templateCard(template)}
 												{/each}
 											</div>
 										</div>
@@ -297,82 +291,9 @@
 						{/each}
 					</div>
 				{:else}
-					<!-- Flat grid (no grouping) -->
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-						{#each sortTemplates(allTemplates) as template}
-							<Card class="hover:bg-muted/50 hover:border-primary/20 border-2 transition-colors">
-								<div class="p-4">
-									<div class="mb-2 flex items-start justify-between gap-2">
-										<h4 class="truncate pr-2 font-semibold">{template.name}</h4>
-										<div class="ml-2 flex flex-shrink-0 flex-wrap items-center gap-1">
-											{#if template.metadata?.version}
-												<Badge variant="outline" class="text-xs">v{template.metadata.version}</Badge>
-											{/if}
-											{#if template.metadata?.envUrl || template.envContent}
-												<Badge variant="secondary" class="text-xs">
-													<SettingsIcon class="mr-1 size-3" />
-													ENV
-												</Badge>
-											{/if}
-										</div>
-									</div>
-
-									<div class="mb-2">
-										<Badge variant="secondary" class="text-xs">
-											{#if template.isRemote}
-												<GlobeIcon class="mr-1 size-3" />
-											{:else}
-												<FolderOpenIcon class="mr-1 size-3" />
-											{/if}
-											{getRegistryName(template)}
-										</Badge>
-									</div>
-
-									<p class="text-muted-foreground mb-3 line-clamp-2 text-sm">
-										{template.description}
-									</p>
-
-									{#if normalizeTags(template).length > 0}
-										<div class="mb-3 flex flex-wrap gap-1">
-											{#each normalizeTags(template) as tag}
-												<Badge variant="outline" class="text-[10px]">{tag}</Badge>
-											{/each}
-										</div>
-									{/if}
-
-									<div class="flex items-center justify-between gap-2">
-										<div class="text-muted-foreground text-xs">
-											{template.isRemote ? m.templates_remote_template_label() : m.templates_local_template_label()}
-										</div>
-										<div class="flex gap-2">
-											{#if template.isRemote}
-												<Button
-													variant="outline"
-													size="sm"
-													onclick={() => handleDownload(template)}
-													disabled={loadingStates.get(`download-${template.id}`)}
-												>
-													{#if loadingStates.get(`download-${template.id}`)}
-														<Spinner class="mr-1 size-3" />
-														{m.templates_downloading()}
-													{:else}
-														<DownloadIcon class="mr-1 size-3" />
-														{m.templates_download()}
-													{/if}
-												</Button>
-											{/if}
-											<Button size="sm" onclick={() => handleSelect(template)} disabled={loadingStates.get(template.id)}>
-												{#if loadingStates.get(template.id)}
-													<Spinner class="mr-1 size-3" />
-													{m.templates_loading()}
-												{:else}
-													{m.templates_use_now()}
-												{/if}
-											</Button>
-										</div>
-									</div>
-								</div>
-							</Card>
+						{#each sortedTemplates as template}
+							{@render templateCard(template, true)}
 						{/each}
 					</div>
 				{/if}

@@ -18,13 +18,15 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import TemplateSelectionDialog from '$lib/components/dialogs/template-selection-dialog.svelte';
 	import type { Template } from '$lib/types/template.type';
-	import * as DropdownButton from '$lib/components/ui/dropdown-button/index.js';
 	import { z } from 'zod/v4';
 	import { arcaneButtonVariants, actionConfigs } from '$lib/components/arcane-button/variants';
 	import PlusCircleIcon from '@lucide/svelte/icons/plus-circle';
 	import { m } from '$lib/paraglide/messages';
 	import { projectService } from '$lib/services/project-service.js';
 	import { systemService } from '$lib/services/system-service.js';
+	import * as ButtonGroup from '$lib/components/ui/button-group/index.js';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 
 	let { data } = $props();
 
@@ -199,62 +201,56 @@
 						</Dialog.Content>
 					</Dialog.Root>
 
-					<DropdownButton.DropdownRoot>
-						<DropdownButton.Root align="center" class="inline-flex">
-							<DropdownButton.Main
-								disabled={!$inputs.name.value ||
-									!$inputs.composeContent.value ||
-									saving ||
-									converting ||
-									isLoadingTemplateContent}
-								onclick={() => handleSubmit()}
-								class={`${templateBtnClass} gap-2 rounded-r-none hover:!translate-y-0 focus-visible:!translate-y-0 active:!translate-y-0`}
-							>
-								{#if saving}
-									<Spinner class="size-4" />
-									{m.compose_creating()}
-								{:else}
-									<PlusCircleIcon class="size-4" />
-									{m.compose_create_project()}
-								{/if}
-							</DropdownButton.Main>
+					<ButtonGroup.Root>
+						<Button
+							disabled={!$inputs.name.value || !$inputs.composeContent.value || saving || converting || isLoadingTemplateContent}
+							onclick={() => handleSubmit()}
+							class={`${templateBtnClass} gap-2 rounded-r-none hover:translate-y-0 focus:translate-y-0 active:translate-y-0`}
+						>
+							{#if saving}
+								<Spinner class="size-4" />
+								{m.compose_creating()}
+							{:else}
+								<PlusCircleIcon class="size-4" />
+								{m.compose_create_project()}
+							{/if}
+						</Button>
 
-							<DropdownButton.DropdownTrigger>
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger>
 								{#snippet child({ props })}
-									<DropdownButton.Trigger
+									<Button
 										{...props}
-										class={[
-											props.class,
-											templateBtnClass,
-											'-ml-px rounded-l-none px-2',
-											'hover:!translate-y-0 focus-visible:!translate-y-0 active:!translate-y-0'
-										].join(' ')}
-									/>
+										class={`${templateBtnClass} -ml-px rounded-l-none px-2 hover:translate-y-0 focus:translate-y-0 active:translate-y-0`}
+										variant="outline"
+									>
+										<ChevronDown class="size-4" />
+									</Button>
 								{/snippet}
-							</DropdownButton.DropdownTrigger>
-						</DropdownButton.Root>
-
-						<DropdownButton.Content class={dropdownContentClass}>
-							<DropdownButton.Item
-								class={dropdownItemClass}
-								disabled={saving || converting || isLoadingTemplateContent}
-								onclick={() => (showTemplateDialog = true)}
-							>
-								<LayoutTemplateIcon class="size-4" />
-								{m.compose_use_template()}
-							</DropdownButton.Item>
-							<DropdownButton.Item class={dropdownItemClass} onclick={() => (showConverterDialog = true)}>
-								<TerminalIcon class="size-4" />
-								{m.compose_convert_from_docker_run()}
-							</DropdownButton.Item>
-						</DropdownButton.Content>
-					</DropdownButton.DropdownRoot>
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content align="end" class={dropdownContentClass}>
+								<DropdownMenu.Group>
+									<DropdownMenu.Item
+										class={dropdownItemClass}
+										disabled={saving || converting || isLoadingTemplateContent}
+										onclick={() => (showTemplateDialog = true)}
+									>
+										<LayoutTemplateIcon class="size-4" />
+										{m.compose_use_template()}
+									</DropdownMenu.Item>
+									<DropdownMenu.Item class={dropdownItemClass} onclick={() => (showConverterDialog = true)}>
+										<TerminalIcon class="size-4" />
+										{m.compose_convert_from_docker_run()}
+									</DropdownMenu.Item>
+								</DropdownMenu.Group>
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
+					</ButtonGroup.Root>
 				</div>
 			</div>
 		</div>
 	</div>
 
-	<!-- Keep existing page padding -->
 	<div class="max-w-none p-6">
 		<div class="space-y-8">
 			<form class="space-y-6" onsubmit={preventDefault(handleSubmit)}>
