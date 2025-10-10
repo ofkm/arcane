@@ -1,6 +1,11 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"layout_title": "Arcane",
+	"accent_color": "亮度颜色",
+	"accent_color_description": "选择要自定义奥术界面的重音颜色",
+	"custom_accent_color": "自定义口音颜色",
+	"custom_accent_color_description": "使用有效的 CSS 颜色格式输入自定义颜色(例如十六、rgb、hsl)。",
+	"color_value": "颜色值",
 	"error_occurred": "出现了一个错误",
 	"error_not_found": "未找到",
 	"error_generic": "出现了一些错误",
@@ -1256,5 +1261,7 @@
 	"customize_registry_credentials": "书记官处全权证书",
 	"customize_registry_mirrors": "注册表镜像",
 	"customize_secret_variables": "秘密变量",
-	"customize_variable_templates": "变量模板"
+	"customize_variable_templates": "变量模板",
+	"duplicate": "Duplicate",
+	"cancel": "取消"
 }
