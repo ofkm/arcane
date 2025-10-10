@@ -1263,5 +1263,6 @@
 	"customize_secret_variables": "Secret Variables",
 	"customize_variable_templates": "Variable Templates",
 	"duplicate": "Duplicate",
-	"cancel": "Cancel"
+	"cancel": "Cancel",
+	"compose_project_name_placeholder": "My New Project"
 }
