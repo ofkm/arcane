@@ -10,7 +10,6 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import CodeEditor from '$lib/components/code-editor/editor.svelte';
 	import { preventDefault, createForm } from '$lib/utils/form.utils';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -27,6 +26,8 @@
 	import * as ButtonGroup from '$lib/components/ui/button-group/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import CodePanel from '../components/CodePanel.svelte';
+	import EditableName from '../components/EditableName.svelte';
 
 	let { data } = $props();
 
@@ -54,6 +55,10 @@
 	let { inputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
 
 	let dockerRunCommand = $state('');
+	let composeOpen = $state(true);
+	let envOpen = $state(true);
+
+	let nameInputRef = $state<HTMLInputElement | null>(null);
 
 	async function handleSubmit() {
 		await handleCreateProject();
@@ -132,209 +137,185 @@
 		'data-[disabled]:opacity-50 data-[disabled]:pointer-events-none';
 </script>
 
-<div class="bg-background min-h-screen">
-	<div class="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 border-b backdrop-blur">
-		<div class="max-w-full px-4 py-3">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-3">
-					<Button variant="ghost" size="sm" href="/projects" class="gap-2">
-						<ArrowLeftIcon class="size-4" />
-						{m.common_back()}
+<div class="bg-background flex min-h-screen flex-col">
+	<!-- Header -->
+	<div class="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 border-b backdrop-blur">
+		<div class="mx-auto flex h-16 max-w-full items-center justify-between gap-4 px-6">
+			<div class="flex items-center gap-4">
+				<Button variant="ghost" size="sm" href="/projects" class="gap-2">
+					<ArrowLeftIcon class="size-4" />
+					{m.common_back()}
+				</Button>
+				<div class="bg-border hidden h-4 w-px sm:block"></div>
+				<div class="hidden items-center gap-3 sm:flex">
+					<EditableName
+						bind:value={$inputs.name.value}
+						bind:ref={nameInputRef}
+						variant="inline"
+						error={$inputs.name.error ?? undefined}
+						originalValue=""
+						placeholder={m.compose_project_name_placeholder?.() || 'Enter project name...'}
+						canEdit={!saving && !isLoadingTemplateContent}
+						class="hidden sm:block"
+					/>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-2">
+				<ButtonGroup.Root>
+					<Button
+						disabled={!$inputs.name.value || !$inputs.composeContent.value || saving || converting || isLoadingTemplateContent}
+						onclick={() => handleSubmit()}
+						class={`${templateBtnClass} gap-2 rounded-r-none hover:translate-y-0 focus:translate-y-0 active:translate-y-0`}
+					>
+						{#if saving}
+							<Spinner class="size-4" />
+							{m.compose_creating()}
+						{:else}
+							<PlusCircleIcon class="size-4" />
+							{m.compose_create_project()}
+						{/if}
 					</Button>
-					<div class="bg-border h-4 w-px"></div>
-					<div class="flex items-center gap-2">
-						<h1 class="text-lg font-semibold leading-none">{m.compose_new_title()}</h1>
-					</div>
-				</div>
 
-				<div class="flex items-center gap-2">
-					<Dialog.Root bind:open={showConverterDialog}>
-						<Dialog.Content class="max-h-[80vh] sm:max-w-[800px]">
-							<Dialog.Header>
-								<Dialog.Title>{m.compose_converter_title()}</Dialog.Title>
-								<Dialog.Description>{m.compose_converter_description()}</Dialog.Description>
-							</Dialog.Header>
-
-							<div class="max-h-[60vh] space-y-4 overflow-y-auto">
-								<div class="space-y-2">
-									<Label for="dockerRunCommand">{m.compose_docker_run_command_label()}</Label>
-									<Textarea
-										id="dockerRunCommand"
-										bind:value={dockerRunCommand}
-										placeholder={m.compose_docker_run_placeholder()}
-										rows={3}
-										disabled={converting}
-										class="font-mono text-sm"
-									/>
-								</div>
-
-								<div class="space-y-2">
-									<Label class="text-muted-foreground text-xs">{m.compose_example_commands_label()}</Label>
-									<div class="space-y-1">
-										{#each exampleCommands as command}
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												class="h-auto w-full justify-start whitespace-normal break-all p-2 text-left font-mono text-xs"
-												onclick={() => useExample(command)}
-											>
-												<CopyIcon class="mr-2 size-3 shrink-0" />
-												<span class=""> {command} </span>
-											</Button>
-										{/each}
-									</div>
-								</div>
-							</div>
-
-							<div class="flex w-full justify-end pt-4">
-								<Button type="button" disabled={!dockerRunCommand.trim() || converting} onclick={handleConvertDockerRun}>
-									{#if converting}
-										<Spinner class="mr-2 size-4" />
-										{m.compose_converting()}
-									{:else}
-										<WandIcon class="mr-2 size-4" />
-										{m.compose_convert_action()}
-									{/if}
+					<DropdownMenu.Root>
+						<DropdownMenu.Trigger>
+							{#snippet child({ props })}
+								<Button
+									{...props}
+									class={`${templateBtnClass} -ml-px rounded-l-none px-2 hover:translate-y-0 focus:translate-y-0 active:translate-y-0`}
+									variant="outline"
+								>
+									<ChevronDown class="size-4" />
 								</Button>
-							</div>
-						</Dialog.Content>
-					</Dialog.Root>
-
-					<ButtonGroup.Root>
-						<Button
-							disabled={!$inputs.name.value || !$inputs.composeContent.value || saving || converting || isLoadingTemplateContent}
-							onclick={() => handleSubmit()}
-							class={`${templateBtnClass} gap-2 rounded-r-none hover:translate-y-0 focus:translate-y-0 active:translate-y-0`}
-						>
-							{#if saving}
-								<Spinner class="size-4" />
-								{m.compose_creating()}
-							{:else}
-								<PlusCircleIcon class="size-4" />
-								{m.compose_create_project()}
-							{/if}
-						</Button>
-
-						<DropdownMenu.Root>
-							<DropdownMenu.Trigger>
-								{#snippet child({ props })}
-									<Button
-										{...props}
-										class={`${templateBtnClass} -ml-px rounded-l-none px-2 hover:translate-y-0 focus:translate-y-0 active:translate-y-0`}
-										variant="outline"
-									>
-										<ChevronDown class="size-4" />
-									</Button>
-								{/snippet}
-							</DropdownMenu.Trigger>
-							<DropdownMenu.Content align="end" class={dropdownContentClass}>
-								<DropdownMenu.Group>
-									<DropdownMenu.Item
-										class={dropdownItemClass}
-										disabled={saving || converting || isLoadingTemplateContent}
-										onclick={() => (showTemplateDialog = true)}
-									>
-										<LayoutTemplateIcon class="size-4" />
-										{m.compose_use_template()}
-									</DropdownMenu.Item>
-									<DropdownMenu.Item class={dropdownItemClass} onclick={() => (showConverterDialog = true)}>
-										<TerminalIcon class="size-4" />
-										{m.compose_convert_from_docker_run()}
-									</DropdownMenu.Item>
-								</DropdownMenu.Group>
-							</DropdownMenu.Content>
-						</DropdownMenu.Root>
-					</ButtonGroup.Root>
-				</div>
+							{/snippet}
+						</DropdownMenu.Trigger>
+						<DropdownMenu.Content align="end" class={dropdownContentClass}>
+							<DropdownMenu.Group>
+								<DropdownMenu.Item
+									class={dropdownItemClass}
+									disabled={saving || converting || isLoadingTemplateContent}
+									onclick={() => (showTemplateDialog = true)}
+								>
+									<LayoutTemplateIcon class="size-4" />
+									{m.compose_use_template()}
+								</DropdownMenu.Item>
+								<DropdownMenu.Item class={dropdownItemClass} onclick={() => (showConverterDialog = true)}>
+									<TerminalIcon class="size-4" />
+									{m.compose_convert_from_docker_run()}
+								</DropdownMenu.Item>
+							</DropdownMenu.Group>
+						</DropdownMenu.Content>
+					</DropdownMenu.Root>
+				</ButtonGroup.Root>
 			</div>
 		</div>
 	</div>
 
-	<div class="max-w-none p-6">
-		<div class="space-y-8">
-			<form class="space-y-6" onsubmit={preventDefault(handleSubmit)}>
-				<div class="mb-6 space-y-2">
-					<Label for="name" class="text-sm font-medium">{m.compose_name_label?.() ?? m.common_name()}</Label>
-					<div class="max-w-md">
-						<Input
-							type="text"
-							id="name"
-							name="name"
-							bind:value={$inputs.name.value}
-							required
-							placeholder={m.compose_name_placeholder()}
-							disabled={saving || isLoadingTemplateContent}
-							class={$inputs.name.error ? 'border-destructive' : ''}
+	<!-- Main Content -->
+	<div class="flex-1 overflow-hidden">
+		<div class="mx-auto h-full max-w-full">
+			<div class="flex h-full flex-col gap-4 p-6">
+				<!-- Name field for mobile -->
+				<div class="block sm:hidden">
+					<EditableName
+						bind:value={$inputs.name.value}
+						bind:ref={nameInputRef}
+						variant="block"
+						error={$inputs.name.error ?? undefined}
+						originalValue=""
+						placeholder={m.compose_project_name_placeholder()}
+						canEdit={!saving && !isLoadingTemplateContent}
+					/>
+				</div>
+
+				<!-- Code Panels -->
+				<form
+					class="grid h-full grid-cols-1 gap-4 lg:grid-cols-5"
+					style="grid-template-rows: 1fr;"
+					onsubmit={preventDefault(handleSubmit)}
+				>
+					<div class="h-full lg:col-span-3">
+						<CodePanel
+							bind:open={composeOpen}
+							title={m.compose_compose_file_title()}
+							language="yaml"
+							bind:value={$inputs.composeContent.value}
+							placeholder={m.compose_compose_placeholder()}
+							error={$inputs.composeContent.error ?? undefined}
 						/>
-						{#if $inputs.name.error}
-							<p class="text-destructive mt-1 text-xs">{$inputs.name.error}</p>
-						{:else}
-							<p class="text-muted-foreground mt-1 text-xs">{m.compose_name_hint()}</p>
-						{/if}
-					</div>
-				</div>
-
-				<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-					<!-- Compose -->
-					<div class="lg:col-span-2">
-						<div class="space-y-4">
-							<div class="flex items-center justify-between">
-								<h3 class="text-lg font-semibold">{m.compose_compose_file_title()}</h3>
-								<span class="text-muted-foreground text-xs">{m.compose_yaml_label()}</span>
-							</div>
-							<div
-								class="border-input focus-within:border-primary focus-within:ring-ring relative rounded-md border bg-transparent transition-colors focus-within:ring-2 focus-within:ring-offset-2"
-								class:border-destructive={$inputs.composeContent.error}
-							>
-								<div class="min-h-[500px] w-full overflow-hidden">
-									<CodeEditor
-										bind:value={$inputs.composeContent.value}
-										language="yaml"
-										height="full"
-										placeholder={m.compose_compose_placeholder()}
-										readOnly={saving || isLoadingTemplateContent}
-									/>
-								</div>
-							</div>
-							{#if $inputs.composeContent.error}
-								<p class="text-destructive mt-1 text-xs">{$inputs.composeContent.error}</p>
-							{/if}
-						</div>
 					</div>
 
-					<!-- Env -->
-					<div class="lg:col-span-1">
-						<div class="space-y-4">
-							<div class="flex items-center justify-between">
-								<h3 class="text-lg font-semibold">{m.compose_env_title()}</h3>
-								<span class="text-muted-foreground text-xs">{m.compose_env_kv_label()}</span>
-							</div>
-							<div
-								class="border-input focus-within:border-primary focus-within:ring-ring relative rounded-md border bg-transparent transition-colors focus-within:ring-2 focus-within:ring-offset-2"
-								class:border-destructive={$inputs.envContent.error}
-							>
-								<div class="min-h-[500px] w-full overflow-hidden">
-									<CodeEditor
-										bind:value={$inputs.envContent.value}
-										language="env"
-										height="full"
-										placeholder={m.compose_env_placeholder()}
-										readOnly={saving || isLoadingTemplateContent}
-									/>
-								</div>
-							</div>
-							{#if $inputs.envContent.error}
-								<p class="text-destructive mt-1 text-xs">{$inputs.envContent.error}</p>
-							{/if}
-						</div>
+					<div class="h-full lg:col-span-2">
+						<CodePanel
+							bind:open={envOpen}
+							title={m.compose_env_title()}
+							language="env"
+							bind:value={$inputs.envContent.value}
+							placeholder={m.compose_env_placeholder()}
+							error={$inputs.envContent.error ?? undefined}
+						/>
 					</div>
-				</div>
-			</form>
+				</form>
+			</div>
 		</div>
 	</div>
 </div>
 
+<!-- Converter Dialog -->
+<Dialog.Root bind:open={showConverterDialog}>
+	<Dialog.Content class="max-h-[80vh] sm:max-w-[800px]">
+		<Dialog.Header>
+			<Dialog.Title>{m.compose_converter_title()}</Dialog.Title>
+			<Dialog.Description>{m.compose_converter_description()}</Dialog.Description>
+		</Dialog.Header>
+
+		<div class="max-h-[60vh] space-y-4 overflow-y-auto">
+			<div class="space-y-2">
+				<Label for="dockerRunCommand">{m.compose_docker_run_command_label()}</Label>
+				<Textarea
+					id="dockerRunCommand"
+					bind:value={dockerRunCommand}
+					placeholder={m.compose_docker_run_placeholder()}
+					rows={3}
+					disabled={converting}
+					class="font-mono text-sm"
+				/>
+			</div>
+
+			<div class="space-y-2">
+				<Label class="text-muted-foreground text-xs">{m.compose_example_commands_label()}</Label>
+				<div class="space-y-1">
+					{#each exampleCommands as command}
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							class="h-auto w-full justify-start whitespace-normal break-all p-2 text-left font-mono text-xs"
+							onclick={() => useExample(command)}
+						>
+							<CopyIcon class="mr-2 size-3 shrink-0" />
+							<span>{command}</span>
+						</Button>
+					{/each}
+				</div>
+			</div>
+		</div>
+
+		<div class="flex w-full justify-end pt-4">
+			<Button type="button" disabled={!dockerRunCommand.trim() || converting} onclick={handleConvertDockerRun}>
+				{#if converting}
+					<Spinner class="mr-2 size-4" />
+					{m.compose_converting()}
+				{:else}
+					<WandIcon class="mr-2 size-4" />
+					{m.compose_convert_action()}
+				{/if}
+			</Button>
+		</div>
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- Template Selection Dialog -->
 <TemplateSelectionDialog
 	bind:open={showTemplateDialog}
 	templates={data.composeTemplates || []}
