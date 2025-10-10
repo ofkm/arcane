@@ -1,4 +1,5 @@
 import type { Icon as IconType } from '@lucide/svelte';
+import PaletteIcon from '@lucide/svelte/icons/palette';
 import FileStackIcon from '@lucide/svelte/icons/file-stack';
 import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 import HouseIcon from '@lucide/svelte/icons/home';
@@ -39,11 +40,8 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 			url: '/customize',
 			icon: PaletteIcon,
 			items: [
-				{
-					title: m.templates_title(),
-					url: '/customize/templates',
-					icon: LayoutTemplateIcon
-				},				{ title: m.registries_title(), url: '/customize/registries', icon: LockKeyholeIcon },
+				{ title: m.templates_title(), url: '/customize/templates', icon: LayoutTemplateIcon },
+				{ title: m.registries_title(), url: '/customize/registries', icon: LockKeyholeIcon },
 				{ title: m.variables_title(), url: '/customize/variables', icon: FileTextIcon }
 			]
 		}
