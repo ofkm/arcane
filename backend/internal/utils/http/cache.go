@@ -8,7 +8,7 @@ import (
 )
 
 func SetCacheControlHeader(ctx *gin.Context, maxAge, staleWhileRevalidate time.Duration) {
-	_, ok := ctx.GetQuery("skipCache")
+	_, ok := ctx.GetQuery("skip-cache")
 	if !ok {
 		maxAgeSeconds := strconv.Itoa(int(maxAge.Seconds()))
 		staleWhileRevalidateSeconds := strconv.Itoa(int(staleWhileRevalidate.Seconds()))

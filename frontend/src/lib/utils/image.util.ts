@@ -14,9 +14,8 @@ function getCachedImageUrl(url: string) {
 	const skipCacheUntil = getSkipCacheUntil(url);
 	const skipCache = skipCacheUntil > Date.now();
 	if (skipCache) {
-		const skipCacheParam = new URLSearchParams();
-		skipCacheParam.append('skip-cache', skipCacheUntil.toString());
-		url += '?' + skipCacheParam.toString();
+		const separator = url.includes('?') ? '&' : '?';
+		url += separator + 'skip-cache=' + skipCacheUntil.toString();
 	}
 
 	return url.toString();
