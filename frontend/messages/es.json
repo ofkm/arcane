@@ -1,6 +1,11 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"layout_title": "Arcane",
+	"accent_color": "Color de acento",
+	"accent_color_description": "Selecciona un color de acento para personalizar la apariencia del Arcano",
+	"custom_accent_color": "Color de acento personalizado",
+	"custom_accent_color_description": "Introduzca un color personalizado usando formatos de color CSS válidos (por ejemplo, hex, rgb, hsl).",
+	"color_value": "Valor de color",
 	"error_occurred": "Ocurrió un error",
 	"error_not_found": "No encontrado",
 	"error_generic": "Algo salió mal",
@@ -1255,6 +1260,8 @@
 	"customize_template_validation": "Validación de plantilla",
 	"customize_registry_credentials": "Credenciales del Registro",
 	"customize_registry_mirrors": "Mirores del Registro",
-	"customize_secret_variables": "Secret Variables",
-	"customize_variable_templates": "Variable Templates"
+	"customize_secret_variables": "Variables secretas",
+	"customize_variable_templates": "Plantillas variables",
+	"duplicate": "Duplicate",
+	"cancel": "Cancelar"
 }
