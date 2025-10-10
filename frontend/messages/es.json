@@ -1263,5 +1263,6 @@
 	"customize_secret_variables": "Variables secretas",
 	"customize_variable_templates": "Plantillas variables",
 	"duplicate": "Duplicate",
-	"cancel": "Cancelar"
+	"cancel": "Cancelar",
+	"compose_project_name_placeholder": "Mi nuevo proyecto"
 }
