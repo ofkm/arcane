@@ -10,6 +10,9 @@
 
 	let { children } = $props();
 
+	// Make logo URL reactive to accent color changes
+	let logoUrl = $derived(getApplicationLogo());
+
 	const steps = [
 		{ id: 'welcome', label: 'Welcome', path: '/onboarding/welcome', icon: CircleCheckIcon },
 		{ id: 'password', label: 'Admin Password', path: '/onboarding/password', icon: KeyIcon },
@@ -25,7 +28,7 @@
 <div class="flex min-h-screen flex-col">
 	<header class="border-b px-8 py-8">
 		<div class="flex items-center">
-			<img src={getApplicationLogo()} alt="Arcane" class="size-12" />
+			<img src={logoUrl} alt="Arcane" class="size-12" />
 			<h1 class="ml-4 text-2xl font-bold">Arcane Setup</h1>
 		</div>
 	</header>

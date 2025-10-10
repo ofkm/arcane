@@ -6,7 +6,7 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import NetworkIcon from '@lucide/svelte/icons/network';
 	import XIcon from '@lucide/svelte/icons/x';
 	import type { NetworkCreateOptions } from 'dockerode';
@@ -310,7 +310,7 @@
 				>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
-						<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+						<Spinner class="mr-2 size-4" />
 						{m.networks_creating()}
 					{:else}
 						<NetworkIcon class="mr-2 size-4" />

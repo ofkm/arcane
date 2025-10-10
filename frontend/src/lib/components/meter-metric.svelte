@@ -2,7 +2,6 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import type { Icon as IconType } from '@lucide/svelte';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -37,7 +36,7 @@
 
 <Card.Root>
 	{#snippet children()}
-		<Card.Header icon={loading ? LoaderCircleIcon : icon} iconVariant="primary" compact>
+		<Card.Header {icon} iconVariant="primary" compact {loading}>
 			{#snippet children()}
 				<div class="min-w-0 flex-1">
 					<div class="text-foreground text-sm font-semibold">{title}</div>

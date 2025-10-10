@@ -1,23 +1,20 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages';
-	let {
-		active = false,
-		delay = 80,
-		minDuration = 350,
-		thickness = 'h-2',
-		class: className = ''
-	}: {
+
+	interface Props {
 		active?: boolean;
 		delay?: number;
 		minDuration?: number;
 		thickness?: string;
 		class?: string;
-	} = $props();
+	}
+
+	let { active = false, delay = 80, minDuration = 350, thickness = 'h-2', class: className = '' }: Props = $props();
 
 	let visible = $state(false);
 	let startedAt = 0;
-	let showTO: any;
-	let hideTO: any;
+	let showTO: ReturnType<typeof setTimeout> | undefined;
+	let hideTO: ReturnType<typeof setTimeout> | undefined;
 
 	function clearTimers() {
 		clearTimeout(showTO);

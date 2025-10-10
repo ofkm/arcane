@@ -3,7 +3,7 @@
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import ServerIcon from '@lucide/svelte/icons/server';
 	import * as Card from '$lib/components/ui/card';
 	import type { CreateEnvironmentDTO } from '$lib/types/environment.type';
@@ -92,7 +92,7 @@
 		<div class="space-y-6 py-6">
 			<Card.Root class="flex flex-col gap-6 py-3">
 				<Card.Header
-					class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+					class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
 				>
 					<Card.Title class="text-lg">{m.environments_add_button()}</Card.Title>
 				</Card.Header>
@@ -118,7 +118,7 @@
 
 						<Button type="submit" class="w-full" disabled={isSubmitting}>
 							{#if isSubmitting}
-								<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+								<Spinner class="mr-2 size-4" />
 							{/if}
 							{m.environments_add_button()}
 						</Button>

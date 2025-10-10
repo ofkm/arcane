@@ -115,7 +115,8 @@
 			title: m.events_total(),
 			value: totalEvents,
 			subtitle: m.events_total_subtitle(),
-			icon: ActivityIcon
+			icon: ActivityIcon,
+			class: 'border-l-4 border-l-primary'
 		},
 		{
 			title: m.events_info(),
@@ -123,7 +124,8 @@
 			subtitle: m.events_info_subtitle(),
 			icon: ActivityIcon,
 			iconColor: 'text-blue-500',
-			bgColor: 'bg-blue-500/10'
+			bgColor: 'bg-blue-500/10',
+			class: 'border-l-4 border-l-blue-500'
 		},
 		{
 			title: m.events_success(),
@@ -131,7 +133,8 @@
 			subtitle: m.events_success_subtitle(),
 			icon: ActivityIcon,
 			iconColor: 'text-green-500',
-			bgColor: 'bg-green-500/10'
+			bgColor: 'bg-green-500/10',
+			class: 'border-l-4 border-l-green-500'
 		},
 		{
 			title: m.events_warning(),
@@ -139,7 +142,8 @@
 			subtitle: m.events_warning_subtitle(),
 			icon: ActivityIcon,
 			iconColor: 'text-yellow-500',
-			bgColor: 'bg-yellow-500/10'
+			bgColor: 'bg-yellow-500/10',
+			class: 'border-l-4 border-l-yellow-500'
 		},
 		{
 			title: m.events_error(),
@@ -147,7 +151,8 @@
 			subtitle: m.events_error_subtitle(),
 			icon: ActivityIcon,
 			iconColor: 'text-red-500',
-			bgColor: 'bg-red-500/10'
+			bgColor: 'bg-red-500/10',
+			class: 'border-l-4 border-l-red-500'
 		}
 	]);
 </script>

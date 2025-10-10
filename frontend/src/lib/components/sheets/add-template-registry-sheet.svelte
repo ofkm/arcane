@@ -3,7 +3,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import AlertCircleIcon from '@lucide/svelte/icons/alert-circle';
 	import { z } from 'zod/v4';
@@ -118,7 +118,7 @@
 				</Button>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
-						<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+						<Spinner class="mr-2 size-4" />
 					{/if}
 					{m.templates_add_registry_button()}
 				</Button>

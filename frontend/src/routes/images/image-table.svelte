@@ -5,7 +5,7 @@
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import ScanSearchIcon from '@lucide/svelte/icons/scan-search';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -118,7 +118,6 @@
 			}
 		});
 	}
-
 	async function handleInlineImagePull(imageId: string, repoTag: string) {
 		if (!repoTag || repoTag === '<none>:<none>') {
 			toast.error(m.images_pull_no_tag());
@@ -274,7 +273,7 @@
 		<div class="flex flex-wrap gap-x-4 gap-y-3 border-t pt-3">
 			{#if (mobileFieldVisibility.updates ?? true) && item.updateInfo !== undefined}
 				<div class="flex min-w-0 flex-1 basis-[180px] flex-col">
-					<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+					<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
 						{m.images_updates()}
 					</div>
 					<div class="mt-0.5">
@@ -313,7 +312,7 @@
 					disabled={isPullingInline[item.id] || !item.repoTags?.[0]}
 				>
 					{#if isPullingInline[item.id]}
-						<LoaderCircleIcon class="size-4 animate-spin" />
+						<Spinner class="size-4" />
 						{m.images_pulling()}
 					{:else}
 						<DownloadIcon class="size-4" />
@@ -323,7 +322,7 @@
 				<DropdownMenu.Separator />
 				<DropdownMenu.Item variant="destructive" onclick={() => deleteImage(item.id)} disabled={isLoading.removing}>
 					{#if isLoading.removing}
-						<LoaderCircleIcon class="size-4 animate-spin" />
+						<Spinner class="size-4" />
 					{:else}
 						<Trash2Icon class="size-4" />
 					{/if}

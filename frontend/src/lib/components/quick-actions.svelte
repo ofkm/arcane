@@ -1,5 +1,5 @@
 <script lang="ts">
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import CirclePlayIcon from '@lucide/svelte/icons/circle-play';
 	import CircleStopIcon from '@lucide/svelte/icons/circle-stop';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
@@ -63,7 +63,7 @@
 					aria-busy={isLoading.starting}
 				>
 					{#if isLoading.starting}
-						<LoaderCircleIcon class="size-3.5 text-emerald-500 motion-safe:animate-spin" />
+						<Spinner class="size-3.5 text-emerald-500" />
 					{:else}
 						<CirclePlayIcon class="size-4 text-emerald-500" />
 					{/if}
@@ -84,7 +84,7 @@
 					aria-busy={isLoading.stopping}
 				>
 					{#if isLoading.stopping}
-						<LoaderCircleIcon class="size-3.5 text-sky-500 motion-safe:animate-spin" />
+						<Spinner class="size-3.5 text-sky-500" />
 					{:else}
 						<CircleStopIcon class="size-4 text-sky-500" />
 					{/if}
@@ -101,7 +101,7 @@
 					aria-busy={isLoading.pruning}
 				>
 					{#if isLoading.pruning}
-						<LoaderCircleIcon class="size-3.5 text-red-500 motion-safe:animate-spin" />
+						<Spinner class="size-3.5 text-red-500" />
 					{:else}
 						<Trash2Icon class="size-4 text-red-500" />
 					{/if}
@@ -109,15 +109,15 @@
 				</button>
 
 				<button
-					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-violet-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-violet-500/40 hover:bg-violet-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="ring-offset-background focus-visible:ring-ring bg-background/70 border-primary/20 hover:border-primary/40 hover:bg-primary/10 group inline-flex h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs shadow-sm transition-colors hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={isLoading.starting || isLoading.stopping || isLoading.pruning || refreshing}
 					onclick={onRefresh}
 					aria-busy={refreshing}
 				>
 					{#if refreshing}
-						<LoaderCircleIcon class="size-3.5 text-violet-500 motion-safe:animate-spin" />
+						<Spinner class="text-primary size-3.5" />
 					{:else}
-						<RefreshCwIcon class="size-4 text-violet-500" />
+						<RefreshCwIcon class="text-primary size-4" />
 					{/if}
 					<span class="font-medium">{m.common_refresh()}</span>
 				</button>
@@ -196,7 +196,7 @@
 						<div class="relative">
 							<div class="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/30">
 								{#if isLoading.starting}
-									<LoaderCircleIcon class="size-4 text-emerald-400 motion-safe:animate-spin" />
+									<Spinner class="size-4 text-emerald-400" />
 								{:else}
 									<CirclePlayIcon class="size-5 text-emerald-400" />
 								{/if}
@@ -228,7 +228,7 @@
 						<div class="relative">
 							<div class="flex size-10 items-center justify-center rounded-lg bg-sky-500/10 ring-1 ring-sky-500/30">
 								{#if isLoading.stopping}
-									<LoaderCircleIcon class="size-4 text-sky-400 motion-safe:animate-spin" />
+									<Spinner class="size-4 text-sky-400" />
 								{:else}
 									<CircleStopIcon class="size-5 text-sky-400" />
 								{/if}
@@ -256,7 +256,7 @@
 						<div class="relative">
 							<div class="flex size-10 items-center justify-center rounded-lg bg-red-500/10 ring-1 ring-red-500/30">
 								{#if isLoading.pruning}
-									<LoaderCircleIcon class="size-4 text-red-400 motion-safe:animate-spin" />
+									<Spinner class="size-4 text-red-400" />
 								{:else}
 									<Trash2Icon class="size-5 text-red-400" />
 								{/if}

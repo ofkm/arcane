@@ -35,19 +35,17 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 	],
 	customizationItems: [
 		{
-			title: m.templates_title(),
-			url: '/customize/templates',
-			icon: LayoutTemplateIcon
-		},
-		{
-			title: m.registries_title(),
-			url: '/customize/registries',
-			icon: LockKeyholeIcon
-		},
-		{
-			title: m.variables_title(),
-			url: '/customize/variables',
-			icon: FileTextIcon
+			title: m.sidebar_customization(),
+			url: '/customize',
+			icon: PaletteIcon,
+			items: [
+				{
+					title: m.templates_title(),
+					url: '/customize/templates',
+					icon: LayoutTemplateIcon
+				},				{ title: m.registries_title(), url: '/customize/registries', icon: LockKeyholeIcon },
+				{ title: m.variables_title(), url: '/customize/variables', icon: FileTextIcon }
+			]
 		}
 	],
 	environmentItems: [
@@ -97,7 +95,14 @@ export function getAvailableMobileNavItems(): NavigationItem[] {
 	const flatItems: NavigationItem[] = [];
 
 	flatItems.push(...navigationItems.managementItems);
-	flatItems.push(...navigationItems.customizationItems);
+	// Flatten customization children so individual pages can be pinned/selected
+	for (const item of navigationItems.customizationItems) {
+		if (item.items && item.items.length > 0) {
+			flatItems.push(...item.items);
+		} else {
+			flatItems.push(item);
+		}
+	}
 
 	if (navigationItems.environmentItems) {
 		flatItems.push(...navigationItems.environmentItems);

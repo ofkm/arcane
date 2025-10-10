@@ -5,7 +5,7 @@
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 	import { z } from 'zod/v4';
 	import { m } from '$lib/paraglide/messages';
@@ -107,7 +107,7 @@
 						<Button type="button" variant="ghost" onclick={handleSkip}>Skip</Button>
 						<Button type="submit" disabled={isLoading}>
 							{#if isLoading}
-								<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+								<Spinner class="mr-2 size-4" />
 							{/if}
 							{m.common_continue()}
 						</Button>
