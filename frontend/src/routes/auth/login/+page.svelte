@@ -15,6 +15,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { settingsService } from '$lib/services/settings-service';
 	import { authService } from '$lib/services/auth-service';
+	import { getApplicationLogo } from '$lib/utils/image.util';
 
 	let { data }: { data: PageData } = $props();
 
@@ -66,8 +67,8 @@
 <div class="bg-muted flex min-h-screen flex-col items-center justify-center p-6 md:p-10">
 	<div class="w-full max-w-sm md:max-w-3xl">
 		<div class="flex flex-col gap-6">
-			<Card.Root class="flex flex-col gap-6 overflow-hidden p-0 py-3">
-				<Card.Content class="grid p-0 px-6 md:grid-cols-2">
+			<Card.Root class="flex flex-col gap-6 overflow-hidden p-0">
+				<Card.Content class="grid p-0 md:grid-cols-2">
 					<div class={showOidcLoginButton && !showLocalLoginForm ? 'flex items-center justify-center p-6 md:p-8' : 'p-6 md:p-8'}>
 						<div class="flex flex-col gap-6">
 							<div class="flex flex-col items-center text-center">
@@ -177,9 +178,13 @@
 
 								{#if showDivider}
 									<div
-										class="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t"
+										class="after:border-border/60 relative my-2 text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t"
 									>
-										<span class="bg-card text-muted-foreground relative z-10 px-2"> {m.auth_or_continue()} </span>
+										<span
+											class="bg-card/70 text-muted-foreground supports-[backdrop-filter]:bg-card/50 relative z-10 inline-flex items-center rounded-full px-3 py-0.5 text-xs backdrop-blur"
+										>
+											{m.auth_or_continue()}
+										</span>
 									</div>
 								{/if}
 
@@ -194,11 +199,11 @@
 					</div>
 
 					<div
-						class="hidden bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10 md:flex md:items-center md:justify-center"
+						class="hidden h-full w-full bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10 md:flex md:items-center md:justify-center"
 					>
 						<div class="space-y-4 p-8 text-center">
 							<div class="mb-8">
-								<img class="mx-auto h-32 w-auto opacity-60" src="/img/arcane.svg" alt={m.layout_title()} />
+								<img class="mx-auto h-32 w-auto opacity-60" src={getApplicationLogo()} alt={m.layout_title()} />
 							</div>
 							<h2 class="text-foreground/80 text-2xl font-bold">{m.layout_title()}</h2>
 							<p class="text-muted-foreground max-w-xs text-balance">{m.auth_tagline()}</p>
@@ -210,14 +215,14 @@
 	</div>
 </div>
 
-<div class="fixed right-0 bottom-0 left-0 p-4">
-	<div class="text-muted-foreground text-center text-xs text-balance">
+<div class="fixed bottom-0 left-0 right-0 p-4">
+	<div class="text-muted-foreground text-balance text-center text-xs">
 		<div class="flex items-center justify-center gap-4">
 			<a
 				href="https://github.com/ofkm/arcane"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="hover:text-primary underline underline-offset-4"
+				class="bg-card/70 text-muted-foreground supports-[backdrop-filter]:bg-card/50 hover:text-primary relative inline-flex items-center rounded-full px-3 py-0.5 text-xs backdrop-blur transition-colors"
 			>
 				{m.common_view_on_github()}
 			</a>

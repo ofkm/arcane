@@ -242,7 +242,7 @@
 						{:else}
 							<PlayIcon class="size-4" />
 						{/if}
-						{m.common_start()}
+						{m.action_up()}
 					</DropdownMenu.Item>
 				{:else}
 					<DropdownMenu.Item
@@ -263,7 +263,7 @@
 						{:else}
 							<StopCircleIcon class="size-4" />
 						{/if}
-						{m.common_stop()}
+						{m.action_down()}
 					</DropdownMenu.Item>
 				{/if}
 

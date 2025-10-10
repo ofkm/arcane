@@ -47,6 +47,7 @@ type ProjectServiceInfo struct {
 	Status      string   `json:"status"`
 	ContainerID string   `json:"container_id"`
 	Ports       []string `json:"ports"`
+	Health      *string  `json:"health,omitempty"`
 }
 
 func (s *ProjectService) GetProjectFromDatabaseByID(ctx context.Context, id string) (*models.Project, error) {
@@ -143,12 +144,18 @@ func (s *ProjectService) GetProjectServices(ctx context.Context, projectID strin
 	var services []ProjectServiceInfo
 
 	for _, c := range containers {
+		var health *string
+		if c.Health != "" {
+			health = &c.Health
+		}
+
 		services = append(services, ProjectServiceInfo{
 			Name:        c.Service,
 			Image:       c.Image,
 			Status:      c.State,
 			ContainerID: c.ID,
 			Ports:       formatPorts(c.Publishers),
+			Health:      health,
 		})
 		have[c.Service] = true
 	}

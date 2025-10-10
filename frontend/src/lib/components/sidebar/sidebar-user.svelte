@@ -12,6 +12,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
 	import LocalePicker from '$lib/components/locale-picker.svelte';
+	import { getDefaultProfilePicture } from '$lib/utils/image.util';
 
 	let { user, isCollapsed }: { user: User; isCollapsed: boolean } = $props();
 	const sidebar = useSidebar();
@@ -52,14 +53,14 @@
 							<Avatar.Root class="size-8 rounded-lg">
 								{#if $settingsStore.enableGravatar}
 									{#await getGravatarUrl(user?.email)}
-										<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
+										<Avatar.Image src={getDefaultProfilePicture()} alt={user.displayName} />
 									{:then url}
-										<Avatar.Image src={url || '/img/profile.jpg'} alt={user.displayName} />
+										<Avatar.Image src={url} alt={user.displayName} />
 									{:catch _}
-										<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
+										<Avatar.Image src={getDefaultProfilePicture()} alt={user.displayName} />
 									{/await}
 								{:else}
-									<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
+									<Avatar.Image src={getDefaultProfilePicture()} alt={user.displayName} />
 								{/if}
 								<Avatar.Fallback
 									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-gradient-to-br"
@@ -97,14 +98,14 @@
 							<Avatar.Root class="size-8 shrink-0 rounded-lg">
 								{#if $settingsStore.enableGravatar}
 									{#await getGravatarUrl(user?.email)}
-										<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
+										<Avatar.Image src={getDefaultProfilePicture()} alt={user.displayName} />
 									{:then url}
-										<Avatar.Image src={url || '/img/profile.jpg'} alt={user.displayName} />
+										<Avatar.Image src={url} alt={user.displayName} />
 									{:catch _}
-										<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
+										<Avatar.Image src={getDefaultProfilePicture()} alt={user.displayName} />
 									{/await}
 								{:else}
-									<Avatar.Image src="/img/profile.jpg" alt={user.displayName} />
+									<Avatar.Image src={getDefaultProfilePicture()} alt={user.displayName} />
 								{/if}
 								<Avatar.Fallback
 									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-gradient-to-br"
@@ -120,8 +121,8 @@
 					</DropdownMenu.Label>
 					<DropdownMenu.Separator />
 
-					<LocalePicker 
-						inline={false} 
+					<LocalePicker
+						inline={false}
 						onOpenChange={(open: boolean) => {
 							localePickerOpen = open;
 							if (!open && sidebar.state === 'collapsed') {

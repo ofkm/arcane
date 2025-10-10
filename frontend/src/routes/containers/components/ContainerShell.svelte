@@ -17,8 +17,21 @@
 	let websocketUrl = $state('');
 	let selectedShell = $state($settingsStore.defaultShell || '/bin/sh');
 	let reconnectKey = $state(0);
+	let lastContainerId = $state<string | undefined>(undefined);
+	let lastShell = $state<string | undefined>(undefined);
 
 	$effect(() => {
+		// Only update if container or shell actually changed
+		const currentContainer = containerId;
+		const currentShell = $settingsStore.defaultShell || selectedShell;
+
+		if (lastContainerId === currentContainer && lastShell === currentShell) {
+			return; // No change, skip update
+		}
+
+		lastContainerId = currentContainer;
+		lastShell = currentShell;
+
 		if ($settingsStore.defaultShell) {
 			selectedShell = $settingsStore.defaultShell;
 		}

@@ -135,10 +135,19 @@ func (s *VolumeService) PruneVolumesWithOptions(ctx context.Context, all bool) (
 	}
 	defer dockerClient.Close()
 
+	// Docker's VolumesPrune behavior (API v1.42+):
+	// - Without 'all' flag: Only removes anonymous (unnamed) volumes that are not in use
+	// - With 'all=true' flag: Removes ALL unused volumes (both named and anonymous)
+	// Note: Volumes are considered "in use" if referenced by any container (running or stopped)
 	filterArgs := filters.NewArgs()
 	if all {
+		// The 'all' filter was added in Docker API v1.42
+		// This tells Docker to prune ALL unused volumes, not just anonymous ones
 		filterArgs.Add("all", "true")
 	}
+	// Other valid filters for volume prune:
+	// - label=<key> or label=<key>=<value>
+	// - label!=<key> or label!=<key>=<value>
 
 	report, err := dockerClient.VolumesPrune(ctx, filterArgs)
 	if err != nil {

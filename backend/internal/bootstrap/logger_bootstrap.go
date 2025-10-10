@@ -14,7 +14,7 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func SetupLogger(cfg *config.Config) {
+func SetupGinLogger(cfg *config.Config) {
 	var lvl slog.Level
 	switch strings.ToLower(cfg.LogLevel) {
 	case "debug":

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -200,16 +199,15 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 
 	testResult, err := h.performRegistryTest(c.Request.Context(), registry, decryptedToken)
 	if err != nil {
-		apiErr := models.NewInternalServerError(fmt.Sprintf("Registry test failed: %s", err.Error()))
-		c.JSON(apiErr.HTTPStatus(), gin.H{
-			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    gin.H{"message": err.Error()},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
+		"success": false,
 		"data":    testResult,
 	})
 }
@@ -225,51 +223,17 @@ func (h *ContainerRegistryHandler) performRegistryTest(ctx context.Context, regi
 
 	testResult, err := registry.TestRegistryConnection(ctx, registryModel.URL, creds)
 	if err != nil {
-		return nil, fmt.Errorf("registry test failed: %w", err)
+		return nil, err
 	}
 
-	result := map[string]interface{}{
-		"status":          getStatusString(testResult.OverallSuccess),
-		"url":             registryModel.URL,
-		"username":        registryModel.Username,
-		"timestamp":       testResult.Timestamp.Format(time.RFC3339),
-		"overall_success": testResult.OverallSuccess,
-		"ping_success":    testResult.PingSuccess,
-		"auth_success":    testResult.AuthSuccess,
-		"catalog_success": testResult.CatalogSuccess,
-		"registry_url":    testResult.URL,
-		"domain":          testResult.Domain,
+	if !testResult.AuthSuccess {
+		if len(testResult.Errors) > 0 {
+			return nil, fmt.Errorf("%s", testResult.Errors[0])
+		}
+		return nil, fmt.Errorf("invalid credentials")
 	}
 
-	if len(testResult.Errors) > 0 {
-		result["errors"] = testResult.Errors
-		result["message"] = fmt.Sprintf("Registry test completed with %d error(s)", len(testResult.Errors))
-	} else {
-		result["message"] = "All registry tests passed successfully"
-	}
-
-	result["tests"] = map[string]interface{}{
-		"connectivity": map[string]interface{}{
-			"success":     testResult.PingSuccess,
-			"description": "Tests if the registry endpoint is reachable",
-		},
-		"authentication": map[string]interface{}{
-			"success":     testResult.AuthSuccess,
-			"description": "Tests if the provided credentials are valid",
-			"skipped":     creds == nil,
-		},
-		"catalog_access": map[string]interface{}{
-			"success":     testResult.CatalogSuccess,
-			"description": "Tests if the registry catalog is accessible",
-		},
-	}
-
-	return result, nil
-}
-
-func getStatusString(success bool) string {
-	if success {
-		return "success"
-	}
-	return "failed"
+	return map[string]interface{}{
+		"message": "Authentication succeeded",
+	}, nil
 }

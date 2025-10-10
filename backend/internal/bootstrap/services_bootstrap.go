@@ -8,9 +8,11 @@ import (
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/resources"
 )
 
 type Services struct {
+	AppImages         *services.ApplicationImagesService
 	User              *services.UserService
 	Project           *services.ProjectService
 	Environment       *services.EnvironmentService
@@ -34,6 +36,7 @@ type Services struct {
 func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config, httpClient *http.Client) (svcs *Services, dockerSrvice *services.DockerClientService, err error) {
 	svcs = &Services{}
 
+	svcs.AppImages = services.NewApplicationImagesService(resources.FS)
 	svcs.Event = services.NewEventService(db)
 	svcs.Settings, err = services.NewSettingsService(ctx, db)
 	if err != nil {

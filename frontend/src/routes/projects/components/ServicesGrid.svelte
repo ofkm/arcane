@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import LayersIcon from '@lucide/svelte/icons/layers';
+	import HeartPulseIcon from '@lucide/svelte/icons/heart-pulse';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { getStatusVariant } from '$lib/utils/status.utils';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
@@ -10,9 +11,18 @@
 		container_id?: string;
 		name: string;
 		status?: string;
+		health?: string;
 	};
 
 	let { services }: { services?: Service[] } = $props();
+
+	function getHealthVariant(health: string | undefined): 'green' | 'red' | 'amber' {
+		if (!health) return 'amber';
+		const normalized = health.toLowerCase();
+		if (normalized === 'healthy') return 'green';
+		if (normalized === 'unhealthy') return 'red';
+		return 'amber'; // starting, none, etc.
+	}
 </script>
 
 <Card.Root>
@@ -48,7 +58,22 @@
 											<h3 class="text-foreground mb-2 text-base font-semibold transition-colors">
 												{service.name}
 											</h3>
-											<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
+											<div class="flex flex-wrap items-center gap-3">
+												<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
+												{#if service.health}
+													{@const healthVariant = getHealthVariant(service.health)}
+													{@const healthColor =
+														healthVariant === 'green'
+															? 'text-green-500'
+															: healthVariant === 'red'
+																? 'text-red-500'
+																: 'text-amber-500'}
+													<div class="flex items-center gap-1.5">
+														<HeartPulseIcon class="{healthColor} size-4" />
+														<span class="text-muted-foreground text-xs">{capitalizeFirstLetter(service.health)}</span>
+													</div>
+												{/if}
+											</div>
 											<p class="text-muted-foreground mt-2 text-xs">{m.compose_active_container()}</p>
 										</div>
 									</div>
