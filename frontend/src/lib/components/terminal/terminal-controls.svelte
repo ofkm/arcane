@@ -52,6 +52,29 @@
 			onShellChange?.(customShell);
 		}
 	}
+
+	$effect(() => {
+		if (!selectedShell) {
+			return;
+		}
+
+		const isKnownShell = selectedShell in shellLabels;
+		if (!isKnownShell && selectedShell !== 'custom') {
+			useCustomShell = true;
+			customShell = selectedShell;
+			return;
+		}
+
+		if (selectedShell === 'custom') {
+			useCustomShell = true;
+			return;
+		}
+
+		if (isKnownShell) {
+			useCustomShell = false;
+			customShell = '';
+		}
+	});
 </script>
 
 <div class="flex items-center gap-2">
