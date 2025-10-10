@@ -7,9 +7,9 @@
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import CopyIcon from '@lucide/svelte/icons/copy';
-	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';
 	import type { Settings, OidcStatusInfo } from '$lib/types/settings.type';
+	import { UseClipboard } from '$lib/hooks/use-clipboard.svelte';
 
 	interface OidcConfig {
 		clientId: string;
@@ -70,13 +70,11 @@
 				: m.oidc_configure_description()
 	);
 
-	async function handleCopyToClipboard(text: string) {
-		try {
-			await navigator.clipboard.writeText(text);
-			toast.success(m.common_copied());
-		} catch {
-			toast.error(m.common_copy_failed());
-		}
+	const clipboard = new UseClipboard();
+
+	function handleCopy(text?: string) {
+		if (!text) return;
+		clipboard.copy(text);
 	}
 
 	function handleClose() {
@@ -268,13 +266,7 @@
 		<p class="text-muted-foreground mb-3 text-sm">{m.oidc_redirect_uri_description()}</p>
 		<div class="flex items-center gap-2">
 			<code class="bg-muted flex-1 break-all rounded p-2 font-mono text-xs">{redirectUri}</code>
-			<Button
-				size="sm"
-				variant="outline"
-				onclick={() => handleCopyToClipboard(redirectUri)}
-				class="flex-shrink-0"
-				title={m.common_copy()}
-			>
+			<Button size="sm" variant="outline" onclick={() => handleCopy(redirectUri)} class="flex-shrink-0" title={m.common_copy()}>
 				<CopyIcon class="size-3" />
 			</Button>
 		</div>
