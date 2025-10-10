@@ -104,8 +104,8 @@
 
 			onSelect({
 				...details.template,
-				content: String(details.content ?? ''),
-				envContent: String(details.envContent ?? '')
+				content: details.content,
+				envContent: details.envContent
 			});
 			open = false;
 			toast.success(m.templates_loaded_success({ name: template.name }));

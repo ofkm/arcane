@@ -139,7 +139,7 @@
 
 {#snippet infoCards()}
 	<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-		{@render infoCard(m.events_resource_id_label(), event?.resourceType, m.events_copy_resource_id_title())}
+		{@render infoCard(m.events_resource_id_label(), event?.resourceId, m.events_copy_resource_id_title())}
 		{@render infoCard(m.events_resource_name_label(), event?.resourceName, m.events_copy_resource_name_title())}
 
 		<div class="rounded-lg border p-3">
