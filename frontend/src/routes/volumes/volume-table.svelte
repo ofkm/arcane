@@ -111,7 +111,7 @@
 			cell: StatusCell
 		},
 		{
-			id: 'size',
+			accessorKey: 'size',
 			title: m.images_size(),
 			sortable: true,
 			cell: SizeCell
@@ -146,8 +146,8 @@
 {/snippet}
 
 {#snippet SizeCell({ item }: { item: VolumeSummaryDto })}
-	{#if item.usageData && item.usageData.size >= 0}
-		<span class="text-sm tabular-nums">{bytes.format(item.usageData.size)}</span>
+	{#if item.size >= 0}
+		<span class="text-sm tabular-nums">{bytes.format(item.size)}</span>
 	{:else}
 		<span class="text-muted-foreground text-sm">-</span>
 	{/if}

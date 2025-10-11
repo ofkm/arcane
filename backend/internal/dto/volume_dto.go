@@ -18,6 +18,7 @@ type VolumeDto struct {
 	CreatedAt  string            `json:"createdAt"`
 	InUse      bool              `json:"inUse"`
 	UsageData  *VolumeUsageData  `json:"usageData,omitempty"`
+	Size       int64             `json:"size"`
 }
 
 func NewVolumeDto(v volume.Volume) VolumeDto {
@@ -37,6 +38,7 @@ func NewVolumeDto(v volume.Volume) VolumeDto {
 			Size:     v.UsageData.Size,
 			RefCount: v.UsageData.RefCount,
 		}
+		dto.Size = v.UsageData.Size
 		if v.UsageData.RefCount >= 1 {
 			dto.InUse = true
 		} else {

@@ -14,6 +14,7 @@ export interface VolumeSummaryDto {
 	createdAt: string;
 	inUse: boolean;
 	usageData?: VolumeUsageData;
+	size: number;
 }
 
 export interface VolumeDetailDto extends VolumeSummaryDto {
