@@ -4,7 +4,7 @@ set -euo pipefail
 cd backend
 mkdir -p .bin
 
-HOST_OS="$(go env GOHOSTOS)"   # added
+HOST_OS="$(go env GOHOSTOS)"
 
 # Read version from repo root .version (trim whitespace), fallback to "dev"
 VERSION=$(cat ../.version | sed 's/^\s*\|\s*$//g')

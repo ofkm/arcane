@@ -86,3 +86,20 @@ func getBoolEnvOrDefault(key string, defaultValue bool) bool {
 	}
 	return defaultValue
 }
+
+func GetEnvOrDefault(key, defaultValue string) string {
+	return getEnvOrDefault(key, defaultValue)
+}
+
+func GetBoolEnvOrDefault(key string, defaultValue bool) bool {
+	return getBoolEnvOrDefault(key, defaultValue)
+}
+
+func GetIntEnvOrDefault(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intVal, err := strconv.Atoi(value); err == nil {
+			return intVal
+		}
+	}
+	return defaultValue
+}
