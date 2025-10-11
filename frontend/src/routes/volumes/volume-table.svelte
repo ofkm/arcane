@@ -20,8 +20,10 @@
 	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
 	import DatabaseIcon from '@lucide/svelte/icons/database';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
+	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import { m } from '$lib/paraglide/messages';
 	import { volumeService } from '$lib/services/volume-service';
+	import bytes from 'bytes';
 
 	let {
 		volumes = $bindable(),
@@ -108,6 +110,12 @@
 			sortable: true,
 			cell: StatusCell
 		},
+		{
+			accessorKey: 'size',
+			title: m.images_size(),
+			sortable: true,
+			cell: SizeCell
+		},
 		{ accessorKey: 'createdAt', title: m.common_created(), sortable: true, cell: CreatedCell },
 		{ accessorKey: 'driver', title: m.common_driver(), sortable: true }
 	] satisfies ColumnSpec<VolumeSummaryDto>[];
@@ -115,6 +123,7 @@
 	const mobileFields = [
 		{ id: 'id', label: m.common_id(), defaultVisible: true },
 		{ id: 'status', label: m.common_status(), defaultVisible: true },
+		{ id: 'size', label: m.images_size(), defaultVisible: true },
 		{ id: 'createdAt', label: m.common_created(), defaultVisible: true },
 		{ id: 'driver', label: m.common_driver(), defaultVisible: true }
 	];
@@ -133,6 +142,14 @@
 		<StatusBadge text={m.common_in_use()} variant="green" />
 	{:else}
 		<StatusBadge text={m.common_unused()} variant="amber" />
+	{/if}
+{/snippet}
+
+{#snippet SizeCell({ item }: { item: VolumeSummaryDto })}
+	{#if item.size >= 0}
+		<span class="text-sm tabular-nums">{bytes.format(item.size)}</span>
+	{:else}
+		<span class="text-muted-foreground text-sm">-</span>
 	{/if}
 {/snippet}
 
@@ -172,6 +189,14 @@
 				icon: DatabaseIcon,
 				iconVariant: 'gray' as const,
 				show: mobileFieldVisibility.driver ?? true
+			},
+			{
+				label: m.images_size(),
+				getValue: (item: VolumeSummaryDto) =>
+					item.usageData && item.usageData.size >= 0 ? bytes.format(item.usageData.size) : '-',
+				icon: HardDriveIcon,
+				iconVariant: 'gray' as const,
+				show: (mobileFieldVisibility.size ?? true) && !!item.usageData
 			}
 		]}
 		footer={(mobileFieldVisibility.createdAt ?? true)

@@ -2,6 +2,11 @@ package dto
 
 import "github.com/docker/docker/api/types/volume"
 
+type VolumeUsageData struct {
+	Size     int64 `json:"size"`
+	RefCount int64 `json:"refCount"`
+}
+
 type VolumeDto struct {
 	ID         string            `json:"id"`
 	Name       string            `json:"name"`
@@ -12,10 +17,12 @@ type VolumeDto struct {
 	Labels     map[string]string `json:"labels"`
 	CreatedAt  string            `json:"createdAt"`
 	InUse      bool              `json:"inUse"`
+	UsageData  *VolumeUsageData  `json:"usageData,omitempty"`
+	Size       int64             `json:"size"`
 }
 
-func NewVolumeDto(v volume.Volume, inUse bool) VolumeDto {
-	return VolumeDto{
+func NewVolumeDto(v volume.Volume) VolumeDto {
+	dto := VolumeDto{
 		ID:         v.Name,
 		Name:       v.Name,
 		Driver:     v.Driver,
@@ -24,8 +31,23 @@ func NewVolumeDto(v volume.Volume, inUse bool) VolumeDto {
 		Options:    v.Options,
 		Labels:     v.Labels,
 		CreatedAt:  v.CreatedAt,
-		InUse:      inUse,
 	}
+
+	if v.UsageData != nil {
+		dto.UsageData = &VolumeUsageData{
+			Size:     v.UsageData.Size,
+			RefCount: v.UsageData.RefCount,
+		}
+		dto.Size = v.UsageData.Size
+		if v.UsageData.RefCount >= 1 {
+			dto.InUse = true
+		} else {
+			dto.InUse = false
+		}
+
+	}
+
+	return dto
 }
 
 type VolumeUsageCounts struct {

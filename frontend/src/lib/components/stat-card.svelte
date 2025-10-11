@@ -24,7 +24,12 @@
 	}: Props = $props();
 </script>
 
-<div class={cn('group flex items-center justify-between gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50', className)}>
+<div
+	class={cn(
+		'bg-card hover:bg-accent/50 group flex items-center justify-between gap-3 rounded-lg border p-4 transition-colors',
+		className
+	)}
+>
 	<div class="flex-1 space-y-1">
 		<p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">{title}</p>
 		<p class="text-xl font-bold tabular-nums">{value}</p>
