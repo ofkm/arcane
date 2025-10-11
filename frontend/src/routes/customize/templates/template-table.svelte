@@ -147,21 +147,47 @@
 
 {#snippet TagsCell({ item }: { item: Template })}
 	{#if item.metadata?.tags}
-		{@const tagsStr = item.metadata.tags}
-		{@const tagsArray =
-			typeof tagsStr === 'string'
-				? tagsStr
-						.split(',')
-						.map((t) => t.trim())
-						.filter(Boolean)
-				: []}
+		{@const parseTags = (tags: any): string[] => {
+			if (!tags) return [];
+
+			if (Array.isArray(tags)) {
+				return tags.map((t) => String(t).trim()).filter(Boolean);
+			}
+
+			if (typeof tags === 'string') {
+				const trimmed = tags.trim();
+
+				if (trimmed.startsWith('[')) {
+					try {
+						const parsed = JSON.parse(trimmed);
+						if (Array.isArray(parsed)) {
+							return parsed
+								.map((t) =>
+									String(t)
+										.trim()
+										.replace(/^["']|["']$/g, '')
+								)
+								.filter(Boolean);
+						}
+					} catch {}
+				}
+
+				return trimmed
+					.split(',')
+					.map((t) => t.trim().replace(/^["'\[\]]+|["'\[\]]+$/g, ''))
+					.filter(Boolean);
+			}
+
+			return [];
+		}}
+		{@const tagsArray = parseTags(item.metadata.tags)}
 		{#if tagsArray.length > 0}
 			<div class="flex flex-wrap gap-1">
-				{#each tagsArray.slice(0, 3) as tag}
+				{#each tagsArray.slice(0, 2) as tag}
 					<Badge variant="outline" class="text-xs">{tag}</Badge>
 				{/each}
-				{#if tagsArray.length > 3}
-					<Badge variant="outline" class="text-xs">+{tagsArray.length - 3}</Badge>
+				{#if tagsArray.length > 2}
+					<Badge variant="outline" class="text-xs">+{tagsArray.length - 2}</Badge>
 				{/if}
 			</div>
 		{/if}
@@ -200,14 +226,46 @@
 	>
 		{#snippet children()}
 			{#if (mobileFieldVisibility.tags ?? true) && item.metadata?.tags}
-				{@const tagsStr = item.metadata.tags}
-				{@const tagsArray =
-					typeof tagsStr === 'string'
-						? tagsStr
-								.split(',')
-								.map((t) => t.trim())
-								.filter(Boolean)
-						: []}
+				{@const parseTags = (tags: any): string[] => {
+					if (!tags) return [];
+
+					// If it's already an array, use it
+					if (Array.isArray(tags)) {
+						return tags.map((t) => String(t).trim()).filter(Boolean);
+					}
+
+					// If it's a string
+					if (typeof tags === 'string') {
+						const trimmed = tags.trim();
+
+						// Try to parse as JSON array if it starts with '['
+						if (trimmed.startsWith('[')) {
+							try {
+								const parsed = JSON.parse(trimmed);
+								if (Array.isArray(parsed)) {
+									return parsed
+										.map((t) =>
+											String(t)
+												.trim()
+												.replace(/^["']|["']$/g, '')
+										)
+										.filter(Boolean);
+								}
+							} catch {
+								// Fall through to comma-separated parsing
+							}
+						}
+
+						// Handle comma-separated values
+						return trimmed
+							.split(',')
+							.map((t) => t.trim().replace(/^["'\[\]]+|["'\[\]]+$/g, ''))
+							.filter(Boolean);
+					}
+
+					return [];
+				}}
+				{@const tagsArray = parseTags(item.metadata.tags)}
 				{#if tagsArray.length > 0}
 					<div class="flex items-start gap-2.5 border-t pt-3">
 						<div class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
