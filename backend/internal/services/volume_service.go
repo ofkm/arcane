@@ -3,15 +3,15 @@ package services
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/volume"
-	"github.com/docker/docker/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils/docker"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
@@ -29,30 +29,6 @@ func NewVolumeService(db *database.DB, dockerService *DockerClientService, event
 	}
 }
 
-func (s *VolumeService) containersUsingVolume(ctx context.Context, dockerClient *client.Client, name string) (bool, []string, error) {
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
-	if err != nil {
-		return false, nil, fmt.Errorf("failed to list containers: %w", err)
-	}
-
-	inUse := false
-	var using []string
-	for _, c := range containers {
-		info, err := dockerClient.ContainerInspect(ctx, c.ID)
-		if err != nil {
-			continue
-		}
-		for _, m := range info.Mounts {
-			if m.Type == "volume" && m.Name == name {
-				inUse = true
-				using = append(using, c.ID)
-				break
-			}
-		}
-	}
-	return inUse, using, nil
-}
-
 func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*dto.VolumeDto, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -65,9 +41,24 @@ func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*dto.
 		return nil, fmt.Errorf("volume not found: %w", err)
 	}
 
-	inUse, _, _ := s.containersUsingVolume(ctx, dockerClient, vol.Name)
+	if usageVolumes, duErr := docker.GetVolumeUsageData(ctx, dockerClient); duErr == nil {
+		for _, uv := range usageVolumes {
+			if uv.Name == vol.Name && uv.UsageData != nil {
+				vol.UsageData = uv.UsageData
+				slog.DebugContext(ctx, "attached volume usage data",
+					slog.String("volume", vol.Name),
+					slog.Int64("size_bytes", uv.UsageData.Size),
+					slog.Int64("ref_count", uv.UsageData.RefCount))
+				break
+			}
+		}
+	} else {
+		slog.WarnContext(ctx, "failed to load volume usage data",
+			slog.String("volume", vol.Name),
+			slog.String("error", duErr.Error()))
+	}
 
-	v := dto.NewVolumeDto(vol, inUse)
+	v := dto.NewVolumeDto(vol)
 	return &v, nil
 }
 
@@ -94,10 +85,14 @@ func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateO
 		"name":   vol.Name,
 	}
 	if logErr := s.eventService.LogVolumeEvent(ctx, models.EventTypeVolumeCreate, vol.Name, vol.Name, user.ID, user.Username, "0", metadata); logErr != nil {
-		fmt.Printf("Could not log volume creation action: %s\n", logErr)
+		slog.WarnContext(ctx, "could not log volume creation action",
+			slog.String("volume", vol.Name),
+			slog.String("error", logErr.Error()))
 	}
 
-	dtoVol := dto.NewVolumeDto(vol, false)
+	docker.InvalidateVolumeUsageCache()
+
+	dtoVol := dto.NewVolumeDto(vol)
 	return &dtoVol, nil
 }
 
@@ -118,8 +113,13 @@ func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force boo
 		"force":  force,
 	}
 	if logErr := s.eventService.LogVolumeEvent(ctx, models.EventTypeVolumeDelete, name, name, user.ID, user.Username, "0", metadata); logErr != nil {
-		fmt.Printf("Could not log volume deletion action: %s\n", logErr)
+		slog.WarnContext(ctx, "could not log volume deletion action",
+			slog.String("volume", name),
+			slog.String("error", logErr.Error()))
 	}
+
+	//
+	docker.InvalidateVolumeUsageCache()
 
 	return nil
 }
@@ -161,8 +161,11 @@ func (s *VolumeService) PruneVolumesWithOptions(ctx context.Context, all bool) (
 		"spaceReclaimed": report.SpaceReclaimed,
 	}
 	if logErr := s.eventService.LogVolumeEvent(ctx, models.EventTypeVolumeDelete, "", "bulk_prune", systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
-		fmt.Printf("Could not log volume prune action: %s\n", logErr)
+		slog.WarnContext(ctx, "could not log volume prune action",
+			slog.String("error", logErr.Error()))
 	}
+
+	docker.InvalidateVolumeUsageCache()
 
 	return &dto.VolumePruneReportDto{
 		VolumesDeleted: report.VolumesDeleted,
@@ -177,128 +180,147 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 	}
 	defer dockerClient.Close()
 
-	if _, err := dockerClient.VolumeInspect(ctx, name); err != nil {
+	vol, err := dockerClient.VolumeInspect(ctx, name)
+	if err != nil {
 		return false, nil, fmt.Errorf("volume not found: %w", err)
 	}
 
-	inUse, usingContainers, err := s.containersUsingVolume(ctx, dockerClient, name)
-	if err != nil {
-		return false, nil, err
+	usageVolumes, duErr := docker.GetVolumeUsageData(ctx, dockerClient)
+	if duErr != nil {
+		return false, nil, fmt.Errorf("failed to get volume usage data: %w", duErr)
 	}
-	return inUse, usingContainers, nil
+
+	for _, uv := range usageVolumes {
+		if uv.Name == vol.Name && uv.UsageData != nil {
+			inUse := uv.UsageData.RefCount >= 1
+			return inUse, nil, nil
+		}
+	}
+
+	return false, nil, nil
 }
 
-func (s *VolumeService) ListVolumesPaginated(ctx context.Context, params pagination.QueryParams) ([]dto.VolumeDto, pagination.Response, error) {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
-	if err != nil {
-		return nil, pagination.Response{}, fmt.Errorf("failed to connect to Docker: %w", err)
-	}
-	defer dockerClient.Close()
-
-	// Get all containers ONCE
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
-	if err != nil {
-		return nil, pagination.Response{}, fmt.Errorf("failed to list containers: %w", err)
-	}
-
-	// Build inUse map in a single pass
-	inUseMap := make(map[string]bool)
-	for _, c := range containers {
-		for _, m := range c.Mounts {
-			if m.Type == "volume" && m.Name != "" {
-				inUseMap[m.Name] = true
-			}
-		}
-	}
-
-	// List all volumes
-	volListBody, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
-	if err != nil {
-		return nil, pagination.Response{}, fmt.Errorf("failed to list Docker volumes: %w", err)
-	}
-
-	volumes := make([]volume.Volume, 0, len(volListBody.Volumes))
-	for _, v := range volListBody.Volumes {
-		if v != nil {
-			volumes = append(volumes, *v)
-		}
-	}
-
-	// Build DTOs using the inUse map (O(1) lookup)
-	items := make([]dto.VolumeDto, 0, len(volumes))
+func (s *VolumeService) enrichVolumesWithUsageData(volumes []*volume.Volume, usageVolumes []volume.Volume) []volume.Volume {
+	result := make([]volume.Volume, 0, len(volumes))
 	for _, v := range volumes {
-		items = append(items, dto.NewVolumeDto(v, inUseMap[v.Name]))
-	}
+		if v != nil {
+			for _, uv := range usageVolumes {
+				if uv.Name == v.Name && uv.UsageData != nil {
+					v.UsageData = uv.UsageData
+					break
+				}
+			}
 
-	config := pagination.Config[dto.VolumeDto]{
+			result = append(result, *v)
+		}
+	}
+	return result
+}
+
+func (s *VolumeService) buildVolumePaginationConfig() pagination.Config[dto.VolumeDto] {
+	return pagination.Config[dto.VolumeDto]{
 		SearchAccessors: []pagination.SearchAccessor[dto.VolumeDto]{
 			func(v dto.VolumeDto) (string, error) { return v.Name, nil },
 			func(v dto.VolumeDto) (string, error) { return v.Driver, nil },
 			func(v dto.VolumeDto) (string, error) { return v.Mountpoint, nil },
 			func(v dto.VolumeDto) (string, error) { return v.Scope, nil },
 		},
-		SortBindings: []pagination.SortBinding[dto.VolumeDto]{
-			{
-				Key: "name",
-				Fn: func(a, b dto.VolumeDto) int {
-					return strings.Compare(a.Name, b.Name)
-				},
-			},
-			{
-				Key: "driver",
-				Fn: func(a, b dto.VolumeDto) int {
-					return strings.Compare(a.Driver, b.Driver)
-				},
-			},
-			{
-				Key: "mountpoint",
-				Fn: func(a, b dto.VolumeDto) int {
-					return strings.Compare(a.Mountpoint, b.Mountpoint)
-				},
-			},
-			{
-				Key: "scope",
-				Fn: func(a, b dto.VolumeDto) int {
-					return strings.Compare(a.Scope, b.Scope)
-				},
-			},
-			{
-				Key: "created",
-				Fn: func(a, b dto.VolumeDto) int {
-					return strings.Compare(a.CreatedAt, b.CreatedAt)
-				},
-			},
-			{
-				Key: "inUse",
-				Fn: func(a, b dto.VolumeDto) int {
-					if a.InUse == b.InUse {
-						return 0
-					}
-					if a.InUse {
-						return -1
-					}
-					return 1
-				},
+		SortBindings:    s.buildVolumeSortBindings(),
+		FilterAccessors: s.buildVolumeFilterAccessors(),
+	}
+}
+
+func (s *VolumeService) buildVolumeSortBindings() []pagination.SortBinding[dto.VolumeDto] {
+	return []pagination.SortBinding[dto.VolumeDto]{
+		{
+			Key: "name",
+			Fn:  func(a, b dto.VolumeDto) int { return strings.Compare(a.Name, b.Name) },
+		},
+		{
+			Key: "driver",
+			Fn:  func(a, b dto.VolumeDto) int { return strings.Compare(a.Driver, b.Driver) },
+		},
+		{
+			Key: "mountpoint",
+			Fn:  func(a, b dto.VolumeDto) int { return strings.Compare(a.Mountpoint, b.Mountpoint) },
+		},
+		{
+			Key: "scope",
+			Fn:  func(a, b dto.VolumeDto) int { return strings.Compare(a.Scope, b.Scope) },
+		},
+		{
+			Key: "created",
+			Fn:  func(a, b dto.VolumeDto) int { return strings.Compare(a.CreatedAt, b.CreatedAt) },
+		},
+		{
+			Key: "inUse",
+			Fn: func(a, b dto.VolumeDto) int {
+				if a.InUse == b.InUse {
+					return 0
+				}
+				if a.InUse {
+					return -1
+				}
+				return 1
 			},
 		},
-		FilterAccessors: []pagination.FilterAccessor[dto.VolumeDto]{
-			{
-				Key: "inUse",
-				Fn: func(v dto.VolumeDto, filterValue string) bool {
-					if filterValue == "true" {
-						return v.InUse
-					}
-					if filterValue == "false" {
-						return !v.InUse
-					}
-					return true
-				},
+		{
+			Key: "size",
+			Fn:  s.compareVolumeSizes,
+		},
+	}
+}
+
+func (s *VolumeService) compareVolumeSizes(a, b dto.VolumeDto) int {
+	aSize := int64(-1)
+	bSize := int64(-1)
+	if a.UsageData != nil {
+		aSize = a.UsageData.Size
+	}
+	if b.UsageData != nil {
+		bSize = b.UsageData.Size
+	}
+	if aSize == bSize {
+		return 0
+	}
+	if aSize < bSize {
+		return -1
+	}
+	return 1
+}
+
+func (s *VolumeService) buildVolumeFilterAccessors() []pagination.FilterAccessor[dto.VolumeDto] {
+	return []pagination.FilterAccessor[dto.VolumeDto]{
+		{
+			Key: "inUse",
+			Fn: func(v dto.VolumeDto, filterValue string) bool {
+				if filterValue == "true" {
+					return v.InUse
+				}
+				if filterValue == "false" {
+					return !v.InUse
+				}
+				return true
 			},
 		},
 	}
+}
 
-	result := pagination.SearchOrderAndPaginate(items, params, config)
+func (s *VolumeService) calculateVolumeUsageCounts(items []dto.VolumeDto) dto.VolumeUsageCounts {
+	counts := dto.VolumeUsageCounts{
+		Total: len(items),
+	}
+	for _, v := range items {
+		if v.InUse {
+			counts.Inuse++
+		} else {
+			counts.Unused++
+		}
+	}
+	return counts
+}
 
+func (s *VolumeService) buildPaginationResponse(result pagination.FilterResult[dto.VolumeDto], params pagination.QueryParams) pagination.Response {
 	totalPages := int64(0)
 	if params.Limit > 0 {
 		totalPages = (int64(result.TotalCount) + int64(params.Limit) - 1) / int64(params.Limit)
@@ -309,13 +331,45 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, params paginat
 		page = (params.Start / params.Limit) + 1
 	}
 
-	paginationResp := pagination.Response{
+	return pagination.Response{
 		TotalPages:      totalPages,
 		TotalItems:      int64(result.TotalCount),
 		CurrentPage:     page,
 		ItemsPerPage:    params.Limit,
 		GrandTotalItems: int64(result.TotalAvailable),
 	}
+}
 
-	return result.Items, paginationResp, nil
+func (s *VolumeService) ListVolumesPaginated(ctx context.Context, params pagination.QueryParams) ([]dto.VolumeDto, pagination.Response, dto.VolumeUsageCounts, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return nil, pagination.Response{}, dto.VolumeUsageCounts{}, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	volListBody, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
+	if err != nil {
+		return nil, pagination.Response{}, dto.VolumeUsageCounts{}, fmt.Errorf("failed to list Docker volumes: %w", err)
+	}
+
+	usageVolumes, duErr := docker.GetVolumeUsageData(ctx, dockerClient)
+	if duErr != nil {
+		slog.WarnContext(ctx, "failed to load volume usage data",
+			slog.String("error", duErr.Error()))
+		usageVolumes = nil
+	}
+
+	volumes := s.enrichVolumesWithUsageData(volListBody.Volumes, usageVolumes)
+
+	items := make([]dto.VolumeDto, 0, len(volumes))
+	for _, v := range volumes {
+		items = append(items, dto.NewVolumeDto(v))
+	}
+
+	config := s.buildVolumePaginationConfig()
+	result := pagination.SearchOrderAndPaginate(items, params, config)
+	counts := s.calculateVolumeUsageCounts(items)
+	paginationResp := s.buildPaginationResponse(result, params)
+
+	return result.Items, paginationResp, counts, nil
 }

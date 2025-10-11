@@ -7,7 +7,7 @@
 	import { containerService } from '$lib/services/container-service';
 	import ContainerTable from './container-table.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { environmentStore } from '$lib/stores/environment.store';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 	import type { Environment } from '$lib/types/environment.type';
 	import { imageService } from '$lib/services/image-service';
 	import { ResourcePageLayout, type ActionButton, type StatCardConfig } from '$lib/layouts/index.js';
@@ -74,7 +74,7 @@
 	const selectedEnvStore = environmentStore.selected;
 	let lastEnvId: string | null = null;
 	$effect(() => {
-		const env = $selectedEnvStore as Environment | null;
+		const env = selectedEnvStore as Environment | null;
 		if (!env) return;
 		if (lastEnvId === null) {
 			lastEnvId = env.id;

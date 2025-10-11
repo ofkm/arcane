@@ -354,7 +354,13 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 		}
 
 		diskUsagePath := h.getDiskUsagePath(c.Request.Context())
-		diskInfo, _ := disk.Usage(diskUsagePath)
+		diskInfo, err := disk.Usage(diskUsagePath)
+		if err != nil || diskInfo == nil || diskInfo.Total == 0 {
+			if diskUsagePath != "/" {
+				diskInfo, _ = disk.Usage("/")
+			}
+		}
+
 		var diskUsed, diskTotal uint64
 		if diskInfo != nil {
 			diskUsed = diskInfo.Used

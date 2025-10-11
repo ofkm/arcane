@@ -4,6 +4,7 @@
 	import { FitAddon } from '@xterm/addon-fit';
 	import '@xterm/xterm/css/xterm.css';
 	import { m } from '$lib/paraglide/messages';
+	import { mode } from 'mode-watcher';
 
 	let {
 		websocketUrl,
@@ -24,6 +25,50 @@
 	let isReconnecting = false;
 	let resizeObserver: ResizeObserver | null = null;
 
+	const darkTheme = {
+		background: '#09090b',
+		foreground: '#e4e4e7',
+		cursor: '#e4e4e7',
+		black: '#18181b',
+		red: '#f87171',
+		green: '#4ade80',
+		yellow: '#facc15',
+		blue: '#60a5fa',
+		magenta: '#c084fc',
+		cyan: '#22d3ee',
+		white: '#e4e4e7',
+		brightBlack: '#52525b',
+		brightRed: '#fca5a5',
+		brightGreen: '#86efac',
+		brightYellow: '#fde047',
+		brightBlue: '#93c5fd',
+		brightMagenta: '#d8b4fe',
+		brightCyan: '#67e8f9',
+		brightWhite: '#fafafa'
+	};
+
+	const lightTheme = {
+		background: '#ffffff',
+		foreground: '#18181b',
+		cursor: '#18181b',
+		black: '#18181b',
+		red: '#dc2626',
+		green: '#16a34a',
+		yellow: '#ca8a04',
+		blue: '#2563eb',
+		magenta: '#9333ea',
+		cyan: '#0891b2',
+		white: '#fafafa',
+		brightBlack: '#71717a',
+		brightRed: '#ef4444',
+		brightGreen: '#22c55e',
+		brightYellow: '#eab308',
+		brightBlue: '#3b82f6',
+		brightMagenta: '#a855f7',
+		brightCyan: '#06b6d4',
+		brightWhite: '#ffffff'
+	};
+
 	function initializeTerminal() {
 		if (!container) return;
 
@@ -36,27 +81,7 @@
 			cursorStyle: 'underline',
 			fontSize: 14,
 			fontFamily: 'Geist Mono, monospace',
-			theme: {
-				background: '#09090b',
-				foreground: '#e4e4e7',
-				cursor: '#e4e4e7',
-				black: '#18181b',
-				red: '#f87171',
-				green: '#4ade80',
-				yellow: '#facc15',
-				blue: '#60a5fa',
-				magenta: '#c084fc',
-				cyan: '#22d3ee',
-				white: '#e4e4e7',
-				brightBlack: '#52525b',
-				brightRed: '#fca5a5',
-				brightGreen: '#86efac',
-				brightYellow: '#fde047',
-				brightBlue: '#93c5fd',
-				brightMagenta: '#d8b4fe',
-				brightCyan: '#67e8f9',
-				brightWhite: '#fafafa'
-			}
+			theme: mode.current === 'dark' ? darkTheme : lightTheme
 		});
 
 		fitAddon = new FitAddon();
@@ -155,6 +180,12 @@
 		}
 	});
 
+	$effect(() => {
+		if (terminal && mode.current) {
+			terminal.options.theme = mode.current === 'dark' ? darkTheme : lightTheme;
+		}
+	});
+
 	onDestroy(() => {
 		resizeObserver?.disconnect();
 		isReconnecting = true;
@@ -171,6 +202,10 @@
 	}
 
 	:global(.terminal-container .xterm-viewport) {
+		background-color: transparent !important;
+	}
+
+	:global(.terminal-container .xterm-screen) {
 		background-color: transparent !important;
 	}
 </style>

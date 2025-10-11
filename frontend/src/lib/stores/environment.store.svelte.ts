@@ -1,4 +1,4 @@
-import { writable, get } from 'svelte/store';
+import { PersistedState } from 'runed';
 import { invalidateAll } from '$app/navigation';
 import type { Environment } from '$lib/types/environment.type';
 
@@ -16,16 +16,19 @@ export const localDockerEnvironment: Environment = {
 };
 
 function createEnvironmentManagementStore() {
-	const _selectedEnvironment = writable<Environment | null>(null);
-	const _availableEnvironments = writable<Environment[]>([]);
+	const selectedEnvironmentId = new PersistedState<string | null>('selectedEnvironmentId', null);
+
+	let _selectedEnvironment = $state<Environment | null>(null);
+	let _availableEnvironments = $state<Environment[]>([]);
 	let _initialized = false;
+	let _initializedWithData = false;
 
 	let _resolveReadyPromiseFunction: () => void;
 	const _readyPromise = new Promise<void>((resolve) => {
 		_resolveReadyPromiseFunction = resolve;
 	});
 
-	function _updateAvailable(environments: Environment[], hasLocalDocker: boolean) {
+	function _updateAvailable(environments: Environment[], hasLocalDocker: boolean): Environment[] {
 		const newAvailable: Environment[] = [];
 
 		if (hasLocalDocker) {
@@ -33,75 +36,68 @@ function createEnvironmentManagementStore() {
 		}
 
 		newAvailable.push(...environments.map((env) => ({ ...env, isLocal: false })));
-		_availableEnvironments.set(newAvailable);
+		_availableEnvironments = newAvailable;
 		return newAvailable;
 	}
 
-	function _getSavedEnvironmentId(): string | null {
-		if (localStorage) {
-			return localStorage.getItem('selectedEnvironmentId');
-		}
-		return null;
-	}
-
 	function _selectInitialEnvironment(available: Environment[]): Environment | null {
-		const savedId = _getSavedEnvironmentId();
+		const savedId = selectedEnvironmentId.current;
 
 		if (savedId) {
 			const found = available.find((env) => env.id === savedId);
 			if (found) {
-				_selectedEnvironment.set(found);
+				_selectedEnvironment = found;
 				return found;
 			}
 		}
 
-		if (available.includes(localDockerEnvironment)) {
-			_selectedEnvironment.set(localDockerEnvironment);
+		if (available.some((env) => env.id === localDockerEnvironment.id)) {
+			_selectedEnvironment = localDockerEnvironment;
 			return localDockerEnvironment;
 		}
 
 		if (available.length > 0) {
-			_selectedEnvironment.set(available[0]);
+			_selectedEnvironment = available[0];
 			return available[0];
 		}
 
-		_selectedEnvironment.set(null);
+		_selectedEnvironment = null;
 		return null;
 	}
 
 	return {
-		selected: {
-			subscribe: _selectedEnvironment.subscribe
+		get selected(): Environment | null {
+			return _selectedEnvironment;
 		},
-		available: {
-			subscribe: _availableEnvironments.subscribe
+		get available(): Environment[] {
+			return _availableEnvironments;
 		},
 		initialize: async (environmentsData: Environment[], hasLocalDocker: boolean) => {
 			const available = _updateAvailable(environmentsData, hasLocalDocker);
+			const hasRealEnvironments = environmentsData.length > 0;
 
 			if (!_initialized) {
 				_selectInitialEnvironment(available);
 				_initialized = true;
+				if (hasRealEnvironments) {
+					_initializedWithData = true;
+				}
 				_resolveReadyPromiseFunction();
+			} else if (hasRealEnvironments && !_initializedWithData) {
+				_selectInitialEnvironment(available);
+				_initializedWithData = true;
 			} else {
-				const currentSelected = get(_selectedEnvironment);
-				if (currentSelected && !available.find((env) => env.id === currentSelected.id)) {
+				if (_selectedEnvironment && !available.find((env) => env.id === _selectedEnvironment!.id)) {
 					_selectInitialEnvironment(available);
-				} else if (!currentSelected && available.length > 0) {
+				} else if (!_selectedEnvironment && available.length > 0) {
 					_selectInitialEnvironment(available);
 				}
 			}
 		},
 		setEnvironment: async (environment: Environment) => {
-			const currentSelected = get(_selectedEnvironment);
-
-			if (currentSelected?.id !== environment.id) {
-				_selectedEnvironment.set(environment);
-
-				if (localStorage) {
-					localStorage.setItem('selectedEnvironmentId', environment.id);
-				}
-
+			if (_selectedEnvironment?.id !== environment.id) {
+				_selectedEnvironment = environment;
+				selectedEnvironmentId.current = environment.id;
 				await invalidateAll();
 			}
 		},
@@ -110,8 +106,7 @@ function createEnvironmentManagementStore() {
 		ready: _readyPromise,
 		getCurrentEnvironmentId: async (): Promise<string> => {
 			await _readyPromise;
-			const current = get(_selectedEnvironment);
-			return current ? current.id : LOCAL_DOCKER_ENVIRONMENT_ID;
+			return _selectedEnvironment ? _selectedEnvironment.id : LOCAL_DOCKER_ENVIRONMENT_ID;
 		}
 	};
 }

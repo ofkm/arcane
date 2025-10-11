@@ -111,6 +111,7 @@ test.describe('Volumes Page', () => {
 
   test('Disable remove action when volume is in use', async ({ page }) => {
     const volumeInUse = realVolumes.find((vol) => vol.inUse);
+    test.skip(!volumeInUse, 'No volumes in use available for this test');
 
     await page.goto('/volumes');
     await page.waitForLoadState('networkidle');

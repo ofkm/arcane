@@ -1,5 +1,5 @@
 import BaseAPIService from './api-service';
-import { environmentStore } from '$lib/stores/environment.store';
+import { environmentStore } from '$lib/stores/environment.store.svelte';
 import type { VolumeSummaryDto, VolumeDetailDto, VolumeUsageDto, VolumeUsageCounts } from '$lib/types/volume.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import type { VolumeCreateOptions } from 'dockerode';

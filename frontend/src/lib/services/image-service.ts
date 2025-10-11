@@ -1,5 +1,5 @@
 import BaseAPIService from './api-service';
-import { environmentStore } from '$lib/stores/environment.store';
+import { environmentStore } from '$lib/stores/environment.store.svelte';
 import type { ImageSummaryDto, ImageUsageCounts, ImageUpdateInfoDto } from '$lib/types/image.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import type { AutoUpdateCheck, AutoUpdateResult } from '$lib/types/auto-update.type';

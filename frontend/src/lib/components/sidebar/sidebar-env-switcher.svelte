@@ -7,7 +7,7 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import RouterIcon from '@lucide/svelte/icons/router';
 	import ServerIcon from '@lucide/svelte/icons/server';
-	import { environmentStore } from '$lib/stores/environment.store';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 	import type { Environment } from '$lib/types/environment.type';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -24,21 +24,6 @@
 	const sidebar = useSidebar();
 
 	let dropdownOpen = $state(false);
-	let currentSelectedEnvironment = $state<Environment | null>(null);
-	let availableEnvironments = $state<Environment[]>([]);
-
-	$effect(() => {
-		const unsubscribeSelected = environmentStore.selected.subscribe((value) => {
-			currentSelectedEnvironment = value;
-		});
-		const unsubscribeAvailable = environmentStore.available.subscribe((value) => {
-			availableEnvironments = value;
-		});
-		return () => {
-			unsubscribeSelected();
-			unsubscribeAvailable();
-		};
-	});
 
 	$effect(() => {
 		if (sidebar.state === 'collapsed' && !sidebar.isHovered && dropdownOpen) {
@@ -88,9 +73,9 @@
 						size="lg"
 						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 					>
-						{#if currentSelectedEnvironment}
+						{#if environmentStore.selected}
 							<div class="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-								{#if currentSelectedEnvironment.isLocal}
+								{#if environmentStore.selected.isLocal}
 									<ServerIcon class="size-4" />
 								{:else}
 									<RouterIcon class="size-4" />
@@ -98,10 +83,10 @@
 							</div>
 							<div class="grid flex-1 text-left text-sm leading-tight">
 								<span class="truncate font-medium">
-									{getEnvLabel(currentSelectedEnvironment)}
+									{getEnvLabel(environmentStore.selected)}
 								</span>
 								<span class="truncate text-xs">
-									{getConnectionString(currentSelectedEnvironment)}
+									{getConnectionString(environmentStore.selected)}
 								</span>
 							</div>
 						{:else}
@@ -137,7 +122,7 @@
 					}}
 				>
 					<DropdownMenu.Label class="text-muted-foreground text-xs">{m.sidebar_select_environment()}</DropdownMenu.Label>
-					{#if availableEnvironments.length === 0}
+					{#if environmentStore.available.length === 0}
 						<DropdownMenu.Item disabled class="gap-2 p-2">
 							<div class="flex size-6 items-center justify-center rounded-md border">
 								<ServerIcon class="size-3.5 shrink-0" />
@@ -145,8 +130,8 @@
 							<span>{m.sidebar_no_environments()}</span>
 						</DropdownMenu.Item>
 					{:else}
-						{#each availableEnvironments as env (env.id)}
-							{@const isActive = currentSelectedEnvironment?.id === env.id}
+						{#each environmentStore.available as env (env.id)}
+							{@const isActive = environmentStore.selected?.id === env.id}
 							<DropdownMenu.Item
 								onSelect={() => !isActive && handleSelect(env)}
 								class={cn(

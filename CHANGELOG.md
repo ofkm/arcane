@@ -1,3 +1,67 @@
+## v1.5.0
+
+### New features
+
+* docker socket proxy support via environment variable ([#616](https://github.com/ofkm/arcane/pull/616) by @Copilot)
+* configurable disk usage path ([#650](https://github.com/ofkm/arcane/pull/650) by @kmendell)
+* health status on project service card ([#658](https://github.com/ofkm/arcane/pull/658) by @kmendell)
+* customizable accent color ([#678](https://github.com/ofkm/arcane/pull/678) by @kmendell)
+* allow filtering events by severity([65c7c75](https://github.com/ofkm/arcane/commit/65c7c75d7f988e5fa59613abddf478ee13a2939a) by @kmendell)
+* show volume size in table ([#685](https://github.com/ofkm/arcane/pull/685) by @kmendell)
+
+### Bug fixes
+
+* remove tag based update logic and only use digests ([#627](https://github.com/ofkm/arcane/pull/627) by @kmendell)
+* allow both pkce and plain auth challenges([fb4ac74](https://github.com/ofkm/arcane/commit/fb4ac74c0897cb8a1eaabe54dd98a6fa88242d2e) by @kmendell)
+* use 'up' and 'down' labels for project table actions([e9d8d38](https://github.com/ofkm/arcane/commit/e9d8d38507f9c5b22197e88f129f215ec155dfbc) by @kmendell)
+* use proper --all filter for volume pruning([734015b](https://github.com/ofkm/arcane/commit/734015ba290d954c68349a3f65d8d873ac806155) by @kmendell)
+* use correct response messages for container registry test ([#665](https://github.com/ofkm/arcane/pull/665) by @kmendell)
+* memory leak in websocket connections ([#664](https://github.com/ofkm/arcane/pull/664) by @kmendell)
+* default not able to be overidden([2d65952](https://github.com/ofkm/arcane/commit/2d65952525b5a94c19e107579aa817148cb3e068) by @kmendell)
+* unable to set global env when ui config is disabled([dfb9192](https://github.com/ofkm/arcane/commit/dfb91924c57d5591aebb600843292cbfe94bc5e4) by @kmendell)
+* project editor height on project creation page([7d1ff5b](https://github.com/ofkm/arcane/commit/7d1ff5b227636641a31ba64834d75fa6f753bee5) by @kmendell)
+* add proper borders to event stat cards([4523985](https://github.com/ofkm/arcane/commit/45239859233d1185cdcf672113969682ef7a1c20) by @kmendell)
+
+### Other
+
+* fix ES translations ([#630](https://github.com/ofkm/arcane/pull/630) by @vsc55)
+* bump the backend-dependencies group in /backend with 2 updates ([#646](https://github.com/ofkm/arcane/pull/646) by @dependabot[bot])
+* move compose examples to seperate folder([aab7d3a](https://github.com/ofkm/arcane/commit/aab7d3ab966ab9b0697aeb9b93b3a11e5b752650) by @kmendell)
+* update readme note([8f32754](https://github.com/ofkm/arcane/commit/8f32754f1e262334c9c4dd26f62c8c9ad29dfb32) by @kmendell)
+* bump the prod-dependencies group with 4 updates ([#644](https://github.com/ofkm/arcane/pull/644) by @dependabot[bot])
+* bump eslint from 9.36.0 to 9.37.0 in the dev-dependencies group ([#645](https://github.com/ofkm/arcane/pull/645) by @dependabot[bot])
+* ensure proper handling of contexts and spec ([#647](https://github.com/ofkm/arcane/pull/647) by @kmendell)
+* cleanup and simplify application bootstrap ([#651](https://github.com/ofkm/arcane/pull/651) by @kmendell)
+* bump the prod-dependencies group with 4 updates ([#654](https://github.com/ofkm/arcane/pull/654) by @dependabot[bot])
+* fix logic with e2e tests caching([f910e39](https://github.com/ofkm/arcane/commit/f910e3989104528e732921a53ca782133ab47629) by @kmendell)
+* use up and down selectors([d3d0607](https://github.com/ofkm/arcane/commit/d3d060703a27b4301338764b59b855404db4bc22) by @kmendell)
+* bump the dev-dependencies group with 2 updates ([#655](https://github.com/ofkm/arcane/pull/655) by @dependabot[bot])
+* bump the prod-dependencies group with 3 updates ([#660](https://github.com/ofkm/arcane/pull/660) by @dependabot[bot])
+* fix internal reponse of challenge manager([3d7187d](https://github.com/ofkm/arcane/commit/3d7187dda8b5b3cb578f010de6e593ca5b80b02c) by @kmendell)
+* update readme with new logo([4b34d0c](https://github.com/ofkm/arcane/commit/4b34d0caa92ebb39c75217f91e03f18998c5c840) by @kmendell)
+* serve images from backend vs static frontend assets ([#671](https://github.com/ofkm/arcane/pull/671) by @kmendell)
+* bump the backend-dependencies group in /backend with 4 updates ([#667](https://github.com/ofkm/arcane/pull/667) by @dependabot[bot])
+* bump the prod-dependencies group with 3 updates ([#666](https://github.com/ofkm/arcane/pull/666) by @dependabot[bot])
+* bump @types/node from 24.7.0 to 24.7.1 in the dev-dependencies group ([#672](https://github.com/ofkm/arcane/pull/672) by @dependabot[bot])
+* update pwa assets ([#673](https://github.com/ofkm/arcane/pull/673) by @kmendell)
+* use docker build cloud([01a6dc2](https://github.com/ofkm/arcane/commit/01a6dc217eb0adaf02113376c35e109ecff75b77) by @kmendell)
+* add docker build cloud for release and e2e tests([7a981ce](https://github.com/ofkm/arcane/commit/7a981ce1231c383460c03c42eecfc7462e1add2d) by @kmendell)
+* remove docker build cloud for e2e tests([2675285](https://github.com/ofkm/arcane/commit/2675285f0013fb696bdd69ffb3e05c12108ff0e5) by @kmendell)
+* improve types on loading indicator([2118d6f](https://github.com/ofkm/arcane/commit/2118d6fddcf7409b497728c85fe27db93a529465) by @kmendell)
+* use root page for /customize route ([#675](https://github.com/ofkm/arcane/pull/675) by @kmendell)
+* use new empty component([dad95bc](https://github.com/ofkm/arcane/commit/dad95bc371205816a22f7af123131c4dfe444904) by @kmendell)
+* use shadcn spinner component ([#676](https://github.com/ofkm/arcane/pull/676) by @kmendell)
+* update global variable input design([87f60d6](https://github.com/ofkm/arcane/commit/87f60d696b98651c8ae252e6d1d5b974cb461786) by @kmendell)
+* bump github.com/quic-go/quic-go from 0.54.0 to 0.54.1 in /backend in the go_modules group across 1 directory ([#679](https://github.com/ofkm/arcane/pull/679) by @dependabot[bot])
+* cleanup svelte components ([#681](https://github.com/ofkm/arcane/pull/681) by @kmendell)
+* remove stat cards from users page([bfcfc84](https://github.com/ofkm/arcane/commit/bfcfc849ecfe2023caa5d074e854d1e4e5c3f502) by @kmendell)
+* simplify stat card([319557e](https://github.com/ofkm/arcane/commit/319557eb723faa68a666af0175d8424bcb65881f) by @kmendell)
+* skip volume test if no inuse volumes([324edbf](https://github.com/ofkm/arcane/commit/324edbf380969f9a396f139224b0225c851dffd3) by @kmendell)
+
+
+
+**Full Changelog**: https://github.com/ofkm/arcane/compare/v1.4.0...v1.5.0
+
 ## v1.4.0
 
 ### New features

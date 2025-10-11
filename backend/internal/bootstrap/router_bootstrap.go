@@ -48,6 +48,12 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 					if pat == mp {
 						return false
 					}
+					if strings.HasSuffix(pat, "/*") {
+						prefix := strings.TrimSuffix(pat, "/*")
+						if strings.HasPrefix(mp, prefix) {
+							return false
+						}
+					}
 					if ok, _ := path.Match(pat, mp); ok {
 						return false
 					}

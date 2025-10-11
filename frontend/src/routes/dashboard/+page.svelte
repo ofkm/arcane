@@ -7,8 +7,7 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { onMount } from 'svelte';
-	import { get } from 'svelte/store';
-	import { environmentStore } from '$lib/stores/environment.store';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 	import { createStatsWebSocket } from '$lib/utils/ws';
 	import type { ReconnectingWebSocket } from '$lib/utils/ws';
 	import MeterMetric from '$lib/components/meter-metric.svelte';
@@ -148,7 +147,7 @@
 		}
 
 		const getEnvId = () => {
-			const env = get(environmentStore.selected);
+			const env = environmentStore.selected;
 			return env ? env.id : '0';
 		};
 
@@ -174,17 +173,15 @@
 	}
 
 	$effect(() => {
-		const unsubscribe = environmentStore.selected.subscribe(async (env) => {
-			if (!env) return;
-			if (statsWSClient) {
-				statsWSClient.close();
-				statsWSClient = null;
-				resetStats();
-				setupStatsWS();
-				await refreshData();
-			}
-		});
-		return () => unsubscribe();
+		const env = environmentStore.selected;
+		if (!env) return;
+		if (statsWSClient) {
+			statsWSClient.close();
+			statsWSClient = null;
+			resetStats();
+			setupStatsWS();
+			refreshData();
+		}
 	});
 
 	async function handleStartAll() {

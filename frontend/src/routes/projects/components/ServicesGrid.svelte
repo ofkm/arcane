@@ -14,7 +14,7 @@
 		health?: string;
 	};
 
-	let { services }: { services?: Service[] } = $props();
+	let { services, projectId }: { services?: Service[]; projectId?: string } = $props();
 
 	function getHealthVariant(health: string | undefined): 'green' | 'red' | 'amber' {
 		if (!health) return 'amber';
@@ -42,9 +42,12 @@
 				{#each services as service (service.container_id || service.name)}
 					{@const status = service.status || 'unknown'}
 					{@const variant = getStatusVariant(status)}
+					{@const containerUrl = projectId
+						? `/containers/${service.container_id}?from=project&projectId=${projectId}`
+						: `/containers/${service.container_id}`}
 
 					{#if service.container_id}
-						<a href={`/containers/${service.container_id}`} class="group">
+						<a href={containerUrl} class="group">
 							<Card.Root
 								variant="subtle"
 								class="group-hover:border-border/60 group-hover:bg-muted/50 flex h-full cursor-pointer transition-all duration-200"

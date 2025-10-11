@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { dev } from '$app/environment';
-	import { get } from 'svelte/store';
-	import { environmentStore } from '$lib/stores/environment.store';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { ReconnectingWebSocket } from '$lib/utils/ws';
 	import { cn } from '$lib/utils';
@@ -141,7 +140,7 @@
 	}
 
 	async function buildLogWsEndpoint(): Promise<string> {
-		const currentEnv = get(environmentStore.selected);
+		const currentEnv = environmentStore.selected;
 		const envId = currentEnv?.id || 'local';
 		const basePath =
 			type === 'project'

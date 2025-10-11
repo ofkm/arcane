@@ -1,3 +1,8 @@
+export interface VolumeUsageData {
+	size: number;
+	refCount: number;
+}
+
 export interface VolumeSummaryDto {
 	id: string;
 	name: string;
@@ -8,6 +13,8 @@ export interface VolumeSummaryDto {
 	labels: Record<string, string>;
 	createdAt: string;
 	inUse: boolean;
+	usageData?: VolumeUsageData;
+	size: number;
 }
 
 export interface VolumeDetailDto extends VolumeSummaryDto {

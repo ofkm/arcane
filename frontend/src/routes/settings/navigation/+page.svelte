@@ -18,7 +18,7 @@
 	import { SettingsPageLayout } from '$lib/layouts';
 
 	let { data } = $props();
-	let currentSettings = $state(data.settings);
+	let currentSettings = $state(data.settings!);
 	let hasChanges = $state(false);
 	let isLoading = $state(false);
 

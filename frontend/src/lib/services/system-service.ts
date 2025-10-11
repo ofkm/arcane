@@ -1,5 +1,5 @@
 import BaseAPIService from './api-service';
-import { environmentStore } from '$lib/stores/environment.store';
+import { environmentStore } from '$lib/stores/environment.store.svelte';
 import type { DockerInfo } from '$lib/types/docker-info.type';
 
 export class SystemService extends BaseAPIService {

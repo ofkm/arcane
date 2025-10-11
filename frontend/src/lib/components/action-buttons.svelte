@@ -27,6 +27,7 @@
 
 	let {
 		id,
+		name,
 		type = 'container',
 		itemState = 'stopped',
 		loading = $bindable<LoadingStates>({}),
@@ -38,6 +39,7 @@
 		redeployLoading = $bindable(false)
 	}: {
 		id: string;
+		name?: string;
 		type?: TargetType;
 		itemState?: string;
 		loading?: LoadingStates;
@@ -199,7 +201,7 @@
 							message: m.action_failed_generic({ action: m.action_redeploy(), type }),
 							setLoadingState: (value) => setLoading('redeploy', value),
 							onSuccess: async () => {
-								toast.success(m.action_redeploy_success({ type }));
+								toast.success(m.action_redeploy_success({ type: name || type }));
 								onActionComplete('running');
 							}
 						});
@@ -217,7 +219,7 @@
 			setLoadingState: (value) => setLoading('start', value),
 			onSuccess: async () => {
 				itemState = 'running';
-				toast.success(m.action_started_success({ type }));
+				toast.success(m.action_started_success({ type: name || type }));
 				onActionComplete('running');
 			}
 		});
@@ -294,7 +296,7 @@
 
 			// Deploy already completed successfully
 			itemState = 'running';
-			toast.success(m.action_started_success({ type }));
+			toast.success(m.action_started_success({ type: name || type }));
 			onActionComplete('running');
 		} catch (e: any) {
 			const message = e?.message || m.action_failed_generic({ action: m.common_start(), type });
@@ -317,7 +319,7 @@
 			setLoadingState: (value) => setLoading('stop', value),
 			onSuccess: async () => {
 				itemState = 'stopped';
-				toast.success(m.action_stopped_success({ type }));
+				toast.success(m.action_stopped_success({ type: name || type }));
 				onActionComplete('stopped');
 			}
 		});
@@ -331,7 +333,7 @@
 			setLoadingState: (value) => setLoading('restart', value),
 			onSuccess: async () => {
 				itemState = 'running';
-				toast.success(m.action_restarted_success({ type }));
+				toast.success(m.action_restarted_success({ type: name || type }));
 				onActionComplete('running');
 			}
 		});

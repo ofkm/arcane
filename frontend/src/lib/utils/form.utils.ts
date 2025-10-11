@@ -24,7 +24,12 @@ export function createForm<T extends z.ZodType<any, any>>(schema: T, initialValu
 
 	function initializeInputs(initialValues: z.infer<T>): FormInputs<z.infer<T>> {
 		const inputs: FormInputs<z.infer<T>> = {} as FormInputs<z.infer<T>>;
-		for (const key in initialValues) {
+
+		// Get the shape keys from the schema to only include defined fields
+		const schemaShape = schema instanceof z.ZodObject ? schema.shape : {};
+		const schemaKeys = Object.keys(schemaShape);
+
+		for (const key of schemaKeys) {
 			if (Object.prototype.hasOwnProperty.call(initialValues, key)) {
 				inputs[key as keyof z.infer<T>] = {
 					value: initialValues[key as keyof z.infer<T>],
