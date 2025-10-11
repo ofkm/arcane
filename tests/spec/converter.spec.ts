@@ -13,10 +13,8 @@ const ROUTES = {
 };
 
 const SELECTORS = {
-  dropdownTrigger: '[data-slot="dropdown-button-trigger"]',
   convertButton: (name = 'Convert to Compose') => ({ name }),
   textareaPlaceholder: 'docker run -d --name my-app -p 8080:80 nginx:alpine',
-  stackNamePlaceholder: 'e.g., my-web-app',
   exampleButtonName: /docker run -d --name nginx/,
   successToast: 'Docker run command converted successfully!',
   exampleCommandExpected: 'docker run -d --name nginx -p 8080:80 -v nginx_data:/usr/share/nginx/html nginx:alpine',
@@ -24,7 +22,8 @@ const SELECTORS = {
 };
 
 async function openConvertFromDockerRun(page: Page) {
-  await page.locator(SELECTORS.dropdownTrigger).first().click();
+  const dropdownTrigger = page.locator('button').filter({ has: page.locator('svg.lucide-chevron-down') });
+  await dropdownTrigger.click();
   await page.getByRole('menuitem', { name: 'Convert from Docker Run' }).click();
 }
 
@@ -66,7 +65,7 @@ test.describe('Docker Run to Compose Converter', () => {
 
     await expect(page.getByText(SELECTORS.successToast)).toBeVisible();
 
-    await expect(page.getByPlaceholder(SELECTORS.stackNamePlaceholder)).toHaveValue('nginx');
+    await expect(page.getByRole('button', { name: 'nginx', exact: true })).toBeVisible();
 
     await expect(page.getByPlaceholder(SELECTORS.textareaPlaceholder)).toHaveValue('');
   });
@@ -97,7 +96,7 @@ test.describe('Docker Run to Compose Converter', () => {
 
     await expect(page.getByText(SELECTORS.successToast)).toBeVisible();
 
-    await expect(page.getByPlaceholder(SELECTORS.stackNamePlaceholder)).toHaveValue('postgres');
+    await expect(page.getByRole('button', { name: 'postgres', exact: true })).toBeVisible;
   });
 
   test('should use example commands', async ({ page }) => {
@@ -141,6 +140,6 @@ test.describe('Docker Run to Compose Converter', () => {
 
     await expect(page.getByText(SELECTORS.successToast)).toBeVisible();
 
-    await expect(page.getByPlaceholder(SELECTORS.stackNamePlaceholder)).toHaveValue('redis');
+    await expect(page.getByRole('button', { name: 'redis', exact: true })).toBeVisible();
   });
 });

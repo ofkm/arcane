@@ -36,12 +36,12 @@ type Services struct {
 func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config, httpClient *http.Client) (svcs *Services, dockerSrvice *services.DockerClientService, err error) {
 	svcs = &Services{}
 
-	svcs.AppImages = services.NewApplicationImagesService(resources.FS)
 	svcs.Event = services.NewEventService(db)
 	svcs.Settings, err = services.NewSettingsService(ctx, db)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to settings service: %w", err)
 	}
+	svcs.AppImages = services.NewApplicationImagesService(resources.FS, svcs.Settings)
 	dockerClient := services.NewDockerClientService(db, cfg)
 	svcs.Docker = dockerClient
 	svcs.User = services.NewUserService(db)

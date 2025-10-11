@@ -4,7 +4,7 @@
 	import * as Alert from '$lib/components/ui/alert';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner';
 	import ZapIcon from '@lucide/svelte/icons/zap';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import FormInput from '$lib/components/form/form-input.svelte';
@@ -117,7 +117,7 @@
 	<div class="grid gap-6 md:grid-cols-2">
 		<Card.Root class="flex flex-col gap-6 py-3">
 			<Card.Header
-				class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+				class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
 			>
 				<Card.Title>{m.docker_title()}</Card.Title>
 				<Card.Description>{m.docker_description()}</Card.Description>
@@ -184,7 +184,7 @@
 
 		<Card.Root class="flex flex-col gap-6 py-3">
 			<Card.Header
-				class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+				class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
 			>
 				<Card.Title>{m.docker_prune_action_label()}</Card.Title>
 				<Card.Description>{pruneModeDescription}</Card.Description>
@@ -211,7 +211,7 @@
 			<Button variant="ghost" onclick={handleSkip}>Skip</Button>
 			<Button onclick={handleNext} disabled={isLoading}>
 				{#if isLoading}
-					<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+					<Spinner class="mr-2 size-4" />
 				{/if}
 				Next
 			</Button>

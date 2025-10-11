@@ -2,7 +2,7 @@
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
@@ -288,7 +288,7 @@
 				>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isPulling}>
 					{#if isPulling}
-						<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+						<Spinner class="mr-2 size-4" />
 						<span class="opacity-0">{m.images_pull_image()}</span>
 					{:else}
 						<DownloadIcon class="mr-2 size-4" />

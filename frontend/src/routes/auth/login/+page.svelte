@@ -24,6 +24,9 @@
 	let username = $state('');
 	let password = $state('');
 
+	// Make logo URL reactive to accent color changes
+	let logoUrl = $derived(getApplicationLogo());
+
 	const oidcEnabledBySettings = data.settings?.authOidcEnabled === true;
 	const showOidcLoginButton = $derived(oidcEnabledBySettings);
 
@@ -203,7 +206,7 @@
 					>
 						<div class="space-y-4 p-8 text-center">
 							<div class="mb-8">
-								<img class="mx-auto h-32 w-auto opacity-60" src={getApplicationLogo()} alt={m.layout_title()} />
+								<img class="mx-auto h-32 w-auto opacity-60" src={logoUrl} alt={m.layout_title()} />
 							</div>
 							<h2 class="text-foreground/80 text-2xl font-bold">{m.layout_title()}</h2>
 							<p class="text-muted-foreground max-w-xs text-balance">{m.auth_tagline()}</p>

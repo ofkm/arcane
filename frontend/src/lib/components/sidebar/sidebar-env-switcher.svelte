@@ -89,9 +89,7 @@
 						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 					>
 						{#if currentSelectedEnvironment}
-							<div
-								class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg"
-							>
+							<div class="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
 								{#if currentSelectedEnvironment.isLocal}
 									<ServerIcon class="size-4" />
 								{:else}
@@ -107,9 +105,7 @@
 								</span>
 							</div>
 						{:else}
-							<div
-								class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg"
-							>
+							<div class="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
 								<ServerIcon class="size-4" />
 							</div>
 							<div class="grid flex-1 text-left text-sm leading-tight">
@@ -161,13 +157,13 @@
 								<div
 									class={cn(
 										'flex size-6 items-center justify-center rounded-md border',
-										isActive ? 'bg-sidebar-primary border-sidebar-primary' : 'border-border'
+										isActive ? 'bg-primary border-primary' : 'border-border'
 									)}
 								>
 									{#if env.isLocal}
-										<ServerIcon class={cn('size-3.5 shrink-0', isActive && 'text-sidebar-primary-foreground')} />
+										<ServerIcon class={cn('size-3.5 shrink-0', isActive && 'text-primary-foreground')} />
 									{:else}
-										<RouterIcon class={cn('size-3.5 shrink-0', isActive && 'text-sidebar-primary-foreground')} />
+										<RouterIcon class={cn('size-3.5 shrink-0', isActive && 'text-primary-foreground')} />
 									{/if}
 								</div>
 								<div class="flex flex-col">

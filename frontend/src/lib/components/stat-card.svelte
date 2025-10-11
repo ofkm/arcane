@@ -1,7 +1,7 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { cn } from '$lib/utils.js';
 	import type { Icon as IconType } from '@lucide/svelte';
+	import type { ClassValue } from 'svelte/elements';
 
 	interface Props {
 		title: string;
@@ -10,7 +10,7 @@
 		iconColor?: string;
 		bgColor?: string;
 		subtitle?: string;
-		class?: string;
+		class?: ClassValue;
 	}
 
 	let {
@@ -24,17 +24,15 @@
 	}: Props = $props();
 </script>
 
-<Card.Root class={cn('flex flex-col gap-6 py-3', className)}>
-	<Card.Content class="flex items-center justify-between px-6">
-		<div>
-			<p class="text-muted-foreground text-sm font-medium">{title}</p>
-			<p class="text-2xl font-bold">{value}</p>
-			{#if subtitle}
-				<p class="text-muted-foreground mt-1 text-xs">{subtitle}</p>
-			{/if}
-		</div>
-		<div class="rounded-full p-2 {bgColor}">
-			<Icon class="{iconColor} size-5" />
-		</div>
-	</Card.Content>
-</Card.Root>
+<div class={cn('group flex items-center justify-between gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50', className)}>
+	<div class="flex-1 space-y-1">
+		<p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">{title}</p>
+		<p class="text-xl font-bold tabular-nums">{value}</p>
+		{#if subtitle}
+			<p class="text-muted-foreground text-xs">{subtitle}</p>
+		{/if}
+	</div>
+	<div class="flex-shrink-0 rounded-md p-2 transition-colors {bgColor} group-hover:scale-105">
+		<Icon class="{iconColor} size-4" />
+	</div>
+</div>

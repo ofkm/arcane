@@ -2,6 +2,8 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import * as InputGroup from '$lib/components/ui/input-group/index.js';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { toast } from 'svelte-sonner';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import XIcon from '@lucide/svelte/icons/x';
@@ -222,64 +224,83 @@
 							<div class="space-y-2">
 								{#each filteredVars as envVar, index (index)}
 									{@const actualIndex = envVars.indexOf(envVar)}
-									<div
-										class="bg-muted/30 hover:bg-muted/50 group flex flex-col gap-2 rounded-lg border p-2.5 transition-colors sm:flex-row sm:items-center"
-									>
-										<div class="flex flex-1 gap-2">
-											<Input
-												type="text"
-												placeholder={m.variables_key_placeholder()}
-												bind:value={envVar.key}
-												disabled={isLoading}
-												class="h-9 flex-1 font-mono text-sm sm:max-w-[200px]"
-												onkeydown={(e) => handleKeyDown(e, actualIndex)}
-												oninput={(e) => {
-													const target = e.target as HTMLInputElement;
-													const cursorPos = target.selectionStart || 0;
-													const oldValue = envVar.key;
-													const newValue = target.value.toUpperCase().replace(/\s/g, '_');
+									<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+										<div class="flex flex-1 items-center gap-2">
+											<InputGroup.Root class="flex-1 sm:max-w-[200px]">
+												<InputGroup.Input
+													type="text"
+													placeholder={m.variables_key_placeholder()}
+													bind:value={envVar.key}
+													disabled={isLoading}
+													class="font-mono text-sm"
+													onkeydown={(e) => handleKeyDown(e, actualIndex)}
+													oninput={(e) => {
+														const target = e.target as HTMLInputElement;
+														const cursorPos = target.selectionStart || 0;
+														const oldValue = envVar.key;
+														const newValue = target.value.toUpperCase().replace(/\s/g, '_');
 
-													envVar.key = newValue;
+														envVar.key = newValue;
 
-													requestAnimationFrame(() => {
-														const diff = newValue.length - oldValue.length;
-														target.setSelectionRange(cursorPos + diff, cursorPos + diff);
-													});
-												}}
-											/>
-											<span class="text-muted-foreground flex items-center font-mono text-sm">=</span>
-											<Input
-												type="text"
-												placeholder={m.variables_value_placeholder()}
-												bind:value={envVar.value}
-												disabled={isLoading}
-												class="h-9 flex-[2] font-mono text-sm"
-												onkeydown={(e) => handleKeyDown(e, actualIndex)}
-											/>
-										</div>
-										<div class="flex items-center gap-1 self-end sm:self-center">
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												class="size-8 shrink-0 opacity-70 transition-opacity group-hover:opacity-100"
-												onclick={() => duplicateEnvVar(actualIndex)}
-												disabled={isLoading}
-												title="Duplicate"
-											>
-												<CopyIcon class="size-4" />
-											</Button>
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												class="text-destructive hover:text-destructive hover:bg-destructive/10 size-8 shrink-0 opacity-70 transition-opacity group-hover:opacity-100"
-												onclick={() => removeEnvVar(actualIndex)}
-												disabled={isLoading}
-												title="Remove"
-											>
-												<XIcon class="size-4" />
-											</Button>
+														requestAnimationFrame(() => {
+															const diff = newValue.length - oldValue.length;
+															target.setSelectionRange(cursorPos + diff, cursorPos + diff);
+														});
+													}}
+												/>
+											</InputGroup.Root>
+											<span class="text-muted-foreground font-mono text-sm">=</span>
+											<InputGroup.Root class="flex-[2]">
+												<InputGroup.Input
+													type="text"
+													placeholder={m.variables_value_placeholder()}
+													bind:value={envVar.value}
+													disabled={isLoading}
+													class="font-mono text-sm"
+													onkeydown={(e) => handleKeyDown(e, actualIndex)}
+												/>
+												<InputGroup.Addon align="inline-end">
+													<Tooltip.Root>
+														<Tooltip.Trigger>
+															{#snippet child({ props })}
+																<InputGroup.Button
+																	{...props}
+																	variant="ghost"
+																	aria-label={m.duplicate()}
+																	size="icon-xs"
+																	onclick={() => duplicateEnvVar(actualIndex)}
+																	disabled={isLoading}
+																>
+																	<CopyIcon />
+																</InputGroup.Button>
+															{/snippet}
+														</Tooltip.Trigger>
+														<Tooltip.Content>
+															<p>{m.duplicate()}</p>
+														</Tooltip.Content>
+													</Tooltip.Root>
+													<Tooltip.Root>
+														<Tooltip.Trigger>
+															{#snippet child({ props })}
+																<InputGroup.Button
+																	{...props}
+																	variant="ghost"
+																	aria-label={m.common_remove()}
+																	size="icon-xs"
+																	onclick={() => removeEnvVar(actualIndex)}
+																	disabled={isLoading}
+																	class="text-destructive hover:text-destructive"
+																>
+																	<XIcon />
+																</InputGroup.Button>
+															{/snippet}
+														</Tooltip.Trigger>
+														<Tooltip.Content>
+															<p>{m.common_remove()}</p>
+														</Tooltip.Content>
+													</Tooltip.Root>
+												</InputGroup.Addon>
+											</InputGroup.Root>
 										</div>
 									</div>
 								{/each}

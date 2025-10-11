@@ -94,10 +94,7 @@ func NewImageDetailSummaryDto(src *image.InspectResponse) ImageDetailSummaryDto 
 	out.Id = src.ID
 	out.RepoTags = append(out.RepoTags, src.RepoTags...)
 	out.RepoDigests = append(out.RepoDigests, src.RepoDigests...)
-	out.Parent = src.Parent
 	out.Comment = src.Comment
-	out.Created = src.Created
-	out.DockerVersion = src.DockerVersion
 	out.Author = src.Author
 
 	if src.Config != nil {

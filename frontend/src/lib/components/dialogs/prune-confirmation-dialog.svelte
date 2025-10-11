@@ -5,7 +5,7 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import AlertCircleIcon from '@lucide/svelte/icons/alert-circle';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { m } from '$lib/paraglide/messages';
 
@@ -141,7 +141,7 @@
 				disabled={selectedTypes.length === 0 || isPruning}
 			>
 				{#if isPruning}
-					<LoaderCircleIcon class="mr-2 size-4 animate-spin" /> {m.images_pruning()}
+					<Spinner class="mr-2 size-4" /> {m.images_pruning()}
 				{:else}
 					<Trash2Icon class="mr-2 size-4" /> {m.prune_button({ count: selectedTypes.length })}
 				{/if}

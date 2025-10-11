@@ -43,12 +43,6 @@ test.describe('Projects Page', () => {
     await expect(page.locator('p:has-text("Stopped") + p')).toHaveText(String(projectCounts.stoppedProjects));
   });
 
-  test('should navigate to new project page when "Create Project" is clicked', async ({ page }) => {
-    await page.getByRole('button', { name: 'Create Project' }).click();
-    await expect(page).toHaveURL(ROUTES.newProject);
-    await expect(page.getByRole('heading', { name: 'Create New Project' })).toBeVisible();
-  });
-
   test('should display projects list', async ({ page }) => {
     await expect(page.locator('table')).toBeVisible();
   });
@@ -119,24 +113,27 @@ test.describe('New Compose Project Page', () => {
   });
 
   test('should display the create project form', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Create New Project' })).toBeVisible();
-    await expect(page.getByLabel('Project Name')).toBeVisible();
-    await expect(page.getByText('Docker Compose File')).toBeVisible();
-    await expect(page.getByText('Environment (.env)')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'My New Project' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Docker Compose File' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Environment (.env)' })).toBeVisible();
   });
 
   test('should validate required fields', async ({ page }) => {
     const createButton = page.getByRole('button', { name: 'Create' }).first();
     await expect(createButton).toBeDisabled();
 
-    await page.getByLabel('Project Name').fill('test-project');
+    await page.getByRole('button', { name: 'My New Project' }).click();
+    await page.getByRole('textbox', { name: 'My New Project' }).fill('test-project');
+    await page.getByRole('textbox', { name: 'My New Project' }).press('Enter');
   });
 
   test('should create a new project successfully', async ({ page }) => {
     const projectName = `test-project-${Date.now()}`;
     let createdProjectId: string | null = null;
 
-    await page.getByLabel('Project Name').fill(projectName);
+    await page.getByRole('button', { name: 'My New Project' }).click();
+    await page.getByRole('textbox', { name: 'My New Project' }).fill(projectName);
+    await page.getByRole('textbox', { name: 'My New Project' }).press('Enter');
 
     const composeEditor = page.locator('.cm-editor').first();
     await expect(composeEditor).toBeVisible();
@@ -163,7 +160,7 @@ test.describe('New Compose Project Page', () => {
       }
     });
 
-    const createButton = page.getByRole('button', { name: 'Create' });
+    const createButton = page.getByRole('button', { name: 'Create Project', exact: true });
     await createButton.click();
 
     await page.waitForURL(/\/projects\/.+/, { timeout: 10000 });

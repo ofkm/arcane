@@ -9,14 +9,20 @@
 	import { m } from '$lib/paraglide/messages';
 	import FolderIcon from '@lucide/svelte/icons/folder';
 	import UserIcon from '@lucide/svelte/icons/user';
+	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
+	import AccentColorPicker from '$lib/components/accent-color/accent-color-picker.svelte';
+	import { Label } from '$lib/components/ui/label/index.js';
 
 	let { data } = $props();
-	let currentSettings = $state(data.settings);
+	let currentSettings = $state({
+		...data.settings,
+		accentColor: data.settings.accentColor || 'default'
+	});
 	let hasChanges = $state(false);
 	let isLoading = $state(false);
 
@@ -25,7 +31,8 @@
 	const formSchema = z.object({
 		projectsDirectory: z.string().min(1, m.general_projects_directory_required()),
 		baseServerUrl: z.string().min(1, m.general_base_url_required()),
-		enableGravatar: z.boolean()
+		enableGravatar: z.boolean(),
+		accentColor: z.string()
 	});
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
@@ -34,7 +41,8 @@
 		() =>
 			$formInputs.projectsDirectory.value !== currentSettings.projectsDirectory ||
 			$formInputs.baseServerUrl.value !== currentSettings.baseServerUrl ||
-			$formInputs.enableGravatar.value !== currentSettings.enableGravatar
+			$formInputs.enableGravatar.value !== currentSettings.enableGravatar ||
+			$formInputs.accentColor.value !== currentSettings.accentColor
 	);
 
 	$effect(() => {
@@ -78,6 +86,7 @@
 		$formInputs.projectsDirectory.value = currentSettings.projectsDirectory;
 		$formInputs.baseServerUrl.value = currentSettings.baseServerUrl;
 		$formInputs.enableGravatar.value = currentSettings.enableGravatar;
+		$formInputs.accentColor.value = currentSettings.accentColor;
 	}
 
 	onMount(() => {
@@ -140,6 +149,24 @@
 							description={m.general_enable_gravatar_description()}
 							bind:checked={$formInputs.enableGravatar.value}
 						/>
+					</Card.Content>
+				</Card.Root>
+
+				<Card.Root>
+					<Card.Header icon={PaletteIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.accent_color()}</Card.Title>
+							<Card.Description>{m.accent_color_description()}</Card.Description>
+						</div>
+					</Card.Header>
+					<Card.Content class="px-3 py-4 sm:px-6">
+						<div class="space-y-5">
+							<AccentColorPicker
+								previousColor={currentSettings.accentColor}
+								bind:selectedColor={$formInputs.accentColor.value}
+								disabled={isReadOnly}
+							/>
+						</div>
 					</Card.Content>
 				</Card.Root>
 			</div>

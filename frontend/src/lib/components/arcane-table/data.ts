@@ -2,6 +2,10 @@ import BadgeCheckIcon from '@lucide/svelte/icons/badge-check';
 import BadgeXIcon from '@lucide/svelte/icons/badge-x';
 import CircleFadingArrowUp from '@lucide/svelte/icons/circle-fading-arrow-up';
 import CircleCheck from '@lucide/svelte/icons/circle-check';
+import InfoIcon from '@lucide/svelte/icons/info';
+import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
+import CircleXIcon from '@lucide/svelte/icons/circle-x';
+import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 import { m } from '$lib/paraglide/messages';
 
 export const usageFilters = [
@@ -27,5 +31,28 @@ export const imageUpdateFilters = [
 		value: false,
 		label: m.images_no_updates(),
 		icon: BadgeXIcon
+	}
+];
+
+export const severityFilters = [
+	{
+		value: 'info',
+		label: m.events_info(),
+		icon: InfoIcon
+	},
+	{
+		value: 'success',
+		label: m.events_success(),
+		icon: CircleCheckIcon
+	},
+	{
+		value: 'warning',
+		label: m.events_warning(),
+		icon: TriangleAlertIcon
+	},
+	{
+		value: 'error',
+		label: m.events_error(),
+		icon: CircleXIcon
 	}
 ];

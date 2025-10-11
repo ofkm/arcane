@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import PackageIcon from '@lucide/svelte/icons/package';
 	import { toast } from 'svelte-sonner';
@@ -188,7 +188,7 @@
 					</Button>
 					<Button variant="destructive" onclick={handlePruneImages} disabled={isLoading.pruning}>
 						{#if isLoading.pruning}
-							<LoaderCircleIcon class="mr-2 size-4 animate-spin" /> {m.images_pruning()}
+							<Spinner class="mr-2 size-4" /> {m.images_pruning()}
 						{:else}
 							{m.images_prune_action()}
 						{/if}

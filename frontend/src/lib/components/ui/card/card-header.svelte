@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cn, type WithElementRef } from '$lib/utils.js';
 	import type { HTMLAttributes } from 'svelte/elements';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 
 	let {
 		ref = $bindable(null),
@@ -9,6 +10,7 @@
 		iconVariant = 'primary',
 		compact = false,
 		enableHover = false,
+		loading = false,
 		children,
 		...restProps
 	}: WithElementRef<
@@ -17,6 +19,7 @@
 			iconVariant?: 'primary' | 'emerald' | 'red' | 'amber' | 'blue' | 'purple' | 'cyan' | 'orange' | 'indigo' | 'pink';
 			compact?: boolean;
 			enableHover?: boolean;
+			loading?: boolean;
 		}
 	> = $props();
 
@@ -38,7 +41,7 @@
 	bind:this={ref}
 	data-slot="card-header"
 	class={cn(
-		'@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6',
+		'@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6',
 		icon
 			? 'flex flex-row items-start space-y-0 bg-gradient-to-br from-gray-50 to-slate-50/30 dark:from-gray-900/20 dark:to-slate-900/10'
 			: '',
@@ -51,7 +54,7 @@
 	{...restProps}
 >
 	{#if icon}
-		{@const IconComponent = icon}
+		{@const IconComponent = loading ? Spinner : icon}
 		<div
 			class={cn(
 				'flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br shadow-lg transition-transform group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:scale-105',

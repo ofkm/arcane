@@ -3,7 +3,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import type { VolumeCreateOptions } from 'dockerode';
 	import { z } from 'zod/v4';
@@ -165,7 +165,7 @@
 				>
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
-						<LoaderCircleIcon class="mr-2 size-4 animate-spin" />
+						<Spinner class="mr-2 size-4" />
 						{m.volumes_creating()}
 					{:else}
 						<HardDriveIcon class="mr-2 size-4" />

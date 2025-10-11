@@ -43,6 +43,8 @@
 		encodeMobileHidden
 	} from './arcane-table.types.svelte';
 	import { buildInitialMobileVisibility, extractPersistedPreferences, filterMapsEqual, toFilterMap } from './arcane-table.utils';
+	import * as Empty from '$lib/components/ui/empty/index.js';
+	import FolderXIcon from '@lucide/svelte/icons/folder-x';
 
 	let {
 		items,
@@ -578,7 +580,16 @@
 						</Table.Row>
 					{:else}
 						<Table.Row>
-							<Table.Cell colspan={columnsDef.length} class="h-24 text-center">{m.common_no_results_found()}</Table.Cell>
+							<Table.Cell colspan={columnsDef.length} class="h-48">
+								<Empty.Root class="border-0 border border-dashed">
+									<Empty.Header>
+										<Empty.Media variant="icon">
+											<FolderXIcon />
+										</Empty.Media>
+										<Empty.Title>{m.common_no_results_found()}</Empty.Title>
+									</Empty.Header>
+								</Empty.Root>
+							</Table.Cell>
 						</Table.Row>
 					{/each}
 				</Table.Body>
@@ -590,9 +601,14 @@
 			{#each table.getRowModel().rows as row (row.id)}
 				{@render MobileCard({ row, item: row.original as TData })}
 			{:else}
-				<div class="h-24 flex items-center justify-center text-center text-muted-foreground">
-					{m.common_no_results_found()}
-				</div>
+				<Empty.Root class="min-h-48 border border-dashed">
+					<Empty.Header>
+						<Empty.Media variant="icon">
+							<FolderXIcon />
+						</Empty.Media>
+						<Empty.Title>{m.common_no_results_found()}</Empty.Title>
+					</Empty.Header>
+				</Empty.Root>
 			{/each}
 		</div>
 

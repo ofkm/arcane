@@ -118,30 +118,6 @@
 			disabled: isLoading.creating
 		}
 	]);
-
-	const statCards: SettingsStatCard[] = $derived([
-		{
-			title: m.users_total(),
-			value: totalUsers,
-			icon: UsersIcon,
-			iconColor: 'text-blue-500',
-			class: 'border-l-4 border-l-blue-500'
-		},
-		{
-			title: m.users_administrators(),
-			value: adminUsers,
-			icon: ShieldIcon,
-			iconColor: 'text-red-500',
-			class: 'border-l-4 border-l-red-500'
-		},
-		{
-			title: m.users_regular(),
-			value: regularUsers,
-			icon: UserCheckIcon,
-			iconColor: 'text-green-500',
-			class: 'border-l-4 border-l-green-500'
-		}
-	]);
 </script>
 
 <SettingsPageLayout
@@ -150,7 +126,6 @@
 	icon={UsersIcon}
 	pageType="management"
 	{actionButtons}
-	{statCards}
 	statCardsColumns={3}
 >
 	{#snippet mainContent()}

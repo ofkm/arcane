@@ -24,6 +24,7 @@ type UpdateSettingsDto struct {
 	EnableGravatar     *string `json:"enableGravatar,omitempty"`
 	DefaultShell       *string `json:"defaultShell,omitempty"`
 	DockerHost         *string `json:"dockerHost,omitempty"`
+	AccentColor        *string `json:"accentColor,omitempty"`
 
 	// Authentication settings
 	AuthLocalEnabled   *string `json:"authLocalEnabled,omitempty"`
