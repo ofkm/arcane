@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Label } from '$lib/components/ui/label/index.js';
+	import { Button } from '$lib/components/ui/button';
+	import { Label } from '$lib/components/ui/label';
 	import { toast } from 'svelte-sonner';
 	import CodeEditor from '$lib/components/code-editor/editor.svelte';
 	import { createForm } from '$lib/utils/form.utils';
@@ -8,7 +9,9 @@
 	import { m } from '$lib/paraglide/messages';
 	import { templateService } from '$lib/services/template-service';
 	import { z } from 'zod/v4';
-	import { ResourcePageLayout, type ActionButton } from '$lib/layouts/index.js';
+	import { ResourcePageLayout, type ActionButton } from '$lib/layouts';
+	import { goto } from '$app/navigation';
+	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 
 	let { data } = $props();
 
@@ -79,54 +82,61 @@
 	]);
 </script>
 
-<ResourcePageLayout title={m.customize_defaults_title()} subtitle={m.customize_defaults_description()} {actionButtons}>
-	{#snippet mainContent()}
-		<div class="space-y-6">
-			<form class="space-y-6">
-				<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-					<div class="lg:col-span-2">
-						<div class="space-y-2">
-							<Label for="compose" class="text-sm font-medium">
-								{m.customize_compose_template_label()}
-							</Label>
-							<div
-								class="border-input focus-within:border-primary focus-within:ring-ring relative rounded-md border bg-transparent transition-colors focus-within:ring-2 focus-within:ring-offset-2"
-								class:border-destructive={$inputs.composeContent.error}
-							>
-								<div class="min-h-[500px] w-full overflow-hidden">
-									<CodeEditor bind:value={$inputs.composeContent.value} language="yaml" height="full" />
-								</div>
-							</div>
-							{#if $inputs.composeContent.error}
-								<p class="text-destructive text-xs">
-									{$inputs.composeContent.error}
-								</p>
-							{/if}
-						</div>
-					</div>
+<div class="space-y-4">
+	<Button variant="ghost" onclick={() => goto('/customize/templates')} class="w-fit gap-2">
+		<ArrowLeftIcon class="size-4" />
+		<span>{m.common_back_to_templates()}</span>
+	</Button>
 
-					<div class="lg:col-span-1">
-						<div class="space-y-2">
-							<Label for="env" class="text-sm font-medium">
-								{m.customize_env_template_label()}
-							</Label>
-							<div
-								class="border-input focus-within:border-primary focus-within:ring-ring relative rounded-md border bg-transparent transition-colors focus-within:ring-2 focus-within:ring-offset-2"
-								class:border-destructive={$inputs.envContent.error}
-							>
-								<div class="min-h-[500px] w-full overflow-hidden">
-									<CodeEditor bind:value={$inputs.envContent.value} language="env" height="full" />
+	<ResourcePageLayout title={m.customize_defaults_title()} subtitle={m.customize_defaults_description()} {actionButtons}>
+		{#snippet mainContent()}
+			<div class="space-y-6">
+				<form class="space-y-6">
+					<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+						<div class="lg:col-span-2">
+							<div class="space-y-2">
+								<Label for="compose" class="text-sm font-medium">
+									{m.customize_compose_template_label()}
+								</Label>
+								<div
+									class="border-input focus-within:border-primary focus-within:ring-ring relative rounded-md border bg-transparent transition-colors focus-within:ring-2 focus-within:ring-offset-2"
+									class:border-destructive={$inputs.composeContent.error}
+								>
+									<div class="min-h-[500px] w-full overflow-hidden">
+										<CodeEditor bind:value={$inputs.composeContent.value} language="yaml" height="full" />
+									</div>
 								</div>
+								{#if $inputs.composeContent.error}
+									<p class="text-destructive text-xs">
+										{$inputs.composeContent.error}
+									</p>
+								{/if}
 							</div>
-							{#if $inputs.envContent.error}
-								<p class="text-destructive text-xs">
-									{$inputs.envContent.error}
-								</p>
-							{/if}
+						</div>
+
+						<div class="lg:col-span-1">
+							<div class="space-y-2">
+								<Label for="env" class="text-sm font-medium">
+									{m.customize_env_template_label()}
+								</Label>
+								<div
+									class="border-input focus-within:border-primary focus-within:ring-ring relative rounded-md border bg-transparent transition-colors focus-within:ring-2 focus-within:ring-offset-2"
+									class:border-destructive={$inputs.envContent.error}
+								>
+									<div class="min-h-[500px] w-full overflow-hidden">
+										<CodeEditor bind:value={$inputs.envContent.value} language="env" height="full" />
+									</div>
+								</div>
+								{#if $inputs.envContent.error}
+									<p class="text-destructive text-xs">
+										{$inputs.envContent.error}
+									</p>
+								{/if}
+							</div>
 						</div>
 					</div>
-				</div>
-			</form>
-		</div>
-	{/snippet}
-</ResourcePageLayout>
+				</form>
+			</div>
+		{/snippet}
+	</ResourcePageLayout>
+</div>

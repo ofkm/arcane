@@ -1,4 +1,5 @@
 import type { Icon as IconType } from '@lucide/svelte';
+import PaletteIcon from '@lucide/svelte/icons/palette';
 import FileStackIcon from '@lucide/svelte/icons/file-stack';
 import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 import HouseIcon from '@lucide/svelte/icons/home';
@@ -14,7 +15,6 @@ import ComputerIcon from '@lucide/svelte/icons/computer';
 import LockKeyholeIcon from '@lucide/svelte/icons/lock-keyhole';
 import AlarmClockIcon from '@lucide/svelte/icons/alarm-clock';
 import NavigationIcon from '@lucide/svelte/icons/navigation';
-import PaletteIcon from '@lucide/svelte/icons/palette';
 import FileTextIcon from '@lucide/svelte/icons/file-text';
 import { m } from '$lib/paraglide/messages';
 
@@ -40,7 +40,6 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 			url: '/customize',
 			icon: PaletteIcon,
 			items: [
-				{ title: m.default_templates(), url: '/customize/defaults', icon: PaletteIcon },
 				{ title: m.templates_title(), url: '/customize/templates', icon: LayoutTemplateIcon },
 				{ title: m.registries_title(), url: '/customize/registries', icon: LockKeyholeIcon },
 				{ title: m.variables_title(), url: '/customize/variables', icon: FileTextIcon }

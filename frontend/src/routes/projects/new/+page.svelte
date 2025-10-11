@@ -46,8 +46,10 @@
 		envContent: z.string().optional().default('')
 	});
 
+	const initialName = data.selectedTemplate ? data.selectedTemplate.name.toLowerCase().replace(/[^a-z0-9-_]/g, '-') : '';
+
 	let formData = $derived({
-		name: '',
+		name: initialName,
 		composeContent: data.defaultTemplate || '',
 		envContent: data.envTemplate || ''
 	});
