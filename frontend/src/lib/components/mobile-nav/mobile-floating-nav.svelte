@@ -105,6 +105,44 @@
 		}
 	});
 
+	// Handle viewport changes (keyboard appearance, rotation, etc.)
+	$effect(() => {
+		if (!navElement || typeof window === 'undefined') return;
+
+		let visualViewport = window.visualViewport;
+
+		const updatePosition = () => {
+			if (!navElement || !visualViewport) return;
+
+			// When keyboard appears, visualViewport height shrinks
+			// Keep the nav at the bottom of the visible viewport with offset
+			const offsetY = window.innerHeight - visualViewport.height;
+			if (offsetY > 0) {
+				// Keyboard is visible, move the floating nav up
+				const baseOffset = 24; // 1.5rem in pixels
+				navElement.style.setProperty('--keyboard-offset', `${offsetY + baseOffset}px`);
+			} else {
+				// Keyboard is hidden
+				navElement.style.setProperty('--keyboard-offset', '0px');
+			}
+		};
+
+		if (visualViewport) {
+			visualViewport.addEventListener('resize', updatePosition);
+			visualViewport.addEventListener('scroll', updatePosition);
+		}
+
+		// Initial update
+		updatePosition();
+
+		return () => {
+			if (visualViewport) {
+				visualViewport.removeEventListener('resize', updatePosition);
+				visualViewport.removeEventListener('scroll', updatePosition);
+			}
+		};
+	});
+
 	$effect(() => {
 		if (navElement) {
 			// Setup the element with the interaction manager
@@ -125,15 +163,17 @@
 	bind:this={navElement}
 	class={cn(
 		'mobile-nav-base mobile-nav-floating',
-		'fixed left-1/2 z-50 -translate-x-1/2 transform',
+		'left-1/2 z-50 -translate-x-1/2 transform',
 		'bg-background/60 border-border/30 border backdrop-blur-xl',
 		'rounded-3xl shadow-sm',
-		'select-none', // Prevent text selection but allow touch
-		'transition-all duration-300 ease-out', // Smoother easing
+		'select-none',
+		'transition-all duration-300 ease-out',
 		showLabels ? 'flex items-center gap-2 px-3 py-2' : 'flex items-center gap-3 px-4 py-2.5',
-		shouldShow ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-full scale-95 opacity-0',
+		shouldShow ? 'scale-100 opacity-100' : 'scale-95 opacity-0',
 		className
 	)}
+	style:will-change={shouldShow !== visible ? 'transform, opacity' : 'auto'}
+	style:bottom="calc(max(1.5rem, env(safe-area-inset-bottom)) + var(--keyboard-offset, 0px))"
 	data-testid="mobile-floating-nav"
 	aria-label="Mobile navigation"
 >

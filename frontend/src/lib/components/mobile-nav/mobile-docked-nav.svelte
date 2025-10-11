@@ -109,6 +109,51 @@
 		}
 	});
 
+	// Handle viewport changes (keyboard appearance, rotation, etc.)
+	$effect(() => {
+		if (!navElement || typeof window === 'undefined') return;
+
+		let resizeObserver: ResizeObserver | null = null;
+		let visualViewport = window.visualViewport;
+
+		const updatePosition = () => {
+			if (!navElement || !visualViewport) return;
+
+			// When keyboard appears, visualViewport height shrinks
+			// Keep the nav at the bottom of the visible viewport
+			const offsetY = window.innerHeight - visualViewport.height;
+			if (offsetY > 0) {
+				// Keyboard is visible, adjust position
+				navElement.style.transform = `translateY(${shouldShow ? 0 : '100%'}) translateY(${-offsetY}px)`;
+			} else {
+				// Keyboard is hidden, use normal transform
+				navElement.style.transform = shouldShow ? 'translateY(0)' : 'translateY(100%)';
+			}
+		};
+
+		if (visualViewport) {
+			visualViewport.addEventListener('resize', updatePosition);
+			visualViewport.addEventListener('scroll', updatePosition);
+		}
+
+		// Fallback for browsers without visualViewport
+		resizeObserver = new ResizeObserver(updatePosition);
+		resizeObserver.observe(document.body);
+
+		// Initial update
+		updatePosition();
+
+		return () => {
+			if (visualViewport) {
+				visualViewport.removeEventListener('resize', updatePosition);
+				visualViewport.removeEventListener('scroll', updatePosition);
+			}
+			if (resizeObserver) {
+				resizeObserver.disconnect();
+			}
+		};
+	});
+
 	// Set up mobile navigation interactions
 	$effect(() => {
 		if (navElement) {
@@ -130,16 +175,17 @@
 	bind:this={navElement}
 	class={cn(
 		'mobile-nav-base mobile-nav-docked',
-		'fixed bottom-0 left-0 right-0 z-50 gap-2',
+		'left-0 right-0 z-50 gap-2',
 		'bg-background/95 border-border/50 border-t backdrop-blur-sm',
 		'shadow-lg',
-		'select-none', // Prevent text selection but allow touch
-		'transition-all duration-300 ease-out', // Smoother easing
+		'select-none',
+		'transition-all duration-300 ease-out',
 		'flex items-center justify-around',
 		showLabels ? 'px-3 py-2' : 'px-3 py-2.5',
-		shouldShow ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0',
+		shouldShow ? 'opacity-100' : 'opacity-0',
 		className
 	)}
+	style:will-change={shouldShow !== visible ? 'transform, opacity' : 'auto'}
 	data-testid="mobile-docked-nav"
 	aria-label={m.mobile_navigation()}
 >

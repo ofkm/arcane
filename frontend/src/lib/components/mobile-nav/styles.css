@@ -9,13 +9,19 @@
 	overscroll-behavior: contain;
 	/* Isolate touch interactions similar to pointer device behavior */
 	isolation: isolate;
-	/* Hardware acceleration for smooth animations */
-	will-change: transform, opacity;
+	/* Only enable will-change during transitions for better performance */
+	/* will-change is added dynamically via class when needed */
 	/* Prevent layout shifts during animation */
 	transform-origin: center bottom;
 	/* Smooth subpixel rendering */
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	/* Ensure fixed positioning works correctly with viewport changes */
+	position: fixed;
+	/* Support for dynamic viewport units to handle keyboard appearances */
+	bottom: 0;
+	/* Prevent scrolling of the nav itself */
+	overflow: visible;
 }
 
 /* Floating navigation specific positioning */
@@ -23,14 +29,18 @@
 	/* Safe area handling for floating navigation */
 	/* Use safe area inset if it's greater than 1.5rem, otherwise use 1.5rem */
 	bottom: max(1.5rem, env(safe-area-inset-bottom));
+	/* Use dynamic viewport height when available to handle keyboard */
+	bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
 }
 
 /* Docked navigation specific positioning */
 .mobile-nav-docked {
+	/* Use bottom: 0 explicitly to ensure it stays anchored */
+	bottom: 0 !important;
 	/* Safe area handling for devices with home indicators */
-	padding-bottom: env(safe-area-inset-bottom);
-	/* Ensure minimum padding even without safe area */
 	padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+	/* Support for keyboard inset if available (iOS 15+) */
+	padding-bottom: max(0.5rem, env(safe-area-inset-bottom), env(keyboard-inset-height, 0px));
 }
 
 /* Shared button/link styles */
@@ -48,7 +58,9 @@
 @media (hover: hover) and (pointer: fine) {
 	.mobile-nav-floating:hover {
 		/* Subtle visual hint that scrolling up will open menu without moving the bar */
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+		box-shadow:
+			0 4px 20px rgba(0, 0, 0, 0.08),
+			0 1px 4px rgba(0, 0, 0, 0.04);
 		backdrop-filter: blur(24px);
 		border-color: var(--muted);
 	}
@@ -64,13 +76,13 @@
 	.mobile-nav-base {
 		transition: none;
 	}
-	
+
 	/* Disable scale and complex animations for reduced motion */
 	.mobile-nav-base :global(button) {
 		transition: none;
 		transform: none !important;
 	}
-	
+
 	.mobile-nav-base :global(button:hover),
 	.mobile-nav-base :global(button:focus-visible),
 	.mobile-nav-base :global(button:active) {

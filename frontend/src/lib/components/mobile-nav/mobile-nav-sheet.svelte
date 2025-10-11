@@ -33,6 +33,8 @@
 		isAtScrollBottom: boolean;
 		canDragToClose: boolean;
 		dragStartedFromHandle: boolean;
+		isInitialized: boolean;
+		touchStartTime: number;
 	}
 
 	let interaction = $state<InteractionState>({
@@ -44,21 +46,26 @@
 		isAtScrollTop: true,
 		isAtScrollBottom: false,
 		canDragToClose: false,
-		dragStartedFromHandle: false
+		dragStartedFromHandle: false,
+		isInitialized: false,
+		touchStartTime: 0
 	});
 
 	let maxSheetHeight = $state(0);
 	let resetTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isClosing = $state(false);
+	let interactionLock = $state(false);
 
 	// Physics configuration
 	const PHYSICS = {
-		closeThreshold: 0.3, // 30% of sheet height
-		resistanceFactor: 0.8, // Resistance when dragging
-		velocityThreshold: 0.5, // Minimum velocity for quick close
-		snapAnimationDuration: 200, // ms
-		wheelSensitivity: 2.0, // Wheel scroll sensitivity (higher for trackpads)
-		resetDelay: 150 // ms before resetting wheel state
+		closeThreshold: 0.3,
+		resistanceFactor: 0.8,
+		velocityThreshold: 0.5,
+		snapAnimationDuration: 200,
+		wheelSensitivity: 2.0,
+		resetDelay: 150,
+		touchDebounce: 50,
+		initializationDelay: 100
 	} as const;
 
 	$effect(() => {
@@ -88,7 +95,6 @@
 		const deltaY = currentY - interaction.startY;
 		if (deltaY <= 0) return 0;
 
-		// Apply consistent resistance curve for all input types
 		const rawDistance = deltaY * PHYSICS.resistanceFactor;
 		return Math.min(rawDistance, maxSheetHeight * 0.8);
 	}
@@ -106,6 +112,8 @@
 		interaction.inputType = 'none';
 		interaction.canDragToClose = false;
 		interaction.dragStartedFromHandle = false;
+		interaction.touchStartTime = 0;
+		interactionLock = false;
 
 		if (resetTimeout) {
 			clearTimeout(resetTimeout);
@@ -126,9 +134,18 @@
 		navigator.vibrate(patterns[type]);
 	}
 
-	// Touch handling
+	// Touch handling with improved locking and debouncing
 	function handleTouchStart(e: TouchEvent) {
-		if (!open || !menuElement || isClosing) return;
+		if (!open || !menuElement || isClosing || interactionLock) return;
+
+		// Prevent rapid repeated interactions
+		const now = Date.now();
+		if (interaction.touchStartTime && now - interaction.touchStartTime < PHYSICS.touchDebounce) {
+			return;
+		}
+
+		// Ensure scroll position is fresh
+		updateScrollPosition();
 
 		const touch = e.touches[0];
 		const target = e.target as HTMLElement;
@@ -143,18 +160,20 @@
 		interaction.currentY = touch.clientY;
 		interaction.inputType = 'touch';
 		interaction.dragStartedFromHandle = !!isOnHandle;
+		interaction.touchStartTime = now;
 
 		// Determine if we can drag to close (handle always works, content only at scroll top)
 		interaction.canDragToClose = !!isOnHandle || isAtScrollTop;
 
 		if (interaction.canDragToClose) {
+			interactionLock = true;
 			interaction.isDragging = true;
 			provideFeedback('grab');
 		}
 	}
 
 	function handleTouchMove(e: TouchEvent) {
-		if (!open || isClosing || !interaction.isDragging) return;
+		if (!open || isClosing || !interaction.isDragging || !interactionLock) return;
 
 		const touch = e.touches[0];
 		interaction.currentY = touch.clientY;
@@ -164,7 +183,7 @@
 		let canContinueDrag = interaction.dragStartedFromHandle;
 
 		if (!interaction.dragStartedFromHandle) {
-			const currentScrollTop = menuElement.scrollTop;
+			const currentScrollTop = menuElement?.scrollTop ?? 0;
 			const isAtScrollTop = currentScrollTop === 0;
 			canContinueDrag = isAtScrollTop;
 		}
@@ -183,10 +202,11 @@
 	}
 
 	function handleTouchEnd(e: TouchEvent) {
-		if (!interaction.isDragging || interaction.inputType !== 'touch') return;
+		if (!interaction.isDragging || interaction.inputType !== 'touch' || !interactionLock) return;
 
 		const deltaY = interaction.currentY - interaction.startY;
-		const dragVelocity = Math.abs(deltaY) / (performance.now() - (e.timeStamp || Date.now()));
+		const duration = Date.now() - interaction.touchStartTime;
+		const dragVelocity = duration > 0 ? Math.abs(deltaY) / duration : 0;
 
 		// Use unified physics to determine if sheet should close
 		if (shouldCloseSheet(interaction.dragDistance, dragVelocity)) {
@@ -290,16 +310,21 @@
 
 			// Add touch listeners for drag-to-close with optimized passive settings
 			menuElement.addEventListener('touchstart', handleTouchStart, { passive: true });
-			menuElement.addEventListener('touchmove', handleTouchMove, { passive: false }); // Needs to prevent default
+			menuElement.addEventListener('touchmove', handleTouchMove, { passive: false });
 			menuElement.addEventListener('touchend', handleTouchEnd, { passive: true });
 
 			// Add wheel listener for trackpad/mouse wheel support
 			menuElement.addEventListener('wheel', handleWheel, { passive: false });
 
-			// Initial scroll position check
-			updateScrollPosition();
+			// Initialize scroll position and interaction state after a brief delay
+			// to ensure the sheet is fully rendered and scrollable
+			const initTimeout = setTimeout(() => {
+				updateScrollPosition();
+				interaction.isInitialized = true;
+			}, PHYSICS.initializationDelay);
 
 			return () => {
+				clearTimeout(initTimeout);
 				menuElement.removeEventListener('scroll', updateScrollPosition);
 				menuElement.removeEventListener('touchstart', handleTouchStart);
 				menuElement.removeEventListener('touchmove', handleTouchMove);
@@ -331,6 +356,9 @@
 	// Focus management and body scroll prevention for accessibility
 	$effect(() => {
 		if (open) {
+			// Reset interaction state when opening
+			resetInteractionState();
+
 			// Prevent body scroll when menu is open but allow menu content to scroll
 			const originalOverflow = document.body.style.overflow;
 			const originalPosition = document.body.style.position;
@@ -348,15 +376,20 @@
 
 			// Ensure the menu element can scroll independently
 			if (menuElement) {
-				// Reset any overflow restrictions that might interfere
 				menuElement.style.overflowY = 'auto';
-				// Disable momentum scrolling to prevent glidy feeling when closing
 				(menuElement.style as any).webkitOverflowScrolling = 'auto';
-				menuElement.style.touchAction = 'pan-y'; // Allow vertical scrolling only
+				menuElement.style.touchAction = 'pan-y';
 
-				// Focus the menu container itself for accessibility without highlighting specific elements
+				// Focus the menu container for accessibility
+				// Use requestAnimationFrame to ensure DOM is ready
 				requestAnimationFrame(() => {
-					menuElement.focus();
+					requestAnimationFrame(() => {
+						if (menuElement) {
+							menuElement.focus();
+							// Ensure scroll position is updated after render
+							updateScrollPosition();
+						}
+					});
 				});
 			}
 
@@ -378,6 +411,9 @@
 					(menuElement.style as any).webkitOverflowScrolling = '';
 					menuElement.style.touchAction = '';
 				}
+
+				// Final cleanup of interaction state
+				resetInteractionState();
 			};
 		}
 	});
@@ -439,20 +475,20 @@
 	bind:this={menuElement}
 	class={cn(
 		'bg-background/60 border-border/30 fixed inset-x-0 bottom-0 z-50 rounded-t-3xl border-t shadow-sm backdrop-blur-xl',
-		'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+		'transition-all ease-[cubic-bezier(0.32,0.72,0,1)]',
 		'max-h-[85vh] overflow-y-auto overscroll-contain',
 		open ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0',
-		interaction.isDragging && !isClosing ? 'transition-none' : ''
+		interaction.isDragging && !isClosing ? 'transition-none' : 'duration-300'
 	)}
-	style={`
-		touch-action: pan-y; 
-		-webkit-overflow-scrolling: touch;
-		${
-			interaction.isDragging && !isClosing
-				? `transform: translateY(${interaction.dragDistance}px); opacity: ${Math.max(0.3, 1 - interaction.dragDistance / 300)};`
-				: ''
-		}
-	`}
+	style:touch-action="pan-y"
+	style:-webkit-overflow-scrolling="touch"
+	style:will-change={interaction.isDragging && !isClosing ? 'transform, opacity' : 'auto'}
+	style:transform={interaction.isDragging && !isClosing
+		? `translateY(${interaction.dragDistance}px)`
+		: open
+			? 'translateY(0)'
+			: 'translateY(100%)'}
+	style:opacity={interaction.isDragging && !isClosing ? Math.max(0.3, 1 - interaction.dragDistance / 300) : open ? 1 : 0}
 	data-testid="mobile-nav-sheet"
 	role="dialog"
 	aria-modal="true"
@@ -461,15 +497,15 @@
 	tabindex={open ? 0 : -1}
 >
 	<!-- Handle indicator -->
-	<div class="flex justify-center pt-4 pb-3" data-drag-handle>
+	<div class="flex justify-center pb-3 pt-4" data-drag-handle>
 		<div
 			class={cn(
 				'h-1.5 w-10 rounded-full transition-all duration-150',
 				interaction.isDragging && !isClosing ? 'bg-muted-foreground/50 h-2 w-12' : 'bg-muted-foreground/20',
 				'hover:bg-muted-foreground/30 active:bg-muted-foreground/50'
 			)}
-			style={`transform: ${interaction.isDragging && !isClosing ? 'scale(1.15)' : 'scale(1)'};
-				transition: transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 150ms ease;`}
+			style:transform={interaction.isDragging && !isClosing ? 'scale(1.15)' : 'scale(1)'}
+			style:transition="transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 150ms ease"
 		></div>
 	</div>
 
@@ -483,7 +519,7 @@
 		<div class="space-y-8">
 			<!-- Management -->
 			<section>
-				<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+				<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 					{m.sidebar_management()}
 				</h4>
 				<div class="space-y-2">
@@ -508,7 +544,7 @@
 
 			<!-- Customization -->
 			<section>
-				<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+				<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 					{m.sidebar_customization()}
 				</h4>
 				<div class="space-y-2">
@@ -536,7 +572,7 @@
 				<!-- Environments -->
 				{#if navigationItems.environmentItems}
 					<section>
-						<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+						<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 							{m.sidebar_environments()}
 						</h4>
 						<div class="space-y-2">
@@ -563,7 +599,7 @@
 				<!-- Administration -->
 				{#if navigationItems.settingsItems}
 					<section>
-						<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+						<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 							{m.sidebar_administration()}
 						</h4>
 						<div class="space-y-2">
