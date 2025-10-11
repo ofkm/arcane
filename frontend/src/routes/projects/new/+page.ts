@@ -4,7 +4,7 @@ export const load = async ({ url }) => {
 	const templateId = url.searchParams.get('templateId');
 
 	const [allTemplates, defaultTemplates, selectedTemplate] = await Promise.all([
-		templateService.loadAll().catch((err) => {
+		templateService.getAllTemplates().catch((err) => {
 			console.warn('Failed to load templates:', err);
 			return [];
 		}),

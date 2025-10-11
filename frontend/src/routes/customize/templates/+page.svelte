@@ -13,12 +13,13 @@
 	import TemplatesBrowser from './components/TemplatesBrowser.svelte';
 	import RegistryManager from './components/RegistryManager.svelte';
 	import type { Template, TemplateRegistry } from '$lib/types/template.type';
+	import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
 	let { data } = $props();
 
-	let templates = $state<Template[]>(data.templates);
+	let templates = $state(data.templates);
 	let registries = $state<TemplateRegistry[]>(data.registries);
-	let searchQuery = $state('');
+	let requestOptions = $state<SearchPaginationSortRequest>(data.templateRequestOptions);
 	let activeView = $state<'browse' | 'registries'>('browse');
 
 	const tabItems: TabItem[] = [
@@ -61,7 +62,7 @@
 			});
 
 			registries = await templateService.getRegistries();
-			templates = await templateService.loadAll();
+			templates = await templateService.getTemplates(requestOptions);
 			toast.success(m.registries_update_success());
 		} catch (error) {
 			console.error('Error updating registry:', error);
@@ -80,7 +81,7 @@
 			await templateService.deleteRegistry(id);
 			registries = registries.filter((r) => r.id !== id);
 			registries = await templateService.getRegistries();
-			templates = await templateService.loadAll();
+			templates = await templateService.getTemplates(requestOptions);
 			toast.success(reg ? m.registries_delete_success({ url: reg.url }) : m.templates_registry_removed_success());
 		} catch (error) {
 			console.error('Error removing registry:', error);
@@ -92,7 +93,7 @@
 
 	async function refreshTemplates() {
 		try {
-			templates = await templateService.loadAll();
+			templates = await templateService.getTemplates(requestOptions);
 			toast.success(m.templates_refreshed());
 		} catch (error) {
 			console.error('Error refreshing templates:', error);
@@ -112,7 +113,7 @@
 			});
 
 			registries = await templateService.getRegistries();
-			templates = await templateService.loadAll();
+			templates = await templateService.getTemplates(requestOptions);
 			showAddRegistrySheet = false;
 
 			toast.success(m.registries_create_success());
@@ -139,8 +140,8 @@
 		}
 	];
 
-	const localTemplatesCount = $derived(templates.filter((t) => !t.isRemote).length);
-	const remoteTemplatesCount = $derived(templates.filter((t) => t.isRemote).length);
+	const localTemplatesCount = $derived(templates.data?.filter((t) => !t.isRemote).length ?? 0);
+	const remoteTemplatesCount = $derived(templates.data?.filter((t) => t.isRemote).length ?? 0);
 
 	const statCards: StatCardConfig[] = $derived([
 		{
@@ -188,7 +189,7 @@
 				</div>
 
 				<Tabs.Content value="browse">
-					<TemplatesBrowser {templates} bind:searchQuery onViewTemplate={(t) => goto(`/customize/templates/${t.id}`)} />
+					<TemplatesBrowser bind:templates bind:requestOptions />
 				</Tabs.Content>
 
 				<Tabs.Content value="registries">

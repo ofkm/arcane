@@ -1279,5 +1279,11 @@
 	"templates_search_placeholder": "Search templates...",
 	"common_back_to_templates": "Back to Templates",
 	"environment_variables": "Environment Variables",
-	"environment_file": "Environment File"
+	"environment_file": "Environment File",
+	"templates_type": "Type",
+	"templates_view_details": "View Details",
+	"templates_all": "All Templates",
+	"templates_local_only": "Local Only",
+	"templates_remote_only": "Remote Only",
+	"templates_tags": "Tags"
 }

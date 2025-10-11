@@ -21,6 +21,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	appfs "github.com/ofkm/arcane-backend/internal/utils/fs"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	"gorm.io/gorm"
 )
 
@@ -123,6 +124,121 @@ func (s *TemplateService) GetAllTemplates(ctx context.Context) ([]models.Compose
 	}
 
 	return templates, nil
+}
+
+func (s *TemplateService) GetAllTemplatesPaginated(ctx context.Context, params pagination.QueryParams) ([]dto.ComposeTemplateDto, pagination.Response, error) {
+	if err := s.syncFilesystemTemplatesInternal(ctx); err != nil {
+		slog.WarnContext(ctx, "failed to sync filesystem templates", "error", err)
+	}
+
+	var templates []models.ComposeTemplate
+	if err := s.db.WithContext(ctx).Preload("Registry").Find(&templates).Error; err != nil {
+		return nil, pagination.Response{}, fmt.Errorf("failed to get local templates: %w", err)
+	}
+
+	// Trim heavy fields in list responses
+	for i := range templates {
+		templates[i].Content = ""
+		templates[i].EnvContent = nil
+	}
+
+	if err := s.ensureRemoteTemplatesLoaded(ctx); err != nil {
+		slog.WarnContext(ctx, "failed to load remote templates for GetAllTemplatesPaginated", "error", err)
+	} else {
+		s.remoteMu.RLock()
+		copied := make([]models.ComposeTemplate, len(s.remoteCache.templates))
+		copy(copied, s.remoteCache.templates)
+		s.remoteMu.RUnlock()
+
+		if len(copied) > 0 {
+			templates = append(templates, copied...)
+		}
+	}
+
+	items := make([]dto.ComposeTemplateDto, 0, len(templates))
+	for _, t := range templates {
+		var dtoItem dto.ComposeTemplateDto
+		if err := dto.MapStruct(&t, &dtoItem); err != nil {
+			slog.WarnContext(ctx, "failed to map template to DTO", "error", err, "templateID", t.ID)
+			continue
+		}
+		items = append(items, dtoItem)
+	}
+
+	config := pagination.Config[dto.ComposeTemplateDto]{
+		SearchAccessors: []pagination.SearchAccessor[dto.ComposeTemplateDto]{
+			func(t dto.ComposeTemplateDto) (string, error) { return t.Name, nil },
+			func(t dto.ComposeTemplateDto) (string, error) { return t.Description, nil },
+			func(t dto.ComposeTemplateDto) (string, error) {
+				if t.Metadata != nil && t.Metadata.Tags != nil {
+					return *t.Metadata.Tags, nil
+				}
+				return "", nil
+			},
+		},
+		SortBindings: []pagination.SortBinding[dto.ComposeTemplateDto]{
+			{
+				Key: "name",
+				Fn: func(a, b dto.ComposeTemplateDto) int {
+					return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
+				},
+			},
+			{
+				Key: "description",
+				Fn: func(a, b dto.ComposeTemplateDto) int {
+					return strings.Compare(strings.ToLower(a.Description), strings.ToLower(b.Description))
+				},
+			},
+			{
+				Key: "isRemote",
+				Fn: func(a, b dto.ComposeTemplateDto) int {
+					if a.IsRemote == b.IsRemote {
+						return 0
+					}
+					if a.IsRemote {
+						return 1
+					}
+					return -1
+				},
+			},
+		},
+		FilterAccessors: []pagination.FilterAccessor[dto.ComposeTemplateDto]{
+			{
+				Key: "type",
+				Fn: func(item dto.ComposeTemplateDto, filterValue string) bool {
+					switch filterValue {
+					case "true":
+						return item.IsRemote
+					case "false":
+						return !item.IsRemote
+					}
+					return true
+				},
+			},
+		},
+	}
+
+	result := pagination.SearchOrderAndPaginate(items, params, config)
+
+	totalPages := int64(0)
+	if params.Limit > 0 {
+		totalPages = (int64(result.TotalCount) + int64(params.Limit) - 1) / int64(params.Limit)
+	}
+
+	currentPage := 1
+	if params.Limit > 0 && params.Start > 0 {
+		currentPage = (params.Start / params.Limit) + 1
+	}
+
+	paginationResp := pagination.Response{
+		TotalPages:      totalPages,
+		TotalItems:      int64(result.TotalCount),
+		CurrentPage:     currentPage,
+		ItemsPerPage:    params.Limit,
+		GrandTotalItems: int64(result.TotalAvailable),
+	}
+
+	return result.Items, paginationResp, nil
 }
 
 var ErrTemplateNotFound = errors.New("template not found")

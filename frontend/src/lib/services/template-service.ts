@@ -1,10 +1,18 @@
 import BaseAPIService from './api-service';
 import type { TemplateRegistry, Template, RemoteRegistry } from '$lib/types/template.type';
 import type { Variable } from '$lib/types/variable.type';
+import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
+import { transformPaginationParams } from '$lib/utils/params.util';
 
 export default class TemplateService extends BaseAPIService {
-	async loadAll(): Promise<Template[]> {
-		const response = await this.api.get('/templates');
+	async getTemplates(options?: SearchPaginationSortRequest): Promise<Paginated<Template>> {
+		const params = transformPaginationParams(options);
+		const response = await this.api.get('/templates', { params });
+		return response.data;
+	}
+
+	async getAllTemplates(): Promise<Template[]> {
+		const response = await this.api.get('/templates/all');
 		return response.data?.data ?? [];
 	}
 

@@ -13,7 +13,7 @@ export const load = async ({
 	try {
 		const [templateData, allTemplates] = await Promise.all([
 			templateService.getTemplateContent(params.id),
-			templateService.loadAll()
+			templateService.getAllTemplates()
 		]);
 
 		return {
