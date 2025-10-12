@@ -143,16 +143,22 @@
 
 		const cpuDelta = statsData.cpu_stats.cpu_usage.total_usage - (statsData.precpu_stats.cpu_usage?.total_usage || 0);
 		const systemDelta = statsData.cpu_stats.system_cpu_usage - (statsData.precpu_stats.system_cpu_usage || 0);
-		const numberCPUs = statsData.cpu_stats.online_cpus || statsData.cpu_stats.cpu_usage?.percpu_usage?.length || 1;
 
 		if (systemDelta > 0 && cpuDelta > 0) {
-			const cpuPercent = (cpuDelta / systemDelta) * numberCPUs * 100.0;
-			return Math.min(Math.max(cpuPercent, 0), 100 * numberCPUs);
+			const cpuPercent = (cpuDelta / systemDelta) * 100.0;
+			return Math.min(Math.max(cpuPercent, 0), 100);
 		}
 		return 0;
 	};
 
 	const cpuUsagePercent = $derived(calculateCPUPercent(stats));
+
+	const cpuLimit = $derived.by(() => {
+		if (container?.hostConfig?.nanoCpus) {
+			return container.hostConfig.nanoCpus / 1e9;
+		}
+		return stats?.cpu_stats?.online_cpus || 0;
+	});
 	const memoryUsageBytes = $derived(stats?.memory_stats?.usage || 0);
 	const memoryLimitBytes = $derived(stats?.memory_stats?.limit || 0);
 	const memoryUsageFormatted = $derived(bytes.format(memoryUsageBytes || 0) || '0 B');
@@ -311,6 +317,7 @@
 							{container}
 							{stats}
 							{cpuUsagePercent}
+							{cpuLimit}
 							{memoryUsageFormatted}
 							{memoryLimitFormatted}
 							{memoryUsagePercent}

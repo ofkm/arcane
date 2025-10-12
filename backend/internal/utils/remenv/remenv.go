@@ -121,7 +121,12 @@ func injectBatchUpdateCredentials(ctx context.Context, bodyBytes []byte, req *ht
 		return nil //nolint:nilerr
 	}
 
+	slog.DebugContext(ctx, "Batch update credential injection check",
+		slog.Int("existingCredentials", len(batchReq.Credentials)),
+		slog.Any("imageRefs", batchReq.ImageRefs))
+
 	if len(batchReq.Credentials) > 0 {
+		slog.DebugContext(ctx, "Credentials already present in request, skipping injection")
 		return nil
 	}
 
@@ -131,6 +136,7 @@ func injectBatchUpdateCredentials(ctx context.Context, bodyBytes []byte, req *ht
 	}
 
 	if len(creds) == 0 {
+		slog.DebugContext(ctx, "No enabled registry credentials found to inject")
 		return nil
 	}
 
@@ -141,8 +147,15 @@ func injectBatchUpdateCredentials(ctx context.Context, bodyBytes []byte, req *ht
 	}
 
 	updateRequestBody(req, modifiedBody)
-	slog.DebugContext(ctx, "Injected registry credentials into batch update request",
-		slog.Int("credentialCount", len(creds)))
+	slog.InfoContext(ctx, "Injected registry credentials into batch update request",
+		slog.Int("credentialCount", len(creds)),
+		slog.Any("credentialURLs", func() []string {
+			urls := make([]string, len(creds))
+			for i, c := range creds {
+				urls[i] = c.URL
+			}
+			return urls
+		}()))
 
 	return nil
 }

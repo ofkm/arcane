@@ -29,6 +29,10 @@ export interface ContainerPorts {
 export interface ContainerHostConfig {
 	networkMode: string;
 	restartPolicy?: string;
+	privileged?: boolean;
+	autoRemove?: boolean;
+	nanoCpus?: number;
+	memory?: number;
 }
 
 export interface ContainerNetworkSettings {

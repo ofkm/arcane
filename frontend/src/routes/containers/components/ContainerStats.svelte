@@ -11,6 +11,7 @@
 		container: ContainerDetailsDto;
 		stats: ContainerStatsType | null;
 		cpuUsagePercent: number;
+		cpuLimit: number;
 		memoryUsageFormatted: string;
 		memoryLimitFormatted: string;
 		memoryUsagePercent: number;
@@ -21,6 +22,7 @@
 		container,
 		stats,
 		cpuUsagePercent,
+		cpuLimit,
 		memoryUsageFormatted,
 		memoryLimitFormatted,
 		memoryUsagePercent,
@@ -214,7 +216,14 @@
 						/>
 						{#if stats.cpu_stats}
 							<div class="text-muted-foreground mt-2 flex items-center justify-between text-xs">
-								<span>{m.containers_stats_online_cpus()}: {stats.cpu_stats.online_cpus}</span>
+								{#if cpuLimit > 0}
+									<span
+										>{m.containers_stats_cpu_limit()}: {cpuLimit}
+										{cpuLimit === 1 ? m.containers_stats_cpu_unit_singular() : m.containers_stats_cpu_unit_plural()}</span
+									>
+								{:else}
+									<span>{m.containers_stats_online_cpus()}: {stats.cpu_stats.online_cpus}</span>
+								{/if}
 								<span>
 									{m.containers_stats_system_cpu()}: {((stats.cpu_stats.system_cpu_usage || 0) / 1e9).toFixed(2)}s
 								</span>
@@ -269,7 +278,7 @@
 				{#if stats.pids_stats && stats.pids_stats.current !== undefined}
 					<Card.Root variant="subtle" class="flex flex-col justify-center">
 						<Card.Content class="flex flex-col justify-center p-4">
-							<div class="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+							<div class="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wide">
 								{m.containers_process_count()}
 							</div>
 							<div class="text-foreground text-2xl font-bold">{stats.pids_stats.current}</div>
@@ -285,7 +294,7 @@
 				<!-- Network I/O Summary -->
 				<Card.Root variant="subtle" class="flex flex-col">
 					<Card.Content class="flex flex-col p-4">
-						<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
+						<div class="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
 							{m.containers_network_io()}
 						</div>
 						<div class="grid flex-1 grid-cols-2 gap-3">
@@ -321,7 +330,7 @@
 				{#if stats.blkio_stats && stats.blkio_stats.io_service_bytes_recursive && stats.blkio_stats.io_service_bytes_recursive.length > 0}
 					<Card.Root variant="subtle" class="flex flex-col">
 						<Card.Content class="flex flex-col p-4">
-							<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
+							<div class="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
 								{m.containers_block_io()}
 							</div>
 							<div class="grid flex-1 grid-cols-2 gap-3">
@@ -352,7 +361,7 @@
 				<div class="mt-4">
 					<Card.Root variant="subtle">
 						<Card.Content class="p-4">
-							<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
+							<div class="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
 								{m.containers_stats_network_interfaces()}
 							</div>
 							<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -396,7 +405,7 @@
 				{#if stats.memory_stats?.stats}
 					<Card.Root variant="subtle" class="flex flex-col">
 						<Card.Content class="flex flex-col p-4">
-							<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
+							<div class="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
 								{m.containers_stats_memory_details()}
 							</div>
 							<div class="grid flex-1 grid-cols-2 gap-x-4 gap-y-2 text-xs">
@@ -445,7 +454,7 @@
 				{#if stats.cpu_stats}
 					<Card.Root variant="subtle" class="flex flex-col">
 						<Card.Content class="flex flex-col p-4">
-							<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
+							<div class="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
 								{m.containers_stats_cpu_details()}
 							</div>
 							<div class="grid flex-1 grid-cols-2 gap-x-4 gap-y-2 text-xs">
