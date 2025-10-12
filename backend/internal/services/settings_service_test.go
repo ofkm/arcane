@@ -261,3 +261,296 @@ func TestSettingsService_UpdateSettings_RefreshesCache(t *testing.T) {
 	}
 	require.True(t, found, "projectsDirectory setting not found in cached list")
 }
+
+func TestSettingsService_AgentMode_OnlyLoadsAgentSettings(t *testing.T) {
+	// Set agent mode BEFORE creating service
+	t.Setenv("AGENT_MODE", "true")
+	t.Setenv("PROJECTS_DIRECTORY", "agent/projects")
+	t.Setenv("DOCKER_HOST", "unix:///var/run/docker.sock")
+	t.Setenv("POLLING_ENABLED", "true")
+
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	// Reload config to pick up env vars
+	cfg := config.Load()
+	cfg.AgentMode = true
+	cfg.UIConfigurationDisabled = true
+
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	settings := svc.GetSettingsConfig()
+
+	// Agent settings should be loaded
+	require.Equal(t, "agent/projects", settings.ProjectsDirectory.Value)
+	require.Equal(t, "unix:///var/run/docker.sock", settings.DockerHost.Value)
+	require.Equal(t, "true", settings.PollingEnabled.Value)
+
+	// Manager-only settings should be empty or default (not loaded from env)
+	require.Empty(t, settings.BaseServerURL.Value)
+	require.Empty(t, settings.AuthLocalEnabled.Value)
+	require.Empty(t, settings.OnboardingCompleted.Value)
+}
+
+func TestSettingsService_ManagerMode_LoadsAllSettings(t *testing.T) {
+	t.Setenv("AGENT_MODE", "false")
+	t.Setenv("PROJECTS_DIRECTORY", "manager/projects")
+	t.Setenv("BASE_SERVER_URL", "http://manager.example")
+
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	cfg := config.Load()
+	cfg.AgentMode = false
+	cfg.UIConfigurationDisabled = true
+
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	settings := svc.GetSettingsConfig()
+
+	// Both agent and manager settings should be loaded
+	require.Equal(t, "manager/projects", settings.ProjectsDirectory.Value)
+	require.Equal(t, "http://manager.example", settings.BaseServerURL.Value)
+}
+
+func TestModels_ParseSettingTag(t *testing.T) {
+	tests := []struct {
+		name     string
+		tagValue string
+		expected models.SettingTagAttributes
+	}{
+		{
+			name:     "simple key only",
+			tagValue: "dockerHost",
+			expected: models.SettingTagAttributes{
+				Key: "dockerHost",
+			},
+		},
+		{
+			name:     "with agent tag",
+			tagValue: "projectsDirectory,agent",
+			expected: models.SettingTagAttributes{
+				Key:     "projectsDirectory",
+				IsAgent: true,
+			},
+		},
+		{
+			name:     "multiple attributes",
+			tagValue: "dockerHost,public,agent,envOverride",
+			expected: models.SettingTagAttributes{
+				Key:         "dockerHost",
+				IsPublic:    true,
+				IsAgent:     true,
+				EnvOverride: true,
+			},
+		},
+		{
+			name:     "sensitive attribute",
+			tagValue: "authOidcConfig,sensitive",
+			expected: models.SettingTagAttributes{
+				Key:         "authOidcConfig",
+				IsSensitive: true,
+			},
+		},
+		{
+			name:     "internal attribute",
+			tagValue: "instanceId,internal",
+			expected: models.SettingTagAttributes{
+				Key:        "instanceId",
+				IsInternal: true,
+			},
+		},
+		{
+			name:     "all attributes",
+			tagValue: "testKey,public,sensitive,internal,agent,envOverride",
+			expected: models.SettingTagAttributes{
+				Key:         "testKey",
+				IsPublic:    true,
+				IsSensitive: true,
+				IsInternal:  true,
+				IsAgent:     true,
+				EnvOverride: true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := models.ParseSettingTag(tt.tagValue)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestModels_Settings_IsAgentSetting(t *testing.T) {
+	settings := &models.Settings{}
+
+	// Agent settings
+	require.True(t, settings.IsAgentSetting("projectsDirectory"))
+	require.True(t, settings.IsAgentSetting("dockerHost"))
+	require.True(t, settings.IsAgentSetting("pollingEnabled"))
+	require.True(t, settings.IsAgentSetting("defaultShell"))
+
+	// Manager-only settings
+	require.False(t, settings.IsAgentSetting("baseServerUrl"))
+	require.False(t, settings.IsAgentSetting("authLocalEnabled"))
+	require.False(t, settings.IsAgentSetting("onboardingCompleted"))
+	require.False(t, settings.IsAgentSetting("mobileNavigationMode"))
+
+	// Internal settings (should return true)
+	require.True(t, settings.IsAgentSetting("instanceId"))
+
+	// Non-existent key
+	require.False(t, settings.IsAgentSetting("nonexistent"))
+}
+
+func TestModels_Settings_GetAgentSettings(t *testing.T) {
+	settings := &models.Settings{
+		ProjectsDirectory: models.SettingVariable{Value: "data/projects"},
+		DockerHost:        models.SettingVariable{Value: "unix:///var/run/docker.sock"},
+		PollingEnabled:    models.SettingVariable{Value: "true"},
+		BaseServerURL:     models.SettingVariable{Value: "http://localhost"},
+		AuthLocalEnabled:  models.SettingVariable{Value: "true"},
+		InstanceID:        models.SettingVariable{Value: "test-instance"},
+	}
+
+	agentSettings := settings.GetAgentSettings(false)
+
+	// Should include agent-tagged settings
+	hasProjectsDir := false
+	hasDockerHost := false
+	hasPollingEnabled := false
+	hasInstanceID := false
+
+	// Should NOT include manager-only settings
+	hasBaseServerURL := false
+	hasAuthLocalEnabled := false
+
+	for _, sv := range agentSettings {
+		switch sv.Key {
+		case "projectsDirectory":
+			hasProjectsDir = true
+			require.Equal(t, "data/projects", sv.Value)
+		case "dockerHost":
+			hasDockerHost = true
+			require.Equal(t, "unix:///var/run/docker.sock", sv.Value)
+		case "pollingEnabled":
+			hasPollingEnabled = true
+			require.Equal(t, "true", sv.Value)
+		case "instanceId":
+			hasInstanceID = true
+			require.Equal(t, "test-instance", sv.Value)
+		case "baseServerUrl":
+			hasBaseServerURL = true
+		case "authLocalEnabled":
+			hasAuthLocalEnabled = true
+		}
+	}
+
+	require.True(t, hasProjectsDir, "agent settings should include projectsDirectory")
+	require.True(t, hasDockerHost, "agent settings should include dockerHost")
+	require.True(t, hasPollingEnabled, "agent settings should include pollingEnabled")
+	require.True(t, hasInstanceID, "agent settings should include instanceId (internal)")
+	require.False(t, hasBaseServerURL, "agent settings should NOT include baseServerUrl")
+	require.False(t, hasAuthLocalEnabled, "agent settings should NOT include authLocalEnabled")
+}
+
+func TestSettingsService_GetDefaultSettings_AgentMode(t *testing.T) {
+	t.Setenv("AGENT_MODE", "true")
+
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	cfg := config.Load()
+	cfg.AgentMode = true
+
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	defaults := svc.GetSettingsConfig()
+
+	// Agent settings should have default values
+	require.NotEmpty(t, defaults.ProjectsDirectory.Value)
+	require.NotEmpty(t, defaults.DockerHost.Value)
+	require.NotEmpty(t, defaults.PollingEnabled.Value)
+
+	// Manager-only settings should be empty
+	require.Empty(t, defaults.BaseServerURL.Value)
+	require.Empty(t, defaults.AuthLocalEnabled.Value)
+	require.Empty(t, defaults.OnboardingCompleted.Value)
+	require.Empty(t, defaults.MobileNavigationMode.Value)
+}
+
+func TestSettingsService_EnvOverride_AppliedCorrectly(t *testing.T) {
+	t.Setenv("DOCKER_HOST", "tcp://custom:2375")
+
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	// Create a DB setting
+	require.NoError(t, svc.UpdateSetting(ctx, "dockerHost", "unix:///var/run/docker.sock"))
+
+	// Reload to apply env overrides
+	require.NoError(t, svc.LoadDatabaseSettings(ctx))
+
+	settings := svc.GetSettingsConfig()
+
+	// Env override should win
+	require.Equal(t, "tcp://custom:2375", settings.DockerHost.Value)
+}
+
+func TestSettingsService_ToSettingVariableSlice_Redaction(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	// Set a sensitive value
+	oidcConfig := models.OidcConfig{
+		ClientID:     "test-client",
+		ClientSecret: "super-secret",
+		IssuerURL:    "https://issuer.example",
+	}
+	configJSON, err := json.Marshal(oidcConfig)
+	require.NoError(t, err)
+
+	require.NoError(t, svc.UpdateSetting(ctx, "authOidcConfig", string(configJSON)))
+	require.NoError(t, svc.LoadDatabaseSettings(ctx))
+
+	settings := svc.GetSettingsConfig()
+
+	// Without redaction
+	varsNoRedact := settings.ToSettingVariableSlice(true, false)
+	var oidcVarNoRedact *models.SettingVariable
+	for _, sv := range varsNoRedact {
+		if sv.Key == "authOidcConfig" {
+			oidcVarNoRedact = &sv
+			break
+		}
+	}
+	require.NotNil(t, oidcVarNoRedact)
+
+	var unredacted models.OidcConfig
+	require.NoError(t, json.Unmarshal([]byte(oidcVarNoRedact.Value), &unredacted))
+	require.Equal(t, "super-secret", unredacted.ClientSecret)
+
+	// With redaction
+	varsRedact := settings.ToSettingVariableSlice(true, true)
+	var oidcVarRedact *models.SettingVariable
+	for _, sv := range varsRedact {
+		if sv.Key == "authOidcConfig" {
+			oidcVarRedact = &sv
+			break
+		}
+	}
+	require.NotNil(t, oidcVarRedact)
+
+	var redacted models.OidcConfig
+	require.NoError(t, json.Unmarshal([]byte(oidcVarRedact.Value), &redacted))
+	require.Empty(t, redacted.ClientSecret, "client secret should be redacted")
+	require.Equal(t, "test-client", redacted.ClientID, "non-sensitive fields should remain")
+}

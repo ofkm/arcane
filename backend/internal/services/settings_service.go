@@ -75,7 +75,7 @@ func (s *SettingsService) LoadDatabaseSettings(ctx context.Context) (err error) 
 }
 
 func (s *SettingsService) getDefaultSettings() *models.Settings {
-	return &models.Settings{
+	defaults := &models.Settings{
 		ProjectsDirectory:            models.SettingVariable{Value: "data/projects"},
 		DiskUsagePath:                models.SettingVariable{Value: "data/projects"},
 		AutoUpdate:                   models.SettingVariable{Value: "false"},
@@ -101,6 +101,35 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		AccentColor:                  models.SettingVariable{Value: "oklch(0.606 0.25 292.717)"},
 
 		InstanceID: models.SettingVariable{Value: ""},
+	}
+
+	// In agent mode, clear manager-only settings
+	if config.Load().AgentMode {
+		s.applyAgentModeDefaults(defaults)
+	}
+
+	return defaults
+}
+
+// applyAgentModeDefaults clears manager-only settings for agent mode
+func (s *SettingsService) applyAgentModeDefaults(settings *models.Settings) {
+	rt := reflect.TypeOf(*settings)
+	rv := reflect.ValueOf(settings).Elem()
+
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
+		tagValue := field.Tag.Get("key")
+		if tagValue == "" {
+			continue
+		}
+
+		attrs := models.ParseSettingTag(tagValue)
+
+		// Keep only agent-applicable and internal settings
+		if !attrs.IsAgent && !attrs.IsInternal {
+			// Clear manager-only setting value
+			rv.Field(i).FieldByName("Value").SetString("")
+		}
 	}
 }
 
@@ -154,19 +183,31 @@ func (s *SettingsService) loadDatabaseSettingsInternal(ctx context.Context, db *
 
 func (s *SettingsService) loadDatabaseConfigFromEnv(ctx context.Context, db *database.DB) (*models.Settings, error) {
 	dest := s.getDefaultSettings()
+	isAgentMode := config.Load().AgentMode
 
 	rt := reflect.ValueOf(dest).Elem().Type()
 	rv := reflect.ValueOf(dest).Elem()
 	for i := range rt.NumField() {
 		field := rt.Field(i)
 
-		key, attrs, _ := strings.Cut(field.Tag.Get("key"), ",")
+		tagValue := field.Tag.Get("key")
+		if tagValue == "" {
+			continue
+		}
 
-		if attrs == "internal" {
+		attrs := models.ParseSettingTag(tagValue)
+
+		// In agent mode, skip manager-only settings (those without "agent" tag)
+		if isAgentMode && !attrs.IsAgent && !attrs.IsInternal {
+			continue
+		}
+
+		// Handle internal fields from database
+		if attrs.IsInternal {
 			var value string
 			err := db.WithContext(ctx).
 				Model(&models.SettingVariable{}).
-				Where("key = ?", key).
+				Where("key = ?", attrs.Key).
 				Select("value").
 				First(&value).Error
 			if err == nil {
@@ -175,19 +216,18 @@ func (s *SettingsService) loadDatabaseConfigFromEnv(ctx context.Context, db *dat
 			continue
 		}
 
-		envVarName := utils.CamelCaseToScreamingSnakeCase(key)
+		// Load from environment variable
+		envVarName := utils.CamelCaseToScreamingSnakeCase(attrs.Key)
 
-		// debug: log each env name checked and whether a value exists
 		if val, ok := os.LookupEnv(envVarName); ok {
 			mask := "<empty>"
 			if len(val) > 0 {
-				mask = fmt.Sprintf("%d chars", len(val))
+				mask = "***"
 			}
-			slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: env override found", "key", key, "env", envVarName, "valueMasked", mask)
+			slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: env var found", "key", envVarName, "value", mask)
 			rv.Field(i).FieldByName("Value").SetString(val)
-			continue
 		} else {
-			slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: env not set", "key", key, "env", envVarName)
+			slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: env var not set", "key", envVarName)
 		}
 	}
 
@@ -199,7 +239,7 @@ func (s *SettingsService) loadDatabaseConfigFromEnv(ctx context.Context, db *dat
 			count++
 		}
 	}
-	slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: completed env load", "loadedFields", count)
+	slog.DebugContext(ctx, "loadDatabaseConfigFromEnv: completed env load", "loadedFields", count, "agentMode", isAgentMode)
 
 	return dest, nil
 }
@@ -215,25 +255,15 @@ func (s *SettingsService) applyEnvOverrides(ctx context.Context, dest *models.Se
 			continue
 		}
 
-		// Parse tag attributes (e.g., "dockerHost,public,envOverride")
-		parts := strings.Split(tagValue, ",")
-		key := parts[0]
-		hasEnvOverride := false
-		for _, attr := range parts[1:] {
-			if attr == "envOverride" {
-				hasEnvOverride = true
-				break
-			}
-		}
-
-		if !hasEnvOverride {
+		attrs := models.ParseSettingTag(tagValue)
+		if !attrs.EnvOverride {
 			continue
 		}
 
 		// Check if environment variable is set
-		envVarName := utils.CamelCaseToScreamingSnakeCase(key)
+		envVarName := utils.CamelCaseToScreamingSnakeCase(attrs.Key)
 		if val, ok := os.LookupEnv(envVarName); ok && val != "" {
-			slog.DebugContext(ctx, "applyEnvOverrides: applying env override", "key", key, "env", envVarName)
+			slog.DebugContext(ctx, "applyEnvOverrides: applying env override", "key", attrs.Key, "env", envVarName)
 			rv.Field(i).FieldByName("Value").SetString(val)
 		}
 	}
@@ -459,35 +489,39 @@ func (s *SettingsService) PersistEnvSettingsIfMissing(ctx context.Context) error
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for i := 0; i < rt.NumField(); i++ {
 			field := rt.Field(i)
-			key, attrs, _ := strings.Cut(field.Tag.Get("key"), ",")
-
-			if key == "" || attrs == "internal" {
+			tagValue := field.Tag.Get("key")
+			if tagValue == "" {
 				continue
 			}
 
-			envVarName := utils.CamelCaseToScreamingSnakeCase(key)
+			attrs := models.ParseSettingTag(tagValue)
+			if attrs.IsInternal {
+				continue
+			}
+
+			envVarName := utils.CamelCaseToScreamingSnakeCase(attrs.Key)
 			envVal, ok := os.LookupEnv(envVarName)
 			if !ok {
 				continue
 			}
 
 			var existing models.SettingVariable
-			err := tx.Where("key = ?", key).First(&existing).Error
+			err := tx.Where("key = ?", attrs.Key).First(&existing).Error
 			switch {
 			case errors.Is(err, gorm.ErrRecordNotFound):
-				newVar := models.SettingVariable{Key: key, Value: envVal}
+				newVar := models.SettingVariable{Key: attrs.Key, Value: envVal}
 				if err := tx.Create(&newVar).Error; err != nil {
-					return fmt.Errorf("persist env setting %s: %w", key, err)
+					return fmt.Errorf("persist env setting %s: %w", attrs.Key, err)
 				}
-				slog.DebugContext(ctx, "Created setting from environment", "key", key)
+				slog.DebugContext(ctx, "Created setting from environment", "key", attrs.Key)
 			case err != nil:
-				return fmt.Errorf("check setting %s: %w", key, err)
+				return fmt.Errorf("check setting %s: %w", attrs.Key, err)
 			default:
 				if existing.Value != envVal {
 					if err := tx.Model(&existing).Update("value", envVal).Error; err != nil {
-						return fmt.Errorf("update env setting %s: %w", key, err)
+						return fmt.Errorf("update env setting %s: %w", attrs.Key, err)
 					}
-					slog.DebugContext(ctx, "Updated setting from environment", "key", key)
+					slog.DebugContext(ctx, "Updated setting from environment", "key", attrs.Key)
 				}
 			}
 		}
