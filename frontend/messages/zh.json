@@ -563,6 +563,7 @@
 	"containers_port_mappings": "端口映射",
 	"containers_port_mappings_description": "此容器曝光的网络端口用于外部访问",
 	"containers_not_published": "未发布",
+	"containers_no_ports": "无端口",
 	"common_labels_description": "附加到此容器的元数据标签，用于组织和自动化",
 	"containers_no_labels_defined": "未定义标签",
 	"containers_networks_title": "网络",
