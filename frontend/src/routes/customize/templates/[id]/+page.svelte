@@ -113,8 +113,41 @@
 				</Badge>
 			{/if}
 			{#if template.metadata?.tags}
-				{@const tags = Array.isArray(template.metadata.tags) ? template.metadata.tags : [template.metadata.tags]}
-				{#each tags as tag}
+				{@const parseTags = (tags: any): string[] => {
+					if (!tags) return [];
+
+					if (Array.isArray(tags)) {
+						return tags.map((t) => String(t).trim()).filter(Boolean);
+					}
+
+					if (typeof tags === 'string') {
+						const trimmed = tags.trim();
+
+						if (trimmed.startsWith('[')) {
+							try {
+								const parsed = JSON.parse(trimmed);
+								if (Array.isArray(parsed)) {
+									return parsed
+										.map((t) =>
+											String(t)
+												.trim()
+												.replace(/^["']|["']$/g, '')
+										)
+										.filter(Boolean);
+								}
+							} catch {}
+						}
+
+						return trimmed
+							.split(',')
+							.map((t) => t.trim().replace(/^["'\[\]]+|["'\[\]]+$/g, ''))
+							.filter(Boolean);
+					}
+
+					return [];
+				}}
+				{@const tagsArray = parseTags(template.metadata.tags)}
+				{#each tagsArray as tag}
 					<Badge variant="outline">{tag}</Badge>
 				{/each}
 			{/if}
