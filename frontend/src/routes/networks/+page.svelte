@@ -9,7 +9,7 @@
 	import NetworkTable from './network-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { networkService } from '$lib/services/network-service';
-	import { environmentStore } from '$lib/stores/environment.store';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 	import type { Environment } from '$lib/types/environment.type';
 	import { ResourcePageLayout, type ActionButton, type StatCardConfig } from '$lib/layouts/index.js';
 
@@ -73,7 +73,7 @@
 	const selectedEnvStore = environmentStore.selected;
 	let lastEnvId: string | null = null;
 	$effect(() => {
-		const env = $selectedEnvStore as Environment | null;
+		const env = selectedEnvStore as Environment | null;
 		if (!env) return;
 		if (lastEnvId === null) {
 			lastEnvId = env.id;

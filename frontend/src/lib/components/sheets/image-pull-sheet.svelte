@@ -7,8 +7,7 @@
 	import { z } from 'zod/v4';
 	import { createForm, preventDefault } from '$lib/utils/form.utils';
 	import { toast } from 'svelte-sonner';
-	import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store';
-	import { get } from 'svelte/store';
+	import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	type ImagePullFormProps = {
@@ -217,7 +216,7 @@
 	}
 
 	function getCurrentEnvironmentId(): string {
-		const env = get(environmentStore.selected);
+		const env = environmentStore.selected;
 		return env?.id || LOCAL_DOCKER_ENVIRONMENT_ID;
 	}
 </script>

@@ -1,11 +1,8 @@
-import { settingsService } from '$lib/services/settings-service';
 import { userService } from '$lib/services/user-service';
 import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 import { resolveInitialTableRequest } from '$lib/utils/table-persistence.util';
 
 export const load = async () => {
-	const settings = await settingsService.getSettings();
-
 	const userRequestOptions = resolveInitialTableRequest('arcane-users-table', {
 		pagination: {
 			page: 1,
@@ -20,7 +17,6 @@ export const load = async () => {
 	const users = await userService.getUsers(userRequestOptions);
 
 	return {
-		settings,
 		users,
 		userRequestOptions
 	};

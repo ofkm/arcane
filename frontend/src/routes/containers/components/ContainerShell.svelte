@@ -4,7 +4,7 @@
 	import TerminalControls from '$lib/components/terminal/terminal-controls.svelte';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import { m } from '$lib/paraglide/messages';
-	import { environmentStore } from '$lib/stores/environment.store';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 	import settingsStore from '$lib/stores/config-store';
 
 	let {

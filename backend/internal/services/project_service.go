@@ -619,10 +619,6 @@ func (s *ProjectService) RedeployProject(ctx context.Context, projectID string, 
 		slog.WarnContext(ctx, "failed to pull project images", "error", err)
 	}
 
-	if err := s.DownProject(ctx, projectID, systemUser); err != nil {
-		return fmt.Errorf("failed to down project for redeploy: %w", err)
-	}
-
 	metadata := models.JSON{"action": "redeploy", "projectID": projectID, "projectName": proj.Name}
 	if logErr := s.eventService.LogProjectEvent(ctx, models.EventTypeProjectDeploy, projectID, proj.Name, user.ID, user.Username, "0", metadata); logErr != nil {
 		slog.ErrorContext(ctx, "could not log project redeploy action", "error", logErr)

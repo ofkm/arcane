@@ -54,7 +54,7 @@
 
 <svelte:head><title>{m.layout_title()}</title></svelte:head>
 
-<div class="bg-background min-h-screen">
+<div class="bg-background flex min-h-screen flex-col">
 	{#if !settings}
 		<Error message={m.error_occurred()} showButton={true} />
 	{:else if !isOnboardingPage && !isLoginPage}

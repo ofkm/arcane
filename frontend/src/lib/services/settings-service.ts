@@ -1,6 +1,6 @@
 import BaseAPIService from './api-service';
 import type { Settings, OidcStatusInfo } from '$lib/types/settings.type';
-import { environmentStore } from '$lib/stores/environment.store';
+import { environmentStore } from '$lib/stores/environment.store.svelte';
 
 type KeyValuePair = { key: string; value: string };
 

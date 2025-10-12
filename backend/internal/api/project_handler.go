@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -25,13 +24,11 @@ import (
 
 type ProjectHandler struct {
 	projectService *services.ProjectService
-	logStreams     sync.Map
 	wsUpgrader     websocket.Upgrader
 }
 
 type projectLogStream struct {
 	hub    *ws.Hub
-	once   sync.Once
 	cancel context.CancelFunc
 	format string
 	seq    atomic.Uint64
@@ -315,68 +312,64 @@ func (h *ProjectHandler) RestartProject(c *gin.Context) {
 }
 
 func (h *ProjectHandler) getOrStartProjectLogHub(projectID, format string, batched bool, follow bool, tail, since string, timestamps bool) *ws.Hub {
-	key := projectID + "::" + format
-	v, _ := h.logStreams.LoadOrStore(key, &projectLogStream{
+	// Create a new hub for each connection to ensure every client gets historical logs
+	ls := &projectLogStream{
 		hub:    ws.NewHub(1024),
 		format: format,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ls.cancel = cancel
+
+	ls.hub.SetOnEmpty(func() {
+		slog.Debug("client disconnected, cleaning up project log hub", "projectID", projectID, "format", format, "tail", tail)
+		cancel()
 	})
-	ls := v.(*projectLogStream)
 
-	ls.once.Do(func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		ls.cancel = cancel
+	go ls.hub.Run(ctx)
 
-		ls.hub.SetOnEmpty(func() {
-			slog.Debug("all clients disconnected, cleaning up project log hub", "projectID", projectID, "format", format)
-			cancel()
-			h.logStreams.Delete(key)
-		})
+	lines := make(chan string, 256)
+	go func() {
+		defer close(lines)
+		_ = h.projectService.StreamProjectLogs(ctx, projectID, lines, follow, tail, since, timestamps)
+	}()
 
-		go ls.hub.Run(ctx)
-
-		lines := make(chan string, 256)
+	if format == "json" {
+		msgs := make(chan ws.LogMessage, 256)
 		go func() {
-			defer close(lines)
-			_ = h.projectService.StreamProjectLogs(ctx, projectID, lines, follow, tail, since, timestamps)
-		}()
-
-		if format == "json" {
-			msgs := make(chan ws.LogMessage, 256)
-			go func() {
-				defer close(msgs)
-				for line := range lines {
-					level, service, msg, ts := ws.NormalizeProjectLine(line)
-					seq := ls.seq.Add(1)
-					timestamp := ts
-					if timestamp == "" {
-						timestamp = ws.NowRFC3339()
-					}
-					msgs <- ws.LogMessage{
-						Seq:       seq,
-						Level:     level,
-						Message:   msg,
-						Service:   service,
-						Timestamp: timestamp,
-					}
+			defer close(msgs)
+			for line := range lines {
+				level, service, msg, ts := ws.NormalizeProjectLine(line)
+				seq := ls.seq.Add(1)
+				timestamp := ts
+				if timestamp == "" {
+					timestamp = ws.NowRFC3339()
 				}
-			}()
-			if batched {
-				go ws.ForwardLogJSONBatched(ctx, ls.hub, msgs, 50, 400*time.Millisecond)
-			} else {
-				go ws.ForwardLogJSON(ctx, ls.hub, msgs)
+				msgs <- ws.LogMessage{
+					Seq:       seq,
+					Level:     level,
+					Message:   msg,
+					Service:   service,
+					Timestamp: timestamp,
+				}
 			}
+		}()
+		if batched {
+			go ws.ForwardLogJSONBatched(ctx, ls.hub, msgs, 50, 400*time.Millisecond)
 		} else {
-			cleanChan := make(chan string, 256)
-			go func() {
-				defer close(cleanChan)
-				for line := range lines {
-					_, _, msg, _ := ws.NormalizeProjectLine(line)
-					cleanChan <- msg
-				}
-			}()
-			go ws.ForwardLines(ctx, ls.hub, cleanChan)
+			go ws.ForwardLogJSON(ctx, ls.hub, msgs)
 		}
-	})
+	} else {
+		cleanChan := make(chan string, 256)
+		go func() {
+			defer close(cleanChan)
+			for line := range lines {
+				_, _, msg, _ := ws.NormalizeProjectLine(line)
+				cleanChan <- msg
+			}
+		}()
+		go ws.ForwardLines(ctx, ls.hub, cleanChan)
+	}
 
 	return ls.hub
 }

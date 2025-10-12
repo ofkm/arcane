@@ -8,7 +8,7 @@
 	import LanguagesIcon from '@lucide/svelte/icons/languages';
 	import Sun from '@lucide/svelte/icons/sun';
 	import Moon from '@lucide/svelte/icons/moon';
-	import { environmentStore } from '$lib/stores/environment.store';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 	import type { Environment } from '$lib/types/environment.type';
 	import { mode, toggleMode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
@@ -26,30 +26,15 @@
 	let { user, class: className = '' }: Props = $props();
 
 	let userCardExpanded = $state(false);
-	let currentSelectedEnvironment = $state<Environment | null>(null);
-	let availableEnvironments = $state<Environment[]>([]);
 
 	const isDarkMode = $derived(mode.current === 'dark');
 
-	$effect(() => {
-		const unsubscribeSelected = environmentStore.selected.subscribe((value) => {
-			currentSelectedEnvironment = value;
-		});
-		const unsubscribeAvailable = environmentStore.available.subscribe((value) => {
-			availableEnvironments = value;
-		});
-		return () => {
-			unsubscribeSelected();
-			unsubscribeAvailable();
-		};
-	});
-
 	const effectiveUser = $derived(user);
 	const isAdmin = $derived(!!effectiveUser.roles?.includes('admin'));
-	const selectedValue = $derived(currentSelectedEnvironment?.id || '');
+	const selectedValue = $derived(environmentStore.selected?.id || '');
 
 	async function handleEnvSelect(envId: string) {
-		const env = availableEnvironments.find((e) => e.id === envId);
+		const env = environmentStore.available.find((e) => e.id === envId);
 		if (!env) return;
 
 		try {
@@ -122,7 +107,7 @@
 				<div class="bg-background/50 border-border/20 rounded-2xl border p-4">
 					<div class="flex items-center gap-3">
 						<div class="bg-primary/10 text-primary flex aspect-square size-8 items-center justify-center rounded-lg">
-							{#if currentSelectedEnvironment?.isLocal}
+							{#if environmentStore.selected?.isLocal}
 								<ServerIcon class="size-4" />
 							{:else}
 								<RouterIcon class="size-4" />
@@ -133,21 +118,21 @@
 								{m.sidebar_environment_label()}
 							</div>
 							<div class="text-foreground text-sm font-medium">
-								{currentSelectedEnvironment ? getEnvLabel(currentSelectedEnvironment) : m.sidebar_no_environment()}
+								{environmentStore.selected ? getEnvLabel(environmentStore.selected) : m.sidebar_no_environment()}
 							</div>
-							{#if currentSelectedEnvironment}
+							{#if environmentStore.selected}
 								<div class="text-muted-foreground/60 text-xs">
-									{getConnectionString(currentSelectedEnvironment)}
+									{getConnectionString(environmentStore.selected)}
 								</div>
 							{/if}
 						</div>
-						{#if availableEnvironments.length > 1}
+						{#if environmentStore.available.length > 1}
 							<Select.Root type="single" value={selectedValue} onValueChange={handleEnvSelect}>
 								<Select.Trigger class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium">
 									<span class="truncate">Switch</span>
 								</Select.Trigger>
 								<Select.Content class="min-w-[160px] max-w-[280px]">
-									{#each availableEnvironments as env (env.id)}
+									{#each environmentStore.available as env (env.id)}
 										<Select.Item value={env.id} class="text-sm">
 											{getEnvLabel(env)}
 										</Select.Item>

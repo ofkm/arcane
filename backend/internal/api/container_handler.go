@@ -30,7 +30,7 @@ type ContainerHandler struct {
 	containerService    *services.ContainerService
 	imageService        *services.ImageService
 	dockerService       *services.DockerClientService
-	logStreams          sync.Map
+	statsStreams        sync.Map
 	containerWSUpgrader websocket.Upgrader
 }
 
@@ -67,87 +67,82 @@ func NewContainerHandler(group *gin.RouterGroup, dockerService *services.DockerC
 
 type containerLogStream struct {
 	hub    *ws.Hub
-	once   sync.Once
 	cancel context.CancelFunc
 	format string
 	seq    atomic.Uint64
 }
 
 func (h *ContainerHandler) getOrStartContainerLogHub(containerID, format string, batched bool, follow bool, tail, since string, timestamps bool) *ws.Hub {
-	key := fmt.Sprintf("%s::%s::batched=%t", containerID, format, batched)
-	v, _ := h.logStreams.LoadOrStore(key, &containerLogStream{
+	// Create a new hub for each connection to ensure every client gets historical logs
+	ls := &containerLogStream{
 		hub:    ws.NewHub(1024),
 		format: format,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ls.cancel = cancel
+
+	ls.hub.SetOnEmpty(func() {
+		slog.Debug("client disconnected, cleaning up log hub", "containerID", containerID, "format", format, "tail", tail)
+		cancel()
 	})
-	ls := v.(*containerLogStream)
 
-	ls.once.Do(func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		ls.cancel = cancel
+	go ls.hub.Run(ctx)
 
-		ls.hub.SetOnEmpty(func() {
-			slog.Debug("all clients disconnected, cleaning up log hub", "containerID", containerID, "format", format)
-			cancel()
-			h.logStreams.Delete(key)
-		})
+	slog.Debug("starting log stream pipeline", "containerID", containerID, "format", format, "batched", batched)
 
-		go ls.hub.Run(ctx)
-
-		slog.Debug("starting log stream pipeline", "containerID", containerID, "format", format, "batched", batched)
-
-		lines := make(chan string, 256)
-		go func() {
-			defer func() {
-				close(lines)
-				slog.Debug("lines channel closed", "containerID", containerID)
-			}()
-
-			if err := h.containerService.StreamLogs(ctx, containerID, lines, follow, tail, since, timestamps); err != nil {
-				slog.Error("StreamLogs failed", "containerID", containerID, "err", err)
-			}
+	lines := make(chan string, 256)
+	go func() {
+		defer func() {
+			close(lines)
+			slog.Debug("lines channel closed", "containerID", containerID)
 		}()
 
-		if format == "json" {
-			msgs := make(chan ws.LogMessage, 256)
-			go func() {
-				defer func() {
-					close(msgs)
-					slog.Debug("msgs channel closed", "containerID", containerID)
-				}()
-				lineCount := 0
-				for line := range lines {
-					lineCount++
-					level, msg, ts := ws.NormalizeContainerLine(line)
-					seq := ls.seq.Add(1)
-					timestamp := ts
-					if timestamp == "" {
-						timestamp = ws.NowRFC3339()
-					}
-					msgs <- ws.LogMessage{
-						Seq:       seq,
-						Level:     level,
-						Message:   msg,
-						Timestamp: timestamp,
-					}
-				}
-			}()
-			if batched {
-				go ws.ForwardLogJSONBatched(ctx, ls.hub, msgs, 50, 400*time.Millisecond)
-			} else {
-				go ws.ForwardLogJSON(ctx, ls.hub, msgs)
-			}
-		} else {
-			cleanChan := make(chan string, 256)
-			go func() {
-				defer close(cleanChan)
-				for line := range lines {
-					_, msg, _ := ws.NormalizeContainerLine(line)
-					cleanChan <- msg
-				}
-			}()
-			go ws.ForwardLines(ctx, ls.hub, cleanChan)
+		if err := h.containerService.StreamLogs(ctx, containerID, lines, follow, tail, since, timestamps); err != nil {
+			slog.Error("StreamLogs failed", "containerID", containerID, "err", err)
 		}
-	})
+	}()
+
+	if format == "json" {
+		msgs := make(chan ws.LogMessage, 256)
+		go func() {
+			defer func() {
+				close(msgs)
+				slog.Debug("msgs channel closed", "containerID", containerID)
+			}()
+			lineCount := 0
+			for line := range lines {
+				lineCount++
+				level, msg, ts := ws.NormalizeContainerLine(line)
+				seq := ls.seq.Add(1)
+				timestamp := ts
+				if timestamp == "" {
+					timestamp = ws.NowRFC3339()
+				}
+				msgs <- ws.LogMessage{
+					Seq:       seq,
+					Level:     level,
+					Message:   msg,
+					Timestamp: timestamp,
+				}
+			}
+		}()
+		if batched {
+			go ws.ForwardLogJSONBatched(ctx, ls.hub, msgs, 50, 400*time.Millisecond)
+		} else {
+			go ws.ForwardLogJSON(ctx, ls.hub, msgs)
+		}
+	} else {
+		cleanChan := make(chan string, 256)
+		go func() {
+			defer close(cleanChan)
+			for line := range lines {
+				_, msg, _ := ws.NormalizeContainerLine(line)
+				cleanChan <- msg
+			}
+		}()
+		go ws.ForwardLines(ctx, ls.hub, cleanChan)
+	}
 
 	return ls.hub
 }
@@ -571,7 +566,7 @@ type containerStatsStream struct {
 
 func (h *ContainerHandler) getOrStartContainerStatsHub(containerID string) *ws.Hub {
 	key := fmt.Sprintf("%s::stats", containerID)
-	v, _ := h.logStreams.LoadOrStore(key, &containerStatsStream{
+	v, _ := h.statsStreams.LoadOrStore(key, &containerStatsStream{
 		hub: ws.NewHub(1024),
 	})
 	ss := v.(*containerStatsStream)
@@ -583,7 +578,7 @@ func (h *ContainerHandler) getOrStartContainerStatsHub(containerID string) *ws.H
 		ss.hub.SetOnEmpty(func() {
 			slog.Debug("all clients disconnected, cleaning up stats hub", "containerID", containerID)
 			cancel()
-			h.logStreams.Delete(key)
+			h.statsStreams.Delete(key)
 		})
 
 		go ss.hub.Run(ctx)

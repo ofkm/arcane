@@ -5,11 +5,12 @@
 	import { properties } from '@codemirror/legacy-modes/mode/properties';
 	import { linter, lintGutter } from '@codemirror/lint';
 	import jsyaml from 'js-yaml';
-	import { arcaneDark } from './theme';
+	import { arcaneDarkInit } from './theme';
 	import type { EditorView } from '@codemirror/view';
 	import type { Extension } from '@codemirror/state';
 	import type { Diagnostic, LintSource } from '@codemirror/lint';
 	import { m } from '$lib/paraglide/messages';
+	import configStore from '$lib/stores/config-store';
 
 	type CodeLanguage = 'yaml' | 'env';
 
@@ -68,7 +69,12 @@
 		return diagnostics;
 	};
 
-	const extensions = $derived([...getLanguageExtension(language), arcaneDark]);
+	const theme = $derived.by(() => {
+		$configStore;
+		return arcaneDarkInit();
+	});
+
+	const extensions = $derived([...getLanguageExtension(language), theme]);
 
 	const styles = $derived({
 		'&': {

@@ -6,10 +6,10 @@ services:
       dockerfile: docker/Dockerfile.dev
       target: frontend-dev
       args:
-        NODE_VERSION: '24'
+        NODE_VERSION: "24"
     container_name: arcane-frontend-dev
     ports:
-      - '3000:3000'
+      - "3000:3000"
     volumes:
       # Source code mounting for hot reload
       - ./frontend:/app/frontend:cached
@@ -19,6 +19,8 @@ services:
       # Anonymous volumes for node_modules to avoid conflicts
       - /app/node_modules
       - /app/frontend/node_modules
+      # Persistent pnpm cache
+      - pnpm-cache:/root/.local/share/pnpm/store
     env_file:
       - .env
     environment:
@@ -29,8 +31,17 @@ services:
     networks:
       - arcane-dev
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:3000 >/dev/null 2>&1 || exit 1']
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:3000 >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -43,10 +54,10 @@ services:
       dockerfile: docker/Dockerfile.dev
       target: backend-dev
       args:
-        GO_VERSION: '1.25'
+        GO_VERSION: "1.25.2"
     container_name: arcane-backend-dev
     ports:
-      - '3552:3552'
+      - "3552:3552"
     volumes:
       # Source code mounting for hot reload
       - ./backend:/app:cached
@@ -68,8 +79,20 @@ services:
     networks:
       - arcane-dev
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:3552/api/health >/dev/null || exit 1']
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:3552/api/health >/dev/null || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -81,10 +104,10 @@ services:
       dockerfile: docker/Dockerfile.dev
       target: backend-dev
       args:
-        GO_VERSION: '1.25'
+        GO_VERSION: "1.25.2"
     container_name: arcane-agent
     ports:
-      - '3553:3553'
+      - "3553:3553"
     env_file:
       - .env
     environment:
@@ -103,8 +126,20 @@ services:
     networks:
       - arcane-dev
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:3553/api/health >/dev/null || exit 1']
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:3553/api/health >/dev/null || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -124,3 +159,5 @@ volumes:
     name: arcane-go-build-cache
   go-mod-cache:
     name: arcane-go-mod-cache
+  pnpm-cache:
+    name: arcane-pnpm-cache

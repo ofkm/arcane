@@ -1,4 +1,4 @@
-import { environmentStore } from '$lib/stores/environment.store';
+import { environmentStore } from '$lib/stores/environment.store.svelte';
 import versionService from '$lib/services/version-service';
 import { tryCatch } from '$lib/utils/try-catch';
 import userStore from '$lib/stores/user-store';

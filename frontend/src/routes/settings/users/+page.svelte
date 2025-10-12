@@ -1,7 +1,5 @@
 <script lang="ts">
 	import UsersIcon from '@lucide/svelte/icons/users';
-	import ShieldIcon from '@lucide/svelte/icons/shield';
-	import UserCheckIcon from '@lucide/svelte/icons/user-check';
 	import { toast } from 'svelte-sonner';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -12,7 +10,7 @@
 	import type { CreateUser } from '$lib/types/user.type';
 	import { m } from '$lib/paraglide/messages';
 	import { userService } from '$lib/services/user-service';
-	import { SettingsPageLayout, type SettingsActionButton, type SettingsStatCard } from '$lib/layouts/index.js';
+	import { SettingsPageLayout, type SettingsActionButton } from '$lib/layouts/index.js';
 
 	let { data } = $props();
 
@@ -32,10 +30,6 @@
 		editing: false,
 		refresh: false
 	});
-
-	const totalUsers = $derived(users.data.length);
-	const adminUsers = $derived(users.data.filter((u) => u.roles?.includes('admin')).length);
-	const regularUsers = $derived(users.data.filter((u) => !u.roles?.includes('admin')).length);
 
 	function openCreateDialog() {
 		userToEdit = null;
