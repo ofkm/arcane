@@ -69,7 +69,7 @@
 								</Avatar.Fallback>
 							</Avatar.Root>
 							{#if !isCollapsed}
-								<div class="grid flex-1 pl-0 text-left text-sm leading-tight">
+								<div class="grid flex-1 text-left text-sm leading-tight">
 									<span class="truncate font-medium">{user.displayName}</span>
 									<span class="truncate text-xs">{user.email}</span>
 								</div>
@@ -93,7 +93,7 @@
 						}
 					}}
 				>
-					<DropdownMenu.Label class="px-3 pt-2 pb-2 font-normal">
+					<DropdownMenu.Label class="px-3 pb-2 pt-2 font-normal">
 						<div class="flex items-center gap-3 text-left text-sm">
 							<Avatar.Root class="size-8 shrink-0 rounded-lg">
 								{#if $settingsStore.enableGravatar}

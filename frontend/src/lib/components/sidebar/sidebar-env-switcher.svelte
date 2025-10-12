@@ -123,50 +123,55 @@
 				>
 					<DropdownMenu.Label class="text-muted-foreground text-xs">{m.sidebar_select_environment()}</DropdownMenu.Label>
 					{#if environmentStore.available.length === 0}
-						<DropdownMenu.Item disabled class="gap-2 p-2">
-							<div class="flex size-6 items-center justify-center rounded-md border">
-								<ServerIcon class="size-3.5 shrink-0" />
+						<DropdownMenu.Item disabled class="opacity-50">
+							<div class="flex items-center gap-2">
+								<div
+									class="bg-sidebar-accent/50 border-border flex size-8 shrink-0 items-center justify-center rounded-lg border"
+								>
+									<ServerIcon class="size-3.5" />
+								</div>
+								<span class="text-sm">{m.sidebar_no_environments()}</span>
 							</div>
-							<span>{m.sidebar_no_environments()}</span>
 						</DropdownMenu.Item>
 					{:else}
 						{#each environmentStore.available as env (env.id)}
 							{@const isActive = environmentStore.selected?.id === env.id}
 							<DropdownMenu.Item
 								onSelect={() => !isActive && handleSelect(env)}
-								class={cn(
-									'gap-2 p-2',
-									isActive && 'bg-sidebar-accent text-sidebar-accent-foreground pointer-events-none font-medium'
-								)}
+								class={cn(isActive && 'bg-sidebar-accent pointer-events-none')}
 							>
-								<div
-									class={cn(
-										'flex size-6 items-center justify-center rounded-md border',
-										isActive ? 'bg-primary border-primary' : 'border-border'
-									)}
-								>
-									{#if env.isLocal}
-										<ServerIcon class={cn('size-3.5 shrink-0', isActive && 'text-primary-foreground')} />
-									{:else}
-										<RouterIcon class={cn('size-3.5 shrink-0', isActive && 'text-primary-foreground')} />
-									{/if}
-								</div>
-								<div class="flex flex-col">
-									<span>{getEnvLabel(env)}</span>
-									<span class={cn('text-xs', isActive ? 'text-sidebar-accent-foreground/70' : 'text-muted-foreground')}>
-										{getConnectionString(env)}
-									</span>
+								<div class="flex items-center gap-2">
+									<div
+										class={cn(
+											'flex size-8 shrink-0 items-center justify-center rounded-lg border',
+											isActive ? 'bg-primary border-primary' : 'bg-sidebar-accent/50 border-border'
+										)}
+									>
+										{#if env.isLocal}
+											<ServerIcon class={cn('size-3.5', isActive && 'text-primary-foreground')} />
+										{:else}
+											<RouterIcon class={cn('size-3.5', isActive && 'text-primary-foreground')} />
+										{/if}
+									</div>
+									<div class="flex flex-1 flex-col text-left">
+										<span class="text-sm font-medium">{getEnvLabel(env)}</span>
+										<span class={cn('text-muted-foreground text-xs', isActive && 'text-sidebar-accent-foreground/70')}>
+											{getConnectionString(env)}
+										</span>
+									</div>
 								</div>
 							</DropdownMenu.Item>
 						{/each}
 					{/if}
 					{#if isAdmin}
 						<DropdownMenu.Separator />
-						<DropdownMenu.Item class="gap-2 p-2" onSelect={() => goto('/environments')}>
-							<div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
-								<PlusIcon class="size-4" />
+						<DropdownMenu.Item onSelect={() => goto('/environments')}>
+							<div class="flex items-center gap-2">
+								<div class="flex size-8 shrink-0 items-center justify-center">
+									<PlusIcon class="size-4" />
+								</div>
+								<span class="text-muted-foreground text-sm font-medium">{m.sidebar_manage_environments()}</span>
 							</div>
-							<div class="text-muted-foreground font-medium">{m.sidebar_manage_environments()}</div>
 						</DropdownMenu.Item>
 					{/if}
 				</div>

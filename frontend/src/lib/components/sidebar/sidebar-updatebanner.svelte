@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as Item from '$lib/components/ui/item';
 	import { cn } from '$lib/utils';
 	import * as Separator from '$lib/components/ui/separator/index.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
@@ -28,43 +29,50 @@
 		<Separator.Root class="mb-3 opacity-30" />
 
 		{#if !isCollapsed}
-			<div
-				class="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-3 transition-all hover:scale-[1.02] hover:from-blue-500/15 hover:to-blue-600/10 hover:shadow-md"
+			<a
+				href={versionInformation?.releaseUrl}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="block transition-transform hover:scale-[1.02]"
 			>
-				<Button
-					variant="link"
-					href={versionInformation?.releaseUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					class="group flex items-center justify-between text-blue-600 transition-colors duration-200 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+				<Item.Root
+					variant="default"
+					size="sm"
+					class="border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 hover:from-blue-500/15 hover:to-blue-600/10 hover:shadow-md"
 				>
-					<div class="flex flex-col gap-1">
-						<span class="text-sm font-semibold">{m.sidebar_update_available()}</span>
-						<span class="text-xs text-blue-500/80"
-							>{m.sidebar_version({ version: versionInformation?.newestVersion ?? m.common_unknown() })}</span
-						>
-					</div>
-					<ExternalLink size={16} class="transition-transform duration-200 group-hover:scale-110" />
-				</Button>
-			</div>
+					<Item.Header>
+						<Item.Content>
+							<Item.Title class="text-blue-600 dark:text-blue-400">{m.sidebar_update_available()}</Item.Title>
+							<Item.Description class="text-blue-500/80"
+								>{m.sidebar_version({ version: versionInformation?.newestVersion ?? m.common_unknown() })}</Item.Description
+							>
+						</Item.Content>
+						<ExternalLink size={16} class="text-blue-600 transition-transform duration-200 hover:scale-110 dark:text-blue-400" />
+					</Item.Header>
+				</Item.Root>
+			</a>
 		{:else}
 			<div class="flex justify-center">
 				<Tooltip.Root>
 					<Tooltip.Trigger>
 						{#snippet child({ props })}
-							<div
-								class="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 transition-all hover:scale-[1.02] hover:from-blue-500/15 hover:to-blue-600/10 hover:shadow-md"
+							<a
+								href={versionInformation?.releaseUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="block transition-transform hover:scale-[1.02]"
 								{...props}
 							>
-								<a
-									href={versionInformation?.releaseUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="flex h-full w-full items-center justify-center text-blue-600 transition-all duration-200 hover:scale-110 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+								<Item.Root
+									variant="default"
+									size="sm"
+									class="border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-2 hover:from-blue-500/15 hover:to-blue-600/10 hover:shadow-md"
 								>
-									<ExternalLink size={14} />
-								</a>
-							</div>
+									<Item.Header>
+										<ExternalLink size={14} class="text-blue-600 dark:text-blue-400" />
+									</Item.Header>
+								</Item.Root>
+							</a>
 						{/snippet}
 					</Tooltip.Trigger>
 					<Tooltip.Content side="right" align="center" hidden={sidebar.state !== 'collapsed' || sidebar.isHovered}>

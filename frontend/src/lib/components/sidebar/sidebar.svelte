@@ -49,7 +49,7 @@
 		<div class="relative">
 			<SidebarLogo {isCollapsed} {versionInformation} />
 			{#if !isCollapsed || sidebar.isHovered}
-				<div class="absolute top-0 right-0 -mt-1 -mr-1">
+				<div class="absolute right-0 top-0 -mr-1 -mt-1">
 					<SidebarPinButton />
 				</div>
 			{/if}
@@ -82,7 +82,7 @@
 								variant="ghost"
 								title={m.common_logout()}
 								type="submit"
-								class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9 w-9 rounded-xl p-0"
+								class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 size-9 rounded-xl p-0"
 							>
 								<LogOutIcon size={16} />
 							</Button.Root>
@@ -90,6 +90,19 @@
 					</div>
 				</div>
 			{/if}
+		{/if}
+		{#if !isCollapsed}
+			<div class="border-border/30 border-t px-3 py-2">
+				<div class="text-muted-foreground/60 text-center text-xs font-medium">
+					{m.sidebar_version({ version: versionInformation?.currentVersion ?? m.common_unknown() })}
+				</div>
+			</div>
+		{:else}
+			<div class="border-border/30 flex justify-center border-t px-1 py-2">
+				<div class="text-muted-foreground/60 text-[10px] font-medium">
+					{versionInformation?.currentVersion?.replace(/^v/, '') ?? '?'}
+				</div>
+			</div>
 		{/if}
 	</Sidebar.Footer>
 </Sidebar.Root>

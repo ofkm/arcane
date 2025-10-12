@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card';
+	import * as Item from '$lib/components/ui/item';
 	import * as Popover from '$lib/components/ui/popover';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -72,111 +72,116 @@
 	}
 </script>
 
-<Card.Root class={className}>
-	{#snippet children()}
-		<Card.Header icon={HardDriveIcon} iconVariant="primary" compact {loading}>
-			{#snippet children()}
-				<div class="min-w-0 flex-1">
-					<div class="text-foreground text-sm font-semibold">{m.dashboard_meter_disk()}</div>
-					<div class="text-muted-foreground text-xs">{m.dashboard_meter_disk_desc()}</div>
-					<div class="text-muted-foreground/70 mt-0.5 font-mono text-[10px]">
-						{m.dashboard_meter_disk_monitoring({ path: $settingsStore.diskUsagePath })}
+<Item.Root variant="outline" class={className}>
+	<Item.Header>
+		<Item.Media variant="icon">
+			{#if loading}
+				<div class="bg-muted size-4 animate-pulse rounded"></div>
+			{:else}
+				<HardDriveIcon class="text-primary" />
+			{/if}
+		</Item.Media>
+		<Item.Content>
+			<Item.Title>{m.dashboard_meter_disk()}</Item.Title>
+			<Item.Description>
+				{m.dashboard_meter_disk_desc()}
+				<span class="mt-0.5 block font-mono text-[10px]">
+					{m.dashboard_meter_disk_monitoring({ path: $settingsStore.diskUsagePath })}
+				</span>
+			</Item.Description>
+		</Item.Content>
+		<Popover.Root bind:open={popoverOpen}>
+			<Popover.Trigger>
+				{#snippet child({ props })}
+					<Button {...props} variant="ghost" size="icon" class="hover:bg-muted h-7 w-7 shrink-0">
+						<SettingsIcon class="size-4" />
+					</Button>
+				{/snippet}
+			</Popover.Trigger>
+			<Popover.Content class="w-80">
+				<div class="space-y-4">
+					<div class="space-y-2">
+						<h4 class="text-sm font-medium leading-none">{m.disk_usage_settings()}</h4>
+						<p class="text-muted-foreground text-sm">{m.disk_usage_settings_description()}</p>
+					</div>
+					<div class="space-y-2">
+						<Label for="disk-path">{m.directory_path()}</Label>
+						<Input id="disk-path" placeholder="data/projects" bind:value={diskUsagePath} disabled={isSaving} />
+					</div>
+					<div class="flex justify-end gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onclick={() => {
+								diskUsagePath = $settingsStore.diskUsagePath || 'data/projects';
+								popoverOpen = false;
+							}}
+							disabled={isSaving}
+						>
+							Cancel
+						</Button>
+						<Button size="sm" onclick={saveDiskUsagePath} disabled={isSaving}>
+							{isSaving ? m.common_saving() : m.common_save()}
+						</Button>
 					</div>
 				</div>
-				<Popover.Root bind:open={popoverOpen}>
-					<Popover.Trigger>
-						{#snippet child({ props })}
-							<Button {...props} variant="ghost" size="icon" class="hover:bg-muted h-7 w-7 shrink-0">
-								<SettingsIcon class="size-4" />
-							</Button>
-						{/snippet}
-					</Popover.Trigger>
-					<Popover.Content class="w-80">
-						<div class="space-y-4">
-							<div class="space-y-2">
-								<h4 class="text-sm leading-none font-medium">{m.disk_usage_settings()}</h4>
-								<p class="text-muted-foreground text-sm">{m.disk_usage_settings_description()}</p>
-							</div>
-							<div class="space-y-2">
-								<Label for="disk-path">{m.directory_path()}</Label>
-								<Input id="disk-path" placeholder="data/projects" bind:value={diskUsagePath} disabled={isSaving} />
-							</div>
-							<div class="flex justify-end gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									onclick={() => {
-										diskUsagePath = $settingsStore.diskUsagePath || 'data/projects';
-										popoverOpen = false;
-									}}
-									disabled={isSaving}
-								>
-									Cancel
-								</Button>
-								<Button size="sm" onclick={saveDiskUsagePath} disabled={isSaving}>
-									{isSaving ? m.common_saving() : m.common_save()}
-								</Button>
-							</div>
-						</div>
-					</Popover.Content>
-				</Popover.Root>
-			{/snippet}
-		</Card.Header>
+			</Popover.Content>
+		</Popover.Root>
+	</Item.Header>
 
-		<Card.Content class="flex flex-1 items-center p-3 sm:p-4">
-			<div class="flex w-full items-center gap-4">
-				<div class="flex-1 space-y-2">
+	<Item.Footer>
+		<div class="flex w-full items-center gap-4">
+			<div class="flex-1 space-y-2">
+				{#if loading}
+					<div class="bg-muted h-2 w-full animate-pulse rounded"></div>
+				{:else}
+					<Progress value={percentage} max={100} class="h-2" />
+				{/if}
+
+				<div class="flex items-center justify-between text-xs">
 					{#if loading}
-						<div class="bg-muted h-2 w-full animate-pulse rounded"></div>
+						<div class="bg-muted h-3 w-16 animate-pulse rounded"></div>
+						<div class="bg-muted h-3 w-24 animate-pulse rounded"></div>
 					{:else}
-						<Progress value={percentage} max={100} class="h-2" />
+						<span class="text-muted-foreground font-medium">
+							{percentage.toFixed(1)}%
+						</span>
+						<span class="text-muted-foreground/70 font-mono">
+							{formatBytes(diskUsage ?? 0)} / {formatBytes(diskTotal ?? 0)}
+						</span>
 					{/if}
-
-					<div class="flex items-center justify-between text-xs">
-						{#if loading}
-							<div class="bg-muted h-3 w-16 animate-pulse rounded"></div>
-							<div class="bg-muted h-3 w-24 animate-pulse rounded"></div>
-						{:else}
-							<span class="text-muted-foreground font-medium">
-								{percentage.toFixed(1)}%
-							</span>
-							<span class="text-muted-foreground/70 font-mono">
-								{formatBytes(diskUsage ?? 0)} / {formatBytes(diskTotal ?? 0)}
-							</span>
-						{/if}
-					</div>
-				</div>
-
-				<div class="bg-muted/50 hidden shrink-0 gap-4 rounded-lg p-3 sm:flex">
-					<div class="space-y-0.5">
-						{#if loading}
-							<div class="bg-muted h-3 w-12 animate-pulse rounded"></div>
-							<div class="bg-muted h-4 w-16 animate-pulse rounded"></div>
-						{:else}
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-								{m.dashboard_meter_disk_used()}
-							</div>
-							<div class="text-foreground text-sm font-semibold">
-								{formatBytes(diskUsage ?? 0)}
-							</div>
-						{/if}
-					</div>
-
-					<div class="space-y-0.5">
-						{#if loading}
-							<div class="bg-muted h-3 w-12 animate-pulse rounded"></div>
-							<div class="bg-muted h-4 w-16 animate-pulse rounded"></div>
-						{:else}
-							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-								{m.dashboard_meter_disk_free()}
-							</div>
-							<div class="text-foreground text-sm font-semibold">
-								{formatBytes(diskFree)}
-							</div>
-						{/if}
-					</div>
 				</div>
 			</div>
-		</Card.Content>
-	{/snippet}
-</Card.Root>
+
+			<div class="bg-muted/50 hidden shrink-0 gap-4 rounded-lg p-3 sm:flex">
+				<div class="space-y-0.5">
+					{#if loading}
+						<div class="bg-muted h-3 w-12 animate-pulse rounded"></div>
+						<div class="bg-muted h-4 w-16 animate-pulse rounded"></div>
+					{:else}
+						<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+							{m.dashboard_meter_disk_used()}
+						</div>
+						<div class="text-foreground text-sm font-semibold">
+							{formatBytes(diskUsage ?? 0)}
+						</div>
+					{/if}
+				</div>
+
+				<div class="space-y-0.5">
+					{#if loading}
+						<div class="bg-muted h-3 w-12 animate-pulse rounded"></div>
+						<div class="bg-muted h-4 w-16 animate-pulse rounded"></div>
+					{:else}
+						<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+							{m.dashboard_meter_disk_free()}
+						</div>
+						<div class="text-foreground text-sm font-semibold">
+							{formatBytes(diskFree)}
+						</div>
+					{/if}
+				</div>
+			</div>
+		</div>
+	</Item.Footer>
+</Item.Root>

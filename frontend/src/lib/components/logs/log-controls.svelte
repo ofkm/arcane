@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Select from '$lib/components/ui/select';
+	import { Switch } from '$lib/components/ui/switch';
+	import { Label } from '$lib/components/ui/label';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import { m } from '$lib/paraglide/messages';
 	import { PersistedState } from 'runed';
@@ -51,10 +53,10 @@
 </script>
 
 <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-	<label class="flex items-center gap-2">
-		<input type="checkbox" bind:checked={autoScroll} class="size-4" />
-		<span class="text-sm font-medium">{m.common_autoscroll()}</span>
-	</label>
+	<div class="flex items-center gap-2">
+		<Switch id="auto-scroll" bind:checked={autoScroll} />
+		<Label for="auto-scroll" class="text-sm font-medium">{m.common_autoscroll()}</Label>
+	</div>
 
 	<Select.Root type="single" bind:value={selectedTail} disabled={isStreaming} onValueChange={(v: string) => (selectedTail = v)}>
 		<Select.Trigger class="h-9 w-32 text-xs">
