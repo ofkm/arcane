@@ -815,7 +815,7 @@
 	"templates_add_registry_title": "Añadir Registro de Plantillas",
 	"templates_add_registry_description": "Añadir un registro de plantillas remoto para acceder a plantillas comunitarias.",
 	"templates_registry_url_label": "URL del registro *",
-	"templates_registry_url_placeholder": "https://templates.arcane.ofkm.dev/registry.json",
+	"templates_registry_url_placeholder": "https://registry.getarcane.app/registry.json",
 	"templates_registry_url_description": "URL al manifiesto JSON del registro",
 	"templates_registry_url_required": "Se requiere la URL del registro",
 	"templates_enable_registry_label": "Habilitar Registro",

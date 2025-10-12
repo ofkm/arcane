@@ -815,7 +815,7 @@
 	"templates_add_registry_title": "添加Registry仓库模板",
 	"templates_add_registry_description": "添加远程Registries仓库模板以访问社区模板。",
 	"templates_registry_url_label": "Registry URL *",
-	"templates_registry_url_placeholder": "https://templates.arcane.ofkm.dev/registry.json",
+	"templates_registry_url_placeholder": "https://registry.getarcane.app/registry.json",
 	"templates_registry_url_description": "URL to the registry JSON manifest",
 	"templates_registry_url_required": "必须输入Registry仓库 URL",
 	"templates_enable_registry_label": "启用Registry仓库",

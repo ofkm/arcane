@@ -17,6 +17,8 @@
 	import MobileFloatingNav from '$lib/components/mobile-nav/mobile-floating-nav.svelte';
 	import MobileDockedNav from '$lib/components/mobile-nav/mobile-docked-nav.svelte';
 	import { getEffectiveNavigationSettings, navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
+	import { browser, dev } from '$app/environment';
+	import { onMount } from 'svelte';
 
 	let {
 		data,
@@ -25,6 +27,12 @@
 		data: LayoutData;
 		children: Snippet;
 	} = $props();
+
+	onMount(() => {
+		if (!dev && browser && 'serviceWorker' in navigator) {
+			navigator.serviceWorker.register('/service-worker.js');
+		}
+	});
 
 	const { versionInformation, user, settings } = data;
 

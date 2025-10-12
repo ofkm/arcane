@@ -79,6 +79,28 @@ func NewFileServerWithCaching(root http.FileSystem, maxAge int) *FileServerWithC
 }
 
 func (f *FileServerWithCaching) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/")
+	if path == "" {
+		path = "index.html"
+	}
+
+	// Never cache index.html or service-worker.js - they need to be fresh to detect updates
+	if path == "index.html" || path == "service-worker.js" {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		http.FileServer(f.root).ServeHTTP(w, r)
+		return
+	}
+
+	// For immutable assets (with content hashes), use long-term caching
+	if strings.Contains(path, "/_app/immutable/") {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		http.FileServer(f.root).ServeHTTP(w, r)
+		return
+	}
+
+	// For other static assets, use the configured cache duration
 	if ifModifiedSince := r.Header.Get("If-Modified-Since"); ifModifiedSince != "" {
 		ifModifiedSinceTime, err := time.Parse(http.TimeFormat, ifModifiedSince)
 		if err == nil && f.lastModified.Before(ifModifiedSinceTime.Add(1*time.Second)) {

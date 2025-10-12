@@ -31,14 +31,6 @@ services:
     networks:
       - arcane-dev
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 2G
-        reservations:
-          cpus: "0.5"
-          memory: 512M
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:3000 >/dev/null 2>&1 || exit 1"]
@@ -79,14 +71,6 @@ services:
     networks:
       - arcane-dev
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 2G
-        reservations:
-          cpus: "0.5"
-          memory: 512M
     healthcheck:
       test:
         [
@@ -126,14 +110,6 @@ services:
     networks:
       - arcane-dev
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1G
-        reservations:
-          cpus: "0.25"
-          memory: 256M
     healthcheck:
       test:
         [

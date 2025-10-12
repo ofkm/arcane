@@ -815,7 +815,7 @@
 	"templates_add_registry_title": "Voeg sjabloonlijst toe",
 	"templates_add_registry_description": "Voeg een externe template register toe om toegang te krijgen tot community templates.",
 	"templates_registry_url_label": "Register URL *",
-	"templates_registry_url_placeholder": "https://templates.arcane.ofkm.dev/registry.json",
+	"templates_registry_url_placeholder": "https://registry.getarcane.app/registry.json",
 	"templates_registry_url_description": "URL naar het register JSON manifest",
 	"templates_registry_url_required": "Register URL is vereist",
 	"templates_enable_registry_label": "Register inschakelen",
