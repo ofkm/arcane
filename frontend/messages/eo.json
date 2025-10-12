@@ -563,6 +563,7 @@
 	"containers_port_mappings": "Port Mappings",
 	"containers_port_mappings_description": "Network ports exposed by this container for external access",
 	"containers_not_published": "Not published",
+	"containers_no_ports": "No ports",
 	"common_labels_description": "Metadata labels attached to this container for organization and automation",
 	"containers_no_labels_defined": "No labels defined",
 	"containers_networks_title": "Networks",
