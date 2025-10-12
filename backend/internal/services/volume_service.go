@@ -6,8 +6,11 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/volume"
+	"github.com/docker/docker/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -59,6 +62,16 @@ func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*dto.
 	}
 
 	v := dto.NewVolumeDto(vol)
+
+	containerIDs, err := docker.GetContainersUsingVolume(ctx, dockerClient, name)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to get containers using volume",
+			slog.String("volume", name),
+			slog.String("error", err.Error()))
+	} else {
+		v.Containers = containerIDs
+	}
+
 	return &v, nil
 }
 
@@ -185,19 +198,13 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 		return false, nil, fmt.Errorf("volume not found: %w", err)
 	}
 
-	usageVolumes, duErr := docker.GetVolumeUsageData(ctx, dockerClient)
-	if duErr != nil {
-		return false, nil, fmt.Errorf("failed to get volume usage data: %w", duErr)
+	containerIDs, err := docker.GetContainersUsingVolume(ctx, dockerClient, vol.Name)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to get containers using volume: %w", err)
 	}
 
-	for _, uv := range usageVolumes {
-		if uv.Name == vol.Name && uv.UsageData != nil {
-			inUse := uv.UsageData.RefCount >= 1
-			return inUse, nil, nil
-		}
-	}
-
-	return false, nil, nil
+	inUse := len(containerIDs) > 0
+	return inUse, containerIDs, nil
 }
 
 func (s *VolumeService) enrichVolumesWithUsageData(volumes []*volume.Volume, usageVolumes []volume.Volume) []volume.Volume {
@@ -215,6 +222,24 @@ func (s *VolumeService) enrichVolumesWithUsageData(volumes []*volume.Volume, usa
 		}
 	}
 	return result
+}
+
+func (s *VolumeService) buildVolumeContainerMap(ctx context.Context, dockerClient *client.Client) (map[string][]string, error) {
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list containers: %w", err)
+	}
+
+	volumeContainerMap := make(map[string][]string)
+	for _, c := range containers {
+		for _, m := range c.Mounts {
+			if m.Type == mount.TypeVolume && m.Name != "" {
+				volumeContainerMap[m.Name] = append(volumeContainerMap[m.Name], c.ID)
+			}
+		}
+	}
+
+	return volumeContainerMap, nil
 }
 
 func (s *VolumeService) buildVolumePaginationConfig() pagination.Config[dto.VolumeDto] {
@@ -361,9 +386,20 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, params paginat
 
 	volumes := s.enrichVolumesWithUsageData(volListBody.Volumes, usageVolumes)
 
+	volumeContainerMap, err := s.buildVolumeContainerMap(ctx, dockerClient)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to build volume-container map",
+			slog.String("error", err.Error()))
+		volumeContainerMap = make(map[string][]string)
+	}
+
 	items := make([]dto.VolumeDto, 0, len(volumes))
 	for _, v := range volumes {
-		items = append(items, dto.NewVolumeDto(v))
+		volDto := dto.NewVolumeDto(v)
+		if containerIDs, ok := volumeContainerMap[v.Name]; ok {
+			volDto.Containers = containerIDs
+		}
+		items = append(items, volDto)
 	}
 
 	config := s.buildVolumePaginationConfig()

@@ -497,7 +497,12 @@ func (s *SystemService) ConvertToDockerCompose(parsed *models.DockerRunCommand) 
 }
 
 func (s *SystemService) GetDiskUsagePath(ctx context.Context) string {
-	path := s.settingsService.GetStringSetting(ctx, "diskUsagePath", "/")
+	cfg := s.settingsService.GetSettingsConfig()
+	if cfg == nil {
+		return "/"
+	}
+
+	path := cfg.DiskUsagePath.Value
 	if path == "" {
 		path = "/"
 	}

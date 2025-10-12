@@ -1,32 +1,32 @@
 <script lang="ts" module>
-	import { tv, type VariantProps } from "tailwind-variants";
+	import { tv, type VariantProps } from 'tailwind-variants';
 
 	const buttonGroupVariants = tv({
 		base: "flex w-fit items-stretch has-[>[data-slot=button-group]]:gap-2 [&>*]:focus-visible:relative [&>*]:focus-visible:z-10 has-[select[aria-hidden=true]:last-child]:[&>[data-slot=select-trigger]:last-of-type]:rounded-r-md [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1",
 		variants: {
 			orientation: {
 				horizontal:
-					"[&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0 [&>*:not(:last-child)]:rounded-r-none",
+					'[&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0 [&>*:not(:last-child)]:rounded-r-none',
 				vertical:
-					"flex-col [&>*:not(:first-child)]:rounded-t-none [&>*:not(:first-child)]:border-t-0 [&>*:not(:last-child)]:rounded-b-none",
-			},
+					'flex-col [&>*:not(:first-child)]:rounded-t-none [&>*:not(:first-child)]:border-t-0 [&>*:not(:last-child)]:rounded-b-none'
+			}
 		},
 		defaultVariants: {
-			orientation: "horizontal",
-		},
+			orientation: 'horizontal'
+		}
 	});
 
-	export type ButtonGroupOrientation = VariantProps<typeof buttonGroupVariants>["orientation"];
+	export type ButtonGroupOrientation = VariantProps<typeof buttonGroupVariants>['orientation'];
 </script>
 
 <script lang="ts">
-	import { cn } from "$lib/utils.js";
-	import type { HTMLAttributes } from "svelte/elements";
+	import { cn } from '$lib/utils.js';
+	import type { HTMLAttributes } from 'svelte/elements';
 
 	let {
 		class: className,
 		children,
-		orientation = "horizontal",
+		orientation = 'horizontal',
 		...restProps
 	}: HTMLAttributes<HTMLDivElement> & {
 		orientation?: ButtonGroupOrientation;

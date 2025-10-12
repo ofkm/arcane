@@ -156,7 +156,7 @@
 	<div class="rounded-lg border p-3">
 		<div class="text-muted-foreground text-xs">{label}</div>
 		<div class="mt-1 flex items-center justify-between gap-2">
-			<div class="break-all text-sm">{value || '-'}</div>
+			<div class="text-sm break-all">{value || '-'}</div>
 			<Button variant="ghost" size="icon" class="size-7" onclick={() => handleCopy(value)} title={copyTitle}>
 				<CopyIcon class="size-4" />
 			</Button>

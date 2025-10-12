@@ -1,12 +1,12 @@
 <script lang="ts">
-import * as Tooltip from '$lib/components/ui/tooltip/index.js';
-import { cn, type WithElementRef } from '$lib/utils.js';
-import type { HTMLAttributes } from 'svelte/elements';
-import { SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from './constants.js';
-import { setSidebar } from './context.svelte.js';
-import { IsTablet } from '$lib/hooks/is-tablet.svelte.js';
-import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
-import { PersistedState } from 'runed';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+	import { cn, type WithElementRef } from '$lib/utils.js';
+	import type { HTMLAttributes } from 'svelte/elements';
+	import { SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from './constants.js';
+	import { setSidebar } from './context.svelte.js';
+	import { IsTablet } from '$lib/hooks/is-tablet.svelte.js';
+	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
+	import { PersistedState } from 'runed';
 
 	const persistedPinned = new PersistedState('sidebar-pinned', true);
 
@@ -50,7 +50,7 @@ import { PersistedState } from 'runed';
 			if (isTablet.current && !isMobile.current && value === true) {
 				return;
 			}
-			
+
 			open = value;
 			onOpenChange(value);
 

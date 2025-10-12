@@ -35,7 +35,7 @@ class SidebarState {
 		this.setOpen = props.setOpen;
 		this.#isTablet = new IsTablet();
 		this.props = props;
-		
+
 		// Sync the open state based on pinning preference and screen size
 		$effect(() => {
 			// On tablet, always collapse regardless of pinning preference
@@ -111,8 +111,6 @@ class SidebarState {
 		}
 	};
 
-	
-
 	toggle = () => {
 		if (!this.#isTablet.current) {
 			// On desktop, toggle the pinning preference
@@ -142,4 +140,3 @@ export function setSidebar(props: SidebarStateProps): SidebarState {
 export function useSidebar(): SidebarState {
 	return getContext(Symbol.for(SYMBOL_KEY));
 }
-

@@ -56,7 +56,7 @@
 						</div>
 						<div
 							class={{
-								'border-border border-1 mt-1 rounded-lg transition-all duration-200 ease-in-out': true,
+								'border-border mt-1 rounded-lg border-1 transition-all duration-200 ease-in-out': true,
 								'h-9 w-9': isValidColor(customColorInput),
 								'h-0 w-0': !isValidColor(customColorInput)
 							}}

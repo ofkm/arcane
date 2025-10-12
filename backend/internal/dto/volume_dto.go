@@ -19,6 +19,7 @@ type VolumeDto struct {
 	InUse      bool              `json:"inUse"`
 	UsageData  *VolumeUsageData  `json:"usageData,omitempty"`
 	Size       int64             `json:"size"`
+	Containers []string          `json:"containers"`
 }
 
 func NewVolumeDto(v volume.Volume) VolumeDto {
@@ -31,6 +32,7 @@ func NewVolumeDto(v volume.Volume) VolumeDto {
 		Options:    v.Options,
 		Labels:     v.Labels,
 		CreatedAt:  v.CreatedAt,
+		Containers: make([]string, 0),
 	}
 
 	if v.UsageData != nil {

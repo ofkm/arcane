@@ -139,7 +139,7 @@
 		'data-[disabled]:opacity-50 data-[disabled]:pointer-events-none';
 </script>
 
-<div class="bg-background flex min-h-screen flex-col">
+<div class="bg-background flex min-h-0 flex-col">
 	<!-- Header -->
 	<div class="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 border-b backdrop-blur">
 		<div class="mx-auto flex h-16 max-w-full items-center justify-between gap-4 px-6">
@@ -292,7 +292,7 @@
 							type="button"
 							variant="ghost"
 							size="sm"
-							class="h-auto w-full justify-start whitespace-normal break-all p-2 text-left font-mono text-xs"
+							class="h-auto w-full justify-start p-2 text-left font-mono text-xs break-all whitespace-normal"
 							onclick={() => useExample(command)}
 						>
 							<CopyIcon class="mr-2 size-3 shrink-0" />

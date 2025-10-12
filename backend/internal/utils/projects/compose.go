@@ -49,17 +49,27 @@ func (w writerConsumer) Log(container, msg string) {
 	if w.out == nil {
 		return
 	}
-	if !strings.HasSuffix(msg, "\n") {
-		msg += "\n"
+	// Include container/service name in the format expected by NormalizeProjectLine
+	output := msg
+	if container != "" {
+		output = container + " | " + msg
 	}
-	_, _ = io.WriteString(w.out, msg)
+	if !strings.HasSuffix(output, "\n") {
+		output += "\n"
+	}
+	_, _ = io.WriteString(w.out, output)
 }
 func (w writerConsumer) Err(container, msg string) {
 	if w.out == nil {
 		return
 	}
-	if !strings.HasSuffix(msg, "\n") {
-		msg += "\n"
+	// Include container/service name in the format expected by NormalizeProjectLine
+	output := msg
+	if container != "" {
+		output = container + " | " + msg
 	}
-	_, _ = io.WriteString(w.out, msg)
+	if !strings.HasSuffix(output, "\n") {
+		output += "\n"
+	}
+	_, _ = io.WriteString(w.out, output)
 }

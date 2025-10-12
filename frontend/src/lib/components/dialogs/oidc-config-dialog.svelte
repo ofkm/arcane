@@ -129,7 +129,7 @@
 {#snippet viewModeContent()}
 	<div class="bg-card/50 rounded-lg border p-4">
 		<h3 class="text-base font-semibold">{m.oidc_server_env_config_title()}</h3>
-		<p class="text-muted-foreground mb-4 mt-1 text-sm">{m.oidc_server_env_config_description()}</p>
+		<p class="text-muted-foreground mt-1 mb-4 text-sm">{m.oidc_server_env_config_description()}</p>
 
 		{#if currentSettings.authOidcEnabled}
 			<div class="divide-border/60 divide-y text-sm">
@@ -166,7 +166,7 @@
 {#snippet editModeContent()}
 	<div class="bg-card/50 rounded-lg border p-4">
 		<h3 class="text-base font-semibold">{m.oidc_basic_configuration_title()}</h3>
-		<p class="text-muted-foreground mb-4 mt-1 text-sm">{m.oidc_basic_description()}</p>
+		<p class="text-muted-foreground mt-1 mb-4 text-sm">{m.oidc_basic_description()}</p>
 
 		<div class="space-y-4">
 			<div class="space-y-2">
@@ -265,7 +265,7 @@
 		</div>
 		<p class="text-muted-foreground mb-3 text-sm">{m.oidc_redirect_uri_description()}</p>
 		<div class="flex items-center gap-2">
-			<code class="bg-muted flex-1 break-all rounded p-2 font-mono text-xs">{redirectUri}</code>
+			<code class="bg-muted flex-1 rounded p-2 font-mono text-xs break-all">{redirectUri}</code>
 			<Button size="sm" variant="outline" onclick={() => handleCopy(redirectUri)} class="flex-shrink-0" title={m.common_copy()}>
 				<CopyIcon class="size-3" />
 			</Button>

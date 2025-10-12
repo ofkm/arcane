@@ -8,8 +8,8 @@
 </script>
 
 {#if active}
-<Tooltip.Provider>
-	<Tooltip.Root>
+	<Tooltip.Provider>
+		<Tooltip.Root>
 			<Tooltip.Trigger>
 				<span
 					class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200 dark:bg-amber-900/50 dark:text-amber-200 dark:ring-amber-800"

@@ -1,6 +1,5 @@
 import type { PageLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import type { VolumeUsageDto } from '$lib/types/volume.type';
 import { volumeService } from '$lib/services/volume-service';
 import { containerService } from '$lib/services/container-service';
 
@@ -8,20 +7,10 @@ export const load: PageLoad = async ({ params }) => {
 	const { volumeName } = params;
 
 	try {
-		const volumeBase = await volumeService.getVolume(volumeName);
-		const usageRes = await volumeService.getVolumeUsage(volumeName);
-
-		const usage: VolumeUsageDto = (
-			usageRes && typeof usageRes === 'object' && 'data' in usageRes ? (usageRes as any).data : usageRes
-		) as VolumeUsageDto;
-
-		const volume = {
-			...volumeBase,
-			containers: Array.isArray(usage?.containers) ? usage.containers : []
-		};
+		const volume = await volumeService.getVolume(volumeName);
 
 		let containersDetailed: { id: string; name: string }[] = [];
-		if (volume.containers.length > 0) {
+		if (volume.containers && volume.containers.length > 0) {
 			containersDetailed = await Promise.all(
 				volume.containers.map(async (id: string) => {
 					try {

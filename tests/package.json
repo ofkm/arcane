@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "arcane-tests",
-  "packageManager": "pnpm@10.17.1",
+  "packageManager": "pnpm@10.18.2",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "test": "playwright test"

@@ -49,7 +49,7 @@
 			<div class="min-w-0 flex-1">
 				<div class="mb-1 flex items-start justify-between gap-2">
 					<div class="min-w-0 flex-1">
-						<h4 class="text-sm font-medium leading-tight">{label}</h4>
+						<h4 class="text-sm leading-tight font-medium">{label}</h4>
 					</div>
 
 					{#if hasOverride}
@@ -74,7 +74,7 @@
 					<div class="flex min-w-0 flex-1 items-center gap-2">
 						<ServerIcon class="text-muted-foreground size-3 flex-shrink-0 sm:size-4" />
 						<div class="min-w-0 flex-1">
-							<p class="text-xs font-medium leading-tight">{m.server_default()}</p>
+							<p class="text-xs leading-tight font-medium">{m.server_default()}</p>
 							<p class="text-muted-foreground hidden text-xs leading-tight sm:block">{m.applies_to_all_users()}</p>
 						</div>
 					</div>
@@ -112,7 +112,7 @@
 						<SmartphoneIcon class="text-muted-foreground size-3 flex-shrink-0 sm:size-4" />
 						<div class="min-w-0 flex-1">
 							<div class="flex flex-col sm:flex-row sm:items-center sm:gap-1">
-								<p class="text-xs font-medium leading-tight">{m.this_device()}</p>
+								<p class="text-xs leading-tight font-medium">{m.this_device()}</p>
 								{#if hasOverride}
 									<span class="text-xs leading-tight text-orange-600 dark:text-orange-400">({m.override()})</span>
 								{/if}

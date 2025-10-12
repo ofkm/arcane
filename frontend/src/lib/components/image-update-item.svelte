@@ -147,7 +147,7 @@
 	{#if authBadge}
 		<div class="mt-2">
 			<div
-				class="inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium {authBadge.classes}"
+				class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap {authBadge.classes}"
 			>
 				<KeyRoundIcon class="size-3 opacity-80" />
 				<span>{m.image_update_auth({ label: authBadge.label })}</span>
@@ -272,7 +272,7 @@
 			</div>
 			{#if updatePriority}
 				<div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-950/30">
-					<div class="text-center text-xs font-medium leading-relaxed text-blue-700 dark:text-blue-300">
+					<div class="text-center text-xs leading-relaxed font-medium text-blue-700 dark:text-blue-300">
 						{updatePriority.description}
 					</div>
 				</div>
@@ -308,7 +308,7 @@
 			</div>
 			{#if updatePriority}
 				<div class="rounded-lg bg-amber-50 p-3 dark:bg-amber-950/30">
-					<div class="text-center text-xs font-medium leading-relaxed text-amber-700 dark:text-amber-300">
+					<div class="text-center text-xs leading-relaxed font-medium text-amber-700 dark:text-amber-300">
 						{updatePriority.description}
 					</div>
 				</div>

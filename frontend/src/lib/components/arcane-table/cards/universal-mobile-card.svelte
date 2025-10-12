@@ -117,7 +117,7 @@
 				</div>
 			{/if}
 			<div class="min-w-0 flex-1">
-				<h3 class={cn('truncate font-semibold leading-tight', compact ? 'text-[13px]' : 'text-base')} title={title(item)}>
+				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-[13px]' : 'text-base')} title={title(item)}>
 					{title(item)}
 				</h3>
 				{#if subtitle}
@@ -161,7 +161,7 @@
 									</div>
 								{/if}
 								<div class="min-w-0 flex-1">
-									<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+									<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
 										{field.label}
 									</div>
 									<div class="mt-0.5 text-xs font-medium">
@@ -185,7 +185,7 @@
 					{@const value = field.getValue(item)}
 					{#if value !== null && value !== undefined}
 						<div class="flex items-baseline gap-1.5">
-							<span class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">{field.label}:</span>
+							<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{field.label}:</span>
 							{#if field.type === 'badge' && field.badgeVariant}
 								<StatusBadge variant={field.badgeVariant} text={String(value)} size="sm" />
 							{:else if field.type === 'mono'}
@@ -215,9 +215,9 @@
 		{@const footerValue = footer.getValue(item)}
 		{#if footerValue}
 			{@const FooterIcon = footer.icon}
-			<Card.Footer class="border-t-1 flex items-center gap-2 py-3">
+			<Card.Footer class="flex items-center gap-2 border-t-1 py-3">
 				<FooterIcon class="text-muted-foreground size-3.5" />
-				<span class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+				<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
 					{footer.label}
 				</span>
 				<span class="text-muted-foreground ml-auto font-mono text-[11px]">

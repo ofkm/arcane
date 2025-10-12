@@ -149,7 +149,7 @@
 		<div class="lg:col-span-1">
 			<Card.Root class="flex flex-col gap-6 py-3">
 				<Card.Header
-					class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
+					class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
 				>
 					<Card.Title class="text-lg">{m.environments_sections_title()}</Card.Title>
 				</Card.Header>
@@ -178,7 +178,7 @@
 				<div class="space-y-6">
 					<Card.Root class="flex flex-col gap-6 py-3">
 						<Card.Header
-							class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
+							class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
 						>
 							<Card.Title class="flex items-center gap-2">
 								<MonitorIcon class="size-5" />
@@ -235,7 +235,7 @@
 
 									<!-- Docker Settings -->
 									<div class="mb-6">
-										<h4 class="text-muted-foreground mb-3 text-sm font-semibold uppercase tracking-wide">{m.docker_title()}</h4>
+										<h4 class="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">{m.docker_title()}</h4>
 										<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 											<div>
 												<Label class="text-muted-foreground text-sm font-medium">{m.docker_enable_polling_label()}</Label>
@@ -280,7 +280,7 @@
 
 									<!-- General Settings -->
 									<div class="mb-6">
-										<h4 class="text-muted-foreground mb-3 text-sm font-semibold uppercase tracking-wide">{m.general_title()}</h4>
+										<h4 class="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">{m.general_title()}</h4>
 										<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 											<div>
 												<Label class="text-muted-foreground text-sm font-medium">{m.general_projects_directory_label()}</Label>
@@ -309,7 +309,7 @@
 									<!-- Security Settings  -->
 									{#if environment.id === '0' && settings.authLocalEnabled !== undefined}
 										<div class="mb-6">
-											<h4 class="text-muted-foreground mb-3 text-sm font-semibold uppercase tracking-wide">
+											<h4 class="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">
 												{m.security_title()}
 											</h4>
 											<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -346,7 +346,7 @@
 									<!-- Navigation Settings -->
 									{#if environment.id === '0' && settings.mobileNavigationMode !== undefined}
 										<div>
-											<h4 class="text-muted-foreground mb-3 text-sm font-semibold uppercase tracking-wide">
+											<h4 class="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">
 												{m.navigation_title()}
 											</h4>
 											<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -393,7 +393,7 @@
 				<div class="space-y-6">
 					<Card.Root class="flex flex-col gap-6 py-3">
 						<Card.Header
-							class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
+							class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
 						>
 							<Card.Title class="flex items-center gap-2">
 								<GlobeIcon class="h-5 w-5" />
@@ -407,7 +407,7 @@
 							</div>
 							<div>
 								<Label class="text-muted-foreground text-sm font-medium">{m.environments_api_url()}</Label>
-								<div class="bg-muted mt-1 break-all rounded-md px-3 py-2 font-mono text-sm">{environment.apiUrl}</div>
+								<div class="bg-muted mt-1 rounded-md px-3 py-2 font-mono text-sm break-all">{environment.apiUrl}</div>
 							</div>
 							<div class="pt-4">
 								<Button onclick={testConnection} disabled={isTestingConnection} class="w-full">
@@ -427,7 +427,7 @@
 				<div class="space-y-6">
 					<Card.Root class="flex flex-col gap-6 py-3">
 						<Card.Header
-							class="@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6"
+							class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
 						>
 							<Card.Title class="flex items-center gap-2">
 								<SettingsIcon class="h-5 w-5" />
@@ -466,7 +466,7 @@
 	</div>
 
 	{#if isRefreshing}
-		<div class="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-white shadow-lg">
+		<div class="fixed right-4 bottom-4 flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-white shadow-lg">
 			<RefreshCwIcon class="h-4 w-4 animate-spin" />
 			<span class="text-sm">{m.environments_refreshing()}</span>
 		</div>

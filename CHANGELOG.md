@@ -1,3 +1,31 @@
+## v1.5.1
+
+### Bug fixes
+
+* do not log _app directory([a9efa58](https://github.com/ofkm/arcane/commit/a9efa586d5e20c3b6ea171adb6eccb7c9ef9c68e) by @kmendell)
+* selected environment id not persisting across refreshes([d87db5b](https://github.com/ofkm/arcane/commit/d87db5b83cfa05c0a995dfb9a1bbf5219ad3e7c3) by @kmendell)
+* accent color not reset after settings form reset([99fb83d](https://github.com/ofkm/arcane/commit/99fb83d273bcd4a4266a9ac8a735c67a1dc306d6) by @kmendell)
+* project -> service back button not returning to project page([cbb6faa](https://github.com/ofkm/arcane/commit/cbb6faa9129cf5e9e950c635f3d0d68f2c9f459f) by @kmendell)
+* rework project redeploy logic to use compose pull & compose up -d([a5e377b](https://github.com/ofkm/arcane/commit/a5e377bee5f1871133cd0fb5351758c4f12a43c4) by @kmendell)
+* use project/container name in action toast messages([3a7ea34](https://github.com/ofkm/arcane/commit/3a7ea34e272d220b777642dc4a8134169867f711) by @kmendell)
+* use accent color for code editor highlighter([ee6a0ad](https://github.com/ofkm/arcane/commit/ee6a0adb68fbb87386730351416811d57d702369) by @kmendell)
+* proper light and dark modes for container terminal([5c624c1](https://github.com/ofkm/arcane/commit/5c624c1114b652c589ad8720aebd08130382800f) by @kmendell)
+* tail container and project logs properly on all ws hubs([b861c19](https://github.com/ofkm/arcane/commit/b861c19757bcdbd52a4ee109e497a323900d0b66) by @kmendell)
+* show exposed non published ports for containers([1dcc8b2](https://github.com/ofkm/arcane/commit/1dcc8b2c19dc7f53be28dedab276d3c850284f32) by @kmendell)
+* log viewer column layout duplicating timestamps, and un-needed scrollbars([3a1aeb5](https://github.com/ofkm/arcane/commit/3a1aeb5b6b7cf26c92b9d39c5c7150f2c75f8946) by @kmendell)
+* volumes not showing containers they are being used by([6eac860](https://github.com/ofkm/arcane/commit/6eac860bcc93f91b4d9d0708bbc1867f581377b3) by @kmendell)
+* cache diskUsagePath setting to stop repeated database calls([4cd637b](https://github.com/ofkm/arcane/commit/4cd637b439bb19979eccfd99fcf4765e58f09ef8) by @kmendell)
+
+### Other
+
+* use parent layout settings to avoid duplicate api calls([fb89650](https://github.com/ofkm/arcane/commit/fb89650b37bb8756ecf3eb8febe6079ddf6d722b) by @kmendell)
+* bump to 10.18.2([8812a58](https://github.com/ofkm/arcane/commit/8812a58d3e5f6978eaa861934f99ad4674c38bc7) by @kmendell)
+* run formatter([57300b9](https://github.com/ofkm/arcane/commit/57300b9a5aac0ea3e1a413da2f9917099790ef21) by @kmendell)
+
+
+
+**Full Changelog**: https://github.com/ofkm/arcane/compare/v1.5.0...v1.5.1
+
 ## v1.5.0
 
 ### New features

@@ -15,6 +15,7 @@
 
 	let isStreaming = $state(false);
 	let viewer = $state<LogViewer>();
+	let tailLines = $state(100);
 
 	function handleStart() {
 		isStreaming = true;
@@ -57,6 +58,7 @@
 			</div>
 			<LogControls
 				bind:autoScroll
+				bind:tailLines
 				{isStreaming}
 				disabled={!projectId}
 				onStart={handleStart}
@@ -71,6 +73,7 @@
 			bind:this={viewer}
 			bind:autoScroll
 			{projectId}
+			{tailLines}
 			type="project"
 			maxLines={500}
 			showTimestamps={true}

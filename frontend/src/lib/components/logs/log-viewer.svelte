@@ -24,6 +24,7 @@
 		autoScroll?: boolean;
 		showTimestamps?: boolean;
 		height?: string;
+		tailLines?: number;
 		onClear?: () => void;
 		onToggleAutoScroll?: () => void;
 		onStart?: () => void;
@@ -37,8 +38,9 @@
 		type = 'container',
 		maxLines = 1000,
 		autoScroll = $bindable(true),
-		showTimestamps = true,
+		showTimestamps = false,
 		height = '400px',
+		tailLines = 100,
 		onClear,
 		onToggleAutoScroll,
 		onStart,
@@ -146,13 +148,18 @@
 			type === 'project'
 				? `/api/environments/${envId}/projects/${projectId}/logs/ws`
 				: `/api/environments/${envId}/containers/${containerId}/logs/ws`;
-		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=100&timestamps=${showTimestamps}&format=json&batched=true`);
+		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=${tailLines}&timestamps=true&format=json&batched=true`);
 	}
 
 	export async function startLogStream() {
 		const targetId = type === 'project' ? projectId : containerId;
 
-		if (!targetId) return;
+		if (!targetId) {
+			error = type === 'project' ? m.log_stream_no_project_selected() : m.log_stream_no_container_selected();
+			isStreaming = false;
+			shouldBeStreaming = false;
+			return;
+		}
 
 		// Prevent starting if already streaming
 		if (shouldBeStreaming && wsClient) {
@@ -289,11 +296,6 @@
 		return logs.length;
 	}
 
-	function formatTimestamp(timestamp: string): string {
-		const date = new Date(timestamp);
-		return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-	}
-
 	function getLevelClass(level: LogEntry['level']): string {
 		switch (level) {
 			case 'stderr':
@@ -305,6 +307,31 @@
 			default:
 				return 'text-gray-300';
 		}
+	}
+
+	// Generate consistent color for service names (similar to docker compose)
+	function getServiceColor(service: string): string {
+		const colors = [
+			'text-cyan-400',
+			'text-yellow-400',
+			'text-green-400',
+			'text-blue-400',
+			'text-purple-400',
+			'text-pink-400',
+			'text-orange-400',
+			'text-teal-400',
+			'text-lime-400',
+			'text-indigo-400',
+			'text-fuchsia-400',
+			'text-rose-400'
+		];
+
+		// Simple hash function to consistently map service names to colors
+		let hash = 0;
+		for (let i = 0; i < service.length; i++) {
+			hash = service.charCodeAt(i) + ((hash << 5) - hash);
+		}
+		return colors[Math.abs(hash) % colors.length];
 	}
 
 	$effect(() => {
@@ -366,45 +393,40 @@
 			</div>
 		{:else}
 			{#each visibleLogs as log (log.id)}
+				<!-- Mobile view -->
 				<div
 					class="border-l-2 border-transparent px-3 py-2 transition-colors hover:border-blue-500 hover:bg-gray-900/50 sm:hidden"
 				>
 					<div class="mb-1 flex items-center gap-2 text-xs">
-						<span class="shrink-0 {getLevelClass(log.level)}">
-							{log.level.toUpperCase()}
-						</span>
 						{#if type === 'project' && log.service}
-							<span class="shrink-0 truncate text-blue-400" title={log.service}>
+							<span class="shrink-0 truncate font-semibold {getServiceColor(log.service)}" title={log.service}>
 								{log.service}
 							</span>
 						{/if}
-						{#if showTimestamps}
-							<span class="ml-auto shrink-0 text-gray-500">
-								{new Date(log.timestamp).toLocaleTimeString()}
-							</span>
-						{/if}
+						<span class="shrink-0 {getLevelClass(log.level)}">
+							{log.level.toUpperCase()}
+						</span>
 					</div>
 					<div class="whitespace-pre-wrap break-words text-sm text-gray-300">
 						{log.message}
 					</div>
 				</div>
 
+				<!-- Desktop view -->
 				<div
 					class="hidden border-l-2 border-transparent px-3 py-1 transition-colors hover:border-blue-500 hover:bg-gray-900/50 sm:flex"
 				>
-					{#if showTimestamps}
-						<span class="mr-3 min-w-fit shrink-0 text-xs text-gray-500">
-							{formatTimestamp(log.timestamp)}
+					{#if type === 'project' && log.service}
+						<span
+							class="mr-3 min-w-[120px] max-w-[120px] shrink-0 truncate text-xs font-semibold {getServiceColor(log.service)}"
+							title={log.service}
+						>
+							{log.service}
 						</span>
 					{/if}
 					<span class="mr-2 shrink-0 text-xs {getLevelClass(log.level)} min-w-fit">
 						{log.level.toUpperCase()}
 					</span>
-					{#if type === 'project' && log.service}
-						<span class="mr-2 min-w-fit shrink-0 truncate text-xs text-blue-400" title={log.service}>
-							{log.service}
-						</span>
-					{/if}
 					<span class="flex-1 whitespace-pre-wrap break-words text-gray-300">
 						{log.message}
 					</span>

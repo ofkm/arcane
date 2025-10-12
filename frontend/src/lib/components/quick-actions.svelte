@@ -57,7 +57,7 @@
 		{:else}
 			<div class="hidden flex-wrap items-center gap-2 sm:flex">
 				<button
-					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={!dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}
 					onclick={onStartAll}
 					aria-busy={isLoading.starting}
@@ -74,7 +74,7 @@
 				</button>
 
 				<button
-					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-sky-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-sky-500/40 hover:bg-sky-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-sky-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-sky-500/40 hover:bg-sky-500/10 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={!dockerInfo ||
 						(dockerInfo?.containersRunning ?? 0) === 0 ||
 						isLoading.starting ||
@@ -95,7 +95,7 @@
 				</button>
 
 				<button
-					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-red-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="ring-offset-background focus-visible:ring-ring bg-background/70 group inline-flex h-9 items-center gap-2 rounded-lg border border-red-500/20 px-3 py-1.5 text-xs shadow-sm transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={!dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
 					onclick={onOpenPruneDialog}
 					aria-busy={isLoading.pruning}
@@ -109,7 +109,7 @@
 				</button>
 
 				<button
-					class="ring-offset-background focus-visible:ring-ring bg-background/70 border-primary/20 hover:border-primary/40 hover:bg-primary/10 group inline-flex h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs shadow-sm transition-colors hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+					class="ring-offset-background focus-visible:ring-ring bg-background/70 border-primary/20 hover:border-primary/40 hover:bg-primary/10 group inline-flex h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs shadow-sm transition-colors hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 					disabled={isLoading.starting || isLoading.stopping || isLoading.pruning || refreshing}
 					onclick={onRefresh}
 					aria-busy={refreshing}
@@ -188,7 +188,7 @@
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				<div class="group rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/0 p-[1px]">
 					<button
-						class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-offset-background focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 shadow-sm backdrop-blur transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+						class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-offset-background focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 shadow-sm backdrop-blur transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 						disabled={!dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}
 						onclick={onStartAll}
 						aria-busy={isLoading.starting}
@@ -216,7 +216,7 @@
 
 				<div class="group rounded-xl bg-gradient-to-br from-sky-500/20 to-sky-500/0 p-[1px]">
 					<button
-						class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-offset-background focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 shadow-sm backdrop-blur transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+						class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-offset-background focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 shadow-sm backdrop-blur transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 						disabled={!dockerInfo ||
 							(dockerInfo?.containersRunning ?? 0) === 0 ||
 							isLoading.starting ||
@@ -248,7 +248,7 @@
 
 				<div class="group rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/0 p-[1px]">
 					<button
-						class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-offset-background focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 shadow-sm backdrop-blur transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+						class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-offset-background focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 shadow-sm backdrop-blur transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 						disabled={!dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
 						onclick={onOpenPruneDialog}
 						aria-busy={isLoading.pruning}

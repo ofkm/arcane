@@ -91,7 +91,7 @@
 		fields={[
 			{
 				label: m.images_size(),
-				getValue: (item: ImageSummaryDto) => bytes.format(item.size),
+				getValue: (item: ImageSummaryDto) => bytes.format(item.size)
 			}
 		]}
 		compact

@@ -29,7 +29,7 @@
 <Dialog.Root bind:open={$confirmDialogStore.open}>
 	<Dialog.Content class="w-full max-w-md sm:max-w-lg">
 		<Dialog.Header class="space-y-3">
-			<Dialog.Title class="flex items-start gap-3 text-lg font-semibold leading-tight">
+			<Dialog.Title class="flex items-start gap-3 text-lg leading-tight font-semibold">
 				<TriangleAlert class="text-destructive mt-0.5 size-5 shrink-0" />
 				<span class="min-w-0 break-words">
 					{$confirmDialogStore.title}
@@ -37,7 +37,7 @@
 			</Dialog.Title>
 		</Dialog.Header>
 
-		<div class="text-muted-foreground mt-4 min-w-0 whitespace-pre-wrap break-words text-sm leading-relaxed">
+		<div class="text-muted-foreground mt-4 min-w-0 text-sm leading-relaxed break-words whitespace-pre-wrap">
 			{$confirmDialogStore.message}
 		</div>
 
@@ -66,7 +66,7 @@
 							<Label
 								id={`${checkbox.id}-label`}
 								for={checkbox.id}
-								class="min-w-0 break-words text-sm font-medium leading-relaxed peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+								class="min-w-0 text-sm leading-relaxed font-medium break-words peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
 							>
 								{checkbox.label}
 							</Label>

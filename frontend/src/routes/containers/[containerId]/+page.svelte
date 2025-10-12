@@ -264,11 +264,11 @@
 	const backUrl = $derived.by(() => {
 		const from = page.url.searchParams.get('from');
 		const projectId = page.url.searchParams.get('projectId');
-		
+
 		if (from === 'project' && projectId) {
 			return `/projects/${projectId}`;
 		}
-		
+
 		return '/containers';
 	});
 </script>

@@ -82,10 +82,10 @@
 <span
 	class={cn(
 		// base
-		'inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full font-medium',
+		'inline-flex items-center justify-center gap-1 rounded-full font-medium whitespace-nowrap',
 		sizeStyles[size as Size],
 		// subtle border and translucency
-		'ring-1 ring-inset transition-colors',
+		'ring-1 transition-colors ring-inset',
 		// variant styles
 		variantStyles[variant as Variant],
 		// optional fixed width
