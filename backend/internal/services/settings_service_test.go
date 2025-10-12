@@ -295,15 +295,12 @@ func TestSettingsService_AgentMode_OnlyLoadsAgentSettings(t *testing.T) {
 
 func TestSettingsService_ManagerMode_LoadsAllSettings(t *testing.T) {
 	t.Setenv("AGENT_MODE", "false")
+	t.Setenv("UI_CONFIGURATION_DISABLED", "true")
 	t.Setenv("PROJECTS_DIRECTORY", "manager/projects")
 	t.Setenv("BASE_SERVER_URL", "http://manager.example")
 
 	ctx := context.Background()
 	db := setupSettingsTestDB(t)
-
-	cfg := config.Load()
-	cfg.AgentMode = false
-	cfg.UIConfigurationDisabled = true
 
 	svc, err := NewSettingsService(ctx, db)
 	require.NoError(t, err)
@@ -553,4 +550,374 @@ func TestSettingsService_ToSettingVariableSlice_Redaction(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(oidcVarRedact.Value), &redacted))
 	require.Empty(t, redacted.ClientSecret, "client secret should be redacted")
 	require.Equal(t, "test-client", redacted.ClientID, "non-sensitive fields should remain")
+}
+
+func TestSettingsService_PersistEnvSettingsIfMissing(t *testing.T) {
+	t.Setenv("PROJECTS_DIRECTORY", "env/test/projects")
+	t.Setenv("DOCKER_HOST", "tcp://env-host:2375")
+	t.Setenv("POLLING_ENABLED", "false")
+	t.Setenv("BASE_SERVER_URL", "https://env.example")
+
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	// Persist env settings
+	err = svc.PersistEnvSettingsIfMissing(ctx)
+	require.NoError(t, err)
+
+	// Verify settings were persisted to database
+	var projectsDir models.SettingVariable
+	require.NoError(t, db.WithContext(ctx).Where("key = ?", "projectsDirectory").First(&projectsDir).Error)
+	require.Equal(t, "env/test/projects", projectsDir.Value)
+
+	var dockerHost models.SettingVariable
+	require.NoError(t, db.WithContext(ctx).Where("key = ?", "dockerHost").First(&dockerHost).Error)
+	require.Equal(t, "tcp://env-host:2375", dockerHost.Value)
+
+	// Change env var and persist again - should update
+	t.Setenv("PROJECTS_DIRECTORY", "env/updated/projects")
+	err = svc.PersistEnvSettingsIfMissing(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, db.WithContext(ctx).Where("key = ?", "projectsDirectory").First(&projectsDir).Error)
+	require.Equal(t, "env/updated/projects", projectsDir.Value)
+}
+
+func TestSettingsService_SetBoolSetting_ErrorHandling(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	// Close the DB connection to force an error
+	sqlDB, err := db.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	svc := &SettingsService{db: db}
+	svc.config.Store(&models.Settings{})
+
+	err = svc.SetBoolSetting(ctx, "enableGravatar", true)
+	require.Error(t, err)
+}
+
+func TestSettingsService_SetIntSetting_ErrorHandling(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	// Close the DB connection to force an error
+	sqlDB, err := db.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	svc := &SettingsService{db: db}
+	svc.config.Store(&models.Settings{})
+
+	err = svc.SetIntSetting(ctx, "authSessionTimeout", 123)
+	require.Error(t, err)
+}
+
+func TestSettingsService_SetStringSetting_ErrorHandling(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	// Close the DB connection to force an error
+	sqlDB, err := db.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	svc := &SettingsService{db: db}
+	svc.config.Store(&models.Settings{})
+
+	err = svc.SetStringSetting(ctx, "baseServerUrl", "http://test")
+	require.Error(t, err)
+}
+
+func TestSettingsService_EnsureEncryptionKey_Empty(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	// Create an empty encryption key
+	require.NoError(t, db.WithContext(ctx).Create(&models.SettingVariable{
+		Key:   "encryptionKey",
+		Value: "",
+	}).Error)
+
+	// Should generate a new key
+	key, err := svc.EnsureEncryptionKey(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, key)
+
+	// Verify it was persisted
+	var sv models.SettingVariable
+	require.NoError(t, db.WithContext(ctx).Where("key = ?", "encryptionKey").First(&sv).Error)
+	require.Equal(t, key, sv.Value)
+}
+
+func TestSettingsService_UpdateSettings_WithCallbacks(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+	require.NoError(t, svc.EnsureDefaultSettings(ctx))
+
+	pollingCalled := false
+	autoUpdateCalled := false
+
+	svc.OnImagePollingSettingsChanged = func(ctx context.Context) {
+		pollingCalled = true
+	}
+	svc.OnAutoUpdateSettingsChanged = func(ctx context.Context) {
+		autoUpdateCalled = true
+	}
+
+	// Update polling settings
+	newInterval := "120"
+	_, err = svc.UpdateSettings(ctx, dto.UpdateSettingsDto{
+		PollingInterval: &newInterval,
+	})
+	require.NoError(t, err)
+	require.True(t, pollingCalled, "polling callback should be called")
+
+	// Reset flags
+	pollingCalled = false
+
+	// Update auto-update settings
+	autoUpdate := "true"
+	_, err = svc.UpdateSettings(ctx, dto.UpdateSettingsDto{
+		AutoUpdate: &autoUpdate,
+	})
+	require.NoError(t, err)
+	require.True(t, autoUpdateCalled, "auto-update callback should be called")
+}
+
+func TestSettingsService_UpdateSettings_InvalidOidcConfig(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+	require.NoError(t, svc.EnsureDefaultSettings(ctx))
+
+	invalidJSON := "not-valid-json"
+	_, err = svc.UpdateSettings(ctx, dto.UpdateSettingsDto{
+		AuthOidcConfig: &invalidJSON,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid authOidcConfig JSON")
+}
+
+func TestSettingsService_UpdateSettings_TransactionError(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+	require.NoError(t, svc.EnsureDefaultSettings(ctx))
+
+	// Close the DB to force transaction error
+	sqlDB, err := db.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	newDir := "test/projects"
+	_, err = svc.UpdateSettings(ctx, dto.UpdateSettingsDto{
+		ProjectsDirectory: &newDir,
+	})
+	require.Error(t, err)
+}
+
+func TestSettingsService_UpdateSettings_EmptyValueUsesDefault(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+	require.NoError(t, svc.EnsureDefaultSettings(ctx))
+
+	// Set a value first
+	customDir := "custom/projects"
+	_, err = svc.UpdateSettings(ctx, dto.UpdateSettingsDto{
+		ProjectsDirectory: &customDir,
+	})
+	require.NoError(t, err)
+
+	// Now set it to empty - should use default
+	emptyDir := ""
+	_, err = svc.UpdateSettings(ctx, dto.UpdateSettingsDto{
+		ProjectsDirectory: &emptyDir,
+	})
+	require.NoError(t, err)
+
+	// Verify it was set to default value
+	var sv models.SettingVariable
+	require.NoError(t, db.WithContext(ctx).Where("key = ?", "projectsDirectory").First(&sv).Error)
+	require.Equal(t, "data/projects", sv.Value) // default value
+}
+
+func TestSettingsService_SyncOidcEnvToDatabase_MissingCredentials(t *testing.T) {
+	t.Setenv("OIDC_CLIENT_ID", "")
+	t.Setenv("OIDC_ISSUER_URL", "")
+
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	_, err = svc.SyncOidcEnvToDatabase(ctx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "missing OIDC_CLIENT_ID or OIDC_ISSUER_URL")
+}
+
+func TestSettingsService_LoadDatabaseSettings_QueryTimeout(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+	require.NoError(t, svc.EnsureDefaultSettings(ctx))
+
+	// This should complete successfully (testing timeout path works)
+	err = svc.LoadDatabaseSettings(ctx)
+	require.NoError(t, err)
+}
+
+func TestSettingsService_GetSettings_IgnoresUnknownFields(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	// Create settings with unknown keys
+	require.NoError(t, db.WithContext(ctx).Create(&models.SettingVariable{
+		Key:   "unknownKey1",
+		Value: "value1",
+	}).Error)
+	require.NoError(t, db.WithContext(ctx).Create(&models.SettingVariable{
+		Key:   "projectsDirectory",
+		Value: "test/projects",
+	}).Error)
+
+	settings, err := svc.GetSettings(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "test/projects", settings.ProjectsDirectory.Value)
+}
+
+func TestSettingsService_GetSettings_DatabaseError(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	// Close DB to force error
+	sqlDB, err := db.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	_, err = svc.GetSettings(ctx)
+	require.Error(t, err)
+}
+
+func TestSettingsService_NewSettingsService_LoadError(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	// Close DB before creating service
+	sqlDB, err := db.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	_, err = NewSettingsService(ctx, db)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to load settings")
+}
+
+func TestSettingsService_SetupInstanceID_GenerateError(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	svc := &SettingsService{db: db}
+
+	// Set empty instance ID in config
+	svc.config.Store(&models.Settings{
+		InstanceID: models.SettingVariable{Value: ""},
+	})
+
+	// Close DB to force error on update
+	sqlDB, err := db.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	err = svc.setupInstanceID(ctx)
+	require.Error(t, err)
+}
+
+func TestSettingsService_EnsureDefaultSettings_CreateError(t *testing.T) {
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	// Close DB to force error
+	sqlDB, err := db.DB.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	err = svc.EnsureDefaultSettings(ctx)
+	require.Error(t, err)
+}
+
+func TestSettingsService_LoadDatabaseSettingsInternal_UIConfigDisabled_Testing(t *testing.T) {
+	t.Setenv("UI_CONFIGURATION_DISABLED", "true")
+	t.Setenv("ENVIRONMENT", "testing")
+	t.Setenv("PROJECTS_DIRECTORY", "test/projects")
+
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	// Set some onboarding data
+	require.NoError(t, db.WithContext(ctx).Create(&models.SettingVariable{
+		Key:   "onboardingCompleted",
+		Value: "true",
+	}).Error)
+	require.NoError(t, db.WithContext(ctx).Create(&models.SettingVariable{
+		Key:   "onboardingSteps",
+		Value: `["step1","step2"]`,
+	}).Error)
+
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	settings := svc.GetSettingsConfig()
+	require.Equal(t, "test/projects", settings.ProjectsDirectory.Value)
+	// In testing mode, onboarding vars should NOT be loaded from DB, they get default values
+	require.Equal(t, "false", settings.OnboardingCompleted.Value) // default value, not from DB
+	require.Equal(t, "[]", settings.OnboardingSteps.Value)        // default value, not from DB
+}
+
+func TestSettingsService_LoadDatabaseSettingsInternal_UIConfigDisabled_Production(t *testing.T) {
+	t.Setenv("UI_CONFIGURATION_DISABLED", "true")
+	t.Setenv("ENVIRONMENT", "production")
+	t.Setenv("PROJECTS_DIRECTORY", "prod/projects")
+
+	ctx := context.Background()
+	db := setupSettingsTestDB(t)
+
+	// Set some onboarding data
+	require.NoError(t, db.WithContext(ctx).Create(&models.SettingVariable{
+		Key:   "onboardingCompleted",
+		Value: "true",
+	}).Error)
+	require.NoError(t, db.WithContext(ctx).Create(&models.SettingVariable{
+		Key:   "onboardingSteps",
+		Value: `["step1","step2"]`,
+	}).Error)
+
+	svc, err := NewSettingsService(ctx, db)
+	require.NoError(t, err)
+
+	settings := svc.GetSettingsConfig()
+	require.Equal(t, "prod/projects", settings.ProjectsDirectory.Value)
+	// In production mode with UI config disabled, onboarding vars SHOULD be loaded from DB
+	require.Equal(t, "true", settings.OnboardingCompleted.Value)
+	require.Equal(t, `["step1","step2"]`, settings.OnboardingSteps.Value)
 }

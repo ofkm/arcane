@@ -18,6 +18,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 
 	let { data }: { data: PageData } = $props();
 	let currentSettings = $state<Settings>(data.settings!);
@@ -25,6 +26,7 @@
 	let isLoading = $state(false);
 
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
+	const isRemoteEnvironment = $derived(environmentStore.selected?.isLocal === false);
 	const formState = getContext('settingsFormState') as any;
 	const formSchema = z
 		.object({

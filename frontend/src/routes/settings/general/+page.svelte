@@ -17,6 +17,7 @@
 	import { SettingsPageLayout } from '$lib/layouts';
 	import AccentColorPicker from '$lib/components/accent-color/accent-color-picker.svelte';
 	import { applyAccentColor } from '$lib/utils/accent-color-util';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 
 	let { data } = $props();
 	let hasChanges = $state(false);
@@ -24,6 +25,7 @@
 
 	let currentSettings = $state(data.settings!);
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
+	const isRemoteEnvironment = $derived(environmentStore.selected?.isLocal === false);
 	const formState = getContext('settingsFormState') as any;
 	const formSchema = z.object({
 		projectsDirectory: z.string().min(1, m.general_projects_directory_required()),
@@ -122,51 +124,55 @@
 								type="text"
 							/>
 
-							<TextInputWithLabel
-								bind:value={$formInputs.baseServerUrl.value}
-								label={m.general_base_url_label()}
-								placeholder={m.general_base_url_placeholder()}
-								helpText={m.general_base_url_help()}
-								type="text"
-							/>
+							{#if !isRemoteEnvironment}
+								<TextInputWithLabel
+									bind:value={$formInputs.baseServerUrl.value}
+									label={m.general_base_url_label()}
+									placeholder={m.general_base_url_placeholder()}
+									helpText={m.general_base_url_help()}
+									type="text"
+								/>
+							{/if}
 						</div>
 					</Card.Content>
 				</Card.Root>
 
-				<Card.Root>
-					<Card.Header icon={UserIcon}>
-						<div class="flex flex-col space-y-1.5">
-							<Card.Title>{m.general_user_avatars_heading()}</Card.Title>
-							<Card.Description>{m.general_user_avatars_description()}</Card.Description>
-						</div>
-					</Card.Header>
-					<Card.Content class="px-3 py-4 sm:px-6">
-						<SwitchWithLabel
-							id="enableGravatar"
-							label={m.general_enable_gravatar_label()}
-							description={m.general_enable_gravatar_description()}
-							bind:checked={$formInputs.enableGravatar.value}
-						/>
-					</Card.Content>
-				</Card.Root>
-
-				<Card.Root>
-					<Card.Header icon={PaletteIcon}>
-						<div class="flex flex-col space-y-1.5">
-							<Card.Title>{m.accent_color()}</Card.Title>
-							<Card.Description>{m.accent_color_description()}</Card.Description>
-						</div>
-					</Card.Header>
-					<Card.Content class="px-3 py-4 sm:px-6">
-						<div class="space-y-5">
-							<AccentColorPicker
-								previousColor={currentSettings.accentColor}
-								bind:selectedColor={$formInputs.accentColor.value}
-								disabled={isReadOnly}
+				{#if !isRemoteEnvironment}
+					<Card.Root>
+						<Card.Header icon={UserIcon}>
+							<div class="flex flex-col space-y-1.5">
+								<Card.Title>{m.general_user_avatars_heading()}</Card.Title>
+								<Card.Description>{m.general_user_avatars_description()}</Card.Description>
+							</div>
+						</Card.Header>
+						<Card.Content class="px-3 py-4 sm:px-6">
+							<SwitchWithLabel
+								id="enableGravatar"
+								label={m.general_enable_gravatar_label()}
+								description={m.general_enable_gravatar_description()}
+								bind:checked={$formInputs.enableGravatar.value}
 							/>
-						</div>
-					</Card.Content>
-				</Card.Root>
+						</Card.Content>
+					</Card.Root>
+
+					<Card.Root>
+						<Card.Header icon={PaletteIcon}>
+							<div class="flex flex-col space-y-1.5">
+								<Card.Title>{m.accent_color()}</Card.Title>
+								<Card.Description>{m.accent_color_description()}</Card.Description>
+							</div>
+						</Card.Header>
+						<Card.Content class="px-3 py-4 sm:px-6">
+							<div class="space-y-5">
+								<AccentColorPicker
+									previousColor={currentSettings.accentColor}
+									bind:selectedColor={$formInputs.accentColor.value}
+									disabled={isReadOnly}
+								/>
+							</div>
+						</Card.Content>
+					</Card.Root>
+				{/if}
 			</div>
 		</fieldset>
 	{/snippet}

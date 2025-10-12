@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	import { navigationItems } from '$lib/config/navigation-config';
+	import { navigationItems, getFilteredSettingsItems } from '$lib/config/navigation-config';
 </script>
 
 <script lang="ts">
@@ -18,6 +18,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import * as Button from '$lib/components/ui/button/index.js';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 
 	let {
 		ref = $bindable(null),
@@ -42,6 +43,8 @@
 
 	const isCollapsed = $derived(sidebar.state === 'collapsed' && !sidebar.isHovered);
 	const isAdmin = $derived(!!effectiveUser?.roles?.includes('admin'));
+	const isRemoteEnvironment = $derived(environmentStore.selected?.isLocal === false);
+	const filteredSettingsItems = $derived(getFilteredSettingsItems(isRemoteEnvironment));
 </script>
 
 <Sidebar.Root {collapsible} {variant} {...restProps}>
@@ -61,7 +64,7 @@
 		<SidebarItemGroup label={m.sidebar_customization()} items={navigationItems.customizationItems} />
 		{#if isAdmin}
 			<SidebarItemGroup label={m.sidebar_environments()} items={navigationItems.environmentItems} />
-			<SidebarItemGroup label={m.sidebar_administration()} items={navigationItems.settingsItems} />
+			<SidebarItemGroup label={m.sidebar_administration()} items={filteredSettingsItems} />
 		{/if}
 	</Sidebar.Content>
 	<Sidebar.Footer>

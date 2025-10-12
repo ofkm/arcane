@@ -12,6 +12,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import settingsStore from '$lib/stores/config-store';
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -26,6 +27,17 @@
 	const sidebar = useSidebar();
 	const isMobile = new IsMobile();
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
+	const isRemoteEnvironment = $derived(environmentStore.selected?.isLocal === false);
+
+	// Redirect away from manager-only pages when viewing remote environment
+	$effect(() => {
+		if (isRemoteEnvironment) {
+			const managerOnlyPages = ['/settings/security', '/settings/navigation', '/settings/users'];
+			if (managerOnlyPages.some(path => currentPath.startsWith(path))) {
+				goto('/settings/general');
+			}
+		}
+	});
 
 	// Calculate left position based on sidebar state to match sidebar spacing system
 	// Uses the same CSS variables and spacing as the sidebar component

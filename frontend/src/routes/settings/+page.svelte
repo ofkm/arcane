@@ -11,6 +11,7 @@
 	import { Card } from '$lib/components/ui/card';
 	import { m } from '$lib/paraglide/messages';
 	import { UiConfigDisabledTag } from '$lib/components/badges/index.js';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 
 	interface SettingMeta {
 		key: string;
@@ -18,6 +19,7 @@
 		type: string;
 		keywords?: string[];
 		description?: string;
+		isAgent?: boolean;
 	}
 
 	interface SettingsCategory {
@@ -30,12 +32,15 @@
 		settings: SettingMeta[];
 		matchingSettings?: SettingMeta[];
 		relevanceScore?: number;
+		isAgentOnly?: boolean;
 	}
 
 	let { data } = $props();
 	let searchQuery = $state('');
 	let showSearchResults = $state(false);
 	let searchResults = $state<SettingsCategory[]>([]);
+
+	const isRemoteEnvironment = $derived(environmentStore.selected?.isLocal === false);
 
 	// Settings categories with metadata
 	const settingsCategories: SettingsCategory[] = [
@@ -52,21 +57,24 @@
 					label: m.general_projects_directory_label(),
 					type: 'text',
 					description: 'Configure where project files are stored',
-					keywords: ['projects', 'directory', 'path', 'folder', 'location', 'storage', 'files', 'compose', 'docker-compose']
+					keywords: ['projects', 'directory', 'path', 'folder', 'location', 'storage', 'files', 'compose', 'docker-compose'],
+					isAgent: true
 				},
 				{
 					key: 'baseServerUrl',
 					label: m.general_base_url_label(),
 					type: 'text',
 					description: 'Set the base URL for the application',
-					keywords: ['base', 'url', 'server', 'domain', 'host', 'endpoint', 'address', 'link']
+					keywords: ['base', 'url', 'server', 'domain', 'host', 'endpoint', 'address', 'link'],
+					isAgent: false
 				},
 				{
 					key: 'enableGravatar',
 					label: m.general_enable_gravatar_label(),
 					type: 'boolean',
 					description: 'Enable Gravatar profile pictures for users',
-					keywords: ['gravatar', 'avatar', 'profile', 'picture', 'image', 'user', 'photo']
+					keywords: ['gravatar', 'avatar', 'profile', 'picture', 'image', 'user', 'photo'],
+					isAgent: false
 				}
 			]
 		},
@@ -77,41 +85,47 @@
 			icon: DatabaseIcon,
 			url: '/settings/docker',
 			keywords: ['docker', 'container', 'image'],
+			isAgentOnly: true,
 			settings: [
 				{
 					key: 'pollingEnabled',
 					label: m.docker_enable_polling_label(),
 					type: 'boolean',
 					description: 'Enable automatic checking for image updates',
-					keywords: ['polling', 'check', 'monitor', 'watch', 'scan', 'detection', 'automatic']
+					keywords: ['polling', 'check', 'monitor', 'watch', 'scan', 'detection', 'automatic'],
+					isAgent: true
 				},
 				{
 					key: 'pollingInterval',
 					label: m.docker_polling_interval_label(),
 					type: 'number',
 					description: 'How often to check for image updates',
-					keywords: ['interval', 'frequency', 'schedule', 'time', 'minutes', 'period', 'delay']
+					keywords: ['interval', 'frequency', 'schedule', 'time', 'minutes', 'period', 'delay'],
+					isAgent: true
 				},
 				{
 					key: 'autoUpdate',
 					label: m.docker_auto_update_label(),
 					type: 'boolean',
 					description: 'Automatically update containers when new images are available',
-					keywords: ['auto', 'update', 'automatic', 'upgrade', 'refresh', 'restart', 'deploy']
+					keywords: ['auto', 'update', 'automatic', 'upgrade', 'refresh', 'restart', 'deploy'],
+					isAgent: true
 				},
 				{
 					key: 'autoUpdateInterval',
 					label: m.docker_auto_update_interval_label(),
 					type: 'number',
 					description: 'Interval between automatic updates',
-					keywords: ['auto', 'update', 'interval', 'frequency', 'schedule', 'automatic', 'timing']
+					keywords: ['auto', 'update', 'interval', 'frequency', 'schedule', 'automatic', 'timing'],
+					isAgent: true
 				},
 				{
 					key: 'dockerPruneMode',
 					label: m.docker_prune_action_label(),
 					type: 'select',
 					description: 'Configure how unused Docker images are cleaned up',
-					keywords: ['prune', 'cleanup', 'clean', 'remove', 'delete', 'unused', 'dangling', 'space', 'disk']
+					keywords: ['prune', 'cleanup', 'clean', 'remove', 'delete', 'unused', 'dangling', 'space', 'disk'],
+					isAgent: true
 				}
 			]
 		},
@@ -128,28 +142,32 @@
 					label: m.security_local_auth_label(),
 					type: 'boolean',
 					description: 'Enable local username/password authentication',
-					keywords: ['local', 'auth', 'authentication', 'username', 'password', 'login', 'credentials']
+					keywords: ['local', 'auth', 'authentication', 'username', 'password', 'login', 'credentials'],
+					isAgent: false
 				},
 				{
 					key: 'authOidcEnabled',
 					label: m.security_oidc_auth_label(),
 					type: 'boolean',
 					description: 'Enable OpenID Connect (OIDC) authentication',
-					keywords: ['oidc', 'openid', 'connect', 'sso', 'oauth', 'external', 'provider', 'federation']
+					keywords: ['oidc', 'openid', 'connect', 'sso', 'oauth', 'external', 'provider', 'federation'],
+					isAgent: false
 				},
 				{
 					key: 'authSessionTimeout',
 					label: m.security_session_timeout_label(),
 					type: 'number',
 					description: 'How long user sessions remain active',
-					keywords: ['session', 'timeout', 'expire', 'duration', 'lifetime', 'minutes', 'logout']
+					keywords: ['session', 'timeout', 'expire', 'duration', 'lifetime', 'minutes', 'logout'],
+					isAgent: false
 				},
 				{
 					key: 'authPasswordPolicy',
 					label: m.security_password_policy_label(),
 					type: 'select',
 					description: 'Set password strength requirements',
-					keywords: ['password', 'policy', 'strength', 'complexity', 'requirements', 'security', 'rules']
+					keywords: ['password', 'policy', 'strength', 'complexity', 'requirements', 'security', 'rules'],
+					isAgent: false
 				}
 			]
 		},
@@ -181,14 +199,16 @@
 					label: m.navigation_mode_label(),
 					type: 'select',
 					description: m.navigation_mode_description(),
-					keywords: ['mode', 'style', 'type', 'floating', 'docked', 'position', 'layout', 'design', 'appearance', 'bottom']
+					keywords: ['mode', 'style', 'type', 'floating', 'docked', 'position', 'layout', 'design', 'appearance', 'bottom'],
+					isAgent: false
 				},
 				{
 					key: 'mobileNavigationShowLabels',
 					label: m.navigation_show_labels_label(),
 					type: 'boolean',
 					description: m.navigation_show_labels_description(),
-					keywords: ['labels', 'text', 'icons', 'display', 'show', 'hide', 'names', 'captions', 'titles', 'visible', 'toggle']
+					keywords: ['labels', 'text', 'icons', 'display', 'show', 'hide', 'names', 'captions', 'titles', 'visible', 'toggle'],
+					isAgent: false
 				},
 				{
 					key: 'mobileNavigationScrollToHide',
@@ -207,14 +227,16 @@
 						'vanish',
 						'minimize',
 						'collapse'
-					]
+					],
+					isAgent: false
 				},
 				{
 					key: 'mobileNavigationTapToHide',
 					label: m.navigation_tap_to_hide_label(),
 					type: 'boolean',
 					description: m.navigation_tap_to_hide_description(),
-					keywords: ['tap', 'touch', 'hide', 'show', 'toggle', 'gesture', 'click', 'outside', 'dismiss', 'interact', 'control']
+					keywords: ['tap', 'touch', 'hide', 'show', 'toggle', 'gesture', 'click', 'outside', 'dismiss', 'interact', 'control'],
+					isAgent: false
 				}
 			]
 		},
@@ -228,6 +250,12 @@
 			settings: []
 		}
 	];
+
+	const filteredCategories = $derived(
+		isRemoteEnvironment
+			? settingsCategories.filter(cat => cat.isAgentOnly || cat.settings.some(s => s.isAgent))
+			: settingsCategories
+	);
 
 	// Search functionality
 	$effect(() => {
@@ -244,7 +272,7 @@
 		const query = searchQuery.toLowerCase().trim();
 		const results: SettingsCategory[] = [];
 
-		settingsCategories.forEach((category) => {
+		filteredCategories.forEach((category) => {
 			// Check if category matches
 			const categoryMatch =
 				category.title.toLowerCase().includes(query) ||
@@ -355,7 +383,7 @@
 
 	{#if !showSearchResults}
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
-			{#each settingsCategories as category}
+			{#each filteredCategories as category}
 				{@const Icon = category.icon}
 				<Card class="hover:border-primary/20 group cursor-pointer transition-all duration-200 hover:shadow-md">
 					<button onclick={() => navigateToCategory(category.url)} class="w-full p-4 text-left sm:p-6">

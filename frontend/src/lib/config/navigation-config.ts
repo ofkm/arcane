@@ -23,6 +23,7 @@ export type NavigationItem = {
 	url: string;
 	icon: typeof IconType;
 	items?: NavigationItem[];
+	isAgentApplicable?: boolean;
 };
 
 export const navigationItems: Record<string, NavigationItem[]> = {
@@ -65,15 +66,32 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 			url: '/settings',
 			icon: SettingsIcon,
 			items: [
-				{ title: m.general_title(), url: '/settings/general', icon: SettingsIcon },
-				{ title: m.docker_title(), url: '/settings/docker', icon: DatabaseIcon },
-				{ title: m.security_title(), url: '/settings/security', icon: ShieldIcon },
-				{ title: m.navigation_title(), url: '/settings/navigation', icon: NavigationIcon },
-				{ title: m.users_title(), url: '/settings/users', icon: UserIcon }
+				{ title: m.general_title(), url: '/settings/general', icon: SettingsIcon, isAgentApplicable: true },
+				{ title: m.docker_title(), url: '/settings/docker', icon: DatabaseIcon, isAgentApplicable: true },
+				{ title: m.security_title(), url: '/settings/security', icon: ShieldIcon, isAgentApplicable: false },
+				{ title: m.navigation_title(), url: '/settings/navigation', icon: NavigationIcon, isAgentApplicable: false },
+				{ title: m.users_title(), url: '/settings/users', icon: UserIcon, isAgentApplicable: false }
 			]
 		}
 	]
 };
+
+export function getFilteredSettingsItems(isRemoteEnvironment: boolean): NavigationItem[] {
+	if (!isRemoteEnvironment) {
+		return navigationItems.settingsItems;
+	}
+
+	return navigationItems.settingsItems.map(item => {
+		if (item.items) {
+			const filteredSubItems = item.items.filter(subItem => subItem.isAgentApplicable !== false);
+			return {
+				...item,
+				items: filteredSubItems
+			};
+		}
+		return item;
+	}).filter(item => !item.items || item.items.length > 0);
+}
 
 export const defaultMobilePinnedItems: NavigationItem[] = [
 	navigationItems.managementItems[0],
