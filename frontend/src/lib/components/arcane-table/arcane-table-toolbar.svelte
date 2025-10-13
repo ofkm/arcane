@@ -107,7 +107,7 @@
 		<ArcaneButton
 			action="remove"
 			size="sm"
-			customLabel={m.common_remove_selected({ count: selectedIds?.length ?? 0 })}
+			customLabel={m.common_remove_selected_count({ count: selectedIds?.length ?? 0 })}
 			onclick={() => onRemoveSelected?.(selectedIds!)}
 		/>
 	{/if}

@@ -183,7 +183,7 @@
 									<KeyIcon class="size-4" />
 								</div>
 								<div>
-									<Card.Title class="text-base">{m.variables_env_vars_title()}</Card.Title>
+									<Card.Title class="text-base">{m.common_environment_variables()}</Card.Title>
 									<Card.Description class="text-xs">
 										{#if envVars.filter((v) => v.key.trim()).length === 1}
 											{m.variables_count_configured({ count: 1 })}

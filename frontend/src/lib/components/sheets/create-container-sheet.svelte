@@ -36,8 +36,8 @@
 	}: CreateContainerFormProps = $props();
 
 	const restartPolicies = [
-		{ value: 'no', label: m.restart_policy_no() },
-		{ value: 'always', label: m.restart_policy_always() },
+		{ value: 'no', label: m.common_no() },
+		{ value: 'always', label: m.common_always() },
 		{ value: 'unless-stopped', label: m.restart_policy_unless_stopped() },
 		{ value: 'on-failure', label: m.restart_policy_on_failure() }
 	];

@@ -364,7 +364,7 @@
 			<DropdownMenu.Group>
 				<DropdownMenu.Item onclick={() => goto(`/customize/templates/${item.id}`)} disabled={isAnyLoading}>
 					<ScanSearchIcon class="size-4" />
-					{m.templates_view_details()}
+					{m.common_view_details()}
 				</DropdownMenu.Item>
 
 				<DropdownMenu.Item onclick={() => goto(`/projects/new?templateId=${item.id}`)} disabled={isAnyLoading}>

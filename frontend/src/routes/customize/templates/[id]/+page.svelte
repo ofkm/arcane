@@ -222,7 +222,9 @@
 					<FileTextIcon class="size-6 text-purple-500" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{m.environment_variables()}</div>
+					<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+						{m.common_environment_variables()}
+					</div>
 					<div class="mt-1 flex flex-wrap items-baseline gap-2">
 						<div class="text-2xl font-bold">{envVars.length}</div>
 						{#if envVars.length > 0}
@@ -282,7 +284,7 @@
 					<Card.Header icon={FileTextIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>
-								<h2>{m.environment_variables()}</h2>
+								<h2>{m.common_environment_variables()}</h2>
 							</Card.Title>
 							<Card.Description>{m.templates_default_config_values()}</Card.Description>
 						</div>

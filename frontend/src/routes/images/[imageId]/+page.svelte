@@ -247,7 +247,7 @@
 				<Card.Root>
 					<Card.Header icon={SettingsIcon}>
 						<div class="flex flex-col space-y-1.5">
-							<Card.Title>{m.images_env_vars_title()}</Card.Title>
+							<Card.Title>{m.common_environment_variables()}</Card.Title>
 							<Card.Description>{m.images_env_vars_description()}</Card.Description>
 						</div>
 					</Card.Header>

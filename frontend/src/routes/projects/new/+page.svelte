@@ -199,7 +199,7 @@
 									onclick={() => (showTemplateDialog = true)}
 								>
 									<LayoutTemplateIcon class="size-4" />
-									{m.compose_use_template()}
+									{m.common_use_template()}
 								</DropdownMenu.Item>
 								<DropdownMenu.Item class={dropdownItemClass} onclick={() => (showConverterDialog = true)}>
 									<TerminalIcon class="size-4" />
