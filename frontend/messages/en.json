@@ -697,6 +697,10 @@
 	"events_copy_full_event_json_title": "Copy full event JSON",
 	"events_environment_label": "Environment",
 
+	"_comment_settings": "=== SETTINGS ===",
+	"settings_title": "Settings",
+	"settings_description": "Configure the application settings",
+
 	"_comment_settings_general": "=== SETTINGS - GENERAL ===",
 	"general_title": "General",
 	"general_description": "Core configuration settings for the application",
@@ -839,6 +843,7 @@
 	"directory_path": "Directory Path",
 
 	"_comment_customize_overview": "=== CUSTOMIZATION - OVERVIEW ===",
+	"customize_title": "Customization",
 	"customize_subtitle": "Customize templates, registries, and configuration defaults",
 	"customize_search_placeholder": "Search customization options...",
 	"customize_search_results": "Search Results for \"{query}\"",
@@ -988,7 +993,7 @@
 	"registry_quay_url": "quay.io",
 
 	"_comment_customize_variables": "=== CUSTOMIZATION - VARIABLES ===",
-	"variables_title": "Global Variables",
+	"variables_title": "Variables",
 	"variables_subtitle": "Manage global environment variables that are available to all projects",
 	"variables_about_title": "About Global Environment Variables",
 	"variables_about_description": "These variables are stored in .env.global at the root of your projects directory and are available to all Docker Compose projects.",
