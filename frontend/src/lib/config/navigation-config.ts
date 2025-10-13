@@ -38,7 +38,7 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 	],
 	customizationItems: [
 		{
-			title: m.sidebar_customization(),
+			title: m.customize_title(),
 			url: '/customize',
 			icon: PaletteIcon,
 			items: [
@@ -62,7 +62,7 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 			icon: AlarmClockIcon
 		},
 		{
-			title: m.sidebar_settings(),
+			title: m.settings_title(),
 			url: '/settings',
 			icon: SettingsIcon,
 			items: [
