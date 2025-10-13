@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'backend/**'
-      - 'frontend/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'frontend/package.json'
+      - "backend/**"
+      - "frontend/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "frontend/package.json"
   workflow_dispatch:
 
 concurrency:
@@ -53,7 +53,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build agent binaries
-        run: bash scripts/development/build-binaries.sh --docker --agent
+        run: bash scripts/github/build-binaries.sh --docker --agent
 
       - name: Build and push agent image
         id: build-push-image
@@ -68,6 +68,6 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v3
         with:
-          subject-name: '${{ env.DOCKER_IMAGE_NAME }}'
+          subject-name: "${{ env.DOCKER_IMAGE_NAME }}"
           subject-digest: ${{ steps.build-push-image.outputs.digest }}
           push-to-registry: true
