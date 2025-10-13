@@ -88,7 +88,7 @@
 	async function handleDeleteOne(id: string, url: string) {
 		const safeUrl = url ?? m.common_unknown();
 		openConfirmDialog({
-			title: m.registries_remove_title(),
+			title: m.common_remove_title({ resource: m.resource_registry() }),
 			message: m.registries_remove_message({ url: safeUrl }),
 			confirm: {
 				label: m.common_remove(),

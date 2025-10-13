@@ -69,7 +69,7 @@
 	async function handleDeleteEvent(eventId: string, title: string) {
 		const safeTitle = title?.trim() || m.common_unknown();
 		openConfirmDialog({
-			title: m.events_delete_title(),
+			title: m.common_delete_title({ resource: 'event' }),
 			message: m.events_delete_confirm_message({ title: safeTitle }),
 			confirm: {
 				label: m.common_delete(),

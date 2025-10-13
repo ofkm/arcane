@@ -81,7 +81,7 @@
 
 	async function handleDeleteOne(id: string, hostname: string) {
 		openConfirmDialog({
-			title: m.environments_delete_title(),
+			title: m.common_delete_title({ resource: m.resource_environment() }),
 			message: m.environments_delete_message({ name: hostname }),
 			confirm: {
 				label: m.common_remove(),

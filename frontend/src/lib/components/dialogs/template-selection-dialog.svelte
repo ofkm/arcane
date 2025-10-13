@@ -207,7 +207,7 @@
 					<Button size="sm" onclick={() => handleSelect(template)} disabled={loadingStates.has(template.id)}>
 						{#if loadingStates.has(template.id)}
 							<Spinner class="mr-1 size-3" />
-							{m.templates_loading()}
+							{m.common_loading()}
 						{:else}
 							{m.templates_use_now()}
 						{/if}

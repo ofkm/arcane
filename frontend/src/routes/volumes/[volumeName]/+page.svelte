@@ -36,7 +36,7 @@
 		}
 
 		openConfirmDialog({
-			title: m.volumes_remove_title(),
+			title: m.common_remove_title({ resource: m.resource_volume() }),
 			message,
 			confirm: {
 				label: m.common_remove(),
@@ -99,7 +99,7 @@
 			<div class="flex gap-2 self-start">
 				<ArcaneButton
 					action="remove"
-					customLabel={m.volumes_remove_title()}
+					customLabel={m.common_remove_title({ resource: m.resource_volume_cap() })}
 					onclick={() => handleRemoveVolumeConfirm(volume.name)}
 					loading={isLoading.remove}
 					disabled={isLoading.remove}

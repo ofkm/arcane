@@ -45,7 +45,7 @@
 			return;
 		}
 		openConfirmDialog({
-			title: m.networks_delete_title(),
+			title: m.common_delete_title({ resource: m.resource_network() }),
 			message: m.networks_delete_confirm_message({ name: safeName }),
 			confirm: {
 				label: m.common_delete(),

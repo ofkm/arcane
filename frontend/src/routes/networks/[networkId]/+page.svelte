@@ -54,7 +54,7 @@
 		}
 
 		openConfirmDialog({
-			title: m.networks_remove_title(),
+			title: m.common_remove_title({ resource: m.resource_network() }),
 			message: m.networks_remove_confirm_message({ name: network?.name ?? shortId }),
 			confirm: {
 				label: m.common_remove(),
@@ -123,7 +123,7 @@
 			<div class="self-start">
 				<ArcaneButton
 					action="remove"
-					customLabel={m.networks_remove_title()}
+					customLabel={m.common_remove_title({ resource: m.resource_network_cap() })}
 					onclick={triggerRemove}
 					loading={isRemoving}
 					disabled={isRemoving || isPredefined}

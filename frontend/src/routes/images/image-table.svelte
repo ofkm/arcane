@@ -94,7 +94,7 @@
 
 	async function deleteImage(id: string) {
 		openConfirmDialog({
-			title: m.images_remove_title(),
+			title: m.common_remove_title({ resource: m.resource_image() }),
 			message: m.images_remove_message(),
 			confirm: {
 				label: m.common_remove(),
