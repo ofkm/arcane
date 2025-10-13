@@ -23,8 +23,8 @@
 	}: {
 		registries: TemplateRegistry[];
 		isLoading: {
-			updating: Set<string>;
-			removing: Set<string>;
+			updating: Record<string, boolean>;
+			removing: Record<string, boolean>;
 		};
 		onAddRegistry: () => void;
 		onUpdateRegistry: (id: string, updates: { enabled?: boolean }) => void;
@@ -84,7 +84,7 @@
 							<Switch
 								checked={registry.enabled}
 								onCheckedChange={(checked) => onUpdateRegistry(registry.id, { enabled: checked })}
-								disabled={isLoading.updating.has(registry.id)}
+								disabled={isLoading.updating[registry.id]}
 							/>
 
 							<Button variant="outline" size="sm" onclick={() => window.open(registry.url, '_blank', 'noopener,noreferrer')}>
@@ -95,9 +95,9 @@
 								variant="destructive"
 								size="sm"
 								onclick={() => onRemoveRegistry(registry.id)}
-								disabled={isLoading.removing.has(registry.id)}
+								disabled={isLoading.removing[registry.id]}
 							>
-								{#if isLoading.removing.has(registry.id)}
+								{#if isLoading.removing[registry.id]}
 									<RefreshCwIcon class="size-4 animate-spin" />
 								{:else}
 									<Trash2Icon class="size-4" />

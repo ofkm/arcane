@@ -12,7 +12,7 @@
 	import * as Tabs from '$lib/components/ui/tabs';
 	import TemplatesBrowser from './components/TemplatesBrowser.svelte';
 	import RegistryManager from './components/RegistryManager.svelte';
-	import type { Template, TemplateRegistry } from '$lib/types/template.type';
+	import type { TemplateRegistry } from '$lib/types/template.type';
 	import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
 
 	let { data } = $props();
@@ -37,20 +37,21 @@
 
 	let isLoading = $state({
 		addingRegistry: false,
-		removing: new Set<string>(),
-		updating: new Set<string>()
+		removing: {} as Record<string, boolean>,
+		updating: {} as Record<string, boolean>
 	});
 
 	let showAddRegistrySheet = $state(false);
 
 	async function updateRegistry(id: string, updates: { enabled?: boolean }) {
-		if (isLoading.updating.has(id)) return;
-		isLoading.updating.add(id);
+		if (isLoading.updating[id]) return;
+		isLoading.updating[id] = true;
 
 		try {
 			const registry = registries.find((r) => r.id === id);
 			if (!registry) {
 				toast.error(m.templates_registry_not_found());
+				delete isLoading.updating[id];
 				return;
 			}
 
@@ -68,13 +69,13 @@
 			console.error('Error updating registry:', error);
 			toast.error(error instanceof Error ? error.message : m.registries_save_failed());
 		} finally {
-			isLoading.updating.delete(id);
+			delete isLoading.updating[id];
 		}
 	}
 
 	async function removeRegistry(id: string) {
-		if (isLoading.removing.has(id)) return;
-		isLoading.removing.add(id);
+		if (isLoading.removing[id]) return;
+		isLoading.removing[id] = true;
 
 		try {
 			const reg = registries.find((r) => r.id === id);
@@ -87,7 +88,7 @@
 			console.error('Error removing registry:', error);
 			toast.error(error instanceof Error ? error.message : m.registries_save_failed());
 		} finally {
-			isLoading.removing.delete(id);
+			delete isLoading.removing[id];
 		}
 	}
 

@@ -467,7 +467,9 @@ func (s *TemplateService) UpdateRegistry(ctx context.Context, id string, updates
 		}
 	}
 
-	result := s.db.WithContext(ctx).Model(&models.TemplateRegistry{}).Where("id = ?", id).Updates(updates)
+	result := s.db.WithContext(ctx).Model(&models.TemplateRegistry{}).Where("id = ?", id).
+		Select("Name", "URL", "Description", "Enabled").
+		Updates(updates)
 	if result.Error != nil {
 		return result.Error
 	}
