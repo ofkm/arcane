@@ -148,9 +148,9 @@
 			return template.registry.name;
 		}
 		if (template.isRemote) {
-			return 'Unknown Registry';
+			return m.templates_unknown_registry();
 		}
-		return 'Local Templates';
+		return m.templates_local_templates();
 	}
 
 	const groupedTemplates = $derived(() => {
@@ -167,10 +167,10 @@
 		}
 
 		const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
-			if (a === 'Local Templates') return -1;
-			if (b === 'Local Templates') return 1;
-			if (a === 'Unknown Registry') return 1;
-			if (b === 'Unknown Registry') return -1;
+			if (a === m.templates_local_templates()) return -1;
+			if (b === m.templates_local_templates()) return 1;
+			if (a === m.templates_unknown_registry()) return 1;
+			if (b === m.templates_unknown_registry()) return -1;
 			return a.localeCompare(b);
 		});
 

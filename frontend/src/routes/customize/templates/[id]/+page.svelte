@@ -176,7 +176,7 @@
 					class="w-full gap-2 sm:w-auto"
 				>
 					<FolderIcon class="size-4" />
-					View Local Version
+					{m.templates_view_local_version()}
 				</Button>
 			{/if}
 
@@ -222,7 +222,7 @@
 					<div class="mt-1 flex flex-wrap items-baseline gap-2">
 						<div class="text-2xl font-bold">{envVars.length}</div>
 						{#if envVars.length > 0}
-							<div class="text-muted-foreground text-sm">Configurable settings</div>
+							<div class="text-muted-foreground text-sm">{m.templates_configurable_settings()}</div>
 						{/if}
 					</div>
 				</div>
@@ -235,9 +235,9 @@
 			<Card.Header icon={CodeIcon}>
 				<div class="flex flex-col space-y-1.5">
 					<Card.Title>
-						<h2>Docker Compose</h2>
+						<h2>{m.common_docker_compose()}</h2>
 					</Card.Title>
-					<Card.Description>Service definitions and configurations</Card.Description>
+					<Card.Description>{m.templates_service_definitions()}</Card.Description>
 				</div>
 			</Card.Header>
 			<Card.Content class="h-full w-full p-0 [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
@@ -251,9 +251,9 @@
 					<Card.Header icon={BoxIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>
-								<h2>Services</h2>
+								<h2>{m.services()}</h2>
 							</Card.Title>
-							<Card.Description>Containers that will be created</Card.Description>
+							<Card.Description>{m.templates_containers_to_create()}</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="grid grid-cols-1 gap-2 p-4">
@@ -278,7 +278,7 @@
 							<Card.Title>
 								<h2>{m.environment_variables()}</h2>
 							</Card.Title>
-							<Card.Description>Default configuration values</Card.Description>
+							<Card.Description>{m.templates_default_config_values()}</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="grid grid-cols-1 gap-2 p-4">
@@ -289,7 +289,7 @@
 									{#if envVar.value}
 										<div class="text-foreground min-w-0 font-mono text-sm break-words select-all">{envVar.value}</div>
 									{:else}
-										<div class="text-muted-foreground text-xs italic">No default value</div>
+										<div class="text-muted-foreground text-xs italic">{m.common_no_default_value()}</div>
 									{/if}
 								</Card.Content>
 							</Card.Root>
@@ -305,7 +305,7 @@
 							<Card.Title>
 								<h2>{m.environment_file()}</h2>
 							</Card.Title>
-							<Card.Description>Raw .env configuration</Card.Description>
+							<Card.Description>{m.templates_raw_env_config()}</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="w-full overflow-auto p-0 [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">

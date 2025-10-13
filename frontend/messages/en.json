@@ -429,6 +429,7 @@
 	"registries_url": "Registry URL",
 	"common_description": "Description",
 	"common_no_description": "No description provided",
+	"common_no_default_value": "No default value",
 	"registries_title": "Container Registries",
 	"registries_subtitle": "Configure access credentials for private Docker registries and container repositories",
 	"registries_add_button": "Add Registry",
@@ -692,6 +693,7 @@
 	"common_author": "Author",
 	"common_working_dir": "Working Dir",
 	"common_docker_version": "Docker Version",
+	"common_docker_compose": "Docker Compose",
 	"common_view_on_github": "View on GitHub",
 	"auth_login_failed": "Login failed",
 	"auth_processing_login": "Processing Login...",
@@ -1299,5 +1301,13 @@
 	"templates_all": "All Templates",
 	"templates_local_only": "Local Only",
 	"templates_remote_only": "Remote Only",
-	"templates_tags": "Tags"
+	"templates_tags": "Tags",
+	"templates_unknown_registry": "Unknown Registry",
+	"templates_view_local_version": "View Local Version",
+	"templates_configurable_settings": "Configurable settings",
+	"templates_service_definitions": "Service definitions and configurations",
+	"templates_containers_to_create": "Containers that will be created",
+	"templates_default_config_values": "Default configuration values",
+	"templates_raw_env_config": "Raw .env configuration",
+	"compose_yaml_description": "YAML configuration for services"
 }
