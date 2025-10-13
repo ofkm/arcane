@@ -1,5 +1,7 @@
 package dto
 
+import "github.com/ofkm/arcane-backend/internal/models"
+
 type CreateProjectDto struct {
 	Name           string  `json:"name" binding:"required"`
 	ComposeContent string  `json:"composeContent" binding:"required"`
@@ -10,6 +12,15 @@ type UpdateProjectDto struct {
 	Name           *string `json:"name,omitempty"`
 	ComposeContent *string `json:"composeContent,omitempty"`
 	EnvContent     *string `json:"envContent,omitempty"`
+}
+
+type UpdateProjectSettingsDto struct {
+	PollingEnabled         *bool        `json:"pollingEnabled,omitempty"`
+	PollingInterval        *int         `json:"pollingInterval,omitempty"`
+	AutoUpdate             *bool        `json:"autoUpdate,omitempty"`
+	UpdateScheduleEnabled  *bool        `json:"updateScheduleEnabled,omitempty"`
+	UpdateScheduleWindows  *models.JSON `json:"updateScheduleWindows,omitempty"`
+	UpdateScheduleTimezone *string      `json:"updateScheduleTimezone,omitempty"`
 }
 
 type CreateProjectReponseDto struct {
@@ -26,19 +37,37 @@ type CreateProjectReponseDto struct {
 }
 
 type ProjectDetailsDto struct {
-	ID             string  `json:"id"`
-	Name           string  `json:"name"`
-	DirName        string  `json:"dirName,omitempty"`
-	Path           string  `json:"path"`
-	ComposeContent string  `json:"composeContent,omitempty"`
-	EnvContent     string  `json:"envContent,omitempty"`
-	Status         string  `json:"status"`
-	StatusReason   *string `json:"statusReason,omitempty"`
-	ServiceCount   int     `json:"serviceCount"`
-	RunningCount   int     `json:"runningCount"`
-	CreatedAt      string  `json:"createdAt"`
-	UpdatedAt      string  `json:"updatedAt"`
-	Services       []any   `json:"services,omitempty"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	DirName        string `json:"dirName,omitempty"`
+	Path           string `json:"path"`
+	ComposeContent string `json:"composeContent,omitempty"`
+	EnvContent     string `json:"envContent,omitempty"`
+	Status         string `json:"status"`
+	ServiceCount   int    `json:"serviceCount"`
+	RunningCount   int    `json:"runningCount"`
+	CreatedAt      string `json:"createdAt"`
+	UpdatedAt      string `json:"updatedAt"`
+	Services       []any  `json:"services,omitempty"`
+
+	PollingEnabled         *bool        `json:"pollingEnabled,omitempty"`
+	PollingInterval        *int         `json:"pollingInterval,omitempty"`
+	AutoUpdate             *bool        `json:"autoUpdate,omitempty"`
+	UpdateScheduleEnabled  *bool        `json:"updateScheduleEnabled,omitempty"`
+	UpdateScheduleWindows  *models.JSON `json:"updateScheduleWindows,omitempty"`
+	UpdateScheduleTimezone *string      `json:"updateScheduleTimezone,omitempty"`
+
+	// Resolved effective settings (after applying overrides)
+	EffectiveSettings *ResolvedProjectSettings `json:"effectiveSettings,omitempty"`
+}
+
+type ResolvedProjectSettings struct {
+	PollingEnabled         bool                         `json:"pollingEnabled"`
+	PollingInterval        int                          `json:"pollingInterval"`
+	AutoUpdate             bool                         `json:"autoUpdate"`
+	UpdateScheduleEnabled  bool                         `json:"updateScheduleEnabled"`
+	UpdateScheduleWindows  *models.UpdateScheduleConfig `json:"updateScheduleWindows,omitempty"`
+	UpdateScheduleTimezone string                       `json:"updateScheduleTimezone"`
 }
 
 type DestroyProjectDto struct {

@@ -26,7 +26,9 @@
 	import ServicesGrid from '../components/ServicesGrid.svelte';
 	import CodePanel from '../components/CodePanel.svelte';
 	import ProjectsLogsPanel from '../components/ProjectLogsPanel.svelte';
+	import ProjectSettings from '../components/ProjectSettings.svelte';
 	import { projectService } from '$lib/services/project-service';
+	import SquarePenIcon from '@lucide/svelte/icons/square-pen';
 
 	let { data } = $props();
 	let projectId = $derived(data.projectId);
@@ -76,7 +78,7 @@
 
 	let autoScrollStackLogs = $state(true);
 
-	let selectedTab = $state<'services' | 'compose' | 'logs'>('compose');
+	let selectedTab = $state<'services' | 'compose' | 'logs' | 'settings'>('compose');
 	let composeOpen = $state(true);
 	let envOpen = $state(true);
 
@@ -90,20 +92,25 @@
 		{
 			value: 'compose',
 			label: m.common_configuration(),
-			icon: SettingsIcon
+			icon: SquarePenIcon
 		},
 		{
 			value: 'logs',
 			label: m.compose_nav_logs(),
 			icon: LogsIcon,
 			disabled: project?.status !== 'running'
+		},
+		{
+			value: 'settings',
+			label: m.compose_nav_settings(),
+			icon: SettingsIcon
 		}
 	]);
 
 	let nameInputRef = $state<HTMLInputElement | null>(null);
 
 	type ComposeUIPrefs = {
-		tab: 'services' | 'compose' | 'logs';
+		tab: 'services' | 'compose' | 'logs' | 'settings';
 		composeOpen: boolean;
 		envOpen: boolean;
 		autoScroll: boolean;
@@ -285,6 +292,10 @@
 				{:else}
 					<div class="text-muted-foreground py-12 text-center">{m.compose_logs_title()} Unavailable</div>
 				{/if}
+			</Tabs.Content>
+
+			<Tabs.Content value="settings" class="h-full">
+				<ProjectSettings {project} onUpdate={invalidateAll} />
 			</Tabs.Content>
 		{/snippet}
 	</TabbedPageLayout>

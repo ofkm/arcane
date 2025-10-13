@@ -14,40 +14,42 @@ type ImagePollingJob struct {
 	imageUpdateService *services.ImageUpdateService
 	settingsService    *services.SettingsService
 	environmentService *services.EnvironmentService
+	projectService     *services.ProjectService
 	scheduler          *Scheduler
 }
 
-func NewImagePollingJob(scheduler *Scheduler, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService, environmentService *services.EnvironmentService) *ImagePollingJob {
+func NewImagePollingJob(scheduler *Scheduler, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService, environmentService *services.EnvironmentService, projectService *services.ProjectService) *ImagePollingJob {
 	return &ImagePollingJob{
 		imageUpdateService: imageUpdateService,
 		settingsService:    settingsService,
 		environmentService: environmentService,
+		projectService:     projectService,
 		scheduler:          scheduler,
 	}
 }
 
 func (j *ImagePollingJob) Register(ctx context.Context) error {
-	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
-	pollingInterval := j.settingsService.GetIntSetting(ctx, "pollingInterval", 60)
+	minInterval, anyEnabled := j.getMinPollingInterval(ctx)
 
-	if !pollingEnabled {
-		slog.InfoContext(ctx, "polling disabled; job not registered")
+	if !anyEnabled {
+		slog.InfoContext(ctx, "polling disabled globally and for all projects; job not registered")
 		return nil
 	}
 
-	interval := time.Duration(pollingInterval) * time.Minute
-	if interval < 5*time.Minute {
-		slog.WarnContext(ctx, "polling interval too low; using default",
-			slog.Int("requested_minutes", pollingInterval),
-			slog.String("effective_interval", "60m"))
-		interval = 60 * time.Minute
+	if minInterval < 5*time.Minute {
+		slog.WarnContext(ctx, "polling interval too low; using minimum",
+			slog.String("requested_interval", minInterval.String()),
+			slog.String("effective_interval", "5m"))
+		minInterval = 5 * time.Minute
 	}
 
-	slog.InfoContext(ctx, "registering image polling job", slog.String("interval", interval.String()))
+	slog.InfoContext(ctx, "registering image polling job",
+		slog.String("interval", minInterval.String()),
+		slog.String("note", "using shortest interval among all projects"))
 
 	j.scheduler.RemoveJobByName("image-polling")
 
-	jobDefinition := gocron.DurationJob(interval)
+	jobDefinition := gocron.DurationJob(minInterval)
 	return j.scheduler.RegisterJob(
 		ctx,
 		"image-polling",
@@ -57,8 +59,57 @@ func (j *ImagePollingJob) Register(ctx context.Context) error {
 	)
 }
 
+func (j *ImagePollingJob) getMinPollingInterval(ctx context.Context) (time.Duration, bool) {
+	globalEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
+	globalInterval := j.settingsService.GetIntSetting(ctx, "pollingInterval", 60)
+
+	minInterval := time.Duration(globalInterval) * time.Minute
+	anyEnabled := globalEnabled
+
+	projects, err := j.projectService.ListAllProjects(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to get projects for polling interval calculation", slog.Any("err", err))
+		return minInterval, anyEnabled
+	}
+
+	for _, project := range projects {
+		resolved, err := j.settingsService.ResolveProjectSettings(ctx, &project)
+		if err != nil {
+			continue
+		}
+
+		if resolved.PollingEnabled {
+			anyEnabled = true
+			projectInterval := time.Duration(resolved.PollingInterval) * time.Minute
+			if projectInterval < minInterval {
+				minInterval = projectInterval
+			}
+		}
+	}
+
+	return minInterval, anyEnabled
+}
+
 func (j *ImagePollingJob) Execute(ctx context.Context) error {
 	slog.InfoContext(ctx, "image scan run started")
+
+	globalEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
+	if !globalEnabled {
+		projects, err := j.projectService.ListAllProjects(ctx)
+		if err == nil {
+			hasEnabledProject := false
+			for _, project := range projects {
+				if project.PollingEnabled != nil && *project.PollingEnabled {
+					hasEnabledProject = true
+					break
+				}
+			}
+			if !hasEnabledProject {
+				slog.InfoContext(ctx, "polling disabled globally and no project overrides; skipping")
+				return nil
+			}
+		}
+	}
 
 	creds, err := j.loadRegistryCredentials(ctx)
 	if err != nil {
@@ -102,20 +153,21 @@ func (j *ImagePollingJob) loadRegistryCredentials(ctx context.Context) ([]dto.Co
 }
 
 func (j *ImagePollingJob) Reschedule(ctx context.Context) error {
-	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
-	pollingInterval := j.settingsService.GetIntSetting(ctx, "pollingInterval", 60)
+	minInterval, anyEnabled := j.getMinPollingInterval(ctx)
 
-	if !pollingEnabled {
+	if !anyEnabled {
 		j.scheduler.RemoveJobByName("image-polling")
 		slog.InfoContext(ctx, "polling disabled; removed image-polling job if present")
 		return nil
 	}
 
-	interval := time.Duration(pollingInterval) * time.Minute
-	if interval < 5*time.Minute {
-		interval = 60 * time.Minute
+	if minInterval < 5*time.Minute {
+		minInterval = 5 * time.Minute
 	}
-	slog.InfoContext(ctx, "polling settings changed; rescheduling", slog.String("interval", interval.String()))
 
-	return j.scheduler.RescheduleDurationJobByName(ctx, "image-polling", interval, j.Execute, false)
+	slog.InfoContext(ctx, "polling settings changed; rescheduling",
+		slog.String("interval", minInterval.String()),
+		slog.String("note", "using shortest interval among all projects"))
+
+	return j.scheduler.RescheduleDurationJobByName(ctx, "image-polling", minInterval, j.Execute, false)
 }

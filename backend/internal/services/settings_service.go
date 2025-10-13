@@ -79,7 +79,6 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		ProjectsDirectory:            models.SettingVariable{Value: "data/projects"},
 		DiskUsagePath:                models.SettingVariable{Value: "data/projects"},
 		AutoUpdate:                   models.SettingVariable{Value: "false"},
-		AutoUpdateInterval:           models.SettingVariable{Value: "1440"},
 		PollingEnabled:               models.SettingVariable{Value: "true"},
 		PollingInterval:              models.SettingVariable{Value: "60"},
 		PruneMode:                    models.SettingVariable{Value: "dangling"},
@@ -625,4 +624,113 @@ func (s *SettingsService) EnsureEncryptionKey(ctx context.Context) (string, erro
 	}
 
 	return key, nil
+}
+
+func (s *SettingsService) ResolveProjectSettings(ctx context.Context, project *models.Project) (*dto.ResolvedProjectSettings, error) {
+	globalSettings, err := s.GetSettings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load global settings: %w", err)
+	}
+
+	resolved := &dto.ResolvedProjectSettings{
+		PollingEnabled:         globalSettings.PollingEnabled.IsTrue(),
+		PollingInterval:        globalSettings.PollingInterval.AsInt(),
+		AutoUpdate:             globalSettings.AutoUpdate.IsTrue(),
+		UpdateScheduleEnabled:  globalSettings.UpdateScheduleEnabled.IsTrue(),
+		UpdateScheduleTimezone: globalSettings.UpdateScheduleTimezone.Value,
+	}
+
+	if resolved.UpdateScheduleTimezone == "" {
+		resolved.UpdateScheduleTimezone = "UTC"
+	}
+
+	if globalSettings.UpdateScheduleWindows.Value != "" {
+		var scheduleConfig models.UpdateScheduleConfig
+		if err := json.Unmarshal([]byte(globalSettings.UpdateScheduleWindows.Value), &scheduleConfig); err == nil {
+			resolved.UpdateScheduleWindows = &scheduleConfig
+		}
+	}
+
+	if project == nil {
+		return resolved, nil
+	}
+
+	if project.PollingEnabled != nil {
+		resolved.PollingEnabled = *project.PollingEnabled
+	}
+	if project.PollingInterval != nil {
+		resolved.PollingInterval = *project.PollingInterval
+	}
+	if project.AutoUpdate != nil {
+		resolved.AutoUpdate = *project.AutoUpdate
+	}
+	if project.UpdateScheduleEnabled != nil {
+		resolved.UpdateScheduleEnabled = *project.UpdateScheduleEnabled
+	}
+	if project.UpdateScheduleTimezone != nil {
+		resolved.UpdateScheduleTimezone = *project.UpdateScheduleTimezone
+	}
+	if project.UpdateScheduleWindows != nil {
+		var scheduleConfig models.UpdateScheduleConfig
+		if jsonBytes, err := json.Marshal(*project.UpdateScheduleWindows); err == nil {
+			if err := json.Unmarshal(jsonBytes, &scheduleConfig); err == nil {
+				resolved.UpdateScheduleWindows = &scheduleConfig
+			}
+		}
+	}
+
+	return resolved, nil
+}
+
+func (s *SettingsService) ParseUpdateScheduleConfig(jsonStr string) (*models.UpdateScheduleConfig, error) {
+	if jsonStr == "" {
+		return &models.UpdateScheduleConfig{
+			Enabled: false,
+			Windows: []models.UpdateScheduleWindow{},
+		}, nil
+	}
+
+	var config models.UpdateScheduleConfig
+	if err := json.Unmarshal([]byte(jsonStr), &config); err != nil {
+		return nil, fmt.Errorf("failed to parse schedule config: %w", err)
+	}
+
+	return &config, nil
+}
+
+func (s *SettingsService) ValidateUpdateScheduleConfig(config *models.UpdateScheduleConfig) error {
+	if config == nil {
+		return nil
+	}
+
+	validDays := map[string]bool{
+		"monday": true, "tuesday": true, "wednesday": true, "thursday": true,
+		"friday": true, "saturday": true, "sunday": true,
+	}
+
+	for i, window := range config.Windows {
+		if len(window.Days) == 0 {
+			return fmt.Errorf("window %d: must have at least one day specified", i)
+		}
+		for _, day := range window.Days {
+			if !validDays[strings.ToLower(day)] {
+				return fmt.Errorf("window %d: invalid day '%s'", i, day)
+			}
+		}
+
+		if _, err := time.Parse("15:04", window.StartTime); err != nil {
+			return fmt.Errorf("window %d: invalid start time format '%s' (expected HH:MM)", i, window.StartTime)
+		}
+		if _, err := time.Parse("15:04", window.EndTime); err != nil {
+			return fmt.Errorf("window %d: invalid end time format '%s' (expected HH:MM)", i, window.EndTime)
+		}
+
+		if window.Timezone != "" {
+			if _, err := time.LoadLocation(window.Timezone); err != nil {
+				return fmt.Errorf("window %d: invalid timezone '%s'", i, window.Timezone)
+			}
+		}
+	}
+
+	return nil
 }

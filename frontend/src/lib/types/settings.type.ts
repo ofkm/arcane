@@ -11,8 +11,10 @@ export type Settings = {
 	projectsDirectory: string;
 	diskUsagePath: string;
 	autoUpdate: boolean;
-	autoUpdateInterval: number;
 	pollingEnabled: boolean;
+	updateScheduleEnabled: boolean;
+	updateScheduleWindows: UpdateScheduleConfig;
+	updateScheduleTimezone: string;
 	pollingInterval: number;
 	dockerPruneMode: 'all' | 'dangling';
 	baseServerUrl: string;
@@ -65,4 +67,16 @@ export interface OidcConfig {
 export interface OidcStatusInfo {
 	envForced: boolean;
 	envConfigured: boolean;
+}
+
+export interface UpdateScheduleWindow {
+	days: string[]; // e.g., ["monday", "tuesday", "wednesday"]
+	startTime: string; // e.g., "02:00"
+	endTime: string; // e.g., "06:00"
+	timezone: string; // e.g., "UTC"
+}
+
+export interface UpdateScheduleConfig {
+	enabled: boolean;
+	windows: UpdateScheduleWindow[];
 }

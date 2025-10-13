@@ -36,10 +36,47 @@ export interface Project {
 	services?: ProjectService[];
 	composeContent?: string;
 	envContent?: string;
+	pollingEnabled?: boolean | null;
+	pollingInterval?: number | null;
+	autoUpdate?: boolean | null;
+	updateScheduleEnabled?: boolean | null;
+	updateScheduleWindows?: UpdateScheduleConfig | null;
+	updateScheduleTimezone?: string | null;
+	effectiveSettings?: ResolvedProjectSettings;
 }
 
 export interface ProjectStatusCounts {
 	runningProjects: number;
 	stoppedProjects: number;
 	totalProjects: number;
+}
+
+export interface UpdateScheduleWindow {
+	days: string[];
+	startTime: string;
+	endTime: string;
+	timezone: string;
+}
+
+export interface UpdateScheduleConfig {
+	enabled: boolean;
+	windows: UpdateScheduleWindow[];
+}
+
+export interface ResolvedProjectSettings {
+	pollingEnabled: boolean;
+	pollingInterval: number;
+	autoUpdate: boolean;
+	updateScheduleEnabled: boolean;
+	updateScheduleWindows?: UpdateScheduleConfig;
+	updateScheduleTimezone: string;
+}
+
+export interface ProjectSettingsUpdate {
+	pollingEnabled?: boolean;
+	pollingInterval?: number;
+	autoUpdate?: boolean;
+	updateScheduleEnabled?: boolean;
+	updateScheduleWindows?: UpdateScheduleConfig;
+	updateScheduleTimezone?: string;
 }

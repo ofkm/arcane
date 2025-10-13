@@ -44,18 +44,20 @@ func (s SettingVariable) AsDurationSeconds() time.Duration {
 
 type Settings struct {
 	// Docker
-	ProjectsDirectory  SettingVariable `key:"projectsDirectory"`
-	DiskUsagePath      SettingVariable `key:"diskUsagePath"`
-	AutoUpdate         SettingVariable `key:"autoUpdate"`
-	AutoUpdateInterval SettingVariable `key:"autoUpdateInterval"`
-	PollingEnabled     SettingVariable `key:"pollingEnabled"`
-	PollingInterval    SettingVariable `key:"pollingInterval"`
-	PruneMode          SettingVariable `key:"dockerPruneMode"`
-	BaseServerURL      SettingVariable `key:"baseServerUrl"`
-	EnableGravatar     SettingVariable `key:"enableGravatar"`
-	DefaultShell       SettingVariable `key:"defaultShell"`
-	DockerHost         SettingVariable `key:"dockerHost,public,envOverride"`
-	AccentColor        SettingVariable `key:"accentColor,public"`
+	ProjectsDirectory      SettingVariable `key:"projectsDirectory"`
+	DiskUsagePath          SettingVariable `key:"diskUsagePath"`
+	AutoUpdate             SettingVariable `key:"autoUpdate"`
+	PollingEnabled         SettingVariable `key:"pollingEnabled"`
+	PollingInterval        SettingVariable `key:"pollingInterval"`
+	UpdateScheduleEnabled  SettingVariable `key:"updateScheduleEnabled"`
+	UpdateScheduleWindows  SettingVariable `key:"updateScheduleWindows"`
+	UpdateScheduleTimezone SettingVariable `key:"updateScheduleTimezone"`
+	PruneMode              SettingVariable `key:"dockerPruneMode"`
+	BaseServerURL          SettingVariable `key:"baseServerUrl"`
+	EnableGravatar         SettingVariable `key:"enableGravatar"`
+	DefaultShell           SettingVariable `key:"defaultShell"`
+	DockerHost             SettingVariable `key:"dockerHost,public,envOverride"`
+	AccentColor            SettingVariable `key:"accentColor,public"`
 
 	// Authentication
 	AuthLocalEnabled   SettingVariable `key:"authLocalEnabled,public"`
@@ -225,4 +227,16 @@ type OidcConfig struct {
 	// - adminClaim: "realm_access.roles", adminValue: "admin" (Keycloak)
 	AdminClaim string `json:"adminClaim,omitempty"`
 	AdminValue string `json:"adminValue,omitempty"`
+}
+
+type UpdateScheduleWindow struct {
+	Days      []string `json:"days"`      // e.g., ["monday", "tuesday", "wednesday"]
+	StartTime string   `json:"startTime"` // e.g., "02:00"
+	EndTime   string   `json:"endTime"`   // e.g., "06:00"
+	Timezone  string   `json:"timezone"`  // e.g., "UTC"
+}
+
+type UpdateScheduleConfig struct {
+	Enabled bool                   `json:"enabled"`
+	Windows []UpdateScheduleWindow `json:"windows"`
 }

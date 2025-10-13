@@ -13,8 +13,11 @@
 	import { z } from 'zod/v4';
 	import { m } from '$lib/paraglide/messages';
 	import settingsStore from '$lib/stores/config-store';
-	import type { Settings } from '$lib/types/settings.type';
+	import type { Settings, UpdateScheduleWindow, UpdateScheduleConfig } from '$lib/types/settings.type';
 	import { settingsService } from '$lib/services/settings-service.js';
+	import UpdateScheduleEditor from '$lib/components/schedule/update-schedule-editor.svelte';
+	import ClockIcon from '@lucide/svelte/icons/clock';
+	import { Label } from '$lib/components/ui/label';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings);
@@ -57,9 +60,16 @@
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		autoUpdateInterval: z.number().int(),
-		dockerPruneMode: z.enum(['all', 'dangling'])
+		dockerPruneMode: z.enum(['all', 'dangling']),
+		updateScheduleEnabled: z.boolean(),
+		updateScheduleWindows: z.any(),
+		updateScheduleTimezone: z.string()
 	});
+
+	// Update schedule state
+	let scheduleWindows = $state<UpdateScheduleWindow[]>([]);
+	let scheduleTimezone = $state<string>('UTC');
+	let scheduleMode = $state<'immediate' | 'scheduled'>('immediate');
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
@@ -69,15 +79,31 @@
 		}
 	});
 
+	function handleScheduleUpdate(windows: UpdateScheduleWindow[], timezone: string) {
+		scheduleWindows = windows;
+		scheduleTimezone = timezone;
+	}
+
 	async function handleNext() {
 		const data = form.validate();
 		if (!data) return;
 		isLoading = true;
 
 		try {
+			// Add schedule data to settings
+			const settingsToUpdate = {
+				...data,
+				updateScheduleEnabled: scheduleMode === 'scheduled',
+				updateScheduleWindows: {
+					enabled: scheduleMode === 'scheduled',
+					windows: scheduleWindows
+				} as UpdateScheduleConfig,
+				updateScheduleTimezone: scheduleTimezone
+			};
+
 			const updated = {
 				...currentSettings,
-				...data,
+				...settingsToUpdate,
 				onboardingCompleted: false,
 				onboardingSteps: { ...currentSettings.onboardingSteps, docker: true }
 			} as Partial<Settings>;
@@ -166,21 +192,69 @@
 							description={m.docker_auto_update_description()}
 							bind:checked={$formInputs.autoUpdate.value}
 						/>
-
-						{#if $formInputs.autoUpdate.value}
-							<FormInput
-								bind:input={$formInputs.autoUpdateInterval}
-								type="number"
-								id="autoUpdateInterval"
-								label={m.docker_auto_update_interval_label()}
-								placeholder={m.docker_auto_update_interval_placeholder()}
-								description={m.docker_auto_update_interval_description()}
-							/>
-						{/if}
 					</div>
 				{/if}
 			</Card.Content>
 		</Card.Root>
+
+		{#if $formInputs.pollingEnabled.value && $formInputs.autoUpdate.value}
+			<Card.Root class="flex flex-col gap-6 py-3">
+				<Card.Header
+					class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+				>
+					<div class="flex items-center gap-2">
+						<ClockIcon class="size-5" />
+						<Card.Title>{m.update_schedule_title()}</Card.Title>
+					</div>
+					<Card.Description>{m.update_schedule_description()}</Card.Description>
+				</Card.Header>
+				<Card.Content class="px-6">
+					<div class="space-y-4">
+						<div class="space-y-2">
+							<Label>{m.update_schedule_mode_label()}</Label>
+							<div class="grid gap-2">
+								<label
+									class="hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-colors"
+									class:bg-accent={scheduleMode === 'immediate'}
+									class:border-primary={scheduleMode === 'immediate'}
+								>
+									<input type="radio" name="scheduleMode" value="immediate" bind:group={scheduleMode} class="mt-1" />
+									<div class="flex-1">
+										<div class="font-medium">{m.update_schedule_mode_immediate()}</div>
+										<div class="text-muted-foreground text-sm">
+											{m.update_schedule_mode_immediate_description()}
+										</div>
+									</div>
+								</label>
+								<label
+									class="hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-colors"
+									class:bg-accent={scheduleMode === 'scheduled'}
+									class:border-primary={scheduleMode === 'scheduled'}
+								>
+									<input type="radio" name="scheduleMode" value="scheduled" bind:group={scheduleMode} class="mt-1" />
+									<div class="flex-1">
+										<div class="font-medium">{m.update_schedule_mode_scheduled()}</div>
+										<div class="text-muted-foreground text-sm">
+											{m.update_schedule_mode_scheduled_description()}
+										</div>
+									</div>
+								</label>
+							</div>
+						</div>
+
+						{#if scheduleMode === 'scheduled'}
+							<div class="border-primary/20 border-l-2 pl-4">
+								<UpdateScheduleEditor
+									bind:windows={scheduleWindows}
+									bind:timezone={scheduleTimezone}
+									onUpdate={handleScheduleUpdate}
+								/>
+							</div>
+						{/if}
+					</div>
+				</Card.Content>
+			</Card.Root>
+		{/if}
 
 		<Card.Root class="flex flex-col gap-6 py-3">
 			<Card.Header

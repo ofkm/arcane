@@ -21,6 +21,13 @@ type Project struct {
 	ServiceCount int           `json:"service_count" sortable:"true"`
 	RunningCount int           `json:"running_count" sortable:"true"`
 
+	PollingEnabled         *bool   `json:"polling_enabled,omitempty" gorm:"column:polling_enabled"`
+	PollingInterval        *int    `json:"polling_interval,omitempty" gorm:"column:polling_interval"`
+	AutoUpdate             *bool   `json:"auto_update,omitempty" gorm:"column:auto_update"`
+	UpdateScheduleEnabled  *bool   `json:"update_schedule_enabled,omitempty" gorm:"column:update_schedule_enabled"`
+	UpdateScheduleWindows  *JSON   `json:"update_schedule_windows,omitempty" gorm:"type:text;column:update_schedule_windows"`
+	UpdateScheduleTimezone *string `json:"update_schedule_timezone,omitempty" gorm:"column:update_schedule_timezone"`
+
 	BaseModel
 }
 
