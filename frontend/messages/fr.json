@@ -819,7 +819,7 @@
 	"templates_add_registry_title": "Add Template Registry",
 	"templates_add_registry_description": "Add a remote template registry to access community templates.",
 	"templates_registry_url_label": "Registry URL *",
-	"templates_registry_url_placeholder": "https://templates.arcane.ofkm.dev/registry.json",
+	"templates_registry_url_placeholder": "https://registry.getarcane.app/registry.json",
 	"templates_registry_url_description": "URL to the registry JSON manifest",
 	"templates_registry_url_required": "Registry URL is required",
 	"templates_enable_registry_label": "Enable Registry",
