@@ -470,6 +470,7 @@
 	"templates_registry_removed_success": "Registry removed successfully",
 	"templates_refreshed": "Templates refreshed successfully",
 	"templates_refresh_failed": "Failed to refresh templates",
+	"templates_group_by_registry": "Group by Registry",
 	"containers_start_failed": "Failed to start container",
 	"containers_start_success": "Container started successfully",
 	"containers_stop_failed": "Failed to stop container",

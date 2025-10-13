@@ -9,9 +9,15 @@
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import PlusCircleIcon from '@lucide/svelte/icons/plus-circle';
+	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
+	import type { Table as TableType } from '@tanstack/table-core';
+	import * as Table from '$lib/components/ui/table/index.js';
+	import FlexRender from '$lib/components/ui/data-table/flex-render.svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
@@ -25,6 +31,7 @@
 	import { templateService } from '$lib/services/template-service';
 	import TagIcon from '@lucide/svelte/icons/tag';
 	import { truncateString } from '$lib/utils/string.utils';
+	import { PersistedState } from 'runed';
 
 	let {
 		templates = $bindable(),
@@ -117,6 +124,58 @@
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 	let customSettings = $state<Record<string, unknown>>({});
+
+	let groupByRegistry = $derived.by(() => {
+		return (customSettings.groupByRegistry as boolean) ?? false;
+	});
+
+	function setGroupByRegistry(value: boolean) {
+		customSettings = { ...customSettings, groupByRegistry: value };
+	}
+
+	const registryOpenStates = new PersistedState<Record<string, boolean>>(
+		'arcane-template-groups-collapsed',
+		{},
+		{ syncTabs: false }
+	);
+
+	function toggleRegistryState(registryName: string, isOpen: boolean) {
+		registryOpenStates.current = { ...registryOpenStates.current, [registryName]: isOpen };
+	}
+
+	function getRegistryName(template: Template): string {
+		if (template.registry?.name) {
+			return template.registry.name;
+		}
+		if (template.isRemote) {
+			return 'Unknown Registry';
+		}
+		return 'Local Templates';
+	}
+
+	const groupedTemplates = $derived(() => {
+		if (!groupByRegistry) return null;
+
+		const groups = new Map<string, Template[]>();
+
+		for (const template of templates.data ?? []) {
+			const registryName = getRegistryName(template);
+			if (!groups.has(registryName)) {
+				groups.set(registryName, []);
+			}
+			groups.get(registryName)!.push(template);
+		}
+
+		const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
+			if (a === 'Local Templates') return -1;
+			if (b === 'Local Templates') return 1;
+			if (a === 'Unknown Registry') return 1;
+			if (b === 'Unknown Registry') return -1;
+			return a.localeCompare(b);
+		});
+
+		return sortedGroups;
+	});
 </script>
 
 {#snippet NameCell({ item }: { item: Template })}
@@ -360,6 +419,93 @@
 			rowActions={RowActions}
 			mobileCard={TemplateMobileCardSnippet}
 			selectionDisabled
+			customViewOptions={CustomViewOptions}
+			customTableView={groupByRegistry && groupedTemplates() ? GroupedTableView : undefined}
 		/>
 	</Card.Content>
 </Card.Root>
+
+{#snippet CustomViewOptions()}
+	<DropdownMenu.CheckboxItem bind:checked={() => groupByRegistry, (v) => setGroupByRegistry(!!v)}>
+		{m.templates_group_by_registry()}
+	</DropdownMenu.CheckboxItem>
+{/snippet}
+
+{#snippet GroupedTableView({ table }: { table: TableType<Template> })}
+	<div class="space-y-4">
+		{#each groupedTemplates() ?? [] as [registryName, registryTemplates] (registryName)}
+			{@const registryTemplateIds = new Set(registryTemplates.map((t) => t.id))}
+			{@const registryRows = table.getRowModel().rows.filter((row) => registryTemplateIds.has((row.original as Template).id))}
+
+			<Collapsible.Root
+				class="w-full"
+				open={registryOpenStates.current[registryName] ?? true}
+				onOpenChange={(open) => toggleRegistryState(registryName, open)}
+			>
+				<Card.Root class="border-2">
+					<Collapsible.Trigger
+						class="hover:bg-accent/50 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
+					>
+						<div class="flex items-center gap-2">
+							{#if registryOpenStates.current[registryName] ?? true}
+								<ChevronDownIcon class="size-4 transition-transform" />
+							{:else}
+								<ChevronRightIcon class="size-4 transition-transform" />
+							{/if}
+							<span class="font-semibold">{registryName}</span>
+							<Badge variant="secondary" class="ml-2">{registryTemplates.length}</Badge>
+						</div>
+					</Collapsible.Trigger>
+					<Collapsible.Content>
+						<Card.Content class="p-0">
+							<div class="hidden md:block">
+								<Table.Root>
+									<Table.Header>
+										{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+											<Table.Row>
+												{#each headerGroup.headers as header (header.id)}
+													<Table.Head colspan={header.colSpan}>
+														{#if !header.isPlaceholder}
+															<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
+														{/if}
+													</Table.Head>
+												{/each}
+											</Table.Row>
+										{/each}
+									</Table.Header>
+									<Table.Body>
+										{#each registryRows as row (row.id)}
+											<Table.Row data-state={(selectedIds ?? []).includes((row.original as Template).id) && 'selected'}>
+												{#each row.getVisibleCells() as cell (cell.id)}
+													<Table.Cell>
+														<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+													</Table.Cell>
+												{/each}
+											</Table.Row>
+										{:else}
+											<Table.Row>
+												<Table.Cell colspan={table.getAllColumns().length} class="h-24 text-center"
+													>{m.common_no_results_found()}</Table.Cell
+												>
+											</Table.Row>
+										{/each}
+									</Table.Body>
+								</Table.Root>
+							</div>
+
+							<div class="space-y-3 md:hidden">
+								{#each registryRows as row (row.id)}
+									{@render TemplateMobileCardSnippet({ row, item: row.original as Template, mobileFieldVisibility })}
+								{:else}
+									<div class="flex h-24 items-center justify-center text-center text-muted-foreground">
+										{m.common_no_results_found()}
+									</div>
+								{/each}
+							</div>
+						</Card.Content>
+					</Collapsible.Content>
+				</Card.Root>
+			</Collapsible.Root>
+		{/each}
+	</div>
+{/snippet}
