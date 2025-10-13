@@ -33,7 +33,7 @@
 
 	const formSchema = z.object({
 		networkName: z.string().min(1, m.network_name_required()),
-		networkDriver: z.string().min(1, m.network_driver_required()),
+		networkDriver: z.string().min(1, m.common_driver_required()),
 		checkDuplicate: z.boolean().default(true),
 		internal: z.boolean().default(false),
 		networkLabels: z.string().optional().default(''),

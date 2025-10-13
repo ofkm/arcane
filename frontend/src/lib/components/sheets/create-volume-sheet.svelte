@@ -29,7 +29,7 @@
 
 	const formSchema = z.object({
 		volumeName: z.string().min(1, m.volume_name_required()),
-		volumeDriver: z.string().min(1, m.volume_driver_required()),
+		volumeDriver: z.string().min(1, m.common_driver_required()),
 		volumeOptText: z.string().optional().default(''),
 		volumeLabels: z.string().optional().default('')
 	});

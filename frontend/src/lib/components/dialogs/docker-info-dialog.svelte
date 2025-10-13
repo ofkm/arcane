@@ -121,7 +121,7 @@
 				<span class="font-mono text-sm">{dockerInfo?.osVersion ?? '-'}</span>
 			</div>
 			<div class="flex items-center justify-between">
-				<span class="text-muted-foreground text-sm">{m.docker_info_architecture_label()}</span>
+				<span class="text-muted-foreground text-sm">{m.common_architecture()}</span>
 				<Badge>{dockerInfo?.architecture ?? '-'}</Badge>
 			</div>
 			<div class="flex items-center justify-between">
@@ -129,7 +129,7 @@
 				<span class="font-mono text-sm">{dockerInfo?.kernelVersion ?? '-'}</span>
 			</div>
 			<div class="flex items-center justify-between">
-				<span class="text-muted-foreground text-sm">{m.docker_info_cpus_label()}</span>
+				<span class="text-muted-foreground text-sm">{m.common_cpus()}</span>
 				<Badge variant="secondary">{dockerInfo?.cpus ?? 0}</Badge>
 			</div>
 			<div class="flex items-center justify-between">

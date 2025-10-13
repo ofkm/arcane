@@ -95,7 +95,7 @@
 				});
 			} else if (action === 'destroy') {
 				openConfirmDialog({
-					title: m.compose_confirm_removal_title(),
+					title: m.common_confirm_removal_title(),
 					message: m.compose_confirm_removal_message(),
 					checkboxes: [
 						{

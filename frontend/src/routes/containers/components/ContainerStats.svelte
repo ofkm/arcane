@@ -219,7 +219,7 @@
 								{#if cpuLimit > 0}
 									<span
 										>{m.containers_stats_cpu_limit()}: {cpuLimit}
-										{cpuLimit === 1 ? m.containers_stats_cpu_unit_singular() : m.containers_stats_cpu_unit_plural()}</span
+										{cpuLimit === 1 ? m.containers_stats_cpu_unit_singular() : m.common_cpus()}</span
 									>
 								{:else}
 									<span>{m.containers_stats_online_cpus()}: {stats.cpu_stats.online_cpus}</span>
