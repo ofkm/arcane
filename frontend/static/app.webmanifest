@@ -1,10 +1,10 @@
 {
 	"name": "Arcane",
 	"short_name": "Arcane",
-	"description": "Modern Docker container management platform",
+	"description": "Modern Docker Management, Designed for Everyone.",
 	"theme_color": "oklch(0.141 0.005 285.823)",
 	"background_color": "oklch(0.141 0.005 285.823)",
-	"display": "fullscreen",
+	"display": "standalone",
 	"orientation": "portrait-primary",
 	"scope": "/",
 	"start_url": "/",

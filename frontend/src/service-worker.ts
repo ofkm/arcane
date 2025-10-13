@@ -31,13 +31,19 @@ self.addEventListener('activate', (event) => {
 	}
 
 	event.waitUntil(deleteOldCaches());
+	self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
 	if (event.request.method !== 'GET') return;
 
+	// Skip WebSocket connections - they must not be intercepted by service worker
+	const url = new URL(event.request.url);
+	if (url.pathname.includes('/ws') || event.request.headers.get('upgrade') === 'websocket') {
+		return;
+	}
+
 	async function respond() {
-		const url = new URL(event.request.url);
 		const cache = await caches.open(CACHE);
 
 		// `build`/`files` can always be served from the cache
@@ -75,4 +81,10 @@ self.addEventListener('fetch', (event) => {
 	}
 
 	event.respondWith(respond());
+});
+
+self.addEventListener('message', (event) => {
+	if (event.data && event.data.type === 'PING') {
+		event.ports[0]?.postMessage({ type: 'PONG' });
+	}
 });

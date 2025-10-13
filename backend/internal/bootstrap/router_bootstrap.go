@@ -69,6 +69,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	authMiddleware := middleware.NewAuthMiddleware(appServices.Auth, cfg)
 	corsMiddleware := middleware.NewCORSMiddleware(cfg).Add()
 	router.Use(corsMiddleware)
+	router.Use(middleware.WebSocketConnectMiddleware())
 
 	apiGroup := router.Group("/api")
 
