@@ -89,7 +89,7 @@
 		},
 		{
 			value: 'compose',
-			label: m.compose_nav_config(),
+			label: m.common_configuration(),
 			icon: SettingsIcon
 		},
 		{

@@ -205,7 +205,7 @@
 
 			<Accordion.Root type="single" class="w-full">
 				<Accordion.Item value="labels">
-					<Accordion.Trigger class="text-sm font-medium">{m.networks_labels()}</Accordion.Trigger>
+					<Accordion.Trigger class="text-sm font-medium">{m.common_labels()}</Accordion.Trigger>
 					<Accordion.Content class="pt-4">
 						<div class="space-y-4">
 							<div class="space-y-2">
@@ -263,7 +263,7 @@
 							{#if $inputs.enableIpam.value}
 								<div class="border-muted space-y-4 border-l-2 pl-6">
 									<div class="space-y-2">
-										<Label for="subnet" class="text-sm font-medium">{m.networks_ipam_subnet_label()}</Label>
+										<Label for="subnet" class="text-sm font-medium">{m.common_subnet()}</Label>
 										<Input
 											id="subnet"
 											type="text"

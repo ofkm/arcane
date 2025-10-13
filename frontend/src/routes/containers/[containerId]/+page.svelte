@@ -219,11 +219,11 @@
 	const showShell = $derived(!!container?.state?.running);
 
 	const tabItems = $derived<TabItem[]>([
-		{ value: 'overview', label: m.containers_nav_overview(), icon: HardDriveIcon },
+		{ value: 'overview', label: m.common_overview(), icon: HardDriveIcon },
 		...(showStats ? [{ value: 'stats', label: m.containers_nav_metrics(), icon: ActivityIcon }] : []),
 		{ value: 'logs', label: m.containers_nav_logs(), icon: FileTextIcon },
-		...(showShell ? [{ value: 'shell', label: m.shell(), icon: TerminalIcon }] : []),
-		...(showConfiguration ? [{ value: 'config', label: m.containers_nav_config(), icon: SettingsIcon }] : []),
+		...(showShell ? [{ value: 'shell', label: m.common_shell(), icon: TerminalIcon }] : []),
+		...(showConfiguration ? [{ value: 'config', label: m.common_configuration(), icon: SettingsIcon }] : []),
 		...(hasNetworks ? [{ value: 'network', label: m.containers_nav_networks(), icon: NetworkIcon }] : []),
 		...(hasMounts ? [{ value: 'storage', label: m.containers_nav_storage(), icon: DatabaseIcon }] : [])
 	]);

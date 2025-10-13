@@ -110,7 +110,7 @@
 		},
 		{
 			accessorKey: 'size',
-			title: m.images_size(),
+			title: m.common_size(),
 			sortable: true,
 			cell: SizeCell
 		},
@@ -121,7 +121,7 @@
 	const mobileFields = [
 		{ id: 'id', label: m.common_id(), defaultVisible: true },
 		{ id: 'status', label: m.common_status(), defaultVisible: true },
-		{ id: 'size', label: m.images_size(), defaultVisible: true },
+		{ id: 'size', label: m.common_size(), defaultVisible: true },
 		{ id: 'createdAt', label: m.common_created(), defaultVisible: true },
 		{ id: 'driver', label: m.common_driver(), defaultVisible: true }
 	];
@@ -189,7 +189,7 @@
 				show: mobileFieldVisibility.driver ?? true
 			},
 			{
-				label: m.images_size(),
+				label: m.common_size(),
 				getValue: (item: VolumeSummaryDto) =>
 					item.usageData && item.usageData.size >= 0 ? bytes.format(item.usageData.size) : '-',
 				icon: HardDriveIcon,

@@ -118,14 +118,14 @@
 			class: 'border-l-4 border-l-amber-500'
 		},
 		{
-			title: m.compose_running(),
+			title: m.common_running(),
 			value: runningCompose,
 			icon: PlayCircleIcon,
 			iconColor: 'text-green-500',
 			class: 'border-l-4 border-l-green-500'
 		},
 		{
-			title: m.compose_stopped(),
+			title: m.common_stopped(),
 			value: stoppedCompose,
 			icon: StopCircleIcon,
 			iconColor: 'text-red-500',

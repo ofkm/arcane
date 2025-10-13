@@ -134,7 +134,7 @@
 								<HardDriveIcon class="size-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-muted-foreground text-sm font-medium">{m.images_size()}</p>
+								<p class="text-muted-foreground text-sm font-medium">{m.common_size()}</p>
 								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
 									{imageSize()}
 								</p>
@@ -229,7 +229,7 @@
 				<Card.Root>
 					<Card.Header icon={TagIcon}>
 						<div class="flex flex-col space-y-1.5">
-							<Card.Title>{m.images_tags_title()}</Card.Title>
+							<Card.Title>{m.common_tags()}</Card.Title>
 							<Card.Description>{m.images_tags_description()}</Card.Description>
 						</div>
 					</Card.Header>

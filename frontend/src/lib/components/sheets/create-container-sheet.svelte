@@ -301,7 +301,7 @@
 					<Tabs.List class="bg-muted/30 grid w-full shrink-0 grid-cols-6 border-b">
 						<Tabs.Trigger value="basic" class="py-3">{m.tabs_basic()}</Tabs.Trigger>
 						<Tabs.Trigger value="environment" class="py-3">{m.tabs_environment()}</Tabs.Trigger>
-						<Tabs.Trigger value="ports" class="py-3">{m.tabs_ports()}</Tabs.Trigger>
+						<Tabs.Trigger value="ports" class="py-3">{m.common_ports()}</Tabs.Trigger>
 						<Tabs.Trigger value="volumes" class="py-3">{m.tabs_volumes()}</Tabs.Trigger>
 						<Tabs.Trigger value="network" class="py-3">{m.tabs_network_security()}</Tabs.Trigger>
 						<Tabs.Trigger value="advanced" class="py-3">{m.tabs_advanced()}</Tabs.Trigger>

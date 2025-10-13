@@ -105,21 +105,21 @@
 		{
 			id: 'type',
 			accessorFn: (row) => row.isRemote,
-			title: m.templates_type(),
+			title: m.common_type(),
 			sortable: true,
 			cell: TypeCell
 		},
 		{
 			accessorKey: 'metadata',
-			title: m.templates_tags(),
+			title: m.common_tags(),
 			cell: TagsCell
 		}
 	] satisfies ColumnSpec<Template>[];
 
 	const mobileFields = [
 		{ id: 'description', label: m.common_description(), defaultVisible: true },
-		{ id: 'type', label: m.templates_type(), defaultVisible: true },
-		{ id: 'tags', label: m.templates_tags(), defaultVisible: true }
+		{ id: 'type', label: m.common_type(), defaultVisible: true },
+		{ id: 'tags', label: m.common_tags(), defaultVisible: true }
 	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});
@@ -332,7 +332,7 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-								{m.templates_tags()}
+								{m.common_tags()}
 							</div>
 							<div class="mt-1 flex flex-wrap gap-1">
 								{#each tagsArray.slice(0, 3) as tag}
