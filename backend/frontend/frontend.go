@@ -37,14 +37,6 @@ func RegisterFrontend(router *gin.Engine) error {
 			return
 		}
 
-		if path == "/health" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"error":   "Health endpoint not found",
-			})
-			return
-		}
-
 		requestedPath := strings.TrimPrefix(path, "/")
 		if requestedPath == "" {
 			requestedPath = "index.html"
@@ -84,8 +76,28 @@ func (f *FileServerWithCaching) ServeHTTP(w http.ResponseWriter, r *http.Request
 		path = "index.html"
 	}
 
-	// Never cache index.html or service-worker.js - they need to be fresh to detect updates
-	if path == "index.html" || path == "service-worker.js" {
+	// Service worker needs correct MIME type and no caching for PWA updates
+	if path == "service-worker.js" {
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		http.FileServer(f.root).ServeHTTP(w, r)
+		return
+	}
+
+	// Web manifest needs correct MIME type and no caching for PWA updates
+	if path == "app.webmanifest" {
+		w.Header().Set("Content-Type", "application/manifest+json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		http.FileServer(f.root).ServeHTTP(w, r)
+		return
+	}
+
+	// Never cache index.html - it needs to be fresh to detect updates
+	if path == "index.html" {
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
