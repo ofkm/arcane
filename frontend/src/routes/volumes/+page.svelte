@@ -36,10 +36,10 @@
 		const name = options.Name?.trim() || m.common_unknown();
 		handleApiResultWithCallbacks({
 			result: await tryCatch(volumeService.createVolume(options)),
-			message: m.volumes_create_failed({ name }),
+			message: m.common_create_failed({ resource: `${m.resource_volume()} "${name}"` }),
 			setLoadingState: (value) => (isLoading.creating = value),
 			onSuccess: async () => {
-				toast.success(m.volumes_created_success({ name }));
+				toast.success(m.common_create_success({ resource: `${m.resource_volume()} "${name}"` }));
 				volumes = await volumeService.getVolumes(requestOptions);
 				isCreateDialogOpen = false;
 			}
@@ -93,7 +93,7 @@
 		{
 			id: 'create',
 			action: 'create',
-			label: m.volumes_create_button(),
+			label: m.common_create_button({ resource: m.resource_volume() }),
 			onclick: () => (isCreateDialogOpen = true),
 			loading: isLoading.creating,
 			disabled: isLoading.creating

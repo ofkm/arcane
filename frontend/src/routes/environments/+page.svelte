@@ -83,7 +83,7 @@
 	async function onEnvironmentCreated() {
 		showEnvironmentSheet = false;
 		environments = await environmentManagementService.getEnvironments(requestOptions);
-		toast.success(m.environments_created_success());
+		toast.success(m.common_create_success({ resource: m.resource_environment() }));
 		refresh();
 	}
 

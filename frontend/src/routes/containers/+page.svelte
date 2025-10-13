@@ -163,7 +163,7 @@
 					message: m.containers_create_failed(),
 					setLoadingState: (value) => (isLoading.create = value),
 					onSuccess: async () => {
-						toast.success(m.containers_create_success());
+						toast.success(m.common_create_success({ resource: m.resource_container() }));
 						containers = await containerService.getContainers(requestOptions);
 						isCreateDialogOpen = false;
 					}

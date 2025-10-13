@@ -60,10 +60,10 @@
 		try {
 			if (isEditMode && registryToEdit?.id) {
 				await containerRegistryService.updateRegistry(registryToEdit.id, registry as ContainerRegistryUpdateDto);
-				toast.success(m.registries_update_success());
+				toast.success(m.common_update_success({ resource: m.resource_registry() }));
 			} else {
 				await containerRegistryService.createRegistry(registry as ContainerRegistryCreateDto);
-				toast.success(m.registries_create_success());
+				toast.success(m.common_create_success({ resource: m.resource_registry() }));
 			}
 
 			registries = await containerRegistryService.getRegistries(requestOptions);

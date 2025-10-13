@@ -94,7 +94,7 @@
 						message: m.environments_delete_failed({ name: hostname }),
 						setLoadingState: () => {},
 						onSuccess: async () => {
-							toast.success(m.environments_delete_success({ name: hostname }));
+							toast.success(m.common_delete_success({ resource: `${m.resource_environment()} "${hostname}"` }));
 							environments = await environmentManagementService.getEnvironments(requestOptions);
 						}
 					});

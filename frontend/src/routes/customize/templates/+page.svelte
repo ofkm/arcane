@@ -64,7 +64,7 @@
 
 			registries = await templateService.getRegistries();
 			templates = await templateService.getTemplates(requestOptions);
-			toast.success(m.registries_update_success());
+			toast.success(m.common_update_success({ resource: m.resource_registry() }));
 		} catch (error) {
 			console.error('Error updating registry:', error);
 			toast.error(error instanceof Error ? error.message : m.registries_save_failed());
@@ -83,7 +83,11 @@
 			registries = registries.filter((r) => r.id !== id);
 			registries = await templateService.getRegistries();
 			templates = await templateService.getTemplates(requestOptions);
-			toast.success(reg ? m.registries_delete_success({ url: reg.url }) : m.templates_registry_removed_success());
+			toast.success(
+				reg
+					? m.common_delete_success({ resource: `${m.resource_registry()} "${reg.url}"` })
+					: m.templates_registry_removed_success()
+			);
 		} catch (error) {
 			console.error('Error removing registry:', error);
 			toast.error(error instanceof Error ? error.message : m.registries_save_failed());
@@ -117,7 +121,7 @@
 			templates = await templateService.getTemplates(requestOptions);
 			showAddRegistrySheet = false;
 
-			toast.success(m.registries_create_success());
+			toast.success(m.common_create_success({ resource: m.resource_registry() }));
 		} catch (error) {
 			console.error('Error adding registry:', error);
 			toast.error(error instanceof Error ? error.message : m.registries_save_failed());

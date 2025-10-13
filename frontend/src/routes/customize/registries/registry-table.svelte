@@ -102,7 +102,7 @@
 						message: m.registries_delete_failed({ url: safeUrl }),
 						setLoadingState: () => {},
 						onSuccess: async () => {
-							toast.success(m.registries_delete_success({ url: safeUrl }));
+							toast.success(m.common_delete_success({ resource: `${m.resource_registry()} "${safeUrl}"` }));
 							registries = await containerRegistryService.getRegistries(requestOptions);
 						}
 					});

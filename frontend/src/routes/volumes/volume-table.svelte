@@ -42,8 +42,8 @@
 	async function handleRemoveVolumeConfirm(name: string) {
 		const safeName = name?.trim() || m.common_unknown();
 		openConfirmDialog({
-			title: m.volumes_remove_title(),
-			message: m.volumes_remove_confirm_message({ name: safeName }),
+			title: m.common_remove_title({ resource: m.resource_volume() }),
+			message: m.common_remove_confirm({ resource: `${m.resource_volume()} "${safeName}"` }),
 			confirm: {
 				label: m.common_remove(),
 				destructive: true,
@@ -51,10 +51,10 @@
 					isLoading.removing = true;
 					handleApiResultWithCallbacks({
 						result: await tryCatch(volumeService.deleteVolume(safeName)),
-						message: m.volumes_remove_failed({ name: safeName }),
+						message: m.common_remove_failed({ resource: `${m.resource_volume()} "${safeName}"` }),
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {
-							toast.success(m.volumes_remove_success({ name: safeName }));
+							toast.success(m.common_remove_success({ resource: `${m.resource_volume()} "${safeName}"` }));
 							volumes = await volumeService.getVolumes(requestOptions);
 						}
 					});
@@ -77,7 +77,7 @@
 			const result = await tryCatch(volumeService.deleteVolume(safeName));
 			handleApiResultWithCallbacks({
 				result,
-				message: m.volumes_remove_failed({ name: safeName }),
+				message: m.common_remove_failed({ resource: `${m.resource_volume()} "${safeName}"` }),
 				setLoadingState: () => {},
 				onSuccess: (_data) => {
 					successCount += 1;

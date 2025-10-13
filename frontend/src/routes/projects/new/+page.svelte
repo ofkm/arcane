@@ -74,10 +74,10 @@
 
 		handleApiResultWithCallbacks({
 			result: await tryCatch(projectService.createProject(name, composeContent, envContent)),
-			message: m.compose_create_failed(),
+			message: m.common_create_failed({ resource: `${m.resource_project()} "${name}"` }),
 			setLoadingState: (value) => (saving = value),
 			onSuccess: async (project) => {
-				toast.success(m.compose_create_success({ name }));
+				toast.success(m.common_create_success({ resource: `${m.resource_project()} "${name}"` }));
 				goto(`/projects/${project.id}`, { invalidateAll: true });
 			}
 		});

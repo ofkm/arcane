@@ -59,10 +59,10 @@
 				const result = await tryCatch(userService.update(userId, user));
 				handleApiResultWithCallbacks({
 					result,
-					message: m.users_update_failed({ username: safeUsername }),
+					message: m.common_update_failed({ resource: `${m.resource_user()} "${safeUsername}"` }),
 					setLoadingState: (value) => (isLoading[loading] = value),
 					onSuccess: async () => {
-						toast.success(m.users_update_success({ username: safeUsername }));
+						toast.success(m.common_update_success({ resource: `${m.resource_user()} "${safeUsername}"` }));
 						users = await userService.getUsers(requestOptions);
 						isDialogOpen.edit = false;
 						userToEdit = null;
@@ -88,10 +88,10 @@
 				const result = await tryCatch(userService.create(createUser));
 				handleApiResultWithCallbacks({
 					result,
-					message: m.users_create_failed({ username: safeUsername }),
+					message: m.common_create_failed({ resource: `${m.resource_user()} "${safeUsername}"` }),
 					setLoadingState: (value) => (isLoading[loading] = value),
 					onSuccess: async () => {
-						toast.success(m.users_create_success({ username: safeUsername }));
+						toast.success(m.common_create_success({ resource: `${m.resource_user()} "${safeUsername}"` }));
 						users = await userService.getUsers(requestOptions);
 						isDialogOpen.create = false;
 					}

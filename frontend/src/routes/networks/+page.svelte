@@ -60,10 +60,10 @@
 		const name = options.Name?.trim() || m.common_unknown();
 		handleApiResultWithCallbacks({
 			result: await tryCatch(networkService.createNetwork(options)),
-			message: m.networks_create_failed({ name }),
+			message: m.common_create_failed({ resource: `${m.resource_network()} "${name}"` }),
 			setLoadingState: (value) => (isLoading.create = value),
 			onSuccess: async () => {
-				toast.success(m.networks_created_success({ name }));
+				toast.success(m.common_create_success({ resource: `${m.resource_network()} "${name}"` }));
 				networks = await networkService.getNetworks(requestOptions);
 				isCreateDialogOpen = false;
 			}
