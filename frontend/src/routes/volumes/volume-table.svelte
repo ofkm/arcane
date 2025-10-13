@@ -88,14 +88,12 @@
 
 		isLoading.removing = false;
 		if (successCount > 0) {
-			const successMsg =
-				successCount === 1 ? m.volumes_bulk_remove_success_one() : m.volumes_bulk_remove_success_many({ count: successCount });
+			const successMsg = m.common_bulk_remove_success({ count: successCount, resource: m.volumes_title() });
 			toast.success(successMsg);
 			volumes = await volumeService.getVolumes(requestOptions);
 		}
 		if (failureCount > 0) {
-			const failureMsg =
-				failureCount === 1 ? m.volumes_bulk_remove_failed_one() : m.volumes_bulk_remove_failed_many({ count: failureCount });
+			const failureMsg = m.common_bulk_remove_failed({ count: failureCount, resource: m.volumes_title() });
 			toast.error(failureMsg);
 		}
 		selectedIds = [];

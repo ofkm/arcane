@@ -90,7 +90,7 @@
 	<div class="space-y-3 sm:space-y-4">
 		<Button variant="ghost" onclick={() => goto('/customize/templates')} class="w-fit gap-2">
 			<ArrowLeftIcon class="size-4" />
-			<span>{m.common_back_to_templates()}</span>
+			<span>{m.common_back_to({ resource: m.templates_title() })}</span>
 		</Button>
 
 		<div>
@@ -163,7 +163,7 @@
 				<Button variant="secondary" onclick={handleDownload} disabled={isDownloading} class="w-full gap-2 sm:w-auto">
 					{#if isDownloading}
 						<Spinner class="size-4" />
-						{m.templates_downloading()}
+						{m.common_action_downloading()}
 					{:else}
 						<DownloadIcon class="size-4" />
 						{m.templates_download()}
@@ -184,7 +184,7 @@
 				<Button variant="destructive" onclick={handleDelete} disabled={isDeleting} class="w-full gap-2 sm:w-auto">
 					{#if isDeleting}
 						<Spinner class="size-4" />
-						{m.templates_deleting()}
+						{m.common_action_deleting()}
 					{:else}
 						<Trash2Icon class="size-4" />
 						{m.templates_delete_template()}

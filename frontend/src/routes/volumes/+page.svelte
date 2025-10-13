@@ -52,7 +52,7 @@
 		let refreshingVolumeCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(volumeService.getVolumes(requestOptions)),
-			message: m.volumes_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.volumes_title() }),
 			setLoadingState: (value) => {
 				refreshingVolumeList = value;
 				isLoading.refresh = refreshingVolumeCounts || refreshingVolumeList;
@@ -63,7 +63,7 @@
 		});
 		handleApiResultWithCallbacks({
 			result: await tryCatch(volumeService.getVolumeUsageCounts()),
-			message: m.volumes_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.volumes_title() }),
 			setLoadingState: (value) => {
 				refreshingVolumeCounts = value;
 				isLoading.refresh = refreshingVolumeCounts || refreshingVolumeList;

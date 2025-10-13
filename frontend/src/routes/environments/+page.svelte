@@ -29,7 +29,7 @@
 			environments = await environmentManagementService.getEnvironments(requestOptions);
 		} catch (err) {
 			console.error('Failed to refresh environments:', err);
-			toast.error(m.environments_refresh_failed());
+			toast.error(m.common_refresh_failed({ resource: m.environments_title() }));
 		} finally {
 			isLoading.refresh = false;
 		}
@@ -53,7 +53,7 @@
 						const result = await tryCatch(environmentManagementService.delete(id));
 						handleApiResultWithCallbacks({
 							result,
-							message: m.environments_bulk_remove_failed_many({ count: selectedIds.length }),
+							message: m.common_bulk_remove_failed({ count: selectedIds.length, resource: m.environments_title() }),
 							setLoadingState: () => {},
 							onSuccess: () => {
 								successCount += 1;
@@ -65,18 +65,12 @@
 					isLoading.deleting = false;
 
 					if (successCount > 0) {
-						const msg =
-							successCount === 1
-								? m.environments_bulk_remove_success_one()
-								: m.environments_bulk_remove_success_many({ count: successCount });
+						const msg = m.common_bulk_remove_success({ count: successCount, resource: m.environments_title() });
 						toast.success(msg);
 						await refresh();
 					}
 					if (failureCount > 0) {
-						const msg =
-							failureCount === 1
-								? m.environments_bulk_remove_failed_one()
-								: m.environments_bulk_remove_failed_many({ count: failureCount });
+						const msg = m.common_bulk_remove_failed({ count: failureCount, resource: m.environments_title() });
 						toast.error(msg);
 					}
 

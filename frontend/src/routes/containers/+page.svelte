@@ -49,7 +49,7 @@
 		let refreshingContainerCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(containerService.getContainers(requestOptions)),
-			message: m.containers_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.containers_title() }),
 			setLoadingState: (value) => {
 				refreshingContainerList = value;
 				isLoading.refreshing = refreshingContainerCounts || refreshingContainerList;
@@ -60,7 +60,7 @@
 		});
 		handleApiResultWithCallbacks({
 			result: await tryCatch(containerService.getContainerStatusCounts()),
-			message: m.containers_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.containers_title() }),
 			setLoadingState: (value) => {
 				refreshingContainerCounts = value;
 				isLoading.refreshing = refreshingContainerCounts || refreshingContainerList;

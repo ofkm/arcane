@@ -33,7 +33,7 @@
 		let refreshingNetworkCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(networkService.getNetworks(requestOptions)),
-			message: m.networks_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.networks_title() }),
 			setLoadingState: (value) => {
 				refreshingNetworkList = value;
 				isLoading.refresh = refreshingNetworkCounts || refreshingNetworkList;
@@ -44,7 +44,7 @@
 		});
 		handleApiResultWithCallbacks({
 			result: await tryCatch(networkService.getNetworkUsageCounts()),
-			message: m.networks_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.networks_title() }),
 			setLoadingState: (value) => {
 				refreshingNetworkCounts = value;
 				isLoading.refresh = refreshingNetworkCounts || refreshingNetworkList;

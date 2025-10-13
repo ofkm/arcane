@@ -98,7 +98,7 @@
 			toast.success(m.templates_refreshed());
 		} catch (error) {
 			console.error('Error refreshing templates:', error);
-			toast.error(m.templates_refresh_failed());
+			toast.error(m.common_refresh_failed({ resource: m.templates_title() }));
 		}
 	}
 

@@ -30,7 +30,7 @@
 		isLoading.refresh = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(containerRegistryService.getRegistries(requestOptions)),
-			message: m.registries_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.registries_title() }),
 			setLoadingState: (value) => (isLoading.refresh = value),
 			onSuccess: async (newRegistries) => {
 				registries = newRegistries;

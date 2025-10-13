@@ -311,7 +311,7 @@
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
 						<Spinner class="mr-2 size-4" />
-						{m.networks_creating()}
+						{m.common_action_creating()}
 					{:else}
 						<NetworkIcon class="mr-2 size-4" />
 						{m.networks_create_button()}

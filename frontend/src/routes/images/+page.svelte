@@ -66,7 +66,7 @@
 		let refreshingImageCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(imageService.getImages(requestOptions)),
-			message: m.images_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.images_title() }),
 			setLoadingState: (value) => {
 				refreshingImageList = value;
 				isLoading.refreshing = refreshingImageCounts || refreshingImageList;
@@ -77,7 +77,7 @@
 		});
 		handleApiResultWithCallbacks({
 			result: await tryCatch(imageService.getImageUsageCounts()),
-			message: m.images_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.images_title() }),
 			setLoadingState: (value) => {
 				refreshingImageCounts = value;
 				isLoading.refreshing = refreshingImageCounts || refreshingImageList;
@@ -114,7 +114,7 @@
 			id: 'check-updates',
 			action: 'inspect',
 			label: m.images_check_updates(),
-			loadingLabel: m.images_checking(),
+			loadingLabel: m.common_action_checking(),
 			onclick: handleTriggerBulkUpdateCheck,
 			loading: isLoading.checking,
 			disabled: isLoading.checking
@@ -123,7 +123,7 @@
 			id: 'prune',
 			action: 'remove',
 			label: m.images_prune_unused(),
-			loadingLabel: m.images_pruning(),
+			loadingLabel: m.common_action_pruning(),
 			onclick: () => (isConfirmPruneDialogOpen = true),
 			loading: isLoading.pruning,
 			disabled: isLoading.pruning
@@ -188,7 +188,7 @@
 					</Button>
 					<Button variant="destructive" onclick={handlePruneImages} disabled={isLoading.pruning}>
 						{#if isLoading.pruning}
-							<Spinner class="mr-2 size-4" /> {m.images_pruning()}
+							<Spinner class="mr-2 size-4" /> {m.common_action_pruning()}
 						{:else}
 							{m.images_prune_action()}
 						{/if}

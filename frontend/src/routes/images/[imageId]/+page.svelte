@@ -289,10 +289,10 @@
 		</div>
 	{:else}
 		<div class="py-12 text-center">
-			<p class="text-muted-foreground text-lg font-medium">{m.images_not_found_title()}</p>
+			<p class="text-muted-foreground text-lg font-medium">{m.common_not_found_title({ resource: m.images_title() })}</p>
 			<ArcaneButton
 				action="cancel"
-				customLabel={m.common_back_to_images()}
+				customLabel={m.common_back_to({ resource: m.images_title() })}
 				onclick={() => goto('/images')}
 				size="sm"
 				class="mt-4"

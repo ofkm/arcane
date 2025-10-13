@@ -321,10 +321,15 @@
 			<div class="bg-muted/30 mb-4 rounded-full p-4">
 				<DatabaseIcon class="text-muted-foreground size-10 opacity-70" />
 			</div>
-			<h2 class="mb-2 text-xl font-medium">{m.volumes_not_found_title()}</h2>
-			<p class="text-muted-foreground mb-6">{m.volumes_not_found_description()}</p>
+			<h2 class="mb-2 text-xl font-medium">{m.common_not_found_title({ resource: m.volumes_title() })}</h2>
+			<p class="text-muted-foreground mb-6">{m.common_not_found_description({ resource: m.volumes_title().toLowerCase() })}</p>
 
-			<ArcaneButton action="cancel" customLabel={m.common_back_to_volumes()} onclick={() => goto('/volumes')} size="sm" />
+			<ArcaneButton
+				action="cancel"
+				customLabel={m.common_back_to({ resource: m.volumes_title() })}
+				onclick={() => goto('/volumes')}
+				size="sm"
+			/>
 		</div>
 	{/if}
 </div>

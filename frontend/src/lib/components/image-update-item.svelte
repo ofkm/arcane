@@ -182,7 +182,7 @@
 			>
 				{#if isChecking}
 					<Spinner class="size-3" />
-					{m.images_checking()}
+					{m.common_action_checking()}
 				{:else}
 					<RefreshCwIcon class="size-3 transition-transform group-hover:rotate-45" />
 					{m.image_update_recheck_button()}

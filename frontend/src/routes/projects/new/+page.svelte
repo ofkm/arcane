@@ -172,7 +172,7 @@
 					>
 						{#if saving}
 							<Spinner class="size-4" />
-							{m.compose_creating()}
+							{m.common_action_creating()}
 						{:else}
 							<PlusCircleIcon class="size-4" />
 							{m.compose_create_project()}

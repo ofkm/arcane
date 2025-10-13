@@ -47,7 +47,7 @@
 		let refreshingProjectCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(projectService.getProjects(projectRequestOptions)),
-			message: m.compose_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.projects_title() }),
 			setLoadingState: (v) => {
 				refreshingProjectList = v;
 				isLoading.refreshing = refreshingProjectCounts || refreshingProjectList;
@@ -58,7 +58,7 @@
 		});
 		handleApiResultWithCallbacks({
 			result: await tryCatch(projectService.getProjectStatusCounts()),
-			message: m.compose_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.projects_title() }),
 			setLoadingState: (v) => {
 				refreshingProjectCounts = v;
 				isLoading.refreshing = refreshingProjectCounts || refreshingProjectList;

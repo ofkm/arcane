@@ -197,7 +197,7 @@
 						>
 							{#if loadingStates.has(`download-${template.id}`)}
 								<Spinner class="mr-1 size-3" />
-								{m.templates_downloading()}
+								{m.common_action_downloading()}
 							{:else}
 								<DownloadIcon class="mr-1 size-3" />
 								{m.templates_download()}

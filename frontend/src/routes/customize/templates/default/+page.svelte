@@ -87,7 +87,7 @@
 <div class="space-y-4">
 	<Button variant="ghost" onclick={() => goto('/customize/templates')} class="w-fit gap-2">
 		<ArrowLeftIcon class="size-4" />
-		<span>{m.common_back_to_templates()}</span>
+		<span>{m.common_back_to({ resource: m.templates_title() })}</span>
 	</Button>
 
 	<ResourcePageLayout title={m.customize_defaults_title()} subtitle={m.customize_defaults_description()} {actionButtons}>

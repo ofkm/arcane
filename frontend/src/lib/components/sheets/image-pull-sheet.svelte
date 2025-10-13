@@ -92,7 +92,7 @@
 
 		const fullImageName = `${imageName}:${imageTag}`;
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		pullStatusText = `${m.images_pulling()} ${fullImageName}`;
+		pullStatusText = `${m.common_action_pulling()} ${fullImageName}`;
 
 		try {
 			const response = await fetch(`/api/environments/${envId}/images/pull`, {
@@ -262,7 +262,7 @@
 				<div class="mt-4">
 					{#if isPulling}
 						<div class="mb-1 flex justify-between text-xs">
-							<span>{pullStatusText || m.images_pulling()}</span>
+							<span>{pullStatusText || m.common_action_pulling()}</span>
 							<span>{Math.round(pullProgress)}%</span>
 						</div>
 						<div class="bg-secondary h-2 w-full overflow-hidden rounded-full">

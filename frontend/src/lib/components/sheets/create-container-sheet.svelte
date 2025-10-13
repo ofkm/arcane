@@ -770,7 +770,7 @@
 									<Button type="submit" disabled={isLoading}>
 										{#if isLoading}
 											<Spinner class="mr-2 size-4" />
-											{m.containers_creating()}
+											{m.common_action_creating()}
 										{:else}
 											<ContainerIcon class="mr-2 size-4" />
 											{m.containers_create_button()}

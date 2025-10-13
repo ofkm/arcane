@@ -462,9 +462,14 @@
 			<div class="bg-muted/30 mb-4 rounded-full p-4">
 				<NetworkIcon class="text-muted-foreground size-10 opacity-70" />
 			</div>
-			<h2 class="mb-2 text-xl font-medium">{m.networks_not_found_title()}</h2>
-			<p class="text-muted-foreground mb-6">{m.networks_not_found_description()}</p>
-			<ArcaneButton action="cancel" customLabel={m.common_back_to_networks()} onclick={() => goto('/networks')} size="sm" />
+			<h2 class="mb-2 text-xl font-medium">{m.common_not_found_title({ resource: m.networks_title() })}</h2>
+			<p class="text-muted-foreground mb-6">{m.common_not_found_description({ resource: m.networks_title().toLowerCase() })}</p>
+			<ArcaneButton
+				action="cancel"
+				customLabel={m.common_back_to({ resource: m.networks_title() })}
+				onclick={() => goto('/networks')}
+				size="sm"
+			/>
 		</div>
 	{/if}
 </div>

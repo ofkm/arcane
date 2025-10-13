@@ -56,7 +56,7 @@
 	let statsStreamEnabled = $state(false);
 
 	const cleanContainerName = (name: string | undefined): string => {
-		if (!name) return m.containers_not_found_title();
+		if (!name) return m.common_not_found_title({ resource: m.containers_title() });
 		return name.replace(/^\/+/, '');
 	};
 
@@ -373,14 +373,14 @@
 			<div class="bg-muted/50 mb-6 inline-flex rounded-full p-6">
 				<CircleAlertIcon class="text-muted-foreground size-10" />
 			</div>
-			<h2 class="mb-3 text-2xl font-medium">{m.containers_not_found_title()}</h2>
+			<h2 class="mb-3 text-2xl font-medium">{m.common_not_found_title({ resource: m.container() })}</h2>
 			<p class="text-muted-foreground mb-8 max-w-md text-center">
-				{m.containers_not_found_description()}
+				{m.common_not_found_description({ resource: m.container().toLowerCase() })}
 			</p>
 			<div class="flex justify-center gap-4">
 				<Button variant="outline" href="/containers">
 					<ArrowLeftIcon class="mr-2 size-4" />
-					{m.common_back_to_containers()}
+					{m.common_back_to({ resource: m.containers_title() })}
 				</Button>
 				<Button variant="default" onclick={refreshData}>
 					<RefreshCwIcon class="mr-2 size-4" />

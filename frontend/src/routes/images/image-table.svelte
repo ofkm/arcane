@@ -313,7 +313,7 @@
 				>
 					{#if isPullingInline[item.id]}
 						<Spinner class="size-4" />
-						{m.images_pulling()}
+						{m.common_action_pulling()}
 					{:else}
 						<DownloadIcon class="size-4" />
 						{m.images_pull()}

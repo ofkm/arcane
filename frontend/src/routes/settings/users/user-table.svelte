@@ -70,13 +70,13 @@
 					isLoading.removing = false;
 
 					if (successCount > 0) {
-						const msg = successCount === 1 ? m.users_delete_success_one() : m.users_delete_success_many({ count: successCount });
+						const msg = m.common_bulk_delete_success({ count: successCount, resource: m.users_title() });
 						toast.success(msg);
 						await onUsersChanged();
 					}
 
 					if (failureCount > 0) {
-						const msg = failureCount === 1 ? m.users_delete_failed_one() : m.users_delete_failed_many({ count: failureCount });
+						const msg = m.common_bulk_delete_failed({ count: failureCount, resource: m.users_title() });
 						toast.error(msg);
 					}
 
